@@ -1,0 +1,36 @@
+// For format details, see https://aka.ms/devcontainer.json.
+{
+    "name": "CompCert devcontainer",
+    "build":  {
+        "dockerfile": "Dockerfile"
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {
+            "installZsh": "true",
+            "username": "vscode",
+            "userUid": "1000",
+            "userGid": "1000",
+            "upgradePackages": "false"
+        },
+        "./features/ocaml": {
+            "version": "${localEnv:OCAML_VERSION}",
+            "packages": "ocamlformat#0.28.1 rocq-prover menhir",
+            "system-packages": "libgmp-dev pkg-config",
+            "repositories": "rocq-released https://rocq-prover.org/opam/released"
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ocamllabs.ocaml-platform"
+            ]
+        }
+    },
+    "remoteUser": "vscode",
+    "postCreateCommand": {
+	"submodules": "git submodule update --init --recursive --depth 1",
+        "opam": "sudo sh -ceux \"chown -R $(id -u):$(id -g) ${OPAMROOT}\""
+
+    },
+    "waitFor": "postCreateCommand"
+}
