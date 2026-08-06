@@ -18,8 +18,15 @@ default: compcert
 # the recipe (as opposed to a $(shell ...)-computed make variable): the case
 # statement's bare `pattern)` labels contain unbalanced parentheses, which
 # confuses make's own paren matching when used inside $(shell ...).
+# COMPCERT_TARGET overrides the PLATFORM/uname autodetection below with an
+# explicit target - used by compcert-export-archive-all. Read as a plain
+# shell env var (command-line make vars are auto-exported), not a make
+# $(if ...): wrapping the case statement in a make function hits the same
+# paren-matching confusion as the $(shell ...) gotcha above.
 compcert-configure:
-	cd $(COMPCERT_DIR) && opam exec -- ./configure $$(case "$$PLATFORM" in \
+	cd $(COMPCERT_DIR) && opam exec -- ./configure $$( \
+	  if [ -n "$${COMPCERT_TARGET:-}" ]; then echo "$$COMPCERT_TARGET"; else \
+	  case "$$PLATFORM" in \
 	  linux/aarch64|linux/arm64) echo aarch64-linux ;; \
 	  linux/amd64|linux/x86_64) echo x86_64-linux ;; \
 	  linux/i386|linux/386) echo x86_32-linux ;; \
@@ -31,7 +38,7 @@ compcert-configure:
 	       armv7l|armv6l|arm) echo arm-linux ;; \
 	       *) echo x86_64-linux ;; \
 	     esac ;; \
-	esac)
+	  esac; fi)
 
 compcert-build:
 	cd $(COMPCERT_DIR) && opam exec -- $(MAKE) -j$(COMPCERT_JOBS) all
@@ -174,8 +181,15 @@ compcert-export-run: compcert-export-build
 	cd $(COMPCERT_EXPORT_DIR) && COMPCERT_CONFIG=$(CURDIR)/$(COMPCERT_DIR)/compcert.ini \
 	  opam exec -- dune exec bin/main.exe -- $(ARGS)
 
+# One archive per target: Rocq extraction differs per architecture, so
+# compcert-export-archive alone only covers whichever target was last
+# configured. See tools/compcert-export-archive-all.sh.
+compcert-export-archive-all:
+	tools/compcert-export-archive-all.sh
+
 .PHONY: default \
   compcert compcert-configure compcert-build compcert-check-proof compcert-test \
   compcert-extraction-archive compcert-extraction-unarchive compcert-prepare-sources \
   compcert-build-from-archive compcert-lib-sync compcert-lib-build compcert-lib-run \
-  compcert-export-archive compcert-export-unarchive compcert-export-build compcert-export-run
+  compcert-export-archive compcert-export-unarchive compcert-export-build compcert-export-run \
+  compcert-export-archive-all

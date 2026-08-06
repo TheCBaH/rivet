@@ -1,0 +1,6 @@
+/.cross-smoke-work/
+/compcert-extraction.tar.gz
+/compcert-extraction-*.tar.gz
+/compcert-export.tar.gz
+/compcert-export-*.tar.gz
+/compcert-export/
