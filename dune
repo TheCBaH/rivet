@@ -1,0 +1,5 @@
+; Third-party sources kept byte-identical to upstream. Marking the tree vendored
+; suppresses warnings there and excludes it from `@fmt`, so `make asm-fmt` can
+; never rewrite a file whose whole value is being a verifiable copy.
+
+(vendored_dirs vendor)

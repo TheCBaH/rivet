@@ -4,3 +4,4 @@
 /compcert-export.tar.gz
 /compcert-export-*.tar.gz
 /compcert-export/
+/asm/_build/

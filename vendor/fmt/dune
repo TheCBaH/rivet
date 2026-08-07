@@ -1,0 +1,16 @@
+; Vendored Fmt (see README.md). The sources are byte-identical to upstream, so
+; the enclosing asm/dune marks this tree `vendored_dirs`: dune then suppresses
+; warnings here and leaves it out of `@fmt`, which keeps the copy verifiable
+; against its recorded hashes.
+;
+; The vendored copy is what makes Fmt usable here at all: the opam `fmt` package
+; is built by topkg and installs a META template, which dune rejects for Melange
+; ("not compatible with melange support"), so the production closure could not
+; depend on it and still satisfy .ai/asm_plan.md §11.6.
+;
+; Melange mode lives in melange/vendor/fmt, which copy_files these same sources.
+(library
+ (name fmt)
+ (modes byte native)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
