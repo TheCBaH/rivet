@@ -29,8 +29,11 @@
     "remoteUser": "vscode",
     "postCreateCommand": {
 	"submodules": "git submodule update --init --recursive --depth 1",
-        "opam": "sudo sh -ceux \"chown -R $(id -u):$(id -g) ${OPAMROOT}\""
-
+        // See .devcontainer/fix-opam-owner.sh: a blind `chown -R` here forces
+        // a full data copy-up of the whole opam/Rocq install on every fresh
+        // container (this host's overlay2 has metacopy disabled), even
+        // though ownership is usually already correct from image build.
+        "opam": "sudo .devcontainer/fix-opam-owner.sh $(id -u) $(id -g)"
     },
     "waitFor": "postCreateCommand"
 }
