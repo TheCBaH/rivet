@@ -109,7 +109,7 @@ module Surface = struct
 end
 
 module Opcode = struct
-  type t = Add | Mov | Movz | Stp | Ldr | Ret
+  type t = Add | Mov | Movz | Stp | Ldr | Ret | Sub | Strb | Udf
 
   let name = function
     | Add -> "add"
@@ -118,6 +118,9 @@ module Opcode = struct
     | Stp -> "stp"
     | Ldr -> "ldr"
     | Ret -> "ret"
+    | Sub -> "sub"
+    | Strb -> "strb"
+    | Udf -> "udf"
 
   (* The surface spellings this target accepts, and the only place the mapping
      lives. [simplify_instruction] consults it rather than repeating the list,
@@ -129,6 +132,9 @@ module Opcode = struct
     | "stp" -> Some Stp
     | "ldr" -> Some Ldr
     | "ret" -> Some Ret
+    | "sub" -> Some Sub
+    | "strb" -> Some Strb
+    | "udf" -> Some Udf
     | _ -> None
 end
 
@@ -148,6 +154,9 @@ module Lowered = struct
     | Movz of { rd : Reg.t; imm16 : int64; hw : int }
     | Ldr_uoff of { rt : Reg.t; rn : Reg.t; offset : int64 }
     | Ret of { rn : Reg.t }
+    | Sub_imm of { rd : Reg.t; rn : Reg.t; imm : int64; shift12 : bool }
+    | Strb_uoff of { rt : Reg.t; rn : Reg.t; offset : int64 }
+    | Udf of { imm16 : int64 }
 
   let pp ppf = function
     (* [add xD, sp, #0] is spelled [mov xD, sp] by every A64 disassembler, and
@@ -173,6 +182,11 @@ module Lowered = struct
            disagree with objdump on a line where nothing differs. *)
         if rn.Reg.num = 30 && not rn.Reg.is_sp then Fmt.string ppf "ret"
         else Fmt.pf ppf "ret %a" Reg.pp rn
+    | Sub_imm { rd; rn; imm; shift12 } ->
+        Fmt.pf ppf "sub %a, %a, #%Ld%s" Reg.pp rd Reg.pp rn imm
+          (if shift12 then ", lsl #12" else "")
+    | Strb_uoff { rt; rn; offset } -> Fmt.pf ppf "strb %a, [%a, #%Ld]" Reg.pp rt Reg.pp rn offset
+    | Udf { imm16 } -> Fmt.pf ppf "udf #%Ld" imm16
 
   let equal a b =
     match (a, b) with
@@ -186,6 +200,12 @@ module Lowered = struct
     | Ldr_uoff x, Ldr_uoff y ->
         Reg.equal x.rt y.rt && Reg.equal x.rn y.rn && Int64.equal x.offset y.offset
     | Ret x, Ret y -> Reg.equal x.rn y.rn
+    | Sub_imm x, Sub_imm y ->
+        Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Int64.equal x.imm y.imm
+        && x.shift12 = y.shift12
+    | Strb_uoff x, Strb_uoff y ->
+        Reg.equal x.rt y.rt && Reg.equal x.rn y.rn && Int64.equal x.offset y.offset
+    | Udf x, Udf y -> Int64.equal x.imm16 y.imm16
     | _ -> false
 end
 
@@ -312,6 +332,41 @@ let codec : (Lowered.t, fixup_kind) C.t =
              const ~width:22 0b1101011001011111000000L
              ** reg_field ~width:64 ~sp:false "rn"
              ** const ~width:5 0L));
+      (* [sub], A64's ADD/SUB(immediate) class with the [op] bit set: the same
+         shape as [add-imm] with one constant bit flipped, not a separate
+         instruction family - which is why A64 encodes it separately from
+         [add-imm] rather than folding it into a negated addend. *)
+      C.alt ~label:"sub-imm" ~priority:5
+        (C.iso_fun ~name:"sub-imm"
+           ~encode:(function
+             | Lowered.Sub_imm { rd; rn; imm; shift12 } ->
+                 if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then None
+                 else Some ((), ((if shift12 then 1L else 0L), (imm, (rn, rd))))
+             | _ -> None)
+           ~decode:(fun ((), (sh, (imm, (rn, rd)))) ->
+             Some (Lowered.Sub_imm { rd; rn; imm; shift12 = Int64.equal sh 1L }))
+           C.(
+             const ~width:9 0b110100010L ** field ~width:1 "sh" ** field ~width:12 "imm12"
+             ** reg_field ~width:64 ~sp:true "rn" ** reg_field ~width:64 ~sp:true "rd"));
+      (* [strb], the LDR/STR-unsigned-immediate class with [size=00,opc=00].
+         Unlike [ldr-uoff]'s field the offset is not scaled: a byte access has
+         nothing to divide by eight, so this is a plain field rather than
+         [scaled ~shift:0]. *)
+      C.alt ~label:"strb-uoff" ~priority:6
+        (C.iso_fun ~name:"strb-uoff"
+           ~encode:(function
+             | Lowered.Strb_uoff { rt; rn; offset } -> Some ((), (offset, (rn, rt))) | _ -> None)
+           ~decode:(fun ((), (offset, (rn, rt))) -> Some (Lowered.Strb_uoff { rt; rn; offset }))
+           C.(
+             const ~width:10 0b0011100100L
+             ** field ~width:12 ~signedness:C.Unsigned "imm12"
+             ** reg_field ~width:64 ~sp:true "rn"
+             ** reg_field ~width:32 ~sp:false "rt"));
+      C.alt ~label:"udf" ~priority:7
+        (C.iso_fun ~name:"udf"
+           ~encode:(function Lowered.Udf { imm16 } -> Some ((), imm16) | _ -> None)
+           ~decode:(fun ((), imm16) -> Some (Lowered.Udf { imm16 }))
+           C.(const ~width:16 0x0000L ** field ~width:16 ~signedness:C.Unsigned "imm16"));
     ]
 
 (* {1 Lexical profile}
@@ -513,6 +568,39 @@ let lower_instruction state i =
       else Ok [ Lowered.Ldr_uoff { rt; rn = m.Mem.base; offset = m.Mem.offset } ]
   | Opcode.Ret, [ Operand.Reg rn ] -> Ok [ Lowered.Ret { rn } ]
   | Opcode.Ret, [] -> Ok [ Lowered.Ret { rn = Reg.x30 } ]
+  | Opcode.Sub, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
+      match imm_of v with
+      | Error e -> Error e
+      | Ok imm ->
+          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then
+            bad
+              "immediate does not fit the unshifted 12-bit field; use the four-operand lsl #12 form"
+          else Ok [ Lowered.Sub_imm { rd; rn; imm; shift12 = false } ])
+  | ( Opcode.Sub,
+      [
+        Operand.Reg rd;
+        Operand.Reg rn;
+        Operand.Imm v;
+        Operand.Shift { Shift.kind = "lsl"; amount = 12 };
+      ] ) -> (
+      match imm_of v with
+      | Error e -> Error e
+      | Ok imm ->
+          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then
+            bad "immediate does not fit the 12-bit field"
+          else Ok [ Lowered.Sub_imm { rd; rn; imm; shift12 = true } ])
+  | Opcode.Strb, [ Operand.Reg rt; Operand.Mem m ] ->
+      if m.Mem.writeback then bad "writeback strb is not in M1 scope"
+      else if Int64.compare m.Mem.offset 0L < 0 || Int64.compare m.Mem.offset 4096L >= 0 then
+        bad "strb offset must fit the unsigned 12-bit field"
+      else Ok [ Lowered.Strb_uoff { rt; rn = m.Mem.base; offset = m.Mem.offset } ]
+  | Opcode.Udf, [ Operand.Imm v ] -> (
+      match imm_of v with
+      | Error e -> Error e
+      | Ok imm ->
+          if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
+            bad "udf immediate does not fit 16 bits"
+          else Ok [ Lowered.Udf { imm16 = imm } ])
   | _ -> bad (Printf.sprintf "no %s form takes these operands" (Opcode.name i.Instruction.op))
 
 (* {1 Encode and decode} *)
@@ -572,6 +660,24 @@ let instruction_of_lowered = function
           Instruction.op = Opcode.Ret;
           ops = (if rn.Reg.num = 30 && not rn.Reg.is_sp then [] else [ Operand.Reg rn ]);
         }
+  | Lowered.Sub_imm { rd; rn; imm; shift12 } ->
+      Some
+        {
+          Instruction.op = Opcode.Sub;
+          ops =
+            Operand.Reg rd :: Operand.Reg rn
+            :: Operand.Imm (Bigint.of_int64 imm)
+            :: (if shift12 then [ Operand.Shift { Shift.kind = "lsl"; amount = 12 } ] else []);
+        }
+  | Lowered.Strb_uoff { rt; rn; offset } ->
+      Some
+        {
+          Instruction.op = Opcode.Strb;
+          ops =
+            [ Operand.Reg rt; Operand.Mem { Mem.base = rn; offset; writeback = false; pre = true } ];
+        }
+  | Lowered.Udf { imm16 } ->
+      Some { Instruction.op = Opcode.Udf; ops = [ Operand.Imm (Bigint.of_int64 imm16) ] }
 
 let decode ctx bytes ~pos =
   ignore ctx;

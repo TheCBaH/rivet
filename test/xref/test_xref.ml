@@ -135,19 +135,36 @@ let%expect_test "generated corpus: our bytes against GNU as" =
   Printf.printf "\n%d agree, %d not\n" !agree !other;
   [%expect
     {|
+    x86_32   callee_clobber   agree
     x86_32   return41         agree
     x86_32   return42         agree
+    x86_32   sp_corrupt       agree
+    x86_32   stack_full       agree
+    x86_32   stack_over       agree
+    x86_32   trap             agree
+    x86_64   callee_clobber   agree
     x86_64   return41         agree
     x86_64   return42         agree
+    x86_64   sp_corrupt       agree
+    x86_64   stack_full       agree
+    x86_64   stack_over       agree
+    x86_64   trap             agree
     arm      callee_clobber   agree
     arm      return41         agree
     arm      return42         agree
     arm      sp_corrupt       agree
+    arm      stack_full       agree
+    arm      stack_over       agree
+    arm      trap             agree
     aarch64  callee_clobber   agree
     aarch64  return41         agree
     aarch64  return42         agree
+    aarch64  sp_corrupt       agree
+    aarch64  stack_full       agree
+    aarch64  stack_over       agree
+    aarch64  trap             agree
 
-    11 agree, 0 not |}]
+    28 agree, 0 not |}]
 
 (* {1 The frontier tree}
 

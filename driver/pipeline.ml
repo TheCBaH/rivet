@@ -416,6 +416,6 @@ module Make (T : T_intf.TARGET) = struct
 
   (* {2 The codec itself} *)
 
-  let dump_codec () = Fmt.to_to_string Codec.pp_shape (Codec.inspect T.codec) ^ "\n"
+  let dump_codec () = Fmt.to_to_string Codec.Shape.pp (Codec.inspect T.codec) ^ "\n"
   let check_codec () = List.map (Fmt.to_to_string Codec.pp_problem) (Codec.check T.codec)
 end

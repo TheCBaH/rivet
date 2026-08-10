@@ -27,7 +27,13 @@ module T = Aarch64
 open Asm_core
 
 let origin = Foundation.Origin.synthesized ~pass:"direct" ()
-let x n = Option.get (T.Reg.find n)
+
+(* Through the parser's own name table, so this file and the text path resolve
+   [sp] the same way. A typo cannot reach an encoding - it fails here, at module
+   initialization, where nothing has printed a test name yet and the message is
+   the only diagnosis available. *)
+let x n =
+  match T.Reg.find n with Some r -> r | None -> Fmt.failwith "%s: unknown register %S" T.name n
 
 let nop length =
   match T.nop_bytes ~length with Ok b -> b | Error d -> failwith (Foundation.Diagnostic.message d)

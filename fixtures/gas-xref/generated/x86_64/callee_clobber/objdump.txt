@@ -1,0 +1,8 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <asm_snippet>:
+   0:	48 31 db             	xor    %rbx,%rbx
+   3:	b8 2a 00 00 00       	mov    $0x2a,%eax
+   8:	c3                   	ret

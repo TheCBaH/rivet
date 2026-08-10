@@ -1,0 +1,6 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_snippet>:
+   0:	e7f000f0 	udf	#0

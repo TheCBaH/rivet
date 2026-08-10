@@ -1,0 +1,9 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_snippet>:
+   0:	5a                   	pop    %edx
+   1:	83 ec 10             	sub    $0x10,%esp
+   4:	b8 2a 00 00 00       	mov    $0x2a,%eax
+   9:	ff e2                	jmp    *%edx

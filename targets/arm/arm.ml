@@ -88,7 +88,7 @@ module Surface = struct
 end
 
 module Opcode = struct
-  type t = Mov | Add | Sub | Str | Ldr | Bx
+  type t = Mov | Add | Sub | Str | Ldr | Bx | Strb | Udf
 
   let name = function
     | Mov -> "mov"
@@ -97,6 +97,8 @@ module Opcode = struct
     | Str -> "str"
     | Ldr -> "ldr"
     | Bx -> "bx"
+    | Strb -> "strb"
+    | Udf -> "udf"
 
   (* The surface spellings this target accepts. [simplify_instruction] consults
      this rather than repeating the list. *)
@@ -107,6 +109,8 @@ module Opcode = struct
     | "str" -> Some Str
     | "ldr" -> Some Ldr
     | "bx" -> Some Bx
+    | "strb" -> Some Strb
+    | "udf" -> Some Udf
     | _ -> None
 
   (* A32 encodes add, sub and mov as one data-processing format distinguished
@@ -144,8 +148,9 @@ module Lowered = struct
         sh_kind : int;
         sh_amt : int;
       }
-    | Ldst_imm of { load : bool; rt : Reg.t; rn : Reg.t; offset : int64 }
+    | Ldst_imm of { load : bool; byte : bool; rt : Reg.t; rn : Reg.t; offset : int64 }
     | Bx of { rm : Reg.t }
+    | Udf of { imm16 : int64 }
 
   let shift_name = function 0 -> "lsl" | 1 -> "lsr" | 2 -> "asr" | 3 -> "ror" | _ -> "?"
 
@@ -164,9 +169,13 @@ module Lowered = struct
         | Some Opcode.Mov -> Fmt.pf ppf "mov %a, %a%s" Reg.pp rd Reg.pp rm sh
         | Some o -> Fmt.pf ppf "%s %a, %a, %a%s" (Opcode.name o) Reg.pp rd Reg.pp rn Reg.pp rm sh
         | None -> Fmt.pf ppf "dp%d %a, %a, %a%s" dp Reg.pp rd Reg.pp rn Reg.pp rm sh)
-    | Ldst_imm { load; rt; rn; offset } ->
-        Fmt.pf ppf "%s %a, [%a, #%Ld]" (if load then "ldr" else "str") Reg.pp rt Reg.pp rn offset
+    | Ldst_imm { load; byte; rt; rn; offset } ->
+        Fmt.pf ppf "%s%s %a, [%a, #%Ld]"
+          (if load then "ldr" else "str")
+          (if byte then "b" else "")
+          Reg.pp rt Reg.pp rn offset
     | Bx { rm } -> Fmt.pf ppf "bx %a" Reg.pp rm
+    | Udf { imm16 } -> Fmt.pf ppf "udf #%Ld" imm16
 
   let equal a b =
     match (a, b) with
@@ -177,9 +186,10 @@ module Lowered = struct
         x.dp = y.dp && x.s = y.s && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn
         && Reg.equal x.rm y.rm && x.sh_kind = y.sh_kind && x.sh_amt = y.sh_amt
     | Ldst_imm x, Ldst_imm y ->
-        x.load = y.load && Reg.equal x.rt y.rt && Reg.equal x.rn y.rn
+        x.load = y.load && x.byte = y.byte && Reg.equal x.rt y.rt && Reg.equal x.rn y.rn
         && Int64.equal x.offset y.offset
     | Bx x, Bx y -> Reg.equal x.rm y.rm
+    | Udf x, Udf y -> Int64.equal x.imm16 y.imm16
     | _ -> false
 end
 
@@ -328,7 +338,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
       C.alt ~label:"ldst-imm" ~priority:3
         (C.iso_fun ~name:"ldst-imm"
            ~encode:(function
-             | Lowered.Ldst_imm { load; rt; rn; offset } ->
+             | Lowered.Ldst_imm { load; byte; rt; rn; offset } ->
                  let up = Int64.compare offset 0L >= 0 in
                  let mag = Int64.abs offset in
                  if Int64.compare mag 4096L >= 0 then None
@@ -338,13 +348,15 @@ let codec : (Lowered.t, fixup_kind) C.t =
                        ( (),
                          ( (),
                            ( (if up then 1L else 0L),
-                             ((), ((), ((if load then 1L else 0L), (rn, (rt, mag))))) ) ) ) )
+                             ( (if byte then 1L else 0L),
+                               ((), ((if load then 1L else 0L), (rn, (rt, mag)))) ) ) ) ) )
              | _ -> None)
-           ~decode:(fun ((), ((), ((), (up, ((), ((), (load, (rn, (rt, mag))))))))) ->
+           ~decode:(fun ((), ((), ((), (up, (byte, ((), (load, (rn, (rt, mag))))))))) ->
              Some
                (Lowered.Ldst_imm
                   {
                     load = Int64.equal load 1L;
+                    byte = Int64.equal byte 1L;
                     rt;
                     rn;
                     offset = (if Int64.equal up 1L then mag else Int64.neg mag);
@@ -352,10 +364,25 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.(
              cond_al ** const ~width:3 2L
              ** const ~width:1 1L (* P: offset addressing, no writeback *)
-             ** field ~width:1 "u"
-             ** const ~width:1 0L (* B: word, not byte *)
-             ** const ~width:1 0L (* W *) ** field ~width:1 "l"
-             ** reg_field "rn" ** reg_field "rt" ** field ~width:12 "imm12"));
+             ** field ~width:1 "u" ** field ~width:1 "b" ** const ~width:1 0L (* W *)
+             ** field ~width:1 "l" ** reg_field "rn" ** reg_field "rt" ** field ~width:12 "imm12"));
+      (* [udf], the permanently-undefined encoding. Its fixed top nibble is
+         literally [cond_al]'s bit pattern - not a coincidence to route around,
+         but where ARM parked this encoding. *)
+      C.alt ~label:"udf" ~priority:4
+        (C.iso_fun ~name:"udf"
+           ~encode:(function
+             | Lowered.Udf { imm16 } ->
+                 if Int64.compare imm16 0L < 0 || Int64.compare imm16 65536L >= 0 then None
+                 else
+                   Some
+                     ((), ((), (Int64.shift_right_logical imm16 4, ((), Int64.logand imm16 0xFL))))
+             | _ -> None)
+           ~decode:(fun ((), ((), (imm12, ((), imm4)))) ->
+             Some (Lowered.Udf { imm16 = Int64.logor (Int64.shift_left imm12 4) imm4 }))
+           C.(
+             cond_al ** const ~width:8 0b01111111L ** field ~width:12 "imm12"
+             ** const ~width:4 0b1111L ** field ~width:4 "imm4"));
     ]
 
 (* {1 Lexical profile}
@@ -522,8 +549,26 @@ let lower_instruction state i =
         if m.writeback then bad "writeback addressing is not in M1 scope"
         else if Int64.compare (Int64.abs m.offset) 4096L >= 0 then
           bad "offset does not fit the 12-bit immediate"
-        else Ok [ Lowered.Ldst_imm { load = op = Opcode.Ldr; rt; rn = m.base; offset = m.offset } ]
+        else
+          Ok
+            [
+              Lowered.Ldst_imm
+                { load = op = Opcode.Ldr; byte = false; rt; rn = m.base; offset = m.offset };
+            ]
+    | Opcode.Strb, [ Operand.Reg rt; Operand.Mem m ] ->
+        if m.writeback then bad "writeback addressing is not in M1 scope"
+        else if Int64.compare (Int64.abs m.offset) 4096L >= 0 then
+          bad "offset does not fit the 12-bit immediate"
+        else
+          Ok [ Lowered.Ldst_imm { load = false; byte = true; rt; rn = m.base; offset = m.offset } ]
     | Opcode.Bx, [ Operand.Reg rm ] -> Ok [ Lowered.Bx { rm } ]
+    | Opcode.Udf, [ Operand.Imm v ] -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm ->
+            if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
+              bad "udf immediate does not fit 16 bits"
+            else Ok [ Lowered.Udf { imm16 = imm } ])
     | _ -> bad (Printf.sprintf "no %s form takes these operands" (Opcode.name i.Instruction.op))
 
 (* {1 Encode and decode}
@@ -563,13 +608,17 @@ let instruction_of_lowered = function
           Some { Instruction.op = Opcode.Mov; ops = [ Operand.Reg rd; Operand.Reg rm ] }
       | Some o ->
           Some { Instruction.op = o; ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] })
-  | Lowered.Ldst_imm { load; rt; rn; offset } ->
-      Some
-        {
-          Instruction.op = (if load then Opcode.Ldr else Opcode.Str);
-          ops = [ Operand.Reg rt; Operand.Mem { base = rn; offset; writeback = false; pre = true } ];
-        }
+  | Lowered.Ldst_imm { load; byte; rt; rn; offset } -> (
+      let mem_op = Operand.Mem { base = rn; offset; writeback = false; pre = true } in
+      match (load, byte) with
+      | false, false -> Some { Instruction.op = Opcode.Str; ops = [ Operand.Reg rt; mem_op ] }
+      | true, false -> Some { Instruction.op = Opcode.Ldr; ops = [ Operand.Reg rt; mem_op ] }
+      | false, true -> Some { Instruction.op = Opcode.Strb; ops = [ Operand.Reg rt; mem_op ] }
+      | true, true -> None
+      (* ldrb decodes correctly but has no M1 opcode to normalize into. *))
   | Lowered.Bx { rm } -> Some { Instruction.op = Opcode.Bx; ops = [ Operand.Reg rm ] }
+  | Lowered.Udf { imm16 } ->
+      Some { Instruction.op = Opcode.Udf; ops = [ Operand.Imm (Bigint.of_int64 imm16) ] }
 
 let decode ctx bytes ~pos =
   ignore ctx;

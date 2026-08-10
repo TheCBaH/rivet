@@ -1,0 +1,10 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <asm_snippet>:
+   0:	48 8d 84 24 07 c0 ff 	lea    -0x3ff9(%rsp),%rax
+   7:	ff 
+   8:	c6 00 00             	movb   $0x0,(%rax)
+   b:	b8 2a 00 00 00       	mov    $0x2a,%eax
+  10:	c3                   	ret

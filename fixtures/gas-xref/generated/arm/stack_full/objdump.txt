@@ -1,0 +1,10 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_snippet>:
+   0:	e24d1901 	sub	r1, sp, #16384	@ 0x4000
+   4:	e3a00000 	mov	r0, #0
+   8:	e5c10000 	strb	r0, [r1]
+   c:	e3a0002a 	mov	r0, #42	@ 0x2a
+  10:	e12fff1e 	bx	lr

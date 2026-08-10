@@ -103,9 +103,18 @@ module Surface = struct
 end
 
 module Opcode = struct
-  type t = Add | Sub | Mov | Lea | Ret
+  type t = Add | Sub | Mov | Lea | Ret | Xor | Ud2 | Pop | Jmp
 
-  let name = function Add -> "add" | Sub -> "sub" | Mov -> "mov" | Lea -> "lea" | Ret -> "ret"
+  let name = function
+    | Add -> "add"
+    | Sub -> "sub"
+    | Mov -> "mov"
+    | Lea -> "lea"
+    | Ret -> "ret"
+    | Xor -> "xor"
+    | Ud2 -> "ud2"
+    | Pop -> "pop"
+    | Jmp -> "jmp"
 
   (* The machine encodes add and sub as one opcode with the operation in the
      ModR/M reg field, so the opcode and its extension are two spellings of one
@@ -125,10 +134,19 @@ module Instruction = struct
   let pp ppf i =
     match i.ops with
     | [] -> Fmt.string ppf (Opcode.name i.op)
-    | ops ->
-        Fmt.pf ppf "%s%s %a" (Opcode.name i.op) (suffix_of_width i.width)
-          Fmt.(list ~sep:(any ", ") Operand.pp)
-          ops
+    | ops -> (
+        match i.op with
+        (* [pop]/[jmp] take no AT&T size suffix in M1 - their one operand's own
+           width is what disambiguates, and [simplify_instruction] only
+           recognizes the bare mnemonic. [jmp]'s indirect-target sigil is
+           equally part of this spelling: it is what [parse_one_operand]'s
+           [Token.Star] case, and GNU as, both expect. *)
+        | Opcode.Pop -> Fmt.pf ppf "pop %a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        | Opcode.Jmp -> Fmt.pf ppf "jmp *%a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        | _ ->
+            Fmt.pf ppf "%s%s %a" (Opcode.name i.op) (suffix_of_width i.width)
+              Fmt.(list ~sep:(any ", ") Operand.pp)
+              ops)
 end
 
 module Rm = struct
@@ -156,6 +174,12 @@ module Lowered = struct
     | Mov_r_rm of { width : int; reg : Reg.t; rm : Rm.t }
     | Lea of { width : int; reg : Reg.t; mem : Mem.t }
     | Ret
+    | Mov_rm_imm of { width : int; rm : Rm.t; imm : int64 }
+        (** imm-to-memory move; M1 only ever builds [width = 8]. *)
+    | Xor_rm_r of { width : int; rm : Rm.t; reg : Reg.t }
+    | Ud2
+    | Pop of { reg : Reg.t }
+    | Jmp_rm of { rm : Rm.t }
 
   let pp ppf = function
     | Alu_rm_imm { ext; width; rm; imm } ->
@@ -171,6 +195,13 @@ module Lowered = struct
     | Lea { width; reg; mem } ->
         Fmt.pf ppf "lea%s %a, %a" (suffix_of_width width) Mem.pp mem Reg.pp reg
     | Ret -> Fmt.string ppf "ret"
+    | Mov_rm_imm { width; rm; imm } ->
+        Fmt.pf ppf "mov%s $%Ld, %a" (suffix_of_width width) imm Rm.pp rm
+    | Xor_rm_r { width; rm; reg } ->
+        Fmt.pf ppf "xor%s %a, %a" (suffix_of_width width) Reg.pp reg Rm.pp rm
+    | Ud2 -> Fmt.string ppf "ud2"
+    | Pop { reg } -> Fmt.pf ppf "pop %a" Reg.pp reg
+    | Jmp_rm { rm } -> Fmt.pf ppf "jmp *%a" Rm.pp rm
 
   let equal a b =
     match (a, b) with
@@ -182,6 +213,12 @@ module Lowered = struct
     | Mov_r_rm x, Mov_r_rm y -> x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Lea x, Lea y -> x.width = y.width && Reg.equal x.reg y.reg && Mem.equal x.mem y.mem
     | Ret, Ret -> true
+    | Mov_rm_imm x, Mov_rm_imm y ->
+        x.width = y.width && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
+    | Xor_rm_r x, Xor_rm_r y -> x.width = y.width && Rm.equal x.rm y.rm && Reg.equal x.reg y.reg
+    | Ud2, Ud2 -> true
+    | Pop x, Pop y -> Reg.equal x.reg y.reg
+    | Jmp_rm x, Jmp_rm y -> Rm.equal x.rm y.rm
     | _ -> false
 end
 
@@ -480,6 +517,11 @@ module Make (M : MODE) = struct
     | Token.Immediate_sigil :: Token.Minus :: [ Token.Int v ] -> Ok (Operand.Imm (Bigint.neg v))
     (* %reg *)
     | [ Token.Register n ] -> Result.map (fun r -> Operand.Reg r) (reg_named n)
+    (* *%reg, the indirect-jump/call target sigil. GNU as requires the [*];
+       we also accept it without one below (falls through to the case
+       above), which is harmless since M1 has no direct/PC-relative jmp form
+       to be confused with - that's M2. *)
+    | [ Token.Star; Token.Register n ] -> Result.map (fun r -> Operand.Reg r) (reg_named n)
     (* disp(%base) and (%base) *)
     | [ Token.Lparen; Token.Register b; Token.Rparen ] ->
         Result.map (fun b -> Operand.Mem (Mem.of_base b)) (reg_named b)
@@ -550,12 +592,12 @@ module Make (M : MODE) = struct
     ignore features;
     let bad msg = Error (diag ~origin:s.Surface.origin "x86.simplify" msg) in
     let stem, suffix = split_suffix s.Surface.mnemonic in
-    let widthed op =
+    let widthed ?(allow8 = false) op =
       match suffix with
       | None ->
           bad (Printf.sprintf "%s needs an operand-size suffix (b, w, l or q)" s.Surface.mnemonic)
       | Some 16 -> bad "16-bit operands need the 0x66 prefix, which is not in M1 scope"
-      | Some 8 -> bad "8-bit operands are not in M1 scope"
+      | Some 8 when not allow8 -> bad "8-bit operands are not in M1 scope"
       | Some w when w = 64 && not M.rex_allowed ->
           bad (Printf.sprintf "%s has no 64-bit operand size" M.name)
       | Some w -> Ok { Instruction.op; width = w; ops = s.Surface.ops }
@@ -565,10 +607,17 @@ module Make (M : MODE) = struct
         if s.Surface.ops = [] then
           Ok { Instruction.op = Opcode.Ret; width = M.address_width; ops = [] }
         else bad "ret takes no operands in M1"
+    | "ud2", _ ->
+        if s.Surface.ops = [] then
+          Ok { Instruction.op = Opcode.Ud2; width = M.address_width; ops = [] }
+        else bad "ud2 takes no operands"
+    | "pop", _ -> Ok { Instruction.op = Opcode.Pop; width = M.address_width; ops = s.Surface.ops }
+    | "jmp", _ -> Ok { Instruction.op = Opcode.Jmp; width = M.address_width; ops = s.Surface.ops }
     | _, "add" -> widthed Opcode.Add
     | _, "sub" -> widthed Opcode.Sub
-    | _, "mov" -> widthed Opcode.Mov
+    | _, "mov" -> widthed ~allow8:true Opcode.Mov
     | _, "lea" -> widthed Opcode.Lea
+    | _, "xor" -> widthed Opcode.Xor
     | _ -> bad (Printf.sprintf "unknown instruction %s" s.Surface.mnemonic)
 
   (* {2 Lower: normalized -> lowered}
@@ -611,6 +660,15 @@ module Make (M : MODE) = struct
             | Operand.Mem m ->
                 Ok [ Lowered.Alu_rm_imm { ext; width = i.Instruction.width; rm = Rm.Mem m; imm } ]
             | Operand.Imm _ -> bad "an immediate cannot be a destination"))
+    | Opcode.Mov, [ Operand.Imm v; Operand.Mem m ] -> (
+        if i.Instruction.width <> 8 then
+          bad "movb $imm,(mem) is the only imm-to-memory mov form in M1"
+        else
+          match imm_of v with
+          | Error e -> Error e
+          | Ok imm -> Ok [ Lowered.Mov_rm_imm { width = 8; rm = Rm.Mem m; imm } ])
+    | Opcode.Mov, _ when i.Instruction.width = 8 ->
+        bad "8-bit mov is only supported as movb $imm,(mem) in M1"
     | Opcode.Mov, [ Operand.Imm v; Operand.Reg r ] -> (
         match (imm_of v, width_ok r) with
         | Ok imm, Ok () -> Ok [ Lowered.Mov_r_imm { width = i.Instruction.width; reg = r; imm } ]
@@ -632,7 +690,15 @@ module Make (M : MODE) = struct
         match width_ok r with
         | Error e -> Error e
         | Ok () -> Ok [ Lowered.Lea { width = i.Instruction.width; reg = r; mem = m } ])
+    | Opcode.Xor, [ Operand.Reg a; Operand.Reg b ] -> (
+        match (width_ok a, width_ok b) with
+        | Ok (), Ok () ->
+            Ok [ Lowered.Xor_rm_r { width = i.Instruction.width; rm = Rm.Reg b; reg = a } ]
+        | Error e, _ | _, Error e -> Error e)
     | Opcode.Ret, [] -> Ok [ Lowered.Ret ]
+    | Opcode.Ud2, [] -> Ok [ Lowered.Ud2 ]
+    | Opcode.Pop, [ Operand.Reg r ] -> Ok [ Lowered.Pop { reg = r } ]
+    | Opcode.Jmp, [ Operand.Reg r ] -> Ok [ Lowered.Jmp_rm { rm = Rm.Reg r } ]
     | _ -> bad (Printf.sprintf "no %s form takes these operands" (Opcode.name i.Instruction.op))
 
   (* {2 The codec}
@@ -790,6 +856,56 @@ module Make (M : MODE) = struct
              ~encode:(function Lowered.Ret -> Some () | _ -> None)
              ~decode:(fun () -> Some Lowered.Ret)
              C.(const ~width:8 0xc3L));
+        C.alt ~label:"mov-rm-imm8" ~priority:7
+          (C.iso_fun ~name:"mov-rm-imm8"
+             ~encode:(function
+               | Lowered.Mov_rm_imm { width; rm; imm } ->
+                   if width <> 8 then None
+                   else Some (rex_of ~width:8 ~reg:0 ~rm, ((), ({ re_reg = 0; re_rm = rm }, imm)))
+               | _ -> None)
+             ~decode:(fun (_rex, ((), (e, imm))) ->
+               if e.re_reg <> 0 then None
+               else Some (Lowered.Mov_rm_imm { width = 8; rm = retype_rm ~width:8 e.re_rm; imm }))
+             C.(
+               rex_codec ** const ~width:8 0xC6L ** rm_codec
+               ** le ~signedness:C.Signed ~width:8 "imm8"));
+        C.alt ~label:"xor-rm-r" ~priority:8
+          (C.iso_fun ~name:"xor-rm-r"
+             ~encode:(function
+               | Lowered.Xor_rm_r { width; rm; reg } ->
+                   Some (rex_of ~width ~reg:reg.num ~rm, ((), { re_reg = reg.num; re_rm = rm }))
+               | _ -> None)
+             ~decode:(fun (rex, ((), e)) ->
+               let width = width_of_rex rex in
+               Some
+                 (Lowered.Xor_rm_r
+                    { width; rm = retype_rm ~width e.re_rm; reg = reg_at ~width e.re_reg }))
+             C.(rex_codec ** const ~width:8 0x31L ** rm_codec));
+        C.alt ~label:"pop-r" ~priority:9
+          (C.iso_fun ~name:"pop-r"
+             ~encode:(function
+               | Lowered.Pop { reg } ->
+                   Some
+                     (rex_of ~width:32 ~reg:0 ~rm:(Rm.Reg reg), ((), Int64.of_int (reg.num land 7)))
+               | _ -> None)
+             ~decode:(fun (_rex, ((), r)) ->
+               Some (Lowered.Pop { reg = reg_at ~width:M.address_width (Int64.to_int r) }))
+             C.(rex_codec ** const ~width:5 0b01011L ** field ~width:3 "reg"));
+        C.alt ~label:"jmp-rm" ~priority:10
+          (C.iso_fun ~name:"jmp-rm"
+             ~encode:(function
+               | Lowered.Jmp_rm { rm } ->
+                   Some (rex_of ~width:32 ~reg:4 ~rm, ((), { re_reg = 4; re_rm = rm }))
+               | _ -> None)
+             ~decode:(fun (_rex, ((), e)) ->
+               if e.re_reg <> 4 then None
+               else Some (Lowered.Jmp_rm { rm = retype_rm ~width:M.address_width e.re_rm }))
+             C.(rex_codec ** const ~width:8 0xFFL ** rm_codec));
+        C.alt ~label:"ud2" ~priority:11
+          (C.iso_fun ~name:"ud2"
+             ~encode:(function Lowered.Ud2 -> Some () | _ -> None)
+             ~decode:(fun () -> Some Lowered.Ud2)
+             C.(const ~width:16 0x0f0bL));
       ]
 
   (* {2 Encode and decode} *)
@@ -852,6 +968,38 @@ module Make (M : MODE) = struct
     | Lowered.Lea { width; reg; mem } ->
         Some { Instruction.op = Opcode.Lea; width; ops = [ Operand.Mem mem; Operand.Reg reg ] }
     | Lowered.Ret -> Some { Instruction.op = Opcode.Ret; width = M.address_width; ops = [] }
+    | Lowered.Mov_rm_imm { width; rm; imm } ->
+        Some
+          {
+            Instruction.op = Opcode.Mov;
+            width;
+            ops =
+              [
+                Operand.Imm (Bigint.of_int64 imm);
+                (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+              ];
+          }
+    | Lowered.Xor_rm_r { width; rm; reg } ->
+        Some
+          {
+            Instruction.op = Opcode.Xor;
+            width;
+            ops =
+              [
+                Operand.Reg reg;
+                (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+              ];
+          }
+    | Lowered.Ud2 -> Some { Instruction.op = Opcode.Ud2; width = M.address_width; ops = [] }
+    | Lowered.Pop { reg } ->
+        Some { Instruction.op = Opcode.Pop; width = M.address_width; ops = [ Operand.Reg reg ] }
+    | Lowered.Jmp_rm { rm } ->
+        Some
+          {
+            Instruction.op = Opcode.Jmp;
+            width = M.address_width;
+            ops = [ (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m) ];
+          }
 
   let decode ctx bytes ~pos =
     ignore ctx;

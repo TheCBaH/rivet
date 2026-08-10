@@ -345,31 +345,84 @@ let decode_bits node bits = decode node bits ~pos:0
    the committed cram dumps read. It is deliberately not the same as [check]'s
    output: this says what a form *is*, that says what is wrong with it. *)
 
-type shape =
-  | S_empty
-  | S_const of { width : int; value : int64 }
-  | S_field of { name : string; width : int; signedness : signedness }
-  | S_fixup of { name : string; width : int }
-  | S_seq of shape list
-  | S_iso_table of { name : string; entries : int; inner : shape }
-  | S_iso_fun of { name : string; inner : shape }
-  | S_alt of { name : string; alts : (string * int * int * shape) list }
+module Shape = struct
+  type shape =
+    | Empty
+    | Const of { width : int; value : int64 }
+    | Field of { name : string; width : int; signedness : signedness }
+    | Fixup of { name : string; width : int }
+    | Seq of shape list
+    | Iso_table of { name : string; entries : int; inner : shape }
+    | Iso_fun of { name : string; inner : shape }
+    | Alt of { name : string; alts : (string * int * int * shape) list }
 
-let rec inspect : type a k. (a, k) t -> shape = function
-  | Empty -> S_empty
-  | Const { width; value } -> S_const { width; value }
-  | Field { name; width; signedness } -> S_field { name; width; signedness }
-  | Fixup { name; width; _ } -> S_fixup { name; width }
+  let pp_signedness ppf = function Signed -> Fmt.string ppf "s" | Unsigned -> Fmt.string ppf "u"
+
+  (* Named nodes ([Alt], [Iso_table], [Iso_fun]) are shared: x86's [modrm] and
+     [sib], for instance, are each one OCaml value referenced from many
+     instructions. Expanding a name's body at every occurrence both balloons the
+     dump (the same seven-branch modrm table, once per instruction that uses it)
+     and, since a nested [alt]'s box indents from whatever column it happens to
+     open at, drifts the whole table sideways by however deep the enclosing
+     sequence already was. So a name is expanded exactly once - at the site that
+     defines it - and every other occurrence is just the bare name, with the
+     definition queued to be printed once of its own accord afterwards. *)
+  let pp ppf top =
+    let seen = Hashtbl.create 16 in
+    let queue = Queue.create () in
+    let enqueue name s =
+      if not (Hashtbl.mem seen name) then (
+        Hashtbl.add seen name ();
+        Queue.push (name, s) queue)
+    in
+    let rec pp_ref ppf = function
+      | Empty -> Fmt.string ppf "()"
+      | Const { width; value } -> Fmt.pf ppf "%s" (Bits.to_string (Bits.of_int64 ~width value))
+      | Field { name; width; signedness } ->
+          Fmt.pf ppf "%s:%d%a" name width pp_signedness signedness
+      | Fixup { name; width } -> Fmt.pf ppf "<%s:%d>" name width
+      | Seq xs -> Fmt.pf ppf "@[<h>%a@]" Fmt.(list ~sep:(any " ") pp_ref) xs
+      | (Iso_table { name; _ } | Iso_fun { name; _ } | Alt { name; _ }) as s ->
+          enqueue name s;
+          Fmt.string ppf name
+    and pp_def ppf = function
+      | Alt { name; alts } ->
+          Fmt.pf ppf "@[<v2>alt %s@,%a@]" name
+            Fmt.(
+              list ~sep:cut (fun ppf (label, prio, cost, s) ->
+                  Fmt.pf ppf "@[<h>[%d cost=%d] %-16s %a@]" prio cost label pp_def s))
+            alts
+      | Iso_table { name; entries; inner } -> Fmt.pf ppf "%s[%d]{%a}" name entries pp_ref inner
+      | Iso_fun { name; inner } -> Fmt.pf ppf "%s(){%a}" name pp_ref inner
+      | (Empty | Const _ | Field _ | Fixup _ | Seq _) as s -> pp_ref ppf s
+    in
+    Fmt.pf ppf "@[<v>%t@]" @@ fun ppf ->
+    pp_def ppf top;
+    let rec drain () =
+      match Queue.pop queue with
+      | exception Queue.Empty -> ()
+      | _name, s ->
+          Fmt.pf ppf "@,%a" pp_def s;
+          drain ()
+    in
+    drain ()
+end
+
+let rec inspect : type a k. (a, k) t -> Shape.shape = function
+  | Empty -> Shape.Empty
+  | Const { width; value } -> Shape.Const { width; value }
+  | Field { name; width; signedness } -> Shape.Field { name; width; signedness }
+  | Fixup { name; width; _ } -> Shape.Fixup { name; width }
   | Seq (a, b) -> (
       (* Flattened, so that a right-nested chain of [**] prints as the sequence
          the author wrote rather than as a comb of pairs. *)
-      let tail = match inspect b with S_seq xs -> xs | s -> [ s ] in
-      match inspect a with S_seq xs -> S_seq (xs @ tail) | s -> S_seq (s :: tail))
+      let tail = match inspect b with Shape.Seq xs -> xs | s -> [ s ] in
+      match inspect a with Shape.Seq xs -> Shape.Seq (xs @ tail) | s -> Shape.Seq (s :: tail))
   | Iso_table { name; entries; inner; _ } ->
-      S_iso_table { name; entries = List.length entries; inner = inspect inner }
-  | Iso_fun { name; inner; _ } -> S_iso_fun { name; inner = inspect inner }
+      Shape.Iso_table { name; entries = List.length entries; inner = inspect inner }
+  | Iso_fun { name; inner; _ } -> Shape.Iso_fun { name; inner = inspect inner }
   | Alt { name; alts } ->
-      S_alt
+      Shape.Alt
         {
           name;
           alts =
@@ -377,23 +430,6 @@ let rec inspect : type a k. (a, k) t -> shape = function
               (fun a -> (a.label, a.priority, a.cost, inspect a.body))
               (List.sort (fun a b -> compare a.priority b.priority) alts);
         }
-
-let pp_signedness ppf = function Signed -> Fmt.string ppf "s" | Unsigned -> Fmt.string ppf "u"
-
-let rec pp_shape ppf = function
-  | S_empty -> Fmt.string ppf "()"
-  | S_const { width; value } -> Fmt.pf ppf "%s" (Bits.to_string (Bits.of_int64 ~width value))
-  | S_field { name; width; signedness } -> Fmt.pf ppf "%s:%d%a" name width pp_signedness signedness
-  | S_fixup { name; width } -> Fmt.pf ppf "<%s:%d>" name width
-  | S_seq xs -> Fmt.pf ppf "@[<h>%a@]" Fmt.(list ~sep:(any " ") pp_shape) xs
-  | S_iso_table { name; entries; inner } -> Fmt.pf ppf "%s[%d]{%a}" name entries pp_shape inner
-  | S_iso_fun { name; inner } -> Fmt.pf ppf "%s(){%a}" name pp_shape inner
-  | S_alt { name; alts } ->
-      Fmt.pf ppf "@[<v2>alt %s@,%a@]" name
-        Fmt.(
-          list ~sep:cut (fun ppf (label, prio, cost, s) ->
-              Fmt.pf ppf "@[<h>[%d cost=%d] %-16s %a@]" prio cost label pp_shape s))
-        alts
 
 (* The width a form occupies, when that is a single number. An [Alt] whose
    branches disagree has none, which is not an error - x86 instructions are

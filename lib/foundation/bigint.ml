@@ -410,7 +410,7 @@ let limbs_of_uint64 v =
         (Int64.to_int (Int64.logand v (Int64.of_int limb_mask)) :: acc)
         (Int64.shift_right_logical v limb_bits)
   in
-  List.rev (go [] v)
+  go [] v
 
 let of_int64 v =
   if Int64.equal v 0L then zero

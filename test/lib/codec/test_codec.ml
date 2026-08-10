@@ -9,16 +9,18 @@ open Codec_corpus.Synthetic_isa
 let show_bits b = Bits.to_string b
 let hex b = Foundation.Byte_cursor.to_hex (Bits.to_bytes b)
 
-let enc insn =
-  match encode isa insn with
-  | Error e -> Fmt.pr "%-18s ERROR %a@." (show_insn insn) pp_error e
-  | Ok ({ bits; placements; _ } as e) ->
-      Fmt.pr "%-18s %s  %-6s form=%-10s%a@." (show_insn insn) (show_bits bits) (hex bits)
-        (form_id e)
-        Fmt.(
-          list ~sep:nop (fun ppf p ->
-              Fmt.pf ppf "  fixup %s:%s@%d+%d" p.name (fixup_name p.kind) p.bit_offset p.bit_width))
-        placements
+let pp_placement ppf (p : _ placement) =
+  Fmt.pf ppf "  fixup %s:%s@%d+%d" p.name (fixup_name p.kind) p.bit_offset p.bit_width
+
+let pp_encoded ppf (e : _ encoded) =
+  Fmt.pf ppf "%s  %-6s form=%-10s%a" (show_bits e.bits) (hex e.bits) (form_id e)
+    Fmt.(list ~sep:nop pp_placement)
+    e.placements
+
+(* Both outcomes print through one combinator, so a success and a failure can
+   never drift into differently-shaped output. *)
+let pp_encode_result = Fmt.result ~ok:pp_encoded ~error:Fmt.(any "ERROR " ++ pp_error)
+let enc insn = Fmt.pr "%-18s %a@." (show_insn insn) pp_encode_result (encode isa insn)
 
 let dec bits =
   match decode_bits isa bits with
@@ -102,15 +104,16 @@ let%expect_test "two encodings, one semantic instruction" =
 (* {1 Inspect} *)
 
 let%expect_test "inspect" =
-  Fmt.pr "@[<v>%a@]@." pp_shape (inspect isa);
+  Fmt.pr "@[<v>%a@]@." Shape.pp (inspect isa);
   [%expect
     {|
     alt synthetic
       [0 cost=0] nop              nop(){0000000000000000}
-      [1 cost=1] add              add(){0001 reg[8]{r:3u} reg[8]{r:3u} 000000}
-      [2 cost=1] li.short         li.short(){0100 reg[8]{r:3u} imm:4u 00000}
-      [3 cost=2] li.long          li.long(){0010 reg[8]{r:3u} imm:8u 0}
-      [4 cost=1] jmp              jmp(){0011 <target:12>} |}]
+      [1 cost=1] add              add(){0001 reg reg 000000}
+      [2 cost=1] li.short         li.short(){0100 reg imm:4u 00000}
+      [3 cost=2] li.long          li.long(){0010 reg imm:8u 0}
+      [4 cost=1] jmp              jmp(){0011 <target:12>}
+    reg[8]{r:3u} |}]
 
 let%expect_test "widths" =
   let w name node =

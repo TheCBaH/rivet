@@ -62,12 +62,19 @@ jobs:
     - name: planted violations
       run: |
         ${{ env.EXEC }} make asm-planted
-    # js_of_ocaml compilation and Node equality on every leg. The Melange leg
-    # cannot run here - Melange 7.0.1-414 requires `ocaml >= 4.14 & < 4.15`, so
-    # it would make every 5.x image unsatisfiable - and it has its own job
-    # below; but leaving jsoo out too would mean the only evidence that the
-    # production closure compiles to JavaScript came from one pinned leg.
+    # js_of_ocaml compilation and Node equality on every leg but the two
+    # 32-bit ones. The Melange leg cannot run here - Melange 7.0.1-414
+    # requires `ocaml >= 4.14 & < 4.15`, so it would make every 5.x image
+    # unsatisfiable - and it has its own job below; but leaving jsoo out too
+    # would mean the only evidence that the production closure compiles to
+    # JavaScript came from one pinned leg. linux/i386 and linux/arm/v7 are
+    # skipped because the devcontainer image installs Node only for
+    # amd64/arm64 (upstream ships no linux-x86 build at all - dropped long
+    # ago - and skipping the armv7l one too keeps both 32-bit legs on the
+    # same simple rule rather than growing a special case), so there is no
+    # `node` to run this against on those two legs.
     - name: js_of_ocaml equality
+      if: matrix.platform != 'linux/i386' && matrix.platform != 'linux/arm/v7'
       run: |
         ${{ env.EXEC }} make asm-js-portable
     # The Melange opt-in itself, which needs no Melange: it asserts that with

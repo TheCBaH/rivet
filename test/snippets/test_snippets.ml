@@ -74,6 +74,37 @@ let%expect_test "x86_64: AST assembles to the frozen bytes" =
       | addq $8, %rsp
       | ret
       assembled      48 83 ec 08 48 8d 44 24 10 48 89 04 24 b8 29 00 00 00 48 83 c4 08 c3
+      == frozen
+    trap
+      | ud2
+      assembled      0f 0b
+      == frozen
+    stack_full
+      | leaq -16376(%rsp), %rax
+      | movb $0, (%rax)
+      | movl $42, %eax
+      | ret
+      assembled      48 8d 84 24 08 c0 ff ff c6 00 00 b8 2a 00 00 00 c3
+      == frozen
+    stack_over
+      | leaq -16377(%rsp), %rax
+      | movb $0, (%rax)
+      | movl $42, %eax
+      | ret
+      assembled      48 8d 84 24 07 c0 ff ff c6 00 00 b8 2a 00 00 00 c3
+      == frozen
+    sp_corrupt
+      | pop %rdx
+      | subq $16, %rsp
+      | movl $42, %eax
+      | jmp *%rdx
+      assembled      5a 48 83 ec 10 b8 2a 00 00 00 ff e2
+      == frozen
+    callee_clobber
+      | xorq %rbx, %rbx
+      | movl $42, %eax
+      | ret
+      assembled      48 31 db b8 2a 00 00 00 c3
       == frozen |}]
 
 let%expect_test "x86_32: AST assembles to the frozen bytes" =
@@ -97,6 +128,37 @@ let%expect_test "x86_32: AST assembles to the frozen bytes" =
       | addl $12, %esp
       | ret
       assembled      83 ec 0c 8d 44 24 10 89 04 24 b8 29 00 00 00 83 c4 0c c3
+      == frozen
+    trap
+      | ud2
+      assembled      0f 0b
+      == frozen
+    stack_full
+      | leal -16380(%esp), %eax
+      | movb $0, (%eax)
+      | movl $42, %eax
+      | ret
+      assembled      8d 84 24 04 c0 ff ff c6 00 00 b8 2a 00 00 00 c3
+      == frozen
+    stack_over
+      | leal -16381(%esp), %eax
+      | movb $0, (%eax)
+      | movl $42, %eax
+      | ret
+      assembled      8d 84 24 03 c0 ff ff c6 00 00 b8 2a 00 00 00 c3
+      == frozen
+    sp_corrupt
+      | pop %edx
+      | subl $16, %esp
+      | movl $42, %eax
+      | jmp *%edx
+      assembled      5a 83 ec 10 b8 2a 00 00 00 ff e2
+      == frozen
+    callee_clobber
+      | xorl %ebx, %ebx
+      | movl $42, %eax
+      | ret
+      assembled      31 db b8 2a 00 00 00 c3
       == frozen |}]
 
 let%expect_test "arm: AST assembles to the frozen bytes" =
@@ -136,6 +198,27 @@ let%expect_test "arm: AST assembles to the frozen bytes" =
       | mov r0, #42
       | bx lr
       assembled      10 d0 4d e2 2a 00 a0 e3 1e ff 2f e1
+      == frozen
+    trap
+      | udf #0
+      assembled      f0 00 f0 e7
+      == frozen
+    stack_full
+      | sub r1, sp, #16384
+      | mov r0, #0
+      | strb r0, [r1, #0]
+      | mov r0, #42
+      | bx lr
+      assembled      01 19 4d e2 00 00 a0 e3 00 00 c1 e5 2a 00 a0 e3 1e ff 2f e1
+      == frozen
+    stack_over
+      | sub r1, sp, #16384
+      | sub r1, r1, #1
+      | mov r0, #0
+      | strb r0, [r1, #0]
+      | mov r0, #42
+      | bx lr
+      assembled      01 19 4d e2 01 10 41 e2 00 00 a0 e3 00 00 c1 e5 2a 00 a0 e3 1e ff 2f e1
       == frozen |}]
 
 let%expect_test "aarch64: AST assembles to the frozen bytes" =
@@ -165,6 +248,31 @@ let%expect_test "aarch64: AST assembles to the frozen bytes" =
       | movz w0, #42
       | ret
       assembled      13 00 80 d2 40 05 80 52 c0 03 5f d6
+      == frozen
+    trap
+      | udf #0
+      assembled      00 00 00 00
+      == frozen
+    stack_full
+      | sub x1, sp, #4, lsl #12
+      | strb wzr, [x1, #0]
+      | movz w0, #42
+      | ret
+      assembled      e1 13 40 d1 3f 00 00 39 40 05 80 52 c0 03 5f d6
+      == frozen
+    stack_over
+      | sub x1, sp, #4, lsl #12
+      | sub x1, x1, #1
+      | strb wzr, [x1, #0]
+      | movz w0, #42
+      | ret
+      assembled      e1 13 40 d1 21 04 00 d1 3f 00 00 39 40 05 80 52 c0 03 5f d6
+      == frozen
+    sp_corrupt
+      | sub sp, sp, #16
+      | movz w0, #42
+      | ret
+      assembled      ff 43 00 d1 40 05 80 52 c0 03 5f d6
       == frozen |}]
 
 (* {1 The inventory}
@@ -215,10 +323,10 @@ let%expect_test "the M1 scope frontier, per snippet and profile" =
       arm      ok
       aarch64  ok
     trap
-      x86_32   needs: ud2
-      x86_64   needs: ud2
-      arm      needs: udf - no trap form
-      aarch64  needs: udf - no trap form
+      x86_32   ok
+      x86_64   ok
+      arm      ok
+      aarch64  ok
     spin
       x86_32   needs: jmp . - PC-relative branch, §4.3 defers fixups to M2
       x86_64   needs: jmp . - PC-relative branch, §4.3 defers fixups to M2
@@ -230,27 +338,27 @@ let%expect_test "the M1 scope frontier, per snippet and profile" =
       arm      needs: and/cmp plus the conditional-execution suffixes moveq/movne
       aarch64  needs: and/cmp/b.eq - three forms plus a PC-relative branch
     stack_full
-      x86_32   needs: movb $0,(%reg) - byte-width store to memory
-      x86_64   needs: movb $0,(%reg) - byte-width store to memory
-      arm      needs: strb
-      aarch64  needs: sub-imm with lsl #12, and strb
-    stack_over
-      x86_32   needs: movb $0,(%reg) - byte-width store to memory
-      x86_64   needs: movb $0,(%reg) - byte-width store to memory
-      arm      needs: strb
-      aarch64  needs: sub-imm with lsl #12, and strb
-    sp_corrupt
-      x86_32   needs: pop, and the indirect jmp *%reg
-      x86_64   needs: pop, and the indirect jmp *%reg
+      x86_32   ok
+      x86_64   ok
       arm      ok
-      aarch64  needs: sub-imm - A64 encodes it separately from add-imm
+      aarch64  ok
+    stack_over
+      x86_32   ok
+      x86_64   ok
+      arm      ok
+      aarch64  ok
+    sp_corrupt
+      x86_32   ok
+      x86_64   ok
+      arm      ok
+      aarch64  ok
     callee_clobber
-      x86_32   needs: xor
-      x86_64   needs: xor
+      x86_32   ok
+      x86_64   ok
       arm      ok
       aarch64  ok
 
-    dogfooded 11 of 36 |}]
+    dogfooded 28 of 36 |}]
 
 (* {1 Padding}
 
@@ -262,16 +370,21 @@ let%expect_test "the M1 scope frontier, per snippet and profile" =
    the encoding rather than a restatement of one. What it did not have was
    anything asserting the lengths come out right. *)
 
+(* Accepted, accepted at the wrong length, and rejected all render through one
+   combinator, so the three cannot drift into differently-shaped output. *)
+let show_nop ~length =
+  let ok ppf b =
+    if String.length b = length then Fmt.string ppf (hex b)
+    else Fmt.pf ppf "WRONG LENGTH %d: %s" (String.length b) (hex b)
+  in
+  Fmt.str "%a" (Fmt.result ~ok ~error:Fmt.(any "rejected: " ++ string))
+
 let%expect_test "nop_bytes, every length a target accepts" =
   List.iter
     (fun t ->
       Printf.printf "%s\n" t.target;
       List.iter
-        (fun length ->
-          match t.nop ~length with
-          | Ok b when String.length b = length -> Printf.printf "  %2d  %s\n" length (hex b)
-          | Ok b -> Printf.printf "  %2d  WRONG LENGTH %d: %s\n" length (String.length b) (hex b)
-          | Error m -> Printf.printf "  %2d  rejected: %s\n" length m)
+        (fun length -> Printf.printf "  %2d  %s\n" length (show_nop ~length (t.nop ~length)))
         (List.init 16 (fun i -> i + 1)))
     all;
   [%expect
