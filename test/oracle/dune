@@ -21,9 +21,16 @@
 ; Both carry the ASM_MELANGE gate the libraries use, because they depend on the
 ; vendored Fmt, whose non-Melange stanza is disabled in that configuration.
 ;
-; The QEMU process runner is deliberately not here: it needs Unix and the four
-; cross-assembled helpers, so it arrives with them (M0.3c/M0.3d) rather than
-; putting a toolchain dependency on the portable test path.
+; asm_oracle_run  the QEMU process runner. Unix lives here and nowhere else on
+;                 the host side; §3.7 bans it from every production and browser
+;                 package and tools/asm-check-purity.sh enforces that over the
+;                 resolved DAG. Native only, and deliberately not wired to any
+;                 alias: it needs the cross-assembled helpers and the four
+;                 qemu-user binaries, which the portable CI leg does not have.
+;
+; conform         the conformance driver (make asm-abi-conform). An executable,
+;                 not a runtest rule, for the same reason - `make asm-test` must
+;                 never acquire a hidden cross-toolchain or QEMU dependency.
 
 (library
  (name asm_oracle)
@@ -41,5 +48,21 @@
  (inline_tests)
  (preprocess
   (pps ppx_expect))
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
+(library
+ (name asm_oracle_run)
+ (modules qemu_user)
+ (modes byte native)
+ (libraries asm_oracle fmt unix)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
+(executable
+ (name conform)
+ (modules conform)
+ (modes exe)
+ (libraries asm_oracle asm_oracle_run fmt)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))

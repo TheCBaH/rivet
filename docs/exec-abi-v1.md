@@ -367,6 +367,23 @@ input violates several rules at once:
 
 First failure wins.
 
+**Order inside cross-region well-formedness.** Groups 1–3 above each carry their
+own internal order — stage order, descriptor-index order, a fixed pair order —
+but group 4 did not, and "first failure wins" needs a total one. It is:
+
+1. the 32-bit address-width rule (subcode 42), on 32-bit profiles;
+2. `entry_addr` inside an X segment (36), then the profile rule (37);
+3. `result_addr` page-aligned (38), then normative (39);
+4. `stack_size` (40), then the stack region (41).
+
+Rule 42 is deliberately first rather than last. Every input with a high word set
+is *also* caught by a later rule — an entry beyond 2^32 lies in no segment, a
+result address beyond 2^32 is not the normative one — so with 42 last it would be
+a check that exists and can never fire. Placing it first shadows nothing, because
+every other subcode in this group has inputs whose high words are zero. This is a
+clarification of an order the document previously left open, not a change to a
+specified one.
+
 Collisions deliberately precede the normative-address rules. Otherwise a manifest
 moving the result page onto the stack would always fail the "`result_addr` equals
 its normative address" check first, making the result/stack collision subcode

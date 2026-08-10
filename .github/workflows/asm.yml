@@ -63,6 +63,43 @@ jobs:
       run: |
         ${{ env.EXEC }} make asm-planted
 
+  # ABI v1 conformance (asm/docs/exec-abi-v1.md §16). Its own job, and
+  # deliberately not part of the matrix above: it assembles the four helpers
+  # with the cross binutils and executes them under the four qemu-user
+  # binaries, neither of which the 32-bit legs have. Keeping it out is what
+  # lets `make asm-test` stay free of any cross-toolchain or QEMU dependency
+  # (guardrail 4) while conformance still blocks.
+  #
+  # It needs no CompCert installation at all, so it is far cheaper than the
+  # full oracle job and can stay required.
+  abi-conform:
+    runs-on: ubuntu-24.04
+    env:
+      OCAML_VERSION: 5.5.0
+    steps:
+    - name: checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: true
+    - name: devcontainer
+      uses: ./.github/workflows/actions/devcontainer
+      id: devcontainer
+      with:
+        variant: ${{ env.OCAML_VERSION }}
+    - name: setup
+      run: |
+        echo 'EXEC=${{ steps.devcontainer.outputs.exec }}' >> $GITHUB_ENV
+    - name: helpers
+      run: |
+        ${{ env.EXEC }} make asm-helpers
+    # Every case checks an exact outcome, and the driver additionally fails if
+    # any subcode §14.2 promises is neither observed by a case nor covered by a
+    # recorded exemption - so a check that becomes unreachable fails here rather
+    # than passing quietly.
+    - name: conformance
+      run: |
+        ${{ env.EXEC }} make asm-abi-conform
+
   # Byte-identical output from native OCaml, js_of_ocaml/Node, and Melange/Node
   # (.ai/asm_plan.md §11.6). Its own job on one pinned leg, because Melange
   # 5.1.0-414 requires `ocaml >= 4.14 & < 4.15` and so cannot be installed on

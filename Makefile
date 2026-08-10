@@ -257,6 +257,27 @@ asm-purity: asm-build
 asm-planted: asm-build
 	tools/asm-check-planted.sh
 
+# The execution ABI (asm/docs/exec-abi-v1.md). Three targets, and the
+# dependency edges are again what enforce a policy: neither asm-helpers nor
+# asm-abi-conform is reachable from asm-test or asm-ci, so `make asm-test` can
+# never acquire a hidden cross-toolchain or QEMU dependency (guardrail 4).
+#
+# asm-helpers needs the four cross GNU as/ld; asm-abi-conform additionally
+# executes the helpers under qemu-user. Both therefore live outside the portable
+# CI matrix, in their own required linux/amd64 job - which needs no CompCert
+# installation at all, so ABI conformance stays a blocking gate without costing
+# what the full oracle costs.
+asm-helpers:
+	tools/asm-helpers.sh all
+
+asm-runner: asm-build
+	cd $(ASM_DIR) && opam exec -- dune build test/oracle/conform.exe
+
+# ASM_HELPERS_DIR is absolute because the driver runs from the build tree.
+asm-abi-conform: asm-runner asm-helpers
+	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers \
+	  opam exec -- dune exec test/oracle/conform.exe
+
 # What CI runs, and what to run locally before pushing. Formatting is checked
 # first: an unformatted tree is the cheapest failure to diagnose. asm-js is not
 # here — it needs Melange, hence OCaml 4.14, so it is its own CI job.
