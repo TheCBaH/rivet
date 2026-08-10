@@ -12,6 +12,7 @@ let rw = { read = true; write = true; execute = false }
 let none = { read = false; write = false; execute = false }
 let executable t = t.execute
 let writable t = t.write
+let readable t = t.read
 
 (* Three characters, with [-] for absent, per asm/docs/contracts.md §1.4. Fixed
    width matters: the lowered and image dumps put permissions in a column, and a

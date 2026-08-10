@@ -184,27 +184,51 @@ let scan_offsets (sel : selection) frags =
    inside one section are independent of where the section is placed, which is
    why relaxation can run at plan time at all. *)
 let alt_reaches ~evaluate ~labels ~frag_off (a : 'k Lowered_ast.encoded_form) =
-  let env_for (f : 'k Lowered_ast.fixup) =
+  (* Being *evaluable* against this section's labels is not the same as being
+     *in* this section, and the difference is the whole of the intra-section
+     rule. [Expr.absolute] happily reduces [Const 0x400078] to a number, and
+     comparing that number against a section-relative [place] silently assumes
+     the section base is zero: the rung would be chosen for a displacement that
+     no longer holds once [bind_image] picks a real base, and by then promotion
+     is over.
+
+     So decide it by measurement rather than by inspecting the expression's
+     shape. Evaluate the target twice - once with the section at 0, once with it
+     at a probe base, moving every label and [here] together - and keep the
+     answer only if the target moved with the section. That is exactly "the
+     target is a location in this section": a constant does not move (coefficient
+     0), nor does a label difference, and a reference to a section we did not lay
+     out here does not evaluate at all. Only a coefficient of 1 cancels against
+     [place] to leave a base-independent displacement.
+
+     The probe is arbitrary and only its difference is read, so no expression can
+     collude with it; it is offset well past any plausible section size so that a
+     coincidental match cannot come from small-integer arithmetic. *)
+  let probe = 0x1000_0000 in
+  let env_for ~base (f : 'k Lowered_ast.fixup) =
     {
-      Expr.lookup = (fun n -> Option.map (fun o -> Bigint.of_int o) (List.assoc_opt n labels));
-      here = Some (Bigint.of_int (frag_off + f.Lowered_ast.pc_bias));
+      Expr.lookup =
+        (fun n -> Option.map (fun o -> Bigint.of_int (o + base)) (List.assoc_opt n labels));
+      here = Some (Bigint.of_int (frag_off + f.Lowered_ast.pc_bias + base));
     }
+  in
+  let at ~base f =
+    match Expr.absolute (env_for ~base f) f.Lowered_ast.value with
+    | Error _ -> None
+    | Ok target -> Bigint.to_int64_opt target
   in
   List.fold_left
     (fun acc (f : 'k Lowered_ast.fixup) ->
       match acc with
       | Some false | None -> acc
       | Some true -> (
-          match Expr.absolute (env_for f) f.Lowered_ast.value with
-          | Error _ -> None
-          | Ok target -> (
-              match Bigint.to_int64_opt target with
-              | None -> None
-              | Some t -> (
-                  let place = Int64.of_int (frag_off + f.Lowered_ast.pc_bias) in
-                  match evaluate f.Lowered_ast.kind ~place ~target:t with
-                  | Error _ -> Some false
-                  | Ok v -> Some (Lowered_ast.range_admits f.Lowered_ast.range v)))))
+          match (at ~base:0 f, at ~base:probe f) with
+          | Some t0, Some t1 when Int64.equal (Int64.sub t1 t0) (Int64.of_int probe) -> (
+              let place = Int64.of_int (frag_off + f.Lowered_ast.pc_bias) in
+              match evaluate f.Lowered_ast.kind ~place ~target:t0 with
+              | Error _ -> Some false
+              | Ok v -> Some (Lowered_ast.range_admits f.Lowered_ast.range v))
+          | _ -> None))
     (Some true) a.Lowered_ast.fixups
 
 (* Promotion-only fixpoint.
@@ -304,16 +328,22 @@ let layout_section ~evaluate (sc : 'k Lowered_ast.section_content) =
               | Some true | None -> ());
               emit_bytes ~frag_off ~form:(Some a.Lowered_ast.form) a.Lowered_ast.bytes
                 a.Lowered_ast.fixups origin)
-      | Lowered_ast.Align { boundary; fill; _ } ->
+      | Lowered_ast.Align { boundary; fills; origin } ->
           let target = align_up (Buffer.length buf) boundary in
           let pad = target - Buffer.length buf in
-          (* The target chooses the fill. A zero-filled gap in an executable
-             section is a decodable instruction, so padding code with zeroes is
-             not a neutral default - it is a different program. *)
-          let unit = max 1 (String.length fill) in
-          for i = 0 to pad - 1 do
-            Buffer.add_char buf fill.[i mod unit]
-          done
+          (* The target supplies one fill per gap size, and this picks the one
+             that fits exactly. Repeating a shorter pattern would be the same
+             number of bytes and a different program: x86 pads with a single
+             no-op sized for the gap, so ten bytes is one ten-byte instruction
+             and not two nops that add up. *)
+          if pad > 0 then
+            if pad > Array.length fills || String.length fills.(pad - 1) <> pad then
+              errors :=
+                diag ~origin "image.align-fill"
+                  (Printf.sprintf "the target supplies no %d-byte padding for a %d-byte alignment"
+                     pad boundary)
+                :: !errors
+            else Buffer.add_string buf fills.(pad - 1)
       | Lowered_ast.Zero { length; _ } -> Buffer.add_string buf (String.make length '\000')
       | Lowered_ast.Label_def { name; _ } -> offsets := (name, Buffer.length buf) :: !offsets
       | Lowered_ast.Set_size { name; size; _ } -> sizes := (name, size, Buffer.length buf) :: !sizes)
@@ -732,31 +762,56 @@ let pp ppf (t : t) =
 
 type site = {
   o_section : string;
-  o_offset : int;
+  o_offset : int;  (** the patch container, section-relative: where an ELF record would point *)
+  o_place : int;
+      (** the PC base this fixup measures from, section-relative. Carried because the ELF addend of
+          a PC-relative record is [expr_addend + o_offset - o_place] and neither term is recoverable
+          from the other; on x86 [o_place] is the realized instruction length past the fragment
+          start, so it is not a constant anyone could substitute. *)
   o_kind_name : string;
   o_family : string;
   o_role : Lowered_ast.fixup_role;
 }
 
-type fixup_observation =
-  | Symbolic_ref of {
-      site : site;
-      symbol : string;
-      addend : int64;
-      binding : [ `Local | `Global ];
-      visibility : Lowered_ast.visibility;
-      defined : bool;
-      same_section : bool;
-    }
-  | Non_normalizable of { site : site; expr : string }
+(* Named rather than inline, so a classifier can take the payload on its own.
+   That is not a convenience: an observation with no single symbol has no
+   binding, visibility or section relation either, and a [classify] handed the
+   whole sum would have a case it cannot decide - which is an invitation to
+   invent an answer for it. The caller matches first and routes the other
+   variant to the post-link byte comparison. *)
+type symbolic_ref = {
+  site : site;
+  symbol : string;
+  addend : int64;
+  binding : [ `Local | `Global ];
+  visibility : Lowered_ast.visibility;
+  defined : bool;
+  same_section : bool;
+}
+
+type non_normalizable = { nn_site : site; nn_expr : string }
+type fixup_observation = Symbolic_ref of symbolic_ref | Non_normalizable of non_normalizable
 
 (* An ELF record names one symbol and one addend. Only these two shapes reduce
    to that; anything else is reported as itself and gated by the post-link byte
-   comparison instead of pretending to a record-for-record match. *)
+   comparison instead of pretending to a record-for-record match.
+
+   Folding first is what makes that "shapes", plural, rather than "spellings":
+   [g + (2 + 2)] and [g + 4] are the same reference and must produce the same
+   record, and matching on the unfolded tree would call the first
+   non-normalizable and quietly drop it out of the comparison. [Expr.fold]
+   leaves symbols and modifiers alone, so a genuine two-symbol expression still
+   arrives here unreduced and is still reported as itself. *)
 let normalize_ref (e : Expr.t) =
-  match e with
+  (* A folding failure - a division by zero in a subterm, say - is not a shape
+     this can name, so it takes the same route as any other unreducible one. *)
+  match match Expr.fold Expr.no_env e with Ok folded -> folded | Error _ -> e with
   | Expr.Symbol s -> Some (s, 0L)
-  | Expr.Binary (Expr.Add, Expr.Symbol s, Expr.Const k) ->
+  | Expr.Binary (Expr.Add, Expr.Symbol s, Expr.Const k)
+  (* Addition commutes and GAS accepts both spellings, so [4+g] is the same
+     reference as [g+4]. Subtraction does not, and [4-g] is deliberately absent
+     below: it is not a symbol plus an addend at all. *)
+  | Expr.Binary (Expr.Add, Expr.Const k, Expr.Symbol s) ->
       Option.map (fun v -> (s, v)) (Bigint.to_int64_opt k)
   | Expr.Binary (Expr.Sub, Expr.Symbol s, Expr.Const k) ->
       Option.map (fun v -> (s, Int64.neg v)) (Bigint.to_int64_opt k)
@@ -769,13 +824,14 @@ let fixup_observations (l : laid_out) =
         {
           o_section = f.rf_section;
           o_offset = f.rf_byte_offset;
+          o_place = f.rf_frag_offset + f.rf_pc_bias;
           o_kind_name = f.rf_kind_name;
           o_family = f.rf_family;
           o_role = f.rf_role;
         }
       in
       match normalize_ref f.rf_value with
-      | None -> Non_normalizable { site; expr = Expr.to_string f.rf_value }
+      | None -> Non_normalizable { nn_site = site; nn_expr = Expr.to_string f.rf_value }
       | Some (symbol, addend) ->
           let sym = List.find_opt (fun s -> String.equal s.Lowered_ast.name symbol) l.symbols in
           let defined = List.mem_assoc symbol l.offsets in
@@ -809,10 +865,10 @@ let pp_observation ppf = function
         (if o.defined then if o.same_section then "same-section" else "other-section"
          else "undefined")
   | Non_normalizable o ->
-      Fmt.pf ppf "%s\t0x%08x\t%s\t%s\tnon-normalizable\t%s" o.site.o_section o.site.o_offset
-        o.site.o_kind_name
-        (Lowered_ast.fixup_role_name o.site.o_role)
-        o.expr
+      Fmt.pf ppf "%s\t0x%08x\t%s\t%s\tnon-normalizable\t%s" o.nn_site.o_section o.nn_site.o_offset
+        o.nn_site.o_kind_name
+        (Lowered_ast.fixup_role_name o.nn_site.o_role)
+        o.nn_expr
 
 (* The plan a laid-out module carries. [laid_out] is otherwise opaque to a
    caller by convention: it is [plan_image]'s working state, handed straight

@@ -273,6 +273,44 @@ let%expect_test "a ladder has no single width, and check accepts it" =
     width: variable
     problems: 0 |}]
 
+let%expect_test "a buried ladder yields every rung, with its surroundings intact" =
+  (* The top-level [ladder] above is the easy case. Here the rungs sit under an
+     [Alt], an [Iso_fun] and two [Seq]s - which is where a real one lives - and
+     each result has to be a *complete* encoding: the register operand ahead of
+     the ladder, the trailing opcode bits behind it, the alternative's label at
+     the head of the form path, and placements shifted to their real bit
+     offsets rather than the rung's local ones. *)
+  (match encode_ladder buried_ladder (Buried (R5, 4L)) with
+  | Error e -> Fmt.pr "ERROR %a@." pp_error e
+  | Ok forms ->
+      List.iter
+        (fun (e : _ encoded) ->
+          Fmt.pr "  %-12s %s  %s@." (form_id e) (hex e.bits)
+            (String.concat " "
+               (List.map
+                  (fun p ->
+                    Printf.sprintf "%s@%s" p.name
+                      (String.concat "+"
+                         (List.map
+                            (fun s -> Printf.sprintf "%d:%d" s.bit_offset s.bit_width)
+                            p.slices)))
+                  e.placements)))
+        forms);
+  [%expect
+    {|
+      br.rel8      bd 60 96  target@11:8
+      br.rel16     bd 20 00 96  target@11:16 |}]
+
+let%expect_test "check rejects two ladders on one realized path" =
+  (* Distinct from the nesting rule: neither ladder is inside the other, so the
+     rung-level check sees nothing wrong. What is wrong is that the form's rungs
+     would be a product of two independent choices. *)
+  Fmt.pr "@[<v>%a@]@."
+    Fmt.(list ~sep:cut pp_problem)
+    (check ~equal_kind:( = ) ~kind_name:fixup_name broken_two_ladders);
+  [%expect
+    {| seq: two relaxation ladders can be realized on one path; a form may contain at most one |}]
+
 let%expect_test "check rejects rungs that cannot be told apart" =
   Fmt.pr "@[<v>%a@]@."
     Fmt.(list ~sep:cut pp_problem)

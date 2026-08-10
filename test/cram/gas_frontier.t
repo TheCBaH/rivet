@@ -59,44 +59,44 @@ CompCert's runtime library, per target.
   >   done
   > done
   x86_32   i64_dtos      error[x86.operand]: unknown register %ah
-  x86_32   i64_dtou      error[x86.operand]: cannot parse operand LC1
-  x86_32   i64_sar       error[x86.operand]: cannot parse operand 1f
-  x86_32   i64_sdiv      error[x86.operand]: cannot parse operand 1f
-  x86_32   i64_shl       error[x86.operand]: cannot parse operand 1f
-  x86_32   i64_shr       error[x86.operand]: cannot parse operand 1f
-  x86_32   i64_smod      error[x86.operand]: cannot parse operand 1f
+  x86_32   i64_dtou      error[x86.operand]: unknown register %ah
+  x86_32   i64_sar       error[x86.simplify]: unknown instruction testb
+  x86_32   i64_sdiv      error[x86.simplify]: unknown instruction pushl
+  x86_32   i64_shl       error[x86.simplify]: unknown instruction testb
+  x86_32   i64_shr       error[x86.simplify]: unknown instruction testb
+  x86_32   i64_smod      error[x86.simplify]: unknown instruction pushl
   x86_32   i64_smulh     error[x86.simplify]: unknown instruction pushl
   x86_32   i64_stod      error[x86.simplify]: unknown instruction fildll
   x86_32   i64_stof      error[x86.simplify]: unknown instruction fildll
-  x86_32   i64_udiv      error[x86.operand]: cannot parse operand __compcert_i64_udivmod
-  x86_32   i64_udivmod   error[x86.operand]: cannot parse operand 1f
-  x86_32   i64_umod      error[x86.operand]: cannot parse operand __compcert_i64_udivmod
+  x86_32   i64_udiv      error[x86.simplify]: unknown instruction pushl
+  x86_32   i64_udivmod   error[x86.simplify]: unknown instruction divl
+  x86_32   i64_umod      error[x86.simplify]: unknown instruction pushl
   x86_32   i64_umulh     error[x86.simplify]: unknown instruction pushl
-  x86_32   i64_utod      error[x86.operand]: cannot parse operand 1f
-  x86_32   i64_utof      error[x86.operand]: cannot parse operand 1f
-  x86_32   vararg        error[x86.operand]: cannot parse operand 3(%eax
-  x86_64   i64_dtou      error[parse]: unexpected token
-  x86_64   i64_utod      error[x86.operand]: cannot parse operand 1f
-  x86_64   i64_utof      error[x86.operand]: cannot parse operand 1f
-  x86_64   vararg        error[x86.operand]: cannot parse operand 1f
-  arm      i64_dtos      error[arm.operand]: unknown register d0
-  arm      i64_dtou      error[arm.operand]: unknown register d0
-  arm      i64_sar       error[arm.operand]: cannot parse operand 1f
+  x86_32   i64_utod      error[x86.simplify]: unknown instruction fildll
+  x86_32   i64_utof      error[x86.simplify]: unknown instruction fildll
+  x86_32   vararg        error[x86.operand]: cannot parse operand 3(%eax %edx)
+  x86_64   i64_dtou      error[x86.operand]: unknown register %xmm0
+  x86_64   i64_utod      error[x86.operand]: unknown register %xmm0
+  x86_64   i64_utof      error[x86.operand]: unknown register %xmm0
+  x86_64   vararg        error[x86.operand]: unknown register %xmm0
+  arm      i64_dtos      error[arm.simplify]: unknown instruction vmov
+  arm      i64_dtou      error[arm.simplify]: unknown instruction vmov
+  arm      i64_sar       error[arm.simplify]: unknown instruction and
   arm      i64_sdiv      error[arm.operand]: cannot parse operand {r4 r5 r6 r7 r8 r10 lr}
   arm      i64_shl       error[arm.simplify]: unknown instruction and
   arm      i64_shr       error[arm.simplify]: unknown instruction and
   arm      i64_smod      error[arm.operand]: cannot parse operand {r4 r5 r6 r7 r8 r10 lr}
   arm      i64_smulh     error[arm.operand]: cannot parse operand {r4 r5 r6 r7}
-  arm      i64_stod      error[parse]: unexpected token
-  arm      i64_stof      error[parse]: unexpected token
+  arm      i64_stod      error[arm.simplify]: unknown instruction vmov
+  arm      i64_stof      error[arm.simplify]: unknown instruction asr
   arm      i64_udiv      error[arm.operand]: cannot parse operand {r4 r5 r6 r7 r8 lr}
-  arm      i64_udivmod   error[arm.operand]: unknown register eq
+  arm      i64_udivmod   error[arm.simplify]: unknown instruction orrs
   arm      i64_umod      error[arm.operand]: cannot parse operand {r4 r5 r6 r7 r8 lr}
   arm      i64_umulh     error[arm.operand]: cannot parse operand {r4 r5 r6 r7}
-  arm      i64_utod      error[parse]: unexpected token
-  arm      i64_utof      error[parse]: unexpected token
-  arm      vararg        error[arm.operand]: unknown register d0
-  aarch64  vararg        error[aarch64.operand]: cannot parse operand 1f
+  arm      i64_utod      error[arm.simplify]: unknown instruction vmov
+  arm      i64_utof      error[arm.simplify]: unknown instruction lsrs
+  arm      vararg        error[arm.simplify]: unknown instruction bic
+  aarch64  vararg        error[aarch64.operand]: cannot parse operand [x2 w1 sxtw]
 
 Where the frontier actually is, as counts. This is the number to watch: it is
 what M2 moves, and prose cannot regress.
@@ -104,22 +104,23 @@ what M2 moves, and prose cannot regress.
   $ { for t in x86_32 x86_64 arm aarch64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-       11  error[x86.operand]: cannot parse operand 1f
-        5  error[parse]: unexpected token
+        6  error[x86.simplify]: unknown instruction pushl
         4 assembles
+        4  error[x86.simplify]: unknown instruction fildll
+        4  error[x86.operand]: unknown register %xmm0
+        4  error[arm.simplify]: unknown instruction vmov
+        3  error[x86.simplify]: unknown instruction testb
         3  error[lex]: unexpected character '\194'
-        3  error[arm.operand]: unknown register d0
-        2  error[x86.simplify]: unknown instruction pushl
-        2  error[x86.simplify]: unknown instruction fildll
-        2  error[x86.operand]: cannot parse operand __compcert_i64_udivmod
-        2  error[arm.simplify]: unknown instruction and
+        3  error[arm.simplify]: unknown instruction and
+        2  error[x86.operand]: unknown register %ah
         2  error[arm.operand]: cannot parse operand {r4 r5 r6 r7}
         2  error[arm.operand]: cannot parse operand {r4 r5 r6 r7 r8 r10 lr}
         2  error[arm.operand]: cannot parse operand {r4 r5 r6 r7 r8 lr}
-        1  error[x86.operand]: unknown register %ah
-        1  error[x86.operand]: cannot parse operand LC1
-        1  error[x86.operand]: cannot parse operand 3(%eax
+        1  error[x86.simplify]: unknown instruction divl
+        1  error[x86.operand]: cannot parse operand 3(%eax %edx)
         1  error[lex]: unexpected character '<'
-        1  error[arm.operand]: unknown register eq
-        1  error[arm.operand]: cannot parse operand 1f
-        1  error[aarch64.operand]: cannot parse operand 1f
+        1  error[arm.simplify]: unknown instruction orrs
+        1  error[arm.simplify]: unknown instruction lsrs
+        1  error[arm.simplify]: unknown instruction bic
+        1  error[arm.simplify]: unknown instruction asr
+        1  error[aarch64.operand]: cannot parse operand [x2 w1 sxtw]

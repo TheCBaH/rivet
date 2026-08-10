@@ -92,7 +92,7 @@ let () =
     exit 1
   in
   let ok = function Ok v -> v | Error ds -> report ds in
-  let laid_out = lazy (ok (D.assemble ~unit_name ~source)) in
+  let laid_out = lazy (ok (D.assemble ~unit_name ~source ())) in
   (* Binding is the *host's* step (§9), so the CLI is the host here: it chooses
      the address, and the assembler only says what constraints it must satisfy.
      With no --fixed-base there is no bound image and only the plan exists. *)

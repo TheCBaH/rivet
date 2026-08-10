@@ -70,12 +70,13 @@ module Mem = struct
 end
 
 module Operand = struct
-  type t = Reg of Reg.t | Imm of Bigint.t | Mem of Mem.t
+  type t = Reg of Reg.t | Imm of Bigint.t | Mem of Mem.t | Sym of Asm_core.Expr.t
 
   let pp ppf = function
     | Reg r -> Reg.pp ppf r
     | Imm v -> Fmt.pf ppf "#%a" Bigint.pp v
     | Mem m -> Mem.pp ppf m
+    | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
 end
 
 module Surface = struct
@@ -88,7 +89,7 @@ module Surface = struct
 end
 
 module Opcode = struct
-  type t = Mov | Add | Sub | Str | Ldr | Bx | Strb | Udf
+  type t = Mov | Add | Sub | Str | Ldr | Bx | Strb | Udf | Bl
 
   let name = function
     | Mov -> "mov"
@@ -99,6 +100,7 @@ module Opcode = struct
     | Bx -> "bx"
     | Strb -> "strb"
     | Udf -> "udf"
+    | Bl -> "bl"
 
   (* The surface spellings this target accepts. [simplify_instruction] consults
      this rather than repeating the list. *)
@@ -111,6 +113,7 @@ module Opcode = struct
     | "bx" -> Some Bx
     | "strb" -> Some Strb
     | "udf" -> Some Udf
+    | "bl" -> Some Bl
     | _ -> None
 
   (* A32 encodes add, sub and mov as one data-processing format distinguished
@@ -151,6 +154,7 @@ module Lowered = struct
     | Ldst_imm of { load : bool; byte : bool; rt : Reg.t; rn : Reg.t; offset : int64 }
     | Bx of { rm : Reg.t }
     | Udf of { imm16 : int64 }
+    | Bl of { target : Asm_core.Lowered_ast.branch }
 
   let shift_name = function 0 -> "lsl" | 1 -> "lsr" | 2 -> "asr" | 3 -> "ror" | _ -> "?"
 
@@ -176,6 +180,7 @@ module Lowered = struct
           Reg.pp rt Reg.pp rn offset
     | Bx { rm } -> Fmt.pf ppf "bx %a" Reg.pp rm
     | Udf { imm16 } -> Fmt.pf ppf "udf #%Ld" imm16
+    | Bl { target } -> Fmt.pf ppf "bl %a" Asm_core.Lowered_ast.pp_branch target
 
   let equal a b =
     match (a, b) with
@@ -190,6 +195,7 @@ module Lowered = struct
         && Int64.equal x.offset y.offset
     | Bx x, Bx y -> Reg.equal x.rm y.rm
     | Udf x, Udf y -> Int64.equal x.imm16 y.imm16
+    | Bl x, Bl y -> Asm_core.Lowered_ast.equal_branch x.target y.target
     | _ -> false
 end
 
@@ -407,6 +413,24 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.(
              cond_al ** const ~width:8 0b01111111L ** field ~width:12 "imm12"
              ** const ~width:4 0b1111L ** field ~width:4 "imm4"));
+      (* [bl] - R_ARM_CALL. The 24-bit field is a word count measured from the
+         instruction plus eight, the A32 pipeline offset; both the division and
+         the bias live outside this node - the division in [evaluate_fixup] and
+         the bias in the fixup, so the evaluator receives a PC rather than
+         something it has to correct. The condition is [al], as everywhere in
+         M2: conditional execution arrives with the branch slice. *)
+      C.alt ~label:"bl" ~priority:5
+        (C.iso_fun ~name:"bl"
+           ~encode:(function
+             | Lowered.Bl { target } -> (
+                 match target with
+                 | Asm_core.Lowered_ast.Symbolic _ -> Some ((), ((), 0L))
+                 | Asm_core.Lowered_ast.Resolved { value; _ } -> Some ((), ((), value)))
+             | _ -> None)
+           ~decode:(fun ((), ((), d)) ->
+             let v = Int64.shift_right (Int64.shift_left d 40) 40 in
+             Some (Lowered.Bl { target = Asm_core.Lowered_ast.Resolved { value = v; rung = "bl" } }))
+           C.(cond_al ** const ~width:4 0b1011L ** fixup ~width:24 ~kind:Pcrel_call "target"));
     ]
 
 (* {1 Lexical profile}
@@ -477,7 +501,11 @@ let parse_one (slice : Asm_core.Token.slice) =
   in
   match List.map Token.kind slice with
   | [ Token.Ident n ] -> (
-      match Reg.find n with Some r -> Ok (Operand.Reg r) | None -> bad ("unknown register " ^ n))
+      (* A register if the table knows the name, a symbol otherwise: A32 has no
+         register sigil, so nothing else can tell them apart. *)
+      match Reg.find n with
+      | Some r -> Ok (Operand.Reg r)
+      | None -> Ok (Operand.Sym (Asm_core.Expr.Symbol n)))
   | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Operand.Imm v)
   | [ Token.Immediate_sigil; Token.Minus; Token.Int v ] -> Ok (Operand.Imm (Bigint.neg v))
   | [ Token.Lbracket; Token.Ident b; Token.Rbracket ] -> (
@@ -498,7 +526,13 @@ let parse_one (slice : Asm_core.Token.slice) =
           Ok (Operand.Mem { base = r; offset = off; writeback = false; pre = true })
       | None, _ -> bad ("unknown register " ^ b)
       | _, None -> bad "offset does not fit 64 bits")
-  | _ -> bad ("cannot parse operand " ^ Asm_core.Token.slice_text slice)
+  | _ -> (
+      (* A branch or call target, or any other expression the shapes above do
+         not claim. The common expression parser decides, so [.LC1] and [foo+4]
+         mean the same here as in a directive argument. *)
+      match Asm_core.Parse_lines.parse_expression slice with
+      | Ok e -> Ok (Operand.Sym e)
+      | Error _ -> bad ("cannot parse operand " ^ Asm_core.Token.slice_text slice))
 
 let parse_operands ~mnemonic slices =
   ignore mnemonic;
@@ -593,6 +627,8 @@ let lower_instruction state i =
             if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
               bad "udf immediate does not fit 16 bits"
             else Ok [ Lowered.Udf { imm16 = imm } ])
+    | Opcode.Bl, [ Operand.Sym e ] ->
+        Ok [ Lowered.Bl { target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
     | _ -> bad (Printf.sprintf "no %s form takes these operands" (Opcode.name i.Instruction.op))
 
 (* {1 Encode and decode}
@@ -637,21 +673,37 @@ let fixup_of_placement (p : fixup_kind C.placement) =
     origin = Origin.synthesized ~pass:"arm.encode" ();
   }
 
-let form_of enc =
+(* The expression lives in the lowered value - Codec sits below asm_core and
+   cannot mention Expr - and is paired with the placement by name. A placement
+   with no expression came from a Resolved operand whose bits are already
+   final, so it yields no linker fixup. *)
+let expr_of_lowered : Lowered.t -> (string * Asm_core.Expr.t) list = function
+  | Lowered.Bl { target = Asm_core.Lowered_ast.Symbolic { value; _ } } -> [ ("target", value) ]
+  | _ -> []
+
+let form_of l enc =
+  let exprs = expr_of_lowered l in
   {
     Asm_core.Lowered_ast.bytes = word_to_memory (C.Bits.to_bytes enc.C.bits);
     form = C.form_id enc;
-    fixups = List.map fixup_of_placement enc.C.placements;
+    fixups =
+      List.filter_map
+        (fun (p : fixup_kind C.placement) ->
+          match List.assoc_opt p.C.name exprs with
+          | None -> None
+          | Some value -> Some { (fixup_of_placement p) with Asm_core.Lowered_ast.value })
+        enc.C.placements;
   }
 
+(* A32 is fixed-width: no ladder, every form `Fixed. *)
 let encode l =
   match C.encode codec l with
   | Error e -> Error (diag "arm.encode" (Fmt.to_to_string C.pp_error e))
-  | Ok enc -> Ok (`Fixed (form_of enc))
+  | Ok enc -> Ok (`Fixed (form_of l enc))
 
 type decode_context = { state : target_state; address : int64 }
 
-let instruction_of_lowered = function
+let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Dp_imm { dp; rd; rn; imm; _ } -> (
       match Opcode.of_dp dp with
       | None -> None
@@ -685,16 +737,29 @@ let instruction_of_lowered = function
   | Lowered.Bx { rm } -> Some { Instruction.op = Opcode.Bx; ops = [ Operand.Reg rm ] }
   | Lowered.Udf { imm16 } ->
       Some { Instruction.op = Opcode.Udf; ops = [ Operand.Imm (Bigint.of_int64 imm16) ] }
+  | Lowered.Bl { target } ->
+      (* The absolute target: the field is a word count measured from the
+         instruction plus eight, so the address is at + 8 + 4 * imm24. *)
+      let abs =
+        match target with
+        | Asm_core.Lowered_ast.Resolved { value; _ } ->
+            Int64.add at (Int64.add 8L (Int64.mul value 4L))
+        | Asm_core.Lowered_ast.Symbolic _ -> at
+      in
+      Some
+        {
+          Instruction.op = Opcode.Bl;
+          ops = [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 abs)) ];
+        }
 
 let decode ctx bytes ~pos =
-  ignore ctx;
   if String.length bytes - pos < 4 then Error (diag "arm.decode" "fewer than four bytes remain")
   else
     let word = word_to_memory (String.sub bytes pos 4) in
     match C.decode_bits codec (C.Bits.of_bytes word) with
     | None -> Error (diag "arm.decode" "no form matches this word")
     | Some d -> (
-        match instruction_of_lowered d.C.value with
+        match instruction_of_lowered ~at:ctx.address d.C.value with
         | None -> Error (diag "arm.decode" "decoded a form with no normalized instruction")
         | Some i -> Ok (i, String.concat "." d.C.dform, 4))
 
@@ -722,6 +787,19 @@ let evaluate_fixup kind ~place ~target =
 (* A32 has an architectural no-op, so padding an executable section needs no
    table and no policy. A boundary that is not a multiple of four is rejected
    rather than padded with bytes, because a partial instruction is not a no-op. *)
+(* On ARM [.word] is four bytes, not two, and CompCert writes [.4byte] for a
+   32-bit address - both spellings mean the same width here. *)
+let data_widths =
+  [ (".byte", 1); (".short", 2); (".hword", 2); (".word", 4); (".4byte", 4); (".quad", 8) ]
+
+let data_fixup ~width =
+  match width with
+  | 4 -> Ok Abs32
+  | _ ->
+      Error
+        (diag "arm.data-fixup"
+           (Printf.sprintf "no absolute relocation for a %d-byte data initializer" width))
+
 let nop_bytes ~length =
   if length mod 4 <> 0 then
     Error (diag "arm.nop" "A32 padding must be a whole number of four-byte instructions")

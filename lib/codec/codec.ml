@@ -253,6 +253,27 @@ let merge_placements ps =
   in
   go [] ps
 
+(* Concatenating two encodings: [b]'s bits follow [a]'s, so every placement
+   [b] contributed moves right by [a]'s width. Shared by [attempt] and
+   [ladder] - a second copy of this arithmetic is exactly how a rung's
+   placements would come to disagree with the same rung's bits. *)
+let seq_join ea eb =
+  let shift = Bits.width ea.bits in
+  {
+    bits = Bits.append ea.bits eb.bits;
+    placements =
+      merge_placements
+        (ea.placements
+        @ List.map
+            (fun p ->
+              {
+                p with
+                slices = List.map (fun s -> { s with bit_offset = s.bit_offset + shift }) p.slices;
+              })
+            eb.placements);
+    form = ea.form @ eb.form;
+  }
+
 (* Only relaxation rungs need to be enumerated rather than resolved, so the
    ladder walk is a separate traversal from [attempt]. Restricting it to one
    [Relax] node - [check] rejects nesting - keeps a rung's result an ordinary
@@ -293,26 +314,7 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
       | Encoded ea -> (
           match attempt b y with
           | (Declined | Failed _) as r -> r
-          | Encoded eb ->
-              let shift = Bits.width ea.bits in
-              Encoded
-                {
-                  bits = Bits.append ea.bits eb.bits;
-                  placements =
-                    merge_placements
-                      (ea.placements
-                      @ List.map
-                          (fun p ->
-                            {
-                              p with
-                              slices =
-                                List.map
-                                  (fun s -> { s with bit_offset = s.bit_offset + shift })
-                                  p.slices;
-                            })
-                          eb.placements);
-                  form = ea.form @ eb.form;
-                }))
+          | Encoded eb -> Encoded (seq_join ea eb)))
   | Iso_table { name; entries; equal; show; inner } -> (
       match List.find_opt (fun (a, _) -> equal a v) entries with
       (* A table is a *declared* finite relation, so a value outside it is a
@@ -374,15 +376,15 @@ let encode node v =
    unrelated instructions. A tree with no reachable [Relax] has a ladder of one,
    so a caller does not have to know in advance whether a form relaxes. *)
 
-let rec ladder : type a k. (a, k) t -> a -> k attempt list =
+let rec ladder : type a k. (a, k) t -> a -> k encoded list =
  fun node v ->
-  let one r = match r with Encoded _ -> [ r ] | Declined | Failed _ -> [ r ] in
+  let single n x = match attempt n x with Encoded e -> [ e ] | Declined | Failed _ -> [] in
   match node with
   | Relax { rungs; _ } ->
       List.filter_map
         (fun r ->
           match attempt r.rung_body v with
-          | Encoded e -> Some (Encoded { e with form = r.rung_label :: e.form })
+          | Encoded e -> Some { e with form = r.rung_label :: e.form }
           | Declined | Failed _ -> None)
         rungs
   | Alt { alts; _ } ->
@@ -396,15 +398,32 @@ let rec ladder : type a k. (a, k) t -> a -> k attempt list =
             else
               match attempt a.body v with
               | Encoded _ ->
-                  List.map
-                    (function Encoded e -> Encoded { e with form = a.label :: e.form } | r -> r)
-                    (ladder a.body v)
+                  List.map (fun e -> { e with form = a.label :: e.form }) (ladder a.body v)
               | Declined -> go rest
               | Failed _ -> go rest)
       in
       go ordered
-  | Seq _ | Iso_fun _ | Iso_table _ -> one (attempt node v)
-  | Empty | Const _ | Field _ | Fixup _ -> one (attempt node v)
+  (* Descending through the wrappers is the whole point. A ladder is almost
+     never the top-level node: it sits under the projection that split the
+     instruction into fields, with opcode bytes sequenced around it. A walk that
+     stopped here would return the one rung [attempt] picked and present it as
+     the complete ladder, which reads as "this branch does not relax". *)
+  | Seq (a, b) -> (
+      let x, y = v in
+      match (attempt a x, attempt b y) with
+      | Encoded ea, Encoded eb ->
+          (* At most one side carries a ladder - [check] rejects two on one
+             realized path - so vary that side and hold the other fixed. *)
+          let la = ladder a x and lb = ladder b y in
+          if List.length lb <= 1 then List.map (fun ea' -> seq_join ea' eb) la
+          else List.map (fun eb' -> seq_join ea eb') lb
+      | _ -> [])
+  | Iso_fun { encode = f; inner; _ } -> ( match f v with None -> [] | Some b -> ladder inner b)
+  | Iso_table { entries; equal; inner; _ } -> (
+      match List.find_opt (fun (a, _) -> equal a v) entries with
+      | None -> []
+      | Some (_, code) -> ladder inner code)
+  | Empty | Const _ | Field _ | Fixup _ -> single node v
 
 let encode_ladder node v =
   match ladder node v with
@@ -415,8 +434,7 @@ let encode_ladder node v =
       | Failed e -> Error e
       | Declined | Encoded _ ->
           Error { where = "encode_ladder"; detail = "no rung of this description applies" })
-  | results ->
-      Ok (List.filter_map (function Encoded e -> Some e | Declined | Failed _ -> None) results)
+  | results -> Ok results
 
 (* Encode exactly one named rung, declining every other. An unknown name or a
    named rung that cannot take the value is a diagnostic, never a quiet fall
@@ -741,6 +759,22 @@ let check_fixup_group ~equal_kind ~kind_name where name entries =
   in
   mixed @ cover 0 sorted
 
+(* Is there a [Relax] anywhere below here?
+
+   [Alt] branches are mutually exclusive, so ladders in two different branches
+   are on two different realized paths and do not conflict - but this reports
+   [true] for the whole [Alt] because *some* realized path through it has one,
+   which is what the [Seq] rule below needs to know. *)
+let rec contains_relax : type a k. (a, k) t -> bool = function
+  | Relax _ -> true
+  | Seq (a, b) -> contains_relax a || contains_relax b
+  (* Split rather than combined: each binds [inner] at its own existential
+     type, and an or-pattern would let it escape. *)
+  | Iso_table { inner; _ } -> contains_relax inner
+  | Iso_fun { inner; _ } -> contains_relax inner
+  | Alt { alts; _ } -> List.exists (fun a -> contains_relax a.body) alts
+  | Empty | Const _ | Field _ | Fixup _ -> false
+
 let rec check : type a k.
     equal_kind:(k -> k -> bool) -> kind_name:(k -> string) -> (a, k) t -> problem list =
  fun ~equal_kind ~kind_name node ->
@@ -760,7 +794,18 @@ let rec check : type a k.
       if fits ~width ~signedness:Unsigned value || fits ~width ~signedness:Signed value then []
       else [ problem "const" (Printf.sprintf "%Ld does not fit %d bits" value width) ]
   | Field _ | Fixup _ -> []
-  | Seq (a, b) -> fixup_groups "seq" node @ check a @ check b
+  | Seq (a, b) ->
+      (* Two ladders in sequence would make "the rungs of this form" a product
+         rather than a list, and [encode_ladder] returns a list. Rejecting the
+         shape is what lets the interpreter vary one side and hold the other
+         fixed without having to say which side won. *)
+      (if contains_relax a && contains_relax b then
+         [
+           problem "seq"
+             "two relaxation ladders can be realized on one path; a form may contain at most one";
+         ]
+       else [])
+      @ fixup_groups "seq" node @ check a @ check b
   | Iso_table { name; entries; equal; show; inner } ->
       let where = "iso_table " ^ name in
       let inner_width = match inner with Field { width; _ } -> Some width | _ -> None in
@@ -829,18 +874,10 @@ let rec check : type a k.
       @ List.concat_map (fun a -> check a.body) alts
   | Relax { name; rungs } ->
       let where = "relax " ^ name in
-      let rec nested : type b. (b, k) t -> bool = function
-        | Relax _ -> true
-        | Seq (a, b) -> nested a || nested b
-        | Iso_table { inner; _ } -> nested inner
-        | Iso_fun { inner; _ } -> nested inner
-        | Alt { alts; _ } -> List.exists (fun a -> nested a.body) alts
-        | Empty | Const _ | Field _ | Fixup _ -> false
-      in
       let nesting =
         List.filter_map
           (fun r ->
-            if nested r.rung_body then
+            if contains_relax r.rung_body then
               Some (problem where ("rung " ^ r.rung_label ^ " contains another relaxation ladder"))
             else None)
           rungs

@@ -52,6 +52,41 @@ Notes that change planned work:
   of M2's scope.
 - x86 `cmovne` appears in `cond_select` on both profiles — a conditional move,
   not only a branch.
+- **x86-64 needs the `0x67` address-size prefix.** `args_arith` and
+  `direct_call` contain `leal 0(%edi,%edi,1), %eax` and `leal 2(%eax), %eax`:
+  32-bit registers used as *addresses* in 64-bit mode, which GNU encodes with a
+  `67` prefix. Encoding them without it assembles cleanly and addresses the
+  wrong registers, so this is a correctness gap rather than a byte difference.
+  *Implemented*, derived from the operand exactly as REX is.
+
+## 2a. Alignment padding: our nop table is not GAS's
+
+The first fixture with two functions is the first with real `.align 16`
+padding, and it disproves an assumption `x86_family.ml` had already flagged as
+unverified ("the first fixture that pads is what turns the claim into
+evidence").
+
+GNU fills the ten bytes between `asm_test_callee` and `asm_test_entry` with a
+single
+
+```
+66 2e 0f 1f 84 00 00 00 00 00    cs nopw 0x0(%rax,%rax,1)
+```
+
+Our table is the Intel-recommended one: it tops out at nine bytes and has no
+`2e` (CS override) forms, so it would emit two nops where GNU emits one, with
+different bytes. Two consequences, both real and both bounded:
+
+1. **Byte parity.** Matching GNU on any padded fixture needs GAS's table, not
+   Intel's. The two differ in the `66 2e` prefix run and in reaching ten and
+   eleven bytes.
+2. **Decoding.** The codec has no `nop` form at all, so
+   `--dump-disasm=diagnostic` fails on any section containing padding with
+   `no form matches these bytes`. That is why the `direct_call` fixture
+   disassembles only up to its first pad today.
+
+Neither blocks the encoding path — instructions are byte-correct either side of
+the padding — but both block the `direct_call` and `args_arith` byte gates.
 
 ## 3. Directives
 

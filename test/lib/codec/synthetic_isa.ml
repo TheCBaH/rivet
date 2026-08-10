@@ -193,6 +193,33 @@ let br_near =
 let ladder : (branch, fixup_kind) t =
   relax ~name:"br" [ rung ~label:"rel8" br_short; rung ~label:"rel16" br_near ]
 
+(* The same ladder, buried the way a real one is.
+
+   [ladder] above is the top-level node, which is the one shape where finding
+   the rungs is trivial. A real ladder is never there: it sits under the
+   [Iso_fun] that projected the instruction into fields, sequenced between a
+   register operand and trailing opcode bits, reached through the target's
+   top-level [Alt]. Each of those wrappers is a place a ladder walk can stop and
+   hand back the single encoding [attempt] chose - which does not look like a
+   bug, it looks like a form that does not relax.
+
+   The nesting is [Seq (reg, Seq (ladder, const))], so the ladder is on the
+   right of the outer [Seq] and the left of the inner one. Both orders matter:
+   the interpreter has to vary whichever side carries the rungs and hold the
+   other fixed, and a walk that only handled one order would still be wrong half
+   the time. *)
+
+type buried = Buried of reg * int64
+
+let buried_body : (buried, fixup_kind) t =
+  iso_fun ~name:"buried.body"
+    ~encode:(function Buried (r, d) -> Some (r, (Br d, ())))
+    ~decode:(fun (r, (Br d, ())) -> Some (Buried (r, d)))
+    (reg_codec ** ladder ** const ~width:5 0b10110L)
+
+let buried_ladder : (buried, fixup_kind) t =
+  choice ~name:"buried" [ alt ~label:"br" ~priority:0 buried_body ]
+
 (* {1 A split fixup}
 
    Two slices of one logical value at non-adjacent positions, as AArch64 [adrp]
@@ -233,6 +260,14 @@ let broken_alt : (unit * int64, fixup_kind) t =
       alt ~label:"b" ~priority:1 (const ~width:4 0b0001L ** field ~width:12 "y");
       alt ~label:"c" ~priority:1 (const ~width:4 0b0101L ** field ~width:12 "z");
     ]
+
+(* Two ladders sequenced on one realized path. "The rungs of this form" is then
+   a product of two independent choices, and [encode_ladder] returns a list -
+   so the shape is rejected rather than given an arbitrary reading. Note that
+   neither ladder is nested inside the other, which is the check that already
+   existed and does not catch this. *)
+let broken_two_ladders : (branch * (branch * unit), fixup_kind) t =
+  ladder ** ladder ** const ~width:4 0L
 
 (* A ladder whose rungs cannot be told apart on decode. Same opcode bits, same
    width, so the first always matches and the rung that produced an encoding is

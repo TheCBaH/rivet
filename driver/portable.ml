@@ -58,13 +58,20 @@ let dump_codec target =
 
 type planned = { laid_out : Image.laid_out; target : string }
 
-let assemble target ~unit_name ~text =
+let assemble ?entry target ~unit_name ~text =
   with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
-      match D.assemble ~unit_name ~source:(source ~unit_name ~text) with
+      match D.assemble ?entry ~unit_name ~source:(source ~unit_name ~text) () with
       | Error ds -> Error (render ds)
       | Ok laid_out -> Ok { laid_out; target })
 
 let plan_text p = Fmt.to_to_string Image.pp_plan (Image.plan_of p.laid_out)
+
+(* Rendered rather than structured, for the same reason diagnostics are: the
+   caller on the far side of this boundary is JavaScript, and one line per
+   observation in the oracle's own column order is what it would have to
+   marshal [Image.fixup_observation] into anyway. *)
+let fixup_observations p =
+  List.map (fun o -> Fmt.to_to_string Image.pp_observation o) (Image.fixup_observations p.laid_out)
 
 let segments p =
   List.map

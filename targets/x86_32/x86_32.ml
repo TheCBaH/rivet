@@ -19,6 +19,22 @@ module Mode = struct
     X86_family.Reg.base_regs 32 X86_family.Reg.names_32
     @ X86_family.Reg.base_regs 16 X86_family.Reg.names_16
     @ X86_family.Reg.base_regs 8 X86_family.Reg.names_8l
+
+  (* Measured against i686-linux-gnu-as, and *not* the 64-bit table: 32-bit GAS
+     pads with [lea] forms because the long NOP is P6+ and the default 32-bit
+     target does not assume it. Sharing one table would have been silently wrong
+     here in every padded section. *)
+  let nop_table =
+    [|
+      "\x90";
+      "\x66\x90";
+      "\x8d\x76\x00";
+      "\x8d\x74\x26\x00";
+      "\x2e\x8d\x74\x26\x00";
+      "\x8d\xb6\x00\x00\x00\x00";
+      "\x8d\xb4\x26\x00\x00\x00\x00";
+      "\x2e\x8d\xb4\x26\x00\x00\x00\x00";
+    |]
 end
 
 include X86_family.Make (Mode)

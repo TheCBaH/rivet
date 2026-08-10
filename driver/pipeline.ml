@@ -31,6 +31,19 @@ module Make (T : T_intf.TARGET) = struct
     | Error ds -> Error ds
     | Ok lines ->
         let errors = ref [] in
+        (* Numeric local labels are resolved here, before [T.parse_operands]:
+           once an operand is inside the target's abstract [Surface.t] there is
+           no expression traversal in [TARGET] to reach a [Local_ref] with, and
+           the feature is target-independent. After this pass they are ordinary
+           generated symbols and nothing downstream knows the difference. *)
+        let lines, label_errors = Local_labels.run lines in
+        List.iter
+          (fun (e : Local_labels.error) ->
+            errors :=
+              diag ~origin:(Origin.text e.Local_labels.span) "parse.local-label"
+                e.Local_labels.message
+              :: !errors)
+          label_errors;
         let items = ref [] in
         let add i = items := i :: !items in
         List.iter
@@ -44,19 +57,15 @@ module Make (T : T_intf.TARGET) = struct
                 | Statement.Named (span, n) ->
                     add (Source_ast.Label { name = n; origin = Origin.text span })
                 | Statement.Numeric (span, n) ->
-                    (* Rejected, not renamed. A numeric local label means
-                       nothing without the [1b]/[1f] references that resolve
-                       against it, and that resolution is a pass over fragment
-                       order which M1 does not have. Turning [1:] into a symbol
-                       called "1:" would define something no reference can ever
-                       reach - a file assembled without being understood, which
-                       is what §2.2 exists to forbid. *)
+                    (* Unreachable: [Local_labels.run] has already rewritten
+                       every numeric definition to a generated [Named] one. It
+                       stays as a diagnostic rather than an assertion because a
+                       silently dropped definition would be a label nothing can
+                       reach, which is a file assembled without being
+                       understood. *)
                     errors :=
                       diag ~origin:(Origin.text span) "parse.local-label"
-                        (Printf.sprintf
-                           "numeric local label %d: needs 1b/1f resolution, which is not in M1 \
-                            scope"
-                           n)
+                        (Printf.sprintf "numeric local label %d: survived resolution" n)
                       :: !errors)
               line.Statement.labels;
             match line.Statement.statement with
@@ -134,7 +143,7 @@ module Make (T : T_intf.TARGET) = struct
                 state := s;
                 List.iter (fun insn -> add (Normalized_ast.Instruction { insn; origin })) emit
             | T_intf.Unhandled -> (
-                match Directives.normalize ~name ~arguments with
+                match Directives.normalize ~data_widths:T.data_widths ~name ~arguments with
                 | Ok Directives.Dropped -> ()
                 | Ok (Directives.Normalized d) -> (
                     match fold_directive ~origin d with
@@ -234,19 +243,98 @@ module Make (T : T_intf.TARGET) = struct
             | Directive.Align { boundary } ->
                 with_section origin (fun s ->
                     s.sb_align <- max s.sb_align boundary;
-                    (* The fill is the target's, and only for an executable
-                       section: a zero-filled gap in .text decodes as an
-                       instruction nobody wrote. *)
-                    let fill =
-                      if Perms.executable s.sb_perms then (
-                        match T.nop_bytes ~length:boundary with
-                        | Ok b -> b
-                        | Error e ->
-                            errors := e :: !errors;
-                            "\000")
-                      else "\000"
+                    (* One fill per possible gap, not one pattern to repeat.
+                       On x86 the padding is a *single* no-op sized for the
+                       gap, so cycling a shorter one produces a different
+                       instruction stream of the same length - which is exactly
+                       what GAS does not do.
+
+                       A gap is always smaller than the boundary, so lengths 1
+                       to boundary-1 cover every case. The target may refuse
+                       some of them - A32 and A64 have no one-byte no-op - and
+                       an empty entry means "this target cannot pad by that
+                       much", which layout reports if it ever needs one.
+
+                       Only for an executable section: a zero-filled gap in
+                       .text decodes as an instruction nobody wrote, and
+                       outside .text zero is exactly right. *)
+                    let fills =
+                      if Perms.executable s.sb_perms then
+                        Array.init
+                          (max 0 (boundary - 1))
+                          (fun i ->
+                            match T.nop_bytes ~length:(i + 1) with Ok b -> b | Error _ -> "")
+                      else Array.init (max 0 (boundary - 1)) (fun i -> String.make (i + 1) '\000')
                     in
-                    s.sb_frags <- Lowered_ast.Align { boundary; fill; origin } :: s.sb_frags)
+                    s.sb_frags <- Lowered_ast.Align { boundary; fills; origin } :: s.sb_frags)
+            (* One fragment per value, and a value that is not already a number
+               becomes a fixup rather than being evaluated here: an initializer
+               naming a symbol has no value until the linker chooses addresses,
+               which is the same reason an instruction operand naming one does
+               not. The bytes emitted are a placeholder of the right width, so
+               layout is exact either way. *)
+            | Directive.Data { width; values } ->
+                List.iter
+                  (fun value ->
+                    match Expr.fold Expr.no_env value with
+                    | Error m -> errors := diag ~origin "lower.data" m :: !errors
+                    | Ok folded -> (
+                        let bytes =
+                          match folded with
+                          | Expr.Const v -> (
+                              match Bigint.to_int64_opt v with
+                              | Some n ->
+                                  Ok
+                                    (String.init width (fun i ->
+                                         Char.chr
+                                           (Int64.to_int
+                                              (Int64.logand
+                                                 (Int64.shift_right_logical n (8 * i))
+                                                 0xFFL))))
+                              | None -> Error "value does not fit 64 bits")
+                          | _ -> Ok (String.make width '\000')
+                        in
+                        let fixups =
+                          match folded with
+                          | Expr.Const _ -> Ok []
+                          | _ -> (
+                              match T.data_fixup ~width with
+                              | Error e -> Error (Diagnostic.message e)
+                              | Ok kind ->
+                                  Ok
+                                    [
+                                      {
+                                        Lowered_ast.kind;
+                                        kind_name = T.fixup_kind_name kind;
+                                        family = T.fixup_family kind;
+                                        role = T.fixup_role kind;
+                                        name = "data";
+                                        slices =
+                                          [
+                                            {
+                                              Lowered_ast.bit_offset = 0;
+                                              bit_width = width * 8;
+                                              value_lsb = 0;
+                                            };
+                                          ];
+                                        byte_offset = 0;
+                                        container = width;
+                                        pc_bias = 0;
+                                        range = Lowered_ast.Bitpattern (width * 8);
+                                        value = folded;
+                                        origin;
+                                      };
+                                    ])
+                        in
+                        match (bytes, fixups) with
+                        | Error m, _ | _, Error m ->
+                            errors := diag ~origin "lower.data" m :: !errors
+                        | Ok bytes, Ok fixups ->
+                            with_section origin (fun s ->
+                                s.sb_frags <-
+                                  Lowered_ast.Bytes { bytes; form = None; fixups; origin }
+                                  :: s.sb_frags)))
+                  values
             | Directive.Global { name } -> (symbol name).sy_global <- true
             | Directive.Sym_type { name; kind } -> (symbol name).sy_kind <- kind
             | Directive.Sym_size { name; size } ->
@@ -347,17 +435,18 @@ module Make (T : T_intf.TARGET) = struct
     { Image.default_policy with entry_symbol }
 
   let plan ?entry m = Image.plan_image ~evaluate:T.evaluate_fixup (policy_for ?entry m) [ m ]
+  let fixup_observations = Image.fixup_observations
 
   (* {1 The whole path} *)
 
-  let assemble ~unit_name ~source =
+  let assemble ?entry ~unit_name ~source () =
     match parse ~unit_name ~source with
     | Error ds -> Error ds
     | Ok src -> (
         match simplify src with
         | Error ds -> Error ds
         | Ok (norm, state) -> (
-            match lower ~state norm with Error ds -> Error ds | Ok low -> plan low))
+            match lower ~state norm with Error ds -> Error ds | Ok low -> plan ?entry low))
 
   (* {1 Dumps (asm/docs/contracts.md §1)} *)
 
@@ -408,19 +497,95 @@ module Make (T : T_intf.TARGET) = struct
      job, and a format that had to satisfy both audiences would satisfy
      neither. *)
 
+  (* Alignment padding is filler, not code, and disassembling it as code is not
+     merely awkward - on x86 it is impossible. GNU's padding table for 64-bit
+     mode ends with [66 2e 0f 1f 84 ...] and [66 66 2e 0f 1f 84 ...], and GAS
+     emits its prefixes in the order [2e 66]: no instruction source reassembles
+     to those two rows. They exist only inside the assembler's own padding
+     table. A canonical dump that spelled them as instructions could therefore
+     never round-trip, whatever spelling it chose.
+
+     What *does* reproduce filler is the directive that asked for it, so both
+     dumps recognize a padding run and print [.balign]. The recognition is
+     exact and target-driven: the bytes from here to a power-of-two boundary
+     must be precisely what this target's own [nop_bytes] emits for that length.
+     A byte sequence GNU pads with and we do not is then a loud decode failure
+     rather than a quiet misreading, which is the right way round.
+
+     [.balign] rather than [.align] or [.p2align] because it is a byte count on
+     all four dialects and is already in the accepted table; the identity being
+     preserved is the bytes, and any boundary that reproduces them reproduces
+     them exactly. A lone [nop] that happens to sit one byte below a boundary is
+     read as padding, which is harmless for exactly that reason.
+
+     Layout aligns *section offsets* and this aligns *addresses*, and the two
+     agree because a section's alignment is raised to the widest [Align] it
+     contains and [bind_image] rejects an address that does not honour it. That
+     invariant is what makes an address-based reading of the bytes correct; it
+     is not an assumption about where hosts put things. *)
+  let padding_at ~address bytes ~pos =
+    let len = String.length bytes in
+    let here = Int64.add address (Int64.of_int pos) in
+    let matches k =
+      let b = Int64.of_int (1 lsl k) in
+      let stop = Int64.mul (Int64.div (Int64.add here (Int64.sub b 1L)) b) b in
+      let n = Int64.to_int (Int64.sub stop here) in
+      if
+        n > 0
+        && pos + n <= len
+        &&
+        match T.nop_bytes ~length:n with
+        | Ok s -> String.equal s (String.sub bytes pos n)
+        | Error _ -> false
+      then Some (1 lsl k, n)
+      else None
+    in
+    (* Longest run first, so a short boundary can never claim a prefix of a
+       longer pad and leave the tail to be decoded as instructions. Among the
+       boundaries that produce that same run - a pad ending at 0x20 is reached
+       from 0x16 by both [.balign 16] and [.balign 32] - the smallest, which is
+       what the source said. Every one of them reproduces the bytes, so this is
+       a fidelity choice rather than a correctness one. *)
+    List.fold_left
+      (fun best k ->
+        match matches k with
+        | Some (b, n) when match best with None -> true | Some (_, bn) -> n > bn -> Some (b, n)
+        | _ -> best)
+      None
+      (List.init 12 (fun i -> i + 1))
+
+  type disasm_row = { at : int64; run : string; text : string; form : string option }
+
   let disassemble_lines ~address bytes =
+    let run_of pos n =
+      String.concat " " (List.init n (fun i -> Printf.sprintf "%02x" (Char.code bytes.[pos + i])))
+    in
     let rec go pos acc =
       if pos >= String.length bytes then Ok (List.rev acc)
       else
         let here = Int64.add address (Int64.of_int pos) in
-        match T.decode { T.state = T.default_state; address = here } bytes ~pos with
-        | Error e -> Error [ e ]
-        | Ok (insn, form, n) ->
-            let run =
-              String.concat " "
-                (List.init n (fun i -> Printf.sprintf "%02x" (Char.code bytes.[pos + i])))
-            in
-            go (pos + n) ((here, run, Fmt.to_to_string T.Instruction.pp insn, form) :: acc)
+        match padding_at ~address bytes ~pos with
+        | Some (boundary, n) ->
+            go (pos + n)
+              ({
+                 at = here;
+                 run = run_of pos n;
+                 text = Printf.sprintf ".balign %d" boundary;
+                 form = None;
+               }
+              :: acc)
+        | None -> (
+            match T.decode { T.state = T.default_state; address = here } bytes ~pos with
+            | Error e -> Error [ e ]
+            | Ok (insn, form, n) ->
+                go (pos + n)
+                  ({
+                     at = here;
+                     run = run_of pos n;
+                     text = Fmt.to_to_string T.Instruction.pp insn;
+                     form = Some form;
+                   }
+                  :: acc))
     in
     go 0 []
 
@@ -428,19 +593,20 @@ module Make (T : T_intf.TARGET) = struct
     match disassemble_lines ~address bytes with
     | Error ds -> Error ds
     | Ok rows ->
-        let wr = List.fold_left (fun a (_, r, _, _) -> max a (String.length r)) 0 rows in
-        let wt = List.fold_left (fun a (_, _, t, _) -> max a (String.length t)) 0 rows in
+        let wr = List.fold_left (fun a r -> max a (String.length r.run)) 0 rows in
+        let wt = List.fold_left (fun a r -> max a (String.length r.text)) 0 rows in
         Ok
           (String.concat ""
              (List.map
-                (fun (addr, run, text, form) ->
-                  Printf.sprintf "%08Lx  %-*s  %-*s  [%s.%s]\n" addr wr run wt text T.name form)
+                (fun r ->
+                  Printf.sprintf "%08Lx  %-*s  %-*s  [%s]\n" r.at wr r.run wt r.text
+                    (match r.form with Some f -> T.name ^ "." ^ f | None -> "padding"))
                 rows))
 
   let dump_disasm_canonical ~address bytes =
     match disassemble_lines ~address bytes with
     | Error ds -> Error ds
-    | Ok rows -> Ok (String.concat "" (List.map (fun (_, _, t, _) -> "\t" ^ t ^ "\n") rows))
+    | Ok rows -> Ok (String.concat "" (List.map (fun r -> "\t" ^ r.text ^ "\n") rows))
 
   (* {2 The codec itself} *)
 

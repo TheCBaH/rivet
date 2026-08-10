@@ -78,6 +78,13 @@ terminator:
 
 label:
   | IDENT COLON { Statement.Named (Token.span $1, match Token.kind $1 with Token.Ident s -> s | _ -> "") }
+  (* A name beginning with [.] lexes as a directive, but [.L100:] is a label -
+     and it is the spelling CompCert uses for every branch target it generates.
+     The colon decides with one token of lookahead, exactly as it does for an
+     IDENT, and no directive is ever followed by one. *)
+  | DIRECTIVE COLON
+    { Statement.Named
+        (Token.span $1, match Token.kind $1 with Token.Directive s -> s | _ -> "") }
   | INT COLON
     { Statement.Numeric
         (Token.span $1,
@@ -133,6 +140,9 @@ expression_only:
 expr:
   | INT { Expr.Const (match Token.kind $1 with Token.Int v -> v | _ -> Foundation.Bigint.zero) }
   | IDENT { Expr.Symbol (match Token.kind $1 with Token.Ident s -> s | _ -> "") }
+  (* The same names that [label] admits: [.L101] is a symbol wherever it is
+     referenced, and it lexes as a directive only because of its leading dot. *)
+  | DIRECTIVE { Expr.Symbol (match Token.kind $1 with Token.Directive s -> s | _ -> "") }
   | DOT { Expr.Current_location }
   | LOCAL
     { match Token.kind $1 with

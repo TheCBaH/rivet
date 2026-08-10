@@ -57,7 +57,7 @@ type outcome =
   | Dropped  (** metadata: consumed, understood, and deliberately discarded *)
   | Unknown
 
-let normalize ~name ~(arguments : Token.slice list) =
+let normalize ~data_widths ~name ~(arguments : Token.slice list) =
   let one () = match arguments with [ a ] -> Some (text_of a) | _ -> None in
   let int_arg () =
     match arguments with
@@ -67,6 +67,23 @@ let normalize ~name ~(arguments : Token.slice list) =
   in
   match name with
   | _ when is_metadata name -> Ok Dropped
+  (* Asked before this table rather than after it, and by width rather than by
+     spelling: [.word] is two bytes in GNU x86 syntax and four on ARM, so the
+     dialect owns the name and the common code owns everything that follows
+     from it. Each argument stays an expression - one naming a symbol becomes a
+     fixup - so nothing is evaluated here. *)
+  | _ when List.mem_assoc name data_widths -> (
+      let width = List.assoc name data_widths in
+      match arguments with
+      | [] -> Error (name ^ " needs at least one value")
+      | args ->
+          let parsed = List.map Parse_lines.parse_expression args in
+          if List.exists Result.is_error parsed then
+            Error (name ^ ": every value must be an expression")
+          else
+            Ok
+              (Normalized
+                 (Directive.Data { width; values = List.map (fun r -> Result.get_ok r) parsed })))
   | ".text" | ".data" | ".bss" ->
       let n = name in
       Ok (Normalized (Directive.Section { name = n; perms = perms_of_section n }))

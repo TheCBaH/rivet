@@ -5,7 +5,17 @@
  (name test_targets)
  (modules test_targets)
  (modes byte native)
- (libraries driver image target_intf codec foundation arm aarch64 fmt)
+ (libraries
+  driver
+  image
+  target_intf
+  codec
+  foundation
+  arm
+  aarch64
+  x86_32
+  x86_64
+  fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))

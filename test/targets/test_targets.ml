@@ -124,7 +124,7 @@ let attempt target text =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Foundation.Span.source ~name:"<test>" ~contents:text in
-  match D.assemble ~unit_name:"t" ~source with
+  match D.assemble ~unit_name:"t" ~source () with
   | Ok _ -> print_endline "accepted"
   | Error ds ->
       List.iter
@@ -140,9 +140,64 @@ let%expect_test "a second allocatable section is accepted, as is a declared one"
     accepted
     |}]
 
+(* {1 The entry symbol across the erased boundary}
+
+   Cardinality named the entry while every fixture had exactly one global. Three
+   of the M2 fixtures declare two - a callee, or a data object, beside the entry
+   - and then it names nothing, so the caller has to be able to say. The caller
+   here is architecture-erased, which is the whole point: an entry that only the
+   concrete pipeline accepted would leave the CLI, the differential gate and
+   both browser adapters stuck with the inference. *)
+
+let entry_of ?entry target text =
+  let (module D : Target_intf.Target.DRIVER) =
+    match Driver.Registry.find target with Some d -> d | None -> failwith target
+  in
+  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  match D.assemble ?entry ~unit_name:"t" ~source () with
+  | Error ds ->
+      List.iter (fun d -> Printf.printf "%s\n" (Foundation.Diagnostic.code d)) ds;
+      None
+  | Ok laid_out -> (
+      match Image.bind_image laid_out ~addresses:[ (".text", 0x400000L) ] with
+      | Error ds ->
+          List.iter (fun d -> Printf.printf "%s\n" (Foundation.Diagnostic.code d)) ds;
+          None
+      | Ok img -> Some img.Image.entry)
+
+let two_globals =
+  "\t.text\n\
+   \t.globl callee\n\
+   \t.type callee, @function\n\
+   callee:\n\
+   \tret\n\
+   \t.globl asm_test_entry\n\
+   \t.type asm_test_entry, @function\n\
+   asm_test_entry:\n\
+   \tret\n"
+
+let%expect_test "an explicit entry survives erasure; without one, two globals name nothing" =
+  let show label e =
+    Printf.printf "%-10s %s\n" label
+      (match e with
+      | None -> "(no image)"
+      | Some None -> "no entry"
+      | Some (Some a) -> Printf.sprintf "0x%Lx" a)
+  in
+  show "explicit" (entry_of ~entry:"asm_test_entry" "x86_64" two_globals);
+  (* callee is one byte of `ret`, so the entry is one past the section base -
+     which is what makes this a check on *which* symbol was chosen rather than
+     on whether any address came out. *)
+  show "other" (entry_of ~entry:"callee" "x86_64" two_globals);
+  show "inferred" (entry_of "x86_64" two_globals);
+  [%expect {|
+    explicit   0x400001
+    other      0x400000
+    inferred   no entry |}]
+
 let%expect_test "an unknown directive is a diagnostic, never a silent skip" =
-  attempt "x86_64" "\t.text\n\t.quad 1\n\tret\n";
-  [%expect {| simplify.directive: unknown directive .quad |}]
+  attempt "x86_64" "\t.text\n\t.frobnicate 1\n\tret\n";
+  [%expect {| simplify.directive: unknown directive .frobnicate |}]
 
 let%expect_test "an unknown instruction is a diagnostic" =
   attempt "x86_64" "\t.text\n\txchgq %rax, %rbx\n";
@@ -187,7 +242,7 @@ let%expect_test "code before any section directive has nowhere to go" =
 let%expect_test "binding at a misaligned address is rejected" =
   let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "aarch64") in
   let source = Foundation.Span.source ~name:"<test>" ~contents:"\t.text\n\t.balign 4\n\tret\n" in
-  match D.assemble ~unit_name:"t" ~source with
+  match D.assemble ~unit_name:"t" ~source () with
   | Error _ -> print_endline "unexpected: did not assemble"
   | Ok l ->
       (let plan = Image.plan_of l in
@@ -246,7 +301,450 @@ let%expect_test "a folding error is reported against the line that wrote it" =
 (* A numeric local label is rejected rather than turned into a symbol named
    "1:". Nothing resolves [1b]/[1f] in M1, so such a symbol could never be
    referenced - it would be a file assembled without being understood. *)
-let%expect_test "numeric local labels are rejected, not silently renamed" =
+let%expect_test "a numeric label with no reference is still a defined symbol" =
+  (* It was rejected while there was no resolution pass, because a label
+     nothing can reach is a file assembled without being understood. Now it
+     resolves to a generated name and assembles. *)
   attempt "x86_64" "\t.text\n1:\n\tret\n";
+  [%expect {| accepted |}]
+
+(* {1 Numeric local labels}
+
+   Resolved before the target sees an operand, so what reaches lowering is an
+   ordinary symbol. These use the dumps rather than an encoding, because the
+   pass is target-independent and the thing under test is which definition a
+   reference picked. *)
+
+let dump_norm target text =
+  let (module D : Target_intf.Target.DRIVER) =
+    match Driver.Registry.find target with Some d -> d | None -> failwith target
+  in
+  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  match D.dump_normalized_ast ~unit_name:"t" ~source with
+  | Ok s -> print_string s
+  | Error ds ->
+      List.iter
+        (fun d ->
+          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
+        ds
+
+(* [.size] is the vehicle because it is the only directive that takes an
+   expression today; the data directives that will carry these references
+   arrive with the rest of M2. What is under test is which definition a
+   reference resolved to, and [.size]'s expression shows that exactly. *)
+
+let%expect_test "a repeated numeric label is legal and each use picks the nearest" =
+  (* The reason they are called local: [1:] may be defined many times, and a
+     reference resolves against the closest one in the direction it names.
+     Rejecting the repetition - or always resolving to the first definition -
+     would be wrong in opposite ways. *)
+  dump_norm "aarch64"
+    "\t.text\nfoo:\n1:\n\tret\n\t.size foo, 1b\n1:\n\t.size foo, 1b\n\t.size foo, 1f\n1:\n";
   [%expect
-    {| parse.local-label: numeric local label 1: needs 1b/1f resolution, which is not in M1 scope |}]
+    {|
+    normalized t
+    section .text r-x
+    label foo
+    label #L1#0
+    ret
+    size foo #L1#0
+    label #L1#1
+    size foo #L1#1
+    size foo #L1#2
+    label #L1#2
+    |}]
+
+let%expect_test "labels precede the statement on their own line" =
+  (* [1: .size foo, 1f] must reach the *next* definition, not the one on its
+     own line. Getting this backwards turns a forward reference into a self
+     reference - which is how [1: jmp 1f] would silently become a loop. *)
+  dump_norm "aarch64" "\t.text\nfoo:\n1:\n\t.size foo, 1f\n1:\n\t.size foo, 1b\n";
+  [%expect
+    {|
+    normalized t
+    section .text r-x
+    label foo
+    label #L1#0
+    size foo #L1#1
+    label #L1#1
+    size foo #L1#1
+    |}]
+
+let%expect_test "a reference with no definition in its direction is a diagnostic" =
+  dump_norm "aarch64" "\t.text\nfoo:\n\t.size foo, 1f\n";
+  dump_norm "aarch64" "\t.text\nfoo:\n\t.size foo, 1b\n";
+  [%expect
+    {|
+    parse.local-label: no 1f: after this reference
+    parse.local-label: no 1b: before this reference
+    |}]
+
+(* {1 Direct calls}
+
+   The first fixup that survives the whole pipeline: parse a symbolic operand,
+   lower it to a symbolic branch, encode a placeholder plus a placement, lay
+   out, bind, patch, and read the bytes back. Every earlier fixup test stopped
+   at one of those boundaries. *)
+
+let disasm target text =
+  let (module D : Target_intf.Target.DRIVER) =
+    match Driver.Registry.find target with Some d -> d | None -> failwith target
+  in
+  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  match D.assemble ~unit_name:"t" ~source () with
+  | Error ds ->
+      List.iter
+        (fun d ->
+          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
+        ds
+  | Ok laid_out -> (
+      let plan = Image.plan_of laid_out in
+      let addresses =
+        List.map
+          (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x40000000L))
+          plan.Image.segments
+      in
+      match Image.bind_image laid_out ~addresses with
+      | Error ds ->
+          List.iter
+            (fun d ->
+              Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d)
+                (Foundation.Diagnostic.message d))
+            ds
+      | Ok img -> (
+          match img.Image.segments with
+          | s :: _ -> (
+              match D.dump_disasm_diagnostic ~address:s.Image.address s.Image.bytes with
+              | Ok text -> print_string text
+              | Error ds ->
+                  List.iter
+                    (fun d -> Printf.printf "decode: %s\n" (Foundation.Diagnostic.message d))
+                    ds)
+          | [] -> print_endline "(no segments)"))
+
+let call_program = "\t.text\n\t.globl f\nf:\n\tret\n\t.globl g\ng:\n\tcall f\n\tret\n"
+
+let%expect_test "a backward call is patched and reads back as its target" =
+  (* The displacement is negative, which is the case that catches a fixup field
+     decoded without sign extension - and, separately, one decoded big-endian:
+     the codec lays bits down most-significant first while the linker patches
+     the container little-endian, so the fixup needs the same [le] wrapper
+     every other x86 displacement has. A placeholder of all zeroes hides both
+     faults completely until something decodes patched bytes. *)
+  disasm "x86_64" call_program;
+  [%expect
+    {|
+    40000000  c3              ret              [x86_64.ret]
+    40000001  e8 fa ff ff ff  call 1073741824  [x86_64.call-rel32]
+    40000006  c3              ret              [x86_64.ret]
+    |}]
+
+let%expect_test "the same call on x86_32" =
+  disasm "x86_32" call_program;
+  [%expect
+    {|
+    40000000  c3              ret              [x86_32.ret]
+    40000001  e8 fa ff ff ff  call 1073741824  [x86_32.call-rel32]
+    40000006  c3              ret              [x86_32.ret]
+    |}]
+
+let%expect_test "a forward call reaches too" =
+  disasm "x86_64" "\t.text\n\t.globl g\ng:\n\tcall f\n\tret\n\t.globl f\nf:\n\tret\n";
+  [%expect
+    {|
+    40000000  e8 01 00 00 00  call 1073741830  [x86_64.call-rel32]
+    40000005  c3              ret              [x86_64.ret]
+    40000006  c3              ret              [x86_64.ret]
+    |}]
+
+let%expect_test "a call to an undefined symbol is rejected at plan time" =
+  attempt "x86_64" "\t.text\n\t.globl g\ng:\n\tcall nowhere\n";
+  [%expect {| image.undefined: fixup target references undefined symbol nowhere |}]
+
+let%expect_test "the same call on the two fixed-width targets" =
+  (* Both measure from somewhere other than the next byte - A64 from the
+     instruction itself, A32 from the instruction plus eight - and both store a
+     word count rather than a byte displacement. The bias lives in the fixup and
+     the division in evaluate_fixup, so neither appears twice. *)
+  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tret\n\t.globl g\ng:\n\tbl f\n\tret\n";
+  disasm "arm" "\t.text\n\t.globl f\nf:\n\tbx lr\n\t.globl g\ng:\n\tbl f\n\tbx lr\n";
+  [%expect
+    {|
+    40000000  c0 03 5f d6  ret            [aarch64.ret]
+    40000004  ff ff ff 97  bl 1073741824  [aarch64.bl]
+    40000008  c0 03 5f d6  ret            [aarch64.ret]
+    40000000  1e ff 2f e1  bx lr          [arm.bx]
+    40000004  fd ff ff eb  bl 1073741824  [arm.bl]
+    40000008  1e ff 2f e1  bx lr          [arm.bx]
+    |}]
+
+(* {1 The x86-64 address-size prefix}
+
+   32-bit registers used as *addresses* in 64-bit mode. Omitting the 0x67 does
+   not produce a different-but-equal encoding - it addresses %rdi where the
+   program said %edi - so this is a correctness property, not a byte-parity
+   one. CompCert emits both shapes in the M2 fixtures. *)
+
+let%expect_test "a 32-bit address in 64-bit mode carries 0x67, and decodes back" =
+  disasm "x86_64"
+    "\t.text\n\t.globl f\nf:\n\tleal 0(%edi,%edi,1), %eax\n\tleal 2(%eax), %eax\n\tret\n";
+  [%expect
+    {|
+    40000000  67 8d 04 3f  leal (%edi,%edi,1), %eax  [x86_64.lea.asz-present.rex-absent.sib-disp0]
+    40000004  67 8d 40 02  leal 2(%eax), %eax        [x86_64.lea.asz-present.rex-absent.base-disp8]
+    40000008  c3           ret                       [x86_64.ret]
+    |}]
+
+let%expect_test "a 64-bit address carries no prefix" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tleaq 16(%rsp), %rax\n\tret\n";
+  [%expect
+    {|
+    40000000  48 8d 44 24 10  leaq 16(%rsp), %rax  [x86_64.lea.asz-absent.rex-present.sib-disp8]
+    40000005  c3              ret                  [x86_64.ret]
+    |}]
+
+(* {1 Alignment padding}
+
+   The bytes below were measured by assembling a [.align 16] at every distance
+   with each mode's own GNU as, not copied from a manual. That distinction cost
+   something to learn: the published Intel table is right for 64-bit only up to
+   nine bytes, and is the wrong table entirely for 32-bit, where GAS pads with
+   [lea] forms because the long NOP is P6+ and the default target does not
+   assume it.
+
+   M1 never reached any of this - both x86 fixtures had their [.align] at
+   offset 0, where the padding is empty - which is why the code carried an
+   unverified table until the first fixture with two functions. *)
+
+let show_padding name f =
+  for n = 1 to 12 do
+    match f ~length:n with
+    | Ok s -> Printf.printf "%s %2d: %s\n" name n (Foundation.Byte_cursor.to_hex s)
+    | Error d -> Printf.printf "%s %2d: %s\n" name n (Foundation.Diagnostic.message d)
+  done
+
+let%expect_test "x86-64 padding matches its own GNU as" =
+  show_padding "x86_64" X86_64.nop_bytes;
+  [%expect
+    {|
+    x86_64  1: 90
+    x86_64  2: 66 90
+    x86_64  3: 0f 1f 00
+    x86_64  4: 0f 1f 40 00
+    x86_64  5: 0f 1f 44 00 00
+    x86_64  6: 66 0f 1f 44 00 00
+    x86_64  7: 0f 1f 80 00 00 00 00
+    x86_64  8: 0f 1f 84 00 00 00 00 00
+    x86_64  9: 66 0f 1f 84 00 00 00 00 00
+    x86_64 10: 66 2e 0f 1f 84 00 00 00 00 00
+    x86_64 11: 66 66 2e 0f 1f 84 00 00 00 00 00
+    x86_64 12: 66 66 2e 0f 1f 84 00 00 00 00 00 90
+    |}]
+
+let%expect_test "x86-32 pads with lea forms, not long nops" =
+  show_padding "x86_32" X86_32.nop_bytes;
+  [%expect
+    {|
+    x86_32  1: 90
+    x86_32  2: 66 90
+    x86_32  3: 8d 76 00
+    x86_32  4: 8d 74 26 00
+    x86_32  5: 2e 8d 74 26 00
+    x86_32  6: 8d b6 00 00 00 00
+    x86_32  7: 8d b4 26 00 00 00 00
+    x86_32  8: 2e 8d b4 26 00 00 00 00
+    x86_32  9: 2e 8d b4 26 00 00 00 00 90
+    x86_32 10: 2e 8d b4 26 00 00 00 00 66 90
+    x86_32 11: 2e 8d b4 26 00 00 00 00 8d 76 00
+    x86_32 12: 2e 8d b4 26 00 00 00 00 8d 74 26 00
+    |}]
+
+(* {1 Alignment padding}
+
+   Padding is the one thing in an executable section that is not code, and on
+   x86 it is not even *spellable* as code: GNU's 64-bit table ends with
+   [66 2e 0f 1f 84 ...] and [66 66 2e 0f 1f 84 ...], while GAS emits its
+   prefixes in the order [2e 66], so no instruction source reassembles to those
+   two rows. Both dumps therefore print the directive that produced the filler.
+
+   M1 never reached any of this: both x86 fixtures had their alignment at offset
+   zero, where the pad is empty. The first fixture with two functions is what
+   made whole-image disassembly fail outright. *)
+
+let pad_round_trip target ~insn ~size ~pad =
+  let (module D : Target_intf.Target.DRIVER) =
+    match Driver.Registry.find target with Some d -> d | None -> failwith target
+  in
+  (* [pad] bytes of filler, arranged by putting 16 - pad bytes of real
+     instructions in front of a 16-byte alignment. Every row of the target's
+     table is reached this way, which is the difference between testing the
+     table and testing what the table is for. *)
+  let body = String.concat "" (List.init ((16 - pad) / size) (fun _ -> "\t" ^ insn ^ "\n")) in
+  let text = "\t.text\n" ^ body ^ "\t.balign 16\n\t" ^ insn ^ "\n" in
+  let base = 0x400000L in
+  let bytes_of t =
+    match Driver.Portable.assemble target ~unit_name:"t" ~text:t with
+    | Error e -> Error e
+    | Ok p -> (
+        match Driver.Portable.bind_at p ~base with
+        | Error e -> Error e
+        | Ok b -> (
+            match Driver.Portable.section_bytes b ".text" with
+            | Some s -> Ok (b, s)
+            | None -> Error "no .text"))
+  in
+  match bytes_of text with
+  | Error e -> Printf.printf "pad %2d: %s\n" pad e
+  | Ok (b, bytes) -> (
+      match Driver.Portable.disassemble b ~mode:`Canonical ~address:base bytes with
+      | Error e -> Printf.printf "pad %2d: DISASM %s\n" pad e
+      | Ok canonical -> (
+          let line =
+            List.find_opt
+              (fun l -> String.length l > 1 && l.[1] = '.')
+              (String.split_on_char '\n' canonical)
+          in
+          match bytes_of ("\t.text\n" ^ canonical) with
+          | Error e -> Printf.printf "pad %2d: REASSEMBLE %s\n" pad e
+          | Ok (_, again) ->
+              Printf.printf "pad %2d: %-12s %s\n" pad
+                (match line with Some l -> String.trim l | None -> "(no directive)")
+                (if String.equal bytes again then "round trips" else "DIFFERS")))
+
+let%expect_test "every row of the x86-64 padding table decodes and round-trips" =
+  List.iter
+    (fun n -> pad_round_trip "x86_64" ~insn:"ret" ~size:1 ~pad:n)
+    [ 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11 ];
+  [%expect
+    {|
+    pad  1: .balign 2    round trips
+    pad  2: .balign 4    round trips
+    pad  3: .balign 4    round trips
+    pad  4: .balign 8    round trips
+    pad  5: .balign 8    round trips
+    pad  6: .balign 8    round trips
+    pad  7: .balign 8    round trips
+    pad  8: .balign 16   round trips
+    pad  9: .balign 16   round trips
+    pad 10: .balign 16   round trips
+    pad 11: .balign 16   round trips |}]
+
+let%expect_test "every row of the x86-32 padding table decodes and round-trips" =
+  (* Eight rows, not eleven, and lea-based rather than long-NOP: the long NOP is
+     P6 and later, so 32-bit GNU as pads with [lea] forms instead. A table
+     shared between the two modes was silently wrong in every padded 32-bit
+     section. *)
+  List.iter (fun n -> pad_round_trip "x86_32" ~insn:"ret" ~size:1 ~pad:n) [ 1; 2; 3; 4; 5; 6; 7; 8 ];
+  [%expect
+    {|
+    pad  1: .balign 2    round trips
+    pad  2: .balign 4    round trips
+    pad  3: .balign 4    round trips
+    pad  4: .balign 8    round trips
+    pad  5: .balign 8    round trips
+    pad  6: .balign 8    round trips
+    pad  7: .balign 8    round trips
+    pad  8: .balign 16   round trips |}]
+
+let%expect_test "the fixed-width targets pad with their architectural nop" =
+  (* Nothing exotic to recognize: A32 and A64 both have a real [nop], so the
+     filler is code and decodes as code. The directive still comes back, because
+     recognition is by bytes and these bytes are what [nop_bytes] emits. *)
+  List.iter (fun n -> pad_round_trip "arm" ~insn:"bx lr" ~size:4 ~pad:n) [ 4; 8; 12 ];
+  List.iter (fun n -> pad_round_trip "aarch64" ~insn:"ret" ~size:4 ~pad:n) [ 4; 8; 12 ];
+  [%expect
+    {|
+    pad  4: .balign 8    round trips
+    pad  8: .balign 16   round trips
+    pad 12: .balign 16   round trips
+    pad  4: .balign 8    round trips
+    pad  8: .balign 16   round trips
+    pad 12: .balign 16   round trips |}]
+
+(* {1 Branch relaxation and form preservation}
+
+   M2.F0 and B10 on real x86 forms rather than on the synthetic ladder in
+   test/image. Three things have to hold together and only the whole path shows
+   it: layout picks the short rung when it reaches, promotes when it does not,
+   and a decoded branch reassembles to the bytes it came from - including a near
+   branch whose final displacement would also have fitted a short one. *)
+
+let branch_bytes target ~gap ~mnemonic =
+  let filler = String.concat "" (List.init gap (fun _ -> "\tret\n")) in
+  let text = Printf.sprintf "\t.text\nasm_test_entry:\n\t%s far\n%sfar:\n\tret\n" mnemonic filler in
+  match Driver.Portable.assemble ~entry:"asm_test_entry" target ~unit_name:"t" ~text with
+  | Error e -> Error e
+  | Ok p -> (
+      match Driver.Portable.bind_at p ~base:0x400000L with
+      | Error e -> Error e
+      | Ok b -> (
+          match Driver.Portable.section_bytes b ".text" with
+          | Some s -> Ok (b, s)
+          | None -> Error "no .text"))
+
+let show_branch target ~gap ~mnemonic =
+  match branch_bytes target ~gap ~mnemonic with
+  | Error e -> Printf.printf "  gap %4d %s\n" gap e
+  | Ok (b, bytes) -> (
+      let head = String.sub bytes 0 (min 6 (String.length bytes)) in
+      match Driver.Portable.disassemble b ~mode:`Canonical ~address:0x400000L bytes with
+      | Error e -> Printf.printf "  gap %4d DISASM %s\n" gap e
+      | Ok canon -> (
+          let first =
+            match List.filter (fun l -> String.trim l <> "") (String.split_on_char '\n' canon) with
+            | l :: _ -> String.trim l
+            | [] -> "(empty)"
+          in
+          (* Reassembling the canonical text is what proves the pin survived:
+             without it a near branch whose displacement fits a byte comes back
+             two bytes shorter and the image changes under a round trip. *)
+          match Driver.Portable.assemble target ~unit_name:"r" ~text:("\t.text\n" ^ canon) with
+          | Error e -> Printf.printf "  gap %4d REASSEMBLE %s\n" gap e
+          | Ok p2 -> (
+              match Driver.Portable.bind_at p2 ~base:0x400000L with
+              | Error e -> Printf.printf "  gap %4d REBIND %s\n" gap e
+              | Ok b2 ->
+                  let again = Option.value ~default:"" (Driver.Portable.section_bytes b2 ".text") in
+                  Printf.printf "  gap %4d %3d bytes  %-18s %-16s %s\n" gap (String.length bytes)
+                    (Foundation.Byte_cursor.to_hex head)
+                    first
+                    (if String.equal again bytes then "round trips" else "REASSEMBLES DIFFERENTLY"))
+          ))
+
+let%expect_test "an x86 branch takes the short rung until it cannot" =
+  (* 127 is what a signed byte reaches from the end of a two-byte branch, so the
+     promotion has to happen at exactly 128 and not before. Each filler byte is
+     one `ret`. *)
+  List.iter (fun gap -> show_branch "x86_64" ~gap ~mnemonic:"jmp") [ 0; 127; 128 ];
+  List.iter (fun gap -> show_branch "x86_64" ~gap ~mnemonic:"jl") [ 0; 127; 128 ];
+  [%expect
+    {|
+    gap    0   3 bytes  eb 00 c3           jmp.d8 4194306   round trips
+    gap  127 130 bytes  eb 7f c3 c3 c3 c3  jmp.d8 4194433   round trips
+    gap  128 134 bytes  e9 80 00 00 00 c3  jmp.d32 4194437  round trips
+    gap    0   3 bytes  7c 00 c3           jl.d8 4194306    round trips
+    gap  127 130 bytes  7c 7f c3 c3 c3 c3  jl.d8 4194433    round trips
+    gap  128 135 bytes  0f 8c 80 00 00 00  jl.d32 4194438   round trips |}]
+
+let%expect_test "the two x86 profiles relax alike" =
+  List.iter (fun gap -> show_branch "x86_32" ~gap ~mnemonic:"jge") [ 127; 128 ];
+  [%expect
+    {|
+    gap  127 130 bytes  7d 7f c3 c3 c3 c3  jge.d8 4194433   round trips
+    gap  128 135 bytes  0f 8d 80 00 00 00  jge.d32 4194438  round trips |}]
+
+let%expect_test "a branch form suffix names a rung, and an unknown one is refused" =
+  (* The pin is GAS's own spelling and is accepted on input, which is what makes
+     canonical output re-parseable. A suffix naming no rung is rejected in this
+     phase - which knows the mnemonic and has a span - so the codec's
+     unknown-rung diagnostic stays reserved for a direct-lowered producer. *)
+  List.iter (fun gap -> show_branch "x86_64" ~gap ~mnemonic:"jmp.d32") [ 0 ];
+  List.iter (fun gap -> show_branch "x86_64" ~gap ~mnemonic:"jmp.d8") [ 0 ];
+  attempt "x86_64" "\t.text\nfoo:\n\tjmp.d16 foo\n";
+  attempt "x86_64" "\t.text\nfoo:\n\tjxx foo\n";
+  [%expect
+    {|
+      gap    0   6 bytes  e9 00 00 00 00 c3  jmp.d32 4194309  round trips
+      gap    0   3 bytes  eb 00 c3           jmp.d8 4194306   round trips
+    x86.branch-suffix: jmp.d16: the branch form suffixes are .d8, .d32
+    x86.simplify: unknown instruction jxx |}]

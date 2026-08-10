@@ -325,7 +325,7 @@ end
 module X86_shared = struct
   open X86_family
 
-  let insn op width ops : Instruction.t = { Instruction.op; width; ops }
+  let insn op width ops : Instruction.t = Instruction.mk op width ops
   let imm n = Operand.Imm (Foundation.Bigint.of_int n)
 
   (* [frame] is the §11 stack adjustment: 8 on x86-64 and 12 on x86-32, because
@@ -335,7 +335,7 @@ module X86_shared = struct
   let return_n ~sp ~ax ~eax ~width ~frame n =
     [
       insn Opcode.Sub width [ imm frame; Operand.Reg sp ];
-      insn Opcode.Lea width [ Operand.Mem (Mem.of_base ~disp:16L sp); Operand.Reg ax ];
+      insn Opcode.Lea width [ Operand.Mem (Mem.of_base ~disp:(Disp.Const 16L) sp); Operand.Reg ax ];
       insn Opcode.Mov width [ Operand.Reg ax; Operand.Mem (Mem.of_base sp) ];
       (* The one line where the two modes agree exactly: [movl $42, %eax] is
          byte-identical in 32- and 64-bit mode, which is why the fixtures use it
@@ -363,7 +363,7 @@ module X86_shared = struct
     [
       insn Opcode.Lea width
         [
-          Operand.Mem (Mem.of_base ~disp:(Int64.neg (Int64.sub 16384L entry_gap)) sp);
+          Operand.Mem (Mem.of_base ~disp:(Disp.Const (Int64.neg (Int64.sub 16384L entry_gap))) sp);
           Operand.Reg ax;
         ];
       insn Opcode.Mov 8 [ imm 0; Operand.Mem (Mem.of_base ax) ];
@@ -375,7 +375,7 @@ module X86_shared = struct
     [
       insn Opcode.Lea width
         [
-          Operand.Mem (Mem.of_base ~disp:(Int64.neg (Int64.sub 16385L entry_gap)) sp);
+          Operand.Mem (Mem.of_base ~disp:(Disp.Const (Int64.neg (Int64.sub 16385L entry_gap))) sp);
           Operand.Reg ax;
         ];
       insn Opcode.Mov 8 [ imm 0; Operand.Mem (Mem.of_base ax) ];

@@ -91,12 +91,16 @@ module Operand = struct
             immediate before it - but the common parser hands over comma-separated slices and this
             is one of them. Simplify folds it into the operand it belongs to; a surface AST that
             had already folded it could not report a shift applied to nothing. *)
+    | Sym of Asm_core.Expr.t
+        (** a branch or call target. Written without a [#], unlike an immediate: it is an address,
+            not a value, and the two are spelled differently for that reason. *)
 
   let pp ppf = function
     | Reg r -> Reg.pp ppf r
     | Imm v -> Fmt.pf ppf "#%a" Bigint.pp v
     | Mem m -> Mem.pp ppf m
     | Shift s -> Fmt.pf ppf "%s #%d" s.Shift.kind s.Shift.amount
+    | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
 end
 
 module Surface = struct
@@ -109,7 +113,7 @@ module Surface = struct
 end
 
 module Opcode = struct
-  type t = Add | Mov | Movz | Stp | Ldr | Ret | Sub | Strb | Udf
+  type t = Add | Mov | Movz | Stp | Ldr | Ret | Sub | Strb | Udf | Bl
 
   let name = function
     | Add -> "add"
@@ -121,6 +125,7 @@ module Opcode = struct
     | Sub -> "sub"
     | Strb -> "strb"
     | Udf -> "udf"
+    | Bl -> "bl"
 
   (* The surface spellings this target accepts, and the only place the mapping
      lives. [simplify_instruction] consults it rather than repeating the list,
@@ -135,6 +140,7 @@ module Opcode = struct
     | "sub" -> Some Sub
     | "strb" -> Some Strb
     | "udf" -> Some Udf
+    | "bl" -> Some Bl
     | _ -> None
 end
 
@@ -157,6 +163,7 @@ module Lowered = struct
     | Sub_imm of { rd : Reg.t; rn : Reg.t; imm : int64; shift12 : bool }
     | Strb_uoff of { rt : Reg.t; rn : Reg.t; offset : int64 }
     | Udf of { imm16 : int64 }
+    | Bl of { target : Asm_core.Lowered_ast.branch }
 
   let pp ppf = function
     (* [add xD, sp, #0] is spelled [mov xD, sp] by every A64 disassembler, and
@@ -187,6 +194,7 @@ module Lowered = struct
           (if shift12 then ", lsl #12" else "")
     | Strb_uoff { rt; rn; offset } -> Fmt.pf ppf "strb %a, [%a, #%Ld]" Reg.pp rt Reg.pp rn offset
     | Udf { imm16 } -> Fmt.pf ppf "udf #%Ld" imm16
+    | Bl { target } -> Fmt.pf ppf "bl %a" Asm_core.Lowered_ast.pp_branch target
 
   let equal a b =
     match (a, b) with
@@ -206,6 +214,7 @@ module Lowered = struct
     | Strb_uoff x, Strb_uoff y ->
         Reg.equal x.rt y.rt && Reg.equal x.rn y.rn && Int64.equal x.offset y.offset
     | Udf x, Udf y -> Int64.equal x.imm16 y.imm16
+    | Bl x, Bl y -> Asm_core.Lowered_ast.equal_branch x.target y.target
     | _ -> false
 end
 
@@ -404,6 +413,26 @@ let codec : (Lowered.t, fixup_kind) C.t =
            ~encode:(function Lowered.Udf { imm16 } -> Some ((), imm16) | _ -> None)
            ~decode:(fun ((), imm16) -> Some (Lowered.Udf { imm16 }))
            C.(const ~width:16 0x0000L ** field ~width:16 ~signedness:C.Unsigned "imm16"));
+      (* [bl] - R_AARCH64_CALL26. The field is a *word count*, so the fixup
+         value is the byte displacement divided by four; [evaluate_fixup] does
+         that division and the range check, which is why the node here is a
+         plain 26-bit fixup and not a scaled one. No little-endian wrapper: a
+         fixed-width target authors one word and reverses it whole, so the
+         container and the codec agree on bit positions. *)
+      C.alt ~label:"bl" ~priority:8
+        (C.iso_fun ~name:"bl"
+           ~encode:(function
+             | Lowered.Bl { target } -> (
+                 match target with
+                 | Asm_core.Lowered_ast.Symbolic _ -> Some ((), 0L)
+                 | Asm_core.Lowered_ast.Resolved { value; _ } -> Some ((), value))
+             | _ -> None)
+           ~decode:(fun ((), d) ->
+             (* The fixup node is unsigned; the sign belongs to the whole value
+                and is applied here. *)
+             let v = Int64.shift_right (Int64.shift_left d 38) 38 in
+             Some (Lowered.Bl { target = Asm_core.Lowered_ast.Resolved { value = v; rung = "bl" } }))
+           C.(const ~width:6 0b100101L ** fixup ~width:26 ~kind:Pcrel_call26 "target"));
     ]
 
 (* {1 Lexical profile}
@@ -473,7 +502,12 @@ let parse_one (slice : Asm_core.Token.slice) =
   let int64_of v = match Bigint.to_int64_opt v with Some x -> Some x | None -> None in
   match List.map Token.kind slice with
   | [ Token.Ident n ] -> (
-      match Reg.find n with Some r -> Ok (Operand.Reg r) | None -> bad ("unknown register " ^ n))
+      (* A bare identifier is a register if the table knows it and a symbol
+         otherwise. There is no sigil to tell them apart on this dialect, so
+         the table is the only thing that can. *)
+      match Reg.find n with
+      | Some r -> Ok (Operand.Reg r)
+      | None -> Ok (Operand.Sym (Expr.Symbol n)))
   | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Operand.Imm v)
   | [ Token.Immediate_sigil; Token.Minus; Token.Int v ] -> Ok (Operand.Imm (Bigint.neg v))
   | [
@@ -515,7 +549,12 @@ let parse_one (slice : Asm_core.Token.slice) =
       match int64_of v with
       | Some o -> mem ~base:b ~offset:(Int64.neg o) ~writeback:true
       | None -> bad "offset does not fit")
-  | _ -> bad ("cannot parse operand " ^ Asm_core.Token.slice_text slice)
+  | _ -> (
+      (* A branch or call target: not a register, an immediate or an address, but
+         still an expression. The common parser decides what it means. *)
+      match Asm_core.Parse_lines.parse_expression slice with
+      | Ok e -> Ok (Operand.Sym e)
+      | Error _ -> bad ("cannot parse operand " ^ Asm_core.Token.slice_text slice))
 
 let parse_operands ~mnemonic slices =
   ignore mnemonic;
@@ -638,6 +677,8 @@ let lower_instruction state i =
           if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
             bad "udf immediate does not fit 16 bits"
           else Ok [ Lowered.Udf { imm16 = imm } ])
+  | Opcode.Bl, [ Operand.Sym e ] ->
+      Ok [ Lowered.Bl { target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
   | _ -> bad (Printf.sprintf "no %s form takes these operands" (Opcode.name i.Instruction.op))
 
 (* {1 Encode and decode} *)
@@ -690,21 +731,39 @@ let fixup_of_placement (p : fixup_kind C.placement) =
     origin = Origin.synthesized ~pass:"aarch64.encode" ();
   }
 
-let form_of enc =
+(* The expression lives in the lowered value, because Codec sits below asm_core
+   and cannot mention Expr; pairing is by placement name. A placement with no
+   expression belongs to a Resolved operand - its bits are already the real
+   displacement - so it yields no linker fixup. *)
+let expr_of_lowered : Lowered.t -> (string * Asm_core.Expr.t) list = function
+  | Lowered.Bl { target = Asm_core.Lowered_ast.Symbolic { value; _ } } -> [ ("target", value) ]
+  | _ -> []
+
+let form_of l enc =
+  let exprs = expr_of_lowered l in
   {
     Asm_core.Lowered_ast.bytes = word_to_memory (C.Bits.to_bytes enc.C.bits);
     form = C.form_id enc;
-    fixups = List.map fixup_of_placement enc.C.placements;
+    fixups =
+      List.filter_map
+        (fun (p : fixup_kind C.placement) ->
+          match List.assoc_opt p.C.name exprs with
+          | None -> None
+          | Some value -> Some { (fixup_of_placement p) with Asm_core.Lowered_ast.value })
+        enc.C.placements;
   }
 
+(* A64 is fixed-width, so there is never a ladder: every form is `Fixed. The
+   dispatch still reads the operand rather than the codec, so the rule is the
+   same one x86 follows. *)
 let encode l =
   match C.encode codec l with
   | Error e -> Error (diag "aarch64.encode" (Fmt.to_to_string C.pp_error e))
-  | Ok enc -> Ok (`Fixed (form_of enc))
+  | Ok enc -> Ok (`Fixed (form_of l enc))
 
 type decode_context = { state : target_state; address : int64 }
 
-let instruction_of_lowered = function
+let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Add_imm { rd; rn; imm; shift12 } ->
       if Int64.equal imm 0L && (not shift12) && (rd.Reg.is_sp || rn.Reg.is_sp) then
         Some { Instruction.op = Opcode.Mov; ops = [ Operand.Reg rd; Operand.Reg rn ] }
@@ -768,16 +827,30 @@ let instruction_of_lowered = function
         }
   | Lowered.Udf { imm16 } ->
       Some { Instruction.op = Opcode.Udf; ops = [ Operand.Imm (Bigint.of_int64 imm16) ] }
+  | Lowered.Bl { target } ->
+      (* Printed as the absolute target. A64 measures a branch from the
+         instruction itself, so there is no length to add - which is why the
+         bias is 0 and this needs only the address. The field is a word count,
+         so the displacement is four times it. *)
+      let abs =
+        match target with
+        | Asm_core.Lowered_ast.Resolved { value; _ } -> Int64.add at (Int64.mul value 4L)
+        | Asm_core.Lowered_ast.Symbolic _ -> at
+      in
+      Some
+        {
+          Instruction.op = Opcode.Bl;
+          ops = [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 abs)) ];
+        }
 
 let decode ctx bytes ~pos =
-  ignore ctx;
   if String.length bytes - pos < 4 then Error (diag "aarch64.decode" "fewer than four bytes remain")
   else
     let word = word_to_memory (String.sub bytes pos 4) in
     match C.decode_bits codec (C.Bits.of_bytes word) with
     | None -> Error (diag "aarch64.decode" "no form matches this word")
     | Some d -> (
-        match instruction_of_lowered d.C.value with
+        match instruction_of_lowered ~at:ctx.address d.C.value with
         | None -> Error (diag "aarch64.decode" "decoded a form with no normalized instruction")
         | Some i -> Ok (i, String.concat "." d.C.dform, 4))
 
@@ -809,6 +882,28 @@ let evaluate_fixup kind ~place ~target =
       if Int64.rem low scale <> 0L then
         Error (diag "aarch64.fixup" "low-12 target is not aligned to the access width")
       else Ok (Int64.div low scale)
+
+(* As on ARM: [.word] is four bytes. A64 additionally needs an eight-byte
+   absolute for a pointer-sized initializer, which is why Abs64 exists. *)
+let data_widths =
+  [
+    (".byte", 1);
+    (".short", 2);
+    (".hword", 2);
+    (".word", 4);
+    (".4byte", 4);
+    (".quad", 8);
+    (".xword", 8);
+  ]
+
+let data_fixup ~width =
+  match width with
+  | 4 -> Ok Abs32
+  | 8 -> Ok Abs64
+  | _ ->
+      Error
+        (diag "aarch64.data-fixup"
+           (Printf.sprintf "no absolute relocation for a %d-byte data initializer" width))
 
 let nop_bytes ~length =
   if length mod 4 <> 0 then

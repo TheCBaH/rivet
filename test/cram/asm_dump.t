@@ -114,7 +114,7 @@
   ########## x86_32 lowered ast
   lowered asm_test_entry
   section .text r-x align=16
-    align 16 fill=66 0f 1f 84 00 00 00 00 00 0f 1f 80 00 00 00 00
+    align 16 fill<=2e 8d b4 26 00 00 00 00 8d b4 26 00 00 00 00
     label asm_test_entry
     bytes 83 ec 0c                 [x86_32.alu-rm-imm8.reg]
     bytes 8d 44 24 10              [x86_32.lea.sib-disp8]
@@ -151,29 +151,49 @@
   00000012  c3              ret                  [x86_32.ret]
   ########## x86_32 codec
   alt x86_32
-    [0 cost=0] alu-rm-imm8      alu-rm-imm8(){no-rex 10000011 modrm imm:8s}
-    [1 cost=0] alu-rm-imm32     alu-rm-imm32(){no-rex 10000001 modrm le32}
-    [2 cost=0] mov-r-imm        mov-r-imm(){no-rex 10111 reg:3u le32}
-    [3 cost=0] mov-rm-r         mov-rm-r(){no-rex 10001001 modrm}
-    [4 cost=0] mov-r-rm         mov-r-rm(){no-rex 10001011 modrm}
-    [5 cost=0] lea              lea(){no-rex 10001101 modrm}
-    [6 cost=0] ret              ret(){11000011}
-    [7 cost=0] mov-rm-imm8      mov-rm-imm8(){no-rex 11000110 modrm imm8:8s}
-    [8 cost=0] xor-rm-r         xor-rm-r(){no-rex 00110001 modrm}
-    [9 cost=0] pop-r            pop-r(){no-rex 01011 reg:3u}
-    [10 cost=0] jmp-rm           jmp-rm(){no-rex 11111111 modrm}
-    [11 cost=0] ud2              ud2(){0000111100001011}
-  no-rex(){()}
+    [0 cost=0] alu-rm-imm8      alu-rm-imm8(){prefixes 10000011 modrm imm:8s}
+    [1 cost=0] alu-rm-imm32     alu-rm-imm32(){prefixes 10000001 modrm le32}
+    [2 cost=0] mov-r-imm        mov-r-imm(){prefixes 10111 reg:3u le32}
+    [3 cost=0] mov-eax-moffs    mov-eax-moffs(){10100001 disp-sym}
+    [4 cost=0] mov-moffs-eax    mov-moffs-eax(){10100011 disp-sym}
+    [5 cost=0] mov-rm-r         mov-rm-r(){prefixes 10001001 modrm}
+    [6 cost=0] mov-r-rm         mov-r-rm(){prefixes 10001011 modrm}
+    [7 cost=0] lea              lea(){prefixes 10001101 modrm}
+    [8 cost=0] ret              ret(){11000011}
+    [9 cost=0] mov-rm-imm8      mov-rm-imm8(){prefixes 11000110 modrm imm8:8s}
+    [10 cost=0] alu-rm-r         alu-rm-r(){prefixes alu-rm-r-op modrm}
+    [11 cost=0] pop-r            pop-r(){prefixes 01011 reg:3u}
+    [12 cost=0] jmp-rm           jmp-rm(){prefixes 11111111 modrm}
+    [13 cost=0] ud2              ud2(){0000111100001011}
+    [14 cost=0] call-rel32       call-rel32(){11101000 le32}
+    [15 cost=0] imul-r-rm        imul-r-rm(){prefixes 0000111110101111 modrm}
+    [16 cost=0] cmov-r-rm        cmov-r-rm(){prefixes 000011110100 cc modrm}
+    [17 cost=0] jmp-rel          relax jmp
+                                   d8               jmp.d8(){11101011 <target:8@0 pcrel8-branch>}
+                                   d32              jmp.d32(){11101001 le32}
+    [18 cost=0] jcc-rel          relax jcc
+                                   d8               jcc.d8(){0111 cc <target:8@0 pcrel8-branch>}
+                                   d32              jcc.d32(){000011111000 cc le32}
+  prefixes(){no-asz no-rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
-    [1 cost=0] sib-disp0        modrm-sib-disp0(){00 reg:3u 100 sib no-disp}
-    [2 cost=0] sib-disp8        modrm-sib-disp8(){01 reg:3u 100 sib disp8:8s}
-    [3 cost=0] sib-disp32       modrm-sib-disp32(){10 reg:3u 100 sib le32}
-    [4 cost=0] base-disp0       modrm-base-disp0(){00 reg:3u rm:3u no-disp}
-    [5 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp8:8s}
-    [6 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u le32}
+    [1 cost=0] sib-disp0        modrm-sib-disp0(){00 reg:3u 100 sib disp-none}
+    [2 cost=0] sib-disp8        modrm-sib-disp8(){01 reg:3u 100 sib disp-c8}
+    [3 cost=0] sib-disp32       modrm-sib-disp32(){10 reg:3u 100 sib disp-c32}
+    [4 cost=0] disp32-norm      modrm-disp32-norm(){00 reg:3u 101 disp-sym}
+    [5 cost=0] base-disp0       modrm-base-disp0(){00 reg:3u rm:3u disp-none}
+    [6 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
+    [7 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-c32}
   le32(){imm:32u}
+  disp-sym(){le32}
+  alu-rm-r-op[3]{opcode:8u}
+  cc[16]{cc:4u}
+  no-asz(){()}
+  no-rex(){()}
   sib(){scale:2u index:3u base:3u}
+  disp-none(){no-disp}
+  disp-c8(){disp8:8s}
+  disp-c32(){le32}
   no-disp(){()}
   ########## x86_64 tokens
   1 5 directive .text
@@ -290,13 +310,13 @@
   ########## x86_64 lowered ast
   lowered asm_test_entry
   section .text r-x align=16
-    align 16 fill=66 0f 1f 84 00 00 00 00 00 0f 1f 80 00 00 00 00
+    align 16 fill<=66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00
     label asm_test_entry
-    bytes 48 83 ec 08              [x86_64.alu-rm-imm8.rex-present.reg]
-    bytes 48 8d 44 24 10           [x86_64.lea.rex-present.sib-disp8]
-    bytes 48 89 04 24              [x86_64.mov-rm-r.rex-present.sib-disp0]
-    bytes b8 2a 00 00 00           [x86_64.mov-r-imm.rex-absent]
-    bytes 48 83 c4 08              [x86_64.alu-rm-imm8.rex-present.reg]
+    bytes 48 83 ec 08              [x86_64.alu-rm-imm8.asz-absent.rex-present.reg]
+    bytes 48 8d 44 24 10           [x86_64.lea.asz-absent.rex-present.sib-disp8]
+    bytes 48 89 04 24              [x86_64.mov-rm-r.asz-absent.rex-present.sib-disp0]
+    bytes b8 2a 00 00 00           [x86_64.mov-r-imm.asz-absent.rex-absent]
+    bytes 48 83 c4 08              [x86_64.alu-rm-imm8.asz-absent.rex-present.reg]
     bytes c3                       [x86_64.ret]
     size asm_test_entry = (. - asm_test_entry)
   global asm_test_entry function in .text size=(. - asm_test_entry)
@@ -319,39 +339,59 @@
   	addq $8, %rsp
   	ret
   ########## x86_64 disasm diagnostic
-  00000000  48 83 ec 08     subq $8, %rsp        [x86_64.alu-rm-imm8.rex-present.reg]
-  00000004  48 8d 44 24 10  leaq 16(%rsp), %rax  [x86_64.lea.rex-present.sib-disp8]
-  00000009  48 89 04 24     movq %rax, (%rsp)    [x86_64.mov-rm-r.rex-present.sib-disp0]
-  0000000d  b8 2a 00 00 00  movl $42, %eax       [x86_64.mov-r-imm.rex-absent]
-  00000012  48 83 c4 08     addq $8, %rsp        [x86_64.alu-rm-imm8.rex-present.reg]
+  00000000  48 83 ec 08     subq $8, %rsp        [x86_64.alu-rm-imm8.asz-absent.rex-present.reg]
+  00000004  48 8d 44 24 10  leaq 16(%rsp), %rax  [x86_64.lea.asz-absent.rex-present.sib-disp8]
+  00000009  48 89 04 24     movq %rax, (%rsp)    [x86_64.mov-rm-r.asz-absent.rex-present.sib-disp0]
+  0000000d  b8 2a 00 00 00  movl $42, %eax       [x86_64.mov-r-imm.asz-absent.rex-absent]
+  00000012  48 83 c4 08     addq $8, %rsp        [x86_64.alu-rm-imm8.asz-absent.rex-present.reg]
   00000016  c3              ret                  [x86_64.ret]
   ########## x86_64 codec
   alt x86_64
-    [0 cost=0] alu-rm-imm8      alu-rm-imm8(){rex 10000011 modrm imm:8s}
-    [1 cost=0] alu-rm-imm32     alu-rm-imm32(){rex 10000001 modrm le32}
-    [2 cost=0] mov-r-imm        mov-r-imm(){rex 10111 reg:3u le32}
-    [3 cost=0] mov-rm-r         mov-rm-r(){rex 10001001 modrm}
-    [4 cost=0] mov-r-rm         mov-r-rm(){rex 10001011 modrm}
-    [5 cost=0] lea              lea(){rex 10001101 modrm}
-    [6 cost=0] ret              ret(){11000011}
-    [7 cost=0] mov-rm-imm8      mov-rm-imm8(){rex 11000110 modrm imm8:8s}
-    [8 cost=0] xor-rm-r         xor-rm-r(){rex 00110001 modrm}
-    [9 cost=0] pop-r            pop-r(){rex 01011 reg:3u}
-    [10 cost=0] jmp-rm           jmp-rm(){rex 11111111 modrm}
-    [11 cost=0] ud2              ud2(){0000111100001011}
+    [0 cost=0] alu-rm-imm8      alu-rm-imm8(){prefixes 10000011 modrm imm:8s}
+    [1 cost=0] alu-rm-imm32     alu-rm-imm32(){prefixes 10000001 modrm le32}
+    [2 cost=0] mov-r-imm        mov-r-imm(){prefixes 10111 reg:3u le32}
+    [5 cost=0] mov-rm-r         mov-rm-r(){prefixes 10001001 modrm}
+    [6 cost=0] mov-r-rm         mov-r-rm(){prefixes 10001011 modrm}
+    [7 cost=0] lea              lea(){prefixes 10001101 modrm}
+    [8 cost=0] ret              ret(){11000011}
+    [9 cost=0] mov-rm-imm8      mov-rm-imm8(){prefixes 11000110 modrm imm8:8s}
+    [10 cost=0] alu-rm-r         alu-rm-r(){prefixes alu-rm-r-op modrm}
+    [11 cost=0] pop-r            pop-r(){prefixes 01011 reg:3u}
+    [12 cost=0] jmp-rm           jmp-rm(){prefixes 11111111 modrm}
+    [13 cost=0] ud2              ud2(){0000111100001011}
+    [14 cost=0] call-rel32       call-rel32(){11101000 le32}
+    [15 cost=0] imul-r-rm        imul-r-rm(){prefixes 0000111110101111 modrm}
+    [16 cost=0] cmov-r-rm        cmov-r-rm(){prefixes 000011110100 cc modrm}
+    [17 cost=0] jmp-rel          relax jmp
+                                   d8               jmp.d8(){11101011 <target:8@0 pcrel8-branch>}
+                                   d32              jmp.d32(){11101001 le32}
+    [18 cost=0] jcc-rel          relax jcc
+                                   d8               jcc.d8(){0111 cc <target:8@0 pcrel8-branch>}
+                                   d32              jcc.d32(){000011111000 cc le32}
+  prefixes(){asz rex}
+  alt modrm
+    [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
+    [1 cost=0] sib-disp0        modrm-sib-disp0(){00 reg:3u 100 sib disp-none}
+    [2 cost=0] sib-disp8        modrm-sib-disp8(){01 reg:3u 100 sib disp-c8}
+    [3 cost=0] sib-disp32       modrm-sib-disp32(){10 reg:3u 100 sib disp-c32}
+    [4 cost=0] disp32-norm      modrm-disp32-norm(){00 reg:3u 101 disp-sym}
+    [5 cost=0] base-disp0       modrm-base-disp0(){00 reg:3u rm:3u disp-none}
+    [6 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
+    [7 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-c32}
+  le32(){imm:32u}
+  alu-rm-r-op[3]{opcode:8u}
+  cc[16]{cc:4u}
+  alt asz
+    [0 cost=0] asz-present      asz-present(){01100111}
+    [1 cost=0] asz-absent       asz-absent(){()}
   alt rex
     [0 cost=0] rex-present      rex-present(){0100 wrxb:4u}
     [1 cost=0] rex-absent       rex-absent(){()}
-  alt modrm
-    [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
-    [1 cost=0] sib-disp0        modrm-sib-disp0(){00 reg:3u 100 sib no-disp}
-    [2 cost=0] sib-disp8        modrm-sib-disp8(){01 reg:3u 100 sib disp8:8s}
-    [3 cost=0] sib-disp32       modrm-sib-disp32(){10 reg:3u 100 sib le32}
-    [4 cost=0] base-disp0       modrm-base-disp0(){00 reg:3u rm:3u no-disp}
-    [5 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp8:8s}
-    [6 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u le32}
-  le32(){imm:32u}
   sib(){scale:2u index:3u base:3u}
+  disp-none(){no-disp}
+  disp-c8(){disp8:8s}
+  disp-c32(){le32}
+  disp-sym(){le32}
   no-disp(){()}
   ########## arm tokens
   1 7 directive .syntax
@@ -528,7 +568,7 @@
   ########## arm lowered ast
   lowered asm_test_entry
   section .text r-x align=4
-    align 4 fill=00 f0 20 e3
+    align 4 fill<=
     label asm_test_entry
     bytes 0d c0 a0 e1              [arm.dp-reg]
     bytes 08 d0 4d e2              [arm.dp-imm]
@@ -576,6 +616,7 @@
     [2 cost=0] dp-reg           dp-reg(){1110 000 dp:4u s:1u rn rd shift-amount:5u shift-kind:2u 0 rm}
     [3 cost=0] ldst-imm         ldst-imm(){1110 010 1 u:1u b:1u 0 l:1u rn rt imm12:12u}
     [4 cost=0] udf              udf(){1110 01111111 imm12:12u 1111 imm4:4u}
+    [5 cost=0] bl               bl(){1110 1011 <target:24@0 pcrel-call>}
   rm(){rm:4u}
   rn(){rn:4u}
   rd(){rd:4u}
@@ -717,7 +758,7 @@
   ########## aarch64 lowered ast
   lowered asm_test_entry
   section .text r-x align=4
-    align 4 fill=1f 20 03 d5
+    align 4 fill<=
     label asm_test_entry
     bytes ef 03 00 91              [aarch64.add-imm]
     bytes ef 7b bf a9              [aarch64.stp-pre]
@@ -762,6 +803,7 @@
     [5 cost=0] sub-imm          sub-imm(){110100010 sh:1u imm12:12u rn rd}
     [6 cost=0] strb-uoff        strb-uoff(){0011100100 imm12:12u rn rt}
     [7 cost=0] udf              udf(){0000000000000000 imm16:16u}
+    [8 cost=0] bl               bl(){100101 <target:26@0 pcrel-call26>}
   rn(){rn:5u}
   rd(){rd:5u}
   imm7-scaled8(){imm7:7s}

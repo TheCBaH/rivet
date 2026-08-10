@@ -49,7 +49,7 @@ let whole_container ~bits = [ { Lowered_ast.bit_offset = 0; bit_width = bits; va
 
 (* A two-rung ladder over one symbol, shaped like `jmp`: opcode byte then
    displacement, two bytes short and five bytes near. *)
-let branch_to sym =
+let branch_to_expr e =
   Lowered_ast.Relax
     {
       alts =
@@ -60,7 +60,7 @@ let branch_to sym =
             fixups =
               [
                 fixup ~kind:Rel8 ~range:(Lowered_ast.Signed 8) ~byte_offset:1 ~container:1
-                  ~pc_bias:2 ~slices:(whole_container ~bits:8) (Expr.Symbol sym);
+                  ~pc_bias:2 ~slices:(whole_container ~bits:8) e;
               ];
           };
           {
@@ -69,13 +69,14 @@ let branch_to sym =
             fixups =
               [
                 fixup ~kind:Rel32 ~range:(Lowered_ast.Signed 32) ~byte_offset:1 ~container:4
-                  ~pc_bias:5 ~slices:(whole_container ~bits:32) (Expr.Symbol sym);
+                  ~pc_bias:5 ~slices:(whole_container ~bits:32) e;
               ];
           };
         ];
       origin;
     }
 
+let branch_to sym = branch_to_expr (Expr.Symbol sym)
 let filler n = Lowered_ast.Bytes { bytes = String.make n '\x90'; form = None; fixups = []; origin }
 let label name = Lowered_ast.Label_def { name; origin }
 
@@ -183,6 +184,57 @@ let%expect_test "the boundary between the two rungs" =
     gap 127 -> rel8
     gap 128 -> rel32 |}]
 
+let%expect_test "an absolute target does not relax, whatever the offsets say" =
+  (* The target is the address 4, not a location in this section. Laid out at
+     offset 0 the section-relative arithmetic reads displacement 4 - 2 = 2 and
+     the short rung looks like a fit; bound at 0x1000 the real displacement is
+     4 - 0x1002, which no signed byte holds. Relaxation is over by then, so
+     picking the short rung here would produce an image that can only be
+     rejected, not repaired.
+
+     Layout therefore has to recognise that the target does not move with the
+     section and keep the longest rung. Note that binding then succeeds, which
+     is the point: the answer is not "diagnose an absolute branch", it is
+     "an absolute branch is not relaxable". *)
+  let m =
+    module_
+      ~symbols:[ sym "entry" ]
+      [ text_section [ label "entry"; branch_to_expr (Expr.Const (Bigint.of_int 4)) ] ]
+  in
+  (match plan m with
+  | Error ds -> show_errors ds
+  | Ok l -> (
+      Fmt.pr "size: %d@." (List.hd (Image.plan_of l).Image.segments).Image.init_size;
+      match bind_at l [ (".text", 0x1000L) ] with None -> () | Some img -> show_text img));
+  (* e9 fe ef ff ff: -4094, little-endian. *)
+  [%expect {|
+    size: 5
+    e9 ff ef ff ff |}]
+
+let%expect_test "a difference of two labels is absolute too" =
+  (* Both symbols are in this section, so every symbol the expression names is
+     evaluable here - and the value is still not a location: it does not move
+     when the section does. A rule phrased as "all symbols are local" would
+     admit this and get the same wrong answer as a bare constant. *)
+  let m =
+    module_
+      ~symbols:[ sym "entry"; sym "a"; sym "b" ]
+      [
+        text_section
+          [
+            label "entry";
+            branch_to_expr (Expr.Binary (Expr.Sub, Expr.Symbol "b", Expr.Symbol "a"));
+            label "a";
+            filler 4;
+            label "b";
+          ];
+      ]
+  in
+  (match plan m with
+  | Error ds -> show_errors ds
+  | Ok l -> Fmt.pr "size: %d@." (List.hd (Image.plan_of l).Image.segments).Image.init_size);
+  [%expect {| size: 9 |}]
+
 let%expect_test "a backward branch reaches too" =
   let m =
     module_
@@ -244,7 +296,8 @@ let%expect_test "alignment padding participates, and costs minimality" =
             label "entry";
             branch_to "here";
             filler 100;
-            Lowered_ast.Align { boundary = 16; fill = "\x90"; origin };
+            Lowered_ast.Align
+              { boundary = 16; fills = Array.init 15 (fun i -> String.make (i + 1) '\x90'); origin };
             filler 20;
             label "here";
           ];
@@ -410,6 +463,107 @@ let%expect_test "the plan reports its outstanding fixups" =
   | Error ds -> show_errors ds
   | Ok l -> Fmt.pr "unresolved: %s@." (String.concat "," (Image.plan_of l).Image.unresolved));
   [%expect {| unresolved: target |}]
+
+(* {1 Fixup observations}
+
+   What the differential oracle classifies on. Every field is a separate column
+   sourced from the module's own symbol table, so that changing the role, the
+   binding, the section relation or the visibility independently changes an
+   observation - nothing here recovers a role by parsing a kind name. *)
+
+let observed m =
+  match plan m with
+  | Error ds -> show_errors ds
+  | Ok l -> List.iter (fun o -> Fmt.pr "%a@." Image.pp_observation o) (Image.fixup_observations l)
+
+let ref_to ?(kind = Abs32) ?(range = Lowered_ast.Bitpattern 32) e =
+  Lowered_ast.Bytes
+    {
+      bytes = "\xb8\x00\x00\x00\x00";
+      form = Some "t.mov-imm32";
+      fixups =
+        [
+          fixup ~kind ~range ~byte_offset:1 ~container:4 ~pc_bias:0
+            ~slices:(whole_container ~bits:32) e;
+        ];
+      origin;
+    }
+
+let%expect_test "an observation carries every column the classifier indexes on" =
+  let m =
+    module_
+      ~symbols:
+        [
+          sym "entry";
+          sym "g" ~section:".data";
+          { (sym "hidden_local" ~global:false) with Lowered_ast.visibility = Lowered_ast.Hidden };
+        ]
+      [
+        text_section
+          [
+            label "entry";
+            (* A global object in another section. *)
+            ref_to (Expr.Symbol "g");
+            (* A local, hidden, same-section reference - each of those three a
+               different column from the line above. *)
+            ref_to (Expr.Symbol "hidden_local");
+            (* A branch rather than a data address, so the role column moves
+               without the kind name doing the work. *)
+            ref_to ~kind:Rel32 ~range:(Lowered_ast.Signed 32) (Expr.Symbol "hidden_local");
+            label "hidden_local";
+          ];
+        {
+          Lowered_ast.sec = { Lowered_ast.sec_name = ".data"; perms = Perms.rw; alignment = 4 };
+          fragments = [ label "g" ];
+        };
+      ]
+  in
+  observed m;
+  [%expect
+    {|
+    .text	0x00000001	abs32	data-address	g	+0x0	global	default	other-section
+    .text	0x00000006	abs32	data-address	hidden_local	+0x0	local	hidden	same-section
+    .text	0x0000000b	rel32	branch	hidden_local	+0x0	local	hidden	same-section |}]
+
+let%expect_test "an addend is normalized, not matched on its spelling" =
+  (* [g + (2 + 2)] and [g + 4] are one reference and must produce one record.
+     Matching the unfolded tree would call the first non-normalizable and drop
+     it out of the record-for-record comparison entirely - a silently weaker
+     gate, not a failing one. The commuted spelling is the same reference too.
+
+     The last one genuinely is not a symbol plus an addend: an ELF record names
+     one symbol, and this names two, so it is reported as itself and left to
+     the post-link byte comparison. *)
+  let m =
+    module_
+      ~symbols:[ sym "entry"; sym "g" ~section:".data"; sym "h" ~section:".data" ]
+      [
+        text_section
+          [
+            label "entry";
+            ref_to
+              (Expr.Binary
+                 ( Expr.Add,
+                   Expr.Symbol "g",
+                   Expr.Binary (Expr.Add, Expr.Const (Bigint.of_int 2), Expr.Const (Bigint.of_int 2))
+                 ));
+            ref_to (Expr.Binary (Expr.Add, Expr.Const (Bigint.of_int 4), Expr.Symbol "g"));
+            ref_to (Expr.Binary (Expr.Sub, Expr.Symbol "g", Expr.Const (Bigint.of_int 8)));
+            ref_to (Expr.Binary (Expr.Sub, Expr.Symbol "h", Expr.Symbol "g"));
+          ];
+        {
+          Lowered_ast.sec = { Lowered_ast.sec_name = ".data"; perms = Perms.rw; alignment = 4 };
+          fragments = [ label "g"; filler 4; label "h" ];
+        };
+      ]
+  in
+  observed m;
+  [%expect
+    {|
+    .text	0x00000001	abs32	data-address	g	+0x4	global	default	other-section
+    .text	0x00000006	abs32	data-address	g	+0x4	global	default	other-section
+    .text	0x0000000b	abs32	data-address	g	-0x8	global	default	other-section
+    .text	0x00000010	abs32	data-address	non-normalizable	(h - g) |}]
 
 (* {1 Multi-segment binding} *)
 

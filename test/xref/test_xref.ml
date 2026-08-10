@@ -72,7 +72,7 @@ let our_bytes target source_text =
   | None -> Error (target ^ ": no such target")
   | Some (module D : Target_intf.Target.DRIVER) -> (
       let source = Foundation.Span.source ~name:(target ^ ".s") ~contents:source_text in
-      match D.assemble ~unit_name:"asm_snippet" ~source with
+      match D.assemble ~unit_name:"asm_snippet" ~source () with
       | Error ds -> Error (String.trim (Foundation.Diagnostic.render_all ds))
       | Ok laid_out -> (
           let plan = Image.plan_of laid_out in

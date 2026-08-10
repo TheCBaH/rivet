@@ -234,6 +234,17 @@ module type TARGET = sig
       targets disagree about which references survive assembly, and they disagree *per role*: a
       same-file global call keeps a record everywhere while a local branch keeps one nowhere. *)
 
+  val data_widths : (string * int) list
+  (** The data directives this dialect spells, and the width in *bytes* each denotes. Asked before
+      the common table, because there is no universal answer: [.word] is two bytes in GNU x86 syntax
+      and four on ARM and AArch64, and CompCert writes [.4byte] for a 32-bit address on ARM. A
+      single shared table would be silently wrong for one of them. *)
+
+  val data_fixup : width:int -> (fixup_kind, Diagnostic.t) result
+  (** Which fixup kind an initializer naming a symbol takes at that width. An error rather than an
+      option, because a width with no absolute relocation is a real limit and the caller has to say
+      so rather than emit an unpatched zero. *)
+
   val nop_bytes : length:int -> (string, Diagnostic.t) result
   (** padding for [.align] in an executable section. Not zeroes: a zero-filled gap in x86 [.text]
       decodes as [add %al,(%rax)] and would make the diagnostic disassembler print instructions
@@ -254,11 +265,28 @@ module type DRIVER = sig
   val triple : string
 
   val assemble :
-    unit_name:string -> source:Span.source -> (Image.laid_out, Diagnostic.t list) result
+    ?entry:string ->
+    unit_name:string ->
+    source:Span.source ->
+    unit ->
+    (Image.laid_out, Diagnostic.t list) result
   (** Text in, laid-out image out - laid out but *not bound*: choosing addresses is the host's
       step and stays outside every target (§9). [Image.bind_image] is what turns the result into
       bytes at an address, and it is deliberately not part of this interface, because it is not
-      target-specific at all. *)
+      target-specific at all.
+
+      [?entry] names the entry symbol. It has to cross this boundary rather than live in the
+      concrete pipeline, because every architecture-erased caller - the CLI, the differential
+      gate, both browser adapters - would otherwise be stuck with the single-global inference,
+      which names nothing as soon as a module declares a callee or a data object beside its entry.
+      Omitting it keeps that inference as the fallback, which is what lets the four M1 fixtures
+      call this unchanged. *)
+
+  val fixup_observations : Image.laid_out -> Image.fixup_observation list
+  (** The relocation evidence a laid-out module carries, kind erased. Named here even though
+      [Image.fixup_observations] is reachable from the result above, because this interface is the
+      statement of which requests survive erasure - and "classify this module's fixups" is one the
+      differential oracle makes through nothing else. *)
 
   (* The six dumps of asm/docs/contracts.md §1. Each is a separate entry point
      rather than a [~stage] parameter, because they have genuinely different

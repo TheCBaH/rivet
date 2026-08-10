@@ -87,6 +87,35 @@ type 'k fixup = {
   origin : Origin.t;
 }
 
+(* A branch or call target, in the three states it can actually be in.
+
+   [Symbolic] with no rung is the ordinary case: lowering knows the expression
+   and not the distance, so the encoder offers a ladder and layout chooses.
+
+   [Symbolic] with a rung is a *pinned* symbolic target, and it is why two
+   states are not enough. Canonical disassembly prints a form-forcing spelling
+   so that a non-minimal encoding survives being read back; re-parsing that text
+   yields a target that is still an address-dependent expression - so it still
+   needs a fixup - but must not be relaxed again.
+
+   [Resolved] only ever comes from decode, and carries the rung that matched so
+   the same encoding can be reproduced. *)
+type branch =
+  | Symbolic of { value : Expr.t; rung : string option }
+  | Resolved of { value : int64; rung : string }
+
+let pp_branch ppf = function
+  | Symbolic { value; rung = None } -> Fmt.string ppf (Expr.to_string value)
+  | Symbolic { value; rung = Some r } -> Fmt.pf ppf "%s{%s}" (Expr.to_string value) r
+  | Resolved { value; rung } -> Fmt.pf ppf "%Ld{%s}" value rung
+
+let equal_branch a b =
+  match (a, b) with
+  | Symbolic x, Symbolic y ->
+      String.equal (Expr.to_string x.value) (Expr.to_string y.value) && x.rung = y.rung
+  | Resolved x, Resolved y -> Int64.equal x.value y.value && String.equal x.rung y.rung
+  | _ -> false
+
 (* One rung of a relaxation ladder: a complete encoding of the same operation,
    differing in size and in how far its fixup reaches. *)
 type 'k encoded_form = { bytes : string; form : string; fixups : 'k fixup list }
@@ -96,9 +125,16 @@ type 'k fragment =
       (** [form] is the codec's form identifier: the path of alternatives its encoding took. It is
           what the diagnostic disassembler prints and what a differential test names when an
           encoding is right by accident. *)
-  | Align of { boundary : int; fill : string; origin : Origin.t }
-      (** [fill] is the target's padding, not zero by default: x86 pads code with multi-byte no-ops
-          and a zero-filled gap in .text would be a decodable instruction. *)
+  | Align of { boundary : int; fills : string array; origin : Origin.t }
+      (** [fills.(n-1)] is the target's padding for exactly [n] bytes - not one pattern to repeat.
+
+          The distinction is the whole point on x86, where padding is a *single no-op instruction*
+          chosen for the gap: GAS fills ten bytes with one ten-byte nop, and cycling a shorter
+          pattern produces a different instruction stream that happens to be the same length. M1
+          never saw it because both x86 fixtures aligned at offset 0, where the gap is empty.
+
+          Still not zero-filled by default: a zero gap in [.text] decodes as an instruction nobody
+          wrote. *)
   | Relax of { alts : 'k encoded_form list; origin : Origin.t }
       (** several encodings of one operation, shortest first, chosen at layout. It is a fragment
           rather than an already-encoded [Bytes] because the choice depends on where the target
@@ -174,7 +210,12 @@ let pp_fragment ppf = function
           list ~sep:nop (fun ppf a ->
               Fmt.pf ppf "@,  %-24s [%s]%a" (Byte_cursor.to_hex a.bytes) a.form pp_fixups a.fixups))
         alts
-  | Align { boundary; fill; _ } -> Fmt.pf ppf "align %d fill=%s" boundary (Byte_cursor.to_hex fill)
+  | Align { boundary; fills; _ } ->
+      (* The widest fill stands for the table: printing all of them would put a
+         quadratic byte dump in every aligned section for no added fact, and the
+         longest is the one that shows which family the target pads with. *)
+      Fmt.pf ppf "align %d fill<=%s" boundary
+        (if Array.length fills = 0 then "" else Byte_cursor.to_hex fills.(Array.length fills - 1))
   | Zero { length; _ } -> Fmt.pf ppf "zero %d" length
   | Label_def { name; _ } -> Fmt.pf ppf "label %s" name
   | Set_size { name; size; _ } -> Fmt.pf ppf "size %s = %a" name Expr.pp size

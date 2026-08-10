@@ -36,6 +36,11 @@ type t =
   | Sym_size of { name : string; size : Expr.t }
       (** not metadata: it exercises the current-location operator and symbol-relative
           subtraction, and lands in the symbol record and the link map *)
+  | Data of { width : int; values : Expr.t list }
+      (** [.byte], [.short], [.long], [.quad] and the dialect spellings that mean the same widths.
+          The width in *bytes* rather than the spelling, because [.word] is two bytes in GNU x86
+          syntax and four on ARM and AArch64 - so the surface name is a dialect fact and the width
+          is the value. An initializer naming a symbol stays an expression and becomes a fixup. *)
   | Target_state of { name : string; argument : string }
 
 let pp ppf = function
@@ -45,4 +50,6 @@ let pp ppf = function
   | Global { name } -> Fmt.pf ppf "globl %s" name
   | Sym_type { name; kind } -> Fmt.pf ppf "type %s %s" name (sym_kind_name kind)
   | Sym_size { name; size } -> Fmt.pf ppf "size %s %a" name Expr.pp size
+  | Data { width; values } ->
+      Fmt.pf ppf "data %d %a" width Fmt.(list ~sep:(any ", ") Expr.pp) values
   | Target_state { name; argument } -> Fmt.pf ppf "target-state %s %s" name argument

@@ -33,7 +33,7 @@ let run (name, text) =
   print_endline (ok (D.dump_normalized_ast ~unit_name ~source));
   banner (name ^ " lowered ast");
   print_endline (ok (D.dump_lowered_ast ~unit_name ~source));
-  let laid_out = ok (D.assemble ~unit_name ~source) in
+  let laid_out = ok (D.assemble ~unit_name ~source ()) in
   let plan = Image.plan_of laid_out in
   banner (name ^ " plan");
   print_endline (Fmt.to_to_string Image.pp_plan plan);
