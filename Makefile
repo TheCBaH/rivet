@@ -4,6 +4,7 @@ COMPCERT_EXTRACTION_ARCHIVE := compcert-extraction.tar.gz
 COMPCERT_LIB_DIR := compcert-lib
 COMPCERT_EXPORT_ARCHIVE := compcert-export.tar.gz
 COMPCERT_EXPORT_DIR := compcert-export
+ASM_DIR := asm
 
 default: compcert
 
@@ -181,6 +182,63 @@ compcert-export-run: compcert-export-build
 	cd $(COMPCERT_EXPORT_DIR) && COMPCERT_CONFIG=$(CURDIR)/$(COMPCERT_DIR)/compcert.ini \
 	  opam exec -- dune exec bin/main.exe -- $(ARGS)
 
+# The retargetable assembler (asm/), a standalone dune project independent of
+# the CompCert build above: it has its own dune-project, so `dune` run from
+# asm/ never descends into compcert-lib/ and none of these targets need Rocq,
+# a cross toolchain, or QEMU. See .ai/asm_plan.md.
+#
+# asm-fmt rewrites sources in place; asm-fmt-check is the CI form, which fails
+# with a diff instead. Both go through dune's @fmt alias, so the vendored
+# sources under asm/vendor (marked (vendored_dirs) in asm/dune) are skipped and
+# stay byte-identical to upstream.
+asm-build:
+	cd $(ASM_DIR) && opam exec -- dune build @all
+
+asm-test: asm-build
+	cd $(ASM_DIR) && opam exec -- dune build @runtest
+
+asm-fmt:
+	cd $(ASM_DIR) && opam exec -- dune build @fmt --auto-promote
+
+asm-fmt-check:
+	cd $(ASM_DIR) && opam exec -- dune build @fmt
+
+# The Melange configuration. Declaring melange mode on a library schedules melc
+# in @all whether or not anything emits JavaScript, so it is gated on
+# ASM_MELANGE and the two configurations are built separately (asm/melange/dune
+# explains why dune leaves no better option). This target needs Melange
+# installed and therefore an OCaml 4.14 switch; it is not part of asm-ci.
+asm-melange:
+	cd $(ASM_DIR) && ASM_MELANGE=true opam exec -- dune build @all
+
+# Byte-identical output from native OCaml, js_of_ocaml/Node, and Melange/Node
+# (.ai/asm_plan.md ยง11.6). All three run the *same* committed cram baseline,
+# asm/test/cram/bigint_dump.t, with ASM_BACKEND choosing which artifact produces
+# it - so equality is the cram diff itself rather than a comparison between two
+# uncommitted outputs. Separate dune invocations because ASM_MELANGE changes
+# which library stanzas are enabled.
+asm-js:
+	cd $(ASM_DIR) && ASM_BACKEND=native opam exec -- dune build @runtest
+	cd $(ASM_DIR) && ASM_BACKEND=jsoo opam exec -- dune build @runtest
+	cd $(ASM_DIR) && ASM_BACKEND=melange ASM_MELANGE=true opam exec -- dune build @runtest
+
+# The transitive purity and layer audits (ง1, ง2.2, ง3.7, ง5.1), and the
+# planted violations that prove they can fail. Guardrail 6: run these before
+# treating a successful JavaScript build as evidence of portability - a package
+# shipping a JS runtime replacement for its C primitives compiles cleanly and
+# still breaks the no-C rule.
+asm-purity: asm-build
+	tools/asm-check-purity.sh
+	tools/asm-check-layers.sh
+
+asm-planted: asm-build
+	tools/asm-check-planted.sh
+
+# What CI runs, and what to run locally before pushing. Formatting is checked
+# first: an unformatted tree is the cheapest failure to diagnose. asm-js is not
+# here โ€” it needs Melange, hence OCaml 4.14, so it is its own CI job.
+asm-ci: asm-fmt-check asm-build asm-test asm-purity asm-planted
+
 # One archive per target: Rocq extraction differs per architecture, so
 # compcert-export-archive alone only covers whichever target was last
 # configured. See tools/compcert-export-archive-all.sh.
@@ -192,4 +250,5 @@ compcert-export-archive-all:
   compcert-extraction-archive compcert-extraction-unarchive compcert-prepare-sources \
   compcert-build-from-archive compcert-lib-sync compcert-lib-build compcert-lib-run \
   compcert-export-archive compcert-export-unarchive compcert-export-build compcert-export-run \
-  compcert-export-archive-all
+  compcert-export-archive-all \
+  asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted asm-ci

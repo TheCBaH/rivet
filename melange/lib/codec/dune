@@ -1,0 +1,12 @@
+; Melange build of lib/codec. Same sources, copied rather than duplicated;
+; see melange/dune for why the tree is mirrored at all.
+
+(copy_files#
+ (files ../../../lib/codec/*.ml))
+
+(library
+ (name codec)
+ (modes byte native melange)
+ (libraries foundation)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))

@@ -1,0 +1,12 @@
+; Melange build of targets/x86_32. Same sources, copied rather than duplicated;
+; see melange/dune for why the tree is mirrored at all.
+
+(copy_files#
+ (files ../../../targets/x86_32/*.ml))
+
+(library
+ (name x86_32)
+ (modes byte native melange)
+ (libraries foundation codec target_intf x86_family)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))

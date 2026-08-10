@@ -1,0 +1,61 @@
+; The three-build equality gate (.ai/asm_plan.md §11.6) as one cram test.
+;
+; There is a single committed baseline — bigint_dump.t — and the backend that
+; produces it is chosen by ASM_BACKEND at build time. Running the same .t under
+; native, jsoo and melange is therefore literally an equality check: any
+; divergence shows up as a cram diff against the one reviewed transcript,
+; instead of as a comparison between two uncommitted outputs.
+;
+; run.sh is the indirection that makes that possible: the .t always invokes
+; `sh run.sh`, and only its contents differ per backend. Native and jsoo name
+; their artifact relative to the cram sandbox, where dune has placed the cram
+; stanza's file deps at their build-tree-relative locations.
+;
+; Melange is the exception, and deliberately so. Its CommonJS output requires
+; sibling modules and the node_modules tree dune materializes beside them, and
+; that whole tree is *generated*, so it cannot be pulled into the sandbox:
+; `glob_files_rec` matches source files only, and an alias carries no files.
+; So the Melange run.sh bakes an absolute path back into the real build tree at
+; rule time ($PWD inside an action is the rule's own directory). The
+; (alias_rec) dep is what makes the emit actually exist before that runs.
+;
+; ASM_BACKEND=melange additionally needs ASM_MELANGE=true, since melange mode is
+; gated at the library level (see melange/dune); the Makefile sets both.
+
+(rule
+ (targets run.sh)
+ (enabled_if
+  (= %{env:ASM_BACKEND=native} native))
+ (action
+  (with-stdout-to
+   run.sh
+   (echo "exec ../lib/foundation/bigint_dump.exe\n"))))
+
+(rule
+ (targets run.sh)
+ (enabled_if
+  (= %{env:ASM_BACKEND=native} jsoo))
+ (action
+  (with-stdout-to
+   run.sh
+   (echo "exec node ../lib/foundation/bigint_dump.bc.js\n"))))
+
+(rule
+ (targets run.sh)
+ (enabled_if
+  (= %{env:ASM_BACKEND=native} melange))
+ (deps
+  (alias_rec ../../melange/test/lib/foundation/default))
+ (action
+  (with-stdout-to
+   run.sh
+   (run
+    sh
+    -c
+    "printf 'exec node %s/../../melange/test/lib/foundation/js/melange/test/lib/foundation/bigint_dump.js\\n' \"$PWD\""))))
+
+(cram
+ (deps
+  run.sh
+  ../lib/foundation/bigint_dump.exe
+  ../lib/foundation/bigint_dump.bc.js))

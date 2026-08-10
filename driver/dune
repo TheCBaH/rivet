@@ -1,0 +1,6 @@
+(library
+ (name driver)
+ (modes byte native)
+ (libraries foundation asm_core image target_intf x86_32 x86_64 arm aarch64)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

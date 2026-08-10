@@ -1,0 +1,12 @@
+; Melange build of browser/melange. Same sources, copied rather than duplicated;
+; see melange/dune for why the tree is mirrored at all.
+
+(copy_files#
+ (files ../../../browser/melange/*.ml))
+
+(library
+ (name browser_melange)
+ (modes byte native melange)
+ (libraries driver)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))

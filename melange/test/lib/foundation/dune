@@ -1,0 +1,26 @@
+; Melange build of the shared corpus, plus the JavaScript emitted from the very
+; same driver source the native and js_of_ocaml builds run. Emitting from one
+; source is the whole point: the three-build gate compares bytes, so a separate
+; hand-written Melange entry point would weaken it into comparing two programs.
+
+(copy_files#
+ (files ../../../../test/lib/foundation/bigint_corpus.ml))
+
+(copy_files#
+ (files ../../../../test/lib/foundation/bigint_dump.ml))
+
+(library
+ (name foundation_corpus)
+ (modules bigint_corpus)
+ (modes byte native melange)
+ (libraries foundation fmt)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))
+
+(melange.emit
+ (target js)
+ (modules bigint_dump)
+ (module_systems commonjs)
+ (libraries foundation_corpus)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))

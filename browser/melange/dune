@@ -1,0 +1,6 @@
+(library
+ (name browser_melange)
+ (modes byte native)
+ (libraries driver)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

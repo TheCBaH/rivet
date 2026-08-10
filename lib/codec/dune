@@ -1,0 +1,6 @@
+(library
+ (name codec)
+ (modes byte native)
+ (libraries foundation)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

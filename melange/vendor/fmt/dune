@@ -1,0 +1,16 @@
+; Melange build of the vendored Fmt. Same sources as ../../../vendor/fmt; only
+; the modes differ. Warnings are disabled explicitly here because
+; `vendored_dirs` covers the source tree, not this copy's stanza.
+(copy_files#
+ (files ../../../vendor/fmt/*.ml))
+
+(copy_files#
+ (files ../../../vendor/fmt/*.mli))
+
+(library
+ (name fmt)
+ (modes byte native melange)
+ (flags
+  (:standard -w -a))
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))

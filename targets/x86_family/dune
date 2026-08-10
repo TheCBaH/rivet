@@ -1,0 +1,6 @@
+(library
+ (name x86_family)
+ (modes byte native)
+ (libraries foundation codec target_intf)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

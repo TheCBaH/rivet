@@ -1,0 +1,18 @@
+; The Melange mirror of the production closure.
+;
+; Dune cannot make a library's `modes` conditional: `enabled_if` on a library
+; needs (lang dune 3.15) — which we now use — but two stanzas sharing a library
+; name in one dune file crash dune with an internal error. Two stanzas sharing a
+; name in *different directories*, made mutually exclusive by enabled_if, work.
+; So each library appears twice: once under lib/ with (modes byte native), and
+; once here with (modes byte native melange), copy_files'ing the very same
+; sources so there is exactly one copy of the code.
+;
+; Why gate it at all: declaring melange mode on a library puts melc rules into
+; @all whether or not anything emits JavaScript, so an ungated declaration would
+; make `dune build @all` require melc on every CI leg — including the OCaml 5.x
+; legs, where Melange 5.1.0-414 (ocaml >= 4.14 & < 4.15) cannot be installed.
+;
+; ASM_MELANGE is set explicitly by both CI jobs, never left to a default.
+
+(vendored_dirs vendor)
