@@ -6,3 +6,4 @@
 /compcert-export/
 /asm/_build/
 /.asm-helpers/
+/.tool-gate/

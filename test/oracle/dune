@@ -66,3 +66,26 @@
  (libraries asm_oracle asm_oracle_run fmt)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
+
+; exec is M1.6, the E5 rung: it assembles the fixtures with this project's own
+; assembler and runs the result. It therefore reaches the whole production
+; closure as well as the QEMU runner, which is why it is its own stanza and not
+; another module of conform - the conformance driver deliberately depends on no
+; part of the assembler, so that a broken assembler cannot make the ABI suite
+; pass.
+
+(executable
+ (name exec)
+ (modules exec)
+ (modes exe)
+ (libraries
+  asm_oracle
+  asm_oracle_run
+  driver
+  image
+  target_intf
+  foundation
+  test_dump_inputs
+  fmt)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

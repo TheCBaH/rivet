@@ -1,0 +1,23 @@
+; The seed for the three-build equality gate at the assembler level.
+;
+; Two stanzas. test_dump_inputs holds the four fixture texts as string literals
+; and nothing else, so it can be shared with test/coherence without dragging in
+; the driver; asm_dump is the executable, built for native and js_of_ocaml here
+; and emitted by Melange under melange/test/dump from the same source.
+;
+; Neither is gated on ASM_MELANGE: the melange/ mirror declares every library in
+; byte and native modes as well, so these link in both configurations - which is
+; what lets the cram stanza name the artifacts unconditionally.
+
+(library
+ (name test_dump_inputs)
+ (modules test_dump_inputs)
+ (modes byte native)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
+(executables
+ (names asm_dump)
+ (modules asm_dump)
+ (modes exe js)
+ (libraries foundation image target_intf driver test_dump_inputs fmt))

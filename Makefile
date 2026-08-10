@@ -217,10 +217,34 @@ asm-melange:
 # it - so equality is the cram diff itself rather than a comparison between two
 # uncommitted outputs. Separate dune invocations because ASM_MELANGE changes
 # which library stanzas are enabled.
-asm-js:
+asm-js: asm-build asm-js-portable
+	cd $(ASM_DIR) && ASM_BACKEND=melange ASM_MELANGE=true opam exec -- dune build @runtest
+
+# The two legs that need no Melange, split out so the portable CI matrix can run
+# them on every image. Melange 7.0.1-414 requires `ocaml >= 4.14 & < 4.15`, so
+# the third leg cannot run on the OCaml 5.x images the matrix also builds - but
+# js_of_ocaml can, and leaving it out of the matrix entirely would mean the only
+# evidence that the closure compiles to JavaScript came from one pinned leg.
+asm-js-portable: asm-build
 	cd $(ASM_DIR) && ASM_BACKEND=native opam exec -- dune build @runtest
 	cd $(ASM_DIR) && ASM_BACKEND=jsoo opam exec -- dune build @runtest
-	cd $(ASM_DIR) && ASM_BACKEND=melange ASM_MELANGE=true opam exec -- dune build @runtest
+
+# The behavioral tool gate (§3.2, an M0 exit criterion). APT tooling is
+# range-checked rather than digest-pinned, and version numbers alone do not
+# establish compatibility where behaviour matters - so this asks the tools to do
+# the things the project depends on and records what answered. It needs the
+# cross toolchains, the four qemu-user binaries, qemu-system and gdb, but no
+# CompCert and no part of the assembler: it establishes E2 tool compatibility
+# only, and asm-abi-conform remains the distinct E4 transport proof.
+asm-tool-gate:
+	tools/asm-tool-gate.sh all
+
+# The Melange opt-in, verified rather than asserted (§3.2). Checks both clean
+# configurations: zero melc rules and a successful build with Melange
+# unavailable, and the rules reappearing under ASM_MELANGE=true. Needs nothing
+# beyond dune, so it runs on every leg.
+asm-melange-optin:
+	tools/asm-melange-optin.sh
 
 # The M1 fixtures. §12 has a two-mode policy and the dependency edges here are
 # what enforce it: asm-fixtures-check needs NO cross toolchain, so every
@@ -278,10 +302,23 @@ asm-abi-conform: asm-runner asm-helpers
 	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers \
 	  opam exec -- dune exec test/oracle/conform.exe
 
+# M1.6, the E5 rung: the assembler's own image bound at the ABI-v1 profile code
+# base and run under the same helpers. Separate from asm-abi-conform on purpose -
+# conform depends on no part of the assembler, so a broken assembler cannot make
+# the ABI suite pass, and this target is where the assembler is what is on trial.
+# The prerequisites are the plan's graph, not a convenience: E5 is not a claim
+# worth making until E4 holds, and the fixtures this binds are the checked-in
+# ones. Spelling the edges out is also what makes the target self-sufficient -
+# it never depends on another job having run first, which is what the fresh
+# full-oracle job needs and what makes it safe under parallel make.
+asm-exec: asm-runner asm-helpers asm-abi-conform asm-fixtures-check
+	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers \
+	  opam exec -- dune exec test/oracle/exec.exe
+
 # What CI runs, and what to run locally before pushing. Formatting is checked
 # first: an unformatted tree is the cheapest failure to diagnose. asm-js is not
 # here — it needs Melange, hence OCaml 4.14, so it is its own CI job.
-asm-ci: asm-fmt-check asm-build asm-test asm-purity asm-planted
+asm-ci: asm-fmt-check asm-build asm-test asm-purity asm-planted asm-melange-optin asm-js-portable
 
 # One archive per target: Rocq extraction differs per architecture, so
 # compcert-export-archive alone only covers whichever target was last
@@ -296,4 +333,6 @@ compcert-export-archive-all:
   compcert-export-archive compcert-export-unarchive compcert-export-build compcert-export-run \
   compcert-export-archive-all \
   asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
-  asm-fixtures-check asm-cross-setup asm-fixtures-regen asm-oracle asm-ci
+  asm-fixtures-check asm-cross-setup asm-fixtures-regen asm-oracle asm-ci \
+  asm-helpers asm-runner asm-abi-conform asm-exec asm-tool-gate asm-melange-optin \
+  asm-js-portable

@@ -62,6 +62,21 @@ jobs:
     - name: planted violations
       run: |
         ${{ env.EXEC }} make asm-planted
+    # js_of_ocaml compilation and Node equality on every leg. The Melange leg
+    # cannot run here - Melange 7.0.1-414 requires `ocaml >= 4.14 & < 4.15`, so
+    # it would make every 5.x image unsatisfiable - and it has its own job
+    # below; but leaving jsoo out too would mean the only evidence that the
+    # production closure compiles to JavaScript came from one pinned leg.
+    - name: js_of_ocaml equality
+      run: |
+        ${{ env.EXEC }} make asm-js-portable
+    # The Melange opt-in itself, which needs no Melange: it asserts that with
+    # ASM_MELANGE unset `dune rules @all` schedules zero melc rules. That is the
+    # check that catches a mis-gated stanza *here*, on an image where Melange
+    # cannot be installed, rather than only on the pinned leg.
+    - name: melange opt-in
+      run: |
+        ${{ env.EXEC }} make asm-melange-optin
 
   # ABI v1 conformance (asm/docs/exec-abi-v1.md §16). Its own job, and
   # deliberately not part of the matrix above: it assembles the four helpers
@@ -96,9 +111,41 @@ jobs:
     # any subcode §14.2 promises is neither observed by a case nor covered by a
     # recorded exemption - so a check that becomes unreachable fails here rather
     # than passing quietly.
-    - name: conformance
+    #
+    # M1.6 runs in the same step rather than a second one, because asm-exec
+    # already depends on asm-abi-conform: E5 is not a claim worth making until
+    # E4 holds, and the make graph is where that edge belongs - two CI steps in
+    # a chosen order could be reordered without anything noticing.
+    - name: conformance and execution
       run: |
-        ${{ env.EXEC }} make asm-abi-conform
+        ${{ env.EXEC }} make asm-exec
+
+  # The behavioral tool gate (§3.2). Its own job because what it checks is the
+  # *container*, not the code: APT tooling is range-checked rather than
+  # digest-pinned, so a base-image update that moved QEMU, GDB or binutils under
+  # us has to surface here rather than as a puzzling failure somewhere else. It
+  # needs no CompCert and no part of the assembler - it establishes E2 tool
+  # compatibility only, and abi-conform above remains the distinct E4 proof.
+  tool-gate:
+    runs-on: ubuntu-24.04
+    env:
+      OCAML_VERSION: 5.5.0
+    steps:
+    - name: checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: true
+    - name: devcontainer
+      uses: ./.github/workflows/actions/devcontainer
+      id: devcontainer
+      with:
+        variant: ${{ env.OCAML_VERSION }}
+    - name: setup
+      run: |
+        echo 'EXEC=${{ steps.devcontainer.outputs.exec }}' >> $GITHUB_ENV
+    - name: tool gate
+      run: |
+        ${{ env.EXEC }} make asm-tool-gate
 
   # Byte-identical output from native OCaml, js_of_ocaml/Node, and Melange/Node
   # (.ai/asm_plan.md §11.6). Its own job on one pinned leg, because Melange
@@ -121,9 +168,12 @@ jobs:
     - name: setup
       run: |
         echo 'EXEC=${{ steps.devcontainer.outputs.exec }}' >> $GITHUB_ENV
-    # Job-local rather than in devcontainer.json's package list: the same
-    # devcontainer.json builds images for OCaml 4.14.3 through 5.5.0, and
-    # Melange's OCaml upper bound would make every 5.x image unsatisfiable.
+    # devcontainer.json lists Melange under `optional-packages`, not `packages`:
+    # the same devcontainer.json builds images for OCaml 4.14.3 through 5.5.0
+    # and Melange's OCaml upper bound would make every 5.x image unsatisfiable,
+    # so the feature installs it only where opam reports it available. On this
+    # pinned 4.14 leg that is already the case; the step below is what makes the
+    # job fail loudly here if it ever stops being installable.
     - name: install melange
       run: |
         ${{ env.EXEC }} opam install -y melange

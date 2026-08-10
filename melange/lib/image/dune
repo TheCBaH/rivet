@@ -7,6 +7,6 @@
 (library
  (name image)
  (modes byte native melange)
- (libraries foundation target_intf)
+ (libraries foundation asm_core fmt)
  (enabled_if
   (= %{env:ASM_MELANGE=false} true)))

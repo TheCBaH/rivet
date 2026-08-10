@@ -57,5 +57,47 @@
 (cram
  (deps
   run.sh
+  run_asm.sh
   ../lib/foundation/bigint_dump.exe
-  ../lib/foundation/bigint_dump.bc.js))
+  ../lib/foundation/bigint_dump.bc.js
+  ../dump/asm_dump.exe
+  ../dump/asm_dump.bc.js))
+
+; The assembler-level three-build gate. Same shape as bigint_dump above: one
+; committed baseline, and ASM_BACKEND chooses which artifact produces it. The
+; two baselines are separate files because they exercise different closures -
+; bigint_dump reaches only foundation, asm_dump reaches every production
+; library including all four targets - and a single merged transcript would not
+; say which one diverged.
+
+(rule
+ (targets run_asm.sh)
+ (enabled_if
+  (= %{env:ASM_BACKEND=native} native))
+ (action
+  (with-stdout-to
+   run_asm.sh
+   (echo "exec ../dump/asm_dump.exe\n"))))
+
+(rule
+ (targets run_asm.sh)
+ (enabled_if
+  (= %{env:ASM_BACKEND=native} jsoo))
+ (action
+  (with-stdout-to
+   run_asm.sh
+   (echo "exec node ../dump/asm_dump.bc.js\n"))))
+
+(rule
+ (targets run_asm.sh)
+ (enabled_if
+  (= %{env:ASM_BACKEND=native} melange))
+ (deps
+  (alias_rec ../../melange/test/dump/default))
+ (action
+  (with-stdout-to
+   run_asm.sh
+   (run
+    sh
+    -c
+    "printf 'exec node %s/../../melange/test/dump/js/melange/test/dump/asm_dump.js\\n' \"$PWD\""))))

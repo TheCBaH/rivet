@@ -53,9 +53,11 @@ One token per line:
 `offset` and `length` are decimal byte offsets into the source. `kind` is the
 lowercase constructor name (`ident`, `directive`, `int`, `string`, `register`,
 `local-label`, `colon`, `comma`, `semi`, `immsigil`, `lparen`, …, `eol`, `eof`).
-`spelling` is the exact source text the span covers, with no escaping — a token's
-spelling cannot contain a newline, so no escaping is needed and adding some would
-create a second representation to keep in step.
+`spelling` is the exact source text the span covers. Two tokens have no source
+text that can appear in a column: an `eol` spells itself as a newline, which
+would end the dump line it sits on, and an `eof` has no spelling at all. Those
+two print as the two-character `\n` and as nothing respectively. Nothing else is
+escaped, because nothing else can contain a newline.
 
 This dump exists to make dialect differences visible: the same line lexed under
 two profiles is the cheapest possible demonstration that `#` is a comment on x86
@@ -177,15 +179,19 @@ line up within one section. Example, aarch64 at base `0x40000000`:
 
 ```text
 section .text address=0x40000000 size=24 permissions=r-x
-40000000  ef 03 00 91   mov x15, sp                [aarch64.add.imm12.sp]
-40000004  ef 7b bf a9   stp x15, x30, [sp, #-16]!  [aarch64.stp.pre.imm7]
-40000008  40 05 80 52   movz w0, #42, lsl #0       [aarch64.movz.imm16.w]
-4000000c  fe 07 40 f9   ldr x30, [sp, #8]          [aarch64.ldr.uoff.x]
-40000010  ff 43 00 91   add sp, sp, #16            [aarch64.add.imm12.sp]
-40000014  c0 03 5f d6   ret x30                    [aarch64.ret.reg]
+40000000  ef 03 00 91  mov x15, sp                [aarch64.add-imm]
+40000004  ef 7b bf a9  stp x15, x30, [sp, #-16]!  [aarch64.stp-pre]
+40000008  40 05 80 52  movz w0, #42               [aarch64.movz]
+4000000c  fe 07 40 f9  ldr x30, [sp, #8]          [aarch64.ldr-uoff]
+40000010  ff 43 00 91  add sp, sp, #16            [aarch64.add-imm]
+40000014  c0 03 5f d6  ret                        [aarch64.ret]
 declared .note.GNU-stack (not allocated)
 export asm_test_entry = 0x40000000 size=24
 ```
+
+The `declared` and `export` lines come from `--dump-image`; the four-column body
+is `--dump-disasm=diagnostic`. They are shown together because that is how the
+CLI is invoked, not because either produces the other.
 
 ### 1.7 Canonical expressions
 
@@ -319,6 +325,10 @@ Four notes on the rows that are not obvious:
   `.align` meaning a power of two on some targets — does not arise for the four
   targets here, and the table above is the checked claim rather than a general
   one. A target where it does arise states its own unit in its directive handler.
+  `.p2align` is the case where the unit genuinely differs, and it is **rejected**
+  rather than treated as a synonym: its argument is an exponent, so accepting it
+  as a byte count would align `.p2align 4` to four bytes instead of sixteen — a
+  valid image at wrong addresses, which is the worst shape a bug can take.
 
 - **`@function` versus `%function` is the *comment introducer* leaking into the
   syntax.** ARM uses `@` for comments, so `@function` would be a comment; GAS

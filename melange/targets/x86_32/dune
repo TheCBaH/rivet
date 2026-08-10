@@ -7,6 +7,6 @@
 (library
  (name x86_32)
  (modes byte native melange)
- (libraries foundation codec target_intf x86_family)
+ (libraries foundation codec asm_core target_intf x86_family)
  (enabled_if
   (= %{env:ASM_MELANGE=false} true)))

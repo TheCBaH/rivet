@@ -80,10 +80,18 @@ let normalize ~name ~(arguments : Token.slice list) =
      values. On the four targets here both denote a byte count; a target where
      [.align] means a power of two states that in its own directive handler,
      and the table above is the checked claim rather than a general one. *)
-  | (".align" | ".balign" | ".p2align") when name <> ".p2align" -> (
+  | ".align" | ".balign" -> (
       match int_arg () with
       | Some n when n > 0 -> Ok (Normalized (Directive.Align { boundary = n }))
       | _ -> Error (name ^ " needs a positive integer argument"))
+  | ".p2align" ->
+      (* Deliberately rejected rather than accepted as a synonym. Its argument
+         is an exponent, not a byte count, so treating it as one would silently
+         align [.p2align 4] to four bytes instead of sixteen - a difference that
+         produces a valid image and wrong addresses. It is absent from
+         asm/docs/contracts.md §3's table, and nothing outside that table
+         assembles. *)
+      Error ".p2align takes a power-of-two exponent and is not in M1 scope; use .balign"
   | ".globl" | ".global" -> (
       match one () with
       | Some n -> Ok (Normalized (Directive.Global { name = n }))

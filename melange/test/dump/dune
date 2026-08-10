@@ -1,0 +1,24 @@
+; Melange build of test/dump. Same sources, copied rather than duplicated; see
+; melange/dune for why the tree is mirrored at all.
+;
+; Emitting from the very same driver source the native and js_of_ocaml builds
+; run is the whole point: the three-build gate compares bytes, so a separate
+; hand-written Melange entry point would weaken it into comparing two programs.
+
+(copy_files#
+ (files ../../../test/dump/*.ml))
+
+(library
+ (name test_dump_inputs)
+ (modules test_dump_inputs)
+ (modes byte native melange)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))
+
+(melange.emit
+ (target js)
+ (modules asm_dump)
+ (module_systems commonjs)
+ (libraries foundation image target_intf driver test_dump_inputs fmt)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))

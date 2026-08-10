@@ -1,0 +1,14 @@
+; Path coherence (M1.7). Uses the statically selected target module rather than
+; the erased DRIVER, which is the point: the types in this file are Aarch64's
+; own, so handing it an ARM normalized AST is a compile error.
+
+(library
+ (name test_coherence)
+ (modules test_coherence)
+ (modes byte native)
+ (libraries driver image asm_core aarch64 foundation test_dump_inputs fmt)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

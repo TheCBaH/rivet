@@ -18,5 +18,17 @@
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
 
-(menhir
- (modules grammar))
+; Menhir is invoked by an explicit rule rather than by the (menhir ...) stanza,
+; because that stanza takes no enabled_if and needs a library to attach to - and
+; this library is disabled in the Melange configuration, where the mirror under
+; melange/lib/asm_core owns the build instead. Exactly one of the two rules is
+; ever enabled, so grammar.ml has exactly one producer and both configurations
+; compile a parser generated from this one .mly.
+
+(rule
+ (targets grammar.ml grammar.mli)
+ (deps grammar.mly)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true))
+ (action
+  (run menhir --base grammar %{deps})))

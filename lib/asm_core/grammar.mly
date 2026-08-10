@@ -31,6 +31,24 @@
 %start <Statement.line list> program
 %start <Expr.t> expression_only
 
+(* Every nonterminal's type is declared rather than inferred. Menhir can infer
+   them by invoking the compiler, but that requires it to know the library's
+   whole compilation environment - which dune's [menhir] stanza arranges and a
+   plain rule cannot. The grammar has to be built by a plain rule because the
+   stanza takes no [enabled_if] and this library is disabled in the Melange
+   configuration, so the declarations below are what let one .mly serve both
+   builds. They are also the more honest form: a nonterminal whose type is only
+   inferred can change type silently when a semantic action is edited. *)
+%type <Statement.line list> lines
+%type <Statement.line> line
+%type <unit> terminator
+%type <Statement.label> label
+%type <Statement.statement> statement
+%type <Token.slice list> slices
+%type <Token.slice> slice
+%type <Token.t> atom
+%type <Expr.t> expr
+
 %%
 
 program:

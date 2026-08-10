@@ -1,0 +1,13 @@
+; Target-level tests. No fixtures, no toolchain, no emulator: everything here
+; is decided by the target descriptions themselves, so it runs in every leg.
+
+(library
+ (name test_targets)
+ (modules test_targets)
+ (modes byte native)
+ (libraries driver image target_intf codec foundation arm aarch64 fmt)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
