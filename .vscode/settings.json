@@ -9,6 +9,10 @@
         "OPAMROOT",
         "rocq",
         "compcert",
-        "ccomp"
+        "ccomp",
+        "binfmt",
+        "buildx",
+        "nohup",
+        "optin"
     ]
 }

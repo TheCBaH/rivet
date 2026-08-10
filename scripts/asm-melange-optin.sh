@@ -25,7 +25,7 @@ ASM_DIR=${ASM_DIR:-asm}
 failures=0
 shim=""
 
-cleanup() { [ -n "$shim" ] && rm -rf "$shim"; }
+cleanup() { [ -n "$shim" ] && rm -rf "$shim"; return 0; }
 trap cleanup EXIT
 
 note() { printf '  %-46s %s\n' "$1" "$2"; }

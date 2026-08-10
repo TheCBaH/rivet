@@ -11,7 +11,7 @@ RUN set -eux;\
     env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends\
   ca-certificates\
   curl\
-  gdb\
+  gdb-multiarch\
   git\
   make\
   qemu-system-arm\

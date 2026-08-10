@@ -183,13 +183,20 @@ system_gate() {
 # batch GDB that connects, reads a register, and detaches. What is being checked
 # is that the two agree on the RSP dialect at all - not that any guest code
 # runs, which is why the machine boots nothing.
+#
+# gdb-multiarch, not plain gdb: Debian's gdb package is built
+# --target=x86_64-linux-gnu only ('set architecture aarch64' is rejected as
+# "Undefined item"), so it can never complete an RSP handshake with
+# qemu-system-aarch64 - every attempt below would fail, indistinguishably
+# from a socket that never accepted. gdb-multiarch is the package built with
+# AArch64 (and the other cross targets) compiled in.
 gdb_gate() {
   echo "== gdb: batch/RSP handshake against a paused qemu-system =="
-  if ! command -v gdb >/dev/null; then
-    fail "gdb" "not installed"
+  if ! command -v gdb-multiarch >/dev/null; then
+    fail "gdb-multiarch" "not installed"
     return
   fi
-  record "gdb" "$(gdb --version | head -1)"
+  record "gdb-multiarch" "$(gdb-multiarch --version | head -1)"
 
   local port=${ASM_TOOL_GATE_PORT:-14730}
   local log="$WORK/gdb.log" qlog="$WORK/qemu-system.log"
@@ -200,7 +207,7 @@ gdb_gate() {
   # sleep is either flaky or slow, and on a loaded CI runner it is both.
   local ready=0
   for _ in $(seq 1 50); do
-    if gdb --batch -ex "set confirm off" -ex "target remote :$port" -ex detach \
+    if gdb-multiarch --batch -ex "set confirm off" -ex "target remote :$port" -ex detach \
         >"$log" 2>&1; then
       ready=1
       break
@@ -210,7 +217,7 @@ gdb_gate() {
   if [ "$ready" -eq 1 ]; then
     # Connected once; now do the real handshake and read state back, so the
     # check is "the two speak RSP" and not merely "a socket accepted".
-    if gdb --batch -ex "set confirm off" -ex "target remote :$port" \
+    if gdb-multiarch --batch -ex "set confirm off" -ex "target remote :$port" \
         -ex "info registers pc" -ex detach >"$log" 2>&1 \
         && grep -q '^pc' "$log"; then
       note "gdb <-> qemu-system-aarch64" "connected, read pc, detached"
