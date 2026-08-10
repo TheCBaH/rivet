@@ -209,12 +209,49 @@ module Lowered = struct
     | _ -> false
 end
 
-type fixup_kind = Abs64 | Pcrel_b26 | Adrp_page
+(* The low-12 relocation is *scaled by the access width*, which is why it is a
+   four-case variant and not one kind: R_AARCH64_LDST32_ABS_LO12_NC divides the
+   offset by 4 where the 8-bit form does not divide at all, and neither is the
+   same transform as [add]'s unscaled ADD_ABS_LO12_NC. A finite variant rather
+   than an [int] also keeps the kind domain genuinely finite, which is what lets
+   the name-consistency test enumerate it. *)
+type access_size = B | H | W | X
+
+let access_bytes = function B -> 1 | H -> 2 | W -> 4 | X -> 8
+
+type fixup_kind =
+  | Abs32
+  | Abs64
+  | Pcrel_b26
+  | Pcrel_call26
+  | Adrp_page
+  | Add_lo12
+  | Ldst_lo12 of access_size
 
 let fixup_kind_name = function
+  | Abs32 -> "abs32"
   | Abs64 -> "abs64"
   | Pcrel_b26 -> "pcrel-b26"
+  | Pcrel_call26 -> "pcrel-call26"
   | Adrp_page -> "adrp-page"
+  | Add_lo12 -> "add-lo12"
+  | Ldst_lo12 sz -> Printf.sprintf "ldst%d-lo12" (access_bytes sz * 8)
+
+let equal_fixup_kind a b = a = b
+
+let fixup_family = function
+  | Abs32 -> "abs32"
+  | Abs64 -> "abs64"
+  | Pcrel_b26 -> "pcrel-branch"
+  | Pcrel_call26 -> "pcrel-call"
+  | Adrp_page -> "adrp-page"
+  | Add_lo12 -> "add-lo12"
+  | Ldst_lo12 _ -> "ldst-lo12"
+
+let fixup_role = function
+  | Abs32 | Abs64 | Adrp_page | Add_lo12 | Ldst_lo12 _ -> Asm_core.Lowered_ast.Data_address
+  | Pcrel_b26 -> Asm_core.Lowered_ast.Branch
+  | Pcrel_call26 -> Asm_core.Lowered_ast.Call
 
 type feature = No_features
 type target_state = { unused : unit }
@@ -607,10 +644,63 @@ let lower_instruction state i =
 
 let word_to_memory s = if String.length s <> 4 then s else String.init 4 (fun i -> s.[3 - i])
 
+(* {2 Placements into fixups}
+
+   The codec authors one 32-bit word most-significant bit first and
+   [word_to_memory] then reverses it, so a placement's bit offset is *not* a
+   memory position. Converting is this target's job precisely because only it
+   knows that reversal happened.
+
+   The container is the whole four-byte word, read little-endian - which
+   reconstructs the word value the codec described - so a codec bit at position
+   [p] with width [w] lands at container bit [32 - p - w]. adrp's split
+   immediate falls out of this: immlo and immhi are two slices of one value at
+   two positions, and nothing has to special-case them.
+
+   [pc_bias] is 0: A64 measures a branch from the instruction itself. *)
+let fixup_of_placement (p : fixup_kind C.placement) =
+  let kind = p.C.kind in
+  {
+    Asm_core.Lowered_ast.kind;
+    kind_name = fixup_kind_name kind;
+    family = fixup_family kind;
+    role = fixup_role kind;
+    name = p.C.name;
+    slices =
+      List.map
+        (fun (s : C.slice) ->
+          {
+            Asm_core.Lowered_ast.bit_offset = 32 - s.C.bit_offset - s.C.bit_width;
+            bit_width = s.C.bit_width;
+            value_lsb = s.C.value_lsb;
+          })
+        p.C.slices;
+    byte_offset = 0;
+    container = 4;
+    pc_bias = 0;
+    range =
+      (match kind with
+      | Abs32 -> Asm_core.Lowered_ast.Bitpattern 32
+      | Abs64 -> Asm_core.Lowered_ast.Bitpattern 64
+      | Pcrel_b26 | Pcrel_call26 -> Asm_core.Lowered_ast.Signed 26
+      | Adrp_page -> Asm_core.Lowered_ast.Signed 21
+      | Add_lo12 -> Asm_core.Lowered_ast.Unsigned 12
+      | Ldst_lo12 _ -> Asm_core.Lowered_ast.Unsigned 12);
+    value = Asm_core.Expr.Const (Bigint.of_int 0);
+    origin = Origin.synthesized ~pass:"aarch64.encode" ();
+  }
+
+let form_of enc =
+  {
+    Asm_core.Lowered_ast.bytes = word_to_memory (C.Bits.to_bytes enc.C.bits);
+    form = C.form_id enc;
+    fixups = List.map fixup_of_placement enc.C.placements;
+  }
+
 let encode l =
   match C.encode codec l with
   | Error e -> Error (diag "aarch64.encode" (Fmt.to_to_string C.pp_error e))
-  | Ok enc -> Ok (word_to_memory (C.Bits.to_bytes enc.C.bits), C.form_id enc, enc.C.placements)
+  | Ok enc -> Ok (`Fixed (form_of enc))
 
 type decode_context = { state : target_state; address : int64 }
 
@@ -696,13 +786,29 @@ let decode ctx bytes ~pos =
 let evaluate_fixup kind ~place ~target =
   match kind with
   | Abs64 -> Ok target
-  | Pcrel_b26 ->
+  | Abs32 -> Ok (Int64.logand target 0xFFFFFFFFL)
+  | Pcrel_b26 | Pcrel_call26 ->
       let d = Int64.sub target place in
       if Int64.rem d 4L <> 0L then Error (diag "aarch64.fixup" "branch target is not word-aligned")
-      else Ok (Int64.div d 4L)
+      else
+        let words = Int64.div d 4L in
+        (* +-128MB, the 26-bit word-count field. *)
+        if Int64.compare words (-0x2000000L) >= 0 && Int64.compare words 0x2000000L < 0 then
+          Ok words
+        else Error (diag "aarch64.fixup" "branch target is out of range")
   | Adrp_page ->
       let page a = Int64.logand a (Int64.lognot 0xFFFL) in
       Ok (Int64.shift_right (Int64.sub (page target) (page place)) 12)
+  | Add_lo12 -> Ok (Int64.logand target 0xFFFL)
+  | Ldst_lo12 sz ->
+      (* The field is the low 12 bits divided by the access width, so an
+         unaligned target is an error rather than a truncation: the hardware
+         would address a different object. *)
+      let low = Int64.logand target 0xFFFL in
+      let scale = Int64.of_int (access_bytes sz) in
+      if Int64.rem low scale <> 0L then
+        Error (diag "aarch64.fixup" "low-12 target is not aligned to the access width")
+      else Ok (Int64.div low scale)
 
 let nop_bytes ~length =
   if length mod 4 <> 0 then

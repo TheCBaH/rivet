@@ -165,6 +165,7 @@ module Make (T : T_intf.TARGET) = struct
   type symbol_build = {
     sy_name : string;
     mutable sy_global : bool;
+    mutable sy_visibility : Lowered_ast.visibility;
     mutable sy_kind : Directive.sym_kind;
     mutable sy_size : Expr.t option;
     mutable sy_section : string;
@@ -203,6 +204,7 @@ module Make (T : T_intf.TARGET) = struct
             {
               sy_name = name;
               sy_global = false;
+              sy_visibility = Lowered_ast.Default;
               sy_kind = Directive.Notype;
               sy_size = None;
               sy_section = (match !current with Some c -> c.sb_name | None -> "");
@@ -266,13 +268,32 @@ module Make (T : T_intf.TARGET) = struct
                 | Ok lowered ->
                     List.iter
                       (fun l ->
+                        let qualify (a : _ Lowered_ast.encoded_form) =
+                          { a with Lowered_ast.form = T.name ^ "." ^ a.Lowered_ast.form }
+                        in
                         match T.encode l with
                         | Error e -> errors := e :: !errors
-                        | Ok (bytes, form, _placements) ->
+                        | Ok (`Fixed a) ->
+                            let a = qualify a in
                             s.sb_frags <-
                               Lowered_ast.Bytes
-                                { bytes; form = Some (T.name ^ "." ^ form); fixups = []; origin }
-                              :: s.sb_frags)
+                                {
+                                  bytes = a.Lowered_ast.bytes;
+                                  form = Some a.Lowered_ast.form;
+                                  fixups = a.Lowered_ast.fixups;
+                                  origin;
+                                }
+                              :: s.sb_frags
+                        | Ok (`Relax alts) -> (
+                            let alts = List.map qualify alts in
+                            (* Checked here *and* in the image, because a direct
+                               Lowered_ast producer never passes through this
+                               function and an ill-formed ladder would otherwise
+                               reach layout unchecked. *)
+                            match Lowered_ast.validate_relax alts with
+                            | Error m -> errors := diag ~origin "lower.relax-ladder" m :: !errors
+                            | Ok () ->
+                                s.sb_frags <- Lowered_ast.Relax { alts; origin } :: s.sb_frags))
                       lowered))
       m.Normalized_ast.items;
     if !errors <> [] then Error (List.rev !errors)
@@ -295,6 +316,7 @@ module Make (T : T_intf.TARGET) = struct
                 {
                   Lowered_ast.name = s.sy_name;
                   global = s.sy_global;
+                  visibility = s.sy_visibility;
                   kind = s.sy_kind;
                   size = s.sy_size;
                   section = s.sy_section;
@@ -305,20 +327,26 @@ module Make (T : T_intf.TARGET) = struct
 
   (* {1 Stage 4 - the image (§8, §9)} *)
 
-  let policy_for (m : T.fixup_kind Lowered_ast.module_) =
-    (* The entry is the single strong exported symbol, which for M1 is the one
-       global the fixtures declare. Naming it here rather than requiring the
-       caller to pass it means [assemble] has a total signature; a caller that
-       wants a different entry calls [plan] itself. *)
+  let policy_for ?entry (m : T.fixup_kind Lowered_ast.module_) =
+    (* An explicit entry wins. The single-global inference below was enough
+       while every fixture declared exactly one global, but three of the M2
+       fixtures declare two - a callee, or a data object, alongside the entry -
+       and cardinality then names nothing at all. Keeping the inference as the
+       fallback is what lets [assemble] stay total. *)
     let globals =
       List.filter_map
         (fun (s : Lowered_ast.symbol) ->
           if s.Lowered_ast.global then Some s.Lowered_ast.name else None)
         m.Lowered_ast.symbols
     in
-    { Image.default_policy with entry_symbol = (match globals with [ g ] -> Some g | _ -> None) }
+    let entry_symbol =
+      match entry with
+      | Some e -> Some e
+      | None -> ( match globals with [ g ] -> Some g | _ -> None)
+    in
+    { Image.default_policy with entry_symbol }
 
-  let plan m = Image.plan_image (policy_for m) [ m ]
+  let plan ?entry m = Image.plan_image ~evaluate:T.evaluate_fixup (policy_for ?entry m) [ m ]
 
   (* {1 The whole path} *)
 
@@ -416,6 +444,15 @@ module Make (T : T_intf.TARGET) = struct
 
   (* {2 The codec itself} *)
 
-  let dump_codec () = Fmt.to_to_string Codec.Shape.pp (Codec.inspect T.codec) ^ "\n"
-  let check_codec () = List.map (Fmt.to_to_string Codec.pp_problem) (Codec.check T.codec)
+  (* The kind dictionaries are supplied here rather than stored in the codec
+     nodes: the fixup kind is [T]'s abstract type, so the codec cannot name or
+     compare it, and a copy carried alongside would be free to disagree with
+     [T.fixup_kind_name]. *)
+  let dump_codec () =
+    Fmt.to_to_string Codec.Shape.pp (Codec.inspect ~kind_name:T.fixup_kind_name T.codec) ^ "\n"
+
+  let check_codec () =
+    List.map
+      (Fmt.to_to_string Codec.pp_problem)
+      (Codec.check ~equal_kind:T.equal_fixup_kind ~kind_name:T.fixup_kind_name T.codec)
 end

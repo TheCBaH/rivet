@@ -64,7 +64,11 @@ module Make (T : Target_intf.Target.TARGET) = struct
             (fun l ->
               match T.encode l with
               | Error d -> raise (Refuse (Foundation.Diagnostic.message d))
-              | Ok (bytes, _form, _placements) -> (bytes, Fmt.to_to_string T.Lowered.pp l))
+              (* The shortest rung, which is what a corpus snippet with a
+                 resolved target would have been assembled as anyway. *)
+              | Ok (`Fixed a) | Ok (`Relax (a :: _)) ->
+                  (a.Asm_core.Lowered_ast.bytes, Fmt.to_to_string T.Lowered.pp l)
+              | Ok (`Relax []) -> raise (Refuse "empty relaxation ladder"))
             lowered
     in
     match List.concat_map one insns with

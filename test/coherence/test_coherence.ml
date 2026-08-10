@@ -151,11 +151,17 @@ let%expect_test "simplify of the parsed text equals the direct normalized AST" =
    lowered module that contained an address could not be laid out twice. *)
 
 let bytes_of l =
-  match T.encode l with Ok (b, _, _) -> b | Error d -> failwith (Foundation.Diagnostic.message d)
+  match T.encode l with
+  | Ok (`Fixed a) -> a.Lowered_ast.bytes
+  | Ok (`Relax (a :: _)) -> a.Lowered_ast.bytes
+  | Ok (`Relax []) -> failwith "empty relaxation ladder"
+  | Error d -> failwith (Foundation.Diagnostic.message d)
 
 let form_of l =
   match T.encode l with
-  | Ok (_, f, _) -> Some ("aarch64." ^ f)
+  | Ok (`Fixed a) -> Some ("aarch64." ^ a.Lowered_ast.form)
+  | Ok (`Relax (a :: _)) -> Some ("aarch64." ^ a.Lowered_ast.form)
+  | Ok (`Relax []) -> failwith "empty relaxation ladder"
   | Error d -> failwith (Foundation.Diagnostic.message d)
 
 let direct_lowered : T.fixup_kind Lowered_ast.module_ =
@@ -194,6 +200,7 @@ let direct_lowered : T.fixup_kind Lowered_ast.module_ =
         {
           Lowered_ast.name = "asm_test_entry";
           global = true;
+          visibility = Lowered_ast.Default;
           kind = Directive.Function;
           size = Some (Expr.Binary (Expr.Sub, Expr.Current_location, Expr.Symbol "asm_test_entry"));
           section = ".text";
@@ -326,6 +333,7 @@ let%expect_test "a direct lowered module whose exported symbol is undefined is r
           {
             Lowered_ast.name = "absent";
             global = true;
+            visibility = Lowered_ast.Default;
             kind = Directive.Function;
             size = None;
             section = ".text";

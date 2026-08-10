@@ -224,13 +224,40 @@ end
 
 (* {1 Fixups}
 
-   Declared, and emitted by nothing in M1: every fixture's .text is
-   relocation-free once the .cfi_* directives (and therefore .eh_frame) are
-   discarded. The type exists so that M2 adds cases rather than replacing a
-   string. *)
-type fixup_kind = Abs32 | Pcrel32
+   The PC-relative kinds are split by *role* rather than merged into one
+   [Pcrel32], because GNU does not treat them alike and the differential gate
+   compares relocation intent. Measured on the M2 fixtures: a same-file global
+   call is R_X86_64_PLT32 on x86-64 but R_386_PC32 on x86-32, a global data
+   reference is PC-relative on x86-64 and *absolute* (R_386_32) on x86-32, and a
+   branch to a local label keeps no record on either. One kind spanning all
+   three would make those distinctions unrepresentable.
 
-let fixup_kind_name = function Abs32 -> "abs32" | Pcrel32 -> "pcrel32"
+   [Pcrel8] is the short rung of the branch ladder; it exists because GNU picks
+   the two-byte encodings for the loop fixture and byte equality is the gate. *)
+type fixup_kind = Abs32 | Pcrel8_branch | Pcrel32_branch | Pcrel32_call | Pcrel32_data
+
+let fixup_kind_name = function
+  | Abs32 -> "abs32"
+  | Pcrel8_branch -> "pcrel8-branch"
+  | Pcrel32_branch -> "pcrel32-branch"
+  | Pcrel32_call -> "pcrel32-call"
+  | Pcrel32_data -> "pcrel32-data"
+
+let equal_fixup_kind a b = a = b
+
+(* Ladder compatibility is checked on the family, so the short and near rungs of
+   one branch must agree here even though they are different kinds of different
+   widths - which is exactly what a ladder is. *)
+let fixup_family = function
+  | Abs32 -> "abs"
+  | Pcrel8_branch | Pcrel32_branch -> "pcrel-branch"
+  | Pcrel32_call -> "pcrel-call"
+  | Pcrel32_data -> "pcrel-data"
+
+let fixup_role = function
+  | Abs32 | Pcrel32_data -> Asm_core.Lowered_ast.Data_address
+  | Pcrel8_branch | Pcrel32_branch -> Asm_core.Lowered_ast.Branch
+  | Pcrel32_call -> Asm_core.Lowered_ast.Call
 
 (* {1 Little-endian fields} *)
 
@@ -448,6 +475,15 @@ module Make (M : MODE) = struct
   module Lowered = Lowered
 
   type nonrec fixup_kind = fixup_kind
+
+  (* Shared with the family, not per mode: what a kind *means* is an ELF
+     property of the architecture, and x86-32 and x86-64 differ only in which
+     kinds their forms select, not in what a kind is. *)
+  let fixup_kind_name = fixup_kind_name
+  let equal_fixup_kind = equal_fixup_kind
+  let fixup_family = fixup_family
+  let fixup_role = fixup_role
+
   type feature = No_features
   type target_state = { unused : unit }
 
@@ -910,10 +946,66 @@ module Make (M : MODE) = struct
 
   (* {2 Encode and decode} *)
 
+  (* {2 Placements into fixups}
+
+     x86 authors bits a byte at a time in memory order, so a placement's bit
+     offset divided by eight *is* its byte offset, and a rel32/disp32 fixup is
+     the four little-endian bytes starting there. The fixup node is deliberately
+     not wrapped in [le]: the linker writes the container little-endian itself,
+     and passing a placeholder through a byte-swapping [Iso_fun] would swap
+     zeroes to no purpose and put the slices in the wrong place.
+
+     [pc_bias] is the *realized* instruction length, taken from the encoding
+     rather than from a per-mnemonic table: an x86 rel32 is relative to the end
+     of the instruction, and that end moves with a REX prefix - a RIP-relative
+     load is six bytes without one and seven with. *)
+  let fixup_of_placement ~total_bytes (p : fixup_kind C.placement) =
+    let kind = p.C.kind in
+    let bits = List.map (fun (s : C.slice) -> s.C.bit_offset) p.C.slices in
+    let first = List.fold_left min max_int bits in
+    let width = List.fold_left (fun a (s : C.slice) -> a + s.C.bit_width) 0 p.C.slices in
+    {
+      Asm_core.Lowered_ast.kind;
+      kind_name = fixup_kind_name kind;
+      family = fixup_family kind;
+      role = fixup_role kind;
+      name = p.C.name;
+      slices =
+        List.map
+          (fun (s : C.slice) ->
+            {
+              Asm_core.Lowered_ast.bit_offset = s.C.bit_offset - first;
+              bit_width = s.C.bit_width;
+              value_lsb = s.C.value_lsb;
+            })
+          p.C.slices;
+      byte_offset = first / 8;
+      container = (width + 7) / 8;
+      pc_bias = (match kind with Abs32 -> 0 | _ -> total_bytes);
+      range =
+        (match kind with
+        (* An absolute 32-bit address is a bit pattern: 0x80000000 upwards is a
+           valid address, and a signed range would reject half of them. *)
+        | Abs32 -> Asm_core.Lowered_ast.Bitpattern 32
+        | Pcrel8_branch -> Asm_core.Lowered_ast.Signed 8
+        | Pcrel32_branch | Pcrel32_call | Pcrel32_data -> Asm_core.Lowered_ast.Signed 32);
+      value = Asm_core.Expr.Const (Bigint.of_int 0);
+      origin = Origin.synthesized ~pass:"x86.encode" ();
+    }
+
+  let form_of enc =
+    let bytes = C.Bits.to_bytes enc.C.bits in
+    let total_bytes = String.length bytes in
+    {
+      Asm_core.Lowered_ast.bytes;
+      form = C.form_id enc;
+      fixups = List.map (fixup_of_placement ~total_bytes) enc.C.placements;
+    }
+
   let encode l =
     match C.encode codec l with
     | Error e -> Error (diag "x86.encode" (Fmt.to_to_string C.pp_error e))
-    | Ok enc -> Ok (C.Bits.to_bytes enc.C.bits, C.form_id enc, enc.C.placements)
+    | Ok enc -> Ok (`Fixed (form_of enc))
 
   type decode_context = { state : target_state; address : int64 }
 
@@ -1016,12 +1108,23 @@ module Make (M : MODE) = struct
 
   (* {2 Fixups, padding, directives} *)
 
+  (* [place] arrives already biased by the fixup's [pc_bias], which on x86 is
+     the realized instruction length - 2 for a short branch, 5 for call/jmp
+     rel32, 6 for a near jcc or a RIP-relative load, 7 with a REX prefix. That
+     is why nothing here adds a constant: only [encode] knows how long the form
+     it produced turned out to be. *)
   let evaluate_fixup kind ~place ~target =
     match kind with
     | Abs32 ->
-        if fits_s32 target then Ok target
-        else Error (diag "x86.fixup" "absolute target does not fit 32 bits")
-    | Pcrel32 ->
+        (* An absolute 32-bit address is a bit pattern, not a signed number:
+           0x80000000 upwards is a perfectly good address and [fits_s32] would
+           reject it. The range check belongs to the fixup's declared range. *)
+        Ok (Int64.logand target 0xFFFFFFFFL)
+    | Pcrel8_branch ->
+        let d = Int64.sub target place in
+        if Int64.compare d (-128L) >= 0 && Int64.compare d 128L < 0 then Ok d
+        else Error (diag "x86.fixup" "displacement does not fit 8 bits")
+    | Pcrel32_branch | Pcrel32_call | Pcrel32_data ->
         let d = Int64.sub target place in
         if fits_s32 d then Ok d else Error (diag "x86.fixup" "displacement does not fit 32 bits")
 

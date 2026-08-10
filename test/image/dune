@@ -1,0 +1,15 @@
+; The linker's own tests. No target is linked: [Image] is parameterized over
+; the fixup-kind type, so a locally declared kind exercises layout, relaxation
+; and patching without borrowing an architecture's vocabulary - the same
+; discipline test/lib/codec follows, one layer up.
+
+(library
+ (name test_image)
+ (modules test_image)
+ (modes byte native)
+ (libraries image asm_core foundation fmt)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

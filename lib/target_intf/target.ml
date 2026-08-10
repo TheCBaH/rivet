@@ -169,13 +169,26 @@ module type TARGET = sig
 
   val codec : (Lowered.t, fixup_kind) Codec.t
 
-  val encode : Lowered.t -> (string * string * fixup_kind Codec.placement list, Diagnostic.t) result
-  (** [(bytes, form_id, placements)]. Separate from {!codec} because packing bits into *memory
-      order* is target-specific: a codec describes bits most-significant first, which for x86's
-      byte-at-a-time forms already is memory order, while ARM and AArch64 author one 32-bit word
-      and must reverse it. Putting the reversal in generic code would mean the generic code knew
-      which targets are fixed-width, and putting it in the codec would mean [inspect] printed a
-      form the machine does not contain. *)
+  val encode :
+    Lowered.t ->
+    ( [ `Fixed of fixup_kind Asm_core.Lowered_ast.encoded_form
+      | `Relax of fixup_kind Asm_core.Lowered_ast.encoded_form list ],
+      Diagnostic.t )
+    result
+  (** Separate from {!codec} because packing bits into *memory order* is target-specific: a codec
+      describes bits most-significant first, which for x86's byte-at-a-time forms already is memory
+      order, while ARM and AArch64 author one 32-bit word and must reverse it. Putting the reversal
+      in generic code would mean the generic code knew which targets are fixed-width, and putting
+      it in the codec would mean [inspect] printed a form the machine does not contain.
+
+      Converting a {!Codec.placement} into a {!Asm_core.Lowered_ast.fixup} happens here for the same
+      reason: only the target knows that its bit positions have just been reversed, and only it can
+      say what PC the architecture measures from.
+
+      [`Relax] when the operand is symbolic and unpinned and the codec offers a ladder; [`Fixed]
+      otherwise. The choice is made from the lowered operand, never inferred by the codec: a
+      resolved displacement that fits the short form also fits the long one, so "several rungs
+      succeeded" cannot distinguish them. *)
 
   type decode_context = { state : target_state; address : int64 }
   (** decoding needs more than the bytes: on ARM the same word is a different instruction depending
@@ -190,7 +203,36 @@ module type TARGET = sig
 
   val evaluate_fixup : fixup_kind -> place:int64 -> target:int64 -> (int64, Diagnostic.t) result
   (** the value to patch in, given where the fixup sits and where its target landed. Range checks
-      belong here: a branch that does not reach is a diagnostic, not a truncation. *)
+      belong here: a branch that does not reach is a diagnostic, not a truncation.
+
+      [place] is already biased: the caller adds the fixup's [pc_bias], so an ARM implementation
+      does not add its own 8 and an x86 one does not have to know how long the instruction it sits
+      in turned out to be. *)
+
+  (* {1 Describing a fixup kind}
+
+     The kind is abstract to everything above, so these four are how generic
+     code says anything about it at all. They are declared projections, not
+     inferences: nothing recovers a role or a family by parsing a name. *)
+
+  val fixup_kind_name : fixup_kind -> string
+  (** stable, for dumps and for the relocation oracle. Used for *messages* and *artifacts*; two
+      kinds are told apart by {!equal_fixup_kind}, never by comparing these. *)
+
+  val equal_fixup_kind : fixup_kind -> fixup_kind -> bool
+  (** identity. [Codec.check] groups a split fixup's slices by name and has to confirm they agree on
+      the kind; it cannot use polymorphic equality on an abstract type that may one day hold a
+      function, and a printed name is not identity. *)
+
+  val fixup_family : fixup_kind -> string
+  (** the semantic family two ends of a relaxation ladder share. An x86 short/near branch pair
+      *must* change kind and width - that is what a ladder is - so ladder compatibility is checked
+      on this rather than on the kind. *)
+
+  val fixup_role : fixup_kind -> Asm_core.Lowered_ast.fixup_role
+  (** call, branch, or data address. The oracle's classifier is indexed by role because the four
+      targets disagree about which references survive assembly, and they disagree *per role*: a
+      same-file global call keeps a record everywhere while a local branch keeps one nowhere. *)
 
   val nop_bytes : length:int -> (string, Diagnostic.t) result
   (** padding for [.align] in an executable section. Not zeroes: a zero-filled gap in x86 [.text]

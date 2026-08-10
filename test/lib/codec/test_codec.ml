@@ -10,7 +10,11 @@ let show_bits b = Bits.to_string b
 let hex b = Foundation.Byte_cursor.to_hex (Bits.to_bytes b)
 
 let pp_placement ppf (p : _ placement) =
-  Fmt.pf ppf "  fixup %s:%s@%d+%d" p.name (fixup_name p.kind) p.bit_offset p.bit_width
+  Fmt.pf ppf "  fixup %s:%s %a" p.name (fixup_name p.kind)
+    Fmt.(
+      list ~sep:(any ",") (fun ppf (s : Codec.slice) ->
+          Fmt.pf ppf "%d+%d@%d" s.Codec.bit_offset s.Codec.bit_width s.Codec.value_lsb))
+    p.slices
 
 let pp_encoded ppf (e : _ encoded) =
   Fmt.pf ppf "%s  %-6s form=%-10s%a" (show_bits e.bits) (hex e.bits) (form_id e)
@@ -39,14 +43,14 @@ let%expect_test "encode" =
      consequence of declaration order. *)
   enc (Li (R2, 5L));
   enc (Li (R2, 200L));
-  enc Jmp;
+  enc (Jmp 0L);
   [%expect
     {|
     nop                0000000000000000  00 00  form=nop
     add r1, r6         0001001110000000  13 80  form=add
     li r2, 5           0100010010100000  44 a0  form=li.short
     li r2, 200         0010010110010000  25 90  form=li.long
-    jmp <target>       0011000000000000  30 00  form=jmp         fixup target:rel12@4+12 |}]
+    jmp 0              0011000000000000  30 00  form=jmp         fixup target:rel12 4+12@0 |}]
 
 let%expect_test "encode out of range" =
   (* No alternative applies: the short form's guard rejects it and the long
@@ -71,7 +75,7 @@ let%expect_test "decode" =
   round (Add (R1, R6));
   round (Li (R2, 5L));
   round (Li (R2, 200L));
-  round Jmp;
+  round (Jmp 0L);
   (* An opcode no form claims. *)
   dec (Bits.of_int64 ~width:16 0xF000L);
   [%expect
@@ -80,7 +84,7 @@ let%expect_test "decode" =
     0001001110000000   add r1, r6 (16 bits) form=add
     0100010010100000   li r2, 5 (16 bits) form=li.short
     0010010110010000   li r2, 200 (16 bits) form=li.long
-    0011000000000000   jmp <target> (16 bits) form=jmp
+    0011000000000000   jmp 0 (16 bits) form=jmp
     1111000000000000   no decode |}]
 
 (* A decoded [Li] cannot tell which encoding it came from, which is the point of
@@ -104,7 +108,7 @@ let%expect_test "two encodings, one semantic instruction" =
 (* {1 Inspect} *)
 
 let%expect_test "inspect" =
-  Fmt.pr "@[<v>%a@]@." Shape.pp (inspect isa);
+  Fmt.pr "@[<v>%a@]@." Shape.pp (inspect ~kind_name:fixup_name isa);
   [%expect
     {|
     alt synthetic
@@ -112,7 +116,7 @@ let%expect_test "inspect" =
       [1 cost=1] add              add(){0001 reg reg 000000}
       [2 cost=1] li.short         li.short(){0100 reg imm:4u 00000}
       [3 cost=2] li.long          li.long(){0010 reg imm:8u 0}
-      [4 cost=1] jmp              jmp(){0011 <target:12>}
+      [4 cost=1] jmp              jmp(){0011 <target:12@0 rel12>}
     reg[8]{r:3u} |}]
 
 let%expect_test "widths" =
@@ -130,21 +134,27 @@ let%expect_test "widths" =
 (* {1 Check - and what it deliberately cannot say} *)
 
 let%expect_test "check accepts the ISA" =
-  Fmt.pr "@[<v>%a@]@." Fmt.(list ~sep:cut pp_problem) (check isa);
-  Fmt.pr "problems: %d@." (List.length (check isa));
+  Fmt.pr "@[<v>%a@]@."
+    Fmt.(list ~sep:cut pp_problem)
+    (check ~equal_kind:( = ) ~kind_name:fixup_name isa);
+  Fmt.pr "problems: %d@." (List.length (check ~equal_kind:( = ) ~kind_name:fixup_name isa));
   [%expect {| problems: 0 |}]
 
 let%expect_test "check rejects a broken table" =
   (* Injectivity in both directions and totality against the field width. A
      duplicate code would make decode pick arbitrarily between two registers. *)
-  Fmt.pr "@[<v>%a@]@." Fmt.(list ~sep:cut pp_problem) (check broken_table);
+  Fmt.pr "@[<v>%a@]@."
+    Fmt.(list ~sep:cut pp_problem)
+    (check ~equal_kind:( = ) ~kind_name:fixup_name broken_table);
   [%expect
     {|
     iso_table broken.dup: duplicate code 1
     iso_table broken.dup: code 99 for r3 does not fit 3 bits |}]
 
 let%expect_test "check rejects ambiguity and duplicate priority" =
-  Fmt.pr "@[<v>%a@]@." Fmt.(list ~sep:cut pp_problem) (check broken_alt);
+  Fmt.pr "@[<v>%a@]@."
+    Fmt.(list ~sep:cut pp_problem)
+    (check ~equal_kind:( = ) ~kind_name:fixup_name broken_alt);
   [%expect
     {|
     alt broken.ambiguous: duplicate priority 1
@@ -177,7 +187,7 @@ let%expect_test "guard reachability" =
       ~why:
         "one instance of every constructor, with immediates chosen on both sides of the short \
          form's range boundary - the only thing any guard in this ISA branches on"
-      [ Nop; Add (R1, R6); Li (R0, 0L); Li (R0, 15L); Li (R0, 16L); Li (R0, 255L); Jmp ]
+      [ Nop; Add (R1, R6); Li (R0, 0L); Li (R0, 15L); Li (R0, 16L); Li (R0, 255L); Jmp 0L ]
   in
   let dead = Finite.unreachable_alts isa domain in
   Fmt.pr "unreachable: %d@." (List.length dead);
@@ -200,3 +210,121 @@ let%expect_test "guard reachability can fail" =
     alt synthetic: add is selected by no value in domain insn.short-only (sample)
     alt synthetic: li.long is selected by no value in domain insn.short-only (sample)
     alt synthetic: jmp is selected by no value in domain insn.short-only (sample) |}]
+
+(* {1 Relaxation ladders}
+
+   The three things a ladder has to do that an [Alt] cannot: hand back every
+   rung at once, be told which rung to use, and let a decoded encoding say which
+   rung produced it. *)
+
+let show_ladder v =
+  match encode_ladder ladder v with
+  | Error e -> Fmt.pr "ERROR %a@." pp_error e
+  | Ok forms ->
+      List.iter (fun (e : _ encoded) -> Fmt.pr "  %-8s %s@." (form_id e) (hex e.bits)) forms
+
+let%expect_test "a ladder yields every rung, not just the first" =
+  (* This is the whole difference from [Alt], whose encoder returns on first
+     success: both rungs apply to the same value, and layout - which knows where
+     the target landed - is what chooses between them. *)
+  show_ladder (Br 4L);
+  [%expect {|
+      rel8     eb 04
+      rel16    e9 00 04 |}]
+
+let%expect_test "a rung can be selected by name" =
+  let one r =
+    match encode_rung ladder ~rung:r (Br 4L) with
+    | Ok e -> Fmt.pr "  %-8s %s@." (form_id e) (hex e.bits)
+    | Error e -> Fmt.pr "  %-8s ERROR %a@." r pp_error e
+  in
+  one "rel8";
+  one "rel16";
+  (* An unknown pin is a diagnostic, never a quiet fall back to another rung:
+     the entire point of a pin is that it is obeyed. *)
+  one "rel99";
+  [%expect
+    {|
+      rel8     eb 04
+      rel16    e9 00 04
+      rel99    ERROR encode_rung: rung rel99 is not among {rel8, rel16} |}]
+
+let%expect_test "a decoded encoding reports its rung" =
+  (* Which is only recoverable because the rungs have distinct fixed bits. If
+     they overlapped, the first would always match and canonical disassembly
+     would silently re-encode a near branch as short. *)
+  let show bits =
+    match decode_bits ladder bits with
+    | None -> Fmt.pr "  no decode@."
+    | Some d ->
+        Fmt.pr "  %-8s Br %s@." (String.concat "." d.dform)
+          (match d.value with Br v -> Int64.to_string v)
+  in
+  show (Bits.of_bytes "\xeb\x04");
+  show (Bits.of_bytes "\xe9\x00\x04");
+  [%expect {|
+      rel8     Br 4
+      rel16    Br 4 |}]
+
+let%expect_test "a ladder has no single width, and check accepts it" =
+  Fmt.pr "width: %s@." (match width_of ladder with Some n -> string_of_int n | None -> "variable");
+  Fmt.pr "problems: %d@." (List.length (check ~equal_kind:( = ) ~kind_name:fixup_name ladder));
+  [%expect {|
+    width: variable
+    problems: 0 |}]
+
+let%expect_test "check rejects rungs that cannot be told apart" =
+  Fmt.pr "@[<v>%a@]@."
+    Fmt.(list ~sep:cut pp_problem)
+    (check ~equal_kind:( = ) ~kind_name:fixup_name broken_relax);
+  [%expect
+    {|
+    relax broken.rungs: rung a (16 bits) is not shorter than b (16 bits)
+    relax broken.rungs: rungs a and b have overlapping fixed bits, so a decoded form cannot say which one produced it |}]
+
+(* {1 Split fixups}
+
+   Two slices of one logical value at non-adjacent positions. The codec sees
+   only pieces; the [Iso_fun] reassembles them. *)
+
+let%expect_test "a split fixup merges into one placement" =
+  (match encode split_hi_lo (Split 0xABCL) with
+  | Error e -> Fmt.pr "ERROR %a@." pp_error e
+  | Ok e ->
+      Fmt.pr "%s  %s@." (show_bits e.bits) (hex e.bits);
+      List.iter (fun p -> Fmt.pr "%a@." pp_placement p) e.placements);
+  [%expect
+    {|
+    00001010101110101100000000000000  0a ba c0 00
+      fixup sym:abs16 0+12@4,16+4@0 |}]
+
+let%expect_test "a split fixup round-trips through its slices" =
+  let round v =
+    match encode split_hi_lo (Split v) with
+    | Error e -> Fmt.pr "  %Ld: ERROR %a@." v pp_error e
+    | Ok e -> (
+        match decode_bits split_hi_lo e.bits with
+        | None -> Fmt.pr "  %Ld: no decode@." v
+        | Some d -> Fmt.pr "  %Ld -> %Ld@." v (match d.value with Split x -> x))
+  in
+  List.iter round [ 0L; 1L; 0xFL; 0x10L; 0xABCL; 0xFFFFL ];
+  [%expect
+    {|
+      0 -> 0
+      1 -> 1
+      15 -> 15
+      16 -> 16
+      2748 -> 2748
+      65535 -> 65535 |}]
+
+let%expect_test "check rejects overlapping slices and mixed kinds" =
+  (* Both faults in one description: the two slices claim value bits 0..3
+     twice, and disagree about the kind. Comparing kinds by *equality* rather
+     than by printed name is what makes the second detectable at all. *)
+  Fmt.pr "@[<v>%a@]@."
+    Fmt.(list ~sep:cut pp_problem)
+    (check ~equal_kind:( = ) ~kind_name:fixup_name broken_fixup);
+  [%expect
+    {|
+    seq: fixup s mixes kinds rel12 and abs16
+    seq: fixup s has slices overlapping at value bit 0 |}]

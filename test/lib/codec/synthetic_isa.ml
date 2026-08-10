@@ -56,13 +56,13 @@ type insn =
   | Nop
   | Add of reg * reg
   | Li of reg * int64  (** load immediate; two encodings, chosen by range *)
-  | Jmp  (** target supplied by a fixup, not by an operand *)
+  | Jmp of int64  (** the displacement: 0 while symbolic, whatever the bits held once decoded *)
 
 let show_insn = function
   | Nop -> "nop"
   | Add (a, b) -> Printf.sprintf "add %s, %s" (reg_name a) (reg_name b)
   | Li (r, v) -> Printf.sprintf "li %s, %Ld" (reg_name r) v
-  | Jmp -> "jmp <target>"
+  | Jmp d -> Printf.sprintf "jmp %Ld" d
 
 (* Each form is described as its bit layout, then lifted to [insn] by an
    [Iso_fun] that projects the one constructor it encodes. The projection
@@ -93,10 +93,13 @@ let form_li_long =
     ~decode:(fun ((), (d, (v, ()))) -> Some (Li (d, v)))
     (const ~width:4 0b0010L ** reg_codec ** field ~width:8 "imm" ** const ~width:1 0L)
 
+(* [Jmp] carries its displacement now that a fixup decodes a value rather than
+   [unit]: a symbolic jump writes the placeholder 0, and a decoded one reports
+   whatever the bits held. *)
 let form_jmp =
   iso_fun ~name:"jmp"
-    ~encode:(function Jmp -> Some ((), ()) | _ -> None)
-    ~decode:(fun ((), ()) -> Some Jmp)
+    ~encode:(function Jmp d -> Some ((), d) | _ -> None)
+    ~decode:(fun ((), d) -> Some (Jmp d))
     (const ~width:4 0b0011L ** fixup ~width:12 ~kind:Rel12 "target")
 
 (* The whole ISA. Priorities are what make selection deterministic on both
@@ -162,6 +165,55 @@ let modimm_domain =
        enumerating the 64 (rot, imm4) pairs enumerates every value there is"
     uniq
 
+(* {1 A relaxation ladder}
+
+   Modelled on x86's short/near branch pair, which is the M2 reason [Relax]
+   exists: GNU encodes a nearby branch in two bytes, so an assembler that always
+   emitted the long form would be correct and would still fail a byte-for-byte
+   comparison. The rung is not decidable at encode time - it depends on where the
+   target lands - so the encoder hands back both and layout chooses.
+
+   The two rungs have different opcodes, which is what makes a decoded form able
+   to say which one produced it. [check] enforces that. *)
+
+type branch = Br of int64
+
+let br_short =
+  iso_fun ~name:"br.short"
+    ~encode:(function Br d -> Some ((), d))
+    ~decode:(fun ((), d) -> Some (Br d))
+    (const ~width:8 0b1110_1011L ** fixup ~width:8 ~kind:Rel12 "target")
+
+let br_near =
+  iso_fun ~name:"br.near"
+    ~encode:(function Br d -> Some ((), d))
+    ~decode:(fun ((), d) -> Some (Br d))
+    (const ~width:8 0b1110_1001L ** fixup ~width:16 ~kind:Rel12 "target")
+
+let ladder : (branch, fixup_kind) t =
+  relax ~name:"br" [ rung ~label:"rel8" br_short; rung ~label:"rel16" br_near ]
+
+(* {1 A split fixup}
+
+   Two slices of one logical value at non-adjacent positions, as AArch64 [adrp]
+   and ARM [movw]/[movt] have. The point is that the *codec* only ever sees
+   pieces: reassembling them, and sign-extending the whole rather than each
+   piece, is the [Iso_fun]'s job. Sign-extending per slice is the bug this shape
+   exists to make visible. *)
+
+type split = Split of int64
+
+let split_hi_lo : (split, fixup_kind) t =
+  iso_fun ~name:"split"
+    ~encode:(function
+      (* hi = value bits 4..15, lo = value bits 0..3 *)
+      | Split v -> Some (Int64.shift_right_logical v 4, ((), (Int64.logand v 0xFL, ()))))
+    ~decode:(fun (hi, ((), (lo, ()))) -> Some (Split (Int64.logor (Int64.shift_left hi 4) lo)))
+    (fixup ~width:12 ~value_lsb:4 ~kind:Abs16 "sym"
+    ** const ~width:4 0b1010L
+    ** fixup ~width:4 ~value_lsb:0 ~kind:Abs16 "sym"
+    ** const ~width:12 0L)
+
 (* {1 Deliberately broken descriptions}
 
    [check] is only evidence if it can fail, so these exist to make it fail.
@@ -181,3 +233,31 @@ let broken_alt : (unit * int64, fixup_kind) t =
       alt ~label:"b" ~priority:1 (const ~width:4 0b0001L ** field ~width:12 "y");
       alt ~label:"c" ~priority:1 (const ~width:4 0b0101L ** field ~width:12 "z");
     ]
+
+(* A ladder whose rungs cannot be told apart on decode. Same opcode bits, same
+   width, so the first always matches and the rung that produced an encoding is
+   unrecoverable - which silently breaks form preservation across the text
+   boundary rather than failing anywhere obvious. *)
+let broken_relax : (branch, fixup_kind) t =
+  relax ~name:"broken.rungs"
+    [
+      rung ~label:"a"
+        (iso_fun ~name:"a"
+           ~encode:(function Br d -> Some ((), d))
+           ~decode:(fun ((), d) -> Some (Br d))
+           (const ~width:8 0b1111_0000L ** fixup ~width:8 ~kind:Rel12 "target"));
+      rung ~label:"b"
+        (iso_fun ~name:"b"
+           ~encode:(function Br d -> Some ((), d))
+           ~decode:(fun ((), d) -> Some (Br d))
+           (const ~width:8 0b1111_0000L ** fixup ~width:8 ~kind:Rel12 "target"));
+    ]
+
+(* Slices of one name that overlap in value space and disagree about the kind:
+   the value bits 0..3 are claimed twice, and one slice says Rel12 where the
+   other says Abs16. *)
+let broken_fixup : (int64 * (unit * (int64 * unit)), fixup_kind) t =
+  fixup ~width:8 ~value_lsb:0 ~kind:Rel12 "s"
+  ** const ~width:4 0L
+  ** fixup ~width:4 ~value_lsb:0 ~kind:Abs16 "s"
+  ** const ~width:8 0L

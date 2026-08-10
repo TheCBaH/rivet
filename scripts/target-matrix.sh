@@ -12,6 +12,13 @@ ALL_TARGETS=(x86_32 x86_64 arm aarch64)
 # CCOMP_EXTRA_ARGS, READELF_MACHINE for the given target. Even x86_32/x86_64
 # use a dedicated cross-gcc package, not the host's native gcc -m32/-m64:
 # gcc-multilib conflicts with the arm/aarch64 cross-gcc packages.
+#
+# LINK_*_ADDR are the controlled-link addresses M2's differential gate uses.
+# They are the same numbers as asm/test/oracle/abi.ml's code_addr, rodata_addr
+# and data_addr, because the GNU reference link, our own binder and the QEMU
+# manifest must place a section at one address or the post-link byte comparison
+# compares two different programs. abi.ml stays the definition; these mirror it
+# for the shell, and asm/test/oracle/test_record.ml asserts they still agree.
 target_config() {
   CONFIGURE_TARGET=""
   TOOLPREFIX=""
@@ -19,6 +26,9 @@ target_config() {
   QEMU_SYSROOT=""
   CCOMP_EXTRA_ARGS=()
   READELF_MACHINE=""
+  LINK_TEXT_ADDR=""
+  LINK_RODATA_ADDR=""
+  LINK_DATA_ADDR=""
   case "$1" in
     x86_32)
       CONFIGURE_TARGET="x86_32-linux"
@@ -54,4 +64,16 @@ target_config() {
       Fatal "unknown target '$1'"
       ;;
   esac
+
+  # abi.ml's window_base: 0x30000000 for the 32-bit profiles, 0x40000000 for
+  # the 64-bit ones - 0x40000000 does not fit a 31-bit native int, which is why
+  # the split exists at all. rodata sits at +0x10000 and data at +0x20000.
+  local base
+  case "$1" in
+    x86_32 | arm) base=$((0x30000000)) ;;
+    *) base=$((0x40000000)) ;;
+  esac
+  LINK_TEXT_ADDR=$(printf '0x%x' "$base")
+  LINK_RODATA_ADDR=$(printf '0x%x' $((base + 0x10000)))
+  LINK_DATA_ADDR=$(printf '0x%x' $((base + 0x20000)))
 }

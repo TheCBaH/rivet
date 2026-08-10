@@ -193,9 +193,33 @@ module Lowered = struct
     | _ -> false
 end
 
-type fixup_kind = Abs32 | Pcrel_b26
+(* Measured on the M2 fixtures: a same-file call is R_ARM_CALL, a global address
+   arrives as the R_ARM_MOVW_ABS_NC / R_ARM_MOVT_ABS pair - one relocation per
+   instruction, each patching a field split across two non-adjacent runs - and a
+   branch to a local label keeps no record at all. A32 is fixed-width, so there
+   is no ladder and no short rung. *)
+type fixup_kind = Abs32 | Pcrel_b26 | Pcrel_call | Movw_abs_nc | Movt_abs
 
-let fixup_kind_name = function Abs32 -> "abs32" | Pcrel_b26 -> "pcrel-b26"
+let fixup_kind_name = function
+  | Abs32 -> "abs32"
+  | Pcrel_b26 -> "pcrel-b26"
+  | Pcrel_call -> "pcrel-call"
+  | Movw_abs_nc -> "movw-abs-nc"
+  | Movt_abs -> "movt-abs"
+
+let equal_fixup_kind a b = a = b
+
+let fixup_family = function
+  | Abs32 -> "abs"
+  | Pcrel_b26 -> "pcrel-branch"
+  | Pcrel_call -> "pcrel-call"
+  | Movw_abs_nc -> "abs-lo16"
+  | Movt_abs -> "abs-hi16"
+
+let fixup_role = function
+  | Abs32 | Movw_abs_nc | Movt_abs -> Asm_core.Lowered_ast.Data_address
+  | Pcrel_b26 -> Asm_core.Lowered_ast.Branch
+  | Pcrel_call -> Asm_core.Lowered_ast.Call
 
 type feature = No_features
 type target_state = { syntax : string; arch : string; fpu : string; thumb : bool }
@@ -578,10 +602,52 @@ let lower_instruction state i =
 
 let word_to_memory s = if String.length s <> 4 then s else String.init 4 (fun i -> s.[3 - i])
 
+(* The same reversal reaches the fixups: a codec bit at position [p] of the
+   most-significant-first word lands at bit [32 - p - w] of the little-endian
+   container. movw/movt's imm4 and imm12 are two slices of one value under this,
+   with no special case. [pc_bias] is 8 - the A32 pipeline offset - and it lives
+   here rather than inside [evaluate_fixup], so that the evaluator receives a PC
+   and not a thing it has to correct. *)
+let fixup_of_placement (p : fixup_kind C.placement) =
+  let kind = p.C.kind in
+  {
+    Asm_core.Lowered_ast.kind;
+    kind_name = fixup_kind_name kind;
+    family = fixup_family kind;
+    role = fixup_role kind;
+    name = p.C.name;
+    slices =
+      List.map
+        (fun (s : C.slice) ->
+          {
+            Asm_core.Lowered_ast.bit_offset = 32 - s.C.bit_offset - s.C.bit_width;
+            bit_width = s.C.bit_width;
+            value_lsb = s.C.value_lsb;
+          })
+        p.C.slices;
+    byte_offset = 0;
+    container = 4;
+    pc_bias = (match kind with Pcrel_b26 | Pcrel_call -> 8 | _ -> 0);
+    range =
+      (match kind with
+      | Abs32 -> Asm_core.Lowered_ast.Bitpattern 32
+      | Pcrel_b26 | Pcrel_call -> Asm_core.Lowered_ast.Signed 24
+      | Movw_abs_nc | Movt_abs -> Asm_core.Lowered_ast.Unsigned 16);
+    value = Asm_core.Expr.Const (Bigint.of_int 0);
+    origin = Origin.synthesized ~pass:"arm.encode" ();
+  }
+
+let form_of enc =
+  {
+    Asm_core.Lowered_ast.bytes = word_to_memory (C.Bits.to_bytes enc.C.bits);
+    form = C.form_id enc;
+    fixups = List.map fixup_of_placement enc.C.placements;
+  }
+
 let encode l =
   match C.encode codec l with
   | Error e -> Error (diag "arm.encode" (Fmt.to_to_string C.pp_error e))
-  | Ok enc -> Ok (word_to_memory (C.Bits.to_bytes enc.C.bits), C.form_id enc, enc.C.placements)
+  | Ok enc -> Ok (`Fixed (form_of enc))
 
 type decode_context = { state : target_state; address : int64 }
 
@@ -635,14 +701,23 @@ let decode ctx bytes ~pos =
 (* {1 Fixups, padding, directives} *)
 
 let evaluate_fixup kind ~place ~target =
+  (* [place] already carries the A32 pipeline offset: the caller adds the
+     fixup's [pc_bias], which is 8 here. Adding it again - as this did while it
+     was the only caller's convention - would double it now that x86 needs a
+     per-form bias and the bias therefore lives in the fixup. *)
   match kind with
   | Abs32 -> Ok (Int64.logand target 0xFFFFFFFFL)
-  | Pcrel_b26 ->
-      (* The branch offset is relative to the instruction address plus eight -
-         the A32 pipeline offset - and is stored as a word count. *)
-      let d = Int64.sub target (Int64.add place 8L) in
+  | Pcrel_b26 | Pcrel_call ->
+      let d = Int64.sub target place in
       if Int64.rem d 4L <> 0L then Error (diag "arm.fixup" "branch target is not word-aligned")
-      else Ok (Int64.div d 4L)
+      else
+        let words = Int64.div d 4L in
+        (* +-32MB. Checked here rather than left to field truncation: a branch
+           that does not reach is a diagnostic, not a wrong address. *)
+        if Int64.compare words (-0x800000L) >= 0 && Int64.compare words 0x800000L < 0 then Ok words
+        else Error (diag "arm.fixup" "branch target is out of range")
+  | Movw_abs_nc -> Ok (Int64.logand target 0xFFFFL)
+  | Movt_abs -> Ok (Int64.logand (Int64.shift_right_logical target 16) 0xFFFFL)
 
 (* A32 has an architectural no-op, so padding an executable section needs no
    table and no policy. A boundary that is not a multiple of four is rejected

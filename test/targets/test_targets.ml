@@ -107,13 +107,17 @@ let%expect_test "the scaled-offset relations round-trip over their declared doma
       failures: none
     |}]
 
-(* {1 M1.4 - the restricted linker}
+(* {1 The restricted linker}
 
-   One module, one allocatable section, one strong exported symbol, no
-   unresolved references, no relaxation. Every unsupported condition is an
-   explicit rejection with its own message, because "unsupported" and "wrong"
-   must not produce the same diagnostic: a caller that hits the one-section
-   limit needs to know it is a limit. *)
+   One module, one strong exported symbol, no imports. Every unsupported
+   condition is an explicit rejection with its own message, because
+   "unsupported" and "wrong" must not produce the same diagnostic: a caller
+   that hits a limit needs to know it is a limit.
+
+   The one-allocatable-section limit was M1's and is gone: the global fixture
+   puts its object in .data and its code in .text, so M2 lays out several
+   sections in one module. Merging sections *across inputs*, and linking more
+   than one module, remain M3. *)
 
 let attempt target text =
   let (module D : Target_intf.Target.DRIVER) =
@@ -128,13 +132,12 @@ let attempt target text =
           Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
         ds
 
-let%expect_test "a second allocatable section is rejected, a declared one is not" =
+let%expect_test "a second allocatable section is accepted, as is a declared one" =
   attempt "x86_64" "\t.text\n\tret\n\t.section .note.GNU-stack,\"\",@progbits\n";
   attempt "x86_64" "\t.text\n\tret\n\t.data\n";
-  [%expect
-    {|
+  [%expect {|
     accepted
-    image.multi-section: M1 links exactly one allocatable section; declared-but-unallocated sections such as .note.GNU-stack do not count and multiple real sections are M3
+    accepted
     |}]
 
 let%expect_test "an unknown directive is a diagnostic, never a silent skip" =

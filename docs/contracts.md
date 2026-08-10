@@ -417,21 +417,126 @@ package and which a browser runtime cannot do at all. The Melange and jsoo
 columns are the direct evidence that the production closure has no such
 dependency.
 
-### 4.3 What is deliberately absent from M1
+### 4.3 What is deliberately absent
 
 Recorded here so that "not in the matrix" never has to be interpreted:
 
-- fixups and relocations of any kind (M2 — every M1 fixup list is empty)
-- numeric local labels and their `1b`/`1f` references (M2). Rejected rather than
-  ignored: `1:` with no resolution pass would define a symbol nothing can
-  reference, which is a file assembled without being understood
-- symbol assignment (`name = expr`), rejected at simplify for the same reason
-- PC-relative expressions (M2)
-- ARM `movw` / `mvn` and surface `mov` pseudo selection (M2)
-- multi-module linking, multiple sections, section merging, BSS (M3)
+- multi-module linking, and section merging *across inputs* (M3). Several
+  allocatable sections within **one** module are supported: the M2 global
+  fixture puts its object in `.data` and its code in `.text`
+- `.bss`, `@nobits`/`%nobits` sections, and any uninitialized storage
+  reservation (M3). Rejected rather than ignored — `section_of_args` parses the
+  section type argument precisely so a NOBITS input cannot slip into the
+  PROGBITS model and silently gain initialized bytes
+- `.comm` and `.local` (M3, with the rest of common allocation). CompCert emits
+  them only for uninitialized globals, so an initialized fixture avoids them
 - weak and common symbols, strong/weak resolution (M3)
-- branch relaxation (M2 at the earliest; M1 has one layout pass and could not
-  benefit from a second)
+- imports: a fixup naming a symbol the module does not define is rejected during
+  planning, because `bind_image` takes section addresses and has no import
+  resolver. Accepting one would report bindable state the API cannot satisfy
+- symbol assignment (`name = expr`), rejected at simplify: it needs a symbol
+  flavour the lowered AST does not have, and no CompCert output uses it
 - `.include`, conditional assembly, repetition, user macros (§4.10, later)
 - any form of object-file output — the lowered module carries what an object file
   would carry precisely so that none is ever written
+
+Left the list in M2: fixups and relocations, branch relaxation, and multiple
+allocatable sections in one module.
+
+## 5. The fixup and relaxation contract
+
+Frozen at M2. Four targets have to agree on every clause here, and each one is
+a thing that was ambiguous until it was written down.
+
+### 5.1 What a fixup names
+
+A fixup records **two different locations**, and conflating them is the mistake
+the shape exists to prevent:
+
+- `byte_offset` + `container` — where the bits go. The container is read and
+  written **little-endian**; all four targets are little-endian on the wire
+  (`exec-abi-v1.md` §1), so one patch routine serves x86's byte-aligned
+  `disp32`, ARM's 24-bit field inside a word, and AArch64's split `adrp`
+  immediate.
+- `pc_bias` — what the architecture measures a displacement *from*. The PC base
+  is `fragment address + pc_bias`.
+
+On x86 these differ by the whole instruction: a `call rel32` patches at offset 1
+and measures from offset 5. `pc_bias` is therefore the **realized** encoded
+length, computed by `encode` from the form it actually produced — not a
+per-mnemonic constant, because a RIP-relative load is six bytes without a REX
+prefix and seven with one. ARM is a constant 8 (the A32 pipeline offset) and
+AArch64 a constant 0.
+
+`evaluate_fixup` receives an **already biased** `place` and adds nothing of its
+own. Scaling and per-kind range checks stay in the target.
+
+### 5.2 Slices
+
+A logical value may occupy several non-adjacent runs — AArch64 `adrp`'s
+`immlo`/`immhi`, ARM's `movw`/`movt` — so a fixup carries a list of slices, each
+saying which bit of the *value* it starts at. In the codec these are separate
+`Fixup` nodes sharing a name; `encode` merges them into one placement.
+Reassembling the pieces, and applying signedness **once to the whole**, is the
+target's `Iso_fun`. Applying it per slice sign-extends a fragment of a number
+and is the bug this arrangement makes impossible to write by accident.
+
+`Codec.check` requires same-named slices to share a kind (compared by
+`equal_fixup_kind`, never by printed name), not to overlap in value space, and
+to cover the value contiguously from bit 0.
+
+### 5.3 Ranges
+
+The accepted values of a fixup are a three-case type, not a signedness:
+
+| range | accepts |
+|---|---|
+| `Signed n` | `[-2^(n-1), 2^(n-1))` |
+| `Unsigned n` | `[0, 2^n)` |
+| `Bitpattern n` | `[-2^(n-1), 2^n)` |
+
+`Bitpattern` exists because a 32-bit absolute address is neither: `Signed 32`
+rejects every address at or above `0x80000000`, and `Unsigned 32` rejects a
+negative displacement. The range is checked **at bind**, against the whole
+logical value — at encode time every symbolic value is a placeholder that
+trivially fits.
+
+Patching **overwrites** the slice bits; it never adds. Addends live in the
+expression, so applying a patch twice cannot double a displacement.
+
+### 5.4 `here` and `unresolved`
+
+`here` inside an operand expression is the instruction's address, matching GAS.
+`plan.unresolved` lists **placement-dependent fixups still outstanding** —
+locally defined symbols awaiting an address — which is what §9 says a plan
+reports and what binding satisfies. It is not a list of missing symbols; those
+are rejected during planning (§4.3).
+
+### 5.5 Relaxation ladders
+
+A `Relax` fragment holds several encodings of one operation, **shortest first**.
+It is a distinct codec node rather than an `Alt` because an `Alt` dispatches
+between different things and returns the first success, while a ladder must hand
+back every rung at once and later be told which to use.
+
+Ladder compatibility is checked on the fixup's **family**, not its kind: an x86
+short/near pair necessarily changes kind, width and `pc_bias`, which is what a
+ladder is. Every rung must carry the same fixup names, the same expressions, and
+the same families, with strictly increasing sizes.
+
+Rungs must be **decode-distinguishable** — `check` rejects overlapping fixed
+bits. Two semantically equivalent but indistinguishable rungs would make the
+first always match, losing which rung produced an encoding.
+
+Selection is a **promotion-only fixpoint**: start at the shortest rung, lay the
+section out, promote anything that does not reach, repeat. Selections travel one
+way along a finite ladder, so it terminates; after convergence every selection
+is verified and `image.relax-unreachable` reports one that still does not reach.
+
+Two limits are deliberate. Relaxation is **intra-section only** — a displacement
+within one section is independent of where the section is placed, which is what
+makes it decidable at plan time; a cross-section target keeps the longest rung.
+And the result is **not claimed minimal**: alignment padding makes layout
+non-monotone in fragment size, so a promotion whose bytes are absorbed by
+padding is not undone. What establishes agreement with GNU is the byte-for-byte
+differential gate on each fixture, not an optimality argument.

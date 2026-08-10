@@ -72,12 +72,18 @@ end
 
 type signedness = Signed | Unsigned
 
-(* A fixup's placement in the encoded bits. The value is not known at encode
-   time - that is what makes it a fixup - so the node's own type is [unit] and
-   what encoding produces is this record, which the lowered fragment pairs with
-   the expression to evaluate later. Distinguishing two fixups in one
-   instruction is by [name]. *)
-type 'k placement = { kind : 'k; name : string; bit_offset : int; bit_width : int }
+(* One contiguous run of a fixup's logical value inside the encoded bits.
+   [value_lsb] is which bit of the *value* this run starts at, so a field split
+   across non-adjacent positions - AArch64 [adrp]'s immlo/immhi, ARM's
+   movw/movt - is described rather than approximated. *)
+type slice = { bit_offset : int; bit_width : int; value_lsb : int }
+
+(* A fixup's placement in the encoded bits, gathered across every slice that
+   shares its [name]. The linker patches this; the expression to evaluate is
+   attached later by the lowered fragment. *)
+type 'k placement = { kind : 'k; name : string; slices : slice list }
+
+let placement_width p = List.fold_left (fun acc s -> max acc (s.value_lsb + s.bit_width)) 0 p.slices
 
 type ('a, 'k) t =
   | Empty : (unit, 'k) t
@@ -89,7 +95,17 @@ type ('a, 'k) t =
           make [width_of] and [pattern] lie about the form. *)
   | Const : { width : int; value : int64 } -> (unit, 'k) t
   | Field : { name : string; width : int; signedness : signedness } -> (int64, 'k) t
-  | Fixup : { name : string; width : int; kind : 'k } -> (unit, 'k) t
+  | Fixup : { name : string; width : int; value_lsb : int; kind : 'k } -> (int64, 'k) t
+      (** An unsigned {!Field} that additionally emits a placement. It carries a value rather than
+          [unit] because the alternative cannot decode: a bound branch would consume its
+          displacement bits and hand back nothing, so canonical disassembly, exact round trips and
+          patch-then-decode would all be inexpressible.
+
+          Lowering writes [0L] here and attaches the expression; a *resolved* value - only ever
+          produced by {!decode} - writes its real bits. One node is one contiguous slice of the
+          logical value, and several nodes sharing a [name] are one fixup: reassembling them, and
+          applying signedness to the whole, is the target's [Iso_fun], which is where this codebase
+          already puts every such transform. *)
   | Seq : ('a, 'k) t * ('b, 'k) t -> ('a * 'b, 'k) t
   | Iso_table : {
       name : string;
@@ -114,6 +130,19 @@ type ('a, 'k) t =
           what proves them correct is a generated finite-domain round-trip test, which is why
           {!Finite} exists. *)
   | Alt : { name : string; alts : ('a, 'k) alt list } -> ('a, 'k) t
+  | Relax : { name : string; rungs : ('a, 'k) rung list } -> ('a, 'k) t
+      (** A *relaxation* choice, deliberately not an [Alt].
+
+          An [Alt] dispatches between different things - which instruction, which prefix, which
+          ModR/M form - and returns the first that succeeds. A relaxation ladder is several
+          encodings of the *same* operation whose selection cannot be made until layout knows the
+          displacement, so the encoder has to be able to hand back all of them at once
+          ({!encode_ladder}) and later be told which one to use ({!encode_rung}). Reusing [Alt]
+          would make "give me every branch that applies" meaningless, because at the top level that
+          question spans unrelated instructions.
+
+          Rungs are declared shortest first. Nesting is rejected by {!check} rather than defined,
+          which keeps a ladder single-valued per rung. *)
 
 and ('a, 'k) alt = {
   label : string;
@@ -122,6 +151,8 @@ and ('a, 'k) alt = {
   cost : int;  (** size or speed policy for relaxation; not used for selection in M1 *)
   body : ('a, 'k) t;
 }
+
+and ('a, 'k) rung = { rung_label : string; rung_body : ('a, 'k) t }
 
 (* {1 Constructors}
 
@@ -139,9 +170,11 @@ let field ?(signedness = Unsigned) ~width name =
   if width < 1 || width > 64 then invalid_arg "Codec.field: width outside 1..64";
   Field { name; width; signedness }
 
-let fixup ~width ~kind name =
+let fixup ?(value_lsb = 0) ~width ~kind name =
   if width < 1 || width > 64 then invalid_arg "Codec.fixup: width outside 1..64";
-  Fixup { name; width; kind }
+  if value_lsb < 0 || value_lsb + width > 64 then
+    invalid_arg "Codec.fixup: value_lsb + width outside 0..64";
+  Fixup { name; width; value_lsb; kind }
 
 let seq a b = Seq (a, b)
 let ( ** ) = seq
@@ -152,6 +185,8 @@ let alt ?(cost = 0) ?(guard = fun _ -> true) ~label ~priority body =
   { label; priority; guard; cost; body }
 
 let choice ~name alts = Alt { name; alts }
+let rung ~label body = { rung_label = label; rung_body = body }
+let relax ~name rungs = Relax { name; rungs }
 
 (* {1 Field range checking}
 
@@ -201,6 +236,27 @@ let form_id e = String.concat "." e.form
    ISA caught. *)
 type 'k attempt = Encoded of 'k encoded | Declined | Failed of error
 
+(* Slices of one logical fixup are authored as separate nodes - they sit at
+   non-adjacent bit positions, and the interpreter walks bits in order - so
+   [Seq] is where they are gathered back into one placement. Grouping is by
+   name, in first-appearance order, and it is purely a linker-side concern: the
+   codec's typed values are untouched by it. *)
+let merge_placements ps =
+  let rec go acc = function
+    | [] -> List.rev acc
+    | p :: rest -> (
+        match List.partition (fun q -> String.equal q.name p.name) rest with
+        | [], _ -> go (p :: acc) rest
+        | same, others ->
+            let slices = List.concat_map (fun q -> q.slices) (p :: same) in
+            go ({ p with slices } :: acc) others)
+  in
+  go [] ps
+
+(* Only relaxation rungs need to be enumerated rather than resolved, so the
+   ladder walk is a separate traversal from [attempt]. Restricting it to one
+   [Relax] node - [check] rejects nesting - keeps a rung's result an ordinary
+   complete encoding. *)
 let rec attempt : type a k. (a, k) t -> a -> k attempt =
  fun node v ->
   match node with
@@ -217,11 +273,17 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
                 (match signedness with Signed -> "signed" | Unsigned -> "unsigned");
           }
       else Encoded { bits = Bits.of_int64 ~width (truncate ~width v); placements = []; form = [] }
-  | Fixup { name; width; kind } ->
+  | Fixup { name; width; value_lsb; kind } ->
+      (* Unsigned, and always truncating: the value here is either a lowering
+         placeholder (0) or a slice the target's [Iso_fun] has already projected
+         out of the logical value, so a "does not fit" verdict at this level
+         would be about the wrong quantity. The logical range is checked once,
+         against the whole value, at bind. *)
       Encoded
         {
-          bits = Bits.zeros width;
-          placements = [ { kind; name; bit_offset = 0; bit_width = width } ];
+          bits = Bits.of_int64 ~width (truncate ~width v);
+          placements =
+            [ { kind; name; slices = [ { bit_offset = 0; bit_width = width; value_lsb } ] } ];
           form = [];
         }
   | Seq (a, b) -> (
@@ -237,8 +299,18 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
                 {
                   bits = Bits.append ea.bits eb.bits;
                   placements =
-                    ea.placements
-                    @ List.map (fun p -> { p with bit_offset = p.bit_offset + shift }) eb.placements;
+                    merge_placements
+                      (ea.placements
+                      @ List.map
+                          (fun p ->
+                            {
+                              p with
+                              slices =
+                                List.map
+                                  (fun s -> { s with bit_offset = s.bit_offset + shift })
+                                  p.slices;
+                            })
+                          eb.placements);
                   form = ea.form @ eb.form;
                 }))
   | Iso_table { name; entries; equal; show; inner } -> (
@@ -271,12 +343,98 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
               | Failed e -> go (match first_error with None -> Some e | some -> some) rest)
       in
       go None ordered
+  | Relax { name; rungs } ->
+      (* Single-result encoding of a ladder is the fallback for a caller that
+         expressed no preference: shortest first, first success. It is *not* how
+         a pinned or resolved operand picks its form - that is [encode_rung],
+         which selects explicitly instead of relying on arriving first. *)
+      let rec go first_error = function
+        | [] -> (
+            match first_error with
+            | Some e -> Failed e
+            | None -> Failed { where = "relax " ^ name; detail = "no rung applies" })
+        | r :: rest -> (
+            match attempt r.rung_body v with
+            | Encoded e -> Encoded { e with form = r.rung_label :: e.form }
+            | Declined -> go first_error rest
+            | Failed e -> go (match first_error with None -> Some e | some -> some) rest)
+      in
+      go None rungs
 
 let encode node v =
   match attempt node v with
   | Encoded e -> Ok e
   | Failed e -> Error e
   | Declined -> Error { where = "encode"; detail = "no form of this description accepts the value" }
+
+(* {2 Relaxation ladders}
+
+   [encode_ladder] answers "every way this value can be encoded", which only
+   makes sense for a [Relax] node - asking it of a top-level [Alt] would span
+   unrelated instructions. A tree with no reachable [Relax] has a ladder of one,
+   so a caller does not have to know in advance whether a form relaxes. *)
+
+let rec ladder : type a k. (a, k) t -> a -> k attempt list =
+ fun node v ->
+  let one r = match r with Encoded _ -> [ r ] | Declined | Failed _ -> [ r ] in
+  match node with
+  | Relax { rungs; _ } ->
+      List.filter_map
+        (fun r ->
+          match attempt r.rung_body v with
+          | Encoded e -> Some (Encoded { e with form = r.rung_label :: e.form })
+          | Declined | Failed _ -> None)
+        rungs
+  | Alt { alts; _ } ->
+      (* The ladder, if there is one, is inside whichever alternative this value
+         selects; the alternatives themselves are not rungs. *)
+      let ordered = List.sort (fun a b -> compare a.priority b.priority) alts in
+      let rec go = function
+        | [] -> []
+        | a :: rest -> (
+            if not (a.guard v) then go rest
+            else
+              match attempt a.body v with
+              | Encoded _ ->
+                  List.map
+                    (function Encoded e -> Encoded { e with form = a.label :: e.form } | r -> r)
+                    (ladder a.body v)
+              | Declined -> go rest
+              | Failed _ -> go rest)
+      in
+      go ordered
+  | Seq _ | Iso_fun _ | Iso_table _ -> one (attempt node v)
+  | Empty | Const _ | Field _ | Fixup _ -> one (attempt node v)
+
+let encode_ladder node v =
+  match ladder node v with
+  | [] -> (
+      (* No rung applied. Report what single-result encoding would have said, so
+         the diagnostic names the value rather than the shape. *)
+      match attempt node v with
+      | Failed e -> Error e
+      | Declined | Encoded _ ->
+          Error { where = "encode_ladder"; detail = "no rung of this description applies" })
+  | results ->
+      Ok (List.filter_map (function Encoded e -> Some e | Declined | Failed _ -> None) results)
+
+(* Encode exactly one named rung, declining every other. An unknown name or a
+   named rung that cannot take the value is a diagnostic, never a quiet fall
+   back to a different encoding: the whole point of a pin is that it is obeyed. *)
+let encode_rung node ~rung:name v =
+  match encode_ladder node v with
+  | Error e -> Error e
+  | Ok forms -> (
+      match List.find_opt (fun e -> List.exists (String.equal name) e.form) forms with
+      | Some e -> Ok e
+      | None ->
+          Error
+            {
+              where = "encode_rung";
+              detail =
+                Printf.sprintf "rung %s is not among {%s}" name
+                  (String.concat ", " (List.map (fun e -> String.concat "." e.form) forms));
+            })
 
 (* {1 Interpreter 2 - decode}
 
@@ -304,7 +462,9 @@ let rec decode : type a k. (a, k) t -> Bits.t -> pos:int -> a decoded option =
         plain
           (match signedness with Unsigned -> raw | Signed -> sign_extend ~width raw)
           (pos + width)
-  | Fixup { width; _ } -> if Bits.width bits - pos < width then None else plain () (pos + width)
+  | Fixup { width; _ } ->
+      if Bits.width bits - pos < width then None
+      else plain (Bits.to_int64 (Bits.sub bits ~pos ~width)) (pos + width)
   | Seq (a, b) -> (
       match decode a bits ~pos with
       | None -> None
@@ -336,6 +496,20 @@ let rec decode : type a k. (a, k) t -> Bits.t -> pos:int -> a decoded option =
               | None -> None
               | Some x -> Some { x with dform = a.label :: x.dform }))
         None ordered
+  | Relax { rungs; _ } ->
+      (* Rung order, first match. [check] requires rung patterns to be mutually
+         distinguishable, so "first" here is not a tie-break hiding an
+         ambiguity - it is the only rung that matches. That is what lets a
+         decoded form report which rung produced it. *)
+      List.fold_left
+        (fun acc r ->
+          match acc with
+          | Some _ -> acc
+          | None -> (
+              match decode r.rung_body bits ~pos with
+              | None -> None
+              | Some x -> Some { x with dform = r.rung_label :: x.dform }))
+        None rungs
 
 let decode_bits node bits = decode node bits ~pos:0
 
@@ -350,11 +524,12 @@ module Shape = struct
     | Empty
     | Const of { width : int; value : int64 }
     | Field of { name : string; width : int; signedness : signedness }
-    | Fixup of { name : string; width : int }
+    | Fixup of { name : string; width : int; value_lsb : int; kind : string }
     | Seq of shape list
     | Iso_table of { name : string; entries : int; inner : shape }
     | Iso_fun of { name : string; inner : shape }
     | Alt of { name : string; alts : (string * int * int * shape) list }
+    | Relax of { name : string; rungs : (string * shape) list }
 
   let pp_signedness ppf = function Signed -> Fmt.string ppf "s" | Unsigned -> Fmt.string ppf "u"
 
@@ -380,9 +555,13 @@ module Shape = struct
       | Const { width; value } -> Fmt.pf ppf "%s" (Bits.to_string (Bits.of_int64 ~width value))
       | Field { name; width; signedness } ->
           Fmt.pf ppf "%s:%d%a" name width pp_signedness signedness
-      | Fixup { name; width } -> Fmt.pf ppf "<%s:%d>" name width
+      | Fixup { name; width; value_lsb; kind } ->
+          (* The value range is printed, not just the field width: for a split
+             fixup the two are different, and which bits of the value a slice
+             carries is the whole content of the node. *)
+          Fmt.pf ppf "<%s:%d@%d %s>" name width value_lsb kind
       | Seq xs -> Fmt.pf ppf "@[<h>%a@]" Fmt.(list ~sep:(any " ") pp_ref) xs
-      | (Iso_table { name; _ } | Iso_fun { name; _ } | Alt { name; _ }) as s ->
+      | (Iso_table { name; _ } | Iso_fun { name; _ } | Alt { name; _ } | Relax { name; _ }) as s ->
           enqueue name s;
           Fmt.string ppf name
     and pp_def ppf = function
@@ -392,6 +571,10 @@ module Shape = struct
               list ~sep:cut (fun ppf (label, prio, cost, s) ->
                   Fmt.pf ppf "@[<h>[%d cost=%d] %-16s %a@]" prio cost label pp_def s))
             alts
+      | Relax { name; rungs } ->
+          Fmt.pf ppf "@[<v2>relax %s@,%a@]" name
+            Fmt.(list ~sep:cut (fun ppf (label, s) -> Fmt.pf ppf "@[<h>%-16s %a@]" label pp_def s))
+            rungs
       | Iso_table { name; entries; inner } -> Fmt.pf ppf "%s[%d]{%a}" name entries pp_ref inner
       | Iso_fun { name; inner } -> Fmt.pf ppf "%s(){%a}" name pp_ref inner
       | (Empty | Const _ | Field _ | Fixup _ | Seq _) as s -> pp_ref ppf s
@@ -408,11 +591,19 @@ module Shape = struct
     drain ()
 end
 
-let rec inspect : type a k. (a, k) t -> Shape.shape = function
+(* [kind_name] is supplied by the caller rather than stored in the node. The
+   fixup kind is the target's abstract type, so the codec cannot name it, and a
+   name carried alongside would be a second source of truth free to disagree
+   with [TARGET.fixup_kind_name]. One dictionary, passed where it is needed. *)
+let rec inspect : type a k. kind_name:(k -> string) -> (a, k) t -> Shape.shape =
+ fun ~kind_name node ->
+  let inspect x = inspect ~kind_name x in
+  match node with
   | Empty -> Shape.Empty
   | Const { width; value } -> Shape.Const { width; value }
   | Field { name; width; signedness } -> Shape.Field { name; width; signedness }
-  | Fixup { name; width; _ } -> Shape.Fixup { name; width }
+  | Fixup { name; width; value_lsb; kind } ->
+      Shape.Fixup { name; width; value_lsb; kind = kind_name kind }
   | Seq (a, b) -> (
       (* Flattened, so that a right-nested chain of [**] prints as the sequence
          the author wrote rather than as a comb of pairs. *)
@@ -430,6 +621,8 @@ let rec inspect : type a k. (a, k) t -> Shape.shape = function
               (fun a -> (a.label, a.priority, a.cost, inspect a.body))
               (List.sort (fun a b -> compare a.priority b.priority) alts);
         }
+  | Relax { name; rungs } ->
+      Shape.Relax { name; rungs = List.map (fun r -> (r.rung_label, inspect r.rung_body)) rungs }
 
 (* The width a form occupies, when that is a single number. An [Alt] whose
    branches disagree has none, which is not an error - x86 instructions are
@@ -443,6 +636,13 @@ let rec width_of : type a k. (a, k) t -> int option = function
   | Iso_fun { inner; _ } -> width_of inner
   | Alt { alts; _ } -> (
       match List.map (fun a -> width_of a.body) alts with
+      | [] -> None
+      | w :: rest -> if List.for_all (fun x -> x = w) rest then w else None)
+  | Relax { rungs; _ } -> (
+      (* A ladder whose rungs differ in width has no single width, by
+         construction - that is what makes it a ladder. Reporting the first
+         rung's width would be a plausible lie. *)
+      match List.map (fun r -> width_of r.rung_body) rungs with
       | [] -> None
       | w :: rest -> if List.for_all (fun x -> x = w) rest then w else None)
 
@@ -481,6 +681,10 @@ let rec pattern : type a k. (a, k) t -> string option = function
       match List.map (fun a -> pattern a.body) alts with
       | [] -> None
       | p :: rest -> if List.for_all (fun x -> x = p) rest then p else None)
+  | Relax { rungs; _ } -> (
+      match List.map (fun r -> pattern r.rung_body) rungs with
+      | [] -> None
+      | p :: rest -> if List.for_all (fun x -> x = p) rest then p else None)
 
 (* Two patterns are ambiguous when some bit string matches both: they agree
    wherever both are fixed. Different lengths are not ambiguous here, because
@@ -493,13 +697,70 @@ let patterns_overlap a b =
   let rec go i = i >= n || ((a.[i] = '?' || b.[i] = '?' || a.[i] = b.[i]) && go (i + 1)) in
   go 0
 
-let rec check : type a k. (a, k) t -> problem list = function
+(* Every [Fixup] node reachable on one realized path, so the slices that share a
+   name can be checked against each other. It deliberately does not descend into
+   [Alt] or [Relax]: those are mutually exclusive, and grouping across them
+   would compare slices that never co-occur. *)
+let rec fixups_here : type a k. (a, k) t -> (string * int * int * k) list = function
+  | Empty | Const _ | Field _ -> []
+  | Fixup { name; width; value_lsb; kind } -> [ (name, width, value_lsb, kind) ]
+  | Seq (a, b) -> fixups_here a @ fixups_here b
+  (* Split rather than combined with the [Iso_fun] case: each binds [inner] at
+     its own existential type, and an or-pattern would let it escape. *)
+  | Iso_table { inner; _ } -> fixups_here inner
+  | Iso_fun { inner; _ } -> fixups_here inner
+  | Alt _ | Relax _ -> []
+
+(* A logical fixup assembled from slices must cover its value contiguously from
+   bit 0 and must not cover a bit twice; and the slices must agree on the kind,
+   compared with the target's equality rather than with a printed name, since
+   two kinds may legitimately share a spelling only if they are the same kind. *)
+let check_fixup_group ~equal_kind ~kind_name where name entries =
+  let sorted = List.sort (fun (_, _, a, _) (_, _, b, _) -> compare a b) entries in
+  let _, _, _, k0 = List.hd sorted in
+  let mixed =
+    List.filter (fun (_, _, _, k) -> not (equal_kind k0 k)) sorted
+    |> List.map (fun (_, _, _, k) ->
+        problem where
+          (Printf.sprintf "fixup %s mixes kinds %s and %s" name (kind_name k0) (kind_name k)))
+  in
+  let rec cover expected = function
+    | [] -> []
+    | (_, w, lsb, _) :: rest ->
+        if lsb < expected then
+          [
+            problem where
+              (Printf.sprintf "fixup %s has slices overlapping at value bit %d" name lsb);
+          ]
+        else if lsb > expected then
+          [
+            problem where
+              (Printf.sprintf "fixup %s leaves value bits %d..%d uncovered" name expected (lsb - 1));
+          ]
+        else cover (lsb + w) rest
+  in
+  mixed @ cover 0 sorted
+
+let rec check : type a k.
+    equal_kind:(k -> k -> bool) -> kind_name:(k -> string) -> (a, k) t -> problem list =
+ fun ~equal_kind ~kind_name node ->
+  let check x = check ~equal_kind ~kind_name x in
+  let fixup_groups where body =
+    let entries = fixups_here body in
+    let names = List.sort_uniq compare (List.map (fun (n, _, _, _) -> n) entries) in
+    List.concat_map
+      (fun n ->
+        check_fixup_group ~equal_kind ~kind_name where n
+          (List.filter (fun (m, _, _, _) -> String.equal m n) entries))
+      names
+  in
+  match node with
   | Empty -> []
   | Const { width; value } ->
       if fits ~width ~signedness:Unsigned value || fits ~width ~signedness:Signed value then []
       else [ problem "const" (Printf.sprintf "%Ld does not fit %d bits" value width) ]
   | Field _ | Fixup _ -> []
-  | Seq (a, b) -> check a @ check b
+  | Seq (a, b) -> fixup_groups "seq" node @ check a @ check b
   | Iso_table { name; entries; equal; show; inner } ->
       let where = "iso_table " ^ name in
       let inner_width = match inner with Field { width; _ } -> Some width | _ -> None in
@@ -564,7 +825,67 @@ let rec check : type a k. (a, k) t -> problem list = function
       in
       List.map (fun p -> problem where (Printf.sprintf "duplicate priority %d" p)) dup_prio
       @ ambiguous
+      @ List.concat_map (fun a -> fixup_groups (where ^ "/" ^ a.label) a.body) alts
       @ List.concat_map (fun a -> check a.body) alts
+  | Relax { name; rungs } ->
+      let where = "relax " ^ name in
+      let rec nested : type b. (b, k) t -> bool = function
+        | Relax _ -> true
+        | Seq (a, b) -> nested a || nested b
+        | Iso_table { inner; _ } -> nested inner
+        | Iso_fun { inner; _ } -> nested inner
+        | Alt { alts; _ } -> List.exists (fun a -> nested a.body) alts
+        | Empty | Const _ | Field _ | Fixup _ -> false
+      in
+      let nesting =
+        List.filter_map
+          (fun r ->
+            if nested r.rung_body then
+              Some (problem where ("rung " ^ r.rung_label ^ " contains another relaxation ladder"))
+            else None)
+          rungs
+      in
+      (* Rungs are declared shortest first, and layout depends on it: the
+         promotion fixpoint only terminates because a selection moves one way
+         along the ladder. *)
+      let widths = List.map (fun r -> (r.rung_label, width_of r.rung_body)) rungs in
+      let rec ordered = function
+        | (la, Some a) :: ((lb, Some b) :: _ as rest) ->
+            (if a >= b then
+               [
+                 problem where
+                   (Printf.sprintf "rung %s (%d bits) is not shorter than %s (%d bits)" la a lb b);
+               ]
+             else [])
+            @ ordered rest
+        | _ :: rest -> ordered rest
+        | [] -> []
+      in
+      (* Two rungs whose fixed bits overlap cannot be told apart on decode, so
+         the rung that produced a given encoding could not be recovered - and
+         canonical disassembly would silently re-encode a near branch as short.
+         Being semantically equivalent does not make them decodable. *)
+      let pairs =
+        let rec go = function [] -> [] | x :: rest -> List.map (fun y -> (x, y)) rest @ go rest in
+        go rungs
+      in
+      let ambiguous =
+        List.filter_map
+          (fun (a, b) ->
+            match (pattern a.rung_body, pattern b.rung_body) with
+            | Some pa, Some pb when patterns_overlap pa pb ->
+                Some
+                  (problem where
+                     (Printf.sprintf
+                        "rungs %s and %s have overlapping fixed bits, so a decoded form cannot say \
+                         which one produced it"
+                        a.rung_label b.rung_label))
+            | _ -> None)
+          pairs
+      in
+      nesting @ ordered widths @ ambiguous
+      @ List.concat_map (fun r -> fixup_groups (where ^ "/" ^ r.rung_label) r.rung_body) rungs
+      @ List.concat_map (fun r -> check r.rung_body) rungs
 
 (* {1 Generated finite-domain tests}
 
