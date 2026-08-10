@@ -6,6 +6,7 @@
    parser understands x86 addressing" from becoming true by accident. *)
 
 open Foundation
+open Asm_core
 
 type label = Named of Span.t * string | Numeric of Span.t * int
 

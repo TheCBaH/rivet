@@ -1,6 +1,33 @@
+; The x86 family, in two libraries: the encoder and the front end.
+;
+; x86_family_encode holds the constructor modules, the codec and everything
+; that turns an instruction into bytes, and reaches no lexer; its [Make]
+; produces a module satisfying target_encode's ENCODE. x86_family adds the
+; lexical profile, the operand parser and the directive handler, and its [Make]
+; produces a TARGET.
+;
+; Both are functors over the mode (§5.1), because what differs between 32- and
+; 64-bit mode is a register file, an address width and whether REX exists -
+; not an instruction set. The two mode packages each instantiate both.
+
+(library
+ (name x86_family_encode)
+ (modules x86_family_encode)
+ (modes byte native)
+ (libraries foundation codec asm_core target_encode)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
 (library
  (name x86_family)
+ (modules x86_family)
  (modes byte native)
- (libraries foundation codec asm_core target_intf)
+ (libraries
+  foundation
+  codec
+  asm_core
+  asm_syntax
+  target_intf
+  x86_family_encode)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))

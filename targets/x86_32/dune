@@ -1,6 +1,20 @@
+; The x86_32 target, in two libraries for the family's reason: x86_32_encode
+; carries the mode and the encoder (ENCODE, no lexer), x86_32 carries the same
+; mode through the family's front end (TARGET). The mode is written once, in
+; the encode package, and the front-end package names it there.
+
+(library
+ (name x86_32_encode)
+ (modules x86_32_encode)
+ (modes byte native)
+ (libraries foundation codec asm_core target_encode x86_family_encode)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
 (library
  (name x86_32)
+ (modules x86_32)
  (modes byte native)
- (libraries foundation codec asm_core target_intf x86_family)
+ (libraries foundation codec asm_core target_intf x86_family x86_32_encode)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))

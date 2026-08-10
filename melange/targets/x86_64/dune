@@ -1,12 +1,23 @@
 ; Melange build of targets/x86_64. Same sources, copied rather than duplicated;
-; see melange/dune for why the tree is mirrored at all.
+; see melange/dune for why the tree is mirrored at all. Two libraries, for the
+; reason targets/x86_64/dune gives: the mode lives with the encoder, and the
+; front-end package carries it through the family's parser.
 
 (copy_files#
  (files ../../../targets/x86_64/*.ml))
 
 (library
- (name x86_64)
+ (name x86_64_encode)
+ (modules x86_64_encode)
  (modes byte native melange)
- (libraries foundation codec asm_core target_intf x86_family)
+ (libraries foundation codec asm_core target_encode x86_family_encode)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))
+
+(library
+ (name x86_64)
+ (modules x86_64)
+ (modes byte native melange)
+ (libraries foundation codec asm_core target_intf x86_family x86_64_encode)
  (enabled_if
   (= %{env:ASM_MELANGE=false} true)))

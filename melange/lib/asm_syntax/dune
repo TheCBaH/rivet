@@ -1,0 +1,32 @@
+; Melange build of lib/asm_syntax. Same sources, copied rather than duplicated;
+; see melange/dune for why the tree is mirrored at all.
+
+(copy_files#
+ (files ../../../lib/asm_syntax/*.ml))
+
+(library
+ (name asm_syntax)
+ (modes byte native melange)
+ (libraries foundation asm_core fmt)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))
+
+; The Melange configuration owns the grammar build, because lib/asm_syntax's
+; rule is disabled there (see lib/asm_syntax/dune). Exactly one of the two is
+; ever enabled, so grammar.ml has one producer and both builds compile a parser
+; generated from the one .mly - which matters, since the three-build gate's
+; whole claim is that these are the same program.
+; Plain copy_files, not copy_files#: the [#] variant prepends a line directive so
+; that diagnostics point at the original file, and Menhir does not accept one at
+; the top of a grammar.
+
+(copy_files
+ (files ../../../lib/asm_syntax/*.mly))
+
+(rule
+ (targets grammar.ml grammar.mli)
+ (deps grammar.mly)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true))
+ (action
+  (run menhir --base grammar %{deps})))

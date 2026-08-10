@@ -11,6 +11,7 @@
   foundation
   codec
   asm_core
+  asm_syntax
   image
   target_intf
   x86_32

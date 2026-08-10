@@ -5,8 +5,17 @@
  (files ../../../lib/target_intf/*.ml))
 
 (library
- (name target_intf)
+ (name target_encode)
+ (modules target_encode)
  (modes byte native melange)
- (libraries foundation codec asm_core image)
+ (libraries foundation codec asm_core)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))
+
+(library
+ (name target_intf)
+ (modules target)
+ (modes byte native melange)
+ (libraries foundation codec asm_core asm_syntax image target_encode)
  (enabled_if
   (= %{env:ASM_MELANGE=false} true)))

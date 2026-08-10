@@ -13,6 +13,7 @@
 
 open Foundation
 open Asm_core
+open Asm_syntax
 
 let text_of (slice : Token.slice) = Token.slice_text slice
 

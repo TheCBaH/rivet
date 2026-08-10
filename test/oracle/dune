@@ -68,11 +68,11 @@
 ; conform takes the snippets from snippet_corpus, which is what M2 made
 ; possible and M1 could not afford. The edge is deliberately to the corpus and
 ; not to driver: the corpus builds instructions as ASTs and pushes them through
-; lower/encode/plan/bind, so the conformance driver links the assembler's back
-; end without acquiring its front end - no pipeline, no directives, no source
-; text. asm_core still carries the lexer and the targets still parse their own
-; operands, so the closure is not lexer-free; making it so means splitting
-; asm_core and each target into a syntax half and an encoding half.
+; lower/encode/plan/bind, so this executable links the assembler's *encoding*
+; half and nothing above it. Checked rather than asserted - there is no
+; asm_syntax module in the linked binary, so no lexer, no Menhir table and no
+; token type reach the conformance suite. That is what the asm_core/asm_syntax
+; and ENCODE/TARGET splits are for.
 
 (executable
  (name conform)

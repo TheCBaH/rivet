@@ -1,6 +1,28 @@
+; The TARGET signature, in two libraries because it describes two halves that
+; are wanted apart.
+;
+; target_encode is everything below source text - normalize, lower, encode,
+; decode, evaluate a fixup, pad - and reaches no front end. target_intf adds
+; the three members that read source text, and so depends on asm_syntax. A
+; consumer that builds instructions as values (test/snippets, and anything that
+; generates them) names the first and links no lexer; the pipeline names the
+; second.
+;
+; Signatures only, both of them: no implementation, so a target depends on a
+; description it cannot influence.
+
+(library
+ (name target_encode)
+ (modules target_encode)
+ (modes byte native)
+ (libraries foundation codec asm_core)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
 (library
  (name target_intf)
+ (modules target)
  (modes byte native)
- (libraries foundation codec asm_core image)
+ (libraries foundation codec asm_core asm_syntax image target_encode)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))

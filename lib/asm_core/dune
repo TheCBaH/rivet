@@ -1,15 +1,18 @@
-; The target-independent frontend and AST containers (.ai/asm_plan.md §4).
+; The target-independent AST containers (.ai/asm_plan.md §4).
 ;
-; Note what is *not* here: the TARGET signature. This package must not depend on
-; target_intf, because §5.1's dependency direction runs the other way - a target
-; description depends on the generic machinery and never the reverse. The ASTs
-; are parameterized over the target's instruction types rather than functorized
-; over TARGET, which is what makes that possible: a container holding an 'insn
-; needs no interface to hold it.
+; Note what is *not* here. Two things, for two different reasons:
 ;
-; Menhir owns the common statement and expression grammar (§4.7) and nothing
-; else. Individual instruction forms must never become Menhir productions, so
-; operands leave the grammar as token slices.
+; - the TARGET signature. This package must not depend on target_intf, because
+;   §5.1's dependency direction runs the other way - a target description
+;   depends on the generic machinery and never the reverse. The ASTs are
+;   parameterized over the target's instruction types rather than functorized
+;   over TARGET, which is what makes that possible: a container holding an
+;   'insn needs no interface to hold it.
+;
+; - the front end. Lexer, grammar, token slices and the source AST moved to
+;   asm_syntax, so that everything downstream of a parsed line can be linked
+;   without them. What is left is what an assembled instruction is made of:
+;   expressions, section permissions, directives, and the staged ASTs.
 
 (library
  (name asm_core)
@@ -17,18 +20,3 @@
  (libraries foundation fmt)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
-
-; Menhir is invoked by an explicit rule rather than by the (menhir ...) stanza,
-; because that stanza takes no enabled_if and needs a library to attach to - and
-; this library is disabled in the Melange configuration, where the mirror under
-; melange/lib/asm_core owns the build instead. Exactly one of the two rules is
-; ever enabled, so grammar.ml has exactly one producer and both configurations
-; compile a parser generated from this one .mly.
-
-(rule
- (targets grammar.ml grammar.mli)
- (deps grammar.mly)
- (enabled_if
-  (<> %{env:ASM_MELANGE=false} true))
- (action
-  (run menhir --base grammar %{deps})))

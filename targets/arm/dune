@@ -1,6 +1,27 @@
+; The arm target, in two libraries: the encoder and the front end.
+;
+; arm_encode satisfies target_encode's ENCODE - instruction types, lower,
+; encode, decode, fixups, padding - and reaches no lexer. arm adds the lexical
+; profile, the operand parser and the directive handler (which is where [.arm],
+; [.syntax] and [.fpu] are answered), and so satisfies TARGET. It is the module
+; the registry and the pipeline name.
+;
+; The split is what lets a consumer that builds instructions as values link the
+; encoder alone: test/snippets does, and the conformance suite reaches §16.3
+; through it.
+
+(library
+ (name arm_encode)
+ (modules arm_encode)
+ (modes byte native)
+ (libraries foundation codec asm_core target_encode)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
 (library
  (name arm)
+ (modules arm)
  (modes byte native)
- (libraries foundation codec asm_core target_intf)
+ (libraries foundation codec asm_core asm_syntax target_intf arm_encode)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))

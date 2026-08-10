@@ -917,7 +917,7 @@ let%expect_test "a direct-lowered pin is checked by the codec, not by the parser
      produces - the same absence when the operand carries its own rung. *)
   let show rung =
     let target = Asm_core.Lowered_ast.Symbolic { value = Asm_core.Expr.Symbol "foo"; rung } in
-    match X86_64.encode (X86_family.Lowered.Jmp_rel { target }) with
+    match X86_64.encode (X86_family_encode.Lowered.Jmp_rel { target }) with
     | Ok (`Fixed a) ->
         Printf.printf "%-8s %s  %s\n"
           (Option.value rung ~default:"(none)")

@@ -41,9 +41,12 @@ open Asm_oracle_run
    The suite therefore tests two things at once now, and the reports keep them
    apart: a snippet that will not assemble is a corpus failure named as such
    below, while a snippet that runs and gives the wrong verdict is a helper or
-   an encoding failure, which is what the case names describe. The dependency
-   is on the corpus, hence on lowering, encoding, layout and binding - not on
-   the driver, so no source text is lexed or parsed to get here. *)
+   an encoding failure, which is what the case names describe.
+
+   What this suite depends on is the assembler's encoding half only - lower,
+   encode, plan, bind. Not the driver, and not the front end: {!Asm_syntax} is
+   absent from the linked binary, so no lexer, grammar or token type is reached
+   to produce §16.3. *)
 
 let stack_16k = Snippet_bytes.stack_16k
 let snippets_for = Snippet_corpus.Snippet_ast.for_profile

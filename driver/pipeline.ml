@@ -13,6 +13,7 @@
 
 open Foundation
 open Asm_core
+open Asm_syntax
 module T_intf = Target_intf.Target
 
 module Make (T : T_intf.TARGET) = struct

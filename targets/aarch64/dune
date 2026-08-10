@@ -1,6 +1,26 @@
+; The aarch64 target, in two libraries: the encoder and the front end.
+;
+; aarch64_encode satisfies target_encode's ENCODE - instruction types, lower,
+; encode, decode, fixups, padding - and reaches no lexer. aarch64 adds the
+; lexical profile, the operand parser and the directive handler, and so
+; satisfies TARGET. It is the module the registry and the pipeline name.
+;
+; The split is what lets a consumer that builds instructions as values link the
+; encoder alone: test/snippets does, and the conformance suite reaches §16.3
+; through it.
+
+(library
+ (name aarch64_encode)
+ (modules aarch64_encode)
+ (modes byte native)
+ (libraries foundation codec asm_core target_encode)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
 (library
  (name aarch64)
+ (modules aarch64)
  (modes byte native)
- (libraries foundation codec asm_core target_intf)
+ (libraries foundation codec asm_core asm_syntax target_intf aarch64_encode)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))

@@ -35,7 +35,7 @@
 %nonassoc UNARY
 
 %start <Statement.line list> program
-%start <Expr.t> expression_only
+%start <Asm_core.Expr.t> expression_only
 
 (* Every nonterminal's type is declared rather than inferred. Menhir can infer
    them by invoking the compiler, but that requires it to know the library's
@@ -53,7 +53,7 @@
 %type <Token.slice list> slices
 %type <Token.slice> slice
 %type <Token.t> atom
-%type <Expr.t> expr
+%type <Asm_core.Expr.t> expr
 
 %%
 
@@ -144,31 +144,31 @@ expression_only:
   | expr EOF { $1 }
 
 expr:
-  | INT { Expr.Const (match Token.kind $1 with Token.Int v -> v | _ -> Foundation.Bigint.zero) }
-  | IDENT { Expr.Symbol (match Token.kind $1 with Token.Ident s -> s | _ -> "") }
+  | INT { Asm_core.Expr.Const (match Token.kind $1 with Token.Int v -> v | _ -> Foundation.Bigint.zero) }
+  | IDENT { Asm_core.Expr.Symbol (match Token.kind $1 with Token.Ident s -> s | _ -> "") }
   (* The same names that [label] admits: [.L101] is a symbol wherever it is
      referenced, and it lexes as a directive only because of its leading dot. *)
-  | DIRECTIVE { Expr.Symbol (match Token.kind $1 with Token.Directive s -> s | _ -> "") }
-  | DOT { Expr.Current_location }
+  | DIRECTIVE { Asm_core.Expr.Symbol (match Token.kind $1 with Token.Directive s -> s | _ -> "") }
+  | DOT { Asm_core.Expr.Current_location }
   | LOCAL
     { match Token.kind $1 with
-      | Token.Local_label (n, d) -> Expr.Local_ref (n, d)
-      | _ -> Expr.Const Foundation.Bigint.zero }
+      | Token.Local_label (n, d) -> Asm_core.Expr.Local_ref (n, d)
+      | _ -> Asm_core.Expr.Const Foundation.Bigint.zero }
   (* A modifier is a prefix, not an operator: [:lower16:g + 4] takes the low
      half of the whole sum, so it wraps an expression rather than competing with
      one. See the precedence declaration above for the measurement. *)
   | MODIFIER expr %prec MODIFIER_PREC
-    { Expr.Modifier ((match Token.kind $1 with Token.Modifier m -> m | _ -> ""), $2) }
+    { Asm_core.Expr.Modifier ((match Token.kind $1 with Token.Modifier m -> m | _ -> ""), $2) }
   | LPAREN expr RPAREN { $2 }
-  | MINUS expr %prec UNARY { Expr.Unary (Expr.Neg, $2) }
-  | TILDE expr %prec UNARY { Expr.Unary (Expr.Lognot, $2) }
-  | expr PLUS expr { Expr.Binary (Expr.Add, $1, $3) }
-  | expr MINUS expr { Expr.Binary (Expr.Sub, $1, $3) }
-  | expr STAR expr { Expr.Binary (Expr.Mul, $1, $3) }
-  | expr SLASH expr { Expr.Binary (Expr.Div, $1, $3) }
-  | expr PERCENT expr { Expr.Binary (Expr.Mod, $1, $3) }
-  | expr AMP expr { Expr.Binary (Expr.And, $1, $3) }
-  | expr PIPE expr { Expr.Binary (Expr.Or, $1, $3) }
-  | expr CARET expr { Expr.Binary (Expr.Xor, $1, $3) }
-  | expr LSHIFT expr { Expr.Binary (Expr.Shl, $1, $3) }
-  | expr RSHIFT expr { Expr.Binary (Expr.Shr, $1, $3) }
+  | MINUS expr %prec UNARY { Asm_core.Expr.Unary (Asm_core.Expr.Neg, $2) }
+  | TILDE expr %prec UNARY { Asm_core.Expr.Unary (Asm_core.Expr.Lognot, $2) }
+  | expr PLUS expr { Asm_core.Expr.Binary (Asm_core.Expr.Add, $1, $3) }
+  | expr MINUS expr { Asm_core.Expr.Binary (Asm_core.Expr.Sub, $1, $3) }
+  | expr STAR expr { Asm_core.Expr.Binary (Asm_core.Expr.Mul, $1, $3) }
+  | expr SLASH expr { Asm_core.Expr.Binary (Asm_core.Expr.Div, $1, $3) }
+  | expr PERCENT expr { Asm_core.Expr.Binary (Asm_core.Expr.Mod, $1, $3) }
+  | expr AMP expr { Asm_core.Expr.Binary (Asm_core.Expr.And, $1, $3) }
+  | expr PIPE expr { Asm_core.Expr.Binary (Asm_core.Expr.Or, $1, $3) }
+  | expr CARET expr { Asm_core.Expr.Binary (Asm_core.Expr.Xor, $1, $3) }
+  | expr LSHIFT expr { Asm_core.Expr.Binary (Asm_core.Expr.Shl, $1, $3) }
+  | expr RSHIFT expr { Asm_core.Expr.Binary (Asm_core.Expr.Shr, $1, $3) }

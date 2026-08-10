@@ -1,12 +1,22 @@
 ; Melange build of targets/aarch64. Same sources, copied rather than duplicated;
-; see melange/dune for why the tree is mirrored at all.
+; see melange/dune for why the tree is mirrored at all. Two libraries, for the
+; reason targets/aarch64/dune gives: the encoder is linkable without a front end.
 
 (copy_files#
  (files ../../../targets/aarch64/*.ml))
 
 (library
- (name aarch64)
+ (name aarch64_encode)
+ (modules aarch64_encode)
  (modes byte native melange)
- (libraries foundation codec asm_core target_intf)
+ (libraries foundation codec asm_core target_encode)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))
+
+(library
+ (name aarch64)
+ (modules aarch64)
+ (modes byte native melange)
+ (libraries foundation codec asm_core asm_syntax target_intf aarch64_encode)
  (enabled_if
   (= %{env:ASM_MELANGE=false} true)))

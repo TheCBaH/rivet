@@ -1,24 +1,34 @@
-; Dogfooding the frozen snippet bytes (asm/docs/exec-abi-v1.md §16.3).
+; The §16.3 snippets (asm/docs/exec-abi-v1.md), assembled from ASTs.
 ;
 ; Three stanzas over one corpus, and the split is what lets one AST produce all
 ; three renderings without any of them being written twice:
 ;
-;   snippet_corpus   the ASTs, and the bytes/canonical text they assemble to.
-;   test_snippets    the expect baselines and the equality assertions.
-;   snippet_emit     writes each entry as a .s file for tools/asm-gas-xref.sh,
+;   snippet_corpus   the ASTs, the bytes and canonical text they assemble to,
+;                    and the per-profile view test/oracle's conformance driver
+;                    runs under QEMU.
+;   test_snippets    the expect baselines: one block per snippet per target.
+;   snippet_emit     writes each snippet as a .s file for tools/asm-gas-xref.sh,
 ;                    so GNU as reads text produced by the same canonical printer
 ;                    the baselines pin. An executable rather than a rule,
 ;                    because `make asm-test` must never acquire a cross
 ;                    toolchain and only the regen path runs it.
 ;
-; The corpus reads asm_oracle's Snippet_bytes table. asm_oracle is the pure half
-; of the oracle - constants and the recovery validator, no Unix - so nothing
-; here needs a toolchain or an emulator.
+; The corpus links the assembler's *encoding* half and nothing above it: the
+; target_encode signature and each target's _encode package, so building a
+; snippet reaches lowering, encoding, layout and binding but no lexer, no
+; grammar and no token type. That is what makes this corpus usable as the
+; conformance suite's source of §16.3 without dragging a front end into a
+; program that never reads source text - and what would make a generated corpus
+; cost the same.
+;
+; asm_oracle is here for Abi.profile and the Snippet_bytes record shape, not for
+; snippets: it is the pure half of the oracle - constants and the recovery
+; validator, no Unix - so nothing here needs a toolchain or an emulator.
 ;
 ; The concrete target modules are named directly rather than reached through
-; Driver.Registry, for test/coherence's reason: the types here are each target's
-; own, so handing the aarch64 corpus an ARM operand is a compile error rather
-; than a runtime one.
+; Driver.Registry, for test/coherence's reason: the types here are each
+; target's own, so handing the aarch64 corpus an ARM operand is a compile
+; error rather than a runtime one.
 ;
 ; ppx_expect, hence native only, and outside the production closure by
 ; construction - tools/asm-check-purity.sh classifies test/ as a non-production
@@ -32,12 +42,12 @@
   foundation
   asm_core
   image
-  target_intf
+  target_encode
   asm_oracle
-  x86_32
-  x86_64
-  arm
-  aarch64
+  x86_32_encode
+  x86_64_encode
+  arm_encode
+  aarch64_encode
   fmt)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))

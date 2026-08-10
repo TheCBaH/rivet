@@ -13,6 +13,7 @@
    instead of beside it. *)
 
 open Foundation
+open Asm_core
 
 type 'sinsn item =
   | Label of { name : string; origin : Origin.t }

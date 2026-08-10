@@ -1,12 +1,22 @@
 ; Melange build of targets/arm. Same sources, copied rather than duplicated;
-; see melange/dune for why the tree is mirrored at all.
+; see melange/dune for why the tree is mirrored at all. Two libraries, for the
+; reason targets/arm/dune gives: the encoder is linkable without a front end.
 
 (copy_files#
  (files ../../../targets/arm/*.ml))
 
 (library
- (name arm)
+ (name arm_encode)
+ (modules arm_encode)
  (modes byte native melange)
- (libraries foundation codec asm_core target_intf)
+ (libraries foundation codec asm_core target_encode)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))
+
+(library
+ (name arm)
+ (modules arm)
+ (modes byte native melange)
+ (libraries foundation codec asm_core asm_syntax target_intf arm_encode)
  (enabled_if
   (= %{env:ASM_MELANGE=false} true)))

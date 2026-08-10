@@ -10,23 +10,3 @@
  (libraries foundation fmt)
  (enabled_if
   (= %{env:ASM_MELANGE=false} true)))
-
-; The Melange configuration owns the grammar build, because lib/asm_core's rule
-; is disabled there (see lib/asm_core/dune). Exactly one of the two is ever
-; enabled, so grammar.ml has one producer and both builds compile a parser
-; generated from the one .mly - which matters, since the three-build gate's
-; whole claim is that these are the same program.
-; Plain copy_files, not copy_files#: the [#] variant prepends a line directive so
-; that diagnostics point at the original file, and Menhir does not accept one at
-; the top of a grammar.
-
-(copy_files
- (files ../../../lib/asm_core/*.mly))
-
-(rule
- (targets grammar.ml grammar.mli)
- (deps grammar.mly)
- (enabled_if
-  (= %{env:ASM_MELANGE=false} true))
- (action
-  (run menhir --base grammar %{deps})))

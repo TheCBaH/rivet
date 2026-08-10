@@ -108,13 +108,21 @@ let named c = List.map (fun (name, get) -> (name, get c)) fields
 
 (* {1 The staged assembler}
 
-   Over TARGET, so the four corpora below share one path and none can quietly
-   take a shortcut. Entries are built at the *normalized* stage and pushed
-   through both remaining stages, so this exercises lowering as well as
-   encoding - an encoder fed lowered forms directly would never notice that
-   [simplify] and [lower] disagree about which operands a mnemonic takes. *)
+   Over {!Target_encode.ENCODE} rather than TARGET, so the four corpora below
+   share one path and none can quietly take a shortcut. Entries are built at
+   the *normalized* stage and pushed through both remaining stages, so this
+   exercises lowering as well as encoding - an encoder fed lowered forms
+   directly would never notice that [simplify] and [lower] disagree about which
+   operands a mnemonic takes.
 
-module Make (T : Target_intf.Target.TARGET) = struct
+   ENCODE is the half of a target that exists below source text, and naming it
+   here rather than TARGET is what keeps the lexer, the grammar and the token
+   type out of this library and out of everything that links it. A snippet is
+   an instruction *value*; nothing about building one should require the
+   machinery for reading one, and until that signature was split, naming any
+   part of a target required all of it. *)
+
+module Make (T : Target_encode.ENCODE) = struct
   exception Refuse of string
 
   (* A snippet is laid out and bound, not merely encoded. §16.3's [spin] is
@@ -211,8 +219,8 @@ let reg_exn ~target find n =
 (* {1 aarch64} *)
 
 module Aarch64_corpus = struct
-  module T = Aarch64
-  module A = Make (Aarch64)
+  module T = Aarch64_encode
+  module A = Make (Aarch64_encode)
 
   let r n = reg_exn ~target:T.name T.Reg.find n
   let insn op ops : T.Instruction.t = T.Instruction.mk op ops
@@ -310,8 +318,8 @@ end
 (* {1 arm} *)
 
 module Arm_corpus = struct
-  module T = Arm
-  module A = Make (Arm)
+  module T = Arm_encode
+  module A = Make (Arm_encode)
 
   let r n = reg_exn ~target:T.name T.Reg.find n
   let insn op ops : T.Instruction.t = T.Instruction.mk op ops
@@ -407,18 +415,19 @@ end
 (* {1 x86}
 
    The prologue is written once for both modes. That is possible because
-   [X86_family.Make] re-exports the family's constructor modules rather than
-   redeclaring them, so [X86_32.Instruction.t] and [X86_64.Instruction.t] are
-   the *same* type and one builder produces values both assemblers accept. §11
-   gives the modes different frame adjustments and different operand widths;
-   that is all the parameterization the shape needs.
+   [X86_family_encode.Make] re-exports the family's constructor modules rather
+   than redeclaring them, so [X86_32_encode.Instruction.t] and
+   [X86_64_encode.Instruction.t] are the *same* type and one builder produces
+   values both assemblers accept. §11 gives the modes different frame
+   adjustments and different operand widths; that is all the parameterization
+   the shape needs.
 
    The x86 entries below are shared for the same reason: the two modes need the
    same missing forms, and stating that twice would let the two corpora drift
    apart in which snippets they even claim to cover. *)
 
 module X86_shared = struct
-  open X86_family
+  open X86_family_encode
 
   let insn op width ops : Instruction.t = Instruction.mk op width ops
   let imm n = Operand.Imm (Foundation.Bigint.of_int n)
@@ -536,9 +545,9 @@ module X86_shared = struct
 end
 
 module X86_64_corpus = struct
-  module A = Make (X86_64)
+  module A = Make (X86_64_encode)
 
-  let r n = reg_exn ~target:X86_64.name X86_64.find_reg n
+  let r n = reg_exn ~target:X86_64_encode.name X86_64_encode.find_reg n
 
   let cases =
     X86_shared.cases
@@ -568,9 +577,9 @@ module X86_64_corpus = struct
 end
 
 module X86_32_corpus = struct
-  module A = Make (X86_32)
+  module A = Make (X86_32_encode)
 
-  let r n = reg_exn ~target:X86_32.name X86_32.find_reg n
+  let r n = reg_exn ~target:X86_32_encode.name X86_32_encode.find_reg n
 
   let cases =
     X86_shared.cases
