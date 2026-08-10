@@ -1,0 +1,15 @@
+; Spans, origins, diagnostics, arbitrary-precision integers, and the byte
+; cursor. This is the root of the production closure, and .ai/asm_plan.md §3.7
+; forbids Unix, native pointers, bigarrays, and any C-backed package anywhere
+; above it — so the only dependency is the vendored pure-OCaml Fmt.
+;
+; Melange mode lives in melange/lib/foundation, which copy_files these same
+; sources; the two stanzas share this library's name and are made mutually
+; exclusive by ASM_MELANGE, because dune cannot make `modes` conditional.
+
+(library
+ (name foundation)
+ (modes byte native)
+ (libraries fmt)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

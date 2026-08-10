@@ -1,0 +1,51 @@
+; Tests for lib/foundation. The test tree mirrors the source tree, so every
+; module here is named after the lib/foundation module it exercises.
+;
+; Four stanzas rather than one, because they have incompatible constraints.
+;
+; foundation_corpus  value sets and their printers, no assertions and no ppx.
+;                    Shared by the expect tests and the portable driver so that
+;                    "the values we check" has one definition; must stay free of
+;                    ppx, Unix, and process state because it is compiled for
+;                    js_of_ocaml and Melange too. Mirrored under melange/, hence
+;                    the same ASM_MELANGE gate the libraries use.
+;
+; test_foundation    the ppx_expect tests. A library, not a test/executable
+;                    stanza — ppx_expect refuses to run inline tests outside a
+;                    library. Native only: ppx_expect cannot run under Melange
+;                    and pulls in a C-backed dependency (time_now), so the
+;                    purity audit must show it is unreachable from every
+;                    production and browser root.
+;
+; bigint_laws /      portable executables, built for native *and* js_of_ocaml.
+; bigint_dump        The laws assert quantified properties with no interesting
+;                    output; the dump prints the corpus and is the seed for the
+;                    three-build equality gate (tools/asm-three-build.sh).
+
+(library
+ (name foundation_corpus)
+ (modules bigint_corpus)
+ (modes byte native)
+ (libraries foundation fmt)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
+(library
+ (name test_foundation)
+ (modules test_bigint)
+ (modes byte native)
+ (libraries foundation fmt foundation_corpus)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect)))
+
+(executables
+ (names bigint_laws bigint_dump)
+ (modules bigint_laws bigint_dump)
+ (modes exe js)
+ (libraries foundation foundation_corpus))
+
+(rule
+ (alias runtest)
+ (action
+  (run %{exe:bigint_laws.exe})))
