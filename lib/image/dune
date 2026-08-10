@@ -1,6 +1,13 @@
+; Symbols, layout, the internal linker, and §9's plan_image/bind_image contract.
+;
+; Depends on asm_core for the lowered module it consumes and on foundation for
+; everything else. It must never acquire a dependency on target_intf or on a
+; target: the linker's job is the same whatever produced the fragments, and a
+; linker that could name a target would be one that could special-case one.
+
 (library
  (name image)
  (modes byte native)
- (libraries foundation target_intf)
+ (libraries foundation asm_core fmt)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))

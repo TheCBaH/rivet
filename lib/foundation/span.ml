@@ -60,6 +60,15 @@ let pp_repr =
       field "column" (fun t -> t.column) Fmt.int;
     ]
 
+(* The exact source text a span covers. Directive arguments are raw token
+   slices - GAS directive syntax is not one grammar - so a handler that needs
+   the spelling back, like [.arch armv7-a], reads it from here rather than from
+   a reconstruction that could differ from what was written. *)
+let text t =
+  let n = String.length t.source.contents in
+  let start = min t.offset n in
+  String.sub t.source.contents start (min t.length (n - start))
+
 (* The text of the line containing the span, without its terminator. *)
 let line_text t =
   let s = t.source.contents in

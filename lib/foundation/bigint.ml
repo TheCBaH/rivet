@@ -394,3 +394,54 @@ let pp_repr =
       field "base" (fun _ -> limb_bits) pp_base;
       field "mag" (fun x -> x.mag) (Fmt.Dump.list pp_limb);
     ]
+
+(* {1 64-bit interoperation}
+
+   The image and codec layers speak int64 - an address does not fit a native int
+   on the 31-bit legs - so these are the conversions at that boundary. Both go
+   through the unsigned bit pattern rather than through [Int64.neg], because
+   [Int64.min_int] has no positive counterpart and negating it returns itself. *)
+
+let limbs_of_uint64 v =
+  let rec go acc v =
+    if Int64.equal v 0L then List.rev acc
+    else
+      go
+        (Int64.to_int (Int64.logand v (Int64.of_int limb_mask)) :: acc)
+        (Int64.shift_right_logical v limb_bits)
+  in
+  List.rev (go [] v)
+
+let of_int64 v =
+  if Int64.equal v 0L then zero
+  else if Int64.compare v 0L > 0 then normalize 1 (limbs_of_uint64 v)
+  else
+    (* Two's complement: the magnitude of a negative v is 2^64 - (unsigned v),
+       computed as (~v) + 1 on the bit pattern, which is exact for min_int. *)
+    let magnitude = normalize 1 (limbs_of_uint64 (Int64.neg v)) in
+    if Int64.equal v Int64.min_int then
+      neg
+        ( normalize 1 (limbs_of_uint64 (Int64.logand v Int64.max_int)) |> fun m ->
+          add m (shift_left one 63) )
+    else neg magnitude
+
+let uint64_of_mag m =
+  List.fold_right
+    (fun limb acc -> Int64.logor (Int64.shift_left acc limb_bits) (Int64.of_int limb))
+    m 0L
+
+let to_uint64_opt x =
+  if is_zero x then Some 0L
+  else if sign x < 0 then None
+  else if numbits x > 64 then None
+  else Some (uint64_of_mag x.mag)
+
+let to_int64_opt x =
+  if is_zero x then Some 0L
+  else if numbits x > 64 then None
+  else
+    let bits = uint64_of_mag x.mag in
+    if sign x > 0 then if Int64.compare bits 0L >= 0 then Some bits else None
+    else if Int64.compare bits 0L > 0 then Some (Int64.neg bits)
+    else if Int64.equal bits Int64.min_int then Some Int64.min_int
+    else None

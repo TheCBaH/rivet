@@ -1,6 +1,14 @@
+; The typed bidirectional codec EDSL (.ai/asm_plan.md §4.9.1, §6).
+;
+; Depends on foundation and nothing else. The hard constraint is negative and
+; enforced by tools/asm-check-layers.sh: nothing here may name or branch on a
+; target. x86 vocabulary belongs in targets/x86_family, not in a generic
+; combinator - a "generic" combinator named after one target is how a
+; retargetable core stops being retargetable.
+
 (library
  (name codec)
  (modes byte native)
- (libraries foundation)
+ (libraries foundation fmt)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))

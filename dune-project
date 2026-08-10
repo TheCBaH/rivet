@@ -8,3 +8,9 @@
 ; same sources and is enabled by ASM_MELANGE. See melange/dune.
 
 (using melange 0.1)
+
+; Menhir owns the common statement and expression grammar (.ai/asm_plan.md
+; §4.7). Only lib/asm_core uses it, and only for that grammar: individual
+; instruction forms must never become Menhir productions.
+
+(using menhir 3.0)

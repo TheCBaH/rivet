@@ -1,6 +1,22 @@
+; The target-independent frontend and AST containers (.ai/asm_plan.md §4).
+;
+; Note what is *not* here: the TARGET signature. This package must not depend on
+; target_intf, because §5.1's dependency direction runs the other way - a target
+; description depends on the generic machinery and never the reverse. The ASTs
+; are parameterized over the target's instruction types rather than functorized
+; over TARGET, which is what makes that possible: a container holding an 'insn
+; needs no interface to hold it.
+;
+; Menhir owns the common statement and expression grammar (§4.7) and nothing
+; else. Individual instruction forms must never become Menhir productions, so
+; operands leave the grammar as token slices.
+
 (library
  (name asm_core)
  (modes byte native)
- (libraries foundation target_intf)
+ (libraries foundation fmt)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
+
+(menhir
+ (modules grammar))

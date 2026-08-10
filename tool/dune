@@ -1,10 +1,10 @@
 ; The host CLI. Outside the production closure by construction: it is an
 ; executable, so nothing can depend on it, and tools/asm-check-purity.sh
-; classifies tool/ as a non-production tree and rejects any production library
-; that reaches it. This is where Unix, argument parsing and file I/O are allowed
-; to live; §9's rule is that none of it leaks back into a library.
+; classifies tool/ as a non-production tree. This is where argument parsing and
+; file I/O are allowed to live; §9's rule is that none of it leaks back into a
+; library.
 
 (executable
  (name asm)
  (modes exe)
- (libraries driver))
+ (libraries foundation image target_intf driver fmt))

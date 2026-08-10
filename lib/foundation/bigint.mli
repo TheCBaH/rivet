@@ -121,3 +121,20 @@ val pp_repr : Format.formatter -> t -> unit
 
     The layout is {!Fmt.Dump.record}'s, so it is a vertical box: long magnitudes wrap at the
     enclosing formatter's margin. *)
+
+(** {1 64-bit interoperation}
+
+    Addresses and encoded field values are [int64] throughout the image and codec layers, while
+    expressions are arbitrary-precision. These are the two conversions at that boundary, and they
+    are deliberately not [to_int]: a 64-bit address does not fit a native [int] on the 31-bit CI
+    legs, so routing addresses through [int] would work everywhere the tests usually run and fail
+    on exactly the platforms the project promises to support. *)
+
+val of_int64 : int64 -> t
+
+val to_int64_opt : t -> int64 option
+(** [None] when the value does not fit a signed 64-bit integer. *)
+
+val to_uint64_opt : t -> int64 option
+(** The unsigned reading: accepts [0 .. 2^64 - 1] and returns the two's-complement bit pattern, so an
+    address at or above [2^63] round-trips instead of being rejected. Negative values are [None]. *)

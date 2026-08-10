@@ -1,0 +1,26 @@
+; Tests for lib/codec. Two stanzas, for the same reason test/lib/foundation has
+; them: the corpus is ppx-free so it can be shared, and the expect tests are a
+; library because ppx_expect refuses to run inline tests outside one.
+;
+; Neither depends on any target, which is M0's "the generic codec library passes
+; synthetic-ISA tests with no target linked" stated as a build fact rather than
+; as an intention.
+
+(library
+ (name codec_corpus)
+ (modules synthetic_isa)
+ (modes byte native)
+ (libraries codec foundation fmt)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
+(library
+ (name test_codec)
+ (modules test_codec)
+ (modes byte native)
+ (libraries codec codec_corpus foundation fmt)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
