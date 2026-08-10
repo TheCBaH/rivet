@@ -194,7 +194,7 @@ compcert-export-run: compcert-export-build
 asm-build:
 	cd $(ASM_DIR) && opam exec -- dune build @all
 
-asm-test: asm-build
+asm-test: asm-build asm-fixtures-check
 	cd $(ASM_DIR) && opam exec -- dune build @runtest
 
 asm-fmt:
@@ -222,7 +222,30 @@ asm-js:
 	cd $(ASM_DIR) && ASM_BACKEND=jsoo opam exec -- dune build @runtest
 	cd $(ASM_DIR) && ASM_BACKEND=melange ASM_MELANGE=true opam exec -- dune build @runtest
 
-# The transitive purity and layer audits (ง1, ง2.2, ง3.7, ง5.1), and the
+# The M1 fixtures. ยง12 has a two-mode policy and the dependency edges here are
+# what enforce it: asm-fixtures-check needs NO cross toolchain, so every
+# ordinary test run and every portable CI leg consumes the checked-in bytes.
+# Only asm-fixtures-regen sits downstream of asm-cross-setup, which builds all
+# four CompCert installations and is far too expensive to put on the path of
+# `make asm-test`.
+asm-fixtures-check:
+	tools/asm-fixture-gen.sh --check
+
+asm-cross-setup:
+	tools/compcert-cross-smoke.sh all
+
+# A regeneration difference is a reviewed failure, not a refresh: it can change
+# accepted syntax, relocations, or instruction coverage, i.e. the M1 scope.
+asm-fixtures-regen: asm-cross-setup
+	tools/asm-fixture-gen.sh --regen
+
+# The reference-assembler artifacts M1.5 compares our encoder against. --rehash
+# folds them into the same manifest, so asm-fixtures-check covers them too.
+asm-oracle: asm-fixtures-regen
+	tools/asm-fixture-oracle.sh all
+	tools/asm-fixture-gen.sh --rehash
+
+# The transitive purity and layer audits (ยง1, ยง2.2, ยง3.7, ยง5.1), and the
 # planted violations that prove they can fail. Guardrail 6: run these before
 # treating a successful JavaScript build as evidence of portability - a package
 # shipping a JS runtime replacement for its C primitives compiles cleanly and
@@ -251,4 +274,5 @@ compcert-export-archive-all:
   compcert-build-from-archive compcert-lib-sync compcert-lib-build compcert-lib-run \
   compcert-export-archive compcert-export-unarchive compcert-export-build compcert-export-run \
   compcert-export-archive-all \
-  asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted asm-ci
+  asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
+  asm-fixtures-check asm-cross-setup asm-fixtures-regen asm-oracle asm-ci

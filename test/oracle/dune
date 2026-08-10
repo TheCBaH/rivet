@@ -1,0 +1,45 @@
+; The host side of the execution ABI (asm/docs/exec-abi-v1.md).
+;
+; Two stanzas, split by what they need from the operating system.
+;
+; asm_oracle       the wire itself: constants, the manifest writer, and the
+;                  four-step recovery validator. Pure OCaml over strings, no
+;                  Unix, so it builds and its tests run on every CI leg -
+;                  including the 31-bit linux/i386 and linux/arm/v7 ones, which
+;                  is why every address here is int64. Keeping it Unix-free is
+;                  also what lets §16.4's synthetic record cases - the terminal
+;                  fault schema no user-mode helper can publish, and records
+;                  interrupted on both sides of a commit store - be ordinary
+;                  unit tests instead of something only QEMU can produce.
+;
+; test_oracle      the synthetic conformance cases over asm_oracle. ppx_expect,
+;                  hence native only and outside the production closure by
+;                  construction; tools/asm-check-purity.sh classifies test/ as a
+;                  non-production tree and rejects any production library that
+;                  reaches it.
+;
+; Both carry the ASM_MELANGE gate the libraries use, because they depend on the
+; vendored Fmt, whose non-Melange stanza is disabled in that configuration.
+;
+; The QEMU process runner is deliberately not here: it needs Unix and the four
+; cross-assembled helpers, so it arrives with them (M0.3c/M0.3d) rather than
+; putting a toolchain dependency on the portable test path.
+
+(library
+ (name asm_oracle)
+ (modules abi manifest record)
+ (modes byte native)
+ (libraries fmt)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
+(library
+ (name test_oracle)
+ (modules test_record)
+ (modes byte native)
+ (libraries asm_oracle fmt)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

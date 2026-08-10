@@ -50,6 +50,9 @@ jobs:
     - name: build
       run: |
         ${{ env.EXEC }} make asm-build
+    - name: fixtures
+      run: |
+        ${{ env.EXEC }} make asm-fixtures-check
     - name: test
       run: |
         ${{ env.EXEC }} make asm-test
