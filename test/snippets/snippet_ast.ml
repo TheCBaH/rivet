@@ -16,18 +16,20 @@
    never produced by this assembler, and this file cannot change it. What is
    under test here is the assembler.
 
-   {1 Why some entries are [Needs]}
+   {1 [Needs], and why it is still here}
 
-   asm/docs/contracts.md §2.3 freezes M1 at the 24 encoding forms the four
-   return-42 fixtures emit; §4.3 lists what is deliberately absent, PC-relative
-   expressions and fixups among it. Most §16.3 snippets are outside that set -
-   they exist to trap, to spin, to test SP alignment - so they cannot be
-   assembled today and are recorded as [Needs] with the form they want.
+   M1 froze the assembler at the 24 encoding forms the four return-42 fixtures
+   emit, and §4.3 listed what was deliberately absent - PC-relative expressions
+   and fixups among it. Six §16.3 snippets were outside that set, so they could
+   not be assembled and were recorded as [Needs] naming the form they wanted:
+   they exist to spin and to check SP alignment, which is exactly what a fixup
+   is for.
 
-   That is the point of listing them rather than dropping them. §4.3's list of
-   deliberate absences is prose; this corpus is the same claim as data, checked
-   on every run, and each M2 form moves an entry from [Needs] to a hexdump that
-   has to match. An entry that vanished would take its scope statement with it. *)
+   M2 supplied those forms and all six became hexdumps that have to match, so
+   nothing is [Needs] today. The constructor stays because that is how the
+   corpus states a scope boundary - as data checked on every run rather than as
+   prose - and the next milestone will have one of its own. An entry that
+   vanished instead would take its scope statement with it. *)
 
 module Sb = Asm_oracle.Snippet_bytes
 
@@ -55,25 +57,76 @@ type entry = { name : string; frozen : Sb.t -> string; built : built }
 module Make (T : Target_intf.Target.TARGET) = struct
   exception Refuse of string
 
+  (* A snippet is laid out and bound, not merely encoded. §16.3's [spin] is
+     [b .] and [sp_align] branches over three instructions, and a branch's bytes
+     are not decided by [encode] - it writes a placeholder and hands back a
+     fixup. Running the corpus through [plan_image] and [bind_image] is what
+     turns those into the frozen bytes, and it uses the *production* patcher and
+     the production relaxation fixpoint rather than a second copy that could
+     agree with itself.
+
+     The base is zero because §16.3's constants are position-independent
+     snippets: every branch in them is internal, so the bound bytes do not
+     depend on where they land, and the frozen table has no address in it. *)
+  let base = 0L
+
   let assemble (insns : T.Instruction.t list) =
-    let one i =
+    let fragments_of i =
       match T.lower_instruction T.default_state i with
       | Error d -> raise (Refuse (Foundation.Diagnostic.message d))
       | Ok lowered ->
           List.map
             (fun l ->
-              match T.encode l with
-              | Error d -> raise (Refuse (Foundation.Diagnostic.message d))
-              (* The shortest rung, which is what a corpus snippet with a
-                 resolved target would have been assembled as anyway. *)
-              | Ok (`Fixed a) | Ok (`Relax (a :: _)) ->
-                  (a.Asm_core.Lowered_ast.bytes, Fmt.to_to_string T.Lowered.pp l)
-              | Ok (`Relax []) -> raise (Refuse "empty relaxation ladder"))
+              let origin = Foundation.Origin.synthesized ~pass:"snippet" () in
+              let frag =
+                match T.encode l with
+                | Error d -> raise (Refuse (Foundation.Diagnostic.message d))
+                | Ok (`Fixed a) ->
+                    Asm_core.Lowered_ast.Bytes
+                      {
+                        bytes = a.Asm_core.Lowered_ast.bytes;
+                        form = Some a.Asm_core.Lowered_ast.form;
+                        fixups = a.Asm_core.Lowered_ast.fixups;
+                        origin;
+                      }
+                | Ok (`Relax alts) -> Asm_core.Lowered_ast.Relax { alts; origin }
+              in
+              (frag, Fmt.to_to_string T.Lowered.pp l))
             lowered
     in
-    match List.concat_map one insns with
-    | parts ->
-        Assembled { bytes = String.concat "" (List.map fst parts); canonical = List.map snd parts }
+    match List.concat_map fragments_of insns with
+    | parts -> (
+        let section =
+          {
+            Asm_core.Lowered_ast.sec =
+              { Asm_core.Lowered_ast.sec_name = ".text"; perms = Asm_core.Perms.rx; alignment = 4 };
+            fragments = List.map fst parts;
+          }
+        in
+        let m =
+          {
+            Asm_core.Lowered_ast.unit_name = "snippet";
+            sections = [ section ];
+            symbols = [];
+            declared_sections = [];
+          }
+        in
+        let fail ds =
+          Refused (String.concat "; " (List.map (fun d -> Foundation.Diagnostic.message d) ds))
+        in
+        match Image.plan_image ~evaluate:T.evaluate_fixup Image.default_policy [ m ] with
+        | Error ds -> fail ds
+        | Ok laid_out -> (
+            match Image.bind_image laid_out ~addresses:[ (".text", base) ] with
+            | Error ds -> fail ds
+            | Ok img -> (
+                match
+                  List.find_opt
+                    (fun (s : Image.segment) -> String.equal s.Image.name ".text")
+                    img.Image.segments
+                with
+                | None -> Refused "the bound image has no .text"
+                | Some s -> Assembled { bytes = s.Image.bytes; canonical = List.map snd parts })))
     | exception Refuse m -> Refused m
 
   (* Padding is the target's answer too, and the [.align] fill is the one blob
@@ -101,12 +154,12 @@ module Aarch64_corpus = struct
   module A = Make (Aarch64)
 
   let r n = reg_exn ~target:T.name T.Reg.find n
-  let insn op ops : T.Instruction.t = { T.Instruction.op; ops }
+  let insn op ops : T.Instruction.t = T.Instruction.mk op ops
   let reg n = T.Operand.Reg (r n)
   let imm n = T.Operand.Imm (Foundation.Bigint.of_int n)
 
   let mem ?(writeback = false) base offset =
-    T.Operand.Mem { T.Mem.base = r base; offset; writeback; pre = true }
+    T.Operand.Mem { T.Mem.base = r base; offset = T.Disp.Const offset; writeback; pre = true }
 
   (* The CompCert 3.17 prologue/epilogue, which is exactly the M1 fixture. *)
   let return_n n =
@@ -148,12 +201,31 @@ module Aarch64_corpus = struct
       {
         name = "spin";
         frozen = (fun s -> s.Sb.spin);
-        built = Needs "b . - PC-relative branch, §4.3 defers fixups to M2";
+        built = A.assemble T.Opcode.[ insn B [ T.Operand.Sym Asm_core.Expr.Current_location ] ];
       };
       {
+        (* A64 has no predication outside [csel], so unlike A32 this one really
+           does branch: [b.eq] jumps over the five-byte-equivalent single word
+           that loads 41, which is [. + 8]. *)
         name = "sp_align";
         frozen = (fun s -> s.Sb.sp_align);
-        built = Needs "and/cmp/b.eq - three forms plus a PC-relative branch";
+        built =
+          A.assemble
+            T.Opcode.
+              [
+                insn Mov [ reg "x0"; reg "sp" ];
+                insn And [ reg "x0"; reg "x0"; imm 15 ];
+                insn Cmp [ reg "x0"; imm 0 ];
+                insn Movz [ reg "w0"; imm 42 ];
+                insn (Bcond T.Cond.Eq)
+                  [
+                    T.Operand.Sym
+                      Asm_core.Expr.(
+                        Binary (Add, Current_location, Const (Foundation.Bigint.of_int 8)));
+                  ];
+                insn Movz [ reg "w0"; imm 41 ];
+                insn Ret [];
+              ];
       };
       {
         (* [sub x1, sp, #4, lsl #12] carves a 16384-byte gap below sp, then
@@ -212,7 +284,7 @@ module Arm_corpus = struct
   module A = Make (Arm)
 
   let r n = reg_exn ~target:T.name T.Reg.find n
-  let insn op ops : T.Instruction.t = { T.Instruction.op; ops }
+  let insn op ops : T.Instruction.t = T.Instruction.mk op ops
   let reg n = T.Operand.Reg (r n)
   let imm n = T.Operand.Imm (Foundation.Bigint.of_int n)
   let mem base offset = T.Operand.Mem { T.Mem.base = r base; offset; writeback = false; pre = true }
@@ -266,12 +338,26 @@ module Arm_corpus = struct
       {
         name = "spin";
         frozen = (fun s -> s.Sb.spin);
-        built = Needs "b . - PC-relative branch, §4.3 defers fixups to M2";
+        built = A.assemble T.Opcode.[ insn B [ T.Operand.Sym Asm_core.Expr.Current_location ] ];
       };
       {
+        (* A32 needs no branch here: the two results are written by predicated
+           moves, which is what the condition field is for and why the frozen
+           bytes are six words with no jump in them. The residue is 7 rather
+           than x86's 8 or 12 because the A32 prologue pushes nothing. *)
         name = "sp_align";
         frozen = (fun s -> s.Sb.sp_align);
-        built = Needs "and/cmp plus the conditional-execution suffixes moveq/movne";
+        built =
+          A.assemble
+            T.Opcode.
+              [
+                insn Mov [ reg "r0"; reg "sp" ];
+                insn And [ reg "r0"; reg "r0"; imm 7 ];
+                insn Cmp [ reg "r0"; imm 0 ];
+                T.Instruction.mk ~cond:T.Cond.Eq Mov [ reg "r0"; imm 42 ];
+                T.Instruction.mk ~cond:T.Cond.Ne Mov [ reg "r0"; imm 41 ];
+                insn Bx [ reg "lr" ];
+              ];
       };
       {
         (* [sub r1, sp, #0x4000] carves a 16384-byte gap below sp, then
@@ -328,6 +414,16 @@ module X86_shared = struct
   let insn op width ops : Instruction.t = Instruction.mk op width ops
   let imm n = Operand.Imm (Foundation.Bigint.of_int n)
 
+  (* [.] and [. + k], the two branch targets §16.3 needs. A snippet has no
+     labels, so a self-loop and a forward jump over three instructions are both
+     written against the current location - which is exactly how GAS reads
+     [jmp .], and why {!Image} resolves [.] to the instruction address rather
+     than to the PC the architecture measures from. *)
+  let here = Operand.Sym Asm_core.Expr.Current_location
+
+  let here_plus k =
+    Operand.Sym Asm_core.Expr.(Binary (Add, Current_location, Const (Foundation.Bigint.of_int k)))
+
   (* [frame] is the §11 stack adjustment: 8 on x86-64 and 12 on x86-32, because
      the return address differs in width and the ABI wants the stack 16-byte
      aligned at the call. Getting it wrong is what the sp_align case exists to
@@ -347,6 +443,27 @@ module X86_shared = struct
     ]
 
   let trap_insns = [ insn Opcode.Ud2 32 [] ]
+  let spin_insns ~width = [ insn Opcode.Jmp width [ here ] ]
+
+  (* §16.3's alignment probe: it returns 42 when the incoming stack pointer is
+     where the ABI says it should be and 41 when it is not. [frame] is the same
+     §11 return-address width [return_n] adjusts by, because that *is* the
+     residue - the ABI wants sp 16-byte aligned at the call site, so on entry it
+     is short by exactly the pushed return address.
+
+     The [je] jumps over one five-byte [mov], so its target is [. + 7]: two for
+     the branch itself and five for what it skips. Written against [.] rather
+     than a label because a snippet has none. *)
+  let sp_align_insns ~sp ~ax ~eax ~width ~frame =
+    [
+      insn Opcode.Mov width [ Operand.Reg sp; Operand.Reg ax ];
+      insn Opcode.And width [ imm 15; Operand.Reg ax ];
+      insn Opcode.Cmp width [ imm frame; Operand.Reg ax ];
+      insn Opcode.Mov 32 [ imm 42; Operand.Reg eax ];
+      insn (Opcode.Jcc Cc.E) width [ here_plus 7 ];
+      insn Opcode.Mov 32 [ imm 41; Operand.Reg eax ];
+      insn Opcode.Ret width [];
+    ]
 
   let callee_clobber_insns ~bx ~eax ~width =
     [
@@ -391,21 +508,13 @@ module X86_shared = struct
       insn Opcode.Jmp width [ Operand.Reg dx ];
     ]
 
-  let entries ~return_n ~trap ~callee_clobber ~stack_full ~stack_over ~sp_corrupt =
+  let entries ~return_n ~trap ~callee_clobber ~stack_full ~stack_over ~sp_corrupt ~spin ~sp_align =
     [
       { name = "return42"; frozen = (fun s -> s.Sb.return42); built = return_n 42 };
       { name = "return41"; frozen = (fun s -> s.Sb.return41); built = return_n 41 };
       { name = "trap"; frozen = (fun s -> s.Sb.trap); built = trap };
-      {
-        name = "spin";
-        frozen = (fun s -> s.Sb.spin);
-        built = Needs "jmp . - PC-relative branch, §4.3 defers fixups to M2";
-      };
-      {
-        name = "sp_align";
-        frozen = (fun s -> s.Sb.sp_align);
-        built = Needs "and/cmp/jcc - two ALU extensions plus a PC-relative branch";
-      };
+      { name = "spin"; frozen = (fun s -> s.Sb.spin); built = spin };
+      { name = "sp_align"; frozen = (fun s -> s.Sb.sp_align); built = sp_align };
       { name = "stack_full"; frozen = (fun s -> s.Sb.stack_full); built = stack_full };
       { name = "stack_over"; frozen = (fun s -> s.Sb.stack_over); built = stack_over };
       { name = "sp_corrupt"; frozen = (fun s -> s.Sb.sp_corrupt); built = sp_corrupt };
@@ -437,6 +546,10 @@ module X86_64_corpus = struct
       ~sp_corrupt:
         (A.assemble
            (X86_shared.sp_corrupt_insns ~sp:(r "rsp") ~dx:(r "rdx") ~eax:(r "eax") ~width:64))
+      ~spin:(A.assemble (X86_shared.spin_insns ~width:64))
+      ~sp_align:
+        (A.assemble
+           (X86_shared.sp_align_insns ~sp:(r "rsp") ~ax:(r "rax") ~eax:(r "eax") ~width:64 ~frame:8))
 
   let nops = A.nop
 end
@@ -465,6 +578,10 @@ module X86_32_corpus = struct
       ~sp_corrupt:
         (A.assemble
            (X86_shared.sp_corrupt_insns ~sp:(r "esp") ~dx:(r "edx") ~eax:(r "eax") ~width:32))
+      ~spin:(A.assemble (X86_shared.spin_insns ~width:32))
+      ~sp_align:
+        (A.assemble
+           (X86_shared.sp_align_insns ~sp:(r "esp") ~ax:(r "eax") ~eax:(r "eax") ~width:32 ~frame:12))
 
   let nops = A.nop
 end

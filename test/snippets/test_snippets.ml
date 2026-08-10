@@ -79,6 +79,20 @@ let%expect_test "x86_64: AST assembles to the frozen bytes" =
       | ud2
       assembled      0f 0b
       == frozen
+    spin
+      | jmp .
+      assembled      eb fe
+      == frozen
+    sp_align
+      | movq %rsp, %rax
+      | andq $15, %rax
+      | cmpq $8, %rax
+      | movl $42, %eax
+      | je (. + 7)
+      | movl $41, %eax
+      | ret
+      assembled      48 89 e0 48 83 e0 0f 48 83 f8 08 b8 2a 00 00 00 74 05 b8 29 00 00 00 c3
+      == frozen
     stack_full
       | leaq -16376(%rsp), %rax
       | movb $0, (%rax)
@@ -132,6 +146,20 @@ let%expect_test "x86_32: AST assembles to the frozen bytes" =
     trap
       | ud2
       assembled      0f 0b
+      == frozen
+    spin
+      | jmp .
+      assembled      eb fe
+      == frozen
+    sp_align
+      | movl %esp, %eax
+      | andl $15, %eax
+      | cmpl $12, %eax
+      | movl $42, %eax
+      | je (. + 7)
+      | movl $41, %eax
+      | ret
+      assembled      89 e0 83 e0 0f 83 f8 0c b8 2a 00 00 00 74 05 b8 29 00 00 00 c3
       == frozen
     stack_full
       | leal -16380(%esp), %eax
@@ -203,6 +231,19 @@ let%expect_test "arm: AST assembles to the frozen bytes" =
       | udf #0
       assembled      f0 00 f0 e7
       == frozen
+    spin
+      | b .
+      assembled      fe ff ff ea
+      == frozen
+    sp_align
+      | mov r0, sp
+      | and r0, r0, #7
+      | cmp r0, #0
+      | moveq r0, #42
+      | movne r0, #41
+      | bx lr
+      assembled      0d 00 a0 e1 07 00 00 e2 00 00 50 e3 2a 00 a0 03 29 00 a0 13 1e ff 2f e1
+      == frozen
     stack_full
       | sub r1, sp, #16384
       | mov r0, #0
@@ -253,9 +294,23 @@ let%expect_test "aarch64: AST assembles to the frozen bytes" =
       | udf #0
       assembled      00 00 00 00
       == frozen
+    spin
+      | b .
+      assembled      00 00 00 14
+      == frozen
+    sp_align
+      | mov x0, sp
+      | and x0, x0, #15
+      | cmp x0, #0
+      | movz w0, #42
+      | b.eq (. + 8)
+      | movz w0, #41
+      | ret
+      assembled      e0 03 00 91 00 0c 40 92 1f 00 00 f1 40 05 80 52 40 00 00 54 20 05 80 52 c0 03 5f d6
+      == frozen
     stack_full
       | sub x1, sp, #4, lsl #12
-      | strb wzr, [x1, #0]
+      | strb wzr, [x1]
       | movz w0, #42
       | ret
       assembled      e1 13 40 d1 3f 00 00 39 40 05 80 52 c0 03 5f d6
@@ -263,7 +318,7 @@ let%expect_test "aarch64: AST assembles to the frozen bytes" =
     stack_over
       | sub x1, sp, #4, lsl #12
       | sub x1, x1, #1
-      | strb wzr, [x1, #0]
+      | strb wzr, [x1]
       | movz w0, #42
       | ret
       assembled      e1 13 40 d1 21 04 00 d1 3f 00 00 39 40 05 80 52 c0 03 5f d6
@@ -328,15 +383,15 @@ let%expect_test "the M1 scope frontier, per snippet and profile" =
       arm      ok
       aarch64  ok
     spin
-      x86_32   needs: jmp . - PC-relative branch, §4.3 defers fixups to M2
-      x86_64   needs: jmp . - PC-relative branch, §4.3 defers fixups to M2
-      arm      needs: b . - PC-relative branch, §4.3 defers fixups to M2
-      aarch64  needs: b . - PC-relative branch, §4.3 defers fixups to M2
+      x86_32   ok
+      x86_64   ok
+      arm      ok
+      aarch64  ok
     sp_align
-      x86_32   needs: and/cmp/jcc - two ALU extensions plus a PC-relative branch
-      x86_64   needs: and/cmp/jcc - two ALU extensions plus a PC-relative branch
-      arm      needs: and/cmp plus the conditional-execution suffixes moveq/movne
-      aarch64  needs: and/cmp/b.eq - three forms plus a PC-relative branch
+      x86_32   ok
+      x86_64   ok
+      arm      ok
+      aarch64  ok
     stack_full
       x86_32   ok
       x86_64   ok
@@ -358,7 +413,7 @@ let%expect_test "the M1 scope frontier, per snippet and profile" =
       arm      ok
       aarch64  ok
 
-    dogfooded 28 of 36 |}]
+    dogfooded 36 of 36 |}]
 
 (* {1 Padding}
 

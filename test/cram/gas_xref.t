@@ -69,7 +69,7 @@ and [ret x30] is printed [ret], by both.
   00000000  ef 03 00 91  mov x15, sp                [aarch64.add-imm]
   00000004  ef 7b bf a9  stp x15, x30, [sp, #-16]!  [aarch64.stp-pre]
   00000008  40 05 80 52  movz w0, #42               [aarch64.movz]
-  0000000c  fe 07 40 f9  ldr x30, [sp, #8]          [aarch64.ldr-uoff]
+  0000000c  fe 07 40 f9  ldr x30, [sp, #8]          [aarch64.ldr64]
   00000010  ff 43 00 91  add sp, sp, #16            [aarch64.add-imm]
   00000014  c0 03 5f d6  ret                        [aarch64.ret]
 

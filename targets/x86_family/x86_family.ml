@@ -217,6 +217,7 @@ module Opcode = struct
     | Lea
     | Ret
     | Xor
+    | And
     | Cmp
     | Imul
     | Cmov of Cc.t
@@ -233,6 +234,7 @@ module Opcode = struct
     | Lea -> "lea"
     | Ret -> "ret"
     | Xor -> "xor"
+    | And -> "and"
     | Cmp -> "cmp"
     | Imul -> "imul"
     | Cmov c -> "cmov" ^ Cc.name c
@@ -245,8 +247,8 @@ module Opcode = struct
   (* The machine encodes add and sub as one opcode with the operation in the
      ModR/M reg field, so the opcode and its extension are two spellings of one
      fact and live together. [-1] is "not an ALU-immediate operation". *)
-  let to_ext = function Add -> 0 | Sub -> 5 | _ -> -1
-  let of_ext = function 0 -> Some Add | 5 -> Some Sub | _ -> None
+  let to_ext = function Add -> 0 | And -> 4 | Sub -> 5 | Cmp -> 7 | _ -> -1
+  let of_ext = function 0 -> Some Add | 4 -> Some And | 5 -> Some Sub | 7 -> Some Cmp | _ -> None
 
   (* The other ALU direction: one byte per operation, r/m written from reg.
      Three rows because three are what the fixtures select - [xorl] to zero a
@@ -1108,6 +1110,7 @@ module Make (M : MODE) = struct
     | _, "mov" -> widthed ~allow8:true Opcode.Mov
     | _, "lea" -> widthed Opcode.Lea
     | _, "xor" -> widthed Opcode.Xor
+    | _, "and" -> widthed Opcode.And
     | _, "cmp" -> widthed Opcode.Cmp
     | _, "imul" -> widthed Opcode.Imul
     (* The width comes from the operands rather than from a suffix, because
@@ -1179,7 +1182,7 @@ module Make (M : MODE) = struct
              i.Instruction.width)
     in
     match (i.Instruction.op, i.Instruction.ops) with
-    | (Opcode.Add | Opcode.Sub), [ Operand.Imm v; dst ] -> (
+    | (Opcode.Add | Opcode.And | Opcode.Sub | Opcode.Cmp), [ Operand.Imm v; dst ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (

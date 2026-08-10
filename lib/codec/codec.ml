@@ -775,10 +775,10 @@ let rec contains_relax : type a k. (a, k) t -> bool = function
   | Alt { alts; _ } -> List.exists (fun a -> contains_relax a.body) alts
   | Empty | Const _ | Field _ | Fixup _ -> false
 
-let rec check : type a k.
+let rec check_node : type a k.
     equal_kind:(k -> k -> bool) -> kind_name:(k -> string) -> (a, k) t -> problem list =
  fun ~equal_kind ~kind_name node ->
-  let check x = check ~equal_kind ~kind_name x in
+  let check x = check_node ~equal_kind ~kind_name x in
   let fixup_groups where body =
     let entries = fixups_here body in
     let names = List.sort_uniq compare (List.map (fun (n, _, _, _) -> n) entries) in
@@ -805,7 +805,15 @@ let rec check : type a k.
              "two relaxation ladders can be realized on one path; a form may contain at most one";
          ]
        else [])
-      @ fixup_groups "seq" node @ check a @ check b
+      (* No fixup grouping. A group is "the slices of one name on one
+         realized form", and a [Seq] is a *fragment* of a form: grouping at
+         every node would look at [immhi] without [immlo] one level down and
+         report the low bits as uncovered, which is a statement about where the
+         traversal happened to stop rather than about the encoding. The grouping
+         is done once per realized form, at the [Alt] and [Relax] branches and
+         at the root. *)
+      @ check a
+      @ check b
   | Iso_table { name; entries; equal; show; inner } ->
       let where = "iso_table " ^ name in
       let inner_width = match inner with Field { width; _ } -> Some width | _ -> None in
@@ -923,6 +931,21 @@ let rec check : type a k.
       nesting @ ordered widths @ ambiguous
       @ List.concat_map (fun r -> fixup_groups (where ^ "/" ^ r.rung_label) r.rung_body) rungs
       @ List.concat_map (fun r -> check r.rung_body) rungs
+
+(* The root is itself a realized form when the codec is not an [Alt] - a single
+   instruction description, which the target tests build directly - so its
+   fixups are grouped here. When the root *is* an [Alt], [fixups_here] stops
+   there and this adds nothing, because the grouping already happened per
+   branch. *)
+let check ~equal_kind ~kind_name node =
+  let entries = fixups_here node in
+  let names = List.sort_uniq compare (List.map (fun (n, _, _, _) -> n) entries) in
+  List.concat_map
+    (fun n ->
+      check_fixup_group ~equal_kind ~kind_name "codec" n
+        (List.filter (fun (m, _, _, _) -> String.equal m n) entries))
+    names
+  @ check_node ~equal_kind ~kind_name node
 
 (* {1 Generated finite-domain tests}
 

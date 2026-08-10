@@ -12,7 +12,7 @@
    parser and any diagnostic see the same spans the lexer produced, and there is
    no second representation of a token to keep in step. *)
 
-%token <Token.t> IDENT DIRECTIVE INT STRING REGISTER LOCAL
+%token <Token.t> IDENT DIRECTIVE INT STRING REGISTER LOCAL MODIFIER
 %token <Token.t> COLON COMMA SEMI IMMSIGIL
 %token <Token.t> LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE
 %token <Token.t> PLUS MINUS STAR SLASH PERCENT AMP PIPE CARET TILDE BANG EQUALS
@@ -23,6 +23,12 @@
    operators bind tightest, then the bitwise ones, then addition. Writing C's
    table here would assemble [1 + 2 | 3] differently from every other assembler
    and the difference would only show up in a value, never in a diagnostic. *)
+(* A modifier is looser than every operator, so it swallows the whole expression
+   to its right: measured, GAS assembles [#:lower16:g+5] to a R_ARM_MOVW_ABS_NC
+   against [g] with 5 in the field, which is [:lower16:(g + 5)] and not
+   [(:lower16:g) + 5]. The two differ whenever the addend crosses the halfword
+   boundary, so this is a value question rather than a spelling one. *)
+%nonassoc MODIFIER_PREC
 %left PLUS MINUS
 %left PIPE AMP CARET
 %left STAR SLASH PERCENT LSHIFT RSHIFT
@@ -125,7 +131,7 @@ slice:
    means is not this grammar's business. *)
 atom:
   | IDENT { $1 } | DIRECTIVE { $1 } | INT { $1 } | STRING { $1 } | REGISTER { $1 } | LOCAL { $1 }
-  | IMMSIGIL { $1 }
+  | MODIFIER { $1 } | IMMSIGIL { $1 }
   | LPAREN { $1 } | RPAREN { $1 } | LBRACKET { $1 } | RBRACKET { $1 } | LBRACE { $1 } | RBRACE { $1 }
   | PLUS { $1 } | MINUS { $1 } | STAR { $1 } | SLASH { $1 } | PERCENT { $1 }
   | AMP { $1 } | PIPE { $1 } | CARET { $1 } | TILDE { $1 } | BANG { $1 }
@@ -148,6 +154,11 @@ expr:
     { match Token.kind $1 with
       | Token.Local_label (n, d) -> Expr.Local_ref (n, d)
       | _ -> Expr.Const Foundation.Bigint.zero }
+  (* A modifier is a prefix, not an operator: [:lower16:g + 4] takes the low
+     half of the whole sum, so it wraps an expression rather than competing with
+     one. See the precedence declaration above for the measurement. *)
+  | MODIFIER expr %prec MODIFIER_PREC
+    { Expr.Modifier ((match Token.kind $1 with Token.Modifier m -> m | _ -> ""), $2) }
   | LPAREN expr RPAREN { $2 }
   | MINUS expr %prec UNARY { Expr.Unary (Expr.Neg, $2) }
   | TILDE expr %prec UNARY { Expr.Unary (Expr.Lognot, $2) }

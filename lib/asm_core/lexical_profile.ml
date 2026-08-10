@@ -20,6 +20,13 @@ type t = {
           the target operand parser can tell [r12] from a symbol *)
   identifier_extra : char list;
       (** characters beyond letters and digits that may appear in a name *)
+  modifier_syntax : string list;
+      (** The relocation modifiers this dialect spells between colons: [lower16] and [upper16] on
+          ARM, [lo12] on AArch64, none on x86. The *names* are declared rather than a bare "colons
+          may wrap an identifier" switch, because [:] also terminates a label and GAS accepts two
+          labels on one line - so [foo: bar: mov r0, r1] would otherwise lex [bar] as a modifier.
+          Listing the names means the ambiguity is decided by the dialect rather than by whichever
+          reading the scanner reaches first. *)
 }
 
 (* [-] is deliberately not an identifier character in any dialect, even though
@@ -45,7 +52,7 @@ let gas_identifier_extra = [ '_'; '.'; '$' ]
    the constructor below, whose labelled arguments make each target state its
    whole dialect explicitly rather than inherit a default it did not read. *)
 let make ~name ~comment_introducers ?statement_separator ?immediate_sigil ?register_sigil
-    ?(identifier_extra = gas_identifier_extra) () =
+    ?(identifier_extra = gas_identifier_extra) ?(modifier_syntax = []) () =
   {
     name;
     comment_introducers;
@@ -53,10 +60,12 @@ let make ~name ~comment_introducers ?statement_separator ?immediate_sigil ?regis
     immediate_sigil;
     register_sigil;
     identifier_extra;
+    modifier_syntax;
   }
 
 let pp ppf t =
-  Fmt.pf ppf "%s: comments=%s immediate=%s register=%s" t.name
+  Fmt.pf ppf "%s: comments=%s immediate=%s register=%s modifiers=%s" t.name
     (String.concat "," t.comment_introducers)
     (match t.immediate_sigil with None -> "none" | Some c -> String.make 1 c)
     (match t.register_sigil with None -> "none" | Some c -> String.make 1 c)
+    (match t.modifier_syntax with [] -> "none" | ms -> String.concat "," ms)

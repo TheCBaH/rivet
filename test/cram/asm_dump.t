@@ -611,17 +611,24 @@
   0000001c  1e ff 2f e1  bx lr             [arm.bx]
   ########## arm codec
   alt arm
-    [0 cost=0] bx               bx(){1110 000100101111111111110001 rm}
-    [1 cost=0] dp-imm           dp-imm(){1110 001 dp:4u s:1u rn rd modimm}
-    [2 cost=0] dp-reg           dp-reg(){1110 000 dp:4u s:1u rn rd shift-amount:5u shift-kind:2u 0 rm}
-    [3 cost=0] ldst-imm         ldst-imm(){1110 010 1 u:1u b:1u 0 l:1u rn rt imm12:12u}
-    [4 cost=0] udf              udf(){1110 01111111 imm12:12u 1111 imm4:4u}
-    [5 cost=0] bl               bl(){1110 1011 <target:24@0 pcrel-call>}
+    [0 cost=0] bx               bx(){cond 000100101111111111110001 rm}
+    [1 cost=0] movw             movw(){cond 00110000 <imm:4@12 movw-abs-nc> rd <imm:12@0 movw-abs-nc>}
+    [2 cost=0] movt             movt(){cond 00110100 <imm:4@12 movt-abs> rd <imm:12@0 movt-abs>}
+    [3 cost=0] dp-imm           dp-imm(){cond 001 dp:4u s:1u rn rd modimm}
+    [4 cost=0] dp-reg           dp-reg(){cond 000 dp:4u s:1u rn rd shift-amount:5u shift-kind:2u 0 rm}
+    [5 cost=0] ldst-imm         ldst-imm(){cond 010 1 u:1u b:1u 0 l:1u rn rt imm12:12u}
+    [6 cost=0] udf              udf(){1110 01111111 imm12:12u 1111 imm4:4u}
+    [7 cost=0] bl               bl(){cond 1011 <target:24@0 pcrel-call>}
+    [8 cost=0] b                b(){cond 1010 <target:24@0 pcrel-b26>}
+    [9 cost=0] mul              mul(){cond 0000000 s:1u rd 0000 rm 1001 rn}
+    [10 cost=0] mla              mla(){cond 0000001 s:1u rd ra rm 1001 rn}
+  cond[16]{cond:4u}
   rm(){rm:4u}
-  rn(){rn:4u}
   rd(){rd:4u}
+  rn(){rn:4u}
   modimm(){rot:4u imm8:8u}
   rt(){rt:4u}
+  ra(){ra:4u}
   ########## aarch64 tokens
   1 5 directive .text
   6 1 eol \n
@@ -763,7 +770,7 @@
     bytes ef 03 00 91              [aarch64.add-imm]
     bytes ef 7b bf a9              [aarch64.stp-pre]
     bytes 40 05 80 52              [aarch64.movz]
-    bytes fe 07 40 f9              [aarch64.ldr-uoff]
+    bytes fe 07 40 f9              [aarch64.ldr64]
     bytes ff 43 00 91              [aarch64.add-imm]
     bytes c0 03 5f d6              [aarch64.ret]
     size asm_test_entry = (. - asm_test_entry)
@@ -790,23 +797,46 @@
   00000000  ef 03 00 91  mov x15, sp                [aarch64.add-imm]
   00000004  ef 7b bf a9  stp x15, x30, [sp, #-16]!  [aarch64.stp-pre]
   00000008  40 05 80 52  movz w0, #42               [aarch64.movz]
-  0000000c  fe 07 40 f9  ldr x30, [sp, #8]          [aarch64.ldr-uoff]
+  0000000c  fe 07 40 f9  ldr x30, [sp, #8]          [aarch64.ldr64]
   00000010  ff 43 00 91  add sp, sp, #16            [aarch64.add-imm]
   00000014  c0 03 5f d6  ret                        [aarch64.ret]
   ########## aarch64 codec
   alt aarch64
-    [0 cost=0] add-imm          add-imm(){100100010 sh:1u imm12:12u rn rd}
-    [1 cost=0] stp-pre          stp-pre(){1010100110 imm7-scaled8 rt2 rn rt}
-    [2 cost=0] movz             movz(){sf:1u 10100101 hw:2u imm16:16u rd}
-    [3 cost=0] ldr-uoff         ldr-uoff(){1111100101 imm12-scaled8 rn rt}
-    [4 cost=0] ret              ret(){1101011001011111000000 rn 00000}
-    [5 cost=0] sub-imm          sub-imm(){110100010 sh:1u imm12:12u rn rd}
-    [6 cost=0] strb-uoff        strb-uoff(){0011100100 imm12:12u rn rt}
-    [7 cost=0] udf              udf(){0000000000000000 imm16:16u}
-    [8 cost=0] bl               bl(){100101 <target:26@0 pcrel-call26>}
+    [0 cost=0] add-imm          add-imm(){sf:1u 00100010 sh:1u imm12:12u rn rd}
+    [1 cost=0] sub-imm          sub-imm(){sf:1u 10100010 sh:1u imm12:12u rn rd}
+    [2 cost=0] addsub-shift     addsub-shift(){sf:1u op:1u s:1u 01011 shift:2u 0 rm imm6:6u rn rd}
+    [3 cost=0] logical-imm-32   logical-imm-32(){0 opc:2u 100100 bitmask32 rn rd}
+    [4 cost=0] logical-imm-64   logical-imm-64(){1 opc:2u 100100 bitmask64 rn rd}
+    [5 cost=0] madd             madd(){sf:1u 0011011000 rm 0 ra rn rd}
+    [6 cost=0] csel             csel(){sf:1u 0011010100 rm cond 00 rn rd}
+    [7 cost=0] stp-pre          stp-pre(){1010100110 imm7-scaled8 rt2 rn rt}
+    [8 cost=0] movz             movz(){sf:1u 10100101 hw:2u imm16:16u rd}
+    [9 cost=0] ldr8             ldr8(){00 111001 01 offset-scaled1 rn rt}
+    [10 cost=0] str8             str8(){00 111001 00 offset-scaled1 rn rt}
+    [11 cost=0] ldr16            ldr16(){01 111001 01 offset-scaled2 rn rt}
+    [12 cost=0] str16            str16(){01 111001 00 offset-scaled2 rn rt}
+    [13 cost=0] ldr32            ldr32(){10 111001 01 offset-scaled4 rn rt}
+    [14 cost=0] str32            str32(){10 111001 00 offset-scaled4 rn rt}
+    [15 cost=0] ldr64            ldr64(){11 111001 01 offset-scaled8 rn rt}
+    [16 cost=0] str64            str64(){11 111001 00 offset-scaled8 rn rt}
+    [17 cost=0] ret              ret(){1101011001011111000000 rn 00000}
+    [18 cost=0] udf              udf(){0000000000000000 imm16:16u}
+    [19 cost=0] adrp             adrp(){1 <page:2@0 adrp-page> 10000 <page:19@2 adrp-page> rd}
+    [20 cost=0] b                b(){000101 <target:26@0 pcrel-b26>}
+    [21 cost=0] b-cond           b-cond(){01010100 <target:19@0 pcrel-b19> 0 cond}
+    [22 cost=0] bl               bl(){100101 <target:26@0 pcrel-call26>}
+    [23 cost=0] subs-imm         subs-imm(){sf:1u 11100010 sh:1u imm12:12u rn rd}
   rn(){rn:5u}
   rd(){rd:5u}
+  rm(){rm:5u}
+  bitmask32(){n:1u immr:6u imms:6u}
+  bitmask64(){n:1u immr:6u imms:6u}
+  ra(){ra:5u}
+  cond[16]{cond:4u}
   imm7-scaled8(){imm7:7s}
   rt2(){rt2:5u}
   rt(){rt:5u}
-  imm12-scaled8(){imm12:12u}
+  offset-scaled1(){<offset:12@0 ldst8-lo12>}
+  offset-scaled2(){<offset:12@0 ldst16-lo12>}
+  offset-scaled4(){<offset:12@0 ldst32-lo12>}
+  offset-scaled8(){<offset:12@0 ldst64-lo12>}

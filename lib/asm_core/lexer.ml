@@ -244,39 +244,57 @@ let tokenize ~profile ~source =
               st.pos <- st.pos + 1;
               emit k start
             in
-            (if starts_with st "<<" then two Token.Lshift
-             else if starts_with st ">>" then two Token.Rshift
-             else
-               match c with
-               | ':' -> one Token.Colon
-               | ',' -> one Token.Comma
-               | '(' -> one Token.Lparen
-               | ')' -> one Token.Rparen
-               | '[' -> one Token.Lbracket
-               | ']' -> one Token.Rbracket
-               | '{' -> one Token.Lbrace
-               | '}' -> one Token.Rbrace
-               | '+' -> one Token.Plus
-               | '-' -> one Token.Minus
-               | '*' -> one Token.Star
-               | '/' -> one Token.Slash
-               | '%' -> one Token.Percent
-               | '&' -> one Token.Amp
-               | '|' -> one Token.Pipe
-               | '^' -> one Token.Caret
-               | '~' -> one Token.Tilde
-               | '!' -> one Token.Bang
-               | '=' -> one Token.Equals
-               | '@' -> one Token.At
-               | '.' -> one Token.Dot
-               | c ->
-                   st.pos <- st.pos + 1;
-                   error :=
-                     Some
-                       {
-                         message = Printf.sprintf "unexpected character %C" c;
-                         span = span_of st ~start;
-                       });
+            (* A declared modifier, [:lower16:] or [:lo12:], is one token. It is
+               matched against the dialect's list rather than recognized as
+               "colon, identifier, colon", because that shape is also two labels
+               on one line - [foo: bar: mov r0, r1], which GAS accepts. Matching
+               a declared name means the dialect decides, and a dialect that
+               declares none keeps [:] meaning exactly what it meant before. *)
+            let modifier =
+              if c <> ':' then None
+              else
+                List.find_opt
+                  (fun m -> starts_with st (":" ^ m ^ ":"))
+                  profile.Lexical_profile.modifier_syntax
+            in
+            (match modifier with
+            | Some m ->
+                st.pos <- st.pos + String.length m + 2;
+                emit (Token.Modifier m) start
+            | None -> (
+                if starts_with st "<<" then two Token.Lshift
+                else if starts_with st ">>" then two Token.Rshift
+                else
+                  match c with
+                  | ':' -> one Token.Colon
+                  | ',' -> one Token.Comma
+                  | '(' -> one Token.Lparen
+                  | ')' -> one Token.Rparen
+                  | '[' -> one Token.Lbracket
+                  | ']' -> one Token.Rbracket
+                  | '{' -> one Token.Lbrace
+                  | '}' -> one Token.Rbrace
+                  | '+' -> one Token.Plus
+                  | '-' -> one Token.Minus
+                  | '*' -> one Token.Star
+                  | '/' -> one Token.Slash
+                  | '%' -> one Token.Percent
+                  | '&' -> one Token.Amp
+                  | '|' -> one Token.Pipe
+                  | '^' -> one Token.Caret
+                  | '~' -> one Token.Tilde
+                  | '!' -> one Token.Bang
+                  | '=' -> one Token.Equals
+                  | '@' -> one Token.At
+                  | '.' -> one Token.Dot
+                  | c ->
+                      st.pos <- st.pos + 1;
+                      error :=
+                        Some
+                          {
+                            message = Printf.sprintf "unexpected character %C" c;
+                            span = span_of st ~start;
+                          }));
             loop ()
   in
   loop ();

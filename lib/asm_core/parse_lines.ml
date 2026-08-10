@@ -17,6 +17,7 @@ let to_menhir (t : Token.t) : Grammar.token =
   | Token.String _ -> Grammar.STRING t
   | Token.Register _ -> Grammar.REGISTER t
   | Token.Local_label _ -> Grammar.LOCAL t
+  | Token.Modifier _ -> Grammar.MODIFIER t
   | Token.Colon -> Grammar.COLON t
   | Token.Comma -> Grammar.COMMA t
   | Token.Semi -> Grammar.SEMI t

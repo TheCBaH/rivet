@@ -25,10 +25,12 @@ let%expect_test "every target's codec passes Codec.check" =
   List.iter
     (fun (module D : Target_intf.Target.DRIVER) -> show_list D.name (D.check_codec ()))
     Driver.Registry.drivers;
-  [%expect {|
+  [%expect
+    {|
     x86_32: none
     x86_64: none
-    arm: none
+    arm: alt arm: movw and dp-imm have overlapping fixed bits; priority 1 before 3 decides
+    arm: alt arm: movt and dp-imm have overlapping fixed bits; priority 2 before 3 decides
     aarch64: none
     |}]
 
@@ -106,6 +108,52 @@ let%expect_test "the scaled-offset relations round-trip over their declared doma
       why: the field is 7 signed bits scaled by eight, so the domain is 128 values; the declared boundary set is zero, both extremes and the two steps adjacent to them
       failures: none
     |}]
+
+(* A64's logical immediates are the second [Iso_fun] with no statically
+   checkable law, and unlike the scaled offsets their domain *is* exhaustible:
+   the encoding is 8192 (N, immr, imms) triples, so every value the relation can
+   express is enumerated and round-tripped. The value counts are printed because
+   "how many constants can a logical immediate express" is the fact that decides
+   whether lowering may reach for this form at all. *)
+let%expect_test "the bitmask-immediate relations round-trip exhaustively" =
+  List.iter
+    (fun datasize ->
+      let dom = Aarch64.bitmask_domain ~datasize in
+      Printf.printf "%s\n" (Fmt.to_to_string Codec.Finite.pp_domain dom);
+      show_list "  failures"
+        (Codec.Finite.round_trip (Aarch64.bitmask_codec ~datasize) dom ~equal:Int64.equal
+           ~show:(Printf.sprintf "0x%Lx")))
+    [ 32; 64 ];
+  [%expect
+    {|
+    aarch64.bitmask32: 1302 values, exhaustive
+      why: the field is N:immr:imms, so the domain is 8192 triples for 64-bit and 4096 for 32-bit; enumerating the values they decode to is a table scan rather than a sample
+      failures: none
+    aarch64.bitmask64: 5334 values, exhaustive
+      why: the field is N:immr:imms, so the domain is 8192 triples for 64-bit and 4096 for 32-bit; enumerating the values they decode to is a table scan rather than a sample
+      failures: none |}]
+
+(* The two values CompCert actually asks for, and the one it cannot: a bitmask
+   immediate is a rotated run of ones, so 7 and 6 are expressible and 5 - which
+   is not a contiguous run - is not. *)
+let%expect_test "which small constants are bitmask immediates" =
+  List.iter
+    (fun v ->
+      match Aarch64.encode_bitmask ~datasize:32 v with
+      | Some (n, immr, imms) -> Printf.printf "%Ld  n=%d immr=%d imms=%d\n" v n immr imms
+      | None -> Printf.printf "%Ld  not expressible\n" v)
+    (* 0 and all-ones are the two the architecture reserves: a run of ones as
+       long as the element would be four spellings of one value, so the encoding
+       excludes it, and there is no run of length zero. *)
+    [ 5L; 6L; 7L; 1L; 0L; 0xFFFFFFFFL ];
+  [%expect
+    {|
+    5  not expressible
+    6  n=0 immr=31 imms=1
+    7  n=0 immr=0 imms=2
+    1  n=0 immr=0 imms=0
+    0  not expressible
+    4294967295  not expressible |}]
 
 (* {1 The restricted linker}
 
@@ -218,7 +266,7 @@ let%expect_test "an ARM immediate outside the relation is rejected, not approxim
 
 let%expect_test "an AArch64 ldr offset that is not a multiple of eight is rejected" =
   attempt "aarch64" "\t.text\n\tldr x30, [sp, #4]\n";
-  [%expect {| aarch64.lower: ldr offset must be a multiple of eight for a 64-bit access |}]
+  [%expect {| aarch64.lower: offset must be a multiple of 8 for this access width |}]
 
 let%expect_test "a declared but undefined symbol is rejected" =
   attempt "x86_64" "\t.text\n\tret\n\t.globl nowhere\n";
@@ -748,3 +796,62 @@ let%expect_test "a branch form suffix names a rung, and an unknown one is refuse
       gap    0   3 bytes  eb 00 c3           jmp.d8 4194306   round trips
     x86.branch-suffix: jmp.d16: the branch form suffixes are .d8, .d32
     x86.simplify: unknown instruction jxx |}]
+
+(* {1 Relocation modifiers}
+
+   [:lower16:] and [:upper16:] are the whole of §D3 as it reaches a target: the
+   dialect declares the names, the lexer makes each one token, the grammar makes
+   it a prefix, and lowering consumes it. That last step is what these tests are
+   about. [Expr.fold] deliberately preserves a [Modifier], so a modifier that
+   lowering forgot to unwrap does not fail here - it survives to [bind_image]
+   and is reported as a residual, a diagnostic pointing at the wrong layer. *)
+
+let%expect_test "a split-field modifier lowers to two relocatable halves" =
+  disasm "arm"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tmovw r1, #:lower16:g\n\
+     \tmovt r1, #:upper16:g\n\
+     \tbx lr\n\
+     \t.globl g\n\
+     g:\n";
+  (* And with a nonzero addend, which is the case a REL target has to get right:
+     the addend is not in a record field but in the instruction, so it must
+     survive the same split as the address it is added to. *)
+  disasm "arm"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tmovw r1, #:lower16:g+5\n\
+     \tmovt r1, #:upper16:g+5\n\
+     \tbx lr\n\
+     \t.globl g\n\
+     g:\n";
+  [%expect
+    {|
+    40000000  0c 10 00 e3  movw r1, #12     [arm.movw]
+    40000004  00 10 44 e3  movt r1, #16384  [arm.movt]
+    40000008  1e ff 2f e1  bx lr            [arm.bx]
+    40000000  11 10 00 e3  movw r1, #17     [arm.movw]
+    40000004  00 10 44 e3  movt r1, #16384  [arm.movt]
+    40000008  1e ff 2f e1  bx lr            [arm.bx]
+    |}]
+
+let%expect_test "the modifier and the mnemonic must agree" =
+  (* Not interchangeable: [movt] given the low half writes the wrong sixteen
+     bits of every address, and nothing downstream can tell. *)
+  attempt "arm" "\t.text\n\t.globl g\ng:\n\tmovt r1, #:lower16:g\n";
+  attempt "arm" "\t.text\n\t.globl g\ng:\n\tmovw r1, #:upper16:g\n";
+  attempt "arm" "\t.text\n\t.globl g\ng:\n\tmovw r1, g\n";
+  [%expect
+    {|
+    arm.lower: movt takes #:upper16:, not #:lower16:
+    arm.lower: movw takes #:lower16:, not #:upper16:
+    arm.lower: movw needs a #:lower16: operand |}]
+
+let%expect_test "a dialect that declares no modifier keeps its colons" =
+  (* x86 has no modifier syntax, so [:] means only what it meant before - a
+     label terminator - and a target parser never sees a [Modifier] token. *)
+  attempt "x86_64" "\t.text\n\t.globl g\ng:\n\tmovl $:lo12:g, %eax\n";
+  [%expect {| parse: unexpected token |}]

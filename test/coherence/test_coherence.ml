@@ -68,7 +68,13 @@ let direct_normalized : T.Instruction.t Normalized_ast.module_ =
               [
                 T.Operand.Reg (x "x15");
                 T.Operand.Reg (x "x30");
-                T.Operand.Mem { T.Mem.base = x "sp"; offset = -16L; writeback = true; pre = true };
+                T.Operand.Mem
+                  {
+                    T.Mem.base = x "sp";
+                    offset = T.Disp.Const (-16L);
+                    writeback = true;
+                    pre = true;
+                  };
               ];
           };
         insn
@@ -82,7 +88,8 @@ let direct_normalized : T.Instruction.t Normalized_ast.module_ =
             ops =
               [
                 T.Operand.Reg (x "x30");
-                T.Operand.Mem { T.Mem.base = x "sp"; offset = 8L; writeback = false; pre = true };
+                T.Operand.Mem
+                  { T.Mem.base = x "sp"; offset = T.Disp.Const 8L; writeback = false; pre = true };
               ];
           };
         insn
@@ -185,7 +192,9 @@ let direct_lowered : T.fixup_kind Lowered_ast.module_ =
               frag (T.Lowered.Add_imm { rd = x "x15"; rn = x "sp"; imm = 0L; shift12 = false });
               frag (T.Lowered.Stp_pre { rt = x "x15"; rt2 = x "x30"; rn = x "sp"; offset = -16L });
               frag (T.Lowered.Movz { rd = x "w0"; imm16 = 42L; hw = 0 });
-              frag (T.Lowered.Ldr_uoff { rt = x "x30"; rn = x "sp"; offset = 8L });
+              frag
+                (T.Lowered.Ldst_uoff
+                   { size = T.X; load = true; rt = x "x30"; rn = x "sp"; offset = T.Disp.Const 8L });
               frag (T.Lowered.Add_imm { rd = x "sp"; rn = x "sp"; imm = 16L; shift12 = false });
               frag (T.Lowered.Ret { rn = x "x30" });
               Lowered_ast.Set_size
@@ -231,7 +240,7 @@ let%expect_test "lowering the direct normalized AST equals the direct lowered mo
           bytes ef 03 00 91              [aarch64.add-imm]
           bytes ef 7b bf a9              [aarch64.stp-pre]
           bytes 40 05 80 52              [aarch64.movz]
-          bytes fe 07 40 f9              [aarch64.ldr-uoff]
+          bytes fe 07 40 f9              [aarch64.ldr64]
           bytes ff 43 00 91              [aarch64.add-imm]
           bytes c0 03 5f d6              [aarch64.ret]
           size asm_test_entry = (. - asm_test_entry)

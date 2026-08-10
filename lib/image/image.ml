@@ -205,11 +205,14 @@ let alt_reaches ~evaluate ~labels ~frag_off (a : 'k Lowered_ast.encoded_form) =
      collude with it; it is offset well past any plausible section size so that a
      coincidental match cannot come from small-integer arithmetic. *)
   let probe = 0x1000_0000 in
-  let env_for ~base (f : 'k Lowered_ast.fixup) =
+  (* [here] is the fragment address, matching [bind_image]: [.] is the
+     instruction, not the PC base. Getting it wrong here would also make the
+     probe misjudge which rung reaches. *)
+  let env_for ~base (_ : 'k Lowered_ast.fixup) =
     {
       Expr.lookup =
         (fun n -> Option.map (fun o -> Bigint.of_int (o + base)) (List.assoc_opt n labels));
-      here = Some (Bigint.of_int (frag_off + f.Lowered_ast.pc_bias + base));
+      here = Some (Bigint.of_int (frag_off + base));
     }
   in
   let at ~base f =
@@ -640,10 +643,15 @@ let bind_image (l : laid_out) ~(addresses : (string * int64) list) =
           | None -> acc
           | Some base -> (
               let place = Int64.add base (Int64.of_int (f.rf_frag_offset + f.rf_pc_bias)) in
+              (* [.] is the address of the instruction, not the PC the
+                 architecture measures from. The two differ by [pc_bias] - two
+                 bytes for a short x86 branch, eight on ARM - and GAS resolves
+                 [jmp .] to a self-loop, so taking [place] here would encode a
+                 displacement of zero and fall through instead. *)
               let env =
                 {
                   Expr.lookup = (fun n -> Option.map Bigint.of_int64 (address_of n));
-                  here = Some (Bigint.of_int64 place);
+                  here = Some (Bigint.of_int64 (Int64.add base (Int64.of_int f.rf_frag_offset)));
                 }
               in
               match Expr.absolute env f.rf_value with

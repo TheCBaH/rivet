@@ -18,6 +18,9 @@ type kind =
   | String of string
   | Register of string  (** only where the dialect has a register sigil: x86's [%eax] *)
   | Local_label of int * [ `Back | `Forward ]  (** [1b], [1f] *)
+  | Modifier of string
+      (** A relocation modifier the dialect declared: ARM's [:lower16:], AArch64's [:lo12:]. One
+          token rather than colon-ident-colon, because [:] otherwise ends a label. *)
   | Colon
   | Comma
   | Semi
@@ -59,6 +62,7 @@ let pp_kind ppf = function
   | String s -> Fmt.pf ppf "string(%S)" s
   | Register s -> Fmt.pf ppf "reg(%s)" s
   | Local_label (n, d) -> Fmt.pf ppf "local(%d%s)" n (match d with `Back -> "b" | `Forward -> "f")
+  | Modifier m -> Fmt.pf ppf "modifier(%s)" m
   | Colon -> Fmt.string ppf ":"
   | Comma -> Fmt.string ppf ","
   | Semi -> Fmt.string ppf ";"
@@ -100,6 +104,7 @@ let kind_tag = function
   | String _ -> "string"
   | Register _ -> "register"
   | Local_label _ -> "local-label"
+  | Modifier _ -> "modifier"
   | Colon -> "colon"
   | Comma -> "comma"
   | Semi -> "semi"

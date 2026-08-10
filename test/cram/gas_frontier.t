@@ -81,10 +81,10 @@ CompCert's runtime library, per target.
   x86_64   vararg        error[x86.operand]: unknown register %xmm0
   arm      i64_dtos      error[arm.simplify]: unknown instruction vmov
   arm      i64_dtou      error[arm.simplify]: unknown instruction vmov
-  arm      i64_sar       error[arm.simplify]: unknown instruction and
+  arm      i64_sar       error[arm.simplify]: unknown instruction rsbs
   arm      i64_sdiv      error[arm.operand]: cannot parse operand {r4 r5 r6 r7 r8 r10 lr}
-  arm      i64_shl       error[arm.simplify]: unknown instruction and
-  arm      i64_shr       error[arm.simplify]: unknown instruction and
+  arm      i64_shl       error[arm.simplify]: unknown instruction rsb
+  arm      i64_shr       error[arm.simplify]: unknown instruction rsb
   arm      i64_smod      error[arm.operand]: cannot parse operand {r4 r5 r6 r7 r8 r10 lr}
   arm      i64_smulh     error[arm.operand]: cannot parse operand {r4 r5 r6 r7}
   arm      i64_stod      error[arm.simplify]: unknown instruction vmov
@@ -111,14 +111,15 @@ what M2 moves, and prose cannot regress.
         4  error[arm.simplify]: unknown instruction vmov
         3  error[x86.simplify]: unknown instruction testb
         3  error[lex]: unexpected character '\194'
-        3  error[arm.simplify]: unknown instruction and
         2  error[x86.operand]: unknown register %ah
+        2  error[arm.simplify]: unknown instruction rsb
         2  error[arm.operand]: cannot parse operand {r4 r5 r6 r7}
         2  error[arm.operand]: cannot parse operand {r4 r5 r6 r7 r8 r10 lr}
         2  error[arm.operand]: cannot parse operand {r4 r5 r6 r7 r8 lr}
         1  error[x86.simplify]: unknown instruction divl
         1  error[x86.operand]: cannot parse operand 3(%eax %edx)
         1  error[lex]: unexpected character '<'
+        1  error[arm.simplify]: unknown instruction rsbs
         1  error[arm.simplify]: unknown instruction orrs
         1  error[arm.simplify]: unknown instruction lsrs
         1  error[arm.simplify]: unknown instruction bic

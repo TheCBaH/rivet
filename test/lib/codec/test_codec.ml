@@ -364,5 +364,5 @@ let%expect_test "check rejects overlapping slices and mixed kinds" =
     (check ~equal_kind:( = ) ~kind_name:fixup_name broken_fixup);
   [%expect
     {|
-    seq: fixup s mixes kinds rel12 and abs16
-    seq: fixup s has slices overlapping at value bit 0 |}]
+    codec: fixup s mixes kinds rel12 and abs16
+    codec: fixup s has slices overlapping at value bit 0 |}]
