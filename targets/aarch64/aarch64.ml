@@ -6,7 +6,18 @@
    and scaled offsets rather than magnitude-plus-sign.
 
    Byte order, as for A32: one 32-bit word authored most significant bit first,
-   reversed once in {!encode}. *)
+   reversed once in {!encode}.
+
+   Every constructor family lives in its own module - [Reg], [Mem], [Shift],
+   [Opcode], [Operand], [Surface], [Instruction], [Lowered] - rather than in
+   one flat namespace with disambiguating prefixes. The prefixes were
+   load-bearing: [Op_add] was an opcode and [Op_reg] an operand, and the two
+   families could not be told apart by name. Under modules the family is the
+   qualifier, [Opcode.Add] and [Operand.Reg] compose without collision, the
+   record fields lose their [i_]/[s_]/[m_] disambiguators, and a hand-written
+   AST reads as the assembly it stands for. {!Target_intf.Target.TARGET} names
+   the same modules, so a target satisfies it by exposing what it already has
+   rather than by restating each type and printer as a loose alias. *)
 
 open Foundation
 module C = Codec
@@ -19,130 +30,164 @@ module C = Codec
    can name the operand, rather than being inferred at encode time where it
    could only be guessed. *)
 
-type reg = { rnum : int; rwidth : int; is_sp : bool }
+module Reg = struct
+  type t = { num : int; width : int; is_sp : bool }
 
-let reg_equal a b = a.rnum = b.rnum && a.rwidth = b.rwidth && a.is_sp = b.is_sp
+  let equal a b = a.num = b.num && a.width = b.width && a.is_sp = b.is_sp
 
-let reg_name r =
-  let p = if r.rwidth = 64 then "x" else "w" in
-  if r.rnum = 31 then if r.is_sp then if r.rwidth = 64 then "sp" else "wsp" else p ^ "zr"
-  else Printf.sprintf "%s%d" p r.rnum
+  let name r =
+    let p = if r.width = 64 then "x" else "w" in
+    if r.num = 31 then if r.is_sp then if r.width = 64 then "sp" else "wsp" else p ^ "zr"
+    else Printf.sprintf "%s%d" p r.num
 
-let pp_reg ppf r = Fmt.string ppf (reg_name r)
+  let pp ppf r = Fmt.string ppf (name r)
 
-let find_reg name =
-  let numbered prefix width =
-    let n = String.length prefix in
-    if String.length name > n && String.sub name 0 n = prefix then
-      match int_of_string_opt (String.sub name n (String.length name - n)) with
-      | Some i when i >= 0 && i <= 30 -> Some { rnum = i; rwidth = width; is_sp = false }
-      | _ -> None
-    else None
-  in
-  match name with
-  | "sp" -> Some { rnum = 31; rwidth = 64; is_sp = true }
-  | "wsp" -> Some { rnum = 31; rwidth = 32; is_sp = true }
-  | "xzr" -> Some { rnum = 31; rwidth = 64; is_sp = false }
-  | "wzr" -> Some { rnum = 31; rwidth = 32; is_sp = false }
-  | _ -> ( match numbered "x" 64 with Some r -> Some r | None -> numbered "w" 32)
+  let find name =
+    let numbered prefix width =
+      let n = String.length prefix in
+      if String.length name > n && String.sub name 0 n = prefix then
+        match int_of_string_opt (String.sub name n (String.length name - n)) with
+        | Some i when i >= 0 && i <= 30 -> Some { num = i; width; is_sp = false }
+        | _ -> None
+      else None
+    in
+    match name with
+    | "sp" -> Some { num = 31; width = 64; is_sp = true }
+    | "wsp" -> Some { num = 31; width = 32; is_sp = true }
+    | "xzr" -> Some { num = 31; width = 64; is_sp = false }
+    | "wzr" -> Some { num = 31; width = 32; is_sp = false }
+    | _ -> ( match numbered "x" 64 with Some r -> Some r | None -> numbered "w" 32)
 
-(* Decoding cannot recover [is_sp] from the bits, so it is supplied by the
-   position: the caller says whether this field is an SP-accepting one. *)
-let reg_of_num ~width ~sp n = { rnum = n land 31; rwidth = width; is_sp = sp && n land 31 = 31 }
+  (* Decoding cannot recover [is_sp] from the bits, so it is supplied by the
+     position: the caller says whether this field is an SP-accepting one. *)
+  let of_num ~width ~sp n = { num = n land 31; width; is_sp = sp && n land 31 = 31 }
+
+  (* The link register, which [ret] defaults to and which the ABI helpers name
+     often enough that spelling the record out each time obscured the intent. *)
+  let x30 = { num = 30; width = 64; is_sp = false }
+end
 
 (* {1 Operands} *)
 
-type memory = { m_base : reg; m_offset : int64; m_writeback : bool; m_pre : bool }
-type shift_op = { sh_kind : string; sh_amount : int }
+module Mem = struct
+  type t = { base : Reg.t; offset : int64; writeback : bool; pre : bool }
 
-type operand =
-  | Op_reg of reg
-  | Op_imm of Bigint.t
-  | Op_mem of memory
-  | Op_shift of shift_op
-      (** [lsl #0] in [movz w0, #42, lsl #0]. Not an operand in any real sense - it modifies the
-          immediate before it - but the common parser hands over comma-separated slices and this
-          is one of them. Simplify folds it into the operand it belongs to; a surface AST that
-          had already folded it could not report a shift applied to nothing. *)
+  let pp ppf m =
+    let off = if Int64.equal m.offset 0L then "" else Printf.sprintf ", #%Ld" m.offset in
+    Fmt.pf ppf "[%a%s]%s" Reg.pp m.base off (if m.writeback then "!" else "")
+end
 
-let pp_mem ppf m =
-  let off = if Int64.equal m.m_offset 0L then "" else Printf.sprintf ", #%Ld" m.m_offset in
-  Fmt.pf ppf "[%a%s]%s" pp_reg m.m_base off (if m.m_writeback then "!" else "")
+module Shift = struct
+  type t = { kind : string; amount : int }
+end
 
-let pp_operand ppf = function
-  | Op_reg r -> pp_reg ppf r
-  | Op_imm v -> Fmt.pf ppf "#%a" Bigint.pp v
-  | Op_mem m -> pp_mem ppf m
-  | Op_shift s -> Fmt.pf ppf "%s #%d" s.sh_kind s.sh_amount
+module Operand = struct
+  type t =
+    | Reg of Reg.t
+    | Imm of Bigint.t
+    | Mem of Mem.t
+    | Shift of Shift.t
+        (** [lsl #0] in [movz w0, #42, lsl #0]. Not an operand in any real sense - it modifies the
+            immediate before it - but the common parser hands over comma-separated slices and this
+            is one of them. Simplify folds it into the operand it belongs to; a surface AST that
+            had already folded it could not report a shift applied to nothing. *)
 
-type surface_operand = operand
-type surface_instruction = { s_mnemonic : string; s_ops : operand list; s_origin : Origin.t }
+  let pp ppf = function
+    | Reg r -> Reg.pp ppf r
+    | Imm v -> Fmt.pf ppf "#%a" Bigint.pp v
+    | Mem m -> Mem.pp ppf m
+    | Shift s -> Fmt.pf ppf "%s #%d" s.Shift.kind s.Shift.amount
+end
 
-let pp_surface ppf s =
-  match s.s_ops with
-  | [] -> Fmt.string ppf s.s_mnemonic
-  | ops -> Fmt.pf ppf "%s %a" s.s_mnemonic Fmt.(list ~sep:(any ", ") pp_operand) ops
+module Surface = struct
+  type t = { mnemonic : string; ops : Operand.t list; origin : Origin.t }
 
-type opcode = Op_add | Op_mov | Op_movz | Op_stp | Op_ldr | Op_ret
+  let pp ppf s =
+    match s.ops with
+    | [] -> Fmt.string ppf s.mnemonic
+    | ops -> Fmt.pf ppf "%s %a" s.mnemonic Fmt.(list ~sep:(any ", ") Operand.pp) ops
+end
 
-let opcode_name = function
-  | Op_add -> "add"
-  | Op_mov -> "mov"
-  | Op_movz -> "movz"
-  | Op_stp -> "stp"
-  | Op_ldr -> "ldr"
-  | Op_ret -> "ret"
+module Opcode = struct
+  type t = Add | Mov | Movz | Stp | Ldr | Ret
 
-type instruction = { i_op : opcode; i_ops : operand list }
+  let name = function
+    | Add -> "add"
+    | Mov -> "mov"
+    | Movz -> "movz"
+    | Stp -> "stp"
+    | Ldr -> "ldr"
+    | Ret -> "ret"
 
-let pp_instruction ppf i =
-  match i.i_ops with
-  | [] -> Fmt.string ppf (opcode_name i.i_op)
-  | ops -> Fmt.pf ppf "%s %a" (opcode_name i.i_op) Fmt.(list ~sep:(any ", ") pp_operand) ops
+  (* The surface spellings this target accepts, and the only place the mapping
+     lives. [simplify_instruction] consults it rather than repeating the list,
+     so a mnemonic that is added here is accepted there by construction. *)
+  let of_mnemonic = function
+    | "add" -> Some Add
+    | "mov" -> Some Mov
+    | "movz" -> Some Movz
+    | "stp" -> Some Stp
+    | "ldr" -> Some Ldr
+    | "ret" -> Some Ret
+    | _ -> None
+end
 
-type lowered_instruction =
-  | L_add_imm of { rd : reg; rn : reg; imm : int64; shift12 : bool }
-  | L_stp_pre of { rt : reg; rt2 : reg; rn : reg; offset : int64 }
-  | L_movz of { rd : reg; imm16 : int64; hw : int }
-  | L_ldr_uoff of { rt : reg; rn : reg; offset : int64 }
-  | L_ret of { rn : reg }
+module Instruction = struct
+  type t = { op : Opcode.t; ops : Operand.t list }
 
-let pp_lowered ppf = function
-  (* [add xD, sp, #0] is spelled [mov xD, sp] by every A64 disassembler, and the
-     canonical dump has to agree with objdump for the differential gate to mean
-     anything. The alias lives here, in printing, and not in the lowered type -
-     there is exactly one encoding and inventing a second constructor for it
-     would let the two drift. *)
-  | L_add_imm { rd; rn; imm; shift12 } ->
-      if Int64.equal imm 0L && (not shift12) && (rd.is_sp || rn.is_sp) then
-        Fmt.pf ppf "mov %a, %a" pp_reg rd pp_reg rn
-      else
-        Fmt.pf ppf "add %a, %a, #%Ld%s" pp_reg rd pp_reg rn imm
-          (if shift12 then ", lsl #12" else "")
-  | L_stp_pre { rt; rt2; rn; offset } ->
-      Fmt.pf ppf "stp %a, %a, [%a, #%Ld]!" pp_reg rt pp_reg rt2 pp_reg rn offset
-  | L_movz { rd; imm16; hw } ->
-      Fmt.pf ppf "movz %a, #%Ld%s" pp_reg rd imm16
-        (if hw = 0 then "" else Printf.sprintf ", lsl #%d" (hw * 16))
-  | L_ldr_uoff { rt; rn; offset } -> Fmt.pf ppf "ldr %a, [%a, #%Ld]" pp_reg rt pp_reg rn offset
-  | L_ret { rn } ->
-      (* [ret x30] is spelled [ret]: x30 is the architectural default and every
-         A64 disassembler elides it. Printing it would make the canonical dump
-         disagree with objdump on a line where nothing differs. *)
-      if rn.rnum = 30 && not rn.is_sp then Fmt.string ppf "ret" else Fmt.pf ppf "ret %a" pp_reg rn
+  let pp ppf i =
+    match i.ops with
+    | [] -> Fmt.string ppf (Opcode.name i.op)
+    | ops -> Fmt.pf ppf "%s %a" (Opcode.name i.op) Fmt.(list ~sep:(any ", ") Operand.pp) ops
+end
 
-let lowered_equal a b =
-  match (a, b) with
-  | L_add_imm x, L_add_imm y ->
-      reg_equal x.rd y.rd && reg_equal x.rn y.rn && Int64.equal x.imm y.imm && x.shift12 = y.shift12
-  | L_stp_pre x, L_stp_pre y ->
-      reg_equal x.rt y.rt && reg_equal x.rt2 y.rt2 && reg_equal x.rn y.rn
-      && Int64.equal x.offset y.offset
-  | L_movz x, L_movz y -> reg_equal x.rd y.rd && Int64.equal x.imm16 y.imm16 && x.hw = y.hw
-  | L_ldr_uoff x, L_ldr_uoff y ->
-      reg_equal x.rt y.rt && reg_equal x.rn y.rn && Int64.equal x.offset y.offset
-  | L_ret x, L_ret y -> reg_equal x.rn y.rn
-  | _ -> false
+module Lowered = struct
+  type t =
+    | Add_imm of { rd : Reg.t; rn : Reg.t; imm : int64; shift12 : bool }
+    | Stp_pre of { rt : Reg.t; rt2 : Reg.t; rn : Reg.t; offset : int64 }
+    | Movz of { rd : Reg.t; imm16 : int64; hw : int }
+    | Ldr_uoff of { rt : Reg.t; rn : Reg.t; offset : int64 }
+    | Ret of { rn : Reg.t }
+
+  let pp ppf = function
+    (* [add xD, sp, #0] is spelled [mov xD, sp] by every A64 disassembler, and
+       the canonical dump has to agree with objdump for the differential gate to
+       mean anything. The alias lives here, in printing, and not in the lowered
+       type - there is exactly one encoding and inventing a second constructor
+       for it would let the two drift. *)
+    | Add_imm { rd; rn; imm; shift12 } ->
+        if Int64.equal imm 0L && (not shift12) && (rd.Reg.is_sp || rn.Reg.is_sp) then
+          Fmt.pf ppf "mov %a, %a" Reg.pp rd Reg.pp rn
+        else
+          Fmt.pf ppf "add %a, %a, #%Ld%s" Reg.pp rd Reg.pp rn imm
+            (if shift12 then ", lsl #12" else "")
+    | Stp_pre { rt; rt2; rn; offset } ->
+        Fmt.pf ppf "stp %a, %a, [%a, #%Ld]!" Reg.pp rt Reg.pp rt2 Reg.pp rn offset
+    | Movz { rd; imm16; hw } ->
+        Fmt.pf ppf "movz %a, #%Ld%s" Reg.pp rd imm16
+          (if hw = 0 then "" else Printf.sprintf ", lsl #%d" (hw * 16))
+    | Ldr_uoff { rt; rn; offset } -> Fmt.pf ppf "ldr %a, [%a, #%Ld]" Reg.pp rt Reg.pp rn offset
+    | Ret { rn } ->
+        (* [ret x30] is spelled [ret]: x30 is the architectural default and every
+           A64 disassembler elides it. Printing it would make the canonical dump
+           disagree with objdump on a line where nothing differs. *)
+        if rn.Reg.num = 30 && not rn.Reg.is_sp then Fmt.string ppf "ret"
+        else Fmt.pf ppf "ret %a" Reg.pp rn
+
+  let equal a b =
+    match (a, b) with
+    | Add_imm x, Add_imm y ->
+        Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Int64.equal x.imm y.imm
+        && x.shift12 = y.shift12
+    | Stp_pre x, Stp_pre y ->
+        Reg.equal x.rt y.rt && Reg.equal x.rt2 y.rt2 && Reg.equal x.rn y.rn
+        && Int64.equal x.offset y.offset
+    | Movz x, Movz y -> Reg.equal x.rd y.rd && Int64.equal x.imm16 y.imm16 && x.hw = y.hw
+    | Ldr_uoff x, Ldr_uoff y ->
+        Reg.equal x.rt y.rt && Reg.equal x.rn y.rn && Int64.equal x.offset y.offset
+    | Ret x, Ret y -> Reg.equal x.rn y.rn
+    | _ -> false
+end
 
 type fixup_kind = Abs64 | Pcrel_b26 | Adrp_page
 
@@ -197,11 +242,11 @@ let stp_imm7_domain =
 
 let reg_field ~width ~sp name =
   C.iso_fun ~name
-    ~encode:(fun (r : reg) -> Some (Int64.of_int r.rnum))
-    ~decode:(fun v -> Some (reg_of_num ~width ~sp (Int64.to_int v)))
+    ~encode:(fun (r : Reg.t) -> Some (Int64.of_int r.Reg.num))
+    ~decode:(fun v -> Some (Reg.of_num ~width ~sp (Int64.to_int v)))
     (C.field ~width:5 name)
 
-let codec : (lowered_instruction, fixup_kind) C.t =
+let codec : (Lowered.t, fixup_kind) C.t =
   C.choice ~name:"aarch64"
     [
       (* Every A64 form has a distinct fixed-bit prefix, so unlike A32 and x86
@@ -211,20 +256,22 @@ let codec : (lowered_instruction, fixup_kind) C.t =
       C.alt ~label:"add-imm" ~priority:0
         (C.iso_fun ~name:"add-imm"
            ~encode:(function
-             | L_add_imm { rd; rn; imm; shift12 } ->
+             | Lowered.Add_imm { rd; rn; imm; shift12 } ->
                  if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then None
                  else Some ((), ((if shift12 then 1L else 0L), (imm, (rn, rd))))
              | _ -> None)
            ~decode:(fun ((), (sh, (imm, (rn, rd)))) ->
-             Some (L_add_imm { rd; rn; imm; shift12 = Int64.equal sh 1L }))
+             Some (Lowered.Add_imm { rd; rn; imm; shift12 = Int64.equal sh 1L }))
            C.(
              const ~width:9 0b100100010L ** field ~width:1 "sh" ** field ~width:12 "imm12"
              ** reg_field ~width:64 ~sp:true "rn" ** reg_field ~width:64 ~sp:true "rd"));
       C.alt ~label:"stp-pre" ~priority:1
         (C.iso_fun ~name:"stp-pre"
            ~encode:(function
-             | L_stp_pre { rt; rt2; rn; offset } -> Some ((), (offset, (rt2, (rn, rt)))) | _ -> None)
-           ~decode:(fun ((), (offset, (rt2, (rn, rt)))) -> Some (L_stp_pre { rt; rt2; rn; offset }))
+             | Lowered.Stp_pre { rt; rt2; rn; offset } -> Some ((), (offset, (rt2, (rn, rt))))
+             | _ -> None)
+           ~decode:(fun ((), (offset, (rt2, (rn, rt)))) ->
+             Some (Lowered.Stp_pre { rt; rt2; rn; offset }))
            C.(
              const ~width:10 0b1010100110L
              ** scaled ~shift:3 ~width:7 ~signedness:C.Signed "imm7"
@@ -234,14 +281,15 @@ let codec : (lowered_instruction, fixup_kind) C.t =
       C.alt ~label:"movz" ~priority:2
         (C.iso_fun ~name:"movz"
            ~encode:(function
-             | L_movz { rd; imm16; hw } ->
+             | Lowered.Movz { rd; imm16; hw } ->
                  if Int64.compare imm16 0L < 0 || Int64.compare imm16 65536L >= 0 then None
                  else
-                   Some ((if rd.rwidth = 64 then 1L else 0L), ((), (Int64.of_int hw, (imm16, rd))))
+                   Some
+                     ((if rd.Reg.width = 64 then 1L else 0L), ((), (Int64.of_int hw, (imm16, rd))))
              | _ -> None)
            ~decode:(fun (sf, ((), (hw, (imm16, rd)))) ->
              let width = if Int64.equal sf 1L then 64 else 32 in
-             Some (L_movz { rd = { rd with rwidth = width }; imm16; hw = Int64.to_int hw }))
+             Some (Lowered.Movz { rd = { rd with Reg.width }; imm16; hw = Int64.to_int hw }))
            C.(
              field ~width:1 "sf" ** const ~width:8 0b10100101L ** field ~width:2 "hw"
              ** field ~width:16 "imm16"
@@ -249,8 +297,8 @@ let codec : (lowered_instruction, fixup_kind) C.t =
       C.alt ~label:"ldr-uoff" ~priority:3
         (C.iso_fun ~name:"ldr-uoff"
            ~encode:(function
-             | L_ldr_uoff { rt; rn; offset } -> Some ((), (offset, (rn, rt))) | _ -> None)
-           ~decode:(fun ((), (offset, (rn, rt))) -> Some (L_ldr_uoff { rt; rn; offset }))
+             | Lowered.Ldr_uoff { rt; rn; offset } -> Some ((), (offset, (rn, rt))) | _ -> None)
+           ~decode:(fun ((), (offset, (rn, rt))) -> Some (Lowered.Ldr_uoff { rt; rn; offset }))
            C.(
              const ~width:10 0b1111100101L
              ** scaled ~shift:3 ~width:12 ~signedness:C.Unsigned "imm12"
@@ -258,8 +306,8 @@ let codec : (lowered_instruction, fixup_kind) C.t =
              ** reg_field ~width:64 ~sp:false "rt"));
       C.alt ~label:"ret" ~priority:4
         (C.iso_fun ~name:"ret"
-           ~encode:(function L_ret { rn } -> Some ((), (rn, ())) | _ -> None)
-           ~decode:(fun ((), (rn, ())) -> Some (L_ret { rn }))
+           ~encode:(function Lowered.Ret { rn } -> Some ((), (rn, ())) | _ -> None)
+           ~decode:(fun ((), (rn, ())) -> Some (Lowered.Ret { rn }))
            C.(
              const ~width:22 0b1101011001011111000000L
              ** reg_field ~width:64 ~sp:false "rn"
@@ -326,23 +374,23 @@ let parse_one (slice : Asm_core.Token.slice) =
   let bad msg = Error (diag ~origin "aarch64.operand" msg) in
   let open Asm_core in
   let mem ~base ~offset ~writeback =
-    match find_reg base with
-    | Some r -> Ok (Op_mem { m_base = r; m_offset = offset; m_writeback = writeback; m_pre = true })
+    match Reg.find base with
+    | Some r -> Ok (Operand.Mem { Mem.base = r; offset; writeback; pre = true })
     | None -> bad ("unknown register " ^ base)
   in
   let int64_of v = match Bigint.to_int64_opt v with Some x -> Some x | None -> None in
   match List.map Token.kind slice with
   | [ Token.Ident n ] -> (
-      match find_reg n with Some r -> Ok (Op_reg r) | None -> bad ("unknown register " ^ n))
-  | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Op_imm v)
-  | [ Token.Immediate_sigil; Token.Minus; Token.Int v ] -> Ok (Op_imm (Bigint.neg v))
+      match Reg.find n with Some r -> Ok (Operand.Reg r) | None -> bad ("unknown register " ^ n))
+  | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Operand.Imm v)
+  | [ Token.Immediate_sigil; Token.Minus; Token.Int v ] -> Ok (Operand.Imm (Bigint.neg v))
   | [
    Token.Ident (("lsl" | "lsr" | "asr" | "ror" | "uxtw" | "sxtw") as k);
    Token.Immediate_sigil;
    Token.Int v;
   ] -> (
       match Bigint.to_int_opt v with
-      | Some n -> Ok (Op_shift { sh_kind = k; sh_amount = n })
+      | Some n -> Ok (Operand.Shift { Shift.kind = k; amount = n })
       | None -> bad "shift amount does not fit")
   | [ Token.Lbracket; Token.Ident b; Token.Rbracket ] -> mem ~base:b ~offset:0L ~writeback:false
   | [ Token.Lbracket; Token.Ident b; Token.Rbracket; Token.Bang ] ->
@@ -388,8 +436,7 @@ let parse_operands ~mnemonic slices =
       in
       go [] groups
 
-let make_surface_instruction ~mnemonic ~origin ops =
-  Ok { s_mnemonic = mnemonic; s_ops = ops; s_origin = origin }
+let make_surface_instruction ~mnemonic ~origin ops = Ok { Surface.mnemonic; ops; origin }
 
 (* {1 Simplify}
 
@@ -400,26 +447,16 @@ let make_surface_instruction ~mnemonic ~origin ops =
 
 let simplify_instruction ~features s =
   ignore features;
-  let bad msg = Error (diag ~origin:s.s_origin "aarch64.simplify" msg) in
-  let op =
-    match s.s_mnemonic with
-    | "add" -> Some Op_add
-    | "mov" -> Some Op_mov
-    | "movz" -> Some Op_movz
-    | "stp" -> Some Op_stp
-    | "ldr" -> Some Op_ldr
-    | "ret" -> Some Op_ret
-    | _ -> None
-  in
-  match op with
-  | None -> bad (Printf.sprintf "unknown instruction %s" s.s_mnemonic)
+  let bad msg = Error (diag ~origin:s.Surface.origin "aarch64.simplify" msg) in
+  match Opcode.of_mnemonic s.Surface.mnemonic with
+  | None -> bad (Printf.sprintf "unknown instruction %s" s.Surface.mnemonic)
   | Some op -> (
       (* A [lsl #0] modifier is dropped; a nonzero one is kept, because [movz]
          encodes it in [hw] and dropping it would silently change the value. *)
-      match List.rev s.s_ops with
-      | Op_shift { sh_kind = "lsl"; sh_amount = 0 } :: rest ->
-          Ok { i_op = op; i_ops = List.rev rest }
-      | _ -> Ok { i_op = op; i_ops = s.s_ops })
+      match List.rev s.Surface.ops with
+      | Operand.Shift { Shift.kind = "lsl"; amount = 0 } :: rest ->
+          Ok { Instruction.op; ops = List.rev rest }
+      | _ -> Ok { Instruction.op; ops = s.Surface.ops })
 
 (* {1 Lower} *)
 
@@ -431,51 +468,52 @@ let lower_instruction state i =
     | Some x -> Ok x
     | None -> Error (diag "aarch64.lower" "immediate does not fit 64 bits")
   in
-  match (i.i_op, i.i_ops) with
+  match (i.Instruction.op, i.Instruction.ops) with
   (* [mov xD, sp] and [mov sp, xS] are [add ..., #0]; [mov] between two general
      registers is [orr] with xzr, which no M1 fixture uses and which is
      therefore rejected rather than guessed. *)
-  | Op_mov, [ Op_reg rd; Op_reg rn ] ->
-      if rd.is_sp || rn.is_sp then Ok [ L_add_imm { rd; rn; imm = 0L; shift12 = false } ]
+  | Opcode.Mov, [ Operand.Reg rd; Operand.Reg rn ] ->
+      if rd.Reg.is_sp || rn.Reg.is_sp then
+        Ok [ Lowered.Add_imm { rd; rn; imm = 0L; shift12 = false } ]
       else bad "mov between two general registers lowers to orr, which is not in M1 scope"
-  | Op_add, [ Op_reg rd; Op_reg rn; Op_imm v ] -> (
+  | Opcode.Add, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
           if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then
             bad "immediate does not fit the unshifted 12-bit field; lsl #12 is M2"
-          else Ok [ L_add_imm { rd; rn; imm; shift12 = false } ])
-  | Op_movz, [ Op_reg rd; Op_imm v ] -> (
+          else Ok [ Lowered.Add_imm { rd; rn; imm; shift12 = false } ])
+  | Opcode.Movz, [ Operand.Reg rd; Operand.Imm v ] -> (
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
           if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
             bad "movz immediate does not fit 16 bits"
-          else Ok [ L_movz { rd; imm16 = imm; hw = 0 } ])
-  | Op_movz, [ Op_reg rd; Op_imm v; Op_shift { sh_kind = "lsl"; sh_amount } ] -> (
+          else Ok [ Lowered.Movz { rd; imm16 = imm; hw = 0 } ])
+  | Opcode.Movz, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = "lsl"; amount } ]
+    -> (
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
-          if sh_amount mod 16 <> 0 || sh_amount / 16 > 3 then
-            bad "movz shift must be 0, 16, 32 or 48"
+          if amount mod 16 <> 0 || amount / 16 > 3 then bad "movz shift must be 0, 16, 32 or 48"
           else if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
             bad "movz immediate does not fit 16 bits"
-          else Ok [ L_movz { rd; imm16 = imm; hw = sh_amount / 16 } ])
-  | Op_stp, [ Op_reg rt; Op_reg rt2; Op_mem m ] ->
-      if not m.m_writeback then bad "M1 supports only the pre-index writeback form of stp"
-      else if not (Int64.equal (Int64.rem m.m_offset 8L) 0L) then
+          else Ok [ Lowered.Movz { rd; imm16 = imm; hw = amount / 16 } ])
+  | Opcode.Stp, [ Operand.Reg rt; Operand.Reg rt2; Operand.Mem m ] ->
+      if not m.Mem.writeback then bad "M1 supports only the pre-index writeback form of stp"
+      else if not (Int64.equal (Int64.rem m.Mem.offset 8L) 0L) then
         bad "stp offset must be a multiple of eight"
-      else Ok [ L_stp_pre { rt; rt2; rn = m.m_base; offset = m.m_offset } ]
-  | Op_ldr, [ Op_reg rt; Op_mem m ] ->
-      if m.m_writeback then bad "writeback ldr is not in M1 scope"
-      else if Int64.compare m.m_offset 0L < 0 then
+      else Ok [ Lowered.Stp_pre { rt; rt2; rn = m.Mem.base; offset = m.Mem.offset } ]
+  | Opcode.Ldr, [ Operand.Reg rt; Operand.Mem m ] ->
+      if m.Mem.writeback then bad "writeback ldr is not in M1 scope"
+      else if Int64.compare m.Mem.offset 0L < 0 then
         bad "M1 supports only the unsigned-offset form of ldr"
-      else if not (Int64.equal (Int64.rem m.m_offset 8L) 0L) then
+      else if not (Int64.equal (Int64.rem m.Mem.offset 8L) 0L) then
         bad "ldr offset must be a multiple of eight for a 64-bit access"
-      else Ok [ L_ldr_uoff { rt; rn = m.m_base; offset = m.m_offset } ]
-  | Op_ret, [ Op_reg rn ] -> Ok [ L_ret { rn } ]
-  | Op_ret, [] -> Ok [ L_ret { rn = { rnum = 30; rwidth = 64; is_sp = false } } ]
-  | _ -> bad (Printf.sprintf "no %s form takes these operands" (opcode_name i.i_op))
+      else Ok [ Lowered.Ldr_uoff { rt; rn = m.Mem.base; offset = m.Mem.offset } ]
+  | Opcode.Ret, [ Operand.Reg rn ] -> Ok [ Lowered.Ret { rn } ]
+  | Opcode.Ret, [] -> Ok [ Lowered.Ret { rn = Reg.x30 } ]
+  | _ -> bad (Printf.sprintf "no %s form takes these operands" (Opcode.name i.Instruction.op))
 
 (* {1 Encode and decode} *)
 
@@ -489,45 +527,51 @@ let encode l =
 type decode_context = { state : target_state; address : int64 }
 
 let instruction_of_lowered = function
-  | L_add_imm { rd; rn; imm; shift12 } ->
-      if Int64.equal imm 0L && (not shift12) && (rd.is_sp || rn.is_sp) then
-        Some { i_op = Op_mov; i_ops = [ Op_reg rd; Op_reg rn ] }
-      else Some { i_op = Op_add; i_ops = [ Op_reg rd; Op_reg rn; Op_imm (Bigint.of_int64 imm) ] }
-  | L_stp_pre { rt; rt2; rn; offset } ->
+  | Lowered.Add_imm { rd; rn; imm; shift12 } ->
+      if Int64.equal imm 0L && (not shift12) && (rd.Reg.is_sp || rn.Reg.is_sp) then
+        Some { Instruction.op = Opcode.Mov; ops = [ Operand.Reg rd; Operand.Reg rn ] }
+      else
+        Some
+          {
+            Instruction.op = Opcode.Add;
+            ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Imm (Bigint.of_int64 imm) ];
+          }
+  | Lowered.Stp_pre { rt; rt2; rn; offset } ->
       Some
         {
-          i_op = Op_stp;
-          i_ops =
+          Instruction.op = Opcode.Stp;
+          ops =
             [
-              Op_reg rt;
-              Op_reg rt2;
-              Op_mem { m_base = rn; m_offset = offset; m_writeback = true; m_pre = true };
+              Operand.Reg rt;
+              Operand.Reg rt2;
+              Operand.Mem { Mem.base = rn; offset; writeback = true; pre = true };
             ];
         }
-  | L_movz { rd; imm16; hw } ->
+  | Lowered.Movz { rd; imm16; hw } ->
       Some
         {
-          i_op = Op_movz;
-          i_ops =
-            Op_reg rd
-            :: Op_imm (Bigint.of_int64 imm16)
-            :: (if hw = 0 then [] else [ Op_shift { sh_kind = "lsl"; sh_amount = hw * 16 } ]);
+          Instruction.op = Opcode.Movz;
+          ops =
+            Operand.Reg rd
+            :: Operand.Imm (Bigint.of_int64 imm16)
+            :: (if hw = 0 then [] else [ Operand.Shift { Shift.kind = "lsl"; amount = hw * 16 } ]);
         }
-  | L_ldr_uoff { rt; rn; offset } ->
+  | Lowered.Ldr_uoff { rt; rn; offset } ->
       Some
         {
-          i_op = Op_ldr;
-          i_ops =
-            [
-              Op_reg rt;
-              Op_mem { m_base = rn; m_offset = offset; m_writeback = false; m_pre = true };
-            ];
+          Instruction.op = Opcode.Ldr;
+          ops =
+            [ Operand.Reg rt; Operand.Mem { Mem.base = rn; offset; writeback = false; pre = true } ];
         }
-  | L_ret { rn } ->
-      (* Same elision as [pp_lowered]: x30 is the architectural default, so
+  | Lowered.Ret { rn } ->
+      (* Same elision as [Lowered.pp]: x30 is the architectural default, so
          [ret x30] denormalizes to the operandless [ret] that both objdump and
          the assembler's own [lower] accept. *)
-      Some { i_op = Op_ret; i_ops = (if rn.rnum = 30 && not rn.is_sp then [] else [ Op_reg rn ]) }
+      Some
+        {
+          Instruction.op = Opcode.Ret;
+          ops = (if rn.Reg.num = 30 && not rn.Reg.is_sp then [] else [ Operand.Reg rn ]);
+        }
 
 let decode ctx bytes ~pos =
   ignore ctx;
@@ -566,5 +610,3 @@ let handle_directive ~name ~argument state =
   (* A64 needs no target-state directive for the M1 fixtures: unlike ARM there
      is no [.syntax], no [.arch] and no [.fpu] in them. *)
   Target_intf.Target.Unhandled
-
-type register = reg

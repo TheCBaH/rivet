@@ -24,26 +24,33 @@ module C = Codec
 
 (* {1 Registers}
 
-   [rnum] is the architectural number 0-15, so [rnum land 7] is the ModR/M or
-   SIB field and [rnum >= 8] is the REX extension bit. Keeping one number
+   [num] is the architectural number 0-15, so [num land 7] is the ModR/M or
+   SIB field and [num >= 8] is the REX extension bit. Keeping one number
    rather than a pair is what makes "did this operand need REX.B" a property of
    the register instead of a fact the caller has to remember to carry. *)
 
-type reg = { rname : string; rnum : int; rwidth : int }
+module Reg = struct
+  type t = { name : string; num : int; width : int }
 
-let reg_equal a b = a.rnum = b.rnum && a.rwidth = b.rwidth
-let pp_reg ppf r = Fmt.pf ppf "%%%s" r.rname
-let names_32 = [| "eax"; "ecx"; "edx"; "ebx"; "esp"; "ebp"; "esi"; "edi" |]
-let names_64 = [| "rax"; "rcx"; "rdx"; "rbx"; "rsp"; "rbp"; "rsi"; "rdi" |]
-let names_16 = [| "ax"; "cx"; "dx"; "bx"; "sp"; "bp"; "si"; "di" |]
-let names_8l = [| "al"; "cl"; "dl"; "bl"; "spl"; "bpl"; "sil"; "dil" |]
+  let equal a b = a.num = b.num && a.width = b.width
+  let pp ppf r = Fmt.pf ppf "%%%s" r.name
+  let names_32 = [| "eax"; "ecx"; "edx"; "ebx"; "esp"; "ebp"; "esi"; "edi" |]
+  let names_64 = [| "rax"; "rcx"; "rdx"; "rbx"; "rsp"; "rbp"; "rsi"; "rdi" |]
+  let names_16 = [| "ax"; "cx"; "dx"; "bx"; "sp"; "bp"; "si"; "di" |]
+  let names_8l = [| "al"; "cl"; "dl"; "bl"; "spl"; "bpl"; "sil"; "dil" |]
 
-let base_regs width names =
-  Array.to_list (Array.mapi (fun i n -> { rname = n; rnum = i; rwidth = width }) names)
+  let base_regs width names =
+    Array.to_list (Array.mapi (fun i n -> { name = n; num = i; width }) names)
 
-let extended_regs width suffix =
-  List.init 8 (fun i ->
-      { rname = Printf.sprintf "r%d%s" (i + 8) suffix; rnum = i + 8; rwidth = width })
+  let extended_regs width suffix =
+    List.init 8 (fun i -> { name = Printf.sprintf "r%d%s" (i + 8) suffix; num = i + 8; width })
+
+  (* Lookup by spelling over a mode's own register set. The set is a [MODE]
+     field rather than a constant here, because [%rax] exists in 64-bit mode
+     and does not exist in 32-bit mode, and a shared table would have to be
+     filtered at every use. *)
+  let find_in registers name = List.find_opt (fun r -> String.equal r.name name) registers
+end
 
 (* {1 Memory operands}
 
@@ -51,116 +58,132 @@ let extended_regs width suffix =
    what the surface syntax writes and converting once at the encoder is one
    place to be wrong instead of every place that builds a [mem]. *)
 
-type mem = { base : reg option; index : reg option; scale : int; disp : int64 }
+module Mem = struct
+  type t = { base : Reg.t option; index : Reg.t option; scale : int; disp : int64 }
 
-let mem_equal a b =
-  Option.equal reg_equal a.base b.base
-  && Option.equal reg_equal a.index b.index
-  && a.scale = b.scale && Int64.equal a.disp b.disp
+  let equal a b =
+    Option.equal Reg.equal a.base b.base
+    && Option.equal Reg.equal a.index b.index
+    && a.scale = b.scale && Int64.equal a.disp b.disp
 
-let pp_mem ppf m =
-  let disp = if Int64.equal m.disp 0L then "" else Printf.sprintf "%Ld" m.disp in
-  match (m.base, m.index) with
-  | None, None -> Fmt.pf ppf "%Ld" m.disp
-  | Some b, None -> Fmt.pf ppf "%s(%a)" disp pp_reg b
-  | Some b, Some i -> Fmt.pf ppf "%s(%a,%a,%d)" disp pp_reg b pp_reg i m.scale
-  | None, Some i -> Fmt.pf ppf "%s(,%a,%d)" disp pp_reg i m.scale
+  let pp ppf m =
+    let disp = if Int64.equal m.disp 0L then "" else Printf.sprintf "%Ld" m.disp in
+    match (m.base, m.index) with
+    | None, None -> Fmt.pf ppf "%Ld" m.disp
+    | Some b, None -> Fmt.pf ppf "%s(%a)" disp Reg.pp b
+    | Some b, Some i -> Fmt.pf ppf "%s(%a,%a,%d)" disp Reg.pp b Reg.pp i m.scale
+    | None, Some i -> Fmt.pf ppf "%s(,%a,%d)" disp Reg.pp i m.scale
 
-type operand = Op_reg of reg | Op_mem of mem | Op_imm of Bigint.t
+  (* [disp(%base)] with no index, which is every memory operand the M1 fixtures
+     contain and the shape a hand-written AST reaches for first. *)
+  let of_base ?(disp = 0L) base = { base = Some base; index = None; scale = 1; disp }
+end
 
-let pp_operand ppf = function
-  | Op_reg r -> pp_reg ppf r
-  | Op_mem m -> pp_mem ppf m
-  | Op_imm v -> Fmt.pf ppf "$%a" Bigint.pp v
+module Operand = struct
+  type t = Reg of Reg.t | Mem of Mem.t | Imm of Bigint.t
+
+  let pp ppf = function
+    | Reg r -> Reg.pp ppf r
+    | Mem m -> Mem.pp ppf m
+    | Imm v -> Fmt.pf ppf "$%a" Bigint.pp v
+end
 
 (* {1 The three staged instruction types} *)
 
-type surface_instruction = { s_mnemonic : string; s_ops : operand list; s_origin : Origin.t }
+module Surface = struct
+  type t = { mnemonic : string; ops : Operand.t list; origin : Origin.t }
 
-(* AT&T operand order throughout: source first, destination last. Canonicalizing
-   to Intel order here would make every diagnostic disagree with the source the
-   user wrote. *)
-let pp_surface ppf s =
-  match s.s_ops with
-  | [] -> Fmt.string ppf s.s_mnemonic
-  | ops -> Fmt.pf ppf "%s %a" s.s_mnemonic Fmt.(list ~sep:(any ", ") pp_operand) ops
+  (* AT&T operand order throughout: source first, destination last.
+     Canonicalizing to Intel order here would make every diagnostic disagree
+     with the source the user wrote. *)
+  let pp ppf s =
+    match s.ops with
+    | [] -> Fmt.string ppf s.mnemonic
+    | ops -> Fmt.pf ppf "%s %a" s.mnemonic Fmt.(list ~sep:(any ", ") Operand.pp) ops
+end
 
-type opcode = Op_add | Op_sub | Op_mov | Op_lea | Op_ret
+module Opcode = struct
+  type t = Add | Sub | Mov | Lea | Ret
 
-let opcode_name = function
-  | Op_add -> "add"
-  | Op_sub -> "sub"
-  | Op_mov -> "mov"
-  | Op_lea -> "lea"
-  | Op_ret -> "ret"
+  let name = function Add -> "add" | Sub -> "sub" | Mov -> "mov" | Lea -> "lea" | Ret -> "ret"
 
-(* The normalized instruction carries an explicit operand *width in bits*: the
-   suffix that spelled it (`l`, `q`) is surface syntax, and by this stage the
-   only thing that matters is 32 or 64. *)
-type instruction = { i_op : opcode; i_width : int; i_ops : operand list }
+  (* The machine encodes add and sub as one opcode with the operation in the
+     ModR/M reg field, so the opcode and its extension are two spellings of one
+     fact and live together. [-1] is "not an ALU-immediate operation". *)
+  let to_ext = function Add -> 0 | Sub -> 5 | _ -> -1
+  let of_ext = function 0 -> Some Add | 5 -> Some Sub | _ -> None
+end
 
 let suffix_of_width = function 8 -> "b" | 16 -> "w" | 32 -> "l" | 64 -> "q" | _ -> "?"
 
-let pp_instruction ppf i =
-  match i.i_ops with
-  | [] -> Fmt.string ppf (opcode_name i.i_op)
-  | ops ->
-      Fmt.pf ppf "%s%s %a" (opcode_name i.i_op) (suffix_of_width i.i_width)
-        Fmt.(list ~sep:(any ", ") pp_operand)
-        ops
+module Instruction = struct
+  (* The normalized instruction carries an explicit operand *width in bits*:
+     the suffix that spelled it (`l`, `q`) is surface syntax, and by this stage
+     the only thing that matters is 32 or 64. *)
+  type t = { op : Opcode.t; width : int; ops : Operand.t list }
 
-type rm = Rm_reg of reg | Rm_mem of mem
+  let pp ppf i =
+    match i.ops with
+    | [] -> Fmt.string ppf (Opcode.name i.op)
+    | ops ->
+        Fmt.pf ppf "%s%s %a" (Opcode.name i.op) (suffix_of_width i.width)
+          Fmt.(list ~sep:(any ", ") Operand.pp)
+          ops
+end
 
-let rm_equal a b =
-  match (a, b) with
-  | Rm_reg x, Rm_reg y -> reg_equal x y
-  | Rm_mem x, Rm_mem y -> mem_equal x y
-  | _ -> false
+module Rm = struct
+  type t = Reg of Reg.t | Mem of Mem.t
 
-let pp_rm ppf = function Rm_reg r -> pp_reg ppf r | Rm_mem m -> pp_mem ppf m
+  let equal a b =
+    match (a, b) with Reg x, Reg y -> Reg.equal x y | Mem x, Mem y -> Mem.equal x y | _ -> false
 
-(* The lowered instruction names an *encoding shape*, not a mnemonic: [L_alu_rm_imm]
-   with [ext = 5] is `sub` and with [ext = 0] is `add`, because the machine
-   encodes both as opcode 0x83 with the operation in the ModR/M reg field. A
-   lowered type that still said "sub" would have to say it twice - once as the
-   constructor and once as the extension - and the two could disagree. *)
-type lowered_instruction =
-  | L_alu_rm_imm of { ext : int; width : int; rm : rm; imm : int64 }
-  | L_mov_r_imm of { width : int; reg : reg; imm : int64 }
-  | L_mov_rm_r of { width : int; rm : rm; reg : reg }
-  | L_mov_r_rm of { width : int; reg : reg; rm : rm }
-  | L_lea of { width : int; reg : reg; mem : mem }
-  | L_ret
+  let pp ppf = function Reg r -> Reg.pp ppf r | Mem m -> Mem.pp ppf m
+end
 
-let alu_ext = function Op_add -> 0 | Op_sub -> 5 | _ -> -1
-let alu_of_ext = function 0 -> Some Op_add | 5 -> Some Op_sub | _ -> None
+type rm = Rm.t
 
-let pp_lowered ppf = function
-  | L_alu_rm_imm { ext; width; rm; imm } ->
-      Fmt.pf ppf "%s%s $%Ld, %a"
-        (match alu_of_ext ext with Some o -> opcode_name o | None -> "alu?")
-        (suffix_of_width width) imm pp_rm rm
-  | L_mov_r_imm { width; reg; imm } ->
-      Fmt.pf ppf "mov%s $%Ld, %a" (suffix_of_width width) imm pp_reg reg
-  | L_mov_rm_r { width; rm; reg } ->
-      Fmt.pf ppf "mov%s %a, %a" (suffix_of_width width) pp_reg reg pp_rm rm
-  | L_mov_r_rm { width; reg; rm } ->
-      Fmt.pf ppf "mov%s %a, %a" (suffix_of_width width) pp_rm rm pp_reg reg
-  | L_lea { width; reg; mem } ->
-      Fmt.pf ppf "lea%s %a, %a" (suffix_of_width width) pp_mem mem pp_reg reg
-  | L_ret -> Fmt.string ppf "ret"
+(* The lowered instruction names an *encoding shape*, not a mnemonic:
+   [Lowered.Alu_rm_imm] with [ext = 5] is `sub` and with [ext = 0] is `add`,
+   because the machine encodes both as opcode 0x83 with the operation in the
+   ModR/M reg field. A lowered type that still said "sub" would have to say it
+   twice - once as the constructor and once as the extension - and the two
+   could disagree. *)
+module Lowered = struct
+  type t =
+    | Alu_rm_imm of { ext : int; width : int; rm : Rm.t; imm : int64 }
+    | Mov_r_imm of { width : int; reg : Reg.t; imm : int64 }
+    | Mov_rm_r of { width : int; rm : Rm.t; reg : Reg.t }
+    | Mov_r_rm of { width : int; reg : Reg.t; rm : Rm.t }
+    | Lea of { width : int; reg : Reg.t; mem : Mem.t }
+    | Ret
 
-let lowered_equal a b =
-  match (a, b) with
-  | L_alu_rm_imm x, L_alu_rm_imm y ->
-      x.ext = y.ext && x.width = y.width && rm_equal x.rm y.rm && Int64.equal x.imm y.imm
-  | L_mov_r_imm x, L_mov_r_imm y ->
-      x.width = y.width && reg_equal x.reg y.reg && Int64.equal x.imm y.imm
-  | L_mov_rm_r x, L_mov_rm_r y -> x.width = y.width && rm_equal x.rm y.rm && reg_equal x.reg y.reg
-  | L_mov_r_rm x, L_mov_r_rm y -> x.width = y.width && reg_equal x.reg y.reg && rm_equal x.rm y.rm
-  | L_lea x, L_lea y -> x.width = y.width && reg_equal x.reg y.reg && mem_equal x.mem y.mem
-  | L_ret, L_ret -> true
-  | _ -> false
+  let pp ppf = function
+    | Alu_rm_imm { ext; width; rm; imm } ->
+        Fmt.pf ppf "%s%s $%Ld, %a"
+          (match Opcode.of_ext ext with Some o -> Opcode.name o | None -> "alu?")
+          (suffix_of_width width) imm Rm.pp rm
+    | Mov_r_imm { width; reg; imm } ->
+        Fmt.pf ppf "mov%s $%Ld, %a" (suffix_of_width width) imm Reg.pp reg
+    | Mov_rm_r { width; rm; reg } ->
+        Fmt.pf ppf "mov%s %a, %a" (suffix_of_width width) Reg.pp reg Rm.pp rm
+    | Mov_r_rm { width; reg; rm } ->
+        Fmt.pf ppf "mov%s %a, %a" (suffix_of_width width) Rm.pp rm Reg.pp reg
+    | Lea { width; reg; mem } ->
+        Fmt.pf ppf "lea%s %a, %a" (suffix_of_width width) Mem.pp mem Reg.pp reg
+    | Ret -> Fmt.string ppf "ret"
+
+  let equal a b =
+    match (a, b) with
+    | Alu_rm_imm x, Alu_rm_imm y ->
+        x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
+    | Mov_r_imm x, Mov_r_imm y ->
+        x.width = y.width && Reg.equal x.reg y.reg && Int64.equal x.imm y.imm
+    | Mov_rm_r x, Mov_rm_r y -> x.width = y.width && Rm.equal x.rm y.rm && Reg.equal x.reg y.reg
+    | Mov_r_rm x, Mov_r_rm y -> x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Lea x, Lea y -> x.width = y.width && Reg.equal x.reg y.reg && Mem.equal x.mem y.mem
+    | Ret, Ret -> true
+    | _ -> false
+end
 
 (* {1 Fixups}
 
@@ -244,7 +267,8 @@ let scale_of_log2 = function 0 -> 1 | 1 -> 2 | 2 -> 4 | 3 -> 8 | _ -> 1
 (* SIB is required when there is an index, and also when the base's low three
    bits are 100 - the value that in the rm field *means* "a SIB byte follows",
    so rsp and r12 have no non-SIB encoding. *)
-let needs_sib m = m.index <> None || match m.base with Some b -> b.rnum land 7 = 4 | None -> true
+let needs_sib (m : Mem.t) =
+  m.index <> None || match m.base with Some b -> b.num land 7 = 4 | None -> true
 
 (* Which displacement form GAS picks, and the one rule that is not "the smallest
    that fits": a base whose low three bits are 101 (rbp, r13) cannot use mod=00,
@@ -252,28 +276,28 @@ let needs_sib m = m.index <> None || match m.base with Some b -> b.rnum land 7 =
    an explicit zero disp8. *)
 type disp_form = D_none | D_8 | D_32
 
-let disp_form_of m =
-  let ebp_like = match m.base with Some b -> b.rnum land 7 = 5 | None -> false in
+let disp_form_of (m : Mem.t) =
+  let ebp_like = match m.base with Some b -> b.num land 7 = 5 | None -> false in
   if Int64.equal m.disp 0L && not ebp_like then D_none else if fits_s8 m.disp then D_8 else D_32
 
-let sib_of m =
+let sib_of (m : Mem.t) =
   match log2_scale (if m.index = None then 1 else m.scale) with
   | None -> None
   | Some sc ->
       Some
         {
           sc;
-          ix = (match m.index with Some i -> i.rnum land 7 | None -> 4);
-          bs = (match m.base with Some b -> b.rnum land 7 | None -> 5);
+          ix = (match m.index with Some i -> i.num land 7 | None -> 4);
+          bs = (match m.base with Some b -> b.num land 7 | None -> 5);
         }
 
 (* Decoding a memory operand needs the register table back, so the two
    directions are parameterized over it. [reg_of_num] is the mode's 32- or
    64-bit address register set. *)
-let make_rm_codec ~(reg_of_num : int -> reg) : (rm_enc, fixup_kind) C.t =
+let make_rm_codec ~(reg_of_num : int -> Reg.t) : (rm_enc, fixup_kind) C.t =
   let mem_of_sib ~sib ~disp =
     {
-      base = Some (reg_of_num sib.bs);
+      Mem.base = Some (reg_of_num sib.bs);
       index = (if sib.ix = 4 then None else Some (reg_of_num sib.ix));
       scale = scale_of_log2 sib.sc;
       disp;
@@ -284,13 +308,13 @@ let make_rm_codec ~(reg_of_num : int -> reg) : (rm_enc, fixup_kind) C.t =
       (C.iso_fun ~name:("modrm-" ^ label)
          ~encode:(fun e ->
            match e.re_rm with
-           | Rm_mem m when needs_sib m && disp_form_of m = form -> (
+           | Rm.Mem m when needs_sib m && disp_form_of m = form -> (
                match sib_of m with
                | None -> None
                | Some s -> Some ((), (Int64.of_int (e.re_reg land 7), ((), (s, m.disp)))))
            | _ -> None)
          ~decode:(fun ((), (reg, ((), (s, disp)))) ->
-           Some { re_reg = Int64.to_int reg; re_rm = Rm_mem (mem_of_sib ~sib:s ~disp) })
+           Some { re_reg = Int64.to_int reg; re_rm = Rm.Mem (mem_of_sib ~sib:s ~disp) })
          C.(
            const ~width:2 (Int64.of_int modbits)
            ** field ~width:3 "reg" ** const ~width:3 4L ** sib_codec ** disp_codec))
@@ -300,20 +324,18 @@ let make_rm_codec ~(reg_of_num : int -> reg) : (rm_enc, fixup_kind) C.t =
       (C.iso_fun ~name:("modrm-" ^ label)
          ~encode:(fun e ->
            match e.re_rm with
-           | Rm_mem m when (not (needs_sib m)) && disp_form_of m = form -> (
+           | Rm.Mem m when (not (needs_sib m)) && disp_form_of m = form -> (
                match m.base with
                | None -> None
                | Some b ->
-                   Some
-                     ((), (Int64.of_int (e.re_reg land 7), (Int64.of_int (b.rnum land 7), m.disp))))
+                   Some ((), (Int64.of_int (e.re_reg land 7), (Int64.of_int (b.num land 7), m.disp)))
+               )
            | _ -> None)
          ~decode:(fun ((), (reg, (rm, disp))) ->
            Some
              {
                re_reg = Int64.to_int reg;
-               re_rm =
-                 Rm_mem
-                   { base = Some (reg_of_num (Int64.to_int rm)); index = None; scale = 1; disp };
+               re_rm = Rm.Mem (Mem.of_base ~disp (reg_of_num (Int64.to_int rm)));
              })
          C.(
            const ~width:2 (Int64.of_int modbits)
@@ -330,10 +352,10 @@ let make_rm_codec ~(reg_of_num : int -> reg) : (rm_enc, fixup_kind) C.t =
         (C.iso_fun ~name:"modrm-reg"
            ~encode:(fun e ->
              match e.re_rm with
-             | Rm_reg r -> Some ((), (Int64.of_int (e.re_reg land 7), Int64.of_int (r.rnum land 7)))
-             | Rm_mem _ -> None)
+             | Rm.Reg r -> Some ((), (Int64.of_int (e.re_reg land 7), Int64.of_int (r.num land 7)))
+             | Rm.Mem _ -> None)
            ~decode:(fun ((), (reg, rm)) ->
-             Some { re_reg = Int64.to_int reg; re_rm = Rm_reg (reg_of_num (Int64.to_int rm)) })
+             Some { re_reg = Int64.to_int reg; re_rm = Rm.Reg (reg_of_num (Int64.to_int rm)) })
            C.(const ~width:2 3L ** field ~width:3 "reg" ** field ~width:3 "rm"));
       sib_alt ~label:"sib-disp0" ~priority:1 ~modbits:0 ~form:D_none ~disp_codec:no_disp;
       sib_alt ~label:"sib-disp8" ~priority:2 ~modbits:1 ~form:D_8
@@ -367,31 +389,33 @@ module type MODE = sig
       REX-shaped alternative in the codec would not merely be unused - it would decode those
       instructions as a prefix on whatever followed. *)
 
-  val registers : reg list
+  val registers : Reg.t list
 end
 
 module Make (M : MODE) = struct
   let name = M.name
   let triple = M.triple
 
-  type register = reg
-  type nonrec reg = reg
-  type nonrec mem = mem
-  type surface_operand = operand
-  type nonrec surface_instruction = surface_instruction
-  type nonrec opcode = opcode
-  type nonrec instruction = instruction
-  type nonrec lowered_instruction = lowered_instruction
+  (* The constructor modules are re-exported rather than re-declared, so
+     [X86_64.Operand.Reg] and [X86_32.Operand.Reg] are the *same* constructor
+     of the same type. Two modes that had their own copies would make an AST
+     written for one mode fail to typecheck against the other for a reason that
+     has nothing to do with the instruction set. *)
+  module Reg = Reg
+  module Mem = Mem
+  module Operand = Operand
+  module Opcode = Opcode
+  module Rm = Rm
+  module Surface = Surface
+  module Instruction = Instruction
+  module Lowered = Lowered
+
   type nonrec fixup_kind = fixup_kind
   type feature = No_features
   type target_state = { unused : unit }
 
   let default_state = { unused = () }
   let default_features = []
-  let pp_surface = pp_surface
-  let pp_instruction = pp_instruction
-  let pp_lowered = pp_lowered
-  let lowered_equal = lowered_equal
 
   (* {2 Lexical profile}
 
@@ -403,12 +427,12 @@ module Make (M : MODE) = struct
     Asm_core.Lexical_profile.make ~name:M.name ~comment_introducers:[ "#" ] ~statement_separator:';'
       ~immediate_sigil:'$' ~register_sigil:'%' ()
 
-  let address_regs = List.filter (fun r -> r.rwidth = M.address_width) M.registers
+  let address_regs = List.filter (fun (r : Reg.t) -> r.width = M.address_width) M.registers
 
   let reg_at ~width n =
-    match List.find_opt (fun r -> r.rwidth = width && r.rnum = n) M.registers with
+    match List.find_opt (fun (r : Reg.t) -> r.width = width && r.num = n) M.registers with
     | Some r -> r
-    | None -> { rname = Printf.sprintf "r%d?" n; rnum = n; rwidth = width }
+    | None -> { Reg.name = Printf.sprintf "r%d?" n; num = n; width }
 
   (* The register a ModR/M or SIB field denotes when it is being used to form an
      *address*. Always the mode's address width, whatever the operand size is:
@@ -421,9 +445,9 @@ module Make (M : MODE) = struct
      each form's decode rather than inside [rm_codec]: with no REX the mov below
      writes [%eax], and printing [%rax] there would be a disassembly that does
      not re-assemble to the bytes it came from. *)
-  let retype ~width (r : reg) = reg_at ~width r.rnum
-  let retype_rm ~width = function Rm_reg r -> Rm_reg (retype ~width r) | Rm_mem _ as m -> m
-  let find_reg n = List.find_opt (fun r -> String.equal r.rname n) M.registers
+  let retype ~width (r : Reg.t) = reg_at ~width r.num
+  let retype_rm ~width = function Rm.Reg r -> Rm.Reg (retype ~width r) | Rm.Mem _ as m -> m
+  let find_reg n = List.find_opt (fun (r : Reg.t) -> String.equal r.name n) M.registers
 
   (* {2 Operand parsing (§4.7)}
 
@@ -452,23 +476,21 @@ module Make (M : MODE) = struct
     let open Asm_core in
     match List.map Token.kind slice with
     (* $imm *)
-    | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Op_imm v)
-    | Token.Immediate_sigil :: Token.Minus :: [ Token.Int v ] -> Ok (Op_imm (Bigint.neg v))
+    | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Operand.Imm v)
+    | Token.Immediate_sigil :: Token.Minus :: [ Token.Int v ] -> Ok (Operand.Imm (Bigint.neg v))
     (* %reg *)
-    | [ Token.Register n ] -> Result.map (fun r -> Op_reg r) (reg_named n)
+    | [ Token.Register n ] -> Result.map (fun r -> Operand.Reg r) (reg_named n)
     (* disp(%base) and (%base) *)
     | [ Token.Lparen; Token.Register b; Token.Rparen ] ->
-        Result.map
-          (fun b -> Op_mem { base = Some b; index = None; scale = 1; disp = 0L })
-          (reg_named b)
+        Result.map (fun b -> Operand.Mem (Mem.of_base b)) (reg_named b)
     | [ Token.Int d; Token.Lparen; Token.Register b; Token.Rparen ] -> (
         match (Bigint.to_int64_opt d, reg_named b) with
-        | Some d, Ok b -> Ok (Op_mem { base = Some b; index = None; scale = 1; disp = d })
+        | Some d, Ok b -> Ok (Operand.Mem (Mem.of_base ~disp:d b))
         | None, _ -> bad "displacement does not fit 64 bits"
         | _, Error e -> Error e)
     | Token.Minus :: Token.Int d :: [ Token.Lparen; Token.Register b; Token.Rparen ] -> (
         match (Bigint.to_int64_opt d, reg_named b) with
-        | Some d, Ok b -> Ok (Op_mem { base = Some b; index = None; scale = 1; disp = Int64.neg d })
+        | Some d, Ok b -> Ok (Operand.Mem (Mem.of_base ~disp:(Int64.neg d) b))
         | None, _ -> bad "displacement does not fit 64 bits"
         | _, Error e -> Error e)
     (* disp(%base,%index,scale) *)
@@ -485,7 +507,7 @@ module Make (M : MODE) = struct
         match (Bigint.to_int64_opt d, Bigint.to_int_opt s, reg_named b, reg_named i) with
         | Some d, Some s, Ok b, Ok i ->
             if log2_scale s = None then bad "scale must be 1, 2, 4 or 8"
-            else Ok (Op_mem { base = Some b; index = Some i; scale = s; disp = d })
+            else Ok (Operand.Mem { Mem.base = Some b; index = Some i; scale = s; disp = d })
         | _ -> bad "malformed scaled memory operand")
     | _ -> bad (Printf.sprintf "cannot parse operand %s" (Asm_core.Token.slice_text slice))
 
@@ -503,8 +525,7 @@ module Make (M : MODE) = struct
     in
     go [] slices
 
-  let make_surface_instruction ~mnemonic ~origin ops =
-    Ok { s_mnemonic = mnemonic; s_ops = ops; s_origin = origin }
+  let make_surface_instruction ~mnemonic ~origin ops = Ok { Surface.mnemonic; ops; origin }
 
   (* {2 Simplify: surface -> normalized}
 
@@ -527,26 +548,28 @@ module Make (M : MODE) = struct
 
   let simplify_instruction ~features s =
     ignore features;
-    let bad msg = Error (diag ~origin:s.s_origin "x86.simplify" msg) in
-    let stem, suffix = split_suffix s.s_mnemonic in
+    let bad msg = Error (diag ~origin:s.Surface.origin "x86.simplify" msg) in
+    let stem, suffix = split_suffix s.Surface.mnemonic in
     let widthed op =
       match suffix with
-      | None -> bad (Printf.sprintf "%s needs an operand-size suffix (b, w, l or q)" s.s_mnemonic)
+      | None ->
+          bad (Printf.sprintf "%s needs an operand-size suffix (b, w, l or q)" s.Surface.mnemonic)
       | Some 16 -> bad "16-bit operands need the 0x66 prefix, which is not in M1 scope"
       | Some 8 -> bad "8-bit operands are not in M1 scope"
       | Some w when w = 64 && not M.rex_allowed ->
           bad (Printf.sprintf "%s has no 64-bit operand size" M.name)
-      | Some w -> Ok { i_op = op; i_width = w; i_ops = s.s_ops }
+      | Some w -> Ok { Instruction.op; width = w; ops = s.Surface.ops }
     in
-    match (s.s_mnemonic, stem) with
+    match (s.Surface.mnemonic, stem) with
     | "ret", _ ->
-        if s.s_ops = [] then Ok { i_op = Op_ret; i_width = M.address_width; i_ops = [] }
+        if s.Surface.ops = [] then
+          Ok { Instruction.op = Opcode.Ret; width = M.address_width; ops = [] }
         else bad "ret takes no operands in M1"
-    | _, "add" -> widthed Op_add
-    | _, "sub" -> widthed Op_sub
-    | _, "mov" -> widthed Op_mov
-    | _, "lea" -> widthed Op_lea
-    | _ -> bad (Printf.sprintf "unknown instruction %s" s.s_mnemonic)
+    | _, "add" -> widthed Opcode.Add
+    | _, "sub" -> widthed Opcode.Sub
+    | _, "mov" -> widthed Opcode.Mov
+    | _, "lea" -> widthed Opcode.Lea
+    | _ -> bad (Printf.sprintf "unknown instruction %s" s.Surface.mnemonic)
 
   (* {2 Lower: normalized -> lowered}
 
@@ -563,46 +586,54 @@ module Make (M : MODE) = struct
       | Some x -> Ok x
       | None -> Error (diag "x86.lower" "immediate does not fit 64 bits")
     in
-    let width_ok r =
-      if r.rwidth = i.i_width then Ok ()
+    let width_ok (r : Reg.t) =
+      if r.width = i.Instruction.width then Ok ()
       else
-        bad (Printf.sprintf "%s is %d-bit but the instruction is %d-bit" r.rname r.rwidth i.i_width)
+        bad
+          (Printf.sprintf "%s is %d-bit but the instruction is %d-bit" r.name r.width
+             i.Instruction.width)
     in
-    match (i.i_op, i.i_ops) with
-    | (Op_add | Op_sub), [ Op_imm v; dst ] -> (
+    match (i.Instruction.op, i.Instruction.ops) with
+    | (Opcode.Add | Opcode.Sub), [ Operand.Imm v; dst ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
-            let ext = alu_ext i.i_op in
+            let ext = Opcode.to_ext i.Instruction.op in
             match dst with
-            | Op_reg r -> (
+            | Operand.Reg r -> (
                 match width_ok r with
                 | Error e -> Error e
-                | Ok () -> Ok [ L_alu_rm_imm { ext; width = i.i_width; rm = Rm_reg r; imm } ])
-            | Op_mem m -> Ok [ L_alu_rm_imm { ext; width = i.i_width; rm = Rm_mem m; imm } ]
-            | Op_imm _ -> bad "an immediate cannot be a destination"))
-    | Op_mov, [ Op_imm v; Op_reg r ] -> (
+                | Ok () ->
+                    Ok
+                      [
+                        Lowered.Alu_rm_imm { ext; width = i.Instruction.width; rm = Rm.Reg r; imm };
+                      ])
+            | Operand.Mem m ->
+                Ok [ Lowered.Alu_rm_imm { ext; width = i.Instruction.width; rm = Rm.Mem m; imm } ]
+            | Operand.Imm _ -> bad "an immediate cannot be a destination"))
+    | Opcode.Mov, [ Operand.Imm v; Operand.Reg r ] -> (
         match (imm_of v, width_ok r) with
-        | Ok imm, Ok () -> Ok [ L_mov_r_imm { width = i.i_width; reg = r; imm } ]
+        | Ok imm, Ok () -> Ok [ Lowered.Mov_r_imm { width = i.Instruction.width; reg = r; imm } ]
         | Error e, _ | _, Error e -> Error e)
-    | Op_mov, [ Op_reg r; Op_mem m ] -> (
+    | Opcode.Mov, [ Operand.Reg r; Operand.Mem m ] -> (
         match width_ok r with
         | Error e -> Error e
-        | Ok () -> Ok [ L_mov_rm_r { width = i.i_width; rm = Rm_mem m; reg = r } ])
-    | Op_mov, [ Op_reg a; Op_reg b ] -> (
+        | Ok () -> Ok [ Lowered.Mov_rm_r { width = i.Instruction.width; rm = Rm.Mem m; reg = r } ])
+    | Opcode.Mov, [ Operand.Reg a; Operand.Reg b ] -> (
         match (width_ok a, width_ok b) with
-        | Ok (), Ok () -> Ok [ L_mov_rm_r { width = i.i_width; rm = Rm_reg b; reg = a } ]
+        | Ok (), Ok () ->
+            Ok [ Lowered.Mov_rm_r { width = i.Instruction.width; rm = Rm.Reg b; reg = a } ]
         | Error e, _ | _, Error e -> Error e)
-    | Op_mov, [ Op_mem m; Op_reg r ] -> (
+    | Opcode.Mov, [ Operand.Mem m; Operand.Reg r ] -> (
         match width_ok r with
         | Error e -> Error e
-        | Ok () -> Ok [ L_mov_r_rm { width = i.i_width; reg = r; rm = Rm_mem m } ])
-    | Op_lea, [ Op_mem m; Op_reg r ] -> (
+        | Ok () -> Ok [ Lowered.Mov_r_rm { width = i.Instruction.width; reg = r; rm = Rm.Mem m } ])
+    | Opcode.Lea, [ Operand.Mem m; Operand.Reg r ] -> (
         match width_ok r with
         | Error e -> Error e
-        | Ok () -> Ok [ L_lea { width = i.i_width; reg = r; mem = m } ])
-    | Op_ret, [] -> Ok [ L_ret ]
-    | _ -> bad (Printf.sprintf "no %s form takes these operands" (opcode_name i.i_op))
+        | Ok () -> Ok [ Lowered.Lea { width = i.Instruction.width; reg = r; mem = m } ])
+    | Opcode.Ret, [] -> Ok [ Lowered.Ret ]
+    | _ -> bad (Printf.sprintf "no %s form takes these operands" (Opcode.name i.Instruction.op))
 
   (* {2 The codec}
 
@@ -623,10 +654,10 @@ module Make (M : MODE) = struct
       let r = reg >= 8 in
       let x, b =
         match rm with
-        | Rm_reg g -> (false, g.rnum >= 8)
-        | Rm_mem m ->
-            ( (match m.index with Some i -> i.rnum >= 8 | None -> false),
-              match m.base with Some bb -> bb.rnum >= 8 | None -> false )
+        | Rm.Reg g -> (false, g.num >= 8)
+        | Rm.Mem m ->
+            ( (match m.index with Some i -> i.num >= 8 | None -> false),
+              match m.base with Some bb -> bb.num >= 8 | None -> false )
       in
       let w = width = 64 in
       if w || r || x || b then
@@ -670,24 +701,25 @@ module Make (M : MODE) = struct
     C.alt ~label ~priority
       (C.iso_fun ~name:label
          ~encode:(function
-           | L_alu_rm_imm { ext; width; rm; imm } ->
+           | Lowered.Alu_rm_imm { ext; width; rm; imm } ->
                let fits = if imm_width = 8 then fits_s8 imm else fits_s32 imm in
                if not fits then None
                else Some (rex_of ~width ~reg:ext ~rm, ((), ({ re_reg = ext; re_rm = rm }, imm)))
            | _ -> None)
          ~decode:(fun (rex, ((), (e, imm))) ->
-           match alu_of_ext e.re_reg with
+           match Opcode.of_ext e.re_reg with
            | None -> None
            | Some _ ->
                let width = width_of_rex rex in
-               Some (L_alu_rm_imm { ext = e.re_reg; width; rm = retype_rm ~width e.re_rm; imm }))
+               Some
+                 (Lowered.Alu_rm_imm { ext = e.re_reg; width; rm = retype_rm ~width e.re_rm; imm }))
          C.(
            rex_codec
            ** const ~width:8 (Int64.of_int opcode_byte)
            ** rm_codec
            ** le ~signedness:C.Signed ~width:imm_width "imm"))
 
-  let codec : (lowered_instruction, fixup_kind) C.t =
+  let codec : (Lowered.t, fixup_kind) C.t =
     C.choice ~name:M.name
       [
         (* The short immediate first: GAS encodes [subl $12, %esp] as [83 ec 0c]
@@ -700,15 +732,15 @@ module Make (M : MODE) = struct
         C.alt ~label:"mov-r-imm" ~priority:2
           (C.iso_fun ~name:"mov-r-imm"
              ~encode:(function
-               | L_mov_r_imm { width; reg; imm } ->
+               | Lowered.Mov_r_imm { width; reg; imm } ->
                    Some
-                     ( rex_of ~width ~reg:0 ~rm:(Rm_reg reg),
-                       (((), Int64.of_int (reg.rnum land 7)), imm) )
+                     ( rex_of ~width ~reg:0 ~rm:(Rm.Reg reg),
+                       (((), Int64.of_int (reg.num land 7)), imm) )
                | _ -> None)
              ~decode:(fun (rex, (((), r), imm)) ->
                let width = width_of_rex rex in
                Some
-                 (L_mov_r_imm
+                 (Lowered.Mov_r_imm
                     { width; reg = reg_at ~width (Int64.to_int r); imm = mask ~width:32 imm }))
              C.(
                rex_codec
@@ -717,44 +749,46 @@ module Make (M : MODE) = struct
         C.alt ~label:"mov-rm-r" ~priority:3
           (C.iso_fun ~name:"mov-rm-r"
              ~encode:(function
-               | L_mov_rm_r { width; rm; reg } ->
-                   Some (rex_of ~width ~reg:reg.rnum ~rm, ((), { re_reg = reg.rnum; re_rm = rm }))
+               | Lowered.Mov_rm_r { width; rm; reg } ->
+                   Some (rex_of ~width ~reg:reg.num ~rm, ((), { re_reg = reg.num; re_rm = rm }))
                | _ -> None)
              ~decode:(fun (rex, ((), e)) ->
                let width = width_of_rex rex in
                Some
-                 (L_mov_rm_r { width; rm = retype_rm ~width e.re_rm; reg = reg_at ~width e.re_reg }))
+                 (Lowered.Mov_rm_r
+                    { width; rm = retype_rm ~width e.re_rm; reg = reg_at ~width e.re_reg }))
              C.(rex_codec ** const ~width:8 0x89L ** rm_codec));
         C.alt ~label:"mov-r-rm" ~priority:4
           (C.iso_fun ~name:"mov-r-rm"
              ~encode:(function
-               | L_mov_r_rm { width; reg; rm } ->
-                   Some (rex_of ~width ~reg:reg.rnum ~rm, ((), { re_reg = reg.rnum; re_rm = rm }))
+               | Lowered.Mov_r_rm { width; reg; rm } ->
+                   Some (rex_of ~width ~reg:reg.num ~rm, ((), { re_reg = reg.num; re_rm = rm }))
                | _ -> None)
              ~decode:(fun (rex, ((), e)) ->
                let width = width_of_rex rex in
                Some
-                 (L_mov_r_rm { width; reg = reg_at ~width e.re_reg; rm = retype_rm ~width e.re_rm }))
+                 (Lowered.Mov_r_rm
+                    { width; reg = reg_at ~width e.re_reg; rm = retype_rm ~width e.re_rm }))
              C.(rex_codec ** const ~width:8 0x8bL ** rm_codec));
         C.alt ~label:"lea" ~priority:5
           (C.iso_fun ~name:"lea"
              ~encode:(function
-               | L_lea { width; reg; mem } ->
+               | Lowered.Lea { width; reg; mem } ->
                    Some
-                     ( rex_of ~width ~reg:reg.rnum ~rm:(Rm_mem mem),
-                       ((), { re_reg = reg.rnum; re_rm = Rm_mem mem }) )
+                     ( rex_of ~width ~reg:reg.num ~rm:(Rm.Mem mem),
+                       ((), { re_reg = reg.num; re_rm = Rm.Mem mem }) )
                | _ -> None)
              ~decode:(fun (rex, ((), e)) ->
                match e.re_rm with
-               | Rm_mem m ->
+               | Rm.Mem m ->
                    let width = width_of_rex rex in
-                   Some (L_lea { width; reg = reg_at ~width e.re_reg; mem = m })
-               | Rm_reg _ -> None)
+                   Some (Lowered.Lea { width; reg = reg_at ~width e.re_reg; mem = m })
+               | Rm.Reg _ -> None)
              C.(rex_codec ** const ~width:8 0x8dL ** rm_codec));
         C.alt ~label:"ret" ~priority:6
           (C.iso_fun ~name:"ret"
-             ~encode:(function L_ret -> Some () | _ -> None)
-             ~decode:(fun () -> Some L_ret)
+             ~encode:(function Lowered.Ret -> Some () | _ -> None)
+             ~decode:(fun () -> Some Lowered.Ret)
              C.(const ~width:8 0xc3L));
       ]
 
@@ -772,40 +806,52 @@ module Make (M : MODE) = struct
      pseudo; the moment one is, this stops being an inverse and the disassembler
      will need the lowered form directly. *)
   let instruction_of_lowered = function
-    | L_alu_rm_imm { ext; width; rm; imm } -> (
-        match alu_of_ext ext with
+    | Lowered.Alu_rm_imm { ext; width; rm; imm } -> (
+        match Opcode.of_ext ext with
         | None -> None
         | Some op ->
             Some
               {
-                i_op = op;
-                i_width = width;
-                i_ops =
+                Instruction.op;
+                width;
+                ops =
                   [
-                    Op_imm (Bigint.of_int64 imm);
-                    (match rm with Rm_reg r -> Op_reg r | Rm_mem m -> Op_mem m);
+                    Operand.Imm (Bigint.of_int64 imm);
+                    (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
                   ];
               })
-    | L_mov_r_imm { width; reg; imm } ->
-        Some
-          { i_op = Op_mov; i_width = width; i_ops = [ Op_imm (Bigint.of_int64 imm); Op_reg reg ] }
-    | L_mov_rm_r { width; rm; reg } ->
+    | Lowered.Mov_r_imm { width; reg; imm } ->
         Some
           {
-            i_op = Op_mov;
-            i_width = width;
-            i_ops = [ Op_reg reg; (match rm with Rm_reg r -> Op_reg r | Rm_mem m -> Op_mem m) ];
+            Instruction.op = Opcode.Mov;
+            width;
+            ops = [ Operand.Imm (Bigint.of_int64 imm); Operand.Reg reg ];
           }
-    | L_mov_r_rm { width; reg; rm } ->
+    | Lowered.Mov_rm_r { width; rm; reg } ->
         Some
           {
-            i_op = Op_mov;
-            i_width = width;
-            i_ops = [ (match rm with Rm_reg r -> Op_reg r | Rm_mem m -> Op_mem m); Op_reg reg ];
+            Instruction.op = Opcode.Mov;
+            width;
+            ops =
+              [
+                Operand.Reg reg;
+                (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+              ];
           }
-    | L_lea { width; reg; mem } ->
-        Some { i_op = Op_lea; i_width = width; i_ops = [ Op_mem mem; Op_reg reg ] }
-    | L_ret -> Some { i_op = Op_ret; i_width = M.address_width; i_ops = [] }
+    | Lowered.Mov_r_rm { width; reg; rm } ->
+        Some
+          {
+            Instruction.op = Opcode.Mov;
+            width;
+            ops =
+              [
+                (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+                Operand.Reg reg;
+              ];
+          }
+    | Lowered.Lea { width; reg; mem } ->
+        Some { Instruction.op = Opcode.Lea; width; ops = [ Operand.Mem mem; Operand.Reg reg ] }
+    | Lowered.Ret -> Some { Instruction.op = Opcode.Ret; width = M.address_width; ops = [] }
 
   let decode ctx bytes ~pos =
     ignore ctx;

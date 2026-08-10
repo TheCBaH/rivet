@@ -1,0 +1,2054 @@
+
+
+Disassembly of section .text:
+
+00000000 <_start>:
+       0:	e59d0000 	ldr	r0, [sp]
+       4:	e3500003 	cmp	r0, #3
+       8:	aa000004 	bge	20 <_start+0x20>
+       c:	e3a00041 	mov	r0, #65	@ 0x41
+      10:	e3001000 	movw	r1, #0
+			10: R_ARM_MOVW_ABS_NC	exit_code
+      14:	e3401000 	movt	r1, #0
+			14: R_ARM_MOVT_ABS	exit_code
+      18:	e5810000 	str	r0, [r1]
+      1c:	ea0005b1 	b	16e8 <exit_class>
+      20:	e59d1008 	ldr	r1, [sp, #8]
+      24:	e3002000 	movw	r2, #0
+			24: R_ARM_MOVW_ABS_NC	manifest_path
+      28:	e3402000 	movt	r2, #0
+			28: R_ARM_MOVT_ABS	manifest_path
+      2c:	e5821000 	str	r1, [r2]
+      30:	e59d100c 	ldr	r1, [sp, #12]
+      34:	e3002000 	movw	r2, #0
+			34: R_ARM_MOVW_ABS_NC	result_path
+      38:	e3402000 	movt	r2, #0
+			38: R_ARM_MOVT_ABS	result_path
+      3c:	e5821000 	str	r1, [r2]
+      40:	e28d1004 	add	r1, sp, #4
+      44:	e0811100 	add	r1, r1, r0, lsl #2
+      48:	e2811004 	add	r1, r1, #4
+      4c:	e4912004 	ldr	r2, [r1], #4
+      50:	e3520000 	cmp	r2, #0
+      54:	1afffffc 	bne	4c <_start+0x4c>
+      58:	e5912000 	ldr	r2, [r1]
+      5c:	e3520000 	cmp	r2, #0
+      60:	0a00000b 	beq	94 <_start+0x94>
+      64:	e3520006 	cmp	r2, #6
+      68:	1a000007 	bne	8c <_start+0x8c>
+      6c:	e5912004 	ldr	r2, [r1, #4]
+      70:	e3003000 	movw	r3, #0
+			70: R_ARM_MOVW_ABS_NC	saved_pagesz
+      74:	e3403000 	movt	r3, #0
+			74: R_ARM_MOVT_ABS	saved_pagesz
+      78:	e5832000 	str	r2, [r3]
+      7c:	e3a02001 	mov	r2, #1
+      80:	e3003000 	movw	r3, #0
+			80: R_ARM_MOVW_ABS_NC	pagesz_found
+      84:	e3403000 	movt	r3, #0
+			84: R_ARM_MOVT_ABS	pagesz_found
+      88:	e5832000 	str	r2, [r3]
+      8c:	e2811008 	add	r1, r1, #8
+      90:	eafffff0 	b	58 <_start+0x58>
+      94:	e59d0000 	ldr	r0, [sp]
+      98:	e3500004 	cmp	r0, #4
+      9c:	ba00001b 	blt	110 <_start+0x110>
+      a0:	e59d1010 	ldr	r1, [sp, #16]
+      a4:	e5912000 	ldr	r2, [r1]
+      a8:	e5913004 	ldr	r3, [r1, #4]
+      ac:	e3000000 	movw	r0, #0
+			ac: R_ARM_MOVW_ABS_NC	pagesz_wrong_token
+      b0:	e3400000 	movt	r0, #0
+			b0: R_ARM_MOVT_ABS	pagesz_wrong_token
+      b4:	e590c000 	ldr	ip, [r0]
+      b8:	e152000c 	cmp	r2, ip
+      bc:	1a000007 	bne	e0 <_start+0xe0>
+      c0:	e590c004 	ldr	ip, [r0, #4]
+      c4:	e153000c 	cmp	r3, ip
+      c8:	1a000004 	bne	e0 <_start+0xe0>
+      cc:	e3a02a02 	mov	r2, #8192	@ 0x2000
+      d0:	e3003000 	movw	r3, #0
+			d0: R_ARM_MOVW_ABS_NC	saved_pagesz
+      d4:	e3403000 	movt	r3, #0
+			d4: R_ARM_MOVT_ABS	saved_pagesz
+      d8:	e5832000 	str	r2, [r3]
+      dc:	ea00000b 	b	110 <_start+0x110>
+      e0:	e3000000 	movw	r0, #0
+			e0: R_ARM_MOVW_ABS_NC	pagesz_absent_token
+      e4:	e3400000 	movt	r0, #0
+			e4: R_ARM_MOVT_ABS	pagesz_absent_token
+      e8:	e590c000 	ldr	ip, [r0]
+      ec:	e152000c 	cmp	r2, ip
+      f0:	1a000006 	bne	110 <_start+0x110>
+      f4:	e590c004 	ldr	ip, [r0, #4]
+      f8:	e153000c 	cmp	r3, ip
+      fc:	1a000003 	bne	110 <_start+0x110>
+     100:	e3a02000 	mov	r2, #0
+     104:	e3003000 	movw	r3, #0
+			104: R_ARM_MOVW_ABS_NC	pagesz_found
+     108:	e3403000 	movt	r3, #0
+			108: R_ARM_MOVT_ABS	pagesz_found
+     10c:	e5832000 	str	r2, [r3]
+     110:	e3000000 	movw	r0, #0
+			110: R_ARM_MOVW_ABS_NC	result_path
+     114:	e3400000 	movt	r0, #0
+			114: R_ARM_MOVT_ABS	result_path
+     118:	e5900000 	ldr	r0, [r0]
+     11c:	e3a010c2 	mov	r1, #194	@ 0xc2
+     120:	e3a02d06 	mov	r2, #384	@ 0x180
+     124:	e3007005 	movw	r7, #5
+     128:	e3407000 	movt	r7, #0
+     12c:	ef000000 	svc	0x00000000
+     130:	e3700a01 	cmn	r0, #4096	@ 0x1000
+     134:	8a000572 	bhi	1704 <exit_class+0x1c>
+     138:	e3001000 	movw	r1, #0
+			138: R_ARM_MOVW_ABS_NC	result_fd
+     13c:	e3401000 	movt	r1, #0
+			13c: R_ARM_MOVT_ABS	result_fd
+     140:	e5810000 	str	r0, [r1]
+     144:	e3a01a01 	mov	r1, #4096	@ 0x1000
+     148:	e300705d 	movw	r7, #93	@ 0x5d
+     14c:	e3407000 	movt	r7, #0
+     150:	ef000000 	svc	0x00000000
+     154:	e3700a01 	cmn	r0, #4096	@ 0x1000
+     158:	8a00056e 	bhi	1718 <exit_class+0x30>
+     15c:	e3000000 	movw	r0, #0
+     160:	e3430000 	movt	r0, #12288	@ 0x3000
+     164:	e3001000 	movw	r1, #0
+			164: R_ARM_MOVW_ABS_NC	mm_addr
+     168:	e3401000 	movt	r1, #0
+			168: R_ARM_MOVT_ABS	mm_addr
+     16c:	e5810000 	str	r0, [r1]
+     170:	e3000000 	movw	r0, #0
+     174:	e3400010 	movt	r0, #16
+     178:	e3001000 	movw	r1, #0
+			178: R_ARM_MOVW_ABS_NC	mm_len
+     17c:	e3401000 	movt	r1, #0
+			17c: R_ARM_MOVT_ABS	mm_len
+     180:	e5810000 	str	r0, [r1]
+     184:	e3a00000 	mov	r0, #0
+     188:	e3001000 	movw	r1, #0
+			188: R_ARM_MOVW_ABS_NC	mm_prot
+     18c:	e3401000 	movt	r1, #0
+			18c: R_ARM_MOVT_ABS	mm_prot
+     190:	e5810000 	str	r0, [r1]
+     194:	e3000022 	movw	r0, #34	@ 0x22
+     198:	e3400010 	movt	r0, #16
+     19c:	e3001000 	movw	r1, #0
+			19c: R_ARM_MOVW_ABS_NC	mm_flags
+     1a0:	e3401000 	movt	r1, #0
+			1a0: R_ARM_MOVT_ABS	mm_flags
+     1a4:	e5810000 	str	r0, [r1]
+     1a8:	e3e00000 	mvn	r0, #0
+     1ac:	e3001000 	movw	r1, #0
+			1ac: R_ARM_MOVW_ABS_NC	mm_fd
+     1b0:	e3401000 	movt	r1, #0
+			1b0: R_ARM_MOVT_ABS	mm_fd
+     1b4:	e5810000 	str	r0, [r1]
+     1b8:	eb000521 	bl	1644 <sys_mmap2>
+     1bc:	e3700a01 	cmn	r0, #4096	@ 0x1000
+     1c0:	8a000559 	bhi	172c <exit_class+0x44>
+     1c4:	e3001000 	movw	r1, #0
+     1c8:	e3431000 	movt	r1, #12288	@ 0x3000
+     1cc:	e1500001 	cmp	r0, r1
+     1d0:	1a000555 	bne	172c <exit_class+0x44>
+     1d4:	e3a00000 	mov	r0, #0
+     1d8:	e3001000 	movw	r1, #0
+			1d8: R_ARM_MOVW_ABS_NC	mm_addr
+     1dc:	e3401000 	movt	r1, #0
+			1dc: R_ARM_MOVT_ABS	mm_addr
+     1e0:	e5810000 	str	r0, [r1]
+     1e4:	e3a00a01 	mov	r0, #4096	@ 0x1000
+     1e8:	e3001000 	movw	r1, #0
+			1e8: R_ARM_MOVW_ABS_NC	mm_len
+     1ec:	e3401000 	movt	r1, #0
+			1ec: R_ARM_MOVT_ABS	mm_len
+     1f0:	e5810000 	str	r0, [r1]
+     1f4:	e3a00003 	mov	r0, #3
+     1f8:	e3001000 	movw	r1, #0
+			1f8: R_ARM_MOVW_ABS_NC	mm_prot
+     1fc:	e3401000 	movt	r1, #0
+			1fc: R_ARM_MOVT_ABS	mm_prot
+     200:	e5810000 	str	r0, [r1]
+     204:	e3a00001 	mov	r0, #1
+     208:	e3001000 	movw	r1, #0
+			208: R_ARM_MOVW_ABS_NC	mm_flags
+     20c:	e3401000 	movt	r1, #0
+			20c: R_ARM_MOVT_ABS	mm_flags
+     210:	e5810000 	str	r0, [r1]
+     214:	e3000000 	movw	r0, #0
+			214: R_ARM_MOVW_ABS_NC	result_fd
+     218:	e3400000 	movt	r0, #0
+			218: R_ARM_MOVT_ABS	result_fd
+     21c:	e5900000 	ldr	r0, [r0]
+     220:	e3001000 	movw	r1, #0
+			220: R_ARM_MOVW_ABS_NC	mm_fd
+     224:	e3401000 	movt	r1, #0
+			224: R_ARM_MOVT_ABS	mm_fd
+     228:	e5810000 	str	r0, [r1]
+     22c:	eb000504 	bl	1644 <sys_mmap2>
+     230:	e3700a01 	cmn	r0, #4096	@ 0x1000
+     234:	8a000541 	bhi	1740 <exit_class+0x58>
+     238:	e1a06000 	mov	r6, r0
+     23c:	e3001000 	movw	r1, #0
+			23c: R_ARM_MOVW_ABS_NC	control_alias
+     240:	e3401000 	movt	r1, #0
+			240: R_ARM_MOVT_ABS	control_alias
+     244:	e5816000 	str	r6, [r1]
+     248:	e3000000 	movw	r0, #0
+			248: R_ARM_MOVW_ABS_NC	result_magic
+     24c:	e3400000 	movt	r0, #0
+			24c: R_ARM_MOVT_ABS	result_magic
+     250:	e5901000 	ldr	r1, [r0]
+     254:	e5861000 	str	r1, [r6]
+     258:	e5901004 	ldr	r1, [r0, #4]
+     25c:	e5861004 	str	r1, [r6, #4]
+     260:	e3a01001 	mov	r1, #1
+     264:	e1c610b8 	strh	r1, [r6, #8]
+     268:	e3000000 	movw	r0, #0
+			268: R_ARM_MOVW_ABS_NC	pagesz_found
+     26c:	e3400000 	movt	r0, #0
+			26c: R_ARM_MOVT_ABS	pagesz_found
+     270:	e5900000 	ldr	r0, [r0]
+     274:	e3500000 	cmp	r0, #0
+     278:	1a000009 	bne	2a4 <_start+0x2a4>
+     27c:	e3a00045 	mov	r0, #69	@ 0x45
+     280:	e3001000 	movw	r1, #0
+			280: R_ARM_MOVW_ABS_NC	exit_code
+     284:	e3401000 	movt	r1, #0
+			284: R_ARM_MOVT_ABS	exit_code
+     288:	e5810000 	str	r0, [r1]
+     28c:	e3000002 	movw	r0, #2
+     290:	e3400000 	movt	r0, #0
+     294:	e3001000 	movw	r1, #0
+			294: R_ARM_MOVW_ABS_NC	fail_subcode
+     298:	e3401000 	movt	r1, #0
+			298: R_ARM_MOVT_ABS	fail_subcode
+     29c:	e5810000 	str	r0, [r1]
+     2a0:	ea0004f4 	b	1678 <fail_pre_run>
+     2a4:	e3000000 	movw	r0, #0
+			2a4: R_ARM_MOVW_ABS_NC	saved_pagesz
+     2a8:	e3400000 	movt	r0, #0
+			2a8: R_ARM_MOVT_ABS	saved_pagesz
+     2ac:	e5900000 	ldr	r0, [r0]
+     2b0:	e3a01a01 	mov	r1, #4096	@ 0x1000
+     2b4:	e1500001 	cmp	r0, r1
+     2b8:	0a000009 	beq	2e4 <_start+0x2e4>
+     2bc:	e3a00045 	mov	r0, #69	@ 0x45
+     2c0:	e3001000 	movw	r1, #0
+			2c0: R_ARM_MOVW_ABS_NC	exit_code
+     2c4:	e3401000 	movt	r1, #0
+			2c4: R_ARM_MOVT_ABS	exit_code
+     2c8:	e5810000 	str	r0, [r1]
+     2cc:	e3000001 	movw	r0, #1
+     2d0:	e3400000 	movt	r0, #0
+     2d4:	e3001000 	movw	r1, #0
+			2d4: R_ARM_MOVW_ABS_NC	fail_subcode
+     2d8:	e3401000 	movt	r1, #0
+			2d8: R_ARM_MOVT_ABS	fail_subcode
+     2dc:	e5810000 	str	r0, [r1]
+     2e0:	ea0004e4 	b	1678 <fail_pre_run>
+     2e4:	e3000000 	movw	r0, #0
+			2e4: R_ARM_MOVW_ABS_NC	manifest_path
+     2e8:	e3400000 	movt	r0, #0
+			2e8: R_ARM_MOVT_ABS	manifest_path
+     2ec:	e5900000 	ldr	r0, [r0]
+     2f0:	e3a01000 	mov	r1, #0
+     2f4:	e3a02000 	mov	r2, #0
+     2f8:	e3007005 	movw	r7, #5
+     2fc:	e3407000 	movt	r7, #0
+     300:	ef000000 	svc	0x00000000
+     304:	e3700a01 	cmn	r0, #4096	@ 0x1000
+     308:	8a000511 	bhi	1754 <exit_class+0x6c>
+     30c:	e3001000 	movw	r1, #0
+			30c: R_ARM_MOVW_ABS_NC	input_fd
+     310:	e3401000 	movt	r1, #0
+			310: R_ARM_MOVT_ABS	input_fd
+     314:	e5810000 	str	r0, [r1]
+     318:	e3001000 	movw	r1, #0
+			318: R_ARM_MOVW_ABS_NC	statbuf
+     31c:	e3401000 	movt	r1, #0
+			31c: R_ARM_MOVT_ABS	statbuf
+     320:	e30070c5 	movw	r7, #197	@ 0xc5
+     324:	e3407000 	movt	r7, #0
+     328:	ef000000 	svc	0x00000000
+     32c:	e3700a01 	cmn	r0, #4096	@ 0x1000
+     330:	8a000511 	bhi	177c <exit_class+0x94>
+     334:	e3000000 	movw	r0, #0
+			334: R_ARM_MOVW_ABS_NC	statbuf
+     338:	e3400000 	movt	r0, #0
+			338: R_ARM_MOVT_ABS	statbuf
+     33c:	e5901034 	ldr	r1, [r0, #52]	@ 0x34
+     340:	e3510000 	cmp	r1, #0
+     344:	1a000010 	bne	38c <_start+0x38c>
+     348:	e5905030 	ldr	r5, [r0, #48]	@ 0x30
+     34c:	e3550078 	cmp	r5, #120	@ 0x78
+     350:	2a000009 	bcs	37c <_start+0x37c>
+     354:	e3a00040 	mov	r0, #64	@ 0x40
+     358:	e3001000 	movw	r1, #0
+			358: R_ARM_MOVW_ABS_NC	exit_code
+     35c:	e3401000 	movt	r1, #0
+			35c: R_ARM_MOVT_ABS	exit_code
+     360:	e5810000 	str	r0, [r1]
+     364:	e3000001 	movw	r0, #1
+     368:	e3400000 	movt	r0, #0
+     36c:	e3001000 	movw	r1, #0
+			36c: R_ARM_MOVW_ABS_NC	fail_subcode
+     370:	e3401000 	movt	r1, #0
+			370: R_ARM_MOVT_ABS	fail_subcode
+     374:	e5810000 	str	r0, [r1]
+     378:	ea0004be 	b	1678 <fail_pre_run>
+     37c:	e3001000 	movw	r1, #0
+     380:	e3401010 	movt	r1, #16
+     384:	e1550001 	cmp	r5, r1
+     388:	9a000009 	bls	3b4 <_start+0x3b4>
+     38c:	e3a00040 	mov	r0, #64	@ 0x40
+     390:	e3001000 	movw	r1, #0
+			390: R_ARM_MOVW_ABS_NC	exit_code
+     394:	e3401000 	movt	r1, #0
+			394: R_ARM_MOVT_ABS	exit_code
+     398:	e5810000 	str	r0, [r1]
+     39c:	e3000002 	movw	r0, #2
+     3a0:	e3400000 	movt	r0, #0
+     3a4:	e3001000 	movw	r1, #0
+			3a4: R_ARM_MOVW_ABS_NC	fail_subcode
+     3a8:	e3401000 	movt	r1, #0
+			3a8: R_ARM_MOVT_ABS	fail_subcode
+     3ac:	e5810000 	str	r0, [r1]
+     3b0:	ea0004b0 	b	1678 <fail_pre_run>
+     3b4:	e3a00000 	mov	r0, #0
+     3b8:	e3001000 	movw	r1, #0
+			3b8: R_ARM_MOVW_ABS_NC	mm_addr
+     3bc:	e3401000 	movt	r1, #0
+			3bc: R_ARM_MOVT_ABS	mm_addr
+     3c0:	e5810000 	str	r0, [r1]
+     3c4:	e3001000 	movw	r1, #0
+			3c4: R_ARM_MOVW_ABS_NC	mm_len
+     3c8:	e3401000 	movt	r1, #0
+			3c8: R_ARM_MOVT_ABS	mm_len
+     3cc:	e5815000 	str	r5, [r1]
+     3d0:	e3a00001 	mov	r0, #1
+     3d4:	e3001000 	movw	r1, #0
+			3d4: R_ARM_MOVW_ABS_NC	mm_prot
+     3d8:	e3401000 	movt	r1, #0
+			3d8: R_ARM_MOVT_ABS	mm_prot
+     3dc:	e5810000 	str	r0, [r1]
+     3e0:	e3a00002 	mov	r0, #2
+     3e4:	e3001000 	movw	r1, #0
+			3e4: R_ARM_MOVW_ABS_NC	mm_flags
+     3e8:	e3401000 	movt	r1, #0
+			3e8: R_ARM_MOVT_ABS	mm_flags
+     3ec:	e5810000 	str	r0, [r1]
+     3f0:	e3000000 	movw	r0, #0
+			3f0: R_ARM_MOVW_ABS_NC	input_fd
+     3f4:	e3400000 	movt	r0, #0
+			3f4: R_ARM_MOVT_ABS	input_fd
+     3f8:	e5900000 	ldr	r0, [r0]
+     3fc:	e3001000 	movw	r1, #0
+			3fc: R_ARM_MOVW_ABS_NC	mm_fd
+     400:	e3401000 	movt	r1, #0
+			400: R_ARM_MOVT_ABS	mm_fd
+     404:	e5810000 	str	r0, [r1]
+     408:	eb00048d 	bl	1644 <sys_mmap2>
+     40c:	e3700a01 	cmn	r0, #4096	@ 0x1000
+     410:	8a0004e3 	bhi	17a4 <exit_class+0xbc>
+     414:	e1a04000 	mov	r4, r0
+     418:	e3000000 	movw	r0, #0
+			418: R_ARM_MOVW_ABS_NC	manifest_magic
+     41c:	e3400000 	movt	r0, #0
+			41c: R_ARM_MOVT_ABS	manifest_magic
+     420:	e5901000 	ldr	r1, [r0]
+     424:	e5942000 	ldr	r2, [r4]
+     428:	e1510002 	cmp	r1, r2
+     42c:	1a000003 	bne	440 <_start+0x440>
+     430:	e5901004 	ldr	r1, [r0, #4]
+     434:	e5942004 	ldr	r2, [r4, #4]
+     438:	e1510002 	cmp	r1, r2
+     43c:	0a000009 	beq	468 <_start+0x468>
+     440:	e3a00040 	mov	r0, #64	@ 0x40
+     444:	e3001000 	movw	r1, #0
+			444: R_ARM_MOVW_ABS_NC	exit_code
+     448:	e3401000 	movt	r1, #0
+			448: R_ARM_MOVT_ABS	exit_code
+     44c:	e5810000 	str	r0, [r1]
+     450:	e3000003 	movw	r0, #3
+     454:	e3400000 	movt	r0, #0
+     458:	e3001000 	movw	r1, #0
+			458: R_ARM_MOVW_ABS_NC	fail_subcode
+     45c:	e3401000 	movt	r1, #0
+			45c: R_ARM_MOVT_ABS	fail_subcode
+     460:	e5810000 	str	r0, [r1]
+     464:	ea000483 	b	1678 <fail_pre_run>
+     468:	e1d400b8 	ldrh	r0, [r4, #8]
+     46c:	e3500001 	cmp	r0, #1
+     470:	0a000009 	beq	49c <_start+0x49c>
+     474:	e3a00040 	mov	r0, #64	@ 0x40
+     478:	e3001000 	movw	r1, #0
+			478: R_ARM_MOVW_ABS_NC	exit_code
+     47c:	e3401000 	movt	r1, #0
+			47c: R_ARM_MOVT_ABS	exit_code
+     480:	e5810000 	str	r0, [r1]
+     484:	e3000004 	movw	r0, #4
+     488:	e3400000 	movt	r0, #0
+     48c:	e3001000 	movw	r1, #0
+			48c: R_ARM_MOVW_ABS_NC	fail_subcode
+     490:	e3401000 	movt	r1, #0
+			490: R_ARM_MOVT_ABS	fail_subcode
+     494:	e5810000 	str	r0, [r1]
+     498:	ea000476 	b	1678 <fail_pre_run>
+     49c:	e1d400ba 	ldrh	r0, [r4, #10]
+     4a0:	e3500003 	cmp	r0, #3
+     4a4:	0a000009 	beq	4d0 <_start+0x4d0>
+     4a8:	e3a00040 	mov	r0, #64	@ 0x40
+     4ac:	e3001000 	movw	r1, #0
+			4ac: R_ARM_MOVW_ABS_NC	exit_code
+     4b0:	e3401000 	movt	r1, #0
+			4b0: R_ARM_MOVT_ABS	exit_code
+     4b4:	e5810000 	str	r0, [r1]
+     4b8:	e3000005 	movw	r0, #5
+     4bc:	e3400000 	movt	r0, #0
+     4c0:	e3001000 	movw	r1, #0
+			4c0: R_ARM_MOVW_ABS_NC	fail_subcode
+     4c4:	e3401000 	movt	r1, #0
+			4c4: R_ARM_MOVT_ABS	fail_subcode
+     4c8:	e5810000 	str	r0, [r1]
+     4cc:	ea000469 	b	1678 <fail_pre_run>
+     4d0:	e594000c 	ldr	r0, [r4, #12]
+     4d4:	e1500005 	cmp	r0, r5
+     4d8:	0a000009 	beq	504 <_start+0x504>
+     4dc:	e3a00040 	mov	r0, #64	@ 0x40
+     4e0:	e3001000 	movw	r1, #0
+			4e0: R_ARM_MOVW_ABS_NC	exit_code
+     4e4:	e3401000 	movt	r1, #0
+			4e4: R_ARM_MOVT_ABS	exit_code
+     4e8:	e5810000 	str	r0, [r1]
+     4ec:	e3000006 	movw	r0, #6
+     4f0:	e3400000 	movt	r0, #0
+     4f4:	e3001000 	movw	r1, #0
+			4f4: R_ARM_MOVW_ABS_NC	fail_subcode
+     4f8:	e3401000 	movt	r1, #0
+			4f8: R_ARM_MOVT_ABS	fail_subcode
+     4fc:	e5810000 	str	r0, [r1]
+     500:	ea00045c 	b	1678 <fail_pre_run>
+     504:	e1d481b4 	ldrh	r8, [r4, #20]
+     508:	e3580000 	cmp	r8, #0
+     50c:	0a000001 	beq	518 <_start+0x518>
+     510:	e3580008 	cmp	r8, #8
+     514:	9a000009 	bls	540 <_start+0x540>
+     518:	e3a00040 	mov	r0, #64	@ 0x40
+     51c:	e3001000 	movw	r1, #0
+			51c: R_ARM_MOVW_ABS_NC	exit_code
+     520:	e3401000 	movt	r1, #0
+			520: R_ARM_MOVT_ABS	exit_code
+     524:	e5810000 	str	r0, [r1]
+     528:	e3000007 	movw	r0, #7
+     52c:	e3400000 	movt	r0, #0
+     530:	e3001000 	movw	r1, #0
+			530: R_ARM_MOVW_ABS_NC	fail_subcode
+     534:	e3401000 	movt	r1, #0
+			534: R_ARM_MOVT_ABS	fail_subcode
+     538:	e5810000 	str	r0, [r1]
+     53c:	ea00044d 	b	1678 <fail_pre_run>
+     540:	e1d401b6 	ldrh	r0, [r4, #22]
+     544:	e3500001 	cmp	r0, #1
+     548:	0a000009 	beq	574 <_start+0x574>
+     54c:	e3a00040 	mov	r0, #64	@ 0x40
+     550:	e3001000 	movw	r1, #0
+			550: R_ARM_MOVW_ABS_NC	exit_code
+     554:	e3401000 	movt	r1, #0
+			554: R_ARM_MOVT_ABS	exit_code
+     558:	e5810000 	str	r0, [r1]
+     55c:	e3000008 	movw	r0, #8
+     560:	e3400000 	movt	r0, #0
+     564:	e3001000 	movw	r1, #0
+			564: R_ARM_MOVW_ABS_NC	fail_subcode
+     568:	e3401000 	movt	r1, #0
+			568: R_ARM_MOVT_ABS	fail_subcode
+     56c:	e5810000 	str	r0, [r1]
+     570:	ea000440 	b	1678 <fail_pre_run>
+     574:	e5940028 	ldr	r0, [r4, #40]	@ 0x28
+     578:	e3500c01 	cmp	r0, #256	@ 0x100
+     57c:	0a000009 	beq	5a8 <_start+0x5a8>
+     580:	e3a00040 	mov	r0, #64	@ 0x40
+     584:	e3001000 	movw	r1, #0
+			584: R_ARM_MOVW_ABS_NC	exit_code
+     588:	e3401000 	movt	r1, #0
+			588: R_ARM_MOVT_ABS	exit_code
+     58c:	e5810000 	str	r0, [r1]
+     590:	e3000009 	movw	r0, #9
+     594:	e3400000 	movt	r0, #0
+     598:	e3001000 	movw	r1, #0
+			598: R_ARM_MOVW_ABS_NC	fail_subcode
+     59c:	e3401000 	movt	r1, #0
+			59c: R_ARM_MOVT_ABS	fail_subcode
+     5a0:	e5810000 	str	r0, [r1]
+     5a4:	ea000433 	b	1678 <fail_pre_run>
+     5a8:	e5940030 	ldr	r0, [r4, #48]	@ 0x30
+     5ac:	e3001064 	movw	r1, #100	@ 0x64
+     5b0:	e3401000 	movt	r1, #0
+     5b4:	e1500001 	cmp	r0, r1
+     5b8:	3a000003 	bcc	5cc <_start+0x5cc>
+     5bc:	e30e1a60 	movw	r1, #60000	@ 0xea60
+     5c0:	e3401000 	movt	r1, #0
+     5c4:	e1500001 	cmp	r0, r1
+     5c8:	9a000009 	bls	5f4 <_start+0x5f4>
+     5cc:	e3a00040 	mov	r0, #64	@ 0x40
+     5d0:	e3001000 	movw	r1, #0
+			5d0: R_ARM_MOVW_ABS_NC	exit_code
+     5d4:	e3401000 	movt	r1, #0
+			5d4: R_ARM_MOVT_ABS	exit_code
+     5d8:	e5810000 	str	r0, [r1]
+     5dc:	e300000a 	movw	r0, #10
+     5e0:	e3400000 	movt	r0, #0
+     5e4:	e3001000 	movw	r1, #0
+			5e4: R_ARM_MOVW_ABS_NC	fail_subcode
+     5e8:	e3401000 	movt	r1, #0
+			5e8: R_ARM_MOVT_ABS	fail_subcode
+     5ec:	e5810000 	str	r0, [r1]
+     5f0:	ea000420 	b	1678 <fail_pre_run>
+     5f4:	e5940034 	ldr	r0, [r4, #52]	@ 0x34
+     5f8:	e3500000 	cmp	r0, #0
+     5fc:	0a000009 	beq	628 <_start+0x628>
+     600:	e3a00040 	mov	r0, #64	@ 0x40
+     604:	e3001000 	movw	r1, #0
+			604: R_ARM_MOVW_ABS_NC	exit_code
+     608:	e3401000 	movt	r1, #0
+			608: R_ARM_MOVT_ABS	exit_code
+     60c:	e5810000 	str	r0, [r1]
+     610:	e300000b 	movw	r0, #11
+     614:	e3400000 	movt	r0, #0
+     618:	e3001000 	movw	r1, #0
+			618: R_ARM_MOVW_ABS_NC	fail_subcode
+     61c:	e3401000 	movt	r1, #0
+			61c: R_ARM_MOVT_ABS	fail_subcode
+     620:	e5810000 	str	r0, [r1]
+     624:	ea000413 	b	1678 <fail_pre_run>
+     628:	e2840040 	add	r0, r4, #64	@ 0x40
+     62c:	e3a01038 	mov	r1, #56	@ 0x38
+     630:	eb0003fa 	bl	1620 <or_bytes>
+     634:	e3500000 	cmp	r0, #0
+     638:	0a000009 	beq	664 <_start+0x664>
+     63c:	e3a00040 	mov	r0, #64	@ 0x40
+     640:	e3001000 	movw	r1, #0
+			640: R_ARM_MOVW_ABS_NC	exit_code
+     644:	e3401000 	movt	r1, #0
+			644: R_ARM_MOVT_ABS	exit_code
+     648:	e5810000 	str	r0, [r1]
+     64c:	e300000c 	movw	r0, #12
+     650:	e3400000 	movt	r0, #0
+     654:	e3001000 	movw	r1, #0
+			654: R_ARM_MOVW_ABS_NC	fail_subcode
+     658:	e3401000 	movt	r1, #0
+			658: R_ARM_MOVT_ABS	fail_subcode
+     65c:	e5810000 	str	r0, [r1]
+     660:	ea000404 	b	1678 <fail_pre_run>
+     664:	e3a00028 	mov	r0, #40	@ 0x28
+     668:	e00a0098 	mul	sl, r8, r0
+     66c:	e28aa078 	add	sl, sl, #120	@ 0x78
+     670:	e15a0005 	cmp	sl, r5
+     674:	9a000009 	bls	6a0 <_start+0x6a0>
+     678:	e3a00040 	mov	r0, #64	@ 0x40
+     67c:	e3001000 	movw	r1, #0
+			67c: R_ARM_MOVW_ABS_NC	exit_code
+     680:	e3401000 	movt	r1, #0
+			680: R_ARM_MOVT_ABS	exit_code
+     684:	e5810000 	str	r0, [r1]
+     688:	e300000d 	movw	r0, #13
+     68c:	e3400000 	movt	r0, #0
+     690:	e3001000 	movw	r1, #0
+			690: R_ARM_MOVW_ABS_NC	fail_subcode
+     694:	e3401000 	movt	r1, #0
+			694: R_ARM_MOVT_ABS	fail_subcode
+     698:	e5810000 	str	r0, [r1]
+     69c:	ea0003f5 	b	1678 <fail_pre_run>
+     6a0:	e3a09000 	mov	r9, #0
+     6a4:	e1590008 	cmp	r9, r8
+     6a8:	2a00001a 	bcs	718 <_start+0x718>
+     6ac:	e3a0b028 	mov	fp, #40	@ 0x28
+     6b0:	e00b0b99 	mul	fp, r9, fp
+     6b4:	e08bb004 	add	fp, fp, r4
+     6b8:	e28bb078 	add	fp, fp, #120	@ 0x78
+     6bc:	e59b0018 	ldr	r0, [fp, #24]
+     6c0:	e59b101c 	ldr	r1, [fp, #28]
+     6c4:	e59b2008 	ldr	r2, [fp, #8]
+     6c8:	e59b300c 	ldr	r3, [fp, #12]
+     6cc:	e0900002 	adds	r0, r0, r2
+     6d0:	e0b11003 	adcs	r1, r1, r3
+     6d4:	2a000003 	bcs	6e8 <_start+0x6e8>
+     6d8:	e3510000 	cmp	r1, #0
+     6dc:	1a000001 	bne	6e8 <_start+0x6e8>
+     6e0:	e1500005 	cmp	r0, r5
+     6e4:	9a000009 	bls	710 <_start+0x710>
+     6e8:	e3a00040 	mov	r0, #64	@ 0x40
+     6ec:	e3001000 	movw	r1, #0
+			6ec: R_ARM_MOVW_ABS_NC	exit_code
+     6f0:	e3401000 	movt	r1, #0
+			6f0: R_ARM_MOVT_ABS	exit_code
+     6f4:	e5810000 	str	r0, [r1]
+     6f8:	e300000e 	movw	r0, #14
+     6fc:	e3400000 	movt	r0, #0
+     700:	e3001000 	movw	r1, #0
+			700: R_ARM_MOVW_ABS_NC	fail_subcode
+     704:	e3401000 	movt	r1, #0
+			704: R_ARM_MOVT_ABS	fail_subcode
+     708:	e5810000 	str	r0, [r1]
+     70c:	ea0003d9 	b	1678 <fail_pre_run>
+     710:	e2899001 	add	r9, r9, #1
+     714:	eaffffe2 	b	6a4 <_start+0x6a4>
+     718:	e3a09000 	mov	r9, #0
+     71c:	e1590008 	cmp	r9, r8
+     720:	2a000033 	bcs	7f4 <_start+0x7f4>
+     724:	e3a0b028 	mov	fp, #40	@ 0x28
+     728:	e00b0b99 	mul	fp, r9, fp
+     72c:	e08bb004 	add	fp, fp, r4
+     730:	e28bb078 	add	fp, fp, #120	@ 0x78
+     734:	e59b0018 	ldr	r0, [fp, #24]
+     738:	e3100007 	tst	r0, #7
+     73c:	0a000009 	beq	768 <_start+0x768>
+     740:	e3a00040 	mov	r0, #64	@ 0x40
+     744:	e3001000 	movw	r1, #0
+			744: R_ARM_MOVW_ABS_NC	exit_code
+     748:	e3401000 	movt	r1, #0
+			748: R_ARM_MOVT_ABS	exit_code
+     74c:	e5810000 	str	r0, [r1]
+     750:	e300000f 	movw	r0, #15
+     754:	e3400000 	movt	r0, #0
+     758:	e3001000 	movw	r1, #0
+			758: R_ARM_MOVW_ABS_NC	fail_subcode
+     75c:	e3401000 	movt	r1, #0
+			75c: R_ARM_MOVT_ABS	fail_subcode
+     760:	e5810000 	str	r0, [r1]
+     764:	ea0003c3 	b	1678 <fail_pre_run>
+     768:	e3500000 	cmp	r0, #0
+     76c:	0a00000b 	beq	7a0 <_start+0x7a0>
+     770:	e150000a 	cmp	r0, sl
+     774:	2a000009 	bcs	7a0 <_start+0x7a0>
+     778:	e3a00040 	mov	r0, #64	@ 0x40
+     77c:	e3001000 	movw	r1, #0
+			77c: R_ARM_MOVW_ABS_NC	exit_code
+     780:	e3401000 	movt	r1, #0
+			780: R_ARM_MOVT_ABS	exit_code
+     784:	e5810000 	str	r0, [r1]
+     788:	e3000010 	movw	r0, #16
+     78c:	e3400000 	movt	r0, #0
+     790:	e3001000 	movw	r1, #0
+			790: R_ARM_MOVW_ABS_NC	fail_subcode
+     794:	e3401000 	movt	r1, #0
+			794: R_ARM_MOVT_ABS	fail_subcode
+     798:	e5810000 	str	r0, [r1]
+     79c:	ea0003b5 	b	1678 <fail_pre_run>
+     7a0:	e59b1008 	ldr	r1, [fp, #8]
+     7a4:	e3500000 	cmp	r0, #0
+     7a8:	13a02001 	movne	r2, #1
+     7ac:	03a02000 	moveq	r2, #0
+     7b0:	e3510000 	cmp	r1, #0
+     7b4:	13a03001 	movne	r3, #1
+     7b8:	03a03000 	moveq	r3, #0
+     7bc:	e1520003 	cmp	r2, r3
+     7c0:	0a000009 	beq	7ec <_start+0x7ec>
+     7c4:	e3a00040 	mov	r0, #64	@ 0x40
+     7c8:	e3001000 	movw	r1, #0
+			7c8: R_ARM_MOVW_ABS_NC	exit_code
+     7cc:	e3401000 	movt	r1, #0
+			7cc: R_ARM_MOVT_ABS	exit_code
+     7d0:	e5810000 	str	r0, [r1]
+     7d4:	e3000011 	movw	r0, #17
+     7d8:	e3400000 	movt	r0, #0
+     7dc:	e3001000 	movw	r1, #0
+			7dc: R_ARM_MOVW_ABS_NC	fail_subcode
+     7e0:	e3401000 	movt	r1, #0
+			7e0: R_ARM_MOVT_ABS	fail_subcode
+     7e4:	e5810000 	str	r0, [r1]
+     7e8:	ea0003a2 	b	1678 <fail_pre_run>
+     7ec:	e2899001 	add	r9, r9, #1
+     7f0:	eaffffc9 	b	71c <_start+0x71c>
+     7f4:	e3a09000 	mov	r9, #0
+     7f8:	e1590008 	cmp	r9, r8
+     7fc:	2a000026 	bcs	89c <_start+0x89c>
+     800:	e3a0b028 	mov	fp, #40	@ 0x28
+     804:	e00b0b99 	mul	fp, r9, fp
+     808:	e08bb004 	add	fp, fp, r4
+     80c:	e28bb078 	add	fp, fp, #120	@ 0x78
+     810:	e59b1008 	ldr	r1, [fp, #8]
+     814:	e3510000 	cmp	r1, #0
+     818:	0a00001d 	beq	894 <_start+0x894>
+     81c:	e59b0018 	ldr	r0, [fp, #24]
+     820:	e0811000 	add	r1, r1, r0
+     824:	e289c001 	add	ip, r9, #1
+     828:	e15c0008 	cmp	ip, r8
+     82c:	2a000018 	bcs	894 <_start+0x894>
+     830:	e3a02028 	mov	r2, #40	@ 0x28
+     834:	e002029c 	mul	r2, ip, r2
+     838:	e0822004 	add	r2, r2, r4
+     83c:	e2822078 	add	r2, r2, #120	@ 0x78
+     840:	e5923008 	ldr	r3, [r2, #8]
+     844:	e3530000 	cmp	r3, #0
+     848:	0a00000f 	beq	88c <_start+0x88c>
+     84c:	e5922018 	ldr	r2, [r2, #24]
+     850:	e0833002 	add	r3, r3, r2
+     854:	e1500003 	cmp	r0, r3
+     858:	2a00000b 	bcs	88c <_start+0x88c>
+     85c:	e1520001 	cmp	r2, r1
+     860:	2a000009 	bcs	88c <_start+0x88c>
+     864:	e3a00040 	mov	r0, #64	@ 0x40
+     868:	e3001000 	movw	r1, #0
+			868: R_ARM_MOVW_ABS_NC	exit_code
+     86c:	e3401000 	movt	r1, #0
+			86c: R_ARM_MOVT_ABS	exit_code
+     870:	e5810000 	str	r0, [r1]
+     874:	e3000012 	movw	r0, #18
+     878:	e3400000 	movt	r0, #0
+     87c:	e3001000 	movw	r1, #0
+			87c: R_ARM_MOVW_ABS_NC	fail_subcode
+     880:	e3401000 	movt	r1, #0
+			880: R_ARM_MOVT_ABS	fail_subcode
+     884:	e5810000 	str	r0, [r1]
+     888:	ea00037a 	b	1678 <fail_pre_run>
+     88c:	e28cc001 	add	ip, ip, #1
+     890:	eaffffe4 	b	828 <_start+0x828>
+     894:	e2899001 	add	r9, r9, #1
+     898:	eaffffd6 	b	7f8 <_start+0x7f8>
+     89c:	e3000000 	movw	r0, #0
+			89c: R_ARM_MOVW_ABS_NC	cursor
+     8a0:	e3400000 	movt	r0, #0
+			8a0: R_ARM_MOVT_ABS	cursor
+     8a4:	e580a000 	str	sl, [r0]
+     8a8:	e3a09000 	mov	r9, #0
+     8ac:	e1590008 	cmp	r9, r8
+     8b0:	2a000034 	bcs	988 <_start+0x988>
+     8b4:	e3a0b028 	mov	fp, #40	@ 0x28
+     8b8:	e00b0b99 	mul	fp, r9, fp
+     8bc:	e08bb004 	add	fp, fp, r4
+     8c0:	e28bb078 	add	fp, fp, #120	@ 0x78
+     8c4:	e59b1008 	ldr	r1, [fp, #8]
+     8c8:	e3510000 	cmp	r1, #0
+     8cc:	0a00002b 	beq	980 <_start+0x980>
+     8d0:	e3002000 	movw	r2, #0
+			8d0: R_ARM_MOVW_ABS_NC	cursor
+     8d4:	e3402000 	movt	r2, #0
+			8d4: R_ARM_MOVT_ABS	cursor
+     8d8:	e5922000 	ldr	r2, [r2]
+     8dc:	e2820007 	add	r0, r2, #7
+     8e0:	e3c00007 	bic	r0, r0, #7
+     8e4:	e59b3018 	ldr	r3, [fp, #24]
+     8e8:	e1500003 	cmp	r0, r3
+     8ec:	0a000009 	beq	918 <_start+0x918>
+     8f0:	e3a00040 	mov	r0, #64	@ 0x40
+     8f4:	e3001000 	movw	r1, #0
+			8f4: R_ARM_MOVW_ABS_NC	exit_code
+     8f8:	e3401000 	movt	r1, #0
+			8f8: R_ARM_MOVT_ABS	exit_code
+     8fc:	e5810000 	str	r0, [r1]
+     900:	e3000013 	movw	r0, #19
+     904:	e3400000 	movt	r0, #0
+     908:	e3001000 	movw	r1, #0
+			908: R_ARM_MOVW_ABS_NC	fail_subcode
+     90c:	e3401000 	movt	r1, #0
+			90c: R_ARM_MOVT_ABS	fail_subcode
+     910:	e5810000 	str	r0, [r1]
+     914:	ea000357 	b	1678 <fail_pre_run>
+     918:	e0501002 	subs	r1, r0, r2
+     91c:	0a00000d 	beq	958 <_start+0x958>
+     920:	e0840002 	add	r0, r4, r2
+     924:	eb00033d 	bl	1620 <or_bytes>
+     928:	e3500000 	cmp	r0, #0
+     92c:	0a000009 	beq	958 <_start+0x958>
+     930:	e3a00040 	mov	r0, #64	@ 0x40
+     934:	e3001000 	movw	r1, #0
+			934: R_ARM_MOVW_ABS_NC	exit_code
+     938:	e3401000 	movt	r1, #0
+			938: R_ARM_MOVT_ABS	exit_code
+     93c:	e5810000 	str	r0, [r1]
+     940:	e3000014 	movw	r0, #20
+     944:	e3400000 	movt	r0, #0
+     948:	e3001000 	movw	r1, #0
+			948: R_ARM_MOVW_ABS_NC	fail_subcode
+     94c:	e3401000 	movt	r1, #0
+			94c: R_ARM_MOVT_ABS	fail_subcode
+     950:	e5810000 	str	r0, [r1]
+     954:	ea000347 	b	1678 <fail_pre_run>
+     958:	e3a0b028 	mov	fp, #40	@ 0x28
+     95c:	e00b0b99 	mul	fp, r9, fp
+     960:	e08bb004 	add	fp, fp, r4
+     964:	e28bb078 	add	fp, fp, #120	@ 0x78
+     968:	e59b0018 	ldr	r0, [fp, #24]
+     96c:	e59b1008 	ldr	r1, [fp, #8]
+     970:	e0800001 	add	r0, r0, r1
+     974:	e3002000 	movw	r2, #0
+			974: R_ARM_MOVW_ABS_NC	cursor
+     978:	e3402000 	movt	r2, #0
+			978: R_ARM_MOVT_ABS	cursor
+     97c:	e5820000 	str	r0, [r2]
+     980:	e2899001 	add	r9, r9, #1
+     984:	eaffffc8 	b	8ac <_start+0x8ac>
+     988:	e3002000 	movw	r2, #0
+			988: R_ARM_MOVW_ABS_NC	cursor
+     98c:	e3402000 	movt	r2, #0
+			98c: R_ARM_MOVT_ABS	cursor
+     990:	e5922000 	ldr	r2, [r2]
+     994:	e2820007 	add	r0, r2, #7
+     998:	e3c00007 	bic	r0, r0, #7
+     99c:	e1500005 	cmp	r0, r5
+     9a0:	0a000009 	beq	9cc <_start+0x9cc>
+     9a4:	e3a00040 	mov	r0, #64	@ 0x40
+     9a8:	e3001000 	movw	r1, #0
+			9a8: R_ARM_MOVW_ABS_NC	exit_code
+     9ac:	e3401000 	movt	r1, #0
+			9ac: R_ARM_MOVT_ABS	exit_code
+     9b0:	e5810000 	str	r0, [r1]
+     9b4:	e3000015 	movw	r0, #21
+     9b8:	e3400000 	movt	r0, #0
+     9bc:	e3001000 	movw	r1, #0
+			9bc: R_ARM_MOVW_ABS_NC	fail_subcode
+     9c0:	e3401000 	movt	r1, #0
+			9c0: R_ARM_MOVT_ABS	fail_subcode
+     9c4:	e5810000 	str	r0, [r1]
+     9c8:	ea00032a 	b	1678 <fail_pre_run>
+     9cc:	e0501002 	subs	r1, r0, r2
+     9d0:	0a00000d 	beq	a0c <_start+0xa0c>
+     9d4:	e0840002 	add	r0, r4, r2
+     9d8:	eb000310 	bl	1620 <or_bytes>
+     9dc:	e3500000 	cmp	r0, #0
+     9e0:	0a000009 	beq	a0c <_start+0xa0c>
+     9e4:	e3a00040 	mov	r0, #64	@ 0x40
+     9e8:	e3001000 	movw	r1, #0
+			9e8: R_ARM_MOVW_ABS_NC	exit_code
+     9ec:	e3401000 	movt	r1, #0
+			9ec: R_ARM_MOVT_ABS	exit_code
+     9f0:	e5810000 	str	r0, [r1]
+     9f4:	e3000014 	movw	r0, #20
+     9f8:	e3400000 	movt	r0, #0
+     9fc:	e3001000 	movw	r1, #0
+			9fc: R_ARM_MOVW_ABS_NC	fail_subcode
+     a00:	e3401000 	movt	r1, #0
+			a00: R_ARM_MOVT_ABS	fail_subcode
+     a04:	e5810000 	str	r0, [r1]
+     a08:	ea00031a 	b	1678 <fail_pre_run>
+     a0c:	e3a09000 	mov	r9, #0
+     a10:	e1590008 	cmp	r9, r8
+     a14:	2a000026 	bcs	ab4 <_start+0xab4>
+     a18:	e3a0b028 	mov	fp, #40	@ 0x28
+     a1c:	e00b0b99 	mul	fp, r9, fp
+     a20:	e08bb004 	add	fp, fp, r4
+     a24:	e28bb078 	add	fp, fp, #120	@ 0x78
+     a28:	e59b0008 	ldr	r0, [fp, #8]
+     a2c:	e3001000 	movw	r1, #0
+     a30:	e3401004 	movt	r1, #4
+     a34:	e1500001 	cmp	r0, r1
+     a38:	9a000009 	bls	a64 <_start+0xa64>
+     a3c:	e3a00040 	mov	r0, #64	@ 0x40
+     a40:	e3001000 	movw	r1, #0
+			a40: R_ARM_MOVW_ABS_NC	exit_code
+     a44:	e3401000 	movt	r1, #0
+			a44: R_ARM_MOVT_ABS	exit_code
+     a48:	e5810000 	str	r0, [r1]
+     a4c:	e3000016 	movw	r0, #22
+     a50:	e3400000 	movt	r0, #0
+     a54:	e3001000 	movw	r1, #0
+			a54: R_ARM_MOVW_ABS_NC	fail_subcode
+     a58:	e3401000 	movt	r1, #0
+			a58: R_ARM_MOVT_ABS	fail_subcode
+     a5c:	e5810000 	str	r0, [r1]
+     a60:	ea000304 	b	1678 <fail_pre_run>
+     a64:	e59b0014 	ldr	r0, [fp, #20]
+     a68:	e3500000 	cmp	r0, #0
+     a6c:	1a000004 	bne	a84 <_start+0xa84>
+     a70:	e59b0010 	ldr	r0, [fp, #16]
+     a74:	e3001000 	movw	r1, #0
+     a78:	e3401010 	movt	r1, #16
+     a7c:	e1500001 	cmp	r0, r1
+     a80:	9a000009 	bls	aac <_start+0xaac>
+     a84:	e3a00040 	mov	r0, #64	@ 0x40
+     a88:	e3001000 	movw	r1, #0
+			a88: R_ARM_MOVW_ABS_NC	exit_code
+     a8c:	e3401000 	movt	r1, #0
+			a8c: R_ARM_MOVT_ABS	exit_code
+     a90:	e5810000 	str	r0, [r1]
+     a94:	e3000017 	movw	r0, #23
+     a98:	e3400000 	movt	r0, #0
+     a9c:	e3001000 	movw	r1, #0
+			a9c: R_ARM_MOVW_ABS_NC	fail_subcode
+     aa0:	e3401000 	movt	r1, #0
+			aa0: R_ARM_MOVT_ABS	fail_subcode
+     aa4:	e5810000 	str	r0, [r1]
+     aa8:	ea0002f2 	b	1678 <fail_pre_run>
+     aac:	e2899001 	add	r9, r9, #1
+     ab0:	eaffffd6 	b	a10 <_start+0xa10>
+     ab4:	e3a09000 	mov	r9, #0
+     ab8:	e1590008 	cmp	r9, r8
+     abc:	2a000082 	bcs	ccc <_start+0xccc>
+     ac0:	e3a0b028 	mov	fp, #40	@ 0x28
+     ac4:	e00b0b99 	mul	fp, r9, fp
+     ac8:	e08bb004 	add	fp, fp, r4
+     acc:	e28bb078 	add	fp, fp, #120	@ 0x78
+     ad0:	e59b0008 	ldr	r0, [fp, #8]
+     ad4:	e59b1010 	ldr	r1, [fp, #16]
+     ad8:	e1902001 	orrs	r2, r0, r1
+     adc:	1a000009 	bne	b08 <_start+0xb08>
+     ae0:	e3a00040 	mov	r0, #64	@ 0x40
+     ae4:	e3001000 	movw	r1, #0
+			ae4: R_ARM_MOVW_ABS_NC	exit_code
+     ae8:	e3401000 	movt	r1, #0
+			ae8: R_ARM_MOVT_ABS	exit_code
+     aec:	e5810000 	str	r0, [r1]
+     af0:	e3000018 	movw	r0, #24
+     af4:	e3400000 	movt	r0, #0
+     af8:	e3001000 	movw	r1, #0
+			af8: R_ARM_MOVW_ABS_NC	fail_subcode
+     afc:	e3401000 	movt	r1, #0
+			afc: R_ARM_MOVT_ABS	fail_subcode
+     b00:	e5810000 	str	r0, [r1]
+     b04:	ea0002db 	b	1678 <fail_pre_run>
+     b08:	e59b2020 	ldr	r2, [fp, #32]
+     b0c:	e3520000 	cmp	r2, #0
+     b10:	0a000002 	beq	b20 <_start+0xb20>
+     b14:	e2423001 	sub	r3, r2, #1
+     b18:	e1120003 	tst	r2, r3
+     b1c:	0a000009 	beq	b48 <_start+0xb48>
+     b20:	e3a00040 	mov	r0, #64	@ 0x40
+     b24:	e3001000 	movw	r1, #0
+			b24: R_ARM_MOVW_ABS_NC	exit_code
+     b28:	e3401000 	movt	r1, #0
+			b28: R_ARM_MOVT_ABS	exit_code
+     b2c:	e5810000 	str	r0, [r1]
+     b30:	e3000019 	movw	r0, #25
+     b34:	e3400000 	movt	r0, #0
+     b38:	e3001000 	movw	r1, #0
+			b38: R_ARM_MOVW_ABS_NC	fail_subcode
+     b3c:	e3401000 	movt	r1, #0
+			b3c: R_ARM_MOVT_ABS	fail_subcode
+     b40:	e5810000 	str	r0, [r1]
+     b44:	ea0002cb 	b	1678 <fail_pre_run>
+     b48:	e59b2000 	ldr	r2, [fp]
+     b4c:	e1120003 	tst	r2, r3
+     b50:	0a000009 	beq	b7c <_start+0xb7c>
+     b54:	e3a00040 	mov	r0, #64	@ 0x40
+     b58:	e3001000 	movw	r1, #0
+			b58: R_ARM_MOVW_ABS_NC	exit_code
+     b5c:	e3401000 	movt	r1, #0
+			b5c: R_ARM_MOVT_ABS	exit_code
+     b60:	e5810000 	str	r0, [r1]
+     b64:	e300001a 	movw	r0, #26
+     b68:	e3400000 	movt	r0, #0
+     b6c:	e3001000 	movw	r1, #0
+			b6c: R_ARM_MOVW_ABS_NC	fail_subcode
+     b70:	e3401000 	movt	r1, #0
+			b70: R_ARM_MOVT_ABS	fail_subcode
+     b74:	e5810000 	str	r0, [r1]
+     b78:	ea0002be 	b	1678 <fail_pre_run>
+     b7c:	e5db2024 	ldrb	r2, [fp, #36]	@ 0x24
+     b80:	e31200f8 	tst	r2, #248	@ 0xf8
+     b84:	0a000009 	beq	bb0 <_start+0xbb0>
+     b88:	e3a00040 	mov	r0, #64	@ 0x40
+     b8c:	e3001000 	movw	r1, #0
+			b8c: R_ARM_MOVW_ABS_NC	exit_code
+     b90:	e3401000 	movt	r1, #0
+			b90: R_ARM_MOVT_ABS	exit_code
+     b94:	e5810000 	str	r0, [r1]
+     b98:	e300001b 	movw	r0, #27
+     b9c:	e3400000 	movt	r0, #0
+     ba0:	e3001000 	movw	r1, #0
+			ba0: R_ARM_MOVW_ABS_NC	fail_subcode
+     ba4:	e3401000 	movt	r1, #0
+			ba4: R_ARM_MOVT_ABS	fail_subcode
+     ba8:	e5810000 	str	r0, [r1]
+     bac:	ea0002b1 	b	1678 <fail_pre_run>
+     bb0:	e2023006 	and	r3, r2, #6
+     bb4:	e3530006 	cmp	r3, #6
+     bb8:	1a000009 	bne	be4 <_start+0xbe4>
+     bbc:	e3a00040 	mov	r0, #64	@ 0x40
+     bc0:	e3001000 	movw	r1, #0
+			bc0: R_ARM_MOVW_ABS_NC	exit_code
+     bc4:	e3401000 	movt	r1, #0
+			bc4: R_ARM_MOVT_ABS	exit_code
+     bc8:	e5810000 	str	r0, [r1]
+     bcc:	e300001c 	movw	r0, #28
+     bd0:	e3400000 	movt	r0, #0
+     bd4:	e3001000 	movw	r1, #0
+			bd4: R_ARM_MOVW_ABS_NC	fail_subcode
+     bd8:	e3401000 	movt	r1, #0
+			bd8: R_ARM_MOVT_ABS	fail_subcode
+     bdc:	e5810000 	str	r0, [r1]
+     be0:	ea0002a4 	b	1678 <fail_pre_run>
+     be4:	e0802001 	add	r2, r0, r1
+     be8:	e59b0000 	ldr	r0, [fp]
+     bec:	e59b1004 	ldr	r1, [fp, #4]
+     bf0:	e0900002 	adds	r0, r0, r2
+     bf4:	e2b11000 	adcs	r1, r1, #0
+     bf8:	2a00001f 	bcs	c7c <_start+0xc7c>
+     bfc:	e3a0cc0f 	mov	ip, #3840	@ 0xf00
+     c00:	e38cc0ff 	orr	ip, ip, #255	@ 0xff
+     c04:	e090000c 	adds	r0, r0, ip
+     c08:	e2b11000 	adcs	r1, r1, #0
+     c0c:	2a00001a 	bcs	c7c <_start+0xc7c>
+     c10:	e3c000ff 	bic	r0, r0, #255	@ 0xff
+     c14:	e3c00c0f 	bic	r0, r0, #3840	@ 0xf00
+     c18:	e3510000 	cmp	r1, #0
+     c1c:	1a000020 	bne	ca4 <_start+0xca4>
+     c20:	e1a03000 	mov	r3, r0
+     c24:	e59b1004 	ldr	r1, [fp, #4]
+     c28:	e3510000 	cmp	r1, #0
+     c2c:	1a00001c 	bne	ca4 <_start+0xca4>
+     c30:	e59b0000 	ldr	r0, [fp]
+     c34:	e3c000ff 	bic	r0, r0, #255	@ 0xff
+     c38:	e3c00c0f 	bic	r0, r0, #3840	@ 0xf00
+     c3c:	e3002000 	movw	r2, #0
+     c40:	e3432000 	movt	r2, #12288	@ 0x3000
+     c44:	e1500002 	cmp	r0, r2
+     c48:	3a000015 	bcc	ca4 <_start+0xca4>
+     c4c:	e3002000 	movw	r2, #0
+     c50:	e3432010 	movt	r2, #12304	@ 0x3010
+     c54:	e1530002 	cmp	r3, r2
+     c58:	8a000011 	bhi	ca4 <_start+0xca4>
+     c5c:	e3002000 	movw	r2, #0
+			c5c: R_ARM_MOVW_ABS_NC	seg_start
+     c60:	e3402000 	movt	r2, #0
+			c60: R_ARM_MOVT_ABS	seg_start
+     c64:	e7820109 	str	r0, [r2, r9, lsl #2]
+     c68:	e3002000 	movw	r2, #0
+			c68: R_ARM_MOVW_ABS_NC	seg_end
+     c6c:	e3402000 	movt	r2, #0
+			c6c: R_ARM_MOVT_ABS	seg_end
+     c70:	e7823109 	str	r3, [r2, r9, lsl #2]
+     c74:	e2899001 	add	r9, r9, #1
+     c78:	eaffff8e 	b	ab8 <_start+0xab8>
+     c7c:	e3a00040 	mov	r0, #64	@ 0x40
+     c80:	e3001000 	movw	r1, #0
+			c80: R_ARM_MOVW_ABS_NC	exit_code
+     c84:	e3401000 	movt	r1, #0
+			c84: R_ARM_MOVT_ABS	exit_code
+     c88:	e5810000 	str	r0, [r1]
+     c8c:	e300001d 	movw	r0, #29
+     c90:	e3400000 	movt	r0, #0
+     c94:	e3001000 	movw	r1, #0
+			c94: R_ARM_MOVW_ABS_NC	fail_subcode
+     c98:	e3401000 	movt	r1, #0
+			c98: R_ARM_MOVT_ABS	fail_subcode
+     c9c:	e5810000 	str	r0, [r1]
+     ca0:	ea000274 	b	1678 <fail_pre_run>
+     ca4:	e3a00040 	mov	r0, #64	@ 0x40
+     ca8:	e3001000 	movw	r1, #0
+			ca8: R_ARM_MOVW_ABS_NC	exit_code
+     cac:	e3401000 	movt	r1, #0
+			cac: R_ARM_MOVT_ABS	exit_code
+     cb0:	e5810000 	str	r0, [r1]
+     cb4:	e300001e 	movw	r0, #30
+     cb8:	e3400000 	movt	r0, #0
+     cbc:	e3001000 	movw	r1, #0
+			cbc: R_ARM_MOVW_ABS_NC	fail_subcode
+     cc0:	e3401000 	movt	r1, #0
+			cc0: R_ARM_MOVT_ABS	fail_subcode
+     cc4:	e5810000 	str	r0, [r1]
+     cc8:	ea00026a 	b	1678 <fail_pre_run>
+     ccc:	e5941024 	ldr	r1, [r4, #36]	@ 0x24
+     cd0:	e3510000 	cmp	r1, #0
+     cd4:	0a000009 	beq	d00 <_start+0xd00>
+     cd8:	e30f0000 	movw	r0, #61440	@ 0xf000
+     cdc:	e34f0fff 	movt	r0, #65535	@ 0xffff
+     ce0:	e3002000 	movw	r2, #0
+			ce0: R_ARM_MOVW_ABS_NC	res_start
+     ce4:	e3402000 	movt	r2, #0
+			ce4: R_ARM_MOVT_ABS	res_start
+     ce8:	e5820000 	str	r0, [r2]
+     cec:	e3e00000 	mvn	r0, #0
+     cf0:	e3002000 	movw	r2, #0
+			cf0: R_ARM_MOVW_ABS_NC	res_end
+     cf4:	e3402000 	movt	r2, #0
+			cf4: R_ARM_MOVT_ABS	res_end
+     cf8:	e5820000 	str	r0, [r2]
+     cfc:	ea00000d 	b	d38 <_start+0xd38>
+     d00:	e5940020 	ldr	r0, [r4, #32]
+     d04:	e3002000 	movw	r2, #0
+			d04: R_ARM_MOVW_ABS_NC	result_lo
+     d08:	e3402000 	movt	r2, #0
+			d08: R_ARM_MOVT_ABS	result_lo
+     d0c:	e5820000 	str	r0, [r2]
+     d10:	e3c000ff 	bic	r0, r0, #255	@ 0xff
+     d14:	e3c00c0f 	bic	r0, r0, #3840	@ 0xf00
+     d18:	e3002000 	movw	r2, #0
+			d18: R_ARM_MOVW_ABS_NC	res_start
+     d1c:	e3402000 	movt	r2, #0
+			d1c: R_ARM_MOVT_ABS	res_start
+     d20:	e5820000 	str	r0, [r2]
+     d24:	e2900a01 	adds	r0, r0, #4096	@ 0x1000
+     d28:	23e00000 	mvncs	r0, #0
+     d2c:	e3002000 	movw	r2, #0
+			d2c: R_ARM_MOVW_ABS_NC	res_end
+     d30:	e3402000 	movt	r2, #0
+			d30: R_ARM_MOVT_ABS	res_end
+     d34:	e5820000 	str	r0, [r2]
+     d38:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+     d3c:	e3002000 	movw	r2, #0
+			d3c: R_ARM_MOVW_ABS_NC	stack_size
+     d40:	e3402000 	movt	r2, #0
+			d40: R_ARM_MOVT_ABS	stack_size
+     d44:	e5820000 	str	r0, [r2]
+     d48:	e3001000 	movw	r1, #0
+     d4c:	e3431004 	movt	r1, #12292	@ 0x3004
+     d50:	e3002000 	movw	r2, #0
+			d50: R_ARM_MOVW_ABS_NC	stk_start
+     d54:	e3402000 	movt	r2, #0
+			d54: R_ARM_MOVT_ABS	stk_start
+     d58:	e5821000 	str	r1, [r2]
+     d5c:	e3a0cc0f 	mov	ip, #3840	@ 0xf00
+     d60:	e38cc0ff 	orr	ip, ip, #255	@ 0xff
+     d64:	e090000c 	adds	r0, r0, ip
+     d68:	2a000003 	bcs	d7c <_start+0xd7c>
+     d6c:	e3c000ff 	bic	r0, r0, #255	@ 0xff
+     d70:	e3c00c0f 	bic	r0, r0, #3840	@ 0xf00
+     d74:	e0900001 	adds	r0, r0, r1
+     d78:	3a000000 	bcc	d80 <_start+0xd80>
+     d7c:	e3e00000 	mvn	r0, #0
+     d80:	e3002000 	movw	r2, #0
+			d80: R_ARM_MOVW_ABS_NC	stk_end
+     d84:	e3402000 	movt	r2, #0
+			d84: R_ARM_MOVT_ABS	stk_end
+     d88:	e5820000 	str	r0, [r2]
+     d8c:	e3a09000 	mov	r9, #0
+     d90:	e1590008 	cmp	r9, r8
+     d94:	2a000041 	bcs	ea0 <_start+0xea0>
+     d98:	e3000000 	movw	r0, #0
+			d98: R_ARM_MOVW_ABS_NC	seg_start
+     d9c:	e3400000 	movt	r0, #0
+			d9c: R_ARM_MOVT_ABS	seg_start
+     da0:	e7900109 	ldr	r0, [r0, r9, lsl #2]
+     da4:	e3001000 	movw	r1, #0
+			da4: R_ARM_MOVW_ABS_NC	seg_end
+     da8:	e3401000 	movt	r1, #0
+			da8: R_ARM_MOVT_ABS	seg_end
+     dac:	e7911109 	ldr	r1, [r1, r9, lsl #2]
+     db0:	e3002000 	movw	r2, #0
+			db0: R_ARM_MOVW_ABS_NC	res_end
+     db4:	e3402000 	movt	r2, #0
+			db4: R_ARM_MOVT_ABS	res_end
+     db8:	e5922000 	ldr	r2, [r2]
+     dbc:	e1500002 	cmp	r0, r2
+     dc0:	2a00000e 	bcs	e00 <_start+0xe00>
+     dc4:	e3002000 	movw	r2, #0
+			dc4: R_ARM_MOVW_ABS_NC	res_start
+     dc8:	e3402000 	movt	r2, #0
+			dc8: R_ARM_MOVT_ABS	res_start
+     dcc:	e5922000 	ldr	r2, [r2]
+     dd0:	e1510002 	cmp	r1, r2
+     dd4:	9a000009 	bls	e00 <_start+0xe00>
+     dd8:	e3a00040 	mov	r0, #64	@ 0x40
+     ddc:	e3001000 	movw	r1, #0
+			ddc: R_ARM_MOVW_ABS_NC	exit_code
+     de0:	e3401000 	movt	r1, #0
+			de0: R_ARM_MOVT_ABS	exit_code
+     de4:	e5810000 	str	r0, [r1]
+     de8:	e300001f 	movw	r0, #31
+     dec:	e3400000 	movt	r0, #0
+     df0:	e3001000 	movw	r1, #0
+			df0: R_ARM_MOVW_ABS_NC	fail_subcode
+     df4:	e3401000 	movt	r1, #0
+			df4: R_ARM_MOVT_ABS	fail_subcode
+     df8:	e5810000 	str	r0, [r1]
+     dfc:	ea00021d 	b	1678 <fail_pre_run>
+     e00:	e3002000 	movw	r2, #0
+			e00: R_ARM_MOVW_ABS_NC	stk_end
+     e04:	e3402000 	movt	r2, #0
+			e04: R_ARM_MOVT_ABS	stk_end
+     e08:	e5922000 	ldr	r2, [r2]
+     e0c:	e1500002 	cmp	r0, r2
+     e10:	2a00000e 	bcs	e50 <_start+0xe50>
+     e14:	e3002000 	movw	r2, #0
+			e14: R_ARM_MOVW_ABS_NC	stk_start
+     e18:	e3402000 	movt	r2, #0
+			e18: R_ARM_MOVT_ABS	stk_start
+     e1c:	e5922000 	ldr	r2, [r2]
+     e20:	e1510002 	cmp	r1, r2
+     e24:	9a000009 	bls	e50 <_start+0xe50>
+     e28:	e3a00040 	mov	r0, #64	@ 0x40
+     e2c:	e3001000 	movw	r1, #0
+			e2c: R_ARM_MOVW_ABS_NC	exit_code
+     e30:	e3401000 	movt	r1, #0
+			e30: R_ARM_MOVT_ABS	exit_code
+     e34:	e5810000 	str	r0, [r1]
+     e38:	e3000020 	movw	r0, #32
+     e3c:	e3400000 	movt	r0, #0
+     e40:	e3001000 	movw	r1, #0
+			e40: R_ARM_MOVW_ABS_NC	fail_subcode
+     e44:	e3401000 	movt	r1, #0
+			e44: R_ARM_MOVT_ABS	fail_subcode
+     e48:	e5810000 	str	r0, [r1]
+     e4c:	ea000209 	b	1678 <fail_pre_run>
+     e50:	e3002000 	movw	r2, #0
+     e54:	e3432004 	movt	r2, #12292	@ 0x3004
+     e58:	e1500002 	cmp	r0, r2
+     e5c:	2a00000d 	bcs	e98 <_start+0xe98>
+     e60:	e30f2000 	movw	r2, #61440	@ 0xf000
+     e64:	e3432003 	movt	r2, #12291	@ 0x3003
+     e68:	e1510002 	cmp	r1, r2
+     e6c:	9a000009 	bls	e98 <_start+0xe98>
+     e70:	e3a00040 	mov	r0, #64	@ 0x40
+     e74:	e3001000 	movw	r1, #0
+			e74: R_ARM_MOVW_ABS_NC	exit_code
+     e78:	e3401000 	movt	r1, #0
+			e78: R_ARM_MOVT_ABS	exit_code
+     e7c:	e5810000 	str	r0, [r1]
+     e80:	e3000021 	movw	r0, #33	@ 0x21
+     e84:	e3400000 	movt	r0, #0
+     e88:	e3001000 	movw	r1, #0
+			e88: R_ARM_MOVW_ABS_NC	fail_subcode
+     e8c:	e3401000 	movt	r1, #0
+			e8c: R_ARM_MOVT_ABS	fail_subcode
+     e90:	e5810000 	str	r0, [r1]
+     e94:	ea0001f7 	b	1678 <fail_pre_run>
+     e98:	e2899001 	add	r9, r9, #1
+     e9c:	eaffffbb 	b	d90 <_start+0xd90>
+     ea0:	e3000000 	movw	r0, #0
+			ea0: R_ARM_MOVW_ABS_NC	res_start
+     ea4:	e3400000 	movt	r0, #0
+			ea4: R_ARM_MOVT_ABS	res_start
+     ea8:	e5900000 	ldr	r0, [r0]
+     eac:	e3002000 	movw	r2, #0
+			eac: R_ARM_MOVW_ABS_NC	stk_end
+     eb0:	e3402000 	movt	r2, #0
+			eb0: R_ARM_MOVT_ABS	stk_end
+     eb4:	e5922000 	ldr	r2, [r2]
+     eb8:	e1500002 	cmp	r0, r2
+     ebc:	2a000011 	bcs	f08 <_start+0xf08>
+     ec0:	e3000000 	movw	r0, #0
+			ec0: R_ARM_MOVW_ABS_NC	res_end
+     ec4:	e3400000 	movt	r0, #0
+			ec4: R_ARM_MOVT_ABS	res_end
+     ec8:	e5900000 	ldr	r0, [r0]
+     ecc:	e3002000 	movw	r2, #0
+			ecc: R_ARM_MOVW_ABS_NC	stk_start
+     ed0:	e3402000 	movt	r2, #0
+			ed0: R_ARM_MOVT_ABS	stk_start
+     ed4:	e5922000 	ldr	r2, [r2]
+     ed8:	e1500002 	cmp	r0, r2
+     edc:	9a000009 	bls	f08 <_start+0xf08>
+     ee0:	e3a00040 	mov	r0, #64	@ 0x40
+     ee4:	e3001000 	movw	r1, #0
+			ee4: R_ARM_MOVW_ABS_NC	exit_code
+     ee8:	e3401000 	movt	r1, #0
+			ee8: R_ARM_MOVT_ABS	exit_code
+     eec:	e5810000 	str	r0, [r1]
+     ef0:	e3000022 	movw	r0, #34	@ 0x22
+     ef4:	e3400000 	movt	r0, #0
+     ef8:	e3001000 	movw	r1, #0
+			ef8: R_ARM_MOVW_ABS_NC	fail_subcode
+     efc:	e3401000 	movt	r1, #0
+			efc: R_ARM_MOVT_ABS	fail_subcode
+     f00:	e5810000 	str	r0, [r1]
+     f04:	ea0001db 	b	1678 <fail_pre_run>
+     f08:	e3a09000 	mov	r9, #0
+     f0c:	e1590008 	cmp	r9, r8
+     f10:	2a000020 	bcs	f98 <_start+0xf98>
+     f14:	e3000000 	movw	r0, #0
+			f14: R_ARM_MOVW_ABS_NC	seg_start
+     f18:	e3400000 	movt	r0, #0
+			f18: R_ARM_MOVT_ABS	seg_start
+     f1c:	e7900109 	ldr	r0, [r0, r9, lsl #2]
+     f20:	e3001000 	movw	r1, #0
+			f20: R_ARM_MOVW_ABS_NC	seg_end
+     f24:	e3401000 	movt	r1, #0
+			f24: R_ARM_MOVT_ABS	seg_end
+     f28:	e7911109 	ldr	r1, [r1, r9, lsl #2]
+     f2c:	e289c001 	add	ip, r9, #1
+     f30:	e15c0008 	cmp	ip, r8
+     f34:	2a000015 	bcs	f90 <_start+0xf90>
+     f38:	e3002000 	movw	r2, #0
+			f38: R_ARM_MOVW_ABS_NC	seg_start
+     f3c:	e3402000 	movt	r2, #0
+			f3c: R_ARM_MOVT_ABS	seg_start
+     f40:	e792210c 	ldr	r2, [r2, ip, lsl #2]
+     f44:	e3003000 	movw	r3, #0
+			f44: R_ARM_MOVW_ABS_NC	seg_end
+     f48:	e3403000 	movt	r3, #0
+			f48: R_ARM_MOVT_ABS	seg_end
+     f4c:	e793310c 	ldr	r3, [r3, ip, lsl #2]
+     f50:	e1500003 	cmp	r0, r3
+     f54:	2a00000b 	bcs	f88 <_start+0xf88>
+     f58:	e1520001 	cmp	r2, r1
+     f5c:	2a000009 	bcs	f88 <_start+0xf88>
+     f60:	e3a00040 	mov	r0, #64	@ 0x40
+     f64:	e3001000 	movw	r1, #0
+			f64: R_ARM_MOVW_ABS_NC	exit_code
+     f68:	e3401000 	movt	r1, #0
+			f68: R_ARM_MOVT_ABS	exit_code
+     f6c:	e5810000 	str	r0, [r1]
+     f70:	e3000023 	movw	r0, #35	@ 0x23
+     f74:	e3400000 	movt	r0, #0
+     f78:	e3001000 	movw	r1, #0
+			f78: R_ARM_MOVW_ABS_NC	fail_subcode
+     f7c:	e3401000 	movt	r1, #0
+			f7c: R_ARM_MOVT_ABS	fail_subcode
+     f80:	e5810000 	str	r0, [r1]
+     f84:	ea0001bb 	b	1678 <fail_pre_run>
+     f88:	e28cc001 	add	ip, ip, #1
+     f8c:	eaffffe7 	b	f30 <_start+0xf30>
+     f90:	e2899001 	add	r9, r9, #1
+     f94:	eaffffdc 	b	f0c <_start+0xf0c>
+     f98:	e594001c 	ldr	r0, [r4, #28]
+     f9c:	e5941024 	ldr	r1, [r4, #36]	@ 0x24
+     fa0:	e1900001 	orrs	r0, r0, r1
+     fa4:	0a000009 	beq	fd0 <_start+0xfd0>
+     fa8:	e3a00040 	mov	r0, #64	@ 0x40
+     fac:	e3001000 	movw	r1, #0
+			fac: R_ARM_MOVW_ABS_NC	exit_code
+     fb0:	e3401000 	movt	r1, #0
+			fb0: R_ARM_MOVT_ABS	exit_code
+     fb4:	e5810000 	str	r0, [r1]
+     fb8:	e300002a 	movw	r0, #42	@ 0x2a
+     fbc:	e3400000 	movt	r0, #0
+     fc0:	e3001000 	movw	r1, #0
+			fc0: R_ARM_MOVW_ABS_NC	fail_subcode
+     fc4:	e3401000 	movt	r1, #0
+			fc4: R_ARM_MOVT_ABS	fail_subcode
+     fc8:	e5810000 	str	r0, [r1]
+     fcc:	ea0001a9 	b	1678 <fail_pre_run>
+     fd0:	e5940018 	ldr	r0, [r4, #24]
+     fd4:	e3001000 	movw	r1, #0
+			fd4: R_ARM_MOVW_ABS_NC	entry_addr
+     fd8:	e3401000 	movt	r1, #0
+			fd8: R_ARM_MOVT_ABS	entry_addr
+     fdc:	e5810000 	str	r0, [r1]
+     fe0:	e3a09000 	mov	r9, #0
+     fe4:	e1590008 	cmp	r9, r8
+     fe8:	2a000012 	bcs	1038 <_start+0x1038>
+     fec:	e3a0b028 	mov	fp, #40	@ 0x28
+     ff0:	e00b0b99 	mul	fp, r9, fp
+     ff4:	e08bb004 	add	fp, fp, r4
+     ff8:	e28bb078 	add	fp, fp, #120	@ 0x78
+     ffc:	e5db0024 	ldrb	r0, [fp, #36]	@ 0x24
+    1000:	e3100004 	tst	r0, #4
+    1004:	0a000009 	beq	1030 <_start+0x1030>
+    1008:	e3003000 	movw	r3, #0
+			1008: R_ARM_MOVW_ABS_NC	entry_addr
+    100c:	e3403000 	movt	r3, #0
+			100c: R_ARM_MOVT_ABS	entry_addr
+    1010:	e5933000 	ldr	r3, [r3]
+    1014:	e59b0000 	ldr	r0, [fp]
+    1018:	e1530000 	cmp	r3, r0
+    101c:	3a000003 	bcc	1030 <_start+0x1030>
+    1020:	e59b1008 	ldr	r1, [fp, #8]
+    1024:	e0800001 	add	r0, r0, r1
+    1028:	e1530000 	cmp	r3, r0
+    102c:	3a00000b 	bcc	1060 <_start+0x1060>
+    1030:	e2899001 	add	r9, r9, #1
+    1034:	eaffffea 	b	fe4 <_start+0xfe4>
+    1038:	e3a00040 	mov	r0, #64	@ 0x40
+    103c:	e3001000 	movw	r1, #0
+			103c: R_ARM_MOVW_ABS_NC	exit_code
+    1040:	e3401000 	movt	r1, #0
+			1040: R_ARM_MOVT_ABS	exit_code
+    1044:	e5810000 	str	r0, [r1]
+    1048:	e3000024 	movw	r0, #36	@ 0x24
+    104c:	e3400000 	movt	r0, #0
+    1050:	e3001000 	movw	r1, #0
+			1050: R_ARM_MOVW_ABS_NC	fail_subcode
+    1054:	e3401000 	movt	r1, #0
+			1054: R_ARM_MOVT_ABS	fail_subcode
+    1058:	e5810000 	str	r0, [r1]
+    105c:	ea000185 	b	1678 <fail_pre_run>
+    1060:	e3000000 	movw	r0, #0
+			1060: R_ARM_MOVW_ABS_NC	entry_addr
+    1064:	e3400000 	movt	r0, #0
+			1064: R_ARM_MOVT_ABS	entry_addr
+    1068:	e5900000 	ldr	r0, [r0]
+    106c:	e3100003 	tst	r0, #3
+    1070:	0a000009 	beq	109c <_start+0x109c>
+    1074:	e3a00040 	mov	r0, #64	@ 0x40
+    1078:	e3001000 	movw	r1, #0
+			1078: R_ARM_MOVW_ABS_NC	exit_code
+    107c:	e3401000 	movt	r1, #0
+			107c: R_ARM_MOVT_ABS	exit_code
+    1080:	e5810000 	str	r0, [r1]
+    1084:	e3000025 	movw	r0, #37	@ 0x25
+    1088:	e3400000 	movt	r0, #0
+    108c:	e3001000 	movw	r1, #0
+			108c: R_ARM_MOVW_ABS_NC	fail_subcode
+    1090:	e3401000 	movt	r1, #0
+			1090: R_ARM_MOVT_ABS	fail_subcode
+    1094:	e5810000 	str	r0, [r1]
+    1098:	ea000176 	b	1678 <fail_pre_run>
+    109c:	e3000000 	movw	r0, #0
+			109c: R_ARM_MOVW_ABS_NC	result_lo
+    10a0:	e3400000 	movt	r0, #0
+			10a0: R_ARM_MOVT_ABS	result_lo
+    10a4:	e5900000 	ldr	r0, [r0]
+    10a8:	e1b0ca00 	lsls	ip, r0, #20
+    10ac:	0a000009 	beq	10d8 <_start+0x10d8>
+    10b0:	e3a00040 	mov	r0, #64	@ 0x40
+    10b4:	e3001000 	movw	r1, #0
+			10b4: R_ARM_MOVW_ABS_NC	exit_code
+    10b8:	e3401000 	movt	r1, #0
+			10b8: R_ARM_MOVT_ABS	exit_code
+    10bc:	e5810000 	str	r0, [r1]
+    10c0:	e3000026 	movw	r0, #38	@ 0x26
+    10c4:	e3400000 	movt	r0, #0
+    10c8:	e3001000 	movw	r1, #0
+			10c8: R_ARM_MOVW_ABS_NC	fail_subcode
+    10cc:	e3401000 	movt	r1, #0
+			10cc: R_ARM_MOVT_ABS	fail_subcode
+    10d0:	e5810000 	str	r0, [r1]
+    10d4:	ea000167 	b	1678 <fail_pre_run>
+    10d8:	e3001000 	movw	r1, #0
+    10dc:	e3431003 	movt	r1, #12291	@ 0x3003
+    10e0:	e1500001 	cmp	r0, r1
+    10e4:	0a000009 	beq	1110 <_start+0x1110>
+    10e8:	e3a00040 	mov	r0, #64	@ 0x40
+    10ec:	e3001000 	movw	r1, #0
+			10ec: R_ARM_MOVW_ABS_NC	exit_code
+    10f0:	e3401000 	movt	r1, #0
+			10f0: R_ARM_MOVT_ABS	exit_code
+    10f4:	e5810000 	str	r0, [r1]
+    10f8:	e3000027 	movw	r0, #39	@ 0x27
+    10fc:	e3400000 	movt	r0, #0
+    1100:	e3001000 	movw	r1, #0
+			1100: R_ARM_MOVW_ABS_NC	fail_subcode
+    1104:	e3401000 	movt	r1, #0
+			1104: R_ARM_MOVT_ABS	fail_subcode
+    1108:	e5810000 	str	r0, [r1]
+    110c:	ea000159 	b	1678 <fail_pre_run>
+    1110:	e3000000 	movw	r0, #0
+			1110: R_ARM_MOVW_ABS_NC	stack_size
+    1114:	e3400000 	movt	r0, #0
+			1114: R_ARM_MOVT_ABS	stack_size
+    1118:	e5900000 	ldr	r0, [r0]
+    111c:	e3500000 	cmp	r0, #0
+    1120:	0a000009 	beq	114c <_start+0x114c>
+    1124:	e1b0ca00 	lsls	ip, r0, #20
+    1128:	1a000007 	bne	114c <_start+0x114c>
+    112c:	e3011000 	movw	r1, #4096	@ 0x1000
+    1130:	e3401000 	movt	r1, #0
+    1134:	e1500001 	cmp	r0, r1
+    1138:	3a000003 	bcc	114c <_start+0x114c>
+    113c:	e3001000 	movw	r1, #0
+    1140:	e3401004 	movt	r1, #4
+    1144:	e1500001 	cmp	r0, r1
+    1148:	9a000009 	bls	1174 <_start+0x1174>
+    114c:	e3a00040 	mov	r0, #64	@ 0x40
+    1150:	e3001000 	movw	r1, #0
+			1150: R_ARM_MOVW_ABS_NC	exit_code
+    1154:	e3401000 	movt	r1, #0
+			1154: R_ARM_MOVT_ABS	exit_code
+    1158:	e5810000 	str	r0, [r1]
+    115c:	e3000028 	movw	r0, #40	@ 0x28
+    1160:	e3400000 	movt	r0, #0
+    1164:	e3001000 	movw	r1, #0
+			1164: R_ARM_MOVW_ABS_NC	fail_subcode
+    1168:	e3401000 	movt	r1, #0
+			1168: R_ARM_MOVT_ABS	fail_subcode
+    116c:	e5810000 	str	r0, [r1]
+    1170:	ea000140 	b	1678 <fail_pre_run>
+    1174:	e3000000 	movw	r0, #0
+    1178:	e3430003 	movt	r0, #12291	@ 0x3003
+    117c:	e3001000 	movw	r1, #0
+			117c: R_ARM_MOVW_ABS_NC	mm_addr
+    1180:	e3401000 	movt	r1, #0
+			1180: R_ARM_MOVT_ABS	mm_addr
+    1184:	e5810000 	str	r0, [r1]
+    1188:	e3a00a01 	mov	r0, #4096	@ 0x1000
+    118c:	e3001000 	movw	r1, #0
+			118c: R_ARM_MOVW_ABS_NC	mm_len
+    1190:	e3401000 	movt	r1, #0
+			1190: R_ARM_MOVT_ABS	mm_len
+    1194:	e5810000 	str	r0, [r1]
+    1198:	e3a00003 	mov	r0, #3
+    119c:	e3001000 	movw	r1, #0
+			119c: R_ARM_MOVW_ABS_NC	mm_prot
+    11a0:	e3401000 	movt	r1, #0
+			11a0: R_ARM_MOVT_ABS	mm_prot
+    11a4:	e5810000 	str	r0, [r1]
+    11a8:	e3a00011 	mov	r0, #17
+    11ac:	e3001000 	movw	r1, #0
+			11ac: R_ARM_MOVW_ABS_NC	mm_flags
+    11b0:	e3401000 	movt	r1, #0
+			11b0: R_ARM_MOVT_ABS	mm_flags
+    11b4:	e5810000 	str	r0, [r1]
+    11b8:	e3000000 	movw	r0, #0
+			11b8: R_ARM_MOVW_ABS_NC	result_fd
+    11bc:	e3400000 	movt	r0, #0
+			11bc: R_ARM_MOVT_ABS	result_fd
+    11c0:	e5900000 	ldr	r0, [r0]
+    11c4:	e3001000 	movw	r1, #0
+			11c4: R_ARM_MOVW_ABS_NC	mm_fd
+    11c8:	e3401000 	movt	r1, #0
+			11c8: R_ARM_MOVT_ABS	mm_fd
+    11cc:	e5810000 	str	r0, [r1]
+    11d0:	eb00011b 	bl	1644 <sys_mmap2>
+    11d4:	e3700a01 	cmn	r0, #4096	@ 0x1000
+    11d8:	8a00017b 	bhi	17cc <exit_class+0xe4>
+    11dc:	e3000000 	movw	r0, #0
+    11e0:	e3430004 	movt	r0, #12292	@ 0x3004
+    11e4:	e3001000 	movw	r1, #0
+			11e4: R_ARM_MOVW_ABS_NC	mm_addr
+    11e8:	e3401000 	movt	r1, #0
+			11e8: R_ARM_MOVT_ABS	mm_addr
+    11ec:	e5810000 	str	r0, [r1]
+    11f0:	e3000000 	movw	r0, #0
+			11f0: R_ARM_MOVW_ABS_NC	stack_size
+    11f4:	e3400000 	movt	r0, #0
+			11f4: R_ARM_MOVT_ABS	stack_size
+    11f8:	e5900000 	ldr	r0, [r0]
+    11fc:	e3001000 	movw	r1, #0
+			11fc: R_ARM_MOVW_ABS_NC	mm_len
+    1200:	e3401000 	movt	r1, #0
+			1200: R_ARM_MOVT_ABS	mm_len
+    1204:	e5810000 	str	r0, [r1]
+    1208:	e3a00003 	mov	r0, #3
+    120c:	e3001000 	movw	r1, #0
+			120c: R_ARM_MOVW_ABS_NC	mm_prot
+    1210:	e3401000 	movt	r1, #0
+			1210: R_ARM_MOVT_ABS	mm_prot
+    1214:	e5810000 	str	r0, [r1]
+    1218:	e3a00032 	mov	r0, #50	@ 0x32
+    121c:	e3001000 	movw	r1, #0
+			121c: R_ARM_MOVW_ABS_NC	mm_flags
+    1220:	e3401000 	movt	r1, #0
+			1220: R_ARM_MOVT_ABS	mm_flags
+    1224:	e5810000 	str	r0, [r1]
+    1228:	e3e00000 	mvn	r0, #0
+    122c:	e3001000 	movw	r1, #0
+			122c: R_ARM_MOVW_ABS_NC	mm_fd
+    1230:	e3401000 	movt	r1, #0
+			1230: R_ARM_MOVT_ABS	mm_fd
+    1234:	e5810000 	str	r0, [r1]
+    1238:	eb000101 	bl	1644 <sys_mmap2>
+    123c:	e3700a01 	cmn	r0, #4096	@ 0x1000
+    1240:	8a00016b 	bhi	17f4 <exit_class+0x10c>
+    1244:	e30f0000 	movw	r0, #61440	@ 0xf000
+    1248:	e3430003 	movt	r0, #12291	@ 0x3003
+    124c:	e3001000 	movw	r1, #0
+			124c: R_ARM_MOVW_ABS_NC	mm_addr
+    1250:	e3401000 	movt	r1, #0
+			1250: R_ARM_MOVT_ABS	mm_addr
+    1254:	e5810000 	str	r0, [r1]
+    1258:	e3a00a01 	mov	r0, #4096	@ 0x1000
+    125c:	e3001000 	movw	r1, #0
+			125c: R_ARM_MOVW_ABS_NC	mm_len
+    1260:	e3401000 	movt	r1, #0
+			1260: R_ARM_MOVT_ABS	mm_len
+    1264:	e5810000 	str	r0, [r1]
+    1268:	e3a00000 	mov	r0, #0
+    126c:	e3001000 	movw	r1, #0
+			126c: R_ARM_MOVW_ABS_NC	mm_prot
+    1270:	e3401000 	movt	r1, #0
+			1270: R_ARM_MOVT_ABS	mm_prot
+    1274:	e5810000 	str	r0, [r1]
+    1278:	e3a00032 	mov	r0, #50	@ 0x32
+    127c:	e3001000 	movw	r1, #0
+			127c: R_ARM_MOVW_ABS_NC	mm_flags
+    1280:	e3401000 	movt	r1, #0
+			1280: R_ARM_MOVT_ABS	mm_flags
+    1284:	e5810000 	str	r0, [r1]
+    1288:	e3e00000 	mvn	r0, #0
+    128c:	e3001000 	movw	r1, #0
+			128c: R_ARM_MOVW_ABS_NC	mm_fd
+    1290:	e3401000 	movt	r1, #0
+			1290: R_ARM_MOVT_ABS	mm_fd
+    1294:	e5810000 	str	r0, [r1]
+    1298:	eb0000e9 	bl	1644 <sys_mmap2>
+    129c:	e3700a01 	cmn	r0, #4096	@ 0x1000
+    12a0:	8a00015d 	bhi	181c <exit_class+0x134>
+    12a4:	e3a09000 	mov	r9, #0
+    12a8:	e1590008 	cmp	r9, r8
+    12ac:	2a00001d 	bcs	1328 <_start+0x1328>
+    12b0:	e3000000 	movw	r0, #0
+			12b0: R_ARM_MOVW_ABS_NC	seg_start
+    12b4:	e3400000 	movt	r0, #0
+			12b4: R_ARM_MOVT_ABS	seg_start
+    12b8:	e7900109 	ldr	r0, [r0, r9, lsl #2]
+    12bc:	e3001000 	movw	r1, #0
+			12bc: R_ARM_MOVW_ABS_NC	mm_addr
+    12c0:	e3401000 	movt	r1, #0
+			12c0: R_ARM_MOVT_ABS	mm_addr
+    12c4:	e5810000 	str	r0, [r1]
+    12c8:	e3001000 	movw	r1, #0
+			12c8: R_ARM_MOVW_ABS_NC	seg_end
+    12cc:	e3401000 	movt	r1, #0
+			12cc: R_ARM_MOVT_ABS	seg_end
+    12d0:	e7911109 	ldr	r1, [r1, r9, lsl #2]
+    12d4:	e0411000 	sub	r1, r1, r0
+    12d8:	e3002000 	movw	r2, #0
+			12d8: R_ARM_MOVW_ABS_NC	mm_len
+    12dc:	e3402000 	movt	r2, #0
+			12dc: R_ARM_MOVT_ABS	mm_len
+    12e0:	e5821000 	str	r1, [r2]
+    12e4:	e3a00003 	mov	r0, #3
+    12e8:	e3001000 	movw	r1, #0
+			12e8: R_ARM_MOVW_ABS_NC	mm_prot
+    12ec:	e3401000 	movt	r1, #0
+			12ec: R_ARM_MOVT_ABS	mm_prot
+    12f0:	e5810000 	str	r0, [r1]
+    12f4:	e3a00032 	mov	r0, #50	@ 0x32
+    12f8:	e3001000 	movw	r1, #0
+			12f8: R_ARM_MOVW_ABS_NC	mm_flags
+    12fc:	e3401000 	movt	r1, #0
+			12fc: R_ARM_MOVT_ABS	mm_flags
+    1300:	e5810000 	str	r0, [r1]
+    1304:	e3e00000 	mvn	r0, #0
+    1308:	e3001000 	movw	r1, #0
+			1308: R_ARM_MOVW_ABS_NC	mm_fd
+    130c:	e3401000 	movt	r1, #0
+			130c: R_ARM_MOVT_ABS	mm_fd
+    1310:	e5810000 	str	r0, [r1]
+    1314:	eb0000ca 	bl	1644 <sys_mmap2>
+    1318:	e3700a01 	cmn	r0, #4096	@ 0x1000
+    131c:	8a000148 	bhi	1844 <exit_class+0x15c>
+    1320:	e2899001 	add	r9, r9, #1
+    1324:	eaffffdf 	b	12a8 <_start+0x12a8>
+    1328:	e3a09000 	mov	r9, #0
+    132c:	e1590008 	cmp	r9, r8
+    1330:	2a00000f 	bcs	1374 <_start+0x1374>
+    1334:	e3a0b028 	mov	fp, #40	@ 0x28
+    1338:	e00b0b99 	mul	fp, r9, fp
+    133c:	e08bb004 	add	fp, fp, r4
+    1340:	e28bb078 	add	fp, fp, #120	@ 0x78
+    1344:	e59b2008 	ldr	r2, [fp, #8]
+    1348:	e3520000 	cmp	r2, #0
+    134c:	0a000006 	beq	136c <_start+0x136c>
+    1350:	e59b0000 	ldr	r0, [fp]
+    1354:	e59b1018 	ldr	r1, [fp, #24]
+    1358:	e0811004 	add	r1, r1, r4
+    135c:	e4d13001 	ldrb	r3, [r1], #1
+    1360:	e4c03001 	strb	r3, [r0], #1
+    1364:	e2522001 	subs	r2, r2, #1
+    1368:	1afffffb 	bne	135c <_start+0x135c>
+    136c:	e2899001 	add	r9, r9, #1
+    1370:	eaffffed 	b	132c <_start+0x132c>
+    1374:	e3a09000 	mov	r9, #0
+    1378:	e1590008 	cmp	r9, r8
+    137c:	2a000019 	bcs	13e8 <_start+0x13e8>
+    1380:	e3a0b028 	mov	fp, #40	@ 0x28
+    1384:	e00b0b99 	mul	fp, r9, fp
+    1388:	e08bb004 	add	fp, fp, r4
+    138c:	e28bb078 	add	fp, fp, #120	@ 0x78
+    1390:	e5db1024 	ldrb	r1, [fp, #36]	@ 0x24
+    1394:	e3a02000 	mov	r2, #0
+    1398:	e3110001 	tst	r1, #1
+    139c:	13822001 	orrne	r2, r2, #1
+    13a0:	e3110002 	tst	r1, #2
+    13a4:	13822002 	orrne	r2, r2, #2
+    13a8:	e3110004 	tst	r1, #4
+    13ac:	13822004 	orrne	r2, r2, #4
+    13b0:	e3000000 	movw	r0, #0
+			13b0: R_ARM_MOVW_ABS_NC	seg_start
+    13b4:	e3400000 	movt	r0, #0
+			13b4: R_ARM_MOVT_ABS	seg_start
+    13b8:	e7900109 	ldr	r0, [r0, r9, lsl #2]
+    13bc:	e3001000 	movw	r1, #0
+			13bc: R_ARM_MOVW_ABS_NC	seg_end
+    13c0:	e3401000 	movt	r1, #0
+			13c0: R_ARM_MOVT_ABS	seg_end
+    13c4:	e7911109 	ldr	r1, [r1, r9, lsl #2]
+    13c8:	e0411000 	sub	r1, r1, r0
+    13cc:	e300707d 	movw	r7, #125	@ 0x7d
+    13d0:	e3407000 	movt	r7, #0
+    13d4:	ef000000 	svc	0x00000000
+    13d8:	e3700a01 	cmn	r0, #4096	@ 0x1000
+    13dc:	8a000122 	bhi	186c <exit_class+0x184>
+    13e0:	e2899001 	add	r9, r9, #1
+    13e4:	eaffffe3 	b	1378 <_start+0x1378>
+    13e8:	e3a09000 	mov	r9, #0
+    13ec:	e1590008 	cmp	r9, r8
+    13f0:	2a00001e 	bcs	1470 <_start+0x1470>
+    13f4:	e3a0b028 	mov	fp, #40	@ 0x28
+    13f8:	e00b0b99 	mul	fp, r9, fp
+    13fc:	e08bb004 	add	fp, fp, r4
+    1400:	e28bb078 	add	fp, fp, #120	@ 0x78
+    1404:	e5db0024 	ldrb	r0, [fp, #36]	@ 0x24
+    1408:	e3100004 	tst	r0, #4
+    140c:	0a000015 	beq	1468 <_start+0x1468>
+    1410:	e3000000 	movw	r0, #0
+			1410: R_ARM_MOVW_ABS_NC	seg_start
+    1414:	e3400000 	movt	r0, #0
+			1414: R_ARM_MOVT_ABS	seg_start
+    1418:	e7900109 	ldr	r0, [r0, r9, lsl #2]
+    141c:	e3001000 	movw	r1, #0
+			141c: R_ARM_MOVW_ABS_NC	seg_end
+    1420:	e3401000 	movt	r1, #0
+			1420: R_ARM_MOVT_ABS	seg_end
+    1424:	e7911109 	ldr	r1, [r1, r9, lsl #2]
+    1428:	e3a02000 	mov	r2, #0
+    142c:	e3007002 	movw	r7, #2
+    1430:	e340700f 	movt	r7, #15
+    1434:	ef000000 	svc	0x00000000
+    1438:	e3700a01 	cmn	r0, #4096	@ 0x1000
+    143c:	9a000009 	bls	1468 <_start+0x1468>
+    1440:	e3a00043 	mov	r0, #67	@ 0x43
+    1444:	e3001000 	movw	r1, #0
+			1444: R_ARM_MOVW_ABS_NC	exit_code
+    1448:	e3401000 	movt	r1, #0
+			1448: R_ARM_MOVT_ABS	exit_code
+    144c:	e5810000 	str	r0, [r1]
+    1450:	e3000001 	movw	r0, #1
+    1454:	e3400000 	movt	r0, #0
+    1458:	e3001000 	movw	r1, #0
+			1458: R_ARM_MOVW_ABS_NC	fail_subcode
+    145c:	e3401000 	movt	r1, #0
+			145c: R_ARM_MOVT_ABS	fail_subcode
+    1460:	e5810000 	str	r0, [r1]
+    1464:	ea000083 	b	1678 <fail_pre_run>
+    1468:	e2899001 	add	r9, r9, #1
+    146c:	eaffffde 	b	13ec <_start+0x13ec>
+    1470:	e5940010 	ldr	r0, [r4, #16]
+    1474:	e586000c 	str	r0, [r6, #12]
+    1478:	e5940038 	ldr	r0, [r4, #56]	@ 0x38
+    147c:	e3002000 	movw	r2, #0
+			147c: R_ARM_MOVW_ABS_NC	expected_lo
+    1480:	e3402000 	movt	r2, #0
+			1480: R_ARM_MOVT_ABS	expected_lo
+    1484:	e5820000 	str	r0, [r2]
+    1488:	e5860018 	str	r0, [r6, #24]
+    148c:	e594003c 	ldr	r0, [r4, #60]	@ 0x3c
+    1490:	e3002000 	movw	r2, #0
+			1490: R_ARM_MOVW_ABS_NC	expected_hi
+    1494:	e3402000 	movt	r2, #0
+			1494: R_ARM_MOVT_ABS	expected_hi
+    1498:	e5820000 	str	r0, [r2]
+    149c:	e586001c 	str	r0, [r6, #28]
+    14a0:	e3a00001 	mov	r0, #1
+    14a4:	e1c601b0 	strh	r0, [r6, #16]
+    14a8:	e3a00000 	mov	r0, #0
+    14ac:	e1c601b2 	strh	r0, [r6, #18]
+    14b0:	f57ff05b 	dmb	ish
+    14b4:	e3a00002 	mov	r0, #2
+    14b8:	e58600dc 	str	r0, [r6, #220]	@ 0xdc
+    14bc:	e3003000 	movw	r3, #0
+			14bc: R_ARM_MOVW_ABS_NC	entry_addr
+    14c0:	e3403000 	movt	r3, #0
+			14c0: R_ARM_MOVT_ABS	entry_addr
+    14c4:	e5933000 	ldr	r3, [r3]
+    14c8:	e3000000 	movw	r0, #0
+    14cc:	e3430004 	movt	r0, #12292	@ 0x3004
+    14d0:	e3001000 	movw	r1, #0
+			14d0: R_ARM_MOVW_ABS_NC	stack_size
+    14d4:	e3401000 	movt	r1, #0
+			14d4: R_ARM_MOVT_ABS	stack_size
+    14d8:	e5911000 	ldr	r1, [r1]
+    14dc:	e0800001 	add	r0, r0, r1
+    14e0:	e3002000 	movw	r2, #0
+			14e0: R_ARM_MOVW_ABS_NC	guest_sp
+    14e4:	e3402000 	movt	r2, #0
+			14e4: R_ARM_MOVT_ABS	guest_sp
+    14e8:	e5820000 	str	r0, [r2]
+    14ec:	e1a0100d 	mov	r1, sp
+    14f0:	e3002000 	movw	r2, #0
+			14f0: R_ARM_MOVW_ABS_NC	helper_sp
+    14f4:	e3402000 	movt	r2, #0
+			14f4: R_ARM_MOVT_ABS	helper_sp
+    14f8:	e5821000 	str	r1, [r2]
+    14fc:	e1a04001 	mov	r4, r1
+    1500:	e1a0d000 	mov	sp, r0
+    1504:	f57ff05b 	dmb	ish
+    1508:	e3a00001 	mov	r0, #1
+    150c:	e1c600ba 	strh	r0, [r6, #10]
+    1510:	e12fff33 	blx	r3
+    1514:	e1a02000 	mov	r2, r0
+    1518:	e1a03fc0 	asr	r3, r0, #31
+    151c:	e3006000 	movw	r6, #0
+			151c: R_ARM_MOVW_ABS_NC	control_alias
+    1520:	e3406000 	movt	r6, #0
+			1520: R_ARM_MOVT_ABS	control_alias
+    1524:	e5966000 	ldr	r6, [r6]
+    1528:	f57ff05b 	dmb	ish
+    152c:	e3a00003 	mov	r0, #3
+    1530:	e58600dc 	str	r0, [r6, #220]	@ 0xdc
+    1534:	e1a0100d 	mov	r1, sp
+    1538:	e3000000 	movw	r0, #0
+			1538: R_ARM_MOVW_ABS_NC	helper_sp
+    153c:	e3400000 	movt	r0, #0
+			153c: R_ARM_MOVT_ABS	helper_sp
+    1540:	e5900000 	ldr	r0, [r0]
+    1544:	e1a0d000 	mov	sp, r0
+    1548:	e3000000 	movw	r0, #0
+			1548: R_ARM_MOVW_ABS_NC	guest_sp
+    154c:	e3400000 	movt	r0, #0
+			154c: R_ARM_MOVT_ABS	guest_sp
+    1550:	e5900000 	ldr	r0, [r0]
+    1554:	e1510000 	cmp	r1, r0
+    1558:	0a000008 	beq	1580 <_start+0x1580>
+    155c:	e3a00044 	mov	r0, #68	@ 0x44
+    1560:	e3001000 	movw	r1, #0
+			1560: R_ARM_MOVW_ABS_NC	exit_code
+    1564:	e3401000 	movt	r1, #0
+			1564: R_ARM_MOVT_ABS	exit_code
+    1568:	e5810000 	str	r0, [r1]
+    156c:	e3a00001 	mov	r0, #1
+    1570:	e3001000 	movw	r1, #0
+			1570: R_ARM_MOVW_ABS_NC	fail_subcode
+    1574:	e3401000 	movt	r1, #0
+			1574: R_ARM_MOVT_ABS	fail_subcode
+    1578:	e5810000 	str	r0, [r1]
+    157c:	ea00004c 	b	16b4 <fail_late>
+    1580:	e3000000 	movw	r0, #0
+			1580: R_ARM_MOVW_ABS_NC	helper_sp
+    1584:	e3400000 	movt	r0, #0
+			1584: R_ARM_MOVT_ABS	helper_sp
+    1588:	e5900000 	ldr	r0, [r0]
+    158c:	e1540000 	cmp	r4, r0
+    1590:	0a000008 	beq	15b8 <_start+0x15b8>
+    1594:	e3a00044 	mov	r0, #68	@ 0x44
+    1598:	e3001000 	movw	r1, #0
+			1598: R_ARM_MOVW_ABS_NC	exit_code
+    159c:	e3401000 	movt	r1, #0
+			159c: R_ARM_MOVT_ABS	exit_code
+    15a0:	e5810000 	str	r0, [r1]
+    15a4:	e3a00002 	mov	r0, #2
+    15a8:	e3001000 	movw	r1, #0
+			15a8: R_ARM_MOVW_ABS_NC	fail_subcode
+    15ac:	e3401000 	movt	r1, #0
+			15ac: R_ARM_MOVT_ABS	fail_subcode
+    15b0:	e5810000 	str	r0, [r1]
+    15b4:	ea00003e 	b	16b4 <fail_late>
+    15b8:	e5862058 	str	r2, [r6, #88]	@ 0x58
+    15bc:	e586305c 	str	r3, [r6, #92]	@ 0x5c
+    15c0:	e3a00001 	mov	r0, #1
+    15c4:	e1c601b2 	strh	r0, [r6, #18]
+    15c8:	e3a00000 	mov	r0, #0
+    15cc:	e5860014 	str	r0, [r6, #20]
+    15d0:	e3000000 	movw	r0, #0
+			15d0: R_ARM_MOVW_ABS_NC	expected_lo
+    15d4:	e3400000 	movt	r0, #0
+			15d4: R_ARM_MOVT_ABS	expected_lo
+    15d8:	e5900000 	ldr	r0, [r0]
+    15dc:	e1520000 	cmp	r2, r0
+    15e0:	1a000006 	bne	1600 <_start+0x1600>
+    15e4:	e3000000 	movw	r0, #0
+			15e4: R_ARM_MOVW_ABS_NC	expected_hi
+    15e8:	e3400000 	movt	r0, #0
+			15e8: R_ARM_MOVT_ABS	expected_hi
+    15ec:	e5900000 	ldr	r0, [r0]
+    15f0:	e1530000 	cmp	r3, r0
+    15f4:	1a000001 	bne	1600 <_start+0x1600>
+    15f8:	e3a00002 	mov	r0, #2
+    15fc:	ea000000 	b	1604 <_start+0x1604>
+    1600:	e3a00003 	mov	r0, #3
+    1604:	f57ff05b 	dmb	ish
+    1608:	e1c600ba 	strh	r0, [r6, #10]
+    160c:	e3a00000 	mov	r0, #0
+    1610:	e3001000 	movw	r1, #0
+			1610: R_ARM_MOVW_ABS_NC	exit_code
+    1614:	e3401000 	movt	r1, #0
+			1614: R_ARM_MOVT_ABS	exit_code
+    1618:	e5810000 	str	r0, [r1]
+    161c:	ea000031 	b	16e8 <exit_class>
+
+00001620 <or_bytes>:
+    1620:	e3a02000 	mov	r2, #0
+    1624:	e3510000 	cmp	r1, #0
+    1628:	0a000003 	beq	163c <or_bytes+0x1c>
+    162c:	e4d03001 	ldrb	r3, [r0], #1
+    1630:	e1822003 	orr	r2, r2, r3
+    1634:	e2511001 	subs	r1, r1, #1
+    1638:	1afffffb 	bne	162c <or_bytes+0xc>
+    163c:	e1a00002 	mov	r0, r2
+    1640:	e12fff1e 	bx	lr
+
+00001644 <sys_mmap2>:
+    1644:	e92d4070 	push	{r4, r5, r6, lr}
+    1648:	e300c000 	movw	ip, #0
+			1648: R_ARM_MOVW_ABS_NC	mm_addr
+    164c:	e340c000 	movt	ip, #0
+			164c: R_ARM_MOVT_ABS	mm_addr
+    1650:	e59c0000 	ldr	r0, [ip]
+    1654:	e59c1004 	ldr	r1, [ip, #4]
+    1658:	e59c2008 	ldr	r2, [ip, #8]
+    165c:	e59c300c 	ldr	r3, [ip, #12]
+    1660:	e59c4010 	ldr	r4, [ip, #16]
+    1664:	e3a05000 	mov	r5, #0
+    1668:	e30070c0 	movw	r7, #192	@ 0xc0
+    166c:	e3407000 	movt	r7, #0
+    1670:	ef000000 	svc	0x00000000
+    1674:	e8bd8070 	pop	{r4, r5, r6, pc}
+
+00001678 <fail_pre_run>:
+    1678:	e3000000 	movw	r0, #0
+			1678: R_ARM_MOVW_ABS_NC	control_alias
+    167c:	e3400000 	movt	r0, #0
+			167c: R_ARM_MOVT_ABS	control_alias
+    1680:	e5900000 	ldr	r0, [r0]
+    1684:	e3001000 	movw	r1, #0
+			1684: R_ARM_MOVW_ABS_NC	fail_subcode
+    1688:	e3401000 	movt	r1, #0
+			1688: R_ARM_MOVT_ABS	fail_subcode
+    168c:	e5911000 	ldr	r1, [r1]
+    1690:	e1c01dba 	strh	r1, [r0, #218]	@ 0xda
+    1694:	e3a01001 	mov	r1, #1
+    1698:	e58010dc 	str	r1, [r0, #220]	@ 0xdc
+    169c:	f57ff05b 	dmb	ish
+    16a0:	e3001000 	movw	r1, #0
+			16a0: R_ARM_MOVW_ABS_NC	exit_code
+    16a4:	e3401000 	movt	r1, #0
+			16a4: R_ARM_MOVT_ABS	exit_code
+    16a8:	e5911000 	ldr	r1, [r1]
+    16ac:	e1c01db8 	strh	r1, [r0, #216]	@ 0xd8
+    16b0:	ea00000c 	b	16e8 <exit_class>
+
+000016b4 <fail_late>:
+    16b4:	e3000000 	movw	r0, #0
+			16b4: R_ARM_MOVW_ABS_NC	control_alias
+    16b8:	e3400000 	movt	r0, #0
+			16b8: R_ARM_MOVT_ABS	control_alias
+    16bc:	e5900000 	ldr	r0, [r0]
+    16c0:	e3001000 	movw	r1, #0
+			16c0: R_ARM_MOVW_ABS_NC	fail_subcode
+    16c4:	e3401000 	movt	r1, #0
+			16c4: R_ARM_MOVT_ABS	fail_subcode
+    16c8:	e5911000 	ldr	r1, [r1]
+    16cc:	e1c01dba 	strh	r1, [r0, #218]	@ 0xda
+    16d0:	f57ff05b 	dmb	ish
+    16d4:	e3001000 	movw	r1, #0
+			16d4: R_ARM_MOVW_ABS_NC	exit_code
+    16d8:	e3401000 	movt	r1, #0
+			16d8: R_ARM_MOVT_ABS	exit_code
+    16dc:	e5911000 	ldr	r1, [r1]
+    16e0:	e1c01db8 	strh	r1, [r0, #216]	@ 0xd8
+    16e4:	eaffffff 	b	16e8 <exit_class>
+
+000016e8 <exit_class>:
+    16e8:	e3000000 	movw	r0, #0
+			16e8: R_ARM_MOVW_ABS_NC	exit_code
+    16ec:	e3400000 	movt	r0, #0
+			16ec: R_ARM_MOVT_ABS	exit_code
+    16f0:	e5900000 	ldr	r0, [r0]
+    16f4:	e30070f8 	movw	r7, #248	@ 0xf8
+    16f8:	e3407000 	movt	r7, #0
+    16fc:	ef000000 	svc	0x00000000
+    1700:	e7f000f0 	udf	#0
+    1704:	e3a00041 	mov	r0, #65	@ 0x41
+    1708:	e3001000 	movw	r1, #0
+			1708: R_ARM_MOVW_ABS_NC	exit_code
+    170c:	e3401000 	movt	r1, #0
+			170c: R_ARM_MOVT_ABS	exit_code
+    1710:	e5810000 	str	r0, [r1]
+    1714:	eafffff3 	b	16e8 <exit_class>
+    1718:	e3a00041 	mov	r0, #65	@ 0x41
+    171c:	e3001000 	movw	r1, #0
+			171c: R_ARM_MOVW_ABS_NC	exit_code
+    1720:	e3401000 	movt	r1, #0
+			1720: R_ARM_MOVT_ABS	exit_code
+    1724:	e5810000 	str	r0, [r1]
+    1728:	eaffffee 	b	16e8 <exit_class>
+    172c:	e3a00042 	mov	r0, #66	@ 0x42
+    1730:	e3001000 	movw	r1, #0
+			1730: R_ARM_MOVW_ABS_NC	exit_code
+    1734:	e3401000 	movt	r1, #0
+			1734: R_ARM_MOVT_ABS	exit_code
+    1738:	e5810000 	str	r0, [r1]
+    173c:	eaffffe9 	b	16e8 <exit_class>
+    1740:	e3a00042 	mov	r0, #66	@ 0x42
+    1744:	e3001000 	movw	r1, #0
+			1744: R_ARM_MOVW_ABS_NC	exit_code
+    1748:	e3401000 	movt	r1, #0
+			1748: R_ARM_MOVT_ABS	exit_code
+    174c:	e5810000 	str	r0, [r1]
+    1750:	eaffffe4 	b	16e8 <exit_class>
+    1754:	e3a00041 	mov	r0, #65	@ 0x41
+    1758:	e3001000 	movw	r1, #0
+			1758: R_ARM_MOVW_ABS_NC	exit_code
+    175c:	e3401000 	movt	r1, #0
+			175c: R_ARM_MOVT_ABS	exit_code
+    1760:	e5810000 	str	r0, [r1]
+    1764:	e3000003 	movw	r0, #3
+    1768:	e3400000 	movt	r0, #0
+    176c:	e3001000 	movw	r1, #0
+			176c: R_ARM_MOVW_ABS_NC	fail_subcode
+    1770:	e3401000 	movt	r1, #0
+			1770: R_ARM_MOVT_ABS	fail_subcode
+    1774:	e5810000 	str	r0, [r1]
+    1778:	eaffffbe 	b	1678 <fail_pre_run>
+    177c:	e3a00041 	mov	r0, #65	@ 0x41
+    1780:	e3001000 	movw	r1, #0
+			1780: R_ARM_MOVW_ABS_NC	exit_code
+    1784:	e3401000 	movt	r1, #0
+			1784: R_ARM_MOVT_ABS	exit_code
+    1788:	e5810000 	str	r0, [r1]
+    178c:	e3000004 	movw	r0, #4
+    1790:	e3400000 	movt	r0, #0
+    1794:	e3001000 	movw	r1, #0
+			1794: R_ARM_MOVW_ABS_NC	fail_subcode
+    1798:	e3401000 	movt	r1, #0
+			1798: R_ARM_MOVT_ABS	fail_subcode
+    179c:	e5810000 	str	r0, [r1]
+    17a0:	eaffffb4 	b	1678 <fail_pre_run>
+    17a4:	e3a00041 	mov	r0, #65	@ 0x41
+    17a8:	e3001000 	movw	r1, #0
+			17a8: R_ARM_MOVW_ABS_NC	exit_code
+    17ac:	e3401000 	movt	r1, #0
+			17ac: R_ARM_MOVT_ABS	exit_code
+    17b0:	e5810000 	str	r0, [r1]
+    17b4:	e3000005 	movw	r0, #5
+    17b8:	e3400000 	movt	r0, #0
+    17bc:	e3001000 	movw	r1, #0
+			17bc: R_ARM_MOVW_ABS_NC	fail_subcode
+    17c0:	e3401000 	movt	r1, #0
+			17c0: R_ARM_MOVT_ABS	fail_subcode
+    17c4:	e5810000 	str	r0, [r1]
+    17c8:	eaffffaa 	b	1678 <fail_pre_run>
+    17cc:	e3a00042 	mov	r0, #66	@ 0x42
+    17d0:	e3001000 	movw	r1, #0
+			17d0: R_ARM_MOVW_ABS_NC	exit_code
+    17d4:	e3401000 	movt	r1, #0
+			17d4: R_ARM_MOVT_ABS	exit_code
+    17d8:	e5810000 	str	r0, [r1]
+    17dc:	e3000003 	movw	r0, #3
+    17e0:	e3400000 	movt	r0, #0
+    17e4:	e3001000 	movw	r1, #0
+			17e4: R_ARM_MOVW_ABS_NC	fail_subcode
+    17e8:	e3401000 	movt	r1, #0
+			17e8: R_ARM_MOVT_ABS	fail_subcode
+    17ec:	e5810000 	str	r0, [r1]
+    17f0:	eaffffa0 	b	1678 <fail_pre_run>
+    17f4:	e3a00042 	mov	r0, #66	@ 0x42
+    17f8:	e3001000 	movw	r1, #0
+			17f8: R_ARM_MOVW_ABS_NC	exit_code
+    17fc:	e3401000 	movt	r1, #0
+			17fc: R_ARM_MOVT_ABS	exit_code
+    1800:	e5810000 	str	r0, [r1]
+    1804:	e3000004 	movw	r0, #4
+    1808:	e3400000 	movt	r0, #0
+    180c:	e3001000 	movw	r1, #0
+			180c: R_ARM_MOVW_ABS_NC	fail_subcode
+    1810:	e3401000 	movt	r1, #0
+			1810: R_ARM_MOVT_ABS	fail_subcode
+    1814:	e5810000 	str	r0, [r1]
+    1818:	eaffff96 	b	1678 <fail_pre_run>
+    181c:	e3a00042 	mov	r0, #66	@ 0x42
+    1820:	e3001000 	movw	r1, #0
+			1820: R_ARM_MOVW_ABS_NC	exit_code
+    1824:	e3401000 	movt	r1, #0
+			1824: R_ARM_MOVT_ABS	exit_code
+    1828:	e5810000 	str	r0, [r1]
+    182c:	e3000005 	movw	r0, #5
+    1830:	e3400000 	movt	r0, #0
+    1834:	e3001000 	movw	r1, #0
+			1834: R_ARM_MOVW_ABS_NC	fail_subcode
+    1838:	e3401000 	movt	r1, #0
+			1838: R_ARM_MOVT_ABS	fail_subcode
+    183c:	e5810000 	str	r0, [r1]
+    1840:	eaffff8c 	b	1678 <fail_pre_run>
+    1844:	e3a00042 	mov	r0, #66	@ 0x42
+    1848:	e3001000 	movw	r1, #0
+			1848: R_ARM_MOVW_ABS_NC	exit_code
+    184c:	e3401000 	movt	r1, #0
+			184c: R_ARM_MOVT_ABS	exit_code
+    1850:	e5810000 	str	r0, [r1]
+    1854:	e3000006 	movw	r0, #6
+    1858:	e3400000 	movt	r0, #0
+    185c:	e3001000 	movw	r1, #0
+			185c: R_ARM_MOVW_ABS_NC	fail_subcode
+    1860:	e3401000 	movt	r1, #0
+			1860: R_ARM_MOVT_ABS	fail_subcode
+    1864:	e5810000 	str	r0, [r1]
+    1868:	eaffff82 	b	1678 <fail_pre_run>
+    186c:	e3a00042 	mov	r0, #66	@ 0x42
+    1870:	e3001000 	movw	r1, #0
+			1870: R_ARM_MOVW_ABS_NC	exit_code
+    1874:	e3401000 	movt	r1, #0
+			1874: R_ARM_MOVT_ABS	exit_code
+    1878:	e5810000 	str	r0, [r1]
+    187c:	e3000007 	movw	r0, #7
+    1880:	e3400000 	movt	r0, #0
+    1884:	e3001000 	movw	r1, #0
+			1884: R_ARM_MOVW_ABS_NC	fail_subcode
+    1888:	e3401000 	movt	r1, #0
+			1888: R_ARM_MOVT_ABS	fail_subcode
+    188c:	e5810000 	str	r0, [r1]
+    1890:	eaffff78 	b	1678 <fail_pre_run>

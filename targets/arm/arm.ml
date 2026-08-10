@@ -19,77 +19,111 @@ module C = Codec
 
    One table with aliases, rather than a table plus an alias map: [sp] and [r13]
    must produce the same encoding and the same diagnostic, and two structures
-   that have to agree eventually will not. [rname] holds the canonical spelling,
+   that have to agree eventually will not. [name] holds the canonical spelling,
    which is what the disassembler prints; the alias is only an input spelling. *)
 
-type reg = { rname : string; rnum : int }
+module Reg = struct
+  type t = { name : string; num : int }
 
-let reg_equal a b = a.rnum = b.rnum
-let pp_reg ppf r = Fmt.string ppf r.rname
-let registers = List.init 16 (fun i -> { rname = Printf.sprintf "r%d" i; rnum = i })
-let aliases = [ ("sp", 13); ("lr", 14); ("pc", 15); ("ip", 12); ("fp", 11); ("sl", 10) ]
+  let equal a b = a.num = b.num
+  let pp ppf r = Fmt.string ppf r.name
+  let all = List.init 16 (fun i -> { name = Printf.sprintf "r%d" i; num = i })
+  let aliases = [ ("sp", 13); ("lr", 14); ("pc", 15); ("ip", 12); ("fp", 11); ("sl", 10) ]
 
-(* The canonical spelling of r13/r14/r15 is [sp]/[lr]/[pc]: that is what GNU
-   objdump prints, and the diagnostic disassembler is compared against it. *)
-let canonical_name n =
-  match n with
-  | 10 -> "sl"
-  | 11 -> "fp"
-  | 12 -> "ip"
-  | 13 -> "sp"
-  | 14 -> "lr"
-  | 15 -> "pc"
-  | _ -> Printf.sprintf "r%d" n
+  (* The canonical spelling of r13/r14/r15 is [sp]/[lr]/[pc]: that is what GNU
+     objdump prints, and the diagnostic disassembler is compared against it. *)
+  let canonical_name n =
+    match n with
+    | 10 -> "sl"
+    | 11 -> "fp"
+    | 12 -> "ip"
+    | 13 -> "sp"
+    | 14 -> "lr"
+    | 15 -> "pc"
+    | _ -> Printf.sprintf "r%d" n
 
-let reg_of_num n = { rname = canonical_name (n land 15); rnum = n land 15 }
+  let of_num n = { name = canonical_name (n land 15); num = n land 15 }
 
-let find_reg name =
-  match List.assoc_opt name aliases with
-  | Some n -> Some (reg_of_num n)
-  | None -> (
-      match List.find_opt (fun r -> String.equal r.rname name) registers with
-      | Some r -> Some (reg_of_num r.rnum)
-      | None -> None)
+  let find name =
+    match List.assoc_opt name aliases with
+    | Some n -> Some (of_num n)
+    | None -> (
+        match List.find_opt (fun r -> String.equal r.name name) all with
+        | Some r -> Some (of_num r.num)
+        | None -> None)
+
+  (* The two registers the procedure-call standard fixes, named because an AST
+     written by hand says [Reg.lr] far more often than it says [r14]. *)
+  let sp = of_num 13
+  let lr = of_num 14
+end
 
 (* {1 Operands} *)
 
-type memory = { m_base : reg; m_offset : int64; m_writeback : bool; m_pre : bool }
-type operand = Op_reg of reg | Op_imm of Bigint.t | Op_mem of memory
+module Mem = struct
+  type t = { base : Reg.t; offset : int64; writeback : bool; pre : bool }
 
-let pp_mem ppf m =
-  let off = if Int64.equal m.m_offset 0L then "" else Printf.sprintf ", #%Ld" m.m_offset in
-  if m.m_pre then Fmt.pf ppf "[%a%s]%s" pp_reg m.m_base off (if m.m_writeback then "!" else "")
-  else Fmt.pf ppf "[%a]%s" pp_reg m.m_base off
+  let pp ppf m =
+    let off = if Int64.equal m.offset 0L then "" else Printf.sprintf ", #%Ld" m.offset in
+    if m.pre then Fmt.pf ppf "[%a%s]%s" Reg.pp m.base off (if m.writeback then "!" else "")
+    else Fmt.pf ppf "[%a]%s" Reg.pp m.base off
+end
 
-let pp_operand ppf = function
-  | Op_reg r -> pp_reg ppf r
-  | Op_imm v -> Fmt.pf ppf "#%a" Bigint.pp v
-  | Op_mem m -> pp_mem ppf m
+module Operand = struct
+  type t = Reg of Reg.t | Imm of Bigint.t | Mem of Mem.t
 
-type surface_operand = operand
-type surface_instruction = { s_mnemonic : string; s_ops : operand list; s_origin : Origin.t }
+  let pp ppf = function
+    | Reg r -> Reg.pp ppf r
+    | Imm v -> Fmt.pf ppf "#%a" Bigint.pp v
+    | Mem m -> Mem.pp ppf m
+end
 
-let pp_surface ppf s =
-  match s.s_ops with
-  | [] -> Fmt.string ppf s.s_mnemonic
-  | ops -> Fmt.pf ppf "%s %a" s.s_mnemonic Fmt.(list ~sep:(any ", ") pp_operand) ops
+module Surface = struct
+  type t = { mnemonic : string; ops : Operand.t list; origin : Origin.t }
 
-type opcode = Op_mov | Op_add | Op_sub | Op_str | Op_ldr | Op_bx
+  let pp ppf s =
+    match s.ops with
+    | [] -> Fmt.string ppf s.mnemonic
+    | ops -> Fmt.pf ppf "%s %a" s.mnemonic Fmt.(list ~sep:(any ", ") Operand.pp) ops
+end
 
-let opcode_name = function
-  | Op_mov -> "mov"
-  | Op_add -> "add"
-  | Op_sub -> "sub"
-  | Op_str -> "str"
-  | Op_ldr -> "ldr"
-  | Op_bx -> "bx"
+module Opcode = struct
+  type t = Mov | Add | Sub | Str | Ldr | Bx
 
-type instruction = { i_op : opcode; i_ops : operand list }
+  let name = function
+    | Mov -> "mov"
+    | Add -> "add"
+    | Sub -> "sub"
+    | Str -> "str"
+    | Ldr -> "ldr"
+    | Bx -> "bx"
 
-let pp_instruction ppf i =
-  match i.i_ops with
-  | [] -> Fmt.string ppf (opcode_name i.i_op)
-  | ops -> Fmt.pf ppf "%s %a" (opcode_name i.i_op) Fmt.(list ~sep:(any ", ") pp_operand) ops
+  (* The surface spellings this target accepts. [simplify_instruction] consults
+     this rather than repeating the list. *)
+  let of_mnemonic = function
+    | "mov" -> Some Mov
+    | "add" -> Some Add
+    | "sub" -> Some Sub
+    | "str" -> Some Str
+    | "ldr" -> Some Ldr
+    | "bx" -> Some Bx
+    | _ -> None
+
+  (* A32 encodes add, sub and mov as one data-processing format distinguished
+     by a 4-bit opcode field. The two directions live together so they cannot
+     drift; [-1] is "this opcode is not a data-processing one". *)
+  let to_dp = function Sub -> 2 | Add -> 4 | Mov -> 13 | _ -> -1
+  let of_dp = function 2 -> Some Sub | 4 -> Some Add | 13 -> Some Mov | _ -> None
+end
+
+module Instruction = struct
+  type t = { op : Opcode.t; ops : Operand.t list }
+
+  let pp ppf i =
+    match i.ops with
+    | [] -> Fmt.string ppf (Opcode.name i.op)
+    | ops -> Fmt.pf ppf "%s %a" (Opcode.name i.op) Fmt.(list ~sep:(any ", ") Operand.pp) ops
+end
 
 (* {1 Lowered forms}
 
@@ -98,47 +132,56 @@ let pp_instruction ppf i =
    4-bit opcode field. Three constructors named add/sub/mov would each have to
    carry that field anyway, and could then disagree with their own name. *)
 
-type lowered_instruction =
-  | L_dp_imm of { dp : int; s : bool; rd : reg; rn : reg; imm : int64 }
-  | L_dp_reg of { dp : int; s : bool; rd : reg; rn : reg; rm : reg; sh_kind : int; sh_amt : int }
-  | L_ldst_imm of { load : bool; rt : reg; rn : reg; offset : int64 }
-  | L_bx of { rm : reg }
+module Lowered = struct
+  type t =
+    | Dp_imm of { dp : int; s : bool; rd : Reg.t; rn : Reg.t; imm : int64 }
+    | Dp_reg of {
+        dp : int;
+        s : bool;
+        rd : Reg.t;
+        rn : Reg.t;
+        rm : Reg.t;
+        sh_kind : int;
+        sh_amt : int;
+      }
+    | Ldst_imm of { load : bool; rt : Reg.t; rn : Reg.t; offset : int64 }
+    | Bx of { rm : Reg.t }
 
-let dp_code = function Op_sub -> 2 | Op_add -> 4 | Op_mov -> 13 | _ -> -1
-let dp_opcode = function 2 -> Some Op_sub | 4 -> Some Op_add | 13 -> Some Op_mov | _ -> None
-let shift_name = function 0 -> "lsl" | 1 -> "lsr" | 2 -> "asr" | 3 -> "ror" | _ -> "?"
+  let shift_name = function 0 -> "lsl" | 1 -> "lsr" | 2 -> "asr" | 3 -> "ror" | _ -> "?"
 
-let pp_lowered ppf = function
-  | L_dp_imm { dp; rd; rn; imm; _ } -> (
-      match dp_opcode dp with
-      | Some Op_mov -> Fmt.pf ppf "mov %a, #%Ld" pp_reg rd imm
-      | Some o -> Fmt.pf ppf "%s %a, %a, #%Ld" (opcode_name o) pp_reg rd pp_reg rn imm
-      | None -> Fmt.pf ppf "dp%d %a, %a, #%Ld" dp pp_reg rd pp_reg rn imm)
-  | L_dp_reg { dp; rd; rn; rm; sh_kind; sh_amt; _ } -> (
-      let sh =
-        if sh_amt = 0 && sh_kind = 0 then ""
-        else Printf.sprintf ", %s #%d" (shift_name sh_kind) sh_amt
-      in
-      match dp_opcode dp with
-      | Some Op_mov -> Fmt.pf ppf "mov %a, %a%s" pp_reg rd pp_reg rm sh
-      | Some o -> Fmt.pf ppf "%s %a, %a, %a%s" (opcode_name o) pp_reg rd pp_reg rn pp_reg rm sh
-      | None -> Fmt.pf ppf "dp%d %a, %a, %a%s" dp pp_reg rd pp_reg rn pp_reg rm sh)
-  | L_ldst_imm { load; rt; rn; offset } ->
-      Fmt.pf ppf "%s %a, [%a, #%Ld]" (if load then "ldr" else "str") pp_reg rt pp_reg rn offset
-  | L_bx { rm } -> Fmt.pf ppf "bx %a" pp_reg rm
+  let pp ppf = function
+    | Dp_imm { dp; rd; rn; imm; _ } -> (
+        match Opcode.of_dp dp with
+        | Some Opcode.Mov -> Fmt.pf ppf "mov %a, #%Ld" Reg.pp rd imm
+        | Some o -> Fmt.pf ppf "%s %a, %a, #%Ld" (Opcode.name o) Reg.pp rd Reg.pp rn imm
+        | None -> Fmt.pf ppf "dp%d %a, %a, #%Ld" dp Reg.pp rd Reg.pp rn imm)
+    | Dp_reg { dp; rd; rn; rm; sh_kind; sh_amt; _ } -> (
+        let sh =
+          if sh_amt = 0 && sh_kind = 0 then ""
+          else Printf.sprintf ", %s #%d" (shift_name sh_kind) sh_amt
+        in
+        match Opcode.of_dp dp with
+        | Some Opcode.Mov -> Fmt.pf ppf "mov %a, %a%s" Reg.pp rd Reg.pp rm sh
+        | Some o -> Fmt.pf ppf "%s %a, %a, %a%s" (Opcode.name o) Reg.pp rd Reg.pp rn Reg.pp rm sh
+        | None -> Fmt.pf ppf "dp%d %a, %a, %a%s" dp Reg.pp rd Reg.pp rn Reg.pp rm sh)
+    | Ldst_imm { load; rt; rn; offset } ->
+        Fmt.pf ppf "%s %a, [%a, #%Ld]" (if load then "ldr" else "str") Reg.pp rt Reg.pp rn offset
+    | Bx { rm } -> Fmt.pf ppf "bx %a" Reg.pp rm
 
-let lowered_equal a b =
-  match (a, b) with
-  | L_dp_imm x, L_dp_imm y ->
-      x.dp = y.dp && x.s = y.s && reg_equal x.rd y.rd && reg_equal x.rn y.rn
-      && Int64.equal x.imm y.imm
-  | L_dp_reg x, L_dp_reg y ->
-      x.dp = y.dp && x.s = y.s && reg_equal x.rd y.rd && reg_equal x.rn y.rn && reg_equal x.rm y.rm
-      && x.sh_kind = y.sh_kind && x.sh_amt = y.sh_amt
-  | L_ldst_imm x, L_ldst_imm y ->
-      x.load = y.load && reg_equal x.rt y.rt && reg_equal x.rn y.rn && Int64.equal x.offset y.offset
-  | L_bx x, L_bx y -> reg_equal x.rm y.rm
-  | _ -> false
+  let equal a b =
+    match (a, b) with
+    | Dp_imm x, Dp_imm y ->
+        x.dp = y.dp && x.s = y.s && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn
+        && Int64.equal x.imm y.imm
+    | Dp_reg x, Dp_reg y ->
+        x.dp = y.dp && x.s = y.s && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn
+        && Reg.equal x.rm y.rm && x.sh_kind = y.sh_kind && x.sh_amt = y.sh_amt
+    | Ldst_imm x, Ldst_imm y ->
+        x.load = y.load && Reg.equal x.rt y.rt && Reg.equal x.rn y.rn
+        && Int64.equal x.offset y.offset
+    | Bx x, Bx y -> Reg.equal x.rm y.rm
+    | _ -> false
+end
 
 type fixup_kind = Abs32 | Pcrel_b26
 
@@ -222,11 +265,11 @@ let cond_al = C.const ~width:4 0xEL
 
 let reg_field name =
   C.iso_fun ~name
-    ~encode:(fun (r : reg) -> Some (Int64.of_int r.rnum))
-    ~decode:(fun v -> Some (reg_of_num (Int64.to_int v)))
+    ~encode:(fun (r : Reg.t) -> Some (Int64.of_int r.num))
+    ~decode:(fun v -> Some (Reg.of_num (Int64.to_int v)))
     (C.field ~width:4 name)
 
-let codec : (lowered_instruction, fixup_kind) C.t =
+let codec : (Lowered.t, fixup_kind) C.t =
   C.choice ~name:"arm"
     [
       (* [bx] first. Its pattern [0001 0010 1111 1111 1111 0001 Rm] is a
@@ -236,24 +279,24 @@ let codec : (lowered_instruction, fixup_kind) C.t =
          plausible [teq], which is the failure this ordering prevents. *)
       C.alt ~label:"bx" ~priority:0
         (C.iso_fun ~name:"bx"
-           ~encode:(function L_bx { rm } -> Some ((), ((), rm)) | _ -> None)
-           ~decode:(fun ((), ((), rm)) -> Some (L_bx { rm }))
+           ~encode:(function Lowered.Bx { rm } -> Some ((), ((), rm)) | _ -> None)
+           ~decode:(fun ((), ((), rm)) -> Some (Lowered.Bx { rm }))
            C.(cond_al ** const ~width:24 0x12FFF1L ** reg_field "rm"));
       C.alt ~label:"dp-imm" ~priority:1
         (C.iso_fun ~name:"dp-imm"
            ~encode:(function
-             | L_dp_imm { dp; s; rd; rn; imm } ->
+             | Lowered.Dp_imm { dp; s; rd; rn; imm } ->
                  Some ((), ((), (Int64.of_int dp, ((if s then 1L else 0L), (rn, (rd, imm))))))
              | _ -> None)
            ~decode:(fun ((), ((), (dp, (s, (rn, (rd, imm)))))) ->
-             Some (L_dp_imm { dp = Int64.to_int dp; s = Int64.equal s 1L; rd; rn; imm }))
+             Some (Lowered.Dp_imm { dp = Int64.to_int dp; s = Int64.equal s 1L; rd; rn; imm }))
            C.(
              cond_al ** const ~width:3 1L ** field ~width:4 "dp" ** field ~width:1 "s"
              ** reg_field "rn" ** reg_field "rd" ** modimm_codec));
       C.alt ~label:"dp-reg" ~priority:2
         (C.iso_fun ~name:"dp-reg"
            ~encode:(function
-             | L_dp_reg { dp; s; rd; rn; rm; sh_kind; sh_amt } ->
+             | Lowered.Dp_reg { dp; s; rd; rn; rm; sh_kind; sh_amt } ->
                  Some
                    ( (),
                      ( (),
@@ -264,7 +307,7 @@ let codec : (lowered_instruction, fixup_kind) C.t =
              | _ -> None)
            ~decode:(fun ((), ((), (dp, (s, (rn, (rd, (sh_amt, (sh_kind, ((), rm))))))))) ->
              Some
-               (L_dp_reg
+               (Lowered.Dp_reg
                   {
                     dp = Int64.to_int dp;
                     s = Int64.equal s 1L;
@@ -285,7 +328,7 @@ let codec : (lowered_instruction, fixup_kind) C.t =
       C.alt ~label:"ldst-imm" ~priority:3
         (C.iso_fun ~name:"ldst-imm"
            ~encode:(function
-             | L_ldst_imm { load; rt; rn; offset } ->
+             | Lowered.Ldst_imm { load; rt; rn; offset } ->
                  let up = Int64.compare offset 0L >= 0 in
                  let mag = Int64.abs offset in
                  if Int64.compare mag 4096L >= 0 then None
@@ -299,7 +342,7 @@ let codec : (lowered_instruction, fixup_kind) C.t =
              | _ -> None)
            ~decode:(fun ((), ((), ((), (up, ((), ((), (load, (rn, (rt, mag))))))))) ->
              Some
-               (L_ldst_imm
+               (Lowered.Ldst_imm
                   {
                     load = Int64.equal load 1L;
                     rt;
@@ -383,25 +426,25 @@ let parse_one (slice : Asm_core.Token.slice) =
   in
   match List.map Token.kind slice with
   | [ Token.Ident n ] -> (
-      match find_reg n with Some r -> Ok (Op_reg r) | None -> bad ("unknown register " ^ n))
-  | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Op_imm v)
-  | [ Token.Immediate_sigil; Token.Minus; Token.Int v ] -> Ok (Op_imm (Bigint.neg v))
+      match Reg.find n with Some r -> Ok (Operand.Reg r) | None -> bad ("unknown register " ^ n))
+  | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Operand.Imm v)
+  | [ Token.Immediate_sigil; Token.Minus; Token.Int v ] -> Ok (Operand.Imm (Bigint.neg v))
   | [ Token.Lbracket; Token.Ident b; Token.Rbracket ] -> (
-      match find_reg b with
-      | Some r -> Ok (Op_mem { m_base = r; m_offset = 0L; m_writeback = false; m_pre = true })
+      match Reg.find b with
+      | Some r -> Ok (Operand.Mem { base = r; offset = 0L; writeback = false; pre = true })
       | None -> bad ("unknown register " ^ b))
   | [ Token.Lbracket; Token.Ident b; Token.Immediate_sigil; Token.Int v; Token.Rbracket ] -> (
-      match (find_reg b, signed_int false v) with
+      match (Reg.find b, signed_int false v) with
       | Some r, Some off ->
-          Ok (Op_mem { m_base = r; m_offset = off; m_writeback = false; m_pre = true })
+          Ok (Operand.Mem { base = r; offset = off; writeback = false; pre = true })
       | None, _ -> bad ("unknown register " ^ b)
       | _, None -> bad "offset does not fit 64 bits")
   | [
    Token.Lbracket; Token.Ident b; Token.Immediate_sigil; Token.Minus; Token.Int v; Token.Rbracket;
   ] -> (
-      match (find_reg b, signed_int true v) with
+      match (Reg.find b, signed_int true v) with
       | Some r, Some off ->
-          Ok (Op_mem { m_base = r; m_offset = off; m_writeback = false; m_pre = true })
+          Ok (Operand.Mem { base = r; offset = off; writeback = false; pre = true })
       | None, _ -> bad ("unknown register " ^ b)
       | _, None -> bad "offset does not fit 64 bits")
   | _ -> bad ("cannot parse operand " ^ Asm_core.Token.slice_text slice)
@@ -417,27 +460,16 @@ let parse_operands ~mnemonic slices =
       in
       go [] groups
 
-let make_surface_instruction ~mnemonic ~origin ops =
-  Ok { s_mnemonic = mnemonic; s_ops = ops; s_origin = origin }
+let make_surface_instruction ~mnemonic ~origin ops = Ok { Surface.mnemonic; ops; origin }
 
 (* {1 Simplify} *)
 
 let simplify_instruction ~features s =
   ignore features;
-  let bad msg = Error (diag ~origin:s.s_origin "arm.simplify" msg) in
-  let op =
-    match s.s_mnemonic with
-    | "mov" -> Some Op_mov
-    | "add" -> Some Op_add
-    | "sub" -> Some Op_sub
-    | "str" -> Some Op_str
-    | "ldr" -> Some Op_ldr
-    | "bx" -> Some Op_bx
-    | _ -> None
-  in
-  match op with
-  | None -> bad (Printf.sprintf "unknown instruction %s" s.s_mnemonic)
-  | Some op -> Ok { i_op = op; i_ops = s.s_ops }
+  let bad msg = Error (diag ~origin:s.Surface.origin "arm.simplify" msg) in
+  match Opcode.of_mnemonic s.Surface.mnemonic with
+  | None -> bad (Printf.sprintf "unknown instruction %s" s.Surface.mnemonic)
+  | Some op -> Ok { Instruction.op; ops = s.Surface.ops }
 
 (* {1 Lower} *)
 
@@ -450,14 +482,22 @@ let lower_instruction state i =
       | Some x -> Ok x
       | None -> Error (diag "arm.lower" "immediate does not fit 64 bits")
     in
-    match (i.i_op, i.i_ops) with
-    | Op_mov, [ Op_reg rd; Op_reg rm ] ->
+    match (i.Instruction.op, i.Instruction.ops) with
+    | Opcode.Mov, [ Operand.Reg rd; Operand.Reg rm ] ->
         Ok
           [
-            L_dp_reg
-              { dp = dp_code Op_mov; s = false; rd; rn = reg_of_num 0; rm; sh_kind = 0; sh_amt = 0 };
+            Lowered.Dp_reg
+              {
+                dp = Opcode.to_dp Opcode.Mov;
+                s = false;
+                rd;
+                rn = Reg.of_num 0;
+                rm;
+                sh_kind = 0;
+                sh_amt = 0;
+              };
           ]
-    | Op_mov, [ Op_reg rd; Op_imm v ] -> (
+    | Opcode.Mov, [ Operand.Reg rd; Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm ->
@@ -465,21 +505,26 @@ let lower_instruction state i =
               bad
                 (Printf.sprintf
                    "#%Ld has no A32 modified-immediate representation; movw and mvn are M2" imm)
-            else Ok [ L_dp_imm { dp = dp_code Op_mov; s = false; rd; rn = reg_of_num 0; imm } ])
-    | ((Op_add | Op_sub) as op), [ Op_reg rd; Op_reg rn; Op_imm v ] -> (
+            else
+              Ok
+                [
+                  Lowered.Dp_imm
+                    { dp = Opcode.to_dp Opcode.Mov; s = false; rd; rn = Reg.of_num 0; imm };
+                ])
+    | ((Opcode.Add | Opcode.Sub) as op), [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm ->
             if encode_modimm imm = None then
               bad (Printf.sprintf "#%Ld has no A32 modified-immediate representation" imm)
-            else Ok [ L_dp_imm { dp = dp_code op; s = false; rd; rn; imm } ])
-    | ((Op_str | Op_ldr) as op), [ Op_reg rt; Op_mem m ] ->
-        if m.m_writeback then bad "writeback addressing is not in M1 scope"
-        else if Int64.compare (Int64.abs m.m_offset) 4096L >= 0 then
+            else Ok [ Lowered.Dp_imm { dp = Opcode.to_dp op; s = false; rd; rn; imm } ])
+    | ((Opcode.Str | Opcode.Ldr) as op), [ Operand.Reg rt; Operand.Mem m ] ->
+        if m.writeback then bad "writeback addressing is not in M1 scope"
+        else if Int64.compare (Int64.abs m.offset) 4096L >= 0 then
           bad "offset does not fit the 12-bit immediate"
-        else Ok [ L_ldst_imm { load = op = Op_ldr; rt; rn = m.m_base; offset = m.m_offset } ]
-    | Op_bx, [ Op_reg rm ] -> Ok [ L_bx { rm } ]
-    | _ -> bad (Printf.sprintf "no %s form takes these operands" (opcode_name i.i_op))
+        else Ok [ Lowered.Ldst_imm { load = op = Opcode.Ldr; rt; rn = m.base; offset = m.offset } ]
+    | Opcode.Bx, [ Operand.Reg rm ] -> Ok [ Lowered.Bx { rm } ]
+    | _ -> bad (Printf.sprintf "no %s form takes these operands" (Opcode.name i.Instruction.op))
 
 (* {1 Encode and decode}
 
@@ -496,27 +541,35 @@ let encode l =
 type decode_context = { state : target_state; address : int64 }
 
 let instruction_of_lowered = function
-  | L_dp_imm { dp; rd; rn; imm; _ } -> (
-      match dp_opcode dp with
+  | Lowered.Dp_imm { dp; rd; rn; imm; _ } -> (
+      match Opcode.of_dp dp with
       | None -> None
-      | Some Op_mov -> Some { i_op = Op_mov; i_ops = [ Op_reg rd; Op_imm (Bigint.of_int64 imm) ] }
-      | Some o -> Some { i_op = o; i_ops = [ Op_reg rd; Op_reg rn; Op_imm (Bigint.of_int64 imm) ] })
-  | L_dp_reg { dp; rd; rn; rm; _ } -> (
-      match dp_opcode dp with
+      | Some Opcode.Mov ->
+          Some
+            {
+              Instruction.op = Opcode.Mov;
+              ops = [ Operand.Reg rd; Operand.Imm (Bigint.of_int64 imm) ];
+            }
+      | Some o ->
+          Some
+            {
+              Instruction.op = o;
+              ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Imm (Bigint.of_int64 imm) ];
+            })
+  | Lowered.Dp_reg { dp; rd; rn; rm; _ } -> (
+      match Opcode.of_dp dp with
       | None -> None
-      | Some Op_mov -> Some { i_op = Op_mov; i_ops = [ Op_reg rd; Op_reg rm ] }
-      | Some o -> Some { i_op = o; i_ops = [ Op_reg rd; Op_reg rn; Op_reg rm ] })
-  | L_ldst_imm { load; rt; rn; offset } ->
+      | Some Opcode.Mov ->
+          Some { Instruction.op = Opcode.Mov; ops = [ Operand.Reg rd; Operand.Reg rm ] }
+      | Some o ->
+          Some { Instruction.op = o; ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] })
+  | Lowered.Ldst_imm { load; rt; rn; offset } ->
       Some
         {
-          i_op = (if load then Op_ldr else Op_str);
-          i_ops =
-            [
-              Op_reg rt;
-              Op_mem { m_base = rn; m_offset = offset; m_writeback = false; m_pre = true };
-            ];
+          Instruction.op = (if load then Opcode.Ldr else Opcode.Str);
+          ops = [ Operand.Reg rt; Operand.Mem { base = rn; offset; writeback = false; pre = true } ];
         }
-  | L_bx { rm } -> Some { i_op = Op_bx; i_ops = [ Op_reg rm ] }
+  | Lowered.Bx { rm } -> Some { Instruction.op = Opcode.Bx; ops = [ Operand.Reg rm ] }
 
 let decode ctx bytes ~pos =
   ignore ctx;
@@ -564,5 +617,3 @@ let handle_directive ~name ~argument state =
          directive and this one would be indistinguishable. *)
       Target_intf.Target.Handled { state; emit = [] }
   | _ -> Target_intf.Target.Unhandled
-
-type register = reg

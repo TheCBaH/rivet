@@ -422,6 +422,10 @@ dependency.
 Recorded here so that "not in the matrix" never has to be interpreted:
 
 - fixups and relocations of any kind (M2 — every M1 fixup list is empty)
+- numeric local labels and their `1b`/`1f` references (M2). Rejected rather than
+  ignored: `1:` with no resolution pass would define a symbol nothing can
+  reference, which is a file assembled without being understood
+- symbol assignment (`name = expr`), rejected at simplify for the same reason
 - PC-relative expressions (M2)
 - ARM `movw` / `mvn` and surface `mov` pseudo selection (M2)
 - multi-module linking, multiple sections, section merging, BSS (M3)

@@ -27,15 +27,18 @@ module T = Aarch64
 open Asm_core
 
 let origin = Foundation.Origin.synthesized ~pass:"direct" ()
-let x n = Option.get (T.find_reg n)
+let x n = Option.get (T.Reg.find n)
+
+let nop length =
+  match T.nop_bytes ~length with Ok b -> b | Error d -> failwith (Foundation.Diagnostic.message d)
 
 (* {1 The direct normalized AST}
 
    Written as a compiler would produce it: directives are values, the aliases
-   are already resolved ([mov x15, sp] is [Op_mov] with two registers, which
+   are already resolved ([mov x15, sp] is [Opcode.Mov] with two registers, which
    lowering turns into [add ..., #0]), and nothing here mentions a token, a span
    or a spelling. *)
-let direct_normalized : T.instruction Normalized_ast.module_ =
+let direct_normalized : T.Instruction.t Normalized_ast.module_ =
   let insn i = Normalized_ast.Instruction { insn = i; origin } in
   let dir d = Normalized_ast.Directive { directive = d; origin } in
   {
@@ -46,37 +49,46 @@ let direct_normalized : T.instruction Normalized_ast.module_ =
         dir (Directive.Align { boundary = 4 });
         dir (Directive.Global { name = "asm_test_entry" });
         Normalized_ast.Label { name = "asm_test_entry"; origin };
-        insn { T.i_op = T.Op_mov; i_ops = [ T.Op_reg (x "x15"); T.Op_reg (x "sp") ] };
         insn
           {
-            T.i_op = T.Op_stp;
-            i_ops =
+            T.Instruction.op = T.Opcode.Mov;
+            ops = [ T.Operand.Reg (x "x15"); T.Operand.Reg (x "sp") ];
+          };
+        insn
+          {
+            T.Instruction.op = T.Opcode.Stp;
+            ops =
               [
-                T.Op_reg (x "x15");
-                T.Op_reg (x "x30");
-                T.Op_mem { m_base = x "sp"; m_offset = -16L; m_writeback = true; m_pre = true };
+                T.Operand.Reg (x "x15");
+                T.Operand.Reg (x "x30");
+                T.Operand.Mem { T.Mem.base = x "sp"; offset = -16L; writeback = true; pre = true };
               ];
           };
         insn
           {
-            T.i_op = T.Op_movz;
-            i_ops = [ T.Op_reg (x "w0"); T.Op_imm (Foundation.Bigint.of_int 42) ];
+            T.Instruction.op = T.Opcode.Movz;
+            ops = [ T.Operand.Reg (x "w0"); T.Operand.Imm (Foundation.Bigint.of_int 42) ];
           };
         insn
           {
-            T.i_op = T.Op_ldr;
-            i_ops =
+            T.Instruction.op = T.Opcode.Ldr;
+            ops =
               [
-                T.Op_reg (x "x30");
-                T.Op_mem { m_base = x "sp"; m_offset = 8L; m_writeback = false; m_pre = true };
+                T.Operand.Reg (x "x30");
+                T.Operand.Mem { T.Mem.base = x "sp"; offset = 8L; writeback = false; pre = true };
               ];
           };
         insn
           {
-            T.i_op = T.Op_add;
-            i_ops = [ T.Op_reg (x "sp"); T.Op_reg (x "sp"); T.Op_imm (Foundation.Bigint.of_int 16) ];
+            T.Instruction.op = T.Opcode.Add;
+            ops =
+              [
+                T.Operand.Reg (x "sp");
+                T.Operand.Reg (x "sp");
+                T.Operand.Imm (Foundation.Bigint.of_int 16);
+              ];
           };
-        insn { T.i_op = T.Op_ret; i_ops = [ T.Op_reg (x "x30") ] };
+        insn { T.Instruction.op = T.Opcode.Ret; ops = [ T.Operand.Reg (x "x30") ] };
         dir (Directive.Sym_type { name = "asm_test_entry"; kind = Directive.Function });
         dir
           (Directive.Sym_size
@@ -99,7 +111,7 @@ let from_text () =
       | Error ds -> failwith (Foundation.Diagnostic.render_all ds)
       | Ok (n, state) -> (n, state))
 
-let render_normalized = Fmt.to_to_string (Normalized_ast.pp T.pp_instruction)
+let render_normalized = Fmt.to_to_string (Normalized_ast.pp T.Instruction.pp)
 
 let%expect_test "simplify of the parsed text equals the direct normalized AST" =
   let parsed, _ = from_text () in
@@ -150,14 +162,18 @@ let direct_lowered : T.fixup_kind Lowered_ast.module_ =
           Lowered_ast.sec = { Lowered_ast.sec_name = ".text"; perms = Perms.rx; alignment = 4 };
           fragments =
             [
-              Lowered_ast.Align { boundary = 4; fill = "\x1f\x20\x03\xd5"; origin };
+              (* The fill comes from the target, not from a byte string quoted
+                 here. A literal would be a second statement of what A64 pads
+                 with, and the one place it can disagree with {!Aarch64.nop_bytes}
+                 is the place no test would look. *)
+              Lowered_ast.Align { boundary = 4; fill = nop 4; origin };
               Lowered_ast.Label_def { name = "asm_test_entry"; origin };
-              frag (T.L_add_imm { rd = x "x15"; rn = x "sp"; imm = 0L; shift12 = false });
-              frag (T.L_stp_pre { rt = x "x15"; rt2 = x "x30"; rn = x "sp"; offset = -16L });
-              frag (T.L_movz { rd = x "w0"; imm16 = 42L; hw = 0 });
-              frag (T.L_ldr_uoff { rt = x "x30"; rn = x "sp"; offset = 8L });
-              frag (T.L_add_imm { rd = x "sp"; rn = x "sp"; imm = 16L; shift12 = false });
-              frag (T.L_ret { rn = x "x30" });
+              frag (T.Lowered.Add_imm { rd = x "x15"; rn = x "sp"; imm = 0L; shift12 = false });
+              frag (T.Lowered.Stp_pre { rt = x "x15"; rt2 = x "x30"; rn = x "sp"; offset = -16L });
+              frag (T.Lowered.Movz { rd = x "w0"; imm16 = 42L; hw = 0 });
+              frag (T.Lowered.Ldr_uoff { rt = x "x30"; rn = x "sp"; offset = 8L });
+              frag (T.Lowered.Add_imm { rd = x "sp"; rn = x "sp"; imm = 16L; shift12 = false });
+              frag (T.Lowered.Ret { rn = x "x30" });
               Lowered_ast.Set_size
                 {
                   name = "asm_test_entry";
@@ -254,7 +270,7 @@ let%expect_test "text, direct normalized AST and direct lowered module give one 
    say "the image is wrong". *)
 
 let%expect_test "a direct normalized AST with an out-of-range immediate is rejected at lowering" =
-  let bad : T.instruction Normalized_ast.module_ =
+  let bad : T.Instruction.t Normalized_ast.module_ =
     {
       Normalized_ast.unit_name = "bad";
       items =
@@ -265,8 +281,8 @@ let%expect_test "a direct normalized AST with an out-of-range immediate is rejec
             {
               insn =
                 {
-                  T.i_op = T.Op_movz;
-                  i_ops = [ T.Op_reg (x "w0"); T.Op_imm (Foundation.Bigint.of_int 70000) ];
+                  T.Instruction.op = T.Opcode.Movz;
+                  ops = [ T.Operand.Reg (x "w0"); T.Operand.Imm (Foundation.Bigint.of_int 70000) ];
                 };
               origin;
             };
@@ -279,10 +295,14 @@ let%expect_test "a direct normalized AST with an out-of-range immediate is rejec
   [%expect {| movz immediate does not fit 16 bits |}]
 
 let%expect_test "a direct normalized AST with no section is rejected at lowering" =
-  let bad : T.instruction Normalized_ast.module_ =
+  let bad : T.Instruction.t Normalized_ast.module_ =
     {
       Normalized_ast.unit_name = "bad";
-      items = [ Normalized_ast.Instruction { insn = { T.i_op = T.Op_ret; i_ops = [] }; origin } ];
+      items =
+        [
+          Normalized_ast.Instruction
+            { insn = { T.Instruction.op = T.Opcode.Ret; ops = [] }; origin };
+        ];
     }
   in
   (match P.lower ~state:T.default_state bad with

@@ -44,8 +44,20 @@ module Make (T : T_intf.TARGET) = struct
                 | Statement.Named (span, n) ->
                     add (Source_ast.Label { name = n; origin = Origin.text span })
                 | Statement.Numeric (span, n) ->
-                    add
-                      (Source_ast.Label { name = string_of_int n ^ ":"; origin = Origin.text span }))
+                    (* Rejected, not renamed. A numeric local label means
+                       nothing without the [1b]/[1f] references that resolve
+                       against it, and that resolution is a pass over fragment
+                       order which M1 does not have. Turning [1:] into a symbol
+                       called "1:" would define something no reference can ever
+                       reach - a file assembled without being understood, which
+                       is what §2.2 exists to forbid. *)
+                    errors :=
+                      diag ~origin:(Origin.text span) "parse.local-label"
+                        (Printf.sprintf
+                           "numeric local label %d: needs 1b/1f resolution, which is not in M1 \
+                            scope"
+                           n)
+                      :: !errors)
               line.Statement.labels;
             match line.Statement.statement with
             | Statement.Empty -> ()
@@ -72,7 +84,27 @@ module Make (T : T_intf.TARGET) = struct
      mutated, so this function is replayable and two runs over the same module
      cannot differ. *)
 
-  let simplify (m : T.surface_instruction Source_ast.module_) =
+  (* Constant folding (§4.3), and the rule that makes it safe: [Expr.fold]
+     collapses only *fully absolute* subterms and rewrites the rest unchanged.
+     So [2 + 3] becomes [5] here, while [. - asm_test_entry] stays symbolic -
+     it cannot be a number until an address exists, and folding it early would
+     mean inventing one.
+
+     Folding at simplify rather than at bind is what §4.3 asks for, and it has a
+     practical consequence: a division by zero or an out-of-range shift is
+     reported against the source line that wrote it, not against a link map. *)
+  let fold_directive ~origin d =
+    let fold e =
+      match Expr.fold Expr.no_env e with
+      | Ok e' -> Ok e'
+      | Error m -> Error (diag ~origin "simplify.expression" m)
+    in
+    match d with
+    | Directive.Sym_size { name; size } ->
+        Result.map (fun size -> Directive.Sym_size { name; size }) (fold size)
+    | other -> Ok other
+
+  let simplify (m : T.Surface.t Source_ast.module_) =
     let errors = ref [] in
     let items = ref [] in
     let add i = items := i :: !items in
@@ -104,8 +136,10 @@ module Make (T : T_intf.TARGET) = struct
             | T_intf.Unhandled -> (
                 match Directives.normalize ~name ~arguments with
                 | Ok Directives.Dropped -> ()
-                | Ok (Directives.Normalized d) ->
-                    add (Normalized_ast.Directive { directive = d; origin })
+                | Ok (Directives.Normalized d) -> (
+                    match fold_directive ~origin d with
+                    | Ok d -> add (Normalized_ast.Directive { directive = d; origin })
+                    | Error e -> errors := e :: !errors)
                 | Ok Directives.Unknown ->
                     errors :=
                       diag ~origin "simplify.directive" ("unknown directive " ^ name) :: !errors
@@ -136,7 +170,7 @@ module Make (T : T_intf.TARGET) = struct
     mutable sy_section : string;
   }
 
-  let lower ~state (m : T.instruction Normalized_ast.module_) =
+  let lower ~state (m : T.Instruction.t Normalized_ast.module_) =
     let errors = ref [] in
     let sections : section_build list ref = ref [] in
     let declared = ref [] in
@@ -321,14 +355,14 @@ module Make (T : T_intf.TARGET) = struct
                 tokens))
 
   let dump_source_ast ~unit_name ~source =
-    Result.map (Fmt.to_to_string (Source_ast.pp T.pp_surface)) (parse ~unit_name ~source)
+    Result.map (Fmt.to_to_string (Source_ast.pp T.Surface.pp)) (parse ~unit_name ~source)
 
   let dump_normalized_ast ~unit_name ~source =
     match parse ~unit_name ~source with
     | Error ds -> Error ds
     | Ok src ->
         Result.map
-          (fun (n, _) -> Fmt.to_to_string (Normalized_ast.pp T.pp_instruction) n)
+          (fun (n, _) -> Fmt.to_to_string (Normalized_ast.pp T.Instruction.pp) n)
           (simplify src)
 
   let dump_lowered_ast ~unit_name ~source =
@@ -358,7 +392,7 @@ module Make (T : T_intf.TARGET) = struct
               String.concat " "
                 (List.init n (fun i -> Printf.sprintf "%02x" (Char.code bytes.[pos + i])))
             in
-            go (pos + n) ((here, run, Fmt.to_to_string T.pp_instruction insn, form) :: acc)
+            go (pos + n) ((here, run, Fmt.to_to_string T.Instruction.pp insn, form) :: acc)
     in
     go 0 []
 

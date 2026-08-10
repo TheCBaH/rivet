@@ -54,6 +54,16 @@
     -c
     "printf 'exec node %s/../../melange/test/lib/foundation/js/melange/test/lib/foundation/bigint_dump.js\\n' \"$PWD\""))))
 
+; The gas cross-reference transcripts (gas_xref.t, gas_frontier.t) need the CLI
+; and the committed corpus. They are in this directory rather than one of their
+; own because a second (cram) stanza would need a second directory anyway, and
+; these belong beside the other transcripts that read committed bytes.
+;
+; The corpus is a glob rather than a list: tools/asm-gas-xref.sh --regen decides
+; how many cases there are, and a hand-maintained dep list would have to be
+; edited every time the AST corpus learns a new snippet - which is exactly the
+; second description this work exists to avoid.
+
 (cram
  (deps
   run.sh
@@ -61,7 +71,9 @@
   ../lib/foundation/bigint_dump.exe
   ../lib/foundation/bigint_dump.bc.js
   ../dump/asm_dump.exe
-  ../dump/asm_dump.bc.js))
+  ../dump/asm_dump.bc.js
+  ../../tool/asm.exe
+  (glob_files_rec %{workspace_root}/fixtures/gas-xref/**)))
 
 ; The assembler-level three-build gate. Same shape as bigint_dump above: one
 ; committed baseline, and ASM_BACKEND chooses which artifact produces it. The

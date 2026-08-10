@@ -202,3 +202,48 @@ let%expect_test "binding at a misaligned address is rejected" =
     segment .text needs 4-byte alignment, address is 0x40000002
     section .text address=0x40000000 size=4 permissions=r-x
     |}]
+
+(* {1 Simplify's two expression rules (§4.3)}
+
+   Constant folding happens at simplify, and only *fully absolute* subterms
+   fold. Both halves are load-bearing: folding at bind instead would report a
+   division by zero against a link map rather than against the line that wrote
+   it, and folding a symbolic subterm early would mean inventing an address that
+   does not exist yet. *)
+
+let normalized target text =
+  let (module D : Target_intf.Target.DRIVER) =
+    match Driver.Registry.find target with Some d -> d | None -> failwith target
+  in
+  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  match D.dump_normalized_ast ~unit_name:"t" ~source with
+  | Ok s -> print_endline (String.trim s)
+  | Error ds ->
+      List.iter
+        (fun d ->
+          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
+        ds
+
+let%expect_test "absolute subterms fold, symbolic ones survive" =
+  normalized "x86_64" "\t.text\nfoo:\n\tret\n\t.size foo, 2 + 3 * 4\n\t.size bar, . - foo\n";
+  [%expect
+    {|
+    normalized t
+    section .text r-x
+    label foo
+    ret
+    size foo 14
+    size bar (. - foo)
+    |}]
+
+let%expect_test "a folding error is reported against the line that wrote it" =
+  normalized "x86_64" "\t.text\n\tret\n\t.size foo, 1 / 0\n";
+  [%expect {| simplify.expression: division by zero |}]
+
+(* A numeric local label is rejected rather than turned into a symbol named
+   "1:". Nothing resolves [1b]/[1f] in M1, so such a symbol could never be
+   referenced - it would be a file assembled without being understood. *)
+let%expect_test "numeric local labels are rejected, not silently renamed" =
+  attempt "x86_64" "\t.text\n1:\n\tret\n";
+  [%expect
+    {| parse.local-label: numeric local label 1: needs 1b/1f resolution, which is not in M1 scope |}]

@@ -12,12 +12,12 @@ module Mode = struct
   let rex_allowed = true
 
   let registers =
-    X86_family.base_regs 64 X86_family.names_64
-    @ X86_family.extended_regs 64 ""
-    @ X86_family.base_regs 32 X86_family.names_32
-    @ X86_family.extended_regs 32 "d"
-    @ X86_family.base_regs 16 X86_family.names_16
-    @ X86_family.base_regs 8 X86_family.names_8l
+    X86_family.Reg.base_regs 64 X86_family.Reg.names_64
+    @ X86_family.Reg.extended_regs 64 ""
+    @ X86_family.Reg.base_regs 32 X86_family.Reg.names_32
+    @ X86_family.Reg.extended_regs 32 "d"
+    @ X86_family.Reg.base_regs 16 X86_family.Reg.names_16
+    @ X86_family.Reg.base_regs 8 X86_family.Reg.names_8l
 end
 
 include X86_family.Make (Mode)

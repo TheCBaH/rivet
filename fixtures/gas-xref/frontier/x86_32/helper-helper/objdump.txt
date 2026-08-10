@@ -1,0 +1,1400 @@
+
+
+Disassembly of section .text:
+
+00000000 <_start>:
+       0:	8b 04 24             	mov    (%esp),%eax
+       3:	83 f8 03             	cmp    $0x3,%eax
+       6:	7d 0f                	jge    17 <_start+0x17>
+       8:	b8 41 00 00 00       	mov    $0x41,%eax
+       d:	a3 1c 00 00 00       	mov    %eax,0x1c
+			e: R_386_32	.bss
+      12:	e9 e3 0f 00 00       	jmp    ffa <exit_class>
+      17:	8b 54 24 08          	mov    0x8(%esp),%edx
+      1b:	89 15 08 00 00 00    	mov    %edx,0x8
+			1d: R_386_32	.bss
+      21:	8b 54 24 0c          	mov    0xc(%esp),%edx
+      25:	89 15 0c 00 00 00    	mov    %edx,0xc
+			27: R_386_32	.bss
+      2b:	8d 74 24 04          	lea    0x4(%esp),%esi
+      2f:	8d 74 86 04          	lea    0x4(%esi,%eax,4),%esi
+      33:	8b 16                	mov    (%esi),%edx
+      35:	83 c6 04             	add    $0x4,%esi
+      38:	85 d2                	test   %edx,%edx
+      3a:	75 f7                	jne    33 <_start+0x33>
+      3c:	8b 16                	mov    (%esi),%edx
+      3e:	85 d2                	test   %edx,%edx
+      40:	74 1d                	je     5f <_start+0x5f>
+      42:	83 fa 06             	cmp    $0x6,%edx
+      45:	75 13                	jne    5a <_start+0x5a>
+      47:	8b 56 04             	mov    0x4(%esi),%edx
+      4a:	89 15 10 00 00 00    	mov    %edx,0x10
+			4c: R_386_32	.bss
+      50:	c7 05 14 00 00 00 01 	movl   $0x1,0x14
+      57:	00 00 00 
+			52: R_386_32	.bss
+      5a:	83 c6 08             	add    $0x8,%esi
+      5d:	eb dd                	jmp    3c <_start+0x3c>
+      5f:	8b 04 24             	mov    (%esp),%eax
+      62:	83 f8 04             	cmp    $0x4,%eax
+      65:	7c 3f                	jl     a6 <_start+0xa6>
+      67:	8b 74 24 10          	mov    0x10(%esp),%esi
+      6b:	8b 06                	mov    (%esi),%eax
+      6d:	8b 56 04             	mov    0x4(%esi),%edx
+      70:	3b 05 10 00 00 00    	cmp    0x10,%eax
+			72: R_386_32	.rodata
+      76:	75 14                	jne    8c <_start+0x8c>
+      78:	3b 15 14 00 00 00    	cmp    0x14,%edx
+			7a: R_386_32	.rodata
+      7e:	75 0c                	jne    8c <_start+0x8c>
+      80:	b8 00 20 00 00       	mov    $0x2000,%eax
+      85:	a3 10 00 00 00       	mov    %eax,0x10
+			86: R_386_32	.bss
+      8a:	eb 1a                	jmp    a6 <_start+0xa6>
+      8c:	3b 05 18 00 00 00    	cmp    0x18,%eax
+			8e: R_386_32	.rodata
+      92:	75 12                	jne    a6 <_start+0xa6>
+      94:	3b 15 1c 00 00 00    	cmp    0x1c,%edx
+			96: R_386_32	.rodata
+      9a:	75 0a                	jne    a6 <_start+0xa6>
+      9c:	c7 05 14 00 00 00 00 	movl   $0x0,0x14
+      a3:	00 00 00 
+			9e: R_386_32	.bss
+      a6:	e8 60 0e 00 00       	call   f0b <sys_open_result>
+      ab:	3d 01 f0 ff ff       	cmp    $0xfffff001,%eax
+      b0:	0f 83 52 0f 00 00    	jae    1008 <exit_class+0xe>
+      b6:	a3 00 00 00 00       	mov    %eax,0x0
+			b7: R_386_32	.bss
+      bb:	e8 65 0e 00 00       	call   f25 <sys_ftruncate_result>
+      c0:	3d 01 f0 ff ff       	cmp    $0xfffff001,%eax
+      c5:	0f 83 49 0f 00 00    	jae    1014 <exit_class+0x1a>
+      cb:	c7 05 b8 00 00 00 00 	movl   $0x30000000,0xb8
+      d2:	00 00 30 
+			cd: R_386_32	.bss
+      d5:	c7 05 bc 00 00 00 00 	movl   $0x100000,0xbc
+      dc:	00 10 00 
+			d7: R_386_32	.bss
+      df:	c7 05 c0 00 00 00 00 	movl   $0x0,0xc0
+      e6:	00 00 00 
+			e1: R_386_32	.bss
+      e9:	c7 05 c4 00 00 00 22 	movl   $0x100022,0xc4
+      f0:	00 10 00 
+			eb: R_386_32	.bss
+      f3:	c7 05 c8 00 00 00 ff 	movl   $0xffffffff,0xc8
+      fa:	ff ff ff 
+			f5: R_386_32	.bss
+      fd:	e8 64 0e 00 00       	call   f66 <sys_mmap2>
+     102:	3d 01 f0 ff ff       	cmp    $0xfffff001,%eax
+     107:	0f 83 13 0f 00 00    	jae    1020 <exit_class+0x26>
+     10d:	3d 00 00 00 30       	cmp    $0x30000000,%eax
+     112:	0f 85 08 0f 00 00    	jne    1020 <exit_class+0x26>
+     118:	c7 05 b8 00 00 00 00 	movl   $0x0,0xb8
+     11f:	00 00 00 
+			11a: R_386_32	.bss
+     122:	c7 05 bc 00 00 00 00 	movl   $0x1000,0xbc
+     129:	10 00 00 
+			124: R_386_32	.bss
+     12c:	c7 05 c0 00 00 00 03 	movl   $0x3,0xc0
+     133:	00 00 00 
+			12e: R_386_32	.bss
+     136:	c7 05 c4 00 00 00 01 	movl   $0x1,0xc4
+     13d:	00 00 00 
+			138: R_386_32	.bss
+     140:	a1 00 00 00 00       	mov    0x0,%eax
+			141: R_386_32	.bss
+     145:	a3 c8 00 00 00       	mov    %eax,0xc8
+			146: R_386_32	.bss
+     14a:	e8 17 0e 00 00       	call   f66 <sys_mmap2>
+     14f:	3d 01 f0 ff ff       	cmp    $0xfffff001,%eax
+     154:	0f 83 d2 0e 00 00    	jae    102c <exit_class+0x32>
+     15a:	a3 18 00 00 00       	mov    %eax,0x18
+			15b: R_386_32	.bss
+     15f:	89 c7                	mov    %eax,%edi
+     161:	a1 08 00 00 00       	mov    0x8,%eax
+			162: R_386_32	.rodata
+     166:	89 07                	mov    %eax,(%edi)
+     168:	a1 0c 00 00 00       	mov    0xc,%eax
+			169: R_386_32	.rodata
+     16d:	89 47 04             	mov    %eax,0x4(%edi)
+     170:	66 c7 47 08 01 00    	movw   $0x1,0x8(%edi)
+     176:	83 3d 14 00 00 00 00 	cmpl   $0x0,0x14
+			178: R_386_32	.bss
+     17d:	75 19                	jne    198 <_start+0x198>
+     17f:	b8 45 00 00 00       	mov    $0x45,%eax
+     184:	a3 1c 00 00 00       	mov    %eax,0x1c
+			185: R_386_32	.bss
+     189:	b8 02 00 00 00       	mov    $0x2,%eax
+     18e:	a3 20 00 00 00       	mov    %eax,0x20
+			18f: R_386_32	.bss
+     193:	e9 16 0e 00 00       	jmp    fae <fail_pre_run>
+     198:	81 3d 10 00 00 00 00 	cmpl   $0x1000,0x10
+     19f:	10 00 00 
+			19a: R_386_32	.bss
+     1a2:	74 19                	je     1bd <_start+0x1bd>
+     1a4:	b8 45 00 00 00       	mov    $0x45,%eax
+     1a9:	a3 1c 00 00 00       	mov    %eax,0x1c
+			1aa: R_386_32	.bss
+     1ae:	b8 01 00 00 00       	mov    $0x1,%eax
+     1b3:	a3 20 00 00 00       	mov    %eax,0x20
+			1b4: R_386_32	.bss
+     1b8:	e9 f1 0d 00 00       	jmp    fae <fail_pre_run>
+     1bd:	e8 78 0d 00 00       	call   f3a <sys_open_input>
+     1c2:	3d 01 f0 ff ff       	cmp    $0xfffff001,%eax
+     1c7:	0f 83 6b 0e 00 00    	jae    1038 <exit_class+0x3e>
+     1cd:	a3 04 00 00 00       	mov    %eax,0x4
+			1ce: R_386_32	.bss
+     1d2:	e8 7a 0d 00 00       	call   f51 <sys_fstat_input>
+     1d7:	3d 01 f0 ff ff       	cmp    $0xfffff001,%eax
+     1dc:	0f 83 6f 0e 00 00    	jae    1051 <exit_class+0x57>
+     1e2:	a1 fc 00 00 00       	mov    0xfc,%eax
+			1e3: R_386_32	.bss
+     1e7:	85 c0                	test   %eax,%eax
+     1e9:	75 2a                	jne    215 <_start+0x215>
+     1eb:	a1 f8 00 00 00       	mov    0xf8,%eax
+			1ec: R_386_32	.bss
+     1f0:	83 f8 78             	cmp    $0x78,%eax
+     1f3:	73 19                	jae    20e <_start+0x20e>
+     1f5:	b8 40 00 00 00       	mov    $0x40,%eax
+     1fa:	a3 1c 00 00 00       	mov    %eax,0x1c
+			1fb: R_386_32	.bss
+     1ff:	b8 01 00 00 00       	mov    $0x1,%eax
+     204:	a3 20 00 00 00       	mov    %eax,0x20
+			205: R_386_32	.bss
+     209:	e9 a0 0d 00 00       	jmp    fae <fail_pre_run>
+     20e:	3d 00 00 10 00       	cmp    $0x100000,%eax
+     213:	76 19                	jbe    22e <_start+0x22e>
+     215:	b8 40 00 00 00       	mov    $0x40,%eax
+     21a:	a3 1c 00 00 00       	mov    %eax,0x1c
+			21b: R_386_32	.bss
+     21f:	b8 02 00 00 00       	mov    $0x2,%eax
+     224:	a3 20 00 00 00       	mov    %eax,0x20
+			225: R_386_32	.bss
+     229:	e9 80 0d 00 00       	jmp    fae <fail_pre_run>
+     22e:	a3 28 00 00 00       	mov    %eax,0x28
+			22f: R_386_32	.bss
+     233:	c7 05 b8 00 00 00 00 	movl   $0x0,0xb8
+     23a:	00 00 00 
+			235: R_386_32	.bss
+     23d:	a3 bc 00 00 00       	mov    %eax,0xbc
+			23e: R_386_32	.bss
+     242:	c7 05 c0 00 00 00 01 	movl   $0x1,0xc0
+     249:	00 00 00 
+			244: R_386_32	.bss
+     24c:	c7 05 c4 00 00 00 02 	movl   $0x2,0xc4
+     253:	00 00 00 
+			24e: R_386_32	.bss
+     256:	a1 04 00 00 00       	mov    0x4,%eax
+			257: R_386_32	.bss
+     25b:	a3 c8 00 00 00       	mov    %eax,0xc8
+			25c: R_386_32	.bss
+     260:	e8 01 0d 00 00       	call   f66 <sys_mmap2>
+     265:	3d 01 f0 ff ff       	cmp    $0xfffff001,%eax
+     26a:	0f 83 fa 0d 00 00    	jae    106a <exit_class+0x70>
+     270:	a3 24 00 00 00       	mov    %eax,0x24
+			271: R_386_32	.bss
+     275:	8b 1d 24 00 00 00    	mov    0x24,%ebx
+			277: R_386_32	.bss
+     27b:	a1 00 00 00 00       	mov    0x0,%eax
+			27c: R_386_32	.rodata
+     280:	3b 03                	cmp    (%ebx),%eax
+     282:	75 0a                	jne    28e <_start+0x28e>
+     284:	a1 04 00 00 00       	mov    0x4,%eax
+			285: R_386_32	.rodata
+     289:	3b 43 04             	cmp    0x4(%ebx),%eax
+     28c:	74 19                	je     2a7 <_start+0x2a7>
+     28e:	b8 40 00 00 00       	mov    $0x40,%eax
+     293:	a3 1c 00 00 00       	mov    %eax,0x1c
+			294: R_386_32	.bss
+     298:	b8 03 00 00 00       	mov    $0x3,%eax
+     29d:	a3 20 00 00 00       	mov    %eax,0x20
+			29e: R_386_32	.bss
+     2a2:	e9 07 0d 00 00       	jmp    fae <fail_pre_run>
+     2a7:	0f b7 43 08          	movzwl 0x8(%ebx),%eax
+     2ab:	83 f8 01             	cmp    $0x1,%eax
+     2ae:	74 19                	je     2c9 <_start+0x2c9>
+     2b0:	b8 40 00 00 00       	mov    $0x40,%eax
+     2b5:	a3 1c 00 00 00       	mov    %eax,0x1c
+			2b6: R_386_32	.bss
+     2ba:	b8 04 00 00 00       	mov    $0x4,%eax
+     2bf:	a3 20 00 00 00       	mov    %eax,0x20
+			2c0: R_386_32	.bss
+     2c4:	e9 e5 0c 00 00       	jmp    fae <fail_pre_run>
+     2c9:	0f b7 43 0a          	movzwl 0xa(%ebx),%eax
+     2cd:	83 f8 01             	cmp    $0x1,%eax
+     2d0:	74 19                	je     2eb <_start+0x2eb>
+     2d2:	b8 40 00 00 00       	mov    $0x40,%eax
+     2d7:	a3 1c 00 00 00       	mov    %eax,0x1c
+			2d8: R_386_32	.bss
+     2dc:	b8 05 00 00 00       	mov    $0x5,%eax
+     2e1:	a3 20 00 00 00       	mov    %eax,0x20
+			2e2: R_386_32	.bss
+     2e6:	e9 c3 0c 00 00       	jmp    fae <fail_pre_run>
+     2eb:	8b 43 0c             	mov    0xc(%ebx),%eax
+     2ee:	3b 05 28 00 00 00    	cmp    0x28,%eax
+			2f0: R_386_32	.bss
+     2f4:	74 19                	je     30f <_start+0x30f>
+     2f6:	b8 40 00 00 00       	mov    $0x40,%eax
+     2fb:	a3 1c 00 00 00       	mov    %eax,0x1c
+			2fc: R_386_32	.bss
+     300:	b8 06 00 00 00       	mov    $0x6,%eax
+     305:	a3 20 00 00 00       	mov    %eax,0x20
+			306: R_386_32	.bss
+     30a:	e9 9f 0c 00 00       	jmp    fae <fail_pre_run>
+     30f:	0f b7 43 14          	movzwl 0x14(%ebx),%eax
+     313:	85 c0                	test   %eax,%eax
+     315:	74 05                	je     31c <_start+0x31c>
+     317:	83 f8 08             	cmp    $0x8,%eax
+     31a:	76 19                	jbe    335 <_start+0x335>
+     31c:	b8 40 00 00 00       	mov    $0x40,%eax
+     321:	a3 1c 00 00 00       	mov    %eax,0x1c
+			322: R_386_32	.bss
+     326:	b8 07 00 00 00       	mov    $0x7,%eax
+     32b:	a3 20 00 00 00       	mov    %eax,0x20
+			32c: R_386_32	.bss
+     330:	e9 79 0c 00 00       	jmp    fae <fail_pre_run>
+     335:	a3 2c 00 00 00       	mov    %eax,0x2c
+			336: R_386_32	.bss
+     33a:	0f b7 43 16          	movzwl 0x16(%ebx),%eax
+     33e:	83 f8 01             	cmp    $0x1,%eax
+     341:	74 19                	je     35c <_start+0x35c>
+     343:	b8 40 00 00 00       	mov    $0x40,%eax
+     348:	a3 1c 00 00 00       	mov    %eax,0x1c
+			349: R_386_32	.bss
+     34d:	b8 08 00 00 00       	mov    $0x8,%eax
+     352:	a3 20 00 00 00       	mov    %eax,0x20
+			353: R_386_32	.bss
+     357:	e9 52 0c 00 00       	jmp    fae <fail_pre_run>
+     35c:	8b 43 28             	mov    0x28(%ebx),%eax
+     35f:	3d 00 01 00 00       	cmp    $0x100,%eax
+     364:	74 19                	je     37f <_start+0x37f>
+     366:	b8 40 00 00 00       	mov    $0x40,%eax
+     36b:	a3 1c 00 00 00       	mov    %eax,0x1c
+			36c: R_386_32	.bss
+     370:	b8 09 00 00 00       	mov    $0x9,%eax
+     375:	a3 20 00 00 00       	mov    %eax,0x20
+			376: R_386_32	.bss
+     37a:	e9 2f 0c 00 00       	jmp    fae <fail_pre_run>
+     37f:	8b 43 30             	mov    0x30(%ebx),%eax
+     382:	83 f8 64             	cmp    $0x64,%eax
+     385:	72 07                	jb     38e <_start+0x38e>
+     387:	3d 60 ea 00 00       	cmp    $0xea60,%eax
+     38c:	76 19                	jbe    3a7 <_start+0x3a7>
+     38e:	b8 40 00 00 00       	mov    $0x40,%eax
+     393:	a3 1c 00 00 00       	mov    %eax,0x1c
+			394: R_386_32	.bss
+     398:	b8 0a 00 00 00       	mov    $0xa,%eax
+     39d:	a3 20 00 00 00       	mov    %eax,0x20
+			39e: R_386_32	.bss
+     3a2:	e9 07 0c 00 00       	jmp    fae <fail_pre_run>
+     3a7:	8b 43 34             	mov    0x34(%ebx),%eax
+     3aa:	85 c0                	test   %eax,%eax
+     3ac:	74 19                	je     3c7 <_start+0x3c7>
+     3ae:	b8 40 00 00 00       	mov    $0x40,%eax
+     3b3:	a3 1c 00 00 00       	mov    %eax,0x1c
+			3b4: R_386_32	.bss
+     3b8:	b8 0b 00 00 00       	mov    $0xb,%eax
+     3bd:	a3 20 00 00 00       	mov    %eax,0x20
+			3be: R_386_32	.bss
+     3c2:	e9 e7 0b 00 00       	jmp    fae <fail_pre_run>
+     3c7:	8d 73 40             	lea    0x40(%ebx),%esi
+     3ca:	b9 38 00 00 00       	mov    $0x38,%ecx
+     3cf:	e8 27 0b 00 00       	call   efb <or_bytes>
+     3d4:	85 c0                	test   %eax,%eax
+     3d6:	74 19                	je     3f1 <_start+0x3f1>
+     3d8:	b8 40 00 00 00       	mov    $0x40,%eax
+     3dd:	a3 1c 00 00 00       	mov    %eax,0x1c
+			3de: R_386_32	.bss
+     3e2:	b8 0c 00 00 00       	mov    $0xc,%eax
+     3e7:	a3 20 00 00 00       	mov    %eax,0x20
+			3e8: R_386_32	.bss
+     3ec:	e9 bd 0b 00 00       	jmp    fae <fail_pre_run>
+     3f1:	a1 2c 00 00 00       	mov    0x2c,%eax
+			3f2: R_386_32	.bss
+     3f6:	6b c0 28             	imul   $0x28,%eax,%eax
+     3f9:	83 c0 78             	add    $0x78,%eax
+     3fc:	3b 05 28 00 00 00    	cmp    0x28,%eax
+			3fe: R_386_32	.bss
+     402:	76 19                	jbe    41d <_start+0x41d>
+     404:	b8 40 00 00 00       	mov    $0x40,%eax
+     409:	a3 1c 00 00 00       	mov    %eax,0x1c
+			40a: R_386_32	.bss
+     40e:	b8 0d 00 00 00       	mov    $0xd,%eax
+     413:	a3 20 00 00 00       	mov    %eax,0x20
+			414: R_386_32	.bss
+     418:	e9 91 0b 00 00       	jmp    fae <fail_pre_run>
+     41d:	a3 30 00 00 00       	mov    %eax,0x30
+			41e: R_386_32	.bss
+     422:	c7 05 38 00 00 00 00 	movl   $0x0,0x38
+     429:	00 00 00 
+			424: R_386_32	.bss
+     42c:	a1 38 00 00 00       	mov    0x38,%eax
+			42d: R_386_32	.bss
+     431:	3b 05 2c 00 00 00    	cmp    0x2c,%eax
+			433: R_386_32	.bss
+     437:	73 4e                	jae    487 <_start+0x487>
+     439:	a1 38 00 00 00       	mov    0x38,%eax
+			43a: R_386_32	.bss
+     43e:	6b c0 28             	imul   $0x28,%eax,%eax
+     441:	03 05 24 00 00 00    	add    0x24,%eax
+			443: R_386_32	.bss
+     447:	83 c0 78             	add    $0x78,%eax
+     44a:	89 c6                	mov    %eax,%esi
+     44c:	8b 46 18             	mov    0x18(%esi),%eax
+     44f:	8b 56 1c             	mov    0x1c(%esi),%edx
+     452:	03 46 08             	add    0x8(%esi),%eax
+     455:	13 56 0c             	adc    0xc(%esi),%edx
+     458:	72 0c                	jb     466 <_start+0x466>
+     45a:	85 d2                	test   %edx,%edx
+     45c:	75 08                	jne    466 <_start+0x466>
+     45e:	3b 05 28 00 00 00    	cmp    0x28,%eax
+			460: R_386_32	.bss
+     464:	76 19                	jbe    47f <_start+0x47f>
+     466:	b8 40 00 00 00       	mov    $0x40,%eax
+     46b:	a3 1c 00 00 00       	mov    %eax,0x1c
+			46c: R_386_32	.bss
+     470:	b8 0e 00 00 00       	mov    $0xe,%eax
+     475:	a3 20 00 00 00       	mov    %eax,0x20
+			476: R_386_32	.bss
+     47a:	e9 2f 0b 00 00       	jmp    fae <fail_pre_run>
+     47f:	ff 05 38 00 00 00    	incl   0x38
+			481: R_386_32	.bss
+     485:	eb a5                	jmp    42c <_start+0x42c>
+     487:	c7 05 38 00 00 00 00 	movl   $0x0,0x38
+     48e:	00 00 00 
+			489: R_386_32	.bss
+     491:	a1 38 00 00 00       	mov    0x38,%eax
+			492: R_386_32	.bss
+     496:	3b 05 2c 00 00 00    	cmp    0x2c,%eax
+			498: R_386_32	.bss
+     49c:	0f 83 8d 00 00 00    	jae    52f <_start+0x52f>
+     4a2:	a1 38 00 00 00       	mov    0x38,%eax
+			4a3: R_386_32	.bss
+     4a7:	6b c0 28             	imul   $0x28,%eax,%eax
+     4aa:	03 05 24 00 00 00    	add    0x24,%eax
+			4ac: R_386_32	.bss
+     4b0:	83 c0 78             	add    $0x78,%eax
+     4b3:	89 c6                	mov    %eax,%esi
+     4b5:	8b 46 18             	mov    0x18(%esi),%eax
+     4b8:	a8 07                	test   $0x7,%al
+     4ba:	74 19                	je     4d5 <_start+0x4d5>
+     4bc:	b8 40 00 00 00       	mov    $0x40,%eax
+     4c1:	a3 1c 00 00 00       	mov    %eax,0x1c
+			4c2: R_386_32	.bss
+     4c6:	b8 0f 00 00 00       	mov    $0xf,%eax
+     4cb:	a3 20 00 00 00       	mov    %eax,0x20
+			4cc: R_386_32	.bss
+     4d0:	e9 d9 0a 00 00       	jmp    fae <fail_pre_run>
+     4d5:	85 c0                	test   %eax,%eax
+     4d7:	74 21                	je     4fa <_start+0x4fa>
+     4d9:	3b 05 30 00 00 00    	cmp    0x30,%eax
+			4db: R_386_32	.bss
+     4df:	73 19                	jae    4fa <_start+0x4fa>
+     4e1:	b8 40 00 00 00       	mov    $0x40,%eax
+     4e6:	a3 1c 00 00 00       	mov    %eax,0x1c
+			4e7: R_386_32	.bss
+     4eb:	b8 10 00 00 00       	mov    $0x10,%eax
+     4f0:	a3 20 00 00 00       	mov    %eax,0x20
+			4f1: R_386_32	.bss
+     4f5:	e9 b4 0a 00 00       	jmp    fae <fail_pre_run>
+     4fa:	8b 56 08             	mov    0x8(%esi),%edx
+     4fd:	85 c0                	test   %eax,%eax
+     4ff:	0f 95 c1             	setne  %cl
+     502:	85 d2                	test   %edx,%edx
+     504:	0f 95 c5             	setne  %ch
+     507:	38 cd                	cmp    %cl,%ch
+     509:	74 19                	je     524 <_start+0x524>
+     50b:	b8 40 00 00 00       	mov    $0x40,%eax
+     510:	a3 1c 00 00 00       	mov    %eax,0x1c
+			511: R_386_32	.bss
+     515:	b8 11 00 00 00       	mov    $0x11,%eax
+     51a:	a3 20 00 00 00       	mov    %eax,0x20
+			51b: R_386_32	.bss
+     51f:	e9 8a 0a 00 00       	jmp    fae <fail_pre_run>
+     524:	ff 05 38 00 00 00    	incl   0x38
+			526: R_386_32	.bss
+     52a:	e9 62 ff ff ff       	jmp    491 <_start+0x491>
+     52f:	c7 05 38 00 00 00 00 	movl   $0x0,0x38
+     536:	00 00 00 
+			531: R_386_32	.bss
+     539:	a1 38 00 00 00       	mov    0x38,%eax
+			53a: R_386_32	.bss
+     53e:	3b 05 2c 00 00 00    	cmp    0x2c,%eax
+			540: R_386_32	.bss
+     544:	0f 83 85 00 00 00    	jae    5cf <_start+0x5cf>
+     54a:	a1 38 00 00 00       	mov    0x38,%eax
+			54b: R_386_32	.bss
+     54f:	6b c0 28             	imul   $0x28,%eax,%eax
+     552:	03 05 24 00 00 00    	add    0x24,%eax
+			554: R_386_32	.bss
+     558:	83 c0 78             	add    $0x78,%eax
+     55b:	89 c6                	mov    %eax,%esi
+     55d:	8b 4e 08             	mov    0x8(%esi),%ecx
+     560:	85 c9                	test   %ecx,%ecx
+     562:	74 60                	je     5c4 <_start+0x5c4>
+     564:	8b 5e 18             	mov    0x18(%esi),%ebx
+     567:	01 d9                	add    %ebx,%ecx
+     569:	a1 38 00 00 00       	mov    0x38,%eax
+			56a: R_386_32	.bss
+     56e:	40                   	inc    %eax
+     56f:	a3 3c 00 00 00       	mov    %eax,0x3c
+			570: R_386_32	.bss
+     574:	a1 3c 00 00 00       	mov    0x3c,%eax
+			575: R_386_32	.bss
+     579:	3b 05 2c 00 00 00    	cmp    0x2c,%eax
+			57b: R_386_32	.bss
+     57f:	73 43                	jae    5c4 <_start+0x5c4>
+     581:	6b c0 28             	imul   $0x28,%eax,%eax
+     584:	03 05 24 00 00 00    	add    0x24,%eax
+			586: R_386_32	.bss
+     58a:	83 c0 78             	add    $0x78,%eax
+     58d:	89 c7                	mov    %eax,%edi
+     58f:	8b 57 08             	mov    0x8(%edi),%edx
+     592:	85 d2                	test   %edx,%edx
+     594:	74 26                	je     5bc <_start+0x5bc>
+     596:	8b 47 18             	mov    0x18(%edi),%eax
+     599:	01 c2                	add    %eax,%edx
+     59b:	39 d3                	cmp    %edx,%ebx
+     59d:	73 1d                	jae    5bc <_start+0x5bc>
+     59f:	39 c8                	cmp    %ecx,%eax
+     5a1:	73 19                	jae    5bc <_start+0x5bc>
+     5a3:	b8 40 00 00 00       	mov    $0x40,%eax
+     5a8:	a3 1c 00 00 00       	mov    %eax,0x1c
+			5a9: R_386_32	.bss
+     5ad:	b8 12 00 00 00       	mov    $0x12,%eax
+     5b2:	a3 20 00 00 00       	mov    %eax,0x20
+			5b3: R_386_32	.bss
+     5b7:	e9 f2 09 00 00       	jmp    fae <fail_pre_run>
+     5bc:	ff 05 3c 00 00 00    	incl   0x3c
+			5be: R_386_32	.bss
+     5c2:	eb b0                	jmp    574 <_start+0x574>
+     5c4:	ff 05 38 00 00 00    	incl   0x38
+			5c6: R_386_32	.bss
+     5ca:	e9 6a ff ff ff       	jmp    539 <_start+0x539>
+     5cf:	a1 30 00 00 00       	mov    0x30,%eax
+			5d0: R_386_32	.bss
+     5d4:	a3 34 00 00 00       	mov    %eax,0x34
+			5d5: R_386_32	.bss
+     5d9:	c7 05 38 00 00 00 00 	movl   $0x0,0x38
+     5e0:	00 00 00 
+			5db: R_386_32	.bss
+     5e3:	a1 38 00 00 00       	mov    0x38,%eax
+			5e4: R_386_32	.bss
+     5e8:	3b 05 2c 00 00 00    	cmp    0x2c,%eax
+			5ea: R_386_32	.bss
+     5ee:	0f 83 a9 00 00 00    	jae    69d <_start+0x69d>
+     5f4:	a1 38 00 00 00       	mov    0x38,%eax
+			5f5: R_386_32	.bss
+     5f9:	6b c0 28             	imul   $0x28,%eax,%eax
+     5fc:	03 05 24 00 00 00    	add    0x24,%eax
+			5fe: R_386_32	.bss
+     602:	83 c0 78             	add    $0x78,%eax
+     605:	89 c6                	mov    %eax,%esi
+     607:	8b 56 08             	mov    0x8(%esi),%edx
+     60a:	85 d2                	test   %edx,%edx
+     60c:	0f 84 80 00 00 00    	je     692 <_start+0x692>
+     612:	a1 34 00 00 00       	mov    0x34,%eax
+			613: R_386_32	.bss
+     617:	83 c0 07             	add    $0x7,%eax
+     61a:	83 e0 f8             	and    $0xfffffff8,%eax
+     61d:	3b 46 18             	cmp    0x18(%esi),%eax
+     620:	74 19                	je     63b <_start+0x63b>
+     622:	b8 40 00 00 00       	mov    $0x40,%eax
+     627:	a3 1c 00 00 00       	mov    %eax,0x1c
+			628: R_386_32	.bss
+     62c:	b8 13 00 00 00       	mov    $0x13,%eax
+     631:	a3 20 00 00 00       	mov    %eax,0x20
+			632: R_386_32	.bss
+     636:	e9 73 09 00 00       	jmp    fae <fail_pre_run>
+     63b:	89 c3                	mov    %eax,%ebx
+     63d:	89 d9                	mov    %ebx,%ecx
+     63f:	2b 0d 34 00 00 00    	sub    0x34,%ecx
+			641: R_386_32	.bss
+     645:	74 2e                	je     675 <_start+0x675>
+     647:	8b 35 34 00 00 00    	mov    0x34,%esi
+			649: R_386_32	.bss
+     64d:	03 35 24 00 00 00    	add    0x24,%esi
+			64f: R_386_32	.bss
+     653:	e8 a3 08 00 00       	call   efb <or_bytes>
+     658:	85 c0                	test   %eax,%eax
+     65a:	74 19                	je     675 <_start+0x675>
+     65c:	b8 40 00 00 00       	mov    $0x40,%eax
+     661:	a3 1c 00 00 00       	mov    %eax,0x1c
+			662: R_386_32	.bss
+     666:	b8 14 00 00 00       	mov    $0x14,%eax
+     66b:	a3 20 00 00 00       	mov    %eax,0x20
+			66c: R_386_32	.bss
+     670:	e9 39 09 00 00       	jmp    fae <fail_pre_run>
+     675:	a1 38 00 00 00       	mov    0x38,%eax
+			676: R_386_32	.bss
+     67a:	6b c0 28             	imul   $0x28,%eax,%eax
+     67d:	03 05 24 00 00 00    	add    0x24,%eax
+			67f: R_386_32	.bss
+     683:	83 c0 78             	add    $0x78,%eax
+     686:	89 c6                	mov    %eax,%esi
+     688:	89 d8                	mov    %ebx,%eax
+     68a:	03 46 08             	add    0x8(%esi),%eax
+     68d:	a3 34 00 00 00       	mov    %eax,0x34
+			68e: R_386_32	.bss
+     692:	ff 05 38 00 00 00    	incl   0x38
+			694: R_386_32	.bss
+     698:	e9 46 ff ff ff       	jmp    5e3 <_start+0x5e3>
+     69d:	a1 34 00 00 00       	mov    0x34,%eax
+			69e: R_386_32	.bss
+     6a2:	83 c0 07             	add    $0x7,%eax
+     6a5:	83 e0 f8             	and    $0xfffffff8,%eax
+     6a8:	3b 05 28 00 00 00    	cmp    0x28,%eax
+			6aa: R_386_32	.bss
+     6ae:	74 19                	je     6c9 <_start+0x6c9>
+     6b0:	b8 40 00 00 00       	mov    $0x40,%eax
+     6b5:	a3 1c 00 00 00       	mov    %eax,0x1c
+			6b6: R_386_32	.bss
+     6ba:	b8 15 00 00 00       	mov    $0x15,%eax
+     6bf:	a3 20 00 00 00       	mov    %eax,0x20
+			6c0: R_386_32	.bss
+     6c4:	e9 e5 08 00 00       	jmp    fae <fail_pre_run>
+     6c9:	89 c1                	mov    %eax,%ecx
+     6cb:	2b 0d 34 00 00 00    	sub    0x34,%ecx
+			6cd: R_386_32	.bss
+     6d1:	74 2e                	je     701 <_start+0x701>
+     6d3:	8b 35 34 00 00 00    	mov    0x34,%esi
+			6d5: R_386_32	.bss
+     6d9:	03 35 24 00 00 00    	add    0x24,%esi
+			6db: R_386_32	.bss
+     6df:	e8 17 08 00 00       	call   efb <or_bytes>
+     6e4:	85 c0                	test   %eax,%eax
+     6e6:	74 19                	je     701 <_start+0x701>
+     6e8:	b8 40 00 00 00       	mov    $0x40,%eax
+     6ed:	a3 1c 00 00 00       	mov    %eax,0x1c
+			6ee: R_386_32	.bss
+     6f2:	b8 14 00 00 00       	mov    $0x14,%eax
+     6f7:	a3 20 00 00 00       	mov    %eax,0x20
+			6f8: R_386_32	.bss
+     6fc:	e9 ad 08 00 00       	jmp    fae <fail_pre_run>
+     701:	c7 05 38 00 00 00 00 	movl   $0x0,0x38
+     708:	00 00 00 
+			703: R_386_32	.bss
+     70b:	a1 38 00 00 00       	mov    0x38,%eax
+			70c: R_386_32	.bss
+     710:	3b 05 2c 00 00 00    	cmp    0x2c,%eax
+			712: R_386_32	.bss
+     716:	73 68                	jae    780 <_start+0x780>
+     718:	a1 38 00 00 00       	mov    0x38,%eax
+			719: R_386_32	.bss
+     71d:	6b c0 28             	imul   $0x28,%eax,%eax
+     720:	03 05 24 00 00 00    	add    0x24,%eax
+			722: R_386_32	.bss
+     726:	83 c0 78             	add    $0x78,%eax
+     729:	89 c6                	mov    %eax,%esi
+     72b:	8b 46 08             	mov    0x8(%esi),%eax
+     72e:	3d 00 00 04 00       	cmp    $0x40000,%eax
+     733:	76 19                	jbe    74e <_start+0x74e>
+     735:	b8 40 00 00 00       	mov    $0x40,%eax
+     73a:	a3 1c 00 00 00       	mov    %eax,0x1c
+			73b: R_386_32	.bss
+     73f:	b8 16 00 00 00       	mov    $0x16,%eax
+     744:	a3 20 00 00 00       	mov    %eax,0x20
+			745: R_386_32	.bss
+     749:	e9 60 08 00 00       	jmp    fae <fail_pre_run>
+     74e:	8b 46 14             	mov    0x14(%esi),%eax
+     751:	85 c0                	test   %eax,%eax
+     753:	75 0a                	jne    75f <_start+0x75f>
+     755:	8b 46 10             	mov    0x10(%esi),%eax
+     758:	3d 00 00 10 00       	cmp    $0x100000,%eax
+     75d:	76 19                	jbe    778 <_start+0x778>
+     75f:	b8 40 00 00 00       	mov    $0x40,%eax
+     764:	a3 1c 00 00 00       	mov    %eax,0x1c
+			765: R_386_32	.bss
+     769:	b8 17 00 00 00       	mov    $0x17,%eax
+     76e:	a3 20 00 00 00       	mov    %eax,0x20
+			76f: R_386_32	.bss
+     773:	e9 36 08 00 00       	jmp    fae <fail_pre_run>
+     778:	ff 05 38 00 00 00    	incl   0x38
+			77a: R_386_32	.bss
+     77e:	eb 8b                	jmp    70b <_start+0x70b>
+     780:	c7 05 38 00 00 00 00 	movl   $0x0,0x38
+     787:	00 00 00 
+			782: R_386_32	.bss
+     78a:	a1 38 00 00 00       	mov    0x38,%eax
+			78b: R_386_32	.bss
+     78f:	3b 05 2c 00 00 00    	cmp    0x2c,%eax
+			791: R_386_32	.bss
+     795:	0f 83 54 01 00 00    	jae    8ef <_start+0x8ef>
+     79b:	a1 38 00 00 00       	mov    0x38,%eax
+			79c: R_386_32	.bss
+     7a0:	6b c0 28             	imul   $0x28,%eax,%eax
+     7a3:	03 05 24 00 00 00    	add    0x24,%eax
+			7a5: R_386_32	.bss
+     7a9:	83 c0 78             	add    $0x78,%eax
+     7ac:	89 c6                	mov    %eax,%esi
+     7ae:	8b 46 08             	mov    0x8(%esi),%eax
+     7b1:	0b 46 10             	or     0x10(%esi),%eax
+     7b4:	75 19                	jne    7cf <_start+0x7cf>
+     7b6:	b8 40 00 00 00       	mov    $0x40,%eax
+     7bb:	a3 1c 00 00 00       	mov    %eax,0x1c
+			7bc: R_386_32	.bss
+     7c0:	b8 18 00 00 00       	mov    $0x18,%eax
+     7c5:	a3 20 00 00 00       	mov    %eax,0x20
+			7c6: R_386_32	.bss
+     7ca:	e9 df 07 00 00       	jmp    fae <fail_pre_run>
+     7cf:	8b 4e 20             	mov    0x20(%esi),%ecx
+     7d2:	85 c9                	test   %ecx,%ecx
+     7d4:	74 07                	je     7dd <_start+0x7dd>
+     7d6:	8d 59 ff             	lea    -0x1(%ecx),%ebx
+     7d9:	85 d9                	test   %ebx,%ecx
+     7db:	74 19                	je     7f6 <_start+0x7f6>
+     7dd:	b8 40 00 00 00       	mov    $0x40,%eax
+     7e2:	a3 1c 00 00 00       	mov    %eax,0x1c
+			7e3: R_386_32	.bss
+     7e7:	b8 19 00 00 00       	mov    $0x19,%eax
+     7ec:	a3 20 00 00 00       	mov    %eax,0x20
+			7ed: R_386_32	.bss
+     7f1:	e9 b8 07 00 00       	jmp    fae <fail_pre_run>
+     7f6:	8b 06                	mov    (%esi),%eax
+     7f8:	85 d8                	test   %ebx,%eax
+     7fa:	74 19                	je     815 <_start+0x815>
+     7fc:	b8 40 00 00 00       	mov    $0x40,%eax
+     801:	a3 1c 00 00 00       	mov    %eax,0x1c
+			802: R_386_32	.bss
+     806:	b8 1a 00 00 00       	mov    $0x1a,%eax
+     80b:	a3 20 00 00 00       	mov    %eax,0x20
+			80c: R_386_32	.bss
+     810:	e9 99 07 00 00       	jmp    fae <fail_pre_run>
+     815:	0f b6 46 24          	movzbl 0x24(%esi),%eax
+     819:	a9 f8 ff ff ff       	test   $0xfffffff8,%eax
+     81e:	74 19                	je     839 <_start+0x839>
+     820:	b8 40 00 00 00       	mov    $0x40,%eax
+     825:	a3 1c 00 00 00       	mov    %eax,0x1c
+			826: R_386_32	.bss
+     82a:	b8 1b 00 00 00       	mov    $0x1b,%eax
+     82f:	a3 20 00 00 00       	mov    %eax,0x20
+			830: R_386_32	.bss
+     834:	e9 75 07 00 00       	jmp    fae <fail_pre_run>
+     839:	83 e0 06             	and    $0x6,%eax
+     83c:	83 f8 06             	cmp    $0x6,%eax
+     83f:	75 19                	jne    85a <_start+0x85a>
+     841:	b8 40 00 00 00       	mov    $0x40,%eax
+     846:	a3 1c 00 00 00       	mov    %eax,0x1c
+			847: R_386_32	.bss
+     84b:	b8 1c 00 00 00       	mov    $0x1c,%eax
+     850:	a3 20 00 00 00       	mov    %eax,0x20
+			851: R_386_32	.bss
+     855:	e9 54 07 00 00       	jmp    fae <fail_pre_run>
+     85a:	8b 4e 08             	mov    0x8(%esi),%ecx
+     85d:	03 4e 10             	add    0x10(%esi),%ecx
+     860:	8b 06                	mov    (%esi),%eax
+     862:	8b 56 04             	mov    0x4(%esi),%edx
+     865:	01 c8                	add    %ecx,%eax
+     867:	83 d2 00             	adc    $0x0,%edx
+     86a:	72 51                	jb     8bd <_start+0x8bd>
+     86c:	05 ff 0f 00 00       	add    $0xfff,%eax
+     871:	83 d2 00             	adc    $0x0,%edx
+     874:	72 47                	jb     8bd <_start+0x8bd>
+     876:	25 00 f0 ff ff       	and    $0xfffff000,%eax
+     87b:	85 d2                	test   %edx,%edx
+     87d:	75 57                	jne    8d6 <_start+0x8d6>
+     87f:	89 c3                	mov    %eax,%ebx
+     881:	8b 56 04             	mov    0x4(%esi),%edx
+     884:	85 d2                	test   %edx,%edx
+     886:	75 4e                	jne    8d6 <_start+0x8d6>
+     888:	8b 06                	mov    (%esi),%eax
+     88a:	25 00 f0 ff ff       	and    $0xfffff000,%eax
+     88f:	3d 00 00 00 30       	cmp    $0x30000000,%eax
+     894:	72 40                	jb     8d6 <_start+0x8d6>
+     896:	81 fb 00 00 10 30    	cmp    $0x30100000,%ebx
+     89c:	77 38                	ja     8d6 <_start+0x8d6>
+     89e:	8b 0d 38 00 00 00    	mov    0x38,%ecx
+			8a0: R_386_32	.bss
+     8a4:	89 04 8d 78 00 00 00 	mov    %eax,0x78(,%ecx,4)
+			8a7: R_386_32	.bss
+     8ab:	89 1c 8d 98 00 00 00 	mov    %ebx,0x98(,%ecx,4)
+			8ae: R_386_32	.bss
+     8b2:	ff 05 38 00 00 00    	incl   0x38
+			8b4: R_386_32	.bss
+     8b8:	e9 cd fe ff ff       	jmp    78a <_start+0x78a>
+     8bd:	b8 40 00 00 00       	mov    $0x40,%eax
+     8c2:	a3 1c 00 00 00       	mov    %eax,0x1c
+			8c3: R_386_32	.bss
+     8c7:	b8 1d 00 00 00       	mov    $0x1d,%eax
+     8cc:	a3 20 00 00 00       	mov    %eax,0x20
+			8cd: R_386_32	.bss
+     8d1:	e9 d8 06 00 00       	jmp    fae <fail_pre_run>
+     8d6:	b8 40 00 00 00       	mov    $0x40,%eax
+     8db:	a3 1c 00 00 00       	mov    %eax,0x1c
+			8dc: R_386_32	.bss
+     8e0:	b8 1e 00 00 00       	mov    $0x1e,%eax
+     8e5:	a3 20 00 00 00       	mov    %eax,0x20
+			8e6: R_386_32	.bss
+     8ea:	e9 bf 06 00 00       	jmp    fae <fail_pre_run>
+     8ef:	8b 1d 24 00 00 00    	mov    0x24,%ebx
+			8f1: R_386_32	.bss
+     8f5:	8b 53 24             	mov    0x24(%ebx),%edx
+     8f8:	85 d2                	test   %edx,%edx
+     8fa:	74 16                	je     912 <_start+0x912>
+     8fc:	c7 05 68 00 00 00 00 	movl   $0xfffff000,0x68
+     903:	f0 ff ff 
+			8fe: R_386_32	.bss
+     906:	c7 05 6c 00 00 00 ff 	movl   $0xffffffff,0x6c
+     90d:	ff ff ff 
+			908: R_386_32	.bss
+     910:	eb 23                	jmp    935 <_start+0x935>
+     912:	8b 43 20             	mov    0x20(%ebx),%eax
+     915:	a3 50 00 00 00       	mov    %eax,0x50
+			916: R_386_32	.bss
+     91a:	25 00 f0 ff ff       	and    $0xfffff000,%eax
+     91f:	a3 68 00 00 00       	mov    %eax,0x68
+			920: R_386_32	.bss
+     924:	05 00 10 00 00       	add    $0x1000,%eax
+     929:	73 05                	jae    930 <_start+0x930>
+     92b:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+     930:	a3 6c 00 00 00       	mov    %eax,0x6c
+			931: R_386_32	.bss
+     935:	8b 43 2c             	mov    0x2c(%ebx),%eax
+     938:	a3 48 00 00 00       	mov    %eax,0x48
+			939: R_386_32	.bss
+     93d:	c7 05 70 00 00 00 00 	movl   $0x30040000,0x70
+     944:	00 04 30 
+			93f: R_386_32	.bss
+     947:	05 ff 0f 00 00       	add    $0xfff,%eax
+     94c:	72 0c                	jb     95a <_start+0x95a>
+     94e:	25 00 f0 ff ff       	and    $0xfffff000,%eax
+     953:	05 00 00 04 30       	add    $0x30040000,%eax
+     958:	73 05                	jae    95f <_start+0x95f>
+     95a:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+     95f:	a3 74 00 00 00       	mov    %eax,0x74
+			960: R_386_32	.bss
+     964:	c7 05 38 00 00 00 00 	movl   $0x0,0x38
+     96b:	00 00 00 
+			966: R_386_32	.bss
+     96e:	8b 0d 38 00 00 00    	mov    0x38,%ecx
+			970: R_386_32	.bss
+     974:	3b 0d 2c 00 00 00    	cmp    0x2c,%ecx
+			976: R_386_32	.bss
+     97a:	0f 83 93 00 00 00    	jae    a13 <_start+0xa13>
+     980:	8b 04 8d 78 00 00 00 	mov    0x78(,%ecx,4),%eax
+			983: R_386_32	.bss
+     987:	8b 14 8d 98 00 00 00 	mov    0x98(,%ecx,4),%edx
+			98a: R_386_32	.bss
+     98e:	3b 05 6c 00 00 00    	cmp    0x6c,%eax
+			990: R_386_32	.bss
+     994:	73 21                	jae    9b7 <_start+0x9b7>
+     996:	3b 15 68 00 00 00    	cmp    0x68,%edx
+			998: R_386_32	.bss
+     99c:	76 19                	jbe    9b7 <_start+0x9b7>
+     99e:	b8 40 00 00 00       	mov    $0x40,%eax
+     9a3:	a3 1c 00 00 00       	mov    %eax,0x1c
+			9a4: R_386_32	.bss
+     9a8:	b8 1f 00 00 00       	mov    $0x1f,%eax
+     9ad:	a3 20 00 00 00       	mov    %eax,0x20
+			9ae: R_386_32	.bss
+     9b2:	e9 f7 05 00 00       	jmp    fae <fail_pre_run>
+     9b7:	3b 05 74 00 00 00    	cmp    0x74,%eax
+			9b9: R_386_32	.bss
+     9bd:	73 21                	jae    9e0 <_start+0x9e0>
+     9bf:	3b 15 70 00 00 00    	cmp    0x70,%edx
+			9c1: R_386_32	.bss
+     9c5:	76 19                	jbe    9e0 <_start+0x9e0>
+     9c7:	b8 40 00 00 00       	mov    $0x40,%eax
+     9cc:	a3 1c 00 00 00       	mov    %eax,0x1c
+			9cd: R_386_32	.bss
+     9d1:	b8 20 00 00 00       	mov    $0x20,%eax
+     9d6:	a3 20 00 00 00       	mov    %eax,0x20
+			9d7: R_386_32	.bss
+     9db:	e9 ce 05 00 00       	jmp    fae <fail_pre_run>
+     9e0:	3d 00 00 04 30       	cmp    $0x30040000,%eax
+     9e5:	73 21                	jae    a08 <_start+0xa08>
+     9e7:	81 fa 00 f0 03 30    	cmp    $0x3003f000,%edx
+     9ed:	76 19                	jbe    a08 <_start+0xa08>
+     9ef:	b8 40 00 00 00       	mov    $0x40,%eax
+     9f4:	a3 1c 00 00 00       	mov    %eax,0x1c
+			9f5: R_386_32	.bss
+     9f9:	b8 21 00 00 00       	mov    $0x21,%eax
+     9fe:	a3 20 00 00 00       	mov    %eax,0x20
+			9ff: R_386_32	.bss
+     a03:	e9 a6 05 00 00       	jmp    fae <fail_pre_run>
+     a08:	ff 05 38 00 00 00    	incl   0x38
+			a0a: R_386_32	.bss
+     a0e:	e9 5b ff ff ff       	jmp    96e <_start+0x96e>
+     a13:	a1 68 00 00 00       	mov    0x68,%eax
+			a14: R_386_32	.bss
+     a18:	3b 05 74 00 00 00    	cmp    0x74,%eax
+			a1a: R_386_32	.bss
+     a1e:	73 26                	jae    a46 <_start+0xa46>
+     a20:	a1 6c 00 00 00       	mov    0x6c,%eax
+			a21: R_386_32	.bss
+     a25:	3b 05 70 00 00 00    	cmp    0x70,%eax
+			a27: R_386_32	.bss
+     a2b:	76 19                	jbe    a46 <_start+0xa46>
+     a2d:	b8 40 00 00 00       	mov    $0x40,%eax
+     a32:	a3 1c 00 00 00       	mov    %eax,0x1c
+			a33: R_386_32	.bss
+     a37:	b8 22 00 00 00       	mov    $0x22,%eax
+     a3c:	a3 20 00 00 00       	mov    %eax,0x20
+			a3d: R_386_32	.bss
+     a41:	e9 68 05 00 00       	jmp    fae <fail_pre_run>
+     a46:	c7 05 38 00 00 00 00 	movl   $0x0,0x38
+     a4d:	00 00 00 
+			a48: R_386_32	.bss
+     a50:	8b 0d 38 00 00 00    	mov    0x38,%ecx
+			a52: R_386_32	.bss
+     a56:	3b 0d 2c 00 00 00    	cmp    0x2c,%ecx
+			a58: R_386_32	.bss
+     a5c:	73 62                	jae    ac0 <_start+0xac0>
+     a5e:	8b 1c 8d 78 00 00 00 	mov    0x78(,%ecx,4),%ebx
+			a61: R_386_32	.bss
+     a65:	8b 34 8d 98 00 00 00 	mov    0x98(,%ecx,4),%esi
+			a68: R_386_32	.bss
+     a6c:	41                   	inc    %ecx
+     a6d:	89 0d 3c 00 00 00    	mov    %ecx,0x3c
+			a6f: R_386_32	.bss
+     a73:	8b 0d 3c 00 00 00    	mov    0x3c,%ecx
+			a75: R_386_32	.bss
+     a79:	3b 0d 2c 00 00 00    	cmp    0x2c,%ecx
+			a7b: R_386_32	.bss
+     a7f:	73 37                	jae    ab8 <_start+0xab8>
+     a81:	8b 04 8d 78 00 00 00 	mov    0x78(,%ecx,4),%eax
+			a84: R_386_32	.bss
+     a88:	8b 14 8d 98 00 00 00 	mov    0x98(,%ecx,4),%edx
+			a8b: R_386_32	.bss
+     a8f:	39 d3                	cmp    %edx,%ebx
+     a91:	73 1d                	jae    ab0 <_start+0xab0>
+     a93:	39 f0                	cmp    %esi,%eax
+     a95:	73 19                	jae    ab0 <_start+0xab0>
+     a97:	b8 40 00 00 00       	mov    $0x40,%eax
+     a9c:	a3 1c 00 00 00       	mov    %eax,0x1c
+			a9d: R_386_32	.bss
+     aa1:	b8 23 00 00 00       	mov    $0x23,%eax
+     aa6:	a3 20 00 00 00       	mov    %eax,0x20
+			aa7: R_386_32	.bss
+     aab:	e9 fe 04 00 00       	jmp    fae <fail_pre_run>
+     ab0:	ff 05 3c 00 00 00    	incl   0x3c
+			ab2: R_386_32	.bss
+     ab6:	eb bb                	jmp    a73 <_start+0xa73>
+     ab8:	ff 05 38 00 00 00    	incl   0x38
+			aba: R_386_32	.bss
+     abe:	eb 90                	jmp    a50 <_start+0xa50>
+     ac0:	8b 1d 24 00 00 00    	mov    0x24,%ebx
+			ac2: R_386_32	.bss
+     ac6:	8b 43 1c             	mov    0x1c(%ebx),%eax
+     ac9:	0b 43 24             	or     0x24(%ebx),%eax
+     acc:	74 19                	je     ae7 <_start+0xae7>
+     ace:	b8 40 00 00 00       	mov    $0x40,%eax
+     ad3:	a3 1c 00 00 00       	mov    %eax,0x1c
+			ad4: R_386_32	.bss
+     ad8:	b8 2a 00 00 00       	mov    $0x2a,%eax
+     add:	a3 20 00 00 00       	mov    %eax,0x20
+			ade: R_386_32	.bss
+     ae2:	e9 c7 04 00 00       	jmp    fae <fail_pre_run>
+     ae7:	8b 43 18             	mov    0x18(%ebx),%eax
+     aea:	a3 4c 00 00 00       	mov    %eax,0x4c
+			aeb: R_386_32	.bss
+     aef:	c7 05 38 00 00 00 00 	movl   $0x0,0x38
+     af6:	00 00 00 
+			af1: R_386_32	.bss
+     af9:	a1 38 00 00 00       	mov    0x38,%eax
+			afa: R_386_32	.bss
+     afe:	3b 05 2c 00 00 00    	cmp    0x2c,%eax
+			b00: R_386_32	.bss
+     b04:	73 3b                	jae    b41 <_start+0xb41>
+     b06:	a1 38 00 00 00       	mov    0x38,%eax
+			b07: R_386_32	.bss
+     b0b:	6b c0 28             	imul   $0x28,%eax,%eax
+     b0e:	03 05 24 00 00 00    	add    0x24,%eax
+			b10: R_386_32	.bss
+     b14:	83 c0 78             	add    $0x78,%eax
+     b17:	89 c6                	mov    %eax,%esi
+     b19:	0f b6 46 24          	movzbl 0x24(%esi),%eax
+     b1d:	a9 04 00 00 00       	test   $0x4,%eax
+     b22:	74 15                	je     b39 <_start+0xb39>
+     b24:	8b 06                	mov    (%esi),%eax
+     b26:	39 05 4c 00 00 00    	cmp    %eax,0x4c
+			b28: R_386_32	.bss
+     b2c:	72 0b                	jb     b39 <_start+0xb39>
+     b2e:	03 46 08             	add    0x8(%esi),%eax
+     b31:	39 05 4c 00 00 00    	cmp    %eax,0x4c
+			b33: R_386_32	.bss
+     b37:	72 21                	jb     b5a <_start+0xb5a>
+     b39:	ff 05 38 00 00 00    	incl   0x38
+			b3b: R_386_32	.bss
+     b3f:	eb b8                	jmp    af9 <_start+0xaf9>
+     b41:	b8 40 00 00 00       	mov    $0x40,%eax
+     b46:	a3 1c 00 00 00       	mov    %eax,0x1c
+			b47: R_386_32	.bss
+     b4b:	b8 24 00 00 00       	mov    $0x24,%eax
+     b50:	a3 20 00 00 00       	mov    %eax,0x20
+			b51: R_386_32	.bss
+     b55:	e9 54 04 00 00       	jmp    fae <fail_pre_run>
+     b5a:	a1 50 00 00 00       	mov    0x50,%eax
+			b5b: R_386_32	.bss
+     b5f:	a9 ff 0f 00 00       	test   $0xfff,%eax
+     b64:	74 19                	je     b7f <_start+0xb7f>
+     b66:	b8 40 00 00 00       	mov    $0x40,%eax
+     b6b:	a3 1c 00 00 00       	mov    %eax,0x1c
+			b6c: R_386_32	.bss
+     b70:	b8 26 00 00 00       	mov    $0x26,%eax
+     b75:	a3 20 00 00 00       	mov    %eax,0x20
+			b76: R_386_32	.bss
+     b7a:	e9 2f 04 00 00       	jmp    fae <fail_pre_run>
+     b7f:	3d 00 00 03 30       	cmp    $0x30030000,%eax
+     b84:	74 19                	je     b9f <_start+0xb9f>
+     b86:	b8 40 00 00 00       	mov    $0x40,%eax
+     b8b:	a3 1c 00 00 00       	mov    %eax,0x1c
+			b8c: R_386_32	.bss
+     b90:	b8 27 00 00 00       	mov    $0x27,%eax
+     b95:	a3 20 00 00 00       	mov    %eax,0x20
+			b96: R_386_32	.bss
+     b9a:	e9 0f 04 00 00       	jmp    fae <fail_pre_run>
+     b9f:	a1 48 00 00 00       	mov    0x48,%eax
+			ba0: R_386_32	.bss
+     ba4:	85 c0                	test   %eax,%eax
+     ba6:	74 15                	je     bbd <_start+0xbbd>
+     ba8:	a9 ff 0f 00 00       	test   $0xfff,%eax
+     bad:	75 0e                	jne    bbd <_start+0xbbd>
+     baf:	3d 00 10 00 00       	cmp    $0x1000,%eax
+     bb4:	72 07                	jb     bbd <_start+0xbbd>
+     bb6:	3d 00 00 04 00       	cmp    $0x40000,%eax
+     bbb:	76 19                	jbe    bd6 <_start+0xbd6>
+     bbd:	b8 40 00 00 00       	mov    $0x40,%eax
+     bc2:	a3 1c 00 00 00       	mov    %eax,0x1c
+			bc3: R_386_32	.bss
+     bc7:	b8 28 00 00 00       	mov    $0x28,%eax
+     bcc:	a3 20 00 00 00       	mov    %eax,0x20
+			bcd: R_386_32	.bss
+     bd1:	e9 d8 03 00 00       	jmp    fae <fail_pre_run>
+     bd6:	c7 05 b8 00 00 00 00 	movl   $0x30030000,0xb8
+     bdd:	00 03 30 
+			bd8: R_386_32	.bss
+     be0:	c7 05 bc 00 00 00 00 	movl   $0x1000,0xbc
+     be7:	10 00 00 
+			be2: R_386_32	.bss
+     bea:	c7 05 c0 00 00 00 03 	movl   $0x3,0xc0
+     bf1:	00 00 00 
+			bec: R_386_32	.bss
+     bf4:	c7 05 c4 00 00 00 11 	movl   $0x11,0xc4
+     bfb:	00 00 00 
+			bf6: R_386_32	.bss
+     bfe:	a1 00 00 00 00       	mov    0x0,%eax
+			bff: R_386_32	.bss
+     c03:	a3 c8 00 00 00       	mov    %eax,0xc8
+			c04: R_386_32	.bss
+     c08:	e8 59 03 00 00       	call   f66 <sys_mmap2>
+     c0d:	3d 01 f0 ff ff       	cmp    $0xfffff001,%eax
+     c12:	0f 83 6b 04 00 00    	jae    1083 <exit_class+0x89>
+     c18:	c7 05 b8 00 00 00 00 	movl   $0x30040000,0xb8
+     c1f:	00 04 30 
+			c1a: R_386_32	.bss
+     c22:	a1 48 00 00 00       	mov    0x48,%eax
+			c23: R_386_32	.bss
+     c27:	a3 bc 00 00 00       	mov    %eax,0xbc
+			c28: R_386_32	.bss
+     c2c:	c7 05 c0 00 00 00 03 	movl   $0x3,0xc0
+     c33:	00 00 00 
+			c2e: R_386_32	.bss
+     c36:	c7 05 c4 00 00 00 32 	movl   $0x32,0xc4
+     c3d:	00 00 00 
+			c38: R_386_32	.bss
+     c40:	c7 05 c8 00 00 00 ff 	movl   $0xffffffff,0xc8
+     c47:	ff ff ff 
+			c42: R_386_32	.bss
+     c4a:	e8 17 03 00 00       	call   f66 <sys_mmap2>
+     c4f:	3d 01 f0 ff ff       	cmp    $0xfffff001,%eax
+     c54:	0f 83 42 04 00 00    	jae    109c <exit_class+0xa2>
+     c5a:	c7 05 b8 00 00 00 00 	movl   $0x3003f000,0xb8
+     c61:	f0 03 30 
+			c5c: R_386_32	.bss
+     c64:	c7 05 bc 00 00 00 00 	movl   $0x1000,0xbc
+     c6b:	10 00 00 
+			c66: R_386_32	.bss
+     c6e:	c7 05 c0 00 00 00 00 	movl   $0x0,0xc0
+     c75:	00 00 00 
+			c70: R_386_32	.bss
+     c78:	c7 05 c4 00 00 00 32 	movl   $0x32,0xc4
+     c7f:	00 00 00 
+			c7a: R_386_32	.bss
+     c82:	c7 05 c8 00 00 00 ff 	movl   $0xffffffff,0xc8
+     c89:	ff ff ff 
+			c84: R_386_32	.bss
+     c8c:	e8 d5 02 00 00       	call   f66 <sys_mmap2>
+     c91:	3d 01 f0 ff ff       	cmp    $0xfffff001,%eax
+     c96:	0f 83 19 04 00 00    	jae    10b5 <exit_class+0xbb>
+     c9c:	c7 05 38 00 00 00 00 	movl   $0x0,0x38
+     ca3:	00 00 00 
+			c9e: R_386_32	.bss
+     ca6:	8b 0d 38 00 00 00    	mov    0x38,%ecx
+			ca8: R_386_32	.bss
+     cac:	3b 0d 2c 00 00 00    	cmp    0x2c,%ecx
+			cae: R_386_32	.bss
+     cb2:	73 51                	jae    d05 <_start+0xd05>
+     cb4:	8b 04 8d 78 00 00 00 	mov    0x78(,%ecx,4),%eax
+			cb7: R_386_32	.bss
+     cbb:	a3 b8 00 00 00       	mov    %eax,0xb8
+			cbc: R_386_32	.bss
+     cc0:	8b 14 8d 98 00 00 00 	mov    0x98(,%ecx,4),%edx
+			cc3: R_386_32	.bss
+     cc7:	29 c2                	sub    %eax,%edx
+     cc9:	89 15 bc 00 00 00    	mov    %edx,0xbc
+			ccb: R_386_32	.bss
+     ccf:	c7 05 c0 00 00 00 03 	movl   $0x3,0xc0
+     cd6:	00 00 00 
+			cd1: R_386_32	.bss
+     cd9:	c7 05 c4 00 00 00 32 	movl   $0x32,0xc4
+     ce0:	00 00 00 
+			cdb: R_386_32	.bss
+     ce3:	c7 05 c8 00 00 00 ff 	movl   $0xffffffff,0xc8
+     cea:	ff ff ff 
+			ce5: R_386_32	.bss
+     ced:	e8 74 02 00 00       	call   f66 <sys_mmap2>
+     cf2:	3d 01 f0 ff ff       	cmp    $0xfffff001,%eax
+     cf7:	0f 83 d1 03 00 00    	jae    10ce <exit_class+0xd4>
+     cfd:	ff 05 38 00 00 00    	incl   0x38
+			cff: R_386_32	.bss
+     d03:	eb a1                	jmp    ca6 <_start+0xca6>
+     d05:	c7 05 38 00 00 00 00 	movl   $0x0,0x38
+     d0c:	00 00 00 
+			d07: R_386_32	.bss
+     d0f:	a1 38 00 00 00       	mov    0x38,%eax
+			d10: R_386_32	.bss
+     d14:	3b 05 2c 00 00 00    	cmp    0x2c,%eax
+			d16: R_386_32	.bss
+     d1a:	73 32                	jae    d4e <_start+0xd4e>
+     d1c:	a1 38 00 00 00       	mov    0x38,%eax
+			d1d: R_386_32	.bss
+     d21:	6b c0 28             	imul   $0x28,%eax,%eax
+     d24:	03 05 24 00 00 00    	add    0x24,%eax
+			d26: R_386_32	.bss
+     d2a:	83 c0 78             	add    $0x78,%eax
+     d2d:	89 c6                	mov    %eax,%esi
+     d2f:	8b 4e 08             	mov    0x8(%esi),%ecx
+     d32:	85 c9                	test   %ecx,%ecx
+     d34:	74 10                	je     d46 <_start+0xd46>
+     d36:	8b 3e                	mov    (%esi),%edi
+     d38:	8b 46 18             	mov    0x18(%esi),%eax
+     d3b:	03 05 24 00 00 00    	add    0x24,%eax
+			d3d: R_386_32	.bss
+     d41:	89 c6                	mov    %eax,%esi
+     d43:	fc                   	cld
+     d44:	f3 a4                	rep movsb %ds:(%esi),%es:(%edi)
+     d46:	ff 05 38 00 00 00    	incl   0x38
+			d48: R_386_32	.bss
+     d4c:	eb c1                	jmp    d0f <_start+0xd0f>
+     d4e:	c7 05 38 00 00 00 00 	movl   $0x0,0x38
+     d55:	00 00 00 
+			d50: R_386_32	.bss
+     d58:	a1 38 00 00 00       	mov    0x38,%eax
+			d59: R_386_32	.bss
+     d5d:	3b 05 2c 00 00 00    	cmp    0x2c,%eax
+			d5f: R_386_32	.bss
+     d63:	73 79                	jae    dde <_start+0xdde>
+     d65:	a1 38 00 00 00       	mov    0x38,%eax
+			d66: R_386_32	.bss
+     d6a:	6b c0 28             	imul   $0x28,%eax,%eax
+     d6d:	03 05 24 00 00 00    	add    0x24,%eax
+			d6f: R_386_32	.bss
+     d73:	83 c0 78             	add    $0x78,%eax
+     d76:	89 c6                	mov    %eax,%esi
+     d78:	0f b6 46 24          	movzbl 0x24(%esi),%eax
+     d7c:	31 d2                	xor    %edx,%edx
+     d7e:	a9 01 00 00 00       	test   $0x1,%eax
+     d83:	74 03                	je     d88 <_start+0xd88>
+     d85:	83 ca 01             	or     $0x1,%edx
+     d88:	a9 02 00 00 00       	test   $0x2,%eax
+     d8d:	74 03                	je     d92 <_start+0xd92>
+     d8f:	83 ca 02             	or     $0x2,%edx
+     d92:	a9 04 00 00 00       	test   $0x4,%eax
+     d97:	74 03                	je     d9c <_start+0xd9c>
+     d99:	83 ca 04             	or     $0x4,%edx
+     d9c:	8b 0d 38 00 00 00    	mov    0x38,%ecx
+			d9e: R_386_32	.bss
+     da2:	8b 04 8d 78 00 00 00 	mov    0x78(,%ecx,4),%eax
+			da5: R_386_32	.bss
+     da9:	a3 b8 00 00 00       	mov    %eax,0xb8
+			daa: R_386_32	.bss
+     dae:	8b 0c 8d 98 00 00 00 	mov    0x98(,%ecx,4),%ecx
+			db1: R_386_32	.bss
+     db5:	29 c1                	sub    %eax,%ecx
+     db7:	89 0d bc 00 00 00    	mov    %ecx,0xbc
+			db9: R_386_32	.bss
+     dbd:	89 15 c0 00 00 00    	mov    %edx,0xc0
+			dbf: R_386_32	.bss
+     dc3:	e8 ca 01 00 00       	call   f92 <sys_mprotect>
+     dc8:	3d 01 f0 ff ff       	cmp    $0xfffff001,%eax
+     dcd:	0f 83 14 03 00 00    	jae    10e7 <exit_class+0xed>
+     dd3:	ff 05 38 00 00 00    	incl   0x38
+			dd5: R_386_32	.bss
+     dd9:	e9 7a ff ff ff       	jmp    d58 <_start+0xd58>
+     dde:	8b 1d 24 00 00 00    	mov    0x24,%ebx
+			de0: R_386_32	.bss
+     de4:	8b 3d 18 00 00 00    	mov    0x18,%edi
+			de6: R_386_32	.bss
+     dea:	8b 43 10             	mov    0x10(%ebx),%eax
+     ded:	a3 54 00 00 00       	mov    %eax,0x54
+			dee: R_386_32	.bss
+     df2:	89 47 0c             	mov    %eax,0xc(%edi)
+     df5:	8b 43 38             	mov    0x38(%ebx),%eax
+     df8:	a3 58 00 00 00       	mov    %eax,0x58
+			df9: R_386_32	.bss
+     dfd:	89 47 18             	mov    %eax,0x18(%edi)
+     e00:	8b 43 3c             	mov    0x3c(%ebx),%eax
+     e03:	a3 5c 00 00 00       	mov    %eax,0x5c
+			e04: R_386_32	.bss
+     e08:	89 47 1c             	mov    %eax,0x1c(%edi)
+     e0b:	66 c7 47 10 01 00    	movw   $0x1,0x10(%edi)
+     e11:	66 c7 47 12 00 00    	movw   $0x0,0x12(%edi)
+     e17:	c7 87 dc 00 00 00 02 	movl   $0x2,0xdc(%edi)
+     e1e:	00 00 00 
+     e21:	8b 15 4c 00 00 00    	mov    0x4c,%edx
+			e23: R_386_32	.bss
+     e27:	b8 00 00 04 30       	mov    $0x30040000,%eax
+     e2c:	03 05 48 00 00 00    	add    0x48,%eax
+			e2e: R_386_32	.bss
+     e32:	a3 44 00 00 00       	mov    %eax,0x44
+			e33: R_386_32	.bss
+     e37:	89 25 40 00 00 00    	mov    %esp,0x40
+			e39: R_386_32	.bss
+     e3d:	89 e3                	mov    %esp,%ebx
+     e3f:	89 c4                	mov    %eax,%esp
+     e41:	66 c7 47 0a 01 00    	movw   $0x1,0xa(%edi)
+     e47:	fc                   	cld
+     e48:	ff d2                	call   *%edx
+     e4a:	a3 60 00 00 00       	mov    %eax,0x60
+			e4b: R_386_32	.bss
+     e4f:	99                   	cltd
+     e50:	89 15 64 00 00 00    	mov    %edx,0x64
+			e52: R_386_32	.bss
+     e56:	8b 3d 18 00 00 00    	mov    0x18,%edi
+			e58: R_386_32	.bss
+     e5c:	c7 87 dc 00 00 00 03 	movl   $0x3,0xdc(%edi)
+     e63:	00 00 00 
+     e66:	89 e1                	mov    %esp,%ecx
+     e68:	8b 25 40 00 00 00    	mov    0x40,%esp
+			e6a: R_386_32	.bss
+     e6e:	3b 0d 44 00 00 00    	cmp    0x44,%ecx
+			e70: R_386_32	.bss
+     e74:	74 19                	je     e8f <_start+0xe8f>
+     e76:	c7 05 1c 00 00 00 44 	movl   $0x44,0x1c
+     e7d:	00 00 00 
+			e78: R_386_32	.bss
+     e80:	c7 05 20 00 00 00 01 	movl   $0x1,0x20
+     e87:	00 00 00 
+			e82: R_386_32	.bss
+     e8a:	e9 4a 01 00 00       	jmp    fd9 <fail_late>
+     e8f:	3b 1d 40 00 00 00    	cmp    0x40,%ebx
+			e91: R_386_32	.bss
+     e95:	74 19                	je     eb0 <_start+0xeb0>
+     e97:	c7 05 1c 00 00 00 44 	movl   $0x44,0x1c
+     e9e:	00 00 00 
+			e99: R_386_32	.bss
+     ea1:	c7 05 20 00 00 00 02 	movl   $0x2,0x20
+     ea8:	00 00 00 
+			ea3: R_386_32	.bss
+     eab:	e9 29 01 00 00       	jmp    fd9 <fail_late>
+     eb0:	a1 60 00 00 00       	mov    0x60,%eax
+			eb1: R_386_32	.bss
+     eb5:	89 47 58             	mov    %eax,0x58(%edi)
+     eb8:	8b 15 64 00 00 00    	mov    0x64,%edx
+			eba: R_386_32	.bss
+     ebe:	89 57 5c             	mov    %edx,0x5c(%edi)
+     ec1:	66 c7 47 12 01 00    	movw   $0x1,0x12(%edi)
+     ec7:	c7 47 14 00 00 00 00 	movl   $0x0,0x14(%edi)
+     ece:	b9 03 00 00 00       	mov    $0x3,%ecx
+     ed3:	3b 05 58 00 00 00    	cmp    0x58,%eax
+			ed5: R_386_32	.bss
+     ed9:	75 0d                	jne    ee8 <_start+0xee8>
+     edb:	3b 15 5c 00 00 00    	cmp    0x5c,%edx
+			edd: R_386_32	.bss
+     ee1:	75 05                	jne    ee8 <_start+0xee8>
+     ee3:	b9 02 00 00 00       	mov    $0x2,%ecx
+     ee8:	66 89 4f 0a          	mov    %cx,0xa(%edi)
+     eec:	c7 05 1c 00 00 00 00 	movl   $0x0,0x1c
+     ef3:	00 00 00 
+			eee: R_386_32	.bss
+     ef6:	e9 ff 00 00 00       	jmp    ffa <exit_class>
+
+00000efb <or_bytes>:
+     efb:	31 c0                	xor    %eax,%eax
+     efd:	85 c9                	test   %ecx,%ecx
+     eff:	74 09                	je     f0a <or_bytes+0xf>
+     f01:	0f b6 16             	movzbl (%esi),%edx
+     f04:	09 d0                	or     %edx,%eax
+     f06:	46                   	inc    %esi
+     f07:	49                   	dec    %ecx
+     f08:	75 f7                	jne    f01 <or_bytes+0x6>
+     f0a:	c3                   	ret
+
+00000f0b <sys_open_result>:
+     f0b:	53                   	push   %ebx
+     f0c:	8b 1d 0c 00 00 00    	mov    0xc,%ebx
+			f0e: R_386_32	.bss
+     f12:	b9 c2 00 00 00       	mov    $0xc2,%ecx
+     f17:	ba 80 01 00 00       	mov    $0x180,%edx
+     f1c:	b8 05 00 00 00       	mov    $0x5,%eax
+     f21:	cd 80                	int    $0x80
+     f23:	5b                   	pop    %ebx
+     f24:	c3                   	ret
+
+00000f25 <sys_ftruncate_result>:
+     f25:	53                   	push   %ebx
+     f26:	8b 1d 00 00 00 00    	mov    0x0,%ebx
+			f28: R_386_32	.bss
+     f2c:	b9 00 10 00 00       	mov    $0x1000,%ecx
+     f31:	b8 5d 00 00 00       	mov    $0x5d,%eax
+     f36:	cd 80                	int    $0x80
+     f38:	5b                   	pop    %ebx
+     f39:	c3                   	ret
+
+00000f3a <sys_open_input>:
+     f3a:	53                   	push   %ebx
+     f3b:	8b 1d 08 00 00 00    	mov    0x8,%ebx
+			f3d: R_386_32	.bss
+     f41:	b9 00 00 00 00       	mov    $0x0,%ecx
+     f46:	31 d2                	xor    %edx,%edx
+     f48:	b8 05 00 00 00       	mov    $0x5,%eax
+     f4d:	cd 80                	int    $0x80
+     f4f:	5b                   	pop    %ebx
+     f50:	c3                   	ret
+
+00000f51 <sys_fstat_input>:
+     f51:	53                   	push   %ebx
+     f52:	8b 1d 04 00 00 00    	mov    0x4,%ebx
+			f54: R_386_32	.bss
+     f58:	b9 cc 00 00 00       	mov    $0xcc,%ecx
+			f59: R_386_32	.bss
+     f5d:	b8 c5 00 00 00       	mov    $0xc5,%eax
+     f62:	cd 80                	int    $0x80
+     f64:	5b                   	pop    %ebx
+     f65:	c3                   	ret
+
+00000f66 <sys_mmap2>:
+     f66:	53                   	push   %ebx
+     f67:	55                   	push   %ebp
+     f68:	8b 1d b8 00 00 00    	mov    0xb8,%ebx
+			f6a: R_386_32	.bss
+     f6e:	8b 0d bc 00 00 00    	mov    0xbc,%ecx
+			f70: R_386_32	.bss
+     f74:	8b 15 c0 00 00 00    	mov    0xc0,%edx
+			f76: R_386_32	.bss
+     f7a:	8b 35 c4 00 00 00    	mov    0xc4,%esi
+			f7c: R_386_32	.bss
+     f80:	8b 3d c8 00 00 00    	mov    0xc8,%edi
+			f82: R_386_32	.bss
+     f86:	31 ed                	xor    %ebp,%ebp
+     f88:	b8 c0 00 00 00       	mov    $0xc0,%eax
+     f8d:	cd 80                	int    $0x80
+     f8f:	5d                   	pop    %ebp
+     f90:	5b                   	pop    %ebx
+     f91:	c3                   	ret
+
+00000f92 <sys_mprotect>:
+     f92:	53                   	push   %ebx
+     f93:	8b 1d b8 00 00 00    	mov    0xb8,%ebx
+			f95: R_386_32	.bss
+     f99:	8b 0d bc 00 00 00    	mov    0xbc,%ecx
+			f9b: R_386_32	.bss
+     f9f:	8b 15 c0 00 00 00    	mov    0xc0,%edx
+			fa1: R_386_32	.bss
+     fa5:	b8 7d 00 00 00       	mov    $0x7d,%eax
+     faa:	cd 80                	int    $0x80
+     fac:	5b                   	pop    %ebx
+     fad:	c3                   	ret
+
+00000fae <fail_pre_run>:
+     fae:	a1 18 00 00 00       	mov    0x18,%eax
+			faf: R_386_32	.bss
+     fb3:	8b 15 20 00 00 00    	mov    0x20,%edx
+			fb5: R_386_32	.bss
+     fb9:	66 89 90 da 00 00 00 	mov    %dx,0xda(%eax)
+     fc0:	c7 80 dc 00 00 00 01 	movl   $0x1,0xdc(%eax)
+     fc7:	00 00 00 
+     fca:	8b 15 1c 00 00 00    	mov    0x1c,%edx
+			fcc: R_386_32	.bss
+     fd0:	66 89 90 d8 00 00 00 	mov    %dx,0xd8(%eax)
+     fd7:	eb 21                	jmp    ffa <exit_class>
+
+00000fd9 <fail_late>:
+     fd9:	a1 18 00 00 00       	mov    0x18,%eax
+			fda: R_386_32	.bss
+     fde:	8b 15 20 00 00 00    	mov    0x20,%edx
+			fe0: R_386_32	.bss
+     fe4:	66 89 90 da 00 00 00 	mov    %dx,0xda(%eax)
+     feb:	8b 15 1c 00 00 00    	mov    0x1c,%edx
+			fed: R_386_32	.bss
+     ff1:	66 89 90 d8 00 00 00 	mov    %dx,0xd8(%eax)
+     ff8:	eb 00                	jmp    ffa <exit_class>
+
+00000ffa <exit_class>:
+     ffa:	8b 1d 1c 00 00 00    	mov    0x1c,%ebx
+			ffc: R_386_32	.bss
+    1000:	b8 fc 00 00 00       	mov    $0xfc,%eax
+    1005:	cd 80                	int    $0x80
+    1007:	f4                   	hlt
+    1008:	b8 41 00 00 00       	mov    $0x41,%eax
+    100d:	a3 1c 00 00 00       	mov    %eax,0x1c
+			100e: R_386_32	.bss
+    1012:	eb e6                	jmp    ffa <exit_class>
+    1014:	b8 41 00 00 00       	mov    $0x41,%eax
+    1019:	a3 1c 00 00 00       	mov    %eax,0x1c
+			101a: R_386_32	.bss
+    101e:	eb da                	jmp    ffa <exit_class>
+    1020:	b8 42 00 00 00       	mov    $0x42,%eax
+    1025:	a3 1c 00 00 00       	mov    %eax,0x1c
+			1026: R_386_32	.bss
+    102a:	eb ce                	jmp    ffa <exit_class>
+    102c:	b8 42 00 00 00       	mov    $0x42,%eax
+    1031:	a3 1c 00 00 00       	mov    %eax,0x1c
+			1032: R_386_32	.bss
+    1036:	eb c2                	jmp    ffa <exit_class>
+    1038:	b8 41 00 00 00       	mov    $0x41,%eax
+    103d:	a3 1c 00 00 00       	mov    %eax,0x1c
+			103e: R_386_32	.bss
+    1042:	b8 03 00 00 00       	mov    $0x3,%eax
+    1047:	a3 20 00 00 00       	mov    %eax,0x20
+			1048: R_386_32	.bss
+    104c:	e9 5d ff ff ff       	jmp    fae <fail_pre_run>
+    1051:	b8 41 00 00 00       	mov    $0x41,%eax
+    1056:	a3 1c 00 00 00       	mov    %eax,0x1c
+			1057: R_386_32	.bss
+    105b:	b8 04 00 00 00       	mov    $0x4,%eax
+    1060:	a3 20 00 00 00       	mov    %eax,0x20
+			1061: R_386_32	.bss
+    1065:	e9 44 ff ff ff       	jmp    fae <fail_pre_run>
+    106a:	b8 41 00 00 00       	mov    $0x41,%eax
+    106f:	a3 1c 00 00 00       	mov    %eax,0x1c
+			1070: R_386_32	.bss
+    1074:	b8 05 00 00 00       	mov    $0x5,%eax
+    1079:	a3 20 00 00 00       	mov    %eax,0x20
+			107a: R_386_32	.bss
+    107e:	e9 2b ff ff ff       	jmp    fae <fail_pre_run>
+    1083:	b8 42 00 00 00       	mov    $0x42,%eax
+    1088:	a3 1c 00 00 00       	mov    %eax,0x1c
+			1089: R_386_32	.bss
+    108d:	b8 03 00 00 00       	mov    $0x3,%eax
+    1092:	a3 20 00 00 00       	mov    %eax,0x20
+			1093: R_386_32	.bss
+    1097:	e9 12 ff ff ff       	jmp    fae <fail_pre_run>
+    109c:	b8 42 00 00 00       	mov    $0x42,%eax
+    10a1:	a3 1c 00 00 00       	mov    %eax,0x1c
+			10a2: R_386_32	.bss
+    10a6:	b8 04 00 00 00       	mov    $0x4,%eax
+    10ab:	a3 20 00 00 00       	mov    %eax,0x20
+			10ac: R_386_32	.bss
+    10b0:	e9 f9 fe ff ff       	jmp    fae <fail_pre_run>
+    10b5:	b8 42 00 00 00       	mov    $0x42,%eax
+    10ba:	a3 1c 00 00 00       	mov    %eax,0x1c
+			10bb: R_386_32	.bss
+    10bf:	b8 05 00 00 00       	mov    $0x5,%eax
+    10c4:	a3 20 00 00 00       	mov    %eax,0x20
+			10c5: R_386_32	.bss
+    10c9:	e9 e0 fe ff ff       	jmp    fae <fail_pre_run>
+    10ce:	b8 42 00 00 00       	mov    $0x42,%eax
+    10d3:	a3 1c 00 00 00       	mov    %eax,0x1c
+			10d4: R_386_32	.bss
+    10d8:	b8 06 00 00 00       	mov    $0x6,%eax
+    10dd:	a3 20 00 00 00       	mov    %eax,0x20
+			10de: R_386_32	.bss
+    10e2:	e9 c7 fe ff ff       	jmp    fae <fail_pre_run>
+    10e7:	b8 42 00 00 00       	mov    $0x42,%eax
+    10ec:	a3 1c 00 00 00       	mov    %eax,0x1c
+			10ed: R_386_32	.bss
+    10f1:	b8 07 00 00 00       	mov    $0x7,%eax
+    10f6:	a3 20 00 00 00       	mov    %eax,0x20
+			10f7: R_386_32	.bss
+    10fb:	e9 ae fe ff ff       	jmp    fae <fail_pre_run>

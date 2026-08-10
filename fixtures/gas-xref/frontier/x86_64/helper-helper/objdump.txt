@@ -1,0 +1,798 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <_start>:
+   0:	48 8b 04 24          	mov    (%rsp),%rax
+   4:	48 83 f8 03          	cmp    $0x3,%rax
+   8:	7d 0a                	jge    14 <_start+0x14>
+   a:	bf 41 00 00 00       	mov    $0x41,%edi
+   f:	e9 2c 0b 00 00       	jmp    b40 <exit_class>
+  14:	48 8b 54 24 10       	mov    0x10(%rsp),%rdx
+  19:	48 89 15 00 00 00 00 	mov    %rdx,0x0(%rip)        # 20 <_start+0x20>
+			1c: R_X86_64_PC32	.bss+0xc
+  20:	48 8b 54 24 18       	mov    0x18(%rsp),%rdx
+  25:	48 89 15 00 00 00 00 	mov    %rdx,0x0(%rip)        # 2c <_start+0x2c>
+			28: R_X86_64_PC32	.bss+0x14
+  2c:	48 8d 74 24 08       	lea    0x8(%rsp),%rsi
+  31:	48 8d 74 c6 08       	lea    0x8(%rsi,%rax,8),%rsi
+  36:	48 8b 16             	mov    (%rsi),%rdx
+  39:	48 83 c6 08          	add    $0x8,%rsi
+  3d:	48 85 d2             	test   %rdx,%rdx
+  40:	75 f4                	jne    36 <_start+0x36>
+  42:	48 8b 16             	mov    (%rsi),%rdx
+  45:	48 85 d2             	test   %rdx,%rdx
+  48:	74 22                	je     6c <_start+0x6c>
+  4a:	48 83 fa 06          	cmp    $0x6,%rdx
+  4e:	75 16                	jne    66 <_start+0x66>
+  50:	48 8b 56 08          	mov    0x8(%rsi),%rdx
+  54:	48 89 15 00 00 00 00 	mov    %rdx,0x0(%rip)        # 5b <_start+0x5b>
+			57: R_X86_64_PC32	.bss+0x1c
+  5b:	48 c7 05 00 00 00 00 	movq   $0x1,0x0(%rip)        # 66 <_start+0x66>
+  62:	01 00 00 00 
+			5e: R_X86_64_PC32	.bss+0x20
+  66:	48 83 c6 10          	add    $0x10,%rsi
+  6a:	eb d6                	jmp    42 <_start+0x42>
+  6c:	48 8b 04 24          	mov    (%rsp),%rax
+  70:	48 83 f8 04          	cmp    $0x4,%rax
+  74:	7c 35                	jl     ab <_start+0xab>
+  76:	48 8b 74 24 20       	mov    0x20(%rsp),%rsi
+  7b:	48 8b 06             	mov    (%rsi),%rax
+  7e:	48 3b 05 00 00 00 00 	cmp    0x0(%rip),%rax        # 85 <_start+0x85>
+			81: R_X86_64_PC32	.rodata+0xc
+  85:	75 10                	jne    97 <_start+0x97>
+  87:	48 c7 c0 00 20 00 00 	mov    $0x2000,%rax
+  8e:	48 89 05 00 00 00 00 	mov    %rax,0x0(%rip)        # 95 <_start+0x95>
+			91: R_X86_64_PC32	.bss+0x1c
+  95:	eb 14                	jmp    ab <_start+0xab>
+  97:	48 3b 05 00 00 00 00 	cmp    0x0(%rip),%rax        # 9e <_start+0x9e>
+			9a: R_X86_64_PC32	.rodata+0x14
+  9e:	75 0b                	jne    ab <_start+0xab>
+  a0:	48 c7 05 00 00 00 00 	movq   $0x0,0x0(%rip)        # ab <_start+0xab>
+  a7:	00 00 00 00 
+			a3: R_X86_64_PC32	.bss+0x20
+  ab:	48 8b 3d 00 00 00 00 	mov    0x0(%rip),%rdi        # b2 <_start+0xb2>
+			ae: R_X86_64_PC32	.bss+0x14
+  b2:	be c2 00 00 00       	mov    $0xc2,%esi
+  b7:	ba 80 01 00 00       	mov    $0x180,%edx
+  bc:	b8 02 00 00 00       	mov    $0x2,%eax
+  c1:	0f 05                	syscall
+  c3:	48 3d 01 f0 ff ff    	cmp    $0xfffffffffffff001,%rax
+  c9:	0f 83 79 0a 00 00    	jae    b48 <exit_class+0x8>
+  cf:	48 89 05 00 00 00 00 	mov    %rax,0x0(%rip)        # d6 <_start+0xd6>
+			d2: R_X86_64_PC32	.bss-0x4
+  d6:	48 89 c7             	mov    %rax,%rdi
+  d9:	be 00 10 00 00       	mov    $0x1000,%esi
+  de:	b8 4d 00 00 00       	mov    $0x4d,%eax
+  e3:	0f 05                	syscall
+  e5:	48 3d 01 f0 ff ff    	cmp    $0xfffffffffffff001,%rax
+  eb:	0f 83 5e 0a 00 00    	jae    b4f <exit_class+0xf>
+  f1:	bf 00 00 00 40       	mov    $0x40000000,%edi
+  f6:	be 00 00 10 00       	mov    $0x100000,%esi
+  fb:	ba 00 00 00 00       	mov    $0x0,%edx
+ 100:	41 ba 22 00 10 00    	mov    $0x100022,%r10d
+ 106:	49 c7 c0 ff ff ff ff 	mov    $0xffffffffffffffff,%r8
+ 10d:	45 31 c9             	xor    %r9d,%r9d
+ 110:	b8 09 00 00 00       	mov    $0x9,%eax
+ 115:	0f 05                	syscall
+ 117:	48 3d 01 f0 ff ff    	cmp    $0xfffffffffffff001,%rax
+ 11d:	0f 83 33 0a 00 00    	jae    b56 <exit_class+0x16>
+ 123:	48 3d 00 00 00 40    	cmp    $0x40000000,%rax
+ 129:	0f 85 27 0a 00 00    	jne    b56 <exit_class+0x16>
+ 12f:	31 ff                	xor    %edi,%edi
+ 131:	be 00 10 00 00       	mov    $0x1000,%esi
+ 136:	ba 03 00 00 00       	mov    $0x3,%edx
+ 13b:	41 ba 01 00 00 00    	mov    $0x1,%r10d
+ 141:	4c 8b 05 00 00 00 00 	mov    0x0(%rip),%r8        # 148 <_start+0x148>
+			144: R_X86_64_PC32	.bss-0x4
+ 148:	45 31 c9             	xor    %r9d,%r9d
+ 14b:	b8 09 00 00 00       	mov    $0x9,%eax
+ 150:	0f 05                	syscall
+ 152:	48 3d 01 f0 ff ff    	cmp    $0xfffffffffffff001,%rax
+ 158:	0f 83 ff 09 00 00    	jae    b5d <exit_class+0x1d>
+ 15e:	49 89 c5             	mov    %rax,%r13
+ 161:	48 89 05 00 00 00 00 	mov    %rax,0x0(%rip)        # 168 <_start+0x168>
+			164: R_X86_64_PC32	.bss+0x2c
+ 168:	48 8b 05 00 00 00 00 	mov    0x0(%rip),%rax        # 16f <_start+0x16f>
+			16b: R_X86_64_PC32	.rodata+0x4
+ 16f:	49 89 45 00          	mov    %rax,0x0(%r13)
+ 173:	66 41 c7 45 08 01 00 	movw   $0x1,0x8(%r13)
+ 17a:	48 83 3d 00 00 00 00 	cmpq   $0x0,0x0(%rip)        # 182 <_start+0x182>
+ 181:	00 
+			17d: R_X86_64_PC32	.bss+0x23
+ 182:	75 0f                	jne    193 <_start+0x193>
+ 184:	bf 45 00 00 00       	mov    $0x45,%edi
+ 189:	be 02 00 00 00       	mov    $0x2,%esi
+ 18e:	e9 75 09 00 00       	jmp    b08 <fail_pre_run>
+ 193:	48 81 3d 00 00 00 00 	cmpq   $0x1000,0x0(%rip)        # 19e <_start+0x19e>
+ 19a:	00 10 00 00 
+			196: R_X86_64_PC32	.bss+0x18
+ 19e:	74 0f                	je     1af <_start+0x1af>
+ 1a0:	bf 45 00 00 00       	mov    $0x45,%edi
+ 1a5:	be 01 00 00 00       	mov    $0x1,%esi
+ 1aa:	e9 59 09 00 00       	jmp    b08 <fail_pre_run>
+ 1af:	48 8b 3d 00 00 00 00 	mov    0x0(%rip),%rdi        # 1b6 <_start+0x1b6>
+			1b2: R_X86_64_PC32	.bss+0xc
+ 1b6:	be 00 00 00 00       	mov    $0x0,%esi
+ 1bb:	31 d2                	xor    %edx,%edx
+ 1bd:	b8 02 00 00 00       	mov    $0x2,%eax
+ 1c2:	0f 05                	syscall
+ 1c4:	48 3d 01 f0 ff ff    	cmp    $0xfffffffffffff001,%rax
+ 1ca:	0f 83 94 09 00 00    	jae    b64 <exit_class+0x24>
+ 1d0:	48 89 05 00 00 00 00 	mov    %rax,0x0(%rip)        # 1d7 <_start+0x1d7>
+			1d3: R_X86_64_PC32	.bss+0x4
+ 1d7:	48 89 c7             	mov    %rax,%rdi
+ 1da:	48 8d 35 00 00 00 00 	lea    0x0(%rip),%rsi        # 1e1 <_start+0x1e1>
+			1dd: R_X86_64_PC32	.bss+0xf4
+ 1e1:	b8 05 00 00 00       	mov    $0x5,%eax
+ 1e6:	0f 05                	syscall
+ 1e8:	48 3d 01 f0 ff ff    	cmp    $0xfffffffffffff001,%rax
+ 1ee:	0f 83 7c 09 00 00    	jae    b70 <exit_class+0x30>
+ 1f4:	4c 8b 35 00 00 00 00 	mov    0x0(%rip),%r14        # 1fb <_start+0x1fb>
+			1f7: R_X86_64_PC32	.bss+0x124
+ 1fb:	49 83 fe 78          	cmp    $0x78,%r14
+ 1ff:	73 0f                	jae    210 <_start+0x210>
+ 201:	bf 40 00 00 00       	mov    $0x40,%edi
+ 206:	be 01 00 00 00       	mov    $0x1,%esi
+ 20b:	e9 f8 08 00 00       	jmp    b08 <fail_pre_run>
+ 210:	49 81 fe 00 00 10 00 	cmp    $0x100000,%r14
+ 217:	76 0f                	jbe    228 <_start+0x228>
+ 219:	bf 40 00 00 00       	mov    $0x40,%edi
+ 21e:	be 02 00 00 00       	mov    $0x2,%esi
+ 223:	e9 e0 08 00 00       	jmp    b08 <fail_pre_run>
+ 228:	31 ff                	xor    %edi,%edi
+ 22a:	4c 89 f6             	mov    %r14,%rsi
+ 22d:	ba 01 00 00 00       	mov    $0x1,%edx
+ 232:	41 ba 02 00 00 00    	mov    $0x2,%r10d
+ 238:	4c 8b 05 00 00 00 00 	mov    0x0(%rip),%r8        # 23f <_start+0x23f>
+			23b: R_X86_64_PC32	.bss+0x4
+ 23f:	45 31 c9             	xor    %r9d,%r9d
+ 242:	b8 09 00 00 00       	mov    $0x9,%eax
+ 247:	0f 05                	syscall
+ 249:	48 3d 01 f0 ff ff    	cmp    $0xfffffffffffff001,%rax
+ 24f:	0f 83 27 09 00 00    	jae    b7c <exit_class+0x3c>
+ 255:	49 89 c7             	mov    %rax,%r15
+ 258:	48 8b 05 00 00 00 00 	mov    0x0(%rip),%rax        # 25f <_start+0x25f>
+			25b: R_X86_64_PC32	.rodata-0x4
+ 25f:	49 3b 07             	cmp    (%r15),%rax
+ 262:	74 0f                	je     273 <_start+0x273>
+ 264:	bf 40 00 00 00       	mov    $0x40,%edi
+ 269:	be 03 00 00 00       	mov    $0x3,%esi
+ 26e:	e9 95 08 00 00       	jmp    b08 <fail_pre_run>
+ 273:	41 0f b7 47 08       	movzwl 0x8(%r15),%eax
+ 278:	83 f8 01             	cmp    $0x1,%eax
+ 27b:	74 0f                	je     28c <_start+0x28c>
+ 27d:	bf 40 00 00 00       	mov    $0x40,%edi
+ 282:	be 04 00 00 00       	mov    $0x4,%esi
+ 287:	e9 7c 08 00 00       	jmp    b08 <fail_pre_run>
+ 28c:	41 0f b7 47 0a       	movzwl 0xa(%r15),%eax
+ 291:	83 f8 02             	cmp    $0x2,%eax
+ 294:	74 0f                	je     2a5 <_start+0x2a5>
+ 296:	bf 40 00 00 00       	mov    $0x40,%edi
+ 29b:	be 05 00 00 00       	mov    $0x5,%esi
+ 2a0:	e9 63 08 00 00       	jmp    b08 <fail_pre_run>
+ 2a5:	41 8b 47 0c          	mov    0xc(%r15),%eax
+ 2a9:	4c 39 f0             	cmp    %r14,%rax
+ 2ac:	74 0f                	je     2bd <_start+0x2bd>
+ 2ae:	bf 40 00 00 00       	mov    $0x40,%edi
+ 2b3:	be 06 00 00 00       	mov    $0x6,%esi
+ 2b8:	e9 4b 08 00 00       	jmp    b08 <fail_pre_run>
+ 2bd:	41 0f b7 47 14       	movzwl 0x14(%r15),%eax
+ 2c2:	85 c0                	test   %eax,%eax
+ 2c4:	74 05                	je     2cb <_start+0x2cb>
+ 2c6:	83 f8 08             	cmp    $0x8,%eax
+ 2c9:	76 0f                	jbe    2da <_start+0x2da>
+ 2cb:	bf 40 00 00 00       	mov    $0x40,%edi
+ 2d0:	be 07 00 00 00       	mov    $0x7,%esi
+ 2d5:	e9 2e 08 00 00       	jmp    b08 <fail_pre_run>
+ 2da:	49 89 c4             	mov    %rax,%r12
+ 2dd:	41 0f b7 47 16       	movzwl 0x16(%r15),%eax
+ 2e2:	83 f8 01             	cmp    $0x1,%eax
+ 2e5:	74 0f                	je     2f6 <_start+0x2f6>
+ 2e7:	bf 40 00 00 00       	mov    $0x40,%edi
+ 2ec:	be 08 00 00 00       	mov    $0x8,%esi
+ 2f1:	e9 12 08 00 00       	jmp    b08 <fail_pre_run>
+ 2f6:	41 8b 47 28          	mov    0x28(%r15),%eax
+ 2fa:	3d 00 01 00 00       	cmp    $0x100,%eax
+ 2ff:	74 0f                	je     310 <_start+0x310>
+ 301:	bf 40 00 00 00       	mov    $0x40,%edi
+ 306:	be 09 00 00 00       	mov    $0x9,%esi
+ 30b:	e9 f8 07 00 00       	jmp    b08 <fail_pre_run>
+ 310:	41 8b 47 30          	mov    0x30(%r15),%eax
+ 314:	83 f8 64             	cmp    $0x64,%eax
+ 317:	72 07                	jb     320 <_start+0x320>
+ 319:	3d 60 ea 00 00       	cmp    $0xea60,%eax
+ 31e:	76 0f                	jbe    32f <_start+0x32f>
+ 320:	bf 40 00 00 00       	mov    $0x40,%edi
+ 325:	be 0a 00 00 00       	mov    $0xa,%esi
+ 32a:	e9 d9 07 00 00       	jmp    b08 <fail_pre_run>
+ 32f:	41 8b 47 34          	mov    0x34(%r15),%eax
+ 333:	85 c0                	test   %eax,%eax
+ 335:	74 0f                	je     346 <_start+0x346>
+ 337:	bf 40 00 00 00       	mov    $0x40,%edi
+ 33c:	be 0b 00 00 00       	mov    $0xb,%esi
+ 341:	e9 c2 07 00 00       	jmp    b08 <fail_pre_run>
+ 346:	49 8d 77 40          	lea    0x40(%r15),%rsi
+ 34a:	b9 38 00 00 00       	mov    $0x38,%ecx
+ 34f:	e8 9f 07 00 00       	call   af3 <or_bytes>
+ 354:	48 85 c0             	test   %rax,%rax
+ 357:	74 0f                	je     368 <_start+0x368>
+ 359:	bf 40 00 00 00       	mov    $0x40,%edi
+ 35e:	be 0c 00 00 00       	mov    $0xc,%esi
+ 363:	e9 a0 07 00 00       	jmp    b08 <fail_pre_run>
+ 368:	49 6b c4 28          	imul   $0x28,%r12,%rax
+ 36c:	48 83 c0 78          	add    $0x78,%rax
+ 370:	4c 39 f0             	cmp    %r14,%rax
+ 373:	76 0f                	jbe    384 <_start+0x384>
+ 375:	bf 40 00 00 00       	mov    $0x40,%edi
+ 37a:	be 0d 00 00 00       	mov    $0xd,%esi
+ 37f:	e9 84 07 00 00       	jmp    b08 <fail_pre_run>
+ 384:	48 89 05 00 00 00 00 	mov    %rax,0x0(%rip)        # 38b <_start+0x38b>
+			387: R_X86_64_PC32	.bss+0x34
+ 38b:	31 db                	xor    %ebx,%ebx
+ 38d:	4c 39 e3             	cmp    %r12,%rbx
+ 390:	73 2c                	jae    3be <_start+0x3be>
+ 392:	48 6b cb 28          	imul   $0x28,%rbx,%rcx
+ 396:	49 8d 4c 0f 78       	lea    0x78(%r15,%rcx,1),%rcx
+ 39b:	48 8b 41 18          	mov    0x18(%rcx),%rax
+ 39f:	48 03 41 08          	add    0x8(%rcx),%rax
+ 3a3:	72 05                	jb     3aa <_start+0x3aa>
+ 3a5:	4c 39 f0             	cmp    %r14,%rax
+ 3a8:	76 0f                	jbe    3b9 <_start+0x3b9>
+ 3aa:	bf 40 00 00 00       	mov    $0x40,%edi
+ 3af:	be 0e 00 00 00       	mov    $0xe,%esi
+ 3b4:	e9 4f 07 00 00       	jmp    b08 <fail_pre_run>
+ 3b9:	48 ff c3             	inc    %rbx
+ 3bc:	eb cf                	jmp    38d <_start+0x38d>
+ 3be:	31 db                	xor    %ebx,%ebx
+ 3c0:	4c 39 e3             	cmp    %r12,%rbx
+ 3c3:	73 68                	jae    42d <_start+0x42d>
+ 3c5:	48 6b cb 28          	imul   $0x28,%rbx,%rcx
+ 3c9:	49 8d 4c 0f 78       	lea    0x78(%r15,%rcx,1),%rcx
+ 3ce:	48 8b 41 18          	mov    0x18(%rcx),%rax
+ 3d2:	a8 07                	test   $0x7,%al
+ 3d4:	74 0f                	je     3e5 <_start+0x3e5>
+ 3d6:	bf 40 00 00 00       	mov    $0x40,%edi
+ 3db:	be 0f 00 00 00       	mov    $0xf,%esi
+ 3e0:	e9 23 07 00 00       	jmp    b08 <fail_pre_run>
+ 3e5:	48 85 c0             	test   %rax,%rax
+ 3e8:	74 18                	je     402 <_start+0x402>
+ 3ea:	48 3b 05 00 00 00 00 	cmp    0x0(%rip),%rax        # 3f1 <_start+0x3f1>
+			3ed: R_X86_64_PC32	.bss+0x34
+ 3f1:	73 0f                	jae    402 <_start+0x402>
+ 3f3:	bf 40 00 00 00       	mov    $0x40,%edi
+ 3f8:	be 10 00 00 00       	mov    $0x10,%esi
+ 3fd:	e9 06 07 00 00       	jmp    b08 <fail_pre_run>
+ 402:	48 8b 51 08          	mov    0x8(%rcx),%rdx
+ 406:	48 85 c0             	test   %rax,%rax
+ 409:	40 0f 95 c6          	setne  %sil
+ 40d:	48 85 d2             	test   %rdx,%rdx
+ 410:	40 0f 95 c7          	setne  %dil
+ 414:	40 38 f7             	cmp    %sil,%dil
+ 417:	74 0f                	je     428 <_start+0x428>
+ 419:	bf 40 00 00 00       	mov    $0x40,%edi
+ 41e:	be 11 00 00 00       	mov    $0x11,%esi
+ 423:	e9 e0 06 00 00       	jmp    b08 <fail_pre_run>
+ 428:	48 ff c3             	inc    %rbx
+ 42b:	eb 93                	jmp    3c0 <_start+0x3c0>
+ 42d:	31 db                	xor    %ebx,%ebx
+ 42f:	4c 39 e3             	cmp    %r12,%rbx
+ 432:	73 5e                	jae    492 <_start+0x492>
+ 434:	48 6b cb 28          	imul   $0x28,%rbx,%rcx
+ 438:	49 8d 4c 0f 78       	lea    0x78(%r15,%rcx,1),%rcx
+ 43d:	4c 8b 49 08          	mov    0x8(%rcx),%r9
+ 441:	4d 85 c9             	test   %r9,%r9
+ 444:	74 47                	je     48d <_start+0x48d>
+ 446:	4c 8b 41 18          	mov    0x18(%rcx),%r8
+ 44a:	4d 01 c1             	add    %r8,%r9
+ 44d:	4c 8d 53 01          	lea    0x1(%rbx),%r10
+ 451:	4d 39 e2             	cmp    %r12,%r10
+ 454:	73 37                	jae    48d <_start+0x48d>
+ 456:	49 6b ca 28          	imul   $0x28,%r10,%rcx
+ 45a:	49 8d 4c 0f 78       	lea    0x78(%r15,%rcx,1),%rcx
+ 45f:	48 8b 51 08          	mov    0x8(%rcx),%rdx
+ 463:	48 85 d2             	test   %rdx,%rdx
+ 466:	74 20                	je     488 <_start+0x488>
+ 468:	48 8b 41 18          	mov    0x18(%rcx),%rax
+ 46c:	48 01 c2             	add    %rax,%rdx
+ 46f:	49 39 d0             	cmp    %rdx,%r8
+ 472:	73 14                	jae    488 <_start+0x488>
+ 474:	4c 39 c8             	cmp    %r9,%rax
+ 477:	73 0f                	jae    488 <_start+0x488>
+ 479:	bf 40 00 00 00       	mov    $0x40,%edi
+ 47e:	be 12 00 00 00       	mov    $0x12,%esi
+ 483:	e9 80 06 00 00       	jmp    b08 <fail_pre_run>
+ 488:	49 ff c2             	inc    %r10
+ 48b:	eb c4                	jmp    451 <_start+0x451>
+ 48d:	48 ff c3             	inc    %rbx
+ 490:	eb 9d                	jmp    42f <_start+0x42f>
+ 492:	4c 8b 1d 00 00 00 00 	mov    0x0(%rip),%r11        # 499 <_start+0x499>
+			495: R_X86_64_PC32	.bss+0x34
+ 499:	31 db                	xor    %ebx,%ebx
+ 49b:	4c 39 e3             	cmp    %r12,%rbx
+ 49e:	73 68                	jae    508 <_start+0x508>
+ 4a0:	48 6b cb 28          	imul   $0x28,%rbx,%rcx
+ 4a4:	49 8d 4c 0f 78       	lea    0x78(%r15,%rcx,1),%rcx
+ 4a9:	48 8b 51 08          	mov    0x8(%rcx),%rdx
+ 4ad:	48 85 d2             	test   %rdx,%rdx
+ 4b0:	74 51                	je     503 <_start+0x503>
+ 4b2:	4c 89 d8             	mov    %r11,%rax
+ 4b5:	48 83 c0 07          	add    $0x7,%rax
+ 4b9:	48 83 e0 f8          	and    $0xfffffffffffffff8,%rax
+ 4bd:	48 3b 41 18          	cmp    0x18(%rcx),%rax
+ 4c1:	74 0f                	je     4d2 <_start+0x4d2>
+ 4c3:	bf 40 00 00 00       	mov    $0x40,%edi
+ 4c8:	be 13 00 00 00       	mov    $0x13,%esi
+ 4cd:	e9 36 06 00 00       	jmp    b08 <fail_pre_run>
+ 4d2:	49 89 c1             	mov    %rax,%r9
+ 4d5:	49 89 d0             	mov    %rdx,%r8
+ 4d8:	4c 89 c9             	mov    %r9,%rcx
+ 4db:	4c 29 d9             	sub    %r11,%rcx
+ 4de:	74 1d                	je     4fd <_start+0x4fd>
+ 4e0:	4b 8d 34 1f          	lea    (%r15,%r11,1),%rsi
+ 4e4:	e8 0a 06 00 00       	call   af3 <or_bytes>
+ 4e9:	48 85 c0             	test   %rax,%rax
+ 4ec:	74 0f                	je     4fd <_start+0x4fd>
+ 4ee:	bf 40 00 00 00       	mov    $0x40,%edi
+ 4f3:	be 14 00 00 00       	mov    $0x14,%esi
+ 4f8:	e9 0b 06 00 00       	jmp    b08 <fail_pre_run>
+ 4fd:	4d 89 cb             	mov    %r9,%r11
+ 500:	4d 01 c3             	add    %r8,%r11
+ 503:	48 ff c3             	inc    %rbx
+ 506:	eb 93                	jmp    49b <_start+0x49b>
+ 508:	4c 89 d8             	mov    %r11,%rax
+ 50b:	48 83 c0 07          	add    $0x7,%rax
+ 50f:	48 83 e0 f8          	and    $0xfffffffffffffff8,%rax
+ 513:	4c 39 f0             	cmp    %r14,%rax
+ 516:	74 0f                	je     527 <_start+0x527>
+ 518:	bf 40 00 00 00       	mov    $0x40,%edi
+ 51d:	be 15 00 00 00       	mov    $0x15,%esi
+ 522:	e9 e1 05 00 00       	jmp    b08 <fail_pre_run>
+ 527:	48 89 c1             	mov    %rax,%rcx
+ 52a:	4c 29 d9             	sub    %r11,%rcx
+ 52d:	74 1d                	je     54c <_start+0x54c>
+ 52f:	4b 8d 34 1f          	lea    (%r15,%r11,1),%rsi
+ 533:	e8 bb 05 00 00       	call   af3 <or_bytes>
+ 538:	48 85 c0             	test   %rax,%rax
+ 53b:	74 0f                	je     54c <_start+0x54c>
+ 53d:	bf 40 00 00 00       	mov    $0x40,%edi
+ 542:	be 14 00 00 00       	mov    $0x14,%esi
+ 547:	e9 bc 05 00 00       	jmp    b08 <fail_pre_run>
+ 54c:	31 db                	xor    %ebx,%ebx
+ 54e:	4c 39 e3             	cmp    %r12,%rbx
+ 551:	73 44                	jae    597 <_start+0x597>
+ 553:	48 6b cb 28          	imul   $0x28,%rbx,%rcx
+ 557:	49 8d 4c 0f 78       	lea    0x78(%r15,%rcx,1),%rcx
+ 55c:	48 8b 41 08          	mov    0x8(%rcx),%rax
+ 560:	48 3d 00 00 04 00    	cmp    $0x40000,%rax
+ 566:	76 0f                	jbe    577 <_start+0x577>
+ 568:	bf 40 00 00 00       	mov    $0x40,%edi
+ 56d:	be 16 00 00 00       	mov    $0x16,%esi
+ 572:	e9 91 05 00 00       	jmp    b08 <fail_pre_run>
+ 577:	48 8b 41 10          	mov    0x10(%rcx),%rax
+ 57b:	48 3d 00 00 10 00    	cmp    $0x100000,%rax
+ 581:	76 0f                	jbe    592 <_start+0x592>
+ 583:	bf 40 00 00 00       	mov    $0x40,%edi
+ 588:	be 17 00 00 00       	mov    $0x17,%esi
+ 58d:	e9 76 05 00 00       	jmp    b08 <fail_pre_run>
+ 592:	48 ff c3             	inc    %rbx
+ 595:	eb b7                	jmp    54e <_start+0x54e>
+ 597:	31 db                	xor    %ebx,%ebx
+ 599:	4c 39 e3             	cmp    %r12,%rbx
+ 59c:	0f 83 02 01 00 00    	jae    6a4 <_start+0x6a4>
+ 5a2:	48 6b cb 28          	imul   $0x28,%rbx,%rcx
+ 5a6:	49 8d 4c 0f 78       	lea    0x78(%r15,%rcx,1),%rcx
+ 5ab:	4c 8b 41 08          	mov    0x8(%rcx),%r8
+ 5af:	4c 8b 49 10          	mov    0x10(%rcx),%r9
+ 5b3:	4c 89 c0             	mov    %r8,%rax
+ 5b6:	4c 09 c8             	or     %r9,%rax
+ 5b9:	75 0f                	jne    5ca <_start+0x5ca>
+ 5bb:	bf 40 00 00 00       	mov    $0x40,%edi
+ 5c0:	be 18 00 00 00       	mov    $0x18,%esi
+ 5c5:	e9 3e 05 00 00       	jmp    b08 <fail_pre_run>
+ 5ca:	8b 41 20             	mov    0x20(%rcx),%eax
+ 5cd:	48 85 c0             	test   %rax,%rax
+ 5d0:	74 09                	je     5db <_start+0x5db>
+ 5d2:	48 8d 50 ff          	lea    -0x1(%rax),%rdx
+ 5d6:	48 85 d0             	test   %rdx,%rax
+ 5d9:	74 0f                	je     5ea <_start+0x5ea>
+ 5db:	bf 40 00 00 00       	mov    $0x40,%edi
+ 5e0:	be 19 00 00 00       	mov    $0x19,%esi
+ 5e5:	e9 1e 05 00 00       	jmp    b08 <fail_pre_run>
+ 5ea:	4c 8b 11             	mov    (%rcx),%r10
+ 5ed:	49 85 d2             	test   %rdx,%r10
+ 5f0:	74 0f                	je     601 <_start+0x601>
+ 5f2:	bf 40 00 00 00       	mov    $0x40,%edi
+ 5f7:	be 1a 00 00 00       	mov    $0x1a,%esi
+ 5fc:	e9 07 05 00 00       	jmp    b08 <fail_pre_run>
+ 601:	0f b6 41 24          	movzbl 0x24(%rcx),%eax
+ 605:	a9 f8 ff ff ff       	test   $0xfffffff8,%eax
+ 60a:	74 0f                	je     61b <_start+0x61b>
+ 60c:	bf 40 00 00 00       	mov    $0x40,%edi
+ 611:	be 1b 00 00 00       	mov    $0x1b,%esi
+ 616:	e9 ed 04 00 00       	jmp    b08 <fail_pre_run>
+ 61b:	83 e0 06             	and    $0x6,%eax
+ 61e:	83 f8 06             	cmp    $0x6,%eax
+ 621:	75 0f                	jne    632 <_start+0x632>
+ 623:	bf 40 00 00 00       	mov    $0x40,%edi
+ 628:	be 1c 00 00 00       	mov    $0x1c,%esi
+ 62d:	e9 d6 04 00 00       	jmp    b08 <fail_pre_run>
+ 632:	4c 89 d0             	mov    %r10,%rax
+ 635:	4c 01 c0             	add    %r8,%rax
+ 638:	72 4c                	jb     686 <_start+0x686>
+ 63a:	4c 01 c8             	add    %r9,%rax
+ 63d:	72 47                	jb     686 <_start+0x686>
+ 63f:	48 05 ff 0f 00 00    	add    $0xfff,%rax
+ 645:	72 3f                	jb     686 <_start+0x686>
+ 647:	48 25 00 f0 ff ff    	and    $0xfffffffffffff000,%rax
+ 64d:	4c 89 d2             	mov    %r10,%rdx
+ 650:	48 81 e2 00 f0 ff ff 	and    $0xfffffffffffff000,%rdx
+ 657:	48 81 fa 00 00 00 40 	cmp    $0x40000000,%rdx
+ 65e:	72 35                	jb     695 <_start+0x695>
+ 660:	48 3d 00 00 10 40    	cmp    $0x40100000,%rax
+ 666:	77 2d                	ja     695 <_start+0x695>
+ 668:	4c 8d 05 00 00 00 00 	lea    0x0(%rip),%r8        # 66f <_start+0x66f>
+			66b: R_X86_64_PC32	.bss+0x74
+ 66f:	49 89 14 d8          	mov    %rdx,(%r8,%rbx,8)
+ 673:	4c 8d 05 00 00 00 00 	lea    0x0(%rip),%r8        # 67a <_start+0x67a>
+			676: R_X86_64_PC32	.bss+0xb4
+ 67a:	49 89 04 d8          	mov    %rax,(%r8,%rbx,8)
+ 67e:	48 ff c3             	inc    %rbx
+ 681:	e9 13 ff ff ff       	jmp    599 <_start+0x599>
+ 686:	bf 40 00 00 00       	mov    $0x40,%edi
+ 68b:	be 1d 00 00 00       	mov    $0x1d,%esi
+ 690:	e9 73 04 00 00       	jmp    b08 <fail_pre_run>
+ 695:	bf 40 00 00 00       	mov    $0x40,%edi
+ 69a:	be 1e 00 00 00       	mov    $0x1e,%esi
+ 69f:	e9 64 04 00 00       	jmp    b08 <fail_pre_run>
+ 6a4:	49 8b 47 20          	mov    0x20(%r15),%rax
+ 6a8:	48 89 05 00 00 00 00 	mov    %rax,0x0(%rip)        # 6af <_start+0x6af>
+			6ab: R_X86_64_PC32	.bss+0x6c
+ 6af:	49 89 c0             	mov    %rax,%r8
+ 6b2:	49 81 e0 00 f0 ff ff 	and    $0xfffffffffffff000,%r8
+ 6b9:	4d 89 c1             	mov    %r8,%r9
+ 6bc:	49 81 c1 00 10 00 00 	add    $0x1000,%r9
+ 6c3:	73 07                	jae    6cc <_start+0x6cc>
+ 6c5:	49 c7 c1 ff ff ff ff 	mov    $0xffffffffffffffff,%r9
+ 6cc:	41 8b 47 2c          	mov    0x2c(%r15),%eax
+ 6d0:	48 89 05 00 00 00 00 	mov    %rax,0x0(%rip)        # 6d7 <_start+0x6d7>
+			6d3: R_X86_64_PC32	.bss+0x64
+ 6d7:	48 c7 c7 00 00 04 40 	mov    $0x40040000,%rdi
+ 6de:	48 89 fe             	mov    %rdi,%rsi
+ 6e1:	48 01 c6             	add    %rax,%rsi
+ 6e4:	48 81 c6 ff 0f 00 00 	add    $0xfff,%rsi
+ 6eb:	48 81 e6 00 f0 ff ff 	and    $0xfffffffffffff000,%rsi
+ 6f2:	31 db                	xor    %ebx,%ebx
+ 6f4:	4c 39 e3             	cmp    %r12,%rbx
+ 6f7:	73 6e                	jae    767 <_start+0x767>
+ 6f9:	48 8d 0d 00 00 00 00 	lea    0x0(%rip),%rcx        # 700 <_start+0x700>
+			6fc: R_X86_64_PC32	.bss+0x74
+ 700:	4c 8b 14 d9          	mov    (%rcx,%rbx,8),%r10
+ 704:	48 8d 0d 00 00 00 00 	lea    0x0(%rip),%rcx        # 70b <_start+0x70b>
+			707: R_X86_64_PC32	.bss+0xb4
+ 70b:	4c 8b 1c d9          	mov    (%rcx,%rbx,8),%r11
+ 70f:	4d 39 ca             	cmp    %r9,%r10
+ 712:	73 14                	jae    728 <_start+0x728>
+ 714:	4d 39 c3             	cmp    %r8,%r11
+ 717:	76 0f                	jbe    728 <_start+0x728>
+ 719:	bf 40 00 00 00       	mov    $0x40,%edi
+ 71e:	be 1f 00 00 00       	mov    $0x1f,%esi
+ 723:	e9 e0 03 00 00       	jmp    b08 <fail_pre_run>
+ 728:	49 39 f2             	cmp    %rsi,%r10
+ 72b:	73 14                	jae    741 <_start+0x741>
+ 72d:	49 39 fb             	cmp    %rdi,%r11
+ 730:	76 0f                	jbe    741 <_start+0x741>
+ 732:	bf 40 00 00 00       	mov    $0x40,%edi
+ 737:	be 20 00 00 00       	mov    $0x20,%esi
+ 73c:	e9 c7 03 00 00       	jmp    b08 <fail_pre_run>
+ 741:	49 81 fa 00 00 04 40 	cmp    $0x40040000,%r10
+ 748:	73 18                	jae    762 <_start+0x762>
+ 74a:	49 81 fb 00 f0 03 40 	cmp    $0x4003f000,%r11
+ 751:	76 0f                	jbe    762 <_start+0x762>
+ 753:	bf 40 00 00 00       	mov    $0x40,%edi
+ 758:	be 21 00 00 00       	mov    $0x21,%esi
+ 75d:	e9 a6 03 00 00       	jmp    b08 <fail_pre_run>
+ 762:	48 ff c3             	inc    %rbx
+ 765:	eb 8d                	jmp    6f4 <_start+0x6f4>
+ 767:	49 39 f0             	cmp    %rsi,%r8
+ 76a:	73 14                	jae    780 <_start+0x780>
+ 76c:	4c 39 cf             	cmp    %r9,%rdi
+ 76f:	73 0f                	jae    780 <_start+0x780>
+ 771:	bf 40 00 00 00       	mov    $0x40,%edi
+ 776:	be 22 00 00 00       	mov    $0x22,%esi
+ 77b:	e9 88 03 00 00       	jmp    b08 <fail_pre_run>
+ 780:	31 db                	xor    %ebx,%ebx
+ 782:	4c 39 e3             	cmp    %r12,%rbx
+ 785:	73 58                	jae    7df <_start+0x7df>
+ 787:	48 8d 35 00 00 00 00 	lea    0x0(%rip),%rsi        # 78e <_start+0x78e>
+			78a: R_X86_64_PC32	.bss+0x74
+ 78e:	4c 8b 14 de          	mov    (%rsi,%rbx,8),%r10
+ 792:	48 8d 35 00 00 00 00 	lea    0x0(%rip),%rsi        # 799 <_start+0x799>
+			795: R_X86_64_PC32	.bss+0xb4
+ 799:	4c 8b 1c de          	mov    (%rsi,%rbx,8),%r11
+ 79d:	48 8d 4b 01          	lea    0x1(%rbx),%rcx
+ 7a1:	4c 39 e1             	cmp    %r12,%rcx
+ 7a4:	73 34                	jae    7da <_start+0x7da>
+ 7a6:	48 8d 35 00 00 00 00 	lea    0x0(%rip),%rsi        # 7ad <_start+0x7ad>
+			7a9: R_X86_64_PC32	.bss+0x74
+ 7ad:	48 8b 04 ce          	mov    (%rsi,%rcx,8),%rax
+ 7b1:	48 8d 35 00 00 00 00 	lea    0x0(%rip),%rsi        # 7b8 <_start+0x7b8>
+			7b4: R_X86_64_PC32	.bss+0xb4
+ 7b8:	48 8b 14 ce          	mov    (%rsi,%rcx,8),%rdx
+ 7bc:	49 39 d2             	cmp    %rdx,%r10
+ 7bf:	73 14                	jae    7d5 <_start+0x7d5>
+ 7c1:	4c 39 d8             	cmp    %r11,%rax
+ 7c4:	73 0f                	jae    7d5 <_start+0x7d5>
+ 7c6:	bf 40 00 00 00       	mov    $0x40,%edi
+ 7cb:	be 23 00 00 00       	mov    $0x23,%esi
+ 7d0:	e9 33 03 00 00       	jmp    b08 <fail_pre_run>
+ 7d5:	48 ff c1             	inc    %rcx
+ 7d8:	eb c7                	jmp    7a1 <_start+0x7a1>
+ 7da:	48 ff c3             	inc    %rbx
+ 7dd:	eb a3                	jmp    782 <_start+0x782>
+ 7df:	4d 8b 4f 18          	mov    0x18(%r15),%r9
+ 7e3:	4c 89 0d 00 00 00 00 	mov    %r9,0x0(%rip)        # 7ea <_start+0x7ea>
+			7e6: R_X86_64_PC32	.bss+0x5c
+ 7ea:	31 db                	xor    %ebx,%ebx
+ 7ec:	4c 39 e3             	cmp    %r12,%rbx
+ 7ef:	73 2a                	jae    81b <_start+0x81b>
+ 7f1:	48 6b cb 28          	imul   $0x28,%rbx,%rcx
+ 7f5:	49 8d 4c 0f 78       	lea    0x78(%r15,%rcx,1),%rcx
+ 7fa:	0f b6 41 24          	movzbl 0x24(%rcx),%eax
+ 7fe:	a9 04 00 00 00       	test   $0x4,%eax
+ 803:	74 11                	je     816 <_start+0x816>
+ 805:	48 8b 01             	mov    (%rcx),%rax
+ 808:	49 39 c1             	cmp    %rax,%r9
+ 80b:	72 09                	jb     816 <_start+0x816>
+ 80d:	48 03 41 08          	add    0x8(%rcx),%rax
+ 811:	49 39 c1             	cmp    %rax,%r9
+ 814:	72 14                	jb     82a <_start+0x82a>
+ 816:	48 ff c3             	inc    %rbx
+ 819:	eb d1                	jmp    7ec <_start+0x7ec>
+ 81b:	bf 40 00 00 00       	mov    $0x40,%edi
+ 820:	be 24 00 00 00       	mov    $0x24,%esi
+ 825:	e9 de 02 00 00       	jmp    b08 <fail_pre_run>
+ 82a:	48 8b 05 00 00 00 00 	mov    0x0(%rip),%rax        # 831 <_start+0x831>
+			82d: R_X86_64_PC32	.bss+0x6c
+ 831:	48 a9 ff 0f 00 00    	test   $0xfff,%rax
+ 837:	74 0f                	je     848 <_start+0x848>
+ 839:	bf 40 00 00 00       	mov    $0x40,%edi
+ 83e:	be 26 00 00 00       	mov    $0x26,%esi
+ 843:	e9 c0 02 00 00       	jmp    b08 <fail_pre_run>
+ 848:	48 3d 00 00 03 40    	cmp    $0x40030000,%rax
+ 84e:	74 0f                	je     85f <_start+0x85f>
+ 850:	bf 40 00 00 00       	mov    $0x40,%edi
+ 855:	be 27 00 00 00       	mov    $0x27,%esi
+ 85a:	e9 a9 02 00 00       	jmp    b08 <fail_pre_run>
+ 85f:	48 8b 05 00 00 00 00 	mov    0x0(%rip),%rax        # 866 <_start+0x866>
+			862: R_X86_64_PC32	.bss+0x64
+ 866:	48 85 c0             	test   %rax,%rax
+ 869:	74 18                	je     883 <_start+0x883>
+ 86b:	48 a9 ff 0f 00 00    	test   $0xfff,%rax
+ 871:	75 10                	jne    883 <_start+0x883>
+ 873:	48 3d 00 10 00 00    	cmp    $0x1000,%rax
+ 879:	72 08                	jb     883 <_start+0x883>
+ 87b:	48 3d 00 00 04 00    	cmp    $0x40000,%rax
+ 881:	76 0f                	jbe    892 <_start+0x892>
+ 883:	bf 40 00 00 00       	mov    $0x40,%edi
+ 888:	be 28 00 00 00       	mov    $0x28,%esi
+ 88d:	e9 76 02 00 00       	jmp    b08 <fail_pre_run>
+ 892:	48 c7 c7 00 00 03 40 	mov    $0x40030000,%rdi
+ 899:	be 00 10 00 00       	mov    $0x1000,%esi
+ 89e:	ba 03 00 00 00       	mov    $0x3,%edx
+ 8a3:	41 ba 11 00 00 00    	mov    $0x11,%r10d
+ 8a9:	4c 8b 05 00 00 00 00 	mov    0x0(%rip),%r8        # 8b0 <_start+0x8b0>
+			8ac: R_X86_64_PC32	.bss-0x4
+ 8b0:	45 31 c9             	xor    %r9d,%r9d
+ 8b3:	b8 09 00 00 00       	mov    $0x9,%eax
+ 8b8:	0f 05                	syscall
+ 8ba:	48 3d 01 f0 ff ff    	cmp    $0xfffffffffffff001,%rax
+ 8c0:	0f 83 c2 02 00 00    	jae    b88 <exit_class+0x48>
+ 8c6:	48 c7 c7 00 00 04 40 	mov    $0x40040000,%rdi
+ 8cd:	48 8b 35 00 00 00 00 	mov    0x0(%rip),%rsi        # 8d4 <_start+0x8d4>
+			8d0: R_X86_64_PC32	.bss+0x64
+ 8d4:	ba 03 00 00 00       	mov    $0x3,%edx
+ 8d9:	41 ba 32 00 00 00    	mov    $0x32,%r10d
+ 8df:	49 c7 c0 ff ff ff ff 	mov    $0xffffffffffffffff,%r8
+ 8e6:	45 31 c9             	xor    %r9d,%r9d
+ 8e9:	b8 09 00 00 00       	mov    $0x9,%eax
+ 8ee:	0f 05                	syscall
+ 8f0:	48 3d 01 f0 ff ff    	cmp    $0xfffffffffffff001,%rax
+ 8f6:	0f 83 9b 02 00 00    	jae    b97 <exit_class+0x57>
+ 8fc:	48 c7 c7 00 f0 03 40 	mov    $0x4003f000,%rdi
+ 903:	be 00 10 00 00       	mov    $0x1000,%esi
+ 908:	ba 00 00 00 00       	mov    $0x0,%edx
+ 90d:	41 ba 32 00 00 00    	mov    $0x32,%r10d
+ 913:	49 c7 c0 ff ff ff ff 	mov    $0xffffffffffffffff,%r8
+ 91a:	45 31 c9             	xor    %r9d,%r9d
+ 91d:	b8 09 00 00 00       	mov    $0x9,%eax
+ 922:	0f 05                	syscall
+ 924:	48 3d 01 f0 ff ff    	cmp    $0xfffffffffffff001,%rax
+ 92a:	0f 83 76 02 00 00    	jae    ba6 <exit_class+0x66>
+ 930:	31 db                	xor    %ebx,%ebx
+ 932:	4c 39 e3             	cmp    %r12,%rbx
+ 935:	73 46                	jae    97d <_start+0x97d>
+ 937:	48 8d 0d 00 00 00 00 	lea    0x0(%rip),%rcx        # 93e <_start+0x93e>
+			93a: R_X86_64_PC32	.bss+0x74
+ 93e:	48 8b 3c d9          	mov    (%rcx,%rbx,8),%rdi
+ 942:	48 8d 0d 00 00 00 00 	lea    0x0(%rip),%rcx        # 949 <_start+0x949>
+			945: R_X86_64_PC32	.bss+0xb4
+ 949:	48 8b 34 d9          	mov    (%rcx,%rbx,8),%rsi
+ 94d:	48 29 fe             	sub    %rdi,%rsi
+ 950:	ba 03 00 00 00       	mov    $0x3,%edx
+ 955:	41 ba 32 00 00 00    	mov    $0x32,%r10d
+ 95b:	49 c7 c0 ff ff ff ff 	mov    $0xffffffffffffffff,%r8
+ 962:	45 31 c9             	xor    %r9d,%r9d
+ 965:	b8 09 00 00 00       	mov    $0x9,%eax
+ 96a:	0f 05                	syscall
+ 96c:	48 3d 01 f0 ff ff    	cmp    $0xfffffffffffff001,%rax
+ 972:	0f 83 3d 02 00 00    	jae    bb5 <exit_class+0x75>
+ 978:	48 ff c3             	inc    %rbx
+ 97b:	eb b5                	jmp    932 <_start+0x932>
+ 97d:	31 db                	xor    %ebx,%ebx
+ 97f:	4c 39 e3             	cmp    %r12,%rbx
+ 982:	73 27                	jae    9ab <_start+0x9ab>
+ 984:	48 6b cb 28          	imul   $0x28,%rbx,%rcx
+ 988:	49 8d 4c 0f 78       	lea    0x78(%r15,%rcx,1),%rcx
+ 98d:	48 8b 51 08          	mov    0x8(%rcx),%rdx
+ 991:	48 85 d2             	test   %rdx,%rdx
+ 994:	74 10                	je     9a6 <_start+0x9a6>
+ 996:	48 8b 39             	mov    (%rcx),%rdi
+ 999:	48 8b 71 18          	mov    0x18(%rcx),%rsi
+ 99d:	4c 01 fe             	add    %r15,%rsi
+ 9a0:	48 89 d1             	mov    %rdx,%rcx
+ 9a3:	fc                   	cld
+ 9a4:	f3 a4                	rep movsb %ds:(%rsi),%es:(%rdi)
+ 9a6:	48 ff c3             	inc    %rbx
+ 9a9:	eb d4                	jmp    97f <_start+0x97f>
+ 9ab:	31 db                	xor    %ebx,%ebx
+ 9ad:	4c 39 e3             	cmp    %r12,%rbx
+ 9b0:	73 5e                	jae    a10 <_start+0xa10>
+ 9b2:	48 6b cb 28          	imul   $0x28,%rbx,%rcx
+ 9b6:	49 8d 4c 0f 78       	lea    0x78(%r15,%rcx,1),%rcx
+ 9bb:	0f b6 41 24          	movzbl 0x24(%rcx),%eax
+ 9bf:	31 d2                	xor    %edx,%edx
+ 9c1:	a9 01 00 00 00       	test   $0x1,%eax
+ 9c6:	74 03                	je     9cb <_start+0x9cb>
+ 9c8:	83 ca 01             	or     $0x1,%edx
+ 9cb:	a9 02 00 00 00       	test   $0x2,%eax
+ 9d0:	74 03                	je     9d5 <_start+0x9d5>
+ 9d2:	83 ca 02             	or     $0x2,%edx
+ 9d5:	a9 04 00 00 00       	test   $0x4,%eax
+ 9da:	74 03                	je     9df <_start+0x9df>
+ 9dc:	83 ca 04             	or     $0x4,%edx
+ 9df:	48 8d 0d 00 00 00 00 	lea    0x0(%rip),%rcx        # 9e6 <_start+0x9e6>
+			9e2: R_X86_64_PC32	.bss+0x74
+ 9e6:	48 8b 3c d9          	mov    (%rcx,%rbx,8),%rdi
+ 9ea:	48 8d 0d 00 00 00 00 	lea    0x0(%rip),%rcx        # 9f1 <_start+0x9f1>
+			9ed: R_X86_64_PC32	.bss+0xb4
+ 9f1:	48 8b 34 d9          	mov    (%rcx,%rbx,8),%rsi
+ 9f5:	48 29 fe             	sub    %rdi,%rsi
+ 9f8:	b8 0a 00 00 00       	mov    $0xa,%eax
+ 9fd:	0f 05                	syscall
+ 9ff:	48 3d 01 f0 ff ff    	cmp    $0xfffffffffffff001,%rax
+ a05:	0f 83 b9 01 00 00    	jae    bc4 <exit_class+0x84>
+ a0b:	48 ff c3             	inc    %rbx
+ a0e:	eb 9d                	jmp    9ad <_start+0x9ad>
+ a10:	41 8b 47 10          	mov    0x10(%r15),%eax
+ a14:	48 89 05 00 00 00 00 	mov    %rax,0x0(%rip)        # a1b <_start+0xa1b>
+			a17: R_X86_64_PC32	.bss+0x4c
+ a1b:	41 89 45 0c          	mov    %eax,0xc(%r13)
+ a1f:	49 8b 47 38          	mov    0x38(%r15),%rax
+ a23:	48 89 05 00 00 00 00 	mov    %rax,0x0(%rip)        # a2a <_start+0xa2a>
+			a26: R_X86_64_PC32	.bss+0x54
+ a2a:	49 89 45 18          	mov    %rax,0x18(%r13)
+ a2e:	66 41 c7 45 10 01 00 	movw   $0x1,0x10(%r13)
+ a35:	66 41 c7 45 12 00 00 	movw   $0x0,0x12(%r13)
+ a3c:	41 c7 85 dc 00 00 00 	movl   $0x2,0xdc(%r13)
+ a43:	02 00 00 00 
+ a47:	4c 8b 1d 00 00 00 00 	mov    0x0(%rip),%r11        # a4e <_start+0xa4e>
+			a4a: R_X86_64_PC32	.bss+0x5c
+ a4e:	48 c7 c0 00 00 04 40 	mov    $0x40040000,%rax
+ a55:	48 03 05 00 00 00 00 	add    0x0(%rip),%rax        # a5c <_start+0xa5c>
+			a58: R_X86_64_PC32	.bss+0x64
+ a5c:	48 89 05 00 00 00 00 	mov    %rax,0x0(%rip)        # a63 <_start+0xa63>
+			a5f: R_X86_64_PC32	.bss+0x44
+ a63:	48 89 25 00 00 00 00 	mov    %rsp,0x0(%rip)        # a6a <_start+0xa6a>
+			a66: R_X86_64_PC32	.bss+0x3c
+ a6a:	48 89 e3             	mov    %rsp,%rbx
+ a6d:	48 89 c4             	mov    %rax,%rsp
+ a70:	66 41 c7 45 0a 01 00 	movw   $0x1,0xa(%r13)
+ a77:	fc                   	cld
+ a78:	41 ff d3             	call   *%r11
+ a7b:	4c 63 d0             	movslq %eax,%r10
+ a7e:	4c 8b 2d 00 00 00 00 	mov    0x0(%rip),%r13        # a85 <_start+0xa85>
+			a81: R_X86_64_PC32	.bss+0x2c
+ a85:	41 c7 85 dc 00 00 00 	movl   $0x3,0xdc(%r13)
+ a8c:	03 00 00 00 
+ a90:	49 89 e1             	mov    %rsp,%r9
+ a93:	48 8b 25 00 00 00 00 	mov    0x0(%rip),%rsp        # a9a <_start+0xa9a>
+			a96: R_X86_64_PC32	.bss+0x3c
+ a9a:	4c 3b 0d 00 00 00 00 	cmp    0x0(%rip),%r9        # aa1 <_start+0xaa1>
+			a9d: R_X86_64_PC32	.bss+0x44
+ aa1:	74 0c                	je     aaf <_start+0xaaf>
+ aa3:	bf 44 00 00 00       	mov    $0x44,%edi
+ aa8:	be 01 00 00 00       	mov    $0x1,%esi
+ aad:	eb 7a                	jmp    b29 <fail_late>
+ aaf:	48 3b 1d 00 00 00 00 	cmp    0x0(%rip),%rbx        # ab6 <_start+0xab6>
+			ab2: R_X86_64_PC32	.bss+0x3c
+ ab6:	74 0c                	je     ac4 <_start+0xac4>
+ ab8:	bf 44 00 00 00       	mov    $0x44,%edi
+ abd:	be 02 00 00 00       	mov    $0x2,%esi
+ ac2:	eb 65                	jmp    b29 <fail_late>
+ ac4:	4d 89 55 58          	mov    %r10,0x58(%r13)
+ ac8:	66 41 c7 45 12 01 00 	movw   $0x1,0x12(%r13)
+ acf:	41 c7 45 14 00 00 00 	movl   $0x0,0x14(%r13)
+ ad6:	00 
+ ad7:	b8 02 00 00 00       	mov    $0x2,%eax
+ adc:	4c 3b 15 00 00 00 00 	cmp    0x0(%rip),%r10        # ae3 <_start+0xae3>
+			adf: R_X86_64_PC32	.bss+0x54
+ ae3:	74 05                	je     aea <_start+0xaea>
+ ae5:	b8 03 00 00 00       	mov    $0x3,%eax
+ aea:	66 41 89 45 0a       	mov    %ax,0xa(%r13)
+ aef:	31 ff                	xor    %edi,%edi
+ af1:	eb 4d                	jmp    b40 <exit_class>
+
+0000000000000af3 <or_bytes>:
+ af3:	31 c0                	xor    %eax,%eax
+ af5:	48 85 c9             	test   %rcx,%rcx
+ af8:	74 0d                	je     b07 <or_bytes+0x14>
+ afa:	0f b6 16             	movzbl (%rsi),%edx
+ afd:	09 d0                	or     %edx,%eax
+ aff:	48 ff c6             	inc    %rsi
+ b02:	48 ff c9             	dec    %rcx
+ b05:	75 f3                	jne    afa <or_bytes+0x7>
+ b07:	c3                   	ret
+
+0000000000000b08 <fail_pre_run>:
+ b08:	48 8b 05 00 00 00 00 	mov    0x0(%rip),%rax        # b0f <fail_pre_run+0x7>
+			b0b: R_X86_64_PC32	.bss+0x2c
+ b0f:	66 89 b0 da 00 00 00 	mov    %si,0xda(%rax)
+ b16:	c7 80 dc 00 00 00 01 	movl   $0x1,0xdc(%rax)
+ b1d:	00 00 00 
+ b20:	66 89 b8 d8 00 00 00 	mov    %di,0xd8(%rax)
+ b27:	eb 17                	jmp    b40 <exit_class>
+
+0000000000000b29 <fail_late>:
+ b29:	48 8b 05 00 00 00 00 	mov    0x0(%rip),%rax        # b30 <fail_late+0x7>
+			b2c: R_X86_64_PC32	.bss+0x2c
+ b30:	66 89 b0 da 00 00 00 	mov    %si,0xda(%rax)
+ b37:	66 89 b8 d8 00 00 00 	mov    %di,0xd8(%rax)
+ b3e:	eb 00                	jmp    b40 <exit_class>
+
+0000000000000b40 <exit_class>:
+ b40:	b8 e7 00 00 00       	mov    $0xe7,%eax
+ b45:	0f 05                	syscall
+ b47:	f4                   	hlt
+ b48:	bf 41 00 00 00       	mov    $0x41,%edi
+ b4d:	eb f1                	jmp    b40 <exit_class>
+ b4f:	bf 41 00 00 00       	mov    $0x41,%edi
+ b54:	eb ea                	jmp    b40 <exit_class>
+ b56:	bf 42 00 00 00       	mov    $0x42,%edi
+ b5b:	eb e3                	jmp    b40 <exit_class>
+ b5d:	bf 42 00 00 00       	mov    $0x42,%edi
+ b62:	eb dc                	jmp    b40 <exit_class>
+ b64:	bf 41 00 00 00       	mov    $0x41,%edi
+ b69:	be 03 00 00 00       	mov    $0x3,%esi
+ b6e:	eb 98                	jmp    b08 <fail_pre_run>
+ b70:	bf 41 00 00 00       	mov    $0x41,%edi
+ b75:	be 04 00 00 00       	mov    $0x4,%esi
+ b7a:	eb 8c                	jmp    b08 <fail_pre_run>
+ b7c:	bf 41 00 00 00       	mov    $0x41,%edi
+ b81:	be 05 00 00 00       	mov    $0x5,%esi
+ b86:	eb 80                	jmp    b08 <fail_pre_run>
+ b88:	bf 42 00 00 00       	mov    $0x42,%edi
+ b8d:	be 03 00 00 00       	mov    $0x3,%esi
+ b92:	e9 71 ff ff ff       	jmp    b08 <fail_pre_run>
+ b97:	bf 42 00 00 00       	mov    $0x42,%edi
+ b9c:	be 04 00 00 00       	mov    $0x4,%esi
+ ba1:	e9 62 ff ff ff       	jmp    b08 <fail_pre_run>
+ ba6:	bf 42 00 00 00       	mov    $0x42,%edi
+ bab:	be 05 00 00 00       	mov    $0x5,%esi
+ bb0:	e9 53 ff ff ff       	jmp    b08 <fail_pre_run>
+ bb5:	bf 42 00 00 00       	mov    $0x42,%edi
+ bba:	be 06 00 00 00       	mov    $0x6,%esi
+ bbf:	e9 44 ff ff ff       	jmp    b08 <fail_pre_run>
+ bc4:	bf 42 00 00 00       	mov    $0x42,%edi
+ bc9:	be 07 00 00 00       	mov    $0x7,%esi
+ bce:	e9 35 ff ff ff       	jmp    b08 <fail_pre_run>

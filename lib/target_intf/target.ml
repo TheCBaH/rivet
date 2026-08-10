@@ -70,20 +70,61 @@ module type TARGET = sig
   (* {1 Target-specific types}
 
      All abstract. The pipeline moves values of these types between the stages
-     below and never looks inside one. *)
+     below and never looks inside one.
 
-  type register
-  type surface_operand
+     Each family is a *module* rather than a bare type plus loose functions,
+     and that is what removes the [pp_lowered = Lowered.pp] shim every target
+     otherwise had to write. A staged AST is a type together with the two
+     operations generic code performs on it - print it, and for the last stage
+     compare it - so the module is the unit that travels, and a target
+     satisfies this signature by exposing the module it already has.
 
-  (* [surface_instruction] is a spelling - [movl $42, %eax] with its operands,
-     before any decision about which encoding it becomes. [instruction] is a
-     canonical semantic operation, mnemonic aliases resolved and pseudo-forms
-     still intact. [lowered_instruction] is one real machine instruction, ready
-     to encode; a pseudo-instruction became several of these. *)
-  type surface_instruction
-  type opcode
-  type instruction
-  type lowered_instruction
+     [Surface.t] is a spelling - [movl $42, %eax] with its operands, before any
+     decision about which encoding it becomes. [Instruction.t] is a canonical
+     semantic operation, mnemonic aliases resolved and pseudo-forms still
+     intact. [Lowered.t] is one real machine instruction, ready to encode; a
+     pseudo-instruction became several of these. *)
+
+  module Reg : sig
+    type t
+  end
+
+  module Operand : sig
+    type t
+  end
+
+  module Opcode : sig
+    type t
+  end
+
+  (* The three staged ASTs of §4.2-§4.4. The printers are the *canonical*
+     spellings asm/docs/contracts.md §1 fixes: a printer here is a contract,
+     not a debugging aid, and its output is compared byte-for-byte across three
+     runtimes. *)
+
+  module Surface : sig
+    type t
+
+    val pp : Format.formatter -> t -> unit
+  end
+
+  module Instruction : sig
+    type t
+
+    val pp : Format.formatter -> t -> unit
+  end
+
+  module Lowered : sig
+    type t
+
+    val pp : Format.formatter -> t -> unit
+
+    val equal : t -> t -> bool
+    (** what the round-trip and path-coherence tests compare. Structural equality would compare
+        [Origin.t] values too, and two paths that reach the same instruction from different source
+        positions are the same instruction. *)
+  end
+
   type feature
   type fixup_kind
   type target_state
@@ -99,15 +140,12 @@ module type TARGET = sig
   val default_features : feature list
 
   val parse_operands :
-    mnemonic:string -> Asm_core.Token.slice list -> (surface_operand list, Diagnostic.t) result
+    mnemonic:string -> Asm_core.Token.slice list -> (Operand.t list, Diagnostic.t) result
   (** the hand-written per-target operand parser (§4.7). Menhir has already split the line into
       comma-separated slices; what those slices mean is decided here. *)
 
   val make_surface_instruction :
-    mnemonic:string ->
-    origin:Origin.t ->
-    surface_operand list ->
-    (surface_instruction, Diagnostic.t) result
+    mnemonic:string -> origin:Origin.t -> Operand.t list -> (Surface.t, Diagnostic.t) result
 
   (* {1 Staged transformations}
 
@@ -115,12 +153,11 @@ module type TARGET = sig
      and pure: same inputs, same output, no state outside [target_state]. *)
 
   val simplify_instruction :
-    features:feature list -> surface_instruction -> (instruction, Diagnostic.t) result
+    features:feature list -> Surface.t -> (Instruction.t, Diagnostic.t) result
   (** surface -> normalized: alias resolution, operand-order canonicalization, and the checks that
       need only the instruction itself *)
 
-  val lower_instruction :
-    target_state -> instruction -> (lowered_instruction list, Diagnostic.t) result
+  val lower_instruction : target_state -> Instruction.t -> (Lowered.t list, Diagnostic.t) result
   (** normalized -> lowered: pseudo expansion, one to many. The list is ordered. *)
 
   (* {1 Encoding}
@@ -130,10 +167,9 @@ module type TARGET = sig
      prints; [Codec.encode] and [Codec.decode] are the two directions of this
      single tree. *)
 
-  val codec : (lowered_instruction, fixup_kind) Codec.t
+  val codec : (Lowered.t, fixup_kind) Codec.t
 
-  val encode :
-    lowered_instruction -> (string * string * fixup_kind Codec.placement list, Diagnostic.t) result
+  val encode : Lowered.t -> (string * string * fixup_kind Codec.placement list, Diagnostic.t) result
   (** [(bytes, form_id, placements)]. Separate from {!codec} because packing bits into *memory
       order* is target-specific: a codec describes bits most-significant first, which for x86's
       byte-at-a-time forms already is memory order, while ARM and AArch64 author one 32-bit word
@@ -146,7 +182,7 @@ module type TARGET = sig
       on the mode, and a PC-relative operand cannot be printed without the address *)
 
   val decode :
-    decode_context -> string -> pos:int -> (instruction * string * int, Diagnostic.t) result
+    decode_context -> string -> pos:int -> (Instruction.t * string * int, Diagnostic.t) result
   (** [(instruction, form_id, bytes_consumed)]. The form id is the codec's alternative path, so a
       round-trip test can assert not just "the same instruction" but "the same encoding decision". *)
 
@@ -161,27 +197,10 @@ module type TARGET = sig
       decodes as [add %al,(%rax)] and would make the diagnostic disassembler print instructions
       nobody wrote. *)
 
-  (* {1 Canonical rendering}
-
-     Three printers, one per staged type, because the ASTs are parameterized
-     over the target's instruction types and generic code has nothing to print.
-     These are the *canonical* spellings that asm/docs/contracts.md §1 fixes: a
-     printer here is a contract, not a debugging aid, and its output is compared
-     byte-for-byte across three runtimes. *)
-
-  val pp_surface : Format.formatter -> surface_instruction -> unit
-  val pp_instruction : Format.formatter -> instruction -> unit
-  val pp_lowered : Format.formatter -> lowered_instruction -> unit
-
-  val lowered_equal : lowered_instruction -> lowered_instruction -> bool
-  (** what the round-trip and path-coherence tests compare. Structural equality would compare
-      [Origin.t] values too, and two paths that reach the same instruction from different source
-      positions are the same instruction. *)
-
   (* {1 Directives} *)
 
   val handle_directive :
-    name:string -> argument:string -> target_state -> (target_state, instruction) directive_result
+    name:string -> argument:string -> target_state -> (target_state, Instruction.t) directive_result
 end
 
 (* The architecture-erased view (§5.1's DRIVER). Its whole purpose is that the

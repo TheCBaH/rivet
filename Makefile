@@ -194,7 +194,7 @@ compcert-export-run: compcert-export-build
 asm-build:
 	cd $(ASM_DIR) && opam exec -- dune build @all
 
-asm-test: asm-build asm-fixtures-check
+asm-test: asm-build asm-fixtures-check asm-gas-xref-check
 	cd $(ASM_DIR) && opam exec -- dune build @runtest
 
 asm-fmt:
@@ -269,6 +269,18 @@ asm-oracle: asm-fixtures-regen
 	tools/asm-fixture-oracle.sh all
 	tools/asm-fixture-gen.sh --rehash
 
+# The GNU as cross-reference. Same two-mode policy as the fixtures above and
+# for the same reason, so the edges are the same shape: --check hashes the
+# committed corpus and needs no toolchain, --regen needs the four cross
+# binutils. It is NOT downstream of asm-cross-setup, unlike asm-fixtures-regen:
+# the inputs are generated from this project's own AST corpus rather than
+# compiled by CompCert, so binutils alone is the whole requirement.
+asm-gas-xref-check:
+	tools/asm-gas-xref.sh --check
+
+asm-gas-xref-regen:
+	tools/asm-gas-xref.sh --regen
+
 # The transitive purity and layer audits (§1, §2.2, §3.7, §5.1), and the
 # planted violations that prove they can fail. Guardrail 6: run these before
 # treating a successful JavaScript build as evidence of portability - a package
@@ -334,5 +346,6 @@ compcert-export-archive-all:
   compcert-export-archive-all \
   asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
   asm-fixtures-check asm-cross-setup asm-fixtures-regen asm-oracle asm-ci \
+  asm-gas-xref-check asm-gas-xref-regen \
   asm-helpers asm-runner asm-abi-conform asm-exec asm-tool-gate asm-melange-optin \
   asm-js-portable

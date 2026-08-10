@@ -1,0 +1,24 @@
+; The GNU as cross-reference (tools/asm-gas-xref.sh).
+;
+; Reads the committed corpus as ordinary files and re-assembles each input with
+; this project's own assembler, so this needs no cross toolchain and runs in
+; every leg of the portable matrix - the same two-mode policy test/differential
+; follows, and the reason `make asm-test` depends on asm-gas-xref-check rather
+; than on asm-gas-xref-regen.
+;
+; This one goes through Driver.Registry rather than naming the target modules,
+; unlike test/snippets: the question here is per-*file*, the target is a string
+; read out of the corpus path, and an erased DRIVER is exactly what that needs.
+
+(library
+ (name test_xref)
+ (modules test_xref)
+ (modes byte native)
+ (libraries driver image target_intf foundation fmt)
+ (inline_tests
+  (deps
+   (glob_files_rec %{workspace_root}/fixtures/gas-xref/**)))
+ (preprocess
+  (pps ppx_expect))
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

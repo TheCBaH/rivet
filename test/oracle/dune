@@ -2,8 +2,9 @@
 ;
 ; Two stanzas, split by what they need from the operating system.
 ;
-; asm_oracle       the wire itself: constants, the manifest writer, and the
-;                  four-step recovery validator. Pure OCaml over strings, no
+; asm_oracle       the wire itself: constants, the manifest writer, the
+;                  four-step recovery validator, and the frozen reference
+;                  snippets of §16.3. Pure OCaml over strings, no
 ;                  Unix, so it builds and its tests run on every CI leg -
 ;                  including the 31-bit linux/i386 and linux/arm/v7 ones, which
 ;                  is why every address here is int64. Keeping it Unix-free is
@@ -32,9 +33,15 @@
 ;                 not a runtest rule, for the same reason - `make asm-test` must
 ;                 never acquire a hidden cross-toolchain or QEMU dependency.
 
+; snippet_bytes belongs here and not beside its consumers because its two
+; consumers have opposite obligations: conform must reach no part of the
+; assembler, and test/snippets exists to assemble the same snippets and compare.
+; A table both read and neither can influence is what lets the second happen
+; without costing the first its independence.
+
 (library
  (name asm_oracle)
- (modules abi manifest record)
+ (modules abi manifest record snippet_bytes)
  (modes byte native)
  (libraries fmt)
  (enabled_if
