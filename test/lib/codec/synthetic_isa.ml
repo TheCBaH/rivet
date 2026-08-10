@@ -193,6 +193,26 @@ let br_near =
 let ladder : (branch, fixup_kind) t =
   relax ~name:"br" [ rung ~label:"rel8" br_short; rung ~label:"rel16" br_near ]
 
+(* The same ladder with a rung that can *decline*.
+
+   [ladder] cannot: a [fixup] node is unsigned and truncating, because at encode
+   time a real branch target is a placeholder zero and the range verdict belongs
+   to bind. So a rung there always applies, and "you pinned a rung that does not
+   fit this value" is not a state it can reach. A rung whose projection checks
+   the range is what makes that second failure real, and it is the shape a target
+   would use for a form whose applicability is decidable from the operand. *)
+let checked_ladder : (branch, fixup_kind) t =
+  relax ~name:"br.checked"
+    [
+      rung ~label:"rel8"
+        (iso_fun ~name:"br.short-checked"
+           ~encode:(function
+             | Br d -> if Int64.compare (Int64.abs d) 128L < 0 then Some ((), d) else None)
+           ~decode:(fun ((), d) -> Some (Br d))
+           (const ~width:8 0b1110_1011L ** fixup ~width:8 ~kind:Rel12 "target"));
+      rung ~label:"rel16" br_near;
+    ]
+
 (* The same ladder, buried the way a real one is.
 
    [ladder] above is the top-level node, which is the one shape where finding
@@ -236,6 +256,25 @@ let split_hi_lo : (split, fixup_kind) t =
       (* hi = value bits 4..15, lo = value bits 0..3 *)
       | Split v -> Some (Int64.shift_right_logical v 4, ((), (Int64.logand v 0xFL, ()))))
     ~decode:(fun (hi, ((), (lo, ()))) -> Some (Split (Int64.logor (Int64.shift_left hi 4) lo)))
+    (fixup ~width:12 ~value_lsb:4 ~kind:Abs16 "sym"
+    ** const ~width:4 0b1010L
+    ** fixup ~width:4 ~value_lsb:0 ~kind:Abs16 "sym"
+    ** const ~width:12 0L)
+
+(* The same shape with a *signed* logical value, which is where per-slice sign
+   extension stops being a style question. The value is 16 bits wide across two
+   slices; extending the high slice alone would give the right answer for every
+   non-negative value and the wrong one for every negative, so a test that only
+   tried small positive numbers would never see it. *)
+let sign_extend16 v = Int64.shift_right (Int64.shift_left v 48) 48
+
+let split_signed : (split, fixup_kind) t =
+  iso_fun ~name:"split.signed"
+    ~encode:(function
+      | Split v ->
+          Some (Int64.logand (Int64.shift_right_logical v 4) 0xFFFL, ((), (Int64.logand v 0xFL, ()))))
+    ~decode:(fun (hi, ((), (lo, ()))) ->
+      Some (Split (sign_extend16 (Int64.logor (Int64.shift_left hi 4) lo))))
     (fixup ~width:12 ~value_lsb:4 ~kind:Abs16 "sym"
     ** const ~width:4 0b1010L
     ** fixup ~width:4 ~value_lsb:0 ~kind:Abs16 "sym"
@@ -287,6 +326,38 @@ let broken_relax : (branch, fixup_kind) t =
            ~decode:(fun ((), d) -> Some (Br d))
            (const ~width:8 0b1111_0000L ** fixup ~width:8 ~kind:Rel12 "target"));
     ]
+
+(* Two forms whose fixed bits differ, and one of them behind a fixup.
+
+   [check] compares alternatives by their *fixed* bits, and a fixup's bits are
+   not fixed: at encode time they hold a placeholder and at bind time whatever
+   the linker computes. So they are don't-care, exactly as a field's are, and
+   these two overlap even though writing the second one's low twelve bits as a
+   constant would have told them apart. That is the honest answer - the pair
+   really is ambiguous on decode - and it is worth pinning because the opposite
+   reading would silently declare a whole family of branch forms distinguishable. *)
+let fixup_is_dont_care : (branch, fixup_kind) t =
+  choice ~name:"dont-care"
+    [
+      alt ~label:"const-low" ~priority:0
+        (iso_fun ~name:"const-low"
+           ~encode:(function Br _ -> Some ((), ()))
+           ~decode:(fun ((), ()) -> Some (Br 0L))
+           (const ~width:4 0b1100L ** const ~width:12 0xFFFL));
+      alt ~label:"fixup-low" ~priority:1
+        (iso_fun ~name:"fixup-low"
+           ~encode:(function Br d -> Some ((), d))
+           ~decode:(fun ((), d) -> Some (Br d))
+           (const ~width:4 0b1100L ** fixup ~width:12 ~kind:Rel12 "target"));
+    ]
+
+(* A ladder inside a ladder. [encode_ladder] returns a list, so a rung that is
+   itself a ladder would make one entry of that list stand for several
+   encodings - and which one it stood for would depend on the order the walk
+   happened to take. Rejected rather than defined, which is what keeps a ladder
+   single-valued per rung. *)
+let nested_relax : (branch, fixup_kind) t =
+  relax ~name:"outer" [ rung ~label:"inner" ladder; rung ~label:"wide" br_near ]
 
 (* Slices of one name that overlap in value space and disagree about the kind:
    the value bits 0..3 are claimed twice, and one slice says Rel12 where the

@@ -247,7 +247,28 @@ let%expect_test "a rung can be selected by name" =
     {|
       rel8     eb 04
       rel16    e9 00 04
-      rel99    ERROR encode_rung: rung rel99 is not among {rel8, rel16} |}]
+      rel99    ERROR encode_rung: no rung is named rel99; this description declares {rel16, rel8} |}]
+
+let%expect_test "a pin fails two different ways, and says which" =
+  (* Only the codec can tell these apart, and only it can see either: a target
+     rejects a bad *suffix* in source, where it has a mnemonic and a span, but a
+     rung name handed to [encode_rung] by a direct-lowered producer has passed
+     no phase that could have checked it. So both carry a code, and they are
+     different codes because they are different mistakes - one about the
+     description, one about the value. *)
+  let one v r =
+    match encode_rung checked_ladder ~rung:r (Br v) with
+    | Ok e -> Fmt.pr "  %-8s %Ld  %s@." (form_id e) v (hex e.bits)
+    | Error e -> Fmt.pr "  %-8s %Ld  [%s] %a@." r v (Option.value e.code ~default:"-") pp_error e
+  in
+  one 4L "rel8";
+  one 1000L "rel8";
+  one 1000L "rel99";
+  [%expect
+    {|
+      rel8     4  eb 04
+      rel8     1000  [codec.rung-inapplicable] encode_rung: rung rel8 does not apply to this value; {rel16} do
+      rel99    1000  [codec.unknown-rung] encode_rung: no rung is named rel99; this description declares {rel16, rel8} |}]
 
 let%expect_test "a decoded encoding reports its rung" =
   (* Which is only recoverable because the rungs have distinct fixed bits. If
@@ -310,6 +331,37 @@ let%expect_test "check rejects two ladders on one realized path" =
     (check ~equal_kind:( = ) ~kind_name:fixup_name broken_two_ladders);
   [%expect
     {| seq: two relaxation ladders can be realized on one path; a form may contain at most one |}]
+
+let%expect_test "a fixup's bits are don't-care to check" =
+  (* The low twelve bits are 0xfff in one form and a fixup in the other. Written
+     as a constant they would tell the two apart; as a fixup they hold a
+     placeholder at encode and a linker's answer at bind, so they are not fixed
+     bits and cannot distinguish anything. Reporting the overlap is the correct
+     answer, and the reason the report exists is that priority is then the thing
+     deciding - which the author should have said on purpose. *)
+  Fmt.pr "const-low  %s@."
+    (match pattern (const ~width:4 0b1100L ** const ~width:12 0xFFFL) with
+    | Some p -> p
+    | None -> "(none)");
+  Fmt.pr "fixup-low  %s@."
+    (match pattern (const ~width:4 0b1100L ** fixup ~width:12 ~kind:Rel12 "target") with
+    | Some p -> p
+    | None -> "(none)");
+  Fmt.pr "@[<v>%a@]@."
+    Fmt.(list ~sep:cut pp_problem)
+    (check ~equal_kind:( = ) ~kind_name:fixup_name fixup_is_dont_care);
+  [%expect
+    {|
+    const-low  1100111111111111
+    fixup-low  1100????????????
+    alt dont-care: const-low and fixup-low have overlapping fixed bits; priority 0 before 1 decides |}]
+
+let%expect_test "check rejects a ladder inside a ladder" =
+  Fmt.pr "@[<v>%a@]@."
+    Fmt.(list ~sep:cut pp_problem)
+    (check ~equal_kind:( = ) ~kind_name:fixup_name nested_relax);
+  [%expect {|
+    relax outer: rung inner contains another relaxation ladder |}]
 
 let%expect_test "check rejects rungs that cannot be told apart" =
   Fmt.pr "@[<v>%a@]@."

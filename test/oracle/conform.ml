@@ -29,14 +29,24 @@ open Asm_oracle_run
 
 (* {1 Reference snippets}
 
-   In {!Snippet_bytes}, which is where the four frozen tables and the reasoning
-   behind them now live. They were moved out of this file so that test/snippets
-   can assemble the same snippets from an AST and compare, without this suite
-   acquiring an assembler dependency: it reads the table, it does not produce
-   it, and a broken assembler still cannot make it pass. *)
+   Assembled by this project, from the ASTs in {!Snippet_corpus.Snippet_ast}.
+
+   This suite used to read frozen bytes and reach no part of the assembler, so
+   that a broken assembler could not make it pass. That guarantee is gone by
+   choice: §16.3 was being stated twice, and once the assembler could build all
+   36 the second statement was duplication rather than evidence. What is left
+   in {!Snippet_bytes} is the record shape, the stack size and the M1.6 control
+   pair - not the snippets.
+
+   The suite therefore tests two things at once now, and the reports keep them
+   apart: a snippet that will not assemble is a corpus failure named as such
+   below, while a snippet that runs and gives the wrong verdict is a helper or
+   an encoding failure, which is what the case names describe. The dependency
+   is on the corpus, hence on lowering, encoding, layout and binding - not on
+   the driver, so no source text is lexed or parsed to get here. *)
 
 let stack_16k = Snippet_bytes.stack_16k
-let snippets_for = Snippet_bytes.for_profile
+let snippets_for = Snippet_corpus.Snippet_ast.for_profile
 
 (* {1 Expectations} *)
 
@@ -477,13 +487,15 @@ let () =
   List.iter
     (fun profile ->
       match snippets_for profile with
-      | None ->
-          (* A helper exists but its reference snippets have not been written.
-             Reported, never silently skipped. *)
-          Fmt.pr "@.=== %s: helper built but no reference snippets - FAIL@."
-            (Abi.profile_name profile);
+      | Error why ->
+          (* A helper exists but the corpus cannot produce §16.3 for it, and
+             [why] names the snippet and what stopped it. Reported, never
+             silently skipped: running the eight that did assemble would report
+             a missing encoding form as a conformance result. *)
+          Fmt.pr "@.=== %s: reference snippets not assembled (%s) - FAIL@."
+            (Abi.profile_name profile) why;
           incr failures
-      | Some s ->
+      | Ok s ->
           Fmt.pr "@.=== %s@." (Abi.profile_name profile);
           List.iter (fun line -> Fmt.pr "  ..   %s@." line) (Qemu_user.provenance profile);
           List.iter

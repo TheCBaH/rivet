@@ -1479,7 +1479,10 @@ let form_of l enc =
    same one x86 follows. *)
 let encode l =
   match C.encode codec l with
-  | Error e -> Error (diag "aarch64.encode" (Fmt.to_to_string C.pp_error e))
+  (* Same rule as the other two targets. A64 declares no ladder either, so this
+     is always [aarch64.encode] today. *)
+  | Error (e : C.error) ->
+      Error (diag (Option.value e.C.code ~default:"aarch64.encode") (Fmt.to_to_string C.pp_error e))
   | Ok enc -> Ok (`Fixed (form_of l enc))
 
 type decode_context = { state : target_state; address : int64 }

@@ -726,7 +726,7 @@ let bind_image (l : laid_out) ~(addresses : (string * int64) list) =
 (* The annotation is load-bearing: [t] declares a [segments] field too, and it
    is declared later, so without it OCaml resolves [p.segments] to [t]'s. *)
 let pp_plan ppf (p : plan) =
-  Fmt.pf ppf "@[<v>%a%a%a@]"
+  Fmt.pf ppf "@[<v>%a%a%a%a@]"
     Fmt.(
       list ~sep:cut (fun ppf (s : segment_plan) ->
           Fmt.pf ppf "segment %s size=%d zero=%d align=%d permissions=%a" s.seg_name s.init_size
@@ -736,6 +736,11 @@ let pp_plan ppf (p : plan) =
     p.entry
     Fmt.(list ~sep:nop (fun ppf e -> Fmt.pf ppf "@,export %s" e))
     p.exports
+    (* What binding still has to do, which is the other half of what a plan is
+       for: §9 splits layout from address assignment, and a plan that showed only
+       what it had already decided would not say why the second step exists. *)
+    Fmt.(list ~sep:nop (fun ppf u -> Fmt.pf ppf "@,unresolved %s" u))
+    p.unresolved
 
 let pp ppf (t : t) =
   Fmt.pf ppf "@[<v>%a%a%a@]"

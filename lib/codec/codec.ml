@@ -221,8 +221,17 @@ let sign_extend ~width v =
    would be one more thing that can disagree with the encoding it names. *)
 
 type 'k encoded = { bits : Bits.t; placements : 'k placement list; form : string list }
-type error = { where : string; detail : string }
 
+(* [code] is set only where the codec is the *only* layer that could have seen
+   the mistake, and it then names the diagnostic the caller must report. A pin
+   for a rung that does not exist is the case: a target knows its mnemonics and
+   can reject a bad suffix itself with a source span, but a direct-lowered
+   producer hands the codec a rung name out of nowhere and nothing above here
+   has the ladder to check it against. Everywhere else [code] is [None] and the
+   caller's own phase name - [x86.encode] - is the right one. *)
+type error = { where : string; detail : string; code : string option }
+
+let err ?code where detail = { where; detail; code }
 let pp_error ppf e = Fmt.pf ppf "%s: %s" e.where e.detail
 let form_id e = String.concat "." e.form
 
@@ -287,12 +296,9 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
   | Field { name; width; signedness } ->
       if not (fits ~width ~signedness v) then
         Failed
-          {
-            where = "field " ^ name;
-            detail =
-              Printf.sprintf "%Ld does not fit %d bits %s" v width
-                (match signedness with Signed -> "signed" | Unsigned -> "unsigned");
-          }
+          (err ("field " ^ name)
+             (Printf.sprintf "%Ld does not fit %d bits %s" v width
+                (match signedness with Signed -> "signed" | Unsigned -> "unsigned")))
       else Encoded { bits = Bits.of_int64 ~width (truncate ~width v); placements = []; form = [] }
   | Fixup { name; width; value_lsb; kind } ->
       (* Unsigned, and always truncating: the value here is either a lowering
@@ -320,7 +326,7 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
       (* A table is a *declared* finite relation, so a value outside it is a
          genuine error rather than a decline: the author enumerated the domain
          and this is not in it. *)
-      | None -> Failed { where = "iso_table " ^ name; detail = show v ^ " is not in the relation" }
+      | None -> Failed (err ("iso_table " ^ name) (show v ^ " is not in the relation"))
       | Some (_, code) -> attempt inner code)
   | Iso_fun { encode = f; inner; _ } -> (
       match f v with None -> Declined | Some b -> attempt inner b)
@@ -335,7 +341,7 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
         | [] -> (
             match first_error with
             | Some e -> Failed e
-            | None -> Failed { where = "alt " ^ name; detail = "no alternative applies" })
+            | None -> Failed (err ("alt " ^ name) "no alternative applies"))
         | a :: rest -> (
             if not (a.guard v) then go first_error rest
             else
@@ -354,7 +360,7 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
         | [] -> (
             match first_error with
             | Some e -> Failed e
-            | None -> Failed { where = "relax " ^ name; detail = "no rung applies" })
+            | None -> Failed (err ("relax " ^ name) "no rung applies"))
         | r :: rest -> (
             match attempt r.rung_body v with
             | Encoded e -> Encoded { e with form = r.rung_label :: e.form }
@@ -367,7 +373,7 @@ let encode node v =
   match attempt node v with
   | Encoded e -> Ok e
   | Failed e -> Error e
-  | Declined -> Error { where = "encode"; detail = "no form of this description accepts the value" }
+  | Declined -> Error (err "encode" "no form of this description accepts the value")
 
 (* {2 Relaxation ladders}
 
@@ -432,27 +438,47 @@ let encode_ladder node v =
          the diagnostic names the value rather than the shape. *)
       match attempt node v with
       | Failed e -> Error e
-      | Declined | Encoded _ ->
-          Error { where = "encode_ladder"; detail = "no rung of this description applies" })
+      | Declined | Encoded _ -> Error (err "encode_ladder" "no rung of this description applies"))
   | results -> Ok results
+
+(* Every rung label this description declares, gathered without reference to any
+   value. That is what separates "there is no such rung" from "that rung cannot
+   take this value": the first is a mistake about the description and the second
+   about the operand, and a pin that failed silently would look identical. *)
+let rec rung_labels : type a k. (a, k) t -> string list = function
+  | Relax { rungs; _ } -> List.map (fun r -> r.rung_label) rungs
+  | Seq (a, b) -> rung_labels a @ rung_labels b
+  (* Split rather than combined: each binds [inner] at its own existential type,
+     and an or-pattern would let it escape. *)
+  | Iso_table { inner; _ } -> rung_labels inner
+  | Iso_fun { inner; _ } -> rung_labels inner
+  | Alt { alts; _ } -> List.concat_map (fun a -> rung_labels a.body) alts
+  | Empty | Const _ | Field _ | Fixup _ -> []
 
 (* Encode exactly one named rung, declining every other. An unknown name or a
    named rung that cannot take the value is a diagnostic, never a quiet fall
-   back to a different encoding: the whole point of a pin is that it is obeyed. *)
+   back to a different encoding: the whole point of a pin is that it is obeyed.
+
+   Both carry a [code], because a pin arrives here from a direct-lowered
+   producer that no earlier phase could have checked it against. *)
 let encode_rung node ~rung:name v =
-  match encode_ladder node v with
-  | Error e -> Error e
-  | Ok forms -> (
-      match List.find_opt (fun e -> List.exists (String.equal name) e.form) forms with
-      | Some e -> Ok e
-      | None ->
-          Error
-            {
-              where = "encode_rung";
-              detail =
-                Printf.sprintf "rung %s is not among {%s}" name
-                  (String.concat ", " (List.map (fun e -> String.concat "." e.form) forms));
-            })
+  let declared = rung_labels node in
+  if not (List.exists (String.equal name) declared) then
+    Error
+      (err ~code:"codec.unknown-rung" "encode_rung"
+         (Printf.sprintf "no rung is named %s; this description declares {%s}" name
+            (String.concat ", " (List.sort_uniq compare declared))))
+  else
+    match encode_ladder node v with
+    | Error e -> Error e
+    | Ok forms -> (
+        match List.find_opt (fun e -> List.exists (String.equal name) e.form) forms with
+        | Some e -> Ok e
+        | None ->
+            Error
+              (err ~code:"codec.rung-inapplicable" "encode_rung"
+                 (Printf.sprintf "rung %s does not apply to this value; {%s} do" name
+                    (String.concat ", " (List.map (fun e -> String.concat "." e.form) forms)))))
 
 (* {1 Interpreter 2 - decode}
 

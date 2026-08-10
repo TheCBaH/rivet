@@ -33,11 +33,10 @@
 ;                 not a runtest rule, for the same reason - `make asm-test` must
 ;                 never acquire a hidden cross-toolchain or QEMU dependency.
 
-; snippet_bytes belongs here and not beside its consumers because its two
-; consumers have opposite obligations: conform must reach no part of the
-; assembler, and test/snippets exists to assemble the same snippets and compare.
-; A table both read and neither can influence is what lets the second happen
-; without costing the first its independence.
+; snippet_bytes no longer holds the §16.3 snippets - test/snippets assembles
+; them and conform runs what it produces. What is left here is the record shape
+; the suite consumes, the stack size and the M1.6 control pair, which is why
+; this library still has no dependency of its own beyond fmt.
 
 (library
  (name asm_oracle)
@@ -66,11 +65,20 @@
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
 
+; conform takes the snippets from snippet_corpus, which is what M2 made
+; possible and M1 could not afford. The edge is deliberately to the corpus and
+; not to driver: the corpus builds instructions as ASTs and pushes them through
+; lower/encode/plan/bind, so the conformance driver links the assembler's back
+; end without acquiring its front end - no pipeline, no directives, no source
+; text. asm_core still carries the lexer and the targets still parse their own
+; operands, so the closure is not lexer-free; making it so means splitting
+; asm_core and each target into a syntax half and an encoding half.
+
 (executable
  (name conform)
  (modules conform)
  (modes exe)
- (libraries asm_oracle asm_oracle_run fmt)
+ (libraries asm_oracle asm_oracle_run snippet_corpus fmt)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
 

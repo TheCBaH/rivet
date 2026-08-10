@@ -1,0 +1,42 @@
+; Property tests (M2.J).
+;
+; Native only, and deliberately outside the three-runtime gate: the evidence
+; that native, js_of_ocaml and Melange agree byte for byte rests on the cram
+; baselines, which are the same input on all three. A randomized test is the
+; same *distribution* on all three, which is not the same claim, so running it
+; three times would cost three times as much and prove nothing extra.
+;
+; Every run uses a fixed seed. A property test that cannot be reproduced from
+; its own transcript reports a failure nobody can act on, and the seed is
+; printed with the summary so a CI log is enough to re-run it.
+;
+; qcheck-core rather than qcheck: no unix, no C stubs, so the linux/i386 and
+; linux/arm/v7 CI legs build it like any other pure OCaml library.
+
+; An executable plus a rule rather than a (test) stanza: (test) puts its
+; executable in the directory's @all alias whatever its enabled_if says, so
+; under ASM_MELANGE=true it would still try to link codec_corpus - which that
+; same opt-in has disabled.
+
+(executable
+ (name test_props)
+ (modes exe)
+ (libraries
+  qcheck-core
+  qcheck-core.runner
+  codec
+  codec_corpus
+  asm_core
+  image
+  driver
+  foundation
+  fmt)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_props.exe))
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

@@ -188,6 +188,114 @@ let%expect_test "a second allocatable section is accepted, as is a declared one"
     accepted
     |}]
 
+let%expect_test "a RIP-relative pc_bias is the realized length, not a constant" =
+  (* The one place a per-mnemonic constant would look right and be wrong. x86
+     measures a RIP-relative displacement from the *end* of the instruction, so
+     the bias is six bytes for a plain `movl g(%rip), %eax` and seven for the
+     REX-prefixed `movq`. Hard-coding six would corrupt the displacement of
+     every 64-bit load by one byte - and also the ELF addend the oracle derives
+     from it, since that is `byte_offset - pc_bias`.
+
+     Both loads name the same symbol from the same section, so the difference in
+     the bound bytes is the difference in the bias and nothing else. *)
+  let text =
+    "\t.text\nasm_test_entry:\n\tmovq g(%rip), %rax\n\tmovl g(%rip), %eax\n\tret\ng:\n\t.long 7\n"
+  in
+  (match Driver.Portable.dump "x86_64" ~which:`Lowered_ast ~unit_name:"t" ~text with
+  | Error e -> print_endline e
+  | Ok s ->
+      List.iter
+        (fun l -> if String.length l > 0 && l.[0] = ' ' then print_endline (String.trim l))
+        (String.split_on_char '\n' s));
+  (match Driver.Portable.assemble "x86_64" ~unit_name:"t" ~text with
+  | Error e -> print_endline e
+  | Ok p -> (
+      match Driver.Portable.bind_at p ~base:0x400000L with
+      | Error e -> print_endline e
+      | Ok b -> (
+          match Driver.Portable.section_bytes b ".text" with
+          | None -> print_endline "no .text"
+          | Some s ->
+              print_endline
+                (String.concat " "
+                   (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i]))))
+          )));
+  [%expect
+    {|
+    label asm_test_entry
+    bytes 48 8b 05 00 00 00 00     [x86_64.mov-r-rm.asz-absent.rex-present.disp32-norm]
+    @3/4B pc+7 disp pcrel32-data s32 [0+32@0] = g
+    bytes 8b 05 00 00 00 00        [x86_64.mov-r-rm.asz-absent.rex-absent.disp32-norm]
+    @2/4B pc+6 disp pcrel32-data s32 [0+32@0] = g
+    bytes c3                       [x86_64.ret]
+    label g
+    bytes 07 00 00 00
+    48 8b 05 07 00 00 00 8b 05 01 00 00 00 c3 07 00 00 00
+    |}]
+
+let%expect_test "one base places one segment, and refuses to guess at two" =
+  (* [bind_at] is the convenience for the caller who has a single section and
+     one address. With two there is no single answer, and the guess it used to
+     make - every segment at [base] - would be caught by [bind.overlap] only
+     when the segments happen to have nonzero size, and then reported as a bad
+     address rather than as a question that has none.
+
+     [bind_sequential] is the documented deterministic alternative, so a caller
+     who needs *some* valid placement does not invent one - two callers that
+     each invented one would produce two images from the same plan. *)
+  let text = "\t.text\n\tret\n\t.data\n\t.long 1\n" in
+  let show label r =
+    match r with
+    | Error e -> Printf.printf "%-12s %s\n" label e
+    | Ok b ->
+        Printf.printf "%-12s %s\n" label
+          (String.concat " "
+             (List.map
+                (fun (n, _, _, _) ->
+                  match Driver.Portable.section_bytes b n with
+                  | Some s -> Printf.sprintf "%s:%d" n (String.length s)
+                  | None -> n ^ ":?")
+                [ (".text", 0, 0, 0); (".data", 0, 0, 0) ]))
+  in
+  (match Driver.Portable.assemble "x86_64" ~unit_name:"t" ~text:"\t.text\n\tret\n" with
+  | Error e -> print_endline e
+  | Ok p -> show "one" (Driver.Portable.bind_at p ~base:0x400000L));
+  match Driver.Portable.assemble "x86_64" ~unit_name:"t" ~text with
+  | Error e -> print_endline e
+  | Ok p ->
+      show "two" (Driver.Portable.bind_at p ~base:0x400000L);
+      show "sequential" (Driver.Portable.bind_sequential p ~base:0x400000L ~gap:0x1000);
+      [%expect
+        {|
+        one          .text:1 .data:?
+        two          bind.multi-segment: this plan has 2 allocatable segments (.text, .data), so one base does not place it; use bind_sequential or pass an address per segment
+        sequential   .text:1 .data:4
+        |}]
+
+let%expect_test "a NOBITS section is refused, in both spellings of the type" =
+  (* Reserved storage is M3, and the deferral has to be *enforced* rather than
+     merely undocumented. [Lowered_ast.Zero] already means initialized NUL bytes
+     appended to the buffer, so a NOBITS section that fell through to the
+     PROGBITS path would be given real contents in the image - a valid file of
+     the wrong size, at addresses that shift everything after it.
+
+     Both spellings, for the same reason [@function] has two: [@] introduces a
+     comment on ARM, so GAS writes [%nobits] there and a table that knew only
+     one of them would refuse on x86 and silently accept on ARM. *)
+  attempt "x86_64" "\t.text\n\tret\n\t.bss\n";
+  attempt "x86_64" "\t.text\n\tret\n\t.section .bss,\"aw\",@nobits\n";
+  attempt "arm" "\t.text\n\tbx lr\n\t.section .bss,\"aw\",%nobits\n";
+  (* A PROGBITS section with the type spelled out is still accepted: the
+     rejection is about the type, not about writing one down. *)
+  attempt "x86_64" "\t.text\n\tret\n\t.section .data,\"aw\",@progbits\n";
+  [%expect
+    {|
+    simplify.nobits-section: .bss is a NOBITS section; reserved storage is M3
+    simplify.nobits-section: .bss is a NOBITS section; reserved storage is M3
+    simplify.nobits-section: .bss is a NOBITS section; reserved storage is M3
+    accepted
+    |}]
+
 (* {1 The entry symbol across the erased boundary}
 
    Cardinality named the entry while every fixture had exactly one global. Three
@@ -796,6 +904,44 @@ let%expect_test "a branch form suffix names a rung, and an unknown one is refuse
       gap    0   3 bytes  eb 00 c3           jmp.d8 4194306   round trips
     x86.branch-suffix: jmp.d16: the branch form suffixes are .d8, .d32
     x86.simplify: unknown instruction jxx |}]
+
+let%expect_test "a direct-lowered pin is checked by the codec, not by the parser" =
+  (* The other half of the frozen split. There is no text here and no mnemonic
+     to have a suffix: a producer that builds [Lowered.t] itself hands
+     [T.encode] a rung name that no earlier phase saw, so the codec is the only
+     layer that can reject it - and it must, because falling back to a rung the
+     caller did not ask for is how a pinned near branch silently becomes short.
+
+     The three cases are the three answers: a rung that exists and applies, one
+     that does not exist, and - reachable only because [Resolved] is what decode
+     produces - the same absence when the operand carries its own rung. *)
+  let show rung =
+    let target = Asm_core.Lowered_ast.Symbolic { value = Asm_core.Expr.Symbol "foo"; rung } in
+    match X86_64.encode (X86_family.Lowered.Jmp_rel { target }) with
+    | Ok (`Fixed a) ->
+        Printf.printf "%-8s %s  %s\n"
+          (Option.value rung ~default:"(none)")
+          a.Asm_core.Lowered_ast.form
+          (String.concat " "
+             (List.init (String.length a.Asm_core.Lowered_ast.bytes) (fun i ->
+                  Printf.sprintf "%02x" (Char.code a.Asm_core.Lowered_ast.bytes.[i]))))
+    | Ok (`Relax alts) ->
+        Printf.printf "%-8s relax over %s\n"
+          (Option.value rung ~default:"(none)")
+          (String.concat ", " (List.map (fun a -> a.Asm_core.Lowered_ast.form) alts))
+    | Error d ->
+        Printf.printf "%-8s %s: %s\n"
+          (Option.value rung ~default:"(none)")
+          (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d)
+  in
+  show None;
+  show (Some "d32");
+  show (Some "bogus");
+  [%expect
+    {|
+    (none)   relax over jmp-rel.d8, jmp-rel.d32
+    d32      jmp-rel.d32  e9 00 00 00 00
+    bogus    codec.unknown-rung: encode_rung: no rung is named bogus; this description declares {d32, d8} |}]
 
 (* {1 Relocation modifiers}
 

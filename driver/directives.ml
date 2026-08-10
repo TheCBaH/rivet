@@ -21,6 +21,13 @@ let text_of (slice : Token.slice) = Token.slice_text slice
    a [Declared_section] and why M1.4's restriction can honestly be "reject a
    second *allocatable* section" while every fixture contains two [.section]-ish
    things. *)
+(* The section *type* argument, in both spellings for [sym_kind_of]'s reason:
+   [@] introduces a comment on ARM, so GAS spells it [%nobits] there. Only
+   [nobits] is distinguished, because it is the one value that changes whether
+   the section has contents at all - and that is the case this milestone
+   defers. *)
+let is_nobits s = match s with "@nobits" | "%nobits" | "nobits" -> true | _ -> false
+
 let section_of_args args =
   match args with
   | [] -> None
@@ -32,7 +39,8 @@ let section_of_args args =
         | [] -> None
       in
       let allocatable = match flags with None -> true | Some s -> String.contains s 'a' in
-      Some (name, allocatable)
+      let nobits = match rest with _ :: t :: _ -> is_nobits (text_of t) | _ -> false in
+      Some (name, allocatable, nobits)
 
 let perms_of_section name =
   if name = ".text" then Perms.rx
@@ -57,6 +65,16 @@ type outcome =
   | Dropped  (** metadata: consumed, understood, and deliberately discarded *)
   | Unknown
 
+(* A rejection may name its own diagnostic code. Almost none do - [.size needs a
+   symbol] is an ordinary malformed directive and [simplify.directive] says
+   everything about it - but a deferral is different: it is a scope statement
+   that a test has to be able to name, and a caller grepping for "which
+   directives does this milestone refuse on purpose" should find one code rather
+   than a message substring. *)
+type rejection = { code : string option; message : string }
+
+let reject ?code message = Error { code; message }
+
 let normalize ~data_widths ~name ~(arguments : Token.slice list) =
   let one () = match arguments with [ a ] -> Some (text_of a) | _ -> None in
   let int_arg () =
@@ -75,24 +93,34 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
   | _ when List.mem_assoc name data_widths -> (
       let width = List.assoc name data_widths in
       match arguments with
-      | [] -> Error (name ^ " needs at least one value")
+      | [] -> reject (name ^ " needs at least one value")
       | args ->
           let parsed = List.map Parse_lines.parse_expression args in
           if List.exists Result.is_error parsed then
-            Error (name ^ ": every value must be an expression")
+            reject (name ^ ": every value must be an expression")
           else
             Ok
               (Normalized
                  (Directive.Data { width; values = List.map (fun r -> Result.get_ok r) parsed })))
-  | ".text" | ".data" | ".bss" ->
+  (* NOBITS is deferred to M3, and the deferral is enforced rather than
+     documented. [Lowered_ast.Zero] already means initialized NUL bytes appended
+     to the buffer, which is [.space] in a PROGBITS section - so accepting
+     [.bss] would silently give a zero-filled section real contents in the
+     image, which is a valid file that is the wrong size. The rejection names
+     the milestone so the message is a plan reference and not a dead end. *)
+  | ".bss" ->
+      reject ~code:"simplify.nobits-section" ".bss is a NOBITS section; reserved storage is M3"
+  | ".text" | ".data" ->
       let n = name in
       Ok (Normalized (Directive.Section { name = n; perms = perms_of_section n }))
   | ".section" -> (
       match section_of_args arguments with
-      | None -> Error "a .section directive needs a name"
-      | Some (n, true) ->
+      | None -> reject "a .section directive needs a name"
+      | Some (n, _, true) ->
+          reject ~code:"simplify.nobits-section" (n ^ " is a NOBITS section; reserved storage is M3")
+      | Some (n, true, false) ->
           Ok (Normalized (Directive.Section { name = n; perms = perms_of_section n }))
-      | Some (n, false) -> Ok (Normalized (Directive.Declared_section { name = n })))
+      | Some (n, false, false) -> Ok (Normalized (Directive.Declared_section { name = n })))
   (* [.align] and [.balign] normalize to the same constructor with different
      values. On the four targets here both denote a byte count; a target where
      [.align] means a power of two states that in its own directive handler,
@@ -100,7 +128,7 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
   | ".align" | ".balign" -> (
       match int_arg () with
       | Some n when n > 0 -> Ok (Normalized (Directive.Align { boundary = n }))
-      | _ -> Error (name ^ " needs a positive integer argument"))
+      | _ -> reject (name ^ " needs a positive integer argument"))
   | ".p2align" ->
       (* Deliberately rejected rather than accepted as a synonym. Its argument
          is an exponent, not a byte count, so treating it as one would silently
@@ -108,23 +136,23 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
          produces a valid image and wrong addresses. It is absent from
          asm/docs/contracts.md §3's table, and nothing outside that table
          assembles. *)
-      Error ".p2align takes a power-of-two exponent and is not in M1 scope; use .balign"
+      reject ".p2align takes a power-of-two exponent and is not in M2 scope; use .balign"
   | ".globl" | ".global" -> (
       match one () with
       | Some n -> Ok (Normalized (Directive.Global { name = n }))
-      | None -> Error (name ^ " needs exactly one symbol"))
+      | None -> reject (name ^ " needs exactly one symbol"))
   | ".type" -> (
       match arguments with
       | [ n; k ] -> (
           match sym_kind_of (text_of k) with
           | Some kind -> Ok (Normalized (Directive.Sym_type { name = text_of n; kind }))
-          | None -> Error ("unknown symbol type " ^ text_of k))
-      | _ -> Error ".type needs a symbol and a type")
+          | None -> reject ("unknown symbol type " ^ text_of k))
+      | _ -> reject ".type needs a symbol and a type")
   | ".size" -> (
       match arguments with
       | [ n; e ] -> (
           match Parse_lines.parse_expression e with
           | Ok expr -> Ok (Normalized (Directive.Sym_size { name = text_of n; size = expr }))
-          | Error m -> Error (".size: " ^ m))
-      | _ -> Error ".size needs a symbol and an expression")
+          | Error m -> reject (".size: " ^ m))
+      | _ -> reject ".size needs a symbol and an expression")
   | _ -> Ok Unknown

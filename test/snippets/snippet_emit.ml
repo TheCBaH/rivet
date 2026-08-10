@@ -29,16 +29,16 @@ let () =
       List.iter
         (fun (t : Snippet_corpus.Snippet_ast.target) ->
           List.iter
-            (fun (e : Snippet_corpus.Snippet_ast.entry) ->
-              match e.built with
+            (fun (name, (b : Snippet_corpus.Snippet_ast.built)) ->
+              match b with
               | Snippet_corpus.Snippet_ast.Assembled { canonical; _ } ->
-                  let dir = Filename.concat (Filename.concat root t.target) e.name in
+                  let dir = Filename.concat (Filename.concat root t.target) name in
                   mkdir_p dir;
                   let path = Filename.concat dir "input.s" in
                   write path (Snippet_corpus.Snippet_ast.source_of t canonical);
                   print_endline path
               | Refused _ | Needs _ -> ())
-            t.entries)
+            (Snippet_corpus.Snippet_ast.named t.cases))
         Snippet_corpus.Snippet_ast.all
   | _ ->
       prerr_endline "usage: snippet_emit <output-dir>";

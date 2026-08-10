@@ -459,10 +459,22 @@ let%expect_test "the plan reports its outstanding fixups" =
       ~symbols:[ sym "entry"; sym "here" ]
       [ text_section [ label "entry"; branch_to "here"; label "here" ] ]
   in
+  (* Printed as well as recorded, because contracts.md §1.5 puts [unresolved] in
+     the plan dump: a plan that showed only what it had already decided would not
+     say why §9's second step exists. *)
   (match plan m with
   | Error ds -> show_errors ds
-  | Ok l -> Fmt.pr "unresolved: %s@." (String.concat "," (Image.plan_of l).Image.unresolved));
-  [%expect {| unresolved: target |}]
+  | Ok l ->
+      Fmt.pr "unresolved: %s@." (String.concat "," (Image.plan_of l).Image.unresolved);
+      Fmt.pr "%a@." Image.pp_plan (Image.plan_of l));
+  [%expect
+    {|
+    unresolved: target
+    segment .text size=2 zero=0 align=1 permissions=r-x
+    entry entry
+    export entry
+    export here
+    unresolved target |}]
 
 (* {1 Fixup observations}
 

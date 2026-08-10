@@ -152,7 +152,12 @@ module Make (T : T_intf.TARGET) = struct
                 | Ok Directives.Unknown ->
                     errors :=
                       diag ~origin "simplify.directive" ("unknown directive " ^ name) :: !errors
-                | Error msg -> errors := diag ~origin "simplify.directive" msg :: !errors)))
+                | Error r ->
+                    errors :=
+                      diag ~origin
+                        (Option.value r.Directives.code ~default:"simplify.directive")
+                        r.Directives.message
+                      :: !errors)))
       m.Source_ast.items;
     if !errors <> [] then Error (List.rev !errors)
     else Ok ({ Normalized_ast.unit_name = m.Source_ast.unit_name; items = List.rev !items }, !state)

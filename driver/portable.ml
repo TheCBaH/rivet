@@ -86,14 +86,52 @@ let bind p ~addresses =
   | Error ds -> Error (render ds)
   | Ok image -> Ok { image; target = p.target }
 
+let planned_segments p = (Image.plan_of p.laid_out).Image.segments
+
 (* The common case, spelled out so a caller with one section does not have to
-   build an association list to say the obvious thing. *)
+   build an association list to say the obvious thing.
+
+   With several segments there is no obvious thing to say, so it refuses rather
+   than guessing. Putting them all at [base] is the guess it used to make, and
+   [bind_image] would have caught the resulting overlap - but only by accident
+   of the segments having nonzero size, and with a message about addresses
+   rather than about the caller having asked a question with no single answer.
+   A caller that wants one is [bind_sequential]. *)
 let bind_at p ~base =
-  bind p
-    ~addresses:
-      (List.map
-         (fun (s : Image.segment_plan) -> (s.Image.seg_name, base))
-         (Image.plan_of p.laid_out).Image.segments)
+  match planned_segments p with
+  | [ s ] -> bind p ~addresses:[ (s.Image.seg_name, base) ]
+  | segments ->
+      Error
+        (Printf.sprintf
+           "bind.multi-segment: this plan has %d allocatable segments (%s), so one base does not \
+            place it; use bind_sequential or pass an address per segment"
+           (List.length segments)
+           (String.concat ", "
+              (List.map (fun (s : Image.segment_plan) -> s.Image.seg_name) segments)))
+
+(* The documented deterministic multi-segment layout: segments in plan order,
+   each aligned up from the end of the previous one plus [gap]. Deterministic is
+   the point - a caller that only needs *some* valid placement should not have
+   to invent one, and two callers that invent different ones would produce two
+   images from one plan. A caller with real addresses still passes them to
+   [bind]; this is for the ones that have none. *)
+let bind_sequential p ~base ~gap =
+  let align_up v a =
+    if a <= 1 then v
+    else
+      Int64.mul (Int64.div (Int64.add v (Int64.of_int (a - 1))) (Int64.of_int a)) (Int64.of_int a)
+  in
+  let _, addresses =
+    List.fold_left
+      (fun (at, acc) (s : Image.segment_plan) ->
+        let a = align_up at s.Image.alignment in
+        ( Int64.add
+            (Int64.add a (Int64.of_int (s.Image.init_size + s.Image.zero_fill)))
+            (Int64.of_int gap),
+          (s.Image.seg_name, a) :: acc ))
+      (base, []) (planned_segments p)
+  in
+  bind p ~addresses:(List.rev addresses)
 
 let image_text b = Fmt.to_to_string Image.pp b.image
 

@@ -1,20 +1,37 @@
 (* The reference snippets of execution ABI v1 §16.3, written as ASTs.
 
-   {!Asm_oracle.Snippet_bytes} states each snippet as a byte string with a
-   comment naming the assembly it encodes. Nothing checked that the comment and
-   the bytes agreed: a transposed nibble would have been invisible, and the
-   comment is the only thing that says what the snippet is *for*.
+   §16.3 used to be stated twice: once as frozen byte strings in
+   {!Asm_oracle.Snippet_bytes}, which is what {!Conform} ran under QEMU, and
+   once here as ASTs that this project's own [lower_instruction] and [encode]
+   turned back into those same bytes. The second statement had to reproduce the
+   first exactly, and a test asserted it did.
 
-   This file writes the same snippets the other way round - as normalized ASTs -
-   and pushes each through this project's own [lower_instruction] and [encode].
-   The test beside it asserts the result equals the frozen constant. The comment
-   becomes executable, and the assembler is dogfooded on the one corpus whose
-   correct answer was established independently of it.
+   That two-sided arrangement was bootstrapping. It bought independence at a
+   time when the assembler could not yet build six of the nine snippets: a
+   table no part of the assembler could influence was the only thing that could
+   say what the right answer was. M2 closed that gap - all 36 assembled and all
+   36 matched - and what the duplicate table buys now is smaller than what it
+   costs, because two statements of one fact are two places to edit and one
+   opportunity to disagree.
 
-   The direction of evidence matters and is deliberately one-way. The frozen
-   table stays the ground truth: it is what {!Conform} runs under QEMU, it was
-   never produced by this assembler, and this file cannot change it. What is
-   under test here is the assembler.
+   So the ASTs are the statement, and the bytes are derived from them. This
+   file is the single source of §16.3: the expect baselines beside it hold the
+   assembled hexdump of every snippet and are what a regression has to get
+   past, and {!for_profile} hands the same bytes to the conformance suite, so
+   what QEMU executes is what this assembler produced.
+
+   What still checks the assembler, now that nothing compares it to a frozen
+   table:
+
+   - the baselines, reviewed as a diff. An encoding that changes prints its
+     snippet's hexdump next to the instruction sequence that produced it.
+   - the helpers, under QEMU. [sp_align] returns 42 only if the entry SP
+     alignment of §11 really holds, [trap] must fault at its instruction,
+     [stack_over] must touch the guard page. Those are semantic assertions
+     about the bytes, and no baseline promotion can satisfy them.
+   - the differential gate, which compares this assembler against GNU as on the
+     fixture corpus, and [tools/asm-gas-xref.sh], which does the same for these
+     snippets from the canonical text {!source_of} emits.
 
    {1 [Needs], and why it is still here}
 
@@ -29,7 +46,10 @@
    nothing is [Needs] today. The constructor stays because that is how the
    corpus states a scope boundary - as data checked on every run rather than as
    prose - and the next milestone will have one of its own. An entry that
-   vanished instead would take its scope statement with it. *)
+   vanished instead would take its scope statement with it. It now also carries
+   a second obligation: a snippet that is [Needs] or [Refused] is one the
+   conformance suite cannot run, and {!for_profile} says so rather than
+   handing QEMU a hole. *)
 
 module Sb = Asm_oracle.Snippet_bytes
 
@@ -44,7 +64,47 @@ type built =
   | Needs of string
       (** declared out of M1 scope, naming the form. Not a failure; the inventory reports it. *)
 
-type entry = { name : string; frozen : Sb.t -> string; built : built }
+(* {1 The registry}
+
+   One field per §16.3 snippet, so a corpus is a record with named members
+   rather than a list a test has to search. That is what lets a test say
+   [X86_64_corpus.cases.spin] and be exactly the test of x86_64's [spin]; it
+   also makes a target that forgets a snippet a type error rather than a row
+   that quietly goes missing from the inventory, and it is what {!for_profile}
+   walks to hand {!Sb.t}'s nine fields to the conformance suite. *)
+
+type cases = {
+  return42 : built;
+  return41 : built;
+  trap : built;
+  spin : built;
+  sp_align : built;
+  stack_full : built;
+  stack_over : built;
+  sp_corrupt : built;
+  callee_clobber : built;
+}
+
+(* Field to §16.3 name, in the canonical inventory order. The one place a
+   snippet's name is spelled, so the inventory, the emitted .s directories and
+   the record cannot disagree about what a case is called. Accessors rather
+   than a list of entries, so a caller that wants one snippet across all four
+   targets - the inventory does - reaches it by the same field the per-snippet
+   tests use, and not by looking a string up in a list. *)
+let fields : (string * (cases -> built)) list =
+  [
+    ("return42", fun c -> c.return42);
+    ("return41", fun c -> c.return41);
+    ("trap", fun c -> c.trap);
+    ("spin", fun c -> c.spin);
+    ("sp_align", fun c -> c.sp_align);
+    ("stack_full", fun c -> c.stack_full);
+    ("stack_over", fun c -> c.stack_over);
+    ("sp_corrupt", fun c -> c.sp_corrupt);
+    ("callee_clobber", fun c -> c.callee_clobber);
+  ]
+
+let named c = List.map (fun (name, get) -> (name, get c)) fields
 
 (* {1 The staged assembler}
 
@@ -61,13 +121,14 @@ module Make (T : Target_intf.Target.TARGET) = struct
      [b .] and [sp_align] branches over three instructions, and a branch's bytes
      are not decided by [encode] - it writes a placeholder and hands back a
      fixup. Running the corpus through [plan_image] and [bind_image] is what
-     turns those into the frozen bytes, and it uses the *production* patcher and
-     the production relaxation fixpoint rather than a second copy that could
-     agree with itself.
+     turns those into bytes, and it uses the *production* patcher and the
+     production relaxation fixpoint rather than a second copy that could agree
+     with itself.
 
-     The base is zero because §16.3's constants are position-independent
-     snippets: every branch in them is internal, so the bound bytes do not
-     depend on where they land, and the frozen table has no address in it. *)
+     The base is zero because §16.3's snippets are position-independent: every
+     branch in them is internal, so the bound bytes do not depend on where they
+     land, which is also why the conformance suite may map them at whatever
+     address the profile asks for. *)
   let base = 0L
 
   let assemble (insns : T.Instruction.t list) =
@@ -174,105 +235,74 @@ module Aarch64_corpus = struct
           insn Ret [ reg "x30" ];
         ]
 
-  let entries =
-    [
-      { name = "return42"; frozen = (fun s -> s.Sb.return42); built = return_n 42 };
-      { name = "return41"; frozen = (fun s -> s.Sb.return41); built = return_n 41 };
-      {
-        (* [mov x19, #0] is [movz x19, #0]: the same form as the fixture's
-           [movz w0, #42] with sf set, which the codec already carries. So this
-           one needs no new encoding form, only the 64-bit register. *)
-        name = "callee_clobber";
-        frozen = (fun s -> s.Sb.callee_clobber);
-        built =
-          A.assemble
-            T.Opcode.
-              [
-                insn Movz [ reg "x19"; imm 0 ];
-                insn Movz [ reg "w0"; imm 42 ];
-                insn Ret [ reg "x30" ];
-              ];
-      };
-      {
-        name = "trap";
-        frozen = (fun s -> s.Sb.trap);
-        built = A.assemble T.Opcode.[ insn Udf [ imm 0 ] ];
-      };
-      {
-        name = "spin";
-        frozen = (fun s -> s.Sb.spin);
-        built = A.assemble T.Opcode.[ insn B [ T.Operand.Sym Asm_core.Expr.Current_location ] ];
-      };
-      {
-        (* A64 has no predication outside [csel], so unlike A32 this one really
-           does branch: [b.eq] jumps over the five-byte-equivalent single word
-           that loads 41, which is [. + 8]. *)
-        name = "sp_align";
-        frozen = (fun s -> s.Sb.sp_align);
-        built =
-          A.assemble
-            T.Opcode.
-              [
-                insn Mov [ reg "x0"; reg "sp" ];
-                insn And [ reg "x0"; reg "x0"; imm 15 ];
-                insn Cmp [ reg "x0"; imm 0 ];
-                insn Movz [ reg "w0"; imm 42 ];
-                insn (Bcond T.Cond.Eq)
-                  [
-                    T.Operand.Sym
-                      Asm_core.Expr.(
-                        Binary (Add, Current_location, Const (Foundation.Bigint.of_int 8)));
-                  ];
-                insn Movz [ reg "w0"; imm 41 ];
-                insn Ret [];
-              ];
-      };
-      {
-        (* [sub x1, sp, #4, lsl #12] carves a 16384-byte gap below sp, then
-           [strb wzr, [x1]] touches its first byte. *)
-        name = "stack_full";
-        frozen = (fun s -> s.Sb.stack_full);
-        built =
-          A.assemble
-            T.Opcode.
-              [
-                insn Sub
-                  T.Operand.
-                    [ reg "x1"; reg "sp"; imm 4; Shift { T.Shift.kind = "lsl"; amount = 12 } ];
-                insn Strb [ reg "wzr"; mem "x1" 0L ];
-                insn Movz [ reg "w0"; imm 42 ];
-                insn Ret [];
-              ];
-      };
-      {
-        (* One byte past [stack_full]'s gap, the first byte the guard page misses. *)
-        name = "stack_over";
-        frozen = (fun s -> s.Sb.stack_over);
-        built =
-          A.assemble
-            T.Opcode.
-              [
-                insn Sub
-                  T.Operand.
-                    [ reg "x1"; reg "sp"; imm 4; Shift { T.Shift.kind = "lsl"; amount = 12 } ];
-                insn Sub [ reg "x1"; reg "x1"; imm 1 ];
-                insn Strb [ reg "wzr"; mem "x1" 0L ];
-                insn Movz [ reg "w0"; imm 42 ];
-                insn Ret [];
-              ];
-      };
-      {
-        (* [sub sp, sp, #16] is A64's separate sub-immediate encoding. *)
-        name = "sp_corrupt";
-        frozen = (fun s -> s.Sb.sp_corrupt);
-        built =
-          A.assemble
-            T.Opcode.
-              [
-                insn Sub [ reg "sp"; reg "sp"; imm 16 ]; insn Movz [ reg "w0"; imm 42 ]; insn Ret [];
-              ];
-      };
-    ]
+  let cases =
+    {
+      return42 = return_n 42;
+      return41 = return_n 41;
+      (* §16.3: [udf #0] is genuinely the zero word here. [brk #0] (d4200000,
+         SIGTRAP) is a verified alternative; [udf] is preferred because it
+         keeps all four profiles on SIGILL. *)
+      trap = A.assemble T.Opcode.[ insn Udf [ imm 0 ] ];
+      spin = A.assemble T.Opcode.[ insn B [ T.Operand.Sym Asm_core.Expr.Current_location ] ];
+      (* A64 has no predication outside [csel], so unlike A32 this one really
+         does branch: [b.eq] jumps over the five-byte-equivalent single word
+         that loads 41, which is [. + 8]. *)
+      sp_align =
+        A.assemble
+          T.Opcode.
+            [
+              insn Mov [ reg "x0"; reg "sp" ];
+              insn And [ reg "x0"; reg "x0"; imm 15 ];
+              insn Cmp [ reg "x0"; imm 0 ];
+              insn Movz [ reg "w0"; imm 42 ];
+              insn (Bcond T.Cond.Eq)
+                [
+                  T.Operand.Sym
+                    Asm_core.Expr.(
+                      Binary (Add, Current_location, Const (Foundation.Bigint.of_int 8)));
+                ];
+              insn Movz [ reg "w0"; imm 41 ];
+              insn Ret [];
+            ];
+      (* [sub x1, sp, #4, lsl #12] carves a 16384-byte gap below sp, then
+         [strb wzr, [x1]] touches its first byte. *)
+      stack_full =
+        A.assemble
+          T.Opcode.
+            [
+              insn Sub
+                T.Operand.[ reg "x1"; reg "sp"; imm 4; Shift { T.Shift.kind = "lsl"; amount = 12 } ];
+              insn Strb [ reg "wzr"; mem "x1" 0L ];
+              insn Movz [ reg "w0"; imm 42 ];
+              insn Ret [];
+            ];
+      (* One byte past [stack_full]'s gap, the first byte the guard page misses. *)
+      stack_over =
+        A.assemble
+          T.Opcode.
+            [
+              insn Sub
+                T.Operand.[ reg "x1"; reg "sp"; imm 4; Shift { T.Shift.kind = "lsl"; amount = 12 } ];
+              insn Sub [ reg "x1"; reg "x1"; imm 1 ];
+              insn Strb [ reg "wzr"; mem "x1" 0L ];
+              insn Movz [ reg "w0"; imm 42 ];
+              insn Ret [];
+            ];
+      (* [sub sp, sp, #16] is A64's separate sub-immediate encoding. *)
+      sp_corrupt =
+        A.assemble
+          T.Opcode.
+            [ insn Sub [ reg "sp"; reg "sp"; imm 16 ]; insn Movz [ reg "w0"; imm 42 ]; insn Ret [] ];
+      (* [mov x19, #0] is [movz x19, #0]: the same form as the fixture's
+         [movz w0, #42] with sf set, which the codec already carries. So this
+         one needs no new encoding form, only the 64-bit register. *)
+      callee_clobber =
+        A.assemble
+          T.Opcode.
+            [
+              insn Movz [ reg "x19"; imm 0 ]; insn Movz [ reg "w0"; imm 42 ]; insn Ret [ reg "x30" ];
+            ];
+    }
 
   let nops = A.nop
 end
@@ -303,95 +333,73 @@ module Arm_corpus = struct
           insn Bx [ reg "lr" ];
         ]
 
-  let entries =
-    [
-      { name = "return42"; frozen = (fun s -> s.Sb.return42); built = return_n 42 };
-      { name = "return41"; frozen = (fun s -> s.Sb.return41); built = return_n 41 };
-      {
-        (* [mov r4, #0] and [mov r0, #42] are both the fixture's
-           modified-immediate form, and [bx lr] is the fixture's. *)
-        name = "callee_clobber";
-        frozen = (fun s -> s.Sb.callee_clobber);
-        built =
-          A.assemble
-            T.Opcode.
-              [ insn Mov [ reg "r4"; imm 0 ]; insn Mov [ reg "r0"; imm 42 ]; insn Bx [ reg "lr" ] ];
-      };
-      {
-        (* [sub sp, sp, #16] is the fixture's sub-immediate. *)
-        name = "sp_corrupt";
-        frozen = (fun s -> s.Sb.sp_corrupt);
-        built =
-          A.assemble
-            T.Opcode.
-              [
-                insn Sub [ reg "sp"; reg "sp"; imm 16 ];
-                insn Mov [ reg "r0"; imm 42 ];
-                insn Bx [ reg "lr" ];
-              ];
-      };
-      {
-        name = "trap";
-        frozen = (fun s -> s.Sb.trap);
-        built = A.assemble T.Opcode.[ insn Udf [ imm 0 ] ];
-      };
-      {
-        name = "spin";
-        frozen = (fun s -> s.Sb.spin);
-        built = A.assemble T.Opcode.[ insn B [ T.Operand.Sym Asm_core.Expr.Current_location ] ];
-      };
-      {
-        (* A32 needs no branch here: the two results are written by predicated
-           moves, which is what the condition field is for and why the frozen
-           bytes are six words with no jump in them. The residue is 7 rather
-           than x86's 8 or 12 because the A32 prologue pushes nothing. *)
-        name = "sp_align";
-        frozen = (fun s -> s.Sb.sp_align);
-        built =
-          A.assemble
-            T.Opcode.
-              [
-                insn Mov [ reg "r0"; reg "sp" ];
-                insn And [ reg "r0"; reg "r0"; imm 7 ];
-                insn Cmp [ reg "r0"; imm 0 ];
-                T.Instruction.mk ~cond:T.Cond.Eq Mov [ reg "r0"; imm 42 ];
-                T.Instruction.mk ~cond:T.Cond.Ne Mov [ reg "r0"; imm 41 ];
-                insn Bx [ reg "lr" ];
-              ];
-      };
-      {
-        (* [sub r1, sp, #0x4000] carves a 16384-byte gap below sp, then
-           [strb r0, [r1]] (with r0 zeroed) touches its first byte. *)
-        name = "stack_full";
-        frozen = (fun s -> s.Sb.stack_full);
-        built =
-          A.assemble
-            T.Opcode.
-              [
-                insn Sub [ reg "r1"; reg "sp"; imm 0x4000 ];
-                insn Mov [ reg "r0"; imm 0 ];
-                insn Strb [ reg "r0"; mem "r1" 0L ];
-                insn Mov [ reg "r0"; imm 42 ];
-                insn Bx [ reg "lr" ];
-              ];
-      };
-      {
-        (* One byte past [stack_full]'s gap. *)
-        name = "stack_over";
-        frozen = (fun s -> s.Sb.stack_over);
-        built =
-          A.assemble
-            T.Opcode.
-              [
-                insn Sub [ reg "r1"; reg "sp"; imm 0x4000 ];
-                insn Sub [ reg "r1"; reg "r1"; imm 1 ];
-                insn Mov [ reg "r0"; imm 0 ];
-                insn Strb [ reg "r0"; mem "r1" 0L ];
-                insn Mov [ reg "r0"; imm 42 ];
-                insn Bx [ reg "lr" ];
-              ];
-      };
-    ]
+  let cases =
+    {
+      return42 = return_n 42;
+      return41 = return_n 41;
+      (* §16.3: [udf #0] is e7f000f0, not the zero word. On A32 that word
+         decodes as [andeq r0, r0, r0], a conditional no-op, and a snippet that
+         fell through into whatever followed would report success while proving
+         nothing. *)
+      trap = A.assemble T.Opcode.[ insn Udf [ imm 0 ] ];
+      spin = A.assemble T.Opcode.[ insn B [ T.Operand.Sym Asm_core.Expr.Current_location ] ];
+      (* A32 needs no branch here: the two results are written by predicated
+         moves, which is what the condition field is for and why this snippet
+         is six words with no jump in it. The residue is 7 rather
+         than x86's 8 or 12 because the A32 prologue pushes nothing. *)
+      sp_align =
+        A.assemble
+          T.Opcode.
+            [
+              insn Mov [ reg "r0"; reg "sp" ];
+              insn And [ reg "r0"; reg "r0"; imm 7 ];
+              insn Cmp [ reg "r0"; imm 0 ];
+              T.Instruction.mk ~cond:T.Cond.Eq Mov [ reg "r0"; imm 42 ];
+              T.Instruction.mk ~cond:T.Cond.Ne Mov [ reg "r0"; imm 41 ];
+              insn Bx [ reg "lr" ];
+            ];
+      (* [sub r1, sp, #0x4000] carves a 16384-byte gap below sp, then
+         [strb r0, [r1]] (with r0 zeroed) touches its first byte. Nothing is
+         pushed by the call here - the return address goes in lr - so entry SP
+         is exactly the top of the stack and that byte is its lowest. *)
+      stack_full =
+        A.assemble
+          T.Opcode.
+            [
+              insn Sub [ reg "r1"; reg "sp"; imm 0x4000 ];
+              insn Mov [ reg "r0"; imm 0 ];
+              insn Strb [ reg "r0"; mem "r1" 0L ];
+              insn Mov [ reg "r0"; imm 42 ];
+              insn Bx [ reg "lr" ];
+            ];
+      (* One byte past [stack_full]'s gap. *)
+      stack_over =
+        A.assemble
+          T.Opcode.
+            [
+              insn Sub [ reg "r1"; reg "sp"; imm 0x4000 ];
+              insn Sub [ reg "r1"; reg "r1"; imm 1 ];
+              insn Mov [ reg "r0"; imm 0 ];
+              insn Strb [ reg "r0"; mem "r1" 0L ];
+              insn Mov [ reg "r0"; imm 42 ];
+              insn Bx [ reg "lr" ];
+            ];
+      (* [sub sp, sp, #16] is the fixture's sub-immediate. *)
+      sp_corrupt =
+        A.assemble
+          T.Opcode.
+            [
+              insn Sub [ reg "sp"; reg "sp"; imm 16 ];
+              insn Mov [ reg "r0"; imm 42 ];
+              insn Bx [ reg "lr" ];
+            ];
+      (* [mov r4, #0] and [mov r0, #42] are both the fixture's
+         modified-immediate form, and [bx lr] is the fixture's. *)
+      callee_clobber =
+        A.assemble
+          T.Opcode.
+            [ insn Mov [ reg "r4"; imm 0 ]; insn Mov [ reg "r0"; imm 42 ]; insn Bx [ reg "lr" ] ];
+    }
 
   let nops = A.nop
 end
@@ -406,7 +414,8 @@ end
    that is all the parameterization the shape needs.
 
    The x86 entries below are shared for the same reason: the two modes need the
-   same missing forms, and stating that twice would let the two lists drift. *)
+   same missing forms, and stating that twice would let the two corpora drift
+   apart in which snippets they even claim to cover. *)
 
 module X86_shared = struct
   open X86_family
@@ -508,18 +517,22 @@ module X86_shared = struct
       insn Opcode.Jmp width [ Operand.Reg dx ];
     ]
 
-  let entries ~return_n ~trap ~callee_clobber ~stack_full ~stack_over ~sp_corrupt ~spin ~sp_align =
-    [
-      { name = "return42"; frozen = (fun s -> s.Sb.return42); built = return_n 42 };
-      { name = "return41"; frozen = (fun s -> s.Sb.return41); built = return_n 41 };
-      { name = "trap"; frozen = (fun s -> s.Sb.trap); built = trap };
-      { name = "spin"; frozen = (fun s -> s.Sb.spin); built = spin };
-      { name = "sp_align"; frozen = (fun s -> s.Sb.sp_align); built = sp_align };
-      { name = "stack_full"; frozen = (fun s -> s.Sb.stack_full); built = stack_full };
-      { name = "stack_over"; frozen = (fun s -> s.Sb.stack_over); built = stack_over };
-      { name = "sp_corrupt"; frozen = (fun s -> s.Sb.sp_corrupt); built = sp_corrupt };
-      { name = "callee_clobber"; frozen = (fun s -> s.Sb.callee_clobber); built = callee_clobber };
-    ]
+  (* The mode supplies its nine [built]s and this fixes which field each one
+     lands in, so a mode cannot file [stack_over]'s bytes under [stack_full] on
+     its own. Labelled arguments rather than a list, so a mode that leaves one
+     out does not compile. *)
+  let cases ~return_n ~trap ~callee_clobber ~stack_full ~stack_over ~sp_corrupt ~spin ~sp_align =
+    {
+      return42 = return_n 42;
+      return41 = return_n 41;
+      trap;
+      spin;
+      sp_align;
+      stack_full;
+      stack_over;
+      sp_corrupt;
+      callee_clobber;
+    }
 end
 
 module X86_64_corpus = struct
@@ -527,8 +540,8 @@ module X86_64_corpus = struct
 
   let r n = reg_exn ~target:X86_64.name X86_64.find_reg n
 
-  let entries =
-    X86_shared.entries
+  let cases =
+    X86_shared.cases
       ~return_n:(fun n ->
         A.assemble
           (X86_shared.return_n ~sp:(r "rsp") ~ax:(r "rax") ~eax:(r "eax") ~width:64 ~frame:8 n))
@@ -559,8 +572,8 @@ module X86_32_corpus = struct
 
   let r n = reg_exn ~target:X86_32.name X86_32.find_reg n
 
-  let entries =
-    X86_shared.entries
+  let cases =
+    X86_shared.cases
       ~return_n:(fun n ->
         A.assemble
           (X86_shared.return_n ~sp:(r "esp") ~ax:(r "eax") ~eax:(r "eax") ~width:32 ~frame:12 n))
@@ -593,8 +606,7 @@ end
 
 type target = {
   target : string;
-  snippets : Sb.t;
-  entries : entry list;
+  cases : cases;
   nop : length:int -> (string, string) result;
   preamble : string list;
       (** what has to precede the instructions for both this assembler and GNU as to read the same
@@ -607,33 +619,80 @@ let all =
   [
     {
       target = "x86_32";
-      snippets = Sb.x86_32;
-      entries = X86_32_corpus.entries;
+      cases = X86_32_corpus.cases;
       nop = X86_32_corpus.nops;
       preamble = [ ".text" ];
     };
     {
       target = "x86_64";
-      snippets = Sb.x86_64;
-      entries = X86_64_corpus.entries;
+      cases = X86_64_corpus.cases;
       nop = X86_64_corpus.nops;
       preamble = [ ".text" ];
     };
     {
       target = "arm";
-      snippets = Sb.arm;
-      entries = Arm_corpus.entries;
+      cases = Arm_corpus.cases;
       nop = Arm_corpus.nops;
       preamble = [ ".syntax unified"; ".arch armv7-a"; ".fpu vfpv3-d16"; ".arm"; ".text" ];
     };
     {
       target = "aarch64";
-      snippets = Sb.aarch64;
-      entries = Aarch64_corpus.entries;
+      cases = Aarch64_corpus.cases;
       nop = Aarch64_corpus.nops;
       preamble = [ ".text" ];
     };
   ]
+
+(* {1 The runtime view}
+
+   What {!Conform} loads into a guest. The conformance suite wants nine byte
+   strings per profile and nothing else - it knows nothing about ASTs, lowering
+   or canonical text - so this is where the corpus stops being a corpus and
+   becomes {!Sb.t}.
+
+   A snippet that did not assemble is reported rather than papered over. The
+   suite's obligation is to run §16.3 in full; handing it eight snippets and a
+   silent hole would turn a missing encoding form into a conformance result,
+   which is the one confusion this direction of dependency could introduce. *)
+
+let bytes_of name = function
+  | Assembled { bytes; _ } -> Ok bytes
+  | Refused msg -> Error (name ^ ": refused by the assembler: " ^ msg)
+  | Needs what -> Error (name ^ ": needs " ^ what)
+
+let snippet_bytes (c : cases) : (Sb.t, string) result =
+  let ( let* ) = Result.bind in
+  let* return42 = bytes_of "return42" c.return42 in
+  let* return41 = bytes_of "return41" c.return41 in
+  let* trap = bytes_of "trap" c.trap in
+  let* spin = bytes_of "spin" c.spin in
+  let* sp_align = bytes_of "sp_align" c.sp_align in
+  let* stack_full = bytes_of "stack_full" c.stack_full in
+  let* stack_over = bytes_of "stack_over" c.stack_over in
+  let* sp_corrupt = bytes_of "sp_corrupt" c.sp_corrupt in
+  let* callee_clobber = bytes_of "callee_clobber" c.callee_clobber in
+  Ok
+    {
+      Sb.return42;
+      return41;
+      trap;
+      spin;
+      sp_align;
+      stack_full;
+      stack_over;
+      sp_corrupt;
+      callee_clobber;
+    }
+
+(* Matched exhaustively rather than looked up in {!all} by name, so a profile
+   added to {!Asm_oracle.Abi} is a compile error here - the conformance suite
+   would otherwise report a new profile as having no snippets, which reads like
+   a helper problem rather than a corpus that has not been extended. *)
+let for_profile : Asm_oracle.Abi.profile -> (Sb.t, string) result = function
+  | Asm_oracle.Abi.X86_32 -> snippet_bytes X86_32_corpus.cases
+  | Asm_oracle.Abi.X86_64 -> snippet_bytes X86_64_corpus.cases
+  | Asm_oracle.Abi.Arm -> snippet_bytes Arm_corpus.cases
+  | Asm_oracle.Abi.Aarch64 -> snippet_bytes Aarch64_corpus.cases
 
 (* {1 Assembly text}
 

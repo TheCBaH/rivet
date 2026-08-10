@@ -1989,7 +1989,14 @@ module Make (M : MODE) = struct
     | _ -> None
 
   let encode l =
-    let fail e = Error (diag "x86.encode" (Fmt.to_to_string C.pp_error e)) in
+    (* The codec names the phase when it is the only layer that could have seen
+       the mistake - a pin for a rung that does not exist - and otherwise this
+       one does. A bad suffix in *source* never reaches here: [simplify] rejects
+       it with a span, which is why [codec.unknown-rung] means a direct-lowered
+       producer and nothing else. *)
+    let fail (e : C.error) =
+      Error (diag (Option.value e.C.code ~default:"x86.encode") (Fmt.to_to_string C.pp_error e))
+    in
     match pinned_rung l with
     | Some rung -> (
         match C.encode_rung codec ~rung l with

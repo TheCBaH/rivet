@@ -1193,7 +1193,11 @@ let form_of l enc =
 (* A32 is fixed-width: no ladder, every form `Fixed. *)
 let encode l =
   match C.encode codec l with
-  | Error e -> Error (diag "arm.encode" (Fmt.to_to_string C.pp_error e))
+  (* A32 is fixed-width and declares no ladder, so [e.code] is always [None]
+     here; reading it anyway keeps one rule across the three targets rather than
+     a special case waiting to be forgotten. *)
+  | Error (e : C.error) ->
+      Error (diag (Option.value e.C.code ~default:"arm.encode") (Fmt.to_to_string C.pp_error e))
   | Ok enc -> Ok (`Fixed (form_of l enc))
 
 type decode_context = { state : target_state; address : int64 }

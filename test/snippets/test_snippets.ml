@@ -1,370 +1,432 @@
-(* Does this assembler reproduce the frozen §16.3 bytes from an AST?
+(* What every §16.3 snippet assembles to, as a reviewable artifact.
 
-   Three claims, in order of strength:
+   Each block is one snippet on one target: the lowered instruction sequence,
+   and the bytes it encodes to. That is the whole assertion. These baselines
+   used to carry a third line comparing the result against a frozen table in
+   {!Asm_oracle.Snippet_bytes}; the corpus is now the single statement of
+   §16.3, the table is gone, and the diff a promotion produces is what a
+   regression has to get past. So read a change to these hexdumps as a change
+   to the assembler's output, and promote one only after deciding the new
+   encoding is right.
 
-   1. The hexdump baseline below. An AST on one side, the bytes it assembles to
-      on the other, reviewed as a diff. This is the artifact: it makes the
-      encoding of every dogfooded snippet visible in the tree without anyone
-      having to run objdump.
+   Two things beyond these baselines still test the same bytes, which is what
+   makes promotion a decision rather than a rubber stamp: {!Conform} executes
+   them under QEMU, where [sp_align] must return 42 only when §11's entry
+   alignment really holds and [trap] must fault at its instruction, and
+   [tools/asm-gas-xref.sh] assembles the same sequences with GNU as.
 
-   2. Equality with {!Asm_oracle.Snippet_bytes}. The baseline alone would pass
-      if the assembler and the corpus were wrong in the same way, because both
-      live in this directory. The frozen table does not: it predates this work,
-      it is what QEMU runs, and nothing here can edit it. That is what makes the
-      comparison evidence rather than a restatement.
+   {1 One block per snippet}
 
-   3. The inventory. Every snippet the assembler cannot yet build is listed with
-      the form it needs, so asm/docs/contracts.md §4.3's prose list of
-      deliberate absences becomes a table a test regresses. *)
+   Each block names the one registry entry it checks -
+   [X86_64_corpus.cases.spin] under a test called "x86_64 spin" - so the
+   mapping from test to subject is the line itself, not a lookup by string
+   through a list that happens to hold it. The cost is 36 blocks; what it buys
+   is that a changed encoding prints one snippet's diff on one target, and that
+   no test can silently check something other than what it is named after. *)
 
 open Snippet_corpus.Snippet_ast
 
-let show_bytes label b = Printf.printf "%-16s %s\n" label (hex b)
+(* The whole of what a snippet has to show: the sequence, then its bytes.
+   Everything a block prints goes through here, so 36 baselines cannot drift
+   into 36 shapes. *)
+let check = function
+  | Needs what -> Printf.printf "not built: needs %s\n" what
+  | Refused msg -> Printf.printf "REFUSED by the assembler: %s\n" msg
+  | Assembled { bytes; canonical } ->
+      List.iter (fun line -> Printf.printf "| %s\n" line) canonical;
+      print_endline (hex bytes)
 
-(* {1 The dogfooded snippets}
+(* {1 x86_64} *)
 
-   One expect block per target rather than one for all four: a diff in the
-   aarch64 encoding should not reprint the x86 baseline, and four blocks say
-   which target moved. *)
-
-let report target_name =
-  let t = List.find (fun t -> String.equal t.target target_name) all in
-  List.iter
-    (fun e ->
-      match e.built with
-      | Needs _ -> ()
-      | Refused msg ->
-          Printf.printf "%s: REFUSED by the assembler: %s\n" e.name msg;
-          Printf.printf "  frozen  %s\n" (hex (e.frozen t.snippets))
-      | Assembled { bytes; canonical } ->
-          let want = e.frozen t.snippets in
-          Printf.printf "%s\n" e.name;
-          List.iter (fun line -> Printf.printf "  | %s\n" line) canonical;
-          show_bytes "  assembled" bytes;
-          if String.equal bytes want then print_endline "  == frozen"
-          else (
-            show_bytes "  FROZEN" want;
-            (* Naming the first differing offset, because two 32-byte hexdumps
-               that differ in one nibble are not something a reader diffs. *)
-            let n = min (String.length bytes) (String.length want) in
-            let rec first i =
-              if i >= n then n else if Char.equal bytes.[i] want.[i] then first (i + 1) else i
-            in
-            Printf.printf "  MISMATCH at byte %d\n" (first 0)))
-    t.entries
-
-let%expect_test "x86_64: AST assembles to the frozen bytes" =
-  report "x86_64";
+let%expect_test "x86_64 return42" =
+  check X86_64_corpus.cases.return42;
   [%expect
     {|
-    return42
-      | subq $8, %rsp
-      | leaq 16(%rsp), %rax
-      | movq %rax, (%rsp)
-      | movl $42, %eax
-      | addq $8, %rsp
-      | ret
-      assembled      48 83 ec 08 48 8d 44 24 10 48 89 04 24 b8 2a 00 00 00 48 83 c4 08 c3
-      == frozen
-    return41
-      | subq $8, %rsp
-      | leaq 16(%rsp), %rax
-      | movq %rax, (%rsp)
-      | movl $41, %eax
-      | addq $8, %rsp
-      | ret
-      assembled      48 83 ec 08 48 8d 44 24 10 48 89 04 24 b8 29 00 00 00 48 83 c4 08 c3
-      == frozen
-    trap
-      | ud2
-      assembled      0f 0b
-      == frozen
-    spin
-      | jmp .
-      assembled      eb fe
-      == frozen
-    sp_align
-      | movq %rsp, %rax
-      | andq $15, %rax
-      | cmpq $8, %rax
-      | movl $42, %eax
-      | je (. + 7)
-      | movl $41, %eax
-      | ret
-      assembled      48 89 e0 48 83 e0 0f 48 83 f8 08 b8 2a 00 00 00 74 05 b8 29 00 00 00 c3
-      == frozen
-    stack_full
-      | leaq -16376(%rsp), %rax
-      | movb $0, (%rax)
-      | movl $42, %eax
-      | ret
-      assembled      48 8d 84 24 08 c0 ff ff c6 00 00 b8 2a 00 00 00 c3
-      == frozen
-    stack_over
-      | leaq -16377(%rsp), %rax
-      | movb $0, (%rax)
-      | movl $42, %eax
-      | ret
-      assembled      48 8d 84 24 07 c0 ff ff c6 00 00 b8 2a 00 00 00 c3
-      == frozen
-    sp_corrupt
-      | pop %rdx
-      | subq $16, %rsp
-      | movl $42, %eax
-      | jmp *%rdx
-      assembled      5a 48 83 ec 10 b8 2a 00 00 00 ff e2
-      == frozen
-    callee_clobber
-      | xorq %rbx, %rbx
-      | movl $42, %eax
-      | ret
-      assembled      48 31 db b8 2a 00 00 00 c3
-      == frozen |}]
+    | subq $8, %rsp
+    | leaq 16(%rsp), %rax
+    | movq %rax, (%rsp)
+    | movl $42, %eax
+    | addq $8, %rsp
+    | ret
+    48 83 ec 08 48 8d 44 24 10 48 89 04 24 b8 2a 00 00 00 48 83 c4 08 c3 |}]
 
-let%expect_test "x86_32: AST assembles to the frozen bytes" =
-  report "x86_32";
+let%expect_test "x86_64 return41" =
+  check X86_64_corpus.cases.return41;
   [%expect
     {|
-    return42
-      | subl $12, %esp
-      | leal 16(%esp), %eax
-      | movl %eax, (%esp)
-      | movl $42, %eax
-      | addl $12, %esp
-      | ret
-      assembled      83 ec 0c 8d 44 24 10 89 04 24 b8 2a 00 00 00 83 c4 0c c3
-      == frozen
-    return41
-      | subl $12, %esp
-      | leal 16(%esp), %eax
-      | movl %eax, (%esp)
-      | movl $41, %eax
-      | addl $12, %esp
-      | ret
-      assembled      83 ec 0c 8d 44 24 10 89 04 24 b8 29 00 00 00 83 c4 0c c3
-      == frozen
-    trap
-      | ud2
-      assembled      0f 0b
-      == frozen
-    spin
-      | jmp .
-      assembled      eb fe
-      == frozen
-    sp_align
-      | movl %esp, %eax
-      | andl $15, %eax
-      | cmpl $12, %eax
-      | movl $42, %eax
-      | je (. + 7)
-      | movl $41, %eax
-      | ret
-      assembled      89 e0 83 e0 0f 83 f8 0c b8 2a 00 00 00 74 05 b8 29 00 00 00 c3
-      == frozen
-    stack_full
-      | leal -16380(%esp), %eax
-      | movb $0, (%eax)
-      | movl $42, %eax
-      | ret
-      assembled      8d 84 24 04 c0 ff ff c6 00 00 b8 2a 00 00 00 c3
-      == frozen
-    stack_over
-      | leal -16381(%esp), %eax
-      | movb $0, (%eax)
-      | movl $42, %eax
-      | ret
-      assembled      8d 84 24 03 c0 ff ff c6 00 00 b8 2a 00 00 00 c3
-      == frozen
-    sp_corrupt
-      | pop %edx
-      | subl $16, %esp
-      | movl $42, %eax
-      | jmp *%edx
-      assembled      5a 83 ec 10 b8 2a 00 00 00 ff e2
-      == frozen
-    callee_clobber
-      | xorl %ebx, %ebx
-      | movl $42, %eax
-      | ret
-      assembled      31 db b8 2a 00 00 00 c3
-      == frozen |}]
+    | subq $8, %rsp
+    | leaq 16(%rsp), %rax
+    | movq %rax, (%rsp)
+    | movl $41, %eax
+    | addq $8, %rsp
+    | ret
+    48 83 ec 08 48 8d 44 24 10 48 89 04 24 b8 29 00 00 00 48 83 c4 08 c3 |}]
 
-let%expect_test "arm: AST assembles to the frozen bytes" =
-  report "arm";
+let%expect_test "x86_64 trap" =
+  check X86_64_corpus.cases.trap;
+  [%expect {|
+    | ud2
+    0f 0b |}]
+
+let%expect_test "x86_64 spin" =
+  check X86_64_corpus.cases.spin;
+  [%expect {|
+    | jmp .
+    eb fe |}]
+
+let%expect_test "x86_64 sp_align" =
+  check X86_64_corpus.cases.sp_align;
   [%expect
     {|
-    return42
-      | mov ip, sp
-      | sub sp, sp, #8
-      | str ip, [sp, #0]
-      | str lr, [sp, #4]
-      | mov r0, #42
-      | ldr lr, [sp, #4]
-      | add sp, sp, #8
-      | bx lr
-      assembled      0d c0 a0 e1 08 d0 4d e2 00 c0 8d e5 04 e0 8d e5 2a 00 a0 e3 04 e0 9d e5 08 d0 8d e2 1e ff 2f e1
-      == frozen
-    return41
-      | mov ip, sp
-      | sub sp, sp, #8
-      | str ip, [sp, #0]
-      | str lr, [sp, #4]
-      | mov r0, #41
-      | ldr lr, [sp, #4]
-      | add sp, sp, #8
-      | bx lr
-      assembled      0d c0 a0 e1 08 d0 4d e2 00 c0 8d e5 04 e0 8d e5 29 00 a0 e3 04 e0 9d e5 08 d0 8d e2 1e ff 2f e1
-      == frozen
-    callee_clobber
-      | mov r4, #0
-      | mov r0, #42
-      | bx lr
-      assembled      00 40 a0 e3 2a 00 a0 e3 1e ff 2f e1
-      == frozen
-    sp_corrupt
-      | sub sp, sp, #16
-      | mov r0, #42
-      | bx lr
-      assembled      10 d0 4d e2 2a 00 a0 e3 1e ff 2f e1
-      == frozen
-    trap
-      | udf #0
-      assembled      f0 00 f0 e7
-      == frozen
-    spin
-      | b .
-      assembled      fe ff ff ea
-      == frozen
-    sp_align
-      | mov r0, sp
-      | and r0, r0, #7
-      | cmp r0, #0
-      | moveq r0, #42
-      | movne r0, #41
-      | bx lr
-      assembled      0d 00 a0 e1 07 00 00 e2 00 00 50 e3 2a 00 a0 03 29 00 a0 13 1e ff 2f e1
-      == frozen
-    stack_full
-      | sub r1, sp, #16384
-      | mov r0, #0
-      | strb r0, [r1, #0]
-      | mov r0, #42
-      | bx lr
-      assembled      01 19 4d e2 00 00 a0 e3 00 00 c1 e5 2a 00 a0 e3 1e ff 2f e1
-      == frozen
-    stack_over
-      | sub r1, sp, #16384
-      | sub r1, r1, #1
-      | mov r0, #0
-      | strb r0, [r1, #0]
-      | mov r0, #42
-      | bx lr
-      assembled      01 19 4d e2 01 10 41 e2 00 00 a0 e3 00 00 c1 e5 2a 00 a0 e3 1e ff 2f e1
-      == frozen |}]
+    | movq %rsp, %rax
+    | andq $15, %rax
+    | cmpq $8, %rax
+    | movl $42, %eax
+    | je (. + 7)
+    | movl $41, %eax
+    | ret
+    48 89 e0 48 83 e0 0f 48 83 f8 08 b8 2a 00 00 00 74 05 b8 29 00 00 00 c3 |}]
 
-let%expect_test "aarch64: AST assembles to the frozen bytes" =
-  report "aarch64";
+let%expect_test "x86_64 stack_full" =
+  check X86_64_corpus.cases.stack_full;
   [%expect
     {|
-    return42
-      | mov x15, sp
-      | stp x15, x30, [sp, #-16]!
-      | movz w0, #42
-      | ldr x30, [sp, #8]
-      | add sp, sp, #16
-      | ret
-      assembled      ef 03 00 91 ef 7b bf a9 40 05 80 52 fe 07 40 f9 ff 43 00 91 c0 03 5f d6
-      == frozen
-    return41
-      | mov x15, sp
-      | stp x15, x30, [sp, #-16]!
-      | movz w0, #41
-      | ldr x30, [sp, #8]
-      | add sp, sp, #16
-      | ret
-      assembled      ef 03 00 91 ef 7b bf a9 20 05 80 52 fe 07 40 f9 ff 43 00 91 c0 03 5f d6
-      == frozen
-    callee_clobber
-      | movz x19, #0
-      | movz w0, #42
-      | ret
-      assembled      13 00 80 d2 40 05 80 52 c0 03 5f d6
-      == frozen
-    trap
-      | udf #0
-      assembled      00 00 00 00
-      == frozen
-    spin
-      | b .
-      assembled      00 00 00 14
-      == frozen
-    sp_align
-      | mov x0, sp
-      | and x0, x0, #15
-      | cmp x0, #0
-      | movz w0, #42
-      | b.eq (. + 8)
-      | movz w0, #41
-      | ret
-      assembled      e0 03 00 91 00 0c 40 92 1f 00 00 f1 40 05 80 52 40 00 00 54 20 05 80 52 c0 03 5f d6
-      == frozen
-    stack_full
-      | sub x1, sp, #4, lsl #12
-      | strb wzr, [x1]
-      | movz w0, #42
-      | ret
-      assembled      e1 13 40 d1 3f 00 00 39 40 05 80 52 c0 03 5f d6
-      == frozen
-    stack_over
-      | sub x1, sp, #4, lsl #12
-      | sub x1, x1, #1
-      | strb wzr, [x1]
-      | movz w0, #42
-      | ret
-      assembled      e1 13 40 d1 21 04 00 d1 3f 00 00 39 40 05 80 52 c0 03 5f d6
-      == frozen
-    sp_corrupt
-      | sub sp, sp, #16
-      | movz w0, #42
-      | ret
-      assembled      ff 43 00 d1 40 05 80 52 c0 03 5f d6
-      == frozen |}]
+    | leaq -16376(%rsp), %rax
+    | movb $0, (%rax)
+    | movl $42, %eax
+    | ret
+    48 8d 84 24 08 c0 ff ff c6 00 00 b8 2a 00 00 00 c3 |}]
+
+let%expect_test "x86_64 stack_over" =
+  check X86_64_corpus.cases.stack_over;
+  [%expect
+    {|
+    | leaq -16377(%rsp), %rax
+    | movb $0, (%rax)
+    | movl $42, %eax
+    | ret
+    48 8d 84 24 07 c0 ff ff c6 00 00 b8 2a 00 00 00 c3 |}]
+
+let%expect_test "x86_64 sp_corrupt" =
+  check X86_64_corpus.cases.sp_corrupt;
+  [%expect
+    {|
+    | pop %rdx
+    | subq $16, %rsp
+    | movl $42, %eax
+    | jmp *%rdx
+    5a 48 83 ec 10 b8 2a 00 00 00 ff e2 |}]
+
+let%expect_test "x86_64 callee_clobber" =
+  check X86_64_corpus.cases.callee_clobber;
+  [%expect
+    {|
+    | xorq %rbx, %rbx
+    | movl $42, %eax
+    | ret
+    48 31 db b8 2a 00 00 00 c3 |}]
+
+(* {1 x86_32} *)
+
+let%expect_test "x86_32 return42" =
+  check X86_32_corpus.cases.return42;
+  [%expect
+    {|
+    | subl $12, %esp
+    | leal 16(%esp), %eax
+    | movl %eax, (%esp)
+    | movl $42, %eax
+    | addl $12, %esp
+    | ret
+    83 ec 0c 8d 44 24 10 89 04 24 b8 2a 00 00 00 83 c4 0c c3 |}]
+
+let%expect_test "x86_32 return41" =
+  check X86_32_corpus.cases.return41;
+  [%expect
+    {|
+    | subl $12, %esp
+    | leal 16(%esp), %eax
+    | movl %eax, (%esp)
+    | movl $41, %eax
+    | addl $12, %esp
+    | ret
+    83 ec 0c 8d 44 24 10 89 04 24 b8 29 00 00 00 83 c4 0c c3 |}]
+
+let%expect_test "x86_32 trap" =
+  check X86_32_corpus.cases.trap;
+  [%expect {|
+    | ud2
+    0f 0b |}]
+
+let%expect_test "x86_32 spin" =
+  check X86_32_corpus.cases.spin;
+  [%expect {|
+    | jmp .
+    eb fe |}]
+
+let%expect_test "x86_32 sp_align" =
+  check X86_32_corpus.cases.sp_align;
+  [%expect
+    {|
+    | movl %esp, %eax
+    | andl $15, %eax
+    | cmpl $12, %eax
+    | movl $42, %eax
+    | je (. + 7)
+    | movl $41, %eax
+    | ret
+    89 e0 83 e0 0f 83 f8 0c b8 2a 00 00 00 74 05 b8 29 00 00 00 c3 |}]
+
+let%expect_test "x86_32 stack_full" =
+  check X86_32_corpus.cases.stack_full;
+  [%expect
+    {|
+    | leal -16380(%esp), %eax
+    | movb $0, (%eax)
+    | movl $42, %eax
+    | ret
+    8d 84 24 04 c0 ff ff c6 00 00 b8 2a 00 00 00 c3 |}]
+
+let%expect_test "x86_32 stack_over" =
+  check X86_32_corpus.cases.stack_over;
+  [%expect
+    {|
+    | leal -16381(%esp), %eax
+    | movb $0, (%eax)
+    | movl $42, %eax
+    | ret
+    8d 84 24 03 c0 ff ff c6 00 00 b8 2a 00 00 00 c3 |}]
+
+let%expect_test "x86_32 sp_corrupt" =
+  check X86_32_corpus.cases.sp_corrupt;
+  [%expect
+    {|
+    | pop %edx
+    | subl $16, %esp
+    | movl $42, %eax
+    | jmp *%edx
+    5a 83 ec 10 b8 2a 00 00 00 ff e2 |}]
+
+let%expect_test "x86_32 callee_clobber" =
+  check X86_32_corpus.cases.callee_clobber;
+  [%expect {|
+    | xorl %ebx, %ebx
+    | movl $42, %eax
+    | ret
+    31 db b8 2a 00 00 00 c3 |}]
+
+(* {1 arm} *)
+
+let%expect_test "arm return42" =
+  check Arm_corpus.cases.return42;
+  [%expect
+    {|
+    | mov ip, sp
+    | sub sp, sp, #8
+    | str ip, [sp, #0]
+    | str lr, [sp, #4]
+    | mov r0, #42
+    | ldr lr, [sp, #4]
+    | add sp, sp, #8
+    | bx lr
+    0d c0 a0 e1 08 d0 4d e2 00 c0 8d e5 04 e0 8d e5 2a 00 a0 e3 04 e0 9d e5 08 d0 8d e2 1e ff 2f e1 |}]
+
+let%expect_test "arm return41" =
+  check Arm_corpus.cases.return41;
+  [%expect
+    {|
+    | mov ip, sp
+    | sub sp, sp, #8
+    | str ip, [sp, #0]
+    | str lr, [sp, #4]
+    | mov r0, #41
+    | ldr lr, [sp, #4]
+    | add sp, sp, #8
+    | bx lr
+    0d c0 a0 e1 08 d0 4d e2 00 c0 8d e5 04 e0 8d e5 29 00 a0 e3 04 e0 9d e5 08 d0 8d e2 1e ff 2f e1 |}]
+
+let%expect_test "arm trap" =
+  check Arm_corpus.cases.trap;
+  [%expect {|
+    | udf #0
+    f0 00 f0 e7 |}]
+
+let%expect_test "arm spin" =
+  check Arm_corpus.cases.spin;
+  [%expect {|
+    | b .
+    fe ff ff ea |}]
+
+let%expect_test "arm sp_align" =
+  check Arm_corpus.cases.sp_align;
+  [%expect
+    {|
+    | mov r0, sp
+    | and r0, r0, #7
+    | cmp r0, #0
+    | moveq r0, #42
+    | movne r0, #41
+    | bx lr
+    0d 00 a0 e1 07 00 00 e2 00 00 50 e3 2a 00 a0 03 29 00 a0 13 1e ff 2f e1 |}]
+
+let%expect_test "arm stack_full" =
+  check Arm_corpus.cases.stack_full;
+  [%expect
+    {|
+    | sub r1, sp, #16384
+    | mov r0, #0
+    | strb r0, [r1, #0]
+    | mov r0, #42
+    | bx lr
+    01 19 4d e2 00 00 a0 e3 00 00 c1 e5 2a 00 a0 e3 1e ff 2f e1 |}]
+
+let%expect_test "arm stack_over" =
+  check Arm_corpus.cases.stack_over;
+  [%expect
+    {|
+    | sub r1, sp, #16384
+    | sub r1, r1, #1
+    | mov r0, #0
+    | strb r0, [r1, #0]
+    | mov r0, #42
+    | bx lr
+    01 19 4d e2 01 10 41 e2 00 00 a0 e3 00 00 c1 e5 2a 00 a0 e3 1e ff 2f e1 |}]
+
+let%expect_test "arm sp_corrupt" =
+  check Arm_corpus.cases.sp_corrupt;
+  [%expect
+    {|
+    | sub sp, sp, #16
+    | mov r0, #42
+    | bx lr
+    10 d0 4d e2 2a 00 a0 e3 1e ff 2f e1 |}]
+
+let%expect_test "arm callee_clobber" =
+  check Arm_corpus.cases.callee_clobber;
+  [%expect
+    {|
+    | mov r4, #0
+    | mov r0, #42
+    | bx lr
+    00 40 a0 e3 2a 00 a0 e3 1e ff 2f e1 |}]
+
+(* {1 aarch64} *)
+
+let%expect_test "aarch64 return42" =
+  check Aarch64_corpus.cases.return42;
+  [%expect
+    {|
+    | mov x15, sp
+    | stp x15, x30, [sp, #-16]!
+    | movz w0, #42
+    | ldr x30, [sp, #8]
+    | add sp, sp, #16
+    | ret
+    ef 03 00 91 ef 7b bf a9 40 05 80 52 fe 07 40 f9 ff 43 00 91 c0 03 5f d6 |}]
+
+let%expect_test "aarch64 return41" =
+  check Aarch64_corpus.cases.return41;
+  [%expect
+    {|
+    | mov x15, sp
+    | stp x15, x30, [sp, #-16]!
+    | movz w0, #41
+    | ldr x30, [sp, #8]
+    | add sp, sp, #16
+    | ret
+    ef 03 00 91 ef 7b bf a9 20 05 80 52 fe 07 40 f9 ff 43 00 91 c0 03 5f d6 |}]
+
+let%expect_test "aarch64 trap" =
+  check Aarch64_corpus.cases.trap;
+  [%expect {|
+    | udf #0
+    00 00 00 00 |}]
+
+let%expect_test "aarch64 spin" =
+  check Aarch64_corpus.cases.spin;
+  [%expect {|
+    | b .
+    00 00 00 14 |}]
+
+let%expect_test "aarch64 sp_align" =
+  check Aarch64_corpus.cases.sp_align;
+  [%expect
+    {|
+    | mov x0, sp
+    | and x0, x0, #15
+    | cmp x0, #0
+    | movz w0, #42
+    | b.eq (. + 8)
+    | movz w0, #41
+    | ret
+    e0 03 00 91 00 0c 40 92 1f 00 00 f1 40 05 80 52 40 00 00 54 20 05 80 52 c0 03 5f d6 |}]
+
+let%expect_test "aarch64 stack_full" =
+  check Aarch64_corpus.cases.stack_full;
+  [%expect
+    {|
+    | sub x1, sp, #4, lsl #12
+    | strb wzr, [x1]
+    | movz w0, #42
+    | ret
+    e1 13 40 d1 3f 00 00 39 40 05 80 52 c0 03 5f d6 |}]
+
+let%expect_test "aarch64 stack_over" =
+  check Aarch64_corpus.cases.stack_over;
+  [%expect
+    {|
+    | sub x1, sp, #4, lsl #12
+    | sub x1, x1, #1
+    | strb wzr, [x1]
+    | movz w0, #42
+    | ret
+    e1 13 40 d1 21 04 00 d1 3f 00 00 39 40 05 80 52 c0 03 5f d6 |}]
+
+let%expect_test "aarch64 sp_corrupt" =
+  check Aarch64_corpus.cases.sp_corrupt;
+  [%expect
+    {|
+    | sub sp, sp, #16
+    | movz w0, #42
+    | ret
+    ff 43 00 d1 40 05 80 52 c0 03 5f d6 |}]
+
+let%expect_test "aarch64 callee_clobber" =
+  check Aarch64_corpus.cases.callee_clobber;
+  [%expect
+    {|
+    | movz x19, #0
+    | movz w0, #42
+    | ret
+    13 00 80 d2 40 05 80 52 c0 03 5f d6 |}]
 
 (* {1 The inventory}
 
-   What is dogfooded and what is not, in one table. The [needs] column is the
-   frontier: it is the work M2 has to do before that snippet can be built here,
-   stated per profile because the instruction sets do not run out of forms at
-   the same place - AArch64 encodes [movz x19, #0] with the fixture's own form
-   and so reaches [callee_clobber] today, while x86 needs [xor] for the same
-   snippet. *)
+   What is dogfooded and what is not, in one table - the one test that is over
+   the whole registry rather than one entry of it, because a frontier is only
+   readable as a table. The [needs] column is that frontier: it is the work M2
+   has to do before that snippet can be built here, stated per profile because
+   the instruction sets do not run out of forms at the same place - AArch64
+   encodes [movz x19, #0] with the fixture's own form and so reaches
+   [callee_clobber] today, while x86 needs [xor] for the same snippet. *)
 
 let%expect_test "the M1 scope frontier, per snippet and profile" =
-  let status e =
-    match e.built with
+  let status = function
     | Assembled _ -> "ok"
     | Refused _ -> "REFUSED"
     | Needs what -> "needs: " ^ what
   in
-  let names = List.map (fun e -> e.name) (List.hd all).entries in
   List.iter
-    (fun name ->
+    (fun (name, get) ->
       Printf.printf "%s\n" name;
-      List.iter
-        (fun t ->
-          match List.find_opt (fun e -> String.equal e.name name) t.entries with
-          | Some e -> Printf.printf "  %-8s %s\n" t.target (status e)
-          | None -> Printf.printf "  %-8s ABSENT FROM CORPUS\n" t.target)
-        all)
-    names;
-  let total = List.length all * List.length names in
+      List.iter (fun t -> Printf.printf "  %-8s %s\n" t.target (status (get t.cases))) all)
+    fields;
+  let entries = List.concat_map (fun t -> named t.cases) all in
   let built =
     List.length
-      (List.filter
-         (fun e -> match e.built with Assembled _ -> true | _ -> false)
-         (List.concat_map (fun t -> t.entries) all))
+      (List.filter (fun (_, b) -> match b with Assembled _ -> true | _ -> false) entries)
   in
-  Printf.printf "\ndogfooded %d of %d\n" built total;
+  Printf.printf "\ndogfooded %d of %d\n" built (List.length entries);
   [%expect
     {|
     return42
