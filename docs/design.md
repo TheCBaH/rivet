@@ -263,6 +263,9 @@ implementation:
   API.
 - No exception or diagnostic text that depends on host paths, locale, process
   state, or nondeterministic iteration order.
+- No error-provenance text - an err-trace origin, stack, event or observation -
+  in an expect or cram baseline. Foundation.Err_policy keeps automatic stack
+  capture off for the same reason; see asm/docs/errors.md §3.
 
 Host tools are deliberately outside this closure. Shell/CI harnesses may run
 CompCert, GNU binutils, QEMU, Node.js, or a browser runner and feed their artifacts
@@ -281,7 +284,10 @@ artifacts.
 
 ### 4.1 Public phase API
 
-The pipeline should expose an API conceptually similar to:
+The error type below is the M0 sketch. It is now a typed domain per module,
+wrapped by err-trace, with `Diagnostic.t` produced only at the reporting
+boundary; see asm/docs/errors.md. The staging and the entry points are
+unchanged.
 
 ```ocaml
 module type PIPELINE = sig

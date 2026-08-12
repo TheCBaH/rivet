@@ -232,20 +232,59 @@ let pp_fragment ppf = function
    them to match would reject the one case ladders exist for. *)
 (* The annotations are load-bearing: [symbol] also declares a [name] field and
    is declared later, so without them OCaml resolves a fixup's [name] to it. *)
+(* The ladder's error domain (asm/docs/errors.md). Every constructor carries the
+   rungs it is talking about rather than their names spliced into a sentence,
+   which is what lets a caller report the pair without re-parsing the message.
+   Rendering is unchanged. *)
+type relax_error =
+  [ `Empty_ladder
+  | `Rung_not_shorter of rung_pair
+  | `Rung_fixups_differ of rung_pair
+  | `Fixup_family_changes of fixup_family_changes
+  | `Fixup_target_differs of string ]
+
+and rung_pair = { rung : string; rung_bytes : int; other : string; other_bytes : int }
+and fixup_family_changes = { fixup : string; from_family : string; to_family : string }
+
+let pp_relax_error ppf : relax_error -> unit = function
+  | `Empty_ladder -> Fmt.string ppf "a relaxation ladder needs at least one alternative"
+  | `Rung_not_shorter { rung; rung_bytes; other; other_bytes } ->
+      Fmt.pf ppf "rung %s (%d bytes) is not shorter than %s (%d bytes)" rung rung_bytes other
+        other_bytes
+  | `Rung_fixups_differ { rung; other; _ } ->
+      Fmt.pf ppf "rung %s does not carry the same fixups as %s" rung other
+  | `Fixup_family_changes { fixup; from_family; to_family } ->
+      Fmt.pf ppf "fixup %s changes family between rungs (%s vs %s)" fixup from_family to_family
+  | `Fixup_target_differs fixup ->
+      Fmt.pf ppf "fixup %s targets a different expression between rungs" fixup
+
+let relax_error_code : relax_error -> string = function
+  | `Empty_ladder -> "relax.empty"
+  | `Rung_not_shorter _ -> "relax.not-shorter"
+  | `Rung_fixups_differ _ -> "relax.fixups-differ"
+  | `Fixup_family_changes _ | `Fixup_target_differs _ -> "relax.fixup-differs"
+
+let relax_fail ?pos (e : relax_error) = Err.fail ?pos ~pp_error:pp_relax_error e
+
 let validate_relax (alts : 'k encoded_form list) =
   let names (f : 'k encoded_form) =
     List.sort_uniq compare (List.map (fun (x : 'k fixup) -> x.name) f.fixups)
   in
   match alts with
-  | [] -> Error "a relaxation ladder needs at least one alternative"
+  | [] -> relax_fail ~pos:__POS__ `Empty_ladder
   | first :: _ -> (
       let want = names first in
       let rec ordered = function
         | a :: (b :: _ as rest) ->
             if String.length a.bytes >= String.length b.bytes then
-              Error
-                (Printf.sprintf "rung %s (%d bytes) is not shorter than %s (%d bytes)" a.form
-                   (String.length a.bytes) b.form (String.length b.bytes))
+              relax_fail ~pos:__POS__
+                (`Rung_not_shorter
+                   {
+                     rung = a.form;
+                     rung_bytes = String.length a.bytes;
+                     other = b.form;
+                     other_bytes = String.length b.bytes;
+                   })
             else ordered rest
         | _ -> Ok ()
       in
@@ -256,8 +295,14 @@ let validate_relax (alts : 'k encoded_form list) =
             | Error _ -> acc
             | Ok () ->
                 if names a <> want then
-                  Error
-                    (Printf.sprintf "rung %s does not carry the same fixups as %s" a.form first.form)
+                  relax_fail ~pos:__POS__
+                    (`Rung_fixups_differ
+                       {
+                         rung = a.form;
+                         rung_bytes = String.length a.bytes;
+                         other = first.form;
+                         other_bytes = String.length first.bytes;
+                       })
                 else
                   List.fold_left
                     (fun acc (fa : 'k fixup) ->
@@ -272,13 +317,15 @@ let validate_relax (alts : 'k encoded_form list) =
                           | None -> Ok ()
                           | Some fb ->
                               if not (String.equal fa.family fb.family) then
-                                Error
-                                  (Printf.sprintf "fixup %s changes family between rungs (%s vs %s)"
-                                     fa.name fb.family fa.family)
+                                relax_fail ~pos:__POS__
+                                  (`Fixup_family_changes
+                                     {
+                                       fixup = fa.name;
+                                       from_family = fb.family;
+                                       to_family = fa.family;
+                                     })
                               else if Expr.to_string fa.value <> Expr.to_string fb.value then
-                                Error
-                                  (Printf.sprintf
-                                     "fixup %s targets a different expression between rungs" fa.name)
+                                relax_fail ~pos:__POS__ (`Fixup_target_differs fa.name)
                               else Ok ()))
                     (Ok ()) a.fixups)
           (Ok ()) alts

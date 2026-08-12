@@ -119,10 +119,10 @@ let text = Test_dump_inputs.aarch64
 let from_text () =
   let source = Foundation.Span.source ~name:"aarch64.s" ~contents:text in
   match P.parse ~unit_name:"asm_test_entry" ~source with
-  | Error ds -> failwith (Foundation.Diagnostic.render_all ds)
+  | Error ds -> failwith (Foundation.Diag.render ds)
   | Ok src -> (
       match P.simplify src with
-      | Error ds -> failwith (Foundation.Diagnostic.render_all ds)
+      | Error ds -> failwith (Foundation.Diag.render ds)
       | Ok (n, state) -> (n, state))
 
 let render_normalized = Fmt.to_to_string (Normalized_ast.pp T.Instruction.pp)
@@ -163,14 +163,14 @@ let bytes_of l =
   | Ok (`Fixed a) -> a.Lowered_ast.bytes
   | Ok (`Relax (a :: _)) -> a.Lowered_ast.bytes
   | Ok (`Relax []) -> failwith "empty relaxation ladder"
-  | Error d -> failwith (Foundation.Diagnostic.message d)
+  | Error d -> failwith (Foundation.Diagnostic.message (T.error_diagnostic (Err.Error.kind d)))
 
 let form_of l =
   match T.encode l with
   | Ok (`Fixed a) -> Some ("aarch64." ^ a.Lowered_ast.form)
   | Ok (`Relax (a :: _)) -> Some ("aarch64." ^ a.Lowered_ast.form)
   | Ok (`Relax []) -> failwith "empty relaxation ladder"
-  | Error d -> failwith (Foundation.Diagnostic.message d)
+  | Error d -> failwith (Foundation.Diagnostic.message (T.error_diagnostic (Err.Error.kind d)))
 
 let direct_lowered : T.fixup_kind Lowered_ast.module_ =
   let frag l = Lowered_ast.Bytes { bytes = bytes_of l; form = form_of l; fixups = []; origin } in
@@ -224,7 +224,7 @@ let render_lowered = Fmt.to_to_string Lowered_ast.pp
 
 let%expect_test "lowering the direct normalized AST equals the direct lowered module" =
   match P.lower ~state:T.default_state direct_normalized with
-  | Error ds -> print_endline (Foundation.Diagnostic.render_all ds)
+  | Error ds -> print_endline (Foundation.Diag.render ds)
   | Ok low ->
       let a = render_lowered low and b = render_lowered direct_lowered in
       if String.equal a b then print_endline "lowered modules are identical"
@@ -252,26 +252,26 @@ let%expect_test "lowering the direct normalized AST equals the direct lowered mo
 
 let image_of low =
   match P.plan low with
-  | Error ds -> failwith (Foundation.Diagnostic.render_all ds)
+  | Error ds -> failwith (Foundation.Diag.render ds)
   | Ok l -> (
       let plan = Image.plan_of l in
       let addresses =
         List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0L)) plan.Image.segments
       in
       match Image.bind_image l ~addresses with
-      | Error ds -> failwith (Foundation.Diagnostic.render_all ds)
+      | Error ds -> failwith (Foundation.Diag.render ds)
       | Ok img -> Fmt.to_to_string Image.pp img)
 
 let%expect_test "text, direct normalized AST and direct lowered module give one image" =
   let parsed, state = from_text () in
   let from_text_image =
     match P.lower ~state parsed with
-    | Error ds -> failwith (Foundation.Diagnostic.render_all ds)
+    | Error ds -> failwith (Foundation.Diag.render ds)
     | Ok low -> image_of low
   in
   let from_normalized =
     match P.lower ~state:T.default_state direct_normalized with
-    | Error ds -> failwith (Foundation.Diagnostic.render_all ds)
+    | Error ds -> failwith (Foundation.Diag.render ds)
     | Ok low -> image_of low
   in
   let from_lowered = image_of direct_lowered in
@@ -315,7 +315,10 @@ let%expect_test "a direct normalized AST with an out-of-range immediate is rejec
   in
   (match P.lower ~state:T.default_state bad with
   | Ok _ -> print_endline "accepted an out-of-range immediate"
-  | Error ds -> List.iter (fun d -> print_endline (Foundation.Diagnostic.message d)) ds);
+  | Error ds ->
+      List.iter
+        (fun d -> print_endline (Foundation.Diagnostic.message d))
+        (Foundation.Diag.diagnostics ds));
   [%expect {| movz immediate does not fit 16 bits |}]
 
 let%expect_test "a direct normalized AST with no section is rejected at lowering" =
@@ -331,7 +334,10 @@ let%expect_test "a direct normalized AST with no section is rejected at lowering
   in
   (match P.lower ~state:T.default_state bad with
   | Ok _ -> print_endline "accepted a fragment with nowhere to go"
-  | Error ds -> List.iter (fun d -> print_endline (Foundation.Diagnostic.message d)) ds);
+  | Error ds ->
+      List.iter
+        (fun d -> print_endline (Foundation.Diagnostic.message d))
+        (Foundation.Diag.diagnostics ds));
   [%expect {| this appears before any section directive |}]
 
 let%expect_test "a direct lowered module whose exported symbol is undefined is rejected at planning"
@@ -354,7 +360,10 @@ let%expect_test "a direct lowered module whose exported symbol is undefined is r
   in
   (match P.plan bad with
   | Ok _ -> print_endline "accepted an undefined export"
-  | Error ds -> List.iter (fun d -> print_endline (Foundation.Diagnostic.message d)) ds);
+  | Error ds ->
+      List.iter
+        (fun d -> print_endline (Foundation.Diagnostic.message d))
+        (Foundation.Diag.diagnostics ds));
   [%expect
     {|
     symbol absent is declared but never defined

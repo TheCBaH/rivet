@@ -1,0 +1,22 @@
+; Melange build of the vendored err_trace. Same sources as the submodule at
+; ../../../vendor/err_trace; only the modes differ. Warnings are disabled
+; explicitly here because `vendored_dirs` covers the source tree, not this
+; copy's stanza.
+;
+; ../../../vendor/dune marks the submodule `data_only_dirs`, which leaves its
+; files reachable as ordinary sources - that is what lets these copy_files#
+; cross into it.
+(copy_files#
+ (files ../../../vendor/err_trace/src/err.ml))
+
+(copy_files#
+ (files ../../../vendor/err_trace/src/err.mli))
+
+(library
+ (name err_trace)
+ (wrapped false)
+ (modes byte native melange)
+ (flags
+  (:standard -w -a))
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))

@@ -12,12 +12,31 @@
 
 type t = { data : string; pos : int; limit : int }
 
+(* The one way to build a cursor badly, and therefore this module's whole error
+   domain. The payload is the three numbers that decide it, so a caller can say
+   which bound it broke; the message is the one [invalid_arg] carried before.
+   See asm/docs/errors.md. *)
+type error = [ `Range_outside_string of range_outside_string ]
+
+(* [start] rather than [pos]: the cursor record below also has a [pos], and the
+   later definition would shadow it for every [t.pos] in this file. *)
+and range_outside_string = { start : int; len : int option; length : int }
+
+let pp_error ppf : error -> unit = function
+  | `Range_outside_string _ -> Fmt.string ppf "Byte_cursor.of_string: range outside the string"
+
+let error_code : error -> string = function `Range_outside_string _ -> "byte-cursor.range"
+
 let of_string ?(pos = 0) ?len data =
   let limit = match len with None -> String.length data | Some n -> pos + n in
   if pos < 0 || limit > String.length data || limit < pos then
-    invalid_arg "Byte_cursor.of_string: range outside the string";
-  { data; pos; limit }
+    Err.fail ~pos:__POS__ ~pp_error
+      (`Range_outside_string { start = pos; len; length = String.length data })
+  else Ok { data; pos; limit }
 
+(* The total companion, for the callers that have already established the range -
+   the same arrangement, and the same reasoning, as {!Bigint}'s. *)
+let of_string_exn ?pos ?len data = Err.or_raise ~pos:__POS__ ~pp_error (of_string ?pos ?len data)
 let position t = t.pos
 let remaining t = t.limit - t.pos
 let at_end t = t.pos >= t.limit

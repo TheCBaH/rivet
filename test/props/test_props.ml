@@ -268,7 +268,9 @@ let prop_relax_feasible =
     ~print:show_shape gen_shape (fun s ->
       match plan_shape s with
       | Error ds ->
-          List.for_all (fun d -> Foundation.Diagnostic.code d = "image.relax-unreachable") ds
+          List.for_all
+            (fun d -> Foundation.Diagnostic.code d = "image.relax-unreachable")
+            (Foundation.Diag.diagnostics ds)
       | Ok l -> (
           match Image.bind_image l ~addresses:[ (".text", 0x400000L) ] with
           | Ok _ -> true

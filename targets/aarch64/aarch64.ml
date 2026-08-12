@@ -15,6 +15,45 @@
 open Foundation
 include Aarch64_encode
 
+(* The front end's error domain (asm/docs/errors.md). Separate from the
+   encoder's because it may name {!Asm_syntax} and the encoder's may not - see
+   {!Target_intf.Target.TARGET} for why that split exists. *)
+type parse_error_kind =
+  [ `Unknown_register of string
+  | `Shift_amount_too_wide
+  | `Offset_too_wide
+  | `Cannot_parse_operand of cannot_parse
+  | `Unbalanced_brackets ]
+
+and cannot_parse = { slice : Asm_syntax.Token.slice; reason : Asm_syntax.Parse_lines.error_kind }
+
+type parse_error = parse_error_kind Target_error.t
+
+let pp_parse_error_kind ppf : parse_error_kind -> unit = function
+  | `Unknown_register n -> Fmt.pf ppf "unknown register %s" n
+  | `Shift_amount_too_wide -> Fmt.string ppf "shift amount does not fit"
+  | `Offset_too_wide -> Fmt.string ppf "offset does not fit"
+  | `Cannot_parse_operand { slice; _ } ->
+      Fmt.pf ppf "cannot parse operand %s" (Asm_syntax.Token.slice_text slice)
+  | `Unbalanced_brackets -> Fmt.string ppf "unbalanced brackets in operand"
+
+let parse_error_kind_code : parse_error_kind -> string = function
+  | `Unknown_register _ | `Shift_amount_too_wide | `Offset_too_wide | `Cannot_parse_operand _
+  | `Unbalanced_brackets ->
+      "aarch64.operand"
+
+let pp_parse_error ppf e = pp_parse_error_kind ppf (Target_error.kind e)
+let parse_error_code e = parse_error_kind_code (Target_error.kind e)
+
+let parse_error_diagnostic e =
+  Target_error.to_diagnostic ~code:parse_error_kind_code ~pp:pp_parse_error_kind e
+
+let parse_diag ?pos ?origin kind =
+  Err.Error.make ?pos ~pp_error:pp_parse_error
+    (Target_error.make
+       ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"aarch64" ())
+       kind)
+
 (* {1 Lexical profile}
 
    [//] introduces a comment, so the profile's longest-first matching matters:
@@ -46,12 +85,12 @@ let regroup (slices : Asm_syntax.Token.slice list) =
      reads [[ sp # 0 ]]. Re-inserting a comma token would be inventing source
      text, and the spans would then not be the lexer's. *)
   let rec go acc pending depth = function
-    | [] -> if pending = [] then Ok (List.rev acc) else Error "unbalanced brackets in operand"
+    | [] -> if pending = [] then Ok (List.rev acc) else Error `Unbalanced_brackets
     | s :: rest ->
         let d = depth + depth_of s in
         let pending = pending @ s in
         if d = 0 then go (pending :: acc) [] 0 rest
-        else if d < 0 then Error "unbalanced brackets in operand"
+        else if d < 0 then Error `Unbalanced_brackets
         else go acc pending d rest
   in
   go [] [] 0 slices
@@ -63,13 +102,13 @@ let slice_origin (s : Asm_syntax.Token.slice) =
 
 let parse_one (slice : Asm_syntax.Token.slice) =
   let origin = slice_origin slice in
-  let bad msg = Error (diag ~origin "aarch64.operand" msg) in
+  let bad kind = Error (parse_diag ~pos:__POS__ ~origin kind) in
   let open Asm_core in
   let open Asm_syntax in
   let mem ~base ~offset ~writeback =
     match Reg.find base with
     | Some r -> Ok (Operand.Mem { Mem.base = r; offset; writeback; pre = true })
-    | None -> bad ("unknown register " ^ base)
+    | None -> bad (`Unknown_register base)
   in
   let const_mem ~base ~offset ~writeback = mem ~base ~offset:(Disp.Const offset) ~writeback in
   let int64_of v = match Bigint.to_int64_opt v with Some x -> Some x | None -> None in
@@ -90,7 +129,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
   ] -> (
       match Bigint.to_int_opt v with
       | Some n -> Ok (Operand.Shift { Shift.kind = k; amount = n })
-      | None -> bad "shift amount does not fit")
+      | None -> bad `Shift_amount_too_wide)
   | [ Token.Lbracket; Token.Ident b; Token.Rbracket ] ->
       const_mem ~base:b ~offset:0L ~writeback:false
   | [ Token.Lbracket; Token.Ident b; Token.Rbracket; Token.Bang ] ->
@@ -98,19 +137,19 @@ let parse_one (slice : Asm_syntax.Token.slice) =
   | [ Token.Lbracket; Token.Ident b; Token.Immediate_sigil; Token.Int v; Token.Rbracket ] -> (
       match int64_of v with
       | Some o -> const_mem ~base:b ~offset:o ~writeback:false
-      | None -> bad "offset does not fit")
+      | None -> bad `Offset_too_wide)
   | [
    Token.Lbracket; Token.Ident b; Token.Immediate_sigil; Token.Int v; Token.Rbracket; Token.Bang;
   ] -> (
       match int64_of v with
       | Some o -> const_mem ~base:b ~offset:o ~writeback:true
-      | None -> bad "offset does not fit")
+      | None -> bad `Offset_too_wide)
   | [
    Token.Lbracket; Token.Ident b; Token.Immediate_sigil; Token.Minus; Token.Int v; Token.Rbracket;
   ] -> (
       match int64_of v with
       | Some o -> const_mem ~base:b ~offset:(Int64.neg o) ~writeback:false
-      | None -> bad "offset does not fit")
+      | None -> bad `Offset_too_wide)
   | [
    Token.Lbracket;
    Token.Ident b;
@@ -122,7 +161,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
   ] -> (
       match int64_of v with
       | Some o -> const_mem ~base:b ~offset:(Int64.neg o) ~writeback:true
-      | None -> bad "offset does not fit")
+      | None -> bad `Offset_too_wide)
   (* [[x16, #:lo12:g]] - a memory operand whose offset is an expression rather
      than a number (§D2). The bracket and sigil are stripped here and the middle
      handed to the common expression parser, which is what knows [:lo12:g+4]
@@ -137,18 +176,18 @@ let parse_one (slice : Asm_syntax.Token.slice) =
       in
       match Asm_syntax.Parse_lines.parse_expression inner with
       | Ok e -> mem ~base:b ~offset:(Disp.Sym e) ~writeback:false
-      | Error _ -> bad ("cannot parse operand " ^ Asm_syntax.Token.slice_text slice))
+      | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))
   | _ -> (
       (* A branch or call target: not a register, an immediate or an address, but
          still an expression. The common parser decides what it means. *)
       match Asm_syntax.Parse_lines.parse_expression slice with
       | Ok e -> Ok (Operand.Sym e)
-      | Error _ -> bad ("cannot parse operand " ^ Asm_syntax.Token.slice_text slice))
+      | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))
 
 let parse_operands ~mnemonic slices =
   ignore mnemonic;
   match regroup slices with
-  | Error m -> Error (diag "aarch64.operand" m)
+  | Error kind -> Error (parse_diag ~pos:__POS__ kind)
   | Ok groups ->
       let rec go acc = function
         | [] -> Ok (List.rev acc)

@@ -1004,10 +1004,115 @@ let codec : (Lowered.t, fixup_kind) C.t =
 let name = "aarch64"
 let triple = "aarch64-linux-gnu"
 
-let diag ?origin code message =
-  Diagnostic.error ~code ~message
-    ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"aarch64" ())
-    ()
+(* This target's error domain; see arm_encode.ml for why it is the shared row
+   alone for now, and why [diag] returns the wrapped error. *)
+(* The A64 encoder's error domain (asm/docs/errors.md). Below source text, so it
+   names no token; the front end's operand failures are a separate domain in
+   aarch64.ml, for the reason {!Target_intf.Target.TARGET} gives.
+
+   [`Not_bitmask_immediate] carries its value for the same reason ARM's
+   modified-immediate tag does: an A64 logical immediate is a rotated run of
+   ones, so which constant failed is the entire fact. *)
+type error_kind =
+  [ Target_error.shared
+  | `Mov_reg_to_reg_out_of_scope
+  | `Imm12_needs_shift
+  | `Imm12_unshifted
+  | `Imm12_needs_lsl12_form
+  | `Imm12_field
+  | `Movz_imm16_overflow
+  | `Movz_shift
+  | `Stp_symbolic_offset
+  | `Stp_writeback_only
+  | `Stp_offset_alignment
+  | `Wrong_register_width of wrong_register_width
+  | `Writeback_out_of_scope
+  | `Wrong_memory_modifier of string
+  | `Missing_memory_modifier
+  | `Unsigned_offset_only
+  | `Offset_not_scaled of int64
+  | `Offset_not_12bit_scaled
+  | `Not_a_shifted_register of string
+  | `Shift_amount_too_large
+  | `Too_many_operands
+  | `Not_bitmask_immediate of int64
+  | `Unknown_condition of string
+  | `Csel_needs_condition
+  | `Udf_imm16_overflow
+  | `Codec of Codec.error
+  | `Decode_short
+  | `Decode_no_match
+  | `Branch_not_word_aligned
+  | `Branch_out_of_range
+  | `Lo12_misaligned
+  | `No_data_relocation of int
+  | `Padding_not_word_multiple ]
+
+and wrong_register_width = { opcode : string; expected : int }
+
+type error = error_kind Target_error.t
+
+let pp_error_kind ppf : error_kind -> unit = function
+  | #Target_error.shared as e -> Target_error.pp_shared ppf e
+  | `Mov_reg_to_reg_out_of_scope ->
+      Fmt.string ppf "mov between two general registers lowers to orr, which is not in M1 scope"
+  | `Imm12_needs_shift ->
+      Fmt.string ppf "immediate does not fit the unshifted 12-bit field; lsl #12 is M2"
+  | `Imm12_unshifted -> Fmt.string ppf "immediate does not fit the unshifted 12-bit field"
+  | `Imm12_needs_lsl12_form ->
+      Fmt.string ppf
+        "immediate does not fit the unshifted 12-bit field; use the four-operand lsl #12 form"
+  | `Imm12_field -> Fmt.string ppf "immediate does not fit the 12-bit field"
+  | `Movz_imm16_overflow -> Fmt.string ppf "movz immediate does not fit 16 bits"
+  | `Movz_shift -> Fmt.string ppf "movz shift must be 0, 16, 32 or 48"
+  | `Stp_symbolic_offset -> Fmt.string ppf "stp takes a numeric offset"
+  | `Stp_writeback_only -> Fmt.string ppf "M1 supports only the pre-index writeback form of stp"
+  | `Stp_offset_alignment -> Fmt.string ppf "stp offset must be a multiple of eight"
+  | `Wrong_register_width { opcode; expected } ->
+      Fmt.pf ppf "%s needs a %d-bit register" opcode expected
+  | `Writeback_out_of_scope -> Fmt.string ppf "writeback loads and stores are not in M2 scope"
+  | `Wrong_memory_modifier m -> Fmt.pf ppf "a memory offset takes #:lo12:, not #:%s:" m
+  | `Missing_memory_modifier -> Fmt.string ppf "a symbolic memory offset needs a #:lo12: modifier"
+  | `Unsigned_offset_only ->
+      Fmt.string ppf "M2 supports only the unsigned-offset form of a load or store"
+  | `Offset_not_scaled scale ->
+      Fmt.pf ppf "offset must be a multiple of %Ld for this access width" scale
+  | `Offset_not_12bit_scaled -> Fmt.string ppf "offset does not fit the scaled 12-bit field"
+  | `Not_a_shifted_register k -> Fmt.pf ppf "%s is not a shift of a register operand" k
+  | `Shift_amount_too_large -> Fmt.string ppf "shift amount does not fit the register width"
+  | `Too_many_operands -> Fmt.string ppf "too many operands"
+  | `Not_bitmask_immediate v -> Fmt.pf ppf "#%Ld is not an A64 bitmask immediate" v
+  | `Unknown_condition c -> Fmt.pf ppf "unknown condition %s" c
+  | `Csel_needs_condition -> Fmt.string ppf "csel needs a condition name"
+  | `Udf_imm16_overflow -> Fmt.string ppf "udf immediate does not fit 16 bits"
+  | `Codec e -> Codec.pp_error ppf e
+  | `Decode_short -> Fmt.string ppf "fewer than four bytes remain"
+  | `Decode_no_match -> Fmt.string ppf "no form matches this word"
+  | `Branch_not_word_aligned -> Fmt.string ppf "branch target is not word-aligned"
+  | `Branch_out_of_range -> Fmt.string ppf "branch target is out of range"
+  | `Lo12_misaligned -> Fmt.string ppf "low-12 target is not aligned to the access width"
+  | `No_data_relocation w -> Fmt.pf ppf "no absolute relocation for a %d-byte data initializer" w
+  | `Padding_not_word_multiple ->
+      Fmt.string ppf "A64 padding must be a whole number of four-byte instructions"
+
+let error_kind_code : error_kind -> string = function
+  | `Unknown_instruction _ -> "aarch64.simplify"
+  | `Codec e -> Option.value (Codec.code e) ~default:"aarch64.encode"
+  | `Decode_short | `Decode_no_match | `Decode_no_normalized -> "aarch64.decode"
+  | `Branch_not_word_aligned | `Branch_out_of_range | `Lo12_misaligned -> "aarch64.fixup"
+  | `No_data_relocation _ -> "aarch64.data-fixup"
+  | `Padding_not_word_multiple -> "aarch64.nop"
+  | _ -> "aarch64.lower"
+
+let pp_error ppf e = pp_error_kind ppf (Target_error.kind e)
+let error_code e = error_kind_code (Target_error.kind e)
+let error_diagnostic e = Target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
+
+let diag ?pos ?origin kind =
+  Err.Error.make ?pos ~pp_error
+    (Target_error.make
+       ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"aarch64" ())
+       kind)
 
 let make_surface_instruction ~mnemonic ~origin ops = Ok { Surface.mnemonic; ops; origin }
 
@@ -1020,9 +1125,9 @@ let make_surface_instruction ~mnemonic ~origin ops = Ok { Surface.mnemonic; ops;
 
 let simplify_instruction ~features s =
   ignore features;
-  let bad msg = Error (diag ~origin:s.Surface.origin "aarch64.simplify" msg) in
+  let bad kind = Error (diag ~pos:__POS__ ~origin:s.Surface.origin kind) in
   match Opcode.of_mnemonic s.Surface.mnemonic with
-  | None -> bad (Printf.sprintf "unknown instruction %s" s.Surface.mnemonic)
+  | None -> bad (`Unknown_instruction s.Surface.mnemonic)
   | Some op -> (
       (* A [lsl #0] modifier is dropped; a nonzero one is kept, because [movz]
          encodes it in [hw] and dropping it would silently change the value. *)
@@ -1035,11 +1140,11 @@ let simplify_instruction ~features s =
 
 let lower_instruction state i =
   ignore state;
-  let bad msg = Error (diag "aarch64.lower" msg) in
+  let bad kind = Error (diag ~pos:__POS__ kind) in
   let imm_of v =
     match Bigint.to_int64_opt v with
     | Some x -> Ok x
-    | None -> Error (diag "aarch64.lower" "immediate does not fit 64 bits")
+    | None -> Error (diag ~pos:__POS__ `Immediate_too_wide)
   in
   match (i.Instruction.op, i.Instruction.ops) with
   (* [mov xD, sp] and [mov sp, xS] are [add ..., #0]; [mov] between two general
@@ -1048,37 +1153,34 @@ let lower_instruction state i =
   | Opcode.Mov, [ Operand.Reg rd; Operand.Reg rn ] ->
       if rd.Reg.is_sp || rn.Reg.is_sp then
         Ok [ Lowered.Add_imm { rd; rn; imm = 0L; shift12 = false } ]
-      else bad "mov between two general registers lowers to orr, which is not in M1 scope"
+      else bad `Mov_reg_to_reg_out_of_scope
   | Opcode.Add, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then
-            bad "immediate does not fit the unshifted 12-bit field; lsl #12 is M2"
+          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then bad `Imm12_needs_shift
           else Ok [ Lowered.Add_imm { rd; rn; imm; shift12 = false } ])
   | Opcode.Movz, [ Operand.Reg rd; Operand.Imm v ] -> (
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
-            bad "movz immediate does not fit 16 bits"
+          if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then bad `Movz_imm16_overflow
           else Ok [ Lowered.Movz { rd; imm16 = imm; hw = 0 } ])
   | Opcode.Movz, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = "lsl"; amount } ]
     -> (
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
-          if amount mod 16 <> 0 || amount / 16 > 3 then bad "movz shift must be 0, 16, 32 or 48"
+          if amount mod 16 <> 0 || amount / 16 > 3 then bad `Movz_shift
           else if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
-            bad "movz immediate does not fit 16 bits"
+            bad `Movz_imm16_overflow
           else Ok [ Lowered.Movz { rd; imm16 = imm; hw = amount / 16 } ])
   | Opcode.Stp, [ Operand.Reg rt; Operand.Reg rt2; Operand.Mem m ] -> (
       match m.Mem.offset with
-      | Disp.Sym _ -> bad "stp takes a numeric offset"
+      | Disp.Sym _ -> bad `Stp_symbolic_offset
       | Disp.Const off ->
-          if not m.Mem.writeback then bad "M1 supports only the pre-index writeback form of stp"
-          else if not (Int64.equal (Int64.rem off 8L) 0L) then
-            bad "stp offset must be a multiple of eight"
+          if not m.Mem.writeback then bad `Stp_writeback_only
+          else if not (Int64.equal (Int64.rem off 8L) 0L) then bad `Stp_offset_alignment
           else Ok [ Lowered.Stp_pre { rt; rt2; rn = m.Mem.base; offset = off } ])
   (* One lowering for all eight loads and stores. The mnemonic fixes the access
      size for the sub-word forms and the register width fixes it for the rest,
@@ -1094,8 +1196,8 @@ let lower_instruction state i =
       in
       let expected = access_reg_width size in
       if rt.Reg.width <> expected then
-        bad (Printf.sprintf "%s needs a %d-bit register" (Opcode.name op) expected)
-      else if m.Mem.writeback then bad "writeback loads and stores are not in M2 scope"
+        bad (`Wrong_register_width { opcode = Opcode.name op; expected })
+      else if m.Mem.writeback then bad `Writeback_out_of_scope
       else
         match m.Mem.offset with
         | Disp.Sym e -> (
@@ -1105,24 +1207,20 @@ let lower_instruction state i =
             let inner =
               match e with
               | Asm_core.Expr.Modifier ("lo12", inner) -> Ok inner
-              | Asm_core.Expr.Modifier (m, _) ->
-                  Error (Printf.sprintf "a memory offset takes #:lo12:, not #:%s:" m)
-              | _ -> Error "a symbolic memory offset needs a #:lo12: modifier"
+              | Asm_core.Expr.Modifier (m, _) -> Error (`Wrong_memory_modifier m)
+              | _ -> Error `Missing_memory_modifier
             in
             match inner with
-            | Error msg -> bad msg
+            | Error kind -> bad kind
             | Ok value ->
                 Ok
                   [ Lowered.Ldst_uoff { size; load; rt; rn = m.Mem.base; offset = Disp.Sym value } ]
             )
         | Disp.Const off ->
             let scale = Int64.of_int (access_bytes size) in
-            if Int64.compare off 0L < 0 then
-              bad "M2 supports only the unsigned-offset form of a load or store"
-            else if not (Int64.equal (Int64.rem off scale) 0L) then
-              bad (Printf.sprintf "offset must be a multiple of %Ld for this access width" scale)
-            else if Int64.compare (Int64.div off scale) 4096L >= 0 then
-              bad "offset does not fit the scaled 12-bit field"
+            if Int64.compare off 0L < 0 then bad `Unsigned_offset_only
+            else if not (Int64.equal (Int64.rem off scale) 0L) then bad (`Offset_not_scaled scale)
+            else if Int64.compare (Int64.div off scale) 4096L >= 0 then bad `Offset_not_12bit_scaled
             else
               Ok [ Lowered.Ldst_uoff { size; load; rt; rn = m.Mem.base; offset = Disp.Const off } ])
   | Opcode.Ret, [ Operand.Reg rn ] -> Ok [ Lowered.Ret { rn } ]
@@ -1132,8 +1230,7 @@ let lower_instruction state i =
       | Error e -> Error e
       | Ok imm ->
           if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then
-            bad
-              "immediate does not fit the unshifted 12-bit field; use the four-operand lsl #12 form"
+            bad `Imm12_needs_lsl12_form
           else Ok [ Lowered.Sub_imm { s = false; rd; rn; imm; shift12 = false } ])
   | ( Opcode.Sub,
       [
@@ -1145,8 +1242,7 @@ let lower_instruction state i =
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then
-            bad "immediate does not fit the 12-bit field"
+          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then bad `Imm12_field
           else Ok [ Lowered.Sub_imm { s = false; rd; rn; imm; shift12 = true } ])
   (* The register forms of ADD/SUB, and the comparison that is one of them.
      A shift is a fourth operand at the surface and part of the third here. *)
@@ -1162,25 +1258,23 @@ let lower_instruction state i =
             ]
       | [ Operand.Shift { Shift.kind; amount } ] -> (
           match shift_of_name kind with
-          | None -> bad (Printf.sprintf "%s is not a shift of a register operand" kind)
+          | None -> bad (`Not_a_shifted_register kind)
           | Some shift ->
-              if amount < 0 || amount >= rd.Reg.width then
-                bad "shift amount does not fit the register width"
+              if amount < 0 || amount >= rd.Reg.width then bad `Shift_amount_too_large
               else
                 Ok
                   [
                     Lowered.Addsub_shift
                       { sub = op = Opcode.Sub; s = false; rd; rn; rm; shift; amount };
                   ])
-      | _ -> bad "too many operands")
+      | _ -> bad `Too_many_operands)
   | Opcode.Cmp, [ Operand.Reg rn; Operand.Imm v ] -> (
       (* The immediate half of the same aliasing: a [subs] into the zero
          register. *)
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then
-            bad "immediate does not fit the unshifted 12-bit field"
+          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then bad `Imm12_unshifted
           else
             Ok
               [
@@ -1214,8 +1308,7 @@ let lower_instruction state i =
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
-          if encode_bitmask ~datasize:rd.Reg.width imm = None then
-            bad (Printf.sprintf "#%Ld is not an A64 bitmask immediate" imm)
+          if encode_bitmask ~datasize:rd.Reg.width imm = None then bad (`Not_bitmask_immediate imm)
           else Ok [ Lowered.Logical_imm { opc = (if op = Opcode.And then 0 else 1); rd; rn; imm } ])
   | Opcode.Madd, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Reg ra ] ->
       Ok [ Lowered.Madd { rd; rn; rm; ra } ]
@@ -1229,8 +1322,8 @@ let lower_instruction state i =
       | Asm_core.Expr.Symbol s -> (
           match Cond.of_name s with
           | Some c -> Ok [ Lowered.Csel { cond = c; rd; rn; rm } ]
-          | None -> bad (Printf.sprintf "unknown condition %s" s))
-      | _ -> bad "csel needs a condition name")
+          | None -> bad (`Unknown_condition s))
+      | _ -> bad `Csel_needs_condition)
   | Opcode.Adrp, [ Operand.Reg rd; Operand.Sym e ] ->
       Ok [ Lowered.Adrp { rd; page = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
   | Opcode.B, [ Operand.Sym e ] ->
@@ -1245,12 +1338,11 @@ let lower_instruction state i =
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
-            bad "udf immediate does not fit 16 bits"
+          if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then bad `Udf_imm16_overflow
           else Ok [ Lowered.Udf { imm16 = imm } ])
   | Opcode.Bl, [ Operand.Sym e ] ->
       Ok [ Lowered.Bl { target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
-  | _ -> bad (Printf.sprintf "no %s form takes these operands" (Opcode.name i.Instruction.op))
+  | _ -> bad (`No_form (Opcode.name i.Instruction.op))
 
 (* {1 Encode and decode} *)
 
@@ -1340,8 +1432,7 @@ let encode l =
   match C.encode codec l with
   (* Same rule as the other two targets. A64 declares no ladder either, so this
      is always [aarch64.encode] today. *)
-  | Error (e : C.error) ->
-      Error (diag (Option.value e.C.code ~default:"aarch64.encode") (Fmt.to_to_string C.pp_error e))
+  | Error (e : C.error) -> Error (diag ~pos:__POS__ (`Codec e))
   | Ok enc -> Ok (`Fixed (form_of l enc))
 
 type decode_context = { state : target_state; address : int64 }
@@ -1508,14 +1599,14 @@ let instruction_of_lowered ?(at = 0L) = function
       Some { Instruction.op = Opcode.Bcond cond; ops = [ branch_operand ~at target ] }
 
 let decode ctx bytes ~pos =
-  if String.length bytes - pos < 4 then Error (diag "aarch64.decode" "fewer than four bytes remain")
+  if String.length bytes - pos < 4 then Error (diag ~pos:__POS__ `Decode_short)
   else
     let word = word_to_memory (String.sub bytes pos 4) in
     match C.decode_bits codec (C.Bits.of_bytes word) with
-    | None -> Error (diag "aarch64.decode" "no form matches this word")
+    | None -> Error (diag ~pos:__POS__ `Decode_no_match)
     | Some d -> (
         match instruction_of_lowered ~at:ctx.address d.C.value with
-        | None -> Error (diag "aarch64.decode" "decoded a form with no normalized instruction")
+        | None -> Error (diag ~pos:__POS__ `Decode_no_normalized)
         | Some i -> Ok (i, String.concat "." d.C.dform, 4))
 
 (* {1 Fixups, padding, directives} *)
@@ -1530,12 +1621,12 @@ let evaluate_fixup kind ~place ~target =
   | (Pcrel_b26 | Pcrel_call26 | Pcrel_b19) as k ->
       let bits = match k with Pcrel_b19 -> 19 | _ -> 26 in
       let d = Int64.sub target place in
-      if Int64.rem d 4L <> 0L then Error (diag "aarch64.fixup" "branch target is not word-aligned")
+      if Int64.rem d 4L <> 0L then Error (diag ~pos:__POS__ `Branch_not_word_aligned)
       else
         let words = Int64.div d 4L in
         let limit = Int64.shift_left 1L (bits - 1) in
         if Int64.compare words (Int64.neg limit) >= 0 && Int64.compare words limit < 0 then Ok words
-        else Error (diag "aarch64.fixup" "branch target is out of range")
+        else Error (diag ~pos:__POS__ `Branch_out_of_range)
   | Adrp_page ->
       let page a = Int64.logand a (Int64.lognot 0xFFFL) in
       Ok (Int64.shift_right (Int64.sub (page target) (page place)) 12)
@@ -1546,8 +1637,7 @@ let evaluate_fixup kind ~place ~target =
          would address a different object. *)
       let low = Int64.logand target 0xFFFL in
       let scale = Int64.of_int (access_bytes sz) in
-      if Int64.rem low scale <> 0L then
-        Error (diag "aarch64.fixup" "low-12 target is not aligned to the access width")
+      if Int64.rem low scale <> 0L then Error (diag ~pos:__POS__ `Lo12_misaligned)
       else Ok (Int64.div low scale)
 
 (* As on ARM: [.word] is four bytes. A64 additionally needs an eight-byte
@@ -1568,12 +1658,8 @@ let data_fixup ~width =
   match width with
   | 4 -> Ok Abs32
   | 8 -> Ok Abs64
-  | _ ->
-      Error
-        (diag "aarch64.data-fixup"
-           (Printf.sprintf "no absolute relocation for a %d-byte data initializer" width))
+  | _ -> Error (diag ~pos:__POS__ (`No_data_relocation width))
 
 let nop_bytes ~length =
-  if length mod 4 <> 0 then
-    Error (diag "aarch64.nop" "A64 padding must be a whole number of four-byte instructions")
+  if length mod 4 <> 0 then Error (diag ~pos:__POS__ `Padding_not_word_multiple)
   else Ok (String.concat "" (List.init (length / 4) (fun _ -> "\x1f\x20\x03\xd5")))

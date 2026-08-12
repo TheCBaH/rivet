@@ -5,10 +5,18 @@
  (files ../../../lib/target_intf/*.ml))
 
 (library
+ (name target_error)
+ (modules target_error)
+ (modes byte native melange)
+ (libraries foundation)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))
+
+(library
  (name target_encode)
  (modules target_encode)
  (modes byte native melange)
- (libraries foundation codec asm_core)
+ (libraries foundation codec asm_core target_error)
  (enabled_if
   (= %{env:ASM_MELANGE=false} true)))
 

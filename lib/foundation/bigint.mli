@@ -12,6 +12,35 @@
 
 type t
 
+(** {1 Errors}
+
+    Every operation that can fail returns this domain rather than raising, and each has a total
+    [*_exn] companion defined as {!Err.or_raise} over the checked form — so the two can never
+    disagree about when a call is legal, which is the failure mode a separately written unchecked
+    path would have. Use the companion where the precondition is already established; this module
+    is the largest such caller, since [to_string] divides by ten and [fits_signed] shifts by a
+    non-negative width.
+
+    See [asm/docs/errors.md]. *)
+
+type error =
+  [ `Division_by_zero
+  | `Negative_shift of negative_shift
+  | `Negative_width of negative_width
+  | `Nonpositive_width of int
+  | `Empty_literal
+  | `No_digits of string
+  | `Invalid_digit of invalid_digit
+  | `Does_not_fit of does_not_fit ]
+
+and negative_shift = { shift_op : [ `Left | `Right ]; amount : int }
+and negative_width = { width_of : [ `Signed | `Unsigned ]; width : int }
+and invalid_digit = { digit : char; base : int; literal : string }
+and does_not_fit = { value : t; bits : int }
+
+val pp_error : Format.formatter -> error -> unit
+val error_code : error -> string
+
 (** {1 Constructors} *)
 
 val zero : t
@@ -19,7 +48,7 @@ val one : t
 val minus_one : t
 val of_int : int -> t
 
-val of_string : string -> (t, string) result
+val of_string : string -> (t, error) Err.t
 (** [of_string s] accepts an optional sign followed by GAS integer spellings: [0x]/[0X] hex,
     [0b]/[0B] binary, a leading [0] for octal, otherwise decimal. Underscores are not accepted. *)
 
@@ -44,12 +73,15 @@ val add : t -> t -> t
 val sub : t -> t -> t
 val mul : t -> t -> t
 
-val divrem : t -> t -> t * t
+val divrem : t -> t -> (t * t, error) Err.t
 (** [divrem a b] truncates toward zero, so the remainder takes the sign of [a] and
-    [fst (divrem a b) * b + snd (divrem a b) = a]. Raises [Division_by_zero] when [b] is zero. *)
+    [fst (divrem a b) * b + snd (divrem a b) = a]. [`Division_by_zero] when [b] is zero. *)
 
-val div : t -> t -> t
-val rem : t -> t -> t
+val div : t -> t -> (t, error) Err.t
+val rem : t -> t -> (t, error) Err.t
+val divrem_exn : t -> t -> t * t
+val div_exn : t -> t -> t
+val rem_exn : t -> t -> t
 
 (** {1 Bitwise}
 
@@ -60,11 +92,14 @@ val logand : t -> t -> t
 val logor : t -> t -> t
 val logxor : t -> t -> t
 val lognot : t -> t
-val shift_left : t -> int -> t
+val shift_left : t -> int -> (t, error) Err.t
 
-val shift_right : t -> int -> t
+val shift_right : t -> int -> (t, error) Err.t
 (** Arithmetic shift right: rounds toward negative infinity, matching the usual assembler semantics
     for [>>] on signed values. *)
+
+val shift_left_exn : t -> int -> t
+val shift_right_exn : t -> int -> t
 
 (** {1 Field conversion}
 
@@ -72,10 +107,12 @@ val shift_right : t -> int -> t
     arbitrary-precision value is narrowed to a specific field, never by letting a host integer
     overflow during folding. *)
 
-val fits_signed : width:int -> t -> bool
-val fits_unsigned : width:int -> t -> bool
+val fits_signed : width:int -> t -> (bool, error) Err.t
+val fits_unsigned : width:int -> t -> (bool, error) Err.t
+val fits_signed_exn : width:int -> t -> bool
+val fits_unsigned_exn : width:int -> t -> bool
 
-val to_bits : width:int -> t -> (t, string) result
+val to_bits : width:int -> t -> (t, error) Err.t
 (** [to_bits ~width x] is the [width]-bit two's-complement pattern of [x] as a non-negative value.
     It fails unless [x] fits the width either as a signed or as an unsigned value, so a value that
     is out of range for both is an error rather than a silent truncation. *)

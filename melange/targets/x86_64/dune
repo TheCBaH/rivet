@@ -10,7 +10,13 @@
  (name x86_64_encode)
  (modules x86_64_encode)
  (modes byte native melange)
- (libraries foundation codec asm_core target_encode x86_family_encode)
+ (libraries
+  foundation
+  codec
+  asm_core
+  target_error
+  target_encode
+  x86_family_encode)
  (enabled_if
   (= %{env:ASM_MELANGE=false} true)))
 

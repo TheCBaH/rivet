@@ -58,7 +58,30 @@ let resolve defs ~num ~dir ~line =
   | `Back -> List.fold_left (fun acc d -> if d.line <= line then Some d else acc) None candidates
   | `Forward -> List.find_opt (fun d -> d.line > line) candidates
 
-type error = { message : string; span : Span.t }
+(* Accumulated like the lexer's, and for the same reason carrying its own span:
+   [run] collects every unresolved reference before returning, so the site that
+   builds the error is not the site that reports it (asm/docs/errors.md §1). *)
+type error_kind = [ `No_such_local of no_such_local | `Reserved_namespace of string ]
+
+(* [direction] mirrors [Token.Local_label]'s own payload rather than inventing a
+   second spelling of the same distinction. *)
+and no_such_local = { number : int; direction : [ `Back | `Forward ] }
+
+type error = { kind : error_kind; span : Span.t }
+
+let pp_kind ppf : error_kind -> unit = function
+  | `No_such_local { number; direction } ->
+      Fmt.pf ppf "no %d%s: %s this reference" number
+        (match direction with `Back -> "b" | `Forward -> "f")
+        (match direction with `Back -> "before" | `Forward -> "after")
+  | `Reserved_namespace n -> Fmt.pf ppf "%s uses the reserved local-label namespace" n
+
+let kind_code : error_kind -> string = function
+  | `No_such_local _ | `Reserved_namespace _ -> "parse.local-label"
+
+let pp_error ppf (e : error) = pp_kind ppf e.kind
+let error_code (e : error) = kind_code e.kind
+let err kind span = { kind; span }
 
 (* {1 Rewriting} *)
 
@@ -71,14 +94,7 @@ let rewrite_slice defs ~line ~errors (s : Token.slice) =
           | Some d -> Token.make (Token.Ident (generated d.num d.ordinal)) (Token.span t)
           | None ->
               errors :=
-                {
-                  message =
-                    Printf.sprintf "no %d%s: %s this reference" n
-                      (match dir with `Back -> "b" | `Forward -> "f")
-                      (match dir with `Back -> "before" | `Forward -> "after");
-                  span = Token.span t;
-                }
-                :: !errors;
+                err (`No_such_local { number = n; direction = dir }) (Token.span t) :: !errors;
               t)
       | _ -> t)
     s
@@ -133,10 +149,15 @@ let run lines =
      overlap. It cannot happen through the lexer, so this fires only if a
      dialect ever admits ['#'] in an identifier. *)
   List.iter
-    (fun (n, span) ->
-      errors :=
-        { message = Printf.sprintf "%s uses the reserved local-label namespace" n; span } :: !errors)
+    (fun (n, span) -> errors := err (`Reserved_namespace n) span :: !errors)
     (collides lines);
   let defs = collect_defs lines in
   let out = List.mapi (fun i l -> rewrite_line defs ~line:i ~errors l) lines in
   (out, List.rev !errors)
+
+(* The presentation of one accumulated error. Here rather than in the pipeline
+   because the code and the message are this module's to name: a caller that
+   spelled the code itself would be a second place for the taxonomy to drift
+   (asm/docs/errors.md §2). *)
+let diagnostic_of_error (e : error) =
+  Diagnostic.of_error ~origin:(Origin.text e.span) ~code:error_code ~pp:pp_error e

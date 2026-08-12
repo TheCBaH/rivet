@@ -1,7 +1,10 @@
 ; Spans, origins, diagnostics, arbitrary-precision integers, and the byte
 ; cursor. This is the root of the production closure, and .ai/asm_plan.md §3.7
 ; forbids Unix, native pointers, bigarrays, and any C-backed package anywhere
-; above it — so the only dependency is the vendored pure-OCaml Fmt.
+; above it — so the only dependencies are the vendored pure-OCaml Fmt and
+; err_trace. Both are vendored rather than taken from opam, and err_trace is
+; named here rather than higher up because foundation is the root of the
+; closure: everything above it gets `Err` transitively.
 ;
 ; Melange mode lives in melange/lib/foundation, which copy_files these same
 ; sources; the two stanzas share this library's name and are made mutually
@@ -10,6 +13,6 @@
 (library
  (name foundation)
  (modes byte native)
- (libraries fmt)
+ (libraries fmt err_trace)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))

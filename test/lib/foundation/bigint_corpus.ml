@@ -20,8 +20,14 @@ let value label x = Fmt.pr "%s = %a (%a)@." label Bigint.pp x Bigint.pp_hex x
 let b = Bigint.of_string_exn
 
 (* Both result-returning entry points print through the same combinator, so an
-   [Ok] and an [Error] can never drift into differently-shaped output. *)
-let pp_result ok = Fmt.result ~ok ~error:Fmt.(any "error: " ++ string)
+   [Ok] and an [Error] can never drift into differently-shaped output.
+
+   The error branch renders the typed payload with the domain's own printer, and
+   deliberately not the Err wrapper: this corpus is the seed of the cram baseline
+   and the three-backend equality gate, and asm/docs/errors.md §3 keeps
+   provenance out of both. *)
+let pp_error ppf e = Bigint.pp_error ppf (Err.Error.kind e)
+let pp_result ok = Fmt.result ~ok ~error:Fmt.(any "error: " ++ pp_error)
 
 (* {1 Representation invariants} *)
 
@@ -32,12 +38,13 @@ let representation () =
   repr "minus_one" Bigint.minus_one;
   (* Exactly one limb wide, then one bit into the second limb: the base-2^14
      boundary is where a limb-carry bug would first show. *)
-  repr "2^14 - 1" (Bigint.sub (Bigint.shift_left Bigint.one 14) Bigint.one);
-  repr "2^14" (Bigint.shift_left Bigint.one 14);
+  repr "2^14 - 1" (Bigint.sub (Bigint.shift_left_exn Bigint.one 14) Bigint.one);
+  repr "2^14" (Bigint.shift_left_exn Bigint.one 14);
   (* A subtraction whose result strips a most-significant limb back off. *)
   repr "2^14 - (2^14 - 1)"
-    (Bigint.sub (Bigint.shift_left Bigint.one 14)
-       (Bigint.sub (Bigint.shift_left Bigint.one 14) Bigint.one));
+    (Bigint.sub
+       (Bigint.shift_left_exn Bigint.one 14)
+       (Bigint.sub (Bigint.shift_left_exn Bigint.one 14) Bigint.one));
   (* x - x must land on canonical zero, sign and all, not on a signed empty
      magnitude or a magnitude of zero limbs. *)
   repr "big - big" (Bigint.sub (b "0xdeadbeefcafef00d") (b "0xdeadbeefcafef00d"));
@@ -98,13 +105,13 @@ let rendering () =
 
 let beyond_2_53 () =
   section "beyond 2^53";
-  let p53 = Bigint.shift_left Bigint.one 53 in
+  let p53 = Bigint.shift_left_exn Bigint.one 53 in
   value "2^53" p53;
   value "2^53 + 1" (Bigint.add p53 Bigint.one);
-  value "2^64 - 1" (Bigint.sub (Bigint.shift_left Bigint.one 64) Bigint.one);
-  value "2^127" (Bigint.shift_left Bigint.one 127);
+  value "2^64 - 1" (Bigint.sub (Bigint.shift_left_exn Bigint.one 64) Bigint.one);
+  value "2^127" (Bigint.shift_left_exn Bigint.one 127);
   value "(2^64 - 1) * (2^64 - 1)"
-    (let m = Bigint.sub (Bigint.shift_left Bigint.one 64) Bigint.one in
+    (let m = Bigint.sub (Bigint.shift_left_exn Bigint.one 64) Bigint.one in
      Bigint.mul m m);
   repr "2^53 + 1" (Bigint.add p53 Bigint.one)
 

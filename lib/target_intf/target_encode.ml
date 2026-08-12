@@ -59,6 +59,25 @@ module type ENCODE = sig
     type t
   end
 
+  (* {1 Errors}
+
+     Abstract for the same reason the ASTs are: generic code moves a target's
+     failures around and renders them, and must not be able to inspect one.
+     Each target's domain is {!Target_error.t} plus its own tags, so the shared
+     kinds - unknown mnemonic, no such form, out of range - are one row rather
+     than three copies (asm/docs/errors.md §1).
+
+     [error_diagnostic] is the erasure boundary, named so it is visible as one:
+     {!Image} holds a target-supplied fixup evaluator and {!Target.DRIVER}
+     erases the architecture entirely, so neither can carry this type. Below
+     that call the payload survives; at it, a diagnostic is what crosses. *)
+
+  type error
+
+  val pp_error : Format.formatter -> error -> unit
+  val error_code : error -> string
+  val error_diagnostic : error -> Diagnostic.t
+
   (* The three staged ASTs of §4.2-§4.4. The printers are the *canonical*
      spellings asm/docs/contracts.md §1 fixes: a printer here is a contract,
      not a debugging aid, and its output is compared byte-for-byte across three
@@ -95,19 +114,18 @@ module type ENCODE = sig
   val default_features : feature list
 
   val make_surface_instruction :
-    mnemonic:string -> origin:Origin.t -> Operand.t list -> (Surface.t, Diagnostic.t) result
+    mnemonic:string -> origin:Origin.t -> Operand.t list -> (Surface.t, error) Err.t
 
   (* {1 Staged transformations}
 
      Three functions, three ASTs (§4.2-§4.4). Each is total on its input type
      and pure: same inputs, same output, no state outside [target_state]. *)
 
-  val simplify_instruction :
-    features:feature list -> Surface.t -> (Instruction.t, Diagnostic.t) result
+  val simplify_instruction : features:feature list -> Surface.t -> (Instruction.t, error) Err.t
   (** surface -> normalized: alias resolution, operand-order canonicalization, and the checks that
       need only the instruction itself *)
 
-  val lower_instruction : target_state -> Instruction.t -> (Lowered.t list, Diagnostic.t) result
+  val lower_instruction : target_state -> Instruction.t -> (Lowered.t list, error) Err.t
   (** normalized -> lowered: pseudo expansion, one to many. The list is ordered. *)
 
   (* {1 Encoding}
@@ -123,8 +141,8 @@ module type ENCODE = sig
     Lowered.t ->
     ( [ `Fixed of fixup_kind Asm_core.Lowered_ast.encoded_form
       | `Relax of fixup_kind Asm_core.Lowered_ast.encoded_form list ],
-      Diagnostic.t )
-    result
+      error )
+    Err.t
   (** Separate from {!codec} because packing bits into *memory order* is target-specific: a codec
       describes bits most-significant first, which for x86's byte-at-a-time forms already is memory
       order, while ARM and AArch64 author one 32-bit word and must reverse it. Putting the reversal
@@ -144,14 +162,13 @@ module type ENCODE = sig
   (** decoding needs more than the bytes: on ARM the same word is a different instruction depending
       on the mode, and a PC-relative operand cannot be printed without the address *)
 
-  val decode :
-    decode_context -> string -> pos:int -> (Instruction.t * string * int, Diagnostic.t) result
+  val decode : decode_context -> string -> pos:int -> (Instruction.t * string * int, error) Err.t
   (** [(instruction, form_id, bytes_consumed)]. The form id is the codec's alternative path, so a
       round-trip test can assert not just "the same instruction" but "the same encoding decision". *)
 
   (* {1 Linking and padding} *)
 
-  val evaluate_fixup : fixup_kind -> place:int64 -> target:int64 -> (int64, Diagnostic.t) result
+  val evaluate_fixup : fixup_kind -> place:int64 -> target:int64 -> (int64, error) Err.t
   (** the value to patch in, given where the fixup sits and where its target landed. Range checks
       belong here: a branch that does not reach is a diagnostic, not a truncation.
 
@@ -190,12 +207,12 @@ module type ENCODE = sig
       and four on ARM and AArch64, and CompCert writes [.4byte] for a 32-bit address on ARM. A
       single shared table would be silently wrong for one of them. *)
 
-  val data_fixup : width:int -> (fixup_kind, Diagnostic.t) result
+  val data_fixup : width:int -> (fixup_kind, error) Err.t
   (** Which fixup kind an initializer naming a symbol takes at that width. An error rather than an
       option, because a width with no absolute relocation is a real limit and the caller has to say
       so rather than emit an unpatched zero. *)
 
-  val nop_bytes : length:int -> (string, Diagnostic.t) result
+  val nop_bytes : length:int -> (string, error) Err.t
   (** padding for [.align] in an executable section. Not zeroes: a zero-filled gap in x86 [.text]
       decodes as [add %al,(%rax)] and would make the diagnostic disassembler print instructions
       nobody wrote. *)

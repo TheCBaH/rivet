@@ -825,10 +825,97 @@ module Make (M : MODE) = struct
   let retype_rm ~width = function Rm.Reg r -> Rm.Reg (retype ~width r) | Rm.Mem _ as m -> m
   let find_reg n = List.find_opt (fun (r : Reg.t) -> String.equal r.name n) M.registers
 
-  let diag ?origin code message =
-    Diagnostic.error ~code ~message
-      ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:M.name ())
-      ()
+  (* The encoder's error domain (asm/docs/errors.md). Below source text, so it
+     names no token; the front end's operand failures are a separate domain in
+     x86_family.ml, for the reason {!Target_intf.Target.TARGET} gives. Inside
+     [Make], so x86_32 and x86_64 share one domain the way they share one
+     encoder.
+
+     The out-of-scope tags are the interesting ones. Eight messages here said
+     "is not in M1 scope" or "is only supported as ... in M1", which made the
+     milestone boundary a fact about English. Each is a constructor now, so a
+     caller - or a test asking what this milestone refuses - matches on it. *)
+  type error_kind =
+    [ Target_error.shared
+    | `Missing_size_suffix of string
+    | `Prefix66_out_of_scope
+    | `Operand8_out_of_scope
+    | `No_64bit_size of string
+    | `Ret_takes_operands
+    | `Ud2_takes_operands
+    | `Cmov_operands
+    | `Bad_branch_suffix of bad_branch_suffix
+    | `Immediate_destination
+    | `Imm_to_mem_only_movb
+    | `Mov8_only_movb
+    | `Codec of Codec.error
+    | `Decode_no_match
+    | `Decode_partial_bytes
+    | `Displacement_not_8bit
+    | `Displacement_not_32bit
+    | `No_data_relocation of int
+    | `Negative_padding of int
+    | `Register_width_mismatch of register_width_mismatch ]
+
+  and bad_branch_suffix = { mnemonic : string; rungs : string list }
+  and register_width_mismatch = { reg : string; reg_width : int; insn_width : int }
+
+  type error = error_kind Target_error.t
+
+  let pp_error_kind ppf : error_kind -> unit = function
+    | #Target_error.shared as e -> Target_error.pp_shared ppf e
+    | `Missing_size_suffix m -> Fmt.pf ppf "%s needs an operand-size suffix (b, w, l or q)" m
+    | `Prefix66_out_of_scope ->
+        Fmt.string ppf "16-bit operands need the 0x66 prefix, which is not in M1 scope"
+    | `Operand8_out_of_scope -> Fmt.string ppf "8-bit operands are not in M1 scope"
+    | `No_64bit_size mode -> Fmt.pf ppf "%s has no 64-bit operand size" mode
+    | `Ret_takes_operands -> Fmt.string ppf "ret takes no operands in M1"
+    | `Ud2_takes_operands -> Fmt.string ppf "ud2 takes no operands"
+    | `Cmov_operands -> Fmt.string ppf "cmov takes two register operands in M2"
+    | `Bad_branch_suffix { mnemonic; rungs } ->
+        Fmt.pf ppf "%s: the branch form suffixes are %s" mnemonic
+          (String.concat ", " (List.map (fun r -> "." ^ r) rungs))
+    | `Immediate_destination -> Fmt.string ppf "an immediate cannot be a destination"
+    | `Imm_to_mem_only_movb ->
+        Fmt.string ppf "movb $imm,(mem) is the only imm-to-memory mov form in M1"
+    | `Mov8_only_movb -> Fmt.string ppf "8-bit mov is only supported as movb $imm,(mem) in M1"
+    | `Codec e -> Codec.pp_error ppf e
+    | `Decode_no_match -> Fmt.string ppf "no form matches these bytes"
+    | `Decode_partial_bytes -> Fmt.string ppf "a form consumed a non-whole number of bytes"
+    | `Displacement_not_8bit -> Fmt.string ppf "displacement does not fit 8 bits"
+    | `Displacement_not_32bit -> Fmt.string ppf "displacement does not fit 32 bits"
+    | `No_data_relocation w -> Fmt.pf ppf "no absolute relocation for a %d-byte data initializer" w
+    | `Negative_padding _ -> Fmt.string ppf "negative padding length"
+    | `Register_width_mismatch { reg; reg_width; insn_width } ->
+        Fmt.pf ppf "%s is %d-bit but the instruction is %d-bit" reg reg_width insn_width
+
+  (* The phase that detected it, which is what the code has always named. The
+     codec arm delegates: [Codec.code] is [Some] only where that layer is the
+     only one that could have seen the mistake (asm/docs/errors.md §2). *)
+  let error_kind_code : error_kind -> string = function
+    | `Unknown_instruction _ | `Missing_size_suffix _ | `Prefix66_out_of_scope
+    | `Operand8_out_of_scope | `No_64bit_size _ | `Ret_takes_operands | `Ud2_takes_operands
+    | `Cmov_operands ->
+        "x86.simplify"
+    | `Bad_branch_suffix _ -> "x86.branch-suffix"
+    | `Immediate_too_wide | `No_form _ | `Immediate_destination | `Imm_to_mem_only_movb
+    | `Mov8_only_movb | `Register_width_mismatch _ ->
+        "x86.lower"
+    | `Codec e -> Option.value (Codec.code e) ~default:"x86.encode"
+    | `Decode_no_match | `Decode_partial_bytes | `Decode_no_normalized -> "x86.decode"
+    | `Displacement_not_8bit | `Displacement_not_32bit -> "x86.fixup"
+    | `No_data_relocation _ -> "x86.data-fixup"
+    | `Negative_padding _ -> "x86.nop"
+
+  let pp_error ppf e = pp_error_kind ppf (Target_error.kind e)
+  let error_code e = error_kind_code (Target_error.kind e)
+  let error_diagnostic e = Target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
+
+  let diag ?pos ?origin kind =
+    Err.Error.make ?pos ~pp_error
+      (Target_error.make
+         ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:M.name ())
+         kind)
 
   let make_surface_instruction ~mnemonic ~origin ops = Ok { Surface.mnemonic; ops; origin }
 
@@ -893,25 +980,23 @@ module Make (M : MODE) = struct
 
   let simplify_instruction ~features s =
     ignore features;
-    let bad msg = Error (diag ~origin:s.Surface.origin "x86.simplify" msg) in
+    let bad kind = Error (diag ~pos:__POS__ ~origin:s.Surface.origin kind) in
     let stem, suffix = split_suffix s.Surface.mnemonic in
     let widthed ?(allow8 = false) op =
       match suffix with
-      | None ->
-          bad (Printf.sprintf "%s needs an operand-size suffix (b, w, l or q)" s.Surface.mnemonic)
-      | Some 16 -> bad "16-bit operands need the 0x66 prefix, which is not in M1 scope"
-      | Some 8 when not allow8 -> bad "8-bit operands are not in M1 scope"
-      | Some w when w = 64 && not M.rex_allowed ->
-          bad (Printf.sprintf "%s has no 64-bit operand size" M.name)
+      | None -> bad (`Missing_size_suffix s.Surface.mnemonic)
+      | Some 16 -> bad `Prefix66_out_of_scope
+      | Some 8 when not allow8 -> bad `Operand8_out_of_scope
+      | Some w when w = 64 && not M.rex_allowed -> bad (`No_64bit_size M.name)
       | Some w -> Ok (Instruction.mk op w s.Surface.ops)
     in
     match (s.Surface.mnemonic, stem) with
     | "ret", _ ->
         if s.Surface.ops = [] then Ok (Instruction.mk Opcode.Ret M.address_width [])
-        else bad "ret takes no operands in M1"
+        else bad `Ret_takes_operands
     | "ud2", _ ->
         if s.Surface.ops = [] then Ok (Instruction.mk Opcode.Ud2 M.address_width [])
-        else bad "ud2 takes no operands"
+        else bad `Ud2_takes_operands
     | "pop", _ -> Ok (Instruction.mk Opcode.Pop M.address_width s.Surface.ops)
     | "jmp", _ -> Ok (Instruction.mk Opcode.Jmp M.address_width s.Surface.ops)
     (* No size suffix, in either mode: a near call is rel32 on x86-32 and on
@@ -938,7 +1023,7 @@ module Make (M : MODE) = struct
     | m, _ when branch_of m <> None -> (
         match branch_of m with
         | Some (op, form) -> Ok (Instruction.mk ?form op M.address_width s.Surface.ops)
-        | None -> bad (Printf.sprintf "unknown instruction %s" s.Surface.mnemonic))
+        | None -> bad (`Unknown_instruction s.Surface.mnemonic))
     (* A suffix on a branch that is not one of this target's rungs is rejected
        *here*, in the phase that knows the mnemonic and has a source span, and
        never reaches the codec - which is why [codec.unknown-rung] is reserved
@@ -947,17 +1032,14 @@ module Make (M : MODE) = struct
        other. *)
     | m, _ when bad_branch_suffix m ->
         Error
-          (Diagnostic.error ~code:"x86.branch-suffix"
-             ~message:
-               (Printf.sprintf "%s: the branch form suffixes are %s" m
-                  (String.concat ", " (List.map (fun r -> "." ^ r) branch_rungs)))
-             ~origin:s.Surface.origin ())
+          (diag ~pos:__POS__ ~origin:s.Surface.origin
+             (`Bad_branch_suffix { mnemonic = m; rungs = branch_rungs }))
     | m, _ when Cc.split_after "cmov" m <> None -> (
         match (Cc.split_after "cmov" m, s.Surface.ops) with
         | Some c, (Operand.Reg r :: _ as ops) -> Ok (Instruction.mk (Opcode.Cmov c) r.Reg.width ops)
-        | Some _, _ -> bad "cmov takes two register operands in M2"
-        | None, _ -> bad (Printf.sprintf "unknown instruction %s" s.Surface.mnemonic))
-    | _ -> bad (Printf.sprintf "unknown instruction %s" s.Surface.mnemonic)
+        | Some _, _ -> bad `Cmov_operands
+        | None, _ -> bad (`Unknown_instruction s.Surface.mnemonic))
+    | _ -> bad (`Unknown_instruction s.Surface.mnemonic)
 
   (* {2 Lower: normalized -> lowered}
 
@@ -980,18 +1062,18 @@ module Make (M : MODE) = struct
 
   let lower_instruction state i =
     ignore state;
-    let bad msg = Error (diag "x86.lower" msg) in
+    let bad kind = Error (diag ~pos:__POS__ kind) in
     let imm_of v =
       match Bigint.to_int64_opt v with
       | Some x -> Ok x
-      | None -> Error (diag "x86.lower" "immediate does not fit 64 bits")
+      | None -> Error (diag ~pos:__POS__ `Immediate_too_wide)
     in
     let width_ok (r : Reg.t) =
       if r.width = i.Instruction.width then Ok ()
       else
         bad
-          (Printf.sprintf "%s is %d-bit but the instruction is %d-bit" r.name r.width
-             i.Instruction.width)
+          (`Register_width_mismatch
+             { reg = r.name; reg_width = r.width; insn_width = i.Instruction.width })
     in
     match (i.Instruction.op, i.Instruction.ops) with
     | (Opcode.Add | Opcode.And | Opcode.Sub | Opcode.Cmp), [ Operand.Imm v; dst ] -> (
@@ -1010,16 +1092,14 @@ module Make (M : MODE) = struct
                       ])
             | Operand.Mem m ->
                 Ok [ Lowered.Alu_rm_imm { ext; width = i.Instruction.width; rm = Rm.Mem m; imm } ]
-            | Operand.Imm _ | Operand.Sym _ -> bad "an immediate cannot be a destination"))
+            | Operand.Imm _ | Operand.Sym _ -> bad `Immediate_destination))
     | Opcode.Mov, [ Operand.Imm v; Operand.Mem m ] -> (
-        if i.Instruction.width <> 8 then
-          bad "movb $imm,(mem) is the only imm-to-memory mov form in M1"
+        if i.Instruction.width <> 8 then bad `Imm_to_mem_only_movb
         else
           match imm_of v with
           | Error e -> Error e
           | Ok imm -> Ok [ Lowered.Mov_rm_imm { width = 8; rm = Rm.Mem m; imm } ])
-    | Opcode.Mov, _ when i.Instruction.width = 8 ->
-        bad "8-bit mov is only supported as movb $imm,(mem) in M1"
+    | Opcode.Mov, _ when i.Instruction.width = 8 -> bad `Mov8_only_movb
     | Opcode.Mov, [ Operand.Imm v; Operand.Reg r ] -> (
         match (imm_of v, width_ok r) with
         | Ok imm, Ok () -> Ok [ Lowered.Mov_r_imm { width = i.Instruction.width; reg = r; imm } ]
@@ -1114,7 +1194,7 @@ module Make (M : MODE) = struct
                 target = Asm_core.Lowered_ast.Symbolic { value = e; rung = i.Instruction.form };
               };
           ]
-    | _ -> bad (Printf.sprintf "no %s form takes these operands" (Opcode.name i.Instruction.op))
+    | _ -> bad (`No_form (Opcode.name i.Instruction.op))
 
   (* {2 The codec}
 
@@ -1806,9 +1886,7 @@ module Make (M : MODE) = struct
        one does. A bad suffix in *source* never reaches here: [simplify] rejects
        it with a span, which is why [codec.unknown-rung] means a direct-lowered
        producer and nothing else. *)
-    let fail (e : C.error) =
-      Error (diag (Option.value e.C.code ~default:"x86.encode") (Fmt.to_to_string C.pp_error e))
-    in
+    let fail (e : C.error) = Error (diag ~pos:__POS__ (`Codec e)) in
     match pinned_rung l with
     | Some rung -> (
         match C.encode_rung codec ~rung l with
@@ -1982,14 +2060,13 @@ module Make (M : MODE) = struct
   let decode ctx bytes ~pos =
     let bits = C.Bits.of_bytes (String.sub bytes pos (String.length bytes - pos)) in
     match C.decode_bits codec bits with
-    | None -> Error (diag "x86.decode" "no form matches these bytes")
+    | None -> Error (diag ~pos:__POS__ `Decode_no_match)
     | Some d -> (
-        if d.C.consumed mod 8 <> 0 then
-          Error (diag "x86.decode" "a form consumed a non-whole number of bytes")
+        if d.C.consumed mod 8 <> 0 then Error (diag ~pos:__POS__ `Decode_partial_bytes)
         else
           let len = d.C.consumed / 8 in
           match instruction_of_lowered ~at:ctx.address ~len d.C.value with
-          | None -> Error (diag "x86.decode" "decoded a form with no normalized instruction")
+          | None -> Error (diag ~pos:__POS__ `Decode_no_normalized)
           | Some i -> Ok (i, String.concat "." d.C.dform, len))
 
   (* {2 Fixups, padding, directives} *)
@@ -2009,10 +2086,10 @@ module Make (M : MODE) = struct
     | Pcrel8_branch ->
         let d = Int64.sub target place in
         if Int64.compare d (-128L) >= 0 && Int64.compare d 128L < 0 then Ok d
-        else Error (diag "x86.fixup" "displacement does not fit 8 bits")
+        else Error (diag ~pos:__POS__ `Displacement_not_8bit)
     | Pcrel32_branch | Pcrel32_call | Pcrel32_data ->
         let d = Int64.sub target place in
-        if fits_s32 d then Ok d else Error (diag "x86.fixup" "displacement does not fit 32 bits")
+        if fits_s32 d then Ok d else Error (diag ~pos:__POS__ `Displacement_not_32bit)
 
   (* Each mode's own, measured against its own GNU as rather than taken from a
      manual. M1 never reached this - both x86 fixtures had their [.align] at
@@ -2026,17 +2103,12 @@ module Make (M : MODE) = struct
   let data_widths = [ (".byte", 1); (".short", 2); (".word", 2); (".long", 4); (".quad", 8) ]
 
   let data_fixup ~width =
-    match width with
-    | 4 -> Ok Abs32
-    | _ ->
-        Error
-          (diag "x86.data-fixup"
-             (Printf.sprintf "no absolute relocation for a %d-byte data initializer" width))
+    match width with 4 -> Ok Abs32 | _ -> Error (diag ~pos:__POS__ (`No_data_relocation width))
 
   let nop_table = M.nop_table
 
   let nop_bytes ~length =
-    if length < 0 then Error (diag "x86.nop" "negative padding length")
+    if length < 0 then Error (diag ~pos:__POS__ (`Negative_padding length))
     else
       let buf = Buffer.create length in
       let rec go n =

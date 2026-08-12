@@ -191,7 +191,19 @@ compcert-export-run: compcert-export-build
 # with a diff instead. Both go through dune's @fmt alias, so the vendored
 # sources under asm/vendor (marked (vendored_dirs) in asm/dune) are skipped and
 # stay byte-identical to upstream.
-asm-build:
+
+# err_trace is vendored as a submodule and its sources are copy_files'd into
+# the build by asm/vendor/err_trace_local/dune, so an uninitialized submodule is a
+# build failure - and an unhelpful one, since dune reports it as a missing rule
+# for a path rather than as a missing checkout. Checked here rather than in
+# asm-ci so that a bare `make asm-build` gets the same answer.
+asm-submodules:
+	@test -f $(ASM_DIR)/vendor/err_trace/src/err.ml || { \
+	  echo "$(ASM_DIR)/vendor/err_trace is not checked out; run:" >&2; \
+	  echo "  git submodule update --init $(ASM_DIR)/vendor/err_trace" >&2; \
+	  exit 1; }
+
+asm-build: asm-submodules
 	cd $(ASM_DIR) && opam exec -- dune build @all
 
 asm-test: asm-build asm-fixtures-check asm-gas-xref-check
@@ -344,7 +356,7 @@ compcert-export-archive-all:
   compcert-build-from-archive compcert-lib-sync compcert-lib-build compcert-lib-run \
   compcert-export-archive compcert-export-unarchive compcert-export-build compcert-export-run \
   compcert-export-archive-all \
-  asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
+  asm-submodules asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
   asm-fixtures-check asm-cross-setup asm-fixtures-regen asm-oracle asm-ci \
   asm-gas-xref-check asm-gas-xref-regen \
   asm-helpers asm-runner asm-abi-conform asm-exec asm-tool-gate asm-melange-optin \

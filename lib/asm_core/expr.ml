@@ -61,24 +61,56 @@ type env = { lookup : string -> Bigint.t option; here : Bigint.t option }
 
 let no_env = { lookup = (fun _ -> None); here = None }
 
+(* This module's error domain (asm/docs/errors.md).
+
+   [`Arithmetic] wraps rather than flattens: a division by zero is [Bigint]'s
+   observation, and the seam that used to render it into a string here is gone.
+   [`Not_absolute] carries the residual expression itself, which is the whole
+   point of the constructor - the old message spent [to_string] on it and threw
+   the value away, so a caller could not ask *which* symbol was still
+   unresolved without re-parsing prose.
+
+   Rendering is unchanged, so the diagnostics these become are the ones the
+   fixtures already pin. *)
+type error = [ `Arithmetic of Bigint.error | `Shift_out_of_range of Bigint.t | `Not_absolute of t ]
+
+let pp_error ppf : error -> unit = function
+  | `Arithmetic e -> Bigint.pp_error ppf e
+  | `Shift_out_of_range _ -> Fmt.string ppf "shift count out of range"
+  | `Not_absolute residual -> Fmt.pf ppf "%s is not an absolute value here" (to_string residual)
+
+let error_code : error -> string = function
+  | `Arithmetic _ -> "expr.arithmetic"
+  | `Shift_out_of_range _ -> "expr.shift"
+  | `Not_absolute _ -> "expr.not-absolute"
+
+(* [Bigint]'s failures are ours once they happen inside an expression, so this
+   is a wrap with no added context - the tag is what records the crossing, and
+   [Err.map_error] the position of it (§2). *)
+let of_bigint r = Err.map_error ~pos:__POS__ ~pp_error (fun e -> `Arithmetic e) r
+let fail ?pos (e : error) = Err.fail ?pos ~pp_error e
+
 let apply_binop op a b =
   match op with
   | Add -> Ok (Bigint.add a b)
   | Sub -> Ok (Bigint.sub a b)
   | Mul -> Ok (Bigint.mul a b)
-  | Div -> if Bigint.is_zero b then Error "division by zero" else Ok (Bigint.div a b)
-  | Mod -> if Bigint.is_zero b then Error "division by zero" else Ok (Bigint.rem a b)
+  (* No zero guard of our own: [Bigint.div] checks, and duplicating the check
+     here is how the two would eventually disagree. Its message is the one this
+     function used to write, so nothing downstream sees a difference. *)
+  | Div -> of_bigint (Bigint.div a b)
+  | Mod -> of_bigint (Bigint.rem a b)
   | And -> Ok (Bigint.logand a b)
   | Or -> Ok (Bigint.logor a b)
   | Xor -> Ok (Bigint.logxor a b)
   | Shl -> (
       match Bigint.to_int_opt b with
-      | Some n when n >= 0 && n <= 4096 -> Ok (Bigint.shift_left a n)
-      | _ -> Error "shift count out of range")
+      | Some n when n >= 0 && n <= 4096 -> Ok (Bigint.shift_left_exn a n)
+      | _ -> fail ~pos:__POS__ (`Shift_out_of_range b))
   | Shr -> (
       match Bigint.to_int_opt b with
-      | Some n when n >= 0 && n <= 4096 -> Ok (Bigint.shift_right a n)
-      | _ -> Error "shift count out of range")
+      | Some n when n >= 0 && n <= 4096 -> Ok (Bigint.shift_right_exn a n)
+      | _ -> fail ~pos:__POS__ (`Shift_out_of_range b))
 
 (* [fold] rewrites the expression, collapsing every absolute subterm and leaving
    the rest alone. It is not [eval]: the result is an expression, so a caller
@@ -105,8 +137,10 @@ let rec fold env e =
   | Modifier (m, a) -> (
       match fold env a with Error _ as err -> err | Ok a' -> Ok (Modifier (m, a')))
 
-let value env e =
-  match fold env e with Ok (Const v) -> Ok v | Ok e' -> Error e' | Error m -> Error (Symbol m)
+(* [value] used to sit here. It had no callers, and its error branch smuggled a
+   message into a [Symbol] node - a string wearing an expression's type, which
+   is the failure this domain exists to remove. What it did that anyone wants is
+   [absolute]. *)
 
 (* [absolute] is the common case: an expression the caller requires to be a
    number now. The failure carries the residual expression, so the diagnostic
@@ -116,7 +150,7 @@ let absolute env e =
   match fold env e with
   | Error m -> Error m
   | Ok (Const v) -> Ok v
-  | Ok residual -> Error (Printf.sprintf "%s is not an absolute value here" (to_string residual))
+  | Ok residual -> fail ~pos:__POS__ (`Not_absolute residual)
 
 let rec symbols acc = function
   | Const _ | Current_location | Local_ref _ -> acc

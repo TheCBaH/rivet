@@ -16,19 +16,64 @@
    protection, flushes a cache or calls generated code - in a browser it could
    not, since a target virtual address is a layout value and not a pointer. *)
 
-type error = string
-(** Diagnostics arrive rendered, because the caller across this boundary is
-    JavaScript and a [Diagnostic.t] would have to be marshalled into something
-    it can read anyway. A caller that wants the structured form uses
-    [Registry] directly - it is not hidden, it is just not the shape this
-    boundary is for. *)
+(* This boundary's error domain (asm/docs/errors.md).
 
-let render ds = Foundation.Diagnostic.render_all ds
+   It used to be [string], on the grounds that the caller is JavaScript and a
+   [Diagnostic.t] would have to be marshalled anyway. That reasoning covers the
+   *rendering*, not the type: a caller cannot tell "unknown target" from "symbol
+   undefined" by matching on prose, and the two are answered completely
+   differently. So the payload is typed and {!render_error} produces the same
+   strings the boundary produced before.
+
+   [`Diagnostics] is the erasure arm, and it is honest about being one: by the
+   time a failure reaches here it has crossed {!Target_intf.Target.DRIVER},
+   which erases the architecture, so a target's own domain cannot survive to
+   this point. Wrapping the rendered list keeps the two boundary-local failures
+   - which this module detects itself, and which are not diagnostics at all -
+   distinguishable from everything the pipeline reports. *)
+type unknown_target = { requested : string; known : string list }
+
+type error =
+  [ `Unknown_target of unknown_target
+  | `Bind_multi_segment of string list
+  | `Diagnostics of Foundation.Diagnostic.t list ]
+
+let pp_error ppf : error -> unit = function
+  | `Unknown_target { requested; known } ->
+      Fmt.pf ppf "unknown target %s; known: %s" requested (String.concat ", " known)
+  | `Bind_multi_segment names ->
+      Fmt.pf ppf
+        "bind.multi-segment: this plan has %d allocatable segments (%s), so one base does not \
+         place it; use bind_sequential or pass an address per segment"
+        (List.length names) (String.concat ", " names)
+  | `Diagnostics ds -> Fmt.string ppf (Foundation.Diagnostic.render_all ds)
+
+let error_code : error -> string = function
+  | `Unknown_target _ -> "portable.unknown-target"
+  | `Bind_multi_segment _ -> "bind.multi-segment"
+  | `Diagnostics _ -> "portable.diagnostics"
+
+let render_error (e : error) = Fmt.to_to_string pp_error e
+let fail ?pos (e : error) : ('a, error) Err.t = Err.fail ?pos ~pp_error e
+
+(* Wrapping a stage failure. The payload the pipeline hands over is already a
+   diagnostic list, so this is the erasure arm rather than a conversion; the
+   [Map] event records that the failure crossed into this domain. *)
+let of_stage r = Err.map_error ~pos:__POS__ ~pp_error (fun ds -> `Diagnostics ds) r
+let of_diagnostics ?pos ds = fail ?pos (`Diagnostics ds)
+
+(* The embedder's initializer. An adapter has no [main] to run this from, and
+   [Err_policy] deliberately does not apply itself at module initialization -
+   linking a library should not mutate process state. So a host that cares calls
+   this once at startup; a host that does not still gets deterministic output,
+   because nothing here renders Err provenance (asm/docs/errors.md §3), and pays
+   only for the callstack Err's default captures at each detection. *)
+let set_trace_policy = Foundation.Err_policy.apply
 let targets = Registry.names
 
 let with_driver target f =
   match Registry.find target with
-  | None -> Error ("unknown target " ^ target ^ "; known: " ^ String.concat ", " targets)
+  | None -> fail ~pos:__POS__ (`Unknown_target { requested = target; known = targets })
   | Some (module D : Target_intf.Target.DRIVER) -> f (module D : Target_intf.Target.DRIVER)
 
 let source ~unit_name ~text = Foundation.Span.source ~name:(unit_name ^ ".s") ~contents:text
@@ -45,7 +90,7 @@ let dump target ~which ~unit_name ~text =
         | `Normalized_ast -> D.dump_normalized_ast ~unit_name ~source
         | `Lowered_ast -> D.dump_lowered_ast ~unit_name ~source
       in
-      match r with Ok s -> Ok s | Error ds -> Error (render ds))
+      of_stage r)
 
 let dump_codec target =
   with_driver target (fun (module D : Target_intf.Target.DRIVER) -> Ok (D.dump_codec ()))
@@ -61,7 +106,7 @@ type planned = { laid_out : Image.laid_out; target : string }
 let assemble ?entry target ~unit_name ~text =
   with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
       match D.assemble ?entry ~unit_name ~source:(source ~unit_name ~text) () with
-      | Error ds -> Error (render ds)
+      | Error ds -> of_stage (Error ds)
       | Ok laid_out -> Ok { laid_out; target })
 
 let plan_text p = Fmt.to_to_string Image.pp_plan (Image.plan_of p.laid_out)
@@ -82,8 +127,8 @@ let segments p =
 type bound = { image : Image.t; target : string }
 
 let bind p ~addresses =
-  match Image.bind_image p.laid_out ~addresses with
-  | Error ds -> Error (render ds)
+  match of_stage (Image.bind_image p.laid_out ~addresses) with
+  | Error _ as e -> e
   | Ok image -> Ok { image; target = p.target }
 
 let planned_segments p = (Image.plan_of p.laid_out).Image.segments
@@ -101,13 +146,8 @@ let bind_at p ~base =
   match planned_segments p with
   | [ s ] -> bind p ~addresses:[ (s.Image.seg_name, base) ]
   | segments ->
-      Error
-        (Printf.sprintf
-           "bind.multi-segment: this plan has %d allocatable segments (%s), so one base does not \
-            place it; use bind_sequential or pass an address per segment"
-           (List.length segments)
-           (String.concat ", "
-              (List.map (fun (s : Image.segment_plan) -> s.Image.seg_name) segments)))
+      fail ~pos:__POS__
+        (`Bind_multi_segment (List.map (fun (s : Image.segment_plan) -> s.Image.seg_name) segments))
 
 (* The documented deterministic multi-segment layout: segments in plan order,
    each aligned up from the end of the previous one plus [gap]. Deterministic is
@@ -154,4 +194,4 @@ let disassemble b ~mode ~address bytes =
         | `Canonical -> D.dump_disasm_canonical ~address bytes
         | `Diagnostic -> D.dump_disasm_diagnostic ~address bytes
       in
-      match r with Ok s -> Ok s | Error ds -> Error (render ds))
+      of_stage r)

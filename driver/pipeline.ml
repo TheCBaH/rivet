@@ -20,10 +20,69 @@ module Make (T : T_intf.TARGET) = struct
   let name = T.name
   let triple = T.triple
 
-  let diag ?origin code message =
-    Diagnostic.error ~code ~message
+  (* The pipeline's own error domain (asm/docs/errors.md) - the failures that
+     belong to no target and no library, but to the act of walking a module
+     through the stages.
+
+     [`Expression] and [`Relax_ladder] wrap their causes, which deletes the last
+     two rendering seams the migration left. [`Directive_rejected] carries
+     {!Directives.rejection} whole, including the optional code that lets a
+     deferral name itself - the delegation of §2, and the reason [.bss] can
+     report under [simplify.nobits-section] rather than the generic code. *)
+  type error =
+    [ `Local_label_survived of int
+    | `Expression of Expr.error
+    | `Assignment_out_of_scope of string
+    | `Unknown_directive of string
+    | `Directive_rejected of Directives.rejection
+    | `Statement_before_section
+    | `Data_value of Expr.error
+    | `Data_fixup of string
+    | `Directive_not_accepted of string
+    | `Relax_ladder of Lowered_ast.relax_error ]
+
+  let pp_error ppf : error -> unit = function
+    | `Local_label_survived n -> Fmt.pf ppf "numeric local label %d: survived resolution" n
+    | `Expression e | `Data_value e -> Expr.pp_error ppf e
+    | `Assignment_out_of_scope name ->
+        Fmt.pf ppf "symbol assignment (%s = ...) is not in M1 scope" name
+    | `Unknown_directive name -> Fmt.pf ppf "unknown directive %s" name
+    | `Directive_rejected r -> Directives.pp_rejection ppf r
+    | `Statement_before_section -> Fmt.string ppf "this appears before any section directive"
+    (* Already rendered when it arrived: the target erased its own domain to
+       hand this over, so the arm reproduces the message rather than composing
+       one. *)
+    | `Data_fixup m -> Fmt.string ppf m
+    | `Directive_not_accepted name -> Fmt.pf ppf "the target did not accept %s" name
+    | `Relax_ladder e -> Lowered_ast.pp_relax_error ppf e
+
+  let error_code : error -> string = function
+    | `Local_label_survived _ -> "parse.local-label"
+    | `Expression _ -> "simplify.expression"
+    | `Assignment_out_of_scope _ -> "simplify.assignment"
+    | `Unknown_directive _ -> "simplify.directive"
+    | `Directive_rejected r -> Option.value r.Directives.code ~default:"simplify.directive"
+    | `Statement_before_section -> "lower.no-section"
+    | `Data_value _ | `Data_fixup _ -> "lower.data"
+    | `Directive_not_accepted _ -> "lower.directive"
+    | `Relax_ladder _ -> "lower.relax-ladder"
+
+  let diag ?origin (e : error) =
+    Diagnostic.of_error ~code:error_code ~pp:pp_error
       ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:T.name ())
-      ()
+      e
+
+  (* Where a target's failure becomes part of the pipeline's report. This is the
+     erasure boundary {!Target_encode.ENCODE} names: [Make] is generic over [T]
+     and cannot hold a [T.error], so the target renders its own domain and a
+     diagnostic is what crosses (asm/docs/errors.md §2). Everything below this
+     call keeps the typed payload. *)
+  let target_diagnostic e = T.error_diagnostic (Err.Error.kind e)
+
+  (* The same erasure for the target's *front-end* domain, which is a separate
+     type because it may name Asm_syntax and the encoder's may not - see
+     Target_intf.Target.TARGET. *)
+  let parse_diagnostic e = T.parse_error_diagnostic (Err.Error.kind e)
 
   (* {1 Stage 1 - text to source AST (§4.2)} *)
 
@@ -38,12 +97,11 @@ module Make (T : T_intf.TARGET) = struct
            the feature is target-independent. After this pass they are ordinary
            generated symbols and nothing downstream knows the difference. *)
         let lines, label_errors = Local_labels.run lines in
+        (* Shared, not wrapped: the tag means the same thing here as it does in
+           [Local_labels] and reports under the same code, so this crossing
+           re-codes nothing (asm/docs/errors.md §2). *)
         List.iter
-          (fun (e : Local_labels.error) ->
-            errors :=
-              diag ~origin:(Origin.text e.Local_labels.span) "parse.local-label"
-                e.Local_labels.message
-              :: !errors)
+          (fun (e : Local_labels.error) -> errors := Local_labels.diagnostic_of_error e :: !errors)
           label_errors;
         let items = ref [] in
         let add i = items := i :: !items in
@@ -64,10 +122,7 @@ module Make (T : T_intf.TARGET) = struct
                        silently dropped definition would be a label nothing can
                        reach, which is a file assembled without being
                        understood. *)
-                    errors :=
-                      diag ~origin:(Origin.text span) "parse.local-label"
-                        (Printf.sprintf "numeric local label %d: survived resolution" n)
-                      :: !errors)
+                    errors := diag ~origin:(Origin.text span) (`Local_label_survived n) :: !errors)
               line.Statement.labels;
             match line.Statement.statement with
             | Statement.Empty -> ()
@@ -78,13 +133,13 @@ module Make (T : T_intf.TARGET) = struct
             | Statement.Instruction { mnemonic; operands; span } -> (
                 let origin = Origin.text span in
                 match T.parse_operands ~mnemonic operands with
-                | Error e -> errors := e :: !errors
+                | Error e -> errors := parse_diagnostic e :: !errors
                 | Ok ops -> (
                     match T.make_surface_instruction ~mnemonic ~origin ops with
-                    | Error e -> errors := e :: !errors
+                    | Error e -> errors := target_diagnostic e :: !errors
                     | Ok insn -> add (Source_ast.Instruction { insn; origin }))))
           lines;
-        if !errors <> [] then Error (List.rev !errors)
+        if !errors <> [] then Diag.fail ~pos:__POS__ (List.rev !errors)
         else Ok { Source_ast.unit_name; items = List.rev !items }
 
   (* {1 Stage 2 - simplify (§4.3)}
@@ -107,7 +162,7 @@ module Make (T : T_intf.TARGET) = struct
     let fold e =
       match Expr.fold Expr.no_env e with
       | Ok e' -> Ok e'
-      | Error m -> Error (diag ~origin "simplify.expression" m)
+      | Error m -> Error (diag ~origin (`Expression (Err.Error.kind m)))
     in
     match d with
     | Directive.Sym_size { name; size } ->
@@ -124,13 +179,10 @@ module Make (T : T_intf.TARGET) = struct
         match item with
         | Source_ast.Label { name; origin } -> add (Normalized_ast.Label { name; origin })
         | Source_ast.Assignment { name; origin; _ } ->
-            errors :=
-              diag ~origin "simplify.assignment"
-                (Printf.sprintf "symbol assignment (%s = ...) is not in M1 scope" name)
-              :: !errors
+            errors := diag ~origin (`Assignment_out_of_scope name) :: !errors
         | Source_ast.Instruction { insn; origin } -> (
             match T.simplify_instruction ~features:T.default_features insn with
-            | Error e -> errors := e :: !errors
+            | Error e -> errors := target_diagnostic e :: !errors
             | Ok i -> add (Normalized_ast.Instruction { insn = i; origin }))
         | Source_ast.Directive { name; arguments; origin } -> (
             (* The target is asked first, because a target-state directive is
@@ -139,7 +191,7 @@ module Make (T : T_intf.TARGET) = struct
                table decides; if neither claims it, it is a diagnostic. *)
             let argument = String.concat ", " (List.map Token.slice_text arguments) in
             match T.handle_directive ~name ~argument !state with
-            | T_intf.Rejected e -> errors := e :: !errors
+            | T_intf.Rejected e -> errors := parse_diagnostic e :: !errors
             | T_intf.Handled { state = s; emit } ->
                 state := s;
                 List.iter (fun insn -> add (Normalized_ast.Instruction { insn; origin })) emit
@@ -151,16 +203,11 @@ module Make (T : T_intf.TARGET) = struct
                     | Ok d -> add (Normalized_ast.Directive { directive = d; origin })
                     | Error e -> errors := e :: !errors)
                 | Ok Directives.Unknown ->
-                    errors :=
-                      diag ~origin "simplify.directive" ("unknown directive " ^ name) :: !errors
+                    errors := diag ~origin (`Unknown_directive name) :: !errors
                 | Error r ->
-                    errors :=
-                      diag ~origin
-                        (Option.value r.Directives.code ~default:"simplify.directive")
-                        r.Directives.message
-                      :: !errors)))
+                    errors := diag ~origin (`Directive_rejected (Err.Error.kind r)) :: !errors)))
       m.Source_ast.items;
-    if !errors <> [] then Error (List.rev !errors)
+    if !errors <> [] then Diag.fail ~pos:__POS__ (List.rev !errors)
     else Ok ({ Normalized_ast.unit_name = m.Source_ast.unit_name; items = List.rev !items }, !state)
 
   (* {1 Stage 3 - lower (§4.4, §7)}
@@ -207,9 +254,7 @@ module Make (T : T_intf.TARGET) = struct
     let with_section origin f =
       match !current with
       | Some s -> f s
-      | None ->
-          errors :=
-            diag ~origin "lower.no-section" "this appears before any section directive" :: !errors
+      | None -> errors := diag ~origin `Statement_before_section :: !errors
     in
     let symbol name =
       match List.find_opt (fun s -> String.equal s.sy_name name) !symbols with
@@ -283,7 +328,7 @@ module Make (T : T_intf.TARGET) = struct
                 List.iter
                   (fun value ->
                     match Expr.fold Expr.no_env value with
-                    | Error m -> errors := diag ~origin "lower.data" m :: !errors
+                    | Error m -> errors := diag ~origin (`Data_value (Err.Error.kind m)) :: !errors
                     | Ok folded -> (
                         let bytes =
                           match folded with
@@ -305,7 +350,7 @@ module Make (T : T_intf.TARGET) = struct
                           | Expr.Const _ -> Ok []
                           | _ -> (
                               match T.data_fixup ~width with
-                              | Error e -> Error (Diagnostic.message e)
+                              | Error e -> Error (Diagnostic.message (target_diagnostic e))
                               | Ok kind ->
                                   Ok
                                     [
@@ -334,7 +379,7 @@ module Make (T : T_intf.TARGET) = struct
                         in
                         match (bytes, fixups) with
                         | Error m, _ | _, Error m ->
-                            errors := diag ~origin "lower.data" m :: !errors
+                            errors := diag ~origin (`Data_fixup m) :: !errors
                         | Ok bytes, Ok fixups ->
                             with_section origin (fun s ->
                                 s.sb_frags <-
@@ -350,15 +395,13 @@ module Make (T : T_intf.TARGET) = struct
             | Directive.Target_state { name; argument } -> (
                 match T.handle_directive ~name ~argument !state with
                 | T_intf.Handled { state = s; _ } -> state := s
-                | T_intf.Rejected e -> errors := e :: !errors
+                | T_intf.Rejected e -> errors := parse_diagnostic e :: !errors
                 | T_intf.Unhandled ->
-                    errors :=
-                      diag ~origin "lower.directive" ("the target did not accept " ^ name)
-                      :: !errors))
+                    errors := diag ~origin (`Directive_not_accepted name) :: !errors))
         | Normalized_ast.Instruction { insn; origin } ->
             with_section origin (fun s ->
                 match T.lower_instruction !state insn with
-                | Error e -> errors := e :: !errors
+                | Error e -> errors := target_diagnostic e :: !errors
                 | Ok lowered ->
                     List.iter
                       (fun l ->
@@ -366,7 +409,7 @@ module Make (T : T_intf.TARGET) = struct
                           { a with Lowered_ast.form = T.name ^ "." ^ a.Lowered_ast.form }
                         in
                         match T.encode l with
-                        | Error e -> errors := e :: !errors
+                        | Error e -> errors := target_diagnostic e :: !errors
                         | Ok (`Fixed a) ->
                             let a = qualify a in
                             s.sb_frags <-
@@ -385,12 +428,13 @@ module Make (T : T_intf.TARGET) = struct
                                function and an ill-formed ladder would otherwise
                                reach layout unchecked. *)
                             match Lowered_ast.validate_relax alts with
-                            | Error m -> errors := diag ~origin "lower.relax-ladder" m :: !errors
+                            | Error m ->
+                                errors := diag ~origin (`Relax_ladder (Err.Error.kind m)) :: !errors
                             | Ok () ->
                                 s.sb_frags <- Lowered_ast.Relax { alts; origin } :: s.sb_frags))
                       lowered))
       m.Normalized_ast.items;
-    if !errors <> [] then Error (List.rev !errors)
+    if !errors <> [] then Diag.fail ~pos:__POS__ (List.rev !errors)
     else
       Ok
         {
@@ -440,19 +484,31 @@ module Make (T : T_intf.TARGET) = struct
     in
     { Image.default_policy with entry_symbol }
 
-  let plan ?entry m = Image.plan_image ~evaluate:T.evaluate_fixup (policy_for ?entry m) [ m ]
+  (* The other erasure boundary: [Image] stores the fixup evaluator in a
+     [laid_out], which the architecture-erased [DRIVER] hands around, so the
+     closure cannot mention [T.error]. The target renders here, exactly as it
+     does at [target_diagnostic] (asm/docs/errors.md §2). *)
+  let evaluate kind ~place ~target =
+    Result.map_error target_diagnostic (T.evaluate_fixup kind ~place ~target)
+
+  let plan ?entry m = Image.plan_image ~evaluate (policy_for ?entry m) [ m ]
   let fixup_observations = Image.fixup_observations
 
-  (* {1 The whole path} *)
+  (* {1 The whole path}
+
+     Each [Diag.stage] marks a phase boundary at the position of the crossing,
+     which is what makes the event trail read parse -> simplify -> lower -> plan
+     rather than leaving the phase implicit in a diagnostic code prefix
+     (asm/docs/errors.md §2). The payload is untouched: a stage mark records
+     that a failure crossed here, not a new failure. *)
 
   let assemble ?entry ~unit_name ~source () =
-    match parse ~unit_name ~source with
-    | Error ds -> Error ds
-    | Ok src -> (
-        match simplify src with
-        | Error ds -> Error ds
-        | Ok (norm, state) -> (
-            match lower ~state norm with Error ds -> Error ds | Ok low -> plan ?entry low))
+    let open Err.Syntax in
+    let stage r = Diag.stage ~pos:__POS__ Err.Action.Map r in
+    let* src = stage (parse ~unit_name ~source) in
+    let* norm, state = stage (simplify src) in
+    let* low = stage (lower ~state norm) in
+    stage (plan ?entry low)
 
   (* {1 Dumps (asm/docs/contracts.md §1)} *)
 
@@ -465,7 +521,7 @@ module Make (T : T_intf.TARGET) = struct
 
   let dump_tokens ~source =
     match Lexer.tokenize ~profile:T.lexical_profile ~source with
-    | Error e -> Error [ Lexer.diagnostic_of_error e ]
+    | Error e -> Diag.fail ~pos:__POS__ [ Lexer.diagnostic_of_error e ]
     | Ok tokens ->
         Ok
           (String.concat ""
@@ -582,7 +638,7 @@ module Make (T : T_intf.TARGET) = struct
               :: acc)
         | None -> (
             match T.decode { T.state = T.default_state; address = here } bytes ~pos with
-            | Error e -> Error [ e ]
+            | Error e -> Diag.fail ~pos:__POS__ [ target_diagnostic e ]
             | Ok (insn, form, n) ->
                 go (pos + n)
                   ({

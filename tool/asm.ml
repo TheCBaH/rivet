@@ -19,6 +19,7 @@ let usage =
       "";
       "  --target <t>            one of: " ^ String.concat ", " Driver.Registry.names;
       "  --fixed-base <addr>     bind the image at this address (hex with 0x, or decimal)";
+      "  --err_trace <spec>      off | boundaries | all; error provenance to stderr";
       "";
       "  --dump-tokens           the lexer";
       "  --dump-source-ast       after parsing";
@@ -55,6 +56,10 @@ let read_file path =
   s
 
 let () =
+  (* First, before anything can fail. Err's own default captures a Printexc
+     callstack at every detection; asm/docs/errors.md §3 explains why that must
+     be off here, and why the policy is not simply Err.Config.fast. *)
+  Foundation.Err_policy.apply ();
   let o = { target = None; base = None; dumps = []; file = None } in
   let args = Array.to_list Sys.argv in
   let rec go = function
@@ -67,6 +72,32 @@ let () =
         go rest
     | "--fixed-base" :: b :: rest ->
         o.base <- Some (parse_base b);
+        go rest
+    (* Error tracing, off unless asked for. The monitor writes to stderr and
+       never to stdout: asm/docs/errors.md §3 keeps Err provenance out of
+       anything a cram baseline compares, and every dump above goes to stdout.
+       The spec is parsed rather than read from the environment, so a build's
+       behaviour is a property of its command line. *)
+    | "--err_trace" :: spec :: rest ->
+        (* [backtrace] is pinned to [off] rather than left to the spec. What
+           this switch is for is the explicit ~pos trail, which is a compile-time
+           constant and reads the same on every backend; a captured native stack
+           would add host paths and frame counts that differ between native,
+           js_of_ocaml and Melange, and say less. *)
+        (match
+           Foundation.Err_policy.of_strings ~trace:(Some spec) ~backtrace:(Some "off")
+             ~max_events:None ~max_frames:None ~max_external_bytes:None
+         with
+        | Ok config ->
+            Err.Config.set config;
+            ignore
+              (Err.Monitor.install (fun observation ->
+                   Fmt.epr "@[<v>[err] %a@]@." Err.Observation.pp observation))
+        | Error e ->
+            Fmt.epr "invalid --err_trace %s: %a@." spec
+              (Err.Error.pp Foundation.Err_policy.pp_of_strings_error)
+              e;
+            exit 2);
         go rest
     | a :: rest when String.length a > 2 && String.sub a 0 2 = "--" ->
         o.dumps <- o.dumps @ [ String.sub a 2 (String.length a - 2) ];
@@ -91,7 +122,10 @@ let () =
     prerr_newline ();
     exit 1
   in
-  let ok = function Ok v -> v | Error ds -> report ds in
+  (* The payload only. A wrapped failure also carries a detection origin and the
+     phase trail, and asm/docs/errors.md §3 keeps both out of what a cram
+     baseline compares; the tracing switch is how they are asked for. *)
+  let ok = function Ok v -> v | Error e -> report (Foundation.Diag.diagnostics e) in
   let laid_out = lazy (ok (D.assemble ~unit_name ~source ())) in
   (* Binding is the *host's* step (§9), so the CLI is the host here: it chooses
      the address, and the assembler only says what constraints it must satisfy.

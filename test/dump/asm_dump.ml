@@ -8,10 +8,14 @@
    The inputs come from Test_dump_inputs, which explains why they are string
    literals rather than files. *)
 
+(* [Foundation.Diag.render] rather than [Diagnostic.render_all]: the driver's
+   failures are wrapped, and the rendering is deliberately of the payload alone -
+   asm/docs/errors.md §3 keeps Err provenance out of anything a baseline
+   compares. *)
 let ok = function
   | Ok v -> v
-  | Error ds ->
-      print_string (Foundation.Diagnostic.render_all ds);
+  | Error e ->
+      print_string (Foundation.Diag.render e);
       exit 1
 
 let hex s =

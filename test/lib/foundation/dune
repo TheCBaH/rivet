@@ -32,7 +32,7 @@
 
 (library
  (name test_foundation)
- (modules test_bigint)
+ (modules test_bigint test_err_policy)
  (modes byte native)
  (libraries foundation fmt foundation_corpus)
  (inline_tests)

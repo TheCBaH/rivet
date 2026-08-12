@@ -27,6 +27,62 @@ open X86_family_encode
 module Make (M : MODE) = struct
   include X86_family_encode.Make (M)
 
+  (* The front end's error domain (asm/docs/errors.md). Separate from the
+     encoder's because it may name {!Asm_syntax} and the encoder's may not - see
+     {!Target_intf.Target.TARGET} for why that split exists.
+
+     That freedom is the point of the split, and [`Cannot_parse_operand] is what
+     it buys: the slice travels whole - token kinds, spans and all - and the
+     expression parser's own failure travels with it. The site this replaces
+     read [bad ("cannot parse operand " ^ Token.slice_text slice)] under an
+     [| Error _ ->], which discarded the cause, reduced the input to a
+     re-rendering of itself, and returned a sentence. All three are back. *)
+  type parse_error_kind =
+    [ `Unknown_register of string
+    | `Displacement_too_wide
+    | `Cannot_parse_displacement of cannot_parse
+    | `Cannot_parse_operand of cannot_parse
+    | `Rip_requires_64bit
+    | `Malformed_rip_operand of Asm_syntax.Token.slice
+    | `Malformed_memory_operand of Asm_syntax.Token.slice
+    | `Bad_scale of int64
+    | `Unbalanced_parens ]
+
+  and cannot_parse = { slice : Asm_syntax.Token.slice; reason : Asm_syntax.Parse_lines.error_kind }
+
+  type parse_error = parse_error_kind Target_error.t
+
+  let pp_parse_error_kind ppf : parse_error_kind -> unit = function
+    | `Unknown_register n -> Fmt.pf ppf "unknown register %%%s" n
+    | `Displacement_too_wide -> Fmt.string ppf "displacement does not fit 64 bits"
+    | `Cannot_parse_displacement { slice; _ } ->
+        Fmt.pf ppf "cannot parse displacement %s" (Asm_syntax.Token.slice_text slice)
+    | `Cannot_parse_operand { slice; _ } ->
+        Fmt.pf ppf "cannot parse operand %s" (Asm_syntax.Token.slice_text slice)
+    | `Rip_requires_64bit -> Fmt.string ppf "%%rip-relative addressing is 64-bit only"
+    | `Malformed_rip_operand _ -> Fmt.string ppf "malformed %%rip-relative operand"
+    | `Malformed_memory_operand _ -> Fmt.string ppf "malformed scaled memory operand"
+    | `Bad_scale _ -> Fmt.string ppf "scale must be 1, 2, 4 or 8"
+    | `Unbalanced_parens -> Fmt.string ppf "unbalanced parentheses in operand"
+
+  let parse_error_kind_code : parse_error_kind -> string = function
+    | `Unknown_register _ | `Displacement_too_wide | `Cannot_parse_displacement _
+    | `Cannot_parse_operand _ | `Rip_requires_64bit | `Malformed_rip_operand _
+    | `Malformed_memory_operand _ | `Bad_scale _ | `Unbalanced_parens ->
+        "x86.operand"
+
+  let pp_parse_error ppf e = pp_parse_error_kind ppf (Target_error.kind e)
+  let parse_error_code e = parse_error_kind_code (Target_error.kind e)
+
+  let parse_error_diagnostic e =
+    Target_error.to_diagnostic ~code:parse_error_kind_code ~pp:pp_parse_error_kind e
+
+  let parse_diag ?pos ?origin kind =
+    Err.Error.make ?pos ~pp_error:pp_parse_error
+      (Target_error.make
+         ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:M.name ())
+         kind)
+
   (* {2 Lexical profile}
 
      x86's `#` is a comment introducer and its immediates carry `$`; registers
@@ -67,25 +123,20 @@ module Make (M : MODE) = struct
      A constant is a constant however it was spelled. *)
   let disp_expression ~bad (slice : Asm_syntax.Token.slice) =
     match Asm_syntax.Parse_lines.parse_expression slice with
-    | Error _ ->
-        bad (Printf.sprintf "cannot parse displacement %s" (Asm_syntax.Token.slice_text slice))
+    | Error e -> bad (`Cannot_parse_displacement { slice; reason = Err.Error.kind e })
     | Ok e -> (
         match Asm_core.Expr.fold Asm_core.Expr.no_env e with
         | Ok (Asm_core.Expr.Const v) -> (
             match Bigint.to_int64_opt v with
             | Some d -> Ok (Disp.Const d)
-            | None -> bad "displacement does not fit 64 bits")
+            | None -> bad `Displacement_too_wide)
         | Ok folded -> Ok (Disp.Sym folded)
         | Error _ -> Ok (Disp.Sym e))
 
   let parse_one_operand (slice : Asm_syntax.Token.slice) =
     let origin = slice_origin slice in
-    let bad msg = Error (diag ~origin "x86.operand" msg) in
-    let reg_named n =
-      match find_reg n with
-      | Some r -> Ok r
-      | None -> bad (Printf.sprintf "unknown register %%%s" n)
-    in
+    let bad kind = Error (parse_diag ~pos:__POS__ ~origin kind) in
+    let reg_named n = match find_reg n with Some r -> Ok r | None -> bad (`Unknown_register n) in
     let open Asm_syntax in
     match List.map Token.kind slice with
     (* $imm *)
@@ -100,7 +151,7 @@ module Make (M : MODE) = struct
     | [ Token.Star; Token.Register n ] -> Result.map (fun r -> Operand.Reg r) (reg_named n)
     (* disp(%base) and (%base) *)
     | [ Token.Lparen; Token.Register "rip"; Token.Rparen ] ->
-        if not M.rex_allowed then bad "%rip-relative addressing is 64-bit only"
+        if not M.rex_allowed then bad `Rip_requires_64bit
         else Ok (Operand.Mem { Mem.base = Some rip_reg; index = None; scale = 1; disp = Disp.zero })
     | [ Token.Lparen; Token.Register b; Token.Rparen ] ->
         Result.map (fun b -> Operand.Mem (Mem.of_base b)) (reg_named b)
@@ -108,7 +159,7 @@ module Make (M : MODE) = struct
        unknown register before the fallback ever saw it. *)
     | [ Token.Int _; Token.Lparen; Token.Register "rip"; Token.Rparen ]
     | Token.Minus :: Token.Int _ :: [ Token.Lparen; Token.Register "rip"; Token.Rparen ] -> (
-        if not M.rex_allowed then bad "%rip-relative addressing is 64-bit only"
+        if not M.rex_allowed then bad `Rip_requires_64bit
         else
           match split_rip slice with
           | Some prefix ->
@@ -116,16 +167,16 @@ module Make (M : MODE) = struct
                 (fun d ->
                   Operand.Mem { Mem.base = Some rip_reg; index = None; scale = 1; disp = d })
                 (disp_expression ~bad prefix)
-          | None -> bad "malformed %rip-relative operand")
+          | None -> bad (`Malformed_rip_operand slice))
     | [ Token.Int d; Token.Lparen; Token.Register b; Token.Rparen ] -> (
         match (Bigint.to_int64_opt d, reg_named b) with
         | Some d, Ok b -> Ok (Operand.Mem (Mem.of_base ~disp:(Disp.Const d) b))
-        | None, _ -> bad "displacement does not fit 64 bits"
+        | None, _ -> bad `Displacement_too_wide
         | _, Error e -> Error e)
     | Token.Minus :: Token.Int d :: [ Token.Lparen; Token.Register b; Token.Rparen ] -> (
         match (Bigint.to_int64_opt d, reg_named b) with
         | Some d, Ok b -> Ok (Operand.Mem (Mem.of_base ~disp:(Disp.Const (Int64.neg d)) b))
-        | None, _ -> bad "displacement does not fit 64 bits"
+        | None, _ -> bad `Displacement_too_wide
         | _, Error e -> Error e)
     (* disp(%base,%index,scale), with the commas already consumed as slice
        separators and the pieces rejoined by [regroup] - so the pattern is the
@@ -134,16 +185,16 @@ module Make (M : MODE) = struct
       -> (
         match (Bigint.to_int64_opt d, Bigint.to_int_opt s, reg_named b, reg_named i) with
         | Some d, Some s, Ok b, Ok i ->
-            if log2_scale s = None then bad "scale must be 1, 2, 4 or 8"
+            if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
             else
               Ok (Operand.Mem { Mem.base = Some b; index = Some i; scale = s; disp = Disp.Const d })
-        | _ -> bad "malformed scaled memory operand")
+        | _ -> bad (`Malformed_memory_operand slice))
     | [ Token.Lparen; Token.Register b; Token.Register i; Token.Int s; Token.Rparen ] -> (
         match (Bigint.to_int_opt s, reg_named b, reg_named i) with
         | Some s, Ok b, Ok i ->
-            if log2_scale s = None then bad "scale must be 1, 2, 4 or 8"
+            if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
             else Ok (Operand.Mem { Mem.base = Some b; index = Some i; scale = s; disp = Disp.zero })
-        | _ -> bad "malformed scaled memory operand")
+        | _ -> bad (`Malformed_memory_operand slice))
     | _ -> (
         (* [expr(%rip)]. Matched as a suffix rather than as a token pattern
            because the displacement is an arbitrary expression - [g+4(%rip)] is
@@ -151,7 +202,7 @@ module Make (M : MODE) = struct
            end, not the shape of what precedes them. *)
         match split_rip slice with
         | Some prefix ->
-            if not M.rex_allowed then bad "%rip-relative addressing is 64-bit only"
+            if not M.rex_allowed then bad `Rip_requires_64bit
             else
               Result.map
                 (fun d ->
@@ -165,8 +216,7 @@ module Make (M : MODE) = struct
                an operand as in a directive argument. *)
             match Asm_syntax.Parse_lines.parse_expression slice with
             | Ok e -> Ok (Operand.Sym e)
-            | Error _ ->
-                bad (Printf.sprintf "cannot parse operand %s" (Asm_syntax.Token.slice_text slice))))
+            | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e })))
 
   (* The common parser splits a line at every top-level comma, and a scaled
      address has commas *inside* its parentheses: [0(%edi,%edi,1)] arrives as
@@ -188,12 +238,12 @@ module Make (M : MODE) = struct
         0 slice
     in
     let rec go acc pending depth = function
-      | [] -> if pending = [] then Ok (List.rev acc) else Error "unbalanced parentheses in operand"
+      | [] -> if pending = [] then Ok (List.rev acc) else Error `Unbalanced_parens
       | s :: rest ->
           let d = depth + depth_of s in
           let pending = pending @ s in
           if d = 0 then go (pending :: acc) [] 0 rest
-          else if d < 0 then Error "unbalanced parentheses in operand"
+          else if d < 0 then Error `Unbalanced_parens
           else go acc pending d rest
     in
     go [] [] 0 slices
@@ -211,7 +261,7 @@ module Make (M : MODE) = struct
           match parse_one_operand s with Ok o -> go (o :: acc) rest | Error e -> Error e)
     in
     match regroup slices with
-    | Error m -> Error (diag "x86.operand" m)
+    | Error kind -> Error (parse_diag ~pos:__POS__ kind)
     | Ok grouped -> go [] grouped
 
   let handle_directive ~name ~argument state =

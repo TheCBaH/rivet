@@ -11,8 +11,40 @@
 
 open Foundation
 
-type error = { message : string; span : Span.t }
+(* The lexer's error domain (asm/docs/errors.md). The span travels beside the
+   tag rather than inside it because these are *accumulated* and turned into
+   diagnostics later, so the failure site is not the site that knows the origin -
+   which is the one case §1's "do not duplicate the location" rule exempts.
 
+   [`Bad_number] wraps rather than flattens: the literal is context this layer
+   has and [Bigint] does not, and the cause keeps its own typed payload instead
+   of being rendered into a sentence (§2). The rendering is unchanged - the
+   colon-joined form the lexer built by hand - so the cram baselines still
+   match. *)
+type error_kind =
+  [ `Bad_number of bad_number
+  | `Unterminated_string
+  | `Unknown_escape of char
+  | `Unexpected_character of char ]
+
+and bad_number = { literal : string; reason : Bigint.error }
+
+type error = { kind : error_kind; span : Span.t }
+
+let pp_kind ppf : error_kind -> unit = function
+  | `Bad_number { literal; reason } -> Fmt.pf ppf "%s: %a" literal Bigint.pp_error reason
+  | `Unterminated_string -> Fmt.string ppf "unterminated string"
+  | `Unknown_escape c -> Fmt.pf ppf "unknown escape \\%c" c
+  | `Unexpected_character c -> Fmt.pf ppf "unexpected character %C" c
+
+(* One code for the whole domain: a lexical failure is a lexical failure, and
+   the four kinds are told apart by the payload rather than by the taxonomy. *)
+let kind_code : error_kind -> string = function
+  | `Bad_number _ | `Unterminated_string | `Unknown_escape _ | `Unexpected_character _ -> "lex"
+
+let pp_error ppf (e : error) = pp_kind ppf e.kind
+let error_code (e : error) = kind_code e.kind
+let err kind span = { kind; span }
 let is_digit c = c >= '0' && c <= '9'
 let is_alpha c = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 let is_hex c = is_digit c || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
@@ -54,7 +86,7 @@ let scan_number c pos =
   let span = span_of c ~start:pos ~stop in
   match Bigint.of_string literal with
   | Ok v -> Ok (Token.make (Token.Int v) span, stop)
-  | Error m -> Error { message = Printf.sprintf "%s: %s" literal m; span }
+  | Error e -> Error (err (`Bad_number { literal; reason = Err.Error.kind e }) span)
 
 (* A digit immediately followed by [b] or [f] is a numeric local-label
    reference, not a number followed by an identifier: [1b] is "the most
@@ -93,7 +125,7 @@ let try_local_label c pos =
 let scan_string c pos =
   let rec go p buf =
     match peek c p 0 with
-    | None -> Error { message = "unterminated string"; span = span_of c ~start:pos ~stop:p }
+    | None -> Error (err `Unterminated_string (span_of c ~start:pos ~stop:p))
     | Some '"' ->
         Ok
           ( Token.make (Token.String (Buffer.contents buf)) (span_of c ~start:pos ~stop:(p + 1)),
@@ -118,14 +150,8 @@ let scan_string c pos =
         | Some '"' ->
             Buffer.add_char buf '"';
             go (p + 2) buf
-        | Some ch ->
-            Error
-              {
-                message = Printf.sprintf "unknown escape \\%c" ch;
-                span = span_of c ~start:pos ~stop:(p + 1);
-              }
-        | None ->
-            Error { message = "unterminated string"; span = span_of c ~start:pos ~stop:(p + 1) })
+        | Some ch -> Error (err (`Unknown_escape ch) (span_of c ~start:pos ~stop:(p + 1)))
+        | None -> Error (err `Unterminated_string (span_of c ~start:pos ~stop:(p + 1))))
     | Some ch ->
         Buffer.add_char buf ch;
         go (p + 1) buf
@@ -238,14 +264,9 @@ let tokenize ~profile ~source =
                 | '=' -> continue (one Token.Equals)
                 | '@' -> continue (one Token.At)
                 | '.' -> continue (one Token.Dot)
-                | ch ->
-                    Error
-                      {
-                        message = Printf.sprintf "unexpected character %C" ch;
-                        span = span_of c ~start ~stop:(pos + 1);
-                      }))
+                | ch -> Error (err (`Unexpected_character ch) (span_of c ~start ~stop:(pos + 1)))))
   in
   loop 0 []
 
 let diagnostic_of_error (e : error) =
-  Diagnostic.error ~code:"lex" ~message:e.message ~origin:(Origin.text e.span) ()
+  Diagnostic.of_error ~origin:(Origin.text e.span) ~code:error_code ~pp:pp_error e

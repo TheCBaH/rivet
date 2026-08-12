@@ -160,16 +160,87 @@ let divrem_mag a b =
   in
   go (numbits_mag a - 1) [] []
 
+(* {1 The error domain}
+
+   Declared here rather than at the top because [Does_not_fit] carries a [t],
+   and because these are the first functions that can fail.
+
+   Every [pp] case reproduces the string this module produced before the domain
+   existed: the parse failures are pinned by test/cram/bigint_dump.t and the
+   narrowing failures by test_bigint.ml, so the payload is what changed and the
+   rendering is not. Two constructors therefore carry a field their message does
+   not mention - [`Nonpositive_width]'s width, and [`Negative_shift]'s amount -
+   because a caller matching the value should not have to re-derive what it
+   passed in just to say what went wrong. *)
+
+type error =
+  [ `Division_by_zero
+  | `Negative_shift of negative_shift
+  | `Negative_width of negative_width
+  | `Nonpositive_width of int
+  | `Empty_literal
+  | `No_digits of string
+  | `Invalid_digit of invalid_digit
+  | `Does_not_fit of does_not_fit ]
+
+and negative_shift = { shift_op : [ `Left | `Right ]; amount : int }
+and negative_width = { width_of : [ `Signed | `Unsigned ]; width : int }
+and invalid_digit = { digit : char; base : int; literal : string }
+and does_not_fit = { value : t; bits : int }
+
+(* Forward reference: [pp_error] renders a value with [to_string_hex], which is
+   defined below with the rest of the printers. Set once, at the bottom of this
+   module; a [ref] rather than a recursive definition because the printer needs
+   the whole numeric core and the core must not need the printer. *)
+let hex_printer : (t -> string) ref = ref (fun _ -> "?")
+
+let pp_error ppf : error -> unit = function
+  | `Division_by_zero -> Fmt.string ppf "division by zero"
+  | `Negative_shift { shift_op; _ } ->
+      Fmt.pf ppf "Bigint.shift_%s: negative shift"
+        (match shift_op with `Left -> "left" | `Right -> "right")
+  | `Negative_width { width_of; _ } ->
+      Fmt.pf ppf "Bigint.fits_%s: negative width"
+        (match width_of with `Signed -> "signed" | `Unsigned -> "unsigned")
+  | `Nonpositive_width _ -> Fmt.string ppf "to_bits: width must be positive"
+  | `Empty_literal -> Fmt.string ppf "empty integer literal"
+  | `No_digits s -> Fmt.pf ppf "integer literal %S has no digits" s
+  | `Invalid_digit { digit; base; literal } ->
+      Fmt.pf ppf "invalid digit %C in base-%d literal %S" digit base literal
+  | `Does_not_fit { value; bits } ->
+      Fmt.pf ppf "value %s does not fit in %d bits (signed or unsigned)" (!hex_printer value) bits
+
+let error_code : error -> string = function
+  | `Division_by_zero -> "bigint.division-by-zero"
+  | `Negative_shift _ -> "bigint.negative-shift"
+  | `Negative_width _ -> "bigint.negative-width"
+  | `Nonpositive_width _ -> "bigint.nonpositive-width"
+  | `Empty_literal | `No_digits _ | `Invalid_digit _ -> "bigint.literal"
+  | `Does_not_fit _ -> "bigint.does-not-fit"
+
+let fail ?pos e = Err.fail ?pos ~pp_error e
+let or_raise r = Err.or_raise ~pos:__POS__ ~pp_error r
+
 let divrem a b =
-  if b.sign = 0 then raise Division_by_zero
-  else if a.sign = 0 then (zero, zero)
+  if b.sign = 0 then fail ~pos:__POS__ `Division_by_zero
+  else if a.sign = 0 then Ok (zero, zero)
   else
     let q, r = divrem_mag a.mag b.mag in
     (* Truncated toward zero, so the remainder carries the dividend's sign. *)
-    (normalize (a.sign * b.sign) q, normalize a.sign r)
+    Ok (normalize (a.sign * b.sign) q, normalize a.sign r)
 
-let div a b = fst (divrem a b)
-let rem a b = snd (divrem a b)
+let div a b = Result.map fst (divrem a b)
+let rem a b = Result.map snd (divrem a b)
+
+(* The total companions. Every [*_exn] here is [or_raise] over the checked form
+   above, so the two can never disagree about when a call is legal - which is
+   the failure mode a separately written unchecked path would have. They exist
+   for callers that have already established the precondition, of which this
+   module is the largest: [to_string] divides by ten, and [fits_signed] shifts
+   by a non-negative width. *)
+let divrem_exn a b = or_raise (divrem a b)
+let div_exn a b = or_raise (div a b)
+let rem_exn a b = or_raise (rem a b)
 
 (* {1 Shifts} *)
 
@@ -183,10 +254,11 @@ let rec shl_bits mag k carry =
       (v land limb_mask) :: shl_bits tl k (v lsr limb_bits)
 
 let shift_left x n =
-  if n < 0 then invalid_arg "Bigint.shift_left: negative shift"
-  else if x.sign = 0 || n = 0 then x
-  else normalize x.sign (prepend_zeros (n / limb_bits) (shl_bits x.mag (n mod limb_bits) 0))
+  if n < 0 then fail ~pos:__POS__ (`Negative_shift { shift_op = `Left; amount = n })
+  else if x.sign = 0 || n = 0 then Ok x
+  else Ok (normalize x.sign (prepend_zeros (n / limb_bits) (shl_bits x.mag (n mod limb_bits) 0)))
 
+let shift_left_exn x n = or_raise (shift_left x n)
 let rec drop n l = if n <= 0 then l else match l with [] -> [] | _ :: tl -> drop (n - 1) tl
 
 (* [k = 0] needs no special case: [y lsl limb_bits] has no bits inside the mask. *)
@@ -200,14 +272,16 @@ let shift_right_mag mag n = shr_bits (drop (n / limb_bits) mag) (n mod limb_bits
 let rec any_bit_below mag n i = i < n && (test_bit_mag mag i = 1 || any_bit_below mag n (i + 1))
 
 let shift_right x n =
-  if n < 0 then invalid_arg "Bigint.shift_right: negative shift"
-  else if x.sign = 0 || n = 0 then x
-  else if x.sign > 0 then normalize 1 (shift_right_mag x.mag n)
+  if n < 0 then fail ~pos:__POS__ (`Negative_shift { shift_op = `Right; amount = n })
+  else if x.sign = 0 || n = 0 then Ok x
+  else if x.sign > 0 then Ok (normalize 1 (shift_right_mag x.mag n))
   else
     (* Arithmetic shift rounds toward negative infinity, so a negative value
        loses one more when any shifted-out bit was set. *)
     let q = normalize 1 (shift_right_mag x.mag n) in
-    neg (if any_bit_below x.mag n 0 then add q one else q)
+    Ok (neg (if any_bit_below x.mag n 0 then add q one else q))
+
+let shift_right_exn x n = or_raise (shift_right x n)
 
 (* {1 Bitwise}
 
@@ -255,17 +329,21 @@ let lognot x = neg (add x one)
    range check happens, and it is explicit rather than a host-integer overflow. *)
 
 let fits_unsigned ~width x =
-  if width < 0 then invalid_arg "Bigint.fits_unsigned: negative width"
-  else x.sign >= 0 && numbits x <= width
+  if width < 0 then fail ~pos:__POS__ (`Negative_width { width_of = `Unsigned; width })
+  else Ok (x.sign >= 0 && numbits x <= width)
 
 let fits_signed ~width x =
-  if width < 0 then invalid_arg "Bigint.fits_signed: negative width"
-  else if width = 0 then is_zero x
-  else if x.sign >= 0 then numbits x <= width - 1
+  if width < 0 then fail ~pos:__POS__ (`Negative_width { width_of = `Signed; width })
+  else if width = 0 then Ok (is_zero x)
+  else if x.sign >= 0 then Ok (numbits x <= width - 1)
   else
     (* The negative range reaches one further: |x| may equal 2^(width-1) exactly,
-       whose numbits is width. *)
-    numbits x <= width - 1 || equal (abs x) (shift_left one (width - 1))
+       whose numbits is width. [width - 1] is non-negative here, so the shift
+       cannot fail and the total form is the honest one to call. *)
+    Ok (numbits x <= width - 1 || equal (abs x) (shift_left_exn one (width - 1)))
+
+let fits_unsigned_exn ~width x = or_raise (fits_unsigned ~width x)
+let fits_signed_exn ~width x = or_raise (fits_signed ~width x)
 
 (* {1 Rendering and parsing} *)
 
@@ -291,13 +369,11 @@ let to_string_hex x =
   match x.sign with 0 -> "0x0" | s -> (if s < 0 then "-0x" else "0x") ^ to_string_hex_mag x.mag
 
 let to_bits ~width x =
-  if width <= 0 then Error "to_bits: width must be positive"
-  else if fits_unsigned ~width x then Ok x
-  else if fits_signed ~width x then if x.sign >= 0 then Ok x else Ok (add (shift_left one width) x)
-  else
-    Error
-      (Printf.sprintf "value %s does not fit in %d bits (signed or unsigned)" (to_string_hex x)
-         width)
+  if width <= 0 then fail ~pos:__POS__ (`Nonpositive_width width)
+  else if fits_unsigned_exn ~width x then Ok x
+  else if fits_signed_exn ~width x then
+    if x.sign >= 0 then Ok x else Ok (add (shift_left_exn one width) x)
+  else fail ~pos:__POS__ (`Does_not_fit { value = x; bits = width })
 
 let ten = of_int 10
 
@@ -307,7 +383,7 @@ let to_string x =
     let rec digits v acc =
       if is_zero v then acc
       else
-        let q, r = divrem v ten in
+        let q, r = divrem_exn v ten in
         let d = match r.mag with [] -> 0 | lo :: _ -> lo in
         digits q (Char.chr (Char.code '0' + d) :: acc)
     in
@@ -346,13 +422,13 @@ let of_string s =
     else
       match digit_value s.[i] with
       | Some d when d < base -> go (i + 1) (add (mul acc bbase) (of_int d))
-      | _ -> Error (Printf.sprintf "invalid digit %C in base-%d literal %S" s.[i] base s)
+      | _ -> fail ~pos:__POS__ (`Invalid_digit { digit = s.[i]; base; literal = s })
   in
-  if n = 0 then Error "empty integer literal"
-  else if start >= n then Error (Printf.sprintf "integer literal %S has no digits" s)
+  if n = 0 then fail ~pos:__POS__ `Empty_literal
+  else if start >= n then fail ~pos:__POS__ (`No_digits s)
   else go start zero
 
-let of_string_exn s = match of_string s with Ok v -> v | Error e -> invalid_arg e
+let of_string_exn s = or_raise (of_string s)
 let to_int_opt x = int_of_string_opt (to_string x)
 
 (* {1 Pretty-printing}
@@ -422,7 +498,7 @@ let of_int64 v =
     if Int64.equal v Int64.min_int then
       neg
         ( normalize 1 (limbs_of_uint64 (Int64.logand v Int64.max_int)) |> fun m ->
-          add m (shift_left one 63) )
+          add m (shift_left_exn one 63) )
     else neg magnitude
 
 let uint64_of_mag m =
@@ -445,3 +521,7 @@ let to_int64_opt x =
     else if Int64.compare bits 0L > 0 then Some (Int64.neg bits)
     else if Int64.equal bits Int64.min_int then Some Int64.min_int
     else None
+
+(* Close the forward reference opened beside [pp_error]: [`Does_not_fit] renders
+   its value in hex, and [to_string_hex] needs the whole numeric core above. *)
+let () = hex_printer := to_string_hex

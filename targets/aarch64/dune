@@ -13,7 +13,7 @@
  (name aarch64_encode)
  (modules aarch64_encode)
  (modes byte native)
- (libraries foundation codec asm_core target_encode)
+ (libraries foundation codec asm_core target_error target_encode)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
 

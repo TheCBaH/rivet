@@ -49,3 +49,18 @@ cloning this repo or touching Rocq:
 * `make compcert-export-archive` package that dune project plus CompCert's own
   `LICENSE` into `compcert-export.tar.gz`, also published on `v*` tags
 * `make compcert-export-run ARGS=-version` build and run the unpacked archive
+
+## Retargetable assembler
+`asm/` is a standalone dune project - independent of the CompCert build, so it
+needs neither Rocq nor a cross toolchain - holding a retargetable assembler for
+x86-32, x86-64, ARM and AArch64. See [.ai/asm_plan.md](.ai/asm_plan.md).
+
+* `make asm-ci` what CI runs, and what to run before pushing
+* `make asm-test` build and run the test suite
+
+It vendors [err_trace](https://github.com/TheCBaH/err_trace) as the
+`asm/vendor/err_trace` submodule, so a fresh clone needs
+`git submodule update --init` before `make asm-build`. See
+[asm/vendor/err_trace_local/README.md](asm/vendor/err_trace_local/README.md) for why it is
+vendored rather than taken from opam, and
+[asm/docs/errors.md](asm/docs/errors.md) for the error model it supports.

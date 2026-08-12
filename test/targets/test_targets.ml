@@ -178,7 +178,7 @@ let attempt target text =
       List.iter
         (fun d ->
           Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        ds
+        (Foundation.Diag.diagnostics ds)
 
 let%expect_test "a second allocatable section is accepted, as is a declared one" =
   attempt "x86_64" "\t.text\n\tret\n\t.section .note.GNU-stack,\"\",@progbits\n";
@@ -202,16 +202,16 @@ let%expect_test "a RIP-relative pc_bias is the realized length, not a constant" 
     "\t.text\nasm_test_entry:\n\tmovq g(%rip), %rax\n\tmovl g(%rip), %eax\n\tret\ng:\n\t.long 7\n"
   in
   (match Driver.Portable.dump "x86_64" ~which:`Lowered_ast ~unit_name:"t" ~text with
-  | Error e -> print_endline e
+  | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
   | Ok s ->
       List.iter
         (fun l -> if String.length l > 0 && l.[0] = ' ' then print_endline (String.trim l))
         (String.split_on_char '\n' s));
   (match Driver.Portable.assemble "x86_64" ~unit_name:"t" ~text with
-  | Error e -> print_endline e
+  | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
   | Ok p -> (
       match Driver.Portable.bind_at p ~base:0x400000L with
-      | Error e -> print_endline e
+      | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
       | Ok b -> (
           match Driver.Portable.section_bytes b ".text" with
           | None -> print_endline "no .text"
@@ -246,7 +246,7 @@ let%expect_test "one base places one segment, and refuses to guess at two" =
   let text = "\t.text\n\tret\n\t.data\n\t.long 1\n" in
   let show label r =
     match r with
-    | Error e -> Printf.printf "%-12s %s\n" label e
+    | Error e -> Printf.printf "%-12s %s\n" label (Driver.Portable.render_error (Err.Error.kind e))
     | Ok b ->
         Printf.printf "%-12s %s\n" label
           (String.concat " "
@@ -258,10 +258,10 @@ let%expect_test "one base places one segment, and refuses to guess at two" =
                 [ (".text", 0, 0, 0); (".data", 0, 0, 0) ]))
   in
   (match Driver.Portable.assemble "x86_64" ~unit_name:"t" ~text:"\t.text\n\tret\n" with
-  | Error e -> print_endline e
+  | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
   | Ok p -> show "one" (Driver.Portable.bind_at p ~base:0x400000L));
   match Driver.Portable.assemble "x86_64" ~unit_name:"t" ~text with
-  | Error e -> print_endline e
+  | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
   | Ok p ->
       show "two" (Driver.Portable.bind_at p ~base:0x400000L);
       show "sequential" (Driver.Portable.bind_sequential p ~base:0x400000L ~gap:0x1000);
@@ -312,12 +312,16 @@ let entry_of ?entry target text =
   let source = Foundation.Span.source ~name:"<test>" ~contents:text in
   match D.assemble ?entry ~unit_name:"t" ~source () with
   | Error ds ->
-      List.iter (fun d -> Printf.printf "%s\n" (Foundation.Diagnostic.code d)) ds;
+      List.iter
+        (fun d -> Printf.printf "%s\n" (Foundation.Diagnostic.code d))
+        (Foundation.Diag.diagnostics ds);
       None
   | Ok laid_out -> (
       match Image.bind_image laid_out ~addresses:[ (".text", 0x400000L) ] with
       | Error ds ->
-          List.iter (fun d -> Printf.printf "%s\n" (Foundation.Diagnostic.code d)) ds;
+          List.iter
+            (fun d -> Printf.printf "%s\n" (Foundation.Diagnostic.code d))
+            (Foundation.Diag.diagnostics ds);
           None
       | Ok img -> Some img.Image.entry)
 
@@ -407,7 +411,10 @@ let%expect_test "binding at a misaligned address is rejected" =
        in
        (match Image.bind_image l ~addresses:(at 0x40000002L) with
        | Ok _ -> print_endline "accepted a misaligned address"
-       | Error ds -> List.iter (fun d -> print_endline (Foundation.Diagnostic.message d)) ds);
+       | Error ds ->
+           List.iter
+             (fun d -> print_endline (Foundation.Diagnostic.message d))
+             (Foundation.Diag.diagnostics ds));
        match Image.bind_image l ~addresses:(at 0x40000000L) with
        | Ok img -> print_endline (Fmt.to_to_string Image.pp img)
        | Error _ -> print_endline "unexpected: aligned binding failed");
@@ -436,7 +443,7 @@ let normalized target text =
       List.iter
         (fun d ->
           Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        ds
+        (Foundation.Diag.diagnostics ds)
 
 let%expect_test "absolute subterms fold, symbolic ones survive" =
   normalized "x86_64" "\t.text\nfoo:\n\tret\n\t.size foo, 2 + 3 * 4\n\t.size bar, . - foo\n";
@@ -482,7 +489,7 @@ let dump_norm target text =
       List.iter
         (fun d ->
           Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        ds
+        (Foundation.Diag.diagnostics ds)
 
 (* [.size] is the vehicle because it is the only directive that takes an
    expression today; the data directives that will carry these references
@@ -552,7 +559,7 @@ let disasm target text =
       List.iter
         (fun d ->
           Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        ds
+        (Foundation.Diag.diagnostics ds)
   | Ok laid_out -> (
       let plan = Image.plan_of laid_out in
       let addresses =
@@ -566,7 +573,7 @@ let disasm target text =
             (fun d ->
               Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d)
                 (Foundation.Diagnostic.message d))
-            ds
+            (Foundation.Diag.diagnostics ds)
       | Ok img -> (
           match img.Image.segments with
           | s :: _ -> (
@@ -575,7 +582,7 @@ let disasm target text =
               | Error ds ->
                   List.iter
                     (fun d -> Printf.printf "decode: %s\n" (Foundation.Diagnostic.message d))
-                    ds)
+                    (Foundation.Diag.diagnostics ds))
           | [] -> print_endline "(no segments)"))
 
 let call_program = "\t.text\n\t.globl f\nf:\n\tret\n\t.globl g\ng:\n\tcall f\n\tret\n"
@@ -672,15 +679,20 @@ let%expect_test "a 64-bit address carries no prefix" =
    offset 0, where the padding is empty - which is why the code carried an
    unverified table until the first fixture with two functions. *)
 
-let show_padding name f =
+(* The target renders its own failure: this helper is generic over the four,
+   so it takes the accessor rather than reaching for a shared printer that
+   would stop working the moment a target grows its own tags. *)
+let show_padding name ~to_diag f =
   for n = 1 to 12 do
     match f ~length:n with
     | Ok s -> Printf.printf "%s %2d: %s\n" name n (Foundation.Byte_cursor.to_hex s)
-    | Error d -> Printf.printf "%s %2d: %s\n" name n (Foundation.Diagnostic.message d)
+    | Error d ->
+        Printf.printf "%s %2d: %s\n" name n
+          (Foundation.Diagnostic.message (to_diag (Err.Error.kind d)))
   done
 
 let%expect_test "x86-64 padding matches its own GNU as" =
-  show_padding "x86_64" X86_64.nop_bytes;
+  show_padding "x86_64" ~to_diag:X86_64.error_diagnostic X86_64.nop_bytes;
   [%expect
     {|
     x86_64  1: 90
@@ -698,7 +710,7 @@ let%expect_test "x86-64 padding matches its own GNU as" =
     |}]
 
 let%expect_test "x86-32 pads with lea forms, not long nops" =
-  show_padding "x86_32" X86_32.nop_bytes;
+  show_padding "x86_32" ~to_diag:X86_32.error_diagnostic X86_32.nop_bytes;
   [%expect
     {|
     x86_32  1: 90
@@ -738,12 +750,15 @@ let pad_round_trip target ~insn ~size ~pad =
   let body = String.concat "" (List.init ((16 - pad) / size) (fun _ -> "\t" ^ insn ^ "\n")) in
   let text = "\t.text\n" ^ body ^ "\t.balign 16\n\t" ^ insn ^ "\n" in
   let base = 0x400000L in
+  (* Rendered on the way in, because this helper's own "no .text" failure is
+     prose and not a Portable.error: one shape for the printf below. *)
+  let render e = Driver.Portable.render_error (Err.Error.kind e) in
   let bytes_of t =
     match Driver.Portable.assemble target ~unit_name:"t" ~text:t with
-    | Error e -> Error e
+    | Error e -> Error (render e)
     | Ok p -> (
         match Driver.Portable.bind_at p ~base with
-        | Error e -> Error e
+        | Error e -> Error (render e)
         | Ok b -> (
             match Driver.Portable.section_bytes b ".text" with
             | Some s -> Ok (b, s)
@@ -753,7 +768,7 @@ let pad_round_trip target ~insn ~size ~pad =
   | Error e -> Printf.printf "pad %2d: %s\n" pad e
   | Ok (b, bytes) -> (
       match Driver.Portable.disassemble b ~mode:`Canonical ~address:base bytes with
-      | Error e -> Printf.printf "pad %2d: DISASM %s\n" pad e
+      | Error e -> Printf.printf "pad %2d: DISASM %s\n" pad (render e)
       | Ok canonical -> (
           let line =
             List.find_opt
@@ -825,14 +840,16 @@ let%expect_test "the fixed-width targets pad with their architectural nop" =
    and a decoded branch reassembles to the bytes it came from - including a near
    branch whose final displacement would also have fitted a short one. *)
 
+let render_portable e = Driver.Portable.render_error (Err.Error.kind e)
+
 let branch_bytes target ~gap ~mnemonic =
   let filler = String.concat "" (List.init gap (fun _ -> "\tret\n")) in
   let text = Printf.sprintf "\t.text\nasm_test_entry:\n\t%s far\n%sfar:\n\tret\n" mnemonic filler in
   match Driver.Portable.assemble ~entry:"asm_test_entry" target ~unit_name:"t" ~text with
-  | Error e -> Error e
+  | Error e -> Error (render_portable e)
   | Ok p -> (
       match Driver.Portable.bind_at p ~base:0x400000L with
-      | Error e -> Error e
+      | Error e -> Error (render_portable e)
       | Ok b -> (
           match Driver.Portable.section_bytes b ".text" with
           | Some s -> Ok (b, s)
@@ -844,7 +861,7 @@ let show_branch target ~gap ~mnemonic =
   | Ok (b, bytes) -> (
       let head = String.sub bytes 0 (min 6 (String.length bytes)) in
       match Driver.Portable.disassemble b ~mode:`Canonical ~address:0x400000L bytes with
-      | Error e -> Printf.printf "  gap %4d DISASM %s\n" gap e
+      | Error e -> Printf.printf "  gap %4d DISASM %s\n" gap (render_portable e)
       | Ok canon -> (
           let first =
             match List.filter (fun l -> String.trim l <> "") (String.split_on_char '\n' canon) with
@@ -855,10 +872,10 @@ let show_branch target ~gap ~mnemonic =
              without it a near branch whose displacement fits a byte comes back
              two bytes shorter and the image changes under a round trip. *)
           match Driver.Portable.assemble target ~unit_name:"r" ~text:("\t.text\n" ^ canon) with
-          | Error e -> Printf.printf "  gap %4d REASSEMBLE %s\n" gap e
+          | Error e -> Printf.printf "  gap %4d REASSEMBLE %s\n" gap (render_portable e)
           | Ok p2 -> (
               match Driver.Portable.bind_at p2 ~base:0x400000L with
-              | Error e -> Printf.printf "  gap %4d REBIND %s\n" gap e
+              | Error e -> Printf.printf "  gap %4d REBIND %s\n" gap (render_portable e)
               | Ok b2 ->
                   let again = Option.value ~default:"" (Driver.Portable.section_bytes b2 ".text") in
                   Printf.printf "  gap %4d %3d bytes  %-18s %-16s %s\n" gap (String.length bytes)
@@ -930,6 +947,7 @@ let%expect_test "a direct-lowered pin is checked by the codec, not by the parser
           (Option.value rung ~default:"(none)")
           (String.concat ", " (List.map (fun a -> a.Asm_core.Lowered_ast.form) alts))
     | Error d ->
+        let d = X86_64.error_diagnostic (Err.Error.kind d) in
         Printf.printf "%-8s %s: %s\n"
           (Option.value rung ~default:"(none)")
           (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d)

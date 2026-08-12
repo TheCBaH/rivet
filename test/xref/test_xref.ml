@@ -73,14 +73,14 @@ let our_bytes target source_text =
   | Some (module D : Target_intf.Target.DRIVER) -> (
       let source = Foundation.Span.source ~name:(target ^ ".s") ~contents:source_text in
       match D.assemble ~unit_name:"asm_snippet" ~source () with
-      | Error ds -> Error (String.trim (Foundation.Diagnostic.render_all ds))
+      | Error ds -> Error (String.trim (Foundation.Diag.render ds))
       | Ok laid_out -> (
           let plan = Image.plan_of laid_out in
           let addresses =
             List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0L)) plan.Image.segments
           in
           match Image.bind_image laid_out ~addresses with
-          | Error ds -> Error (String.trim (Foundation.Diagnostic.render_all ds))
+          | Error ds -> Error (String.trim (Foundation.Diag.render ds))
           | Ok img -> (
               match img.Image.segments with
               | s :: _ -> Ok s.Image.bytes

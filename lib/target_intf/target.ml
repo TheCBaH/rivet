@@ -50,12 +50,16 @@ open Foundation
    [.syntax]/[.arch]/[.fpu]/[.arm]-style state directives, and on [Unhandled]
    falls back to the common table. A target that answered "yes, ignored" to
    everything would make every misspelled directive assemble. *)
-type ('state, 'insn) directive_result =
+type ('state, 'insn, 'error) directive_result =
   | Handled of { state : 'state; emit : 'insn list }
       (** the directive changed target state, and possibly emitted instructions - [.arm] after
           [.thumb] does not, but a target macro directive would *)
   | Unhandled
-  | Rejected of Diagnostic.t
+  | Rejected of 'error
+      (** the target's own error domain, not a rendered diagnostic: a rejection here is an ordinary
+          typed failure and only becomes text at the reporting boundary (asm/docs/errors.md).
+          {!TARGET} instantiates this with the {i wrapped} error, so a rejection carries the same
+          detection origin every other target failure does. *)
 
 module type TARGET = sig
   include Target_encode.ENCODE
@@ -71,15 +75,41 @@ module type TARGET = sig
       per-target, which is why [#] can start a comment on ARM and an immediate on x86 without two
       lexers existing. *)
 
+  (* {2 The front end's error domain}
+
+     A second domain, and not an accident of layering. A target fails here for
+     reasons that do not exist below source text - an unknown register spelling,
+     a slice no operand shape claims - and those failures want to carry the
+     tokens they were reading. {!Target_encode.ENCODE}'s [error] cannot: that
+     signature is satisfied by libraries built without a lexer, so naming
+     {!Asm_syntax.Token} in it would drag the whole front end back into them,
+     which is precisely the split ENCODE exists to make.
+
+     So the encoder's domain stays below source text and the front end gets its
+     own above it, each carrying what it actually has. See
+     asm/docs/errors.md. *)
+
+  type parse_error
+
+  val pp_parse_error : Format.formatter -> parse_error -> unit
+  val parse_error_code : parse_error -> string
+
+  val parse_error_diagnostic : parse_error -> Diagnostic.t
+  (** the same erasure {!Target_encode.ENCODE.error_diagnostic} performs, for this domain *)
+
   val parse_operands :
-    mnemonic:string -> Asm_syntax.Token.slice list -> (Operand.t list, Diagnostic.t) result
+    mnemonic:string -> Asm_syntax.Token.slice list -> (Operand.t list, parse_error) Err.t
   (** the hand-written per-target operand parser (§4.7). Menhir has already split the line into
       comma-separated slices; what those slices mean is decided here. *)
 
   (* {1 Directives} *)
 
   val handle_directive :
-    name:string -> argument:string -> target_state -> (target_state, Instruction.t) directive_result
+    name:string ->
+    argument:string ->
+    target_state ->
+    (target_state, Instruction.t, parse_error Err.Error.t) directive_result
+  (** a directive arrives as source text, so a rejection is a front-end failure *)
 end
 
 (* The architecture-erased view (§5.1's DRIVER). Its whole purpose is that the
@@ -91,11 +121,7 @@ module type DRIVER = sig
   val triple : string
 
   val assemble :
-    ?entry:string ->
-    unit_name:string ->
-    source:Span.source ->
-    unit ->
-    (Image.laid_out, Diagnostic.t list) result
+    ?entry:string -> unit_name:string -> source:Span.source -> unit -> Image.laid_out Diag.t
   (** Text in, laid-out image out - laid out but *not bound*: choosing addresses is the host's
       step and stays outside every target (§9). [Image.bind_image] is what turns the result into
       bytes at an address, and it is deliberately not part of this interface, because it is not
@@ -119,20 +145,16 @@ module type DRIVER = sig
      inputs: three take source text, two take bytes and an address, and one
      takes nothing. *)
 
-  val dump_tokens : source:Span.source -> (string, Diagnostic.t list) result
-  val dump_source_ast : unit_name:string -> source:Span.source -> (string, Diagnostic.t list) result
+  val dump_tokens : source:Span.source -> string Diag.t
+  val dump_source_ast : unit_name:string -> source:Span.source -> string Diag.t
+  val dump_normalized_ast : unit_name:string -> source:Span.source -> string Diag.t
+  val dump_lowered_ast : unit_name:string -> source:Span.source -> string Diag.t
 
-  val dump_normalized_ast :
-    unit_name:string -> source:Span.source -> (string, Diagnostic.t list) result
-
-  val dump_lowered_ast :
-    unit_name:string -> source:Span.source -> (string, Diagnostic.t list) result
-
-  val dump_disasm_canonical : address:int64 -> string -> (string, Diagnostic.t list) result
+  val dump_disasm_canonical : address:int64 -> string -> string Diag.t
   (** exactly re-parseable: feeding this back through the assembler must produce the identical
       image, and a round-trip test does exactly that *)
 
-  val dump_disasm_diagnostic : address:int64 -> string -> (string, Diagnostic.t list) result
+  val dump_disasm_diagnostic : address:int64 -> string -> string Diag.t
   (** address, bytes, spelling and form id in columns. Read by humans and by the differential gate;
       **not** re-parseable, and no test may re-parse it - a format that had to satisfy both
       audiences would satisfy neither. *)

@@ -71,10 +71,24 @@ type outcome =
    everything about it - but a deferral is different: it is a scope statement
    that a test has to be able to name, and a caller grepping for "which
    directives does this milestone refuse on purpose" should find one code rather
-   than a message substring. *)
-type rejection = { code : string option; message : string }
+   than a message substring. [reasons] retains typed parser causes where they
+   exist; [pp_rejection] owns their eventual presentation. *)
+type rejection = {
+  code : string option;
+  message : string;
+  reasons : Parse_lines.error_kind Err.Error.t list;
+}
 
-let reject ?code message = Error { code; message }
+let pp_rejection ppf r =
+  match r.reasons with
+  | [] -> Fmt.string ppf r.message
+  | reasons ->
+      Fmt.pf ppf "%s: %a" r.message
+        Fmt.(list ~sep:(any "; ") (Err.Error.pp_kind Parse_lines.pp_error))
+        reasons
+
+let reject ?code ~pos message = Err.fail ~pos ~pp_error:pp_rejection { code; message; reasons = [] }
+let reject_reasons ?code message reasons = { code; message; reasons }
 
 let normalize ~data_widths ~name ~(arguments : Token.slice list) =
   let one () = match arguments with [ a ] -> Some (text_of a) | _ -> None in
@@ -94,15 +108,11 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
   | _ when List.mem_assoc name data_widths -> (
       let width = List.assoc name data_widths in
       match arguments with
-      | [] -> reject (name ^ " needs at least one value")
+      | [] -> reject ~pos:__POS__ (name ^ " needs at least one value")
       | args ->
-          let parsed = List.map Parse_lines.parse_expression args in
-          if List.exists Result.is_error parsed then
-            reject (name ^ ": every value must be an expression")
-          else
-            Ok
-              (Normalized
-                 (Directive.Data { width; values = List.map (fun r -> Result.get_ok r) parsed })))
+          Err.Accum.map ~pos:__POS__ Parse_lines.parse_expression args
+          |> Err.Accum.fold_errors (reject_reasons (name ^ ": every value must be an expression"))
+          |> Err.map (fun values -> Normalized (Directive.Data { width; values })))
   (* NOBITS is deferred to M3, and the deferral is enforced rather than
      documented. [Lowered_ast.Zero] already means initialized NUL bytes appended
      to the buffer, which is [.space] in a PROGBITS section - so accepting
@@ -110,15 +120,17 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
      image, which is a valid file that is the wrong size. The rejection names
      the milestone so the message is a plan reference and not a dead end. *)
   | ".bss" ->
-      reject ~code:"simplify.nobits-section" ".bss is a NOBITS section; reserved storage is M3"
+      reject ~pos:__POS__ ~code:"simplify.nobits-section"
+        ".bss is a NOBITS section; reserved storage is M3"
   | ".text" | ".data" ->
       let n = name in
       Ok (Normalized (Directive.Section { name = n; perms = perms_of_section n }))
   | ".section" -> (
       match section_of_args arguments with
-      | None -> reject "a .section directive needs a name"
+      | None -> reject ~pos:__POS__ "a .section directive needs a name"
       | Some (n, _, true) ->
-          reject ~code:"simplify.nobits-section" (n ^ " is a NOBITS section; reserved storage is M3")
+          reject ~pos:__POS__ ~code:"simplify.nobits-section"
+            (n ^ " is a NOBITS section; reserved storage is M3")
       | Some (n, true, false) ->
           Ok (Normalized (Directive.Section { name = n; perms = perms_of_section n }))
       | Some (n, false, false) -> Ok (Normalized (Directive.Declared_section { name = n })))
@@ -129,7 +141,7 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
   | ".align" | ".balign" -> (
       match int_arg () with
       | Some n when n > 0 -> Ok (Normalized (Directive.Align { boundary = n }))
-      | _ -> reject (name ^ " needs a positive integer argument"))
+      | _ -> reject ~pos:__POS__ (name ^ " needs a positive integer argument"))
   | ".p2align" ->
       (* Deliberately rejected rather than accepted as a synonym. Its argument
          is an exponent, not a byte count, so treating it as one would silently
@@ -137,23 +149,28 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
          produces a valid image and wrong addresses. It is absent from
          asm/docs/contracts.md §3's table, and nothing outside that table
          assembles. *)
-      reject ".p2align takes a power-of-two exponent and is not in M2 scope; use .balign"
+      reject ~pos:__POS__
+        ".p2align takes a power-of-two exponent and is not in M2 scope; use .balign"
   | ".globl" | ".global" -> (
       match one () with
       | Some n -> Ok (Normalized (Directive.Global { name = n }))
-      | None -> reject (name ^ " needs exactly one symbol"))
+      | None -> reject ~pos:__POS__ (name ^ " needs exactly one symbol"))
   | ".type" -> (
       match arguments with
       | [ n; k ] -> (
           match sym_kind_of (text_of k) with
           | Some kind -> Ok (Normalized (Directive.Sym_type { name = text_of n; kind }))
-          | None -> reject ("unknown symbol type " ^ text_of k))
-      | _ -> reject ".type needs a symbol and a type")
+          | None -> reject ~pos:__POS__ ("unknown symbol type " ^ text_of k))
+      | _ -> reject ~pos:__POS__ ".type needs a symbol and a type")
   | ".size" -> (
       match arguments with
-      | [ n; e ] -> (
-          match Parse_lines.parse_expression e with
-          | Ok expr -> Ok (Normalized (Directive.Sym_size { name = text_of n; size = expr }))
-          | Error m -> reject (".size: " ^ m))
-      | _ -> reject ".size needs a symbol and an expression")
+      | [ n; e ] ->
+          (* [lift] keeps the parser's wrapper and [fold_errors] changes only
+             the published payload domain. Rendering here would flatten the
+             expression domain at exactly the boundary where
+             asm/docs/errors.md says to wrap it instead. *)
+          Parse_lines.parse_expression e |> Err.Accum.lift
+          |> Err.Accum.fold_errors (reject_reasons ".size")
+          |> Err.map (fun expr -> Normalized (Directive.Sym_size { name = text_of n; size = expr }))
+      | _ -> reject ~pos:__POS__ ".size needs a symbol and an expression")
   | _ -> Ok Unknown

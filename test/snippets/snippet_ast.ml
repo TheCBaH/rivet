@@ -125,6 +125,16 @@ let named c = List.map (fun (name, get) -> (name, get c)) fields
 module Make (T : Target_encode.ENCODE) = struct
   exception Refuse of string
 
+  (* This harness reports refusals as prose, so a target failure is rendered on
+     the way in. [Make] is generic over [T] and cannot hold a [T.error], which is
+     the same erasure the pipeline performs (asm/docs/errors.md §2). *)
+  let message_of_error e = Foundation.Diagnostic.message (T.error_diagnostic (Err.Error.kind e))
+
+  let evaluate kind ~place ~target =
+    Result.map_error
+      (fun e -> T.error_diagnostic (Err.Error.kind e))
+      (T.evaluate_fixup kind ~place ~target)
+
   (* A snippet is laid out and bound, not merely encoded. §16.3's [spin] is
      [b .] and [sp_align] branches over three instructions, and a branch's bytes
      are not decided by [encode] - it writes a placeholder and hands back a
@@ -142,14 +152,14 @@ module Make (T : Target_encode.ENCODE) = struct
   let assemble (insns : T.Instruction.t list) =
     let fragments_of i =
       match T.lower_instruction T.default_state i with
-      | Error d -> raise (Refuse (Foundation.Diagnostic.message d))
+      | Error d -> raise (Refuse (message_of_error d))
       | Ok lowered ->
           List.map
             (fun l ->
               let origin = Foundation.Origin.synthesized ~pass:"snippet" () in
               let frag =
                 match T.encode l with
-                | Error d -> raise (Refuse (Foundation.Diagnostic.message d))
+                | Error d -> raise (Refuse (message_of_error d))
                 | Ok (`Fixed a) ->
                     Asm_core.Lowered_ast.Bytes
                       {
@@ -180,10 +190,12 @@ module Make (T : Target_encode.ENCODE) = struct
             declared_sections = [];
           }
         in
-        let fail ds =
-          Refused (String.concat "; " (List.map (fun d -> Foundation.Diagnostic.message d) ds))
+        let fail e =
+          Refused
+            (String.concat "; "
+               (List.map (fun d -> Foundation.Diagnostic.message d) (Foundation.Diag.diagnostics e)))
         in
-        match Image.plan_image ~evaluate:T.evaluate_fixup Image.default_policy [ m ] with
+        match Image.plan_image ~evaluate Image.default_policy [ m ] with
         | Error ds -> fail ds
         | Ok laid_out -> (
             match Image.bind_image laid_out ~addresses:[ (".text", base) ] with
@@ -201,9 +213,7 @@ module Make (T : Target_encode.ENCODE) = struct
   (* Padding is the target's answer too, and the [.align] fill is the one blob
      that reaches an image without passing through an instruction. *)
   let nop ~length =
-    match T.nop_bytes ~length with
-    | Ok b -> Ok b
-    | Error d -> Error (Foundation.Diagnostic.message d)
+    match T.nop_bytes ~length with Ok b -> Ok b | Error d -> Error (message_of_error d)
 end
 
 (* Registers are named by the spelling the *parser* accepts, so the corpus goes

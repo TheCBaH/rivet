@@ -1,0 +1,29 @@
+; The diagnostic-code taxonomy check (asm/docs/errors.md). Its own stanza rather
+; than a module of test_targets, because it reaches every domain in the tree -
+; foundation through driver - and is about none of them in particular.
+;
+; Native only, like every ppx_expect library here: the purity audit has to see
+; that ppx_expect and its C-backed transitive dependencies are unreachable from
+; each production and browser root, which is why test trees are classified
+; separately rather than gated.
+
+(library
+ (name test_error_codes)
+ (modules test_error_codes)
+ (modes byte native)
+ (libraries
+  foundation
+  asm_core
+  asm_syntax
+  codec
+  image
+  driver
+  arm
+  aarch64
+  x86_64
+  fmt)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

@@ -17,10 +17,21 @@ type t = {
 let make ?(notes = []) ~severity ~code ~message ~origin () =
   { severity; code; message; origin; notes }
 
-let error ?notes ~code ~message ~origin () = make ?notes ~severity:Error ~code ~message ~origin ()
+(* The only constructor (see asm/docs/errors.md). A diagnostic is not something
+   a failure site *writes*; it is the rendering of a typed error value, and the
+   domain supplies both strings. [make] above is private to this module - the
+   interface does not export it - so there is no way in that takes a
+   hand-written message.
 
-let warning ?notes ~code ~message ~origin () =
-  make ?notes ~severity:Warning ~code ~message ~origin ()
+   [code] is a function rather than a string because the whole point is that the
+   diagnostic code is a property of the error - the ~40 literals it replaces
+   were an unenforced taxonomy that nothing stopped drifting.
+
+   Rendering goes through [Fmt.to_to_string], i.e. the same path every other
+   printer here uses, so a domain printer that emits a breakable space is
+   subject to the same margin rules as the rest of this module. *)
+let of_error ?notes ?(severity = Error) ~origin ~code ~pp e =
+  make ?notes ~severity ~code:(code e) ~message:(Fmt.to_to_string pp e) ~origin ()
 
 let severity t = t.severity
 let code t = t.code

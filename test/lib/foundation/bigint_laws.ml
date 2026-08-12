@@ -55,7 +55,7 @@ let () =
 
 let divcheck a bb q r =
   let a = b a and bb = b bb in
-  let gq, gr = Bigint.divrem a bb in
+  let gq, gr = Bigint.divrem_exn a bb in
   check_eq
     (Printf.sprintf "div %s/%s q" (Bigint.to_string a) (Bigint.to_string bb))
     (Bigint.to_string gq) q;
@@ -74,23 +74,30 @@ let () =
   divcheck "5" "17" "0" "5";
   divcheck "0x123456789abcdef0123456789abcdef0" "0x10000000000000000" "1311768467463790320"
     "1311768467463790320";
-  check "div-by-zero"
+  (* Both halves of the checked/total pair, because they are the pair: the
+     checked form must report, and the companion must still refuse. The
+     companion now raises Err's structured exception rather than
+     [Division_by_zero] - it is [Err.or_raise] over the checked form - so this
+     catches the change instead of leaving it to be discovered. *)
+  check "div-by-zero-checked" (Result.is_error (Bigint.divrem Bigint.one Bigint.zero));
+  check "div-by-zero-exn"
     (try
-       ignore (Bigint.divrem Bigint.one Bigint.zero);
+       ignore (Bigint.divrem_exn Bigint.one Bigint.zero);
        false
-     with Division_by_zero -> true)
+     with Err.Exn.E _ -> true)
 
 (* {1 Shifts} *)
 
 let () =
-  check "shl" (Bigint.equal (Bigint.shift_left (b "1") 100) (b "0x10000000000000000000000000"));
-  check "shl-shr" (Bigint.equal (Bigint.shift_right (Bigint.shift_left big 37) 37) big);
+  check "shl" (Bigint.equal (Bigint.shift_left_exn (b "1") 100) (b "0x10000000000000000000000000"));
+  check "shl-shr" (Bigint.equal (Bigint.shift_right_exn (Bigint.shift_left_exn big 37) 37) big);
   check "shl-is-mul"
-    (Bigint.equal (Bigint.shift_left big 13) (Bigint.mul big (Bigint.shift_left Bigint.one 13)));
+    (Bigint.equal (Bigint.shift_left_exn big 13)
+       (Bigint.mul big (Bigint.shift_left_exn Bigint.one 13)));
   (* Arithmetic shift right rounds toward negative infinity. *)
-  check_eq "shr-neg" (Bigint.to_string (Bigint.shift_right (b "-5") 1)) "-3";
-  check_eq "shr-neg-exact" (Bigint.to_string (Bigint.shift_right (b "-4") 1)) "-2";
-  check_eq "shr-neg-big" (Bigint.to_string (Bigint.shift_right (b "-1") 64)) "-1"
+  check_eq "shr-neg" (Bigint.to_string (Bigint.shift_right_exn (b "-5") 1)) "-3";
+  check_eq "shr-neg-exact" (Bigint.to_string (Bigint.shift_right_exn (b "-4") 1)) "-2";
+  check_eq "shr-neg-big" (Bigint.to_string (Bigint.shift_right_exn (b "-1") 64)) "-1"
 
 (* {1 Bitwise over infinite-width two's complement} *)
 
@@ -118,22 +125,23 @@ let widths = [ 5; 7; 8; 12; 16; 19; 21; 26; 32; 64 ]
 let () =
   List.iter
     (fun w ->
-      let two_pow k = Bigint.shift_left Bigint.one k in
+      let two_pow k = Bigint.shift_left_exn Bigint.one k in
       let smax = Bigint.sub (two_pow (w - 1)) Bigint.one in
       let smin = Bigint.neg (two_pow (w - 1)) in
       let umax = Bigint.sub (two_pow w) Bigint.one in
       let tag s = Printf.sprintf "w%d-%s" w s in
-      check (tag "smax") (Bigint.fits_signed ~width:w smax);
-      check (tag "smax+1") (not (Bigint.fits_signed ~width:w (Bigint.add smax Bigint.one)));
-      check (tag "smin") (Bigint.fits_signed ~width:w smin);
-      check (tag "smin-1") (not (Bigint.fits_signed ~width:w (Bigint.sub smin Bigint.one)));
-      check (tag "umax") (Bigint.fits_unsigned ~width:w umax);
-      check (tag "umax+1") (not (Bigint.fits_unsigned ~width:w (Bigint.add umax Bigint.one)));
-      check (tag "u-neg") (not (Bigint.fits_unsigned ~width:w Bigint.minus_one));
+      check (tag "smax") (Bigint.fits_signed_exn ~width:w smax);
+      check (tag "smax+1") (not (Bigint.fits_signed_exn ~width:w (Bigint.add smax Bigint.one)));
+      check (tag "smin") (Bigint.fits_signed_exn ~width:w smin);
+      check (tag "smin-1") (not (Bigint.fits_signed_exn ~width:w (Bigint.sub smin Bigint.one)));
+      check (tag "umax") (Bigint.fits_unsigned_exn ~width:w umax);
+      check (tag "umax+1") (not (Bigint.fits_unsigned_exn ~width:w (Bigint.add umax Bigint.one)));
+      check (tag "u-neg") (not (Bigint.fits_unsigned_exn ~width:w Bigint.minus_one));
       (* A negative value narrows to its two's-complement pattern. *)
       match Bigint.to_bits ~width:w Bigint.minus_one with
       | Ok v -> check (tag "to_bits-1") (Bigint.equal v umax)
-      | Error e -> check (tag "to_bits-1: " ^ e) false)
+      | Error e ->
+          check (tag ("to_bits-1: " ^ Fmt.to_to_string Bigint.pp_error (Err.Error.kind e))) false)
     widths
 
 let () =

@@ -102,8 +102,12 @@ let module_ ?(symbols = []) sections =
 let plan ?(entry = "entry") m =
   Image.plan_image ~evaluate { Image.default_policy with entry_symbol = Some entry } [ m ]
 
-let show_errors ds =
-  List.iter (fun d -> Fmt.pr "%s: %s@." (Diagnostic.code d) (Diagnostic.message d)) ds
+(* The payload only: a linker failure is wrapped now, and asm/docs/errors.md §3
+   keeps Err provenance out of anything an expect baseline compares. *)
+let show_errors e =
+  List.iter
+    (fun d -> Fmt.pr "%s: %s@." (Diagnostic.code d) (Diagnostic.message d))
+    (Diag.diagnostics e)
 
 (* Bind at a nonzero base throughout. A zero base makes an absolute address and
    a section offset print identically, which is exactly the confusion these
@@ -618,4 +622,19 @@ let%expect_test "overlapping segments are rejected" =
   [%expect
     {|
     bind.overlap: segments .text at 0x40000000 (16 bytes) and .data at 0x40000008 (8 bytes) overlap
+    |}]
+
+let%expect_test "placement preflight accumulates independent failures in order" =
+  (match plan (two_sections ()) with
+  | Error ds -> show_errors ds
+  | Ok l -> (
+      match Image.bind_image l ~addresses:[ (".text", -1L); (".data", 2L) ] with
+      | Ok _ -> Fmt.pr "accepted@."
+      | Error error ->
+          Diag.diagnostics error
+          |> List.iter (fun diagnostic -> Fmt.pr "%s@." (Diagnostic.code diagnostic))));
+  [%expect {|
+    bind.overflow
+    bind.overlap
+    bind.alignment
     |}]

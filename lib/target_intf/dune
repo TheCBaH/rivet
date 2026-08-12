@@ -11,11 +11,24 @@
 ; Signatures only, both of them: no implementation, so a target depends on a
 ; description it cannot influence.
 
+; target_error is the one module here that is *not* a signature: it is the
+; shared target error domain (asm/docs/errors.md). It needs its own library
+; rather than joining target_encode, because a library whose name matches one of
+; its modules treats that module as the whole interface and hides the rest.
+
+(library
+ (name target_error)
+ (modules target_error)
+ (modes byte native)
+ (libraries foundation)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
 (library
  (name target_encode)
  (modules target_encode)
  (modes byte native)
- (libraries foundation codec asm_core)
+ (libraries foundation codec asm_core target_error)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
 

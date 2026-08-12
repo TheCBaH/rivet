@@ -121,10 +121,146 @@ type t = {
   symbol_sizes : (string * int64) list;
 }
 
-let diag ?origin code message =
-  Diagnostic.error ~code ~message
+(* The linker's error domain (asm/docs/errors.md), in two halves because the two
+   phases fail for unrelated reasons: [plan_image] is about a module that cannot
+   be laid out, [bind_image] about addresses that do not satisfy the plan it
+   produced. Splitting them is what lets a host tell "this program is wrong"
+   from "these addresses are wrong", which is why §9 has two steps at all.
+
+   [`Relax_ladder], [`Symbol_size] and [`Fixup_value] wrap their causes, so a
+   caller reaches the expression or ladder failure underneath rather than the
+   sentence about it.
+
+   One constructor stays rendered, and it is a real erasure rather than a
+   shortcut: the fixup evaluator a [laid_out] carries is target-supplied, and
+   this module is generic while the architecture-erased [DRIVER] hands a
+   [laid_out] around - so neither can be parameterized by a target's error type.
+   [`Target_fixup] therefore holds a [Diagnostic.t], is the only constructor
+   here that does, and keeps the code the target chose. *)
+type link_error =
+  [ `No_modules
+  | `Multi_module of int
+  | `No_section
+  | `Duplicate_definition of string
+  | `Declared_never_defined of string
+  | `Fixup_undefined_symbol of fixup_undefined_symbol
+  | `Export_undefined of string
+  | `Entry_undefined of string
+  | `Too_large of too_large
+  | `Relax_ladder of Lowered_ast.relax_error
+  | `Relax_unreachable of relax_unreachable
+  | `Align_fill of align_fill ]
+
+and fixup_undefined_symbol = { fixup : string; symbol : string }
+and too_large = { size : int; limit : int }
+and relax_unreachable = { widest : string; at : int }
+and align_fill = { pad : int; boundary : int }
+
+type bind_error =
+  [ `Overflow of overflow
+  | `Overlap of overlap
+  | `No_address of string
+  | `Alignment of alignment
+  | `Symbol_size of symbol_size
+  | `Fixup_value of fixup_value
+  | `Fixup_target_too_wide of string
+  | `Fixup_out_of_range of fixup_out_of_range
+  | `Target_fixup of Diagnostic.t ]
+
+and overflow = { segment : string; address : int64; size : int }
+
+and overlap = {
+  a_name : string;
+  a_at : int64;
+  a_size : int;
+  b_name : string;
+  b_at : int64;
+  b_size : int;
+}
+
+and alignment = { segment : string; needs : int; address : int64 }
+and symbol_size = { symbol : string; reason : Expr.error }
+and fixup_value = { fixup : string; reason : Expr.error }
+and fixup_out_of_range = { fixup : string; value : int64; range : Lowered_ast.range; at : int }
+
+type error = [ link_error | bind_error ]
+
+let pp_link_error ppf : link_error -> unit = function
+  | `No_modules -> Fmt.string ppf "no lowered modules"
+  | `Multi_module _ -> Fmt.string ppf "M2 links exactly one module; two-file linking is M3"
+  | `No_section -> Fmt.string ppf "the module defines no allocatable section"
+  | `Duplicate_definition n -> Fmt.pf ppf "duplicate definition of %s" n
+  | `Declared_never_defined n -> Fmt.pf ppf "symbol %s is declared but never defined" n
+  | `Fixup_undefined_symbol { fixup; symbol } ->
+      Fmt.pf ppf "fixup %s references undefined symbol %s" fixup symbol
+  | `Export_undefined n -> Fmt.pf ppf "exported symbol %s is not defined" n
+  | `Entry_undefined n -> Fmt.pf ppf "entry symbol %s is not defined" n
+  | `Too_large { size; limit } -> Fmt.pf ppf "image is %d bytes, limit is %d" size limit
+  | `Relax_ladder e -> Lowered_ast.pp_relax_error ppf e
+  | `Relax_unreachable { widest; at } ->
+      Fmt.pf ppf
+        "no encoding of this instruction reaches its target: widest form %s still out of range at \
+         section offset %d"
+        widest at
+  | `Align_fill { pad; boundary } ->
+      Fmt.pf ppf "the target supplies no %d-byte padding for a %d-byte alignment" pad boundary
+
+let pp_bind_error ppf : bind_error -> unit = function
+  | `Overflow { segment; address; size } ->
+      Fmt.pf ppf "segment %s at 0x%Lx overflows with size %d" segment address size
+  | `Overlap { a_name; a_at; a_size; b_name; b_at; b_size } ->
+      Fmt.pf ppf "segments %s at 0x%Lx (%d bytes) and %s at 0x%Lx (%d bytes) overlap" a_name a_at
+        a_size b_name b_at b_size
+  | `No_address s -> Fmt.pf ppf "no address for segment %s" s
+  | `Alignment { segment; needs; address } ->
+      Fmt.pf ppf "segment %s needs %d-byte alignment, address is 0x%Lx" segment needs address
+  | `Symbol_size { symbol; reason } -> Fmt.pf ppf "size of %s: %a" symbol Expr.pp_error reason
+  | `Fixup_value { fixup; reason } -> Fmt.pf ppf "fixup %s: %a" fixup Expr.pp_error reason
+  | `Fixup_target_too_wide f -> Fmt.pf ppf "fixup %s: target does not fit 64 bits" f
+  | `Fixup_out_of_range { fixup; value; range; at } ->
+      Fmt.pf ppf "fixup %s: value %Ld does not fit %a at section offset %d" fixup value
+        Lowered_ast.pp_range range at
+  (* Already a diagnostic when it arrived: the target rendered it at the erasure
+     boundary, so this arm reproduces the message rather than composing one. *)
+  | `Target_fixup d -> Fmt.string ppf (Diagnostic.message d)
+
+let pp_error ppf : error -> unit = function
+  | #link_error as e -> pp_link_error ppf e
+  | #bind_error as e -> pp_bind_error ppf e
+
+let link_error_code : link_error -> string = function
+  | `No_modules -> "image.no-modules"
+  | `Multi_module _ -> "image.multi-module"
+  | `No_section -> "image.no-section"
+  | `Duplicate_definition _ -> "image.duplicate"
+  | `Declared_never_defined _ | `Fixup_undefined_symbol _ -> "image.undefined"
+  | `Export_undefined _ -> "image.export"
+  | `Entry_undefined _ -> "image.entry"
+  | `Too_large _ -> "image.too-large"
+  | `Relax_ladder _ -> "image.relax-ladder"
+  | `Relax_unreachable _ -> "image.relax-unreachable"
+  | `Align_fill _ -> "image.align-fill"
+
+let bind_error_code : bind_error -> string = function
+  | `Overflow _ -> "bind.overflow"
+  | `Overlap _ -> "bind.overlap"
+  | `No_address _ -> "bind.address"
+  | `Alignment _ -> "bind.alignment"
+  | `Symbol_size _ -> "bind.size"
+  | `Fixup_value _ | `Fixup_target_too_wide _ -> "bind.fixup"
+  | `Fixup_out_of_range _ -> "bind.fixup-range"
+  (* The target named it; re-coding here would overwrite what only the target
+     could know (asm/docs/errors.md §2, delegation). *)
+  | `Target_fixup d -> Diagnostic.code d
+
+let error_code : error -> string = function
+  | #link_error as e -> link_error_code e
+  | #bind_error as e -> bind_error_code e
+
+let diag ?origin (e : error) =
+  Diagnostic.of_error ~code:error_code ~pp:pp_error
     ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"image" ())
-    ()
+    e
 
 (* {1 Laying fragments out}
 
@@ -313,7 +449,7 @@ let layout_section ~evaluate (sc : 'k Lowered_ast.section_content) =
           emit_bytes ~frag_off ~form bytes fs origin
       | Lowered_ast.Relax { alts; origin } -> (
           match Lowered_ast.validate_relax alts with
-          | Error m -> errors := diag ~origin "image.relax-ladder" m :: !errors
+          | Error m -> errors := diag ~origin (`Relax_ladder (Err.Error.kind m)) :: !errors
           | Ok () ->
               let a = List.nth alts sel.(i) in
               (* The fixpoint promotes; if even the longest rung cannot reach,
@@ -322,11 +458,7 @@ let layout_section ~evaluate (sc : 'k Lowered_ast.section_content) =
               (match alt_reaches ~evaluate ~labels ~frag_off a with
               | Some false ->
                   errors :=
-                    diag ~origin "image.relax-unreachable"
-                      (Printf.sprintf
-                         "no encoding of this instruction reaches its target: widest form %s still \
-                          out of range at section offset %d"
-                         a.Lowered_ast.form frag_off)
+                    diag ~origin (`Relax_unreachable { widest = a.Lowered_ast.form; at = frag_off })
                     :: !errors
               | Some true | None -> ());
               emit_bytes ~frag_off ~form:(Some a.Lowered_ast.form) a.Lowered_ast.bytes
@@ -341,11 +473,7 @@ let layout_section ~evaluate (sc : 'k Lowered_ast.section_content) =
              and not two nops that add up. *)
           if pad > 0 then
             if pad > Array.length fills || String.length fills.(pad - 1) <> pad then
-              errors :=
-                diag ~origin "image.align-fill"
-                  (Printf.sprintf "the target supplies no %d-byte padding for a %d-byte alignment"
-                     pad boundary)
-                :: !errors
+              errors := diag ~origin (`Align_fill { pad; boundary }) :: !errors
             else Buffer.add_string buf fills.(pad - 1)
       | Lowered_ast.Zero { length; _ } -> Buffer.add_string buf (String.make length '\000')
       | Lowered_ast.Label_def { name; _ } -> offsets := (name, Buffer.length buf) :: !offsets
@@ -361,21 +489,19 @@ let layout_section ~evaluate (sc : 'k Lowered_ast.section_content) =
 
 let plan_image ~evaluate policy (modules : 'k Lowered_ast.module_ list) =
   let errors = ref [] in
-  let fail ?origin code msg = errors := diag ?origin code msg :: !errors in
+  let fail ?origin e = errors := diag ?origin e :: !errors in
   (match modules with
-  | [] -> fail "image.no-modules" "no lowered modules"
+  | [] -> fail `No_modules
   | [ _ ] -> ()
-  | _ -> fail "image.multi-module" "M2 links exactly one module; two-file linking is M3");
+  | ms -> fail (`Multi_module (List.length ms)));
   match modules with
-  | [] -> Error (List.rev !errors)
+  | [] -> Diag.fail ~pos:__POS__ (List.rev !errors)
   | m :: _ ->
       (* Several allocatable sections in one module are M2: the global fixture
          puts its object in .data and its code in .text. Merging sections
          *across inputs*, and multi-module linking, remain M3. *)
       let allocatable = m.Lowered_ast.sections in
-      (match allocatable with
-      | [] -> fail "image.no-section" "the module defines no allocatable section"
-      | _ -> ());
+      (match allocatable with [] -> fail `No_section | _ -> ());
       let laid =
         List.map
           (fun (sc : 'k Lowered_ast.section_content) ->
@@ -425,22 +551,16 @@ let plan_image ~evaluate policy (modules : 'k Lowered_ast.module_ list) =
           (fun n -> List.length (List.filter (String.equal n) (List.map fst offsets)) > 1)
           globals
       in
-      List.iter (fun n -> fail "image.duplicate" ("duplicate definition of " ^ n)) dup;
+      List.iter (fun n -> fail (`Duplicate_definition n)) dup;
       List.iter
         (fun s ->
           if not (List.mem_assoc s.Lowered_ast.name offsets) then
-            fail "image.undefined"
-              ("symbol " ^ s.Lowered_ast.name ^ " is declared but never defined"))
+            fail (`Declared_never_defined s.Lowered_ast.name))
         m.Lowered_ast.symbols;
       let exports = match policy.exported with None -> globals | Some names -> names in
-      List.iter
-        (fun n ->
-          if not (List.mem_assoc n offsets) then
-            fail "image.export" ("exported symbol " ^ n ^ " is not defined"))
-        exports;
+      List.iter (fun n -> if not (List.mem_assoc n offsets) then fail (`Export_undefined n)) exports;
       (match policy.entry_symbol with
-      | Some e when not (List.mem_assoc e offsets) ->
-          fail "image.entry" ("entry symbol " ^ e ^ " is not defined")
+      | Some e when not (List.mem_assoc e offsets) -> fail (`Entry_undefined e)
       | _ -> ());
       (* A fixup naming a symbol this module never defines cannot become a bound
          image: [bind_image] takes section addresses and has no import
@@ -451,8 +571,7 @@ let plan_image ~evaluate policy (modules : 'k Lowered_ast.module_ list) =
           List.iter
             (fun s ->
               if not (List.mem_assoc s offsets) then
-                fail ~origin:f.rf_origin "image.undefined"
-                  ("fixup " ^ f.rf_name ^ " references undefined symbol " ^ s))
+                fail ~origin:f.rf_origin (`Fixup_undefined_symbol { fixup = f.rf_name; symbol = s }))
             (Expr.symbols f.rf_value))
         fixups;
       let segments =
@@ -473,8 +592,7 @@ let plan_image ~evaluate policy (modules : 'k Lowered_ast.module_ list) =
       (match policy.max_size with
       | Some limit ->
           let total = List.fold_left (fun a s -> a + s.init_size + s.zero_fill) 0 segments in
-          if total > limit then
-            fail "image.too-large" (Printf.sprintf "image is %d bytes, limit is %d" total limit)
+          if total > limit then fail (`Too_large { size = total; limit })
       | None -> ());
       (* Which section defined each label, taken from the section that laid it
          out rather than assumed to be the first: with .text and .data both
@@ -484,7 +602,7 @@ let plan_image ~evaluate policy (modules : 'k Lowered_ast.module_ list) =
           (fun (name, _, offs, _, _, _) -> List.map (fun (n, _) -> (n, name)) offs)
           laid
       in
-      if !errors <> [] then Error (List.rev !errors)
+      if !errors <> [] then Diag.fail ~pos:__POS__ (List.rev !errors)
       else
         Ok
           {
@@ -550,8 +668,6 @@ let patch_container bytes ~at ~size ~slices ~value =
   Bytes.to_string out
 
 let bind_image (l : laid_out) ~(addresses : (string * int64) list) =
-  let errors = ref [] in
-  let fail code msg = errors := diag code msg :: !errors in
   (* Two segments at one address was M1's silent behaviour, because there was
      only ever one segment. With .text and .data both present it would map one
      over the other and the byte comparison would be against a program that
@@ -564,41 +680,47 @@ let bind_image (l : laid_out) ~(addresses : (string * int64) list) =
           (List.assoc_opt s.seg_name addresses))
       l.plan.segments
   in
-  List.iter
-    (fun (n, a, sz) ->
-      if Int64.compare a 0L < 0 || Int64.compare (Int64.add a (Int64.of_int sz)) a < 0 then
-        fail "bind.overflow" (Printf.sprintf "segment %s at 0x%Lx overflows with size %d" n a sz))
-    placed;
-  let rec overlaps = function
-    | [] -> ()
+  let reject_if ~pos condition error = if condition then Diag.fail1 ~pos (diag error) else Ok () in
+  let overflow_checks =
+    List.map
+      (fun (n, a, sz) ->
+        reject_if ~pos:__POS__
+          (Int64.compare a 0L < 0 || Int64.compare (Int64.add a (Int64.of_int sz)) a < 0)
+          (`Overflow { segment = n; address = a; size = sz }))
+      placed
+  in
+  let rec overlap_checks = function
+    | [] -> []
     | (n, a, sz) :: rest ->
-        List.iter
+        List.map
           (fun (n', a', sz') ->
             let e = Int64.add a (Int64.of_int sz) and e' = Int64.add a' (Int64.of_int sz') in
-            if Int64.compare a e' < 0 && Int64.compare a' e < 0 then
-              fail "bind.overlap"
-                (Printf.sprintf "segments %s at 0x%Lx (%d bytes) and %s at 0x%Lx (%d bytes) overlap"
-                   n a sz n' a' sz'))
-          rest;
-        overlaps rest
+            reject_if ~pos:__POS__
+              (Int64.compare a e' < 0 && Int64.compare a' e < 0)
+              (`Overlap { a_name = n; a_at = a; a_size = sz; b_name = n'; b_at = a'; b_size = sz' }))
+          rest
+        @ overlap_checks rest
   in
-  overlaps placed;
-  List.iter
-    (fun s ->
-      if not (List.mem_assoc s.seg_name addresses) then
-        fail "bind.address" ("no address for segment " ^ s.seg_name))
-    l.plan.segments;
-  List.iter
-    (fun s ->
-      match List.assoc_opt s.seg_name addresses with
-      | Some a when s.alignment > 1 && Int64.rem a (Int64.of_int s.alignment) <> 0L ->
-          fail "bind.alignment"
-            (Printf.sprintf "segment %s needs %d-byte alignment, address is 0x%Lx" s.seg_name
-               s.alignment a)
-      | _ -> ())
-    l.plan.segments;
-  if !errors <> [] then Error (List.rev !errors)
-  else
+  let address_checks =
+    List.map
+      (fun s ->
+        reject_if ~pos:__POS__ (not (List.mem_assoc s.seg_name addresses)) (`No_address s.seg_name))
+      l.plan.segments
+  in
+  let alignment_checks =
+    List.map
+      (fun s ->
+        match List.assoc_opt s.seg_name addresses with
+        | Some a ->
+            reject_if ~pos:__POS__
+              (s.alignment > 1 && Int64.rem a (Int64.of_int s.alignment) <> 0L)
+              (`Alignment { segment = s.seg_name; needs = s.alignment; address = a })
+        | None -> Ok ())
+      l.plan.segments
+  in
+  let finish () =
+    let errors = ref [] in
+    let fail e = errors := diag e :: !errors in
     let address_of name =
       match List.assoc_opt name l.offsets with
       | None -> None
@@ -626,7 +748,7 @@ let bind_image (l : laid_out) ~(addresses : (string * int64) list) =
           match Expr.absolute (env_at at section) expr with
           | Ok v -> Some (name, Option.value ~default:0L (Bigint.to_int64_opt v))
           | Error m ->
-              fail "bind.size" (Printf.sprintf "size of %s: %s" name m);
+              fail (`Symbol_size { symbol = name; reason = Err.Error.kind m });
               None)
         l.sizes
     in
@@ -656,27 +778,32 @@ let bind_image (l : laid_out) ~(addresses : (string * int64) list) =
               in
               match Expr.absolute env f.rf_value with
               | Error m ->
-                  fail "bind.fixup" (Printf.sprintf "fixup %s: %s" f.rf_name m);
+                  fail (`Fixup_value { fixup = f.rf_name; reason = Err.Error.kind m });
                   acc
               | Ok target -> (
                   match Bigint.to_int64_opt target with
                   | None ->
-                      fail "bind.fixup"
-                        (Printf.sprintf "fixup %s: target does not fit 64 bits" f.rf_name);
+                      fail (`Fixup_target_too_wide f.rf_name);
                       acc
                   | Some t -> (
                       match f.rf_evaluate ~place ~target:t with
+                      (* The one arm that arrives already rendered: the
+                         evaluator is the target's, and this module cannot hold
+                         its domain. Routing it through the same [fail] as every
+                         other bind failure is what keeps the code it chose. *)
                       | Error d ->
-                          errors := d :: !errors;
+                          fail (`Target_fixup d);
                           acc
                       | Ok v ->
                           if not (Lowered_ast.range_admits f.rf_range v) then begin
-                            fail "bind.fixup-range"
-                              (Printf.sprintf
-                                 "fixup %s: value %Ld does not fit %s at section offset %d"
-                                 f.rf_name v
-                                 (Fmt.to_to_string Lowered_ast.pp_range f.rf_range)
-                                 f.rf_byte_offset);
+                            fail
+                              (`Fixup_out_of_range
+                                 {
+                                   fixup = f.rf_name;
+                                   value = v;
+                                   range = f.rf_range;
+                                   at = f.rf_byte_offset;
+                                 });
                             acc
                           end
                           else
@@ -715,8 +842,15 @@ let bind_image (l : laid_out) ~(addresses : (string * int64) list) =
     let exports =
       List.filter_map (fun n -> Option.map (fun a -> (n, a)) (address_of n)) l.plan.exports
     in
-    if !errors <> [] then Error (List.rev !errors)
+    if !errors <> [] then Diag.fail ~pos:__POS__ (List.rev !errors)
     else Ok { segments; entry; exports; symbol_sizes }
+  in
+  match
+    Diag.validate_all ~pos:__POS__
+      (overflow_checks @ overlap_checks placed @ address_checks @ alignment_checks)
+  with
+  | Error errors -> Error errors
+  | Ok () -> finish ()
 
 (* {1 Rendering}
 

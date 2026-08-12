@@ -259,7 +259,7 @@ let%expect_test "a pin fails two different ways, and says which" =
   let one v r =
     match encode_rung checked_ladder ~rung:r (Br v) with
     | Ok e -> Fmt.pr "  %-8s %Ld  %s@." (form_id e) v (hex e.bits)
-    | Error e -> Fmt.pr "  %-8s %Ld  [%s] %a@." r v (Option.value e.code ~default:"-") pp_error e
+    | Error e -> Fmt.pr "  %-8s %Ld  [%s] %a@." r v (Option.value (code e) ~default:"-") pp_error e
   in
   one 4L "rel8";
   one 1000L "rel8";

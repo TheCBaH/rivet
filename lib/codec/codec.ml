@@ -229,10 +229,52 @@ type 'k encoded = { bits : Bits.t; placements : 'k placement list; form : string
    producer hands the codec a rung name out of nowhere and nothing above here
    has the ladder to check it against. Everywhere else [code] is [None] and the
    caller's own phase name - [x86.encode] - is the right one. *)
-type error = { where : string; detail : string; code : string option }
+type error =
+  [ `Field_does_not_fit of field_does_not_fit
+  | `Not_in_relation of not_in_relation
+  | `No_alternative of string  (** the [Alt] node's name *)
+  | `No_rung of string  (** the [Relax] node's name *)
+  | `No_form
+  | `No_ladder_rung
+  | `Unknown_rung of unknown_rung
+  | `Rung_inapplicable of rung_inapplicable ]
 
-let err ?code where detail = { where; detail; code }
-let pp_error ppf e = Fmt.pf ppf "%s: %s" e.where e.detail
+and field_does_not_fit = { field : string; value : int64; width : int; signedness : signedness }
+and not_in_relation = { relation : string; shown : string }
+and unknown_rung = { wanted : string; declared : string list }
+and rung_inapplicable = { wanted : string; applicable : string list }
+
+(* Two halves, as before: [where] names the node and [detail] says what it
+   refused. Kept as one printer producing [where: detail] so the rendering is
+   the one every target already reports. *)
+let pp_error ppf : error -> unit = function
+  | `Field_does_not_fit { field; value; width; signedness } ->
+      Fmt.pf ppf "field %s: %Ld does not fit %d bits %s" field value width
+        (match signedness with Signed -> "signed" | Unsigned -> "unsigned")
+  | `Not_in_relation { relation; shown } ->
+      Fmt.pf ppf "iso_table %s: %s is not in the relation" relation shown
+  | `No_alternative name -> Fmt.pf ppf "alt %s: no alternative applies" name
+  | `No_rung name -> Fmt.pf ppf "relax %s: no rung applies" name
+  | `No_form -> Fmt.string ppf "encode: no form of this description accepts the value"
+  | `No_ladder_rung -> Fmt.string ppf "encode_ladder: no rung of this description applies"
+  | `Unknown_rung { wanted; declared } ->
+      Fmt.pf ppf "encode_rung: no rung is named %s; this description declares {%s}" wanted
+        (String.concat ", " (List.sort_uniq compare declared))
+  | `Rung_inapplicable { wanted; applicable } ->
+      Fmt.pf ppf "encode_rung: rung %s does not apply to this value; {%s} do" wanted
+        (String.concat ", " applicable)
+
+(* The delegation of asm/docs/errors.md §2: [Some] only where this layer is the
+   only one that could have seen the mistake, so a caller writes
+   [Option.value (Codec.code e) ~default:own_code] and the reserved code cannot
+   drift from the case that earns it. *)
+let code : error -> string option = function
+  | `Unknown_rung _ -> Some "codec.unknown-rung"
+  | `Rung_inapplicable _ -> Some "codec.rung-inapplicable"
+  | `Field_does_not_fit _ | `Not_in_relation _ | `No_alternative _ | `No_rung _ | `No_form
+  | `No_ladder_rung ->
+      None
+
 let form_id e = String.concat "." e.form
 
 (* Three outcomes, not two, and the distinction is the whole of [Alt]'s
@@ -295,10 +337,7 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
       Encoded { bits = Bits.of_int64 ~width value; placements = []; form = [] }
   | Field { name; width; signedness } ->
       if not (fits ~width ~signedness v) then
-        Failed
-          (err ("field " ^ name)
-             (Printf.sprintf "%Ld does not fit %d bits %s" v width
-                (match signedness with Signed -> "signed" | Unsigned -> "unsigned")))
+        Failed (`Field_does_not_fit { field = name; value = v; width; signedness })
       else Encoded { bits = Bits.of_int64 ~width (truncate ~width v); placements = []; form = [] }
   | Fixup { name; width; value_lsb; kind } ->
       (* Unsigned, and always truncating: the value here is either a lowering
@@ -326,7 +365,7 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
       (* A table is a *declared* finite relation, so a value outside it is a
          genuine error rather than a decline: the author enumerated the domain
          and this is not in it. *)
-      | None -> Failed (err ("iso_table " ^ name) (show v ^ " is not in the relation"))
+      | None -> Failed (`Not_in_relation { relation = name; shown = show v })
       | Some (_, code) -> attempt inner code)
   | Iso_fun { encode = f; inner; _ } -> (
       match f v with None -> Declined | Some b -> attempt inner b)
@@ -339,9 +378,7 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
          the author needs and "this is not a nop" is not. *)
       let rec go first_error = function
         | [] -> (
-            match first_error with
-            | Some e -> Failed e
-            | None -> Failed (err ("alt " ^ name) "no alternative applies"))
+            match first_error with Some e -> Failed e | None -> Failed (`No_alternative name))
         | a :: rest -> (
             if not (a.guard v) then go first_error rest
             else
@@ -357,10 +394,7 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
          a pinned or resolved operand picks its form - that is [encode_rung],
          which selects explicitly instead of relying on arriving first. *)
       let rec go first_error = function
-        | [] -> (
-            match first_error with
-            | Some e -> Failed e
-            | None -> Failed (err ("relax " ^ name) "no rung applies"))
+        | [] -> ( match first_error with Some e -> Failed e | None -> Failed (`No_rung name))
         | r :: rest -> (
             match attempt r.rung_body v with
             | Encoded e -> Encoded { e with form = r.rung_label :: e.form }
@@ -370,10 +404,7 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
       go None rungs
 
 let encode node v =
-  match attempt node v with
-  | Encoded e -> Ok e
-  | Failed e -> Error e
-  | Declined -> Error (err "encode" "no form of this description accepts the value")
+  match attempt node v with Encoded e -> Ok e | Failed e -> Error e | Declined -> Error `No_form
 
 (* {2 Relaxation ladders}
 
@@ -438,7 +469,7 @@ let encode_ladder node v =
          the diagnostic names the value rather than the shape. *)
       match attempt node v with
       | Failed e -> Error e
-      | Declined | Encoded _ -> Error (err "encode_ladder" "no rung of this description applies"))
+      | Declined | Encoded _ -> Error `No_ladder_rung)
   | results -> Ok results
 
 (* Every rung label this description declares, gathered without reference to any
@@ -464,10 +495,7 @@ let rec rung_labels : type a k. (a, k) t -> string list = function
 let encode_rung node ~rung:name v =
   let declared = rung_labels node in
   if not (List.exists (String.equal name) declared) then
-    Error
-      (err ~code:"codec.unknown-rung" "encode_rung"
-         (Printf.sprintf "no rung is named %s; this description declares {%s}" name
-            (String.concat ", " (List.sort_uniq compare declared))))
+    Error (`Unknown_rung { wanted = name; declared })
   else
     match encode_ladder node v with
     | Error e -> Error e
@@ -476,9 +504,9 @@ let encode_rung node ~rung:name v =
         | Some e -> Ok e
         | None ->
             Error
-              (err ~code:"codec.rung-inapplicable" "encode_rung"
-                 (Printf.sprintf "rung %s does not apply to this value; {%s} do" name
-                    (String.concat ", " (List.map (fun e -> String.concat "." e.form) forms)))))
+              (`Rung_inapplicable
+                 { wanted = name; applicable = List.map (fun e -> String.concat "." e.form) forms })
+        )
 
 (* {1 Interpreter 2 - decode}
 

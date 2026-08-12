@@ -82,9 +82,29 @@ let error_span tokens =
 
 let dummy_lexbuf () = Lexing.from_string ""
 
+(* This module's error domain. One tag, because Menhir's classic API reports
+   every syntax failure the same way; what varies is the token it stopped on,
+   which is now carried rather than discarded. *)
+type error_kind =
+  [ `Unexpected_token of Token.t option | `Empty_expression | `Malformed_expression of Token.slice ]
+
+let pp_error ppf : error_kind -> unit = function
+  | `Unexpected_token _ -> Fmt.string ppf "unexpected token"
+  | `Empty_expression -> Fmt.string ppf "empty expression"
+  | `Malformed_expression _ -> Fmt.string ppf "malformed expression"
+
+let error_code : error_kind -> string = function
+  | `Unexpected_token _ -> "parse"
+  | `Empty_expression | `Malformed_expression _ -> "parse.expression"
+
+let parse_diagnostic ~span kind =
+  Diagnostic.of_error ~origin:(Origin.text span) ~code:error_code ~pp:pp_error kind
+
 let parse_program ~profile ~source =
   match Lexer.tokenize ~profile ~source with
-  | Error e -> Error [ Lexer.diagnostic_of_error e ]
+  (* Shared: a lexical failure is reported here exactly as the lexer described
+     it, under the lexer's own code (asm/docs/errors.md §2). *)
+  | Error e -> Diag.fail ~pos:__POS__ [ Lexer.diagnostic_of_error e ]
   | Ok tokens -> (
       let tokens = ensure_terminated tokens in
       let remaining = ref tokens in
@@ -95,24 +115,41 @@ let parse_program ~profile ~source =
             remaining := rest;
             to_menhir t
       in
-      try Ok (Grammar.program supply (dummy_lexbuf ()))
-      with Grammar.Error ->
-        let span =
-          match error_span !remaining with
-          | Some s -> s
-          | None -> Span.of_offset ~source ~offset:0 ~length:0
-        in
-        Error
-          [
-            Diagnostic.error ~code:"parse" ~message:"unexpected token" ~origin:(Origin.text span) ();
-          ])
+      (* [Err.protect] rather than a bare [try]: it names the exception this
+         boundary is allowed to absorb and re-raises everything else, where the
+         previous handler would have caught only [Grammar.Error] but recorded
+         nothing about the crossing. The [Catch] event it adds is what says a
+         failure entered our domain from a foreign one (asm/docs/errors.md §2).
+
+         The token is the one the supplier had not yet consumed - what the
+         parser choked on - and is now carried rather than reduced to its
+         span. *)
+      let stopped_on = ref None in
+      match
+        Err.protect ~pos:__POS__ ~pp_error
+          ~catch:(fun exn ->
+            match exn with
+            | Grammar.Error ->
+                (stopped_on := match !remaining with t :: _ -> Some t | [] -> None);
+                Some (`Unexpected_token !stopped_on)
+            | _ -> None)
+          (fun () -> Grammar.program supply (dummy_lexbuf ()))
+      with
+      | Ok lines -> Ok lines
+      | Error e ->
+          let span =
+            match !stopped_on with
+            | Some t -> Token.span t
+            | None -> Span.of_offset ~source ~offset:0 ~length:0
+          in
+          Diag.fail ~pos:__POS__ [ parse_diagnostic ~span (Err.Error.kind e) ])
 
 (* Parsing a slice as an expression. This is what a directive handler or a
    target operand parser calls; the slice already exists, so the lexer does not
    run again and the spans are the original ones. *)
 let parse_expression (slice : Token.slice) =
   match slice with
-  | [] -> Error "empty expression"
+  | [] -> Err.fail ~pos:__POS__ ~pp_error `Empty_expression
   | first :: _ -> (
       let eof = Token.make Token.Eof (Token.span first) in
       let remaining = ref (slice @ [ eof ]) in
@@ -124,6 +161,6 @@ let parse_expression (slice : Token.slice) =
             to_menhir t
       in
       try Ok (Grammar.expression_only supply (dummy_lexbuf ()))
-      with Grammar.Error -> Error "malformed expression")
+      with Grammar.Error -> Err.fail ~pos:__POS__ ~pp_error (`Malformed_expression slice))
 
 let _ = supplier

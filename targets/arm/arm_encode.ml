@@ -735,10 +735,87 @@ let codec : (Lowered.t, fixup_kind) C.t =
 let name = "arm"
 let triple = "arm-linux-gnueabihf"
 
-let diag ?origin code message =
-  Diagnostic.error ~code ~message
-    ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"arm" ())
-    ()
+(* The A32 encoder's error domain (asm/docs/errors.md). Below source text, so it
+   names no token; the front end's operand failures are a separate domain in
+   arm.ml, for the reason {!Target_intf.Target.TARGET} gives.
+
+   [`No_modified_immediate] carries the value that has no representation, which
+   is the whole content of the failure: an A32 immediate is a rotation of an
+   eight-bit field, so *which constant* is what a caller needs. *)
+type error_kind =
+  [ Target_error.shared
+  | `Thumb_out_of_scope
+  | `Expected_register_or_shifted
+  | `No_modified_immediate of int64
+  | `No_modified_immediate_mov of int64
+  | `Writeback_out_of_scope
+  | `Offset_not_12bit
+  | `Udf_imm16_overflow
+  | `Wrong_relocation_modifier of wrong_relocation_modifier
+  | `Missing_relocation_modifier of missing_relocation_modifier
+  | `Imm16_overflow of string
+  | `Codec of Codec.error
+  | `Decode_short
+  | `Decode_no_match
+  | `Branch_not_word_aligned
+  | `Branch_out_of_range
+  | `No_data_relocation of int
+  | `Padding_not_word_multiple ]
+
+and wrong_relocation_modifier = { opcode : string; want : string; got : string }
+and missing_relocation_modifier = { opcode : string; want : string }
+
+type error = error_kind Target_error.t
+
+let pp_error_kind ppf : error_kind -> unit = function
+  | #Target_error.shared as e -> Target_error.pp_shared ppf e
+  | `Thumb_out_of_scope -> Fmt.string ppf "Thumb is not in M1 scope"
+  | `Expected_register_or_shifted -> Fmt.string ppf "expected a register or a shifted register"
+  | `No_modified_immediate v -> Fmt.pf ppf "#%Ld has no A32 modified-immediate representation" v
+  | `No_modified_immediate_mov v ->
+      Fmt.pf ppf "#%Ld has no A32 modified-immediate representation; movw and mvn are M2" v
+  | `Writeback_out_of_scope -> Fmt.string ppf "writeback addressing is not in M1 scope"
+  | `Offset_not_12bit -> Fmt.string ppf "offset does not fit the 12-bit immediate"
+  | `Udf_imm16_overflow -> Fmt.string ppf "udf immediate does not fit 16 bits"
+  | `Wrong_relocation_modifier { opcode; want; got } ->
+      Fmt.pf ppf "%s takes #:%s:, not #:%s:" opcode want got
+  | `Missing_relocation_modifier { opcode; want } ->
+      Fmt.pf ppf "%s needs a #:%s: operand" opcode want
+  | `Imm16_overflow op -> Fmt.pf ppf "%s immediate does not fit 16 bits" op
+  | `Codec e -> Codec.pp_error ppf e
+  | `Decode_short -> Fmt.string ppf "fewer than four bytes remain"
+  | `Decode_no_match -> Fmt.string ppf "no form matches this word"
+  | `Branch_not_word_aligned -> Fmt.string ppf "branch target is not word-aligned"
+  | `Branch_out_of_range -> Fmt.string ppf "branch target is out of range"
+  | `No_data_relocation w -> Fmt.pf ppf "no absolute relocation for a %d-byte data initializer" w
+  | `Padding_not_word_multiple ->
+      Fmt.string ppf "A32 padding must be a whole number of four-byte instructions"
+
+let error_kind_code : error_kind -> string = function
+  | `Unknown_instruction _ -> "arm.simplify"
+  | `Thumb_out_of_scope | `Immediate_too_wide | `Expected_register_or_shifted
+  | `No_modified_immediate _ | `No_modified_immediate_mov _ | `Writeback_out_of_scope
+  | `Offset_not_12bit | `Udf_imm16_overflow | `Wrong_relocation_modifier _
+  | `Missing_relocation_modifier _ | `Imm16_overflow _ | `No_form _ ->
+      "arm.lower"
+  | `Codec e -> Option.value (Codec.code e) ~default:"arm.encode"
+  | `Decode_short | `Decode_no_match | `Decode_no_normalized -> "arm.decode"
+  | `Branch_not_word_aligned | `Branch_out_of_range -> "arm.fixup"
+  | `No_data_relocation _ -> "arm.data-fixup"
+  | `Padding_not_word_multiple -> "arm.nop"
+
+let pp_error ppf e = pp_error_kind ppf (Target_error.kind e)
+let error_code e = error_kind_code (Target_error.kind e)
+let error_diagnostic e = Target_error.to_diagnostic ~code:error_kind_code ~pp:pp_error_kind e
+
+(* Returns the wrapped error rather than a bare one, so every [Error (diag ...)]
+   site keeps its shape: [Err.t] is a [result] whose error branch is an
+   [Err.Error.t]. *)
+let diag ?pos ?origin kind =
+  Err.Error.make ?pos ~pp_error
+    (Target_error.make
+       ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"arm" ())
+       kind)
 
 let make_surface_instruction ~mnemonic ~origin ops = Ok { Surface.mnemonic; ops; origin }
 
@@ -746,7 +823,7 @@ let make_surface_instruction ~mnemonic ~origin ops = Ok { Surface.mnemonic; ops;
 
 let simplify_instruction ~features s =
   ignore features;
-  let bad msg = Error (diag ~origin:s.Surface.origin "arm.simplify" msg) in
+  let bad kind = Error (diag ~pos:__POS__ ~origin:s.Surface.origin kind) in
   let m = s.Surface.mnemonic in
   match Opcode.of_mnemonic m with
   (* The unsuffixed spelling first, so [b] is the branch rather than [b] with a
@@ -757,18 +834,18 @@ let simplify_instruction ~features s =
       let stem, cond = Cond.split m in
       match Opcode.of_mnemonic stem with
       | Some op -> Ok (Instruction.mk ~cond op s.Surface.ops)
-      | None -> bad (Printf.sprintf "unknown instruction %s" m))
+      | None -> bad (`Unknown_instruction m))
 
 (* {1 Lower} *)
 
 let lower_instruction state i =
-  let bad msg = Error (diag "arm.lower" msg) in
-  if state.thumb then bad "Thumb is not in M1 scope"
+  let bad kind = Error (diag ~pos:__POS__ kind) in
+  if state.thumb then bad `Thumb_out_of_scope
   else
     let imm_of v =
       match Bigint.to_int64_opt v with
       | Some x -> Ok x
-      | None -> Error (diag "arm.lower" "immediate does not fit 64 bits")
+      | None -> Error (diag ~pos:__POS__ `Immediate_too_wide)
     in
     let cond = i.Instruction.cond in
     match (i.Instruction.op, i.Instruction.ops) with
@@ -776,10 +853,7 @@ let lower_instruction state i =
         match imm_of v with
         | Error e -> Error e
         | Ok imm ->
-            if encode_modimm imm = None then
-              bad
-                (Printf.sprintf
-                   "#%Ld has no A32 modified-immediate representation; movw and mvn are M2" imm)
+            if encode_modimm imm = None then bad (`No_modified_immediate_mov imm)
             else
               Ok
                 [
@@ -825,7 +899,7 @@ let lower_instruction state i =
                     sh_amt = amount;
                   };
               ]
-        | _ -> bad "expected a register or a shifted register")
+        | _ -> bad `Expected_register_or_shifted)
     | Opcode.Cmp, [ Operand.Reg rn; Operand.Shifted { reg = rm; kind; amount } ] ->
         Ok
           [
@@ -846,13 +920,11 @@ let lower_instruction state i =
         match imm_of v with
         | Error e -> Error e
         | Ok imm ->
-            if encode_modimm imm = None then
-              bad (Printf.sprintf "#%Ld has no A32 modified-immediate representation" imm)
+            if encode_modimm imm = None then bad (`No_modified_immediate imm)
             else Ok [ Lowered.Dp_imm { cond; dp = Opcode.to_dp op; s = false; rd; rn; imm } ])
     | ((Opcode.Str | Opcode.Ldr) as op), [ Operand.Reg rt; Operand.Mem m ] ->
-        if m.writeback then bad "writeback addressing is not in M1 scope"
-        else if Int64.compare (Int64.abs m.offset) 4096L >= 0 then
-          bad "offset does not fit the 12-bit immediate"
+        if m.writeback then bad `Writeback_out_of_scope
+        else if Int64.compare (Int64.abs m.offset) 4096L >= 0 then bad `Offset_not_12bit
         else
           Ok
             [
@@ -860,9 +932,8 @@ let lower_instruction state i =
                 { cond; load = op = Opcode.Ldr; byte = false; rt; rn = m.base; offset = m.offset };
             ]
     | Opcode.Strb, [ Operand.Reg rt; Operand.Mem m ] ->
-        if m.writeback then bad "writeback addressing is not in M1 scope"
-        else if Int64.compare (Int64.abs m.offset) 4096L >= 0 then
-          bad "offset does not fit the 12-bit immediate"
+        if m.writeback then bad `Writeback_out_of_scope
+        else if Int64.compare (Int64.abs m.offset) 4096L >= 0 then bad `Offset_not_12bit
         else
           Ok
             [
@@ -875,7 +946,7 @@ let lower_instruction state i =
         | Error e -> Error e
         | Ok imm ->
             if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
-              bad "udf immediate does not fit 16 bits"
+              bad `Udf_imm16_overflow
             else Ok [ Lowered.Udf { imm16 = imm } ])
     | Opcode.Bl, [ Operand.Sym e ] ->
         Ok
@@ -907,8 +978,7 @@ let lower_instruction state i =
         match imm_of v with
         | Error e -> Error e
         | Ok imm ->
-            if encode_modimm imm = None then
-              bad (Printf.sprintf "#%Ld has no A32 modified-immediate representation" imm)
+            if encode_modimm imm = None then bad (`No_modified_immediate imm)
             else
               Ok
                 [
@@ -940,14 +1010,14 @@ let lower_instruction state i =
                   };
               ]
         | Asm_core.Expr.Modifier (m, _) ->
-            bad (Printf.sprintf "%s takes #:%s:, not #:%s:" (Opcode.name op) want m)
-        | _ -> bad (Printf.sprintf "%s needs a #:%s: operand" (Opcode.name op) want))
+            bad (`Wrong_relocation_modifier { opcode = Opcode.name op; want; got = m })
+        | _ -> bad (`Missing_relocation_modifier { opcode = Opcode.name op; want }))
     | ((Opcode.Movw | Opcode.Movt) as op), [ Operand.Reg rd; Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm ->
             if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
-              bad (Printf.sprintf "%s immediate does not fit 16 bits" (Opcode.name op))
+              bad (`Imm16_overflow (Opcode.name op))
             else
               Ok
                 [
@@ -970,7 +1040,7 @@ let lower_instruction state i =
        from the [cmp] to the [moveq]. Accepting and dropping it is therefore
        matching GAS, not ignoring an instruction. *)
     | Opcode.Ite, _ -> Ok []
-    | _ -> bad (Printf.sprintf "no %s form takes these operands" (Opcode.name i.Instruction.op))
+    | _ -> bad (`No_form (Opcode.name i.Instruction.op))
 
 (* {1 Encode and decode}
 
@@ -1048,8 +1118,7 @@ let encode l =
   (* A32 is fixed-width and declares no ladder, so [e.code] is always [None]
      here; reading it anyway keeps one rule across the three targets rather than
      a special case waiting to be forgotten. *)
-  | Error (e : C.error) ->
-      Error (diag (Option.value e.C.code ~default:"arm.encode") (Fmt.to_to_string C.pp_error e))
+  | Error (e : C.error) -> Error (diag ~pos:__POS__ (`Codec e))
   | Ok enc -> Ok (`Fixed (form_of l enc))
 
 type decode_context = { state : target_state; address : int64 }
@@ -1123,14 +1192,14 @@ let instruction_of_lowered ?(at = 0L) =
       Some (Instruction.mk ~cond (if top then Opcode.Movt else Opcode.Movw) [ Operand.Reg rd; v ])
 
 let decode ctx bytes ~pos =
-  if String.length bytes - pos < 4 then Error (diag "arm.decode" "fewer than four bytes remain")
+  if String.length bytes - pos < 4 then Error (diag ~pos:__POS__ `Decode_short)
   else
     let word = word_to_memory (String.sub bytes pos 4) in
     match C.decode_bits codec (C.Bits.of_bytes word) with
-    | None -> Error (diag "arm.decode" "no form matches this word")
+    | None -> Error (diag ~pos:__POS__ `Decode_no_match)
     | Some d -> (
         match instruction_of_lowered ~at:ctx.address d.C.value with
-        | None -> Error (diag "arm.decode" "decoded a form with no normalized instruction")
+        | None -> Error (diag ~pos:__POS__ `Decode_no_normalized)
         | Some i -> Ok (i, String.concat "." d.C.dform, 4))
 
 (* {1 Fixups, padding, directives} *)
@@ -1144,13 +1213,13 @@ let evaluate_fixup kind ~place ~target =
   | Abs32 -> Ok (Int64.logand target 0xFFFFFFFFL)
   | Pcrel_b26 | Pcrel_call ->
       let d = Int64.sub target place in
-      if Int64.rem d 4L <> 0L then Error (diag "arm.fixup" "branch target is not word-aligned")
+      if Int64.rem d 4L <> 0L then Error (diag ~pos:__POS__ `Branch_not_word_aligned)
       else
         let words = Int64.div d 4L in
         (* +-32MB. Checked here rather than left to field truncation: a branch
            that does not reach is a diagnostic, not a wrong address. *)
         if Int64.compare words (-0x800000L) >= 0 && Int64.compare words 0x800000L < 0 then Ok words
-        else Error (diag "arm.fixup" "branch target is out of range")
+        else Error (diag ~pos:__POS__ `Branch_out_of_range)
   | Movw_abs_nc -> Ok (Int64.logand target 0xFFFFL)
   | Movt_abs -> Ok (Int64.logand (Int64.shift_right_logical target 16) 0xFFFFL)
 
@@ -1171,14 +1240,8 @@ let data_widths =
   ]
 
 let data_fixup ~width =
-  match width with
-  | 4 -> Ok Abs32
-  | _ ->
-      Error
-        (diag "arm.data-fixup"
-           (Printf.sprintf "no absolute relocation for a %d-byte data initializer" width))
+  match width with 4 -> Ok Abs32 | _ -> Error (diag ~pos:__POS__ (`No_data_relocation width))
 
 let nop_bytes ~length =
-  if length mod 4 <> 0 then
-    Error (diag "arm.nop" "A32 padding must be a whole number of four-byte instructions")
+  if length mod 4 <> 0 then Error (diag ~pos:__POS__ `Padding_not_word_multiple)
   else Ok (String.concat "" (List.init (length / 4) (fun _ -> "\x00\xf0\x20\xe3")))
