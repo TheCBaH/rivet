@@ -84,13 +84,14 @@ let payload_offsets t =
   in
   go base t.segments
 
-let serialize t =
+let serialize ?(abi_version = Abi.abi_version) t =
   let n = List.length t.segments in
   let offsets, payload_end = payload_offsets t in
   let total = align_up_8 payload_end in
   let b = Bytes.make total '\000' in
-  Abi.set_string b Abi.Manifest_off.magic Abi.manifest_magic;
-  Abi.set_u16 b Abi.Manifest_off.abi_version Abi.abi_version;
+  Abi.set_string b Abi.Manifest_off.magic
+    (if abi_version = Abi_v2.abi_version then Abi_v2.manifest_magic else Abi.manifest_magic);
+  Abi.set_u16 b Abi.Manifest_off.abi_version abi_version;
   Abi.set_u16 b Abi.Manifest_off.profile_id (Abi.profile_id t.profile);
   Abi.set_u32 b Abi.Manifest_off.total_len total;
   Abi.set_u32 b Abi.Manifest_off.case_id t.case_id;

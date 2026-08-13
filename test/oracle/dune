@@ -40,7 +40,7 @@
 
 (library
  (name asm_oracle)
- (modules abi manifest record snippet_bytes)
+ (modules abi abi_v2 manifest record snippet_bytes)
  (modes byte native)
  (libraries fmt)
  (enabled_if

@@ -8,6 +8,7 @@
  (libraries
   driver
   image
+  asm_core
   target_intf
   codec
   foundation
@@ -15,6 +16,8 @@
   aarch64
   x86_32
   x86_64
+  riscv32_encode
+  riscv64_encode
   fmt)
  (inline_tests)
  (preprocess

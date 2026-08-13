@@ -27,6 +27,11 @@ type t = {
           labels on one line - so [foo: bar: mov r0, r1] would otherwise lex [bar] as a modifier.
           Listing the names means the ambiguity is decided by the dialect rather than by whichever
           reading the scanner reaches first. *)
+  percent_call_modifiers : string list;
+      (** Relocation modifiers written as a percent-prefixed call, for example
+          [%pcrel_hi(symbol)].  As with the colon-wrapped style, spellings are
+          declared explicitly: an undeclared [%name] must remain a percent
+          token followed by an identifier and fail in the ordinary grammar. *)
 }
 
 (* [-] is deliberately not an identifier character in any dialect, even though
@@ -52,7 +57,8 @@ let gas_identifier_extra = [ '_'; '.'; '$' ]
    the constructor below, whose labelled arguments make each target state its
    whole dialect explicitly rather than inherit a default it did not read. *)
 let make ~name ~comment_introducers ?statement_separator ?immediate_sigil ?register_sigil
-    ?(identifier_extra = gas_identifier_extra) ?(modifier_syntax = []) () =
+    ?(identifier_extra = gas_identifier_extra) ?(modifier_syntax = [])
+    ?(percent_call_modifiers = []) () =
   {
     name;
     comment_introducers;
@@ -61,11 +67,13 @@ let make ~name ~comment_introducers ?statement_separator ?immediate_sigil ?regis
     register_sigil;
     identifier_extra;
     modifier_syntax;
+    percent_call_modifiers;
   }
 
 let pp ppf t =
-  Fmt.pf ppf "%s: comments=%s immediate=%s register=%s modifiers=%s" t.name
+  Fmt.pf ppf "%s: comments=%s immediate=%s register=%s modifiers=%s percent-call=%s" t.name
     (String.concat "," t.comment_introducers)
     (match t.immediate_sigil with None -> "none" | Some c -> String.make 1 c)
     (match t.register_sigil with None -> "none" | Some c -> String.make 1 c)
     (match t.modifier_syntax with [] -> "none" | ms -> String.concat "," ms)
+    (match t.percent_call_modifiers with [] -> "none" | ms -> String.concat "," ms)

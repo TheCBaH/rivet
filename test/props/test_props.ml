@@ -154,6 +154,7 @@ let fixup ~kind ~range ~bits ~pc_bias ~container value =
     pc_bias;
     range;
     value;
+    pairing = Lowered_ast.Unpaired;
     origin;
   }
 

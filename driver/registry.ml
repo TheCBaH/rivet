@@ -21,6 +21,8 @@ module X86_32 = Pipeline.Make (X86_32)
 module X86_64 = Pipeline.Make (X86_64)
 module Arm = Pipeline.Make (Arm)
 module Aarch64 = Pipeline.Make (Aarch64)
+module Riscv32 = Pipeline.Make (Riscv32)
+module Riscv64 = Pipeline.Make (Riscv64)
 
 type driver = (module T_intf.DRIVER)
 
@@ -30,6 +32,8 @@ let drivers : driver list =
     (module X86_64 : T_intf.DRIVER);
     (module Arm : T_intf.DRIVER);
     (module Aarch64 : T_intf.DRIVER);
+    (module Riscv32 : T_intf.DRIVER);
+    (module Riscv64 : T_intf.DRIVER);
   ]
 
 let names = List.map (fun (module D : T_intf.DRIVER) -> D.name) drivers

@@ -65,18 +65,21 @@ let u64_array s off n = Array.init n (fun i -> Abi.get_u64 s (off + (8 * i)))
    decoration: the guest can see the result page through the second alias, so a
    stray guest store lands here and must not be mistaken for a valid record. *)
 
-let check_framing s =
+let check_framing ~abi_version s =
+  let result_magic =
+    if abi_version = Abi_v2.abi_version then Abi_v2.result_magic else Abi.result_magic
+  in
   if String.length s <> Abi.result_page_size then
     Some
       (Printf.sprintf "framing: result file is %d bytes, expected %d" (String.length s)
          Abi.result_page_size)
-  else if String.sub s Abi.Result_off.magic (String.length Abi.result_magic) <> Abi.result_magic
-  then Some "framing: bad result magic"
-  else if Abi.get_u16 s Abi.Result_off.abi_version <> Abi.abi_version then
+  else if String.sub s Abi.Result_off.magic (String.length result_magic) <> result_magic then
+    Some "framing: bad result magic"
+  else if Abi.get_u16 s Abi.Result_off.abi_version <> abi_version then
     Some
       (Printf.sprintf "framing: abi_version %d, expected %d"
          (Abi.get_u16 s Abi.Result_off.abi_version)
-         Abi.abi_version)
+         abi_version)
   else if not (is_zero_range s Abi.Result_off.reserved Abi.Result_off.reserved_len) then
     Some "framing: reserved bytes nonzero"
   else if
@@ -143,8 +146,8 @@ let staging_rule state status =
   | Abi.Returned, (Abi.Passed | Abi.Failed) -> Some Value_terminal
   | _ -> None
 
-let validate ~expected_case_id s =
-  match check_framing s with
+let validate ?(abi_version = Abi.abi_version) ~expected_case_id s =
+  match check_framing ~abi_version s with
   | Some why -> Invalid why
   | None -> (
       let raw_state = Abi.get_u32 s Abi.Result_off.record_state in
@@ -308,12 +311,13 @@ let validate ~expected_case_id s =
    the same offsets the validator reads, so that a transcription slip fails
    loudly instead of making a test agree with itself. *)
 
-let build ?(record_state = Abi.Bootstrap) ?(status = Abi.Not_started) ?(case_id = 0)
-    ?(expected = [||]) ?(values = [||]) ?(n_values = -1) ?(n_expected = -1) ?(diag = "")
-    ?(runner_error = 0) ?(error_subcode = 0) () =
+let build ?(abi_version = Abi.abi_version) ?(record_state = Abi.Bootstrap)
+    ?(status = Abi.Not_started) ?(case_id = 0) ?(expected = [||]) ?(values = [||]) ?(n_values = -1)
+    ?(n_expected = -1) ?(diag = "") ?(runner_error = 0) ?(error_subcode = 0) () =
   let b = Bytes.make Abi.result_page_size '\000' in
-  Abi.set_string b Abi.Result_off.magic Abi.result_magic;
-  Abi.set_u16 b Abi.Result_off.abi_version Abi.abi_version;
+  Abi.set_string b Abi.Result_off.magic
+    (if abi_version = Abi_v2.abi_version then Abi_v2.result_magic else Abi.result_magic);
+  Abi.set_u16 b Abi.Result_off.abi_version abi_version;
   Abi.set_u16 b Abi.Result_off.status (Abi.status_code status);
   Abi.set_u32 b Abi.Result_off.case_id case_id;
   Abi.set_u16 b Abi.Result_off.n_expected

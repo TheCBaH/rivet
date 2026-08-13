@@ -32,6 +32,132 @@ let%expect_test "every target's codec passes Codec.check" =
     arm: alt arm: movw and dp-imm have overlapping fixed bits; priority 1 before 3 decides
     arm: alt arm: movt and dp-imm have overlapping fixed bits; priority 2 before 3 decides
     aarch64: none
+    riscv32: none
+    riscv64: none
+    |}]
+
+let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
+  let open Riscv32_encode in
+  let zero = Asm_core.Expr.Const Foundation.Bigint.zero in
+  let values =
+    [
+      Lowered.I
+        {
+          name = "addi";
+          opcode = 0x13;
+          funct3 = 0;
+          funct_hi = 0;
+          shamt_bits = None;
+          rd = 10;
+          rs1 = 0;
+          imm = Asm_core.Expr.Const (Foundation.Bigint.of_int 42);
+        };
+      Lowered.Pair { name = "call"; rd = 1; tmp = 1; target = zero; addi = false };
+    ]
+  in
+  List.iter
+    (fun value ->
+      match Codec.encode codec value with
+      | Error _ -> print_endline "encode failed"
+      | Ok encoded -> (
+          Printf.printf "%s %d bits %s\n"
+            (String.concat "." encoded.Codec.form)
+            (Codec.Bits.width encoded.bits)
+            (Codec.Bits.to_string encoded.bits);
+          match Codec.decode_bits codec encoded.bits with
+          | Some decoded ->
+              Printf.printf "decoded %d bits, equal=%b\n" decoded.Codec.consumed
+                (Lowered.equal value decoded.value)
+          | None -> print_endline "decode failed"))
+    values;
+  [%expect
+    {|
+    word 32 bits 00000010101000000000010100010011
+    decoded 32 bits, equal=true
+    pair 64 bits 0000000000000000000000001001011100000000000000001000000011100111
+    decoded 64 bits, equal=true
+    |}]
+
+(* {1 Declared modifier lexing} *)
+
+let driver name =
+  match Driver.Registry.find name with Some d -> d | None -> failwith ("missing target " ^ name)
+
+let source text = Foundation.Span.source ~name:"<test>" ~contents:text
+
+let show_tokens target text =
+  let (module D : Target_intf.Target.DRIVER) = driver target in
+  match D.dump_tokens ~source:(source text) with
+  | Ok dump -> print_string dump
+  | Error ds ->
+      List.iter
+        (fun d ->
+          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
+        (Foundation.Diag.diagnostics ds)
+
+let%expect_test "modifier spellings are declared by the lexical profile" =
+  show_tokens "riscv32" "%pcrel_hi(symbol) %undeclared(symbol)\n";
+  show_tokens "arm" ":lower16:symbol\n";
+  [%expect
+    {|
+    0 9 modifier %pcrel_hi
+    9 1 lparen (
+    10 6 ident symbol
+    16 1 rparen )
+    18 1 percent %
+    19 10 ident undeclared
+    29 1 lparen (
+    30 6 ident symbol
+    36 1 rparen )
+    37 1 eol \n
+    38 0 eof
+    0 9 modifier :lower16:
+    9 6 ident symbol
+    15 1 eol \n
+    16 0 eof
+    |}]
+
+let%expect_test "target state is replayed in source order across push and pop" =
+  let (module D : Target_intf.Target.DRIVER) = driver "riscv64" in
+  let text =
+    {|
+.text
+.option nopic
+la x5, target
+.option push
+.option pic
+la x6, target
+.option pop
+la x7, target
+target:
+addi x0, x0, 0
+|}
+  in
+  (match D.dump_lowered_ast ~unit_name:"state" ~source:(source text) with
+  | Ok dump -> print_string dump
+  | Error ds ->
+      List.iter
+        (fun d ->
+          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
+        (Foundation.Diag.diagnostics ds));
+  [%expect
+    {|
+    lowered state
+    section .text r-x align=1
+      bytes b7 02 00 00              [riscv64.lui]
+        @0/4B pc+0 hi abs-hi20 b20 [12+20@0] = target
+      bytes 93 82 02 00              [riscv64.addi]
+        @0/4B pc+0 lo abs-lo12-i s12 [20+12@0] = target
+      bytes 17 03 00 00 13 03 03 00  [riscv64.la]
+        @0/4B pc+0 hi pcrel-hi20 b20 [12+20@0] = target head(pair)
+        @4/4B pc+0 lo pcrel-lo12-i s12 [20+12@0] = target tail(sibling:pair)
+      bytes b7 03 00 00              [riscv64.lui]
+        @0/4B pc+0 hi abs-hi20 b20 [12+20@0] = target
+      bytes 93 83 03 00              [riscv64.addi]
+        @0/4B pc+0 lo abs-lo12-i s12 [20+12@0] = target
+      label target
+      bytes 13 00 00 00              [riscv64.addi]
+    local target notype in .text
     |}]
 
 (* {1 ARM modified immediates}
@@ -179,6 +305,117 @@ let attempt target text =
         (fun d ->
           Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
         (Foundation.Diag.diagnostics ds)
+
+let%expect_test "RISC-V option failures are never ignored" =
+  attempt "riscv32" ".text\n.option pop\naddi x0, x0, 0\n";
+  attempt "riscv32" ".text\n.option rvc\naddi x0, x0, 0\n";
+  attempt "riscv32" ".text\n.option relax\naddi x0, x0, 0\n";
+  attempt "riscv32" ".text\n.option mystery\naddi x0, x0, 0\n";
+  [%expect
+    {|
+    riscv32.directive: .option pop has no matching push
+    riscv32.directive: .option rvc is not supported
+    riscv32.directive: .option relax is not supported
+    riscv32.directive: unknown .option mystery
+    |}]
+
+let show_fixup label result =
+  match result with
+  | Ok value -> Printf.printf "%-18s %Ld\n" label value
+  | Error error ->
+      let diagnostic = Riscv32_encode.error_diagnostic (Err.Error.kind error) in
+      Printf.printf "%-18s %s\n" label (Foundation.Diagnostic.message diagnostic)
+
+let%expect_test "RISC-V branch, jump, and rounded split boundaries are exact" =
+  let branch target = Riscv32_encode.evaluate_fixup Riscv32_encode.Branch13 ~place:0L ~target in
+  let jump target = Riscv32_encode.evaluate_fixup Riscv32_encode.Jal21 ~place:0L ~target in
+  let hi target = Riscv32_encode.evaluate_fixup Riscv32_encode.Pcrel_hi20 ~place:0L ~target in
+  let lo target = Riscv32_encode.evaluate_fixup Riscv32_encode.Pcrel_lo12_i ~place:0L ~target in
+  List.iter
+    (fun (label, value) -> show_fixup label (branch value))
+    [ ("b min", -4096L); ("b below", -4098L); ("b max", 4094L); ("b above", 4096L) ];
+  List.iter
+    (fun (label, value) -> show_fixup label (jump value))
+    [
+      ("jal min", -1048576L);
+      ("jal below", -1048578L);
+      ("jal max", 1048574L);
+      ("jal above", 1048576L);
+    ];
+  show_fixup "hi 0x7ff" (hi 0x7ffL);
+  show_fixup "lo 0x7ff" (lo 0x7ffL);
+  show_fixup "hi 0x800" (hi 0x800L);
+  show_fixup "lo 0x800" (lo 0x800L);
+  show_fixup "auipc max" (hi 0x7fffffffL);
+  show_fixup "auipc overflow" (hi 0x80000000L);
+  show_fixup "rv32 max hi"
+    (Riscv32_encode.evaluate_fixup Riscv32_encode.Abs_hi20 ~place:0L ~target:0xffffffffL);
+  show_fixup "rv32 max lo"
+    (Riscv32_encode.evaluate_fixup Riscv32_encode.Abs_lo12_i ~place:0L ~target:0xffffffffL);
+  show_fixup "rv32 overflow"
+    (Riscv32_encode.evaluate_fixup Riscv32_encode.Abs_hi20 ~place:0L ~target:0x100000000L);
+  [%expect
+    {|
+    b min              -4096
+    b below            branch immediate is out of range
+    b max              4094
+    b above            branch immediate is out of range
+    jal min            -1048576
+    jal below          jal immediate is out of range
+    jal max            1048574
+    jal above          jal immediate is out of range
+    hi 0x7ff           0
+    lo 0x7ff           2047
+    hi 0x800           1
+    lo 0x800           -2048
+    auipc max          524288
+    auipc overflow     auipc immediate is out of range
+    rv32 max hi        0
+    rv32 max lo        -1
+    rv32 overflow      RV32 address immediate is out of range
+    |}]
+
+let show_decode target bytes =
+  let (module D : Target_intf.Target.DRIVER) = driver target in
+  match D.dump_disasm_canonical ~address:0L bytes with
+  | Ok text -> Printf.printf "%s: %s" target text
+  | Error ds ->
+      List.iter
+        (fun d ->
+          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
+        (Foundation.Diag.diagnostics ds)
+
+let%expect_test "RISC-V decode rejects malformed or profile-incompatible words" =
+  show_decode "riscv32" "\x13\x00\x00";
+  show_decode "riscv32" "\xff\xff\xff\xff";
+  show_decode "riscv32" "\x1b\x00\x00\x00";
+  show_decode "riscv32" "\x01\x00\x00\x00";
+  [%expect
+    {|
+    riscv32.decode: fewer than four bytes remain
+    riscv32.decode: no form matches this word
+    riscv32.decode: no form matches this word
+    riscv32.decode: RISC-V instructions must be four bytes
+    |}]
+
+let%expect_test "RISC-V I/S and shift widths reject exactly one past their limits" =
+  attempt "riscv32" ".text\naddi x1, x2, -2048\nsw x1, 2047(x2)\nslli x1, x2, 31\n";
+  attempt "riscv32" ".text\naddi x1, x2, 2048\n";
+  attempt "riscv32" ".text\nsw x1, -2049(x2)\n";
+  attempt "riscv32" ".text\nslli x1, x2, 32\n";
+  attempt "riscv64" ".text\nslli x1, x2, 63\n";
+  attempt "riscv64" ".text\nslli x1, x2, 64\n";
+  attempt "riscv32" ".text\naddw x1, x2, x3\n";
+  [%expect
+    {|
+    accepted
+    riscv32.fixup: addi 2048 (2048) immediate is out of range
+    riscv32.fixup: sw immediate is out of range
+    riscv32.fixup: slli 32 (32) immediate is out of range
+    accepted
+    riscv64.fixup: slli 64 (64) immediate is out of range
+    riscv32.lower: addw is available only when XLEN is 64
+    |}]
 
 let%expect_test "a second allocatable section is accepted, as is a declared one" =
   attempt "x86_64" "\t.text\n\tret\n\t.section .note.GNU-stack,\"\",@progbits\n";

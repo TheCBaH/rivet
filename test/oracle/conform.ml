@@ -27,6 +27,23 @@
 open Asm_oracle
 open Asm_oracle_run
 
+let abi_version =
+  match Sys.getenv_opt "ASM_ABI_VERSION" with
+  | None -> Abi.abi_version
+  | Some "1" -> 1
+  | Some "2" -> Abi_v2.abi_version
+  | Some value -> invalid_arg ("ASM_ABI_VERSION must be 1 or 2, got " ^ value)
+
+let serialize t = Manifest.serialize ~abi_version t
+
+let () =
+  let probe = serialize (Manifest.single_code Abi.X86_32 "") in
+  let encoded = Abi.get_u16 probe Abi.Manifest_off.abi_version in
+  if encoded <> abi_version then
+    failwith
+      (Printf.sprintf "manifest serializer wrote ABI v%d while v%d was requested" encoded
+         abi_version)
+
 (* {1 Reference snippets}
 
    Assembled by this project, from the ASTs in {!Snippet_corpus.Snippet_ast}.
@@ -94,12 +111,12 @@ let base profile code =
 
 (* Named [canonical] rather than [serialize] because the case lists open
    Manifest, which would otherwise shadow it with the raw writer. *)
-let canonical profile code = Manifest.serialize (base profile code)
+let canonical profile code = serialize (base profile code)
 
 let two_segments profile code =
   (* Two payload-bearing segments a page apart, for the overlap and
      segment/segment collision cases. *)
-  Manifest.serialize
+  serialize
     {
       (base profile code) with
       Manifest.segments =
@@ -127,7 +144,7 @@ let two_segments profile code =
    A case whose violation depends on the length of an unrelated snippet is not
    testing what it claims to. *)
 let gapped profile code =
-  Manifest.serialize
+  serialize
     {
       (base profile code) with
       Manifest.segments =
@@ -161,7 +178,7 @@ type case = {
 }
 
 let run_manifest ?input ?extra_args profile manifest =
-  Qemu_user.run ?input ?extra_args ~profile ~manifest ~expected_case_id:case_id ()
+  Qemu_user.run ~abi_version ?input ?extra_args ~profile ~manifest ~expected_case_id:case_id ()
 
 let m ?only name expect f =
   { name; expect; only; build = (fun profile s -> run_manifest profile (f profile s)) }
@@ -206,7 +223,8 @@ let header_cases =
     m "bad-magic" (Error "manifest.bad_magic") (fun p s ->
         patch_bytes (canonical p s.return42) 0 "X");
     m "bad-abi-version" (Error "manifest.bad_abi_version") (fun p s ->
-        patch_u16 (canonical p s.return42) Abi.Manifest_off.abi_version 2);
+        patch_u16 (canonical p s.return42) Abi.Manifest_off.abi_version
+          (if abi_version = 1 then 2 else 1));
     m "bad-profile-id" (Error "manifest.bad_profile_id") (fun p s ->
         patch_u16 (canonical p s.return42) Abi.Manifest_off.profile_id 9);
     (* total_len overstating the real st_size: the case that would have let an
@@ -270,7 +288,7 @@ let payload_cases =
         set_total_len (append (canonical p s.return42) (String.make 8 '\000')));
     (* The file has to be genuinely large enough, or stage 5 shadows stage 9. *)
     m "init-len-too-large" (Error "manifest.init_len_too_large") (fun p _ ->
-        Manifest.serialize (base p (String.make (Abi.init_len_max + 1) '\x90')));
+        Manifest.serialize ~abi_version (base p (String.make (Abi.init_len_max + 1) '\x90')));
     m "zero-len-too-large" (Error "manifest.zero_len_too_large") (fun p s ->
         patch_u64 (canonical p s.return42)
           (d0 + Abi.Descriptor_off.zero_len)
@@ -282,7 +300,8 @@ let geometry_cases =
   let open Manifest in
   let vaddr0 = d0 + Abi.Descriptor_off.vaddr in
   [
-    m "segment-empty" (Error "manifest.segment_empty") (fun p _ -> Manifest.serialize (base p ""));
+    m "segment-empty" (Error "manifest.segment_empty") (fun p _ ->
+        Manifest.serialize ~abi_version (base p ""));
     m "align-not-power-of-two" (Error "manifest.align_not_power_of_two") (fun p s ->
         patch_u32 (canonical p s.return42) (d0 + Abi.Descriptor_off.align) 3L);
     m "vaddr-misaligned" (Error "manifest.vaddr_misaligned") (fun p s ->
@@ -481,7 +500,7 @@ let exemption_for profile key =
 (* {1 Driver} *)
 
 let () =
-  let profiles = Qemu_user.available_profiles () in
+  let profiles = Qemu_user.available_profiles ~abi_version () in
   if profiles = [] then (
     Fmt.pr "conform: no helpers built - run `make asm-helpers`@.";
     exit 1);
@@ -500,7 +519,9 @@ let () =
           incr failures
       | Ok s ->
           Fmt.pr "@.=== %s@." (Abi.profile_name profile);
-          List.iter (fun line -> Fmt.pr "  ..   %s@." line) (Qemu_user.provenance profile);
+          List.iter
+            (fun line -> Fmt.pr "  ..   %s@." line)
+            (Qemu_user.provenance ~abi_version profile);
           List.iter
             (fun c ->
               if applies profile c then (
@@ -527,5 +548,6 @@ let () =
                       key)
             Abi.all_subcodes)
     profiles;
-  Fmt.pr "@.conform: %d failures over %d profile(s)@." !failures (List.length profiles);
+  Fmt.pr "@.conform: ABI v%d, %d failures over %d profile(s)@." abi_version !failures
+    (List.length profiles);
   if !failures > 0 then exit 1

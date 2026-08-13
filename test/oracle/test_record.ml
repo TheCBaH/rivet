@@ -363,3 +363,30 @@ let%expect_test "subcode table" =
     cache-sync    2 subcodes 1..2 contiguous=true
     protocol      2 subcodes 1..2 contiguous=true
     environment   2 subcodes 1..2 contiguous=true |}]
+
+let%expect_test "ABI v2 adds two profiles without moving v1 wire fields" =
+  List.iter
+    (fun profile ->
+      Fmt.pr "%d %-8s xlen=%d entry-align=%d stack-align=%d return=%s flush=%b@."
+        (Abi_v2.profile_id profile) (Abi_v2.profile_name profile) (Abi_v2.word_bits profile)
+        (Abi_v2.entry_alignment profile) (Abi_v2.stack_alignment profile)
+        (Abi_v2.return_register profile)
+        (Abi_v2.needs_riscv_flush_icache profile))
+    Abi_v2.all_profiles;
+  Fmt.pr "offsets manifest=%d/%d result=%d/%d cache=%d:%s callee-saved=%d signext=%Ld@."
+    Abi.Manifest_off.entry_addr Abi_v2.Manifest_off.entry_addr Abi.Result_off.values
+    Abi_v2.Result_off.values
+    (Abi_v2.cache_sync_subcode Abi_v2.Riscv_flush_icache)
+    (Abi_v2.cache_sync_name Abi_v2.Riscv_flush_icache)
+    (List.length (Abi_v2.callee_saved Abi_v2.Riscv64))
+    (Abi_v2.normalize_return32 0xffffffffL);
+  [%expect
+    {|
+    1 x86_32   xlen=32 entry-align=1 stack-align=16 return=eax flush=false
+    2 x86_64   xlen=64 entry-align=1 stack-align=16 return=eax flush=false
+    3 arm      xlen=32 entry-align=4 stack-align=8 return=r0 flush=false
+    4 aarch64  xlen=64 entry-align=4 stack-align=16 return=w0 flush=false
+    5 riscv32  xlen=32 entry-align=4 stack-align=16 return=x10 flush=true
+    6 riscv64  xlen=64 entry-align=4 stack-align=16 return=x10 flush=true
+    offsets manifest=24/24 result=88/88 cache=3:riscv_flush_icache callee-saved=12 signext=-1
+    |}]

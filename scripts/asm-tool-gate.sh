@@ -9,7 +9,7 @@
 #
 # Five checks, and the boundaries between them are the point:
 #
-#   1. Each of the four qemu-user runners executes a self-contained reference
+#   1. Each qemu-user runner executes a self-contained reference
 #      ELF that exits through a direct exit_group syscall. NO dependency on
 #      ABI v1, on the transport helpers, or on the OCaml runner - none of which
 #      existed when this gate was specified, and none of which should be able to
@@ -97,12 +97,31 @@ _start:
 	svc	#0
 EOF
 ;;
+    riscv32) cat <<'EOF'
+	.text
+	.globl _start
+_start:
+	li a7, 94
+	li a0, 15
+	ecall
+EOF
+;;
+    riscv64) cat <<'EOF'
+	.text
+	.globl _start
+_start:
+	li a7, 94
+	li a0, 16
+	ecall
+EOF
+;;
   esac
 }
 
 expected_status_for() {
   case "$1" in
     x86_32) echo 11 ;; x86_64) echo 12 ;; arm) echo 13 ;; aarch64) echo 14 ;;
+    riscv32) echo 15 ;; riscv64) echo 16 ;;
   esac
 }
 
@@ -118,18 +137,26 @@ user_gate() {
       fail "$t" "no ${TOOLPREFIX}as"
       continue
     fi
-    if ! "${TOOLPREFIX}as" -o "$dir/ref.o" "$dir/ref.s" 2>"$dir/as.log"; then
+    if ! "${TOOLPREFIX}as" "${AS_FLAGS[@]}" -o "$dir/ref.o" "$dir/ref.s" 2>"$dir/as.log"; then
       fail "$t assemble" "$(tr '\n' ' ' <"$dir/as.log")"
       continue
     fi
     # Static, no libc, explicit entry: linking is a separate failure mode from
     # assembling and gets its own message.
-    if ! "${TOOLPREFIX}ld" -static -e _start -o "$dir/ref" "$dir/ref.o" 2>"$dir/ld.log"; then
+    if ! "${TOOLPREFIX}ld" "${LD_FLAGS[@]}" -static -e _start -o "$dir/ref" "$dir/ref.o" 2>"$dir/ld.log"; then
       fail "$t link" "$(tr '\n' ' ' <"$dir/ld.log")"
       continue
     fi
     record "$t.as" "$("${TOOLPREFIX}as" --version | head -1)"
     record "$t.ld" "$("${TOOLPREFIX}ld" --version | head -1)"
+
+    local actual_class actual_machine
+    actual_class=$("${TOOLPREFIX}readelf" -h "$dir/ref" | awk -F: '/Class:/ { gsub(/ /, "", $2); print $2 }')
+    actual_machine=$("${TOOLPREFIX}readelf" -h "$dir/ref" | awk -F: '/Machine:/ { sub(/^[[:space:]]+/, "", $2); print $2 }')
+    if [ "$actual_class" != "$ELF_CLASS" ] || [ "$actual_machine" != "$READELF_MACHINE" ]; then
+      fail "$t ELF" "$actual_class/$actual_machine, expected $ELF_CLASS/$READELF_MACHINE"
+      continue
+    fi
 
     if ! command -v "$QEMU_BIN" >/dev/null; then
       fail "$t" "no $QEMU_BIN"

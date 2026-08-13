@@ -194,6 +194,12 @@ module Make (T : T_intf.TARGET) = struct
             | T_intf.Rejected e -> errors := parse_diagnostic e :: !errors
             | T_intf.Handled { state = s; emit } ->
                 state := s;
+                (* State transitions are part of the normalized program.  They
+                   must survive so lowering can replay them at their source
+                   position instead of seeing only the final file state. *)
+                add
+                  (Normalized_ast.Directive
+                     { directive = Directive.Target_state { name; argument }; origin });
                 List.iter (fun insn -> add (Normalized_ast.Instruction { insn; origin })) emit
             | T_intf.Unhandled -> (
                 match Directives.normalize ~data_widths:T.data_widths ~name ~arguments with
@@ -238,6 +244,9 @@ module Make (T : T_intf.TARGET) = struct
     let sections : section_build list ref = ref [] in
     let declared = ref [] in
     let symbols : symbol_build list ref = ref [] in
+    (* [state] is retained in the public entry point for direct normalized-AST
+       producers, but parsed programs always pass [default_state].  Target
+       directives in [m] then replay in source order below. *)
     let state = ref state in
     let current = ref None in
     let ensure_section name perms =
@@ -373,6 +382,7 @@ module Make (T : T_intf.TARGET) = struct
                                         pc_bias = 0;
                                         range = Lowered_ast.Bitpattern (width * 8);
                                         value = folded;
+                                        pairing = Lowered_ast.Unpaired;
                                         origin;
                                       };
                                     ])
@@ -506,8 +516,8 @@ module Make (T : T_intf.TARGET) = struct
     let open Err.Syntax in
     let stage r = Diag.stage ~pos:__POS__ Err.Action.Map r in
     let* src = stage (parse ~unit_name ~source) in
-    let* norm, state = stage (simplify src) in
-    let* low = stage (lower ~state norm) in
+    let* norm, _final_state = stage (simplify src) in
+    let* low = stage (lower ~state:T.default_state norm) in
     stage (plan ?entry low)
 
   (* {1 Dumps (asm/docs/contracts.md §1)} *)
@@ -550,7 +560,8 @@ module Make (T : T_intf.TARGET) = struct
     | Ok src -> (
         match simplify src with
         | Error ds -> Error ds
-        | Ok (n, state) -> Result.map (Fmt.to_to_string Lowered_ast.pp) (lower ~state n))
+        | Ok (n, _final_state) ->
+            Result.map (Fmt.to_to_string Lowered_ast.pp) (lower ~state:T.default_state n))
 
   (* {2 The diagnostic disassembler (§6)}
 

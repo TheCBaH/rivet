@@ -61,6 +61,8 @@ let pp_range ppf r =
    AArch64 adrp's immlo/immhi and ARM's movw/movt describe rather than
    approximate their split fields. *)
 type slice = { bit_offset : int; bit_width : int; value_lsb : int }
+type pair_ref = Sibling_key of string | Anchor_symbol of string
+type pairing = Unpaired | Pair_head of string | Pair_tail of pair_ref
 
 (* A fixup as the *linker* needs it: where to patch, what PC the architecture
    computes against, what values are acceptable, and the expression to evaluate.
@@ -84,6 +86,7 @@ type 'k fixup = {
   pc_bias : int;  (** PC base = fragment address + this *)
   range : range;
   value : Expr.t;
+  pairing : pairing;
   origin : Origin.t;
 }
 
@@ -187,13 +190,19 @@ type 'k module_ = {
    where in memory. *)
 let pp_slice ppf s = Fmt.pf ppf "%d+%d@%d" s.bit_offset s.bit_width s.value_lsb
 
+let pp_pairing ppf = function
+  | Unpaired -> ()
+  | Pair_head key -> Fmt.pf ppf " head(%s)" key
+  | Pair_tail (Sibling_key key) -> Fmt.pf ppf " tail(sibling:%s)" key
+  | Pair_tail (Anchor_symbol symbol) -> Fmt.pf ppf " tail(anchor:%s)" symbol
+
 let pp_fixup ppf f =
-  Fmt.pf ppf "@%d/%dB pc+%d %s %s %a [%a] = %s" f.byte_offset f.container f.pc_bias f.name
+  Fmt.pf ppf "@%d/%dB pc+%d %s %s %a [%a] = %s%a" f.byte_offset f.container f.pc_bias f.name
     f.kind_name
     (fun ppf () -> pp_range ppf f.range)
     ()
     Fmt.(list ~sep:(any ",") pp_slice)
-    f.slices (Expr.to_string f.value)
+    f.slices (Expr.to_string f.value) pp_pairing f.pairing
 
 let pp_fixups ppf = function
   | [] -> ()

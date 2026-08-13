@@ -1,4 +1,4 @@
-(* The four fixture sources, embedded as string literals.
+(* The six fixture sources, embedded as string literals.
 
    Embedded rather than read from disk, and that is not a convenience: a Melange
    build shares no filesystem with the native one, so a three-build driver that
@@ -90,4 +90,56 @@ let aarch64 =
    \t.size\tasm_test_entry, . - asm_test_entry\n\n\
    \t.section .note.GNU-stack,\"\",%progbits\n"
 
-let all = [ ("x86_32", x86_32); ("x86_64", x86_64); ("arm", arm); ("aarch64", aarch64) ]
+let riscv32 =
+  "\t.option pic\n\
+   \t.text\n\
+   \t.balign 2\n\
+   \t.globl asm_test_entry\n\
+   asm_test_entry:\n\
+   \t.cfi_startproc\n\
+   \tmv\tx30, x2\n\
+   \taddi\tx2, x2, -16\n\
+   \t.cfi_adjust_cfa_offset\t16\n\
+   \tsw\tx30, 0(x2)\n\
+   \tsw\tx1, 4(x2)\n\
+   \t.cfi_rel_offset\tx1, 4\n\
+   \taddi\tx10, x0, 42\n\
+   \tlw\tx1, 4(x2)\n\
+   \taddi\tx2, x2, 16\n\
+   \tjr\tx1\n\
+   \t.cfi_endproc\n\
+   \t.type\tasm_test_entry, @function\n\
+   \t.size\tasm_test_entry, . - asm_test_entry\n\n\
+   \t.section .note.GNU-stack,\"\",%progbits\n"
+
+let riscv64 =
+  "\t.option pic\n\
+   \t.text\n\
+   \t.balign 2\n\
+   \t.globl asm_test_entry\n\
+   asm_test_entry:\n\
+   \t.cfi_startproc\n\
+   \tmv\tx30, x2\n\
+   \taddi\tx2, x2, -16\n\
+   \t.cfi_adjust_cfa_offset\t16\n\
+   \tsd\tx30, 0(x2)\n\
+   \tsd\tx1, 8(x2)\n\
+   \t.cfi_rel_offset\tx1, 8\n\
+   \taddiw\tx10, x0, 42\n\
+   \tld\tx1, 8(x2)\n\
+   \taddi\tx2, x2, 16\n\
+   \tjr\tx1\n\
+   \t.cfi_endproc\n\
+   \t.type\tasm_test_entry, @function\n\
+   \t.size\tasm_test_entry, . - asm_test_entry\n\n\
+   \t.section .note.GNU-stack,\"\",%progbits\n"
+
+let all =
+  [
+    ("x86_32", x86_32);
+    ("x86_64", x86_64);
+    ("arm", arm);
+    ("aarch64", aarch64);
+    ("riscv32", riscv32);
+    ("riscv64", riscv64);
+  ]

@@ -7,3 +7,4 @@
 /asm/_build/
 /.asm-helpers/
 /.tool-gate/
+/.riscv-exec-artifacts/

@@ -84,6 +84,8 @@ type resolved_fixup = {
   rf_slices : Lowered_ast.slice list;
   rf_range : Lowered_ast.range;
   rf_value : Expr.t;
+  rf_original_value : Expr.t;
+  rf_pairing : Lowered_ast.pairing;
   rf_name : string;
   rf_kind_name : string;
   rf_family : string;
@@ -149,7 +151,13 @@ type link_error =
   | `Too_large of too_large
   | `Relax_ladder of Lowered_ast.relax_error
   | `Relax_unreachable of relax_unreachable
-  | `Align_fill of align_fill ]
+  | `Align_fill of align_fill
+  | `Pair_undefined_anchor of string
+  | `Pair_cross_section of string
+  | `Pair_missing_head of string
+  | `Pair_ambiguous_head of string
+  | `Pair_incompatible_family of string
+  | `Pair_duplicate_head of string ]
 
 and fixup_undefined_symbol = { fixup : string; symbol : string }
 and too_large = { size : int; limit : int }
@@ -204,6 +212,12 @@ let pp_link_error ppf : link_error -> unit = function
         widest at
   | `Align_fill { pad; boundary } ->
       Fmt.pf ppf "the target supplies no %d-byte padding for a %d-byte alignment" pad boundary
+  | `Pair_undefined_anchor s -> Fmt.pf ppf "paired fixup anchor %s is undefined" s
+  | `Pair_cross_section s -> Fmt.pf ppf "paired fixup anchor %s is in another section" s
+  | `Pair_missing_head s -> Fmt.pf ppf "paired fixup %s has no matching head" s
+  | `Pair_ambiguous_head s -> Fmt.pf ppf "paired fixup %s has multiple matching heads" s
+  | `Pair_incompatible_family s -> Fmt.pf ppf "paired fixup %s has an incompatible head family" s
+  | `Pair_duplicate_head s -> Fmt.pf ppf "duplicate paired-fixup head %s" s
 
 let pp_bind_error ppf : bind_error -> unit = function
   | `Overflow { segment; address; size } ->
@@ -240,6 +254,12 @@ let link_error_code : link_error -> string = function
   | `Relax_ladder _ -> "image.relax-ladder"
   | `Relax_unreachable _ -> "image.relax-unreachable"
   | `Align_fill _ -> "image.align-fill"
+  | `Pair_undefined_anchor _ -> "image.pair-undefined-anchor"
+  | `Pair_cross_section _ -> "image.pair-cross-section"
+  | `Pair_missing_head _ -> "image.pair-missing-head"
+  | `Pair_ambiguous_head _ -> "image.pair-ambiguous-head"
+  | `Pair_incompatible_family _ -> "image.pair-family"
+  | `Pair_duplicate_head _ -> "image.pair-duplicate-head"
 
 let bind_error_code : bind_error -> string = function
   | `Overflow _ -> "bind.overflow"
@@ -528,6 +548,8 @@ let plan_image ~evaluate policy (modules : 'k Lowered_ast.module_ list) =
                   rf_slices = f.Lowered_ast.slices;
                   rf_range = f.Lowered_ast.range;
                   rf_value = f.Lowered_ast.value;
+                  rf_original_value = f.Lowered_ast.value;
+                  rf_pairing = f.Lowered_ast.pairing;
                   rf_name = f.Lowered_ast.name;
                   rf_kind_name = f.Lowered_ast.kind_name;
                   rf_family = f.Lowered_ast.family;
@@ -537,6 +559,93 @@ let plan_image ~evaluate policy (modules : 'k Lowered_ast.module_ list) =
                 })
               fx)
           laid
+      in
+      let label_locations =
+        List.concat_map
+          (fun (section, _, offs, _, _, _) ->
+            List.map (fun (symbol, offset) -> (symbol, section, offset)) offs)
+          laid
+      in
+      let heads =
+        List.filter
+          (fun f -> match f.rf_pairing with Lowered_ast.Pair_head _ -> true | _ -> false)
+          fixups
+      in
+      (* Head keys are fragment-local.  A duplicate is rejected even if no
+         tail happens to reference it, since accepting it would make a later
+         low fixup depend on list order. *)
+      let seen_head_keys = ref [] in
+      List.iter
+        (fun h ->
+          match h.rf_pairing with
+          | Lowered_ast.Pair_head key ->
+              let qualified = (h.rf_section, h.rf_frag_offset, key) in
+              if List.mem qualified !seen_head_keys then
+                fail ~origin:h.rf_origin (`Pair_duplicate_head key)
+              else seen_head_keys := qualified :: !seen_head_keys
+          | _ -> ())
+        heads;
+      let pair_tail tail candidates description =
+        match candidates with
+        | [] ->
+            fail ~origin:tail.rf_origin (`Pair_missing_head description);
+            tail
+        | [ head ] ->
+            if not (String.equal tail.rf_family head.rf_family) then begin
+              fail ~origin:tail.rf_origin (`Pair_incompatible_family description);
+              tail
+            end
+            else
+              {
+                tail with
+                rf_value = head.rf_value;
+                rf_frag_offset = head.rf_frag_offset;
+                rf_pc_bias = head.rf_pc_bias;
+              }
+        | _ ->
+            fail ~origin:tail.rf_origin (`Pair_ambiguous_head description);
+            tail
+      in
+      let fixups =
+        List.map
+          (fun tail ->
+            match tail.rf_pairing with
+            | Lowered_ast.Unpaired | Lowered_ast.Pair_head _ -> tail
+            | Lowered_ast.Pair_tail (Lowered_ast.Sibling_key key) ->
+                pair_tail tail
+                  (List.filter
+                     (fun h ->
+                       String.equal h.rf_section tail.rf_section
+                       && h.rf_frag_offset = tail.rf_frag_offset
+                       &&
+                       match h.rf_pairing with
+                       | Lowered_ast.Pair_head k -> String.equal k key
+                       | _ -> false)
+                     heads)
+                  key
+            | Lowered_ast.Pair_tail (Lowered_ast.Anchor_symbol anchor) -> (
+                match List.filter (fun (n, _, _) -> String.equal n anchor) label_locations with
+                | [] ->
+                    fail ~origin:tail.rf_origin (`Pair_undefined_anchor anchor);
+                    (* The pairing diagnostic is the root cause.  Replace the
+                       unresolved effective expression so the generic import
+                       check below does not add a misleading second error.  The
+                       original anchor remains in [rf_original_value] for
+                       relocation observations. *)
+                    { tail with rf_value = Expr.Const Bigint.zero }
+                | (_, section, _) :: _ when not (String.equal section tail.rf_section) ->
+                    fail ~origin:tail.rf_origin (`Pair_cross_section anchor);
+                    tail
+                | [ (_, section, offset) ] ->
+                    pair_tail tail
+                      (List.filter
+                         (fun h -> String.equal h.rf_section section && h.rf_byte_offset = offset)
+                         heads)
+                      anchor
+                | _ ->
+                    fail ~origin:tail.rf_origin (`Pair_ambiguous_head anchor);
+                    tail))
+          fixups
       in
       errors := List.rev_append layout_errors !errors;
       let globals =
@@ -597,11 +706,7 @@ let plan_image ~evaluate policy (modules : 'k Lowered_ast.module_ list) =
       (* Which section defined each label, taken from the section that laid it
          out rather than assumed to be the first: with .text and .data both
          present, assuming would put every data symbol at a code address. *)
-      let section_of =
-        List.concat_map
-          (fun (name, _, offs, _, _, _) -> List.map (fun (n, _) -> (n, name)) offs)
-          laid
-      in
+      let section_of = List.map (fun (name, section, _) -> (name, section)) label_locations in
       if !errors <> [] then Diag.fail ~pos:__POS__ (List.rev !errors)
       else
         Ok
@@ -977,8 +1082,8 @@ let fixup_observations (l : laid_out) =
           o_role = f.rf_role;
         }
       in
-      match normalize_ref f.rf_value with
-      | None -> Non_normalizable { nn_site = site; nn_expr = Expr.to_string f.rf_value }
+      match normalize_ref f.rf_original_value with
+      | None -> Non_normalizable { nn_site = site; nn_expr = Expr.to_string f.rf_original_value }
       | Some (symbol, addend) ->
           let sym = List.find_opt (fun s -> String.equal s.Lowered_ast.name symbol) l.symbols in
           let defined = List.mem_assoc symbol l.offsets in

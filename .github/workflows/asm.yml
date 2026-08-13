@@ -85,10 +85,11 @@ jobs:
       run: |
         ${{ env.EXEC }} make asm-melange-optin
 
-  # ABI v1 conformance (asm/docs/exec-abi-v1.md §16). Its own job, and
+# ABI v1 regression plus the shared-source v2 legacy-profile conformance suite.
+# Its own job, and
   # deliberately not part of the matrix above: it assembles the four helpers
   # with the cross binutils and executes them under the four qemu-user
-  # binaries, neither of which the 32-bit legs have. Keeping it out is what
+  # binaries, none of which the 32-bit legs have. Keeping it out is what
   # lets `make asm-test` stay free of any cross-toolchain or QEMU dependency
   # (guardrail 4) while conformance still blocks.
   #
@@ -153,6 +154,61 @@ jobs:
     - name: tool gate
       run: |
         ${{ env.EXEC }} make asm-tool-gate
+
+  # Freestanding CompCert regeneration and GNU/QEMU differential gate.  The
+  # profiles are independent jobs: neither a libc nor the other XLEN's ccomp
+  # installation is a prerequisite for reproducing one committed corpus.
+  riscv-oracle:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [riscv32, riscv64]
+    env:
+      OCAML_VERSION: 5.5.0
+    steps:
+    - name: checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: true
+    - name: devcontainer
+      uses: ./.github/workflows/actions/devcontainer
+      id: devcontainer
+      with:
+        variant: ${{ env.OCAML_VERSION }}
+    - name: setup
+      run: |
+        echo 'EXEC=${{ steps.devcontainer.outputs.exec }}' >> $GITHUB_ENV
+    - name: build freestanding CompCert profile
+      run: |
+        ${{ env.EXEC }} tools/compcert-riscv-fixture-setup.sh ${{ matrix.target }}
+    - name: regenerate and compare source assembly
+      run: |
+        ${{ env.EXEC }} tools/asm-fixture-gen.sh --verify ${{ matrix.target }}
+    - name: GNU differential artifacts and QEMU execution
+      run: |
+        ${{ env.EXEC }} tools/asm-fixture-oracle.sh ${{ matrix.target }}
+        ${{ env.EXEC }} tools/asm-riscv-exec.sh ${{ matrix.target }}
+        git diff --exit-code -- asm/fixtures/compcert-3.17
+    - name: provenance and summaries
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: riscv-oracle-${{ matrix.target }}-provenance
+        path: |
+          .cross-smoke-work/artifacts/${{ matrix.target }}/
+          .riscv-exec-artifacts/${{ matrix.target }}/
+          asm/fixtures/compcert-3.17/*/${{ matrix.target }}/oracle/tool-versions.txt
+          asm/fixtures/compcert-3.17/*/${{ matrix.target }}/oracle/linked/manifest.txt
+    - name: complete failure evidence
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: riscv-oracle-${{ matrix.target }}-failure
+        path: |
+          .cross-smoke-work/artifacts/${{ matrix.target }}/
+          .riscv-exec-artifacts/${{ matrix.target }}/
+          asm/fixtures/compcert-3.17/*/${{ matrix.target }}/
 
   # Byte-identical output from native OCaml, js_of_ocaml/Node, and Melange/Node
   # (.ai/asm_plan.md §11.6). Its own job on one pinned leg, because Melange

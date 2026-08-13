@@ -28,12 +28,13 @@ let evaluate kind ~place ~target =
 
 let origin = Origin.synthesized ~pass:"test" ()
 
-let fixup ?(name = "target") ?(byte_offset = 1) ?(container = 4) ?(pc_bias = 5) ~kind ~range ~slices
-    value =
+let fixup ?(name = "target") ?(family = "") ?(pairing = Lowered_ast.Unpaired) ?(byte_offset = 1)
+    ?(container = 4) ?(pc_bias = 5) ~kind ~range ~slices value =
   {
     Lowered_ast.kind;
     kind_name = kind_name kind;
-    family = (match kind with Abs32 -> "abs" | _ -> "pcrel-branch");
+    family =
+      (if family <> "" then family else match kind with Abs32 -> "abs" | _ -> "pcrel-branch");
     role = (match kind with Abs32 -> Lowered_ast.Data_address | _ -> Lowered_ast.Branch);
     name;
     slices;
@@ -42,6 +43,7 @@ let fixup ?(name = "target") ?(byte_offset = 1) ?(container = 4) ?(pc_bias = 5) 
     pc_bias;
     range;
     value;
+    pairing;
     origin;
   }
 
@@ -479,6 +481,144 @@ let%expect_test "the plan reports its outstanding fixups" =
     export entry
     export here
     unresolved target |}]
+
+(* {1 Paired fixups}
+
+   A synthetic absolute split keeps this test target-independent: both words
+   evaluate the head's target, while the tail retains its anchor expression in
+   observations.  RISC-V uses the same layout mechanism for PC-relative
+   HI20/LO12 pairs. *)
+
+let pair_fixup ?(family = "split") ?(pairing = Lowered_ast.Unpaired) ~byte_offset value =
+  fixup ~name:"pair" ~family ~pairing ~kind:Abs32 ~range:(Lowered_ast.Bitpattern 32) ~byte_offset
+    ~container:4 ~pc_bias:0 ~slices:(whole_container ~bits:32) value
+
+let pair_bytes fixups =
+  Lowered_ast.Bytes { bytes = String.make 12 '\x00'; form = Some "t.pair"; fixups; origin }
+
+let pair_plan frags =
+  plan
+    (module_
+       ~symbols:[ sym "entry"; sym "target" ]
+       [ text_section ((label "entry" :: frags) @ [ label "target" ]) ])
+
+let%expect_test "an anchor tail evaluates against its high fixup target" =
+  let fragment =
+    pair_bytes
+      [
+        pair_fixup ~pairing:(Lowered_ast.Pair_head "hi") ~byte_offset:0 (Expr.Symbol "target");
+        pair_fixup ~pairing:(Lowered_ast.Pair_tail (Lowered_ast.Anchor_symbol ".Lhi"))
+          ~byte_offset:4 (Expr.Symbol ".Lhi");
+        pair_fixup ~pairing:(Lowered_ast.Pair_tail (Lowered_ast.Anchor_symbol ".Lhi"))
+          ~byte_offset:8 (Expr.Symbol ".Lhi");
+      ]
+  in
+  (match pair_plan [ label ".Lhi"; fragment ] with
+  | Error ds -> show_errors ds
+  | Ok l -> ( match bind_at l [ (".text", 0x1000L) ] with None -> () | Some img -> show_text img));
+  [%expect {|
+    0c 10 00 00 0c 10 00 00 0c 10 00 00 |}]
+
+let%expect_test "a sibling key is fragment-local" =
+  let head =
+    pair_bytes
+      [ pair_fixup ~pairing:(Lowered_ast.Pair_head "k") ~byte_offset:0 (Expr.Symbol "target") ]
+  in
+  let tail =
+    pair_bytes
+      [
+        pair_fixup ~pairing:(Lowered_ast.Pair_tail (Lowered_ast.Sibling_key "k")) ~byte_offset:4
+          (Expr.Symbol "entry");
+      ]
+  in
+  (match pair_plan [ head; tail ] with Error ds -> show_errors ds | Ok _ -> Fmt.pr "accepted@.");
+  [%expect {| image.pair-missing-head: paired fixup k has no matching head |}]
+
+let%expect_test "paired-fixup anchor failures are typed" =
+  let attempt frags =
+    match pair_plan frags with Error ds -> show_errors ds | Ok _ -> Fmt.pr "accepted@."
+  in
+  attempt
+    [
+      pair_bytes
+        [
+          pair_fixup ~pairing:(Lowered_ast.Pair_tail (Lowered_ast.Anchor_symbol ".Lmissing"))
+            ~byte_offset:4 (Expr.Symbol ".Lmissing");
+        ];
+    ];
+  attempt
+    [
+      label ".Lplain";
+      pair_bytes
+        [
+          pair_fixup ~pairing:(Lowered_ast.Pair_tail (Lowered_ast.Anchor_symbol ".Lplain"))
+            ~byte_offset:4 (Expr.Symbol ".Lplain");
+        ];
+    ];
+  attempt
+    [
+      label ".Lwrong";
+      pair_bytes
+        [
+          pair_fixup ~family:"high" ~pairing:(Lowered_ast.Pair_head "h") ~byte_offset:0
+            (Expr.Symbol "target");
+          pair_fixup ~family:"low"
+            ~pairing:(Lowered_ast.Pair_tail (Lowered_ast.Anchor_symbol ".Lwrong")) ~byte_offset:4
+            (Expr.Symbol ".Lwrong");
+        ];
+    ];
+  [%expect
+    {|
+    image.pair-undefined-anchor: paired fixup anchor .Lmissing is undefined
+    image.pair-missing-head: paired fixup .Lplain has no matching head
+    image.pair-family: paired fixup .Lwrong has an incompatible head family |}]
+
+let%expect_test "duplicate and ambiguous heads are rejected" =
+  let attempt fixups =
+    match pair_plan [ label ".Lhi"; pair_bytes fixups ] with
+    | Error ds -> show_errors ds
+    | Ok _ -> Fmt.pr "accepted@."
+  in
+  attempt
+    [
+      pair_fixup ~pairing:(Lowered_ast.Pair_head "same") ~byte_offset:0 (Expr.Symbol "target");
+      pair_fixup ~pairing:(Lowered_ast.Pair_head "same") ~byte_offset:0 (Expr.Symbol "target");
+    ];
+  attempt
+    [
+      pair_fixup ~pairing:(Lowered_ast.Pair_head "one") ~byte_offset:0 (Expr.Symbol "target");
+      pair_fixup ~pairing:(Lowered_ast.Pair_head "two") ~byte_offset:0 (Expr.Symbol "target");
+      pair_fixup ~pairing:(Lowered_ast.Pair_tail (Lowered_ast.Anchor_symbol ".Lhi")) ~byte_offset:4
+        (Expr.Symbol ".Lhi");
+    ];
+  [%expect
+    {|
+    image.pair-duplicate-head: duplicate paired-fixup head same
+    image.pair-ambiguous-head: paired fixup .Lhi has multiple matching heads |}]
+
+let%expect_test "an anchor may not cross sections" =
+  let m =
+    module_
+      ~symbols:[ sym "entry"; sym "target"; sym "anchor" ~section:".data" ]
+      [
+        text_section
+          [
+            label "entry";
+            pair_bytes
+              [
+                pair_fixup ~pairing:(Lowered_ast.Pair_tail (Lowered_ast.Anchor_symbol "anchor"))
+                  ~byte_offset:4 (Expr.Symbol "anchor");
+              ];
+            label "target";
+          ];
+        {
+          Lowered_ast.sec = { Lowered_ast.sec_name = ".data"; perms = Perms.rw; alignment = 4 };
+          fragments = [ label "anchor"; filler 4 ];
+        };
+      ]
+  in
+  (match plan m with Error ds -> show_errors ds | Ok _ -> Fmt.pr "accepted@.");
+  [%expect {| image.pair-cross-section: paired fixup anchor anchor is in another section |}]
 
 (* {1 Fixup observations}
 

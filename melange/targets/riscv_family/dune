@@ -1,0 +1,24 @@
+(copy_files#
+ (files ../../../targets/riscv_family/*.ml))
+
+(library
+ (name riscv_family_encode)
+ (modules riscv_family_encode)
+ (modes byte native melange)
+ (libraries foundation codec asm_core target_error target_encode)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))
+
+(library
+ (name riscv_family)
+ (modules riscv_family)
+ (modes byte native melange)
+ (libraries
+  foundation
+  codec
+  asm_core
+  asm_syntax
+  target_intf
+  riscv_family_encode)
+ (enabled_if
+  (= %{env:ASM_MELANGE=false} true)))

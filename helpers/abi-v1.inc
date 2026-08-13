@@ -1,4 +1,4 @@
-/* Execution ABI v1 constants, shared by all four helpers.
+/* Execution ABI wire constants, shared by the legacy-profile v1 and v2 helpers.
  *
  * asm/docs/exec-abi-v1.md is the specification and this is its transcription
  * for the assembler. It exists so that four assembly implementations cannot
@@ -11,8 +11,9 @@
  * name a register, an instruction or a syscall - those differ per profile and
  * live in the profile source.
  *
- * Every value below is quoted from a section of exec-abi-v1.md, and changing
- * one is an ABI v2 bump (§17), not an edit. */
+ * Every layout value below is quoted from exec-abi-v1.md and remains frozen in
+ * exec-abi-v2.md. tools/asm-helpers.sh supplies ABI_VERSION when it builds a
+ * helper; the fallback keeps direct assembly of these sources at ABI v1. */
 
 /* ---- §8 manifest header ---- */
 
@@ -80,7 +81,9 @@
         .equ    RS_VALIDATED,   2
         .equ    RS_RETURNED,    3
 
+        .ifndef ABI_VERSION
         .equ    ABI_VERSION,    1
+        .endif
 
 /* ---- §1 profile ids ---- */
 
@@ -88,6 +91,8 @@
         .equ    PROF_X86_64,    2
         .equ    PROF_ARM,       3
         .equ    PROF_AARCH64,   4
+        .equ    PROF_RISCV32,   5
+        .equ    PROF_RISCV64,   6
 
 /* ---- §3 address map ----
  *
@@ -204,6 +209,7 @@
 /* class 67 cache-sync */
         .equ    SUB_ARM_CACHEFLUSH,     1
         .equ    SUB_AARCH64_LINE_SIZE,  2
+        .equ    SUB_RISCV_FLUSH_ICACHE, 3
 
 /* class 68 protocol */
         .equ    SUB_STACK_POINTER_CORRUPT,      1

@@ -610,7 +610,7 @@ A fixup records **two different locations**, and conflating them is the mistake
 the shape exists to prevent:
 
 - `byte_offset` + `container` — where the bits go. The container is read and
-  written **little-endian**; all four targets are little-endian on the wire
+  written **little-endian**; all six targets are little-endian on the wire
   (`exec-abi-v1.md` §1), so one patch routine serves x86's byte-aligned
   `disp32`, ARM's 24-bit field inside a word, and AArch64's split `adrp`
   immediate.

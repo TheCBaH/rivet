@@ -23,7 +23,8 @@ module type ENCODE = sig
   (* {1 Identity} *)
 
   val name : string
-  (** the registry key and the [--target] spelling: [x86_32], [x86_64], [arm], [aarch64] *)
+  (** the registry key and the [--target] spelling: [x86_32], [x86_64], [arm], [aarch64],
+      [riscv32], [riscv64] *)
 
   val triple : string
   (** the GNU triple the fixture oracle used, so a differential failure can name the exact

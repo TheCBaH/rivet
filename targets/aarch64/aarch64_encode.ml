@@ -1392,6 +1392,7 @@ let fixup_of_placement (p : fixup_kind C.placement) =
       | Add_lo12 -> Asm_core.Lowered_ast.Unsigned 12
       | Ldst_lo12 _ -> Asm_core.Lowered_ast.Unsigned 12);
     value = Asm_core.Expr.Const (Bigint.of_int 0);
+    pairing = Asm_core.Lowered_ast.Unpaired;
     origin = Origin.synthesized ~pass:"aarch64.encode" ();
   }
 

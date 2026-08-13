@@ -63,15 +63,17 @@ let write_file path contents =
 
 type helper = { elf : string; qemu : string }
 
-let helper_for profile =
-  let dir = Filename.concat (helpers_dir ()) (Abi.profile_name profile) in
+let helper_for ?(abi_version = Abi.abi_version) profile =
+  let root = Filename.concat (helpers_dir ()) (Printf.sprintf "v%d" abi_version) in
+  let dir = Filename.concat root (Abi.profile_name profile) in
   let elf = Filename.concat dir "helper" in
   let qemu = Filename.concat dir "qemu" in
   if Sys.file_exists elf && Sys.file_exists qemu then
     Some { elf; qemu = String.trim (read_file qemu) }
   else None
 
-let available_profiles () = List.filter (fun p -> helper_for p <> None) Abi.all_profiles
+let available_profiles ?(abi_version = Abi.abi_version) () =
+  List.filter (fun p -> helper_for ~abi_version p <> None) Abi.all_profiles
 
 (* M0.3 requires helper hashes and tool versions in provenance;
    tools/asm-helpers.sh records them beside the ELF and the conformance run
@@ -79,9 +81,13 @@ let available_profiles () = List.filter (fun p -> helper_for p <> None) Abi.all_
    emulator that produced it. The APT packages are range-checked rather than
    digest-pinned, so this is how a base-image update that moved QEMU or the
    assembler under us shows up in the artifact instead of silently. *)
-let provenance profile =
+let provenance ?(abi_version = Abi.abi_version) profile =
   let path =
-    Filename.concat (Filename.concat (helpers_dir ()) (Abi.profile_name profile)) "provenance.txt"
+    Filename.concat
+      (Filename.concat
+         (Filename.concat (helpers_dir ()) (Printf.sprintf "v%d" abi_version))
+         (Abi.profile_name profile))
+      "provenance.txt"
   in
   if Sys.file_exists path then String.split_on_char '\n' (String.trim (read_file path)) else []
 
@@ -180,9 +186,9 @@ let classify ~status ~killed ~record =
    prove nothing about the helper. *)
 type input = File  (** write the manifest and pass its path *) | Missing | Directory
 
-let run ?(timeout_s = 10.0) ?(input = File) ?(extra_args = []) ~profile ~manifest ~expected_case_id
-    () =
-  match helper_for profile with
+let run ?(abi_version = Abi.abi_version) ?(timeout_s = 10.0) ?(input = File) ?(extra_args = [])
+    ~profile ~manifest ~expected_case_id () =
+  match helper_for ~abi_version profile with
   | None -> invalid_arg ("qemu_user: no helper built for " ^ Abi.profile_name profile)
   | Some h ->
       with_temp_dir (fun dir ->
@@ -228,7 +234,7 @@ let run ?(timeout_s = 10.0) ?(input = File) ?(extra_args = []) ~profile ~manifes
           let wall_ms = int_of_float ((Unix.gettimeofday () -. t0) *. 1000.) in
           let record =
             if Sys.file_exists result_path then
-              Some (Record.validate ~expected_case_id (read_file result_path))
+              Some (Record.validate ~abi_version ~expected_case_id (read_file result_path))
             else None
           in
           { termination = classify ~status ~killed ~record; record; wall_ms })

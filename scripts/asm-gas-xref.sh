@@ -95,7 +95,10 @@ runtime_defines() {
 # this gas reports every instruction as "an ARM instruction on a Thumb-only
 # processor". The committed fixtures are unaffected: they carry .arch/.arm
 # inline, which is why they assembled cleanly before this was noticed.
-gas_flags() { case "$1" in arm) echo "-march=armv7-a" ;; *) echo "" ;; esac; }
+gas_flags() {
+  target_config "$1"
+  printf '%s ' "${AS_FLAGS[@]}"
+}
 
 # Emitted as tab-separated <target> <group> <id> <path>.
 frontier_sources() {

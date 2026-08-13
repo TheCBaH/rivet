@@ -255,7 +255,22 @@ let tokenize ~profile ~source =
                 | '-' -> continue (one Token.Minus)
                 | '*' -> continue (one Token.Star)
                 | '/' -> continue (one Token.Slash)
-                | '%' -> continue (one Token.Percent)
+                | '%' -> (
+                    (* RISC-V-style modifiers are declared by spelling, just
+                       like the colon-wrapped ARM forms above.  Include the
+                       leading percent in the semantic modifier name so the
+                       generic expression printer reproduces [%name(expr)]. *)
+                    let percent_modifier =
+                      List.find_opt
+                        (fun m ->
+                          starts_with c pos ("%" ^ m ^ "(") || starts_with c pos ("%" ^ m ^ " ("))
+                        profile.Lexical_profile.percent_call_modifiers
+                    in
+                    match percent_modifier with
+                    | Some m ->
+                        let stop = pos + String.length m + 1 in
+                        continue (emit c (Token.Modifier ("%" ^ m)) ~start ~stop, stop)
+                    | None -> continue (one Token.Percent))
                 | '&' -> continue (one Token.Amp)
                 | '|' -> continue (one Token.Pipe)
                 | '^' -> continue (one Token.Caret)

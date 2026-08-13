@@ -56,7 +56,7 @@ let bytes_of_hex_file path =
 
 (* The canonical target order tools/target-matrix.sh fixes, which is the order
    every generated artifact and manifest in this project uses. *)
-let targets = [ "x86_32"; "x86_64"; "arm"; "aarch64" ]
+let targets = [ "x86_32"; "x86_64"; "arm"; "aarch64"; "riscv32"; "riscv64" ]
 
 let cases tree target =
   let dir = Filename.concat (Filename.concat corpus_root tree) target in

@@ -1081,6 +1081,7 @@ let fixup_of_placement (p : fixup_kind C.placement) =
       | Pcrel_b26 | Pcrel_call -> Asm_core.Lowered_ast.Signed 24
       | Movw_abs_nc | Movt_abs -> Asm_core.Lowered_ast.Unsigned 16);
     value = Asm_core.Expr.Const (Bigint.of_int 0);
+    pairing = Asm_core.Lowered_ast.Unpaired;
     origin = Origin.synthesized ~pass:"arm.encode" ();
   }
 

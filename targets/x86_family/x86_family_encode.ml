@@ -1816,6 +1816,7 @@ module Make (M : MODE) = struct
         | Pcrel8_branch -> Asm_core.Lowered_ast.Signed 8
         | Pcrel32_branch | Pcrel32_call | Pcrel32_data -> Asm_core.Lowered_ast.Signed 32);
       value = Asm_core.Expr.Const (Bigint.of_int 0);
+      pairing = Asm_core.Lowered_ast.Unpaired;
       origin = Origin.synthesized ~pass:"x86.encode" ();
     }
 

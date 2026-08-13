@@ -245,7 +245,7 @@ asm-js-portable: asm-build
 # range-checked rather than digest-pinned, and version numbers alone do not
 # establish compatibility where behaviour matters - so this asks the tools to do
 # the things the project depends on and records what answered. It needs the
-# cross toolchains, the four qemu-user binaries, qemu-system and gdb, but no
+# cross toolchains, all six qemu-user binaries, qemu-system and gdb, but no
 # CompCert and no part of the assembler: it establishes E2 tool compatibility
 # only, and asm-abi-conform remains the distinct E4 transport proof.
 asm-tool-gate:
@@ -269,17 +269,29 @@ asm-fixtures-check:
 
 asm-cross-setup:
 	tools/compcert-cross-smoke.sh all
+	tools/compcert-riscv-fixture-setup.sh all
 
 # A regeneration difference is a reviewed failure, not a refresh: it can change
 # accepted syntax, relocations, or instruction coverage, i.e. the M1 scope.
 asm-fixtures-regen: asm-cross-setup
 	tools/asm-fixture-gen.sh --regen
 
+asm-riscv32-fixtures-verify:
+	tools/compcert-riscv-fixture-setup.sh riscv32
+	tools/asm-fixture-gen.sh --verify riscv32
+
+asm-riscv64-fixtures-verify:
+	tools/compcert-riscv-fixture-setup.sh riscv64
+	tools/asm-fixture-gen.sh --verify riscv64
+
 # The reference-assembler artifacts M1.5 compares our encoder against. --rehash
 # folds them into the same manifest, so asm-fixtures-check covers them too.
 asm-oracle: asm-fixtures-regen
 	tools/asm-fixture-oracle.sh all
 	tools/asm-fixture-gen.sh --rehash
+
+asm-riscv-exec:
+	tools/asm-riscv-exec.sh all
 
 # The GNU as cross-reference. Same two-mode policy as the fixtures above and
 # for the same reason, so the edges are the same shape: --check hashes the
@@ -305,16 +317,14 @@ asm-purity: asm-build
 asm-planted: asm-build
 	tools/asm-check-planted.sh
 
-# The execution ABI (asm/docs/exec-abi-v1.md). Three targets, and the
+# The execution ABI (asm/docs/exec-abi-v1.md and exec-abi-v2.md). The
 # dependency edges are again what enforce a policy: neither asm-helpers nor
 # asm-abi-conform is reachable from asm-test or asm-ci, so `make asm-test` can
 # never acquire a hidden cross-toolchain or QEMU dependency (guardrail 4).
 #
-# asm-helpers needs the four cross GNU as/ld; asm-abi-conform additionally
-# executes the helpers under qemu-user. Both therefore live outside the portable
-# CI matrix, in their own required linux/amd64 job - which needs no CompCert
-# installation at all, so ABI conformance stays a blocking gate without costing
-# what the full oracle costs.
+# asm-helpers builds the four legacy profiles in both v1 and v2 modes from
+# shared sources. asm-abi-conform executes both copies under qemu-user. The
+# RISC-V v2 helper implementations remain a separate acceptance item.
 asm-helpers:
 	tools/asm-helpers.sh all
 
@@ -323,7 +333,9 @@ asm-runner: asm-build
 
 # ASM_HELPERS_DIR is absolute because the driver runs from the build tree.
 asm-abi-conform: asm-runner asm-helpers
-	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers \
+	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers ASM_ABI_VERSION=1 \
+	  opam exec -- dune exec test/oracle/conform.exe
+	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers ASM_ABI_VERSION=2 \
 	  opam exec -- dune exec test/oracle/conform.exe
 
 # M1.6, the E5 rung: the assembler's own image bound at the ABI-v1 profile code
@@ -357,7 +369,8 @@ compcert-export-archive-all:
   compcert-export-archive compcert-export-unarchive compcert-export-build compcert-export-run \
   compcert-export-archive-all \
   asm-submodules asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
-  asm-fixtures-check asm-cross-setup asm-fixtures-regen asm-oracle asm-ci \
+  asm-fixtures-check asm-cross-setup asm-fixtures-regen asm-riscv32-fixtures-verify \
+  asm-riscv64-fixtures-verify asm-oracle asm-riscv-exec asm-ci \
   asm-gas-xref-check asm-gas-xref-regen \
   asm-helpers asm-runner asm-abi-conform asm-exec asm-tool-gate asm-melange-optin \
   asm-js-portable

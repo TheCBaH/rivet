@@ -6,7 +6,7 @@ RUN set -eux;\
     ARCH="$(dpkg --print-architecture)";\
     case "$ARCH" in\
       armhf|armel) cross='gcc-arm-linux-gnueabihf libc6-dev-armhf-cross' ;;\
-      *) cross='gcc-i686-linux-gnu libc6-dev-i386-cross gcc-x86-64-linux-gnu libc6-dev-amd64-cross gcc-arm-linux-gnueabihf libc6-dev-armhf-cross gcc-aarch64-linux-gnu libc6-dev-arm64-cross' ;;\
+      *) cross='gcc-i686-linux-gnu libc6-dev-i386-cross gcc-x86-64-linux-gnu libc6-dev-amd64-cross gcc-arm-linux-gnueabihf libc6-dev-armhf-cross gcc-aarch64-linux-gnu libc6-dev-arm64-cross binutils-riscv64-linux-gnu gcc-riscv64-linux-gnu' ;;\
     esac;\
     env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends\
   ca-certificates\
@@ -14,6 +14,7 @@ RUN set -eux;\
   gdb-multiarch\
   git\
   make\
+  python3\
   qemu-system-arm\
   qemu-system-x86\
   qemu-user\

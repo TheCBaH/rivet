@@ -550,6 +550,11 @@
   directive .section [.note.GNU-stack] [""] [%progbits]
   ########## arm normalized ast
   normalized asm_test_entry
+  target-state .syntax unified
+  target-state .arch armv7-a
+  target-state .fpu vfpv3-d16
+  target-state .eabi_attribute Tag_ABI_VFP_args, 1
+  target-state .arm 
   section .text r-x
   align 4
   globl asm_test_entry
@@ -840,3 +845,433 @@
   offset-scaled2(){<offset:12@0 ldst16-lo12>}
   offset-scaled4(){<offset:12@0 ldst32-lo12>}
   offset-scaled8(){<offset:12@0 ldst64-lo12>}
+  ########## riscv32 tokens
+  1 7 directive .option
+  9 3 ident pic
+  12 1 eol \n
+  14 5 directive .text
+  19 1 eol \n
+  21 7 directive .balign
+  29 1 int 2
+  30 1 eol \n
+  32 6 directive .globl
+  39 14 ident asm_test_entry
+  53 1 eol \n
+  54 14 ident asm_test_entry
+  68 1 colon :
+  69 1 eol \n
+  71 14 directive .cfi_startproc
+  85 1 eol \n
+  87 2 ident mv
+  90 3 ident x30
+  93 1 comma ,
+  95 2 ident x2
+  97 1 eol \n
+  99 4 ident addi
+  104 2 ident x2
+  106 1 comma ,
+  108 2 ident x2
+  110 1 comma ,
+  112 1 minus -
+  113 2 int 16
+  115 1 eol \n
+  117 22 directive .cfi_adjust_cfa_offset
+  140 2 int 16
+  142 1 eol \n
+  144 2 ident sw
+  147 3 ident x30
+  150 1 comma ,
+  152 1 int 0
+  153 1 lparen (
+  154 2 ident x2
+  156 1 rparen )
+  157 1 eol \n
+  159 2 ident sw
+  162 2 ident x1
+  164 1 comma ,
+  166 1 int 4
+  167 1 lparen (
+  168 2 ident x2
+  170 1 rparen )
+  171 1 eol \n
+  173 15 directive .cfi_rel_offset
+  189 2 ident x1
+  191 1 comma ,
+  193 1 int 4
+  194 1 eol \n
+  196 4 ident addi
+  201 3 ident x10
+  204 1 comma ,
+  206 2 ident x0
+  208 1 comma ,
+  210 2 int 42
+  212 1 eol \n
+  214 2 ident lw
+  217 2 ident x1
+  219 1 comma ,
+  221 1 int 4
+  222 1 lparen (
+  223 2 ident x2
+  225 1 rparen )
+  226 1 eol \n
+  228 4 ident addi
+  233 2 ident x2
+  235 1 comma ,
+  237 2 ident x2
+  239 1 comma ,
+  241 2 int 16
+  243 1 eol \n
+  245 2 ident jr
+  248 2 ident x1
+  250 1 eol \n
+  252 12 directive .cfi_endproc
+  264 1 eol \n
+  266 5 directive .type
+  272 14 ident asm_test_entry
+  286 1 comma ,
+  288 1 at @
+  289 8 ident function
+  297 1 eol \n
+  299 5 directive .size
+  305 14 ident asm_test_entry
+  319 1 comma ,
+  321 1 dot .
+  323 1 minus -
+  325 14 ident asm_test_entry
+  339 1 eol \n
+  340 1 eol \n
+  342 8 directive .section
+  351 9 directive .note.GNU
+  360 1 minus -
+  361 5 ident stack
+  366 1 comma ,
+  367 2 string ""
+  369 1 comma ,
+  370 1 percent %
+  371 8 ident progbits
+  379 1 eol \n
+  380 0 eof 
+  ########## riscv32 source ast
+  source asm_test_entry
+  directive .option [pic]
+  directive .text
+  directive .balign [2]
+  directive .globl [asm_test_entry]
+  label asm_test_entry
+  directive .cfi_startproc
+  insn mv x30, x2
+  insn addi x2, x2, -16
+  directive .cfi_adjust_cfa_offset [16]
+  insn sw x30, 0(x2)
+  insn sw x1, 4(x2)
+  directive .cfi_rel_offset [x1] [4]
+  insn addi x10, x0, 42
+  insn lw x1, 4(x2)
+  insn addi x2, x2, 16
+  insn jr x1
+  directive .cfi_endproc
+  directive .type [asm_test_entry] [@function]
+  directive .size [asm_test_entry] [. - asm_test_entry]
+  directive .section [.note.GNU-stack] [""] [%progbits]
+  ########## riscv32 normalized ast
+  normalized asm_test_entry
+  target-state .option pic
+  section .text r-x
+  align 2
+  globl asm_test_entry
+  label asm_test_entry
+  mv x30, x2
+  addi x2, x2, -16
+  sw x30, 0(x2)
+  sw x1, 4(x2)
+  addi x10, x0, 42
+  lw x1, 4(x2)
+  addi x2, x2, 16
+  jr x1
+  type asm_test_entry function
+  size asm_test_entry (. - asm_test_entry)
+  declared-section .note.GNU-stack
+  ########## riscv32 lowered ast
+  lowered asm_test_entry
+  section .text r-x align=2
+    align 2 fill<=
+    label asm_test_entry
+    bytes 13 0f 01 00              [riscv32.addi]
+    bytes 13 01 01 ff              [riscv32.addi]
+    bytes 23 20 e1 01              [riscv32.sw]
+    bytes 23 22 11 00              [riscv32.sw]
+    bytes 13 05 a0 02              [riscv32.addi]
+    bytes 83 20 41 00              [riscv32.lw]
+    bytes 13 01 01 01              [riscv32.addi]
+    bytes 67 80 00 00              [riscv32.jalr]
+    size asm_test_entry = (. - asm_test_entry)
+  global asm_test_entry function in .text size=(. - asm_test_entry)
+  declared .note.GNU-stack (not allocated)
+  ########## riscv32 plan
+  segment .text size=32 zero=0 align=2 permissions=r-x
+  entry asm_test_entry
+  export asm_test_entry
+  ########## riscv32 image
+  section .text address=0x0 size=32 permissions=r-x
+  entry 0x0
+  export asm_test_entry = 0x0 size=32
+  ########## riscv32 bytes
+  13 0f 01 00 13 01 01 ff 23 20 e1 01 23 22 11 00 13 05 a0 02 83 20 41 00 13 01 01 01 67 80 00 00
+  ########## riscv32 disasm canonical
+  	addi x30, x2, 0
+  	addi x2, x2, -16
+  	sw x30, 0(x2)
+  	sw x1, 4(x2)
+  	addi x10, x0, 42
+  	lw x1, 4(x2)
+  	addi x2, x2, 16
+  	jalr x0, 0(x1)
+  ########## riscv32 disasm diagnostic
+  00000000  13 0f 01 00  addi x30, x2, 0   [riscv32.addi]
+  00000004  13 01 01 ff  addi x2, x2, -16  [riscv32.addi]
+  00000008  23 20 e1 01  sw x30, 0(x2)     [riscv32.sw]
+  0000000c  23 22 11 00  sw x1, 4(x2)      [riscv32.sw]
+  00000010  13 05 a0 02  addi x10, x0, 42  [riscv32.addi]
+  00000014  83 20 41 00  lw x1, 4(x2)      [riscv32.lw]
+  00000018  13 01 01 01  addi x2, x2, 16   [riscv32.addi]
+  0000001c  67 80 00 00  jalr x0, 0(x1)    [riscv32.jalr]
+  ########## riscv32 codec
+  alt riscv32
+    [0 cost=0] pair             riscv32-pair(){auipc-i-pair:64u}
+    [1 cost=0] word             riscv32-word(){instruction:32u}
+  ########## riscv64 tokens
+  1 7 directive .option
+  9 3 ident pic
+  12 1 eol \n
+  14 5 directive .text
+  19 1 eol \n
+  21 7 directive .balign
+  29 1 int 2
+  30 1 eol \n
+  32 6 directive .globl
+  39 14 ident asm_test_entry
+  53 1 eol \n
+  54 14 ident asm_test_entry
+  68 1 colon :
+  69 1 eol \n
+  71 14 directive .cfi_startproc
+  85 1 eol \n
+  87 2 ident mv
+  90 3 ident x30
+  93 1 comma ,
+  95 2 ident x2
+  97 1 eol \n
+  99 4 ident addi
+  104 2 ident x2
+  106 1 comma ,
+  108 2 ident x2
+  110 1 comma ,
+  112 1 minus -
+  113 2 int 16
+  115 1 eol \n
+  117 22 directive .cfi_adjust_cfa_offset
+  140 2 int 16
+  142 1 eol \n
+  144 2 ident sd
+  147 3 ident x30
+  150 1 comma ,
+  152 1 int 0
+  153 1 lparen (
+  154 2 ident x2
+  156 1 rparen )
+  157 1 eol \n
+  159 2 ident sd
+  162 2 ident x1
+  164 1 comma ,
+  166 1 int 8
+  167 1 lparen (
+  168 2 ident x2
+  170 1 rparen )
+  171 1 eol \n
+  173 15 directive .cfi_rel_offset
+  189 2 ident x1
+  191 1 comma ,
+  193 1 int 8
+  194 1 eol \n
+  196 5 ident addiw
+  202 3 ident x10
+  205 1 comma ,
+  207 2 ident x0
+  209 1 comma ,
+  211 2 int 42
+  213 1 eol \n
+  215 2 ident ld
+  218 2 ident x1
+  220 1 comma ,
+  222 1 int 8
+  223 1 lparen (
+  224 2 ident x2
+  226 1 rparen )
+  227 1 eol \n
+  229 4 ident addi
+  234 2 ident x2
+  236 1 comma ,
+  238 2 ident x2
+  240 1 comma ,
+  242 2 int 16
+  244 1 eol \n
+  246 2 ident jr
+  249 2 ident x1
+  251 1 eol \n
+  253 12 directive .cfi_endproc
+  265 1 eol \n
+  267 5 directive .type
+  273 14 ident asm_test_entry
+  287 1 comma ,
+  289 1 at @
+  290 8 ident function
+  298 1 eol \n
+  300 5 directive .size
+  306 14 ident asm_test_entry
+  320 1 comma ,
+  322 1 dot .
+  324 1 minus -
+  326 14 ident asm_test_entry
+  340 1 eol \n
+  341 1 eol \n
+  343 8 directive .section
+  352 9 directive .note.GNU
+  361 1 minus -
+  362 5 ident stack
+  367 1 comma ,
+  368 2 string ""
+  370 1 comma ,
+  371 1 percent %
+  372 8 ident progbits
+  380 1 eol \n
+  381 0 eof 
+  ########## riscv64 source ast
+  source asm_test_entry
+  directive .option [pic]
+  directive .text
+  directive .balign [2]
+  directive .globl [asm_test_entry]
+  label asm_test_entry
+  directive .cfi_startproc
+  insn mv x30, x2
+  insn addi x2, x2, -16
+  directive .cfi_adjust_cfa_offset [16]
+  insn sd x30, 0(x2)
+  insn sd x1, 8(x2)
+  directive .cfi_rel_offset [x1] [8]
+  insn addiw x10, x0, 42
+  insn ld x1, 8(x2)
+  insn addi x2, x2, 16
+  insn jr x1
+  directive .cfi_endproc
+  directive .type [asm_test_entry] [@function]
+  directive .size [asm_test_entry] [. - asm_test_entry]
+  directive .section [.note.GNU-stack] [""] [%progbits]
+  ########## riscv64 normalized ast
+  normalized asm_test_entry
+  target-state .option pic
+  section .text r-x
+  align 2
+  globl asm_test_entry
+  label asm_test_entry
+  mv x30, x2
+  addi x2, x2, -16
+  sd x30, 0(x2)
+  sd x1, 8(x2)
+  addiw x10, x0, 42
+  ld x1, 8(x2)
+  addi x2, x2, 16
+  jr x1
+  type asm_test_entry function
+  size asm_test_entry (. - asm_test_entry)
+  declared-section .note.GNU-stack
+  ########## riscv64 lowered ast
+  lowered asm_test_entry
+  section .text r-x align=2
+    align 2 fill<=
+    label asm_test_entry
+    bytes 13 0f 01 00              [riscv64.addi]
+    bytes 13 01 01 ff              [riscv64.addi]
+    bytes 23 30 e1 01              [riscv64.sd]
+    bytes 23 34 11 00              [riscv64.sd]
+    bytes 1b 05 a0 02              [riscv64.addiw]
+    bytes 83 30 81 00              [riscv64.ld]
+    bytes 13 01 01 01              [riscv64.addi]
+    bytes 67 80 00 00              [riscv64.jalr]
+    size asm_test_entry = (. - asm_test_entry)
+  global asm_test_entry function in .text size=(. - asm_test_entry)
+  declared .note.GNU-stack (not allocated)
+  ########## riscv64 plan
+  segment .text size=32 zero=0 align=2 permissions=r-x
+  entry asm_test_entry
+  export asm_test_entry
+  ########## riscv64 image
+  section .text address=0x0 size=32 permissions=r-x
+  entry 0x0
+  export asm_test_entry = 0x0 size=32
+  ########## riscv64 bytes
+  13 0f 01 00 13 01 01 ff 23 30 e1 01 23 34 11 00 1b 05 a0 02 83 30 81 00 13 01 01 01 67 80 00 00
+  ########## riscv64 disasm canonical
+  	addi x30, x2, 0
+  	addi x2, x2, -16
+  	sd x30, 0(x2)
+  	sd x1, 8(x2)
+  	addiw x10, x0, 42
+  	ld x1, 8(x2)
+  	addi x2, x2, 16
+  	jalr x0, 0(x1)
+  ########## riscv64 disasm diagnostic
+  00000000  13 0f 01 00  addi x30, x2, 0    [riscv64.addi]
+  00000004  13 01 01 ff  addi x2, x2, -16   [riscv64.addi]
+  00000008  23 30 e1 01  sd x30, 0(x2)      [riscv64.sd]
+  0000000c  23 34 11 00  sd x1, 8(x2)       [riscv64.sd]
+  00000010  1b 05 a0 02  addiw x10, x0, 42  [riscv64.addiw]
+  00000014  83 30 81 00  ld x1, 8(x2)       [riscv64.ld]
+  00000018  13 01 01 01  addi x2, x2, 16    [riscv64.addi]
+  0000001c  67 80 00 00  jalr x0, 0(x1)     [riscv64.jalr]
+  ########## riscv64 codec
+  alt riscv64
+    [0 cost=0] pair             riscv64-pair(){auipc-i-pair:64u}
+    [1 cost=0] word             riscv64-word(){instruction:32u}
+	subl $12, %esp
+	leal 16(%esp), %eax
+	movl %eax, (%esp)
+	movl $42, %eax
+	addl $12, %esp
+	ret
+	subq $8, %rsp
+	leaq 16(%rsp), %rax
+	movq %rax, (%rsp)
+	movl $42, %eax
+	addq $8, %rsp
+	ret
+	mov ip, sp
+	sub sp, sp, #8
+	str ip, [sp]
+	str lr, [sp, #4]
+	mov r0, #42
+	ldr lr, [sp, #4]
+	add sp, sp, #8
+	bx lr
+	mov x15, sp
+	stp x15, x30, [sp, #-16]!
+	movz w0, #42
+	ldr x30, [sp, #8]
+	add sp, sp, #16
+	ret
+	addi x30, x2, 0
+	addi x2, x2, -16
+	sw x30, 0(x2)
+	sw x1, 4(x2)
+	addi x10, x0, 42
+	lw x1, 4(x2)
+	addi x2, x2, 16
+	jalr x0, 0(x1)
+	addi x30, x2, 0
+	addi x2, x2, -16
+	sd x30, 0(x2)
+	sd x1, 8(x2)
+	addiw x10, x0, 42
+	ld x1, 8(x2)
+	addi x2, x2, 16
+	jalr x0, 0(x1)

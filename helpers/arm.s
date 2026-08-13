@@ -110,9 +110,11 @@
         .section .rodata
         .align  2
 manifest_magic:
-        .ascii  "ASMEXE\0\1"
+        .ascii  "ASMEXE\0"
+        .byte   ABI_VERSION
 result_magic:
-        .ascii  "ASMRES\0\1"
+        .ascii  "ASMRES\0"
+        .byte   ABI_VERSION
 pagesz_wrong_token:
         .ascii  "pgsz-bad"
 pagesz_absent_token:
