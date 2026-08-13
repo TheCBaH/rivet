@@ -1,4 +1,5 @@
-(* The ABI v1 conformance suite (asm/docs/exec-abi-v1.md §16).
+(* The execution ABI conformance suite (asm/docs/exec-abi-v1.md §16 and
+   asm/docs/exec-abi-v2.md).
 
    Drives each built helper under its emulator and checks the *exact* outcome:
    the exact subcode for a malformed manifest, the exact termination for a trap
@@ -95,7 +96,7 @@ let matches expect (o : Qemu_user.t) =
   | Guest_timeout, Qemu_user.Timeout, Some (Record.Valid r) ->
       r.Record.record_state = Abi.Validated && r.Record.status = Abi.Running
   | Error key, Qemu_user.Runner_error cls, _ ->
-      let want = Abi.find_subcode key in
+      let want = Abi.find_subcode ~abi_version key in
       want.Abi.cls = cls && Qemu_user.observed_error o = Some (cls, want.Abi.code)
   | _ -> false
 
@@ -184,11 +185,11 @@ let m ?only name expect f =
   { name; expect; only; build = (fun profile s -> run_manifest profile (f profile s)) }
 
 let applies profile c = match c.only with None -> true | Some ps -> List.mem profile ps
-let bits32 = [ Abi.X86_32; Abi.Arm ]
-let bits64 = [ Abi.X86_64; Abi.Aarch64 ]
+let bits32 = [ Abi.X86_32; Abi.Arm; Abi.Riscv32 ]
+let bits64 = [ Abi.X86_64; Abi.Aarch64; Abi.Riscv64 ]
 
 (* §10.3 gives only these two an instruction-address rule for the entry. *)
-let has_entry_rule = [ Abi.Arm; Abi.Aarch64 ]
+let has_entry_rule = [ Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ]
 
 (* Positive controls and the deliberately-wrong ones. *)
 let behavioral_cases =
@@ -458,19 +459,26 @@ let exemptions =
     (* Per-profile: the rule itself is profile-dependent. *)
     exempt ~profiles:[ Abi.X86_32; Abi.X86_64 ] "manifest.entry_profile_rule"
       "§10.3 places no instruction-alignment restriction on x86 entries";
-    exempt ~profiles:[ Abi.X86_64; Abi.Aarch64 ] "manifest.address_high_bits_set"
-      "a 64-bit profile has no high half to reject";
     exempt
-      ~profiles:[ Abi.X86_32; Abi.X86_64; Abi.Aarch64 ]
+      ~profiles:[ Abi.X86_64; Abi.Aarch64; Abi.Riscv64 ]
+      "manifest.address_high_bits_set" "a 64-bit profile has no high half to reject";
+    exempt
+      ~profiles:[ Abi.X86_32; Abi.X86_64; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ]
       "cache-sync.arm_cacheflush" "§12: only the ARM profile issues a cacheflush syscall";
     exempt ~profiles:[ Abi.Arm ] "cache-sync.arm_cacheflush"
       "no injection mechanism: qemu-user implements the ARM cacheflush syscall as an unconditional \
        success, and the manifest has no field that reaches it";
     exempt
-      ~profiles:[ Abi.X86_32; Abi.X86_64; Abi.Arm ]
+      ~profiles:[ Abi.X86_32; Abi.X86_64; Abi.Arm; Abi.Riscv32; Abi.Riscv64 ]
       "cache-sync.aarch64_line_size" "§12: only AArch64 reads CTR_EL0";
     exempt ~profiles:[ Abi.Aarch64 ] "cache-sync.aarch64_line_size"
       "no injection mechanism: CTR_EL0 is emulator state, not manifest input";
+    exempt
+      ~profiles:[ Abi.X86_32; Abi.X86_64; Abi.Arm; Abi.Aarch64 ]
+      "cache-sync.riscv_flush_icache" "ABI v2: only the RISC-V profiles issue riscv_flush_icache";
+    exempt ~profiles:[ Abi.Riscv32; Abi.Riscv64 ] "cache-sync.riscv_flush_icache"
+      "no injection mechanism: qemu-user implements the architecture syscall for valid mapped \
+       ranges";
     (* Syscalls that cannot be made to fail from the host side once the run has
        got far enough to attempt them. §15.2 already scopes the exact-subcode
        guarantee to failures occurring after the control alias exists; these
@@ -500,7 +508,14 @@ let exemption_for profile key =
 (* {1 Driver} *)
 
 let () =
-  let profiles = Qemu_user.available_profiles ~abi_version () in
+  let profiles =
+    let available = Qemu_user.available_profiles ~abi_version () in
+    match Sys.getenv_opt "ASM_ABI_PROFILES" with
+    | None -> available
+    | Some names ->
+        let wanted = String.split_on_char ',' names |> List.map String.trim in
+        List.filter (fun p -> List.mem (Abi.profile_name p) wanted) available
+  in
   if profiles = [] then (
     Fmt.pr "conform: no helpers built - run `make asm-helpers`@.";
     exit 1);
@@ -546,7 +561,7 @@ let () =
                       "  FAIL %-32s promised by §14.2 but no case observes it and no exemption \
                        covers it@."
                       key)
-            Abi.all_subcodes)
+            (Abi.all_subcodes_for_version abi_version))
     profiles;
   Fmt.pr "@.conform: ABI v%d, %d failures over %d profile(s)@." abi_version !failures
     (List.length profiles);

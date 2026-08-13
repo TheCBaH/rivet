@@ -85,10 +85,9 @@ jobs:
       run: |
         ${{ env.EXEC }} make asm-melange-optin
 
-# ABI v1 regression plus the shared-source v2 legacy-profile conformance suite.
-# Its own job, and
-  # deliberately not part of the matrix above: it assembles the four helpers
-  # with the cross binutils and executes them under the four qemu-user
+# ABI v1 regression plus the complete six-profile v2 conformance suite.
+# Its own job, and deliberately not part of the matrix above: it builds the
+# helpers with the cross toolchains and executes them under all six qemu-user
   # binaries, none of which the 32-bit legs have. Keeping it out is what
   # lets `make asm-test` stay free of any cross-toolchain or QEMU dependency
   # (guardrail 4) while conformance still blocks.

@@ -160,6 +160,7 @@ module Make (P : PROFILE) = struct
       | Ret
       | Ecall
       | Ebreak
+      | Unimp
       | Fence_i
 
     let name = function
@@ -226,6 +227,7 @@ module Make (P : PROFILE) = struct
       | Ret -> "ret"
       | Ecall -> "ecall"
       | Ebreak -> "ebreak"
+      | Unimp -> "unimp"
       | Fence_i -> "fence.i"
 
     let all =
@@ -293,6 +295,7 @@ module Make (P : PROFILE) = struct
         Ret;
         Ecall;
         Ebreak;
+        Unimp;
         Fence_i;
       ]
 
@@ -774,6 +777,7 @@ module Make (P : PROFILE) = struct
           ]
     | Opcode.Ecall, [] -> Ok [ Lowered.Fixed { name = "ecall"; word = 0x00000073L } ]
     | Opcode.Ebreak, [] -> Ok [ Lowered.Fixed { name = "ebreak"; word = 0x00100073L } ]
+    | Opcode.Unimp, [] -> Ok [ Lowered.Fixed { name = "unimp"; word = 0xc0001073L } ]
     | Opcode.Fence_i, [] -> Ok [ Lowered.Fixed { name = "fence.i"; word = 0x0000100fL } ]
     | _ -> wrong opn
 
@@ -1198,6 +1202,7 @@ module Make (P : PROFILE) = struct
                     "jalr" )
             | 0x73 when Int64.equal w 0x73L -> Some (instruction Opcode.Ecall [], "ecall")
             | 0x73 when Int64.equal w 0x00100073L -> Some (instruction Opcode.Ebreak [], "ebreak")
+            | 0x73 when Int64.equal w 0xc0001073L -> Some (instruction Opcode.Unimp [], "unimp")
             | 0x0f when Int64.equal w 0x0000100fL -> Some (instruction Opcode.Fence_i [], "fence.i")
             | _ -> None)
       in

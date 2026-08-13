@@ -138,33 +138,59 @@ let%expect_test "generated corpus: our bytes against GNU as" =
     x86_32   callee_clobber   agree
     x86_32   return41         agree
     x86_32   return42         agree
+    x86_32   sp_align         agree
     x86_32   sp_corrupt       agree
+    x86_32   spin             agree
     x86_32   stack_full       agree
     x86_32   stack_over       agree
     x86_32   trap             agree
     x86_64   callee_clobber   agree
     x86_64   return41         agree
     x86_64   return42         agree
+    x86_64   sp_align         agree
     x86_64   sp_corrupt       agree
+    x86_64   spin             agree
     x86_64   stack_full       agree
     x86_64   stack_over       agree
     x86_64   trap             agree
     arm      callee_clobber   agree
     arm      return41         agree
     arm      return42         agree
+    arm      sp_align         agree
     arm      sp_corrupt       agree
+    arm      spin             agree
     arm      stack_full       agree
     arm      stack_over       agree
     arm      trap             agree
     aarch64  callee_clobber   agree
     aarch64  return41         agree
     aarch64  return42         agree
+    aarch64  sp_align         agree
     aarch64  sp_corrupt       agree
+    aarch64  spin             agree
     aarch64  stack_full       agree
     aarch64  stack_over       agree
     aarch64  trap             agree
+    riscv32  callee_clobber   agree
+    riscv32  return41         agree
+    riscv32  return42         agree
+    riscv32  sp_align         agree
+    riscv32  sp_corrupt       agree
+    riscv32  spin             agree
+    riscv32  stack_full       agree
+    riscv32  stack_over       agree
+    riscv32  trap             agree
+    riscv64  callee_clobber   agree
+    riscv64  return41         agree
+    riscv64  return42         agree
+    riscv64  sp_align         agree
+    riscv64  sp_corrupt       agree
+    riscv64  spin             agree
+    riscv64  stack_full       agree
+    riscv64  stack_over       agree
+    riscv64  trap             agree
 
-    28 agree, 0 not |}]
+    54 agree, 0 not |}]
 
 (* {1 The frontier tree}
 
@@ -202,5 +228,7 @@ let%expect_test "frontier corpus: agreement wherever both assemblers accept" =
     x86_64   fixture-asm_test_entry   agree
     arm      fixture-asm_test_entry   agree
     aarch64  fixture-asm_test_entry   agree
+    riscv32  fixture-asm_test_entry   agree
+    riscv64  fixture-asm_test_entry   agree
 
-    4 agree, 0 differ, 43 beyond M1, 0 not assembled by GNU as |}]
+    6 agree, 0 differ, 43 beyond M1, 0 not assembled by GNU as |}]

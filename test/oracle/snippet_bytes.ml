@@ -64,3 +64,4 @@ let mutation = function
   | Abi.X86_32 | Abi.X86_64 -> ("\xb8\x2a", "\xb8\x29")
   | Abi.Arm -> ("\x2a\x00\xa0\xe3", "\x29\x00\xa0\xe3")
   | Abi.Aarch64 -> ("\x40\x05\x80\x52", "\x20\x05\x80\x52")
+  | Abi.Riscv32 | Abi.Riscv64 -> ("\x13\x05\xa0\x02", "\x13\x05\x90\x02")

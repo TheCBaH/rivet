@@ -92,6 +92,8 @@ let serialize ?(abi_version = Abi.abi_version) t =
   Abi.set_string b Abi.Manifest_off.magic
     (if abi_version = Abi_v2.abi_version then Abi_v2.manifest_magic else Abi.manifest_magic);
   Abi.set_u16 b Abi.Manifest_off.abi_version abi_version;
+  if abi_version = Abi.abi_version && not (List.mem t.profile Abi.v1_profiles) then
+    invalid_arg "Manifest.serialize: RISC-V profiles require ABI v2";
   Abi.set_u16 b Abi.Manifest_off.profile_id (Abi.profile_id t.profile);
   Abi.set_u32 b Abi.Manifest_off.total_len total;
   Abi.set_u32 b Abi.Manifest_off.case_id t.case_id;

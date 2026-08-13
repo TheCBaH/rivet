@@ -1,0 +1,6 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_snippet>:
+   0:	eafffffe 	b	0 <asm_snippet>

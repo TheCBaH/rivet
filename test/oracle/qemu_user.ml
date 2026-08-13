@@ -73,7 +73,7 @@ let helper_for ?(abi_version = Abi.abi_version) profile =
   else None
 
 let available_profiles ?(abi_version = Abi.abi_version) () =
-  List.filter (fun p -> helper_for ~abi_version p <> None) Abi.all_profiles
+  List.filter (fun p -> helper_for ~abi_version p <> None) (Abi.profiles_for_version abi_version)
 
 (* M0.3 requires helper hashes and tool versions in provenance;
    tools/asm-helpers.sh records them beside the ELF and the conformance run

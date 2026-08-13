@@ -6,3 +6,7 @@ as:arm	GNU assembler (GNU Binutils for Debian) 2.44
 objdump:arm	GNU objdump (GNU Binutils for Debian) 2.44
 as:aarch64	GNU assembler (GNU Binutils for Debian) 2.44
 objdump:aarch64	GNU objdump (GNU Binutils for Debian) 2.44
+as:riscv32	GNU assembler (GNU Binutils for Debian) 2.44
+objdump:riscv32	GNU objdump (GNU Binutils for Debian) 2.44
+as:riscv64	GNU assembler (GNU Binutils for Debian) 2.44
+objdump:riscv64	GNU objdump (GNU Binutils for Debian) 2.44

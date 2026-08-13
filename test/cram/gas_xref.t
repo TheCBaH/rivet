@@ -33,28 +33,54 @@ text.hex's own format so the two are directly comparable.
   aarch64/callee_clobber: agree
   aarch64/return41: agree
   aarch64/return42: agree
+  aarch64/sp_align: agree
   aarch64/sp_corrupt: agree
+  aarch64/spin: agree
   aarch64/stack_full: agree
   aarch64/stack_over: agree
   aarch64/trap: agree
   arm/callee_clobber: agree
   arm/return41: agree
   arm/return42: agree
+  arm/sp_align: agree
   arm/sp_corrupt: agree
+  arm/spin: agree
   arm/stack_full: agree
   arm/stack_over: agree
   arm/trap: agree
+  riscv32/callee_clobber: agree
+  riscv32/return41: agree
+  riscv32/return42: agree
+  riscv32/sp_align: agree
+  riscv32/sp_corrupt: agree
+  riscv32/spin: agree
+  riscv32/stack_full: agree
+  riscv32/stack_over: agree
+  riscv32/trap: agree
+  riscv64/callee_clobber: agree
+  riscv64/return41: agree
+  riscv64/return42: agree
+  riscv64/sp_align: agree
+  riscv64/sp_corrupt: agree
+  riscv64/spin: agree
+  riscv64/stack_full: agree
+  riscv64/stack_over: agree
+  riscv64/trap: agree
   x86_32/callee_clobber: agree
   x86_32/return41: agree
   x86_32/return42: agree
+  x86_32/sp_align: agree
   x86_32/sp_corrupt: agree
+  x86_32/spin: agree
   x86_32/stack_full: agree
   x86_32/stack_over: agree
   x86_32/trap: agree
   x86_64/callee_clobber: agree
   x86_64/return41: agree
   x86_64/return42: agree
+  x86_64/sp_align: agree
   x86_64/sp_corrupt: agree
+  x86_64/spin: agree
   x86_64/stack_full: agree
   x86_64/stack_over: agree
   x86_64/trap: agree
@@ -112,28 +138,54 @@ being checked is that the *instruction text* survives, and it does.
   aarch64/callee_clobber: round trip identical
   aarch64/return41: round trip identical
   aarch64/return42: round trip identical
+  aarch64/sp_align: round trip identical
   aarch64/sp_corrupt: round trip identical
+  aarch64/spin: round trip identical
   aarch64/stack_full: round trip identical
   aarch64/stack_over: round trip identical
   aarch64/trap: round trip identical
   arm/callee_clobber: round trip identical
   arm/return41: round trip identical
   arm/return42: round trip identical
+  arm/sp_align: round trip identical
   arm/sp_corrupt: round trip identical
+  arm/spin: round trip identical
   arm/stack_full: round trip identical
   arm/stack_over: round trip identical
   arm/trap: round trip identical
+  riscv32/callee_clobber: round trip identical
+  riscv32/return41: round trip identical
+  riscv32/return42: round trip identical
+  riscv32/sp_align: round trip identical
+  riscv32/sp_corrupt: round trip identical
+  riscv32/spin: round trip identical
+  riscv32/stack_full: round trip identical
+  riscv32/stack_over: round trip identical
+  riscv32/trap: round trip identical
+  riscv64/callee_clobber: round trip identical
+  riscv64/return41: round trip identical
+  riscv64/return42: round trip identical
+  riscv64/sp_align: round trip identical
+  riscv64/sp_corrupt: round trip identical
+  riscv64/spin: round trip identical
+  riscv64/stack_full: round trip identical
+  riscv64/stack_over: round trip identical
+  riscv64/trap: round trip identical
   x86_32/callee_clobber: round trip identical
   x86_32/return41: round trip identical
   x86_32/return42: round trip identical
+  x86_32/sp_align: round trip identical
   x86_32/sp_corrupt: round trip identical
+  x86_32/spin: round trip identical
   x86_32/stack_full: round trip identical
   x86_32/stack_over: round trip identical
   x86_32/trap: round trip identical
   x86_64/callee_clobber: round trip identical
   x86_64/return41: round trip identical
   x86_64/return42: round trip identical
+  x86_64/sp_align: round trip identical
   x86_64/sp_corrupt: round trip identical
+  x86_64/spin: round trip identical
   x86_64/stack_full: round trip identical
   x86_64/stack_over: round trip identical
   x86_64/trap: round trip identical

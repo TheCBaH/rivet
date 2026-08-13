@@ -1,0 +1,12 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <asm_snippet>:
+   0:	910003e0 	mov	x0, sp
+   4:	92400c00 	and	x0, x0, #0xf
+   8:	f100001f 	cmp	x0, #0x0
+   c:	52800540 	mov	w0, #0x2a                  	// #42
+  10:	54000040 	b.eq	18 <asm_snippet+0x18>  // b.none
+  14:	52800520 	mov	w0, #0x29                  	// #41
+  18:	d65f03c0 	ret

@@ -400,6 +400,168 @@ let%expect_test "aarch64 callee_clobber" =
     | ret
     13 00 80 d2 40 05 80 52 c0 03 5f d6 |}]
 
+(* {1 riscv32} *)
+
+let%expect_test "riscv32 return42" =
+  check Riscv32_corpus.cases.return42;
+  [%expect {|
+  | addi x10, x0, 42
+  | jalr x0, 0(x1)
+  13 05 a0 02 67 80 00 00 |}]
+
+let%expect_test "riscv32 return41" =
+  check Riscv32_corpus.cases.return41;
+  [%expect {|
+  | addi x10, x0, 41
+  | jalr x0, 0(x1)
+  13 05 90 02 67 80 00 00 |}]
+
+let%expect_test "riscv32 trap" =
+  check Riscv32_corpus.cases.trap;
+  [%expect {|
+  | unimp
+  73 10 00 c0 |}]
+
+let%expect_test "riscv32 spin" =
+  check Riscv32_corpus.cases.spin;
+  [%expect {|
+  | jal x0, .
+  6f 00 00 00 |}]
+
+let%expect_test "riscv32 sp_align" =
+  check Riscv32_corpus.cases.sp_align;
+  [%expect
+    {|
+  | andi x5, x2, 15
+  | addi x10, x0, 42
+  | beq x5, x0, (. + 8)
+  | addi x10, x0, 41
+  | jalr x0, 0(x1)
+  93 72 f1 00 13 05 a0 02 63 84 02 00 13 05 90 02 67 80 00 00 |}]
+
+let%expect_test "riscv32 stack_full" =
+  check Riscv32_corpus.cases.stack_full;
+  [%expect
+    {|
+  | lui x5, 4
+  | sub x5, x2, x5
+  | sb x0, 0(x5)
+  | addi x10, x0, 42
+  | jalr x0, 0(x1)
+  b7 42 00 00 b3 02 51 40 23 80 02 00 13 05 a0 02 67 80 00 00 |}]
+
+let%expect_test "riscv32 stack_over" =
+  check Riscv32_corpus.cases.stack_over;
+  [%expect
+    {|
+  | lui x5, 4
+  | sub x5, x2, x5
+  | addi x5, x5, -1
+  | sb x0, 0(x5)
+  | addi x10, x0, 42
+  | jalr x0, 0(x1)
+  b7 42 00 00 b3 02 51 40 93 82 f2 ff 23 80 02 00 13 05 a0 02 67 80 00 00 |}]
+
+let%expect_test "riscv32 sp_corrupt" =
+  check Riscv32_corpus.cases.sp_corrupt;
+  [%expect
+    {|
+  | addi x5, x1, 0
+  | addi x2, x2, -16
+  | addi x10, x0, 42
+  | jalr x0, 0(x5)
+  93 82 00 00 13 01 01 ff 13 05 a0 02 67 80 02 00 |}]
+
+let%expect_test "riscv32 callee_clobber" =
+  check Riscv32_corpus.cases.callee_clobber;
+  [%expect
+    {|
+  | addi x8, x0, 0
+  | addi x10, x0, 42
+  | jalr x0, 0(x1)
+  13 04 00 00 13 05 a0 02 67 80 00 00 |}]
+
+(* {1 riscv64} *)
+
+let%expect_test "riscv64 return42" =
+  check Riscv64_corpus.cases.return42;
+  [%expect {|
+  | addi x10, x0, 42
+  | jalr x0, 0(x1)
+  13 05 a0 02 67 80 00 00 |}]
+
+let%expect_test "riscv64 return41" =
+  check Riscv64_corpus.cases.return41;
+  [%expect {|
+  | addi x10, x0, 41
+  | jalr x0, 0(x1)
+  13 05 90 02 67 80 00 00 |}]
+
+let%expect_test "riscv64 trap" =
+  check Riscv64_corpus.cases.trap;
+  [%expect {|
+  | unimp
+  73 10 00 c0 |}]
+
+let%expect_test "riscv64 spin" =
+  check Riscv64_corpus.cases.spin;
+  [%expect {|
+  | jal x0, .
+  6f 00 00 00 |}]
+
+let%expect_test "riscv64 sp_align" =
+  check Riscv64_corpus.cases.sp_align;
+  [%expect
+    {|
+  | andi x5, x2, 15
+  | addi x10, x0, 42
+  | beq x5, x0, (. + 8)
+  | addi x10, x0, 41
+  | jalr x0, 0(x1)
+  93 72 f1 00 13 05 a0 02 63 84 02 00 13 05 90 02 67 80 00 00 |}]
+
+let%expect_test "riscv64 stack_full" =
+  check Riscv64_corpus.cases.stack_full;
+  [%expect
+    {|
+  | lui x5, 4
+  | sub x5, x2, x5
+  | sb x0, 0(x5)
+  | addi x10, x0, 42
+  | jalr x0, 0(x1)
+  b7 42 00 00 b3 02 51 40 23 80 02 00 13 05 a0 02 67 80 00 00 |}]
+
+let%expect_test "riscv64 stack_over" =
+  check Riscv64_corpus.cases.stack_over;
+  [%expect
+    {|
+  | lui x5, 4
+  | sub x5, x2, x5
+  | addi x5, x5, -1
+  | sb x0, 0(x5)
+  | addi x10, x0, 42
+  | jalr x0, 0(x1)
+  b7 42 00 00 b3 02 51 40 93 82 f2 ff 23 80 02 00 13 05 a0 02 67 80 00 00 |}]
+
+let%expect_test "riscv64 sp_corrupt" =
+  check Riscv64_corpus.cases.sp_corrupt;
+  [%expect
+    {|
+  | addi x5, x1, 0
+  | addi x2, x2, -16
+  | addi x10, x0, 42
+  | jalr x0, 0(x5)
+  93 82 00 00 13 01 01 ff 13 05 a0 02 67 80 02 00 |}]
+
+let%expect_test "riscv64 callee_clobber" =
+  check Riscv64_corpus.cases.callee_clobber;
+  [%expect
+    {|
+  | addi x8, x0, 0
+  | addi x10, x0, 42
+  | jalr x0, 0(x1)
+  13 04 00 00 13 05 a0 02 67 80 00 00 |}]
+
 (* {1 The inventory}
 
    What is dogfooded and what is not, in one table - the one test that is over
@@ -434,48 +596,66 @@ let%expect_test "the M1 scope frontier, per snippet and profile" =
       x86_64   ok
       arm      ok
       aarch64  ok
+      riscv32  ok
+      riscv64  ok
     return41
       x86_32   ok
       x86_64   ok
       arm      ok
       aarch64  ok
+      riscv32  ok
+      riscv64  ok
     trap
       x86_32   ok
       x86_64   ok
       arm      ok
       aarch64  ok
+      riscv32  ok
+      riscv64  ok
     spin
       x86_32   ok
       x86_64   ok
       arm      ok
       aarch64  ok
+      riscv32  ok
+      riscv64  ok
     sp_align
       x86_32   ok
       x86_64   ok
       arm      ok
       aarch64  ok
+      riscv32  ok
+      riscv64  ok
     stack_full
       x86_32   ok
       x86_64   ok
       arm      ok
       aarch64  ok
+      riscv32  ok
+      riscv64  ok
     stack_over
       x86_32   ok
       x86_64   ok
       arm      ok
       aarch64  ok
+      riscv32  ok
+      riscv64  ok
     sp_corrupt
       x86_32   ok
       x86_64   ok
       arm      ok
       aarch64  ok
+      riscv32  ok
+      riscv64  ok
     callee_clobber
       x86_32   ok
       x86_64   ok
       arm      ok
       aarch64  ok
+      riscv32  ok
+      riscv64  ok
 
-    dogfooded 36 of 36 |}]
+    dogfooded 54 of 54 |}]
 
 (* {1 Padding}
 
@@ -573,4 +753,38 @@ let%expect_test "nop_bytes, every length a target accepts" =
       13  rejected: A64 padding must be a whole number of four-byte instructions
       14  rejected: A64 padding must be a whole number of four-byte instructions
       15  rejected: A64 padding must be a whole number of four-byte instructions
-      16  1f 20 03 d5 1f 20 03 d5 1f 20 03 d5 1f 20 03 d5 |}]
+      16  1f 20 03 d5 1f 20 03 d5 1f 20 03 d5 1f 20 03 d5
+    riscv32
+       1  rejected: RISC-V padding must be a multiple of four bytes
+       2  rejected: RISC-V padding must be a multiple of four bytes
+       3  rejected: RISC-V padding must be a multiple of four bytes
+       4  13 00 00 00
+       5  rejected: RISC-V padding must be a multiple of four bytes
+       6  rejected: RISC-V padding must be a multiple of four bytes
+       7  rejected: RISC-V padding must be a multiple of four bytes
+       8  13 00 00 00 13 00 00 00
+       9  rejected: RISC-V padding must be a multiple of four bytes
+      10  rejected: RISC-V padding must be a multiple of four bytes
+      11  rejected: RISC-V padding must be a multiple of four bytes
+      12  13 00 00 00 13 00 00 00 13 00 00 00
+      13  rejected: RISC-V padding must be a multiple of four bytes
+      14  rejected: RISC-V padding must be a multiple of four bytes
+      15  rejected: RISC-V padding must be a multiple of four bytes
+      16  13 00 00 00 13 00 00 00 13 00 00 00 13 00 00 00
+    riscv64
+       1  rejected: RISC-V padding must be a multiple of four bytes
+       2  rejected: RISC-V padding must be a multiple of four bytes
+       3  rejected: RISC-V padding must be a multiple of four bytes
+       4  13 00 00 00
+       5  rejected: RISC-V padding must be a multiple of four bytes
+       6  rejected: RISC-V padding must be a multiple of four bytes
+       7  rejected: RISC-V padding must be a multiple of four bytes
+       8  13 00 00 00 13 00 00 00
+       9  rejected: RISC-V padding must be a multiple of four bytes
+      10  rejected: RISC-V padding must be a multiple of four bytes
+      11  rejected: RISC-V padding must be a multiple of four bytes
+      12  13 00 00 00 13 00 00 00 13 00 00 00
+      13  rejected: RISC-V padding must be a multiple of four bytes
+      14  rejected: RISC-V padding must be a multiple of four bytes
+      15  rejected: RISC-V padding must be a multiple of four bytes
+      16  13 00 00 00 13 00 00 00 13 00 00 00 13 00 00 00 |}]

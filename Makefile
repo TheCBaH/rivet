@@ -322,9 +322,9 @@ asm-planted: asm-build
 # asm-abi-conform is reachable from asm-test or asm-ci, so `make asm-test` can
 # never acquire a hidden cross-toolchain or QEMU dependency (guardrail 4).
 #
-# asm-helpers builds the four legacy profiles in both v1 and v2 modes from
-# shared sources. asm-abi-conform executes both copies under qemu-user. The
-# RISC-V v2 helper implementations remain a separate acceptance item.
+# asm-helpers builds the four legacy profiles in both v1 and v2 modes and the
+# RISC-V profiles in v2 mode only. asm-abi-conform executes the four-profile v1
+# regression followed by the complete six-profile v2 suite under qemu-user.
 asm-helpers:
 	tools/asm-helpers.sh all
 

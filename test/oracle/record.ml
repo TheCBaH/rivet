@@ -194,7 +194,7 @@ let validate ?(abi_version = Abi.abi_version) ~expected_case_id s =
                         (Printf.sprintf "state: class %s committed with subcode 0"
                            (Abi.class_name cls))
                     else
-                      match Abi.subcode_of_wire cls error_subcode with
+                      match Abi.subcode_of_wire ~abi_version cls error_subcode with
                       | None ->
                           Some
                             (Printf.sprintf "state: subcode %d is not defined for class %s"
@@ -348,7 +348,10 @@ let pp ppf t =
   | None -> ()
   | Some c -> (
       Fmt.pf ppf " runner_error=%s" (Abi.class_name c);
-      match Abi.subcode_of_wire c t.error_subcode with
+      (* [t] does not retain the wire ABI version.  Use the additive v2
+         namespace when rendering so v2-only errors keep their symbolic name;
+         validation has already rejected those subcodes for v1 records. *)
+      match Abi.subcode_of_wire ~abi_version:Abi_v2.abi_version c t.error_subcode with
       | Some sc -> Fmt.pf ppf ".%s" sc.Abi.name
       | None -> Fmt.pf ppf ".%d" t.error_subcode));
   if t.staged_subcode_ignored then Fmt.pf ppf " staged_subcode=ignored"

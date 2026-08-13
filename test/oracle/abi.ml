@@ -16,18 +16,29 @@
 
 (* {1 Profiles} *)
 
-type profile = X86_32 | X86_64 | Arm | Aarch64
+type profile = X86_32 | X86_64 | Arm | Aarch64 | Riscv32 | Riscv64
 
-let all_profiles = [ X86_32; X86_64; Arm; Aarch64 ]
+let v1_profiles = [ X86_32; X86_64; Arm; Aarch64 ]
+let v2_profiles = v1_profiles @ [ Riscv32; Riscv64 ]
+let all_profiles = v2_profiles
+let profiles_for_version = function 1 -> v1_profiles | 2 -> v2_profiles | _ -> []
 
 (* §1. The ids are wire values, not an enumeration order we may renumber. *)
-let profile_id = function X86_32 -> 1 | X86_64 -> 2 | Arm -> 3 | Aarch64 -> 4
+let profile_id = function
+  | X86_32 -> 1
+  | X86_64 -> 2
+  | Arm -> 3
+  | Aarch64 -> 4
+  | Riscv32 -> 5
+  | Riscv64 -> 6
 
 let profile_of_id = function
   | 1 -> Some X86_32
   | 2 -> Some X86_64
   | 3 -> Some Arm
   | 4 -> Some Aarch64
+  | 5 -> Some Riscv32
+  | 6 -> Some Riscv64
   | _ -> None
 
 (* The names tools/target-matrix.sh uses, so a profile named on a command line,
@@ -37,9 +48,11 @@ let profile_name = function
   | X86_64 -> "x86_64"
   | Arm -> "arm"
   | Aarch64 -> "aarch64"
+  | Riscv32 -> "riscv32"
+  | Riscv64 -> "riscv64"
 
 let profile_of_name n = List.find_opt (fun p -> profile_name p = n) all_profiles
-let word_bits = function X86_32 | Arm -> 32 | X86_64 | Aarch64 -> 64
+let word_bits = function X86_32 | Arm | Riscv32 -> 32 | X86_64 | Aarch64 | Riscv64 -> 64
 
 (* {1 Address map (§3)}
 
@@ -338,6 +351,15 @@ let cache_sync_subcodes =
     s 2 "aarch64_line_size" "AArch64 CTR_EL0 reported an unusable line size";
   ]
 
+let riscv_cache_sync_subcode =
+  {
+    cls = Cache_sync;
+    code = 3;
+    name = "riscv_flush_icache";
+    stage = "step 8";
+    condition = "RISC-V riscv_flush_icache syscall failed";
+  }
+
 let protocol_subcodes =
   let s code name condition = { cls = Protocol; code; name; stage = "post-return"; condition } in
   [
@@ -356,12 +378,18 @@ let all_subcodes =
   manifest_subcodes @ io_subcodes @ mapping_subcodes @ cache_sync_subcodes @ protocol_subcodes
   @ environment_subcodes
 
-let find_subcode name =
-  match List.find_opt (fun s -> key s = name) all_subcodes with
+let all_subcodes_for_version = function
+  | 1 -> all_subcodes
+  | 2 -> all_subcodes @ [ riscv_cache_sync_subcode ]
+  | _ -> []
+
+let find_subcode ?(abi_version = abi_version) name =
+  match List.find_opt (fun s -> key s = name) (all_subcodes_for_version abi_version) with
   | Some s -> s
   | None -> invalid_arg (Printf.sprintf "Abi.find_subcode: no subcode named %S" name)
 
-let subcode_of_wire cls code = List.find_opt (fun s -> s.cls = cls && s.code = code) all_subcodes
+let subcode_of_wire ?(abi_version = abi_version) cls code =
+  List.find_opt (fun s -> s.cls = cls && s.code = code) (all_subcodes_for_version abi_version)
 
 (* {1 Little-endian accessors}
 

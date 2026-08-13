@@ -422,6 +422,162 @@ module Arm_corpus = struct
   let nops = A.nop
 end
 
+(* {1 RISC-V}
+
+   The two XLEN profiles deliberately spell the same nine programs.  Their
+   target modules have generative operand types, so the small constructors are
+   instantiated twice while the semantic shape stays visibly identical. *)
+
+module Riscv32_corpus = struct
+  module T = Riscv32_encode
+  module A = Make (T)
+
+  let r n = reg_exn ~target:T.name T.Reg.find n
+  let reg n = T.Operand.Reg (r n)
+  let imm n = T.Operand.Imm (Foundation.Bigint.of_int n)
+
+  let mem base offset =
+    T.Operand.Mem
+      { T.Mem.offset = Asm_core.Expr.Const (Foundation.Bigint.of_int64 offset); base = r base }
+
+  let insn op ops : T.Instruction.t = T.Instruction.mk op ops
+  let here = T.Operand.Sym Asm_core.Expr.Current_location
+
+  let ahead n =
+    T.Operand.Sym Asm_core.Expr.(Binary (Add, Current_location, Const (Foundation.Bigint.of_int n)))
+
+  let return_n n = A.assemble T.Opcode.[ insn Addi [ reg "a0"; reg "zero"; imm n ]; insn Ret [] ]
+
+  let cases =
+    let open T.Opcode in
+    {
+      return42 = return_n 42;
+      return41 = return_n 41;
+      trap = A.assemble [ insn Unimp [] ];
+      spin = A.assemble [ insn J [ here ] ];
+      sp_align =
+        A.assemble
+          [
+            insn Andi [ reg "t0"; reg "sp"; imm 15 ];
+            insn Addi [ reg "a0"; reg "zero"; imm 42 ];
+            insn Beq [ reg "t0"; reg "zero"; ahead 8 ];
+            insn Addi [ reg "a0"; reg "zero"; imm 41 ];
+            insn Ret [];
+          ];
+      stack_full =
+        A.assemble
+          [
+            insn Lui [ reg "t0"; imm 4 ];
+            insn Sub [ reg "t0"; reg "sp"; reg "t0" ];
+            insn Sb [ reg "zero"; mem "t0" 0L ];
+            insn Addi [ reg "a0"; reg "zero"; imm 42 ];
+            insn Ret [];
+          ];
+      stack_over =
+        A.assemble
+          [
+            insn Lui [ reg "t0"; imm 4 ];
+            insn Sub [ reg "t0"; reg "sp"; reg "t0" ];
+            insn Addi [ reg "t0"; reg "t0"; imm (-1) ];
+            insn Sb [ reg "zero"; mem "t0" 0L ];
+            insn Addi [ reg "a0"; reg "zero"; imm 42 ];
+            insn Ret [];
+          ];
+      sp_corrupt =
+        A.assemble
+          [
+            insn Mv [ reg "t0"; reg "ra" ];
+            insn Addi [ reg "sp"; reg "sp"; imm (-16) ];
+            insn Addi [ reg "a0"; reg "zero"; imm 42 ];
+            insn Jr [ reg "t0" ];
+          ];
+      callee_clobber =
+        A.assemble
+          [
+            insn Addi [ reg "s0"; reg "zero"; imm 0 ];
+            insn Addi [ reg "a0"; reg "zero"; imm 42 ];
+            insn Ret [];
+          ];
+    }
+
+  let nops = A.nop
+end
+
+module Riscv64_corpus = struct
+  module T = Riscv64_encode
+  module A = Make (T)
+
+  let r n = reg_exn ~target:T.name T.Reg.find n
+  let reg n = T.Operand.Reg (r n)
+  let imm n = T.Operand.Imm (Foundation.Bigint.of_int n)
+
+  let mem base offset =
+    T.Operand.Mem
+      { T.Mem.offset = Asm_core.Expr.Const (Foundation.Bigint.of_int64 offset); base = r base }
+
+  let insn op ops : T.Instruction.t = T.Instruction.mk op ops
+  let here = T.Operand.Sym Asm_core.Expr.Current_location
+
+  let ahead n =
+    T.Operand.Sym Asm_core.Expr.(Binary (Add, Current_location, Const (Foundation.Bigint.of_int n)))
+
+  let return_n n = A.assemble T.Opcode.[ insn Addi [ reg "a0"; reg "zero"; imm n ]; insn Ret [] ]
+
+  let cases =
+    let open T.Opcode in
+    {
+      return42 = return_n 42;
+      return41 = return_n 41;
+      trap = A.assemble [ insn Unimp [] ];
+      spin = A.assemble [ insn J [ here ] ];
+      sp_align =
+        A.assemble
+          [
+            insn Andi [ reg "t0"; reg "sp"; imm 15 ];
+            insn Addi [ reg "a0"; reg "zero"; imm 42 ];
+            insn Beq [ reg "t0"; reg "zero"; ahead 8 ];
+            insn Addi [ reg "a0"; reg "zero"; imm 41 ];
+            insn Ret [];
+          ];
+      stack_full =
+        A.assemble
+          [
+            insn Lui [ reg "t0"; imm 4 ];
+            insn Sub [ reg "t0"; reg "sp"; reg "t0" ];
+            insn Sb [ reg "zero"; mem "t0" 0L ];
+            insn Addi [ reg "a0"; reg "zero"; imm 42 ];
+            insn Ret [];
+          ];
+      stack_over =
+        A.assemble
+          [
+            insn Lui [ reg "t0"; imm 4 ];
+            insn Sub [ reg "t0"; reg "sp"; reg "t0" ];
+            insn Addi [ reg "t0"; reg "t0"; imm (-1) ];
+            insn Sb [ reg "zero"; mem "t0" 0L ];
+            insn Addi [ reg "a0"; reg "zero"; imm 42 ];
+            insn Ret [];
+          ];
+      sp_corrupt =
+        A.assemble
+          [
+            insn Mv [ reg "t0"; reg "ra" ];
+            insn Addi [ reg "sp"; reg "sp"; imm (-16) ];
+            insn Addi [ reg "a0"; reg "zero"; imm 42 ];
+            insn Jr [ reg "t0" ];
+          ];
+      callee_clobber =
+        A.assemble
+          [
+            insn Addi [ reg "s0"; reg "zero"; imm 0 ];
+            insn Addi [ reg "a0"; reg "zero"; imm 42 ];
+            insn Ret [];
+          ];
+    }
+
+  let nops = A.nop
+end
+
 (* {1 x86}
 
    The prologue is written once for both modes. That is possible because
@@ -660,6 +816,18 @@ let all =
       nop = Aarch64_corpus.nops;
       preamble = [ ".text" ];
     };
+    {
+      target = "riscv32";
+      cases = Riscv32_corpus.cases;
+      nop = Riscv32_corpus.nops;
+      preamble = [ ".option norelax"; ".option norvc"; ".text" ];
+    };
+    {
+      target = "riscv64";
+      cases = Riscv64_corpus.cases;
+      nop = Riscv64_corpus.nops;
+      preamble = [ ".option norelax"; ".option norvc"; ".text" ];
+    };
   ]
 
 (* {1 The runtime view}
@@ -712,6 +880,8 @@ let for_profile : Asm_oracle.Abi.profile -> (Sb.t, string) result = function
   | Asm_oracle.Abi.X86_64 -> snippet_bytes X86_64_corpus.cases
   | Asm_oracle.Abi.Arm -> snippet_bytes Arm_corpus.cases
   | Asm_oracle.Abi.Aarch64 -> snippet_bytes Aarch64_corpus.cases
+  | Asm_oracle.Abi.Riscv32 -> snippet_bytes Riscv32_corpus.cases
+  | Asm_oracle.Abi.Riscv64 -> snippet_bytes Riscv64_corpus.cases
 
 (* {1 Assembly text}
 

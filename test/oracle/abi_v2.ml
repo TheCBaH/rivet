@@ -1,9 +1,9 @@
 (* Additive execution ABI v2 metadata. ABI v1 remains in [Abi] unchanged;
    this module owns the six-profile namespace and the RISC-V execution rules. *)
 
-type profile = X86_32 | X86_64 | Arm | Aarch64 | Riscv32 | Riscv64
+type profile = Abi.profile = X86_32 | X86_64 | Arm | Aarch64 | Riscv32 | Riscv64
 
-let all_profiles = [ X86_32; X86_64; Arm; Aarch64; Riscv32; Riscv64 ]
+let all_profiles = Abi.v2_profiles
 
 let profile_id = function
   | X86_32 -> 1

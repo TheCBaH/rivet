@@ -26,8 +26,8 @@
 ;                 the host side; §3.7 bans it from every production and browser
 ;                 package and tools/asm-check-purity.sh enforces that over the
 ;                 resolved DAG. Native only, and deliberately not wired to any
-;                 alias: it needs the cross-assembled helpers and the four
-;                 qemu-user binaries, which the portable CI leg does not have.
+;                 alias: it needs the cross-built helpers and the six qemu-user
+;                 binaries, which the portable CI leg does not have.
 ;
 ; conform         the conformance driver (make asm-abi-conform). An executable,
 ;                 not a runtest rule, for the same reason - `make asm-test` must

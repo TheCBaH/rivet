@@ -1,0 +1,8 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_snippet>:
+   0:	00000413          	li	s0,0
+   4:	02a00513          	li	a0,42
+   8:	00008067          	ret

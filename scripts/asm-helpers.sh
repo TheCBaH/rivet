@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Assemble and link the legacy-profile ABI v1 and v2 user-mode helpers.
+# Build the execution ABI user-mode helpers: the four legacy assembly sources
+# in v1 and v2 modes, and the shared freestanding RISC-V source in v2 mode.
 #
-# Each helper is checked-in target assembly, built by the reference GNU as/ld
-# with no C, no libc and no dynamic loader - so `ld` here is the whole link, not
-# a compiler driver that would quietly pull in crt files. `-static -nostdlib`
-# is not enough on its own: gcc would still add its own startup objects, which
-# is why this calls ld directly.
+# The legacy helpers are checked-in target assembly and the RISC-V helper is
+# freestanding C with its target call boundary expressed as inline assembly.
+# All are linked directly by the reference GNU ld with no libc, start files,
+# runtime, or dynamic loader. `-static -nostdlib` is not enough on its own: gcc
+# would still add startup objects if it performed the link.
 #
 # Toolchain prefixes come from tools/target-matrix.sh, the same place
 # the fixture and oracle tools read them from. A helper assembled with one
@@ -71,6 +72,31 @@ build_one() {
   echo "asm-helpers: ABI v$abi $t -> $dir/helper ($QEMU_BIN)"
 }
 
+build_riscv_v2() {
+  local t=$1
+  target_config "$t"
+  local src="$SRC_DIR/riscv.c"
+  local cc="${TOOLPREFIX}gcc" ld="${TOOLPREFIX}ld"
+  command -v "$cc" >/dev/null || Fatal "$cc not found (cross compiler missing)"
+  command -v "$ld" >/dev/null || Fatal "$ld not found (cross binutils missing)"
+
+  local dir="$OUT_DIR/v2/$t"
+  mkdir -p "$dir"
+  "$cc" "${AS_FLAGS[@]}" -O2 -ffreestanding -fno-builtin -fno-stack-protector \
+    -fno-pic -fomit-frame-pointer -nostdlib -c -o "$dir/helper.o" "$src"
+  "$ld" "${LD_FLAGS[@]}" -z separate-code -static -e _start -o "$dir/helper" "$dir/helper.o"
+  echo "$QEMU_BIN" > "$dir/qemu"
+  {
+    echo "abi-version	2"
+    echo "profile	$t"
+    echo "helper.sha256	$(sha256sum "$src" | cut -d' ' -f1)"
+    echo "cc	$("$cc" --version | head -1)"
+    echo "ld	$("$ld" --version | head -1)"
+    echo "qemu	$("$QEMU_BIN" --version 2>/dev/null | head -1)"
+  } > "$dir/provenance.txt"
+  echo "asm-helpers: ABI v2 $t -> $dir/helper ($QEMU_BIN)"
+}
+
 targets=()
 if [ $# -eq 0 ] || [ "${1:-}" = all ]; then
   targets=("${ALL_TARGETS[@]}")
@@ -79,8 +105,12 @@ else
 fi
 
 for t in "${targets[@]}"; do
-  # A profile whose helper has not been written yet is reported explicitly and
-  # skipped. The conformance driver reports exactly which built profiles ran.
+  case "$t" in
+    riscv32 | riscv64)
+      build_riscv_v2 "$t"
+      continue
+      ;;
+  esac
   if [ ! -f "$SRC_DIR/$t.s" ]; then
     echo "asm-helpers: $t skipped (no $SRC_DIR/$t.s yet)"
     continue

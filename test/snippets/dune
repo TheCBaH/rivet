@@ -48,6 +48,8 @@
   x86_64_encode
   arm_encode
   aarch64_encode
+  riscv32_encode
+  riscv64_encode
   fmt)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
