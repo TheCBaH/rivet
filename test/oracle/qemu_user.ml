@@ -41,6 +41,10 @@ type t = {
   termination : termination;
   record : Record.verdict option;  (** [None] when no result file exists at all *)
   wall_ms : int;  (** not part of the normalized artifact; kept for diagnosis only *)
+  trace : string option;
+      (** M4 Phase 9: the content of a QEMU trace log, when [run]'s [~qemu_args] asked QEMU to
+          write one (see [trace_file_name]) and it exists. [None] on every default (untraced)
+          call - this field exists for a caller that opted in, not for [pp]/normal comparisons. *)
 }
 
 (* {1 Locating a profile's helper}
@@ -186,8 +190,23 @@ let classify ~status ~killed ~record =
    prove nothing about the helper. *)
 type input = File  (** write the manifest and pass its path *) | Missing | Directory
 
+(* M4 Phase 9.1/9.2: the QEMU-side trace file's fixed name. A caller that wants
+   a trace passes [~qemu_args] naming QEMU's own [-D] option with this exact
+   relative path (the child [chdir]s into the private temp dir before exec, so
+   a relative path lands there); [run] looks for it opportunistically after
+   the process exits and, if present, reads it before [with_temp_dir]'s
+   cleanup unlinks it - the fix for the bug where a trace was written and then
+   discarded before any caller could see it. *)
+let trace_file_name = "trace.log"
+let trace_cap = 64 * 1024
+
+let capped_trace s =
+  if String.length s <= trace_cap then s
+  else
+    String.sub s 0 trace_cap ^ Printf.sprintf "\n...(truncated, %d bytes total)" (String.length s)
+
 let run ?(abi_version = Abi.abi_version) ?(timeout_s = 10.0) ?(input = File) ?(extra_args = [])
-    ~profile ~manifest ~expected_case_id () =
+    ?(qemu_args = []) ~profile ~manifest ~expected_case_id () =
   match helper_for ~abi_version profile with
   | None -> invalid_arg ("qemu_user: no helper built for " ^ Abi.profile_name profile)
   | Some h ->
@@ -203,8 +222,13 @@ let run ?(abi_version = Abi.abi_version) ?(timeout_s = 10.0) ?(input = File) ?(e
             | Directory -> dir
           in
           let t0 = Unix.gettimeofday () in
+          (* [qemu_args] are QEMU's own options and belong before the guest
+             binary on its command line - [extra_args], by contrast, extends
+             the guest helper's own argv, not QEMU's option list, so a [-d]
+             flag cannot reuse it. *)
           let argv =
-            Array.of_list (h.qemu :: h.elf :: manifest_path :: result_path :: extra_args)
+            Array.of_list
+              ((h.qemu :: qemu_args) @ (h.elf :: manifest_path :: result_path :: extra_args))
           in
           (* fork/chdir/exec rather than create_process: qemu-user writes a
              qemu_<name>_<stamp>_<pid>.core file into the *current* directory
@@ -237,7 +261,14 @@ let run ?(abi_version = Abi.abi_version) ?(timeout_s = 10.0) ?(input = File) ?(e
               Some (Record.validate ~abi_version ~expected_case_id (read_file result_path))
             else None
           in
-          { termination = classify ~status ~killed ~record; record; wall_ms })
+          (* Read inside this callback, before [with_temp_dir]'s cleanup runs
+             on return - not after, which is the bug 9.1 fixes: a trace file
+             read anywhere outside here would already be unlinked. *)
+          let trace_path = Filename.concat dir trace_file_name in
+          let trace =
+            if Sys.file_exists trace_path then Some (capped_trace (read_file trace_path)) else None
+          in
+          { termination = classify ~status ~killed ~record; record; wall_ms; trace })
 
 (* {1 The normalized artifact}
 

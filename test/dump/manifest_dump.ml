@@ -11,16 +11,16 @@
 
 let text =
   "\t.text\n\
-  \t.globl start\n\
+   \t.globl start\n\
    start:\n\
-  \tmovl $1, %eax\n\
-  \tret\n\
-  \t.data\n\
+   \tmovl $1, %eax\n\
+   \tret\n\
+   \t.data\n\
    g:\n\
-  \t.long 42\n\
-  \t.bss\n\
+   \t.long 42\n\
+   \t.bss\n\
    b:\n\
-  \t.zero 8\n"
+   \t.zero 8\n"
 
 let ok = function
   | Ok v -> v
@@ -41,6 +41,7 @@ let () =
   List.iter
     (fun (s : Driver.Portable.manifest_segment) ->
       Printf.printf "%-6s address=0x%-10Lx bytes=%d %s\n" s.Driver.Portable.name
-        s.Driver.Portable.address (String.length s.Driver.Portable.bytes)
+        s.Driver.Portable.address
+        (String.length s.Driver.Portable.bytes)
         (Asm_core.Perms.to_string s.Driver.Portable.perms))
     m.Driver.Portable.segments

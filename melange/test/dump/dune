@@ -19,6 +19,14 @@
  (target js)
  (modules asm_dump manifest_dump)
  (module_systems commonjs)
- (libraries foundation image target_intf driver test_dump_inputs asm_core err_trace fmt)
+ (libraries
+  foundation
+  image
+  target_intf
+  driver
+  test_dump_inputs
+  asm_core
+  err_trace
+  fmt)
  (enabled_if
   (= %{env:ASM_MELANGE=false} true)))
