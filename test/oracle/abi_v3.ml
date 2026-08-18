@@ -103,7 +103,8 @@ let all_subcodes = Abi.all_subcodes_for_version 2 @ obs_subcodes
    class-scoped, not version-scoped, so a v1 or v2 record's committed
    subcode still has one name here. Mirrors why [Record.pp] already renders
    through [Abi_v2]'s superset rather than [Abi]'s v1-only one. *)
-let subcode_of_wire cls code = List.find_opt (fun s -> s.Abi.cls = cls && s.Abi.code = code) all_subcodes
+let subcode_of_wire cls code =
+  List.find_opt (fun s -> s.Abi.cls = cls && s.Abi.code = code) all_subcodes
 
 (* {1 Version dispatch}
 
@@ -119,13 +120,15 @@ let manifest_magic_for_version = function
   | 1 -> Abi.manifest_magic
   | 2 -> Abi_v2.manifest_magic
   | 3 -> manifest_magic
-  | v -> invalid_arg (Printf.sprintf "Abi_v3.manifest_magic_for_version: unsupported abi_version %d" v)
+  | v ->
+      invalid_arg (Printf.sprintf "Abi_v3.manifest_magic_for_version: unsupported abi_version %d" v)
 
 let result_magic_for_version = function
   | 1 -> Abi.result_magic
   | 2 -> Abi_v2.result_magic
   | 3 -> result_magic
-  | v -> invalid_arg (Printf.sprintf "Abi_v3.result_magic_for_version: unsupported abi_version %d" v)
+  | v ->
+      invalid_arg (Printf.sprintf "Abi_v3.result_magic_for_version: unsupported abi_version %d" v)
 
 (* The same table for the profile set a version supports - what
    [Qemu_user.available_profiles] consults, so a v3 helper actually gets
@@ -133,14 +136,22 @@ let result_magic_for_version = function
    none. This is exactly the "one small lookup table all sites consult" the
    magic-dispatch functions above already are, generalized to the other
    version-scoped quantity call sites actually need. *)
-let profiles_for_version = function 1 -> Abi.v1_profiles | 2 -> Abi_v2.all_profiles | 3 -> all_profiles | _ -> []
+let profiles_for_version = function
+  | 1 -> Abi.v1_profiles
+  | 2 -> Abi_v2.all_profiles
+  | 3 -> all_profiles
+  | _ -> []
 
 (* Same pattern for the subcode table: [Abi.all_subcodes_for_version] only
    knows 1 and 2 (it is v1's own frozen transcription and cannot depend
    forward on v3), so [conform.ml]'s reachability walk and its
    [Error "class.name"] case lookups both go through this version instead
    once a case is scoped at v3. *)
-let all_subcodes_for_version = function 1 -> Abi.all_subcodes_for_version 1 | 2 -> Abi.all_subcodes_for_version 2 | 3 -> all_subcodes | _ -> []
+let all_subcodes_for_version = function
+  | 1 -> Abi.all_subcodes_for_version 1
+  | 2 -> Abi.all_subcodes_for_version 2
+  | 3 -> all_subcodes
+  | _ -> []
 
 let find_subcode ?(abi_version = abi_version) name =
   match List.find_opt (fun s -> Abi.key s = name) (all_subcodes_for_version abi_version) with
@@ -154,4 +165,6 @@ let find_subcode ?(abi_version = abi_version) name =
    v1 record must not be accepted merely because its subcode happens to
    exist in v3's superset table. *)
 let subcode_of_wire_for_version ~abi_version cls code =
-  List.find_opt (fun s -> s.Abi.cls = cls && s.Abi.code = code) (all_subcodes_for_version abi_version)
+  List.find_opt
+    (fun s -> s.Abi.cls = cls && s.Abi.code = code)
+    (all_subcodes_for_version abi_version)

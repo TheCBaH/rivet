@@ -400,7 +400,8 @@ let%expect_test "ABI v2 adds two profiles without moving v1 wire fields" =
    (v1) abi_version, so those records are still held to the exact-1 rule. *)
 
 let show_v3 s =
-  Fmt.pr "%a@." Record.pp_verdict (Record.validate ~abi_version:Abi_v3.abi_version ~expected_case_id:case_id s)
+  Fmt.pr "%a@." Record.pp_verdict
+    (Record.validate ~abi_version:Abi_v3.abi_version ~expected_case_id:case_id s)
 
 let%expect_test "v3: n_expected outside 1..8 is rejected, same message shape as v1's exact-1 rule" =
   show_v3
@@ -408,9 +409,7 @@ let%expect_test "v3: n_expected outside 1..8 is rejected, same message shape as 
        ~case_id ~expected:[||] ~n_expected:0 ());
   show_v3
     (Record.build ~abi_version:Abi_v3.abi_version ~record_state:Abi.Validated ~status:Abi.Running
-       ~case_id
-       ~expected:(Array.make 9 0L)
-       ~n_expected:9 ());
+       ~case_id ~expected:(Array.make 9 0L) ~n_expected:9 ());
   [%expect
     {|
     invalid: state: n_expected 0, expected 1..8
@@ -420,26 +419,22 @@ let%expect_test "v3: n_expected outside 1..8 is rejected, same message shape as 
 let%expect_test "v3: a returned/passed record needs n_values = n_expected exactly" =
   show_v3
     (Record.build ~abi_version:Abi_v3.abi_version ~record_state:Abi.Returned ~status:Abi.Passed
-       ~case_id
-       ~expected:[| 42L; 7L; 9L |]
-       ~values:[| 42L; 7L |] ());
+       ~case_id ~expected:[| 42L; 7L; 9L |] ~values:[| 42L; 7L |] ());
   [%expect {| invalid: staging: n_values 2, expected 3 |}]
 
 let%expect_test "v3: a fully-populated multi-value returned/passed record validates" =
   show_v3
     (Record.build ~abi_version:Abi_v3.abi_version ~record_state:Abi.Returned ~status:Abi.Passed
-       ~case_id
-       ~expected:[| 42L; 7L; 9L |]
-       ~values:[| 42L; 7L; 9L |] ());
-  [%expect {| returned/passed case_id=7 n_expected=3 expected=[42 7 9] n_values=3 values=[42 7 9] diag="" |}]
+       ~case_id ~expected:[| 42L; 7L; 9L |] ~values:[| 42L; 7L; 9L |] ());
+  [%expect
+    {| returned/passed case_id=7 n_expected=3 expected=[42 7 9] n_values=3 values=[42 7 9] diag="" |}]
 
 let%expect_test "v3: a fault record still requires n_values = 0 regardless of n_expected" =
   show_v3
     (Record.build ~abi_version:Abi_v3.abi_version ~record_state:Abi.Validated ~status:Abi.Fault
-       ~case_id
-       ~expected:[| 42L; 7L; 9L |]
-       ());
-  [%expect {| validated/fault case_id=7 n_expected=3 expected=[42 7 9] n_values=0 values=[] diag="" |}]
+       ~case_id ~expected:[| 42L; 7L; 9L |] ());
+  [%expect
+    {| validated/fault case_id=7 n_expected=3 expected=[42 7 9] n_values=0 values=[] diag="" |}]
 
 let%expect_test "v3: the four new observation subcodes are a contiguous class-64 extension" =
   let v3_only =

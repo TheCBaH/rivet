@@ -26,11 +26,7 @@ type segment = {
    equal [List.length expected - 1] once [expected] has more than one entry -
    a caller-side invariant, not one this writer checks, per this module's own
    "dumb writer" philosophy above. *)
-type observation = {
-  obs_vaddr : int64;
-  width : int;  (** 1, 2, 4, or 8 *)
-  sign_extend : bool;
-}
+type observation = { obs_vaddr : int64; width : int;  (** 1, 2, 4, or 8 *) sign_extend : bool }
 
 type t = {
   profile : Abi.profile;
@@ -41,7 +37,8 @@ type t = {
   timeout_ms : int;
   expected : int64 list;
   segments : segment list;
-  observations : observation list;  (** empty for every v1/v2 manifest and every single-value v3 one *)
+  observations : observation list;
+      (** empty for every v1/v2 manifest and every single-value v3 one *)
 }
 
 let align_up_8 n = (n + 7) land lnot 7
@@ -139,7 +136,8 @@ let serialize ?(abi_version = Abi.abi_version) t =
       let d = obs_base + (Abi_v3.obs_descriptor_size * i) in
       Abi.set_u64 b (d + Abi_v3.Obs_descriptor_off.vaddr) o.obs_vaddr;
       Abi.set_u8 b (d + Abi_v3.Obs_descriptor_off.width) o.width;
-      Abi.set_u8 b (d + Abi_v3.Obs_descriptor_off.flags)
+      Abi.set_u8 b
+        (d + Abi_v3.Obs_descriptor_off.flags)
         (if o.sign_extend then Abi_v3.sign_extend_flag else 0))
     t.observations;
   List.iteri

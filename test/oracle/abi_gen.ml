@@ -95,7 +95,8 @@ let seg_a0a =
 let seg_v3_equ =
   [
     Blank;
-    comment "v3-only constants (exec-abi-v3.md), additive to abi-v1.inc, which stays frozen at v1/v2.";
+    comment
+      "v3-only constants (exec-abi-v3.md), additive to abi-v1.inc, which stays frozen at v1/v2.";
     directive ".equ N_EXPECTED_MAX, 8";
     directive ".equ OBS_D_VADDR, 0";
     directive ".equ OBS_D_WIDTH, 8";
@@ -554,10 +555,10 @@ let seg_v3_stage4b =
   [
     Blank;
     directive ".if ABI_VERSION >= 3";
+    comment "---- v3 stage 4b: the observation-descriptor table (exec-abi-v3.md §3).";
     comment
-      "---- v3 stage 4b: the observation-descriptor table (exec-abi-v3.md §3)."
-      ;
-    comment "%rax still holds the segment-descriptor-table end from .Lmeta_ok, unclobbered by the store above.";
+      "%rax still holds the segment-descriptor-table end from .Lmeta_ok, unclobbered by the store \
+       above.";
     insn "movq    %rax, v3_obs_table_off(%rip)";
     insn "movq    v3_n_expected(%rip), %rdx";
     insn "decq    %rdx";
@@ -569,7 +570,8 @@ let seg_v3_stage4b =
     insn "movq    %rdx, meta_end(%rip)           /* extend meta_end: the real payload start */";
     insn "jmp     .Lobs_table_ok";
     label ".Lobs_table_overruns";
-    comment "same condition class as stage 4's own check, generalized to include the observation table.";
+    comment
+      "same condition class as stage 4's own check, generalized to include the observation table.";
     insn "FAIL    CLS_MANIFEST, SUB_DESCRIPTOR_TABLE_OVERRUNS";
     label ".Lobs_table_ok";
     insn "xorl    %ebx, %ebx";
@@ -580,8 +582,12 @@ let seg_v3_stage4b =
     insn "jae     .Lobsv_done";
     insn "imulq   $OBS_D_SIZE, %rbx, %rcx";
     insn "addq    v3_obs_table_off(%rip), %rcx";
-    insn "addq    %r15, %rcx                     /* rcx: pointer to this descriptor, pre-call so %r15 is trusted */";
-    insn "movzbl  OBS_D_WIDTH(%rcx), %r9d         /* r9: width, kept live for the rest of this iteration */";
+    insn
+      "addq    %r15, %rcx                     /* rcx: pointer to this descriptor, pre-call so %r15 \
+       is trusted */";
+    insn
+      "movzbl  OBS_D_WIDTH(%rcx), %r9d         /* r9: width, kept live for the rest of this \
+       iteration */";
     insn "cmpl    $1, %r9d";
     insn "je      .Lobsv_width_ok";
     insn "cmpl    $2, %r9d";
@@ -597,7 +603,9 @@ let seg_v3_stage4b =
     insn "jz      .Lobsv_flags_ok";
     insn "FAIL    CLS_MANIFEST, SUB_OBS_RESERVED_NONZERO";
     label ".Lobsv_flags_ok";
-    comment "the six reserved bytes, unrolled: only six iterations, and or_bytes would clobber rcx (our descriptor pointer).";
+    comment
+      "the six reserved bytes, unrolled: only six iterations, and or_bytes would clobber rcx (our \
+       descriptor pointer).";
     insn "movzbl  OBS_D_RESERVED+0(%rcx), %eax";
     insn "movzbl  OBS_D_RESERVED+1(%rcx), %edx";
     insn "orl     %edx, %eax";
@@ -615,8 +623,10 @@ let seg_v3_stage4b =
     label ".Lobsv_reserved_ok";
     insn "movq    OBS_D_VADDR(%rcx), %r10         /* r10: this observation's vaddr, kept live */";
     comment
-      "find a segment whose declared [D_VADDR, D_VADDR+D_INIT_LEN+D_ZERO_LEN) contains [r10, r10+r9),";
-    comment "in descriptor order - the same first-container-wins convention .Lentry already uses below.";
+      "find a segment whose declared [D_VADDR, D_VADDR+D_INIT_LEN+D_ZERO_LEN) contains [r10, \
+       r10+r9),";
+    comment
+      "in descriptor order - the same first-container-wins convention .Lentry already uses below.";
     insn "xorl    %r11d, %r11d";
     label ".Lobsv_seg";
     insn "cmpq    %r12, %r11";
@@ -629,7 +639,9 @@ let seg_v3_stage4b =
     insn "movq    D_INIT_LEN(%rdx), %rsi";
     insn "addq    D_ZERO_LEN(%rdx), %rsi";
     insn "addq    %rax, %rsi";
-    insn "jc      .Lobsv_seg_next                 /* this segment's own range overflows: .Lgeom rejects it later */";
+    insn
+      "jc      .Lobsv_seg_next                 /* this segment's own range overflows: .Lgeom \
+       rejects it later */";
     insn "movq    %r10, %rdi";
     insn "addq    %r9, %rdi";
     insn "jc      .Lobsv_not_contained             /* the observation's own range overflows */";
@@ -1329,7 +1341,9 @@ let seg_v3_tail =
     directive ".if ABI_VERSION >= 3";
     insn "movq    v3_n_expected(%rip), %rax";
     insn "movw    %ax, R_N_VALUES(%r13)";
-    comment "the loop below runs zero times when n_expected = 1: (n_expected - 1) - 0 compares >= 0 immediately.";
+    comment
+      "the loop below runs zero times when n_expected = 1: (n_expected - 1) - 0 compares >= 0 \
+       immediately.";
     insn "xorl    %ebx, %ebx";
     label ".Lobsload";
     insn "movq    v3_n_expected(%rip), %rax";
@@ -1385,7 +1399,8 @@ let seg_v3_tail =
     insn "movl    $0, R_DIAG_LEN(%r13)";
     directive ".if ABI_VERSION >= 3";
     comment
-      "passed iff every slot matches expected[] element-wise (exec-abi-v3.md §4); one mismatch anywhere commits failed.";
+      "passed iff every slot matches expected[] element-wise (exec-abi-v3.md §4); one mismatch \
+       anywhere commits failed.";
     insn "movq    v3_n_expected(%rip), %rcx";
     insn "xorl    %ebx, %ebx";
     insn "movl    $ST_PASSED, %r9d";
@@ -1567,7 +1582,8 @@ let x32_a0a =
 let x32_v3_equ =
   [
     Blank;
-    comment "v3-only constants (exec-abi-v3.md), additive to abi-v1.inc, which stays frozen at v1/v2.";
+    comment
+      "v3-only constants (exec-abi-v3.md), additive to abi-v1.inc, which stays frozen at v1/v2.";
     directive ".equ N_EXPECTED_MAX, 8";
     directive ".equ OBS_D_VADDR, 0";
     directive ".equ OBS_D_WIDTH, 8";
@@ -1952,7 +1968,9 @@ let x32_v3_stage4b =
     Blank;
     directive ".if ABI_VERSION >= 3";
     comment "---- v3 stage 4b: the observation-descriptor table (exec-abi-v3.md §3).";
-    comment "%eax still holds the segment-descriptor-table end from .Lmeta_ok, unclobbered by the store above.";
+    comment
+      "%eax still holds the segment-descriptor-table end from .Lmeta_ok, unclobbered by the store \
+       above.";
     insn "movl    %eax, v3_obs_table_off";
     insn "movl    v3_n_expected, %edx";
     insn "decl    %edx";
@@ -1964,7 +1982,8 @@ let x32_v3_stage4b =
     insn "movl    %edx, meta_end                 /* extend meta_end: the real payload start */";
     insn "jmp     .Lobs_table_ok";
     label ".Lobs_table_overruns";
-    comment "same condition class as stage 4's own check, generalized to include the observation table.";
+    comment
+      "same condition class as stage 4's own check, generalized to include the observation table.";
     insn "FAIL    CLS_MANIFEST, SUB_DESCRIPTOR_TABLE_OVERRUNS";
     label ".Lobs_table_ok";
     insn "movl    $0, idx";
@@ -2011,7 +2030,8 @@ let x32_v3_stage4b =
     insn "jz      .Lobsv_reserved_ok";
     insn "FAIL    CLS_MANIFEST, SUB_OBS_RESERVED_NONZERO";
     label ".Lobsv_reserved_ok";
-    comment "Containment: general 64-bit unsigned range test (see this section's own header comment).";
+    comment
+      "Containment: general 64-bit unsigned range test (see this section's own header comment).";
     insn "movl    OBS_D_VADDR(%esi), %eax";
     insn "movl    %eax, v3_obs_vaddr_lo";
     insn "movl    OBS_D_VADDR+4(%esi), %eax";
@@ -2718,7 +2738,9 @@ let x32_v3_tail =
     insn "decl    %eax";
     insn "imull   $OBS_D_SIZE, %eax, %eax";
     insn "addl    v3_obs_table_off, %eax";
-    insn "addl    mbase, %eax                    /* mbase, never a register: safe post-call, unlike x86_64's %r15 */";
+    insn
+      "addl    mbase, %eax                    /* mbase, never a register: safe post-call, unlike \
+       x86_64's %r15 */";
     insn "movl    %eax, %esi";
     insn "movl    OBS_D_VADDR(%esi), %ebx         /* the guest address to read */";
     insn "movzbl  OBS_D_WIDTH(%esi), %ecx";
@@ -2760,7 +2782,9 @@ let x32_v3_tail =
     label ".Lobsload_hi_zero";
     insn "xorl    %edx, %edx";
     label ".Lobsload_store";
-    comment "idx is already the target slot number (1, 2, ...): no -1 here, unlike the descriptor lookup above.";
+    comment
+      "idx is already the target slot number (1, 2, ...): no -1 here, unlike the descriptor lookup \
+       above.";
     insn "movl    idx, %ecx";
     insn "imull   $8, %ecx, %ecx";
     insn "movl    %eax, R_VALUES(%edi,%ecx,1)";
@@ -2774,7 +2798,8 @@ let x32_v3_tail =
     insn "movl    $0, R_DIAG_LEN(%edi)";
     directive ".if ABI_VERSION >= 3";
     comment
-      "passed iff every slot matches expected[] element-wise (exec-abi-v3.md §4); one mismatch anywhere commits failed.";
+      "passed iff every slot matches expected[] element-wise (exec-abi-v3.md §4); one mismatch \
+       anywhere commits failed.";
     insn "movl    $0, idx";
     insn "movl    $ST_PASSED, %ebp";
     label ".Lcmp";
@@ -3035,7 +3060,8 @@ let arm_a0a =
 let arm_v3_equ =
   [
     Blank;
-    comment "v3-only constants (exec-abi-v3.md), additive to abi-v1.inc, which stays frozen at v1/v2.";
+    comment
+      "v3-only constants (exec-abi-v3.md), additive to abi-v1.inc, which stays frozen at v1/v2.";
     directive ".equ N_EXPECTED_MAX, 8";
     directive ".equ OBS_D_VADDR, 0";
     directive ".equ OBS_D_WIDTH, 8";
@@ -3357,11 +3383,7 @@ _start:
   |> verbatim_block
 
 let arm_v3_manifest_base =
-  [
-    directive ".if ABI_VERSION >= 3";
-    insn "STV     r4, v3_manifest_base, r0";
-    directive ".endif";
-  ]
+  [ directive ".if ABI_VERSION >= 3"; insn "STV     r4, v3_manifest_base, r0"; directive ".endif" ]
 
 let arm_a1 =
   {|
@@ -3498,7 +3520,8 @@ let arm_v3_stage4b =
     insn "cmp     r10, r5";
     insn "bls     .Lobs_table_ok";
     label ".Lobs_table_overruns";
-    comment "same condition class as stage 4's own check, generalized to include the observation table.";
+    comment
+      "same condition class as stage 4's own check, generalized to include the observation table.";
     insn "FAIL    CLS_MANIFEST, SUB_DESCRIPTOR_TABLE_OVERRUNS";
     label ".Lobs_table_ok";
     insn "mov     r9, #0";
@@ -3544,7 +3567,9 @@ let arm_v3_stage4b =
     insn "beq     .Lobsv_reserved_ok";
     insn "FAIL    CLS_MANIFEST, SUB_OBS_RESERVED_NONZERO";
     label ".Lobsv_reserved_ok";
-    comment "Containment: general 64-bit unsigned range test - stage 5 has not yet proved init_len/zero_len 32-bit.";
+    comment
+      "Containment: general 64-bit unsigned range test - stage 5 has not yet proved \
+       init_len/zero_len 32-bit.";
     insn "ldr     r0, [r11, #OBS_D_VADDR]";
     insn "STV     r0, v3_obs_vaddr_lo, r1";
     insn "ldr     r0, [r11, #OBS_D_VADDR+4]";
@@ -4378,7 +4403,8 @@ let arm_v3_tail =
     insn "str     r0, [r6, #R_DIAG_LEN]";
     directive ".if ABI_VERSION >= 3";
     comment
-      "passed iff every slot matches expected[] element-wise (exec-abi-v3.md §4); one mismatch anywhere commits failed.";
+      "passed iff every slot matches expected[] element-wise (exec-abi-v3.md §4); one mismatch \
+       anywhere commits failed.";
     insn "mov     r9, #0";
     insn "mov     r12, #ST_PASSED";
     label ".Lcmp";
@@ -4588,7 +4614,8 @@ let a64_a0a =
 let a64_v3_equ =
   [
     Blank;
-    comment "v3-only constants (exec-abi-v3.md), additive to abi-v1.inc, which stays frozen at v1/v2.";
+    comment
+      "v3-only constants (exec-abi-v3.md), additive to abi-v1.inc, which stays frozen at v1/v2.";
     directive ".equ N_EXPECTED_MAX, 8";
     directive ".equ OBS_D_VADDR, 0";
     directive ".equ OBS_D_WIDTH, 8";
@@ -5014,7 +5041,8 @@ let a64_v3_stage4b =
     insn "cmp     x10, x5";
     insn "b.ls    .Lobs_table_ok";
     label ".Lobs_table_overruns";
-    comment "same condition class as stage 4's own check, generalized to include the observation table.";
+    comment
+      "same condition class as stage 4's own check, generalized to include the observation table.";
     insn "FAIL    CLS_MANIFEST, SUB_DESCRIPTOR_TABLE_OVERRUNS";
     label ".Lobs_table_ok";
     insn "mov     x9, xzr";
@@ -5045,7 +5073,9 @@ let a64_v3_stage4b =
     insn "b.eq    .Lobsv_flags_ok";
     insn "FAIL    CLS_MANIFEST, SUB_OBS_RESERVED_NONZERO";
     label ".Lobsv_flags_ok";
-    comment "6 reserved bytes at offset 10, ending exactly at the 16-byte descriptor boundary: a 4+2 load, never an 8-byte load that would read into the next descriptor.";
+    comment
+      "6 reserved bytes at offset 10, ending exactly at the 16-byte descriptor boundary: a 4+2 \
+       load, never an 8-byte load that would read into the next descriptor.";
     insn "ldr     w0, [x11, #OBS_D_RESERVED]";
     insn "ldrh    w1, [x11, #OBS_D_RESERVED+4]";
     insn "orr     w0, w0, w1";
@@ -5758,7 +5788,9 @@ let a64_v3_tail =
     insn "sub     x0, x9, #1";
     insn "mov     x1, #OBS_D_SIZE";
     insn "mul     x0, x0, x1";
-    insn "LDV     x1, mbase_save, x2                /* never trust the register x4 became: not preserved by the guest call */";
+    insn
+      "LDV     x1, mbase_save, x2                /* never trust the register x4 became: not \
+       preserved by the guest call */";
     insn "add     x0, x0, x1";
     insn "LDV     x1, v3_obs_table_off, x2";
     insn "add     x0, x0, x1";
@@ -5811,7 +5843,8 @@ let a64_v3_tail =
     insn "str     wzr, [x6, #R_DIAG_LEN]";
     directive ".if ABI_VERSION >= 3";
     comment
-      "passed iff every slot matches expected[] element-wise (exec-abi-v3.md §4); one mismatch anywhere commits failed.";
+      "passed iff every slot matches expected[] element-wise (exec-abi-v3.md §4); one mismatch \
+       anywhere commits failed.";
     insn "mov     x9, xzr";
     insn "mov     x12, #ST_PASSED";
     label ".Lcmp";
@@ -5949,28 +5982,80 @@ let generate = function
   | X86_64 ->
       List.concat
         [
-          seg_a0a; seg_v3_equ; seg_a0b; seg_v3_bss; seg_v3_manifest_base; seg_a1; seg_v3_nexpected;
-          seg_b1; seg_v3_exp_tail; seg_b2; seg_v3_stage4b; seg_c1; seg_v3_publish_expected; seg_c2;
-          seg_v3_tail; seg_c3;
+          seg_a0a;
+          seg_v3_equ;
+          seg_a0b;
+          seg_v3_bss;
+          seg_v3_manifest_base;
+          seg_a1;
+          seg_v3_nexpected;
+          seg_b1;
+          seg_v3_exp_tail;
+          seg_b2;
+          seg_v3_stage4b;
+          seg_c1;
+          seg_v3_publish_expected;
+          seg_c2;
+          seg_v3_tail;
+          seg_c3;
         ]
   | X86_32 ->
       List.concat
         [
-          x32_a0a; x32_v3_equ; x32_a0b; x32_v3_bss; x32_a1; x32_v3_nexpected; x32_b1; x32_v3_exp_tail;
-          x32_b2; x32_v3_stage4b; x32_c1; x32_v3_publish_expected; x32_c2; x32_v3_tail; x32_c3;
+          x32_a0a;
+          x32_v3_equ;
+          x32_a0b;
+          x32_v3_bss;
+          x32_a1;
+          x32_v3_nexpected;
+          x32_b1;
+          x32_v3_exp_tail;
+          x32_b2;
+          x32_v3_stage4b;
+          x32_c1;
+          x32_v3_publish_expected;
+          x32_c2;
+          x32_v3_tail;
+          x32_c3;
         ]
   | Arm ->
       List.concat
         [
-          arm_a0a; arm_v3_equ; arm_a0b; arm_v3_bss; arm_v3_manifest_base; arm_a1; arm_v3_nexpected;
-          arm_b1; arm_v3_exp_tail; arm_b2; arm_v3_stage4b; arm_c1; arm_v3_publish_expected; arm_c2;
-          arm_v3_tail; arm_c3;
+          arm_a0a;
+          arm_v3_equ;
+          arm_a0b;
+          arm_v3_bss;
+          arm_v3_manifest_base;
+          arm_a1;
+          arm_v3_nexpected;
+          arm_b1;
+          arm_v3_exp_tail;
+          arm_b2;
+          arm_v3_stage4b;
+          arm_c1;
+          arm_v3_publish_expected;
+          arm_c2;
+          arm_v3_tail;
+          arm_c3;
         ]
   | Aarch64 ->
       List.concat
         [
-          a64_a0a; a64_v3_equ; a64_a0b; a64_v3_bss; a64_a1; a64_v3_nexpected; a64_b1; a64_v3_exp_tail;
-          a64_b2; a64_v3_stage4b; a64_c1; a64_v3_publish_expected; a64_c2; a64_v3_tail; a64_c3;
+          a64_a0a;
+          a64_v3_equ;
+          a64_a0b;
+          a64_v3_bss;
+          a64_a1;
+          a64_v3_nexpected;
+          a64_b1;
+          a64_v3_exp_tail;
+          a64_b2;
+          a64_v3_stage4b;
+          a64_c1;
+          a64_v3_publish_expected;
+          a64_c2;
+          a64_v3_tail;
+          a64_c3;
         ]
 
 let source profile = render (generate profile)

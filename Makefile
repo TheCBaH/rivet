@@ -191,6 +191,19 @@ compcert-export-run: compcert-export-build
 # with a diff instead. Both go through dune's @fmt alias, so the vendored
 # sources under asm/vendor (marked (vendored_dirs) in asm/dune) are skipped and
 # stay byte-identical to upstream.
+#
+# Both depend on asm-fmt-ocamlformat rather than trusting whatever ocamlformat
+# a devcontainer image happens to ship. Previously the only thing enforcing
+# asm/.ocamlformat's `version = 0.28.1` pin was ocamlformat's own refusal to
+# run against a mismatched binary - a check that only fires if dune build @fmt
+# actually gets invoked with the wrong version already on PATH, and gives no
+# way to self-heal. Installing the pinned version explicitly, here, on every
+# run, makes asm-fmt/-check work the same way on any machine regardless of
+# what the image happened to ship.
+ASM_OCAMLFORMAT_VERSION := $(shell awk -F' *= *' '/^version/{print $$2}' $(ASM_DIR)/.ocamlformat)
+
+asm-fmt-ocamlformat:
+	opam install -y ocamlformat.$(ASM_OCAMLFORMAT_VERSION)
 
 # err_trace is vendored as a submodule and its sources are copy_files'd into
 # the build by asm/vendor/err_trace_local/dune, so an uninitialized submodule is a
@@ -209,10 +222,10 @@ asm-build: asm-submodules
 asm-test: asm-build asm-fixtures-check asm-gas-xref-check
 	cd $(ASM_DIR) && opam exec -- dune build @runtest
 
-asm-fmt:
+asm-fmt: asm-fmt-ocamlformat
 	cd $(ASM_DIR) && opam exec -- dune build @fmt --auto-promote
 
-asm-fmt-check:
+asm-fmt-check: asm-fmt-ocamlformat
 	cd $(ASM_DIR) && opam exec -- dune build @fmt
 
 # The Melange configuration. Declaring melange mode on a library schedules melc

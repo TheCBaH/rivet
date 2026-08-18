@@ -197,11 +197,18 @@ let run_manifest ?input ?extra_args profile manifest =
   Qemu_user.run ~abi_version ?input ?extra_args ~profile ~manifest ~expected_case_id:case_id ()
 
 let m ?only ?abi_versions name expect f =
-  { name; expect; only; abi_versions; build = (fun profile s -> run_manifest profile (f profile s)) }
+  {
+    name;
+    expect;
+    only;
+    abi_versions;
+    build = (fun profile s -> run_manifest profile (f profile s));
+  }
 
 let applies profile c =
   (match c.only with None -> true | Some ps -> List.mem profile ps)
-  && (match c.abi_versions with None -> true | Some vs -> List.mem abi_version vs)
+  && match c.abi_versions with None -> true | Some vs -> List.mem abi_version vs
+
 let bits32 = [ Abi.X86_32; Abi.Arm; Abi.Riscv32 ]
 let bits64 = [ Abi.X86_64; Abi.Aarch64; Abi.Riscv64 ]
 
@@ -570,8 +577,10 @@ let v3_canonical ?(data_perms = Abi.perm_r lor Abi.perm_w) profile =
     {
       (base profile code) with
       Manifest.expected = [ 42L; v3_observed_value ];
-      Manifest.segments = [ Manifest.code_segment profile code; v3_data_segment ~perms:data_perms profile ];
-      observations = [ { Manifest.obs_vaddr = Abi.data_addr profile; width = 4; sign_extend = false } ];
+      Manifest.segments =
+        [ Manifest.code_segment profile code; v3_data_segment ~perms:data_perms profile ];
+      observations =
+        [ { Manifest.obs_vaddr = Abi.data_addr profile; width = 4; sign_extend = false } ];
     }
 
 (* Two segments, so this is [120 + 40*2 = 200] - the observation table sits
@@ -581,15 +590,20 @@ let v3_obs_off = Abi_v3.obs_table_off ~n_segments:2
 
 let v3_cases =
   [
-    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ] ~abi_versions:[ 3 ] "v3-multi-value-passed"
-      (Passed_multi [ 42L; v3_observed_value ]) (fun p _ -> v3_canonical p);
-    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ] ~abi_versions:[ 3 ] "v3-obs-bad-width" (Error "manifest.obs_bad_width")
-      (fun p _ -> Manifest.patch_u8 (v3_canonical p) (v3_obs_off + Abi_v3.Obs_descriptor_off.width) 3);
-    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ] ~abi_versions:[ 3 ] "v3-obs-reserved-nonzero"
-      (Error "manifest.obs_reserved_nonzero") (fun p _ ->
-        Manifest.patch_u8 (v3_canonical p) (v3_obs_off + Abi_v3.Obs_descriptor_off.flags) 2);
-    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ] ~abi_versions:[ 3 ] "v3-obs-not-contained" (Error "manifest.obs_not_contained")
+    m
+      ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ]
+      ~abi_versions:[ 3 ] "v3-multi-value-passed"
+      (Passed_multi [ 42L; v3_observed_value ])
+      (fun p _ -> v3_canonical p);
+    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ]
+      ~abi_versions:[ 3 ] "v3-obs-bad-width" (Error "manifest.obs_bad_width") (fun p _ ->
+        Manifest.patch_u8 (v3_canonical p) (v3_obs_off + Abi_v3.Obs_descriptor_off.width) 3);
+    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ]
+      ~abi_versions:[ 3 ] "v3-obs-reserved-nonzero" (Error "manifest.obs_reserved_nonzero")
       (fun p _ ->
+        Manifest.patch_u8 (v3_canonical p) (v3_obs_off + Abi_v3.Obs_descriptor_off.flags) 2);
+    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ]
+      ~abi_versions:[ 3 ] "v3-obs-not-contained" (Error "manifest.obs_not_contained") (fun p _ ->
         Manifest.patch_u64 (v3_canonical p)
           (v3_obs_off + Abi_v3.Obs_descriptor_off.vaddr)
           (Int64.add (Abi.data_addr p) 0x100000L));
@@ -597,8 +611,9 @@ let v3_cases =
        level - the point of this case is the manifest's own *declared*
        [D_PERMS] byte, which stage 4b checks directly, not what the hardware
        would have enforced. *)
-    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ] ~abi_versions:[ 3 ] "v3-obs-not-readable" (Error "manifest.obs_not_readable")
-      (fun p _ -> v3_canonical ~data_perms:Abi.perm_w p);
+    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ]
+      ~abi_versions:[ 3 ] "v3-obs-not-readable" (Error "manifest.obs_not_readable") (fun p _ ->
+        v3_canonical ~data_perms:Abi.perm_w p);
   ]
 
 let all_cases =

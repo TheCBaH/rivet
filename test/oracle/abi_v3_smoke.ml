@@ -35,7 +35,8 @@ let manifest =
           perms = Abi.perm_r lor Abi.perm_w;
         };
       ];
-    observations = [ { Manifest.obs_vaddr = Abi.data_addr Abi.X86_64; width = 4; sign_extend = false } ];
+    observations =
+      [ { Manifest.obs_vaddr = Abi.data_addr Abi.X86_64; width = 4; sign_extend = false } ];
   }
 
 let () =
@@ -58,7 +59,8 @@ let () =
         | Qemu_user.Completed -> (
             match o.Qemu_user.record with
             | Some (Record.Valid r) ->
-                r.Record.record_state = Abi.Returned && r.Record.status = Abi.Passed
+                r.Record.record_state = Abi.Returned
+                && r.Record.status = Abi.Passed
                 && r.Record.values = [| 42L; observed_value |]
                 && r.Record.expected = [| 42L; observed_value |]
             | _ -> false)

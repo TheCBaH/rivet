@@ -701,10 +701,7 @@ module Make (T : T_intf.TARGET) = struct
        covers. *)
     let fill_matches n candidate =
       (match T.nop_bytes ~length:n with Ok s -> String.equal s candidate | Error _ -> false)
-      ||
-      match T.merge_fill with
-      | Some f -> String.equal (f ~length:n) candidate
-      | None -> false
+      || match T.merge_fill with Some f -> String.equal (f ~length:n) candidate | None -> false
     in
     let matches k =
       let b = Int64.of_int (1 lsl k) in

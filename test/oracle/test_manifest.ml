@@ -28,11 +28,9 @@ let%expect_test "n_expected = 1 is byte-shape-identical across abi versions" =
   (* Everything from byte 10 onward (past magic + abi_version) is identical. *)
   let tail s = String.sub s 10 (String.length s - 10) in
   Fmt.pr "tails equal: %b@." (String.equal (tail v1) (tail v3));
-  Fmt.pr "v1 magic: %S abi_version=%d@."
-    (String.sub v1 0 8)
+  Fmt.pr "v1 magic: %S abi_version=%d@." (String.sub v1 0 8)
     (Abi.get_u16 v1 Abi.Manifest_off.abi_version);
-  Fmt.pr "v3 magic: %S abi_version=%d@."
-    (String.sub v3 0 8)
+  Fmt.pr "v3 magic: %S abi_version=%d@." (String.sub v3 0 8)
     (Abi.get_u16 v3 Abi.Manifest_off.abi_version);
   [%expect
     {|
@@ -123,7 +121,8 @@ let%expect_test "three observations: contiguous 16-byte descriptors in order" =
       (Abi.get_u64 s (d + Abi_v3.Obs_descriptor_off.vaddr))
       (Abi.get_u8 s (d + Abi_v3.Obs_descriptor_off.width))
   done;
-  [%expect {|
+  [%expect
+    {|
     [0] vaddr=0x1000 width=1
     [1] vaddr=0x2000 width=2
     [2] vaddr=0x3000 width=8

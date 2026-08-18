@@ -40,10 +40,9 @@ jobs:
     - name: setup
       run: |
         echo 'EXEC=${{ steps.devcontainer.outputs.exec }}' >> $GITHUB_ENV
-    # Checked first and on every leg. asm/.ocamlformat pins `version = 0.28.1`,
-    # so ocamlformat refuses to run at all against a different binary - which
-    # makes this also the check that devcontainer.json's ocamlformat pin is
-    # actually what each image ships.
+    # Checked first and on every leg. make asm-fmt-check installs
+    # asm/.ocamlformat's pinned `version = 0.28.1` itself before running, so
+    # this does not depend on whatever ocamlformat a given image shipped.
     - name: fmt-check
       run: |
         ${{ env.EXEC }} make asm-fmt-check

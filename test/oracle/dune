@@ -85,6 +85,7 @@
 ; Phase 3.4's direct v3 multi-value proof (abi_v3_smoke.ml's header comment).
 ; Not wired to any Make target - a one-off, hand-built manifest, exercised via
 ; ASM_HELPERS_DIR against a real generated helper while no fixture exists yet.
+
 (executable
  (name abi_v3_smoke)
  (modules abi_v3_smoke)
@@ -99,6 +100,7 @@
 ; dependency on asm_oracle's wire constants (abi_gen.ml transcribes them
 ; directly as .equ text, the same way the frozen helpers/*.s files do) and no
 ; Unix, so it builds on every leg tools/asm-helpers.sh might run on.
+
 (executable
  (name abi_gen_main)
  (modules abi_gen abi_gen_text abi_gen_main)

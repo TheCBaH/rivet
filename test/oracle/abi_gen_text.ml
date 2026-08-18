@@ -30,8 +30,7 @@ let comment c = Raw ("/* " ^ c ^ " */")
    trailing newline in [text] does not produce a spurious empty final line. *)
 let verbatim_block text =
   String.split_on_char '\n' text
-  |> (fun lines ->
-       match List.rev lines with "" :: rest -> List.rev rest | _ -> lines)
+  |> (fun lines -> match List.rev lines with "" :: rest -> List.rev rest | _ -> lines)
   |> List.map (fun l -> Raw l)
 
 let render lines =

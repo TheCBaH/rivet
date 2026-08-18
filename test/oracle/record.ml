@@ -235,7 +235,8 @@ let validate ?(abi_version = Abi.abi_version) ~expected_case_id s =
                           Printf.sprintf "state: n_expected %d, expected 1..%d" n_expected
                             Abi.n_expected_max )
                       else
-                        (n_expected = 1, Printf.sprintf "state: n_expected %d, expected 1" n_expected)
+                        ( n_expected = 1,
+                          Printf.sprintf "state: n_expected %d, expected 1" n_expected )
                     in
                     if not n_expected_valid then Some n_expected_err
                     else if

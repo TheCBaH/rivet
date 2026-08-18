@@ -36,8 +36,9 @@ let () =
   match (!profile, !abi_version) with
   | Some p, Some 3 -> print_string (Abi_gen.source p)
   | Some _, Some n ->
-      Printf.eprintf "abi_gen_main: --abi-version %d is not supported (only 3 is generated; v1/v2\n\
-                       already have checked-in helpers under asm/helpers/)\n"
+      Printf.eprintf
+        "abi_gen_main: --abi-version %d is not supported (only 3 is generated; v1/v2\n\
+         already have checked-in helpers under asm/helpers/)\n"
         n;
       exit 2
   | None, _ -> usage ()
