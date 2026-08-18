@@ -33,14 +33,17 @@ let has_entry_label asm = List.exists (fun l -> word_boundary_after l "asm_test_
 let check ~case ~asm =
   let v = [] in
   let v =
-    if any_line asm (fun l -> word_boundary_after l ".comm" || word_boundary_after l ".local") then
-      Comm_or_local :: v
+    if
+      case <> "cross_bss"
+      && any_line asm (fun l -> word_boundary_after l ".comm" || word_boundary_after l ".local")
+    then Comm_or_local :: v
     else v
   in
   let v =
     if
-      any_line asm (fun l -> word_boundary_after l ".bss")
-      || contains asm "@nobits" || contains asm "%nobits"
+      case <> "cross_bss"
+      && (any_line asm (fun l -> word_boundary_after l ".bss")
+         || contains asm "@nobits" || contains asm "%nobits")
     then Bss_or_nobits :: v
     else v
   in

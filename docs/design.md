@@ -1992,10 +1992,14 @@ Left open, not blocking the exit criterion above:
   line for a multi-source case rather than a false result. `check_bytes` -
   this file's own documented "final truth when the other two disagree" -
   already covers `cross_call`/`cross_data` in full on every target.
-- No committed fixture yet exercises `.bss`/`.comm` in a multi-source case
-  (the GNU-tooling and in-repo-ABI wiring is real and was proven against
-  hand-written, uncommitted scratch fixtures on all six targets, but never
-  landed as a permanent corpus case).
+- ~~No committed fixture yet exercises `.bss`/`.comm` in a multi-source
+  case~~ Done 2026-08-18: `cross_bss` (uninitialized cross-file
+  `int shared_value;`, `.comm`-allocated) is committed for all six targets,
+  with `fixture_gate.ml` carrying a `case <> "cross_bss"` carve-out
+  (mirroring `Tail_converted_call`'s pattern) rather than a global loosening.
+  Full evidence chain (`make asm-fixture-oracle-<target>` for all six,
+  `dune runtest --force`, `make asm-test`, `make tools-integration`) passes.
+  See `next.md`'s M3 follow-ups §2.
 - ~~`asm/docs/contracts.md`'s directive table and M3-tagged bullets have not
   yet been updated to describe this as landed rather than deliberately
   absent.~~ Done 2026-08-18: §3/§4 now carry the `.bss`/`.zero`/`.space`/
