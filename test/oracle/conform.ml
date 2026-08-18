@@ -401,6 +401,47 @@ let boundary_cases =
         patch_bytes b 0 "X");
   ]
 
+(* M3's fixed BSS window (.ai/asm_plan.md §12; the M3 plan's §11): a second,
+   pure zero-fill segment at [Abi_v2.bss_addr], with no payload bytes at all -
+   exactly the shape [bind_image] produces for a NOBITS section. The address
+   and its cap are not asserted in isolation; they are proven against the
+   generic segment/collision machinery every other geometry case already
+   exercises, which is what makes "fits" and "one byte over is rejected"
+   evidence rather than restated arithmetic. Unrestricted by [~only]: the
+   address is a pure function of the profile, so it is exercised under both
+   ABI v1's four profiles and, in the v2 pass, RISC-V's two as well. *)
+let bss_segment ~zero_len profile =
+  {
+    Manifest.vaddr = Abi_v2.bss_addr profile;
+    init = "";
+    zero_len;
+    align = 4096;
+    perms = Abi.perm_r lor Abi.perm_w;
+  }
+
+let with_bss ~zero_len profile code =
+  serialize
+    {
+      (base profile code) with
+      Manifest.segments = [ Manifest.code_segment profile code; bss_segment ~zero_len profile ];
+    }
+
+let bss_cases =
+  [
+    (* The whole remainder of the window above the largest permitted stack
+       ([stack_start + stack_size_max]) - reaching exactly the window's own
+       end. A passing run is itself the collision proof: any overlap with
+       the stack, guard or result page would have failed it. *)
+    m "bss-max-extent-binds" (Passed 42L) (fun p s ->
+        with_bss ~zero_len:(Int64.of_int Abi_v2.bss_max_extent) p s.return42);
+    (* One byte past the window's end - not a generic "somewhere outside",
+       but the specific boundary [bss_addr + bss_max_extent] pins, so this
+       is a check on the exact numbers rather than on the rule's existence
+       (already covered by "outside-window" above). *)
+    m "bss-one-byte-over-outside-window" (Error "manifest.outside_window") (fun p s ->
+        with_bss ~zero_len:(Int64.add (Int64.of_int Abi_v2.bss_max_extent) 1L) p s.return42);
+  ]
+
 (* The io class, and the environment class through the helper's §14.2 test
    entry. Neither is reachable by a well-formed run, which is exactly why they
    need a deliberate mechanism rather than a hope. *)
@@ -433,7 +474,7 @@ let environment_cases =
   ]
 
 let all_cases =
-  behavioral_cases @ header_cases @ payload_cases @ geometry_cases @ boundary_cases
+  behavioral_cases @ header_cases @ payload_cases @ geometry_cases @ boundary_cases @ bss_cases
   @ environment_cases
 
 (* {1 Reachability exceptions}

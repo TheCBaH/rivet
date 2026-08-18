@@ -3,7 +3,16 @@ type outcome = Up_to_date | Changed of string
 let ( let* ) = Result.bind
 let record key value = { Manifest.key; value }
 
-let records ~case ~targets ~work_root ~previous ~source_rel =
+let source_records sources =
+  match sources with
+  (* Exactly one unit keeps the legacy [source] key, byte-identical to every
+     already-committed single-source manifest - the [source-unit:] key family
+     is what a genuinely multi-source case gets instead, never a length-1
+     rewrite of a case that never needed it. *)
+  | [ (_, source_rel) ] -> [ record Manifest.Source (Some source_rel) ]
+  | many -> List.map (fun (name, rel) -> record (Manifest.Source_unit name) (Some rel)) many
+
+let records ~case ~targets ~work_root ~previous ~sources =
   let per_target t =
     let c = Target.config t in
     let* version_records =
@@ -53,10 +62,8 @@ let records ~case ~targets ~work_root ~previous ~source_rel =
   in
   let* hashes = hash_records [] files in
   Ok
-    (record Manifest.Generator (Some "compcert-tools fixture regen")
-     :: record Manifest.Source (Some source_rel)
-     :: target_records
-    @ hashes)
+    ((record Manifest.Generator (Some "compcert-tools fixture regen") :: source_records sources)
+    @ target_records @ hashes)
 
 let run_diff ~old_path ~new_path =
   (* Statuses [0;1] only: 0 is identical, 1 is differs, and anything else means

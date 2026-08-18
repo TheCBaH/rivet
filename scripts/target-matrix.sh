@@ -33,16 +33,18 @@ ALL_TARGETS=("${ASSEMBLER_TARGETS[@]}")
 #
 # LINK_*_ADDR are the controlled-link addresses M2's differential gate uses.
 # They are the same numbers as asm/test/oracle/abi.ml's code_addr, rodata_addr
-# and data_addr, because the GNU reference link, our own binder and the QEMU
-# manifest must place a section at one address or the post-link byte comparison
-# compares two different programs. abi.ml stays the definition; Target.link
-# mirrors it, and asm/test/oracle/test_record.ml asserts they still agree.
+# and data_addr (and, for LINK_BSS_ADDR, abi_v2.ml's bss_addr - M3), because
+# the GNU reference link, our own binder and the QEMU manifest must place a
+# section at one address or the post-link byte comparison compares two
+# different programs. abi.ml/abi_v2.ml stay the definition; Target.link
+# mirrors them, and asm/test/oracle/test_record.ml asserts they still agree.
 #
 # The addresses are emitted per target rather than computed here, so the
 # derivation lives in one language instead of two. It is abi.ml's window_base:
 # 0x30000000 for the 32-bit profiles and 0x40000000 for the 64-bit ones - and
 # the split exists at all because 0x40000000 does not fit a 31-bit native int -
-# with rodata at +0x10000 and data at +0x20000.
+# with rodata at +0x10000, data at +0x20000, and bss at +0x80000 (the first
+# byte after the largest stack abi_v2.ml's stack_size_max permits).
 target_config() {
   CONFIGURE_TARGET=""
   TOOLPREFIX=""
@@ -60,6 +62,7 @@ target_config() {
   LINK_TEXT_ADDR=""
   LINK_RODATA_ADDR=""
   LINK_DATA_ADDR=""
+  LINK_BSS_ADDR=""
   case "$1" in
     x86_32)
       CONFIGURE_TARGET="x86_32-linux"
@@ -71,6 +74,7 @@ target_config() {
       LINK_TEXT_ADDR="0x30000000"
       LINK_RODATA_ADDR="0x30010000"
       LINK_DATA_ADDR="0x30020000"
+      LINK_BSS_ADDR="0x30080000"
       ;;
     x86_64)
       CONFIGURE_TARGET="x86_64-linux"
@@ -82,6 +86,7 @@ target_config() {
       LINK_TEXT_ADDR="0x40000000"
       LINK_RODATA_ADDR="0x40010000"
       LINK_DATA_ADDR="0x40020000"
+      LINK_BSS_ADDR="0x40080000"
       ;;
     arm)
       CONFIGURE_TARGET="arm-linux"
@@ -95,6 +100,7 @@ target_config() {
       LINK_TEXT_ADDR="0x30000000"
       LINK_RODATA_ADDR="0x30010000"
       LINK_DATA_ADDR="0x30020000"
+      LINK_BSS_ADDR="0x30080000"
       ;;
     aarch64)
       CONFIGURE_TARGET="aarch64-linux"
@@ -106,6 +112,7 @@ target_config() {
       LINK_TEXT_ADDR="0x40000000"
       LINK_RODATA_ADDR="0x40010000"
       LINK_DATA_ADDR="0x40020000"
+      LINK_BSS_ADDR="0x40080000"
       ;;
     riscv32)
       CONFIGURE_TARGET="rv32-linux"
@@ -120,6 +127,7 @@ target_config() {
       LINK_TEXT_ADDR="0x30000000"
       LINK_RODATA_ADDR="0x30010000"
       LINK_DATA_ADDR="0x30020000"
+      LINK_BSS_ADDR="0x30080000"
       ;;
     riscv64)
       CONFIGURE_TARGET="rv64-linux"
@@ -134,6 +142,7 @@ target_config() {
       LINK_TEXT_ADDR="0x40000000"
       LINK_RODATA_ADDR="0x40010000"
       LINK_DATA_ADDR="0x40020000"
+      LINK_BSS_ADDR="0x40080000"
       ;;
     *)
       usage

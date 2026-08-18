@@ -28,7 +28,7 @@ type capability = Fixture | Assembler | Libc_smoke
 
 let set = function Fixture | Assembler -> all | Libc_smoke -> [ X86_32; X86_64; Arm; Aarch64 ]
 
-type link = { text : int; rodata : int; data : int }
+type link = { text : int; rodata : int; data : int; bss : int }
 
 type config = {
   configure_target : string;
@@ -50,11 +50,15 @@ let hex n = Printf.sprintf "0x%x" n
 
 (* abi.ml's window_base: 0x30000000 for the 32-bit profiles and 0x40000000 for
    the 64-bit ones. The split exists because 0x40000000 does not fit a 31-bit
-   native int. rodata sits at +0x10000, data at +0x20000. These must equal
-   asm/test/oracle/abi.ml's addresses: the GNU reference link, our own binder
-   and the QEMU manifest have to place a section at ONE address, or the
-   post-link byte comparison compares two different programs. *)
-let link_of base = { text = base; rodata = base + 0x10000; data = base + 0x20000 }
+   native int. rodata sits at +0x10000, data at +0x20000, bss at +0x80000
+   (M3, .ai/asm_plan.md §12: abi_v2.ml's bss_addr - stack_start +
+   stack_size_max, the first byte after the largest stack the ABI permits).
+   These must equal asm/test/oracle/abi.ml's/abi_v2.ml's addresses: the GNU
+   reference link, our own binder and the QEMU manifest have to place a
+   section at ONE address, or the post-link byte comparison compares two
+   different programs. *)
+let link_of base =
+  { text = base; rodata = base + 0x10000; data = base + 0x20000; bss = base + 0x80000 }
 
 let base_of = function
   | X86_32 | Arm | Riscv32 -> 0x30000000
@@ -171,7 +175,7 @@ let () =
       (* word_size and elf_class are two spellings of one fact. *)
       assert (
         (c.elf_class = "ELF32" && c.word_size = 4) || (c.elf_class = "ELF64" && c.word_size = 8));
-      assert (c.link.text < c.link.rodata && c.link.rodata < c.link.data);
+      assert (c.link.text < c.link.rodata && c.link.rodata < c.link.data && c.link.data < c.link.bss);
       (* The libc-smoke capability is exactly the sysroot-bearing set: a target
          with no sysroot cannot link against a libc. *)
       assert (c.qemu_sysroot = None = not (List.mem t (set Libc_smoke))))

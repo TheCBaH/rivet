@@ -12,13 +12,16 @@ val oracle : Target.t -> string
 (** Wildcard input selection and [ENTRY(asm_test_entry)]: the oracle links the
     fixture object alone, so there is nothing to disambiguate. *)
 
-val exec : Target.t -> string
+val exec : Target.t -> objs:string list -> string
 (** [ENTRY(_start)], the startup stub placed in its own [.start] output section
-    below .text, and PER-OBJECT input selection - [start.o(.text.startup)] and
-    [fixture.o(.text)] rather than wildcards.
+    below .text, and PER-OBJECT input selection - [start.o(.text.startup)] and,
+    for every name in [objs], e.g. [fixture.o(.text)] - rather than wildcards.
 
     That distinction is load-bearing: with a wildcard the startup could land in
-    the very .text that is about to be compared against the oracle. The discard
-    list is the union across targets; every entry is either non-alloc or
-    unwind-only, so discarding one a given target never emits is a no-op and
-    none of them can move an allocated byte. *)
+    the very .text that is about to be compared against the oracle, and any
+    stray object placed in the same work directory could silently join the
+    link. [objs] is the fixture's own bounded object set - one name for a
+    single-source case, one per unit for a multi-source one - never a glob.
+    The discard list is the union across targets; every entry is either
+    non-alloc or unwind-only, so discarding one a given target never emits is
+    a no-op and none of them can move an allocated byte. *)

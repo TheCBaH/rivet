@@ -14,8 +14,24 @@ type violation =
   | Missing_entry_label
 
 val check : case:string -> asm:string -> violation list
-(** Every violation found, in a fixed order - a case can trip more than one and
-    reporting only the first would hide the rest. *)
+(** Every per-FILE violation found, in a fixed order - a case can trip more
+    than one and reporting only the first would hide the rest. [asm] is one
+    compilation unit's generated text; for a multi-source case this is called
+    once per unit per target, since each unit's own content (a `.comm`, a
+    tail-converted call) is independent of every other unit's.
+
+    [Missing_entry_label] is NOT among these: it is a whole-CASE property, not
+    a per-file one - see {!has_entry_label}. *)
+
+val has_entry_label : string -> bool
+(** Whether this one compilation unit's generated text defines the frozen
+    [asm_test_entry] label. A single-source case has exactly one unit, so
+    checking it alone is equivalent to the old per-file check; a multi-source
+    case's caller/entry unit is the only one of its N units expected to
+    satisfy this, so the [Missing_entry_label] gate must be evaluated once per
+    (case, target) over the UNION of all of that case's units, not once per
+    unit - a callee-only or data-only unit legitimately has no entry label of
+    its own. *)
 
 val message : case:string -> target:Target.t -> violation -> string
 (** The shell's exact wording, because these lines are byte-compared. *)

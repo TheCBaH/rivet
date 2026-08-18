@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Print target_config's sixteen values for ONE target as a simple TSV.
+# Print target_config's seventeen values for ONE target as a simple TSV.
 #
 # This exists so Target can be compared against the shell matrix. Since Phase 7
 # that matrix is GENERATED from Target, so the comparison is a round trip: it
@@ -46,3 +46,4 @@ printf 'READELF_MACHINE\t%s\n'         "$READELF_MACHINE"
 printf 'LINK_TEXT_ADDR\t%s\n'          "$LINK_TEXT_ADDR"
 printf 'LINK_RODATA_ADDR\t%s\n'        "$LINK_RODATA_ADDR"
 printf 'LINK_DATA_ADDR\t%s\n'          "$LINK_DATA_ADDR"
+printf 'LINK_BSS_ADDR\t%s\n'           "$LINK_BSS_ADDR"

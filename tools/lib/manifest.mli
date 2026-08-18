@@ -9,6 +9,11 @@
 type key =
   | Generator
   | Source
+  | Source_unit of string
+      (** M3 (.ai/asm_plan.md §12): one of several sources in a multi-source case, keyed by its own
+          unit name. The single-source [Source] key is unchanged and still what every case with one
+          source carries - this is additive, not a replacement, so no existing manifest's bytes
+          change. *)
   | Inputs  (** gas-xref only *)
   | Ccomp_version of Target.t
   | Ccomp_target of Target.t
@@ -58,6 +63,11 @@ val find : t -> key -> string option option
 
 val source_rel : t -> (string option, Tool_error.t) Err.t
 (** The validated [source] value, or [None] when the manifest has none. *)
+
+val source_units : t -> ((string * string) list, Tool_error.t) Err.t
+(** Every [Source_unit] record as [(unit_name, source_rel)], sorted by unit name for a
+    deterministic build order - [[]] when the manifest has none (the single-source case, where
+    {!source_rel} is what a caller reads instead). *)
 
 val escape : string -> string
 

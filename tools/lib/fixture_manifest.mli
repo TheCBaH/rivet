@@ -12,11 +12,16 @@ val records :
   targets:Target.t list ->
   work_root:Fpath.t ->
   previous:Manifest.t option ->
-  source_rel:string ->
+  sources:(string * string) list ->
   (Manifest.record list, Tool_error.t) Err.t
 (** Every fallible step is a CHECKED command. The shell's producer wrote
     `printf '...' "$(hash_of ...)"`, where printf's success masked the
     substitution's failure and the record was written with an empty hash.
+
+    [sources] is a case's units from {!Corpus.sources}: exactly one emits the
+    legacy [source] record, byte-identical to every already-committed
+    single-source manifest; more than one emits a [source-unit:<name>] record
+    per unit instead.
 
     [ccomp-version:<t>] comes from the live compiler when one is installed and
     is otherwise carried forward from [previous] verbatim - `--rehash` runs with

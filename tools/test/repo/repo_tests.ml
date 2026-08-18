@@ -51,7 +51,7 @@ let tsv s =
       | None -> Some (line, ""))
     (lines s)
 
-(* {1 All sixteen shell values, verbatim}
+(* {1 All seventeen shell values, verbatim}
 
    Including HAS_SYSROOT, which the OCaml side DERIVES. Comparing only the
    derived form would let a stale HAS_SYSROOT assignment in the shell hide
@@ -77,6 +77,7 @@ let ocaml_view t =
     ("LINK_TEXT_ADDR", Target.hex c.Target.link.Target.text);
     ("LINK_RODATA_ADDR", Target.hex c.Target.link.Target.rodata);
     ("LINK_DATA_ADDR", Target.hex c.Target.link.Target.data);
+    ("LINK_BSS_ADDR", Target.hex c.Target.link.Target.bss);
   ]
 
 let test_target_db_agrees root =
@@ -90,8 +91,8 @@ let test_target_db_agrees root =
           let shell = tsv out in
           let ours = ocaml_view t in
           check
-            (Printf.sprintf "target_db: %s: all sixteen values present" name)
-            (List.length shell = 16 && List.length ours = 16);
+            (Printf.sprintf "target_db: %s: all seventeen values present" name)
+            (List.length shell = 17 && List.length ours = 17);
           List.iter
             (fun (k, v) ->
               match List.assoc_opt k shell with
@@ -133,12 +134,15 @@ let test_derived_invariants root =
           check
             (Printf.sprintf "derived: %s: HAS_SYSROOT <-> QEMU_SYSROOT non-empty" name)
             (get "HAS_SYSROOT" = "true" = (get "QEMU_SYSROOT" <> ""));
-          (* And the link family really is base, +0x10000, +0x20000. *)
+          (* And the link family really is base, +0x10000, +0x20000, +0x80000
+             (M3: bss, the first byte after the largest stack abi_v2.ml's
+             stack_size_max permits). *)
           let addr k = int_of_string (get k) in
           check
             (Printf.sprintf "derived: %s: link addresses are one arithmetic family" name)
             (addr "LINK_RODATA_ADDR" = addr "LINK_TEXT_ADDR" + 0x10000
-            && addr "LINK_DATA_ADDR" = addr "LINK_TEXT_ADDR" + 0x20000))
+            && addr "LINK_DATA_ADDR" = addr "LINK_TEXT_ADDR" + 0x20000
+            && addr "LINK_BSS_ADDR" = addr "LINK_TEXT_ADDR" + 0x80000))
     Target.all
 
 let () =

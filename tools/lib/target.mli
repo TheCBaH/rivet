@@ -32,7 +32,7 @@ val set : capability -> t list
 (** [Libc_smoke] omits riscv32/riscv64: fixture work is freestanding and must
     not acquire the cross-smoke suite's libc requirement. *)
 
-type link = { text : int; rodata : int; data : int }
+type link = { text : int; rodata : int; data : int; bss : int }
 
 type config = {
   configure_target : string;

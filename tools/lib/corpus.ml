@@ -105,3 +105,68 @@ let previous_and_source case =
     | Ok m -> (
         let* s = Manifest.source_rel m in
         match s with Some s -> Ok (Some m, s) | None -> Ok (Some m, "source/" ^ case.name ^ ".c"))
+
+let source_units case =
+  let manifest = Fpath.(case.root / "manifest.txt") in
+  if not (Sys.file_exists (Fpath.to_string manifest)) then Ok []
+  else
+    let ( let* ) = Result.bind in
+    let* text = Tool_fs.read manifest in
+    match Manifest.parse text with
+    | Error e -> Error (List.hd (Err.Error.kind e))
+    | Ok m -> Manifest.source_units m
+
+(* Top-level only (not recursive): a case's own [source/] directory is where
+   its compilation units live, and going deeper would risk picking up a
+   helper header or a nested fixture's own tree. *)
+let discover_c_files case =
+  let dir = Fpath.(case.root / "source") in
+  match Sys.readdir (Fpath.to_string dir) with
+  | exception Sys_error m -> err ~path:dir Tool_error.Traverse m
+  | entries ->
+      Array.to_list entries
+      |> List.filter (fun e -> Filename.check_suffix e ".c")
+      |> List.sort String.compare
+      |> fun names -> Ok (List.map (fun n -> "source/" ^ n) names)
+
+let sources case =
+  let ( let* ) = Result.bind in
+  let* units = source_units case in
+  match units with
+  | _ :: _ -> Ok units
+  | [] -> (
+      (* No [source-unit] records: either a legacy single-source manifest
+         already pins ONE source, which is the case's whole scope regardless
+         of what else happens to sit in [source/] - or there is no manifest
+         yet and this is a case being authored for the first time, where the
+         directory contents are the only source of truth. *)
+      let manifest = Fpath.(case.root / "manifest.txt") in
+      if Sys.file_exists (Fpath.to_string manifest) then
+        let* _prev, source_rel = previous_and_source case in
+        Ok [ (case.name, source_rel) ]
+      else
+        let* found = discover_c_files case in
+        match found with
+        | [] ->
+            let* _prev, source_rel = previous_and_source case in
+            Ok [ (case.name, source_rel) ]
+        | [ rel ] -> Ok [ (case.name, rel) ]
+        | many ->
+            let rec go acc = function
+              | [] -> Ok (List.rev acc)
+              | rel :: rest ->
+                  let* stem = stem_of_source rel in
+                  go ((stem, rel) :: acc) rest
+            in
+            go [] many)
+
+let unit_stems case =
+  let ( let* ) = Result.bind in
+  let* units = sources case in
+  let rec go acc = function
+    | [] -> Ok (List.rev acc)
+    | (unit_name, source_rel) :: rest ->
+        let* stem = stem_of_source source_rel in
+        go ((unit_name, stem) :: acc) rest
+  in
+  go [] units

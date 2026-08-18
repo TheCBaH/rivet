@@ -1,6 +1,7 @@
 type key =
   | Generator
   | Source
+  | Source_unit of string
   | Inputs
   | Ccomp_version of Target.t
   | Ccomp_target of Target.t
@@ -68,6 +69,7 @@ let unescape s =
 let key_prefix = function
   | Generator -> "generator"
   | Source -> "source"
+  | Source_unit name -> "source-unit:" ^ name
   | Inputs -> "inputs"
   | Ccomp_version t -> "ccomp-version:" ^ Target.to_string t
   | Ccomp_target t -> "ccomp-target:" ^ Target.to_string t
@@ -109,24 +111,37 @@ let parse_key raw =
                   match targeted "ccomp-args:" (fun t -> Ccomp_args t) with
                   | Some r -> r
                   | None -> (
-                      match split_prefix raw "sha256:" with
-                      | Some path -> (
-                          (* D6: corpus paths are validated. The key side has no
-                             escape layer, so a TAB or newline here could not
-                             round-trip - it would silently become a different
-                             record, or two. *)
-                          match Identifier.relative_path path with
-                          | Ok p -> Ok (Sha256 p)
+                      match split_prefix raw "source-unit:" with
+                      | Some name -> (
+                          (* Same D6 reasoning as sha256's path below: the key side
+                             has no escape layer, so a name is one path COMPONENT
+                             (no '/', no leading '-'), not the freer [source]
+                             value itself. *)
+                          match Identifier.parse name with
+                          | Ok id -> Ok (Source_unit (Identifier.to_string id))
                           | Error e ->
                               fail_parse
-                                (Printf.sprintf "record %S has an unusable path: %s" raw
+                                (Printf.sprintf "record %S has an unusable unit name: %s" raw
                                    (Err.Error.kind e).Tool_error.detail))
-                      | None ->
-                          (* P2: Unknown records parse, and are DROPPED on
-                             rehash - write_manifest reconstructs known records
-                             only, so preserving them here would invent a
-                             behavior the shell does not have. *)
-                          Ok (Unknown raw))))))
+                      | None -> (
+                          match split_prefix raw "sha256:" with
+                          | Some path -> (
+                              (* D6: corpus paths are validated. The key side has no
+                                 escape layer, so a TAB or newline here could not
+                                 round-trip - it would silently become a different
+                                 record, or two. *)
+                              match Identifier.relative_path path with
+                              | Ok p -> Ok (Sha256 p)
+                              | Error e ->
+                                  fail_parse
+                                    (Printf.sprintf "record %S has an unusable path: %s" raw
+                                       (Err.Error.kind e).Tool_error.detail))
+                          | None ->
+                              (* P2: Unknown records parse, and are DROPPED on
+                                 rehash - write_manifest reconstructs known
+                                 records only, so preserving them here would
+                                 invent a behavior the shell does not have. *)
+                              Ok (Unknown raw)))))))
 
 let is_hex_digit c = match c with '0' .. '9' | 'a' .. 'f' -> true | _ -> false
 
@@ -182,7 +197,9 @@ let parse text =
            every line has had its say - a manifest with two malformed records
            AND a duplicate should report all three. *)
         let dups =
-          let seen_hash = Hashtbl.create 64 and seen_version = Hashtbl.create 8 in
+          let seen_hash = Hashtbl.create 64
+          and seen_version = Hashtbl.create 8
+          and seen_source_unit = Hashtbl.create 4 in
           List.filter_map
             (fun r ->
               match r.key with
@@ -203,6 +220,16 @@ let parse text =
                             (Target.to_string t)))
                   else (
                     Hashtbl.add seen_version t ();
+                    None)
+              (* Unlike Source's own P3 first-wins: two sources claiming the
+                 same unit name is ambiguous rather than redundant - there is
+                 no well-defined "which one wins" for which per-target .s file
+                 a unit's own name should mean. *)
+              | Source_unit name ->
+                  if Hashtbl.mem seen_source_unit name then
+                    Some (fail_parse (Printf.sprintf "duplicate source-unit record for %S" name))
+                  else (
+                    Hashtbl.add seen_source_unit name ();
                     None)
               | _ -> None)
             rs
@@ -235,3 +262,21 @@ let source_rel t =
       Err.fail ~pos:__POS__ ~pp_error:Tool_error.pp
         (Tool_error.v Tool_error.Parse "the source record has no value")
   | Some { value = Some v; _ } -> Result.map Option.some (Identifier.relative_path v)
+
+let source_units t =
+  let units =
+    List.filter_map
+      (function { key = Source_unit name; value } -> Some (name, value) | _ -> None)
+      t
+  in
+  let rec go acc = function
+    | [] -> Ok (List.rev acc)
+    | (_, None) :: _ ->
+        Err.fail ~pos:__POS__ ~pp_error:Tool_error.pp
+          (Tool_error.v Tool_error.Parse "a source-unit record has no value")
+    | (name, Some v) :: rest -> (
+        match Identifier.relative_path v with
+        | Error _ as e -> e
+        | Ok p -> go ((name, p) :: acc) rest)
+  in
+  Result.map (List.sort compare) (go [] units)

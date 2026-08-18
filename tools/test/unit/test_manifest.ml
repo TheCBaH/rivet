@@ -92,11 +92,32 @@ let test_parse () =
   check "parse: an unknown target in a key is rejected"
     (is_err (Manifest.parse "ccomp-version:sparc\tv\n"));
   (* P3: first wins. *)
-  match parse_ok "source\tsource/a.c\nsource\tsource/b.c\n" with
+  (match parse_ok "source\tsource/a.c\nsource\tsource/b.c\n" with
   | Some m ->
       check "parse: duplicate source - FIRST wins (P3)"
         (Manifest.source_rel m = Ok (Some "source/a.c"))
-  | None -> check "parse: duplicate source - FIRST wins (P3)" false
+  | None -> check "parse: duplicate source - FIRST wins (P3)" false);
+  (* M3 (.ai/asm_plan.md §12): source-unit records are additive, keyed by
+     unit name, sorted for a deterministic build order. Unlike Source's own
+     P3 first-wins, two records claiming the SAME unit name are ambiguous
+     rather than redundant, so that is rejected instead. *)
+  check "parse: an empty manifest has no source-unit records"
+    (match parse_ok "" with Some m -> Manifest.source_units m = Ok [] | None -> false);
+  (match parse_ok "source-unit:b\tsource/b.c\nsource-unit:a\tsource/a.c\n" with
+  | Some m ->
+      check "parse: source-unit records round trip, sorted by unit name"
+        (Manifest.source_units m = Ok [ ("a", "source/a.c"); ("b", "source/b.c") ])
+  | None -> check "parse: source-unit records round trip, sorted by unit name" false);
+  check "parse: a duplicate source-unit name is rejected"
+    (is_err (Manifest.parse "source-unit:a\tsource/a.c\nsource-unit:a\tsource/b.c\n"));
+  check "parse: a source-unit name with a slash is rejected (D6)"
+    (is_err (Manifest.parse "source-unit:a/b\tsource/a.c\n"));
+  check "parse: source and source-unit coexist without colliding"
+    (match parse_ok "source\tsource/x.c\nsource-unit:y\tsource/y.c\n" with
+    | Some m ->
+        Manifest.source_rel m = Ok (Some "source/x.c")
+        && Manifest.source_units m = Ok [ ("y", "source/y.c") ]
+    | None -> false)
 
 (* Accumulation: EVERY complaint, not just the first. This is the one shape
    Err.Accum fits, and it is why parse's error type is Accum.errors. *)
@@ -202,6 +223,12 @@ let test_corpus fixtures =
   check "corpus: a non-.c source is rejected" (is_err (Corpus.stem_of_source "source/a.txt"));
   check "corpus: an escaping source is rejected (D6)"
     (is_err (Corpus.stem_of_source "../../etc/passwd.c"));
+  (* M3: every committed case today predates source-unit records, so this is
+     the "legacy single-source case" branch every one of them exercises. *)
+  check "corpus: a single-source case has no source-unit records"
+    (match Corpus.resolve corpus "return42" with
+    | Ok case -> Corpus.source_units case = Ok []
+    | Error _ -> false);
   (* A clean case reports zero findings and a positive count. *)
   match Corpus.resolve corpus "return42" with
   | Error _ -> check "corpus: a clean case has no findings" false

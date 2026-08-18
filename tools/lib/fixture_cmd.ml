@@ -39,6 +39,75 @@ let over_cases repo ~cases ~f =
 
 (* {1 verify} *)
 
+(* [case.name/unit/target] for a genuinely multi-source case, but the legacy
+   single-source case's unit name IS the case name (Corpus.sources: [Ok [
+   (case.name, source_rel) ]]), so printing it again would produce a
+   confusing "alpha/alpha/x86_64" for the common single-source fixture. *)
+let unit_label case unit_name =
+  if String.equal unit_name case.Corpus.name then case.Corpus.name
+  else case.Corpus.name ^ "/" ^ unit_name
+
+let verify_unit ~target ~compiler ~c case (unit_name, source_rel) =
+  let outcome =
+    Tool_workspace.with_scratch ~label:"verify" (fun scratch ->
+        let* stem = Corpus.stem_of_source source_rel in
+        let out_rel = Target.to_string target ^ "/" ^ stem ^ ".s" in
+        let* () = Tool_fs.mkdir_p Fpath.(scratch // v (Filename.dirname source_rel)) in
+        let* () = Tool_fs.mkdir_p Fpath.(scratch / Target.to_string target) in
+        let* () =
+          Tool_fs.copy
+            ~src:Fpath.(case.Corpus.root // v source_rel)
+            ~dst:Fpath.(scratch // v source_rel)
+        in
+        (* cwd = scratch and BOTH paths relative: CompCert embeds the command
+           line in a banner, so an absolute path here would put a temporary
+           directory name into the compared bytes. *)
+        let* () =
+          Ccomp.compile_s ~compiler ~cwd:scratch ~args:c.Target.ccomp_args ~out_rel ~source_rel
+            ~case:case.Corpus.name ~target
+        in
+        let regenerated = Fpath.(scratch // v out_rel) in
+        let committed = Fpath.(case.Corpus.root // v out_rel) in
+        let* same = Tool_fs.same_bytes regenerated committed in
+        if same then Ok None
+        else
+          (* Statuses [0;1] (D10): the shell's `diff -u ... || true` ignores
+             EVERY non-zero status, so a broken diff there is silently treated
+             as "no differences to show". *)
+          let* r =
+            Tool_process.exec
+              (Tool_process.spec ~stdout:Tool_process.Out_capture ~stderr:Tool_process.Err_capture
+                 ~accepted:(Process_status.Statuses [ 0; 1 ])
+                 ~label:"diff" "diff"
+                 [ "-u"; Fpath.to_string committed; Fpath.to_string regenerated ])
+          in
+          Ok (Some (Option.value ~default:"" r.Tool_process.stdout)))
+  in
+  match outcome with
+  | Error e -> Command.of_error e
+  | Ok None ->
+      Command.ok
+        [
+          Diagnostic.stdout
+            (Printf.sprintf "fixtures: %s/%s regenerates byte-identically"
+               (unit_label case unit_name) (Target.to_string target));
+        ]
+  | Ok (Some body) ->
+      (* The diff on STDOUT, then the fatal on stderr, and the caller
+         continues to the next unit. *)
+      {
+        Command.events =
+          [
+            Command.Output (Diagnostic.stdout body);
+            Command.Fatal
+              (Err.Error.make ~pos:__POS__ ~pp_error:Tool_error.pp
+                 (Tool_error.v Tool_error.Validate
+                    (Printf.sprintf "fixture regeneration differs for %s/%s"
+                       (unit_label case unit_name) (Target.to_string target))));
+          ];
+        exit = `Failure;
+      }
+
 let verify_case repo ~target case =
   match work_root repo with
   | Error e -> Command.of_error e
@@ -49,67 +118,9 @@ let verify_case repo ~target case =
           (Printf.sprintf "%s: no installed ccomp at %s" case.Corpus.name (Fpath.to_string compiler))
       else
         let c = Target.config target in
-        let outcome =
-          Tool_workspace.with_scratch ~label:"verify" (fun scratch ->
-              let* _prev, source_rel = previous_and_source case in
-              let* stem = Corpus.stem_of_source source_rel in
-              let out_rel = Target.to_string target ^ "/" ^ stem ^ ".s" in
-              let* () = Tool_fs.mkdir_p Fpath.(scratch // v (Filename.dirname source_rel)) in
-              let* () = Tool_fs.mkdir_p Fpath.(scratch / Target.to_string target) in
-              let* () =
-                Tool_fs.copy
-                  ~src:Fpath.(case.Corpus.root // v source_rel)
-                  ~dst:Fpath.(scratch // v source_rel)
-              in
-              (* cwd = scratch and BOTH paths relative: CompCert embeds the
-                 command line in a banner, so an absolute path here would put a
-                 temporary directory name into the compared bytes. *)
-              let* () =
-                Ccomp.compile_s ~compiler ~cwd:scratch ~args:c.Target.ccomp_args ~out_rel
-                  ~source_rel ~case:case.Corpus.name ~target
-              in
-              let regenerated = Fpath.(scratch // v out_rel) in
-              let committed = Fpath.(case.Corpus.root // v out_rel) in
-              let* same = Tool_fs.same_bytes regenerated committed in
-              if same then Ok None
-              else
-                (* Statuses [0;1] (D10): the shell's `diff -u ... || true`
-                   ignores EVERY non-zero status, so a broken diff there is
-                   silently treated as "no differences to show". *)
-                let* r =
-                  Tool_process.exec
-                    (Tool_process.spec ~stdout:Tool_process.Out_capture
-                       ~stderr:Tool_process.Err_capture
-                       ~accepted:(Process_status.Statuses [ 0; 1 ])
-                       ~label:"diff" "diff"
-                       [ "-u"; Fpath.to_string committed; Fpath.to_string regenerated ])
-                in
-                Ok (Some (Option.value ~default:"" r.Tool_process.stdout)))
-        in
-        match outcome with
+        match Corpus.sources case with
         | Error e -> Command.of_error e
-        | Ok None ->
-            Command.ok
-              [
-                Diagnostic.stdout
-                  (Printf.sprintf "fixtures: %s/%s regenerates byte-identically" case.Corpus.name
-                     (Target.to_string target));
-              ]
-        | Ok (Some body) ->
-            (* The diff on STDOUT, then the fatal on stderr, and the caller
-               continues to the next case. *)
-            {
-              Command.events =
-                [
-                  Command.Output (Diagnostic.stdout body);
-                  Command.Fatal
-                    (Err.Error.make ~pos:__POS__ ~pp_error:Tool_error.pp
-                       (Tool_error.v Tool_error.Validate
-                          (Printf.sprintf "fixture regeneration differs for %s/%s" case.Corpus.name
-                             (Target.to_string target))));
-                ];
-              exit = `Failure;
-            })
+        | Ok units -> Command.accumulate units ~f:(verify_unit ~target ~compiler ~c case))
 
 let verify repo ~target ~cases = over_cases repo ~cases ~f:(verify_case repo ~target)
 
@@ -130,16 +141,17 @@ let report_write case = function
           Diagnostic.stderr body;
         ]
 
-let write_for case ~targets ~work_root ~previous ~source_rel =
-  let* records = Fixture_manifest.records ~case ~targets ~work_root ~previous ~source_rel in
+let write_for case ~targets ~work_root ~previous ~sources =
+  let* records = Fixture_manifest.records ~case ~targets ~work_root ~previous ~sources in
   Fixture_manifest.write ~final:Fpath.(case.Corpus.root / "manifest.txt") ~previous records
 
-let regen_case repo ~targets case =
-  match work_root repo with
-  | Error e -> Command.of_error e
-  | Ok work -> (
-      let step =
-        let* previous, source_rel = previous_and_source case in
+(* Every unit's own source must exist before any compiler runs, so a missing
+   file in a multi-source case is reported once, up front, rather than as a
+   compiler failure on whichever unit happened to be compiled first. *)
+let stems_of case units =
+  let rec go acc = function
+    | [] -> Ok (List.rev acc)
+    | (unit_name, source_rel) :: rest ->
         let source = Fpath.(case.Corpus.root // v source_rel) in
         if not (Sys.file_exists (Fpath.to_string source)) then
           Err.fail ~pos:__POS__ ~pp_error:Tool_error.pp
@@ -147,53 +159,104 @@ let regen_case repo ~targets case =
                (Printf.sprintf "missing fixture source %s" (Fpath.to_string source)))
         else
           let* stem = Corpus.stem_of_source source_rel in
-          (* Each invocation is CHECKED, and the loop stops at the first
-             failure: the shell ran all six and then reported a manifest over a
-             partial tree. *)
-          let rec compile_all = function
-            | [] -> Ok ()
-            | t :: rest ->
-                let c = Target.config t in
-                let compiler = Ccomp.path t ~work_root:work in
-                let out_rel = Target.to_string t ^ "/" ^ stem ^ ".s" in
-                let* () = Tool_fs.mkdir_p Fpath.(case.Corpus.root / Target.to_string t) in
-                let* () =
-                  Ccomp.compile_s ~compiler ~cwd:case.Corpus.root ~args:c.Target.ccomp_args ~out_rel
-                    ~source_rel ~case:case.Corpus.name ~target:t
-                in
-                compile_all rest
-          in
-          let* () = compile_all targets in
-          Ok (previous, source_rel, stem)
+          go ((unit_name, source_rel, stem) :: acc) rest
+  in
+  go [] units
+
+let regen_case repo ~targets case =
+  match work_root repo with
+  | Error e -> Command.of_error e
+  | Ok work -> (
+      let step =
+        let* previous, _ = previous_and_source case in
+        let* units = Corpus.sources case in
+        let* stems = stems_of case units in
+        (* Each invocation is CHECKED, and the loop stops at the first
+           failure: the shell ran all six and then reported a manifest over a
+           partial tree. Every unit of one target is compiled before moving to
+           the next target, so a partial-tree failure never leaves some
+           targets fully written and others not attempted at all. *)
+        let rec compile_all = function
+          | [] -> Ok ()
+          | t :: rest ->
+              let c = Target.config t in
+              let compiler = Ccomp.path t ~work_root:work in
+              let* () = Tool_fs.mkdir_p Fpath.(case.Corpus.root / Target.to_string t) in
+              let rec compile_units = function
+                | [] -> Ok ()
+                | (_, source_rel, stem) :: units_rest ->
+                    let out_rel = Target.to_string t ^ "/" ^ stem ^ ".s" in
+                    let* () =
+                      Ccomp.compile_s ~compiler ~cwd:case.Corpus.root ~args:c.Target.ccomp_args
+                        ~out_rel ~source_rel ~case:case.Corpus.name ~target:t
+                    in
+                    compile_units units_rest
+              in
+              let* () = compile_units stems in
+              compile_all rest
+        in
+        let* () = compile_all targets in
+        Ok (previous, units, stems)
       in
       match step with
       | Error e -> Command.of_error e
-      | Ok (previous, source_rel, stem) -> (
+      | Ok (previous, units, stems) -> (
           (* The gate runs BEFORE the manifest is written, and its status is
              honored. The Phase 0A defect was that this status was discarded, so
              a rejected fixture had its manifest installed and the case reported
-             success. *)
-          let gate =
-            List.concat_map
-              (fun t ->
-                let p = Fpath.(case.Corpus.root / Target.to_string t / (stem ^ ".s")) in
-                match Tool_fs.read p with
-                | Error _ ->
-                    [
-                      Fixture_gate.message ~case:case.Corpus.name ~target:t
-                        Fixture_gate.Missing_entry_label;
-                    ]
-                | Ok asm ->
-                    List.map
-                      (Fixture_gate.message ~case:case.Corpus.name ~target:t)
-                      (Fixture_gate.check ~case:case.Corpus.name ~asm))
-              targets
+             success.
+
+             Comm_or_local/Bss_or_nobits/Tail_converted_call are each one
+             unit's own property, checked per unit. Missing_entry_label is a
+             whole-CASE property per target instead, checked once over the
+             UNION of all of a case's units - a callee-only or data-only unit
+             legitimately carries no entry label of its own, and requiring
+             every unit to carry one would reject every multi-source case by
+             construction. *)
+          let gate_for_target t =
+            let* asms =
+              let rec go acc = function
+                | [] -> Ok (List.rev acc)
+                | (_, _, stem) :: rest ->
+                    let* asm =
+                      Tool_fs.read Fpath.(case.Corpus.root / Target.to_string t / (stem ^ ".s"))
+                    in
+                    go (asm :: acc) rest
+              in
+              go [] stems
+            in
+            let per_unit =
+              List.concat_map
+                (fun asm ->
+                  List.map
+                    (Fixture_gate.message ~case:case.Corpus.name ~target:t)
+                    (Fixture_gate.check ~case:case.Corpus.name ~asm))
+                asms
+            in
+            let entry =
+              if List.exists Fixture_gate.has_entry_label asms then []
+              else
+                [
+                  Fixture_gate.message ~case:case.Corpus.name ~target:t
+                    Fixture_gate.Missing_entry_label;
+                ]
+            in
+            Ok (per_unit @ entry)
           in
-          if gate <> [] then Command.fail (List.map Diagnostic.stderr gate)
-          else
-            match write_for case ~targets ~work_root:work ~previous ~source_rel with
-            | Error e -> Command.of_error e
-            | Ok outcome -> report_write case outcome))
+          let rec gate_all acc = function
+            | [] -> Ok (List.concat (List.rev acc))
+            | t :: rest ->
+                let* g = gate_for_target t in
+                gate_all (g :: acc) rest
+          in
+          match gate_all [] targets with
+          | Error e -> Command.of_error e
+          | Ok gate -> (
+              if gate <> [] then Command.fail (List.map Diagnostic.stderr gate)
+              else
+                match write_for case ~targets ~work_root:work ~previous ~sources:units with
+                | Error e -> Command.of_error e
+                | Ok outcome -> report_write case outcome)))
 
 let regen repo ~cases =
   let targets = Target.set Target.Fixture in
@@ -211,8 +274,9 @@ let rehash_case repo case =
   | Error e -> Command.of_error e
   | Ok work -> (
       let step =
-        let* previous, source_rel = previous_and_source case in
-        write_for case ~targets:(Target.set Target.Fixture) ~work_root:work ~previous ~source_rel
+        let* previous, _ = previous_and_source case in
+        let* units = Corpus.sources case in
+        write_for case ~targets:(Target.set Target.Fixture) ~work_root:work ~previous ~sources:units
       in
       match step with Error e -> Command.of_error e | Ok outcome -> report_write case outcome)
 

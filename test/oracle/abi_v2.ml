@@ -53,6 +53,21 @@ let data_addr p = Int64.add (window_base p) 0x20000L
 let result_addr p = Int64.add (window_base p) 0x30000L
 let guard_addr p = Int64.add (window_base p) 0x3f000L
 let stack_start p = Int64.add (window_base p) 0x40000L
+
+(* M3's fixed BSS window (.ai/asm_plan.md §12; the M3 plan's §11), additive to
+   v2 rather than v1: not a wire-format change (a segment's address and
+   length are ordinary manifest fields either version can carry), but a new
+   *policy* decision, and v1 is frozen to its own. [bss_addr] is exactly
+   [stack_start + Abi.stack_size_max] - the first byte after the *largest*
+   stack the ABI's own bound permits, so BSS never overlaps the stack
+   regardless of which [stack_size] a given manifest actually chooses -
+   through [bss_addr + bss_max_extent], the window's own end. Both the GNU
+   fixture-oracle's controlled-link address for [.bss] and this in-repo
+   ABI's placement use this same function, so a fixture that passes one
+   never fails the other purely because the two paths picked different
+   addresses. *)
+let bss_addr p = Int64.add (stack_start p) (Int64.of_int Abi.stack_size_max)
+let bss_max_extent = 0x80000
 let manifest_header_size = Abi.manifest_header_size
 let segment_descriptor_size = Abi.segment_descriptor_size
 let result_record_size = Abi.result_record_size

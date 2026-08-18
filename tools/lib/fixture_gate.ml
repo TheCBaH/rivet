@@ -28,6 +28,8 @@ let contains hay needle =
   let rec go i = i + n <= m && (String.sub hay i n = needle || go (i + 1)) in
   go 0
 
+let has_entry_label asm = List.exists (fun l -> word_boundary_after l "asm_test_entry:") (lines asm)
+
 let check ~case ~asm =
   let v = [] in
   let v =
@@ -55,11 +57,6 @@ let check ~case ~asm =
       case = "direct_call"
       && not (any_line asm (fun l -> starts_with_mnemonic l "call" || starts_with_mnemonic l "bl"))
     then Tail_converted_call :: v
-    else v
-  in
-  let v =
-    if not (List.exists (fun l -> word_boundary_after l "asm_test_entry:") (lines asm)) then
-      Missing_entry_label :: v
     else v
   in
   List.rev v

@@ -52,3 +52,38 @@ val previous_and_source : case -> (Manifest.t option * string, Tool_error.t) Err
     spelling its committed bytes were generated with: CompCert writes the
     source path into its "# Command line:" banner, so renaming the file would
     change every one of that case's hashes. *)
+
+val source_units : case -> ((string * string) list, Tool_error.t) Err.t
+(** M3 (.ai/asm_plan.md §12): the case's [source-unit] records, or [[]] for a
+    case with no manifest yet, or one whose manifest predates M3 and carries
+    only the single legacy [source] record - a caller reads that case's own
+    ONE source through {!previous_and_source} exactly as before, and decides
+    its own single-source unit-naming convention itself, unchanged. This
+    function answers only "is this case multi-source", not "what is this
+    case's source" - the two legacy and multi-source paths stay genuinely
+    separate rather than being forced through one fabricated default. *)
+
+val sources : case -> ((string * string) list, Tool_error.t) Err.t
+(** Every compilation unit a case has, as [(unit_name, source_rel)], in build
+    order. This is the one function fixture tooling should loop over - it
+    never returns [[]].
+
+    - A manifest with [source-unit] records: exactly those (via
+      {!source_units}).
+    - A manifest with only the legacy [source] record: that one source,
+      under the case's own name - an already-committed single-source case's
+      scope is what its manifest says, regardless of what else later lands
+      in [source/].
+    - No manifest yet (a case being authored for the first time): every
+      [.c] file directly under [source/], sorted. Exactly one file keeps the
+      historical single-source convention (unit named after the case, like
+      {!previous_and_source}'s fallback); more than one makes this a
+      multi-source case from its very first [--regen], with each unit named
+      after its own file's stem (via {!stem_of_source}). *)
+
+val unit_stems : case -> ((string * string) list, Tool_error.t) Err.t
+(** {!sources}, with each unit's source path already reduced to its stem via
+    {!stem_of_source} - what the oracle and exec tooling key a case's
+    per-target generated files by (`<target>/<stem>.s`), one call away from
+    {!sources} rather than every caller reimplementing the same
+    [List.map stem_of_source]. *)
