@@ -1965,8 +1965,9 @@ memory, and control flow produce correct fixed-layout images on all four targets
 
 ### Milestone 3: Generalize the image builder to two-file internal linking
 
-**Status (2026-08-17): exit criterion met on all six targets; a few specific
-items below remain open, tracked in `next.md`.** The image-layer model
+**Status: exit criterion met on all six targets (2026-08-17); the follow-up
+items below, tracked in `next.md`, are now also closed (2026-08-18).** The
+image-layer model
 (fragment/symbol/fixup namespaces, name-only section merging, link-wide
 resolution, `.weak`/`.local`/`.comm` with the strong>common>weak resolver,
 real NOBITS support, `assemble_many`) and the multi-source fixture tooling
@@ -1984,14 +1985,19 @@ linker, and CompCert's default PIE/GOT codegen for any cross-file
 reference (fixed by compiling every fixture `-fno-pie`, verified as a
 no-op for every fixture that predates this milestone).
 
-Left open, not blocking the exit criterion above:
-- The differential gate's spelling/relocation checks (`check_disasm`,
+All items below are now closed (2026-08-18); recorded for history, not as
+open work:
+- ~~The differential gate's spelling/relocation checks (`check_disasm`,
   `check_relocs` in `test_differential.ml`) do not yet attribute a
   multi-source case's per-unit GNU oracle evidence to the right slice of
-  its merged output section; they report an explicit "not yet implemented"
-  line for a multi-source case rather than a false result. `check_bytes` -
-  this file's own documented "final truth when the other two disagree" -
-  already covers `cross_call`/`cross_data` in full on every target.
+  its merged output section~~ Done: a unit's base offset within the merged
+  section is read directly from this assembler's own layout
+  (`Image.Symtab.definition.d_offset`, already merge-padding-aware), not
+  guessed - `unit_base_offset` plus the generalized `reloc_records`/
+  `disasm_records` translate every unit's GNU record into merged
+  coordinates, so `check_disasm`/`check_relocs` need no multi-source branch
+  at all. Verified clean for `cross_call`, `cross_data` and `cross_bss` on
+  all six targets. See `next.md`'s M3 follow-ups §3.
 - ~~No committed fixture yet exercises `.bss`/`.comm` in a multi-source
   case~~ Done 2026-08-18: `cross_bss` (uninitialized cross-file
   `int shared_value;`, `.comm`-allocated) is committed for all six targets,
