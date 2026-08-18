@@ -282,8 +282,8 @@ t_invocation() {
   local t want got
   for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
     case "$t" in
-      arm) want=$(printf 'cwd=%s\targv=-S\x1f-marm\x1f-o\x1f%s/alpha.s\x1fsource/alpha.c\x1f' "$root" "$t") ;;
-      *)   want=$(printf 'cwd=%s\targv=-S\x1f-o\x1f%s/alpha.s\x1fsource/alpha.c\x1f' "$root" "$t") ;;
+      arm) want=$(printf 'cwd=%s\targv=-S\x1f-marm\x1f-fno-pie\x1f-o\x1f%s/alpha.s\x1fsource/alpha.c\x1f' "$root" "$t") ;;
+      *)   want=$(printf 'cwd=%s\targv=-S\x1f-fno-pie\x1f-o\x1f%s/alpha.s\x1fsource/alpha.c\x1f' "$root" "$t") ;;
     esac
     got=$(printf '%s\n' "$compiles" | grep -F "$t/alpha.s" | head -1)
     if [ "$got" != "$want" ]; then
@@ -298,7 +298,7 @@ t_invocation() {
   [ "$rc" = 0 ] || { bad "$name" "verify exited $rc"; return; }
 
   local vline; vline=$(grep -F -- '-o' "$repo/fake.log" | head -1)
-  want=$(printf -- '-S\x1f-o\x1fx86_64/alpha.s\x1fsource/alpha.c\x1f')
+  want=$(printf -- '-S\x1f-fno-pie\x1f-o\x1fx86_64/alpha.s\x1fsource/alpha.c\x1f')
   got=${vline#*$'\t'argv=}
   [ "$got" = "$want" ] || { bad "$name" "verify argv: got $(printf '%q' "$got")"; return; }
 

@@ -1,0 +1,11 @@
+# Cram golden transcripts, captured verbatim from the tools' own dump output.
+# Whitespace here is DATA, not formatting, and must never be normalized: the
+# token dump's "eof" row ends in a trailing space (asm_dump.t) whenever the
+# underlying printer emits one, the same way asm/tools/test/data/gnu's
+# recorded binutils output does for readelf/objdump rows.
+#
+# The repository's pre-commit hook runs `git diff --cached --check`, which
+# rejects trailing whitespace by default. Stripping it to satisfy the hook
+# would silently change what these golden files assert and make the tests
+# prove something about output the tools never actually produce.
+* -whitespace

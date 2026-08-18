@@ -59,6 +59,9 @@ let alloc_sections text =
 let section_size text ~name =
   List.find_map (fun (n, s, _) -> if n = name then Some s else None) (section_headers text)
 
+let section_is_nobits text ~name =
+  List.exists (fun (n, _, f) -> n = name && not (has_flag f "CONTENTS")) (section_headers text)
+
 (* {2 readelf -SW}
 
    Only the question "is there a .rela.* section". The bracketed index makes the

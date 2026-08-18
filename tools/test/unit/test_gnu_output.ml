@@ -212,7 +212,10 @@ let test_symbols_shape () =
 
 let test_alloc_flags () =
   (* The flag is a whole word: a section flagged NOALLOC must not be reported
-     as allocated by a substring match. *)
+     as allocated by a substring match. The .bss line is the real measured
+     transcript (x86_64-linux-gnu-objdump 2.44, M3 §11, .ai/asm_plan.md §12):
+     a NOBITS section carries ALLOC with no CONTENTS, the one flag word that
+     tells section_is_nobits apart from a PROGBITS section. *)
   let h =
     "Sections:\n\
      Idx Name          Size      VMA       LMA       File off  Algn\n\
@@ -221,13 +224,22 @@ let test_alloc_flags () =
     \  1 .weird        00000004  00000000  00000000  00000064  2**2\n\
     \                  CONTENTS, NOALLOC\n\
     \  2 .data         00000004  00000000  00000000  00000068  2**2\n\
-    \                  CONTENTS, ALLOC, LOAD, DATA\n"
+    \                  CONTENTS, ALLOC, LOAD, DATA\n\
+    \  3 .bss          00000004  00000000  00000000  00002000  2**2\n\
+    \                  ALLOC\n"
   in
-  check_eq "alloc: whole-word flag match" ~expected:".text .data"
+  check_eq "alloc: whole-word flag match" ~expected:".text .data .bss"
     ~actual:(String.concat " " (unwrap (Gnu_output.alloc_sections h)));
   check_eq "section_size: reads the size column" ~expected:"00000022"
     ~actual:(Option.value ~default:"" (Gnu_output.section_size h ~name:".text"));
-  check "alloc: empty input is an error" (Result.is_error (Gnu_output.alloc_sections ""))
+  check "alloc: empty input is an error" (Result.is_error (Gnu_output.alloc_sections ""));
+  check "nobits: .bss (ALLOC only) is NOBITS" (Gnu_output.section_is_nobits h ~name:".bss");
+  check "nobits: .text (CONTENTS) is not NOBITS"
+    (not (Gnu_output.section_is_nobits h ~name:".text"));
+  check "nobits: an absent section is not NOBITS"
+    (not (Gnu_output.section_is_nobits h ~name:".nonesuch"));
+  check_eq "section_size: .bss's logical size is visible with no bytes to copy" ~expected:"00000004"
+    ~actual:(Option.value ~default:"" (Gnu_output.section_size h ~name:".bss"))
 
 let () =
   if Array.length Sys.argv < 3 then (

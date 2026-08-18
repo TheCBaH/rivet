@@ -688,18 +688,29 @@ module Make (T : T_intf.TARGET) = struct
   let padding_at ~address bytes ~pos =
     let len = String.length bytes in
     let here = Int64.add address (Int64.of_int pos) in
+    (* Two possible fill sources for the same run, not one: [T.nop_bytes] is
+       what [as] emits for an [.align] gap within one module, and (M3 §5,
+       .ai/asm_plan.md §12) [T.merge_fill] is what [ld] emits for a gap the
+       merge step inserts between two modules - and on x86_32 those are
+       DIFFERENT byte sequences for the same length (nop_table's LEA forms
+       vs. merge_fill's plain [66 90] chain). Neither table's bytes decode as
+       ordinary instructions - {!T.nop_bytes}'s own doc comment is explicit
+       that GNU's padding table exists nowhere a real encoder would produce it
+       - so a merge gap recognized by neither source falls through to the
+       ordinary decoder and fails outright, which is exactly the gap this
+       covers. *)
+    let fill_matches n candidate =
+      (match T.nop_bytes ~length:n with Ok s -> String.equal s candidate | Error _ -> false)
+      ||
+      match T.merge_fill with
+      | Some f -> String.equal (f ~length:n) candidate
+      | None -> false
+    in
     let matches k =
       let b = Int64.of_int (1 lsl k) in
       let stop = Int64.mul (Int64.div (Int64.add here (Int64.sub b 1L)) b) b in
       let n = Int64.to_int (Int64.sub stop here) in
-      if
-        n > 0
-        && pos + n <= len
-        &&
-        match T.nop_bytes ~length:n with
-        | Ok s -> String.equal s (String.sub bytes pos n)
-        | Error _ -> false
-      then Some (1 lsl k, n)
+      if n > 0 && pos + n <= len && fill_matches n (String.sub bytes pos n) then Some (1 lsl k, n)
       else None
     in
     (* Longest run first, so a short boundary can never claim a prefix of a

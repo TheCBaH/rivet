@@ -7,8 +7,10 @@ let err ?path op detail =
    them. The set is CLOSED: an allocated section outside it is a hard failure,
    because ld places an input section the script never names as an ORPHAN
    output section - it would be mapped into every executed image while being
-   recorded in no artifact at all. *)
-let alloc_sections = [ ".text"; ".rodata"; ".data" ]
+   recorded in no artifact at all. .bss is real M3 scope (.ai/asm_plan.md
+   §12), not a placeholder: it is NOBITS rather than PROGBITS, so it is
+   handled separately below wherever that distinction matters. *)
+let alloc_sections = [ ".text"; ".rodata"; ".data"; ".bss" ]
 let hex_name section = String.sub section 1 (String.length section - 1)
 
 let link_addr target section =
@@ -17,6 +19,7 @@ let link_addr target section =
   | ".text" -> Some c.Target.text
   | ".rodata" -> Some c.Target.rodata
   | ".data" -> Some c.Target.data
+  | ".bss" -> Some c.Target.bss
   | _ -> None
 
 (* One object name per unit: the historical "obj.o" for a single-source case,
@@ -130,30 +133,51 @@ let run_one repo ~target ~case_name =
              where the manifest would no longer name it but the traversal-based
              corpus check still would. *)
             let* () = Tool_fs.remove_matching linked_dir ~suffix:".hex" in
+            (* A NOBITS section (.bss) has no bytes to extract - objcopy always
+               reports it as absent-or-empty, the same signal a genuinely
+               unallocated section gives - so its evidence is its LOGICAL size
+               from the header table instead, and there is no .hex artifact for
+               it at all (M3 §11, .ai/asm_plan.md §12). *)
             let* present =
               List.fold_left
                 (fun acc section ->
                   let* acc = acc in
-                  let name = hex_name section in
-                  let bin = Fpath.(work / (name ^ ".bin")) in
-                  let* got = Gnu_tools.objcopy_section tools ~src:linked ~section ~out:bin in
-                  if not got then Ok acc
+                  if Gnu_output.section_is_nobits linked_headers ~name:section then
+                    match Gnu_output.section_size linked_headers ~name:section with
+                    | None -> Ok acc
+                    | Some size -> Ok ((section, `Nobits, int_of_string ("0x" ^ size)) :: acc)
                   else
-                    let* bytes = Tool_fs.read bin in
-                    let* () =
-                      Tool_fs.write Fpath.(linked_dir / (name ^ ".hex")) (Hex_dump.of_bytes bytes)
-                    in
-                    Ok (section :: acc))
+                    let name = hex_name section in
+                    let bin = Fpath.(work / (name ^ ".bin")) in
+                    let* got = Gnu_tools.objcopy_section tools ~src:linked ~section ~out:bin in
+                    if not got then Ok acc
+                    else
+                      let* bytes = Tool_fs.read bin in
+                      let* () =
+                        Tool_fs.write Fpath.(linked_dir / (name ^ ".hex")) (Hex_dump.of_bytes bytes)
+                      in
+                      Ok ((section, `Progbits, String.length bytes) :: acc))
                 (Ok []) alloc_sections
             in
             let present = List.rev present in
+            (* Manifest v2 (M3 §11): section, kind, address, size, artifact -
+               versioned because v1 had no kind column and no way to say "this
+               section has no byte artifact". kind is "progbits" or "nobits";
+               the artifact column is "-" for nobits, since there is nothing to
+               objcopy out of it. *)
             let manifest =
               String.concat ""
                 (List.map
-                   (fun section ->
+                   (fun (section, kind, size) ->
                      let addr = Option.get (link_addr target section) in
-                     Printf.sprintf "%s\t%s\tlinked/%s.hex\n" section (Target.hex addr)
-                       (hex_name section))
+                     let kind_s = match kind with `Progbits -> "progbits" | `Nobits -> "nobits" in
+                     let artifact =
+                       match kind with
+                       | `Progbits -> "linked/" ^ hex_name section ^ ".hex"
+                       | `Nobits -> "-"
+                     in
+                     Printf.sprintf "%s\t%s\t%s\t%s\t%s\n" section kind_s (Target.hex addr)
+                       (Target.hex size) artifact)
                    present)
             in
             let* () = Tool_fs.write Fpath.(linked_dir / "manifest.txt") manifest in
@@ -181,7 +205,7 @@ let run_one repo ~target ~case_name =
                  (unit_lines
                  @ [
                      Printf.sprintf "%s/%s: linked sections %s" case_name target_s
-                       (String.concat " " present);
+                       (String.concat " " (List.map (fun (s, _, _) -> s) present));
                    ])))
 
 let run repo ~targets ~cases =

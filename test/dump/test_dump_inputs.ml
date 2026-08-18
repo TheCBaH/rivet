@@ -91,7 +91,7 @@ let aarch64 =
    \t.section .note.GNU-stack,\"\",%progbits\n"
 
 let riscv32 =
-  "\t.option pic\n\
+  "\t.option nopic\n\
    \t.text\n\
    \t.balign 2\n\
    \t.globl asm_test_entry\n\
@@ -113,7 +113,7 @@ let riscv32 =
    \t.section .note.GNU-stack,\"\",%progbits\n"
 
 let riscv64 =
-  "\t.option pic\n\
+  "\t.option nopic\n\
    \t.text\n\
    \t.balign 2\n\
    \t.globl asm_test_entry\n\

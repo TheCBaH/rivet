@@ -23,7 +23,20 @@ val alloc_sections : string -> (string list, Tool_error.t) Err.t
 val section_size : string -> name:string -> string option
 (** The size field, as objdump's own hex string, or [None] when the section is
     absent. Used for the .start provenance check, where the comparison is
-    between two objdump spellings and so never needs the numeric value. *)
+    between two objdump spellings and so never needs the numeric value. It is
+    also a NOBITS section's only source of size (M3 §11,
+    .ai/asm_plan.md §12): objdump reports its full logical extent here even
+    though there is nothing to copy out of it. *)
+
+val section_is_nobits : string -> name:string -> bool
+(** Whether an allocated section carries no [CONTENTS] flag in [objdump -h] -
+    a NOBITS/[.bss]-shaped section, which [objcopy] always extracts as ZERO
+    bytes regardless of {!section_size}, and which therefore has no byte
+    artifact of its own. [false] for a section [objdump] does not list at all
+    - a caller checks presence via {!section_size} or {!alloc_sections}
+    first, exactly as it already must. Measured directly (real
+    [objdump -h]): a NOBITS section's flag line reads plain [ALLOC], where a
+    PROGBITS one reads [CONTENTS, ALLOC, ...]. *)
 
 val has_rela : string -> bool
 (** Whether [readelf -SW] output lists any [.rela.*] section.

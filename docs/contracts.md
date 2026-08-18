@@ -379,6 +379,19 @@ absent.
 
 ## 3. Per-dialect directive table
 
+**M3 update (2026-08-17):** this section and §4 below describe the M1/M2
+state - four targets, no `.bss`/`.comm`/`.local`/`.weak` row, multi-module
+linking rejected. M3 implemented multi-module linking, `.bss`/NOBITS,
+`.comm`/`.local`/`.weak` and the strong/common/weak resolver on all **six**
+targets (`x86_32`/`x86_64`/`arm`/`aarch64`/`riscv32`/`riscv64`), verified
+against two real, committed, six-target CompCert fixtures
+(`asm/fixtures/compcert-3.17/cross_call`, `cross_data`). The directive
+table, support matrix and §4.3 below have not yet been re-worked to add
+those rows/columns and remove the now-obsolete "rejected" language in the
+two places it appears - see `.ai/asm_plan.md`'s Milestone 3 status and
+`next.md` for the authoritative current state; treat every "M3" reference
+below as "was, until 2026-08-17" rather than "still is."
+
 Every directive the fixtures contain, and nothing else. **A directive not in
 this table is a diagnostic.** An assembler that ignores directives it does not
 recognize produces a plausible image from a file it did not understand, which is

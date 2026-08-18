@@ -74,7 +74,20 @@ let config t =
       toolprefix = "";
       qemu_bin = "";
       qemu_sysroot = None;
-      ccomp_args = [];
+      (* Every target: this project has no dynamic linker and no GOT, so PIE's
+         GOT-indirected external-data addressing (CompCert's default when it
+         cannot prove a symbol is defined in the same translation unit,
+         [-fpie] "on if supported" per `ccomp -help`) is never a construct any
+         fixture here can resolve, and it isn't what M3's cross-file data
+         fixture is testing anyway - the plan's own relocation table names
+         R_AARCH64_ADR_PREL_PG_HI21/R_ARM_MOVW_ABS_NC/R_RISCV_PCREL_HI20/
+         R_X86_64_PC32-class direct relocations, not GOT slots. Measured
+         (M3 §12/§11, real ccomp): -fno-pie is a no-op, byte-for-byte past the
+         command-line banner, for every already-committed fixture on every
+         target - x86_32 and arm already default to direct addressing, and a
+         SAME-file reference (global_ldst) is never GOT-indirected regardless
+         of PIE, since only a genuinely external symbol reference triggers it. *)
+      ccomp_args = [ "-fno-pie" ];
       compcert_configure_args = [];
       as_args = [];
       ld_args = [];
@@ -115,7 +128,7 @@ let config t =
         toolprefix = "arm-linux-gnueabihf-";
         qemu_bin = "qemu-arm";
         qemu_sysroot = Some "/usr/arm-linux-gnueabihf";
-        ccomp_args = [ "-marm" ];
+        ccomp_args = [ "-marm"; "-fno-pie" ];
         as_args = [ "-march=armv7-a" ];
         readelf_machine = "ARM";
         elf_class = "ELF32";

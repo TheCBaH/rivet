@@ -1965,6 +1965,41 @@ memory, and control flow produce correct fixed-layout images on all four targets
 
 ### Milestone 3: Generalize the image builder to two-file internal linking
 
+**Status (2026-08-17): exit criterion met on all six targets; a few specific
+items below remain open, tracked in `next.md`.** The image-layer model
+(fragment/symbol/fixup namespaces, name-only section merging, link-wide
+resolution, `.weak`/`.local`/`.comm` with the strong>common>weak resolver,
+real NOBITS support, `assemble_many`) and the multi-source fixture tooling
+(manifest, oracle, exec, the differential gate's `assemble_many` path) both
+landed and are exercised by two real, committed, six-target CompCert
+fixtures - `cross_call` and `cross_data` - each byte-identical to a GNU
+`as`/`ld` oracle and executing to the correct exit status under QEMU on
+`x86_32`, `x86_64`, `arm`, `aarch64`, `riscv32` and `riscv64`, demonstrating
+this milestone's stated exit criterion directly. Writing those fixtures
+also surfaced and fixed three real gaps the earlier design work could not
+have found without real CompCert output: x86's and RISC-V's `@PLT`/`@plt`
+call-operand syntax for a symbol not defined in the same unit, the
+merge-gap fill byte-sequence mismatch between `x86_32`'s assembler and its
+linker, and CompCert's default PIE/GOT codegen for any cross-file
+reference (fixed by compiling every fixture `-fno-pie`, verified as a
+no-op for every fixture that predates this milestone).
+
+Left open, not blocking the exit criterion above:
+- The differential gate's spelling/relocation checks (`check_disasm`,
+  `check_relocs` in `test_differential.ml`) do not yet attribute a
+  multi-source case's per-unit GNU oracle evidence to the right slice of
+  its merged output section; they report an explicit "not yet implemented"
+  line for a multi-source case rather than a false result. `check_bytes` -
+  this file's own documented "final truth when the other two disagree" -
+  already covers `cross_call`/`cross_data` in full on every target.
+- No committed fixture yet exercises `.bss`/`.comm` in a multi-source case
+  (the GNU-tooling and in-repo-ABI wiring is real and was proven against
+  hand-written, uncommitted scratch fixtures on all six targets, but never
+  landed as a permanent corpus case).
+- `asm/docs/contracts.md`'s directive table and M3-tagged bullets have not
+  yet been updated to describe this as landed rather than deliberately
+  absent.
+
 - Generalize the initial fragment/symbol/fixup model to module-local namespaces,
   multiple inputs, and section merging across those inputs. Several allocatable
   sections within one module arrive in M2, because the global load/store fixture

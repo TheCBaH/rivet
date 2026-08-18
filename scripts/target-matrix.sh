@@ -69,6 +69,7 @@ target_config() {
       TOOLPREFIX="i686-linux-gnu-"
       QEMU_BIN="qemu-i386"
       QEMU_SYSROOT="/usr/i686-linux-gnu"
+      CCOMP_EXTRA_ARGS=(-fno-pie)
       READELF_MACHINE="Intel 80386"
       ELF_CLASS="ELF32"; WORD_SIZE=4; HAS_SYSROOT=true
       LINK_TEXT_ADDR="0x30000000"
@@ -81,6 +82,7 @@ target_config() {
       TOOLPREFIX="x86_64-linux-gnu-"
       QEMU_BIN="qemu-x86_64"
       QEMU_SYSROOT="/usr/x86_64-linux-gnu"
+      CCOMP_EXTRA_ARGS=(-fno-pie)
       READELF_MACHINE="Advanced Micro Devices X86-64"
       ELF_CLASS="ELF64"; WORD_SIZE=8; HAS_SYSROOT=true
       LINK_TEXT_ADDR="0x40000000"
@@ -93,7 +95,7 @@ target_config() {
       TOOLPREFIX="arm-linux-gnueabihf-"
       QEMU_BIN="qemu-arm"
       QEMU_SYSROOT="/usr/arm-linux-gnueabihf"
-      CCOMP_EXTRA_ARGS=(-marm)
+      CCOMP_EXTRA_ARGS=(-marm -fno-pie)
       AS_FLAGS=(-march=armv7-a)
       READELF_MACHINE="ARM"
       ELF_CLASS="ELF32"; WORD_SIZE=4; HAS_SYSROOT=true
@@ -107,6 +109,7 @@ target_config() {
       TOOLPREFIX="aarch64-linux-gnu-"
       QEMU_BIN="qemu-aarch64"
       QEMU_SYSROOT="/usr/aarch64-linux-gnu"
+      CCOMP_EXTRA_ARGS=(-fno-pie)
       READELF_MACHINE="AArch64"
       ELF_CLASS="ELF64"; WORD_SIZE=8; HAS_SYSROOT=true
       LINK_TEXT_ADDR="0x40000000"
@@ -118,6 +121,7 @@ target_config() {
       CONFIGURE_TARGET="rv32-linux"
       TOOLPREFIX="riscv64-linux-gnu-"
       QEMU_BIN="qemu-riscv32"
+      CCOMP_EXTRA_ARGS=(-fno-pie)
       COMPCERT_CONFIGURE_ARGS=(-no-runtime-lib -no-standard-headers)
       AS_FLAGS=(-march=rv32imafd -mabi=ilp32d -mno-relax)
       LINKER_EMULATION="elf32lriscv"
@@ -133,6 +137,7 @@ target_config() {
       CONFIGURE_TARGET="rv64-linux"
       TOOLPREFIX="riscv64-linux-gnu-"
       QEMU_BIN="qemu-riscv64"
+      CCOMP_EXTRA_ARGS=(-fno-pie)
       COMPCERT_CONFIGURE_ARGS=(-no-runtime-lib -no-standard-headers)
       AS_FLAGS=(-march=rv64imafd -mabi=lp64d -mno-relax)
       LINKER_EMULATION="elf64lriscv"
