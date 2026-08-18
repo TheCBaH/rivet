@@ -56,6 +56,22 @@ module Make (P : PROFILE) = struct
     | Error _ ->
         Error (parse_diag ~pos:__POS__ ~origin:(slice_origin slice) (`Cannot_parse_operand slice))
 
+  (* [sym@plt]: GNU's marker that a call target may need to route through the
+     PLT, on a symbol CompCert cannot see defined in this translation unit -
+     the RISC-V spelling of the same construct x86 writes [sym@PLT] for.
+     Semantically inert: [call sym@plt] and plain [call sym] both lower to the
+     same [call-hi20]/[call-lo12-i] pair, so stripping the suffix before the
+     common expression parser ever sees [@] changes no byte. Scoped to the
+     bare-symbol operand fallback below, not {!parse_expr}'s other two call
+     sites, since a memory-operand offset or a [%pcrel_hi] argument never
+     carries this suffix. *)
+  let strip_plt_suffix (slice : Asm_syntax.Token.slice) =
+    let open Asm_syntax in
+    match List.rev slice with
+    | { Token.kind = Token.Ident "plt"; _ } :: { Token.kind = Token.At; _ } :: (_ :: _ as rest) ->
+        List.rev rest
+    | _ -> slice
+
   let split_memory slice =
     let rev_take = function
       | rparen :: base :: lparen :: rest -> (
@@ -95,7 +111,7 @@ module Make (P : PROFILE) = struct
             | Some r -> Ok (Operand.Reg r)
             | None -> Ok (Operand.Sym (Asm_core.Expr.Symbol n)))
         | _ -> (
-            match parse_expr slice with
+            match parse_expr (strip_plt_suffix slice) with
             | Ok (Asm_core.Expr.Const n) -> Ok (Operand.Imm n)
             | Ok e -> Ok (Operand.Sym e)
             | Error _ as e -> e))

@@ -1664,3 +1664,7 @@ let data_fixup ~width =
 let nop_bytes ~length =
   if length mod 4 <> 0 then Error (diag ~pos:__POS__ `Padding_not_word_multiple)
   else Ok (String.concat "" (List.init (length / 4) (fun _ -> "\x1f\x20\x03\xd5")))
+
+(* Measured (M3 §3/§5, .ai/asm_plan.md §12): a linker-inserted merge gap in an
+   executable section is plain zero fill on AArch64, not NOP fill. *)
+let merge_fill = None

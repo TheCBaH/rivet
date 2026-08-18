@@ -555,10 +555,21 @@ module Make (T : T_intf.TARGET) = struct
   let evaluate kind ~place ~target =
     Result.map_error target_diagnostic (T.evaluate_fixup kind ~place ~target)
 
-  let plan ?entry m = Image.plan_image ~evaluate (policy_for ?entry m) [ m ]
+  (* M3 §5's merge-gap fill (.ai/asm_plan.md §12): [T.merge_fill], where the
+     target has one, is its OWN linker's measured fill for a gap a merge
+     inserts in an EXECUTABLE output section - not necessarily [T.nop_bytes]
+     again (x86_32's ld and as disagree; see {!Target_encode.ENCODE.merge_fill}).
+     [None], and every non-executable gap even where [Some], falls through to
+     [Image.plan_image]'s own zero-fill default, which is what makes this the
+     identity substitute for a single-module [plan]: no merge boundary exists
+     there to fill at all. *)
+  let merge_fill ~executable pad =
+    match T.merge_fill with Some f when executable -> f ~length:pad | _ -> String.make pad '\000'
+
+  let plan ?entry m = Image.plan_image ~evaluate ~fill:merge_fill (policy_for ?entry m) [ m ]
 
   let plan_many ?entry (modules : T.fixup_kind Lowered_ast.module_ list) =
-    Image.plan_image ~evaluate (policy_for_many ?entry modules) modules
+    Image.plan_image ~evaluate ~fill:merge_fill (policy_for_many ?entry modules) modules
 
   let fixup_observations = Image.fixup_observations
 

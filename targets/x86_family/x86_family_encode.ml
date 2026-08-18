@@ -768,6 +768,14 @@ module type MODE = sig
       the difference is not cosmetic: 64-bit GAS pads with the long-NOP family ([0f 1f ...]) while
       32-bit GAS pads with [lea] forms ([8d 76 00], [2e 8d b4 26 ...]), because the long NOP is P6+
       and the 32-bit default target does not assume it. A shared table would be wrong in one mode. *)
+
+  val merge_nop_table : string array
+  (** M3 §5 (.ai/asm_plan.md §12): the padding GNU's LINKER (not [as]) emits for a gap it inserts
+      between two modules' contributions to one executable output section. Measured separately from
+      {!nop_table}, and not always the same array: [x86_64]'s [ld] agrees with its [as] and reuses the
+      long-NOP table, but [x86_32]'s [ld] fills with repeated 2-byte [66 90] alone, never the wider
+      LEA forms {!nop_table} uses for [.align] - a genuine difference between what the assembler and
+      the linker each do on 32-bit, not a simplification. *)
 end
 
 module Make (M : MODE) = struct
@@ -2108,17 +2116,30 @@ module Make (M : MODE) = struct
 
   let nop_table = M.nop_table
 
+  (* Greedy, longest entry first: both {!nop_table} (as's own [.align] table)
+     and {!M.merge_nop_table} (ld's merge-gap table, M3 §5) are indexed the
+     same way - entry [n-1] is exactly [n] bytes - so one fill loop serves
+     both, over whichever table its caller names. *)
+  let fill_from table length =
+    let buf = Buffer.create length in
+    let rec go n =
+      if n = 0 then ()
+      else
+        let take = min n (Array.length table) in
+        Buffer.add_string buf table.(take - 1);
+        go (n - take)
+    in
+    go length;
+    Buffer.contents buf
+
   let nop_bytes ~length =
     if length < 0 then Error (diag ~pos:__POS__ (`Negative_padding length))
-    else
-      let buf = Buffer.create length in
-      let rec go n =
-        if n = 0 then ()
-        else
-          let take = min n (Array.length nop_table) in
-          Buffer.add_string buf nop_table.(take - 1);
-          go (n - take)
-      in
-      go length;
-      Ok (Buffer.contents buf)
+    else Ok (fill_from nop_table length)
+
+  (* Measured (M3 §3/§5, .ai/asm_plan.md §12): a linker-inserted merge gap in an
+     executable section is real NOP fill on both x86_32 and x86_64, from
+     {!M.merge_nop_table} - NOT necessarily {!nop_table} again, since x86_32's
+     ld and as disagree (see {!MODE.merge_nop_table}). Every other target's
+     merge gap, and every NON-executable gap here too, is plain zero fill. *)
+  let merge_fill = Some (fun ~length -> fill_from M.merge_nop_table length)
 end

@@ -35,6 +35,14 @@ module Mode = struct
       "\x8d\xb4\x26\x00\x00\x00\x00";
       "\x2e\x8d\xb4\x26\x00\x00\x00\x00";
     |]
+
+  (* Measured against a real controlled link (i686-linux-gnu-ld 2.44, M3 §3):
+     the linker's own merge-gap fill is NOT this mode's [nop_table] - it never
+     reaches for the LEA forms above, only the always-safe 2-byte [66 90],
+     repeated, with one trailing single-byte [90] for an odd-length gap. A
+     13-byte gap measured as six [66 90] pairs plus one [90], matching the
+     greedy fill over this exact two-entry table. *)
+  let merge_nop_table = [| "\x90"; "\x66\x90" |]
 end
 
 include X86_family_encode.Make (Mode)

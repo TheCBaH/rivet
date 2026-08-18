@@ -133,6 +133,21 @@ module Make (M : MODE) = struct
         | Ok folded -> Ok (Disp.Sym folded)
         | Error _ -> Ok (Disp.Sym e))
 
+  (* [sym@PLT]: GNU's marker that a call target may need to route through the
+     PLT, on a symbol CompCert cannot see defined in this translation unit.
+     Semantically inert here - a plain [call sym] to an external or even a
+     same-file [.globl] symbol already gets R_X86_64_PLT32 (measured: the M2
+     direct_call fixture's same-file, .globl callee gets it with no [@PLT] in
+     sight), so the encoding is identical whether the source wrote the suffix
+     or not. Stripped before the common expression parser ever sees it, since
+     [@] is not an expression operator there. *)
+  let strip_plt_suffix (slice : Asm_syntax.Token.slice) =
+    let open Asm_syntax in
+    match List.rev slice with
+    | { Token.kind = Token.Ident "PLT"; _ } :: { Token.kind = Token.At; _ } :: (_ :: _ as rest) ->
+        List.rev rest
+    | _ -> slice
+
   let parse_one_operand (slice : Asm_syntax.Token.slice) =
     let origin = slice_origin slice in
     let bad kind = Error (parse_diag ~pos:__POS__ ~origin kind) in
@@ -214,7 +229,7 @@ module Make (M : MODE) = struct
                target. The common expression parser decides, rather than a
                second hand-written one here, so [foo+4] means the same thing in
                an operand as in a directive argument. *)
-            match Asm_syntax.Parse_lines.parse_expression slice with
+            match Asm_syntax.Parse_lines.parse_expression (strip_plt_suffix slice) with
             | Ok e -> Ok (Operand.Sym e)
             | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e })))
 

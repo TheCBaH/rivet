@@ -1321,4 +1321,10 @@ module Make (P : PROFILE) = struct
   let nop_bytes ~length =
     if length mod 4 <> 0 then Error (diag ~pos:__POS__ `Padding_not_word_multiple)
     else Ok (String.concat "" (List.init (length / 4) (fun _ -> "\x13\x00\x00\x00")))
+
+  (* Measured (M3 §3/§5, .ai/asm_plan.md §12): a linker-inserted merge gap in an
+     executable section is plain zero fill on both riscv32 and riscv64, not NOP
+     fill - unlike the *assembler's own* end-of-section padding, which uses
+     real [c.nop]/[nop] via [nop_bytes] above. *)
+  let merge_fill = None
 end

@@ -217,4 +217,15 @@ module type ENCODE = sig
   (** padding for [.align] in an executable section. Not zeroes: a zero-filled gap in x86 [.text]
       decodes as [add %al,(%rax)] and would make the diagnostic disassembler print instructions
       nobody wrote. *)
+
+  val merge_fill : (length:int -> string) option
+  (** M3 §5 (.ai/asm_plan.md §12): GNU's linker fill for a gap it inserts BETWEEN two modules'
+      contributions to one EXECUTABLE merged output section - distinct from {!nop_bytes}'s
+      *assembler*-time [.align] padding within one module, and NOT always the same bytes even where
+      both exist: measured directly (real [ld], all six targets), [x86_64]'s linker and assembler
+      agree on one long-NOP table, but [x86_32]'s linker fills with repeated 2-byte [66 90] alone,
+      regardless of the wider LEA-based table [as] uses for [.align]. [None] is every other target,
+      and it is the correct answer there: every non-executable gap everywhere, and every gap on
+      [arm]/[aarch64]/[riscv32]/[riscv64], is plain zero fill, which [Image.plan_image]'s default
+      [~fill] already produces without a callback. *)
 end

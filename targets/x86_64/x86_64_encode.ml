@@ -37,6 +37,12 @@ module Mode = struct
       "\x66\x2e\x0f\x1f\x84\x00\x00\x00\x00\x00";
       "\x66\x66\x2e\x0f\x1f\x84\x00\x00\x00\x00\x00";
     |]
+
+  (* Measured against a real controlled link (x86_64-linux-gnu-ld 2.44, M3 §3):
+     unlike x86_32, this mode's linker and assembler agree - ld's merge-gap
+     fill is exactly this same long-NOP table, e.g. the 10-byte entry above
+     for a 10-byte gap. *)
+  let merge_nop_table = nop_table
 end
 
 include X86_family_encode.Make (Mode)
