@@ -134,6 +134,15 @@ module type DRIVER = sig
       Omitting it keeps that inference as the fallback, which is what lets the four M1 fixtures
       call this unchanged. *)
 
+  val assemble_many : ?entry:string -> (string * Span.source) list -> unit -> Image.laid_out Diag.t
+  (** M3's multi-module entry point (.ai/asm_plan.md §12): every input lowered with its own
+      [unit_name], then handed to [Image.plan_image] as one list, so a cross-input reference
+      resolves through §2's rules rather than each input being planned alone. [Image.laid_out] is
+      already architecture-erased, so this needs no existential of its own - each target's own
+      ['k] never crosses this boundary, exactly as [assemble] already does not. A parse/simplify/
+      lower failure in one input does not stop the others from being checked too: every input's
+      diagnostics are collected before this fails, not just the first input's. *)
+
   val fixup_observations : Image.laid_out -> Image.fixup_observation list
   (** The relocation evidence a laid-out module carries, kind erased. Named here even though
       [Image.fixup_observations] is reachable from the result above, because this interface is the

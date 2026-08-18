@@ -27,8 +27,7 @@ module Make (T : T_intf.TARGET) = struct
      [`Expression] and [`Relax_ladder] wrap their causes, which deletes the last
      two rendering seams the migration left. [`Directive_rejected] carries
      {!Directives.rejection} whole, including the optional code that lets a
-     deferral name itself - the delegation of §2, and the reason [.bss] can
-     report under [simplify.nobits-section] rather than the generic code. *)
+     deferral name itself - the delegation of §2. *)
   type error =
     [ `Local_label_survived of int
     | `Expression of Expr.error
@@ -226,36 +225,53 @@ module Make (T : T_intf.TARGET) = struct
   type section_build = {
     sb_name : string;
     sb_perms : Perms.t;
+    sb_kind : Lowered_ast.section_kind;
     mutable sb_align : int;
     mutable sb_frags : T.fixup_kind Lowered_ast.fragment list;  (** reversed *)
   }
 
   type symbol_build = {
     sy_name : string;
-    mutable sy_global : bool;
+    mutable sy_binding : Lowered_ast.binding;
     mutable sy_visibility : Lowered_ast.visibility;
     mutable sy_kind : Directive.sym_kind;
     mutable sy_size : Expr.t option;
     mutable sy_section : string;
   }
 
+  (* M3 §7: measured against real GNU `as` ([.weak;.local], [.local;.weak],
+     [.globl;.weak] and [.weak;.globl] all produced a WEAK symbol) rather than
+     assumed from the ELF spec. [.weak] is sticky against a later
+     [.local]/[.globl]; those two remain plain last-wins against each other
+     whenever [.weak] has not applied. *)
+  let apply_binding_directive current (directive : [ `Weak | `Local | `Global ]) =
+    match directive with
+    | `Weak -> Lowered_ast.Weak
+    | `Local -> (
+        match current with Lowered_ast.Weak -> Lowered_ast.Weak | _ -> Lowered_ast.Local)
+    | `Global -> (
+        match current with Lowered_ast.Weak -> Lowered_ast.Weak | _ -> Lowered_ast.Global)
+
   let lower ~state (m : T.Instruction.t Normalized_ast.module_) =
     let errors = ref [] in
     let sections : section_build list ref = ref [] in
     let declared = ref [] in
     let symbols : symbol_build list ref = ref [] in
+    let commons : Lowered_ast.common list ref = ref [] in
     (* [state] is retained in the public entry point for direct normalized-AST
        producers, but parsed programs always pass [default_state].  Target
        directives in [m] then replay in source order below. *)
     let state = ref state in
     let current = ref None in
-    let ensure_section name perms =
+    let ensure_section name perms kind =
       match List.find_opt (fun s -> String.equal s.sb_name name) !sections with
       | Some s ->
           current := Some s;
           s
       | None ->
-          let s = { sb_name = name; sb_perms = perms; sb_align = 1; sb_frags = [] } in
+          let s =
+            { sb_name = name; sb_perms = perms; sb_kind = kind; sb_align = 1; sb_frags = [] }
+          in
           sections := !sections @ [ s ];
           current := Some s;
           s
@@ -272,7 +288,7 @@ module Make (T : T_intf.TARGET) = struct
           let s =
             {
               sy_name = name;
-              sy_global = false;
+              sy_binding = Lowered_ast.Local;
               sy_visibility = Lowered_ast.Default;
               sy_kind = Directive.Notype;
               sy_size = None;
@@ -292,7 +308,10 @@ module Make (T : T_intf.TARGET) = struct
                 sy.sy_section <- s.sb_name)
         | Normalized_ast.Directive { directive; origin } -> (
             match directive with
-            | Directive.Section { name; perms } -> ignore (ensure_section name perms)
+            | Directive.Section { name; perms; nobits } ->
+                ignore
+                  (ensure_section name perms
+                     (if nobits then Lowered_ast.Nobits else Lowered_ast.Progbits))
             | Directive.Declared_section { name } ->
                 declared := !declared @ [ name ];
                 (* Deliberately does *not* become the current section: it is
@@ -396,7 +415,22 @@ module Make (T : T_intf.TARGET) = struct
                                   Lowered_ast.Bytes { bytes; form = None; fixups; origin }
                                   :: s.sb_frags)))
                   values
-            | Directive.Global { name } -> (symbol name).sy_global <- true
+            | Directive.Zero { length } ->
+                with_section origin (fun s ->
+                    s.sb_frags <- Lowered_ast.Zero { length; origin } :: s.sb_frags)
+            | Directive.Global { name } ->
+                let sy = symbol name in
+                sy.sy_binding <- apply_binding_directive sy.sy_binding `Global
+            | Directive.Weak { name } ->
+                let sy = symbol name in
+                sy.sy_binding <- apply_binding_directive sy.sy_binding `Weak
+            | Directive.Local { name } ->
+                let sy = symbol name in
+                sy.sy_binding <- apply_binding_directive sy.sy_binding `Local
+            | Directive.Common { name; size; align } ->
+                commons :=
+                  !commons
+                  @ [ { Lowered_ast.comm_name = name; comm_size = size; comm_align = align } ]
             | Directive.Sym_type { name; kind } -> (symbol name).sy_kind <- kind
             | Directive.Sym_size { name; size } ->
                 (symbol name).sy_size <- Some size;
@@ -454,7 +488,12 @@ module Make (T : T_intf.TARGET) = struct
               (fun s ->
                 {
                   Lowered_ast.sec =
-                    { Lowered_ast.sec_name = s.sb_name; perms = s.sb_perms; alignment = s.sb_align };
+                    {
+                      Lowered_ast.sec_name = s.sb_name;
+                      perms = s.sb_perms;
+                      alignment = s.sb_align;
+                      kind = s.sb_kind;
+                    };
                   fragments = List.rev s.sb_frags;
                 })
               !sections;
@@ -463,29 +502,42 @@ module Make (T : T_intf.TARGET) = struct
               (fun s ->
                 {
                   Lowered_ast.name = s.sy_name;
-                  global = s.sy_global;
+                  binding = s.sy_binding;
                   visibility = s.sy_visibility;
                   kind = s.sy_kind;
                   size = s.sy_size;
                   section = s.sy_section;
                 })
               !symbols;
+          commons = !commons;
           declared_sections = !declared;
         }
 
   (* {1 Stage 4 - the image (§8, §9)} *)
 
-  let policy_for ?entry (m : T.fixup_kind Lowered_ast.module_) =
-    (* An explicit entry wins. The single-global inference below was enough
-       while every fixture declared exactly one global, but three of the M2
-       fixtures declare two - a callee, or a data object, alongside the entry -
-       and cardinality then names nothing at all. Keeping the inference as the
-       fallback is what lets [assemble] stay total. *)
+  (* An explicit entry wins. The single-global inference below was enough
+     while every fixture declared exactly one global, but three of the M2
+     fixtures declare two - a callee, or a data object, alongside the entry -
+     and cardinality then names nothing at all. Keeping the inference as the
+     fallback is what lets [assemble]/[assemble_many] stay total.
+
+     [Weak] never counts as a candidate (M3 §8): an entry silently landing on
+     a weak symbol that later loses to nothing - or to a different input's
+     definition - would be a footgun, and cardinality over every input's
+     [Global] declarations is the direct generalization of the single-module
+     rule, not a new one. *)
+  let policy_for_many ?entry (modules : T.fixup_kind Lowered_ast.module_ list) =
     let globals =
-      List.filter_map
-        (fun (s : Lowered_ast.symbol) ->
-          if s.Lowered_ast.global then Some s.Lowered_ast.name else None)
-        m.Lowered_ast.symbols
+      List.sort_uniq compare
+        (List.concat_map
+           (fun (m : T.fixup_kind Lowered_ast.module_) ->
+             List.filter_map
+               (fun (s : Lowered_ast.symbol) ->
+                 match s.Lowered_ast.binding with
+                 | Lowered_ast.Global -> Some s.Lowered_ast.name
+                 | Lowered_ast.Local | Lowered_ast.Weak -> None)
+               m.Lowered_ast.symbols)
+           modules)
     in
     let entry_symbol =
       match entry with
@@ -493,6 +545,8 @@ module Make (T : T_intf.TARGET) = struct
       | None -> ( match globals with [ g ] -> Some g | _ -> None)
     in
     { Image.default_policy with entry_symbol }
+
+  let policy_for ?entry (m : T.fixup_kind Lowered_ast.module_) = policy_for_many ?entry [ m ]
 
   (* The other erasure boundary: [Image] stores the fixup evaluator in a
      [laid_out], which the architecture-erased [DRIVER] hands around, so the
@@ -502,6 +556,10 @@ module Make (T : T_intf.TARGET) = struct
     Result.map_error target_diagnostic (T.evaluate_fixup kind ~place ~target)
 
   let plan ?entry m = Image.plan_image ~evaluate (policy_for ?entry m) [ m ]
+
+  let plan_many ?entry (modules : T.fixup_kind Lowered_ast.module_ list) =
+    Image.plan_image ~evaluate (policy_for_many ?entry modules) modules
+
   let fixup_observations = Image.fixup_observations
 
   (* {1 The whole path}
@@ -519,6 +577,26 @@ module Make (T : T_intf.TARGET) = struct
     let* norm, _final_state = stage (simplify src) in
     let* low = stage (lower ~state:T.default_state norm) in
     stage (plan ?entry low)
+
+  (* M3's multi-module entry point. Every input is lowered independently
+     ([lower_one]) - a failure in one input does not stop the others from
+     being checked too, via [Err.Accum.map] rather than the [let*] short-
+     circuit [lower_one]'s own three stages still use internally - and only
+     the resulting module list crosses into [plan_many], the one place
+     cross-input resolution (§2) actually happens. *)
+  let assemble_many ?entry (sources : (string * Span.source) list) () =
+    let open Err.Syntax in
+    let stage r = Diag.stage ~pos:__POS__ Err.Action.Map r in
+    let lower_one (unit_name, source) =
+      let* src = stage (parse ~unit_name ~source) in
+      let* norm, _final_state = stage (simplify src) in
+      stage (lower ~state:T.default_state norm)
+    in
+    let* modules =
+      Err.Accum.map ~pos:__POS__ lower_one sources
+      |> Err.Accum.fold_errors (fun errs -> List.concat_map Err.Error.kind errs)
+    in
+    stage (plan_many ?entry modules)
 
   (* {1 Dumps (asm/docs/contracts.md §1)} *)
 

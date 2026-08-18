@@ -509,28 +509,82 @@ let%expect_test "one base places one segment, and refuses to guess at two" =
         sequential   .text:1 .data:4
         |}]
 
-let%expect_test "a NOBITS section is refused, in both spellings of the type" =
-  (* Reserved storage is M3, and the deferral has to be *enforced* rather than
-     merely undocumented. [Lowered_ast.Zero] already means initialized NUL bytes
-     appended to the buffer, so a NOBITS section that fell through to the
-     PROGBITS path would be given real contents in the image - a valid file of
-     the wrong size, at addresses that shift everything after it.
-
-     Both spellings, for the same reason [@function] has two: [@] introduces a
-     comment on ARM, so GAS writes [%nobits] there and a table that knew only
-     one of them would refuse on x86 and silently accept on ARM. *)
+let%expect_test "a NOBITS section is accepted, in both spellings of the type" =
+  (* M3 §6: real support, not a rejection - [.bss] and an explicit
+     [.section name,"aw",@nobits]/[%nobits] both name a real, allocatable
+     NOBITS section. Both spellings, for the same reason [@function] has two:
+     [@] introduces a comment on ARM, so GAS writes [%nobits] there and a
+     table that knew only one of them would accept on x86 and refuse on
+     ARM. *)
   attempt "x86_64" "\t.text\n\tret\n\t.bss\n";
   attempt "x86_64" "\t.text\n\tret\n\t.section .bss,\"aw\",@nobits\n";
   attempt "arm" "\t.text\n\tbx lr\n\t.section .bss,\"aw\",%nobits\n";
-  (* A PROGBITS section with the type spelled out is still accepted: the
-     rejection is about the type, not about writing one down. *)
+  (* A PROGBITS section with the type spelled out is still accepted, exactly
+     as before: the type is read, not assumed. *)
   attempt "x86_64" "\t.text\n\tret\n\t.section .data,\"aw\",@progbits\n";
+  [%expect {|
+    accepted
+    accepted
+    accepted
+    accepted
+    |}]
+
+let%expect_test "a NOBITS section holds labels and .zero reservations, never initialized bytes" =
+  (* This is what makes "real support" true rather than aspirational: a label
+     lands at the right offset, [.zero] reserves without writing, and actual
+     content - a [.byte] here, equally an instruction - is a validation
+     error naming the section, not a silent drop into the image. *)
+  attempt "x86_64" "\t.text\n\tret\n\t.bss\n\tcounter:\n\t.zero 4\n\tflag:\n\t.zero 1\n";
+  attempt "x86_64" "\t.text\n\tret\n\t.bss\n\t.byte 1\n";
+  attempt "x86_64" "\t.text\n\tret\n\t.bss\n\tret\n";
   [%expect
     {|
-    simplify.nobits-section: .bss is a NOBITS section; reserved storage is M3
-    simplify.nobits-section: .bss is a NOBITS section; reserved storage is M3
-    simplify.nobits-section: .bss is a NOBITS section; reserved storage is M3
     accepted
+    image.nobits-content: section .bss is NOBITS and cannot hold initialized content
+    image.nobits-content: section .bss is NOBITS and cannot hold initialized content
+    |}]
+
+let%expect_test "binding-directive transitions match the measured GNU as table" =
+  (* Real GNU `as` probes (M3 §7), not the ELF spec: [.weak] is sticky
+     against a later [.local]/[.globl], but a [.weak] directive itself always
+     applies. [.local]/[.globl] stay plain last-wins against each other
+     whenever [.weak] has not applied - all six ordered pairs, through the
+     real directive table and the real transition function, not called
+     directly. *)
+  let (module D : Target_intf.Target.DRIVER) = driver "x86_64" in
+  let show first second =
+    let text = Printf.sprintf ".%s x\n.%s x\n" first second in
+    match D.dump_lowered_ast ~unit_name:"t" ~source:(source text) with
+    | Ok dump ->
+        let symbol_line =
+          List.find (fun l -> l <> "" && l <> "lowered t") (String.split_on_char '\n' dump)
+        in
+        Printf.printf ".%s then .%s -> %s\n" first second symbol_line
+    | Error ds ->
+        List.iter
+          (fun d ->
+            Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d)
+              (Foundation.Diagnostic.message d))
+          (Foundation.Diag.diagnostics ds)
+  in
+  List.iter
+    (fun (a, b) -> show a b)
+    [
+      ("local", "globl");
+      ("globl", "local");
+      ("local", "weak");
+      ("weak", "local");
+      ("globl", "weak");
+      ("weak", "globl");
+    ];
+  [%expect
+    {|
+    .local then .globl -> global x notype in
+    .globl then .local -> local x notype in
+    .local then .weak -> weak x notype in
+    .weak then .local -> weak x notype in
+    .globl then .weak -> weak x notype in
+    .weak then .globl -> weak x notype in
     |}]
 
 (* {1 The entry symbol across the erased boundary}
@@ -1256,3 +1310,106 @@ let%expect_test "a dialect that declares no modifier keeps its colons" =
      label terminator - and a target parser never sees a [Modifier] token. *)
   attempt "x86_64" "\t.text\n\t.globl g\ng:\n\tmovl $:lo12:g, %eax\n";
   [%expect {| parse: unexpected token |}]
+
+(* {1 assemble_many: the M3 exit criterion (§7-§10)}
+
+   Two inputs into one resolved, fixed-address image, with no object files
+   and no external linker - through the real DRIVER entry point, not
+   Image.plan_image called directly. *)
+
+let assemble_many target sources =
+  let (module D : Target_intf.Target.DRIVER) = driver target in
+  let sources = List.map (fun (unit_name, text) -> (unit_name, source text)) sources in
+  match D.assemble_many sources () with
+  | Ok _ -> print_endline "accepted"
+  | Error ds ->
+      List.iter
+        (fun d ->
+          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
+        (Foundation.Diag.diagnostics ds)
+
+let%expect_test "two inputs assemble and link through assemble_many, plain cross-file case" =
+  assemble_many "x86_64"
+    [
+      ("caller", "\t.text\n\t.globl entry\nentry:\n\tcall callee\n\tret\n");
+      ("callee", "\t.text\n\t.globl callee\ncallee:\n\tret\n");
+    ];
+  [%expect {| accepted |}]
+
+(* RISC-V is the mandatory case (M3 §9/§11a): it is the target family with
+   real paired-fixup machinery to prove, both the intra-fragment [call]
+   sequence (Call_hi20/Call_lo12_i, Sibling_key pairing) and the
+   cross-fragment [%pcrel_hi]/[%pcrel_lo] sequence (Pcrel_hi20/
+   Pcrel_lo12_i, Anchor_symbol pairing - the anchor is a numeric local
+   label, resolved after the merge has already shifted its offset). Both
+   referenced symbols are defined only in the *other* input, so this is a
+   real cross-module resolution, not merely two inputs that happen not to
+   collide. *)
+let riscv_two_input_case target =
+  assemble_many target
+    [
+      ( "caller",
+        "\t.text\n\
+         \t.balign 2\n\
+         \t.globl entry\n\
+         entry:\n\
+         \tcall callee\n\
+         1:\tauipc x31, %pcrel_hi(gvar)\n\
+         \tlw x6, %pcrel_lo(1b)(x31)\n\
+         \tjr x1\n" );
+      ( "callee_mod",
+        "\t.text\n\
+         \t.balign 2\n\
+         \t.globl callee\n\
+         callee:\n\
+         \tjr x1\n\
+         \t.data\n\
+         \t.balign 4\n\
+         \t.globl gvar\n\
+         gvar:\n\
+         \t.long 99\n" );
+    ]
+
+let%expect_test "riscv32: cross-file call and pcrel-hi/lo data reference resolve after the merge" =
+  riscv_two_input_case "riscv32";
+  [%expect {| accepted |}]
+
+let%expect_test "riscv64: cross-file call and pcrel-hi/lo data reference resolve after the merge" =
+  riscv_two_input_case "riscv64";
+  [%expect {| accepted |}]
+
+(* x86-only: ARM/AArch64/RISC-V are fixed-width and declare no relaxation
+   ladder (contracts.md §5.5), so a cross-input forward-reference test does
+   not generalize to them. This pins the short/long selection boundary
+   where the branch target is defined in a *different* input than the
+   branch - relaxation stays per-contribution (§9), so it can only ever
+   pick the short rung when the target is undecidable... which a foreign
+   target always is, making the long rung the only safe, and therefore the
+   only correct, choice regardless of how close the two inputs end up. *)
+let%expect_test "a branch to a same-section symbol in another input always takes the long rung" =
+  let (module D : Target_intf.Target.DRIVER) = driver "x86_64" in
+  let sources =
+    [
+      ("a", source "\t.text\n\t.globl entry\nentry:\n\tjmp far\n");
+      ("b", source "\t.text\n\t.globl far\nfar:\n\tret\n");
+    ]
+  in
+  (match D.assemble_many sources () with
+  | Error ds ->
+      List.iter
+        (fun d ->
+          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
+        (Foundation.Diag.diagnostics ds)
+  | Ok laid_out -> (
+      match Image.bind_image laid_out ~addresses:[ (".text", 0x400000L) ] with
+      | Error ds ->
+          List.iter
+            (fun d ->
+              Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d)
+                (Foundation.Diagnostic.message d))
+            (Foundation.Diag.diagnostics ds)
+      | Ok img -> (
+          match img.Image.segments with
+          | s :: _ -> Printf.printf "%s\n" (Foundation.Byte_cursor.to_hex s.Image.bytes)
+          | [] -> print_endline "(no segments)")));
+  [%expect {| e9 00 00 00 00 c3 |}]

@@ -237,7 +237,13 @@ let module_of s =
     sections =
       [
         {
-          Lowered_ast.sec = { Lowered_ast.sec_name = ".text"; perms = Perms.rx; alignment = 1 };
+          Lowered_ast.sec =
+            {
+              Lowered_ast.sec_name = ".text";
+              perms = Perms.rx;
+              alignment = 1;
+              kind = Lowered_ast.Progbits;
+            };
           fragments = frags @ [ Lowered_ast.Label_def { name = label (n - 1); origin } ];
         };
       ];
@@ -245,12 +251,13 @@ let module_of s =
       List.init n (fun i ->
           {
             Lowered_ast.name = label i;
-            global = false;
+            binding = Lowered_ast.Local;
             visibility = Lowered_ast.Default;
             kind = Directive.Notype;
             size = None;
             section = ".text";
           });
+    commons = [];
     declared_sections = [];
   }
 

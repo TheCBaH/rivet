@@ -80,9 +80,10 @@ let () =
   record "Image" Image.error_code
     [
       `No_modules;
-      `Multi_module 2;
       `No_section;
+      `Section_kind_mismatch ".bss";
       `Duplicate_definition "s";
+      `Common_conflicts_with_local "s";
       `Declared_never_defined "s";
       `Export_undefined "s";
       `Entry_undefined "s";
@@ -90,6 +91,7 @@ let () =
       `Relax_ladder `Empty_ladder;
       `Relax_unreachable { Image.widest = "w"; at = 0 };
       `Align_fill { Image.pad = 1; boundary = 2 };
+      `Nobits_content ".bss";
       `Overflow { Image.segment = ".text"; address = 0L; size = 0 };
       `Overlap
         { Image.a_name = ".text"; a_at = 0L; a_size = 0; b_name = ".data"; b_at = 0L; b_size = 0 };
@@ -254,12 +256,14 @@ let%expect_test "every diagnostic code, and the domain that claims it" =
     expr.not-absolute            Expr
     expr.shift                   Expr
     image.align-fill             Image
+    image.common-conflicts-local Image
     image.duplicate              Image
     image.entry                  Image
     image.export                 Image
-    image.multi-module           Image
+    image.kind-mismatch          Image
     image.no-modules             Image
     image.no-section             Image
+    image.nobits-content         Image
     image.relax-ladder           Image
     image.relax-unreachable      Image
     image.too-large              Image

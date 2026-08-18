@@ -25,8 +25,8 @@ let text_of (slice : Token.slice) = Token.slice_text slice
 (* The section *type* argument, in both spellings for [sym_kind_of]'s reason:
    [@] introduces a comment on ARM, so GAS spells it [%nobits] there. Only
    [nobits] is distinguished, because it is the one value that changes whether
-   the section has contents at all - and that is the case this milestone
-   defers. *)
+   the section has real contents at all (M3 §6) - every other type spelling
+   ([@progbits] and friends) means the ordinary case and is not tracked. *)
 let is_nobits s = match s with "@nobits" | "%nobits" | "nobits" -> true | _ -> false
 
 let section_of_args args =
@@ -113,27 +113,31 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
           Err.Accum.map ~pos:__POS__ Parse_lines.parse_expression args
           |> Err.Accum.fold_errors (reject_reasons (name ^ ": every value must be an expression"))
           |> Err.map (fun values -> Normalized (Directive.Data { width; values })))
-  (* NOBITS is deferred to M3, and the deferral is enforced rather than
-     documented. [Lowered_ast.Zero] already means initialized NUL bytes appended
-     to the buffer, which is [.space] in a PROGBITS section - so accepting
-     [.bss] would silently give a zero-filled section real contents in the
-     image, which is a valid file that is the wrong size. The rejection names
-     the milestone so the message is a plan reference and not a dead end. *)
   | ".bss" ->
-      reject ~pos:__POS__ ~code:"simplify.nobits-section"
-        ".bss is a NOBITS section; reserved storage is M3"
+      Ok
+        (Normalized
+           (Directive.Section { name = ".bss"; perms = perms_of_section ".bss"; nobits = true }))
   | ".text" | ".data" ->
       let n = name in
-      Ok (Normalized (Directive.Section { name = n; perms = perms_of_section n }))
+      Ok (Normalized (Directive.Section { name = n; perms = perms_of_section n; nobits = false }))
   | ".section" -> (
       match section_of_args arguments with
       | None -> reject ~pos:__POS__ "a .section directive needs a name"
-      | Some (n, _, true) ->
-          reject ~pos:__POS__ ~code:"simplify.nobits-section"
-            (n ^ " is a NOBITS section; reserved storage is M3")
-      | Some (n, true, false) ->
-          Ok (Normalized (Directive.Section { name = n; perms = perms_of_section n }))
-      | Some (n, false, false) -> Ok (Normalized (Directive.Declared_section { name = n })))
+      | Some (n, true, nobits) ->
+          Ok (Normalized (Directive.Section { name = n; perms = perms_of_section n; nobits }))
+      | Some (n, false, _) -> Ok (Normalized (Directive.Declared_section { name = n })))
+  (* M3 §6: reservation-only, single-argument form. A fill byte
+     ([.space size,fill]) is rejected explicitly below rather than silently
+     ignored, since ignoring it would make [.space 4,1] mean something
+     different from what it says. *)
+  | ".zero" | ".space" -> (
+      match int_arg () with
+      | Some n when n >= 0 -> Ok (Normalized (Directive.Zero { length = n }))
+      | Some _ -> reject ~pos:__POS__ (name ^ " needs a non-negative length")
+      | None -> (
+          match arguments with
+          | [ _; _ ] -> reject ~pos:__POS__ (name ^ ": a fill-byte argument is not supported")
+          | _ -> reject ~pos:__POS__ (name ^ " needs exactly one integer argument")))
   (* [.align] and [.balign] normalize to the same constructor with different
      values. On the four targets here both denote a byte count; a target where
      [.align] means a power of two states that in its own directive handler,
@@ -155,6 +159,30 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
       match one () with
       | Some n -> Ok (Normalized (Directive.Global { name = n }))
       | None -> reject ~pos:__POS__ (name ^ " needs exactly one symbol"))
+  | ".weak" -> (
+      match one () with
+      | Some n -> Ok (Normalized (Directive.Weak { name = n }))
+      | None -> reject ~pos:__POS__ (name ^ " needs exactly one symbol"))
+  | ".local" -> (
+      match one () with
+      | Some n -> Ok (Normalized (Directive.Local { name = n }))
+      | None -> reject ~pos:__POS__ (name ^ " needs exactly one symbol"))
+  | ".comm" -> (
+      let int_of_slice slice =
+        match List.map Token.kind slice with [ Token.Int v ] -> Bigint.to_int_opt v | _ -> None
+      in
+      match arguments with
+      | [ n; s ] -> (
+          match int_of_slice s with
+          | Some size when size >= 0 ->
+              Ok (Normalized (Directive.Common { name = text_of n; size; align = 1 }))
+          | _ -> reject ~pos:__POS__ ".comm needs a non-negative integer size")
+      | [ n; s; a ] -> (
+          match (int_of_slice s, int_of_slice a) with
+          | Some size, Some align when size >= 0 && align > 0 ->
+              Ok (Normalized (Directive.Common { name = text_of n; size; align }))
+          | _ -> reject ~pos:__POS__ ".comm needs a non-negative size and a positive alignment")
+      | _ -> reject ~pos:__POS__ ".comm needs a symbol and a size, and optionally an alignment")
   | ".type" -> (
       match arguments with
       | [ n; k ] -> (

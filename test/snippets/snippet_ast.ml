@@ -178,7 +178,12 @@ module Make (T : Target_encode.ENCODE) = struct
         let section =
           {
             Asm_core.Lowered_ast.sec =
-              { Asm_core.Lowered_ast.sec_name = ".text"; perms = Asm_core.Perms.rx; alignment = 4 };
+              {
+                Asm_core.Lowered_ast.sec_name = ".text";
+                perms = Asm_core.Perms.rx;
+                alignment = 4;
+                kind = Asm_core.Lowered_ast.Progbits;
+              };
             fragments = List.map fst parts;
           }
         in
@@ -187,6 +192,7 @@ module Make (T : Target_encode.ENCODE) = struct
             Asm_core.Lowered_ast.unit_name = "snippet";
             sections = [ section ];
             symbols = [];
+            commons = [];
             declared_sections = [];
           }
         in

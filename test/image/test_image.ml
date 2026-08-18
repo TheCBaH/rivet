@@ -82,10 +82,11 @@ let branch_to sym = branch_to_expr (Expr.Symbol sym)
 let filler n = Lowered_ast.Bytes { bytes = String.make n '\x90'; form = None; fixups = []; origin }
 let label name = Lowered_ast.Label_def { name; origin }
 
-let sym ?(global = true) ?(section = ".text") name =
+let sym ?(global = true) ?(weak = false) ?(section = ".text") name =
   {
     Lowered_ast.name;
-    global;
+    binding =
+      (if weak then Lowered_ast.Weak else if global then Lowered_ast.Global else Lowered_ast.Local);
     visibility = Lowered_ast.Default;
     kind = Directive.Notype;
     size = None;
@@ -94,15 +95,26 @@ let sym ?(global = true) ?(section = ".text") name =
 
 let text_section ?(align = 1) frags =
   {
-    Lowered_ast.sec = { Lowered_ast.sec_name = ".text"; perms = Perms.rx; alignment = align };
+    Lowered_ast.sec =
+      {
+        Lowered_ast.sec_name = ".text";
+        perms = Perms.rx;
+        alignment = align;
+        kind = Lowered_ast.Progbits;
+      };
     fragments = frags;
   }
 
-let module_ ?(symbols = []) sections =
-  { Lowered_ast.unit_name = "t"; sections; symbols; declared_sections = [] }
+let module_ ?(unit_name = "t") ?(symbols = []) ?(commons = []) sections =
+  { Lowered_ast.unit_name; sections; symbols; commons; declared_sections = [] }
 
 let plan ?(entry = "entry") m =
   Image.plan_image ~evaluate { Image.default_policy with entry_symbol = Some entry } [ m ]
+
+(* {2 Multi-module linking (M3 §4)} *)
+
+let plan_many ?entry ms =
+  Image.plan_image ~evaluate { Image.default_policy with entry_symbol = entry } ms
 
 (* The payload only: a linker failure is wrapped now, and asm/docs/errors.md §3
    keeps Err provenance out of anything an expect baseline compares. *)
@@ -393,7 +405,13 @@ let%expect_test "an absolute fixup is patched little-endian" =
               };
           ];
         {
-          Lowered_ast.sec = { Lowered_ast.sec_name = ".data"; perms = Perms.rw; alignment = 4 };
+          Lowered_ast.sec =
+            {
+              Lowered_ast.sec_name = ".data";
+              perms = Perms.rw;
+              alignment = 4;
+              kind = Lowered_ast.Progbits;
+            };
           fragments =
             [
               label "g";
@@ -434,7 +452,13 @@ let%expect_test "a fixup out of range is a diagnostic, not a truncation" =
               };
           ];
         {
-          Lowered_ast.sec = { Lowered_ast.sec_name = ".data"; perms = Perms.rw; alignment = 4 };
+          Lowered_ast.sec =
+            {
+              Lowered_ast.sec_name = ".data";
+              perms = Perms.rw;
+              alignment = 4;
+              kind = Lowered_ast.Progbits;
+            };
           fragments = [ label "g" ];
         };
       ]
@@ -612,7 +636,13 @@ let%expect_test "an anchor may not cross sections" =
             label "target";
           ];
         {
-          Lowered_ast.sec = { Lowered_ast.sec_name = ".data"; perms = Perms.rw; alignment = 4 };
+          Lowered_ast.sec =
+            {
+              Lowered_ast.sec_name = ".data";
+              perms = Perms.rw;
+              alignment = 4;
+              kind = Lowered_ast.Progbits;
+            };
           fragments = [ label "anchor"; filler 4 ];
         };
       ]
@@ -669,7 +699,13 @@ let%expect_test "an observation carries every column the classifier indexes on" 
             label "hidden_local";
           ];
         {
-          Lowered_ast.sec = { Lowered_ast.sec_name = ".data"; perms = Perms.rw; alignment = 4 };
+          Lowered_ast.sec =
+            {
+              Lowered_ast.sec_name = ".data";
+              perms = Perms.rw;
+              alignment = 4;
+              kind = Lowered_ast.Progbits;
+            };
           fragments = [ label "g" ];
         };
       ]
@@ -708,7 +744,13 @@ let%expect_test "an addend is normalized, not matched on its spelling" =
             ref_to (Expr.Binary (Expr.Sub, Expr.Symbol "h", Expr.Symbol "g"));
           ];
         {
-          Lowered_ast.sec = { Lowered_ast.sec_name = ".data"; perms = Perms.rw; alignment = 4 };
+          Lowered_ast.sec =
+            {
+              Lowered_ast.sec_name = ".data";
+              perms = Perms.rw;
+              alignment = 4;
+              kind = Lowered_ast.Progbits;
+            };
           fragments = [ label "g"; filler 4; label "h" ];
         };
       ]
@@ -729,7 +771,13 @@ let two_sections () =
     [
       text_section [ label "entry"; filler 16 ];
       {
-        Lowered_ast.sec = { Lowered_ast.sec_name = ".data"; perms = Perms.rw; alignment = 4 };
+        Lowered_ast.sec =
+          {
+            Lowered_ast.sec_name = ".data";
+            perms = Perms.rw;
+            alignment = 4;
+            kind = Lowered_ast.Progbits;
+          };
         fragments = [ label "g"; filler 8 ];
       };
     ]
@@ -778,3 +826,374 @@ let%expect_test "placement preflight accumulates independent failures in order" 
     bind.overlap
     bind.alignment
     |}]
+
+(* {1 Symtab: input-qualified symbol identity (M3 §2)}
+
+   Pure data-model tests against [Symtab] directly, with no
+   [plan_image] involved - multi-module planning is a later M3 step
+   (`create-implementation-plan-for-golden-kettle.md`'s step 4). These three
+   cases are exactly what that plan's step 2 requires proven before any
+   parser change: local names never collide across inputs, a local shadows a
+   same-spelled foreign global from inside its own input, and a foreign
+   local can never be captured by name the way a flat, bare-string lookup
+   over the old single-module [offsets] would have. *)
+
+let def ?(binding = Lowered_ast.Local) ?(section = ".text") ?(offset = 0) unit_name name =
+  {
+    Image.Symtab.d_unit = unit_name;
+    d_name = name;
+    d_binding = binding;
+    d_section = section;
+    d_offset = offset;
+  }
+
+let reference unit_name name = { Image.Symtab.r_unit = unit_name; r_name = name }
+
+let%expect_test "two modules each defining a same-named local do not collide" =
+  let defs = [ def "a" "x" ~offset:4; def "b" "x" ~offset:8 ] in
+  let local = Image.Symtab.build_local_table defs in
+  (match (List.assoc_opt ("a", "x") local, List.assoc_opt ("b", "x") local) with
+  | Some da, Some db -> Fmt.pr "a.x=%d b.x=%d@." da.Image.Symtab.d_offset db.Image.Symtab.d_offset
+  | _ -> Fmt.pr "missing@.");
+  [%expect {| a.x=4 b.x=8 |}]
+
+let%expect_test "a reference resolves to its own input's local, never a same-spelled foreign global"
+    =
+  let defs = [ def "a" "x" ~offset:4; def "b" "x" ~binding:Lowered_ast.Global ~offset:8 ] in
+  let local = Image.Symtab.build_local_table defs in
+  let link_global = Image.Symtab.build_link_global_table defs in
+  (match Image.Symtab.resolve_reference ~local ~link_global (reference "a" "x") with
+  | Image.Symtab.Resolved_local d ->
+      Fmt.pr "resolved to %s's local at %d@." d.Image.Symtab.d_unit d.Image.Symtab.d_offset
+  | Image.Symtab.Resolved_global _ -> Fmt.pr "wrongly resolved to a foreign global@."
+  | Image.Symtab.Unresolved -> Fmt.pr "wrongly unresolved@.");
+  [%expect {| resolved to a's local at 4 |}]
+
+let%expect_test
+    "a foreign local is never visible, even under a name a bare-string lookup would find" =
+  (* [x] is local in [a] and never exported - exactly the case where a flat,
+     bare-string [offsets] lookup (the pre-M3 shape) would have silently
+     handed [b]'s reference [a]'s definition. *)
+  let defs = [ def "a" "x" ~offset:4 ] in
+  let local = Image.Symtab.build_local_table defs in
+  let link_global = Image.Symtab.build_link_global_table defs in
+  (match Image.Symtab.resolve_reference ~local ~link_global (reference "b" "x") with
+  | Image.Symtab.Resolved_local d -> Fmt.pr "wrongly captured as %s's local@." d.Image.Symtab.d_unit
+  | Image.Symtab.Resolved_global _ -> Fmt.pr "wrongly captured as a global@."
+  | Image.Symtab.Unresolved -> Fmt.pr "unresolved, as required@.");
+  [%expect {| unresolved, as required |}]
+
+(* {1 Multi-module linking through plan_image/bind_image (M3 §4, step 4)}
+
+   Everything above proved the data model in isolation; these prove the
+   wiring - [Image.plan_image] and [Image.bind_image] themselves, not
+   [Symtab] called directly - which is the plan's own exit criterion: two
+   inputs become one resolved, fixed-address image with no object files and
+   no external linker. *)
+
+let%expect_test "a cross-file reference resolves and patches exactly like the single-module case" =
+  (* Same shape and same expected bytes as "an absolute fixup is patched
+     little-endian" above, split across two inputs: [a] references [g], [b]
+     defines it. If this prints anything else, cross-module resolution
+     changed the bind result, not just its internal bookkeeping. *)
+  let a =
+    module_ ~unit_name:"a"
+      ~symbols:[ sym "entry" ]
+      [ text_section [ label "entry"; ref_to (Expr.Symbol "g") ] ]
+  in
+  let b =
+    module_ ~unit_name:"b"
+      ~symbols:[ sym "g" ~section:".data" ]
+      [
+        {
+          Lowered_ast.sec =
+            {
+              Lowered_ast.sec_name = ".data";
+              perms = Perms.rw;
+              alignment = 4;
+              kind = Lowered_ast.Progbits;
+            };
+          fragments =
+            [
+              label "g";
+              Lowered_ast.Bytes { bytes = "\x14\x00\x00\x00"; form = None; fixups = []; origin };
+            ];
+        };
+      ]
+  in
+  (match plan_many ~entry:"entry" [ a; b ] with
+  | Error ds -> show_errors ds
+  | Ok l -> (
+      match bind_at l [ (".text", 0x40000000L); (".data", 0x40020000L) ] with
+      | None -> ()
+      | Some img -> show_text img));
+  [%expect {| b8 00 00 02 40 |}]
+
+let%expect_test "each input's fixup resolves to its own input's local, never the other's" =
+  (* [x] is an anonymous local (no symbol record - like an ordinary branch
+     target) in *both* inputs. A bare-string lookup over a flat, pre-M3
+     [offsets] table could only ever find one of them; here each input's own
+     reference must find its own [x], at its own, distinct merged offset. *)
+  let a = module_ ~unit_name:"a" [ text_section [ ref_to (Expr.Symbol "x"); label "x" ] ] in
+  let b = module_ ~unit_name:"b" [ text_section [ ref_to (Expr.Symbol "x"); label "x" ] ] in
+  (match plan_many [ a; b ] with
+  | Error ds -> show_errors ds
+  | Ok l -> ( match bind_at l [ (".text", 0x1000L) ] with None -> () | Some img -> show_text img));
+  (* a's own x is at merged offset 5 (0x1005); b's own x is at merged offset
+     10 (0x100a), right after a's whole 5-byte contribution. Each fixup must
+     find its own, not the other's. *)
+  [%expect {| b8 05 10 00 00 b8 0a 10 00 00 |}]
+
+let%expect_test "a same-name section fed both kinds by two inputs is rejected, not coerced" =
+  let bss_section kind =
+    {
+      Lowered_ast.sec = { Lowered_ast.sec_name = ".bss"; perms = Perms.rw; alignment = 1; kind };
+      fragments = [];
+    }
+  in
+  let a = module_ ~unit_name:"a" [ bss_section Lowered_ast.Progbits ] in
+  let b = module_ ~unit_name:"b" [ bss_section Lowered_ast.Nobits ] in
+  (match plan_many [ a; b ] with Error ds -> show_errors ds | Ok _ -> Fmt.pr "accepted@.");
+  [%expect {| image.kind-mismatch: section .bss is PROGBITS in one input and NOBITS in another |}]
+
+let%expect_test "a same-name section's flag mismatch unions rather than rejects" =
+  let flagged perms byte =
+    {
+      Lowered_ast.sec =
+        { Lowered_ast.sec_name = ".flagtest"; perms; alignment = 1; kind = Lowered_ast.Progbits };
+      fragments = [ Lowered_ast.Bytes { bytes = byte; form = None; fixups = []; origin } ];
+    }
+  in
+  let a = module_ ~unit_name:"a" [ flagged Perms.ro "\x01" ] in
+  let b = module_ ~unit_name:"b" [ flagged Perms.rw "\x02" ] in
+  (match plan_many [ a; b ] with
+  | Error ds -> show_errors ds
+  | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Image.pp_plan (Image.plan_of l)));
+  [%expect {| segment .flagtest size=2 zero=0 align=1 permissions=rw- |}]
+
+let%expect_test "a merge-boundary gap is filled by the caller's callback, not silently zeroed" =
+  let a =
+    module_ ~unit_name:"a"
+      [ text_section [ Lowered_ast.Bytes { bytes = "\x11"; form = None; fixups = []; origin } ] ]
+  in
+  let b =
+    module_ ~unit_name:"b"
+      [
+        text_section ~align:4
+          [ Lowered_ast.Bytes { bytes = "\x22"; form = None; fixups = []; origin } ];
+      ]
+  in
+  let fill ~executable n = if executable then String.make n '\xaa' else String.make n '\x00' in
+  (match Image.plan_image ~evaluate ~fill Image.default_policy [ a; b ] with
+  | Error ds -> show_errors ds
+  | Ok l -> ( match bind_at l [ (".text", 0x1000L) ] with None -> () | Some img -> show_text img));
+  [%expect {| 11 aa aa aa 22 |}]
+
+(* {1 NOBITS: logical extent, not emitted bytes (M3 §6, step 5)} *)
+
+let bss_section ?(align = 4) frags =
+  {
+    Lowered_ast.sec =
+      {
+        Lowered_ast.sec_name = ".bss";
+        perms = Perms.rw;
+        alignment = align;
+        kind = Lowered_ast.Nobits;
+      };
+    fragments = frags;
+  }
+
+let%expect_test "a NOBITS section reserves logical extent without writing real bytes" =
+  let m =
+    module_
+      [
+        text_section [ label "entry" ];
+        bss_section
+          [
+            Lowered_ast.Zero { length = 4; origin };
+            label "flag";
+            Lowered_ast.Zero { length = 1; origin };
+          ];
+      ]
+  in
+  (match plan m with
+  | Error ds -> show_errors ds
+  | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Image.pp_plan (Image.plan_of l)));
+  [%expect
+    {|
+    segment .text size=0 zero=0 align=1 permissions=r-x
+    segment .bss size=0 zero=5 align=4 permissions=rw-
+    entry entry |}]
+
+let%expect_test "a NOBITS label lands after its reservation, and binds without real bytes" =
+  let m =
+    module_
+      ~symbols:[ sym "entry"; sym "flag" ~section:".bss" ]
+      [
+        text_section [ label "entry" ];
+        bss_section [ Lowered_ast.Zero { length = 4; origin }; label "flag" ];
+      ]
+  in
+  (match plan m with
+  | Error ds -> show_errors ds
+  | Ok l -> (
+      match Image.bind_image l ~addresses:[ (".text", 0x1000L); (".bss", 0x2000L) ] with
+      | Error ds -> show_errors ds
+      | Ok img ->
+          (* Standing invariant (§6): every bound segment's real bytes and
+             logical extent are asked separately - a NOBITS segment's own
+             bytes are always empty, whatever its zero_fill says. *)
+          List.iter
+            (fun (s : Image.segment) ->
+              Fmt.pr "%s bytes=%d zero_fill=%d@." s.Image.name (String.length s.Image.bytes)
+                s.Image.zero_fill)
+            img.Image.segments;
+          Fmt.pr "%s@." (Fmt.to_to_string Image.pp img)));
+  [%expect
+    {|
+    .text bytes=0 zero_fill=0
+    .bss bytes=0 zero_fill=4
+    section .text address=0x1000 size=0 permissions=r-x
+    section .bss address=0x2000 size=4 permissions=rw-
+    entry 0x1000
+    export entry = 0x1000
+    export flag = 0x2004 |}]
+
+let%expect_test "initialized content inside a NOBITS section is rejected, not silently dropped" =
+  let m =
+    module_ ~symbols:[ sym "entry" ] [ text_section [ label "entry" ]; bss_section [ filler 4 ] ]
+  in
+  (match plan m with Error ds -> show_errors ds | Ok _ -> Fmt.pr "accepted@.");
+  [%expect {| image.nobits-content: section .bss is NOBITS and cannot hold initialized content |}]
+
+(* {1 .comm / .weak resolution (M3 §7)}
+
+   Pairwise precedence, common-vs-local conflict, common folded alongside a
+   user-written .bss, and undefined-weak substitution - all through
+   plan_image/bind_image directly, not through Symtab, since what is under
+   test here is the resolver's wiring (build_link_global_table's
+   strong-first ordering, the common pre-pass, address_of's weak fallback),
+   not the data model §1/§2 already proved. *)
+
+let comm name size align = { Lowered_ast.comm_name = name; comm_size = size; comm_align = align }
+
+let%expect_test "strong beats common: a real definition discards every .comm of the same name" =
+  let a =
+    module_ ~unit_name:"a"
+      ~symbols:[ sym "x" ~section:".data" ]
+      [
+        {
+          Lowered_ast.sec =
+            {
+              Lowered_ast.sec_name = ".data";
+              perms = Perms.rw;
+              alignment = 4;
+              kind = Lowered_ast.Progbits;
+            };
+          fragments = [ label "x"; filler 4 ];
+        };
+      ]
+  in
+  let b = module_ ~unit_name:"b" ~commons:[ comm "x" 4 4 ] [] in
+  (match plan_many [ a; b ] with
+  | Error ds -> show_errors ds
+  | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Image.pp_plan (Image.plan_of l)));
+  (* No .bss segment at all: the common declaration never allocated
+     anything, because [x] already has a real definition. *)
+  [%expect {|
+    segment .data size=4 zero=0 align=4 permissions=rw-
+    export x |}]
+
+let%expect_test "common beats weak: an undefined-weak reference finds the common allocation" =
+  let a =
+    module_ ~unit_name:"a"
+      ~symbols:[ sym "entry"; sym "x" ~weak:true ]
+      [ text_section [ label "entry"; ref_to (Expr.Symbol "x") ] ]
+  in
+  let b = module_ ~unit_name:"b" ~commons:[ comm "x" 4 4 ] [] in
+  (match plan_many ~entry:"entry" [ a; b ] with
+  | Error ds -> show_errors ds
+  | Ok l -> (
+      match bind_at l [ (".text", 0x1000L); (".bss", 0x2000L) ] with
+      | None -> ()
+      | Some img -> show_text img));
+  (* b8 00 20 00 00: the common allocation's address (0x2000), not 0 - if
+     this printed zero, common lost to the undefined-weak-resolves-to-0
+     path instead of winning outright. *)
+  [%expect {| b8 00 20 00 00 |}]
+
+let%expect_test "strong beats weak, re-verified link-wide" =
+  let a =
+    module_ ~unit_name:"a"
+      ~symbols:[ sym "entry"; sym "x" ~section:".data" ]
+      [
+        text_section [ label "entry" ];
+        {
+          Lowered_ast.sec =
+            {
+              Lowered_ast.sec_name = ".data";
+              perms = Perms.rw;
+              alignment = 4;
+              kind = Lowered_ast.Progbits;
+            };
+          fragments = [ label "x"; filler 4 ];
+        };
+      ]
+  in
+  let b =
+    module_ ~unit_name:"b"
+      ~symbols:[ sym "x" ~weak:true ]
+      [ text_section [ ref_to (Expr.Symbol "x") ] ]
+  in
+  (match plan_many ~entry:"entry" [ a; b ] with
+  | Error ds -> show_errors ds
+  | Ok l -> (
+      match bind_at l [ (".text", 0x1000L); (".data", 0x2000L) ] with
+      | None -> ()
+      | Some img ->
+          List.iter
+            (fun (s : Image.segment) -> Fmt.pr "%s %s@." s.Image.name (hex s.Image.bytes))
+            img.Image.segments));
+  [%expect {|
+    .text b8 00 20 00 00
+    .data 90 90 90 90 |}]
+
+let%expect_test "a .comm conflicting with a local definition in the same input is rejected" =
+  let a =
+    module_ ~unit_name:"a"
+      ~symbols:[ sym "x" ~global:false ]
+      ~commons:[ comm "x" 4 1 ]
+      [ text_section [ label "x" ] ]
+  in
+  (match plan_many [ a ] with Error ds -> show_errors ds | Ok _ -> Fmt.pr "accepted@.");
+  [%expect
+    {| image.common-conflicts-local: common declaration of x conflicts with a local definition in the same input |}]
+
+let%expect_test
+    "a resolved common allocation is folded into a user-written .bss, not a second segment" =
+  let a =
+    module_ ~unit_name:"a"
+      ~commons:[ comm "y" 4 4 ]
+      [ bss_section [ Lowered_ast.Zero { length = 8; origin }; label "existing" ] ]
+  in
+  (match plan_many [ a ] with
+  | Error ds -> show_errors ds
+  | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Image.pp_plan (Image.plan_of l)));
+  (* One .bss segment, sized 8 (existing) + 4 (y) = 12 - not two. *)
+  [%expect {| segment .bss size=0 zero=12 align=4 permissions=rw- |}]
+
+let%expect_test "an undefined weak reference resolves to 0, absolute and PC-relative alike" =
+  let a =
+    module_ ~unit_name:"a"
+      ~symbols:[ sym "entry"; sym "w" ~weak:true ]
+      [ text_section [ label "entry"; ref_to (Expr.Symbol "w"); branch_to "w" ] ]
+  in
+  (match plan_many ~entry:"entry" [ a ] with
+  | Error ds -> show_errors ds
+  | Ok l -> ( match bind_at l [ (".text", 0x1000L) ] with None -> () | Some img -> show_text img));
+  (* b8 00 00 00 00: the absolute reference, patched to the literal value 0.
+     Then the branch: [w] at address 0 is unreachable from a short rung, so
+     relaxation keeps the long one - eb (short) never being selected is
+     itself part of the proof that the target genuinely resolved to a fixed,
+     far-away address (0) rather than merely "not failing". *)
+  [%expect {| b8 00 00 00 00 e9 f6 ef ff ff |}]

@@ -109,6 +109,20 @@ let assemble ?entry target ~unit_name ~text =
       | Error ds -> of_stage (Error ds)
       | Ok laid_out -> Ok { laid_out; target })
 
+(* M3's multi-module entry point, returning the same [planned] type
+   [assemble] does - [Image.laid_out] is already architecture-erased and
+   already carries however many inputs went into it, so nothing downstream
+   ([plan_text], [bind], [fixup_observations]) needs a second version of
+   itself just because this one exists. *)
+let assemble_many ?entry target (sources : (string * string) list) =
+  with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
+      let sources =
+        List.map (fun (unit_name, text) -> (unit_name, source ~unit_name ~text)) sources
+      in
+      match D.assemble_many ?entry sources () with
+      | Error ds -> of_stage (Error ds)
+      | Ok laid_out -> Ok { laid_out; target })
+
 let plan_text p = Fmt.to_to_string Image.pp_plan (Image.plan_of p.laid_out)
 
 (* Rendered rather than structured, for the same reason diagnostics are: the
@@ -179,7 +193,13 @@ let section_bytes b name =
   match
     List.find_opt (fun (s : Image.segment) -> String.equal s.Image.name name) b.image.Image.segments
   with
-  | Some s -> Some s.Image.bytes
+  (* A NOBITS segment's [bytes] holds only its real ([init_size]) prefix -
+     always empty until common-symbol storage exists (§7) - so a caller that
+     wants to materialize memory gets the full logical extent, real bytes
+     followed by [zero_fill] zero bytes, rather than having to special-case
+     the segment kind itself. A no-op for every PROGBITS segment, since
+     [zero_fill] is 0 there. *)
+  | Some s -> Some (s.Image.bytes ^ String.make s.Image.zero_fill '\000')
   | None -> None
 
 let entry b = b.image.Image.entry

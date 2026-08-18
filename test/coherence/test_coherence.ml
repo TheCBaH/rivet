@@ -52,7 +52,7 @@ let direct_normalized : T.Instruction.t Normalized_ast.module_ =
     Normalized_ast.unit_name = "asm_test_entry";
     items =
       [
-        dir (Directive.Section { name = ".text"; perms = Perms.rx });
+        dir (Directive.Section { name = ".text"; perms = Perms.rx; nobits = false });
         dir (Directive.Align { boundary = 4 });
         dir (Directive.Global { name = "asm_test_entry" });
         Normalized_ast.Label { name = "asm_test_entry"; origin };
@@ -179,7 +179,13 @@ let direct_lowered : T.fixup_kind Lowered_ast.module_ =
     sections =
       [
         {
-          Lowered_ast.sec = { Lowered_ast.sec_name = ".text"; perms = Perms.rx; alignment = 4 };
+          Lowered_ast.sec =
+            {
+              Lowered_ast.sec_name = ".text";
+              perms = Perms.rx;
+              alignment = 4;
+              kind = Lowered_ast.Progbits;
+            };
           fragments =
             [
               (* The fill comes from the target, not from a byte string quoted
@@ -210,13 +216,14 @@ let direct_lowered : T.fixup_kind Lowered_ast.module_ =
       [
         {
           Lowered_ast.name = "asm_test_entry";
-          global = true;
+          binding = Lowered_ast.Global;
           visibility = Lowered_ast.Default;
           kind = Directive.Function;
           size = Some (Expr.Binary (Expr.Sub, Expr.Current_location, Expr.Symbol "asm_test_entry"));
           section = ".text";
         };
       ];
+    commons = [];
     declared_sections = [ ".note.GNU-stack" ];
   }
 
@@ -300,7 +307,10 @@ let%expect_test "a direct normalized AST with an out-of-range immediate is rejec
       items =
         [
           Normalized_ast.Directive
-            { directive = Directive.Section { name = ".text"; perms = Perms.rx }; origin };
+            {
+              directive = Directive.Section { name = ".text"; perms = Perms.rx; nobits = false };
+              origin;
+            };
           Normalized_ast.Instruction
             {
               insn =
@@ -349,7 +359,7 @@ let%expect_test "a direct lowered module whose exported symbol is undefined is r
         [
           {
             Lowered_ast.name = "absent";
-            global = true;
+            binding = Lowered_ast.Global;
             visibility = Lowered_ast.Default;
             kind = Directive.Function;
             size = None;

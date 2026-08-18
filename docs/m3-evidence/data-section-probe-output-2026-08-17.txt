@@ -1,0 +1,19 @@
+=== x86_64-linux-gnu .data (non-executable PROGBITS) merge gap ===
+ 11 12 13 14 00 00 00 00 00 00 00 00 00 00 00 00
+ 22
+=== i686-linux-gnu .data (non-executable PROGBITS) merge gap ===
+ 11 12 13 14 00 00 00 00 00 00 00 00 00 00 00 00
+ 22
+=== arm-linux-gnueabihf .data (non-executable PROGBITS) merge gap ===
+ 11 12 13 14 00 00 00 00 00 00 00 00 00 00 00 00
+ 22
+=== aarch64-linux-gnu .data (non-executable PROGBITS) merge gap ===
+ 11 12 13 14 00 00 00 00 00 00 00 00 00 00 00 00
+ 22
+=== riscv64/riscv32 .data ===
+-- riscv64 --
+ 11 12 13 14 00 00 00 00 00 00 00 00 00 00 00 00
+ 22
+-- riscv32 --
+ 11 12 13 14 00 00 00 00 00 00 00 00 00 00 00 00
+ 22

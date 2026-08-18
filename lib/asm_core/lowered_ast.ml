@@ -151,7 +151,19 @@ type 'k fragment =
           expression mentions the current location, so its value depends on *where the directive
           appeared*; a symbol-level field would have lost that position and had to guess. *)
 
-type section = { sec_name : string; perms : Perms.t; alignment : int }
+(* PROGBITS/NOBITS (M3 §4/§6): every M1/M2 section is [Progbits] - nothing
+   before M3 can request a reservation-only section, since driver/directives.ml
+   still hard-rejects the NOBITS flag it already parses (`simplify.nobits-
+   section`) until §6 wires real `.bss` content support. The field exists now
+   because §4's merge step needs it: a same-name section fed both kinds by two
+   different inputs is a dedicated rejection (the GNU probe in
+   asm/docs/m3-evidence found real `ld`, under this project's own linker-script
+   shape, silently coerces that case into one PROGBITS section instead). *)
+type section_kind = Progbits | Nobits
+
+let section_kind_name = function Progbits -> "progbits" | Nobits -> "nobits"
+
+type section = { sec_name : string; perms : Perms.t; alignment : int; kind : section_kind }
 type 'k section_content = { sec : section; fragments : 'k fragment list }
 
 (* ELF visibility. The directives that set it are not in M2's fixture set, so
@@ -167,19 +179,38 @@ let visibility_name = function
   | Protected -> "protected"
   | Internal -> "internal"
 
+(* M3 (.ai/asm_plan.md §12, "Milestone 3"). Replaces the bare [global : bool]
+   M1/M2 carried: a linker with more than one input needs a third state, since
+   GNU's [.weak] is neither "visible link-wide with duplicate-definition
+   rejection" ([Global]) nor "invisible outside this input" ([Local]) - a weak
+   definition is link-wide visible but loses to a strong one instead of
+   conflicting with it (asm/docs/contracts.md, the M3 resolver). *)
+type binding = Local | Global | Weak
+
+let binding_name = function Local -> "local" | Global -> "global" | Weak -> "weak"
+
 type symbol = {
   name : string;
-  global : bool;
+  binding : binding;
   visibility : visibility;
   kind : Directive.sym_kind;
   size : Expr.t option;
   section : string;
 }
 
+(* M3 §7: a [.comm] claim - size and alignment, no input-section offset. Kept
+   apart from [symbol] because a common declaration is not yet a definition:
+   whether it ever contributes storage, and how much, is decided link-wide by
+   the resolver (strong beats it outright; several declarations of the same
+   name fold into one reservation sized to the maximum requested size and
+   aligned to the maximum requested alignment), never by this input alone. *)
+type common = { comm_name : string; comm_size : int; comm_align : int }
+
 type 'k module_ = {
   unit_name : string;
   sections : 'k section_content list;
   symbols : symbol list;
+  commons : common list;
   declared_sections : string list;
       (** sections named by the input that are never allocated - [.note.GNU-stack]. Recorded so a
           later pass can report them, and deliberately not section objects. *)
@@ -342,14 +373,15 @@ let validate_relax (alts : 'k encoded_form list) =
       match compatible with Error _ as e -> e | Ok () -> ordered alts)
 
 let pp_symbol ppf s =
-  Fmt.pf ppf "%s %s %s in %s%a"
-    (if s.global then "global" else "local")
-    s.name (Directive.sym_kind_name s.kind) s.section
+  Fmt.pf ppf "%s %s %s in %s%a" (binding_name s.binding) s.name (Directive.sym_kind_name s.kind)
+    s.section
     Fmt.(option (any " size=" ++ using Expr.to_string string))
     s.size
 
+let pp_common ppf c = Fmt.pf ppf "@,comm %s size=%d align=%d" c.comm_name c.comm_size c.comm_align
+
 let pp ppf m =
-  Fmt.pf ppf "@[<v>lowered %s@,%a@,%a%a@]" m.unit_name
+  Fmt.pf ppf "@[<v>lowered %s@,%a@,%a%a%a@]" m.unit_name
     Fmt.(
       list ~sep:cut (fun ppf sc ->
           Fmt.pf ppf "@[<v2>section %s %a align=%d@,%a@]" sc.sec.sec_name Perms.pp sc.sec.perms
@@ -359,5 +391,7 @@ let pp ppf m =
     m.sections
     Fmt.(list ~sep:cut pp_symbol)
     m.symbols
+    Fmt.(list ~sep:nop pp_common)
+    m.commons
     Fmt.(list ~sep:nop (fun ppf n -> Fmt.pf ppf "@,declared %s (not allocated)" n))
     m.declared_sections
