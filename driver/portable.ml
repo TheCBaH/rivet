@@ -205,9 +205,51 @@ let section_bytes b name =
 let entry b = b.image.Image.entry
 let exports b = b.image.Image.exports
 
+(* {1 Manifest}
+
+   M4 Phase 7 (.ai/asm_plan.md): a pure aggregation over the accessors above,
+   for a caller that wants one call rather than [entry]/[exports]/[segments]/
+   [section_bytes] stitched together by hand. Deliberately not the QEMU wire
+   format ([test/oracle/manifest.ml] is test-only and reaches into [Abi]/
+   [Abi_v2], which has no place in a production package per .ai/asm_plan.md
+   §9) - this is a plain, self-contained record a browser embedder can read
+   directly or marshal to whatever shape its own host wants.
+
+   [bytes] reuses [section_bytes]'s exact zero-fill convention: a NOBITS
+   segment's logical extent is the real prefix followed by [zero_fill] zero
+   bytes, materialized as one string. A large BSS segment therefore costs a
+   same-size string in memory - the same resource caveat [section_bytes]
+   already carries, restated here because [manifest] is the entry point most
+   callers will actually use. *)
+type manifest_segment = { name : string; address : int64; perms : Asm_core.Perms.t; bytes : string }
+
+type manifest = {
+  target : string;
+  entry : int64 option;
+  exports : (string * int64) list;
+  segments : manifest_segment list;
+}
+
+let manifest (b : bound) =
+  {
+    target = b.target;
+    entry = b.image.Image.entry;
+    exports = b.image.Image.exports;
+    segments =
+      List.map
+        (fun (s : Image.segment) ->
+          {
+            name = s.Image.name;
+            address = s.Image.address;
+            perms = s.Image.perms;
+            bytes = s.Image.bytes ^ String.make s.Image.zero_fill '\000';
+          })
+        b.image.Image.segments;
+  }
+
 (* {1 Disassembly} *)
 
-let disassemble b ~mode ~address bytes =
+let disassemble (b : bound) ~mode ~address bytes =
   with_driver b.target (fun (module D : Target_intf.Target.DRIVER) ->
       let r =
         match mode with

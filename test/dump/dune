@@ -21,3 +21,14 @@
  (modules asm_dump)
  (modes exe js)
  (libraries foundation image target_intf driver test_dump_inputs fmt))
+
+; The manifest three-build driver (.ai/asm_plan.md M4 Phase 8). Its own
+; stanza rather than a module of asm_dump: it reaches only [driver] and
+; [asm_core] (for Perms.to_string), not [image]/[target_intf] directly, and a
+; shared stanza would blur that.
+
+(executables
+ (names manifest_dump)
+ (modules manifest_dump)
+ (modes exe js)
+ (libraries foundation driver asm_core err_trace fmt))

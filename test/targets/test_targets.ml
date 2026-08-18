@@ -1413,3 +1413,52 @@ let%expect_test "a branch to a same-section symbol in another input always takes
           | s :: _ -> Printf.printf "%s\n" (Foundation.Byte_cursor.to_hex s.Image.bytes)
           | [] -> print_endline "(no segments)")));
   [%expect {| e9 00 00 00 00 c3 |}]
+
+(* {1 Portable manifest (.ai/asm_plan.md M4 Phase 7)}
+
+   [Driver.Portable.manifest] is a pure aggregation over [entry]/[exports]/
+   [segments]/[section_bytes] - proven here rather than re-deriving each
+   accessor's own coverage, which the tests above already give. What is worth
+   a dedicated case is the one thing [manifest] does that no existing test
+   does: materialize a NOBITS segment's [zero_fill] into real bytes
+   ([section_bytes]'s documented convention, `driver/portable.ml:190-197`),
+   over a real three-segment image - code, initialized data, and BSS - so a
+   resource caveat stated in a doc comment is also a checked fact. *)
+let%expect_test "portable manifest aggregates a multi-segment image, including BSS" =
+  let text =
+    "\t.text\n\
+    \t.globl start\n\
+     start:\n\
+    \tmovl $1, %eax\n\
+    \tret\n\
+    \t.data\n\
+     g:\n\
+    \t.long 42\n\
+    \t.bss\n\
+     b:\n\
+    \t.zero 8\n"
+  in
+  (match Driver.Portable.assemble ~entry:"start" "x86_64" ~unit_name:"m" ~text with
+  | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
+  | Ok p -> (
+      match Driver.Portable.bind_sequential p ~base:0x400000L ~gap:0 with
+      | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
+      | Ok b ->
+          let m = Driver.Portable.manifest b in
+          Printf.printf "target=%s entry=%s\n" m.Driver.Portable.target
+            (match m.Driver.Portable.entry with
+            | Some e -> Printf.sprintf "0x%Lx" e
+            | None -> "none");
+          List.iter
+            (fun (s : Driver.Portable.manifest_segment) ->
+              Printf.printf "%-6s address=0x%-10Lx bytes=%d %s\n" s.Driver.Portable.name
+                s.Driver.Portable.address (String.length s.Driver.Portable.bytes)
+                (Asm_core.Perms.to_string s.Driver.Portable.perms))
+            m.Driver.Portable.segments));
+  [%expect
+    {|
+    target=x86_64 entry=0x400000
+    .text  address=0x400000     bytes=6 r-x
+    .data  address=0x400006     bytes=4 rw-
+    .bss   address=0x40000a     bytes=8 rw-
+    |}]

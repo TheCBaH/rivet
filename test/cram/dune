@@ -72,6 +72,9 @@
   ../lib/foundation/bigint_dump.bc.js
   ../dump/asm_dump.exe
   ../dump/asm_dump.bc.js
+  run_manifest.sh
+  ../dump/manifest_dump.exe
+  ../dump/manifest_dump.bc.js
   ../../tool/asm.exe
   (glob_files_rec %{workspace_root}/fixtures/gas-xref/**)))
 
@@ -113,3 +116,38 @@
     sh
     -c
     "printf 'exec node %s/../../melange/test/dump/js/melange/test/dump/asm_dump.js\\n' \"$PWD\""))))
+
+; The manifest three-build gate (.ai/asm_plan.md M4 Phase 8), same run.sh
+; indirection as run_asm.sh above and for the same reason.
+
+(rule
+ (targets run_manifest.sh)
+ (enabled_if
+  (= %{env:ASM_BACKEND=native} native))
+ (action
+  (with-stdout-to
+   run_manifest.sh
+   (echo "exec ../dump/manifest_dump.exe\n"))))
+
+(rule
+ (targets run_manifest.sh)
+ (enabled_if
+  (= %{env:ASM_BACKEND=native} jsoo))
+ (action
+  (with-stdout-to
+   run_manifest.sh
+   (echo "exec node ../dump/manifest_dump.bc.js\n"))))
+
+(rule
+ (targets run_manifest.sh)
+ (enabled_if
+  (= %{env:ASM_BACKEND=native} melange))
+ (deps
+  (alias_rec ../../melange/test/dump/default))
+ (action
+  (with-stdout-to
+   run_manifest.sh
+   (run
+    sh
+    -c
+    "printf 'exec node %s/../../melange/test/dump/js/melange/test/dump/manifest_dump.js\\n' \"$PWD\""))))
