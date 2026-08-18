@@ -248,8 +248,8 @@ asm-js-portable: asm-build
 # cross toolchains, all six qemu-user binaries, qemu-system and gdb, but no
 # CompCert and no part of the assembler: it establishes E2 tool compatibility
 # only, and asm-abi-conform remains the distinct E4 transport proof.
-asm-tool-gate:
-	tools/asm-tool-gate.sh all
+asm-tool-gate: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) tool-gate all
 
 # The Melange opt-in, verified rather than asserted (§3.2). Checks both clean
 # configurations: zero melc rules and a successful build with Melange
@@ -262,48 +262,126 @@ asm-melange-optin:
 # what enforce it: asm-fixtures-check needs NO cross toolchain, so every
 # ordinary test run and every portable CI leg consumes the checked-in bytes.
 # Only asm-fixtures-regen sits downstream of asm-cross-setup, which builds all
-# four CompCert installations and is far too expensive to put on the path of
+# six CompCert installations and is far too expensive to put on the path of
 # `make asm-test`.
-asm-fixtures-check:
-	tools/asm-fixture-gen.sh --check
+# Repointed at the native executable (tool.md §11 Phase 2). The SCRIPT is
+# unchanged and remains the public shell implementation until Phase 3's
+# cutover; only this Make edge moves.
+#
+# This target now needs a dune build where it previously needed nothing but
+# bash and coreutils - divergence D2, and it lands on every platform leg
+# including the emulated linux/i386 and linux/arm/v7. It is not one of gate 6's
+# four forbidden dependencies, but it is real, and it is why tools-build is
+# TARGETED: `dune build @all` here would put an entire assembler build behind a
+# toolchain-free check.
+asm-fixtures-check: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture check
 
+# The fixture profiles come from tools/target-matrix.sh rather than a copy of
+# the list here. $(shell) does not fail the build when its command fails, so
+# both the status and the cardinality are asserted: an empty or short set would
+# otherwise make the aggregate goal below run zero targets and report success.
+FIXTURE_TARGETS := $(shell tools/target-matrix.sh fixture)
+ifneq ($(.SHELLSTATUS),0)
+$(error tools/target-matrix.sh fixture failed)
+endif
+ifneq ($(words $(FIXTURE_TARGETS)),6)
+$(error expected 6 fixture targets, got '$(FIXTURE_TARGETS)')
+endif
+
+FIXTURE_SETUP_GOALS  := $(addprefix asm-fixture-setup-,$(FIXTURE_TARGETS))
+FIXTURE_VERIFY_GOALS := $(addprefix asm-fixtures-verify-,$(FIXTURE_TARGETS))
+FIXTURE_EXEC_GOALS   := $(addprefix asm-fixture-exec-,$(FIXTURE_TARGETS))
+FIXTURE_ORACLE_GOALS := $(addprefix asm-fixture-oracle-,$(FIXTURE_TARGETS))
+
+# Static pattern rules, not `%` implicit rules. GNU Make skips implicit rule
+# search for .PHONY targets, so an implicit pattern plus a phony expansion
+# yields "Nothing to be done" and exit 0 - a silent no-op. Static pattern rules
+# are explicit rules, so .PHONY does what it is meant to here.
+.PHONY: $(FIXTURE_SETUP_GOALS)
+$(FIXTURE_SETUP_GOALS): asm-fixture-setup-%:
+	tools/compcert-fixture-setup.sh $*
+
+# tools-build on every goal that reaches $(TOOLS_EXE), which since Phase 8 is
+# all of them: the shell implementations are gone and there is nothing else to
+# run. Without the edge the recipe would invoke a path that does not exist.
+#
+# asm-fixture-oracle-% is the one that matters most: the fixture-oracle CI job
+# runs it alone in a fresh checkout, with no prior job and no edge to
+# asm-fixtures-check, so it cannot inherit the build from anywhere else.
+.PHONY: $(FIXTURE_VERIFY_GOALS)
+$(FIXTURE_VERIFY_GOALS): asm-fixtures-verify-%: tools-build asm-fixture-setup-%
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture verify -- $*
+
+.PHONY: $(FIXTURE_EXEC_GOALS)
+$(FIXTURE_EXEC_GOALS): asm-fixture-exec-%: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture exec -- $*
+
+# One target's complete oracle leg, in the one order that makes the evidence
+# chain hold: strict profile, exact regeneration, GNU oracle, QEMU execution,
+# manifest completeness, clean tree. CI runs this goal rather than restating
+# the sequence, so local and CI ordering have a single definition.
+#
+# --check before git diff is load-bearing: git diff cannot see an untracked
+# file, so a newly produced oracle artifact would leave the leg reporting clean.
+# --check reports it as UNRECORDED. git diff stays because the manifest excludes
+# itself from its own hashes.
+.PHONY: $(FIXTURE_ORACLE_GOALS)
+$(FIXTURE_ORACLE_GOALS): asm-fixture-oracle-%: tools-build
+	tools/compcert-fixture-setup.sh $*
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture verify -- $*
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture oracle -- $*
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture exec -- $*
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture check
+	git diff --exit-code -- asm/fixtures/compcert-3.17
+
+asm-fixture-oracle:
+	@for t in $(FIXTURE_TARGETS); do $(MAKE) asm-fixture-oracle-$$t || exit 1; done
+
+# Six freestanding fixture compilers under .fixture-work. The libc cross-smoke
+# suite owns .cross-smoke-work and is no longer on this path: fixture work is
+# freestanding, so requiring a libc here would only import skips.
 asm-cross-setup:
+	tools/compcert-fixture-setup.sh all
+
+asm-libc-cross-smoke:
 	tools/compcert-cross-smoke.sh all
-	tools/compcert-riscv-fixture-setup.sh all
+
+# The suite's OK/FAIL/SKIP result, asserted without building anything. SKIP is
+# the state that matters and the one nothing tested: a target whose compiler or
+# emulator is absent is skipped rather than failed, and the run still exits 0,
+# which is what lets the suite pass on a 32-bit host. Both skip checks run
+# before any build, so this takes well under a second.
+#
+# It needs the x86_32 cross gcc and qemu-i386 in order to reach the FAIL and
+# emulator-absent branches, so - like tools-oracle-diff - it runs in a job with
+# the full cross toolchain rather than in the portable matrix, where on
+# linux/arm/v7 it would fail for a missing tool rather than for a defect.
+asm-cross-smoke-selftest:
+	tools/dev/test-cross-smoke-tristate.sh
 
 # A regeneration difference is a reviewed failure, not a refresh: it can change
 # accepted syntax, relocations, or instruction coverage, i.e. the M1 scope.
-asm-fixtures-regen: asm-cross-setup
-	tools/asm-fixture-gen.sh --regen
-
-asm-riscv32-fixtures-verify:
-	tools/compcert-riscv-fixture-setup.sh riscv32
-	tools/asm-fixture-gen.sh --verify riscv32
-
-asm-riscv64-fixtures-verify:
-	tools/compcert-riscv-fixture-setup.sh riscv64
-	tools/asm-fixture-gen.sh --verify riscv64
+asm-fixtures-regen: tools-build asm-cross-setup
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture regen
 
 # The reference-assembler artifacts M1.5 compares our encoder against. --rehash
 # folds them into the same manifest, so asm-fixtures-check covers them too.
-asm-oracle: asm-fixtures-regen
-	tools/asm-fixture-oracle.sh all
-	tools/asm-fixture-gen.sh --rehash
-
-asm-riscv-exec:
-	tools/asm-riscv-exec.sh all
+asm-oracle: tools-build asm-fixtures-regen
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture oracle -- all
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture rehash
 
 # The GNU as cross-reference. Same two-mode policy as the fixtures above and
 # for the same reason, so the edges are the same shape: --check hashes the
-# committed corpus and needs no toolchain, --regen needs the four cross
+# committed corpus and needs no toolchain, --regen needs the six cross
 # binutils. It is NOT downstream of asm-cross-setup, unlike asm-fixtures-regen:
 # the inputs are generated from this project's own AST corpus rather than
 # compiled by CompCert, so binutils alone is the whole requirement.
-asm-gas-xref-check:
-	tools/asm-gas-xref.sh --check
+asm-gas-xref-check: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) gas-xref check
 
-asm-gas-xref-regen:
-	tools/asm-gas-xref.sh --regen
+asm-gas-xref-regen: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) gas-xref regen
 
 # The transitive purity and layer audits (§1, §2.2, §3.7, §5.1), and the
 # planted violations that prove they can fail. Guardrail 6: run these before
@@ -316,6 +394,119 @@ asm-purity: asm-build
 
 asm-planted: asm-build
 	tools/asm-check-planted.sh
+
+# Control-flow tests for asm-fixture-gen.sh --regen, using fake compilers in a
+# throwaway tree. No toolchain, no corpus and no build: this belongs on the
+# cheap side of the two-mode policy, alongside asm-fixtures-check, which is why
+# it takes no prerequisite.
+# {1 The OCaml tool project (tool.md §5)}
+
+TOOLS_EXE   := $(CURDIR)/$(ASM_DIR)/_build/default/tools/bin/compcert_tools.exe
+TOOLS_ITEST := $(CURDIR)/$(ASM_DIR)/_build/default/tools/test/repo/repo_tests.exe
+
+# TARGETED, never @all: `cd asm && dune build @all` would drag the whole
+# assembler in, so every check-only target that later gains a tools-build edge
+# would transitively require an assembler build - exactly what tool.md gate 6
+# forbids and what preserves §5's third property. `make -n` asserts this.
+#
+# asm-submodules because the tool project copy_files# its err_trace sources from
+# the submodule, and without the guard dune reports a missing RULE for a path
+# rather than a missing checkout (see the comment on asm-submodules itself).
+tools-build: asm-submodules
+	cd $(ASM_DIR) && opam exec -- dune build tools/bin/compcert_tools.exe
+
+tools-test: asm-submodules
+	cd $(ASM_DIR) && opam exec -- dune build @tools/runtest
+
+# The repository-level suite is RUN BY MAKE, not by a dune runtest rule: it
+# reads Makefile, tools/target-matrix.sh and tools/dev/dump-target-config.sh,
+# all of which are outside the asm/ dune workspace, so a sandboxed action would
+# be depending on undeclared inputs. The root is passed as argv, which is also
+# why %{workspace_root} - asm/, not the repository root - never enters.
+tools-integration: asm-submodules
+	cd $(ASM_DIR) && opam exec -- dune build tools/test/repo/repo_tests.exe
+	$(TOOLS_ITEST) $(CURDIR)
+
+# A cold targeted build into a private build directory, then the resolved
+# library closure of exactly the compcert_tools executable. It is on the CI path
+# because it is called load-bearing throughout: it is what keeps
+# asm-fixtures-check free of an assembler build. Its planted cases run in copied
+# trees, so no ordering constraint against the ordinary _build is needed.
+tools-boundary: asm-submodules
+	tools/dev/check-tool-build-boundary.sh
+
+# tools/target-matrix.sh is a GENERATED file: Target owns the sixteen values and
+# this renders them for the shell consumers that drive ./configure, make and
+# linkhier. Generating rather than having those scripts query the executable is
+# what keeps compcert-fixture-setup.sh and asm-helpers.sh free of a dune build -
+# they are the first thing their CI jobs run.
+#
+# Staged and moved rather than redirected in place: `> tools/target-matrix.sh`
+# truncates before the tool runs, so a generator failure would destroy the file
+# it was asked to reproduce.
+tools-matrix: tools-build
+	@$(TOOLS_EXE) targets emit > tools/target-matrix.sh.new
+	@chmod 755 tools/target-matrix.sh.new
+	@mv tools/target-matrix.sh.new tools/target-matrix.sh
+
+# The equivalence gate, in the pattern tools-oracle-diff established: regenerate
+# and require the working tree to stay clean. An edit to target.ml that is not
+# reflected in the shell fails here rather than at whichever consumer next
+# disagreed - and an edit to the shell alone fails here too, which is what makes
+# "do not edit" enforced rather than requested.
+tools-matrix-diff: tools-matrix
+	@test -z "$$(git status --porcelain -- tools/target-matrix.sh)" || { \
+	  git status --porcelain -- tools/target-matrix.sh; \
+	  echo "tools/target-matrix.sh is generated - edit asm/tools/lib/target.ml and run 'make tools-matrix'" >&2; \
+	  exit 1; }
+
+# Phase 4's artifact gate, and the strongest one in the migration: re-record
+# every oracle artifact for all six targets with the OCaml implementation and
+# require the working tree to stay clean. 294 committed files, produced by the
+# AWK this phase replaces.
+#
+# It needs the cross BINUTILS but NOT CompCert - the oracle reads the committed
+# .s files rather than regenerating them - which is why it is a cheap gate
+# (about a second) rather than a toolchain build. `git diff --exit-code` is the
+# assertion; the recipe leaves the corpus regenerated either way, so a failure
+# can be inspected with an ordinary `git diff`.
+#
+# In CI this runs in the abi-conform job, NOT the portable asm matrix: the
+# devcontainer Dockerfile installs only the ARM cross set on armhf/armel, so on
+# linux/arm/v7 this would fail for a missing tool rather than a byte
+# difference. asm-ci below is a local aggregate and assumes a full toolchain.
+tools-oracle-diff: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture oracle all
+	@test -z "$$(git status --porcelain -- asm/fixtures/compcert-3.17)" || { \
+	  git status --porcelain -- asm/fixtures/compcert-3.17; \
+	  echo "oracle artifacts changed - review the diff above" >&2; exit 1; }
+
+# The same gate for the gas cross-reference: 463 committed files, rebuilt from
+# scratch (the command deletes the corpus root first) and required to come back
+# identical.
+#
+# Unlike tools-oracle-diff this DOES need the assembler built, because the
+# generated cases come from asm/test/snippets/snippet_emit.exe - by design, so
+# a corpus can never be regenerated from an assembler that does not compile.
+# Hence the asm-build edge, which tools-oracle-diff deliberately lacks.
+tools-gasxref-diff: tools-build asm-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) gas-xref regen
+	@test -z "$$(git status --porcelain -- asm/fixtures/gas-xref)" || { \
+	  git status --porcelain -- asm/fixtures/gas-xref; \
+	  echo "gas-xref corpus changed - review the diff above" >&2; exit 1; }
+
+# The same control-flow properties, asserted against the OCaml implementation
+# with fake compilers. Needs the executable but no cross toolchain.
+tools-fixture-modes: tools-build
+	tools/dev/test-fixture-modes.sh
+
+# Re-run the recorded shell behavior and compare. This is the migration's
+# reference: the OCaml replacements are held to these snapshots, so a change to
+# a shell entry point has to show up here before it can be silently ported.
+# Also toolchain-free, and it runs against a detached worktree of HEAD rather
+# than the working checkout, so nothing it does can touch the real corpus.
+asm-characterize-verify:
+	tools/dev/characterize.sh verify
 
 # The execution ABI (asm/docs/exec-abi-v1.md and exec-abi-v2.md). The
 # dependency edges are again what enforce a policy: neither asm-helpers nor
@@ -354,7 +545,7 @@ asm-exec: asm-runner asm-helpers asm-abi-conform asm-fixtures-check
 # What CI runs, and what to run locally before pushing. Formatting is checked
 # first: an unformatted tree is the cheapest failure to diagnose. asm-js is not
 # here — it needs Melange, hence OCaml 4.14, so it is its own CI job.
-asm-ci: asm-fmt-check asm-build asm-test asm-purity asm-planted asm-melange-optin asm-js-portable
+asm-ci: asm-fmt-check asm-build asm-test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff asm-purity asm-planted asm-cross-smoke-selftest asm-characterize-verify asm-melange-optin asm-js-portable
 
 # One archive per target: Rocq extraction differs per architecture, so
 # compcert-export-archive alone only covers whichever target was last
@@ -369,8 +560,9 @@ compcert-export-archive-all:
   compcert-export-archive compcert-export-unarchive compcert-export-build compcert-export-run \
   compcert-export-archive-all \
   asm-submodules asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
-  asm-fixtures-check asm-cross-setup asm-fixtures-regen asm-riscv32-fixtures-verify \
-  asm-riscv64-fixtures-verify asm-oracle asm-riscv-exec asm-ci \
+  tools-build tools-test tools-integration tools-boundary tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-matrix tools-matrix-diff \
+  asm-fixtures-check asm-characterize-verify asm-cross-setup asm-libc-cross-smoke asm-cross-smoke-selftest asm-fixtures-regen \
+  asm-oracle asm-fixture-oracle asm-ci \
   asm-gas-xref-check asm-gas-xref-regen \
   asm-helpers asm-runner asm-abi-conform asm-exec asm-tool-gate asm-melange-optin \
   asm-js-portable

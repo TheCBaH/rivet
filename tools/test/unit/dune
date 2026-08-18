@@ -1,0 +1,73 @@
+; An executable plus a rule rather than a (test) stanza, matching asm/test's
+; convention: (test) puts its executable in the directory's @all alias whatever
+; its enabled_if says.
+
+(executables
+ (names
+  test_command
+  test_fs
+  test_process
+  test_manifest
+  test_gnu_output
+  test_supervisor
+  test_tool_gate)
+ (modes byte native)
+ (libraries compcert_tools err_trace bos fpath unix))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_command.exe)))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_fs.exe)))
+
+; The fake tool is a declared dependency, not something the test hopes to find:
+; without this the suite would pass vacuously in a sandbox where it was absent.
+
+(rule
+ (alias runtest)
+ (deps ../fake/fake_tool.exe)
+ (action
+  (run ./test_process.exe)))
+
+; test_manifest reads the real committed manifests, which ARE inside the dune
+; workspace, so they are declared deps and the corpus path is passed as argv.
+
+(rule
+ (alias runtest)
+ (deps
+  (glob_files_rec %{workspace_root}/fixtures/compcert-3.17/**)
+  (glob_files_rec %{workspace_root}/fixtures/gas-xref/**))
+ (action
+  (run ./test_manifest.exe %{workspace_root}/fixtures)))
+
+; The Phase 4 parsers, compared against the committed oracle artifacts. Two
+; declared dependency sets: the recorded binutils output in this project, and
+; the corpus those artifacts live in. Neither is discovered at run time.
+
+(rule
+ (alias runtest)
+ (deps
+  (glob_files_rec %{workspace_root}/fixtures/compcert-3.17/**)
+  (glob_files_rec ../data/gnu/*))
+ (action
+  (run ./test_gnu_output.exe ../data/gnu %{workspace_root}/fixtures)))
+
+; Supervised background processes. No declared deps: it spawns only /bin/sh,
+; sleep, false and scripts it writes into its own scratch directory.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_supervisor.exe)))
+
+; The tool gate's pure parts: the snippet discrimination property and the four
+; sed/awk/tr transcriptions. No deps - it runs no external tool at all.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_tool_gate.exe)))

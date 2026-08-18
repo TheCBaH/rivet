@@ -1,0 +1,5 @@
+./asm/_build/default/tools/bin/compcert_tools.exe
+fixture
+rehash
+--
+return42

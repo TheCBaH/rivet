@@ -1,0 +1,18 @@
+(lang dune 3.15)
+
+; A NESTED project, not a nested directory: this file is what creates the
+; boundary. Dune scopes a library with no public_name to its project, so the
+; stanza below is what makes `compcert_tools` invisible to asm/ and asm/'s
+; private libraries - lib/, targets/, driver/, vendor/fmt - invisible here.
+;
+; That isolation is load-bearing rather than tidy. Bos requires the opam `fmt`,
+; and asm/vendor/fmt defines a private library of the same name; in one project
+; dune rejects the closure outright ("Conflict between the following libraries").
+; See tool.md §5.
+;
+; Deliberately NOT inherited from asm/dune-project: melange (the tools never
+; build to JS), menhir, and cram. The lang version matches on purpose - a lower
+; one would silently change stanza defaults across the boundary.
+;
+; There is no .ocamlformat here either: asm/.ocamlformat governs this tree, and
+; `dune build @fmt` from asm/ covers it.

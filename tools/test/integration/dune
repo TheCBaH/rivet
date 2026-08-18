@@ -1,0 +1,25 @@
+; A CORPUS-ONLY integration test: it reads asm/fixtures/**, which IS inside the
+; dune workspace, so it can be a sandboxed runtest rule with declared deps.
+;
+; %{workspace_root} is asm/, not the repository root - asm/dune-project is the
+; only project file on the path. That is why the corpus is spelled without a
+; leading asm/, exactly as asm/test/differential/dune spells it, and why the
+; repository root can never be obtained this way (see Repo).
+;
+; The repository-level tests, which read Makefile and tools/target-matrix.sh
+; from OUTSIDE the workspace, cannot be runtest rules and are run by Make
+; instead.
+
+(executable
+ (name corpus_hashes)
+ (modes byte native)
+ (libraries compcert_tools err_trace bos fpath unix))
+
+(rule
+ (alias runtest)
+ (deps
+  corpus_hashes.exe
+  (glob_files_rec %{workspace_root}/fixtures/compcert-3.17/**)
+  (glob_files_rec %{workspace_root}/fixtures/gas-xref/**))
+ (action
+  (run ./corpus_hashes.exe %{workspace_root}/fixtures)))

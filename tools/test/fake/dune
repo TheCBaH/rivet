@@ -1,0 +1,12 @@
+; ONE fake program, driven by FAKE_TOOL_SPEC, rather than a family of stubs.
+; It is symlinked onto a temporary PATH or installed at an absolute path - the
+; fixture scripts spell "$WORK_ROOT/install/<t>/bin/ccomp" directly, so a PATH
+; shim would never be consulted for those.
+;
+; The deadline and grandchild actions exist from Phase 1 but are exercised only
+; by Phase 6's supervision tests.
+
+(executable
+ (name fake_tool)
+ (modes byte native)
+ (libraries unix))

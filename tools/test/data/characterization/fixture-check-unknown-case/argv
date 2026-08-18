@@ -1,0 +1,6 @@
+./asm/_build/default/tools/bin/compcert_tools.exe
+fixture
+check
+--
+return42
+does_not_exist

@@ -1,0 +1,4 @@
+(executable
+ (name compcert_tools)
+ (modes byte native)
+ (libraries compcert_tools cmdliner))

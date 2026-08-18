@@ -45,20 +45,14 @@ are resolved by the assembler and have no object relocation.
 
 ## Artifact contract
 
-Each `asm/fixtures/compcert-3.17/<case>/<profile>/` directory contains the
-CompCert source assembly plus:
+The artifact set, manifest format, regeneration and execution contract are not
+RISC-V-specific: they are the common six-target pipeline documented in
+[fixture-oracle.md](fixture-oracle.md). `make asm-fixture-oracle-riscv32` and
+`make asm-fixture-oracle-riscv64` run the two RISC-V legs of it.
 
-- raw section bytes, ELF section/symbol/relocation data, canonical GNU
-  disassembly, and relocation/symbol summaries;
-- controlled-link section bytes and a section-address manifest;
-- exact tool banners.
-
-The case-level `manifest.txt` records SHA-256 for every source and oracle
-artifact, complete CompCert target/argument provenance, and the generator.
-`tools/asm-fixture-gen.sh --verify riscv32` and `--verify riscv64` independently
-regenerate source assembly in temporary storage and compare exact bytes.
-
-`tools/asm-riscv-exec.sh all` links a freestanding startup in a separate
-section, verifies the fixture sections still equal the controlled-link oracle,
-checks ELF class/machine, and invokes only the named QEMU binary under a
-ten-second host timeout. All twelve fixture/profile executions return 42.
+Only the settings above are RISC-V's own: the `-march`/`-mabi` pairs, the
+`elf32lriscv`/`elf64lriscv` link emulations, relaxation being disabled
+everywhere, the `-M no-aliases,numeric` disassembly, the freestanding
+`-no-runtime-lib -no-standard-headers` CompCert configuration, and the
+project-owned GCC probe wrapper that selects between the two ABIs behind a
+single `riscv64-linux-gnu-` tool prefix.

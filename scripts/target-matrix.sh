@@ -1,11 +1,26 @@
 #!/usr/bin/env bash
-# The shared target matrix. Sourced by tools/compcert-cross-smoke.sh and by the
-# asm/ fixture and oracle tools, so all targets are described in exactly
-# one place: a fixture generated against one toolchain prefix and an oracle
-# produced against another would compare cleanly and mean nothing.
+# GENERATED FILE - do not edit. Regenerate with `make tools-matrix`.
+#
+# The source of truth is asm/tools/lib/target.ml. This file exists so that shell
+# consumers - tools/compcert-cross-smoke.sh, tools/compcert-fixture-setup.sh,
+# tools/asm-helpers.sh and the Makefile - read the same definition the OCaml
+# tooling does, without any of them acquiring a run-time dependency on a built
+# executable. `make tools-matrix-diff` regenerates it and fails if the working
+# tree changed, so an edit to target.ml that is not reflected here is caught in
+# CI rather than at whichever consumer next disagreed.
+#
+# All targets are described in exactly one place because a fixture generated
+# against one toolchain prefix and an oracle produced against another would
+# compare cleanly and mean nothing.
 #
 # Capability sets are explicit: fixture work is freestanding and must not
 # accidentally acquire the libc requirement of the cross-smoke suite.
+#
+# The two suites also own disjoint work roots. tools/compcert-cross-smoke.sh
+# builds under .cross-smoke-work (CROSS_SMOKE_WORK); the fixture oracle builds
+# under .fixture-work (FIXTURE_WORK). Both recreate build/, install/ and
+# artifacts/ destructively per target, so a shared root meant either suite could
+# delete the other's evidence mid-run.
 ASSEMBLER_TARGETS=(x86_32 x86_64 arm aarch64 riscv32 riscv64)
 FIXTURE_TARGETS=(x86_32 x86_64 arm aarch64 riscv32 riscv64)
 LIBC_SMOKE_TARGETS=(x86_32 x86_64 arm aarch64)
@@ -20,8 +35,14 @@ ALL_TARGETS=("${ASSEMBLER_TARGETS[@]}")
 # They are the same numbers as asm/test/oracle/abi.ml's code_addr, rodata_addr
 # and data_addr, because the GNU reference link, our own binder and the QEMU
 # manifest must place a section at one address or the post-link byte comparison
-# compares two different programs. abi.ml stays the definition; these mirror it
-# for the shell, and asm/test/oracle/test_record.ml asserts they still agree.
+# compares two different programs. abi.ml stays the definition; Target.link
+# mirrors it, and asm/test/oracle/test_record.ml asserts they still agree.
+#
+# The addresses are emitted per target rather than computed here, so the
+# derivation lives in one language instead of two. It is abi.ml's window_base:
+# 0x30000000 for the 32-bit profiles and 0x40000000 for the 64-bit ones - and
+# the split exists at all because 0x40000000 does not fit a 31-bit native int -
+# with rodata at +0x10000 and data at +0x20000.
 target_config() {
   CONFIGURE_TARGET=""
   TOOLPREFIX=""
@@ -47,6 +68,9 @@ target_config() {
       QEMU_SYSROOT="/usr/i686-linux-gnu"
       READELF_MACHINE="Intel 80386"
       ELF_CLASS="ELF32"; WORD_SIZE=4; HAS_SYSROOT=true
+      LINK_TEXT_ADDR="0x30000000"
+      LINK_RODATA_ADDR="0x30010000"
+      LINK_DATA_ADDR="0x30020000"
       ;;
     x86_64)
       CONFIGURE_TARGET="x86_64-linux"
@@ -55,6 +79,9 @@ target_config() {
       QEMU_SYSROOT="/usr/x86_64-linux-gnu"
       READELF_MACHINE="Advanced Micro Devices X86-64"
       ELF_CLASS="ELF64"; WORD_SIZE=8; HAS_SYSROOT=true
+      LINK_TEXT_ADDR="0x40000000"
+      LINK_RODATA_ADDR="0x40010000"
+      LINK_DATA_ADDR="0x40020000"
       ;;
     arm)
       CONFIGURE_TARGET="arm-linux"
@@ -62,9 +89,12 @@ target_config() {
       QEMU_BIN="qemu-arm"
       QEMU_SYSROOT="/usr/arm-linux-gnueabihf"
       CCOMP_EXTRA_ARGS=(-marm)
-      READELF_MACHINE="ARM"
       AS_FLAGS=(-march=armv7-a)
+      READELF_MACHINE="ARM"
       ELF_CLASS="ELF32"; WORD_SIZE=4; HAS_SYSROOT=true
+      LINK_TEXT_ADDR="0x30000000"
+      LINK_RODATA_ADDR="0x30010000"
+      LINK_DATA_ADDR="0x30020000"
       ;;
     aarch64)
       CONFIGURE_TARGET="aarch64-linux"
@@ -73,6 +103,9 @@ target_config() {
       QEMU_SYSROOT="/usr/aarch64-linux-gnu"
       READELF_MACHINE="AArch64"
       ELF_CLASS="ELF64"; WORD_SIZE=8; HAS_SYSROOT=true
+      LINK_TEXT_ADDR="0x40000000"
+      LINK_RODATA_ADDR="0x40010000"
+      LINK_DATA_ADDR="0x40020000"
       ;;
     riscv32)
       CONFIGURE_TARGET="rv32-linux"
@@ -84,6 +117,9 @@ target_config() {
       LD_FLAGS=(-m elf32lriscv --no-relax)
       READELF_MACHINE="RISC-V"
       ELF_CLASS="ELF32"; WORD_SIZE=4
+      LINK_TEXT_ADDR="0x30000000"
+      LINK_RODATA_ADDR="0x30010000"
+      LINK_DATA_ADDR="0x30020000"
       ;;
     riscv64)
       CONFIGURE_TARGET="rv64-linux"
@@ -95,22 +131,25 @@ target_config() {
       LD_FLAGS=(-m elf64lriscv --no-relax)
       READELF_MACHINE="RISC-V"
       ELF_CLASS="ELF64"; WORD_SIZE=8
+      LINK_TEXT_ADDR="0x40000000"
+      LINK_RODATA_ADDR="0x40010000"
+      LINK_DATA_ADDR="0x40020000"
       ;;
     *)
       usage
       Fatal "unknown target '$1'"
       ;;
   esac
-
-  # abi.ml's window_base: 0x30000000 for the 32-bit profiles, 0x40000000 for
-  # the 64-bit ones - 0x40000000 does not fit a 31-bit native int, which is why
-  # the split exists at all. rodata sits at +0x10000 and data at +0x20000.
-  local base
-  case "$1" in
-    x86_32 | arm | riscv32) base=$((0x30000000)) ;;
-    *) base=$((0x40000000)) ;;
-  esac
-  LINK_TEXT_ADDR=$(printf '0x%x' "$base")
-  LINK_RODATA_ADDR=$(printf '0x%x' $((base + 0x10000)))
-  LINK_DATA_ADDR=$(printf '0x%x' $((base + 0x20000)))
 }
+
+# When executed rather than sourced, print a named target set one per line, so
+# the Makefile reads the same definition the scripts do instead of keeping its
+# own copy of the list.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  case "${1:-fixture}" in
+    fixture)   printf '%s\n' "${FIXTURE_TARGETS[@]}" ;;
+    assembler) printf '%s\n' "${ASSEMBLER_TARGETS[@]}" ;;
+    libc)      printf '%s\n' "${LIBC_SMOKE_TARGETS[@]}" ;;
+    *) echo "usage: $0 [fixture|assembler|libc]" >&2; exit 2 ;;
+  esac
+fi

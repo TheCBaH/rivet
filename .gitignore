@@ -7,4 +7,5 @@
 /asm/_build/
 /.asm-helpers/
 /.tool-gate/
-/.riscv-exec-artifacts/
+/.fixture-work/
+/.fixture-exec-artifacts/

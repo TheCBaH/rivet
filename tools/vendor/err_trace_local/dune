@@ -1,0 +1,32 @@
+; The tool project's own copy_files# of the err_trace submodule sources.
+;
+; This is NOT a second checkout and not a duplicated source: it copies the same
+; two files asm/vendor/err_trace_local copies, from the same submodule, at build
+; time. The submodule count stays at one and err.ml has exactly one source of
+; truth in the repository.
+;
+; The stanza is repeated rather than shared because sharing is precisely what
+; the project boundary forbids: a library lives in one project, and whichever
+; project owned it, the other could not name it. Six lines is the price of the
+; boundary.
+;
+; Reaching ../../../vendor/err_trace/src/ works because this project is nested
+; inside the asm/ WORKSPACE even though it is a separate PROJECT. A root at
+; tools/ocaml/ could not do this - the sources would lie outside its workspace.
+;
+; `wrapped false` is upstream's own setting and is what makes the module `Err`
+; rather than `Err_trace.Err`, matching asm/'s spelling exactly.
+;
+; No enabled_if: unlike asm/vendor/err_trace_local, this copy is not disabled
+; under Melange, because nothing here builds to JavaScript.
+
+(copy_files#
+ (files ../../../vendor/err_trace/src/err.ml))
+
+(copy_files#
+ (files ../../../vendor/err_trace/src/err.mli))
+
+(library
+ (name err_trace)
+ (wrapped false)
+ (modes byte native))

@@ -9,3 +9,10 @@ ASM_DIR=${ASM_DIR:-asm}
 desc=$(mktemp); trap 'rm -f "$desc"' EXIT
 ( cd "$ASM_DIR" && opam exec -- dune describe --lang 0.1 ) > "$desc"
 opam exec -- ocaml tools/asm_audit.ml purity "$desc" "$ASM_DIR"
+
+# The tool project's dependency declaration, over the SAME describe output - no
+# second dune run. It rides here rather than on a target of its own because
+# asm-purity already depends on asm-build and is already enforced by CI, and a
+# rule that only ever ran against planted mutations would never notice a real
+# undeclared dependency, a stale row, or a floor that became false.
+opam exec -- ocaml tools/asm_audit.ml tool-dependencies "$desc" "$ASM_DIR"

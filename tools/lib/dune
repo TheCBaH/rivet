@@ -1,0 +1,19 @@
+; No ppx and no inline_tests on production code, matching the asm/ split.
+;
+; No enabled_if: unlike every stanza under asm/, this needs no Melange guard.
+; The guards there exist because asm/vendor/err_trace_local is disabled under
+; Melange; this project's own copy is not, and nothing here builds to JS.
+;
+; `fmt` is deliberately absent: Tool_error.pp needs only Format. `cmdliner` is
+; named by bin/dune rather than here, which is exactly why a dependency audit
+; has to read executables as graph roots and not just libraries.
+;
+; digestif.ocaml, never bare `digestif`: the backend is a pinned decision, not
+; an alternation resolved at build time. digestif.c would add a host-C build to
+; the make asm-build path on every platform leg, including linux/i386 and
+; linux/arm/v7.
+
+(library
+ (name compcert_tools)
+ (modes byte native)
+ (libraries err_trace bos fpath digestif.ocaml mtime.clock.os unix))

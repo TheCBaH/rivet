@@ -1,0 +1,15 @@
+; A REPOSITORY-LEVEL integration test. It reads Makefile, tools/target-matrix.sh
+; and tools/dev/dump-target-config.sh, all of which are OUTSIDE the asm/ dune
+; workspace, so it cannot be a runtest rule: reaching them through ../ or an
+; absolute path would make a sandboxed action depend on undeclared inputs, which
+; is worse than not sandboxing at all.
+;
+; It is therefore built here and RUN BY MAKE (tools-integration), with the
+; repository root passed as argv - so the root a command operated on is visible
+; in the command line rather than inferred, and %{workspace_root} (which is
+; asm/, not the repository root) never enters.
+
+(executables
+ (names repo_tests)
+ (modes byte native)
+ (libraries compcert_tools err_trace bos fpath unix))

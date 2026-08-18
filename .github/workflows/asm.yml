@@ -56,6 +56,31 @@ jobs:
     - name: test
       run: |
         ${{ env.EXEC }} make asm-test
+    - name: tool tests
+      run: |
+        ${{ env.EXEC }} make tools-test
+    # The focused tool build must reach no assembler library, which is what
+    # keeps asm-fixtures-check free of an assembler build (tool.md gate 6). It
+    # uses a private build directory, so it is safe alongside the ordinary
+    # _build that the earlier steps produced. The repository-level suite drives
+    # the tool across the complete six-target matrix, including 64-bit target
+    # addresses, so it belongs on the 64-bit host legs only.
+    - name: tool repository-level tests
+      if: matrix.platform != 'linux/i386' && matrix.platform != 'linux/arm/v7'
+      run: |
+        ${{ env.EXEC }} make tools-integration
+    # Skipped on the two 32-bit legs: the fixture address window (0x40000000)
+    # cannot be represented by OCaml's 31-bit native int there. The portable
+    # assembler and tool tests above still run on those legs.
+    - name: fixture modes against fake compilers
+      if: matrix.platform != 'linux/i386' && matrix.platform != 'linux/arm/v7'
+      run: |
+        ${{ env.EXEC }} make tools-fixture-modes
+    - name: tool build boundary
+      run: |
+        ${{ env.EXEC }} make tools-boundary
+    # asm-purity now also runs the tool-dependencies audit, over the same
+    # describe output.
     - name: purity and layers
       run: |
         ${{ env.EXEC }} make asm-purity
@@ -111,6 +136,27 @@ jobs:
     - name: setup
       run: |
         echo 'EXEC=${{ steps.devcontainer.outputs.exec }}' >> $GITHUB_ENV
+    # Phase 4's artifact gate: 294 committed oracle files re-recorded by the
+    # OCaml implementation, working tree required to stay clean. It lives HERE
+    # rather than in the portable `asm` matrix above because it needs the cross
+    # binutils for all six targets, and the Dockerfile installs only the ARM
+    # cross set on armhf/armel - so on linux/arm/v7 it would fail for a missing
+    # tool rather than for a byte difference. It needs no CompCert: the oracle
+    # reads the committed .s files instead of regenerating them.
+    - name: oracle artifacts reproduce byte-for-byte
+      run: |
+        ${{ env.EXEC }} make tools-oracle-diff
+    - name: gas cross-reference reproduces byte-for-byte
+      run: |
+        ${{ env.EXEC }} make tools-gasxref-diff
+    # The cross-smoke suite's OK/FAIL/SKIP result, asserted without building
+    # anything. Here rather than in the compcert job that actually runs the
+    # suite, because reaching the FAIL and emulator-absent branches needs the
+    # x86_32 cross gcc and qemu-i386, and the compcert job runs on the full
+    # image matrix where linux/arm/v7 has neither.
+    - name: cross-smoke tri-state
+      run: |
+        ${{ env.EXEC }} make asm-cross-smoke-selftest
     - name: helpers
       run: |
         ${{ env.EXEC }} make asm-helpers
@@ -155,14 +201,15 @@ jobs:
         ${{ env.EXEC }} make asm-tool-gate
 
   # Freestanding CompCert regeneration and GNU/QEMU differential gate.  The
-  # profiles are independent jobs: neither a libc nor the other XLEN's ccomp
-  # installation is a prerequisite for reproducing one committed corpus.
-  riscv-oracle:
+  # profiles are independent jobs: neither a libc nor any other profile's ccomp
+  # installation is a prerequisite for reproducing one committed corpus, so a
+  # failure names exactly the one leg whose evidence broke.
+  fixture-oracle:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        target: [riscv32, riscv64]
+        target: [x86_32, x86_64, arm, aarch64, riscv32, riscv64]
     env:
       OCAML_VERSION: 5.5.0
     steps:
@@ -178,35 +225,31 @@ jobs:
     - name: setup
       run: |
         echo 'EXEC=${{ steps.devcontainer.outputs.exec }}' >> $GITHUB_ENV
-    - name: build freestanding CompCert profile
+    # One step, because the Make goal is the single definition of the ordered
+    # flow: strict profile, exact regeneration, GNU oracle, QEMU execution,
+    # manifest completeness, clean tree. Restating the sequence here would let
+    # local and CI ordering drift apart.
+    - name: fixture oracle (setup, verify, GNU oracle, QEMU, manifest, diff)
       run: |
-        ${{ env.EXEC }} tools/compcert-riscv-fixture-setup.sh ${{ matrix.target }}
-    - name: regenerate and compare source assembly
-      run: |
-        ${{ env.EXEC }} tools/asm-fixture-gen.sh --verify ${{ matrix.target }}
-    - name: GNU differential artifacts and QEMU execution
-      run: |
-        ${{ env.EXEC }} tools/asm-fixture-oracle.sh ${{ matrix.target }}
-        ${{ env.EXEC }} tools/asm-riscv-exec.sh ${{ matrix.target }}
-        git diff --exit-code -- asm/fixtures/compcert-3.17
+        ${{ env.EXEC }} make asm-fixture-oracle-${{ matrix.target }}
     - name: provenance and summaries
       if: success()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
-        name: riscv-oracle-${{ matrix.target }}-provenance
+        name: fixture-oracle-${{ matrix.target }}-provenance
         path: |
-          .cross-smoke-work/artifacts/${{ matrix.target }}/
-          .riscv-exec-artifacts/${{ matrix.target }}/
+          .fixture-work/artifacts/${{ matrix.target }}/
+          .fixture-exec-artifacts/${{ matrix.target }}/
           asm/fixtures/compcert-3.17/*/${{ matrix.target }}/oracle/tool-versions.txt
           asm/fixtures/compcert-3.17/*/${{ matrix.target }}/oracle/linked/manifest.txt
     - name: complete failure evidence
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
-        name: riscv-oracle-${{ matrix.target }}-failure
+        name: fixture-oracle-${{ matrix.target }}-failure
         path: |
-          .cross-smoke-work/artifacts/${{ matrix.target }}/
-          .riscv-exec-artifacts/${{ matrix.target }}/
+          .fixture-work/artifacts/${{ matrix.target }}/
+          .fixture-exec-artifacts/${{ matrix.target }}/
           asm/fixtures/compcert-3.17/*/${{ matrix.target }}/
 
   # Byte-identical output from native OCaml, js_of_ocaml/Node, and Melange/Node

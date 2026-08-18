@@ -14,7 +14,7 @@
         },
         "./features/ocaml": {
             "version": "${localEnv:OCAML_VERSION}",
-            "packages": "fmt js_of_ocaml-compiler js_of_ocaml-ppx menhir ocamlformat#0.28.1 ppx_expect rocq-prover qcheck zarith",
+            "packages": "bos cmdliner digestif fmt fpath mtime js_of_ocaml-compiler js_of_ocaml-ppx menhir ocamlformat#0.28.1 ppx_expect rocq-prover qcheck zarith",
             // Melange requires 'ocaml >= 4.14 & < 4.15', so it is installable on
             // the 4.14 images only; the same devcontainer.json builds 4.14.3
             // through 5.5.0.

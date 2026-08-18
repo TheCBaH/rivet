@@ -102,10 +102,91 @@ let lib_of_sexp body =
         }
   | _ -> None
 
+(* An immediate abort, for malformed graph metadata. This is deliberately not
+   the accumulating `fail` defined further down: if the build context cannot be
+   determined, every later check would be measuring the wrong paths, so
+   collecting more findings would only produce confident nonsense. *)
+let fail_now fmt =
+  Printf.ksprintf
+    (fun s ->
+      print_endline ("FAIL " ^ s);
+      exit 1)
+    fmt
+
 let libraries sexps =
   List.filter_map
     (function List [ Atom "library"; body ] -> lib_of_sexp body | _ -> None)
     (List.concat_map (function List items -> items | a -> [ a ]) sexps)
+
+(* {1 Executables as graph roots}
+
+   `dune describe` emits executables as (executables ((names (...)) (requires
+   (...)) (modules (...)) ...)) with NO `local` and NO `source_dir`. The library
+   filter above drops them entirely, so cmdliner - which bin/dune names and
+   lib/dune does not - is invisible to any closure taken over libraries alone.
+   Since an executable is where a CLI's own dependencies are declared, a
+   dependency audit that could not see them would miss exactly the edge it
+   exists to check.
+
+   An executable is identified by where its modules LIVE, not by its name: a
+   name is not a location, and two projects may use the same one. *)
+
+type exe = { exe_names : string list; exe_requires : string list; exe_impls : string list }
+
+let rec impl_paths = function
+  | List [ Atom "impl"; List [ Atom p ] ] -> [ p ]
+  | List items -> List.concat_map impl_paths items
+  | Atom _ -> []
+
+let executables sexps =
+  List.filter_map
+    (function
+      | List [ Atom "executables"; body ] ->
+          Some
+            {
+              exe_names = atoms_of (field "names" body);
+              exe_requires = atoms_of (field "requires" body);
+              exe_impls = impl_paths body;
+            }
+      | _ -> None)
+    (List.concat_map (function List items -> items | a -> [ a ]) sexps)
+
+(* {2 Build-context normalization}
+
+   strip_build below removes the literal "_build/default/", which is right for
+   an ordinary build and WRONG for the focused boundary check: that one uses a
+   private --build-dir, and dune then reports an absolute build_context such as
+   /tmp/xxx/default with local source_dir and impl paths absolute beneath it.
+   Measured, not assumed. A literal-prefix strip would find no executable root
+   and classify every local library Unknown - the check would fail for the wrong
+   reason, or pass vacuously.
+
+   So paths are normalized against the graph's own declared context, and a local
+   path that cannot be normalized FAILS CLOSED rather than falling back to
+   substring replacement. *)
+
+let build_context sexps =
+  let ctxs =
+    List.filter_map
+      (function List [ Atom "build_context"; Atom c ] -> Some c | _ -> None)
+      (List.concat_map (function List items -> items | a -> [ a ]) sexps)
+  in
+  match ctxs with
+  | [ c ] when c <> "" -> c
+  | [] -> fail_now "audit: `dune describe` reported no build_context"
+  | _ -> fail_now "audit: `dune describe` reported several build_context entries"
+
+(* Component-wise containment, not a raw string prefix: a context of
+   /tmp/build/default must not accept /tmp/build/default-other/x. *)
+let relative_to_context ~context path =
+  if path = context then Some ""
+  else
+    let c = if String.length context > 0 && context.[String.length context - 1] = '/' then context
+            else context ^ "/" in
+    let lc = String.length c in
+    if String.length path > lc && String.sub path 0 lc = c then
+      Some (String.sub path lc (String.length path - lc))
+    else None
 
 (* {1 Directory classification}
 
@@ -124,7 +205,12 @@ let starts_with pre s =
   String.length s >= String.length pre && String.sub s 0 (String.length pre) = pre
 
 let production_dirs = [ "lib/"; "targets/"; "driver/"; "browser/"; "vendor/" ]
-let non_production_dirs = [ "test/"; "tool/" ]
+(* "tools/" is the nested OCaml tool project (tool.md §5). It is additive, not a
+   widening: `under "tool/" "tools/lib"` is false, so the existing entry never
+   covered it. One entry classifies BOTH tool libraries, because production_dirs
+   is tested first and `under "vendor/" "tools/vendor/err_trace_local"` is false
+   - the test is a prefix test on the whole path, not a component search. *)
+let non_production_dirs = [ "test/"; "tool/"; "tools/" ]
 
 (* [under "driver/" "driver"] must hold: a package can sit directly at a root
    directory rather than in a subdirectory of it, and a prefix test alone would
@@ -312,15 +398,326 @@ let audit_layers asm_dir libs =
               fail "layers: generic source %s mentions target name %S" p t)
           target_names)
 
+(* {1 The tool dependency manifest}
+
+   asm/tools/dependencies.sexp declares, per opam package, its version floor,
+   its scope, and the dune library names it supplies. There is no committed
+   .opam file: an *.opam inside asm/ risks dune treating it as a project package,
+   which affects @install and package inference in a project whose libraries
+   deliberately have no public names. The manifest is an audited declaration,
+   not an installable package, so it does not pretend to be one.
+
+   A DEDICATED strict parser, not parse_sexps above. That reader is deliberately
+   permissive and cannot deliver a fail-before-rules contract: it has no comment
+   syntax (so the ";" lines in the manifest would parse as atoms), it accepts an
+   unterminated quoted string at end of input, it accepts a missing closing
+   paren at end of input, and a stray ")" silently terminates parsing. *)
+
+type dep = { pkg : string; floor : string; scope : string; libs : string list }
+
+let parse_manifest path =
+  let s = read_file path in
+  let n = String.length s in
+  let line_of i =
+    let l = ref 1 in
+    String.iteri (fun j c -> if j < i && c = '\n' then incr l) s;
+    !l
+  in
+  let bad i fmt =
+    Printf.ksprintf (fun m -> fail_now "tool-dependencies: %s:%d: %s" path (line_of i) m) fmt
+  in
+  let is_space c = c = ' ' || c = '\t' || c = '\n' || c = '\r' in
+  (* Comments are part of the grammar here, because the checked-in file uses
+     them to record which exclusions are decisions rather than omissions. *)
+  let rec skip i =
+    if i >= n then i
+    else if is_space s.[i] then skip (i + 1)
+    else if s.[i] = ';' then
+      let rec eol j = if j >= n || s.[j] = '\n' then j else eol (j + 1) in
+      skip (eol i)
+    else i
+  in
+  let token i =
+    let i = skip i in
+    if i >= n then None
+    else if s.[i] = '(' then Some (`Open, i + 1)
+    else if s.[i] = ')' then Some (`Close, i + 1)
+    else if s.[i] = '"' then bad i "quoted strings are not part of this grammar"
+    else
+      let rec fin j =
+        if j < n && (not (is_space s.[j])) && s.[j] <> '(' && s.[j] <> ')' && s.[j] <> ';' then fin (j + 1)
+        else j
+      in
+      let j = fin i in
+      Some (`Atom (String.sub s i (j - i)), j)
+  in
+  (* One row: (pkg (>= VERSION) scope (lib ...)). Exactly one constraint shape
+     is accepted, because the installed-set query renders precisely
+     PACKAGE>=FLOOR and cannot evaluate an arbitrary opam formula. The same
+     value is rendered into both the generated opam file and the query, so the
+     two can never diverge. *)
+  let rec rows acc i =
+    match token i with
+    | None -> List.rev acc
+    | Some (`Close, i) -> bad i "stray ')'"
+    | Some (`Atom a, i) -> bad i "unexpected atom %S at top level" a
+    | Some (`Open, i) ->
+        let pkg, i =
+          match token i with
+          | Some (`Atom a, i) -> (a, i)
+          | Some (_, j) -> bad j "expected a package name"
+          | None -> bad i "expected a package name"
+        in
+        let i =
+          match token i with Some (`Open, i) -> i | _ -> bad i "expected a version constraint"
+        in
+        let i =
+          match token i with
+          | Some (`Atom ">=", i) -> i
+          | Some (`Atom op, i) -> bad i "constraint operator %S: only >= is accepted" op
+          | _ -> bad i "expected a constraint operator"
+        in
+        let floor, i =
+          match token i with Some (`Atom a, i) -> (a, i) | _ -> bad i "expected a version"
+        in
+        let i =
+          match token i with
+          | Some (`Close, i) -> i
+          | Some (`Atom a, i) -> bad i "trailing item %S in a constraint: only (>= V) is accepted" a
+          | _ -> bad i "unterminated constraint"
+        in
+        let scope, i =
+          match token i with
+          | Some (`Atom (("runtime" | "test") as a), i) -> (a, i)
+          | Some (`Atom a, i) -> bad i "unknown scope %S: expected runtime or test" a
+          | _ -> bad i "expected a scope"
+        in
+        let i = match token i with Some (`Open, i) -> i | _ -> bad i "expected a library list" in
+        let rec libs acc i =
+          match token i with
+          | Some (`Atom a, i) -> libs (a :: acc) i
+          | Some (`Close, i) -> (List.rev acc, i)
+          | _ -> bad i "unterminated library list"
+        in
+        let ls, i = libs [] i in
+        if ls = [] then bad i "package %s declares no libraries" pkg;
+        if List.exists (fun l -> l = "digestif") ls then
+          bad i "bare `digestif` is not a backend; name digestif.c or digestif.ocaml";
+        let i = match token i with Some (`Close, i) -> i | _ -> bad i "unterminated row for %s" pkg in
+        rows ({ pkg; floor; scope; libs = ls } :: acc) i
+  in
+  let ds = rows [] 0 in
+  if ds = [] then fail_now "tool-dependencies: %s declares nothing" path;
+  let names = List.map (fun d -> d.pkg) ds in
+  let sorted = List.sort String.compare names in
+  let rec dup = function a :: (b :: _ as r) -> if a = b then Some a else dup r | _ -> None in
+  (match dup sorted with Some p -> fail_now "tool-dependencies: duplicate package %s" p | None -> ());
+  let all_libs = List.concat_map (fun d -> d.libs) ds in
+  (match dup (List.sort String.compare all_libs) with
+  | Some l -> fail_now "tool-dependencies: library %s is mapped by two packages" l
+  | None -> ());
+  ds
+
+(* {2 opam, which owns version comparison}
+
+   Never compare version strings by hand: opam's ordering is not lexicographic.
+   Exit statuses are classified EXACTLY rather than as "nonzero", so an
+   operational failure - a lock, a bad configuration, a solver crash - is never
+   reported as a dependency problem. Per opam 2.3's documented table: with
+   --check, 1 is False; 20 is "no solution to the user request"; everything else
+   nonzero is operational. --cli=2.3 pins the contract so a newer opam binary
+   still means what this code was written against. *)
+
+type opam_answer = Yes | No | No_solution | Operational of int * string
+
+let tmp_file suffix = Filename.concat (Filename.get_temp_dir_name ()) ("asm_audit_" ^ suffix)
+
+(* Sys.command rather than Unix.open_process_in: this script is run by `ocaml`,
+   not linked, so unix.cma is not available. The status Sys.command returns is
+   the command's, which is all the classification below needs. *)
+let opam_query args =
+  let errf = tmp_file "opam_err" in
+  let cmd = Printf.sprintf "opam --cli=2.3 %s >/dev/null 2>%s" args (Filename.quote errf) in
+  let status = Sys.command cmd in
+  let stderr_text = try read_file errf with _ -> "" in
+  (try Sys.remove errf with _ -> ());
+  match status with
+  | 0 -> Yes
+  | 1 -> No
+  | 20 -> No_solution
+  | c -> Operational (c, stderr_text)
+
+let check_floor d =
+  (* Two stages, so "not installed at all" is distinguishable from "installed
+     but below the floor" - they have different fixes. *)
+  match opam_query (Printf.sprintf "list --installed --check %s" (Filename.quote d.pkg)) with
+  | No -> fail "tool-dependencies: package %s is declared but not installed" d.pkg
+  | Operational (c, e) ->
+      fail "tool-dependencies: opam failed operationally (status %d) checking %s: %s" c d.pkg
+        (String.trim e)
+  | No_solution ->
+      fail "tool-dependencies: opam reported no solution while checking whether %s is installed" d.pkg
+  | Yes -> (
+      match
+        opam_query
+          (Printf.sprintf "list --installed --resolve=%s --check"
+             (Filename.quote (d.pkg ^ ">=" ^ d.floor)))
+      with
+      | Yes -> ()
+      | No | No_solution ->
+          fail "tool-dependencies: %s is installed but below the declared floor %s" d.pkg d.floor
+      | Operational (c, e) ->
+          fail "tool-dependencies: opam failed operationally (status %d) checking %s >= %s: %s" c
+            d.pkg d.floor (String.trim e))
+
+(* {3 Rule 4's containment boundary}
+
+   A resolved-library allowlist, NOT a dependency declaration: stale entries are
+   accepted by design, because the question it answers is "did anything
+   unexpected enter the closure", not "is every entry still used". Measured on
+   OCaml 4.14.3 from the final stanzas; compiler-supplied unix is excluded. *)
+let tool_transitive_allowlist =
+  [ "astring"; "bos"; "cmdliner"; "digestif"; "digestif.ocaml"; "eqaf"; "fmt"; "fpath"; "logs";
+    "mtime"; "mtime.clock"; "mtime.clock.os"; "rresult"; "topkg"; "seq"; "stdlib-shims" ]
+
+(* {4 The two tool modes} *)
+
+let ocaml_lib_dir () =
+  let out = tmp_file "ocamlwhere" in
+  let rc = Sys.command (Printf.sprintf "ocamlc -where >%s 2>/dev/null" (Filename.quote out)) in
+  let d = if rc = 0 then (try String.trim (read_file out) with _ -> "") else "" in
+  (try Sys.remove out with _ -> ());
+  d
+
+let tool_roots ~context libs exes =
+  let under_tools p =
+    match relative_to_context ~context p with
+    | Some rel -> starts_with "tools/" rel
+    | None -> false
+  in
+  let lib_roots = List.filter (fun l -> l.local && under_tools l.source_dir) libs in
+  let exe_roots = List.filter (fun e -> List.exists under_tools e.exe_impls) exes in
+  (lib_roots, exe_roots)
+
+let audit_tool_dependencies asm_dir libs exes context =
+  let manifest = Filename.concat asm_dir "tools/dependencies.sexp" in
+  if not (Sys.file_exists manifest) then fail_now "tool-dependencies: %s is missing" manifest;
+  let deps = parse_manifest manifest in
+  let lib_roots, exe_roots = tool_roots ~context libs exes in
+  if lib_roots = [] then fail_now "tool-dependencies: no tool libraries found - is asm/tools built?";
+  if exe_roots = [] then fail_now "tool-dependencies: no tool executables found - is asm/tools built?";
+  let by_uid = Hashtbl.create 64 in
+  List.iter (fun l -> Hashtbl.replace by_uid l.uid l) libs;
+  let resolve uid = Hashtbl.find_opt by_uid uid in
+  (* Local paths that cannot be normalized fail closed rather than being
+     silently classified. *)
+  List.iter
+    (fun l ->
+      if l.local && relative_to_context ~context l.source_dir = None then
+        fail "tool-dependencies: local library %S has source_dir %s outside the build context %s"
+          l.name l.source_dir context)
+    libs;
+  let switch_lib = ocaml_lib_dir () in
+  (* unix is recognized as compiler-supplied BY ITS DIRECTORY, not by name: a
+     name-only rule would let any external library called unix through. *)
+  let compiler_supplied l = (not l.local) && switch_lib <> "" && starts_with switch_lib l.source_dir in
+  let direct_uids =
+    List.concat_map (fun l -> l.requires) lib_roots @ List.concat_map (fun e -> e.exe_requires) exe_roots
+  in
+  let direct =
+    List.filter_map resolve direct_uids
+    |> List.filter (fun l -> (not l.local) && not (compiler_supplied l))
+  in
+  let declared_libs = List.concat_map (fun d -> d.libs) deps in
+  (* Rule 1: every direct external library maps to exactly one declared package. *)
+  List.iter
+    (fun l ->
+      if not (List.mem l.name declared_libs) then
+        fail "tool-dependencies: rule 1: tool stanzas use external library %S, which no package in %s declares"
+          l.name manifest)
+    direct;
+  (* Rule 2: every declared package supplies at least one direct dependency.
+     This is what catches a row left behind after its dune edge was deleted. *)
+  List.iter
+    (fun d ->
+      if not (List.exists (fun l -> List.mem l.name d.libs) direct) then
+        fail "tool-dependencies: rule 2: package %s is declared but none of its libraries (%s) is used"
+          d.pkg (String.concat " " d.libs))
+    deps;
+  (* Rule 3: floors, evaluated by opam. *)
+  List.iter check_floor deps;
+  (* Rule 4: the transitive external closure is contained. *)
+  let members = closure libs (lib_roots @ List.filter_map resolve (List.concat_map (fun e -> e.exe_requires) exe_roots)) in
+  List.iter
+    (fun l ->
+      if (not l.local) && (not (compiler_supplied l)) && not (List.mem l.name tool_transitive_allowlist)
+      then
+        fail "tool-dependencies: rule 4: unexpected resolved library %S (in %s) is outside the transitive allowlist"
+          l.name l.source_dir)
+    members;
+  (* The devcontainer must be able to provide every declared package. *)
+  let dc = Filename.concat (Filename.dirname asm_dir) ".devcontainer/devcontainer.json" in
+  if Sys.file_exists dc then begin
+    let text = read_file dc in
+    List.iter
+      (fun d ->
+        if not (contains text d.pkg) then
+          fail "tool-dependencies: package %s is declared but absent from %s" d.pkg dc)
+      deps
+  end
+
+(* The focused boundary: seeded from EXACTLY the compcert_tools executable, not
+   from every tool root. tools-build builds one executable, so auditing the
+   test, fake and integration closures would stop proving that target's actual
+   boundary. *)
+let audit_tool_boundary libs exes context =
+  let allowlist = [ "tools/" ] in
+  let root =
+    List.filter
+      (fun e ->
+        List.exists
+          (fun p ->
+            match relative_to_context ~context p with
+            | Some rel -> rel = "tools/bin/compcert_tools.ml"
+            | None -> false)
+          e.exe_impls)
+      exes
+  in
+  (match root with
+  | [] -> fail_now "tool-boundary: no executable with implementation tools/bin/compcert_tools.ml"
+  | [ _ ] -> ()
+  | _ -> fail_now "tool-boundary: several executables claim tools/bin/compcert_tools.ml");
+  let by_uid = Hashtbl.create 64 in
+  List.iter (fun l -> Hashtbl.replace by_uid l.uid l) libs;
+  let seeds = List.filter_map (Hashtbl.find_opt by_uid) (List.concat_map (fun e -> e.exe_requires) root) in
+  let members = closure libs seeds in
+  let locals = List.filter (fun l -> l.local) members in
+  note "focused local closure: %s" (String.concat " " (List.map (fun l -> l.name) locals));
+  List.iter
+    (fun l ->
+      match relative_to_context ~context l.source_dir with
+      | None ->
+          fail "tool-boundary: local library %S has source_dir %s outside the build context %s" l.name
+            l.source_dir context
+      | Some rel ->
+          if not (List.exists (fun p -> starts_with p rel) allowlist) then
+            fail "tool-boundary: the focused build reaches local library %S in %s, outside the allowlist (%s)"
+              l.name rel (String.concat " " allowlist))
+    locals
+
 (* {1 Entry point} *)
 
 let () =
   let mode = Sys.argv.(1) and desc = Sys.argv.(2) and asm_dir = Sys.argv.(3) in
-  let libs = libraries (parse_sexps (read_file desc)) in
+  let sexps = parse_sexps (read_file desc) in
+  let libs = libraries sexps in
   if libs = [] then fail "audit: `dune describe` reported no libraries";
   (match mode with
   | "purity" -> audit_purity asm_dir libs
   | "layers" -> audit_layers asm_dir libs
+  | "tool-dependencies" ->
+      audit_tool_dependencies asm_dir libs (executables sexps) (build_context sexps)
+  | "tool-boundary" -> audit_tool_boundary libs (executables sexps) (build_context sexps)
   | m ->
       prerr_endline ("unknown mode: " ^ m);
       exit 2);

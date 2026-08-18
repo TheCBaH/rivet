@@ -53,10 +53,20 @@ cloning this repo or touching Rocq:
 ## Retargetable assembler
 `asm/` is a standalone dune project - independent of the CompCert build, so it
 needs neither Rocq nor a cross toolchain - holding a retargetable assembler for
-x86-32, x86-64, ARM and AArch64. See [.ai/asm_plan.md](.ai/asm_plan.md).
+x86-32, x86-64, ARM, AArch64, RV32 and RV64. See
+[.ai/asm_plan.md](.ai/asm_plan.md).
 
 * `make asm-ci` what CI runs, and what to run before pushing
 * `make asm-test` build and run the test suite
+
+The fixture oracle is the evidence pipeline behind those six targets: exact
+CompCert regeneration, GNU binutils differential artifacts, and freestanding
+QEMU execution of the very bytes the oracle accepted. It needs a cross
+toolchain and is not on the path of `make asm-test`. See
+[asm/docs/fixture-oracle.md](asm/docs/fixture-oracle.md).
+
+* `make asm-fixture-oracle-<target>` one target's complete leg
+* `make asm-fixture-oracle` all six
 
 It vendors [err_trace](https://github.com/TheCBaH/err_trace) as the
 `asm/vendor/err_trace` submodule, so a fresh clone needs
