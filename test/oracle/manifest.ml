@@ -21,6 +21,17 @@ type segment = {
   perms : int;  (** bit0 R, bit1 W, bit2 X *)
 }
 
+(* ABI v3 (exec-abi-v3.md §2): one entry per observation beyond slot 0 (the
+   return register, which needs none). [List.length observations] is meant to
+   equal [List.length expected - 1] once [expected] has more than one entry -
+   a caller-side invariant, not one this writer checks, per this module's own
+   "dumb writer" philosophy above. *)
+type observation = {
+  obs_vaddr : int64;
+  width : int;  (** 1, 2, 4, or 8 *)
+  sign_extend : bool;
+}
+
 type t = {
   profile : Abi.profile;
   case_id : int;
@@ -30,6 +41,7 @@ type t = {
   timeout_ms : int;
   expected : int64 list;
   segments : segment list;
+  observations : observation list;  (** empty for every v1/v2 manifest and every single-value v3 one *)
 }
 
 let align_up_8 n = (n + 7) land lnot 7
@@ -49,7 +61,7 @@ let code_segment profile code =
   }
 
 let single_code ?(case_id = 1) ?(stack_size = 16 * 1024) ?(timeout_ms = 1000) ?(expected = [ 42L ])
-    profile code =
+    ?(observations = []) profile code =
   {
     profile;
     case_id;
@@ -59,6 +71,7 @@ let single_code ?(case_id = 1) ?(stack_size = 16 * 1024) ?(timeout_ms = 1000) ?(
     timeout_ms;
     expected;
     segments = [ code_segment profile code ];
+    observations;
   }
 
 (* {1 Serialization} *)
@@ -67,9 +80,18 @@ let single_code ?(case_id = 1) ?(stack_size = 16 * 1024) ?(timeout_ms = 1000) ?(
    descriptor order at 8-byte alignment; descriptors with init_len = 0 are
    skipped and carry payload_off = 0. The offsets are computed here rather than
    supplied by the caller so that "canonical" has one definition - a case that
-   wants a non-canonical offset patches it. *)
+   wants a non-canonical offset patches it.
+
+   [base] is shifted past the observation-descriptor table (exec-abi-v3.md
+   §2) when [n_expected > 1]; at [n_expected = 1] the table is empty and this
+   is exactly v1/v2's [manifest_header_size + segment_descriptor_size × n]. *)
 let payload_offsets t =
-  let base = Abi.manifest_header_size + (Abi.segment_descriptor_size * List.length t.segments) in
+  let n_expected = List.length t.expected in
+  let base =
+    Abi.manifest_header_size
+    + (Abi.segment_descriptor_size * List.length t.segments)
+    + (Abi_v3.obs_descriptor_size * max 0 (n_expected - 1))
+  in
   let rec go cursor = function
     | [] -> ([], cursor)
     | s :: rest ->
@@ -86,25 +108,40 @@ let payload_offsets t =
 
 let serialize ?(abi_version = Abi.abi_version) t =
   let n = List.length t.segments in
+  let n_expected = List.length t.expected in
   let offsets, payload_end = payload_offsets t in
   let total = align_up_8 payload_end in
   let b = Bytes.make total '\000' in
-  Abi.set_string b Abi.Manifest_off.magic
-    (if abi_version = Abi_v2.abi_version then Abi_v2.manifest_magic else Abi.manifest_magic);
+  Abi.set_string b Abi.Manifest_off.magic (Abi_v3.manifest_magic_for_version abi_version);
   Abi.set_u16 b Abi.Manifest_off.abi_version abi_version;
   if abi_version = Abi.abi_version && not (List.mem t.profile Abi.v1_profiles) then
     invalid_arg "Manifest.serialize: RISC-V profiles require ABI v2";
+  if abi_version <> Abi_v3.abi_version && n_expected <> 1 then
+    invalid_arg "Manifest.serialize: more than one expected value requires ABI v3";
   Abi.set_u16 b Abi.Manifest_off.profile_id (Abi.profile_id t.profile);
   Abi.set_u32 b Abi.Manifest_off.total_len total;
   Abi.set_u32 b Abi.Manifest_off.case_id t.case_id;
   Abi.set_u16 b Abi.Manifest_off.n_segments n;
-  Abi.set_u16 b Abi.Manifest_off.n_expected (List.length t.expected);
+  Abi.set_u16 b Abi.Manifest_off.n_expected n_expected;
   Abi.set_u64 b Abi.Manifest_off.entry_addr t.entry_addr;
   Abi.set_u64 b Abi.Manifest_off.result_addr t.result_addr;
   Abi.set_u32 b Abi.Manifest_off.result_size Abi.result_record_size;
   Abi.set_u32 b Abi.Manifest_off.stack_size t.stack_size;
   Abi.set_u32 b Abi.Manifest_off.timeout_ms t.timeout_ms;
   List.iteri (fun i v -> Abi.set_u64 b (Abi.Manifest_off.expected + (8 * i)) v) t.expected;
+  (* The observation-descriptor table (exec-abi-v3.md §2), at the derived
+     offset [Abi_v3.obs_table_off ~n_segments:n] - empty when [n_expected = 1],
+     which is exactly what makes a v3 manifest with one expected value
+     byte-shape-identical to a v1/v2 one. *)
+  let obs_base = Abi_v3.obs_table_off ~n_segments:n in
+  List.iteri
+    (fun i (o : observation) ->
+      let d = obs_base + (Abi_v3.obs_descriptor_size * i) in
+      Abi.set_u64 b (d + Abi_v3.Obs_descriptor_off.vaddr) o.obs_vaddr;
+      Abi.set_u8 b (d + Abi_v3.Obs_descriptor_off.width) o.width;
+      Abi.set_u8 b (d + Abi_v3.Obs_descriptor_off.flags)
+        (if o.sign_extend then Abi_v3.sign_extend_flag else 0))
+    t.observations;
   List.iteri
     (fun i s ->
       let d = Abi.manifest_header_size + (Abi.segment_descriptor_size * i) in

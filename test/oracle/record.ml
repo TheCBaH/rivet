@@ -66,9 +66,7 @@ let u64_array s off n = Array.init n (fun i -> Abi.get_u64 s (off + (8 * i)))
    stray guest store lands here and must not be mistaken for a valid record. *)
 
 let check_framing ~abi_version s =
-  let result_magic =
-    if abi_version = Abi_v2.abi_version then Abi_v2.result_magic else Abi.result_magic
-  in
+  let result_magic = Abi_v3.result_magic_for_version abi_version in
   if String.length s <> Abi.result_page_size then
     Some
       (Printf.sprintf "framing: result file is %d bytes, expected %d" (String.length s)
@@ -194,7 +192,7 @@ let validate ?(abi_version = Abi.abi_version) ~expected_case_id s =
                         (Printf.sprintf "state: class %s committed with subcode 0"
                            (Abi.class_name cls))
                     else
-                      match Abi.subcode_of_wire ~abi_version cls error_subcode with
+                      match Abi_v3.subcode_of_wire_for_version ~abi_version cls error_subcode with
                       | None ->
                           Some
                             (Printf.sprintf "state: subcode %d is not defined for class %s"
@@ -228,13 +226,25 @@ let validate ?(abi_version = Abi.abi_version) ~expected_case_id s =
               | Abi.Validated | Abi.Returned ->
                   if case_id <> Int64.of_int expected_case_id then
                     Some (Printf.sprintf "state: case_id %Lu, expected %d" case_id expected_case_id)
-                  else if n_expected <> 1 then
-                    Some (Printf.sprintf "state: n_expected %d, expected 1" n_expected)
-                  else if
-                    not
-                      (is_zero_range s (Abi.Result_off.expected + 8) (8 * (Abi.n_expected_max - 1)))
-                  then Some "state: expected[] tail beyond n_expected nonzero"
-                  else None
+                  else
+                    (* v3 (exec-abi-v3.md §4): n_expected is 1..8 rather than
+                       forced to 1; v1/v2 keep their exact-1 rule unchanged. *)
+                    let n_expected_valid, n_expected_err =
+                      if abi_version = Abi_v3.abi_version then
+                        ( n_expected >= 1 && n_expected <= Abi.n_expected_max,
+                          Printf.sprintf "state: n_expected %d, expected 1..%d" n_expected
+                            Abi.n_expected_max )
+                      else
+                        (n_expected = 1, Printf.sprintf "state: n_expected %d, expected 1" n_expected)
+                    in
+                    if not n_expected_valid then Some n_expected_err
+                    else if
+                      not
+                        (is_zero_range s
+                           (Abi.Result_off.expected + (8 * n_expected))
+                           (8 * (Abi.n_expected_max - n_expected)))
+                    then Some "state: expected[] tail beyond n_expected nonzero"
+                    else None
             in
             (* Step 4. *)
             let rule = staging_rule state status in
@@ -256,10 +266,16 @@ let validate ?(abi_version = Abi.abi_version) ~expected_case_id s =
                   else None
               | Some ((Fault_terminal | Value_terminal) as terminal) ->
                   (* Value completeness applies only to passed/failed. A fault
-                     records no observation, so requiring n_values = 1 there
-                     would let the initialized zero in values[0] masquerade as a
-                     real observation from a guest that never returned one. *)
-                  let want_values = if terminal = Value_terminal then 1 else 0 in
+                     records no observation, so requiring n_values = n_expected
+                     there would let the initialized zeros in values[] masquerade
+                     as real observations from a guest that never returned any.
+
+                     [n_expected] rather than a literal 1: by the time [staging]
+                     runs, [trusted_fields] has already forced it to exactly 1
+                     for every v1/v2 record (exec-abi-v3.md §4's "n_values must
+                     equal n_expected" generalizes cleanly to v1/v2 because their
+                     own n_expected is already pinned upstream). *)
+                  let want_values = if terminal = Value_terminal then n_expected else 0 in
                   if n_values <> want_values then
                     Some (Printf.sprintf "staging: n_values %d, expected %d" n_values want_values)
                   else if
@@ -315,8 +331,7 @@ let build ?(abi_version = Abi.abi_version) ?(record_state = Abi.Bootstrap)
     ?(status = Abi.Not_started) ?(case_id = 0) ?(expected = [||]) ?(values = [||]) ?(n_values = -1)
     ?(n_expected = -1) ?(diag = "") ?(runner_error = 0) ?(error_subcode = 0) () =
   let b = Bytes.make Abi.result_page_size '\000' in
-  Abi.set_string b Abi.Result_off.magic
-    (if abi_version = Abi_v2.abi_version then Abi_v2.result_magic else Abi.result_magic);
+  Abi.set_string b Abi.Result_off.magic (Abi_v3.result_magic_for_version abi_version);
   Abi.set_u16 b Abi.Result_off.abi_version abi_version;
   Abi.set_u16 b Abi.Result_off.status (Abi.status_code status);
   Abi.set_u32 b Abi.Result_off.case_id case_id;
@@ -348,10 +363,11 @@ let pp ppf t =
   | None -> ()
   | Some c -> (
       Fmt.pf ppf " runner_error=%s" (Abi.class_name c);
-      (* [t] does not retain the wire ABI version.  Use the additive v2
-         namespace when rendering so v2-only errors keep their symbolic name;
-         validation has already rejected those subcodes for v1 records. *)
-      match Abi.subcode_of_wire ~abi_version:Abi_v2.abi_version c t.error_subcode with
+      (* [t] does not retain the wire ABI version.  Use the richest known
+         namespace when rendering so a v2- or v3-only error keeps its
+         symbolic name; validation has already rejected those subcodes for
+         records at an earlier ABI version. *)
+      match Abi_v3.subcode_of_wire c t.error_subcode with
       | Some sc -> Fmt.pf ppf ".%s" sc.Abi.name
       | None -> Fmt.pf ppf ".%d" t.error_subcode));
   if t.staged_subcode_ignored then Fmt.pf ppf " staged_subcode=ignored"

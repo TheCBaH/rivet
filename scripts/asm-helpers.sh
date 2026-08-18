@@ -1,12 +1,23 @@
 #!/usr/bin/env bash
 # Build the execution ABI user-mode helpers: the four legacy assembly sources
-# in v1 and v2 modes, and the shared freestanding RISC-V source in v2 mode.
+# in v1 and v2 modes, plus a v3 helper for every profile that has one - the
+# generator (.ai/asm_plan.md M4 Phase 3) for the four legacy profiles, and
+# the shared freestanding RISC-V source (built at both v2 and v3, an
+# ABI_VERSION #define selecting the path within the one checked-in file -
+# asm/helpers/riscv.c's own header comment).
 #
-# The legacy helpers are checked-in target assembly and the RISC-V helper is
-# freestanding C with its target call boundary expressed as inline assembly.
-# All are linked directly by the reference GNU ld with no libc, start files,
-# runtime, or dynamic loader. `-static -nostdlib` is not enough on its own: gcc
-# would still add startup objects if it performed the link.
+# The legacy v1/v2 helpers are checked-in target assembly and the RISC-V
+# helper is freestanding C with its target call boundary expressed as inline
+# assembly. The legacy profiles' v3 helpers are GAS text produced at build
+# time by test/oracle/abi_gen_main.exe (build_generated_one below) rather
+# than checked in - v1/v2 stay frozen and untouched (.ai/asm_plan.md M4
+# Phase 3.6) - while RISC-V's v3 helper is the same checked-in riscv.c
+# recompiled with -DABI_VERSION=3 (build_riscv below), since C has no
+# equivalent need for a generated/frozen split. This script is where all of
+# these build boundaries meet: the same reference GNU as/ld links every
+# kind, with no libc, start files, runtime, or dynamic loader.
+# `-static -nostdlib` is not enough on its own: gcc would still add startup
+# objects if it performed the link.
 #
 # Toolchain prefixes come from tools/target-matrix.sh, the same place
 # the fixture and oracle tools read them from. A helper assembled with one
@@ -24,6 +35,13 @@ cd "$(dirname "$0")/.."
 
 OUT_DIR=${ASM_HELPERS_DIR:-.asm-helpers}
 SRC_DIR=asm/helpers
+
+# Legacy profiles the generator currently implements (.ai/asm_plan.md M4
+# Phase 3.4: x86_64 first, proven end to end, then generalized). A profile
+# absent from this list gets no v3 helper yet and `make asm-exec`/
+# `make asm-abi-conform`'s v3 leg simply has one fewer profile available,
+# exactly like an unbuilt v1/v2 profile does today.
+GENERATOR_PROFILES=(x86_64 x86_32 arm aarch64)
 
 Fatal() { echo "asm-helpers: $*" >&2; exit 1; }
 usage() { echo "usage: tools/asm-helpers.sh [all | ${ALL_TARGETS[*]}]" >&2; }
@@ -72,29 +90,76 @@ build_one() {
   echo "asm-helpers: ABI v$abi $t -> $dir/helper ($QEMU_BIN)"
 }
 
-build_riscv_v2() {
-  local t=$1
+# The frozen command pair (.ai/asm_plan.md M4 Phase 3.2): the script has
+# already `cd`d to the repo root above, and there is no root-level Dune
+# project (only compcert-lib/, asm/ and asm/tools/ each have their own), so
+# the build step must name asm/ explicitly rather than assume the generator
+# is reachable from the script's own cwd.
+build_generated_one() {
+  local abi=$1 t=$2
+  target_config "$t"
+  local as="${TOOLPREFIX}as" ld="${TOOLPREFIX}ld"
+  command -v "$as" >/dev/null || Fatal "$as not found (cross binutils missing)"
+  command -v "$ld" >/dev/null || Fatal "$ld not found (cross binutils missing)"
+
+  local dir="$OUT_DIR/v$abi/$t"
+  mkdir -p "$dir"
+  (cd asm && opam exec -- dune build test/oracle/abi_gen_main.exe)
+  asm/_build/default/test/oracle/abi_gen_main.exe --profile "$t" --abi-version "$abi" \
+    > "$dir/generated.s"
+  "$as" "${AS_FLAGS[@]}" --defsym "ABI_VERSION=$abi" -I "$SRC_DIR" -o "$dir/helper.o" "$dir/generated.s"
+  "$ld" "${LD_FLAGS[@]}" -static -e _start -o "$dir/helper" "$dir/helper.o"
+  echo "$QEMU_BIN" > "$dir/qemu"
+
+  # Provenance for a generated helper covers both halves of what produced it:
+  # the generator's own sources (so a generator change is attributable) and
+  # the generated output itself (so the exact assembled text is), the same
+  # way build_one's provenance covers both the checked-in source and
+  # abi-v1.inc.
+  {
+    echo "abi-version	$abi"
+    echo "profile	$t"
+    echo "generated.sha256	$(sha256sum "$dir/generated.s" | cut -d' ' -f1)"
+    echo "abi_gen.ml.sha256	$(sha256sum asm/test/oracle/abi_gen.ml | cut -d' ' -f1)"
+    echo "abi_gen_text.ml.sha256	$(sha256sum asm/test/oracle/abi_gen_text.ml | cut -d' ' -f1)"
+    echo "abi_gen_main.ml.sha256	$(sha256sum asm/test/oracle/abi_gen_main.ml | cut -d' ' -f1)"
+    echo "as	$("$as" --version | head -1)"
+    echo "ld	$("$ld" --version | head -1)"
+    echo "qemu	$("$QEMU_BIN" --version 2>/dev/null | head -1)"
+  } > "$dir/provenance.txt"
+
+  echo "asm-helpers: ABI v$abi (generated) $t -> $dir/helper ($QEMU_BIN)"
+}
+
+# RISC-V's helper is one C source guarded by an ABI_VERSION #define
+# (asm/helpers/riscv.c's own header comment) rather than a GAS text/generator
+# split like the legacy profiles: -DABI_VERSION=$abi is what selects v2's
+# frozen path or v3's additive one, and both are built from the same
+# checked-in file, so there is no "generated.s" provenance half here - only
+# the one source's own hash.
+build_riscv() {
+  local abi=$1 t=$2
   target_config "$t"
   local src="$SRC_DIR/riscv.c"
   local cc="${TOOLPREFIX}gcc" ld="${TOOLPREFIX}ld"
   command -v "$cc" >/dev/null || Fatal "$cc not found (cross compiler missing)"
   command -v "$ld" >/dev/null || Fatal "$ld not found (cross binutils missing)"
 
-  local dir="$OUT_DIR/v2/$t"
+  local dir="$OUT_DIR/v$abi/$t"
   mkdir -p "$dir"
-  "$cc" "${AS_FLAGS[@]}" -O2 -ffreestanding -fno-builtin -fno-stack-protector \
+  "$cc" "${AS_FLAGS[@]}" -DABI_VERSION=$abi -O2 -ffreestanding -fno-builtin -fno-stack-protector \
     -fno-pic -fomit-frame-pointer -nostdlib -c -o "$dir/helper.o" "$src"
   "$ld" "${LD_FLAGS[@]}" -z separate-code -static -e _start -o "$dir/helper" "$dir/helper.o"
   echo "$QEMU_BIN" > "$dir/qemu"
   {
-    echo "abi-version	2"
+    echo "abi-version	$abi"
     echo "profile	$t"
     echo "helper.sha256	$(sha256sum "$src" | cut -d' ' -f1)"
     echo "cc	$("$cc" --version | head -1)"
     echo "ld	$("$ld" --version | head -1)"
     echo "qemu	$("$QEMU_BIN" --version 2>/dev/null | head -1)"
   } > "$dir/provenance.txt"
-  echo "asm-helpers: ABI v2 $t -> $dir/helper ($QEMU_BIN)"
+  echo "asm-helpers: ABI v$abi $t -> $dir/helper ($QEMU_BIN)"
 }
 
 targets=()
@@ -107,7 +172,8 @@ fi
 for t in "${targets[@]}"; do
   case "$t" in
     riscv32 | riscv64)
-      build_riscv_v2 "$t"
+      build_riscv 2 "$t"
+      build_riscv 3 "$t"
       continue
       ;;
   esac
@@ -117,4 +183,10 @@ for t in "${targets[@]}"; do
   fi
   build_one 1 "$t"
   build_one 2 "$t"
+  for p in "${GENERATOR_PROFILES[@]}"; do
+    if [ "$p" = "$t" ]; then
+      build_generated_one 3 "$t"
+      break
+    fi
+  done
 done

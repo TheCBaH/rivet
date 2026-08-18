@@ -513,9 +513,12 @@ asm-characterize-verify:
 # asm-abi-conform is reachable from asm-test or asm-ci, so `make asm-test` can
 # never acquire a hidden cross-toolchain or QEMU dependency (guardrail 4).
 #
-# asm-helpers builds the four legacy profiles in both v1 and v2 modes and the
-# RISC-V profiles in v2 mode only. asm-abi-conform executes the four-profile v1
-# regression followed by the complete six-profile v2 suite under qemu-user.
+# asm-helpers builds the four legacy profiles in v1 and v2 modes, the RISC-V
+# profiles in v2 mode only, and - for the legacy profiles the generator
+# already supports (.ai/asm_plan.md M4 Phase 3.4: x86_64 today) - a v3
+# helper too. asm-abi-conform executes the four-profile v1 regression, the
+# complete six-profile v2 suite, and the v3 suite over whatever profiles have
+# a generated v3 helper, all under qemu-user.
 asm-helpers:
 	tools/asm-helpers.sh all
 
@@ -523,10 +526,16 @@ asm-runner: asm-build
 	cd $(ASM_DIR) && opam exec -- dune build test/oracle/conform.exe
 
 # ASM_HELPERS_DIR is absolute because the driver runs from the build tree.
+# run_control's v1 dependency stays independent of the v3 leg deliberately:
+# build_one's v1 calls in asm-helpers.sh are unconditional and untouched by
+# the v3 addition, so the first leg below never depends on the third having
+# built anything.
 asm-abi-conform: asm-runner asm-helpers
 	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers ASM_ABI_VERSION=1 \
 	  opam exec -- dune exec test/oracle/conform.exe
 	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers ASM_ABI_VERSION=2 \
+	  opam exec -- dune exec test/oracle/conform.exe
+	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers ASM_ABI_VERSION=3 \
 	  opam exec -- dune exec test/oracle/conform.exe
 
 # M1.6, the E5 rung: the assembler's own image bound at the ABI-v1 profile code

@@ -1,4 +1,4 @@
-/* Execution ABI v2 helper shared by RV32 and RV64.
+/* Execution ABI v2/v3 helper shared by RV32 and RV64.
  *
  * This is freestanding transport code: no headers, libc, compiler runtime, or
  * dynamic loader.  tools/asm-helpers.sh compiles it with the profile's explicit
@@ -8,8 +8,25 @@
  * Keeping the validator in one source is important here.  The wire format is
  * identical for RV32 and RV64; only pointer width, profile id, and the address
  * window differ.  A duplicated pair would make validation precedence an
- * accidental per-XLEN property.
+ * accidental per-XLEN property. The same reasoning is why v3 (the
+ * observation-vector extension, docs/exec-abi-v3.md) is added as
+ * ABI_VERSION-guarded logic in this one source rather than a second file: a
+ * duplicated pair would make the v2/v3 split an accidental per-XLEN property
+ * too. ABI_VERSION is a compiler -D define, defaulting to 2 (the frozen,
+ * unconditional path); tools/asm-helpers.sh compiles this file twice, once
+ * per version, exactly as it links two GAS assemblies per legacy profile.
+ * Unlike the legacy profiles' generated v3 helper, there is no separate
+ * "frozen source, generated addition" split to preserve here - this whole
+ * file is already the single source of truth for both versions, guarded
+ * in place.
  */
+
+#ifndef ABI_VERSION
+# define ABI_VERSION 2
+#endif
+#if ABI_VERSION != 2 && ABI_VERSION != 3
+# error "riscv.c: unsupported ABI_VERSION (must be 2 or 3)"
+#endif
 
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -81,6 +98,15 @@ enum {
   R_NEXPECTED = 16, R_NVALUES = 18, R_DIAG_LEN = 20, R_EXPECTED = 24,
   R_VALUES = 88, R_RUNNER_ERROR = 216, R_SUBCODE = 218, R_STATE = 220
 };
+/* v3 only (docs/exec-abi-v3.md §2): the observation-descriptor table, placed
+ * at a derived (not stored) offset immediately after the segment-descriptor
+ * table. N_EXPECTED_MAX is the wire field's existing range, unused above 1
+ * until v3. */
+enum {
+  OBS_D_VADDR = 0, OBS_D_WIDTH = 8, OBS_D_FLAGS = 9, OBS_D_RESERVED = 10,
+  OBS_D_SIZE = 16
+};
+enum { SIGN_EXTEND_FLAG = 1, N_EXPECTED_MAX = 8 };
 
 static uptr control_alias;
 static uptr saved_helper_sp __attribute__((used));
@@ -252,10 +278,11 @@ static __attribute__((noreturn, used, noinline)) void helper_main(uptr *initial_
   u8 statbuf[256];
   u8 *m, *result;
   u64 file_size;
-  u32 nseg, i, j, meta_end;
+  u32 nseg, i, j, meta_end, nexp;
+  u64 obs_table_off = 0;
   struct segment seg[NSEG_MAX];
-  static const u8 mmagic[8] = { 'A','S','M','E','X','E',0,2 };
-  static const u8 rmagic[8] = { 'A','S','M','R','E','S',0,2 };
+  static const u8 mmagic[8] = { 'A','S','M','E','X','E',0,ABI_VERSION };
+  static const u8 rmagic[8] = { 'A','S','M','R','E','S',0,ABI_VERSION };
   static const u8 empty_path[1] = { 0 };
 
   if (argc < 3) fail_no_record(CLS_IO);
@@ -280,7 +307,7 @@ static __attribute__((noreturn, used, noinline)) void helper_main(uptr *initial_
   control_alias = (uptr)rr;
   result = (u8 *)control_alias;
   copy_bytes(result + R_MAGIC, rmagic, 8);
-  wr16(result + R_VERSION, 2);
+  wr16(result + R_VERSION, ABI_VERSION);
   if (!pagesz_found) fail_pre(CLS_ENVIRONMENT, 2);
   if (pagesz != PAGE_SIZE) fail_pre(CLS_ENVIRONMENT, 1);
 
@@ -296,20 +323,47 @@ static __attribute__((noreturn, used, noinline)) void helper_main(uptr *initial_
   m = (u8 *)(uptr)rr;
 
   if (!bytes_equal(m + M_MAGIC, mmagic, 8)) fail_pre(CLS_MANIFEST, 3);
-  if (rd16(m + M_VERSION) != 2) fail_pre(CLS_MANIFEST, 4);
+  if (rd16(m + M_VERSION) != ABI_VERSION) fail_pre(CLS_MANIFEST, 4);
   if (rd16(m + M_PROFILE) != PROFILE_ID) fail_pre(CLS_MANIFEST, 5);
   if ((u64)rd32(m + M_TOTAL) != file_size) fail_pre(CLS_MANIFEST, 6);
   nseg = rd16(m + M_NSEG);
   if (nseg == 0 || nseg > NSEG_MAX) fail_pre(CLS_MANIFEST, 7);
+#if ABI_VERSION >= 3
+  nexp = rd16(m + M_NEXPECTED);
+  if (nexp == 0 || nexp > N_EXPECTED_MAX) fail_pre(CLS_MANIFEST, 8);
+#else
+  nexp = 1;
   if (rd16(m + M_NEXPECTED) != 1) fail_pre(CLS_MANIFEST, 8);
+#endif
   if (rd32(m + M_RESULT_SIZE) != 256) fail_pre(CLS_MANIFEST, 9);
   if (rd32(m + M_TIMEOUT) < TIMEOUT_MIN || rd32(m + M_TIMEOUT) > TIMEOUT_MAX)
     fail_pre(CLS_MANIFEST, 10);
   if (rd32(m + M_RESERVED) != 0) fail_pre(CLS_MANIFEST, 11);
+#if ABI_VERSION >= 3
+  /* expected[] entries beyond n_expected must be zero (exec-abi-v3.md §2) -
+   * generalized from v1/v2's fixed "beyond index 0". */
+  if (nexp < 8 && bytes_nonzero(m + M_EXPECTED + 8 * nexp, 8 * (8 - nexp)))
+    fail_pre(CLS_MANIFEST, 12);
+#else
   if (bytes_nonzero(m + M_EXPECTED + 8, 56)) fail_pre(CLS_MANIFEST, 12);
+#endif
 
   meta_end = M_HEADER_SIZE + D_SIZE * nseg;
+#if ABI_VERSION >= 3
+  /* stage 4b's own table-bound check, generalizing stage 4's (same subcode):
+   * the observation-descriptor table must also be in-file before any
+   * descriptor in it is read (exec-abi-v3.md §3). */
+  {
+    u64 obs_off = (u64)meta_end;
+    u64 obs_len = (u64)OBS_D_SIZE * (nexp - 1);
+    u64 obs_end = obs_off + obs_len;
+    if (obs_end < obs_off || obs_end > file_size) fail_pre(CLS_MANIFEST, 13);
+    obs_table_off = obs_off;
+    meta_end = (u32)obs_end;
+  }
+#else
   if ((u64)meta_end > file_size) fail_pre(CLS_MANIFEST, 13);
+#endif
   for (i = 0; i < nseg; ++i) {
     const u8 *d = m + M_HEADER_SIZE + D_SIZE * i;
     int ov = 0;
@@ -319,6 +373,38 @@ static __attribute__((noreturn, used, noinline)) void helper_main(uptr *initial_
     if (add64(seg[i].payload, seg[i].init, &ov) > file_size || ov)
       fail_pre(CLS_MANIFEST, 14);
   }
+#if ABI_VERSION >= 3
+  /* stage 4b: per-descriptor validation, entirely from the manifest's own
+   * declared geometry - no guest memory is read here (exec-abi-v3.md §3).
+   * Runs before geometry/collision/well-formedness below, for the same
+   * reason stage 4 does: an out-of-file or ill-formed table should not be
+   * interpreted as containing valid descriptors. */
+  for (i = 0; i + 1 < nexp; ++i) {
+    const u8 *d = m + (uptr)(obs_table_off + (u64)OBS_D_SIZE * i);
+    u64 vaddr = rd64(d + OBS_D_VADDR);
+    u8 width = d[OBS_D_WIDTH];
+    u8 flags = d[OBS_D_FLAGS];
+    u64 vend;
+    u32 k;
+    int contained = 0;
+    if (width != 1 && width != 2 && width != 4 && width != 8) fail_pre(CLS_MANIFEST, 43);
+    if (flags & ~(u8)SIGN_EXTEND_FLAG) fail_pre(CLS_MANIFEST, 44);
+    if (bytes_nonzero(d + OBS_D_RESERVED, 6)) fail_pre(CLS_MANIFEST, 44);
+    vend = vaddr + width;
+    if (vend < vaddr) fail_pre(CLS_MANIFEST, 45);
+    for (k = 0; k < nseg; ++k) {
+      int ov = 0;
+      u64 send;
+      if (vaddr < seg[k].vaddr) continue;
+      send = add64(add64(seg[k].vaddr, seg[k].init, &ov), seg[k].zero, &ov);
+      if (ov || vend > send) continue;
+      if (!(seg[k].perms & PERM_R)) fail_pre(CLS_MANIFEST, 46);
+      contained = 1;
+      break;
+    }
+    if (!contained) fail_pre(CLS_MANIFEST, 45);
+  }
+#endif
   for (i = 0; i < nseg; ++i) {
     if (seg[i].payload & 7) fail_pre(CLS_MANIFEST, 15);
     if (seg[i].payload && seg[i].payload < meta_end) fail_pre(CLS_MANIFEST, 16);
@@ -432,9 +518,17 @@ static __attribute__((noreturn, used, noinline)) void helper_main(uptr *initial_
   }
 
   wr32(result + R_CASE, rd32(m + M_CASE));
+#if ABI_VERSION >= 3
+  wr16(result + R_NEXPECTED, (u16)nexp);
+  {
+    u32 k;
+    for (k = 0; k < nexp; ++k) wr64(result + R_EXPECTED + 8 * k, rd64(m + M_EXPECTED + 8 * k));
+  }
+#else
   wr16(result + R_NEXPECTED, 1);
-  wr16(result + R_NVALUES, 0);
   wr64(result + R_EXPECTED, rd64(m + M_EXPECTED));
+#endif
+  wr16(result + R_NVALUES, 0);
   __asm__ volatile("fence rw,w" ::: "memory");
   wr32(result + R_STATE, RS_VALIDATED);
   {
@@ -445,10 +539,52 @@ static __attribute__((noreturn, used, noinline)) void helper_main(uptr *initial_
     if (g.sp_after != guest_sp_expected) fail_late(CLS_PROTOCOL, 1);
     if (g.callee_bad) fail_late(CLS_PROTOCOL, 2);
     wr64(result + R_VALUES, actual);
+#if ABI_VERSION >= 3
+    /* Every additional observation is loaded from guest memory only now,
+     * after the guest has returned (exec-abi-v3.md §4); [m]/[seg]/[nexp]/
+     * [obs_table_off] are ordinary locals here, not registers the guest call
+     * could have clobbered - riscv_run_guest's own callee-saved save/restore
+     * already gives the C compiler's calling convention that guarantee, so
+     * (unlike the legacy profiles' hand-written assembly) no separate .bss
+     * save is needed to survive the call. */
+    wr16(result + R_NVALUES, (u16)nexp);
+    {
+      u32 k;
+      for (k = 0; k + 1 < nexp; ++k) {
+        const u8 *d = m + (uptr)(obs_table_off + (u64)OBS_D_SIZE * k);
+        u64 vaddr = rd64(d + OBS_D_VADDR);
+        u8 width = d[OBS_D_WIDTH];
+        u8 flags = d[OBS_D_FLAGS];
+        const u8 *p = (const u8 *)ptr_of(vaddr);
+        u64 v;
+        switch (width) {
+          case 1: v = (flags & SIGN_EXTEND_FLAG) ? (u64)(sptr)(signed char)p[0] : (u64)p[0]; break;
+          case 2: v = (flags & SIGN_EXTEND_FLAG) ? (u64)(sptr)(short)rd16(p) : (u64)rd16(p); break;
+          case 4: v = (flags & SIGN_EXTEND_FLAG) ? (u64)(sptr)(int)rd32(p) : (u64)rd32(p); break;
+          default: v = rd64(p); break;
+        }
+        wr64(result + R_VALUES + 8 * (k + 1), v);
+      }
+    }
+#else
     wr16(result + R_NVALUES, 1);
+#endif
     wr32(result + R_DIAG_LEN, 0);
     __asm__ volatile("fence rw,w" ::: "memory");
+#if ABI_VERSION >= 3
+    /* passed iff every slot matches expected[] element-wise
+     * (exec-abi-v3.md §4); one mismatch anywhere commits failed. */
+    {
+      u16 status = ST_PASSED;
+      u32 k;
+      for (k = 0; k < nexp; ++k) {
+        if (rd64(result + R_VALUES + 8 * k) != rd64(result + R_EXPECTED + 8 * k)) { status = ST_FAILED; break; }
+      }
+      wr16(result + R_STATUS, status);
+    }
+#else
     wr16(result + R_STATUS, actual == rd64(m + M_EXPECTED) ? ST_PASSED : ST_FAILED);
+#endif
   }
   exit_class(0);
 }

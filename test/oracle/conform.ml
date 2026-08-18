@@ -33,7 +33,8 @@ let abi_version =
   | None -> Abi.abi_version
   | Some "1" -> 1
   | Some "2" -> Abi_v2.abi_version
-  | Some value -> invalid_arg ("ASM_ABI_VERSION must be 1 or 2, got " ^ value)
+  | Some "3" -> Abi_v3.abi_version
+  | Some value -> invalid_arg ("ASM_ABI_VERSION must be 1, 2 or 3, got " ^ value)
 
 let serialize t = Manifest.serialize ~abi_version t
 
@@ -74,6 +75,9 @@ let snippets_for = Snippet_corpus.Snippet_ast.for_profile
 type expect =
   | Passed of int64
   | Failed of int64
+  | Passed_multi of int64 list
+      (** v3 only: every slot must match, element-wise (exec-abi-v3.md §4) - additive to [Passed],
+          not a replacement, so the existing single-value corpus stays exactly as written. *)
   | Guest_fault
   | Guest_timeout
   | Error of string  (** a subcode key, e.g. "manifest.bad_magic" *)
@@ -86,6 +90,10 @@ let matches expect (o : Qemu_user.t) =
   | Passed v, Qemu_user.Completed, Some (Record.Valid r) ->
       r.Record.record_state = Abi.Returned
       && r.Record.status = Abi.Passed && r.Record.values = [| v |] && r.Record.expected = [| v |]
+  | Passed_multi vs, Qemu_user.Completed, Some (Record.Valid r) ->
+      let a = Array.of_list vs in
+      r.Record.record_state = Abi.Returned
+      && r.Record.status = Abi.Passed && r.Record.values = a && r.Record.expected = a
   | Failed v, Qemu_user.Completed, Some (Record.Valid r) ->
       r.Record.record_state = Abi.Returned
       && r.Record.status = Abi.Failed && r.Record.values = [| v |]
@@ -96,7 +104,7 @@ let matches expect (o : Qemu_user.t) =
   | Guest_timeout, Qemu_user.Timeout, Some (Record.Valid r) ->
       r.Record.record_state = Abi.Validated && r.Record.status = Abi.Running
   | Error key, Qemu_user.Runner_error cls, _ ->
-      let want = Abi.find_subcode ~abi_version key in
+      let want = Abi_v3.find_subcode ~abi_version key in
       want.Abi.cls = cls && Qemu_user.observed_error o = Some (cls, want.Abi.code)
   | _ -> false
 
@@ -175,16 +183,25 @@ type case = {
       (** [None] means every profile. A case is profile-scoped only when the *rule* is: §10.3's
           entry alignment and the 32-bit address-width rule have no counterpart on the other
           profiles, and a case that ran everywhere would be asserting a different thing on each. *)
+  abi_versions : int list option;
+      (** [None] means whatever version this run is at. A case is version-scoped when the *rule*
+          differs by version - v1/v2's n_expected forced to exactly 1 versus v3's 1..8 range is
+          the one case in this corpus where that happens (exec-abi-v3.md §2) - so a case whose
+          point is "the old rule" does not silently reinterpret itself as "the new rule" under a
+          v3 run, and a case whose point is "the new rule" does not run at all under v1/v2, where
+          it would not even parse the way it expects to. *)
   build : Abi.profile -> Snippet_bytes.t -> Qemu_user.t;
 }
 
 let run_manifest ?input ?extra_args profile manifest =
   Qemu_user.run ~abi_version ?input ?extra_args ~profile ~manifest ~expected_case_id:case_id ()
 
-let m ?only name expect f =
-  { name; expect; only; build = (fun profile s -> run_manifest profile (f profile s)) }
+let m ?only ?abi_versions name expect f =
+  { name; expect; only; abi_versions; build = (fun profile s -> run_manifest profile (f profile s)) }
 
-let applies profile c = match c.only with None -> true | Some ps -> List.mem profile ps
+let applies profile c =
+  (match c.only with None -> true | Some ps -> List.mem profile ps)
+  && (match c.abi_versions with None -> true | Some vs -> List.mem abi_version vs)
 let bits32 = [ Abi.X86_32; Abi.Arm; Abi.Riscv32 ]
 let bits64 = [ Abi.X86_64; Abi.Aarch64; Abi.Riscv64 ]
 
@@ -237,8 +254,16 @@ let header_cases =
         patch_u16 (canonical p s.return42) Abi.Manifest_off.n_segments 0);
     m "n-segments-nine" (Error "manifest.n_segments_range") (fun p s ->
         patch_u16 (canonical p s.return42) Abi.Manifest_off.n_segments 9);
-    m "n-expected-two" (Error "manifest.n_expected_range") (fun p s ->
+    (* v1/v2 force n_expected to exactly 1; v3 widens it to 1..8
+       (exec-abi-v3.md §2), so this specific case - "2 is rejected outright" -
+       is v1/v2's own rule and does not generalize. v3's analogous boundary
+       cases are the two abi_versions:[3] ones right after it. *)
+    m ~abi_versions:[ 1; 2 ] "n-expected-two" (Error "manifest.n_expected_range") (fun p s ->
         patch_u16 (canonical p s.return42) Abi.Manifest_off.n_expected 2);
+    m ~abi_versions:[ 3 ] "n-expected-zero" (Error "manifest.n_expected_range") (fun p s ->
+        patch_u16 (canonical p s.return42) Abi.Manifest_off.n_expected 0);
+    m ~abi_versions:[ 3 ] "n-expected-nine" (Error "manifest.n_expected_range") (fun p s ->
+        patch_u16 (canonical p s.return42) Abi.Manifest_off.n_expected 9);
     m "result-size-wrong" (Error "manifest.result_size_wrong") (fun p s ->
         patch_u32 (canonical p s.return42) Abi.Manifest_off.result_size 128L);
     m "timeout-too-small" (Error "manifest.timeout_range") (fun p s ->
@@ -450,32 +475,135 @@ let environment_cases =
     {
       name = "input-missing";
       only = None;
+      abi_versions = None;
       expect = Error "io.input_open";
       build = (fun p s -> run_manifest ~input:Qemu_user.Missing p (canonical p s.return42));
     };
     {
       name = "input-not-mappable";
       only = None;
+      abi_versions = None;
       expect = Error "io.input_mmap";
       build = (fun p s -> run_manifest ~input:Qemu_user.Directory p (canonical p s.return42));
     };
     {
       name = "page-size-wrong";
       only = None;
+      abi_versions = None;
       expect = Error "environment.page_size_wrong";
       build = (fun p s -> run_manifest ~extra_args:[ "pgsz-bad" ] p (canonical p s.return42));
     };
     {
       name = "page-size-absent";
       only = None;
+      abi_versions = None;
       expect = Error "environment.page_size_absent";
       build = (fun p s -> run_manifest ~extra_args:[ "pgsz-abs" ] p (canonical p s.return42));
     };
   ]
 
+(* {1 v3: the observation-descriptor table (exec-abi-v3.md §§2-4)}
+
+   All six profiles now have a real v3 helper to run these against: the four
+   legacy profiles via the generator (.ai/asm_plan.md M4 Phase 3.4, proved
+   x86_64 first, then generalized), and RISC-V (both XLEN profiles) via
+   asm/helpers/riscv.c's own ABI_VERSION-guarded v3 path. Every case here is
+   scoped abi_versions:[3] - these manifests are not v1/v2-shaped, and
+   patching one field of them under a v1/v2 run would not be testing a
+   single difference against a canonical base the way the rest of this
+   corpus is.
+
+   Hand-written machine code rather than a Snippet_ast case: the point here
+   is the manifest-side observation table and the post-return load, not an
+   instruction form the assembler's own encoder needs proving (§16.3's own
+   job, unrelated to this milestone). One encoding per profile, since the
+   immediate data address is baked into the instruction stream - there is no
+   portable "write a constant to address X" opcode to share. *)
+
+let v3_observed_value = 0x11223344L
+
+(* [write $0x11223344 to Abi.data_addr profile; return 42], per profile. *)
+let v3_write_and_return42 = function
+  (* movabs $0x40020000,%rax ; movl $0x11223344,(%rax) ; movl $42,%eax ; ret *)
+  | Abi.X86_64 ->
+      "\x48\xb8\x00\x00\x02\x40\x00\x00\x00\x00\xc7\x00\x44\x33\x22\x11\xb8\x2a\x00\x00\x00\xc3"
+  (* movl $0x30020000,%ecx ; movl $0x11223344,(%ecx) ; movl $42,%eax ; ret.
+     %ecx, not %ebx: %ebx is the profile's checked callee-saved register
+     (§11's "convenience copy"), and clobbering it here was a real bug this
+     conformance case caught - protocol.callee_saved_clobbered instead of
+     the intended passed/failed result. *)
+  | Abi.X86_32 -> "\xb9\x00\x00\x02\x30\xc7\x01\x44\x33\x22\x11\xb8\x2a\x00\x00\x00\xc3"
+  (* movw r1,#:lower16:0x30020000 ; movt r1,#:upper16:0x30020000 ;
+     movw r2,#:lower16:0x11223344 ; movt r2,#:upper16:0x11223344 ;
+     str r2,[r1] ; mov r0,#42 ; bx lr. r1/r2, not r4: r4 is this profile's
+     checked callee-saved register (§11's convenience copy). *)
+  | Abi.Arm ->
+      "\x00\x10\x00\xe3\x02\x10\x43\xe3\x44\x23\x03\xe3\x22\x21\x41\xe3\x00\x20\x81\xe5\x2a\x00\xa0\xe3\x1e\xff\x2f\xe1"
+  (* movz x1,#0 ; movk x1,#0x4002,lsl #16 ; movz w2,#0x3344 ;
+     movk w2,#0x1122,lsl #16 ; str w2,[x1] ; mov w0,#42 ; ret.
+     x1/x2, not x19: x19 is this profile's checked callee-saved register
+     (§11's convenience copy). *)
+  | Abi.Aarch64 ->
+      "\x01\x00\x80\xd2\x41\x00\xa8\xf2\x82\x68\x86\x52\x42\x24\xa2\x72\x22\x00\x00\xb9\x40\x05\x80\x52\xc0\x03\x5f\xd6"
+  (* lui t0,0x30020 ; lui t1,0x11223 ; addi t1,t1,0x344 ; sw t1,0(t0) ;
+     addi a0,zero,42 ; ret. t0/t1 (x5/x6, caller-saved temporaries), not any
+     of s0-s11: those are the profile's checked callee-saved registers
+     (riscv_run_guest's twelve-register check in asm/helpers/riscv.c). Bytes
+     confirmed by assembling with the real riscv64-linux-gnu-as -march=rv32imafd. *)
+  | Abi.Riscv32 ->
+      "\xb7\x02\x02\x30\x37\x33\x22\x11\x13\x03\x43\x34\x23\xa0\x62\x00\x13\x05\xa0\x02\x67\x80\x00\x00"
+  (* Same sequence, only the address constant differs (window_base 0x40000000
+     rather than 0x30000000): lui t0,0x40020 ; lui t1,0x11223 ;
+     addi t1,t1,0x344 ; sw t1,0(t0) ; addi a0,zero,42 ; ret. *)
+  | Abi.Riscv64 ->
+      "\xb7\x02\x02\x40\x37\x33\x22\x11\x13\x03\x43\x34\x23\xa0\x62\x00\x13\x05\xa0\x02\x67\x80\x00\x00"
+
+let v3_data_segment ?(perms = Abi.perm_r lor Abi.perm_w) profile =
+  { Manifest.vaddr = Abi.data_addr profile; init = ""; zero_len = 4L; align = 16; perms }
+
+(* The canonical two-segment, one-observation v3 manifest every case below
+   patches exactly one field of - "canonical plus one difference," the same
+   discipline the rest of this corpus uses. *)
+let v3_canonical ?(data_perms = Abi.perm_r lor Abi.perm_w) profile =
+  let code = v3_write_and_return42 profile in
+  serialize
+    {
+      (base profile code) with
+      Manifest.expected = [ 42L; v3_observed_value ];
+      Manifest.segments = [ Manifest.code_segment profile code; v3_data_segment ~perms:data_perms profile ];
+      observations = [ { Manifest.obs_vaddr = Abi.data_addr profile; width = 4; sign_extend = false } ];
+    }
+
+(* Two segments, so this is [120 + 40*2 = 200] - the observation table sits
+   immediately after the segment-descriptor table, per exec-abi-v3.md §2's
+   derived offset. *)
+let v3_obs_off = Abi_v3.obs_table_off ~n_segments:2
+
+let v3_cases =
+  [
+    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ] ~abi_versions:[ 3 ] "v3-multi-value-passed"
+      (Passed_multi [ 42L; v3_observed_value ]) (fun p _ -> v3_canonical p);
+    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ] ~abi_versions:[ 3 ] "v3-obs-bad-width" (Error "manifest.obs_bad_width")
+      (fun p _ -> Manifest.patch_u8 (v3_canonical p) (v3_obs_off + Abi_v3.Obs_descriptor_off.width) 3);
+    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ] ~abi_versions:[ 3 ] "v3-obs-reserved-nonzero"
+      (Error "manifest.obs_reserved_nonzero") (fun p _ ->
+        Manifest.patch_u8 (v3_canonical p) (v3_obs_off + Abi_v3.Obs_descriptor_off.flags) 2);
+    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ] ~abi_versions:[ 3 ] "v3-obs-not-contained" (Error "manifest.obs_not_contained")
+      (fun p _ ->
+        Manifest.patch_u64 (v3_canonical p)
+          (v3_obs_off + Abi_v3.Obs_descriptor_off.vaddr)
+          (Int64.add (Abi.data_addr p) 0x100000L));
+    (* PROT_WRITE without PROT_READ is not distinguishable at the x86 ISA
+       level - the point of this case is the manifest's own *declared*
+       [D_PERMS] byte, which stage 4b checks directly, not what the hardware
+       would have enforced. *)
+    m ~only:[ Abi.X86_64; Abi.X86_32; Abi.Arm; Abi.Aarch64; Abi.Riscv32; Abi.Riscv64 ] ~abi_versions:[ 3 ] "v3-obs-not-readable" (Error "manifest.obs_not_readable")
+      (fun p _ -> v3_canonical ~data_perms:Abi.perm_w p);
+  ]
+
 let all_cases =
   behavioral_cases @ header_cases @ payload_cases @ geometry_cases @ boundary_cases @ bss_cases
-  @ environment_cases
+  @ environment_cases @ v3_cases
 
 (* {1 Reachability exceptions}
 
@@ -602,7 +730,7 @@ let () =
                       "  FAIL %-32s promised by §14.2 but no case observes it and no exemption \
                        covers it@."
                       key)
-            (Abi.all_subcodes_for_version abi_version))
+            (Abi_v3.all_subcodes_for_version abi_version))
     profiles;
   Fmt.pr "@.conform: ABI v%d, %d failures over %d profile(s)@." abi_version !failures
     (List.length profiles);

@@ -40,7 +40,7 @@
 
 (library
  (name asm_oracle)
- (modules abi abi_v2 manifest record snippet_bytes)
+ (modules abi abi_v2 abi_v3 manifest record snippet_bytes)
  (modes byte native)
  (libraries fmt)
  (enabled_if
@@ -48,7 +48,7 @@
 
 (library
  (name test_oracle)
- (modules test_record)
+ (modules test_record test_manifest)
  (modes byte native)
  (libraries asm_oracle fmt)
  (inline_tests)
@@ -79,6 +79,30 @@
  (modules conform)
  (modes exe)
  (libraries asm_oracle asm_oracle_run snippet_corpus fmt)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
+; Phase 3.4's direct v3 multi-value proof (abi_v3_smoke.ml's header comment).
+; Not wired to any Make target - a one-off, hand-built manifest, exercised via
+; ASM_HELPERS_DIR against a real generated helper while no fixture exists yet.
+(executable
+ (name abi_v3_smoke)
+ (modules abi_v3_smoke)
+ (modes exe)
+ (libraries asm_oracle asm_oracle_run fmt)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
+; The ABI generator (.ai/asm_plan.md M4 Phase 3.2): a named, buildable,
+; invocable executable - not a library module with no way to run it, which is
+; what round 3's review specifically required. Pure text generation, no
+; dependency on asm_oracle's wire constants (abi_gen.ml transcribes them
+; directly as .equ text, the same way the frozen helpers/*.s files do) and no
+; Unix, so it builds on every leg tools/asm-helpers.sh might run on.
+(executable
+ (name abi_gen_main)
+ (modules abi_gen abi_gen_text abi_gen_main)
+ (modes exe)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
 
