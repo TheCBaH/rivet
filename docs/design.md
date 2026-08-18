@@ -1996,9 +1996,12 @@ Left open, not blocking the exit criterion above:
   (the GNU-tooling and in-repo-ABI wiring is real and was proven against
   hand-written, uncommitted scratch fixtures on all six targets, but never
   landed as a permanent corpus case).
-- `asm/docs/contracts.md`'s directive table and M3-tagged bullets have not
+- ~~`asm/docs/contracts.md`'s directive table and M3-tagged bullets have not
   yet been updated to describe this as landed rather than deliberately
-  absent.
+  absent.~~ Done 2026-08-18: §3/§4 now carry the `.bss`/`.zero`/`.space`/
+  `.comm`/`.local`/`.weak` rows, the four obsolete "M3: deliberately
+  absent" §4.3 bullets are gone, and both tables are six-target. See
+  `next.md`'s M3 follow-ups §1.
 
 - Generalize the initial fragment/symbol/fixup model to module-local namespaces,
   multiple inputs, and section merging across those inputs. Several allocatable

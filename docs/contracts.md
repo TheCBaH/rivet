@@ -379,18 +379,18 @@ absent.
 
 ## 3. Per-dialect directive table
 
-**M3 update (2026-08-17):** this section and §4 below describe the M1/M2
-state - four targets, no `.bss`/`.comm`/`.local`/`.weak` row, multi-module
-linking rejected. M3 implemented multi-module linking, `.bss`/NOBITS,
-`.comm`/`.local`/`.weak` and the strong/common/weak resolver on all **six**
-targets (`x86_32`/`x86_64`/`arm`/`aarch64`/`riscv32`/`riscv64`), verified
-against two real, committed, six-target CompCert fixtures
-(`asm/fixtures/compcert-3.17/cross_call`, `cross_data`). The directive
-table, support matrix and §4.3 below have not yet been re-worked to add
-those rows/columns and remove the now-obsolete "rejected" language in the
-two places it appears - see `.ai/asm_plan.md`'s Milestone 3 status and
-`next.md` for the authoritative current state; treat every "M3" reference
-below as "was, until 2026-08-17" rather than "still is."
+**M3 update (2026-08-18):** M3 implemented multi-module linking, `.bss`/
+NOBITS, `.comm`/`.local`/`.weak` and the strong/common/weak resolver on all
+**six** targets (`x86_32`/`x86_64`/`arm`/`aarch64`/`riscv32`/`riscv64`). The
+directive table, data-directive table and support matrix below are updated
+to add those rows/columns. Multi-module linking itself is proven against
+two real, committed, six-target CompCert fixtures
+(`asm/fixtures/compcert-3.17/cross_call`, `cross_data`); those two link an
+initialized, strongly-`.globl`'d symbol across files and do not themselves
+exercise `.bss`/`.comm`/`.local`/`.weak` — that machinery is covered
+instead by the synthetic cases in `asm/test/targets/test_targets.ml` and
+`asm/test/image/test_image.ml`. See `.ai/asm_plan.md`'s Milestone 3 status
+and `next.md` for the milestone's own remaining follow-ups.
 
 Every directive the fixtures contain, and nothing else. **A directive not in
 this table is a diagnostic.** An assembler that ignores directives it does not
@@ -406,26 +406,44 @@ Four categories, and the category decides what happens:
 | **target state** | handed to `TARGET.handle_directive`; never reaches generic code |
 | **metadata** | arguments consumed lexically, then discarded at simplify |
 
-| Directive | x86_32 | x86_64 | arm | aarch64 | Category | Normalizes to |
-|---|:-:|:-:|:-:|:-:|---|---|
-| `.text` | ● | ● | ● | ● | semantic | `Section {name = ".text"; perms = r-x}` |
-| `.data` | ● | ● | ● | ● | semantic | `Section {name = ".data"; perms = rw-}` |
-| `.section <n>,"<f>",<t>` | ● | ● | ● | ● | declared | `Declared_section` when unallocated |
-| `.align <n>` | ● | ● | | | semantic | `Align {boundary = n}` — **bytes** |
-| `.balign <n>` | | | ● | ● | semantic | `Align {boundary = n}` — **bytes** |
-| `.globl <s>` | ● | ● | ● | ● | semantic | `Global {name = s}` |
-| `.type <s>, @function` | ● | ● | | ● | semantic | `Sym_type {kind = Function}` |
-| `.type <s>, %function` | | | ● | | semantic | `Sym_type {kind = Function}` |
-| `.size <s>, <expr>` | ● | ● | ● | ● | semantic | `Sym_size {name; size}` |
-| `.syntax unified` | | | ● | | target state | ARM state |
-| `.arch <name>` | | | ● | | target state | ARM state |
-| `.fpu <name>` | | | ● | | target state | ARM state |
-| `.arm` | | | ● | | target state | ARM state |
-| `.eabi_attribute <t>, <v>` | | | ● | | target state | ARM state |
-| `.cfi_startproc` | ● | ● | ● | ● | metadata | discarded |
-| `.cfi_endproc` | ● | ● | ● | ● | metadata | discarded |
-| `.cfi_adjust_cfa_offset <n>` | ● | ● | ● | ● | metadata | discarded |
-| `.cfi_rel_offset <r>, <n>` | | | ● | ● | metadata | discarded |
+| Directive | x86_32 | x86_64 | arm | aarch64 | riscv32 | riscv64 | Category | Normalizes to |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|---|---|
+| `.text` | ● | ● | ● | ● | ● | ● | semantic | `Section {name = ".text"; perms = r-x}` |
+| `.data` | ● | ● | ● | ● | ● | ● | semantic | `Section {name = ".data"; perms = rw-}` |
+| `.section <n>,"<f>",<t>` | ● | ● | ● | ● | ● | ● | declared | `Declared_section` when unallocated; `Section {nobits}` when allocatable, with a `@nobits`/`%nobits` type marker setting `nobits = true` |
+| `.bss` | ● | ● | ● | ● | ● | ● | semantic | `Section {name = ".bss"; perms = rw-; nobits = true}` |
+| `.align <n>` | ● | ● | | | | | semantic | `Align {boundary = n}` — **bytes** |
+| `.balign <n>` | | | ● | ● | ● | ● | semantic | `Align {boundary = n}` — **bytes** |
+| `.globl <s>` | ● | ● | ● | ● | ● | ● | semantic | `Global {name = s}` |
+| `.local <s>` | ● | ● | ● | ● | ● | ● | semantic | `Local {name = s}` |
+| `.weak <s>` | ● | ● | ● | ● | ● | ● | semantic | `Weak {name = s}` |
+| `.comm <s>, <size>[, <align>]` | ● | ● | ● | ● | ● | ● | semantic | `Common {name; size; align}` |
+| `.zero <n>` | ● | ● | ● | ● | ● | ● | semantic | `Zero {length = n}` |
+| `.space <n>` | ● | ● | ● | ● | ● | ● | semantic | `Zero {length = n}` — the two-argument fill-byte form is rejected |
+| `.type <s>, @function` | ● | ● | | ● | ● | ● | semantic | `Sym_type {kind = Function}` |
+| `.type <s>, %function` | | | ● | | | | semantic | `Sym_type {kind = Function}` |
+| `.size <s>, <expr>` | ● | ● | ● | ● | ● | ● | semantic | `Sym_size {name; size}` |
+| `.syntax unified` | | | ● | | | | target state | ARM state |
+| `.arch <name>` | | | ● | | | | target state | ARM state |
+| `.fpu <name>` | | | ● | | | | target state | ARM state |
+| `.arm` | | | ● | | | | target state | ARM state |
+| `.eabi_attribute <t>, <v>` | | | ● | | | | target state | ARM state |
+| `.option <mode>` | | | | | ● | ● | target state | RISC-V state — no-op for `push`/`pop`/`pic`/`nopic`/`norelax`/`norvc`; `relax`/`rvc`/anything else is rejected |
+| `.cfi_startproc` | ● | ● | ● | ● | ● | ● | metadata | discarded |
+| `.cfi_endproc` | ● | ● | ● | ● | ● | ● | metadata | discarded |
+| `.cfi_adjust_cfa_offset <n>` | ● | ● | ● | ● | ● | ● | metadata | discarded |
+| `.cfi_rel_offset <r>, <n>` | | | ● | ● | | | metadata | discarded |
+
+`.bss`, `.local`, `.weak`, `.comm`, `.zero` and `.space` are parsed and
+normalized by the common table on every target — `directives.ml` names no
+target — so their ● above is a fact about the shared parser, not six
+separate implementations. §3's directive-normalization code is followed by
+the M3 image-layer machinery: the strong/common/weak resolver
+(`asm/lib/image/symtab.ml`, `asm/lib/image/image.ml`'s `plan_image`) and
+NOBITS-section handling both live below the normalized-directive boundary
+and are equally target-independent. See the notes below the data-directive
+table for what a NOBITS section, and `.comm`/`.local`/`.weak`, do at that
+layer.
 
 **Data directives, where the cell is the width in bytes rather than a tick.**
 `.word` is two bytes in GNU x86 syntax and four on ARM and AArch64, so one
@@ -435,27 +453,30 @@ universal table would be wrong on two targets, and the width comes from
 value naming a symbol becomes a fixup through `TARGET.data_fixup` rather than
 being evaluated here.
 
-| Directive | x86_32 | x86_64 | arm | aarch64 | Normalizes to |
-|---|:-:|:-:|:-:|:-:|---|
-| `.byte` | 1 | 1 | 1 | 1 | `Data {width; values}` |
-| `.short` | 2 | 2 | 2 | 2 | `Data {width; values}` |
-| `.hword` | | | 2 | 2 | `Data {width; values}` |
-| `.word` | **2** | **2** | **4** | **4** | `Data {width; values}` |
-| `.4byte` | | | 4 | 4 | `Data {width; values}` |
-| `.long` | 4 | 4 | 4 | 4 | `Data {width; values}` |
-| `.quad` | 8 | 8 | 8 | 8 | `Data {width; values}` |
-| `.xword` | | | | 8 | `Data {width; values}` |
+| Directive | x86_32 | x86_64 | arm | aarch64 | riscv32 | riscv64 | Normalizes to |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|---|
+| `.byte` | 1 | 1 | 1 | 1 | 1 | 1 | `Data {width; values}` |
+| `.short` | 2 | 2 | 2 | 2 | 2 | 2 | `Data {width; values}` |
+| `.hword` | | | 2 | 2 | 2 | 2 | `Data {width; values}` |
+| `.word` | **2** | **2** | **4** | **4** | **4** | **4** | `Data {width; values}` |
+| `.4byte` | | | 4 | 4 | 4 | 4 | `Data {width; values}` |
+| `.long` | 4 | 4 | 4 | 4 | 4 | 4 | `Data {width; values}` |
+| `.quad` | 8 | 8 | 8 | 8 | 8 | 8 | `Data {width; values}` |
+| `.xword` | | | | 8 | | | `Data {width; values}` |
+| `.dword` | | | | | 8 | 8 | `Data {width; values}` |
 
 CompCert emits `.4byte` for 32-bit address data on ARM and `.long` on x86, which
 is why both spellings are present rather than one canonical name: the table
-absorbs the dialect, and nothing downstream of it knows there was one.
+absorbs the dialect, and nothing downstream of it knows there was one. `.dword`
+is riscv's own spelling of the same eight-byte width `.quad` already gives x86,
+arm and aarch64 — riscv accepts both.
 
-Six notes on the rows that are not obvious:
+Notes on the rows that are not obvious:
 
 - **`.align` and `.balign` normalize to the same constructor with different
   values.** `.align 16` on x86 and `.balign 4` on ARM both mean "pad to this many
   bytes", and both become `Align`. The dialect difference GAS actually has —
-  `.align` meaning a power of two on some targets — does not arise for the four
+  `.align` meaning a power of two on some targets — does not arise for the six
   targets here, and the table above is the checked claim rather than a general
   one. A target where it does arise states its own unit in its directive handler.
   `.p2align` is the case where the unit genuinely differs, and it is **rejected**
@@ -473,16 +494,36 @@ Six notes on the rows that are not obvious:
   "section" — every fixture has two `.section`-ish things and only one of them
   is a section. M1's limit of one allocatable section is gone: `global_ldst`
   puts its object in `.data` and its code in `.text`, and M2 lays out both.
-  Merging sections *across inputs*, and linking more than one module, are M3.
+  Merging sections *across inputs*, and linking more than one module, landed in
+  M3 (§4.1) — `cross_call` and `cross_data` are the committed fixtures.
 
-- **A NOBITS section is refused**, whether written `.bss` or as a `.section`
-  with a `@nobits` or `%nobits` type argument, and the deferral is enforced
-  rather than documented (`simplify.nobits-section`, naming M3).
-  `Lowered_ast.Zero` already means initialized NUL bytes appended to the buffer,
-  which is `.space` in a PROGBITS section — so a NOBITS section taken as
-  PROGBITS would get real contents, producing a valid file of the wrong size
-  with everything after it at the wrong address. Both spellings of the type are
-  parsed for the same reason `@function` has two.
+- **A NOBITS section is accepted** (M3), whether written `.bss` or as a
+  `.section` with a `@nobits`/`%nobits` type argument — both spellings are
+  parsed for the same reason `@function` has two — and normalizes to a real
+  `Lowered_ast.Nobits` section kind rather than `Progbits`. The kind is what
+  decides what a `Zero` fragment inside the section costs: in a `Progbits`
+  section it is real, initialized NUL bytes appended to the buffer (which is
+  what `.space`/`.zero` mean there); in a `Nobits` section it is pure logical
+  extent with no bytes written. Putting actual content — a `Data` directive or
+  an instruction — inside a NOBITS section is rejected
+  (`image.nobits-content`), and merging a `Progbits` and a `Nobits` declaration
+  of the same section name across inputs is rejected too
+  (`image.kind-mismatch`) — both would silently produce a file of the wrong
+  size with everything after it at the wrong address.
+
+- **`.comm`, `.local` and `.weak` (M3) feed the strong/common/weak resolver**,
+  not `Directive.Global`'s plain visibility flag. `.weak` is sticky: once a
+  name is marked weak, a later `.local`/`.globl` on the same name does not
+  clear it; `.local`/`.globl` are otherwise plain last-wins against each
+  other. Several `.comm` declarations of one name fold into a single
+  reservation sized to the maximum requested size and aligned to the maximum
+  requested alignment, placed as an internal contribution to the canonical
+  `.bss` group — and a strong (`.globl`-and-defined) symbol of the same name
+  beats every `.comm` of it outright, with the commons simply discarded.
+  CompCert emits `.comm` for an uninitialized extern global and `.local` for
+  an uninitialized static; an initialized fixture never emits either, which is
+  why `cross_call`/`cross_data` don't exercise this path (see the M3 update
+  note above §3).
 
 - **`.cfi_*` are metadata, but their arguments are still lexed.** They are
   discarded at simplify, not skipped at parse. Skipping them lexically would mean
@@ -515,7 +556,7 @@ Legend:
 | ◐ | implemented, tested outside the portable matrix (needs a toolchain or an emulator) |
 | — | not applicable in this runtime by construction |
 
-### 4.1 M2 capabilities, native OCaml
+### 4.1 Target capabilities, native OCaml
 
 | Target | parse | simplify | lower | encode | decode | link | relax | reloc | execute-user | execute-system |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
@@ -523,17 +564,25 @@ Legend:
 | `x86_64` | ● | ● | ● | ● | ● | ● | ● | ● | ◐ | ○ |
 | `arm` | ● | ● | ● | ● | ● | ● | — | ● | ◐ | ○ |
 | `aarch64` | ● | ● | ● | ● | ● | ● | — | ● | ◐ | ○ |
+| `riscv32` | ● | ● | ● | ● | ● | ● | — | ● | ◐ | ○ |
+| `riscv64` | ● | ● | ● | ● | ● | ● | — | ● | ◐ | ○ |
 
-`link` is the restricted linker: one module, no imports, no weak or common
-symbols. Several allocatable sections in one module are supported at M2; merging
-sections across inputs and linking more than one module are M3. Every condition
-outside that is an explicit tested rejection, which is why the cell is ● and not
-◐ — the restriction is implemented, not merely unimplemented.
+`link` covers multi-module linking (M3): module-local fragment/symbol/fixup
+namespaces, name-only section merging across inputs, and the strong/common/weak
+resolver behind §3's `.comm`/`.local`/`.weak` rows
+(`asm/lib/image/symtab.ml`, `asm/lib/image/image.ml`'s `plan_image`), proven
+end to end by `cross_call` and `cross_data` on all six targets. Imports are
+still rejected: a fixup naming a symbol no input defines fails at planning,
+because `bind_image` takes section addresses and has no import resolver
+(§4.3). Every condition outside what `link` supports is an explicit tested
+rejection, which is why the cell is ● and not ◐ — the restriction that
+remains is implemented, not merely unimplemented.
 
-`relax` is `—` rather than ○ on the two fixed-width targets: A32 and A64 have no
-short and long encoding of one branch, so there is nothing to choose between.
-That is a property of the architecture, not a limit of this assembler, and ○ —
-which means "attempting it is a tested diagnostic" — would misstate it.
+`relax` is `—` rather than ○ on the four fixed-width targets: A32, A64, RV32
+and RV64 have no short and long encoding of one branch, so there is nothing to
+choose between. That is a property of each architecture, not a limit of this
+assembler, and ○ — which means "attempting it is a tested diagnostic" — would
+misstate it.
 
 `reloc` is the fixup pipeline end to end: lowering emits a symbolic fixup, layout
 carries it, binding patches it, and the differential gate checks the observation
@@ -583,16 +632,6 @@ dependency.
 
 Recorded here so that "not in the matrix" never has to be interpreted:
 
-- multi-module linking, and section merging *across inputs* (M3). Several
-  allocatable sections within **one** module are supported: the M2 global
-  fixture puts its object in `.data` and its code in `.text`
-- `.bss`, `@nobits`/`%nobits` sections, and any uninitialized storage
-  reservation (M3). Rejected rather than ignored — `section_of_args` parses the
-  section type argument precisely so a NOBITS input cannot slip into the
-  PROGBITS model and silently gain initialized bytes
-- `.comm` and `.local` (M3, with the rest of common allocation). CompCert emits
-  them only for uninitialized globals, so an initialized fixture avoids them
-- weak and common symbols, strong/weak resolution (M3)
 - imports: a fixup naming a symbol the module does not define is rejected during
   planning, because `bind_image` takes section addresses and has no import
   resolver. Accepting one would report bindable state the API cannot satisfy
@@ -611,6 +650,10 @@ Left the list in M2: fixups and relocations, branch relaxation, PC-relative and
 symbolic operand expressions, numeric local labels, relocation modifiers
 (`:lo12:`, `:lower16:`, `:upper16:`), ARM `movw`/`movt`, and several allocatable
 sections in one module.
+
+Left the list in M3: multi-module linking and section merging *across
+inputs*, `.bss`/NOBITS sections and any uninitialized storage reservation,
+`.comm`/`.local`/`.weak`, and strong/common/weak resolution — see §3 and §4.1.
 
 ## 5. The fixup and relaxation contract
 
