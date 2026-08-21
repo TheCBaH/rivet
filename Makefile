@@ -307,6 +307,41 @@ FIXTURE_VERIFY_GOALS := $(addprefix asm-fixtures-verify-,$(FIXTURE_TARGETS))
 FIXTURE_EXEC_GOALS   := $(addprefix asm-fixture-exec-,$(FIXTURE_TARGETS))
 FIXTURE_ORACLE_GOALS := $(addprefix asm-fixture-oracle-,$(FIXTURE_TARGETS))
 
+# Per-target compcert-lib: unlike compcert-lib-sync (which only ever reflects
+# whichever ARCH is currently configured in modules/CompCert/Makefile.config),
+# these sync any of the six targets into its own compcert-lib-<target>/src,
+# built as dune library compcert_<target> - so more than one target's
+# Asm.program can coexist for a future adapter to depend on. See
+# tools/compcert-lib-sync-target.sh and next.md's multi-arch compcert-lib
+# decision. Never touches a cross toolchain (extraction is pure
+# Rocq+OCaml+Menhir), unlike the fixture goals below.
+COMPCERT_LIB_SYNC_GOALS  := $(addprefix compcert-lib-sync-,$(FIXTURE_TARGETS))
+COMPCERT_LIB_BUILD_GOALS := $(addprefix compcert-lib-build-,$(FIXTURE_TARGETS))
+
+.PHONY: $(COMPCERT_LIB_SYNC_GOALS)
+$(COMPCERT_LIB_SYNC_GOALS): compcert-lib-sync-%:
+	tools/compcert-lib-sync-target.sh $*
+
+.PHONY: $(COMPCERT_LIB_BUILD_GOALS)
+$(COMPCERT_LIB_BUILD_GOALS): compcert-lib-build-%: compcert-lib-sync-%
+	cd compcert-lib-$* && opam exec -- dune build
+
+# Order item 2 of next.md's CompCert integration milestone: proves the
+# CompCert Asm.program adapter (asm/compcert_adapter/) against
+# test_coherence.ml's own assertions, for aarch64's return42 fixture. Not a
+# prerequisite of asm-test/asm-ci - needs Rocq (via
+# compcert-lib-build-aarch64) - gated by ASM_COMPCERT_ADAPTER exactly like
+# asm-melange-test is gated by ASM_MELANGE. Needs asm-submodules for the same
+# reason asm-build/asm-test do: foundation depends on the vendor/err_trace
+# submodule, and an uninitialized checkout should fail with that target's
+# actionable message rather than a dune missing-rule error.
+asm-compcert-adapter-test: asm-submodules compcert-lib-build-aarch64
+	cd compcert-lib-aarch64 && opam exec -- dune build @install
+	cd $(ASM_DIR) && \
+	  OCAMLPATH=$(CURDIR)/compcert-lib-aarch64/_build/install/default/lib:$$OCAMLPATH \
+	  COMPCERT_CONFIG=$(CURDIR)/.compcert-lib-work/build/aarch64/compcert.ini \
+	  ASM_COMPCERT_ADAPTER=true opam exec -- dune build @runtest
+
 # Static pattern rules, not `%` implicit rules. GNU Make skips implicit rule
 # search for .PHONY targets, so an implicit pattern plus a phony expansion
 # yields "Nothing to be done" and exit 0 - a silent no-op. Static pattern rules
@@ -581,6 +616,7 @@ compcert-export-archive-all:
   compcert-build-from-archive compcert-lib-sync compcert-lib-build compcert-lib-run \
   compcert-export-archive compcert-export-unarchive compcert-export-build compcert-export-run \
   compcert-export-archive-all \
+  asm-compcert-adapter-test \
   asm-submodules asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
   tools-build tools-test tools-integration tools-boundary tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-matrix tools-matrix-diff \
   asm-fixtures-check asm-characterize-verify asm-cross-setup asm-libc-cross-smoke asm-cross-smoke-selftest asm-fixtures-regen \

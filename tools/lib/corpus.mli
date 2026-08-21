@@ -39,51 +39,88 @@ val check : Fpath.t -> Manifest.t -> (int * finding list, Tool_error.t) Err.t
 
 val stem_of_source : string -> (string, Tool_error.t) Err.t
 (** The basename without its .c suffix. This is why return42 keeps the
-    asm_test_entry.c spelling: CompCert writes the source path into its
-    "# Command line:" banner, so renaming the file would change every hash. *)
+    asm_test_entry.c spelling: CompCert writes the source path into its "#
+    Command line:" banner, so renaming the file would change every hash. *)
 
 val previous_and_source : case -> (Manifest.t option * string, Tool_error.t) Err.t
 (** The case's committed manifest, if it has one, and the source path to build
     from.
 
-    SOURCE_REL comes from that manifest and only falls back to
-    [source/<case>.c] for a case being generated for the first time. Deriving
-    it rather than fixing it is what lets return42 keep the asm_test_entry.c
-    spelling its committed bytes were generated with: CompCert writes the
-    source path into its "# Command line:" banner, so renaming the file would
-    change every one of that case's hashes. *)
+    SOURCE_REL comes from that manifest and only falls back to [source/<case>.c]
+    for a case being generated for the first time. Deriving it rather than
+    fixing it is what lets return42 keep the asm_test_entry.c spelling its
+    committed bytes were generated with: CompCert writes the source path into
+    its "# Command line:" banner, so renaming the file would change every one of
+    that case's hashes. *)
 
 val source_units : case -> ((string * string) list, Tool_error.t) Err.t
 (** M3 (.ai/asm_plan.md §12): the case's [source-unit] records, or [[]] for a
     case with no manifest yet, or one whose manifest predates M3 and carries
-    only the single legacy [source] record - a caller reads that case's own
-    ONE source through {!previous_and_source} exactly as before, and decides
-    its own single-source unit-naming convention itself, unchanged. This
-    function answers only "is this case multi-source", not "what is this
-    case's source" - the two legacy and multi-source paths stay genuinely
-    separate rather than being forced through one fabricated default. *)
+    only the single legacy [source] record - a caller reads that case's own ONE
+    source through {!previous_and_source} exactly as before, and decides its own
+    single-source unit-naming convention itself, unchanged. This function
+    answers only "is this case multi-source", not "what is this case's source" -
+    the two legacy and multi-source paths stay genuinely separate rather than
+    being forced through one fabricated default. *)
 
-val sources : case -> ((string * string) list, Tool_error.t) Err.t
-(** Every compilation unit a case has, as [(unit_name, source_rel)], in build
-    order. This is the one function fixture tooling should loop over - it
-    never returns [[]].
+val origins : case -> ((string * string) list, Tool_error.t) Err.t
+(** M4 (.ai/asm_plan.md §12): the case's [origin] records as
+    [(unit_stem, upstream_path)], or [[]] for a case with no manifest yet or no
+    such records - the same shape and fallback as {!source_units}. *)
 
-    - A manifest with [source-unit] records: exactly those (via
-      {!source_units}).
-    - A manifest with only the legacy [source] record: that one source,
-      under the case's own name - an already-committed single-source case's
-      scope is what its manifest says, regardless of what else later lands
-      in [source/].
-    - No manifest yet (a case being authored for the first time): every
-      [.c] file directly under [source/], sorted. Exactly one file keeps the
-      historical single-source convention (unit named after the case, like
-      {!previous_and_source}'s fallback); more than one makes this a
-      multi-source case from its very first [--regen], with each unit named
-      after its own file's stem (via {!stem_of_source}). *)
+val supported_targets : case -> (Target.t list, Tool_error.t) Err.t
+(** M4: the case's declared [supported-targets], defaulted to all six when the
+    manifest has none or doesn't exist yet - the single source of truth for
+    every target/case traversal, consulted before any compiler requirement or
+    target-directory filesystem access. *)
+
+val supports_target : case -> Target.t -> (bool, Tool_error.t) Err.t
+(** {!supported_targets} membership, for the common case a caller just wants a
+    skip/don't-skip decision. *)
+
+type unit_source =
+  | Compiled of { unit : string; c_path : string }
+      (** A unit compiled from a project [.c] file via [ccomp] - the only kind
+          that existed before M4. *)
+  | Preexisting of { unit : string; origin : string }
+      (** M4: a unit whose committed [<target>/<stem>.s] is preprocessed from an
+          upstream, not-project-authored [.S] source (e.g. a CompCert runtime
+          helper) rather than compiled - [unit] is always its declared stem. *)
+
+val unit_name : unit_source -> string
+
+val sources : case -> (unit_source list, Tool_error.t) Err.t
+(** Every compilation unit a case has, [Compiled] or [Preexisting], merged and
+    sorted by unit name. This is the one function fixture tooling should loop
+    over - it never returns [[]], and every consumer (regen, verify, rehash, the
+    GNU oracle, exec) sees units in this same order, matching
+    [asm/test/oracle/exec.ml]'s and
+    [asm/test/differential/test_differential.ml]'s independent
+    lexical-by-filename traversal of the committed [.s] files those units
+    materialize into.
+
+    - [Compiled] units: a manifest with [source-unit] records (exactly those,
+      via {!source_units}); a manifest with only the legacy [source] record
+      (that one source, under the case's own name - an already-committed
+      single-source case's scope is what its manifest says, regardless of what
+      else later lands in [source/]); no manifest yet (every [.c] file directly
+      under [source/], sorted - exactly one file keeps the historical
+      single-source convention, more than one makes this a multi-source case
+      from its very first [--regen]).
+    - [Preexisting] units: every [origin] record, independently of whichever
+      [Compiled] shape above applies - a case can have a legacy single [source]
+      entry point plus [origin]-declared helper units at once (M4's own
+      [i64_divmod] fixture does).
+
+    Rejects two units (of either kind, including a legacy single-[source] case's
+    implicit case-name unit) sharing one name. *)
 
 val unit_stems : case -> ((string * string) list, Tool_error.t) Err.t
-(** {!sources}, with each unit's source path already reduced to its stem via
-    {!stem_of_source} - what the oracle and exec tooling key a case's
-    per-target generated files by (`<target>/<stem>.s`), one call away from
-    {!sources} rather than every caller reimplementing the same
-    [List.map stem_of_source]. *)
+(** {!sources}, with each unit reduced to [(unit_name, stem)] - what the oracle
+    and exec tooling key a case's per-target generated files by
+    (`<target>/<stem>.s`). A [Compiled] unit's stem comes from {!stem_of_source}
+    on its [.c] path; a [Preexisting] unit's stem is always its own [unit] name,
+    since [origin:<stem>] declares them as the same thing. This function does
+    not distinguish the two kinds in its return type - a caller that only needs
+    "which [.s] files does this case have" (the oracle and exec tooling) never
+    needs to. *)

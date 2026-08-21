@@ -174,6 +174,11 @@
     [18 cost=0] jcc-rel          relax jcc
                                    d8               jcc.d8(){0111 cc <target:8@0 pcrel8-branch>}
                                    d32              jcc.d32(){000011111000 cc le32}
+    [19 cost=0] push-r           push-r(){prefixes 01010 reg:3u}
+    [20 cost=0] unary-rm         unary-rm(){prefixes 11110111 modrm}
+    [21 cost=0] alu-r-rm         alu-r-rm(){prefixes alu-r-rm-op modrm}
+    [22 cost=0] shift1-rm        shift1-rm(){prefixes 11010001 modrm}
+    [23 cost=0] dec-r            dec-r(){01001 reg:3u}
   prefixes(){no-asz no-rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
@@ -186,8 +191,9 @@
     [7 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-c32}
   le32(){imm:32u}
   disp-sym(){le32}
-  alu-rm-r-op[3]{opcode:8u}
+  alu-rm-r-op[6]{opcode:8u}
   cc[16]{cc:4u}
+  alu-r-rm-op[2]{opcode:8u}
   no-asz(){()}
   no-rex(){()}
   sib(){scale:2u index:3u base:3u}
@@ -368,6 +374,10 @@
     [18 cost=0] jcc-rel          relax jcc
                                    d8               jcc.d8(){0111 cc <target:8@0 pcrel8-branch>}
                                    d32              jcc.d32(){000011111000 cc le32}
+    [19 cost=0] push-r           push-r(){prefixes 01010 reg:3u}
+    [20 cost=0] unary-rm         unary-rm(){prefixes 11110111 modrm}
+    [21 cost=0] alu-r-rm         alu-r-rm(){prefixes alu-r-rm-op modrm}
+    [22 cost=0] shift1-rm        shift1-rm(){prefixes 11010001 modrm}
   prefixes(){asz rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
@@ -379,8 +389,9 @@
     [6 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
     [7 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-c32}
   le32(){imm:32u}
-  alu-rm-r-op[3]{opcode:8u}
+  alu-rm-r-op[6]{opcode:8u}
   cc[16]{cc:4u}
+  alu-r-rm-op[2]{opcode:8u}
   alt asz
     [0 cost=0] asz-present      asz-present(){01100111}
     [1 cost=0] asz-absent       asz-absent(){()}

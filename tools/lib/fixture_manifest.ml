@@ -3,14 +3,39 @@ type outcome = Up_to_date | Changed of string
 let ( let* ) = Result.bind
 let record key value = { Manifest.key; value }
 
+(* M4 (.ai/asm_plan.md §12): [Compiled] units only - a [Preexisting] unit's
+   identity comes from its own [origin:] record (carried forward
+   unconditionally below, never re-derived here), not from a [source]/
+   [source-unit] record, since it has no project [.c] file to name. *)
 let source_records sources =
-  match sources with
+  let compiled =
+    List.filter_map
+      (function
+        | Corpus.Compiled { unit; c_path } -> Some (unit, c_path) | Corpus.Preexisting _ -> None)
+      sources
+  in
+  match compiled with
   (* Exactly one unit keeps the legacy [source] key, byte-identical to every
      already-committed single-source manifest - the [source-unit:] key family
      is what a genuinely multi-source case gets instead, never a length-1
      rewrite of a case that never needed it. *)
   | [ (_, source_rel) ] -> [ record Manifest.Source (Some source_rel) ]
   | many -> List.map (fun (name, rel) -> record (Manifest.Source_unit name) (Some rel)) many
+
+(* M4: the five v3/target-restriction key families are author-declared, never
+   derived from a toolchain or from [sources] - unconditionally carried
+   forward from [previous], the same "don't drop what the manifest exists to
+   carry" reasoning [Ccomp_version]'s no-compiler branch already uses below,
+   just without that branch's condition. *)
+let single_carry_forward previous key =
+  match previous with
+  | None -> []
+  | Some prev -> ( match Manifest.find prev key with None -> [] | Some v -> [ record key v ])
+
+let carry_forward_family previous is_member =
+  match previous with
+  | None -> []
+  | Some prev -> List.filter (fun r -> is_member r.Manifest.key) (Manifest.records prev)
 
 let records ~case ~targets ~work_root ~previous ~sources =
   let per_target t =
@@ -61,9 +86,16 @@ let records ~case ~targets ~work_root ~previous ~sources =
         hash_records (record (Manifest.Sha256 f) (Some h) :: acc) rest
   in
   let* hashes = hash_records [] files in
+  let m4_carried =
+    single_carry_forward previous Manifest.Abi_version
+    @ single_carry_forward previous Manifest.Supported_targets
+    @ carry_forward_family previous (function
+      | Manifest.Expected_value _ | Manifest.Observation _ | Manifest.Origin _ -> true
+      | _ -> false)
+  in
   Ok
     ((record Manifest.Generator (Some "compcert-tools fixture regen") :: source_records sources)
-    @ target_records @ hashes)
+    @ target_records @ hashes @ m4_carried)
 
 let run_diff ~old_path ~new_path =
   (* Statuses [0;1] only: 0 is identical, 1 is differs, and anything else means

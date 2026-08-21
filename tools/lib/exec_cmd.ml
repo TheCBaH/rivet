@@ -50,69 +50,76 @@ let run_one repo ~target ~case_name =
   let c = Target.config target in
   let target_s = Target.to_string target in
   let* case = Corpus.resolve corpus case_name in
-  let* units = Corpus.unit_stems case in
-  let* want =
-    Expected_status.read ~case:case_name Fpath.(case.Corpus.root / "expected-status.txt")
-  in
-  let unit_sources =
-    List.map
-      (fun (unit_name, stem) ->
-        (unit_name, obj_name units unit_name, Fpath.(case.Corpus.root / target_s / (stem ^ ".s"))))
-      units
-  in
-  let oracle = Fpath.(case.Corpus.root / target_s / "oracle" / "linked") in
-  let missing =
-    List.filter (fun (_, _, p) -> not (Sys.file_exists (Fpath.to_string p))) unit_sources
-  in
-  match missing with
-  | (_, _, p) :: _ ->
-      err Tool_error.Read_file (Printf.sprintf "missing fixture %s" (Fpath.to_string p))
-  | [] -> (
-      let* root = artifacts repo in
-      let work = Fpath.(Tool_workspace.read_path root / target_s / case_name) in
-      (* Recreated, not reused: a stale image from an earlier run must never be
+  let* supported = Corpus.supports_target case target in
+  if not supported then
+    Ok
+      ( Printf.sprintf "# skipped: %s does not support %s" case_name target_s,
+        Printf.sprintf "qemu: %s/%s: skipped (unsupported target)" case_name target_s )
+  else
+    let* units = Corpus.unit_stems case in
+    let* want =
+      Expected_status.read ~case:case_name Fpath.(case.Corpus.root / "expected-status.txt")
+    in
+    let unit_sources =
+      List.map
+        (fun (unit_name, stem) ->
+          (unit_name, obj_name units unit_name, Fpath.(case.Corpus.root / target_s / (stem ^ ".s"))))
+        units
+    in
+    let oracle = Fpath.(case.Corpus.root / target_s / "oracle" / "linked") in
+    let missing =
+      List.filter (fun (_, _, p) -> not (Sys.file_exists (Fpath.to_string p))) unit_sources
+    in
+    match missing with
+    | (_, _, p) :: _ ->
+        err Tool_error.Read_file (Printf.sprintf "missing fixture %s" (Fpath.to_string p))
+    | [] -> (
+        let* root = artifacts repo in
+        let work = Fpath.(Tool_workspace.read_path root / target_s / case_name) in
+        (* Recreated, not reused: a stale image from an earlier run must never be
        what gets executed and compared. *)
-      let* () = Tool_fs.remove_tree work in
-      let* () = Tool_fs.mkdir_p work in
+        let* () = Tool_fs.remove_tree work in
+        let* () = Tool_fs.mkdir_p work in
 
-      let objs = List.map (fun (_, o, _) -> o) unit_sources in
-      let start_s = Fpath.(work / "start.s") in
-      let* () = Tool_fs.write start_s (Startup.source target) in
-      let* () = Tool_fs.write Fpath.(work / "link.ld") (Link_script.exec target ~objs) in
-      let start_o = Fpath.(work / "start.o") in
-      let* () = Gnu_tools.assemble tools ~cwd:work ~src:start_s ~obj:start_o in
-      let* () =
-        let rec go = function
-          | [] -> Ok ()
-          | (_, o, src) :: rest ->
-              let* () = Gnu_tools.assemble tools ~cwd:work ~src ~obj:Fpath.(work / o) in
-              go rest
+        let objs = List.map (fun (_, o, _) -> o) unit_sources in
+        let start_s = Fpath.(work / "start.s") in
+        let* () = Tool_fs.write start_s (Startup.source target) in
+        let* () = Tool_fs.write Fpath.(work / "link.ld") (Link_script.exec target ~objs) in
+        let start_o = Fpath.(work / "start.o") in
+        let* () = Gnu_tools.assemble tools ~cwd:work ~src:start_s ~obj:start_o in
+        let* () =
+          let rec go = function
+            | [] -> Ok ()
+            | (_, o, src) :: rest ->
+                let* () = Gnu_tools.assemble tools ~cwd:work ~src ~obj:Fpath.(work / o) in
+                go rest
+          in
+          go unit_sources
         in
-        go unit_sources
-      in
-      let elf = Fpath.(work / "fixture.elf") in
-      let* () =
-        Gnu_tools.link tools ~cwd:work
-          ~script:Fpath.(work / "link.ld")
-          ~out:elf ~objs:("start.o" :: objs)
-      in
+        let elf = Fpath.(work / "fixture.elf") in
+        let* () =
+          Gnu_tools.link tools ~cwd:work
+            ~script:Fpath.(work / "link.ld")
+            ~out:elf ~objs:("start.o" :: objs)
+        in
 
-      let* class_, machine = Gnu_tools.elf_identity tools elf in
-      let* readelf = Gnu_tools.readelf_exec tools elf in
-      let* () = Tool_fs.write Fpath.(work / "readelf.txt") readelf in
-      let* disasm =
-        Gnu_tools.objdump_disasm tools elf ~scrub:work ~drop_banner:false ~riscv_numeric:true
-      in
-      let* () = Tool_fs.write Fpath.(work / "objdump.txt") disasm in
-      if class_ <> c.Target.elf_class then
-        err Tool_error.Validate
-          (Printf.sprintf "%s/%s: expected %s, got %s" case_name target_s c.Target.elf_class class_)
-      else if machine <> c.Target.readelf_machine then
-        err Tool_error.Validate
-          (Printf.sprintf "%s/%s: expected %s, got %s" case_name target_s c.Target.readelf_machine
-             machine)
-      else
-        (* {1 The bytes about to execute are the bytes the oracle accepted}
+        let* class_, machine = Gnu_tools.elf_identity tools elf in
+        let* readelf = Gnu_tools.readelf_exec tools elf in
+        let* () = Tool_fs.write Fpath.(work / "readelf.txt") readelf in
+        let* disasm =
+          Gnu_tools.objdump_disasm tools elf ~scrub:work ~drop_banner:false ~riscv_numeric:true
+        in
+        let* () = Tool_fs.write Fpath.(work / "objdump.txt") disasm in
+        if class_ <> c.Target.elf_class then
+          err Tool_error.Validate
+            (Printf.sprintf "%s/%s: expected %s, got %s" case_name target_s c.Target.elf_class
+               class_)
+        else if machine <> c.Target.readelf_machine then
+          err Tool_error.Validate
+            (Printf.sprintf "%s/%s: expected %s, got %s" case_name target_s c.Target.readelf_machine
+               machine)
+        else
+          (* {1 The bytes about to execute are the bytes the oracle accepted}
 
          The compared set has to be CLOSED, not merely non-empty. ld places an
          allocated input section the script never mentions as an orphan output
@@ -121,99 +128,99 @@ let run_one repo ~target ~case_name =
          loop driven by which oracle files exist would never look at them. The
          oracle's OWN manifest is the source of truth for what it covers, not
          a static list - a NOBITS section legitimately has no .hex file. *)
-        let* linked = read_linked_manifest oracle in
-        let compared = ".start" :: List.map (fun e -> e.le_section) linked in
-        let* headers = Gnu_tools.objdump_headers tools elf in
-        let* allocated = Gnu_output.alloc_sections headers in
-        let unexpected = List.filter (fun s -> not (List.mem s compared)) allocated in
-        if unexpected <> [] then
-          err Tool_error.Validate
-            (Printf.sprintf
-               "%s/%s: allocated section(s) in the executed image with no oracle entry: %s"
-               case_name target_s (String.concat " " unexpected))
-        else
-          (* .start is the one allocated output section with no oracle
+          let* linked = read_linked_manifest oracle in
+          let compared = ".start" :: List.map (fun e -> e.le_section) linked in
+          let* headers = Gnu_tools.objdump_headers tools elf in
+          let* allocated = Gnu_output.alloc_sections headers in
+          let unexpected = List.filter (fun s -> not (List.mem s compared)) allocated in
+          if unexpected <> [] then
+            err Tool_error.Validate
+              (Printf.sprintf
+                 "%s/%s: allocated section(s) in the executed image with no oracle entry: %s"
+                 case_name target_s (String.concat " " unexpected))
+          else
+            (* .start is the one allocated output section with no oracle
            counterpart, so it is the one place bytes can hide. Trusting it by
            name is not enough: ld merges an orphan input section into an
            existing output section of the SAME NAME, so a fixture carrying its
            own .start would be appended to our stub and executed even though the
            script selects only start.o(.text.startup). Size equality against the
            stub establishes provenance. *)
-          let* start_headers = Gnu_tools.objdump_headers tools start_o in
-          match
-            ( Gnu_output.section_size start_headers ~name:".text.startup",
-              Gnu_output.section_size headers ~name:".start" )
-          with
-          | None, _ ->
-              err Tool_error.Validate
-                (Printf.sprintf "%s/%s: startup stub has no .text.startup" case_name target_s)
-          | Some expected, actual when Some expected <> actual ->
-              err Tool_error.Validate
-                (Printf.sprintf
-                   "%s/%s: .start is 0x%s bytes, expected 0x%s from the startup stub - the fixture \
-                    contributed to it"
-                   case_name target_s
-                   (Option.value ~default:"<absent>" actual)
-                   expected)
-          | Some _, _ ->
-              (* A NOBITS section has no bytes to extract from the EXECUTED
+            let* start_headers = Gnu_tools.objdump_headers tools start_o in
+            match
+              ( Gnu_output.section_size start_headers ~name:".text.startup",
+                Gnu_output.section_size headers ~name:".start" )
+            with
+            | None, _ ->
+                err Tool_error.Validate
+                  (Printf.sprintf "%s/%s: startup stub has no .text.startup" case_name target_s)
+            | Some expected, actual when Some expected <> actual ->
+                err Tool_error.Validate
+                  (Printf.sprintf
+                     "%s/%s: .start is 0x%s bytes, expected 0x%s from the startup stub - the \
+                      fixture contributed to it"
+                     case_name target_s
+                     (Option.value ~default:"<absent>" actual)
+                     expected)
+            | Some _, _ ->
+                (* A NOBITS section has no bytes to extract from the EXECUTED
                  image either - the same objcopy-reports-empty signal a
                  genuinely absent section gives - so it is checked by its
                  logical size instead, read off the executed ELF's own
                  section headers and compared against the oracle's recorded
                  size (M3 §11, .ai/asm_plan.md §12). *)
-              let rec compare_sections = function
-                | [] -> Ok ()
-                | { le_section = section; le_kind = `Nobits; le_size } :: rest ->
-                    let got = Gnu_output.section_size headers ~name:section in
-                    let got_size = Option.map (fun s -> int_of_string ("0x" ^ s)) got in
-                    if got_size <> Some le_size then
-                      err Tool_error.Validate
-                        (Printf.sprintf "%s/%s: executed %s is %s bytes, oracle recorded 0x%x"
-                           case_name target_s section
-                           (Option.value ~default:"<absent>" got)
-                           le_size)
-                    else compare_sections rest
-                | { le_section = section; le_kind = `Progbits; _ } :: rest ->
-                    let name = hex_name section in
-                    let committed = Fpath.(oracle / (name ^ ".hex")) in
-                    let bin = Fpath.(work / (name ^ ".bin")) in
-                    let* _ = Gnu_tools.objcopy_section tools ~src:elf ~section ~out:bin in
-                    let* bytes = Tool_fs.read bin in
-                    let dumped = Hex_dump.of_bytes bytes in
-                    let* () = Tool_fs.write Fpath.(work / (name ^ ".hex")) dumped in
-                    let* want_hex = Tool_fs.read committed in
-                    if dumped <> want_hex then
-                      err Tool_error.Validate
-                        (Printf.sprintf "%s/%s: executed %s differs from controlled-link oracle"
-                           case_name target_s section)
-                    else compare_sections rest
-              in
-              let* () = compare_sections linked in
-              let* status, _out, errout = Gnu_tools.qemu_run tools ~exe:elf ~timeout_s in
-              let code =
-                match status with
-                | Process_status.Exited n -> n
-                | Process_status.Signaled n -> 128 + n
-                | Process_status.Timed_out -> 124
-              in
-              let* () =
-                Tool_fs.write Fpath.(work / "exit-status.txt") (string_of_int code ^ "\n")
-              in
-              if code = 124 then
-                err Tool_error.Exec (Printf.sprintf "%s/%s: QEMU timed out" case_name target_s)
-              else if code <> want then (
-                prerr_string errout;
-                flush stderr;
-                err Tool_error.Validate
-                  (Printf.sprintf "%s/%s: expected exit status %d, got %d" case_name target_s want
-                     code))
-              else
-                Ok
-                  ( Printf.sprintf "+ timeout %ds %s %s" timeout_s c.Target.qemu_bin
-                      (Fpath.to_string elf),
-                    Printf.sprintf "qemu: %s/%s: %s %s, exit %d" case_name target_s class_ machine
-                      code ))
+                let rec compare_sections = function
+                  | [] -> Ok ()
+                  | { le_section = section; le_kind = `Nobits; le_size } :: rest ->
+                      let got = Gnu_output.section_size headers ~name:section in
+                      let got_size = Option.map (fun s -> int_of_string ("0x" ^ s)) got in
+                      if got_size <> Some le_size then
+                        err Tool_error.Validate
+                          (Printf.sprintf "%s/%s: executed %s is %s bytes, oracle recorded 0x%x"
+                             case_name target_s section
+                             (Option.value ~default:"<absent>" got)
+                             le_size)
+                      else compare_sections rest
+                  | { le_section = section; le_kind = `Progbits; _ } :: rest ->
+                      let name = hex_name section in
+                      let committed = Fpath.(oracle / (name ^ ".hex")) in
+                      let bin = Fpath.(work / (name ^ ".bin")) in
+                      let* _ = Gnu_tools.objcopy_section tools ~src:elf ~section ~out:bin in
+                      let* bytes = Tool_fs.read bin in
+                      let dumped = Hex_dump.of_bytes bytes in
+                      let* () = Tool_fs.write Fpath.(work / (name ^ ".hex")) dumped in
+                      let* want_hex = Tool_fs.read committed in
+                      if dumped <> want_hex then
+                        err Tool_error.Validate
+                          (Printf.sprintf "%s/%s: executed %s differs from controlled-link oracle"
+                             case_name target_s section)
+                      else compare_sections rest
+                in
+                let* () = compare_sections linked in
+                let* status, _out, errout = Gnu_tools.qemu_run tools ~exe:elf ~timeout_s in
+                let code =
+                  match status with
+                  | Process_status.Exited n -> n
+                  | Process_status.Signaled n -> 128 + n
+                  | Process_status.Timed_out -> 124
+                in
+                let* () =
+                  Tool_fs.write Fpath.(work / "exit-status.txt") (string_of_int code ^ "\n")
+                in
+                if code = 124 then
+                  err Tool_error.Exec (Printf.sprintf "%s/%s: QEMU timed out" case_name target_s)
+                else if code <> want then (
+                  prerr_string errout;
+                  flush stderr;
+                  err Tool_error.Validate
+                    (Printf.sprintf "%s/%s: expected exit status %d, got %d" case_name target_s want
+                       code))
+                else
+                  Ok
+                    ( Printf.sprintf "+ timeout %ds %s %s" timeout_s c.Target.qemu_bin
+                        (Fpath.to_string elf),
+                      Printf.sprintf "qemu: %s/%s: %s %s, exit %d" case_name target_s class_ machine
+                        code ))
 
 let provenance repo ~target =
   let tools = Gnu_tools.for_target target in

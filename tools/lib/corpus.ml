@@ -116,6 +116,39 @@ let source_units case =
     | Error e -> Error (List.hd (Err.Error.kind e))
     | Ok m -> Manifest.source_units m
 
+(* M4 (.ai/asm_plan.md §12): a case's [origin:] records, or [[]] for a case
+   with no manifest yet or no such records - the same shape and fallback as
+   {!source_units}. *)
+let origins case =
+  let manifest = Fpath.(case.root / "manifest.txt") in
+  if not (Sys.file_exists (Fpath.to_string manifest)) then Ok []
+  else
+    let ( let* ) = Result.bind in
+    let* text = Tool_fs.read manifest in
+    match Manifest.parse text with
+    | Error e -> Error (List.hd (Err.Error.kind e))
+    | Ok m -> Manifest.origins m
+
+(* M4: [Supported_targets], decoded and defaulted to all six - the single
+   source of truth every target/case traversal consults before any compiler
+   requirement or target-directory filesystem access. *)
+let supported_targets case =
+  let manifest = Fpath.(case.root / "manifest.txt") in
+  if not (Sys.file_exists (Fpath.to_string manifest)) then Ok Target.all
+  else
+    let ( let* ) = Result.bind in
+    let* text = Tool_fs.read manifest in
+    match Manifest.parse text with
+    | Error e -> Error (List.hd (Err.Error.kind e))
+    | Ok m -> (
+        let* ts = Manifest.supported_targets m in
+        match ts with Some ts -> Ok ts | None -> Ok Target.all)
+
+let supports_target case target =
+  let ( let* ) = Result.bind in
+  let* ts = supported_targets case in
+  Ok (List.mem target ts)
+
 (* Top-level only (not recursive): a case's own [source/] directory is where
    its compilation units live, and going deeper would risk picking up a
    helper header or a nested fixture's own tree. *)
@@ -129,11 +162,20 @@ let discover_c_files case =
       |> List.sort String.compare
       |> fun names -> Ok (List.map (fun n -> "source/" ^ n) names)
 
-let sources case =
+type unit_source =
+  | Compiled of { unit : string; c_path : string }
+  | Preexisting of { unit : string; origin : string }
+
+let unit_name = function Compiled { unit; _ } | Preexisting { unit; _ } -> unit
+
+(* Exactly the pre-M4 [sources] logic, restricted to the [Compiled] units a
+   case has - a [source-unit]/legacy-[source]/first-authoring case ladder
+   independent of whatever [origin:] records the case also carries. *)
+let compiled_units case =
   let ( let* ) = Result.bind in
-  let* units = source_units case in
-  match units with
-  | _ :: _ -> Ok units
+  let* su = source_units case in
+  match su with
+  | _ :: _ -> Ok (List.map (fun (unit, c_path) -> Compiled { unit; c_path }) su)
   | [] -> (
       (* No [source-unit] records: either a legacy single-source manifest
          already pins ONE source, which is the case's whole scope regardless
@@ -143,30 +185,76 @@ let sources case =
       let manifest = Fpath.(case.root / "manifest.txt") in
       if Sys.file_exists (Fpath.to_string manifest) then
         let* _prev, source_rel = previous_and_source case in
-        Ok [ (case.name, source_rel) ]
+        Ok [ Compiled { unit = case.name; c_path = source_rel } ]
       else
         let* found = discover_c_files case in
         match found with
         | [] ->
             let* _prev, source_rel = previous_and_source case in
-            Ok [ (case.name, source_rel) ]
-        | [ rel ] -> Ok [ (case.name, rel) ]
+            Ok [ Compiled { unit = case.name; c_path = source_rel } ]
+        | [ rel ] -> Ok [ Compiled { unit = case.name; c_path = rel } ]
         | many ->
             let rec go acc = function
               | [] -> Ok (List.rev acc)
               | rel :: rest ->
                   let* stem = stem_of_source rel in
-                  go ((stem, rel) :: acc) rest
+                  go (Compiled { unit = stem; c_path = rel } :: acc) rest
             in
             go [] many)
+
+let preexisting_units case =
+  let ( let* ) = Result.bind in
+  let* og = origins case in
+  Ok (List.map (fun (unit, origin) -> Preexisting { unit; origin }) og)
+
+(* M4 (.ai/asm_plan.md §12): every compilation unit a case has, [Compiled]
+   (from a project [.c] file) or [Preexisting] (an upstream [.S] source,
+   e.g. a CompCert runtime helper, preprocessed rather than compiled) -
+   merged and sorted by unit name, the SAME comparison rule
+   [asm/test/oracle/exec.ml]'s [units_of] and
+   [asm/test/differential/test_differential.ml]'s [unit_paths] already apply
+   to committed [.s] filenames, so once a unit is materialized as an
+   ordinary [<target>/<stem>.s] file every consumer agrees on one order by
+   construction. Rejects two units (of either kind, including the implicit
+   case-name unit a legacy single-[source] case has) sharing one name -
+   [Manifest.parse] cannot check this itself, since it has no case name to
+   compare an [Origin] stem against. *)
+let sources case =
+  let ( let* ) = Result.bind in
+  let* compiled = compiled_units case in
+  let* preexisting = preexisting_units case in
+  let merged = compiled @ preexisting in
+  let has_dup =
+    let seen = Hashtbl.create 8 in
+    List.exists
+      (fun u ->
+        let n = unit_name u in
+        if Hashtbl.mem seen n then true
+        else (
+          Hashtbl.add seen n ();
+          false))
+      merged
+  in
+  if has_dup then
+    err Tool_error.Validate
+      (Printf.sprintf
+         "case %S has two units sharing one name (an origin unit colliding with a compiled unit, \
+          or with the case's own implicit unit name)"
+         case.name)
+  else Ok (List.sort (fun a b -> String.compare (unit_name a) (unit_name b)) merged)
 
 let unit_stems case =
   let ( let* ) = Result.bind in
   let* units = sources case in
   let rec go acc = function
     | [] -> Ok (List.rev acc)
-    | (unit_name, source_rel) :: rest ->
-        let* stem = stem_of_source source_rel in
-        go ((unit_name, stem) :: acc) rest
+    | Compiled { unit; c_path } :: rest ->
+        let* stem = stem_of_source c_path in
+        go ((unit, stem) :: acc) rest
+    (* A [Preexisting] unit's declared stem IS its name - [origin:<stem>]
+       names the unit by the committed [<target>/<stem>.s] it will be
+       preprocessed into, unlike a [Compiled] unit's name, which need not
+       equal its [.c] file's stem. *)
+    | Preexisting { unit; origin = _ } :: rest -> go ((unit, unit) :: acc) rest
   in
   go [] units

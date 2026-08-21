@@ -117,7 +117,7 @@
 
 (executable
  (name exec)
- (modules exec)
+ (modules exec fixture_meta)
  (modes exe)
  (libraries
   asm_oracle

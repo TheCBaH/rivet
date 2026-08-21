@@ -60,18 +60,18 @@ CompCert's runtime library, per target.
   > done
   x86_32   i64_dtos      error[x86.operand]: unknown register %ah
   x86_32   i64_dtou      error[x86.operand]: unknown register %ah
-  x86_32   i64_sar       error[x86.simplify]: unknown instruction testb
-  x86_32   i64_sdiv      error[x86.simplify]: unknown instruction pushl
-  x86_32   i64_shl       error[x86.simplify]: unknown instruction testb
-  x86_32   i64_shr       error[x86.simplify]: unknown instruction testb
-  x86_32   i64_smod      error[x86.simplify]: unknown instruction pushl
-  x86_32   i64_smulh     error[x86.simplify]: unknown instruction pushl
+  x86_32   i64_sar       error[x86.simplify]: 8-bit operands are not in M1 scope
+  x86_32   i64_sdiv     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
+  x86_32   i64_shl       error[x86.simplify]: 8-bit operands are not in M1 scope
+  x86_32   i64_shr       error[x86.simplify]: 8-bit operands are not in M1 scope
+  x86_32   i64_smod     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
+  x86_32   i64_smulh     error[x86.simplify]: cmov takes two register operands in M2
   x86_32   i64_stod      error[x86.simplify]: unknown instruction fildll
   x86_32   i64_stof      error[x86.simplify]: unknown instruction fildll
-  x86_32   i64_udiv      error[x86.simplify]: unknown instruction pushl
-  x86_32   i64_udivmod   error[x86.simplify]: unknown instruction divl
-  x86_32   i64_umod      error[x86.simplify]: unknown instruction pushl
-  x86_32   i64_umulh     error[x86.simplify]: unknown instruction pushl
+  x86_32   i64_udiv     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
+  x86_32   i64_udivmod  assembles
+  x86_32   i64_umod     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
+  x86_32   i64_umulh    <synthesized by x86_32>: error[x86.lower]: no adc form takes these operands
   x86_32   i64_utod      error[x86.simplify]: unknown instruction fildll
   x86_32   i64_utof      error[x86.simplify]: unknown instruction fildll
   x86_32   vararg        error[x86.operand]: cannot parse operand 3(%eax %edx)
@@ -104,19 +104,20 @@ what M2 moves, and prose cannot regress.
   $ { for t in x86_32 x86_64 arm aarch64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-        6  error[x86.simplify]: unknown instruction pushl
-        4 assembles
+        5 assembles
+        4 <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4  error[x86.simplify]: unknown instruction fildll
         4  error[x86.operand]: unknown register %xmm0
         4  error[arm.simplify]: unknown instruction vmov
-        3  error[x86.simplify]: unknown instruction testb
+        3  error[x86.simplify]: 8-bit operands are not in M1 scope
         3  error[lex]: unexpected character '\194'
         2  error[x86.operand]: unknown register %ah
         2  error[arm.simplify]: unknown instruction rsb
         2  error[arm.operand]: cannot parse operand {r4 r5 r6 r7}
         2  error[arm.operand]: cannot parse operand {r4 r5 r6 r7 r8 r10 lr}
         2  error[arm.operand]: cannot parse operand {r4 r5 r6 r7 r8 lr}
-        1  error[x86.simplify]: unknown instruction divl
+        1 <synthesized by x86_32>: error[x86.lower]: no adc form takes these operands
+        1  error[x86.simplify]: cmov takes two register operands in M2
         1  error[x86.operand]: cannot parse operand 3(%eax %edx)
         1  error[lex]: unexpected character '<'
         1  error[arm.simplify]: unknown instruction rsbs

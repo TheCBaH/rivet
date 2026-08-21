@@ -225,10 +225,11 @@ let%expect_test "frontier corpus: agreement wherever both assemblers accept" =
   [%expect
     {|
     x86_32   fixture-asm_test_entry   agree
+    x86_32   runtime-i64_udivmod      agree
     x86_64   fixture-asm_test_entry   agree
     arm      fixture-asm_test_entry   agree
     aarch64  fixture-asm_test_entry   agree
     riscv32  fixture-asm_test_entry   agree
     riscv64  fixture-asm_test_entry   agree
 
-    6 agree, 0 differ, 43 beyond M1, 0 not assembled by GNU as |}]
+    7 agree, 0 differ, 42 beyond M1, 0 not assembled by GNU as |}]

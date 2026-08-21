@@ -117,7 +117,78 @@ let test_parse () =
     | Some m ->
         Manifest.source_rel m = Ok (Some "source/x.c")
         && Manifest.source_units m = Ok [ ("y", "source/y.c") ]
-    | None -> false)
+    | None -> false);
+  (* M4 (.ai/asm_plan.md §12): abi-version. *)
+  check "parse: abi-version 1/2 alone are accepted; 3 needs a pair (checked below)"
+    (is_ok (Manifest.parse "abi-version\t1\n") && is_ok (Manifest.parse "abi-version\t2\n"));
+  check "parse: an invalid abi-version value is rejected"
+    (is_err (Manifest.parse "abi-version\t4\n"));
+  (* M4: supported-targets - non-empty, no duplicates, canonical order. *)
+  (match parse_ok "supported-targets\tx86_32 x86_64\n" with
+  | Some m ->
+      check "parse: supported-targets round-trips, decoded"
+        (Manifest.supported_targets m = Ok (Some [ Target.X86_32; Target.X86_64 ]))
+  | None -> check "parse: supported-targets round-trips, decoded" false);
+  check "parse: an empty supported-targets value is rejected"
+    (is_err (Manifest.parse "supported-targets\t\n"));
+  check "parse: an unknown target in supported-targets is rejected"
+    (is_err (Manifest.parse "supported-targets\tx86_32 sparc\n"));
+  check "parse: a duplicate target in supported-targets is rejected"
+    (is_err (Manifest.parse "supported-targets\tx86_32 x86_32\n"));
+  check "parse: a non-canonical target order is rejected"
+    (is_err (Manifest.parse "supported-targets\tx86_64 x86_32\n"));
+  check "parse: an empty manifest has no supported-targets record"
+    (match parse_ok "" with Some m -> Manifest.supported_targets m = Ok None | None -> false);
+  (* M4: expected-value/observation - paired, contiguous from 1, require
+     abi-version: 3. *)
+  check "parse: a matched expected-value/observation pair under abi-version 3 is accepted"
+    (is_ok
+       (Manifest.parse "abi-version\t3\nexpected-value:1\t42\nobservation:1\tasm_test_global 4 1\n"));
+  check "parse: expected-value without abi-version 3 is rejected"
+    (is_err (Manifest.parse "expected-value:1\t42\nobservation:1\tasm_test_global 4 1\n"));
+  check "parse: abi-version 3 with no pairs is rejected"
+    (is_err (Manifest.parse "abi-version\t3\n"));
+  check "parse: a gap in expected-value indices is rejected"
+    (is_err
+       (Manifest.parse
+          "abi-version\t3\n\
+           expected-value:1\t1\n\
+           observation:1\ta 4 0\n\
+           expected-value:3\t2\n\
+           observation:3\tb 4 0\n"));
+  check "parse: an expected-value with no matching observation is rejected"
+    (is_err (Manifest.parse "abi-version\t3\nexpected-value:1\t42\n"));
+  check "parse: an observation with no matching expected-value is rejected"
+    (is_err (Manifest.parse "abi-version\t3\nobservation:1\ta 4 0\n"));
+  check "parse: a duplicate expected-value index is rejected"
+    (is_err
+       (Manifest.parse
+          "abi-version\t3\nexpected-value:1\t1\nexpected-value:1\t2\nobservation:1\ta 4 0\n"));
+  check "parse: a non-decimal expected-value is rejected"
+    (is_err (Manifest.parse "abi-version\t3\nexpected-value:1\tnotanumber\nobservation:1\ta 4 0\n"));
+  check "parse: an observation with a bad width is rejected"
+    (is_err (Manifest.parse "abi-version\t3\nexpected-value:1\t1\nobservation:1\ta 3 0\n"));
+  check "parse: an observation with a bad sign-extend flag is rejected"
+    (is_err (Manifest.parse "abi-version\t3\nexpected-value:1\t1\nobservation:1\ta 4 2\n"));
+  check "parse: an observation with the wrong arity is rejected"
+    (is_err (Manifest.parse "abi-version\t3\nexpected-value:1\t1\nobservation:1\ta 4\n"));
+  check "parse: an invalid index on expected-value is rejected"
+    (is_err (Manifest.parse "abi-version\t3\nexpected-value:0\t1\nobservation:0\ta 4 0\n"));
+  (* M4: origin, exactly parallel to source-unit. *)
+  (match parse_ok "origin:i64_sdiv\tmodules/CompCert/runtime/x86_32/i64_sdiv.S\n" with
+  | Some m ->
+      check "parse: origin round-trips"
+        (Manifest.origins m = Ok [ ("i64_sdiv", "modules/CompCert/runtime/x86_32/i64_sdiv.S") ])
+  | None -> check "parse: origin round-trips" false);
+  check "parse: a duplicate origin stem is rejected"
+    (is_err
+       (Manifest.parse
+          "origin:a\tmodules/CompCert/runtime/x86_32/i64_sdiv.S\n\
+           origin:a\tmodules/CompCert/runtime/x86_32/i64_smod.S\n"));
+  check "parse: an origin stem with a slash is rejected (D6)"
+    (is_err (Manifest.parse "origin:a/b\tmodules/CompCert/runtime/x86_32/i64_sdiv.S\n"));
+  check "parse: an empty manifest has no origin records"
+    (match parse_ok "" with Some m -> Manifest.origins m = Ok [] | None -> false)
 
 (* Accumulation: EVERY complaint, not just the first. This is the one shape
    Err.Accum fits, and it is why parse's error type is Accum.errors. *)

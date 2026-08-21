@@ -1,6 +1,10 @@
 fixtures: args_arith: 50 files match the manifest
 fixtures: cond_select: 50 files match the manifest
+fixtures: cross_bss: 87 files match the manifest
+fixtures: cross_call: 87 files match the manifest
+fixtures: cross_data: 93 files match the manifest
 fixtures: direct_call: 50 files match the manifest
 fixtures: global_ldst: 56 files match the manifest
+fixtures: i64_divmod: 29 files match the manifest
 fixtures: loop: 50 files match the manifest
 fixtures: return42: 50 files match the manifest

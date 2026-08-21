@@ -2033,6 +2033,9 @@ image on every initial target without object files or an external linker.
 
 ### Milestone 4: Portable image binding and broader freestanding execution
 
+**Status: exit criterion met (2026-08-21); see `next.md` for the
+verification evidence and the M4→M5 scope handoff.**
+
 - Implement caller-selected virtual placement, address validation, final fixups,
   segment materialization, and permission metadata entirely in pure OCaml.
 - Expose browser-friendly segment/manifest conversion without making JavaScript

@@ -9,3 +9,4 @@
 /.tool-gate/
 /.fixture-work/
 /.fixture-exec-artifacts/
+/.compcert-lib-work/
