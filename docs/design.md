@@ -145,8 +145,9 @@ GNU `as`, LLVM `llvm-mc`, object readers, and disassemblers may be used by tests
 obtain reference encodings. Production assembly and linking must not invoke an
 external assembler or linker.
 
-The repository devcontainer is the baseline oracle environment. It provides one
-prefixed GNU toolchain for every initial profile:
+The repository devcontainer is the baseline oracle environment. The assembler
+has six supported profiles. Four are covered by the libc cross-smoke suite;
+both RISC-V profiles are covered by the freestanding fixture-oracle suite.
 
 | Target profile | CompCert installation | GNU oracle prefix | QEMU user runner |
 |---|---|---|---|
@@ -154,9 +155,12 @@ prefixed GNU toolchain for every initial profile:
 | x86-64 Linux | `.cross-smoke-work/install/x86_64/bin/ccomp` | `x86_64-linux-gnu-` | `qemu-x86_64` |
 | ARMv7-A Linux, hard-float, ARM mode | `.cross-smoke-work/install/arm/bin/ccomp -marm` | `arm-linux-gnueabihf-` | `qemu-arm` |
 | AArch64 Linux | `.cross-smoke-work/install/aarch64/bin/ccomp` | `aarch64-linux-gnu-` | `qemu-aarch64` |
+| RISC-V 32-bit Linux, `rv32imafd` / `ilp32d` | `.fixture-work/install/riscv32/bin/ccomp` | `riscv64-linux-gnu-` | `qemu-riscv32` |
+| RISC-V 64-bit Linux, `rv64imafd` / `lp64d` | `.fixture-work/install/riscv64/bin/ccomp` | `riscv64-linux-gnu-` | `qemu-riscv64` |
 
-`tools/compcert-cross-smoke.sh all` creates those four isolated installations and
-validates the complete C-to-executable path. Tests should call the prefixed
+`tools/compcert-cross-smoke.sh all` creates the four libc-capable installations;
+`tools/compcert-fixture-setup.sh all` provisions all six freestanding fixture
+profiles. Tests should call the prefixed
 `as`, `objcopy`, `objdump`, and `readelf` directly when establishing assembler
 ground truth; using only `gcc -c` would obscure which oracle stage produced a
 result. The compiler driver remains useful as a second acceptance check because
@@ -167,20 +171,24 @@ Reference `.o`, extracted section bytes, symbol/relocation dumps, and disassembl
 are diagnostic test artifacts only. They never enter the production assembler or
 linker pipeline.
 
-### 3.4 Develop four architecture slices in parallel
+### 3.4 Develop six architecture slices in parallel
 
-The initial targets are x86-32, x86-64, ARM, and AArch64. The project must not
-complete one target before exposing the common design to the others. That would
-risk making fixed-width encodings, a particular register model, or one style of
-address expression accidental assumptions of the shared core.
+The supported targets are x86-32, x86-64, ARM, AArch64, RISC-V 32-bit, and
+RISC-V 64-bit. The project must not complete one target before exposing the
+common design to the others. That would risk making fixed-width encodings, a
+particular register model, or one style of address expression accidental
+assumptions of the shared core.
+
+These six profiles are the complete planned target set. New work maintains their
+parity rather than reserving a future architecture-expansion milestone.
 
 Development proceeds by semantic capability slices. For example, the first slice
 supports only what CompCert emits for a freestanding function returning a
-constant, but supports that slice on all four targets. Later slices add arguments,
+constant, but supports that slice on all six targets. Later slices add arguments,
 arithmetic, globals, control flow, direct calls, data, and multi-file references in
 parallel.
 
-The four targets deliberately stress different parts of the design:
+The six targets deliberately stress different parts of the design:
 
 | Target | Early design pressure |
 |---|---|
@@ -188,10 +196,12 @@ The four targets deliberately stress different parts of the design:
 | x86-64 | REX selection, RIP-relative addressing, several equivalent encodings |
 | ARM | Condition fields, flexible operands, literal/address materialization, range handling |
 | AArch64 | Fixed-width encoding, page-relative addresses, split immediates and fixups |
+| RISC-V 32-bit | Fixed-width PC-relative pairs, 32-bit address and ABI boundaries |
+| RISC-V 64-bit | XLEN-dependent forms, 64-bit address and ABI boundaries |
 
 Parallel does not require identical instruction counts or equal implementation
 effort in every iteration. It requires every new architecture-independent
-abstraction to be exercised by a real expect test on all four targets before it is
+abstraction to be exercised by a real expect test on all six targets before it is
 treated as stable.
 
 ### 3.5 Make observable behavior testable by construction
@@ -221,7 +231,7 @@ generic foundations
   <- driver registry and executable
 ```
 
-Generic packages must not import x86, ARM, AArch64, PowerPC, or RISC-V modules and
+Generic packages must not import x86, ARM, AArch64, or RISC-V modules and
 must not contain a `match target with ...` dispatch. When generic machinery needs
 target behavior, it receives an abstract operation through a module signature,
 functor argument, or typed description value.
@@ -464,8 +474,7 @@ type line = {
 
 Operands remain token slices only until delegated to a target parser that completes
 the source AST. This avoids a false universal grammar for x86 addressing, ARM
-register lists, AArch64
-shift/extend operands, and RISC-V or PowerPC address modifiers.
+register lists, AArch64 shift/extend operands, and RISC-V address modifiers.
 
 Menhir is suitable for the stable common grammar and expressions. Small
 hand-written token-cursor parsers are preferable for target operands. Individual
@@ -490,8 +499,8 @@ type expr =
 ```
 
 The target interprets `Modifier`, allowing representations such as RISC-V
-`%pcrel_hi`, PowerPC `@ha`, or AArch64 page-address forms without embedding their
-semantics in the common parser.
+`%pcrel_hi` or AArch64 page-address forms without embedding their semantics in
+the common parser.
 
 Expression evaluation must distinguish:
 
@@ -600,8 +609,8 @@ must have focused expect and independent differential tests.
 
 #### 4.9.2 Evolution to an external instruction language
 
-The codec abstractions should first be exercised on x86-32, x86-64, ARM, and
-AArch64. Once those four targets stabilize the concepts, a compact `.isa` language
+The codec abstractions should first be exercised on x86-32, x86-64, ARM, AArch64,
+RISC-V 32-bit, and RISC-V 64-bit. Once those six targets stabilize the concepts, a compact `.isa` language
 can elaborate into the same typed internal codec representation and generate
 ordinary `.ml`/`.mli` tables.
 
@@ -822,6 +831,8 @@ targets/x86_32/       concrete syntax, registers, forms, fixups, profile
 targets/x86_64/       concrete syntax, registers, forms, fixups, profile
 targets/arm/           ARM-specific descriptions and helpers
 targets/aarch64/       AArch64-specific descriptions and helpers
+targets/riscv32/       RISC-V 32-bit-specific descriptions and helpers
+targets/riscv64/       RISC-V 64-bit-specific descriptions and helpers
 driver/                portable functor applications and target registry
 browser/               thin js_of_ocaml and Melange API adapters
 tool/                  optional host CLI; never a library dependency
@@ -1150,7 +1161,7 @@ CompCert corpus tests should report concise summaries or focused diffs rather th
 checking thousands of unstable lines into a single expectation.
 
 The first cross-target ladder should compile equivalent minimal freestanding C
-sources with each of the four CompCert configurations:
+sources with each of the six CompCert configurations:
 
 1. Exported function returning a constant.
 2. Integer arguments and arithmetic.
@@ -1161,10 +1172,10 @@ sources with each of the four CompCert configurations:
 7. Initialized data, BSS, alignment, and address constants.
 8. A small result-block program with a callable entry point.
 
-Each rung has x86-32, x86-64, ARM, and AArch64 expectations. A common feature is
-considered implemented only when all four reach the relevant pipeline stage. If a
-target requires a runtime helper, that helper is an explicit additional assembly
-input and appears in the expected link map.
+Each rung has x86-32, x86-64, ARM, AArch64, RISC-V 32-bit, and RISC-V 64-bit
+expectations. A common feature is considered implemented only when all six reach
+the relevant pipeline stage. If a target requires a runtime helper, that helper
+is an explicit additional assembly input and appears in the expected link map.
 
 ### 11.2 Corpus parsing and matching
 
@@ -1273,19 +1284,21 @@ smoke testing, but those results must be classified separately from freestanding
 tests.
 
 Execution testing uses QEMU user mode as the required development and CI backend
-across all four targets. The four `qemu-*` user binaries and their target sysroots
-are installed and have already executed system-linked CompCert smoke programs.
-The four matching QEMU system emulators are also installed and verified, so
-system mode is available as an independent secondary backend. User mode remains
-the required M0/M1 path because its Linux process setup is simpler; system-mode
-machine configuration, boot state, and control add substantial target-specific
-work. GDB is installed and may drive or debug the system runner in batch mode. A
-small project-external RSP client remains preferable for a minimal deterministic
-CI protocol, but it is a design choice rather than a workaround for missing GDB.
-An optional separately built, subprocess-isolated native executor may also test
-executable-memory behavior when the host ISA and ABI match. No executor is an
-OCaml library dependency or a requirement for using the browser-embeddable
-assembler.
+across all six targets. `qemu-i386`, `qemu-x86_64`, `qemu-arm`, `qemu-aarch64`,
+`qemu-riscv32`, and `qemu-riscv64` are the pinned runners. The x86 and ARM
+profiles have sysroots for the libc smoke suite; the RISC-V profiles use the
+freestanding fixture-oracle workflow and require no libc sysroot. The four
+matching QEMU system emulators for the libc-smoke profiles are installed and
+verified, so system mode is available as an independent secondary backend there.
+User mode remains the required M0/M1 path because its Linux process setup is
+simpler; system-mode machine configuration, boot state, and control add
+substantial target-specific work. GDB is installed and may drive or debug the
+system runner in batch mode. A small project-external RSP client remains
+preferable for a minimal deterministic CI protocol, but it is a design choice
+rather than a workaround for missing GDB. An optional separately built,
+subprocess-isolated native executor may also test executable-memory behavior when
+the host ISA and ABI match. No executor is an OCaml library dependency or a
+requirement for using the browser-embeddable assembler.
 
 Environment snapshot (2026-08-07): `qemu-system-i386`,
 `qemu-system-x86_64`, `qemu-system-arm`, and `qemu-system-aarch64` are installed
@@ -1356,8 +1369,9 @@ The user-mode protocol is:
 1. The host oracle harness serializes each bound image segment plus a deterministic
    manifest containing requested address, initialized size, zero-fill size,
    alignment, permissions, entry, result-block location, and timeout.
-2. It invokes the profile's installed `qemu-i386`, `qemu-x86_64`, `qemu-arm`, or
-   `qemu-aarch64`, with the verified sysroot when the helper needs it.
+2. It invokes the profile's installed `qemu-i386`, `qemu-x86_64`, `qemu-arm`,
+   `qemu-aarch64`, `qemu-riscv32`, or `qemu-riscv64`, with a verified sysroot
+   when the helper needs one.
 3. The helper maps each segment writable at the requested guest virtual address,
    copies initialized bytes, clears zero-fill, and initializes the result block.
 4. It changes each mapping to its final permissions, performs the target-required
@@ -1467,13 +1481,13 @@ production library.
 ## 12. Implementation roadmap
 
 Milestones are capability-based rather than schedule estimates. x86-32, x86-64,
-ARM, and AArch64 advance together through each milestone. No milestone means
-"finish one architecture".
+ARM, AArch64, RISC-V 32-bit, and RISC-V 64-bit advance together through each
+milestone. No milestone means "finish one architecture".
 
 For each capability slice, use the same development loop:
 
 1. Write the smallest freestanding C example expressing the capability.
-2. Compile it to `.s` with each of the four unmodified CompCert configurations.
+2. Compile it to `.s` with each of the six unmodified CompCert configurations.
 3. Assemble every emitted `.s` with its target-prefixed GNU `as`; retain the
    object's section, symbol, relocation, and disassembly oracle artifacts.
 4. Add or update focused expect fixtures for the actual emitted syntax and GNU
@@ -1504,17 +1518,17 @@ The reasons are visible in the CompCert build:
   with an ARM configuration.
 - The supplied `setup-build` and `build-all` Makefile targets create separate
   linked source trees and configure/build several architectures in parallel.
-- The supplied CI runner configures AArch64, ARM, PowerPC, and RISC-V builds with
-  prefixed GNU cross toolchains.
+- The supplied CI runner configures AArch64, ARM, and RISC-V builds with prefixed
+  GNU cross toolchains.
 
 The official installation manual confirms that cross-compilation is supported
 and that a matching GCC/Diab cross compiler and cross libraries are required for
 the complete preprocess/assemble/link workflow:
 <https://compcert.org/man/manual002.html>.
 
-The repository devcontainer is provisioned for the full workflow described in
-`.ai/cross-plan.md`, so Step 0 uses real `.c -> .s -> .o -> executable` paths on
-all four targets. Run:
+The repository devcontainer provides two complementary workflows. The libc
+cross-smoke workflow described in `.ai/cross-plan.md` uses real
+`.c -> .s -> .o -> executable` paths on its four libc-capable profiles. Run:
 
 ```text
 tools/compcert-cross-smoke.sh all
@@ -1523,12 +1537,14 @@ tools/compcert-cross-smoke.sh all
 This builds and installs four target-specific CompCert executables under
 `.cross-smoke-work/install/<target>/`, retains generated assembly under
 `.cross-smoke-work/artifacts/<target>/`, checks the ELF machine, and runs every
-linked executable with the corresponding QEMU user emulator and sysroot. Treat a
-skip as a provisioning failure for this devcontainer, even though the reusable
-script permits skips on host architectures for which Debian does not package a
-particular cross toolchain.
+linked executable with the corresponding QEMU user emulator and sysroot. The
+six-profile freestanding assembler gate is `make asm-fixture-oracle`; it uses
+`tools/compcert-fixture-setup.sh all` and has no RISC-V libc requirement. Treat a
+skip in either applicable gate as a provisioning failure for this devcontainer,
+even though the reusable scripts permit skips on host architectures for which
+Debian does not package a particular cross toolchain.
 
-The verified profile/tool matrix is:
+The verified libc cross-smoke profile/tool matrix is:
 
 | Fixture | CompCert profile and flags | External-tool prefix | Sysroot |
 |---|---|---|---|
@@ -1537,7 +1553,7 @@ The verified profile/tool matrix is:
 | ARM | `arm-linux`, `-marm` (ARMv7-A hard-float) | `arm-linux-gnueabihf-` | `/usr/arm-linux-gnueabihf` |
 | AArch64 | `aarch64-linux` | `aarch64-linux-gnu-` | `/usr/aarch64-linux-gnu` |
 
-Verification snapshot (2026-08-07): the smoke command built and installed four
+Verification snapshot (2026-08-07): the libc smoke command built and installed four
 separate CompCert 3.17 executables and completed all four compile/link/QEMU runs
 with zero skips. `readelf` reported `Intel 80386`, `Advanced Micro Devices
 X86-64`, `ARM`, and `AArch64` respectively. The retained CompCert-generated
@@ -1559,6 +1575,8 @@ i686-linux-gnu-as --32 -o fixture.o fixture.s
 x86_64-linux-gnu-as --64 -o fixture.o fixture.s
 arm-linux-gnueabihf-as -o fixture.o fixture.s
 aarch64-linux-gnu-as -o fixture.o fixture.s
+riscv64-linux-gnu-as -march=rv32imafd -mabi=ilp32d -mno-relax -o fixture.o fixture.s
+riscv64-linux-gnu-as -march=rv64imafd -mabi=lp64d -mno-relax -o fixture.o fixture.s
 ```
 
 Then retain normalized `readelf -SWsWr fixture.o` and `objdump -dr fixture.o`
@@ -1600,10 +1618,12 @@ optimization, PIC/PIE, floating-point, and debug settings. The first fixture
 should use no debug generation and no PIC unless a later capability specifically
 tests them.
 
-The target GCC/binutils drivers, sysroot headers and libc, CompCert runtime
-libraries, archivers, and QEMU user-mode execution paths are present now. Keep the
-`.i -> .s` path as a fast, hermetic code-generation test, but do not let it replace
-the full smoke test or direct-assembler oracle gate.
+The target GCC/binutils drivers, archivers, and QEMU user-mode execution paths
+are present now. The four libc-smoke profiles also have sysroot headers, libc,
+and CompCert runtime libraries; the RISC-V profiles are intentionally
+freestanding. Keep the `.i -> .s` path as a fast, hermetic code-generation test,
+but do not let it replace the applicable smoke test or direct-assembler oracle
+gate.
 
 #### Fallback for an unprovisioned environment
 
@@ -1620,6 +1640,8 @@ fixtures/compcert-3.17/return42/x86_32-linux/asm_test_entry.s
 fixtures/compcert-3.17/return42/x86_64-linux/asm_test_entry.s
 fixtures/compcert-3.17/return42/armv7a-linux-hardfloat-arm/asm_test_entry.s
 fixtures/compcert-3.17/return42/aarch64-linux/asm_test_entry.s
+fixtures/compcert-3.17/return42/rv32-linux/asm_test_entry.s
+fixtures/compcert-3.17/return42/rv64-linux/asm_test_entry.s
 fixtures/compcert-3.17/return42/manifest.sexp
 ```
 
@@ -1642,19 +1664,21 @@ CI should have two modes:
 
 - Always consume the checked-in bootstrap fixtures, making initial development
   independent of cross-compiler availability.
-- In the provisioned devcontainer job, build all four CompCert configurations,
-  regenerate the fixtures, run the direct GNU assembler oracles, and fail on a
-  skip or unexplained difference. Regeneration changes require review because
-  they may alter accepted syntax, relocations, or instruction coverage.
+- In the provisioned devcontainer job, build all six freestanding CompCert
+  configurations, regenerate the fixtures, run the direct GNU assembler oracles,
+  and fail on a skip or unexplained difference. Regeneration changes require
+  review because they may alter accepted syntax, relocations, or instruction
+  coverage.
 
 Relevant source locations in this checkout are `configure` (`-toolprefix` and
 target profiles), `Makefile` (`setup-build`/`build-all`), `Makefile.extr`
 (`$(ARCH)` in the extracted build), and `tools/runner.sh` (cross-tool prefixes).
 
-### Initial end-to-end goal: `return 42` on four targets
+### Initial end-to-end goal: `return 42` on six targets
 
 The first externally meaningful deliverable is a walking skeleton through the
-entire final architecture. For each of x86-32, x86-64, ARM, and AArch64:
+entire final architecture. For each of x86-32, x86-64, ARM, AArch64, RISC-V
+32-bit, and RISC-V 64-bit:
 
 ```c
 int asm_test_entry(void) { return 42; }
@@ -1674,7 +1698,7 @@ An unmodified CompCert produces the textual `.s` fixture. The project then:
 The first slice intentionally does not support general multi-file linking, data
 segments, unresolved symbols, arbitrary expressions, branch relaxation, imports,
 or caller-selected placement. It supports only the directives and instruction
-forms present in the four exact CompCert fixtures. Unsupported input fails
+forms present in the six exact CompCert fixtures. Unsupported input fails
 explicitly.
 
 The restricted implementation must use the final phase types and public APIs. It
@@ -1683,7 +1707,7 @@ the lowered-module/image-builder boundary. Later milestones expand accepted AST
 values and policies without replacing this path.
 
 The initial goal is complete only when all of the following evidence exists for
-all four targets:
+all six targets:
 
 - Checked-in C and CompCert-generated assembly fixtures with reproducible
   generation commands and pinned target profiles.
@@ -1711,7 +1735,7 @@ is useful and testable even before the whole slice executes.
 
 1. **Freeze profiles and fixtures.** Select exact CompCert configurations,
    assembly dialects, QEMU user binaries/sysroots, guest virtual load addresses,
-   transport-helper ABIs, and reference tools. Check in the four minimal
+   transport-helper ABIs, and reference tools. Check in the six minimal
    `.c`/`.s` pairs and document regeneration.
 
    Verification: regenerating a fixture either reproduces it or produces a
@@ -1766,7 +1790,7 @@ is useful and testable even before the whole slice executes.
 8. **Join the validated components.** Feed the generated image into the already
    validated QEMU runner and observe `42`.
 
-   Verification: the four end-to-end artifacts plus an induced wrong-encoding
+   Verification: the six end-to-end artifacts plus an induced wrong-encoding
    test that demonstrates the execution gate detects failure.
 
 ### Evidence required for every later capability
@@ -1799,8 +1823,8 @@ CI should separate feedback latency without weakening the definition of done:
 
 - Per commit: generic unit/property tests, focused expects, production-closure
   audit, js_of_ocaml and Melange compilation, Node.js smoke/equality tests, and the
-  four minimal end-to-end slices where QEMU capacity permits.
-- Per pull request: all four QEMU slices, differential encoding, native/js_of_ocaml/
+  six minimal end-to-end slices where QEMU capacity permits.
+- Per pull request: all six QEMU slices, differential encoding, native/js_of_ocaml/
   Melange output equality under Node, direct-path coherence, and affected corpus
   shards.
 - Scheduled/full: complete corpus parsing, large multi-file applications, fuzzing,
@@ -1817,7 +1841,7 @@ linker scope simultaneously without separate evidence.
 
 | Axis | Incremental progression | Verification gate for each increment |
 |---|---|---|
-| Semantic instruction coverage | return constant; arguments/arithmetic; stack/global memory; conditions/loops; calls; integer corner cases; floating/vector | Four-target AST expects, independent bytes/decode, operand boundaries, and QEMU result |
+| Semantic instruction coverage | return constant; arguments/arithmetic; stack/global memory; conditions/loops; calls; integer corner cases; floating/vector | Six-target AST expects, independent bytes/decode, operand boundaries, and QEMU result |
 | Textual frontend | exact CompCert subset; more directives/expressions; aliases/pseudos; numeric labels; includes/macros/conditionals; broader handwritten syntax | Source-AST expects, malformed-input diagnostics, corpus acceptance delta, and unchanged direct-AST behavior |
 | Simplification | literal folding; algebraic normalization; symbol-preserving forms; directive desugaring; target canonicalization | Normalized-AST expects, arbitrary-precision boundaries, non-folding cases, canonical/idempotence properties, and path coherence |
 | Lowering/codec | exact forms; alternative forms; target fixups; variable length; literal pools/veneers | Lowered expects, ambiguity/reachability checks, encode/decode properties, reference comparison, and execution |
@@ -1825,7 +1849,7 @@ linker scope simultaneously without separate evidence.
 | Layout/relaxation | fixed text base; multiple sections; range selection; shortening; veneers/islands; rebasing | Two-address layout tests, convergence/invariant checks, boundary distances, final disassembly, and execution at each placement |
 | Image binding/embedding | fixed raw image; multi-segment image; caller-selected virtual addresses; browser materialization; optional external native consumer | Segment/permission expects, identical native/JavaScript bytes, address-boundary tests, QEMU result blocks, and optional isolated consumer execution |
 | Programmatic frontends | direct normalized fixtures; direct lowered fixtures; CompCert adapter; other generator APIs | Validator negatives and byte/image equivalence with a semantically identical textual path; no parser dependency in later libraries |
-| Retargeting | four initial targets in lockstep; fuller profiles/features; RISC-V; PowerPC | Complete return-constant ladder first, then every capability gate through execution; no target dependency added to generic libraries |
+| Retargeting | six supported targets in lockstep; fuller profiles and features | Complete return-constant ladder first, then every capability gate through execution; no target dependency added to generic libraries |
 | Description tooling | interpreted OCaml EDSL; generated tables; optional external `.isa` syntax | Same schema interpreted/generated equivalence, generator expects, ambiguity tests, reproducible output, and no loss of handwritten escape-hatch coverage |
 | Scale and robustness | focused fixtures; regression corpus; ABI suite; multi-file applications; fuzzed syntax/bytes | Stable corpus summaries, bounded diagnostics, no crashes, reproducible images, memory/time budgets, and minimized regression cases |
 
@@ -1861,12 +1885,12 @@ deployment environment is actually complete.
 - Define symbol strength, import, entry, and section-merging rules.
 - Define the common result-block ABI and normalized execution artifact.
 - Select concrete CompCert configurations and reference tools for x86-32,
-  x86-64, ARM, and AArch64.
+  x86-64, ARM, AArch64, RISC-V 32-bit, and RISC-V 64-bit.
 - Add one fixture-oracle command that runs the target-prefixed `as`, `readelf`,
   `objdump`, and `objcopy` protocol and normalizes paths/tool-version noise for
   expect output.
 - Select and pin the installed QEMU user binary, sysroot policy, helper hash/ABI,
-  guest virtual address map, and timeout policy for each initial target.
+  guest virtual address map, and timeout policy for each supported target.
 - Validate every QEMU user-mode runner/helper with independently assembled
   `return 42`, trap, and timeout raw snippets before running assembler-produced
   bytes.
@@ -1875,9 +1899,11 @@ deployment environment is actually complete.
   block the M0 user-mode exit criterion.
 - Record GDB's pinned version and validate whichever batch-GDB or direct-RSP
   control path is selected for each system-mode harness.
-- Build and smoke-test all four target-specific CompCert `ccomp` executables in
-  the provisioned devcontainer; a skip fails this gate.
-- Generate the four real CompCert `return 42` assembly fixtures locally with
+- Build and validate all six target-specific CompCert `ccomp` executables in the
+  provisioned devcontainer; use the libc smoke suite for the four libc-capable
+  profiles and the freestanding fixture setup for both RISC-V profiles. A skip
+  fails this gate.
+- Generate the six real CompCert `return 42` assembly fixtures locally with
   those installed compilers. Keep the provenance-preserving checked-in bundle as
   an offline consumer path, not as evidence that this gate passed.
 - Directly assemble every fixture with its GNU oracle and retain normalized
@@ -1887,7 +1913,7 @@ deployment environment is actually complete.
 - Define canonical instruction and diagnostic disassembly formats, including raw
   bytes and form identifiers.
 
-Exit criterion: all four return-constant assembly files are present with complete
+Exit criterion: all six return-constant assembly files are present with complete
 provenance, one command verifies their hashes/manifest, and the provisioned target
 builds reproduce their corresponding fixtures without a skipped target. Every
 fixture is accepted by the matching direct GNU assembler and has reviewed oracle
@@ -1895,11 +1921,11 @@ bytes/relocations and reference disassembly. Accepted/rejected syntax is
 documented per target. The generic codec library passes its synthetic-ISA tests
 without linking any concrete target. The complete production registry builds with
 native OCaml, js_of_ocaml, and Melange, produces identical smoke artifacts, and
-passes the no-C transitive dependency audit. All four QEMU user-mode harnesses
+passes the no-C transitive dependency audit. All six QEMU user-mode harnesses
 independently report correct completion, fault, and timeout artifacts for golden
 snippets.
 
-### Milestone 1: First complete end-to-end slice on four targets
+### Milestone 1: First complete end-to-end slice on six targets
 
 - Implement source management, spans, lexer profiles, statements, expressions,
   numeric local labels, and diagnostics.
@@ -1911,7 +1937,7 @@ snippets.
   performing cross-module resolution or final layout.
 - Implement the restricted `build_image` path for one module, one fixed-address
   text section, one strong exported entry symbol, and no unresolved references.
-- Create skeletal target modules for all four targets using the same interface.
+- Create skeletal target modules for all six targets using the same interface.
 - Construct their complete drivers through the common target functor and register
   them behind the uniform runtime `DRIVER` interface.
 - Implement the registers, operands, return-constant instruction forms, and
@@ -1919,7 +1945,7 @@ snippets.
 - Describe those forms using typed operand GADTs and inspectable codec values;
   generate or interpret both encoding and decoding from them.
 - Add separate expect tests for source AST, normalized AST, lowered AST, bytes,
-  form selection, canonical disassembly, and errors on all four targets.
+  form selection, canonical disassembly, and errors on all six targets.
 - Add direct-normalized and direct-lowered fixtures proving path coherence with
   the textual fixture.
 - Run every phase expectation and final image comparison through native,
@@ -1935,7 +1961,8 @@ snippets.
   execution failures with focused negative expects.
 
 Exit criterion: the smallest CompCert-generated exported function passes through
-all public phases and returns `42` under QEMU on x86-32, x86-64, ARM, and AArch64.
+all public phases and returns `42` under QEMU on x86-32, x86-64, ARM, AArch64,
+RISC-V 32-bit, and RISC-V 64-bit.
 Textual, direct-normalized, and direct-lowered paths produce equivalent images.
 Native OCaml and the Node-run js_of_ocaml and Melange builds produce
 byte-identical images and diagnostics through the same in-memory API. The shared
@@ -1946,7 +1973,7 @@ architecture/family conveniences remain outside the generic codec package.
 
 - Add minimal CompCert fixtures for integer arguments and arithmetic, global
   load/store, conditional selection/branching, a loop, and a direct call.
-- Implement each slice across all four target modules before moving to the next.
+- Implement each slice across all six target modules before moving to the next.
 - Implement common section, data, alignment, visibility, alias, and storage
   directives as demanded by these fixtures.
 - Lay out several allocatable sections within one module, since the global
@@ -1961,7 +1988,7 @@ architecture/family conveniences remain outside the generic codec package.
   expect cases for every discovered boundary or regression.
 
 Exit criterion: equivalent single-file CompCert programs using arithmetic,
-memory, and control flow produce correct fixed-layout images on all four targets.
+memory, and control flow produce correct fixed-layout images on all six targets.
 
 ### Milestone 3: Generalize the image builder to two-file internal linking
 
@@ -2019,7 +2046,7 @@ open work:
   needs `.data` alongside `.text`.
 - Implement strong/weak/common resolution and BSS allocation.
 - Add equivalent two-file CompCert fixtures containing a cross-file call and a
-  cross-file data reference on all four targets.
+  cross-file data reference on all six targets.
 - Generalize fixed-address layout and add branch/immediate range diagnostics.
 - Add expect dumps for modules, symbol resolution, fixups, link maps, final bytes,
   and disassembly.
@@ -2029,7 +2056,7 @@ open work:
   lowered modules.
 
 Exit criterion: two CompCert assembly files become one fully resolved fixed-address
-image on every initial target without object files or an external linker.
+image on every supported target without object files or an external linker.
 
 ### Milestone 4: Portable image binding and broader freestanding execution
 
@@ -2055,7 +2082,8 @@ verification evidence and the M4→M5 scope handoff.**
   run both generated JavaScript builds under Node through the in-memory API.
 
 Exit criterion: the same representative CompCert-compiled, multi-file,
-freestanding programs report correct results on x86-32, x86-64, ARM, and AArch64
+freestanding programs report correct results on x86-32, x86-64, ARM, AArch64,
+RISC-V 32-bit, and RISC-V 64-bit
 without libc, object files, or a system linker. The portable library materializes
 the same images in native OCaml and both browser toolchains with no C-backed
 production dependency.
@@ -2065,7 +2093,7 @@ production dependency.
 - Add the deferred real-browser harness for the already validated in-memory API;
   run representative parser, encoder, linker, and multi-segment image fixtures
   without Node or POSIX polyfills.
-- Grow instruction and directive coverage according to the four generated
+- Grow instruction and directive coverage according to the six generated
   CompCert corpora, choosing small failures before large applications.
 - Add relaxation, veneers, literal pools, and alternative encodings only when a
   focused fixture exposes the need.
@@ -2078,25 +2106,24 @@ production dependency.
   accepting it.
 - Add concise corpus-level expectations summarizing accepted files, unsupported
   forms, symbol dependencies, and differential mismatches.
-- Generate and classify the broader CompCert assembly corpora for all four
+- Generate and classify the broader CompCert assembly corpora for all six
   targets, using checked-in provenance manifests where CI cannot regenerate them.
 - Progressively enable regression, ABI, and selected benchmark-derived tests on
-  all four targets.
+  all six targets.
 
 Exit criterion: the intended CompCert corpus subset has no unexplained parse,
-match, encode, decode, link, or execution failures on any initial target.
+match, encode, decode, link, or execution failures on any supported target.
 
-### Milestone 6: Additional CompCert targets
+### Milestone 6: Six-profile parity and description tooling
 
-Add RISC-V and PowerPC using the same vertical-slice ladder, beginning again with
-the return-constant fixture and advancing through arithmetic, memory, control
-flow, two-file linking, and freestanding execution. A new target does not weaken
-the expect, differential, disassembly, or execution gates.
+Maintain x86-32, x86-64, ARM, AArch64, RISC-V 32-bit, and RISC-V 64-bit through
+the same vertical-slice ladder. A supported profile does not weaken the expect,
+differential, disassembly, or execution gates.
 
-After the four initial targets have stabilized the typed codec representation,
-decide whether to retain the OCaml EDSL as the authored format or add the compact
+After the six profiles have stabilized the typed codec representation, decide
+whether to retain the OCaml EDSL as the authored format or add the compact
 external `.isa` syntax that elaborates to it. This decision must be supported by
-side-by-side descriptions from all four encoding families, not by one target.
+side-by-side descriptions from the supported encoding families, not by one target.
 
 ### Milestone 7: Broader assembler language
 
@@ -2190,8 +2217,8 @@ Useful references:
 
 The first complete version is successful when it can:
 
-1. Consume the supported ordinary x86-32, x86-64, ARM, and AArch64 assembly
-   emitted by unmodified CompCert configurations.
+1. Consume the supported ordinary x86-32, x86-64, ARM, AArch64, RISC-V 32-bit,
+   and RISC-V 64-bit assembly emitted by unmodified CompCert configurations.
 2. Consume several source files in one invocation.
 3. Encode instructions and data without an external assembler.
 4. Resolve all internal symbols and required CompCert runtime helpers without a
@@ -2204,13 +2231,13 @@ The first complete version is successful when it can:
 9. Do all of the above without producing object files and without constructing or
    retaining debugger or unwind information.
 10. Provide reviewed expect tests for each pipeline layer and each supported
-    capability on all four initial targets.
+    capability on all six supported targets.
 11. Decode every assembler-emitted instruction into a canonical diagnostic form,
     expose the selected encoding form, and pass semantic and exact-form round-trip
     tests.
-12. Build the four target drivers through the same functor boundary while using
+12. Build the six target drivers through the same functor boundary while using
     typed GADT/codec schemas for instruction forms.
-13. Run the common freestanding result-block tests under the four pinned QEMU
+13. Run the common freestanding result-block tests under the six pinned QEMU
     user-mode profiles and extract deterministic artifacts through the versioned
     helper/result-block protocol.
 14. Compile the complete production target registry with native OCaml,
