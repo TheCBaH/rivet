@@ -449,6 +449,20 @@ asm-gas-xref-check: tools-build
 asm-gas-xref-regen: tools-build
 	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) gas-xref regen
 
+# M5 corpus growth: classify CompCert's own test/c/ suite against the parser,
+# x86_64 only (asm/docs/corpus.md). Same two-mode split as gas-xref above:
+# --check needs no toolchain, classify-c needs the x86_64 cross compiler AND
+# a CompCert build, hence asm-cross-setup as a prerequisite (unlike
+# asm-gas-xref-regen, classify-c compiles real CompCert C sources).
+#
+# In asm-ci: asm/fixtures/corpus/c/x86_64/manifest.txt is now committed (a
+# real classify-c run, x86_64 only), so `check` has something to verify.
+asm-corpus-check-c: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus check
+
+asm-corpus-classify-c-x86_64: asm-build tools-build asm-cross-setup
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus classify-c
+
 # The transitive purity and layer audits (§1, §2.2, §3.7, §5.1), and the
 # planted violations that prove they can fail. Guardrail 6: run these before
 # treating a successful JavaScript build as evidence of portability - a package
@@ -620,7 +634,7 @@ asm-exec: asm-runner asm-helpers asm-abi-conform asm-fixtures-check
 # What CI runs, and what to run locally before pushing. Formatting is checked
 # first: an unformatted tree is the cheapest failure to diagnose. asm-js is not
 # here — it needs Melange, hence OCaml 4.14, so it is its own CI job.
-asm-ci: asm-fmt-check asm-build asm-test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff asm-purity asm-planted asm-cross-smoke-selftest asm-characterize-verify asm-melange-optin asm-js-portable
+asm-ci: asm-fmt-check asm-build asm-test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff asm-corpus-check-c asm-purity asm-planted asm-cross-smoke-selftest asm-characterize-verify asm-melange-optin asm-js-portable
 
 # One archive per target: Rocq extraction differs per architecture, so
 # compcert-export-archive alone only covers whichever target was last
@@ -640,5 +654,6 @@ compcert-export-archive-all:
   asm-fixtures-check asm-characterize-verify asm-cross-setup asm-libc-cross-smoke asm-cross-smoke-selftest asm-fixtures-regen \
   asm-oracle asm-fixture-oracle asm-ci \
   asm-gas-xref-check asm-gas-xref-regen \
+  asm-corpus-check-c asm-corpus-classify-c-x86_64 \
   asm-helpers asm-runner asm-abi-conform asm-exec asm-tool-gate asm-melange-optin \
   asm-js-portable asm-js-browser

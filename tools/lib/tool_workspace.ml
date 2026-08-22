@@ -40,10 +40,20 @@ let forbidden repo p =
   else if eq (Repo.path repo) then Some "the repository root"
   else if eq (Repo.fixture_corpus repo) then Some "the fixture corpus"
   else if eq (Repo.gas_xref_corpus repo) then Some "the gas-xref corpus"
+  else if eq (Repo.corpus_work repo) then Some "the classify-c work root"
   else
     match Sys.getenv_opt "HOME" with
     | Some h when h <> "" && eq (Fpath.v h) -> Some "the home directory"
     | _ -> None
+
+(* Not built through from_env/validate_work_root: .corpus-work must stay
+   repo-relative (no external override), so only the symlink-planting guard
+   applies - there is no env value, absolute-ness or ".." to check. *)
+let corpus_work repo =
+  let ( let* ) = Result.bind in
+  let p = Fpath.normalize (Repo.corpus_work repo) in
+  let* () = no_symlinked_component p in
+  Ok p
 
 (* P5: an external root is allowed. D11: it must be absolute, free of "..", and
    free of symlinked components - none of which the shell checks today. *)
@@ -77,7 +87,7 @@ let exec_artifacts repo ~env =
    until Phase 6 gave it a caller - a redirect that silently did nothing. *)
 let tool_gate_work repo ~env = from_env repo ~env ~var:"ASM_TOOL_GATE_WORK" ~default:".tool-gate"
 
-let child root components =
+let child_of root components =
   let ( let* ) = Result.bind in
   let rec go acc = function
     | [] -> Ok acc
@@ -91,6 +101,9 @@ let child root components =
      property is what actually matters, so it is asserted rather than inferred. *)
   if Fpath.is_prefix (Fpath.to_dir_path root) p then Ok p
   else fail ~path:p (Printf.sprintf "%s escapes its root" (Fpath.to_string p))
+
+let child root components = child_of root components
+let child_of_recreatable root components = child_of root components
 
 let mkdir_p p =
   match Bos.OS.Dir.create ~path:true p with

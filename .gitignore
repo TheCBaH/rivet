@@ -8,6 +8,7 @@
 /.asm-helpers/
 /.tool-gate/
 /.fixture-work/
+/.corpus-work/
 /.fixture-exec-artifacts/
 /.compcert-lib-work/
 /.playwright-browsers/

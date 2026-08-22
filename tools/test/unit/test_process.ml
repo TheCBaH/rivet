@@ -107,6 +107,8 @@ let test_work_root_validation () =
         (is_err (with_work (Fpath.to_string (Repo.fixture_corpus repo))));
       check "workspace: the gas-xref corpus is rejected"
         (is_err (with_work (Fpath.to_string (Repo.gas_xref_corpus repo))));
+      check "workspace: the classify-c work root is rejected"
+        (is_err (with_work (Fpath.to_string (Repo.corpus_work repo))));
       (* A symlinked component is rejected rather than resolved, because the
          root gets rm -rf'd and that would delete something else. *)
       Unix.mkdir Fpath.(to_string (root / "real")) 0o700;
@@ -125,6 +127,52 @@ let test_work_root_validation () =
             (is_err (Tool_workspace.child cap [ "a/b" ]));
           check "workspace: a child component with a leading dash is rejected"
             (is_err (Tool_workspace.child cap [ "-rf" ])))
+
+(* {2 corpus_work - fixed, not env-overridable, and its own child constructor} *)
+
+let test_corpus_work_root () =
+  with_tmp (fun root ->
+      let repo = make_repo root in
+      let default = Repo.corpus_work repo in
+      check "corpus_work: the default root does not exist to begin with" (not (exists default));
+      check "corpus_work: constructing a capability for an ABSENT root succeeds"
+        (is_ok (Tool_workspace.corpus_work repo));
+      check "corpus_work: and creates nothing" (not (exists default));
+      (* Symlink rejection, mirroring fixture_work's D11 guard - .corpus-work
+         is recreated on every run, and rm -rf through a symlink would delete
+         something the caller did not name. *)
+      Unix.mkdir Fpath.(to_string (root / "real")) 0o700;
+      Unix.symlink "real" Fpath.(to_string default);
+      check "corpus_work: a symlinked .corpus-work is rejected"
+        (is_err (Tool_workspace.corpus_work repo));
+      Unix.unlink (Fpath.to_string default);
+      match Tool_workspace.corpus_work repo with
+      | Error _ -> check "corpus_work: capability construction" false
+      | Ok cap -> (
+          (* child_of_recreatable enforces the same Identifier/containment
+             checks as child, not a raw Fpath join - it is a separate typed
+             constructor only because `child` cannot accept a
+             recreatable_root at all. *)
+          check "corpus_work: child_of_recreatable rejects '..'"
+            (is_err (Tool_workspace.child_of_recreatable cap [ ".."; "escape" ]));
+          check "corpus_work: child_of_recreatable rejects a separator"
+            (is_err (Tool_workspace.child_of_recreatable cap [ "a/b" ]));
+          match Tool_workspace.child_of_recreatable cap [ "c"; "aes" ] with
+          | Error _ -> check "corpus_work: child_of_recreatable of a valid root" false
+          | Ok dir ->
+              check "corpus_work: child_of_recreatable of a valid root" true;
+              check "corpus_work: naming a child creates nothing"
+                (not (exists (Tool_workspace.child_path dir)));
+              check "corpus_work: ensure creates the directory" (is_ok (Tool_workspace.ensure dir));
+              check "corpus_work: ... and it now exists" (exists (Tool_workspace.child_path dir));
+              (* The compiled output is a FILE strictly beneath the ensure'd
+                 directory, never the child_owned path itself - ensure
+                 creates a directory, so the two must stay distinct. *)
+              let output_file = Fpath.(Tool_workspace.child_path dir / "output.s") in
+              check
+                "corpus_work: the output file is strictly beneath its directory, not equal to it"
+                (Fpath.is_prefix (Fpath.to_dir_path (Tool_workspace.child_path dir)) output_file
+                && output_file <> Tool_workspace.child_path dir)))
 
 let test_scratch_cleanup () =
   let seen = ref None in
@@ -357,6 +405,7 @@ let () =
   test_process_status_accepts ();
   test_construction_creates_nothing ();
   test_work_root_validation ();
+  test_corpus_work_root ();
   test_scratch_cleanup ();
   test_spawn_vs_exit ();
   test_path_search ();

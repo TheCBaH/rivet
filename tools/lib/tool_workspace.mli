@@ -27,6 +27,15 @@ val child_path : child_owned -> Fpath.t
 val fixture_corpus : Repo.t -> read_root
 val gas_xref_corpus : Repo.t -> recreatable_root
 
+val corpus_work : Repo.t -> (recreatable_root, Tool_error.t) Err.t
+(** [<repo>/.corpus-work], recreated on every [classify-c] run. Unlike
+    {!fixture_corpus}/{!gas_xref_corpus} this directory is not part of the
+    checked-in tree, so its constructor checks for a symlinked component
+    before returning, the same guard {!fixture_work} and {!tool_gate_work}
+    apply to their (env-selected) roots. Not overridable by any environment
+    variable: it must stay repo-relative so paths handed to the C compiler
+    and the parser resolve the same way regardless of caller cwd. *)
+
 (** {2 Environment-selected roots}
 
     External roots are supported (P5): FIXTURE_WORK and friends may point
@@ -50,6 +59,11 @@ val tool_gate_work :
 val child : read_root -> string list -> (child_owned, Tool_error.t) Err.t
 (** Every component must parse as an {!Identifier.t}, and the result must stay
     beneath its root after resolution. *)
+
+val child_of_recreatable : recreatable_root -> string list -> (child_owned, Tool_error.t) Err.t
+(** Same checks as {!child}, for a {!recreatable_root}. A separate function
+    rather than a shared argument type, so "delete and recreate this" stays
+    impossible to apply to a {!read_root} by accident. *)
 
 val ensure : child_owned -> (unit, Tool_error.t) Err.t
 val recreate_child : child_owned -> (unit, Tool_error.t) Err.t

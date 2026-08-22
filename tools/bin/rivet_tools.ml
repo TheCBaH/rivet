@@ -170,6 +170,25 @@ let gas_xref_cmd =
     (Cmdliner.Cmd.info "gas-xref" ~doc:"The GNU as cross-reference corpus")
     [ gas_xref_check_cmd; gas_xref_regen_cmd ]
 
+let corpus_check_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Corpus_classify_cmd.check) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "check"
+       ~doc:"Verify the committed CompCert c/ classification, no toolchain needed")
+    Cmdliner.Term.(const run $ common)
+
+let corpus_classify_c_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Corpus_classify_cmd.classify_c) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "classify-c"
+       ~doc:"Compile CompCert's test/c/ suite for x86_64 and classify each file against the parser")
+    Cmdliner.Term.(const run $ common)
+
+let corpus_cmd =
+  Cmdliner.Cmd.group
+    (Cmdliner.Cmd.info "corpus" ~doc:"CompCert's own test suites, classified against the parser")
+    [ corpus_check_cmd; corpus_classify_c_cmd ]
+
 let targets_cmd =
   let run (err_trace, _root) set =
     let command =
@@ -216,7 +235,7 @@ let tool_gate_cmd =
 let main_cmd =
   Cmdliner.Cmd.group
     (Cmdliner.Cmd.info "compcert-tools" ~doc:"CompCert assembler repository tooling")
-    [ fixture_cmd; gas_xref_cmd; targets_cmd; tool_gate_cmd ]
+    [ fixture_cmd; gas_xref_cmd; corpus_cmd; targets_cmd; tool_gate_cmd ]
 
 let () =
   (* At the entry point, not at module initialization: this is a process-wide

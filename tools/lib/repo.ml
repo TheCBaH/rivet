@@ -57,3 +57,5 @@ let resolve ~cli ~env ~cwd =
 let path t = t
 let fixture_corpus t = Fpath.(t / "asm" / "fixtures" / "compcert-3.17")
 let gas_xref_corpus t = Fpath.(t / "asm" / "fixtures" / "gas-xref")
+let corpus_work t = Fpath.(t / ".corpus-work")
+let corpus_c_x86_64 t = Fpath.(t / "asm" / "fixtures" / "corpus" / "c" / "x86_64")
