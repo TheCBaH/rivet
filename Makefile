@@ -254,6 +254,24 @@ asm-js-portable: asm-build
 	cd $(ASM_DIR) && ASM_BACKEND=native opam exec -- dune build @runtest
 	cd $(ASM_DIR) && ASM_BACKEND=jsoo opam exec -- dune build @runtest
 
+# The real-browser smoke harness (.ai/asm_plan.md M5, the deferred
+# browser-harness item). A separate target, not a fourth ASM_BACKEND cram leg:
+# the cram ASM_BACKEND mechanism is built around one synchronous process's
+# stdout diffed against a committed transcript, while a real browser run is an
+# async multi-step lifecycle with a genuine heavy external dependency
+# (Chromium) the other cram files have no reason to acquire. Not reachable
+# from asm-ci or the broad platform matrix, matching the asm-melange/
+# asm-compcert-adapter-test precedent for extra-environment-cost legs.
+#
+# asm-js is a prerequisite (proving three-build equality first is a cheap gate
+# before spending Chromium-launch time), but asm-melange deliberately is not:
+# the wrapper script already runs the one ASM_MELANGE=true dune build it
+# needs, and a second, overlapping @all build under a different environment
+# configuration in the same asm/_build tree would only contend with asm-js's
+# own builds under `make -j` for no added coverage.
+asm-js-browser: asm-js
+	tools/asm-browser-harness.sh
+
 # The behavioral tool gate (§3.2, an M0 exit criterion). APT tooling is
 # range-checked rather than digest-pinned, and version numbers alone do not
 # establish compatibility where behaviour matters - so this asks the tools to do
@@ -623,4 +641,4 @@ compcert-export-archive-all:
   asm-oracle asm-fixture-oracle asm-ci \
   asm-gas-xref-check asm-gas-xref-regen \
   asm-helpers asm-runner asm-abi-conform asm-exec asm-tool-gate asm-melange-optin \
-  asm-js-portable
+  asm-js-portable asm-js-browser

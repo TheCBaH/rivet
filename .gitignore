@@ -10,3 +10,6 @@
 /.fixture-work/
 /.fixture-exec-artifacts/
 /.compcert-lib-work/
+/.playwright-browsers/
+/asm/test/browser/node_modules/
+/asm/test/browser/_work/

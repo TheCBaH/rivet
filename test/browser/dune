@@ -1,0 +1,41 @@
+; The real-browser smoke harness (.ai/asm_plan.md M5, the deferred
+; browser-harness item). [smoke] is a small library, not a module folded into
+; one executable, because the native and js_of_ocaml entry points need
+; different [(modes ...)] on their own stanzas - (modes js) applies to a whole
+; executables stanza, not to one named source file - while sharing exactly one
+; implementation.
+;
+; smoke_jsoo needs js_of_ocaml + js_of_ocaml-ppx explicitly (Js.export and
+; object%js are not available otherwise); the local precedent for this exact
+; shape is asm/vendor/err_trace/test/dune's jsoo stanza.
+;
+; No enabled_if here, matching asm/test/dump/dune's asm_dump/manifest_dump
+; executables: only the library they depend on (test_dump_inputs there,
+; smoke_fixtures here) carries the ASM_MELANGE guard.
+
+(library
+ (name smoke)
+ (modules smoke)
+ (modes byte native)
+ (libraries
+  foundation
+  image
+  target_intf
+  driver
+  test_dump_inputs
+  smoke_fixtures
+  err_trace))
+
+(executables
+ (names smoke_native)
+ (modules smoke_native)
+ (modes exe)
+ (libraries smoke))
+
+(executables
+ (names smoke_jsoo)
+ (modules smoke_jsoo)
+ (modes js)
+ (libraries smoke js_of_ocaml)
+ (preprocess
+  (pps js_of_ocaml-ppx)))

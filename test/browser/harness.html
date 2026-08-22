@@ -1,0 +1,58 @@
+<!doctype html>
+<!--
+  Real-browser smoke harness (.ai/asm_plan.md M5, the deferred
+  browser-harness item). This is a TEMPLATE: tools/asm-browser-harness.sh
+  copies it into a generated work directory alongside baseline.js,
+  smoke_jsoo.bc.js, and smoke_melange.bundle.js before Playwright ever
+  navigates here (asm/test/browser/dune's build output and the
+  Melange/esbuild output live in different _build trees; this file cannot
+  reference them by relative path until they are staged as siblings).
+
+  document.title is the pass/fail protocol run_harness.mjs polls:
+  'PENDING' until a terminal result, then 'PASS' or 'FAIL: <detail>'. Error
+  handlers are installed before either bundle loads, so a load-time or
+  runtime exception in either one produces a terminal FAIL instead of
+  leaving the title (and the driver's wait) stuck at PENDING forever.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>PENDING</title>
+  </head>
+  <body>
+    <pre id="result">PENDING</pre>
+    <script>
+      function terminal(detail) {
+        document.title = detail;
+        document.getElementById("result").textContent = detail;
+      }
+
+      window.onerror = function (message, source, lineno, colno, error) {
+        terminal("FAIL: onerror: " + message + " (" + source + ":" + lineno + ":" + colno + ")");
+        return true;
+      };
+      window.addEventListener("unhandledrejection", function (event) {
+        terminal("FAIL: unhandledrejection: " + event.reason);
+      });
+    </script>
+    <script src="baseline.js"></script>
+    <script src="smoke_jsoo.bc.js"></script>
+    <script src="smoke_melange.bundle.js"></script>
+    <script>
+      try {
+        var baseline = window.__ASM_SMOKE_BASELINE__;
+        var jsooResult = window.AsmSmoke.run();
+        var melangeResult = window.AsmSmokeMelange.run();
+        if (jsooResult !== baseline) {
+          terminal("FAIL: jsoo result does not match native baseline:\n--- baseline ---\n" + baseline + "--- jsoo ---\n" + jsooResult);
+        } else if (melangeResult !== baseline) {
+          terminal("FAIL: melange result does not match native baseline:\n--- baseline ---\n" + baseline + "--- melange ---\n" + melangeResult);
+        } else {
+          terminal("PASS");
+        }
+      } catch (e) {
+        terminal("FAIL: exception: " + e);
+      }
+    </script>
+  </body>
+</html>

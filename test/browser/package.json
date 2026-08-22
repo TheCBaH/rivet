@@ -1,0 +1,9 @@
+{
+  "name": "asm-browser-harness",
+  "private": true,
+  "description": "Driver-only devDependencies for the real-browser smoke harness (.ai/asm_plan.md M5). Never a production dependency of asm/ itself - see tools/asm-browser-harness.sh and the Makefile's asm-js-browser target.",
+  "devDependencies": {
+    "playwright": "1.56.1",
+    "esbuild": "0.25.12"
+  }
+}

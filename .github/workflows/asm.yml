@@ -281,6 +281,13 @@ jobs:
     - name: install melange
       run: |
         ${{ env.EXEC }} opam install -y melange
-    - name: three-build equality
+    # asm-js-browser depends on asm-js (.ai/asm_plan.md M5's browser-harness
+    # item), so this single step both proves native/jsoo/Melange equality and
+    # runs the real-browser smoke harness - replacing a bare `make asm-js`
+    # step rather than adding a second one avoids repeating the whole
+    # three-build equality gate before ever launching Chromium. Playwright's
+    # Chromium provisioning happens fresh here, at run time, under this job's
+    # own user - see tools/asm-browser-harness.sh.
+    - name: three-build equality + real-browser smoke harness
       run: |
-        ${{ env.EXEC }} make asm-js
+        ${{ env.EXEC }} make asm-js-browser

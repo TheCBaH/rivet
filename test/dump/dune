@@ -22,6 +22,21 @@
  (modes exe js)
  (libraries foundation image target_intf driver test_dump_inputs fmt))
 
+; The manifest three-build driver's shared fixture (.ai/asm_plan.md M4 Phase
+; 8, extended by M5's real-browser harness). A real library, not a module
+; living beside manifest_dump.ml: an executable's modules cannot be linked by
+; another executable, and asm/test/browser/smoke.ml needs this exact source
+; and rendering, not a copy of it. Same enabled_if as test_dump_inputs, same
+; reason.
+
+(library
+ (name smoke_fixtures)
+ (modules smoke_fixtures)
+ (modes byte native)
+ (libraries driver asm_core fmt)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
 ; The manifest three-build driver (.ai/asm_plan.md M4 Phase 8). Its own
 ; stanza rather than a module of asm_dump: it reaches only [driver] and
 ; [asm_core] (for Perms.to_string), not [image]/[target_intf] directly, and a
@@ -31,4 +46,4 @@
  (names manifest_dump)
  (modules manifest_dump)
  (modes exe js)
- (libraries foundation driver asm_core err_trace fmt))
+ (libraries foundation driver asm_core err_trace fmt smoke_fixtures))
