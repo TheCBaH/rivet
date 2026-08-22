@@ -957,6 +957,199 @@ let%expect_test "a 64-bit address carries no prefix" =
     40000005  c3              ret                  [x86_64.ret]
     |}]
 
+(* {1 8-bit REX-extended sub-registers}
+
+   [%r8b]-[%r15b] (M5 corpus evidence: asm/fixtures/corpus/c/x86_64/
+   summary.txt - aes/knucleotide/sha1/sha3/siphash24/vmach all use one).
+   x86_64_encode.ml's register list already had every other REX-extended
+   width (64, 32, 16 is unused by any fixture and stays absent) but not this
+   one. The register table addition is the whole fix - [reg_at]/ModR-M/REX.B
+   selection are already width-and-number generic - so this is deliberately
+   not a round-trip-through-bytes test: no 8-bit register operand of any kind
+   (not even the pre-existing [%al]) lowers all the way to bytes yet, because
+   [Opcode.Mov]'s width-8 case is scoped to [movb $imm,(mem)] only
+   (`Mov8_only_movb`) - a pre-existing M1-scope limit this fix does not
+   touch. What this proves is that [%r8b] now reaches that same, identical,
+   already-existing boundary instead of failing earlier as an unknown
+   register - i.e. the new register table entry is wired up correctly. *)
+let%expect_test "%r8b-%r15b are recognized registers, at the same M1 boundary as %al" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tmovb %r8b, %al\n\tret\n";
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tmovb %al, %al\n\tret\n";
+  [%expect
+    {|
+    x86.lower: 8-bit mov is only supported as movb $imm,(mem) in M1
+    x86.lower: 8-bit mov is only supported as movb $imm,(mem) in M1
+    |}]
+
+(* {1 Base-less scaled-index (SIB) memory operands}
+
+   [disp(,%index,scale)] - no base register, GCC/CompCert's array-index
+   address idiom (M5 corpus evidence: asm/fixtures/corpus/c/x86_64/
+   summary.txt). SIB.base=101 with mod=00 is reserved to mean "no base,
+   disp32 always follows" - there is no shorter encoding, hence 8 bytes
+   here where a real-base disp0/disp8 SIB form would take 3-4. *)
+
+let%expect_test "a base-less SIB operand takes a mandatory disp32" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tleaq 0(,%rcx,8), %rdi\n\tret\n";
+  [%expect
+    {|
+    40000000  48 8d 3c cd 00 00 00 00  leaq (,%rcx,8), %rdi  [x86_64.lea.asz-absent.rex-present.sib-nobase-disp32]
+    40000008  c3                       ret                   [x86_64.ret]
+    |}]
+
+(* Also exercises the [sym_disp] sign-extension fix (x86_family_encode.ml):
+   without it, the decoded disp32 redisplays as the unsigned magnitude
+   4294967295 instead of -1, even though the encoded bytes (a two's-complement
+   0xffffffff) are correct either way - [Fixup] carries no signedness of its
+   own, unlike [Field]. The fix is shared with disp32-norm's RIP-relative
+   form, which took the same bug; see "a negative RIP-relative displacement
+   redisplays with its sign" below. *)
+let%expect_test "a base-less SIB operand with a negative displacement" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tleaq -1(,%rbp,2), %rdi\n\tret\n";
+  [%expect
+    {|
+    40000000  48 8d 3c 6d ff ff ff ff  leaq -1(,%rbp,2), %rdi  [x86_64.lea.asz-absent.rex-present.sib-nobase-disp32]
+    40000008  c3                       ret                     [x86_64.ret]
+    |}]
+
+let%expect_test "a negative RIP-relative displacement redisplays with its sign" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tmovl -1(%rip), %eax\n\tret\n";
+  [%expect
+    {|
+    40000000  8b 05 ff ff ff ff  movl -1(%rip), %eax  [x86_64.mov-r-rm.asz-absent.rex-absent.disp32-norm]
+    40000006  c3                 ret                  [x86_64.ret]
+    |}]
+
+(* {1 SSE2 scalar float}
+
+   M5 corpus evidence (asm/docs/corpus.md): the register class and
+   instruction family CompCert's x86_64 double/float codegen needs.
+   Byte-for-byte hand-verified against the real, installed
+   x86_64-linux-gnu-as/objdump (binutils 2.44) before being written down
+   here - the same discipline the base-less-SIB fix above used. *)
+
+let%expect_test "one binop per mandatory-prefix group (f2, f3, 66, none)" =
+  disasm "x86_64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \taddsd %xmm0, %xmm1\n\
+     \taddss %xmm0, %xmm1\n\
+     \tcomisd %xmm0, %xmm1\n\
+     \tcomiss %xmm2, %xmm3\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  f2 0f 58 c8  addsd %xmm0, %xmm1   [x86_64.sse-binop-f2.asz-absent.rex-absent.reg]
+    40000004  f3 0f 58 c8  addss %xmm0, %xmm1   [x86_64.sse-binop-f3.asz-absent.rex-absent.reg]
+    40000008  66 0f 2f c8  comisd %xmm0, %xmm1  [x86_64.sse-binop-66.asz-absent.rex-absent.reg]
+    4000000c  0f 2f da     comiss %xmm2, %xmm3  [x86_64.sse-binop-none.asz-absent.rex-absent.reg]
+    4000000f  c3           ret                  [x86_64.ret]
+    |}]
+
+(* An xmm8-15 operand needs REX, and the mandatory prefix has to precede it
+   (M5 corpus.md's Fix C step 3): real GNU as emits [f2 45 0f 58 c8], not
+   [45 f2 0f 58 c8]. *)
+let%expect_test "a REX-extended xmm register keeps the mandatory prefix before REX" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\taddsd %xmm8, %xmm9\n\tret\n";
+  [%expect
+    {|
+    40000000  f2 45 0f 58 c8  addsd %xmm8, %xmm9  [x86_64.sse-binop-f2.asz-absent.rex-present.reg]
+    40000005  c3              ret                 [x86_64.ret]
+    |}]
+
+let%expect_test "movsd/movss both directions, including a SIB-addressed memory operand" =
+  disasm "x86_64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tmovsd (%rax,%rcx,8), %xmm2\n\
+     \tmovsd %xmm2, (%rax,%rcx,8)\n\
+     \tmovss (%rax), %xmm1\n\
+     \tmovss %xmm1, (%rax)\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  f2 0f 10 14 c8  movsd (%rax,%rcx,8), %xmm2  [x86_64.sse-movsd-load.asz-absent.rex-absent.sib-disp0]
+    40000005  f2 0f 11 14 c8  movsd %xmm2, (%rax,%rcx,8)  [x86_64.sse-movsd-store.asz-absent.rex-absent.sib-disp0]
+    4000000a  f3 0f 10 08     movss (%rax), %xmm1         [x86_64.sse-movss-load.asz-absent.rex-absent.base-disp0]
+    4000000e  f3 0f 11 08     movss %xmm1, (%rax)         [x86_64.sse-movss-store.asz-absent.rex-absent.base-disp0]
+    40000012  c3              ret                         [x86_64.ret]
+    |}]
+
+(* The one case the SSE prefix design's review round specifically flagged:
+   an [asz] (0x67) address-size override combined with a mandatory SSE
+   prefix and REX all at once. Real GNU as: [67 f2 44 0f 10 00]. Without
+   [asz_of ~rm] actually threaded into the encoder (Fix C step 3), this
+   would silently encode as if 64-bit-addressed instead. *)
+let%expect_test "movsd with a 32-bit address and an xmm8-15 destination" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tmovsd (%eax), %xmm8\n\tret\n";
+  [%expect
+    {|
+    40000000  67 f2 44 0f 10 00  movsd (%eax), %xmm8  [x86_64.sse-movsd-load.asz-present.rex-present.base-disp0]
+    40000006  c3                 ret                  [x86_64.ret]
+    |}]
+
+let%expect_test "cvtsi2sdq sets REX.W; cvttsd2si's width comes from its GPR destination" =
+  disasm "x86_64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tcvtsi2sd %eax, %xmm0\n\
+     \tcvtsi2sdq %rax, %xmm0\n\
+     \tcvttsd2si %xmm0, %eax\n\
+     \tcvttsd2si %xmm0, %rax\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  f2 0f 2a c0     cvtsi2sd %eax, %xmm0   [x86_64.cvtsi2sd-r-rm.asz-absent.rex-absent.reg]
+    40000004  f2 48 0f 2a c0  cvtsi2sd %rax, %xmm0   [x86_64.cvtsi2sd-r-rm.asz-absent.rex-present.reg]
+    40000009  f2 0f 2c c0     cvttsd2si %xmm0, %eax  [x86_64.cvttsd2si-r-rm.asz-absent.rex-absent.reg]
+    4000000d  f2 48 0f 2c c0  cvttsd2si %xmm0, %rax  [x86_64.cvttsd2si-r-rm.asz-absent.rex-present.reg]
+    40000012  c3              ret                    [x86_64.ret]
+    |}]
+
+(* A RIP-relative binop memory operand ([xorpd __negd_mask(%rip), %xmmN] is
+   the real corpus shape; a literal displacement stands in for the symbol
+   here, matching how the base-less-SIB tests above and "a negative
+   RIP-relative displacement..." already do it, so this stays a single-
+   segment [.text]-only program. *)
+let%expect_test "a RIP-relative binop memory operand (xorpd)" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\txorpd 8(%rip), %xmm3\n\tret\n";
+  [%expect
+    {|
+    40000000  66 0f 57 1d 08 00 00 00  xorpd 8(%rip), %xmm3  [x86_64.sse-binop-66.asz-absent.rex-absent.disp32-norm]
+    40000008  c3                       ret                   [x86_64.ret]
+    |}]
+
+(* {1 SSE operand-class validation}
+
+   Reusing [Reg.t]/[Rm.t] for both GPR and xmm operands (width 128 is the
+   only class marker) buys width-generic ModR/M machinery for free, but
+   nothing else stops a cross-class operand from reaching the codec unless
+   [lower_instruction]'s new arms check it explicitly (M5, corpus.md's Fix C
+   step 5). *)
+
+let%expect_test "a GPR where an xmm operand is required is rejected" =
+  attempt "x86_64" "\t.text\n\t.globl f\nf:\n\taddsd %eax, %xmm0\n\tret\n";
+  [%expect {| x86.lower: eax is 32-bit, expected an xmm register |}]
+
+(* [cvtsi2sd]'s [rm] must be a GPR of exactly the mnemonic-selected width;
+   an xmm register there reuses {!Register_width_mismatch} rather than a
+   second class-mismatch case, since xmm's width (128) can never equal a
+   GPR instruction's declared 32/64 - see [sse_operand_class_mismatch]'s own
+   comment in x86_family_encode.ml. *)
+let%expect_test "an xmm register where cvtsi2sd's GPR source is required is rejected" =
+  attempt "x86_64" "\t.text\n\t.globl f\nf:\n\tcvtsi2sd %xmm1, %xmm0\n\tret\n";
+  [%expect {| x86.lower: xmm1 is 128-bit but the instruction is 32-bit |}]
+
+(* Caught at parse time, in the memory-operand grammar itself (x86_family.ml)
+   - the earliest and cheapest point, and the one that protects every
+   instruction with a memory operand, not only the new SSE ones. *)
+let%expect_test "an xmm register used as a memory base is rejected at parse time" =
+  attempt "x86_64" "\t.text\n\t.globl f\nf:\n\tmovsd (%xmm0), %xmm1\n\tret\n";
+  [%expect {| x86.operand: %xmm0 cannot be used as a memory operand's base or index register |}]
+
 (* {1 Alignment padding}
 
    The bytes below were measured by assembling a [.align 16] at every distance

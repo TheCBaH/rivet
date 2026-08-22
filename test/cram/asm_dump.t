@@ -179,16 +179,28 @@
     [21 cost=0] alu-r-rm         alu-r-rm(){prefixes alu-r-rm-op modrm}
     [22 cost=0] shift1-rm        shift1-rm(){prefixes 11010001 modrm}
     [23 cost=0] dec-r            dec-r(){01001 reg:3u}
+    [24 cost=0] sse-binop-f2     sse-binop-f2(){no-asz 11110010 no-rex 00001111 sse-binop-f2-op modrm}
+    [25 cost=0] sse-binop-f3     sse-binop-f3(){no-asz 11110011 no-rex 00001111 sse-binop-f3-op modrm}
+    [26 cost=0] sse-binop-66     sse-binop-66(){no-asz 01100110 no-rex 00001111 sse-binop-66-op modrm}
+    [27 cost=0] sse-binop-none   sse-binop-none(){prefixes 0000111100101111 modrm}
+    [28 cost=0] sse-movsd-load   sse-movsd-load(){no-asz 11110010 no-rex 0000111100010000 modrm}
+    [29 cost=0] sse-movss-load   sse-movss-load(){no-asz 11110011 no-rex 0000111100010000 modrm}
+    [30 cost=0] sse-movsd-store  sse-movsd-store(){no-asz 11110010 no-rex 0000111100010001 modrm}
+    [31 cost=0] sse-movss-store  sse-movss-store(){no-asz 11110011 no-rex 0000111100010001 modrm}
+    [32 cost=0] cvtsi2sd-r-rm    cvtsi2sd-r-rm(){no-asz 11110010 no-rex 0000111100101010 modrm}
+    [33 cost=0] cvtsi2ss-r-rm    cvtsi2ss-r-rm(){no-asz 11110011 no-rex 0000111100101010 modrm}
+    [34 cost=0] cvttsd2si-r-rm   cvttsd2si-r-rm(){no-asz 11110010 no-rex 0000111100101100 modrm}
   prefixes(){no-asz no-rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
-    [1 cost=0] sib-disp0        modrm-sib-disp0(){00 reg:3u 100 sib disp-none}
-    [2 cost=0] sib-disp8        modrm-sib-disp8(){01 reg:3u 100 sib disp-c8}
-    [3 cost=0] sib-disp32       modrm-sib-disp32(){10 reg:3u 100 sib disp-c32}
-    [4 cost=0] disp32-norm      modrm-disp32-norm(){00 reg:3u 101 disp-sym}
-    [5 cost=0] base-disp0       modrm-base-disp0(){00 reg:3u rm:3u disp-none}
-    [6 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
-    [7 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-c32}
+    [1 cost=0] sib-nobase-disp32 modrm-sib-nobase-disp32(){00 reg:3u 100 scale:2u index:3u 101 disp-sym}
+    [2 cost=0] sib-disp0        modrm-sib-disp0(){00 reg:3u 100 sib disp-none}
+    [3 cost=0] sib-disp8        modrm-sib-disp8(){01 reg:3u 100 sib disp-c8}
+    [4 cost=0] sib-disp32       modrm-sib-disp32(){10 reg:3u 100 sib disp-c32}
+    [5 cost=0] disp32-norm      modrm-disp32-norm(){00 reg:3u 101 disp-sym}
+    [6 cost=0] base-disp0       modrm-base-disp0(){00 reg:3u rm:3u disp-none}
+    [7 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
+    [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-c32}
   le32(){imm:32u}
   disp-sym(){le32}
   alu-rm-r-op[6]{opcode:8u}
@@ -196,6 +208,9 @@
   alu-r-rm-op[2]{opcode:8u}
   no-asz(){()}
   no-rex(){()}
+  sse-binop-f2-op[5]{opcode:8u}
+  sse-binop-f3-op[5]{opcode:8u}
+  sse-binop-66-op[3]{opcode:8u}
   sib(){scale:2u index:3u base:3u}
   disp-none(){no-disp}
   disp-c8(){disp8:8s}
@@ -378,16 +393,28 @@
     [20 cost=0] unary-rm         unary-rm(){prefixes 11110111 modrm}
     [21 cost=0] alu-r-rm         alu-r-rm(){prefixes alu-r-rm-op modrm}
     [22 cost=0] shift1-rm        shift1-rm(){prefixes 11010001 modrm}
+    [24 cost=0] sse-binop-f2     sse-binop-f2(){asz 11110010 rex 00001111 sse-binop-f2-op modrm}
+    [25 cost=0] sse-binop-f3     sse-binop-f3(){asz 11110011 rex 00001111 sse-binop-f3-op modrm}
+    [26 cost=0] sse-binop-66     sse-binop-66(){asz 01100110 rex 00001111 sse-binop-66-op modrm}
+    [27 cost=0] sse-binop-none   sse-binop-none(){prefixes 0000111100101111 modrm}
+    [28 cost=0] sse-movsd-load   sse-movsd-load(){asz 11110010 rex 0000111100010000 modrm}
+    [29 cost=0] sse-movss-load   sse-movss-load(){asz 11110011 rex 0000111100010000 modrm}
+    [30 cost=0] sse-movsd-store  sse-movsd-store(){asz 11110010 rex 0000111100010001 modrm}
+    [31 cost=0] sse-movss-store  sse-movss-store(){asz 11110011 rex 0000111100010001 modrm}
+    [32 cost=0] cvtsi2sd-r-rm    cvtsi2sd-r-rm(){asz 11110010 rex 0000111100101010 modrm}
+    [33 cost=0] cvtsi2ss-r-rm    cvtsi2ss-r-rm(){asz 11110011 rex 0000111100101010 modrm}
+    [34 cost=0] cvttsd2si-r-rm   cvttsd2si-r-rm(){asz 11110010 rex 0000111100101100 modrm}
   prefixes(){asz rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
-    [1 cost=0] sib-disp0        modrm-sib-disp0(){00 reg:3u 100 sib disp-none}
-    [2 cost=0] sib-disp8        modrm-sib-disp8(){01 reg:3u 100 sib disp-c8}
-    [3 cost=0] sib-disp32       modrm-sib-disp32(){10 reg:3u 100 sib disp-c32}
-    [4 cost=0] disp32-norm      modrm-disp32-norm(){00 reg:3u 101 disp-sym}
-    [5 cost=0] base-disp0       modrm-base-disp0(){00 reg:3u rm:3u disp-none}
-    [6 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
-    [7 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-c32}
+    [1 cost=0] sib-nobase-disp32 modrm-sib-nobase-disp32(){00 reg:3u 100 scale:2u index:3u 101 disp-sym}
+    [2 cost=0] sib-disp0        modrm-sib-disp0(){00 reg:3u 100 sib disp-none}
+    [3 cost=0] sib-disp8        modrm-sib-disp8(){01 reg:3u 100 sib disp-c8}
+    [4 cost=0] sib-disp32       modrm-sib-disp32(){10 reg:3u 100 sib disp-c32}
+    [5 cost=0] disp32-norm      modrm-disp32-norm(){00 reg:3u 101 disp-sym}
+    [6 cost=0] base-disp0       modrm-base-disp0(){00 reg:3u rm:3u disp-none}
+    [7 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
+    [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-c32}
   le32(){imm:32u}
   alu-rm-r-op[6]{opcode:8u}
   cc[16]{cc:4u}
@@ -398,11 +425,14 @@
   alt rex
     [0 cost=0] rex-present      rex-present(){0100 wrxb:4u}
     [1 cost=0] rex-absent       rex-absent(){()}
+  sse-binop-f2-op[5]{opcode:8u}
+  sse-binop-f3-op[5]{opcode:8u}
+  sse-binop-66-op[3]{opcode:8u}
+  disp-sym(){le32}
   sib(){scale:2u index:3u base:3u}
   disp-none(){no-disp}
   disp-c8(){disp8:8s}
   disp-c32(){le32}
-  disp-sym(){le32}
   no-disp(){()}
   ########## arm tokens
   1 7 directive .syntax

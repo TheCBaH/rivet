@@ -1,0 +1,21 @@
+; Tests for lib/asm_syntax's Lexer. Its own directory rather than a module of
+; test_targets, mirroring test/lib/foundation and test/lib/codec: this is a
+; direct test of one library module, not a whole-pipeline question.
+;
+; Depends on x86_64 only for a real Lexical_profile.t - the dialect
+; configuration is a target property (asm/docs), not something this test
+; should invent a second copy of.
+;
+; Native only, like every ppx_expect library here: the purity audit has to see
+; that ppx_expect is unreachable from every production and browser root.
+
+(library
+ (name test_lexer)
+ (modules test_lexer)
+ (modes byte native)
+ (libraries foundation asm_syntax x86_64 fmt)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

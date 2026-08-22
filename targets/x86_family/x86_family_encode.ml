@@ -39,6 +39,17 @@ module Reg = struct
   let names_16 = [| "ax"; "cx"; "dx"; "bx"; "sp"; "bp"; "si"; "di" |]
   let names_8l = [| "al"; "cl"; "dl"; "bl"; "spl"; "bpl"; "sil"; "dil" |]
 
+  (* [xmm0]-[xmm15], one flat array rather than an 8-wide base plus a
+     REX-extended tail the way the GPR names above are split: xmm's naming
+     doesn't have a legacy/extended-spelling distinction the way [al] vs.
+     [r8b] does, so all sixteen go through [base_regs] at once. Width 128 is
+     not a real operand width any encoding ever selects by - SSE forms fix
+     their own width dimension by opcode, not by suffix - it exists here only
+     so a register's [.width] keeps doubling as its class marker
+     ([reg_at]/[retype] already key purely on [(width, num)]), the same way
+     8/16/32/64 already mark the four GPR widths. *)
+  let names_xmm = Array.init 16 (fun i -> Printf.sprintf "xmm%d" i)
+
   let base_regs width names =
     Array.to_list (Array.mapi (fun i n -> { name = n; num = i; width }) names)
 
@@ -236,6 +247,25 @@ module Opcode = struct
     | Dec
     | Rcr
     | Shr
+    | Addsd
+    | Subsd
+    | Mulsd
+    | Divsd
+    | Addss
+    | Subss
+    | Mulss
+    | Divss
+    | Comisd
+    | Comiss
+    | Xorpd
+    | Movapd
+    | Cvtsd2ss
+    | Cvtss2sd
+    | Movsd
+    | Movss
+    | Cvtsi2sd
+    | Cvtsi2ss
+    | Cvttsd2si
 
   let name = function
     | Add -> "add"
@@ -263,6 +293,25 @@ module Opcode = struct
     | Dec -> "dec"
     | Rcr -> "rcr"
     | Shr -> "shr"
+    | Addsd -> "addsd"
+    | Subsd -> "subsd"
+    | Mulsd -> "mulsd"
+    | Divsd -> "divsd"
+    | Addss -> "addss"
+    | Subss -> "subss"
+    | Mulss -> "mulss"
+    | Divss -> "divss"
+    | Comisd -> "comisd"
+    | Comiss -> "comiss"
+    | Xorpd -> "xorpd"
+    | Movapd -> "movapd"
+    | Cvtsd2ss -> "cvtsd2ss"
+    | Cvtss2sd -> "cvtss2sd"
+    | Movsd -> "movsd"
+    | Movss -> "movss"
+    | Cvtsi2sd -> "cvtsi2sd"
+    | Cvtsi2ss -> "cvtsi2ss"
+    | Cvttsd2si -> "cvttsd2si"
 
   (* The machine encodes add and sub as one opcode with the operation in the
      ModR/M reg field, so the opcode and its extension are two spellings of one
@@ -394,6 +443,17 @@ module Instruction = struct
               Fmt.pf ppf "%s%s %a" (Opcode.name op) (suffix_of_width i.width)
                 Fmt.(list ~sep:(any ", ") Operand.pp)
                 ops
+        (* No AT&T size suffix on any of these, ever: they are fixed-name SSE
+           mnemonics (M5, asm/docs/corpus.md), not a stem plus a width letter
+           - GAS never writes [addsdl] or [movsdq]. [i.width] here is not the
+           128-bit xmm operand's width in the first place (see
+           {!instruction_of_lowered}'s comment) so it must never reach
+           [suffix_of_width] the way the fallback case below does. *)
+        | ( Opcode.Addsd | Opcode.Subsd | Opcode.Mulsd | Opcode.Divsd | Opcode.Addss | Opcode.Subss
+          | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Comiss | Opcode.Xorpd
+          | Opcode.Movapd | Opcode.Cvtsd2ss | Opcode.Cvtss2sd | Opcode.Movsd | Opcode.Movss
+          | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si ) as op ->
+            Fmt.pf ppf "%s %a" (Opcode.name op) Fmt.(list ~sep:(any ", ") Operand.pp) ops
         | _ ->
             Fmt.pf ppf "%s%s %a" (Opcode.name i.op) (suffix_of_width i.width)
               Fmt.(list ~sep:(any ", ") Operand.pp)
@@ -458,6 +518,30 @@ module Lowered = struct
         (** Group-2 shift/rotate-by-1 (opcode [0xD1]): [Rcr]/[Shr] with a literal count of 1, the
             only count M4's real fixture ever selects - the general [0xC1 ib] immediate-count form
             is unimplemented. *)
+    | Sse_binop_r_rm of { op : Opcode.t; reg : Reg.t; rm : Rm.t }
+        (** [\[66/F2/F3/none\] 0F opcode /r], reg<-rm (M5 corpus evidence, asm/docs/corpus.md):
+            the SSE2 scalar-float arithmetic/compare/move family - [addsd subsd mulsd divsd addss
+            subss mulss divss comisd comiss xorpd movapd cvtsd2ss cvtss2sd]. [reg] and a register
+            [rm] are always xmm (width 128); a memory [rm] is unconstrained, as for any other ALU
+            form. One constructor covers all fourteen mnemonics, encoded as four [C.alt]
+            alternatives grouped by mandatory prefix - not fourteen, and not one, since the
+            mandatory-prefix byte is fixed per alternative rather than a table value (see the
+            encoder's own comment on why one alt per mnemonic-family, not one per mnemonic, was
+            rejected). *)
+    | Sse_mov_r_rm of { op : Opcode.t; reg : Reg.t; rm : Rm.t }
+        (** [F2/F3 0F 10 /r], the load direction of [movsd]/[movss]: xmm<-(xmm or mem). Split from
+            {!Sse_binop_r_rm} because these two mnemonics are the only ones here with a real second
+            (store) direction. *)
+    | Sse_mov_rm_r of { op : Opcode.t; rm : Rm.t; reg : Reg.t }
+        (** [F2/F3 0F 11 /r], the store direction: (xmm or mem)<-xmm. *)
+    | Cvtsi2f_r_rm of { op : Opcode.t; width : int; reg : Reg.t; rm : Rm.t }
+        (** [F2/F3 0F 2A /r], xmm<-(r/m32 or r/m64) - [cvtsi2sd]/[cvtsi2ss]. [reg] is xmm; [rm] is
+            a GPR (or memory) at [width], which is also what selects REX.W - CompCert always
+            spells the 64-bit source explicitly ([cvtsi2sdq]), so [width] comes from the mnemonic,
+            not inferred from an operand. *)
+    | Cvtf2i_r_rm of { width : int; reg : Reg.t; rm : Rm.t }
+        (** [F2 0F 2C /r], (r32 or r64)<-(xmm or m64) - [cvttsd2si] only ([cvttss2si] is unevidenced
+            by this corpus). [reg] is a GPR at [width]; [rm] is xmm (or memory). *)
 
   let pp ppf = function
     | Alu_rm_imm { ext; width; rm; imm } ->
@@ -506,6 +590,11 @@ module Lowered = struct
         match rm with
         | Rm.Reg _ -> Fmt.pf ppf "%s $1, %a" name Rm.pp rm
         | Rm.Mem _ -> Fmt.pf ppf "%s%s $1, %a" name (suffix_of_width width) Rm.pp rm)
+    | Sse_binop_r_rm { op; reg; rm } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
+    | Sse_mov_r_rm { op; reg; rm } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
+    | Sse_mov_rm_r { op; rm; reg } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Reg.pp reg Rm.pp rm
+    | Cvtsi2f_r_rm { op; reg; rm; _ } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
+    | Cvtf2i_r_rm { reg; rm; _ } -> Fmt.pf ppf "cvttsd2si %a, %a" Rm.pp rm Reg.pp reg
 
   let equal a b =
     match (a, b) with
@@ -537,6 +626,14 @@ module Lowered = struct
     | Alu_r_rm x, Alu_r_rm y ->
         x.op = y.op && x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Shift1_rm x, Shift1_rm y -> x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm
+    | Sse_binop_r_rm x, Sse_binop_r_rm y ->
+        x.op = y.op && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Sse_mov_r_rm x, Sse_mov_r_rm y -> x.op = y.op && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Sse_mov_rm_r x, Sse_mov_rm_r y -> x.op = y.op && Rm.equal x.rm y.rm && Reg.equal x.reg y.reg
+    | Cvtsi2f_r_rm x, Cvtsi2f_r_rm y ->
+        x.op = y.op && x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Cvtf2i_r_rm x, Cvtf2i_r_rm y ->
+        x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | _ -> false
 end
 
@@ -650,14 +747,24 @@ let const_disp ~name inner =
     ~decode:(fun v -> Some (Disp.Const v))
     inner
 
-(* The displacement of the mod=00 rm=101 form, which is the one that can carry a
-   symbol. Symbolic values write a placeholder and emit a placement; constants
-   write themselves and their placement is dropped for want of an expression, so
-   one node serves both without a second alternative. *)
+(* The displacement of the mod=00 rm=101 form, and of the base-less SIB form
+   below, both of which can carry a symbol. Symbolic values write a
+   placeholder and emit a placement; constants write themselves and their
+   placement is dropped for want of an expression, so one node serves both
+   without a second alternative.
+
+   [Fixup] (unlike [Field]) carries no signedness of its own - decode hands
+   back the raw 32-bit pattern reconstructed as an unsigned magnitude, e.g.
+   0xffffffff decodes to 4294967295L, not -1L. [Codec.sign_extend] is the
+   same correction {!Field}'s own decode already applies for a signed field
+   (codec.ml:535); without it here, a negative disp32 round-trips to the
+   correct BYTES (encode truncates to the low 32 bits either way) but
+   redisplays as a huge positive magnitude instead of the negative value the
+   source wrote, which is what a reader needs to see to tell the two apart. *)
 let sym_disp ~kind =
   C.iso_fun ~name:"disp-sym"
     ~encode:(fun d -> Some (Disp.placeholder d))
-    ~decode:(fun v -> Some (Disp.Const v))
+    ~decode:(fun v -> Some (Disp.Const (C.sign_extend ~width:32 v)))
     (le_fixup ~width:32 ~kind "disp")
 
 (* [%rip] is not a general-purpose register and is admitted in exactly one
@@ -716,13 +823,21 @@ let needs_sib (m : Mem.t) =
 type disp_form = D_none | D_8 | D_32
 
 let disp_form_of (m : Mem.t) =
-  let ebp_like = match m.base with Some b -> b.num land 7 = 5 | None -> false in
-  match m.disp with
-  (* A symbolic displacement is always the wide form: its value is not known
-     here, and a byte could not hold an address even if it were. *)
-  | Disp.Sym _ -> D_32
-  | Disp.Const v ->
-      if Int64.equal v 0L && not ebp_like then D_none else if fits_s8 v then D_8 else D_32
+  match m.base with
+  (* No base is the SIB "base=101" escape (base register field is not used
+     for a real register at all), same family as the rbp/r13 rule below but
+     total rather than conditional: there is no mod=00-with-zero-bytes or
+     mod=01-disp8 encoding for "no base", only mod=00 with a mandatory
+     disp32, regardless of the displacement's actual value. *)
+  | None -> D_32
+  | Some b -> (
+      let ebp_like = b.num land 7 = 5 in
+      match m.disp with
+      (* A symbolic displacement is always the wide form: its value is not
+         known here, and a byte could not hold an address even if it were. *)
+      | Disp.Sym _ -> D_32
+      | Disp.Const v ->
+          if Int64.equal v 0L && not ebp_like then D_none else if fits_s8 v then D_8 else D_32)
 
 let sib_of (m : Mem.t) =
   match log2_scale (if m.index = None then 1 else m.scale) with
@@ -764,6 +879,48 @@ let make_rm_codec ~(reg_of_num : int -> Reg.t) ~rip_relative ~disp_kind : (rm_en
          C.(
            const ~width:2 (Int64.of_int modbits)
            ** field ~width:3 "reg" ** const ~width:3 4L ** sib_codec ** disp_codec))
+  in
+  (* mod=00, SIB present, SIB.base=101: the SIB-side counterpart of
+     [disp32-norm] below - the one SIB encoding whose *meaning* differs from
+     the generic [sib_alt] forms rather than only its displacement width.
+     SIB.base=101 with mod=00 is reserved to mean "no base register, disp32
+     always follows", never "base=rbp/r13, no displacement" - so it cannot be
+     built from [sib_alt] (whose SIB base subfield is a free, decoded field)
+     no matter what [~form] it is given. The base field here is a CONSTANT,
+     not a decoded value - there is nothing to store, since [Mem.base] is
+     [None] whenever this alternative applies. *)
+  let sib_nobase_disp32 ~priority =
+    C.alt ~label:"sib-nobase-disp32" ~priority
+      (C.iso_fun ~name:"modrm-sib-nobase-disp32"
+         ~encode:(fun e ->
+           match e.re_rm with
+           | Rm.Mem m when m.Mem.index <> None && m.Mem.base = None -> (
+               match (m.Mem.index, log2_scale m.Mem.scale) with
+               | Some i, Some sc ->
+                   Some
+                     ( (),
+                       ( Int64.of_int (e.re_reg land 7),
+                         ((), ((Int64.of_int sc, (Int64.of_int (i.num land 7), ())), m.Mem.disp)) )
+                     )
+               | _ -> None)
+           | _ -> None)
+         ~decode:(fun ((), (reg, ((), ((sc, (ix, ())), disp)))) ->
+           Some
+             {
+               re_reg = Int64.to_int reg;
+               re_rm =
+                 Rm.Mem
+                   {
+                     Mem.base = None;
+                     index = Some (reg_of_num (Int64.to_int ix));
+                     scale = scale_of_log2 (Int64.to_int sc);
+                     disp;
+                   };
+             })
+         C.(
+           const ~width:2 0L ** field ~width:3 "reg" ** const ~width:3 4L
+           ** (field ~width:2 "scale" ** field ~width:3 "index" ** const ~width:3 5L)
+           ** sym_disp ~kind:disp_kind))
   in
   let base_alt ~label ~priority ~modbits ~form ~disp_codec =
     C.alt ~label ~priority
@@ -807,17 +964,25 @@ let make_rm_codec ~(reg_of_num : int -> Reg.t) ~rip_relative ~disp_kind : (rm_en
            ~decode:(fun ((), (reg, rm)) ->
              Some { re_reg = Int64.to_int reg; re_rm = Rm.Reg (reg_of_num (Int64.to_int rm)) })
            C.(const ~width:2 3L ** field ~width:3 "reg" ** field ~width:3 "rm"));
-      sib_alt ~label:"sib-disp0" ~priority:1 ~modbits:0 ~form:D_none
+      (* Ahead of sib-disp0: sib-disp0's SIB base subfield is free and its
+         displacement is [no_disp] (zero bytes), so without this ordering it
+         would match the first 3 bytes of a real base-less-SIB instruction
+         and stop, leaving the mandatory disp32 bytes to be misread as the
+         start of the next instruction. Bit-disjoint from [disp32-norm]
+         below (rm=100 with a SIB byte here, vs. rm=101 with none there), so
+         no other reordering is required. *)
+      sib_nobase_disp32 ~priority:1;
+      sib_alt ~label:"sib-disp0" ~priority:2 ~modbits:0 ~form:D_none
         ~disp_codec:(const_disp ~name:"disp-none" no_disp);
-      sib_alt ~label:"sib-disp8" ~priority:2 ~modbits:1 ~form:D_8
+      sib_alt ~label:"sib-disp8" ~priority:3 ~modbits:1 ~form:D_8
         ~disp_codec:(const_disp ~name:"disp-c8" (le ~signedness:C.Signed ~width:8 "disp8"));
-      sib_alt ~label:"sib-disp32" ~priority:3 ~modbits:2 ~form:D_32
+      sib_alt ~label:"sib-disp32" ~priority:4 ~modbits:2 ~form:D_32
         ~disp_codec:(const_disp ~name:"disp-c32" (le ~signedness:C.Signed ~width:32 "disp32"));
-      base_alt ~label:"base-disp0" ~priority:5 ~modbits:0 ~form:D_none
+      base_alt ~label:"base-disp0" ~priority:6 ~modbits:0 ~form:D_none
         ~disp_codec:(const_disp ~name:"disp-none" no_disp);
-      base_alt ~label:"base-disp8" ~priority:6 ~modbits:1 ~form:D_8
+      base_alt ~label:"base-disp8" ~priority:7 ~modbits:1 ~form:D_8
         ~disp_codec:(const_disp ~name:"disp-c8" (le ~signedness:C.Signed ~width:8 "disp8"));
-      base_alt ~label:"base-disp32" ~priority:7 ~modbits:2 ~form:D_32
+      base_alt ~label:"base-disp32" ~priority:8 ~modbits:2 ~form:D_32
         ~disp_codec:(const_disp ~name:"disp-c32" (le ~signedness:C.Signed ~width:32 "disp32"));
       (* mod=00, rm=101: the one ModR/M encoding whose *meaning* differs between
          the two modes rather than only its operand width. In 32-bit it is an
@@ -834,7 +999,7 @@ let make_rm_codec ~(reg_of_num : int -> Reg.t) ~rip_relative ~disp_kind : (rm_en
          while theirs is free and can hold 101 too - and mod=00 rm=101 is never
          a base register on either mode. Decoding it as one would read four
          displacement bytes as the next instruction. *)
-      C.alt ~label:"disp32-norm" ~priority:4
+      C.alt ~label:"disp32-norm" ~priority:5
         (C.iso_fun ~name:"modrm-disp32-norm"
            ~encode:(fun e ->
              match e.re_rm with
@@ -982,10 +1147,24 @@ module Make (M : MODE) = struct
     | `No_data_relocation of int
     | `Negative_padding of int
     | `Register_width_mismatch of register_width_mismatch
-    | `Shift_count_not_one of int64 ]
+    | `Shift_count_not_one of int64
+    | `Sse_operand_class of sse_operand_class_mismatch ]
 
   and bad_branch_suffix = { mnemonic : string; rungs : string list }
   and register_width_mismatch = { reg : string; reg_width : int; insn_width : int }
+
+  and sse_operand_class_mismatch = { sse_reg : string; sse_reg_width : int }
+  (** Always "expected xmm, found something else" (M5, asm/docs/corpus.md):
+          reusing {!Reg.t}/{!Rm.t} for both GPR and xmm operands buys width- and
+          number-generic ModR/M machinery for free, but it also means nothing
+          else in this domain stops [addsd %eax, %xmm0] from lowering as if
+          [%eax] were [%xmm0] - the codec sees only a register number, never a
+          class. This is that check's diagnostic. The opposite direction (an
+          xmm register where a GPR is required, e.g. [cvtsi2sd]'s [rm] operand)
+          reuses {!Register_width_mismatch} instead of a second case here,
+          since xmm's width (128) already can never equal a GPR instruction's
+          declared width - the existing check is already exactly the right
+          shape for it. *)
 
   type error = error_kind Target_error.t
 
@@ -1020,6 +1199,8 @@ module Make (M : MODE) = struct
           "shift/rotate-by-1 count must be exactly 1, got %Ld (the general immediate-count form is \
            not implemented)"
           n
+    | `Sse_operand_class { sse_reg; sse_reg_width } ->
+        Fmt.pf ppf "%s is %d-bit, expected an xmm register" sse_reg sse_reg_width
 
   (* The phase that detected it, which is what the code has always named. The
      codec arm delegates: [Codec.code] is [Some] only where that layer is the
@@ -1031,7 +1212,8 @@ module Make (M : MODE) = struct
         "x86.simplify"
     | `Bad_branch_suffix _ -> "x86.branch-suffix"
     | `Immediate_too_wide | `No_form _ | `Immediate_destination | `Imm_to_mem_only_movb
-    | `Mov8_only_movb | `Register_width_mismatch _ | `Shift_count_not_one _ ->
+    | `Mov8_only_movb | `Register_width_mismatch _ | `Shift_count_not_one _ | `Sse_operand_class _
+      ->
         "x86.lower"
     | `Codec e -> Option.value (Codec.code e) ~default:"x86.encode"
     | `Decode_no_match | `Decode_partial_bytes | `Decode_no_normalized -> "x86.decode"
@@ -1143,6 +1325,53 @@ module Make (M : MODE) = struct
     (* No size suffix, in either mode: a near call is rel32 on x86-32 and on
        x86-64 alike, so there is nothing for a suffix to select. *)
     | "call", _ -> Ok (Instruction.mk Opcode.Call M.address_width s.Surface.ops)
+    (* {3 SSE2 scalar float (M5, asm/docs/corpus.md)}
+
+       Fixed mnemonics, matched on the mnemonic directly rather than through
+       [stem]/[widthed]: none of these carry an AT&T size suffix - GAS never
+       writes [addsdl] - so there is no suffix to split off. [Instruction.width]
+       does not mean "this instruction's operand width" for these the way it
+       does elsewhere in this function; see {!instruction_of_lowered}'s and
+       {!Instruction.pp}'s comments for what it means here instead. *)
+    | "addsd", _ -> Ok (Instruction.mk Opcode.Addsd 32 s.Surface.ops)
+    | "subsd", _ -> Ok (Instruction.mk Opcode.Subsd 32 s.Surface.ops)
+    | "mulsd", _ -> Ok (Instruction.mk Opcode.Mulsd 32 s.Surface.ops)
+    | "divsd", _ -> Ok (Instruction.mk Opcode.Divsd 32 s.Surface.ops)
+    | "addss", _ -> Ok (Instruction.mk Opcode.Addss 32 s.Surface.ops)
+    | "subss", _ -> Ok (Instruction.mk Opcode.Subss 32 s.Surface.ops)
+    | "mulss", _ -> Ok (Instruction.mk Opcode.Mulss 32 s.Surface.ops)
+    | "divss", _ -> Ok (Instruction.mk Opcode.Divss 32 s.Surface.ops)
+    | "comisd", _ -> Ok (Instruction.mk Opcode.Comisd 32 s.Surface.ops)
+    | "comiss", _ -> Ok (Instruction.mk Opcode.Comiss 32 s.Surface.ops)
+    | "xorpd", _ -> Ok (Instruction.mk Opcode.Xorpd 32 s.Surface.ops)
+    | "movapd", _ -> Ok (Instruction.mk Opcode.Movapd 32 s.Surface.ops)
+    | "cvtsd2ss", _ -> Ok (Instruction.mk Opcode.Cvtsd2ss 32 s.Surface.ops)
+    | "cvtss2sd", _ -> Ok (Instruction.mk Opcode.Cvtss2sd 32 s.Surface.ops)
+    | "movsd", _ -> Ok (Instruction.mk Opcode.Movsd 32 s.Surface.ops)
+    | "movss", _ -> Ok (Instruction.mk Opcode.Movss 32 s.Surface.ops)
+    (* [cvtsi2sd]/[cvtsi2ss] take their REX.W directly from the mnemonic:
+       CompCert always spells the 64-bit-source form explicitly ([cvtsi2sdq]/
+       [cvtsi2ssq]), never infers it, so there is no operand to inspect here
+       the way the bare-[add] case above inspects one. *)
+    | "cvtsi2sd", _ -> Ok (Instruction.mk Opcode.Cvtsi2sd 32 s.Surface.ops)
+    | "cvtsi2sdq", _ -> Ok (Instruction.mk Opcode.Cvtsi2sd 64 s.Surface.ops)
+    | "cvtsi2ss", _ -> Ok (Instruction.mk Opcode.Cvtsi2ss 32 s.Surface.ops)
+    | "cvtsi2ssq", _ -> Ok (Instruction.mk Opcode.Cvtsi2ss 64 s.Surface.ops)
+    (* [cvttsd2si] has one spelling for both GPR destination widths in this
+       corpus (unlike [cvtsi2sd]/[cvtsi2sdq]) - GAS disambiguates from the
+       destination register alone, so this reads it the same way the bare
+       [add] case above reads its register operand. A malformed operand list
+       falls through to [lower_instruction]'s exhaustive match and its
+       [`No_form] catch-all rather than being rejected twice; the placeholder
+       width here is never used for anything besides that later, definitive
+       check. *)
+    | "cvttsd2si", _ ->
+        let width =
+          match List.rev s.Surface.ops with
+          | Operand.Reg r :: _ -> r.Reg.width
+          | _ -> M.address_width
+        in
+        Ok (Instruction.mk Opcode.Cvttsd2si width s.Surface.ops)
     (* M4 (.ai/asm_plan.md §12): the real i64_udivmod.S source spells its
        one register-register [add] with no suffix at all ([add %ecx,
        %edx]) - valid GNU as, since the register operand disambiguates the
@@ -1237,6 +1466,13 @@ module Make (M : MODE) = struct
         bad
           (`Register_width_mismatch
              { reg = r.name; reg_width = r.width; insn_width = i.Instruction.width })
+    in
+    (* xmm-side of the SSE operand-class check (M5, asm/docs/corpus.md); see
+       {!sse_operand_class_mismatch}'s comment for why the GPR side reuses
+       [width_ok] instead of a mirrored helper here. *)
+    let xmm_ok (r : Reg.t) =
+      if r.width = 128 then Ok ()
+      else bad (`Sse_operand_class { sse_reg = r.name; sse_reg_width = r.width })
     in
     match (i.Instruction.op, i.Instruction.ops) with
     | (Opcode.Add | Opcode.Adc | Opcode.And | Opcode.Sub | Opcode.Cmp), [ Operand.Imm v; dst ] -> (
@@ -1410,6 +1646,71 @@ module Make (M : MODE) = struct
                 target = Asm_core.Lowered_ast.Symbolic { value = e; rung = i.Instruction.form };
               };
           ]
+    (* {3 SSE2 scalar float (M5, asm/docs/corpus.md)}
+
+       [reg] is always the destination and always xmm for the binop/mov-load
+       family, matching every shape this corpus evidences; a register [rm]
+       must be xmm too ({!xmm_ok}), and a memory [rm] needs no check here -
+       {!x86_family.ml}'s memory-operand parser already refuses an xmm
+       register as a [Mem.t] base or index, so an [Operand.Mem] arriving here
+       is already guaranteed clean. Register-register [movsd]/[movss] is not
+       built: unevidenced by this corpus, and unlike plain [mov] (which has a
+       real fixture pinning its reg-reg direction to the store opcode) there
+       is nothing here to check that choice against. *)
+    | ( ( Opcode.Addsd | Opcode.Subsd | Opcode.Mulsd | Opcode.Divsd | Opcode.Addss | Opcode.Subss
+        | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Comiss | Opcode.Xorpd | Opcode.Movapd
+        | Opcode.Cvtsd2ss | Opcode.Cvtss2sd ),
+        [ Operand.Reg src; Operand.Reg reg ] ) -> (
+        match (xmm_ok src, xmm_ok reg) with
+        | Ok (), Ok () ->
+            Ok [ Lowered.Sse_binop_r_rm { op = i.Instruction.op; reg; rm = Rm.Reg src } ]
+        | Error e, _ | _, Error e -> Error e)
+    | ( ( Opcode.Addsd | Opcode.Subsd | Opcode.Mulsd | Opcode.Divsd | Opcode.Addss | Opcode.Subss
+        | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Comiss | Opcode.Xorpd | Opcode.Movapd
+        | Opcode.Cvtsd2ss | Opcode.Cvtss2sd ),
+        [ Operand.Mem m; Operand.Reg reg ] ) -> (
+        match xmm_ok reg with
+        | Error e -> Error e
+        | Ok () -> Ok [ Lowered.Sse_binop_r_rm { op = i.Instruction.op; reg; rm = Rm.Mem m } ])
+    | (Opcode.Movsd | Opcode.Movss), [ Operand.Mem m; Operand.Reg reg ] -> (
+        match xmm_ok reg with
+        | Error e -> Error e
+        | Ok () -> Ok [ Lowered.Sse_mov_r_rm { op = i.Instruction.op; reg; rm = Rm.Mem m } ])
+    | (Opcode.Movsd | Opcode.Movss), [ Operand.Reg reg; Operand.Mem m ] -> (
+        match xmm_ok reg with
+        | Error e -> Error e
+        | Ok () -> Ok [ Lowered.Sse_mov_rm_r { op = i.Instruction.op; rm = Rm.Mem m; reg } ])
+    (* [cvtsi2sd]/[cvtsi2ss]: [rm]'s width must match the mnemonic's own
+       ([width_ok], not [xmm_ok] - reused exactly as documented on
+       {!sse_operand_class_mismatch}, since xmm's width 128 can never equal a
+       GPR instruction's declared 32/64 anyway). *)
+    | (Opcode.Cvtsi2sd | Opcode.Cvtsi2ss), [ Operand.Reg src; Operand.Reg reg ] -> (
+        match (width_ok src, xmm_ok reg) with
+        | Ok (), Ok () ->
+            Ok
+              [
+                Lowered.Cvtsi2f_r_rm
+                  { op = i.Instruction.op; width = i.Instruction.width; reg; rm = Rm.Reg src };
+              ]
+        | Error e, _ | _, Error e -> Error e)
+    | (Opcode.Cvtsi2sd | Opcode.Cvtsi2ss), [ Operand.Mem m; Operand.Reg reg ] -> (
+        match xmm_ok reg with
+        | Error e -> Error e
+        | Ok () ->
+            Ok
+              [
+                Lowered.Cvtsi2f_r_rm
+                  { op = i.Instruction.op; width = i.Instruction.width; reg; rm = Rm.Mem m };
+              ])
+    | Opcode.Cvttsd2si, [ Operand.Reg src; Operand.Reg reg ] -> (
+        match (xmm_ok src, width_ok reg) with
+        | Ok (), Ok () ->
+            Ok [ Lowered.Cvtf2i_r_rm { width = i.Instruction.width; reg; rm = Rm.Reg src } ]
+        | Error e, _ | _, Error e -> Error e)
+    | Opcode.Cvttsd2si, [ Operand.Mem m; Operand.Reg reg ] -> (
+        match width_ok reg with
+        | Error e -> Error e
+        | Ok () -> Ok [ Lowered.Cvtf2i_r_rm { width = i.Instruction.width; reg; rm = Rm.Mem m } ])
     | _ -> bad (`No_form (Opcode.name i.Instruction.op))
 
   (* {2 The codec}
@@ -1680,6 +1981,182 @@ module Make (M : MODE) = struct
 
   (* The ModR/M reg field, with REX.R put back the same way. *)
   let reg_field ~p ~width n = reg_at ~width (n + rex_bit p 4)
+
+  (* {3 SSE2 scalar float (M5, asm/docs/corpus.md)}
+
+     [asz, mandatory-prefix, REX, 0F, opcode, rm] - one fixed shape per
+     mandatory-prefix group, not one alt per mnemonic and not one alt
+     spanning every mnemonic. {!Lowered.Sse_binop_r_rm}'s own comment says
+     why the latter doesn't work: REX has to sit between the mandatory prefix
+     and 0F, so a table whose *selected prefix* changes per entry cannot be
+     expressed as one contiguous field - only a prefix fixed per [C.alt] can.
+     [prefixes_codec]/[prefixes_of] (above) are untouched; every non-SSE
+     alternative still uses them exactly as before. Where a mandatory prefix
+     exists, this reimplements [prefixes_codec]'s two components as three
+     separate pieces (with the mandatory byte spliced between them) rather
+     than extending the shared record type. REX.W still comes from
+     [prefixes_of]'s [~width] exactly as everywhere else - [~width:32] for
+     the pure-xmm forms (REX.W always clear; the 128-bit xmm operand's real
+     width is never what selects it) and the real GPR width for the two
+     conversion families, which is also why those two builders take [~width]
+     from the [Lowered] value rather than hard-coding 32. *)
+
+  let sse_binop_f2_codec =
+    C.iso_table ~name:"sse-binop-f2-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:
+        [
+          (Opcode.Addsd, 0x58L);
+          (Opcode.Subsd, 0x5CL);
+          (Opcode.Mulsd, 0x59L);
+          (Opcode.Divsd, 0x5EL);
+          (Opcode.Cvtsd2ss, 0x5AL);
+        ]
+      (C.field ~width:8 "opcode")
+
+  let sse_binop_f3_codec =
+    C.iso_table ~name:"sse-binop-f3-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:
+        [
+          (Opcode.Addss, 0x58L);
+          (Opcode.Subss, 0x5CL);
+          (Opcode.Mulss, 0x59L);
+          (Opcode.Divss, 0x5EL);
+          (Opcode.Cvtss2sd, 0x5AL);
+        ]
+      (C.field ~width:8 "opcode")
+
+  let sse_binop_66_codec =
+    C.iso_table ~name:"sse-binop-66-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:[ (Opcode.Comisd, 0x2FL); (Opcode.Xorpd, 0x57L); (Opcode.Movapd, 0x28L) ]
+      (C.field ~width:8 "opcode")
+
+  let sse_binop_alt ~label ~priority ~mandatory ~opcode_codec =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Sse_binop_r_rm { op; reg; rm } ->
+               let p = prefixes_of ~width:32 ~reg:reg.num ~rm in
+               Some (p.asz, ((), (p.rex, ((), (op, { re_reg = reg.num; re_rm = rm })))))
+           | _ -> None)
+         ~decode:(fun (asz, ((), (rex, ((), (op, e))))) ->
+           let p = { asz; rex } in
+           Some
+             (Lowered.Sse_binop_r_rm
+                { op; reg = reg_field ~p ~width:128 e.re_reg; rm = rm_of ~p ~width:128 e.re_rm }))
+         C.(
+           asz_codec
+           ** const ~width:8 (Int64.of_int mandatory)
+           ** rex_codec ** const ~width:8 0x0FL ** opcode_codec ** rm_codec))
+
+  (* [comiss] alone has no mandatory prefix - the one member of the binop
+     family this corpus evidences with none - so it reuses [prefixes_codec]
+     directly (an [asz]-then-REX composite with nothing spliced between them
+     is exactly what [prefixes_codec] already is) and a single fixed 16-bit
+     [0F 2F], the same shape [imul-r-rm] and [cmov-r-rm] already use for a
+     mandatory-prefix-free two-byte opcode. *)
+  let sse_binop_none_alt ~label ~priority =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Sse_binop_r_rm { op = Opcode.Comiss; reg; rm } ->
+               Some (prefixes_of ~width:32 ~reg:reg.num ~rm, ((), { re_reg = reg.num; re_rm = rm }))
+           | _ -> None)
+         ~decode:(fun (p, ((), e)) ->
+           Some
+             (Lowered.Sse_binop_r_rm
+                {
+                  op = Opcode.Comiss;
+                  reg = reg_field ~p ~width:128 e.re_reg;
+                  rm = rm_of ~p ~width:128 e.re_rm;
+                }))
+         C.(prefixes_codec ** const ~width:16 0x0F2FL ** rm_codec))
+
+  (* [movsd]/[movss]'s two directions: same ModR/M shape as {!sse_binop_alt}
+     ([reg] is always xmm, one register or memory [rm]), but each direction
+     has its own opcode (load [0F 10], store [0F 11]) and there is exactly
+     one mnemonic per mandatory-prefix group in each direction, so a fixed
+     16-bit [0F]+opcode constant replaces {!sse_binop_alt}'s opcode table -
+     there is nothing left to vary once [~mandatory] has picked the
+     mnemonic. *)
+  let sse_mov_r_rm_alt ~label ~priority ~mandatory ~op ~opcode16 =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Sse_mov_r_rm { op = op'; reg; rm } when op' = op ->
+               let p = prefixes_of ~width:32 ~reg:reg.num ~rm in
+               Some (p.asz, ((), (p.rex, ((), { re_reg = reg.num; re_rm = rm }))))
+           | _ -> None)
+         ~decode:(fun (asz, ((), (rex, ((), e)))) ->
+           let p = { asz; rex } in
+           Some
+             (Lowered.Sse_mov_r_rm
+                { op; reg = reg_field ~p ~width:128 e.re_reg; rm = rm_of ~p ~width:128 e.re_rm }))
+         C.(
+           asz_codec
+           ** const ~width:8 (Int64.of_int mandatory)
+           ** rex_codec ** const ~width:16 opcode16 ** rm_codec))
+
+  let sse_mov_rm_r_alt ~label ~priority ~mandatory ~op ~opcode16 =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Sse_mov_rm_r { op = op'; rm; reg } when op' = op ->
+               let p = prefixes_of ~width:32 ~reg:reg.num ~rm in
+               Some (p.asz, ((), (p.rex, ((), { re_reg = reg.num; re_rm = rm }))))
+           | _ -> None)
+         ~decode:(fun (asz, ((), (rex, ((), e)))) ->
+           let p = { asz; rex } in
+           Some
+             (Lowered.Sse_mov_rm_r
+                { op; rm = rm_of ~p ~width:128 e.re_rm; reg = reg_field ~p ~width:128 e.re_reg }))
+         C.(
+           asz_codec
+           ** const ~width:8 (Int64.of_int mandatory)
+           ** rex_codec ** const ~width:16 opcode16 ** rm_codec))
+
+  (* [cvtsi2sd]/[cvtsi2ss] ([0F 2A]): the one place [~width] threaded into
+     {!prefixes_of} is a real GPR width rather than the [32] REX.W-clear
+     sentinel the rest of this section uses - [rm] is the GPR/memory operand
+     here, and its width is exactly what CompCert's [q] suffix already
+     pinned down in {!simplify_instruction}. *)
+  let sse_cvtsi2f_alt ~label ~priority ~mandatory ~op =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Cvtsi2f_r_rm { op = op'; width; reg; rm } when op' = op ->
+               let p = prefixes_of ~width ~reg:reg.num ~rm in
+               Some (p.asz, ((), (p.rex, ((), { re_reg = reg.num; re_rm = rm }))))
+           | _ -> None)
+         ~decode:(fun (asz, ((), (rex, ((), e)))) ->
+           let p = { asz; rex } in
+           let width = width_of_prefixes p in
+           Some
+             (Lowered.Cvtsi2f_r_rm
+                { op; width; reg = reg_field ~p ~width:128 e.re_reg; rm = rm_of ~p ~width e.re_rm }))
+         C.(
+           asz_codec
+           ** const ~width:8 (Int64.of_int mandatory)
+           ** rex_codec ** const ~width:16 0x0F2AL ** rm_codec))
+
+  (* [cvttsd2si] ([0F 2C], [F2] only - [cvttss2si]/[F3] is unevidenced by
+     this corpus and not built). Mirrors {!sse_cvtsi2f_alt} with [reg]/[rm]'s
+     roles swapped: [reg] is the GPR (its width drives REX.W here), [rm] is
+     xmm or memory. *)
+  let sse_cvtf2i_alt ~label ~priority =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Cvtf2i_r_rm { width; reg; rm } ->
+               let p = prefixes_of ~width ~reg:reg.num ~rm in
+               Some (p.asz, ((), (p.rex, ((), { re_reg = reg.num; re_rm = rm }))))
+           | _ -> None)
+         ~decode:(fun (asz, ((), (rex, ((), e)))) ->
+           let p = { asz; rex } in
+           let width = width_of_prefixes p in
+           Some
+             (Lowered.Cvtf2i_r_rm
+                { width; reg = reg_field ~p ~width e.re_reg; rm = rm_of ~p ~width:128 e.re_rm }))
+         C.(asz_codec ** const ~width:8 0xF2L ** rex_codec ** const ~width:16 0x0F2CL ** rm_codec))
 
   let alu_form ~label ~priority ~opcode_byte ~imm_width =
     C.alt ~label ~priority
@@ -2065,24 +2542,52 @@ module Make (M : MODE) = struct
                           { ext = e.re_reg; width; rm = rm_of ~p:rex ~width e.re_rm }))
                C.(prefixes_codec ** const ~width:8 0xD1L ** rm_codec));
         ]
-      @
       (* [0x48+r]: the single-byte DEC form exists only in 32-bit mode - in
          64-bit mode 0x40-0x4F are REX prefixes instead, so an unguarded alt
          here would be dead code [Finite.unreachable_alts] exists to catch
          (the same reasoning {!moffs_alts} already documents for [a1]/[a3]).
          The general [0xFF /1] group encoding that DOES exist in 64-bit mode
          is unimplemented; no fixture selects it. *)
-      if M.rex_allowed then []
-      else
-        [
-          C.alt ~label:"dec-r" ~priority:23
-            (C.iso_fun ~name:"dec-r"
-               ~encode:(function
-                 | Lowered.Dec { reg } -> Some ((), Int64.of_int (reg.num land 7)) | _ -> None)
-               ~decode:(fun ((), r) ->
-                 Some (Lowered.Dec { reg = reg_at ~width:M.address_width (Int64.to_int r) }))
-               C.(const ~width:5 0b01001L ** field ~width:3 "reg"));
-        ])
+      @ (if M.rex_allowed then []
+         else
+           [
+             C.alt ~label:"dec-r" ~priority:23
+               (C.iso_fun ~name:"dec-r"
+                  ~encode:(function
+                    | Lowered.Dec { reg } -> Some ((), Int64.of_int (reg.num land 7)) | _ -> None)
+                  ~decode:(fun ((), r) ->
+                    Some (Lowered.Dec { reg = reg_at ~width:M.address_width (Int64.to_int r) }))
+                  C.(const ~width:5 0b01001L ** field ~width:3 "reg"));
+           ])
+      @
+      (* SSE2 scalar float (M5, asm/docs/corpus.md), unconditional - unlike
+         [dec-r] just above, nothing here is bit-pattern-dead in 32-bit mode
+         (every mandatory-prefix byte and opcode used here is free in both
+         modes), so this is not a second [if M.rex_allowed] split. x86_32
+         simply never constructs a [Sse_*] value in the first place, because
+         its own register list (x86_32_encode.ml) has no xmm entries - the
+         same "unreachable via values, not via bit patterns" situation
+         {!Codec.check} does not and need not flag. *)
+      [
+        sse_binop_alt ~label:"sse-binop-f2" ~priority:24 ~mandatory:0xF2
+          ~opcode_codec:sse_binop_f2_codec;
+        sse_binop_alt ~label:"sse-binop-f3" ~priority:25 ~mandatory:0xF3
+          ~opcode_codec:sse_binop_f3_codec;
+        sse_binop_alt ~label:"sse-binop-66" ~priority:26 ~mandatory:0x66
+          ~opcode_codec:sse_binop_66_codec;
+        sse_binop_none_alt ~label:"sse-binop-none" ~priority:27;
+        sse_mov_r_rm_alt ~label:"sse-movsd-load" ~priority:28 ~mandatory:0xF2 ~op:Opcode.Movsd
+          ~opcode16:0x0F10L;
+        sse_mov_r_rm_alt ~label:"sse-movss-load" ~priority:29 ~mandatory:0xF3 ~op:Opcode.Movss
+          ~opcode16:0x0F10L;
+        sse_mov_rm_r_alt ~label:"sse-movsd-store" ~priority:30 ~mandatory:0xF2 ~op:Opcode.Movsd
+          ~opcode16:0x0F11L;
+        sse_mov_rm_r_alt ~label:"sse-movss-store" ~priority:31 ~mandatory:0xF3 ~op:Opcode.Movss
+          ~opcode16:0x0F11L;
+        sse_cvtsi2f_alt ~label:"cvtsi2sd-r-rm" ~priority:32 ~mandatory:0xF2 ~op:Opcode.Cvtsi2sd;
+        sse_cvtsi2f_alt ~label:"cvtsi2ss-r-rm" ~priority:33 ~mandatory:0xF3 ~op:Opcode.Cvtsi2ss;
+        sse_cvtf2i_alt ~label:"cvttsd2si-r-rm" ~priority:34;
+      ])
 
   (* {2 Encode and decode} *)
 
@@ -2402,6 +2907,74 @@ module Make (M : MODE) = struct
                    Operand.Imm (Bigint.of_int64 1L);
                    (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
                  ]))
+    (* The SSE forms' [Instruction.width] is not the 128-bit xmm operand's
+       width - nothing here ever prints a size suffix for these opcodes (see
+       {!Instruction.pp}'s no-suffix group), so [width] only has to be
+       whatever value keeps REX.W correct if this instruction were
+       re-encoded, which for a pure xmm/xmm or xmm/mem form is "cleared" -
+       hence the [32] sentinel, exactly as the REX-suppression cases
+       elsewhere use. [Cvtsi2f_r_rm]/[Cvtf2i_r_rm] carry their own real GPR
+       width and use it here instead. *)
+    | Lowered.Sse_binop_r_rm { op; reg; rm } ->
+        Some
+          {
+            Instruction.op;
+            width = 32;
+            ops =
+              [
+                (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+                Operand.Reg reg;
+              ];
+            form = None;
+          }
+    | Lowered.Sse_mov_r_rm { op; reg; rm } ->
+        Some
+          {
+            Instruction.op;
+            width = 32;
+            ops =
+              [
+                (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+                Operand.Reg reg;
+              ];
+            form = None;
+          }
+    | Lowered.Sse_mov_rm_r { op; rm; reg } ->
+        Some
+          {
+            Instruction.op;
+            width = 32;
+            ops =
+              [
+                Operand.Reg reg;
+                (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+              ];
+            form = None;
+          }
+    | Lowered.Cvtsi2f_r_rm { op; width; reg; rm } ->
+        Some
+          {
+            Instruction.op;
+            width;
+            ops =
+              [
+                (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+                Operand.Reg reg;
+              ];
+            form = None;
+          }
+    | Lowered.Cvtf2i_r_rm { width; reg; rm } ->
+        Some
+          {
+            Instruction.op = Opcode.Cvttsd2si;
+            width;
+            ops =
+              [
+                (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+                Operand.Reg reg;
+              ];
+            form = None;
+          }
 
   let decode ctx bytes ~pos =
     let bits = C.Bits.of_bytes (String.sub bytes pos (String.length bytes - pos)) in

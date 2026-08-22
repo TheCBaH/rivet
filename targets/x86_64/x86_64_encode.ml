@@ -18,6 +18,8 @@ module Mode = struct
     @ X86_family_encode.Reg.extended_regs 32 "d"
     @ X86_family_encode.Reg.base_regs 16 X86_family_encode.Reg.names_16
     @ X86_family_encode.Reg.base_regs 8 X86_family_encode.Reg.names_8l
+    @ X86_family_encode.Reg.extended_regs 8 "b"
+    @ X86_family_encode.Reg.base_regs 128 X86_family_encode.Reg.names_xmm
 
   (* Measured against x86_64-linux-gnu-as by padding a .align 16 at each
      distance, not copied from a manual: the long-NOP family plus the CS-prefix

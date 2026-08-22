@@ -46,7 +46,8 @@ module Make (M : MODE) = struct
     | `Malformed_rip_operand of Asm_syntax.Token.slice
     | `Malformed_memory_operand of Asm_syntax.Token.slice
     | `Bad_scale of int64
-    | `Unbalanced_parens ]
+    | `Unbalanced_parens
+    | `Xmm_in_memory_operand of string ]
 
   and cannot_parse = { slice : Asm_syntax.Token.slice; reason : Asm_syntax.Parse_lines.error_kind }
 
@@ -64,11 +65,13 @@ module Make (M : MODE) = struct
     | `Malformed_memory_operand _ -> Fmt.string ppf "malformed scaled memory operand"
     | `Bad_scale _ -> Fmt.string ppf "scale must be 1, 2, 4 or 8"
     | `Unbalanced_parens -> Fmt.string ppf "unbalanced parentheses in operand"
+    | `Xmm_in_memory_operand n ->
+        Fmt.pf ppf "%%%s cannot be used as a memory operand's base or index register" n
 
   let parse_error_kind_code : parse_error_kind -> string = function
     | `Unknown_register _ | `Displacement_too_wide | `Cannot_parse_displacement _
     | `Cannot_parse_operand _ | `Rip_requires_64bit | `Malformed_rip_operand _
-    | `Malformed_memory_operand _ | `Bad_scale _ | `Unbalanced_parens ->
+    | `Malformed_memory_operand _ | `Bad_scale _ | `Unbalanced_parens | `Xmm_in_memory_operand _ ->
         "x86.operand"
 
   let pp_parse_error ppf e = pp_parse_error_kind ppf (Target_error.kind e)
@@ -152,6 +155,19 @@ module Make (M : MODE) = struct
     let origin = slice_origin slice in
     let bad kind = Error (parse_diag ~pos:__POS__ ~origin kind) in
     let reg_named n = match find_reg n with Some r -> Ok r | None -> bad (`Unknown_register n) in
+    (* Only for a memory operand's base/index position (M5, corpus.md's SSE
+       triage): an xmm register is a legal plain operand ([%xmm3] alone) but
+       never legal address arithmetic, and nothing about [Mem.t] or the SIB
+       codec would otherwise catch [movsd (%xmm0), %xmm1] - ModR/M and SIB
+       encode a bare register *number*, with no class of their own to check.
+       Rejecting it here, at the one place a bare register token becomes a
+       [Mem.t.base]/[.index], protects every instruction with a memory
+       operand, not only the new SSE ones. *)
+    let mem_reg_named n =
+      match reg_named n with
+      | Ok r when r.Reg.width = 128 -> bad (`Xmm_in_memory_operand n)
+      | other -> other
+    in
     let open Asm_syntax in
     match List.map Token.kind slice with
     (* $imm *)
@@ -169,7 +185,7 @@ module Make (M : MODE) = struct
         if not M.rex_allowed then bad `Rip_requires_64bit
         else Ok (Operand.Mem { Mem.base = Some rip_reg; index = None; scale = 1; disp = Disp.zero })
     | [ Token.Lparen; Token.Register b; Token.Rparen ] ->
-        Result.map (fun b -> Operand.Mem (Mem.of_base b)) (reg_named b)
+        Result.map (fun b -> Operand.Mem (Mem.of_base b)) (mem_reg_named b)
     (* [%rip] is not in the register table, so these two would report it as an
        unknown register before the fallback ever saw it. *)
     | [ Token.Int _; Token.Lparen; Token.Register "rip"; Token.Rparen ]
@@ -184,12 +200,12 @@ module Make (M : MODE) = struct
                 (disp_expression ~bad prefix)
           | None -> bad (`Malformed_rip_operand slice))
     | [ Token.Int d; Token.Lparen; Token.Register b; Token.Rparen ] -> (
-        match (Bigint.to_int64_opt d, reg_named b) with
+        match (Bigint.to_int64_opt d, mem_reg_named b) with
         | Some d, Ok b -> Ok (Operand.Mem (Mem.of_base ~disp:(Disp.Const d) b))
         | None, _ -> bad `Displacement_too_wide
         | _, Error e -> Error e)
     | Token.Minus :: Token.Int d :: [ Token.Lparen; Token.Register b; Token.Rparen ] -> (
-        match (Bigint.to_int64_opt d, reg_named b) with
+        match (Bigint.to_int64_opt d, mem_reg_named b) with
         | Some d, Ok b -> Ok (Operand.Mem (Mem.of_base ~disp:(Disp.Const (Int64.neg d)) b))
         | None, _ -> bad `Displacement_too_wide
         | _, Error e -> Error e)
@@ -198,17 +214,65 @@ module Make (M : MODE) = struct
        tokens that remain, not the ones the source wrote. *)
     | [ Token.Int d; Token.Lparen; Token.Register b; Token.Register i; Token.Int s; Token.Rparen ]
       -> (
-        match (Bigint.to_int64_opt d, Bigint.to_int_opt s, reg_named b, reg_named i) with
+        match (Bigint.to_int64_opt d, Bigint.to_int_opt s, mem_reg_named b, mem_reg_named i) with
         | Some d, Some s, Ok b, Ok i ->
             if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
             else
               Ok (Operand.Mem { Mem.base = Some b; index = Some i; scale = s; disp = Disp.Const d })
         | _ -> bad (`Malformed_memory_operand slice))
+    (* -disp(%base,%index,scale) - the negative-displacement sibling of the
+       positive form just above (M5 corpus evidence: asm/fixtures/corpus/c/
+       x86_64/summary.txt's sha1.c, "cannot parse operand" on
+       [-1894007588(%esi,%r10d,1)]). Base, index and scale all present, only
+       the displacement's sign differs, mirroring how the base-less SIB case
+       below already has both a positive and a [Token.Minus]-prefixed
+       alternative. *)
+    | Token.Minus
+      :: Token.Int d
+      :: [ Token.Lparen; Token.Register b; Token.Register i; Token.Int s; Token.Rparen ] -> (
+        match (Bigint.to_int64_opt d, Bigint.to_int_opt s, mem_reg_named b, mem_reg_named i) with
+        | Some d, Some s, Ok b, Ok i ->
+            if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
+            else
+              Ok
+                (Operand.Mem
+                   { Mem.base = Some b; index = Some i; scale = s; disp = Disp.Const (Int64.neg d) })
+        | _ -> bad (`Malformed_memory_operand slice))
     | [ Token.Lparen; Token.Register b; Token.Register i; Token.Int s; Token.Rparen ] -> (
-        match (Bigint.to_int_opt s, reg_named b, reg_named i) with
+        match (Bigint.to_int_opt s, mem_reg_named b, mem_reg_named i) with
         | Some s, Ok b, Ok i ->
             if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
             else Ok (Operand.Mem { Mem.base = Some b; index = Some i; scale = s; disp = Disp.zero })
+        | _ -> bad (`Malformed_memory_operand slice))
+    (* disp(,%index,scale) and (,%index,scale) - a SIB operand with no base
+       register, GCC/CompCert's standard array-index address idiom
+       (M5 corpus evidence: asm/fixtures/corpus/c/x86_64/summary.txt). The
+       comma before %index is a real token GAS requires, but [regroup] above
+       already drops every comma when rejoining a parenthesized operand's
+       slices, so what's left to match is the same shape as disp(%base,...)
+       minus the base register - not a "commas matter" case. *)
+    | [ Token.Int d; Token.Lparen; Token.Register i; Token.Int s; Token.Rparen ] -> (
+        match (Bigint.to_int64_opt d, Bigint.to_int_opt s, mem_reg_named i) with
+        | Some d, Some s, Ok i ->
+            if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
+            else
+              Ok (Operand.Mem { Mem.base = None; index = Some i; scale = s; disp = Disp.Const d })
+        | _ -> bad (`Malformed_memory_operand slice))
+    | Token.Minus :: Token.Int d :: [ Token.Lparen; Token.Register i; Token.Int s; Token.Rparen ]
+      -> (
+        match (Bigint.to_int64_opt d, Bigint.to_int_opt s, mem_reg_named i) with
+        | Some d, Some s, Ok i ->
+            if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
+            else
+              Ok
+                (Operand.Mem
+                   { Mem.base = None; index = Some i; scale = s; disp = Disp.Const (Int64.neg d) })
+        | _ -> bad (`Malformed_memory_operand slice))
+    | [ Token.Lparen; Token.Register i; Token.Int s; Token.Rparen ] -> (
+        match (Bigint.to_int_opt s, mem_reg_named i) with
+        | Some s, Ok i ->
+            if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
+            else Ok (Operand.Mem { Mem.base = None; index = Some i; scale = s; disp = Disp.zero })
         | _ -> bad (`Malformed_memory_operand slice))
     | _ -> (
         (* [expr(%rip)]. Matched as a suffix rather than as a token pattern

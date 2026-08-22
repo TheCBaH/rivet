@@ -121,7 +121,29 @@ let try_local_label c pos =
 
    Only the escapes the M1 fixtures and ordinary GAS data directives need. An
    unknown escape is a diagnostic rather than a silent pass-through, so a file
-   using one is rejected instead of assembled differently from GAS. *)
+   using one is rejected instead of assembled differently from GAS.
+
+   The octal escape (M5 corpus evidence: [aes.c]'s string-literal table uses
+   [\NNN] throughout) is GAS's, not a guess: real [x86_64-linux-gnu-as]
+   (binutils 2.44) was used to pin down three behaviors a single-digit
+   special case can't express - up to three octal digits are consumed
+   greedily but stop early at the first non-octal character or end of
+   string ([\04x] is [\004] then the literal ['x']); a full three digits
+   whose value exceeds 0o377 is truncated to its low byte rather than
+   rejected ([\400] assembles as a single zero byte, since 0o400 = 256);
+   and [\0] was already a special case of exactly this rule (one octal
+   digit, value 0), so it no longer needs its own branch. *)
+let octal_digit c p n =
+  let rec go i acc =
+    if i >= n then Some (acc, i)
+    else
+      match peek c p i with
+      | Some ch when ch >= '0' && ch <= '7' ->
+          go (i + 1) ((acc * 8) + (Char.code ch - Char.code '0'))
+      | _ -> if i = 0 then None else Some (acc, i)
+  in
+  go 0 0
+
 let scan_string c pos =
   let rec go p buf =
     match peek c p 0 with
@@ -141,15 +163,18 @@ let scan_string c pos =
         | Some 'r' ->
             Buffer.add_char buf '\r';
             go (p + 2) buf
-        | Some '0' ->
-            Buffer.add_char buf '\000';
-            go (p + 2) buf
         | Some '\\' ->
             Buffer.add_char buf '\\';
             go (p + 2) buf
         | Some '"' ->
             Buffer.add_char buf '"';
             go (p + 2) buf
+        | Some ch when ch >= '0' && ch <= '7' -> (
+            match octal_digit c (p + 1) 3 with
+            | Some (value, digits) ->
+                Buffer.add_char buf (Char.chr (value land 0xff));
+                go (p + 1 + digits) buf
+            | None -> assert false (* [ch] above already proved digit 0 is octal *))
         | Some ch -> Error (err (`Unknown_escape ch) (span_of c ~start:pos ~stop:(p + 1)))
         | None -> Error (err `Unterminated_string (span_of c ~start:pos ~stop:(p + 1))))
     | Some ch ->
