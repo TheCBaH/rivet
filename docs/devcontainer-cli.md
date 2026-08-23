@@ -1,94 +1,207 @@
-# Working the devcontainer locally
+# Working with the devcontainer locally
 
-This repo's CI builds and drives the container with the `@devcontainers/cli`
-(`devcontainer` on `$PATH`), never plain `docker build`/`docker run` — see
-`.github/workflows/actions/devcontainer/action.yml`. Reproducing a CI leg
-locally means running the same three verbs it does: `build`, `up`, `exec`.
+This repository's CI builds and runs containers with `@devcontainers/cli`
+(`devcontainer` on `PATH`), through
+`.github/workflows/actions/devcontainer/action.yml`. Reproduce a CI leg with the
+same `up` and `exec` operations rather than invoking `docker build` directly.
 
-## Prerequisites
+## Select the OCaml version and container
 
-```sh
-npm install -g @devcontainers/cli   # already on PATH in this devcontainer
-docker ps                            # confirm the daemon is reachable
-```
-
-## The OCaml version matters
-
-`.devcontainer/devcontainer.json`'s `ocaml` feature reads its version from
-`${localEnv:OCAML_VERSION}`, so it must be exported in the *host* shell
-before calling `devcontainer`, not passed as a container env var:
+The OCaml feature reads `${localEnv:OCAML_VERSION}` while the image is built, so
+set it in the shell that runs `devcontainer up`:
 
 ```sh
-export OCAML_VERSION=5.5.0   # one of: 4.14.3 5.2.1 5.3.0 5.4.1 5.5.0
-                              # (see .github/workflows/ocaml-versions.yml)
-```
-
-Melange is only installable on the 4.14.3 image (`ocaml >= 4.14 & < 4.15`);
-the `asm-melange-optin` gate and the melange leg specifically need that
-version.
-
-## Bring the container up
-
-```sh
+export OCAML_VERSION=5.5.0
 devcontainer up --workspace-folder .
 ```
 
-- First build is slow: expect 15-20 minutes (CI's `devcontainer` step took
-  ~15m53s-18m for `tool-gate`/`asm` jobs). Run it with `nohup ... &` or
-  `run_in_background` rather than a foreground command with a short timeout.
-- `up` builds the image if needed, then starts/reuses a container keyed off
-  the workspace path + devcontainer.json content. Re-running `up` after a
-  Dockerfile/devcontainer.json edit will rebuild only the changed layers.
-- `.devcontainer/devcontainer-lock.json` is a generated-by-`up` artifact
-  (feature version lockfile), not something to hand-edit.
-- CI additionally passes `--platform <docker-platform>` and pre-seeds
-  `--cache-from` a pushed `ghcr.io` image (see the action). Locally, without
-  `--platform`, you get the host's native platform, which is enough for
-  investigating amd64-only failures (e.g. `tool-gate`, `abi-conform`). To
-  reproduce a `linux/i386` or `linux/arm/v7` leg on an amd64 host you need
-  cross-platform emulation set up for Docker (binfmt/buildx) — prefer
-  reasoning from the CI log first; only reach for a local cross build if the
-  failure doesn't reproduce natively.
+The core versions and architectures are defined in
+`.github/workflows/ocaml-versions.yml`. The current versions are 4.14.3,
+5.2.1, 5.3.0, 5.4.1, and 5.5.0. CI covers `linux/amd64`, `linux/arm64`, and
+`linux/s390x` for every version. The s390x jobs run under QEMU on an x86-64
+GitHub runner and are substantially slower than native builds. Only 4.14.3
+additionally covers `linux/i386` and `linux/arm/v7`.
 
-## Run commands inside it
+Feature suites use dedicated cached images. Pass the same configuration to both
+`up` and `exec` when reproducing one:
 
 ```sh
-devcontainer exec --workspace-folder . <command...>
+export OCAML_VERSION=4.14.3
+devcontainer up --workspace-folder . \
+  --config .devcontainer/javascript/devcontainer.json
+devcontainer exec --workspace-folder . \
+  --config .devcontainer/javascript/devcontainer.json make test-js test-melange
 ```
 
-CI always sets `PLATFORM` explicitly (`--remote-env PLATFORM=linux/amd64`,
-etc.) because `uname -m` inside a 32-bit container on a 64-bit host reports
-the *host's* arch, not the container's — several Makefile targets
-(`compcert-configure`, cross-toolchain selection) key off `$PLATFORM`. Match
-that when reproducing a specific leg:
+Available feature configurations are `native-adapters`, `javascript`, and
+`octez`. Melange is constrained to OCaml 4.14. Octez is an optional package:
+the 4.14 image exercises it, while OCaml 5 legs verify that its absence is a
+clean capability skip.
+
+CI also passes `--platform <docker-platform>` while building. Use that locally
+only when Docker has the required native host or binfmt emulation. Its generated
+`exec` prefix exports the matching `PLATFORM` as well; current test targets do
+not branch on it, but passing it reproduces the complete CI environment:
 
 ```sh
-devcontainer exec --remote-env PLATFORM=linux/amd64 --workspace-folder . \
-  make asm-tool-gate
+devcontainer exec --remote-env PLATFORM=linux/arm64 \
+  --workspace-folder . make ci
 ```
 
-For a leg pinned to a non-default `devcontainer.json` (rare in this repo),
-add `--config <path>` to both `up` and `exec`, matching the action's
-`config` input.
+### Reproduce an s390x job
 
-## Useful `make` targets to run this way
-
-All of these are plain `make <target>` run through `exec`, exactly as CI's
-`EXEC` env var does (`${{ env.EXEC }} make ...` in `asm.yml`):
-
-- `asm-fmt-check`, `asm-build`, `asm-fixtures-check`, `asm-test`,
-  `asm-purity`, `asm-planted`, `asm-js-portable`, `asm-melange-optin` — the
-  per-leg `asm` job steps.
-- `asm-helpers`, `asm-exec` — the `abi-conform` job.
-- `asm-tool-gate` — the `tool-gate` job (see `.ai/ci-triage.md` for how to
-  debug a failure in this one specifically).
-
-## Tearing down
+On Linux with Docker, install the s390x binfmt handler before starting a
+foreign-architecture container (Docker Desktop may already provide it):
 
 ```sh
-docker ps                      # find the container devcontainer up created
-docker rm -f <container>       # only if you want a clean rebuild
+docker run --privileged --rm tonistiigi/binfmt --install s390x
+docker run --rm --platform linux/s390x debian:13 \
+  sh -c 'uname -m; dpkg --print-architecture'
 ```
 
-`devcontainer up` is idempotent and safe to re-run instead of tearing down;
-prefer that unless the image itself needs to be rebuilt from scratch.
+The first command changes the host kernel's binfmt registrations and therefore
+requires a privileged container. QEMU makes this substantially slower than a
+native build.
+
+Use the same build, up, and exec sequence as CI:
+
+```sh
+export OCAML_VERSION=5.5.0
+export DOCKER_DEFAULT_PLATFORM=linux/s390x
+
+devcontainer build --platform linux/s390x --workspace-folder .
+devcontainer up --workspace-folder .
+devcontainer exec --remote-env PLATFORM=linux/s390x \
+  --workspace-folder . make
+devcontainer exec --remote-env PLATFORM=linux/s390x \
+  --workspace-folder . sh -ceu '
+    test "$(dpkg --print-architecture)" = s390x
+    opam exec -- ocamlc -config | grep -q "^architecture: s390x$"
+  '
+```
+
+QEMU only provides CPU emulation; the nested-devcontainer bind-mount caveat
+below still applies.
+
+## Run checks
+
+The common core checks are:
+
+```sh
+devcontainer exec --workspace-folder . make ci
+devcontainer exec --workspace-folder . make bench
+```
+
+`make bench` reports exact allocated bytes and is intended for comparison within
+one pinned compiler, architecture, and build configuration. `make bench-check`
+is included in `make ci` and asserts only cross-version relational invariants,
+such as stack capture allocating more than no capture and successful propagation
+being independent of tracing policy.
+
+`make build` builds Dune's default alias, including the bytecode, native, and
+js_of_ocaml forms of the cross-runtime example. The core image therefore
+preinstalls `js_of_ocaml-compiler` and `js_of_ocaml-ppx`; JavaScript execution
+and Melange remain focused checks in the JavaScript feature image.
+
+The core image does not install `odoc`; the documentation workflow does. To
+check API documentation in the core container, first run
+`devcontainer exec --workspace-folder . opam install --yes odoc`, then
+`devcontainer exec --workspace-folder . make doc`.
+
+Focused feature checks are `test-base-async`, `test-lwt`, `test-rresult`,
+`test-cmdliner`, `test-mirage`, `test-fmt-logs-yojson`,
+`test-compiler-locations`, `test-js`, `test-melange`, and `test-octez`. The
+dedicated feature images already contain their dependencies; the corresponding
+Makefile installs are therefore normally cached no-ops.
+
+`make test-multicore` is a native-only OCaml 5 check. The validation workflow
+runs it as a separate step in the existing OCaml 5 core jobs; its Dune stanza is
+disabled for OCaml 4 so the `Domain`-using module is not compiled there.
+
+`devcontainer up` is idempotent and reuses a container keyed by its workspace
+and configuration. The generated `.devcontainer/devcontainer-lock.json` files
+are feature-resolution artifacts and should not be edited manually.
+
+## Nested devcontainer mount caveat
+
+When this repository is itself opened in the
+`.devcontainer/devcontainers.cli/devcontainer.json` environment, the Docker
+daemon may run outside that CLI container. In that arrangement the daemon
+resolves bind-mount source paths in the host namespace. `devcontainer exec` can
+therefore report `/workspaces/err_trace` while the inner validation container
+sees an empty or stale directory at that path.
+
+Check before trusting a validation run:
+
+```sh
+devcontainer exec --workspace-folder . bash -lc \
+  'test -f src/err.ml && command -v opam && opam exec -- dune --version'
+```
+
+### When `up` itself fails
+
+With an empty mount, `devcontainer up` does not merely produce a container with
+no sources: it fails, because `postCreateCommand` runs a script that lives in
+the workspace.
+
+```json
+{"outcome":"error","message":"Command failed: /bin/sh -c sudo .devcontainer/fix-opam-owner.sh $(id -u) $(id -g)","description":"opam of postCreateCommand from devcontainer.json failed.","containerId":"a3e60f1cb101..."}
+```
+
+The container named by `containerId` was created and is usable; only the
+post-create step failed. Because `up` never completed, `devcontainer exec`
+cannot drive it, so use `docker exec` and finish the setup by hand. Do what
+`fix-opam-owner.sh` would have done — the image bakes `OPAMROOT` ownership as
+uid 1000, while `updateRemoteUserUID` remaps the container's `vscode` user to
+the host uid:
+
+```sh
+CONTAINER=<containerId from the up failure>
+docker exec -u root "$CONTAINER" chown -R vscode:vscode /opt/opam
+```
+
+`docker exec` does not inherit the devcontainer environment — the container's
+`Config.Env` carries only `PATH` — so pass `OPAMROOT` on every call:
+
+```sh
+docker exec -u vscode -e OPAMROOT=/opt/opam "$CONTAINER" \
+  sh -lc 'opam exec -- dune --version'
+```
+
+### Validate a disposable snapshot
+
+If the source is not mounted, validate a copy instead. Create a temporary
+directory inside the target container, stream the working tree into it
+(excluding local build and archive artifacts), and run checks there:
+
+```sh
+ERR_TRACE_SNAPSHOT_PATH=$(devcontainer exec --workspace-folder . \
+  mktemp -d /tmp/err_trace-review.XXXXXX | tail -n 1)
+tar --exclude=.git --exclude=_build --exclude='*.tar.gz' -cf - . \
+  | devcontainer exec --workspace-folder . \
+      tar -xf - -C "$ERR_TRACE_SNAPSHOT_PATH"
+devcontainer exec --remote-env ERR_TRACE_SNAPSHOT_PATH="$ERR_TRACE_SNAPSHOT_PATH" \
+  --workspace-folder . bash -lc 'cd "$ERR_TRACE_SNAPSHOT_PATH" && make ci'
+```
+
+When `up` failed as above, the same recipe works with `docker exec`, reading the
+tree from its real path in this container rather than from `.`:
+
+```sh
+SNAP=$(docker exec -u vscode "$CONTAINER" mktemp -d /tmp/err_trace-review.XXXXXX | tr -d '\r')
+tar --exclude=.git --exclude=_build --exclude='*.tar.gz' \
+  -cf - -C /workspaces/err_trace . \
+  | docker exec -i -u vscode "$CONTAINER" tar -xf - -C "$SNAP"
+docker exec -u vscode -e OPAMROOT=/opt/opam "$CONTAINER" \
+  sh -lc "cd $SNAP && make ci"
+```
+
+Use a newly created path for each independent snapshot so stale files cannot
+mask deletions. This is only a validation copy; make source edits in the shared
+workspace.
+
+## Container lifecycle
+
+Prefer rerunning `devcontainer up` over deleting a container. If a genuinely
+clean rebuild is necessary, first identify the exact container with
+`docker ps`, then remove only that container explicitly.
