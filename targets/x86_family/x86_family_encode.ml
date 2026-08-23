@@ -247,6 +247,14 @@ module Opcode = struct
     | Dec
     | Rcr
     | Shr
+    | Or
+    | Not
+    | Ror
+    | Shl
+    | Sar
+    | Setcc of Cc.t
+    | Movzx of { src_width : int }
+    | Movsx of { src_width : int }
     | Addsd
     | Subsd
     | Mulsd
@@ -293,6 +301,15 @@ module Opcode = struct
     | Dec -> "dec"
     | Rcr -> "rcr"
     | Shr -> "shr"
+    | Or -> "or"
+    | Not -> "not"
+    | Ror -> "ror"
+    | Shl -> "shl"
+    | Sar -> "sar"
+    | Setcc c -> "set" ^ Cc.name c
+    | Movzx { src_width } -> ( "movz" ^ match src_width with 8 -> "b" | 16 -> "w" | _ -> "?")
+    | Movsx { src_width } -> (
+        "movs" ^ match src_width with 8 -> "b" | 16 -> "w" | 32 -> "l" | _ -> "?")
     | Addsd -> "addsd"
     | Subsd -> "subsd"
     | Mulsd -> "mulsd"
@@ -319,13 +336,23 @@ module Opcode = struct
      (M4, .ai/asm_plan.md §12: the CompCert-runtime-helper fixture) needs only
      this immediate form - [i64_sdiv.S]/[i64_smod.S] never add it to a memory
      destination. *)
-  let to_ext = function Add -> 0 | Adc -> 2 | And -> 4 | Sub -> 5 | Cmp -> 7 | _ -> -1
+  let to_ext = function
+    | Add -> 0
+    | Or -> 1
+    | Adc -> 2
+    | And -> 4
+    | Sub -> 5
+    | Xor -> 6
+    | Cmp -> 7
+    | _ -> -1
 
   let of_ext = function
     | 0 -> Some Add
+    | 1 -> Some Or
     | 2 -> Some Adc
     | 4 -> Some And
     | 5 -> Some Sub
+    | 6 -> Some Xor
     | 7 -> Some Cmp
     | _ -> None
 
@@ -341,26 +368,44 @@ module Opcode = struct
     | Add -> Some 0x01L
     | Sbb -> Some 0x19L
     | Test -> Some 0x85L
+    | Or -> Some 0x09L
+    | And -> Some 0x21L
     | _ -> None
 
   (* The reg<-rm ALU direction ([Alu_r_rm]): one byte per operation, the
      register field is the DESTINATION. M4's own [adcl 0x20(%esp),%edx] and
      [add 0x1c(%esp),%eax] are the only two measured uses; a row nothing
      selects is a row nothing checks. *)
-  let to_r_rm = function Adc -> Some 0x13L | Add -> Some 0x03L | _ -> None
+  let to_r_rm = function Adc -> Some 0x13L | Add -> Some 0x03L | Xor -> Some 0x33L | _ -> None
 
   (* Group-3 unary forms (opcode 0xF7): the ModR/M reg field selects the
      operation, exactly [to_ext]'s idea but a different opcode and a disjoint
      extension namespace - group-3's /3 is NEG, not SBB. *)
-  let to_unary_ext = function Neg -> 3 | Mul -> 4 | Div -> 6 | _ -> -1
-  let of_unary_ext = function 3 -> Some Neg | 4 -> Some Mul | 6 -> Some Div | _ -> None
+  let to_unary_ext = function Neg -> 3 | Not -> 2 | Mul -> 4 | Div -> 6 | _ -> -1
 
-  (* Group-2 shift/rotate-by-exactly-1 forms (opcode 0xD1, no immediate byte -
-     the [0xC1 ib] general-count form is a different, unimplemented encoding
-     no fixture here selects). Its own disjoint extension namespace again:
-     group-2's /3 is RCR, not SBB or NEG. *)
-  let to_shift1_ext = function Rcr -> 3 | Shr -> 5 | _ -> -1
-  let of_shift1_ext = function 3 -> Some Rcr | 5 -> Some Shr | _ -> None
+  let of_unary_ext = function
+    | 2 -> Some Not
+    | 3 -> Some Neg
+    | 4 -> Some Mul
+    | 6 -> Some Div
+    | _ -> None
+
+  (* Group-2 shift/rotate forms, shared by three opcodes with the same
+     ext-in-ModR/M-reg layout: [0xD1] (shift/rotate-by-exactly-1, no
+     immediate byte), [0xC1 ib] (general immediate count, M5 corpus
+     evidence - [rorl $27,%eax], [sarl $2,%eax], [shrq $63,%rax]) and [0xD3]
+     (count in %cl - [sall %cl,%eax]). One ext table serves all three forms,
+     since the reg-field encoding of the operation is identical across them;
+     only the opcode byte and the trailing count representation differ. *)
+  let to_shift1_ext = function Ror -> 1 | Rcr -> 3 | Shl -> 4 | Shr -> 5 | Sar -> 7 | _ -> -1
+
+  let of_shift1_ext = function
+    | 1 -> Some Ror
+    | 3 -> Some Rcr
+    | 4 -> Some Shl
+    | 5 -> Some Shr
+    | 7 -> Some Sar
+    | _ -> None
 end
 
 let suffix_of_width = function 8 -> "b" | 16 -> "w" | 32 -> "l" | 64 -> "q" | _ -> "?"
@@ -419,6 +464,19 @@ module Instruction = struct
            width is on the line already, and GAS accepts no suffix on it. *)
         | Opcode.Cmov c ->
             Fmt.pf ppf "cmov%s %a" (Cc.name c) Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        (* No AT&T size suffix: [sete]/[setl] are always 8-bit, so there is no
+           width for a suffix to disambiguate - GAS accepts none. *)
+        | Opcode.Setcc c ->
+            Fmt.pf ppf "set%s %a" (Cc.name c) Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        (* [movzbl]/[movsbl]/[movslq] (M5, asm/docs/corpus.md): [Opcode.name]
+           already carries the *source* width as its own trailing letter
+           ([movzb], [movsl], ...); appending [suffix_of_width i.width] here
+           supplies the destination one, together reconstructing GAS's own
+           two-suffix spelling. *)
+        | (Opcode.Movzx _ | Opcode.Movsx _) as op ->
+            Fmt.pf ppf "%s%s %a" (Opcode.name op) (suffix_of_width i.width)
+              Fmt.(list ~sep:(any ", ") Operand.pp)
+              ops
         (* M4 (.ai/asm_plan.md §12): [push]/[dec] are single-register-only here
            (like [pop]), so their own operand always disambiguates - measured
            against the real i64_divmod runtime-helper oracle, GNU's objdump
@@ -433,10 +491,13 @@ module Instruction = struct
            (["neg %esi"], ["adc $0x0,%esi"], ["adc 0x20(%esp),%edx"], ["rcr
            $1,%ecx"]); an all-memory(+immediate) operand list keeps it
            (["negl 0x10(%esp)"]). Scoped to exactly the M4 opcodes added
-           alongside this rule - existing opcodes below keep their
-           already-measured, unconditional suffix. *)
+           alongside this rule, plus M5's [Ror]/[Shl]/[Sar] (measured the
+           same way against the same oracle: ["ror $0x1b,%eax"], ["shl
+           $0x10,%eax"], ["sar $0x2,%eax"], but ["rorl $0x3,(%rax)"]) -
+           existing opcodes below keep their already-measured, unconditional
+           suffix. *)
         | ( Opcode.Neg | Opcode.Mul | Opcode.Div | Opcode.Test | Opcode.Adc | Opcode.Sbb
-          | Opcode.Rcr | Opcode.Shr ) as op ->
+          | Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar ) as op ->
             if List.exists (function Operand.Reg _ -> true | _ -> false) ops then
               Fmt.pf ppf "%s %a" (Opcode.name op) Fmt.(list ~sep:(any ", ") Operand.pp) ops
             else
@@ -491,6 +552,18 @@ module Lowered = struct
         (** the r/m-written direction of a two-operand ALU op: one opcode byte selects which. *)
     | Imul_r_rm of { width : int; reg : Reg.t; rm : Rm.t }
         (** [0f af /r], and the other direction: the register operand is the destination. *)
+    | Imul_r_rm_imm of { width : int; reg : Reg.t; rm : Rm.t; imm : int64 }
+        (** [0x69 /r id] / [0x6B /r ib] (M5, asm/docs/corpus.md - [imull $10000,%ebx], [imulq
+            $56,%rax]): the two-operand AT&T form, where GAS writes the same register as both
+            source and destination - [reg] and [rm] are therefore always equal at construction,
+            never independently chosen the way the real three-operand instruction otherwise
+            allows, since nothing here selects a genuine [imul $imm,src,dst]. *)
+    | Test_rm_imm of { width : int; rm : Rm.t; imm : int64 }
+        (** [0xF7 /0 id] (M5, asm/docs/corpus.md - [testl $1,%edi]): TEST's own immediate form,
+            structurally like {!Unary_rm}'s opcode and ext-in-ModR/M-reg layout but with a
+            trailing immediate {!Unary_rm}'s forms never carry - so it is its own constructor
+            rather than a field added to that one. Always a full-width immediate: unlike
+            {!Alu_rm_imm}, TEST has no imm8/imm32 dual encoding to choose between. *)
     | Cmov_r_rm of { cc : Cc.t; width : int; reg : Reg.t; rm : Rm.t }  (** [0f 4x /r] *)
     | Ud2
     | Pop of { reg : Reg.t }
@@ -515,9 +588,18 @@ module Lowered = struct
             (M4, .ai/asm_plan.md §12) are measured writing the register operand rather than the
             r/m one - [adcl 0x20(%esp),%edx]. *)
     | Shift1_rm of { ext : int; width : int; rm : Rm.t }
-        (** Group-2 shift/rotate-by-1 (opcode [0xD1]): [Rcr]/[Shr] with a literal count of 1, the
-            only count M4's real fixture ever selects - the general [0xC1 ib] immediate-count form
-            is unimplemented. *)
+        (** Group-2 shift/rotate-by-1 (opcode [0xD1]): a literal count of 1, always chosen over
+            {!Shift_imm_rm} when the count is exactly 1 (GAS's own canonical choice - one byte
+            shorter). *)
+    | Shift_imm_rm of { ext : int; width : int; rm : Rm.t; imm : int64 }
+        (** Group-2 general immediate count (opcode [0xC1 ib], M5 corpus evidence -
+            [rorl $27,%eax], [sall $16,%eax], [sarl $2,%eax], [shrq $63,%rax]). Register
+            destination only - unlike {!Alu_rm_imm}, no fixture here selects a memory destination,
+            so it is not built (the same "measured forms only" scoping as everywhere else in this
+            module). *)
+    | Shift_cl_rm of { ext : int; width : int; rm : Rm.t }
+        (** Group-2 count-in-%cl (opcode [0xD3], M5 corpus evidence - [sall %cl,%eax]). Register
+            destination only, for the same reason as {!Shift_imm_rm}. *)
     | Sse_binop_r_rm of { op : Opcode.t; reg : Reg.t; rm : Rm.t }
         (** [\[66/F2/F3/none\] 0F opcode /r], reg<-rm (M5 corpus evidence, asm/docs/corpus.md):
             the SSE2 scalar-float arithmetic/compare/move family - [addsd subsd mulsd divsd addss
@@ -542,6 +624,22 @@ module Lowered = struct
     | Cvtf2i_r_rm of { width : int; reg : Reg.t; rm : Rm.t }
         (** [F2 0F 2C /r], (r32 or r64)<-(xmm or m64) - [cvttsd2si] only ([cvttss2si] is unevidenced
             by this corpus). [reg] is a GPR at [width]; [rm] is xmm (or memory). *)
+    | Setcc_rm of { cc : Cc.t; rm : Rm.t }
+        (** [0F 90+cc /0] (M5 corpus evidence - [sete %al], [setl %r8b]). Always 8-bit; the ModR/M
+            reg field is a fixed 0, not an operand or an extension table lookup - the condition is
+            already fully carried by the opcode byte, the same way {!Cmov_r_rm}'s is. *)
+    | Movx_r_rm of { zero_extend : bool; src_width : int; width : int; reg : Reg.t; rm : Rm.t }
+        (** [0F B6/B7/BE/BF /r] (M5 corpus evidence - [movzbl], [movsbl]): zero- or sign-extending
+            move, [src_width] (8 or 16, the ModR/M-side width) always less than [width] (the
+            ModR/M-reg-side, destination width - REX.W's source, exactly as {!Cvtsi2f_r_rm}'s own
+            comment explains for a different width-mismatched pair). The 32-bit-source sign-extend
+            ([movslq], opcode [0x63]) is a structurally different encoding and is
+            {!Movsxd_r_rm} instead, not a third [src_width] here. *)
+    | Movsxd_r_rm of { reg : Reg.t; rm : Rm.t }
+        (** [0x63 /r] (M5 corpus evidence - [movslq]), REX.W mandatory: sign-extend r/m32 to r64.
+            Not a [Movx_r_rm] with [src_width = 32] - unlike the B6/B7/BE/BF family this is a
+            single fixed opcode byte with no zero-extending counterpart ([movzlq] is not a real
+            instruction; a 32-bit write already zero-extends). *)
 
   let pp ppf = function
     | Alu_rm_imm { ext; width; rm; imm } ->
@@ -563,6 +661,10 @@ module Lowered = struct
         Fmt.pf ppf "%s%s %a, %a" (Opcode.name op) (suffix_of_width width) Reg.pp reg Rm.pp rm
     | Imul_r_rm { width; reg; rm } ->
         Fmt.pf ppf "imul%s %a, %a" (suffix_of_width width) Rm.pp rm Reg.pp reg
+    | Imul_r_rm_imm { width; imm; rm; _ } ->
+        Fmt.pf ppf "imul%s $%Ld, %a" (suffix_of_width width) imm Rm.pp rm
+    | Test_rm_imm { width; rm; imm } ->
+        Fmt.pf ppf "test%s $%Ld, %a" (suffix_of_width width) imm Rm.pp rm
     (* No size suffix: both operands are registers, so the width is already on
        the line, and GAS writes none either. *)
     | Cmov_r_rm { cc; reg; rm; _ } -> Fmt.pf ppf "cmov%s %a, %a" (Cc.name cc) Rm.pp rm Reg.pp reg
@@ -590,6 +692,20 @@ module Lowered = struct
         match rm with
         | Rm.Reg _ -> Fmt.pf ppf "%s $1, %a" name Rm.pp rm
         | Rm.Mem _ -> Fmt.pf ppf "%s%s $1, %a" name (suffix_of_width width) Rm.pp rm)
+    | Shift_imm_rm { ext; imm; rm; _ } ->
+        let name =
+          match Opcode.of_shift1_ext ext with Some o -> Opcode.name o | None -> "shift?"
+        in
+        Fmt.pf ppf "%s $%Ld, %a" name imm Rm.pp rm
+    | Shift_cl_rm { ext; rm; _ } ->
+        let name =
+          match Opcode.of_shift1_ext ext with Some o -> Opcode.name o | None -> "shift?"
+        in
+        Fmt.pf ppf "%s %%cl, %a" name Rm.pp rm
+    | Setcc_rm { cc; rm } -> Fmt.pf ppf "set%s %a" (Cc.name cc) Rm.pp rm
+    | Movx_r_rm { zero_extend; reg; rm; _ } ->
+        Fmt.pf ppf "%s %a, %a" (if zero_extend then "movzx" else "movsx") Rm.pp rm Reg.pp reg
+    | Movsxd_r_rm { reg; rm } -> Fmt.pf ppf "movslq %a, %a" Rm.pp rm Reg.pp reg
     | Sse_binop_r_rm { op; reg; rm } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
     | Sse_mov_r_rm { op; reg; rm } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
     | Sse_mov_rm_r { op; rm; reg } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Reg.pp reg Rm.pp rm
@@ -611,6 +727,10 @@ module Lowered = struct
     | Alu_rm_r x, Alu_rm_r y ->
         x.op = y.op && x.width = y.width && Rm.equal x.rm y.rm && Reg.equal x.reg y.reg
     | Imul_r_rm x, Imul_r_rm y -> x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Imul_r_rm_imm x, Imul_r_rm_imm y ->
+        x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
+    | Test_rm_imm x, Test_rm_imm y ->
+        x.width = y.width && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
     | Cmov_r_rm x, Cmov_r_rm y ->
         Cc.equal x.cc y.cc && x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Ud2, Ud2 -> true
@@ -626,6 +746,14 @@ module Lowered = struct
     | Alu_r_rm x, Alu_r_rm y ->
         x.op = y.op && x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Shift1_rm x, Shift1_rm y -> x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm
+    | Shift_imm_rm x, Shift_imm_rm y ->
+        x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
+    | Shift_cl_rm x, Shift_cl_rm y -> x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm
+    | Setcc_rm x, Setcc_rm y -> Cc.equal x.cc y.cc && Rm.equal x.rm y.rm
+    | Movx_r_rm x, Movx_r_rm y ->
+        x.zero_extend = y.zero_extend && x.src_width = y.src_width && x.width = y.width
+        && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Movsxd_r_rm x, Movsxd_r_rm y -> Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Sse_binop_r_rm x, Sse_binop_r_rm y ->
         x.op = y.op && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Sse_mov_r_rm x, Sse_mov_r_rm y -> x.op = y.op && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
@@ -649,10 +777,11 @@ end
 
    [Pcrel8] is the short rung of the branch ladder; it exists because GNU picks
    the two-byte encodings for the loop fixture and byte equality is the gate. *)
-type fixup_kind = Abs32 | Pcrel8_branch | Pcrel32_branch | Pcrel32_call | Pcrel32_data
+type fixup_kind = Abs32 | Abs64 | Pcrel8_branch | Pcrel32_branch | Pcrel32_call | Pcrel32_data
 
 let fixup_kind_name = function
   | Abs32 -> "abs32"
+  | Abs64 -> "abs64"
   | Pcrel8_branch -> "pcrel8-branch"
   | Pcrel32_branch -> "pcrel32-branch"
   | Pcrel32_call -> "pcrel32-call"
@@ -662,15 +791,18 @@ let equal_fixup_kind a b = a = b
 
 (* Ladder compatibility is checked on the family, so the short and near rungs of
    one branch must agree here even though they are different kinds of different
-   widths - which is exactly what a ladder is. *)
+   widths - which is exactly what a ladder is. [Abs64] gets its own family
+   rather than sharing [Abs32]'s "abs": they are different widths, and nothing
+   should ever treat them as interchangeable rungs of one ladder. *)
 let fixup_family = function
   | Abs32 -> "abs"
+  | Abs64 -> "abs64"
   | Pcrel8_branch | Pcrel32_branch -> "pcrel-branch"
   | Pcrel32_call -> "pcrel-call"
   | Pcrel32_data -> "pcrel-data"
 
 let fixup_role = function
-  | Abs32 | Pcrel32_data -> Asm_core.Lowered_ast.Data_address
+  | Abs32 | Abs64 | Pcrel32_data -> Asm_core.Lowered_ast.Data_address
   | Pcrel8_branch | Pcrel32_branch -> Asm_core.Lowered_ast.Branch
   | Pcrel32_call -> Asm_core.Lowered_ast.Call
 
@@ -1148,6 +1280,7 @@ module Make (M : MODE) = struct
     | `Negative_padding of int
     | `Register_width_mismatch of register_width_mismatch
     | `Shift_count_not_one of int64
+    | `Setcc_operands
     | `Sse_operand_class of sse_operand_class_mismatch ]
 
   and bad_branch_suffix = { mnemonic : string; rungs : string list }
@@ -1178,6 +1311,7 @@ module Make (M : MODE) = struct
     | `Ret_takes_operands -> Fmt.string ppf "ret takes no operands in M1"
     | `Ud2_takes_operands -> Fmt.string ppf "ud2 takes no operands"
     | `Cmov_operands -> Fmt.string ppf "cmov takes two register operands in M2"
+    | `Setcc_operands -> Fmt.string ppf "setcc takes exactly one 8-bit register or memory operand"
     | `Bad_branch_suffix { mnemonic; rungs } ->
         Fmt.pf ppf "%s: the branch form suffixes are %s" mnemonic
           (String.concat ", " (List.map (fun r -> "." ^ r) rungs))
@@ -1208,7 +1342,7 @@ module Make (M : MODE) = struct
   let error_kind_code : error_kind -> string = function
     | `Unknown_instruction _ | `Missing_size_suffix _ | `Prefix66_out_of_scope
     | `Operand8_out_of_scope | `No_64bit_size _ | `Ret_takes_operands | `Ud2_takes_operands
-    | `Cmov_operands ->
+    | `Cmov_operands | `Setcc_operands ->
         "x86.simplify"
     | `Bad_branch_suffix _ -> "x86.branch-suffix"
     | `Immediate_too_wide | `No_form _ | `Immediate_destination | `Imm_to_mem_only_movb
@@ -1251,6 +1385,28 @@ module Make (M : MODE) = struct
       | 'l' -> (stem, Some 32)
       | 'q' -> (stem, Some 64)
       | _ -> (m, None)
+
+  (* [movzbl]/[movsbl]/[movslq] and the rest of the zero-/sign-extending move
+     family (M5, asm/docs/corpus.md): GAS spells these as [prefix] followed by
+     *two* one-letter widths (source, then destination), not a stem plus one
+     trailing suffix - [split_suffix] cannot express this shape at all, so it
+     gets its own small parser. [sw < dw] is what makes [movslq] (l then q)
+     valid and rejects a nonsensical [movzlb] (l then b) the same table would
+     otherwise accept. *)
+  let width_suffix_char = function
+    | 'b' -> Some 8
+    | 'w' -> Some 16
+    | 'l' -> Some 32
+    | 'q' -> Some 64
+    | _ -> None
+
+  let movx_suffixes ~prefix m =
+    let plen = String.length prefix and n = String.length m in
+    if n <> plen + 2 || String.sub m 0 plen <> prefix then None
+    else
+      match (width_suffix_char m.[plen], width_suffix_char m.[plen + 1]) with
+      | Some sw, Some dw when sw < dw -> Some (sw, dw)
+      | _ -> None
 
   (* The rungs this target's branch ladders declare, and therefore exactly the
      suffixes its mnemonics accept. Sharing one list with the codec is what
@@ -1349,6 +1505,20 @@ module Make (M : MODE) = struct
     | "cvtss2sd", _ -> Ok (Instruction.mk Opcode.Cvtss2sd 32 s.Surface.ops)
     | "movsd", _ -> Ok (Instruction.mk Opcode.Movsd 32 s.Surface.ops)
     | "movss", _ -> Ok (Instruction.mk Opcode.Movss 32 s.Surface.ops)
+    (* M5 (asm/docs/corpus.md): zero-/sign-extending move. Matched on the full
+       mnemonic via {!movx_suffixes}, not on [stem] - see its own comment for
+       why [split_suffix] cannot express this shape. [movslq] (src 32, dst 64)
+       is included here at the [Instruction]/[Opcode] level like any other
+       [Movsx]; only {!lower_instruction} treats it differently, since [0x63]
+       is a structurally distinct encoding from the [0F BE/BF] family. *)
+    | m, _ when movx_suffixes ~prefix:"movz" m <> None -> (
+        match movx_suffixes ~prefix:"movz" m with
+        | Some (src_width, dw) -> Ok (Instruction.mk (Opcode.Movzx { src_width }) dw s.Surface.ops)
+        | None -> bad (`Unknown_instruction s.Surface.mnemonic))
+    | m, _ when movx_suffixes ~prefix:"movs" m <> None -> (
+        match movx_suffixes ~prefix:"movs" m with
+        | Some (src_width, dw) -> Ok (Instruction.mk (Opcode.Movsx { src_width }) dw s.Surface.ops)
+        | None -> bad (`Unknown_instruction s.Surface.mnemonic))
     (* [cvtsi2sd]/[cvtsi2ss] take their REX.W directly from the mnemonic:
        CompCert always spells the 64-bit-source form explicitly ([cvtsi2sdq]/
        [cvtsi2ssq]), never infers it, so there is no operand to inspect here
@@ -1402,6 +1572,17 @@ module Make (M : MODE) = struct
     | _, "div" -> widthed Opcode.Div
     | _, "rcr" -> widthed Opcode.Rcr
     | _, "shr" -> widthed Opcode.Shr
+    (* M5 (asm/docs/corpus.md): the x86_64 [test/c/] corpus's own measured
+       instruction set. *)
+    | _, "or" -> widthed Opcode.Or
+    | _, "not" -> widthed Opcode.Not
+    | _, "ror" -> widthed Opcode.Ror
+    (* GAS accepts both [shl] and [sal] for the same opcode; only [sal] is
+       evidenced (CompCert's own spelling), so only that stem is recognized -
+       consistent with this function's general practice of not building an
+       unevidenced mnemonic alias. *)
+    | _, "sal" -> widthed Opcode.Shl
+    | _, "sar" -> widthed Opcode.Sar
     (* The width comes from the operands rather than from a suffix, because
        there is no suffix to come from: GAS spells this [cmovne %%r8, %%rax] and
        rejects [cmovnel]. Both operands are registers here, so asking the first
@@ -1430,6 +1611,15 @@ module Make (M : MODE) = struct
         match (Cc.split_after "cmov" m, s.Surface.ops) with
         | Some c, (Operand.Reg r :: _ as ops) -> Ok (Instruction.mk (Opcode.Cmov c) r.Reg.width ops)
         | Some _, _ -> bad `Cmov_operands
+        | None, _ -> bad (`Unknown_instruction s.Surface.mnemonic))
+    (* M5 (asm/docs/corpus.md): [sete %al], [setl %r8b] - always 8-bit, so
+       unlike [cmov] there is no operand width to read; the single operand's
+       own class ([`Setcc_operands] otherwise) is all that is checked here. *)
+    | m, _ when Cc.split_after "set" m <> None -> (
+        match (Cc.split_after "set" m, s.Surface.ops) with
+        | Some c, [ ((Operand.Reg _ | Operand.Mem _) as dst) ] ->
+            Ok (Instruction.mk (Opcode.Setcc c) 8 [ dst ])
+        | Some _, _ -> bad `Setcc_operands
         | None, _ -> bad (`Unknown_instruction s.Surface.mnemonic))
     | _ -> bad (`Unknown_instruction s.Surface.mnemonic)
 
@@ -1475,7 +1665,8 @@ module Make (M : MODE) = struct
       else bad (`Sse_operand_class { sse_reg = r.name; sse_reg_width = r.width })
     in
     match (i.Instruction.op, i.Instruction.ops) with
-    | (Opcode.Add | Opcode.Adc | Opcode.And | Opcode.Sub | Opcode.Cmp), [ Operand.Imm v; dst ] -> (
+    | ( (Opcode.Add | Opcode.Adc | Opcode.And | Opcode.Sub | Opcode.Cmp | Opcode.Or | Opcode.Xor),
+        [ Operand.Imm v; dst ] ) -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
@@ -1498,7 +1689,6 @@ module Make (M : MODE) = struct
           match imm_of v with
           | Error e -> Error e
           | Ok imm -> Ok [ Lowered.Mov_rm_imm { width = 8; rm = Rm.Mem m; imm } ])
-    | Opcode.Mov, _ when i.Instruction.width = 8 -> bad `Mov8_only_movb
     | Opcode.Mov, [ Operand.Imm v; Operand.Reg r ] -> (
         match (imm_of v, width_ok r) with
         | Ok imm, Ok () -> Ok [ Lowered.Mov_r_imm { width = i.Instruction.width; reg = r; imm } ]
@@ -1546,7 +1736,8 @@ module Make (M : MODE) = struct
        here for the same reason they joined {!Opcode.to_rm_r} - real bytes
        the i64_divmod runtime-helper fixture measurably selects
        ([addl %ecx,%edx], [testl %esi,%esi], [sbbl %ecx,%edx]). *)
-    | ( (Opcode.Xor | Opcode.Cmp | Opcode.Sub | Opcode.Add | Opcode.Test | Opcode.Sbb),
+    | ( ( Opcode.Xor | Opcode.Cmp | Opcode.Sub | Opcode.Add | Opcode.Test | Opcode.Sbb | Opcode.Or
+        | Opcode.And ),
         [ Operand.Reg a; Operand.Reg b ] ) -> (
         match (width_ok a, width_ok b) with
         | Ok (), Ok () ->
@@ -1560,7 +1751,7 @@ module Make (M : MODE) = struct
        above. Only measured with a memory source ([adcl 0x20(%esp),%edx],
        [add 0x1c(%esp),%eax]) - a register-register source would also be
        valid x86, but nothing here selects it, so it is not built. *)
-    | (Opcode.Adc | Opcode.Add), [ Operand.Mem m; Operand.Reg r ] -> (
+    | (Opcode.Adc | Opcode.Add | Opcode.Xor), [ Operand.Mem m; Operand.Reg r ] -> (
         match width_ok r with
         | Error e -> Error e
         | Ok () ->
@@ -1571,7 +1762,7 @@ module Make (M : MODE) = struct
               ])
     (* Group-3 unary forms: one r/m operand, register or memory
        ([negl 0x10(%esp)], [neg %esi], [mull %esi], [divl %ecx]). *)
-    | (Opcode.Neg | Opcode.Mul | Opcode.Div), [ dst ] -> (
+    | (Opcode.Neg | Opcode.Mul | Opcode.Div | Opcode.Not), [ dst ] -> (
         let ext = Opcode.to_unary_ext i.Instruction.op in
         match dst with
         | Operand.Reg r -> (
@@ -1581,27 +1772,57 @@ module Make (M : MODE) = struct
         | Operand.Mem m ->
             Ok [ Lowered.Unary_rm { ext; width = i.Instruction.width; rm = Rm.Mem m } ]
         | Operand.Imm _ | Operand.Sym _ -> bad `Immediate_destination)
-    (* Group-2 shift/rotate-by-1: the fixture always spells the count
-       explicitly ([rcrl $1, %ecx], [shrl $1, %esi]), never the bare-mnemonic
-       implicit-1 form GAS also accepts, so only the explicit-[$1] shape is
-       built. Any other literal count is rejected rather than silently
-       mis-encoded: the general [0xC1 ib] immediate-count form is a
-       different, unimplemented encoding. *)
-    | (Opcode.Rcr | Opcode.Shr), [ Operand.Imm v; dst ] -> (
+    (* Group-2 shift/rotate, explicit-count form. The fixture always spells
+       the count explicitly ([rcrl $1, %ecx], [rorl $27, %eax]), never the
+       bare-mnemonic implicit-1 form GAS also accepts. A literal count of
+       exactly 1 still picks {!Lowered.Shift1_rm} - GAS's own shorter,
+       canonical encoding (M4's original scope here) - and any other count
+       is {!Lowered.Shift_imm_rm} (M5, asm/docs/corpus.md: [rorl $27,%eax],
+       [sall $16,%eax], [sarl $2,%eax], [shrq $63,%rax]). Register
+       destination only for a non-1 count: unlike {!Alu_rm_imm}, no fixture
+       selects a memory destination at a count other than 1, so that shape
+       is not built. *)
+    | (Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar), [ Operand.Imm v; dst ] -> (
         match imm_of v with
         | Error e -> Error e
-        | Ok 1L -> (
+        | Ok imm -> (
             let ext = Opcode.to_shift1_ext i.Instruction.op in
-            match dst with
-            | Operand.Reg r -> (
+            match (imm, dst) with
+            | 1L, Operand.Reg r -> (
                 match width_ok r with
                 | Error e -> Error e
                 | Ok () ->
                     Ok [ Lowered.Shift1_rm { ext; width = i.Instruction.width; rm = Rm.Reg r } ])
-            | Operand.Mem m ->
+            | 1L, Operand.Mem m ->
                 Ok [ Lowered.Shift1_rm { ext; width = i.Instruction.width; rm = Rm.Mem m } ]
-            | Operand.Imm _ | Operand.Sym _ -> bad `Immediate_destination)
-        | Ok n -> bad (`Shift_count_not_one n))
+            | _, Operand.Reg r -> (
+                match width_ok r with
+                | Error e -> Error e
+                | Ok () ->
+                    Ok
+                      [
+                        Lowered.Shift_imm_rm
+                          { ext; width = i.Instruction.width; rm = Rm.Reg r; imm };
+                      ])
+            | _, Operand.Mem _ -> bad (`No_form (Opcode.name i.Instruction.op))
+            | _, (Operand.Imm _ | Operand.Sym _) -> bad `Immediate_destination))
+    (* Group-2 shift/rotate, count-in-%cl (M5, asm/docs/corpus.md: [sall
+       %cl,%eax]). [cl]'s width and number pin it to exactly %cl, not any
+       other byte register - GAS accepts no other register here, and this
+       target's parser has no separate "the count register" operand class to
+       enforce it earlier. Register destination only, for the same reason as
+       the immediate-count form above. *)
+    | (Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar), [ Operand.Reg cl; dst ]
+      when cl.Reg.width = 8 && cl.Reg.num = 1 -> (
+        let ext = Opcode.to_shift1_ext i.Instruction.op in
+        match dst with
+        | Operand.Reg r -> (
+            match width_ok r with
+            | Error e -> Error e
+            | Ok () ->
+                Ok [ Lowered.Shift_cl_rm { ext; width = i.Instruction.width; rm = Rm.Reg r } ])
+        | Operand.Mem _ -> bad (`No_form (Opcode.name i.Instruction.op))
+        | Operand.Imm _ | Operand.Sym _ -> bad `Immediate_destination)
     | Opcode.Push, [ Operand.Reg r ] -> Ok [ Lowered.Push { reg = r } ]
     | Opcode.Dec, [ Operand.Reg r ] -> Ok [ Lowered.Dec { reg = r } ]
     (* The operands swap sides relative to the ALU forms above: AT&T [imull
@@ -1612,6 +1833,31 @@ module Make (M : MODE) = struct
         | Ok (), Ok () ->
             Ok [ Lowered.Imul_r_rm { width = i.Instruction.width; reg = b; rm = Rm.Reg a } ]
         | Error e, _ | _, Error e -> Error e)
+    (* [imull $10000,%ebx] / [imulq $56,%rax]: GAS's two-operand form, same
+       register read as [rm] and written as [reg] - not a genuine
+       [imul $imm,src,dst] with independent operands, since nothing here
+       selects that three-operand shape. *)
+    | Opcode.Imul, [ Operand.Imm v; Operand.Reg r ] -> (
+        match (imm_of v, width_ok r) with
+        | Ok imm, Ok () ->
+            Ok
+              [ Lowered.Imul_r_rm_imm { width = i.Instruction.width; reg = r; rm = Rm.Reg r; imm } ]
+        | Error e, _ | _, Error e -> Error e)
+    (* [testl $1,%edi] (M5, asm/docs/corpus.md): TEST's own immediate form,
+       disjoint from the [reg,reg] pattern above. *)
+    | Opcode.Test, [ Operand.Imm v; dst ] -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm -> (
+            match dst with
+            | Operand.Reg r -> (
+                match width_ok r with
+                | Error e -> Error e
+                | Ok () ->
+                    Ok [ Lowered.Test_rm_imm { width = i.Instruction.width; rm = Rm.Reg r; imm } ])
+            | Operand.Mem m ->
+                Ok [ Lowered.Test_rm_imm { width = i.Instruction.width; rm = Rm.Mem m; imm } ]
+            | Operand.Imm _ | Operand.Sym _ -> bad `Immediate_destination))
     | Opcode.Cmov cc, [ Operand.Reg a; Operand.Reg b ] -> (
         match (width_ok a, width_ok b) with
         | Ok (), Ok () ->
@@ -1711,6 +1957,90 @@ module Make (M : MODE) = struct
         match width_ok reg with
         | Error e -> Error e
         | Ok () -> Ok [ Lowered.Cvtf2i_r_rm { width = i.Instruction.width; reg; rm = Rm.Mem m } ])
+    (* [sete %al]/[setl %r8b] (M5, asm/docs/corpus.md): [Instruction.width] is
+       always 8 here ({!simplify_instruction} pins it), so [width_ok] on the
+       destination register is exactly the right check with no extra
+       plumbing. *)
+    | Opcode.Setcc cc, [ Operand.Reg r ] -> (
+        match width_ok r with
+        | Error e -> Error e
+        | Ok () -> Ok [ Lowered.Setcc_rm { cc; rm = Rm.Reg r } ])
+    | Opcode.Setcc cc, [ Operand.Mem m ] -> Ok [ Lowered.Setcc_rm { cc; rm = Rm.Mem m } ]
+    (* Zero-/sign-extending move (M5, asm/docs/corpus.md). [src_width = 32]
+       is [movslq] - a structurally different opcode ([0x63], no ModR/M-reg
+       extension table, mandatory REX.W) from the [0F B6/B7/BE/BF] family the
+       other widths share, so it gets its own {!Lowered.Movsxd_r_rm} rather
+       than a third [Movx_r_rm] case; matched first since it is the more
+       specific pattern (a variable [src_width] binding below would
+       otherwise shadow it). The [when src.Reg.width = src_width] guard on
+       the register-source forms rejects a mnemonic/operand mismatch
+       ([movsbl %eax, ...]) by simply not matching, the same way
+       {!width_ok}'s failures elsewhere fall through to the catch-all. *)
+    | Opcode.Movsx { src_width = 32 }, [ Operand.Reg src; Operand.Reg reg ] when src.Reg.width = 32
+      -> (
+        match width_ok reg with
+        | Error e -> Error e
+        | Ok () -> Ok [ Lowered.Movsxd_r_rm { reg; rm = Rm.Reg src } ])
+    | Opcode.Movsx { src_width = 32 }, [ Operand.Mem m; Operand.Reg reg ] -> (
+        match width_ok reg with
+        | Error e -> Error e
+        | Ok () -> Ok [ Lowered.Movsxd_r_rm { reg; rm = Rm.Mem m } ])
+    | Opcode.Movzx { src_width }, [ Operand.Reg src; Operand.Reg reg ]
+      when src.Reg.width = src_width -> (
+        match width_ok reg with
+        | Error e -> Error e
+        | Ok () ->
+            Ok
+              [
+                Lowered.Movx_r_rm
+                  {
+                    zero_extend = true;
+                    src_width;
+                    width = i.Instruction.width;
+                    reg;
+                    rm = Rm.Reg src;
+                  };
+              ])
+    | Opcode.Movzx { src_width }, [ Operand.Mem m; Operand.Reg reg ] -> (
+        match width_ok reg with
+        | Error e -> Error e
+        | Ok () ->
+            Ok
+              [
+                Lowered.Movx_r_rm
+                  { zero_extend = true; src_width; width = i.Instruction.width; reg; rm = Rm.Mem m };
+              ])
+    | Opcode.Movsx { src_width }, [ Operand.Reg src; Operand.Reg reg ]
+      when src.Reg.width = src_width -> (
+        match width_ok reg with
+        | Error e -> Error e
+        | Ok () ->
+            Ok
+              [
+                Lowered.Movx_r_rm
+                  {
+                    zero_extend = false;
+                    src_width;
+                    width = i.Instruction.width;
+                    reg;
+                    rm = Rm.Reg src;
+                  };
+              ])
+    | Opcode.Movsx { src_width }, [ Operand.Mem m; Operand.Reg reg ] -> (
+        match width_ok reg with
+        | Error e -> Error e
+        | Ok () ->
+            Ok
+              [
+                Lowered.Movx_r_rm
+                  {
+                    zero_extend = false;
+                    src_width;
+                    width = i.Instruction.width;
+                    reg;
+                    rm = Rm.Mem m;
+                  };
+              ])
     | _ -> bad (`No_form (Opcode.name i.Instruction.op))
 
   (* {2 The codec}
@@ -1747,7 +2077,16 @@ module Make (M : MODE) = struct
       ~entries:
         (List.filter_map
            (fun op -> Option.map (fun b -> (op, b)) (Opcode.to_rm_r op))
-           [ Opcode.Xor; Opcode.Cmp; Opcode.Sub; Opcode.Add; Opcode.Sbb; Opcode.Test ])
+           [
+             Opcode.Xor;
+             Opcode.Cmp;
+             Opcode.Sub;
+             Opcode.Add;
+             Opcode.Sbb;
+             Opcode.Test;
+             Opcode.Or;
+             Opcode.And;
+           ])
       (C.field ~width:8 "opcode")
 
   (* The reg<-rm mirror of {!alu_rm_r_codec}, {!Opcode.to_r_rm}'s table. *)
@@ -1756,7 +2095,7 @@ module Make (M : MODE) = struct
       ~entries:
         (List.filter_map
            (fun op -> Option.map (fun b -> (op, b)) (Opcode.to_r_rm op))
-           [ Opcode.Adc; Opcode.Add ])
+           [ Opcode.Adc; Opcode.Add; Opcode.Xor ])
       (C.field ~width:8 "opcode")
 
   let cc_codec =
@@ -1852,7 +2191,23 @@ module Make (M : MODE) = struct
               match m.base with Some bb -> bb.num >= 8 | None -> false )
       in
       let w = width = 64 in
-      if w || r || x || b then
+      (* {!Reg.names_8l} has no legacy AH/CH/DH/BH spelling at all - num 4-7
+         at width 8 is always SPL/BPL/SIL/DIL (M5, asm/docs/corpus.md:
+         [movb %sil, 7(%rdi)]) - so an *empty* REX byte (0x40, every bit
+         clear) has to be present whenever one of those four is named, purely
+         to select that reading over the legacy one; [w]/[r]/[x]/[b] above
+         would all otherwise stay false and this prefix would vanish
+         entirely. Scoped to real register operands - a [reg]/[rm] that is
+         actually a ModR/M-reg extension code (group-1/2/3's [ext], or
+         [Setcc_rm]'s fixed 0) rather than a register number happens to share
+         this parameter, but no fixture reaches an 8-bit extension-coded form
+         with a raw value in 4-7 today, so the two are not distinguished
+         here. *)
+      let byte_legacy_num n = width = 8 && n >= 4 && n < 8 in
+      let needs_empty_rex =
+        byte_legacy_num reg || match rm with Rm.Reg g -> byte_legacy_num g.num | Rm.Mem _ -> false
+      in
+      if w || r || x || b || needs_empty_rex then
         Some
           ((if w then 8 else 0)
           lor (if r then 4 else 0)
@@ -2158,6 +2513,85 @@ module Make (M : MODE) = struct
                 { width; reg = reg_field ~p ~width e.re_reg; rm = rm_of ~p ~width:128 e.re_rm }))
          C.(asz_codec ** const ~width:8 0xF2L ** rex_codec ** const ~width:16 0x0F2CL ** rm_codec))
 
+  (* Zero-/sign-extending move (M5, asm/docs/corpus.md): [0F B6/B7/BE/BF /r].
+     No mandatory prefix, so this reuses [prefixes_codec] directly rather than
+     the SSE alts' split [asz_codec]/[rex_codec] - there is no third byte to
+     splice between them. [reg] (destination, [width]) and [rm] (source,
+     [src_width]) are independently widthed exactly as {!sse_cvtsi2f_alt}
+     already does for a different mismatched pair; see {!Lowered.Movx_r_rm}'s
+     own comment for why. *)
+  let movx_alt ~label ~priority ~zero_extend ~src_width ~opcode16 =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Movx_r_rm { zero_extend = ze; src_width = sw; width; reg; rm }
+             when Bool.equal ze zero_extend && sw = src_width ->
+               Some (prefixes_of ~width ~reg:reg.num ~rm, ((), { re_reg = reg.num; re_rm = rm }))
+           | _ -> None)
+         ~decode:(fun (rex, ((), e)) ->
+           let width = width_of_prefixes rex in
+           Some
+             (Lowered.Movx_r_rm
+                {
+                  zero_extend;
+                  src_width;
+                  width;
+                  reg = reg_field ~p:rex ~width e.re_reg;
+                  rm = rm_of ~p:rex ~width:src_width e.re_rm;
+                }))
+         C.(prefixes_codec ** const ~width:16 opcode16 ** rm_codec))
+
+  (* [movslq] ([0x63 /r], M5, asm/docs/corpus.md): REX.W mandatory (a 32-bit
+     write already zero-extends, so a REX-less encoding would mean something
+     else entirely), hence the hard-coded [~width:64] rather than a value
+     threaded from the lowered form the way {!movx_alt} threads [width]. *)
+  let movsxd_alt ~label ~priority =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Movsxd_r_rm { reg; rm } ->
+               Some (prefixes_of ~width:64 ~reg:reg.num ~rm, ((), { re_reg = reg.num; re_rm = rm }))
+           | _ -> None)
+         ~decode:(fun (rex, ((), e)) ->
+           Some
+             (Lowered.Movsxd_r_rm
+                { reg = reg_field ~p:rex ~width:64 e.re_reg; rm = rm_of ~p:rex ~width:32 e.re_rm }))
+         C.(prefixes_codec ** const ~width:8 0x63L ** rm_codec))
+
+  (* [imull $10000,%ebx] / [imulq $56,%rax] ([0x69 id] / [0x6B ib], M5,
+     asm/docs/corpus.md): the same short-immediate-first priority discipline
+     as {!alu_form} - GAS picks [6B] whenever the immediate fits a sign-
+     extended byte, and getting the order wrong would differ from every
+     other assembler by three bytes per instruction, exactly as that
+     comment explains. *)
+  let imul_imm_form ~label ~priority ~opcode_byte ~imm_width =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Imul_r_rm_imm { width; reg; rm; imm } ->
+               let fits = if imm_width = 8 then fits_s8 imm else fits_s32 imm in
+               if not fits then None
+               else
+                 Some
+                   ( prefixes_of ~width ~reg:reg.num ~rm,
+                     ((), ({ re_reg = reg.num; re_rm = rm }, imm)) )
+           | _ -> None)
+         ~decode:(fun (rex, ((), (e, imm))) ->
+           let width = width_of_prefixes rex in
+           Some
+             (Lowered.Imul_r_rm_imm
+                {
+                  width;
+                  reg = reg_field ~p:rex ~width e.re_reg;
+                  rm = rm_of ~p:rex ~width e.re_rm;
+                  imm;
+                }))
+         C.(
+           prefixes_codec
+           ** const ~width:8 (Int64.of_int opcode_byte)
+           ** rm_codec
+           ** le ~signedness:C.Signed ~width:imm_width "imm"))
+
   let alu_form ~label ~priority ~opcode_byte ~imm_width =
     C.alt ~label ~priority
       (C.iso_fun ~name:label
@@ -2257,10 +2691,34 @@ module Make (M : MODE) = struct
     C.choice ~name:M.name
       (general_alts @ moffs_alts
       @ [
+          (* 8-bit MOV is not the same opcode with a narrower width like every
+             other case here - real x86 has no operand-size prefix or REX.W
+             reading that means "8 bits" for [0x89]/[0x8B], so a width-8
+             [Mov_rm_r]/[Mov_r_rm] needs a genuinely different opcode byte
+             ([0x88]/[0x8A]) rather than [prefixes_of]'s usual REX.W
+             selection - {!width_of_prefixes} can only ever produce 32 or 64.
+             M5, asm/docs/corpus.md: [movb %sil, 7(%rdi)]. *)
+          C.alt ~label:"mov-rm-r8" ~priority:46
+            (C.iso_fun ~name:"mov-rm-r8"
+               ~encode:(function
+                 | Lowered.Mov_rm_r { width = 8; rm; reg } ->
+                     Some
+                       ( prefixes_of ~width:8 ~reg:reg.num ~rm,
+                         ((), { re_reg = reg.num; re_rm = rm }) )
+                 | _ -> None)
+               ~decode:(fun (rex, ((), e)) ->
+                 Some
+                   (Lowered.Mov_rm_r
+                      {
+                        width = 8;
+                        rm = rm_of ~p:rex ~width:8 e.re_rm;
+                        reg = reg_field ~p:rex ~width:8 e.re_reg;
+                      }))
+               C.(prefixes_codec ** const ~width:8 0x88L ** rm_codec));
           C.alt ~label:"mov-rm-r" ~priority:5
             (C.iso_fun ~name:"mov-rm-r"
                ~encode:(function
-                 | Lowered.Mov_rm_r { width; rm; reg } ->
+                 | Lowered.Mov_rm_r { width; rm; reg } when width <> 8 ->
                      Some
                        (prefixes_of ~width ~reg:reg.num ~rm, ((), { re_reg = reg.num; re_rm = rm }))
                  | _ -> None)
@@ -2274,10 +2732,27 @@ module Make (M : MODE) = struct
                         reg = reg_field ~p:rex ~width e.re_reg;
                       }))
                C.(prefixes_codec ** const ~width:8 0x89L ** rm_codec));
+          C.alt ~label:"mov-r-rm8" ~priority:47
+            (C.iso_fun ~name:"mov-r-rm8"
+               ~encode:(function
+                 | Lowered.Mov_r_rm { width = 8; reg; rm } ->
+                     Some
+                       ( prefixes_of ~width:8 ~reg:reg.num ~rm,
+                         ((), { re_reg = reg.num; re_rm = rm }) )
+                 | _ -> None)
+               ~decode:(fun (rex, ((), e)) ->
+                 Some
+                   (Lowered.Mov_r_rm
+                      {
+                        width = 8;
+                        reg = reg_field ~p:rex ~width:8 e.re_reg;
+                        rm = rm_of ~p:rex ~width:8 e.re_rm;
+                      }))
+               C.(prefixes_codec ** const ~width:8 0x8aL ** rm_codec));
           C.alt ~label:"mov-r-rm" ~priority:6
             (C.iso_fun ~name:"mov-r-rm"
                ~encode:(function
-                 | Lowered.Mov_r_rm { width; reg; rm } ->
+                 | Lowered.Mov_r_rm { width; reg; rm } when width <> 8 ->
                      Some
                        (prefixes_of ~width ~reg:reg.num ~rm, ((), { re_reg = reg.num; re_rm = rm }))
                  | _ -> None)
@@ -2559,7 +3034,6 @@ module Make (M : MODE) = struct
                     Some (Lowered.Dec { reg = reg_at ~width:M.address_width (Int64.to_int r) }))
                   C.(const ~width:5 0b01001L ** field ~width:3 "reg"));
            ])
-      @
       (* SSE2 scalar float (M5, asm/docs/corpus.md), unconditional - unlike
          [dec-r] just above, nothing here is bit-pattern-dead in 32-bit mode
          (every mandatory-prefix byte and opcode used here is free in both
@@ -2568,26 +3042,114 @@ module Make (M : MODE) = struct
          its own register list (x86_32_encode.ml) has no xmm entries - the
          same "unreachable via values, not via bit patterns" situation
          {!Codec.check} does not and need not flag. *)
-      [
-        sse_binop_alt ~label:"sse-binop-f2" ~priority:24 ~mandatory:0xF2
-          ~opcode_codec:sse_binop_f2_codec;
-        sse_binop_alt ~label:"sse-binop-f3" ~priority:25 ~mandatory:0xF3
-          ~opcode_codec:sse_binop_f3_codec;
-        sse_binop_alt ~label:"sse-binop-66" ~priority:26 ~mandatory:0x66
-          ~opcode_codec:sse_binop_66_codec;
-        sse_binop_none_alt ~label:"sse-binop-none" ~priority:27;
-        sse_mov_r_rm_alt ~label:"sse-movsd-load" ~priority:28 ~mandatory:0xF2 ~op:Opcode.Movsd
-          ~opcode16:0x0F10L;
-        sse_mov_r_rm_alt ~label:"sse-movss-load" ~priority:29 ~mandatory:0xF3 ~op:Opcode.Movss
-          ~opcode16:0x0F10L;
-        sse_mov_rm_r_alt ~label:"sse-movsd-store" ~priority:30 ~mandatory:0xF2 ~op:Opcode.Movsd
-          ~opcode16:0x0F11L;
-        sse_mov_rm_r_alt ~label:"sse-movss-store" ~priority:31 ~mandatory:0xF3 ~op:Opcode.Movss
-          ~opcode16:0x0F11L;
-        sse_cvtsi2f_alt ~label:"cvtsi2sd-r-rm" ~priority:32 ~mandatory:0xF2 ~op:Opcode.Cvtsi2sd;
-        sse_cvtsi2f_alt ~label:"cvtsi2ss-r-rm" ~priority:33 ~mandatory:0xF3 ~op:Opcode.Cvtsi2ss;
-        sse_cvtf2i_alt ~label:"cvttsd2si-r-rm" ~priority:34;
-      ])
+      @ [
+          sse_binop_alt ~label:"sse-binop-f2" ~priority:24 ~mandatory:0xF2
+            ~opcode_codec:sse_binop_f2_codec;
+          sse_binop_alt ~label:"sse-binop-f3" ~priority:25 ~mandatory:0xF3
+            ~opcode_codec:sse_binop_f3_codec;
+          sse_binop_alt ~label:"sse-binop-66" ~priority:26 ~mandatory:0x66
+            ~opcode_codec:sse_binop_66_codec;
+          sse_binop_none_alt ~label:"sse-binop-none" ~priority:27;
+          sse_mov_r_rm_alt ~label:"sse-movsd-load" ~priority:28 ~mandatory:0xF2 ~op:Opcode.Movsd
+            ~opcode16:0x0F10L;
+          sse_mov_r_rm_alt ~label:"sse-movss-load" ~priority:29 ~mandatory:0xF3 ~op:Opcode.Movss
+            ~opcode16:0x0F10L;
+          sse_mov_rm_r_alt ~label:"sse-movsd-store" ~priority:30 ~mandatory:0xF2 ~op:Opcode.Movsd
+            ~opcode16:0x0F11L;
+          sse_mov_rm_r_alt ~label:"sse-movss-store" ~priority:31 ~mandatory:0xF3 ~op:Opcode.Movss
+            ~opcode16:0x0F11L;
+          sse_cvtsi2f_alt ~label:"cvtsi2sd-r-rm" ~priority:32 ~mandatory:0xF2 ~op:Opcode.Cvtsi2sd;
+          sse_cvtsi2f_alt ~label:"cvtsi2ss-r-rm" ~priority:33 ~mandatory:0xF3 ~op:Opcode.Cvtsi2ss;
+          sse_cvtf2i_alt ~label:"cvttsd2si-r-rm" ~priority:34;
+        ]
+      (* M5 (asm/docs/corpus.md), unconditional for the same reason as the
+         SSE block above: nothing here is bit-pattern-dead in either mode. *)
+      @ [
+          (* Group-2 shift/rotate, general immediate count ([0xC1 ib]) - the
+             non-1-count sibling of [shift1-rm] above. *)
+          C.alt ~label:"shift-imm-rm" ~priority:35
+            (C.iso_fun ~name:"shift-imm-rm"
+               ~encode:(function
+                 | Lowered.Shift_imm_rm { ext; width; rm; imm } ->
+                     Some
+                       (prefixes_of ~width ~reg:ext ~rm, ((), ({ re_reg = ext; re_rm = rm }, imm)))
+                 | _ -> None)
+               ~decode:(fun (rex, ((), (e, imm))) ->
+                 match Opcode.of_shift1_ext e.re_reg with
+                 | None -> None
+                 | Some _ ->
+                     let width = width_of_prefixes rex in
+                     Some
+                       (Lowered.Shift_imm_rm
+                          { ext = e.re_reg; width; rm = rm_of ~p:rex ~width e.re_rm; imm }))
+               C.(
+                 prefixes_codec ** const ~width:8 0xC1L ** rm_codec
+                 ** le ~signedness:C.Unsigned ~width:8 "imm8"));
+          (* Group-2 shift/rotate, count-in-%cl ([0xD3]). *)
+          C.alt ~label:"shift-cl-rm" ~priority:36
+            (C.iso_fun ~name:"shift-cl-rm"
+               ~encode:(function
+                 | Lowered.Shift_cl_rm { ext; width; rm } ->
+                     Some (prefixes_of ~width ~reg:ext ~rm, ((), { re_reg = ext; re_rm = rm }))
+                 | _ -> None)
+               ~decode:(fun (rex, ((), e)) ->
+                 match Opcode.of_shift1_ext e.re_reg with
+                 | None -> None
+                 | Some _ ->
+                     let width = width_of_prefixes rex in
+                     Some
+                       (Lowered.Shift_cl_rm
+                          { ext = e.re_reg; width; rm = rm_of ~p:rex ~width e.re_rm }))
+               C.(prefixes_codec ** const ~width:8 0xD3L ** rm_codec));
+          (* [sete %al]/[setl %r8b] ([0F 90+cc /0]): the ModR/M reg field is
+             fixed at 0 rather than an operand or an extension lookup, unlike
+             every other reg-field use in this codec - the condition is
+             already fully carried by the low nibble of the opcode's second
+             byte, mirroring {!Cmov_r_rm}'s own [const ~width:12 0x0F4L]. *)
+          C.alt ~label:"setcc-rm" ~priority:37
+            (C.iso_fun ~name:"setcc-rm"
+               ~encode:(function
+                 | Lowered.Setcc_rm { cc; rm } ->
+                     Some (prefixes_of ~width:8 ~reg:0 ~rm, ((), (cc, { re_reg = 0; re_rm = rm })))
+                 | _ -> None)
+               ~decode:(fun (rex, ((), (cc, e))) ->
+                 if e.re_reg <> 0 then None
+                 else Some (Lowered.Setcc_rm { cc; rm = rm_of ~p:rex ~width:8 e.re_rm }))
+               C.(prefixes_codec ** const ~width:12 0x0F9L ** cc_codec ** rm_codec));
+          movx_alt ~label:"movzx-b-r-rm" ~priority:38 ~zero_extend:true ~src_width:8
+            ~opcode16:0x0FB6L;
+          movx_alt ~label:"movzx-w-r-rm" ~priority:39 ~zero_extend:true ~src_width:16
+            ~opcode16:0x0FB7L;
+          movx_alt ~label:"movsx-b-r-rm" ~priority:40 ~zero_extend:false ~src_width:8
+            ~opcode16:0x0FBEL;
+          movx_alt ~label:"movsx-w-r-rm" ~priority:41 ~zero_extend:false ~src_width:16
+            ~opcode16:0x0FBFL;
+          movsxd_alt ~label:"movsxd-r-rm" ~priority:42;
+          imul_imm_form ~label:"imul-r-rm-imm8" ~priority:43 ~opcode_byte:0x6B ~imm_width:8;
+          imul_imm_form ~label:"imul-r-rm-imm32" ~priority:44 ~opcode_byte:0x69 ~imm_width:32;
+          (* TEST's own immediate form ([0xF7 /0 id], M5, asm/docs/corpus.md
+             - [testl $1,%edi]): the ModR/M reg field is fixed at 0, the same
+             "extension code, not an operand" shape as {!setcc-rm} above, not
+             a lookup into {!Opcode.to_ext} - TEST is not part of that table
+             (it is not opcode [0x80]/[0x81]/[0x83] at all). Always a
+             32-bit-or-truncated immediate, never the imm8 short form
+             {!alu_form} picks for group-1 - TEST has no such alternative
+             encoding to choose between. *)
+          C.alt ~label:"test-rm-imm" ~priority:45
+            (C.iso_fun ~name:"test-rm-imm"
+               ~encode:(function
+                 | Lowered.Test_rm_imm { width; rm; imm } ->
+                     Some (prefixes_of ~width ~reg:0 ~rm, ((), ({ re_reg = 0; re_rm = rm }, imm)))
+                 | _ -> None)
+               ~decode:(fun (rex, ((), (e, imm))) ->
+                 if e.re_reg <> 0 then None
+                 else
+                   let width = width_of_prefixes rex in
+                   Some (Lowered.Test_rm_imm { width; rm = rm_of ~p:rex ~width e.re_rm; imm }))
+               C.(
+                 prefixes_codec ** const ~width:8 0xF7L ** rm_codec
+                 ** le ~signedness:C.Signed ~width:32 "imm"));
+        ])
 
   (* {2 Encode and decode} *)
 
@@ -2626,12 +3188,14 @@ module Make (M : MODE) = struct
           p.C.slices;
       byte_offset = first / 8;
       container = (width + 7) / 8;
-      pc_bias = (match kind with Abs32 -> 0 | _ -> total_bytes);
+      pc_bias = (match kind with Abs32 | Abs64 -> 0 | _ -> total_bytes);
       range =
         (match kind with
-        (* An absolute 32-bit address is a bit pattern: 0x80000000 upwards is a
-           valid address, and a signed range would reject half of them. *)
+        (* An absolute address is a bit pattern: 0x80000000 upwards (or, for
+           [Abs64], 0x8000000000000000 upwards) is a perfectly good address,
+           and a signed range would reject half of them. *)
         | Abs32 -> Asm_core.Lowered_ast.Bitpattern 32
+        | Abs64 -> Asm_core.Lowered_ast.Bitpattern 64
         | Pcrel8_branch -> Asm_core.Lowered_ast.Signed 8
         | Pcrel32_branch | Pcrel32_call | Pcrel32_data -> Asm_core.Lowered_ast.Signed 32);
       value = Asm_core.Expr.Const (Bigint.of_int 0);
@@ -2829,6 +3393,23 @@ module Make (M : MODE) = struct
               ];
             form = None;
           }
+    (* [reg] is dropped: {!Lowered.Imul_r_rm_imm}'s own comment says why it
+       always equals [rm] as constructed here, so only [rm] needs to survive
+       into the two-operand AT&T spelling. *)
+    | Lowered.Imul_r_rm_imm { width; imm; rm; _ } ->
+        Some
+          (Instruction.mk Opcode.Imul width
+             [
+               Operand.Imm (Bigint.of_int64 imm);
+               (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+             ])
+    | Lowered.Test_rm_imm { width; imm; rm } ->
+        Some
+          (Instruction.mk Opcode.Test width
+             [
+               Operand.Imm (Bigint.of_int64 imm);
+               (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+             ])
     | Lowered.Cmov_r_rm { cc; width; reg; rm } ->
         Some
           {
@@ -2907,6 +3488,48 @@ module Make (M : MODE) = struct
                    Operand.Imm (Bigint.of_int64 1L);
                    (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
                  ]))
+    | Lowered.Shift_imm_rm { ext; width; rm; imm } -> (
+        match Opcode.of_shift1_ext ext with
+        | None -> None
+        | Some op ->
+            Some
+              (Instruction.mk op width
+                 [
+                   Operand.Imm (Bigint.of_int64 imm);
+                   (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+                 ]))
+    | Lowered.Shift_cl_rm { ext; width; rm } -> (
+        match Opcode.of_shift1_ext ext with
+        | None -> None
+        | Some op ->
+            Some
+              (Instruction.mk op width
+                 [
+                   Operand.Reg (reg_at ~width:8 1);
+                   (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+                 ]))
+    | Lowered.Setcc_rm { cc; rm } ->
+        Some
+          (Instruction.mk (Opcode.Setcc cc) 8
+             [ (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m) ])
+    | Lowered.Movx_r_rm { zero_extend; src_width; width; reg; rm } ->
+        Some
+          (Instruction.mk
+             (if zero_extend then Opcode.Movzx { src_width } else Opcode.Movsx { src_width })
+             width
+             [
+               (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+               Operand.Reg reg;
+             ])
+    | Lowered.Movsxd_r_rm { reg; rm } ->
+        Some
+          (Instruction.mk
+             (Opcode.Movsx { src_width = 32 })
+             64
+             [
+               (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+               Operand.Reg reg;
+             ])
     (* The SSE forms' [Instruction.width] is not the 128-bit xmm operand's
        width - nothing here ever prints a size suffix for these opcodes (see
        {!Instruction.pp}'s no-suffix group), so [width] only has to be
@@ -3002,6 +3625,10 @@ module Make (M : MODE) = struct
            0x80000000 upwards is a perfectly good address and [fits_s32] would
            reject it. The range check belongs to the fixup's declared range. *)
         Ok (Int64.logand target 0xFFFFFFFFL)
+    | Abs64 ->
+        (* The full 64-bit bit pattern - no masking needed, [target] already
+           is one. *)
+        Ok target
     | Pcrel8_branch ->
         let d = Int64.sub target place in
         if Int64.compare d (-128L) >= 0 && Int64.compare d 128L < 0 then Ok d
@@ -3022,7 +3649,15 @@ module Make (M : MODE) = struct
   let data_widths = [ (".byte", 1); (".short", 2); (".word", 2); (".long", 4); (".quad", 8) ]
 
   let data_fixup ~width =
-    match width with 4 -> Ok Abs32 | _ -> Error (diag ~pos:__POS__ (`No_data_relocation width))
+    match width with
+    | 4 -> Ok Abs32
+    (* [.quad symbol] (M5, asm/docs/corpus.md - [testvec: ... .quad __stringlit_4]):
+       a full 64-bit absolute address, only representable in 64-bit mode
+       ([M.rex_allowed] - x86-32 has no 8-byte general-purpose register or
+       address width for this to mean anything, and no fixture needs it
+       there). *)
+    | 8 when M.rex_allowed -> Ok Abs64
+    | _ -> Error (diag ~pos:__POS__ (`No_data_relocation width))
 
   let nop_table = M.nop_table
 

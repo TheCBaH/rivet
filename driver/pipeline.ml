@@ -361,7 +361,19 @@ module Make (T : T_intf.TARGET) = struct
                         let bytes =
                           match folded with
                           | Expr.Const v -> (
-                              match Bigint.to_int64_opt v with
+                              (* [to_int64_opt] alone rejects a raw bit pattern at or above
+                                 2^63 - a [.quad] holding a float's bits or an unsigned
+                                 constant ([0x8000000000000000], [0xFFFFFFFFFFFFFFFF]) is
+                                 ordinary, common data, not an out-of-range value, so the
+                                 unsigned reading is tried second rather than the whole
+                                 initializer being rejected. Both readings produce the same
+                                 two's-complement bytes below; only which one succeeds at all
+                                 differs. *)
+                              match
+                                match Bigint.to_int64_opt v with
+                                | Some _ as r -> r
+                                | None -> Bigint.to_uint64_opt v
+                              with
                               | Some n ->
                                   Ok
                                     (String.init width (fun i ->

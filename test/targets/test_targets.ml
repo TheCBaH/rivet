@@ -972,13 +972,130 @@ let%expect_test "a 64-bit address carries no prefix" =
    touch. What this proves is that [%r8b] now reaches that same, identical,
    already-existing boundary instead of failing earlier as an unknown
    register - i.e. the new register table entry is wired up correctly. *)
-let%expect_test "%r8b-%r15b are recognized registers, at the same M1 boundary as %al" =
+(* M1 rejected reg/reg and reg/mem [movb] entirely (only [movb $imm,(mem)]
+   was in scope); M5 (asm/docs/corpus.md - [movb %sil, 7(%rdi)] and friends)
+   lifted that, so both cases below now decode rather than error. [0x88],
+   not [0x89] with an 8-bit width - the opcode byte itself carries the
+   operand size for MOV, unlike every other form here where a shared opcode
+   picks width from REX.W. *)
+let%expect_test "%r8b-%r15b are recognized registers, and 8-bit reg/reg mov uses opcode 0x88" =
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tmovb %r8b, %al\n\tret\n";
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tmovb %al, %al\n\tret\n";
   [%expect
     {|
-    x86.lower: 8-bit mov is only supported as movb $imm,(mem) in M1
-    x86.lower: 8-bit mov is only supported as movb $imm,(mem) in M1
+    40000000  44 88 c0  movb %r8b, %al  [x86_64.mov-rm-r8.asz-absent.rex-present.reg]
+    40000003  c3        ret             [x86_64.ret]
+    40000000  88 c0  movb %al, %al  [x86_64.mov-rm-r8.asz-absent.rex-absent.reg]
+    40000002  c3     ret            [x86_64.ret]
+    |}]
+
+(* {1 M5 corpus-growth forms (asm/docs/corpus.md): actually assembling
+   CompCert's [test/c/] corpus, not just parsing it}
+
+   Every byte sequence and canonical spelling below was checked against the
+   real, installed [x86_64-linux-gnu-as]/[objdump] (binutils) before being
+   promoted here - not hand-typed. *)
+
+let%expect_test
+    "or/and/xor in the register-register and mem-source shapes CompCert's own codegen needs" =
+  disasm "x86_64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \torl $128, %r8d\n\
+     \torq %r10, %r11\n\
+     \tandq %rsi, %r14\n\
+     \txorq %rsi, %r9\n\
+     \txorq $255, %rcx\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  41 81 c8 80 00 00 00  orl $128, %r8d   [x86_64.alu-rm-imm32.asz-absent.rex-present.reg]
+    40000007  4d 09 d3              orq %r10, %r11   [x86_64.alu-rm-r.asz-absent.rex-present.reg]
+    4000000a  49 21 f6              andq %rsi, %r14  [x86_64.alu-rm-r.asz-absent.rex-present.reg]
+    4000000d  49 31 f1              xorq %rsi, %r9   [x86_64.alu-rm-r.asz-absent.rex-present.reg]
+    40000010  48 81 f1 ff 00 00 00  xorq $255, %rcx  [x86_64.alu-rm-imm32.asz-absent.rex-present.reg]
+    40000017  c3                    ret              [x86_64.ret]
+    |}]
+
+let%expect_test "not (group-3, ext=2)" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tnotl %eax\n\tnotq %r14\n\tret\n";
+  [%expect
+    {|
+    40000000  f7 d0     notl %eax  [x86_64.unary-rm.asz-absent.rex-absent.reg]
+    40000002  49 f7 d6  notq %r14  [x86_64.unary-rm.asz-absent.rex-present.reg]
+    40000005  c3        ret        [x86_64.ret]
+    |}]
+
+(* Group-2 shift/rotate beyond the M4-era shift-by-1-only [0xD1]: the general
+   immediate count ([0xC1 ib]) and count-in-%cl ([0xD3]). A literal count of
+   1 still picks the shorter [0xD1] form ([shift1-rm], unchanged from M4). *)
+let%expect_test "the general group-2 shift/rotate forms" =
+  disasm "x86_64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \trorl $27, %eax\n\
+     \tsall $16, %eax\n\
+     \tsall %cl, %eax\n\
+     \tsarl $2, %eax\n\
+     \tshrq $63, %rax\n\
+     \tshrl $1, %eax\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  c1 c8 1b     ror $27, %eax  [x86_64.shift-imm-rm.asz-absent.rex-absent.reg]
+    40000003  c1 e0 10     shl $16, %eax  [x86_64.shift-imm-rm.asz-absent.rex-absent.reg]
+    40000006  d3 e0        shl %cl, %eax  [x86_64.shift-cl-rm.asz-absent.rex-absent.reg]
+    40000008  c1 f8 02     sar $2, %eax   [x86_64.shift-imm-rm.asz-absent.rex-absent.reg]
+    4000000b  48 c1 e8 3f  shr $63, %rax  [x86_64.shift-imm-rm.asz-absent.rex-present.reg]
+    4000000f  d1 e8        shr $1, %eax   [x86_64.shift1-rm.asz-absent.rex-absent.reg]
+    40000011  c3           ret            [x86_64.ret]
+    |}]
+
+let%expect_test "setcc (0F 90+cc /0, ModR/M reg fixed at 0)" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tsete %al\n\tsetl %r8b\n\tret\n";
+  [%expect
+    {|
+    40000000  0f 94 c0     sete %al   [x86_64.setcc-rm.asz-absent.rex-absent.reg]
+    40000003  41 0f 9c c0  setl %r8b  [x86_64.setcc-rm.asz-absent.rex-present.reg]
+    40000007  c3           ret        [x86_64.ret]
+    |}]
+
+(* Zero-/sign-extending move: the [0F B6/B7/BE/BF] family plus [movslq]'s
+   own, structurally different [0x63]. *)
+let%expect_test "movzx/movsx/movslq" =
+  disasm "x86_64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tmovzbl (%rdi), %ecx\n\
+     \tmovsbl %bl, %edi\n\
+     \tmovslq %eax, %r11\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  0f b6 0f  movzbl (%rdi), %ecx  [x86_64.movzx-b-r-rm.asz-absent.rex-absent.base-disp0]
+    40000003  0f be fb  movsbl %bl, %edi     [x86_64.movsx-b-r-rm.asz-absent.rex-absent.reg]
+    40000006  4c 63 d8  movslq %eax, %r11    [x86_64.movsxd-r-rm.asz-absent.rex-present.reg]
+    40000009  c3        ret                  [x86_64.ret]
+    |}]
+
+let%expect_test "the two-operand imul $imm,reg form (0x69/0x6B, short-immediate-first)" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\timull $10000, %ebx\n\timulq $56, %rax\n\tret\n";
+  [%expect
+    {|
+    40000000  69 db 10 27 00 00  imull $10000, %ebx  [x86_64.imul-r-rm-imm32.asz-absent.rex-absent.reg]
+    40000006  48 6b c0 38        imulq $56, %rax     [x86_64.imul-r-rm-imm8.asz-absent.rex-present.reg]
+    4000000a  c3                 ret                 [x86_64.ret]
+    |}]
+
+let%expect_test "TEST's own immediate form (0xF7 /0 id, always full-width, no imm8 alternative)" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\ttestl $1, %edi\n\tret\n";
+  [%expect
+    {|
+    40000000  f7 c7 01 00 00 00  test $1, %edi  [x86_64.test-rm-imm.asz-absent.rex-absent.reg]
+    40000006  c3                 ret            [x86_64.ret]
     |}]
 
 (* {1 Base-less scaled-index (SIB) memory operands}

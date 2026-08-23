@@ -190,6 +190,19 @@
     [32 cost=0] cvtsi2sd-r-rm    cvtsi2sd-r-rm(){no-asz 11110010 no-rex 0000111100101010 modrm}
     [33 cost=0] cvtsi2ss-r-rm    cvtsi2ss-r-rm(){no-asz 11110011 no-rex 0000111100101010 modrm}
     [34 cost=0] cvttsd2si-r-rm   cvttsd2si-r-rm(){no-asz 11110010 no-rex 0000111100101100 modrm}
+    [35 cost=0] shift-imm-rm     shift-imm-rm(){prefixes 11000001 modrm imm8:8u}
+    [36 cost=0] shift-cl-rm      shift-cl-rm(){prefixes 11010011 modrm}
+    [37 cost=0] setcc-rm         setcc-rm(){prefixes 000011111001 cc modrm}
+    [38 cost=0] movzx-b-r-rm     movzx-b-r-rm(){prefixes 0000111110110110 modrm}
+    [39 cost=0] movzx-w-r-rm     movzx-w-r-rm(){prefixes 0000111110110111 modrm}
+    [40 cost=0] movsx-b-r-rm     movsx-b-r-rm(){prefixes 0000111110111110 modrm}
+    [41 cost=0] movsx-w-r-rm     movsx-w-r-rm(){prefixes 0000111110111111 modrm}
+    [42 cost=0] movsxd-r-rm      movsxd-r-rm(){prefixes 01100011 modrm}
+    [43 cost=0] imul-r-rm-imm8   imul-r-rm-imm8(){prefixes 01101011 modrm imm:8s}
+    [44 cost=0] imul-r-rm-imm32  imul-r-rm-imm32(){prefixes 01101001 modrm le32}
+    [45 cost=0] test-rm-imm      test-rm-imm(){prefixes 11110111 modrm le32}
+    [46 cost=0] mov-rm-r8        mov-rm-r8(){prefixes 10001000 modrm}
+    [47 cost=0] mov-r-rm8        mov-r-rm8(){prefixes 10001010 modrm}
   prefixes(){no-asz no-rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
@@ -203,9 +216,9 @@
     [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-c32}
   le32(){imm:32u}
   disp-sym(){le32}
-  alu-rm-r-op[6]{opcode:8u}
+  alu-rm-r-op[8]{opcode:8u}
   cc[16]{cc:4u}
-  alu-r-rm-op[2]{opcode:8u}
+  alu-r-rm-op[3]{opcode:8u}
   no-asz(){()}
   no-rex(){()}
   sse-binop-f2-op[5]{opcode:8u}
@@ -404,6 +417,19 @@
     [32 cost=0] cvtsi2sd-r-rm    cvtsi2sd-r-rm(){asz 11110010 rex 0000111100101010 modrm}
     [33 cost=0] cvtsi2ss-r-rm    cvtsi2ss-r-rm(){asz 11110011 rex 0000111100101010 modrm}
     [34 cost=0] cvttsd2si-r-rm   cvttsd2si-r-rm(){asz 11110010 rex 0000111100101100 modrm}
+    [35 cost=0] shift-imm-rm     shift-imm-rm(){prefixes 11000001 modrm imm8:8u}
+    [36 cost=0] shift-cl-rm      shift-cl-rm(){prefixes 11010011 modrm}
+    [37 cost=0] setcc-rm         setcc-rm(){prefixes 000011111001 cc modrm}
+    [38 cost=0] movzx-b-r-rm     movzx-b-r-rm(){prefixes 0000111110110110 modrm}
+    [39 cost=0] movzx-w-r-rm     movzx-w-r-rm(){prefixes 0000111110110111 modrm}
+    [40 cost=0] movsx-b-r-rm     movsx-b-r-rm(){prefixes 0000111110111110 modrm}
+    [41 cost=0] movsx-w-r-rm     movsx-w-r-rm(){prefixes 0000111110111111 modrm}
+    [42 cost=0] movsxd-r-rm      movsxd-r-rm(){prefixes 01100011 modrm}
+    [43 cost=0] imul-r-rm-imm8   imul-r-rm-imm8(){prefixes 01101011 modrm imm:8s}
+    [44 cost=0] imul-r-rm-imm32  imul-r-rm-imm32(){prefixes 01101001 modrm le32}
+    [45 cost=0] test-rm-imm      test-rm-imm(){prefixes 11110111 modrm le32}
+    [46 cost=0] mov-rm-r8        mov-rm-r8(){prefixes 10001000 modrm}
+    [47 cost=0] mov-r-rm8        mov-r-rm8(){prefixes 10001010 modrm}
   prefixes(){asz rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
@@ -416,9 +442,9 @@
     [7 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
     [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-c32}
   le32(){imm:32u}
-  alu-rm-r-op[6]{opcode:8u}
+  alu-rm-r-op[8]{opcode:8u}
   cc[16]{cc:4u}
-  alu-r-rm-op[2]{opcode:8u}
+  alu-r-rm-op[3]{opcode:8u}
   alt asz
     [0 cost=0] asz-present      asz-present(){01100111}
     [1 cost=0] asz-absent       asz-absent(){()}

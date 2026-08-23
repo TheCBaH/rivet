@@ -113,6 +113,35 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
           Err.Accum.map ~pos:__POS__ Parse_lines.parse_expression args
           |> Err.Accum.fold_errors (reject_reasons (name ^ ": every value must be an expression"))
           |> Err.map (fun values -> Normalized (Directive.Data { width; values })))
+  (* [.ascii]/[.asciz]/[.string]: one or more string-literal arguments,
+     concatenated into raw byte data. [.ascii] emits exactly the decoded
+     string bytes; [.asciz] and [.string] (a GAS synonym) each append a
+     trailing NUL. The lexer has already resolved escapes (including octal)
+     into [Token.String]'s payload, so no further decoding happens here.
+     Reused as [Directive.Data { width = 1; ... }] - one [Const] byte value
+     per character - rather than a new constructor, since every downstream
+     consumer (layout, encoding, fixups) already knows how to turn that into
+     bytes and nothing here needs a symbol reference or fixup. *)
+  | ".ascii" | ".asciz" | ".string" -> (
+      let string_of arg =
+        match List.map Token.kind arg with [ Token.String s ] -> Some s | _ -> None
+      in
+      match arguments with
+      | [] -> reject ~pos:__POS__ (name ^ " needs at least one string literal")
+      | args -> (
+          match List.map string_of args with
+          | opts when List.for_all Option.is_some opts ->
+              let nul_terminated = name <> ".ascii" in
+              let chars =
+                List.concat_map
+                  (fun s ->
+                    let cs = List.init (String.length s) (String.get s) in
+                    if nul_terminated then cs @ [ '\000' ] else cs)
+                  (List.map Option.get opts)
+              in
+              let values = List.map (fun c -> Expr.Const (Bigint.of_int (Char.code c))) chars in
+              Ok (Normalized (Directive.Data { width = 1; values }))
+          | _ -> reject ~pos:__POS__ (name ^ ": every argument must be a string literal")))
   | ".bss" ->
       Ok
         (Normalized
