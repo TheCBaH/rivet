@@ -1,8 +1,8 @@
 {
     "name": "ocaml/opam toolchains",
     "id": "ocaml",
-    "version": "0.0.3",
-    "description": "Install ocaml/opam toolchains",
+    "version": "0.0.5",
+    "description": "Install ocaml/opam toolchains (Debian/Ubuntu apt or Gentoo portage)",
     "options": {
         "packages": {
             "type": "string",
@@ -41,6 +41,6 @@
         }
     },
     "installsAfter": [
-        "ghcr.io/devcontainers/features/common-utils"
+        "ghcr.io/thecbah/devcontainer.features/common-utils"
     ]
 }
