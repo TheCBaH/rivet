@@ -195,13 +195,17 @@ let direct_lowered : T.fixup_kind Lowered_ast.module_ =
               Lowered_ast.Align
                 { boundary = 4; fills = Array.init 3 (fun i -> nop_or_empty (i + 1)); origin };
               Lowered_ast.Label_def { name = "asm_test_entry"; origin };
-              frag (T.Lowered.Add_imm { rd = x "x15"; rn = x "sp"; imm = 0L; shift12 = false });
+              frag
+                (T.Lowered.Add_imm
+                   { rd = x "x15"; rn = x "sp"; imm = T.Disp.Const 0L; shift12 = false });
               frag (T.Lowered.Stp_pre { rt = x "x15"; rt2 = x "x30"; rn = x "sp"; offset = -16L });
               frag (T.Lowered.Movz { rd = x "w0"; imm16 = 42L; hw = 0 });
               frag
                 (T.Lowered.Ldst_uoff
                    { size = T.X; load = true; rt = x "x30"; rn = x "sp"; offset = T.Disp.Const 8L });
-              frag (T.Lowered.Add_imm { rd = x "sp"; rn = x "sp"; imm = 16L; shift12 = false });
+              frag
+                (T.Lowered.Add_imm
+                   { rd = x "sp"; rn = x "sp"; imm = T.Disp.Const 16L; shift12 = false });
               frag (T.Lowered.Ret { rn = x "x30" });
               Lowered_ast.Set_size
                 {

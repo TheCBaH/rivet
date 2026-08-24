@@ -119,6 +119,35 @@ module Make (M : MODE) = struct
         Some (List.rev rest)
     | _ -> None
 
+  (* The trailing [(,%index,scale)] of a base-less SIB operand whose
+     displacement is a symbolic expression rather than a bare integer
+     literal - [Te4(,%eax,4)] and [(keccakf_rndc + 4)(,%ecx,8)] (M5 corpus
+     evidence: asm/fixtures/corpus/c/x86_32/summary.txt's aes.c/sha3.c/
+     knucleotide.c - the array/jump-table-lookup idiom CompCert's x86_32
+     codegen uses instead of %rip-relative addressing). The purely-numeric
+     sibling of this shape already has its own literal token patterns above
+     ([Int d; Lparen; Register i; Int s; Rparen] and friends); this one is a
+     suffix split, mirroring [split_rip], because the prefix is an arbitrary
+     expression - one token for [Te4], five for [(keccakf_rndc + 4)] - not a
+     fixed shape. The encoder side needs no change: [sib_nobase_disp32]
+     already carries its displacement through [sym_disp], which round-trips
+     [Disp.Sym] exactly like [Disp.Const] (verified against i686-linux-gnu-as:
+     all three shapes above encode as mod=00, SIB.base=101, disp32 with an
+     R_386_32 relocation against the symbol). *)
+  let split_nobase_sib (slice : Asm_syntax.Token.slice) =
+    let open Asm_syntax in
+    match List.rev slice with
+    | rp :: si :: reg :: lp :: rest
+      when Token.kind rp = Token.Rparen
+           && Token.kind lp = Token.Lparen
+           && (match Token.kind si with Token.Int _ -> true | _ -> false)
+           && (match Token.kind reg with Token.Register _ -> true | _ -> false)
+           && rest <> [] ->
+        let scale = match Token.kind si with Token.Int s -> s | _ -> assert false in
+        let index = match Token.kind reg with Token.Register r -> r | _ -> assert false in
+        Some (List.rev rest, index, scale)
+    | _ -> None
+
   (* A displacement expression, folded first. Folding is what decides between
      the two constructors, and it has to: a decoded RIP-relative operand prints
      its raw displacement, and re-parsing [2044(%rip)] as *symbolic* would make
@@ -151,7 +180,7 @@ module Make (M : MODE) = struct
         List.rev rest
     | _ -> slice
 
-  let parse_one_operand (slice : Asm_syntax.Token.slice) =
+  let rec parse_one_operand (slice : Asm_syntax.Token.slice) =
     let origin = slice_origin slice in
     let bad kind = Error (parse_diag ~pos:__POS__ ~origin kind) in
     let reg_named n = match find_reg n with Some r -> Ok r | None -> bad (`Unknown_register n) in
@@ -175,11 +204,20 @@ module Make (M : MODE) = struct
     | Token.Immediate_sigil :: Token.Minus :: [ Token.Int v ] -> Ok (Operand.Imm (Bigint.neg v))
     (* %reg *)
     | [ Token.Register n ] -> Result.map (fun r -> Operand.Reg r) (reg_named n)
-    (* *%reg, the indirect-jump/call target sigil. GNU as requires the [*];
-       we also accept it without one below (falls through to the case
-       above), which is harmless since M1 has no direct/PC-relative jmp form
-       to be confused with - that's M2. *)
-    | [ Token.Star; Token.Register n ] -> Result.map (fun r -> Operand.Reg r) (reg_named n)
+    (* *<operand>, the indirect-jump/call target sigil. GNU as requires the
+       [*] before a register ([*%eax]) or a memory operand ([*sym(,%eax,4)],
+       M5 corpus evidence: asm/fixtures/corpus/c/x86_32/summary.txt's
+       siphash24.c/vmach.c jump-table dispatch); we also accept it without one
+       below (falls through to the cases above/below), which is harmless
+       since M1 has no direct/PC-relative jmp form to be confused with -
+       that's M2. Stripped and recursed rather than duplicated as its own
+       [Star ::] pattern per memory-operand shape: the sigil marks how the
+       *opcode* uses the operand (jmp/call reads it as a target, decided
+       downstream by which [Operand.t] constructor comes back), not a
+       different addressing grammar, so every existing shape - register,
+       any memory form, even a plain symbol - already means the right thing
+       once the [*] itself is gone. *)
+    | Token.Star :: _ -> parse_one_operand (List.tl slice)
     (* disp(%base) and (%base) *)
     | [ Token.Lparen; Token.Register "rip"; Token.Rparen ] ->
         if not M.rex_allowed then bad `Rip_requires_64bit
@@ -288,14 +326,26 @@ module Make (M : MODE) = struct
                   Operand.Mem { Mem.base = Some rip_reg; index = None; scale = 1; disp = d })
                 (disp_expression ~bad prefix)
         | None -> (
-            (* Last resort: anything that is not a register, an immediate or an
+            match split_nobase_sib slice with
+            | Some (prefix, index, scale) -> (
+                match (Bigint.to_int_opt scale, mem_reg_named index) with
+                | Some scale, Ok index ->
+                    if log2_scale scale = None then bad (`Bad_scale (Int64.of_int scale))
+                    else
+                      Result.map
+                        (fun disp ->
+                          Operand.Mem { Mem.base = None; index = Some index; scale; disp })
+                        (disp_expression ~bad prefix)
+                | _ -> bad (`Malformed_memory_operand slice))
+            | None -> (
+                (* Last resort: anything that is not a register, an immediate or an
                addressing form may still be an expression - a branch or call
                target. The common expression parser decides, rather than a
                second hand-written one here, so [foo+4] means the same thing in
                an operand as in a directive argument. *)
-            match Asm_syntax.Parse_lines.parse_expression (strip_plt_suffix slice) with
-            | Ok e -> Ok (Operand.Sym e)
-            | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e })))
+                match Asm_syntax.Parse_lines.parse_expression (strip_plt_suffix slice) with
+                | Ok e -> Ok (Operand.Sym e)
+                | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))))
 
   (* The common parser splits a line at every top-level comma, and a scaled
      address has commas *inside* its parentheses: [0(%edi,%edi,1)] arrives as

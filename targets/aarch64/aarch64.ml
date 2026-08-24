@@ -112,16 +112,86 @@ let parse_one (slice : Asm_syntax.Token.slice) =
   in
   let const_mem ~base ~offset ~writeback = mem ~base ~offset:(Disp.Const offset) ~writeback in
   let int64_of v = match Bigint.to_int64_opt v with Some x -> Some x | None -> None in
+  let mem_reg ~base ~index ~extend ~amount =
+    match (Reg.find base, Reg.find index) with
+    | Some br, Some ir ->
+        Ok
+          (Operand.Mem
+             {
+               Mem.base = br;
+               offset = Disp.Reg { index = ir; extend; amount };
+               writeback = false;
+               pre = true;
+             })
+    | None, _ -> bad (`Unknown_register base)
+    | _, None -> bad (`Unknown_register index)
+  in
+  (* [#1.0000000], [#0.5000000], [#1.] (ARM's own trailing-dot-no-fraction
+     spelling also lexes the same way here, even though this corpus does not
+     use it) - the FP modified-immediate FMOV/FCMP take. Tokenized as
+     [Int; Directive ".NNN"] or [Int; Dot] (no digits after), never a float
+     token of its own: confirmed against the real lexer, since [.] only ever
+     starts an identifier/directive-shaped token on this dialect (the same
+     rule that makes [.L100] one token), not a numeric-literal one. *)
+  let float_literal ~neg int_part frac =
+    let s = Printf.sprintf "%s%s%s" (if neg then "-" else "") (Bigint.to_string int_part) frac in
+    match float_of_string_opt s with Some f -> Ok (Operand.Fimm f) | None -> bad `Offset_too_wide
+  in
   match List.map Token.kind slice with
   | [ Token.Ident n ] -> (
       (* A bare identifier is a register if the table knows it and a symbol
          otherwise. There is no sigil to tell them apart on this dialect, so
-         the table is the only thing that can. *)
-      match Reg.find n with
-      | Some r -> Ok (Operand.Reg r)
-      | None -> Ok (Operand.Sym (Expr.Symbol n)))
+         the table is the only thing that can. [Freg] is checked first: [d0]-
+         [d31]/[s0]-[s31] would otherwise fall to [Sym] (harmless for
+         classify-c's parse-only goal, since a bare identifier always parses
+         either way, but wrong for anything that lowers an [fmov]/[fcmp]
+         operand). *)
+      match Freg.find n with
+      | Some r -> Ok (Operand.Freg r)
+      | None -> (
+          match Reg.find n with
+          | Some r -> Ok (Operand.Reg r)
+          | None -> Ok (Operand.Sym (Expr.Symbol n))))
   | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Operand.Imm v)
   | [ Token.Immediate_sigil; Token.Minus; Token.Int v ] -> Ok (Operand.Imm (Bigint.neg v))
+  | [ Token.Immediate_sigil; Token.Int i; Token.Directive frac ] -> float_literal ~neg:false i frac
+  | [ Token.Immediate_sigil; Token.Int i; Token.Dot ] -> float_literal ~neg:false i "."
+  | [ Token.Immediate_sigil; Token.Minus; Token.Int i; Token.Directive frac ] ->
+      float_literal ~neg:true i frac
+  | [ Token.Immediate_sigil; Token.Minus; Token.Int i; Token.Dot ] -> float_literal ~neg:true i "."
+  (* [#:lo12:sym] as a plain (non-bracketed) operand - [add x9, x9,
+     #:lo12:Te4]. Unlike the bracketed memory form below, the modifier stays
+     on the expression here rather than being stripped: [lower_instruction]
+     is what knows which instruction gets to keep it. *)
+  | Token.Immediate_sigil :: Token.Modifier _ :: _ -> (
+      match Asm_syntax.Parse_lines.parse_expression (List.tl slice) with
+      | Ok e -> Ok (Operand.Sym e)
+      | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))
+  (* Register-offset addressing - [ldr w4, [x9, w10, uxtw #2]],
+     [ldrb w2, [x22, w5, uxtw]], [ldr x2, [x20, x1]]. Three shapes: index
+     alone (bare [lsl], unscaled - the same encoding real [as] gives
+     [[x20, x1, lsl #0]]... except unscaled, since no [#0] was written -
+     verified byte-for-byte, see [Aarch64_encode.Disp.Reg]'s comment), index
+     plus an extend keyword with no [#amount] (S=0), and index plus extend
+     plus an explicit [#amount] (S=1). The extend keyword itself is not
+     validated here - [lower_instruction] rejects an unknown one with the
+     opcode/width diagnostic register-offset addressing already has. *)
+  | [ Token.Lbracket; Token.Ident b; Token.Ident idx; Token.Rbracket ] ->
+      mem_reg ~base:b ~index:idx ~extend:"lsl" ~amount:None
+  | [ Token.Lbracket; Token.Ident b; Token.Ident idx; Token.Ident ext; Token.Rbracket ] ->
+      mem_reg ~base:b ~index:idx ~extend:ext ~amount:None
+  | [
+   Token.Lbracket;
+   Token.Ident b;
+   Token.Ident idx;
+   Token.Ident ext;
+   Token.Immediate_sigil;
+   Token.Int v;
+   Token.Rbracket;
+  ] -> (
+      match Bigint.to_int_opt v with
+      | Some n -> mem_reg ~base:b ~index:idx ~extend:ext ~amount:(Some n)
+      | None -> bad `Shift_amount_too_wide)
   | [
    Token.Ident (("lsl" | "lsr" | "asr" | "ror" | "uxtw" | "sxtw") as k);
    Token.Immediate_sigil;

@@ -58,16 +58,66 @@ module Reg = struct
   let lr = of_num 14
 end
 
-(* {1 Operands} *)
+(* {1 VFP registers}
 
-module Mem = struct
-  type t = { base : Reg.t; offset : int64; writeback : bool; pre : bool }
+   Sixteen doubleword (D0-D15) and thirty-two singleword (S0-S31) extension
+   registers - VFPv2's range, which is what CompCert's ARM codegen ever
+   emits (measured: the [test/c/] corpus never names D16 or above). Every VFP
+   encoding splits a register's number across a non-adjacent 1-bit "extension"
+   field and a 4-bit field elsewhere in the word - {!Dreg.hilo}/{!Sreg.hilo}
+   are that split, verified against the real, installed
+   [arm-linux-gnueabihf-as]/[objdump] for both register classes (e.g. [vmov.f32
+   s0, s1] is [eeb00a60], where [s1]'s extension bit lands at bit 5 - not bit
+   4 - which only real tool output caught). The two classes invert which side
+   of the split carries the extension bit: doubleword is [D:Vx] (D is the
+   high bit), singleword is [Vx:D] (D is the low bit) - so implementing D0-D31
+   here, not just D0-D15, is nearly free once the split exists, and correct
+   for any future corpus item that does need it. *)
+module Dreg = struct
+  type t = { num : int }
 
-  let pp ppf m =
-    let off = if Int64.equal m.offset 0L then "" else Printf.sprintf ", #%Ld" m.offset in
-    if m.pre then Fmt.pf ppf "[%a%s]%s" Reg.pp m.base off (if m.writeback then "!" else "")
-    else Fmt.pf ppf "[%a]%s" Reg.pp m.base off
+  let equal a b = a.num = b.num
+  let of_num n = { num = n land 31 }
+  let name r = Printf.sprintf "d%d" r.num
+  let pp ppf r = Fmt.string ppf (name r)
+
+  let find s =
+    if String.length s > 1 && s.[0] = 'd' then
+      match int_of_string_opt (String.sub s 1 (String.length s - 1)) with
+      | Some n when n >= 0 && n <= 31 -> Some (of_num n)
+      | _ -> None
+    else None
+
+  (* [hi] is the register's extension bit ("D" at bit 22 for Vd, "N" at bit 7
+     for Vn, "M" at bit 5 for Vm - the caller places it), [lo] the 4-bit field
+     next to the register's other operands in the word. *)
+  let hilo r = (Int64.of_int (r.num lsr 4), Int64.of_int (r.num land 0xF))
+  let of_hilo hi lo = of_num ((Int64.to_int hi lsl 4) lor Int64.to_int lo)
 end
+
+module Sreg = struct
+  type t = { num : int }
+
+  let equal a b = a.num = b.num
+  let of_num n = { num = n land 31 }
+  let name r = Printf.sprintf "s%d" r.num
+  let pp ppf r = Fmt.string ppf (name r)
+
+  let find s =
+    if String.length s > 1 && s.[0] = 's' then
+      match int_of_string_opt (String.sub s 1 (String.length s - 1)) with
+      | Some n when n >= 0 && n <= 31 -> Some (of_num n)
+      | _ -> None
+    else None
+
+  (* Reversed from {!Dreg.hilo}: the 4-bit field is the high bits here, and
+     the extension bit ("D"/"N"/"M", same word positions as the doubleword
+     case) is the register number's low bit. *)
+  let hilo r = (Int64.of_int (r.num lsr 1), Int64.of_int (r.num land 1))
+  let of_hilo hi lo = of_num ((Int64.to_int hi lsl 1) lor Int64.to_int lo)
+end
+
+(* {1 Operands} *)
 
 let shift_name = function 0 -> "lsl" | 1 -> "lsr" | 2 -> "asr" | 3 -> "ror" | _ -> "?"
 
@@ -77,6 +127,143 @@ let shift_of_name = function
   | "asr" -> Some 2
   | "ror" -> Some 3
   | _ -> None
+
+module Mem = struct
+  (* [Reg_offset] is its own constructor rather than folding the index into
+     [Imm]'s type, because A32's register-offset addressing ([ldr r2, [r1,
+     r2, lsl #2]]) is a genuinely different encoding (bit 25 set, an imm5 +
+     shift-kind + Rm field where the immediate form has a 12-bit magnitude),
+     not a different spelling of the same one. Named [Reg_offset], not [Reg],
+     so it cannot be confused with the [Reg] module or {!Operand.Reg} once
+     this file's [include Arm_encode] brings both into arm.ml's scope
+     unqualified. *)
+  type offset =
+    | Imm of int64
+    | Reg_offset of { reg : Reg.t; negate : bool; kind : int; amount : int }
+
+  type t = { base : Reg.t; offset : offset; writeback : bool; pre : bool }
+
+  let pp ppf m =
+    let off =
+      match m.offset with
+      | Imm v -> if Int64.equal v 0L then "" else Printf.sprintf ", #%Ld" v
+      | Reg_offset { reg; negate; kind = 0; amount = 0 } ->
+          Printf.sprintf ", %s%s" (if negate then "-" else "") reg.Reg.name
+      | Reg_offset { reg; negate; kind; amount } ->
+          Printf.sprintf ", %s%s, %s #%d"
+            (if negate then "-" else "")
+            reg.Reg.name (shift_name kind) amount
+    in
+    if m.pre then Fmt.pf ppf "[%a%s]%s" Reg.pp m.base off (if m.writeback then "!" else "")
+    else Fmt.pf ppf "[%a]%s" Reg.pp m.base off
+end
+
+(* Exact decimal spelling of a finite double - GAS's own accepted syntax for a
+   VFP immediate ([vmov.f64 d0, #1.5]), and what {!decode} reconstructs so a
+   disassembled operand re-parses. Every double is an exact dyadic rational
+   (mantissa * 2^exp), so this never rounds: the algorithm scales the mantissa
+   by 5^k (k = the negated binary exponent, once trailing zero mantissa bits
+   are stripped) to turn it into an exact decimal integer, then places the
+   point k digits from the right - the standard technique for printing a
+   binary fraction as an exact decimal. Matches GAS's own convention of a
+   trailing bare dot with no fraction digits for a whole number ([1.], not
+   [1.0]) because trailing zeros are stripped before the dot is placed. *)
+let decimal_of_float v =
+  if Float.equal v 0.0 then "0."
+  else
+    let bits = Int64.bits_of_float v in
+    let sign_bit = Int64.logand (Int64.shift_right_logical bits 63) 1L in
+    let biased_exp = Int64.to_int (Int64.logand (Int64.shift_right_logical bits 52) 0x7FFL) in
+    let frac = Int64.logand bits 0xFFFFFFFFFFFFFL in
+    let mantissa, exp2 =
+      if biased_exp = 0 then (frac, -1074)
+      else (Int64.logor frac 0x10000000000000L, biased_exp - 1075)
+    in
+    let rec strip m e =
+      if Int64.equal (Int64.logand m 1L) 0L && not (Int64.equal m 0L) then
+        strip (Int64.shift_right_logical m 1) (e + 1)
+      else (m, e)
+    in
+    let m, e = strip mantissa exp2 in
+    let digits =
+      if e >= 0 then Bigint.to_string (Bigint.shift_left_exn (Bigint.of_int64 m) e) ^ "."
+      else
+        let k = -e in
+        let rec pow5 n acc =
+          if n = 0 then acc else pow5 (n - 1) (Bigint.mul acc (Bigint.of_int 5))
+        in
+        let scaled = Bigint.mul (Bigint.of_int64 m) (pow5 k Bigint.one) in
+        let s = Bigint.to_string scaled in
+        let s = if String.length s <= k then String.make (k - String.length s + 1) '0' ^ s else s in
+        let cut = String.length s - k in
+        let int_part = String.sub s 0 cut and frac_part = String.sub s cut k in
+        let n = ref (String.length frac_part) in
+        while !n > 0 && frac_part.[!n - 1] = '0' do
+          decr n
+        done;
+        int_part ^ "." ^ String.sub frac_part 0 !n
+    in
+    (if Int64.equal sign_bit 1L then "-" else "") ^ digits
+
+(* {1 The VFP modified-immediate relation}
+
+   [vmov.f64 d0, #1.5]'s 8-bit field is [sign:b:exp_lo(2):frac(4)], expanding
+   per the ARM ARM's VFPExpandImm to [sign : NOT(b) : Repeat(b, n) : exp_lo :
+   frac : Zeros] - the same shape as A32's rotate-based integer modified
+   immediate above, just a different expansion. Precision-independent by
+   design: the *value* an imm8 names does not depend on whether the
+   instruction is [.f64] or [.f32], only the width of the packed
+   exponent/fraction the CPU expands it into at execution time does - so
+   there is one relation here, expressed at double width, reused by both
+   {!Lowered.Vmov_imm_d} and {!Lowered.Vmov_imm_s} alike. Verified against
+   the real, installed arm-linux-gnueabihf-as/objdump: [vmov.f64 d0, #1.] is
+   imm8 0x70 (expands to the double bit pattern for 1.0), [#1.5] is 0x78,
+   [#0.5] is 0x60, [#-5.] is 0x94. *)
+let vfp_expand imm8 =
+  let sign = (imm8 lsr 7) land 1 in
+  let b = (imm8 lsr 6) land 1 in
+  let lo2 = (imm8 lsr 4) land 0x3 in
+  let frac4 = imm8 land 0xF in
+  let notb = 1 - b in
+  let mid8 = if b = 1 then 0xFF else 0x00 in
+  let exp11 = (notb lsl 10) lor (mid8 lsl 2) lor lo2 in
+  let bits =
+    Int64.logor
+      (Int64.shift_left (Int64.of_int sign) 63)
+      (Int64.logor
+         (Int64.shift_left (Int64.of_int exp11) 52)
+         (Int64.shift_left (Int64.of_int frac4) 48))
+  in
+  Int64.float_of_bits bits
+
+(* The inverse: [None] unless [v] is one of the 256 values the expansion
+   above can produce - checked by requiring the fraction's low 48 bits to be
+   zero and the exponent's middle 8 bits to all equal [b], both of which the
+   expansion always establishes and nothing else can. *)
+let vfp_compress v =
+  let bits = Int64.bits_of_float v in
+  let sign = Int64.to_int (Int64.logand (Int64.shift_right_logical bits 63) 1L) in
+  let exp11 = Int64.to_int (Int64.logand (Int64.shift_right_logical bits 52) 0x7FFL) in
+  let frac52 = Int64.logand bits 0xFFFFFFFFFFFFFL in
+  if not (Int64.equal (Int64.logand frac52 0xFFFFFFFFFFFFL) 0L) then None
+  else
+    let frac4 = Int64.to_int (Int64.shift_right_logical frac52 48) in
+    let lo2 = exp11 land 0x3 in
+    let mid8 = (exp11 lsr 2) land 0xFF in
+    let notb = (exp11 lsr 10) land 1 in
+    let b = 1 - notb in
+    let expect_mid8 = if b = 1 then 0xFF else 0x00 in
+    if mid8 <> expect_mid8 then None else Some ((sign lsl 7) lor (b lsl 6) lor (lo2 lsl 4) lor frac4)
+
+(* Every imm8 value, 0 to 255: small enough to enumerate outright, the same
+   justification {!modimm_domain} gives for A32's integer modified
+   immediate. *)
+let vfp_imm_domain =
+  C.Finite.exhaustive ~name:"arm.vfp-imm"
+    ~why:
+      "the field is a sign bit, a repeat bit, a 2-bit exponent tail and a 4-bit fraction, so the \
+       domain is exactly 256 values and enumerating it is a table scan rather than a sample"
+    (List.init 256 vfp_expand)
 
 module Operand = struct
   (* [Shifted] is one operand, not two: [r1, lsl #1] arrives as two
@@ -90,6 +277,10 @@ module Operand = struct
     | Mem of Mem.t
     | Sym of Asm_core.Expr.t
     | Shifted of { reg : Reg.t; kind : int; amount : int }
+    | Dreg of Dreg.t
+    | Sreg of Sreg.t
+    | FImm of float
+        (** a VFP modified-immediate literal, e.g. [#1.5] - {!Dreg.t}/{!Sreg.t}'s dot. *)
 
   let pp ppf = function
     | Reg r -> Reg.pp ppf r
@@ -97,6 +288,9 @@ module Operand = struct
     | Mem m -> Mem.pp ppf m
     | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
     | Shifted { reg; kind; amount } -> Fmt.pf ppf "%a, %s #%d" Reg.pp reg (shift_name kind) amount
+    | Dreg r -> Dreg.pp ppf r
+    | Sreg r -> Sreg.pp ppf r
+    | FImm v -> Fmt.pf ppf "#%s" (decimal_of_float v)
 end
 
 module Surface = struct
@@ -178,6 +372,33 @@ module Cond = struct
     match List.fold_left try_one None candidates with Some r -> r | None -> (m, Al)
 end
 
+(* Add/sub/mul/div share one three-operand VFP encoding, distinguished only by
+   a 3-bit selector spread across bits 23/21/20 plus one more at bit 6 -
+   {!V3.selector} below. A shared [Lowered] payload parametrized by this type,
+   rather than four near-identical constructors, is what keeps that one codec
+   alt from being four near-identical alts. *)
+module V3 = struct
+  type op = Vadd | Vsub | Vmul | Vdiv
+
+  let name = function Vadd -> "vadd" | Vsub -> "vsub" | Vmul -> "vmul" | Vdiv -> "vdiv"
+
+  (* (b23, b21, b20, b6), verified against arm-linux-gnueabihf-as/objdump:
+     vadd.f64 is [ee310b02], vsub.f64 (same b23/b21/b20, b6 flips) is
+     [ee310b42], vmul.f64 is [ee210b02], vdiv.f64 is [ee810b02]. *)
+  let selector = function
+    | Vadd -> (0L, 1L, 1L, 0L)
+    | Vsub -> (0L, 1L, 1L, 1L)
+    | Vmul -> (0L, 1L, 0L, 0L)
+    | Vdiv -> (1L, 0L, 0L, 0L)
+
+  let of_selector = function
+    | 0L, 1L, 1L, 0L -> Some Vadd
+    | 0L, 1L, 1L, 1L -> Some Vsub
+    | 0L, 1L, 0L, 0L -> Some Vmul
+    | 1L, 0L, 0L, 0L -> Some Vdiv
+    | _ -> None
+end
+
 module Opcode = struct
   type t =
     | Mov
@@ -191,12 +412,30 @@ module Opcode = struct
     | Ldr
     | Bx
     | Strb
+    | Ldrb
     | Udf
     | Bl
     | B
     | Movw
     | Movt
     | Ite
+    | Vmov_d  (** [vmov.f64 Dd, Dm] or [vmov.f64 Dd, #imm] - operand-shape dispatched *)
+    | Vmov_s  (** [vmov.f32 Sd, Sm] or [vmov.f32 Sd, #imm] *)
+    | Vmov_core  (** [vmov Rt, Sn] / [vmov Sn, Rt] / [vmov Rt, Rt2, Dm] / [vmov Dm, Rt, Rt2] *)
+    | V3 of V3.op
+    | Vneg_d
+    | Vneg_s
+    | Vcmp_d  (** covers both [vcmp Dd, Dm] and [vcmp Dd, #0] - operand-shape dispatched *)
+    | Vcmp_s
+    | Vmrs
+    | Vcvt_f32_f64
+    | Vcvt_f64_f32
+    | Vcvt_f32_s32
+    | Vcvt_f64_s32
+    | Vcvt_f64_u32
+    | Vcvt_s32_f64
+    | Vldr
+    | Vstr
 
   let name = function
     | Mov -> "mov"
@@ -214,11 +453,33 @@ module Opcode = struct
     | Ldr -> "ldr"
     | Bx -> "bx"
     | Strb -> "strb"
+    | Ldrb -> "ldrb"
     | Udf -> "udf"
     | Bl -> "bl"
+    | Vmov_d -> "vmov.f64"
+    | Vmov_s -> "vmov.f32"
+    | Vmov_core -> "vmov"
+    | V3 op -> V3.name op ^ ".f64"
+    | Vneg_d -> "vneg.f64"
+    | Vneg_s -> "vneg.f32"
+    | Vcmp_d -> "vcmp.f64"
+    | Vcmp_s -> "vcmp.f32"
+    | Vmrs -> "vmrs"
+    | Vcvt_f32_f64 -> "vcvt.f32.f64"
+    | Vcvt_f64_f32 -> "vcvt.f64.f32"
+    | Vcvt_f32_s32 -> "vcvt.f32.s32"
+    | Vcvt_f64_s32 -> "vcvt.f64.s32"
+    | Vcvt_f64_u32 -> "vcvt.f64.u32"
+    | Vcvt_s32_f64 -> "vcvt.s32.f64"
+    | Vldr -> "vldr"
+    | Vstr -> "vstr"
 
   (* The surface spellings this target accepts. [simplify_instruction] consults
-     this rather than repeating the list. *)
+     this rather than repeating the list. VFP mnemonics are not here - they
+     carry a [.f64]/[.f32] (or, for [vcvt], a two-part) type suffix that this
+     whole-string table cannot express, and their condition, when present,
+     sits *before* that suffix rather than at the very end - see
+     {!split_vfp_mnemonic}/{!vfp_opcode_of} below. *)
   let of_mnemonic = function
     | "mov" -> Some Mov
     | "add" -> Some Add
@@ -235,8 +496,57 @@ module Opcode = struct
     | "ldr" -> Some Ldr
     | "bx" -> Some Bx
     | "strb" -> Some Strb
+    | "ldrb" -> Some Ldrb
     | "udf" -> Some Udf
     | "bl" -> Some Bl
+    | _ -> None
+
+  (* VFP's own mnemonic bases - never a substring of a GPR mnemonic above, so
+     there is no ambiguity between the two tables. *)
+  let vfp_bases =
+    [ "vmov"; "vadd"; "vsub"; "vmul"; "vdiv"; "vneg"; "vcmp"; "vmrs"; "vldr"; "vstr"; "vcvt" ]
+
+  (* [vmoveq.f64] splits as base [vmov], condition [eq], type suffix [f64] -
+     the condition sits between the base and the first dot, not at the very
+     end the way [Cond.split] (used by every other opcode) expects. Tried
+     after the plain GPR table above, so this never shadows it. *)
+  let split_vfp_mnemonic m =
+    match String.split_on_char '.' m with
+    | [] -> None
+    | base_cond :: rest ->
+        if List.mem base_cond vfp_bases then Some (base_cond, Cond.Al, rest)
+        else
+          let stem, cond = Cond.split base_cond in
+          if List.mem stem vfp_bases then Some (stem, cond, rest) else None
+
+  (* Operand shapes (register class, operand count) disambiguate everything
+     [vcvt] cannot: [vmov]'s reg-move vs. immediate-move (an [Imm] vs an
+     [FImm] operand), [vcmp]'s register vs. zero-compare, [vmov_core]'s four
+     directions. Only [vcvt] needs the type suffix itself to pick an opcode,
+     since e.g. [vcvt.f64.f32 d0, s0] and [vcvt.f64.s32 d0, s0] share an
+     operand shape but mean different instructions. *)
+  let vfp_opcode_of stem rest =
+    match (stem, rest) with
+    | "vmov", [ "f64" ] -> Some Vmov_d
+    | "vmov", [ "f32" ] -> Some Vmov_s
+    | "vmov", [] -> Some Vmov_core
+    | "vadd", [ "f64" ] -> Some (V3 V3.Vadd)
+    | "vsub", [ "f64" ] -> Some (V3 V3.Vsub)
+    | "vmul", [ "f64" ] -> Some (V3 V3.Vmul)
+    | "vdiv", [ "f64" ] -> Some (V3 V3.Vdiv)
+    | "vneg", [ "f64" ] -> Some Vneg_d
+    | "vneg", [ "f32" ] -> Some Vneg_s
+    | "vcmp", [ "f64" ] -> Some Vcmp_d
+    | "vcmp", [ "f32" ] -> Some Vcmp_s
+    | "vmrs", [] -> Some Vmrs
+    | "vldr", [] -> Some Vldr
+    | "vstr", [] -> Some Vstr
+    | "vcvt", [ "f32"; "f64" ] -> Some Vcvt_f32_f64
+    | "vcvt", [ "f64"; "f32" ] -> Some Vcvt_f64_f32
+    | "vcvt", [ "f32"; "s32" ] -> Some Vcvt_f32_s32
+    | "vcvt", [ "f64"; "s32" ] -> Some Vcvt_f64_s32
+    | "vcvt", [ "f64"; "u32" ] -> Some Vcvt_f64_u32
+    | "vcvt", [ "s32"; "f64" ] -> Some Vcvt_s32_f64
     | _ -> None
 
   (* A32 encodes add, sub and mov as one data-processing format distinguished
@@ -264,9 +574,18 @@ module Instruction = struct
   let mk ?(cond = Cond.Al) op ops = { op; cond; ops }
 
   (* The condition is a mnemonic suffix on the way out as well as in, and [al]
-     is spelled by its absence. *)
+     is spelled by its absence. For a VFP opcode, [Opcode.name] already
+     carries its own [.f64]/[.f32]/[.f32.f64]-shaped type suffix, and the
+     condition has to land *before* that first dot ([vmoveq.f64], not
+     [vmov.f64eq] - the latter is not an instruction GAS accepts), so it is
+     spliced in there rather than appended at the end. *)
   let pp ppf i =
-    let m = Opcode.name i.op ^ Cond.suffix i.cond in
+    let name = Opcode.name i.op and c = Cond.suffix i.cond in
+    let m =
+      match String.index_opt name '.' with
+      | Some dot -> String.sub name 0 dot ^ c ^ String.sub name dot (String.length name - dot)
+      | None -> name ^ c
+    in
     match i.ops with
     | [] -> Fmt.string ppf m
     | ops -> Fmt.pf ppf "%s %a" m Fmt.(list ~sep:(any ", ") Operand.pp) ops
@@ -304,6 +623,17 @@ module Lowered = struct
         rn : Reg.t;
         offset : int64;
       }
+    | Ldst_reg of {
+        cond : Cond.t;
+        load : bool;
+        byte : bool;
+        rt : Reg.t;
+        rn : Reg.t;
+        rm : Reg.t;
+        negate : bool;
+        sh_kind : int;
+        sh_amt : int;
+      }
     | Bx of { cond : Cond.t; rm : Reg.t }
     | Udf of { imm16 : int64 }  (** permanently undefined, and unconditional by definition *)
     | Bl of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
@@ -314,6 +644,46 @@ module Lowered = struct
         (** [movw]/[movt] with a 16-bit immediate that is usually [:lower16:] or [:upper16:] of a
             symbol - hence a [branch], which is this codebase's name for "an operand that is either
             an expression awaiting the linker or a value a decoder recovered". *)
+    (* {2 VFP}
+
+           Every VFP data-processing form below shares the same skeleton (cond
+           1110 1 D b21 b20 <4-bit> Vd 101 sz N op M 0 Vm - {!codec}'s comments
+           give each instruction's exact bits, all verified against the real,
+           installed arm-linux-gnueabihf-as/objdump) but no two share enough of
+           it to be one constructor without a payload wide enough to defeat the
+           point - so, as with the GPR forms above, each is named after what it
+           does. *)
+    | Vmov_reg_d of { cond : Cond.t; vd : Dreg.t; vm : Dreg.t }
+    | Vmov_reg_s of { cond : Cond.t; vd : Sreg.t; vm : Sreg.t }
+    | Vmov_imm_d of { cond : Cond.t; vd : Dreg.t; imm8 : int }
+        (** [imm8] is the raw 8-bit VFP modified-immediate field ({!vfp_expand}/{!vfp_compress}
+            are its relation to the actual float value), not the value itself - the same split
+            {!modimm_codec} already keeps for A32's integer modified immediate. *)
+    | Vmov_imm_s of { cond : Cond.t; vd : Sreg.t; imm8 : int }
+    | Vmov_to_single of { cond : Cond.t; sn : Sreg.t; rt : Reg.t }  (** [vmov Sn, Rt] *)
+    | Vmov_from_single of { cond : Cond.t; rt : Reg.t; sn : Sreg.t }  (** [vmov Rt, Sn] *)
+    | Vmov_to_double of { cond : Cond.t; dm : Dreg.t; rt : Reg.t; rt2 : Reg.t }
+        (** [vmov Dm, Rt, Rt2] *)
+    | Vmov_from_double of { cond : Cond.t; rt : Reg.t; rt2 : Reg.t; dm : Dreg.t }
+        (** [vmov Rt, Rt2, Dm] *)
+    | V3_d of { cond : Cond.t; op : V3.op; vd : Dreg.t; vn : Dreg.t; vm : Dreg.t }
+    | V3_s of { cond : Cond.t; op : V3.op; vd : Sreg.t; vn : Sreg.t; vm : Sreg.t }
+    | Vneg_d of { cond : Cond.t; vd : Dreg.t; vm : Dreg.t }
+    | Vneg_s of { cond : Cond.t; vd : Sreg.t; vm : Sreg.t }
+    | Vcmp_reg_d of { cond : Cond.t; vd : Dreg.t; vm : Dreg.t }
+    | Vcmp_reg_s of { cond : Cond.t; vd : Sreg.t; vm : Sreg.t }
+    | Vcmp_zero_d of { cond : Cond.t; vd : Dreg.t }
+    | Vcmp_zero_s of { cond : Cond.t; vd : Sreg.t }
+    | Vmrs of { cond : Cond.t }
+        (** always [vmrs APSR_nzcv, FPSCR] - the only form this corpus needs *)
+    | Vcvt_f32_f64 of { cond : Cond.t; sd : Sreg.t; dm : Dreg.t }
+    | Vcvt_f64_f32 of { cond : Cond.t; dd : Dreg.t; sm : Sreg.t }
+    | Vcvt_f32_s32 of { cond : Cond.t; sd : Sreg.t; sm : Sreg.t }
+    | Vcvt_f64_s32 of { cond : Cond.t; dd : Dreg.t; sm : Sreg.t }
+    | Vcvt_f64_u32 of { cond : Cond.t; dd : Dreg.t; sm : Sreg.t }
+    | Vcvt_s32_f64 of { cond : Cond.t; sd : Sreg.t; dm : Dreg.t }
+    | Vmem_d of { cond : Cond.t; load : bool; vd : Dreg.t; rn : Reg.t; offset : int64 }
+    | Vmem_s of { cond : Cond.t; load : bool; vd : Sreg.t; rn : Reg.t; offset : int64 }
 
   let pp ppf = function
     | Dp_imm { cond; dp; rd; rn; imm; _ } -> (
@@ -344,6 +714,17 @@ module Lowered = struct
           (if load then "ldr" else "str")
           (if byte then "b" else "")
           (Cond.suffix cond) Reg.pp rt Reg.pp rn offset
+    | Ldst_reg { cond; load; byte; rt; rn; rm; negate; sh_kind; sh_amt } ->
+        let sh =
+          if sh_amt = 0 && sh_kind = 0 then ""
+          else Printf.sprintf ", %s #%d" (shift_name sh_kind) sh_amt
+        in
+        Fmt.pf ppf "%s%s%s %a, [%a, %s%a%s]"
+          (if load then "ldr" else "str")
+          (if byte then "b" else "")
+          (Cond.suffix cond) Reg.pp rt Reg.pp rn
+          (if negate then "-" else "")
+          Reg.pp rm sh
     | Bx { cond; rm } -> Fmt.pf ppf "bx%s %a" (Cond.suffix cond) Reg.pp rm
     | Udf { imm16 } -> Fmt.pf ppf "udf #%Ld" imm16
     | Bl { cond; target } ->
@@ -358,6 +739,61 @@ module Lowered = struct
         Fmt.pf ppf "%s%s %a, #%a"
           (if top then "movt" else "movw")
           (Cond.suffix cond) Reg.pp rd Asm_core.Lowered_ast.pp_branch imm
+    | Vmov_reg_d { cond; vd; vm } ->
+        Fmt.pf ppf "vmov%s.f64 %a, %a" (Cond.suffix cond) Dreg.pp vd Dreg.pp vm
+    | Vmov_reg_s { cond; vd; vm } ->
+        Fmt.pf ppf "vmov%s.f32 %a, %a" (Cond.suffix cond) Sreg.pp vd Sreg.pp vm
+    | Vmov_imm_d { cond; vd; imm8 } ->
+        Fmt.pf ppf "vmov%s.f64 %a, #%s" (Cond.suffix cond) Dreg.pp vd
+          (decimal_of_float (vfp_expand imm8))
+    | Vmov_imm_s { cond; vd; imm8 } ->
+        Fmt.pf ppf "vmov%s.f32 %a, #%s" (Cond.suffix cond) Sreg.pp vd
+          (decimal_of_float (vfp_expand imm8))
+    | Vmov_to_single { cond; sn; rt } ->
+        Fmt.pf ppf "vmov%s %a, %a" (Cond.suffix cond) Sreg.pp sn Reg.pp rt
+    | Vmov_from_single { cond; rt; sn } ->
+        Fmt.pf ppf "vmov%s %a, %a" (Cond.suffix cond) Reg.pp rt Sreg.pp sn
+    | Vmov_to_double { cond; dm; rt; rt2 } ->
+        Fmt.pf ppf "vmov%s %a, %a, %a" (Cond.suffix cond) Dreg.pp dm Reg.pp rt Reg.pp rt2
+    | Vmov_from_double { cond; rt; rt2; dm } ->
+        Fmt.pf ppf "vmov%s %a, %a, %a" (Cond.suffix cond) Reg.pp rt Reg.pp rt2 Dreg.pp dm
+    | V3_d { cond; op; vd; vn; vm } ->
+        Fmt.pf ppf "%s%s.f64 %a, %a, %a" (V3.name op) (Cond.suffix cond) Dreg.pp vd Dreg.pp vn
+          Dreg.pp vm
+    | V3_s { cond; op; vd; vn; vm } ->
+        Fmt.pf ppf "%s%s.f32 %a, %a, %a" (V3.name op) (Cond.suffix cond) Sreg.pp vd Sreg.pp vn
+          Sreg.pp vm
+    | Vneg_d { cond; vd; vm } ->
+        Fmt.pf ppf "vneg%s.f64 %a, %a" (Cond.suffix cond) Dreg.pp vd Dreg.pp vm
+    | Vneg_s { cond; vd; vm } ->
+        Fmt.pf ppf "vneg%s.f32 %a, %a" (Cond.suffix cond) Sreg.pp vd Sreg.pp vm
+    | Vcmp_reg_d { cond; vd; vm } ->
+        Fmt.pf ppf "vcmp%s.f64 %a, %a" (Cond.suffix cond) Dreg.pp vd Dreg.pp vm
+    | Vcmp_reg_s { cond; vd; vm } ->
+        Fmt.pf ppf "vcmp%s.f32 %a, %a" (Cond.suffix cond) Sreg.pp vd Sreg.pp vm
+    | Vcmp_zero_d { cond; vd } -> Fmt.pf ppf "vcmp%s.f64 %a, #0" (Cond.suffix cond) Dreg.pp vd
+    | Vcmp_zero_s { cond; vd } -> Fmt.pf ppf "vcmp%s.f32 %a, #0" (Cond.suffix cond) Sreg.pp vd
+    | Vmrs { cond } -> Fmt.pf ppf "vmrs%s APSR_nzcv, FPSCR" (Cond.suffix cond)
+    | Vcvt_f32_f64 { cond; sd; dm } ->
+        Fmt.pf ppf "vcvt%s.f32.f64 %a, %a" (Cond.suffix cond) Sreg.pp sd Dreg.pp dm
+    | Vcvt_f64_f32 { cond; dd; sm } ->
+        Fmt.pf ppf "vcvt%s.f64.f32 %a, %a" (Cond.suffix cond) Dreg.pp dd Sreg.pp sm
+    | Vcvt_f32_s32 { cond; sd; sm } ->
+        Fmt.pf ppf "vcvt%s.f32.s32 %a, %a" (Cond.suffix cond) Sreg.pp sd Sreg.pp sm
+    | Vcvt_f64_s32 { cond; dd; sm } ->
+        Fmt.pf ppf "vcvt%s.f64.s32 %a, %a" (Cond.suffix cond) Dreg.pp dd Sreg.pp sm
+    | Vcvt_f64_u32 { cond; dd; sm } ->
+        Fmt.pf ppf "vcvt%s.f64.u32 %a, %a" (Cond.suffix cond) Dreg.pp dd Sreg.pp sm
+    | Vcvt_s32_f64 { cond; sd; dm } ->
+        Fmt.pf ppf "vcvt%s.s32.f64 %a, %a" (Cond.suffix cond) Sreg.pp sd Dreg.pp dm
+    | Vmem_d { cond; load; vd; rn; offset } ->
+        Fmt.pf ppf "%s%s %a, [%a, #%Ld]"
+          (if load then "vldr" else "vstr")
+          (Cond.suffix cond) Dreg.pp vd Reg.pp rn offset
+    | Vmem_s { cond; load; vd; rn; offset } ->
+        Fmt.pf ppf "%s%s %a, [%a, #%Ld]"
+          (if load then "vldr" else "vstr")
+          (Cond.suffix cond) Sreg.pp vd Reg.pp rn offset
 
   let equal a b =
     match (a, b) with
@@ -371,6 +807,10 @@ module Lowered = struct
     | Ldst_imm x, Ldst_imm y ->
         Cond.equal x.cond y.cond && x.load = y.load && x.byte = y.byte && Reg.equal x.rt y.rt
         && Reg.equal x.rn y.rn && Int64.equal x.offset y.offset
+    | Ldst_reg x, Ldst_reg y ->
+        Cond.equal x.cond y.cond && x.load = y.load && x.byte = y.byte && Reg.equal x.rt y.rt
+        && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm && x.negate = y.negate
+        && x.sh_kind = y.sh_kind && x.sh_amt = y.sh_amt
     | Bx x, Bx y -> Cond.equal x.cond y.cond && Reg.equal x.rm y.rm
     | Udf x, Udf y -> Int64.equal x.imm16 y.imm16
     | Bl x, Bl y -> Cond.equal x.cond y.cond && Asm_core.Lowered_ast.equal_branch x.target y.target
@@ -384,6 +824,57 @@ module Lowered = struct
     | Movw_movt x, Movw_movt y ->
         Cond.equal x.cond y.cond && x.top = y.top && Reg.equal x.rd y.rd
         && Asm_core.Lowered_ast.equal_branch x.imm y.imm
+    | Vmov_reg_d x, Vmov_reg_d y ->
+        Cond.equal x.cond y.cond && Dreg.equal x.vd y.vd && Dreg.equal x.vm y.vm
+    | Vmov_reg_s x, Vmov_reg_s y ->
+        Cond.equal x.cond y.cond && Sreg.equal x.vd y.vd && Sreg.equal x.vm y.vm
+    | Vmov_imm_d x, Vmov_imm_d y ->
+        Cond.equal x.cond y.cond && Dreg.equal x.vd y.vd && x.imm8 = y.imm8
+    | Vmov_imm_s x, Vmov_imm_s y ->
+        Cond.equal x.cond y.cond && Sreg.equal x.vd y.vd && x.imm8 = y.imm8
+    | Vmov_to_single x, Vmov_to_single y ->
+        Cond.equal x.cond y.cond && Sreg.equal x.sn y.sn && Reg.equal x.rt y.rt
+    | Vmov_from_single x, Vmov_from_single y ->
+        Cond.equal x.cond y.cond && Reg.equal x.rt y.rt && Sreg.equal x.sn y.sn
+    | Vmov_to_double x, Vmov_to_double y ->
+        Cond.equal x.cond y.cond && Dreg.equal x.dm y.dm && Reg.equal x.rt y.rt
+        && Reg.equal x.rt2 y.rt2
+    | Vmov_from_double x, Vmov_from_double y ->
+        Cond.equal x.cond y.cond && Reg.equal x.rt y.rt && Reg.equal x.rt2 y.rt2
+        && Dreg.equal x.dm y.dm
+    | V3_d x, V3_d y ->
+        Cond.equal x.cond y.cond && x.op = y.op && Dreg.equal x.vd y.vd && Dreg.equal x.vn y.vn
+        && Dreg.equal x.vm y.vm
+    | V3_s x, V3_s y ->
+        Cond.equal x.cond y.cond && x.op = y.op && Sreg.equal x.vd y.vd && Sreg.equal x.vn y.vn
+        && Sreg.equal x.vm y.vm
+    | Vneg_d x, Vneg_d y -> Cond.equal x.cond y.cond && Dreg.equal x.vd y.vd && Dreg.equal x.vm y.vm
+    | Vneg_s x, Vneg_s y -> Cond.equal x.cond y.cond && Sreg.equal x.vd y.vd && Sreg.equal x.vm y.vm
+    | Vcmp_reg_d x, Vcmp_reg_d y ->
+        Cond.equal x.cond y.cond && Dreg.equal x.vd y.vd && Dreg.equal x.vm y.vm
+    | Vcmp_reg_s x, Vcmp_reg_s y ->
+        Cond.equal x.cond y.cond && Sreg.equal x.vd y.vd && Sreg.equal x.vm y.vm
+    | Vcmp_zero_d x, Vcmp_zero_d y -> Cond.equal x.cond y.cond && Dreg.equal x.vd y.vd
+    | Vcmp_zero_s x, Vcmp_zero_s y -> Cond.equal x.cond y.cond && Sreg.equal x.vd y.vd
+    | Vmrs x, Vmrs y -> Cond.equal x.cond y.cond
+    | Vcvt_f32_f64 x, Vcvt_f32_f64 y ->
+        Cond.equal x.cond y.cond && Sreg.equal x.sd y.sd && Dreg.equal x.dm y.dm
+    | Vcvt_f64_f32 x, Vcvt_f64_f32 y ->
+        Cond.equal x.cond y.cond && Dreg.equal x.dd y.dd && Sreg.equal x.sm y.sm
+    | Vcvt_f32_s32 x, Vcvt_f32_s32 y ->
+        Cond.equal x.cond y.cond && Sreg.equal x.sd y.sd && Sreg.equal x.sm y.sm
+    | Vcvt_f64_s32 x, Vcvt_f64_s32 y ->
+        Cond.equal x.cond y.cond && Dreg.equal x.dd y.dd && Sreg.equal x.sm y.sm
+    | Vcvt_f64_u32 x, Vcvt_f64_u32 y ->
+        Cond.equal x.cond y.cond && Dreg.equal x.dd y.dd && Sreg.equal x.sm y.sm
+    | Vcvt_s32_f64 x, Vcvt_s32_f64 y ->
+        Cond.equal x.cond y.cond && Sreg.equal x.sd y.sd && Dreg.equal x.dm y.dm
+    | Vmem_d x, Vmem_d y ->
+        Cond.equal x.cond y.cond && x.load = y.load && Dreg.equal x.vd y.vd && Reg.equal x.rn y.rn
+        && Int64.equal x.offset y.offset
+    | Vmem_s x, Vmem_s y ->
+        Cond.equal x.cond y.cond && x.load = y.load && Sreg.equal x.vd y.vd && Reg.equal x.rn y.rn
+        && Int64.equal x.offset y.offset
     | _ -> false
 end
 
@@ -505,6 +996,27 @@ let reg_field name =
     ~encode:(fun (r : Reg.t) -> Some (Int64.of_int r.num))
     ~decode:(fun v -> Some (Reg.of_num (Int64.to_int v)))
     (C.field ~width:4 name)
+
+(* {1 VFP register field splitting}
+
+   Every VFP encoding splits a D/S register's number across a 1-bit
+   "extension" field (D/N/M in the ARM ARM's own names, depending which
+   operand slot it belongs to) and an adjacent 4-bit field - never the same
+   two word positions twice, so the split itself, not its placement, is what
+   belongs here. [Dreg.hilo]/[Sreg.hilo] already compute the two components;
+   what differs between the register classes is *which* component goes in
+   the 1-bit slot and which in the 4-bit slot - {!Dreg.hilo}'s own doc
+   comment spells out the inversion. These wrappers normalize both classes
+   to one shape, [(ext, field4)], so every VFP [Alt] below can place the two
+   without having to remember which class inverts. *)
+let dreg_parts (r : Dreg.t) : int64 * int64 = Dreg.hilo r
+let dreg_unparts ext field4 = Dreg.of_hilo ext field4
+
+let sreg_parts (r : Sreg.t) : int64 * int64 =
+  let field4, ext = Sreg.hilo r in
+  (ext, field4)
+
+let sreg_unparts ext field4 = Sreg.of_hilo field4 ext
 
 (* [movw]/[movt]. The 16-bit immediate is split across two non-adjacent fields -
    [imm4] at bits 19:16 and [imm12] at bits 11:0 - which is exactly the case
@@ -648,10 +1160,58 @@ let codec : (Lowered.t, fixup_kind) C.t =
              ** const ~width:1 1L (* P: offset addressing, no writeback *)
              ** field ~width:1 "u" ** field ~width:1 "b" ** const ~width:1 0L (* W *)
              ** field ~width:1 "l" ** reg_field "rn" ** reg_field "rt" ** field ~width:12 "imm12"));
+      (* Load and store, register offset: [ldr r2, [r1, r2, lsl #2]] / [ldrb
+         r2, [r7, r0]]. Same word shape as ldst-imm one level up, but bit 25
+         is set (the [I] bit ARM's own manual uses for this distinction) and
+         the 12-bit magnitude is replaced by imm5 + shift-kind + a fixed 0 +
+         Rm. [U] carries the index register's sign here exactly as it carries
+         the immediate's sign above - there is no separate "negative register"
+         field. Verified byte-for-byte against arm-linux-gnueabihf-as/objdump:
+         [ldr r2, [r1, r2, lsl #2]] is [e7912102], [ldr r2, [r1, -r2]] is
+         [e7112002], [ldr r2, [r1, r2, ror #7]] is [e79123e2]. *)
+      C.alt ~label:"ldst-reg" ~priority:6
+        (C.iso_fun ~name:"ldst-reg"
+           ~encode:(function
+             | Lowered.Ldst_reg { cond; load; byte; rt; rn; rm; negate; sh_kind; sh_amt } ->
+                 Some
+                   ( cond,
+                     ( (),
+                       ( (),
+                         ( (if negate then 0L else 1L),
+                           ( (if byte then 1L else 0L),
+                             ( (),
+                               ( (if load then 1L else 0L),
+                                 (rn, (rt, (Int64.of_int sh_amt, (Int64.of_int sh_kind, ((), rm)))))
+                               ) ) ) ) ) ) )
+             | _ -> None)
+           ~decode:(fun
+               ( cond,
+                 ((), ((), (u, (byte, ((), (load, (rn, (rt, (sh_amt, (sh_kind, ((), rm))))))))))) )
+             ->
+             Some
+               (Lowered.Ldst_reg
+                  {
+                    cond;
+                    load = Int64.equal load 1L;
+                    byte = Int64.equal byte 1L;
+                    rt;
+                    rn;
+                    rm;
+                    negate = Int64.equal u 0L;
+                    sh_kind = Int64.to_int sh_kind;
+                    sh_amt = Int64.to_int sh_amt;
+                  }))
+           C.(
+             cond_codec ** const ~width:3 3L
+             ** const ~width:1 1L (* P: offset addressing, no writeback *)
+             ** field ~width:1 "u" ** field ~width:1 "b" ** const ~width:1 0L (* W *)
+             ** field ~width:1 "l" ** reg_field "rn" ** reg_field "rt"
+             ** field ~width:5 "shift-amount" ** field ~width:2 "shift-kind" ** const ~width:1 0L
+             ** reg_field "rm"));
       (* [udf], the permanently-undefined encoding. Its fixed top nibble is
          literally [cond_codec]'s bit pattern - not a coincidence to route around,
          but where ARM parked this encoding. *)
-      C.alt ~label:"udf" ~priority:6
+      C.alt ~label:"udf" ~priority:7
         (C.iso_fun ~name:"udf"
            ~encode:(function
              | Lowered.Udf { imm16 } ->
@@ -673,7 +1233,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
          the bias live outside this node - the division in [evaluate_fixup] and
          the bias in the fixup, so the evaluator receives a PC rather than
          something it has to correct. *)
-      C.alt ~label:"bl" ~priority:7
+      C.alt ~label:"bl" ~priority:8
         (C.iso_fun ~name:"bl"
            ~encode:(function
              | Lowered.Bl { cond; target } -> (
@@ -690,7 +1250,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
       (* [b] - the same word-counted 24-bit field as [bl], one opcode bit apart,
          and the reason A32 needs no relaxation ladder: 24 words of signed reach
          is +/-32 MiB from a single fixed-width form. *)
-      C.alt ~label:"b" ~priority:8
+      C.alt ~label:"b" ~priority:9
         (C.iso_fun ~name:"b"
            ~encode:(function
              | Lowered.B { cond; target } -> (
@@ -708,7 +1268,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
          their position in this list is free. The operand order is the trap:
          [mul Rd, Rn, Rm] puts Rd at 19:16 where [dp-reg] keeps Rn, and Rn at
          3:0 where [dp-reg] keeps Rm. *)
-      C.alt ~label:"mul" ~priority:9
+      C.alt ~label:"mul" ~priority:10
         (C.iso_fun ~name:"mul"
            ~encode:(function
              | Lowered.Mul { cond; s; rd; rn; rm } ->
@@ -719,7 +1279,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.(
              cond_codec ** const ~width:7 0L ** field ~width:1 "s" ** reg_field "rd"
              ** const ~width:4 0L ** reg_field "rm" ** const ~width:4 0b1001L ** reg_field "rn"));
-      C.alt ~label:"mla" ~priority:10
+      C.alt ~label:"mla" ~priority:11
         (C.iso_fun ~name:"mla"
            ~encode:(function
              | Lowered.Mla { cond; s; rd; rn; rm; ra } ->
@@ -730,6 +1290,448 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.(
              cond_codec ** const ~width:7 1L ** field ~width:1 "s" ** reg_field "rd"
              ** reg_field "ra" ** reg_field "rm" ** const ~width:4 0b1001L ** reg_field "rn"));
+      (* {2 VFP}
+
+         Every form below was measured byte-for-byte against the real,
+         installed arm-linux-gnueabihf-as/objdump (vfpv3-d16): the register
+         moves, the immediate move (including the negative case, since VFP's
+         modified immediate has a sign bit like A32's integer one), the
+         three-register arithmetic family, negate, compare, the system
+         register transfer, every VCVT direction this corpus needs, and
+         VLDR/VSTR. *)
+      C.alt ~label:"vmov-reg-d" ~priority:12
+        (C.iso_fun ~name:"vmov-reg-d"
+           ~encode:(function
+             | Lowered.Vmov_reg_d { cond; vd; vm } ->
+                 let d, vdf = dreg_parts vd in
+                 let m, vmf = dreg_parts vm in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf)))))))))) ->
+             Some (Lowered.Vmov_reg_d { cond; vd = dreg_unparts d vdf; vm = dreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0L ** field ~width:4 "Vd" ** const ~width:4 0b1011L
+             ** const ~width:2 0b01L ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vmov-reg-s" ~priority:13
+        (C.iso_fun ~name:"vmov-reg-s"
+           ~encode:(function
+             | Lowered.Vmov_reg_s { cond; vd; vm } ->
+                 let d, vdf = sreg_parts vd in
+                 let m, vmf = sreg_parts vm in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf)))))))))) ->
+             Some (Lowered.Vmov_reg_s { cond; vd = sreg_unparts d vdf; vm = sreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0L ** field ~width:4 "Vd" ** const ~width:4 0b1010L
+             ** const ~width:2 0b01L ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vmov-imm-d" ~priority:14
+        (C.iso_fun ~name:"vmov-imm-d"
+           ~encode:(function
+             | Lowered.Vmov_imm_d { cond; vd; imm8 } ->
+                 let d, vdf = dreg_parts vd in
+                 let imm4h = Int64.of_int (imm8 lsr 4) and imm4l = Int64.of_int (imm8 land 0xF) in
+                 Some (cond, ((), (d, ((), (imm4h, (vdf, ((), ((), imm4l))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), (imm4h, (vdf, ((), ((), imm4l)))))))) ->
+             let imm8 = (Int64.to_int imm4h lsl 4) lor Int64.to_int imm4l in
+             Some (Lowered.Vmov_imm_d { cond; vd = dreg_unparts d vdf; imm8 }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** field ~width:4 "imm4H" ** field ~width:4 "Vd" ** const ~width:4 0b1011L
+             ** const ~width:4 0L ** field ~width:4 "imm4L"));
+      C.alt ~label:"vmov-imm-s" ~priority:15
+        (C.iso_fun ~name:"vmov-imm-s"
+           ~encode:(function
+             | Lowered.Vmov_imm_s { cond; vd; imm8 } ->
+                 let d, vdf = sreg_parts vd in
+                 let imm4h = Int64.of_int (imm8 lsr 4) and imm4l = Int64.of_int (imm8 land 0xF) in
+                 Some (cond, ((), (d, ((), (imm4h, (vdf, ((), ((), imm4l))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), (imm4h, (vdf, ((), ((), imm4l)))))))) ->
+             let imm8 = (Int64.to_int imm4h lsl 4) lor Int64.to_int imm4l in
+             Some (Lowered.Vmov_imm_s { cond; vd = sreg_unparts d vdf; imm8 }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** field ~width:4 "imm4H" ** field ~width:4 "Vd" ** const ~width:4 0b1010L
+             ** const ~width:4 0L ** field ~width:4 "imm4L"));
+      C.alt ~label:"vmov-to-single" ~priority:16
+        (C.iso_fun ~name:"vmov-to-single"
+           ~encode:(function
+             | Lowered.Vmov_to_single { cond; sn; rt } ->
+                 let n, vnf = sreg_parts sn in
+                 Some (cond, ((), ((), (vnf, (rt, ((), (n, ())))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), ((), (vnf, (rt, ((), (n, ()))))))) ->
+             Some (Lowered.Vmov_to_single { cond; sn = sreg_unparts n vnf; rt }))
+           C.(
+             cond_codec ** const ~width:7 0b1110000L ** const ~width:1 0L ** field ~width:4 "Vn"
+             ** reg_field "rt" ** const ~width:4 0b1010L ** field ~width:1 "N"
+             ** const ~width:7 0b0010000L));
+      C.alt ~label:"vmov-from-single" ~priority:17
+        (C.iso_fun ~name:"vmov-from-single"
+           ~encode:(function
+             | Lowered.Vmov_from_single { cond; rt; sn } ->
+                 let n, vnf = sreg_parts sn in
+                 Some (cond, ((), ((), (vnf, (rt, ((), (n, ())))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), ((), (vnf, (rt, ((), (n, ()))))))) ->
+             Some (Lowered.Vmov_from_single { cond; rt; sn = sreg_unparts n vnf }))
+           C.(
+             cond_codec ** const ~width:7 0b1110000L ** const ~width:1 1L ** field ~width:4 "Vn"
+             ** reg_field "rt" ** const ~width:4 0b1010L ** field ~width:1 "N"
+             ** const ~width:7 0b0010000L));
+      C.alt ~label:"vmov-to-double" ~priority:18
+        (C.iso_fun ~name:"vmov-to-double"
+           ~encode:(function
+             | Lowered.Vmov_to_double { cond; dm; rt; rt2 } ->
+                 let m, vmf = dreg_parts dm in
+                 Some (cond, ((), ((), (rt2, (rt, ((), ((), (m, ((), vmf)))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), ((), (rt2, (rt, ((), ((), (m, ((), vmf))))))))) ->
+             Some (Lowered.Vmov_to_double { cond; dm = dreg_unparts m vmf; rt; rt2 }))
+           C.(
+             cond_codec ** const ~width:7 0b1100010L ** const ~width:1 0L ** reg_field "rt2"
+             ** reg_field "rt" ** const ~width:4 0b1011L ** const ~width:2 0b00L
+             ** field ~width:1 "D" ** const ~width:1 1L ** field ~width:4 "Vm"));
+      C.alt ~label:"vmov-from-double" ~priority:19
+        (C.iso_fun ~name:"vmov-from-double"
+           ~encode:(function
+             | Lowered.Vmov_from_double { cond; rt; rt2; dm } ->
+                 let m, vmf = dreg_parts dm in
+                 Some (cond, ((), ((), (rt2, (rt, ((), ((), (m, ((), vmf)))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), ((), (rt2, (rt, ((), ((), (m, ((), vmf))))))))) ->
+             Some (Lowered.Vmov_from_double { cond; rt; rt2; dm = dreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:7 0b1100010L ** const ~width:1 1L ** reg_field "rt2"
+             ** reg_field "rt" ** const ~width:4 0b1011L ** const ~width:2 0b00L
+             ** field ~width:1 "D" ** const ~width:1 1L ** field ~width:4 "Vm"));
+      (* [v3-d]/[v3-s] declare [b23]/[b21]/[b20]/[b6] as plain fields rather
+         than four separate consts per op, because {!V3.selector} is the one
+         place that relation lives and a const per alternative would restate
+         it. The cost is exactly the situation {!movw_alt} already documents:
+         [check] sees a field where the two-register "extension" family
+         (vneg/vcmp/vcvt/vmov, priorities 12-34) sees a literal, so it reports
+         overlap wherever a wildcarded field could reach one of those literal
+         patterns. It is harmless on decode: {!V3.of_selector} accepts only
+         the four combinations lowering ever produces, declines everything
+         else, and [Alt]'s decoder falls through to the next priority on a
+         decline - which is exactly why [v3-d]/[v3-s] are given the *lower*
+         priority number of every pair [check] names, so a real three-register
+         word is claimed here first and everything else falls through to its
+         own, correct alternative. *)
+      C.alt ~label:"v3-d" ~priority:20
+        (C.iso_fun ~name:"v3-d"
+           ~encode:(function
+             | Lowered.V3_d { cond; op; vd; vn; vm } ->
+                 let b23, b21, b20, b6 = V3.selector op in
+                 let d, vdf = dreg_parts vd in
+                 let n, vnf = dreg_parts vn in
+                 let m, vmf = dreg_parts vm in
+                 Some
+                   ( cond,
+                     ((), (b23, (d, (b21, (b20, (vnf, (vdf, ((), (n, (b6, (m, ((), vmf))))))))))))
+                   )
+             | _ -> None)
+           ~decode:(fun
+               (cond, ((), (b23, (d, (b21, (b20, (vnf, (vdf, ((), (n, (b6, (m, ((), vmf)))))))))))))
+             ->
+             match V3.of_selector (b23, b21, b20, b6) with
+             | None -> None
+             | Some op ->
+                 Some
+                   (Lowered.V3_d
+                      {
+                        cond;
+                        op;
+                        vd = dreg_unparts d vdf;
+                        vn = dreg_unparts n vnf;
+                        vm = dreg_unparts m vmf;
+                      }))
+           C.(
+             cond_codec ** const ~width:4 0b1110L ** field ~width:1 "b23" ** field ~width:1 "D"
+             ** field ~width:1 "b21" ** field ~width:1 "b20" ** field ~width:4 "Vn"
+             ** field ~width:4 "Vd" ** const ~width:4 0b1011L ** field ~width:1 "N"
+             ** field ~width:1 "b6" ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"v3-s" ~priority:21
+        (C.iso_fun ~name:"v3-s"
+           ~encode:(function
+             | Lowered.V3_s { cond; op; vd; vn; vm } ->
+                 let b23, b21, b20, b6 = V3.selector op in
+                 let d, vdf = sreg_parts vd in
+                 let n, vnf = sreg_parts vn in
+                 let m, vmf = sreg_parts vm in
+                 Some
+                   ( cond,
+                     ((), (b23, (d, (b21, (b20, (vnf, (vdf, ((), (n, (b6, (m, ((), vmf))))))))))))
+                   )
+             | _ -> None)
+           ~decode:(fun
+               (cond, ((), (b23, (d, (b21, (b20, (vnf, (vdf, ((), (n, (b6, (m, ((), vmf)))))))))))))
+             ->
+             match V3.of_selector (b23, b21, b20, b6) with
+             | None -> None
+             | Some op ->
+                 Some
+                   (Lowered.V3_s
+                      {
+                        cond;
+                        op;
+                        vd = sreg_unparts d vdf;
+                        vn = sreg_unparts n vnf;
+                        vm = sreg_unparts m vmf;
+                      }))
+           C.(
+             cond_codec ** const ~width:4 0b1110L ** field ~width:1 "b23" ** field ~width:1 "D"
+             ** field ~width:1 "b21" ** field ~width:1 "b20" ** field ~width:4 "Vn"
+             ** field ~width:4 "Vd" ** const ~width:4 0b1010L ** field ~width:1 "N"
+             ** field ~width:1 "b6" ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vneg-d" ~priority:22
+        (C.iso_fun ~name:"vneg-d"
+           ~encode:(function
+             | Lowered.Vneg_d { cond; vd; vm } ->
+                 let d, vdf = dreg_parts vd in
+                 let m, vmf = dreg_parts vm in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf)))))))))) ->
+             Some (Lowered.Vneg_d { cond; vd = dreg_unparts d vdf; vm = dreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0b0001L ** field ~width:4 "Vd" ** const ~width:4 0b1011L
+             ** const ~width:2 0b01L ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vneg-s" ~priority:23
+        (C.iso_fun ~name:"vneg-s"
+           ~encode:(function
+             | Lowered.Vneg_s { cond; vd; vm } ->
+                 let d, vdf = sreg_parts vd in
+                 let m, vmf = sreg_parts vm in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf)))))))))) ->
+             Some (Lowered.Vneg_s { cond; vd = sreg_unparts d vdf; vm = sreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0b0001L ** field ~width:4 "Vd" ** const ~width:4 0b1010L
+             ** const ~width:2 0b01L ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vcmp-reg-d" ~priority:24
+        (C.iso_fun ~name:"vcmp-reg-d"
+           ~encode:(function
+             | Lowered.Vcmp_reg_d { cond; vd; vm } ->
+                 let d, vdf = dreg_parts vd in
+                 let m, vmf = dreg_parts vm in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf)))))))))) ->
+             Some (Lowered.Vcmp_reg_d { cond; vd = dreg_unparts d vdf; vm = dreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0b0100L ** field ~width:4 "Vd" ** const ~width:4 0b1011L
+             ** const ~width:2 0b01L ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vcmp-reg-s" ~priority:25
+        (C.iso_fun ~name:"vcmp-reg-s"
+           ~encode:(function
+             | Lowered.Vcmp_reg_s { cond; vd; vm } ->
+                 let d, vdf = sreg_parts vd in
+                 let m, vmf = sreg_parts vm in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf)))))))))) ->
+             Some (Lowered.Vcmp_reg_s { cond; vd = sreg_unparts d vdf; vm = sreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0b0100L ** field ~width:4 "Vd" ** const ~width:4 0b1010L
+             ** const ~width:2 0b01L ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vcmp-zero-d" ~priority:26
+        (C.iso_fun ~name:"vcmp-zero-d"
+           ~encode:(function
+             | Lowered.Vcmp_zero_d { cond; vd } ->
+                 let d, vdf = dreg_parts vd in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), ()))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), ())))))))) ->
+             Some (Lowered.Vcmp_zero_d { cond; vd = dreg_unparts d vdf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0b0101L ** field ~width:4 "Vd" ** const ~width:4 0b1011L
+             ** const ~width:2 0b01L ** const ~width:6 0L));
+      C.alt ~label:"vcmp-zero-s" ~priority:27
+        (C.iso_fun ~name:"vcmp-zero-s"
+           ~encode:(function
+             | Lowered.Vcmp_zero_s { cond; vd } ->
+                 let d, vdf = sreg_parts vd in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), ()))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), ())))))))) ->
+             Some (Lowered.Vcmp_zero_s { cond; vd = sreg_unparts d vdf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0b0101L ** field ~width:4 "Vd" ** const ~width:4 0b1010L
+             ** const ~width:2 0b01L ** const ~width:6 0L));
+      (* [vmrs APSR_nzcv, FPSCR] - the only form this corpus needs, so the
+         entire word past [cond] is one constant. *)
+      C.alt ~label:"vmrs" ~priority:28
+        (C.iso_fun ~name:"vmrs"
+           ~encode:(function Lowered.Vmrs { cond } -> Some (cond, ()) | _ -> None)
+           ~decode:(fun (cond, ()) -> Some (Lowered.Vmrs { cond }))
+           C.(cond_codec ** const ~width:28 0xEF1FA10L));
+      C.alt ~label:"vcvt-f32-f64" ~priority:29
+        (C.iso_fun ~name:"vcvt-f32-f64"
+           ~encode:(function
+             | Lowered.Vcvt_f32_f64 { cond; sd; dm } ->
+                 let d, vdf = sreg_parts sd in
+                 let m, vmf = dreg_parts dm in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf)))))))))) ->
+             Some (Lowered.Vcvt_f32_f64 { cond; sd = sreg_unparts d vdf; dm = dreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0b0111L ** field ~width:4 "Vd" ** const ~width:4 0b1011L
+             ** const ~width:2 0b11L ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vcvt-f64-f32" ~priority:30
+        (C.iso_fun ~name:"vcvt-f64-f32"
+           ~encode:(function
+             | Lowered.Vcvt_f64_f32 { cond; dd; sm } ->
+                 let d, vdf = dreg_parts dd in
+                 let m, vmf = sreg_parts sm in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf)))))))))) ->
+             Some (Lowered.Vcvt_f64_f32 { cond; dd = dreg_unparts d vdf; sm = sreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0b0111L ** field ~width:4 "Vd" ** const ~width:4 0b1010L
+             ** const ~width:2 0b11L ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vcvt-f32-s32" ~priority:31
+        (C.iso_fun ~name:"vcvt-f32-s32"
+           ~encode:(function
+             | Lowered.Vcvt_f32_s32 { cond; sd; sm } ->
+                 let d, vdf = sreg_parts sd in
+                 let m, vmf = sreg_parts sm in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), ((), (m, ((), vmf)))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), ((), (m, ((), vmf))))))))))) ->
+             Some (Lowered.Vcvt_f32_s32 { cond; sd = sreg_unparts d vdf; sm = sreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0b1000L ** field ~width:4 "Vd" ** const ~width:4 0b1010L
+             ** const ~width:1 1L ** const ~width:1 1L ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vcvt-f64-s32" ~priority:32
+        (C.iso_fun ~name:"vcvt-f64-s32"
+           ~encode:(function
+             | Lowered.Vcvt_f64_s32 { cond; dd; sm } ->
+                 let d, vdf = dreg_parts dd in
+                 let m, vmf = sreg_parts sm in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), ((), (m, ((), vmf)))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), ((), (m, ((), vmf))))))))))) ->
+             Some (Lowered.Vcvt_f64_s32 { cond; dd = dreg_unparts d vdf; sm = sreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0b1000L ** field ~width:4 "Vd" ** const ~width:4 0b1011L
+             ** const ~width:1 1L ** const ~width:1 1L ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vcvt-f64-u32" ~priority:33
+        (C.iso_fun ~name:"vcvt-f64-u32"
+           ~encode:(function
+             | Lowered.Vcvt_f64_u32 { cond; dd; sm } ->
+                 let d, vdf = dreg_parts dd in
+                 let m, vmf = sreg_parts sm in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), ((), (m, ((), vmf)))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), ((), (m, ((), vmf))))))))))) ->
+             Some (Lowered.Vcvt_f64_u32 { cond; dd = dreg_unparts d vdf; sm = sreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0b1000L ** field ~width:4 "Vd" ** const ~width:4 0b1011L
+             ** const ~width:1 0L ** const ~width:1 1L ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vcvt-s32-f64" ~priority:34
+        (C.iso_fun ~name:"vcvt-s32-f64"
+           ~encode:(function
+             | Lowered.Vcvt_s32_f64 { cond; sd; dm } ->
+                 let d, vdf = sreg_parts sd in
+                 let m, vmf = dreg_parts dm in
+                 Some (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), ((), (m, ((), vmf)))))))))) ->
+             Some (Lowered.Vcvt_s32_f64 { cond; sd = sreg_unparts d vdf; dm = dreg_unparts m vmf }))
+           C.(
+             cond_codec ** const ~width:5 0x1DL ** field ~width:1 "D" ** const ~width:2 0b11L
+             ** const ~width:4 0b1101L ** field ~width:4 "Vd" ** const ~width:4 0b1011L
+             ** const ~width:2 0b11L ** field ~width:1 "M" ** const ~width:1 0L
+             ** field ~width:4 "Vm"));
+      C.alt ~label:"vmem-d" ~priority:35
+        (C.iso_fun ~name:"vmem-d"
+           ~encode:(function
+             | Lowered.Vmem_d { cond; load; vd; rn; offset } ->
+                 let up = Int64.compare offset 0L >= 0 in
+                 let mag = Int64.abs offset in
+                 if not (Int64.equal (Int64.rem mag 4L) 0L) then None
+                 else
+                   let imm8 = Int64.div mag 4L in
+                   if Int64.compare imm8 256L >= 0 then None
+                   else
+                     let d, vdf = dreg_parts vd in
+                     Some
+                       ( cond,
+                         ( (),
+                           ( (if up then 1L else 0L),
+                             (d, ((), ((if load then 1L else 0L), (rn, (vdf, ((), imm8)))))) ) ) )
+             | _ -> None)
+           ~decode:(fun (cond, ((), (up, (d, ((), (load, (rn, (vdf, ((), imm8))))))))) ->
+             let mag = Int64.mul imm8 4L in
+             let offset = if Int64.equal up 1L then mag else Int64.neg mag in
+             Some
+               (Lowered.Vmem_d
+                  { cond; load = Int64.equal load 1L; vd = dreg_unparts d vdf; rn; offset }))
+           C.(
+             cond_codec ** const ~width:4 0b1101L ** field ~width:1 "U" ** field ~width:1 "D"
+             ** const ~width:1 0L ** field ~width:1 "L" ** reg_field "rn" ** field ~width:4 "Vd"
+             ** const ~width:4 0b1011L ** field ~width:8 "imm8"));
+      C.alt ~label:"vmem-s" ~priority:36
+        (C.iso_fun ~name:"vmem-s"
+           ~encode:(function
+             | Lowered.Vmem_s { cond; load; vd; rn; offset } ->
+                 let up = Int64.compare offset 0L >= 0 in
+                 let mag = Int64.abs offset in
+                 if not (Int64.equal (Int64.rem mag 4L) 0L) then None
+                 else
+                   let imm8 = Int64.div mag 4L in
+                   if Int64.compare imm8 256L >= 0 then None
+                   else
+                     let d, vdf = sreg_parts vd in
+                     Some
+                       ( cond,
+                         ( (),
+                           ( (if up then 1L else 0L),
+                             (d, ((), ((if load then 1L else 0L), (rn, (vdf, ((), imm8)))))) ) ) )
+             | _ -> None)
+           ~decode:(fun (cond, ((), (up, (d, ((), (load, (rn, (vdf, ((), imm8))))))))) ->
+             let mag = Int64.mul imm8 4L in
+             let offset = if Int64.equal up 1L then mag else Int64.neg mag in
+             Some
+               (Lowered.Vmem_s
+                  { cond; load = Int64.equal load 1L; vd = sreg_unparts d vdf; rn; offset }))
+           C.(
+             cond_codec ** const ~width:4 0b1101L ** field ~width:1 "U" ** field ~width:1 "D"
+             ** const ~width:1 0L ** field ~width:1 "L" ** reg_field "rn" ** field ~width:4 "Vd"
+             ** const ~width:4 0b1010L ** field ~width:8 "imm8"));
     ]
 
 let name = "arm"
@@ -760,7 +1762,10 @@ type error_kind =
   | `Branch_not_word_aligned
   | `Branch_out_of_range
   | `No_data_relocation of int
-  | `Padding_not_word_multiple ]
+  | `Padding_not_word_multiple
+  | `No_vfp_immediate of float
+  | `Vfp_offset_out_of_range of int64
+  | `Vmrs_unsupported_operands ]
 
 and wrong_relocation_modifier = { opcode : string; want : string; got : string }
 and missing_relocation_modifier = { opcode : string; want : string }
@@ -790,13 +1795,19 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `No_data_relocation w -> Fmt.pf ppf "no absolute relocation for a %d-byte data initializer" w
   | `Padding_not_word_multiple ->
       Fmt.string ppf "A32 padding must be a whole number of four-byte instructions"
+  | `No_vfp_immediate v ->
+      Fmt.pf ppf "#%s has no VFP modified-immediate representation" (decimal_of_float v)
+  | `Vfp_offset_out_of_range off ->
+      Fmt.pf ppf "vldr/vstr offset %Ld does not fit a word-aligned 10-bit range" off
+  | `Vmrs_unsupported_operands -> Fmt.string ppf "vmrs only supports APSR_nzcv, FPSCR in M1 scope"
 
 let error_kind_code : error_kind -> string = function
   | `Unknown_instruction _ -> "arm.simplify"
   | `Thumb_out_of_scope | `Immediate_too_wide | `Expected_register_or_shifted
   | `No_modified_immediate _ | `No_modified_immediate_mov _ | `Writeback_out_of_scope
   | `Offset_not_12bit | `Udf_imm16_overflow | `Wrong_relocation_modifier _
-  | `Missing_relocation_modifier _ | `Imm16_overflow _ | `No_form _ ->
+  | `Missing_relocation_modifier _ | `Imm16_overflow _ | `No_form _ | `No_vfp_immediate _
+  | `Vfp_offset_out_of_range _ | `Vmrs_unsupported_operands ->
       "arm.lower"
   | `Codec e -> Option.value (Codec.code e) ~default:"arm.encode"
   | `Decode_short | `Decode_no_match | `Decode_no_normalized -> "arm.decode"
@@ -831,12 +1842,29 @@ let simplify_instruction ~features s =
      opcode claims the whole mnemonic is a condition suffix looked for. *)
   | Some op -> Ok (Instruction.mk op s.Surface.ops)
   | None -> (
-      let stem, cond = Cond.split m in
-      match Opcode.of_mnemonic stem with
-      | Some op -> Ok (Instruction.mk ~cond op s.Surface.ops)
-      | None -> bad (`Unknown_instruction m))
+      match Opcode.split_vfp_mnemonic m with
+      | Some (stem, cond, rest) -> (
+          match Opcode.vfp_opcode_of stem rest with
+          | Some op -> Ok (Instruction.mk ~cond op s.Surface.ops)
+          | None -> bad (`Unknown_instruction m))
+      | None -> (
+          let stem, cond = Cond.split m in
+          match Opcode.of_mnemonic stem with
+          | Some op -> Ok (Instruction.mk ~cond op s.Surface.ops)
+          | None -> bad (`Unknown_instruction m)))
 
 (* {1 Lower} *)
+
+(* Shared by [ldr]/[str]/[strb]: the mnemonic and byte-width vary, but which
+   [Lowered] form a memory operand becomes - [Ldst_imm] or [Ldst_reg] - and
+   the 12-bit magnitude check that only the immediate form needs, do not. *)
+let lower_ldst ~bad ~cond ~load ~byte ~rt ~(m : Mem.t) =
+  match m.offset with
+  | Mem.Imm offset ->
+      if Int64.compare (Int64.abs offset) 4096L >= 0 then bad `Offset_not_12bit
+      else Ok [ Lowered.Ldst_imm { cond; load; byte; rt; rn = m.base; offset } ]
+  | Mem.Reg_offset { reg = rm; negate; kind = sh_kind; amount = sh_amt } ->
+      Ok [ Lowered.Ldst_reg { cond; load; byte; rt; rn = m.base; rm; negate; sh_kind; sh_amt } ]
 
 let lower_instruction state i =
   let bad kind = Error (diag ~pos:__POS__ kind) in
@@ -924,22 +1952,13 @@ let lower_instruction state i =
             else Ok [ Lowered.Dp_imm { cond; dp = Opcode.to_dp op; s = false; rd; rn; imm } ])
     | ((Opcode.Str | Opcode.Ldr) as op), [ Operand.Reg rt; Operand.Mem m ] ->
         if m.writeback then bad `Writeback_out_of_scope
-        else if Int64.compare (Int64.abs m.offset) 4096L >= 0 then bad `Offset_not_12bit
-        else
-          Ok
-            [
-              Lowered.Ldst_imm
-                { cond; load = op = Opcode.Ldr; byte = false; rt; rn = m.base; offset = m.offset };
-            ]
+        else lower_ldst ~bad ~cond ~load:(op = Opcode.Ldr) ~byte:false ~rt ~m
     | Opcode.Strb, [ Operand.Reg rt; Operand.Mem m ] ->
         if m.writeback then bad `Writeback_out_of_scope
-        else if Int64.compare (Int64.abs m.offset) 4096L >= 0 then bad `Offset_not_12bit
-        else
-          Ok
-            [
-              Lowered.Ldst_imm
-                { cond; load = false; byte = true; rt; rn = m.base; offset = m.offset };
-            ]
+        else lower_ldst ~bad ~cond ~load:false ~byte:true ~rt ~m
+    | Opcode.Ldrb, [ Operand.Reg rt; Operand.Mem m ] ->
+        if m.writeback then bad `Writeback_out_of_scope
+        else lower_ldst ~bad ~cond ~load:true ~byte:true ~rt ~m
     | Opcode.Bx, [ Operand.Reg rm ] -> Ok [ Lowered.Bx { cond; rm } ]
     | Opcode.Udf, [ Operand.Imm v ] -> (
         match imm_of v with
@@ -1033,6 +2052,76 @@ let lower_instruction state i =
         Ok [ Lowered.Mul { cond; s = false; rd; rn; rm } ]
     | Opcode.Mla, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Reg ra ] ->
         Ok [ Lowered.Mla { cond; s = false; rd; rn; rm; ra } ]
+    (* {2 VFP} *)
+    | Opcode.Vmov_d, [ Operand.Dreg vd; Operand.Dreg vm ] ->
+        Ok [ Lowered.Vmov_reg_d { cond; vd; vm } ]
+    | Opcode.Vmov_d, [ Operand.Dreg vd; Operand.FImm v ] -> (
+        match vfp_compress v with
+        | Some imm8 -> Ok [ Lowered.Vmov_imm_d { cond; vd; imm8 } ]
+        | None -> bad (`No_vfp_immediate v))
+    | Opcode.Vmov_s, [ Operand.Sreg vd; Operand.Sreg vm ] ->
+        Ok [ Lowered.Vmov_reg_s { cond; vd; vm } ]
+    | Opcode.Vmov_s, [ Operand.Sreg vd; Operand.FImm v ] -> (
+        match vfp_compress v with
+        | Some imm8 -> Ok [ Lowered.Vmov_imm_s { cond; vd; imm8 } ]
+        | None -> bad (`No_vfp_immediate v))
+    | Opcode.Vmov_core, [ Operand.Sreg sn; Operand.Reg rt ] ->
+        Ok [ Lowered.Vmov_to_single { cond; sn; rt } ]
+    | Opcode.Vmov_core, [ Operand.Reg rt; Operand.Sreg sn ] ->
+        Ok [ Lowered.Vmov_from_single { cond; rt; sn } ]
+    | Opcode.Vmov_core, [ Operand.Dreg dm; Operand.Reg rt; Operand.Reg rt2 ] ->
+        Ok [ Lowered.Vmov_to_double { cond; dm; rt; rt2 } ]
+    | Opcode.Vmov_core, [ Operand.Reg rt; Operand.Reg rt2; Operand.Dreg dm ] ->
+        Ok [ Lowered.Vmov_from_double { cond; rt; rt2; dm } ]
+    | Opcode.V3 op, [ Operand.Dreg vd; Operand.Dreg vn; Operand.Dreg vm ] ->
+        Ok [ Lowered.V3_d { cond; op; vd; vn; vm } ]
+    | Opcode.Vneg_d, [ Operand.Dreg vd; Operand.Dreg vm ] -> Ok [ Lowered.Vneg_d { cond; vd; vm } ]
+    | Opcode.Vneg_s, [ Operand.Sreg vd; Operand.Sreg vm ] -> Ok [ Lowered.Vneg_s { cond; vd; vm } ]
+    | Opcode.Vcmp_d, [ Operand.Dreg vd; Operand.Dreg vm ] ->
+        Ok [ Lowered.Vcmp_reg_d { cond; vd; vm } ]
+    | Opcode.Vcmp_d, [ Operand.Dreg vd; Operand.Imm v ] when Bigint.is_zero v ->
+        Ok [ Lowered.Vcmp_zero_d { cond; vd } ]
+    | Opcode.Vcmp_s, [ Operand.Sreg vd; Operand.Sreg vm ] ->
+        Ok [ Lowered.Vcmp_reg_s { cond; vd; vm } ]
+    | Opcode.Vcmp_s, [ Operand.Sreg vd; Operand.Imm v ] when Bigint.is_zero v ->
+        Ok [ Lowered.Vcmp_zero_s { cond; vd } ]
+    | Opcode.Vmrs, [ Operand.Sym (Asm_core.Expr.Symbol a); Operand.Sym (Asm_core.Expr.Symbol f) ]
+      when String.equal a "APSR_nzcv" && String.equal f "FPSCR" ->
+        Ok [ Lowered.Vmrs { cond } ]
+    | Opcode.Vmrs, _ -> bad `Vmrs_unsupported_operands
+    | Opcode.Vcvt_f32_f64, [ Operand.Sreg sd; Operand.Dreg dm ] ->
+        Ok [ Lowered.Vcvt_f32_f64 { cond; sd; dm } ]
+    | Opcode.Vcvt_f64_f32, [ Operand.Dreg dd; Operand.Sreg sm ] ->
+        Ok [ Lowered.Vcvt_f64_f32 { cond; dd; sm } ]
+    | Opcode.Vcvt_f32_s32, [ Operand.Sreg sd; Operand.Sreg sm ] ->
+        Ok [ Lowered.Vcvt_f32_s32 { cond; sd; sm } ]
+    | Opcode.Vcvt_f64_s32, [ Operand.Dreg dd; Operand.Sreg sm ] ->
+        Ok [ Lowered.Vcvt_f64_s32 { cond; dd; sm } ]
+    | Opcode.Vcvt_f64_u32, [ Operand.Dreg dd; Operand.Sreg sm ] ->
+        Ok [ Lowered.Vcvt_f64_u32 { cond; dd; sm } ]
+    | Opcode.Vcvt_s32_f64, [ Operand.Sreg sd; Operand.Dreg dm ] ->
+        Ok [ Lowered.Vcvt_s32_f64 { cond; sd; dm } ]
+    (* [vldr]/[vstr] offset-only addressing: the 8-bit field is scaled by 4,
+       so the reach is a word-aligned +/-1020 - {!Mem.Reg_offset} (register
+       offset) has no VFP encoding at all and falls to [No_form]. *)
+    | ( (Opcode.Vldr | Opcode.Vstr),
+        [ Operand.Dreg vd; Operand.Mem { offset = Mem.Imm offset; base; _ } ] ) ->
+        if Int64.rem offset 4L <> 0L || Int64.compare (Int64.abs offset) 1024L >= 0 then
+          bad (`Vfp_offset_out_of_range offset)
+        else
+          Ok
+            [
+              Lowered.Vmem_d { cond; load = i.Instruction.op = Opcode.Vldr; vd; rn = base; offset };
+            ]
+    | ( (Opcode.Vldr | Opcode.Vstr),
+        [ Operand.Sreg vd; Operand.Mem { offset = Mem.Imm offset; base; _ } ] ) ->
+        if Int64.rem offset 4L <> 0L || Int64.compare (Int64.abs offset) 1024L >= 0 then
+          bad (`Vfp_offset_out_of_range offset)
+        else
+          Ok
+            [
+              Lowered.Vmem_s { cond; load = i.Instruction.op = Opcode.Vldr; vd; rn = base; offset };
+            ]
     (* [ite] is a Thumb construct. GAS accepts it in A32 source and emits
        nothing, because conditional execution there is native to every
        instruction - the suffixed [moveq]/[movne] that follow already say what
@@ -1157,13 +2246,29 @@ let instruction_of_lowered ?(at = 0L) =
       | Some o when Opcode.is_compare o -> Some (Instruction.mk ~cond o [ Operand.Reg rn; shifted ])
       | Some o -> Some (Instruction.mk ~cond o [ Operand.Reg rd; Operand.Reg rn; shifted ]))
   | Lowered.Ldst_imm { cond; load; byte; rt; rn; offset } -> (
-      let mem_op = Operand.Mem { base = rn; offset; writeback = false; pre = true } in
+      let mem_op =
+        Operand.Mem { base = rn; offset = Mem.Imm offset; writeback = false; pre = true }
+      in
       match (load, byte) with
       | false, false -> Some (Instruction.mk ~cond Opcode.Str [ Operand.Reg rt; mem_op ])
       | true, false -> Some (Instruction.mk ~cond Opcode.Ldr [ Operand.Reg rt; mem_op ])
       | false, true -> Some (Instruction.mk ~cond Opcode.Strb [ Operand.Reg rt; mem_op ])
-      | true, true -> None
-      (* ldrb decodes correctly but has no opcode to normalize into. *))
+      | true, true -> Some (Instruction.mk ~cond Opcode.Ldrb [ Operand.Reg rt; mem_op ]))
+  | Lowered.Ldst_reg { cond; load; byte; rt; rn; rm; negate; sh_kind; sh_amt } -> (
+      let mem_op =
+        Operand.Mem
+          {
+            base = rn;
+            offset = Mem.Reg_offset { reg = rm; negate; kind = sh_kind; amount = sh_amt };
+            writeback = false;
+            pre = true;
+          }
+      in
+      match (load, byte) with
+      | false, false -> Some (Instruction.mk ~cond Opcode.Str [ Operand.Reg rt; mem_op ])
+      | true, false -> Some (Instruction.mk ~cond Opcode.Ldr [ Operand.Reg rt; mem_op ])
+      | false, true -> Some (Instruction.mk ~cond Opcode.Strb [ Operand.Reg rt; mem_op ])
+      | true, true -> Some (Instruction.mk ~cond Opcode.Ldrb [ Operand.Reg rt; mem_op ]))
   | Lowered.Bx { cond; rm } -> Some (Instruction.mk ~cond Opcode.Bx [ Operand.Reg rm ])
   | Lowered.Udf { imm16 } ->
       Some (Instruction.mk Opcode.Udf [ Operand.Imm (Bigint.of_int64 imm16) ])
@@ -1191,6 +2296,77 @@ let instruction_of_lowered ?(at = 0L) =
         | Asm_core.Lowered_ast.Symbolic { value; _ } -> Operand.Sym value
       in
       Some (Instruction.mk ~cond (if top then Opcode.Movt else Opcode.Movw) [ Operand.Reg rd; v ])
+  | Lowered.Vmov_reg_d { cond; vd; vm } ->
+      Some (Instruction.mk ~cond Opcode.Vmov_d [ Operand.Dreg vd; Operand.Dreg vm ])
+  | Lowered.Vmov_reg_s { cond; vd; vm } ->
+      Some (Instruction.mk ~cond Opcode.Vmov_s [ Operand.Sreg vd; Operand.Sreg vm ])
+  | Lowered.Vmov_imm_d { cond; vd; imm8 } ->
+      Some (Instruction.mk ~cond Opcode.Vmov_d [ Operand.Dreg vd; Operand.FImm (vfp_expand imm8) ])
+  | Lowered.Vmov_imm_s { cond; vd; imm8 } ->
+      Some (Instruction.mk ~cond Opcode.Vmov_s [ Operand.Sreg vd; Operand.FImm (vfp_expand imm8) ])
+  | Lowered.Vmov_to_single { cond; sn; rt } ->
+      Some (Instruction.mk ~cond Opcode.Vmov_core [ Operand.Sreg sn; Operand.Reg rt ])
+  | Lowered.Vmov_from_single { cond; rt; sn } ->
+      Some (Instruction.mk ~cond Opcode.Vmov_core [ Operand.Reg rt; Operand.Sreg sn ])
+  | Lowered.Vmov_to_double { cond; dm; rt; rt2 } ->
+      Some
+        (Instruction.mk ~cond Opcode.Vmov_core [ Operand.Dreg dm; Operand.Reg rt; Operand.Reg rt2 ])
+  | Lowered.Vmov_from_double { cond; rt; rt2; dm } ->
+      Some
+        (Instruction.mk ~cond Opcode.Vmov_core [ Operand.Reg rt; Operand.Reg rt2; Operand.Dreg dm ])
+  | Lowered.V3_d { cond; op; vd; vn; vm } ->
+      Some
+        (Instruction.mk ~cond (Opcode.V3 op) [ Operand.Dreg vd; Operand.Dreg vn; Operand.Dreg vm ])
+  | Lowered.V3_s { cond; op; vd; vn; vm } ->
+      Some
+        (Instruction.mk ~cond (Opcode.V3 op) [ Operand.Sreg vd; Operand.Sreg vn; Operand.Sreg vm ])
+  | Lowered.Vneg_d { cond; vd; vm } ->
+      Some (Instruction.mk ~cond Opcode.Vneg_d [ Operand.Dreg vd; Operand.Dreg vm ])
+  | Lowered.Vneg_s { cond; vd; vm } ->
+      Some (Instruction.mk ~cond Opcode.Vneg_s [ Operand.Sreg vd; Operand.Sreg vm ])
+  | Lowered.Vcmp_reg_d { cond; vd; vm } ->
+      Some (Instruction.mk ~cond Opcode.Vcmp_d [ Operand.Dreg vd; Operand.Dreg vm ])
+  | Lowered.Vcmp_reg_s { cond; vd; vm } ->
+      Some (Instruction.mk ~cond Opcode.Vcmp_s [ Operand.Sreg vd; Operand.Sreg vm ])
+  | Lowered.Vcmp_zero_d { cond; vd } ->
+      Some (Instruction.mk ~cond Opcode.Vcmp_d [ Operand.Dreg vd; Operand.Imm Bigint.zero ])
+  | Lowered.Vcmp_zero_s { cond; vd } ->
+      Some (Instruction.mk ~cond Opcode.Vcmp_s [ Operand.Sreg vd; Operand.Imm Bigint.zero ])
+  | Lowered.Vmrs { cond } ->
+      Some
+        (Instruction.mk ~cond Opcode.Vmrs
+           [
+             Operand.Sym (Asm_core.Expr.Symbol "APSR_nzcv");
+             Operand.Sym (Asm_core.Expr.Symbol "FPSCR");
+           ])
+  | Lowered.Vcvt_f32_f64 { cond; sd; dm } ->
+      Some (Instruction.mk ~cond Opcode.Vcvt_f32_f64 [ Operand.Sreg sd; Operand.Dreg dm ])
+  | Lowered.Vcvt_f64_f32 { cond; dd; sm } ->
+      Some (Instruction.mk ~cond Opcode.Vcvt_f64_f32 [ Operand.Dreg dd; Operand.Sreg sm ])
+  | Lowered.Vcvt_f32_s32 { cond; sd; sm } ->
+      Some (Instruction.mk ~cond Opcode.Vcvt_f32_s32 [ Operand.Sreg sd; Operand.Sreg sm ])
+  | Lowered.Vcvt_f64_s32 { cond; dd; sm } ->
+      Some (Instruction.mk ~cond Opcode.Vcvt_f64_s32 [ Operand.Dreg dd; Operand.Sreg sm ])
+  | Lowered.Vcvt_f64_u32 { cond; dd; sm } ->
+      Some (Instruction.mk ~cond Opcode.Vcvt_f64_u32 [ Operand.Dreg dd; Operand.Sreg sm ])
+  | Lowered.Vcvt_s32_f64 { cond; sd; dm } ->
+      Some (Instruction.mk ~cond Opcode.Vcvt_s32_f64 [ Operand.Sreg sd; Operand.Dreg dm ])
+  | Lowered.Vmem_d { cond; load; vd; rn; offset } ->
+      Some
+        (Instruction.mk ~cond
+           (if load then Opcode.Vldr else Opcode.Vstr)
+           [
+             Operand.Dreg vd;
+             Operand.Mem { base = rn; offset = Mem.Imm offset; writeback = false; pre = true };
+           ])
+  | Lowered.Vmem_s { cond; load; vd; rn; offset } ->
+      Some
+        (Instruction.mk ~cond
+           (if load then Opcode.Vldr else Opcode.Vstr)
+           [
+             Operand.Sreg vd;
+             Operand.Mem { base = rn; offset = Mem.Imm offset; writeback = false; pre = true };
+           ])
 
 let decode ctx bytes ~pos =
   if String.length bytes - pos < 4 then Error (diag ~pos:__POS__ `Decode_short)

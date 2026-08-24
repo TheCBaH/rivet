@@ -689,11 +689,37 @@
     [3 cost=0] dp-imm           dp-imm(){cond 001 dp:4u s:1u rn rd modimm}
     [4 cost=0] dp-reg           dp-reg(){cond 000 dp:4u s:1u rn rd shift-amount:5u shift-kind:2u 0 rm}
     [5 cost=0] ldst-imm         ldst-imm(){cond 010 1 u:1u b:1u 0 l:1u rn rt imm12:12u}
-    [6 cost=0] udf              udf(){1110 01111111 imm12:12u 1111 imm4:4u}
-    [7 cost=0] bl               bl(){cond 1011 <target:24@0 pcrel-call>}
-    [8 cost=0] b                b(){cond 1010 <target:24@0 pcrel-b26>}
-    [9 cost=0] mul              mul(){cond 0000000 s:1u rd 0000 rm 1001 rn}
-    [10 cost=0] mla              mla(){cond 0000001 s:1u rd ra rm 1001 rn}
+    [6 cost=0] ldst-reg         ldst-reg(){cond 011 1 u:1u b:1u 0 l:1u rn rt shift-amount:5u shift-kind:2u 0 rm}
+    [7 cost=0] udf              udf(){1110 01111111 imm12:12u 1111 imm4:4u}
+    [8 cost=0] bl               bl(){cond 1011 <target:24@0 pcrel-call>}
+    [9 cost=0] b                b(){cond 1010 <target:24@0 pcrel-b26>}
+    [10 cost=0] mul              mul(){cond 0000000 s:1u rd 0000 rm 1001 rn}
+    [11 cost=0] mla              mla(){cond 0000001 s:1u rd ra rm 1001 rn}
+    [12 cost=0] vmov-reg-d       vmov-reg-d(){cond 11101 D:1u 11 0000 Vd:4u 1011 01 M:1u 0 Vm:4u}
+    [13 cost=0] vmov-reg-s       vmov-reg-s(){cond 11101 D:1u 11 0000 Vd:4u 1010 01 M:1u 0 Vm:4u}
+    [14 cost=0] vmov-imm-d       vmov-imm-d(){cond 11101 D:1u 11 imm4H:4u Vd:4u 1011 0000 imm4L:4u}
+    [15 cost=0] vmov-imm-s       vmov-imm-s(){cond 11101 D:1u 11 imm4H:4u Vd:4u 1010 0000 imm4L:4u}
+    [16 cost=0] vmov-to-single   vmov-to-single(){cond 1110000 0 Vn:4u rt 1010 N:1u 0010000}
+    [17 cost=0] vmov-from-single vmov-from-single(){cond 1110000 1 Vn:4u rt 1010 N:1u 0010000}
+    [18 cost=0] vmov-to-double   vmov-to-double(){cond 1100010 0 rt2 rt 1011 00 D:1u 1 Vm:4u}
+    [19 cost=0] vmov-from-double vmov-from-double(){cond 1100010 1 rt2 rt 1011 00 D:1u 1 Vm:4u}
+    [20 cost=0] v3-d             v3-d(){cond 1110 b23:1u D:1u b21:1u b20:1u Vn:4u Vd:4u 1011 N:1u b6:1u M:1u 0 Vm:4u}
+    [21 cost=0] v3-s             v3-s(){cond 1110 b23:1u D:1u b21:1u b20:1u Vn:4u Vd:4u 1010 N:1u b6:1u M:1u 0 Vm:4u}
+    [22 cost=0] vneg-d           vneg-d(){cond 11101 D:1u 11 0001 Vd:4u 1011 01 M:1u 0 Vm:4u}
+    [23 cost=0] vneg-s           vneg-s(){cond 11101 D:1u 11 0001 Vd:4u 1010 01 M:1u 0 Vm:4u}
+    [24 cost=0] vcmp-reg-d       vcmp-reg-d(){cond 11101 D:1u 11 0100 Vd:4u 1011 01 M:1u 0 Vm:4u}
+    [25 cost=0] vcmp-reg-s       vcmp-reg-s(){cond 11101 D:1u 11 0100 Vd:4u 1010 01 M:1u 0 Vm:4u}
+    [26 cost=0] vcmp-zero-d      vcmp-zero-d(){cond 11101 D:1u 11 0101 Vd:4u 1011 01 000000}
+    [27 cost=0] vcmp-zero-s      vcmp-zero-s(){cond 11101 D:1u 11 0101 Vd:4u 1010 01 000000}
+    [28 cost=0] vmrs             vmrs(){cond 1110111100011111101000010000}
+    [29 cost=0] vcvt-f32-f64     vcvt-f32-f64(){cond 11101 D:1u 11 0111 Vd:4u 1011 11 M:1u 0 Vm:4u}
+    [30 cost=0] vcvt-f64-f32     vcvt-f64-f32(){cond 11101 D:1u 11 0111 Vd:4u 1010 11 M:1u 0 Vm:4u}
+    [31 cost=0] vcvt-f32-s32     vcvt-f32-s32(){cond 11101 D:1u 11 1000 Vd:4u 1010 1 1 M:1u 0 Vm:4u}
+    [32 cost=0] vcvt-f64-s32     vcvt-f64-s32(){cond 11101 D:1u 11 1000 Vd:4u 1011 1 1 M:1u 0 Vm:4u}
+    [33 cost=0] vcvt-f64-u32     vcvt-f64-u32(){cond 11101 D:1u 11 1000 Vd:4u 1011 0 1 M:1u 0 Vm:4u}
+    [34 cost=0] vcvt-s32-f64     vcvt-s32-f64(){cond 11101 D:1u 11 1101 Vd:4u 1011 11 M:1u 0 Vm:4u}
+    [35 cost=0] vmem-d           vmem-d(){cond 1101 U:1u D:1u 0 L:1u rn Vd:4u 1011 imm8:8u}
+    [36 cost=0] vmem-s           vmem-s(){cond 1101 U:1u D:1u 0 L:1u rn Vd:4u 1010 imm8:8u}
   cond[16]{cond:4u}
   rm(){rm:4u}
   rd(){rd:4u}
@@ -701,6 +727,7 @@
   modimm(){rot:4u imm8:8u}
   rt(){rt:4u}
   ra(){ra:4u}
+  rt2(){rt2:4u}
   ########## aarch64 tokens
   1 5 directive .text
   6 1 eol \n
@@ -874,7 +901,7 @@
   00000014  c0 03 5f d6  ret                        [aarch64.ret]
   ########## aarch64 codec
   alt aarch64
-    [0 cost=0] add-imm          add-imm(){sf:1u 00100010 sh:1u imm12:12u rn rd}
+    [0 cost=0] add-imm          add-imm(){sf:1u 00100010 sh:1u <imm:12@0 add-lo12> rn rd}
     [1 cost=0] sub-imm          sub-imm(){sf:1u 10100010 sh:1u imm12:12u rn rd}
     [2 cost=0] addsub-shift     addsub-shift(){sf:1u op:1u s:1u 01011 shift:2u 0 rm imm6:6u rn rd}
     [3 cost=0] logical-imm-32   logical-imm-32(){0 opc:2u 100100 bitmask32 rn rd}
@@ -898,6 +925,18 @@
     [21 cost=0] b-cond           b-cond(){01010100 <target:19@0 pcrel-b19> 0 cond}
     [22 cost=0] bl               bl(){100101 <target:26@0 pcrel-call26>}
     [23 cost=0] subs-imm         subs-imm(){sf:1u 11100010 sh:1u imm12:12u rn rd}
+    [24 cost=0] ldr8-roff        ldr8-roff(){00 111000 01 1 rm option:3u s:1u 10 rn rt}
+    [25 cost=0] str8-roff        str8-roff(){00 111000 00 1 rm option:3u s:1u 10 rn rt}
+    [26 cost=0] ldr16-roff       ldr16-roff(){01 111000 01 1 rm option:3u s:1u 10 rn rt}
+    [27 cost=0] str16-roff       str16-roff(){01 111000 00 1 rm option:3u s:1u 10 rn rt}
+    [28 cost=0] ldr32-roff       ldr32-roff(){10 111000 01 1 rm option:3u s:1u 10 rn rt}
+    [29 cost=0] str32-roff       str32-roff(){10 111000 00 1 rm option:3u s:1u 10 rn rt}
+    [30 cost=0] ldr64-roff       ldr64-roff(){11 111000 01 1 rm option:3u s:1u 10 rn rt}
+    [31 cost=0] str64-roff       str64-roff(){11 111000 00 1 rm option:3u s:1u 10 rn rt}
+    [32 cost=0] fmov-imm-d       fmov-imm-d(){000 11110 01 1 fpimm8-d 10000000 rd:5u}
+    [33 cost=0] fmov-imm-s       fmov-imm-s(){000 11110 00 1 fpimm8-s 10000000 rd:5u}
+    [34 cost=0] fcmp-imm0-d      fcmp-imm0-d(){000 11110 01 1 00000001000 rn:5u 01000}
+    [35 cost=0] fcmp-imm0-s      fcmp-imm0-s(){000 11110 00 1 00000001000 rn:5u 01000}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}
@@ -912,6 +951,8 @@
   offset-scaled2(){<offset:12@0 ldst16-lo12>}
   offset-scaled4(){<offset:12@0 ldst32-lo12>}
   offset-scaled8(){<offset:12@0 ldst64-lo12>}
+  fpimm8-d(){imm8:8u}
+  fpimm8-s(){imm8:8u}
   ########## riscv32 tokens
   1 7 directive .option
   9 5 ident nopic

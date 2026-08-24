@@ -31,6 +31,22 @@ let%expect_test "every target's codec passes Codec.check" =
     x86_64: none
     arm: alt arm: movw and dp-imm have overlapping fixed bits; priority 1 before 3 decides
     arm: alt arm: movt and dp-imm have overlapping fixed bits; priority 2 before 3 decides
+    arm: alt arm: vmov-reg-d and v3-d have overlapping fixed bits; priority 12 before 20 decides
+    arm: alt arm: vmov-reg-s and v3-s have overlapping fixed bits; priority 13 before 21 decides
+    arm: alt arm: vmov-imm-d and v3-d have overlapping fixed bits; priority 14 before 20 decides
+    arm: alt arm: vmov-imm-s and v3-s have overlapping fixed bits; priority 15 before 21 decides
+    arm: alt arm: v3-d and vneg-d have overlapping fixed bits; priority 20 before 22 decides
+    arm: alt arm: v3-d and vcmp-reg-d have overlapping fixed bits; priority 20 before 24 decides
+    arm: alt arm: v3-d and vcmp-zero-d have overlapping fixed bits; priority 20 before 26 decides
+    arm: alt arm: v3-d and vcvt-f32-f64 have overlapping fixed bits; priority 20 before 29 decides
+    arm: alt arm: v3-d and vcvt-f64-s32 have overlapping fixed bits; priority 20 before 32 decides
+    arm: alt arm: v3-d and vcvt-f64-u32 have overlapping fixed bits; priority 20 before 33 decides
+    arm: alt arm: v3-d and vcvt-s32-f64 have overlapping fixed bits; priority 20 before 34 decides
+    arm: alt arm: v3-s and vneg-s have overlapping fixed bits; priority 21 before 23 decides
+    arm: alt arm: v3-s and vcmp-reg-s have overlapping fixed bits; priority 21 before 25 decides
+    arm: alt arm: v3-s and vcmp-zero-s have overlapping fixed bits; priority 21 before 27 decides
+    arm: alt arm: v3-s and vcvt-f64-f32 have overlapping fixed bits; priority 21 before 30 decides
+    arm: alt arm: v3-s and vcvt-f32-s32 have overlapping fixed bits; priority 21 before 31 decides
     aarch64: none
     riscv32: none
     riscv64: none
@@ -1137,6 +1153,52 @@ let%expect_test "a negative RIP-relative displacement redisplays with its sign" 
     40000006  c3                 ret                  [x86_64.ret]
     |}]
 
+(* A *symbolic* base-less-SIB displacement - [Te4(,%eax,4)] and the
+   parenthesized-expression sibling [(tbl + 4)(,%ecx,8)] (M5 corpus evidence:
+   asm/fixtures/corpus/c/x86_32/summary.txt's aes.c/sha3.c). Unlike the
+   numeric cases just above, the displacement here is a fixup against a
+   symbol, not a literal; [split_nobase_sib] (x86_family.ml) is what makes
+   the parenthesized-expression shape parse at all - [(tbl + 4)] is itself a
+   grouped expression, not a bare identifier. Checked against i686-linux-gnu-as
+   before being promoted here (see corpus.md's Follow-ups / this session). *)
+(* [tbl] stays in [.text], like every other fixup test in this file
+   ([disasm] binds every segment at the same address, so a second segment
+   would overlap the first) and is a code label (a [ret], not a [.long]) so
+   the trailing bytes still decode - [disasm] disassembles the whole segment
+   linearly, and this test cares about the SIB fixup, not what [tbl] holds. *)
+let%expect_test "a base-less SIB operand with a symbolic displacement" =
+  disasm "x86_32"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tmovl tbl(,%eax,4), %eax\n\
+     \tmovl (tbl + 4)(,%ecx,8), %ecx\n\
+     \tret\n\
+     tbl:\n\
+     \tret\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  8b 04 85 0f 00 00 40  movl 1073741839(,%eax,4), %eax  [x86_32.mov-r-rm.sib-nobase-disp32]
+    40000007  8b 0c cd 13 00 00 40  movl 1073741843(,%ecx,8), %ecx  [x86_32.mov-r-rm.sib-nobase-disp32]
+    4000000e  c3                    ret                             [x86_32.ret]
+    4000000f  c3                    ret                             [x86_32.ret]
+    40000010  c3                    ret                             [x86_32.ret]
+    |}]
+
+(* [jmp *sym(,%reg,scale)] - an indirect jump through a jump-table entry
+   (M5 corpus evidence: asm/fixtures/corpus/c/x86_32/summary.txt's
+   siphash24.c/vmach.c switch-dispatch code). [Opcode.Jmp, [Operand.Mem m]]
+   (x86_family_encode.ml) is the only new lowering this needed - [Jmp_rm] was
+   already generic over [Rm.t]. *)
+let%expect_test "an indirect jmp through a base-less SIB jump-table entry" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tjmp *tbl(,%eax,4)\ntbl:\n\tret\n";
+  [%expect
+    {|
+    40000000  ff 24 85 07 00 00 40  jmp *1073741831(,%eax,4)  [x86_32.jmp-rm.sib-nobase-disp32]
+    40000007  c3                    ret                       [x86_32.ret]
+    |}]
+
 (* {1 SSE2 scalar float}
 
    M5 corpus evidence (asm/docs/corpus.md): the register class and
@@ -1237,6 +1299,29 @@ let%expect_test "a RIP-relative binop memory operand (xorpd)" =
     {|
     40000000  66 0f 57 1d 08 00 00 00  xorpd 8(%rip), %xmm3  [x86_64.sse-binop-66.asz-absent.rex-absent.disp32-norm]
     40000008  c3                       ret                   [x86_64.ret]
+    |}]
+
+(* x86_32 has xmm0-xmm7 (no REX byte, so no REX-extended xmm8-15 - GNU as
+   rejects %xmm8 outright in 32-bit mode) with the identical opcode bytes as
+   x86_64 (M5 corpus evidence: asm/fixtures/corpus/c/x86_32/summary.txt -
+   "unknown register %xmmN" on every file with floating-point arithmetic).
+   The SSE2 codec itself is already target-agnostic; this is a register-table
+   addition only (x86_32_encode.ml). *)
+let%expect_test "x86_32 has xmm0-xmm7 with the same SSE2 encoding as x86_64" =
+  disasm "x86_32"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \taddsd %xmm2, %xmm3\n\
+     \tcvtsi2sd %eax, %xmm4\n\
+     \tmovsd (%eax), %xmm5\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  f2 0f 58 da  addsd %xmm2, %xmm3    [x86_32.sse-binop-f2.reg]
+    40000004  f2 0f 2a e0  cvtsi2sd %eax, %xmm4  [x86_32.cvtsi2sd-r-rm.reg]
+    40000008  f2 0f 10 28  movsd (%eax), %xmm5   [x86_32.sse-movsd-load.base-disp0]
+    4000000c  c3           ret                   [x86_32.ret]
     |}]
 
 (* {1 SSE operand-class validation}
@@ -1772,4 +1857,133 @@ let%expect_test "portable manifest aggregates a multi-segment image, including B
     .text  address=0x400000     bytes=6 r-x
     .data  address=0x400006     bytes=4 rw-
     .bss   address=0x40000a     bytes=8 rw-
+    |}]
+
+(* {1 AArch64 register-offset addressing, lo12 add, and FP immediates}
+
+   [Disp.t]'s third constructor ([Reg], register-offset addressing) and the
+   scalar FP modified-immediate FMOV/FCMP forms. Byte-for-byte hand-verified
+   against the real, installed aarch64-linux-gnu-as/objdump before being
+   written down here - the same discipline the x86 SSE2 section above used.
+   Real objdump output:
+     b86a5924  ldr w4, [x9, w10, uxtw #2]
+     b86a4924  ldr w4, [x9, w10, uxtw]
+     f8616a82  ldr x2, [x20, x1]
+     f8617a82  ldr x2, [x20, x1, lsl #3]
+     b82ad920  str w0, [x9, w10, sxtw #2]
+     38654ac2  ldrb w2, [x22, w5, uxtw]
+     f861fa80  ldr x0, [x20, x1, sxtx #3] *)
+let%expect_test "register-offset addressing: uxtw/sxtw/sxtx/lsl, scaled and unscaled" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tldr w4, [x9, w10, uxtw #2]\n\
+     \tldr w4, [x9, w10, uxtw]\n\
+     \tldr x2, [x20, x1]\n\
+     \tldr x2, [x20, x1, lsl #3]\n\
+     \tstr w0, [x9, w10, sxtw #2]\n\
+     \tldrb w2, [x22, w5, uxtw]\n\
+     \tldr x0, [x20, x1, sxtx #3]\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  24 59 6a b8  ldr w4, [x9, w10, uxtw #2]  [aarch64.ldr32-roff]
+    40000004  24 49 6a b8  ldr w4, [x9, w10, uxtw]     [aarch64.ldr32-roff]
+    40000008  82 6a 61 f8  ldr x2, [x20, x1]           [aarch64.ldr64-roff]
+    4000000c  82 7a 61 f8  ldr x2, [x20, x1, lsl #3]   [aarch64.ldr64-roff]
+    40000010  20 d9 2a b8  str w0, [x9, w10, sxtw #2]  [aarch64.str32-roff]
+    40000014  c2 4a 65 38  ldrb w2, [x22, w5, uxtw]    [aarch64.ldr8-roff]
+    40000018  80 fa 61 f8  ldr x0, [x20, x1, sxtx #3]  [aarch64.ldr64-roff]
+    4000001c  c0 03 5f d6  ret                         [aarch64.ret]
+    |}]
+
+(* [[x20, x1]] with no extend token at all and [[x20, x1, lsl #0]] with an
+   explicit unscaled [lsl #0] assemble to the same word on real [as]
+   ([f8616a82] both - verified directly, distinct from the [lsl #3] case
+   above which is [f8617a82]). This test caught a real encoder bug during
+   this pass: [ldst_roff_alt]'s [encode] set S=1 for *any* [Some _] amount,
+   including an explicit [Some 0], so [lsl #0] on a doubleword access
+   encoded identically to [lsl #3] instead of to the bare form. Fixed by
+   treating [Some 0] as S=0 alongside [None] - only a nonzero explicit
+   amount is S=1. *)
+let%expect_test "a bare two-register offset and an explicit lsl #0 are the same encoding" =
+  disasm "aarch64"
+    "\t.text\n\t.globl f\nf:\n\tldr x2, [x20, x1]\n\tldr x2, [x20, x1, lsl #0]\n\tret\n";
+  [%expect
+    {|
+    40000000  82 6a 61 f8  ldr x2, [x20, x1]  [aarch64.ldr64-roff]
+    40000004  82 6a 61 f8  ldr x2, [x20, x1]  [aarch64.ldr64-roff]
+    40000008  c0 03 5f d6  ret                [aarch64.ret]
+    |}]
+
+(* stp has no register-offset addressing form at all - real [as] rejects
+   [stp x0, x1, [x9, x10]] outright ("error: invalid addressing mode"). Our
+   own rejection reuses [`Stp_symbolic_offset] rather than adding a fourth
+   error case, exactly as the [Disp.Sym] arm beside it already does. *)
+let%expect_test "stp has no register-offset addressing form" =
+  attempt "aarch64" "\t.text\n\tstp x0, x1, [x9, x10]\n";
+  [%expect {| aarch64.lower: stp takes a numeric offset |}]
+
+(* Real objdump output for the four immediates below:
+     1e602008  fcmp d0, #0.0
+     1e202028  fcmp s1, #0.0
+     1e6e1000  fmov d0, #1.000000000000000000e+00
+     1e2e1000  fmov s0, #1.000000000000000000e+00
+     1e7e1002  fmov d2, #-1.000000000000000000e+00
+     1e2c1003  fmov s3, #5.000000000000000000e-01 *)
+let%expect_test "fcmp #0.0 and fmov modified-immediate forms, single and double" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tfcmp d0, #0.0\n\
+     \tfcmp s1, #0.0\n\
+     \tfmov d0, #1.0\n\
+     \tfmov s0, #1.0\n\
+     \tfmov d2, #-1.0\n\
+     \tfmov s3, #0.5\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  08 20 60 1e  fcmp d0, #0.000000000000000000e+00   [aarch64.fcmp-imm0-d]
+    40000004  28 20 20 1e  fcmp s1, #0.000000000000000000e+00   [aarch64.fcmp-imm0-s]
+    40000008  00 10 6e 1e  fmov d0, #1.000000000000000000e+00   [aarch64.fmov-imm-d]
+    4000000c  00 10 2e 1e  fmov s0, #1.000000000000000000e+00   [aarch64.fmov-imm-s]
+    40000010  02 10 7e 1e  fmov d2, #-1.000000000000000000e+00  [aarch64.fmov-imm-d]
+    40000014  03 10 2c 1e  fmov s3, #5.000000000000000000e-01   [aarch64.fmov-imm-s]
+    40000018  c0 03 5f d6  ret                                  [aarch64.ret]
+    |}]
+
+(* fcmp's immediate operand must be exactly #0.0 - any other literal is a
+   different, unimplemented instruction shape (verified against real [as]:
+   [fcmp d0, #1.0] is rejected there too, "error: FP compare register expected"
+   in a form gas does support elsewhere, but not as a modified-immediate). *)
+let%expect_test "fcmp rejects a nonzero immediate" =
+  attempt "aarch64" "\t.text\n\tfcmp d0, #1.0\n";
+  [%expect
+    {| aarch64.lower: fcmp's immediate operand must be #0.0, not #1.000000000000000000e+00 |}]
+
+(* [add x9, x9, #:lo12:sym] - the ADD low-12 relocation form (M5 corpus
+   evidence). Real [as]/[objdump] on the un-relocated instruction word alone
+   (the low-12 field itself is R_AARCH64_ADD_ABS_LO12_NC, resolved by the
+   linker, so it reads 0 in the object file):
+     91000129  add x9, x9, #0x0
+       0: R_AARCH64_ADD_ABS_LO12_NC .data
+   [disasm] here (like the rest of this file) binds every segment at the same
+   address, so a second, nonempty section would overlap [.text] rather than
+   sit after it; [sym] is defined in [.text] itself to keep this a single-
+   segment program (see "a base-less SIB..." and the RIP-relative test above
+   for the same constraint on x86). [sym]'s bound address is 0x40000008, so
+   the low-12 field the real relocation would leave as 0 instead comes out as
+   8 (word-encoded as [imm12 = 8] at bits [21:10] - [0x91000129 + (8 << 10) =
+   0x91002129], matching the fixed opcode/rd/rn bits real [as] produced
+   above.) *)
+let%expect_test "add ..., #:lo12:sym" =
+  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tadd x9, x9, #:lo12:sym\n\tret\nsym:\n\t.word 0\n";
+  [%expect
+    {|
+    40000000  29 21 00 91  add x9, x9, #8  [aarch64.add-imm]
+    40000004  c0 03 5f d6  ret             [aarch64.ret]
+    40000008  00 00 00 00  udf #0          [aarch64.udf]
     |}]

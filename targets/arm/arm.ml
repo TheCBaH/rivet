@@ -26,6 +26,7 @@ type parse_error_kind =
   | `Shift_amount_too_wide
   | `Cannot_parse_operand of cannot_parse
   | `Unbalanced_brackets
+  | `Bad_float_literal of string
   | `Thumb_directive_out_of_scope ]
 
 and shift_amount_out_of_range = { amount : int; max : int }
@@ -42,12 +43,14 @@ let pp_parse_error_kind ppf : parse_error_kind -> unit = function
   | `Cannot_parse_operand { slice; _ } ->
       Fmt.pf ppf "cannot parse operand %s" (Asm_syntax.Token.slice_text slice)
   | `Unbalanced_brackets -> Fmt.string ppf "unbalanced brackets in operand"
+  | `Bad_float_literal s -> Fmt.pf ppf "cannot parse floating-point literal %s" s
   | `Thumb_directive_out_of_scope -> Fmt.string ppf "Thumb is not in M1 scope"
 
 let parse_error_kind_code : parse_error_kind -> string = function
   | `Thumb_directive_out_of_scope -> "arm.directive"
   | `Unknown_register _ | `Unknown_shift _ | `Offset_too_wide | `Shift_amount_out_of_range _
-  | `Shift_amount_too_wide | `Cannot_parse_operand _ | `Unbalanced_brackets ->
+  | `Shift_amount_too_wide | `Cannot_parse_operand _ | `Unbalanced_brackets | `Bad_float_literal _
+    ->
       "arm.operand"
 
 let pp_parse_error ppf e = pp_parse_error_kind ppf (Target_error.kind e)
@@ -120,23 +123,50 @@ let parse_one (slice : Asm_syntax.Token.slice) =
     | None -> None
     | Some x -> Some (if neg then Int64.neg x else x)
   in
+  (* [whole.frac] is one exact decimal literal, e.g. [#1.5]/[#1.]/[#-0.5]: the
+     lexer has no float token, so a fractional VFP immediate arrives as an
+     [Int] followed by either a bare [Dot] ([1.], no digits after the point)
+     or a [Directive] token ([.5] - the lexer reads any [.]-led run of
+     identifier-ish characters as a directive name, having no way to know
+     this one is not [.text]). [Directive]'s payload keeps the leading dot,
+     so concatenating it straight onto the whole part's digits is enough. *)
+  let float_lit ~negate whole frac =
+    let s = (if negate then "-" else "") ^ Bigint.to_string whole ^ frac in
+    match float_of_string_opt s with
+    | Some v -> Ok (Operand.FImm v)
+    | None -> bad (`Bad_float_literal s)
+  in
   match List.map Token.kind slice with
   | [ Token.Ident n ] -> (
-      (* A register if the table knows the name, a symbol otherwise: A32 has no
-         register sigil, so nothing else can tell them apart. *)
+      (* A register if a table knows the name, a symbol otherwise: A32 has no
+         register sigil, so nothing else can tell them apart. GPR first, then
+         the two VFP register files - none of the three namespaces overlap. *)
       match Reg.find n with
       | Some r -> Ok (Operand.Reg r)
-      | None -> Ok (Operand.Sym (Asm_core.Expr.Symbol n)))
+      | None -> (
+          match Dreg.find n with
+          | Some r -> Ok (Operand.Dreg r)
+          | None -> (
+              match Sreg.find n with
+              | Some r -> Ok (Operand.Sreg r)
+              | None -> Ok (Operand.Sym (Asm_core.Expr.Symbol n)))))
   | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Operand.Imm v)
   | [ Token.Immediate_sigil; Token.Minus; Token.Int v ] -> Ok (Operand.Imm (Bigint.neg v))
+  | [ Token.Immediate_sigil; Token.Int whole; Token.Dot ] -> float_lit ~negate:false whole "."
+  | [ Token.Immediate_sigil; Token.Int whole; Token.Directive frac ] ->
+      float_lit ~negate:false whole frac
+  | [ Token.Immediate_sigil; Token.Minus; Token.Int whole; Token.Dot ] ->
+      float_lit ~negate:true whole "."
+  | [ Token.Immediate_sigil; Token.Minus; Token.Int whole; Token.Directive frac ] ->
+      float_lit ~negate:true whole frac
   | [ Token.Lbracket; Token.Ident b; Token.Rbracket ] -> (
       match Reg.find b with
-      | Some r -> Ok (Operand.Mem { base = r; offset = 0L; writeback = false; pre = true })
+      | Some r -> Ok (Operand.Mem { base = r; offset = Mem.Imm 0L; writeback = false; pre = true })
       | None -> bad (`Unknown_register b))
   | [ Token.Lbracket; Token.Ident b; Token.Immediate_sigil; Token.Int v; Token.Rbracket ] -> (
       match (Reg.find b, signed_int false v) with
       | Some r, Some off ->
-          Ok (Operand.Mem { base = r; offset = off; writeback = false; pre = true })
+          Ok (Operand.Mem { base = r; offset = Mem.Imm off; writeback = false; pre = true })
       | None, _ -> bad (`Unknown_register b)
       | _, None -> bad `Offset_too_wide)
   | [
@@ -144,9 +174,91 @@ let parse_one (slice : Asm_syntax.Token.slice) =
   ] -> (
       match (Reg.find b, signed_int true v) with
       | Some r, Some off ->
-          Ok (Operand.Mem { base = r; offset = off; writeback = false; pre = true })
+          Ok (Operand.Mem { base = r; offset = Mem.Imm off; writeback = false; pre = true })
       | None, _ -> bad (`Unknown_register b)
       | _, None -> bad `Offset_too_wide)
+  (* Register-offset addressing: [ldr r2, [r1, r2]] / [ldrb r2, [r7, r0]], no
+     shift. *)
+  | [ Token.Lbracket; Token.Ident b; Token.Ident idx; Token.Rbracket ] -> (
+      match (Reg.find b, Reg.find idx) with
+      | Some br, Some ir ->
+          Ok
+            (Operand.Mem
+               {
+                 base = br;
+                 offset = Mem.Reg_offset { reg = ir; negate = false; kind = 0; amount = 0 };
+                 writeback = false;
+                 pre = true;
+               })
+      | None, _ -> bad (`Unknown_register b)
+      | _, None -> bad (`Unknown_register idx))
+  (* Register-offset, negated: [ldr r2, [r1, -r2]]. *)
+  | [ Token.Lbracket; Token.Ident b; Token.Minus; Token.Ident idx; Token.Rbracket ] -> (
+      match (Reg.find b, Reg.find idx) with
+      | Some br, Some ir ->
+          Ok
+            (Operand.Mem
+               {
+                 base = br;
+                 offset = Mem.Reg_offset { reg = ir; negate = true; kind = 0; amount = 0 };
+                 writeback = false;
+                 pre = true;
+               })
+      | None, _ -> bad (`Unknown_register b)
+      | _, None -> bad (`Unknown_register idx))
+  (* Shifted register-offset: [ldr r2, [r1, r2, lsl #2]]. *)
+  | [
+   Token.Lbracket;
+   Token.Ident b;
+   Token.Ident idx;
+   Token.Ident sh;
+   Token.Immediate_sigil;
+   Token.Int v;
+   Token.Rbracket;
+  ] -> (
+      match (Reg.find b, Reg.find idx, shift_of_name sh, Bigint.to_int_opt v) with
+      | Some br, Some ir, Some kind, Some amount ->
+          if amount < 0 || amount > 31 then bad (`Shift_amount_out_of_range { amount; max = 31 })
+          else
+            Ok
+              (Operand.Mem
+                 {
+                   base = br;
+                   offset = Mem.Reg_offset { reg = ir; negate = false; kind; amount };
+                   writeback = false;
+                   pre = true;
+                 })
+      | None, _, _, _ -> bad (`Unknown_register b)
+      | _, None, _, _ -> bad (`Unknown_register idx)
+      | _, _, None, _ -> bad (`Unknown_shift sh)
+      | _, _, _, None -> bad `Shift_amount_too_wide)
+  (* Shifted register-offset, negated: [ldr r2, [r1, -r2, lsl #3]]. *)
+  | [
+   Token.Lbracket;
+   Token.Ident b;
+   Token.Minus;
+   Token.Ident idx;
+   Token.Ident sh;
+   Token.Immediate_sigil;
+   Token.Int v;
+   Token.Rbracket;
+  ] -> (
+      match (Reg.find b, Reg.find idx, shift_of_name sh, Bigint.to_int_opt v) with
+      | Some br, Some ir, Some kind, Some amount ->
+          if amount < 0 || amount > 31 then bad (`Shift_amount_out_of_range { amount; max = 31 })
+          else
+            Ok
+              (Operand.Mem
+                 {
+                   base = br;
+                   offset = Mem.Reg_offset { reg = ir; negate = true; kind; amount };
+                   writeback = false;
+                   pre = true;
+                 })
+      | None, _, _, _ -> bad (`Unknown_register b)
+      | _, None, _, _ -> bad (`Unknown_register idx)
+      | _, _, None, _ -> bad (`Unknown_shift sh)
+      | _, _, _, None -> bad `Shift_amount_too_wide)
   (* [rm, lsl #n] as one operand, the two halves already rejoined by
      [join_shifts]. A32 folds the shift into the data-processing word rather
      than making it a separate instruction, so it is part of the operand and not

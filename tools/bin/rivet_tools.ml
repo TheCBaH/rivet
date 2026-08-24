@@ -174,20 +174,29 @@ let corpus_check_cmd =
   let run (err_trace, root) = (err_trace, with_repo root Corpus_classify_cmd.check) in
   Cmdliner.Cmd.v
     (Cmdliner.Cmd.info "check"
-       ~doc:"Verify the committed CompCert c/ classification, no toolchain needed")
+       ~doc:"Verify every already-published CompCert c/ classification, no toolchain needed")
     Cmdliner.Term.(const run $ common)
 
-let corpus_classify_c_cmd =
-  let run (err_trace, root) = (err_trace, with_repo root Corpus_classify_cmd.classify_c) in
+(* One explicit subcommand per target, never a `--target` flag with
+   unimplemented values (asm/docs/corpus.md's own Follow-ups) - `Target.of_string`
+   stays internal to Target.all's own literals here, not exposed to argv. *)
+let corpus_classify_c_cmd (target : Target.t) =
+  let name = "classify-c-" ^ Target.to_string target in
+  let run (err_trace, root) =
+    (err_trace, with_repo root (fun repo -> Corpus_classify_cmd.classify_c repo target))
+  in
   Cmdliner.Cmd.v
-    (Cmdliner.Cmd.info "classify-c"
-       ~doc:"Compile CompCert's test/c/ suite for x86_64 and classify each file against the parser")
+    (Cmdliner.Cmd.info name
+       ~doc:
+         (Printf.sprintf
+            "Compile CompCert's test/c/ suite for %s and classify each file against the parser"
+            (Target.to_string target)))
     Cmdliner.Term.(const run $ common)
 
 let corpus_cmd =
   Cmdliner.Cmd.group
     (Cmdliner.Cmd.info "corpus" ~doc:"CompCert's own test suites, classified against the parser")
-    [ corpus_check_cmd; corpus_classify_c_cmd ]
+    (corpus_check_cmd :: List.map corpus_classify_c_cmd Target.all)
 
 let targets_cmd =
   let run (err_trace, _root) set =

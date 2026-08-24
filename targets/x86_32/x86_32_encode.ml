@@ -15,10 +15,18 @@ module Mode = struct
   let address_width = 32
   let rex_allowed = false
 
+  (* xmm0-xmm7 only: 32-bit mode has no REX byte, so the REX.R/REX.B
+     extension bits that reach xmm8-xmm15 in 64-bit mode do not exist here -
+     verified against i686-linux-gnu-as, which rejects %xmm8 outright. The
+     SSE2 codec itself (x86_family_encode.ml) is unconditional and already
+     produces the identical opcode bytes in both modes (no REX prefix either
+     way for xmm0-7); this register-table addition is the only x86_32 change
+     the M5 corpus (asm/docs/corpus.md) needs for SSE2 float support. *)
   let registers =
     X86_family_encode.Reg.base_regs 32 X86_family_encode.Reg.names_32
     @ X86_family_encode.Reg.base_regs 16 X86_family_encode.Reg.names_16
     @ X86_family_encode.Reg.base_regs 8 X86_family_encode.Reg.names_8l
+    @ X86_family_encode.Reg.base_regs 128 (Array.sub X86_family_encode.Reg.names_xmm 0 8)
 
   (* Measured against i686-linux-gnu-as, and *not* the 64-bit table: 32-bit GAS
      pads with [lea] forms because the long NOP is P6+ and the default 32-bit

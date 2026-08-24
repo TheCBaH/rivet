@@ -67,6 +67,34 @@ module Reg = struct
   let x30 = { num = 30; width = 64; is_sp = false }
 end
 
+(* The scalar FP register file - [d0]-[d31]/[s0]-[s31] - kept separate from
+   [Reg] rather than folded into it with a "kind" tag: A64 has no register
+   that is sometimes general-purpose and sometimes floating-point the way
+   [Reg]'s own SP/zero-register ambiguity is resolved by instruction
+   position, so a shared type would carry a distinction every consumer has
+   to re-check for no case that needs it. Only [d]/[s] are here (M5's FMOV/
+   FCMP-immediate scope, asm/docs/corpus.md); [q]/[v] (NEON) are not. *)
+module Freg = struct
+  type t = { num : int; double : bool }
+
+  let equal a b = a.num = b.num && a.double = b.double
+  let name r = Printf.sprintf "%s%d" (if r.double then "d" else "s") r.num
+  let pp ppf r = Fmt.string ppf (name r)
+
+  let find name =
+    let numbered prefix double =
+      let n = String.length prefix in
+      if String.length name > n && String.sub name 0 n = prefix then
+        match int_of_string_opt (String.sub name n (String.length name - n)) with
+        | Some i when i >= 0 && i <= 31 -> Some { num = i; double }
+        | _ -> None
+      else None
+    in
+    match numbered "d" true with Some r -> Some r | None -> numbered "s" false
+
+  let of_num ~double n = { num = n land 31; double }
+end
+
 (* {1 Operands} *)
 
 (* A memory offset is a number or an expression (§D2). [ldr w0, [x16, #:lo12:g]]
@@ -74,12 +102,37 @@ end
    numeric field cannot hold it and a separate "symbolic load" form would be a
    second spelling of the same addressing mode. *)
 module Disp = struct
-  type t = Const of int64 | Sym of Asm_core.Expr.t
+  (* [Reg] is the register-offset addressing form - [ldr w4, [x9, w10, uxtw
+     #2]] - not a fourth [Mem] shape but a third [Disp] one, because base
+     plus offset is the whole addressing relation and this is a third kind
+     of offset, exactly as [Sym] already is. [amount] is what the source
+     wrote: [None] when the extend name carried no [#N] at all ([uxtw]
+     alone, or the two-register form with no extend token at all - GAS
+     accepts that too and it means [lsl] unshifted), [Some n] when it did,
+     including [Some 0] - which is a real, distinct encoding (S=1) from
+     [None] (S=0) even though both add the index unscaled; verified against
+     real [as]/[objdump]: [[x20, x1]] and [[x20, x1, lsl #0]] assemble to
+     the same word and objdump prints both as the bare two-register form,
+     which is why decode reconstructs [amount = None] whenever the encoded
+     amount is unscaled, regardless of which spelling produced it. *)
+  type t =
+    | Const of int64
+    | Sym of Asm_core.Expr.t
+    | Reg of { index : Reg.t; extend : string; amount : int option }
 
   let zero = Const 0L
-  let is_zero = function Const v -> Int64.equal v 0L | Sym _ -> false
+  let is_zero = function Const v -> Int64.equal v 0L | Sym _ | Reg _ -> false
   let equal a b = match (a, b) with Const x, Const y -> Int64.equal x y | _ -> a = b
-  let to_string = function Const v -> Printf.sprintf "#%Ld" v | Sym e -> Asm_core.Expr.to_string e
+
+  let to_string = function
+    | Const v -> Printf.sprintf "#%Ld" v
+    | Sym e -> Asm_core.Expr.to_string e
+    | Reg { index; extend; amount } ->
+        let tail =
+          if extend = "lsl" && amount = None then ""
+          else ", " ^ extend ^ match amount with Some n -> Printf.sprintf " #%d" n | None -> ""
+        in
+        Reg.name index ^ tail
 end
 
 module Mem = struct
@@ -97,7 +150,13 @@ end
 module Operand = struct
   type t =
     | Reg of Reg.t
+    | Freg of Freg.t
     | Imm of Bigint.t
+    | Fimm of float
+        (** [#1.0000000] in [fmov d0, #1.0000000] - the scalar FP modified immediate FMOV and
+            FCMP(#0.0) take. A distinct constructor from [Imm] rather than a reinterpreted bit
+            pattern: the value is a *value*, and [Fimm]'s domain (what VFPExpandImm can express) is
+            not [Imm]'s (any integer that fits). *)
     | Mem of Mem.t
     | Shift of Shift.t
         (** [lsl #0] in [movz w0, #42, lsl #0]. Not an operand in any real sense - it modifies the
@@ -110,7 +169,15 @@ module Operand = struct
 
   let pp ppf = function
     | Reg r -> Reg.pp ppf r
+    | Freg r -> Freg.pp ppf r
     | Imm v -> Fmt.pf ppf "#%a" Bigint.pp v
+    (* Objdump's own spelling ([%.18e], verified against real
+       [aarch64-linux-gnu-objdump]: [#1.000000000000000000e+00], not
+       CompCert's source spelling [#1.0000000] - same rule as [Reg]'s
+       canonical names ([sl]/[fp] rather than the [r10]/[r11] a source file
+       might have written), because this printer is also what the decoded
+       canonical dump uses and that dump is compared against objdump's. *)
+    | Fimm f -> Fmt.pf ppf "#%s" (Printf.sprintf "%.18e" f)
     | Mem m -> Mem.pp ppf m
     | Shift s -> Fmt.pf ppf "%s #%d" s.Shift.kind s.Shift.amount
     | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
@@ -194,6 +261,8 @@ module Opcode = struct
     | Bcond of Cond.t
     | Udf
     | Bl
+    | Fmov
+    | Fcmp
 
   let name = function
     | Add -> "add"
@@ -219,6 +288,8 @@ module Opcode = struct
     | Bcond c -> "b." ^ Cond.name c
     | Udf -> "udf"
     | Bl -> "bl"
+    | Fmov -> "fmov"
+    | Fcmp -> "fcmp"
 
   (* The surface spellings this target accepts, and the only place the mapping
      lives. [simplify_instruction] consults it rather than repeating the list,
@@ -251,6 +322,8 @@ module Opcode = struct
     | "b" -> Some B
     | "udf" -> Some Udf
     | "bl" -> Some Bl
+    | "fmov" -> Some Fmov
+    | "fcmp" -> Some Fcmp
     | m ->
         if String.length m > 2 && String.sub m 0 2 = "b." then
           Option.map (fun c -> Bcond c) (Cond.of_name (String.sub m 2 (String.length m - 2)))
@@ -304,7 +377,12 @@ let logical_name = function 0 -> "and" | 1 -> "orr" | 2 -> "eor" | 3 -> "ands" |
 
 module Lowered = struct
   type t =
-    | Add_imm of { rd : Reg.t; rn : Reg.t; imm : int64; shift12 : bool }
+    | Add_imm of { rd : Reg.t; rn : Reg.t; imm : Disp.t; shift12 : bool }
+        (** [imm] is a [Disp.t], not a plain [int64]: [add x9, x9, #:lo12:Te4] (R_AARCH64_ADD_ABS_LO12_NC)
+            is bit-for-bit the same form as a numeric [add ..., #N] - verified against real
+            [as]/[objdump], same fixed word, same field position - so it is the same [Lowered]
+            constructor with a [Disp.Sym] in the field a numeric add puts a [Disp.Const] in, exactly
+            the choice [Ldst_uoff.offset] already made for [ldr]/[str]'s own [#:lo12:]. *)
     | Stp_pre of { rt : Reg.t; rt2 : Reg.t; rn : Reg.t; offset : int64 }
     | Movz of { rd : Reg.t; imm16 : int64; hw : int }
     | Ldst_uoff of { size : access_size; load : bool; rt : Reg.t; rn : Reg.t; offset : Disp.t }
@@ -336,6 +414,12 @@ module Lowered = struct
     | Bcond of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
     | Udf of { imm16 : int64 }
     | Bl of { target : Asm_core.Lowered_ast.branch }
+    | Fmov_imm of { rd : Freg.t; value : float }
+    | Fcmp_imm0 of { rn : Freg.t }
+        (** FCMP(immediate) only ever compares against [#0.0] - a fixed instruction, not a general
+            8-bit immediate the way [Fmov_imm] is (verified against real [as]: any other literal
+            after a [fcmp ..., #] is a different, unimplemented instruction shape, not a value this
+            one field could hold) - so there is no value to carry beyond which register. *)
 
   let pp ppf = function
     (* [add xD, sp, #0] is spelled [mov xD, sp] by every A64 disassembler, and
@@ -344,10 +428,10 @@ module Lowered = struct
        type - there is exactly one encoding and inventing a second constructor
        for it would let the two drift. *)
     | Add_imm { rd; rn; imm; shift12 } ->
-        if Int64.equal imm 0L && (not shift12) && (rd.Reg.is_sp || rn.Reg.is_sp) then
+        if Disp.equal imm (Disp.Const 0L) && (not shift12) && (rd.Reg.is_sp || rn.Reg.is_sp) then
           Fmt.pf ppf "mov %a, %a" Reg.pp rd Reg.pp rn
         else
-          Fmt.pf ppf "add %a, %a, #%Ld%s" Reg.pp rd Reg.pp rn imm
+          Fmt.pf ppf "add %a, %a, %s%s" Reg.pp rd Reg.pp rn (Disp.to_string imm)
             (if shift12 then ", lsl #12" else "")
     | Stp_pre { rt; rt2; rn; offset } ->
         Fmt.pf ppf "stp %a, %a, [%a, #%Ld]!" Reg.pp rt Reg.pp rt2 Reg.pp rn offset
@@ -396,11 +480,13 @@ module Lowered = struct
         Fmt.pf ppf "b.%s %a" (Cond.name cond) Asm_core.Lowered_ast.pp_branch target
     | Udf { imm16 } -> Fmt.pf ppf "udf #%Ld" imm16
     | Bl { target } -> Fmt.pf ppf "bl %a" Asm_core.Lowered_ast.pp_branch target
+    | Fmov_imm { rd; value } -> Fmt.pf ppf "fmov %a, #%.18e" Freg.pp rd value
+    | Fcmp_imm0 { rn } -> Fmt.pf ppf "fcmp %a, #0.0" Freg.pp rn
 
   let equal a b =
     match (a, b) with
     | Add_imm x, Add_imm y ->
-        Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Int64.equal x.imm y.imm
+        Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Disp.equal x.imm y.imm
         && x.shift12 = y.shift12
     | Stp_pre x, Stp_pre y ->
         Reg.equal x.rt y.rt && Reg.equal x.rt2 y.rt2 && Reg.equal x.rn y.rn
@@ -429,6 +515,8 @@ module Lowered = struct
         Cond.equal x.cond y.cond && Asm_core.Lowered_ast.equal_branch x.target y.target
     | Udf x, Udf y -> Int64.equal x.imm16 y.imm16
     | Bl x, Bl y -> Asm_core.Lowered_ast.equal_branch x.target y.target
+    | Fmov_imm x, Fmov_imm y -> Freg.equal x.rd y.rd && Float.equal x.value y.value
+    | Fcmp_imm0 x, Fcmp_imm0 y -> Freg.equal x.rn y.rn
     | _ -> false
 end
 
@@ -602,6 +690,72 @@ let bitmask_codec ~datasize : (int64, fixup_kind) C.t =
         ~imms:(Int64.to_int imms))
     C.(field ~width:1 "n" ** field ~width:6 "immr" ** field ~width:6 "imms")
 
+(* {1 The scalar FP modified immediate}
+
+   FMOV(scalar,immediate)'s 8-bit field - sign:exp3:frac4 - expands to a full
+   double or single per the ARM ARM's VFPExpandImm: the sign is copied
+   whole, and the exponent is rebuilt by inverting the top of the 3-bit
+   [exp] and replicating that same bit to fill the rest of the target
+   format's exponent width, so an all-0/all-1 target exponent (inf/nan/
+   denormal) is unreachable - by construction, not by a range check. 256
+   values, so - like ARM's modified immediates and A64's own bitmask
+   immediates - encode is an exhaustive table scan rather than an inverse
+   formula. Verified against real [as]/[objdump]: [#1.0], [#0.5], [#-1.0],
+   [#2.0], [#16.0] and [#1.125] all round-tripped byte-for-byte before this
+   formula was written down. *)
+
+let vfp_expand_imm8 ~double imm8 =
+  let sign = (imm8 lsr 7) land 1 in
+  let e = (imm8 lsr 4) land 0x7 in
+  let f = imm8 land 0xF in
+  let e2 = (e lsr 2) land 1 in
+  let e10 = e land 0x3 in
+  if double then
+    let full_exp = ((1 - e2) lsl 10) lor ((if e2 = 1 then 0xFF else 0) lsl 2) lor e10 in
+    let mantissa = Int64.shift_left (Int64.of_int f) (52 - 4) in
+    let bits =
+      Int64.logor
+        (Int64.logor
+           (Int64.shift_left (Int64.of_int sign) 63)
+           (Int64.shift_left (Int64.of_int full_exp) 52))
+        mantissa
+    in
+    Int64.float_of_bits bits
+  else
+    let full_exp = ((1 - e2) lsl 7) lor ((if e2 = 1 then 0x1F else 0) lsl 2) lor e10 in
+    let mantissa = f lsl (23 - 4) in
+    let bits =
+      Int32.logor
+        (Int32.logor
+           (Int32.shift_left (Int32.of_int sign) 31)
+           (Int32.shift_left (Int32.of_int full_exp) 23))
+        (Int32.of_int mantissa)
+    in
+    Int32.float_of_bits bits
+
+let encode_fp_imm8 ~double v =
+  let rec go imm8 =
+    if imm8 > 255 then None
+    else if Float.equal (vfp_expand_imm8 ~double imm8) v then Some imm8
+    else go (imm8 + 1)
+  in
+  go 0
+
+let fp_imm8_domain ~double =
+  C.Finite.exhaustive
+    ~name:(Printf.sprintf "aarch64.fpimm8-%s" (if double then "d" else "s"))
+    ~why:
+      "the field is sign:exp3:frac4, so the domain is exactly 256 values and enumerating it is a \
+       table scan rather than an inverse formula"
+    (List.init 256 (fun imm8 -> vfp_expand_imm8 ~double imm8))
+
+let fp_imm8_codec ~double : (float, fixup_kind) C.t =
+  C.iso_fun
+    ~name:(Printf.sprintf "fpimm8-%s" (if double then "d" else "s"))
+    ~encode:(fun v -> Option.map (fun i -> Int64.of_int i) (encode_fp_imm8 ~double v))
+    ~decode:(fun i -> Some (vfp_expand_imm8 ~double (Int64.to_int i)))
+    (C.field ~width:8 "imm8")
+
 (* {1 The codec} *)
 
 let reg_field ~width ~sp name =
@@ -635,14 +789,22 @@ let ldst_offset ~size name =
     ~decode:(fun f -> Some (Int64.mul f step))
     (C.fixup ~width:12 ~kind:(Ldst_lo12 size) name)
 
+(* [add]'s own low-12 fixup, unscaled unlike [ldst_offset]'s - verified
+   against real [as]/[objdump]: [add x9, x9, #:lo12:Te4] emits
+   R_AARCH64_ADD_ABS_LO12_NC directly against the 12-bit field, no division
+   by an access width the way a load/store's low-12 is scaled. *)
+let add_lo12_offset name = C.fixup ~width:12 ~kind:Add_lo12 name
+
 let ldst_alt ~size ~load =
   let rt_width = access_reg_width size in
   C.iso_fun
     ~name:(Printf.sprintf "%s%d" (if load then "ldr" else "str") (access_bytes size * 8))
     ~encode:(function
-      | Lowered.Ldst_uoff { size = sz; load = l; rt; rn; offset } when sz = size && l = load ->
-          let v = match offset with Disp.Const v -> v | Disp.Sym _ -> 0L in
-          Some ((), ((), ((), (v, (rn, rt)))))
+      | Lowered.Ldst_uoff { size = sz; load = l; rt; rn; offset } when sz = size && l = load -> (
+          match offset with
+          | Disp.Reg _ -> None (* [ldst_roff_alt]'s form, not this one *)
+          | Disp.Const v -> Some ((), ((), ((), (v, (rn, rt)))))
+          | Disp.Sym _ -> Some ((), ((), ((), (0L, (rn, rt))))))
       | _ -> None)
     ~decode:(fun ((), ((), ((), (v, (rn, rt))))) ->
       Some (Lowered.Ldst_uoff { size; load; rt; rn; offset = Disp.Const v }))
@@ -651,6 +813,84 @@ let ldst_alt ~size ~load =
       ** const ~width:6 0b111001L
       ** const ~width:2 (if load then 1L else 0L)
       ** ldst_offset ~size "offset" ** reg_field ~width:64 ~sp:true "rn"
+      ** reg_field ~width:rt_width ~sp:false "rt")
+
+(* {2 Register-offset addressing}
+
+   [ldr w4, [x9, w10, uxtw #2]] - a second addressing mode for the same eight
+   loads and stores [ldst_alt] already covers, sharing their size/opc prefix
+   but diverging at what would be [ldst_alt]'s low-12 field: bit 21 is a
+   fixed [1] here (it is the low bit of [ldst_alt]'s "111001" six-bit
+   constant there, "111000" here - the one bit real [as]/[objdump] output
+   showed distinguishing the two forms), then a 5-bit index register, a
+   3-bit extend/shift-kind ("option"), a 1-bit "was a shift amount written"
+   flag ("S" - the actual amount is never a field: hardware only accepts 0
+   or [access_shift size], so it is recovered from [size] and [S] rather
+   than stored, exactly as [S=1, size=B] and an explicit ["#0"] are the same
+   value but a different, real bit, verified by hand against real [as]). The
+   four option encodings below (UXTW/LSL/SXTW/SXTX) are the ones a
+   general-purpose load or store accepts; the other four the 3-bit field
+   could hold are reserved for this instruction class. *)
+let extend_option = function
+  | "uxtw" -> Some 0b010
+  | "lsl" -> Some 0b011
+  | "sxtw" -> Some 0b110
+  | "sxtx" -> Some 0b111
+  | _ -> None
+
+let extend_of_option = function
+  | 0b010 -> Some "uxtw"
+  | 0b011 -> Some "lsl"
+  | 0b110 -> Some "sxtw"
+  | 0b111 -> Some "sxtx"
+  | _ -> None
+
+(* [uxtw]/[sxtw] read a 32-bit [Wm]; [lsl]/[sxtx] read a 64-bit [Xm] - the
+   option alone decides, there is no separate width bit, so decode fixes
+   [index]'s width from the extend it just recovered rather than from the
+   raw field. *)
+let extend_index_width = function "uxtw" | "sxtw" -> 32 | _ -> 64
+
+let ldst_roff_alt ~size ~load =
+  let rt_width = access_reg_width size in
+  C.iso_fun
+    ~name:(Printf.sprintf "%s%d-roff" (if load then "ldr" else "str") (access_bytes size * 8))
+    ~encode:(function
+      | Lowered.Ldst_uoff
+          { size = sz; load = l; rt; rn; offset = Disp.Reg { index; extend; amount } }
+        when sz = size && l = load -> (
+          match extend_option extend with
+          | None -> None
+          | Some opt ->
+              (* [None] and an explicit [Some 0] are both S=0 - real [as] encodes
+                 [[x20, x1, lsl #0]] identically to [[x20, x1]] (verified byte-for-
+                 byte: both give [f8616a82]), only a *nonzero* explicit amount sets
+                 S=1. [lower_instruction]'s register-offset arm keeps the amount the
+                 source wrote (including a literal 0) rather than normalizing it, so
+                 this is the one place that decision has to be made. *)
+              let s = match amount with Some 0 | None -> 0L | Some _ -> 1L in
+              Some ((), ((), ((), ((), (index, (Int64.of_int opt, (s, ((), (rn, rt))))))))))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), ((), (index, (opt, (s, ((), (rn, rt))))))))) ->
+      match extend_of_option (Int64.to_int opt) with
+      | None -> None
+      | Some extend ->
+          let scaled = Int64.equal s 1L in
+          let extend, amount =
+            if extend = "lsl" && not scaled then ("lsl", None)
+            else (extend, if scaled then Some (access_shift size) else None)
+          in
+          let index = { index with Reg.width = extend_index_width extend } in
+          Some
+            (Lowered.Ldst_uoff { size; load; rt; rn; offset = Disp.Reg { index; extend; amount } }))
+    C.(
+      const ~width:2 (Int64.of_int (access_code size))
+      ** const ~width:6 0b111000L
+      ** const ~width:2 (if load then 1L else 0L)
+      ** const ~width:1 1L
+      ** reg_field ~width:64 ~sp:false "rm"
+      ** field ~width:3 "option" ** field ~width:1 "s" ** const ~width:2 0b10L
+      ** reg_field ~width:64 ~sp:true "rn"
       ** reg_field ~width:rt_width ~sp:false "rt")
 
 (* ADD/SUB (immediate) with the [op] bit set, once per value of [S]. The two
@@ -685,6 +925,36 @@ let sub_imm_alt ~s =
       ** field ~width:1 "sh" ** field ~width:12 "imm12" ** reg_field ~width:64 ~sp:true "rn"
       ** reg_field ~width:64 ~sp:(not s) "rd")
 
+let fmov_imm_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fmov-imm-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fmov_imm { rd; value } when rd.Freg.double = double ->
+          Some ((), ((), ((), ((), (value, ((), Int64.of_int rd.Freg.num))))))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), ((), (value, ((), rd)))))) ->
+      Some (Lowered.Fmov_imm { rd = Freg.of_num ~double (Int64.to_int rd); value }))
+    C.(
+      const ~width:3 0L ** const ~width:5 0b11110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:1 1L ** fp_imm8_codec ~double ** const ~width:8 0b10000000L
+      ** field ~width:5 "rd")
+
+let fcmp_imm0_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fcmp-imm0-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fcmp_imm0 { rn } when rn.Freg.double = double ->
+          Some ((), ((), ((), ((), ((), (Int64.of_int rn.Freg.num, ()))))))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), ((), ((), (rn, ())))))) ->
+      Some (Lowered.Fcmp_imm0 { rn = Freg.of_num ~double (Int64.to_int rn) }))
+    C.(
+      const ~width:3 0L ** const ~width:5 0b11110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:1 1L ** const ~width:11 0b00000001000L ** field ~width:5 "rn"
+      ** const ~width:5 0b01000L)
+
 let branch_value = function
   | Asm_core.Lowered_ast.Symbolic _ -> 0L
   | Asm_core.Lowered_ast.Resolved { value; _ } -> value
@@ -706,12 +976,22 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.alt ~label:"add-imm" ~priority:0
              (C.iso_fun ~name:"add-imm"
                 ~encode:(function
-                  | Lowered.Add_imm { rd; rn; imm; shift12 } ->
-                      if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then None
-                      else
-                        Some
-                          ( (if rd.Reg.width = 64 then 1L else 0L),
-                            ((), ((if shift12 then 1L else 0L), (imm, (rn, rd)))) )
+                  | Lowered.Add_imm { rd; rn; imm; shift12 } -> (
+                      match imm with
+                      | Disp.Const v ->
+                          if Int64.compare v 0L < 0 || Int64.compare v 4096L >= 0 then None
+                          else
+                            Some
+                              ( (if rd.Reg.width = 64 then 1L else 0L),
+                                ((), ((if shift12 then 1L else 0L), (v, (rn, rd)))) )
+                      | Disp.Sym _ ->
+                          (* The field carries no real value pre-relocation - [form_of]
+                             attaches the actual fixup separately, keyed by the "imm"
+                             placement name (see [expr_of_lowered]). *)
+                          if shift12 then None
+                          else
+                            Some ((if rd.Reg.width = 64 then 1L else 0L), ((), (0L, (0L, (rn, rd)))))
+                      | Disp.Reg _ -> None)
                   | _ -> None)
                 ~decode:(fun (sf, ((), (sh, (imm, (rn, rd))))) ->
                   let width = if Int64.equal sf 1L then 64 else 32 in
@@ -720,12 +1000,12 @@ let codec : (Lowered.t, fixup_kind) C.t =
                        {
                          rd = { rd with Reg.width };
                          rn = { rn with Reg.width };
-                         imm;
+                         imm = Disp.Const imm;
                          shift12 = Int64.equal sh 1L;
                        }))
                 C.(
                   field ~width:1 "sf" ** const ~width:8 0b00100010L ** field ~width:1 "sh"
-                  ** field ~width:12 "imm12" ** reg_field ~width:64 ~sp:true "rn"
+                  ** add_lo12_offset "imm" ** reg_field ~width:64 ~sp:true "rn"
                   ** reg_field ~width:64 ~sp:true "rd"));
            (* [sub], A64's ADD/SUB(immediate) class with the [op] bit set: the
               same shape as [add-imm] with one constant bit flipped, not a
@@ -903,6 +1183,24 @@ let codec : (Lowered.t, fixup_kind) C.t =
                  (ldst_alt ~size ~load:false);
              ])
            access_all;
+         (* The same eight loads and stores, register-offset addressing
+            (see [ldst_roff_alt]'s comment for the bit that tells the two
+            forms apart). Priorities 24-31, past every fixed-list and
+            unsigned-offset priority above (max 23), so nothing here needed
+            renumbering. *)
+         List.concat_map
+           (fun size ->
+             [
+               C.alt
+                 ~label:(Printf.sprintf "ldr%d-roff" (access_bytes size * 8))
+                 ~priority:(24 + (2 * access_code size))
+                 (ldst_roff_alt ~size ~load:true);
+               C.alt
+                 ~label:(Printf.sprintf "str%d-roff" (access_bytes size * 8))
+                 ~priority:(25 + (2 * access_code size))
+                 (ldst_roff_alt ~size ~load:false);
+             ])
+           access_all;
          [
            C.alt ~label:"ret" ~priority:17
              (C.iso_fun ~name:"ret"
@@ -998,6 +1296,19 @@ let codec : (Lowered.t, fixup_kind) C.t =
                              { value = sign_extend ~width:26 d; rung = "bl" };
                        }))
                 C.(const ~width:6 0b100101L ** fixup ~width:26 ~kind:Pcrel_call26 "target"));
+           (* FMOV(scalar,immediate) and FCMP(immediate,#0.0), split into a
+              double and a single alt each - not one alt with a runtime
+              [type] field - because [type] here changes what the *value*
+              in the following field means (a double-precision
+              [vfp_expand_imm8] vs a single-precision one), unlike [Reg]'s
+              width, which decode fixes up post-hoc without touching the
+              value at all. Every field position and fixed-bit constant
+              below was read off real [as]/[objdump] output, not from
+              memory of the ARM ARM. *)
+           C.alt ~label:"fmov-imm-d" ~priority:32 (fmov_imm_alt ~double:true);
+           C.alt ~label:"fmov-imm-s" ~priority:33 (fmov_imm_alt ~double:false);
+           C.alt ~label:"fcmp-imm0-d" ~priority:34 (fcmp_imm0_alt ~double:true);
+           C.alt ~label:"fcmp-imm0-s" ~priority:35 (fcmp_imm0_alt ~double:false);
          ];
        ])
 
@@ -1032,10 +1343,13 @@ type error_kind =
   | `Unsigned_offset_only
   | `Offset_not_scaled of int64
   | `Offset_not_12bit_scaled
+  | `Register_offset_shift_invalid of int
   | `Not_a_shifted_register of string
   | `Shift_amount_too_large
   | `Too_many_operands
   | `Not_bitmask_immediate of int64
+  | `Not_fp_modified_immediate of float
+  | `Fcmp_immediate_must_be_zero of float
   | `Unknown_condition of string
   | `Csel_needs_condition
   | `Udf_imm16_overflow
@@ -1078,10 +1392,15 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `Offset_not_scaled scale ->
       Fmt.pf ppf "offset must be a multiple of %Ld for this access width" scale
   | `Offset_not_12bit_scaled -> Fmt.string ppf "offset does not fit the scaled 12-bit field"
+  | `Register_offset_shift_invalid n ->
+      Fmt.pf ppf "a register-offset shift amount must be 0 or the access width's own log2, not %d" n
   | `Not_a_shifted_register k -> Fmt.pf ppf "%s is not a shift of a register operand" k
   | `Shift_amount_too_large -> Fmt.string ppf "shift amount does not fit the register width"
   | `Too_many_operands -> Fmt.string ppf "too many operands"
   | `Not_bitmask_immediate v -> Fmt.pf ppf "#%Ld is not an A64 bitmask immediate" v
+  | `Not_fp_modified_immediate v -> Fmt.pf ppf "#%.18e is not an FMOV modified floating immediate" v
+  | `Fcmp_immediate_must_be_zero v ->
+      Fmt.pf ppf "fcmp's immediate operand must be #0.0, not #%.18e" v
   | `Unknown_condition c -> Fmt.pf ppf "unknown condition %s" c
   | `Csel_needs_condition -> Fmt.string ppf "csel needs a condition name"
   | `Udf_imm16_overflow -> Fmt.string ppf "udf immediate does not fit 16 bits"
@@ -1152,14 +1471,22 @@ let lower_instruction state i =
      therefore rejected rather than guessed. *)
   | Opcode.Mov, [ Operand.Reg rd; Operand.Reg rn ] ->
       if rd.Reg.is_sp || rn.Reg.is_sp then
-        Ok [ Lowered.Add_imm { rd; rn; imm = 0L; shift12 = false } ]
+        Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const 0L; shift12 = false } ]
       else bad `Mov_reg_to_reg_out_of_scope
   | Opcode.Add, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
           if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then bad `Imm12_needs_shift
-          else Ok [ Lowered.Add_imm { rd; rn; imm; shift12 = false } ])
+          else Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const imm; shift12 = false } ])
+  (* [add x9, x9, #:lo12:Te4] - R_AARCH64_ADD_ABS_LO12_NC. Same shape as
+     [ldr]/[str]'s own [#:lo12:] a few cases below: the modifier picked the
+     form, so the expression underneath (with the modifier stripped) is what
+     the lowered value stores. *)
+  | Opcode.Add, [ Operand.Reg rd; Operand.Reg rn; Operand.Sym (Asm_core.Expr.Modifier (m, inner)) ]
+    ->
+      if m <> "lo12" then bad (`Wrong_memory_modifier m)
+      else Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Sym inner; shift12 = false } ]
   | Opcode.Movz, [ Operand.Reg rd; Operand.Imm v ] -> (
       match imm_of v with
       | Error e -> Error e
@@ -1178,6 +1505,7 @@ let lower_instruction state i =
   | Opcode.Stp, [ Operand.Reg rt; Operand.Reg rt2; Operand.Mem m ] -> (
       match m.Mem.offset with
       | Disp.Sym _ -> bad `Stp_symbolic_offset
+      | Disp.Reg _ -> bad `Stp_symbolic_offset (* stp has no register-offset form at all *)
       | Disp.Const off ->
           if not m.Mem.writeback then bad `Stp_writeback_only
           else if not (Int64.equal (Int64.rem off 8L) 0L) then bad `Stp_offset_alignment
@@ -1222,7 +1550,20 @@ let lower_instruction state i =
             else if not (Int64.equal (Int64.rem off scale) 0L) then bad (`Offset_not_scaled scale)
             else if Int64.compare (Int64.div off scale) 4096L >= 0 then bad `Offset_not_12bit_scaled
             else
-              Ok [ Lowered.Ldst_uoff { size; load; rt; rn = m.Mem.base; offset = Disp.Const off } ])
+              Ok [ Lowered.Ldst_uoff { size; load; rt; rn = m.Mem.base; offset = Disp.Const off } ]
+        | Disp.Reg { index; extend; amount } -> (
+            let expected_index_width = extend_index_width extend in
+            if index.Reg.width <> expected_index_width then
+              bad (`Wrong_register_width { opcode = extend; expected = expected_index_width })
+            else
+              match amount with
+              | None | Some 0 ->
+                  Ok
+                    [ Lowered.Ldst_uoff { size; load; rt; rn = m.Mem.base; offset = m.Mem.offset } ]
+              | Some n when n = access_shift size ->
+                  Ok
+                    [ Lowered.Ldst_uoff { size; load; rt; rn = m.Mem.base; offset = m.Mem.offset } ]
+              | Some n -> bad (`Register_offset_shift_invalid n)))
   | Opcode.Ret, [ Operand.Reg rn ] -> Ok [ Lowered.Ret { rn } ]
   | Opcode.Ret, [] -> Ok [ Lowered.Ret { rn = Reg.x30 } ]
   | Opcode.Sub, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
@@ -1342,6 +1683,18 @@ let lower_instruction state i =
           else Ok [ Lowered.Udf { imm16 = imm } ])
   | Opcode.Bl, [ Operand.Sym e ] ->
       Ok [ Lowered.Bl { target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
+  | Opcode.Fmov, [ Operand.Freg rd; Operand.Fimm value ] ->
+      if encode_fp_imm8 ~double:rd.Freg.double value = None then
+        bad (`Not_fp_modified_immediate value)
+      else Ok [ Lowered.Fmov_imm { rd; value } ]
+  (* FCMP(immediate) only ever compares against zero (§ "the codec"'s
+     comment on [fcmp_imm0_alt]) - a nonzero literal is not a narrower case
+     of this form, it is a different, unimplemented one (the register form,
+     [fcmp dN, dM], already parses via the generic symbol fallback but has
+     no [Lowered] constructor of its own yet). *)
+  | Opcode.Fcmp, [ Operand.Freg rn; Operand.Fimm value ] ->
+      if Float.equal value 0.0 then Ok [ Lowered.Fcmp_imm0 { rn } ]
+      else bad (`Fcmp_immediate_must_be_zero value)
   | _ -> bad (`No_form (Opcode.name i.Instruction.op))
 
 (* {1 Encode and decode} *)
@@ -1410,6 +1763,7 @@ let expr_of_lowered : Lowered.t -> (string * Asm_core.Expr.t) list = function
      two by name, and a mismatch does not fail - it silently produces an
      encoding with no fixup, which then binds to the placeholder. *)
   | Lowered.Ldst_uoff { offset = Disp.Sym value; _ } -> [ ("offset", value) ]
+  | Lowered.Add_imm { imm = Disp.Sym value; _ } -> [ ("imm", value) ]
   | _ -> []
 
 let form_of l enc =
@@ -1448,14 +1802,17 @@ let branch_operand ~at target =
 
 let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Add_imm { rd; rn; imm; shift12 } ->
-      if Int64.equal imm 0L && (not shift12) && (rd.Reg.is_sp || rn.Reg.is_sp) then
+      if Disp.equal imm (Disp.Const 0L) && (not shift12) && (rd.Reg.is_sp || rn.Reg.is_sp) then
         Some { Instruction.op = Opcode.Mov; ops = [ Operand.Reg rd; Operand.Reg rn ] }
       else
-        Some
-          {
-            Instruction.op = Opcode.Add;
-            ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Imm (Bigint.of_int64 imm) ];
-          }
+        let imm_op =
+          match imm with
+          | Disp.Const v -> Operand.Imm (Bigint.of_int64 v)
+          | Disp.Sym e -> Operand.Sym (Asm_core.Expr.Modifier ("lo12", e))
+          | Disp.Reg _ -> Operand.Imm (Bigint.of_int 0)
+          (* unreachable: decode never produces this *)
+        in
+        Some { Instruction.op = Opcode.Add; ops = [ Operand.Reg rd; Operand.Reg rn; imm_op ] }
   | Lowered.Stp_pre { rt; rt2; rn; offset } ->
       Some
         {
@@ -1598,6 +1955,10 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.B { target } -> Some { Instruction.op = Opcode.B; ops = [ branch_operand ~at target ] }
   | Lowered.Bcond { cond; target } ->
       Some { Instruction.op = Opcode.Bcond cond; ops = [ branch_operand ~at target ] }
+  | Lowered.Fmov_imm { rd; value } ->
+      Some { Instruction.op = Opcode.Fmov; ops = [ Operand.Freg rd; Operand.Fimm value ] }
+  | Lowered.Fcmp_imm0 { rn } ->
+      Some { Instruction.op = Opcode.Fcmp; ops = [ Operand.Freg rn; Operand.Fimm 0.0 ] }
 
 let decode ctx bytes ~pos =
   if String.length bytes - pos < 4 then Error (diag ~pos:__POS__ `Decode_short)

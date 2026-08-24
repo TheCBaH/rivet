@@ -1867,6 +1867,13 @@ module Make (M : MODE) = struct
     | Opcode.Ud2, [] -> Ok [ Lowered.Ud2 ]
     | Opcode.Pop, [ Operand.Reg r ] -> Ok [ Lowered.Pop { reg = r } ]
     | Opcode.Jmp, [ Operand.Reg r ] -> Ok [ Lowered.Jmp_rm { rm = Rm.Reg r } ]
+    (* [jmp *sym(,%reg,scale)] - an indirect jump through a jump-table entry
+       (M5 corpus, asm/docs/corpus.md: siphash24.c/vmach.c's [switch] dispatch).
+       [Jmp_rm] is already generic over [Rm.t] - the [jmp-rm] codec alt encodes
+       whatever ModR/M+SIB [rm] carries - so this needs no new lowered form or
+       codec, only the match arm the [Reg] case above never needed a [Mem]
+       sibling for until this corpus evidence. *)
+    | Opcode.Jmp, [ Operand.Mem m ] -> Ok [ Lowered.Jmp_rm { rm = Rm.Mem m } ]
     (* Symbolic and unpinned: the distance is not known here, so the encoder
        offers what it can and layout decides. A [call] has only one rung today,
        which is why it still reaches the byte gate as a [`Fixed] form. *)

@@ -25,4 +25,7 @@ val path : t -> Fpath.t
 val fixture_corpus : t -> Fpath.t
 val gas_xref_corpus : t -> Fpath.t
 val corpus_work : t -> Fpath.t
-val corpus_c_x86_64 : t -> Fpath.t
+
+val corpus_c : t -> Target.t -> Fpath.t
+(** [asm/fixtures/corpus/c/<target>/], the classify-c manifest/summary
+    destination for that target. *)

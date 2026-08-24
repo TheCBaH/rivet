@@ -341,7 +341,9 @@ module Arm_corpus = struct
   let insn op ops : T.Instruction.t = T.Instruction.mk op ops
   let reg n = T.Operand.Reg (r n)
   let imm n = T.Operand.Imm (Foundation.Bigint.of_int n)
-  let mem base offset = T.Operand.Mem { T.Mem.base = r base; offset; writeback = false; pre = true }
+
+  let mem base offset =
+    T.Operand.Mem { T.Mem.base = r base; offset = T.Mem.Imm offset; writeback = false; pre = true }
 
   let return_n n =
     A.assemble
