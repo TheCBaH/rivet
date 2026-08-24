@@ -13,8 +13,10 @@ elsewhere do not widen this measured corpus.
 
 Both CompCert configurations use `-no-runtime-lib -no-standard-headers` and a
 project-owned GCC probe wrapper. Fixture generation stops at `ccomp -S`.
-Binutils is GNU 2.44 and QEMU is 10.0.11 in the recorded run. The exact tool
-banners are stored beside every fixture in `oracle/tool-versions.txt`.
+RV32 uses the published crosstool-NG toolchain (GCC 14.2.0, Binutils 2.43.1)
+and RV64 uses Debian's GNU Binutils 2.44; QEMU is 10.0.11 in the recorded
+run. The exact tool banners are stored beside every fixture in
+`oracle/tool-versions.txt`.
 
 Controlled section addresses are `0x30000000` for `.text`, `0x30010000` for
 `.rodata`, and `0x30020000` for `.data`. All GNU assembly and links disable
@@ -54,5 +56,7 @@ Only the settings above are RISC-V's own: the `-march`/`-mabi` pairs, the
 `elf32lriscv`/`elf64lriscv` link emulations, relaxation being disabled
 everywhere, the `-M no-aliases,numeric` disassembly, the freestanding
 `-no-runtime-lib -no-standard-headers` CompCert configuration, and the
-project-owned GCC probe wrapper that selects between the two ABIs behind a
-single `riscv64-linux-gnu-` tool prefix.
+project-owned GCC probe wrapper that selects the exact ABI behind each
+profile's own tool prefix.  Development images install the published
+`riscv32-linux-gnu-` glibc toolchain for RV32, while Debian's packaged
+`riscv64-linux-gnu-` toolchain remains the RV64 source.

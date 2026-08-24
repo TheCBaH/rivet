@@ -26,7 +26,9 @@ let of_string s =
 
 type capability = Fixture | Assembler | Libc_smoke
 
-let set = function Fixture | Assembler -> all | Libc_smoke -> [ X86_32; X86_64; Arm; Aarch64 ]
+let set = function
+  | Fixture | Assembler -> all
+  | Libc_smoke -> [ X86_32; X86_64; Arm; Aarch64; Riscv32 ]
 
 type link = { text : int; rodata : int; data : int; bss : int }
 
@@ -149,8 +151,9 @@ let config t =
       {
         base with
         configure_target = "rv32-linux";
-        toolprefix = "riscv64-linux-gnu-";
+        toolprefix = "riscv32-linux-gnu-";
         qemu_bin = "qemu-riscv32";
+        qemu_sysroot = Some "/usr/riscv32-linux-gnu";
         compcert_configure_args = riscv_configure_args;
         as_args = [ "-march=rv32imafd"; "-mabi=ilp32d"; "-mno-relax" ];
         ld_args = [ "-m"; "elf32lriscv"; "--no-relax" ];

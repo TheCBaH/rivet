@@ -159,7 +159,7 @@ let objdump_disasm t p ~scrub ~drop_banner ~riscv_numeric =
        of it - which is what the fixture oracle wants and what the gas
        cross-reference deliberately does not. *)
     match t.prefix with
-    | pre when riscv_numeric && String.length pre >= 7 && String.sub pre 0 7 = "riscv64" ->
+    | pre when riscv_numeric && String.length pre >= 5 && String.sub pre 0 5 = "riscv" ->
         [ "-M"; "no-aliases,numeric" ]
     | _ -> []
   in

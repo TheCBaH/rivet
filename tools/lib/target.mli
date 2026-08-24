@@ -29,8 +29,9 @@ val pp : Format.formatter -> t -> unit
 type capability = Fixture | Assembler | Libc_smoke
 
 val set : capability -> t list
-(** [Libc_smoke] omits riscv32/riscv64: fixture work is freestanding and must
-    not acquire the cross-smoke suite's libc requirement. *)
+(** [Libc_smoke] includes the sysroot-bearing targets, including [riscv32]
+    when its published Linux/glibc cross toolchain is installed.  [riscv64]
+    remains fixture-only because this project does not install an rv64 sysroot. *)
 
 type link = { text : int; rodata : int; data : int; bss : int }
 

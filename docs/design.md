@@ -1993,7 +1993,7 @@ memory, and control flow produce correct fixed-layout images on all six targets.
 ### Milestone 3: Generalize the image builder to two-file internal linking
 
 **Status: exit criterion met on all six targets (2026-08-17); the follow-up
-items below, tracked in `next.md`, are now also closed (2026-08-18).** The
+items below are now also closed (2026-08-18).** The
 image-layer model
 (fragment/symbol/fixup namespaces, name-only section merging, link-wide
 resolution, `.weak`/`.local`/`.comm` with the strong>common>weak resolver,
@@ -2024,7 +2024,7 @@ open work:
   `disasm_records` translate every unit's GNU record into merged
   coordinates, so `check_disasm`/`check_relocs` need no multi-source branch
   at all. Verified clean for `cross_call`, `cross_data` and `cross_bss` on
-  all six targets. See `next.md`'s M3 follow-ups §3.
+  all six targets.
 - ~~No committed fixture yet exercises `.bss`/`.comm` in a multi-source
   case~~ Done 2026-08-18: `cross_bss` (uninitialized cross-file
   `int shared_value;`, `.comm`-allocated) is committed for all six targets,
@@ -2032,13 +2032,11 @@ open work:
   (mirroring `Tail_converted_call`'s pattern) rather than a global loosening.
   Full evidence chain (`make asm-fixture-oracle-<target>` for all six,
   `dune runtest --force`, `make asm-test`, `make tools-integration`) passes.
-  See `next.md`'s M3 follow-ups §2.
 - ~~`asm/docs/contracts.md`'s directive table and M3-tagged bullets have not
   yet been updated to describe this as landed rather than deliberately
   absent.~~ Done 2026-08-18: §3/§4 now carry the `.bss`/`.zero`/`.space`/
   `.comm`/`.local`/`.weak` rows, the four obsolete "M3: deliberately
-  absent" §4.3 bullets are gone, and both tables are six-target. See
-  `next.md`'s M3 follow-ups §1.
+  absent" §4.3 bullets are gone, and both tables are six-target.
 
 - Generalize the initial fragment/symbol/fixup model to module-local namespaces,
   multiple inputs, and section merging across those inputs. Several allocatable
@@ -2060,8 +2058,7 @@ image on every supported target without object files or an external linker.
 
 ### Milestone 4: Portable image binding and broader freestanding execution
 
-**Status: exit criterion met (2026-08-21); see `next.md` for the
-verification evidence and the M4→M5 scope handoff.**
+**Status: exit criterion met (2026-08-21).**
 
 - Implement caller-selected virtual placement, address validation, final fixups,
   segment materialization, and permission metadata entirely in pure OCaml.

@@ -389,8 +389,7 @@ two real, committed, six-target CompCert fixtures
 initialized, strongly-`.globl`'d symbol across files and do not themselves
 exercise `.bss`/`.comm`/`.local`/`.weak` — that machinery is covered
 instead by the synthetic cases in `asm/test/targets/test_targets.ml` and
-`asm/test/image/test_image.ml`. See `.ai/asm_plan.md`'s Milestone 3 status
-and `next.md` for the milestone's own remaining follow-ups.
+`asm/test/image/test_image.ml`. See `.ai/asm_plan.md`'s Milestone 3 status.
 
 Every directive the fixtures contain, and nothing else. **A directive not in
 this table is a diagnostic.** An assembler that ignores directives it does not
