@@ -5,12 +5,7 @@
         "dockerfile": "Dockerfile"
     },
     "features": {
-        // Fork of ghcr.io/devcontainers/features/common-utils with Gentoo
-        // support added: upstream hard-fails on any distro outside its
-        // debian/rhel/alpine allowlist (see its main.sh), so it doesn't work
-        // on the Gentoo base below unmodified. Fork (with a PR upstream
-        // pending): https://github.com/TheCBaH/devcontainer.features
-        "ghcr.io/thecbah/devcontainer.features/common-utils:2.5.10": {
+        "ghcr.io/devcontainers/features/common-utils:2": {
             "installZsh": "true",
             "username": "vscode",
             "userUid": "1000",
