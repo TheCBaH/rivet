@@ -205,15 +205,20 @@ ASM_OCAMLFORMAT_VERSION := $(shell awk -F' *= *' '/^version/{print $$2}' $(ASM_D
 asm-fmt-ocamlformat:
 	opam install -y ocamlformat.$(ASM_OCAMLFORMAT_VERSION)
 
-# err_trace is vendored as a submodule and its sources are copy_files'd into
-# the build by asm/vendor/err_trace_local/dune, so an uninitialized submodule is a
-# build failure - and an unhelpful one, since dune reports it as a missing rule
-# for a path rather than as a missing checkout. Checked here rather than in
-# asm-ci so that a bare `make asm-build` gets the same answer.
+# err_trace and Fmt are both vendored as submodules (asm/vendor/err_trace/upstream,
+# asm/vendor/fmt/upstream) and their sources are copy_files'd into the build by
+# the enclosing directory's dune, so an uninitialized submodule is a build
+# failure - and an unhelpful one, since dune reports it as a missing rule for a
+# path rather than as a missing checkout. Checked here rather than in asm-ci so
+# that a bare `make asm-build` gets the same answer.
 asm-submodules:
-	@test -f $(ASM_DIR)/vendor/err_trace/src/err.ml || { \
-	  echo "$(ASM_DIR)/vendor/err_trace is not checked out; run:" >&2; \
-	  echo "  git submodule update --init $(ASM_DIR)/vendor/err_trace" >&2; \
+	@test -f $(ASM_DIR)/vendor/err_trace/upstream/src/err.ml || { \
+	  echo "$(ASM_DIR)/vendor/err_trace/upstream is not checked out; run:" >&2; \
+	  echo "  git submodule update --init $(ASM_DIR)/vendor/err_trace/upstream" >&2; \
+	  exit 1; }
+	@test -f $(ASM_DIR)/vendor/fmt/upstream/src/fmt.ml || { \
+	  echo "$(ASM_DIR)/vendor/fmt/upstream is not checked out; run:" >&2; \
+	  echo "  git submodule update --init $(ASM_DIR)/vendor/fmt/upstream" >&2; \
 	  exit 1; }
 
 asm-build: asm-submodules
@@ -330,9 +335,8 @@ FIXTURE_ORACLE_GOALS := $(addprefix asm-fixture-oracle-,$(FIXTURE_TARGETS))
 # these sync any of the six targets into its own compcert-lib-<target>/src,
 # built as dune library compcert_<target> - so more than one target's
 # Asm.program can coexist for a future adapter to depend on. See
-# tools/compcert-lib-sync-target.sh and next.md's multi-arch compcert-lib
-# decision. Never touches a cross toolchain (extraction is pure
-# Rocq+OCaml+Menhir), unlike the fixture goals below.
+# tools/compcert-lib-sync-target.sh. Never touches a cross toolchain
+# (extraction is pure Rocq+OCaml+Menhir), unlike the fixture goals below.
 COMPCERT_LIB_SYNC_GOALS  := $(addprefix compcert-lib-sync-,$(FIXTURE_TARGETS))
 COMPCERT_LIB_BUILD_GOALS := $(addprefix compcert-lib-build-,$(FIXTURE_TARGETS))
 
@@ -344,15 +348,14 @@ $(COMPCERT_LIB_SYNC_GOALS): compcert-lib-sync-%:
 $(COMPCERT_LIB_BUILD_GOALS): compcert-lib-build-%: compcert-lib-sync-%
 	cd compcert-lib-$* && opam exec -- dune build
 
-# Order item 2 of next.md's CompCert integration milestone: proves the
-# CompCert Asm.program adapter (asm/compcert_adapter/) against
+# Proves the CompCert Asm.program adapter (asm/compcert_adapter/) against
 # test_coherence.ml's own assertions, for aarch64's return42 fixture. Not a
 # prerequisite of asm-test/asm-ci - needs Rocq (via
 # compcert-lib-build-aarch64) - gated by ASM_COMPCERT_ADAPTER exactly like
 # asm-melange-test is gated by ASM_MELANGE. Needs asm-submodules for the same
-# reason asm-build/asm-test do: foundation depends on the vendor/err_trace
-# submodule, and an uninitialized checkout should fail with that target's
-# actionable message rather than a dune missing-rule error.
+# reason asm-build/asm-test do: foundation depends on the vendor/err_trace and
+# vendor/fmt submodules, and an uninitialized checkout should fail with that
+# target's actionable message rather than a dune missing-rule error.
 asm-compcert-adapter-test: asm-submodules compcert-lib-build-aarch64
 	cd compcert-lib-aarch64 && opam exec -- dune build @install
 	cd $(ASM_DIR) && \

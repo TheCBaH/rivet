@@ -252,17 +252,19 @@ plant ppx-in-production purity reject-either 'reaches "ppx_expect"' \
   "add_library lib/foundation/dune ppx_expect"
 
 # The same leak arriving through a vendored submodule rather than through one of
-# our own stanzas. asm/vendor/err_trace is a whole upstream repository, and its
-# own test/dune declares an inline-test library over ppx_expect; vendor/dune
-# marks the checkout `data_only_dirs` so dune never reads it. Without that one
-# line, `core_tests` becomes a production root - anything under vendor/ is
-# production by `production_dirs` - and drags base, time_now and the ppx_expect
-# runtime into the closure, which grows from 22 libraries to 42.
+# our own stanzas. asm/vendor/err_trace/upstream is a whole upstream
+# repository, and its own test/dune declares an inline-test library over
+# ppx_expect; vendor/err_trace/dune's `(data_only_dirs upstream)` line is what
+# stops dune reading it. Without that line, `core_tests` becomes a production
+# root - anything under vendor/ is production by `production_dirs` - and drags
+# base, time_now and the ppx_expect runtime into the closure, which grows from
+# 22 libraries to 42.
 #
-# Planted by deleting the file rather than by editing a stanza, because the
-# protection *is* the file's existence: nothing else in the tree would fail if
-# it were dropped in a rebase.
-plant vendor-submodule-visible purity reject-either 'reaches "base"' "rm -f vendor/dune"
+# Planted by deleting just that line rather than the whole file, because
+# deleting the file would also delete the err_trace library stanza right next
+# to it, breaking the build for an unrelated reason.
+plant vendor-submodule-visible purity reject-either 'reaches "base"' \
+  "edit vendor/err_trace/dune '/data_only_dirs/d'"
 
 # A production library depending on test code. Not a C problem - a closure
 # problem, and the one that would let a test helper end up in a shipped image.

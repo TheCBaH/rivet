@@ -1,0 +1,43 @@
+; Vendored err_trace (see README.md). `upstream/` is a git submodule, i.e. a
+; whole upstream repository checked out inside this tree - not the two source
+; files we actually build. Its own dune files (test/dune, bench/dune) declare a
+; test suite depending on ppx_expect, base, time_now and compiler-libs.
+;
+; The enclosing asm/dune marks this tree `vendored_dirs`, which suppresses
+; warnings and leaves it out of `@fmt`, but that alone does not stop dune
+; reading `upstream/`'s own dune files: left visible, those stanzas land in
+; `dune describe` output, and tools/asm_audit.ml classifies anything under
+; vendor/ as part of the production closure (see its `production_dirs`). base,
+; time_now and ppx_expect are all on its `denied` list, so `make asm-purity`
+; fails - and on a CI image that does not ship ppx_expect, `dune build @all`
+; fails outright.
+;
+; `data_only_dirs` is what stops that: dune keeps upstream/'s files as ordinary
+; sources - the copy_files# below still reaches them - but reads no dune file
+; inside it.
+;
+; tools/asm-check-planted.sh has a case that deletes this line and requires the
+; purity audit to reject the result, so the protection cannot be lost silently.
+(data_only_dirs upstream)
+
+; `wrapped false` is upstream's own setting and is load-bearing: it is what
+; makes the module `Err` rather than `Err_trace.Err`, which is the name the
+; whole codebase uses.
+;
+; Melange mode lives in melange/vendor/err_trace, and the nested tool project's
+; own copy lives in tools/vendor/err_trace, both of which copy_files these same
+; sources; a dune project boundary cannot share a library, and dune cannot make
+; `modes` conditional within one stanza either.
+
+(copy_files#
+ (files upstream/src/err.ml))
+
+(copy_files#
+ (files upstream/src/err.mli))
+
+(library
+ (name err_trace)
+ (wrapped false)
+ (modes byte native)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

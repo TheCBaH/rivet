@@ -1,14 +1,29 @@
-; Vendored Fmt (see README.md). The sources are byte-identical to upstream, so
-; the enclosing asm/dune marks this tree `vendored_dirs`: dune then suppresses
-; warnings here and leaves it out of `@fmt`, which keeps the copy verifiable
-; against its recorded hashes.
+; Vendored Fmt (see README.md). `upstream/` is a git submodule pinned at the
+; `v0.11.0` tag; the enclosing asm/dune marks this tree `vendored_dirs`, which
+; suppresses warnings here and leaves it out of `@fmt`, so the copy stays
+; verifiable against the pinned submodule commit.
 ;
-; The vendored copy is what makes Fmt usable here at all: the opam `fmt` package
-; is built by topkg and installs a META template, which dune rejects for Melange
-; ("not compatible with melange support"), so the production closure could not
-; depend on it and still satisfy .ai/asm_plan.md §11.6.
+; The vendored copy is what makes Fmt usable here at all: the opam `fmt`
+; package is built by topkg and installs a META template, which dune rejects
+; for Melange ("not compatible with melange support"), so the production
+; closure could not depend on it and still satisfy .ai/asm_plan.md §11.6.
 ;
-; Melange mode lives in melange/vendor/fmt, which copy_files these same sources.
+; Melange mode lives in melange/vendor/fmt, which copy_files these same
+; sources.
+;
+; `data_only_dirs` keeps upstream/'s own build files (B0.ml, pkg/, _tags) out
+; of dune's view. Fmt 0.11.0 ships no dune files of its own, so nothing
+; upstream currently depends on this - but err_trace next door shows exactly
+; what goes wrong the day a vendored submodule's own build machinery is left
+; readable, so the same protection is applied here on principle.
+(data_only_dirs upstream)
+
+(copy_files#
+ (files upstream/src/fmt.ml))
+
+(copy_files#
+ (files upstream/src/fmt.mli))
+
 (library
  (name fmt)
  (modes byte native)

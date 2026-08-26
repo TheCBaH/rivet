@@ -1,7 +1,7 @@
 ; No ppx and no inline_tests on production code, matching the asm/ split.
 ;
 ; No enabled_if: unlike every stanza under asm/, this needs no Melange guard.
-; The guards there exist because asm/vendor/err_trace_local is disabled under
+; The guards there exist because asm/vendor/err_trace is disabled under
 ; Melange; this project's own copy is not, and nothing here builds to JS.
 ;
 ; `fmt` is deliberately absent: Tool_error.pp needs only Format. `cmdliner` is

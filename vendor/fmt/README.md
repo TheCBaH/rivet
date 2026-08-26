@@ -1,12 +1,15 @@
 # Vendored `Fmt`
 
-`fmt.ml` and `fmt.mli` are copied **verbatim** from `fmt.0.11.0`
-(`src/fmt.ml`, `src/fmt.mli`), ISC licensed — see `LICENSE.md`.
+`fmt.ml` and `fmt.mli` are built from the `fmt` git submodule checked out at
+[`./upstream`](./upstream) from <https://github.com/dbuenzli/fmt>, pinned at
+the `v0.11.0` tag (`src/fmt.ml`, `src/fmt.mli`), ISC licensed — see
+`upstream/LICENSE.md`.
 
-| File | SHA-256 |
-|---|---|
-| `fmt.ml` | `e7a41d9a8c1f2f2b8a075cdb461bea6b8f8582092ae8ca717abcb762cf0d146f` |
-| `fmt.mli` | `050a7b7448584928a21462d23ec0ba3abe3a985231535855b9be8e72595d9c38` |
+Nothing is copied into this directory ahead of time. `dune` here
+`copy_files#`s the two sources out of `upstream/` at build time, so the only
+record of *which* version is vendored is the submodule's gitlink — matching
+[`../err_trace`](../err_trace/README.md). There is no SHA-256 table to keep in
+step: `git submodule status` already answers that question.
 
 ## Why vendored rather than an opam dependency
 
@@ -31,11 +34,18 @@ byte-identical output under all three backends.
 transitive dependencies from the production closure. The vendored subset is pure
 OCaml over `Stdlib` only — no `external`, no `Obj`, no `Unix`. The upstream
 `fmt.tty` (terminal capability detection, needs `Unix`) and `fmt.cli` (needs
-`cmdliner`) sub-libraries are **not** vendored.
+`cmdliner`) sub-libraries are **not** vendored, and `upstream/`'s `dune` is
+`data_only_dirs` so nothing else in the checkout can be read by dune either.
 
 ## Upgrading
 
-Replace both files from the upstream tarball, update the hashes above, and
-re-run the three-build equality harness. Do not patch the sources in place: any
-local change must be a separate module in `lib/foundation`, so this directory
-stays a verifiable copy.
+```sh
+git -C asm/vendor/fmt/upstream fetch origin --tags
+git -C asm/vendor/fmt/upstream checkout <new-tag>
+git add asm/vendor/fmt/upstream        # commits the new gitlink
+make asm-ci asm-melange asm-js         # all three backends, plus the audits
+```
+
+Do not patch the submodule in place: any local change must be a separate module
+in `lib/foundation`, so this directory stays a verifiable copy. If a change
+belongs in the library, send it upstream and move the gitlink.

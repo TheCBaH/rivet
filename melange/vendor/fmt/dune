@@ -1,11 +1,12 @@
-; Melange build of the vendored Fmt. Same sources as ../../../vendor/fmt; only
-; the modes differ. Warnings are disabled explicitly here because
-; `vendored_dirs` covers the source tree, not this copy's stanza.
+; Melange build of the vendored Fmt. Same sources as
+; ../../../vendor/fmt/upstream/src; only the modes differ. Warnings are
+; disabled explicitly here because `vendored_dirs` covers the source tree, not
+; this copy's stanza.
 (copy_files#
- (files ../../../vendor/fmt/*.ml))
+ (files ../../../vendor/fmt/upstream/src/*.ml))
 
 (copy_files#
- (files ../../../vendor/fmt/*.mli))
+ (files ../../../vendor/fmt/upstream/src/*.mli))
 
 (library
  (name fmt)

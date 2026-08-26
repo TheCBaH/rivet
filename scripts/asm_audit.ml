@@ -208,8 +208,8 @@ let production_dirs = [ "lib/"; "targets/"; "driver/"; "browser/"; "vendor/" ]
 (* "tools/" is the nested OCaml tool project (tool.md §5). It is additive, not a
    widening: `under "tool/" "tools/lib"` is false, so the existing entry never
    covered it. One entry classifies BOTH tool libraries, because production_dirs
-   is tested first and `under "vendor/" "tools/vendor/err_trace_local"` is false
-   - the test is a prefix test on the whole path, not a component search. *)
+   is tested first and `under "vendor/" "tools/vendor/err_trace"` is false -
+   the test is a prefix test on the whole path, not a component search. *)
 let non_production_dirs = [ "test/"; "tool/"; "tools/" ]
 
 (* [under "driver/" "driver"] must hold: a package can sit directly at a root

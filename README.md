@@ -69,8 +69,10 @@ toolchain and is not on the path of `make asm-test`. See
 * `make asm-fixture-oracle` all six
 
 It vendors [err_trace](https://github.com/TheCBaH/err_trace) as the
-`asm/vendor/err_trace` submodule, so a fresh clone needs
+`asm/vendor/err_trace/upstream` submodule and [Fmt](https://github.com/dbuenzli/fmt)
+as `asm/vendor/fmt/upstream`, so a fresh clone needs
 `git submodule update --init` before `make asm-build`. See
-[asm/vendor/err_trace_local/README.md](asm/vendor/err_trace_local/README.md) for why it is
+[asm/vendor/err_trace/README.md](asm/vendor/err_trace/README.md) and
+[asm/vendor/fmt/README.md](asm/vendor/fmt/README.md) for why they are
 vendored rather than taken from opam, and
-[asm/docs/errors.md](asm/docs/errors.md) for the error model it supports.
+[asm/docs/errors.md](asm/docs/errors.md) for the error model err_trace supports.

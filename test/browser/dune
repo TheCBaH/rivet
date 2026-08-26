@@ -7,7 +7,7 @@
 ;
 ; smoke_jsoo needs js_of_ocaml + js_of_ocaml-ppx explicitly (Js.export and
 ; object%js are not available otherwise); the local precedent for this exact
-; shape is asm/vendor/err_trace/test/dune's jsoo stanza.
+; shape is asm/vendor/err_trace/upstream/test/dune's jsoo stanza.
 ;
 ; No enabled_if here, matching asm/test/dump/dune's asm_dump/manifest_dump
 ; executables: only the library they depend on (test_dump_inputs there,
