@@ -8,12 +8,15 @@ ENV PATH="/usr/local/riscv32-linux-gnu-toolchain/bin:${PATH}"
 # published RV32 archive installs the sysroot at /usr/riscv32-linux-gnu and
 # its tool prefix under /usr/local. There is no published 32-bit-host archive,
 # so the portable 32-bit image legs leave it absent and skip cross-toolchain jobs.
+# gcc-riscv64-linux-gnu only Recommends (not Depends) libc6-dev-riscv64-cross,
+# and this install uses --no-install-recommends, so the rv64 glibc sysroot is
+# listed explicitly rather than arriving as a side effect.
 RUN set -eux;\
     apt-get update;\
     ARCH="$(dpkg --print-architecture)";\
     case "$ARCH" in\
       armhf|armel) cross='gcc-arm-linux-gnueabihf libc6-dev-armhf-cross' ;;\
-      *) cross='gcc-i686-linux-gnu libc6-dev-i386-cross gcc-x86-64-linux-gnu libc6-dev-amd64-cross gcc-arm-linux-gnueabihf libc6-dev-armhf-cross gcc-aarch64-linux-gnu libc6-dev-arm64-cross binutils-riscv64-linux-gnu gcc-riscv64-linux-gnu' ;;\
+      *) cross='gcc-i686-linux-gnu libc6-dev-i386-cross gcc-x86-64-linux-gnu libc6-dev-amd64-cross gcc-arm-linux-gnueabihf libc6-dev-armhf-cross gcc-aarch64-linux-gnu libc6-dev-arm64-cross binutils-riscv64-linux-gnu gcc-riscv64-linux-gnu libc6-dev-riscv64-cross' ;;\
     esac;\
     env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends\
   ca-certificates\

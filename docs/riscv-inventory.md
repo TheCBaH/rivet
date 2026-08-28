@@ -59,4 +59,9 @@ everywhere, the `-M no-aliases,numeric` disassembly, the freestanding
 project-owned GCC probe wrapper that selects the exact ABI behind each
 profile's own tool prefix.  Development images install the published
 `riscv32-linux-gnu-` glibc toolchain for RV32, while Debian's packaged
-`riscv64-linux-gnu-` toolchain remains the RV64 source.
+`riscv64-linux-gnu-` toolchain remains the RV64 source. This fixture-oracle
+workflow is independent of the libc-smoke suite (`.ai/cross-plan.md`), which
+both RV32 and RV64 also join with their own real glibc sysroots
+(`/usr/riscv32-linux-gnu`, `/usr/riscv64-linux-gnu`); the Dockerfile installs
+`libc6-dev-riscv64-cross` explicitly since Debian only `Recommends`, not
+`Depends`, it from `gcc-riscv64-linux-gnu`.

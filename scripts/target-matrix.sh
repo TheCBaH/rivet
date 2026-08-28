@@ -23,7 +23,7 @@
 # delete the other's evidence mid-run.
 ASSEMBLER_TARGETS=(x86_32 x86_64 arm aarch64 riscv32 riscv64)
 FIXTURE_TARGETS=(x86_32 x86_64 arm aarch64 riscv32 riscv64)
-LIBC_SMOKE_TARGETS=(x86_32 x86_64 arm aarch64 riscv32)
+LIBC_SMOKE_TARGETS=(x86_32 x86_64 arm aarch64 riscv32 riscv64)
 ALL_TARGETS=("${ASSEMBLER_TARGETS[@]}")
 
 # Sets CONFIGURE_TARGET, TOOLPREFIX, QEMU_BIN, QEMU_SYSROOT,
@@ -138,13 +138,14 @@ target_config() {
       CONFIGURE_TARGET="rv64-linux"
       TOOLPREFIX="riscv64-linux-gnu-"
       QEMU_BIN="qemu-riscv64"
+      QEMU_SYSROOT="/usr/riscv64-linux-gnu"
       CCOMP_EXTRA_ARGS=(-fno-pie)
       COMPCERT_CONFIGURE_ARGS=(-no-runtime-lib -no-standard-headers)
       AS_FLAGS=(-march=rv64imafd -mabi=lp64d -mno-relax)
       LINKER_EMULATION="elf64lriscv"
       LD_FLAGS=(-m elf64lriscv --no-relax)
       READELF_MACHINE="RISC-V"
-      ELF_CLASS="ELF64"; WORD_SIZE=8
+      ELF_CLASS="ELF64"; WORD_SIZE=8; HAS_SYSROOT=true
       LINK_TEXT_ADDR="0x40000000"
       LINK_RODATA_ADDR="0x40010000"
       LINK_DATA_ADDR="0x40020000"

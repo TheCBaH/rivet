@@ -1632,12 +1632,11 @@ should use no debug generation and no PIC unless a later capability specifically
 tests them.
 
 The target GCC/binutils drivers, archivers, and QEMU user-mode execution paths
-are present now. The five libc-smoke profiles (x86-32, x86-64, ARM, AArch64,
-RISC-V 32-bit) also have sysroot headers, libc, and CompCert runtime
-libraries; only RV64 is intentionally freestanding, because this project does
-not install an RV64 libc sysroot. Keep the `.i -> .s` path as a fast,
-hermetic code-generation test, but do not let it replace the applicable smoke
-test or direct-assembler oracle gate.
+are present now. All six libc-smoke profiles (x86-32, x86-64, ARM, AArch64,
+RISC-V 32-bit, RISC-V 64-bit) have sysroot headers, libc, and CompCert runtime
+libraries. Keep the `.i -> .s` path as a fast, hermetic code-generation test,
+but do not let it replace the applicable smoke test or direct-assembler oracle
+gate.
 
 #### Fallback for an unprovisioned environment
 
