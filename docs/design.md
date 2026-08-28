@@ -1528,13 +1528,15 @@ the complete preprocess/assemble/link workflow:
 
 The repository devcontainer provides two complementary workflows. The libc
 cross-smoke workflow described in `.ai/cross-plan.md` uses real
-`.c -> .s -> .o -> executable` paths on its four libc-capable profiles. Run:
+`.c -> .s -> .o -> executable` paths on its five libc-capable profiles (RV32
+joined once the published `riscv32-linux-gnu` toolchain gave it a real glibc
+sysroot; see `asm/docs/riscv-inventory.md`). Run:
 
 ```text
 tools/compcert-cross-smoke.sh all
 ```
 
-This builds and installs four target-specific CompCert executables under
+This builds and installs five target-specific CompCert executables under
 `.cross-smoke-work/install/<target>/`, retains generated assembly under
 `.cross-smoke-work/artifacts/<target>/`, checks the ELF machine, and runs every
 linked executable with the corresponding QEMU user emulator and sysroot. The
@@ -1552,6 +1554,7 @@ The verified libc cross-smoke profile/tool matrix is:
 | x86-64 | `x86_64-linux` | `x86_64-linux-gnu-` | `/usr/x86_64-linux-gnu` |
 | ARM | `arm-linux`, `-marm` (ARMv7-A hard-float) | `arm-linux-gnueabihf-` | `/usr/arm-linux-gnueabihf` |
 | AArch64 | `aarch64-linux` | `aarch64-linux-gnu-` | `/usr/aarch64-linux-gnu` |
+| RISC-V 32-bit | `rv32-linux`, `-mabi=ilp32d` | `riscv32-linux-gnu-` (published crosstool-NG toolchain, not Debian's packaged `riscv64-linux-gnu-`) | `/usr/riscv32-linux-gnu` |
 
 Verification snapshot (2026-08-07): the libc smoke command built and installed four
 separate CompCert 3.17 executables and completed all four compile/link/QEMU runs
@@ -1561,6 +1564,16 @@ X86-64`, `ARM`, and `AArch64` respectively. The retained CompCert-generated
 (GNU Binutils 2.44); each resulting object linked with its matching installed
 `ccomp` and reproduced the expected output under QEMU. Oracle artifacts are under
 `.cross-smoke-work/artifacts/<target>/gnu-oracle/`.
+
+Verification snapshot (2026-08-28): `tools/compcert-cross-smoke.sh riscv32`
+built and installed a fifth CompCert 3.17 executable and completed its
+compile/link/QEMU run with zero skips, using the published `riscv32-linux-gnu`
+toolchain (crosstool-NG GCC 14.2.0 / Binutils 2.43.1). `readelf` reported
+`RISC-V`, `ELF32`. The retained `hello.s` was also assembled directly by
+`riscv32-linux-gnu-as -march=rv32imafd -mabi=ilp32d -mno-relax` and linked
+correctly (relocations against `puts`/`__stringlit_1` resolved as expected).
+RV32 is no longer blocked by Debian's lack of an `ilp32d` glibc package, and
+no longer shares RV64's GNU-tool prefix.
 
 Fixture generation and differential testing must use the installed compiler for
 the row, not `modules/CompCert/ccomp`, whose target depends on the last native
@@ -1575,7 +1588,7 @@ i686-linux-gnu-as --32 -o fixture.o fixture.s
 x86_64-linux-gnu-as --64 -o fixture.o fixture.s
 arm-linux-gnueabihf-as -o fixture.o fixture.s
 aarch64-linux-gnu-as -o fixture.o fixture.s
-riscv64-linux-gnu-as -march=rv32imafd -mabi=ilp32d -mno-relax -o fixture.o fixture.s
+riscv32-linux-gnu-as -march=rv32imafd -mabi=ilp32d -mno-relax -o fixture.o fixture.s
 riscv64-linux-gnu-as -march=rv64imafd -mabi=lp64d -mno-relax -o fixture.o fixture.s
 ```
 
@@ -1619,11 +1632,12 @@ should use no debug generation and no PIC unless a later capability specifically
 tests them.
 
 The target GCC/binutils drivers, archivers, and QEMU user-mode execution paths
-are present now. The four libc-smoke profiles also have sysroot headers, libc,
-and CompCert runtime libraries; the RISC-V profiles are intentionally
-freestanding. Keep the `.i -> .s` path as a fast, hermetic code-generation test,
-but do not let it replace the applicable smoke test or direct-assembler oracle
-gate.
+are present now. The five libc-smoke profiles (x86-32, x86-64, ARM, AArch64,
+RISC-V 32-bit) also have sysroot headers, libc, and CompCert runtime
+libraries; only RV64 is intentionally freestanding, because this project does
+not install an RV64 libc sysroot. Keep the `.i -> .s` path as a fast,
+hermetic code-generation test, but do not let it replace the applicable smoke
+test or direct-assembler oracle gate.
 
 #### Fallback for an unprovisioned environment
 

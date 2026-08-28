@@ -213,7 +213,7 @@
     [5 cost=0] disp32-norm      modrm-disp32-norm(){00 reg:3u 101 disp-sym}
     [6 cost=0] base-disp0       modrm-base-disp0(){00 reg:3u rm:3u disp-none}
     [7 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
-    [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-c32}
+    [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-sym}
   le32(){imm:32u}
   disp-sym(){le32}
   alu-rm-r-op[8]{opcode:8u}
@@ -440,7 +440,7 @@
     [5 cost=0] disp32-norm      modrm-disp32-norm(){00 reg:3u 101 disp-sym}
     [6 cost=0] base-disp0       modrm-base-disp0(){00 reg:3u rm:3u disp-none}
     [7 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
-    [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-c32}
+    [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-sym}
   le32(){imm:32u}
   alu-rm-r-op[8]{opcode:8u}
   cc[16]{cc:4u}

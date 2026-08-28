@@ -1114,8 +1114,16 @@ let make_rm_codec ~(reg_of_num : int -> Reg.t) ~rip_relative ~disp_kind : (rm_en
         ~disp_codec:(const_disp ~name:"disp-none" no_disp);
       base_alt ~label:"base-disp8" ~priority:7 ~modbits:1 ~form:D_8
         ~disp_codec:(const_disp ~name:"disp-c8" (le ~signedness:C.Signed ~width:8 "disp8"));
+      (* Unlike the disp0/disp8 base forms above, disp32 is also what a
+         symbolic base displacement takes ([disp_form_of] always classifies
+         [Disp.Sym] as [D_32]), so this alternative reuses [sym_disp] rather
+         than [const_disp] - the same base/SIB split [disp32-norm] and
+         [sib_nobase_disp32] already draw between a fixup-carrying disp32 and
+         a plain one. A numeric operand is unaffected: [sym_disp] already
+         round-trips [Disp.Const] identically to [const_disp] (see its
+         comment above). *)
       base_alt ~label:"base-disp32" ~priority:8 ~modbits:2 ~form:D_32
-        ~disp_codec:(const_disp ~name:"disp-c32" (le ~signedness:C.Signed ~width:32 "disp32"));
+        ~disp_codec:(sym_disp ~kind:disp_kind);
       (* mod=00, rm=101: the one ModR/M encoding whose *meaning* differs between
          the two modes rather than only its operand width. In 32-bit it is an
          absolute disp32 with no base; in 64-bit the same bits are RIP-relative,

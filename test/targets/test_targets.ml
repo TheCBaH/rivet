@@ -1199,6 +1199,40 @@ let%expect_test "an indirect jmp through a base-less SIB jump-table entry" =
     40000007  c3                    ret                       [x86_32.ret]
     |}]
 
+(* {1 Base-only memory operands with a symbolic displacement}
+
+   [sym(%base)] and the parenthesized-expression sibling [(sym + N)(%base)] -
+   no index, no scale, GCC/CompCert's plain struct/array-field address idiom
+   (M5 corpus evidence: asm/fixtures/corpus/c/x86_32/summary.txt's
+   almabench.c/nbody.c/sha3.c - "cannot parse operand a(%eax)",
+   "cannot parse operand (bodies + 24)(%eax)", "cannot parse operand
+   (testvec + 4)(%edx)"). Unlike the base-less-SIB case above, the encoder
+   needed a change too: [base-disp32] (x86_family_encode.ml) declined
+   [Disp.Sym] outright before this fix. Checked against i686-linux-gnu-as
+   (binutils 2.44) before being promoted here: [movl tbl(%eax), %eax] and
+   [movl (tbl + 24)(%edx), %edx] both encode as mod=10, no SIB, disp32 with
+   an R_386_32 relocation against [.text] - `8b 80 0d 00 00 00` and
+   `8b 92 25 00 00 00` respectively, matching this test's bytes exactly. *)
+let%expect_test "a base-only memory operand with a symbolic displacement" =
+  disasm "x86_32"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tmovl tbl(%eax), %eax\n\
+     \tmovl (tbl + 24)(%edx), %edx\n\
+     \tret\n\
+     tbl:\n\
+     \tret\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  8b 80 0d 00 00 40  movl 1073741837(%eax), %eax  [x86_32.mov-r-rm.base-disp32]
+    40000006  8b 92 25 00 00 40  movl 1073741861(%edx), %edx  [x86_32.mov-r-rm.base-disp32]
+    4000000c  c3                 ret                          [x86_32.ret]
+    4000000d  c3                 ret                          [x86_32.ret]
+    4000000e  c3                 ret                          [x86_32.ret]
+    |}]
+
 (* {1 SSE2 scalar float}
 
    M5 corpus evidence (asm/docs/corpus.md): the register class and

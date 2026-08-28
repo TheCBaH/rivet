@@ -148,6 +148,38 @@ module Make (M : MODE) = struct
         Some (List.rev rest, index, scale)
     | _ -> None
 
+  (* The trailing [(%base)] of a base-only memory operand whose displacement
+     is a symbolic expression rather than a bare integer literal -
+     [a(%eax)] and the parenthesized-expression sibling [(bodies + 24)(%eax)]
+     (M5 corpus evidence: asm/fixtures/corpus/c/x86_32/summary.txt's
+     almabench.c/nbody.c/sha3.c - the same struct/array-field idiom as the
+     base-less-SIB case above, just without an index register). The purely-
+     numeric sibling already has its own literal token patterns above
+     ([Int d; Lparen; Register b; Rparen] and friends); this one is a suffix
+     split, mirroring [split_rip] and [split_nobase_sib], because the prefix
+     is an arbitrary expression, not a fixed shape. [%rip] is excluded (it is
+     tried first, via [split_rip] and the earlier fixed-token patterns) so
+     this never fights over which case owns [expr(%rip)]. The encoder side
+     needs its own change unlike [split_nobase_sib]'s: [base-disp32]
+     (x86_family_encode.ml) carried its displacement through [const_disp],
+     which declines [Disp.Sym] outright, so it now uses [sym_disp] instead -
+     verified against i686-linux-gnu-as: both shapes above encode as mod=10,
+     no SIB, disp32 with an R_386_32 relocation against the symbol. *)
+  let split_base (slice : Asm_syntax.Token.slice) =
+    let open Asm_syntax in
+    match List.rev slice with
+    | rp :: reg :: lp :: rest
+      when Token.kind rp = Token.Rparen
+           && Token.kind lp = Token.Lparen
+           && (match Token.kind reg with
+             | Token.Register "rip" -> false
+             | Token.Register _ -> true
+             | _ -> false)
+           && rest <> [] ->
+        let base = match Token.kind reg with Token.Register r -> r | _ -> assert false in
+        Some (List.rev rest, base)
+    | _ -> None
+
   (* A displacement expression, folded first. Folding is what decides between
      the two constructors, and it has to: a decoded RIP-relative operand prints
      its raw displacement, and re-parsing [2044(%rip)] as *symbolic* would make
@@ -338,14 +370,25 @@ module Make (M : MODE) = struct
                         (disp_expression ~bad prefix)
                 | _ -> bad (`Malformed_memory_operand slice))
             | None -> (
-                (* Last resort: anything that is not a register, an immediate or an
+                match split_base slice with
+                | Some (prefix, base) -> (
+                    match mem_reg_named base with
+                    | Ok base ->
+                        Result.map
+                          (fun disp ->
+                            Operand.Mem { Mem.base = Some base; index = None; scale = 1; disp })
+                          (disp_expression ~bad prefix)
+                    | Error e -> Error e)
+                | None -> (
+                    (* Last resort: anything that is not a register, an immediate or an
                addressing form may still be an expression - a branch or call
                target. The common expression parser decides, rather than a
                second hand-written one here, so [foo+4] means the same thing in
                an operand as in a directive argument. *)
-                match Asm_syntax.Parse_lines.parse_expression (strip_plt_suffix slice) with
-                | Ok e -> Ok (Operand.Sym e)
-                | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))))
+                    match Asm_syntax.Parse_lines.parse_expression (strip_plt_suffix slice) with
+                    | Ok e -> Ok (Operand.Sym e)
+                    | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))))
+        )
 
   (* The common parser splits a line at every top-level comma, and a scaled
      address has commas *inside* its parentheses: [0(%edi,%edi,1)] arrives as
