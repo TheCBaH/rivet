@@ -937,6 +937,7 @@
     [33 cost=0] fmov-imm-s       fmov-imm-s(){000 11110 00 1 fpimm8-s 10000000 rd:5u}
     [34 cost=0] fcmp-imm0-d      fcmp-imm0-d(){000 11110 01 1 00000001000 rn:5u 01000}
     [35 cost=0] fcmp-imm0-s      fcmp-imm0-s(){000 11110 00 1 00000001000 rn:5u 01000}
+    [36 cost=0] addsub-extend    addsub-extend(){sf:1u op:1u s:1u 01011 00 1 rm option:3u imm3:3u rn rd}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}

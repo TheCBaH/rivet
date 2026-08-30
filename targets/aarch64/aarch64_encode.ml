@@ -373,6 +373,37 @@ let shift_of_name = function
   | "ror" -> Some 3
   | _ -> None
 
+(* ADD/SUB (extended register)'s own 3-bit "option" field - a different table
+   from the register-offset addressing extend above ([extend_option]/
+   [extend_of_option]): that one has four values (the two widths the
+   [ldr]/[str] index actually needs), this one has the full eight extend
+   forms A64 defines, at different bit values (verified against real
+   [aarch64-linux-gnu-as]/[objdump]: [uxtx] here is [0b011], not the
+   addressing table's [lsl] at that value). Kept separate rather than
+   unified, since conflating them would let one family's bit assignment leak
+   into the other's decode. *)
+let extend_alu_name = function
+  | 0 -> "uxtb"
+  | 1 -> "uxth"
+  | 2 -> "uxtw"
+  | 3 -> "uxtx"
+  | 4 -> "sxtb"
+  | 5 -> "sxth"
+  | 6 -> "sxtw"
+  | 7 -> "sxtx"
+  | _ -> "?"
+
+let extend_alu_of_name = function
+  | "uxtb" -> Some 0
+  | "uxth" -> Some 1
+  | "uxtw" -> Some 2
+  | "uxtx" -> Some 3
+  | "sxtb" -> Some 4
+  | "sxth" -> Some 5
+  | "sxtw" -> Some 6
+  | "sxtx" -> Some 7
+  | _ -> None
+
 let logical_name = function 0 -> "and" | 1 -> "orr" | 2 -> "eor" | 3 -> "ands" | _ -> "?"
 
 module Lowered = struct
@@ -405,6 +436,19 @@ module Lowered = struct
       }
         (** ADD/SUB (shifted register). [cmp] is this form with [sub], [s] and [rd = zr], which is
             what the machine means by a comparison - there is no compare instruction. *)
+    | Addsub_extend of {
+        sub : bool;
+        s : bool;
+        rd : Reg.t;
+        rn : Reg.t;
+        rm : Reg.t;
+        option : int;
+        imm3 : int;
+      }
+        (** ADD/SUB (extended register) - structurally distinct from {!Addsub_shift}, not a shift
+            with a different keyword table: [option] and [imm3] sit at different bit positions than
+            [Addsub_shift]'s [shift]/[amount], and unlike that form [rd]/[rn] here may be SP (M5
+            corpus evidence: [add x0, x0, x16, uxtx #0], asm/docs/corpus.md). *)
     | Logical_imm of { opc : int; rd : Reg.t; rn : Reg.t; imm : int64 }
         (** AND/ORR/EOR/ANDS with a bitmask immediate. *)
     | Madd of { rd : Reg.t; rn : Reg.t; rm : Reg.t; ra : Reg.t }
@@ -466,6 +510,11 @@ module Lowered = struct
             (if sub then "sub" else "add")
             (if s then "s" else "")
             Reg.pp rd Reg.pp rn Reg.pp rm tail
+    | Addsub_extend { sub; s; rd; rn; rm; option; imm3 } ->
+        Fmt.pf ppf "%s%s %a, %a, %a, %s #%d"
+          (if sub then "sub" else "add")
+          (if s then "s" else "")
+          Reg.pp rd Reg.pp rn Reg.pp rm (extend_alu_name option) imm3
     | Logical_imm { opc; rd; rn; imm } ->
         Fmt.pf ppf "%s %a, %a, #%Ld" (logical_name opc) Reg.pp rd Reg.pp rn imm
     | Madd { rd; rn; rm; ra } ->
@@ -502,6 +551,9 @@ module Lowered = struct
     | Addsub_shift x, Addsub_shift y ->
         x.sub = y.sub && x.s = y.s && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn
         && Reg.equal x.rm y.rm && x.shift = y.shift && x.amount = y.amount
+    | Addsub_extend x, Addsub_extend y ->
+        x.sub = y.sub && x.s = y.s && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn
+        && Reg.equal x.rm y.rm && x.option = y.option && x.imm3 = y.imm3
     | Logical_imm x, Logical_imm y ->
         x.opc = y.opc && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Int64.equal x.imm y.imm
     | Madd x, Madd y ->
@@ -1056,6 +1108,56 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   ** field ~width:6 "imm6"
                   ** reg_field ~width:64 ~sp:false "rn"
                   ** reg_field ~width:64 ~sp:false "rd"));
+           (* ADD/SUB (extended register): same [01011] family as [addsub-shift]
+              above, disambiguated by the fixed [00 1] at bits 23:21 where that
+              form has a 2-bit shift kind and a 0 bit instead. Unlike
+              [addsub-shift], [rd]/[rn] may be SP - the extended-register form is
+              how A64 spells SP-relative register arithmetic (verified against
+              real [aarch64-linux-gnu-as]/[objdump]: [add x1, sp, x2, uxtx]). *)
+           C.alt ~label:"addsub-extend" ~priority:36
+             (C.iso_fun ~name:"addsub-extend"
+                ~encode:(function
+                  | Lowered.Addsub_extend { sub; s; rd; rn; rm; option; imm3 } ->
+                      if option < 0 || option > 7 || imm3 < 0 || imm3 > 4 then None
+                      else
+                        Some
+                          ( (if rd.Reg.width = 64 then 1L else 0L),
+                            ( (if sub then 1L else 0L),
+                              ( (if s then 1L else 0L),
+                                ( (),
+                                  ( (),
+                                    ((), (rm, (Int64.of_int option, (Int64.of_int imm3, (rn, rd)))))
+                                  ) ) ) ) )
+                  | _ -> None)
+                ~decode:(fun (sf, (op, (s, ((), ((), ((), (rm, (option, (imm3, (rn, rd)))))))))) ->
+                  let width = if Int64.equal sf 1L then 64 else 32 in
+                  let option = Int64.to_int option in
+                  (* [rm]'s width is the extend option's own source width
+                     ([uxtx]/[sxtx] read [Xm], every other extend reads [Wm]),
+                     not [rd]/[rn]'s - the same distinction the
+                     register-offset addressing table's [extend_index_width]
+                     already makes, verified here against real
+                     [aarch64-linux-gnu-as]/[objdump]:
+                     [add x3, x4, w5, uxtw #2] prints [w5], not [x5], even
+                     though [rd]/[rn] are 64-bit. *)
+                  let rm_width = if option = 3 || option = 7 then 64 else 32 in
+                  Some
+                    (Lowered.Addsub_extend
+                       {
+                         sub = Int64.equal op 1L;
+                         s = Int64.equal s 1L;
+                         rd = { rd with Reg.width };
+                         rn = { rn with Reg.width };
+                         rm = { rm with Reg.width = rm_width };
+                         option;
+                         imm3 = Int64.to_int imm3;
+                       }))
+                C.(
+                  field ~width:1 "sf" ** field ~width:1 "op" ** field ~width:1 "s"
+                  ** const ~width:5 0b01011L ** const ~width:2 0b00L ** const ~width:1 1L
+                  ** reg_field ~width:64 ~sp:false "rm"
+                  ** field ~width:3 "option" ** field ~width:3 "imm3"
+                  ** reg_field ~width:64 ~sp:true "rn" ** reg_field ~width:64 ~sp:true "rd"));
            C.alt ~label:"logical-imm-32" ~priority:3
              (C.iso_fun ~name:"logical-imm-32"
                 ~encode:(function
@@ -1599,7 +1701,6 @@ let lower_instruction state i =
             ]
       | [ Operand.Shift { Shift.kind; amount } ] -> (
           match shift_of_name kind with
-          | None -> bad (`Not_a_shifted_register kind)
           | Some shift ->
               if amount < 0 || amount >= rd.Reg.width then bad `Shift_amount_too_large
               else
@@ -1607,7 +1708,18 @@ let lower_instruction state i =
                   [
                     Lowered.Addsub_shift
                       { sub = op = Opcode.Sub; s = false; rd; rn; rm; shift; amount };
-                  ])
+                  ]
+          | None -> (
+              match extend_alu_of_name kind with
+              | None -> bad (`Not_a_shifted_register kind)
+              | Some option ->
+                  if amount < 0 || amount > 4 then bad `Shift_amount_too_large
+                  else
+                    Ok
+                      [
+                        Lowered.Addsub_extend
+                          { sub = op = Opcode.Sub; s = false; rd; rn; rm; option; imm3 = amount };
+                      ]))
       | _ -> bad `Too_many_operands)
   | Opcode.Cmp, [ Operand.Reg rn; Operand.Imm v ] -> (
       (* The immediate half of the same aliasing: a [subs] into the zero
@@ -1895,6 +2007,20 @@ let instruction_of_lowered ?(at = 0L) = function
           {
             Instruction.op = (if sub then Opcode.Sub else Opcode.Add);
             ops = Operand.Reg rd :: Operand.Reg rn :: Operand.Reg rm :: tail;
+          }
+  | Lowered.Addsub_extend { sub; s; rd; rn; rm; option; imm3 } ->
+      if s then None
+      else
+        Some
+          {
+            Instruction.op = (if sub then Opcode.Sub else Opcode.Add);
+            ops =
+              [
+                Operand.Reg rd;
+                Operand.Reg rn;
+                Operand.Reg rm;
+                Operand.Shift { Shift.kind = extend_alu_name option; amount = imm3 };
+              ];
           }
   | Lowered.Logical_imm { opc; rd; rn; imm } -> (
       (* [eor] and [ands] are opc 2 and 3; neither has a surface spelling here

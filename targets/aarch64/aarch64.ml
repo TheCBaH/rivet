@@ -192,8 +192,18 @@ let parse_one (slice : Asm_syntax.Token.slice) =
       match Bigint.to_int_opt v with
       | Some n -> mem_reg ~base:b ~index:idx ~extend:ext ~amount:(Some n)
       | None -> bad `Shift_amount_too_wide)
+  (* The shift keywords ([lsl]/[lsr]/[asr]/[ror]) are ADD/SUB (shifted
+     register)'s operand; the extend keywords are the *other* ADD/SUB
+     register form - extended register, e.g. [add x0, x0, x16, uxtx #0]
+     (M5 corpus evidence: test/regression/int64.c, asm/docs/corpus.md).
+     Both spell as [<keyword> #<amount>] at this token shape, so one operand
+     type ([Operand.Shift]) carries either; {!Aarch64_encode.lower_instruction}
+     is what tells them apart, by which table ([shift_of_name] vs. the
+     extended-register option table) recognizes [kind]. *)
   | [
-   Token.Ident (("lsl" | "lsr" | "asr" | "ror" | "uxtw" | "sxtw") as k);
+   Token.Ident
+     (( "lsl" | "lsr" | "asr" | "ror" | "uxtb" | "uxth" | "uxtw" | "uxtx" | "sxtb" | "sxth" | "sxtw"
+      | "sxtx" ) as k);
    Token.Immediate_sigil;
    Token.Int v;
   ] -> (

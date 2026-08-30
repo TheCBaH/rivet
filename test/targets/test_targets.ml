@@ -1963,6 +1963,44 @@ let%expect_test "register-offset addressing: uxtw/sxtw/sxtx/lsl, scaled and unsc
     4000001c  c0 03 5f d6  ret                         [aarch64.ret]
     |}]
 
+(* {1 ADD/SUB (extended register)}
+
+   Structurally distinct from ADD/SUB (shifted register) - a different fixed
+   bit at 21 where the shifted form has a 2-bit shift kind, and [rd]/[rn] may
+   be SP here where the shifted form forbids it. M5 corpus evidence
+   (asm/docs/corpus.md): [test/regression/int64.c]'s
+   [add x0, x0, x16, uxtx #0]. Byte-for-byte hand-verified against the real,
+   installed aarch64-linux-gnu-as/objdump before being written down:
+     8b306000  add x0, x0, x16, uxtx
+     8b2263e1  add x1, sp, x2
+     8b254883  add x3, x4, w5, uxtw #2
+     0b2800e6  add w6, w7, w8, uxtb
+     cb2bed49  sub x9, x10, x11, sxtx #3
+   (GNU's own canonical printer omits an implied [uxtx]/[#0]; this project
+   always prints the operand explicitly instead, matching what CompCert and
+   this corpus fixture actually write - see {!Lowered.pp}'s [Addsub_extend]
+   case.) *)
+let%expect_test "ADD/SUB (extended register): uxtb/uxtw/uxtx/sxtx, and rd/rn = sp" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tadd x0, x0, x16, uxtx #0\n\
+     \tadd x1, sp, x2, uxtx #0\n\
+     \tadd x3, x4, w5, uxtw #2\n\
+     \tadd w6, w7, w8, uxtb #0\n\
+     \tsub x9, x10, x11, sxtx #3\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  00 60 30 8b  add x0, x0, x16, uxtx #0   [aarch64.addsub-extend]
+    40000004  e1 63 22 8b  add x1, sp, x2, uxtx #0    [aarch64.addsub-extend]
+    40000008  83 48 25 8b  add x3, x4, w5, uxtw #2    [aarch64.addsub-extend]
+    4000000c  e6 00 28 0b  add w6, w7, w8, uxtb #0    [aarch64.addsub-extend]
+    40000010  49 ed 2b cb  sub x9, x10, x11, sxtx #3  [aarch64.addsub-extend]
+    40000014  c0 03 5f d6  ret                        [aarch64.ret]
+    |}]
+
 (* [[x20, x1]] with no extend token at all and [[x20, x1, lsl #0]] with an
    explicit unscaled [lsl #0] assemble to the same word on real [as]
    ([f8616a82] both - verified directly, distinct from the [lsl #3] case
