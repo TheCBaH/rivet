@@ -151,9 +151,9 @@
   00000012  c3              ret                  [x86_32.ret]
   ########## x86_32 codec
   alt x86_32
-    [0 cost=0] alu-rm-imm8      alu-rm-imm8(){prefixes 10000011 modrm imm:8s}
-    [1 cost=0] alu-rm-imm32     alu-rm-imm32(){prefixes 10000001 modrm le32}
-    [2 cost=0] mov-r-imm        mov-r-imm(){prefixes 10111 reg:3u le32}
+    [0 cost=0] alu-rm-imm8      alu-rm-imm8(){prefixes 10000011 modrm imm}
+    [1 cost=0] alu-rm-imm32     alu-rm-imm32(){prefixes 10000001 modrm imm-sym32}
+    [2 cost=0] mov-r-imm        mov-r-imm(){prefixes 10111 reg:3u imm-sym32}
     [3 cost=0] mov-eax-moffs    mov-eax-moffs(){10100001 disp-sym}
     [4 cost=0] mov-moffs-eax    mov-moffs-eax(){10100011 disp-sym}
     [5 cost=0] mov-rm-r         mov-rm-r(){prefixes 10001001 modrm}
@@ -203,6 +203,8 @@
     [45 cost=0] test-rm-imm      test-rm-imm(){prefixes 11110111 modrm le32}
     [46 cost=0] mov-rm-r8        mov-rm-r8(){prefixes 10001000 modrm}
     [47 cost=0] mov-r-rm8        mov-r-rm8(){prefixes 10001010 modrm}
+    [48 cost=0] push-imm8        push-imm8(){01101010 imm}
+    [49 cost=0] push-imm32       push-imm32(){01101000 imm-sym32}
   prefixes(){no-asz opsz no-rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
@@ -214,9 +216,11 @@
     [6 cost=0] base-disp0       modrm-base-disp0(){00 reg:3u rm:3u disp-none}
     [7 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
     [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-sym}
-  le32(){imm:32u}
+  imm(){imm:8s}
+  imm-sym32(){le32}
   disp-sym(){le32}
   alu-rm-r-op[8]{opcode:8u}
+  le32(){<target:32@0 pcrel32-call>}
   cc[16]{cc:4u}
   alu-r-rm-op[3]{opcode:8u}
   no-asz(){()}
@@ -384,9 +388,9 @@
   00000016  c3              ret                  [x86_64.ret]
   ########## x86_64 codec
   alt x86_64
-    [0 cost=0] alu-rm-imm8      alu-rm-imm8(){prefixes 10000011 modrm imm:8s}
-    [1 cost=0] alu-rm-imm32     alu-rm-imm32(){prefixes 10000001 modrm le32}
-    [2 cost=0] mov-r-imm        mov-r-imm(){prefixes 10111 reg:3u le32}
+    [0 cost=0] alu-rm-imm8      alu-rm-imm8(){prefixes 10000011 modrm imm}
+    [1 cost=0] alu-rm-imm32     alu-rm-imm32(){prefixes 10000001 modrm imm-sym32}
+    [2 cost=0] mov-r-imm        mov-r-imm(){prefixes 10111 reg:3u imm-sym32}
     [5 cost=0] mov-rm-r         mov-rm-r(){prefixes 10001001 modrm}
     [6 cost=0] mov-r-rm         mov-r-rm(){prefixes 10001011 modrm}
     [7 cost=0] lea              lea(){prefixes 10001101 modrm}
@@ -433,6 +437,8 @@
     [45 cost=0] test-rm-imm      test-rm-imm(){prefixes 11110111 modrm le32}
     [46 cost=0] mov-rm-r8        mov-rm-r8(){prefixes 10001000 modrm}
     [47 cost=0] mov-r-rm8        mov-r-rm8(){prefixes 10001010 modrm}
+    [48 cost=0] push-imm8        push-imm8(){01101010 imm}
+    [49 cost=0] push-imm32       push-imm32(){01101000 imm-sym32}
   prefixes(){asz opsz rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
@@ -444,8 +450,10 @@
     [6 cost=0] base-disp0       modrm-base-disp0(){00 reg:3u rm:3u disp-none}
     [7 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
     [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-sym}
-  le32(){imm:32u}
+  imm(){imm:8s}
+  imm-sym32(){le32}
   alu-rm-r-op[8]{opcode:8u}
+  le32(){<target:32@0 pcrel32-call>}
   cc[16]{cc:4u}
   alu-r-rm-op[3]{opcode:8u}
   alt asz

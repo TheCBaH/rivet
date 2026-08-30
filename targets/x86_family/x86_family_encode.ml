@@ -130,9 +130,11 @@ module Operand = struct
      (this project's only source of fixtures until now) never emitted. Kept
      as its own constructor rather than widening [Imm] to
      [Bigint.t Asm_core.Expr.t]-like union, so every existing [Imm v] site
-     stays exactly as narrow as it was - this is parse-level only for now (no
-     [lower_instruction] arm accepts it yet, so it falls to that match's own
-     [No_form] catch-all; see asm/docs/corpus.md's classify-c-gcc section). *)
+     stays exactly as narrow as it was. All three evidenced forms now lower
+     it: [mov]'s register-destination form ({!Lowered.Mov_r_imm}), the
+     ALU-immediate form ({!Lowered.Alu_rm_imm}), and [push]'s immediate form
+     ({!Lowered.Push_imm}) - see asm/docs/corpus.md's classify-c-gcc
+     section. *)
   type t =
     | Reg of Reg.t
     | Mem of Mem.t
@@ -558,8 +560,17 @@ type rm = Rm.t
    could disagree. *)
 module Lowered = struct
   type t =
-    | Alu_rm_imm of { ext : int; width : int; rm : Rm.t; imm : int64 }
-    | Mov_r_imm of { width : int; reg : Reg.t; imm : int64 }
+    | Alu_rm_imm of { ext : int; width : int; rm : Rm.t; imm : Disp.t }
+        (** [imm] is a [Disp.t] rather than a bare [int64], for the same reason
+            as {!Mov_r_imm}'s: gcc's `addq $bodies+24, %rax` (M5,
+            asm/docs/corpus.md) writes a symbol's address as an ALU
+            immediate. *)
+    | Mov_r_imm of { width : int; reg : Reg.t; imm : Disp.t }
+        (** [imm] is a [Disp.t] rather than a bare [int64] - unlike every other
+            immediate-carrying form here - because this is the one place a
+            gcc-only idiom (M5, asm/docs/corpus.md - [movl $.LC0,%edi]) writes
+            a symbol's address as an immediate rather than through a memory
+            operand; see {!sym_imm32}. *)
     | Mov_rm_r of { width : int; rm : Rm.t; reg : Reg.t }
     | Mov_r_rm of { width : int; reg : Reg.t; rm : Rm.t }
     | Lea of { width : int; reg : Reg.t; mem : Mem.t }
@@ -595,6 +606,12 @@ module Lowered = struct
             encoder dispatches on which, so a resolved displacement never rebuilds a ladder and a
             symbolic one never pretends to have a value. *)
     | Push of { reg : Reg.t }  (** [0x50+r], mirroring {!Pop}'s [0x58+r]. *)
+    | Push_imm of { imm : Disp.t }
+        (** [0x6a ib] / [0x68 id] (M5, asm/docs/corpus.md - [pushl $sym]): push's own immediate
+            form, disjoint from {!Push}'s register-only [0x50+r]. [imm] is a {!Disp.t} for the
+            same reason {!Mov_r_imm}'s and {!Alu_rm_imm}'s are - GAS lets [$sym] stand in for a
+            numeric literal here too - and like {!Alu_rm_imm} it sign-extends, confirmed by real
+            [as] emitting [R_X86_64_32S] for the symbolic case the same way it does there. *)
     | Dec of { reg : Reg.t }
         (** [0x48+r] - the single-byte 32-bit-only form; the general [0xFF /1] group is
             unimplemented, no fixture selects it. *)
@@ -661,11 +678,11 @@ module Lowered = struct
 
   let pp ppf = function
     | Alu_rm_imm { ext; width; rm; imm } ->
-        Fmt.pf ppf "%s%s $%Ld, %a"
+        Fmt.pf ppf "%s%s $%s, %a"
           (match Opcode.of_ext ext with Some o -> Opcode.name o | None -> "alu?")
-          (suffix_of_width width) imm Rm.pp rm
+          (suffix_of_width width) (Disp.to_string imm) Rm.pp rm
     | Mov_r_imm { width; reg; imm } ->
-        Fmt.pf ppf "mov%s $%Ld, %a" (suffix_of_width width) imm Reg.pp reg
+        Fmt.pf ppf "mov%s $%s, %a" (suffix_of_width width) (Disp.to_string imm) Reg.pp reg
     | Mov_rm_r { width; rm; reg } ->
         Fmt.pf ppf "mov%s %a, %a" (suffix_of_width width) Reg.pp reg Rm.pp rm
     | Mov_r_rm { width; reg; rm } ->
@@ -694,6 +711,7 @@ module Lowered = struct
         Fmt.pf ppf "j%s %a" (Cc.name cc) Asm_core.Lowered_ast.pp_branch target
     | Call_rel { target } -> Fmt.pf ppf "call %a" Asm_core.Lowered_ast.pp_branch target
     | Push { reg } -> Fmt.pf ppf "push %a" Reg.pp reg
+    | Push_imm { imm } -> Fmt.pf ppf "push $%s" (Disp.to_string imm)
     | Dec { reg } -> Fmt.pf ppf "dec %a" Reg.pp reg
     | Unary_rm { ext; width; rm } -> (
         let name =
@@ -733,9 +751,9 @@ module Lowered = struct
   let equal a b =
     match (a, b) with
     | Alu_rm_imm x, Alu_rm_imm y ->
-        x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
+        x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm && Disp.equal x.imm y.imm
     | Mov_r_imm x, Mov_r_imm y ->
-        x.width = y.width && Reg.equal x.reg y.reg && Int64.equal x.imm y.imm
+        x.width = y.width && Reg.equal x.reg y.reg && Disp.equal x.imm y.imm
     | Mov_rm_r x, Mov_rm_r y -> x.width = y.width && Rm.equal x.rm y.rm && Reg.equal x.reg y.reg
     | Mov_r_rm x, Mov_r_rm y -> x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Lea x, Lea y -> x.width = y.width && Reg.equal x.reg y.reg && Mem.equal x.mem y.mem
@@ -759,6 +777,7 @@ module Lowered = struct
         Cc.equal x.cc y.cc && Asm_core.Lowered_ast.equal_branch x.target y.target
     | Call_rel x, Call_rel y -> Asm_core.Lowered_ast.equal_branch x.target y.target
     | Push x, Push y -> Reg.equal x.reg y.reg
+    | Push_imm x, Push_imm y -> Disp.equal x.imm y.imm
     | Dec x, Dec y -> Reg.equal x.reg y.reg
     | Unary_rm x, Unary_rm y -> x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm
     | Alu_r_rm x, Alu_r_rm y ->
@@ -916,6 +935,27 @@ let sym_disp ~kind =
     ~encode:(fun d -> Some (Disp.placeholder d))
     ~decode:(fun v -> Some (Disp.Const (C.sign_extend ~width:32 v)))
     (le_fixup ~width:32 ~kind "disp")
+
+(* The same idea as [sym_disp], for an immediate rather than a displacement
+   (M5, asm/docs/corpus.md - [movl $.LC0,%edi], gcc's idiom for materializing
+   a string/array address into a register; also [addq $bodies+24,%rax], the
+   same idiom as an ALU operand). [signedness] is not hard-coded the way
+   [sym_disp]'s always-sign-extending decode is, because the two callers
+   disagree: {!Lowered.Mov_r_imm}'s [imm] has always round-tripped as the raw
+   unsigned 32-bit magnitude, while {!Lowered.Alu_rm_imm}'s imm32 form
+   already sign-extended before this constructor carried a symbol at all -
+   each keeps its own prior decode exactly, so this stays purely additive for
+   every value the non-symbolic forms already handled. *)
+let sym_imm32 ~kind ~signedness =
+  C.iso_fun ~name:"imm-sym32"
+    ~encode:(fun d -> Some (Disp.placeholder d))
+    ~decode:(fun v ->
+      Some
+        (Disp.Const
+           (match signedness with
+           | C.Signed -> sign_extend ~width:32 v
+           | C.Unsigned -> mask ~width:32 v)))
+    (le_fixup ~width:32 ~kind "imm")
 
 (* [%rip] is not a general-purpose register and is admitted in exactly one
    place: as the base of a 64-bit RIP-relative operand. Numbering it outside the
@@ -1712,11 +1752,31 @@ module Make (M : MODE) = struct
                 | Ok () ->
                     Ok
                       [
-                        Lowered.Alu_rm_imm { ext; width = i.Instruction.width; rm = Rm.Reg r; imm };
+                        Lowered.Alu_rm_imm
+                          { ext; width = i.Instruction.width; rm = Rm.Reg r; imm = Disp.Const imm };
                       ])
             | Operand.Mem m ->
-                Ok [ Lowered.Alu_rm_imm { ext; width = i.Instruction.width; rm = Rm.Mem m; imm } ]
+                Ok
+                  [
+                    Lowered.Alu_rm_imm
+                      { ext; width = i.Instruction.width; rm = Rm.Mem m; imm = Disp.Const imm };
+                  ]
             | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ -> bad `Immediate_destination))
+    (* [addq $bodies+24, %rax] - gcc's idiom for address arithmetic against a
+       symbol's own address rather than through [lea] (M5, asm/docs/corpus.md).
+       Register destination only - no fixture evidences a symbolic-immediate
+       memory destination for an ALU op. *)
+    | ( (Opcode.Add | Opcode.Adc | Opcode.And | Opcode.Sub | Opcode.Cmp | Opcode.Or | Opcode.Xor),
+        [ Operand.Imm_sym e; Operand.Reg r ] ) -> (
+        match width_ok r with
+        | Error e -> Error e
+        | Ok () ->
+            let ext = Opcode.to_ext i.Instruction.op in
+            Ok
+              [
+                Lowered.Alu_rm_imm
+                  { ext; width = i.Instruction.width; rm = Rm.Reg r; imm = Disp.Sym e };
+              ])
     | Opcode.Mov, [ Operand.Imm v; Operand.Mem m ] -> (
         if i.Instruction.width <> 8 then bad `Imm_to_mem_only_movb
         else
@@ -1725,8 +1785,17 @@ module Make (M : MODE) = struct
           | Ok imm -> Ok [ Lowered.Mov_rm_imm { width = 8; rm = Rm.Mem m; imm } ])
     | Opcode.Mov, [ Operand.Imm v; Operand.Reg r ] -> (
         match (imm_of v, width_ok r) with
-        | Ok imm, Ok () -> Ok [ Lowered.Mov_r_imm { width = i.Instruction.width; reg = r; imm } ]
+        | Ok imm, Ok () ->
+            Ok [ Lowered.Mov_r_imm { width = i.Instruction.width; reg = r; imm = Disp.Const imm } ]
         | Error e, _ | _, Error e -> Error e)
+    (* [movl $.LC0, %edi] - gcc's idiom for materializing a string/array
+       address into a register (M5, asm/docs/corpus.md), rather than through
+       [lea] against a memory operand the way ccomp's own codegen always did. *)
+    | Opcode.Mov, [ Operand.Imm_sym e; Operand.Reg r ] -> (
+        match width_ok r with
+        | Error e -> Error e
+        | Ok () ->
+            Ok [ Lowered.Mov_r_imm { width = i.Instruction.width; reg = r; imm = Disp.Sym e } ])
     | Opcode.Mov, [ Operand.Reg r; Operand.Mem m ] -> (
         match width_ok r with
         | Error e -> Error e
@@ -1865,6 +1934,14 @@ module Make (M : MODE) = struct
         | Operand.Mem _ -> bad (`No_form (Opcode.name i.Instruction.op))
         | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ -> bad `Immediate_destination)
     | Opcode.Push, [ Operand.Reg r ] -> Ok [ Lowered.Push { reg = r } ]
+    (* [pushl $sym] (M5, asm/docs/corpus.md), gcc's own idiom for materializing
+       a symbol's address on the stack: {!Push_imm}'s [imm] carries it as a
+       {!Disp.t} the same way {!Mov_r_imm}'s and {!Alu_rm_imm}'s already do. *)
+    | Opcode.Push, [ Operand.Imm v ] -> (
+        match imm_of v with
+        | Ok imm -> Ok [ Lowered.Push_imm { imm = Disp.Const imm } ]
+        | Error e -> Error e)
+    | Opcode.Push, [ Operand.Imm_sym e ] -> Ok [ Lowered.Push_imm { imm = Disp.Sym e } ]
     | Opcode.Dec, [ Operand.Reg r ] -> Ok [ Lowered.Dec { reg = r } ]
     (* The operands swap sides relative to the ALU forms above: AT&T [imull
        %%esi, %%ecx] writes %%ecx, and the register field of an [0f af] is the
@@ -2675,12 +2752,23 @@ module Make (M : MODE) = struct
            ** rm_codec
            ** le ~signedness:C.Signed ~width:imm_width "imm"))
 
+  (* Unlike {!imul_imm_form}'s [imm] above, this one is a [Disp.t]: the imm8
+     rung can never carry a symbol (gcc's `addq $sym,%rax` never fits a
+     sign-extended byte anyway), so it is wrapped in [const_disp] purely for
+     the tuple shape both rungs of the ladder must share; the imm32 rung
+     reuses {!sym_imm32}, {!Mov_r_imm}'s own fixup field, keeping this
+     alt's prior sign-extending decode exactly (unlike [Mov_r_imm]'s
+     unsigned one). *)
   let alu_form ~label ~priority ~opcode_byte ~imm_width =
     C.alt ~label ~priority
       (C.iso_fun ~name:label
          ~encode:(function
            | Lowered.Alu_rm_imm { ext; width; rm; imm } ->
-               let fits = if imm_width = 8 then fits_s8 imm else fits_s32 imm in
+               let fits =
+                 match imm with
+                 | Disp.Const v -> if imm_width = 8 then fits_s8 v else fits_s32 v
+                 | Disp.Sym _ -> imm_width = 32
+               in
                if not fits then None
                else Some (prefixes_of ~width ~reg:ext ~rm, ((), ({ re_reg = ext; re_rm = rm }, imm)))
            | _ -> None)
@@ -2696,7 +2784,32 @@ module Make (M : MODE) = struct
            prefixes_codec
            ** const ~width:8 (Int64.of_int opcode_byte)
            ** rm_codec
-           ** le ~signedness:C.Signed ~width:imm_width "imm"))
+           **
+           if imm_width = 8 then const_disp ~name:"imm" (le ~signedness:C.Signed ~width:8 "imm")
+           else sym_imm32 ~kind:Abs32 ~signedness:C.Signed))
+
+  (* [0x6a ib] / [0x68 id] ({!Lowered.Push_imm}, [pushl $sym]): the same
+     short-immediate-first priority discipline and [Disp.t]/[sym_imm32]
+     symbol-carrying as {!alu_form}, minus a ModR/M byte - push's immediate
+     forms take no r/m or extension field, just the opcode and the value. *)
+  let push_imm_form ~label ~priority ~opcode_byte ~imm_width =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Push_imm { imm } ->
+               let fits =
+                 match imm with
+                 | Disp.Const v -> if imm_width = 8 then fits_s8 v else fits_s32 v
+                 | Disp.Sym _ -> imm_width = 32
+               in
+               if not fits then None else Some ((), imm)
+           | _ -> None)
+         ~decode:(fun ((), imm) -> Some (Lowered.Push_imm { imm }))
+         C.(
+           const ~width:8 (Int64.of_int opcode_byte)
+           **
+           if imm_width = 8 then const_disp ~name:"imm" (le ~signedness:C.Signed ~width:8 "imm")
+           else sym_imm32 ~kind:Abs32 ~signedness:C.Signed))
 
   let general_alts =
     [
@@ -2717,13 +2830,11 @@ module Make (M : MODE) = struct
              | _ -> None)
            ~decode:(fun (rex, (((), r), imm)) ->
              let width = width_of_prefixes rex in
-             Some
-               (Lowered.Mov_r_imm
-                  { width; reg = reg_at ~width (Int64.to_int r); imm = mask ~width:32 imm }))
+             Some (Lowered.Mov_r_imm { width; reg = reg_at ~width (Int64.to_int r); imm }))
            C.(
              prefixes_codec
              ** (const ~width:5 0b10111L ** field ~width:3 "reg")
-             ** le ~signedness:C.Unsigned ~width:32 "imm32"));
+             ** sym_imm32 ~kind:Abs32 ~signedness:C.Unsigned));
     ]
 
   (* Present only in 32-bit mode, not merely unselected there: an alternative no
@@ -3232,6 +3343,8 @@ module Make (M : MODE) = struct
                C.(
                  prefixes_codec ** const ~width:8 0xF7L ** rm_codec
                  ** le ~signedness:C.Signed ~width:32 "imm"));
+          push_imm_form ~label:"push-imm8" ~priority:48 ~opcode_byte:0x6a ~imm_width:8;
+          push_imm_form ~label:"push-imm32" ~priority:49 ~opcode_byte:0x68 ~imm_width:32;
         ])
 
   (* {2 Encode and decode} *)
@@ -3300,7 +3413,8 @@ module Make (M : MODE) = struct
     | Lowered.Jmp_rel { target = Asm_core.Lowered_ast.Symbolic { value; _ } }
     | Lowered.Jcc_rel { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
         [ ("target", value) ]
-    | Lowered.Alu_rm_imm { rm; _ }
+    | Lowered.Alu_rm_imm { rm; imm; _ } -> (
+        disp_expr rm @ match imm with Disp.Sym e -> [ ("imm", e) ] | Disp.Const _ -> [])
     | Lowered.Mov_rm_r { rm; _ }
     | Lowered.Mov_r_rm { rm; _ }
     | Lowered.Mov_rm_imm { rm; _ }
@@ -3310,6 +3424,8 @@ module Make (M : MODE) = struct
     | Lowered.Jmp_rm { rm } ->
         disp_expr rm
     | Lowered.Lea { mem; _ } -> disp_expr (Rm.Mem mem)
+    | Lowered.Mov_r_imm { imm = Disp.Sym e; _ } | Lowered.Push_imm { imm = Disp.Sym e } ->
+        [ ("imm", e) ]
     | _ -> []
 
   let form_of l enc =
@@ -3397,7 +3513,9 @@ module Make (M : MODE) = struct
                 width;
                 ops =
                   [
-                    Operand.Imm (Bigint.of_int64 imm);
+                    (match imm with
+                    | Disp.Const v -> Operand.Imm (Bigint.of_int64 v)
+                    | Disp.Sym e -> Operand.Imm_sym e);
                     (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
                   ];
                 form = None;
@@ -3407,7 +3525,13 @@ module Make (M : MODE) = struct
           {
             Instruction.op = Opcode.Mov;
             width;
-            ops = [ Operand.Imm (Bigint.of_int64 imm); Operand.Reg reg ];
+            ops =
+              [
+                (match imm with
+                | Disp.Const v -> Operand.Imm (Bigint.of_int64 v)
+                | Disp.Sym e -> Operand.Imm_sym e);
+                Operand.Reg reg;
+              ];
             form = None;
           }
     | Lowered.Mov_rm_r { width; rm; reg } ->
@@ -3541,6 +3665,14 @@ module Make (M : MODE) = struct
           (Instruction.mk ?form:(rung_of target) (Opcode.Jcc cc) M.address_width
              [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
     | Lowered.Push { reg } -> Some (Instruction.mk Opcode.Push M.address_width [ Operand.Reg reg ])
+    | Lowered.Push_imm { imm } ->
+        Some
+          (Instruction.mk Opcode.Push M.address_width
+             [
+               (match imm with
+               | Disp.Const v -> Operand.Imm (Bigint.of_int64 v)
+               | Disp.Sym e -> Operand.Imm_sym e);
+             ])
     | Lowered.Dec { reg } -> Some (Instruction.mk Opcode.Dec M.address_width [ Operand.Reg reg ])
     | Lowered.Unary_rm { ext; width; rm } -> (
         match Opcode.of_unary_ext ext with

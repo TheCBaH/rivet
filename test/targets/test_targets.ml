@@ -1649,22 +1649,74 @@ let%expect_test "%ah/%ch/%dh/%bh, x86_32's legacy high-byte registers" =
     4000000b  c3        ret                       [x86_32.ret]
     |}]
 
-(* $symbol/$symbol+offset - a symbolic immediate (`movl $.LC0,%edi`,
-   `addq $bodies+24,%rax`, `pushl $sym`). Parses (Operand.Imm_sym,
-   x86_family_encode.ml), which is all classify-c-gcc's --dump-source-ast
-   needs - no [lower_instruction] arm accepts it yet, so assembling all the
-   way through fails cleanly at the lower stage rather than crashing or
-   silently mis-encoding, and each opcode's own diagnostic still names the
-   opcode. *)
-let%expect_test "$symbol parses as an operand but does not lower yet" =
-  attempt "x86_64" "\t.text\n\t.globl f\nf:\n\tmovl $sym, %eax\n\tret\n\t.data\nsym:\n\t.long 0\n";
-  attempt "x86_64" "\t.text\n\t.globl f\nf:\n\taddq $sym, %rax\n\tret\n\t.data\nsym:\n\t.long 0\n";
-  attempt "x86_32" "\t.text\n\t.globl f\nf:\n\tpushl $sym\n\tret\n\t.data\nsym:\n\t.long 0\n";
+(* [movl $sym, %reg] - a symbolic immediate (M5 corpus evidence: gcc's
+   `movl $.LC0, %edi`, its idiom for materializing a string/array address
+   into a register). [Mov_r_imm]'s [imm] field became a [Disp.t] (was a bare
+   [int64]) so it can carry a symbol the same way a memory displacement
+   already could; the field codec swapped [le32] for {!sym_imm32}, a
+   fixup-carrying sibling of [sym_disp]. Checked against real
+   i686-linux-gnu-as/x86_64-linux-gnu-as: `movl $sym, %eax` -> `b8
+   <disp32>` with an `R_386_32` relocation on x86-32 and `R_X86_64_32` on
+   x86-64 - the same absolute-address relocation kind [mov]'s
+   [mem_of_symbol] disp32 form already uses, just carried by an immediate
+   field instead of a ModR/M memory operand. *)
+let%expect_test "movl $sym, %reg reads a symbolic immediate" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tmovl $f, %eax\n\tmovl $f+4, %ecx\n\tret\n";
   [%expect
     {|
-    x86.lower: no mov form takes these operands
-    x86.lower: no add form takes these operands
-    x86.lower: no push form takes these operands
+    40000000  b8 00 00 00 40  movl $1073741824, %eax  [x86_32.mov-r-imm.opsz-absent]
+    40000005  b9 04 00 00 40  movl $1073741828, %ecx  [x86_32.mov-r-imm.opsz-absent]
+    4000000a  c3              ret                     [x86_32.ret]
+    |}]
+
+(* [addq $sym, %reg] - the same symbolic-immediate idiom as [mov] above, on
+   an ALU op (M5 corpus evidence: gcc's `addq $bodies+24, %rax`, address
+   arithmetic against a symbol's own address rather than through [lea]).
+   [Alu_rm_imm]'s [imm] field became a [Disp.t] too; its imm32 rung reuses
+   {!sym_imm32}, keeping this alt's prior sign-extending decode (unlike
+   [Mov_r_imm]'s unsigned one - see {!sym_imm32}'s doc comment). The imm8
+   rung can never carry a symbol (wrapped in [const_disp] only for the tuple
+   shape both rungs share), so a symbolic immediate always picks the imm32
+   rung regardless of the offset's own magnitude.
+
+   Register is `%rcx`/`%rdx`, not `%rax`: real `as` picks a *shorter*,
+   accumulator-only encoding (`05 id`, no ModR/M byte) whenever the
+   destination is the accumulator and the immediate is full-width - an
+   encoder gap this project already had before this change (confirmed
+   against real i686-linux-gnu-as: `addl $1000, %eax` -> `05 e8 03 00 00`,
+   vs. `addl $1000, %ecx` -> `81 c1 e8 03 00 00`), independent of whether
+   the immediate is symbolic. Checked against real x86_64-linux-gnu-as:
+   `addq $sym, %rcx` -> `48 81 c1 <disp32>` with an `R_X86_64_32S`
+   relocation - signed, unlike [mov]'s `R_X86_64_32`, matching this form's
+   own prior sign-extending decode. *)
+let%expect_test "addq $sym, %reg reads a symbolic ALU immediate" =
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\taddq $f, %rcx\n\taddq $f+24, %rdx\n\tret\n";
+  [%expect
+    {|
+    40000000  48 81 c1 00 00 00 40  addq $1073741824, %rcx  [x86_64.alu-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
+    40000007  48 81 c2 18 00 00 40  addq $1073741848, %rdx  [x86_64.alu-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
+    4000000e  c3                    ret                     [x86_64.ret]
+    |}]
+
+(* [pushl $sym] - the last of the three symbolic-immediate forms
+   (Operand.Imm_sym), and the only one that also needed a brand-new
+   non-symbolic immediate lowering first: unlike [mov]/the ALU ops, [push]
+   previously had no immediate form at all, only the register one
+   ([Lowered.Push]). [Lowered.Push_imm]'s [imm] is a [Disp.t] the same way,
+   picking [0x6a ib]/[0x68 id] by the identical short-immediate-first
+   priority and [fits_s8]/[fits_s32] check as {!alu_form} - a symbolic
+   immediate always forces the [id] rung, same reasoning as [addq] above.
+   Checked against real i686-linux-gnu-as: `pushl $sym` -> `68 <disp32>`
+   with `R_386_32`; `pushl $100` still fits the pre-existing-shaped `6a 64`
+   short form, confirming the priority order didn't regress the plain
+   literal case. *)
+let%expect_test "pushl $sym reads a symbolic immediate" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tpushl $f\n\tpushl $f+4\n\tret\n";
+  [%expect
+    {|
+    40000000  68 00 00 00 40  push $1073741824  [x86_32.push-imm32]
+    40000005  68 04 00 00 40  push $1073741828  [x86_32.push-imm32]
+    4000000a  c3              ret               [x86_32.ret]
     |}]
 
 (* %st(n) - the x87 stack-relative register (M5 corpus evidence:
