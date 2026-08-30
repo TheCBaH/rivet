@@ -29,3 +29,19 @@ val corpus_work : t -> Fpath.t
 val corpus_c : t -> Target.t -> Fpath.t
 (** [asm/fixtures/corpus/c/<target>/], the classify-c manifest/summary
     destination for that target. *)
+
+val corpus_c_assemble : t -> Target.t -> Fpath.t
+(** [asm/fixtures/corpus/c-assemble/<target>/], the assemble-c manifest/summary
+    destination for that target - separate from {!corpus_c} so a classify-c
+    regression and an assemble-c regression are never conflated. *)
+
+val corpus_regression : t -> Target.t -> Fpath.t
+(** [asm/fixtures/corpus/regression/<target>/], the classify-regression
+    manifest/summary destination for that target - CompCert's
+    [test/regression/] suite, classified the same way {!corpus_c} classifies
+    [test/c/]. *)
+
+val corpus_compression : t -> Target.t -> Fpath.t
+(** [asm/fixtures/corpus/compression/<target>/], the classify-compression
+    manifest/summary destination for that target - CompCert's
+    [test/compression/] suite. *)

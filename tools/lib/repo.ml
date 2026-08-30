@@ -59,3 +59,12 @@ let fixture_corpus t = Fpath.(t / "asm" / "fixtures" / "compcert-3.17")
 let gas_xref_corpus t = Fpath.(t / "asm" / "fixtures" / "gas-xref")
 let corpus_work t = Fpath.(t / ".corpus-work")
 let corpus_c t target = Fpath.(t / "asm" / "fixtures" / "corpus" / "c" / Target.to_string target)
+
+let corpus_c_assemble t target =
+  Fpath.(t / "asm" / "fixtures" / "corpus" / "c-assemble" / Target.to_string target)
+
+let corpus_regression t target =
+  Fpath.(t / "asm" / "fixtures" / "corpus" / "regression" / Target.to_string target)
+
+let corpus_compression t target =
+  Fpath.(t / "asm" / "fixtures" / "corpus" / "compression" / Target.to_string target)

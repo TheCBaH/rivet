@@ -472,6 +472,45 @@ CORPUS_CLASSIFY_GOALS := $(addprefix asm-corpus-classify-c-,$(FIXTURE_TARGETS))
 $(CORPUS_CLASSIFY_GOALS): asm-corpus-classify-c-%: asm-build tools-build asm-cross-setup
 	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus classify-c-$*
 
+# The pipeline-level follow-up to classify-c above: same two-mode split, same
+# per-target cross-compiler/CompCert-build prerequisites, but the generated
+# .s files are run through the full parse/simplify/lower/encode/plan_image
+# pipeline (asm.exe with no --dump flag) rather than stopped at
+# --dump-source-ast. Published under asm/fixtures/corpus/c-assemble/<target>/
+# - a separate destination from classify-c's, so the two checks (and the two
+# regenerations) can never be conflated (asm/docs/corpus.md).
+asm-corpus-check-assemble-c: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus check-assemble
+
+CORPUS_ASSEMBLE_GOALS := $(addprefix asm-corpus-assemble-c-,$(FIXTURE_TARGETS))
+
+.PHONY: $(CORPUS_ASSEMBLE_GOALS)
+$(CORPUS_ASSEMBLE_GOALS): asm-corpus-assemble-c-%: asm-build tools-build asm-cross-setup
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus assemble-c-$*
+
+# classify-c's own siblings over CompCert's other two static, committed-source
+# test suites (test/regression/, test/compression/ - not test/abi/, whose
+# sources are generator-produced rather than committed; asm/docs/corpus.md's
+# Follow-ups). Same two-mode split, same per-target cross-compiler
+# prerequisite, same one-explicit-subcommand-per-target discipline.
+asm-corpus-check-regression: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus check-regression
+
+CORPUS_CLASSIFY_REGRESSION_GOALS := $(addprefix asm-corpus-classify-regression-,$(FIXTURE_TARGETS))
+
+.PHONY: $(CORPUS_CLASSIFY_REGRESSION_GOALS)
+$(CORPUS_CLASSIFY_REGRESSION_GOALS): asm-corpus-classify-regression-%: asm-build tools-build asm-cross-setup
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus classify-regression-$*
+
+asm-corpus-check-compression: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus check-compression
+
+CORPUS_CLASSIFY_COMPRESSION_GOALS := $(addprefix asm-corpus-classify-compression-,$(FIXTURE_TARGETS))
+
+.PHONY: $(CORPUS_CLASSIFY_COMPRESSION_GOALS)
+$(CORPUS_CLASSIFY_COMPRESSION_GOALS): asm-corpus-classify-compression-%: asm-build tools-build asm-cross-setup
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus classify-compression-$*
+
 # The transitive purity and layer audits (§1, §2.2, §3.7, §5.1), and the
 # planted violations that prove they can fail. Guardrail 6: run these before
 # treating a successful JavaScript build as evidence of portability - a package
@@ -643,7 +682,7 @@ asm-exec: asm-runner asm-helpers asm-abi-conform asm-fixtures-check
 # What CI runs, and what to run locally before pushing. Formatting is checked
 # first: an unformatted tree is the cheapest failure to diagnose. asm-js is not
 # here — it needs Melange, hence OCaml 4.14, so it is its own CI job.
-asm-ci: asm-fmt-check asm-build asm-test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff asm-corpus-check-c asm-purity asm-planted asm-cross-smoke-selftest asm-characterize-verify asm-melange-optin asm-js-portable
+asm-ci: asm-fmt-check asm-build asm-test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff asm-corpus-check-c asm-corpus-check-assemble-c asm-corpus-check-regression asm-corpus-check-compression asm-purity asm-planted asm-cross-smoke-selftest asm-characterize-verify asm-melange-optin asm-js-portable
 
 # One archive per target: Rocq extraction differs per architecture, so
 # compcert-export-archive alone only covers whichever target was last
@@ -664,5 +703,8 @@ compcert-export-archive-all:
   asm-oracle asm-fixture-oracle asm-ci \
   asm-gas-xref-check asm-gas-xref-regen \
   asm-corpus-check-c $(CORPUS_CLASSIFY_GOALS) \
+  asm-corpus-check-assemble-c $(CORPUS_ASSEMBLE_GOALS) \
+  asm-corpus-check-regression $(CORPUS_CLASSIFY_REGRESSION_GOALS) \
+  asm-corpus-check-compression $(CORPUS_CLASSIFY_COMPRESSION_GOALS) \
   asm-helpers asm-runner asm-abi-conform asm-exec asm-tool-gate asm-melange-optin \
   asm-js-portable asm-js-browser

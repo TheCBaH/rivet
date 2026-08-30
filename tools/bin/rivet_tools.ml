@@ -193,10 +193,73 @@ let corpus_classify_c_cmd (target : Target.t) =
             (Target.to_string target)))
     Cmdliner.Term.(const run $ common)
 
+let corpus_check_assemble_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Corpus_assemble_cmd.check) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "check-assemble"
+       ~doc:
+         "Verify every already-published CompCert c/ assemble classification, no toolchain needed")
+    Cmdliner.Term.(const run $ common)
+
+(* Same one-subcommand-per-target discipline as corpus_classify_c_cmd. *)
+let corpus_assemble_c_cmd (target : Target.t) =
+  let name = "assemble-c-" ^ Target.to_string target in
+  let run (err_trace, root) =
+    (err_trace, with_repo root (fun repo -> Corpus_assemble_cmd.assemble_c repo target))
+  in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info name
+       ~doc:
+         (Printf.sprintf
+            "Compile CompCert's test/c/ suite for %s and run each generated .s through the full \
+             parse/simplify/lower/encode/plan_image pipeline"
+            (Target.to_string target)))
+    Cmdliner.Term.(const run $ common)
+
+(* One explicit subcommand per (suite, target) pair, same discipline as
+   corpus_classify_c_cmd - never a --suite/--target flag accepting an
+   unimplemented value. *)
+let corpus_classify_suite_cmd ~(spec : Corpus_classify_cmd.suite_spec) (target : Target.t) =
+  let name = "classify-" ^ spec.suite_tag ^ "-" ^ Target.to_string target in
+  let run (err_trace, root) =
+    (err_trace, with_repo root (fun repo -> Corpus_classify_cmd.classify_suite spec repo target))
+  in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info name
+       ~doc:
+         (Printf.sprintf
+            "Compile CompCert's test/%s/ suite for %s and classify each file against the parser"
+            spec.test_subdir (Target.to_string target)))
+    Cmdliner.Term.(const run $ common)
+
+let corpus_check_suite_cmd ~(spec : Corpus_classify_cmd.suite_spec) =
+  let name = "check-" ^ spec.suite_tag in
+  let run (err_trace, root) =
+    (err_trace, with_repo root (fun repo -> Corpus_classify_cmd.check_suite spec repo))
+  in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info name
+       ~doc:
+         (Printf.sprintf
+            "Verify every already-published CompCert %s/ classification, no toolchain needed"
+            spec.test_subdir))
+    Cmdliner.Term.(const run $ common)
+
+let corpus_classify_regression_cmd =
+  corpus_classify_suite_cmd ~spec:Corpus_classify_cmd.regression_spec
+
+let corpus_classify_compression_cmd =
+  corpus_classify_suite_cmd ~spec:Corpus_classify_cmd.compression_spec
+
 let corpus_cmd =
   Cmdliner.Cmd.group
     (Cmdliner.Cmd.info "corpus" ~doc:"CompCert's own test suites, classified against the parser")
-    (corpus_check_cmd :: List.map corpus_classify_c_cmd Target.all)
+    ((corpus_check_cmd :: List.map corpus_classify_c_cmd Target.all)
+    @ (corpus_check_assemble_cmd :: List.map corpus_assemble_c_cmd Target.all)
+    @ corpus_check_suite_cmd ~spec:Corpus_classify_cmd.regression_spec
+      :: List.map corpus_classify_regression_cmd Target.all
+    @ corpus_check_suite_cmd ~spec:Corpus_classify_cmd.compression_spec
+      :: List.map corpus_classify_compression_cmd Target.all)
 
 let targets_cmd =
   let run (err_trace, _root) set =
