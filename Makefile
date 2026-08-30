@@ -511,6 +511,25 @@ CORPUS_CLASSIFY_COMPRESSION_GOALS := $(addprefix asm-corpus-classify-compression
 $(CORPUS_CLASSIFY_COMPRESSION_GOALS): asm-corpus-classify-compression-%: asm-build tools-build asm-cross-setup
 	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus classify-compression-$*
 
+# classify-c-gcc: classify-c's own second, independent-compiler sibling - the
+# identical test/c/*.c corpus, compiled with the SYSTEM cross gcc (Gcc) rather
+# than ccomp. Unlike every classify-* goal above, this is NOT downstream of
+# asm-cross-setup: all six cross gcc toolchains are plain packages the
+# devcontainer image already installs (asm/docs/corpus.md), so classifying
+# needs only a CompCert checkout (asm-build's own asm-submodules prerequisite)
+# and this project's own asm.exe/compcert_tools.exe - the same "no toolchain
+# build" edge asm-gas-xref-regen already has, for the same reason. Published
+# under its own asm/fixtures/corpus/c-gcc/<target>/, never conflated with
+# classify-c's asm/fixtures/corpus/c/<target>/.
+asm-corpus-check-c-gcc: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus check-c-gcc
+
+CORPUS_CLASSIFY_C_GCC_GOALS := $(addprefix asm-corpus-classify-c-gcc-,$(FIXTURE_TARGETS))
+
+.PHONY: $(CORPUS_CLASSIFY_C_GCC_GOALS)
+$(CORPUS_CLASSIFY_C_GCC_GOALS): asm-corpus-classify-c-gcc-%: asm-build tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus classify-c-gcc-$*
+
 # The transitive purity and layer audits (§1, §2.2, §3.7, §5.1), and the
 # planted violations that prove they can fail. Guardrail 6: run these before
 # treating a successful JavaScript build as evidence of portability - a package
@@ -682,7 +701,7 @@ asm-exec: asm-runner asm-helpers asm-abi-conform asm-fixtures-check
 # What CI runs, and what to run locally before pushing. Formatting is checked
 # first: an unformatted tree is the cheapest failure to diagnose. asm-js is not
 # here — it needs Melange, hence OCaml 4.14, so it is its own CI job.
-asm-ci: asm-fmt-check asm-build asm-test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff asm-corpus-check-c asm-corpus-check-assemble-c asm-corpus-check-regression asm-corpus-check-compression asm-purity asm-planted asm-cross-smoke-selftest asm-characterize-verify asm-melange-optin asm-js-portable
+asm-ci: asm-fmt-check asm-build asm-test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff asm-corpus-check-c asm-corpus-check-assemble-c asm-corpus-check-regression asm-corpus-check-compression asm-corpus-check-c-gcc asm-purity asm-planted asm-cross-smoke-selftest asm-characterize-verify asm-melange-optin asm-js-portable
 
 # One archive per target: Rocq extraction differs per architecture, so
 # compcert-export-archive alone only covers whichever target was last
@@ -706,5 +725,6 @@ compcert-export-archive-all:
   asm-corpus-check-assemble-c $(CORPUS_ASSEMBLE_GOALS) \
   asm-corpus-check-regression $(CORPUS_CLASSIFY_REGRESSION_GOALS) \
   asm-corpus-check-compression $(CORPUS_CLASSIFY_COMPRESSION_GOALS) \
+  asm-corpus-check-c-gcc $(CORPUS_CLASSIFY_C_GCC_GOALS) \
   asm-helpers asm-runner asm-abi-conform asm-exec asm-tool-gate asm-melange-optin \
   asm-js-portable asm-js-browser

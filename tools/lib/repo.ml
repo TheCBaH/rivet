@@ -68,3 +68,6 @@ let corpus_regression t target =
 
 let corpus_compression t target =
   Fpath.(t / "asm" / "fixtures" / "corpus" / "compression" / Target.to_string target)
+
+let corpus_c_gcc t target =
+  Fpath.(t / "asm" / "fixtures" / "corpus" / "c-gcc" / Target.to_string target)

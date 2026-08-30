@@ -45,3 +45,10 @@ val corpus_compression : t -> Target.t -> Fpath.t
 (** [asm/fixtures/corpus/compression/<target>/], the classify-compression
     manifest/summary destination for that target - CompCert's
     [test/compression/] suite. *)
+
+val corpus_c_gcc : t -> Target.t -> Fpath.t
+(** [asm/fixtures/corpus/c-gcc/<target>/], the classify-c-gcc manifest/summary
+    destination for that target - the same [test/c/] sources as {!corpus_c},
+    compiled with the system cross [gcc] instead of [ccomp] (see {!Gcc}), so a
+    classify-c regression and a classify-c-gcc regression are never
+    conflated. *)

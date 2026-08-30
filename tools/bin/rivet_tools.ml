@@ -251,6 +251,32 @@ let corpus_classify_regression_cmd =
 let corpus_classify_compression_cmd =
   corpus_classify_suite_cmd ~spec:Corpus_classify_cmd.compression_spec
 
+(* classify-c-gcc: same test/c/ corpus as corpus_classify_c_cmd, compiled with
+   the system cross gcc (Gcc) instead of ccomp - a second, independent-compiler
+   classification, published under its own asm/fixtures/corpus/c-gcc/<target>/
+   destination (Corpus_classify_gcc_cmd). Same one-explicit-subcommand-per-
+   target discipline as every other corpus subcommand. *)
+let corpus_check_c_gcc_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Corpus_classify_gcc_cmd.check) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "check-c-gcc"
+       ~doc:"Verify every already-published CompCert c-gcc/ classification, no toolchain needed")
+    Cmdliner.Term.(const run $ common)
+
+let corpus_classify_c_gcc_cmd (target : Target.t) =
+  let name = "classify-c-gcc-" ^ Target.to_string target in
+  let run (err_trace, root) =
+    (err_trace, with_repo root (fun repo -> Corpus_classify_gcc_cmd.classify_c_gcc repo target))
+  in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info name
+       ~doc:
+         (Printf.sprintf
+            "Compile CompCert's test/c/ suite for %s with gcc and classify each file against the \
+             parser"
+            (Target.to_string target)))
+    Cmdliner.Term.(const run $ common)
+
 let corpus_cmd =
   Cmdliner.Cmd.group
     (Cmdliner.Cmd.info "corpus" ~doc:"CompCert's own test suites, classified against the parser")
@@ -259,7 +285,8 @@ let corpus_cmd =
     @ corpus_check_suite_cmd ~spec:Corpus_classify_cmd.regression_spec
       :: List.map corpus_classify_regression_cmd Target.all
     @ corpus_check_suite_cmd ~spec:Corpus_classify_cmd.compression_spec
-      :: List.map corpus_classify_compression_cmd Target.all)
+      :: List.map corpus_classify_compression_cmd Target.all
+    @ (corpus_check_c_gcc_cmd :: List.map corpus_classify_c_gcc_cmd Target.all))
 
 let targets_cmd =
   let run (err_trace, _root) set =
