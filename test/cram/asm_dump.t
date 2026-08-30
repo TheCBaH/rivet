@@ -726,6 +726,7 @@
     [34 cost=0] vcvt-s32-f64     vcvt-s32-f64(){cond 11101 D:1u 11 1101 Vd:4u 1011 11 M:1u 0 Vm:4u}
     [35 cost=0] vmem-d           vmem-d(){cond 1101 U:1u D:1u 0 L:1u rn Vd:4u 1011 imm8:8u}
     [36 cost=0] vmem-s           vmem-s(){cond 1101 U:1u D:1u 0 L:1u rn Vd:4u 1010 imm8:8u}
+    [37 cost=0] push             push(){cond 100100101101 reglist:16u}
   cond[16]{cond:4u}
   rm(){rm:4u}
   rd(){rd:4u}

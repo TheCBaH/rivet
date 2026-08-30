@@ -281,6 +281,11 @@ module Operand = struct
     | Sreg of Sreg.t
     | FImm of float
         (** a VFP modified-immediate literal, e.g. [#1.5] - {!Dreg.t}/{!Sreg.t}'s dot. *)
+    | Reglist of int list
+        (** [{r0, r1, r2, r3}] - [push]'s operand (M5, asm/docs/corpus.md). Register *numbers*, not
+            {!Reg.t}s: the encoding is one bit per number and the surface order carries no
+            information the bitmask does not already have, so keeping the list unsorted-as-written
+            here would only invite a caller to rely on an order the instruction itself discards. *)
 
   let pp ppf = function
     | Reg r -> Reg.pp ppf r
@@ -291,6 +296,10 @@ module Operand = struct
     | Dreg r -> Dreg.pp ppf r
     | Sreg r -> Sreg.pp ppf r
     | FImm v -> Fmt.pf ppf "#%s" (decimal_of_float v)
+    | Reglist regs ->
+        Fmt.pf ppf "{%a}"
+          Fmt.(list ~sep:(any ", ") Reg.pp)
+          (List.map Reg.of_num (List.sort compare regs))
 end
 
 module Surface = struct
@@ -436,6 +445,13 @@ module Opcode = struct
     | Vcvt_s32_f64
     | Vldr
     | Vstr
+    | Push
+        (** [push {reglist}], GNU's alias for [stmdb sp!, {reglist}] - not a general STM/LDM (M5,
+            asm/docs/corpus.md: CompCert's own ARM codegen only ever emits this one multi-register
+            alias, always as its varargs-spill prologue). Scoped to two or more registers: GNU's own
+            canonical printer spells a *one*-register [push {rN}] as [str rN, [sp, #-4]!] instead
+            (verified against real [as]/[objdump]), a different encoding this corpus does not
+            evidence and this opcode does not attempt. *)
 
   let name = function
     | Mov -> "mov"
@@ -473,6 +489,7 @@ module Opcode = struct
     | Vcvt_s32_f64 -> "vcvt.s32.f64"
     | Vldr -> "vldr"
     | Vstr -> "vstr"
+    | Push -> "push"
 
   (* The surface spellings this target accepts. [simplify_instruction] consults
      this rather than repeating the list. VFP mnemonics are not here - they
@@ -499,6 +516,7 @@ module Opcode = struct
     | "ldrb" -> Some Ldrb
     | "udf" -> Some Udf
     | "bl" -> Some Bl
+    | "push" -> Some Push
     | _ -> None
 
   (* VFP's own mnemonic bases - never a substring of a GPR mnemonic above, so
@@ -635,6 +653,10 @@ module Lowered = struct
         sh_amt : int;
       }
     | Bx of { cond : Cond.t; rm : Reg.t }
+    | Push of { cond : Cond.t; regs : int }
+        (** [regs] is the 16-bit register-list bitmask directly, bit [n] set meaning [rn] is in the
+            list - what the word itself stores, and what {!Opcode.Push}'s own doc explains the scope
+            of. *)
     | Udf of { imm16 : int64 }  (** permanently undefined, and unconditional by definition *)
     | Bl of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
     | B of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
@@ -726,6 +748,13 @@ module Lowered = struct
           (if negate then "-" else "")
           Reg.pp rm sh
     | Bx { cond; rm } -> Fmt.pf ppf "bx%s %a" (Cond.suffix cond) Reg.pp rm
+    | Push { cond; regs } ->
+        let members =
+          List.filter_map
+            (fun n -> if regs land (1 lsl n) <> 0 then Some (Reg.of_num n) else None)
+            (List.init 16 Fun.id)
+        in
+        Fmt.pf ppf "push%s {%a}" (Cond.suffix cond) Fmt.(list ~sep:(any ", ") Reg.pp) members
     | Udf { imm16 } -> Fmt.pf ppf "udf #%Ld" imm16
     | Bl { cond; target } ->
         Fmt.pf ppf "bl%s %a" (Cond.suffix cond) Asm_core.Lowered_ast.pp_branch target
@@ -812,6 +841,7 @@ module Lowered = struct
         && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm && x.negate = y.negate
         && x.sh_kind = y.sh_kind && x.sh_amt = y.sh_amt
     | Bx x, Bx y -> Cond.equal x.cond y.cond && Reg.equal x.rm y.rm
+    | Push x, Push y -> Cond.equal x.cond y.cond && x.regs = y.regs
     | Udf x, Udf y -> Int64.equal x.imm16 y.imm16
     | Bl x, Bl y -> Cond.equal x.cond y.cond && Asm_core.Lowered_ast.equal_branch x.target y.target
     | B x, B y -> Cond.equal x.cond y.cond && Asm_core.Lowered_ast.equal_branch x.target y.target
@@ -1071,6 +1101,18 @@ let codec : (Lowered.t, fixup_kind) C.t =
            ~encode:(function Lowered.Bx { cond; rm } -> Some (cond, ((), rm)) | _ -> None)
            ~decode:(fun (cond, ((), rm)) -> Some (Lowered.Bx { cond; rm }))
            C.(cond_codec ** const ~width:24 0x12FFF1L ** reg_field "rm"));
+      (* [push {reglist}], GNU's [stmdb sp!, {reglist}] alias (M5,
+         asm/docs/corpus.md). [100 1 0 0 1 0] is STM's P=1/U=0/S=0/W=1/L=0
+         (pre-indexed, decrement, no S-bit, writeback, store) - verified
+         against real [arm-linux-gnueabihf-as]/[objdump]:
+         [e92d000f] for [push {r0, r1, r2, r3}]. *)
+      C.alt ~label:"push" ~priority:37
+        (C.iso_fun ~name:"push"
+           ~encode:(function
+             | Lowered.Push { cond; regs } -> Some (cond, ((), Int64.of_int regs)) | _ -> None)
+           ~decode:(fun (cond, ((), regs)) ->
+             Some (Lowered.Push { cond; regs = Int64.to_int regs }))
+           C.(cond_codec ** const ~width:12 0b100100101101L ** field ~width:16 "reglist"));
       (* [movw]/[movt] must be tried *before* [dp-imm], not after. Their
          encodings sit inside the data-processing immediate space - [movw] is
          [dp = 8, S = 0] and [movt] is [dp = 10, S = 0], the [tst] and [cmp]
@@ -1765,7 +1807,8 @@ type error_kind =
   | `Padding_not_word_multiple
   | `No_vfp_immediate of float
   | `Vfp_offset_out_of_range of int64
-  | `Vmrs_unsupported_operands ]
+  | `Vmrs_unsupported_operands
+  | `Push_needs_two_or_more_registers ]
 
 and wrong_relocation_modifier = { opcode : string; want : string; got : string }
 and missing_relocation_modifier = { opcode : string; want : string }
@@ -1800,6 +1843,9 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `Vfp_offset_out_of_range off ->
       Fmt.pf ppf "vldr/vstr offset %Ld does not fit a word-aligned 10-bit range" off
   | `Vmrs_unsupported_operands -> Fmt.string ppf "vmrs only supports APSR_nzcv, FPSCR in M1 scope"
+  | `Push_needs_two_or_more_registers ->
+      Fmt.string ppf
+        "push needs two or more registers; a single register is str rN, [sp, #-4]!, not in scope"
 
 let error_kind_code : error_kind -> string = function
   | `Unknown_instruction _ -> "arm.simplify"
@@ -1807,7 +1853,7 @@ let error_kind_code : error_kind -> string = function
   | `No_modified_immediate _ | `No_modified_immediate_mov _ | `Writeback_out_of_scope
   | `Offset_not_12bit | `Udf_imm16_overflow | `Wrong_relocation_modifier _
   | `Missing_relocation_modifier _ | `Imm16_overflow _ | `No_form _ | `No_vfp_immediate _
-  | `Vfp_offset_out_of_range _ | `Vmrs_unsupported_operands ->
+  | `Vfp_offset_out_of_range _ | `Vmrs_unsupported_operands | `Push_needs_two_or_more_registers ->
       "arm.lower"
   | `Codec e -> Option.value (Codec.code e) ~default:"arm.encode"
   | `Decode_short | `Decode_no_match | `Decode_no_normalized -> "arm.decode"
@@ -1960,6 +2006,11 @@ let lower_instruction state i =
         if m.writeback then bad `Writeback_out_of_scope
         else lower_ldst ~bad ~cond ~load:true ~byte:true ~rt ~m
     | Opcode.Bx, [ Operand.Reg rm ] -> Ok [ Lowered.Bx { cond; rm } ]
+    | Opcode.Push, [ Operand.Reglist regs ] ->
+        if List.length regs < 2 then bad `Push_needs_two_or_more_registers
+        else
+          Ok
+            [ Lowered.Push { cond; regs = List.fold_left (fun acc n -> acc lor (1 lsl n)) 0 regs } ]
     | Opcode.Udf, [ Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
@@ -2270,6 +2321,9 @@ let instruction_of_lowered ?(at = 0L) =
       | false, true -> Some (Instruction.mk ~cond Opcode.Strb [ Operand.Reg rt; mem_op ])
       | true, true -> Some (Instruction.mk ~cond Opcode.Ldrb [ Operand.Reg rt; mem_op ]))
   | Lowered.Bx { cond; rm } -> Some (Instruction.mk ~cond Opcode.Bx [ Operand.Reg rm ])
+  | Lowered.Push { cond; regs } ->
+      let members = List.filter (fun n -> regs land (1 lsl n) <> 0) (List.init 16 Fun.id) in
+      Some (Instruction.mk ~cond Opcode.Push [ Operand.Reglist members ])
   | Lowered.Udf { imm16 } ->
       Some (Instruction.mk Opcode.Udf [ Operand.Imm (Bigint.of_int64 imm16) ])
   | Lowered.Bl { cond; target } ->

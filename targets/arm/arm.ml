@@ -279,6 +279,28 @@ let parse_one (slice : Asm_syntax.Token.slice) =
       match Asm_syntax.Parse_lines.parse_expression (List.tl slice) with
       | Ok e -> Ok (Operand.Sym e)
       | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))
+  (* [{r0, r1, r2, r3}] - [push]'s operand (M5, asm/docs/corpus.md:
+     test/regression/varargs1.c and friends). [regroup] has already rejoined
+     the comma-split pieces by brace depth - and, per its own comment, without
+     reinserting the commas themselves, which the common parser already
+     consumed as slice boundaries - so this is one flat slice:
+     [Lbrace; Ident; Ident; ...; Rbrace], no ranges (CompCert's own ARM
+     codegen never writes [{r0-r3}], only the flat comma form). *)
+  | Token.Lbrace :: (_ :: _ as rest) when List.nth rest (List.length rest - 1) = Token.Rbrace -> (
+      let inner = List.filteri (fun i _ -> i < List.length rest - 1) rest in
+      let rec regs_of = function
+        | [] -> Ok []
+        | Token.Ident n :: more -> (
+            match (Reg.find n, regs_of more) with
+            | Some r, Ok rest -> Ok (r.Reg.num :: rest)
+            | None, _ -> bad (`Unknown_register n)
+            | _, (Error _ as e) -> e)
+        | _ -> bad (`Cannot_parse_operand { slice; reason = `Unexpected_token None })
+      in
+      match regs_of inner with
+      | Ok [] -> bad (`Cannot_parse_operand { slice; reason = `Unexpected_token None })
+      | Ok regs -> Ok (Operand.Reglist regs)
+      | Error _ as e -> e)
   | _ -> (
       (* A branch or call target, or any other expression the shapes above do
          not claim. The common expression parser decides, so [.LC1] and [foo+4]

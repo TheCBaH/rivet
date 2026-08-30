@@ -948,6 +948,32 @@ let%expect_test "the same call on the two fixed-width targets" =
     40000008  1e ff 2f e1  bx lr          [arm.bx]
     |}]
 
+(* {1 ARM [push {reglist}]}
+
+   [push], GNU's alias for [stmdb sp!, {reglist}] (M5 corpus evidence:
+   asm/docs/corpus.md - test/regression/varargs1.c's own
+   [push {r0, r1, r2, r3}], CompCert's varargs-spill prologue). Byte-for-byte
+   checked against real arm-linux-gnueabihf-as/objdump:
+     e92d000f  push {r0, r1, r2, r3}
+     e92d4091  push {r0, r4, r7, lr}
+   Scoped to two or more registers - see [Opcode.Push]'s own comment for why
+   a single-register [push {r4}] (which GNU spells [str r4, [sp, #-4]!]
+   instead) is not in scope. *)
+let%expect_test "push {reglist}: the varargs-spill shape, and a mixed reglist with lr" =
+  disasm "arm"
+    "\t.text\n\t.globl f\nf:\n\tpush {r0, r1, r2, r3}\n\tpush {r0, r4, r7, lr}\n\tbx lr\n";
+  [%expect
+    {|
+    40000000  0f 00 2d e9  push {r0, r1, r2, r3}  [arm.push]
+    40000004  91 40 2d e9  push {r0, r4, r7, lr}  [arm.push]
+    40000008  1e ff 2f e1  bx lr                  [arm.bx]
+    |}]
+
+let%expect_test "push needs two or more registers; one register is out of scope" =
+  attempt "arm" "\t.text\n\t.globl f\nf:\n\tpush {r4}\n\tbx lr\n";
+  [%expect
+    {| arm.lower: push needs two or more registers; a single register is str rN, [sp, #-4]!, not in scope |}]
+
 (* {1 The x86-64 address-size prefix}
 
    32-bit registers used as *addresses* in 64-bit mode. Omitting the 0x67 does
