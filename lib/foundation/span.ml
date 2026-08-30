@@ -12,13 +12,48 @@ let make ~source ~offset ~length ~line ~column = { source; offset; length; line;
 
 let of_offset ~source ~offset ~length =
   (* Recount from the start rather than threading a mutable position: inputs are
-     small, and this keeps the API total for any offset a caller hands us. *)
+     small, and this keeps the API total for any offset a caller hands us. Not
+     for a caller that builds one span per token over a whole file - see
+     [line_index]/[of_offset_indexed], which a lexer's per-token hot loop uses
+     instead, since a rescan-from-zero on every token is quadratic in file
+     size. *)
   let rec go i line column =
     if i >= offset || i >= String.length source.contents then (line, column)
     else if source.contents.[i] = '\n' then go (i + 1) (line + 1) 1
     else go (i + 1) line (column + 1)
   in
   let line, column = go 0 1 1 in
+  { source; offset; length; line; column }
+
+(* {1 Indexed line/column lookup}
+
+   [line_index] is the offset of each line's first character - line 1 starts
+   at 0, and a line following a ['\n'] at position [i] starts at [i + 1] - the
+   same convention [of_offset]'s [go] counts by, so [of_offset_indexed] finds
+   exactly the same (line, column) it would, in O(log n) instead of O(n). *)
+type line_index = int array
+
+let build_line_index (source : source) : line_index =
+  let text = source.contents in
+  let n = String.length text in
+  let starts = ref [ 0 ] in
+  for i = 0 to n - 1 do
+    if text.[i] = '\n' then starts := (i + 1) :: !starts
+  done;
+  Array.of_list (List.rev !starts)
+
+(* The greatest line start [<= offset], found by binary search: that line is
+   the one containing [offset]. [line_index] is never empty (it always holds
+   at least line 1's start, 0), so the search range is never empty either. *)
+let of_offset_indexed ~source ~(line_index : line_index) ~offset ~length =
+  let offset' = min offset (String.length source.contents) in
+  let lo = ref 0 and hi = ref (Array.length line_index - 1) in
+  while !lo < !hi do
+    let mid = (!lo + !hi + 1) / 2 in
+    if line_index.(mid) <= offset' then lo := mid else hi := mid - 1
+  done;
+  let line = !lo + 1 in
+  let column = offset' - line_index.(!lo) + 1 in
   { source; offset; length; line; column }
 
 let source_of t = t.source

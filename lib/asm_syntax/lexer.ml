@@ -57,9 +57,20 @@ let is_ident_char (p : Lexical_profile.t) c = is_ident_start p c || is_digit c
    ordinary number, [scan_number] on a bad literal - then just returns
    without having touched anything, instead of having to mutate forward and
    remember to undo it. *)
-type cursor = { src : Span.source; text : string; profile : Lexical_profile.t }
+type cursor = {
+  src : Span.source;
+  text : string;
+  profile : Lexical_profile.t;
+  line_index : Span.line_index;
+      (* Built once per file so every token's span is an O(log n) lookup
+         instead of [Span.of_offset]'s O(n) rescan-from-zero - the difference
+         between a linear and a quadratic lexer over a large file (M5, gcc's
+         [floats.c]: 110K lines). *)
+}
 
-let span_of c ~start ~stop = Span.of_offset ~source:c.src ~offset:start ~length:(stop - start)
+let span_of c ~start ~stop =
+  Span.of_offset_indexed ~source:c.src ~line_index:c.line_index ~offset:start ~length:(stop - start)
+
 let emit c k ~start ~stop = Token.make k (span_of c ~start ~stop)
 let peek c pos off = if pos + off < String.length c.text then Some c.text.[pos + off] else None
 
@@ -210,7 +221,14 @@ let scan_ident c pos =
 (* {1 The main loop} *)
 
 let tokenize ~profile ~source =
-  let c = { src = source; text = Span.contents source; profile } in
+  let c =
+    {
+      src = source;
+      text = Span.contents source;
+      profile;
+      line_index = Span.build_line_index source;
+    }
+  in
   let rec loop pos acc =
     match peek c pos 0 with
     | None -> Ok (List.rev (emit c Token.Eof ~start:pos ~stop:pos :: acc))

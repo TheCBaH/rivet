@@ -634,15 +634,23 @@ module Make (T : T_intf.TARGET) = struct
     match Lexer.tokenize ~profile:T.lexical_profile ~source with
     | Error e -> Diag.fail ~pos:__POS__ [ Lexer.diagnostic_of_error e ]
     | Ok tokens ->
-        Ok
-          (String.concat ""
-             (List.map
-                (fun (t : Token.t) ->
-                  let sp = Token.span t in
-                  Printf.sprintf "%d %d %s %s\n" (Span.offset sp) (Span.length sp)
-                    (Token.kind_tag (Token.kind t))
-                    (spelling t))
-                tokens))
+        (* [List.iter] into a [Buffer] rather than [String.concat] over a
+           [List.map]: [List.map] conses onto its recursive call rather than an
+           accumulator, one native stack frame per token, which a real
+           generated file's token count (M5, gcc's [floats.c]: ~600K tokens)
+           overflows - confirmed by gdb, hundreds of thousands of stacked
+           [List.map] frames. [List.iter]'s call to itself is a genuine tail
+           call, so this is O(1) stack regardless of token count. *)
+        let buf = Buffer.create (List.length tokens * 16) in
+        List.iter
+          (fun (t : Token.t) ->
+            let sp = Token.span t in
+            Buffer.add_string buf
+              (Printf.sprintf "%d %d %s %s\n" (Span.offset sp) (Span.length sp)
+                 (Token.kind_tag (Token.kind t))
+                 (spelling t)))
+          tokens;
+        Ok (Buffer.contents buf)
 
   let dump_source_ast ~unit_name ~source =
     Result.map (Fmt.to_to_string (Source_ast.pp T.Surface.pp)) (parse ~unit_name ~source)

@@ -49,16 +49,26 @@ let to_menhir (t : Token.t) : Grammar.token =
 (* The grammar requires every line to be terminated, so a file whose last line
    has no newline gets one here rather than in the grammar. Making it the
    grammar's problem would mean an optional terminator, which is one more state
-   in which a missing separator is silently accepted. *)
+   in which a missing separator is silently accepted.
+
+   [acc] holds every token already looked at, newest first - a tail-recursive
+   accumulator rather than [t :: go rest], whose cons-after-the-call shape
+   costs one native stack frame per token. That is invisible on a handwritten
+   fixture and a guaranteed stack overflow on a real generated file (M5, gcc's
+   [floats.c]: ~600K tokens - confirmed by gdb, a backtrace hundreds of
+   thousands of frames deep, every one this function). [List.rev_append acc
+   tail] is [List.rev acc @ tail], computed tail-recursively, so the one-time
+   reversal at each exit point costs nothing asymptotically. *)
 let ensure_terminated tokens =
-  let rec go = function
-    | [ ({ Token.kind = Token.Eof; span } as eof) ] -> [ Token.make Token.Eol span; eof ]
+  let rec go acc = function
+    | [ ({ Token.kind = Token.Eof; span } as eof) ] ->
+        List.rev_append acc [ Token.make Token.Eol span; eof ]
     | ({ Token.kind = Token.Eol; _ } as e) :: [ ({ Token.kind = Token.Eof; _ } as eof) ] ->
-        [ e; eof ]
-    | t :: rest -> t :: go rest
-    | [] -> []
+        List.rev_append acc [ e; eof ]
+    | t :: rest -> go (t :: acc) rest
+    | [] -> List.rev acc
   in
-  go tokens
+  go [] tokens
 
 let supplier tokens =
   let remaining = ref tokens in

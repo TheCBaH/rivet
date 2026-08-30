@@ -143,6 +143,18 @@ let collides lines =
     lines;
   !written
 
+(* [List.mapi], but tail-recursive: the stdlib's own [let rec mapi i f =
+   function [] -> [] | a::l -> let r = f i a in r :: mapi (i + 1) f l] conses
+   onto its own recursive call, one native stack frame per element. Over
+   [rewrite_line] applied to every line in the file - the one call site below,
+   file-size-scaled the same way [ensure_terminated]/[dump_tokens] were - that
+   overflows the default stack on a real generated file (M5, gcc's
+   [floats.c]: ~110K lines; confirmed by gdb on the same-shaped bugs those two
+   fixes closed). *)
+let mapi_tailrec f lst =
+  let rec go i acc = function [] -> List.rev acc | x :: rest -> go (i + 1) (f i x :: acc) rest in
+  go 0 [] lst
+
 let run lines =
   let errors = ref [] in
   (* A written label that looks generated would make the two namespaces
@@ -152,7 +164,7 @@ let run lines =
     (fun (n, span) -> errors := err (`Reserved_namespace n) span :: !errors)
     (collides lines);
   let defs = collect_defs lines in
-  let out = List.mapi (fun i l -> rewrite_line defs ~line:i ~errors l) lines in
+  let out = mapi_tailrec (fun i l -> rewrite_line defs ~line:i ~errors l) lines in
   (out, List.rev !errors)
 
 (* The presentation of one accumulated error. Here rather than in the pipeline
