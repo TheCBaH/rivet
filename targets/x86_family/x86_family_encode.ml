@@ -294,6 +294,9 @@ module Opcode = struct
     | Cvtsi2sd
     | Cvtsi2ss
     | Cvttsd2si
+    | Fldl
+    | Fstpl
+    | Fstps
 
   let name = function
     | Add -> "add"
@@ -349,6 +352,9 @@ module Opcode = struct
     | Cvtsi2sd -> "cvtsi2sd"
     | Cvtsi2ss -> "cvtsi2ss"
     | Cvttsd2si -> "cvttsd2si"
+    | Fldl -> "fldl"
+    | Fstpl -> "fstpl"
+    | Fstps -> "fstps"
 
   (* The machine encodes add and sub as one opcode with the operation in the
      ModR/M reg field, so the opcode and its extension are two spellings of one
@@ -533,7 +539,8 @@ module Instruction = struct
         | ( Opcode.Addsd | Opcode.Subsd | Opcode.Mulsd | Opcode.Divsd | Opcode.Addss | Opcode.Subss
           | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Comiss | Opcode.Xorpd
           | Opcode.Movapd | Opcode.Cvtsd2ss | Opcode.Cvtss2sd | Opcode.Movsd | Opcode.Movss
-          | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si ) as op ->
+          | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si | Opcode.Fldl | Opcode.Fstpl
+          | Opcode.Fstps ) as op ->
             Fmt.pf ppf "%s %a" (Opcode.name op) Fmt.(list ~sep:(any ", ") Operand.pp) ops
         | _ ->
             Fmt.pf ppf "%s%s %a" (Opcode.name i.op) (suffix_of_width i.width)
@@ -675,6 +682,13 @@ module Lowered = struct
             Not a [Movx_r_rm] with [src_width = 32] - unlike the B6/B7/BE/BF family this is a
             single fixed opcode byte with no zero-extending counterpart ([movzlq] is not a real
             instruction; a 32-bit write already zero-extends). *)
+    | Fpu_mem of { op : Opcode.t; mem : Mem.t }
+        (** [0xD9|0xDD /ext] (M5 corpus evidence - [fldl]/[fstpl]/[fstps]): the x87 load/store-
+            and-pop family, evidenced only against a memory operand - the mod=11 ModR/M shape
+            this opcode family also permits means an [%st(n)] register operand instead, which no
+            fixture here selects, so [mem] is a bare {!Mem.t} rather than the general {!Rm.t}
+            every GPR/xmm form above uses. [op] picks the opcode byte and ModR/M-reg extension
+            the same way {!Sse_binop_r_rm}'s does. *)
 
   let pp ppf = function
     | Alu_rm_imm { ext; width; rm; imm } ->
@@ -747,6 +761,7 @@ module Lowered = struct
     | Sse_mov_rm_r { op; rm; reg } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Reg.pp reg Rm.pp rm
     | Cvtsi2f_r_rm { op; reg; rm; _ } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
     | Cvtf2i_r_rm { reg; rm; _ } -> Fmt.pf ppf "cvttsd2si %a, %a" Rm.pp rm Reg.pp reg
+    | Fpu_mem { op; mem } -> Fmt.pf ppf "%s %a" (Opcode.name op) Mem.pp mem
 
   let equal a b =
     match (a, b) with
@@ -799,6 +814,7 @@ module Lowered = struct
         x.op = y.op && x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Cvtf2i_r_rm x, Cvtf2i_r_rm y ->
         x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Fpu_mem x, Fpu_mem y -> x.op = y.op && Mem.equal x.mem y.mem
     | _ -> false
 end
 
@@ -1579,6 +1595,16 @@ module Make (M : MODE) = struct
     | "cvtss2sd", _ -> Ok (Instruction.mk Opcode.Cvtss2sd 32 s.Surface.ops)
     | "movsd", _ -> Ok (Instruction.mk Opcode.Movsd 32 s.Surface.ops)
     | "movss", _ -> Ok (Instruction.mk Opcode.Movss 32 s.Surface.ops)
+    (* {3 x87 (M5, asm/docs/corpus.md)}
+
+       [fldl]/[fstpl]/[fstps]: ccomp's own double/single-precision spill and
+       reload around a `%st(0)` return value. Like the SSE mnemonics above,
+       matched on the full name rather than [stem]/[widthed] - the `l`/`s`
+       here is GAS's fixed x87 spelling for the operand's memory width, not
+       a general AT&T size suffix a second one could be appended to. *)
+    | "fldl", _ -> Ok (Instruction.mk Opcode.Fldl 32 s.Surface.ops)
+    | "fstpl", _ -> Ok (Instruction.mk Opcode.Fstpl 32 s.Surface.ops)
+    | "fstps", _ -> Ok (Instruction.mk Opcode.Fstps 32 s.Surface.ops)
     (* M5 (asm/docs/corpus.md): zero-/sign-extending move. Matched on the full
        mnemonic via {!movx_suffixes}, not on [stem] - see its own comment for
        why [split_suffix] cannot express this shape. [movslq] (src 32, dst 64)
@@ -2061,6 +2087,21 @@ module Make (M : MODE) = struct
             Ok
               [ Lowered.Sse_mov_r_rm { op = i.Instruction.op; reg; rm = Rm.Mem (mem_of_symbol e) } ]
         )
+    (* [xorpd __negd_mask, %xmmN] (M5, asm/docs/corpus.md): ccomp's own
+       sign-flip idiom for float negation/`fabs`, reading a sign-mask
+       constant from a bare symbol - the identical bare-symbol-source
+       duality as [movsd]/[movss] just above, on the one binop mnemonic this
+       corpus evidences it for (register-register `xorpd %xmmN, %xmmN`, the
+       zeroing idiom, is the only other shape measured; no other binop here
+       is evidenced with a symbolic source). *)
+    | Opcode.Xorpd, [ Operand.Sym e; Operand.Reg reg ] -> (
+        match xmm_ok reg with
+        | Error e2 -> Error e2
+        | Ok () ->
+            Ok
+              [
+                Lowered.Sse_binop_r_rm { op = i.Instruction.op; reg; rm = Rm.Mem (mem_of_symbol e) };
+              ])
     (* [cvtsi2sd]/[cvtsi2ss]: [rm]'s width must match the mnemonic's own
        ([width_ok], not [xmm_ok] - reused exactly as documented on
        {!sse_operand_class_mismatch}, since xmm's width 128 can never equal a
@@ -2092,6 +2133,13 @@ module Make (M : MODE) = struct
         match width_ok reg with
         | Error e -> Error e
         | Ok () -> Ok [ Lowered.Cvtf2i_r_rm { width = i.Instruction.width; reg; rm = Rm.Mem m } ])
+    (* [fldl]/[fstpl]/[fstps] (M5, asm/docs/corpus.md): ccomp's own x87
+       double/single-precision spill-and-reload sequence around a `%st(0)`
+       return value - always to/from a stack memory operand in this corpus,
+       never a register, so {!Lowered.Fpu_mem} takes a bare {!Mem.t} rather
+       than the general {!Rm.t} every GPR/xmm form above uses. *)
+    | (Opcode.Fldl | Opcode.Fstpl | Opcode.Fstps), [ Operand.Mem m ] ->
+        Ok [ Lowered.Fpu_mem { op = i.Instruction.op; mem = m } ]
     (* [sete %al]/[setl %r8b] (M5, asm/docs/corpus.md): [Instruction.width] is
        always 8 here ({!simplify_instruction} pins it), so [width_ok] on the
        destination register is exactly the right check with no extra
@@ -2717,6 +2765,29 @@ module Make (M : MODE) = struct
              (Lowered.Movsxd_r_rm
                 { reg = reg_field ~p:rex ~width:64 e.re_reg; rm = rm_of ~p:rex ~width:32 e.re_rm }))
          C.(prefixes_codec ** const ~width:8 0x63L ** rm_codec))
+
+  (* [0xD9|0xDD /ext] ({!Lowered.Fpu_mem} - [fldl]/[fstpl]/[fstps]): opcode
+     plus ModR/M-reg extension, structurally identical to {!Unary_rm}'s
+     Group-3 shape (a fixed [prefixes_codec ** opcode ** rm_codec], no
+     immediate) - just a disjoint opcode byte and extension table, and one
+     instance per mnemonic rather than an [Opcode.of_ext]-style lookup
+     shared across every ALU op, since [ext = 3] means two different
+     mnemonics here depending on the opcode byte ([fstpl] vs [fstps]). *)
+  let fpu_mem_form ~label ~priority ~opcode_byte ~ext ~op =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Fpu_mem { op = o; mem } when o = op ->
+               let rm = Rm.Mem mem in
+               Some (prefixes_of ~width:32 ~reg:ext ~rm, ((), { re_reg = ext; re_rm = rm }))
+           | _ -> None)
+         ~decode:(fun (p, ((), e)) ->
+           if e.re_reg <> ext then None
+           else
+             match rm_of ~p ~width:32 e.re_rm with
+             | Rm.Mem mem -> Some (Lowered.Fpu_mem { op; mem })
+             | Rm.Reg _ -> None)
+         C.(prefixes_codec ** const ~width:8 (Int64.of_int opcode_byte) ** rm_codec))
 
   (* [imull $10000,%ebx] / [imulq $56,%rax] ([0x69 id] / [0x6B ib], M5,
      asm/docs/corpus.md): the same short-immediate-first priority discipline
@@ -3345,6 +3416,9 @@ module Make (M : MODE) = struct
                  ** le ~signedness:C.Signed ~width:32 "imm"));
           push_imm_form ~label:"push-imm8" ~priority:48 ~opcode_byte:0x6a ~imm_width:8;
           push_imm_form ~label:"push-imm32" ~priority:49 ~opcode_byte:0x68 ~imm_width:32;
+          fpu_mem_form ~label:"fldl" ~priority:50 ~opcode_byte:0xDD ~ext:0 ~op:Opcode.Fldl;
+          fpu_mem_form ~label:"fstpl" ~priority:51 ~opcode_byte:0xDD ~ext:3 ~op:Opcode.Fstpl;
+          fpu_mem_form ~label:"fstps" ~priority:52 ~opcode_byte:0xD9 ~ext:3 ~op:Opcode.Fstps;
         ])
 
   (* {2 Encode and decode} *)
@@ -3421,9 +3495,12 @@ module Make (M : MODE) = struct
     | Lowered.Alu_rm_r { rm; _ }
     | Lowered.Imul_r_rm { rm; _ }
     | Lowered.Cmov_r_rm { rm; _ }
+    | Lowered.Sse_binop_r_rm { rm; _ }
+    | Lowered.Sse_mov_r_rm { rm; _ }
+    | Lowered.Sse_mov_rm_r { rm; _ }
     | Lowered.Jmp_rm { rm } ->
         disp_expr rm
-    | Lowered.Lea { mem; _ } -> disp_expr (Rm.Mem mem)
+    | Lowered.Lea { mem; _ } | Lowered.Fpu_mem { mem; _ } -> disp_expr (Rm.Mem mem)
     | Lowered.Mov_r_imm { imm = Disp.Sym e; _ } | Lowered.Push_imm { imm = Disp.Sym e } ->
         [ ("imm", e) ]
     | _ -> []
@@ -3813,6 +3890,7 @@ module Make (M : MODE) = struct
               ];
             form = None;
           }
+    | Lowered.Fpu_mem { op; mem } -> Some (Instruction.mk op 32 [ Operand.Mem mem ])
 
   let decode ctx bytes ~pos =
     let bits = C.Bits.of_bytes (String.sub bytes pos (String.length bytes - pos)) in

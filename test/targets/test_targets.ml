@@ -1719,12 +1719,37 @@ let%expect_test "pushl $sym reads a symbolic immediate" =
     4000000a  c3              ret               [x86_32.ret]
     |}]
 
+(* [fldl]/[fstpl]/[fstps] (M5, asm/docs/corpus.md): ccomp's own x87
+   double/single-precision spill-and-reload around a `%st(0)` return value -
+   the highest-recurrence real gap left in x86_32's [assemble-c] corpus (72 +
+   8 + 5 = 85 occurrences across almabench.c/binarytrees.c/bisect.c/fft.c/
+   fftsp.c/integr.c/nbody.c/perlin.c/spectral.c). Unlike every GPR/xmm form
+   above, [Lowered.Fpu_mem] carries a bare [Mem.t] rather than a general
+   [Rm.t]: the mod=11 ModR/M shape this opcode family also permits means an
+   [%st(n)] register operand instead (still unimplemented - see the next
+   test), not a second reading of the same [rm] these forms don't build.
+   Every recurrence in the corpus is [disp(%esp)] - checked against real
+   i686-linux-gnu-as: `fldl 8(%esp)` -> `dd 44 24 08`, `fstpl 24(%esp)` ->
+   `dd 5c 24 18`, `fstps 52(%esp)` -> `d9 5c 24 34` (the SIB byte is
+   [%esp]'s own requirement, not specific to x87). *)
+let%expect_test "fldl/fstpl/fstps read/write a double/single memory operand" =
+  disasm "x86_32"
+    "\t.text\n\t.globl f\nf:\n\tfldl 8(%esp)\n\tfstpl 24(%esp)\n\tfstps 52(%esp)\n\tret\n";
+  [%expect
+    {|
+    40000000  dd 44 24 08  fldl 8(%esp)    [x86_32.fldl.opsz-absent.sib-disp8]
+    40000004  dd 5c 24 18  fstpl 24(%esp)  [x86_32.fstpl.opsz-absent.sib-disp8]
+    40000008  d9 5c 24 34  fstps 52(%esp)  [x86_32.fstps.opsz-absent.sib-disp8]
+    4000000c  c3           ret             [x86_32.ret]
+    |}]
+
 (* %st(n) - the x87 stack-relative register (M5 corpus evidence:
    almabench.c's %st(1)). [find_reg] can never see this shape: the lexer
    splits the parens off the identifier the same way it does for any memory
    operand, so it is synthesized directly from the [n] literal
-   (x86_family.ml) rather than looked up. Parse-only, like $symbol above - no
-   x87 mnemonic is in the M1 instruction table at all yet, so the pipeline
+   (x86_family.ml) rather than looked up. Parse-only: [fld] (register-only,
+   no size suffix - distinct from [fldl]'s own memory-only, double-precision
+   mnemonic above) is still not in the M1 instruction table, so the pipeline
    fails one stage earlier still, at simplify's mnemonic lookup, before the
    operand is ever consulted. *)
 let%expect_test "%st(n) parses as a register operand" =
@@ -1758,9 +1783,37 @@ let%expect_test "movsd/movss sym, %xmmN reads a bare symbol's address" =
   disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tmovsd f, %xmm0\n\tmovss f, %xmm1\n\tret\n";
   [%expect
     {|
-    40000000  f2 0f 10 05 00 00 00 00  movsd 0, %xmm0  [x86_32.sse-movsd-load.disp32-norm]
-    40000008  f3 0f 10 0d 00 00 00 00  movss 0, %xmm1  [x86_32.sse-movss-load.disp32-norm]
-    40000010  c3                       ret             [x86_32.ret] |}]
+    40000000  f2 0f 10 05 00 00 00 40  movsd 1073741824, %xmm0  [x86_32.sse-movsd-load.disp32-norm]
+    40000008  f3 0f 10 0d 00 00 00 40  movss 1073741824, %xmm1  [x86_32.sse-movss-load.disp32-norm]
+    40000010  c3                       ret                      [x86_32.ret] |}]
+
+(* [xorpd __negd_mask, %xmmN] - ccomp's own sign-flip idiom for float
+   negation/[fabs] (M5, asm/docs/corpus.md; found while regenerating
+   assemble-c's x86_32 manifest after the x87 fix below, where it became
+   the corpus's own next-highest-signal reason - 6 recurrences across
+   fftsp.c/nbody.c/others). Same bare-symbol duality as [movsd]/[movss]
+   above, on [Xorpd] specifically - the only binop mnemonic this corpus
+   evidences it for; register-register `xorpd %xmmN, %xmmN` (the zeroing
+   idiom) is the only other shape measured. Checked against real
+   i686-linux-gnu-as: `xorpd sym, %xmm5` -> `66 0f 57 2d <disp32>` with an
+   `R_386_32` relocation.
+
+   This test is also what caught a real bug in the [movsd]/[movss] fix
+   above: [expr_of_lowered] had no case for [Sse_binop_r_rm]/[Sse_mov_r_rm]/
+   [Sse_mov_rm_r], so a symbolic [Mem] built through any of them never
+   registered its fixup - the placeholder disp32 byte-checked correctly
+   against real [as] (which only proves the *text* is valid GAS syntax) but
+   this project's own image binding silently left it at its all-zero
+   placeholder instead of the symbol's real address, with no diagnostic.
+   Fixed by adding all three to the same [disp_expr rm] case the GPR forms
+   already share; the [movsd]/[movss] test above was reprinted from an
+   incorrect `movsd 0, %xmm0` to the correct resolved address once fixed. *)
+let%expect_test "xorpd sym, %xmmN reads a bare symbol's address" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\txorpd f, %xmm5\n\tret\n";
+  [%expect
+    {|
+    40000000  66 0f 57 2d 00 00 00 40  xorpd 1073741824, %xmm5  [x86_32.sse-binop-66.disp32-norm]
+    40000008  c3                       ret                      [x86_32.ret] |}]
 
 (* {1 Alignment padding}
 

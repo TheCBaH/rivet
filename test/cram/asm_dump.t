@@ -205,6 +205,9 @@
     [47 cost=0] mov-r-rm8        mov-r-rm8(){prefixes 10001010 modrm}
     [48 cost=0] push-imm8        push-imm8(){01101010 imm}
     [49 cost=0] push-imm32       push-imm32(){01101000 imm-sym32}
+    [50 cost=0] fldl             fldl(){prefixes 11011101 modrm}
+    [51 cost=0] fstpl            fstpl(){prefixes 11011101 modrm}
+    [52 cost=0] fstps            fstps(){prefixes 11011001 modrm}
   prefixes(){no-asz opsz no-rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
@@ -439,6 +442,9 @@
     [47 cost=0] mov-r-rm8        mov-r-rm8(){prefixes 10001010 modrm}
     [48 cost=0] push-imm8        push-imm8(){01101010 imm}
     [49 cost=0] push-imm32       push-imm32(){01101000 imm-sym32}
+    [50 cost=0] fldl             fldl(){prefixes 11011101 modrm}
+    [51 cost=0] fstpl            fstpl(){prefixes 11011101 modrm}
+    [52 cost=0] fstps            fstps(){prefixes 11011001 modrm}
   prefixes(){asz opsz rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
