@@ -89,9 +89,9 @@ CompCert's runtime library, per target.
   arm      i64_smulh     error[arm.simplify]: unknown instruction umull
   arm      i64_stod      error[arm.simplify]: unknown instruction vmla.f64
   arm      i64_stof      error[arm.simplify]: unknown instruction asr
-  arm      i64_udiv      error[arm.simplify]: unknown instruction pop
+  arm      i64_udiv     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   arm      i64_udivmod   error[arm.simplify]: unknown instruction orrs
-  arm      i64_umod      error[arm.simplify]: unknown instruction pop
+  arm      i64_umod     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   arm      i64_umulh     error[arm.simplify]: unknown instruction umull
   arm      i64_utod      error[arm.simplify]: unknown instruction vmla.f64
   arm      i64_utof      error[arm.simplify]: unknown instruction lsrs
@@ -110,12 +110,12 @@ what M2 moves, and prose cannot regress.
         4  error[x86.simplify]: 8-bit operands are not in M1 scope
         4  error[arm.simplify]: unknown instruction asr
         3  error[lex]: unexpected character '\194'
+        2 <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         2  error[x86.simplify]: unknown instruction pxor
         2  error[x86.simplify]: unknown instruction fldl
         2  error[arm.simplify]: unknown instruction vmla.f64
         2  error[arm.simplify]: unknown instruction umull
         2  error[arm.simplify]: unknown instruction rsb
-        2  error[arm.simplify]: unknown instruction pop
         1 <synthesized by x86_32>: error[x86.lower]: no adc form takes these operands
         1  error[x86.simplify]: unknown instruction ucomisd
         1  error[x86.simplify]: unknown instruction fnstcw

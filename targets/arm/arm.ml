@@ -409,10 +409,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
         | Ok regs -> Ok (Operand.Reglist regs)
         | Error _ as e -> e)
   (* [Rn!] with no brackets - [stmia]/[ldmia]'s own writeback base register
-     (M5, asm/docs/corpus.md classify-c-gcc: [stmia r3!, {r0, r1}]). Parse-
-     level only, like {!Operand.Reg_writeback}'s own doc says: neither
-     mnemonic is in {!Opcode.t} yet, and [dump-source-ast] never asks for
-     more than a successful operand parse. *)
+     (M5, asm/docs/corpus.md classify-c-gcc: [stmia r3!, {r0, r1}]). *)
   | [ Token.Ident r; Token.Bang ] -> (
       match Reg.find r with
       | Some reg -> Ok (Operand.Reg_writeback reg)

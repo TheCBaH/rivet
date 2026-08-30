@@ -290,9 +290,7 @@ module Operand = struct
         (** [Rn!] with no brackets - [stmia]/[ldmia]'s own writeback base register (M5,
             asm/docs/corpus.md classify-c-gcc: [stmia r3!, {r0, r1}]), a bare-register grammar
             distinct from {!Mem.t}'s bracketed [\[Rn, #imm\]!] since STM/LDM's writeback amount is
-            implicit rather than an explicit offset. Parse-level only: neither [stmia] nor [ldmia]
-            is in {!Opcode.t} yet, the same scope {!Imm_sym} and x86's [st(n)] operand have on their
-            own targets - [dump-source-ast] only requires an operand to parse, not lower. *)
+            implicit rather than an explicit offset. *)
     | Dreglist of int list
         (** [{d8, d9}] - [vpush.64]/[vpop.64]'s D-register list (M5, asm/docs/corpus.md
             classify-c-gcc: [vpush.64 {d8, d9}]), structurally the same shape as {!Reglist} but
@@ -470,6 +468,19 @@ module Opcode = struct
             canonical printer spells a *one*-register [push {rN}] as [str rN, [sp, #-4]!] instead
             (verified against real [as]/[objdump]), a different encoding this corpus does not
             evidence and this opcode does not attempt. *)
+    | Stmia
+        (** [stmia Rn!, {reglist}] - increment-after STM, a different encoding class from
+                 [push]'s STMDB one (asm/docs/corpus.md: gcc's [aes.c]). Always carries the bare
+                 [Rn!] writeback base as an explicit operand, the only shape evidenced. *)
+    | Ldmia
+        (** [ldmia Rn!, {reglist}] - [Stmia]'s load counterpart, same encoding class with the
+                 L bit set. *)
+    | Pop
+        (** [pop {reglist}], GNU's alias for [ldmia sp!, {reglist}] - the LDM-class counterpart of
+            [Push]'s STMDB alias (asm/docs/corpus.md: [gas_frontier.t]'s [i64_udivmod]/[i64_umod]
+            epilogues). Scoped to two or more registers for the same reason as [Push]: GNU spells a
+            one-register [pop {rN}] as [ldr rN, [sp], #4] instead (verified against real
+            [as]/[objdump]), a different encoding not attempted here. *)
 
   let name = function
     | Mov -> "mov"
@@ -508,6 +519,9 @@ module Opcode = struct
     | Vldr -> "vldr"
     | Vstr -> "vstr"
     | Push -> "push"
+    | Stmia -> "stmia"
+    | Ldmia -> "ldmia"
+    | Pop -> "pop"
 
   (* The surface spellings this target accepts. [simplify_instruction] consults
      this rather than repeating the list. VFP mnemonics are not here - they
@@ -535,6 +549,9 @@ module Opcode = struct
     | "udf" -> Some Udf
     | "bl" -> Some Bl
     | "push" -> Some Push
+    | "stmia" -> Some Stmia
+    | "ldmia" -> Some Ldmia
+    | "pop" -> Some Pop
     | _ -> None
 
   (* VFP's own mnemonic bases - never a substring of a GPR mnemonic above, so
@@ -676,6 +693,14 @@ module Lowered = struct
         (** [regs] is the 16-bit register-list bitmask directly, bit [n] set meaning [rn] is in the
             list - what the word itself stores, and what {!Opcode.Push}'s own doc explains the scope
             of. *)
+    | Ldm of { cond : Cond.t; load : bool; rn : Reg.t; regs : int }
+        (** [stmia]/[ldmia]'s own increment-after encoding class, distinct from {!Push}'s STMDB one
+            (asm/docs/corpus.md). Always carries [rn] and forces W=1: the only evidenced shape is
+            the bare [Rn!] writeback base, so there is no separate writeback flag to get wrong.
+            {!Opcode.Pop} lowers into this too, with [rn] fixed to [Reg.sp] - the same relationship
+            {!Push} has to [stmdb sp!] - and {!instruction_of_lowered} collapses it back to [pop]
+            on the way out, mirroring how real [objdump] never prints [ldmia sp!, {reglist}] for
+            two or more registers. *)
     | Udf of { imm16 : int64 }  (** permanently undefined, and unconditional by definition *)
     | Bl of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
     | B of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
@@ -775,6 +800,20 @@ module Lowered = struct
             (List.init 16 Fun.id)
         in
         Fmt.pf ppf "push%s {%a}" (Cond.suffix cond) Fmt.(list ~sep:(any ", ") Reg.pp) members
+    | Ldm { cond; load; rn; regs } ->
+        let members =
+          List.filter_map
+            (fun n -> if regs land (1 lsl n) <> 0 then Some (Reg.of_num n) else None)
+            (List.init 16 Fun.id)
+        in
+        if load && Reg.equal rn Reg.sp && List.length members >= 2 then
+          Fmt.pf ppf "pop%s {%a}" (Cond.suffix cond) Fmt.(list ~sep:(any ", ") Reg.pp) members
+        else
+          Fmt.pf ppf "%s%s %a!, {%a}"
+            (if load then "ldmia" else "stmia")
+            (Cond.suffix cond) Reg.pp rn
+            Fmt.(list ~sep:(any ", ") Reg.pp)
+            members
     | Udf { imm16 } -> Fmt.pf ppf "udf #%Ld" imm16
     | Bl { cond; target } ->
         Fmt.pf ppf "bl%s %a" (Cond.suffix cond) Asm_core.Lowered_ast.pp_branch target
@@ -862,6 +901,8 @@ module Lowered = struct
         && x.sh_kind = y.sh_kind && x.sh_amt = y.sh_amt
     | Bx x, Bx y -> Cond.equal x.cond y.cond && Reg.equal x.rm y.rm
     | Push x, Push y -> Cond.equal x.cond y.cond && x.regs = y.regs
+    | Ldm x, Ldm y ->
+        Cond.equal x.cond y.cond && x.load = y.load && Reg.equal x.rn y.rn && x.regs = y.regs
     | Udf x, Udf y -> Int64.equal x.imm16 y.imm16
     | Bl x, Bl y -> Cond.equal x.cond y.cond && Asm_core.Lowered_ast.equal_branch x.target y.target
     | B x, B y -> Cond.equal x.cond y.cond && Asm_core.Lowered_ast.equal_branch x.target y.target
@@ -1133,6 +1174,27 @@ let codec : (Lowered.t, fixup_kind) C.t =
            ~decode:(fun (cond, ((), regs)) ->
              Some (Lowered.Push { cond; regs = Int64.to_int regs }))
            C.(cond_codec ** const ~width:12 0b100100101101L ** field ~width:16 "reglist"));
+      (* [stmia]/[ldmia Rn!, {reglist}], and [pop]'s own alias for the load
+         direction with [Rn = sp] (M5, asm/docs/corpus.md). Increment-after
+         STM/LDM: [100 0 1 0 1] is P=0/U=1/S=0/W=1 (post-indexed, increment,
+         no S-bit, writeback forced - the only evidenced shape), leaving L
+         (store/load) and Rn variable, unlike [push] above which bakes both
+         P/U *and* Rn=sp into its fixed field. Verified against real
+         arm-linux-gnueabihf-as/objdump: [e8a30003] for [stmia r3!, {r0,
+         r1}], [e8b30003] for [ldmia r3!, {r0, r1}], and [e8bd0003] for
+         [pop {r0, r1}] (identical to [ldmia sp!, {r0, r1}] - {!Opcode.Pop}
+         is a pure printing alias, not a separate bit pattern). *)
+      C.alt ~label:"ldm" ~priority:38
+        (C.iso_fun ~name:"ldm"
+           ~encode:(function
+             | Lowered.Ldm { cond; load; rn; regs } ->
+                 Some (cond, ((), ((if load then 1L else 0L), (rn, Int64.of_int regs))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (l, (rn, regs)))) ->
+             Some (Lowered.Ldm { cond; load = Int64.equal l 1L; rn; regs = Int64.to_int regs }))
+           C.(
+             cond_codec ** const ~width:7 0b1000101L ** field ~width:1 "l" ** reg_field "rn"
+             ** field ~width:16 "reglist"));
       (* [movw]/[movt] must be tried *before* [dp-imm], not after. Their
          encodings sit inside the data-processing immediate space - [movw] is
          [dp = 8, S = 0] and [movt] is [dp = 10, S = 0], the [tst] and [cmp]
@@ -1833,7 +1895,8 @@ type error_kind =
   | `No_vfp_immediate of float
   | `Vfp_offset_out_of_range of int64
   | `Vmrs_unsupported_operands
-  | `Push_needs_two_or_more_registers ]
+  | `Push_needs_two_or_more_registers
+  | `Pop_needs_two_or_more_registers ]
 
 and wrong_relocation_modifier = { opcode : string; want : string; got : string }
 and missing_relocation_modifier = { opcode : string; want : string }
@@ -1871,6 +1934,9 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `Push_needs_two_or_more_registers ->
       Fmt.string ppf
         "push needs two or more registers; a single register is str rN, [sp, #-4]!, not in scope"
+  | `Pop_needs_two_or_more_registers ->
+      Fmt.string ppf
+        "pop needs two or more registers; a single register is ldr rN, [sp], #4, not in scope"
 
 let error_kind_code : error_kind -> string = function
   | `Unknown_instruction _ -> "arm.simplify"
@@ -1878,7 +1944,8 @@ let error_kind_code : error_kind -> string = function
   | `No_modified_immediate _ | `No_modified_immediate_mov _ | `Writeback_out_of_scope
   | `Offset_not_12bit | `Udf_imm16_overflow | `Wrong_relocation_modifier _
   | `Missing_relocation_modifier _ | `Imm16_overflow _ | `No_form _ | `No_vfp_immediate _
-  | `Vfp_offset_out_of_range _ | `Vmrs_unsupported_operands | `Push_needs_two_or_more_registers ->
+  | `Vfp_offset_out_of_range _ | `Vmrs_unsupported_operands | `Push_needs_two_or_more_registers
+  | `Pop_needs_two_or_more_registers ->
       "arm.lower"
   | `Codec e -> Option.value (Codec.code e) ~default:"arm.encode"
   | `Decode_short | `Decode_no_match | `Decode_no_normalized -> "arm.decode"
@@ -2052,6 +2119,30 @@ let lower_instruction state i =
         else
           Ok
             [ Lowered.Push { cond; regs = List.fold_left (fun acc n -> acc lor (1 lsl n)) 0 regs } ]
+    | (Opcode.Stmia | Opcode.Ldmia), [ Operand.Reg_writeback rn; Operand.Reglist regs ] ->
+        Ok
+          [
+            Lowered.Ldm
+              {
+                cond;
+                load = i.Instruction.op = Opcode.Ldmia;
+                rn;
+                regs = List.fold_left (fun acc n -> acc lor (1 lsl n)) 0 regs;
+              };
+          ]
+    | Opcode.Pop, [ Operand.Reglist regs ] ->
+        if List.length regs < 2 then bad `Pop_needs_two_or_more_registers
+        else
+          Ok
+            [
+              Lowered.Ldm
+                {
+                  cond;
+                  load = true;
+                  rn = Reg.sp;
+                  regs = List.fold_left (fun acc n -> acc lor (1 lsl n)) 0 regs;
+                };
+            ]
     | Opcode.Udf, [ Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
@@ -2363,6 +2454,15 @@ let instruction_of_lowered ?(at = 0L) =
   | Lowered.Push { cond; regs } ->
       let members = List.filter (fun n -> regs land (1 lsl n) <> 0) (List.init 16 Fun.id) in
       Some (Instruction.mk ~cond Opcode.Push [ Operand.Reglist members ])
+  | Lowered.Ldm { cond; load; rn; regs } ->
+      let members = List.filter (fun n -> regs land (1 lsl n) <> 0) (List.init 16 Fun.id) in
+      if load && Reg.equal rn Reg.sp && List.length members >= 2 then
+        Some (Instruction.mk ~cond Opcode.Pop [ Operand.Reglist members ])
+      else
+        Some
+          (Instruction.mk ~cond
+             (if load then Opcode.Ldmia else Opcode.Stmia)
+             [ Operand.Reg_writeback rn; Operand.Reglist members ])
   | Lowered.Udf { imm16 } ->
       Some (Instruction.mk Opcode.Udf [ Operand.Imm (Bigint.of_int64 imm16) ])
   | Lowered.Bl { cond; target } ->

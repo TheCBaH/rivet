@@ -1023,20 +1023,47 @@ let%expect_test "vmov.f32/f64 with a scientific-notation immediate" =
     40000008  1e ff 2f e1  bx lr              [arm.bx]
     |}]
 
-(* {1 ARM classify-c-gcc, closing the two last-open findings}
+(* {1 ARM [stmia]/[ldmia]/[pop {reglist}]}
 
-   Both parse-only, the same scope as x86's [$symbol]/[%st(n)] above
-   (asm/docs/corpus.md): neither mnemonic is in [Opcode.t] yet, so
-   [dump-source-ast]'s own operand-only check is satisfied and the full
-   [attempt] pipeline below fails one stage later, at [simplify]'s mnemonic
-   lookup - never at operand parsing. *)
+   The LDM-class increment-after encoding, structurally distinct from
+   [push]'s STMDB-class one (asm/docs/corpus.md): evidenced by
+   [gas_frontier.t]'s runtime-helper corpus ([i64_udivmod]/[i64_umod]'s own
+   [pop {reglist}] epilogues) and classify-c-gcc's [aes.c] ([stmia r3!, {r0,
+   r1}]). Byte-for-byte checked against real arm-linux-gnueabihf-as/objdump:
+     e8a30003  stmia r3!, {r0, r1}
+     e8b30003  ldmia r3!, {r0, r1}
+     e8bd0003  pop {r0, r1}          (identical bytes to [ldmia sp!, {r0, r1}];
+                                       real objdump also collapses the two)
+     e8bd000f  pop {r0, r1, r2, r3}
+     e8bd4091  pop {r0, r4, r7, lr}
+   [pop], like [push], is scoped to two or more registers - a single-register
+   [pop {r4}] is a different encoding entirely ([ldr r4, [sp], #4], confirmed
+   against real [as]/[objdump]: [e49d4004], not the LDM form this decodes). *)
+let%expect_test "stmia/ldmia Rn!, {reglist}, and pop's own sp-based alias" =
+  disasm "arm"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tstmia r3!, {r0, r1}\n\
+     \tldmia r3!, {r0, r1}\n\
+     \tpop {r0, r1}\n\
+     \tpop {r0, r1, r2, r3}\n\
+     \tpop {r0, r4, r7, lr}\n\
+     \tbx lr\n";
+  [%expect
+    {|
+    40000000  03 00 a3 e8  stmia r3!, {r0, r1}   [arm.ldm]
+    40000004  03 00 b3 e8  ldmia r3!, {r0, r1}   [arm.ldm]
+    40000008  03 00 bd e8  pop {r0, r1}          [arm.ldm]
+    4000000c  0f 00 bd e8  pop {r0, r1, r2, r3}  [arm.ldm]
+    40000010  91 40 bd e8  pop {r0, r4, r7, lr}  [arm.ldm]
+    40000014  1e ff 2f e1  bx lr                 [arm.bx]
+    |}]
 
-(* [stmia r3!, {r0, r1}] - aes.c's own STM writeback (asm/docs/corpus.md).
-   [Operand.Reg_writeback] parses the bare [r3!] base; [stmia] itself is
-   still unknown to [Opcode.t]. *)
-let%expect_test "stmia Rn!, {reglist} parses its writeback base but does not lower yet" =
-  attempt "arm" "\t.text\n\t.globl f\nf:\n\tstmia r3!, {r0, r1}\n\tbx lr\n";
-  [%expect {| arm.simplify: unknown instruction stmia |}]
+let%expect_test "pop needs two or more registers; one register is out of scope" =
+  attempt "arm" "\t.text\n\t.globl f\nf:\n\tpop {r4}\n\tbx lr\n";
+  [%expect
+    {| arm.lower: pop needs two or more registers; a single register is ldr rN, [sp], #4, not in scope |}]
 
 (* [vpush.64 {d8-d9}] / [{d8, d9}] - almabench.c's/perlin.c's own D-register
    reglist push (asm/docs/corpus.md). gcc's own VFP printer spells the range
