@@ -17,6 +17,7 @@ module Mode = struct
     @ X86_family_encode.Reg.base_regs 32 X86_family_encode.Reg.names_32
     @ X86_family_encode.Reg.extended_regs 32 "d"
     @ X86_family_encode.Reg.base_regs 16 X86_family_encode.Reg.names_16
+    @ X86_family_encode.Reg.extended_regs 16 "w"
     @ X86_family_encode.Reg.base_regs 8 X86_family_encode.Reg.names_8l
     @ X86_family_encode.Reg.extended_regs 8 "b"
     @ X86_family_encode.Reg.base_regs 128 X86_family_encode.Reg.names_xmm

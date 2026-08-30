@@ -1460,10 +1460,18 @@ module Make (M : MODE) = struct
     ignore features;
     let bad kind = Error (diag ~pos:__POS__ ~origin:s.Surface.origin kind) in
     let stem, suffix = split_suffix s.Surface.mnemonic in
-    let widthed ?(allow8 = false) op =
+    (* [~allow16] is narrowly scoped to [mov] (M5, asm/docs/corpus.md:
+       [movw %r8w, 58(%rsp)]), the one 16-bit form this corpus evidences -
+       every other ALU mnemonic keeps the blanket [Prefix66_out_of_scope]
+       rejection with its own clear diagnostic, rather than silently
+       reaching [lower_instruction] and failing there with a generic
+       "no form takes these operands" once the encoder gained the general
+       0x66 machinery [mov] needed. Mirrors [~allow8]'s existing per-opcode
+       shape rather than inventing a second mechanism. *)
+    let widthed ?(allow8 = false) ?(allow16 = false) op =
       match suffix with
       | None -> bad (`Missing_size_suffix s.Surface.mnemonic)
-      | Some 16 -> bad `Prefix66_out_of_scope
+      | Some 16 when not allow16 -> bad `Prefix66_out_of_scope
       | Some 8 when not allow8 -> bad `Operand8_out_of_scope
       | Some w when w = 64 && not M.rex_allowed -> bad (`No_64bit_size M.name)
       | Some w -> Ok (Instruction.mk op w s.Surface.ops)
@@ -1564,7 +1572,7 @@ module Make (M : MODE) = struct
             Ok (Instruction.mk Opcode.Add a.Reg.width s.Surface.ops)
         | _ -> widthed Opcode.Add)
     | _, "sub" -> widthed Opcode.Sub
-    | _, "mov" -> widthed ~allow8:true Opcode.Mov
+    | _, "mov" -> widthed ~allow8:true ~allow16:true Opcode.Mov
     | _, "lea" -> widthed Opcode.Lea
     | _, "xor" -> widthed Opcode.Xor
     | _, "and" -> widthed Opcode.And
@@ -2180,7 +2188,7 @@ module Make (M : MODE) = struct
 
      They share a slot so that adding one did not have to reshape all thirteen
      alternatives' tuples. *)
-  type prefixes = { asz : bool; rex : int option }
+  type prefixes = { asz : bool; opsz : bool; rex : int option }
 
   let asz_of ~rm =
     (* Only meaningful where the address width and the register width can
@@ -2280,15 +2288,40 @@ module Make (M : MODE) = struct
         ~decode:(fun () -> Some false)
         C.empty
 
-  let prefixes_of ~width ~reg ~rm = { asz = asz_of ~rm; rex = prefixes_of ~width ~reg ~rm }
+  (* The operand-size override (M5, asm/docs/corpus.md: [movw %r8w,
+     58(%rsp)]) - unlike [asz_codec]/[rex_codec] this exists in both modes
+     (x86_32 has 16-bit operands too), so it is never the trivial
+     [M.rex_allowed]-gated single-branch form the other two have. Ordering
+     matters: real [as] always places [0x66] before REX (verified against
+     [x86_64-linux-gnu-as]/[objdump]: [66 44 89 44 24 3a] for
+     [movw %r8w, 0x3a(%rsp)]), which is why it sits between [asz_codec] and
+     [rex_codec] in {!prefixes_codec} rather than after. *)
+  let opsz_codec : (bool, fixup_kind) C.t =
+    C.choice ~name:"opsz"
+      [
+        C.alt ~label:"opsz-present" ~priority:0
+          (C.iso_fun ~name:"opsz-present"
+             ~encode:(function true -> Some () | false -> None)
+             ~decode:(fun () -> Some true)
+             C.(const ~width:8 0x66L));
+        C.alt ~label:"opsz-absent" ~priority:1
+          (C.iso_fun ~name:"opsz-absent"
+             ~encode:(function false -> Some () | true -> None)
+             ~decode:(fun () -> Some false)
+             C.empty);
+      ]
+
+  let prefixes_of ~width ~reg ~rm =
+    { asz = asz_of ~rm; opsz = width = 16; rex = prefixes_of ~width ~reg ~rm }
 
   let prefixes_codec : (prefixes, fixup_kind) C.t =
     C.iso_fun ~name:"prefixes"
-      ~encode:(fun p -> Some (p.asz, p.rex))
-      ~decode:(fun (asz, rex) -> Some { asz; rex })
-      C.(asz_codec ** rex_codec)
+      ~encode:(fun p -> Some (p.asz, (p.opsz, p.rex)))
+      ~decode:(fun (asz, (opsz, rex)) -> Some { asz; opsz; rex })
+      C.(asz_codec ** opsz_codec ** rex_codec)
 
-  let width_of_prefixes p = match p.rex with Some v when v land 8 <> 0 -> 64 | _ -> 32
+  let width_of_prefixes p =
+    if p.opsz then 16 else match p.rex with Some v when v land 8 <> 0 -> 64 | _ -> 32
 
   (* Decoding cannot learn the address width from the ModR/M bits - only the
      prefix says it - so the registers the rm codec built at the default address
@@ -2409,7 +2442,7 @@ module Make (M : MODE) = struct
                Some (p.asz, ((), (p.rex, ((), (op, { re_reg = reg.num; re_rm = rm })))))
            | _ -> None)
          ~decode:(fun (asz, ((), (rex, ((), (op, e))))) ->
-           let p = { asz; rex } in
+           let p = { asz; opsz = false; rex } in
            Some
              (Lowered.Sse_binop_r_rm
                 { op; reg = reg_field ~p ~width:128 e.re_reg; rm = rm_of ~p ~width:128 e.re_rm }))
@@ -2457,7 +2490,7 @@ module Make (M : MODE) = struct
                Some (p.asz, ((), (p.rex, ((), { re_reg = reg.num; re_rm = rm }))))
            | _ -> None)
          ~decode:(fun (asz, ((), (rex, ((), e)))) ->
-           let p = { asz; rex } in
+           let p = { asz; opsz = false; rex } in
            Some
              (Lowered.Sse_mov_r_rm
                 { op; reg = reg_field ~p ~width:128 e.re_reg; rm = rm_of ~p ~width:128 e.re_rm }))
@@ -2475,7 +2508,7 @@ module Make (M : MODE) = struct
                Some (p.asz, ((), (p.rex, ((), { re_reg = reg.num; re_rm = rm }))))
            | _ -> None)
          ~decode:(fun (asz, ((), (rex, ((), e)))) ->
-           let p = { asz; rex } in
+           let p = { asz; opsz = false; rex } in
            Some
              (Lowered.Sse_mov_rm_r
                 { op; rm = rm_of ~p ~width:128 e.re_rm; reg = reg_field ~p ~width:128 e.re_reg }))
@@ -2498,7 +2531,7 @@ module Make (M : MODE) = struct
                Some (p.asz, ((), (p.rex, ((), { re_reg = reg.num; re_rm = rm }))))
            | _ -> None)
          ~decode:(fun (asz, ((), (rex, ((), e)))) ->
-           let p = { asz; rex } in
+           let p = { asz; opsz = false; rex } in
            let width = width_of_prefixes p in
            Some
              (Lowered.Cvtsi2f_r_rm
@@ -2521,7 +2554,7 @@ module Make (M : MODE) = struct
                Some (p.asz, ((), (p.rex, ((), { re_reg = reg.num; re_rm = rm }))))
            | _ -> None)
          ~decode:(fun (asz, ((), (rex, ((), e)))) ->
-           let p = { asz; rex } in
+           let p = { asz; opsz = false; rex } in
            let width = width_of_prefixes p in
            Some
              (Lowered.Cvtf2i_r_rm

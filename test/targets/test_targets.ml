@@ -476,9 +476,9 @@ let%expect_test "a RIP-relative pc_bias is the realized length, not a constant" 
   [%expect
     {|
     label asm_test_entry
-    bytes 48 8b 05 00 00 00 00     [x86_64.mov-r-rm.asz-absent.rex-present.disp32-norm]
+    bytes 48 8b 05 00 00 00 00     [x86_64.mov-r-rm.asz-absent.opsz-absent.rex-present.disp32-norm]
     @3/4B pc+7 disp pcrel32-data s32 [0+32@0] = g
-    bytes 8b 05 00 00 00 00        [x86_64.mov-r-rm.asz-absent.rex-absent.disp32-norm]
+    bytes 8b 05 00 00 00 00        [x86_64.mov-r-rm.asz-absent.opsz-absent.rex-absent.disp32-norm]
     @2/4B pc+6 disp pcrel32-data s32 [0+32@0] = g
     bytes c3                       [x86_64.ret]
     label g
@@ -960,8 +960,8 @@ let%expect_test "a 32-bit address in 64-bit mode carries 0x67, and decodes back"
     "\t.text\n\t.globl f\nf:\n\tleal 0(%edi,%edi,1), %eax\n\tleal 2(%eax), %eax\n\tret\n";
   [%expect
     {|
-    40000000  67 8d 04 3f  leal (%edi,%edi,1), %eax  [x86_64.lea.asz-present.rex-absent.sib-disp0]
-    40000004  67 8d 40 02  leal 2(%eax), %eax        [x86_64.lea.asz-present.rex-absent.base-disp8]
+    40000000  67 8d 04 3f  leal (%edi,%edi,1), %eax  [x86_64.lea.asz-present.opsz-absent.rex-absent.sib-disp0]
+    40000004  67 8d 40 02  leal 2(%eax), %eax        [x86_64.lea.asz-present.opsz-absent.rex-absent.base-disp8]
     40000008  c3           ret                       [x86_64.ret]
     |}]
 
@@ -969,7 +969,7 @@ let%expect_test "a 64-bit address carries no prefix" =
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tleaq 16(%rsp), %rax\n\tret\n";
   [%expect
     {|
-    40000000  48 8d 44 24 10  leaq 16(%rsp), %rax  [x86_64.lea.asz-absent.rex-present.sib-disp8]
+    40000000  48 8d 44 24 10  leaq 16(%rsp), %rax  [x86_64.lea.asz-absent.opsz-absent.rex-present.sib-disp8]
     40000005  c3              ret                  [x86_64.ret]
     |}]
 
@@ -999,10 +999,56 @@ let%expect_test "%r8b-%r15b are recognized registers, and 8-bit reg/reg mov uses
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tmovb %al, %al\n\tret\n";
   [%expect
     {|
-    40000000  44 88 c0  movb %r8b, %al  [x86_64.mov-rm-r8.asz-absent.rex-present.reg]
+    40000000  44 88 c0  movb %r8b, %al  [x86_64.mov-rm-r8.asz-absent.opsz-absent.rex-present.reg]
     40000003  c3        ret             [x86_64.ret]
-    40000000  88 c0  movb %al, %al  [x86_64.mov-rm-r8.asz-absent.rex-absent.reg]
+    40000000  88 c0  movb %al, %al  [x86_64.mov-rm-r8.asz-absent.opsz-absent.rex-absent.reg]
     40000002  c3     ret            [x86_64.ret]
+    |}]
+
+(* {1 16-bit operand size, and REX-extended 16-bit sub-registers}
+
+   [%r8w]-[%r15w] (M5 corpus evidence: asm/docs/corpus.md -
+   test/regression/bitfields10.c's [movw %r8w, 58(%rsp)]). Unlike the 8-bit
+   case above, this needed more than a register-table row: no 16-bit operand
+   size existed at all yet ([simplify_instruction]'s [widthed] rejected every
+   16-bit-suffixed mnemonic outright as [Prefix66_out_of_scope]), because the
+   0x66 operand-size-override prefix had never been implemented. [mov] is the
+   only mnemonic given the [~allow16] exception (see [widthed]'s own
+   comment); every other ALU mnemonic still rejects a 16-bit suffix with the
+   same diagnostic as before. Byte-for-byte checked against real
+   [x86_64-linux-gnu-as]/[objdump] - [66 44 89 44 24 3a], [66 89 43 04],
+   [66 89 ca], [66 45 89 ca] - covering a memory destination, no REX, and
+   REX on both the register and the r/m operand. *)
+let%expect_test "%r8w-%r15w and 16-bit mov: register-memory, register-register, no/with REX" =
+  disasm "x86_64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tmovw %r8w, 58(%rsp)\n\
+     \tmovw %ax, 4(%rbx)\n\
+     \tmovw %cx, %dx\n\
+     \tmovw %r9w, %r10w\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  66 44 89 44 24 3a  movw %r8w, 58(%rsp)  [x86_64.mov-rm-r.asz-absent.opsz-present.rex-present.sib-disp8]
+    40000006  66 89 43 04        movw %ax, 4(%rbx)    [x86_64.mov-rm-r.asz-absent.opsz-present.rex-absent.base-disp8]
+    4000000a  66 89 ca           movw %cx, %dx        [x86_64.mov-rm-r.asz-absent.opsz-present.rex-absent.reg]
+    4000000d  66 45 89 ca        movw %r9w, %r10w     [x86_64.mov-rm-r.asz-absent.opsz-present.rex-present.reg]
+    40000011  c3                 ret                  [x86_64.ret]
+    |}]
+
+(* A 16-bit suffix on any other ALU mnemonic keeps its pre-existing, clearer
+   diagnostic rather than silently reaching [lower_instruction] and failing
+   there instead - the scope decision asm/docs/corpus.md's capability-ladder
+   section records: only [mov]'s corpus-evidenced 16-bit form was added. *)
+let%expect_test "a 16-bit suffix stays out of scope for every ALU mnemonic but mov" =
+  attempt "x86_64" "\t.text\n\t.globl f\nf:\n\taddw $1, %ax\n\tret\n";
+  attempt "x86_64" "\t.text\n\t.globl f\nf:\n\txorw %ax, %cx\n\tret\n";
+  [%expect
+    {|
+    x86.simplify: 16-bit operands need the 0x66 prefix, which is not in M1 scope
+    x86.simplify: 16-bit operands need the 0x66 prefix, which is not in M1 scope
     |}]
 
 (* {1 M5 corpus-growth forms (asm/docs/corpus.md): actually assembling
@@ -1026,11 +1072,11 @@ let%expect_test
      \tret\n";
   [%expect
     {|
-    40000000  41 81 c8 80 00 00 00  orl $128, %r8d   [x86_64.alu-rm-imm32.asz-absent.rex-present.reg]
-    40000007  4d 09 d3              orq %r10, %r11   [x86_64.alu-rm-r.asz-absent.rex-present.reg]
-    4000000a  49 21 f6              andq %rsi, %r14  [x86_64.alu-rm-r.asz-absent.rex-present.reg]
-    4000000d  49 31 f1              xorq %rsi, %r9   [x86_64.alu-rm-r.asz-absent.rex-present.reg]
-    40000010  48 81 f1 ff 00 00 00  xorq $255, %rcx  [x86_64.alu-rm-imm32.asz-absent.rex-present.reg]
+    40000000  41 81 c8 80 00 00 00  orl $128, %r8d   [x86_64.alu-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
+    40000007  4d 09 d3              orq %r10, %r11   [x86_64.alu-rm-r.asz-absent.opsz-absent.rex-present.reg]
+    4000000a  49 21 f6              andq %rsi, %r14  [x86_64.alu-rm-r.asz-absent.opsz-absent.rex-present.reg]
+    4000000d  49 31 f1              xorq %rsi, %r9   [x86_64.alu-rm-r.asz-absent.opsz-absent.rex-present.reg]
+    40000010  48 81 f1 ff 00 00 00  xorq $255, %rcx  [x86_64.alu-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
     40000017  c3                    ret              [x86_64.ret]
     |}]
 
@@ -1038,8 +1084,8 @@ let%expect_test "not (group-3, ext=2)" =
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tnotl %eax\n\tnotq %r14\n\tret\n";
   [%expect
     {|
-    40000000  f7 d0     notl %eax  [x86_64.unary-rm.asz-absent.rex-absent.reg]
-    40000002  49 f7 d6  notq %r14  [x86_64.unary-rm.asz-absent.rex-present.reg]
+    40000000  f7 d0     notl %eax  [x86_64.unary-rm.asz-absent.opsz-absent.rex-absent.reg]
+    40000002  49 f7 d6  notq %r14  [x86_64.unary-rm.asz-absent.opsz-absent.rex-present.reg]
     40000005  c3        ret        [x86_64.ret]
     |}]
 
@@ -1060,12 +1106,12 @@ let%expect_test "the general group-2 shift/rotate forms" =
      \tret\n";
   [%expect
     {|
-    40000000  c1 c8 1b     ror $27, %eax  [x86_64.shift-imm-rm.asz-absent.rex-absent.reg]
-    40000003  c1 e0 10     shl $16, %eax  [x86_64.shift-imm-rm.asz-absent.rex-absent.reg]
-    40000006  d3 e0        shl %cl, %eax  [x86_64.shift-cl-rm.asz-absent.rex-absent.reg]
-    40000008  c1 f8 02     sar $2, %eax   [x86_64.shift-imm-rm.asz-absent.rex-absent.reg]
-    4000000b  48 c1 e8 3f  shr $63, %rax  [x86_64.shift-imm-rm.asz-absent.rex-present.reg]
-    4000000f  d1 e8        shr $1, %eax   [x86_64.shift1-rm.asz-absent.rex-absent.reg]
+    40000000  c1 c8 1b     ror $27, %eax  [x86_64.shift-imm-rm.asz-absent.opsz-absent.rex-absent.reg]
+    40000003  c1 e0 10     shl $16, %eax  [x86_64.shift-imm-rm.asz-absent.opsz-absent.rex-absent.reg]
+    40000006  d3 e0        shl %cl, %eax  [x86_64.shift-cl-rm.asz-absent.opsz-absent.rex-absent.reg]
+    40000008  c1 f8 02     sar $2, %eax   [x86_64.shift-imm-rm.asz-absent.opsz-absent.rex-absent.reg]
+    4000000b  48 c1 e8 3f  shr $63, %rax  [x86_64.shift-imm-rm.asz-absent.opsz-absent.rex-present.reg]
+    4000000f  d1 e8        shr $1, %eax   [x86_64.shift1-rm.asz-absent.opsz-absent.rex-absent.reg]
     40000011  c3           ret            [x86_64.ret]
     |}]
 
@@ -1073,8 +1119,8 @@ let%expect_test "setcc (0F 90+cc /0, ModR/M reg fixed at 0)" =
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tsete %al\n\tsetl %r8b\n\tret\n";
   [%expect
     {|
-    40000000  0f 94 c0     sete %al   [x86_64.setcc-rm.asz-absent.rex-absent.reg]
-    40000003  41 0f 9c c0  setl %r8b  [x86_64.setcc-rm.asz-absent.rex-present.reg]
+    40000000  0f 94 c0     sete %al   [x86_64.setcc-rm.asz-absent.opsz-absent.rex-absent.reg]
+    40000003  41 0f 9c c0  setl %r8b  [x86_64.setcc-rm.asz-absent.opsz-absent.rex-present.reg]
     40000007  c3           ret        [x86_64.ret]
     |}]
 
@@ -1091,9 +1137,9 @@ let%expect_test "movzx/movsx/movslq" =
      \tret\n";
   [%expect
     {|
-    40000000  0f b6 0f  movzbl (%rdi), %ecx  [x86_64.movzx-b-r-rm.asz-absent.rex-absent.base-disp0]
-    40000003  0f be fb  movsbl %bl, %edi     [x86_64.movsx-b-r-rm.asz-absent.rex-absent.reg]
-    40000006  4c 63 d8  movslq %eax, %r11    [x86_64.movsxd-r-rm.asz-absent.rex-present.reg]
+    40000000  0f b6 0f  movzbl (%rdi), %ecx  [x86_64.movzx-b-r-rm.asz-absent.opsz-absent.rex-absent.base-disp0]
+    40000003  0f be fb  movsbl %bl, %edi     [x86_64.movsx-b-r-rm.asz-absent.opsz-absent.rex-absent.reg]
+    40000006  4c 63 d8  movslq %eax, %r11    [x86_64.movsxd-r-rm.asz-absent.opsz-absent.rex-present.reg]
     40000009  c3        ret                  [x86_64.ret]
     |}]
 
@@ -1101,8 +1147,8 @@ let%expect_test "the two-operand imul $imm,reg form (0x69/0x6B, short-immediate-
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\timull $10000, %ebx\n\timulq $56, %rax\n\tret\n";
   [%expect
     {|
-    40000000  69 db 10 27 00 00  imull $10000, %ebx  [x86_64.imul-r-rm-imm32.asz-absent.rex-absent.reg]
-    40000006  48 6b c0 38        imulq $56, %rax     [x86_64.imul-r-rm-imm8.asz-absent.rex-present.reg]
+    40000000  69 db 10 27 00 00  imull $10000, %ebx  [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-absent.reg]
+    40000006  48 6b c0 38        imulq $56, %rax     [x86_64.imul-r-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
     4000000a  c3                 ret                 [x86_64.ret]
     |}]
 
@@ -1110,7 +1156,7 @@ let%expect_test "TEST's own immediate form (0xF7 /0 id, always full-width, no im
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\ttestl $1, %edi\n\tret\n";
   [%expect
     {|
-    40000000  f7 c7 01 00 00 00  test $1, %edi  [x86_64.test-rm-imm.asz-absent.rex-absent.reg]
+    40000000  f7 c7 01 00 00 00  test $1, %edi  [x86_64.test-rm-imm.asz-absent.opsz-absent.rex-absent.reg]
     40000006  c3                 ret            [x86_64.ret]
     |}]
 
@@ -1126,7 +1172,7 @@ let%expect_test "a base-less SIB operand takes a mandatory disp32" =
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tleaq 0(,%rcx,8), %rdi\n\tret\n";
   [%expect
     {|
-    40000000  48 8d 3c cd 00 00 00 00  leaq (,%rcx,8), %rdi  [x86_64.lea.asz-absent.rex-present.sib-nobase-disp32]
+    40000000  48 8d 3c cd 00 00 00 00  leaq (,%rcx,8), %rdi  [x86_64.lea.asz-absent.opsz-absent.rex-present.sib-nobase-disp32]
     40000008  c3                       ret                   [x86_64.ret]
     |}]
 
@@ -1141,7 +1187,7 @@ let%expect_test "a base-less SIB operand with a negative displacement" =
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tleaq -1(,%rbp,2), %rdi\n\tret\n";
   [%expect
     {|
-    40000000  48 8d 3c 6d ff ff ff ff  leaq -1(,%rbp,2), %rdi  [x86_64.lea.asz-absent.rex-present.sib-nobase-disp32]
+    40000000  48 8d 3c 6d ff ff ff ff  leaq -1(,%rbp,2), %rdi  [x86_64.lea.asz-absent.opsz-absent.rex-present.sib-nobase-disp32]
     40000008  c3                       ret                     [x86_64.ret]
     |}]
 
@@ -1149,7 +1195,7 @@ let%expect_test "a negative RIP-relative displacement redisplays with its sign" 
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tmovl -1(%rip), %eax\n\tret\n";
   [%expect
     {|
-    40000000  8b 05 ff ff ff ff  movl -1(%rip), %eax  [x86_64.mov-r-rm.asz-absent.rex-absent.disp32-norm]
+    40000000  8b 05 ff ff ff ff  movl -1(%rip), %eax  [x86_64.mov-r-rm.asz-absent.opsz-absent.rex-absent.disp32-norm]
     40000006  c3                 ret                  [x86_64.ret]
     |}]
 
@@ -1179,8 +1225,8 @@ let%expect_test "a base-less SIB operand with a symbolic displacement" =
      \tret\n";
   [%expect
     {|
-    40000000  8b 04 85 0f 00 00 40  movl 1073741839(,%eax,4), %eax  [x86_32.mov-r-rm.sib-nobase-disp32]
-    40000007  8b 0c cd 13 00 00 40  movl 1073741843(,%ecx,8), %ecx  [x86_32.mov-r-rm.sib-nobase-disp32]
+    40000000  8b 04 85 0f 00 00 40  movl 1073741839(,%eax,4), %eax  [x86_32.mov-r-rm.opsz-absent.sib-nobase-disp32]
+    40000007  8b 0c cd 13 00 00 40  movl 1073741843(,%ecx,8), %ecx  [x86_32.mov-r-rm.opsz-absent.sib-nobase-disp32]
     4000000e  c3                    ret                             [x86_32.ret]
     4000000f  c3                    ret                             [x86_32.ret]
     40000010  c3                    ret                             [x86_32.ret]
@@ -1195,7 +1241,7 @@ let%expect_test "an indirect jmp through a base-less SIB jump-table entry" =
   disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tjmp *tbl(,%eax,4)\ntbl:\n\tret\n";
   [%expect
     {|
-    40000000  ff 24 85 07 00 00 40  jmp *1073741831(,%eax,4)  [x86_32.jmp-rm.sib-nobase-disp32]
+    40000000  ff 24 85 07 00 00 40  jmp *1073741831(,%eax,4)  [x86_32.jmp-rm.opsz-absent.sib-nobase-disp32]
     40000007  c3                    ret                       [x86_32.ret]
     |}]
 
@@ -1226,8 +1272,8 @@ let%expect_test "a base-only memory operand with a symbolic displacement" =
      \tret\n";
   [%expect
     {|
-    40000000  8b 80 0d 00 00 40  movl 1073741837(%eax), %eax  [x86_32.mov-r-rm.base-disp32]
-    40000006  8b 92 25 00 00 40  movl 1073741861(%edx), %edx  [x86_32.mov-r-rm.base-disp32]
+    40000000  8b 80 0d 00 00 40  movl 1073741837(%eax), %eax  [x86_32.mov-r-rm.opsz-absent.base-disp32]
+    40000006  8b 92 25 00 00 40  movl 1073741861(%edx), %edx  [x86_32.mov-r-rm.opsz-absent.base-disp32]
     4000000c  c3                 ret                          [x86_32.ret]
     4000000d  c3                 ret                          [x86_32.ret]
     4000000e  c3                 ret                          [x86_32.ret]
@@ -1256,7 +1302,7 @@ let%expect_test "one binop per mandatory-prefix group (f2, f3, 66, none)" =
     40000000  f2 0f 58 c8  addsd %xmm0, %xmm1   [x86_64.sse-binop-f2.asz-absent.rex-absent.reg]
     40000004  f3 0f 58 c8  addss %xmm0, %xmm1   [x86_64.sse-binop-f3.asz-absent.rex-absent.reg]
     40000008  66 0f 2f c8  comisd %xmm0, %xmm1  [x86_64.sse-binop-66.asz-absent.rex-absent.reg]
-    4000000c  0f 2f da     comiss %xmm2, %xmm3  [x86_64.sse-binop-none.asz-absent.rex-absent.reg]
+    4000000c  0f 2f da     comiss %xmm2, %xmm3  [x86_64.sse-binop-none.asz-absent.opsz-absent.rex-absent.reg]
     4000000f  c3           ret                  [x86_64.ret]
     |}]
 

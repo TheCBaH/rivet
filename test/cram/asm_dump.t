@@ -116,11 +116,11 @@
   section .text r-x align=16
     align 16 fill<=2e 8d b4 26 00 00 00 00 8d b4 26 00 00 00 00
     label asm_test_entry
-    bytes 83 ec 0c                 [x86_32.alu-rm-imm8.reg]
-    bytes 8d 44 24 10              [x86_32.lea.sib-disp8]
-    bytes 89 04 24                 [x86_32.mov-rm-r.sib-disp0]
-    bytes b8 2a 00 00 00           [x86_32.mov-r-imm]
-    bytes 83 c4 0c                 [x86_32.alu-rm-imm8.reg]
+    bytes 83 ec 0c                 [x86_32.alu-rm-imm8.opsz-absent.reg]
+    bytes 8d 44 24 10              [x86_32.lea.opsz-absent.sib-disp8]
+    bytes 89 04 24                 [x86_32.mov-rm-r.opsz-absent.sib-disp0]
+    bytes b8 2a 00 00 00           [x86_32.mov-r-imm.opsz-absent]
+    bytes 83 c4 0c                 [x86_32.alu-rm-imm8.opsz-absent.reg]
     bytes c3                       [x86_32.ret]
     size asm_test_entry = (. - asm_test_entry)
   global asm_test_entry function in .text size=(. - asm_test_entry)
@@ -143,11 +143,11 @@
   	addl $12, %esp
   	ret
   ########## x86_32 disasm diagnostic
-  00000000  83 ec 0c        subl $12, %esp       [x86_32.alu-rm-imm8.reg]
-  00000003  8d 44 24 10     leal 16(%esp), %eax  [x86_32.lea.sib-disp8]
-  00000007  89 04 24        movl %eax, (%esp)    [x86_32.mov-rm-r.sib-disp0]
-  0000000a  b8 2a 00 00 00  movl $42, %eax       [x86_32.mov-r-imm]
-  0000000f  83 c4 0c        addl $12, %esp       [x86_32.alu-rm-imm8.reg]
+  00000000  83 ec 0c        subl $12, %esp       [x86_32.alu-rm-imm8.opsz-absent.reg]
+  00000003  8d 44 24 10     leal 16(%esp), %eax  [x86_32.lea.opsz-absent.sib-disp8]
+  00000007  89 04 24        movl %eax, (%esp)    [x86_32.mov-rm-r.opsz-absent.sib-disp0]
+  0000000a  b8 2a 00 00 00  movl $42, %eax       [x86_32.mov-r-imm.opsz-absent]
+  0000000f  83 c4 0c        addl $12, %esp       [x86_32.alu-rm-imm8.opsz-absent.reg]
   00000012  c3              ret                  [x86_32.ret]
   ########## x86_32 codec
   alt x86_32
@@ -203,7 +203,7 @@
     [45 cost=0] test-rm-imm      test-rm-imm(){prefixes 11110111 modrm le32}
     [46 cost=0] mov-rm-r8        mov-rm-r8(){prefixes 10001000 modrm}
     [47 cost=0] mov-r-rm8        mov-r-rm8(){prefixes 10001010 modrm}
-  prefixes(){no-asz no-rex}
+  prefixes(){no-asz opsz no-rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
     [1 cost=0] sib-nobase-disp32 modrm-sib-nobase-disp32(){00 reg:3u 100 scale:2u index:3u 101 disp-sym}
@@ -224,6 +224,9 @@
   sse-binop-f2-op[5]{opcode:8u}
   sse-binop-f3-op[5]{opcode:8u}
   sse-binop-66-op[3]{opcode:8u}
+  alt opsz
+    [0 cost=0] opsz-present     opsz-present(){01100110}
+    [1 cost=0] opsz-absent      opsz-absent(){()}
   sib(){scale:2u index:3u base:3u}
   disp-none(){no-disp}
   disp-c8(){disp8:8s}
@@ -346,11 +349,11 @@
   section .text r-x align=16
     align 16 fill<=66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00
     label asm_test_entry
-    bytes 48 83 ec 08              [x86_64.alu-rm-imm8.asz-absent.rex-present.reg]
-    bytes 48 8d 44 24 10           [x86_64.lea.asz-absent.rex-present.sib-disp8]
-    bytes 48 89 04 24              [x86_64.mov-rm-r.asz-absent.rex-present.sib-disp0]
-    bytes b8 2a 00 00 00           [x86_64.mov-r-imm.asz-absent.rex-absent]
-    bytes 48 83 c4 08              [x86_64.alu-rm-imm8.asz-absent.rex-present.reg]
+    bytes 48 83 ec 08              [x86_64.alu-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
+    bytes 48 8d 44 24 10           [x86_64.lea.asz-absent.opsz-absent.rex-present.sib-disp8]
+    bytes 48 89 04 24              [x86_64.mov-rm-r.asz-absent.opsz-absent.rex-present.sib-disp0]
+    bytes b8 2a 00 00 00           [x86_64.mov-r-imm.asz-absent.opsz-absent.rex-absent]
+    bytes 48 83 c4 08              [x86_64.alu-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
     bytes c3                       [x86_64.ret]
     size asm_test_entry = (. - asm_test_entry)
   global asm_test_entry function in .text size=(. - asm_test_entry)
@@ -373,11 +376,11 @@
   	addq $8, %rsp
   	ret
   ########## x86_64 disasm diagnostic
-  00000000  48 83 ec 08     subq $8, %rsp        [x86_64.alu-rm-imm8.asz-absent.rex-present.reg]
-  00000004  48 8d 44 24 10  leaq 16(%rsp), %rax  [x86_64.lea.asz-absent.rex-present.sib-disp8]
-  00000009  48 89 04 24     movq %rax, (%rsp)    [x86_64.mov-rm-r.asz-absent.rex-present.sib-disp0]
-  0000000d  b8 2a 00 00 00  movl $42, %eax       [x86_64.mov-r-imm.asz-absent.rex-absent]
-  00000012  48 83 c4 08     addq $8, %rsp        [x86_64.alu-rm-imm8.asz-absent.rex-present.reg]
+  00000000  48 83 ec 08     subq $8, %rsp        [x86_64.alu-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
+  00000004  48 8d 44 24 10  leaq 16(%rsp), %rax  [x86_64.lea.asz-absent.opsz-absent.rex-present.sib-disp8]
+  00000009  48 89 04 24     movq %rax, (%rsp)    [x86_64.mov-rm-r.asz-absent.opsz-absent.rex-present.sib-disp0]
+  0000000d  b8 2a 00 00 00  movl $42, %eax       [x86_64.mov-r-imm.asz-absent.opsz-absent.rex-absent]
+  00000012  48 83 c4 08     addq $8, %rsp        [x86_64.alu-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
   00000016  c3              ret                  [x86_64.ret]
   ########## x86_64 codec
   alt x86_64
@@ -430,7 +433,7 @@
     [45 cost=0] test-rm-imm      test-rm-imm(){prefixes 11110111 modrm le32}
     [46 cost=0] mov-rm-r8        mov-rm-r8(){prefixes 10001000 modrm}
     [47 cost=0] mov-r-rm8        mov-r-rm8(){prefixes 10001010 modrm}
-  prefixes(){asz rex}
+  prefixes(){asz opsz rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
     [1 cost=0] sib-nobase-disp32 modrm-sib-nobase-disp32(){00 reg:3u 100 scale:2u index:3u 101 disp-sym}
@@ -454,6 +457,9 @@
   sse-binop-f2-op[5]{opcode:8u}
   sse-binop-f3-op[5]{opcode:8u}
   sse-binop-66-op[3]{opcode:8u}
+  alt opsz
+    [0 cost=0] opsz-present     opsz-present(){01100110}
+    [1 cost=0] opsz-absent      opsz-absent(){()}
   disp-sym(){le32}
   sib(){scale:2u index:3u base:3u}
   disp-none(){no-disp}
