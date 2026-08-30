@@ -132,7 +132,18 @@ let try_local_label c pos =
    whose value exceeds 0o377 is truncated to its low byte rather than
    rejected ([\400] assembles as a single zero byte, since 0o400 = 256);
    and [\0] was already a special case of exactly this rule (one octal
-   digit, value 0), so it no longer needs its own branch. *)
+   digit, value 0), so it no longer needs its own branch.
+
+   [\b]/[\f] (M5 classify-c-gcc corpus evidence: gcc's own string-literal
+   escaping - unlike ccomp's, which this project's fixtures never exercised -
+   uses both throughout [aes.c]/[sha3.c]/[siphash24.c]) are backspace ([0x08])
+   and form feed ([0x0C]), checked against real [x86_64-linux-gnu-as] the same
+   way: [.ascii "a\bc\fd"] assembles to the five bytes [61 08 63 0c 64].
+   Deliberately NOT a general "any unrecognized [\X] passes [X] through
+   literally" rule GNU as also implements (confirmed by hand: [\e] and [\a]
+   assemble as the bare letters [e]/[a], not ESC/BEL) - only [\b]/[\f]
+   themselves are corpus-evidenced, so only they are added; every other
+   unrecognized escape stays a rejection until a real fixture needs it. *)
 let octal_digit c p n =
   let rec go i acc =
     if i >= n then Some (acc, i)
@@ -162,6 +173,12 @@ let scan_string c pos =
             go (p + 2) buf
         | Some 'r' ->
             Buffer.add_char buf '\r';
+            go (p + 2) buf
+        | Some 'b' ->
+            Buffer.add_char buf '\b';
+            go (p + 2) buf
+        | Some 'f' ->
+            Buffer.add_char buf '\012' (* form feed, 0x0C - OCaml has no \f char escape *);
             go (p + 2) buf
         | Some '\\' ->
             Buffer.add_char buf '\\';

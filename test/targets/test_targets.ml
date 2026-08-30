@@ -974,6 +974,37 @@ let%expect_test "push needs two or more registers; one register is out of scope"
   [%expect
     {| arm.lower: push needs two or more registers; a single register is str rN, [sp, #-4]!, not in scope |}]
 
+(* {1 str/ldr pre-indexed writeback (classify-c-gcc, asm/docs/corpus.md)}
+
+   [str fp, [sp, #-4]!] - gcc's own single-register frame-pointer prologue
+   (not the [push {reglist}] pseudo-instruction just above, which CompCert's
+   own codegen uses instead and which stays scoped to two-or-more registers).
+   Byte-for-byte checked against real arm-linux-gnueabihf-as/objdump:
+     e52db004  str fp, [sp, #-4]!
+     e53db004  ldr fp, [sp, #-4]!
+   P stays fixed (this project only ever parses pre-indexed [Rn, #imm]!, never
+   post-indexed [Rn], #imm); only W - previously a hard-coded 0 - now varies
+   with the operand's own [writeback] flag. Scoped to str/ldr: strb/ldrb
+   writeback stays rejected below, since nothing corpus-evidences it and nothing
+   about the (otherwise-identical) B bit makes it free to assume. *)
+let%expect_test "str/ldr [Rn, #imm]! pre-indexed writeback" =
+  disasm "arm" "\t.text\n\t.globl f\nf:\n\tstr fp, [sp, #-4]!\n\tldr fp, [sp, #-4]!\n\tbx lr\n";
+  [%expect
+    {|
+    40000000  04 b0 2d e5  str fp, [sp, #-4]!  [arm.ldst-imm]
+    40000004  04 b0 3d e5  ldr fp, [sp, #-4]!  [arm.ldst-imm]
+    40000008  1e ff 2f e1  bx lr               [arm.bx]
+    |}]
+
+let%expect_test "strb/ldrb writeback stays out of scope" =
+  attempt "arm" "\t.text\n\t.globl f\nf:\n\tstrb r0, [sp, #-1]!\n\tbx lr\n";
+  attempt "arm" "\t.text\n\t.globl f\nf:\n\tldrb r0, [sp, #-1]!\n\tbx lr\n";
+  [%expect
+    {|
+    arm.lower: writeback addressing is not in M1 scope
+    arm.lower: writeback addressing is not in M1 scope
+    |}]
+
 (* {1 The x86-64 address-size prefix}
 
    32-bit registers used as *addresses* in 64-bit mode. Omitting the 0x67 does
@@ -1457,6 +1488,97 @@ let%expect_test "an xmm register where cvtsi2sd's GPR source is required is reje
 let%expect_test "an xmm register used as a memory base is rejected at parse time" =
   attempt "x86_64" "\t.text\n\t.globl f\nf:\n\tmovsd (%xmm0), %xmm1\n\tret\n";
   [%expect {| x86.operand: %xmm0 cannot be used as a memory operand's base or index register |}]
+
+(* {1 classify-c-gcc forms (asm/docs/corpus.md): gcc's own idioms, not ccomp's}
+
+   Every M5 fixture above compiled its evidence with ccomp; classify-c-gcc
+   (asm/docs/corpus.md) runs the identical test/c/ corpus through the system
+   cross gcc instead, and gcc's assembly idioms are not the ones ccomp emits.
+   Byte sequences below were checked against the real, installed
+   i686-linux-gnu-as/x86_64-linux-gnu-as and objdump before being promoted
+   here, the same discipline as every other [disasm] test in this file. *)
+
+(* (%base,%index) and disp(%base,%index) - GAS defaults an omitted scale to 1,
+   so these are byte-identical to the already-supported explicit-,1 forms
+   (checked: `lea (%rax,%rax),%rsi` -> `48 8d 34 00`, matching
+   `lea (%rax,%rax,1),%rsi`; `movb $1,-368(%rbp,%rax)` ->
+   `c6 84 05 90 fe ff ff 01`; `mov (%rcx,%rdx),%eax` -> `8b 04 11`). No
+   encoder change: the parser (x86_family.ml) just builds the same [Mem.t]
+   [scale = 1] already writes when the source spells it out. *)
+let%expect_test "(%base,%index) with the scale omitted defaults to 1" =
+  disasm "x86_64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tleaq (%rax,%rax), %rsi\n\
+     \tmovb $1, -368(%rbp,%rax)\n\
+     \tmovl (%rcx,%rdx), %eax\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  48 8d 34 00              leaq (%rax,%rax,1), %rsi    [x86_64.lea.asz-absent.opsz-absent.rex-present.sib-disp0]
+    40000004  c6 84 05 90 fe ff ff 01  movb $1, -368(%rbp,%rax,1)  [x86_64.mov-rm-imm8.asz-absent.opsz-absent.rex-absent.sib-disp32]
+    4000000c  8b 04 11                 movl (%rcx,%rdx,1), %eax    [x86_64.mov-r-rm.asz-absent.opsz-absent.rex-absent.sib-disp0]
+    4000000f  c3                       ret                         [x86_64.ret]
+    |}]
+
+(* %ah/%ch/%dh/%bh - x86_32's OWN legacy high-byte spelling of register
+   numbers 4-7 in an 8-bit operand (there is no REX byte in 32-bit mode, so
+   those numbers can never mean spl/bpl/sil/dil there - x86_32_encode.ml).
+   Checked against real i686-linux-gnu-as: `movb %ah,%al`/`%ch,%dl`/`%dh,%bl`/
+   `%bh,%cl` encode ModRM.reg 4/5/6/7 respectively (`88 e0`/`88 ea`/`88 f3`/
+   `88 f9`), and the same omitted-scale addressing as above applies equally
+   on x86_32 (`lea (%eax,%edx),%ecx` -> `8d 0c 10`). *)
+let%expect_test "%ah/%ch/%dh/%bh, x86_32's legacy high-byte registers" =
+  disasm "x86_32"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tmovb %ah, %al\n\
+     \tmovb %ch, %dl\n\
+     \tmovb %dh, %bl\n\
+     \tmovb %bh, %cl\n\
+     \tleal (%eax,%edx), %ecx\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  88 e0     movb %ah, %al             [x86_32.mov-rm-r8.opsz-absent.reg]
+    40000002  88 ea     movb %ch, %dl             [x86_32.mov-rm-r8.opsz-absent.reg]
+    40000004  88 f3     movb %dh, %bl             [x86_32.mov-rm-r8.opsz-absent.reg]
+    40000006  88 f9     movb %bh, %cl             [x86_32.mov-rm-r8.opsz-absent.reg]
+    40000008  8d 0c 10  leal (%eax,%edx,1), %ecx  [x86_32.lea.opsz-absent.sib-disp0]
+    4000000b  c3        ret                       [x86_32.ret]
+    |}]
+
+(* $symbol/$symbol+offset - a symbolic immediate (`movl $.LC0,%edi`,
+   `addq $bodies+24,%rax`, `pushl $sym`). Parses (Operand.Imm_sym,
+   x86_family_encode.ml), which is all classify-c-gcc's --dump-source-ast
+   needs - no [lower_instruction] arm accepts it yet, so assembling all the
+   way through fails cleanly at the lower stage rather than crashing or
+   silently mis-encoding, and each opcode's own diagnostic still names the
+   opcode. *)
+let%expect_test "$symbol parses as an operand but does not lower yet" =
+  attempt "x86_64" "\t.text\n\t.globl f\nf:\n\tmovl $sym, %eax\n\tret\n\t.data\nsym:\n\t.long 0\n";
+  attempt "x86_64" "\t.text\n\t.globl f\nf:\n\taddq $sym, %rax\n\tret\n\t.data\nsym:\n\t.long 0\n";
+  attempt "x86_32" "\t.text\n\t.globl f\nf:\n\tpushl $sym\n\tret\n\t.data\nsym:\n\t.long 0\n";
+  [%expect
+    {|
+    x86.lower: no mov form takes these operands
+    x86.lower: no add form takes these operands
+    x86.lower: no push form takes these operands
+    |}]
+
+(* %st(n) - the x87 stack-relative register (M5 corpus evidence:
+   almabench.c's %st(1)). [find_reg] can never see this shape: the lexer
+   splits the parens off the identifier the same way it does for any memory
+   operand, so it is synthesized directly from the [n] literal
+   (x86_family.ml) rather than looked up. Parse-only, like $symbol above - no
+   x87 mnemonic is in the M1 instruction table at all yet, so the pipeline
+   fails one stage earlier still, at simplify's mnemonic lookup, before the
+   operand is ever consulted. *)
+let%expect_test "%st(n) parses as a register operand" =
+  attempt "x86_32" "\t.text\n\t.globl f\nf:\n\tfld %st(1)\n\tret\n";
+  [%expect {| x86.simplify: unknown instruction fld |}]
 
 (* {1 Alignment padding}
 
@@ -2161,4 +2283,38 @@ let%expect_test "add ..., #:lo12:sym" =
     40000000  29 21 00 91  add x9, x9, #8  [aarch64.add-imm]
     40000004  c0 03 5f d6  ret             [aarch64.ret]
     40000008  00 00 00 00  udf #0          [aarch64.udf]
+    |}]
+
+(* {1 classify-c-gcc forms (asm/docs/corpus.md): the [#] is optional}
+
+   Every AArch64 test above spells an immediate with a leading [#], because
+   that is what ccomp always emits. gcc's own aarch64 backend never does -
+   every one of the 5156 bracket-immediate offsets in the whole
+   classify-c-gcc corpus omits it, and so does every shift/extend amount and
+   FP immediate this section covers - which is why this target was 0/24
+   before these five new parser alternatives (aarch64.ml), not just its
+   [stp]/[ldp] writeback finding: with [#] required, even a plain
+   [ldr x0, [sp, 16]] never parsed. [#] itself carries no encoding - GNU
+   accepts it or not for identical bytes, confirmed by hand for every shape
+   below against the real, installed aarch64-linux-gnu-as/objdump before
+   being promoted here. *)
+let%expect_test "stp/ldr/add/fmov with the [#] omitted, gcc's own spelling" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tstp x29, x30, [sp, -48]!\n\
+     \tldr x0, [x0, x1, lsl 3]\n\
+     \tadd x9, x9, x16, uxtx 0\n\
+     \tfmov d0, 1.0e+0\n\
+     \tfmov d1, 5.0e-1\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  fd 7b bd a9  stp x29, x30, [sp, #-48]!           [aarch64.stp-pre]
+    40000004  00 78 61 f8  ldr x0, [x0, x1, lsl #3]            [aarch64.ldr64-roff]
+    40000008  29 61 30 8b  add x9, x9, x16, uxtx #0            [aarch64.addsub-extend]
+    4000000c  00 10 6e 1e  fmov d0, #1.000000000000000000e+00  [aarch64.fmov-imm-d]
+    40000010  01 10 6c 1e  fmov d1, #5.000000000000000000e-01  [aarch64.fmov-imm-d]
+    40000014  c0 03 5f d6  ret                                 [aarch64.ret]
     |}]

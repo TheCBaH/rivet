@@ -58,8 +58,8 @@ CompCert's runtime library, per target.
   >     printf '%-8s %-12s %s\n' "$t" "$(basename $d | sed 's/^runtime-//')" "$(verdict $t $d/input.s)"
   >   done
   > done
-  x86_32   i64_dtos      error[x86.operand]: unknown register %ah
-  x86_32   i64_dtou      error[x86.operand]: unknown register %ah
+  x86_32   i64_dtos      error[x86.simplify]: unknown instruction fnstcw
+  x86_32   i64_dtou      error[x86.simplify]: unknown instruction fldl
   x86_32   i64_sar       error[x86.simplify]: 8-bit operands are not in M1 scope
   x86_32   i64_sdiv     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   x86_32   i64_shl       error[x86.simplify]: 8-bit operands are not in M1 scope
@@ -74,7 +74,7 @@ CompCert's runtime library, per target.
   x86_32   i64_umulh    <synthesized by x86_32>: error[x86.lower]: no adc form takes these operands
   x86_32   i64_utod      error[x86.simplify]: unknown instruction fildll
   x86_32   i64_utof      error[x86.simplify]: unknown instruction fildll
-  x86_32   vararg        error[x86.operand]: cannot parse operand 3(%eax %edx)
+  x86_32   vararg        error[x86.simplify]: unknown instruction fldl
   x86_64   i64_dtou      error[x86.simplify]: unknown instruction ucomisd
   x86_64   i64_utod      error[x86.simplify]: unknown instruction pxor
   x86_64   i64_utof      error[x86.simplify]: unknown instruction pxor
@@ -111,15 +111,15 @@ what M2 moves, and prose cannot regress.
         4  error[arm.simplify]: unknown instruction asr
         3  error[lex]: unexpected character '\194'
         2  error[x86.simplify]: unknown instruction pxor
-        2  error[x86.operand]: unknown register %ah
+        2  error[x86.simplify]: unknown instruction fldl
         2  error[arm.simplify]: unknown instruction vmla.f64
         2  error[arm.simplify]: unknown instruction umull
         2  error[arm.simplify]: unknown instruction rsb
         2  error[arm.simplify]: unknown instruction pop
         1 <synthesized by x86_32>: error[x86.lower]: no adc form takes these operands
         1  error[x86.simplify]: unknown instruction ucomisd
+        1  error[x86.simplify]: unknown instruction fnstcw
         1  error[x86.simplify]: cmov takes two register operands in M2
-        1  error[x86.operand]: cannot parse operand 3(%eax %edx)
         1  error[lex]: unexpected character '<'
         1  error[arm.simplify]: unknown instruction rsbs
         1  error[arm.simplify]: unknown instruction orrs

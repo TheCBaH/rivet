@@ -640,6 +640,7 @@ module Lowered = struct
         rt : Reg.t;
         rn : Reg.t;
         offset : int64;
+        writeback : bool;
       }
     | Ldst_reg of {
         cond : Cond.t;
@@ -731,11 +732,12 @@ module Lowered = struct
         | Some o ->
             Fmt.pf ppf "%s%s %a, %a, %a%s" (Opcode.name o) c Reg.pp rd Reg.pp rn Reg.pp rm sh
         | None -> Fmt.pf ppf "dp%d%s %a, %a, %a%s" dp c Reg.pp rd Reg.pp rn Reg.pp rm sh)
-    | Ldst_imm { cond; load; byte; rt; rn; offset } ->
-        Fmt.pf ppf "%s%s%s %a, [%a, #%Ld]"
+    | Ldst_imm { cond; load; byte; rt; rn; offset; writeback } ->
+        Fmt.pf ppf "%s%s%s %a, [%a, #%Ld]%s"
           (if load then "ldr" else "str")
           (if byte then "b" else "")
           (Cond.suffix cond) Reg.pp rt Reg.pp rn offset
+          (if writeback then "!" else "")
     | Ldst_reg { cond; load; byte; rt; rn; rm; negate; sh_kind; sh_amt } ->
         let sh =
           if sh_amt = 0 && sh_kind = 0 then ""
@@ -835,7 +837,7 @@ module Lowered = struct
         && x.sh_amt = y.sh_amt
     | Ldst_imm x, Ldst_imm y ->
         Cond.equal x.cond y.cond && x.load = y.load && x.byte = y.byte && Reg.equal x.rt y.rt
-        && Reg.equal x.rn y.rn && Int64.equal x.offset y.offset
+        && Reg.equal x.rn y.rn && Int64.equal x.offset y.offset && x.writeback = y.writeback
     | Ldst_reg x, Ldst_reg y ->
         Cond.equal x.cond y.cond && x.load = y.load && x.byte = y.byte && Reg.equal x.rt y.rt
         && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm && x.negate = y.negate
@@ -1173,7 +1175,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
       C.alt ~label:"ldst-imm" ~priority:5
         (C.iso_fun ~name:"ldst-imm"
            ~encode:(function
-             | Lowered.Ldst_imm { cond; load; byte; rt; rn; offset } ->
+             | Lowered.Ldst_imm { cond; load; byte; rt; rn; offset; writeback } ->
                  let up = Int64.compare offset 0L >= 0 in
                  let mag = Int64.abs offset in
                  if Int64.compare mag 4096L >= 0 then None
@@ -1184,9 +1186,10 @@ let codec : (Lowered.t, fixup_kind) C.t =
                          ( (),
                            ( (if up then 1L else 0L),
                              ( (if byte then 1L else 0L),
-                               ((), ((if load then 1L else 0L), (rn, (rt, mag)))) ) ) ) ) )
+                               ( (if writeback then 1L else 0L),
+                                 ((if load then 1L else 0L), (rn, (rt, mag))) ) ) ) ) ) )
              | _ -> None)
-           ~decode:(fun (cond, ((), ((), (up, (byte, ((), (load, (rn, (rt, mag))))))))) ->
+           ~decode:(fun (cond, ((), ((), (up, (byte, (w, (load, (rn, (rt, mag))))))))) ->
              Some
                (Lowered.Ldst_imm
                   {
@@ -1196,12 +1199,16 @@ let codec : (Lowered.t, fixup_kind) C.t =
                     rt;
                     rn;
                     offset = (if Int64.equal up 1L then mag else Int64.neg mag);
+                    writeback = Int64.equal w 1L;
                   }))
            C.(
-             cond_codec ** const ~width:3 2L
-             ** const ~width:1 1L (* P: offset addressing, no writeback *)
-             ** field ~width:1 "u" ** field ~width:1 "b" ** const ~width:1 0L (* W *)
-             ** field ~width:1 "l" ** reg_field "rn" ** reg_field "rt" ** field ~width:12 "imm12"));
+             cond_codec ** const ~width:3 2L ** const ~width:1 1L
+             (* P: pre-indexed - the only addressing this project parses
+                (asm/docs/corpus.md's classify-c-gcc: str/ldr writeback), so
+                P is still fixed; only W now varies. *)
+             ** field ~width:1 "u"
+             ** field ~width:1 "b" ** field ~width:1 "w" ** field ~width:1 "l" ** reg_field "rn"
+             ** reg_field "rt" ** field ~width:12 "imm12"));
       (* Load and store, register offset: [ldr r2, [r1, r2, lsl #2]] / [ldrb
          r2, [r7, r0]]. Same word shape as ldst-imm one level up, but bit 25
          is set (the [I] bit ARM's own manual uses for this distinction) and
@@ -1908,9 +1915,19 @@ let lower_ldst ~bad ~cond ~load ~byte ~rt ~(m : Mem.t) =
   match m.offset with
   | Mem.Imm offset ->
       if Int64.compare (Int64.abs offset) 4096L >= 0 then bad `Offset_not_12bit
-      else Ok [ Lowered.Ldst_imm { cond; load; byte; rt; rn = m.base; offset } ]
+      else
+        Ok
+          [
+            Lowered.Ldst_imm { cond; load; byte; rt; rn = m.base; offset; writeback = m.writeback };
+          ]
   | Mem.Reg_offset { reg = rm; negate; kind = sh_kind; amount = sh_amt } ->
-      Ok [ Lowered.Ldst_reg { cond; load; byte; rt; rn = m.base; rm; negate; sh_kind; sh_amt } ]
+      (* Register-offset writeback ([str r0, [r1, r2]!]) is real ARM syntax
+         but corpus-unevidenced (M5 classify-c-gcc's one finding, [sp, #-N]!,
+         is always an immediate offset - asm/docs/corpus.md) - stays out of
+         scope here even though the immediate sibling just above is now in. *)
+      if m.writeback then bad `Writeback_out_of_scope
+      else
+        Ok [ Lowered.Ldst_reg { cond; load; byte; rt; rn = m.base; rm; negate; sh_kind; sh_amt } ]
 
 let lower_instruction state i =
   let bad kind = Error (diag ~pos:__POS__ kind) in
@@ -1996,9 +2013,15 @@ let lower_instruction state i =
         | Ok imm ->
             if encode_modimm imm = None then bad (`No_modified_immediate imm)
             else Ok [ Lowered.Dp_imm { cond; dp = Opcode.to_dp op; s = false; rd; rn; imm } ])
+    (* str/ldr writeback ([str fp, [sp, #-4]!]) is M5 classify-c-gcc's one
+       corpus-evidenced writeback form (asm/docs/corpus.md: gcc's own
+       frame-pointer prologue idiom) - lower_ldst now honors m.writeback for
+       an immediate offset instead of rejecting it outright. strb/ldrb below
+       keep the blanket rejection: no byte-access writeback is evidenced, and
+       nothing about the word-vs-byte bit makes it a safe default to widen
+       for free. *)
     | ((Opcode.Str | Opcode.Ldr) as op), [ Operand.Reg rt; Operand.Mem m ] ->
-        if m.writeback then bad `Writeback_out_of_scope
-        else lower_ldst ~bad ~cond ~load:(op = Opcode.Ldr) ~byte:false ~rt ~m
+        lower_ldst ~bad ~cond ~load:(op = Opcode.Ldr) ~byte:false ~rt ~m
     | Opcode.Strb, [ Operand.Reg rt; Operand.Mem m ] ->
         if m.writeback then bad `Writeback_out_of_scope
         else lower_ldst ~bad ~cond ~load:false ~byte:true ~rt ~m
@@ -2296,10 +2319,8 @@ let instruction_of_lowered ?(at = 0L) =
       | Some Opcode.Mov -> Some (Instruction.mk ~cond Opcode.Mov [ Operand.Reg rd; shifted ])
       | Some o when Opcode.is_compare o -> Some (Instruction.mk ~cond o [ Operand.Reg rn; shifted ])
       | Some o -> Some (Instruction.mk ~cond o [ Operand.Reg rd; Operand.Reg rn; shifted ]))
-  | Lowered.Ldst_imm { cond; load; byte; rt; rn; offset } -> (
-      let mem_op =
-        Operand.Mem { base = rn; offset = Mem.Imm offset; writeback = false; pre = true }
-      in
+  | Lowered.Ldst_imm { cond; load; byte; rt; rn; offset; writeback } -> (
+      let mem_op = Operand.Mem { base = rn; offset = Mem.Imm offset; writeback; pre = true } in
       match (load, byte) with
       | false, false -> Some (Instruction.mk ~cond Opcode.Str [ Operand.Reg rt; mem_op ])
       | true, false -> Some (Instruction.mk ~cond Opcode.Ldr [ Operand.Reg rt; mem_op ])

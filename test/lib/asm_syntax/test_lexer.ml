@@ -54,6 +54,22 @@ let%expect_test "the other named escapes are unaffected" =
   strings {|.ascii "\n\t\r\\\""|};
   [%expect {| string("\n\t\r\\\"") |}]
 
+(* M5 classify-c-gcc corpus evidence (aes.c/sha3.c/siphash24.c): checked
+   against real x86_64-linux-gnu-as - [.ascii "a\bc\fd"] assembles to the five
+   bytes [61 08 63 0c 64]. *)
+let%expect_test "\\b and \\f decode to backspace and form feed" =
+  strings {|.ascii "a\bc\fd"|};
+  [%expect {| string("a\bc\012d") |}]
+
 let%expect_test "a genuinely unknown escape is still rejected" =
   strings {|.ascii "\8"|};
   [%expect {| error: unknown escape \8 |}]
+
+(* GNU as itself passes an otherwise-unrecognized \X through as the bare
+   character X (confirmed by hand: \e and \a assemble as 'e'/'a', not
+   ESC/BEL) - \b/\f are corpus-evidenced and added above, but this project
+   deliberately does not adopt that general passthrough rule, so an escape
+   letter neither named nor octal stays a rejection. *)
+let%expect_test "\\e (not corpus-evidenced) is still rejected, not passed through" =
+  strings {|.ascii "\e"|};
+  [%expect {| error: unknown escape \e |}]

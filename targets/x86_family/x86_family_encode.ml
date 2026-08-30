@@ -120,13 +120,31 @@ module Operand = struct
      from [Imm] rather than an [Imm] holding an expression because the two are
      encoded differently - an immediate is a value in the instruction, a target
      becomes a fixup - and because AT&T spells the first with a [$] and the
-     second without. *)
-  type t = Reg of Reg.t | Mem of Mem.t | Imm of Bigint.t | Sym of Asm_core.Expr.t
+     second without.
+
+     [Imm_sym] (M5 classify-c-gcc corpus evidence: `movl $.LC0, %edi`,
+     `addq $bodies+24, %rax`, `pushl $sym`, ...) is the [$]-spelled sibling
+     [Sym] is not: a genuine immediate whose value is a symbol's address
+     rather than a literal number - gcc's own idiom for materializing a
+     string/array address into a register or the stack, which ccomp's codegen
+     (this project's only source of fixtures until now) never emitted. Kept
+     as its own constructor rather than widening [Imm] to
+     [Bigint.t Asm_core.Expr.t]-like union, so every existing [Imm v] site
+     stays exactly as narrow as it was - this is parse-level only for now (no
+     [lower_instruction] arm accepts it yet, so it falls to that match's own
+     [No_form] catch-all; see asm/docs/corpus.md's classify-c-gcc section). *)
+  type t =
+    | Reg of Reg.t
+    | Mem of Mem.t
+    | Imm of Bigint.t
+    | Imm_sym of Asm_core.Expr.t
+    | Sym of Asm_core.Expr.t
 
   let pp ppf = function
     | Reg r -> Reg.pp ppf r
     | Mem m -> Mem.pp ppf m
     | Imm v -> Fmt.pf ppf "$%a" Bigint.pp v
+    | Imm_sym e -> Fmt.pf ppf "$%s" (Asm_core.Expr.to_string e)
     | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
 end
 
@@ -1698,7 +1716,7 @@ module Make (M : MODE) = struct
                       ])
             | Operand.Mem m ->
                 Ok [ Lowered.Alu_rm_imm { ext; width = i.Instruction.width; rm = Rm.Mem m; imm } ]
-            | Operand.Imm _ | Operand.Sym _ -> bad `Immediate_destination))
+            | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ -> bad `Immediate_destination))
     | Opcode.Mov, [ Operand.Imm v; Operand.Mem m ] -> (
         if i.Instruction.width <> 8 then bad `Imm_to_mem_only_movb
         else
@@ -1787,7 +1805,7 @@ module Make (M : MODE) = struct
             | Ok () -> Ok [ Lowered.Unary_rm { ext; width = i.Instruction.width; rm = Rm.Reg r } ])
         | Operand.Mem m ->
             Ok [ Lowered.Unary_rm { ext; width = i.Instruction.width; rm = Rm.Mem m } ]
-        | Operand.Imm _ | Operand.Sym _ -> bad `Immediate_destination)
+        | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ -> bad `Immediate_destination)
     (* Group-2 shift/rotate, explicit-count form. The fixture always spells
        the count explicitly ([rcrl $1, %ecx], [rorl $27, %eax]), never the
        bare-mnemonic implicit-1 form GAS also accepts. A literal count of
@@ -1821,7 +1839,7 @@ module Make (M : MODE) = struct
                           { ext; width = i.Instruction.width; rm = Rm.Reg r; imm };
                       ])
             | _, Operand.Mem _ -> bad (`No_form (Opcode.name i.Instruction.op))
-            | _, (Operand.Imm _ | Operand.Sym _) -> bad `Immediate_destination))
+            | _, (Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _) -> bad `Immediate_destination))
     (* Group-2 shift/rotate, count-in-%cl (M5, asm/docs/corpus.md: [sall
        %cl,%eax]). [cl]'s width and number pin it to exactly %cl, not any
        other byte register - GAS accepts no other register here, and this
@@ -1838,7 +1856,7 @@ module Make (M : MODE) = struct
             | Ok () ->
                 Ok [ Lowered.Shift_cl_rm { ext; width = i.Instruction.width; rm = Rm.Reg r } ])
         | Operand.Mem _ -> bad (`No_form (Opcode.name i.Instruction.op))
-        | Operand.Imm _ | Operand.Sym _ -> bad `Immediate_destination)
+        | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ -> bad `Immediate_destination)
     | Opcode.Push, [ Operand.Reg r ] -> Ok [ Lowered.Push { reg = r } ]
     | Opcode.Dec, [ Operand.Reg r ] -> Ok [ Lowered.Dec { reg = r } ]
     (* The operands swap sides relative to the ALU forms above: AT&T [imull
@@ -1873,7 +1891,7 @@ module Make (M : MODE) = struct
                     Ok [ Lowered.Test_rm_imm { width = i.Instruction.width; rm = Rm.Reg r; imm } ])
             | Operand.Mem m ->
                 Ok [ Lowered.Test_rm_imm { width = i.Instruction.width; rm = Rm.Mem m; imm } ]
-            | Operand.Imm _ | Operand.Sym _ -> bad `Immediate_destination))
+            | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ -> bad `Immediate_destination))
     | Opcode.Cmov cc, [ Operand.Reg a; Operand.Reg b ] -> (
         match (width_ok a, width_ok b) with
         | Ok (), Ok () ->

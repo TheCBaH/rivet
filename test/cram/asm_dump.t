@@ -694,7 +694,7 @@
     [2 cost=0] movt             movt(){cond 00110100 <imm:4@12 movt-abs> rd <imm:12@0 movt-abs>}
     [3 cost=0] dp-imm           dp-imm(){cond 001 dp:4u s:1u rn rd modimm}
     [4 cost=0] dp-reg           dp-reg(){cond 000 dp:4u s:1u rn rd shift-amount:5u shift-kind:2u 0 rm}
-    [5 cost=0] ldst-imm         ldst-imm(){cond 010 1 u:1u b:1u 0 l:1u rn rt imm12:12u}
+    [5 cost=0] ldst-imm         ldst-imm(){cond 010 1 u:1u b:1u w:1u l:1u rn rt imm12:12u}
     [6 cost=0] ldst-reg         ldst-reg(){cond 011 1 u:1u b:1u 0 l:1u rn rt shift-amount:5u shift-kind:2u 0 rm}
     [7 cost=0] udf              udf(){1110 01111111 imm12:12u 1111 imm4:4u}
     [8 cost=0] bl               bl(){cond 1011 <target:24@0 pcrel-call>}

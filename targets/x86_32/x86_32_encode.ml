@@ -21,12 +21,31 @@ module Mode = struct
      SSE2 codec itself (x86_family_encode.ml) is unconditional and already
      produces the identical opcode bytes in both modes (no REX prefix either
      way for xmm0-7); this register-table addition is the only x86_32 change
-     the M5 corpus (asm/docs/corpus.md) needs for SSE2 float support. *)
+     the M5 corpus (asm/docs/corpus.md) needs for SSE2 float support.
+
+     8-bit registers are 32-bit mode's OWN spelling ([al]-[bl] then
+     [ah]/[ch]/[dh]/[bh]), not {!X86_family_encode.Reg.names_8l} (that array is
+     [al]-[bl] then [spl]/[bpl]/[sil]/[dil], the REX-required low-byte forms
+     that exist only where a REX prefix does - x86_64's own table, [rex_allowed
+     = true]). Without a REX byte, register numbers 4-7 in an 8-bit operand
+     ALWAYS mean the legacy high-byte halves, never spl/bpl/sil/dil - checked
+     against real i686-linux-gnu-as/objdump: [movb %ah,%al]/[%ch,%al]/
+     [%dh,%al]/[%bh,%al] encode ModRM.reg 4/5/6/7 respectively (M5
+     classify-c-gcc corpus evidence: [binarytrees.c]'s [%ah]). *)
   let registers =
     X86_family_encode.Reg.base_regs 32 X86_family_encode.Reg.names_32
     @ X86_family_encode.Reg.base_regs 16 X86_family_encode.Reg.names_16
-    @ X86_family_encode.Reg.base_regs 8 X86_family_encode.Reg.names_8l
+    @ X86_family_encode.Reg.base_regs 8 [| "al"; "cl"; "dl"; "bl"; "ah"; "ch"; "dh"; "bh" |]
     @ X86_family_encode.Reg.base_regs 128 (Array.sub X86_family_encode.Reg.names_xmm 0 8)
+    (* [st] (x87 top-of-stack, [%st] alone - [%st(1)]-[%st(7)] are parsed
+       directly from the [Register "st"; Lparen; Int n; Rparen] token shape,
+       x86_family.ml, and never reach this table). Width 80 is not a real
+       operand width (x87 is 80-bit extended precision, but nothing here
+       lowers or encodes an x87 instruction yet - M5 classify-c-gcc corpus
+       evidence, parse-level only, asm/docs/corpus.md): it exists purely as a
+       class marker distinct from 8/16/32/64/128, the same convention
+       [names_xmm]'s width 128 already established. *)
+    @ [ { X86_family_encode.Reg.name = "st"; num = 0; width = 80 } ]
 
   (* Measured against i686-linux-gnu-as, and *not* the 64-bit table: 32-bit GAS
      pads with [lea] forms because the long NOP is P6+ and the default 32-bit

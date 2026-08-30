@@ -137,6 +137,24 @@ let parse_one (slice : Asm_syntax.Token.slice) =
     let s = Printf.sprintf "%s%s%s" (if neg then "-" else "") (Bigint.to_string int_part) frac in
     match float_of_string_opt s with Some f -> Ok (Operand.Fimm f) | None -> bad `Offset_too_wide
   in
+  (* [1.0e+0]/[5.0e-1]/... - every FP immediate this corpus actually has is
+     scientific notation (M5 classify-c-gcc corpus evidence: gcc's own
+     printer always emits one, never [float_literal]'s bare [1.5]/[1.] shape
+     above), tokenized as [Int; Directive ".Ne"; (Plus|Minus); Int] - the
+     [Directive] already ends in the bare [e] the lexer's directive-name scan
+     swallowed, so appending the sign and the exponent digits straight onto
+     [frac] reproduces exactly the string OCaml's own [float_of_string]
+     expects. *)
+  let float_literal_exp ~neg int_part frac ~exp_neg exp =
+    let s =
+      Printf.sprintf "%s%s%s%s%s"
+        (if neg then "-" else "")
+        (Bigint.to_string int_part) frac
+        (if exp_neg then "-" else "+")
+        (Bigint.to_string exp)
+    in
+    match float_of_string_opt s with Some f -> Ok (Operand.Fimm f) | None -> bad `Offset_too_wide
+  in
   match List.map Token.kind slice with
   | [ Token.Ident n ] -> (
       (* A bare identifier is a register if the table knows it and a symbol
@@ -159,6 +177,46 @@ let parse_one (slice : Asm_syntax.Token.slice) =
   | [ Token.Immediate_sigil; Token.Minus; Token.Int i; Token.Directive frac ] ->
       float_literal ~neg:true i frac
   | [ Token.Immediate_sigil; Token.Minus; Token.Int i; Token.Dot ] -> float_literal ~neg:true i "."
+  (* The [#]-less siblings of the FP-literal shapes just above (M5
+     classify-c-gcc corpus evidence: gcc always omits [#] here too -
+     [fmov s0, 2.0e+0] - checked against real aarch64-linux-gnu-as:
+     [fmov d0, 1.0] and [fmov d0, #1.0] both assemble to [1e6e1000]). *)
+  | [ Token.Int i; Token.Directive frac ] -> float_literal ~neg:false i frac
+  | [ Token.Int i; Token.Dot ] -> float_literal ~neg:false i "."
+  | [ Token.Minus; Token.Int i; Token.Directive frac ] -> float_literal ~neg:true i frac
+  | [ Token.Minus; Token.Int i; Token.Dot ] -> float_literal ~neg:true i "."
+  (* Scientific-notation FP immediates - see [float_literal_exp]'s own
+     comment. Four shapes ([#]-optional x mantissa-sign), each covering both
+     exponent signs by a guard rather than doubling again: nothing else at
+     this token shape needs telling apart from a [Plus]/[Minus] exponent
+     sign. *)
+  | [ Token.Int i; Token.Directive frac; ((Token.Plus | Token.Minus) as sign); Token.Int exp ] ->
+      float_literal_exp ~neg:false i frac ~exp_neg:(sign = Token.Minus) exp
+  | [
+   Token.Minus;
+   Token.Int i;
+   Token.Directive frac;
+   ((Token.Plus | Token.Minus) as sign);
+   Token.Int exp;
+  ] ->
+      float_literal_exp ~neg:true i frac ~exp_neg:(sign = Token.Minus) exp
+  | [
+   Token.Immediate_sigil;
+   Token.Int i;
+   Token.Directive frac;
+   ((Token.Plus | Token.Minus) as sign);
+   Token.Int exp;
+  ] ->
+      float_literal_exp ~neg:false i frac ~exp_neg:(sign = Token.Minus) exp
+  | [
+   Token.Immediate_sigil;
+   Token.Minus;
+   Token.Int i;
+   Token.Directive frac;
+   ((Token.Plus | Token.Minus) as sign);
+   Token.Int exp;
+  ] ->
+      float_literal_exp ~neg:true i frac ~exp_neg:(sign = Token.Minus) exp
   (* [#:lo12:sym] as a plain (non-bracketed) operand - [add x9, x9,
      #:lo12:Te4]. Unlike the bracketed memory form below, the modifier stays
      on the expression here rather than being stripped: [lower_instruction]
@@ -192,6 +250,16 @@ let parse_one (slice : Asm_syntax.Token.slice) =
       match Bigint.to_int_opt v with
       | Some n -> mem_reg ~base:b ~index:idx ~extend:ext ~amount:(Some n)
       | None -> bad `Shift_amount_too_wide)
+  (* The [#]-less sibling of the shape just above (M5 classify-c-gcc corpus
+     evidence: gcc omits [#] here too - [ldr x0, [x0, x1, lsl 3]] - the same
+     optional-[#] GNU syntax the memory-offset shapes above already account
+     for; checked against real aarch64-linux-gnu-as: [ldr x0, [x0, x1, lsl 3]]
+     and [..., lsl #3] both assemble to [f8617800]). *)
+  | [ Token.Lbracket; Token.Ident b; Token.Ident idx; Token.Ident ext; Token.Int v; Token.Rbracket ]
+    -> (
+      match Bigint.to_int_opt v with
+      | Some n -> mem_reg ~base:b ~index:idx ~extend:ext ~amount:(Some n)
+      | None -> bad `Shift_amount_too_wide)
   (* The shift keywords ([lsl]/[lsr]/[asr]/[ror]) are ADD/SUB (shifted
      register)'s operand; the extend keywords are the *other* ADD/SUB
      register form - extended register, e.g. [add x0, x0, x16, uxtx #0]
@@ -205,6 +273,19 @@ let parse_one (slice : Asm_syntax.Token.slice) =
      (( "lsl" | "lsr" | "asr" | "ror" | "uxtb" | "uxth" | "uxtw" | "uxtx" | "sxtb" | "sxth" | "sxtw"
       | "sxtx" ) as k);
    Token.Immediate_sigil;
+   Token.Int v;
+  ] -> (
+      match Bigint.to_int_opt v with
+      | Some n -> Ok (Operand.Shift { Shift.kind = k; amount = n })
+      | None -> bad `Shift_amount_too_wide)
+  (* The [#]-less sibling (M5 classify-c-gcc corpus evidence:
+     [add x9, x9, x16, uxtx 0] et al. - checked against real
+     aarch64-linux-gnu-as: [uxtx 0] and [uxtx #0] both assemble to
+     [8b306129] for [add x9, x9, x16, uxtx ...]). *)
+  | [
+   Token.Ident
+     (( "lsl" | "lsr" | "asr" | "ror" | "uxtb" | "uxth" | "uxtw" | "uxtx" | "sxtb" | "sxth" | "sxtw"
+      | "sxtx" ) as k);
    Token.Int v;
   ] -> (
       match Bigint.to_int_opt v with
@@ -239,6 +320,32 @@ let parse_one (slice : Asm_syntax.Token.slice) =
    Token.Rbracket;
    Token.Bang;
   ] -> (
+      match int64_of v with
+      | Some o -> const_mem ~base:b ~offset:(Int64.neg o) ~writeback:true
+      | None -> bad `Offset_too_wide)
+  (* The same four immediate-offset shapes just above, with the [#] omitted -
+     GNU's own syntax makes it optional before a bracketed immediate, and
+     gcc's aarch64 backend always omits it (M5 classify-c-gcc corpus
+     evidence: every single bracket-immediate offset in the whole corpus,
+     5156 of them, e.g. [ldr x0, [sp, 16]] and the pre-indexed
+     [stp x29, x30, [sp, -48]!] - not one carries a [#], checked against real
+     aarch64-linux-gnu-as/objdump: [stp x29, x30, [sp, -48]!] and
+     [stp x29, x30, [sp, #-48]!] assemble byte-identically to [a9bd7bfd]).
+     This was the whole target's blocker, not only stp/ldp's: with the [#]
+     required, even a plain [ldr]/[str] immediate offset never parsed. *)
+  | [ Token.Lbracket; Token.Ident b; Token.Int v; Token.Rbracket ] -> (
+      match int64_of v with
+      | Some o -> const_mem ~base:b ~offset:o ~writeback:false
+      | None -> bad `Offset_too_wide)
+  | [ Token.Lbracket; Token.Ident b; Token.Int v; Token.Rbracket; Token.Bang ] -> (
+      match int64_of v with
+      | Some o -> const_mem ~base:b ~offset:o ~writeback:true
+      | None -> bad `Offset_too_wide)
+  | [ Token.Lbracket; Token.Ident b; Token.Minus; Token.Int v; Token.Rbracket ] -> (
+      match int64_of v with
+      | Some o -> const_mem ~base:b ~offset:(Int64.neg o) ~writeback:false
+      | None -> bad `Offset_too_wide)
+  | [ Token.Lbracket; Token.Ident b; Token.Minus; Token.Int v; Token.Rbracket; Token.Bang ] -> (
       match int64_of v with
       | Some o -> const_mem ~base:b ~offset:(Int64.neg o) ~writeback:true
       | None -> bad `Offset_too_wide)

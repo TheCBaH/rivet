@@ -177,6 +177,35 @@ let parse_one (slice : Asm_syntax.Token.slice) =
           Ok (Operand.Mem { base = r; offset = Mem.Imm off; writeback = false; pre = true })
       | None, _ -> bad (`Unknown_register b)
       | _, None -> bad `Offset_too_wide)
+  (* [Rn, #imm]! / [Rn, #-imm]! - pre-indexed with writeback (M5 corpus
+     evidence: asm/docs/corpus.md's classify-c-gcc, gcc's own frame-pointer
+     prologue `str fp, [sp, #-4]!`). The trailing [!] is the same [Token.Bang]
+     the lexer already produces elsewhere; nothing splits it from the bracket
+     group before it since no comma separates them, so it just extends this
+     operand's slice by one token past the already-supported non-writeback
+     patterns just above. *)
+  | [
+   Token.Lbracket; Token.Ident b; Token.Immediate_sigil; Token.Int v; Token.Rbracket; Token.Bang;
+  ] -> (
+      match (Reg.find b, signed_int false v) with
+      | Some r, Some off ->
+          Ok (Operand.Mem { base = r; offset = Mem.Imm off; writeback = true; pre = true })
+      | None, _ -> bad (`Unknown_register b)
+      | _, None -> bad `Offset_too_wide)
+  | [
+   Token.Lbracket;
+   Token.Ident b;
+   Token.Immediate_sigil;
+   Token.Minus;
+   Token.Int v;
+   Token.Rbracket;
+   Token.Bang;
+  ] -> (
+      match (Reg.find b, signed_int true v) with
+      | Some r, Some off ->
+          Ok (Operand.Mem { base = r; offset = Mem.Imm off; writeback = true; pre = true })
+      | None, _ -> bad (`Unknown_register b)
+      | _, None -> bad `Offset_too_wide)
   (* Register-offset addressing: [ldr r2, [r1, r2]] / [ldrb r2, [r7, r0]], no
      shift. *)
   | [ Token.Lbracket; Token.Ident b; Token.Ident idx; Token.Rbracket ] -> (

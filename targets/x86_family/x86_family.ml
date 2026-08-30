@@ -234,8 +234,36 @@ module Make (M : MODE) = struct
     (* $imm *)
     | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Operand.Imm v)
     | Token.Immediate_sigil :: Token.Minus :: [ Token.Int v ] -> Ok (Operand.Imm (Bigint.neg v))
+    (* $symbol / $symbol+offset - a symbolic immediate (M5 classify-c-gcc
+       corpus evidence: `movl $.LC0, %edi`, `addq $bodies+24, %rax`,
+       `pushl $sym`). Tried after the two literal-integer shapes above so a
+       plain `$5`/`$-5` still takes the cheaper, already-tested path; this
+       case is whatever is left once a `$` is stripped and does not reduce to
+       a bare integer, matching the bottom fallback's own
+       parse-the-remainder-as-an-expression approach for a bare (non-`$`)
+       symbol operand. *)
+    | Token.Immediate_sigil :: _ :: _ -> (
+        match Asm_syntax.Parse_lines.parse_expression (List.tl slice) with
+        | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e })
+        | Ok e -> (
+            match Asm_core.Expr.fold Asm_core.Expr.no_env e with
+            | Ok (Asm_core.Expr.Const v) -> Ok (Operand.Imm v)
+            | Ok folded -> Ok (Operand.Imm_sym folded)
+            | Error _ -> Ok (Operand.Imm_sym e)))
     (* %reg *)
     | [ Token.Register n ] -> Result.map (fun r -> Operand.Reg r) (reg_named n)
+    (* %st(n), the x87 stack-relative register form ([n] a literal 0-7) - a
+       shape [find_reg] can never see, since the lexer splits the parens off
+       the identifier the same way it does for any other memory operand (M5
+       classify-c-gcc corpus evidence: [almabench.c]'s [%st(1)]). Synthesized
+       directly rather than looked up: no [st(n)]-named table entry exists for
+       n>0 (only the bare [st] alone - x86_32_encode.ml), since nothing
+       decodes an x87 operand back to text yet either. *)
+    | [ Token.Register "st"; Token.Lparen; Token.Int n; Token.Rparen ] -> (
+        match Bigint.to_int_opt n with
+        | Some n when n >= 0 && n <= 7 ->
+            Ok (Operand.Reg { Reg.name = Printf.sprintf "st(%d)" n; num = n; width = 80 })
+        | _ -> bad (`Cannot_parse_operand { slice; reason = `Malformed_expression slice }))
     (* *<operand>, the indirect-jump/call target sigil. GNU as requires the
        [*] before a register ([*%eax]) or a memory operand ([*sym(,%eax,4)],
        M5 corpus evidence: asm/fixtures/corpus/c/x86_32/summary.txt's
@@ -314,6 +342,31 @@ module Make (M : MODE) = struct
             if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
             else Ok (Operand.Mem { Mem.base = Some b; index = Some i; scale = s; disp = Disp.zero })
         | _ -> bad (`Malformed_memory_operand slice))
+    (* disp(%base,%index), (%base,%index) and -disp(%base,%index) - the same
+       three shapes just above with the scale omitted, which GAS defaults to 1
+       (M5 classify-c-gcc corpus evidence: `leaq (%rax,%rax), %rsi`,
+       `movb $1, -368(%rbp,%rax)` - checked against real i686-linux-gnu-as:
+       `movl (%eax,%edx), %ecx` assembles byte-identically to
+       `movl (%eax,%edx,1), %ecx`, mod=00 SIB scale=00 (i.e. 1)). *)
+    | [ Token.Int d; Token.Lparen; Token.Register b; Token.Register i; Token.Rparen ] -> (
+        match (Bigint.to_int64_opt d, mem_reg_named b, mem_reg_named i) with
+        | Some d, Ok b, Ok i ->
+            Ok (Operand.Mem { Mem.base = Some b; index = Some i; scale = 1; disp = Disp.Const d })
+        | _ -> bad (`Malformed_memory_operand slice))
+    | Token.Minus
+      :: Token.Int d
+      :: [ Token.Lparen; Token.Register b; Token.Register i; Token.Rparen ] -> (
+        match (Bigint.to_int64_opt d, mem_reg_named b, mem_reg_named i) with
+        | Some d, Ok b, Ok i ->
+            Ok
+              (Operand.Mem
+                 { Mem.base = Some b; index = Some i; scale = 1; disp = Disp.Const (Int64.neg d) })
+        | _ -> bad (`Malformed_memory_operand slice))
+    | [ Token.Lparen; Token.Register b; Token.Register i; Token.Rparen ] -> (
+        match (mem_reg_named b, mem_reg_named i) with
+        | Ok b, Ok i ->
+            Ok (Operand.Mem { Mem.base = Some b; index = Some i; scale = 1; disp = Disp.zero })
+        | Error e, _ | _, Error e -> Error e)
     (* disp(,%index,scale) and (,%index,scale) - a SIB operand with no base
        register, GCC/CompCert's standard array-index address idiom
        (M5 corpus evidence: asm/fixtures/corpus/c/x86_64/summary.txt). The
