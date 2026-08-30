@@ -1766,6 +1766,13 @@ module Make (M : MODE) = struct
         match width_ok r with
         | Error e -> Error e
         | Ok () -> Ok [ Lowered.Lea { width = i.Instruction.width; reg = r; mem = m } ])
+    (* [leal sym, %reg]: a bare symbol operand, same duality as [Mov] above -
+       reuse [mem_of_symbol] rather than a second [Lea] constructor. *)
+    | Opcode.Lea, [ Operand.Sym e; Operand.Reg r ] -> (
+        match width_ok r with
+        | Error e2 -> Error e2
+        | Ok () ->
+            Ok [ Lowered.Lea { width = i.Instruction.width; reg = r; mem = mem_of_symbol e } ])
     (* M4 (.ai/asm_plan.md §12): [Add]/[Test]/[Sbb] join the pre-existing three
        here for the same reason they joined {!Opcode.to_rm_r} - real bytes
        the i64_divmod runtime-helper fixture measurably selects
@@ -1967,6 +1974,16 @@ module Make (M : MODE) = struct
         match xmm_ok reg with
         | Error e -> Error e
         | Ok () -> Ok [ Lowered.Sse_mov_rm_r { op = i.Instruction.op; rm = Rm.Mem m; reg } ])
+    (* [movsd/movss .Lxx, %xmmN]: a bare-symbol load source, GAS's spelling for
+       a rip-relative/absolute float constant. Same duality as [Lea] above -
+       reuse [mem_of_symbol] rather than a third [Sse_mov_r_rm] shape. *)
+    | (Opcode.Movsd | Opcode.Movss), [ Operand.Sym e; Operand.Reg reg ] -> (
+        match xmm_ok reg with
+        | Error e2 -> Error e2
+        | Ok () ->
+            Ok
+              [ Lowered.Sse_mov_r_rm { op = i.Instruction.op; reg; rm = Rm.Mem (mem_of_symbol e) } ]
+        )
     (* [cvtsi2sd]/[cvtsi2ss]: [rm]'s width must match the mnemonic's own
        ([width_ok], not [xmm_ok] - reused exactly as documented on
        {!sse_operand_class_mismatch}, since xmm's width 128 can never equal a

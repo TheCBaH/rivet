@@ -1655,6 +1655,37 @@ let%expect_test "%st(n) parses as a register operand" =
   attempt "x86_32" "\t.text\n\t.globl f\nf:\n\tfld %st(1)\n\tret\n";
   [%expect {| x86.simplify: unknown instruction fld |}]
 
+(* [leal sym, %reg] - a bare symbol used as [lea]'s source, the highest-signal
+   single gap in the whole gcc corpus (12 `test/c/` recurrences: string-literal
+   and static-array addresses, e.g. aes.c's `leal rcon, %eax`). [Mov] already
+   had this duality ([Operand.Sym] read through [mem_of_symbol] rather than a
+   second constructor); [Lea] just needed the same arm. Checked against real
+   i686-linux-gnu-as: `leal sym, %ecx` -> `8d 0d <disp32>` with an `R_386_32`
+   relocation against [sym] - byte-identical to the encoder's general
+   base-less-disp32 [Mem] form, which is why no codec change was needed. *)
+let%expect_test "leal sym, %reg reads a bare symbol's address" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tleal f, %ecx\n\tret\n";
+  [%expect
+    {|
+    40000000  8d 0d 00 00 00 40  leal 1073741824, %ecx  [x86_32.lea.opsz-absent.disp32-norm]
+    40000006  c3                 ret                    [x86_32.ret] |}]
+
+(* [movsd/movss .Lxx, %xmmN] - a bare symbol used as a float-constant load
+   source (mandelbrot.c/knucleotide.c, the two `lea` recurrences the fix above
+   left rejected, since both hit this next). Same duality as [Lea]'s bare
+   symbol above; [Sse_mov_r_rm] already had the general [Mem] form, so this
+   is only a missing [Operand.Sym] arm, not a codec gap. Checked against real
+   i686-linux-gnu-as: `movsd .Lc, %xmm0` -> `f2 0f 10 05 <disp32>`, `movss
+   .Lc, %xmm1` -> `f3 0f 10 0d <disp32>`, both with an `R_386_32` relocation -
+   the same base-less-disp32 ModR/M shape [lea] uses. *)
+let%expect_test "movsd/movss sym, %xmmN reads a bare symbol's address" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tmovsd f, %xmm0\n\tmovss f, %xmm1\n\tret\n";
+  [%expect
+    {|
+    40000000  f2 0f 10 05 00 00 00 00  movsd 0, %xmm0  [x86_32.sse-movsd-load.disp32-norm]
+    40000008  f3 0f 10 0d 00 00 00 00  movss 0, %xmm1  [x86_32.sse-movss-load.disp32-norm]
+    40000010  c3                       ret             [x86_32.ret] |}]
+
 (* {1 Alignment padding}
 
    The bytes below were measured by assembling a [.align 16] at every distance
