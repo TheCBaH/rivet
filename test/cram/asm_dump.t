@@ -728,6 +728,7 @@
     [36 cost=0] vmem-s           vmem-s(){cond 1101 U:1u D:1u 0 L:1u rn Vd:4u 1010 imm8:8u}
     [37 cost=0] push             push(){cond 100100101101 reglist:16u}
     [38 cost=0] ldm              ldm(){cond 1000101 l:1u rn reglist:16u}
+    [39 cost=0] vpush            vpush(){cond 11010 D:1u 10 1101 Vd:4u 1011 imm8:8u}
   cond[16]{cond:4u}
   rm(){rm:4u}
   rd(){rd:4u}

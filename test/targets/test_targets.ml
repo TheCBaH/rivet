@@ -1068,17 +1068,41 @@ let%expect_test "pop needs two or more registers; one register is out of scope" 
 (* [vpush.64 {d8-d9}] / [{d8, d9}] - almabench.c's/perlin.c's own D-register
    reglist push (asm/docs/corpus.md). gcc's own VFP printer spells the range
    with a hyphen, not the GPR [push]'s flat comma list; both forms parse into
-   the identical [Operand.Dreglist] (byte-for-byte checked against real
-   arm-linux-gnueabihf-as/objdump: [{d8-d9}] and [{d8, d9}] both assemble to
-   [ed2d8b04]). [vpush] itself is still unknown to [Opcode.t]. *)
-let%expect_test "vpush.64 {dN-dM} and {dN, dM} parse but do not lower yet" =
-  attempt "arm" "\t.text\n\t.globl f\nf:\n\tvpush.64 {d8-d9}\n\tbx lr\n";
-  attempt "arm" "\t.text\n\t.globl f\nf:\n\tvpush.64 {d8, d9}\n\tbx lr\n";
+   the identical [Operand.Dreglist] and now lower/encode identically too, a
+   VSTM-class encoding (base register + count, not a bitmask) distinct from
+   GPR [push]'s STMDB one - unlike [push], a single D register needs no
+   separate one-register alias. Byte-for-byte checked against real
+   arm-linux-gnueabihf-as/objdump (-march=armv7-a -mfpu=vfpv3):
+     ed2d8b04  vpush.64 {d8, d9}     (identical bytes for [{d8-d9}])
+     ed2d8b06  vpush.64 {d8, d9, d10}
+     ed2d8b02  vpush.64 {d8}
+     ed6d0b04  vpush.64 {d16, d17}   (base >= D16, exercising the D:Vd split's
+                                       high half) *)
+let%expect_test "vpush.64 {dN-dM} and {dN, dM} both lower to the identical VSTM-class encoding" =
+  disasm "arm"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tvpush.64 {d8-d9}\n\
+     \tvpush.64 {d8, d9}\n\
+     \tvpush.64 {d8-d10}\n\
+     \tvpush.64 {d8}\n\
+     \tvpush.64 {d16-d17}\n\
+     \tbx lr\n";
   [%expect
     {|
-    arm.simplify: unknown instruction vpush.64
-    arm.simplify: unknown instruction vpush.64
+    40000000  04 8b 2d ed  vpush.64 {d8, d9}       [arm.vpush]
+    40000004  04 8b 2d ed  vpush.64 {d8, d9}       [arm.vpush]
+    40000008  06 8b 2d ed  vpush.64 {d8, d9, d10}  [arm.vpush]
+    4000000c  02 8b 2d ed  vpush.64 {d8}           [arm.vpush]
+    40000010  04 0b 6d ed  vpush.64 {d16, d17}     [arm.vpush]
+    40000014  1e ff 2f e1  bx lr                   [arm.bx]
     |}]
+
+let%expect_test "vpush.64 needs a non-empty, contiguous, ascending D-register list" =
+  attempt "arm" "\t.text\n\t.globl f\nf:\n\tvpush.64 {d8, d10}\n\tbx lr\n";
+  [%expect
+    {| arm.lower: vpush.64 needs a non-empty, ascending, contiguous D-register list, e.g. {d8, d9} |}]
 
 (* {1 The x86-64 address-size prefix}
 

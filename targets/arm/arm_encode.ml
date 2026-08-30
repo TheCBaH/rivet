@@ -292,11 +292,13 @@ module Operand = struct
             distinct from {!Mem.t}'s bracketed [\[Rn, #imm\]!] since STM/LDM's writeback amount is
             implicit rather than an explicit offset. *)
     | Dreglist of int list
-        (** [{d8, d9}] - [vpush.64]/[vpop.64]'s D-register list (M5, asm/docs/corpus.md
-            classify-c-gcc: [vpush.64 {d8, d9}]), structurally the same shape as {!Reglist} but
-            over {!Dreg.t}'s number space rather than {!Reg.t}'s - the two are never a single list
-            because a bitmask position means a different register in each. Parse-level only, the
-            same scope as {!Reg_writeback}: no opcode consumes it yet. *)
+        (** [{d8, d9}] - [vpush.64]'s D-register list (M5, asm/docs/corpus.md classify-c-gcc:
+            [vpush.64 {d8, d9}]), structurally the same shape as {!Reglist} but over {!Dreg.t}'s
+            number space rather than {!Reg.t}'s - the two are never a single list because a
+            bitmask position means a different register in each. {!Opcode.Vpush} consumes it,
+            requiring a non-empty, ascending, contiguous run (VSTM-class encodings have a base
+            register and a count, not an arbitrary bitmask). [vpop.64] itself is still
+            unevidenced and out of scope. *)
 
   let pp ppf = function
     | Reg r -> Reg.pp ppf r
@@ -461,6 +463,14 @@ module Opcode = struct
     | Vcvt_s32_f64
     | Vldr
     | Vstr
+    | Vpush
+        (** [vpush.64 {dN, ...}], GNU's alias for [vstmdb sp!, {dN, ...}] - the D-register
+            reglist push (M5, asm/docs/corpus.md: almabench.c/fft.c/fftsp.c/perlin.c's own
+            varargs-spill prologue). Unlike {!Push}'s STMDB encoding, there is no separate
+            one-register alias to exclude: VPUSH's own encoding covers a single D register
+            exactly as it covers several (verified against real
+            arm-linux-gnueabihf-as/objdump), so {!Operand.Dreglist} is accepted from one
+            member up, provided it is contiguous and ascending. *)
     | Push
         (** [push {reglist}], GNU's alias for [stmdb sp!, {reglist}] - not a general STM/LDM (M5,
             asm/docs/corpus.md: CompCert's own ARM codegen only ever emits this one multi-register
@@ -518,6 +528,7 @@ module Opcode = struct
     | Vcvt_s32_f64 -> "vcvt.s32.f64"
     | Vldr -> "vldr"
     | Vstr -> "vstr"
+    | Vpush -> "vpush.64"
     | Push -> "push"
     | Stmia -> "stmia"
     | Ldmia -> "ldmia"
@@ -557,7 +568,20 @@ module Opcode = struct
   (* VFP's own mnemonic bases - never a substring of a GPR mnemonic above, so
      there is no ambiguity between the two tables. *)
   let vfp_bases =
-    [ "vmov"; "vadd"; "vsub"; "vmul"; "vdiv"; "vneg"; "vcmp"; "vmrs"; "vldr"; "vstr"; "vcvt" ]
+    [
+      "vmov";
+      "vadd";
+      "vsub";
+      "vmul";
+      "vdiv";
+      "vneg";
+      "vcmp";
+      "vmrs";
+      "vldr";
+      "vstr";
+      "vcvt";
+      "vpush";
+    ]
 
   (* [vmoveq.f64] splits as base [vmov], condition [eq], type suffix [f64] -
      the condition sits between the base and the first dot, not at the very
@@ -594,6 +618,7 @@ module Opcode = struct
     | "vmrs", [] -> Some Vmrs
     | "vldr", [] -> Some Vldr
     | "vstr", [] -> Some Vstr
+    | "vpush", [ "64" ] -> Some Vpush
     | "vcvt", [ "f32"; "f64" ] -> Some Vcvt_f32_f64
     | "vcvt", [ "f64"; "f32" ] -> Some Vcvt_f64_f32
     | "vcvt", [ "f32"; "s32" ] -> Some Vcvt_f32_s32
@@ -750,6 +775,12 @@ module Lowered = struct
     | Vcvt_s32_f64 of { cond : Cond.t; sd : Sreg.t; dm : Dreg.t }
     | Vmem_d of { cond : Cond.t; load : bool; vd : Dreg.t; rn : Reg.t; offset : int64 }
     | Vmem_s of { cond : Cond.t; load : bool; vd : Sreg.t; rn : Reg.t; offset : int64 }
+    | Vpush of { cond : Cond.t; vd : Dreg.t; count : int }
+        (** [vd] is the reglist's lowest-numbered D register and [count] how many consecutive
+            ones follow it - VSTM-class encodings have no bitmask, only a base and a count
+            ({!Opcode.Vpush}'s own doc explains why a single register needs no separate case
+            the way {!Push}'s does). [imm8 = count * 2]: each doubleword register is two
+            32-bit transfers. *)
 
   let pp ppf = function
     | Dp_imm { cond; dp; rd; rn; imm; _ } -> (
@@ -882,6 +913,9 @@ module Lowered = struct
         Fmt.pf ppf "%s%s %a, [%a, #%Ld]"
           (if load then "vldr" else "vstr")
           (Cond.suffix cond) Sreg.pp vd Reg.pp rn offset
+    | Vpush { cond; vd; count } ->
+        let members = List.init count (fun i -> Dreg.of_num (vd.Dreg.num + i)) in
+        Fmt.pf ppf "vpush%s.64 {%a}" (Cond.suffix cond) Fmt.(list ~sep:(any ", ") Dreg.pp) members
 
   let equal a b =
     match (a, b) with
@@ -966,6 +1000,7 @@ module Lowered = struct
     | Vmem_s x, Vmem_s y ->
         Cond.equal x.cond y.cond && x.load = y.load && Sreg.equal x.vd y.vd && Reg.equal x.rn y.rn
         && Int64.equal x.offset y.offset
+    | Vpush x, Vpush y -> Cond.equal x.cond y.cond && Dreg.equal x.vd y.vd && x.count = y.count
     | _ -> false
 end
 
@@ -1195,6 +1230,32 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.(
              cond_codec ** const ~width:7 0b1000101L ** field ~width:1 "l" ** reg_field "rn"
              ** field ~width:16 "reglist"));
+      (* [vpush.64 {dN, ...}], GNU's [vstmdb sp!, {dN, ...}] alias (M5, asm/docs/corpus.md) -
+         the D-register cousin of [push] above, but VSTM-class rather than STMDB-class: no
+         bitmask, only a base register and a count. [1101 0] is P=1/U=0 (pre-indexed,
+         decrement), [D] is the base D-register's extension bit, [10] is W=1/L=0 (writeback,
+         store), [1101] fixes Rn=sp, and [1011] is VSTM's own coprocessor tag ([101]) with
+         the doubleword size bit ([1]) set - a single D register needs no separate
+         one-register alias the way GPR [push] does, since this encoding already covers it
+         (imm8 = 2). Verified against real arm-linux-gnueabihf-as/objdump (-march=armv7-a
+         -mfpu=vfpv3): [ed2d8b04] for [vpush.64 {d8, d9}] (2 registers), [ed2d8b06] for
+         [vpush.64 {d8-d10}] (3), [ed2d8b02] for [vpush.64 {d8}] (1), and [ed6d0b04] for
+         [vpush.64 {d16-d17}] (base >= D16, exercising the D:Vd split's high half). *)
+      C.alt ~label:"vpush" ~priority:39
+        (C.iso_fun ~name:"vpush"
+           ~encode:(function
+             | Lowered.Vpush { cond; vd; count } ->
+                 let d, vdf = dreg_parts vd in
+                 let imm8 = Int64.of_int (count * 2) in
+                 if Int64.compare imm8 256L >= 0 then None
+                 else Some (cond, ((), (d, ((), ((), (vdf, ((), imm8)))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (d, ((), ((), (vdf, ((), imm8))))))) ->
+             Some (Lowered.Vpush { cond; vd = dreg_unparts d vdf; count = Int64.to_int imm8 / 2 }))
+           C.(
+             cond_codec ** const ~width:5 0b11010L ** field ~width:1 "D" ** const ~width:2 0b10L
+             ** const ~width:4 0b1101L ** field ~width:4 "Vd" ** const ~width:4 0b1011L
+             ** field ~width:8 "imm8"));
       (* [movw]/[movt] must be tried *before* [dp-imm], not after. Their
          encodings sit inside the data-processing immediate space - [movw] is
          [dp = 8, S = 0] and [movt] is [dp = 10, S = 0], the [tst] and [cmp]
@@ -1896,7 +1957,8 @@ type error_kind =
   | `Vfp_offset_out_of_range of int64
   | `Vmrs_unsupported_operands
   | `Push_needs_two_or_more_registers
-  | `Pop_needs_two_or_more_registers ]
+  | `Pop_needs_two_or_more_registers
+  | `Vpush_needs_contiguous_registers ]
 
 and wrong_relocation_modifier = { opcode : string; want : string; got : string }
 and missing_relocation_modifier = { opcode : string; want : string }
@@ -1937,6 +1999,9 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `Pop_needs_two_or_more_registers ->
       Fmt.string ppf
         "pop needs two or more registers; a single register is ldr rN, [sp], #4, not in scope"
+  | `Vpush_needs_contiguous_registers ->
+      Fmt.string ppf
+        "vpush.64 needs a non-empty, ascending, contiguous D-register list, e.g. {d8, d9}"
 
 let error_kind_code : error_kind -> string = function
   | `Unknown_instruction _ -> "arm.simplify"
@@ -1945,7 +2010,7 @@ let error_kind_code : error_kind -> string = function
   | `Offset_not_12bit | `Udf_imm16_overflow | `Wrong_relocation_modifier _
   | `Missing_relocation_modifier _ | `Imm16_overflow _ | `No_form _ | `No_vfp_immediate _
   | `Vfp_offset_out_of_range _ | `Vmrs_unsupported_operands | `Push_needs_two_or_more_registers
-  | `Pop_needs_two_or_more_registers ->
+  | `Pop_needs_two_or_more_registers | `Vpush_needs_contiguous_registers ->
       "arm.lower"
   | `Codec e -> Option.value (Codec.code e) ~default:"arm.encode"
   | `Decode_short | `Decode_no_match | `Decode_no_normalized -> "arm.decode"
@@ -2143,6 +2208,15 @@ let lower_instruction state i =
                   regs = List.fold_left (fun acc n -> acc lor (1 lsl n)) 0 regs;
                 };
             ]
+    | Opcode.Vpush, [ Operand.Dreglist regs ] -> (
+        let sorted = List.sort compare regs in
+        match sorted with
+        | [] -> bad `Vpush_needs_contiguous_registers
+        | base :: _ as members ->
+            let count = List.length members in
+            if List.for_all2 (fun n i -> n = base + i) members (List.init count Fun.id) then
+              Ok [ Lowered.Vpush { cond; vd = Dreg.of_num base; count } ]
+            else bad `Vpush_needs_contiguous_registers)
     | Opcode.Udf, [ Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
@@ -2560,6 +2634,10 @@ let instruction_of_lowered ?(at = 0L) =
              Operand.Sreg vd;
              Operand.Mem { base = rn; offset = Mem.Imm offset; writeback = false; pre = true };
            ])
+  | Lowered.Vpush { cond; vd; count } ->
+      Some
+        (Instruction.mk ~cond Opcode.Vpush
+           [ Operand.Dreglist (List.init count (fun i -> vd.Dreg.num + i)) ])
 
 let decode ctx bytes ~pos =
   if String.length bytes - pos < 4 then Error (diag ~pos:__POS__ `Decode_short)
