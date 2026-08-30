@@ -85,9 +85,25 @@ module Make (P : PROFILE) = struct
     in
     rev_take (List.rev slice)
 
+  (* [%pcrel_hi(f1)]'s parenthesized argument is the modifier's symbol, never
+     a memory-operand base register - but [f1] is also a legal floating
+     register spelling ([Reg.find] has no way to know which reading a bare
+     identifier is "for"), and CompCert is free to name a static function or
+     variable anything, register spellings included (M5 corpus evidence:
+     test/regression/charlit.c's static [f1]; asm/docs/corpus.md). A single
+     leading [Token.Modifier] is unambiguous - a real [offset(base)] never
+     starts with one - so it decides the reading before [Reg.find] is even
+     consulted. *)
+  let modifier_prefix = function
+    | [ tok ] -> (
+        match Asm_syntax.Token.kind tok with Asm_syntax.Token.Modifier _ -> true | _ -> false)
+    | _ -> false
+
   let parse_one slice =
     let open Asm_syntax in
     match split_memory slice with
+    | Some (prefix, _) when modifier_prefix prefix -> (
+        match parse_expr slice with Ok e -> Ok (Operand.Sym e) | Error _ as e -> e)
     | Some (prefix, base_name) -> (
         match Reg.find base_name with
         | None -> (

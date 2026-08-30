@@ -1807,6 +1807,37 @@ let%expect_test "riscv64: cross-file call and pcrel-hi/lo data reference resolve
   riscv_two_input_case "riscv64";
   [%expect {| accepted |}]
 
+(* M5 corpus evidence (asm/docs/corpus.md - test/regression/charlit.c's
+   static [f1]): [%pcrel_hi(sym)]/[%pcrel_lo(sym)] must resolve [sym] as a
+   symbol even when its spelling is also a legal register name - here the
+   floating register [f1] - because CompCert names statics from the source
+   program, register spellings included. Before the fix, [f1] the register
+   won the ambiguity and the modifier's own token was left with no operand,
+   producing "cannot parse operand %pcrel_hi" on a file that has nothing else
+   wrong with it. Checked against a real riscv64-linux-gnu-as: this is valid,
+   R_RISCV_PCREL_HI20/LO12_I-relocated syntax, not an invented shape. *)
+let riscv_pcrel_register_name_collision target =
+  attempt target
+    "\t.text\n\
+     \t.balign 2\n\
+     \t.globl entry\n\
+     entry:\n\
+     1:\tauipc x31, %pcrel_hi(f1)\n\
+     \tlw x6, %pcrel_lo(1b)(x31)\n\
+     \tjr x1\n\
+     \t.data\n\
+     \t.balign 4\n\
+     f1:\n\
+     \t.long 99\n"
+
+let%expect_test "riscv32: %pcrel_hi/%pcrel_lo resolve a symbol named like a register (f1)" =
+  riscv_pcrel_register_name_collision "riscv32";
+  [%expect {| accepted |}]
+
+let%expect_test "riscv64: %pcrel_hi/%pcrel_lo resolve a symbol named like a register (f1)" =
+  riscv_pcrel_register_name_collision "riscv64";
+  [%expect {| accepted |}]
+
 (* x86-only: ARM/AArch64/RISC-V are fixed-width and declare no relaxation
    ladder (contracts.md §5.5), so a cross-input forward-reference test does
    not generalize to them. This pins the short/long selection boundary
