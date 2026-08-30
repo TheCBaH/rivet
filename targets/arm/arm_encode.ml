@@ -286,6 +286,19 @@ module Operand = struct
             {!Reg.t}s: the encoding is one bit per number and the surface order carries no
             information the bitmask does not already have, so keeping the list unsorted-as-written
             here would only invite a caller to rely on an order the instruction itself discards. *)
+    | Reg_writeback of Reg.t
+        (** [Rn!] with no brackets - [stmia]/[ldmia]'s own writeback base register (M5,
+            asm/docs/corpus.md classify-c-gcc: [stmia r3!, {r0, r1}]), a bare-register grammar
+            distinct from {!Mem.t}'s bracketed [\[Rn, #imm\]!] since STM/LDM's writeback amount is
+            implicit rather than an explicit offset. Parse-level only: neither [stmia] nor [ldmia]
+            is in {!Opcode.t} yet, the same scope {!Imm_sym} and x86's [st(n)] operand have on their
+            own targets - [dump-source-ast] only requires an operand to parse, not lower. *)
+    | Dreglist of int list
+        (** [{d8, d9}] - [vpush.64]/[vpop.64]'s D-register list (M5, asm/docs/corpus.md
+            classify-c-gcc: [vpush.64 {d8, d9}]), structurally the same shape as {!Reglist} but
+            over {!Dreg.t}'s number space rather than {!Reg.t}'s - the two are never a single list
+            because a bitmask position means a different register in each. Parse-level only, the
+            same scope as {!Reg_writeback}: no opcode consumes it yet. *)
 
   let pp ppf = function
     | Reg r -> Reg.pp ppf r
@@ -300,6 +313,11 @@ module Operand = struct
         Fmt.pf ppf "{%a}"
           Fmt.(list ~sep:(any ", ") Reg.pp)
           (List.map Reg.of_num (List.sort compare regs))
+    | Reg_writeback r -> Fmt.pf ppf "%a!" Reg.pp r
+    | Dreglist regs ->
+        Fmt.pf ppf "{%a}"
+          Fmt.(list ~sep:(any ", ") Dreg.pp)
+          (List.map Dreg.of_num (List.sort compare regs))
 end
 
 module Surface = struct

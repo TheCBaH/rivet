@@ -1005,6 +1005,54 @@ let%expect_test "strb/ldrb writeback stays out of scope" =
     arm.lower: writeback addressing is not in M1 scope
     |}]
 
+(* [vmov.f32 s0, #2.0e+0] - every VFP modified immediate M5 classify-c-gcc
+   corpus evidence actually has is scientific notation, a shape [float_lit]
+   never parsed (with or without the already-required [#]) - the same
+   exponent gap AArch64's own [float_literal_exp] closed
+   (aarch64.ml). [Vmov_imm_s]/[Vmov_imm_d] themselves needed no change: only
+   the operand never reached them. Byte-for-byte checked against real
+   arm-linux-gnueabihf-as/objdump (-march=armv7-a -mfpu=vfpv3-d16):
+     eeb00a00  vmov.f32 s0, #2.0e+0
+     eeb60b00  vmov.f64 d0, #5.0e-1 *)
+let%expect_test "vmov.f32/f64 with a scientific-notation immediate" =
+  disasm "arm" "\t.text\n\t.globl f\nf:\n\tvmov.f32 s0, #2.0e+0\n\tvmov.f64 d0, #5.0e-1\n\tbx lr\n";
+  [%expect
+    {|
+    40000000  00 0a b0 ee  vmov.f32 s0, #2.   [arm.vmov-imm-s]
+    40000004  00 0b b6 ee  vmov.f64 d0, #0.5  [arm.vmov-imm-d]
+    40000008  1e ff 2f e1  bx lr              [arm.bx]
+    |}]
+
+(* {1 ARM classify-c-gcc, closing the two last-open findings}
+
+   Both parse-only, the same scope as x86's [$symbol]/[%st(n)] above
+   (asm/docs/corpus.md): neither mnemonic is in [Opcode.t] yet, so
+   [dump-source-ast]'s own operand-only check is satisfied and the full
+   [attempt] pipeline below fails one stage later, at [simplify]'s mnemonic
+   lookup - never at operand parsing. *)
+
+(* [stmia r3!, {r0, r1}] - aes.c's own STM writeback (asm/docs/corpus.md).
+   [Operand.Reg_writeback] parses the bare [r3!] base; [stmia] itself is
+   still unknown to [Opcode.t]. *)
+let%expect_test "stmia Rn!, {reglist} parses its writeback base but does not lower yet" =
+  attempt "arm" "\t.text\n\t.globl f\nf:\n\tstmia r3!, {r0, r1}\n\tbx lr\n";
+  [%expect {| arm.simplify: unknown instruction stmia |}]
+
+(* [vpush.64 {d8-d9}] / [{d8, d9}] - almabench.c's/perlin.c's own D-register
+   reglist push (asm/docs/corpus.md). gcc's own VFP printer spells the range
+   with a hyphen, not the GPR [push]'s flat comma list; both forms parse into
+   the identical [Operand.Dreglist] (byte-for-byte checked against real
+   arm-linux-gnueabihf-as/objdump: [{d8-d9}] and [{d8, d9}] both assemble to
+   [ed2d8b04]). [vpush] itself is still unknown to [Opcode.t]. *)
+let%expect_test "vpush.64 {dN-dM} and {dN, dM} parse but do not lower yet" =
+  attempt "arm" "\t.text\n\t.globl f\nf:\n\tvpush.64 {d8-d9}\n\tbx lr\n";
+  attempt "arm" "\t.text\n\t.globl f\nf:\n\tvpush.64 {d8, d9}\n\tbx lr\n";
+  [%expect
+    {|
+    arm.simplify: unknown instruction vpush.64
+    arm.simplify: unknown instruction vpush.64
+    |}]
+
 (* {1 The x86-64 address-size prefix}
 
    32-bit registers used as *addresses* in 64-bit mode. Omitting the 0x67 does

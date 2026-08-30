@@ -136,6 +136,25 @@ let parse_one (slice : Asm_syntax.Token.slice) =
     | Some v -> Ok (Operand.FImm v)
     | None -> bad (`Bad_float_literal s)
   in
+  (* [#2.0e+0]/[#5.0e-1]/... - every VFP immediate M5 classify-c-gcc corpus
+     evidence actually has is scientific notation (gcc's own printer, never
+     [float_lit]'s bare [#1.5]/[#1.] shape above), tokenized as
+     [Int; Directive ".Ne"; (Plus|Minus); Int] exactly like AArch64's own
+     [float_literal_exp] gap (aarch64.ml) - the [Directive] already ends in
+     the bare [e] the lexer's directive-name scan swallowed, so appending the
+     sign and exponent digits straight onto [frac] reproduces the string
+     [float_of_string] expects. *)
+  let float_lit_exp ~negate whole frac ~exp_negate exp =
+    let s =
+      (if negate then "-" else "")
+      ^ Bigint.to_string whole ^ frac
+      ^ (if exp_negate then "-" else "+")
+      ^ Bigint.to_string exp
+    in
+    match float_of_string_opt s with
+    | Some v -> Ok (Operand.FImm v)
+    | None -> bad (`Bad_float_literal s)
+  in
   match List.map Token.kind slice with
   | [ Token.Ident n ] -> (
       (* A register if a table knows the name, a symbol otherwise: A32 has no
@@ -159,6 +178,23 @@ let parse_one (slice : Asm_syntax.Token.slice) =
       float_lit ~negate:true whole "."
   | [ Token.Immediate_sigil; Token.Minus; Token.Int whole; Token.Directive frac ] ->
       float_lit ~negate:true whole frac
+  | [
+   Token.Immediate_sigil;
+   Token.Int whole;
+   Token.Directive frac;
+   ((Token.Plus | Token.Minus) as sign);
+   Token.Int exp;
+  ] ->
+      float_lit_exp ~negate:false whole frac ~exp_negate:(sign = Token.Minus) exp
+  | [
+   Token.Immediate_sigil;
+   Token.Minus;
+   Token.Int whole;
+   Token.Directive frac;
+   ((Token.Plus | Token.Minus) as sign);
+   Token.Int exp;
+  ] ->
+      float_lit_exp ~negate:true whole frac ~exp_negate:(sign = Token.Minus) exp
   | [ Token.Lbracket; Token.Ident b; Token.Rbracket ] -> (
       match Reg.find b with
       | Some r -> Ok (Operand.Mem { base = r; offset = Mem.Imm 0L; writeback = false; pre = true })
@@ -314,22 +350,73 @@ let parse_one (slice : Asm_syntax.Token.slice) =
      reinserting the commas themselves, which the common parser already
      consumed as slice boundaries - so this is one flat slice:
      [Lbrace; Ident; Ident; ...; Rbrace], no ranges (CompCert's own ARM
-     codegen never writes [{r0-r3}], only the flat comma form). *)
+     codegen never writes [{r0-r3}], only the flat comma form). [{d8-d9}] -
+     [vpush.64]/[vpop.64]'s D-register list (M5, asm/docs/corpus.md
+     classify-c-gcc: [vpush.64 {d8-d9}]) - is the same flat-slice grammar
+     over {!Dreg.t}'s name space instead, dispatched on the first member
+     since a "dN" spelling is never also a GPR name ({!Reg.find} and
+     {!Dreg.find} never both succeed on the same string), but gcc's own VFP
+     printer spells it as a hyphenated range rather than the GPR form's flat
+     comma list (confirmed against real [as]/[objdump]: [{d8-d9}] and
+     [{d8, d9}] both assemble to the identical [ed2d8b04]) - so a range is
+     expanded here into the same flat register-number list a comma form
+     would produce, and the two grammars are otherwise interchangeable. *)
   | Token.Lbrace :: (_ :: _ as rest) when List.nth rest (List.length rest - 1) = Token.Rbrace -> (
       let inner = List.filteri (fun i _ -> i < List.length rest - 1) rest in
-      let rec regs_of = function
-        | [] -> Ok []
-        | Token.Ident n :: more -> (
-            match (Reg.find n, regs_of more) with
-            | Some r, Ok rest -> Ok (r.Reg.num :: rest)
-            | None, _ -> bad (`Unknown_register n)
-            | _, (Error _ as e) -> e)
-        | _ -> bad (`Cannot_parse_operand { slice; reason = `Unexpected_token None })
+      let is_dreg_list =
+        match inner with
+        | Token.Ident n :: _ -> Option.is_some (Dreg.find n) && Option.is_none (Reg.find n)
+        | _ -> false
       in
-      match regs_of inner with
-      | Ok [] -> bad (`Cannot_parse_operand { slice; reason = `Unexpected_token None })
-      | Ok regs -> Ok (Operand.Reglist regs)
-      | Error _ as e -> e)
+      if is_dreg_list then
+        let rec dregs_of = function
+          | [] -> Ok []
+          | Token.Ident lo :: Token.Minus :: Token.Ident hi :: more -> (
+              match (Dreg.find lo, Dreg.find hi) with
+              | Some l, Some h -> (
+                  if l.Dreg.num > h.Dreg.num then
+                    bad (`Cannot_parse_operand { slice; reason = `Unexpected_token None })
+                  else
+                    match dregs_of more with
+                    | Ok rest ->
+                        Ok (List.init (h.Dreg.num - l.Dreg.num + 1) (fun i -> l.Dreg.num + i) @ rest)
+                    | Error _ as e -> e)
+              | None, _ -> bad (`Unknown_register lo)
+              | _, None -> bad (`Unknown_register hi))
+          | Token.Ident n :: more -> (
+              match (Dreg.find n, dregs_of more) with
+              | Some r, Ok rest -> Ok (r.Dreg.num :: rest)
+              | None, _ -> bad (`Unknown_register n)
+              | _, (Error _ as e) -> e)
+          | _ -> bad (`Cannot_parse_operand { slice; reason = `Unexpected_token None })
+        in
+        match dregs_of inner with
+        | Ok [] -> bad (`Cannot_parse_operand { slice; reason = `Unexpected_token None })
+        | Ok regs -> Ok (Operand.Dreglist regs)
+        | Error _ as e -> e
+      else
+        let rec regs_of = function
+          | [] -> Ok []
+          | Token.Ident n :: more -> (
+              match (Reg.find n, regs_of more) with
+              | Some r, Ok rest -> Ok (r.Reg.num :: rest)
+              | None, _ -> bad (`Unknown_register n)
+              | _, (Error _ as e) -> e)
+          | _ -> bad (`Cannot_parse_operand { slice; reason = `Unexpected_token None })
+        in
+        match regs_of inner with
+        | Ok [] -> bad (`Cannot_parse_operand { slice; reason = `Unexpected_token None })
+        | Ok regs -> Ok (Operand.Reglist regs)
+        | Error _ as e -> e)
+  (* [Rn!] with no brackets - [stmia]/[ldmia]'s own writeback base register
+     (M5, asm/docs/corpus.md classify-c-gcc: [stmia r3!, {r0, r1}]). Parse-
+     level only, like {!Operand.Reg_writeback}'s own doc says: neither
+     mnemonic is in {!Opcode.t} yet, and [dump-source-ast] never asks for
+     more than a successful operand parse. *)
+  | [ Token.Ident r; Token.Bang ] -> (
+      match Reg.find r with
+      | Some reg -> Ok (Operand.Reg_writeback reg)
+      | None -> bad (`Unknown_register r))
   | _ -> (
       (* A branch or call target, or any other expression the shapes above do
          not claim. The common expression parser decides, so [.LC1] and [foo+4]
