@@ -232,7 +232,9 @@ let checked_ladder : (branch, fixup_kind) t =
    and value actually failed. *)
 type relaxed = RBr of int64 | RFixed of int64
 
-let show_relaxed = function RBr d -> Printf.sprintf "RBr %Ld" d | RFixed v -> Printf.sprintf "RFixed %Ld" v
+let show_relaxed = function
+  | RBr d -> Printf.sprintf "RBr %Ld" d
+  | RFixed v -> Printf.sprintf "RFixed %Ld" v
 
 let relaxed_ladder : (relaxed, fixup_kind) t =
   relax ~name:"jmp"

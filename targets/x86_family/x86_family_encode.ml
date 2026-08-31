@@ -829,8 +829,7 @@ module Lowered = struct
         x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
     | Shift_cl_rm x, Shift_cl_rm y -> x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm
     | Shld_imm_rm x, Shld_imm_rm y ->
-        x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
-        && Int64.equal x.imm y.imm
+        x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
     | Setcc_rm x, Setcc_rm y -> Cc.equal x.cc y.cc && Rm.equal x.rm y.rm
     | Movx_r_rm x, Movx_r_rm y ->
         x.zero_extend = y.zero_extend && x.src_width = y.src_width && x.width = y.width
@@ -2942,8 +2941,7 @@ module Make (M : MODE) = struct
          ~encode:(function
            | Lowered.Shld_imm_rm { width; reg; rm; imm } ->
                Some
-                 ( prefixes_of ~width ~reg:reg.num ~rm,
-                   ((), ({ re_reg = reg.num; re_rm = rm }, imm)) )
+                 (prefixes_of ~width ~reg:reg.num ~rm, ((), ({ re_reg = reg.num; re_rm = rm }, imm)))
            | _ -> None)
          ~decode:(fun (rex, ((), (e, imm))) ->
            let width = width_of_prefixes rex in

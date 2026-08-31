@@ -1,14 +1,16 @@
 How far this assembler gets on assembly files it did not write.
 
-Every other test in this project runs over inputs the project produced: four
+Every other test in this project runs over inputs the project produced: six
 CompCert fixtures and, since test/snippets, whatever the AST corpus emits. This
 one runs over the rest of the assembly in the tree - our own ABI helpers, and
 CompCert's runtime library, the largest body of real A32/A64/x86 assembly
-available here - and records exactly where each one stops.
+available here (plus, for RISC-V, the one fixture control gas-xref's own
+frontier_sources already covers for riscv32/riscv64) - and records exactly
+where each one stops.
 
-GNU as assembles all 47, which is what makes the comparison mean something: the
-inputs are known-good, so a rejection here is a statement about this assembler's
-coverage and not about the file.
+GNU as assembles every one of them, which is what makes the comparison mean
+something: the inputs are known-good, so a rejection here is a statement about
+this assembler's coverage and not about the file.
 
 A rejection is not a failure. asm/docs/contracts.md §2.3 freezes M1 at the 24
 encoding forms the fixtures emit and §4.3 lists what is deliberately absent, so
@@ -28,16 +30,23 @@ bury the finding it exists to report.
   >   else head -1 err.txt | sed -e 's|^[^ ]*:||' -e 's/^\([0-9]*\):\([0-9]*\)/line \1 col \2/'; fi
   > }
 
-The four committed fixtures are positive controls. They are the M1 scope, so
-anything but "assembles" here is a regression rather than a boundary.
+The six committed fixtures are positive controls. They are the M1 scope, so
+anything but "assembles" here is a regression rather than a boundary. RISC-V
+joins only this control: gas-xref.ml's own frontier_sources deliberately
+covers just Fixture for riscv32/riscv64 (asm/tools/lib/gas_xref_cmd.ml's own
+comment - no asm/helpers/riscv32.s/riscv64.s exists yet, and CompCert's
+runtime tree names its RISC-V leg riscV, not riscv32/riscv64), so there is no
+Helper or Runtime row below for either.
 
-  $ for t in x86_32 x86_64 arm aarch64; do
+  $ for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
   >   printf '%-8s %s\n' "$t" "$(verdict $t $corpus/$t/fixture-asm_test_entry/input.s)"
   > done
   x86_32   assembles
   x86_64   assembles
   arm      assembles
   aarch64  assembles
+  riscv32  assembles
+  riscv64  assembles
 
 Our own ABI helpers. GNU as assembles all four; this assembler reads none of
 them, and not for a reason connected to instruction coverage.
@@ -96,15 +105,15 @@ CompCert's runtime library, per target.
   arm      i64_utod      error[arm.simplify]: unknown instruction vmla.f64
   arm      i64_utof      error[arm.simplify]: unknown instruction lsrs
   arm      vararg       assembles
-  aarch64  vararg        error[aarch64.simplify]: unknown instruction cbz
+  aarch64  vararg       <synthesized by aarch64>: error[aarch64.lower]: no ldr form takes these operands
 
 Where the frontier actually is, as counts. This is the number to watch: it is
 what M2 moves, and prose cannot regress.
 
-  $ { for t in x86_32 x86_64 arm aarch64; do
+  $ { for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-       10 assembles
+       12 assembles
         4 <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4  error[x86.simplify]: unknown instruction fildll
         4  error[x86.simplify]: 8-bit operands are not in M1 scope
@@ -115,6 +124,7 @@ what M2 moves, and prose cannot regress.
         2  error[arm.simplify]: unknown instruction umull
         2  error[arm.simplify]: unknown instruction subs
         2  error[arm.simplify]: unknown instruction cmn
+        1 <synthesized by aarch64>: error[aarch64.lower]: no ldr form takes these operands
         1  error[x86.simplify]: unknown instruction ucomisd
         1  error[x86.simplify]: unknown instruction fnstsw
         1  error[x86.simplify]: unknown instruction fnstcw
@@ -123,4 +133,3 @@ what M2 moves, and prose cannot regress.
         1  error[arm.simplify]: unknown instruction rsbs
         1  error[arm.simplify]: unknown instruction orrs
         1  error[arm.simplify]: unknown instruction lsrs
-        1  error[aarch64.simplify]: unknown instruction cbz

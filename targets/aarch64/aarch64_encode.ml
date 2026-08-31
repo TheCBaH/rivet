@@ -234,6 +234,28 @@ module Cond = struct
     match List.find_opt (fun c -> String.equal (name c) s) all with
     | Some c -> Some c
     | None -> List.assoc_opt s synonyms
+
+  (* [cset rd, cc] is [csinc rd, zr, zr, invert(cc)] - the condition that must hold for the
+     *complement* selection (real hardware's own encoding of the alias, not a semantic negation
+     this project computes at runtime). Every A64 condition but AL/NV pairs with the one flipping
+     its least-significant bit, and [cset] never evidences either of those two. *)
+  let invert = function
+    | Eq -> Ne
+    | Ne -> Eq
+    | Cs -> Cc
+    | Cc -> Cs
+    | Mi -> Pl
+    | Pl -> Mi
+    | Vs -> Vc
+    | Vc -> Vs
+    | Hi -> Ls
+    | Ls -> Hi
+    | Ge -> Lt
+    | Lt -> Ge
+    | Gt -> Le
+    | Le -> Gt
+    | Al -> Nv
+    | Nv -> Al
 end
 
 module Opcode = struct
@@ -241,6 +263,17 @@ module Opcode = struct
     | Add
     | Mov
     | Movz
+    | Movn
+    | Movk
+    | Cbz
+    | Cbnz
+    | Sxtw
+    | Uxtw
+    | Udiv
+    | Cset
+    | Lsl
+    | Ubfx
+    | Ubfiz
     | Stp
     | Ldr
     | Ldrb
@@ -249,14 +282,19 @@ module Opcode = struct
     | Strb
     | Strh
     | Ret
+    | Br
     | Sub
     | Cmp
     | And
     | Orr
+    | Eor
+    | Bic
     | Madd
+    | Msub
     | Mul
     | Csel
     | Adrp
+    | Adr
     | B
     | Bcond of Cond.t
     | Udf
@@ -268,6 +306,17 @@ module Opcode = struct
     | Add -> "add"
     | Mov -> "mov"
     | Movz -> "movz"
+    | Movn -> "movn"
+    | Movk -> "movk"
+    | Cbz -> "cbz"
+    | Cbnz -> "cbnz"
+    | Sxtw -> "sxtw"
+    | Uxtw -> "uxtw"
+    | Udiv -> "udiv"
+    | Cset -> "cset"
+    | Lsl -> "lsl"
+    | Ubfx -> "ubfx"
+    | Ubfiz -> "ubfiz"
     | Stp -> "stp"
     | Ldr -> "ldr"
     | Ldrb -> "ldrb"
@@ -276,14 +325,19 @@ module Opcode = struct
     | Strb -> "strb"
     | Strh -> "strh"
     | Ret -> "ret"
+    | Br -> "br"
     | Sub -> "sub"
     | Cmp -> "cmp"
     | And -> "and"
     | Orr -> "orr"
+    | Eor -> "eor"
+    | Bic -> "bic"
     | Madd -> "madd"
+    | Msub -> "msub"
     | Mul -> "mul"
     | Csel -> "csel"
     | Adrp -> "adrp"
+    | Adr -> "adr"
     | B -> "b"
     | Bcond c -> "b." ^ Cond.name c
     | Udf -> "udf"
@@ -303,6 +357,17 @@ module Opcode = struct
     | "add" -> Some Add
     | "mov" -> Some Mov
     | "movz" -> Some Movz
+    | "movn" -> Some Movn
+    | "movk" -> Some Movk
+    | "cbz" -> Some Cbz
+    | "cbnz" -> Some Cbnz
+    | "sxtw" -> Some Sxtw
+    | "uxtw" -> Some Uxtw
+    | "udiv" -> Some Udiv
+    | "cset" -> Some Cset
+    | "lsl" -> Some Lsl
+    | "ubfx" -> Some Ubfx
+    | "ubfiz" -> Some Ubfiz
     | "stp" -> Some Stp
     | "ldr" -> Some Ldr
     | "ldrb" -> Some Ldrb
@@ -311,14 +376,19 @@ module Opcode = struct
     | "strb" -> Some Strb
     | "strh" -> Some Strh
     | "ret" -> Some Ret
+    | "br" -> Some Br
     | "sub" -> Some Sub
     | "cmp" -> Some Cmp
     | "and" -> Some And
     | "orr" -> Some Orr
+    | "eor" -> Some Eor
+    | "bic" -> Some Bic
     | "madd" -> Some Madd
+    | "msub" -> Some Msub
     | "mul" -> Some Mul
     | "csel" -> Some Csel
     | "adrp" -> Some Adrp
+    | "adr" -> Some Adr
     | "b" -> Some B
     | "udf" -> Some Udf
     | "bl" -> Some Bl
@@ -406,6 +476,20 @@ let extend_alu_of_name = function
 
 let logical_name = function 0 -> "and" | 1 -> "orr" | 2 -> "eor" | 3 -> "ands" | _ -> "?"
 
+(* UBFM's own two evidenced surface aliases (M5 corpus evidence: asm/docs/corpus.md's [ubfx]/
+   [ubfiz]). Real hardware's canonical disassembly additionally prefers [uxtb]/[uxth]/[lsr] over
+   these at particular [immr]/[imms] values, but nothing in this codebase compares decoded text
+   against real objdump's text - only encoded bytes are compared (test/xref/test_xref.ml: "nothing
+   is being compared as text") - so there is no second alias table to replicate here: any
+   [immr]/[imms] pair this project produces prints as [ubfx] or [ubfiz], and re-parses through
+   {!Opcode.Ubfx}/{!Opcode.Ubfiz} back to the identical pair, which is the only invariant that
+   matters. *)
+type ubfm_alias = Ubfx of int * int | Ubfiz of int * int
+
+let ubfm_alias_of ~datasize ~immr ~imms =
+  if imms >= immr then Ubfx (immr, imms - immr + 1)
+  else Ubfiz ((datasize - immr) mod datasize, imms + 1)
+
 module Lowered = struct
   type t =
     | Add_imm of { rd : Reg.t; rn : Reg.t; imm : Disp.t; shift12 : bool }
@@ -416,10 +500,58 @@ module Lowered = struct
             the choice [Ldst_uoff.offset] already made for [ldr]/[str]'s own [#:lo12:]. *)
     | Stp_pre of { rt : Reg.t; rt2 : Reg.t; rn : Reg.t; offset : int64 }
     | Movz of { rd : Reg.t; imm16 : int64; hw : int }
+    | Movn of { rd : Reg.t; imm16 : int64; hw : int }
+        (** [movn rd, #imm16, lsl #n] - {!Movz}'s bitwise-complement sibling ([opc] = 0 versus 2 in
+            the shared MOVZ/MOVN/MOVK family), evidenced only with [hw] = 0 (M5 corpus evidence:
+            asm/docs/corpus.md's [qsort.c]). Its own constructor rather than a field on {!Movz}: the
+            two opcodes never round-trip into the same mnemonic the way a single flag would suggest
+            - real objdump instead re-aliases a fully-representable [movn] as [mov #-N], which this
+            project deliberately does not replicate (nothing here needs `--dump`'s text to match that
+            alias, only the bits). *)
+    | Movk of { rd : Reg.t; imm16 : int64; hw : int }
+        (** [movk rd, #imm16, lsl #n] - {!Movz}/{!Movn}'s "keep the other halfwords" sibling
+            ([opc] = 3, the same family), evidenced only with [hw] = 1 (M5 corpus evidence:
+            asm/docs/corpus.md's [qsort.c]/[sha1.c]/[sha3.c]'s own multi-instruction 64-bit-constant
+            materialization). *)
+    | Ubfm of { rd : Reg.t; rn : Reg.t; immr : int; imms : int }
+        (** [ubfx]/[ubfiz rd, rn, #lsb, #width] - the general unsigned-bitfield-move word ([immr]/
+            [imms], the same two-field shape {!Logical_imm}'s bitmask codec derives values from), a
+            genuinely general instruction of which [ubfx]/[ubfiz] are the two evidenced aliases (M5
+            corpus evidence: asm/docs/corpus.md's [aes.c]'s own byte-extraction idiom for [ubfx],
+            [vmach.c]/[perlin.c]/etc. for [ubfiz]). [ubfx] is [immr = lsb, imms = lsb + width - 1];
+            [ubfiz] is [immr = (datasize - lsb) mod datasize, imms = width - 1] - both round-trip
+            through this one pair of fields, and printing always picks [ubfx] when [imms >= immr]
+            and [ubfiz] otherwise, both of which reconstruct the identical [immr]/[imms] through
+            {!Opcode.Ubfx}/{!Opcode.Ubfiz}'s own lowering (the only invariant this needs: nothing in
+            this codebase compares decoded text against real objdump's text, only encoded bytes
+            against real [as] - see [ubfm_alias_of]'s own comment). Real hardware's wider alias
+            table at this same encoding ([uxtb]/[uxth]/[lsr] at particular [immr]/[imms] values, a
+            general [bfxil]/[sbfx] a nonzero [N] would select) is therefore not attempted. *)
+    | Sxtw of { rd : Reg.t; rn : Reg.t }
+        (** [sxtw xd, wn] - sign-extend, an [SBFM xd, xn, #0, #31] alias fixed at that one
+            [immr]/[imms] pair (M5 corpus evidence: asm/docs/corpus.md's [chomp.c]/[fannkuch.c]/
+            etc.), not the general bitfield-move family this project does not otherwise implement.
+            [uxtw] needs no sibling constructor: on real hardware, writing a 32-bit register already
+            zeroes the upper 32 bits of its 64-bit view, so [uxtw xd, wn] assembles to the identical
+            bits as [mov wd, wn] (verified against real [as]/[objdump]) - {!Logical_shift} already
+            covers it. *)
+    | Cbz of { nz : bool; rt : Reg.t; target : Asm_core.Lowered_ast.branch }
+        (** [cbz]/[cbnz rt, target] - compare-and-branch, [nz] true for [cbnz] (M5 corpus evidence:
+            asm/docs/corpus.md's [binarytrees.c]/[bisect.c]/etc.). A different 19-bit-immediate word
+            shape from {!Bcond}'s (the fixed bits and [Rt] sit where {!Bcond}'s condition code does),
+            but the same {!Pcrel_b19} fixup kind - both relocate a 19-bit word-count field. *)
     | Ldst_uoff of { size : access_size; load : bool; rt : Reg.t; rn : Reg.t; offset : Disp.t }
         (** One addressing mode, eight forms. The size decides the register width, the field scale
             and the relocation kind at once, so they cannot disagree. *)
     | Ret of { rn : Reg.t }
+    | Br of { rn : Reg.t }
+        (** [br rn] - "unconditional branch to register", the same
+            [1101011_0_opc_11111_000000_Rn_00000] word shape as {!Ret} with
+            [opc = 000] rather than [010]: an indirect jump, not a return
+            (M5 corpus evidence: asm/docs/corpus.md's [vmach.c]/
+            [siphash24.c], the same jump-table switch dispatch {!Adr}
+            documents - `adr x16, .Ltable; add x16, x16, wN, uxtw #2;
+            br x16`). *)
     | Sub_imm of { s : bool; rd : Reg.t; rn : Reg.t; imm : int64; shift12 : bool }
         (** [s] is the flag-setting bit, and it changes what [rd = 31] means: SP without it and the
             zero register with it. That is why the two are separate codec alternatives rather than
@@ -451,9 +583,51 @@ module Lowered = struct
             corpus evidence: [add x0, x0, x16, uxtx #0], asm/docs/corpus.md). *)
     | Logical_imm of { opc : int; rd : Reg.t; rn : Reg.t; imm : int64 }
         (** AND/ORR/EOR/ANDS with a bitmask immediate. *)
+    | Logical_shift of {
+        opc : int;
+        n : bool;
+        rd : Reg.t;
+        rn : Reg.t;
+        rm : Reg.t;
+        shift : int;
+        amount : int;
+      }
+        (** AND/ORR/EOR/ANDS (shifted register), or their bit-clear siblings BIC/ORN/EON/BICS when
+            [n] - {!Logical_imm}'s register-operand cousin, [opc] the identical 2-bit selector. Only
+            [opc] = 1, [n] = false (ORR - [mov] between two general registers is real hardware's own
+            "[orr rd, xzr, rm]" expansion), [opc] = 2, [n] = false (EOR), and [opc] = 0, [n] = true
+            (BIC) are evidenced (M5 corpus evidence: asm/docs/corpus.md's [aes.c]/[sha3.c] for [eor],
+            [sha3.c] for [bic]). *)
     | Madd of { rd : Reg.t; rn : Reg.t; rm : Reg.t; ra : Reg.t }
+    | Msub of { rd : Reg.t; rn : Reg.t; rm : Reg.t; ra : Reg.t }
+        (** {!Madd}'s subtract sibling ([o0] = 1 versus 0 in the same word shape). Unlike {!Madd},
+            no [ra] = zr alias ([mneg]) is evidenced (M5 corpus evidence: asm/docs/corpus.md's
+            [siphash24.c]), so none is printed. *)
+    | Udiv of { rd : Reg.t; rn : Reg.t; rm : Reg.t }
+        (** [udiv rd, rn, rm] - unsigned divide (M5 corpus evidence: asm/docs/corpus.md's
+            [knucleotide.c]). [sdiv] shares the identical word shape with one bit flipped but is not
+            evidenced, so it is not implemented alongside it. *)
+    | Lslv of { rd : Reg.t; rn : Reg.t; rm : Reg.t }
+        (** [lsl rd, rn, rm] - {!Udiv}'s "data-processing (2 source)" cousin, LSLV's
+            register-specified shift amount (M5 corpus evidence: asm/docs/corpus.md's [nsieve.c]/
+            [nsievebits.c]; the immediate-shift-amount form, a [UBFM] alias, is not evidenced and
+            not implemented). [lsr]/[asr]/[ror] share the identical shape with a different 6-bit
+            opcode field but are not evidenced, so none is implemented alongside it. *)
+    | Cset of { cond : Cond.t; rd : Reg.t }
+        (** [cset rd, cc] - [csinc rd, zr, zr, invert(cc)], the general condition-select family's
+            "materialize a 0/1 boolean" alias (M5 corpus evidence: asm/docs/corpus.md's [chomp.c]/
+            [lists.c]). [zr]/[zr] are baked in rather than carried, since no fixture evidences a
+            general [csinc rd, rn, rm, cc] this project would otherwise need a shared constructor
+            for. *)
     | Csel of { cond : Cond.t; rd : Reg.t; rn : Reg.t; rm : Reg.t }
     | Adrp of { rd : Reg.t; page : Asm_core.Lowered_ast.branch }
+    | Adr of { rd : Reg.t; offset : Asm_core.Lowered_ast.branch }
+        (** [adr rd, label] - the same word shape as {!Adrp} (bit 31 is the only
+            difference, [op = 0]), but the 21-bit immediate is a byte-granular
+            program-relative offset, not a page count, so it materializes a
+            precise address rather than a page base (M5 corpus evidence:
+            asm/docs/corpus.md's [vmach.c]/[siphash24.c], a switch statement's
+            computed-goto jump-table base). *)
     | B of { target : Asm_core.Lowered_ast.branch }
     | Bcond of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
     | Udf of { imm16 : int64 }
@@ -482,6 +656,24 @@ module Lowered = struct
     | Movz { rd; imm16; hw } ->
         Fmt.pf ppf "movz %a, #%Ld%s" Reg.pp rd imm16
           (if hw = 0 then "" else Printf.sprintf ", lsl #%d" (hw * 16))
+    | Movn { rd; imm16; hw } ->
+        Fmt.pf ppf "movn %a, #%Ld%s" Reg.pp rd imm16
+          (if hw = 0 then "" else Printf.sprintf ", lsl #%d" (hw * 16))
+    | Movk { rd; imm16; hw } ->
+        Fmt.pf ppf "movk %a, #%Ld%s" Reg.pp rd imm16
+          (if hw = 0 then "" else Printf.sprintf ", lsl #%d" (hw * 16))
+    | Ubfm { rd; rn; immr; imms } -> (
+        match ubfm_alias_of ~datasize:rd.Reg.width ~immr ~imms with
+        | Ubfx (lsb, width) -> Fmt.pf ppf "ubfx %a, %a, #%d, #%d" Reg.pp rd Reg.pp rn lsb width
+        | Ubfiz (lsb, width) -> Fmt.pf ppf "ubfiz %a, %a, #%d, #%d" Reg.pp rd Reg.pp rn lsb width)
+    | Sxtw { rd; rn } -> Fmt.pf ppf "sxtw %a, %a" Reg.pp rd Reg.pp rn
+    | Udiv { rd; rn; rm } -> Fmt.pf ppf "udiv %a, %a, %a" Reg.pp rd Reg.pp rn Reg.pp rm
+    | Lslv { rd; rn; rm } -> Fmt.pf ppf "lsl %a, %a, %a" Reg.pp rd Reg.pp rn Reg.pp rm
+    | Cset { cond; rd } -> Fmt.pf ppf "cset %a, %s" Reg.pp rd (Cond.name cond)
+    | Cbz { nz; rt; target } ->
+        Fmt.pf ppf "%s %a, %a"
+          (if nz then "cbnz" else "cbz")
+          Reg.pp rt Asm_core.Lowered_ast.pp_branch target
     | Ldst_uoff { size; load; rt; rn; offset } ->
         Fmt.pf ppf "%s %a, %a" (ldst_mnemonic ~size ~load) Reg.pp rt Mem.pp
           { Mem.base = rn; offset; writeback = false; pre = true }
@@ -491,6 +683,7 @@ module Lowered = struct
            disagree with objdump on a line where nothing differs. *)
         if rn.Reg.num = 30 && not rn.Reg.is_sp then Fmt.string ppf "ret"
         else Fmt.pf ppf "ret %a" Reg.pp rn
+    | Br { rn } -> Fmt.pf ppf "br %a" Reg.pp rn
     | Sub_imm { s; rd; rn; imm; shift12 } ->
         let tail = if shift12 then ", lsl #12" else "" in
         if s && rd.Reg.num = 31 && not rd.Reg.is_sp then
@@ -517,13 +710,28 @@ module Lowered = struct
           Reg.pp rd Reg.pp rn Reg.pp rm (extend_alu_name option) imm3
     | Logical_imm { opc; rd; rn; imm } ->
         Fmt.pf ppf "%s %a, %a, #%Ld" (logical_name opc) Reg.pp rd Reg.pp rn imm
+    | Logical_shift { opc; n; rd; rn; rm; shift; amount } ->
+        (* [orr rd, xzr, rm] with no shift is [mov rd, rm] - real hardware's own alias, the same
+           relationship {!Madd}'s [mov ..., ra = zr] case above has to [mul]. *)
+        if opc = 1 && (not n) && rn.Reg.num = 31 && (not rn.Reg.is_sp) && shift = 0 && amount = 0
+        then Fmt.pf ppf "mov %a, %a" Reg.pp rd Reg.pp rm
+        else
+          let sh =
+            if shift = 0 && amount = 0 then ""
+            else Printf.sprintf ", %s #%d" (shift_name shift) amount
+          in
+          let name = if n then if opc = 0 then "bic" else "?" else logical_name opc in
+          Fmt.pf ppf "%s %a, %a, %a%s" name Reg.pp rd Reg.pp rn Reg.pp rm sh
     | Madd { rd; rn; rm; ra } ->
         if ra.Reg.num = 31 && not ra.Reg.is_sp then
           Fmt.pf ppf "mul %a, %a, %a" Reg.pp rd Reg.pp rn Reg.pp rm
         else Fmt.pf ppf "madd %a, %a, %a, %a" Reg.pp rd Reg.pp rn Reg.pp rm Reg.pp ra
+    | Msub { rd; rn; rm; ra } ->
+        Fmt.pf ppf "msub %a, %a, %a, %a" Reg.pp rd Reg.pp rn Reg.pp rm Reg.pp ra
     | Csel { cond; rd; rn; rm } ->
         Fmt.pf ppf "csel %a, %a, %a, %s" Reg.pp rd Reg.pp rn Reg.pp rm (Cond.name cond)
     | Adrp { rd; page } -> Fmt.pf ppf "adrp %a, %a" Reg.pp rd Asm_core.Lowered_ast.pp_branch page
+    | Adr { rd; offset } -> Fmt.pf ppf "adr %a, %a" Reg.pp rd Asm_core.Lowered_ast.pp_branch offset
     | B { target } -> Fmt.pf ppf "b %a" Asm_core.Lowered_ast.pp_branch target
     | Bcond { cond; target } ->
         Fmt.pf ppf "b.%s %a" (Cond.name cond) Asm_core.Lowered_ast.pp_branch target
@@ -541,10 +749,18 @@ module Lowered = struct
         Reg.equal x.rt y.rt && Reg.equal x.rt2 y.rt2 && Reg.equal x.rn y.rn
         && Int64.equal x.offset y.offset
     | Movz x, Movz y -> Reg.equal x.rd y.rd && Int64.equal x.imm16 y.imm16 && x.hw = y.hw
+    | Movn x, Movn y -> Reg.equal x.rd y.rd && Int64.equal x.imm16 y.imm16 && x.hw = y.hw
+    | Movk x, Movk y -> Reg.equal x.rd y.rd && Int64.equal x.imm16 y.imm16 && x.hw = y.hw
+    | Ubfm x, Ubfm y ->
+        Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && x.immr = y.immr && x.imms = y.imms
+    | Sxtw x, Sxtw y -> Reg.equal x.rd y.rd && Reg.equal x.rn y.rn
+    | Cbz x, Cbz y ->
+        x.nz = y.nz && Reg.equal x.rt y.rt && Asm_core.Lowered_ast.equal_branch x.target y.target
     | Ldst_uoff x, Ldst_uoff y ->
         x.size = y.size && x.load = y.load && Reg.equal x.rt y.rt && Reg.equal x.rn y.rn
         && Disp.equal x.offset y.offset
     | Ret x, Ret y -> Reg.equal x.rn y.rn
+    | Br x, Br y -> Reg.equal x.rn y.rn
     | Sub_imm x, Sub_imm y ->
         x.s = y.s && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Int64.equal x.imm y.imm
         && x.shift12 = y.shift12
@@ -556,12 +772,21 @@ module Lowered = struct
         && Reg.equal x.rm y.rm && x.option = y.option && x.imm3 = y.imm3
     | Logical_imm x, Logical_imm y ->
         x.opc = y.opc && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Int64.equal x.imm y.imm
+    | Logical_shift x, Logical_shift y ->
+        x.opc = y.opc && x.n = y.n && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn
+        && Reg.equal x.rm y.rm && x.shift = y.shift && x.amount = y.amount
     | Madd x, Madd y ->
         Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm && Reg.equal x.ra y.ra
+    | Msub x, Msub y ->
+        Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm && Reg.equal x.ra y.ra
+    | Udiv x, Udiv y -> Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm
+    | Lslv x, Lslv y -> Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm
+    | Cset x, Cset y -> Cond.equal x.cond y.cond && Reg.equal x.rd y.rd
     | Csel x, Csel y ->
         Cond.equal x.cond y.cond && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn
         && Reg.equal x.rm y.rm
     | Adrp x, Adrp y -> Reg.equal x.rd y.rd && Asm_core.Lowered_ast.equal_branch x.page y.page
+    | Adr x, Adr y -> Reg.equal x.rd y.rd && Asm_core.Lowered_ast.equal_branch x.offset y.offset
     | B x, B y -> Asm_core.Lowered_ast.equal_branch x.target y.target
     | Bcond x, Bcond y ->
         Cond.equal x.cond y.cond && Asm_core.Lowered_ast.equal_branch x.target y.target
@@ -579,6 +804,7 @@ type fixup_kind =
   | Pcrel_b19  (** the conditional branch's shorter field - R_AARCH64_CONDBR19 *)
   | Pcrel_call26
   | Adrp_page
+  | Pcrel_adr21  (** [adr]'s byte-granular 21-bit program-relative offset *)
   | Add_lo12
   | Ldst_lo12 of access_size
 
@@ -589,6 +815,7 @@ let fixup_kind_name = function
   | Pcrel_b19 -> "pcrel-b19"
   | Pcrel_call26 -> "pcrel-call26"
   | Adrp_page -> "adrp-page"
+  | Pcrel_adr21 -> "pcrel-adr21"
   | Add_lo12 -> "add-lo12"
   | Ldst_lo12 sz -> Printf.sprintf "ldst%d-lo12" (access_bytes sz * 8)
 
@@ -600,11 +827,13 @@ let fixup_family = function
   | Pcrel_b26 | Pcrel_b19 -> "pcrel-branch"
   | Pcrel_call26 -> "pcrel-call"
   | Adrp_page -> "adrp-page"
+  | Pcrel_adr21 -> "pcrel-adr"
   | Add_lo12 -> "add-lo12"
   | Ldst_lo12 _ -> "ldst-lo12"
 
 let fixup_role = function
-  | Abs32 | Abs64 | Adrp_page | Add_lo12 | Ldst_lo12 _ -> Asm_core.Lowered_ast.Data_address
+  | Abs32 | Abs64 | Adrp_page | Pcrel_adr21 | Add_lo12 | Ldst_lo12 _ ->
+      Asm_core.Lowered_ast.Data_address
   | Pcrel_b26 | Pcrel_b19 -> Asm_core.Lowered_ast.Branch
   | Pcrel_call26 -> Asm_core.Lowered_ast.Call
 
@@ -1214,6 +1443,105 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   ** reg_field ~width:64 ~sp:false "ra"
                   ** reg_field ~width:64 ~sp:false "rn"
                   ** reg_field ~width:64 ~sp:false "rd"));
+           (* [msub] - {!Madd}'s [o0] = 1 sibling, the identical word shape with that one bit
+              flipped. Verified against real aarch64-linux-gnu-as/objdump: [1b028c20] for
+              [msub w0, w1, w2, w3]. *)
+           C.alt ~label:"msub" ~priority:42
+             (C.iso_fun ~name:"msub"
+                ~encode:(function
+                  | Lowered.Msub { rd; rn; rm; ra } ->
+                      Some ((if rd.Reg.width = 64 then 1L else 0L), ((), (rm, ((), (ra, (rn, rd))))))
+                  | _ -> None)
+                ~decode:(fun (sf, ((), (rm, ((), (ra, (rn, rd)))))) ->
+                  let width = if Int64.equal sf 1L then 64 else 32 in
+                  Some
+                    (Lowered.Msub
+                       {
+                         rd = { rd with Reg.width };
+                         rn = { rn with Reg.width };
+                         rm = { rm with Reg.width };
+                         ra = { ra with Reg.width };
+                       }))
+                C.(
+                  field ~width:1 "sf" ** const ~width:10 0b0011011000L
+                  ** reg_field ~width:64 ~sp:false "rm"
+                  ** const ~width:1 1L
+                  ** reg_field ~width:64 ~sp:false "ra"
+                  ** reg_field ~width:64 ~sp:false "rn"
+                  ** reg_field ~width:64 ~sp:false "rd"));
+           (* [udiv rd, rn, rm] - unsigned divide (M5 corpus evidence: asm/docs/corpus.md's
+              [knucleotide.c]). Verified against real aarch64-linux-gnu-as/objdump: [1ac20820] for
+              [udiv w0, w1, w2], [9ac20820] for [udiv x0, x1, x2]. *)
+           C.alt ~label:"udiv" ~priority:43
+             (C.iso_fun ~name:"udiv"
+                ~encode:(function
+                  | Lowered.Udiv { rd; rn; rm } ->
+                      Some ((if rd.Reg.width = 64 then 1L else 0L), ((), (rm, ((), (rn, rd)))))
+                  | _ -> None)
+                ~decode:(fun (sf, ((), (rm, ((), (rn, rd))))) ->
+                  let width = if Int64.equal sf 1L then 64 else 32 in
+                  Some
+                    (Lowered.Udiv
+                       {
+                         rd = { rd with Reg.width };
+                         rn = { rn with Reg.width };
+                         rm = { rm with Reg.width };
+                       }))
+                C.(
+                  field ~width:1 "sf" ** const ~width:10 0b0011010110L
+                  ** reg_field ~width:64 ~sp:false "rm"
+                  ** const ~width:6 0b000010L
+                  ** reg_field ~width:64 ~sp:false "rn"
+                  ** reg_field ~width:64 ~sp:false "rd"));
+           (* [lsl rd, rn, rm] - {!Udiv}'s "data-processing (2 source)" cousin, LSLV's
+              register-specified shift amount (M5 corpus evidence: asm/docs/corpus.md's
+              [nsieve.c]/[nsievebits.c]). Verified against real aarch64-linux-gnu-as/objdump:
+              [1ac62115] for [lsl w21, w8, w6], [9ac22020] for [lsl x0, x1, x2]. *)
+           C.alt ~label:"lslv" ~priority:46
+             (C.iso_fun ~name:"lslv"
+                ~encode:(function
+                  | Lowered.Lslv { rd; rn; rm } ->
+                      Some ((if rd.Reg.width = 64 then 1L else 0L), ((), (rm, ((), (rn, rd)))))
+                  | _ -> None)
+                ~decode:(fun (sf, ((), (rm, ((), (rn, rd))))) ->
+                  let width = if Int64.equal sf 1L then 64 else 32 in
+                  Some
+                    (Lowered.Lslv
+                       {
+                         rd = { rd with Reg.width };
+                         rn = { rn with Reg.width };
+                         rm = { rm with Reg.width };
+                       }))
+                C.(
+                  field ~width:1 "sf" ** const ~width:10 0b0011010110L
+                  ** reg_field ~width:64 ~sp:false "rm"
+                  ** const ~width:6 0b001000L
+                  ** reg_field ~width:64 ~sp:false "rn"
+                  ** reg_field ~width:64 ~sp:false "rd"));
+           (* [cset rd, cc] - [csinc rd, zr, zr, invert(cc)] (M5 corpus evidence:
+              asm/docs/corpus.md's [chomp.c]/[lists.c]). Same top bits {!Csel} already has ([op2] =
+              01 for CSINC versus CSEL's 00), [rn]/[rm] fixed to the zero register rather than
+              carried - no fixture evidences a general [csinc rd, rn, rm, cc]. Verified against real
+              aarch64-linux-gnu-as/objdump: [1a9f17e0] for [cset w0, eq] (stored condition [ne], the
+              inverse), [9a9f07e1] for [cset x1, ne] (stored [eq]). *)
+           C.alt ~label:"cset" ~priority:44
+             (C.iso_fun ~name:"cset"
+                ~encode:(function
+                  | Lowered.Cset { cond; rd } ->
+                      let zr = { Reg.num = 31; width = rd.Reg.width; is_sp = false } in
+                      Some
+                        ( (if rd.Reg.width = 64 then 1L else 0L),
+                          ((), (zr, (Cond.invert cond, ((), (zr, rd))))) )
+                  | _ -> None)
+                ~decode:(fun (sf, ((), (_rm, (cond, ((), (_rn, rd)))))) ->
+                  let width = if Int64.equal sf 1L then 64 else 32 in
+                  Some (Lowered.Cset { cond = Cond.invert cond; rd = { rd with Reg.width } }))
+                C.(
+                  field ~width:1 "sf" ** const ~width:10 0b0011010100L
+                  ** reg_field ~width:64 ~sp:false "rm"
+                  ** cond_codec ** const ~width:2 0b01L
+                  ** reg_field ~width:64 ~sp:false "rn"
+                  ** reg_field ~width:64 ~sp:false "rd"));
            C.alt ~label:"csel" ~priority:6
              (C.iso_fun ~name:"csel"
                 ~encode:(function
@@ -1267,6 +1595,163 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   field ~width:1 "sf" ** const ~width:8 0b10100101L ** field ~width:2 "hw"
                   ** field ~width:16 "imm16"
                   ** reg_field ~width:64 ~sp:false "rd"));
+           (* [movn] - {!Movz}'s bitwise-complement sibling, [opc] = 0 in the shared MOVZ/MOVN/MOVK
+              family versus [movz]'s [opc] = 2 immediately above (M5 corpus evidence: [qsort.c]'s
+              own [movn w0, #0, lsl #0]). Verified against real aarch64-linux-gnu-as/objdump:
+              [12800000] for [movn w0, #0]. *)
+           C.alt ~label:"movn" ~priority:37
+             (C.iso_fun ~name:"movn"
+                ~encode:(function
+                  | Lowered.Movn { rd; imm16; hw } ->
+                      if Int64.compare imm16 0L < 0 || Int64.compare imm16 65536L >= 0 then None
+                      else
+                        Some
+                          ( (if rd.Reg.width = 64 then 1L else 0L),
+                            ((), (Int64.of_int hw, (imm16, rd))) )
+                  | _ -> None)
+                ~decode:(fun (sf, ((), (hw, (imm16, rd)))) ->
+                  let width = if Int64.equal sf 1L then 64 else 32 in
+                  Some (Lowered.Movn { rd = { rd with Reg.width }; imm16; hw = Int64.to_int hw }))
+                C.(
+                  field ~width:1 "sf" ** const ~width:8 0b00100101L ** field ~width:2 "hw"
+                  ** field ~width:16 "imm16"
+                  ** reg_field ~width:64 ~sp:false "rd"));
+           (* [movk] - the third MOVZ/MOVN/MOVK family member, [opc] = 3 (M5 corpus evidence:
+              asm/docs/corpus.md's [qsort.c]/[sha1.c]/[sha3.c]). Verified against real
+              aarch64-linux-gnu-as/objdump: [72a000a0] for [movk w0, #5, lsl #16]. *)
+           C.alt ~label:"movk" ~priority:45
+             (C.iso_fun ~name:"movk"
+                ~encode:(function
+                  | Lowered.Movk { rd; imm16; hw } ->
+                      if Int64.compare imm16 0L < 0 || Int64.compare imm16 65536L >= 0 then None
+                      else
+                        Some
+                          ( (if rd.Reg.width = 64 then 1L else 0L),
+                            ((), (Int64.of_int hw, (imm16, rd))) )
+                  | _ -> None)
+                ~decode:(fun (sf, ((), (hw, (imm16, rd)))) ->
+                  let width = if Int64.equal sf 1L then 64 else 32 in
+                  Some (Lowered.Movk { rd = { rd with Reg.width }; imm16; hw = Int64.to_int hw }))
+                C.(
+                  field ~width:1 "sf" ** const ~width:8 0b11100101L ** field ~width:2 "hw"
+                  ** field ~width:16 "imm16"
+                  ** reg_field ~width:64 ~sp:false "rd"));
+           (* [sxtw xd, wn] - a fixed [SBFM xd, xn, #0, #31] (M5 corpus evidence:
+              asm/docs/corpus.md's [chomp.c]/etc.). [N] always equals [sf] for a real SBFM word
+              (hardware UNDEFINED otherwise) and this project only ever produces or accepts the
+              64-bit-destination form, so both are fixed consts alongside [immr]/[imms]. Verified
+              against real aarch64-linux-gnu-as/objdump: [93407c60] for [sxtw x0, w3]. *)
+           C.alt ~label:"sxtw" ~priority:41
+             (C.iso_fun ~name:"sxtw"
+                ~encode:(function
+                  | Lowered.Sxtw { rd; rn } -> Some ((), ((), ((), ((), (rn, rd))))) | _ -> None)
+                ~decode:(fun ((), ((), ((), ((), (rn, rd))))) ->
+                  Some
+                    (Lowered.Sxtw
+                       { rd = { rd with Reg.width = 64 }; rn = { rn with Reg.width = 32 } }))
+                C.(
+                  const ~width:9 0b100100110L ** const ~width:1 1L ** const ~width:6 0b000000L
+                  ** const ~width:6 0b011111L
+                  ** reg_field ~width:32 ~sp:false "rn"
+                  ** reg_field ~width:64 ~sp:false "rd"));
+           (* [ubfx]/[ubfiz]/[uxtb]/[uxth]/[lsr] (immediate) - the general unsigned-bitfield-move
+              word ({!Lowered.Ubfm}'s own doc explains the alias table). [N] always equals [sf] for
+              a real UBFM word (hardware UNDEFINED otherwise), so it is written from the same value
+              as [sf] rather than carried as an independent field - this project never produces or
+              accepts [N] <> [sf]. Verified against real aarch64-linux-gnu-as/objdump: [53021001]
+              for [ubfx w1, w0, #2, #3]. *)
+           C.alt ~label:"ubfm" ~priority:47
+             (C.iso_fun ~name:"ubfm"
+                ~encode:(function
+                  | Lowered.Ubfm { rd; rn; immr; imms } ->
+                      let sf = if rd.Reg.width = 64 then 1L else 0L in
+                      Some (sf, ((), (sf, (Int64.of_int immr, (Int64.of_int imms, (rn, rd))))))
+                  | _ -> None)
+                ~decode:(fun (sf, ((), (_n, (immr, (imms, (rn, rd)))))) ->
+                  let width = if Int64.equal sf 1L then 64 else 32 in
+                  Some
+                    (Lowered.Ubfm
+                       {
+                         rd = { rd with Reg.width };
+                         rn = { rn with Reg.width };
+                         immr = Int64.to_int immr;
+                         imms = Int64.to_int imms;
+                       }))
+                C.(
+                  field ~width:1 "sf" ** const ~width:8 0b10100110L ** field ~width:1 "N"
+                  ** field ~width:6 "immr" ** field ~width:6 "imms"
+                  ** reg_field ~width:64 ~sp:false "rn"
+                  ** reg_field ~width:64 ~sp:false "rd"));
+           (* [cbz]/[cbnz rt, target] - compare-and-branch (M5 corpus evidence:
+              asm/docs/corpus.md's [binarytrees.c]/[bisect.c]/etc.). [op] (field, not const)
+              distinguishes the two: 0 for [cbz], 1 for [cbnz]. Same {!Pcrel_b19} fixup kind as
+              [b.<cc>], a different word shape (Rt sits where [b.<cc>]'s condition code does).
+              Verified against real aarch64-linux-gnu-as/objdump: [b4ffffc0] for [cbz x0, .],
+              [35ffffa1] for [cbnz w1, .]. *)
+           C.alt ~label:"cbz" ~priority:38
+             (C.iso_fun ~name:"cbz"
+                ~encode:(function
+                  | Lowered.Cbz { nz; rt; target } ->
+                      Some
+                        ( (if rt.Reg.width = 64 then 1L else 0L),
+                          ((), ((if nz then 1L else 0L), (branch_value target, rt))) )
+                  | _ -> None)
+                ~decode:(fun (sf, ((), (op, (d, rt)))) ->
+                  let width = if Int64.equal sf 1L then 64 else 32 in
+                  Some
+                    (Lowered.Cbz
+                       {
+                         nz = Int64.equal op 1L;
+                         rt = { rt with Reg.width };
+                         target =
+                           Asm_core.Lowered_ast.Resolved
+                             { value = sign_extend ~width:19 d; rung = "cbz" };
+                       }))
+                C.(
+                  field ~width:1 "sf" ** const ~width:6 0b011010L ** field ~width:1 "op"
+                  ** fixup ~width:19 ~kind:Pcrel_b19 "target"
+                  ** reg_field ~width:64 ~sp:false "rt"));
+           (* AND/ORR/EOR/ANDS (shifted register), or BIC/ORN/EON/BICS when [N] - {!Logical_imm}'s
+              register-operand cousin, one more codec alt rather than eight ([opc] and [N] are
+              fields, not consts, exactly as {!Logical_imm} already reads [opc]). Only [opc] = 1,
+              [N] = 0 (ORR, real hardware's own [mov rd, rm] expansion), [opc] = 2, [N] = 0 (EOR),
+              and [opc] = 0, [N] = 1 (BIC) are evidenced (M5 corpus evidence: asm/docs/corpus.md's
+              [aes.c]/[sha3.c] for [eor], [sha3.c] for [bic]). Verified against real
+              aarch64-linux-gnu-as/objdump: [4a020020] for [eor w0, w1, w2], [4a0d6085] for
+              [eor w5, w4, w13, lsl #24], [aa0103e0] for [orr x0, xzr, x1] ([mov x0, x1]), [8a250063]
+              for [bic x3, x3, x5]. *)
+           C.alt ~label:"logical-shift" ~priority:39
+             (C.iso_fun ~name:"logical-shift"
+                ~encode:(function
+                  | Lowered.Logical_shift { opc; n; rd; rn; rm; shift; amount } ->
+                      Some
+                        ( (if rd.Reg.width = 64 then 1L else 0L),
+                          ( Int64.of_int opc,
+                            ( (),
+                              ( Int64.of_int shift,
+                                ((if n then 1L else 0L), (rm, (Int64.of_int amount, (rn, rd)))) ) )
+                          ) )
+                  | _ -> None)
+                ~decode:(fun (sf, (opc, ((), (shift, (n, (rm, (amount, (rn, rd)))))))) ->
+                  let width = if Int64.equal sf 1L then 64 else 32 in
+                  Some
+                    (Lowered.Logical_shift
+                       {
+                         opc = Int64.to_int opc;
+                         n = Int64.equal n 1L;
+                         rd = { rd with Reg.width };
+                         rn = { rn with Reg.width };
+                         rm = { rm with Reg.width };
+                         shift = Int64.to_int shift;
+                         amount = Int64.to_int amount;
+                       }))
+                C.(
+                  field ~width:1 "sf" ** field ~width:2 "opc" ** const ~width:5 0b01010L
+                  ** field ~width:2 "shift" ** field ~width:1 "N"
+                  ** reg_field ~width:64 ~sp:false "rm"
+                  ** field ~width:6 "imm6"
+                  ** reg_field ~width:64 ~sp:false "rn"
+                  ** reg_field ~width:64 ~sp:false "rd"));
          ];
          (* The eight unsigned-offset loads and stores, generated rather than
             listed: the size decides the field scale, the register width and the
@@ -1312,6 +1797,18 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   const ~width:22 0b1101011001011111000000L
                   ** reg_field ~width:64 ~sp:false "rn"
                   ** const ~width:5 0L));
+           (* [br]: the same "unconditional branch (register)" word as [ret]
+              above, [opc = 000] rather than [010] - the middle 3 bits of the
+              22-bit constant. Checked against real aarch64-linux-gnu-as/
+              objdump: `br x16` -> `d61f0200`. *)
+           C.alt ~label:"br" ~priority:49
+             (C.iso_fun ~name:"br"
+                ~encode:(function Lowered.Br { rn } -> Some ((), (rn, ())) | _ -> None)
+                ~decode:(fun ((), (rn, ())) -> Some (Lowered.Br { rn }))
+                C.(
+                  const ~width:22 0b1101011000011111000000L
+                  ** reg_field ~width:64 ~sp:false "rn"
+                  ** const ~width:5 0L));
            C.alt ~label:"udf" ~priority:18
              (C.iso_fun ~name:"udf"
                 ~encode:(function Lowered.Udf { imm16 } -> Some ((), imm16) | _ -> None)
@@ -1342,6 +1839,35 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   ** fixup ~width:2 ~value_lsb:0 ~kind:Adrp_page "page"
                   ** const ~width:5 0b10000L
                   ** fixup ~width:19 ~value_lsb:2 ~kind:Adrp_page "page"
+                  ** reg_field ~width:64 ~sp:false "rd"));
+           (* [adr]: bit-for-bit the same word shape as [adrp] above - the same
+              immhi/immlo split, sharing the [0b10000] fixed field at bits
+              28:24 - with only bit 31 (op) distinguishing the two, so there is
+              no fixed-bit overlap for priority to resolve. The immediate is a
+              plain byte-granular program-relative offset rather than a page
+              count, which is entirely [evaluate_fixup]'s concern
+              ([Pcrel_adr21] skips [adrp_page]'s page-alignment masking and
+              12-bit shift) - the bit layout and packing are identical. *)
+           C.alt ~label:"adr" ~priority:48
+             (C.iso_fun ~name:"adr"
+                ~encode:(function
+                  | Lowered.Adr { rd; offset } ->
+                      let v = branch_value offset in
+                      Some
+                        ( (),
+                          ( Int64.logand v 3L,
+                            ((), (Int64.logand (Int64.shift_right v 2) 0x7FFFFL, rd)) ) )
+                  | _ -> None)
+                ~decode:(fun ((), (immlo, ((), (immhi, rd)))) ->
+                  let v = sign_extend ~width:21 (Int64.logor (Int64.shift_left immhi 2) immlo) in
+                  Some
+                    (Lowered.Adr
+                       { rd; offset = Asm_core.Lowered_ast.Resolved { value = v; rung = "adr" } }))
+                C.(
+                  const ~width:1 0L
+                  ** fixup ~width:2 ~value_lsb:0 ~kind:Pcrel_adr21 "offset"
+                  ** const ~width:5 0b10000L
+                  ** fixup ~width:19 ~value_lsb:2 ~kind:Pcrel_adr21 "offset"
                   ** reg_field ~width:64 ~sp:false "rd"));
            (* [b] and [b.<cc>]: the same measurement as [bl] over two different
               field widths, which is why the conditional form has a relocation
@@ -1428,7 +1954,6 @@ let triple = "aarch64-linux-gnu"
    ones, so which constant failed is the entire fact. *)
 type error_kind =
   [ Target_error.shared
-  | `Mov_reg_to_reg_out_of_scope
   | `Imm12_needs_shift
   | `Imm12_unshifted
   | `Imm12_needs_lsl12_form
@@ -1448,6 +1973,7 @@ type error_kind =
   | `Register_offset_shift_invalid of int
   | `Not_a_shifted_register of string
   | `Shift_amount_too_large
+  | `Bitfield_out_of_range
   | `Too_many_operands
   | `Not_bitmask_immediate of int64
   | `Not_fp_modified_immediate of float
@@ -1470,8 +1996,6 @@ type error = error_kind Target_error.t
 
 let pp_error_kind ppf : error_kind -> unit = function
   | #Target_error.shared as e -> Target_error.pp_shared ppf e
-  | `Mov_reg_to_reg_out_of_scope ->
-      Fmt.string ppf "mov between two general registers lowers to orr, which is not in M1 scope"
   | `Imm12_needs_shift ->
       Fmt.string ppf "immediate does not fit the unshifted 12-bit field; lsl #12 is M2"
   | `Imm12_unshifted -> Fmt.string ppf "immediate does not fit the unshifted 12-bit field"
@@ -1498,6 +2022,7 @@ let pp_error_kind ppf : error_kind -> unit = function
       Fmt.pf ppf "a register-offset shift amount must be 0 or the access width's own log2, not %d" n
   | `Not_a_shifted_register k -> Fmt.pf ppf "%s is not a shift of a register operand" k
   | `Shift_amount_too_large -> Fmt.string ppf "shift amount does not fit the register width"
+  | `Bitfield_out_of_range -> Fmt.string ppf "bitfield lsb/width does not fit the register width"
   | `Too_many_operands -> Fmt.string ppf "too many operands"
   | `Not_bitmask_immediate v -> Fmt.pf ppf "#%Ld is not an A64 bitmask immediate" v
   | `Not_fp_modified_immediate v -> Fmt.pf ppf "#%.18e is not an FMOV modified floating immediate" v
@@ -1569,12 +2094,27 @@ let lower_instruction state i =
   in
   match (i.Instruction.op, i.Instruction.ops) with
   (* [mov xD, sp] and [mov sp, xS] are [add ..., #0]; [mov] between two general
-     registers is [orr] with xzr, which no M1 fixture uses and which is
-     therefore rejected rather than guessed. *)
+     registers is [orr rd, xzr, rm] - real hardware's own expansion, now that
+     {!Lowered.Logical_shift} exists to carry it (M5 corpus evidence:
+     asm/docs/corpus.md's synthesized "mov between two general registers"
+     finding, e.g. [nsieve.c]). *)
   | Opcode.Mov, [ Operand.Reg rd; Operand.Reg rn ] ->
       if rd.Reg.is_sp || rn.Reg.is_sp then
         Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const 0L; shift12 = false } ]
-      else bad `Mov_reg_to_reg_out_of_scope
+      else
+        Ok
+          [
+            Lowered.Logical_shift
+              {
+                opc = 1;
+                n = false;
+                rd;
+                rn = { Reg.num = 31; width = rd.Reg.width; is_sp = false };
+                rm = rn;
+                shift = 0;
+                amount = 0;
+              };
+          ]
   | Opcode.Add, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
       match imm_of v with
       | Error e -> Error e
@@ -1604,6 +2144,110 @@ let lower_instruction state i =
           else if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
             bad `Movz_imm16_overflow
           else Ok [ Lowered.Movz { rd; imm16 = imm; hw = amount / 16 } ])
+  | Opcode.Movn, [ Operand.Reg rd; Operand.Imm v ] -> (
+      match imm_of v with
+      | Error e -> Error e
+      | Ok imm ->
+          if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then bad `Movz_imm16_overflow
+          else Ok [ Lowered.Movn { rd; imm16 = imm; hw = 0 } ])
+  | Opcode.Movn, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = "lsl"; amount } ]
+    -> (
+      match imm_of v with
+      | Error e -> Error e
+      | Ok imm ->
+          if amount mod 16 <> 0 || amount / 16 > 3 then bad `Movz_shift
+          else if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
+            bad `Movz_imm16_overflow
+          else Ok [ Lowered.Movn { rd; imm16 = imm; hw = amount / 16 } ])
+  | Opcode.Movk, [ Operand.Reg rd; Operand.Imm v ] -> (
+      match imm_of v with
+      | Error e -> Error e
+      | Ok imm ->
+          if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then bad `Movz_imm16_overflow
+          else Ok [ Lowered.Movk { rd; imm16 = imm; hw = 0 } ])
+  | Opcode.Movk, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = "lsl"; amount } ]
+    -> (
+      match imm_of v with
+      | Error e -> Error e
+      | Ok imm ->
+          if amount mod 16 <> 0 || amount / 16 > 3 then bad `Movz_shift
+          else if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
+            bad `Movz_imm16_overflow
+          else Ok [ Lowered.Movk { rd; imm16 = imm; hw = amount / 16 } ])
+  | Opcode.Msub, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Reg ra ] ->
+      Ok [ Lowered.Msub { rd; rn; rm; ra } ]
+  | Opcode.Udiv, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
+      Ok [ Lowered.Udiv { rd; rn; rm } ]
+  | Opcode.Lsl, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
+      Ok [ Lowered.Lslv { rd; rn; rm } ]
+  (* [ubfx]/[ubfiz]'s own lsb/width pair is the one GNU AArch64 immediate spelled without a
+     leading [#] in this corpus (every other immediate operand this target parses has one) - real
+     [as] accepts both spellings, but ccomp/gcc only ever emit the bare one, which the common
+     expression parser reads as [Operand.Sym (Expr.Const _)], not [Operand.Imm], so both shapes
+     have to be accepted here. *)
+  | ( Opcode.Ubfx,
+      [
+        Operand.Reg rd;
+        Operand.Reg rn;
+        (Operand.Imm lsb_v | Operand.Sym (Asm_core.Expr.Const lsb_v));
+        (Operand.Imm width_v | Operand.Sym (Asm_core.Expr.Const width_v));
+      ] ) -> (
+      match (imm_of lsb_v, imm_of width_v) with
+      | Error e, _ | _, Error e -> Error e
+      | Ok lsb64, Ok width64 ->
+          let datasize = rd.Reg.width in
+          let lsb = Int64.to_int lsb64 and width = Int64.to_int width64 in
+          if lsb < 0 || lsb >= datasize || width < 1 || lsb + width > datasize then
+            bad `Bitfield_out_of_range
+          else Ok [ Lowered.Ubfm { rd; rn; immr = lsb; imms = lsb + width - 1 } ])
+  | ( Opcode.Ubfiz,
+      [
+        Operand.Reg rd;
+        Operand.Reg rn;
+        (Operand.Imm lsb_v | Operand.Sym (Asm_core.Expr.Const lsb_v));
+        (Operand.Imm width_v | Operand.Sym (Asm_core.Expr.Const width_v));
+      ] ) -> (
+      match (imm_of lsb_v, imm_of width_v) with
+      | Error e, _ | _, Error e -> Error e
+      | Ok lsb64, Ok width64 ->
+          let datasize = rd.Reg.width in
+          let lsb = Int64.to_int lsb64 and width = Int64.to_int width64 in
+          if lsb < 0 || lsb >= datasize || width < 1 || lsb + width > datasize then
+            bad `Bitfield_out_of_range
+          else
+            Ok [ Lowered.Ubfm { rd; rn; immr = (datasize - lsb) mod datasize; imms = width - 1 } ])
+  | Opcode.Cset, [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Symbol s) ] -> (
+      match Cond.of_name s with
+      | Some cond -> Ok [ Lowered.Cset { cond; rd } ]
+      | None -> bad (`Unknown_condition s))
+  | ((Opcode.Cbz | Opcode.Cbnz) as op), [ Operand.Reg rt; Operand.Sym e ] ->
+      Ok
+        [
+          Lowered.Cbz
+            {
+              nz = op = Opcode.Cbnz;
+              rt;
+              target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None };
+            };
+        ]
+  | Opcode.Sxtw, [ Operand.Reg rd; Operand.Reg rn ] -> Ok [ Lowered.Sxtw { rd; rn } ]
+  (* [uxtw xd, wn] - real hardware's own "writing a W register zeroes the upper 32 bits of its X
+     view" rule means this assembles to the identical bits as [mov wd, wn] (verified against real
+     [as]/[objdump]), so it reuses {!Lowered.Logical_shift} rather than a dedicated constructor. *)
+  | Opcode.Uxtw, [ Operand.Reg rd; Operand.Reg rn ] ->
+      Ok
+        [
+          Lowered.Logical_shift
+            {
+              opc = 1;
+              n = false;
+              rd = { rd with Reg.width = 32 };
+              rn = { Reg.num = 31; width = 32; is_sp = false };
+              rm = { rn with Reg.width = 32 };
+              shift = 0;
+              amount = 0;
+            };
+        ]
   | Opcode.Stp, [ Operand.Reg rt; Operand.Reg rt2; Operand.Mem m ] -> (
       match m.Mem.offset with
       | Disp.Sym _ -> bad `Stp_symbolic_offset
@@ -1668,6 +2312,7 @@ let lower_instruction state i =
               | Some n -> bad (`Register_offset_shift_invalid n)))
   | Opcode.Ret, [ Operand.Reg rn ] -> Ok [ Lowered.Ret { rn } ]
   | Opcode.Ret, [] -> Ok [ Lowered.Ret { rn = Reg.x30 } ]
+  | Opcode.Br, [ Operand.Reg rn ] -> Ok [ Lowered.Br { rn } ]
   | Opcode.Sub, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
       match imm_of v with
       | Error e -> Error e
@@ -1757,12 +2402,44 @@ let lower_instruction state i =
               amount = 0;
             };
         ]
-  | ((Opcode.And | Opcode.Orr) as op), [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
+  | ( ((Opcode.And | Opcode.Orr | Opcode.Eor) as op),
+      [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] ) -> (
+      let opc = match op with Opcode.And -> 0 | Opcode.Orr -> 1 | _ -> 2 in
       match imm_of v with
       | Error e -> Error e
-      | Ok imm ->
-          if encode_bitmask ~datasize:rd.Reg.width imm = None then bad (`Not_bitmask_immediate imm)
-          else Ok [ Lowered.Logical_imm { opc = (if op = Opcode.And then 0 else 1); rd; rn; imm } ])
+      | Ok imm_raw ->
+          (* [decode_bitmask] only ever reconstructs a 32-bit datasize's value already reduced to
+             its low 32 bits (never a negative int64), so a literal spelled at its own width's
+             negative extreme (gcc's own [#-16777216] for a byte-mask, `aes.c`) has to be reduced
+             the identical way before the search - and before being stored, since the codec's own
+             field is that same reduced value - or it can never match any entry in the domain. *)
+          let imm = if rd.Reg.width = 32 then Int64.logand imm_raw 0xFFFFFFFFL else imm_raw in
+          if encode_bitmask ~datasize:rd.Reg.width imm = None then
+            bad (`Not_bitmask_immediate imm_raw)
+          else Ok [ Lowered.Logical_imm { opc; rd; rn; imm } ])
+  (* [and rd, rn, rm] / [eor rd, rn, rm[, shift]] / [orr rd, rn, rm[, shift]] / [bic rd, rn, rm] -
+     the register form of the same family, evidenced for [and] ([sha1.c]/[nsievebits.c]) and [eor]
+     ([aes.c]/[sha3.c]), for [orr] specifically as [mov]'s own [orr rd, xzr, rm, lsl #n]
+     shifted-register spelling (ccomp's own scaled-move idiom, e.g. [binarytrees.c]'s
+     [orr x1, xzr, x20, lsl #1]), and, with [N] = 1, [bic] ([sha3.c]). *)
+  | ( ((Opcode.And | Opcode.Eor | Opcode.Orr | Opcode.Bic) as op),
+      Operand.Reg rd :: Operand.Reg rn :: Operand.Reg rm :: rest ) -> (
+      let opc, n =
+        match op with
+        | Opcode.Bic -> (0, true)
+        | Opcode.And -> (0, false)
+        | Opcode.Orr -> (1, false)
+        | _ -> (2, false)
+      in
+      match rest with
+      | [] -> Ok [ Lowered.Logical_shift { opc; n; rd; rn; rm; shift = 0; amount = 0 } ]
+      | [ Operand.Shift { Shift.kind; amount } ] -> (
+          match shift_of_name kind with
+          | Some shift ->
+              if amount < 0 || amount >= rd.Reg.width then bad `Shift_amount_too_large
+              else Ok [ Lowered.Logical_shift { opc; n; rd; rn; rm; shift; amount } ]
+          | None -> bad (`Not_a_shifted_register kind))
+      | _ -> bad `Too_many_operands)
   | Opcode.Madd, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Reg ra ] ->
       Ok [ Lowered.Madd { rd; rn; rm; ra } ]
   | Opcode.Mul, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
@@ -1779,6 +2456,8 @@ let lower_instruction state i =
       | _ -> bad `Csel_needs_condition)
   | Opcode.Adrp, [ Operand.Reg rd; Operand.Sym e ] ->
       Ok [ Lowered.Adrp { rd; page = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
+  | Opcode.Adr, [ Operand.Reg rd; Operand.Sym e ] ->
+      Ok [ Lowered.Adr { rd; offset = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
   | Opcode.B, [ Operand.Sym e ] ->
       Ok [ Lowered.B { target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
   | Opcode.Bcond c, [ Operand.Sym e ] ->
@@ -1854,6 +2533,7 @@ let fixup_of_placement (p : fixup_kind C.placement) =
       | Pcrel_b26 | Pcrel_call26 -> Asm_core.Lowered_ast.Signed 26
       | Pcrel_b19 -> Asm_core.Lowered_ast.Signed 19
       | Adrp_page -> Asm_core.Lowered_ast.Signed 21
+      | Pcrel_adr21 -> Asm_core.Lowered_ast.Signed 21
       | Add_lo12 -> Asm_core.Lowered_ast.Unsigned 12
       | Ldst_lo12 _ -> Asm_core.Lowered_ast.Unsigned 12);
     value = Asm_core.Expr.Const (Bigint.of_int 0);
@@ -1868,9 +2548,11 @@ let fixup_of_placement (p : fixup_kind C.placement) =
 let expr_of_lowered : Lowered.t -> (string * Asm_core.Expr.t) list = function
   | Lowered.Bl { target = Asm_core.Lowered_ast.Symbolic { value; _ } }
   | Lowered.B { target = Asm_core.Lowered_ast.Symbolic { value; _ } }
-  | Lowered.Bcond { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
+  | Lowered.Bcond { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ }
+  | Lowered.Cbz { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
       [ ("target", value) ]
   | Lowered.Adrp { page = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } -> [ ("page", value) ]
+  | Lowered.Adr { offset = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } -> [ ("offset", value) ]
   (* The names are the codec placements', not descriptions: [form_of] pairs the
      two by name, and a mismatch does not fail - it silently produces an
      encoding with no fixup, which then binds to the placeholder. *)
@@ -1946,6 +2628,75 @@ let instruction_of_lowered ?(at = 0L) = function
             :: Operand.Imm (Bigint.of_int64 imm16)
             :: (if hw = 0 then [] else [ Operand.Shift { Shift.kind = "lsl"; amount = hw * 16 } ]);
         }
+  | Lowered.Movn { rd; imm16; hw } ->
+      Some
+        {
+          Instruction.op = Opcode.Movn;
+          ops =
+            Operand.Reg rd
+            :: Operand.Imm (Bigint.of_int64 imm16)
+            :: (if hw = 0 then [] else [ Operand.Shift { Shift.kind = "lsl"; amount = hw * 16 } ]);
+        }
+  | Lowered.Movk { rd; imm16; hw } ->
+      Some
+        {
+          Instruction.op = Opcode.Movk;
+          ops =
+            Operand.Reg rd
+            :: Operand.Imm (Bigint.of_int64 imm16)
+            :: (if hw = 0 then [] else [ Operand.Shift { Shift.kind = "lsl"; amount = hw * 16 } ]);
+        }
+  | Lowered.Msub { rd; rn; rm; ra } ->
+      Some
+        {
+          Instruction.op = Opcode.Msub;
+          ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Reg ra ];
+        }
+  | Lowered.Udiv { rd; rn; rm } ->
+      Some
+        { Instruction.op = Opcode.Udiv; ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] }
+  | Lowered.Lslv { rd; rn; rm } ->
+      Some { Instruction.op = Opcode.Lsl; ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] }
+  | Lowered.Cset { cond; rd } ->
+      Some
+        {
+          Instruction.op = Opcode.Cset;
+          ops = [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Symbol (Cond.name cond)) ];
+        }
+  | Lowered.Ubfm { rd; rn; immr; imms } -> (
+      match ubfm_alias_of ~datasize:rd.Reg.width ~immr ~imms with
+      | Ubfx (lsb, width) ->
+          Some
+            {
+              Instruction.op = Opcode.Ubfx;
+              ops =
+                [
+                  Operand.Reg rd;
+                  Operand.Reg rn;
+                  Operand.Imm (Bigint.of_int lsb);
+                  Operand.Imm (Bigint.of_int width);
+                ];
+            }
+      | Ubfiz (lsb, width) ->
+          Some
+            {
+              Instruction.op = Opcode.Ubfiz;
+              ops =
+                [
+                  Operand.Reg rd;
+                  Operand.Reg rn;
+                  Operand.Imm (Bigint.of_int lsb);
+                  Operand.Imm (Bigint.of_int width);
+                ];
+            })
+  | Lowered.Sxtw { rd; rn } ->
+      Some { Instruction.op = Opcode.Sxtw; ops = [ Operand.Reg rd; Operand.Reg rn ] }
+  | Lowered.Cbz { nz; rt; target } ->
+      Some
+        {
+          Instruction.op = (if nz then Opcode.Cbnz else Opcode.Cbz);
+          ops = [ Operand.Reg rt; branch_operand ~at target ];
+        }
   | Lowered.Ldst_uoff { size; load; rt; rn; offset } ->
       let op =
         match (size, load) with
@@ -1971,6 +2722,7 @@ let instruction_of_lowered ?(at = 0L) = function
           Instruction.op = Opcode.Ret;
           ops = (if rn.Reg.num = 30 && not rn.Reg.is_sp then [] else [ Operand.Reg rn ]);
         }
+  | Lowered.Br { rn } -> Some { Instruction.op = Opcode.Br; ops = [ Operand.Reg rn ] }
   | Lowered.Sub_imm { s; rd; rn; imm; shift12 } ->
       let tail = if shift12 then [ Operand.Shift { Shift.kind = "lsl"; amount = 12 } ] else [] in
       if s then
@@ -2023,17 +2775,52 @@ let instruction_of_lowered ?(at = 0L) = function
               ];
           }
   | Lowered.Logical_imm { opc; rd; rn; imm } -> (
-      (* [eor] and [ands] are opc 2 and 3; neither has a surface spelling here
-         yet, so they denormalize to nothing rather than to a mnemonic the
-         parser would reject. *)
+      (* [ands] is opc 3; it has no surface spelling here yet, so it
+         denormalizes to nothing rather than to a mnemonic the parser would
+         reject. *)
       match opc with
-      | 0 | 1 ->
+      | 0 | 1 | 2 ->
           Some
             {
-              Instruction.op = (if opc = 0 then Opcode.And else Opcode.Orr);
+              Instruction.op =
+                (match opc with 0 -> Opcode.And | 1 -> Opcode.Orr | _ -> Opcode.Eor);
               ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Imm (Bigint.of_int64 imm) ];
             }
       | _ -> None)
+  | Lowered.Logical_shift { opc; n; rd; rn; rm; shift; amount } -> (
+      if opc = 1 && (not n) && rn.Reg.num = 31 && (not rn.Reg.is_sp) && shift = 0 && amount = 0 then
+        Some { Instruction.op = Opcode.Mov; ops = [ Operand.Reg rd; Operand.Reg rm ] }
+      else
+        let tail =
+          if shift = 0 && amount = 0 then []
+          else [ Operand.Shift { Shift.kind = shift_name shift; amount } ]
+        in
+        match (opc, n) with
+        | 0, false ->
+            Some
+              {
+                Instruction.op = Opcode.And;
+                ops = Operand.Reg rd :: Operand.Reg rn :: Operand.Reg rm :: tail;
+              }
+        | 1, false ->
+            Some
+              {
+                Instruction.op = Opcode.Orr;
+                ops = Operand.Reg rd :: Operand.Reg rn :: Operand.Reg rm :: tail;
+              }
+        | 2, false ->
+            Some
+              {
+                Instruction.op = Opcode.Eor;
+                ops = Operand.Reg rd :: Operand.Reg rn :: Operand.Reg rm :: tail;
+              }
+        | 0, true ->
+            Some
+              {
+                Instruction.op = Opcode.Bic;
+                ops = Operand.Reg rd :: Operand.Reg rn :: Operand.Reg rm :: tail;
+              }
+        | _ -> None)
   | Lowered.Madd { rd; rn; rm; ra } ->
       if ra.Reg.num = 31 && not ra.Reg.is_sp then
         Some
@@ -2068,6 +2855,20 @@ let instruction_of_lowered ?(at = 0L) = function
       Some
         {
           Instruction.op = Opcode.Adrp;
+          ops = [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 abs)) ];
+        }
+  | Lowered.Adr { rd; offset } ->
+      (* Unlike [Adrp], the field already *is* the absolute-address delta, so
+         no page masking or scaling applies - just add it to the instruction's
+         own address, the same as any other PC-relative print. *)
+      let abs =
+        match offset with
+        | Asm_core.Lowered_ast.Resolved { value; _ } -> Int64.add at value
+        | Asm_core.Lowered_ast.Symbolic _ -> at
+      in
+      Some
+        {
+          Instruction.op = Opcode.Adr;
           ops = [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 abs)) ];
         }
   | Lowered.Udf { imm16 } ->
@@ -2118,6 +2919,7 @@ let evaluate_fixup kind ~place ~target =
   | Adrp_page ->
       let page a = Int64.logand a (Int64.lognot 0xFFFL) in
       Ok (Int64.shift_right (Int64.sub (page target) (page place)) 12)
+  | Pcrel_adr21 -> Ok (Int64.sub target place)
   | Add_lo12 -> Ok (Int64.logand target 0xFFFL)
   | Ldst_lo12 sz ->
       (* The field is the low 12 bits divided by the access width, so an

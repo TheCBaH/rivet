@@ -972,6 +972,18 @@
     [34 cost=0] fcmp-imm0-d      fcmp-imm0-d(){000 11110 01 1 00000001000 rn:5u 01000}
     [35 cost=0] fcmp-imm0-s      fcmp-imm0-s(){000 11110 00 1 00000001000 rn:5u 01000}
     [36 cost=0] addsub-extend    addsub-extend(){sf:1u op:1u s:1u 01011 00 1 rm option:3u imm3:3u rn rd}
+    [37 cost=0] movn             movn(){sf:1u 00100101 hw:2u imm16:16u rd}
+    [38 cost=0] cbz              cbz(){sf:1u 011010 op:1u <target:19@0 pcrel-b19> rt}
+    [39 cost=0] logical-shift    logical-shift(){sf:1u opc:2u 01010 shift:2u N:1u rm imm6:6u rn rd}
+    [41 cost=0] sxtw             sxtw(){100100110 1 000000 011111 rn rd}
+    [42 cost=0] msub             msub(){sf:1u 0011011000 rm 1 ra rn rd}
+    [43 cost=0] udiv             udiv(){sf:1u 0011010110 rm 000010 rn rd}
+    [44 cost=0] cset             cset(){sf:1u 0011010100 rm cond 01 rn rd}
+    [45 cost=0] movk             movk(){sf:1u 11100101 hw:2u imm16:16u rd}
+    [46 cost=0] lslv             lslv(){sf:1u 0011010110 rm 001000 rn rd}
+    [47 cost=0] ubfm             ubfm(){sf:1u 10100110 N:1u immr:6u imms:6u rn rd}
+    [48 cost=0] adr              adr(){0 <offset:2@0 pcrel-adr21> 10000 <offset:19@2 pcrel-adr21> rd}
+    [49 cost=0] br               br(){1101011000011111000000 rn 00000}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}

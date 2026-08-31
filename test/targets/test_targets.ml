@@ -71,7 +71,7 @@ let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
           rs1 = 0;
           imm = Asm_core.Expr.Const (Foundation.Bigint.of_int 42);
         };
-      Lowered.Pair { name = "call"; rd = 1; tmp = 1; target = zero; addi = false };
+      Lowered.Pair { name = "call"; rd = 1; tmp = 1; target = zero; kind = Jalr };
     ]
   in
   List.iter
@@ -2631,6 +2631,115 @@ let%expect_test "riscv64: %pcrel_hi/%pcrel_lo resolve a symbol named like a regi
   riscv_pcrel_register_name_collision "riscv64";
   [%expect {| accepted |}]
 
+(* M5 corpus evidence (asm/docs/corpus.md, assemble-c riscv32/riscv64): GAS
+   overloads sll/srl/sra(w) with a third register operand as the R-type
+   register-shift-amount form, and with a third immediate operand as an
+   alias for slli/srli/srai(w) - confirmed against real
+   riscv64-linux-gnu-as: `sll x5, x11, 2` decodes back as `slli t0, a1,
+   0x2`. Only `sll` with an immediate is corpus-evidenced (vmach.c/
+   siphash24.c), but the dispatch is shared by the whole family, so this
+   pins srl/sra(w) alongside it. *)
+let show_lowered target text =
+  let (module D : Target_intf.Target.DRIVER) = driver target in
+  match D.dump_lowered_ast ~unit_name:"t" ~source:(source text) with
+  | Ok dump -> print_string dump
+  | Error ds ->
+      List.iter
+        (fun d ->
+          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
+        (Foundation.Diag.diagnostics ds)
+
+let%expect_test "riscv32: sll/srl/sra with an immediate third operand alias slli/srli/srai" =
+  show_lowered "riscv32"
+    "\t.text\n\tsll x5, x11, 2\n\tsll x19, x13, x14\n\tsrl x6, x12, 3\n\tsra x7, x13, 4\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 93 92 25 00              [riscv32.slli]
+      bytes b3 99 e6 00              [riscv32.sll]
+      bytes 13 53 36 00              [riscv32.srli]
+      bytes 93 d3 46 40              [riscv32.srai] |}]
+
+let%expect_test "riscv64: sllw/srlw/sraw with an immediate third operand alias slliw/srliw/sraiw" =
+  show_lowered "riscv64" "\t.text\n\tsllw x5, x11, 2\n\tsrlw x6, x12, 3\n\tsraw x7, x13, 4\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 9b 92 25 00              [riscv64.slliw]
+      bytes 1b 53 36 00              [riscv64.srliw]
+      bytes 9b d3 46 40              [riscv64.sraiw] |}]
+
+(* M5 corpus evidence: knucleotide.c's unsigned-modulo idiom (`x % array_len`
+   where the operands are `size_t`) is RV32M/RV64M's own REMU, the one
+   division-family opcode this corpus evidences - DIV/DIVU/REM are left
+   unadded until a fixture needs them. Checked against real
+   riscv64-linux-gnu-as: `remu x11, x11, x12` -> `02c5f5b3`, the same R-type
+   shape `mul` already uses with funct7=1, funct3=7. *)
+let%expect_test "riscv32/riscv64: remu shares mul's R-type shape (funct3=7)" =
+  show_lowered "riscv32" "\t.text\n\tremu x11, x11, x12\n";
+  show_lowered "riscv64" "\t.text\n\tremu x11, x11, x12\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes b3 f5 c5 02              [riscv32.remu]
+    lowered t
+    section .text r-x align=1
+      bytes b3 f5 c5 02              [riscv64.remu] |}]
+
+(* M5 corpus evidence (siphash24.c on riscv64 only - RV32 has no 64-bit
+   literal-pool load): CompCert's own `ld rd, symbol` load-from-literal-pool
+   idiom is GAS's own pseudo-instruction, expanding to
+   `auipc rd, %pcrel_hi(symbol); ld rd, %pcrel_lo(...)(rd)` - the same
+   anchored hi/lo pairing `la`/`call` already share, with the second word an
+   opcode-0x03 load rather than addi/jalr. Checked against real
+   riscv64-linux-gnu-as/objdump: the placeholder auipc/ld bytes below match
+   `00000f97 000fbf83` byte-for-byte, and a real link at address 0
+   resolves them to `auipc t6,0x0` / `ld t6,16(t6)`. *)
+let%expect_test "riscv64: ld rd, symbol is GAS's own auipc+ld literal-pool pseudo" =
+  show_lowered "riscv64" "\t.text\n\tld x31, .L100\n.L100:\n\t.quad 0\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 97 0f 00 00 83 bf 0f 00  [riscv64.ld]
+        @0/4B pc+0 hi pcrel-hi20 b20 [12+20@0] = .L100 head(pair)
+        @4/4B pc+0 lo pcrel-lo12-i s12 [20+12@0] = .L100 tail(sibling:pair)
+      label .L100
+      bytes 00 00 00 00 00 00 00 00
+    local .L100 notype in .text |}]
+
+let%expect_test "riscv32: ld rd, symbol is rejected (ld itself needs XLEN=64)" =
+  attempt "riscv32" "\t.text\n\tld x31, .L100\n.L100:\n\t.quad 0\n";
+  [%expect {| riscv32.lower: ld is available only when XLEN is 64 |}]
+
+(* M5 corpus evidence (asm/docs/corpus.md's vmach.c/siphash24.c): a switch
+   statement's computed-goto jump table is `adr x16, .Ltable; add x16, x16,
+   wN, uxtw #2; br x16` - `adr` materializes the table's own address (a
+   byte-granular program-relative offset, unlike `adrp`'s page-shifted one)
+   and `br` makes the indirect jump. Both are the same
+   "unconditional branch (register)" word `ret` already uses, with a
+   different 3-bit `opc`. Checked against real aarch64-linux-gnu-as/objdump:
+   `br x16` -> `d61f0200`, and a resolved `adr x16, .L101` twelve bytes
+   ahead -> `10000070` (matching this test's own resolved fixup). *)
+let%expect_test "aarch64: adr materializes a jump-table base and br dispatches through it" =
+  show_lowered "aarch64" "\t.text\n\tadr x16, .L101\n\tbr x16\n.L101:\n\tb .L101\n\tb .L101\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 10 00 00 10              [aarch64.adr]
+        @0/4B pc+0 offset pcrel-adr21 s21 [29+2@0,5+19@2] = .L101
+      bytes 00 02 1f d6              [aarch64.br]
+      label .L101
+      bytes 00 00 00 14              [aarch64.b]
+        @0/4B pc+0 target pcrel-b26 s26 [0+26@0] = .L101
+      bytes 00 00 00 14              [aarch64.b]
+        @0/4B pc+0 target pcrel-b26 s26 [0+26@0] = .L101
+    local .L101 notype in .text |}]
+
 (* x86-only: ARM/AArch64/RISC-V are fixed-width and declare no relaxation
    ladder (contracts.md §5.5), so a cross-input forward-reference test does
    not generalize to them. This pins the short/long selection boundary
@@ -2916,4 +3025,128 @@ let%expect_test "stp/ldr/add/fmov with the [#] omitted, gcc's own spelling" =
     4000000c  00 10 6e 1e  fmov d0, #1.000000000000000000e+00  [aarch64.fmov-imm-d]
     40000010  01 10 6c 1e  fmov d1, #5.000000000000000000e-01  [aarch64.fmov-imm-d]
     40000014  c0 03 5f d6  ret                                 [aarch64.ret]
+    |}]
+
+(* {1 AArch64 [eor]/[and]/[orr]/[bic] (shifted register), and [mov] between two general registers}
+
+   [add]/[sub] already have their own shifted-register form ({!Addsub_shift}); the identical
+   shape's logical-family sibling ([eor]/[and]/[orr]/[bic], [Logical_shift]) was unimplemented,
+   including the one case classify-c-gcc's own synthesized "mov between two general registers
+   lowers to orr, which is not in M1 scope" finding named directly: real hardware's own expansion
+   is [orr rd, xzr, rm]. [bic] shares the identical word with [N] = 1 rather than a fourth codec
+   alt. Byte-for-byte checked against real aarch64-linux-gnu-as/objdump:
+     4a020020  eor w0, w1, w2
+     ca020020  eor x0, x1, x2
+     4a0d6085  eor w5, w4, w13, lsl #24
+     0a0e0045  and w5, w2, w14
+     aa0103e0  mov x0, x1        (orr x0, xzr, x1)
+     2a0103e0  mov w0, w1        (orr w0, wzr, w1)
+     aa1407e1  orr x1, xzr, x20, lsl #1  (not collapsed - mov carries no shift)
+     8a250063  bic x3, x3, x5 *)
+let%expect_test "eor/and/orr (shifted register), and mov between two general registers" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \teor w0, w1, w2\n\
+     \teor x0, x1, x2\n\
+     \teor w5, w4, w13, lsl #24\n\
+     \tand w5, w2, w14\n\
+     \tmov x0, x1\n\
+     \tmov w0, w1\n\
+     \torr x1, xzr, x20, lsl #1\n\
+     \tbic x3, x3, x5\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  20 00 02 4a  eor w0, w1, w2            [aarch64.logical-shift]
+    40000004  20 00 02 ca  eor x0, x1, x2            [aarch64.logical-shift]
+    40000008  85 60 0d 4a  eor w5, w4, w13, lsl #24  [aarch64.logical-shift]
+    4000000c  45 00 0e 0a  and w5, w2, w14           [aarch64.logical-shift]
+    40000010  e0 03 01 aa  mov x0, x1                [aarch64.logical-shift]
+    40000014  e0 03 01 2a  mov w0, w1                [aarch64.logical-shift]
+    40000018  e1 07 14 aa  orr x1, xzr, x20, lsl #1  [aarch64.logical-shift]
+    4000001c  63 00 25 8a  bic x3, x3, x5            [aarch64.logical-shift]
+    40000020  c0 03 5f d6  ret                       [aarch64.ret]
+    |}]
+
+(* {1 AArch64 [and]/[orr]/[eor] with a negative-extreme bitmask immediate}
+
+   Found while chasing [eor]/[bic]'s own fixes further into `aes.c`'s own byte-mask idioms: a
+   32-bit literal spelled at its own width's negative extreme (gcc's own [#-16777216] for a
+   0xff000000 byte mask) never matched any entry in the bitmask domain, because
+   [decode_bitmask]'s own 32-bit case always reconstructs a value already reduced to its low 32
+   bits (never a negative int64), and nothing reduced the literal itself the same way before the
+   search - the identical shape ARM's own `to_width_signed` fix (asm/docs/corpus.md) already
+   named for a different encoder. Byte-checked against real aarch64-linux-gnu-as/objdump:
+   `and w1, w4, #-16777216` -> `12081c81`; `and w2, w17, #16711680` (the positive spelling of the
+   same bit pattern, confirming the fix does not regress the case that already worked) ->
+   `12101e22`. *)
+let%expect_test "a 32-bit bitmask immediate spelled at its own width's negative extreme" =
+  disasm "aarch64"
+    "\t.text\n\t.globl f\nf:\n\tand w1, w4, #-16777216\n\tand w2, w17, #16711680\n\tret\n";
+  [%expect
+    {|
+    40000000  81 1c 08 12  and w1, w4, #4278190080  [aarch64.logical-imm-32]
+    40000004  22 1e 10 12  and w2, w17, #16711680   [aarch64.logical-imm-32]
+    40000008  c0 03 5f d6  ret                      [aarch64.ret]
+    |}]
+
+(* {1 AArch64 [movn]/[cbz]/[cbnz]/[sxtw]/[udiv]/[msub]/[cset]/[movk]/[lsl]/[ubfx]/[ubfiz]}
+
+   The rest of the M5 corpus's integer/control-flow slice (asm/docs/corpus.md), each its own
+   evidenced word shape:
+   - [movn] - {!Opcode.Movz}'s [opc] = 0 sibling.
+   - [cbz]/[cbnz] - compare-and-branch, a different 19-bit-immediate word from [b.<cc>].
+   - [sxtw xd, wn] - a fixed [SBFM xd, xn, #0, #31].
+   - [udiv] - unsigned divide; [msub] - {!Opcode.Madd}'s [o0] = 1 sibling.
+   - [cset rd, cc] - [csinc rd, zr, zr, invert(cc)].
+   - [movk] - the third MOVZ/MOVN/MOVK family member.
+   - [lsl rd, rn, rm] - LSLV, register-specified shift amount (distinct from the immediate-shift
+     form, unimplemented since unevidenced).
+   - [ubfx]/[ubfiz rd, rn, lsb, width] - the general UBFM word, evidenced with the bare (no [#])
+     GNU spelling ccomp/gcc always use for these two operands specifically.
+   Byte-for-byte checked against real aarch64-linux-gnu-as/objdump:
+     12800000  movn w0, #0
+     b4ffffc0  cbz x0, .
+     35ffffa1  cbnz w1, .
+     93407c60  sxtw x0, w3
+     1ac20820  udiv w0, w1, w2
+     1b028c20  msub w0, w1, w2, w3
+     1a9f17e0  cset w0, eq
+     72a000a0  movk w0, #5, lsl #16
+     1ac62115  lsl w21, w8, w6
+     53021001  ubfx w1, w0, 2, 3
+     53000c00  ubfiz w0, w0, 0, 4 *)
+let%expect_test "movn/cbz/cbnz/sxtw/udiv/msub/cset/movk/lsl/ubfx/ubfiz" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tmovn w0, #0\n\
+     \tcbz x0, f\n\
+     \tcbnz w1, f\n\
+     \tsxtw x0, w3\n\
+     \tudiv w0, w1, w2\n\
+     \tmsub w0, w1, w2, w3\n\
+     \tcset w0, eq\n\
+     \tmovk w0, #5, lsl #16\n\
+     \tlsl w21, w8, w6\n\
+     \tubfx w1, w0, 2, 3\n\
+     \tubfiz w0, w0, 0, 4\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  00 00 80 12  movn w0, #0           [aarch64.movn]
+    40000004  e0 ff ff b4  cbz x0, 1073741824    [aarch64.cbz]
+    40000008  c1 ff ff 35  cbnz w1, 1073741824   [aarch64.cbz]
+    4000000c  60 7c 40 93  sxtw x0, w3           [aarch64.sxtw]
+    40000010  20 08 c2 1a  udiv w0, w1, w2       [aarch64.udiv]
+    40000014  20 8c 02 1b  msub w0, w1, w2, w3   [aarch64.msub]
+    40000018  e0 17 9f 1a  cset w0, eq           [aarch64.cset]
+    4000001c  a0 00 a0 72  movk w0, #5, lsl #16  [aarch64.movk]
+    40000020  15 21 c6 1a  lsl w21, w8, w6       [aarch64.lslv]
+    40000024  01 10 02 53  ubfx w1, w0, #2, #3   [aarch64.ubfm]
+    40000028  00 0c 00 53  ubfx w0, w0, #0, #4   [aarch64.ubfm]
+    4000002c  c0 03 5f d6  ret                   [aarch64.ret]
     |}]

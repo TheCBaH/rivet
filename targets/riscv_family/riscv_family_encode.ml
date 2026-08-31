@@ -108,6 +108,7 @@ module Make (P : PROFILE) = struct
       | Or
       | And
       | Mul
+      | Remu
       | Addw
       | Subw
       | Sllw
@@ -175,6 +176,7 @@ module Make (P : PROFILE) = struct
       | Or -> "or"
       | And -> "and"
       | Mul -> "mul"
+      | Remu -> "remu"
       | Addw -> "addw"
       | Subw -> "subw"
       | Sllw -> "sllw"
@@ -243,6 +245,7 @@ module Make (P : PROFILE) = struct
         Or;
         And;
         Mul;
+        Remu;
         Addw;
         Subw;
         Sllw;
@@ -323,6 +326,13 @@ module Make (P : PROFILE) = struct
   end
 
   module Lowered = struct
+    (* The second instruction of an [auipc]-based pair: [Addi] for [la]/[lla]
+       (pic), [Jalr] for [call]/[tail], [Load funct3] for a load pseudo like
+       [ld rd, symbol] (GAS's own auipc+load expansion, confirmed against real
+       riscv64-linux-gnu-as: `ld t6, sym` decodes back as
+       `auipc t6, ...; ld t6, 0(t6)`). *)
+    type pair_kind = Addi | Jalr | Load of int
+
     type t =
       | R of {
           name : string;
@@ -347,7 +357,7 @@ module Make (P : PROFILE) = struct
       | B of { name : string; funct3 : int; rs1 : int; rs2 : int; target : Asm_core.Expr.t }
       | U of { name : string; opcode : int; rd : int; imm : Asm_core.Expr.t }
       | J of { rd : int; target : Asm_core.Expr.t }
-      | Pair of { name : string; rd : int; tmp : int; target : Asm_core.Expr.t; addi : bool }
+      | Pair of { name : string; rd : int; tmp : int; target : Asm_core.Expr.t; kind : pair_kind }
       | Fixed of { name : string; word : int64 }
 
     let pp_expr ppf e = Asm_core.Expr.pp ppf e
@@ -499,12 +509,22 @@ module Make (P : PROFILE) = struct
     | Or -> Some (0x33, 6, 0x00)
     | And -> Some (0x33, 7, 0x00)
     | Mul -> Some (0x33, 0, 0x01)
+    | Remu -> Some (0x33, 7, 0x01)
     | Addw -> Some (0x3b, 0, 0x00)
     | Subw -> Some (0x3b, 0, 0x20)
     | Sllw -> Some (0x3b, 1, 0x00)
     | Srlw -> Some (0x3b, 5, 0x00)
     | Sraw -> Some (0x3b, 5, 0x20)
     | Mulw -> Some (0x3b, 0, 0x01)
+    | _ -> None
+
+  let shift_i_alias = function
+    | Opcode.Sll -> Some Opcode.Slli
+    | Srl -> Some Srli
+    | Sra -> Some Srai
+    | Sllw -> Some Slliw
+    | Srlw -> Some Srliw
+    | Sraw -> Some Sraiw
     | _ -> None
 
   let i_desc = function
@@ -560,6 +580,33 @@ module Make (P : PROFILE) = struct
         match (xreg a, xreg b, xreg c, r_desc op) with
         | Some rd, Some rs1, Some rs2, Some (opcode, funct3, funct7) ->
             Ok [ Lowered.R { name = opn; opcode; funct3; funct7; rd; rs1; rs2 } ]
+        | Some rd, Some rs1, None, _ -> (
+            (* GAS overloads sll/srl/sra(w) with a third register-typed operand
+               as the R-type register-shift-amount form above, and with a third
+               immediate-typed operand as an alias for the corresponding
+               slli/srli/srai(w) form - confirmed against real
+               riscv64-linux-gnu-as: `sll x5, x11, 2` decodes back as
+               `slli t0, a1, 0x2`. *)
+            match (shift_i_alias op, expr_of c) with
+            | Some ialias, Some imm -> (
+                match i_desc ialias with
+                | Some (opcode, funct3, funct_hi, shamt) ->
+                    Ok
+                      [
+                        Lowered.I
+                          {
+                            name = Opcode.name ialias;
+                            opcode;
+                            funct3;
+                            funct_hi;
+                            shamt_bits = shamt;
+                            rd;
+                            rs1;
+                            imm;
+                          };
+                      ]
+                | None -> wrong opn)
+            | _ -> wrong opn)
         | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (i_desc op) -> (
         match (xreg a, xreg b, expr_of c, i_desc op) with
@@ -586,6 +633,19 @@ module Make (P : PROFILE) = struct
                     imm = m.offset;
                   };
               ]
+        | _ -> wrong opn)
+    | Opcode.Ld, [ a; (Operand.Sym _ as target) ] -> (
+        (* GAS's own `ld rd, symbol` pseudo, a literal-pool load: auipc rd,
+           %pcrel_hi(symbol); ld rd, %pcrel_lo(...)(rd) - the same anchored
+           hi/lo pairing `la`/`call` already use, with the second word an
+           opcode-0x03 load rather than addi/jalr. Confirmed against real
+           riscv64-linux-gnu-as. Scoped to `ld` alone since that is the only
+           load pseudo this corpus evidences (a 64-bit constant pulled from a
+           `.rodata.cst8` literal, CompCert's own float/double materialization
+           idiom on riscv64). *)
+        match (xreg a, expr_of target, load_desc Opcode.Ld) with
+        | Some rd, Some target, Some funct3 ->
+            Ok [ Lowered.Pair { name = opn; rd; tmp = rd; target; kind = Load funct3 } ]
         | _ -> wrong opn)
     | op, [ a; Operand.Mem m ] when Option.is_some (store_desc op) -> (
         match (xreg a, Reg.x m.base, store_desc op) with
@@ -712,14 +772,14 @@ module Make (P : PROFILE) = struct
                     rd = (if i.op = Call then 1 else 0);
                     tmp = (if i.op = Call then 1 else 6);
                     target;
-                    addi = false;
+                    kind = Jalr;
                   };
               ]
         | None -> wrong opn)
     | ((Opcode.La | Lla) as op), [ a; target ] -> (
         match (xreg a, expr_of target) with
         | Some rd, Some target when op = Lla || state.pic ->
-            Ok [ Lowered.Pair { name = opn; rd; tmp = rd; target; addi = true } ]
+            Ok [ Lowered.Pair { name = opn; rd; tmp = rd; target; kind = Addi } ]
         | Some rd, Some target ->
             (* In non-PIC state GAS's [la] is the absolute LUI/ADDI pair.
                Keeping this decision in lowering makes source-ordered option
@@ -1017,12 +1077,15 @@ module Make (P : PROFILE) = struct
             | Asm_core.Expr.Modifier (m, _) -> bad_encode (`Bad_modifier m)
             | _ -> bad_encode (`Immediate_range x.name)))
     | Pair x ->
-        let hiword = word_u ~opcode:0x17 ~rd:x.tmp 0L in
-        let lowword =
-          word_i ~opcode:(if x.addi then 0x13 else 0x67) ~funct3:0 ~rd:x.rd ~rs1:x.tmp 0L
+        let lo_opcode, lo_funct3 =
+          match x.kind with Addi -> (0x13, 0) | Jalr -> (0x67, 0) | Load funct3 -> (0x03, funct3)
         in
+        let hiword = word_u ~opcode:0x17 ~rd:x.tmp 0L in
+        let lowword = word_i ~opcode:lo_opcode ~funct3:lo_funct3 ~rd:x.rd ~rs1:x.tmp 0L in
         let hi_kind, lo_kind =
-          if x.addi then (Pcrel_hi20, Pcrel_lo12_i) else (Call_hi20, Call_lo12_i)
+          match x.kind with
+          | Addi | Load _ -> (Pcrel_hi20, Pcrel_lo12_i)
+          | Jalr -> (Call_hi20, Call_lo12_i)
         in
         let hi =
           mk_fixup ~kind:hi_kind ~name:"hi" ~slices:u_slices ~byte_offset:0 ~container:4
@@ -1072,6 +1135,7 @@ module Make (P : PROFILE) = struct
     | 0x33, 6, 0 -> Some "or"
     | 0x33, 7, 0 -> Some "and"
     | 0x33, 0, 1 -> Some "mul"
+    | 0x33, 7, 1 -> Some "remu"
     | 0x3b, 0, 0 -> Some "addw"
     | 0x3b, 0, 0x20 -> Some "subw"
     | 0x3b, 1, 0 -> Some "sllw"
@@ -1242,6 +1306,7 @@ module Make (P : PROFILE) = struct
       let high_opcode = Int64.to_int (bits high 0 7) in
       let tmp = Int64.to_int (bits high 7 5) in
       let low_opcode = Int64.to_int (bits low 0 7) in
+      let low_funct3 = Int64.to_int (bits low 12 3) in
       let rd = Int64.to_int (bits low 7 5) in
       let rs1 = Int64.to_int (bits low 15 5) in
       let high_imm = sign_extend 20 (bits high 12 20) in
@@ -1252,11 +1317,13 @@ module Make (P : PROFILE) = struct
           Asm_core.Expr.Const (Bigint.of_int64 (Int64.add (Int64.shift_left high_imm 12) low_imm))
         in
         match low_opcode with
-        | 0x13 -> Some (Lowered.Pair { name = "la"; rd; tmp; target; addi = true })
+        | 0x13 -> Some (Lowered.Pair { name = "la"; rd; tmp; target; kind = Addi })
         | 0x67 when rd = 1 && tmp = 1 ->
-            Some (Lowered.Pair { name = "call"; rd; tmp; target; addi = false })
+            Some (Lowered.Pair { name = "call"; rd; tmp; target; kind = Jalr })
         | 0x67 when rd = 0 && tmp = 6 ->
-            Some (Lowered.Pair { name = "tail"; rd; tmp; target; addi = false })
+            Some (Lowered.Pair { name = "tail"; rd; tmp; target; kind = Jalr })
+        | 0x03 when rd = tmp && low_funct3 = 3 ->
+            Some (Lowered.Pair { name = "ld"; rd; tmp; target; kind = Load low_funct3 })
         | _ -> None
     in
     C.choice ~name:P.name
