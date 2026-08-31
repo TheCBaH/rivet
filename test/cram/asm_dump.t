@@ -208,6 +208,9 @@
     [50 cost=0] fldl             fldl(){prefixes 11011101 modrm}
     [51 cost=0] fstpl            fstpl(){prefixes 11011101 modrm}
     [52 cost=0] fstps            fstps(){prefixes 11011001 modrm}
+    [53 cost=0] shld-imm-rm      shld-imm-rm(){prefixes 0000111110100100 modrm imm8:8u}
+    [54 cost=0] flds             flds(){prefixes 11011001 modrm}
+    [55 cost=0] fucomp           fucomp(){1101110111101001}
   prefixes(){no-asz opsz no-rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
@@ -222,7 +225,7 @@
   imm(){imm:8s}
   imm-sym32(){le32}
   disp-sym(){le32}
-  alu-rm-r-op[8]{opcode:8u}
+  alu-rm-r-op[9]{opcode:8u}
   le32(){<target:32@0 pcrel32-call>}
   cc[16]{cc:4u}
   alu-r-rm-op[3]{opcode:8u}
@@ -445,6 +448,9 @@
     [50 cost=0] fldl             fldl(){prefixes 11011101 modrm}
     [51 cost=0] fstpl            fstpl(){prefixes 11011101 modrm}
     [52 cost=0] fstps            fstps(){prefixes 11011001 modrm}
+    [53 cost=0] shld-imm-rm      shld-imm-rm(){prefixes 0000111110100100 modrm imm8:8u}
+    [54 cost=0] flds             flds(){prefixes 11011001 modrm}
+    [55 cost=0] fucomp           fucomp(){1101110111101001}
   prefixes(){asz opsz rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
@@ -458,7 +464,7 @@
     [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-sym}
   imm(){imm:8s}
   imm-sym32(){le32}
-  alu-rm-r-op[8]{opcode:8u}
+  alu-rm-r-op[9]{opcode:8u}
   le32(){<target:32@0 pcrel32-call>}
   cc[16]{cc:4u}
   alu-r-rm-op[3]{opcode:8u}

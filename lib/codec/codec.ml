@@ -388,13 +388,28 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
               | Failed e -> go (match first_error with None -> Some e | some -> some) rest)
       in
       go None ordered
-  | Relax { name; rungs } ->
+  | Relax { name = _; rungs } ->
       (* Single-result encoding of a ladder is the fallback for a caller that
          expressed no preference: shortest first, first success. It is *not* how
          a pinned or resolved operand picks its form - that is [encode_rung],
-         which selects explicitly instead of relying on arriving first. *)
+         which selects explicitly instead of relying on arriving first.
+
+         [first_error = None] at the end means every rung [Declined] - none of
+         them even recognized the value's shape, exactly the [Iso_fun]
+         "this value is not this form" case [Alt] already distinguishes from a
+         genuine range failure - so the whole ladder must decline too, not
+         report [`No_rung]. Without this, a [Relax] node reached by a value
+         that was never a candidate for it at all (M5, asm/docs/corpus.md: any
+         non-jmp instruction reaching the top-level [Alt]'s [jmp-rel]
+         alternative) manufactures a spurious [Failed (`No_rung "jmp")] that
+         [Alt]'s own scan then remembers as [first_error] and a later, real
+         match can only override on success - so an instruction that truly has
+         no encoding anywhere reports "relax jmp: no rung applies" regardless
+         of which alternative and value actually failed. [`No_rung] now fires
+         only when at least one rung's shape matched but genuinely failed to
+         fit - the one case a decline could never explain. *)
       let rec go first_error = function
-        | [] -> ( match first_error with Some e -> Failed e | None -> Failed (`No_rung name))
+        | [] -> ( match first_error with Some e -> Failed e | None -> Declined)
         | r :: rest -> (
             match attempt r.rung_body v with
             | Encoded e -> Encoded { e with form = r.rung_label :: e.form }

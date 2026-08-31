@@ -270,6 +270,23 @@ let%expect_test "a pin fails two different ways, and says which" =
       rel8     1000  [codec.rung-inapplicable] encode_rung: rung rel8 does not apply to this value; {rel16} do
       rel99    1000  [codec.unknown-rung] encode_rung: no rung is named rel99; this description declares {rel16, rel8} |}]
 
+let%expect_test "a ladder's universal decline does not mask a sibling's real failure" =
+  let enc v = Fmt.pr "%-12s %a@." (show_relaxed v) pp_encode_result (encode relaxed_isa v) in
+  (* The ladder still applies normally when it is the right shape. *)
+  enc (RBr 4L);
+  (* The unrelated alternative applies normally when its own value fits. *)
+  enc (RFixed 100L);
+  (* Every rung of the ladder declines [RFixed] (wrong shape entirely) before
+     [fixed] is even tried; the ladder as a whole must decline too, so
+     [fixed]'s own real, later [Field_does_not_fit] is what gets reported -
+     not a phantom [`No_rung "jmp"] from the ladder locking in first. *)
+  enc (RFixed 1000L);
+  [%expect
+    {|
+    RBr 4        1110101100000100  eb 04  form=jmp.short   fixup target:rel12 8+8@0
+    RFixed 100   01100100  64     form=fixed
+    RFixed 1000  ERROR field imm: 1000 does not fit 8 bits signed |}]
+
 let%expect_test "a decoded encoding reports its rung" =
   (* Which is only recoverable because the rungs have distinct fixed bits. If
      they overlapped, the first would always match and canonical disassembly

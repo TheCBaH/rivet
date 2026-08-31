@@ -1308,6 +1308,38 @@ let%expect_test "the two-operand imul $imm,reg form (0x69/0x6B, short-immediate-
     4000000a  c3                 ret                 [x86_64.ret]
     |}]
 
+(* An ALU-immediate/imul-immediate/push-immediate literal spelled as the
+   unsigned-looking hex form of a negative value at its own operand width
+   (M5, asm/docs/corpus.md - [vararg.S]'s real `andl $0xfffffffc,%edx`, GAS's
+   own idiom for a 4-byte-alignment mask): the parsed literal (4294967292)
+   must be reduced modulo the operand's width and reinterpreted as signed
+   before any rung's range check runs, and that *reduced* value - not the
+   raw one - is what has to reach the trailing field, since the imm8 rung's
+   field independently re-validates whatever value it is given. Checked
+   against real i686-linux-gnu-as/objdump: `andl $0xfffffffc,%edx` -> `83 e2
+   fc`, `imull $0xfffffff9,%ecx` -> `6b c9 f9`, `pushl $0xfffffffc` -> `6a
+   fc` - all three pick the short imm8 form, byte-identical to the decimal
+   spelling of the same bit pattern (`andl $-4,%edx`, unchanged, confirms
+   the fix is additive). *)
+let%expect_test "a width-full hex immediate reduces to its signed value before any rung is picked" =
+  disasm "x86_32"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tandl $0xfffffffc, %edx\n\
+     \tandl $-4, %edx\n\
+     \timull $0xfffffff9, %ecx\n\
+     \tpushl $0xfffffffc\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  83 e2 fc  andl $-4, %edx   [x86_32.alu-rm-imm8.opsz-absent.reg]
+    40000003  83 e2 fc  andl $-4, %edx   [x86_32.alu-rm-imm8.opsz-absent.reg]
+    40000006  6b c9 f9  imull $-7, %ecx  [x86_32.imul-r-rm-imm8.opsz-absent.reg]
+    40000009  6a fc     push $-4         [x86_32.push-imm8]
+    4000000b  c3        ret              [x86_32.ret]
+    |}]
+
 let%expect_test "TEST's own immediate form (0xF7 /0 id, always full-width, no imm8 alternative)" =
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\ttestl $1, %edi\n\tret\n";
   [%expect
@@ -1741,6 +1773,77 @@ let%expect_test "fldl/fstpl/fstps read/write a double/single memory operand" =
     40000004  dd 5c 24 18  fstpl 24(%esp)  [x86_32.fstpl.opsz-absent.sib-disp8]
     40000008  d9 5c 24 34  fstps 52(%esp)  [x86_32.fstps.opsz-absent.sib-disp8]
     4000000c  c3           ret             [x86_32.ret]
+    |}]
+
+(* [shldl $imm8,%src,%dst] (M5, asm/docs/corpus.md - sha3.c/siphash24.c's
+   64-bit-rotate idiom built from two 32-bit halves): SHLD's own immediate-
+   count double-precision shift, [0F A4 /r ib]. AT&T reverses Intel's [SHLD
+   r/m32, r32, imm8] order, putting the count first and the r/m destination
+   last; the ModR/M reg field carries the bit-supplying source register, not
+   an extension code, so both register operands print (unlike group-2's
+   [shr]/[sar], whose reg field is only ever an operation code). Checked
+   against real i686-linux-gnu-as/objdump: `shldl $6, %ecx, %eax` -> `0f a4
+   c8 06`, decoding back with no size suffix, exactly [ror $27, %eax]'s
+   register-operand precedent above. *)
+let%expect_test "shldl reads a register source and an immediate count" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tshldl $6, %ecx, %eax\n\tshldl $16, %esi, %ecx\n\tret\n";
+  [%expect
+    {|
+    40000000  0f a4 c8 06  shld $6, %ecx, %eax   [x86_32.shld-imm-rm.opsz-absent.reg]
+    40000004  0f a4 f1 10  shld $16, %esi, %ecx  [x86_32.shld-imm-rm.opsz-absent.reg]
+    40000008  c3           ret                   [x86_32.ret]
+    |}]
+
+(* [adcl %reg,%reg] (M5, asm/docs/corpus.md - siphash24.c's carry-propagation
+   half of its 64-bit add): the same [Alu_rm_r] rm<-reg direction [Add]/
+   [Xor]/... already had, just a missing table entry - [Adc]'s own [0x11 /r]
+   was absent from both {!Opcode.to_rm_r} and the reg-reg lowering match that
+   feeds it, even though its mirror direction ([adcl mem,%reg], opcode
+   [0x13]) was already present. Checked against real i686-linux-gnu-as:
+   `adcl %ecx, %edx` -> `11 ca`. *)
+let%expect_test "adcl reads a register source (the rm<-reg direction)" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tadcl %ecx, %edx\n\tret\n";
+  [%expect
+    {|
+    40000000  11 ca  adc %ecx, %edx  [x86_32.alu-rm-r.opsz-absent.reg]
+    40000002  c3     ret             [x86_32.ret]
+    |}]
+
+(* [flds] - x87 single-precision *load*, [fstps]'s missing load counterpart
+   (M5, asm/docs/corpus.md - i64_dtou.S/i64_stof.S/i64_utof.S's own
+   float<->int conversion helpers). Same opcode byte as [fstps] ([0xD9]),
+   distinguished only by the ModR/M-reg extension (0 here, 3 there) - the
+   identical shared-opcode-disjoint-extension shape {!Fldl}/{!Fstpl} already
+   use on [0xDD]. `flds LC1` is a bare-symbol source, the same duality
+   [lea]/[movsd]/[xorpd] already read through [mem_of_symbol]; unlike those
+   three, [fldl]/[fstpl]/[fstps] never needed it (every recurrence of those
+   three in this corpus is `disp(%esp)`), so only [Flds] carries the extra
+   lowering arm. Checked against real i686-linux-gnu-as/objdump: `flds
+   4(%esp)` -> `d9 44 24 04`; `flds LC1` -> `d9 05 <disp32>` with an
+   `R_386_32` relocation. *)
+let%expect_test "flds reads a double/single memory operand and a bare symbol" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tflds 4(%esp)\n\tflds f\n\tret\n";
+  [%expect
+    {|
+    40000000  d9 44 24 04        flds 4(%esp)     [x86_32.flds.opsz-absent.sib-disp8]
+    40000004  d9 05 00 00 00 40  flds 1073741824  [x86_32.flds.opsz-absent.disp32-norm]
+    4000000a  c3                 ret              [x86_32.ret]
+    |}]
+
+(* [fucomp] - bare, no operand (M5, asm/docs/corpus.md - i64_dtou.S's own compare-and-pop,
+   x87's last remaining gap in this corpus after [fldl]/[fstpl]/[fstps]/[flds] above). GAS's
+   own no-operand spelling of [fucomp %st(1)]: a fixed [0xDD 0xE9] word, no ModR/M at all - the
+   same shape [ret]/[ud2] already use, just a different opcode pair; like those two, the
+   [Instruction.t] this decodes back to carries no operand list, so the canonical dump prints
+   the bare mnemonic (real objdump prints the implicit `%st(1)` back, but nothing here compares
+   decoded text against real objdump text - only encoded bytes are compared against real `as`).
+   Checked against real i686-linux-gnu-as/objdump: `fucomp` -> `dd e9`. *)
+let%expect_test "fucomp is a bare, fixed-encoding compare-and-pop" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tfucomp\n\tret\n";
+  [%expect
+    {|
+    40000000  dd e9  fucomp  [x86_32.fucomp]
+    40000002  c3     ret     [x86_32.ret]
     |}]
 
 (* %st(n) - the x87 stack-relative register (M5 corpus evidence:

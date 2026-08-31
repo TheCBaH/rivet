@@ -213,6 +213,53 @@ let checked_ladder : (branch, fixup_kind) t =
       rung ~label:"rel16" br_near;
     ]
 
+(* {1 A ladder beside an unrelated, genuinely-failing alternative}
+
+   Modelled on x86's real shape - a top-level [Alt] whose [jmp-rel] arm is
+   itself a [Relax] node, each of whose *rungs* carries its own projecting
+   [Iso_fun] (there is no single projection wrapping the whole ladder;
+   asm/docs/corpus.md, x86_family_encode.ml's [jmp_rung]) - beside another
+   arm whose value can genuinely fail a range check.
+
+   This is what [attempt]'s [Relax] case has to get right: every rung of
+   [RFixed]'s completely wrong-shaped value declining must produce a plain
+   [Declined] for the whole ladder, not a manufactured [`No_rung]. Before
+   that fix, the manufactured failure was recorded as the enclosing [Alt]'s
+   [first_error] and permanently hid [fixed]'s own real,
+   later [Field_does_not_fit] - the same masking gcc's `andl
+   $0xfffffffc,%edx` (M5, asm/docs/corpus.md) hit for real, reported as
+   `x86.encode: relax jmp: no rung applies` regardless of which alternative
+   and value actually failed. *)
+type relaxed = RBr of int64 | RFixed of int64
+
+let show_relaxed = function RBr d -> Printf.sprintf "RBr %Ld" d | RFixed v -> Printf.sprintf "RFixed %Ld" v
+
+let relaxed_ladder : (relaxed, fixup_kind) t =
+  relax ~name:"jmp"
+    [
+      rung ~label:"short"
+        (iso_fun ~name:"jmp.short"
+           ~encode:(function RBr d -> Some ((), d) | RFixed _ -> None)
+           ~decode:(fun ((), d) -> Some (RBr d))
+           (const ~width:8 0b1110_1011L ** fixup ~width:8 ~kind:Rel12 "target"));
+      rung ~label:"near"
+        (iso_fun ~name:"jmp.near"
+           ~encode:(function RBr d -> Some ((), d) | RFixed _ -> None)
+           ~decode:(fun ((), d) -> Some (RBr d))
+           (const ~width:8 0b1110_1001L ** fixup ~width:16 ~kind:Rel12 "target"));
+    ]
+
+let relaxed_isa : (relaxed, fixup_kind) t =
+  choice ~name:"relaxed"
+    [
+      alt ~label:"jmp" ~priority:0 relaxed_ladder;
+      alt ~label:"fixed" ~priority:1
+        (iso_fun ~name:"fixed"
+           ~encode:(function RFixed v -> Some v | RBr _ -> None)
+           ~decode:(fun v -> Some (RFixed v))
+           (field ~signedness:Signed ~width:8 "imm"));
+    ]
+
 (* The same ladder, buried the way a real one is.
 
    [ladder] above is the top-level node, which is the one shape where finding

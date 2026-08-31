@@ -59,7 +59,7 @@ CompCert's runtime library, per target.
   >   done
   > done
   x86_32   i64_dtos      error[x86.simplify]: unknown instruction fnstcw
-  x86_32   i64_dtou      error[x86.simplify]: unknown instruction flds
+  x86_32   i64_dtou      error[x86.simplify]: unknown instruction fnstsw
   x86_32   i64_sar       error[x86.simplify]: 8-bit operands are not in M1 scope
   x86_32   i64_sdiv     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   x86_32   i64_shl       error[x86.simplify]: 8-bit operands are not in M1 scope
@@ -71,10 +71,10 @@ CompCert's runtime library, per target.
   x86_32   i64_udiv     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   x86_32   i64_udivmod  assembles
   x86_32   i64_umod     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
-  x86_32   i64_umulh    <synthesized by x86_32>: error[x86.lower]: no adc form takes these operands
+  x86_32   i64_umulh    assembles
   x86_32   i64_utod      error[x86.simplify]: unknown instruction fildll
   x86_32   i64_utof      error[x86.simplify]: unknown instruction fildll
-  x86_32   vararg       <synthesized by x86_32>: error[x86.encode]: relax jmp: no rung applies
+  x86_32   vararg       assembles
   x86_64   i64_dtou      error[x86.simplify]: unknown instruction ucomisd
   x86_64   i64_utod      error[x86.simplify]: unknown instruction pxor
   x86_64   i64_utof      error[x86.simplify]: unknown instruction pxor
@@ -104,7 +104,7 @@ what M2 moves, and prose cannot regress.
   $ { for t in x86_32 x86_64 arm aarch64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-        5 assembles
+        7 assembles
         4 <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4  error[x86.simplify]: unknown instruction fildll
         4  error[x86.simplify]: 8-bit operands are not in M1 scope
@@ -115,11 +115,9 @@ what M2 moves, and prose cannot regress.
         2  error[arm.simplify]: unknown instruction vmla.f64
         2  error[arm.simplify]: unknown instruction umull
         2  error[arm.simplify]: unknown instruction rsb
-        1 <synthesized by x86_32>: error[x86.lower]: no adc form takes these operands
-        1 <synthesized by x86_32>: error[x86.encode]: relax jmp: no rung applies
         1  error[x86.simplify]: unknown instruction ucomisd
+        1  error[x86.simplify]: unknown instruction fnstsw
         1  error[x86.simplify]: unknown instruction fnstcw
-        1  error[x86.simplify]: unknown instruction flds
         1  error[x86.simplify]: cmov takes two register operands in M2
         1  error[lex]: unexpected character '<'
         1  error[arm.simplify]: unknown instruction rsbs
