@@ -984,6 +984,40 @@
     [47 cost=0] ubfm             ubfm(){sf:1u 10100110 N:1u immr:6u imms:6u rn rd}
     [48 cost=0] adr              adr(){0 <offset:2@0 pcrel-adr21> 10000 <offset:19@2 pcrel-adr21> rd}
     [49 cost=0] br               br(){1101011000011111000000 rn 00000}
+    [50 cost=0] fcmp-reg-d       fcmp-reg-d(){000 11110 01 1 rm:5u 00 1000 rn:5u 00000}
+    [51 cost=0] fcmp-reg-s       fcmp-reg-s(){000 11110 00 1 rm:5u 00 1000 rn:5u 00000}
+    [52 cost=0] fmul-d           fbinop-fmul-d(){000 11110 01 1 rm:5u 0000 10 rn:5u rd:5u}
+    [53 cost=0] fmul-s           fbinop-fmul-s(){000 11110 00 1 rm:5u 0000 10 rn:5u rd:5u}
+    [54 cost=0] fdiv-d           fbinop-fdiv-d(){000 11110 01 1 rm:5u 0001 10 rn:5u rd:5u}
+    [55 cost=0] fdiv-s           fbinop-fdiv-s(){000 11110 00 1 rm:5u 0001 10 rn:5u rd:5u}
+    [56 cost=0] fadd-d           fbinop-fadd-d(){000 11110 01 1 rm:5u 0010 10 rn:5u rd:5u}
+    [57 cost=0] fadd-s           fbinop-fadd-s(){000 11110 00 1 rm:5u 0010 10 rn:5u rd:5u}
+    [58 cost=0] fsub-d           fbinop-fsub-d(){000 11110 01 1 rm:5u 0011 10 rn:5u rd:5u}
+    [59 cost=0] fsub-s           fbinop-fsub-s(){000 11110 00 1 rm:5u 0011 10 rn:5u rd:5u}
+    [60 cost=0] fcsel-d          fcsel-d(){000 11110 01 1 rm:5u cond 11 rn:5u rd:5u}
+    [61 cost=0] fcsel-s          fcsel-s(){000 11110 00 1 rm:5u cond 11 rn:5u rd:5u}
+    [62 cost=0] scvtf-d          cvtf-s-d(){sf:1u 0011110 01 100010000000 rn:5u rd:5u}
+    [63 cost=0] scvtf-s          cvtf-s-s(){sf:1u 0011110 00 100010000000 rn:5u rd:5u}
+    [64 cost=0] ucvtf-d          cvtf-u-d(){sf:1u 0011110 01 100011000000 rn:5u rd:5u}
+    [65 cost=0] ucvtf-s          cvtf-u-s(){sf:1u 0011110 00 100011000000 rn:5u rd:5u}
+    [66 cost=0] fmov-from-gpr-d  fmov-from-gpr-d(){sf:1u 0011110 01 100111000000 rn:5u rd:5u}
+    [67 cost=0] fmov-from-gpr-s  fmov-from-gpr-s(){sf:1u 0011110 00 100111000000 rn:5u rd:5u}
+    [68 cost=0] fcvtzs-d         fcvtzs-d(){sf:1u 0011110 01 111000000000 rn:5u rd:5u}
+    [69 cost=0] fcvtzs-s         fcvtzs-s(){sf:1u 0011110 00 111000000000 rn:5u rd:5u}
+    [70 cost=0] fneg-d           fneg-d(){00011110 01 100001010000 rn:5u rd:5u}
+    [71 cost=0] fneg-s           fneg-s(){00011110 00 100001010000 rn:5u rd:5u}
+    [72 cost=0] fcvt-d-to-s      fcvt-d-to-s(){00011110 01 100010010000 rn:5u rd:5u}
+    [73 cost=0] fcvt-s-to-d      fcvt-s-to-d(){00011110 00 100010110000 rn:5u rd:5u}
+    [74 cost=0] ldr32-f          ldr32-f(){10 111101 01 offset-scaled4 rn rt:5u}
+    [75 cost=0] ldr64-f          ldr64-f(){11 111101 01 offset-scaled8 rn rt:5u}
+    [76 cost=0] str32-f          str32-f(){10 111101 00 offset-scaled4 rn rt:5u}
+    [77 cost=0] str64-f          str64-f(){11 111101 00 offset-scaled8 rn rt:5u}
+    [78 cost=0] ldr32-f-roff     ldr32-f-roff(){10 111100 01 1 rm option:3u s:1u 10 rn rt:5u}
+    [79 cost=0] ldr64-f-roff     ldr64-f-roff(){11 111100 01 1 rm option:3u s:1u 10 rn rt:5u}
+    [80 cost=0] str32-f-roff     str32-f-roff(){10 111100 00 1 rm option:3u s:1u 10 rn rt:5u}
+    [81 cost=0] str64-f-roff     str64-f-roff(){11 111100 00 1 rm option:3u s:1u 10 rn rt:5u}
+    [82 cost=0] fmov-reg-d       fmov-reg-d(){00011110 01 100000010000 rn:5u rd:5u}
+    [83 cost=0] fmov-reg-s       fmov-reg-s(){00011110 00 100000010000 rn:5u rd:5u}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}

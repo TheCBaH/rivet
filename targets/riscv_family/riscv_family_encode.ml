@@ -163,6 +163,35 @@ module Make (P : PROFILE) = struct
       | Ebreak
       | Unimp
       | Fence_i
+      | Fld
+      | Flw
+      | Fsd
+      | Fsw
+      | Fadd_d
+      | Fadd_s
+      | Fsub_d
+      | Fsub_s
+      | Fmul_d
+      | Fmul_s
+      | Fdiv_d
+      | Fdiv_s
+      | Fneg_d
+      | Fneg_s
+      | Fmv_d
+      | Fmv_x_d
+      | Feq_d
+      | Fle_d
+      | Flt_d
+      | Flt_s
+      | Fcvt_w_d
+      | Fcvt_wu_d
+      | Fcvt_l_d
+      | Fcvt_d_w
+      | Fcvt_d_wu
+      | Fcvt_s_w
+      | Fcvt_s_d
+      | Fcvt_d_s
+      | Fcvt_s_l
 
     let name = function
       | Add -> "add"
@@ -231,6 +260,35 @@ module Make (P : PROFILE) = struct
       | Ebreak -> "ebreak"
       | Unimp -> "unimp"
       | Fence_i -> "fence.i"
+      | Fld -> "fld"
+      | Flw -> "flw"
+      | Fsd -> "fsd"
+      | Fsw -> "fsw"
+      | Fadd_d -> "fadd.d"
+      | Fadd_s -> "fadd.s"
+      | Fsub_d -> "fsub.d"
+      | Fsub_s -> "fsub.s"
+      | Fmul_d -> "fmul.d"
+      | Fmul_s -> "fmul.s"
+      | Fdiv_d -> "fdiv.d"
+      | Fdiv_s -> "fdiv.s"
+      | Fneg_d -> "fneg.d"
+      | Fneg_s -> "fneg.s"
+      | Fmv_d -> "fmv.d"
+      | Fmv_x_d -> "fmv.x.d"
+      | Feq_d -> "feq.d"
+      | Fle_d -> "fle.d"
+      | Flt_d -> "flt.d"
+      | Flt_s -> "flt.s"
+      | Fcvt_w_d -> "fcvt.w.d"
+      | Fcvt_wu_d -> "fcvt.wu.d"
+      | Fcvt_l_d -> "fcvt.l.d"
+      | Fcvt_d_w -> "fcvt.d.w"
+      | Fcvt_d_wu -> "fcvt.d.wu"
+      | Fcvt_s_w -> "fcvt.s.w"
+      | Fcvt_s_d -> "fcvt.s.d"
+      | Fcvt_d_s -> "fcvt.d.s"
+      | Fcvt_s_l -> "fcvt.s.l"
 
     let all =
       [
@@ -300,6 +358,35 @@ module Make (P : PROFILE) = struct
         Ebreak;
         Unimp;
         Fence_i;
+        Fld;
+        Flw;
+        Fsd;
+        Fsw;
+        Fadd_d;
+        Fadd_s;
+        Fsub_d;
+        Fsub_s;
+        Fmul_d;
+        Fmul_s;
+        Fdiv_d;
+        Fdiv_s;
+        Fneg_d;
+        Fneg_s;
+        Fmv_d;
+        Fmv_x_d;
+        Feq_d;
+        Fle_d;
+        Flt_d;
+        Flt_s;
+        Fcvt_w_d;
+        Fcvt_wu_d;
+        Fcvt_l_d;
+        Fcvt_d_w;
+        Fcvt_d_wu;
+        Fcvt_s_w;
+        Fcvt_s_d;
+        Fcvt_d_s;
+        Fcvt_s_l;
       ]
 
     let of_mnemonic s = List.find_opt (fun op -> String.equal (name op) s) all
@@ -325,13 +412,79 @@ module Make (P : PROFILE) = struct
       else Fmt.pf ppf "%s %a" (Opcode.name i.op) Fmt.(list ~sep:(any ", ") Operand.pp) i.ops
   end
 
+  (* Which of an F/D instruction's [R]-shape operand positions is a scalar FP register
+     rather than a GPR, and how many of the three fields printed. The generic [R]/[I]/[S]
+     shapes carry plain register numbers with no class tag - correct for encoding (an FP
+     register field is bit-for-bit the same 5-bit slot a GPR one is), but [pp] and [decode]
+     both need to know which is which to print/reconstruct the right operand text, and this
+     one table is what both consult rather than duplicating the classification. [arity] = 2
+     covers the pseudo-mnemonics ([fneg.*]/[fmv.d], real hardware's [fsgnjn]/[fsgnj] with
+     [rs2] forced equal to [rs1] - the shared register is stored once and never printed
+     twice) and every convert/move between one FP and one GPR; [arity] = 3 covers the
+     three-FP-register arithmetic family and the FP-operand compares (whose own result is a
+     GPR).
+
+     [rm] is [Some default_funct3] exactly when this mnemonic's own [funct3] field is a
+     rounding mode rather than a fixed part of the encoding (real hardware defines a
+     five-name enumeration - [rne]/[rtz]/[rdn]/[rup]/[rmm] - plus [dyn] for "read it from
+     the fcsr", GAS's own default whenever none is written); [default_funct3] is exactly
+     the value GAS's bare mnemonic - no explicit rounding-mode operand - picks, per
+     mnemonic (almost always [dyn] = [7], except the two conversions real hardware defines
+     as always exact, which pick [rne] = [0] instead). A decoded [funct3] equal to the
+     default prints no trailing operand at all; any other value round-trips through an
+     explicit one (M5, asm/docs/corpus.md - perlin.c/binarytrees.c's own [(int)]/[(long)]
+     cast idiom, which truncates and so must override the default with [rtz], not read
+     it). [feq.d]/[fle.d]/[flt.d]/[flt.s]'s own [funct3] is a real comparison-kind selector,
+     not a rounding mode, so [rm] is [None] there even though the field sits at the same
+     bit position. *)
+  type freg_shape = { rd_f : bool; rs1_f : bool; rs2_f : bool; arity : int; rm : int option }
+
+  let f_shape_of_name = function
+    | "fadd.d" | "fadd.s" | "fsub.d" | "fsub.s" | "fmul.d" | "fmul.s" | "fdiv.d" | "fdiv.s" ->
+        Some { rd_f = true; rs1_f = true; rs2_f = true; arity = 3; rm = Some 7 }
+    | "fneg.d" | "fneg.s" | "fmv.d" ->
+        Some { rd_f = true; rs1_f = true; rs2_f = true; arity = 2; rm = None }
+    | "feq.d" | "fle.d" | "flt.d" | "flt.s" ->
+        Some { rd_f = false; rs1_f = true; rs2_f = true; arity = 3; rm = None }
+    | "fcvt.w.d" | "fcvt.wu.d" | "fcvt.l.d" ->
+        Some { rd_f = false; rs1_f = true; rs2_f = false; arity = 2; rm = Some 7 }
+    | "fmv.x.d" -> Some { rd_f = false; rs1_f = true; rs2_f = false; arity = 2; rm = None }
+    | "fcvt.d.w" | "fcvt.d.wu" ->
+        Some { rd_f = true; rs1_f = false; rs2_f = false; arity = 2; rm = Some 0 }
+    | "fcvt.s.w" | "fcvt.s.l" ->
+        Some { rd_f = true; rs1_f = false; rs2_f = false; arity = 2; rm = Some 7 }
+    | "fcvt.s.d" -> Some { rd_f = true; rs1_f = true; rs2_f = false; arity = 2; rm = Some 7 }
+    | "fcvt.d.s" -> Some { rd_f = true; rs1_f = true; rs2_f = false; arity = 2; rm = Some 0 }
+    | _ -> None
+
+  (* The six standard rounding-mode names (RISC-V unprivileged spec table 11.2), shared by
+     {!freg_shape}'s printing and by [lower_instruction]'s parsing of an explicit third
+     operand on a convert. *)
+  let rounding_modes = [ ("rne", 0); ("rtz", 1); ("rdn", 2); ("rup", 3); ("rmm", 4); ("dyn", 7) ]
+  let rounding_mode_of_name s = List.assoc_opt s rounding_modes
+  let rounding_name_of_mode m = List.find_opt (fun (_, v) -> v = m) rounding_modes |> Option.map fst
+
   module Lowered = struct
     (* The second instruction of an [auipc]-based pair: [Addi] for [la]/[lla]
        (pic), [Jalr] for [call]/[tail], [Load funct3] for a load pseudo like
        [ld rd, symbol] (GAS's own auipc+load expansion, confirmed against real
        riscv64-linux-gnu-as: `ld t6, sym` decodes back as
        `auipc t6, ...; ld t6, 0(t6)`). *)
-    type pair_kind = Addi | Jalr | Load of int
+    type pair_kind =
+      | Addi
+      | Jalr
+      | Load of int
+      | Fload of int
+          (** [fld]/[flw]'s own literal-pool pseudo (M5, asm/docs/corpus.md - almabench.c/
+            fftsp.c/knucleotide.c/...): the same anchored [auipc]+load pairing as [Load],
+            but the scratch register can never be [rd] itself the way [ld rd, symbol]
+            reuses [rd] as its own [auipc] target - [rd] is a scalar FP register here, and
+            [auipc] can only write a GPR. GAS's own three-operand pseudo spells the GPR
+            scratch out explicitly (`fld rd, symbol, xtmp`) for exactly that reason, so
+            unlike every other {!Pair} kind, [tmp] is a real, distinct, always-printed
+            operand rather than a repeat of [rd]. Confirmed against real
+            riscv64-linux-gnu-as: `fld fa1, .L100, x31` expands to `auipc t6,
+            %pcrel_hi(.L100); fld fa1, %pcrel_lo(...)(t6)`. *)
 
     type t =
       | R of {
@@ -353,7 +506,20 @@ module Make (P : PROFILE) = struct
           rs1 : int;
           imm : Asm_core.Expr.t;
         }
-      | S of { name : string; funct3 : int; rs1 : int; rs2 : int; imm : Asm_core.Expr.t }
+      | S of {
+          name : string;
+          opcode : int;
+          funct3 : int;
+          rs1 : int;
+          rs2 : int;
+          imm : Asm_core.Expr.t;
+        }
+          (** [opcode] defaults to STORE's [0x23] for every integer store; the F/D extension's
+              [fsd]/[fsw] are the only other user, at STORE-FP's [0x27] (M5, asm/docs/corpus.md
+              - almabench.c/bisect.c/... callee-saved double spills). Everything else about the
+              S-type word - the split 12-bit immediate, [rs1]/[rs2] field positions - is
+              identical between the two opcodes, so this is one field rather than a second
+              constructor. *)
       | B of { name : string; funct3 : int; rs1 : int; rs2 : int; target : Asm_core.Expr.t }
       | U of { name : string; opcode : int; rd : int; imm : Asm_core.Expr.t }
       | J of { rd : int; target : Asm_core.Expr.t }
@@ -361,16 +527,35 @@ module Make (P : PROFILE) = struct
       | Fixed of { name : string; word : int64 }
 
     let pp_expr ppf e = Asm_core.Expr.pp ppf e
+    let reg_name isf n = Printf.sprintf "%s%d" (if isf then "f" else "x") n
+
+    let rm_suffix rm funct3 =
+      match rm with
+      | Some default when default <> funct3 -> (
+          match rounding_name_of_mode funct3 with Some n -> ", " ^ n | None -> "")
+      | Some _ | None -> ""
 
     let pp ppf = function
-      | R x -> Fmt.pf ppf "%s x%d, x%d, x%d" x.name x.rd x.rs1 x.rs2
+      | R x -> (
+          match f_shape_of_name x.name with
+          | Some { rd_f; rs1_f; rs2_f = _; arity = 2; rm } ->
+              Fmt.pf ppf "%s %s, %s%s" x.name (reg_name rd_f x.rd) (reg_name rs1_f x.rs1)
+                (rm_suffix rm x.funct3)
+          | Some { rd_f; rs1_f; rs2_f; arity = _; rm } ->
+              Fmt.pf ppf "%s %s, %s, %s%s" x.name (reg_name rd_f x.rd) (reg_name rs1_f x.rs1)
+                (reg_name rs2_f x.rs2) (rm_suffix rm x.funct3)
+          | None -> Fmt.pf ppf "%s x%d, x%d, x%d" x.name x.rd x.rs1 x.rs2)
       | I x when x.opcode = 0x03 || x.opcode = 0x67 ->
           Fmt.pf ppf "%s x%d, %a(x%d)" x.name x.rd pp_expr x.imm x.rs1
+      | I x when x.opcode = 0x07 -> Fmt.pf ppf "%s f%d, %a(x%d)" x.name x.rd pp_expr x.imm x.rs1
       | I x -> Fmt.pf ppf "%s x%d, x%d, %a" x.name x.rd x.rs1 pp_expr x.imm
+      | S x when x.opcode = 0x27 -> Fmt.pf ppf "%s f%d, %a(x%d)" x.name x.rs2 pp_expr x.imm x.rs1
       | S x -> Fmt.pf ppf "%s x%d, %a(x%d)" x.name x.rs2 pp_expr x.imm x.rs1
       | B x -> Fmt.pf ppf "%s x%d, x%d, %a" x.name x.rs1 x.rs2 pp_expr x.target
       | U x -> Fmt.pf ppf "%s x%d, %a" x.name x.rd pp_expr x.imm
       | J x -> Fmt.pf ppf "jal x%d, %a" x.rd pp_expr x.target
+      | Pair ({ kind = Fload _; _ } as x) ->
+          Fmt.pf ppf "%s f%d, %a, x%d" x.name x.rd pp_expr x.target x.tmp
       | Pair x -> Fmt.pf ppf "%s x%d, %a" x.name x.rd pp_expr x.target
       | Fixed x -> Fmt.string ppf x.name
 
@@ -494,6 +679,7 @@ module Make (P : PROFILE) = struct
     | _ -> None
 
   let xreg = function Operand.Reg r -> Reg.x r | _ -> None
+  let freg = function Operand.Reg (Reg.F n) -> Some n | _ -> None
   let rv64 op = if xlen = 64 then Ok () else Error (diag ~pos:__POS__ (`Rv64_only op))
   let wrong op = Error (diag ~pos:__POS__ (`Wrong_operands op))
 
@@ -569,12 +755,83 @@ module Make (P : PROFILE) = struct
     | Bgeu -> Some 7
     | _ -> None
 
+  (* OP-FP (opcode [0x53]) descriptors, one table per operand shape (M5 corpus
+     evidence, asm/docs/corpus.md - almabench.c/bisect.c/fftsp.c/knucleotide.c/...).
+     [funct3] here is the rounding-mode field GAS's own bare mnemonic spelling
+     always picks - `7` (dynamic) for the arithmetic family and every convert *to* a
+     narrower or differently-rounded type, `0` (round-to-nearest-even) for a
+     conversion real hardware defines as always exact - not an operand this corpus
+     ever spells explicitly, so no rounding-mode operand is read. *)
+  let f_arith_desc = function
+    | Opcode.Fadd_s -> Some (7, 0x00)
+    | Fadd_d -> Some (7, 0x01)
+    | Fsub_s -> Some (7, 0x04)
+    | Fsub_d -> Some (7, 0x05)
+    | Fmul_s -> Some (7, 0x08)
+    | Fmul_d -> Some (7, 0x09)
+    | Fdiv_s -> Some (7, 0x0c)
+    | Fdiv_d -> Some (7, 0x0d)
+    | _ -> None
+
+  (* [fneg.d]/[fneg.s]/[fmv.d] - FSGNJN/FSGNJ with [rs2] forced equal to [rs1], real
+     hardware's own alias (verified against real riscv64-linux-gnu-as/objdump:
+     `fneg.d fs0, fs1` -> `22949453`, decoding back with [rs1] = [rs2] = 9). The
+     general two-different-register [fsgnj]/[fsgnjn]/[fsgnjx] this shares a word with
+     is not evidenced and not implemented. *)
+  let f_sgnj_desc = function
+    | Opcode.Fneg_s -> Some (1, 0x10)
+    | Fneg_d -> Some (1, 0x11)
+    | Fmv_d -> Some (0, 0x11)
+    | _ -> None
+
+  (* Compares: [rd] is a GPR (the boolean result), [rs1]/[rs2] are FP. *)
+  let f_cmp_desc = function
+    | Opcode.Feq_d -> Some (2, 0x51)
+    | Fle_d -> Some (0, 0x51)
+    | Flt_d -> Some (1, 0x51)
+    | Flt_s -> Some (1, 0x50)
+    | _ -> None
+
+  (* Float-to-integer converts, and [fmv.x.d] (bit-for-bit move, not a conversion) -
+     [rd] is a GPR, [rs1] is FP, [rs2] is a fixed selector rather than a second
+     operand. *)
+  let f_to_i_desc = function
+    | Opcode.Fcvt_w_d -> Some (7, 0x61, 0)
+    | Fcvt_wu_d -> Some (7, 0x61, 1)
+    | Fcvt_l_d -> Some (7, 0x61, 2)
+    | Fmv_x_d -> Some (0, 0x71, 0)
+    | _ -> None
+
+  (* Integer-to-float converts - [rd] is FP, [rs1] is a GPR, [rs2] fixed. *)
+  let i_to_f_desc = function
+    | Opcode.Fcvt_d_w -> Some (0, 0x69, 0)
+    | Fcvt_d_wu -> Some (0, 0x69, 1)
+    | Fcvt_s_w -> Some (7, 0x68, 0)
+    | Fcvt_s_l -> Some (7, 0x68, 2)
+    | _ -> None
+
+  (* Float-to-float precision converts - [rd]/[rs1] both FP, [rs2] fixed (the source
+     format, per the ISA's own encoding: [1] = double, [0] = single). *)
+  let f_to_f_desc = function
+    | Opcode.Fcvt_s_d -> Some (7, 0x20, 1)
+    | Fcvt_d_s -> Some (0, 0x21, 0)
+    | _ -> None
+
+  (* LOAD-FP/STORE-FP (opcodes [0x07]/[0x27]) - the identical addressing mode
+     integer [lw]/[sw] use, into/from an FP register instead of a GPR; only
+     [funct3] (word width) differs between the two, exactly as it does for the
+     integer loads/stores this shares a byte-count convention with. *)
+  let f_load_desc = function Opcode.Flw -> Some 2 | Fld -> Some 3 | _ -> None
+  let f_store_desc = function Opcode.Fsw -> Some 2 | Fsd -> Some 3 | _ -> None
+
   let lower_instruction state i =
     let opn = Opcode.name i.Instruction.op in
     match (i.op, i.ops) with
     | (Opcode.Addw | Subw | Sllw | Srlw | Sraw | Mulw), _ when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
     | (Opcode.Addiw | Slliw | Srliw | Sraiw | Ld | Lwu | Sd), _ when xlen <> 64 ->
+        Error (diag ~pos:__POS__ (`Rv64_only opn))
+    | (Opcode.Fcvt_l_d | Fmv_x_d | Fcvt_s_l), _ when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
     | op, [ a; b; c ] when Option.is_some (r_desc op) -> (
         match (xreg a, xreg b, xreg c, r_desc op) with
@@ -647,10 +904,84 @@ module Make (P : PROFILE) = struct
         | Some rd, Some target, Some funct3 ->
             Ok [ Lowered.Pair { name = opn; rd; tmp = rd; target; kind = Load funct3 } ]
         | _ -> wrong opn)
+    | op, [ a; (Operand.Sym _ as target); b ] when Option.is_some (f_load_desc op) -> (
+        (* [fld rd, symbol, xtmp] / [flw rd, symbol, xtmp] - the identical anchored
+           [auipc]+load pseudo as [ld] above, except the scratch register can't be [rd]
+           itself ([auipc] only ever writes a GPR, and [rd] here is a scalar FP register),
+           so GAS's own three-operand spelling names it explicitly (M5,
+           asm/docs/corpus.md - almabench.c/fftsp.c/knucleotide.c/...). *)
+        match (freg a, expr_of target, xreg b, f_load_desc op) with
+        | Some rd, Some target, Some tmp, Some funct3 ->
+            Ok [ Lowered.Pair { name = opn; rd; tmp; target; kind = Fload funct3 } ]
+        | _ -> wrong opn)
     | op, [ a; Operand.Mem m ] when Option.is_some (store_desc op) -> (
         match (xreg a, Reg.x m.base, store_desc op) with
         | Some rs2, Some rs1, Some funct3 ->
-            Ok [ Lowered.S { name = opn; funct3; rs1; rs2; imm = m.offset } ]
+            Ok [ Lowered.S { name = opn; opcode = 0x23; funct3; rs1; rs2; imm = m.offset } ]
+        | _ -> wrong opn)
+    | op, [ a; Operand.Mem m ] when Option.is_some (f_load_desc op) -> (
+        match (freg a, Reg.x m.base, f_load_desc op) with
+        | Some rd, Some rs1, Some funct3 ->
+            Ok
+              [
+                Lowered.I
+                  {
+                    name = opn;
+                    opcode = 0x07;
+                    funct3;
+                    funct_hi = 0;
+                    shamt_bits = None;
+                    rd;
+                    rs1;
+                    imm = m.offset;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ a; Operand.Mem m ] when Option.is_some (f_store_desc op) -> (
+        match (freg a, Reg.x m.base, f_store_desc op) with
+        | Some rs2, Some rs1, Some funct3 ->
+            Ok [ Lowered.S { name = opn; opcode = 0x27; funct3; rs1; rs2; imm = m.offset } ]
+        | _ -> wrong opn)
+    | op, [ a; b; c ] when Option.is_some (f_arith_desc op) -> (
+        match (freg a, freg b, freg c, f_arith_desc op) with
+        | Some rd, Some rs1, Some rs2, Some (funct3, funct7) ->
+            Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ a; b ] when Option.is_some (f_sgnj_desc op) -> (
+        match (freg a, freg b, f_sgnj_desc op) with
+        | Some rd, Some rs1, Some (funct3, funct7) ->
+            Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 = rs1 } ]
+        | _ -> wrong opn)
+    | op, [ a; b; c ] when Option.is_some (f_cmp_desc op) -> (
+        match (xreg a, freg b, freg c, f_cmp_desc op) with
+        | Some rd, Some rs1, Some rs2, Some (funct3, funct7) ->
+            Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ a; b ] when Option.is_some (f_to_i_desc op) -> (
+        match (xreg a, freg b, f_to_i_desc op) with
+        | Some rd, Some rs1, Some (funct3, funct7, rs2) ->
+            Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ a; b; Operand.Sym (Asm_core.Expr.Symbol rm) ] when Option.is_some (f_to_i_desc op) -> (
+        (* [fcvt.w.d rd, rs1, rtz] - an explicit rounding-mode operand overriding the
+           bare mnemonic's own default (M5, asm/docs/corpus.md - perlin.c/binarytrees.c's
+           own [(int)]/[(long)] C cast idiom, which truncates and so needs [rtz] rather
+           than the default dynamic mode). Checked against real riscv64-linux-gnu-as:
+           `fcvt.l.d x22, f10, rtz` -> `c2251b53` (funct3 = 1, matching {!rounding_modes}'
+           own [rtz] = 1). *)
+        match (xreg a, freg b, f_to_i_desc op, rounding_mode_of_name rm) with
+        | Some rd, Some rs1, Some (_, funct7, rs2), Some funct3 ->
+            Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ a; b ] when Option.is_some (i_to_f_desc op) -> (
+        match (freg a, xreg b, i_to_f_desc op) with
+        | Some rd, Some rs1, Some (funct3, funct7, rs2) ->
+            Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ a; b ] when Option.is_some (f_to_f_desc op) -> (
+        match (freg a, freg b, f_to_f_desc op) with
+        | Some rd, Some rs1, Some (funct3, funct7, rs2) ->
+            Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b; target ] when Option.is_some (branch_desc op) -> (
         match (xreg a, xreg b, expr_of target, branch_desc op) with
@@ -868,8 +1199,8 @@ module Make (P : PROFILE) = struct
             (field 12 3 (Int64.of_int funct3))
             (Int64.logor (field 15 5 (Int64.of_int rs1)) (field 20 12 imm))))
 
-  let word_s ~funct3 ~rs1 ~rs2 imm =
-    Int64.logor 0x23L
+  let word_s ~opcode ~funct3 ~rs1 ~rs2 imm =
+    Int64.logor (Int64.of_int opcode)
       (Int64.logor (field 7 5 imm)
          (Int64.logor
             (field 12 3 (Int64.of_int funct3))
@@ -1021,7 +1352,7 @@ module Make (P : PROFILE) = struct
     | S x -> (
         match int64_expr x.imm with
         | Some imm when fits_signed 12 imm ->
-            fixed (word_s ~funct3:x.funct3 ~rs1:x.rs1 ~rs2:x.rs2 imm) x.name
+            fixed (word_s ~opcode:x.opcode ~funct3:x.funct3 ~rs1:x.rs1 ~rs2:x.rs2 imm) x.name
         | Some _ -> bad_encode (`Immediate_range x.name)
         | None -> (
             match x.imm with
@@ -1035,7 +1366,8 @@ module Make (P : PROFILE) = struct
                 Ok
                   (`Fixed
                      (form
-                        (bytes_of_word (word_s ~funct3:x.funct3 ~rs1:x.rs1 ~rs2:x.rs2 0L))
+                        (bytes_of_word
+                           (word_s ~opcode:x.opcode ~funct3:x.funct3 ~rs1:x.rs1 ~rs2:x.rs2 0L))
                         x.name [ fx ]))
             | _ -> bad_encode (`Immediate_range x.name)))
     | B x ->
@@ -1078,13 +1410,17 @@ module Make (P : PROFILE) = struct
             | _ -> bad_encode (`Immediate_range x.name)))
     | Pair x ->
         let lo_opcode, lo_funct3 =
-          match x.kind with Addi -> (0x13, 0) | Jalr -> (0x67, 0) | Load funct3 -> (0x03, funct3)
+          match x.kind with
+          | Addi -> (0x13, 0)
+          | Jalr -> (0x67, 0)
+          | Load funct3 -> (0x03, funct3)
+          | Fload funct3 -> (0x07, funct3)
         in
         let hiword = word_u ~opcode:0x17 ~rd:x.tmp 0L in
         let lowword = word_i ~opcode:lo_opcode ~funct3:lo_funct3 ~rd:x.rd ~rs1:x.tmp 0L in
         let hi_kind, lo_kind =
           match x.kind with
-          | Addi | Load _ -> (Pcrel_hi20, Pcrel_lo12_i)
+          | Addi | Load _ | Fload _ -> (Pcrel_hi20, Pcrel_lo12_i)
           | Jalr -> (Call_hi20, Call_lo12_i)
         in
         let hi =
@@ -1113,6 +1449,7 @@ module Make (P : PROFILE) = struct
     !w
 
   let reg n = Operand.Reg (Reg.of_x n)
+  let f_operand n = Operand.Reg (Reg.F (n land 31))
   let imm n = Operand.Imm (Bigint.of_int64 n)
   let sym n = Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 n))
 
@@ -1143,6 +1480,53 @@ module Make (P : PROFILE) = struct
     | 0x3b, 5, 0x20 -> Some "sraw"
     | 0x3b, 0, 1 -> Some "mulw"
     | _ -> None
+
+  (* OP-FP (opcode [0x53]): unlike every integer R-type above, several of these
+     mnemonics also need [rs2] to disambiguate (a convert or move fixes its second
+     "operand" to a selector rather than reading a real register - see
+     {!f_shape_of_name}, which is what actually decides whether [rs2] is printed at
+     all). [fneg.d]/[fneg.s]/[fmv.d] are real hardware's [fsgnjn]/[fsgnj] with [rs1] =
+     [rs2] - this table alone cannot tell that apart from the general two-different-
+     operand form (unimplemented, unevidenced), so the caller checks [rs1 = rs2]
+     before accepting one of these three names. *)
+  let f_r_name f3 f7 rs2 =
+    (* The arithmetic and convert families' [f3] is a rounding mode, not part of a
+       mnemonic's own identity (an explicit non-default one is a real, separate operand -
+       {!freg_shape}'s [rm] and [rm_suffix] print it, not this lookup) - so these match on
+       [f7]/[rs2] alone, before the [f3]-sensitive compares/pseudo-moves below ever see
+       them. The two groups' [f7] values never overlap. *)
+    match (f7, rs2) with
+    | 0x00, _ -> Some "fadd.s"
+    | 0x01, _ -> Some "fadd.d"
+    | 0x04, _ -> Some "fsub.s"
+    | 0x05, _ -> Some "fsub.d"
+    | 0x08, _ -> Some "fmul.s"
+    | 0x09, _ -> Some "fmul.d"
+    | 0x0c, _ -> Some "fdiv.s"
+    | 0x0d, _ -> Some "fdiv.d"
+    | 0x61, 0 -> Some "fcvt.w.d"
+    | 0x61, 1 -> Some "fcvt.wu.d"
+    | 0x61, 2 -> Some "fcvt.l.d"
+    | 0x69, 0 -> Some "fcvt.d.w"
+    | 0x69, 1 -> Some "fcvt.d.wu"
+    | 0x68, 0 -> Some "fcvt.s.w"
+    | 0x68, 2 -> Some "fcvt.s.l"
+    | 0x20, 1 -> Some "fcvt.s.d"
+    | 0x21, 0 -> Some "fcvt.d.s"
+    | _ -> (
+        match (f3, f7, rs2) with
+        | 1, 0x10, _ -> Some "fneg.s"
+        | 1, 0x11, _ -> Some "fneg.d"
+        | 0, 0x11, _ -> Some "fmv.d"
+        | 0, 0x51, _ -> Some "fle.d"
+        | 2, 0x51, _ -> Some "feq.d"
+        | 1, 0x51, _ -> Some "flt.d"
+        | 1, 0x50, _ -> Some "flt.s"
+        | 0, 0x71, 0 -> Some "fmv.x.d"
+        | _ -> None)
+
+  let f_load_name = function 2 -> Some "flw" | 3 -> Some "fld" | _ -> None
+  let f_store_name = function 2 -> Some "fsw" | 3 -> Some "fsd" | _ -> None
 
   type decode_context = { state : target_state; address : int64 }
 
@@ -1220,6 +1604,51 @@ module Make (P : PROFILE) = struct
                   sign_extend 12 (Int64.logor (bits w 7 5) (Int64.shift_left (bits w 25 7) 5))
                 in
                 Option.map (fun n -> (instruction (op_exn n) [ reg rs2; mem rs1 v ], n)) n
+            | 0x07 ->
+                Option.map
+                  (fun n ->
+                    ( instruction (op_exn n)
+                        [ f_operand rd; mem rs1 (sign_extend 12 (bits w 20 12)) ],
+                      n ))
+                  (f_load_name f3)
+            | 0x27 ->
+                let v =
+                  sign_extend 12 (Int64.logor (bits w 7 5) (Int64.shift_left (bits w 25 7) 5))
+                in
+                Option.map
+                  (fun n -> (instruction (op_exn n) [ f_operand rs2; mem rs1 v ], n))
+                  (f_store_name f3)
+            | 0x53 -> (
+                let n =
+                  match f_r_name f3 f7 rs2 with
+                  | Some (("fneg.s" | "fneg.d" | "fmv.d") as n) when rs1 = rs2 -> Some n
+                  | Some ("fneg.s" | "fneg.d" | "fmv.d") -> None
+                  | other -> other
+                in
+                match n with
+                | None -> None
+                | Some n -> (
+                    match f_shape_of_name n with
+                    | None -> None
+                    | Some shape ->
+                        let r isf v = if isf then f_operand v else reg v in
+                        let base =
+                          if shape.arity = 2 then [ r shape.rd_f rd; r shape.rs1_f rs1 ]
+                          else [ r shape.rd_f rd; r shape.rs1_f rs1; r shape.rs2_f rs2 ]
+                        in
+                        (* An explicit, non-default rounding mode is a real trailing
+                           operand a re-parse must see too, not only text {!Lowered.pp}
+                           prints - {!rm_suffix}'s own condition, read back here from the
+                           other end. *)
+                        let ops =
+                          match shape.rm with
+                          | Some default when default <> f3 -> (
+                              match rounding_name_of_mode f3 with
+                              | Some rm -> base @ [ Operand.Sym (Asm_core.Expr.Symbol rm) ]
+                              | None -> base)
+                          | Some _ | None -> base
+                        in
+                        Some (instruction (op_exn n) ops, n)))
             | 0x63 ->
                 let n =
                   match f3 with
@@ -1324,6 +1753,10 @@ module Make (P : PROFILE) = struct
             Some (Lowered.Pair { name = "tail"; rd; tmp; target; kind = Jalr })
         | 0x03 when rd = tmp && low_funct3 = 3 ->
             Some (Lowered.Pair { name = "ld"; rd; tmp; target; kind = Load low_funct3 })
+        | 0x07 ->
+            Option.map
+              (fun n -> Lowered.Pair { name = n; rd; tmp; target; kind = Fload low_funct3 })
+              (f_load_name low_funct3)
         | _ -> None
     in
     C.choice ~name:P.name

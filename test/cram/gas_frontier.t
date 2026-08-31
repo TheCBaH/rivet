@@ -105,7 +105,7 @@ CompCert's runtime library, per target.
   arm      i64_utod      error[arm.simplify]: unknown instruction vmla.f64
   arm      i64_utof      error[arm.simplify]: unknown instruction lsrs
   arm      vararg       assembles
-  aarch64  vararg       <synthesized by aarch64>: error[aarch64.lower]: no ldr form takes these operands
+  aarch64  vararg       assembles
 
 Where the frontier actually is, as counts. This is the number to watch: it is
 what M2 moves, and prose cannot regress.
@@ -113,7 +113,7 @@ what M2 moves, and prose cannot regress.
   $ { for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-       12 assembles
+       13 assembles
         4 <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4  error[x86.simplify]: unknown instruction fildll
         4  error[x86.simplify]: 8-bit operands are not in M1 scope
@@ -124,7 +124,6 @@ what M2 moves, and prose cannot regress.
         2  error[arm.simplify]: unknown instruction umull
         2  error[arm.simplify]: unknown instruction subs
         2  error[arm.simplify]: unknown instruction cmn
-        1 <synthesized by aarch64>: error[aarch64.lower]: no ldr form takes these operands
         1  error[x86.simplify]: unknown instruction ucomisd
         1  error[x86.simplify]: unknown instruction fnstsw
         1  error[x86.simplify]: unknown instruction fnstcw

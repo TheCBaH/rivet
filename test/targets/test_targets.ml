@@ -3150,3 +3150,378 @@ let%expect_test "movn/cbz/cbnz/sxtw/udiv/msub/cset/movk/lsl/ubfx/ubfiz" =
     40000028  00 0c 00 53  ubfx w0, w0, #0, #4   [aarch64.ubfm]
     4000002c  c0 03 5f d6  ret                   [aarch64.ret]
     |}]
+
+(* {1 AArch64 FP: fadd/fsub/fmul/fdiv, fcsel, fcmp (register), scvtf/ucvtf, fneg, fcvt,
+   fcvtzs, fmov (general register, no conversion)}
+
+   The rest of the M5 corpus's floating-point slice (asm/docs/corpus.md - almabench.c/
+   binarytrees.c/bisect.c/fft.c/fftsp.c/fftw.c/integr.c/knucleotide.c/mandelbrot.c/nbody.c/
+   perlin.c/spectral.c), each its own evidenced word shape:
+   - [fadd]/[fsub]/[fmul]/[fdiv] - "floating-point data-processing (2 source)", one word with
+     a 4-bit opcode selecting which ({!Lowered.Fbinop}).
+   - [fcsel] - {!Opcode.Csel}'s floating-point sibling, a distinct word from the above (bits
+     11-10 = [11] instead of [10]).
+   - [fcmp dN, dM] - {!Lowered.Fcmp_imm0}'s register-register sibling.
+   - [scvtf]/[ucvtf] rd, rn - signed/unsigned integer-to-float, the "conversion between
+     floating-point and integer" word ([rmode] = [00], [opcode] = [010]/[011]).
+   - [fneg]/[fcvt] - "floating-point data-processing (1 source)", opcode [000010] for [fneg],
+     [000100]/[000101] (destination-select) for [fcvt].
+   - [fcvtzs] - the same "conversion" word as [scvtf]/[ucvtf] at [rmode] = [11], [opcode] =
+     [000].
+   - [fmov dd, xn] - the same "conversion" word at [opcode] = [111] (GPR bits into an FP
+     register, no conversion - the zeroing idiom [fmov d9, xzr]/[fmov s9, wzr]).
+   Byte-for-byte checked against real aarch64-linux-gnu-as/objdump:
+     1e622820  fadd d0, d1, d2
+     1e222820  fadd s0, s1, s2
+     1e653883  fsub d3, d4, d5
+     1e6808e6  fmul d6, d7, d8
+     1e6b1949  fdiv d9, d10, d11
+     1e6e0dac  fcsel d12, d13, d14, eq
+     1e692100  fcmp d8, d9
+     1e620251  scvtf d17, w16
+     9e220251  scvtf s17, x18
+     1e630293  ucvtf d19, w20
+     1e614020  fneg d0, d1
+     1e624062  fcvt s2, d3
+     9e7800a4  fcvtzs x4, d5
+     9e6703e9  fmov d9, xzr *)
+let%expect_test "fadd/fsub/fmul/fdiv/fcsel/fcmp(reg)/scvtf/ucvtf/fneg/fcvt/fcvtzs/fmov(gpr)" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tfadd d0, d1, d2\n\
+     \tfadd s0, s1, s2\n\
+     \tfsub d3, d4, d5\n\
+     \tfmul d6, d7, d8\n\
+     \tfdiv d9, d10, d11\n\
+     \tfcsel d12, d13, d14, eq\n\
+     \tfcmp d8, d9\n\
+     \tscvtf d17, w16\n\
+     \tscvtf s17, x18\n\
+     \tucvtf d19, w20\n\
+     \tfneg d0, d1\n\
+     \tfcvt s2, d3\n\
+     \tfcvtzs x4, d5\n\
+     \tfmov d9, xzr\n\
+     \tret\n";
+  [%expect
+    {|
+      40000000  20 28 62 1e  fadd d0, d1, d2          [aarch64.fadd-d]
+      40000004  20 28 22 1e  fadd s0, s1, s2          [aarch64.fadd-s]
+      40000008  83 38 65 1e  fsub d3, d4, d5          [aarch64.fsub-d]
+      4000000c  e6 08 68 1e  fmul d6, d7, d8          [aarch64.fmul-d]
+      40000010  49 19 6b 1e  fdiv d9, d10, d11        [aarch64.fdiv-d]
+      40000014  ac 0d 6e 1e  fcsel d12, d13, d14, eq  [aarch64.fcsel-d]
+      40000018  00 21 69 1e  fcmp d8, d9              [aarch64.fcmp-reg-d]
+      4000001c  11 02 62 1e  scvtf d17, w16           [aarch64.scvtf-d]
+      40000020  51 02 22 9e  scvtf s17, x18           [aarch64.scvtf-s]
+      40000024  93 02 63 1e  ucvtf d19, w20           [aarch64.ucvtf-d]
+      40000028  20 40 61 1e  fneg d0, d1              [aarch64.fneg-d]
+      4000002c  62 40 62 1e  fcvt s2, d3              [aarch64.fcvt-d-to-s]
+      40000030  a4 00 78 9e  fcvtzs x4, d5            [aarch64.fcvtzs-d]
+      40000034  e9 03 67 9e  fmov d9, xzr             [aarch64.fmov-from-gpr-d]
+      40000038  c0 03 5f d6  ret                      [aarch64.ret]
+    |}]
+
+(* The single-precision widths of the same forms, plus [fcvt]'s reverse (single-to-double)
+   direction and [fmov]'s single-width zeroing idiom - every combination the corpus itself
+   evidences (fftsp.c/knucleotide.c's single-precision [fmul]/[fdiv]/[scvtf], bisect.c/fft.c/
+   fftsp.c/mandelbrot.c's [fmov sN, wzr]). Byte-for-byte checked against real
+   aarch64-linux-gnu-as/objdump: [1e2b1949] for [fdiv s9, s10, s11], [1e22c062] for [fcvt d2,
+   s3] (opcode [000101], type = source = single), [1e3800a4] for [fcvtzs w4, s5], [1e2703e9]
+   for [fmov s9, wzr]. *)
+let%expect_test "the single-precision widths, fcvt's reverse direction, and fmov s9, wzr" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tfsub s3, s4, s5\n\
+     \tfmul s6, s7, s8\n\
+     \tfdiv s9, s10, s11\n\
+     \tfcsel s12, s13, s14, ne\n\
+     \tfcmp s8, s9\n\
+     \tscvtf s4, w3\n\
+     \tucvtf s19, x20\n\
+     \tfneg s0, s1\n\
+     \tfcvt d2, s3\n\
+     \tfcvtzs w4, s5\n\
+     \tfmov s9, wzr\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  83 38 25 1e  fsub s3, s4, s5          [aarch64.fsub-s]
+    40000004  e6 08 28 1e  fmul s6, s7, s8          [aarch64.fmul-s]
+    40000008  49 19 2b 1e  fdiv s9, s10, s11        [aarch64.fdiv-s]
+    4000000c  ac 1d 2e 1e  fcsel s12, s13, s14, ne  [aarch64.fcsel-s]
+    40000010  00 21 29 1e  fcmp s8, s9              [aarch64.fcmp-reg-s]
+    40000014  64 00 22 1e  scvtf s4, w3             [aarch64.scvtf-s]
+    40000018  93 02 23 9e  ucvtf s19, x20           [aarch64.ucvtf-s]
+    4000001c  20 40 21 1e  fneg s0, s1              [aarch64.fneg-s]
+    40000020  62 c0 22 1e  fcvt d2, s3              [aarch64.fcvt-s-to-d]
+    40000024  a4 00 38 1e  fcvtzs w4, s5            [aarch64.fcvtzs-s]
+    40000028  e9 03 27 1e  fmov s9, wzr             [aarch64.fmov-from-gpr-s]
+    4000002c  c0 03 5f d6  ret                      [aarch64.ret]
+    |}]
+
+(* {1 AArch64 [ldr]/[str] into a scalar FP register}
+
+   `assemble-c`'s dominant remaining aarch64 reason after the arithmetic/conversion family
+   above (asm/docs/corpus.md - almabench.c/bisect.c/fft.c/fftsp.c/fftw.c/integr.c/
+   mandelbrot.c/nbody.c/perlin.c's own callee-saved [dN] spills, spectral.c/bisect.c's
+   indexed array loads, knucleotide.c's [#:lo12:] float-constant load). Bit-for-bit the
+   same word {!Ldst_uoff} already uses for a GPR, both addressing modes (unsigned-offset
+   and register-offset), with the "SIMD&FP" bit set - the six-bit constant differs from
+   the GPR form only in that one middle bit. Verified against real
+   aarch64-linux-gnu-as/objdump: `str d8, [sp, #16]` -> `fd000be8`, `ldr d0, [x21, w24,
+   sxtw #3]` -> `fc78daa0`. *)
+let%expect_test "ldr/str into a scalar FP register, both addressing modes and widths" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tstr d8, [sp, #16]\n\
+     \tldr d8, [sp, #16]\n\
+     \tstr s8, [sp, #16]\n\
+     \tldr s8, [sp, #16]\n\
+     \tldr d0, [x21, w24, sxtw #3]\n\
+     \tldr s0, [x21, w24, sxtw #2]\n\
+     \tstr d3, [x2, w3, sxtw #3]\n\
+     \tstr s3, [x2, w3, sxtw #2]\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  e8 0b 00 fd  str d8, [sp, #16]            [aarch64.str64-f]
+    40000004  e8 0b 40 fd  ldr d8, [sp, #16]            [aarch64.ldr64-f]
+    40000008  e8 13 00 bd  str s8, [sp, #16]            [aarch64.str32-f]
+    4000000c  e8 13 40 bd  ldr s8, [sp, #16]            [aarch64.ldr32-f]
+    40000010  a0 da 78 fc  ldr d0, [x21, w24, sxtw #3]  [aarch64.ldr64-f-roff]
+    40000014  a0 da 78 bc  ldr s0, [x21, w24, sxtw #2]  [aarch64.ldr32-f-roff]
+    40000018  43 d8 23 fc  str d3, [x2, w3, sxtw #3]    [aarch64.str64-f-roff]
+    4000001c  43 d8 23 bc  str s3, [x2, w3, sxtw #2]    [aarch64.str32-f-roff]
+    40000020  c0 03 5f d6  ret                          [aarch64.ret] |}]
+
+(* [ldr dN/sN, [xN, #:lo12:sym]] - the bare-symbol duality every other addressing-mode
+   family in this project reads through the same [Disp.Sym]/fixup path (M5 corpus
+   evidence: knucleotide.c's own float-constant load, `ldr s2, [x16, #:lo12:.L142]`). *)
+let%expect_test "ldr dN/sN, [xN, #:lo12:sym] reads a symbolic low-12 offset" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tadrp x16, f\n\
+     \tldr d1, [x16, #:lo12:f]\n\
+     \tldr s1, [x16, #:lo12:f]\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  10 00 00 90  adrp x16, 1073741824  [aarch64.adrp]
+    40000004  01 02 40 fd  ldr d1, [x16]         [aarch64.ldr64-f]
+    40000008  01 02 40 bd  ldr s1, [x16]         [aarch64.ldr32-f]
+    4000000c  c0 03 5f d6  ret                   [aarch64.ret] |}]
+
+(* [fmov dd, dn] - register-to-register, no conversion (M5 corpus evidence:
+   asm/docs/corpus.md's almabench.c/bisect.c/... - ccomp's own float-value move between
+   two live registers, `assemble-c`'s highest-signal remaining aarch64 reason once FP
+   load/store above closed). {!Fneg}'s identical "floating-point data-processing (1
+   source)" word at [opcode] = [000000]. Verified against real
+   aarch64-linux-gnu-as/objdump: `fmov d9, d0` -> `1e604009`, `fmov s5, s3` -> `1e204065`.
+*)
+let%expect_test "fmov dd, dn copies one scalar FP register to another" =
+  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tfmov d9, d0\n\tfmov s5, s3\n\tret\n";
+  [%expect
+    {|
+    40000000  09 40 60 1e  fmov d9, d0  [aarch64.fmov-reg-d]
+    40000004  65 40 20 1e  fmov s5, s3  [aarch64.fmov-reg-s]
+    40000008  c0 03 5f d6  ret          [aarch64.ret] |}]
+
+(* [tst rn, #imm] - [ands zr, rn, #imm] with the result discarded (M5, asm/docs/corpus.md -
+   perlin.c, `assemble-c`'s last remaining aarch64 gap alongside the [add]/[sub] auto-shift
+   below). {!Logical_imm}'s own [opc] = 3, [zr] baked in rather than carried - the same
+   choice {!Cset} already makes for its own zr operands. Checked against real
+   aarch64-linux-gnu-as/objdump: `tst w1, #2` -> `721f003f`. *)
+let%expect_test "tst rn, #imm is ands zr, rn, #imm with the destination discarded" =
+  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\ttst w1, #2\n\tret\n";
+  [%expect
+    {|
+    40000000  3f 00 1f 72  tst w1, #2  [aarch64.logical-imm-32]
+    40000004  c0 03 5f d6  ret         [aarch64.ret] |}]
+
+(* [add]/[sub] rd, rn, #imm where [imm] is a bare multiple of 4096 too large for the plain
+   12-bit field - GAS auto-selects the [lsl #12] form itself; ccomp never writes the
+   explicit four-operand spelling {!Sub}'s own [lsl #12] arm already reads (M5,
+   asm/docs/corpus.md - knucleotide.c's `add x23, x23, #8192`, `assemble-c`'s last aarch64
+   rejection reason in this corpus). Checked against real aarch64-linux-gnu-as/objdump:
+   `add x23, x23, #8192` -> `91400af7`, decoding back as `add x23, x23, #0x2, lsl #12`;
+   `sub x5, x5, #4096` -> `d14004a5`. *)
+let%expect_test "add/sub auto-select the lsl #12 form for a bare multiple-of-4096 immediate" =
+  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tadd x23, x23, #8192\n\tsub x5, x5, #4096\n\tret\n";
+  [%expect
+    {|
+    40000000  f7 0a 40 91  add x23, x23, #2, lsl #12  [aarch64.add-imm]
+    40000004  a5 04 40 d1  sub x5, x5, #1, lsl #12    [aarch64.sub-imm]
+    40000008  c0 03 5f d6  ret                        [aarch64.ret] |}]
+
+(* {1 RISC-V F/D: load/store, arithmetic, sign-inject moves}
+
+   Ordered Work item 3's floating-point second slice, RISC-V's own leg (M5, asm/docs/
+   corpus.md - almabench.c/bisect.c/fft.c/fftsp.c/fftw.c/integr.c/mandelbrot.c/nbody.c/
+   perlin.c/spectral.c). [fld]/[fsd]/[flw]/[fsw] are bit-for-bit the same addressing mode
+   integer [lw]/[sw] use (opcodes [0x07]/[0x27] rather than [0x03]/[0x23], into/from an FP
+   register instead of a GPR - the only field difference, matching {!Lowered.S}'s new
+   [opcode] field). [fadd]/[fsub]/[fmul]/[fdiv] read the funct3 rounding-mode field as [7]
+   (dynamic), GAS's own default when no explicit rounding mode is written. [fneg.d]/
+   [fneg.s]/[fmv.d] are real hardware's [fsgnjn]/[fsgnj] with [rs2] forced equal to [rs1] -
+   the general two-different-register form is unevidenced and unimplemented. Checked
+   against real riscv64-linux-gnu-as/objdump: `fld ft1, 8(a0)` -> `00853087`, `fadd.d ft5,
+   ft6, ft7` -> `027372d3`, `fneg.d fs0, fs1` -> `22949453`. *)
+let%expect_test "riscv: fld/fsd/flw/fsw, fadd/fsub/fmul/fdiv, fneg/fmv" =
+  show_lowered "riscv64"
+    "\t.text\n\
+     \tfld f1, 8(x10)\n\
+     \tflw f2, 4(x11)\n\
+     \tfsd f3, 16(x12)\n\
+     \tfsw f4, 12(x13)\n\
+     \tfadd.d f5, f6, f7\n\
+     \tfadd.s f5, f6, f7\n\
+     \tfsub.d f5, f6, f7\n\
+     \tfmul.d f5, f6, f7\n\
+     \tfdiv.d f5, f6, f7\n\
+     \tfneg.d f8, f9\n\
+     \tfneg.s f8, f9\n\
+     \tfmv.d f8, f9\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 87 30 85 00              [riscv64.fld]
+      bytes 07 a1 45 00              [riscv64.flw]
+      bytes 27 38 36 00              [riscv64.fsd]
+      bytes 27 a6 46 00              [riscv64.fsw]
+      bytes d3 72 73 02              [riscv64.fadd.d]
+      bytes d3 72 73 00              [riscv64.fadd.s]
+      bytes d3 72 73 0a              [riscv64.fsub.d]
+      bytes d3 72 73 12              [riscv64.fmul.d]
+      bytes d3 72 73 1a              [riscv64.fdiv.d]
+      bytes 53 94 94 22              [riscv64.fneg.d]
+      bytes 53 94 94 20              [riscv64.fneg.s]
+      bytes 53 84 94 22              [riscv64.fmv.d] |}]
+
+(* {1 RISC-V F/D: compares, and convert between float and integer}
+
+   [feq.d]/[fle.d]/[flt.d]/[flt.s] write a GPR result from two FP operands. The
+   float<->integer converts are asymmetric in which operand is which register class -
+   {!f_shape_of_name} is what both {!Lowered.pp} and [decode] consult to get this right -
+   and [fcvt.d.w]/[fcvt.d.wu] read funct3 [0] (round-to-nearest-even: converting a 32-bit
+   integer to a double is always exact) where [fcvt.s.w]/[fcvt.s.l] read [7] (dynamic: a
+   64-bit range or single-precision destination is not always exact). [fcvt.l.d]/
+   [fcvt.s.l]/[fmv.x.d] need a 64-bit integer register and are RV64-only, checked below on
+   riscv32. Checked against real riscv64-linux-gnu-as/objdump: `fcvt.w.d x12, f13` ->
+   `c206f653`, `fcvt.d.w f14, x13` -> `d2068753`, `fcvt.s.d f15, f16` -> `401877d3`. *)
+let%expect_test "riscv: feq/fle/flt, fcvt between float and integer, fmv.x.d" =
+  show_lowered "riscv64"
+    "\t.text\n\
+     \tfeq.d x11, f11, f12\n\
+     \tfle.d x11, f11, f12\n\
+     \tflt.d x11, f11, f12\n\
+     \tflt.s x11, f11, f12\n\
+     \tfcvt.w.d x12, f13\n\
+     \tfcvt.wu.d x12, f13\n\
+     \tfcvt.l.d x12, f13\n\
+     \tfcvt.d.w f14, x13\n\
+     \tfcvt.d.wu f14, x13\n\
+     \tfcvt.s.w f14, x13\n\
+     \tfcvt.s.d f15, f16\n\
+     \tfcvt.d.s f15, f16\n\
+     \tfcvt.s.l f15, x14\n\
+     \tfmv.x.d x10, f10\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes d3 a5 c5 a2              [riscv64.feq.d]
+      bytes d3 85 c5 a2              [riscv64.fle.d]
+      bytes d3 95 c5 a2              [riscv64.flt.d]
+      bytes d3 95 c5 a0              [riscv64.flt.s]
+      bytes 53 f6 06 c2              [riscv64.fcvt.w.d]
+      bytes 53 f6 16 c2              [riscv64.fcvt.wu.d]
+      bytes 53 f6 26 c2              [riscv64.fcvt.l.d]
+      bytes 53 87 06 d2              [riscv64.fcvt.d.w]
+      bytes 53 87 16 d2              [riscv64.fcvt.d.wu]
+      bytes 53 f7 06 d0              [riscv64.fcvt.s.w]
+      bytes d3 77 18 40              [riscv64.fcvt.s.d]
+      bytes d3 07 08 42              [riscv64.fcvt.d.s]
+      bytes d3 77 27 d0              [riscv64.fcvt.s.l]
+      bytes 53 05 05 e2              [riscv64.fmv.x.d] |}]
+
+let%expect_test "riscv32: the RV64-only F/D forms are rejected on riscv32" =
+  attempt "riscv32" "\t.text\n\tfcvt.l.d x12, f13\n";
+  attempt "riscv32" "\t.text\n\tfmv.x.d x10, f10\n";
+  attempt "riscv32" "\t.text\n\tfcvt.s.l f15, x14\n";
+  [%expect
+    {|
+    riscv32.lower: fcvt.l.d is available only when XLEN is 64
+    riscv32.lower: fmv.x.d is available only when XLEN is 64
+    riscv32.lower: fcvt.s.l is available only when XLEN is 64
+    |}]
+
+(* The rest of the family shares bit-for-bit identical words on riscv32 - XLEN affects
+   only which forms exist, never how the ones both profiles share are encoded. Checked
+   against real riscv32-linux-gnu-as/objdump: identical bytes to riscv64's own for [fld],
+   [fadd.d], [fcvt.w.d], and [fcvt.d.w]. *)
+let%expect_test "riscv32: fld, fadd.d, fcvt.w.d/d.w encode identically to riscv64" =
+  show_lowered "riscv32"
+    "\t.text\n\tfld f1, 8(x10)\n\tfadd.d f5, f6, f7\n\tfcvt.w.d x12, f13\n\tfcvt.d.w f14, x13\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 87 30 85 00              [riscv32.fld]
+      bytes d3 72 73 02              [riscv32.fadd.d]
+      bytes 53 f6 06 c2              [riscv32.fcvt.w.d]
+      bytes 53 87 06 d2              [riscv32.fcvt.d.w] |}]
+
+(* [fld rd, symbol, xtmp] / [flw rd, symbol, xtmp] - GAS's own three-operand literal-pool
+   pseudo, the {!Lowered.Pair} shape [ld rd, symbol] already uses except the scratch
+   register can't be [rd] itself here ([auipc] only ever writes a GPR, and [rd] is a
+   scalar FP register) - so GAS spells it explicitly rather than reusing [rd] (M5,
+   asm/docs/corpus.md - almabench.c/fftsp.c/knucleotide.c's own float-constant loads,
+   `assemble-c`'s dominant remaining riscv reason once the rest of the F/D family closed).
+   Checked against real riscv64-linux-gnu-as/objdump: `fld fa1, .L100, x31` expands to
+   `auipc t6, %pcrel_hi(.L100); fld fa1, %pcrel_lo(...)(t6)`, placeholder bytes `00000f97
+   008fb587`. *)
+let%expect_test "riscv: fld/flw rd, symbol, xtmp is GAS's own auipc+load literal-pool pseudo" =
+  show_lowered "riscv64"
+    "\t.text\n\tfld f11, .L100, x31\n\tflw f12, .L100, x31\n.L100:\n\t.quad 0\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 97 0f 00 00 87 b5 0f 00  [riscv64.fld]
+        @0/4B pc+0 hi pcrel-hi20 b20 [12+20@0] = .L100 head(pair)
+        @4/4B pc+0 lo pcrel-lo12-i s12 [20+12@0] = .L100 tail(sibling:pair)
+      bytes 97 0f 00 00 07 a6 0f 00  [riscv64.flw]
+        @0/4B pc+0 hi pcrel-hi20 b20 [12+20@0] = .L100 head(pair)
+        @4/4B pc+0 lo pcrel-lo12-i s12 [20+12@0] = .L100 tail(sibling:pair)
+      label .L100
+      bytes 00 00 00 00 00 00 00 00
+    local .L100 notype in .text |}]
+
+(* [fcvt.w.d]/[fcvt.l.d] rd, rs1, rtz - an explicit rounding-mode operand overriding the
+   bare mnemonic's own dynamic-rounding default (M5, asm/docs/corpus.md - perlin.c's own
+   [(int)] cast, binarytrees.c's own [(long)] cast - C truncates toward zero, which the
+   default dynamic mode does not guarantee). {!freg_shape}'s [rm] field is what both this
+   and {!Lowered.pp}'s own reverse direction consult. Checked against real
+   riscv64-linux-gnu-as/objdump: `fcvt.l.d x22, f10, rtz` -> `c2251b53`, `fcvt.w.d x11,
+   f10, rtz` -> `c20515d3` (funct3 = 1, matching {!rounding_modes}' own `rtz` = 1 - `7`,
+   `dyn`, is the bare mnemonic's own default and prints no operand at all). *)
+let%expect_test "riscv64: fcvt.w.d/fcvt.l.d read an explicit rounding-mode operand" =
+  show_lowered "riscv64"
+    "\t.text\n\tfcvt.l.d x22, f10, rtz\n\tfcvt.w.d x11, f10, rtz\n\tfcvt.w.d x11, f10\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 53 1b 25 c2              [riscv64.fcvt.l.d]
+      bytes d3 15 05 c2              [riscv64.fcvt.w.d]
+      bytes d3 75 05 c2              [riscv64.fcvt.w.d] |}]

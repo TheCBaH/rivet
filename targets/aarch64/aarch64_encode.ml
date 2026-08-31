@@ -301,6 +301,17 @@ module Opcode = struct
     | Bl
     | Fmov
     | Fcmp
+    | Fadd
+    | Fsub
+    | Fmul
+    | Fdiv
+    | Fcsel
+    | Scvtf
+    | Ucvtf
+    | Fneg
+    | Fcvt
+    | Fcvtzs
+    | Tst
 
   let name = function
     | Add -> "add"
@@ -344,6 +355,17 @@ module Opcode = struct
     | Bl -> "bl"
     | Fmov -> "fmov"
     | Fcmp -> "fcmp"
+    | Fadd -> "fadd"
+    | Fsub -> "fsub"
+    | Fmul -> "fmul"
+    | Fdiv -> "fdiv"
+    | Fcsel -> "fcsel"
+    | Scvtf -> "scvtf"
+    | Ucvtf -> "ucvtf"
+    | Fneg -> "fneg"
+    | Fcvt -> "fcvt"
+    | Fcvtzs -> "fcvtzs"
+    | Tst -> "tst"
 
   (* The surface spellings this target accepts, and the only place the mapping
      lives. [simplify_instruction] consults it rather than repeating the list,
@@ -394,6 +416,17 @@ module Opcode = struct
     | "bl" -> Some Bl
     | "fmov" -> Some Fmov
     | "fcmp" -> Some Fcmp
+    | "fadd" -> Some Fadd
+    | "fsub" -> Some Fsub
+    | "fmul" -> Some Fmul
+    | "fdiv" -> Some Fdiv
+    | "fcsel" -> Some Fcsel
+    | "scvtf" -> Some Scvtf
+    | "ucvtf" -> Some Ucvtf
+    | "fneg" -> Some Fneg
+    | "fcvt" -> Some Fcvt
+    | "fcvtzs" -> Some Fcvtzs
+    | "tst" -> Some Tst
     | m ->
         if String.length m > 2 && String.sub m 0 2 = "b." then
           Option.map (fun c -> Bcond c) (Cond.of_name (String.sub m 2 (String.length m - 2)))
@@ -476,6 +509,20 @@ let extend_alu_of_name = function
 
 let logical_name = function 0 -> "and" | 1 -> "orr" | 2 -> "eor" | 3 -> "ands" | _ -> "?"
 
+(* "Floating-point data-processing (2 source)"'s own 4-bit opcode field (M5
+   corpus evidence: asm/docs/corpus.md's almabench.c/fftw.c/... - fadd/fsub/
+   fmul/fdiv). [fmax]/[fmin]/[fmaxnm]/[fminnm]/[fnmul] share the identical
+   word shape at other opcode values but are not evidenced, so none of them
+   is implemented alongside these four. *)
+let fbinop_name = function 0 -> "fmul" | 1 -> "fdiv" | 2 -> "fadd" | 3 -> "fsub" | _ -> "?"
+
+let fbinop_opcode = function
+  | Opcode.Fmul -> Some 0
+  | Opcode.Fdiv -> Some 1
+  | Opcode.Fadd -> Some 2
+  | Opcode.Fsub -> Some 3
+  | _ -> None
+
 (* UBFM's own two evidenced surface aliases (M5 corpus evidence: asm/docs/corpus.md's [ubfx]/
    [ubfiz]). Real hardware's canonical disassembly additionally prefers [uxtb]/[uxth]/[lsr] over
    these at particular [immr]/[imms] values, but nothing in this codebase compares decoded text
@@ -543,6 +590,16 @@ module Lowered = struct
     | Ldst_uoff of { size : access_size; load : bool; rt : Reg.t; rn : Reg.t; offset : Disp.t }
         (** One addressing mode, eight forms. The size decides the register width, the field scale
             and the relocation kind at once, so they cannot disagree. *)
+    | Ldst_uoff_f of { double : bool; load : bool; rt : Freg.t; rn : Reg.t; offset : Disp.t }
+        (** [ldr]/[str] into a scalar FP register rather than a GPR (M5 corpus evidence:
+            asm/docs/corpus.md's almabench.c/bisect.c/... - callee-saved [dN] spills, indexed
+            array loads, and [#:lo12:] float-constant loads). Bit-for-bit the same word
+            {!Ldst_uoff} uses (both the immediate-offset and the register-offset addressing
+            forms), with the "SIMD&FP" discriminator bit set - verified against real
+            [as]/[objdump]: [str d8, [sp, #16]] and [str x8, [sp, #16]] differ in exactly one
+            bit, the rest of the word identical. Only [S]/[D] (this project's only two
+            {!Freg.t} widths) are implemented; [B]/[H]/[Q] are real A64 sizes this corpus does
+            not evidence. *)
     | Ret of { rn : Reg.t }
     | Br of { rn : Reg.t }
         (** [br rn] - "unconditional branch to register", the same
@@ -638,6 +695,59 @@ module Lowered = struct
             8-bit immediate the way [Fmov_imm] is (verified against real [as]: any other literal
             after a [fcmp ..., #] is a different, unimplemented instruction shape, not a value this
             one field could hold) - so there is no value to carry beyond which register. *)
+    | Fcmp_reg of { rn : Freg.t; rm : Freg.t }
+        (** [fcmp dN, dM] - {!Fcmp_imm0}'s register-register sibling, the same "floating-point
+            compare" word shape with [Rm] a real field instead of fixed zero and the trailing
+            5-bit opcode2 [00000] instead of [01000] (M5 corpus evidence: asm/docs/corpus.md's
+            [bisect.c]/[mandelbrot.c]/... - every [fcmp] this corpus writes against a nonzero
+            right-hand side). *)
+    | Fbinop of { opc : int; rd : Freg.t; rn : Freg.t; rm : Freg.t }
+        (** "Floating-point data-processing (2 source)" - [fadd]/[fsub]/[fmul]/[fdiv] (M5 corpus
+            evidence: asm/docs/corpus.md's almabench.c/fftw.c/...), one word shape with a 4-bit
+            [opc] selecting which - see {!fbinop_name}/{!fbinop_opcode}. All three registers are
+            always the same width; nothing here re-derives [double] from more than [rd]. *)
+    | Fcsel of { cond : Cond.t; rd : Freg.t; rn : Freg.t; rm : Freg.t }
+        (** [fcsel dd, dn, dm, cc] - {!Csel}'s floating-point sibling, a distinct "floating-point
+            conditional select" word (bits 11-10 = [11] versus {!Fbinop}'s [10]) rather than a
+            shared constructor with it, since {!Csel}'s registers are {!Reg.t} and this one's are
+            {!Freg.t} (M5 corpus evidence: asm/docs/corpus.md's almabench.c/perlin.c). *)
+    | Cvtf of { signed : bool; rd : Freg.t; rn : Reg.t }
+        (** [scvtf]/[ucvtf] rd, rn - signed/unsigned integer-to-float, the "conversion between
+            floating-point and integer" word shape with [rmode] fixed at [00] and [opcode] =
+            [010]/[011] (M5 corpus evidence: asm/docs/corpus.md's binarytrees.c/bisect.c/...).
+            [rn]'s own [Reg.width] carries the word's [sf] bit; [rd]'s [Freg.double] carries
+            [type] - both already fields on their respective register values, so neither is
+            duplicated here the way {!Movz}'s [hw] has to be (nothing about either bit can be
+            recovered from the other register alone). *)
+    | Fneg of { rd : Freg.t; rn : Freg.t }
+        (** [fneg dd, dn] - "floating-point data-processing (1 source)", opcode [000010] (M5
+            corpus evidence: asm/docs/corpus.md's almabench.c/bisect.c/...). [fabs]/[fsqrt] share
+            the identical word shape at other opcode values but are not evidenced, so neither is
+            implemented alongside it. *)
+    | Fcvt of { rd : Freg.t; rn : Freg.t }
+        (** [fcvt sd, dn] / [fcvt dd, sn] - the single<->double precision conversion, the same
+            "floating-point data-processing (1 source)" word {!Fneg} uses: [type] (source
+            precision) and [opcode] (destination-select, [000100] to single / [000101] to
+            double) together are fully determined by [rd.Freg.double]/[rn.Freg.double] being
+            opposite, so neither is a separate field (M5 corpus evidence: asm/docs/corpus.md's
+            fftsp.c/knucleotide.c). *)
+    | Fcvtzs of { rd : Reg.t; rn : Freg.t }
+        (** [fcvtzs rd, rn] - float-to-signed-integer, round toward zero: the "conversion between
+            floating-point and integer" word shape with [rmode] = [11], [opcode] = [000] (M5
+            corpus evidence: asm/docs/corpus.md's binarytrees.c/perlin.c). [fcvtzu] shares the
+            identical shape at [opcode] = [001] but is not evidenced. *)
+    | Fmov_from_gpr of { rd : Freg.t; rn : Reg.t }
+        (** [fmov dd, xn] / [fmov sd, wn] - move a general register's raw bits into a scalar FP
+            register, no conversion (M5 corpus evidence: asm/docs/corpus.md's [fmov d9, xzr]/
+            [fmov s9, wzr] zeroing idiom in bisect.c/fft.c/fftsp.c/mandelbrot.c). The identical
+            "conversion between floating-point and integer" word shape as {!Cvtf} at [opcode] =
+            [111]; the reverse direction ([fmov xd, sn], [opcode] = [110]) is not evidenced, so
+            only this one is implemented. *)
+    | Fmov_reg of { rd : Freg.t; rn : Freg.t }
+        (** [fmov dd, dn] - copy one scalar FP register to another, no conversion (M5 corpus
+            evidence: asm/docs/corpus.md's almabench.c/bisect.c/... - ccomp's own float-value
+            move between two live registers). {!Fneg}'s identical "floating-point
+            data-processing (1 source)" word at [opcode] = [000000]. *)
 
   let pp ppf = function
     (* [add xD, sp, #0] is spelled [mov xD, sp] by every A64 disassembler, and
@@ -676,6 +786,11 @@ module Lowered = struct
           Reg.pp rt Asm_core.Lowered_ast.pp_branch target
     | Ldst_uoff { size; load; rt; rn; offset } ->
         Fmt.pf ppf "%s %a, %a" (ldst_mnemonic ~size ~load) Reg.pp rt Mem.pp
+          { Mem.base = rn; offset; writeback = false; pre = true }
+    | Ldst_uoff_f { load; rt; rn; offset; _ } ->
+        Fmt.pf ppf "%s %a, %a"
+          (if load then "ldr" else "str")
+          Freg.pp rt Mem.pp
           { Mem.base = rn; offset; writeback = false; pre = true }
     | Ret { rn } ->
         (* [ret x30] is spelled [ret]: x30 is the architectural default and every
@@ -739,6 +854,18 @@ module Lowered = struct
     | Bl { target } -> Fmt.pf ppf "bl %a" Asm_core.Lowered_ast.pp_branch target
     | Fmov_imm { rd; value } -> Fmt.pf ppf "fmov %a, #%.18e" Freg.pp rd value
     | Fcmp_imm0 { rn } -> Fmt.pf ppf "fcmp %a, #0.0" Freg.pp rn
+    | Fcmp_reg { rn; rm } -> Fmt.pf ppf "fcmp %a, %a" Freg.pp rn Freg.pp rm
+    | Fbinop { opc; rd; rn; rm } ->
+        Fmt.pf ppf "%s %a, %a, %a" (fbinop_name opc) Freg.pp rd Freg.pp rn Freg.pp rm
+    | Fcsel { cond; rd; rn; rm } ->
+        Fmt.pf ppf "fcsel %a, %a, %a, %s" Freg.pp rd Freg.pp rn Freg.pp rm (Cond.name cond)
+    | Cvtf { signed; rd; rn } ->
+        Fmt.pf ppf "%s %a, %a" (if signed then "scvtf" else "ucvtf") Freg.pp rd Reg.pp rn
+    | Fneg { rd; rn } -> Fmt.pf ppf "fneg %a, %a" Freg.pp rd Freg.pp rn
+    | Fcvt { rd; rn } -> Fmt.pf ppf "fcvt %a, %a" Freg.pp rd Freg.pp rn
+    | Fcvtzs { rd; rn } -> Fmt.pf ppf "fcvtzs %a, %a" Reg.pp rd Freg.pp rn
+    | Fmov_from_gpr { rd; rn } -> Fmt.pf ppf "fmov %a, %a" Freg.pp rd Reg.pp rn
+    | Fmov_reg { rd; rn } -> Fmt.pf ppf "fmov %a, %a" Freg.pp rd Freg.pp rn
 
   let equal a b =
     match (a, b) with
@@ -758,6 +885,9 @@ module Lowered = struct
         x.nz = y.nz && Reg.equal x.rt y.rt && Asm_core.Lowered_ast.equal_branch x.target y.target
     | Ldst_uoff x, Ldst_uoff y ->
         x.size = y.size && x.load = y.load && Reg.equal x.rt y.rt && Reg.equal x.rn y.rn
+        && Disp.equal x.offset y.offset
+    | Ldst_uoff_f x, Ldst_uoff_f y ->
+        x.double = y.double && x.load = y.load && Freg.equal x.rt y.rt && Reg.equal x.rn y.rn
         && Disp.equal x.offset y.offset
     | Ret x, Ret y -> Reg.equal x.rn y.rn
     | Br x, Br y -> Reg.equal x.rn y.rn
@@ -794,6 +924,18 @@ module Lowered = struct
     | Bl x, Bl y -> Asm_core.Lowered_ast.equal_branch x.target y.target
     | Fmov_imm x, Fmov_imm y -> Freg.equal x.rd y.rd && Float.equal x.value y.value
     | Fcmp_imm0 x, Fcmp_imm0 y -> Freg.equal x.rn y.rn
+    | Fcmp_reg x, Fcmp_reg y -> Freg.equal x.rn y.rn && Freg.equal x.rm y.rm
+    | Fbinop x, Fbinop y ->
+        x.opc = y.opc && Freg.equal x.rd y.rd && Freg.equal x.rn y.rn && Freg.equal x.rm y.rm
+    | Fcsel x, Fcsel y ->
+        Cond.equal x.cond y.cond && Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
+        && Freg.equal x.rm y.rm
+    | Cvtf x, Cvtf y -> x.signed = y.signed && Freg.equal x.rd y.rd && Reg.equal x.rn y.rn
+    | Fneg x, Fneg y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
+    | Fcvt x, Fcvt y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
+    | Fcvtzs x, Fcvtzs y -> Reg.equal x.rd y.rd && Freg.equal x.rn y.rn
+    | Fmov_from_gpr x, Fmov_from_gpr y -> Freg.equal x.rd y.rd && Reg.equal x.rn y.rn
+    | Fmov_reg x, Fmov_reg y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | _ -> false
 end
 
@@ -1045,6 +1187,12 @@ let reg_field ~width ~sp name =
     ~decode:(fun v -> Some (Reg.of_num ~width ~sp (Int64.to_int v)))
     (C.field ~width:5 name)
 
+let freg_field ~double name =
+  C.iso_fun ~name
+    ~encode:(fun (r : Freg.t) -> Some (Int64.of_int r.Freg.num))
+    ~decode:(fun v -> Some (Freg.of_num ~double (Int64.to_int v)))
+    (C.field ~width:5 name)
+
 (* The condition, as a declared finite relation rather than a bare four-bit
    field, so [check] decides that all sixteen codes decode and that no two share
    one. *)
@@ -1174,6 +1322,81 @@ let ldst_roff_alt ~size ~load =
       ** reg_field ~width:64 ~sp:true "rn"
       ** reg_field ~width:rt_width ~sp:false "rt")
 
+(* [ldr]/[str] into a scalar FP register - bit-for-bit {!ldst_alt}'s own word with the
+   "SIMD&FP" bit set (verified against real aarch64-linux-gnu-as/objdump: [str d8, [sp,
+   #16]] -> [fd000be8], versus {!ldst_alt}'s own GPR [str x8, [sp, #16]] shape at the
+   identical field positions - the six-bit constant differs from [ldst_alt]'s [111001] only
+   in the one middle bit). Only [S]/[D] (via [W]/[X]'s numeric size/shift/byte-count, since
+   A64 assigns them the identical codes) are used; [B]/[H]/[Q] are not evidenced. *)
+let ldst_f_alt ~double ~load =
+  let size = if double then X else W in
+  C.iso_fun
+    ~name:(Printf.sprintf "%s%d-f" (if load then "ldr" else "str") (access_bytes size * 8))
+    ~encode:(function
+      | Lowered.Ldst_uoff_f { double = d; load = l; rt; rn; offset } when d = double && l = load
+        -> (
+          match offset with
+          | Disp.Reg _ -> None (* [ldst_roff_f_alt]'s form, not this one *)
+          | Disp.Const v -> Some ((), ((), ((), (v, (rn, Int64.of_int rt.Freg.num)))))
+          | Disp.Sym _ -> Some ((), ((), ((), (0L, (rn, Int64.of_int rt.Freg.num))))))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), (v, (rn, rt))))) ->
+      Some
+        (Lowered.Ldst_uoff_f
+           { double; load; rt = Freg.of_num ~double (Int64.to_int rt); rn; offset = Disp.Const v }))
+    C.(
+      const ~width:2 (Int64.of_int (access_code size))
+      ** const ~width:6 0b111101L
+      ** const ~width:2 (if load then 1L else 0L)
+      ** ldst_offset ~size "offset" ** reg_field ~width:64 ~sp:true "rn" ** field ~width:5 "rt")
+
+let ldst_roff_f_alt ~double ~load =
+  let size = if double then X else W in
+  C.iso_fun
+    ~name:(Printf.sprintf "%s%d-f-roff" (if load then "ldr" else "str") (access_bytes size * 8))
+    ~encode:(function
+      | Lowered.Ldst_uoff_f
+          { double = d; load = l; rt; rn; offset = Disp.Reg { index; extend; amount } }
+        when d = double && l = load -> (
+          match extend_option extend with
+          | None -> None
+          | Some opt ->
+              let s = match amount with Some 0 | None -> 0L | Some _ -> 1L in
+              Some
+                ( (),
+                  ( (),
+                    ( (),
+                      ((), (index, (Int64.of_int opt, (s, ((), (rn, Int64.of_int rt.Freg.num))))))
+                    ) ) ))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), ((), (index, (opt, (s, ((), (rn, rt))))))))) ->
+      match extend_of_option (Int64.to_int opt) with
+      | None -> None
+      | Some extend ->
+          let scaled = Int64.equal s 1L in
+          let extend, amount =
+            if extend = "lsl" && not scaled then ("lsl", None)
+            else (extend, if scaled then Some (access_shift size) else None)
+          in
+          let index = { index with Reg.width = extend_index_width extend } in
+          Some
+            (Lowered.Ldst_uoff_f
+               {
+                 double;
+                 load;
+                 rt = Freg.of_num ~double (Int64.to_int rt);
+                 rn;
+                 offset = Disp.Reg { index; extend; amount };
+               }))
+    C.(
+      const ~width:2 (Int64.of_int (access_code size))
+      ** const ~width:6 0b111100L
+      ** const ~width:2 (if load then 1L else 0L)
+      ** const ~width:1 1L
+      ** reg_field ~width:64 ~sp:false "rm"
+      ** field ~width:3 "option" ** field ~width:1 "s" ** const ~width:2 0b10L
+      ** reg_field ~width:64 ~sp:true "rn" ** field ~width:5 "rt")
+
 (* ADD/SUB (immediate) with the [op] bit set, once per value of [S]. The two
    differ in exactly two places - the constant bit and whether [rd = 31] reads
    as SP or as the zero register - so they share a generator rather than being
@@ -1235,6 +1458,255 @@ let fcmp_imm0_alt ~double =
       ** const ~width:2 (if double then 1L else 0L)
       ** const ~width:1 1L ** const ~width:11 0b00000001000L ** field ~width:5 "rn"
       ** const ~width:5 0b01000L)
+
+(* [fcmp dN, dM] - {!fcmp_imm0_alt}'s register-register sibling: the same "floating-point
+   compare" word, [Rm] a real field instead of fixed zero and the trailing 5-bit opcode2
+   [00000] instead of [01000]. *)
+let fcmp_reg_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fcmp-reg-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fcmp_reg { rn; rm } when rn.Freg.double = double && rm.Freg.double = double ->
+          Some
+            ( (),
+              ( (),
+                ((), ((), (Int64.of_int rm.Freg.num, ((), ((), (Int64.of_int rn.Freg.num, ()))))))
+              ) )
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), ((), (rm, ((), ((), (rn, ())))))))) ->
+      Some
+        (Lowered.Fcmp_reg
+           {
+             rn = Freg.of_num ~double (Int64.to_int rn);
+             rm = Freg.of_num ~double (Int64.to_int rm);
+           }))
+    C.(
+      const ~width:3 0L ** const ~width:5 0b11110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:1 1L ** field ~width:5 "rm" ** const ~width:2 0L ** const ~width:4 0b1000L
+      ** field ~width:5 "rn" ** const ~width:5 0b00000L)
+
+(* "Floating-point data-processing (2 source)" - [fadd]/[fsub]/[fmul]/[fdiv] (see
+   {!fbinop_name}/{!fbinop_opcode}). Verified against real aarch64-linux-gnu-as/objdump:
+   [1e622820] for [fadd d0, d1, d2], [1e222820] for [fadd s0, s1, s2], and likewise for
+   [fsub]/[fmul]/[fdiv] at their own 4-bit opcode. *)
+let fbinop_alt ~double ~opc =
+  C.iso_fun
+    ~name:(Printf.sprintf "fbinop-%s-%s" (fbinop_name opc) (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fbinop { opc = o; rd; rn; rm }
+        when o = opc && rd.Freg.double = double && rn.Freg.double = double
+             && rm.Freg.double = double ->
+          Some
+            ( (),
+              ( (),
+                ( (),
+                  ( (),
+                    ( Int64.of_int rm.Freg.num,
+                      ((), ((), (Int64.of_int rn.Freg.num, Int64.of_int rd.Freg.num))) ) ) ) ) )
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), ((), (rm, ((), ((), (rn, rd)))))))) ->
+      Some
+        (Lowered.Fbinop
+           {
+             opc;
+             rd = Freg.of_num ~double (Int64.to_int rd);
+             rn = Freg.of_num ~double (Int64.to_int rn);
+             rm = Freg.of_num ~double (Int64.to_int rm);
+           }))
+    C.(
+      const ~width:3 0L ** const ~width:5 0b11110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:1 1L ** field ~width:5 "rm"
+      ** const ~width:4 (Int64.of_int opc)
+      ** const ~width:2 0b10L ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [fcsel dd, dn, dm, cc] - {!Csel}'s floating-point sibling: the same top bits {!fbinop_alt}
+   has, with [cc] where {!Fbinop} has its opcode and the trailing fixed bits [11] rather than
+   [10]. Verified against real aarch64-linux-gnu-as/objdump: [1e6e0dac] for [fcsel d12, d13,
+   d14, eq]. *)
+let fcsel_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fcsel-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fcsel { cond; rd; rn; rm }
+        when rd.Freg.double = double && rn.Freg.double = double && rm.Freg.double = double ->
+          Some
+            ( (),
+              ( (),
+                ( (),
+                  ( (),
+                    ( Int64.of_int rm.Freg.num,
+                      (cond, ((), (Int64.of_int rn.Freg.num, Int64.of_int rd.Freg.num))) ) ) ) ) )
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), ((), (rm, (cond, ((), (rn, rd)))))))) ->
+      Some
+        (Lowered.Fcsel
+           {
+             cond;
+             rd = Freg.of_num ~double (Int64.to_int rd);
+             rn = Freg.of_num ~double (Int64.to_int rn);
+             rm = Freg.of_num ~double (Int64.to_int rm);
+           }))
+    C.(
+      const ~width:3 0L ** const ~width:5 0b11110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:1 1L ** field ~width:5 "rm" ** cond_codec ** const ~width:2 0b11L
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [scvtf]/[ucvtf] rd, rn - signed/unsigned integer-to-float (M5 corpus evidence:
+   asm/docs/corpus.md's binarytrees.c/bisect.c/...). Verified against real
+   aarch64-linux-gnu-as/objdump: [1e620251] for [scvtf d17, w16]... (only [sf] and [type]
+   vary the fixed word, both plain fields here rather than one alt per combination, exactly
+   {!Udiv}'s own [sf]-as-field precedent). *)
+let cvtf_alt ~signed ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "cvtf-%s-%s" (if signed then "s" else "u") (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Cvtf { signed = s; rd; rn } when s = signed && rd.Freg.double = double ->
+          Some
+            ( (if rn.Reg.width = 64 then 1L else 0L),
+              ((), ((), ((), (Int64.of_int rn.Reg.num, Int64.of_int rd.Freg.num)))) )
+      | _ -> None)
+    ~decode:(fun (sf, ((), ((), ((), (rn, rd))))) ->
+      let width = if Int64.equal sf 1L then 64 else 32 in
+      Some
+        (Lowered.Cvtf
+           {
+             signed;
+             rd = Freg.of_num ~double (Int64.to_int rd);
+             rn = Reg.of_num ~width ~sp:false (Int64.to_int rn);
+           }))
+    C.(
+      field ~width:1 "sf" ** const ~width:7 0b0011110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:12 (Int64.of_int (2048 + ((if signed then 0b010 else 0b011) * 64)))
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [fmov dd, xn] / [fmov sd, wn] - move a general register's raw bits into a scalar FP
+   register (M5 corpus evidence: asm/docs/corpus.md's [fmov d9, xzr]/[fmov s9, wzr] zeroing
+   idiom). {!Cvtf}'s identical "conversion" word at [opcode] = [111]. Verified against real
+   aarch64-linux-gnu-as/objdump: [9e6703e9] for [fmov d9, xzr], [1e2703e9] for [fmov s9,
+   wzr]. *)
+let fmov_from_gpr_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fmov-from-gpr-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fmov_from_gpr { rd; rn } when rd.Freg.double = double ->
+          Some
+            ( (if rn.Reg.width = 64 then 1L else 0L),
+              ((), ((), ((), (Int64.of_int rn.Reg.num, Int64.of_int rd.Freg.num)))) )
+      | _ -> None)
+    ~decode:(fun (sf, ((), ((), ((), (rn, rd))))) ->
+      let width = if Int64.equal sf 1L then 64 else 32 in
+      Some
+        (Lowered.Fmov_from_gpr
+           {
+             rd = Freg.of_num ~double (Int64.to_int rd);
+             rn = Reg.of_num ~width ~sp:false (Int64.to_int rn);
+           }))
+    C.(
+      field ~width:1 "sf" ** const ~width:7 0b0011110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:12 (Int64.of_int (2048 + (0b111 * 64)))
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [fcvtzs rd, rn] - float-to-signed-integer, round toward zero (M5 corpus evidence:
+   asm/docs/corpus.md's binarytrees.c/perlin.c). {!Cvtf}'s identical "conversion" word with
+   [rmode] = [11], [opcode] = [000]. Verified against real aarch64-linux-gnu-as/objdump:
+   [9e7800a4] for [fcvtzs x4, d5], [1e3800a4] for [fcvtzs w4, s5]. *)
+let fcvtzs_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fcvtzs-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fcvtzs { rd; rn } when rn.Freg.double = double ->
+          Some
+            ( (if rd.Reg.width = 64 then 1L else 0L),
+              ((), ((), ((), (Int64.of_int rn.Freg.num, Int64.of_int rd.Reg.num)))) )
+      | _ -> None)
+    ~decode:(fun (sf, ((), ((), ((), (rn, rd))))) ->
+      let width = if Int64.equal sf 1L then 64 else 32 in
+      Some
+        (Lowered.Fcvtzs
+           {
+             rd = Reg.of_num ~width ~sp:false (Int64.to_int rd);
+             rn = Freg.of_num ~double (Int64.to_int rn);
+           }))
+    C.(
+      field ~width:1 "sf" ** const ~width:7 0b0011110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:12 (Int64.of_int (2048 + (0b11 * 512) + 0))
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* "Floating-point data-processing (1 source)" - [fneg]/[fcvt] (M5 corpus evidence:
+   asm/docs/corpus.md's almabench.c/bisect.c/... for [fneg], fftsp.c/knucleotide.c for
+   [fcvt]). Verified against real aarch64-linux-gnu-as/objdump: [1e614020] for [fneg d0,
+   d1], [1e624062] for [fcvt s2, d3] (opcode [000100], type = source = double), [1e22c062]
+   for [fcvt d2, s3] (opcode [000101], type = source = single). *)
+let fneg_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fneg-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fneg { rd; rn } when rd.Freg.double = double && rn.Freg.double = double ->
+          Some ((), ((), ((), (Int64.of_int rn.Freg.num, Int64.of_int rd.Freg.num))))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), (rn, rd)))) ->
+      Some
+        (Lowered.Fneg
+           {
+             rd = Freg.of_num ~double (Int64.to_int rd);
+             rn = Freg.of_num ~double (Int64.to_int rn);
+           }))
+    C.(
+      const ~width:8 0b00011110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:12 (Int64.of_int (2048 + (0b000010 * 32) + 0b10000))
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [fmov dd, dn] - {!Fneg}'s identical word at [opcode] = [000000] (register-to-register
+   copy, no conversion). Verified against real aarch64-linux-gnu-as/objdump: [1e604009]
+   for [fmov d9, d0]. *)
+let fmov_reg_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fmov-reg-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fmov_reg { rd; rn } when rd.Freg.double = double && rn.Freg.double = double ->
+          Some ((), ((), ((), (Int64.of_int rn.Freg.num, Int64.of_int rd.Freg.num))))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), (rn, rd)))) ->
+      Some
+        (Lowered.Fmov_reg
+           {
+             rd = Freg.of_num ~double (Int64.to_int rd);
+             rn = Freg.of_num ~double (Int64.to_int rn);
+           }))
+    C.(
+      const ~width:8 0b00011110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:12 (Int64.of_int (2048 + (0b000000 * 32) + 0b10000))
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+let fcvt_alt ~src_double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fcvt-%s" (if src_double then "d-to-s" else "s-to-d"))
+    ~encode:(function
+      | Lowered.Fcvt { rd; rn } when rn.Freg.double = src_double && rd.Freg.double = not src_double
+        ->
+          Some ((), ((), ((), (Int64.of_int rn.Freg.num, Int64.of_int rd.Freg.num))))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), (rn, rd)))) ->
+      Some
+        (Lowered.Fcvt
+           {
+             rd = Freg.of_num ~double:(not src_double) (Int64.to_int rd);
+             rn = Freg.of_num ~double:src_double (Int64.to_int rn);
+           }))
+    C.(
+      const ~width:8 0b00011110L
+      ** const ~width:2 (if src_double then 1L else 0L)
+      ** const ~width:12
+           (Int64.of_int (2048 + ((if src_double then 0b000100 else 0b000101) * 32) + 0b10000))
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
 
 let branch_value = function
   | Asm_core.Lowered_ast.Symbolic _ -> 0L
@@ -1394,11 +1866,17 @@ let codec : (Lowered.t, fixup_kind) C.t =
                       Some ((), (Int64.of_int opc, ((), (imm, (rn, rd)))))
                   | _ -> None)
                 ~decode:(fun ((), (opc, ((), (imm, (rn, rd))))) ->
+                  let opc = Int64.to_int opc in
+                  (* [rd]'s own field is SP-capable for AND/ORR/EOR (opc 0-2), but ANDS
+                     (opc 3) sets flags and can never target SP - the same rule ADD/SUB's
+                     own flag-setting [s] forms already observe - so [Rd] = 31 there is
+                     always the zero register, never [wsp]/[sp] the way {!reg_field}'s
+                     blanket [~sp:true] would otherwise report it. *)
                   Some
                     (Lowered.Logical_imm
                        {
-                         opc = Int64.to_int opc;
-                         rd = { rd with Reg.width = 32 };
+                         opc;
+                         rd = { rd with Reg.width = 32; is_sp = opc <> 3 && rd.Reg.is_sp };
                          rn = { rn with Reg.width = 32 };
                          imm;
                        }))
@@ -1414,7 +1892,10 @@ let codec : (Lowered.t, fixup_kind) C.t =
                       Some ((), (Int64.of_int opc, ((), (imm, (rn, rd)))))
                   | _ -> None)
                 ~decode:(fun ((), (opc, ((), (imm, (rn, rd))))) ->
-                  Some (Lowered.Logical_imm { opc = Int64.to_int opc; rd; rn; imm }))
+                  let opc = Int64.to_int opc in
+                  Some
+                    (Lowered.Logical_imm
+                       { opc; rd = { rd with Reg.is_sp = opc <> 3 && rd.Reg.is_sp }; rn; imm }))
                 C.(
                   const ~width:1 1L ** field ~width:2 "opc" ** const ~width:6 0b100100L
                   ** bitmask_codec ~datasize:64
@@ -1788,6 +2269,29 @@ let codec : (Lowered.t, fixup_kind) C.t =
                  (ldst_roff_alt ~size ~load:false);
              ])
            access_all;
+         (* [ldr]/[str] into a scalar FP register, both addressing modes, both widths -
+            {!ldst_f_alt}/{!ldst_roff_f_alt}'s own comments. *)
+         List.concat_map
+           (fun double ->
+             [
+               C.alt
+                 ~label:(Printf.sprintf "ldr%d-f" (if double then 64 else 32))
+                 ~priority:(if double then 75 else 74)
+                 (ldst_f_alt ~double ~load:true);
+               C.alt
+                 ~label:(Printf.sprintf "str%d-f" (if double then 64 else 32))
+                 ~priority:(if double then 77 else 76)
+                 (ldst_f_alt ~double ~load:false);
+               C.alt
+                 ~label:(Printf.sprintf "ldr%d-f-roff" (if double then 64 else 32))
+                 ~priority:(if double then 79 else 78)
+                 (ldst_roff_f_alt ~double ~load:true);
+               C.alt
+                 ~label:(Printf.sprintf "str%d-f-roff" (if double then 64 else 32))
+                 ~priority:(if double then 81 else 80)
+                 (ldst_roff_f_alt ~double ~load:false);
+             ])
+           [ false; true ];
          [
            C.alt ~label:"ret" ~priority:17
              (C.iso_fun ~name:"ret"
@@ -1937,6 +2441,32 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.alt ~label:"fmov-imm-s" ~priority:33 (fmov_imm_alt ~double:false);
            C.alt ~label:"fcmp-imm0-d" ~priority:34 (fcmp_imm0_alt ~double:true);
            C.alt ~label:"fcmp-imm0-s" ~priority:35 (fcmp_imm0_alt ~double:false);
+           C.alt ~label:"fcmp-reg-d" ~priority:50 (fcmp_reg_alt ~double:true);
+           C.alt ~label:"fcmp-reg-s" ~priority:51 (fcmp_reg_alt ~double:false);
+           C.alt ~label:"fmul-d" ~priority:52 (fbinop_alt ~double:true ~opc:0);
+           C.alt ~label:"fmul-s" ~priority:53 (fbinop_alt ~double:false ~opc:0);
+           C.alt ~label:"fdiv-d" ~priority:54 (fbinop_alt ~double:true ~opc:1);
+           C.alt ~label:"fdiv-s" ~priority:55 (fbinop_alt ~double:false ~opc:1);
+           C.alt ~label:"fadd-d" ~priority:56 (fbinop_alt ~double:true ~opc:2);
+           C.alt ~label:"fadd-s" ~priority:57 (fbinop_alt ~double:false ~opc:2);
+           C.alt ~label:"fsub-d" ~priority:58 (fbinop_alt ~double:true ~opc:3);
+           C.alt ~label:"fsub-s" ~priority:59 (fbinop_alt ~double:false ~opc:3);
+           C.alt ~label:"fcsel-d" ~priority:60 (fcsel_alt ~double:true);
+           C.alt ~label:"fcsel-s" ~priority:61 (fcsel_alt ~double:false);
+           C.alt ~label:"scvtf-d" ~priority:62 (cvtf_alt ~signed:true ~double:true);
+           C.alt ~label:"scvtf-s" ~priority:63 (cvtf_alt ~signed:true ~double:false);
+           C.alt ~label:"ucvtf-d" ~priority:64 (cvtf_alt ~signed:false ~double:true);
+           C.alt ~label:"ucvtf-s" ~priority:65 (cvtf_alt ~signed:false ~double:false);
+           C.alt ~label:"fmov-from-gpr-d" ~priority:66 (fmov_from_gpr_alt ~double:true);
+           C.alt ~label:"fmov-from-gpr-s" ~priority:67 (fmov_from_gpr_alt ~double:false);
+           C.alt ~label:"fcvtzs-d" ~priority:68 (fcvtzs_alt ~double:true);
+           C.alt ~label:"fcvtzs-s" ~priority:69 (fcvtzs_alt ~double:false);
+           C.alt ~label:"fneg-d" ~priority:70 (fneg_alt ~double:true);
+           C.alt ~label:"fneg-s" ~priority:71 (fneg_alt ~double:false);
+           C.alt ~label:"fcvt-d-to-s" ~priority:72 (fcvt_alt ~src_double:true);
+           C.alt ~label:"fcvt-s-to-d" ~priority:73 (fcvt_alt ~src_double:false);
+           C.alt ~label:"fmov-reg-d" ~priority:82 (fmov_reg_alt ~double:true);
+           C.alt ~label:"fmov-reg-s" ~priority:83 (fmov_reg_alt ~double:false);
          ];
        ])
 
@@ -2119,8 +2649,23 @@ let lower_instruction state i =
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then bad `Imm12_needs_shift
-          else Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const imm; shift12 = false } ])
+          if Int64.compare imm 0L >= 0 && Int64.compare imm 4096L < 0 then
+            Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const imm; shift12 = false } ]
+          else
+            (* GAS auto-selects the [lsl #12] form itself whenever a bare immediate is an
+               exact multiple of 4096 that doesn't fit the plain 12-bit field (M5 corpus
+               evidence: asm/docs/corpus.md's knucleotide.c - ccomp writes the bare
+               [add x23, x23, #8192], never the explicit four-operand spelling {!Sub}'s own
+               [lsl #12] arm already reads). Verified against real
+               aarch64-linux-gnu-as/objdump: [add x23, x23, #8192] -> [91400af7], decoding
+               back as [add x23, x23, #0x2, lsl #12]. *)
+            let shifted = Int64.shift_right_logical imm 12 in
+            if
+              Int64.equal (Int64.shift_left shifted 12) imm
+              && Int64.compare shifted 0L >= 0
+              && Int64.compare shifted 4096L < 0
+            then Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const shifted; shift12 = true } ]
+            else bad `Imm12_needs_shift)
   (* [add x9, x9, #:lo12:Te4] - R_AARCH64_ADD_ABS_LO12_NC. Same shape as
      [ldr]/[str]'s own [#:lo12:] a few cases below: the modifier picked the
      form, so the expression underneath (with the modifier stripped) is what
@@ -2129,6 +2674,23 @@ let lower_instruction state i =
     ->
       if m <> "lo12" then bad (`Wrong_memory_modifier m)
       else Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Sym inner; shift12 = false } ]
+  (* The explicit four-operand [lsl #12] spelling - not evidenced from ccomp's own output
+     (which always writes the bare, auto-selected form above), but the canonical dump's own
+     decode->reconstruct round trip produces exactly this operand list for a decoded
+     [shift12] instruction, and it must re-lower to the identical [Lowered.Add_imm] rather
+     than fail - the same reasoning as {!Sub}'s own arm just below. *)
+  | ( Opcode.Add,
+      [
+        Operand.Reg rd;
+        Operand.Reg rn;
+        Operand.Imm v;
+        Operand.Shift { Shift.kind = "lsl"; amount = 12 };
+      ] ) -> (
+      match imm_of v with
+      | Error e -> Error e
+      | Ok imm ->
+          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then bad `Imm12_field
+          else Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const imm; shift12 = true } ])
   | Opcode.Movz, [ Operand.Reg rd; Operand.Imm v ] -> (
       match imm_of v with
       | Error e -> Error e
@@ -2310,6 +2872,61 @@ let lower_instruction state i =
                   Ok
                     [ Lowered.Ldst_uoff { size; load; rt; rn = m.Mem.base; offset = m.Mem.offset } ]
               | Some n -> bad (`Register_offset_shift_invalid n)))
+  (* [ldr]/[str] into a scalar FP register - the identical addressing-mode handling as the GPR
+     case above (bare-symbol [#:lo12:], scaled numeric offset, register-offset), just against
+     {!Freg.t}'s two widths rather than {!access_size}'s four (M5 corpus evidence:
+     asm/docs/corpus.md's almabench.c/bisect.c/...). *)
+  | (Opcode.Ldr | Opcode.Str), [ Operand.Freg rt; Operand.Mem m ] -> (
+      let load = match i.Instruction.op with Opcode.Ldr -> true | _ -> false in
+      let size = if rt.Freg.double then X else W in
+      if m.Mem.writeback then bad `Writeback_out_of_scope
+      else
+        let double = rt.Freg.double in
+        match m.Mem.offset with
+        | Disp.Sym e -> (
+            let inner =
+              match e with
+              | Asm_core.Expr.Modifier ("lo12", inner) -> Ok inner
+              | Asm_core.Expr.Modifier (m, _) -> Error (`Wrong_memory_modifier m)
+              | _ -> Error `Missing_memory_modifier
+            in
+            match inner with
+            | Error kind -> bad kind
+            | Ok value ->
+                Ok
+                  [
+                    Lowered.Ldst_uoff_f
+                      { double; load; rt; rn = m.Mem.base; offset = Disp.Sym value };
+                  ])
+        | Disp.Const off ->
+            let scale = Int64.of_int (access_bytes size) in
+            if Int64.compare off 0L < 0 then bad `Unsigned_offset_only
+            else if not (Int64.equal (Int64.rem off scale) 0L) then bad (`Offset_not_scaled scale)
+            else if Int64.compare (Int64.div off scale) 4096L >= 0 then bad `Offset_not_12bit_scaled
+            else
+              Ok
+                [
+                  Lowered.Ldst_uoff_f { double; load; rt; rn = m.Mem.base; offset = Disp.Const off };
+                ]
+        | Disp.Reg { index; extend; amount } -> (
+            let expected_index_width = extend_index_width extend in
+            if index.Reg.width <> expected_index_width then
+              bad (`Wrong_register_width { opcode = extend; expected = expected_index_width })
+            else
+              match amount with
+              | None | Some 0 ->
+                  Ok
+                    [
+                      Lowered.Ldst_uoff_f
+                        { double; load; rt; rn = m.Mem.base; offset = m.Mem.offset };
+                    ]
+              | Some n when n = access_shift size ->
+                  Ok
+                    [
+                      Lowered.Ldst_uoff_f
+                        { double; load; rt; rn = m.Mem.base; offset = m.Mem.offset };
+                    ]
+              | Some n -> bad (`Register_offset_shift_invalid n)))
   | Opcode.Ret, [ Operand.Reg rn ] -> Ok [ Lowered.Ret { rn } ]
   | Opcode.Ret, [] -> Ok [ Lowered.Ret { rn = Reg.x30 } ]
   | Opcode.Br, [ Operand.Reg rn ] -> Ok [ Lowered.Br { rn } ]
@@ -2317,9 +2934,19 @@ let lower_instruction state i =
       match imm_of v with
       | Error e -> Error e
       | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then
-            bad `Imm12_needs_lsl12_form
-          else Ok [ Lowered.Sub_imm { s = false; rd; rn; imm; shift12 = false } ])
+          if Int64.compare imm 0L >= 0 && Int64.compare imm 4096L < 0 then
+            Ok [ Lowered.Sub_imm { s = false; rd; rn; imm; shift12 = false } ]
+          else
+            (* {!Opcode.Add}'s own bare-multiple-of-4096 auto-select comment applies
+               identically here - not yet evidenced for [sub] in this corpus, but the same
+               GAS behavior for the identical word shape. *)
+            let shifted = Int64.shift_right_logical imm 12 in
+            if
+              Int64.equal (Int64.shift_left shifted 12) imm
+              && Int64.compare shifted 0L >= 0
+              && Int64.compare shifted 4096L < 0
+            then Ok [ Lowered.Sub_imm { s = false; rd; rn; imm = shifted; shift12 = true } ]
+            else bad `Imm12_needs_lsl12_form)
   | ( Opcode.Sub,
       [
         Operand.Reg rd;
@@ -2417,6 +3044,20 @@ let lower_instruction state i =
           if encode_bitmask ~datasize:rd.Reg.width imm = None then
             bad (`Not_bitmask_immediate imm_raw)
           else Ok [ Lowered.Logical_imm { opc; rd; rn; imm } ])
+  (* [tst rn, #imm] - [ands zr, rn, #imm] with the result discarded, {!Logical_imm}'s own
+     [opc] = 3 (M5 corpus evidence: asm/docs/corpus.md's perlin.c). [zr] is baked in rather
+     than carried, the same "no general destination is evidenced" choice {!Cset} already
+     makes for its own zr operands. *)
+  | Opcode.Tst, [ Operand.Reg rn; Operand.Imm v ] -> (
+      match imm_of v with
+      | Error e -> Error e
+      | Ok imm_raw ->
+          let imm = if rn.Reg.width = 32 then Int64.logand imm_raw 0xFFFFFFFFL else imm_raw in
+          if encode_bitmask ~datasize:rn.Reg.width imm = None then
+            bad (`Not_bitmask_immediate imm_raw)
+          else
+            let rd = { Reg.num = 31; width = rn.Reg.width; is_sp = false } in
+            Ok [ Lowered.Logical_imm { opc = 3; rd; rn; imm } ])
   (* [and rd, rn, rm] / [eor rd, rn, rm[, shift]] / [orr rd, rn, rm[, shift]] / [bic rd, rn, rm] -
      the register form of the same family, evidenced for [and] ([sha1.c]/[nsievebits.c]) and [eor]
      ([aes.c]/[sha3.c]), for [orr] specifically as [mov]'s own [orr rd, xzr, rm, lsl #n]
@@ -2478,14 +3119,41 @@ let lower_instruction state i =
       if encode_fp_imm8 ~double:rd.Freg.double value = None then
         bad (`Not_fp_modified_immediate value)
       else Ok [ Lowered.Fmov_imm { rd; value } ]
+  (* [fmov dd, xn] / [fmov sd, wn] - move a general register's raw bits into a scalar FP
+     register (M5 corpus evidence: asm/docs/corpus.md's [fmov d9, xzr]/[fmov s9, wzr]). The
+     reverse direction ([fmov xd, sn]) is not evidenced, so only this one is a [Lowered] case. *)
+  | Opcode.Fmov, [ Operand.Freg rd; Operand.Reg rn ] -> Ok [ Lowered.Fmov_from_gpr { rd; rn } ]
+  (* [fmov dd, dn] - register-to-register, no conversion (M5 corpus evidence:
+     asm/docs/corpus.md's almabench.c/bisect.c/...). *)
+  | Opcode.Fmov, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fmov_reg { rd; rn } ]
   (* FCMP(immediate) only ever compares against zero (§ "the codec"'s
      comment on [fcmp_imm0_alt]) - a nonzero literal is not a narrower case
-     of this form, it is a different, unimplemented one (the register form,
-     [fcmp dN, dM], already parses via the generic symbol fallback but has
-     no [Lowered] constructor of its own yet). *)
+     of this form, it is a different, unimplemented one. *)
   | Opcode.Fcmp, [ Operand.Freg rn; Operand.Fimm value ] ->
       if Float.equal value 0.0 then Ok [ Lowered.Fcmp_imm0 { rn } ]
       else bad (`Fcmp_immediate_must_be_zero value)
+  (* [fcmp dN, dM] - the register-register form (M5 corpus evidence: asm/docs/corpus.md's
+     bisect.c/mandelbrot.c/...). *)
+  | Opcode.Fcmp, [ Operand.Freg rn; Operand.Freg rm ] -> Ok [ Lowered.Fcmp_reg { rn; rm } ]
+  | ( (Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv),
+      [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm ] ) -> (
+      match fbinop_opcode i.Instruction.op with
+      | Some opc -> Ok [ Lowered.Fbinop { opc; rd; rn; rm } ]
+      | None -> bad (`No_form (Opcode.name i.Instruction.op)))
+  | Opcode.Fcsel, [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm; Operand.Sym cond ] -> (
+      match cond with
+      | Asm_core.Expr.Symbol s -> (
+          match Cond.of_name s with
+          | Some c -> Ok [ Lowered.Fcsel { cond = c; rd; rn; rm } ]
+          | None -> bad (`Unknown_condition s))
+      | _ -> bad `Csel_needs_condition)
+  | Opcode.Scvtf, [ Operand.Freg rd; Operand.Reg rn ] ->
+      Ok [ Lowered.Cvtf { signed = true; rd; rn } ]
+  | Opcode.Ucvtf, [ Operand.Freg rd; Operand.Reg rn ] ->
+      Ok [ Lowered.Cvtf { signed = false; rd; rn } ]
+  | Opcode.Fneg, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fneg { rd; rn } ]
+  | Opcode.Fcvt, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvt { rd; rn } ]
+  | Opcode.Fcvtzs, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvtzs { rd; rn } ]
   | _ -> bad (`No_form (Opcode.name i.Instruction.op))
 
 (* {1 Encode and decode} *)
@@ -2557,6 +3225,7 @@ let expr_of_lowered : Lowered.t -> (string * Asm_core.Expr.t) list = function
      two by name, and a mismatch does not fail - it silently produces an
      encoding with no fixup, which then binds to the placeholder. *)
   | Lowered.Ldst_uoff { offset = Disp.Sym value; _ } -> [ ("offset", value) ]
+  | Lowered.Ldst_uoff_f { offset = Disp.Sym value; _ } -> [ ("offset", value) ]
   | Lowered.Add_imm { imm = Disp.Sym value; _ } -> [ ("imm", value) ]
   | _ -> []
 
@@ -2606,7 +3275,9 @@ let instruction_of_lowered ?(at = 0L) = function
           | Disp.Reg _ -> Operand.Imm (Bigint.of_int 0)
           (* unreachable: decode never produces this *)
         in
-        Some { Instruction.op = Opcode.Add; ops = [ Operand.Reg rd; Operand.Reg rn; imm_op ] }
+        let tail = if shift12 then [ Operand.Shift { Shift.kind = "lsl"; amount = 12 } ] else [] in
+        Some
+          { Instruction.op = Opcode.Add; ops = Operand.Reg rd :: Operand.Reg rn :: imm_op :: tail }
   | Lowered.Stp_pre { rt; rt2; rn; offset } ->
       Some
         {
@@ -2713,6 +3384,15 @@ let instruction_of_lowered ?(at = 0L) = function
           ops =
             [ Operand.Reg rt; Operand.Mem { Mem.base = rn; offset; writeback = false; pre = true } ];
         }
+  | Lowered.Ldst_uoff_f { load; rt; rn; offset; _ } ->
+      Some
+        {
+          Instruction.op = (if load then Opcode.Ldr else Opcode.Str);
+          ops =
+            [
+              Operand.Freg rt; Operand.Mem { Mem.base = rn; offset; writeback = false; pre = true };
+            ];
+        }
   | Lowered.Ret { rn } ->
       (* Same elision as [Lowered.pp]: x30 is the architectural default, so
          [ret x30] denormalizes to the operandless [ret] that both objdump and
@@ -2775,9 +3455,6 @@ let instruction_of_lowered ?(at = 0L) = function
               ];
           }
   | Lowered.Logical_imm { opc; rd; rn; imm } -> (
-      (* [ands] is opc 3; it has no surface spelling here yet, so it
-         denormalizes to nothing rather than to a mnemonic the parser would
-         reject. *)
       match opc with
       | 0 | 1 | 2 ->
           Some
@@ -2785,6 +3462,16 @@ let instruction_of_lowered ?(at = 0L) = function
               Instruction.op =
                 (match opc with 0 -> Opcode.And | 1 -> Opcode.Orr | _ -> Opcode.Eor);
               ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Imm (Bigint.of_int64 imm) ];
+            }
+      (* [ands zr, rn, #imm] with the result discarded is [tst rn, #imm] - real hardware's
+         own alias, the same relationship {!Cset}'s own zr operands have to {!Csel}. Any
+         other [opc] = 3 destination has no surface spelling here yet (not evidenced), so it
+         denormalizes to nothing rather than to a mnemonic the parser would reject. *)
+      | 3 when rd.Reg.num = 31 && not rd.Reg.is_sp ->
+          Some
+            {
+              Instruction.op = Opcode.Tst;
+              ops = [ Operand.Reg rn; Operand.Imm (Bigint.of_int64 imm) ];
             }
       | _ -> None)
   | Lowered.Logical_shift { opc; n; rd; rn; rm; shift; amount } -> (
@@ -2886,6 +3573,46 @@ let instruction_of_lowered ?(at = 0L) = function
       Some { Instruction.op = Opcode.Fmov; ops = [ Operand.Freg rd; Operand.Fimm value ] }
   | Lowered.Fcmp_imm0 { rn } ->
       Some { Instruction.op = Opcode.Fcmp; ops = [ Operand.Freg rn; Operand.Fimm 0.0 ] }
+  | Lowered.Fcmp_reg { rn; rm } ->
+      Some { Instruction.op = Opcode.Fcmp; ops = [ Operand.Freg rn; Operand.Freg rm ] }
+  | Lowered.Fbinop { opc; rd; rn; rm } ->
+      let op =
+        match opc with
+        | 0 -> Opcode.Fmul
+        | 1 -> Opcode.Fdiv
+        | 2 -> Opcode.Fadd
+        | 3 -> Opcode.Fsub
+        | _ -> Opcode.Fadd
+      in
+      Some { Instruction.op; ops = [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm ] }
+  | Lowered.Fcsel { cond; rd; rn; rm } ->
+      Some
+        {
+          Instruction.op = Opcode.Fcsel;
+          ops =
+            [
+              Operand.Freg rd;
+              Operand.Freg rn;
+              Operand.Freg rm;
+              Operand.Sym (Asm_core.Expr.Symbol (Cond.name cond));
+            ];
+        }
+  | Lowered.Cvtf { signed; rd; rn } ->
+      Some
+        {
+          Instruction.op = (if signed then Opcode.Scvtf else Opcode.Ucvtf);
+          ops = [ Operand.Freg rd; Operand.Reg rn ];
+        }
+  | Lowered.Fneg { rd; rn } ->
+      Some { Instruction.op = Opcode.Fneg; ops = [ Operand.Freg rd; Operand.Freg rn ] }
+  | Lowered.Fcvt { rd; rn } ->
+      Some { Instruction.op = Opcode.Fcvt; ops = [ Operand.Freg rd; Operand.Freg rn ] }
+  | Lowered.Fcvtzs { rd; rn } ->
+      Some { Instruction.op = Opcode.Fcvtzs; ops = [ Operand.Reg rd; Operand.Freg rn ] }
+  | Lowered.Fmov_from_gpr { rd; rn } ->
+      Some { Instruction.op = Opcode.Fmov; ops = [ Operand.Freg rd; Operand.Reg rn ] }
+  | Lowered.Fmov_reg { rd; rn } ->
+      Some { Instruction.op = Opcode.Fmov; ops = [ Operand.Freg rd; Operand.Freg rn ] }
 
 let decode ctx bytes ~pos =
   if String.length bytes - pos < 4 then Error (diag ~pos:__POS__ `Decode_short)

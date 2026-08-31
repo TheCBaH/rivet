@@ -88,6 +88,69 @@ let our_bytes target source_text =
 
 type verdict = Agree | Differ of string | Rejected of string | Gas_rejected
 
+(* A same-file, same-section branch/call to a *global* symbol still gets a linker
+   relocation from real GNU as - R_AARCH64_JUMP26/CALL26, R_ARM_CALL/JUMP24 - because a
+   global symbol can be interposed at link time, unlike a local label, even though the
+   definition is already known. GNU's own raw object bytes at that word are therefore a
+   placeholder (0), not the real displacement; the differential harness's own [our_bytes]
+   has no such placeholder state to reproduce - [bind_image] always resolves every
+   same-image reference to its real value, which is the entire point of a single-pass
+   assembler that also links (M3, asm/docs/corpus.md), and every fixture-oracle QEMU
+   execution test depends on exactly that behavior. So this specific relocation family is
+   the one place two conforming assemblers may legitimately disagree on the raw bytes -
+   verified against real aarch64-linux-gnu-as/objdump for [runtime-vararg]: `b
+   __compcert_va_int64` (a tail call from `__compcert_va_composite` to an earlier function
+   in the same file) assembles to `14000000` (offset 0, deferred to
+   `R_AARCH64_JUMP26 __compcert_va_int64`) under real `as`, and to the real, already-
+   correct backward displacement under this project's own image binding. Every other
+   relocation kind this corpus records (ADRP/ADD-lo12 pairs, PC-relative loads, ...) is
+   *not* in this list: GNU computes and writes the real value for those directly, so a
+   mismatch there stays a reportable [Differ] instead of being masked. *)
+let deferred_relocation_kinds =
+  [ "R_AARCH64_JUMP26"; "R_AARCH64_CALL26"; "R_ARM_CALL"; "R_ARM_JUMP24" ]
+
+(* [objdump.txt] carries lines like ["\t\t\tb0: R_AARCH64_JUMP26\t__compcert_va_int64"] -
+   an offset, a colon, one of the [Elf_reloc] kind names, then the symbol. Extract the
+   4-byte-word offsets of only the deferred-relocation kinds above. *)
+let deferred_relocation_offsets path =
+  if not (Sys.file_exists path) then []
+  else
+    String.split_on_char '\n' (read path)
+    |> List.filter_map (fun line ->
+        match String.index_opt line ':' with
+        | None -> None
+        | Some colon -> (
+            let before = String.trim (String.sub line 0 colon) in
+            let after =
+              String.trim (String.sub line (colon + 1) (String.length line - colon - 1))
+            in
+            match int_of_string_opt ("0x" ^ before) with
+            | None -> None
+            | Some off ->
+                if
+                  List.exists
+                    (fun k ->
+                      String.length after >= String.length k
+                      && String.sub after 0 (String.length k) = k)
+                    deferred_relocation_kinds
+                then Some off
+                else None))
+
+(* Zero the 4-byte word at each given offset in [s], the same fixed relocation-field width
+   every kind in [deferred_relocation_kinds] uses (a whole aarch64/arm instruction word, or
+   an x86 disp32 - never checked against a target that needs a different width here). Out-
+   of-range offsets are ignored rather than raising, so a stale or unrelated recorded
+   relocation can never crash the comparison. *)
+let mask_words s offsets =
+  let b = Bytes.of_string s in
+  List.iter
+    (fun off ->
+      for k = 0 to 3 do
+        if off + k >= 0 && off + k < Bytes.length b then Bytes.set b (off + k) '\000'
+      done)
+    offsets;
+  Bytes.to_string b
+
 let verdict_of tree target case =
   let dir = Filename.concat (Filename.concat (Filename.concat corpus_root tree) target) case in
   let gas_ok =
@@ -101,6 +164,13 @@ let verdict_of tree target case =
     match our_bytes target (read (Filename.concat dir "input.s")) with
     | Error msg -> Rejected msg
     | Ok ours when String.equal ours gnu -> Agree
+    | Ok ours when tree = "frontier" -> (
+        let offsets = deferred_relocation_offsets (Filename.concat dir "objdump.txt") in
+        match offsets with
+        | [] -> Differ (Printf.sprintf "ours %s\n      gnu  %s" (hex ours) (hex gnu))
+        | _ :: _ ->
+            if String.equal (mask_words ours offsets) (mask_words gnu offsets) then Agree
+            else Differ (Printf.sprintf "ours %s\n      gnu  %s" (hex ours) (hex gnu)))
     | Ok ours -> Differ (Printf.sprintf "ours %s\n      gnu  %s" (hex ours) (hex gnu))
 
 (* {1 The generated tree}
@@ -234,7 +304,8 @@ let%expect_test "frontier corpus: agreement wherever both assemblers accept" =
     arm      runtime-i64_shr          agree
     arm      runtime-vararg           agree
     aarch64  fixture-asm_test_entry   agree
+    aarch64  runtime-vararg           agree
     riscv32  fixture-asm_test_entry   agree
     riscv64  fixture-asm_test_entry   agree
 
-    12 agree, 0 differ, 37 beyond M1, 0 not assembled by GNU as |}]
+    13 agree, 0 differ, 36 beyond M1, 0 not assembled by GNU as |}]
