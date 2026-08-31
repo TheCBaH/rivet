@@ -433,6 +433,31 @@ module Opcode = struct
     | Sub
     | And
     | Cmp
+    | Eor  (** [eor rd, rn, rm[, shift]] - bitwise XOR, the same data-processing family as {!And} *)
+    | Rsb
+        (** [rsb rd, rn, rm[, shift]] / [rsb rd, rn, #imm] - reverse subtract (computes [op2 - rn]),
+            structurally identical to {!Sub} in every operand shape this corpus evidences. *)
+    | Orr  (** [orr rd, rn, rm[, shift]] - bitwise OR, the same data-processing family as {!And}. *)
+    | Mvn
+        (** [mvn rd, rm] / [mvn rd, #imm] - bitwise NOT, {!Mov}'s own two-operand shape (no [rn]) in
+            the same data-processing family. *)
+    | Bic
+        (** [bic rd, rn, rm[, shift]] / [bic rd, rn, #imm] - bit clear ([rn AND NOT op2]), the same
+            data-processing family as {!And}/{!Orr}. *)
+    | Adc
+        (** [adc rd, rn, rm[, shift]] - add with carry, the same data-processing family as
+            {!And}/{!Orr}/{!Bic} (evidenced only in the plain register-register-register shape:
+            asm/docs/corpus.md's [siphash24.c], the upper half of a 64-bit add {!Adds} already
+            covers the lower half of). *)
+    | Adds
+        (** [adds rd, rn, rm] - {!Add}'s own flag-setting form (dp = 4, [s] = 1), evidenced only in
+            this one register-register-register shape (asm/docs/corpus.md: gcc's own carry-out
+            idiom, [siphash24.c]'s 64-bit add built from two 32-bit halves). A [dp] value alone
+            cannot tell [add] and [adds] apart - only the already-present [s] field can - so this is
+            its own opcode with its own dedicated lowering/printing case, the same relationship
+            {!Cmp} already has to being "[sub] with [s] = 1 and no destination": {!to_dp} still maps
+            it to 4, but it is deliberately excluded from the generic [Add]/[Sub]/[And]/... lowering
+            arm, which always produces [s] = false. *)
     | Mul
     | Mla
     | Str
@@ -446,10 +471,21 @@ module Opcode = struct
     | Movw
     | Movt
     | Ite
+    | Nop
+        (** the dedicated ARMv7 hint encoding ([e320f000], the same bytes {!nop_bytes} already pads
+            with) - not a data-processing alias the way {!Mvn}'s [mov]-family siblings are. *)
+    | Shift of int
+        (** [lsl]/[lsr]/[asr]/[ror rd, rm, rs] - GNU's own mnemonics for {!Mov} with a
+            register-specified shift amount, a different word shape from the already-supported
+            immediate-shift-amount one ({!Lowered.Dp_reg}'s [sh_amt]: bit 4 is the immediate/register
+            discriminator, and CompCert's own codegen only ever emits the register form under these
+            names, never [mov rd, rm, TYPE rs]). [int] is the shared shift-kind encoding
+            {!shift_of_name}/{!shift_name} already use. *)
     | Vmov_d  (** [vmov.f64 Dd, Dm] or [vmov.f64 Dd, #imm] - operand-shape dispatched *)
     | Vmov_s  (** [vmov.f32 Sd, Sm] or [vmov.f32 Sd, #imm] *)
     | Vmov_core  (** [vmov Rt, Sn] / [vmov Sn, Rt] / [vmov Rt, Rt2, Dm] / [vmov Dm, Rt, Rt2] *)
-    | V3 of V3.op
+    | V3d of V3.op  (** [vadd.f64]/[vsub.f64]/[vmul.f64]/[vdiv.f64], double-precision *)
+    | V3s of V3.op  (** [vadd.f32]/[vsub.f32]/[vmul.f32]/[vdiv.f32], single-precision *)
     | Vneg_d
     | Vneg_s
     | Vcmp_d  (** covers both [vcmp Dd, Dm] and [vcmp Dd, #0] - operand-shape dispatched *)
@@ -498,6 +534,15 @@ module Opcode = struct
     | Sub -> "sub"
     | And -> "and"
     | Cmp -> "cmp"
+    | Eor -> "eor"
+    | Rsb -> "rsb"
+    | Orr -> "orr"
+    | Mvn -> "mvn"
+    | Bic -> "bic"
+    | Adc -> "adc"
+    | Adds -> "adds"
+    | Nop -> "nop"
+    | Shift k -> shift_name k
     | Mul -> "mul"
     | Mla -> "mla"
     | B -> "b"
@@ -514,7 +559,8 @@ module Opcode = struct
     | Vmov_d -> "vmov.f64"
     | Vmov_s -> "vmov.f32"
     | Vmov_core -> "vmov"
-    | V3 op -> V3.name op ^ ".f64"
+    | V3d op -> V3.name op ^ ".f64"
+    | V3s op -> V3.name op ^ ".f32"
     | Vneg_d -> "vneg.f64"
     | Vneg_s -> "vneg.f32"
     | Vcmp_d -> "vcmp.f64"
@@ -546,6 +592,14 @@ module Opcode = struct
     | "sub" -> Some Sub
     | "and" -> Some And
     | "cmp" -> Some Cmp
+    | "eor" -> Some Eor
+    | "rsb" -> Some Rsb
+    | "orr" -> Some Orr
+    | "mvn" -> Some Mvn
+    | "bic" -> Some Bic
+    | "adc" -> Some Adc
+    | "adds" -> Some Adds
+    | "nop" -> Some Nop
     | "mul" -> Some Mul
     | "mla" -> Some Mla
     | "b" -> Some B
@@ -563,7 +617,7 @@ module Opcode = struct
     | "stmia" -> Some Stmia
     | "ldmia" -> Some Ldmia
     | "pop" -> Some Pop
-    | _ -> None
+    | m -> ( match shift_of_name m with Some k -> Some (Shift k) | None -> None)
 
   (* VFP's own mnemonic bases - never a substring of a GPR mnemonic above, so
      there is no ambiguity between the two tables. *)
@@ -607,10 +661,14 @@ module Opcode = struct
     | "vmov", [ "f64" ] -> Some Vmov_d
     | "vmov", [ "f32" ] -> Some Vmov_s
     | "vmov", [] -> Some Vmov_core
-    | "vadd", [ "f64" ] -> Some (V3 V3.Vadd)
-    | "vsub", [ "f64" ] -> Some (V3 V3.Vsub)
-    | "vmul", [ "f64" ] -> Some (V3 V3.Vmul)
-    | "vdiv", [ "f64" ] -> Some (V3 V3.Vdiv)
+    | "vadd", [ "f64" ] -> Some (V3d V3.Vadd)
+    | "vsub", [ "f64" ] -> Some (V3d V3.Vsub)
+    | "vmul", [ "f64" ] -> Some (V3d V3.Vmul)
+    | "vdiv", [ "f64" ] -> Some (V3d V3.Vdiv)
+    | "vadd", [ "f32" ] -> Some (V3s V3.Vadd)
+    | "vsub", [ "f32" ] -> Some (V3s V3.Vsub)
+    | "vmul", [ "f32" ] -> Some (V3s V3.Vmul)
+    | "vdiv", [ "f32" ] -> Some (V3s V3.Vdiv)
     | "vneg", [ "f64" ] -> Some Vneg_d
     | "vneg", [ "f32" ] -> Some Vneg_s
     | "vcmp", [ "f64" ] -> Some Vcmp_d
@@ -630,14 +688,32 @@ module Opcode = struct
   (* A32 encodes add, sub and mov as one data-processing format distinguished
      by a 4-bit opcode field. The two directions live together so they cannot
      drift; [-1] is "this opcode is not a data-processing one". *)
-  let to_dp = function And -> 0 | Sub -> 2 | Add -> 4 | Cmp -> 10 | Mov -> 13 | _ -> -1
+  let to_dp = function
+    | And -> 0
+    | Eor -> 1
+    | Sub -> 2
+    | Rsb -> 3
+    | Add | Adds -> 4
+    | Adc -> 5
+    | Cmp -> 10
+    | Orr -> 12
+    | Mov -> 13
+    | Bic -> 14
+    | Mvn -> 15
+    | _ -> -1
 
   let of_dp = function
     | 0 -> Some And
+    | 1 -> Some Eor
     | 2 -> Some Sub
+    | 3 -> Some Rsb
     | 4 -> Some Add
+    | 5 -> Some Adc
     | 10 -> Some Cmp
+    | 12 -> Some Orr
     | 13 -> Some Mov
+    | 14 -> Some Bic
+    | 15 -> Some Mvn
     | _ -> None
 
   (* The three that write no destination register and set the flags instead, so
@@ -775,37 +851,64 @@ module Lowered = struct
     | Vcvt_s32_f64 of { cond : Cond.t; sd : Sreg.t; dm : Dreg.t }
     | Vmem_d of { cond : Cond.t; load : bool; vd : Dreg.t; rn : Reg.t; offset : int64 }
     | Vmem_s of { cond : Cond.t; load : bool; vd : Sreg.t; rn : Reg.t; offset : int64 }
+    | Vldr_lit_d of { cond : Cond.t; vd : Dreg.t; target : Asm_core.Lowered_ast.branch }
+        (** [vldr Dd, label] - a PC-relative literal-pool load, the same word shape as
+            {!Vmem_d} with the base register fixed to [pc] (Rn = 0b1111) instead of a runtime
+            register. Load-only: real hardware defines the store form's [Rn = 1111] encoding as
+            UNPREDICTABLE, and no fixture ever spells [vstr] this way (GAS accepts it anyway, with
+            a deprecation warning). Forward references only ([U] fixed to 1) - every corpus
+            occurrence is a same-function trailing literal pool, and {!evaluate_fixup} rejects a
+            negative distance rather than silently mis-encoding one. *)
+    | Vldr_lit_s of { cond : Cond.t; vd : Sreg.t; target : Asm_core.Lowered_ast.branch }
     | Vpush of { cond : Cond.t; vd : Dreg.t; count : int }
         (** [vd] is the reglist's lowest-numbered D register and [count] how many consecutive
             ones follow it - VSTM-class encodings have no bitmask, only a base and a count
             ({!Opcode.Vpush}'s own doc explains why a single register needs no separate case
             the way {!Push}'s does). [imm8 = count * 2]: each doubleword register is two
             32-bit transfers. *)
+    | Nop of { cond : Cond.t }
+        (** the dedicated ARMv7 hint-NOP word, [e320f000] for [cond = Al] - the same bytes
+            {!nop_bytes} already pads with, now reachable from a source-level [nop] mnemonic too. *)
+    | Shift_reg of { cond : Cond.t; kind : int; rd : Reg.t; rm : Reg.t; rs : Reg.t }
+        (** [lsl]/[lsr]/[asr]/[ror rd, rm, rs] - {!Opcode.Shift}'s register-shift-amount form, a
+            [mov]-family word (dp = 13, [s] = 0, [rn] = 0 always: the only evidenced shape) with a
+            genuinely different bit 4/11:8 layout from {!Dp_reg}'s immediate-shift one, so it is its
+            own constructor rather than a variant field on {!Dp_reg}. *)
 
   let pp ppf = function
     | Dp_imm { cond; dp; rd; rn; imm; _ } -> (
         let c = Cond.suffix cond in
         match Opcode.of_dp dp with
-        | Some Opcode.Mov -> Fmt.pf ppf "mov%s %a, #%Ld" c Reg.pp rd imm
+        | Some ((Opcode.Mov | Opcode.Mvn) as o) ->
+            Fmt.pf ppf "%s%s %a, #%Ld" (Opcode.name o) c Reg.pp rd imm
         (* A compare writes no destination, so printing [Rd] would print the
            zero the encoding requires as though it were an operand. *)
         | Some o when Opcode.is_compare o ->
             Fmt.pf ppf "%s%s %a, #%Ld" (Opcode.name o) c Reg.pp rn imm
         | Some o -> Fmt.pf ppf "%s%s %a, %a, #%Ld" (Opcode.name o) c Reg.pp rd Reg.pp rn imm
         | None -> Fmt.pf ppf "dp%d%s %a, %a, #%Ld" dp c Reg.pp rd Reg.pp rn imm)
-    | Dp_reg { cond; dp; rd; rn; rm; sh_kind; sh_amt; _ } -> (
+    | Dp_reg { cond; dp; s; rd; rn; rm; sh_kind; sh_amt } -> (
         let sh =
           if sh_amt = 0 && sh_kind = 0 then ""
           else Printf.sprintf ", %s #%d" (shift_name sh_kind) sh_amt
         in
         let c = Cond.suffix cond in
         match Opcode.of_dp dp with
-        | Some Opcode.Mov -> Fmt.pf ppf "mov%s %a, %a%s" c Reg.pp rd Reg.pp rm sh
+        | Some ((Opcode.Mov | Opcode.Mvn) as o) ->
+            Fmt.pf ppf "%s%s %a, %a%s" (Opcode.name o) c Reg.pp rd Reg.pp rm sh
         | Some o when Opcode.is_compare o ->
             Fmt.pf ppf "%s%s %a, %a%s" (Opcode.name o) c Reg.pp rn Reg.pp rm sh
+        (* [adds] - {!Add}'s own flag-setting form. [dp] alone cannot distinguish it from plain
+           [add]; only [s] can, exactly as {!Opcode.Adds}'s own doc explains. *)
+        | Some Opcode.Add when s ->
+            Fmt.pf ppf "adds%s %a, %a, %a%s" c Reg.pp rd Reg.pp rn Reg.pp rm sh
         | Some o ->
             Fmt.pf ppf "%s%s %a, %a, %a%s" (Opcode.name o) c Reg.pp rd Reg.pp rn Reg.pp rm sh
         | None -> Fmt.pf ppf "dp%d%s %a, %a, %a%s" dp c Reg.pp rd Reg.pp rn Reg.pp rm sh)
+    | Nop { cond } -> Fmt.pf ppf "nop%s" (Cond.suffix cond)
+    | Shift_reg { cond; kind; rd; rm; rs } ->
+        Fmt.pf ppf "%s%s %a, %a, %a" (shift_name kind) (Cond.suffix cond) Reg.pp rd Reg.pp rm Reg.pp
+          rs
     | Ldst_imm { cond; load; byte; rt; rn; offset; writeback } ->
         Fmt.pf ppf "%s%s%s %a, [%a, #%Ld]%s"
           (if load then "ldr" else "str")
@@ -913,6 +1016,12 @@ module Lowered = struct
         Fmt.pf ppf "%s%s %a, [%a, #%Ld]"
           (if load then "vldr" else "vstr")
           (Cond.suffix cond) Sreg.pp vd Reg.pp rn offset
+    | Vldr_lit_d { cond; vd; target } ->
+        Fmt.pf ppf "vldr%s %a, %a" (Cond.suffix cond) Dreg.pp vd Asm_core.Lowered_ast.pp_branch
+          target
+    | Vldr_lit_s { cond; vd; target } ->
+        Fmt.pf ppf "vldr%s %a, %a" (Cond.suffix cond) Sreg.pp vd Asm_core.Lowered_ast.pp_branch
+          target
     | Vpush { cond; vd; count } ->
         let members = List.init count (fun i -> Dreg.of_num (vd.Dreg.num + i)) in
         Fmt.pf ppf "vpush%s.64 {%a}" (Cond.suffix cond) Fmt.(list ~sep:(any ", ") Dreg.pp) members
@@ -1000,7 +1109,17 @@ module Lowered = struct
     | Vmem_s x, Vmem_s y ->
         Cond.equal x.cond y.cond && x.load = y.load && Sreg.equal x.vd y.vd && Reg.equal x.rn y.rn
         && Int64.equal x.offset y.offset
+    | Vldr_lit_d x, Vldr_lit_d y ->
+        Cond.equal x.cond y.cond && Dreg.equal x.vd y.vd
+        && Asm_core.Lowered_ast.equal_branch x.target y.target
+    | Vldr_lit_s x, Vldr_lit_s y ->
+        Cond.equal x.cond y.cond && Sreg.equal x.vd y.vd
+        && Asm_core.Lowered_ast.equal_branch x.target y.target
     | Vpush x, Vpush y -> Cond.equal x.cond y.cond && Dreg.equal x.vd y.vd && x.count = y.count
+    | Nop x, Nop y -> Cond.equal x.cond y.cond
+    | Shift_reg x, Shift_reg y ->
+        Cond.equal x.cond y.cond && x.kind = y.kind && Reg.equal x.rd y.rd && Reg.equal x.rm y.rm
+        && Reg.equal x.rs y.rs
     | _ -> false
 end
 
@@ -1009,7 +1128,7 @@ end
    instruction, each patching a field split across two non-adjacent runs - and a
    branch to a local label keeps no record at all. A32 is fixed-width, so there
    is no ladder and no short rung. *)
-type fixup_kind = Abs32 | Pcrel_b26 | Pcrel_call | Movw_abs_nc | Movt_abs
+type fixup_kind = Abs32 | Pcrel_b26 | Pcrel_call | Movw_abs_nc | Movt_abs | Pcrel_vldr8
 
 let fixup_kind_name = function
   | Abs32 -> "abs32"
@@ -1017,6 +1136,7 @@ let fixup_kind_name = function
   | Pcrel_call -> "pcrel-call"
   | Movw_abs_nc -> "movw-abs-nc"
   | Movt_abs -> "movt-abs"
+  | Pcrel_vldr8 -> "pcrel-vldr8"
 
 let equal_fixup_kind a b = a = b
 
@@ -1026,9 +1146,10 @@ let fixup_family = function
   | Pcrel_call -> "pcrel-call"
   | Movw_abs_nc -> "abs-lo16"
   | Movt_abs -> "abs-hi16"
+  | Pcrel_vldr8 -> "pcrel-vldr-literal"
 
 let fixup_role = function
-  | Abs32 | Movw_abs_nc | Movt_abs -> Asm_core.Lowered_ast.Data_address
+  | Abs32 | Movw_abs_nc | Movt_abs | Pcrel_vldr8 -> Asm_core.Lowered_ast.Data_address
   | Pcrel_b26 -> Asm_core.Lowered_ast.Branch
   | Pcrel_call -> Asm_core.Lowered_ast.Call
 
@@ -1267,6 +1388,16 @@ let codec : (Lowered.t, fixup_kind) C.t =
          the real one. [check] reports both pairs, naming the priorities that
          decide them - the report is the record that this was chosen rather than
          missed. *)
+      (* [nop] - the dedicated ARMv7 hint-NOP encoding, [e320f000] for [cond = Al] (the same
+         bytes {!nop_bytes} already pads with). Its [dp] reading is 9 (the [teq] slot, S clear -
+         unmapped, since {!Opcode.of_dp} names no [Teq]), but [dp-imm]'s own fields are all
+         variable, not fixed, so it would still decode - wrongly, as a nonsensical [dp9] word -
+         unless tried first, the identical overlap [movw]/[movt] already document just below. *)
+      C.alt ~label:"nop" ~priority:(-1)
+        (C.iso_fun ~name:"nop"
+           ~encode:(function Lowered.Nop { cond } -> Some (cond, ()) | _ -> None)
+           ~decode:(fun (cond, ()) -> Some (Lowered.Nop { cond }))
+           C.(cond_codec ** const ~width:28 0x320F000L));
       C.alt ~label:"movw" ~priority:1 (movw_alt ~top:false);
       C.alt ~label:"movt" ~priority:2 (movw_alt ~top:true);
       C.alt ~label:"dp-imm" ~priority:3
@@ -1922,6 +2053,93 @@ let codec : (Lowered.t, fixup_kind) C.t =
              cond_codec ** const ~width:4 0b1101L ** field ~width:1 "U" ** field ~width:1 "D"
              ** const ~width:1 0L ** field ~width:1 "L" ** reg_field "rn" ** field ~width:4 "Vd"
              ** const ~width:4 0b1010L ** field ~width:8 "imm8"));
+      (* [vldr Dd/Sd, label] - the literal-pool form of {!Vmem_d}/{!Vmem_s}'s own
+         word, with [Rn] fixed to [pc] (0b1111) rather than a runtime register,
+         [L] fixed to 1 (load-only, asm/docs/corpus.md), and [U] fixed to 1
+         (forward-only: every corpus occurrence is a trailing same-function
+         literal pool, and {!evaluate_fixup} rejects a negative distance rather
+         than silently mis-encoding one). [imm8] is a fixup, not a plain field -
+         the only difference from {!Vmem_d}/{!Vmem_s}'s own [imm8] is *where its
+         value comes from* (a resolved link-time distance, not an operand
+         already known at lowering time). Necessarily overlaps [vmem-d]/[vmem-s]
+         on fixed bits (their [Rn]/[U]/[L] are wildcards, so an all-1111/1/1
+         instance of either already matches them) - given a lower priority so
+         they win on decode, reproducing real objdump's own [pc, #imm]
+         disassembly rather than a bare-label spelling nothing re-parses back
+         to the identical word (Codec.check's own tolerated-overlap list, the
+         same shape [nop]/[movw]/[movt] already appear in). *)
+      C.alt ~label:"vldr-lit-d" ~priority:41
+        (C.iso_fun ~name:"vldr-lit-d"
+           ~encode:(function
+             | Lowered.Vldr_lit_d { cond; vd; target } ->
+                 let imm8 =
+                   match target with
+                   | Asm_core.Lowered_ast.Symbolic _ -> 0L
+                   | Asm_core.Lowered_ast.Resolved { value; _ } -> value
+                 in
+                 let d, vdf = dreg_parts vd in
+                 Some (cond, ((), ((), (d, ((), ((), ((), (vdf, ((), imm8)))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), ((), (d, ((), ((), ((), (vdf, ((), imm8))))))))) ->
+             Some
+               (Lowered.Vldr_lit_d
+                  {
+                    cond;
+                    vd = dreg_unparts d vdf;
+                    target = Asm_core.Lowered_ast.Resolved { value = imm8; rung = "vldr-lit-d" };
+                  }))
+           C.(
+             cond_codec ** const ~width:4 0b1101L ** const ~width:1 1L (* U *) ** field ~width:1 "D"
+             ** const ~width:1 0L ** const ~width:1 1L (* L *) ** const ~width:4 0b1111L
+             (* Rn = pc *) ** field ~width:4 "Vd"
+             ** const ~width:4 0b1011L
+             ** fixup ~width:8 ~kind:Pcrel_vldr8 "target"));
+      C.alt ~label:"vldr-lit-s" ~priority:42
+        (C.iso_fun ~name:"vldr-lit-s"
+           ~encode:(function
+             | Lowered.Vldr_lit_s { cond; vd; target } ->
+                 let imm8 =
+                   match target with
+                   | Asm_core.Lowered_ast.Symbolic _ -> 0L
+                   | Asm_core.Lowered_ast.Resolved { value; _ } -> value
+                 in
+                 let d, vdf = sreg_parts vd in
+                 Some (cond, ((), ((), (d, ((), ((), ((), (vdf, ((), imm8)))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), ((), (d, ((), ((), ((), (vdf, ((), imm8))))))))) ->
+             Some
+               (Lowered.Vldr_lit_s
+                  {
+                    cond;
+                    vd = sreg_unparts d vdf;
+                    target = Asm_core.Lowered_ast.Resolved { value = imm8; rung = "vldr-lit-s" };
+                  }))
+           C.(
+             cond_codec ** const ~width:4 0b1101L ** const ~width:1 1L (* U *) ** field ~width:1 "D"
+             ** const ~width:1 0L ** const ~width:1 1L (* L *) ** const ~width:4 0b1111L
+             (* Rn = pc *) ** field ~width:4 "Vd"
+             ** const ~width:4 0b1010L
+             ** fixup ~width:8 ~kind:Pcrel_vldr8 "target"));
+      (* [lsl]/[lsr]/[asr]/[ror rd, rm, rs] - {!Opcode.Shift}'s register-shift-amount form
+         (asm/docs/corpus.md: gcc's own [nsieve.c]/[nsievebits.c]). A [mov]-family word (dp = 13,
+         S = 0, Rn = 0 - the only evidenced shape) with Rs at bits 11:8 in place of {!Dp_reg}'s
+         5-bit immediate shift amount, and bit 4 set rather than clear - the ARM manual's own
+         register/immediate-shift discriminator, so this never overlaps {!Dp_reg}'s own fixed
+         bit 4 = 0. Verified against real arm-linux-gnueabihf-as/objdump: [e1a00211] for
+         [lsl r0, r1, r2], [e1a00231]/[e1a00251]/[e1a00271] for [lsr]/[asr]/[ror] with the same
+         operands (only the 2-bit shift-kind field differs). *)
+      C.alt ~label:"shift-reg" ~priority:40
+        (C.iso_fun ~name:"shift-reg"
+           ~encode:(function
+             | Lowered.Shift_reg { cond; kind; rd; rm; rs } ->
+                 Some (cond, ((), ((), ((), ((), (rd, (rs, ((), (Int64.of_int kind, ((), rm))))))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), ((), ((), ((), (rd, (rs, ((), (kind, ((), rm)))))))))) ->
+             Some (Lowered.Shift_reg { cond; kind = Int64.to_int kind; rd; rm; rs }))
+           C.(
+             cond_codec ** const ~width:3 0L ** const ~width:4 13L ** const ~width:1 0L
+             ** const ~width:4 0L ** reg_field "rd" ** reg_field "rs" ** const ~width:1 0L
+             ** field ~width:2 "shift-kind" ** const ~width:1 1L ** reg_field "rm"));
     ]
 
 let name = "arm"
@@ -1939,7 +2157,7 @@ type error_kind =
   | `Thumb_out_of_scope
   | `Expected_register_or_shifted
   | `No_modified_immediate of int64
-  | `No_modified_immediate_mov of int64
+  | `No_modified_immediate_2op of no_modified_immediate_2op
   | `Writeback_out_of_scope
   | `Offset_not_12bit
   | `Udf_imm16_overflow
@@ -1951,6 +2169,9 @@ type error_kind =
   | `Decode_no_match
   | `Branch_not_word_aligned
   | `Branch_out_of_range
+  | `Vldr_literal_backward
+  | `Vldr_literal_not_word_aligned
+  | `Vldr_literal_out_of_range
   | `No_data_relocation of int
   | `Padding_not_word_multiple
   | `No_vfp_immediate of float
@@ -1962,6 +2183,7 @@ type error_kind =
 
 and wrong_relocation_modifier = { opcode : string; want : string; got : string }
 and missing_relocation_modifier = { opcode : string; want : string }
+and no_modified_immediate_2op = { opcode : string; value : int64 }
 
 type error = error_kind Target_error.t
 
@@ -1970,8 +2192,8 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `Thumb_out_of_scope -> Fmt.string ppf "Thumb is not in M1 scope"
   | `Expected_register_or_shifted -> Fmt.string ppf "expected a register or a shifted register"
   | `No_modified_immediate v -> Fmt.pf ppf "#%Ld has no A32 modified-immediate representation" v
-  | `No_modified_immediate_mov v ->
-      Fmt.pf ppf "#%Ld has no A32 modified-immediate representation; movw and mvn are M2" v
+  | `No_modified_immediate_2op { opcode; value } ->
+      Fmt.pf ppf "%s #%Ld has no A32 modified-immediate representation; movw is M2" opcode value
   | `Writeback_out_of_scope -> Fmt.string ppf "writeback addressing is not in M1 scope"
   | `Offset_not_12bit -> Fmt.string ppf "offset does not fit the 12-bit immediate"
   | `Udf_imm16_overflow -> Fmt.string ppf "udf immediate does not fit 16 bits"
@@ -1985,6 +2207,11 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `Decode_no_match -> Fmt.string ppf "no form matches this word"
   | `Branch_not_word_aligned -> Fmt.string ppf "branch target is not word-aligned"
   | `Branch_out_of_range -> Fmt.string ppf "branch target is out of range"
+  | `Vldr_literal_backward ->
+      Fmt.string ppf
+        "vldr literal-pool target must follow the instruction; a backward one is not in scope"
+  | `Vldr_literal_not_word_aligned -> Fmt.string ppf "vldr literal-pool target is not word-aligned"
+  | `Vldr_literal_out_of_range -> Fmt.string ppf "vldr literal-pool target is out of range"
   | `No_data_relocation w -> Fmt.pf ppf "no absolute relocation for a %d-byte data initializer" w
   | `Padding_not_word_multiple ->
       Fmt.string ppf "A32 padding must be a whole number of four-byte instructions"
@@ -2006,7 +2233,7 @@ let pp_error_kind ppf : error_kind -> unit = function
 let error_kind_code : error_kind -> string = function
   | `Unknown_instruction _ -> "arm.simplify"
   | `Thumb_out_of_scope | `Immediate_too_wide | `Expected_register_or_shifted
-  | `No_modified_immediate _ | `No_modified_immediate_mov _ | `Writeback_out_of_scope
+  | `No_modified_immediate _ | `No_modified_immediate_2op _ | `Writeback_out_of_scope
   | `Offset_not_12bit | `Udf_imm16_overflow | `Wrong_relocation_modifier _
   | `Missing_relocation_modifier _ | `Imm16_overflow _ | `No_form _ | `No_vfp_immediate _
   | `Vfp_offset_out_of_range _ | `Vmrs_unsupported_operands | `Push_needs_two_or_more_registers
@@ -2014,7 +2241,9 @@ let error_kind_code : error_kind -> string = function
       "arm.lower"
   | `Codec e -> Option.value (Codec.code e) ~default:"arm.encode"
   | `Decode_short | `Decode_no_match | `Decode_no_normalized -> "arm.decode"
-  | `Branch_not_word_aligned | `Branch_out_of_range -> "arm.fixup"
+  | `Branch_not_word_aligned | `Branch_out_of_range | `Vldr_literal_backward
+  | `Vldr_literal_not_word_aligned | `Vldr_literal_out_of_range ->
+      "arm.fixup"
   | `No_data_relocation _ -> "arm.data-fixup"
   | `Padding_not_word_multiple -> "arm.nop"
 
@@ -2090,21 +2319,24 @@ let lower_instruction state i =
     in
     let cond = i.Instruction.cond in
     match (i.Instruction.op, i.Instruction.ops) with
-    | Opcode.Mov, [ Operand.Reg rd; Operand.Imm v ] -> (
+    | ((Opcode.Mov | Opcode.Mvn) as op), [ Operand.Reg rd; Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm ->
-            if encode_modimm imm = None then bad (`No_modified_immediate_mov imm)
+            if encode_modimm imm = None then
+              bad (`No_modified_immediate_2op { opcode = Opcode.name op; value = imm })
             else
               Ok
                 [
                   Lowered.Dp_imm
-                    { cond; dp = Opcode.to_dp Opcode.Mov; s = false; rd; rn = Reg.of_num 0; imm };
+                    { cond; dp = Opcode.to_dp op; s = false; rd; rn = Reg.of_num 0; imm };
                 ])
     (* The register forms, with or without a shift. [Shifted] and a bare [Reg]
        differ only in the two fields the encoding already has, so one case
        covers both rather than duplicating the lowering. *)
-    | ((Opcode.Add | Opcode.Sub | Opcode.And | Opcode.Mov) as op), (Operand.Reg rd :: rest as ops)
+    | ( (( Opcode.Add | Opcode.Sub | Opcode.And | Opcode.Mov | Opcode.Eor | Opcode.Rsb | Opcode.Orr
+         | Opcode.Mvn | Opcode.Bic | Opcode.Adc ) as op),
+        (Operand.Reg rd :: rest as ops) )
       when match ops with
            | [ _; Operand.Reg _ ]
            | [ _; Operand.Shifted _ ]
@@ -2156,7 +2388,8 @@ let lower_instruction state i =
                 sh_amt = amount;
               };
           ]
-    | ( ((Opcode.Add | Opcode.Sub | Opcode.And) as op),
+    | ( ((Opcode.Add | Opcode.Sub | Opcode.And | Opcode.Rsb | Opcode.Orr | Opcode.Bic | Opcode.Eor)
+         as op),
         [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] ) -> (
         match imm_of v with
         | Error e -> Error e
@@ -2217,6 +2450,15 @@ let lower_instruction state i =
             if List.for_all2 (fun n i -> n = base + i) members (List.init count Fun.id) then
               Ok [ Lowered.Vpush { cond; vd = Dreg.of_num base; count } ]
             else bad `Vpush_needs_contiguous_registers)
+    | Opcode.Adds, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
+        Ok
+          [
+            Lowered.Dp_reg
+              { cond; dp = Opcode.to_dp Opcode.Adds; s = true; rd; rn; rm; sh_kind = 0; sh_amt = 0 };
+          ]
+    | Opcode.Nop, [] -> Ok [ Lowered.Nop { cond } ]
+    | Opcode.Shift kind, [ Operand.Reg rd; Operand.Reg rm; Operand.Reg rs ] ->
+        Ok [ Lowered.Shift_reg { cond; kind; rd; rm; rs } ]
     | Opcode.Udf, [ Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
@@ -2330,8 +2572,10 @@ let lower_instruction state i =
         Ok [ Lowered.Vmov_to_double { cond; dm; rt; rt2 } ]
     | Opcode.Vmov_core, [ Operand.Reg rt; Operand.Reg rt2; Operand.Dreg dm ] ->
         Ok [ Lowered.Vmov_from_double { cond; rt; rt2; dm } ]
-    | Opcode.V3 op, [ Operand.Dreg vd; Operand.Dreg vn; Operand.Dreg vm ] ->
+    | Opcode.V3d op, [ Operand.Dreg vd; Operand.Dreg vn; Operand.Dreg vm ] ->
         Ok [ Lowered.V3_d { cond; op; vd; vn; vm } ]
+    | Opcode.V3s op, [ Operand.Sreg vd; Operand.Sreg vn; Operand.Sreg vm ] ->
+        Ok [ Lowered.V3_s { cond; op; vd; vn; vm } ]
     | Opcode.Vneg_d, [ Operand.Dreg vd; Operand.Dreg vm ] -> Ok [ Lowered.Vneg_d { cond; vd; vm } ]
     | Opcode.Vneg_s, [ Operand.Sreg vd; Operand.Sreg vm ] -> Ok [ Lowered.Vneg_s { cond; vd; vm } ]
     | Opcode.Vcmp_d, [ Operand.Dreg vd; Operand.Dreg vm ] ->
@@ -2379,6 +2623,22 @@ let lower_instruction state i =
             [
               Lowered.Vmem_s { cond; load = i.Instruction.op = Opcode.Vldr; vd; rn = base; offset };
             ]
+    (* [vldr Dd/Sd, label] - a PC-relative literal-pool load (asm/docs/corpus.md:
+       fftsp.c's/knucleotide.c's own [.f32] float constants). Load-only:
+       {!Opcode.Vstr} never reaches here, since real hardware defines a
+       store's [Rn = 1111] as UNPREDICTABLE and no fixture spells it. *)
+    | Opcode.Vldr, [ Operand.Dreg vd; Operand.Sym e ] ->
+        Ok
+          [
+            Lowered.Vldr_lit_d
+              { cond; vd; target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } };
+          ]
+    | Opcode.Vldr, [ Operand.Sreg vd; Operand.Sym e ] ->
+        Ok
+          [
+            Lowered.Vldr_lit_s
+              { cond; vd; target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } };
+          ]
     (* [ite] is a Thumb construct. GAS accepts it in A32 source and emits
        nothing, because conditional execution there is native to every
        instruction - the suffixed [moveq]/[movne] that follow already say what
@@ -2420,12 +2680,17 @@ let fixup_of_placement (p : fixup_kind C.placement) =
         p.C.slices;
     byte_offset = 0;
     container = 4;
-    pc_bias = (match kind with Pcrel_b26 | Pcrel_call -> 8 | _ -> 0);
+    pc_bias = (match kind with Pcrel_b26 | Pcrel_call | Pcrel_vldr8 -> 8 | _ -> 0);
     range =
       (match kind with
       | Abs32 -> Asm_core.Lowered_ast.Bitpattern 32
       | Pcrel_b26 | Pcrel_call -> Asm_core.Lowered_ast.Signed 24
-      | Movw_abs_nc | Movt_abs -> Asm_core.Lowered_ast.Unsigned 16);
+      | Movw_abs_nc | Movt_abs -> Asm_core.Lowered_ast.Unsigned 16
+      (* Already reduced to the final imm8 field's own value by
+         [evaluate_fixup] (word-shifted, forward-only) - this is a defensive
+         re-check, the same role [Unsigned 16] plays for [Movw_abs_nc]/
+         [Movt_abs] above, not a second computation. *)
+      | Pcrel_vldr8 -> Asm_core.Lowered_ast.Unsigned 8);
     value = Asm_core.Expr.Const (Bigint.of_int 0);
     pairing = Asm_core.Lowered_ast.Unpaired;
     origin = Origin.synthesized ~pass:"arm.encode" ();
@@ -2437,7 +2702,9 @@ let fixup_of_placement (p : fixup_kind C.placement) =
    final, so it yields no linker fixup. *)
 let expr_of_lowered : Lowered.t -> (string * Asm_core.Expr.t) list = function
   | Lowered.Bl { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ }
-  | Lowered.B { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
+  | Lowered.B { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ }
+  | Lowered.Vldr_lit_d { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ }
+  | Lowered.Vldr_lit_s { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
       [ ("target", value) ]
   (* The name is the codec placement's, not a description: [form_of] pairs the
      two by name, and a mismatch here does not fail - it silently produces an
@@ -2483,25 +2750,32 @@ let instruction_of_lowered ?(at = 0L) =
   | Lowered.Dp_imm { cond; dp; rd; rn; imm; _ } -> (
       match Opcode.of_dp dp with
       | None -> None
-      | Some Opcode.Mov ->
-          Some
-            (Instruction.mk ~cond Opcode.Mov [ Operand.Reg rd; Operand.Imm (Bigint.of_int64 imm) ])
+      | Some ((Opcode.Mov | Opcode.Mvn) as o) ->
+          Some (Instruction.mk ~cond o [ Operand.Reg rd; Operand.Imm (Bigint.of_int64 imm) ])
       | Some o when Opcode.is_compare o ->
           Some (Instruction.mk ~cond o [ Operand.Reg rn; Operand.Imm (Bigint.of_int64 imm) ])
       | Some o ->
           Some
             (Instruction.mk ~cond o
                [ Operand.Reg rd; Operand.Reg rn; Operand.Imm (Bigint.of_int64 imm) ]))
-  | Lowered.Dp_reg { cond; dp; rd; rn; rm; sh_kind; sh_amt; _ } -> (
+  | Lowered.Dp_reg { cond; dp; s; rd; rn; rm; sh_kind; sh_amt } -> (
       let shifted =
         if sh_kind = 0 && sh_amt = 0 then Operand.Reg rm
         else Operand.Shifted { reg = rm; kind = sh_kind; amount = sh_amt }
       in
       match Opcode.of_dp dp with
       | None -> None
-      | Some Opcode.Mov -> Some (Instruction.mk ~cond Opcode.Mov [ Operand.Reg rd; shifted ])
+      | Some ((Opcode.Mov | Opcode.Mvn) as o) ->
+          Some (Instruction.mk ~cond o [ Operand.Reg rd; shifted ])
       | Some o when Opcode.is_compare o -> Some (Instruction.mk ~cond o [ Operand.Reg rn; shifted ])
+      | Some Opcode.Add when s ->
+          Some (Instruction.mk ~cond Opcode.Adds [ Operand.Reg rd; Operand.Reg rn; shifted ])
       | Some o -> Some (Instruction.mk ~cond o [ Operand.Reg rd; Operand.Reg rn; shifted ]))
+  | Lowered.Nop { cond } -> Some (Instruction.mk ~cond Opcode.Nop [])
+  | Lowered.Shift_reg { cond; kind; rd; rm; rs } ->
+      Some
+        (Instruction.mk ~cond (Opcode.Shift kind)
+           [ Operand.Reg rd; Operand.Reg rm; Operand.Reg rs ])
   | Lowered.Ldst_imm { cond; load; byte; rt; rn; offset; writeback } -> (
       let mem_op = Operand.Mem { base = rn; offset = Mem.Imm offset; writeback; pre = true } in
       match (load, byte) with
@@ -2583,10 +2857,10 @@ let instruction_of_lowered ?(at = 0L) =
         (Instruction.mk ~cond Opcode.Vmov_core [ Operand.Reg rt; Operand.Reg rt2; Operand.Dreg dm ])
   | Lowered.V3_d { cond; op; vd; vn; vm } ->
       Some
-        (Instruction.mk ~cond (Opcode.V3 op) [ Operand.Dreg vd; Operand.Dreg vn; Operand.Dreg vm ])
+        (Instruction.mk ~cond (Opcode.V3d op) [ Operand.Dreg vd; Operand.Dreg vn; Operand.Dreg vm ])
   | Lowered.V3_s { cond; op; vd; vn; vm } ->
       Some
-        (Instruction.mk ~cond (Opcode.V3 op) [ Operand.Sreg vd; Operand.Sreg vn; Operand.Sreg vm ])
+        (Instruction.mk ~cond (Opcode.V3s op) [ Operand.Sreg vd; Operand.Sreg vn; Operand.Sreg vm ])
   | Lowered.Vneg_d { cond; vd; vm } ->
       Some (Instruction.mk ~cond Opcode.Vneg_d [ Operand.Dreg vd; Operand.Dreg vm ])
   | Lowered.Vneg_s { cond; vd; vm } ->
@@ -2634,6 +2908,20 @@ let instruction_of_lowered ?(at = 0L) =
              Operand.Sreg vd;
              Operand.Mem { base = rn; offset = Mem.Imm offset; writeback = false; pre = true };
            ])
+  | Lowered.Vldr_lit_d { cond; vd; target } ->
+      Some
+        (Instruction.mk ~cond Opcode.Vldr
+           [
+             Operand.Dreg vd;
+             Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target)));
+           ])
+  | Lowered.Vldr_lit_s { cond; vd; target } ->
+      Some
+        (Instruction.mk ~cond Opcode.Vldr
+           [
+             Operand.Sreg vd;
+             Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target)));
+           ])
   | Lowered.Vpush { cond; vd; count } ->
       Some
         (Instruction.mk ~cond Opcode.Vpush
@@ -2670,6 +2958,18 @@ let evaluate_fixup kind ~place ~target =
         else Error (diag ~pos:__POS__ `Branch_out_of_range)
   | Movw_abs_nc -> Ok (Int64.logand target 0xFFFFL)
   | Movt_abs -> Ok (Int64.logand (Int64.shift_right_logical target 16) 0xFFFFL)
+  (* [vldr]'s literal form always adds ([U] is fixed to 1 in the codec, not a
+     field this fixup carries) - every corpus occurrence is a trailing
+     same-function literal pool, ahead of the instruction, so a backward
+     target is a scope decision, not a truncation. *)
+  | Pcrel_vldr8 ->
+      let d = Int64.sub target place in
+      if Int64.compare d 0L < 0 then Error (diag ~pos:__POS__ `Vldr_literal_backward)
+      else if Int64.rem d 4L <> 0L then Error (diag ~pos:__POS__ `Vldr_literal_not_word_aligned)
+      else
+        let imm8 = Int64.div d 4L in
+        if Int64.compare imm8 256L < 0 then Ok imm8
+        else Error (diag ~pos:__POS__ `Vldr_literal_out_of_range)
 
 (* A32 has an architectural no-op, so padding an executable section needs no
    table and no policy. A boundary that is not a multiple of four is rejected

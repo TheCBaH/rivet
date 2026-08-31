@@ -79,23 +79,23 @@ CompCert's runtime library, per target.
   x86_64   i64_utod      error[x86.simplify]: unknown instruction pxor
   x86_64   i64_utof      error[x86.simplify]: unknown instruction pxor
   x86_64   vararg        error[x86.simplify]: 8-bit operands are not in M1 scope
-  arm      i64_dtos      error[arm.simplify]: unknown instruction asr
-  arm      i64_dtou      error[arm.simplify]: unknown instruction lsl
+  arm      i64_dtos      error[arm.simplify]: unknown instruction cmn
+  arm      i64_dtou      error[arm.simplify]: unknown instruction cmn
   arm      i64_sar       error[arm.simplify]: unknown instruction rsbs
-  arm      i64_sdiv      error[arm.simplify]: unknown instruction asr
-  arm      i64_shl       error[arm.simplify]: unknown instruction rsb
-  arm      i64_shr       error[arm.simplify]: unknown instruction rsb
-  arm      i64_smod      error[arm.simplify]: unknown instruction asr
+  arm      i64_sdiv      error[arm.simplify]: unknown instruction subs
+  arm      i64_shl      assembles
+  arm      i64_shr      assembles
+  arm      i64_smod      error[arm.simplify]: unknown instruction subs
   arm      i64_smulh     error[arm.simplify]: unknown instruction umull
   arm      i64_stod      error[arm.simplify]: unknown instruction vmla.f64
-  arm      i64_stof      error[arm.simplify]: unknown instruction asr
+  arm      i64_stof      error[arm.simplify]: unknown instruction vmla.f64
   arm      i64_udiv     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   arm      i64_udivmod   error[arm.simplify]: unknown instruction orrs
   arm      i64_umod     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   arm      i64_umulh     error[arm.simplify]: unknown instruction umull
   arm      i64_utod      error[arm.simplify]: unknown instruction vmla.f64
   arm      i64_utof      error[arm.simplify]: unknown instruction lsrs
-  arm      vararg        error[arm.simplify]: unknown instruction bic
+  arm      vararg       assembles
   aarch64  vararg        error[aarch64.simplify]: unknown instruction cbz
 
 Where the frontier actually is, as counts. This is the number to watch: it is
@@ -104,17 +104,17 @@ what M2 moves, and prose cannot regress.
   $ { for t in x86_32 x86_64 arm aarch64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-        7 assembles
+       10 assembles
         4 <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4  error[x86.simplify]: unknown instruction fildll
         4  error[x86.simplify]: 8-bit operands are not in M1 scope
-        4  error[arm.simplify]: unknown instruction asr
         3  error[lex]: unexpected character '\194'
+        3  error[arm.simplify]: unknown instruction vmla.f64
         2 <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         2  error[x86.simplify]: unknown instruction pxor
-        2  error[arm.simplify]: unknown instruction vmla.f64
         2  error[arm.simplify]: unknown instruction umull
-        2  error[arm.simplify]: unknown instruction rsb
+        2  error[arm.simplify]: unknown instruction subs
+        2  error[arm.simplify]: unknown instruction cmn
         1  error[x86.simplify]: unknown instruction ucomisd
         1  error[x86.simplify]: unknown instruction fnstsw
         1  error[x86.simplify]: unknown instruction fnstcw
@@ -123,6 +123,4 @@ what M2 moves, and prose cannot regress.
         1  error[arm.simplify]: unknown instruction rsbs
         1  error[arm.simplify]: unknown instruction orrs
         1  error[arm.simplify]: unknown instruction lsrs
-        1  error[arm.simplify]: unknown instruction lsl
-        1  error[arm.simplify]: unknown instruction bic
         1  error[aarch64.simplify]: unknown instruction cbz

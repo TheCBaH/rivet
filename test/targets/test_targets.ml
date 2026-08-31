@@ -29,6 +29,7 @@ let%expect_test "every target's codec passes Codec.check" =
     {|
     x86_32: none
     x86_64: none
+    arm: alt arm: nop and dp-imm have overlapping fixed bits; priority -1 before 3 decides
     arm: alt arm: movw and dp-imm have overlapping fixed bits; priority 1 before 3 decides
     arm: alt arm: movt and dp-imm have overlapping fixed bits; priority 2 before 3 decides
     arm: alt arm: vmov-reg-d and v3-d have overlapping fixed bits; priority 12 before 20 decides
@@ -47,6 +48,8 @@ let%expect_test "every target's codec passes Codec.check" =
     arm: alt arm: v3-s and vcmp-zero-s have overlapping fixed bits; priority 21 before 27 decides
     arm: alt arm: v3-s and vcvt-f64-f32 have overlapping fixed bits; priority 21 before 30 decides
     arm: alt arm: v3-s and vcvt-f32-s32 have overlapping fixed bits; priority 21 before 31 decides
+    arm: alt arm: vmem-d and vldr-lit-d have overlapping fixed bits; priority 35 before 41 decides
+    arm: alt arm: vmem-s and vldr-lit-s have overlapping fixed bits; priority 36 before 42 decides
     aarch64: none
     riscv32: none
     riscv64: none
@@ -680,8 +683,7 @@ let%expect_test "x86_32 has no 64-bit operand size" =
 
 let%expect_test "an ARM immediate outside the relation is rejected, not approximated" =
   attempt "arm" "\t.text\n\tmov r0, #0x12345678\n";
-  [%expect
-    {| arm.lower: #305419896 has no A32 modified-immediate representation; movw and mvn are M2 |}]
+  [%expect {| arm.lower: mov #305419896 has no A32 modified-immediate representation; movw is M2 |}]
 
 let%expect_test "an AArch64 ldr offset that is not a multiple of eight is rejected" =
   attempt "aarch64" "\t.text\n\tldr x30, [sp, #4]\n";
@@ -1103,6 +1105,264 @@ let%expect_test "vpush.64 needs a non-empty, contiguous, ascending D-register li
   attempt "arm" "\t.text\n\t.globl f\nf:\n\tvpush.64 {d8, d10}\n\tbx lr\n";
   [%expect
     {| arm.lower: vpush.64 needs a non-empty, ascending, contiguous D-register list, e.g. {d8, d9} |}]
+
+(* {1 ARM [vadd]/[vsub]/[vmul]/[vdiv] single-precision ([.f32])}
+
+   asm/docs/corpus.md's assemble-c corpus (fftsp.c's [vmul.f32]/[vdiv.f32],
+   knucleotide.c's [vmul.f32]/[vdiv.f32]) evidences the single-precision form
+   of the same V3 (add/sub/mul/div) family whose double-precision ([.f64], S
+   registers) form was already fully encodable - {!Lowered.V3_s} and its codec
+   alt already existed, built generically alongside {!Lowered.V3_d} when the
+   family was first added, but neither the [.f32] mnemonic table entry nor
+   the Sreg-operand lowering case that would ever reach it did. Filling in
+   both closes the gap; {!Opcode.V3} itself is split into {!Opcode.V3d}/
+   {!Opcode.V3s} rather than staying one operand-shape-dispatched
+   constructor, since [Opcode.name] carries a fixed [.f64]/[.f32] type
+   suffix into every dump/diagnostic that prints an un-lowered
+   {!Instruction.t} - one shared constructor could not tell the two widths'
+   text apart, and (caught before landing, not evidenced by any corpus
+   fixture) [--dump-disasm=canonical] on a decoded [.f32] instruction printed
+   the wrong suffix, text real [as] rejects outright even though this
+   project's own operand-shape-dispatched re-lowering happened to accept it.
+   Byte-for-byte checked against real arm-linux-gnueabihf-as/objdump
+   (-mfpu=vfpv3):
+     ee2dca03  vmul.f32 s24, s26, s6
+     ee8dca03  vdiv.f32 s24, s26, s6
+     ee300a81  vadd.f32 s0, s1, s2
+     ee300ac1  vsub.f32 s0, s1, s2 *)
+let%expect_test "vadd/vsub/vmul/vdiv.f32 share the .f64 family's V3 lowering, over S registers" =
+  disasm "arm"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tvmul.f32 s24, s26, s6\n\
+     \tvdiv.f32 s24, s26, s6\n\
+     \tvadd.f32 s0, s1, s2\n\
+     \tvsub.f32 s0, s1, s2\n\
+     \tbx lr\n";
+  [%expect
+    {|
+    40000000  03 ca 2d ee  vmul.f32 s24, s26, s6  [arm.v3-s]
+    40000004  03 ca 8d ee  vdiv.f32 s24, s26, s6  [arm.v3-s]
+    40000008  81 0a 30 ee  vadd.f32 s0, s1, s2    [arm.v3-s]
+    4000000c  c1 0a 30 ee  vsub.f32 s0, s1, s2    [arm.v3-s]
+    40000010  1e ff 2f e1  bx lr                  [arm.bx]
+    |}]
+
+(* {1 ARM [vldr Dd/Sd, label] - a PC-relative literal-pool load}
+
+   asm/docs/corpus.md's assemble-c corpus (fftsp.c's/knucleotide.c's own
+   [vldr s0, .L104], a bare label with no brackets and no base register - a
+   gcc/ccomp-generated same-function trailing float-constant pool, the
+   commonest remaining ARM `assemble-c` gap once [.f32] arithmetic above
+   stopped masking it). Structurally distinct from the already-complete
+   {!Lowered.Vmem_d}/{!Lowered.Vmem_s} (a runtime base register plus an
+   offset already resolved at lowering time, never symbolic): this is the
+   identical word shape with [Rn] fixed to [pc] (0b1111), [L] fixed to 1
+   (load-only - {!Opcode.Vstr} is not accepted this way, since real hardware
+   defines the store encoding's [Rn = 1111] as UNPREDICTABLE and no fixture
+   spells it, though real GAS still assembles it with a deprecation
+   warning), and [U] fixed to 1 (forward-only - every corpus occurrence is a
+   trailing literal pool, and a backward one is rejected rather than
+   mis-encoded). Byte-for-byte checked against real
+   arm-linux-gnueabihf-as/objdump (-mfpu=vfpv3): [vldr s0, .L1] (16 bytes
+   ahead) -> [ed9f0a04], [vldr d1, .L2] (4 bytes ahead) -> [ed9f1b01] -
+   real [as] resolves the identical distances this project's own fixup
+   formula does. Canonical disassembly prints these back as [pc, #imm] under
+   [arm.vmem-s]/[arm.vmem-d], not a bare-label spelling under the new alt:
+   {!Lowered.Vmem_d}/{!Lowered.Vmem_s}'s own codec alt already matches this
+   exact word (their [Rn]/[U]/[L] are wildcards, so an Rn=1111/U=1/L=1
+   instance already fits), and it is given the lower priority so it wins -
+   reproducing real objdump's own choice (confirmed against real
+   arm-linux-gnueabihf-as/objdump above: it prints [pc, #16]/[pc, #4] too,
+   never a bare label), rather than a spelling nothing re-parses back to the
+   identical word. *)
+let%expect_test "vldr Dd/Sd, label (PC-relative literal-pool load)" =
+  disasm "arm"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tvldr s0, .L1\n\
+     \tvldr d1, .L2\n\
+     \tbx lr\n\
+     \tnop\n\
+     .L2:\n\
+     \t.word 0\n\
+     \t.word 0\n\
+     .L1:\n\
+     \t.word 0\n";
+  [%expect
+    {|
+    40000000  04 0a 9f ed  vldr s0, [pc, #16]  [arm.vmem-s]
+    40000004  01 1b 9f ed  vldr d1, [pc, #4]   [arm.vmem-d]
+    40000008  1e ff 2f e1  bx lr               [arm.bx]
+    4000000c  00 f0 20 e3  .balign 8           [padding]
+    40000010  00 00 00 00  andeq r0, r0, r0    [arm.dp-reg]
+    40000014  00 00 00 00  andeq r0, r0, r0    [arm.dp-reg]
+    40000018  00 00 00 00  andeq r0, r0, r0    [arm.dp-reg]
+    |}]
+
+(* [evaluate_fixup] tested directly, the same way RISC-V's own branch/jump/hi/lo
+   boundaries are above: a full [assemble] round trip cannot exercise the
+   backward-reference rejection without an already-resolved local label
+   short-circuiting the fixup (or an impractically large fixture for the
+   32-bit-reach cases), so this checks the arithmetic in isolation instead. *)
+let show_arm_fixup label result =
+  match result with
+  | Ok value -> Printf.printf "%-12s %Ld\n" label value
+  | Error error ->
+      let diagnostic = Arm_encode.error_diagnostic (Err.Error.kind error) in
+      Printf.printf "%-12s %s\n" label (Foundation.Diagnostic.message diagnostic)
+
+let%expect_test "vldr literal-pool fixup: forward-only, word-aligned, +/-1020 reach" =
+  let vldr8 target = Arm_encode.evaluate_fixup Arm_encode.Pcrel_vldr8 ~place:8L ~target in
+  List.iter
+    (fun (label, target) -> show_arm_fixup label (vldr8 target))
+    [ ("min", 8L); ("max", 1028L); ("above max", 1032L); ("backward", 4L); ("misaligned", 9L) ];
+  [%expect
+    {|
+    min          0
+    max          255
+    above max    vldr literal-pool target is out of range
+    backward     vldr literal-pool target must follow the instruction; a backward one is not in scope
+    misaligned   vldr literal-pool target is not word-aligned
+    |}]
+
+(* [vstr] never reaches the literal-pool lowering above - real hardware defines
+   the store encoding's [Rn = 1111] as UNPREDICTABLE, and no fixture spells it -
+   so a bare label after [vstr] still falls through to the generic diagnostic. *)
+let%expect_test "vstr to a bare label is not in scope (only vldr's literal form is)" =
+  attempt "arm" "\t.text\n\t.globl f\nf:\n\tvstr s0, .L1\n\tbx lr\n.L1:\n\t.word 0\n";
+  [%expect {| arm.lower: no vstr form takes these operands |}]
+
+(* {1 ARM [eor]/[rsb]/[orr]/[mvn] - the rest of the data-processing family}
+
+   [add]/[sub]/[and]/[mov]/[cmp] already share one [dp]-parametrized lowering
+   ({!Lowered.Dp_imm}/{!Lowered.Dp_reg}); asm/docs/corpus.md's classify-c-gcc
+   evidence ([sha1.c]/[sha3.c]'s [eor rd, rn, rm], [binarytrees.c]/[chomp.c]/
+   [fft.c]'s [rsb rd, rn, #imm] and [rsb rd, rn, rm, lsl #n], [mandelbrot.c]/
+   [siphash24.c]'s [orr rd, rn, rm[, lsl #n]], [qsort.c]'s [mvn rd, rm]/
+   [mvn rd, #imm]) is every one of them the identical shape [add]/[and]
+   already lower, so this is four more [dp] table entries and no new codec
+   alt - [mvn] alone reuses [mov]'s own two-operand (no [rn]) shape rather
+   than the three-operand one. Byte-for-byte checked against real
+   arm-linux-gnueabihf-as/objdump:
+     e0210002  eor r0, r1, r2
+     e2610001  rsb r0, r1, #1
+     e0610082  rsb r0, r1, r2, lsl #1
+     e1810002  orr r0, r1, r2
+     e1810402  orr r0, r1, r2, lsl #8
+     e1e00001  mvn r0, r1
+     e3e00000  mvn r0, #0 *)
+let%expect_test "eor/rsb/orr/mvn share add/sub/and/mov's own data-processing lowering" =
+  disasm "arm"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \teor r0, r1, r2\n\
+     \trsb r0, r1, #1\n\
+     \trsb r0, r1, r2, lsl #1\n\
+     \torr r0, r1, r2\n\
+     \torr r0, r1, r2, lsl #8\n\
+     \tmvn r0, r1\n\
+     \tmvn r0, #0\n\
+     \tbx lr\n";
+  [%expect
+    {|
+    40000000  02 00 21 e0  eor r0, r1, r2          [arm.dp-reg]
+    40000004  01 00 61 e2  rsb r0, r1, #1          [arm.dp-imm]
+    40000008  82 00 61 e0  rsb r0, r1, r2, lsl #1  [arm.dp-reg]
+    4000000c  02 00 81 e1  orr r0, r1, r2          [arm.dp-reg]
+    40000010  02 04 81 e1  orr r0, r1, r2, lsl #8  [arm.dp-reg]
+    40000014  01 00 e0 e1  mvn r0, r1              [arm.dp-reg]
+    40000018  00 00 e0 e3  mvn r0, #0              [arm.dp-imm]
+    4000001c  1e ff 2f e1  bx lr                   [arm.bx]
+    |}]
+
+(* {1 ARM [lsl]/[lsr]/[asr]/[ror rd, rm, rs] and [nop]}
+
+   [lsl rd, rm, rs] etc. are GNU's own mnemonics for [mov] with a
+   register-specified shift amount (asm/docs/corpus.md - gcc's [nsieve.c]/
+   [nsievebits.c]) - a different word shape from the already-supported
+   immediate-shift-amount one ({!Lowered.Dp_reg}'s own [mov rd, rm, lsl #n]):
+   bit 4 is the ARM manual's own register/immediate-shift discriminator, and
+   Rs sits where the 5-bit immediate shift amount otherwise would. [nop] is
+   the dedicated ARMv7 hint-NOP word ([e320f000]), the same bytes
+   {!nop_bytes} already uses to pad a section, now reachable from source
+   too (classify-c-gcc's [vmach.c]). Byte-for-byte checked against real
+   arm-linux-gnueabihf-as/objdump:
+     e1a00211  lsl r0, r1, r2
+     e1a00231  lsr r0, r1, r2
+     e1a00251  asr r0, r1, r2
+     e1a00271  ror r0, r1, r2
+     e320f000  nop *)
+let%expect_test "lsl/lsr/asr/ror rd, rm, rs (register shift amount), and nop" =
+  disasm "arm"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tlsl r0, r1, r2\n\
+     \tlsr r0, r1, r2\n\
+     \tasr r0, r1, r2\n\
+     \tror r0, r1, r2\n\
+     \tnop\n\
+     \tbx lr\n";
+  [%expect
+    {|
+    40000000  11 02 a0 e1  lsl r0, r1, r2  [arm.shift-reg]
+    40000004  31 02 a0 e1  lsr r0, r1, r2  [arm.shift-reg]
+    40000008  51 02 a0 e1  asr r0, r1, r2  [arm.shift-reg]
+    4000000c  71 02 a0 e1  ror r0, r1, r2  [arm.shift-reg]
+    40000010  00 f0 20 e3  nop             [arm.nop]
+    40000014  1e ff 2f e1  bx lr           [arm.bx]
+    |}]
+
+let%expect_test "lsl with an immediate shift amount is a different, unimplemented form" =
+  attempt "arm" "\t.text\n\t.globl f\nf:\n\tlsl r0, r1, #2\n\tbx lr\n";
+  [%expect {| arm.lower: no lsl form takes these operands |}]
+
+(* {1 ARM [eor]/[orr]/[bic]'s own three-operand immediate form, and [adc]/[adds]}
+
+   [rsb rd, rn, #imm] already shares [add]/[sub]/[and]'s own [dp-imm] lowering
+   (above); asm/docs/corpus.md's siphash24.c/sha3.c/mandelbrot.c/qsort.c/
+   nsievebits.c evidence the identical shape for [eor]/[orr]/[bic] too, and
+   [nsievebits.c]/[qsort.c] also evidence [bic]'s register form. [adc]
+   (siphash24.c's 64-bit-add upper half) is the same three-register
+   [dp-reg] shape [eor]/[orr] already have. [adds] (the lower half of that
+   same 64-bit add) is {!Add}'s own flag-setting form - a [dp] value alone
+   can't tell it from plain [add], only the pre-existing [s] field can, so
+   it gets its own opcode and its own dedicated case rather than joining the
+   generic list (which always lowers with [s] = false). Byte-for-byte
+   checked against real arm-linux-gnueabihf-as/objdump (whose canonical
+   disassembly spells r10/r12 as sl/ip, matching this project's own decoder):
+     e22c0062  eor r0, ip, #98
+     e38c0001  orr r0, ip, #1
+     e3c038ff  bic r3, r0, #16711680
+     e1c3100c  bic r1, r3, ip
+     e0a4a00c  adc sl, r4, ip
+     e0910002  adds r0, r1, r2 *)
+let%expect_test "eor/orr/bic's three-operand immediate form, bic's register form, adc, and adds" =
+  disasm "arm"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \teor r0, r12, #98\n\
+     \torr r0, r12, #1\n\
+     \tbic r3, r0, #16711680\n\
+     \tbic r1, r3, r12\n\
+     \tadc r10, r4, r12\n\
+     \tadds r0, r1, r2\n\
+     \tbx lr\n";
+  [%expect
+    {|
+    40000000  62 00 2c e2  eor r0, ip, #98        [arm.dp-imm]
+    40000004  01 00 8c e3  orr r0, ip, #1         [arm.dp-imm]
+    40000008  ff 38 c0 e3  bic r3, r0, #16711680  [arm.dp-imm]
+    4000000c  0c 10 c3 e1  bic r1, r3, ip         [arm.dp-reg]
+    40000010  0c a0 a4 e0  adc sl, r4, ip         [arm.dp-reg]
+    40000014  02 00 91 e0  adds r0, r1, r2        [arm.dp-reg]
+    40000018  1e ff 2f e1  bx lr                  [arm.bx]
+    |}]
 
 (* {1 The x86-64 address-size prefix}
 
@@ -1786,7 +2046,8 @@ let%expect_test "fldl/fstpl/fstps read/write a double/single memory operand" =
    c8 06`, decoding back with no size suffix, exactly [ror $27, %eax]'s
    register-operand precedent above. *)
 let%expect_test "shldl reads a register source and an immediate count" =
-  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tshldl $6, %ecx, %eax\n\tshldl $16, %esi, %ecx\n\tret\n";
+  disasm "x86_32"
+    "\t.text\n\t.globl f\nf:\n\tshldl $6, %ecx, %eax\n\tshldl $16, %esi, %ecx\n\tret\n";
   [%expect
     {|
     40000000  0f a4 c8 06  shld $6, %ecx, %eax   [x86_32.shld-imm-rm.opsz-absent.reg]

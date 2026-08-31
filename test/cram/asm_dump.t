@@ -709,6 +709,7 @@
   0000001c  1e ff 2f e1  bx lr             [arm.bx]
   ########## arm codec
   alt arm
+    [-1 cost=0] nop              nop(){cond 0011001000001111000000000000}
     [0 cost=0] bx               bx(){cond 000100101111111111110001 rm}
     [1 cost=0] movw             movw(){cond 00110000 <imm:4@12 movw-abs-nc> rd <imm:12@0 movw-abs-nc>}
     [2 cost=0] movt             movt(){cond 00110100 <imm:4@12 movt-abs> rd <imm:12@0 movt-abs>}
@@ -749,6 +750,9 @@
     [37 cost=0] push             push(){cond 100100101101 reglist:16u}
     [38 cost=0] ldm              ldm(){cond 1000101 l:1u rn reglist:16u}
     [39 cost=0] vpush            vpush(){cond 11010 D:1u 10 1101 Vd:4u 1011 imm8:8u}
+    [40 cost=0] shift-reg        shift-reg(){cond 000 1101 0 0000 rd rs 0 shift-kind:2u 1 rm}
+    [41 cost=0] vldr-lit-d       vldr-lit-d(){cond 1101 1 D:1u 0 1 1111 Vd:4u 1011 <target:8@0 pcrel-vldr8>}
+    [42 cost=0] vldr-lit-s       vldr-lit-s(){cond 1101 1 D:1u 0 1 1111 Vd:4u 1010 <target:8@0 pcrel-vldr8>}
   cond[16]{cond:4u}
   rm(){rm:4u}
   rd(){rd:4u}
@@ -757,6 +761,7 @@
   rt(){rt:4u}
   ra(){ra:4u}
   rt2(){rt2:4u}
+  rs(){rs:4u}
   ########## aarch64 tokens
   1 5 directive .text
   6 1 eol \n
