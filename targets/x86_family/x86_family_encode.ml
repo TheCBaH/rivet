@@ -299,6 +299,19 @@ module Opcode = struct
     | Fstpl
     | Fstps
     | Flds
+    | Fildll
+        (** [fildll mem] - x87 64-bit integer load ([0xDF /5]), GAS's own spelling of FILD m64int -
+            distinct from the 32-bit [fildl]/[0xDB /0] no fixture evidences. Shares {!Lowered.Fpu_mem}
+            with {!Fldl}/{!Fstpl}/{!Fstps}/{!Flds}: same opcode-plus-ModR/M-extension shape, a
+            disjoint opcode byte and extension. *)
+    | Fadds
+        (** [fadds mem] - x87 single-precision add ([st(0) := st(0) + mem], [0xD8 /0]), a memory-
+            source-only arithmetic sibling of {!Fldl}/{!Fstpl}/{!Fstps}/{!Flds}/{!Fildll}'s pure
+            load/store family - same {!Lowered.Fpu_mem} shape, one more disjoint opcode/extension
+            pair. Evidenced only against a bare-symbol source (M5, asm/docs/corpus.md -
+            gas_frontier.t's runtime-i64_utod.S/i64_utof.S), so it shares {!Flds}'s
+            [mem_of_symbol] duality rather than {!Fldl}/{!Fstpl}/{!Fstps}'s memory-operand-only
+            scope. *)
     | Fucomp
 
   let name = function
@@ -360,6 +373,8 @@ module Opcode = struct
     | Fstpl -> "fstpl"
     | Fstps -> "fstps"
     | Flds -> "flds"
+    | Fildll -> "fildll"
+    | Fadds -> "fadds"
     | Fucomp -> "fucomp"
 
   (* The machine encodes add and sub as one opcode with the operation in the
@@ -553,7 +568,7 @@ module Instruction = struct
           | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Comiss | Opcode.Xorpd
           | Opcode.Movapd | Opcode.Cvtsd2ss | Opcode.Cvtss2sd | Opcode.Movsd | Opcode.Movss
           | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si | Opcode.Fldl | Opcode.Fstpl
-          | Opcode.Fstps | Opcode.Flds ) as op ->
+          | Opcode.Fstps | Opcode.Flds | Opcode.Fildll | Opcode.Fadds ) as op ->
             Fmt.pf ppf "%s %a" (Opcode.name op) Fmt.(list ~sep:(any ", ") Operand.pp) ops
         | _ ->
             Fmt.pf ppf "%s%s %a" (Opcode.name i.op) (suffix_of_width i.width)
@@ -1665,6 +1680,14 @@ module Make (M : MODE) = struct
        (M5, asm/docs/corpus.md - i64_dtou.S/i64_stof.S/i64_utof.S's own
        float<->int conversion helpers). *)
     | "flds", _ -> Ok (Instruction.mk Opcode.Flds 32 s.Surface.ops)
+    (* [fildll] - x87 64-bit integer load, [fistpll]'s (unevidenced) load counterpart and
+       [fldl]/[fstpl]/[fstps]/[flds]'s integer-typed sibling (M5, asm/docs/corpus.md -
+       gas_frontier.t's i64_stod.S/i64_stof.S/i64_utod.S/i64_utof.S, CompCert's own
+       int64-to-float runtime helpers). *)
+    | "fildll", _ -> Ok (Instruction.mk Opcode.Fildll 32 s.Surface.ops)
+    (* [fadds] - x87 single-precision add, [fstps]/[flds]'s arithmetic sibling (M5,
+       asm/docs/corpus.md - gas_frontier.t's i64_utod.S/i64_utof.S). *)
+    | "fadds", _ -> Ok (Instruction.mk Opcode.Fadds 32 s.Surface.ops)
     (* [fucomp] - bare, no operand: GAS's own spelling of [fucomp %st(1)], the compare-and-pop
        counterpart to [fldl]/[fstpl]/[fstps]/[flds]'s load/store family (M5,
        asm/docs/corpus.md - i64_dtou.S). *)
@@ -2227,15 +2250,17 @@ module Make (M : MODE) = struct
        return value - always to/from a stack memory operand in this corpus,
        never a register, so {!Lowered.Fpu_mem} takes a bare {!Mem.t} rather
        than the general {!Rm.t} every GPR/xmm form above uses. *)
-    | (Opcode.Fldl | Opcode.Fstpl | Opcode.Fstps | Opcode.Flds), [ Operand.Mem m ] ->
+    | (Opcode.Fldl | Opcode.Fstpl | Opcode.Fstps | Opcode.Flds | Opcode.Fildll), [ Operand.Mem m ]
+      ->
         Ok [ Lowered.Fpu_mem { op = i.Instruction.op; mem = m } ]
-    (* [flds sym] - a bare-symbol source, the same duality [lea]/[movsd]/
+    (* [flds sym] / [fadds sym] - a bare-symbol source, the same duality [lea]/[movsd]/
        [xorpd] already read through [mem_of_symbol] (M5, asm/docs/corpus.md -
-       i64_dtou.S's `flds LC1`). Scoped to [Flds] alone: no fixture evidences
-       a bare-symbol [fldl]/[fstpl]/[fstps] (every recurrence of those three
+       i64_dtou.S's `flds LC1`; gas_frontier.t's i64_utod.S/i64_utof.S own
+       `fadds LC1`). Scoped to [Flds]/[Fadds]: no fixture evidences a
+       bare-symbol [fldl]/[fstpl]/[fstps] (every recurrence of those three
        is `disp(%esp)`). *)
-    | Opcode.Flds, [ Operand.Sym e ] ->
-        Ok [ Lowered.Fpu_mem { op = Opcode.Flds; mem = mem_of_symbol e } ]
+    | (Opcode.Flds | Opcode.Fadds), [ Operand.Sym e ] ->
+        Ok [ Lowered.Fpu_mem { op = i.Instruction.op; mem = mem_of_symbol e } ]
     | Opcode.Fucomp, [] -> Ok [ Lowered.Fucomp ]
     (* [sete %al]/[setl %r8b] (M5, asm/docs/corpus.md): [Instruction.width] is
        always 8 here ({!simplify_instruction} pins it), so [width_ok] on the
@@ -3577,6 +3602,8 @@ module Make (M : MODE) = struct
           fpu_mem_form ~label:"fstps" ~priority:52 ~opcode_byte:0xD9 ~ext:3 ~op:Opcode.Fstps;
           shld_imm_form ~label:"shld-imm-rm" ~priority:53;
           fpu_mem_form ~label:"flds" ~priority:54 ~opcode_byte:0xD9 ~ext:0 ~op:Opcode.Flds;
+          fpu_mem_form ~label:"fildll" ~priority:56 ~opcode_byte:0xDF ~ext:5 ~op:Opcode.Fildll;
+          fpu_mem_form ~label:"fadds" ~priority:57 ~opcode_byte:0xD8 ~ext:0 ~op:Opcode.Fadds;
           (* [0xDD 0xE9] ({!Lowered.Fucomp} - bare [fucomp], M5, asm/docs/corpus.md):
              a fixed two-byte word, no ModR/M at all - the same "no operand" shape
              {!Ret}/{!Ud2} already use, just a different opcode pair. *)

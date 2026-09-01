@@ -1317,9 +1317,23 @@ let%expect_test "lsl/lsr/asr/ror rd, rm, rs (register shift amount), and nop" =
     40000014  1e ff 2f e1  bx lr           [arm.bx]
     |}]
 
-let%expect_test "lsl with an immediate shift amount is a different, unimplemented form" =
-  attempt "arm" "\t.text\n\t.globl f\nf:\n\tlsl r0, r1, #2\n\tbx lr\n";
-  [%expect {| arm.lower: no lsl form takes these operands |}]
+(* [lsl]/[lsr]/[asr]/[ror rd, rm, #imm] (M5, asm/docs/corpus.md - gas_frontier.t's
+   runtime-i64_dtou.S/i64_sar.S): the immediate-shift-amount sibling of the register-shift-amount
+   form above - GNU's own mnemonics for [mov rd, rm, <shift> #imm], lowering into the identical
+   {!Lowered.Dp_reg}/[mov] shape the two-operand-plus-[Shifted] spelling already builds. Real
+   objdump's own canonical text prefers [lsl]/[asr] here (confirmed against real
+   arm-linux-gnueabihf-as/objdump: `lsl r0, r1, #2` -> `e1a00101`, disassembling back as [lsl r0,
+   r1, #2] rather than [mov r0, r1, lsl #2]) - this project's own canonical dump still prints via
+   the pre-existing [mov] fallback, a spelling choice test/xref/test_xref.ml's byte-only oracle
+   does not distinguish. *)
+let%expect_test "lsl/lsr/asr/ror rd, rm, #imm (immediate shift amount)" =
+  disasm "arm" "\t.text\n\t.globl f\nf:\n\tlsl r0, r1, #2\n\tasr r1, r1, #31\n\tbx lr\n";
+  [%expect
+    {|
+    40000000  01 01 a0 e1  mov r0, r1, lsl #2   [arm.dp-reg]
+    40000004  c1 1f a0 e1  mov r1, r1, asr #31  [arm.dp-reg]
+    40000008  1e ff 2f e1  bx lr                [arm.bx]
+    |}]
 
 (* {1 ARM [eor]/[orr]/[bic]'s own three-operand immediate form, and [adc]/[adds]}
 
@@ -1362,6 +1376,47 @@ let%expect_test "eor/orr/bic's three-operand immediate form, bic's register form
     40000010  0c a0 a4 e0  adc sl, r4, ip         [arm.dp-reg]
     40000014  02 00 91 e0  adds r0, r1, r2        [arm.dp-reg]
     40000018  1e ff 2f e1  bx lr                  [arm.bx]
+    |}]
+
+(* {1 ARM [cmn]/[subs]/[rsbs]/[orrs]/[sbc]}
+
+   Five more flag-setting/compare data-processing forms (M5, asm/docs/corpus.md -
+   gas_frontier.t's runtime-i64_dtos.S/i64_dtou.S/i64_sar.S/i64_sdiv.S/i64_smod.S/
+   i64_udivmod.S, CompCert's own 64-bit software-arithmetic runtime helpers). [cmn]
+   (dp = 11) is {!Cmp}'s exact sibling test instruction, sharing {!is_compare}'s
+   forced-[Rd]-zero/[S]-set shape - no dedicated lowering case needed beyond the table
+   entry, unlike the next three. [subs]/[orrs] are {!Adds}'s own pattern applied to
+   [sub]/[orr] (dp = 2/12, [s] = 1, register-register-register only - a [dp] value
+   alone cannot tell a plain op from its flag-setting sibling, only [s] can, so each
+   needs its own opcode and dedicated case). [rsbs] is the same pattern on the
+   *immediate* form instead (evidenced only that way: `rsbs r3, r2, #32`). [sbc] is
+   {!Adc}'s exact mirror (dp = 6, plain register form, no dedicated [s]-handling
+   needed - no fixture evidences an S-suffixed [sbcs]). Byte-for-byte checked against
+   real arm-linux-gnueabihf-as/objdump:
+     e3720034  cmn r2, #52
+     e0500004  subs r0, r0, r4
+     e2723020  rsbs r3, r2, #32
+     e1926003  orrs r6, r2, r3
+     e0c11004  sbc r1, r1, r4 *)
+let%expect_test "cmn, subs, rsbs, orrs, and sbc" =
+  disasm "arm"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tcmn r2, #52\n\
+     \tsubs r0, r0, r4\n\
+     \trsbs r3, r2, #32\n\
+     \torrs r6, r2, r3\n\
+     \tsbc r1, r1, r4\n\
+     \tbx lr\n";
+  [%expect
+    {|
+    40000000  34 00 72 e3  cmn r2, #52       [arm.dp-imm]
+    40000004  04 00 50 e0  subs r0, r0, r4   [arm.dp-reg]
+    40000008  20 30 72 e2  rsbs r3, r2, #32  [arm.dp-imm]
+    4000000c  03 60 92 e1  orrs r6, r2, r3   [arm.dp-reg]
+    40000010  04 10 c1 e0  sbc r1, r1, r4    [arm.dp-reg]
+    40000014  1e ff 2f e1  bx lr             [arm.bx]
     |}]
 
 (* {1 The x86-64 address-size prefix}
@@ -2089,6 +2144,35 @@ let%expect_test "flds reads a double/single memory operand and a bare symbol" =
     40000000  d9 44 24 04        flds 4(%esp)     [x86_32.flds.opsz-absent.sib-disp8]
     40000004  d9 05 00 00 00 40  flds 1073741824  [x86_32.flds.opsz-absent.disp32-norm]
     4000000a  c3                 ret              [x86_32.ret]
+    |}]
+
+(* [fildll] - x87 64-bit integer load ([0xDF /5], M5, asm/docs/corpus.md - gas_frontier.t's
+   runtime-i64_stod.S/i64_stof.S/i64_utod.S/i64_utof.S: CompCert's own int64-to-float
+   conversion runtime helpers). Same shared-opcode-disjoint-extension shape as
+   {!Fldl}/{!Fstpl}/{!Fstps}/{!Flds}, memory-operand-only (every recurrence in this
+   corpus is `disp(%esp)`, no bare-symbol source evidenced the way {!Flds}/{!Fadds}
+   need). Checked against real i686-linux-gnu-as/objdump: `fildll 4(%esp)` -> `df 6c
+   24 04`. *)
+let%expect_test "fildll reads a 64-bit integer memory operand" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tfildll 4(%esp)\n\tret\n";
+  [%expect
+    {|
+    40000000  df 6c 24 04  fildll 4(%esp)  [x86_32.fildll.opsz-absent.sib-disp8]
+    40000004  c3           ret             [x86_32.ret]
+    |}]
+
+(* [fadds] - x87 single-precision add ([0xD8 /0], M5, asm/docs/corpus.md - gas_frontier.t's
+   runtime-i64_utod.S/i64_utof.S). [fstps]/[flds]'s arithmetic sibling, sharing the same
+   {!Lowered.Fpu_mem} shape and, since both corpus occurrences are `fadds LC1`, {!Flds}'s
+   own [mem_of_symbol] bare-symbol duality rather than {!Fldl}/{!Fstpl}/{!Fstps}'s
+   memory-operand-only scope. Checked against real i686-linux-gnu-as/objdump: `fadds LC1`
+   -> `d8 05 <disp32>` with an `R_386_32` relocation. *)
+let%expect_test "fadds reads a bare-symbol single-precision memory operand" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tfadds f\n\tret\n";
+  [%expect
+    {|
+    40000000  d8 05 00 00 00 40  fadds 1073741824  [x86_32.fadds.opsz-absent.disp32-norm]
+    40000006  c3                 ret               [x86_32.ret]
     |}]
 
 (* [fucomp] - bare, no operand (M5, asm/docs/corpus.md - i64_dtou.S's own compare-and-pop,

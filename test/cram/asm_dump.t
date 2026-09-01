@@ -211,6 +211,8 @@
     [53 cost=0] shld-imm-rm      shld-imm-rm(){prefixes 0000111110100100 modrm imm8:8u}
     [54 cost=0] flds             flds(){prefixes 11011001 modrm}
     [55 cost=0] fucomp           fucomp(){1101110111101001}
+    [56 cost=0] fildll           fildll(){prefixes 11011111 modrm}
+    [57 cost=0] fadds            fadds(){prefixes 11011000 modrm}
   prefixes(){no-asz opsz no-rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
@@ -451,6 +453,8 @@
     [53 cost=0] shld-imm-rm      shld-imm-rm(){prefixes 0000111110100100 modrm imm8:8u}
     [54 cost=0] flds             flds(){prefixes 11011001 modrm}
     [55 cost=0] fucomp           fucomp(){1101110111101001}
+    [56 cost=0] fildll           fildll(){prefixes 11011111 modrm}
+    [57 cost=0] fadds            fadds(){prefixes 11011000 modrm}
   prefixes(){asz opsz rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}

@@ -433,6 +433,11 @@ module Opcode = struct
     | Sub
     | And
     | Cmp
+    | Cmn
+        (** [cmn rn, #imm] - compare negative ([rn + op2], flags only, dp = 11), {!Cmp}'s own sibling
+            test instruction: same [Rd = 0]/[S = 1]-forced shape {!is_compare} already generalizes,
+            just a different [dp] value (M5, asm/docs/corpus.md - gas_frontier.t's
+            runtime-i64_dtos.S/i64_dtou.S). Evidenced only as the immediate form. *)
     | Eor  (** [eor rd, rn, rm[, shift]] - bitwise XOR, the same data-processing family as {!And} *)
     | Rsb
         (** [rsb rd, rn, rm[, shift]] / [rsb rd, rn, #imm] - reverse subtract (computes [op2 - rn]),
@@ -449,6 +454,11 @@ module Opcode = struct
             {!And}/{!Orr}/{!Bic} (evidenced only in the plain register-register-register shape:
             asm/docs/corpus.md's [siphash24.c], the upper half of a 64-bit add {!Adds} already
             covers the lower half of). *)
+    | Sbc
+        (** [sbc rd, rn, rm] - subtract with carry, {!Adc}'s exact mirror (dp = 6), evidenced only in
+            the same plain register-register-register shape (M5, asm/docs/corpus.md -
+            gas_frontier.t's runtime-i64_dtos.S/i64_sdiv.S/i64_smod.S, the upper half of a 64-bit
+            subtract {!Subs} covers the lower half of). *)
     | Adds
         (** [adds rd, rn, rm] - {!Add}'s own flag-setting form (dp = 4, [s] = 1), evidenced only in
             this one register-register-register shape (asm/docs/corpus.md: gcc's own carry-out
@@ -458,6 +468,19 @@ module Opcode = struct
             {!Cmp} already has to being "[sub] with [s] = 1 and no destination": {!to_dp} still maps
             it to 4, but it is deliberately excluded from the generic [Add]/[Sub]/[And]/... lowering
             arm, which always produces [s] = false. *)
+    | Subs
+        (** [subs rd, rn, rm] - {!Sub}'s own flag-setting form (dp = 2, [s] = 1), {!Adds}'s exact
+            counterpart on the other side of the family (M5, asm/docs/corpus.md - gas_frontier.t's
+            runtime-i64_sdiv.S/i64_smod.S own absolute-value idiom). Register-register-register only,
+            the one shape evidenced. *)
+    | Rsbs
+        (** [rsbs rd, rn, #imm] - {!Rsb}'s own flag-setting form (dp = 3, [s] = 1), evidenced only as
+            the immediate form (M5, asm/docs/corpus.md - gas_frontier.t's runtime-i64_sar.S's own
+            "32 - amount" idiom). *)
+    | Orrs
+        (** [orrs rd, rn, rm] - {!Orr}'s own flag-setting form (dp = 12, [s] = 1), evidenced only as
+            the register form, its result used only as a zero test (M5, asm/docs/corpus.md -
+            gas_frontier.t's runtime-i64_udivmod.S). *)
     | Mul
     | Mla
     | Str
@@ -534,13 +557,18 @@ module Opcode = struct
     | Sub -> "sub"
     | And -> "and"
     | Cmp -> "cmp"
+    | Cmn -> "cmn"
     | Eor -> "eor"
     | Rsb -> "rsb"
     | Orr -> "orr"
     | Mvn -> "mvn"
     | Bic -> "bic"
     | Adc -> "adc"
+    | Sbc -> "sbc"
     | Adds -> "adds"
+    | Subs -> "subs"
+    | Rsbs -> "rsbs"
+    | Orrs -> "orrs"
     | Nop -> "nop"
     | Shift k -> shift_name k
     | Mul -> "mul"
@@ -592,13 +620,18 @@ module Opcode = struct
     | "sub" -> Some Sub
     | "and" -> Some And
     | "cmp" -> Some Cmp
+    | "cmn" -> Some Cmn
     | "eor" -> Some Eor
     | "rsb" -> Some Rsb
     | "orr" -> Some Orr
     | "mvn" -> Some Mvn
     | "bic" -> Some Bic
     | "adc" -> Some Adc
+    | "sbc" -> Some Sbc
     | "adds" -> Some Adds
+    | "subs" -> Some Subs
+    | "rsbs" -> Some Rsbs
+    | "orrs" -> Some Orrs
     | "nop" -> Some Nop
     | "mul" -> Some Mul
     | "mla" -> Some Mla
@@ -691,12 +724,14 @@ module Opcode = struct
   let to_dp = function
     | And -> 0
     | Eor -> 1
-    | Sub -> 2
-    | Rsb -> 3
+    | Sub | Subs -> 2
+    | Rsb | Rsbs -> 3
     | Add | Adds -> 4
     | Adc -> 5
+    | Sbc -> 6
     | Cmp -> 10
-    | Orr -> 12
+    | Cmn -> 11
+    | Orr | Orrs -> 12
     | Mov -> 13
     | Bic -> 14
     | Mvn -> 15
@@ -709,17 +744,20 @@ module Opcode = struct
     | 3 -> Some Rsb
     | 4 -> Some Add
     | 5 -> Some Adc
+    | 6 -> Some Sbc
     | 10 -> Some Cmp
+    | 11 -> Some Cmn
     | 12 -> Some Orr
     | 13 -> Some Mov
     | 14 -> Some Bic
     | 15 -> Some Mvn
     | _ -> None
 
-  (* The three that write no destination register and set the flags instead, so
+  (* The ones that write no destination register and set the flags instead, so
      their [Rd] field is zero and their [S] bit is one. Reading that off a table
-     rather than off the opcode number is what keeps [Dp_reg] one form. *)
-  let is_compare = function Cmp -> true | _ -> false
+     rather than off the opcode number is what keeps [Dp_reg]/[Dp_imm] one form
+     each. *)
+  let is_compare = function Cmp | Cmn -> true | _ -> false
 end
 
 module Instruction = struct
@@ -2179,7 +2217,8 @@ type error_kind =
   | `Vmrs_unsupported_operands
   | `Push_needs_two_or_more_registers
   | `Pop_needs_two_or_more_registers
-  | `Vpush_needs_contiguous_registers ]
+  | `Vpush_needs_contiguous_registers
+  | `Shift_amount_out_of_range ]
 
 and wrong_relocation_modifier = { opcode : string; want : string; got : string }
 and missing_relocation_modifier = { opcode : string; want : string }
@@ -2229,6 +2268,7 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `Vpush_needs_contiguous_registers ->
       Fmt.string ppf
         "vpush.64 needs a non-empty, ascending, contiguous D-register list, e.g. {d8, d9}"
+  | `Shift_amount_out_of_range -> Fmt.string ppf "shift amount does not fit the 5-bit immediate"
 
 let error_kind_code : error_kind -> string = function
   | `Unknown_instruction _ -> "arm.simplify"
@@ -2237,7 +2277,8 @@ let error_kind_code : error_kind -> string = function
   | `Offset_not_12bit | `Udf_imm16_overflow | `Wrong_relocation_modifier _
   | `Missing_relocation_modifier _ | `Imm16_overflow _ | `No_form _ | `No_vfp_immediate _
   | `Vfp_offset_out_of_range _ | `Vmrs_unsupported_operands | `Push_needs_two_or_more_registers
-  | `Pop_needs_two_or_more_registers | `Vpush_needs_contiguous_registers ->
+  | `Pop_needs_two_or_more_registers | `Vpush_needs_contiguous_registers
+  | `Shift_amount_out_of_range ->
       "arm.lower"
   | `Codec e -> Option.value (Codec.code e) ~default:"arm.encode"
   | `Decode_short | `Decode_no_match | `Decode_no_normalized -> "arm.decode"
@@ -2335,7 +2376,7 @@ let lower_instruction state i =
        differ only in the two fields the encoding already has, so one case
        covers both rather than duplicating the lowering. *)
     | ( (( Opcode.Add | Opcode.Sub | Opcode.And | Opcode.Mov | Opcode.Eor | Opcode.Rsb | Opcode.Orr
-         | Opcode.Mvn | Opcode.Bic | Opcode.Adc ) as op),
+         | Opcode.Mvn | Opcode.Bic | Opcode.Adc | Opcode.Sbc ) as op),
         (Operand.Reg rd :: rest as ops) )
       when match ops with
            | [ _; Operand.Reg _ ]
@@ -2373,13 +2414,14 @@ let lower_instruction state i =
                   };
               ]
         | _ -> bad `Expected_register_or_shifted)
-    | Opcode.Cmp, [ Operand.Reg rn; Operand.Shifted { reg = rm; kind; amount } ] ->
+    | ( ((Opcode.Cmp | Opcode.Cmn) as op),
+        [ Operand.Reg rn; Operand.Shifted { reg = rm; kind; amount } ] ) ->
         Ok
           [
             Lowered.Dp_reg
               {
                 cond;
-                dp = Opcode.to_dp Opcode.Cmp;
+                dp = Opcode.to_dp op;
                 s = true;
                 rd = Reg.of_num 0;
                 rn;
@@ -2450,15 +2492,57 @@ let lower_instruction state i =
             if List.for_all2 (fun n i -> n = base + i) members (List.init count Fun.id) then
               Ok [ Lowered.Vpush { cond; vd = Dreg.of_num base; count } ]
             else bad `Vpush_needs_contiguous_registers)
-    | Opcode.Adds, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
+    | ( ((Opcode.Adds | Opcode.Subs | Opcode.Orrs) as op),
+        [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ) ->
         Ok
           [
             Lowered.Dp_reg
-              { cond; dp = Opcode.to_dp Opcode.Adds; s = true; rd; rn; rm; sh_kind = 0; sh_amt = 0 };
+              { cond; dp = Opcode.to_dp op; s = true; rd; rn; rm; sh_kind = 0; sh_amt = 0 };
           ]
+    | Opcode.Rsbs, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm ->
+            if encode_modimm imm = None then bad (`No_modified_immediate imm)
+            else
+              Ok [ Lowered.Dp_imm { cond; dp = Opcode.to_dp Opcode.Rsbs; s = true; rd; rn; imm } ])
     | Opcode.Nop, [] -> Ok [ Lowered.Nop { cond } ]
     | Opcode.Shift kind, [ Operand.Reg rd; Operand.Reg rm; Operand.Reg rs ] ->
         Ok [ Lowered.Shift_reg { cond; kind; rd; rm; rs } ]
+    (* [lsl]/[lsr]/[asr]/[ror rd, rm, #imm] - GNU's own mnemonics for [mov rd, rm, <shift> #imm], the
+       immediate-shift-amount sibling of the register-shift-amount form just above (M5,
+       asm/docs/corpus.md - gas_frontier.t's runtime-i64_dtou.S/i64_sar.S, evidenced only as [lsl]/
+       [asr]). Lowers straight into the same {!Lowered.Dp_reg}/[mov] shape the generic register-form
+       arm above already builds for [mov rd, rm, <shift> #imm]'s own two-operand-plus-[Shifted]
+       spelling - byte-identical to real arm-linux-gnueabihf-as either way (verified). Unlike
+       {!Adds}/{!Subs}/{!Orrs}/{!Rsbs}, no dedicated printer is added: real objdump's own canonical
+       text *does* prefer [lsl]/[asr] here over [mov ..., <shift> #imm] (confirmed against real
+       objdump), but this codebase's own canonical dump is judged only by whether it re-parses to the
+       identical word (test/xref/test_xref.ml compares encoded bytes, never decoded text, against
+       real objdump) - so printing via the pre-existing [mov] fallback is a spelling choice, not a
+       correctness gap. The 5-bit shift-amount field is 0-31; GAS's own 32-encoded-as-0 alias for a
+       full-width [lsr]/[asr] is not evidenced and not attempted. *)
+    | Opcode.Shift kind, [ Operand.Reg rd; Operand.Reg rm; Operand.Imm v ] -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm ->
+            if Int64.compare imm 0L < 0 || Int64.compare imm 32L >= 0 then
+              bad `Shift_amount_out_of_range
+            else
+              Ok
+                [
+                  Lowered.Dp_reg
+                    {
+                      cond;
+                      dp = Opcode.to_dp Opcode.Mov;
+                      s = false;
+                      rd;
+                      rn = Reg.of_num 0;
+                      rm;
+                      sh_kind = kind;
+                      sh_amt = Int64.to_int imm;
+                    };
+                ])
     | Opcode.Udf, [ Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
@@ -2477,13 +2561,13 @@ let lower_instruction state i =
     (* A comparison writes no destination: the encoding requires Rd = 0 and
        S = 1, and reading that off [is_compare] rather than off the operand
        list is what keeps one lowering for the whole data-processing family. *)
-    | Opcode.Cmp, [ Operand.Reg rn; Operand.Reg rm ] ->
+    | ((Opcode.Cmp | Opcode.Cmn) as op), [ Operand.Reg rn; Operand.Reg rm ] ->
         Ok
           [
             Lowered.Dp_reg
               {
                 cond;
-                dp = Opcode.to_dp Opcode.Cmp;
+                dp = Opcode.to_dp op;
                 s = true;
                 rd = Reg.of_num 0;
                 rn;
@@ -2492,7 +2576,7 @@ let lower_instruction state i =
                 sh_amt = 0;
               };
           ]
-    | Opcode.Cmp, [ Operand.Reg rn; Operand.Imm v ] -> (
+    | ((Opcode.Cmp | Opcode.Cmn) as op), [ Operand.Reg rn; Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm ->
@@ -2501,7 +2585,7 @@ let lower_instruction state i =
               Ok
                 [
                   Lowered.Dp_imm
-                    { cond; dp = Opcode.to_dp Opcode.Cmp; s = true; rd = Reg.of_num 0; rn; imm };
+                    { cond; dp = Opcode.to_dp op; s = true; rd = Reg.of_num 0; rn; imm };
                 ])
     (* [movw]/[movt]. Per the contract's §B7 the modifier is *consumed* here -
        it selects the form, and what is stored is the expression underneath -
@@ -2747,13 +2831,17 @@ let instruction_of_lowered ?(at = 0L) =
     | Asm_core.Lowered_ast.Symbolic _ -> at
   in
   function
-  | Lowered.Dp_imm { cond; dp; rd; rn; imm; _ } -> (
+  | Lowered.Dp_imm { cond; dp; s; rd; rn; imm } -> (
       match Opcode.of_dp dp with
       | None -> None
       | Some ((Opcode.Mov | Opcode.Mvn) as o) ->
           Some (Instruction.mk ~cond o [ Operand.Reg rd; Operand.Imm (Bigint.of_int64 imm) ])
       | Some o when Opcode.is_compare o ->
           Some (Instruction.mk ~cond o [ Operand.Reg rn; Operand.Imm (Bigint.of_int64 imm) ])
+      | Some Opcode.Rsb when s ->
+          Some
+            (Instruction.mk ~cond Opcode.Rsbs
+               [ Operand.Reg rd; Operand.Reg rn; Operand.Imm (Bigint.of_int64 imm) ])
       | Some o ->
           Some
             (Instruction.mk ~cond o
@@ -2770,6 +2858,10 @@ let instruction_of_lowered ?(at = 0L) =
       | Some o when Opcode.is_compare o -> Some (Instruction.mk ~cond o [ Operand.Reg rn; shifted ])
       | Some Opcode.Add when s ->
           Some (Instruction.mk ~cond Opcode.Adds [ Operand.Reg rd; Operand.Reg rn; shifted ])
+      | Some Opcode.Sub when s ->
+          Some (Instruction.mk ~cond Opcode.Subs [ Operand.Reg rd; Operand.Reg rn; shifted ])
+      | Some Opcode.Orr when s ->
+          Some (Instruction.mk ~cond Opcode.Orrs [ Operand.Reg rd; Operand.Reg rn; shifted ])
       | Some o -> Some (Instruction.mk ~cond o [ Operand.Reg rd; Operand.Reg rn; shifted ]))
   | Lowered.Nop { cond } -> Some (Instruction.mk ~cond Opcode.Nop [])
   | Lowered.Shift_reg { cond; kind; rd; rm; rs } ->

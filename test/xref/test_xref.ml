@@ -295,11 +295,16 @@ let%expect_test "frontier corpus: agreement wherever both assemblers accept" =
   [%expect
     {|
     x86_32   fixture-asm_test_entry   agree
+    x86_32   runtime-i64_stod         agree
+    x86_32   runtime-i64_stof         agree
     x86_32   runtime-i64_udivmod      agree
     x86_32   runtime-i64_umulh        agree
     x86_32   runtime-vararg           agree
     x86_64   fixture-asm_test_entry   agree
     arm      fixture-asm_test_entry   agree
+    arm      runtime-i64_dtos         agree
+    arm      runtime-i64_dtou         agree
+    arm      runtime-i64_sar          agree
     arm      runtime-i64_shl          agree
     arm      runtime-i64_shr          agree
     arm      runtime-vararg           agree
@@ -308,4 +313,4 @@ let%expect_test "frontier corpus: agreement wherever both assemblers accept" =
     riscv32  fixture-asm_test_entry   agree
     riscv64  fixture-asm_test_entry   agree
 
-    13 agree, 0 differ, 36 beyond M1, 0 not assembled by GNU as |}]
+    18 agree, 0 differ, 31 beyond M1, 0 not assembled by GNU as |}]

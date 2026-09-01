@@ -75,31 +75,31 @@ CompCert's runtime library, per target.
   x86_32   i64_shr       error[x86.simplify]: 8-bit operands are not in M1 scope
   x86_32   i64_smod     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   x86_32   i64_smulh     error[x86.simplify]: cmov takes two register operands in M2
-  x86_32   i64_stod      error[x86.simplify]: unknown instruction fildll
-  x86_32   i64_stof      error[x86.simplify]: unknown instruction fildll
+  x86_32   i64_stod     assembles
+  x86_32   i64_stof     assembles
   x86_32   i64_udiv     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   x86_32   i64_udivmod  assembles
   x86_32   i64_umod     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   x86_32   i64_umulh    assembles
-  x86_32   i64_utod      error[x86.simplify]: unknown instruction fildll
-  x86_32   i64_utof      error[x86.simplify]: unknown instruction fildll
+  x86_32   i64_utod      error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
+  x86_32   i64_utof      error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
   x86_32   vararg       assembles
   x86_64   i64_dtou      error[x86.simplify]: unknown instruction ucomisd
   x86_64   i64_utod      error[x86.simplify]: unknown instruction pxor
   x86_64   i64_utof      error[x86.simplify]: unknown instruction pxor
   x86_64   vararg        error[x86.simplify]: 8-bit operands are not in M1 scope
-  arm      i64_dtos      error[arm.simplify]: unknown instruction cmn
-  arm      i64_dtou      error[arm.simplify]: unknown instruction cmn
-  arm      i64_sar       error[arm.simplify]: unknown instruction rsbs
-  arm      i64_sdiv      error[arm.simplify]: unknown instruction subs
+  arm      i64_dtos     assembles
+  arm      i64_dtou     assembles
+  arm      i64_sar      assembles
+  arm      i64_sdiv     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   arm      i64_shl      assembles
   arm      i64_shr      assembles
-  arm      i64_smod      error[arm.simplify]: unknown instruction subs
+  arm      i64_smod     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   arm      i64_smulh     error[arm.simplify]: unknown instruction umull
   arm      i64_stod      error[arm.simplify]: unknown instruction vmla.f64
   arm      i64_stof      error[arm.simplify]: unknown instruction vmla.f64
   arm      i64_udiv     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
-  arm      i64_udivmod   error[arm.simplify]: unknown instruction orrs
+  arm      i64_udivmod   error[arm.simplify]: unknown instruction it
   arm      i64_umod     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   arm      i64_umulh     error[arm.simplify]: unknown instruction umull
   arm      i64_utod      error[arm.simplify]: unknown instruction vmla.f64
@@ -113,22 +113,19 @@ what M2 moves, and prose cannot regress.
   $ { for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-       13 assembles
+       18 assembles
         4 <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
-        4  error[x86.simplify]: unknown instruction fildll
+        4 <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4  error[x86.simplify]: 8-bit operands are not in M1 scope
         3  error[lex]: unexpected character '\194'
         3  error[arm.simplify]: unknown instruction vmla.f64
-        2 <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         2  error[x86.simplify]: unknown instruction pxor
+        2  error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
         2  error[arm.simplify]: unknown instruction umull
-        2  error[arm.simplify]: unknown instruction subs
-        2  error[arm.simplify]: unknown instruction cmn
         1  error[x86.simplify]: unknown instruction ucomisd
         1  error[x86.simplify]: unknown instruction fnstsw
         1  error[x86.simplify]: unknown instruction fnstcw
         1  error[x86.simplify]: cmov takes two register operands in M2
         1  error[lex]: unexpected character '<'
-        1  error[arm.simplify]: unknown instruction rsbs
-        1  error[arm.simplify]: unknown instruction orrs
         1  error[arm.simplify]: unknown instruction lsrs
+        1  error[arm.simplify]: unknown instruction it
