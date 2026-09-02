@@ -99,7 +99,7 @@ CompCert's runtime library, per target.
   arm      i64_stod     assembles
   arm      i64_stof     assembles
   arm      i64_udiv     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
-  arm      i64_udivmod   error[arm.simplify]: unknown instruction it
+  arm      i64_udivmod  assembles
   arm      i64_umod     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   arm      i64_umulh    assembles
   arm      i64_utod     assembles
@@ -113,11 +113,10 @@ what M2 moves, and prose cannot regress.
   $ { for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-       28 assembles
+       29 assembles
         4 <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4 <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4  error[x86.simplify]: 8-bit operands are not in M1 scope
         4  error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
         3  error[lex]: unexpected character '\194'
         1  error[lex]: unexpected character '<'
-        1  error[arm.simplify]: unknown instruction it

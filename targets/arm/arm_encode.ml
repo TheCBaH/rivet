@@ -541,6 +541,10 @@ module Opcode = struct
     | Movw
     | Movt
     | Ite
+        (** [it]/[ite] - the Thumb IT-block prefix. GAS accepts both spellings (and every other
+            IT-block letter combination) in A32 source and emits nothing for any of them, so this
+            one constructor covers all of them; see {!simplify_instruction}'s own comment (M5,
+            asm/docs/corpus.md - gas_frontier.t's runtime-i64_udivmod.S's own bare [it eq]). *)
     | Nop
         (** the dedicated ARMv7 hint encoding ([e320f000], the same bytes {!nop_bytes} already pads
             with) - not a data-processing alias the way {!Mvn}'s [mov]-family siblings are. *)
@@ -559,6 +563,18 @@ module Opcode = struct
             apart - only [s] can, the same relationship {!Adds} already has to {!Add} - so this is
             its own opcode with its own dedicated lowering/decoding case rather than a field on
             {!Shift}. No register-shift-amount ([lsrs rd, rm, rs]) form is evidenced or attempted. *)
+    | Rrx
+        (** [rrx rd, rm] - GAS's dedicated two-operand mnemonic for rotate-right-with-extend
+            (rotate through the carry flag by exactly one bit), encoded as [mov rd, rm, ror #0]
+            - a ROR immediate shift of 0 means RRX rather than "no shift" the way an LSL 0 would
+            (M5, asm/docs/corpus.md - gas_frontier.t's runtime-i64_udivmod.S's own bare [rrx r2,
+            r2]). Kept separate from {!Shift}/{!Shifts} rather than reusing [Shift 3] with an
+            implicit zero, since [ror rd, rm] (no immediate at all) is not evidenced and this
+            keeps {!Shift}'s own three-operand-only scope untouched. Byte-identical to
+            [mov rd, rm, ror #0] either way (verified against real arm-linux-gnueabihf-as); no
+            dedicated printer is added, the same judgment call {!Shift}'s own comment explains -
+            correctness here is byte-level, not spelling-level. *)
+    | Rrxs  (** [rrxs rd, rm] - {!Rrx}'s own flag-setting sibling, [movs rd, rm, ror #0]. *)
     | Vmov_d  (** [vmov.f64 Dd, Dm] or [vmov.f64 Dd, #imm] - operand-shape dispatched *)
     | Vmov_s  (** [vmov.f32 Sd, Sm] or [vmov.f32 Sd, #imm] *)
     | Vmov_core  (** [vmov Rt, Sn] / [vmov Sn, Rt] / [vmov Rt, Rt2, Dm] / [vmov Dm, Rt, Rt2] *)
@@ -629,6 +645,8 @@ module Opcode = struct
     | Nop -> "nop"
     | Shift k -> shift_name k
     | Shifts k -> shift_name k ^ "s"
+    | Rrx -> "rrx"
+    | Rrxs -> "rrxs"
     | Mul -> "mul"
     | Mla -> "mla"
     | Umull -> "umull"
@@ -700,7 +718,7 @@ module Opcode = struct
     | "b" -> Some B
     | "movw" -> Some Movw
     | "movt" -> Some Movt
-    | "ite" -> Some Ite
+    | "ite" | "it" -> Some Ite
     | "str" -> Some Str
     | "ldr" -> Some Ldr
     | "bx" -> Some Bx
@@ -712,6 +730,8 @@ module Opcode = struct
     | "stmia" -> Some Stmia
     | "ldmia" -> Some Ldmia
     | "pop" -> Some Pop
+    | "rrx" -> Some Rrx
+    | "rrxs" -> Some Rrxs
     | m -> (
         match shift_of_name m with
         | Some k -> Some (Shift k)
@@ -2611,6 +2631,17 @@ let lower_instruction state i =
             if encode_modimm imm = None then bad (`No_modified_immediate imm)
             else
               Ok [ Lowered.Dp_imm { cond; dp = Opcode.to_dp Opcode.Adds; s = true; rd; rn; imm } ])
+    (* [subs rd, rn, #imm] - {!Adds}'s exact counterpart on the subtract side (M5,
+       asm/docs/corpus.md - gas_frontier.t's runtime-i64_udivmod.S's own loop-counter
+       decrement, [subs r8, r8, #1]); {!Subs} itself was register-register-register only
+       until now. *)
+    | Opcode.Subs, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm ->
+            if encode_modimm imm = None then bad (`No_modified_immediate imm)
+            else
+              Ok [ Lowered.Dp_imm { cond; dp = Opcode.to_dp Opcode.Subs; s = true; rd; rn; imm } ])
     | Opcode.Nop, [] -> Ok [ Lowered.Nop { cond } ]
     | Opcode.Shift kind, [ Operand.Reg rd; Operand.Reg rm; Operand.Reg rs ] ->
         Ok [ Lowered.Shift_reg { cond; kind; rd; rm; rs } ]
@@ -2672,6 +2703,39 @@ let lower_instruction state i =
                       sh_amt = Int64.to_int imm;
                     };
                 ])
+    (* [rrx rd, rm] / [rrxs rd, rm] - see {!Opcode.Rrx}'s doc comment: the identical
+       [Lowered.Dp_reg]/[mov] shape the two cases just above build, at the one shift kind
+       (ROR, 3) and amount (0) that mean RRX rather than "no shift". *)
+    | Opcode.Rrx, [ Operand.Reg rd; Operand.Reg rm ] ->
+        Ok
+          [
+            Lowered.Dp_reg
+              {
+                cond;
+                dp = Opcode.to_dp Opcode.Mov;
+                s = false;
+                rd;
+                rn = Reg.of_num 0;
+                rm;
+                sh_kind = 3;
+                sh_amt = 0;
+              };
+          ]
+    | Opcode.Rrxs, [ Operand.Reg rd; Operand.Reg rm ] ->
+        Ok
+          [
+            Lowered.Dp_reg
+              {
+                cond;
+                dp = Opcode.to_dp Opcode.Mov;
+                s = true;
+                rd;
+                rn = Reg.of_num 0;
+                rm;
+                sh_kind = 3;
+                sh_amt = 0;
+              };
+          ]
     | Opcode.Udf, [ Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
@@ -2976,6 +3040,13 @@ let instruction_of_lowered ?(at = 0L) =
       | Some Opcode.Add when s ->
           Some
             (Instruction.mk ~cond Opcode.Adds
+               [ Operand.Reg rd; Operand.Reg rn; Operand.Imm (Bigint.of_int64 imm) ])
+      (* [subs rd, rn, #imm]'s own reconstruction - {!Opcode.Adds}'s exact counterpart, and the
+         same round-trip guard: without this, decoding [subs r8, r8, #1] would silently drop [s]
+         and reconstruct as plain [sub], which does not reassemble to the original bytes. *)
+      | Some Opcode.Sub when s ->
+          Some
+            (Instruction.mk ~cond Opcode.Subs
                [ Operand.Reg rd; Operand.Reg rn; Operand.Imm (Bigint.of_int64 imm) ])
       | Some o ->
           Some
