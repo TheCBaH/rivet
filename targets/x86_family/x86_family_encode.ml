@@ -285,8 +285,19 @@ module Opcode = struct
     | Mulss
     | Divss
     | Comisd
+    | Ucomisd
+        (** [ucomisd rm, reg] - unordered scalar double compare ([66 0F 2E /r]), {!Comisd}'s exact
+            sibling in the same [sse_binop_66_codec] table, one more opcode byte at the same
+            mandatory-prefix group (M5, asm/docs/corpus.md - gas_frontier.t's
+            runtime-i64_dtou.S's own float-to-unsigned range test). *)
     | Comiss
     | Xorpd
+    | Pxor
+        (** [pxor rm, reg] - packed bitwise XOR ([66 0F EF /r]), {!Xorpd}'s own mandatory-prefix
+            group at a different opcode byte, evidenced only as the register-register
+            self-zeroing idiom [pxor %xmmN, %xmmN] (M5, asm/docs/corpus.md - gas_frontier.t's
+            runtime-i64_utod.S/i64_utof.S, priming an accumulator ahead of an integer-to-float
+            conversion). *)
     | Movapd
     | Cvtsd2ss
     | Cvtss2sd
@@ -313,6 +324,34 @@ module Opcode = struct
             [mem_of_symbol] duality rather than {!Fldl}/{!Fstpl}/{!Fstps}'s memory-operand-only
             scope. *)
     | Fucomp
+    | Fnstcw
+        (** [fnstcw mem] - x87 store-control-word ([0xD9 /7], M5, asm/docs/corpus.md -
+            gas_frontier.t's runtime-i64_dtos.S/i64_dtou.S own round-to-nearest-then-
+            truncate idiom around an integer conversion). Shares {!Lowered.Fpu_mem}
+            with {!Fldl}/.../{!Fadds}: same opcode-plus-ModR/M-extension shape, one
+            more disjoint opcode/extension pair. *)
+    | Fldcw
+        (** [fldcw mem] - x87 load-control-word ([0xD9 /5]), {!Fnstcw}'s load-back
+            counterpart restoring the saved rounding mode (M5, asm/docs/corpus.md -
+            same fixtures as {!Fnstcw}). *)
+    | Fistpll
+        (** [fistpll mem] - x87 64-bit integer store-and-pop ([0xDF /7]), {!Fildll}'s
+            store direction (M5, asm/docs/corpus.md - same fixtures as {!Fnstcw}). *)
+    | Fsubs
+        (** [fsubs mem] - x87 single-precision subtract ([st(0) := st(0) - mem],
+            [0xD8 /4]), {!Fadds}'s exact sibling at a different ModR/M extension,
+            including the same bare-symbol [mem_of_symbol] duality (M5,
+            asm/docs/corpus.md - gas_frontier.t's runtime-i64_dtou.S). *)
+    | Fnstsw
+        (** [fnstsw %ax] - x87 store-status-word into [%ax] ([0xDF 0xE0]), a fixed
+            two-byte word with no ModR/M, the same "no operand" shape {!Fucomp}
+            already uses - the [%ax] destination is implicit in the opcode, not an
+            encoded operand (M5, asm/docs/corpus.md - gas_frontier.t's
+            runtime-i64_dtou.S own status-word-into-[sahf] idiom). *)
+    | Sahf
+        (** [sahf] - load [%ah] into the flags register ([0x9E]), bare, no operand,
+            {!Fucomp}/{!Fnstsw}'s exact fixed-opcode shape (M5, asm/docs/corpus.md -
+            same fixture as {!Fnstsw}). *)
 
   let name = function
     | Add -> "add"
@@ -359,8 +398,10 @@ module Opcode = struct
     | Mulss -> "mulss"
     | Divss -> "divss"
     | Comisd -> "comisd"
+    | Ucomisd -> "ucomisd"
     | Comiss -> "comiss"
     | Xorpd -> "xorpd"
+    | Pxor -> "pxor"
     | Movapd -> "movapd"
     | Cvtsd2ss -> "cvtsd2ss"
     | Cvtss2sd -> "cvtss2sd"
@@ -376,6 +417,12 @@ module Opcode = struct
     | Fildll -> "fildll"
     | Fadds -> "fadds"
     | Fucomp -> "fucomp"
+    | Fnstcw -> "fnstcw"
+    | Fldcw -> "fldcw"
+    | Fistpll -> "fistpll"
+    | Fsubs -> "fsubs"
+    | Fnstsw -> "fnstsw"
+    | Sahf -> "sahf"
 
   (* The machine encodes add and sub as one opcode with the operation in the
      ModR/M reg field, so the opcode and its extension are two spellings of one
@@ -565,10 +612,11 @@ module Instruction = struct
            {!instruction_of_lowered}'s comment) so it must never reach
            [suffix_of_width] the way the fallback case below does. *)
         | ( Opcode.Addsd | Opcode.Subsd | Opcode.Mulsd | Opcode.Divsd | Opcode.Addss | Opcode.Subss
-          | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Comiss | Opcode.Xorpd
-          | Opcode.Movapd | Opcode.Cvtsd2ss | Opcode.Cvtss2sd | Opcode.Movsd | Opcode.Movss
-          | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si | Opcode.Fldl | Opcode.Fstpl
-          | Opcode.Fstps | Opcode.Flds | Opcode.Fildll | Opcode.Fadds ) as op ->
+          | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Ucomisd | Opcode.Comiss
+          | Opcode.Xorpd | Opcode.Pxor | Opcode.Movapd | Opcode.Cvtsd2ss | Opcode.Cvtss2sd
+          | Opcode.Movsd | Opcode.Movss | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si
+          | Opcode.Fldl | Opcode.Fstpl | Opcode.Fstps | Opcode.Flds | Opcode.Fildll | Opcode.Fadds
+          | Opcode.Fnstcw | Opcode.Fldcw | Opcode.Fistpll | Opcode.Fsubs | Opcode.Fnstsw ) as op ->
             Fmt.pf ppf "%s %a" (Opcode.name op) Fmt.(list ~sep:(any ", ") Operand.pp) ops
         | _ ->
             Fmt.pf ppf "%s%s %a" (Opcode.name i.op) (suffix_of_width i.width)
@@ -729,6 +777,14 @@ module Lowered = struct
             compare-and-pop against the fixed stack slot [%st(1)] - GAS's bare, no-operand
             spelling of [fucomp %st(1)], the only form this corpus evidences, so unlike
             {!Fpu_mem} this carries no operand at all rather than a general [%st(n)]. *)
+    | Fnstsw
+        (** [0xDF 0xE0] (M5, asm/docs/corpus.md - i64_dtou.S's own [fnstsw %ax]): x87
+            store-status-word, {!Fucomp}'s exact "fixed two-byte word, no operand" shape - the
+            [%ax] destination is implicit in the opcode and checked away in
+            {!simplify_instruction} rather than carried here. *)
+    | Sahf
+        (** [0x9E] (M5, asm/docs/corpus.md - same fixture as {!Fnstsw}): load [%ah] into the
+            flags register, bare, no operand, {!Fucomp}/{!Fnstsw}'s exact fixed-opcode shape. *)
 
   let pp ppf = function
     | Alu_rm_imm { ext; width; rm; imm } ->
@@ -804,6 +860,8 @@ module Lowered = struct
     | Cvtf2i_r_rm { reg; rm; _ } -> Fmt.pf ppf "cvttsd2si %a, %a" Rm.pp rm Reg.pp reg
     | Fpu_mem { op; mem } -> Fmt.pf ppf "%s %a" (Opcode.name op) Mem.pp mem
     | Fucomp -> Fmt.string ppf "fucomp %st(1)"
+    | Fnstsw -> Fmt.string ppf "fnstsw %ax"
+    | Sahf -> Fmt.string ppf "sahf"
 
   let equal a b =
     match (a, b) with
@@ -860,6 +918,8 @@ module Lowered = struct
         x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Fpu_mem x, Fpu_mem y -> x.op = y.op && Mem.equal x.mem y.mem
     | Fucomp, Fucomp -> true
+    | Fnstsw, Fnstsw -> true
+    | Sahf, Sahf -> true
     | _ -> false
 end
 
@@ -1418,6 +1478,8 @@ module Make (M : MODE) = struct
     | `Ret_takes_operands
     | `Ud2_takes_operands
     | `Fucomp_takes_operands
+    | `Fnstsw_operand
+    | `Sahf_takes_operands
     | `Cmov_operands
     | `Bad_branch_suffix of bad_branch_suffix
     | `Immediate_destination
@@ -1463,6 +1525,8 @@ module Make (M : MODE) = struct
     | `Ret_takes_operands -> Fmt.string ppf "ret takes no operands in M1"
     | `Ud2_takes_operands -> Fmt.string ppf "ud2 takes no operands"
     | `Fucomp_takes_operands -> Fmt.string ppf "fucomp takes no operands in M5"
+    | `Fnstsw_operand -> Fmt.string ppf "fnstsw is only supported as fnstsw %%ax in M5"
+    | `Sahf_takes_operands -> Fmt.string ppf "sahf takes no operands"
     | `Cmov_operands -> Fmt.string ppf "cmov takes two register operands in M2"
     | `Setcc_operands -> Fmt.string ppf "setcc takes exactly one 8-bit register or memory operand"
     | `Bad_branch_suffix { mnemonic; rungs } ->
@@ -1495,7 +1559,8 @@ module Make (M : MODE) = struct
   let error_kind_code : error_kind -> string = function
     | `Unknown_instruction _ | `Missing_size_suffix _ | `Prefix66_out_of_scope
     | `Operand8_out_of_scope | `No_64bit_size _ | `Ret_takes_operands | `Ud2_takes_operands
-    | `Fucomp_takes_operands | `Cmov_operands | `Setcc_operands ->
+    | `Fucomp_takes_operands | `Fnstsw_operand | `Sahf_takes_operands | `Cmov_operands
+    | `Setcc_operands ->
         "x86.simplify"
     | `Bad_branch_suffix _ -> "x86.branch-suffix"
     | `Immediate_too_wide | `No_form _ | `Immediate_destination | `Imm_to_mem_only_movb
@@ -1659,8 +1724,10 @@ module Make (M : MODE) = struct
     | "mulss", _ -> Ok (Instruction.mk Opcode.Mulss 32 s.Surface.ops)
     | "divss", _ -> Ok (Instruction.mk Opcode.Divss 32 s.Surface.ops)
     | "comisd", _ -> Ok (Instruction.mk Opcode.Comisd 32 s.Surface.ops)
+    | "ucomisd", _ -> Ok (Instruction.mk Opcode.Ucomisd 32 s.Surface.ops)
     | "comiss", _ -> Ok (Instruction.mk Opcode.Comiss 32 s.Surface.ops)
     | "xorpd", _ -> Ok (Instruction.mk Opcode.Xorpd 32 s.Surface.ops)
+    | "pxor", _ -> Ok (Instruction.mk Opcode.Pxor 32 s.Surface.ops)
     | "movapd", _ -> Ok (Instruction.mk Opcode.Movapd 32 s.Surface.ops)
     | "cvtsd2ss", _ -> Ok (Instruction.mk Opcode.Cvtsd2ss 32 s.Surface.ops)
     | "cvtss2sd", _ -> Ok (Instruction.mk Opcode.Cvtss2sd 32 s.Surface.ops)
@@ -1694,6 +1761,26 @@ module Make (M : MODE) = struct
     | "fucomp", _ ->
         if s.Surface.ops = [] then Ok (Instruction.mk Opcode.Fucomp 32 [])
         else bad `Fucomp_takes_operands
+    (* [fnstcw]/[fldcw] - x87 store/load control-word, {!Fldl}/.../[Fadds]'s memory-operand-only
+       [Fpu_mem] shape at two more disjoint opcode/extension pairs (M5, asm/docs/corpus.md -
+       gas_frontier.t's i64_dtos.S/i64_dtou.S own round-to-nearest-then-truncate idiom). *)
+    | "fnstcw", _ -> Ok (Instruction.mk Opcode.Fnstcw 32 s.Surface.ops)
+    | "fldcw", _ -> Ok (Instruction.mk Opcode.Fldcw 32 s.Surface.ops)
+    (* [fistpll] - x87 64-bit integer store-and-pop, [Fildll]'s store direction, same
+       [Fpu_mem] shape (M5, asm/docs/corpus.md - same fixtures as [fnstcw]). *)
+    | "fistpll", _ -> Ok (Instruction.mk Opcode.Fistpll 32 s.Surface.ops)
+    (* [fsubs] - x87 single-precision subtract, [fadds]'s exact sibling including its bare-symbol
+       duality (M5, asm/docs/corpus.md - gas_frontier.t's i64_dtou.S). *)
+    | "fsubs", _ -> Ok (Instruction.mk Opcode.Fsubs 32 s.Surface.ops)
+    (* [fnstsw %ax] - bare fixed two-byte word, [fucomp]'s exact "no encoded operand" shape; the
+       lone [%ax] operand is checked in {!simplify_instruction} and then discarded rather than
+       carried into {!Lowered.Fnstsw} (M5, asm/docs/corpus.md - gas_frontier.t's i64_dtou.S). *)
+    | "fnstsw", _ -> Ok (Instruction.mk Opcode.Fnstsw 32 s.Surface.ops)
+    (* [sahf] - bare, no operand, {!Fucomp}'s exact fixed-opcode shape (M5,
+       asm/docs/corpus.md - same fixture as [fnstsw]). *)
+    | "sahf", _ ->
+        if s.Surface.ops = [] then Ok (Instruction.mk Opcode.Sahf 32 [])
+        else bad `Sahf_takes_operands
     (* M5 (asm/docs/corpus.md): zero-/sign-extending move. Matched on the full
        mnemonic via {!movx_suffixes}, not on [stem] - see its own comment for
        why [split_suffix] cannot express this shape. [movslq] (src 32, dst 64)
@@ -1731,6 +1818,11 @@ module Make (M : MODE) = struct
           | _ -> M.address_width
         in
         Ok (Instruction.mk Opcode.Cvttsd2si width s.Surface.ops)
+    (* [cvttsd2siq]: the explicit-width spelling of the same instruction, {!Cvtsi2ss}'s own
+       [cvtsi2ssq] precedent just above - always paired with a 64-bit destination register in
+       this corpus, so byte-identical to the bare mnemonic reading its width off that register
+       (M5, asm/docs/corpus.md - gas_frontier.t's runtime-i64_dtou.S). *)
+    | "cvttsd2siq", _ -> Ok (Instruction.mk Opcode.Cvttsd2si 64 s.Surface.ops)
     (* M4 (.ai/asm_plan.md §12): the real i64_udivmod.S source spells its
        one register-register [add] with no suffix at all ([add %ecx,
        %edx]) - valid GNU as, since the register operand disambiguates the
@@ -1801,7 +1893,12 @@ module Make (M : MODE) = struct
              (`Bad_branch_suffix { mnemonic = m; rungs = branch_rungs }))
     | m, _ when Cc.split_after "cmov" m <> None -> (
         match (Cc.split_after "cmov" m, s.Surface.ops) with
-        | Some c, (Operand.Reg r :: _ as ops) -> Ok (Instruction.mk (Opcode.Cmov c) r.Reg.width ops)
+        (* The width has to come from the destination (the second, always-a-register
+           operand), not the first: a memory source (M5, asm/docs/corpus.md -
+           gas_frontier.t's i64_smulh.S's own `cmovl 20(%esp), %eax`) carries no width
+           of its own the way a register source does. *)
+        | Some c, ([ Operand.Reg _; Operand.Reg r ] | [ Operand.Mem _; Operand.Reg r ]) ->
+            Ok (Instruction.mk (Opcode.Cmov c) r.Reg.width s.Surface.ops)
         | Some _, _ -> bad `Cmov_operands
         | None, _ -> bad (`Unknown_instruction s.Surface.mnemonic))
     (* M5 (asm/docs/corpus.md): [sete %al], [setl %r8b] - always 8-bit, so
@@ -2003,12 +2100,25 @@ module Make (M : MODE) = struct
         | Operand.Mem m ->
             Ok [ Lowered.Unary_rm { ext; width = i.Instruction.width; rm = Rm.Mem m } ]
         | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ -> bad `Immediate_destination)
-    (* Group-2 shift/rotate, explicit-count form. The fixture always spells
-       the count explicitly ([rcrl $1, %ecx], [rorl $27, %eax]), never the
-       bare-mnemonic implicit-1 form GAS also accepts. A literal count of
-       exactly 1 still picks {!Lowered.Shift1_rm} - GAS's own shorter,
-       canonical encoding (M4's original scope here) - and any other count
-       is {!Lowered.Shift_imm_rm} (M5, asm/docs/corpus.md: [rorl $27,%eax],
+    (* Group-2 shift/rotate, bare-mnemonic implicit-1 form ([shrq %rax]) - GAS's
+       own shorter surface spelling of the explicit [$1, dst] one just below,
+       byte-identical either way (M5, asm/docs/corpus.md - gas_frontier.t's
+       runtime-i64_utod.S/i64_utof.S). Lowers straight into the same
+       {!Lowered.Shift1_rm} the explicit-count-1 case builds. *)
+    | (Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar), [ dst ] -> (
+        let ext = Opcode.to_shift1_ext i.Instruction.op in
+        match dst with
+        | Operand.Reg r -> (
+            match width_ok r with
+            | Error e -> Error e
+            | Ok () -> Ok [ Lowered.Shift1_rm { ext; width = i.Instruction.width; rm = Rm.Reg r } ])
+        | Operand.Mem m ->
+            Ok [ Lowered.Shift1_rm { ext; width = i.Instruction.width; rm = Rm.Mem m } ]
+        | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ -> bad `Immediate_destination)
+    (* Group-2 shift/rotate, explicit-count form. A literal count of exactly 1
+       still picks {!Lowered.Shift1_rm} - GAS's own shorter, canonical
+       encoding (M4's original scope here) - and any other count is
+       {!Lowered.Shift_imm_rm} (M5, asm/docs/corpus.md: [rorl $27,%eax],
        [sall $16,%eax], [sarl $2,%eax], [shrq $63,%rax]). Register
        destination only for a non-1 count: unlike {!Alu_rm_imm}, no fixture
        selects a memory destination at a count other than 1, so that shape
@@ -2119,6 +2229,14 @@ module Make (M : MODE) = struct
         | Ok (), Ok () ->
             Ok [ Lowered.Cmov_r_rm { cc; width = i.Instruction.width; reg = b; rm = Rm.Reg a } ]
         | Error e, _ | _, Error e -> Error e)
+    (* [cmovl 20(%esp), %eax] (M5, asm/docs/corpus.md - gas_frontier.t's i64_smulh.S):
+       {!Lowered.Cmov_r_rm}'s [rm] is already a general {!Rm.t} - this is the same
+       shape as the register-register form above, just [Rm.Mem] instead of [Rm.Reg]. *)
+    | Opcode.Cmov cc, [ Operand.Mem m; Operand.Reg b ] -> (
+        match width_ok b with
+        | Error e -> Error e
+        | Ok () ->
+            Ok [ Lowered.Cmov_r_rm { cc; width = i.Instruction.width; reg = b; rm = Rm.Mem m } ])
     | Opcode.Ret, [] -> Ok [ Lowered.Ret ]
     | Opcode.Ud2, [] -> Ok [ Lowered.Ud2 ]
     | Opcode.Pop, [ Operand.Reg r ] -> Ok [ Lowered.Pop { reg = r } ]
@@ -2167,16 +2285,16 @@ module Make (M : MODE) = struct
        real fixture pinning its reg-reg direction to the store opcode) there
        is nothing here to check that choice against. *)
     | ( ( Opcode.Addsd | Opcode.Subsd | Opcode.Mulsd | Opcode.Divsd | Opcode.Addss | Opcode.Subss
-        | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Comiss | Opcode.Xorpd | Opcode.Movapd
-        | Opcode.Cvtsd2ss | Opcode.Cvtss2sd ),
+        | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Ucomisd | Opcode.Comiss
+        | Opcode.Xorpd | Opcode.Pxor | Opcode.Movapd | Opcode.Cvtsd2ss | Opcode.Cvtss2sd ),
         [ Operand.Reg src; Operand.Reg reg ] ) -> (
         match (xmm_ok src, xmm_ok reg) with
         | Ok (), Ok () ->
             Ok [ Lowered.Sse_binop_r_rm { op = i.Instruction.op; reg; rm = Rm.Reg src } ]
         | Error e, _ | _, Error e -> Error e)
     | ( ( Opcode.Addsd | Opcode.Subsd | Opcode.Mulsd | Opcode.Divsd | Opcode.Addss | Opcode.Subss
-        | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Comiss | Opcode.Xorpd | Opcode.Movapd
-        | Opcode.Cvtsd2ss | Opcode.Cvtss2sd ),
+        | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Ucomisd | Opcode.Comiss
+        | Opcode.Xorpd | Opcode.Pxor | Opcode.Movapd | Opcode.Cvtsd2ss | Opcode.Cvtss2sd ),
         [ Operand.Mem m; Operand.Reg reg ] ) -> (
         match xmm_ok reg with
         | Error e -> Error e
@@ -2250,18 +2368,26 @@ module Make (M : MODE) = struct
        return value - always to/from a stack memory operand in this corpus,
        never a register, so {!Lowered.Fpu_mem} takes a bare {!Mem.t} rather
        than the general {!Rm.t} every GPR/xmm form above uses. *)
-    | (Opcode.Fldl | Opcode.Fstpl | Opcode.Fstps | Opcode.Flds | Opcode.Fildll), [ Operand.Mem m ]
-      ->
+    | ( ( Opcode.Fldl | Opcode.Fstpl | Opcode.Fstps | Opcode.Flds | Opcode.Fildll | Opcode.Fnstcw
+        | Opcode.Fldcw | Opcode.Fistpll ),
+        [ Operand.Mem m ] ) ->
         Ok [ Lowered.Fpu_mem { op = i.Instruction.op; mem = m } ]
-    (* [flds sym] / [fadds sym] - a bare-symbol source, the same duality [lea]/[movsd]/
-       [xorpd] already read through [mem_of_symbol] (M5, asm/docs/corpus.md -
-       i64_dtou.S's `flds LC1`; gas_frontier.t's i64_utod.S/i64_utof.S own
-       `fadds LC1`). Scoped to [Flds]/[Fadds]: no fixture evidences a
+    (* [flds sym] / [fadds sym] / [fsubs sym] - a bare-symbol source, the same duality
+       [lea]/[movsd]/[xorpd] already read through [mem_of_symbol] (M5, asm/docs/corpus.md -
+       i64_dtou.S's `flds LC1`/`fsubs LC1`; gas_frontier.t's i64_utod.S/i64_utof.S own
+       `fadds LC1`). Scoped to [Flds]/[Fadds]/[Fsubs]: no fixture evidences a
        bare-symbol [fldl]/[fstpl]/[fstps] (every recurrence of those three
        is `disp(%esp)`). *)
-    | (Opcode.Flds | Opcode.Fadds), [ Operand.Sym e ] ->
+    | (Opcode.Flds | Opcode.Fadds | Opcode.Fsubs), [ Operand.Sym e ] ->
         Ok [ Lowered.Fpu_mem { op = i.Instruction.op; mem = mem_of_symbol e } ]
     | Opcode.Fucomp, [] -> Ok [ Lowered.Fucomp ]
+    (* [fnstsw %ax] (M5, asm/docs/corpus.md - i64_dtou.S): [%ax]'s width and number pin it to
+       exactly that register, {!Shift_cl_rm}'s own count-in-%cl precedent for a fixed implicit
+       operand - any other register, or none, is rejected rather than silently accepted. *)
+    | Opcode.Fnstsw, [ Operand.Reg ax ] when ax.Reg.width = 16 && ax.Reg.num = 0 ->
+        Ok [ Lowered.Fnstsw ]
+    | Opcode.Fnstsw, _ -> bad `Fnstsw_operand
+    | Opcode.Sahf, [] -> Ok [ Lowered.Sahf ]
     (* [sete %al]/[setl %r8b] (M5, asm/docs/corpus.md): [Instruction.width] is
        always 8 here ({!simplify_instruction} pins it), so [width_ok] on the
        destination register is exactly the right check with no extra
@@ -2713,7 +2839,14 @@ module Make (M : MODE) = struct
 
   let sse_binop_66_codec =
     C.iso_table ~name:"sse-binop-66-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Comisd, 0x2FL); (Opcode.Xorpd, 0x57L); (Opcode.Movapd, 0x28L) ]
+      ~entries:
+        [
+          (Opcode.Comisd, 0x2FL);
+          (Opcode.Ucomisd, 0x2EL);
+          (Opcode.Xorpd, 0x57L);
+          (Opcode.Pxor, 0xEFL);
+          (Opcode.Movapd, 0x28L);
+        ]
       (C.field ~width:8 "opcode")
 
   let sse_binop_alt ~label ~priority ~mandatory ~opcode_codec =
@@ -3075,18 +3208,63 @@ module Make (M : MODE) = struct
       C.alt ~label:"mov-r-imm" ~priority:2
         (C.iso_fun ~name:"mov-r-imm"
            ~encode:(function
-             | Lowered.Mov_r_imm { width; reg; imm } ->
+             | Lowered.Mov_r_imm { width; reg; imm } when width <> 8 ->
                  Some
                    ( prefixes_of ~width ~reg:0 ~rm:(Rm.Reg reg),
                      (((), Int64.of_int (reg.num land 7)), imm) )
              | _ -> None)
            ~decode:(fun (rex, (((), r), imm)) ->
              let width = width_of_prefixes rex in
-             Some (Lowered.Mov_r_imm { width; reg = reg_at ~width (Int64.to_int r); imm }))
+             (* The register lives in the opcode's own low 3 bits, not a ModR/M
+                reg field, so it is REX.B (mask 1) that extends it to r8-r15/
+                r8d-r15d, not {!reg_field}'s REX.R (mask 4) - confirmed against
+                real x86_64-linux-gnu-as: [movl $5, %r8d] -> [41 b8 05 00 00
+                00]. A pre-existing decode bug, found while fixing
+                {!Mov_r_imm}'s 8-bit form below: the bytes were always
+                correct, but canonical disassembly mislabelled the
+                destination as %eax/%rax/... (register 0), which does not
+                round-trip through real as back to the original bytes. *)
+             Some
+               (Lowered.Mov_r_imm
+                  { width; reg = reg_at ~width (Int64.to_int r + rex_bit rex 1); imm }))
            C.(
              prefixes_codec
              ** (const ~width:5 0b10111L ** field ~width:3 "reg")
              ** sym_imm32 ~kind:Abs32 ~signedness:C.Unsigned));
+      (* [movb $12, %ah] ([0xB0+reg ib], M5, asm/docs/corpus.md - gas_frontier.t's
+         i64_dtos.S/i64_dtou.S own rounding-mode-byte idiom): {!Mov_r_imm}'s own
+         8-bit sibling - a genuinely different opcode range ([0xB0]-[0xB7], not
+         [0xB8]-[0xBF]) and a 1-byte immediate rather than {!sym_imm32}'s fixed
+         4 bytes, not just [width]-parameterized the way the alt above is.
+         Discovered as a real bug, not a missing feature: before this alt
+         existed, {!Lowered.Mov_r_imm} with [width = 8] still matched the alt
+         above unconditionally, encoding [%ah] (register number 4) as if it
+         were the 32-bit register number 4 ([%esp]) instead - [movb $12, %ah]
+         came out as [mov $0xc, %esp]. Only a plain constant is evidenced (no
+         fixture spells [movb $sym, %reg]), so unlike the width<>8 alt this
+         one does not thread a symbolic {!Disp.t} through {!sym_imm32}. *)
+      C.alt ~label:"mov-r-imm8" ~priority:64
+        (C.iso_fun ~name:"mov-r-imm8"
+           ~encode:(function
+             | Lowered.Mov_r_imm { width = 8; reg; imm = Disp.Const v } ->
+                 Some
+                   ( prefixes_of ~width:8 ~reg:0 ~rm:(Rm.Reg reg),
+                     (((), Int64.of_int (reg.num land 7)), v) )
+             | _ -> None)
+           ~decode:(fun (rex, (((), r), v)) ->
+             (* Same REX.B (not REX.R) extension the alt above needs, and for
+                the same reason - see its own comment. *)
+             Some
+               (Lowered.Mov_r_imm
+                  {
+                    width = 8;
+                    reg = reg_at ~width:8 (Int64.to_int r + rex_bit rex 1);
+                    imm = Disp.Const v;
+                  }))
+           C.(
+             prefixes_codec
+             ** (const ~width:5 0b10110L ** field ~width:3 "reg")
+             ** le ~signedness:C.Unsigned ~width:8 "imm"));
     ]
 
   (* Present only in 32-bit mode, not merely unselected there: an alternative no
@@ -3612,6 +3790,26 @@ module Make (M : MODE) = struct
                ~encode:(function Lowered.Fucomp -> Some () | _ -> None)
                ~decode:(fun () -> Some Lowered.Fucomp)
                C.(const ~width:16 0xDDE9L));
+          fpu_mem_form ~label:"fnstcw" ~priority:58 ~opcode_byte:0xD9 ~ext:7 ~op:Opcode.Fnstcw;
+          fpu_mem_form ~label:"fldcw" ~priority:59 ~opcode_byte:0xD9 ~ext:5 ~op:Opcode.Fldcw;
+          fpu_mem_form ~label:"fistpll" ~priority:60 ~opcode_byte:0xDF ~ext:7 ~op:Opcode.Fistpll;
+          fpu_mem_form ~label:"fsubs" ~priority:61 ~opcode_byte:0xD8 ~ext:4 ~op:Opcode.Fsubs;
+          (* [0xDF 0xE0] ({!Lowered.Fnstsw} - [fnstsw %ax], M5, asm/docs/corpus.md):
+             a fixed two-byte word, no ModR/M at all - {!Fucomp}'s exact shape, a
+             different opcode pair. *)
+          C.alt ~label:"fnstsw" ~priority:62
+            (C.iso_fun ~name:"fnstsw"
+               ~encode:(function Lowered.Fnstsw -> Some () | _ -> None)
+               ~decode:(fun () -> Some Lowered.Fnstsw)
+               C.(const ~width:16 0xDFE0L));
+          (* [0x9E] ({!Lowered.Sahf} - bare [sahf], M5, asm/docs/corpus.md): a fixed
+             single-byte word, no ModR/M - {!Fucomp}/{!Fnstsw}'s exact shape at a
+             one-byte-shorter opcode. *)
+          C.alt ~label:"sahf" ~priority:63
+            (C.iso_fun ~name:"sahf"
+               ~encode:(function Lowered.Sahf -> Some () | _ -> None)
+               ~decode:(fun () -> Some Lowered.Sahf)
+               C.(const ~width:8 0x9EL));
         ])
 
   (* {2 Encode and decode} *)
@@ -4093,6 +4291,8 @@ module Make (M : MODE) = struct
           }
     | Lowered.Fpu_mem { op; mem } -> Some (Instruction.mk op 32 [ Operand.Mem mem ])
     | Lowered.Fucomp -> Some (Instruction.mk Opcode.Fucomp 32 [])
+    | Lowered.Fnstsw -> Some (Instruction.mk Opcode.Fnstsw 32 [ Operand.Reg (reg_at ~width:16 0) ])
+    | Lowered.Sahf -> Some (Instruction.mk Opcode.Sahf 32 [])
 
   let decode ctx bytes ~pos =
     let bits = C.Bits.of_bytes (String.sub bytes pos (String.length bytes - pos)) in

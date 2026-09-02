@@ -67,14 +67,14 @@ CompCert's runtime library, per target.
   >     printf '%-8s %-12s %s\n' "$t" "$(basename $d | sed 's/^runtime-//')" "$(verdict $t $d/input.s)"
   >   done
   > done
-  x86_32   i64_dtos      error[x86.simplify]: unknown instruction fnstcw
-  x86_32   i64_dtou      error[x86.simplify]: unknown instruction fnstsw
+  x86_32   i64_dtos     assembles
+  x86_32   i64_dtou      error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
   x86_32   i64_sar       error[x86.simplify]: 8-bit operands are not in M1 scope
   x86_32   i64_sdiv     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   x86_32   i64_shl       error[x86.simplify]: 8-bit operands are not in M1 scope
   x86_32   i64_shr       error[x86.simplify]: 8-bit operands are not in M1 scope
   x86_32   i64_smod     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
-  x86_32   i64_smulh     error[x86.simplify]: cmov takes two register operands in M2
+  x86_32   i64_smulh    assembles
   x86_32   i64_stod     assembles
   x86_32   i64_stof     assembles
   x86_32   i64_udiv     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
@@ -84,9 +84,9 @@ CompCert's runtime library, per target.
   x86_32   i64_utod      error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
   x86_32   i64_utof      error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
   x86_32   vararg       assembles
-  x86_64   i64_dtou      error[x86.simplify]: unknown instruction ucomisd
-  x86_64   i64_utod      error[x86.simplify]: unknown instruction pxor
-  x86_64   i64_utof      error[x86.simplify]: unknown instruction pxor
+  x86_64   i64_dtou      error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
+  x86_64   i64_utod     assembles
+  x86_64   i64_utof     assembles
   x86_64   vararg        error[x86.simplify]: 8-bit operands are not in M1 scope
   arm      i64_dtos     assembles
   arm      i64_dtou     assembles
@@ -113,16 +113,11 @@ what M2 moves, and prose cannot regress.
   $ { for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-       24 assembles
+       28 assembles
         4 <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4 <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4  error[x86.simplify]: 8-bit operands are not in M1 scope
+        4  error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
         3  error[lex]: unexpected character '\194'
-        2  error[x86.simplify]: unknown instruction pxor
-        2  error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
-        1  error[x86.simplify]: unknown instruction ucomisd
-        1  error[x86.simplify]: unknown instruction fnstsw
-        1  error[x86.simplify]: unknown instruction fnstcw
-        1  error[x86.simplify]: cmov takes two register operands in M2
         1  error[lex]: unexpected character '<'
         1  error[arm.simplify]: unknown instruction it

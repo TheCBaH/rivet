@@ -213,6 +213,13 @@
     [55 cost=0] fucomp           fucomp(){1101110111101001}
     [56 cost=0] fildll           fildll(){prefixes 11011111 modrm}
     [57 cost=0] fadds            fadds(){prefixes 11011000 modrm}
+    [58 cost=0] fnstcw           fnstcw(){prefixes 11011001 modrm}
+    [59 cost=0] fldcw            fldcw(){prefixes 11011001 modrm}
+    [60 cost=0] fistpll          fistpll(){prefixes 11011111 modrm}
+    [61 cost=0] fsubs            fsubs(){prefixes 11011000 modrm}
+    [62 cost=0] fnstsw           fnstsw(){1101111111100000}
+    [63 cost=0] sahf             sahf(){10011110}
+    [64 cost=0] mov-r-imm8       mov-r-imm8(){prefixes 10110 reg:3u imm:8u}
   prefixes(){no-asz opsz no-rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
@@ -235,7 +242,7 @@
   no-rex(){()}
   sse-binop-f2-op[5]{opcode:8u}
   sse-binop-f3-op[5]{opcode:8u}
-  sse-binop-66-op[3]{opcode:8u}
+  sse-binop-66-op[5]{opcode:8u}
   alt opsz
     [0 cost=0] opsz-present     opsz-present(){01100110}
     [1 cost=0] opsz-absent      opsz-absent(){()}
@@ -455,6 +462,13 @@
     [55 cost=0] fucomp           fucomp(){1101110111101001}
     [56 cost=0] fildll           fildll(){prefixes 11011111 modrm}
     [57 cost=0] fadds            fadds(){prefixes 11011000 modrm}
+    [58 cost=0] fnstcw           fnstcw(){prefixes 11011001 modrm}
+    [59 cost=0] fldcw            fldcw(){prefixes 11011001 modrm}
+    [60 cost=0] fistpll          fistpll(){prefixes 11011111 modrm}
+    [61 cost=0] fsubs            fsubs(){prefixes 11011000 modrm}
+    [62 cost=0] fnstsw           fnstsw(){1101111111100000}
+    [63 cost=0] sahf             sahf(){10011110}
+    [64 cost=0] mov-r-imm8       mov-r-imm8(){prefixes 10110 reg:3u imm:8u}
   prefixes(){asz opsz rex}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
@@ -480,7 +494,7 @@
     [1 cost=0] rex-absent       rex-absent(){()}
   sse-binop-f2-op[5]{opcode:8u}
   sse-binop-f3-op[5]{opcode:8u}
-  sse-binop-66-op[3]{opcode:8u}
+  sse-binop-66-op[5]{opcode:8u}
   alt opsz
     [0 cost=0] opsz-present     opsz-present(){01100110}
     [1 cost=0] opsz-absent      opsz-absent(){()}
