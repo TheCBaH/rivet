@@ -95,15 +95,15 @@ CompCert's runtime library, per target.
   arm      i64_shl      assembles
   arm      i64_shr      assembles
   arm      i64_smod     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
-  arm      i64_smulh     error[arm.simplify]: unknown instruction umull
-  arm      i64_stod      error[arm.simplify]: unknown instruction vmla.f64
-  arm      i64_stof      error[arm.simplify]: unknown instruction vmla.f64
+  arm      i64_smulh    assembles
+  arm      i64_stod     assembles
+  arm      i64_stof     assembles
   arm      i64_udiv     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   arm      i64_udivmod   error[arm.simplify]: unknown instruction it
   arm      i64_umod     <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
-  arm      i64_umulh     error[arm.simplify]: unknown instruction umull
-  arm      i64_utod      error[arm.simplify]: unknown instruction vmla.f64
-  arm      i64_utof      error[arm.simplify]: unknown instruction lsrs
+  arm      i64_umulh    assembles
+  arm      i64_utod     assembles
+  arm      i64_utof     assembles
   arm      vararg       assembles
   aarch64  vararg       assembles
 
@@ -113,19 +113,16 @@ what M2 moves, and prose cannot regress.
   $ { for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-       18 assembles
+       24 assembles
         4 <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4 <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4  error[x86.simplify]: 8-bit operands are not in M1 scope
         3  error[lex]: unexpected character '\194'
-        3  error[arm.simplify]: unknown instruction vmla.f64
         2  error[x86.simplify]: unknown instruction pxor
         2  error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
-        2  error[arm.simplify]: unknown instruction umull
         1  error[x86.simplify]: unknown instruction ucomisd
         1  error[x86.simplify]: unknown instruction fnstsw
         1  error[x86.simplify]: unknown instruction fnstcw
         1  error[x86.simplify]: cmov takes two register operands in M2
         1  error[lex]: unexpected character '<'
-        1  error[arm.simplify]: unknown instruction lsrs
         1  error[arm.simplify]: unknown instruction it

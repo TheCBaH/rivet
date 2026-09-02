@@ -1081,11 +1081,19 @@ let plan_image ~evaluate ?(fill = default_fill) policy (modules : 'k Lowered_ast
               acc m.Lowered_ast.symbols)
           [] modules
       in
-      (* Two or more strong (Global) definitions of the same name - in one
-         input or across several - is a rejection rather than a last-wins,
-         unchanged from M1/M2 and now checked link-wide. [Weak] is never
-         "strong" here: a weak definition never conflicts with anything, per
-         §7's strong > common > weak precedence. *)
+      (* Two or more strong (Global) definitions of the same name at *different*
+         addresses - in one input or across several - is a rejection rather
+         than a last-wins, unchanged from M1/M2 and now checked link-wide.
+         [Weak] is never "strong" here: a weak definition never conflicts with
+         anything, per §7's strong > common > weak precedence. Two labels of
+         the identical name at the identical (section, offset) - GAS's own
+         ordinary "label: label: instruction" idiom, gas_frontier.t's own
+         runtime-i64_stod.S/i64_stof.S/i64_utod.S/i64_utof.S (each opens with
+         [.global name; name:] immediately followed by a bare [name:] at the
+         same address) - is not a conflict on real hardware's own assembler
+         (confirmed against real arm-linux-gnueabihf-as: redefining a symbol
+         to its own existing value is accepted, only a differing value is
+         rejected), so only a genuine second *address* counts here. *)
       let global_names =
         List.sort_uniq compare
           (List.filter_map
@@ -1095,14 +1103,15 @@ let plan_image ~evaluate ?(fill = default_fill) policy (modules : 'k Lowered_ast
       in
       List.iter
         (fun n ->
-          if
-            List.length
-              (List.filter
-                 (fun (d : Symtab.definition) ->
-                   String.equal d.Symtab.d_name n && d.Symtab.d_binding = Lowered_ast.Global)
-                 definitions)
-            > 1
-          then fail (`Duplicate_definition n))
+          let addresses =
+            List.filter_map
+              (fun (d : Symtab.definition) ->
+                if String.equal d.Symtab.d_name n && d.Symtab.d_binding = Lowered_ast.Global then
+                  Some (d.Symtab.d_section, d.Symtab.d_offset)
+                else None)
+              definitions
+          in
+          if List.length (List.sort_uniq compare addresses) > 1 then fail (`Duplicate_definition n))
         global_names;
       (* A declaration with no definition anywhere it is allowed to see one
          is [Declared_never_defined] - distinct from an undefined

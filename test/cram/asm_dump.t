@@ -757,6 +757,7 @@
     [40 cost=0] shift-reg        shift-reg(){cond 000 1101 0 0000 rd rs 0 shift-kind:2u 1 rm}
     [41 cost=0] vldr-lit-d       vldr-lit-d(){cond 1101 1 D:1u 0 1 1111 Vd:4u 1011 <target:8@0 pcrel-vldr8>}
     [42 cost=0] vldr-lit-s       vldr-lit-s(){cond 1101 1 D:1u 0 1 1111 Vd:4u 1010 <target:8@0 pcrel-vldr8>}
+    [43 cost=0] umull            umull(){cond 00001 00 s:1u rdhi rdlo rm 1001 rn}
   cond[16]{cond:4u}
   rm(){rm:4u}
   rd(){rd:4u}
@@ -766,6 +767,8 @@
   ra(){ra:4u}
   rt2(){rt2:4u}
   rs(){rs:4u}
+  rdhi(){rdhi:4u}
+  rdlo(){rdlo:4u}
   ########## aarch64 tokens
   1 5 directive .text
   6 1 eol \n
