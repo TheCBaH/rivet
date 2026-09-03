@@ -2027,15 +2027,13 @@ let%expect_test "movl $sym, %reg reads a symbolic immediate" =
    rung regardless of the offset's own magnitude.
 
    Register is `%rcx`/`%rdx`, not `%rax`: real `as` picks a *shorter*,
-   accumulator-only encoding (`05 id`, no ModR/M byte) whenever the
-   destination is the accumulator and the immediate is full-width - an
-   encoder gap this project already had before this change (confirmed
-   against real i686-linux-gnu-as: `addl $1000, %eax` -> `05 e8 03 00 00`,
-   vs. `addl $1000, %ecx` -> `81 c1 e8 03 00 00`), independent of whether
-   the immediate is symbolic. Checked against real x86_64-linux-gnu-as:
-   `addq $sym, %rcx` -> `48 81 c1 <disp32>` with an `R_X86_64_32S`
-   relocation - signed, unlike [mov]'s `R_X86_64_32`, matching this form's
-   own prior sign-extending decode. *)
+   accumulator-only encoding ({!alu_acc_form}, `05 id`, no ModR/M byte)
+   whenever the destination is the accumulator and the immediate is
+   full-width, independent of whether the immediate is symbolic - see the
+   dedicated accumulator test right below this one for that case. Checked
+   against real x86_64-linux-gnu-as: `addq $sym, %rcx` -> `48 81 c1 <disp32>`
+   with an `R_X86_64_32S` relocation - signed, unlike [mov]'s `R_X86_64_32`,
+   matching this form's own prior sign-extending decode. *)
 let%expect_test "addq $sym, %reg reads a symbolic ALU immediate" =
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\taddq $f, %rcx\n\taddq $f+24, %rdx\n\tret\n";
   [%expect
@@ -2043,6 +2041,40 @@ let%expect_test "addq $sym, %reg reads a symbolic ALU immediate" =
     40000000  48 81 c1 00 00 00 40  addq $1073741824, %rcx  [x86_64.alu-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
     40000007  48 81 c2 18 00 00 40  addq $1073741848, %rdx  [x86_64.alu-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
     4000000e  c3                    ret                     [x86_64.ret]
+    |}]
+
+(* The accumulator-only ALU-immediate form ({!alu_acc_form}, M5,
+   asm/docs/corpus.md - the corpus's own literal `addq $bodies+24, %rax`):
+   until this session, this project's ALU-immediate encoder had no
+   accumulator-specific alternative at all, so `addq $sym, %rax` fell
+   through to the seven-byte ModR/M form instead of real `as`'s
+   six-byte `05 id`/`48 05 id` one - a documented, deliberately-left-open
+   byte mismatch (`asm/docs/corpus.md`'s own Follow-ups entry), not
+   evidenced by any *rejection* since nothing here failed to lower, only to
+   byte-match. Now fixed on both x86_32 and x86_64, with a plain literal
+   alongside the symbolic form to show the priority order still picks the
+   shorter ModR/M imm8 rung whenever the value fits ([addl $5, %eax], no
+   `05` opcode). Checked against real i686-linux-gnu-as/x86_64-linux-gnu-as:
+   `addl $1000, %eax` -> `05 e8 03 00 00`, `addq $1000, %rax` -> `48 05 e8
+   03 00 00`, `addl $5, %eax` -> `83 c0 05`. *)
+let%expect_test "addq $sym, %rax picks the shorter accumulator-only encoding" =
+  disasm "x86_64"
+    "\t.text\n\t.globl f\nf:\n\taddq $f+24, %rax\n\taddq $1000, %rax\n\taddl $5, %eax\n\tret\n";
+  [%expect
+    {|
+    40000000  48 05 18 00 00 40  addq $1073741848, %rax  [x86_64.alu-acc-imm.asz-absent.opsz-absent.rex-present]
+    40000006  48 05 e8 03 00 00  addq $1000, %rax        [x86_64.alu-acc-imm.asz-absent.opsz-absent.rex-present]
+    4000000c  83 c0 05           addl $5, %eax           [x86_64.alu-rm-imm8.asz-absent.opsz-absent.rex-absent.reg]
+    4000000f  c3                 ret                     [x86_64.ret]
+    |}]
+
+let%expect_test "addl $sym, %eax picks the shorter accumulator-only encoding on x86_32" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\taddl $f+24, %eax\n\taddl $1000, %eax\n\tret\n";
+  [%expect
+    {|
+    40000000  05 18 00 00 40  addl $1073741848, %eax  [x86_32.alu-acc-imm.opsz-absent]
+    40000005  05 e8 03 00 00  addl $1000, %eax        [x86_32.alu-acc-imm.opsz-absent]
+    4000000a  c3              ret                     [x86_32.ret]
     |}]
 
 (* [pushl $sym] - the last of the three symbolic-immediate forms

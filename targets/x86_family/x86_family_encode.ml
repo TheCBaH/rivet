@@ -3164,6 +3164,61 @@ module Make (M : MODE) = struct
            if imm_width = 8 then const_disp ~name:"imm" (le ~signedness:C.Signed ~width:8 "imm")
            else sym_imm32 ~kind:Abs32 ~signedness:C.Signed))
 
+  (* [ext<<3 | 5] ib/id ({!Lowered.Alu_rm_imm} with the r/m register being
+     exactly the accumulator, %al/%ax/%eax/%rax - register number 0): a
+     shorter accumulator-only encoding real [as] always prefers over the
+     general ModR/M form whenever the immediate does not fit the imm8 rung
+     (M5, asm/docs/corpus.md - the corpus's own [addq $sym, %rax], a
+     previously documented, deliberately-left-open byte mismatch: this
+     encoder had no accumulator-specific alternative at all, so it always
+     fell through to the longer ModR/M form; now fixed). No ModR/M or SIB
+     byte at all - the destination is implied by the opcode, not encoded -
+     so like {!push_imm_form} this is "opcode plus bare immediate", except
+     the opcode's own low 3 bits are the fixed pattern [101] and its next 3
+     bits carry the same [ext] {!alu_form}'s ModR/M reg field otherwise
+     would ([add]=0/[or]=1/[adc]=2/[and]=4/[sub]=5/[xor]=6/[cmp]=7 - the same
+     domain {!Opcode.of_ext} already recognizes, [sbb]=3 excluded since it
+     never reaches this form either). Always the full-width immediate, never
+     imm8 - when the value *does* fit imm8 the ModR/M imm8 rung above is one
+     byte shorter and wins instead (checked against real
+     i686-linux-gnu-as: [addl $5, %eax] -> [83 c0 05], not this form).
+     Scoped to width 32/64: narrower ALU-immediate forms are not lowered at
+     all yet (M2 scope), so [width = 16]/[width = 8] never reach this rung
+     in practice, matching {!alu_form}'s own lack of an explicit guard.
+     Byte-checked against real i686-linux-gnu-as/x86_64-linux-gnu-as:
+     [addl $1000, %eax] -> [05 e8 03 00 00], [addq $1000, %rax] ->
+     [48 05 e8 03 00 00], [subl $1000, %ecx] still picks the ModR/M form
+     unchanged ([ecx] is not the accumulator). *)
+  let alu_acc_form ~label ~priority =
+    let opcode_codec =
+      C.iso_fun ~name:(label ^ "-opcode")
+        ~encode:(fun ext ->
+          if ext < 0 || ext > 7 then None else Some (Int64.of_int ((ext lsl 3) lor 5)))
+        ~decode:(fun b ->
+          let b = Int64.to_int b in
+          if b land 7 = 5 then Some (b lsr 3) else None)
+        (C.field ~width:8 "opcode")
+    in
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Alu_rm_imm { ext; width; rm = Rm.Reg r; imm } when width <> 8 && r.num = 0 ->
+               let imm =
+                 match imm with
+                 | Disp.Const v -> Disp.Const (to_width_signed ~width v)
+                 | Disp.Sym _ as s -> s
+               in
+               let fits8 = match imm with Disp.Const v -> fits_s8 v | Disp.Sym _ -> false in
+               if fits8 then None else Some (prefixes_of ~width ~reg:0 ~rm:(Rm.Reg r), (ext, imm))
+           | _ -> None)
+         ~decode:(fun (rex, (ext, imm)) ->
+           match Opcode.of_ext ext with
+           | None -> None
+           | Some _ ->
+               let width = width_of_prefixes rex in
+               Some (Lowered.Alu_rm_imm { ext; width; rm = Rm.Reg (reg_at ~width 0); imm }))
+         C.(prefixes_codec ** opcode_codec ** sym_imm32 ~kind:Abs32 ~signedness:C.Signed))
+
   (* [0x6a ib] / [0x68 id] ({!Lowered.Push_imm}, [pushl $sym]): the same
      short-immediate-first priority discipline and [Disp.t]/[sym_imm32]
      symbol-carrying as {!alu_form}, minus a ModR/M byte - push's immediate
@@ -3203,6 +3258,14 @@ module Make (M : MODE) = struct
            plus the sign-extended-imm8 range check inside the form. Getting the
            order wrong here produces working code that differs from every other
            assembler by three bytes per instruction. *)
+      (* Tried first, ahead of even the imm8 ModR/M rung right below: its own
+         encode already declines whenever the value fits imm8 (that rung is
+         one byte shorter and wins instead), so the ordering only matters
+         when both this and the imm32 rung below would otherwise apply - see
+         {!alu_acc_form}'s own comment. [priority] is unique across this
+         whole target's opcode table, not just this cluster, so this sits at
+         -1 rather than crowding the 0..64 range already in use below. *)
+      alu_acc_form ~label:"alu-acc-imm" ~priority:(-1);
       alu_form ~label:"alu-rm-imm8" ~priority:0 ~opcode_byte:0x83 ~imm_width:8;
       alu_form ~label:"alu-rm-imm32" ~priority:1 ~opcode_byte:0x81 ~imm_width:32;
       C.alt ~label:"mov-r-imm" ~priority:2

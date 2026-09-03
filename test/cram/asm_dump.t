@@ -151,6 +151,7 @@
   00000012  c3              ret                  [x86_32.ret]
   ########## x86_32 codec
   alt x86_32
+    [-1 cost=0] alu-acc-imm      alu-acc-imm(){prefixes alu-acc-imm-opcode imm-sym32}
     [0 cost=0] alu-rm-imm8      alu-rm-imm8(){prefixes 10000011 modrm imm}
     [1 cost=0] alu-rm-imm32     alu-rm-imm32(){prefixes 10000001 modrm imm-sym32}
     [2 cost=0] mov-r-imm        mov-r-imm(){prefixes 10111 reg:3u imm-sym32}
@@ -221,6 +222,8 @@
     [63 cost=0] sahf             sahf(){10011110}
     [64 cost=0] mov-r-imm8       mov-r-imm8(){prefixes 10110 reg:3u imm:8u}
   prefixes(){no-asz opsz no-rex}
+  alu-acc-imm-opcode(){opcode:8u}
+  imm-sym32(){le32}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
     [1 cost=0] sib-nobase-disp32 modrm-sib-nobase-disp32(){00 reg:3u 100 scale:2u index:3u 101 disp-sym}
@@ -232,7 +235,6 @@
     [7 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
     [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-sym}
   imm(){imm:8s}
-  imm-sym32(){le32}
   disp-sym(){le32}
   alu-rm-r-op[9]{opcode:8u}
   le32(){<target:32@0 pcrel32-call>}
@@ -403,6 +405,7 @@
   00000016  c3              ret                  [x86_64.ret]
   ########## x86_64 codec
   alt x86_64
+    [-1 cost=0] alu-acc-imm      alu-acc-imm(){prefixes alu-acc-imm-opcode imm-sym32}
     [0 cost=0] alu-rm-imm8      alu-rm-imm8(){prefixes 10000011 modrm imm}
     [1 cost=0] alu-rm-imm32     alu-rm-imm32(){prefixes 10000001 modrm imm-sym32}
     [2 cost=0] mov-r-imm        mov-r-imm(){prefixes 10111 reg:3u imm-sym32}
@@ -470,6 +473,8 @@
     [63 cost=0] sahf             sahf(){10011110}
     [64 cost=0] mov-r-imm8       mov-r-imm8(){prefixes 10110 reg:3u imm:8u}
   prefixes(){asz opsz rex}
+  alu-acc-imm-opcode(){opcode:8u}
+  imm-sym32(){le32}
   alt modrm
     [0 cost=0] reg              modrm-reg(){11 reg:3u rm:3u}
     [1 cost=0] sib-nobase-disp32 modrm-sib-nobase-disp32(){00 reg:3u 100 scale:2u index:3u 101 disp-sym}
@@ -481,7 +486,6 @@
     [7 cost=0] base-disp8       modrm-base-disp8(){01 reg:3u rm:3u disp-c8}
     [8 cost=0] base-disp32      modrm-base-disp32(){10 reg:3u rm:3u disp-sym}
   imm(){imm:8s}
-  imm-sym32(){le32}
   alu-rm-r-op[9]{opcode:8u}
   le32(){<target:32@0 pcrel32-call>}
   cc[16]{cc:4u}
