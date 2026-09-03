@@ -59,7 +59,19 @@ let sym_kind_of s =
   | "@notype" | "%notype" | "notype" -> Some Directive.Notype
   | _ -> None
 
-let is_metadata name = String.length name >= 5 && String.sub name 0 5 = ".cfi_"
+(* [.file]/[.ident] are GAS's own compiler-provenance metadata ([.file "x.c"],
+   [.ident "GCC: ..."]) - like [.cfi_*], they change nothing this project
+   assembles and are dropped rather than rejected, the same "understood and
+   discarded, not silently ignored as unknown" distinction §2.2 draws (M5,
+   asm/docs/corpus.md: gcc's own freestanding riscv.c helper output carries
+   both on every profile). Real gcc emits both on every target, not just
+   RISC-V, but classify-c-gcc's own check stops at --dump-source-ast - parse
+   only, never reaching simplify, the phase that rejected these - so this is
+   the first time gcc-compiled output has been run through the full pipeline
+   far enough to see it. *)
+let is_metadata name =
+  (String.length name >= 5 && String.sub name 0 5 = ".cfi_")
+  || String.equal name ".file" || String.equal name ".ident"
 
 type outcome =
   | Normalized of Directive.t

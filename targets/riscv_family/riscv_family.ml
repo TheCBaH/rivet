@@ -140,7 +140,16 @@ module Make (P : PROFILE) = struct
     go [] slices
 
   let handle_directive ~name:directive ~argument state =
-    if not (String.equal directive ".option") then Target_intf.Target.Unhandled
+    if String.equal directive ".attribute" then (
+      (* [.attribute arch, "rv32i2p1_..."], [.attribute unaligned_access, 0], ...
+         - RISC-V's own build-attribute directive (ARM's [.eabi_attribute]
+         precedent above: recorded as handled and otherwise ignored, since it is
+         an ELF attribute and M1 produces no ELF; rejecting it would fail every
+         gcc-compiled RISC-V file, and treating it as unknown would make it
+         indistinguishable from a real misspelling). *)
+      ignore argument;
+      Target_intf.Target.Handled { state; emit = [] })
+    else if not (String.equal directive ".option") then Target_intf.Target.Unhandled
     else
       let option = String.trim argument in
       let handled state = Target_intf.Target.Handled { state; emit = [] } in

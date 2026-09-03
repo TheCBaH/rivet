@@ -31,12 +31,7 @@ bury the finding it exists to report.
   > }
 
 The six committed fixtures are positive controls. They are the M1 scope, so
-anything but "assembles" here is a regression rather than a boundary. RISC-V
-joins only this control: gas-xref.ml's own frontier_sources deliberately
-covers just Fixture for riscv32/riscv64 (asm/tools/lib/gas_xref_cmd.ml's own
-comment - no asm/helpers/riscv32.s/riscv64.s exists yet, and CompCert's
-runtime tree names its RISC-V leg riscV, not riscv32/riscv64), so there is no
-Helper or Runtime row below for either.
+anything but "assembles" here is a regression rather than a boundary.
 
   $ for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
   >   printf '%-8s %s\n' "$t" "$(verdict $t $corpus/$t/fixture-asm_test_entry/input.s)"
@@ -48,16 +43,27 @@ Helper or Runtime row below for either.
   riscv32  assembles
   riscv64  assembles
 
-Our own ABI helpers. GNU as assembles all four; this assembler reads none of
-them, and not for a reason connected to instruction coverage.
+Our own ABI helpers. GNU as assembles all six; this assembler reads none of
+the four legacy ones, and not for a reason connected to instruction coverage -
+gas-xref's own frontier_sources reads `asm/helpers/<target>.s` unconditionally
+and the legacy four are the *linked ELF's* own manifest/result-window
+addresses spelled as raw bytes mid-file (an execution-ABI convention, not GAS
+syntax), which the lexer chokes on immediately. riscv32/riscv64 have no such
+convention - `asm/helpers/riscv.c` is freestanding C compiled straight to an
+object, never through a `.s` intermediate GAS would need to parse - so their
+row here is instead a real, ordinary `.s` snapshot of that same source
+(asm/helpers/riscv32.s/riscv64.s's own header comment), the first
+Helper-group row either RISC-V profile has ever had.
 
-  $ for t in x86_32 x86_64 arm aarch64; do
+  $ for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
   >   printf '%-8s %s\n' "$t" "$(verdict $t $corpus/$t/helper-helper/input.s)"
   > done
   x86_32    error[lex]: unexpected character '<'
   x86_64    error[lex]: unexpected character '\194'
   arm       error[lex]: unexpected character '\194'
   aarch64   error[lex]: unexpected character '\194'
+  riscv32  assembles
+  riscv64  assembles
 
 CompCert's runtime library, per target.
 
@@ -113,7 +119,7 @@ what M2 moves, and prose cannot regress.
   $ { for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-       29 assembles
+       31 assembles
         4 <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4 <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4  error[x86.simplify]: 8-bit operands are not in M1 scope

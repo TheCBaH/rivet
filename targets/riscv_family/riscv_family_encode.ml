@@ -102,6 +102,7 @@ module Make (P : PROFILE) = struct
       | Sll
       | Slt
       | Sltu
+      | Snez
       | Xor
       | Srl
       | Sra
@@ -128,6 +129,7 @@ module Make (P : PROFILE) = struct
       | Slliw
       | Srliw
       | Sraiw
+      | Sext_w
       | Lb
       | Lh
       | Lw
@@ -145,6 +147,8 @@ module Make (P : PROFILE) = struct
       | Bge
       | Bltu
       | Bgeu
+      | Bgtu
+      | Bleu
       | Lui
       | Auipc
       | Jal
@@ -163,6 +167,7 @@ module Make (P : PROFILE) = struct
       | Ebreak
       | Unimp
       | Fence_i
+      | Fence
       | Fld
       | Flw
       | Fsd
@@ -199,6 +204,7 @@ module Make (P : PROFILE) = struct
       | Sll -> "sll"
       | Slt -> "slt"
       | Sltu -> "sltu"
+      | Snez -> "snez"
       | Xor -> "xor"
       | Srl -> "srl"
       | Sra -> "sra"
@@ -225,6 +231,7 @@ module Make (P : PROFILE) = struct
       | Slliw -> "slliw"
       | Srliw -> "srliw"
       | Sraiw -> "sraiw"
+      | Sext_w -> "sext.w"
       | Lb -> "lb"
       | Lh -> "lh"
       | Lw -> "lw"
@@ -242,6 +249,8 @@ module Make (P : PROFILE) = struct
       | Bge -> "bge"
       | Bltu -> "bltu"
       | Bgeu -> "bgeu"
+      | Bgtu -> "bgtu"
+      | Bleu -> "bleu"
       | Lui -> "lui"
       | Auipc -> "auipc"
       | Jal -> "jal"
@@ -260,6 +269,7 @@ module Make (P : PROFILE) = struct
       | Ebreak -> "ebreak"
       | Unimp -> "unimp"
       | Fence_i -> "fence.i"
+      | Fence -> "fence"
       | Fld -> "fld"
       | Flw -> "flw"
       | Fsd -> "fsd"
@@ -297,6 +307,7 @@ module Make (P : PROFILE) = struct
         Sll;
         Slt;
         Sltu;
+        Snez;
         Xor;
         Srl;
         Sra;
@@ -323,6 +334,7 @@ module Make (P : PROFILE) = struct
         Slliw;
         Srliw;
         Sraiw;
+        Sext_w;
         Lb;
         Lh;
         Lw;
@@ -340,6 +352,8 @@ module Make (P : PROFILE) = struct
         Bge;
         Bltu;
         Bgeu;
+        Bgtu;
+        Bleu;
         Lui;
         Auipc;
         Jal;
@@ -358,6 +372,7 @@ module Make (P : PROFILE) = struct
         Ebreak;
         Unimp;
         Fence_i;
+        Fence;
         Fld;
         Flw;
         Fsd;
@@ -824,12 +839,21 @@ module Make (P : PROFILE) = struct
   let f_load_desc = function Opcode.Flw -> Some 2 | Fld -> Some 3 | _ -> None
   let f_store_desc = function Opcode.Fsw -> Some 2 | Fsd -> Some 3 | _ -> None
 
+  let fits_signed bits v =
+    let lim = Int64.shift_left 1L (bits - 1) in
+    Int64.compare v (Int64.neg lim) >= 0 && Int64.compare v lim < 0
+
+  let int64_expr e =
+    match Asm_core.Expr.fold Asm_core.Expr.no_env e with
+    | Ok (Asm_core.Expr.Const n) -> Bigint.to_int64_opt n
+    | Ok _ | Error _ -> None
+
   let lower_instruction state i =
     let opn = Opcode.name i.Instruction.op in
     match (i.op, i.ops) with
     | (Opcode.Addw | Subw | Sllw | Srlw | Sraw | Mulw), _ when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
-    | (Opcode.Addiw | Slliw | Srliw | Sraiw | Ld | Lwu | Sd), _ when xlen <> 64 ->
+    | (Opcode.Addiw | Slliw | Srliw | Sraiw | Sext_w | Ld | Lwu | Sd), _ when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
     | (Opcode.Fcvt_l_d | Fmv_x_d | Fcvt_s_l), _ when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
@@ -988,6 +1012,26 @@ module Make (P : PROFILE) = struct
         | Some rs1, Some rs2, Some target, Some funct3 ->
             Ok [ Lowered.B { name = opn; funct3; rs1; rs2; target } ]
         | _ -> wrong opn)
+    | (Opcode.Bgtu | Bleu), [ a; b; target ] -> (
+        (* [bgtu rs,rt,label]/[bleu rs,rt,label] - GAS's own greater-than/
+           less-or-equal-unsigned pseudos, [bltu]/[bgeu] with the two register
+           operands swapped (real hardware defines no distinct opcode; only
+           [bltu rt,rs,label]/[bgeu rt,rs,label] exist). Real objdump always
+           disassembles the swapped-operand word back as the real underlying
+           mnemonic, never the pseudo - this project's canonical printer follows
+           that choice (the same alias-preference precedent as AArch64's
+           [ubfx]/[ubfiz], asm/docs/corpus.md's Capability ladder item 4), reusing
+           [Lowered.B]'s existing shape rather than adding a name-only variant.
+           Checked against real riscv64-linux-gnu-as/objdump: `bgtu a0, a1, .`
+           -> `00a5e063`, decoding as `bltu a1, a0, .`; `bleu a0, a1, .` ->
+           `fea5fee3`, decoding as `bgeu a1, a0, .`. *)
+        let real_op, real_name =
+          if i.op = Bgtu then (Opcode.Bltu, "bltu") else (Opcode.Bgeu, "bgeu")
+        in
+        match (xreg a, xreg b, expr_of target, branch_desc real_op) with
+        | Some ra, Some rb, Some target, Some funct3 ->
+            Ok [ Lowered.B { name = real_name; funct3; rs1 = rb; rs2 = ra; target } ]
+        | _ -> wrong opn)
     | ((Opcode.Lui | Auipc) as op), [ a; imm ] -> (
         match (xreg a, expr_of imm) with
         | Some rd, Some imm ->
@@ -1055,6 +1099,47 @@ module Make (P : PROFILE) = struct
                   };
               ]
         | None -> wrong opn)
+    | Opcode.Snez, [ a; b ] -> (
+        (* [snez rd, rs] - GAS's own set-not-equal-zero pseudo, [sltu rd, zero, rs]
+           under a different spelling (only ever reachable through [Sltu]'s own
+           three-register form otherwise, which has no all-zero-[rs1] entry point
+           of its own). Real objdump prefers the alias text ([snez a2, a3]), but
+           this project's canonical printer reuses the real underlying mnemonic
+           the same way {!Mv}/{!Nop} above already reuse [addi]'s, rather than
+           adding a second, decode-only spelling nothing here compares against
+           (M5, asm/docs/corpus.md - asm/helpers/riscv.c's own zero-test idiom).
+           Checked against real riscv64-linux-gnu-as/objdump: `snez a2, a3` ->
+           `00d03633`, matching `sltu a2, zero, a3` bit-for-bit. *)
+        match (xreg a, xreg b) with
+        | Some rd, Some rs2 ->
+            Ok
+              [
+                Lowered.R { name = "sltu"; opcode = 0x33; funct3 = 3; funct7 = 0; rd; rs1 = 0; rs2 };
+              ]
+        | _ -> wrong opn)
+    | Opcode.Sext_w, [ a; b ] -> (
+        (* [sext.w rd, rs] - the sign-extend-word pseudo, [addiw rd, rs, 0] under a
+           different spelling (RV64 only: {!Opcode.t}'s early [Rv64_only] gate
+           above already rejects it on RV32). Checked against real
+           riscv64-linux-gnu-as/objdump: `sext.w a1, a2` -> `0006059b`, matching
+           `addiw a1, a2, 0` bit-for-bit. *)
+        match (xreg a, xreg b) with
+        | Some rd, Some rs1 ->
+            Ok
+              [
+                Lowered.I
+                  {
+                    name = "addiw";
+                    opcode = 0x1b;
+                    funct3 = 0;
+                    funct_hi = 0;
+                    shamt_bits = None;
+                    rd;
+                    rs1;
+                    imm = const 0;
+                  };
+              ]
+        | _ -> wrong opn)
     | Opcode.Mv, [ a; b ] -> (
         match (xreg a, xreg b) with
         | Some rd, Some rs1 ->
@@ -1135,21 +1220,48 @@ module Make (P : PROFILE) = struct
         | _ -> wrong opn)
     | Opcode.Li, [ a; imm ] -> (
         match (xreg a, expr_of imm) with
-        | Some rd, Some imm ->
-            Ok
-              [
-                Lowered.I
-                  {
-                    name = "addi";
-                    opcode = 0x13;
-                    funct3 = 0;
-                    funct_hi = 0;
-                    shamt_bits = None;
-                    rd;
-                    rs1 = 0;
-                    imm;
-                  };
-              ]
+        | Some rd, Some imm -> (
+            let addi imm =
+              Ok
+                [
+                  Lowered.I
+                    {
+                      name = "addi";
+                      opcode = 0x13;
+                      funct3 = 0;
+                      funct_hi = 0;
+                      shamt_bits = None;
+                      rd;
+                      rs1 = 0;
+                      imm;
+                    };
+                ]
+            in
+            match int64_expr imm with
+            | Some v when fits_signed 12 v -> addi imm
+            | Some v when Int64.logand v 0xfffL = 0L && fits_signed 32 v ->
+                (* GAS's own [li] expansion for a constant whose low 12 bits are
+                   exactly zero collapses to a bare [lui] - no [addi], the
+                   redundant "+0" GAS itself never emits - the only large-constant
+                   [li] shape this corpus evidences (asm/helpers/riscv.c's
+                   page/window-aligned address constants, e.g. `li a0,
+                   0x30000000`). Checked against real riscv64-linux-gnu-as/
+                   objdump: `li a0, 0x30000000` -> `lui a0, 0x30000`; `li a2,
+                   -4096` -> `lui a2, 0xfffff`. A constant needing a genuine
+                   [lui]+[addi] pair, or one wider than 32 bits, is not evidenced
+                   and still falls through to the single-[addi] form below, which
+                   then reports the same out-of-range diagnostic it always has. *)
+                Ok
+                  [
+                    Lowered.U
+                      {
+                        name = "lui";
+                        opcode = 0x37;
+                        rd;
+                        imm = Asm_core.Expr.Const (Bigint.of_int64 (Int64.shift_right v 12));
+                      };
+                  ]
+            | _ -> addi imm)
         | _ -> wrong opn)
     | Opcode.Ret, [] ->
         Ok
@@ -1170,11 +1282,24 @@ module Make (P : PROFILE) = struct
     | Opcode.Ebreak, [] -> Ok [ Lowered.Fixed { name = "ebreak"; word = 0x00100073L } ]
     | Opcode.Unimp, [] -> Ok [ Lowered.Fixed { name = "unimp"; word = 0xc0001073L } ]
     | Opcode.Fence_i, [] -> Ok [ Lowered.Fixed { name = "fence.i"; word = 0x0000100fL } ]
+    | ( Opcode.Fence,
+        ([] | [ Operand.Sym (Asm_core.Expr.Symbol "rw"); Operand.Sym (Asm_core.Expr.Symbol "w") ]) )
+      ->
+        (* [fence rw,w] - a memory barrier, opcode 0x0f/funct3 0 with no ModR/M-like
+           register fields ([rd]/[rs1] both fixed zero): [imm[11:0]] splits into a
+           4-bit [pred]/[succ] pair, each an (i,o,r,w) flag set, at bits 27:24/23:20.
+           Only this one predecessor/successor spelling is evidenced
+           (asm/helpers/riscv.c's own release-store fence, via
+           `__sync_synchronize`-style codegen), so - matching this project's own
+           narrow-scope precedent for a single-spelling fixed word ([fucomp],
+           [fence.i] above) - any other combination is a diagnostic rather than a
+           silently-computed one; the bare no-operand form is decode's own
+           round-trip spelling ({!Lowered.Fixed}'s [pp] prints no operand list, the
+           same convention [ret]/[ecall] already use). Checked against real
+           riscv64-linux-gnu-as/objdump: `fence rw,w` -> `0310000f`
+           (pred = 0b0011 = r|w, succ = 0b0001 = w). *)
+        Ok [ Lowered.Fixed { name = "fence"; word = 0x0310000fL } ]
     | _ -> wrong opn
-
-  let fits_signed bits v =
-    let lim = Int64.shift_left 1L (bits - 1) in
-    Int64.compare v (Int64.neg lim) >= 0 && Int64.compare v lim < 0
 
   let mask bits v =
     if bits = 64 then v else Int64.logand v (Int64.sub (Int64.shift_left 1L bits) 1L)
@@ -1244,11 +1369,6 @@ module Make (P : PROFILE) = struct
   let bytes_of_word w =
     String.init 4 (fun i ->
         Char.chr (Int64.to_int (Int64.logand (Int64.shift_right_logical w (8 * i)) 0xffL)))
-
-  let int64_expr e =
-    match Asm_core.Expr.fold Asm_core.Expr.no_env e with
-    | Ok (Asm_core.Expr.Const n) -> Bigint.to_int64_opt n
-    | Ok _ | Error _ -> None
 
   let mk_fixup ~kind ~name:fxname ~slices ~byte_offset ~container ~range ~value ~pairing =
     {
@@ -1369,6 +1489,32 @@ module Make (P : PROFILE) = struct
                         (bytes_of_word
                            (word_s ~opcode:x.opcode ~funct3:x.funct3 ~rs1:x.rs1 ~rs2:x.rs2 0L))
                         x.name [ fx ]))
+            | Asm_core.Expr.Modifier ("%lo", target) ->
+                (* [sw a0,%lo(sym)(s6)] - the store-side sibling of [I]'s own
+                   [%lo] case just above (`la`'s non-PIC absolute [lui]+[addi]
+                   pair, with [s6] already holding [%hi(sym)] from an earlier
+                   instruction this project's own single-pass model resolves
+                   independently): a real gap, not a dead branch - {!Abs_lo12_s}
+                   already existed in {!fixup_kind} and in [evaluate_fixup]
+                   below, but [S]'s own [encode] case never produced one (M5,
+                   asm/docs/corpus.md - asm/helpers/riscv.c's own absolute
+                   store to a page-local static, the first fixture to spell an
+                   [S]-type absolute [%lo]). Checked against real
+                   riscv64-linux-gnu-as: `sw a0,%lo(control_alias)(s6)` still
+                   assembles to a placeholder-zero S-type word plus an
+                   `R_RISCV_LO12_S` relocation, the identical shape [I]'s own
+                   [Abs_lo12_i] already produces for a load/[addi]. *)
+                let fx =
+                  mk_fixup ~kind:Abs_lo12_s ~name:"lo" ~slices:s_slices ~byte_offset:0 ~container:4
+                    ~range:(Asm_core.Lowered_ast.Signed 12) ~value:target ~pairing:Unpaired
+                in
+                Ok
+                  (`Fixed
+                     (form
+                        (bytes_of_word
+                           (word_s ~opcode:x.opcode ~funct3:x.funct3 ~rs1:x.rs1 ~rs2:x.rs2 0L))
+                        x.name [ fx ]))
+            | Asm_core.Expr.Modifier (m, _) -> bad_encode (`Bad_modifier m)
             | _ -> bad_encode (`Immediate_range x.name)))
     | B x ->
         let fx =
@@ -1697,6 +1843,7 @@ module Make (P : PROFILE) = struct
             | 0x73 when Int64.equal w 0x00100073L -> Some (instruction Opcode.Ebreak [], "ebreak")
             | 0x73 when Int64.equal w 0xc0001073L -> Some (instruction Opcode.Unimp [], "unimp")
             | 0x0f when Int64.equal w 0x0000100fL -> Some (instruction Opcode.Fence_i [], "fence.i")
+            | 0x0f when Int64.equal w 0x0310000fL -> Some (instruction Opcode.Fence [], "fence")
             | _ -> None)
       in
       match result with
