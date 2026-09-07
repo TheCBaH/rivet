@@ -6,17 +6,19 @@ let err op detail = Err.fail ~pos:__POS__ ~pp_error:Tool_error.pp (Tool_error.v 
    Three groups answering different questions: `fixture` are positive controls
    this assembler already handles; `helper` are our own hand-written ABI
    helpers; `runtime` is CompCert's runtime library, the largest body of real
-   assembly available here.
-
-   The runtime group silently covers only FOUR targets. CompCert's runtime tree
-   is arch-named - arm, x86_32, x86_64, aarch64, and riscV - so there is no
-   riscv32/ or riscv64/ directory and the shell's `[ -d … ] || continue` skips
-   both. runtime_defines omits the same two for the same reason. Reproduced
-   deliberately: adding RISC-V here would change the corpus. *)
+   assembly available here. The runtime group covers all six targets: both
+   RISC-V profiles share CompCert's arch-named `runtime/riscV` directory (see
+   runtime_dir below), rather than each having its own target-named one. *)
 
 type group = Fixture | Helper | Runtime
 
 let group_name = function Fixture -> "fixture" | Helper -> "helper" | Runtime -> "runtime"
+
+(* CompCert's runtime tree is arch-named, not target-named: both RISC-V
+   profiles share runtime/riscV, and it is the MODEL_ define below - not the
+   directory - that selects the 32- or 64-bit half of vararg.S. Every other
+   target's arch name and target name coincide. *)
+let runtime_dir = function Target.Riscv32 | Target.Riscv64 -> "riscV" | t -> Target.to_string t
 
 (* CompCert compiles its runtime with -DMODEL_/-DABI_/-DENDIANNESS_/-DSYS_
    (modules/CompCert/runtime/Makefile:62) and the values are the ones its own
@@ -29,7 +31,8 @@ let runtime_defines = function
   | Target.X86_32 -> [ "-DMODEL_32sse2"; "-DABI_standard"; "-DENDIANNESS_little"; "-DSYS_linux" ]
   | Target.X86_64 -> [ "-DMODEL_64"; "-DABI_standard"; "-DENDIANNESS_little"; "-DSYS_linux" ]
   | Target.Aarch64 -> [ "-DMODEL_default"; "-DABI_standard"; "-DENDIANNESS_little"; "-DSYS_linux" ]
-  | Target.Riscv32 | Target.Riscv64 -> []
+  | Target.Riscv32 -> [ "-DMODEL_32"; "-DABI_standard"; "-DENDIANNESS_little"; "-DSYS_linux" ]
+  | Target.Riscv64 -> [ "-DMODEL_64"; "-DABI_standard"; "-DENDIANNESS_little"; "-DSYS_linux" ]
 
 let frontier_sources repo target =
   let root = Repo.path repo in
@@ -40,11 +43,12 @@ let frontier_sources repo target =
       (Helper, "helper", "asm/helpers/" ^ t ^ ".s");
     ]
   in
-  let dir = "modules/CompCert/runtime/" ^ t in
+  let dir = "modules/CompCert/runtime/" ^ runtime_dir target in
   let runtime =
     (* Sys.is_directory RAISES on a missing path, where the shell's `[ -d … ]`
-       is merely false - and a missing directory is the NORMAL case here, since
-       CompCert's runtime tree has no riscv32/ or riscv64/. *)
+       is merely false. Every target now maps to a directory that exists; this
+       guard's remaining job is to fail soft if the submodule is uninitialized,
+       rather than to skip RISC-V. *)
     let is_dir p = try Sys.is_directory p with Sys_error _ -> false in
     if not (is_dir (Fpath.to_string Fpath.(root // v dir))) then []
     else

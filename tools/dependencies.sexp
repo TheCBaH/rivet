@@ -32,6 +32,15 @@
 ; used, not the one spelled in lib/dune. They all come from this one package.
 (mtime     (>= 2.0.0) runtime (mtime.clock.os mtime.clock mtime))
 
+; jsont plus jsont.bytesrw (Isa_db_jsonl): see the same
+; note in tools/lib/dune. Both library names come from the one opam package.
+(jsont    (>= 0.2.0) runtime (jsont jsont.bytesrw))
+; bytesrw: dune resolves jsont.bytesrw's requires into a direct edge on
+; bytesrw as well (the same expansion the mtime.clock.os note above
+; describes), so rule 1 asks about it too, even though tools/lib/dune never
+; names it. A separate opam package from jsont, hence its own row.
+(bytesrw  (>= 0.3.0) runtime (bytesrw))
+
 ; Deliberately absent, so these read as decisions rather than omissions:
 ;
 ;   err_trace  a LOCAL library of this project (tools/vendor/err_trace_local),

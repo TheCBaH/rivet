@@ -26,9 +26,11 @@ d 755 frontier/arm/runtime-vararg
 d 755 frontier/riscv32
 d 755 frontier/riscv32/fixture-asm_test_entry
 d 755 frontier/riscv32/helper-helper
+d 755 frontier/riscv32/runtime-vararg
 d 755 frontier/riscv64
 d 755 frontier/riscv64/fixture-asm_test_entry
 d 755 frontier/riscv64/helper-helper
+d 755 frontier/riscv64/runtime-vararg
 d 755 frontier/x86_32
 d 755 frontier/x86_32/fixture-asm_test_entry
 d 755 frontier/x86_32/helper-helper
@@ -237,6 +239,11 @@ f 644 frontier/riscv32/helper-helper/input.s
 f 644 frontier/riscv32/helper-helper/objdump.txt
 f 644 frontier/riscv32/helper-helper/origin.txt
 f 644 frontier/riscv32/helper-helper/text.hex
+f 644 frontier/riscv32/runtime-vararg/gas.txt
+f 644 frontier/riscv32/runtime-vararg/input.s
+f 644 frontier/riscv32/runtime-vararg/objdump.txt
+f 644 frontier/riscv32/runtime-vararg/origin.txt
+f 644 frontier/riscv32/runtime-vararg/text.hex
 f 644 frontier/riscv64/fixture-asm_test_entry/gas.txt
 f 644 frontier/riscv64/fixture-asm_test_entry/input.s
 f 644 frontier/riscv64/fixture-asm_test_entry/objdump.txt
@@ -247,6 +254,11 @@ f 644 frontier/riscv64/helper-helper/input.s
 f 644 frontier/riscv64/helper-helper/objdump.txt
 f 644 frontier/riscv64/helper-helper/origin.txt
 f 644 frontier/riscv64/helper-helper/text.hex
+f 644 frontier/riscv64/runtime-vararg/gas.txt
+f 644 frontier/riscv64/runtime-vararg/input.s
+f 644 frontier/riscv64/runtime-vararg/objdump.txt
+f 644 frontier/riscv64/runtime-vararg/origin.txt
+f 644 frontier/riscv64/runtime-vararg/text.hex
 f 644 frontier/x86_32/fixture-asm_test_entry/gas.txt
 f 644 frontier/x86_32/fixture-asm_test_entry/input.s
 f 644 frontier/x86_32/fixture-asm_test_entry/objdump.txt

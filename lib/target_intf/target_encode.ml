@@ -228,4 +228,13 @@ module type ENCODE = sig
       and it is the correct answer there: every non-executable gap everywhere, and every gap on
       [arm]/[aarch64]/[riscv32]/[riscv64], is plain zero fill, which [Image.plan_image]'s default
       [~fill] already produces without a callback. *)
+
+  val pad_section_to_alignment : bool
+  (** Whether GAS rounds a merged section's own final size up to its recorded alignment, using its
+      own {!nop_bytes} padding - a target-specific *layout* fact, distinct from {!merge_fill}'s
+      linker-gap fill, and the same shape one field over: the measured common answer (leave the
+      size as laid out - [arm]/[aarch64] record alignment 16 without rounding the size) is the
+      default [false], and RISC-V's divergence is the one target that sets this [true]. Measured
+      directly: `.text` / `.balign 16` / `nop` on riscv64 GAS records a size padded to 16 bytes;
+      the identical input on arm/aarch64 GAS does not. *)
 end

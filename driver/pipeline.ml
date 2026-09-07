@@ -578,10 +578,28 @@ module Make (T : T_intf.TARGET) = struct
   let merge_fill ~executable pad =
     match T.merge_fill with Some f when executable -> f ~length:pad | _ -> String.make pad '\000'
 
-  let plan ?entry m = Image.plan_image ~evaluate ~fill:merge_fill (policy_for ?entry m) [ m ]
+  (* The runtime-vararg frontier gap (asm/docs/corpus.md): [T.pad_section_to_alignment],
+     where set, rounds a merged Progbits section's own final size up to its recorded
+     alignment - GAS's own end-of-section behavior on RISC-V alone, distinct from
+     {!merge_fill}'s between-contribution gap above. The padding bytes are
+     [T.nop_bytes], the same source the assembler's own [.align] padding already
+     uses within a module (not [T.merge_fill], which is [None]/zero-fill on every
+     target that sets this flag) - falling back to zero fill only if [nop_bytes]
+     itself rejects the length, which should not happen since section sizes here
+     are always instruction-word multiples. *)
+  let section_pad =
+    if T.pad_section_to_alignment then
+      Some
+        (fun ~length ->
+          match T.nop_bytes ~length with Ok b -> b | Error _ -> String.make length '\000')
+    else None
+
+  let plan ?entry m =
+    Image.plan_image ~evaluate ~fill:merge_fill ?section_pad (policy_for ?entry m) [ m ]
 
   let plan_many ?entry (modules : T.fixup_kind Lowered_ast.module_ list) =
-    Image.plan_image ~evaluate ~fill:merge_fill (policy_for_many ?entry modules) modules
+    Image.plan_image ~evaluate ~fill:merge_fill ?section_pad (policy_for_many ?entry modules)
+      modules
 
   let fixup_observations = Image.fixup_observations
 

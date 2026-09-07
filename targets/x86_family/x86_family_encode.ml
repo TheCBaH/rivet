@@ -4445,4 +4445,8 @@ module Make (M : MODE) = struct
      ld and as disagree (see {!MODE.merge_nop_table}). Every other target's
      merge gap, and every NON-executable gap here too, is plain zero fill. *)
   let merge_fill = Some (fun ~length -> fill_from M.merge_nop_table length)
+
+  (* Measured: x86 GAS records a section's alignment without rounding its
+     size up to it. *)
+  let pad_section_to_alignment = false
 end

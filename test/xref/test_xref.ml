@@ -322,6 +322,8 @@ let%expect_test "frontier corpus: agreement wherever both assemblers accept" =
     aarch64  fixture-asm_test_entry   agree
     aarch64  runtime-vararg           agree
     riscv32  fixture-asm_test_entry   agree
+    riscv32  runtime-vararg           agree
     riscv64  fixture-asm_test_entry   agree
+    riscv64  runtime-vararg           agree
 
-    29 agree, 0 differ, 22 beyond M1, 0 not assembled by GNU as |}]
+    31 agree, 0 differ, 22 beyond M1, 0 not assembled by GNU as |}]

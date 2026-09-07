@@ -3315,3 +3315,7 @@ let nop_bytes ~length =
 (* Measured (M3 §3/§5, .ai/asm_plan.md §12): a linker-inserted merge gap in an
    executable section is plain zero fill on ARM, not NOP fill. *)
 let merge_fill = None
+
+(* Measured: ARM GAS records a section's alignment without rounding its size
+   up to it. *)
+let pad_section_to_alignment = false

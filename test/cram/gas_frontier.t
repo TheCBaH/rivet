@@ -3,10 +3,8 @@ How far this assembler gets on assembly files it did not write.
 Every other test in this project runs over inputs the project produced: six
 CompCert fixtures and, since test/snippets, whatever the AST corpus emits. This
 one runs over the rest of the assembly in the tree - our own ABI helpers, and
-CompCert's runtime library, the largest body of real A32/A64/x86 assembly
-available here (plus, for RISC-V, the one fixture control gas-xref's own
-frontier_sources already covers for riscv32/riscv64) - and records exactly
-where each one stops.
+CompCert's runtime library, the largest body of real assembly available here -
+across all six targets, and records exactly where each one stops.
 
 GNU as assembles every one of them, which is what makes the comparison mean
 something: the inputs are known-good, so a rejection here is a statement about
@@ -119,7 +117,7 @@ what M2 moves, and prose cannot regress.
   $ { for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-       31 assembles
+       33 assembles
         4 <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4 <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4  error[x86.simplify]: 8-bit operands are not in M1 scope

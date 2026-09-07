@@ -577,8 +577,9 @@ let check_floor d =
    unexpected enter the closure", not "is every entry still used". Measured on
    OCaml 4.14.3 from the final stanzas; compiler-supplied unix is excluded. *)
 let tool_transitive_allowlist =
-  [ "astring"; "bos"; "cmdliner"; "digestif"; "digestif.ocaml"; "eqaf"; "fmt"; "fpath"; "logs";
-    "mtime"; "mtime.clock"; "mtime.clock.os"; "rresult"; "topkg"; "seq"; "stdlib-shims" ]
+  [ "astring"; "bos"; "bytesrw"; "cmdliner"; "digestif"; "digestif.ocaml"; "eqaf"; "fmt"; "fpath";
+    "jsont"; "jsont.bytesrw"; "logs"; "mtime"; "mtime.clock"; "mtime.clock.os"; "rresult"; "topkg";
+    "seq"; "stdlib-shims" ]
 
 (* {4 The two tool modes} *)
 

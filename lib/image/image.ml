@@ -611,7 +611,8 @@ let layout_section ~evaluate (sc : 'k Lowered_ast.section_content) =
    special case. *)
 let default_fill ~executable:_ n = String.make n '\000'
 
-let plan_image ~evaluate ?(fill = default_fill) policy (modules : 'k Lowered_ast.module_ list) =
+let plan_image ~evaluate ?(fill = default_fill) ?section_pad policy
+    (modules : 'k Lowered_ast.module_ list) =
   let errors = ref [] in
   let fail ?origin e = errors := diag ?origin e :: !errors in
   match modules with
@@ -869,6 +870,21 @@ let plan_image ~evaluate ?(fill = default_fill) policy (modules : 'k Lowered_ast
                   | Lowered_ast.Nobits -> ());
                   (target + logical_size, (unit_name, target) :: bases))
                 (0, []) contribs
+            in
+            (* The runtime-vararg frontier gap (asm/docs/corpus.md, Follow-ups):
+               a target that sets [section_pad] (RISC-V alone, measured) rounds this
+               PROGBITS section's own final size up to its recorded alignment, the same
+               way GAS's own assembler does at end-of-section - distinct from the
+               inter-contribution merge-gap [fill] above, which every target either lacks
+               or answers differently. NOBITS has no bytes to pad (§6). *)
+            let total_logical_size =
+              match (kind, section_pad) with
+              | Lowered_ast.Progbits, Some pad_fn ->
+                  let target = align_up total_logical_size alignment in
+                  let pad = target - total_logical_size in
+                  if pad > 0 then Buffer.add_string buf (pad_fn ~length:pad);
+                  target
+              | _ -> total_logical_size
             in
             let bases = List.rev bases in
             let base_of unit_name = List.assoc unit_name bases in

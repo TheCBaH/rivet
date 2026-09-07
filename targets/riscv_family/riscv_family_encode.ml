@@ -58,6 +58,47 @@ module Make (P : PROFILE) = struct
         ("t6", 31);
       ]
 
+    (* The FP calling-convention register names (RISC-V ABI). Not generated
+       from a formula: the three runs are not contiguous. Read out of
+       riscv64-linux-gnu-as 2.44 by assembling `fld <name>, 0(x1)` for each
+       name and decoding the [rd] field. There is no FP counterpart of the
+       integer [fp] alias. *)
+    let f_aliases =
+      [
+        ("ft0", 0);
+        ("ft1", 1);
+        ("ft2", 2);
+        ("ft3", 3);
+        ("ft4", 4);
+        ("ft5", 5);
+        ("ft6", 6);
+        ("ft7", 7);
+        ("fs0", 8);
+        ("fs1", 9);
+        ("fa0", 10);
+        ("fa1", 11);
+        ("fa2", 12);
+        ("fa3", 13);
+        ("fa4", 14);
+        ("fa5", 15);
+        ("fa6", 16);
+        ("fa7", 17);
+        ("fs2", 18);
+        ("fs3", 19);
+        ("fs4", 20);
+        ("fs5", 21);
+        ("fs6", 22);
+        ("fs7", 23);
+        ("fs8", 24);
+        ("fs9", 25);
+        ("fs10", 26);
+        ("fs11", 27);
+        ("ft8", 28);
+        ("ft9", 29);
+        ("ft10", 30);
+        ("ft11", 31);
+      ]
+
     let numbered prefix ctor s =
       let n = String.length prefix in
       if String.length s > n && String.sub s 0 n = prefix then
@@ -72,7 +113,14 @@ module Make (P : PROFILE) = struct
       | None -> (
           match numbered "f" (fun n -> F n) s with
           | Some _ as r -> r
-          | None -> Option.map (fun n -> X n) (List.assoc_opt s aliases))
+          | None -> (
+              (* The two alias tables cannot collide: every f_aliases name
+                 starts with 'f' followed by a non-digit, so [numbered "f"]
+                 has already declined it, and no integer alias is spelled that
+                 way either - the integer [fp] is its own entry below. *)
+              match List.assoc_opt s f_aliases with
+              | Some n -> Some (F n)
+              | None -> Option.map (fun n -> X n) (List.assoc_opt s aliases)))
 
     let x = function X n -> Some n | F _ -> None
     let x_exn = function X n -> n | F _ -> invalid_arg "RISC-V integer register required"
@@ -719,8 +767,22 @@ module Make (P : PROFILE) = struct
     | Mulw -> Some (0x3b, 0, 0x01)
     | _ -> None
 
-  let shift_i_alias = function
-    | Opcode.Sll -> Some Opcode.Slli
+  (* An R-type mnemonic whose third operand is an immediate is GAS's alias for
+     the matching I-type form, wherever one exists - one rule, not a shift
+     special case. Probed against riscv64-linux-gnu-as 2.44, `<op> t5, t5, -8`:
+     and/or/xor/add/slt/sltu/addw all assemble as andi/ori/xori/addi/slti/
+     sltiu/addiw, while sub/subw/mul are rejected, exactly the ops with no
+     I-type counterpart to name here. The shifts are the same rule: `sll x5,
+     x11, 2` decodes back as `slli t0, a1, 0x2`. *)
+  let imm_alias = function
+    | Opcode.Add -> Some Opcode.Addi
+    | Slt -> Some Slti
+    | Sltu -> Some Sltiu
+    | Xor -> Some Xori
+    | Or -> Some Ori
+    | And -> Some Andi
+    | Addw -> Some Addiw
+    | Sll -> Some Slli
     | Srl -> Some Srli
     | Sra -> Some Srai
     | Sllw -> Some Slliw
@@ -862,13 +924,11 @@ module Make (P : PROFILE) = struct
         | Some rd, Some rs1, Some rs2, Some (opcode, funct3, funct7) ->
             Ok [ Lowered.R { name = opn; opcode; funct3; funct7; rd; rs1; rs2 } ]
         | Some rd, Some rs1, None, _ -> (
-            (* GAS overloads sll/srl/sra(w) with a third register-typed operand
-               as the R-type register-shift-amount form above, and with a third
-               immediate-typed operand as an alias for the corresponding
-               slli/srli/srai(w) form - confirmed against real
-               riscv64-linux-gnu-as: `sll x5, x11, 2` decodes back as
-               `slli t0, a1, 0x2`. *)
-            match (shift_i_alias op, expr_of c) with
+            (* A third register-typed operand is the R-type form above; a third
+               immediate-typed one is GAS's I-type alias, per imm_alias. An op
+               with no I-type counterpart (sub, subw, mul) falls through to
+               [wrong], which is what GAS does too. *)
+            match (imm_alias op, expr_of c) with
             | Some ialias, Some imm -> (
                 match i_desc ialias with
                 | Some (opcode, funct3, funct_hi, shamt) ->
@@ -1974,4 +2034,12 @@ module Make (P : PROFILE) = struct
      fill - unlike the *assembler's own* end-of-section padding, which uses
      real [c.nop]/[nop] via [nop_bytes] above. *)
   let merge_fill = None
+
+  (* Measured: riscv64/riscv32 GAS both round a section's own final size up to
+     its recorded alignment (e.g. `.text` / `.balign 16` / `nop` records a
+     16-byte-padded size), unlike every other target here. The real corpus
+     agrees: GNU's `runtime-vararg` `.text` is 112 bytes on both RISC-V
+     profiles - a multiple of its own 16-byte alignment - but 68/100/180 bytes
+     (none a multiple of 16) on x86_32/arm/aarch64. *)
+  let pad_section_to_alignment = true
 end

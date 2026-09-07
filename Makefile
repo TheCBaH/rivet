@@ -628,7 +628,7 @@ tools-oracle-diff: tools-build
 	  git status --porcelain -- asm/fixtures/compcert-3.17; \
 	  echo "oracle artifacts changed - review the diff above" >&2; exit 1; }
 
-# The same gate for the gas cross-reference: 463 committed files, rebuilt from
+# The same gate for the gas cross-reference: 483 committed files, rebuilt from
 # scratch (the command deletes the corpus root first) and required to come back
 # identical.
 #
