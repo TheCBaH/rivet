@@ -15,6 +15,7 @@ type arch = Riscv | X86
 type register_class =
   | Riscv_gpr
   | Riscv_fpr
+  | Riscv_vec  (** a RISC-V V vector register, v0..v31 *)
   | X86_gpr
   | X87_st  (** an x87 stack register, ST(0)..ST(7) *)
 
@@ -85,9 +86,9 @@ type provenance_label = Upstream | Inferred
 type fact = { label : provenance_label; note : string }
 
 type diagnostic = { rule : string; message : string }
-(** An unresolved or deliberately-deferred point about one form, per plan
-    §3.3's "unknown constructs must be reported, never silently treated as
-    unconstrained or dropped." *)
+(** An unresolved or deliberately-deferred point about one form: unknown
+    constructs must be reported, never silently treated as
+    unconstrained or dropped. *)
 
 type form = {
   form_id : string;

@@ -15,10 +15,15 @@ module Make (P : PROFILE) = struct
   let xlen = P.xlen
 
   module Reg = struct
-    type t = X of int | F of int
+    type t = X of int | F of int | V of int
 
     let equal a b = a = b
-    let name = function X n -> Printf.sprintf "x%d" n | F n -> Printf.sprintf "f%d" n
+
+    let name = function
+      | X n -> Printf.sprintf "x%d" n
+      | F n -> Printf.sprintf "f%d" n
+      | V n -> Printf.sprintf "v%d" n
+
     let pp ppf r = Fmt.string ppf (name r)
 
     let aliases =
@@ -114,16 +119,21 @@ module Make (P : PROFILE) = struct
           match numbered "f" (fun n -> F n) s with
           | Some _ as r -> r
           | None -> (
-              (* The two alias tables cannot collide: every f_aliases name
-                 starts with 'f' followed by a non-digit, so [numbered "f"]
-                 has already declined it, and no integer alias is spelled that
-                 way either - the integer [fp] is its own entry below. *)
-              match List.assoc_opt s f_aliases with
-              | Some n -> Some (F n)
-              | None -> Option.map (fun n -> X n) (List.assoc_opt s aliases)))
+              match numbered "v" (fun n -> V n) s with
+              | Some _ as r -> r
+              | None -> (
+                  (* The two alias tables cannot collide: every f_aliases name
+                     starts with 'f' followed by a non-digit, so [numbered "f"]
+                     has already declined it, and no integer alias is spelled that
+                     way either - the integer [fp] is its own entry below. V has
+                     no ABI alias names at all - every RVV mnemonic spells vector
+                     registers as bare [v0]-[v31]. *)
+                  match List.assoc_opt s f_aliases with
+                  | Some n -> Some (F n)
+                  | None -> Option.map (fun n -> X n) (List.assoc_opt s aliases))))
 
-    let x = function X n -> Some n | F _ -> None
-    let x_exn = function X n -> n | F _ -> invalid_arg "RISC-V integer register required"
+    let x = function X n -> Some n | F _ | V _ -> None
+    let x_exn = function X n -> n | F _ | V _ -> invalid_arg "RISC-V integer register required"
     let of_x n = X (n land 31)
   end
 
@@ -381,6 +391,12 @@ module Make (P : PROFILE) = struct
       | Fcvt_l_s
       | Fcvt_lu_s
       | Fcvt_s_lu
+      | Vsetvl
+      | Vsetvli
+      | Vsetivli
+      | Vadd_vv
+      | Vadd_vx
+      | Vadd_vi
 
     let name = function
       | Add -> "add"
@@ -619,6 +635,12 @@ module Make (P : PROFILE) = struct
       | Fcvt_l_s -> "fcvt.l.s"
       | Fcvt_lu_s -> "fcvt.lu.s"
       | Fcvt_s_lu -> "fcvt.s.lu"
+      | Vsetvl -> "vsetvl"
+      | Vsetvli -> "vsetvli"
+      | Vsetivli -> "vsetivli"
+      | Vadd_vv -> "vadd.vv"
+      | Vadd_vx -> "vadd.vx"
+      | Vadd_vi -> "vadd.vi"
 
     let all =
       [
@@ -858,6 +880,12 @@ module Make (P : PROFILE) = struct
         Fcvt_l_s;
         Fcvt_lu_s;
         Fcvt_s_lu;
+        Vsetvl;
+        Vsetvli;
+        Vsetivli;
+        Vadd_vv;
+        Vadd_vx;
+        Vadd_vi;
       ]
 
     let of_mnemonic s = List.find_opt (fun op -> String.equal (name op) s) all
@@ -1030,7 +1058,21 @@ module Make (P : PROFILE) = struct
           match rounding_name_of_mode funct3 with Some n -> ", " ^ n | None -> "")
       | Some _ | None -> ""
 
+    (* V's vm bit lives in [funct7]'s low bit ([funct7 = (funct6 lsl 1) lor
+       vm]) - unmasked (vm = 1) prints no suffix, masked (vm = 0) prints the
+       trailing [, v0.t] real GNU as's own disassembly always shows
+       explicitly (there is no "default mask" elision the way [rm_suffix]
+       elides a default rounding mode). *)
+    let vm_suffix funct7 = if funct7 land 1 = 1 then "" else ", v0.t"
+
     let pp ppf = function
+      | R x when x.name = "vadd.vv" ->
+          Fmt.pf ppf "%s v%d, v%d, v%d%s" x.name x.rd x.rs2 x.rs1 (vm_suffix x.funct7)
+      | R x when x.name = "vadd.vx" ->
+          Fmt.pf ppf "%s v%d, v%d, x%d%s" x.name x.rd x.rs2 x.rs1 (vm_suffix x.funct7)
+      | R x when x.name = "vadd.vi" ->
+          let simm5 = if x.rs1 land 0x10 <> 0 then x.rs1 - 32 else x.rs1 in
+          Fmt.pf ppf "%s v%d, v%d, %d%s" x.name x.rd x.rs2 simm5 (vm_suffix x.funct7)
       | R x -> (
           match f_shape_of_name x.name with
           | Some { rd_f; rs1_f; rs2_f = _; arity = 2; rm } ->
@@ -1184,6 +1226,14 @@ module Make (P : PROFILE) = struct
 
   let xreg = function Operand.Reg r -> Reg.x r | _ -> None
   let freg = function Operand.Reg (Reg.F n) -> Some n | _ -> None
+  let vreg = function Operand.Reg (Reg.V n) -> Some n | _ -> None
+
+  (* V's masked-operand marker: a bare trailing [v0.t] (never a real register
+     by itself - [Reg.find] never returns a [V] for a name with a [.t] suffix,
+     so it falls through {!parse_one}'s generic bare-identifier case to
+     [Operand.Sym (Symbol "v0.t")] with no frontend change needed, the same
+     way vsetvli/vsetivli's keyword tokens do). *)
+  let is_v0t = function Operand.Sym (Asm_core.Expr.Symbol "v0.t") -> true | _ -> false
   let rv64 op = if xlen = 64 then Ok () else Error (diag ~pos:__POS__ (`Rv64_only op))
   let wrong op = Error (diag ~pos:__POS__ (`Wrong_operands op))
 
@@ -1247,6 +1297,15 @@ module Make (P : PROFILE) = struct
     | Packw -> Some (0x3b, 4, 0x04)
     | Rolw -> Some (0x3b, 1, 0x30)
     | Rorw -> Some (0x3b, 5, 0x30)
+    (* Vector configuration-setting instruction with two GPR sources
+       ([vsetvl rd, rs1, rs2] - the AVL requested in [rs1], the desired
+       vtype encoded in [rs2] rather than an immediate; {!r_type_gpr_form}'s
+       plain [rd, rs1, rs2] shape applies unchanged since no vector register
+       is involved). OP-V's major opcode 0x57 is otherwise unused by this
+       family (OP-FP is the distinct 0x53). Confirmed against real GNU as:
+       `vsetvl a0, a1, a2` -> `80c5f557` on both riscv32-linux-gnu-as 2.43.1
+       (-march=rv32iv) and riscv64-linux-gnu-as 2.44 (-march=rv64iv). *)
+    | Vsetvl -> Some (0x57, 7, 0x40)
     | _ -> None
 
   (* Zaamo's [amoOP rd, rs2, (rs1)] / [scOP rd, rs2, (rs1)] three-GPR-plus-
@@ -1638,6 +1697,65 @@ module Make (P : PROFILE) = struct
      GNU as's own "illegal operands" rejection of `amoadd.w a0, a1, 4(a2)`. *)
   let zero_offset e = match int64_expr e with Some 0L -> true | _ -> false
 
+  (* V's "vtype keyword list" - vsetvli/vsetivli's own trailing
+     [e<SEW>][,m<LMUL>][,ta|tu][,ma|mu] syntax, not a register, plain
+     immediate, or memory operand the generic text parser already has a
+     name for; each bare identifier ([Operand.Sym (Symbol _)], produced by
+     {!parse_one}'s already-generic bare-identifier fallback with no
+     frontend changes needed) selects one of four independent categories.
+     Real GNU as accepts any subset of the four - even a single trailing
+     keyword, skipping every earlier category - but rejects them out of
+     the fixed SEW < LMUL < tail-policy < mask-policy order, and rejects
+     omitting every keyword. Confirmed against real GNU as: `vsetvli a0,
+     a1, ta` alone (skipping SEW/LMUL) assembles as e8,m1,ta,mu; `vsetvli
+     a0, a1, m1, e32` and `vsetvli a0, a1, ma, ta` are both "illegal
+     operands"; `vsetvli a0, a1` (no keyword at all) is too. *)
+  let vlmul_bits = function
+    | "m1" -> Some 0
+    | "m2" -> Some 1
+    | "m4" -> Some 2
+    | "m8" -> Some 3
+    | "mf8" -> Some 5
+    | "mf4" -> Some 6
+    | "mf2" -> Some 7
+    | _ -> None
+
+  let vsew_bits = function
+    | "e8" -> Some 0
+    | "e16" -> Some 1
+    | "e32" -> Some 2
+    | "e64" -> Some 3
+    | _ -> None
+
+  let vtype_token = function
+    | "ta" -> Some (2, 1 lsl 6)
+    | "tu" -> Some (2, 0)
+    | "ma" -> Some (3, 1 lsl 7)
+    | "mu" -> Some (3, 0)
+    | s -> (
+        match vsew_bits s with
+        | Some b -> Some (0, b lsl 3)
+        | None -> ( match vlmul_bits s with Some b -> Some (1, b) | None -> None))
+
+  let vtype_value_of tokens =
+    let rec go last_category acc = function
+      | [] -> Some acc
+      | tok :: rest -> (
+          match vtype_token tok with
+          | Some (category, bits) when category > last_category -> go category (acc lor bits) rest
+          | _ -> None)
+    in
+    go (-1) 0 tokens
+
+  let symbol_of = function Operand.Sym (Asm_core.Expr.Symbol s) -> Some s | _ -> None
+
+  let symbols_of ops =
+    let rec go acc = function
+      | [] -> Some (List.rev acc)
+      | o :: rest -> ( match symbol_of o with Some s -> go (s :: acc) rest | None -> None)
+    in
+    go [] ops
+
   let lower_instruction state i =
     let opn = Opcode.name i.Instruction.op in
     match (i.op, i.ops) with
@@ -1965,6 +2083,131 @@ module Make (P : PROFILE) = struct
                         imm = const (Int64.to_int (signed_csr csr));
                       };
                   ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | Opcode.Vsetvli, a :: b :: (_ :: _ as tail) -> (
+        (* [vsetvli rd, rs1, vtype...] - V's register-AVL configuration-
+           setting instruction. [rd]/[rs1] are plain GPRs encoded through
+           the same [Lowered.I]/[word_i] path {!i_desc}'s callers use; the
+           "vtype..." tail is {!vtype_value_of}'s own keyword-list syntax,
+           not a real immediate operand GAS lets you write directly.
+           Confirmed against real GNU as: `vsetvli a0, a1, e32, m1, ta, ma`
+           -> `0d05f557` (imm12 = 208; bit31 = 0 falls out automatically
+           since 208 < 2048). *)
+        match (xreg a, xreg b, symbols_of tail) with
+        | Some rd, Some rs1, Some tokens -> (
+            match vtype_value_of tokens with
+            | Some vtype ->
+                Ok
+                  [
+                    Lowered.I
+                      {
+                        name = opn;
+                        opcode = 0x57;
+                        funct3 = 7;
+                        funct_hi = 0;
+                        shamt_bits = None;
+                        rd;
+                        rs1;
+                        imm = const vtype;
+                      };
+                  ]
+            | None -> wrong opn)
+        | _ -> wrong opn)
+    | Opcode.Vsetivli, a :: b :: (_ :: _ as tail) -> (
+        (* [vsetivli rd, uimm, vtype...] - V's immediate-AVL sibling.
+           [uimm] (0-31) occupies the same bit position {!Csrrwi}'s [zimm]
+           does, reusing [Lowered.I]'s [rs1] field for a raw immediate
+           rather than a register (same trick as that comment). The word's
+           fixed bits[31:30] = 0b11 fall out of encoding [vtype - 1024] as
+           a plain signed 12-bit two's-complement [Lowered.I] immediate -
+           no new bit-masking machinery, the same way {!signed_csr} reuses
+           this path for an unsigned field. Confirmed against real GNU as:
+           `vsetivli a0, 5, e32, m1, ta, ma` -> `cd02f557` (vtype = 208,
+           imm12 = 208 - 1024 = -816, two's complement 0xcd0 =
+           0b11_0011010000, matching bits[31:20] exactly). *)
+        match (xreg a, expr_of b, symbols_of tail) with
+        | Some rd, Some uimm_e, Some tokens -> (
+            match (int64_expr uimm_e, vtype_value_of tokens) with
+            | Some uimm, Some vtype when Int64.compare uimm 0L >= 0 && Int64.compare uimm 31L <= 0
+              ->
+                Ok
+                  [
+                    Lowered.I
+                      {
+                        name = opn;
+                        opcode = 0x57;
+                        funct3 = 7;
+                        funct_hi = 0;
+                        shamt_bits = None;
+                        rd;
+                        rs1 = Int64.to_int uimm;
+                        imm = const (vtype - 1024);
+                      };
+                  ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | Opcode.Vadd_vv, [ vd_op; vs2_op; vs1_op ] -> (
+        (* [vadd.vv vd, vs2, vs1] - V's plain vector-vector integer add,
+           the entry point into the ~373-record OP-V arithmetic space. All
+           three operands are vector registers ([Reg.V], parsed with zero
+           frontend changes the same way [vsetvli]'s keyword tokens were -
+           [Reg.find] already resolves bare [v0]-[v31] generically). The
+           word's top 7 bits split into a 6-bit funct6 (0x00 for vadd) and a
+           1-bit vm (1 = unmasked, the implicit-v0.t-mask bit's own
+           complement) - together exactly the same 7-bit span
+           {!Lowered.R}/[word_r] already encodes any other R-type [funct7]
+           across, so this reuses that path unchanged with
+           [funct7 = (funct6 lsl 1) lor vm]. Confirmed against real GNU as:
+           `vadd.vv v1, v2, v3` -> `022180d7` (funct7 = 0b0000001, vm = 1). *)
+        match (vreg vd_op, vreg vs2_op, vreg vs1_op) with
+        | Some rd, Some rs2, Some rs1 ->
+            Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 0; funct7 = 1; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | Opcode.Vadd_vv, [ vd_op; vs2_op; vs1_op; mask ] when is_v0t mask -> (
+        (* Masked form: `vadd.vv v1, v2, v3, v0.t` -> `002180d7` (vm = 0,
+           the same word with only the vm bit cleared). *)
+        match (vreg vd_op, vreg vs2_op, vreg vs1_op) with
+        | Some rd, Some rs2, Some rs1 ->
+            Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 0; funct7 = 0; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | Opcode.Vadd_vx, [ vd_op; vs2_op; rs1_op ] -> (
+        (* [vadd.vx vd, vs2, rs1] - the scalar-broadcast sibling: [rs1] is a
+           plain GPR (funct3 = 0b100, OPIVX), [vd]/[vs2] stay vector
+           registers. Confirmed against real GNU as: `vadd.vx v1, v2, a0` ->
+           `022540d7`. *)
+        match (vreg vd_op, vreg vs2_op, xreg rs1_op) with
+        | Some rd, Some rs2, Some rs1 ->
+            Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 4; funct7 = 1; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | Opcode.Vadd_vx, [ vd_op; vs2_op; rs1_op; mask ] when is_v0t mask -> (
+        match (vreg vd_op, vreg vs2_op, xreg rs1_op) with
+        | Some rd, Some rs2, Some rs1 ->
+            Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 4; funct7 = 0; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | Opcode.Vadd_vi, [ vd_op; vs2_op; imm_op ] -> (
+        (* [vadd.vi vd, vs2, simm5] - the immediate sibling: a 5-bit SIGNED
+           immediate (-16..15) occupies the [rs1] field position (funct3 =
+           0b011, OPIVI), the same "reuse the field for something that isn't
+           a register" trick {!signed_csr}/[vsetivli]'s [uimm] already use.
+           Confirmed against real GNU as: `vadd.vi v1, v2, 5` -> `0222b0d7`;
+           `vadd.vi v1, v2, -5` -> `022db0d7` (simm5 field = 0b11011 = 27,
+           i.e. plain 5-bit two's complement, masked with 0x1f below). *)
+        match (vreg vd_op, vreg vs2_op, expr_of imm_op) with
+        | Some rd, Some rs2, Some e -> (
+            match int64_expr e with
+            | Some v when fits_signed 5 v ->
+                let rs1 = Int64.to_int (Int64.logand v 0x1fL) in
+                Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 3; funct7 = 1; rd; rs1; rs2 } ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | Opcode.Vadd_vi, [ vd_op; vs2_op; imm_op; mask ] when is_v0t mask -> (
+        match (vreg vd_op, vreg vs2_op, expr_of imm_op) with
+        | Some rd, Some rs2, Some e -> (
+            match int64_expr e with
+            | Some v when fits_signed 5 v ->
+                let rs1 = Int64.to_int (Int64.logand v 0x1fL) in
+                Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 3; funct7 = 0; rd; rs1; rs2 } ]
             | _ -> wrong opn)
         | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (i_desc op) -> (
@@ -2840,6 +3083,7 @@ module Make (P : PROFILE) = struct
     | 0x3b, 4, 0x04 -> Some "packw"
     | 0x3b, 1, 0x30 -> Some "rolw"
     | 0x3b, 5, 0x30 -> Some "rorw"
+    | 0x57, 7, 0x40 -> Some "vsetvl"
     | _ -> None
 
   (* OP-FP (opcode [0x53]): unlike every integer R-type above, several of these

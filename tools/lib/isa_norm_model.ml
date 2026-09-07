@@ -1,5 +1,5 @@
 type arch = Riscv | X86
-type register_class = Riscv_gpr | Riscv_fpr | X86_gpr | X87_st
+type register_class = Riscv_gpr | Riscv_fpr | Riscv_vec | X86_gpr | X87_st
 type bit_run = { field_name : string; field_hi : int; field_lo : int; dest_hi : int; dest_lo : int }
 
 type immediate = {

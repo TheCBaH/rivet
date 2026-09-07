@@ -316,6 +316,35 @@ val fcvt_d_l_entries : entry list
 val fcvt_d_lu_entries : entry list
 (** {!fcvt_d_l_entries}'s unsigned sibling. *)
 
+val vsetvl_entries : entry list
+(** [vsetvl a0, a1, a2] on RV32IV and RV64IV - V's register-register
+    configuration-setting instruction, the cheapest entry point into the
+    rv_v family: a plain three-GPR R-type shape with no vector register
+    class and no import duplication. *)
+
+val vsetvli_entries : entry list
+(** [vsetvli a0, a1, e32, m1, ta, ma] on RV32IV and RV64IV - V's
+    register-AVL immediate-vtype sibling of {!vsetvl_entries}; the
+    "e<SEW>,m<LMUL>,ta|tu,ma|mu" vtype spelling is GAS's own keyword
+    decomposition of a single 11-bit field. *)
+
+val vsetivli_entries : entry list
+(** [vsetivli a0, 5, e32, m1, ta, ma] on RV32IV and RV64IV -
+    {!vsetvli_entries}'s immediate-AVL sibling. *)
+
+val vadd_vv_entries : entry list
+(** [vadd.vv v1, v2, v3] on RV32IV and RV64IV - the entry point into OP-V's
+    real vector-register arithmetic space, all three operands vector
+    registers. *)
+
+val vadd_vx_entries : entry list
+(** [vadd.vx v1, v2, a0] - {!vadd_vv_entries}'s scalar-broadcast sibling,
+    [rs1] a real GPR. *)
+
+val vadd_vi_entries : entry list
+(** [vadd.vi v1, v2, -5] - {!vadd_vv_entries}'s immediate sibling, a real
+    5-bit signed immediate. *)
+
 val sh1add_entries : entry list
 (** [sh1add a0, a1, a2] on RV32IM_Zba and RV64IM_Zba, Zba's scale-one R-type
     form. *)

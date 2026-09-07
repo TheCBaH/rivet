@@ -237,6 +237,12 @@ let promoted_case ~target ~form_id ~lookup_key =
       ( "amoswap.d" | "amoadd.d" | "amoxor.d" | "amoand.d" | "amoor.d" | "amomin.d" | "amomax.d"
       | "amominu.d" | "amomaxu.d" | "sc.d" | "lr.d" ) ) ->
       true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsetvl", "vsetvl" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsetvli", "vsetvli" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsetivli", "vsetivli" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vadd.vv", "vadd.vv" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vadd.vx", "vadd.vx" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vadd.vi", "vadd.vi" -> true
   | _ -> false
 
 let pilot_case ~target ~form_id ~lookup_key =

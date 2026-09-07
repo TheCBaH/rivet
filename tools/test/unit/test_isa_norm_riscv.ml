@@ -259,6 +259,114 @@ let test_minu () = test_r_type_gpr ~feature:"zbb" ~mnemonic:"minu" ~json:minu_js
 let test_max () = test_r_type_gpr ~feature:"zbb" ~mnemonic:"max" ~json:max_json
 let test_maxu () = test_r_type_gpr ~feature:"zbb" ~mnemonic:"maxu" ~json:maxu_json
 
+(* vsetvl: V's register-register configuration-setting instruction - the
+   same plain three-GPR R-type shape {!test_r_type_gpr} already exercises,
+   with no import duplication (a single rv_v record on both profiles), so
+   its requirement is a plain Req_feature "riscv:v", not a Req_any. Taken
+   verbatim from the checked-in riscv64.jsonl (identical in riscv32.jsonl). *)
+let vsetvl_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 31, "name": "bits[31:31]", "width": 1}, {"lsb": 25, "name": "bits[30:25]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "rd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x80007057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsetvl", "origin": {"line": 13, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["rs2", "rs1", "rd"], "raw": {"line": "vsetvl       31=1 30..25=0x0 rs2  rs1 14..12=0x7 rd 6..0=0x57", "tokens": ["vsetvl", "31=1", "30..25=0x0", "rs2", "rs1", "14..12=0x7", "rd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x80007057", "variable_fields": ["rs2", "rs1", "rd"]}}, "record_id": "riscv-opcodes:rv_v:vsetvl@L13", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsetvl () = test_r_type_gpr ~feature:"v" ~mnemonic:"vsetvl" ~json:vsetvl_json
+
+(* vsetvli/vsetivli: V's immediate-vtype siblings of vsetvl. Both taken
+   verbatim from the checked-in riscv64.jsonl (identical in riscv32.jsonl). *)
+let vsetvli_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 31, "name": "bits[31:31]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "zimm11", "width": 11}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "rd", "width": 5}], "kind": "fixed_bits", "mask": "0x8000707f", "value": "0x7057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsetvli", "origin": {"line": 12, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["zimm11", "rs1", "rd"], "raw": {"line": "vsetvli      31=0 zimm11          rs1 14..12=0x7 rd 6..0=0x57", "tokens": ["vsetvli", "31=0", "zimm11", "rs1", "14..12=0x7", "rd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0x8000707f", "match": "0x7057", "variable_fields": ["zimm11", "rs1", "rd"]}}, "record_id": "riscv-opcodes:rv_v:vsetvli@L12", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsetivli_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 31, "name": "bits[31:31]", "width": 1}, {"lsb": 30, "name": "bits[30:30]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "zimm10", "width": 10}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "rd", "width": 5}], "kind": "fixed_bits", "mask": "0xc000707f", "value": "0xc0007057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsetivli", "origin": {"line": 11, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["zimm10", "zimm5", "rd"], "raw": {"line": "vsetivli     31=1 30=1 zimm10    zimm5 14..12=0x7 rd 6..0=0x57", "tokens": ["vsetivli", "31=1", "30=1", "zimm10", "zimm5", "14..12=0x7", "rd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xc000707f", "match": "0xc0007057", "variable_fields": ["zimm10", "zimm5", "rd"]}}, "record_id": "riscv-opcodes:rv_v:vsetivli@L11", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsetvli () =
+  let rec_ = decode_or_fail "vsetvli" vsetvli_json in
+  let form = normalize_or_fail "vsetvli" rec_ in
+  check "vsetvli: form_id" (form.form_id = "riscv:vsetvli");
+  check "vsetvli: requirement is the v feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vsetvli: renders as rd, rs1, vtype"
+    (Isa_norm_model.render_syntax form.syntax = "vsetvli rd, rs1, vtype");
+  check "vsetvli: vtype is an unsigned 11-bit immediate"
+    (match List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "vtype") form.operands with
+    | { op_kind = Immediate { width_bits = 11; signed = false; runs = [ r ]; _ }; _ } ->
+        r.field_name = "zimm11" && r.dest_hi = 10 && r.dest_lo = 0
+    | _ -> false)
+
+let test_vsetivli () =
+  let rec_ = decode_or_fail "vsetivli" vsetivli_json in
+  let form = normalize_or_fail "vsetivli" rec_ in
+  check "vsetivli: form_id" (form.form_id = "riscv:vsetivli");
+  check "vsetivli: requirement is the v feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vsetivli: renders as rd, uimm, vtype"
+    (Isa_norm_model.render_syntax form.syntax = "vsetivli rd, uimm, vtype");
+  check "vsetivli: uimm is an unsigned 5-bit immediate"
+    (match List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "uimm") form.operands with
+    | { op_kind = Immediate { width_bits = 5; signed = false; runs = [ r ]; _ }; _ } ->
+        r.field_name = "zimm5" && r.dest_hi = 4 && r.dest_lo = 0
+    | _ -> false);
+  check "vsetivli: vtype is an unsigned 10-bit immediate"
+    (match List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "vtype") form.operands with
+    | { op_kind = Immediate { width_bits = 10; signed = false; runs = [ r ]; _ }; _ } ->
+        r.field_name = "zimm10" && r.dest_hi = 9 && r.dest_lo = 0
+    | _ -> false)
+
+(* vadd.vv/vadd.vx/vadd.vi: OP-V's plain vector-register add family, the
+   entry point into the real ~373-record vector arithmetic space. Taken
+   verbatim from the checked-in riscv64.jsonl (identical in riscv32.jsonl -
+   V is XLEN-independent). *)
+let vadd_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x57", "width_bits": 32}, "kind": "instruction-form", "native_name": "vadd.vv", "origin": {"line": 260, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vadd.vv         31..26=0x00 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vadd.vv", "31..26=0x00", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x57", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vadd.vv@L260", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vadd_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x4057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vadd.vx", "origin": {"line": 213, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vadd.vx        31..26=0x00 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vadd.vx", "31..26=0x00", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x4057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vadd.vx@L213", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vadd_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x3057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vadd.vi", "origin": {"line": 306, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vadd.vi        31..26=0x00 vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vadd.vi", "31..26=0x00", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x3057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vadd.vi@L306", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vadd_vv () =
+  let rec_ = decode_or_fail "vadd.vv" vadd_vv_json in
+  let form = normalize_or_fail "vadd.vv" rec_ in
+  check "vadd.vv: form_id" (form.form_id = "riscv:vadd.vv");
+  check "vadd.vv: requirement is the v feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vadd.vv: renders as rd, rs2, rs1"
+    (Isa_norm_model.render_syntax form.syntax = "vadd.vv rd, rs2, rs1");
+  check "vadd.vv: all three operands are vector registers"
+    (List.for_all
+       (fun (o : Isa_norm_model.operand) ->
+         match o.op_kind with Register { class_ = Riscv_vec; _ } -> true | _ -> false)
+       form.operands)
+
+let test_vadd_vx () =
+  let rec_ = decode_or_fail "vadd.vx" vadd_vx_json in
+  let form = normalize_or_fail "vadd.vx" rec_ in
+  check "vadd.vx: form_id" (form.form_id = "riscv:vadd.vx");
+  check "vadd.vx: renders as rd, rs2, rs1"
+    (Isa_norm_model.render_syntax form.syntax = "vadd.vx rd, rs2, rs1");
+  check "vadd.vx: rs1 is a GPR, rd/rs2 are vector registers"
+    (match
+       ( List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rs1") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rd") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rs2") form.operands )
+     with
+    | ( { op_kind = Register { class_ = Riscv_gpr; _ }; _ },
+        { op_kind = Register { class_ = Riscv_vec; _ }; _ },
+        { op_kind = Register { class_ = Riscv_vec; _ }; _ } ) ->
+        true
+    | _ -> false)
+
+let test_vadd_vi () =
+  let rec_ = decode_or_fail "vadd.vi" vadd_vi_json in
+  let form = normalize_or_fail "vadd.vi" rec_ in
+  check "vadd.vi: form_id" (form.form_id = "riscv:vadd.vi");
+  check "vadd.vi: renders as rd, rs2, simm5"
+    (Isa_norm_model.render_syntax form.syntax = "vadd.vi rd, rs2, simm5");
+  check "vadd.vi: simm5 is a signed 5-bit immediate"
+    (match List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "simm5") form.operands with
+    | { op_kind = Immediate { width_bits = 5; signed = true; runs = [ r ]; _ }; _ } ->
+        r.field_name = "simm5" && r.dest_hi = 4 && r.dest_lo = 0
+    | _ -> false)
+
 let pack_json =
   {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":25,"name":"bits[31:25]","width":7},{"lsb":12,"name":"bits[14:12]","width":3},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"rs2","width":5}],"kind":"fixed_bits","mask":"0xfe00707f","value":"0x8004033","width_bits":32},"kind":"instruction-form","native_name":"pack","origin":{"line":6,"path":"extensions/rv_zbkb"},"provenance":{"extension":"rv_zbkb","operands":["rd","rs1","rs2"],"raw":{"line":"pack       rd rs1 rs2 31..25=4  14..12=4 6..2=0x0C 1..0=3","tokens":["pack","rd","rs1","rs2","31..25=4","14..12=4","6..2=0x0C","1..0=3"]},"upstream-resolved":{"mask":"0xfe00707f","match":"0x8004033","variable_fields":["rd","rs1","rs2"]}},"record_id":"riscv-opcodes:rv_zbkb:pack@L6","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
 
@@ -2200,6 +2308,12 @@ let () =
   test_fcvt_f_f ();
   test_fcvt_l_d ();
   test_fcvt_l_s ();
+  test_vsetvl ();
+  test_vsetvli ();
+  test_vsetivli ();
+  test_vadd_vv ();
+  test_vadd_vx ();
+  test_vadd_vi ();
   test_r_type_gpr ();
   test_i_type_imm ();
   test_relationship_resolution ();

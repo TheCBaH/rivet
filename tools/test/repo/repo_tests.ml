@@ -185,8 +185,8 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:232;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:284;
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:238;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:290;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:9;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:9
 
@@ -308,11 +308,22 @@ let test_isa_family_admission repo =
      (rv64_d/rv64_f, no RV32 counterpart at all - riscv32.jsonl does not
      even contain these 8 records), so this slice moves 8 records on RV64
      ONLY, straight from blocked to promoted-support; RV32's own counts are
-     unaffected. *)
+     unaffected. vsetvl (V's register-register configuration-setting
+     instruction, the entry point into the 375-record rv_v family) is a
+     single, non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 1 record on EACH profile, straight from
+     blocked to promoted-support. vsetvli/vsetivli (V's immediate-vtype
+     siblings) are likewise each a single, non-import-duplicated rv_v record
+     present identically on both profiles, so that slice moves 2 records on
+     EACH profile. vadd.vv/vadd.vx/vadd.vi (the entry point into OP-V's real
+     vector-register arithmetic space) are likewise each a single,
+     non-import-duplicated rv_v record present identically on both profiles,
+     so this slice moves 3 records on EACH profile, straight from blocked to
+     promoted-support. *)
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
-    ~promoted_support:212 ~blocked:857;
+    ~promoted_support:218 ~blocked:851;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
-    ~promoted_support:254 ~blocked:870;
+    ~promoted_support:260 ~blocked:864;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0 ~gas_generatable:5
     ~promoted_support:4 ~blocked:7878;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
@@ -370,9 +381,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 534)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 546)"
        !roundtrip_count)
-    (!roundtrip_count = 534)
+    (!roundtrip_count = 546)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's

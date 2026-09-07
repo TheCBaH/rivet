@@ -27,6 +27,7 @@ let feature_of_extension = function
   | "rv_f" -> Req_feature "riscv:f"
   | "rv_d" -> Req_feature "riscv:d"
   | "rv_a" -> Req_feature "riscv:a"
+  | "rv_v" -> Req_feature "riscv:v"
   | "rv64_a" -> Req_all [ Req_xlen 64; Req_feature "riscv:a" ]
   | "rv64_f" -> Req_all [ Req_xlen 64; Req_feature "riscv:f" ]
   | "rv64_d" -> Req_all [ Req_xlen 64; Req_feature "riscv:d" ]
@@ -247,6 +248,7 @@ let requirement_of_mnemonic ~mnemonic (rec_ : R.t) =
 
 let gpr ?(excluded = []) () = Register { class_ = Riscv_gpr; excluded }
 let fpr () = Register { class_ = Riscv_fpr; excluded = [] }
+let vreg () = Register { class_ = Riscv_vec; excluded = [] }
 
 (* imm[hi:lo] <- one raw field's bits verbatim, high-to-low: sw's imm12hi
    (source bits 11:5) then imm12lo (bits 4:0). This is plain concatenation,
@@ -1329,6 +1331,16 @@ let r_type_mnemonics =
     "aes64es";
     "aes64esm";
     "aes64ks2";
+    (* vsetvl (V's register-register configuration-setting instruction):
+       riscv-opcodes exports a single rv_v record on both profiles, with no
+       import duplication (relationships is empty), so the plain
+       {!requirement_of} fallback (no {!alternative_extensions_by_mnemonic}
+       entry needed) already gives the right Req_feature "riscv:v" answer.
+       vsetvli/vsetivli (V's own immediate-vtype siblings) are a separate,
+       larger normalization problem - GAS's "e<SEW>,m<LMUL>,ta|tu,ma|mu"
+       operand syntax is not a plain register or a numeric immediate - and
+       are left as a named follow-up, not covered by this entry. *)
+    "vsetvl";
   ]
 
 let i_type_mnemonics = [ "addi"; "slti"; "sltiu"; "andi"; "ori"; "xori"; "addiw" ]
@@ -2135,6 +2147,323 @@ let f_cvt_f_f_form ~mnemonic (rec_ : R.t) =
           diagnostics = [];
         }
 
+(* vsetvli's own [rd, rs1, zimm11] shape: riscv-opcodes exports a single,
+   flat 11-bit [zimm11] field - GAS's "e<SEW>,m<LMUL>,ta|tu,ma|mu" spelling
+   is a keyword decomposition of that one field's bits, not four separate
+   riscv-opcodes fields, so this models one 11-bit unsigned [vtype]
+   operand rather than four narrower ones; the encoder (not this
+   normalized model) owns interpreting the keyword syntax, the same
+   division of labor {!csr_reg_form} already uses for [csr]'s own numeric-
+   vs-symbolic spelling. *)
+let vsetvli_form (rec_ : R.t) =
+  let mnemonic = "vsetvli" in
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = gpr (); role = In; explicit = true } in
+      let vtype =
+        {
+          op_name = "vtype";
+          op_kind =
+            Immediate
+              {
+                width_bits = 11;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [
+                    {
+                      field_name = "zimm11";
+                      field_hi = 10;
+                      field_lo = 0;
+                      dest_hi = 10;
+                      dest_lo = 0;
+                    };
+                  ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "riscv:vsetvli";
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; vtype ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "rs1"; Syn_operand "vtype" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, zimm11 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "GAS spells the vtype operand as a keyword decomposition \
+                   (\"e<SEW>,m<LMUL>,ta|tu,ma|mu\"), not a numeral - not modeled here, owned by \
+                   the encoder";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* vsetivli's own [rd, zimm5, zimm10] shape: the immediate-AVL sibling of
+   {!vsetvli_form} above, [zimm5] (the AVL, GAS's own [uimm]) taking the
+   bit position a GPR number would in [rs1] - the same reuse
+   {!csr_imm_form}'s own [zimm5] already documents - and [zimm10] one bit
+   narrower than [vsetvli]'s [zimm11] (bits[31:30] are fixed to 0b11
+   instead of carrying one more content bit). GAS's own text order, [rd,
+   uimm, vtype...], matches riscv-opcodes' field order reversed (rd last
+   there), the same kind of reordering {!csr_reg_form} documents. *)
+let vsetivli_form (rec_ : R.t) =
+  let mnemonic = "vsetivli" in
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let uimm =
+        {
+          op_name = "uimm";
+          op_kind =
+            Immediate
+              {
+                width_bits = 5;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [ { field_name = "zimm5"; field_hi = 4; field_lo = 0; dest_hi = 4; dest_lo = 0 } ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      let vtype =
+        {
+          op_name = "vtype";
+          op_kind =
+            Immediate
+              {
+                width_bits = 10;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [
+                    { field_name = "zimm10"; field_hi = 9; field_lo = 0; dest_hi = 9; dest_lo = 0 };
+                  ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "riscv:vsetivli";
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; uimm; vtype ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "uimm"; Syn_operand "vtype" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields zimm10, zimm5, rd taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note = "GAS syntax reorders these as \"mnemonic rd, uimm, vtype...\"";
+              };
+              {
+                label = Inferred;
+                note =
+                  "GAS spells the vtype operand as a keyword decomposition \
+                   (\"e<SEW>,m<LMUL>,ta|tu,ma|mu\"), not a numeral - not modeled here, owned by \
+                   the encoder";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* [vadd.vv vd, vs2, vs1] - the entry point into OP-V's ~373-record
+   vector-vector/vector-scalar/vector-immediate arithmetic space. All three
+   real operands (renamed [rd]/[rs2]/[rs1], the same convention
+   {!r_type_gpr_form} uses regardless of a field's own riscv-opcodes name)
+   are vector registers ({!vreg}, mirroring {!fpr}'s and {!gpr}'s existing
+   per-class constructors) rather than GPRs. The fourth riscv-opcodes
+   variable field, [vm], is a mask-select bit, not a value-carrying operand -
+   GAS's own optional trailing [, v0.t] is left to the encoder to model, the
+   same way {!vsetvli_form} leaves its keyword-list [vtype] syntax to the
+   encoder. *)
+let vadd_vv_form (rec_ : R.t) =
+  let mnemonic = "vadd.vv" in
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = vreg (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = vreg (); role = In; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:vadd.vv";
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rs2 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "rs2"; Syn_operand "rs1" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields vd, vs2, vs1 taken verbatim from encoding.fields, renamed \
+                   rd/rs2/rs1";
+              };
+              {
+                label = Inferred;
+                note =
+                  "GAS accepts an optional trailing mask operand (\", v0.t\") selecting vm=0 - not \
+                   modeled here, owned by the encoder";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* [vadd.vx vd, vs2, rs1] - the scalar-broadcast sibling: [rs1] stays a real
+   GPR (unlike [vadd.vv]'s all-vector shape), only [rd]/[rs2] are vector
+   registers. *)
+let vadd_vx_form (rec_ : R.t) =
+  let mnemonic = "vadd.vx" in
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = vreg (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = gpr (); role = In; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:vadd.vx";
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rs2 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "rs2"; Syn_operand "rs1" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields vd, vs2, rs1 taken verbatim from encoding.fields, renamed \
+                   rd/rs2/rs1";
+              };
+              {
+                label = Inferred;
+                note =
+                  "GAS accepts an optional trailing mask operand (\", v0.t\") selecting vm=0 - not \
+                   modeled here, owned by the encoder";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* [vadd.vi vd, vs2, simm5] - the immediate sibling: a real 5-bit SIGNED
+   immediate (riscv-opcodes' own [simm5] field, confirmed against real GNU
+   as: `vadd.vi v1, v2, -5` assembles, unlike an unsigned field which would
+   reject it) occupies [rs1]'s bit position. *)
+let vadd_vi_form (rec_ : R.t) =
+  let mnemonic = "vadd.vi" in
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = vreg (); role = Out; explicit = true } in
+      let simm5 =
+        {
+          op_name = "simm5";
+          op_kind =
+            Immediate
+              {
+                width_bits = 5;
+                signed = true;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [ { field_name = "simm5"; field_hi = 4; field_lo = 0; dest_hi = 4; dest_lo = 0 } ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      let rs2 = { op_name = "rs2"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:vadd.vi";
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; simm5; rs2 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "rs2"; Syn_operand "simm5" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields vd, vs2, simm5 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "GAS accepts an optional trailing mask operand (\", v0.t\") selecting vm=0 - not \
+                   modeled here, owned by the encoder";
+              };
+            ];
+          diagnostics = [];
+        }
+
 let normalize (rec_ : R.t) =
   match rec_.native_name with
   | "sw" -> sw_form rec_
@@ -2254,6 +2583,11 @@ let normalize (rec_ : R.t) =
      does (riscv_family_encode.ml's own dedicated two-operand match arm). *)
   | "zext.h" -> unary_gpr_form ~mnemonic:"zext.h" rec_
   | "zext.h.rv32" -> unary_gpr_form ~mnemonic:"zext.h" rec_
+  | "vsetvli" -> vsetvli_form rec_
+  | "vsetivli" -> vsetivli_form rec_
+  | "vadd.vv" -> vadd_vv_form rec_
+  | "vadd.vx" -> vadd_vx_form rec_
+  | "vadd.vi" -> vadd_vi_form rec_
   | other ->
       err "unhandled-native-name"
         (Printf.sprintf

@@ -231,6 +231,18 @@ let test_counts () =
          (fun (e : Isa_gen_difficult.entry) ->
            e.target = Target.Riscv64 && String.equal e.lookup_key "zext.h")
          Isa_gen_difficult.zext_h_entries);
+  check "vsetvl_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsetvl_entries = 2);
+  check "vsetvli_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsetvli_entries = 2);
+  check "vsetivli_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsetivli_entries = 2);
+  check "vadd_vv_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vadd_vv_entries = 2);
+  check "vadd_vx_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vadd_vx_entries = 2);
+  check "vadd_vi_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vadd_vi_entries = 2);
   check "all includes every difficult-form family"
     (List.length Isa_gen_difficult.all
     = List.length Isa_gen_difficult.sw_entries
@@ -397,7 +409,13 @@ let test_counts () =
       + List.length Isa_gen_difficult.fcvt_s_l_entries
       + List.length Isa_gen_difficult.fcvt_s_lu_entries
       + List.length Isa_gen_difficult.fcvt_d_l_entries
-      + List.length Isa_gen_difficult.fcvt_d_lu_entries)
+      + List.length Isa_gen_difficult.fcvt_d_lu_entries
+      + List.length Isa_gen_difficult.vsetvl_entries
+      + List.length Isa_gen_difficult.vsetvli_entries
+      + List.length Isa_gen_difficult.vsetivli_entries
+      + List.length Isa_gen_difficult.vadd_vv_entries
+      + List.length Isa_gen_difficult.vadd_vx_entries
+      + List.length Isa_gen_difficult.vadd_vi_entries)
 
 let test_case_ids_distinct () =
   let ids = List.map (fun (e : Isa_gen_difficult.entry) -> e.case_id) Isa_gen_difficult.all in
@@ -763,6 +781,80 @@ let test_f_cvt_l_domain () =
     (Isa_gen_difficult.fcvt_s_l_entries @ Isa_gen_difficult.fcvt_s_lu_entries
    @ Isa_gen_difficult.fcvt_d_l_entries @ Isa_gen_difficult.fcvt_d_lu_entries)
 
+(* vsetvl: three ordinary GPR operands, both profiles, `v` enabled and no
+   other extension needed (unlike every Zb*/Zk* family above). *)
+let test_vsetvl_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses three ordinary GPR operands" e.case_id)
+        (List.map snd e.operands = [ "a0"; "a1"; "a2" ]);
+      check
+        (Printf.sprintf "%s: flags the v-enabled rule" e.case_id)
+        (List.mem "v-enabled" e.rule_ids);
+      check
+        (Printf.sprintf "%s: configuration enables the v extension" e.case_id)
+        (List.exists
+           (fun arg ->
+             String.length arg > 7
+             && String.sub arg 0 7 = "-march="
+             && String.ends_with ~suffix:"v" arg)
+           e.configuration))
+    Isa_gen_difficult.vsetvl_entries
+
+(* vsetvli/vsetivli: the [vtype] operand's own value is the full literal
+   "e<SEW>,m<LMUL>,ta|tu,ma|mu" spelling, embedded commas and all -
+   {!Isa_gen_render.render_line} joins operand values with ", " regardless
+   of whether a value itself contains one, so this still renders the
+   canonical six-operand spelling from a three-element operands list. *)
+let test_vsetvli_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, rs1, vtype operands in that order" e.case_id)
+        (List.map fst e.operands = [ "rd"; "rs1"; "vtype" ]
+        && List.map snd e.operands = [ "a0"; "a1"; "e32, m1, ta, ma" ]);
+      check
+        (Printf.sprintf "%s: flags the vtype-keyword-list rule" e.case_id)
+        (List.mem "vtype-keyword-list" e.rule_ids))
+    Isa_gen_difficult.vsetvli_entries;
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, uimm, vtype operands in that order" e.case_id)
+        (List.map fst e.operands = [ "rd"; "uimm"; "vtype" ]
+        && List.map snd e.operands = [ "a0"; "5"; "e32, m1, ta, ma" ]))
+    Isa_gen_difficult.vsetivli_entries
+
+(* vadd.vv/vadd.vx/vadd.vi: the entry point into OP-V's real vector-register
+   arithmetic space, distinct from the configuration-setting group above -
+   flags "vector-register-operands" rather than "vtype-keyword-list". *)
+let test_vadd_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, rs2, rs1 vector-register operands" e.case_id)
+        (List.map fst e.operands = [ "rd"; "rs2"; "rs1" ]
+        && List.map snd e.operands = [ "v1"; "v2"; "v3" ]);
+      check
+        (Printf.sprintf "%s: flags the vector-register-operands rule" e.case_id)
+        (List.mem "vector-register-operands" e.rule_ids))
+    Isa_gen_difficult.vadd_vv_entries;
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, rs2 vector registers and a GPR rs1" e.case_id)
+        (List.map fst e.operands = [ "rd"; "rs2"; "rs1" ]
+        && List.map snd e.operands = [ "v1"; "v2"; "a0" ]))
+    Isa_gen_difficult.vadd_vx_entries;
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, rs2 vector registers and a signed immediate" e.case_id)
+        (List.map fst e.operands = [ "rd"; "rs2"; "simm5" ]
+        && List.map snd e.operands = [ "v1"; "v2"; "-5" ]))
+    Isa_gen_difficult.vadd_vi_entries
+
 let test_sh1add_domain () =
   List.iter
     (fun (e : Isa_gen_difficult.entry) ->
@@ -1028,6 +1120,9 @@ let () =
   test_f_cvt_w_s_domain ();
   test_f_cvt_w_d_domain ();
   test_f_cvt_l_domain ();
+  test_vsetvl_domain ();
+  test_vsetvli_domain ();
+  test_vadd_domain ();
   test_sh1add_domain ();
   test_minmax_domain ();
   test_unary_gpr_domain ();

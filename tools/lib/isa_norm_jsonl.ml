@@ -67,6 +67,7 @@ let arch_of_json json =
 let register_class_to_json : Isa_norm_model.register_class -> Jsont.json = function
   | Riscv_gpr -> str "riscv_gpr"
   | Riscv_fpr -> str "riscv_fpr"
+  | Riscv_vec -> str "riscv_vec"
   | X86_gpr -> str "x86_gpr"
   | X87_st -> str "x87_st"
 
@@ -75,6 +76,7 @@ let register_class_of_json json =
   match s with
   | "riscv_gpr" -> Ok Isa_norm_model.Riscv_gpr
   | "riscv_fpr" -> Ok Isa_norm_model.Riscv_fpr
+  | "riscv_vec" -> Ok Isa_norm_model.Riscv_vec
   | "x86_gpr" -> Ok Isa_norm_model.X86_gpr
   | "x87_st" -> Ok Isa_norm_model.X87_st
   | other -> err "unknown register_class: %s" other

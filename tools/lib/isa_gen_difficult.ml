@@ -1496,6 +1496,129 @@ let zext_h_entries =
     zext_h_entry ~lookup_key:"zext.h" Target.Riscv64;
   ]
 
+(* vsetvl (V's register-register vector configuration-setting instruction):
+   the same plain three-GPR R-type shape as {!zbc_r_type_entry} above, but
+   [rd, rs1, rs2] rather than the operation's usual roles - [rs1] the
+   requested AVL, [rs2] the desired vtype, [rd] the resulting vl - riscv-
+   opcodes exports a single rv_v record on both profiles with no import
+   duplication. `-march=rv32iv`/`rv64iv` alone (no F/D) suffices for real
+   GNU as to accept it: confirmed `vsetvl a0, a1, a2` -> `80c5f557` on both
+   riscv32-linux-gnu-as 2.43.1 and riscv64-linux-gnu-as 2.44. This is the
+   cheapest possible entry point into the 375-record rv_v family: no vector
+   register class, no vtype-immediate text syntax (vsetvli/vsetivli's own
+   "e<SEW>,m<LMUL>,ta|tu,ma|mu" operand list is a separate, larger
+   normalization problem, left as a named follow-up). *)
+let v_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32iv"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64iv"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let vsetvl_entry target =
+  {
+    form_id = "riscv:vsetvl";
+    target;
+    lookup_key = "vsetvl";
+    case_id = Printf.sprintf "riscv:vsetvl:register-register:%s" (Target.to_string target);
+    rule_ids = [ "v-enabled"; "three-gpr-operands" ];
+    operands = [ ("rd", "a0"); ("rs1", "a1"); ("rs2", "a2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let vsetvl_entries = List.map vsetvl_entry [ Target.Riscv32; Target.Riscv64 ]
+
+(* vsetvli/vsetivli: V's own immediate-vtype siblings of {!vsetvl_entry}.
+   {!Isa_norm_riscv.vsetvli_form}/{!vsetivli_form} model the whole
+   "e<SEW>,m<LMUL>,ta|tu,ma|mu" spelling as one [vtype] operand, so its
+   entry value here is the full literal spelling with its own embedded
+   commas - {!Isa_gen_render.render_line} joins operand values with ", "
+   regardless of whether a value itself contains one, so this renders
+   exactly the canonical six-operand spelling. Confirmed against real GNU
+   as: `vsetvli a0, a1, e32, m1, ta, ma` -> `0d05f557`, `vsetivli a0, 5,
+   e32, m1, ta, ma` -> `cd02f557`, identical on both profiles (V is
+   XLEN-independent). *)
+let vsetvli_entry target =
+  {
+    form_id = "riscv:vsetvli";
+    target;
+    lookup_key = "vsetvli";
+    case_id = Printf.sprintf "riscv:vsetvli:full-spelling:%s" (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vtype-keyword-list" ];
+    operands = [ ("rd", "a0"); ("rs1", "a1"); ("vtype", "e32, m1, ta, ma") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let vsetvli_entries = List.map vsetvli_entry [ Target.Riscv32; Target.Riscv64 ]
+
+let vsetivli_entry target =
+  {
+    form_id = "riscv:vsetivli";
+    target;
+    lookup_key = "vsetivli";
+    case_id = Printf.sprintf "riscv:vsetivli:full-spelling:%s" (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vtype-keyword-list" ];
+    operands = [ ("rd", "a0"); ("uimm", "5"); ("vtype", "e32, m1, ta, ma") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let vsetivli_entries = List.map vsetivli_entry [ Target.Riscv32; Target.Riscv64 ]
+
+(* [vadd.vv]/[vadd.vx]/[vadd.vi]: the entry point into OP-V's real
+   vector-register arithmetic space (as opposed to the configuration-setting
+   group above). Confirmed against real GNU as, identical on both profiles
+   (V is XLEN-independent): `vadd.vv v1, v2, v3` -> `022180d7`; `vadd.vx v1,
+   v2, a0` -> `022540d7`; `vadd.vi v1, v2, -5` -> `022db0d7`. *)
+let vadd_vv_entry target =
+  {
+    form_id = "riscv:vadd.vv";
+    target;
+    lookup_key = "vadd.vv";
+    case_id = Printf.sprintf "riscv:vadd.vv:vector-vector:%s" (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let vadd_vv_entries = List.map vadd_vv_entry [ Target.Riscv32; Target.Riscv64 ]
+
+let vadd_vx_entry target =
+  {
+    form_id = "riscv:vadd.vx";
+    target;
+    lookup_key = "vadd.vx";
+    case_id = Printf.sprintf "riscv:vadd.vx:vector-scalar:%s" (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "a0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let vadd_vx_entries = List.map vadd_vx_entry [ Target.Riscv32; Target.Riscv64 ]
+
+let vadd_vi_entry target =
+  {
+    form_id = "riscv:vadd.vi";
+    target;
+    lookup_key = "vadd.vi";
+    case_id = Printf.sprintf "riscv:vadd.vi:vector-immediate:%s" (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("simm5", "-5") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let vadd_vi_entries = List.map vadd_vi_entry [ Target.Riscv32; Target.Riscv64 ]
+
 let all =
   sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @ x86_fadd_entries @ fadd_s_entries
   @ fsub_s_entries @ fmul_s_entries @ fdiv_s_entries @ fadd_d_entries @ fsub_d_entries
@@ -1528,7 +1651,8 @@ let all =
   @ fmv_w_x_entries @ fcvt_w_s_entries @ fcvt_wu_s_entries @ fcvt_s_w_entries @ fcvt_s_wu_entries
   @ fcvt_w_d_entries @ fcvt_wu_d_entries @ fcvt_d_w_entries @ fcvt_d_wu_entries @ fcvt_s_d_entries
   @ fcvt_d_s_entries @ fcvt_l_d_entries @ fcvt_lu_d_entries @ fcvt_l_s_entries @ fcvt_lu_s_entries
-  @ fcvt_s_l_entries @ fcvt_s_lu_entries @ fcvt_d_l_entries @ fcvt_d_lu_entries
+  @ fcvt_s_l_entries @ fcvt_s_lu_entries @ fcvt_d_l_entries @ fcvt_d_lu_entries @ vsetvl_entries
+  @ vsetvli_entries @ vsetivli_entries @ vadd_vv_entries @ vadd_vx_entries @ vadd_vi_entries
 
 let pilot_entry_of (entry : entry) =
   let evidence =
