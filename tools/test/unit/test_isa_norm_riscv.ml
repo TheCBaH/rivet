@@ -301,6 +301,120 @@ let xperm4_json =
 let xperm8_json =
   {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[31:25]", "width": 7}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x28004033", "width_bits": 32}, "kind": "instruction-form", "native_name": "xperm8", "origin": {"line": 2, "path": "extensions/rv_zbkx"}, "provenance": {"extension": "rv_zbkx", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "xperm8     rd rs1 rs2 31..25=20 14..12=4 6..2=0x0C 1..0=3", "tokens": ["xperm8", "rd", "rs1", "rs2", "31..25=20", "14..12=4", "6..2=0x0C", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x28004033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_zbkx:xperm8@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
 
+let sha256sum0_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x10001013", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha256sum0", "origin": {"line": 2, "path": "extensions/rv_zknh"}, "provenance": {"extension": "rv_zknh", "operands": ["rd", "rs1"], "raw": {"line": "sha256sum0    rd rs1 31..30=0 29..25=0b01000 24..20=0b00000 14..12=1 6..0=0x13", "tokens": ["sha256sum0", "rd", "rs1", "31..30=0", "29..25=0b01000", "24..20=0b00000", "14..12=1", "6..0=0x13"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x10001013", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv_zknh:sha256sum0@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha256sum1_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x10101013", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha256sum1", "origin": {"line": 3, "path": "extensions/rv_zknh"}, "provenance": {"extension": "rv_zknh", "operands": ["rd", "rs1"], "raw": {"line": "sha256sum1    rd rs1 31..30=0 29..25=0b01000 24..20=0b00001 14..12=1 6..0=0x13", "tokens": ["sha256sum1", "rd", "rs1", "31..30=0", "29..25=0b01000", "24..20=0b00001", "14..12=1", "6..0=0x13"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x10101013", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv_zknh:sha256sum1@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha256sig0_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x10201013", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha256sig0", "origin": {"line": 4, "path": "extensions/rv_zknh"}, "provenance": {"extension": "rv_zknh", "operands": ["rd", "rs1"], "raw": {"line": "sha256sig0    rd rs1 31..30=0 29..25=0b01000 24..20=0b00010 14..12=1 6..0=0x13", "tokens": ["sha256sig0", "rd", "rs1", "31..30=0", "29..25=0b01000", "24..20=0b00010", "14..12=1", "6..0=0x13"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x10201013", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv_zknh:sha256sig0@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha256sig1_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x10301013", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha256sig1", "origin": {"line": 5, "path": "extensions/rv_zknh"}, "provenance": {"extension": "rv_zknh", "operands": ["rd", "rs1"], "raw": {"line": "sha256sig1    rd rs1 31..30=0 29..25=0b01000 24..20=0b00011 14..12=1 6..0=0x13", "tokens": ["sha256sig1", "rd", "rs1", "31..30=0", "29..25=0b01000", "24..20=0b00011", "14..12=1", "6..0=0x13"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x10301013", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv_zknh:sha256sig1@L5", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha512sum0_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x10401013", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha512sum0", "origin": {"line": 2, "path": "extensions/rv64_zknh"}, "provenance": {"extension": "rv64_zknh", "operands": ["rd", "rs1"], "raw": {"line": "sha512sum0 rd rs1  31..30=0 29..25=0b01000 24..20=0b00100 14..12=1 6..0=0x13", "tokens": ["sha512sum0", "rd", "rs1", "31..30=0", "29..25=0b01000", "24..20=0b00100", "14..12=1", "6..0=0x13"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x10401013", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv64_zknh:sha512sum0@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha512sum1_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x10501013", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha512sum1", "origin": {"line": 3, "path": "extensions/rv64_zknh"}, "provenance": {"extension": "rv64_zknh", "operands": ["rd", "rs1"], "raw": {"line": "sha512sum1 rd rs1  31..30=0 29..25=0b01000 24..20=0b00101 14..12=1 6..0=0x13", "tokens": ["sha512sum1", "rd", "rs1", "31..30=0", "29..25=0b01000", "24..20=0b00101", "14..12=1", "6..0=0x13"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x10501013", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv64_zknh:sha512sum1@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha512sig0_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x10601013", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha512sig0", "origin": {"line": 4, "path": "extensions/rv64_zknh"}, "provenance": {"extension": "rv64_zknh", "operands": ["rd", "rs1"], "raw": {"line": "sha512sig0 rd rs1  31..30=0 29..25=0b01000 24..20=0b00110 14..12=1 6..0=0x13", "tokens": ["sha512sig0", "rd", "rs1", "31..30=0", "29..25=0b01000", "24..20=0b00110", "14..12=1", "6..0=0x13"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x10601013", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv64_zknh:sha512sig0@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha512sig1_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x10701013", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha512sig1", "origin": {"line": 5, "path": "extensions/rv64_zknh"}, "provenance": {"extension": "rv64_zknh", "operands": ["rd", "rs1"], "raw": {"line": "sha512sig1 rd rs1  31..30=0 29..25=0b01000 24..20=0b00111 14..12=1 6..0=0x13", "tokens": ["sha512sig1", "rd", "rs1", "31..30=0", "29..25=0b01000", "24..20=0b00111", "14..12=1", "6..0=0x13"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x10701013", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv64_zknh:sha512sig1@L5", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha512sum0r_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x50000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha512sum0r", "origin": {"line": 2, "path": "extensions/rv32_zknh"}, "provenance": {"extension": "rv32_zknh", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "sha512sum0r   rd rs1 rs2    31..30=1 29..25=0b01000 14..12=0 6..0=0x33", "tokens": ["sha512sum0r", "rd", "rs1", "rs2", "31..30=1", "29..25=0b01000", "14..12=0", "6..0=0x33"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x50000033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv32_zknh:sha512sum0r@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha512sum1r_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x52000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha512sum1r", "origin": {"line": 3, "path": "extensions/rv32_zknh"}, "provenance": {"extension": "rv32_zknh", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "sha512sum1r   rd rs1 rs2    31..30=1 29..25=0b01001 14..12=0 6..0=0x33", "tokens": ["sha512sum1r", "rd", "rs1", "rs2", "31..30=1", "29..25=0b01001", "14..12=0", "6..0=0x33"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x52000033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv32_zknh:sha512sum1r@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha512sig0l_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x54000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha512sig0l", "origin": {"line": 4, "path": "extensions/rv32_zknh"}, "provenance": {"extension": "rv32_zknh", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "sha512sig0l   rd rs1 rs2    31..30=1 29..25=0b01010 14..12=0 6..0=0x33", "tokens": ["sha512sig0l", "rd", "rs1", "rs2", "31..30=1", "29..25=0b01010", "14..12=0", "6..0=0x33"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x54000033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv32_zknh:sha512sig0l@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha512sig1l_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x56000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha512sig1l", "origin": {"line": 6, "path": "extensions/rv32_zknh"}, "provenance": {"extension": "rv32_zknh", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "sha512sig1l   rd rs1 rs2    31..30=1 29..25=0b01011 14..12=0 6..0=0x33", "tokens": ["sha512sig1l", "rd", "rs1", "rs2", "31..30=1", "29..25=0b01011", "14..12=0", "6..0=0x33"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x56000033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv32_zknh:sha512sig1l@L6", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha512sig0h_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x5c000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha512sig0h", "origin": {"line": 5, "path": "extensions/rv32_zknh"}, "provenance": {"extension": "rv32_zknh", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "sha512sig0h   rd rs1 rs2    31..30=1 29..25=0b01110 14..12=0 6..0=0x33", "tokens": ["sha512sig0h", "rd", "rs1", "rs2", "31..30=1", "29..25=0b01110", "14..12=0", "6..0=0x33"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x5c000033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv32_zknh:sha512sig0h@L5", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sha512sig1h_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x5e000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "sha512sig1h", "origin": {"line": 7, "path": "extensions/rv32_zknh"}, "provenance": {"extension": "rv32_zknh", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "sha512sig1h   rd rs1 rs2    31..30=1 29..25=0b01111 14..12=0 6..0=0x33", "tokens": ["sha512sig1h", "rd", "rs1", "rs2", "31..30=1", "29..25=0b01111", "14..12=0", "6..0=0x33"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x5e000033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv32_zknh:sha512sig1h@L7", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let aes64ds_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x3a000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "aes64ds", "origin": {"line": 3, "path": "extensions/rv64_zknd"}, "provenance": {"extension": "rv64_zknd", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "aes64ds    rd rs1 rs2  31..30=0 29..25=0b11101          14..12=0b000 6..0=0x33", "tokens": ["aes64ds", "rd", "rs1", "rs2", "31..30=0", "29..25=0b11101", "14..12=0b000", "6..0=0x33"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x3a000033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv64_zknd:aes64ds@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let aes64dsm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x3e000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "aes64dsm", "origin": {"line": 2, "path": "extensions/rv64_zknd"}, "provenance": {"extension": "rv64_zknd", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "aes64dsm   rd rs1 rs2  31..30=0 29..25=0b11111          14..12=0b000 6..0=0x33", "tokens": ["aes64dsm", "rd", "rs1", "rs2", "31..30=0", "29..25=0b11111", "14..12=0b000", "6..0=0x33"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x3e000033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv64_zknd:aes64dsm@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let aes64es_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x32000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "aes64es", "origin": {"line": 3, "path": "extensions/rv64_zkne"}, "provenance": {"extension": "rv64_zkne", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "aes64es    rd rs1 rs2  31..30=0 29..25=0b11001          14..12=0b000 6..0=0x33", "tokens": ["aes64es", "rd", "rs1", "rs2", "31..30=0", "29..25=0b11001", "14..12=0b000", "6..0=0x33"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x32000033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv64_zkne:aes64es@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let aes64esm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x36000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "aes64esm", "origin": {"line": 2, "path": "extensions/rv64_zkne"}, "provenance": {"extension": "rv64_zkne", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "aes64esm   rd rs1 rs2  31..30=0 29..25=0b11011          14..12=0b000 6..0=0x33", "tokens": ["aes64esm", "rd", "rs1", "rs2", "31..30=0", "29..25=0b11011", "14..12=0b000", "6..0=0x33"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x36000033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv64_zkne:aes64esm@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let aes64ks2_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x7e000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "aes64ks2", "origin": {"line": 6, "path": "extensions/rv64_zknd"}, "provenance": {"extension": "rv64_zknd", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "aes64ks2   rd rs1 rs2  31..30=1 29..25=0b11111          14..12=0b000 6..0=0x33", "tokens": ["aes64ks2", "rd", "rs1", "rs2", "31..30=1", "29..25=0b11111", "14..12=0b000", "6..0=0x33"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x7e000033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv64_zknd:aes64ks2@L6", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrrw_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "csr", "width": 12}], "kind": "fixed_bits", "mask": "0x707f", "value": "0x1073", "width_bits": 32}, "kind": "instruction-form", "native_name": "csrrw", "origin": {"line": 1, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["rd", "rs1", "csr"], "raw": {"line": "csrrw     rd rs1 csr        14..12=1 6..2=0x1C 1..0=3", "tokens": ["csrrw", "rd", "rs1", "csr", "14..12=1", "6..2=0x1C", "1..0=3"]}, "upstream-resolved": {"mask": "0x707f", "match": "0x1073", "variable_fields": ["rd", "rs1", "csr"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrrw@L1", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrrs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "csr", "width": 12}], "kind": "fixed_bits", "mask": "0x707f", "value": "0x2073", "width_bits": 32}, "kind": "instruction-form", "native_name": "csrrs", "origin": {"line": 2, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["rd", "rs1", "csr"], "raw": {"line": "csrrs     rd rs1 csr        14..12=2 6..2=0x1C 1..0=3", "tokens": ["csrrs", "rd", "rs1", "csr", "14..12=2", "6..2=0x1C", "1..0=3"]}, "upstream-resolved": {"mask": "0x707f", "match": "0x2073", "variable_fields": ["rd", "rs1", "csr"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrrs@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrrc_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "csr", "width": 12}], "kind": "fixed_bits", "mask": "0x707f", "value": "0x3073", "width_bits": 32}, "kind": "instruction-form", "native_name": "csrrc", "origin": {"line": 3, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["rd", "rs1", "csr"], "raw": {"line": "csrrc     rd rs1 csr        14..12=3 6..2=0x1C 1..0=3", "tokens": ["csrrc", "rd", "rs1", "csr", "14..12=3", "6..2=0x1C", "1..0=3"]}, "upstream-resolved": {"mask": "0x707f", "match": "0x3073", "variable_fields": ["rd", "rs1", "csr"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrrc@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrrwi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 20, "name": "csr", "width": 12}, {"lsb": 15, "name": "zimm5", "width": 5}], "kind": "fixed_bits", "mask": "0x707f", "value": "0x5073", "width_bits": 32}, "kind": "instruction-form", "native_name": "csrrwi", "origin": {"line": 4, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["rd", "csr", "zimm5"], "raw": {"line": "csrrwi    rd csr zimm5       14..12=5 6..2=0x1C 1..0=3", "tokens": ["csrrwi", "rd", "csr", "zimm5", "14..12=5", "6..2=0x1C", "1..0=3"]}, "upstream-resolved": {"mask": "0x707f", "match": "0x5073", "variable_fields": ["rd", "csr", "zimm5"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrrwi@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrrsi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 20, "name": "csr", "width": 12}, {"lsb": 15, "name": "zimm5", "width": 5}], "kind": "fixed_bits", "mask": "0x707f", "value": "0x6073", "width_bits": 32}, "kind": "instruction-form", "native_name": "csrrsi", "origin": {"line": 5, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["rd", "csr", "zimm5"], "raw": {"line": "csrrsi    rd csr zimm5       14..12=6 6..2=0x1C 1..0=3", "tokens": ["csrrsi", "rd", "csr", "zimm5", "14..12=6", "6..2=0x1C", "1..0=3"]}, "upstream-resolved": {"mask": "0x707f", "match": "0x6073", "variable_fields": ["rd", "csr", "zimm5"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrrsi@L5", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrrci_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 20, "name": "csr", "width": 12}, {"lsb": 15, "name": "zimm5", "width": 5}], "kind": "fixed_bits", "mask": "0x707f", "value": "0x7073", "width_bits": 32}, "kind": "instruction-form", "native_name": "csrrci", "origin": {"line": 6, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["rd", "csr", "zimm5"], "raw": {"line": "csrrci    rd csr zimm5       14..12=7 6..2=0x1C 1..0=3", "tokens": ["csrrci", "rd", "csr", "zimm5", "14..12=7", "6..2=0x1C", "1..0=3"]}, "upstream-resolved": {"mask": "0x707f", "match": "0x7073", "variable_fields": ["rd", "csr", "zimm5"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrrci@L6", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrr_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 7, "name": "rd", "width": 5}, {"lsb": 20, "name": "csr", "width": 12}], "kind": "fixed_bits", "mask": "0xff07f", "value": "0x2073", "width_bits": 32}, "kind": "pseudo-op", "native_name": "csrr", "origin": {"line": 9, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["rd", "csr"], "raw": {"line": "$pseudo_op rv_zicsr::csrrs csrr     rd csr      19..15=0x0 14..12=2 6..2=0x1C 1..0=3", "tokens": ["$pseudo_op", "rv_zicsr::csrrs", "csrr", "rd", "csr", "19..15=0x0", "14..12=2", "6..2=0x1C", "1..0=3"]}, "relationship-resolution": [{"candidates": ["riscv-opcodes:rv_zicsr:csrrs@L2"], "kind": "specializes", "status": "exact"}], "specializes-reference": {"extension": "rv_zicsr", "name": "csrrs"}, "upstream-resolved": {"mask": "0xff07f", "match": "0x2073", "variable_fields": ["rd", "csr"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrr@L9", "relationships": [{"kind": "specializes", "target": "riscv-opcodes:rv_zicsr:csrrs@L2"}], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrw_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "csr", "width": 12}], "kind": "fixed_bits", "mask": "0x7fff", "value": "0x1073", "width_bits": 32}, "kind": "pseudo-op", "native_name": "csrw", "origin": {"line": 10, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["rs1", "csr"], "raw": {"line": "$pseudo_op rv_zicsr::csrrw csrw     rs1 csr     14..12=1 11..7=0x0 6..2=0x1C 1..0=3", "tokens": ["$pseudo_op", "rv_zicsr::csrrw", "csrw", "rs1", "csr", "14..12=1", "11..7=0x0", "6..2=0x1C", "1..0=3"]}, "relationship-resolution": [{"candidates": ["riscv-opcodes:rv_zicsr:csrrw@L1"], "kind": "specializes", "status": "exact"}], "specializes-reference": {"extension": "rv_zicsr", "name": "csrrw"}, "upstream-resolved": {"mask": "0x7fff", "match": "0x1073", "variable_fields": ["rs1", "csr"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrw@L10", "relationships": [{"kind": "specializes", "target": "riscv-opcodes:rv_zicsr:csrrw@L1"}], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrs_alias_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "csr", "width": 12}], "kind": "fixed_bits", "mask": "0x7fff", "value": "0x2073", "width_bits": 32}, "kind": "pseudo-op", "native_name": "csrs", "origin": {"line": 11, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["rs1", "csr"], "raw": {"line": "$pseudo_op rv_zicsr::csrrs csrs     rs1 csr     14..12=2 11..7=0x0 6..2=0x1C 1..0=3", "tokens": ["$pseudo_op", "rv_zicsr::csrrs", "csrs", "rs1", "csr", "14..12=2", "11..7=0x0", "6..2=0x1C", "1..0=3"]}, "relationship-resolution": [{"candidates": ["riscv-opcodes:rv_zicsr:csrrs@L2"], "kind": "specializes", "status": "exact"}], "specializes-reference": {"extension": "rv_zicsr", "name": "csrrs"}, "upstream-resolved": {"mask": "0x7fff", "match": "0x2073", "variable_fields": ["rs1", "csr"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrs@L11", "relationships": [{"kind": "specializes", "target": "riscv-opcodes:rv_zicsr:csrrs@L2"}], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrc_alias_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "csr", "width": 12}], "kind": "fixed_bits", "mask": "0x7fff", "value": "0x3073", "width_bits": 32}, "kind": "pseudo-op", "native_name": "csrc", "origin": {"line": 12, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["rs1", "csr"], "raw": {"line": "$pseudo_op rv_zicsr::csrrc csrc     rs1 csr     14..12=3 11..7=0x0 6..2=0x1C 1..0=3", "tokens": ["$pseudo_op", "rv_zicsr::csrrc", "csrc", "rs1", "csr", "14..12=3", "11..7=0x0", "6..2=0x1C", "1..0=3"]}, "relationship-resolution": [{"candidates": ["riscv-opcodes:rv_zicsr:csrrc@L3"], "kind": "specializes", "status": "exact"}], "specializes-reference": {"extension": "rv_zicsr", "name": "csrrc"}, "upstream-resolved": {"mask": "0x7fff", "match": "0x3073", "variable_fields": ["rs1", "csr"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrc@L12", "relationships": [{"kind": "specializes", "target": "riscv-opcodes:rv_zicsr:csrrc@L3"}], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrwi_alias_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "csr", "width": 12}, {"lsb": 15, "name": "zimm5", "width": 5}], "kind": "fixed_bits", "mask": "0x7fff", "value": "0x5073", "width_bits": 32}, "kind": "pseudo-op", "native_name": "csrwi", "origin": {"line": 13, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["csr", "zimm5"], "raw": {"line": "$pseudo_op rv_zicsr::csrrwi csrwi   csr zimm5    14..12=5 11..7=0x0 6..2=0x1C 1..0=3", "tokens": ["$pseudo_op", "rv_zicsr::csrrwi", "csrwi", "csr", "zimm5", "14..12=5", "11..7=0x0", "6..2=0x1C", "1..0=3"]}, "relationship-resolution": [{"candidates": ["riscv-opcodes:rv_zicsr:csrrwi@L4"], "kind": "specializes", "status": "exact"}], "specializes-reference": {"extension": "rv_zicsr", "name": "csrrwi"}, "upstream-resolved": {"mask": "0x7fff", "match": "0x5073", "variable_fields": ["csr", "zimm5"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrwi@L13", "relationships": [{"kind": "specializes", "target": "riscv-opcodes:rv_zicsr:csrrwi@L4"}], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrsi_alias_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "csr", "width": 12}, {"lsb": 15, "name": "zimm5", "width": 5}], "kind": "fixed_bits", "mask": "0x7fff", "value": "0x6073", "width_bits": 32}, "kind": "pseudo-op", "native_name": "csrsi", "origin": {"line": 14, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["csr", "zimm5"], "raw": {"line": "$pseudo_op rv_zicsr::csrrsi csrsi   csr zimm5    14..12=6 11..7=0x0 6..2=0x1C 1..0=3", "tokens": ["$pseudo_op", "rv_zicsr::csrrsi", "csrsi", "csr", "zimm5", "14..12=6", "11..7=0x0", "6..2=0x1C", "1..0=3"]}, "relationship-resolution": [{"candidates": ["riscv-opcodes:rv_zicsr:csrrsi@L5"], "kind": "specializes", "status": "exact"}], "specializes-reference": {"extension": "rv_zicsr", "name": "csrrsi"}, "upstream-resolved": {"mask": "0x7fff", "match": "0x6073", "variable_fields": ["csr", "zimm5"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrsi@L14", "relationships": [{"kind": "specializes", "target": "riscv-opcodes:rv_zicsr:csrrsi@L5"}], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let csrci_alias_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "csr", "width": 12}, {"lsb": 15, "name": "zimm5", "width": 5}], "kind": "fixed_bits", "mask": "0x7fff", "value": "0x7073", "width_bits": 32}, "kind": "pseudo-op", "native_name": "csrci", "origin": {"line": 15, "path": "extensions/rv_zicsr"}, "provenance": {"extension": "rv_zicsr", "operands": ["csr", "zimm5"], "raw": {"line": "$pseudo_op rv_zicsr::csrrci csrci   csr zimm5    14..12=7 11..7=0x0 6..2=0x1C 1..0=3", "tokens": ["$pseudo_op", "rv_zicsr::csrrci", "csrci", "csr", "zimm5", "14..12=7", "11..7=0x0", "6..2=0x1C", "1..0=3"]}, "relationship-resolution": [{"candidates": ["riscv-opcodes:rv_zicsr:csrrci@L6"], "kind": "specializes", "status": "exact"}], "specializes-reference": {"extension": "rv_zicsr", "name": "csrrci"}, "upstream-resolved": {"mask": "0x7fff", "match": "0x7073", "variable_fields": ["csr", "zimm5"]}}, "record_id": "riscv-opcodes:rv_zicsr:csrci@L15", "relationships": [{"kind": "specializes", "target": "riscv-opcodes:rv_zicsr:csrrci@L6"}], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let aes32dsi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 30, "name": "bs", "width": 2}], "kind": "fixed_bits", "mask": "0x3e00707f", "value": "0x2a000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "aes32dsi", "origin": {"line": 3, "path": "extensions/rv32_zknd"}, "provenance": {"extension": "rv32_zknd", "operands": ["rd", "rs1", "rs2", "bs"], "raw": {"line": "aes32dsi      rd rs1 rs2 bs          29..25=0b10101 14..12=0 6..0=0x33", "tokens": ["aes32dsi", "rd", "rs1", "rs2", "bs", "29..25=0b10101", "14..12=0", "6..0=0x33"]}, "upstream-resolved": {"mask": "0x3e00707f", "match": "0x2a000033", "variable_fields": ["rd", "rs1", "rs2", "bs"]}}, "record_id": "riscv-opcodes:rv32_zknd:aes32dsi@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let aes32dsmi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 30, "name": "bs", "width": 2}], "kind": "fixed_bits", "mask": "0x3e00707f", "value": "0x2e000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "aes32dsmi", "origin": {"line": 2, "path": "extensions/rv32_zknd"}, "provenance": {"extension": "rv32_zknd", "operands": ["rd", "rs1", "rs2", "bs"], "raw": {"line": "aes32dsmi     rd rs1 rs2 bs          29..25=0b10111 14..12=0 6..0=0x33", "tokens": ["aes32dsmi", "rd", "rs1", "rs2", "bs", "29..25=0b10111", "14..12=0", "6..0=0x33"]}, "upstream-resolved": {"mask": "0x3e00707f", "match": "0x2e000033", "variable_fields": ["rd", "rs1", "rs2", "bs"]}}, "record_id": "riscv-opcodes:rv32_zknd:aes32dsmi@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let aes32esi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 30, "name": "bs", "width": 2}], "kind": "fixed_bits", "mask": "0x3e00707f", "value": "0x22000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "aes32esi", "origin": {"line": 4, "path": "extensions/rv32_zkne"}, "provenance": {"extension": "rv32_zkne", "operands": ["rd", "rs1", "rs2", "bs"], "raw": {"line": "aes32esi      rd rs1 rs2 bs          29..25=0b10001 14..12=0 6..0=0x33", "tokens": ["aes32esi", "rd", "rs1", "rs2", "bs", "29..25=0b10001", "14..12=0", "6..0=0x33"]}, "upstream-resolved": {"mask": "0x3e00707f", "match": "0x22000033", "variable_fields": ["rd", "rs1", "rs2", "bs"]}}, "record_id": "riscv-opcodes:rv32_zkne:aes32esi@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let aes32esmi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 30, "name": "bs", "width": 2}], "kind": "fixed_bits", "mask": "0x3e00707f", "value": "0x26000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "aes32esmi", "origin": {"line": 3, "path": "extensions/rv32_zkne"}, "provenance": {"extension": "rv32_zkne", "operands": ["rd", "rs1", "rs2", "bs"], "raw": {"line": "aes32esmi     rd rs1 rs2 bs          29..25=0b10011 14..12=0 6..0=0x33", "tokens": ["aes32esmi", "rd", "rs1", "rs2", "bs", "29..25=0b10011", "14..12=0", "6..0=0x33"]}, "upstream-resolved": {"mask": "0x3e00707f", "match": "0x26000033", "variable_fields": ["rd", "rs1", "rs2", "bs"]}}, "record_id": "riscv-opcodes:rv32_zkne:aes32esmi@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let aes64ks1i_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 24, "name": "bits[24:24]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rnum", "width": 4}], "kind": "fixed_bits", "mask": "0xff00707f", "value": "0x31001013", "width_bits": 32}, "kind": "instruction-form", "native_name": "aes64ks1i", "origin": {"line": 4, "path": "extensions/rv64_zknd"}, "provenance": {"extension": "rv64_zknd", "operands": ["rd", "rs1", "rnum"], "raw": {"line": "aes64ks1i  rd rs1 rnum 31..30=0 29..25=0b11000 24=1     14..12=0b001 6..0=0x13", "tokens": ["aes64ks1i", "rd", "rs1", "rnum", "31..30=0", "29..25=0b11000", "24=1", "14..12=0b001", "6..0=0x13"]}, "upstream-resolved": {"mask": "0xff00707f", "match": "0x31001013", "variable_fields": ["rd", "rs1", "rnum"]}}, "record_id": "riscv-opcodes:rv64_zknd:aes64ks1i@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let aes64im_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x30001013", "width_bits": 32}, "kind": "instruction-form", "native_name": "aes64im", "origin": {"line": 5, "path": "extensions/rv64_zknd"}, "provenance": {"extension": "rv64_zknd", "operands": ["rd", "rs1"], "raw": {"line": "aes64im    rd rs1      31..30=0 29..25=0b11000 24..20=0b0000 14..12=0b001 6..0=0x13", "tokens": ["aes64im", "rd", "rs1", "31..30=0", "29..25=0b11000", "24..20=0b0000", "14..12=0b001", "6..0=0x13"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x30001013", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv64_zknd:aes64im@L5", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
 let zip_json =
   {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":25,"name":"bits[31:25]","width":7},{"lsb":20,"name":"bits[24:20]","width":5},{"lsb":12,"name":"bits[14:12]","width":3},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5}],"kind":"fixed_bits","mask":"0xfff0707f","value":"0x8f01013","width_bits":32},"kind":"instruction-form","native_name":"zip","origin":{"line":1,"path":"extensions/rv32_zbkb"},"provenance":{"extension":"rv32_zbkb","operands":["rd","rs1"],"raw":{"line":"zip       rd rs1 31..25=4 24..20=15 14..12=1 6..2=4 1..0=3","tokens":["zip","rd","rs1","31..25=4","24..20=15","14..12=1","6..2=4","1..0=3"]},"upstream-resolved":{"mask":"0xfff0707f","match":"0x8f01013","variable_fields":["rd","rs1"]}},"record_id":"riscv-opcodes:rv32_zbkb:zip@L1","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
 
@@ -337,6 +451,32 @@ let test_r_type_gpr_any ~import_group ~mnemonic ~json =
     (mnemonic ^ ": renders as rd, rs1, rs2")
     (Isa_norm_model.render_syntax form.syntax = Printf.sprintf "%s rd, rs1, rs2" mnemonic)
 
+(* The two-GPR-operand analogue of {!test_r_type_gpr_any} above, for
+   unary_gpr_mnemonics entries (clz-shaped) that also need a Req_any
+   requirement rather than a plain Req_feature/Req_all. *)
+let test_unary_gpr_any ~import_group ~mnemonic ~json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check
+    (mnemonic ^ ": requirement is Req_any over the import-group features")
+    (form.requirement
+    = Isa_norm_model.Req_any
+        (List.map
+           (fun feature -> Isa_norm_model.Req_feature (Printf.sprintf "riscv:%s" feature))
+           import_group));
+  check
+    (mnemonic ^ ": two plain GPR operands, no immediate")
+    (List.length form.operands = 2
+    && List.for_all
+         (fun (o : Isa_norm_model.operand) ->
+           match o.op_kind with
+           | Register { class_ = Riscv_gpr; excluded = [] } -> true
+           | _ -> false)
+         form.operands);
+  check
+    (mnemonic ^ ": renders as rd, rs1")
+    (Isa_norm_model.render_syntax form.syntax = Printf.sprintf "%s rd, rs1" mnemonic)
+
 let test_andn () =
   test_r_type_gpr_any ~import_group:zbb_import_group ~mnemonic:"andn" ~json:andn_json
 
@@ -371,6 +511,422 @@ let test_xperm4 () =
 
 let test_xperm8 () =
   test_r_type_gpr_any ~import_group:zbkx_import_group ~mnemonic:"xperm8" ~json:xperm8_json
+
+(* sha256sum0/sha256sum1/sha256sig0/sha256sig1: the two-GPR unary-shape
+   analogue of xperm4/xperm8 above - a three-way Req_any group (rv_zknh
+   primary, imported by rv_zk/rv_zkn; no rv_zks, since SHA-256 belongs to
+   the NIST crypto profile, not ShangMi). *)
+let zknh_import_group = [ "zknh"; "zk"; "zkn" ]
+
+let test_sha256sum0 () =
+  test_unary_gpr_any ~import_group:zknh_import_group ~mnemonic:"sha256sum0" ~json:sha256sum0_json
+
+let test_sha256sum1 () =
+  test_unary_gpr_any ~import_group:zknh_import_group ~mnemonic:"sha256sum1" ~json:sha256sum1_json
+
+let test_sha256sig0 () =
+  test_unary_gpr_any ~import_group:zknh_import_group ~mnemonic:"sha256sig0" ~json:sha256sig0_json
+
+let test_sha256sig1 () =
+  test_unary_gpr_any ~import_group:zknh_import_group ~mnemonic:"sha256sig1" ~json:sha256sig1_json
+
+(* sha512sum0/sum1/sig0/sig1: sha256's RV64-only siblings - the same
+   two-GPR unary shape, but an XLEN-prefixed three-way Req_any group (no
+   RV32 record at all; riscv-opcodes' RV32 answer is a different,
+   32-bit-word-pair-split family out of this slice's scope), so this needs
+   the rev8-style Req_xlen-wrapped check rather than {!test_unary_gpr_any}'s
+   plain-Req_feature shape. *)
+let zknh_import_group_rv64 = [ "zknh"; "zk"; "zkn" ]
+
+let test_sha512_unary_any ~mnemonic ~json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check
+    (mnemonic ^ ": requirement is Req_any over the three rv64-prefixed features")
+    (form.requirement
+    = Isa_norm_model.Req_any
+        (List.map
+           (fun feature ->
+             Isa_norm_model.Req_all [ Req_xlen 64; Req_feature (Printf.sprintf "riscv:%s" feature) ])
+           zknh_import_group_rv64));
+  check
+    (mnemonic ^ ": two plain GPR operands, no immediate")
+    (List.length form.operands = 2
+    && List.for_all
+         (fun (o : Isa_norm_model.operand) ->
+           match o.op_kind with
+           | Register { class_ = Riscv_gpr; excluded = [] } -> true
+           | _ -> false)
+         form.operands);
+  check
+    (mnemonic ^ ": renders as rd, rs1")
+    (Isa_norm_model.render_syntax form.syntax = Printf.sprintf "%s rd, rs1" mnemonic)
+
+let test_sha512sum0 () = test_sha512_unary_any ~mnemonic:"sha512sum0" ~json:sha512sum0_json
+let test_sha512sum1 () = test_sha512_unary_any ~mnemonic:"sha512sum1" ~json:sha512sum1_json
+let test_sha512sig0 () = test_sha512_unary_any ~mnemonic:"sha512sig0" ~json:sha512sig0_json
+let test_sha512sig1 () = test_sha512_unary_any ~mnemonic:"sha512sig1" ~json:sha512sig1_json
+
+(* sha512sum0r/sum1r/sig0l/sig1l/sig0h/sig1h: SHA-512's own RV32-only
+   32-bit-word-pair-split helpers - a plain three-GPR R-type shape (not the
+   two-GPR unary one every sha256/sha512 form above uses), with the same
+   rv32-prefixed, Req_xlen-wrapped three-way Req_any group shape as
+   {!test_sha512_unary_any} above. *)
+let zknh_import_group_rv32 = [ "zknh"; "zk"; "zkn" ]
+
+let test_r_type_gpr_any_rv32 ~mnemonic ~json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check
+    (mnemonic ^ ": requirement is Req_any over the three rv32-prefixed features")
+    (form.requirement
+    = Isa_norm_model.Req_any
+        (List.map
+           (fun feature ->
+             Isa_norm_model.Req_all [ Req_xlen 32; Req_feature (Printf.sprintf "riscv:%s" feature) ])
+           zknh_import_group_rv32));
+  check
+    (mnemonic ^ ": three plain GPR operands, no immediate")
+    (List.length form.operands = 3
+    && List.for_all
+         (fun (o : Isa_norm_model.operand) ->
+           match o.op_kind with
+           | Register { class_ = Riscv_gpr; excluded = [] } -> true
+           | _ -> false)
+         form.operands);
+  check
+    (mnemonic ^ ": renders as rd, rs1, rs2")
+    (Isa_norm_model.render_syntax form.syntax = Printf.sprintf "%s rd, rs1, rs2" mnemonic)
+
+let test_sha512sum0r () = test_r_type_gpr_any_rv32 ~mnemonic:"sha512sum0r" ~json:sha512sum0r_json
+let test_sha512sum1r () = test_r_type_gpr_any_rv32 ~mnemonic:"sha512sum1r" ~json:sha512sum1r_json
+let test_sha512sig0l () = test_r_type_gpr_any_rv32 ~mnemonic:"sha512sig0l" ~json:sha512sig0l_json
+let test_sha512sig1l () = test_r_type_gpr_any_rv32 ~mnemonic:"sha512sig1l" ~json:sha512sig1l_json
+let test_sha512sig0h () = test_r_type_gpr_any_rv32 ~mnemonic:"sha512sig0h" ~json:sha512sig0h_json
+let test_sha512sig1h () = test_r_type_gpr_any_rv32 ~mnemonic:"sha512sig1h" ~json:sha512sig1h_json
+
+(* AES-64's plain three-GPR round functions and its two-GPR unary
+   inverse-mix-columns sibling - the rv64-prefixed analogues of
+   {!test_r_type_gpr_any_rv32}/{!test_sha512_unary_any}, parametrized over
+   [import_group] since aes64ds/aes64dsm (rooted in rv64_zknd),
+   aes64es/aes64esm (rooted in rv64_zkne, a disjoint primary), and
+   aes64ks2 (imported by both zknd and zkne, a four-way group) each need a
+   different one. *)
+let aes64ds_import_group = [ "zknd"; "zk"; "zkn" ]
+let aes64es_import_group = [ "zkne"; "zk"; "zkn" ]
+let aes64ks2_import_group = [ "zknd"; "zk"; "zkn"; "zkne" ]
+
+let test_r_type_gpr_any_rv64 ~import_group ~mnemonic ~json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check
+    (mnemonic ^ ": requirement is Req_any over the rv64-prefixed features")
+    (form.requirement
+    = Isa_norm_model.Req_any
+        (List.map
+           (fun feature ->
+             Isa_norm_model.Req_all [ Req_xlen 64; Req_feature (Printf.sprintf "riscv:%s" feature) ])
+           import_group));
+  check
+    (mnemonic ^ ": three plain GPR operands, no immediate")
+    (List.length form.operands = 3
+    && List.for_all
+         (fun (o : Isa_norm_model.operand) ->
+           match o.op_kind with
+           | Register { class_ = Riscv_gpr; excluded = [] } -> true
+           | _ -> false)
+         form.operands);
+  check
+    (mnemonic ^ ": renders as rd, rs1, rs2")
+    (Isa_norm_model.render_syntax form.syntax = Printf.sprintf "%s rd, rs1, rs2" mnemonic)
+
+let test_aes64ds () =
+  test_r_type_gpr_any_rv64 ~import_group:aes64ds_import_group ~mnemonic:"aes64ds" ~json:aes64ds_json
+
+let test_aes64dsm () =
+  test_r_type_gpr_any_rv64 ~import_group:aes64ds_import_group ~mnemonic:"aes64dsm"
+    ~json:aes64dsm_json
+
+let test_aes64es () =
+  test_r_type_gpr_any_rv64 ~import_group:aes64es_import_group ~mnemonic:"aes64es" ~json:aes64es_json
+
+let test_aes64esm () =
+  test_r_type_gpr_any_rv64 ~import_group:aes64es_import_group ~mnemonic:"aes64esm"
+    ~json:aes64esm_json
+
+let test_aes64ks2 () =
+  test_r_type_gpr_any_rv64 ~import_group:aes64ks2_import_group ~mnemonic:"aes64ks2"
+    ~json:aes64ks2_json
+
+let test_aes64im () =
+  let rec_ = decode_or_fail "aes64im" aes64im_json in
+  let form = normalize_or_fail "aes64im" rec_ in
+  check "aes64im: requirement is Req_any over the three rv64-prefixed features"
+    (form.requirement
+    = Isa_norm_model.Req_any
+        (List.map
+           (fun feature ->
+             Isa_norm_model.Req_all [ Req_xlen 64; Req_feature (Printf.sprintf "riscv:%s" feature) ])
+           aes64ds_import_group));
+  check "aes64im: two plain GPR operands, no immediate"
+    (List.length form.operands = 2
+    && List.for_all
+         (fun (o : Isa_norm_model.operand) ->
+           match o.op_kind with
+           | Register { class_ = Riscv_gpr; excluded = [] } -> true
+           | _ -> false)
+         form.operands);
+  check "aes64im: renders as rd, rs1" (Isa_norm_model.render_syntax form.syntax = "aes64im rd, rs1")
+
+(* aes64ks1i: the same two-GPR-plus-narrow-unsigned-immediate shape as
+   rori/roriw, reusing shamt_gpr_form's generalized operand_name/field_name
+   overrides for riscv-opcodes' own "rnum" field, and aes64ks2's own
+   four-way Req_any group (imported by both key-schedule extensions). *)
+let test_aes64ks1i () =
+  let rec_ = decode_or_fail "aes64ks1i" aes64ks1i_json in
+  let form = normalize_or_fail "aes64ks1i" rec_ in
+  check "aes64ks1i: requirement is Req_any over the four rv64-prefixed features"
+    (form.requirement
+    = Isa_norm_model.Req_any
+        (List.map
+           (fun feature ->
+             Isa_norm_model.Req_all [ Req_xlen 64; Req_feature (Printf.sprintf "riscv:%s" feature) ])
+           aes64ks2_import_group));
+  check "aes64ks1i: two GPR operands plus an unsigned 4-bit rnum immediate"
+    (match form.operands with
+    | [
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Immediate { width_bits = 4; signed = false; _ }; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "aes64ks1i: renders as rd, rs1, rnum"
+    (Isa_norm_model.render_syntax form.syntax = "aes64ks1i rd, rs1, rnum")
+
+(* aes32dsi/dsmi/esi/esmi: AES-32's own round functions - a three-GPR
+   analogue of aes64ks1i's own two-GPR-plus-narrow-immediate shape, via the
+   new r_type_imm_gpr_form, keyed "bs" (riscv-opcodes' own field name), not
+   "rnum" or "shamt". aes32dsi/dsmi share aes32d_import_group_rv32
+   (rv32_zknd-rooted); aes32esi/esmi share the disjoint
+   aes32e_import_group_rv32 (rv32_zkne-rooted). *)
+let aes32d_import_group = [ "zknd"; "zk"; "zkn" ]
+let aes32e_import_group = [ "zkne"; "zk"; "zkn" ]
+
+let test_r_type_imm_gpr_any_rv32 ~import_group ~mnemonic ~json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check
+    (mnemonic ^ ": requirement is Req_any over the three rv32-prefixed features")
+    (form.requirement
+    = Isa_norm_model.Req_any
+        (List.map
+           (fun feature ->
+             Isa_norm_model.Req_all [ Req_xlen 32; Req_feature (Printf.sprintf "riscv:%s" feature) ])
+           import_group));
+  check
+    (mnemonic ^ ": three GPR operands plus an unsigned 2-bit bs immediate")
+    (match form.operands with
+    | [
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Immediate { width_bits = 2; signed = false; _ }; _ };
+    ] ->
+        true
+    | _ -> false);
+  check
+    (mnemonic ^ ": renders as rd, rs1, rs2, bs")
+    (Isa_norm_model.render_syntax form.syntax = Printf.sprintf "%s rd, rs1, rs2, bs" mnemonic)
+
+let test_aes32dsi () =
+  test_r_type_imm_gpr_any_rv32 ~import_group:aes32d_import_group ~mnemonic:"aes32dsi"
+    ~json:aes32dsi_json
+
+let test_aes32dsmi () =
+  test_r_type_imm_gpr_any_rv32 ~import_group:aes32d_import_group ~mnemonic:"aes32dsmi"
+    ~json:aes32dsmi_json
+
+let test_aes32esi () =
+  test_r_type_imm_gpr_any_rv32 ~import_group:aes32e_import_group ~mnemonic:"aes32esi"
+    ~json:aes32esi_json
+
+let test_aes32esmi () =
+  test_r_type_imm_gpr_any_rv32 ~import_group:aes32e_import_group ~mnemonic:"aes32esmi"
+    ~json:aes32esmi_json
+
+(* csrrw/csrrs/csrrc: Zicsr's register-source CSR forms - a plain
+   Req_feature (no import duplication, single rv_zicsr record per
+   mnemonic), operands reordered to [rd, csr, rs1] matching real GAS
+   syntax rather than riscv-opcodes' own [rd, rs1, csr] field order. *)
+let test_csr_reg ~mnemonic ~json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check
+    (mnemonic ^ ": requirement is the Zicsr feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:zicsr");
+  check
+    (mnemonic ^ ": rd/rs1 GPRs plus an unsigned 12-bit csr immediate, in rd/csr/rs1 order")
+    (match form.operands with
+    | [
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Immediate { width_bits = 12; signed = false; _ }; _ };
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+    ] ->
+        true
+    | _ -> false);
+  check
+    (mnemonic ^ ": renders as rd, csr, rs1")
+    (Isa_norm_model.render_syntax form.syntax = Printf.sprintf "%s rd, csr, rs1" mnemonic)
+
+let test_csrrw () = test_csr_reg ~mnemonic:"csrrw" ~json:csrrw_json
+let test_csrrs () = test_csr_reg ~mnemonic:"csrrs" ~json:csrrs_json
+let test_csrrc () = test_csr_reg ~mnemonic:"csrrc" ~json:csrrc_json
+
+(* csrrwi/csrrsi/csrrci: Zicsr's immediate-source CSR forms - [rd, csr,
+   zimm5], no register operand besides [rd]. *)
+let test_csr_imm ~mnemonic ~json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check
+    (mnemonic ^ ": requirement is the Zicsr feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:zicsr");
+  check
+    (mnemonic ^ ": rd GPR plus unsigned 12-bit csr and 5-bit zimm5 immediates")
+    (match form.operands with
+    | [
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Immediate { width_bits = 12; signed = false; _ }; _ };
+     { op_kind = Immediate { width_bits = 5; signed = false; _ }; _ };
+    ] ->
+        true
+    | _ -> false);
+  check
+    (mnemonic ^ ": renders as rd, csr, zimm5")
+    (Isa_norm_model.render_syntax form.syntax = Printf.sprintf "%s rd, csr, zimm5" mnemonic)
+
+let test_csrrwi () = test_csr_imm ~mnemonic:"csrrwi" ~json:csrrwi_json
+let test_csrrsi () = test_csr_imm ~mnemonic:"csrrsi" ~json:csrrsi_json
+let test_csrrci () = test_csr_imm ~mnemonic:"csrrci" ~json:csrrci_json
+
+(* csrr: GAS's read-only alias for csrrs rd, csr, x0 - [rd, csr] operands,
+   no rs1 at all. *)
+let test_csrr () =
+  let rec_ = decode_or_fail "csrr" csrr_json in
+  let form = normalize_or_fail "csrr" rec_ in
+  check "csrr: requirement is the Zicsr feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:zicsr");
+  check "csrr: rd GPR plus an unsigned 12-bit csr immediate, in rd/csr order"
+    (match form.operands with
+    | [
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Immediate { width_bits = 12; signed = false; _ }; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "csrr: renders as rd, csr" (Isa_norm_model.render_syntax form.syntax = "csrr rd, csr")
+
+(* csrw/csrs/csrc: GAS's write/set/clear-only aliases for
+   csrrw/csrrs/csrrc x0, csr, rs1 - [csr, rs1] operands, no rd at all;
+   csr comes first, unlike riscv-opcodes' own [rs1, csr] field order. *)
+let test_csr_write ~mnemonic ~json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check
+    (mnemonic ^ ": requirement is the Zicsr feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:zicsr");
+  check
+    (mnemonic ^ ": an unsigned 12-bit csr immediate plus rs1 GPR, in csr/rs1 order")
+    (match form.operands with
+    | [
+     { op_kind = Immediate { width_bits = 12; signed = false; _ }; _ };
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+    ] ->
+        true
+    | _ -> false);
+  check
+    (mnemonic ^ ": renders as csr, rs1")
+    (Isa_norm_model.render_syntax form.syntax = Printf.sprintf "%s csr, rs1" mnemonic)
+
+let test_csrw () = test_csr_write ~mnemonic:"csrw" ~json:csrw_json
+let test_csrs () = test_csr_write ~mnemonic:"csrs" ~json:csrs_alias_json
+let test_csrc () = test_csr_write ~mnemonic:"csrc" ~json:csrc_alias_json
+
+(* csrwi/csrsi/csrci: GAS's write/set/clear-only aliases for
+   csrrwi/csrrsi/csrrci x0, csr, zimm5 - [csr, zimm5] operands, no rd. *)
+let test_csr_write_imm ~mnemonic ~json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check
+    (mnemonic ^ ": requirement is the Zicsr feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:zicsr");
+  check
+    (mnemonic ^ ": unsigned 12-bit csr and 5-bit zimm5 immediates, in csr/zimm5 order")
+    (match form.operands with
+    | [
+     { op_kind = Immediate { width_bits = 12; signed = false; _ }; _ };
+     { op_kind = Immediate { width_bits = 5; signed = false; _ }; _ };
+    ] ->
+        true
+    | _ -> false);
+  check
+    (mnemonic ^ ": renders as csr, zimm5")
+    (Isa_norm_model.render_syntax form.syntax = Printf.sprintf "%s csr, zimm5" mnemonic)
+
+let test_csrwi () = test_csr_write_imm ~mnemonic:"csrwi" ~json:csrwi_alias_json
+let test_csrsi () = test_csr_write_imm ~mnemonic:"csrsi" ~json:csrsi_alias_json
+let test_csrci () = test_csr_write_imm ~mnemonic:"csrci" ~json:csrci_alias_json
+
+(* amoadd.w: Zaamo's three-GPR-plus-memory shape, verbatim-extracted from
+   the checked-in riscv32.jsonl - representative of every amo_form
+   mnemonic (only funct5/funct3 differ between them). *)
+let amoadd_w_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 29, "name": "bits[31:29]", "width": 3}, {"lsb": 27, "name": "bits[28:27]", "width": 2}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 26, "name": "aq", "width": 1}, {"lsb": 25, "name": "rl", "width": 1}], "kind": "fixed_bits", "mask": "0xf800707f", "value": "0x202f", "width_bits": 32}, "kind": "instruction-form", "native_name": "amoadd.w", "origin": {"line": 4, "path": "extensions/rv_a"}, "provenance": {"extension": "rv_a", "operands": ["rd", "rs1", "rs2", "aq", "rl"], "raw": {"line": "amoadd.w    rd rs1 rs2      aq rl 31..29=0 28..27=0 14..12=2 6..2=0x0B 1..0=3", "tokens": ["amoadd.w", "rd", "rs1", "rs2", "aq", "rl", "31..29=0", "28..27=0", "14..12=2", "6..2=0x0B", "1..0=3"]}, "upstream-resolved": {"mask": "0xf800707f", "match": "0x202f", "variable_fields": ["rd", "rs1", "rs2", "aq", "rl"]}}, "record_id": "riscv-opcodes:rv_a:amoadd.w@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_amoadd_w () =
+  let rec_ = decode_or_fail "amoadd.w" amoadd_w_json in
+  let form = normalize_or_fail "amoadd.w" rec_ in
+  check "amoadd.w: requirement is the A feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:a");
+  check "amoadd.w: rd/rs2/base GPRs, in that order, no offset operand"
+    (match form.operands with
+    | [
+     { op_name = "rd"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = Out; _ };
+     { op_name = "rs2"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "amoadd.w: renders as rd, rs2, (base)"
+    (Isa_norm_model.render_syntax form.syntax = "amoadd.w rd, rs2, (base)");
+  check "amoadd.w: flags aq/rl as not modeled"
+    (List.exists
+       (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "amoadd.w-aq-rl-not-modeled")
+       form.diagnostics)
+
+(* lr.w: Zaamo's own two-operand member, no rs2 at all (its field is fixed
+   to 0). *)
+let lr_w_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 29, "name": "bits[31:29]", "width": 3}, {"lsb": 27, "name": "bits[28:27]", "width": 2}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 26, "name": "aq", "width": 1}, {"lsb": 25, "name": "rl", "width": 1}], "kind": "fixed_bits", "mask": "0xf9f0707f", "value": "0x1000202f", "width_bits": 32}, "kind": "instruction-form", "native_name": "lr.w", "origin": {"line": 1, "path": "extensions/rv_a"}, "provenance": {"extension": "rv_a", "operands": ["rd", "rs1", "aq", "rl"], "raw": {"line": "lr.w        rd rs1 24..20=0 aq rl 31..29=0 28..27=2 14..12=2 6..2=0x0B 1..0=3", "tokens": ["lr.w", "rd", "rs1", "24..20=0", "aq", "rl", "31..29=0", "28..27=2", "14..12=2", "6..2=0x0B", "1..0=3"]}, "upstream-resolved": {"mask": "0xf9f0707f", "match": "0x1000202f", "variable_fields": ["rd", "rs1", "aq", "rl"]}}, "record_id": "riscv-opcodes:rv_a:lr.w@L1", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_lr_w () =
+  let rec_ = decode_or_fail "lr.w" lr_w_json in
+  let form = normalize_or_fail "lr.w" rec_ in
+  check "lr.w: requirement is the A feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:a");
+  check "lr.w: rd/base GPRs only, in that order, no rs2 operand"
+    (match form.operands with
+    | [
+     { op_name = "rd"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = Out; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "lr.w: renders as rd, (base)" (Isa_norm_model.render_syntax form.syntax = "lr.w rd, (base)");
+  check "lr.w: flags aq/rl as not modeled"
+    (List.exists
+       (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "lr.w-aq-rl-not-modeled")
+       form.diagnostics)
 
 (* pack/packh: the same Req_any R-type shape, but a four-way zbkb-only group
    (rv_zbkb/rv_zk/rv_zkn/rv_zks - no rv_zbb primary the way andn/orn/xnor/
@@ -945,6 +1501,46 @@ let () =
   test_clmulh ();
   test_xperm4 ();
   test_xperm8 ();
+  test_sha256sum0 ();
+  test_sha256sum1 ();
+  test_sha256sig0 ();
+  test_sha256sig1 ();
+  test_sha512sum0 ();
+  test_sha512sum1 ();
+  test_sha512sig0 ();
+  test_sha512sig1 ();
+  test_sha512sum0r ();
+  test_sha512sum1r ();
+  test_sha512sig0l ();
+  test_sha512sig1l ();
+  test_sha512sig0h ();
+  test_sha512sig1h ();
+  test_aes64ds ();
+  test_aes64dsm ();
+  test_aes64es ();
+  test_aes64esm ();
+  test_aes64ks2 ();
+  test_aes64im ();
+  test_aes64ks1i ();
+  test_aes32dsi ();
+  test_aes32dsmi ();
+  test_aes32esi ();
+  test_aes32esmi ();
+  test_csrrw ();
+  test_csrrs ();
+  test_csrrc ();
+  test_csrrwi ();
+  test_csrrsi ();
+  test_csrrci ();
+  test_csrr ();
+  test_csrw ();
+  test_csrs ();
+  test_csrc ();
+  test_csrwi ();
+  test_csrsi ();
+  test_csrci ();
+  test_amoadd_w ();
+  test_lr_w ();
   test_andn_import_record_matches_primary ();
   test_clz ();
   test_ctz ();

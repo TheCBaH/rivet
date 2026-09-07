@@ -185,8 +185,8 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:122;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:150;
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:188;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:232;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:9;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:9
 
@@ -250,11 +250,37 @@ let test_isa_family_admission repo =
      xperm4/xperm8 are import-duplicated four ways (rv_zbkx/rv_zk/rv_zkn/
      rv_zks - no separate non-K sibling extension), identical on both
      profiles, so this slice moves 8 records per profile (2 mnemonics x
-     4 records). *)
+     4 records). sha256sum0/sha256sum1/sha256sig0/sha256sig1 are
+     import-duplicated three ways (rv_zknh/rv_zk/rv_zkn - no rv_zks),
+     identical on both profiles, so this slice moves 12 records per profile
+     (4 mnemonics x 3 records). sha512sum0/sha512sum1/sha512sig0/sha512sig1
+     are sha256's RV64-only siblings, also import-duplicated three ways
+     (rv64_zknh/rv64_zk/rv64_zkn), so this slice moves 12 records on RV64
+     only (4 mnemonics x 3 records), 0 on RV32 (no RV32 record at all).
+     sha512sum0r/sha512sum1r/sha512sig0l/sha512sig1l/sha512sig0h/sha512sig1h
+     are SHA-512's own RV32-only 32-bit-split siblings, also
+     import-duplicated three ways (rv32_zknh/rv32_zk/rv32_zkn), so this
+     slice moves 18 records on RV32 only (6 mnemonics x 3 records), 0 on
+     RV64 (no RV64 record at all). aes64ds/aes64dsm/aes64im are
+     import-duplicated three ways (rv64_zknd/rv64_zk/rv64_zkn),
+     aes64es/aes64esm three ways (rv64_zkne/rv64_zk/rv64_zkn, a disjoint
+     primary), and aes64ks2 four ways (rv64_zknd/rv64_zk/rv64_zkn/rv64_zkne
+     - the one mnemonic both key-schedule extensions import), so this
+     slice moves 19 records on RV64 only (5 mnemonics x 3 + 1 mnemonic x 4),
+     0 on RV32 (no RV32 record at all). aes64ks1i shares aes64ks2's own
+     four-way group (rv64_zknd/rv64_zk/rv64_zkn/rv64_zkne), so this slice
+     moves 4 more records on RV64 only. aes32dsi/aes32dsmi/aes32esi/
+     aes32esmi are each import-duplicated three ways (rv32_zknd or
+     rv32_zkne, rv32_zk, rv32_zkn), so this slice moves 12 records on RV32
+     only (4 mnemonics x 3 records). csrrw/csrrs/csrrc/csrrwi/csrrsi/csrrci
+     are the first family here outside Zb/Zk - each a single, non-import-
+     duplicated rv_zicsr record, XLEN-independent, so this slice moves 6
+     records on EACH profile (6 mnemonics x 1 record, not x2/x3 the way
+     every import-duplicated slice above did). *)
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
-    ~promoted_support:102 ~blocked:967;
+    ~promoted_support:168 ~blocked:901;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
-    ~promoted_support:120 ~blocked:1004;
+    ~promoted_support:202 ~blocked:922;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0 ~gas_generatable:5
     ~promoted_support:4 ~blocked:7878;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
@@ -312,9 +338,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 290)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 438)"
        !roundtrip_count)
-    (!roundtrip_count = 290)
+    (!roundtrip_count = 438)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's

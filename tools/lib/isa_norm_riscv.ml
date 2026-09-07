@@ -22,7 +22,11 @@ let feature_of_extension = function
   | "rv_zbc" -> Req_feature "riscv:zbc"
   | "rv_zbkc" -> Req_feature "riscv:zbkc"
   | "rv_zbkx" -> Req_feature "riscv:zbkx"
+  | "rv_zknh" -> Req_feature "riscv:zknh"
+  | "rv_zicsr" -> Req_feature "riscv:zicsr"
   | "rv_f" -> Req_feature "riscv:f"
+  | "rv_a" -> Req_feature "riscv:a"
+  | "rv64_a" -> Req_all [ Req_xlen 64; Req_feature "riscv:a" ]
   | "rv64_i" -> Req_xlen 64
   | "rv64_m" -> Req_all [ Req_xlen 64; Req_feature "riscv:m" ]
   | "rv64_zba" -> Req_all [ Req_xlen 64; Req_feature "riscv:zba" ]
@@ -31,11 +35,17 @@ let feature_of_extension = function
   | "rv64_zk" -> Req_all [ Req_xlen 64; Req_feature "riscv:zk" ]
   | "rv64_zkn" -> Req_all [ Req_xlen 64; Req_feature "riscv:zkn" ]
   | "rv64_zks" -> Req_all [ Req_xlen 64; Req_feature "riscv:zks" ]
+  | "rv64_zknh" -> Req_all [ Req_xlen 64; Req_feature "riscv:zknh" ]
+  | "rv64_zknd" -> Req_all [ Req_xlen 64; Req_feature "riscv:zknd" ]
+  | "rv64_zkne" -> Req_all [ Req_xlen 64; Req_feature "riscv:zkne" ]
+  | "rv32_zknd" -> Req_all [ Req_xlen 32; Req_feature "riscv:zknd" ]
+  | "rv32_zkne" -> Req_all [ Req_xlen 32; Req_feature "riscv:zkne" ]
   | "rv32_zbb" -> Req_all [ Req_xlen 32; Req_feature "riscv:zbb" ]
   | "rv32_zbkb" -> Req_all [ Req_xlen 32; Req_feature "riscv:zbkb" ]
   | "rv32_zk" -> Req_all [ Req_xlen 32; Req_feature "riscv:zk" ]
   | "rv32_zkn" -> Req_all [ Req_xlen 32; Req_feature "riscv:zkn" ]
   | "rv32_zks" -> Req_all [ Req_xlen 32; Req_feature "riscv:zks" ]
+  | "rv32_zknh" -> Req_all [ Req_xlen 32; Req_feature "riscv:zknh" ]
   | ext -> Req_unknown (Printf.sprintf "unmapped riscv-opcodes extension: %s" ext)
 
 let riscv_encoding_of (rec_ : R.t) =
@@ -120,6 +130,48 @@ let alternative_extensions_by_mnemonic =
      identical mask/value across all four records in both checked-in
      profiles. *)
   let zbkx_import_group = [ "rv_zbkx"; "rv_zk"; "rv_zkn"; "rv_zks" ] in
+  (* sha256sum0/sha256sum1/sha256sig0/sha256sig1 (Zknh's SHA-256
+     message-schedule helpers) are a three-way import group - primary
+     rv_zknh, imported by rv_zk/rv_zkn (no rv_zks: SHA-256 belongs to the
+     "NIST" crypto profile Zkn groups, not the "ShangMi" Zks one) - the same
+     two-GPR unary shape {!unary_gpr_mnemonics} already dispatches through
+     (see {!Isa_norm_riscv.normalize}'s dispatch list below), identical
+     mnemonic/encoding on both profiles, hand-verified identical mask/value
+     across all three records in both checked-in profiles. *)
+  let zknh_import_group = [ "rv_zknh"; "rv_zk"; "rv_zkn" ] in
+  (* sha512sum0/sha512sum1/sha512sig0/sha512sig1 are the RV64-only siblings
+     of the sha256 group above - same three-way import structure, but
+     XLEN-prefixed (primary rv64_zknh, imported by rv64_zk/rv64_zkn; no
+     RV32 record at all - riscv-opcodes' own RV32 answer is a genuinely
+     different 32-bit-word-pair-split family, sha512sig0h/l etc., out of
+     this slice's scope). *)
+  let zknh_import_group_rv64 = [ "rv64_zknh"; "rv64_zk"; "rv64_zkn" ] in
+  (* SHA-512's own RV32-only 32-bit-word-pair-split helpers - the mirror
+     image of the RV64 group above (primary rv32_zknh, imported by
+     rv32_zk/rv32_zkn), a plain three-GPR R-type shape (not the two-GPR
+     unary one sha256/sha512's non-split forms use), reusing
+     {!r_type_gpr_form}/{!r_type_mnemonics} unchanged. *)
+  let zknh_import_group_rv32 = [ "rv32_zknh"; "rv32_zk"; "rv32_zkn" ] in
+  (* AES-64's plain three-GPR round functions and aes64im's two-GPR unary
+     sibling: aes64ds/aes64dsm are primary rv64_zknd, imported by
+     rv64_zk/rv64_zkn (three-way); aes64es/aes64esm are primary rv64_zkne,
+     imported by rv64_zk/rv64_zkn (three-way, disjoint primary from
+     ds/dsm); aes64ks2 is primary rv64_zknd, imported by
+     rv64_zk/rv64_zkn/rv64_zkne (four-way - the one AES-64 mnemonic both
+     the decrypt and encrypt key-schedule extensions import); aes64im is
+     primary rv64_zknd, imported by rv64_zk/rv64_zkn (three-way, same shape
+     as ds/dsm's group). All hand-verified identical mask/value across
+     every member in the checked-in riscv64.jsonl before writing any code. *)
+  let zknd_import_group_rv64 = [ "rv64_zknd"; "rv64_zk"; "rv64_zkn" ] in
+  let zkne_import_group_rv64 = [ "rv64_zkne"; "rv64_zk"; "rv64_zkn" ] in
+  let aes64ks2_import_group_rv64 = [ "rv64_zknd"; "rv64_zk"; "rv64_zkn"; "rv64_zkne" ] in
+  (* AES-32's own round functions - the RV32 mirror of aes64ds/aes64dsm's
+     and aes64es/aes64esm's own groups above (aes32dsi/aes32dsmi rooted in
+     rv32_zknd, aes32esi/aes32esmi in a disjoint rv32_zkne), each imported
+     by rv32_zk/rv32_zkn (three-way, no rv32_zkne membership for the
+     zknd-rooted pair or vice versa - hand-verified, not assumed). *)
+  let aes32d_import_group_rv32 = [ "rv32_zknd"; "rv32_zk"; "rv32_zkn" ] in
+  let aes32e_import_group_rv32 = [ "rv32_zkne"; "rv32_zk"; "rv32_zkn" ] in
   [
     ("andn", zbb_import_group);
     ("orn", zbb_import_group);
@@ -143,6 +195,31 @@ let alternative_extensions_by_mnemonic =
     ("clmulh", zbc_import_group);
     ("xperm4", zbkx_import_group);
     ("xperm8", zbkx_import_group);
+    ("sha256sum0", zknh_import_group);
+    ("sha256sum1", zknh_import_group);
+    ("sha256sig0", zknh_import_group);
+    ("sha256sig1", zknh_import_group);
+    ("sha512sum0", zknh_import_group_rv64);
+    ("sha512sum1", zknh_import_group_rv64);
+    ("sha512sig0", zknh_import_group_rv64);
+    ("sha512sig1", zknh_import_group_rv64);
+    ("sha512sum0r", zknh_import_group_rv32);
+    ("sha512sum1r", zknh_import_group_rv32);
+    ("sha512sig0l", zknh_import_group_rv32);
+    ("sha512sig1l", zknh_import_group_rv32);
+    ("sha512sig0h", zknh_import_group_rv32);
+    ("sha512sig1h", zknh_import_group_rv32);
+    ("aes64ds", zknd_import_group_rv64);
+    ("aes64dsm", zknd_import_group_rv64);
+    ("aes64es", zkne_import_group_rv64);
+    ("aes64esm", zkne_import_group_rv64);
+    ("aes64ks2", aes64ks2_import_group_rv64);
+    ("aes64im", zknd_import_group_rv64);
+    ("aes64ks1i", aes64ks2_import_group_rv64);
+    ("aes32dsi", aes32d_import_group_rv32);
+    ("aes32dsmi", aes32d_import_group_rv32);
+    ("aes32esi", aes32e_import_group_rv32);
+    ("aes32esmi", aes32e_import_group_rv32);
   ]
 
 (* Builds [Req_any] over every extension in [extensions] once [rec_]'s own
@@ -605,8 +682,15 @@ let i_type_imm_form ~mnemonic (rec_ : R.t) =
    rendered mnemonic ["rori"] and [form_id] the same way {!unary_gpr_form}'s
    rev8/rev8.rv32 dispatch does - see {!extension_lookup_key} there for why
    a separate lookup key is threaded through instead of [mnemonic] itself.
-   [roriw] is the plain RV64-only *w sibling, needing no such split. *)
-let shamt_gpr_form ?extension_lookup_key ~mnemonic ~width (rec_ : R.t) =
+   [roriw] is the plain RV64-only *w sibling, needing no such split.
+
+   [operand_name]/[field_name] default to rori's own "shamt"/"shamtd"-or-
+   "shamtw" naming, but are overridable - {!aes64ks1i}'s [rnum] is the same
+   two-GPR-plus-narrow-unsigned-immediate shape at the normalized-model
+   level (this function only models the field's raw width, not any
+   semantic subrange a real assembler further restricts), just with the
+   record's own field name "rnum", not a shift amount. *)
+let shamt_gpr_form ?extension_lookup_key ?operand_name ?field_name ~mnemonic ~width (rec_ : R.t) =
   match riscv_encoding_of rec_ with
   | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
   | Ok encoding ->
@@ -615,10 +699,13 @@ let shamt_gpr_form ?extension_lookup_key ~mnemonic ~width (rec_ : R.t) =
       in
       let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
       let rs1 = { op_name = "rs1"; op_kind = gpr (); role = In; explicit = true } in
-      let field_name = if width = 6 then "shamtd" else "shamtw" in
+      let operand_name = Option.value operand_name ~default:"shamt" in
+      let field_name =
+        Option.value field_name ~default:(if width = 6 then "shamtd" else "shamtw")
+      in
       let shamt =
         {
-          op_name = "shamt";
+          op_name = operand_name;
           op_kind =
             Immediate
               {
@@ -654,7 +741,7 @@ let shamt_gpr_form ?extension_lookup_key ~mnemonic ~width (rec_ : R.t) =
             {
               dialect = "gas-att";
               mnemonic;
-              operands = [ Syn_operand "rd"; Syn_operand "rs1"; Syn_operand "shamt" ];
+              operands = [ Syn_operand "rd"; Syn_operand "rs1"; Syn_operand operand_name ];
             };
           concreteness = Concrete;
           facts =
@@ -670,6 +757,508 @@ let shamt_gpr_form ?extension_lookup_key ~mnemonic ~width (rec_ : R.t) =
             (match requirement with
             | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
             | _ -> []);
+        }
+
+(* Generic three-GPR-plus-narrow-unsigned-immediate form: AES-32's own
+   round functions (aes32dsi/aes32dsmi/aes32esi/aes32esmi), riscv-opcodes'
+   [rd, rs1, rs2, bs] variable_fields shape - the three-GPR analogue of
+   {!shamt_gpr_form}'s two-GPR-plus-immediate one. Like that function, this
+   only models the field's raw width; a real assembler's own narrower
+   semantic subrange (if any - AES-32's own "bs" happens to use its full
+   2-bit range, unlike aes64ks1i's "rnum") is an encoder concern, not a
+   normalization one. *)
+let r_type_imm_gpr_form ~mnemonic ~width ~operand_name ~field_name (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of_mnemonic ~mnemonic rec_ in
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = gpr (); role = In; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = gpr (); role = In; explicit = true } in
+      let imm =
+        {
+          op_name = operand_name;
+          op_kind =
+            Immediate
+              {
+                width_bits = width;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [
+                    {
+                      field_name;
+                      field_hi = width - 1;
+                      field_lo = 0;
+                      dest_hi = width - 1;
+                      dest_lo = 0;
+                    };
+                  ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ rd; rs1; rs2; imm ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [ Syn_operand "rd"; Syn_operand "rs1"; Syn_operand "rs2"; Syn_operand operand_name ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  Printf.sprintf
+                    "operand fields rd, rs1, rs2, %s taken verbatim from encoding.fields" field_name;
+              };
+            ];
+          diagnostics =
+            (match requirement with
+            | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+            | _ -> []);
+        }
+
+(* Zicsr's register-source CSR forms (csrrw/csrrs/csrrc): [rd, rs1, csr] in
+   riscv-opcodes' own encoding.fields/operands order, but GAS's own text
+   order is [rd, csr, rs1] - the CSR address comes second, confirmed
+   against real GNU as (`csrrw a0, mstatus, a1` -> the same bit pattern as
+   riscv-opcodes' [rd, rs1, csr] field order, just written with [csr]
+   before [rs1] in the source text). [csr] is a genuine, syntax-visible
+   12-bit UNSIGNED immediate (0-4095), unlike every prior I-type immediate
+   this project's normalized model has recorded (all signed so far) - the
+   riscv_family_encode.ml encoder side handles the unsigned range by
+   writing the address's own signed 12-bit two's-complement equivalent
+   through the existing bit-masking machinery unchanged; the normalized
+   model here just records the field's own raw width and its explicit
+   [signed = false]. Neither record is import-duplicated (a single
+   rv_zicsr record per mnemonic), so this is a plain [requirement_of], not
+   a Req_any. *)
+let csr_reg_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = gpr (); role = In; explicit = true } in
+      let csr =
+        {
+          op_name = "csr";
+          op_kind =
+            Immediate
+              {
+                width_bits = 12;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [ { field_name = "csr"; field_hi = 11; field_lo = 0; dest_hi = 11; dest_lo = 0 } ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ rd; csr; rs1 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "csr"; Syn_operand "rs1" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, csr taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "GAS syntax reorders these as \"mnemonic rd, csr, rs1\" - csr before rs1 - not \
+                   the encoding.fields declaration order";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+            | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+            | _ -> []);
+        }
+
+(* Zicsr's immediate-source CSR forms (csrrwi/csrrsi/csrrci): [rd, csr,
+   zimm5] - riscv-opcodes' own operands order already matches GAS syntax
+   here (unlike the register-source forms above), since there is no [rs1]
+   to reorder around. [zimm5] is a genuine, syntax-visible 5-bit unsigned
+   immediate (0-31 - real GNU as rejects 32+ as "improper CSRxI
+   immediate"); the encoder reuses the bit position a GPR number would
+   occupy in [rs1] to carry it, but that is an encoder-side reuse, not a
+   normalized-model one - this form has no register operand besides [rd]
+   at all. *)
+let csr_imm_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let csr =
+        {
+          op_name = "csr";
+          op_kind =
+            Immediate
+              {
+                width_bits = 12;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [ { field_name = "csr"; field_hi = 11; field_lo = 0; dest_hi = 11; dest_lo = 0 } ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      let zimm5 =
+        {
+          op_name = "zimm5";
+          op_kind =
+            Immediate
+              {
+                width_bits = 5;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [ { field_name = "zimm5"; field_hi = 4; field_lo = 0; dest_hi = 4; dest_lo = 0 } ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ rd; csr; zimm5 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "csr"; Syn_operand "zimm5" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, csr, zimm5 taken verbatim from encoding.fields";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+            | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+            | _ -> []);
+        }
+
+let csr_immediate_operand () =
+  {
+    op_name = "csr";
+    op_kind =
+      Immediate
+        {
+          width_bits = 12;
+          signed = false;
+          implicit_low_zero_bits = 0;
+          nonzero = false;
+          runs = [ { field_name = "csr"; field_hi = 11; field_lo = 0; dest_hi = 11; dest_lo = 0 } ];
+        };
+    role = In;
+    explicit = true;
+  }
+
+(* [csrr rd, csr] - GAS's read-only alias for [csrrs rd, csr, x0] (rd = the
+   only register operand, rs1 is implicitly x0). riscv-opcodes' own
+   encoding.fields/operands order here, [rd, csr], already matches GAS
+   syntax (there is no [rs1] to reorder around, unlike {!csr_write_form}
+   below), confirmed against real GNU as (`csrr a0, mstatus` -> the same
+   bit pattern as `csrrs a0, mstatus, zero`). *)
+let csr_read_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let csr = csr_immediate_operand () in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ rd; csr ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "csr" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, csr taken verbatim from encoding.fields";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+            | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+            | _ -> []);
+        }
+
+(* [csrw/csrs/csrc csr, rs1] - GAS's write/set/clear-only aliases for
+   [csrrw/csrrs/csrrc x0, csr, rs1] (rd = x0, discarding the old value; not
+   a normalized-model operand since it is never syntax-visible). Like
+   {!csr_reg_form} above, riscv-opcodes' own encoding.fields/operands order,
+   [rs1, csr], does NOT match GAS's own text order [csr, rs1] - confirmed
+   against real GNU as (`csrw mstatus, a1` -> the same bit pattern as
+   `csrrw zero, mstatus, a1`). *)
+let csr_write_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let rs1 = { op_name = "rs1"; op_kind = gpr (); role = In; explicit = true } in
+      let csr = csr_immediate_operand () in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ csr; rs1 ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "csr"; Syn_operand "rs1" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rs1, csr taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "GAS syntax reorders these as \"mnemonic csr, rs1\" - not the encoding.fields \
+                   declaration order";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+            | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+            | _ -> []);
+        }
+
+(* [csrwi/csrsi/csrci csr, zimm5] - GAS's write/set/clear-only aliases for
+   [csrrwi/csrrsi/csrrci x0, csr, zimm5] (rd = x0). riscv-opcodes' own
+   encoding.fields/operands order here, [csr, zimm5], already matches GAS
+   syntax, confirmed against real GNU as (`csrwi mstatus, 5` -> the same
+   bit pattern as `csrrwi zero, mstatus, 5`). *)
+let csr_write_imm_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let csr = csr_immediate_operand () in
+      let zimm5 =
+        {
+          op_name = "zimm5";
+          op_kind =
+            Immediate
+              {
+                width_bits = 5;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [ { field_name = "zimm5"; field_hi = 4; field_lo = 0; dest_hi = 4; dest_lo = 0 } ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ csr; zimm5 ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "csr"; Syn_operand "zimm5" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields csr, zimm5 taken verbatim from encoding.fields";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+            | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+            | _ -> []);
+        }
+
+(* [amoOP rd, rs2, (rs1)] / [scOP rd, rs2, (rs1)] - Zaamo's three-GPR-
+   plus-memory shape. Unlike {!sw_form}'s [offset(base)], the memory group
+   here has no offset field at all - riscv-opcodes' own encoding.fields
+   never lists one for this record, since GAS's own "(rs1)" is pure
+   parenthesization, not an encoded value (confirmed against real GNU as:
+   `amoadd.w a0, a1, 4(a2)` is rejected, "illegal operands"). The record's
+   own `aq`/`rl` fields are real, independently encodable bits (GAS's
+   `.aq`/`.rl`/`.aqrl` mnemonic-suffix decorators read/write them), but
+   this normalizes only GAS's bare canonical (aq=0,rl=0) spelling per the
+   plan's "canonical spelling first ... decorators ... as separately
+   identified cases" policy (section 5.2) - not modeled as operands here,
+   flagged as an explicit diagnostic instead of silently dropped. *)
+let amo_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = gpr (); role = In; explicit = true } in
+      let base = { op_name = "base"; op_kind = gpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ rd; rs2; base ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "rd";
+                  Syn_operand "rs2";
+                  Syn_group [ Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, rs2 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note = "rs1 renders as GAS's parenthesized memory base, never a bare register";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+              | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+              | _ -> [])
+            @ [
+                {
+                  rule = mnemonic ^ "-aq-rl-not-modeled";
+                  message =
+                    "aq/rl bits are real encodable fields (GAS .aq/.rl/.aqrl mnemonic-suffix \
+                     decorators); only the bare aq=0,rl=0 canonical spelling is normalized here";
+                };
+              ];
+        }
+
+(* [lr.w/lr.d rd, (rs1)] - the same family's only two-operand member; rs2's
+   field is architecturally fixed to 0 and never syntax-visible (unlike
+   {!amo_form}'s real rs2 operand), so it is not modeled as an operand at
+   all, the same omission convention {!csr_write_form} uses for its
+   implicit-x0 register. *)
+let lr_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let base = { op_name = "base"; op_kind = gpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ rd; base ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "rd";
+                  Syn_group [ Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand field rd, rs1 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rs1 renders as GAS's parenthesized memory base; rs2's field is fixed to 0 and \
+                   is not a real operand";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+              | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+              | _ -> [])
+            @ [
+                {
+                  rule = mnemonic ^ "-aq-rl-not-modeled";
+                  message =
+                    "aq/rl bits are real encodable fields (GAS .aq/.rl/.aqrl mnemonic-suffix \
+                     decorators); only the bare aq=0,rl=0 canonical spelling is normalized here";
+                };
+              ];
         }
 
 let r_type_mnemonics =
@@ -726,6 +1315,17 @@ let r_type_mnemonics =
     "clmulh";
     "xperm4";
     "xperm8";
+    "sha512sum0r";
+    "sha512sum1r";
+    "sha512sig0l";
+    "sha512sig1l";
+    "sha512sig0h";
+    "sha512sig1h";
+    "aes64ds";
+    "aes64dsm";
+    "aes64es";
+    "aes64esm";
+    "aes64ks2";
   ]
 
 let i_type_mnemonics = [ "addi"; "slti"; "sltiu"; "andi"; "ori"; "xori"; "addiw" ]
@@ -753,6 +1353,15 @@ let unary_gpr_mnemonics =
     "brev8";
     "zip";
     "unzip";
+    "sha256sum0";
+    "sha256sum1";
+    "sha256sig0";
+    "sha256sig1";
+    "sha512sum0";
+    "sha512sum1";
+    "sha512sig0";
+    "sha512sig1";
+    "aes64im";
   ]
 
 (* The scalar floating-point arithmetic forms' rd/rs1/rs2 are floating
@@ -837,6 +1446,65 @@ let normalize (rec_ : R.t) =
   | "rori" -> shamt_gpr_form ~mnemonic:"rori" ~width:6 rec_
   | "rori.rv32" -> shamt_gpr_form ~mnemonic:"rori" ~width:5 ~extension_lookup_key:"rori.rv32" rec_
   | "roriw" -> shamt_gpr_form ~mnemonic:"roriw" ~width:5 rec_
+  (* aes64ks1i: the same two-GPR-plus-narrow-unsigned-immediate shape as
+     rori/roriw above, reusing shamt_gpr_form's generalized [operand_name]/
+     [field_name] overrides for riscv-opcodes' own "rnum" field (a 4-bit
+     round-select, not a shift amount) - the normalized model only records
+     the field's raw width; aes64ks1i's real semantic subrange (0-10 of the
+     16 representable values) is an encoder concern, not a normalization
+     one. *)
+  | "aes64ks1i" ->
+      shamt_gpr_form ~mnemonic:"aes64ks1i" ~width:4 ~operand_name:"rnum" ~field_name:"rnum" rec_
+  (* aes32dsi/aes32dsmi/aes32esi/aes32esmi: AES-32's own round functions -
+     the three-GPR-plus-narrow-unsigned-immediate shape r_type_imm_gpr_form
+     above models, riscv-opcodes' own "bs" (byte-select) field. *)
+  | "aes32dsi" ->
+      r_type_imm_gpr_form ~mnemonic:"aes32dsi" ~width:2 ~operand_name:"bs" ~field_name:"bs" rec_
+  | "aes32dsmi" ->
+      r_type_imm_gpr_form ~mnemonic:"aes32dsmi" ~width:2 ~operand_name:"bs" ~field_name:"bs" rec_
+  | "aes32esi" ->
+      r_type_imm_gpr_form ~mnemonic:"aes32esi" ~width:2 ~operand_name:"bs" ~field_name:"bs" rec_
+  | "aes32esmi" ->
+      r_type_imm_gpr_form ~mnemonic:"aes32esmi" ~width:2 ~operand_name:"bs" ~field_name:"bs" rec_
+  (* Zicsr's register-source and immediate-source CSR forms. *)
+  | "csrrw" -> csr_reg_form ~mnemonic:"csrrw" rec_
+  | "csrrs" -> csr_reg_form ~mnemonic:"csrrs" rec_
+  | "csrrc" -> csr_reg_form ~mnemonic:"csrrc" rec_
+  | "csrrwi" -> csr_imm_form ~mnemonic:"csrrwi" rec_
+  | "csrrsi" -> csr_imm_form ~mnemonic:"csrrsi" rec_
+  | "csrrci" -> csr_imm_form ~mnemonic:"csrrci" rec_
+  | "csrr" -> csr_read_form ~mnemonic:"csrr" rec_
+  | "csrw" -> csr_write_form ~mnemonic:"csrw" rec_
+  | "csrs" -> csr_write_form ~mnemonic:"csrs" rec_
+  | "csrc" -> csr_write_form ~mnemonic:"csrc" rec_
+  | "csrwi" -> csr_write_imm_form ~mnemonic:"csrwi" rec_
+  | "csrsi" -> csr_write_imm_form ~mnemonic:"csrsi" rec_
+  | "csrci" -> csr_write_imm_form ~mnemonic:"csrci" rec_
+  (* Zaamo's 22 atomic-memory-operation/load-reserved/store-conditional
+     records - 9 amoOP mnemonics plus sc on each of .w/.d, plus lr.w/lr.d
+     (see {!amo_form}/{!lr_form} above). *)
+  | "amoswap.w" -> amo_form ~mnemonic:"amoswap.w" rec_
+  | "amoadd.w" -> amo_form ~mnemonic:"amoadd.w" rec_
+  | "amoxor.w" -> amo_form ~mnemonic:"amoxor.w" rec_
+  | "amoand.w" -> amo_form ~mnemonic:"amoand.w" rec_
+  | "amoor.w" -> amo_form ~mnemonic:"amoor.w" rec_
+  | "amomin.w" -> amo_form ~mnemonic:"amomin.w" rec_
+  | "amomax.w" -> amo_form ~mnemonic:"amomax.w" rec_
+  | "amominu.w" -> amo_form ~mnemonic:"amominu.w" rec_
+  | "amomaxu.w" -> amo_form ~mnemonic:"amomaxu.w" rec_
+  | "sc.w" -> amo_form ~mnemonic:"sc.w" rec_
+  | "lr.w" -> lr_form ~mnemonic:"lr.w" rec_
+  | "amoswap.d" -> amo_form ~mnemonic:"amoswap.d" rec_
+  | "amoadd.d" -> amo_form ~mnemonic:"amoadd.d" rec_
+  | "amoxor.d" -> amo_form ~mnemonic:"amoxor.d" rec_
+  | "amoand.d" -> amo_form ~mnemonic:"amoand.d" rec_
+  | "amoor.d" -> amo_form ~mnemonic:"amoor.d" rec_
+  | "amomin.d" -> amo_form ~mnemonic:"amomin.d" rec_
+  | "amomax.d" -> amo_form ~mnemonic:"amomax.d" rec_
+  | "amominu.d" -> amo_form ~mnemonic:"amominu.d" rec_
+  | "amomaxu.d" -> amo_form ~mnemonic:"amomaxu.d" rec_
+  | "sc.d" -> amo_form ~mnemonic:"sc.d" rec_
+  | "lr.d" -> lr_form ~mnemonic:"lr.d" rec_
   (* zext.h/zext.h.rv32: the same profile-specific native_name split as
      rev8/rev8.rv32 above, but with no import duplication to disambiguate -
      each profile's record names only its own single extension

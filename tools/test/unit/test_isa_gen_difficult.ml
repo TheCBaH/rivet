@@ -80,6 +80,79 @@ let test_counts () =
   check "xperm4/xperm8 entries have 2 entries each (Zbkx Req_any x 2 profiles)"
     (List.length Isa_gen_difficult.xperm4_entries = 2
     && List.length Isa_gen_difficult.xperm8_entries = 2);
+  check "sha256sum0/sum1/sig0/sig1 entries have 2 entries each (Zknh Req_any x 2 profiles)"
+    (List.length Isa_gen_difficult.sha256sum0_entries = 2
+    && List.length Isa_gen_difficult.sha256sum1_entries = 2
+    && List.length Isa_gen_difficult.sha256sig0_entries = 2
+    && List.length Isa_gen_difficult.sha256sig1_entries = 2);
+  check "sha512sum0/sum1/sig0/sig1 entries have 1 entry each (RV64-only, no RV32 counterpart)"
+    (List.length Isa_gen_difficult.sha512sum0_entries = 1
+    && List.length Isa_gen_difficult.sha512sum1_entries = 1
+    && List.length Isa_gen_difficult.sha512sig0_entries = 1
+    && List.length Isa_gen_difficult.sha512sig1_entries = 1
+    && List.for_all
+         (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv64)
+         (Isa_gen_difficult.sha512sum0_entries @ Isa_gen_difficult.sha512sum1_entries
+        @ Isa_gen_difficult.sha512sig0_entries @ Isa_gen_difficult.sha512sig1_entries));
+  check
+    "sha512sum0r/sum1r/sig0l/sig1l/sig0h/sig1h entries have 1 entry each (RV32-only, no RV64 \
+     counterpart)"
+    (List.length Isa_gen_difficult.sha512sum0r_entries = 1
+    && List.length Isa_gen_difficult.sha512sum1r_entries = 1
+    && List.length Isa_gen_difficult.sha512sig0l_entries = 1
+    && List.length Isa_gen_difficult.sha512sig1l_entries = 1
+    && List.length Isa_gen_difficult.sha512sig0h_entries = 1
+    && List.length Isa_gen_difficult.sha512sig1h_entries = 1
+    && List.for_all
+         (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv32)
+         (Isa_gen_difficult.sha512sum0r_entries @ Isa_gen_difficult.sha512sum1r_entries
+        @ Isa_gen_difficult.sha512sig0l_entries @ Isa_gen_difficult.sha512sig1l_entries
+        @ Isa_gen_difficult.sha512sig0h_entries @ Isa_gen_difficult.sha512sig1h_entries));
+  check "aes64ds/dsm/es/esm/ks2/im entries have 1 entry each (RV64-only, no RV32 counterpart)"
+    (List.length Isa_gen_difficult.aes64ds_entries = 1
+    && List.length Isa_gen_difficult.aes64dsm_entries = 1
+    && List.length Isa_gen_difficult.aes64es_entries = 1
+    && List.length Isa_gen_difficult.aes64esm_entries = 1
+    && List.length Isa_gen_difficult.aes64ks2_entries = 1
+    && List.length Isa_gen_difficult.aes64im_entries = 1
+    && List.for_all
+         (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv64)
+         (Isa_gen_difficult.aes64ds_entries @ Isa_gen_difficult.aes64dsm_entries
+        @ Isa_gen_difficult.aes64es_entries @ Isa_gen_difficult.aes64esm_entries
+        @ Isa_gen_difficult.aes64ks2_entries @ Isa_gen_difficult.aes64im_entries));
+  check "aes64ks1i_entries has 1 entry (RV64-only, no RV32 counterpart)"
+    (List.length Isa_gen_difficult.aes64ks1i_entries = 1
+    && List.for_all
+         (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv64)
+         Isa_gen_difficult.aes64ks1i_entries);
+  check "aes32dsi/dsmi/esi/esmi entries have 1 entry each (RV32-only, no RV64 counterpart)"
+    (List.length Isa_gen_difficult.aes32dsi_entries = 1
+    && List.length Isa_gen_difficult.aes32dsmi_entries = 1
+    && List.length Isa_gen_difficult.aes32esi_entries = 1
+    && List.length Isa_gen_difficult.aes32esmi_entries = 1
+    && List.for_all
+         (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv32)
+         (Isa_gen_difficult.aes32dsi_entries @ Isa_gen_difficult.aes32dsmi_entries
+        @ Isa_gen_difficult.aes32esi_entries @ Isa_gen_difficult.aes32esmi_entries));
+  check
+    "csrrw/csrrs/csrrc/csrrwi/csrrsi/csrrci entries have 2 entries each (XLEN-independent x 2 \
+     profiles)"
+    (List.length Isa_gen_difficult.csrrw_entries = 2
+    && List.length Isa_gen_difficult.csrrs_entries = 2
+    && List.length Isa_gen_difficult.csrrc_entries = 2
+    && List.length Isa_gen_difficult.csrrwi_entries = 2
+    && List.length Isa_gen_difficult.csrrsi_entries = 2
+    && List.length Isa_gen_difficult.csrrci_entries = 2);
+  check
+    "csrr/csrw/csrs/csrc/csrwi/csrsi/csrci entries have 2 entries each (XLEN-independent x 2 \
+     profiles)"
+    (List.length Isa_gen_difficult.csrr_entries = 2
+    && List.length Isa_gen_difficult.csrw_entries = 2
+    && List.length Isa_gen_difficult.csrs_entries = 2
+    && List.length Isa_gen_difficult.csrc_entries = 2
+    && List.length Isa_gen_difficult.csrwi_entries = 2
+    && List.length Isa_gen_difficult.csrsi_entries = 2
+    && List.length Isa_gen_difficult.csrci_entries = 2);
   check
     "clz/ctz/cpop/sext.b/sext.h/orc.b entries have 2 entries each (XLEN-independent x 2 profiles)"
     (List.length Isa_gen_difficult.clz_entries = 2
@@ -207,7 +280,67 @@ let test_counts () =
       + List.length Isa_gen_difficult.clmul_entries
       + List.length Isa_gen_difficult.clmulh_entries
       + List.length Isa_gen_difficult.xperm4_entries
-      + List.length Isa_gen_difficult.xperm8_entries)
+      + List.length Isa_gen_difficult.xperm8_entries
+      + List.length Isa_gen_difficult.sha256sum0_entries
+      + List.length Isa_gen_difficult.sha256sum1_entries
+      + List.length Isa_gen_difficult.sha256sig0_entries
+      + List.length Isa_gen_difficult.sha256sig1_entries
+      + List.length Isa_gen_difficult.sha512sum0_entries
+      + List.length Isa_gen_difficult.sha512sum1_entries
+      + List.length Isa_gen_difficult.sha512sig0_entries
+      + List.length Isa_gen_difficult.sha512sig1_entries
+      + List.length Isa_gen_difficult.sha512sum0r_entries
+      + List.length Isa_gen_difficult.sha512sum1r_entries
+      + List.length Isa_gen_difficult.sha512sig0l_entries
+      + List.length Isa_gen_difficult.sha512sig1l_entries
+      + List.length Isa_gen_difficult.sha512sig0h_entries
+      + List.length Isa_gen_difficult.sha512sig1h_entries
+      + List.length Isa_gen_difficult.aes64ds_entries
+      + List.length Isa_gen_difficult.aes64dsm_entries
+      + List.length Isa_gen_difficult.aes64es_entries
+      + List.length Isa_gen_difficult.aes64esm_entries
+      + List.length Isa_gen_difficult.aes64ks2_entries
+      + List.length Isa_gen_difficult.aes64im_entries
+      + List.length Isa_gen_difficult.aes64ks1i_entries
+      + List.length Isa_gen_difficult.aes32dsi_entries
+      + List.length Isa_gen_difficult.aes32dsmi_entries
+      + List.length Isa_gen_difficult.aes32esi_entries
+      + List.length Isa_gen_difficult.aes32esmi_entries
+      + List.length Isa_gen_difficult.csrrw_entries
+      + List.length Isa_gen_difficult.csrrs_entries
+      + List.length Isa_gen_difficult.csrrc_entries
+      + List.length Isa_gen_difficult.csrrwi_entries
+      + List.length Isa_gen_difficult.csrrsi_entries
+      + List.length Isa_gen_difficult.csrrci_entries
+      + List.length Isa_gen_difficult.csrr_entries
+      + List.length Isa_gen_difficult.csrw_entries
+      + List.length Isa_gen_difficult.csrs_entries
+      + List.length Isa_gen_difficult.csrc_entries
+      + List.length Isa_gen_difficult.csrwi_entries
+      + List.length Isa_gen_difficult.csrsi_entries
+      + List.length Isa_gen_difficult.csrci_entries
+      + List.length Isa_gen_difficult.amoswap_w_entries
+      + List.length Isa_gen_difficult.amoadd_w_entries
+      + List.length Isa_gen_difficult.amoxor_w_entries
+      + List.length Isa_gen_difficult.amoand_w_entries
+      + List.length Isa_gen_difficult.amoor_w_entries
+      + List.length Isa_gen_difficult.amomin_w_entries
+      + List.length Isa_gen_difficult.amomax_w_entries
+      + List.length Isa_gen_difficult.amominu_w_entries
+      + List.length Isa_gen_difficult.amomaxu_w_entries
+      + List.length Isa_gen_difficult.sc_w_entries
+      + List.length Isa_gen_difficult.lr_w_entries
+      + List.length Isa_gen_difficult.amoswap_d_entries
+      + List.length Isa_gen_difficult.amoadd_d_entries
+      + List.length Isa_gen_difficult.amoxor_d_entries
+      + List.length Isa_gen_difficult.amoand_d_entries
+      + List.length Isa_gen_difficult.amoor_d_entries
+      + List.length Isa_gen_difficult.amomin_d_entries
+      + List.length Isa_gen_difficult.amomax_d_entries
+      + List.length Isa_gen_difficult.amominu_d_entries
+      + List.length Isa_gen_difficult.amomaxu_d_entries
+      + List.length Isa_gen_difficult.sc_d_entries
+      + List.length Isa_gen_difficult.lr_d_entries)
 
 let test_case_ids_distinct () =
   let ids = List.map (fun (e : Isa_gen_difficult.entry) -> e.case_id) Isa_gen_difficult.all in
@@ -356,7 +489,12 @@ let test_minmax_domain () =
    @ Isa_gen_difficult.packw_entries @ Isa_gen_difficult.rolw_entries
    @ Isa_gen_difficult.rorw_entries @ Isa_gen_difficult.clmul_entries
    @ Isa_gen_difficult.clmulh_entries @ Isa_gen_difficult.xperm4_entries
-   @ Isa_gen_difficult.xperm8_entries)
+   @ Isa_gen_difficult.xperm8_entries @ Isa_gen_difficult.sha512sum0r_entries
+   @ Isa_gen_difficult.sha512sum1r_entries @ Isa_gen_difficult.sha512sig0l_entries
+   @ Isa_gen_difficult.sha512sig1l_entries @ Isa_gen_difficult.sha512sig0h_entries
+   @ Isa_gen_difficult.sha512sig1h_entries @ Isa_gen_difficult.aes64ds_entries
+   @ Isa_gen_difficult.aes64dsm_entries @ Isa_gen_difficult.aes64es_entries
+   @ Isa_gen_difficult.aes64esm_entries @ Isa_gen_difficult.aes64ks2_entries)
 
 let test_unary_gpr_domain () =
   List.iter
@@ -373,7 +511,11 @@ let test_unary_gpr_domain () =
    @ Isa_gen_difficult.ctzw_entries @ Isa_gen_difficult.cpopw_entries
    @ Isa_gen_difficult.brev8_entries @ Isa_gen_difficult.rev8_entries
    @ Isa_gen_difficult.zip_entries @ Isa_gen_difficult.unzip_entries
-   @ Isa_gen_difficult.zext_h_entries)
+   @ Isa_gen_difficult.zext_h_entries @ Isa_gen_difficult.sha256sum0_entries
+   @ Isa_gen_difficult.sha256sum1_entries @ Isa_gen_difficult.sha256sig0_entries
+   @ Isa_gen_difficult.sha256sig1_entries @ Isa_gen_difficult.sha512sum0_entries
+   @ Isa_gen_difficult.sha512sum1_entries @ Isa_gen_difficult.sha512sig0_entries
+   @ Isa_gen_difficult.sha512sig1_entries @ Isa_gen_difficult.aes64im_entries)
 
 let test_shamt_domain () =
   List.iter
@@ -386,6 +528,146 @@ let test_shamt_domain () =
         (Printf.sprintf "%s: enables only the measured Zbb extension" e.case_id)
         (List.exists (fun arg -> String.contains arg 'z') e.configuration))
     (Isa_gen_difficult.rori_entries @ Isa_gen_difficult.roriw_entries)
+
+(* aes64ks1i: the same two-GPR-plus-narrow-immediate shape as
+   {!test_shamt_domain} above, but keyed "rnum" (riscv-opcodes' own field
+   name), not "shamt", so it gets its own check rather than folding into
+   that shared one. *)
+let test_aes64ks1i_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses two ordinary GPR operands plus an rnum immediate" e.case_id)
+        (List.map fst e.operands = [ "rd"; "rs1"; "rnum" ]
+        && List.map snd e.operands = [ "a0"; "a1"; "5" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured Zknd extension" e.case_id)
+        (List.exists (fun arg -> String.contains arg 'z') e.configuration))
+    Isa_gen_difficult.aes64ks1i_entries
+
+(* aes32dsi/dsmi/esi/esmi: the three-GPR-plus-immediate analogue of
+   {!test_aes64ks1i_domain} above, keyed "bs" (riscv-opcodes' own field
+   name), not "rnum". *)
+let test_aes32_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses three ordinary GPR operands plus a bs immediate" e.case_id)
+        (List.map fst e.operands = [ "rd"; "rs1"; "rs2"; "bs" ]
+        && List.map snd e.operands = [ "a0"; "a1"; "a2"; "3" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured Zknd/Zkne extension" e.case_id)
+        (List.exists (fun arg -> String.contains arg 'z') e.configuration))
+    (Isa_gen_difficult.aes32dsi_entries @ Isa_gen_difficult.aes32dsmi_entries
+   @ Isa_gen_difficult.aes32esi_entries @ Isa_gen_difficult.aes32esmi_entries)
+
+(* csrrw/csrrs/csrrc: rd/csr/rs1 operands, GAS's own text order (not
+   riscv-opcodes' rd/rs1/csr field order). *)
+let test_csr_reg_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, csr, rs1 operands in that order" e.case_id)
+        (List.map fst e.operands = [ "rd"; "csr"; "rs1" ]
+        && List.map snd e.operands = [ "a0"; "0x300"; "a1" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured Zicsr extension" e.case_id)
+        (List.exists (fun arg -> String.contains arg 'z') e.configuration))
+    (Isa_gen_difficult.csrrw_entries @ Isa_gen_difficult.csrrs_entries
+   @ Isa_gen_difficult.csrrc_entries)
+
+(* csrrwi/csrrsi/csrrci: rd/csr/zimm5 operands - no register operand
+   besides rd. *)
+let test_csr_imm_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, csr, zimm5 operands in that order" e.case_id)
+        (List.map fst e.operands = [ "rd"; "csr"; "zimm5" ]
+        && List.map snd e.operands = [ "a0"; "0x300"; "5" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured Zicsr extension" e.case_id)
+        (List.exists (fun arg -> String.contains arg 'z') e.configuration))
+    (Isa_gen_difficult.csrrwi_entries @ Isa_gen_difficult.csrrsi_entries
+   @ Isa_gen_difficult.csrrci_entries)
+
+(* csrr: rd/csr operands, no rs1. *)
+let test_csrr_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, csr operands in that order" e.case_id)
+        (List.map fst e.operands = [ "rd"; "csr" ] && List.map snd e.operands = [ "a0"; "0x300" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured Zicsr extension" e.case_id)
+        (List.exists (fun arg -> String.contains arg 'z') e.configuration))
+    Isa_gen_difficult.csrr_entries
+
+(* csrw/csrs/csrc: csr/rs1 operands, no rd - csr comes first, unlike
+   {!test_csr_reg_domain}'s rd/csr/rs1. *)
+let test_csr_write_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses csr, rs1 operands in that order" e.case_id)
+        (List.map fst e.operands = [ "csr"; "rs1" ] && List.map snd e.operands = [ "0x300"; "a1" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured Zicsr extension" e.case_id)
+        (List.exists (fun arg -> String.contains arg 'z') e.configuration))
+    (Isa_gen_difficult.csrw_entries @ Isa_gen_difficult.csrs_entries
+   @ Isa_gen_difficult.csrc_entries)
+
+(* csrwi/csrsi/csrci: csr/zimm5 operands, no rd. *)
+let test_csr_write_imm_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses csr, zimm5 operands in that order" e.case_id)
+        (List.map fst e.operands = [ "csr"; "zimm5" ] && List.map snd e.operands = [ "0x300"; "5" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured Zicsr extension" e.case_id)
+        (List.exists (fun arg -> String.contains arg 'z') e.configuration))
+    (Isa_gen_difficult.csrwi_entries @ Isa_gen_difficult.csrsi_entries
+   @ Isa_gen_difficult.csrci_entries)
+
+(* amoOP/scOP: rd/rs2/base operands, base rendering as GAS's parenthesized
+   memory group rather than a bare register. *)
+let test_amo_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, rs2, base operands in that order" e.case_id)
+        (List.map fst e.operands = [ "rd"; "rs2"; "base" ]
+        && List.map snd e.operands = [ "a0"; "a1"; "a2" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured A extension" e.case_id)
+        (List.exists
+           (fun arg -> String.equal arg "-march=rv32ia" || String.equal arg "-march=rv64ia")
+           e.configuration))
+    (Isa_gen_difficult.amoswap_w_entries @ Isa_gen_difficult.amoadd_w_entries
+   @ Isa_gen_difficult.amoxor_w_entries @ Isa_gen_difficult.amoand_w_entries
+   @ Isa_gen_difficult.amoor_w_entries @ Isa_gen_difficult.amomin_w_entries
+   @ Isa_gen_difficult.amomax_w_entries @ Isa_gen_difficult.amominu_w_entries
+   @ Isa_gen_difficult.amomaxu_w_entries @ Isa_gen_difficult.sc_w_entries
+   @ Isa_gen_difficult.amoswap_d_entries @ Isa_gen_difficult.amoadd_d_entries
+   @ Isa_gen_difficult.amoxor_d_entries @ Isa_gen_difficult.amoand_d_entries
+   @ Isa_gen_difficult.amoor_d_entries @ Isa_gen_difficult.amomin_d_entries
+   @ Isa_gen_difficult.amomax_d_entries @ Isa_gen_difficult.amominu_d_entries
+   @ Isa_gen_difficult.amomaxu_d_entries @ Isa_gen_difficult.sc_d_entries)
+
+(* lr.w/lr.d: rd/base operands only, no rs2 (its field is fixed to 0). *)
+let test_lr_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, base operands in that order" e.case_id)
+        (List.map fst e.operands = [ "rd"; "base" ] && List.map snd e.operands = [ "a0"; "a2" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured A extension" e.case_id)
+        (List.exists
+           (fun arg -> String.equal arg "-march=rv32ia" || String.equal arg "-march=rv64ia")
+           e.configuration))
+    (Isa_gen_difficult.lr_w_entries @ Isa_gen_difficult.lr_d_entries)
 
 let test_render_source_lines () =
   check "render_source_lines matches render_source for a single line"
@@ -437,6 +719,15 @@ let () =
   test_minmax_domain ();
   test_unary_gpr_domain ();
   test_shamt_domain ();
+  test_aes64ks1i_domain ();
+  test_aes32_domain ();
+  test_csr_reg_domain ();
+  test_csr_imm_domain ();
+  test_csrr_domain ();
+  test_csr_write_domain ();
+  test_csr_write_imm_domain ();
+  test_amo_domain ();
+  test_lr_domain ();
   test_render_source_lines ();
   test_build_wraps_lines_before_and_after ();
   if !failures > 0 then (

@@ -317,6 +317,278 @@ val xperm8_entries : entry list
 (** [xperm8 a0, a1, a2] on both profiles, {!xperm4_entries}'s byte-granular
     sibling (same Req_any group, opcode, funct7; only funct3 differs). *)
 
+val sha256sum0_entries : entry list
+(** [sha256sum0 a0, a1] on both profiles - Zknh's SHA-256 message-schedule
+    helper, the same two-GPR-operand unary shape {!clz_entries} uses but a
+    three-way Req_any group (rv_zknh primary, imported by rv_zk/rv_zkn - no
+    rv_zks, since SHA-256 belongs to the NIST crypto profile, not
+    ShangMi). *)
+
+val sha256sum1_entries : entry list
+(** [sha256sum1 a0, a1] on both profiles, {!sha256sum0_entries}'s sibling
+    (same Req_any group, opcode, funct3; only funct12 differs). *)
+
+val sha256sig0_entries : entry list
+(** [sha256sig0 a0, a1] on both profiles, {!sha256sum0_entries}'s sibling
+    (same Req_any group, opcode, funct3; only funct12 differs). *)
+
+val sha256sig1_entries : entry list
+(** [sha256sig1 a0, a1] on both profiles, {!sha256sum0_entries}'s sibling
+    (same Req_any group, opcode, funct3; only funct12 differs). *)
+
+val sha512sum0_entries : entry list
+(** [sha512sum0 a0, a1] on RV64 only - {!sha256sum0_entries}'s RV64-only
+    sibling; riscv-opcodes has no RV32 record at all (confirmed: real
+    riscv32-linux-gnu-as rejects it as an unrecognized opcode). *)
+
+val sha512sum1_entries : entry list
+(** [sha512sum1 a0, a1] on RV64 only, {!sha512sum0_entries}'s sibling
+    (same Req_any group, opcode, funct3; only funct12 differs). *)
+
+val sha512sig0_entries : entry list
+(** [sha512sig0 a0, a1] on RV64 only, {!sha512sum0_entries}'s sibling
+    (same Req_any group, opcode, funct3; only funct12 differs). *)
+
+val sha512sig1_entries : entry list
+(** [sha512sig1 a0, a1] on RV64 only, {!sha512sum0_entries}'s sibling
+    (same Req_any group, opcode, funct3; only funct12 differs). *)
+
+val sha512sum0r_entries : entry list
+(** [sha512sum0r a0, a1, a2] on RV32 only - SHA-512's own 32-bit-word-pair-
+    split helper, a plain three-GPR R-type shape (not the two-GPR unary
+    one {!sha512sum0_entries} etc. use), a three-way Req_any group
+    (rv32_zknh primary, imported by rv32_zk/rv32_zkn); riscv-opcodes has no
+    RV64 record at all (confirmed: real riscv64-linux-gnu-as rejects it as
+    an unrecognized opcode). *)
+
+val sha512sum1r_entries : entry list
+(** [sha512sum1r a0, a1, a2] on RV32 only, {!sha512sum0r_entries}'s sibling
+    (same Req_any group, opcode, funct3; only funct7 differs). *)
+
+val sha512sig0l_entries : entry list
+(** [sha512sig0l a0, a1, a2] on RV32 only, {!sha512sum0r_entries}'s sibling
+    (same Req_any group, opcode, funct3; only funct7 differs). *)
+
+val sha512sig1l_entries : entry list
+(** [sha512sig1l a0, a1, a2] on RV32 only, {!sha512sum0r_entries}'s sibling
+    (same Req_any group, opcode, funct3; only funct7 differs). *)
+
+val sha512sig0h_entries : entry list
+(** [sha512sig0h a0, a1, a2] on RV32 only, {!sha512sum0r_entries}'s sibling
+    (same Req_any group, opcode, funct3; only funct7 differs). *)
+
+val sha512sig1h_entries : entry list
+(** [sha512sig1h a0, a1, a2] on RV32 only, {!sha512sum0r_entries}'s sibling
+    (same Req_any group, opcode, funct3; only funct7 differs). *)
+
+val aes64ds_entries : entry list
+(** [aes64ds a0, a1, a2] on RV64 only - AES-64's decrypt round, a plain
+    three-GPR R-type shape reusing {!r_type_gpr_form}/{!r_desc}, a
+    three-way Req_any group (rv64_zknd primary, imported by
+    rv64_zk/rv64_zkn). riscv-opcodes has no RV32 record at all. *)
+
+val aes64dsm_entries : entry list
+(** [aes64dsm a0, a1, a2] on RV64 only, {!aes64ds_entries}'s
+    mixed-columns sibling (same Req_any group, opcode, funct3; only
+    funct7 differs). *)
+
+val aes64es_entries : entry list
+(** [aes64es a0, a1, a2] on RV64 only - AES-64's encrypt round, the same
+    shape as {!aes64ds_entries} but rooted in a disjoint primary
+    extension (rv64_zkne, imported by rv64_zk/rv64_zkn). *)
+
+val aes64esm_entries : entry list
+(** [aes64esm a0, a1, a2] on RV64 only, {!aes64es_entries}'s
+    mixed-columns sibling (same Req_any group, opcode, funct3; only
+    funct7 differs). *)
+
+val aes64ks2_entries : entry list
+(** [aes64ks2 a0, a1, a2] on RV64 only - AES-64's key-schedule helper,
+    the one mnemonic in this family imported by BOTH zknd and zkne (a
+    four-way Req_any group: rv64_zknd primary, imported by
+    rv64_zk/rv64_zkn/rv64_zkne). *)
+
+val aes64im_entries : entry list
+(** [aes64im a0, a1] on RV64 only - AES-64's inverse-mix-columns helper,
+    the one two-GPR unary form in this family (same shape as
+    {!sha512sum0_entries}), sharing {!aes64ds_entries}'s own three-way
+    Zknd-rooted Req_any group. *)
+
+val aes64ks1i_entries : entry list
+(** [aes64ks1i a0, a1, 5] on RV64 only - AES-64's first key-schedule helper,
+    the same two-GPR-plus-narrow-unsigned-immediate shape {!rori_entries}
+    uses, sharing {!aes64ks2_entries}'s own four-way Req_any group. [rnum]'s
+    real valid range is 0-10 (of the 16 the 4-bit field can represent) -
+    real GNU as rejects 11-15 outright. *)
+
+val aes32dsi_entries : entry list
+(** [aes32dsi a0, a1, a2, 3] on RV32 only - AES-32's own decrypt round, a
+    three-GPR-plus-narrow-unsigned-immediate shape (riscv-opcodes' own "bs"
+    byte-select field), a three-way Req_any group (rv32_zknd primary,
+    imported by rv32_zk/rv32_zkn). riscv-opcodes has no RV64 record at
+    all. *)
+
+val aes32dsmi_entries : entry list
+(** [aes32dsmi a0, a1, a2, 3] on RV32 only, {!aes32dsi_entries}'s
+    mixed-columns sibling (same Req_any group, opcode, funct3; only the
+    fixed 5-bit selector portion of funct7 differs). *)
+
+val aes32esi_entries : entry list
+(** [aes32esi a0, a1, a2, 3] on RV32 only - AES-32's own encrypt round, the
+    same shape as {!aes32dsi_entries} but rooted in a disjoint primary
+    extension (rv32_zkne, imported by rv32_zk/rv32_zkn). *)
+
+val aes32esmi_entries : entry list
+(** [aes32esmi a0, a1, a2, 3] on RV32 only, {!aes32esi_entries}'s
+    mixed-columns sibling (same Req_any group, opcode, funct3; only the
+    fixed 5-bit selector portion of funct7 differs). *)
+
+val csrrw_entries : entry list
+(** [csrrw a0, 0x300, a1] on both profiles - Zicsr's register-source
+    read/write CSR form, [rd, csr, rs1] operands (GAS's own text order,
+    not riscv-opcodes' [rd, rs1, csr] field order). A plain Req_feature
+    (no import duplication); XLEN-independent. *)
+
+val csrrs_entries : entry list
+(** [csrrs a0, 0x300, a1] on both profiles, {!csrrw_entries}'s read-set
+    sibling (same shape; only funct3 differs). *)
+
+val csrrc_entries : entry list
+(** [csrrc a0, 0x300, a1] on both profiles, {!csrrw_entries}'s read-clear
+    sibling (same shape; only funct3 differs). *)
+
+val csrrwi_entries : entry list
+(** [csrrwi a0, 0x300, 5] on both profiles - Zicsr's immediate-source
+    read/write CSR form, [rd, csr, zimm5] operands (no register operand
+    besides [rd]). *)
+
+val csrrsi_entries : entry list
+(** [csrrsi a0, 0x300, 5] on both profiles, {!csrrwi_entries}'s read-set
+    sibling (same shape; only funct3 differs). *)
+
+val csrrci_entries : entry list
+(** [csrrci a0, 0x300, 5] on both profiles, {!csrrwi_entries}'s read-clear
+    sibling (same shape; only funct3 differs). *)
+
+val csrr_entries : entry list
+(** [csrr a0, 0x300] on both profiles - GAS's read-only alias for
+    {!csrrs_entries} with an implicit x0 source, [rd, csr] operands. *)
+
+val csrw_entries : entry list
+(** [csrw 0x300, a1] on both profiles - GAS's write-only alias for
+    {!csrrw_entries} with an implicit x0 destination, [csr, rs1] operands
+    (csr first, unlike {!csrrw_entries}'s [rd, csr, rs1]). *)
+
+val csrs_entries : entry list
+(** [csrs 0x300, a1] on both profiles, {!csrw_entries}'s set-only sibling
+    (same shape; only funct3 differs). *)
+
+val csrc_entries : entry list
+(** [csrc 0x300, a1] on both profiles, {!csrw_entries}'s clear-only sibling
+    (same shape; only funct3 differs). *)
+
+val csrwi_entries : entry list
+(** [csrwi 0x300, 5] on both profiles - GAS's write-only alias for
+    {!csrrwi_entries} with an implicit x0 destination, [csr, zimm5]
+    operands. *)
+
+val csrsi_entries : entry list
+(** [csrsi 0x300, 5] on both profiles, {!csrwi_entries}'s set-only sibling
+    (same shape; only funct3 differs). *)
+
+val csrci_entries : entry list
+(** [csrci 0x300, 5] on both profiles, {!csrwi_entries}'s clear-only
+    sibling (same shape; only funct3 differs). *)
+
+val amoswap_w_entries : entry list
+(** [amoswap.w a0, a1, (a2)] on both profiles - Zaamo's atomic-swap, the
+    first entry using a real GAS memory group [(base)] third operand
+    rather than a plain register or immediate. *)
+
+val amoadd_w_entries : entry list
+(** [amoadd.w a0, a1, (a2)] on both profiles, {!amoswap_w_entries}'s
+    atomic-add sibling (same shape; only funct5 differs). *)
+
+val amoxor_w_entries : entry list
+(** [amoxor.w a0, a1, (a2)] on both profiles, {!amoswap_w_entries}'s
+    atomic-xor sibling (same shape; only funct5 differs). *)
+
+val amoand_w_entries : entry list
+(** [amoand.w a0, a1, (a2)] on both profiles, {!amoswap_w_entries}'s
+    atomic-and sibling (same shape; only funct5 differs). *)
+
+val amoor_w_entries : entry list
+(** [amoor.w a0, a1, (a2)] on both profiles, {!amoswap_w_entries}'s
+    atomic-or sibling (same shape; only funct5 differs). *)
+
+val amomin_w_entries : entry list
+(** [amomin.w a0, a1, (a2)] on both profiles, {!amoswap_w_entries}'s
+    signed-atomic-min sibling (same shape; only funct5 differs). *)
+
+val amomax_w_entries : entry list
+(** [amomax.w a0, a1, (a2)] on both profiles, {!amoswap_w_entries}'s
+    signed-atomic-max sibling (same shape; only funct5 differs). *)
+
+val amominu_w_entries : entry list
+(** [amominu.w a0, a1, (a2)] on both profiles, {!amoswap_w_entries}'s
+    unsigned-atomic-min sibling (same shape; only funct5 differs). *)
+
+val amomaxu_w_entries : entry list
+(** [amomaxu.w a0, a1, (a2)] on both profiles, {!amoswap_w_entries}'s
+    unsigned-atomic-max sibling (same shape; only funct5 differs). *)
+
+val sc_w_entries : entry list
+(** [sc.w a0, a1, (a2)] on both profiles, {!amoswap_w_entries}'s
+    store-conditional sibling (same operand shape; only funct5 differs). *)
+
+val lr_w_entries : entry list
+(** [lr.w a0, (a2)] on both profiles - Zaamo's own two-operand member
+    ([rd, (base)], no [rs2]: its field is fixed to 0). *)
+
+val amoswap_d_entries : entry list
+(** [amoswap.d a0, a1, (a2)] on RV64 only (rv64_a - no RV32 record),
+    {!amoswap_w_entries}'s 64-bit sibling (same shape; only funct3
+    differs). *)
+
+val amoadd_d_entries : entry list
+(** [amoadd.d a0, a1, (a2)] on RV64 only, {!amoswap_d_entries}'s
+    atomic-add sibling. *)
+
+val amoxor_d_entries : entry list
+(** [amoxor.d a0, a1, (a2)] on RV64 only, {!amoswap_d_entries}'s
+    atomic-xor sibling. *)
+
+val amoand_d_entries : entry list
+(** [amoand.d a0, a1, (a2)] on RV64 only, {!amoswap_d_entries}'s
+    atomic-and sibling. *)
+
+val amoor_d_entries : entry list
+(** [amoor.d a0, a1, (a2)] on RV64 only, {!amoswap_d_entries}'s atomic-or
+    sibling. *)
+
+val amomin_d_entries : entry list
+(** [amomin.d a0, a1, (a2)] on RV64 only, {!amoswap_d_entries}'s
+    signed-atomic-min sibling. *)
+
+val amomax_d_entries : entry list
+(** [amomax.d a0, a1, (a2)] on RV64 only, {!amoswap_d_entries}'s
+    signed-atomic-max sibling. *)
+
+val amominu_d_entries : entry list
+(** [amominu.d a0, a1, (a2)] on RV64 only, {!amoswap_d_entries}'s
+    unsigned-atomic-min sibling. *)
+
+val amomaxu_d_entries : entry list
+(** [amomaxu.d a0, a1, (a2)] on RV64 only, {!amoswap_d_entries}'s
+    unsigned-atomic-max sibling. *)
+
+val sc_d_entries : entry list
+(** [sc.d a0, a1, (a2)] on RV64 only, {!amoswap_d_entries}'s
+    store-conditional sibling. *)
+
+val lr_d_entries : entry list
+(** [lr.d a0, (a2)] on RV64 only, {!lr_w_entries}'s 64-bit sibling. *)
+
 val all : entry list
 (** [sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @
     x86_fadd_entries @ fadd_s_entries @ fsub_s_entries @ fmul_s_entries @
@@ -330,7 +602,26 @@ val all : entry list
     rev8_entries @ pack_entries @ packh_entries @ packw_entries @
     zip_entries @ unzip_entries @ rolw_entries @ rorw_entries @
     rori_entries @ roriw_entries @ zext_h_entries @ clmul_entries @
-    clmulh_entries @ xperm4_entries @ xperm8_entries]. *)
+    clmulh_entries @ xperm4_entries @ xperm8_entries @ sha256sum0_entries @
+    sha256sum1_entries @ sha256sig0_entries @ sha256sig1_entries @
+    sha512sum0_entries @ sha512sum1_entries @ sha512sig0_entries @
+    sha512sig1_entries @ sha512sum0r_entries @ sha512sum1r_entries @
+    sha512sig0l_entries @ sha512sig1l_entries @ sha512sig0h_entries @
+    sha512sig1h_entries @ aes64ds_entries @ aes64dsm_entries @
+    aes64es_entries @ aes64esm_entries @ aes64ks2_entries @
+    aes64im_entries @ aes64ks1i_entries @ aes32dsi_entries @
+    aes32dsmi_entries @ aes32esi_entries @ aes32esmi_entries @
+    csrrw_entries @ csrrs_entries @ csrrc_entries @ csrrwi_entries @
+    csrrsi_entries @ csrrci_entries @ csrr_entries @ csrw_entries @
+    csrs_entries @ csrc_entries @ csrwi_entries @ csrsi_entries @
+    csrci_entries @ amoswap_w_entries @ amoadd_w_entries @
+    amoxor_w_entries @ amoand_w_entries @ amoor_w_entries @
+    amomin_w_entries @ amomax_w_entries @ amominu_w_entries @
+    amomaxu_w_entries @ sc_w_entries @ lr_w_entries @
+    amoswap_d_entries @ amoadd_d_entries @ amoxor_d_entries @
+    amoand_d_entries @ amoor_d_entries @ amomin_d_entries @
+    amomax_d_entries @ amominu_d_entries @ amomaxu_d_entries @
+    sc_d_entries @ lr_d_entries]. *)
 
 val normalize_entry : Repo.t -> entry -> (Isa_norm_model.form, Tool_error.t) Err.t
 (** Finds the real record in the checked-in riscv-opcodes export matching

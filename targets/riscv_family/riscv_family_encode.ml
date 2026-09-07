@@ -198,6 +198,66 @@ module Make (P : PROFILE) = struct
       | Clmulh
       | Xperm4
       | Xperm8
+      | Sha256sum0
+      | Sha256sum1
+      | Sha256sig0
+      | Sha256sig1
+      | Sha512sum0
+      | Sha512sum1
+      | Sha512sig0
+      | Sha512sig1
+      | Sha512sum0r
+      | Sha512sum1r
+      | Sha512sig0l
+      | Sha512sig1l
+      | Sha512sig0h
+      | Sha512sig1h
+      | Aes64ds
+      | Aes64dsm
+      | Aes64es
+      | Aes64esm
+      | Aes64ks2
+      | Aes64im
+      | Aes64ks1i
+      | Aes32dsi
+      | Aes32dsmi
+      | Aes32esi
+      | Aes32esmi
+      | Csrrw
+      | Csrrs
+      | Csrrc
+      | Csrrwi
+      | Csrrsi
+      | Csrrci
+      | Csrr
+      | Csrw
+      | Csrs
+      | Csrc
+      | Csrwi
+      | Csrsi
+      | Csrci
+      | Amoswap_w
+      | Amoadd_w
+      | Amoxor_w
+      | Amoand_w
+      | Amoor_w
+      | Amomin_w
+      | Amomax_w
+      | Amominu_w
+      | Amomaxu_w
+      | Lr_w
+      | Sc_w
+      | Amoswap_d
+      | Amoadd_d
+      | Amoxor_d
+      | Amoand_d
+      | Amoor_d
+      | Amomin_d
+      | Amomax_d
+      | Amominu_d
+      | Amomaxu_d
+      | Lr_d
+      | Sc_d
       | Addw
       | Subw
       | Sllw
@@ -341,6 +401,66 @@ module Make (P : PROFILE) = struct
       | Clmulh -> "clmulh"
       | Xperm4 -> "xperm4"
       | Xperm8 -> "xperm8"
+      | Sha256sum0 -> "sha256sum0"
+      | Sha256sum1 -> "sha256sum1"
+      | Sha256sig0 -> "sha256sig0"
+      | Sha256sig1 -> "sha256sig1"
+      | Sha512sum0 -> "sha512sum0"
+      | Sha512sum1 -> "sha512sum1"
+      | Sha512sig0 -> "sha512sig0"
+      | Sha512sig1 -> "sha512sig1"
+      | Sha512sum0r -> "sha512sum0r"
+      | Sha512sum1r -> "sha512sum1r"
+      | Sha512sig0l -> "sha512sig0l"
+      | Sha512sig1l -> "sha512sig1l"
+      | Sha512sig0h -> "sha512sig0h"
+      | Sha512sig1h -> "sha512sig1h"
+      | Aes64ds -> "aes64ds"
+      | Aes64dsm -> "aes64dsm"
+      | Aes64es -> "aes64es"
+      | Aes64esm -> "aes64esm"
+      | Aes64ks2 -> "aes64ks2"
+      | Aes64im -> "aes64im"
+      | Aes64ks1i -> "aes64ks1i"
+      | Aes32dsi -> "aes32dsi"
+      | Aes32dsmi -> "aes32dsmi"
+      | Aes32esi -> "aes32esi"
+      | Aes32esmi -> "aes32esmi"
+      | Csrrw -> "csrrw"
+      | Csrrs -> "csrrs"
+      | Csrrc -> "csrrc"
+      | Csrrwi -> "csrrwi"
+      | Csrrsi -> "csrrsi"
+      | Csrrci -> "csrrci"
+      | Csrr -> "csrr"
+      | Csrw -> "csrw"
+      | Csrs -> "csrs"
+      | Csrc -> "csrc"
+      | Csrwi -> "csrwi"
+      | Csrsi -> "csrsi"
+      | Csrci -> "csrci"
+      | Amoswap_w -> "amoswap.w"
+      | Amoadd_w -> "amoadd.w"
+      | Amoxor_w -> "amoxor.w"
+      | Amoand_w -> "amoand.w"
+      | Amoor_w -> "amoor.w"
+      | Amomin_w -> "amomin.w"
+      | Amomax_w -> "amomax.w"
+      | Amominu_w -> "amominu.w"
+      | Amomaxu_w -> "amomaxu.w"
+      | Lr_w -> "lr.w"
+      | Sc_w -> "sc.w"
+      | Amoswap_d -> "amoswap.d"
+      | Amoadd_d -> "amoadd.d"
+      | Amoxor_d -> "amoxor.d"
+      | Amoand_d -> "amoand.d"
+      | Amoor_d -> "amoor.d"
+      | Amomin_d -> "amomin.d"
+      | Amomax_d -> "amomax.d"
+      | Amominu_d -> "amominu.d"
+      | Amomaxu_d -> "amomaxu.d"
+      | Lr_d -> "lr.d"
+      | Sc_d -> "sc.d"
       | Addw -> "addw"
       | Subw -> "subw"
       | Sllw -> "sllw"
@@ -485,6 +605,66 @@ module Make (P : PROFILE) = struct
         Clmulh;
         Xperm4;
         Xperm8;
+        Sha256sum0;
+        Sha256sum1;
+        Sha256sig0;
+        Sha256sig1;
+        Sha512sum0;
+        Sha512sum1;
+        Sha512sig0;
+        Sha512sig1;
+        Sha512sum0r;
+        Sha512sum1r;
+        Sha512sig0l;
+        Sha512sig1l;
+        Sha512sig0h;
+        Sha512sig1h;
+        Aes64ds;
+        Aes64dsm;
+        Aes64es;
+        Aes64esm;
+        Aes64ks2;
+        Aes64im;
+        Aes64ks1i;
+        Aes32dsi;
+        Aes32dsmi;
+        Aes32esi;
+        Aes32esmi;
+        Csrrw;
+        Csrrs;
+        Csrrc;
+        Csrrwi;
+        Csrrsi;
+        Csrrci;
+        Csrr;
+        Csrw;
+        Csrs;
+        Csrc;
+        Csrwi;
+        Csrsi;
+        Csrci;
+        Amoswap_w;
+        Amoadd_w;
+        Amoxor_w;
+        Amoand_w;
+        Amoor_w;
+        Amomin_w;
+        Amomax_w;
+        Amominu_w;
+        Amomaxu_w;
+        Lr_w;
+        Sc_w;
+        Amoswap_d;
+        Amoadd_d;
+        Amoxor_d;
+        Amoand_d;
+        Amoor_d;
+        Amomin_d;
+        Amomax_d;
+        Amominu_d;
+        Amomaxu_d;
+        Lr_d;
+        Sc_d;
         Addw;
         Subw;
         Sllw;
@@ -905,6 +1085,23 @@ module Make (P : PROFILE) = struct
     | Clmulh -> Some (0x33, 3, 0x05)
     | Xperm4 -> Some (0x33, 2, 0x14)
     | Xperm8 -> Some (0x33, 4, 0x14)
+    (* SHA-512's RV32-only 32-bit-word-pair-split helpers (gated below;
+       riscv-opcodes has no RV64 record at all for these six - RV64 instead
+       gets the plain, non-split {!Sha512sum0}/etc. two-GPR unary family
+       above). *)
+    | Sha512sum0r -> Some (0x33, 0, 0x28)
+    | Sha512sum1r -> Some (0x33, 0, 0x29)
+    | Sha512sig0l -> Some (0x33, 0, 0x2a)
+    | Sha512sig1l -> Some (0x33, 0, 0x2b)
+    | Sha512sig0h -> Some (0x33, 0, 0x2e)
+    | Sha512sig1h -> Some (0x33, 0, 0x2f)
+    (* AES-64's plain three-GPR round functions (aes64im's two-GPR unary
+       sibling is in unary_imm_desc below, not here). *)
+    | Aes64ds -> Some (0x33, 0, 0x1d)
+    | Aes64dsm -> Some (0x33, 0, 0x1f)
+    | Aes64es -> Some (0x33, 0, 0x19)
+    | Aes64esm -> Some (0x33, 0, 0x1b)
+    | Aes64ks2 -> Some (0x33, 0, 0x3f)
     | Sh1adduw -> Some (0x3b, 2, 0x10)
     | Sh2adduw -> Some (0x3b, 4, 0x10)
     | Sh3adduw -> Some (0x3b, 6, 0x10)
@@ -919,6 +1116,54 @@ module Make (P : PROFILE) = struct
     | Packw -> Some (0x3b, 4, 0x04)
     | Rolw -> Some (0x3b, 1, 0x30)
     | Rorw -> Some (0x3b, 5, 0x30)
+    | _ -> None
+
+  (* Zaamo's [amoOP rd, rs2, (rs1)] / [scOP rd, rs2, (rs1)] three-GPR-plus-
+     memory shape (opcode 0x2f, aq/rl bits zeroed - GAS's own bare-mnemonic
+     canonical spelling; the `.aq`/`.rl`/`.aqrl` suffix decorators GAS also
+     accepts are not modeled here since they add a textual decorator on top
+     of these same 22 records, not a new source record - a
+     canonical-spelling-first policy). funct7's low 2 bits are aq/rl (both
+     0), its high 5 bits are the funct5 that actually selects the operation;
+     {!r_desc}'s reused [Lowered.R]/[word_r] path (already used for
+     aes32dsi/etc.'s own composed funct7) needs no change. Values confirmed
+     against real GNU as: `amoadd.w a0,a1,(a2)` -> `00b6252f`, `amoswap.w`
+     -> `08b6252f` (funct5 0x01), `amoxor.w` -> `20b6252f` (0x04), `amoor.w`
+     -> `40b6252f` (0x08), `amoand.w` -> `60b6252f` (0x0c), `amomin.w` ->
+     `80b6252f` (0x10), `amomax.w` -> `a0b6252f` (0x14), `amominu.w` ->
+     `c0b6252f` (0x18), `amomaxu.w` -> `e0b6252f` (0x1c), `sc.w` ->
+     `18b6252f` (0x03); funct3 3 (not 2) for every `.d` sibling, e.g.
+     `amoswap.d` -> `08b6352f`. *)
+  let amo3_desc = function
+    | Opcode.Amoadd_w -> Some (0x2f, 2, 0x00)
+    | Amoswap_w -> Some (0x2f, 2, 0x04)
+    | Amoxor_w -> Some (0x2f, 2, 0x10)
+    | Amoor_w -> Some (0x2f, 2, 0x20)
+    | Amoand_w -> Some (0x2f, 2, 0x30)
+    | Amomin_w -> Some (0x2f, 2, 0x40)
+    | Amomax_w -> Some (0x2f, 2, 0x50)
+    | Amominu_w -> Some (0x2f, 2, 0x60)
+    | Amomaxu_w -> Some (0x2f, 2, 0x70)
+    | Sc_w -> Some (0x2f, 2, 0x0c)
+    | Amoadd_d -> Some (0x2f, 3, 0x00)
+    | Amoswap_d -> Some (0x2f, 3, 0x04)
+    | Amoxor_d -> Some (0x2f, 3, 0x10)
+    | Amoor_d -> Some (0x2f, 3, 0x20)
+    | Amoand_d -> Some (0x2f, 3, 0x30)
+    | Amomin_d -> Some (0x2f, 3, 0x40)
+    | Amomax_d -> Some (0x2f, 3, 0x50)
+    | Amominu_d -> Some (0x2f, 3, 0x60)
+    | Amomaxu_d -> Some (0x2f, 3, 0x70)
+    | Sc_d -> Some (0x2f, 3, 0x0c)
+    | _ -> None
+
+  (* [lr.w/lr.d rd, (rs1)] - the same opcode-0x2f family's only two-operand
+     member (rs2's field is architecturally fixed to 0, never
+     syntax-visible), funct5 0x02: `lr.w a0,(a2)` -> `1006252f`,
+     `lr.d a0,(a2)` -> `1006352f`. *)
+  let lr_desc = function
+    | Opcode.Lr_w -> Some (0x2f, 2, 0x08)
+    | Lr_d -> Some (0x2f, 3, 0x08)
     | _ -> None
 
   (* OP-IMM/OP-IMM-32 (opcodes 0x13/0x1b) "pseudo-unary" forms: Zbb's
@@ -960,6 +1205,29 @@ module Make (P : PROFILE) = struct
        every RV64-only sibling in this family. *)
     | Zip -> Some (0x13, 1, 0x08f)
     | Unzip -> Some (0x13, 5, 0x08f)
+    (* Zknh's SHA-256 message-schedule helpers - the same two-GPR unary
+       shape as clz/ctz/cpop above, XLEN-independent (identical mnemonic and
+       encoding on both profiles), just a different funct12 per mnemonic.
+       Hand-verified against the checked-in riscv32.jsonl/riscv64.jsonl
+       mask/value fields (e.g. sha256sum0 0x10001013, sha256sig1
+       0x10301013), then confirmed against real riscv32-linux-gnu-as
+       2.43.1 / riscv64-linux-gnu-as 2.44. *)
+    | Sha256sum0 -> Some (0x13, 1, 0x100)
+    | Sha256sum1 -> Some (0x13, 1, 0x101)
+    | Sha256sig0 -> Some (0x13, 1, 0x102)
+    | Sha256sig1 -> Some (0x13, 1, 0x103)
+    (* SHA-512's own message-schedule helpers - the same shape as SHA-256's
+       above, RV64-only (gated below; riscv-opcodes has no RV32 record at
+       all for these four - RV32 instead gets a genuinely different,
+       32-bit-word-pair-split family, sha512sig0h/l etc., out of this
+       slice's scope). *)
+    | Sha512sum0 -> Some (0x13, 1, 0x104)
+    | Sha512sum1 -> Some (0x13, 1, 0x105)
+    | Sha512sig0 -> Some (0x13, 1, 0x106)
+    | Sha512sig1 -> Some (0x13, 1, 0x107)
+    (* AES-64's inverse-mix-columns helper - the same two-GPR unary shape as
+       the SHA helpers above, RV64-only (gated below). *)
+    | Aes64im -> Some (0x13, 1, 0x300)
     | _ -> None
 
   (* An R-type mnemonic whose third operand is an immediate is GAS's alias for
@@ -1114,17 +1382,39 @@ module Make (P : PROFILE) = struct
     | Ok (Asm_core.Expr.Const n) -> Bigint.to_int64_opt n
     | Ok _ | Error _ -> None
 
+  (* A CSR address is a real 12-bit UNSIGNED field (0-4095), unlike every
+     other I-type immediate this project encodes (all signed). Rather than
+     adding new bit-masking machinery, every Csrr*/Csr{r,w,s,c}* match arm
+     below writes the address's own SIGNED 12-bit two's-complement
+     equivalent into the existing [Lowered.I]/[word_i] path unchanged -
+     that path's own field-masking already operates on raw two's-
+     complement bit patterns, so the two are bit-identical once masked back
+     to 12 bits (confirmed against real GNU as: `csrrw a0, 0xf14, a1` ->
+     `f1459573`, mhartid = 0xf14 = 3860 encoded via signed_csr = -236). *)
+  let signed_csr csr = if Int64.compare csr 2048L >= 0 then Int64.sub csr 4096L else csr
+
+  (* Zaamo's [(rs1)] memory operand carries no real offset field - GAS
+     accepts the [offset(base)] syntax generically, so this rejects any
+     concrete nonzero fold rather than silently dropping it, matching real
+     GNU as's own "illegal operands" rejection of `amoadd.w a0, a1, 4(a2)`. *)
+  let zero_offset e = match int64_expr e with Some 0L -> true | _ -> false
+
   let lower_instruction state i =
     let opn = Opcode.name i.Instruction.op in
     match (i.op, i.ops) with
     | ( ( Opcode.Addw | Subw | Sllw | Srlw | Sraw | Mulw | Sh1adduw | Sh2adduw | Sh3adduw | Clzw
-        | Ctzw | Cpopw | Packw | Rolw | Rorw ),
+        | Ctzw | Cpopw | Packw | Rolw | Rorw | Sha512sum0 | Sha512sum1 | Sha512sig0 | Sha512sig1
+        | Aes64ds | Aes64dsm | Aes64es | Aes64esm | Aes64ks2 | Aes64im | Aes64ks1i ),
         _ )
       when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
     | (Opcode.Addiw | Slliw | Srliw | Sraiw | Roriw | Sext_w | Ld | Lwu | Sd), _ when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
-    | (Opcode.Zip | Unzip), _ when xlen <> 32 -> Error (diag ~pos:__POS__ (`Rv32_only opn))
+    | ( ( Opcode.Zip | Unzip | Sha512sum0r | Sha512sum1r | Sha512sig0l | Sha512sig1l | Sha512sig0h
+        | Sha512sig1h | Aes32dsi | Aes32dsmi | Aes32esi | Aes32esmi ),
+        _ )
+      when xlen <> 32 ->
+        Error (diag ~pos:__POS__ (`Rv32_only opn))
     | Opcode.C_addi, _ when not state.rvc -> Error (diag ~pos:__POS__ (`Compressed_disabled opn))
     | Opcode.C_addi, [ a; imm ] -> (
         match (xreg a, expr_of imm) with
@@ -1132,6 +1422,26 @@ module Make (P : PROFILE) = struct
         | _ -> wrong opn)
     | (Opcode.Fcvt_l_d | Fmv_x_d | Fcvt_s_l), _ when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
+    | ( ( Opcode.Amoswap_d | Amoadd_d | Amoxor_d | Amoand_d | Amoor_d | Amomin_d | Amomax_d
+        | Amominu_d | Amomaxu_d | Lr_d | Sc_d ),
+        _ )
+      when xlen <> 64 ->
+        Error (diag ~pos:__POS__ (`Rv64_only opn))
+    | op, [ a; b; Operand.Mem m ] when Option.is_some (amo3_desc op) -> (
+        (* [amoOP rd, rs2, (rs1)] / [scOP rd, rs2, (rs1)] - the memory
+           operand's offset is never syntax-visible (real GNU as rejects
+           `amoadd.w a0, a1, 4(a2)`: "illegal operands"), so requiring a
+           literal zero here is what enforces that shape instead of
+           silently discarding a real one. *)
+        match (xreg a, xreg b, Reg.x m.base, amo3_desc op) with
+        | Some rd, Some rs2, Some rs1, Some (opcode, funct3, funct7) when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode; funct3; funct7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ a; Operand.Mem m ] when Option.is_some (lr_desc op) -> (
+        match (xreg a, Reg.x m.base, lr_desc op) with
+        | Some rd, Some rs1, Some (opcode, funct3, funct7) when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode; funct3; funct7; rd; rs1; rs2 = 0 } ]
+        | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (r_desc op) -> (
         match (xreg a, xreg b, xreg c, r_desc op) with
         | Some rd, Some rs1, Some rs2, Some (opcode, funct3, funct7) ->
@@ -1160,6 +1470,259 @@ module Make (P : PROFILE) = struct
                           };
                       ]
                 | None -> wrong opn)
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | Opcode.Aes64ks1i, [ a; b; imm ] -> (
+        (* [aes64ks1i rd, rs1, rnum] - AES-64's first key-schedule helper.
+           Unlike every shift-immediate form the generic [i_desc]/[shamt_bits]
+           path below serves, [rnum]'s valid range (0-10) is narrower than
+           its 4-bit encoding field (0-15) - rounds 11-15 are architecturally
+           reserved, and real GNU as rejects them outright ("Improper rnum
+           immediate"), confirmed against riscv64-linux-gnu-as 2.44: rnum
+           0/1/8/9/10 assemble, 11/15/16/-1 are all rejected. [i_desc] only
+           checks a field's raw bit width, not this narrower semantic range,
+           so this needs its own validated match arm instead. [rnum] is
+           folded to a concrete value here (not left symbolic like a
+           relocatable immediate) since GAS itself requires it foldable and
+           a reserved round number is a real assembly-time error. The
+           composed imm12 is the fixed 8-bit prefix 0x31 (bits[11:4]) with
+           [rnum] in bits[3:0]. *)
+        match (xreg a, xreg b, expr_of imm) with
+        | Some rd, Some rs1, Some e -> (
+            match int64_expr e with
+            | Some rnum when Int64.compare rnum 0L >= 0 && Int64.compare rnum 10L <= 0 ->
+                Ok
+                  [
+                    Lowered.I
+                      {
+                        name = opn;
+                        opcode = 0x13;
+                        funct3 = 1;
+                        funct_hi = 0;
+                        shamt_bits = None;
+                        rd;
+                        rs1;
+                        imm = const (0x310 lor Int64.to_int rnum);
+                      };
+                  ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | (Opcode.Aes32dsi | Aes32dsmi | Aes32esi | Aes32esmi), [ a; b; c; bs ] -> (
+        (* [aes32dsi/aes32dsmi/aes32esi/aes32esmi rd, rs1, rs2, bs] - AES-32's
+           byte-select-parameterized round functions. [bs] is a real,
+           syntax-visible 2-bit immediate, but unlike [aes64ks1i]'s [rnum] it
+           uses its FULL field range (0-3, confirmed against real
+           riscv32-linux-gnu-as 2.43.1: all four values assemble, bs=4 is
+           rejected as "Improper bs immediate" purely because it overflows
+           the 2-bit field, not because of any narrower semantic
+           restriction) - so no extra range check beyond the field width is
+           needed here, unlike [aes64ks1i]'s dedicated arm. [bs] does not sit
+           in a spare high bit of an existing field the way [aes64ks1i]'s
+           [rnum] does either: it occupies bits[31:30], directly ABOVE the
+           5-bit fixed selector that would otherwise be [word_r]'s own
+           7-bit funct7 (bits[31:25]) for a plain three-register form -
+           since [word_r] already encodes its [~funct7] argument across
+           exactly that same 7-bit span, this reuses [Lowered.R]/[word_r]
+           completely unchanged by composing [bs] and the fixed 5-bit
+           selector into one 7-bit value at lowering time
+           ([(bs lsl 5) lor base]), rather than adding a new lowered
+           instruction shape. Confirmed against real riscv32-linux-gnu-as
+           2.43.1 for all four mnemonics x all four bs values (16 cases):
+           `aes32dsi a0,a1,a2,1` -> `6ac58533`, matching
+           `(1 lsl 5) lor 0x15 = 0x35` as the composed funct7. Real GNU as
+           rejects all four mnemonics outright on RV64 (genuinely absent,
+           not merely extension-gated). *)
+        let base = function
+          | Opcode.Aes32dsi -> Some 0x15
+          | Aes32dsmi -> Some 0x17
+          | Aes32esi -> Some 0x11
+          | Aes32esmi -> Some 0x13
+          | _ -> None
+        in
+        match (xreg a, xreg b, xreg c, expr_of bs, base i.op) with
+        | Some rd, Some rs1, Some rs2, Some e, Some base -> (
+            match int64_expr e with
+            | Some bs when Int64.compare bs 0L >= 0 && Int64.compare bs 3L <= 0 ->
+                Ok
+                  [
+                    Lowered.R
+                      {
+                        name = opn;
+                        opcode = 0x33;
+                        funct3 = 0;
+                        funct7 = (Int64.to_int bs lsl 5) lor base;
+                        rd;
+                        rs1;
+                        rs2;
+                      };
+                  ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | (Opcode.Csrrw | Csrrs | Csrrc), [ a; csr; b ] -> (
+        (* [csrrw/csrrs/csrrc rd, csr, rs1] - Zicsr's register-source CSR
+           forms. GAS's own operand text order is [rd, csr, rs1] - the CSR
+           address comes SECOND, not third, unlike every plain I-type form
+           this project has built (confirmed against real
+           riscv32-linux-gnu-as: `csrrw a0, mstatus, a1` -> `30059573`,
+           matching riscv-opcodes' own encoding.fields order [rd, rs1, csr]
+           bit-for-bit even though the GAS text order differs). [csr] is a
+           real, syntax-visible 12-bit UNSIGNED address (0-4095 - real GNU
+           as rejects 4096+ as "improper CSR address"); see {!signed_csr}
+           for how that is encoded. Both profiles accept identical syntax
+           (Zicsr is XLEN-independent). *)
+        match (xreg a, expr_of csr, xreg b) with
+        | Some rd, Some csr_e, Some rs1 -> (
+            match int64_expr csr_e with
+            | Some csr when Int64.compare csr 0L >= 0 && Int64.compare csr 4095L <= 0 ->
+                let funct3 =
+                  match i.op with Opcode.Csrrw -> 1 | Csrrs -> 2 | Csrrc -> 3 | _ -> assert false
+                in
+                Ok
+                  [
+                    Lowered.I
+                      {
+                        name = opn;
+                        opcode = 0x73;
+                        funct3;
+                        funct_hi = 0;
+                        shamt_bits = None;
+                        rd;
+                        rs1;
+                        imm = const (Int64.to_int (signed_csr csr));
+                      };
+                  ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | (Opcode.Csrrwi | Csrrsi | Csrrci), [ a; csr; zimm ] -> (
+        (* [csrrwi/csrrsi/csrrci rd, csr, zimm] - Zicsr's immediate-source
+           CSR forms. [zimm] is a real, syntax-visible 5-bit unsigned
+           immediate (0-31 - real GNU as rejects 32+ as "improper CSRxI
+           immediate"), occupying the SAME bit position (bits[19:15]) a GPR
+           number would in [rs1] - since that position's own encoding is
+           bit-identical either way, this reuses {!word_i}/[Lowered.I]'s
+           existing [rs1] field unchanged to carry [zimm] rather than a
+           real register, confirmed against real GNU as: `csrrwi a0,
+           mstatus, 31` -> `300fd573`. *)
+        match (xreg a, expr_of csr, expr_of zimm) with
+        | Some rd, Some csr_e, Some zimm_e -> (
+            match (int64_expr csr_e, int64_expr zimm_e) with
+            | Some csr, Some zimm
+              when Int64.compare csr 0L >= 0
+                   && Int64.compare csr 4095L <= 0
+                   && Int64.compare zimm 0L >= 0
+                   && Int64.compare zimm 31L <= 0 ->
+                let funct3 =
+                  match i.op with
+                  | Opcode.Csrrwi -> 5
+                  | Csrrsi -> 6
+                  | Csrrci -> 7
+                  | _ -> assert false
+                in
+                Ok
+                  [
+                    Lowered.I
+                      {
+                        name = opn;
+                        opcode = 0x73;
+                        funct3;
+                        funct_hi = 0;
+                        shamt_bits = None;
+                        rd;
+                        rs1 = Int64.to_int zimm;
+                        imm = const (Int64.to_int (signed_csr csr));
+                      };
+                  ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | Opcode.Csrr, [ a; csr ] -> (
+        (* [csrr rd, csr] - GAS's read-only alias for [csrrs rd, csr, x0]
+           (real hardware reads without ever setting a bit, since ORing
+           with x0's value 0 is a no-op). Confirmed against real GNU as:
+           `csrr a0, mstatus` -> `30002573`, matching `csrrs a0, mstatus,
+           zero` bit-for-bit. *)
+        match (xreg a, expr_of csr) with
+        | Some rd, Some csr_e -> (
+            match int64_expr csr_e with
+            | Some csr when Int64.compare csr 0L >= 0 && Int64.compare csr 4095L <= 0 ->
+                Ok
+                  [
+                    Lowered.I
+                      {
+                        name = opn;
+                        opcode = 0x73;
+                        funct3 = 2;
+                        funct_hi = 0;
+                        shamt_bits = None;
+                        rd;
+                        rs1 = 0;
+                        imm = const (Int64.to_int (signed_csr csr));
+                      };
+                  ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | (Opcode.Csrw | Csrs | Csrc), [ csr; b ] -> (
+        (* [csrw/csrs/csrc csr, rs1] - GAS's write/set/clear-only aliases
+           for [csrrw/csrrs/csrrc x0, csr, rs1] (rd = x0, discarding the
+           old value). Unlike the register-source base forms above, GAS's
+           own text order here is [csr, rs1] - csr FIRST, not second -
+           confirmed against real GNU as: `csrw mstatus, a1` -> `30059073`,
+           matching `csrrw zero, mstatus, a1` bit-for-bit; riscv-opcodes'
+           own declared operands order, [rs1, csr], matches neither this
+           project's base-form order nor this one, so neither can be
+           inferred from the other. *)
+        match (expr_of csr, xreg b) with
+        | Some csr_e, Some rs1 -> (
+            match int64_expr csr_e with
+            | Some csr when Int64.compare csr 0L >= 0 && Int64.compare csr 4095L <= 0 ->
+                let funct3 =
+                  match i.op with Opcode.Csrw -> 1 | Csrs -> 2 | Csrc -> 3 | _ -> assert false
+                in
+                Ok
+                  [
+                    Lowered.I
+                      {
+                        name = opn;
+                        opcode = 0x73;
+                        funct3;
+                        funct_hi = 0;
+                        shamt_bits = None;
+                        rd = 0;
+                        rs1;
+                        imm = const (Int64.to_int (signed_csr csr));
+                      };
+                  ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | (Opcode.Csrwi | Csrsi | Csrci), [ csr; zimm ] -> (
+        (* [csrwi/csrsi/csrci csr, zimm] - GAS's write/set/clear-only
+           aliases for [csrrwi/csrrsi/csrrci x0, csr, zimm] (rd = x0).
+           Confirmed against real GNU as: `csrwi mstatus, 5` -> `3002d073`,
+           matching `csrrwi zero, mstatus, 5` bit-for-bit. *)
+        match (expr_of csr, expr_of zimm) with
+        | Some csr_e, Some zimm_e -> (
+            match (int64_expr csr_e, int64_expr zimm_e) with
+            | Some csr, Some zimm
+              when Int64.compare csr 0L >= 0
+                   && Int64.compare csr 4095L <= 0
+                   && Int64.compare zimm 0L >= 0
+                   && Int64.compare zimm 31L <= 0 ->
+                let funct3 =
+                  match i.op with Opcode.Csrwi -> 5 | Csrsi -> 6 | Csrci -> 7 | _ -> assert false
+                in
+                Ok
+                  [
+                    Lowered.I
+                      {
+                        name = opn;
+                        opcode = 0x73;
+                        funct3;
+                        funct_hi = 0;
+                        shamt_bits = None;
+                        rd = 0;
+                        rs1 = Int64.to_int zimm;
+                        imm = const (Int64.to_int (signed_csr csr));
+                      };
+                  ]
             | _ -> wrong opn)
         | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (i_desc op) -> (
@@ -2240,6 +2803,41 @@ module Make (P : PROFILE) = struct
             | 0x73 when Int64.equal w 0xc0001073L -> Some (instruction Opcode.Unimp [], "unimp")
             | 0x0f when Int64.equal w 0x0000100fL -> Some (instruction Opcode.Fence_i [], "fence.i")
             | 0x0f when Int64.equal w 0x0310000fL -> Some (instruction Opcode.Fence [], "fence")
+            | 0x2f when f7 land 0x3 = 0 -> (
+                (* Zaamo, bare-mnemonic spelling only (aq=rl=0 - see
+                   {!amo3_desc}); aq/rl set is left undecoded rather than
+                   silently dropped, since this project's own encoder never
+                   emits that bit pattern for any mnemonic yet. *)
+                let funct5 = f7 asr 2 in
+                let suffix =
+                  if f3 = 2 then Some ".w" else if f3 = 3 && xlen = 64 then Some ".d" else None
+                in
+                match suffix with
+                | None -> None
+                | Some suffix -> (
+                    let base =
+                      match funct5 with
+                      | 0x00 -> Some "amoadd"
+                      | 0x01 -> Some "amoswap"
+                      | 0x02 -> Some "lr"
+                      | 0x03 -> Some "sc"
+                      | 0x04 -> Some "amoxor"
+                      | 0x08 -> Some "amoor"
+                      | 0x0c -> Some "amoand"
+                      | 0x10 -> Some "amomin"
+                      | 0x14 -> Some "amomax"
+                      | 0x18 -> Some "amominu"
+                      | 0x1c -> Some "amomaxu"
+                      | _ -> None
+                    in
+                    match base with
+                    | None -> None
+                    | Some "lr" ->
+                        let n = "lr" ^ suffix in
+                        Some (instruction (op_exn n) [ reg rd; mem rs1 0L ], n)
+                    | Some base ->
+                        let n = base ^ suffix in
+                        Some (instruction (op_exn n) [ reg rd; reg rs2; mem rs1 0L ], n)))
             | _ -> None)
       in
       match result with

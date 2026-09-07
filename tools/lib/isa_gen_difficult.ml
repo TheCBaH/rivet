@@ -398,6 +398,525 @@ let xperm8_entries =
     (zbkx_r_type_entry ~mnemonic:"xperm8" ~variant_name:"crossbar-permute-byte")
     [ Target.Riscv32; Target.Riscv64 ]
 
+(* sha256sum0/sha256sum1/sha256sig0/sha256sig1 (Zknh's SHA-256
+   message-schedule helpers): the same two-GPR-operand unary shape as
+   {!zbb_unary_entry}, but needing Zknh (a three-way Req_any group - primary
+   rv_zknh, imported by rv_zk/rv_zkn; no rv_zks). *)
+let zknh_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32im_zknh"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64im_zknh"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let zknh_unary_entry ~mnemonic ~variant_name target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic variant_name (Target.to_string target);
+    rule_ids = [ "zknh-enabled"; "two-gpr-operands"; variant_name ];
+    operands = [ ("rd", "a0"); ("rs1", "a1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zknh_configuration_for target;
+  }
+
+let sha256sum0_entries =
+  List.map
+    (zknh_unary_entry ~mnemonic:"sha256sum0" ~variant_name:"message-schedule-sum0")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let sha256sum1_entries =
+  List.map
+    (zknh_unary_entry ~mnemonic:"sha256sum1" ~variant_name:"message-schedule-sum1")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let sha256sig0_entries =
+  List.map
+    (zknh_unary_entry ~mnemonic:"sha256sig0" ~variant_name:"message-schedule-sig0")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let sha256sig1_entries =
+  List.map
+    (zknh_unary_entry ~mnemonic:"sha256sig1" ~variant_name:"message-schedule-sig1")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+(* sha512sum0/sum1/sig0/sig1: sha256's RV64-only siblings - the same
+   two-GPR-operand unary shape and Zknh configuration as {!zknh_unary_entry}
+   above, but riscv-opcodes has no RV32 record at all for these four
+   (confirmed: real riscv32-linux-gnu-as rejects all four as unrecognized
+   opcodes - its own RV32 answer is a different, 32-bit-word-pair-split
+   family, out of this slice's scope), the same single-target restriction
+   {!clzw_entries} etc. already use. *)
+let sha512sum0_entries =
+  [ zknh_unary_entry ~mnemonic:"sha512sum0" ~variant_name:"message-schedule-sum0" Target.Riscv64 ]
+
+let sha512sum1_entries =
+  [ zknh_unary_entry ~mnemonic:"sha512sum1" ~variant_name:"message-schedule-sum1" Target.Riscv64 ]
+
+let sha512sig0_entries =
+  [ zknh_unary_entry ~mnemonic:"sha512sig0" ~variant_name:"message-schedule-sig0" Target.Riscv64 ]
+
+let sha512sig1_entries =
+  [ zknh_unary_entry ~mnemonic:"sha512sig1" ~variant_name:"message-schedule-sig1" Target.Riscv64 ]
+
+(* sha512sum0r/sum1r/sig0l/sig1l/sig0h/sig1h: SHA-512's own RV32-only
+   32-bit-word-pair-split helpers - a plain three-GPR R-type shape (not the
+   two-GPR unary one every entry above uses), reusing {!zknh_configuration_for}
+   but restricted to Riscv32 (riscv-opcodes has no RV64 record at all -
+   confirmed: real riscv64-linux-gnu-as rejects all six as unrecognized
+   opcodes, the mirror image of {!sha512sum0_entries}'s own RV64-only
+   restriction). *)
+let zknh_r_type_entry ~mnemonic ~variant_name target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic variant_name (Target.to_string target);
+    rule_ids = [ "zknh-enabled"; "three-gpr-operands"; variant_name ];
+    operands = [ ("rd", "a0"); ("rs1", "a1"); ("rs2", "a2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zknh_configuration_for target;
+  }
+
+let sha512sum0r_entries =
+  [
+    zknh_r_type_entry ~mnemonic:"sha512sum0r" ~variant_name:"message-schedule-sum0r" Target.Riscv32;
+  ]
+
+let sha512sum1r_entries =
+  [
+    zknh_r_type_entry ~mnemonic:"sha512sum1r" ~variant_name:"message-schedule-sum1r" Target.Riscv32;
+  ]
+
+let sha512sig0l_entries =
+  [
+    zknh_r_type_entry ~mnemonic:"sha512sig0l" ~variant_name:"message-schedule-sig0l" Target.Riscv32;
+  ]
+
+let sha512sig1l_entries =
+  [
+    zknh_r_type_entry ~mnemonic:"sha512sig1l" ~variant_name:"message-schedule-sig1l" Target.Riscv32;
+  ]
+
+let sha512sig0h_entries =
+  [
+    zknh_r_type_entry ~mnemonic:"sha512sig0h" ~variant_name:"message-schedule-sig0h" Target.Riscv32;
+  ]
+
+let sha512sig1h_entries =
+  [
+    zknh_r_type_entry ~mnemonic:"sha512sig1h" ~variant_name:"message-schedule-sig1h" Target.Riscv32;
+  ]
+
+(* AES-64's plain three-GPR round functions and its two-GPR unary
+   inverse-mix-columns sibling: aes64ds/aes64dsm/aes64im are rooted in
+   Zknd, aes64es/aes64esm in Zkne (a disjoint primary extension, not
+   Zknd-imported), and aes64ks2 is imported by both - this generator
+   exercises the Zknd configuration for aes64ks2 too, the same "one
+   configuration proves promotion" discipline every other slice here
+   uses. All RV64-only (riscv-opcodes has no RV32 record at all). *)
+let zknd_configuration_for = function
+  | Target.Riscv64 -> [ "-march=rv64im_zknd"; "-mabi=lp64"; "-mno-relax" ]
+  | Target.Riscv32 -> [ "-march=rv32im_zknd"; "-mabi=ilp32"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let zkne_configuration_for = function
+  | Target.Riscv64 -> [ "-march=rv64im_zkne"; "-mabi=lp64"; "-mno-relax" ]
+  | Target.Riscv32 -> [ "-march=rv32im_zkne"; "-mabi=ilp32"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let aes64_r_type_entry ~mnemonic ~variant_name ~configuration_for target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic variant_name (Target.to_string target);
+    rule_ids = [ "aes64-enabled"; "three-gpr-operands"; variant_name ];
+    operands = [ ("rd", "a0"); ("rs1", "a1"); ("rs2", "a2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = configuration_for target;
+  }
+
+let aes64ds_entries =
+  [
+    aes64_r_type_entry ~mnemonic:"aes64ds" ~variant_name:"decrypt-round"
+      ~configuration_for:zknd_configuration_for Target.Riscv64;
+  ]
+
+let aes64dsm_entries =
+  [
+    aes64_r_type_entry ~mnemonic:"aes64dsm" ~variant_name:"decrypt-round-mixed"
+      ~configuration_for:zknd_configuration_for Target.Riscv64;
+  ]
+
+let aes64es_entries =
+  [
+    aes64_r_type_entry ~mnemonic:"aes64es" ~variant_name:"encrypt-round"
+      ~configuration_for:zkne_configuration_for Target.Riscv64;
+  ]
+
+let aes64esm_entries =
+  [
+    aes64_r_type_entry ~mnemonic:"aes64esm" ~variant_name:"encrypt-round-mixed"
+      ~configuration_for:zkne_configuration_for Target.Riscv64;
+  ]
+
+let aes64ks2_entries =
+  [
+    aes64_r_type_entry ~mnemonic:"aes64ks2" ~variant_name:"key-schedule-2"
+      ~configuration_for:zknd_configuration_for Target.Riscv64;
+  ]
+
+let aes64im_entries =
+  [
+    {
+      form_id = "riscv:aes64im";
+      target = Target.Riscv64;
+      lookup_key = "aes64im";
+      case_id = "riscv:aes64im:inverse-mix-columns:riscv64";
+      rule_ids = [ "aes64-enabled"; "two-gpr-operands"; "inverse-mix-columns" ];
+      operands = [ ("rd", "a0"); ("rs1", "a1") ];
+      lines_before = [];
+      lines_after = [];
+      configuration = zknd_configuration_for Target.Riscv64;
+    };
+  ]
+
+(* aes64ks1i: AES-64's first key-schedule helper - the same two-GPR-plus-
+   narrow-unsigned-immediate shape as {!rori_entries}, RV64 only
+   (riscv-opcodes has no RV32 record at all), reusing aes64ks2's own
+   four-way Req_any group (imported by both key-schedule extensions).
+   [rnum]'s real valid range is 0-10 (of the 16 the 4-bit field can
+   represent) - real GNU as rejects 11-15 outright - so this uses "5", a
+   round number safely inside that range, not "15" the way {!zbb_shamt_entry}'s
+   own bare "5" shamt happens to also be for [rori]. *)
+let aes64ks1i_entries =
+  [
+    {
+      form_id = "riscv:aes64ks1i";
+      target = Target.Riscv64;
+      lookup_key = "aes64ks1i";
+      case_id = "riscv:aes64ks1i:key-schedule-1:riscv64";
+      rule_ids = [ "aes64-enabled"; "gpr-rnum-operands"; "key-schedule-1" ];
+      operands = [ ("rd", "a0"); ("rs1", "a1"); ("rnum", "5") ];
+      lines_before = [];
+      lines_after = [];
+      configuration = zknd_configuration_for Target.Riscv64;
+    };
+  ]
+
+(* aes32dsi/aes32dsmi/aes32esi/aes32esmi: AES-32's own round functions - a
+   three-GPR-plus-narrow-unsigned-immediate shape (rd/rs1/rs2 plus a real
+   "bs" byte-select immediate), RV32 only (riscv-opcodes has no RV64 record
+   at all). aes32dsi/aes32dsmi share aes64ds/aes64dsm's own rv64_zknd-
+   rooted family lineage but at RV32 (rv32_zknd, imported by
+   rv32_zk/rv32_zkn); aes32esi/aes32esmi mirror aes64es/aes64esm's
+   rv32_zkne-rooted one. Unlike aes64ks1i's "rnum", "bs" uses its full 2-bit
+   range (0-3) - real GNU as rejects only out-of-field values (bs=4+), not
+   any narrower reserved subset - so "3" (not "5") is chosen here just to
+   exercise a non-zero, non-trivial value, not because other values are
+   invalid. *)
+let aes32_imm_entry ~mnemonic ~variant_name ~configuration_for target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic variant_name (Target.to_string target);
+    rule_ids = [ "aes32-enabled"; "gpr-bs-operands"; variant_name ];
+    operands = [ ("rd", "a0"); ("rs1", "a1"); ("rs2", "a2"); ("bs", "3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = configuration_for target;
+  }
+
+let aes32dsi_entries =
+  [
+    aes32_imm_entry ~mnemonic:"aes32dsi" ~variant_name:"decrypt-round"
+      ~configuration_for:zknd_configuration_for Target.Riscv32;
+  ]
+
+let aes32dsmi_entries =
+  [
+    aes32_imm_entry ~mnemonic:"aes32dsmi" ~variant_name:"decrypt-round-mixed"
+      ~configuration_for:zknd_configuration_for Target.Riscv32;
+  ]
+
+let aes32esi_entries =
+  [
+    aes32_imm_entry ~mnemonic:"aes32esi" ~variant_name:"encrypt-round"
+      ~configuration_for:zkne_configuration_for Target.Riscv32;
+  ]
+
+let aes32esmi_entries =
+  [
+    aes32_imm_entry ~mnemonic:"aes32esmi" ~variant_name:"encrypt-round-mixed"
+      ~configuration_for:zkne_configuration_for Target.Riscv32;
+  ]
+
+(* csrrw/csrrs/csrrc/csrrwi/csrrsi/csrrci: Zicsr's CSR forms, the first
+   family here outside Zb/Zk - XLEN-independent (both profiles accept
+   identical syntax), no Req_any (a single rv_zicsr record per mnemonic).
+   The register-source forms (csrrw/csrrs/csrrc) get [rd, csr, rs1]
+   operands in that GAS text order (not riscv-opcodes' own [rd, rs1, csr]
+   field order); the immediate-source forms (csrrwi/csrrsi/csrrci) get
+   [rd, csr, zimm5], with no register operand besides [rd]. [csr] here is
+   0x300 (mstatus) for every entry - a real, canonical CSR address, not an
+   arbitrary placeholder - since real GNU as accepts any 0-4095 value
+   whether or not it names a defined CSR, but a recognizable one keeps the
+   corpus's own disassembly readable. *)
+let zicsr_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32i_zicsr"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64i_zicsr"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let csr_reg_entry ~mnemonic ~variant_name target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic variant_name (Target.to_string target);
+    rule_ids = [ "zicsr-enabled"; "gpr-csr-gpr-operands"; variant_name ];
+    operands = [ ("rd", "a0"); ("csr", "0x300"); ("rs1", "a1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zicsr_configuration_for target;
+  }
+
+let csr_imm_entry ~mnemonic ~variant_name target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic variant_name (Target.to_string target);
+    rule_ids = [ "zicsr-enabled"; "gpr-csr-zimm-operands"; variant_name ];
+    operands = [ ("rd", "a0"); ("csr", "0x300"); ("zimm5", "5") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zicsr_configuration_for target;
+  }
+
+let csrrw_entries =
+  List.map
+    (csr_reg_entry ~mnemonic:"csrrw" ~variant_name:"read-write")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let csrrs_entries =
+  List.map
+    (csr_reg_entry ~mnemonic:"csrrs" ~variant_name:"read-set")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let csrrc_entries =
+  List.map
+    (csr_reg_entry ~mnemonic:"csrrc" ~variant_name:"read-clear")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let csrrwi_entries =
+  List.map
+    (csr_imm_entry ~mnemonic:"csrrwi" ~variant_name:"read-write-immediate")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let csrrsi_entries =
+  List.map
+    (csr_imm_entry ~mnemonic:"csrrsi" ~variant_name:"read-set-immediate")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let csrrci_entries =
+  List.map
+    (csr_imm_entry ~mnemonic:"csrrci" ~variant_name:"read-clear-immediate")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+(* csrr/csrw/csrs/csrc/csrwi/csrsi/csrci: Zicsr's 7 pseudo-op aliases for
+   the six real csrr*/csrrw* forms above, each omitting whichever of
+   rd/rs1 real hardware doesn't need (rd for the write/set/clear-only
+   forms, rs1 for the read-only form). Same [csr] = 0x300 (mstatus)
+   convention as the base forms. *)
+let csr_read_entry ~variant_name target =
+  {
+    form_id = "riscv:csrr";
+    target;
+    lookup_key = "csrr";
+    case_id = Printf.sprintf "riscv:csrr:%s:%s" variant_name (Target.to_string target);
+    rule_ids = [ "zicsr-enabled"; "gpr-csr-operands"; variant_name ];
+    operands = [ ("rd", "a0"); ("csr", "0x300") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zicsr_configuration_for target;
+  }
+
+let csr_write_entry ~mnemonic ~variant_name target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic variant_name (Target.to_string target);
+    rule_ids = [ "zicsr-enabled"; "csr-gpr-operands"; variant_name ];
+    operands = [ ("csr", "0x300"); ("rs1", "a1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zicsr_configuration_for target;
+  }
+
+let csr_write_imm_entry ~mnemonic ~variant_name target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic variant_name (Target.to_string target);
+    rule_ids = [ "zicsr-enabled"; "csr-zimm-operands"; variant_name ];
+    operands = [ ("csr", "0x300"); ("zimm5", "5") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zicsr_configuration_for target;
+  }
+
+let csrr_entries = List.map (csr_read_entry ~variant_name:"read") [ Target.Riscv32; Target.Riscv64 ]
+
+let csrw_entries =
+  List.map
+    (csr_write_entry ~mnemonic:"csrw" ~variant_name:"write")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let csrs_entries =
+  List.map (csr_write_entry ~mnemonic:"csrs" ~variant_name:"set") [ Target.Riscv32; Target.Riscv64 ]
+
+let csrc_entries =
+  List.map
+    (csr_write_entry ~mnemonic:"csrc" ~variant_name:"clear")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let csrwi_entries =
+  List.map
+    (csr_write_imm_entry ~mnemonic:"csrwi" ~variant_name:"write-immediate")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let csrsi_entries =
+  List.map
+    (csr_write_imm_entry ~mnemonic:"csrsi" ~variant_name:"set-immediate")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let csrci_entries =
+  List.map
+    (csr_write_imm_entry ~mnemonic:"csrci" ~variant_name:"clear-immediate")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+(* amoswap.w/amoadd.w/.../sc.w/lr.w and their RV64-only .d siblings: Zaamo's
+   22-record family (self-selected after Zicsr closed - the smallest still-
+   unadmitted bounded family, per the same survey discipline CSR itself
+   was picked with). Unlike every prior family here, the third operand is
+   a real GAS memory group ["(base)"], not a plain register or immediate -
+   {!amo_form}'s own [rd, rs2, base] operand triple, verified against real
+   GNU as before writing any code (`amoadd.w a0, a1, (a2)` -> `00b6252f`,
+   matching every funct5 assignment in the RISC-V ISA manual; a nonzero
+   offset - `amoadd.w a0, a1, 4(a2)` - is rejected as "illegal operands").
+   `.w` mnemonics apply on both profiles (rv_a); `.d` mnemonics are
+   RV64-only (rv64_a), reusing the identical shape. `lr.w`/`lr.d` are the
+   family's only two-operand member (rs2's field is fixed to 0). The
+   `.aq`/`.rl`/`.aqrl` mnemonic-suffix decorators GAS also accepts on all
+   22 are out of scope here (canonical bare spelling only, per the plan's
+   section 5.2 policy) - see {!amo_form}'s own diagnostic. *)
+let a_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32ia"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64ia"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let amo_entry ~mnemonic ~variant_name target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "a-enabled"; "gpr-gpr-mem-operands"; variant_name ];
+    operands = [ ("rd", "a0"); ("rs2", "a1"); ("base", "a2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = a_configuration_for target;
+  }
+
+let lr_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "a-enabled"; "gpr-mem-operands"; "load-reserved" ];
+    operands = [ ("rd", "a0"); ("base", "a2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = a_configuration_for target;
+  }
+
+let amoswap_w_entries =
+  List.map (amo_entry ~mnemonic:"amoswap.w" ~variant_name:"swap") [ Target.Riscv32; Target.Riscv64 ]
+
+let amoadd_w_entries =
+  List.map (amo_entry ~mnemonic:"amoadd.w" ~variant_name:"add") [ Target.Riscv32; Target.Riscv64 ]
+
+let amoxor_w_entries =
+  List.map (amo_entry ~mnemonic:"amoxor.w" ~variant_name:"xor") [ Target.Riscv32; Target.Riscv64 ]
+
+let amoand_w_entries =
+  List.map (amo_entry ~mnemonic:"amoand.w" ~variant_name:"and") [ Target.Riscv32; Target.Riscv64 ]
+
+let amoor_w_entries =
+  List.map (amo_entry ~mnemonic:"amoor.w" ~variant_name:"or") [ Target.Riscv32; Target.Riscv64 ]
+
+let amomin_w_entries =
+  List.map (amo_entry ~mnemonic:"amomin.w" ~variant_name:"min") [ Target.Riscv32; Target.Riscv64 ]
+
+let amomax_w_entries =
+  List.map (amo_entry ~mnemonic:"amomax.w" ~variant_name:"max") [ Target.Riscv32; Target.Riscv64 ]
+
+let amominu_w_entries =
+  List.map (amo_entry ~mnemonic:"amominu.w" ~variant_name:"minu") [ Target.Riscv32; Target.Riscv64 ]
+
+let amomaxu_w_entries =
+  List.map (amo_entry ~mnemonic:"amomaxu.w" ~variant_name:"maxu") [ Target.Riscv32; Target.Riscv64 ]
+
+let sc_w_entries =
+  List.map
+    (amo_entry ~mnemonic:"sc.w" ~variant_name:"conditional-store")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let lr_w_entries = List.map (lr_entry ~mnemonic:"lr.w") [ Target.Riscv32; Target.Riscv64 ]
+
+let amoswap_d_entries =
+  List.map (amo_entry ~mnemonic:"amoswap.d" ~variant_name:"swap") [ Target.Riscv64 ]
+
+let amoadd_d_entries =
+  List.map (amo_entry ~mnemonic:"amoadd.d" ~variant_name:"add") [ Target.Riscv64 ]
+
+let amoxor_d_entries =
+  List.map (amo_entry ~mnemonic:"amoxor.d" ~variant_name:"xor") [ Target.Riscv64 ]
+
+let amoand_d_entries =
+  List.map (amo_entry ~mnemonic:"amoand.d" ~variant_name:"and") [ Target.Riscv64 ]
+
+let amoor_d_entries = List.map (amo_entry ~mnemonic:"amoor.d" ~variant_name:"or") [ Target.Riscv64 ]
+
+let amomin_d_entries =
+  List.map (amo_entry ~mnemonic:"amomin.d" ~variant_name:"min") [ Target.Riscv64 ]
+
+let amomax_d_entries =
+  List.map (amo_entry ~mnemonic:"amomax.d" ~variant_name:"max") [ Target.Riscv64 ]
+
+let amominu_d_entries =
+  List.map (amo_entry ~mnemonic:"amominu.d" ~variant_name:"minu") [ Target.Riscv64 ]
+
+let amomaxu_d_entries =
+  List.map (amo_entry ~mnemonic:"amomaxu.d" ~variant_name:"maxu") [ Target.Riscv64 ]
+
+let sc_d_entries =
+  List.map (amo_entry ~mnemonic:"sc.d" ~variant_name:"conditional-store") [ Target.Riscv64 ]
+
+let lr_d_entries = List.map (lr_entry ~mnemonic:"lr.d") [ Target.Riscv64 ]
+
 (* rori/roriw: Zbb's rotate-*immediate* forms - two ordinary GPR operands
    plus a genuine shift-amount immediate (rd, rs1, shamt), unlike every
    R-type entry above. rori is the same profile-specific native_name split
@@ -641,7 +1160,19 @@ let all =
   @ orcb_entries @ clzw_entries @ ctzw_entries @ cpopw_entries @ brev8_entries @ rev8_entries
   @ pack_entries @ packh_entries @ packw_entries @ zip_entries @ unzip_entries @ rolw_entries
   @ rorw_entries @ rori_entries @ roriw_entries @ zext_h_entries @ clmul_entries @ clmulh_entries
-  @ xperm4_entries @ xperm8_entries
+  @ xperm4_entries @ xperm8_entries @ sha256sum0_entries @ sha256sum1_entries @ sha256sig0_entries
+  @ sha256sig1_entries @ sha512sum0_entries @ sha512sum1_entries @ sha512sig0_entries
+  @ sha512sig1_entries @ sha512sum0r_entries @ sha512sum1r_entries @ sha512sig0l_entries
+  @ sha512sig1l_entries @ sha512sig0h_entries @ sha512sig1h_entries @ aes64ds_entries
+  @ aes64dsm_entries @ aes64es_entries @ aes64esm_entries @ aes64ks2_entries @ aes64im_entries
+  @ aes64ks1i_entries @ aes32dsi_entries @ aes32dsmi_entries @ aes32esi_entries @ aes32esmi_entries
+  @ csrrw_entries @ csrrs_entries @ csrrc_entries @ csrrwi_entries @ csrrsi_entries @ csrrci_entries
+  @ csrr_entries @ csrw_entries @ csrs_entries @ csrc_entries @ csrwi_entries @ csrsi_entries
+  @ csrci_entries @ amoswap_w_entries @ amoadd_w_entries @ amoxor_w_entries @ amoand_w_entries
+  @ amoor_w_entries @ amomin_w_entries @ amomax_w_entries @ amominu_w_entries @ amomaxu_w_entries
+  @ sc_w_entries @ lr_w_entries @ amoswap_d_entries @ amoadd_d_entries @ amoxor_d_entries
+  @ amoand_d_entries @ amoor_d_entries @ amomin_d_entries @ amomax_d_entries @ amominu_d_entries
+  @ amomaxu_d_entries @ sc_d_entries @ lr_d_entries
 
 let pilot_entry_of (entry : entry) =
   let evidence =

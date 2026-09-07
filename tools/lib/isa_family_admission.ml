@@ -142,6 +142,54 @@ let promoted_case ~target ~form_id ~lookup_key =
       true
   | (Target.Riscv32 | Target.Riscv64), ("riscv:xperm4" | "riscv:xperm8"), ("xperm4" | "xperm8") ->
       true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:sha256sum0" | "riscv:sha256sum1" | "riscv:sha256sig0" | "riscv:sha256sig1"),
+      ("sha256sum0" | "sha256sum1" | "sha256sig0" | "sha256sig1") ) ->
+      true
+  | ( Target.Riscv64,
+      ("riscv:sha512sum0" | "riscv:sha512sum1" | "riscv:sha512sig0" | "riscv:sha512sig1"),
+      ("sha512sum0" | "sha512sum1" | "sha512sig0" | "sha512sig1") ) ->
+      true
+  | ( Target.Riscv32,
+      ( "riscv:sha512sum0r" | "riscv:sha512sum1r" | "riscv:sha512sig0l" | "riscv:sha512sig1l"
+      | "riscv:sha512sig0h" | "riscv:sha512sig1h" ),
+      ("sha512sum0r" | "sha512sum1r" | "sha512sig0l" | "sha512sig1l" | "sha512sig0h" | "sha512sig1h")
+    ) ->
+      true
+  | ( Target.Riscv64,
+      ( "riscv:aes64ds" | "riscv:aes64dsm" | "riscv:aes64es" | "riscv:aes64esm" | "riscv:aes64ks2"
+      | "riscv:aes64im" ),
+      ("aes64ds" | "aes64dsm" | "aes64es" | "aes64esm" | "aes64ks2" | "aes64im") ) ->
+      true
+  | Target.Riscv64, "riscv:aes64ks1i", "aes64ks1i" -> true
+  | ( Target.Riscv32,
+      ("riscv:aes32dsi" | "riscv:aes32dsmi" | "riscv:aes32esi" | "riscv:aes32esmi"),
+      ("aes32dsi" | "aes32dsmi" | "aes32esi" | "aes32esmi") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ( "riscv:csrrw" | "riscv:csrrs" | "riscv:csrrc" | "riscv:csrrwi" | "riscv:csrrsi"
+      | "riscv:csrrci" ),
+      ("csrrw" | "csrrs" | "csrrc" | "csrrwi" | "csrrsi" | "csrrci") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ( "riscv:csrr" | "riscv:csrw" | "riscv:csrs" | "riscv:csrc" | "riscv:csrwi" | "riscv:csrsi"
+      | "riscv:csrci" ),
+      ("csrr" | "csrw" | "csrs" | "csrc" | "csrwi" | "csrsi" | "csrci") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ( "riscv:amoswap.w" | "riscv:amoadd.w" | "riscv:amoxor.w" | "riscv:amoand.w" | "riscv:amoor.w"
+      | "riscv:amomin.w" | "riscv:amomax.w" | "riscv:amominu.w" | "riscv:amomaxu.w" | "riscv:sc.w"
+      | "riscv:lr.w" ),
+      ( "amoswap.w" | "amoadd.w" | "amoxor.w" | "amoand.w" | "amoor.w" | "amomin.w" | "amomax.w"
+      | "amominu.w" | "amomaxu.w" | "sc.w" | "lr.w" ) ) ->
+      true
+  | ( Target.Riscv64,
+      ( "riscv:amoswap.d" | "riscv:amoadd.d" | "riscv:amoxor.d" | "riscv:amoand.d" | "riscv:amoor.d"
+      | "riscv:amomin.d" | "riscv:amomax.d" | "riscv:amominu.d" | "riscv:amomaxu.d" | "riscv:sc.d"
+      | "riscv:lr.d" ),
+      ( "amoswap.d" | "amoadd.d" | "amoxor.d" | "amoand.d" | "amoor.d" | "amomin.d" | "amomax.d"
+      | "amominu.d" | "amomaxu.d" | "sc.d" | "lr.d" ) ) ->
+      true
   | _ -> false
 
 let pilot_case ~target ~form_id ~lookup_key =
