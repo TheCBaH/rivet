@@ -1,5 +1,5 @@
 target:x86_32
-total:2493
+total:2492
 by-extension:4fmaps-512:4
 by-extension:4vnniw-512:2
 by-extension:amd:138
@@ -18,7 +18,7 @@ by-extension:avx512cd:6
 by-extension:avx512f:351
 by-extension:avx512ifma:2
 by-extension:avx512vbmi:4
-by-extension:base:645
+by-extension:base:644
 by-extension:bdw:2
 by-extension:bitalg:3
 by-extension:cet:11
@@ -69,6 +69,6 @@ by-extension:wrmsrns:1
 by-extension:xsavec:2
 by-extension:xsaveopt:2
 by-extension:xsaves:4
-by-state:unknown:2493
+by-state:unknown:2492
 compcert-emitted:0
 gcc-emitted:0

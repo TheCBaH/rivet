@@ -676,6 +676,12 @@ tools-isa-inventory-diff: tools-isa-inventory
 tools-isa-db-cross-validate: tools-build
 	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-inventory cross-validate
 
+# Producer-only native-capture integrity check.  It intentionally stays out
+# of asm-ci: it reads the vendored source trees and requires Python, whereas
+# asm-ci's portable artifact checks consume only the committed JSONL files.
+isa-db-capture-check:
+	cd isa-db && python3 -m export.verify
+
 # The same control-flow properties, asserted against the OCaml implementation
 # with fake compilers. Needs the executable but no cross toolchain.
 tools-fixture-modes: tools-build
@@ -752,7 +758,7 @@ compcert-export-archive-all:
   asm-compcert-adapter-test \
   asm-submodules asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
   tools-build tools-test tools-integration tools-boundary tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-matrix tools-matrix-diff \
-  tools-isa-inventory tools-isa-inventory-diff tools-isa-db-cross-validate \
+  tools-isa-inventory tools-isa-inventory-diff tools-isa-db-cross-validate isa-db-capture-check \
   asm-fixtures-check asm-characterize-verify asm-cross-setup asm-libc-cross-smoke asm-cross-smoke-selftest asm-fixtures-regen \
   asm-oracle asm-fixture-oracle asm-ci \
   asm-gas-xref-check asm-gas-xref-regen \

@@ -330,7 +330,6 @@ mnemonic:jns	extension:base	compcert-emitted:unknown	gcc-emitted:unknown	state:u
 mnemonic:jnz	extension:base	compcert-emitted:unknown	gcc-emitted:unknown	state:unknown	deferral-reason:-	promotion-trigger:-
 mnemonic:jo	extension:base	compcert-emitted:unknown	gcc-emitted:unknown	state:unknown	deferral-reason:-	promotion-trigger:-
 mnemonic:jp	extension:base	compcert-emitted:unknown	gcc-emitted:unknown	state:unknown	deferral-reason:-	promotion-trigger:-
-mnemonic:jrcxz	extension:base	compcert-emitted:unknown	gcc-emitted:unknown	state:unknown	deferral-reason:-	promotion-trigger:-
 mnemonic:js	extension:base	compcert-emitted:unknown	gcc-emitted:unknown	state:unknown	deferral-reason:-	promotion-trigger:-
 mnemonic:jz	extension:base	compcert-emitted:unknown	gcc-emitted:unknown	state:unknown	deferral-reason:-	promotion-trigger:-
 mnemonic:kaddb	extension:avx512-skx	compcert-emitted:unknown	gcc-emitted:unknown	state:unknown	deferral-reason:-	promotion-trigger:-

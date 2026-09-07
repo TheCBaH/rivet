@@ -46,19 +46,28 @@ let field_value line ~field =
    dialect) - see the .mli and asm/docs/isa-inventory.md. *)
 type block_state = {
   mutable iclass : string option;
+  mutable isa_set : string option;
   mutable saw_pattern : bool;
   mutable any_32_ok : bool;
   mutable any_64_ok : bool;
 }
 
-let fresh_block () = { iclass = None; saw_pattern = false; any_32_ok = false; any_64_ok = false }
+let fresh_block () =
+  { iclass = None; isa_set = None; saw_pattern = false; any_32_ok = false; any_64_ok = false }
 
 let close_block ~extension (b : block_state) acc =
   match b.iclass with
   | None -> acc (* a block with no ICLASS field is not an instruction *)
   | Some name ->
-      let applies_32 = if b.saw_pattern then b.any_32_ok else true in
-      let applies_64 = if b.saw_pattern then b.any_64_ok else true in
+      let pattern_32 = if b.saw_pattern then b.any_32_ok else true in
+      let pattern_64 = if b.saw_pattern then b.any_64_ok else true in
+      (* LONGMODE is an execution-mode restriction even when a hand-written
+         pattern spells the same fact through EAMODE/FORCE64 rather than a
+         MODE token.  Do not infer other ISA_SET names as mode restrictions:
+         they are feature labels, not a substitute vocabulary. *)
+      let is_longmode = b.isa_set = Some "LONGMODE" in
+      let applies_32 = pattern_32 && not is_longmode in
+      let applies_64 = pattern_64 in
       { mnemonic = String.lowercase_ascii name; extension; applies_32; applies_64 } :: acc
 
 let parse_datafile ~extension text =
@@ -87,6 +96,9 @@ let parse_datafile ~extension text =
           (match field_value line ~field:"ICLASS" with
           | Some v -> if block.iclass = None then block.iclass <- Some v
           | None -> ());
+          (match field_value line ~field:"ISA_SET" with
+          | Some v -> if block.isa_set = None then block.isa_set <- Some v
+          | None -> ());
           (match field_value line ~field:"PATTERN" with
           | Some v ->
               block.saw_pattern <- true;
@@ -97,8 +109,13 @@ let parse_datafile ~extension text =
                  have only mode16/mode32 forms and no not64 tag at all - see
                  asm/docs/isa-inventory.md). Don't confuse this MODE token
                  with the separate EAMODE one (eamode16/eamode32/eamode64,
-                 address-size, not operating-mode). *)
-              if not (List.mem "mode64" toks) then block.any_32_ok <- true;
+                 address-size, not operating-mode). EAMODE64 and FORCE64()
+                 do nevertheless imply long mode; EAMODE16/EAMODE32 do not
+                 exclude it on their own. *)
+              let mode64_only =
+                List.mem "mode64" toks || List.mem "eamode64" toks || List.mem "FORCE64()" toks
+              in
+              if not mode64_only then block.any_32_ok <- true;
               if not (List.mem "not64" toks || List.mem "mode16" toks || List.mem "mode32" toks)
               then block.any_64_ok <- true
           | None -> ());

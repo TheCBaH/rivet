@@ -42,6 +42,7 @@ class TestPusha(unittest.TestCase):
         self.assertEqual(len(self.records), 1)
         self.assertEqual(self.records[0]["provenance"]["group"], "base")
         self.assertEqual(self.records[0]["provenance"]["isa_extension"], "BASE")
+        self.assertIn("patterns", self.records[0]["provenance"]["raw"])
 
     def test_applicability_excludes_mode64(self):
         expr = self.records[0]["applicability"]
@@ -81,6 +82,26 @@ class TestMovqMultiBlockMultiExtension(unittest.TestCase):
         a32, a64 = merged[("movq", "base")]
         self.assertTrue(a32)
         self.assertTrue(a64)
+
+
+class TestModeRestrictionVocabulary(unittest.TestCase):
+    def test_jrcxz_longmode_is_not_x86_32_applicable(self):
+        records = _records_by_native_name("JRCXZ")
+        self.assertEqual(len(records), 1)
+        expr = records[0]["applicability"]
+        self.assertFalse(eval_mode_expr(expr, "mode16"))
+        self.assertFalse(eval_mode_expr(expr, "mode32"))
+        self.assertTrue(eval_mode_expr(expr, "mode64"))
+        self.assertNotIn(("jrcxz", "base"), reader.compat_entries_for_profile(DATAFILES_DIR, "x86_32"))
+
+    def test_unknown_mode_restriction_is_not_a_positive_match(self):
+        block = reader.Block(iclass="FUTURE", patterns=["0x90 FORCE32()"])
+        expr = reader.block_applicability(block)
+        self.assertIsNone(eval_mode_expr(expr, "mode16"))
+        self.assertIsNone(eval_mode_expr(expr, "mode32"))
+        self.assertIsNone(eval_mode_expr(expr, "mode64"))
+        self.assertFalse(reader.applies_32(expr))
+        self.assertFalse(reader.applies_64(expr))
 
 
 class TestCompatRegression(unittest.TestCase):

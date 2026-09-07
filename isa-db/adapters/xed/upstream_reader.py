@@ -102,6 +102,7 @@ def source_records(snapshot: str) -> list[dict]:
                 "isa_set": v.isa_set,
                 "category": v.category,
                 "iform": v.iform,
+                "mode_restriction": v.mode_restriction,
             },
             unresolved=[
                 "no original datafiles/ file:line (see origin)",

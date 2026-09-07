@@ -83,6 +83,50 @@ let isa_db_pairs spec (records : Isa_db_jsonl.record list) =
             Some (name, key))
   |> Pair_set.of_list
 
+module Name_set = Set.Make (String)
+
+let native_names records =
+  records
+  |> List.map (fun (r : Isa_db_jsonl.record) -> String.lowercase_ascii r.native_name)
+  |> Name_set.of_list
+
+let render_names names = String.concat ", " (Name_set.elements names)
+
+(* The coarse traversal intentionally retains XED's synthetic multi-byte NOP
+   ICLASSes while the resolved reader does not.  They are the only permitted
+   difference: checking both directions catches a mode-applicability leak
+   (such as the former x86-32 JRCXZ leak) without pretending the two exports
+   are independent ISA authorities. *)
+let expected_xed_coarse_only =
+  List.init 8 (fun i -> Printf.sprintf "nop%d" (i + 2)) |> Name_set.of_list
+
+let check_xed_view_delta repo (target : Target.t) =
+  match target with
+  | Target.X86_32 | Target.X86_64 -> (
+      let coarse_path = Repo.isa_db_export repo ~source:"xed" target in
+      let resolved_path = Repo.isa_db_export repo ~source:"xed_resolved" target in
+      match (Isa_db_jsonl.read_file coarse_path, Isa_db_jsonl.read_file resolved_path) with
+      | Error e, _ | _, Error e -> Command.of_error e
+      | Ok coarse, Ok resolved ->
+          let coarse_only = Name_set.diff (native_names coarse) (native_names resolved) in
+          let resolved_only = Name_set.diff (native_names resolved) (native_names coarse) in
+          if Name_set.equal coarse_only expected_xed_coarse_only && Name_set.is_empty resolved_only
+          then
+            Command.ok
+              [
+                Diagnostic.stdout
+                  (Printf.sprintf
+                     "isa-db-cross-validate: %s: coarse/resolved XED name delta accounted"
+                     (Target.to_string target));
+              ]
+          else
+            fatal Tool_error.Validate
+              (Printf.sprintf
+                 "isa-db-cross-validate: %s: unaccounted coarse/resolved XED name delta \
+                  (coarse-only: %s; resolved-only: %s)"
+                 (Target.to_string target) (render_names coarse_only) (render_names resolved_only)))
+  | Target.Arm | Target.Aarch64 | Target.Riscv32 | Target.Riscv64 -> Command.ok []
+
 let check_target repo (target : Target.t) =
   match spec_for_target target with
   | None -> Command.ok []
@@ -120,4 +164,6 @@ let check_target repo (target : Target.t) =
                              (Printf.sprintf "  missing: mnemonic:%s extension:%s" m e))
                          missing)))
 
-let check repo = Command.accumulate Target.all ~f:(check_target repo)
+let check repo =
+  Command.accumulate Target.all ~f:(fun target ->
+      Command.accumulate [ check_target repo target; check_xed_view_delta repo target ] ~f:Fun.id)

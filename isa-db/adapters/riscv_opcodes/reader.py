@@ -44,9 +44,9 @@ def parse_fields(toks: list[str]) -> tuple[list[dict], list[str], int, int]:
 
     Bit positions come straight from the source ("hi..lo=value" tokens), so
     mask/value are correct regardless of instruction width; the caller pairs
-    this with `_instruction_width_bits` to label the encoding's width
-    (16 for a compressed 'c' extension, 32 otherwise) rather than assuming
-    32 outright. Values may be decimal, hex ("0x..."), or binary ("0b...",
+    this with `instruction_width_bits` to label the encoding's width from its
+    own low encoding bits rather than its extension filename. Values may be
+    decimal, hex ("0x..."), or binary ("0b...",
     e.g. rv32_zknd's "29..25=0b10111") - `int(raw, 0)` matches upstream
     riscv-opcodes' own `int(entry, 0)` base-detection exactly.
     """
@@ -88,18 +88,23 @@ def _applies_to(profile: str, extension: str) -> bool:
     raise ValueError(f"unsupported profile: {profile!r}")
 
 
-def _instruction_width_bits(extension: str) -> int:
-    """16 for a compressed extension (its own 'c' name component, e.g.
-    'rv_c', 'rv32_c_f', 'rv_c_zicfiss'), else 32.
+def instruction_width_bits(mask: int, value: int) -> int:
+    """Infer a record's RISC-V instruction length from encoding facts.
 
-    Checking components after splitting on '_', rather than a substring
-    check for "_c", matters: a naive substring check either misses these
-    (splitting removes the underscore, so "_c" never reappears as a
-    substring - the bug this replaced) or, if fixed to search for a bare
-    "c", would wrongly also match extensions like 'rv_zbkc' or 'rv_zbc'
-    whose name merely contains the letter c.
+    RISC-V reserves low bits ``..11`` for instructions wider than a compressed
+    16-bit word.  The captures currently contain only 16- and 32-bit forms;
+    a longer form, or a form whose discriminator is not fixed, is rejected
+    rather than stamped with a guessed width.  This is intentionally per
+    record: imports and pseudo-ops use the resolved upstream entry, which can
+    belong to a different extension file than the source line.
     """
-    return 16 if "c" in extension.split("_")[1:] else 32
+    if mask & 0b11 != 0b11:
+        raise ValueError("instruction length is unknown: encoding does not fix bits [1:0]")
+    if value & 0b11 != 0b11:
+        return 16
+    if mask & 0b1_1111 == 0b1_1111 and value & 0b1_1111 == 0b1_1111:
+        raise ValueError("instruction length is unsupported: encoding is wider than 32 bits")
+    return 32
 
 
 def _resolve_variable_fields(names: list[str], arg_lut: dict[str, tuple[int, int]]) -> list[dict]:
@@ -110,16 +115,26 @@ def _resolve_variable_fields(names: list[str], arg_lut: dict[str, tuple[int, int
     return fields
 
 
-def _encoding_from_upstream(entry: dict, width_bits: int, arg_lut: dict[str, tuple[int, int]]) -> dict:
+def _encoding_from_upstream(entry: dict, arg_lut: dict[str, tuple[int, int]]) -> dict:
     mask = int(entry["mask"], 16)
     value = int(entry["match"], 16)
     fields = _resolve_variable_fields(entry["variable_fields"], arg_lut)
-    return fixed_bits_encoding(width_bits, mask, value, fields)
+    return fixed_bits_encoding(instruction_width_bits(mask, value), mask, value, fields)
+
+
+def _native_provenance(extension: str, raw_line: str, toks: list[str], entry: dict | None = None) -> dict:
+    facts = {"extension": extension, "raw": {"line": raw_line, "tokens": toks}}
+    if entry is not None:
+        facts["upstream-resolved"] = {
+            "mask": entry["mask"],
+            "match": entry["match"],
+            "variable_fields": entry["variable_fields"],
+        }
+    return facts
 
 
 def source_records_for_file(path: Path, snapshot: str) -> list[dict]:
     extension = path.name
-    width_bits = _instruction_width_bits(extension)
     upstream_dict = upstream.create_inst_dict_for_file(extension)
     arg_lut = upstream.arg_lut()
     records = []
@@ -137,7 +152,7 @@ def source_records_for_file(path: Path, snapshot: str) -> list[dict]:
             unresolved = ["import target not resolved to a concrete record_id by this adapter"]
             entry = upstream_dict.get(target_name.replace(".", "_"))
             if entry is not None:
-                encoding = _encoding_from_upstream(entry, width_bits, arg_lut)
+                encoding = _encoding_from_upstream(entry, arg_lut)
             else:
                 encoding = opaque_encoding("import - no local encoding, see relationships")
                 unresolved.append("upstream create_inst_dict did not resolve this import to a concrete encoding")
@@ -151,7 +166,10 @@ def source_records_for_file(path: Path, snapshot: str) -> list[dict]:
                 encoding=encoding,
                 applicability=unconditional(),
                 relationships=[{"kind": "imports", "target": f"riscv-opcodes:{target_ext}:{target_name}"}],
-                provenance={"extension": extension},
+                provenance={
+                    **_native_provenance(extension, trimmed, toks, entry),
+                    "import-reference": {"extension": target_ext, "name": target_name},
+                },
                 unresolved=unresolved,
             )
             records.append(rec.to_dict())
@@ -165,11 +183,11 @@ def source_records_for_file(path: Path, snapshot: str) -> list[dict]:
             upstream_key = mnemonic.replace(".", "_")
             entry = upstream_dict.get(upstream_key) or upstream_dict.get(f"{upstream_key}_pseudo")
             if entry is not None:
-                encoding = _encoding_from_upstream(entry, width_bits, arg_lut)
+                encoding = _encoding_from_upstream(entry, arg_lut)
                 operands = entry["variable_fields"]
             else:
                 fields, operands, mask, value = parse_fields(toks[3:])
-                encoding = fixed_bits_encoding(width_bits, mask, value, fields)
+                encoding = fixed_bits_encoding(instruction_width_bits(mask, value), mask, value, fields)
             rec = SourceRecord(
                 record_id=f"riscv-opcodes:{extension}:{mnemonic}@L{lineno}",
                 source="riscv_opcodes",
@@ -180,7 +198,11 @@ def source_records_for_file(path: Path, snapshot: str) -> list[dict]:
                 encoding=encoding,
                 applicability=unconditional(),
                 relationships=[{"kind": "specializes", "target": f"riscv-opcodes:{base_ext}:{base_name}"}],
-                provenance={"extension": extension, "operands": operands},
+                provenance={
+                    **_native_provenance(extension, trimmed, toks, entry),
+                    "operands": operands,
+                    "specializes-reference": {"extension": base_ext, "name": base_name},
+                },
                 unresolved=["specializes-target not resolved to a concrete record_id by this adapter"],
             )
             records.append(rec.to_dict())
@@ -198,12 +220,36 @@ def source_records_for_file(path: Path, snapshot: str) -> list[dict]:
             native_name=mnemonic,
             snapshot=snapshot,
             origin=origin,
-            encoding=fixed_bits_encoding(width_bits, mask, value, fields),
+            encoding=fixed_bits_encoding(instruction_width_bits(mask, value), mask, value, fields),
             applicability=unconditional(),
-            provenance={"extension": extension, "operands": operands},
+            provenance={**_native_provenance(extension, trimmed, toks, entry), "operands": operands},
             unresolved=[],
         )
         records.append(rec.to_dict())
+    return records
+
+
+def _resolve_relationships(records: list[dict]) -> list[dict]:
+    """Turn source-shaped RISC-V relationship references into exact record
+    IDs where this snapshot has one unambiguous target.  The raw reference and
+    any ambiguity remain in provenance for a later normalizer to account for.
+    """
+    index: dict[str, list[str]] = {}
+    for record in records:
+        stem = record["record_id"].split("@L", maxsplit=1)[0]
+        index.setdefault(stem, []).append(record["record_id"])
+    for record in records:
+        resolutions = []
+        for relationship in record["relationships"]:
+            candidates = index.get(relationship["target"], [])
+            status = "missing" if not candidates else "exact" if len(candidates) == 1 else "ambiguous"
+            if status == "exact":
+                relationship["target"] = candidates[0]
+            resolutions.append({"kind": relationship["kind"], "status": status, "candidates": candidates})
+        if resolutions:
+            record.setdefault("provenance", {})["relationship-resolution"] = resolutions
+            if all(r["status"] == "exact" for r in resolutions):
+                record["unresolved"] = [u for u in record["unresolved"] if "target not resolved" not in u]
     return records
 
 
@@ -211,7 +257,7 @@ def source_records(extensions_dir: Path, snapshot: str) -> list[dict]:
     records = []
     for f in _list_extension_files(extensions_dir):
         records.extend(source_records_for_file(f, snapshot))
-    return records
+    return _resolve_relationships(records)
 
 
 def source_records_for_profile(extensions_dir: Path, profile: str, snapshot: str) -> list[dict]:
@@ -224,7 +270,7 @@ def source_records_for_profile(extensions_dir: Path, profile: str, snapshot: str
         if not _applies_to(profile, f.name):
             continue
         records.extend(source_records_for_file(f, snapshot))
-    return records
+    return _resolve_relationships(records)
 
 
 def compat_entries_for_profile(extensions_dir: Path, profile: str) -> set[tuple[str, str]]:

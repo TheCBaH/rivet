@@ -15,9 +15,9 @@ This is a standalone Python project, deliberately with **zero third-party
 dependencies** (stdlib only - no `pytest`, no `jsonschema`; neither was
 available in this environment, and the design doc itself says production
 assembler libraries should not acquire producer build dependencies). It is
-not wired into `asm-ci` or the root `Makefile`: per the design doc, producer
-CI is a separate concern from this repo's ordinary, offline, toolchain-free
-checks.
+kept outside `asm-ci`: the explicit `make isa-db-capture-check` producer
+target is separate from the repository's ordinary, offline, toolchain-free
+assembler checks.
 
 ## Layout
 
@@ -28,6 +28,9 @@ checks.
 - `sources.lock.json` - pins the two vendored submodule commits this slice
   reads, matching `git -C asm/vendor/isa-data/<name>/upstream rev-parse HEAD`
   at the time this slice was written.
+- `docs/capture-contract.md` - the versioned native-capture envelope,
+  preserved source facts, explicit loss/unknown policy, and producer-only
+  verification boundary.
 - `normalize/model.py` - the shared, source-agnostic pieces: the source
   record shape, the `fixed_bits`/`opaque` encoding tagged union, the mode
   applicability expression (`all`/`any`/`mode`) and its evaluator, and JSON
@@ -122,6 +125,14 @@ checks.
 ```sh
 python3 -m unittest discover -s isa-db/tests -t isa-db
 ```
+
+`python3 -m export.regen` is a release-style producer operation: it refuses a
+dirty or differently pinned XED/riscv-opcodes/mbuild checkout, writes the
+JSONL files, and records the selected-input Merkle hashes plus a content hash
+of the producer in `export/capture-manifest.v1.json`. `make
+isa-db-capture-check` verifies those facts without writing files. It remains
+outside `asm-ci`; the existing producer test's freshness gate also remains
+outside that portable assembler lane.
 
 The tests read the vendored submodules directly (`asm/vendor/isa-data/...`),
 so they need `git submodule update --init` to have been run, the same

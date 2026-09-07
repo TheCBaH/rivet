@@ -69,6 +69,16 @@ def mode_not_equals(mode: str) -> dict:
     return {"kind": "mode", "not_equals": mode}
 
 
+def unknown_applicability(reason: str) -> dict:
+    """A source restriction we preserved but cannot interpret safely.
+
+    This is deliberately an applicability node rather than an entry in a
+    record's free-form ``unresolved`` list: callers selecting records for a
+    concrete execution mode must see that it is not a positive match.
+    """
+    return {"kind": "unknown", "reason": reason}
+
+
 def all_of(exprs: list[dict]) -> dict:
     return {"kind": "all", "of": exprs}
 
@@ -77,25 +87,33 @@ def any_of(exprs: list[dict]) -> dict:
     return {"kind": "any", "of": exprs}
 
 
-def eval_mode_expr(expr: dict, mode: str) -> bool:
+def eval_mode_expr(expr: dict, mode: str) -> bool | None:
     """Evaluate an applicability expression against one concrete x86 mode.
 
-    Three-valued in principle (per the design doc); this slice's inputs are
-    always fully resolved mode tokens, so this evaluator only ever returns
-    True/False, never "unknown" - there is nothing yet that would produce an
-    unknown mode constraint from XED's PATTERN tokens.
+    ``None`` is unknown.  Kleene conjunction/disjunction means an unknown
+    restriction never becomes a positive profile selection: ``all`` can only
+    be false when a child is false, and ``any`` can only be true when a child
+    is true.  Profile readers use ``is True`` rather than truthiness.
     """
     kind = expr["kind"]
     if kind == "all":
-        return all(eval_mode_expr(sub, mode) for sub in expr["of"])
+        values = [eval_mode_expr(sub, mode) for sub in expr["of"]]
+        if False in values:
+            return False
+        return None if None in values else True
     if kind == "any":
-        return any(eval_mode_expr(sub, mode) for sub in expr["of"])
+        values = [eval_mode_expr(sub, mode) for sub in expr["of"]]
+        if True in values:
+            return True
+        return None if None in values else False
     if kind == "mode":
         if "equals" in expr:
             return mode == expr["equals"]
         if "not_equals" in expr:
             return mode != expr["not_equals"]
         raise ValueError(f"mode node with neither 'equals' nor 'not_equals': {expr!r}")
+    if kind == "unknown":
+        return None
     raise ValueError(f"unknown applicability node kind: {kind!r}")
 
 

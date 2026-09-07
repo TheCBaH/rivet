@@ -15,18 +15,29 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import re
 
 from normalize.model import (
     SourceRecord,
+    all_of,
     any_of,
     eval_mode_expr,
     mode_equals,
     mode_not_equals,
     opaque_encoding,
     unconditional,
+    unknown_applicability,
 )
 
-_MODE_TOKENS = ("mode16", "mode32", "mode64", "not64")
+# This is deliberately an explicit vocabulary.  Adding a token here is a
+# reviewed semantic decision, not a fallback that broadens profile exports.
+_MODE_TOKENS = frozenset(("mode16", "mode32", "mode64", "not64"))
+_EAMODE_TOKENS = frozenset(("eamode16", "eamode32", "eamode64"))
+_MODE_ONLY_ISA_SETS = frozenset(("LONGMODE",))
+_NON_RESTRICTING_MODE_TOKENS = frozenset(
+    ("modep5=0", "modep5=1", "mode_short_ud0=0", "mode_short_ud0=1", "mpxmode=0", "mpxmode=1")
+)
+_MODE_RESTRICTION_CANDIDATE = re.compile(r"^(?:mode|eamode|force)", re.IGNORECASE)
 
 
 def tokens(line: str) -> list[str]:
@@ -112,7 +123,8 @@ def parse_datafile_blocks(text: str) -> list[Block]:
 
 
 def pattern_mode_expr(toks: list[str]) -> dict:
-    has = lambda t: t in toks  # noqa: E731
+    normalized = [t.lower() for t in toks]
+    has = lambda t: t in normalized  # noqa: E731
     constraints = []
     if has("mode64"):
         constraints.append(mode_equals("mode64"))
@@ -122,6 +134,17 @@ def pattern_mode_expr(toks: list[str]) -> dict:
         constraints.append(mode_equals("mode16"))
     if has("not64"):
         constraints.append(mode_not_equals("mode64"))
+    # EAMODE is address-size state, not MODE.  Its 16- and 32-bit values can
+    # occur in more than one execution mode, while EAMODE64 can only exist in
+    # 64-bit execution mode.  Preserve that asymmetry instead of treating all
+    # EAMODE spellings as MODE aliases.
+    if has("eamode64"):
+        constraints.append(mode_equals("mode64"))
+    if has("force64()"):
+        constraints.append(mode_equals("mode64"))
+    known = _MODE_TOKENS | _EAMODE_TOKENS | _NON_RESTRICTING_MODE_TOKENS | {"force64()"}
+    unknown = [t for t, lower in zip(toks, normalized) if _MODE_RESTRICTION_CANDIDATE.match(t) and lower not in known]
+    constraints.extend(unknown_applicability(f"unrecognized XED mode restriction token: {t}") for t in unknown)
     if not constraints:
         return unconditional()
     if len(constraints) == 1:
@@ -130,17 +153,23 @@ def pattern_mode_expr(toks: list[str]) -> dict:
 
 
 def block_applicability(block: Block) -> dict:
+    isa_constraints = []
+    if block.isa_set in _MODE_ONLY_ISA_SETS:
+        isa_constraints.append(mode_equals("mode64"))
+    elif block.isa_set is not None and "MODE" in block.isa_set:
+        isa_constraints.append(unknown_applicability(f"unrecognized XED ISA_SET mode restriction: {block.isa_set}"))
     if not block.patterns:
-        return unconditional()
-    return any_of([pattern_mode_expr(t) for t in block.pattern_tokens])
+        return isa_constraints[0] if len(isa_constraints) == 1 else all_of(isa_constraints)
+    patterns = any_of([pattern_mode_expr(t) for t in block.pattern_tokens])
+    return patterns if not isa_constraints else all_of(isa_constraints + [patterns])
 
 
 def applies_32(applicability: dict) -> bool:
-    return eval_mode_expr(applicability, "mode16") or eval_mode_expr(applicability, "mode32")
+    return eval_mode_expr(applicability, "mode16") is True or eval_mode_expr(applicability, "mode32") is True
 
 
 def applies_64(applicability: dict) -> bool:
-    return eval_mode_expr(applicability, "mode64")
+    return eval_mode_expr(applicability, "mode64") is True
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +228,7 @@ def source_records(datafiles_dir: Path, snapshot: str) -> list[dict]:
                 "group": group,
                 "isa_extension": block.isa_extension,
                 "isa_set": block.isa_set,
+                "raw": {"patterns": block.patterns},
             },
             unresolved=[
                 "operand forms (OPERANDS field) are not extracted",

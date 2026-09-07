@@ -31,13 +31,8 @@ class TestSh1add(unittest.TestCase):
 
 
 class TestCompressedInstructionWidth(unittest.TestCase):
-    """rv_c's c.addi4spn is a real 16-bit compressed encoding. A prior
-    version of this adapter always declared width_bits=32 here (its
-    "is this a compressed extension" check used a substring match that could
-    never fire, since splitting on '_' removes the underscore it searched
-    for) - this pins the fix: width_bits must reflect the actual 16-bit
-    encoding for a 'c' extension component, and must not be fooled by an
-    unrelated extension like rv_zbkc merely containing the letter c."""
+    """Widths come from each record's fixed low encoding bits, including
+    records from Zc extension files and pseudo-ops resolved by upstream."""
 
     def test_c_addi4spn_is_16_bit(self):
         records = _records_by_native_name(EXTENSIONS_DIR / "rv_c", "c.addi4spn")
@@ -52,10 +47,20 @@ class TestCompressedInstructionWidth(unittest.TestCase):
         records = _records_by_native_name(EXTENSIONS_DIR / "rv_zba", "sh1add")
         self.assertEqual(records[0]["encoding"]["width_bits"], 32)
 
-    def test_zbkc_is_not_mistaken_for_compressed(self):
-        self.assertEqual(reader._instruction_width_bits("rv_zbkc"), 32)
-        self.assertEqual(reader._instruction_width_bits("rv_c"), 16)
-        self.assertEqual(reader._instruction_width_bits("rv32_c_f"), 16)
+    def test_zcb_is_16_bit_without_a_c_filename_component(self):
+        records = _records_by_native_name(EXTENSIONS_DIR / "rv_zcb", "c.zext.b")
+        self.assertEqual(records[0]["encoding"]["width_bits"], 16)
+
+    def test_pseudo_op_uses_its_resolved_encoding_not_its_filename(self):
+        records = _records_by_native_name(EXTENSIONS_DIR / "rv_zcmop", "c.mop.1")
+        self.assertEqual(records[0]["kind"], "pseudo-op")
+        self.assertEqual(records[0]["encoding"]["width_bits"], 16)
+
+    def test_unknown_or_long_discriminators_are_rejected(self):
+        with self.assertRaisesRegex(ValueError, "does not fix"):
+            reader.instruction_width_bits(0, 0)
+        with self.assertRaisesRegex(ValueError, "wider than 32"):
+            reader.instruction_width_bits(0b1_1111, 0b1_1111)
 
 
 class TestBinaryLiteralFixedField(unittest.TestCase):
@@ -94,11 +99,16 @@ class TestNopPseudoOp(unittest.TestCase):
     addi, not an independent instruction."""
 
     def test_specializes_addi(self):
-        records = _records_by_native_name(EXTENSIONS_DIR / "rv_i", "nop")
+        records = [
+            r
+            for r in reader.source_records_for_profile(EXTENSIONS_DIR, "riscv32", "riscv-opcodes@test")
+            if r["native_name"] == "nop"
+        ]
         self.assertEqual(len(records), 1)
         rec = records[0]
         self.assertEqual(rec["kind"], "pseudo-op")
-        self.assertEqual(rec["relationships"], [{"kind": "specializes", "target": "riscv-opcodes:rv_i:addi"}])
+        self.assertRegex(rec["relationships"][0]["target"], r"^riscv-opcodes:rv_i:addi@L[0-9]+$")
+        self.assertEqual(rec["provenance"]["relationship-resolution"][0]["status"], "exact")
 
     def test_record_is_schema_shaped(self):
         records = _records_by_native_name(EXTENSIONS_DIR / "rv_i", "nop")
@@ -120,6 +130,7 @@ class TestImportRelationship(unittest.TestCase):
         for r in imports:
             self.assertEqual(len(r["relationships"]), 1)
             self.assertTrue(r["relationships"][0]["target"].startswith("riscv-opcodes:rv_zbc:"))
+            self.assertEqual(r["provenance"]["relationship-resolution"][0]["status"], "exact")
 
     def test_import_does_not_appear_in_compat_view(self):
         # $import is intentionally excluded from the compat view (it would

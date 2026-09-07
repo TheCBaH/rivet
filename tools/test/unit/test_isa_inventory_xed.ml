@@ -77,6 +77,14 @@ let test_parse_mode64_only () =
       check "mode64_only: excluded from x86_32, kept for x86_64"
         (match entries with [ e ] -> (not e.applies_32) && e.applies_64 | _ -> false)
 
+let test_parse_longmode_without_mode_token () =
+  let text = "{\nICLASS: JRCXZ\nISA_SET: LONGMODE\nPATTERN: 0xE3 eamode64 FORCE64()\n}\n" in
+  match Isa_inventory_xed.parse_datafile ~extension:"base" text with
+  | Error _ -> check "longmode_without_mode_token succeeds" false
+  | Ok entries ->
+      check "longmode_without_mode_token: excluded from x86_32, kept for x86_64"
+        (match entries with [ e ] -> (not e.applies_32) && e.applies_64 | _ -> false)
+
 (* PUSHA's real shape: two PATTERN lines, one mode16 and one mode32, neither
    tagged not64 or mode64. MODE is a three-way field (mode16/mode32/mode64),
    so a PATTERN restricted to mode16 or mode32 is just as excluded from
@@ -192,6 +200,7 @@ let () =
   test_parse_hand_authored_dialect ();
   test_parse_not64_only ();
   test_parse_mode64_only ();
+  test_parse_longmode_without_mode_token ();
   test_parse_mode16_and_mode32_only_excludes_64 ();
   test_parse_mixed_restrictions_same_direction ();
   test_parse_no_pattern_defaults_open ();

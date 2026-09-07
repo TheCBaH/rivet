@@ -30,8 +30,10 @@ keys XED matching on.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
+import subprocess
 
 from adapters.riscv_opcodes import reader as riscv_opcodes_reader
 from adapters.riscv_opcodes import reference as riscv_opcodes_reference
@@ -86,6 +88,95 @@ REFERENCE_SOURCES: list[str] = ["riscv_opcodes"]
 # PROFILES/records_for above (see this module's docstring).
 RESOLVED_PROFILES: dict[str, list[str]] = {"xed": ["x86_32", "x86_64"]}
 
+CAPTURE_MANIFEST = EXPORT_DIR / "capture-manifest.v1.json"
+CAPTURE_MANIFEST_SCHEMA = "isa-db-capture-manifest-v1"
+
+
+def _git(path: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(path), *args], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False
+    )
+    if result.returncode != 0:
+        raise ValueError(f"cannot inspect pinned source {path}: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def _verify_checkout(name: str, path: Path, expected_commit: str) -> None:
+    actual = _git(path, "rev-parse", "HEAD")
+    if actual != expected_commit:
+        raise ValueError(f"{name} checkout is {actual}, but sources.lock.json pins {expected_commit}")
+    dirty = _git(path, "status", "--porcelain", "--untracked-files=no")
+    if dirty:
+        raise ValueError(f"{name} checkout is dirty; refuse to label a development tree as pinned capture")
+
+
+def verify_source_inputs(lock: dict) -> None:
+    """Refuse a release capture when its named source/build dependency is not
+    exactly the clean lockfile checkout.  This is intentionally producer-side
+    and stays outside the portable assembler test path."""
+    for source, spec in lock["sources"].items():
+        _verify_checkout(source, REPO_ROOT / spec["path"], spec["commit"])
+        for dependency, dep_spec in spec.get("build-dependencies", {}).items():
+            _verify_checkout(f"{source}/{dependency}", REPO_ROOT / dep_spec["path"], dep_spec["commit"])
+
+
+def _selected_input_files(source: str, lock: dict) -> list[Path]:
+    root = REPO_ROOT / lock["sources"][source]["path"]
+    if source == "xed":
+        return sorted((root / "datafiles").rglob("*.txt"))
+    if source == "riscv_opcodes":
+        return sorted(
+            [p for p in (root / "extensions").iterdir() if p.is_file()]
+            + [root / "arg_lut.csv"]
+        )
+    raise ValueError(f"unknown source: {source!r}")
+
+
+def _tree_digest(root: Path, files: list[Path]) -> tuple[str, int]:
+    digest = hashlib.sha256()
+    for path in files:
+        digest.update(path.relative_to(root).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(hashlib.sha256(path.read_bytes()).digest())
+    return digest.hexdigest(), len(files)
+
+
+def _producer_revision() -> str:
+    """Content identity avoids tying a checked-in capture to a future git
+    commit made after regeneration while still identifying the exact producer
+    sources that formed it."""
+    files = [
+        REPO_ROOT / "isa-db" / "export" / "writer.py",
+        REPO_ROOT / "isa-db" / "adapters" / "riscv_opcodes" / "reader.py",
+        REPO_ROOT / "isa-db" / "adapters" / "xed" / "reader.py",
+        REPO_ROOT / "isa-db" / "adapters" / "xed" / "upstream_reader.py",
+        REPO_ROOT / "isa-db" / "normalize" / "model.py",
+    ]
+    digest, _ = _tree_digest(REPO_ROOT, files)
+    return f"sha256:{digest}"
+
+
+def capture_manifest(lock: dict) -> dict:
+    sources = {}
+    for source, spec in sorted(lock["sources"].items()):
+        root = REPO_ROOT / spec["path"]
+        digest, count = _tree_digest(root, _selected_input_files(source, lock))
+        sources[source] = {
+            "commit": spec["commit"],
+            "selected-input-file-count": count,
+            "selected-input-sha256": digest,
+            "build-dependencies": {
+                name: dep["commit"] for name, dep in sorted(spec.get("build-dependencies", {}).items())
+            },
+        }
+    return {
+        "schema": CAPTURE_MANIFEST_SCHEMA,
+        "source-record-schema": "source_record.schema.v1.json",
+        "producer-revision": _producer_revision(),
+        "dirty-source-policy": "refuse",
+        "sources": sources,
+    }
+
 
 def resolved_records_for(source: str, profile: str, lock: dict) -> list[dict]:
     snapshot = snapshot_for(source, lock)
@@ -116,6 +207,7 @@ def write_jsonl(records: list[dict], path: Path, *, key=lambda r: r["record_id"]
 
 def regenerate(out_dir: Path = EXPORT_DIR) -> list[Path]:
     lock = load_lock()
+    verify_source_inputs(lock)
     written = []
     for source, profiles in PROFILES.items():
         for profile in profiles:
@@ -131,4 +223,7 @@ def regenerate(out_dir: Path = EXPORT_DIR) -> list[Path]:
             path = out_dir / f"{source}_resolved" / f"{profile}.jsonl"
             write_jsonl(resolved_records_for(source, profile, lock), path)
             written.append(path)
+    manifest_path = out_dir / CAPTURE_MANIFEST.name
+    manifest_path.write_text(json.dumps(capture_manifest(lock), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    written.append(manifest_path)
     return written

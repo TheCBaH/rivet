@@ -15,10 +15,12 @@ from adapters.riscv_opcodes import reader as riscv_opcodes_reader
 from adapters.xed import reader as xed_reader
 from export.writer import (
     EXPORT_DIR,
+    CAPTURE_MANIFEST,
     PROFILES,
     REFERENCE_SOURCES,
     RESOLVED_PROFILES,
     load_lock,
+    capture_manifest,
     records_for,
     reference_records_for,
     resolved_records_for,
@@ -135,3 +137,8 @@ class TestCheckedInExportUpToDate(unittest.TestCase):
                     expected,
                     f"{path} is stale - rerun `python3 -m export.regen`",
                 )
+        self.assertEqual(
+            json.loads(CAPTURE_MANIFEST.read_text(encoding="utf-8")),
+            capture_manifest(lock),
+            f"{CAPTURE_MANIFEST} is stale - rerun `python3 -m export.regen`",
+        )
