@@ -165,7 +165,8 @@ module Make (P : PROFILE) = struct
       | "nopic" -> handled { state with pic = false }
       | "norelax" -> handled { state with relax = false }
       | "norvc" -> handled { state with rvc = false }
-      | ("relax" | "rvc") as o ->
-          Target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unsupported_option o))
+      | "rvc" -> handled { state with rvc = true }
+      | "relax" ->
+          Target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unsupported_option "relax"))
       | o -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unknown_option o))
 end

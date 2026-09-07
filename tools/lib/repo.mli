@@ -24,6 +24,17 @@ val resolve :
 val path : t -> Fpath.t
 val fixture_corpus : t -> Fpath.t
 val gas_xref_corpus : t -> Fpath.t
+
+val isa_generated_corpus : t -> Fpath.t
+(** [asm/fixtures/isa-generated/] ({!Isa_generated_case.fixture_dir_name}),
+    the pilot differential generator's own corpus - never
+    {!gas_xref_corpus}'s tree. *)
+
+val isa_difficult_corpus : t -> Fpath.t
+(** [asm/fixtures/isa-difficult/] ({!Isa_gen_difficult.fixture_dir_name}), the
+    non-frozen difficult-form corpus - never {!isa_generated_corpus}'s
+    tree, which stays the frozen 21-entry pilot. *)
+
 val corpus_work : t -> Fpath.t
 
 val corpus_c : t -> Target.t -> Fpath.t

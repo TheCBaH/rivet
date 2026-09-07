@@ -71,6 +71,7 @@ let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
           rs1 = 0;
           imm = Asm_core.Expr.Const (Foundation.Bigint.of_int 42);
         };
+      Lowered.Caddi { rd = 10; imm = Asm_core.Expr.Const (Foundation.Bigint.of_int (-1)) };
       Lowered.Pair { name = "call"; rd = 1; tmp = 1; target = zero; kind = Jalr };
     ]
   in
@@ -93,6 +94,8 @@ let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
     {|
     word 32 bits 00000010101000000000010100010011
     decoded 32 bits, equal=true
+    compressed 16 bits 0001010101111101
+    decoded 16 bits, equal=true
     pair 64 bits 0000000000000000000000001001011100000000000000001000000011100111
     decoded 64 bits, equal=true
     |}]
@@ -325,7 +328,7 @@ let attempt target text =
           Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
         (Foundation.Diag.diagnostics ds)
 
-let%expect_test "RISC-V option failures are never ignored" =
+let%expect_test "RISC-V option state is explicit" =
   attempt "riscv32" ".text\n.option pop\naddi x0, x0, 0\n";
   attempt "riscv32" ".text\n.option rvc\naddi x0, x0, 0\n";
   attempt "riscv32" ".text\n.option relax\naddi x0, x0, 0\n";
@@ -333,7 +336,7 @@ let%expect_test "RISC-V option failures are never ignored" =
   [%expect
     {|
     riscv32.directive: .option pop has no matching push
-    riscv32.directive: .option rvc is not supported
+    accepted
     riscv32.directive: .option relax is not supported
     riscv32.directive: unknown .option mystery
     |}]
@@ -414,7 +417,69 @@ let%expect_test "RISC-V decode rejects malformed or profile-incompatible words" 
     riscv32.decode: fewer than four bytes remain
     riscv32.decode: no form matches this word
     riscv32.decode: no form matches this word
-    riscv32.decode: RISC-V instructions must be four bytes
+    riscv32.decode: no form matches this word
+    |}]
+
+let%expect_test "c.addi requires rvc, enforces its architectural domain, and round-trips" =
+  attempt "riscv32" ".text\nc.addi x10, -1\n";
+  attempt "riscv32" ".text\n.option rvc\nc.addi x0, 1\n";
+  attempt "riscv32" ".text\n.option rvc\nc.addi x10, 0\n";
+  show_decode "riscv32" "\x7d\x15";
+  [%expect
+    {|
+    riscv32.lower: c.addi requires .option rvc
+    riscv32.lower: no c.addi form takes these operands
+    riscv32.fixup: c.addi immediate is out of range
+    riscv32: 	c.addi x10, -1
+    |}]
+
+(* Section-padding policy for mixed 16/32-bit streams. No policy
+   turned out to be needed: RISC-V only requires two-byte instruction
+   alignment even with the C extension enabled (four-byte alignment is a
+   convention some codebases choose, not an ISA requirement), and this
+   engine's layout already places every fragment back-to-back by its own
+   real encoded length. So a 4-byte add immediately after a 2-byte c.addi
+   sits at offset 2, with no inserted padding - exactly matching real GAS,
+   confirmed here byte-for-byte on both RV32 and RV64.
+
+   `.option norvc` brackets the plain `sw`/`add` lines because real GAS,
+   unlike this project, opportunistically substitutes ANY compressible
+   instruction once the C extension is active - without it GAS would silently
+   re-encode `sw a0, 0(a1)` as the 2-byte `c.sw`, which is a real, separate,
+   unimplemented compressed form here (measured directly: GAS emits `88 c1`
+   for that line when RVC is left enabled around it). The pinned bytes below
+   were independently verified against real riscv32-linux-gnu-as 2.43.1 and
+   riscv64-linux-gnu-as 2.44 for this exact source. *)
+let text_hex_of target text =
+  match Driver.Portable.assemble target ~unit_name:"t" ~text with
+  | Error e -> Driver.Portable.render_error (Err.Error.kind e)
+  | Ok p -> (
+      match Driver.Portable.bind_at p ~base:0x0L with
+      | Error e -> Driver.Portable.render_error (Err.Error.kind e)
+      | Ok b -> (
+          match Driver.Portable.section_bytes b ".text" with
+          | None -> "no .text"
+          | Some s ->
+              String.concat " "
+                (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i])))))
+
+let%expect_test "a compressed instruction and a 32-bit instruction pack with no inserted padding" =
+  let text =
+    ".text\n\
+     .option rvc\n\
+     c.addi a0, 1\n\
+     .option norvc\n\
+     sw a0, 0(a1)\n\
+     add a2, a0, a1\n\
+     .option rvc\n\
+     c.addi a0, -1\n"
+  in
+  Printf.printf "riscv32: %s\n" (text_hex_of "riscv32" text);
+  Printf.printf "riscv64: %s\n" (text_hex_of "riscv64" text);
+  [%expect
+    {|
+    riscv32: 05 05 23 a0 a5 00 33 06 b5 00 7d 15
+    riscv64: 05 05 23 a0 a5 00 33 06 b5 00 7d 15
     |}]
 
 let%expect_test "RISC-V I/S and shift widths reject exactly one past their limits" =
@@ -2205,6 +2270,24 @@ let%expect_test "fadds reads a bare-symbol single-precision memory operand" =
     {|
     40000000  d8 05 00 00 00 40  fadds 1073741824  [x86_32.fadds.opsz-absent.disp32-norm]
     40000006  c3                 ret               [x86_32.ret]
+    |}]
+
+(* [fadd %st(1), %st] is XED's FADD_ST0_X87 direction: ST0 is the implicit
+   read-write destination and the numbered stack register is the explicit
+   source.  The reverse spelling writes ST(1) and is a different form, so this
+   pins both operand order and the MOD=11 register encoding on both modes. *)
+let%expect_test "fadd reads an x87 stack source into implicit st0" =
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tfadd %st(1), %st\n\tret\n";
+  [%expect
+    {|
+    40000000  d8 c1  fadd %st(1), %st  [x86_32.fadd-st0-x87]
+    40000002  c3     ret               [x86_32.ret]
+    |}];
+  disasm "x86_64" "\t.text\n\t.globl f\nf:\n\tfadd %st(1), %st\n\tret\n";
+  [%expect
+    {|
+    40000000  d8 c1  fadd %st(1), %st  [x86_64.fadd-st0-x87]
+    40000002  c3     ret               [x86_64.ret]
     |}]
 
 (* [fucomp] - bare, no operand (M5, asm/docs/corpus.md - i64_dtou.S's own compare-and-pop,

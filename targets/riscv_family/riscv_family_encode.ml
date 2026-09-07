@@ -165,6 +165,7 @@ module Make (P : PROFILE) = struct
       | Sraw
       | Mulw
       | Addi
+      | C_addi
       | Slti
       | Sltiu
       | Xori
@@ -267,6 +268,7 @@ module Make (P : PROFILE) = struct
       | Sraw -> "sraw"
       | Mulw -> "mulw"
       | Addi -> "addi"
+      | C_addi -> "c.addi"
       | Slti -> "slti"
       | Sltiu -> "sltiu"
       | Xori -> "xori"
@@ -370,6 +372,7 @@ module Make (P : PROFILE) = struct
         Sraw;
         Mulw;
         Addi;
+        C_addi;
         Slti;
         Sltiu;
         Xori;
@@ -588,6 +591,7 @@ module Make (P : PROFILE) = struct
       | J of { rd : int; target : Asm_core.Expr.t }
       | Pair of { name : string; rd : int; tmp : int; target : Asm_core.Expr.t; kind : pair_kind }
       | Fixed of { name : string; word : int64 }
+      | Caddi of { rd : int; imm : Asm_core.Expr.t }
 
     let pp_expr ppf e = Asm_core.Expr.pp ppf e
     let reg_name isf n = Printf.sprintf "%s%d" (if isf then "f" else "x") n
@@ -621,6 +625,7 @@ module Make (P : PROFILE) = struct
           Fmt.pf ppf "%s f%d, %a, x%d" x.name x.rd pp_expr x.target x.tmp
       | Pair x -> Fmt.pf ppf "%s x%d, %a" x.name x.rd pp_expr x.target
       | Fixed x -> Fmt.string ppf x.name
+      | Caddi x -> Fmt.pf ppf "c.addi x%d, %a" x.rd pp_expr x.imm
 
     let equal (a : t) b = a = b
   end
@@ -687,6 +692,7 @@ module Make (P : PROFILE) = struct
     | `Immediate_range of string
     | `Immediate_alignment of string
     | `Bad_modifier of string
+    | `Compressed_disabled of string
     | `Decode_short
     | `Decode_length
     | `Decode_no_match
@@ -702,6 +708,7 @@ module Make (P : PROFILE) = struct
     | `Immediate_range what -> Fmt.pf ppf "%s immediate is out of range" what
     | `Immediate_alignment what -> Fmt.pf ppf "%s target is not two-byte aligned" what
     | `Bad_modifier m -> Fmt.pf ppf "unsupported relocation modifier %s" m
+    | `Compressed_disabled op -> Fmt.pf ppf "%s requires .option rvc" op
     | `Decode_short -> Fmt.string ppf "fewer than four bytes remain"
     | `Decode_length -> Fmt.string ppf "RISC-V instructions must be four bytes"
     | `Decode_no_match -> Fmt.string ppf "no form matches this word"
@@ -714,6 +721,7 @@ module Make (P : PROFILE) = struct
         P.name ^ ".decode"
     | `No_data_relocation _ -> P.name ^ ".data-fixup"
     | `Padding_not_word_multiple -> P.name ^ ".nop"
+    | `Compressed_disabled _ -> P.name ^ ".lower"
     | `Immediate_alignment _ | `Immediate_range _ -> P.name ^ ".fixup"
     | _ -> P.name ^ ".lower"
 
@@ -917,6 +925,11 @@ module Make (P : PROFILE) = struct
         Error (diag ~pos:__POS__ (`Rv64_only opn))
     | (Opcode.Addiw | Slliw | Srliw | Sraiw | Sext_w | Ld | Lwu | Sd), _ when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
+    | Opcode.C_addi, _ when not state.rvc -> Error (diag ~pos:__POS__ (`Compressed_disabled opn))
+    | Opcode.C_addi, [ a; imm ] -> (
+        match (xreg a, expr_of imm) with
+        | Some rd, Some imm when rd <> 0 -> Ok [ Lowered.Caddi { rd; imm } ]
+        | _ -> wrong opn)
     | (Opcode.Fcvt_l_d | Fmv_x_d | Fcvt_s_l), _ when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
     | op, [ a; b; c ] when Option.is_some (r_desc op) -> (
@@ -1426,8 +1439,22 @@ module Make (P : PROFILE) = struct
                   (field 21 10 (Int64.shift_right_logical imm 1))
                   (field 31 1 (Int64.shift_right_logical imm 20))))))
 
+  (* C.ADDI: quadrant 1 / funct3 000.  The six-bit signed immediate is split
+     as imm[5] at bit 12 and imm[4:0] at bits 6:2; rd is also rs1 and x0 is
+     excluded.  Keeping this as its own constructor, rather than shrinking an
+     ADDI opportunistically, makes compression an explicit source/state choice
+     and avoids silently changing a requested 32-bit instruction's bytes. *)
+  let word_caddi ~rd imm =
+    Int64.logor 0x1L
+      (Int64.logor (field 2 5 imm)
+         (Int64.logor (field 7 5 (Int64.of_int rd)) (field 12 1 (Int64.shift_right_logical imm 5))))
+
   let bytes_of_word w =
     String.init 4 (fun i ->
+        Char.chr (Int64.to_int (Int64.logand (Int64.shift_right_logical w (8 * i)) 0xffL)))
+
+  let bytes_of_half w =
+    String.init 2 (fun i ->
         Char.chr (Int64.to_int (Int64.logand (Int64.shift_right_logical w (8 * i)) 0xffL)))
 
   let mk_fixup ~kind ~name:fxname ~slices ~byte_offset ~container ~range ~value ~pairing =
@@ -1478,6 +1505,12 @@ module Make (P : PROFILE) = struct
   let encode l =
     let fixed w f = Ok (`Fixed (form (bytes_of_word w) f [])) in
     match l with
+    | Lowered.Caddi x -> (
+        match int64_expr x.imm with
+        | Some imm when x.rd <> 0 && imm <> 0L && fits_signed 6 imm ->
+            Ok (`Fixed (form (bytes_of_half (word_caddi ~rd:x.rd imm)) "c.addi" []))
+        | Some _ -> bad_encode (`Immediate_range "c.addi")
+        | None -> bad_encode (`Immediate_range ("c.addi " ^ Asm_core.Expr.to_string x.imm)))
     | Lowered.R x ->
         fixed
           (word_r ~opcode:x.opcode ~funct3:x.funct3 ~funct7:x.funct7 ~rd:x.rd ~rs1:x.rs1 ~rs2:x.rs2)
@@ -1654,6 +1687,11 @@ module Make (P : PROFILE) = struct
     done;
     !w
 
+  let read_half s pos =
+    Int64.logor
+      (Int64.of_int (Char.code s.[pos]))
+      (Int64.shift_left (Int64.of_int (Char.code s.[pos + 1])) 8)
+
   let reg n = Operand.Reg (Reg.of_x n)
   let f_operand n = Operand.Reg (Reg.F (n land 31))
   let imm n = Operand.Imm (Bigint.of_int64 n)
@@ -1737,8 +1775,20 @@ module Make (P : PROFILE) = struct
   type decode_context = { state : target_state; address : int64 }
 
   let decode ctx bytes ~pos =
-    if String.length bytes - pos < 4 then Error (diag ~pos:__POS__ `Decode_short)
-    else if Char.code bytes.[pos] land 3 <> 3 then Error (diag ~pos:__POS__ `Decode_length)
+    if String.length bytes - pos < 2 then Error (diag ~pos:__POS__ `Decode_short)
+    else if Char.code bytes.[pos] land 3 <> 3 then
+      let half = read_half bytes pos in
+      let quadrant = Int64.to_int (bits half 0 2) in
+      let funct3 = Int64.to_int (bits half 13 3) in
+      let rd = Int64.to_int (bits half 7 5) in
+      let imm_value =
+        sign_extend 6 (Int64.logor (bits half 2 5) (Int64.shift_left (bits half 12 1) 5))
+      in
+      match (quadrant, funct3, rd, imm_value) with
+      | 1, 0, rd, imm_value when rd <> 0 && imm_value <> 0L ->
+          Ok (instruction Opcode.C_addi [ reg rd; imm imm_value ], "c.addi", 2)
+      | _ -> Error (diag ~pos:__POS__ `Decode_no_match)
+    else if String.length bytes - pos < 4 then Error (diag ~pos:__POS__ `Decode_short)
     else
       let w = read_word bytes pos in
       let opc = Int64.to_int (bits w 0 7) in
@@ -1920,7 +1970,8 @@ module Make (P : PROFILE) = struct
     let encoded_bits wanted l =
       match encode l with
       | Ok (`Fixed f) when String.length f.bytes = wanted ->
-          if wanted = 4 then Some (read_word f.bytes 0)
+          if wanted = 2 then Some (read_half f.bytes 0)
+          else if wanted = 4 then Some (read_word f.bytes 0)
           else
             Some
               (Int64.logor
@@ -1932,6 +1983,14 @@ module Make (P : PROFILE) = struct
       match decode { state = default_state; address = 0L } (bytes_of_word w) ~pos:0 with
       | Ok (instruction, _, 4) -> (
           match lower_instruction default_state instruction with
+          | Ok [ lowered ] -> Some lowered
+          | _ -> None)
+      | Ok _ | Error _ -> None
+    in
+    let decode_half half =
+      match decode { state = default_state; address = 0L } (bytes_of_half half) ~pos:0 with
+      | Ok (instruction, _, 2) -> (
+          match lower_instruction { default_state with rvc = true } instruction with
           | Ok [ lowered ] -> Some lowered
           | _ -> None)
       | Ok _ | Error _ -> None
@@ -1968,6 +2027,9 @@ module Make (P : PROFILE) = struct
     in
     C.choice ~name:P.name
       [
+        C.alt ~label:"compressed" ~priority:2
+          (C.iso_fun ~name:(P.name ^ "-compressed") ~encode:(encoded_bits 2) ~decode:decode_half
+             (C.field ~width:16 "compressed-instruction"));
         C.alt ~label:"word" ~priority:1
           (C.iso_fun ~name:(P.name ^ "-word") ~encode:(encoded_bits 4) ~decode:decode_word
              (C.field ~width:32 "instruction"));

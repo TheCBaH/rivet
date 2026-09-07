@@ -224,7 +224,7 @@ asm-submodules:
 asm-build: asm-submodules
 	cd $(ASM_DIR) && opam exec -- dune build @all
 
-asm-test: asm-build asm-fixtures-check asm-gas-xref-check
+asm-test: asm-build asm-fixtures-check asm-gas-xref-check asm-isa-generated-check asm-isa-difficult-check
 	cd $(ASM_DIR) && opam exec -- dune build @runtest
 
 asm-fmt: asm-fmt-ocamlformat
@@ -451,6 +451,39 @@ asm-gas-xref-check: tools-build
 
 asm-gas-xref-regen: tools-build
 	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) gas-xref regen
+
+# The isa-generated pilot GAS differential generator (GAS-02/GAS-03/GAS-04;
+# frozen names, GAS-01). Same two-mode split as gas-xref
+# above: --check replays the committed asm/fixtures/isa-generated/cases.jsonl
+# corpus offline and needs no toolchain (joining asm-test, matching
+# Isa_generated_case.joins_prerequisite_of Offline_consumer), --regen needs
+# the six targets' cross GNU binutils (in particular the RV32 one, which needs
+# /usr/local/riscv32-linux-gnu-toolchain/bin on PATH) and stays off that
+# critical path, matching
+# joins_prerequisite_of Gnu_regeneration. GAS-04's "ours" half additionally
+# shells out to this project's own tool/asm.exe (Isa_gen_ours, never linked
+# into compcert_tools - tools-boundary), so --regen also needs asm-build: with
+# it as a prerequisite, `dune exec tool/asm.exe` at regen time only ever runs
+# an already-built binary, so its exit code is unambiguously the assembler's
+# own (0 accepted, 1 rejected) rather than a dune build failure.
+asm-isa-generated-check: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-generated check
+
+asm-isa-generated-regen: tools-build asm-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-generated regen
+
+# The isa-difficult non-frozen difficult-form GAS differential generator
+# (GEN-03; names frozen in Isa_gen_difficult).
+# Same two-mode split, tool/dependency shape and asm-build requirement as
+# isa-generated above, but for bounded difficult-form families (currently
+# RISC-V split-immediate/compressed cases and x86 addressing/x87) rather than
+# GEN-01's frozen 21-entry pilot, in its own corpus (asm/fixtures/isa-difficult/)
+# so growing it can never touch that one.
+asm-isa-difficult-check: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult check
+
+asm-isa-difficult-regen: tools-build asm-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult regen
 
 # M5 corpus growth: classify CompCert's own test/c/ suite against the parser,
 # one manifest per target (asm/docs/corpus.md). Same two-mode split as
@@ -762,6 +795,8 @@ compcert-export-archive-all:
   asm-fixtures-check asm-characterize-verify asm-cross-setup asm-libc-cross-smoke asm-cross-smoke-selftest asm-fixtures-regen \
   asm-oracle asm-fixture-oracle asm-ci \
   asm-gas-xref-check asm-gas-xref-regen \
+  asm-isa-generated-check asm-isa-generated-regen \
+  asm-isa-difficult-check asm-isa-difficult-regen \
   asm-corpus-check-c $(CORPUS_CLASSIFY_GOALS) \
   asm-corpus-check-assemble-c $(CORPUS_ASSEMBLE_GOALS) \
   asm-corpus-check-regression $(CORPUS_CLASSIFY_REGRESSION_GOALS) \

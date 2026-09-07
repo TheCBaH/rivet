@@ -16,4 +16,19 @@ val gas_xref_check : Repo.t -> Command.t
     would not reach `set -e`, so the loop would simply not execute and --check
     would pass having compared nothing in that direction. *)
 
+val isa_generated_check : Repo.t -> Command.t
+(** {!Isa_generated_case.Offline_consumer} tier: for every
+    {!Isa_gen_pilot.all} entry, rebuild its case offline (no toolchain),
+    require a matching committed {!Isa_generated_corpus.record} in the
+    checked-in corpus, and {!Isa_generated_corpus.replay} it - never invoking
+    a real assembler. Also rejects a committed record that no pilot manifest
+    entry produces (a stale corpus after the manifest shrinks). *)
+
+val isa_difficult_check : Repo.t -> Command.t
+(** The same {!Isa_generated_case.Offline_consumer}-tier replay as
+    {!isa_generated_check}, generalized over {!Isa_gen_difficult.all}/
+    [normalize_entry]/[build] and the separate
+    [asm/fixtures/isa-difficult/cases.jsonl] corpus, so growing this
+    non-frozen manifest can never touch the frozen pilot corpus. *)
+
 val targets : Target.capability -> Command.t

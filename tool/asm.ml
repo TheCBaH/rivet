@@ -28,6 +28,8 @@ let usage =
       "  --dump-image            the plan, or the bound image with --fixed-base";
       "  --dump-disasm=canonical exactly re-parseable disassembly";
       "  --dump-disasm=diagnostic address, bytes, spelling and form id";
+      "  --dump-bytes            assembled section bytes, in the project's committed hex-dump \
+       format";
       "  --dump-codec            the target's encoding tree";
       "  --check-codec           what Codec.check says about it";
       "";
@@ -47,6 +49,29 @@ let die msg =
 
 let parse_base s =
   match Int64.of_string_opt s with Some v -> v | None -> die ("not an address: " ^ s)
+
+(* Isa_gen_ours (asm/tools/lib) shells out to this executable rather than
+   linking it, so this project's own hex-dump format has to be reproduced here
+   rather than shared as a library call - tools/asm-check-purity.sh forbids the
+   dependency running the other way (compcert_tools must never require
+   building the whole assembler, tools-boundary). Byte-for-byte the same
+   algorithm as asm/tools/lib/hex_dump.ml's [of_bytes]: lowercase, space
+   separated, 16 bytes per line, a trailing newline after every line including
+   the last, and [""] for zero bytes. *)
+let hex_dump_of_bytes s =
+  let n = String.length s in
+  if n = 0 then ""
+  else begin
+    let per_line = 16 in
+    let b = Buffer.create ((n * 3) + (n / per_line) + 1) in
+    String.iteri
+      (fun i c ->
+        if i > 0 then Buffer.add_char b (if i mod per_line = 0 then '\n' else ' ');
+        Buffer.add_string b (Printf.sprintf "%02x" (Char.code c)))
+      s;
+    Buffer.add_char b '\n';
+    Buffer.contents b
+  end
 
 let read_file path =
   let ic = try open_in_bin path with Sys_error m -> die m in
@@ -168,6 +193,9 @@ let () =
       | "dump-disasm=diagnostic" ->
           let bytes, address = bytes_and_base () in
           print_string (ok (D.dump_disasm_diagnostic ~address bytes))
+      | "dump-bytes" ->
+          let bytes, (_ : int64) = bytes_and_base () in
+          print_string (hex_dump_of_bytes bytes)
       | "dump-codec" -> print_string (D.dump_codec ())
       | "check-codec" ->
           let ps = D.check_codec () in

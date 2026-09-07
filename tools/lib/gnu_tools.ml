@@ -238,21 +238,15 @@ let qemu_version t =
 
 type gas_outcome = Assembled | Rejected of string
 
-let try_assemble t ~src ~obj ~include_dir =
-  let inc = match include_dir with Some d -> [ "-I"; Fpath.to_string d ] | None -> [] in
-  let* r =
-    Tool_process.exec
-      (Tool_process.spec ~stdout:Tool_process.Out_capture ~stderr:Tool_process.Err_to_stdout
-         ~parsed_output:true ~accepted:Process_status.Any_exit ~label:"as" (tool t "as")
-         (t.as_args @ inc @ [ "-o"; Fpath.to_string obj; Fpath.to_string src ]))
-  in
+(* The message only, with the input's path stripped: the path is the case's
+   own identity and repeating it inside the record would make every line
+   depend on where this checkout lives. Shared by every caller that runs `as`
+   without requiring success. *)
+let gas_outcome_of_result ~src (r : Tool_process.result) =
   match r.Tool_process.status with
-  | Process_status.Exited 0 -> Ok Assembled
+  | Process_status.Exited 0 -> Assembled
   | _ ->
       let text = Option.value ~default:"" r.Tool_process.stdout in
-      (* The message only, with the input's path stripped: the path is the
-         case's own identity and repeating it inside the record would make
-         every line depend on where this checkout lives. *)
       let body =
         split_lines (replace_all ~sub:(Fpath.to_string src) ~by:"" text)
         |> List.filter (fun l ->
@@ -264,7 +258,23 @@ let try_assemble t ~src ~obj ~include_dir =
             has "Error" || has "Warning")
         |> List.filteri (fun i _ -> i < 3)
       in
-      Ok (Rejected (render body))
+      Rejected (render body)
+
+let run_as_capturing t argv =
+  Tool_process.exec
+    (Tool_process.spec ~stdout:Tool_process.Out_capture ~stderr:Tool_process.Err_to_stdout
+       ~parsed_output:true ~accepted:Process_status.Any_exit ~label:"as" (tool t "as") argv)
+
+let try_assemble t ~src ~obj ~include_dir =
+  let inc = match include_dir with Some d -> [ "-I"; Fpath.to_string d ] | None -> [] in
+  let* r =
+    run_as_capturing t (t.as_args @ inc @ [ "-o"; Fpath.to_string obj; Fpath.to_string src ])
+  in
+  Ok (gas_outcome_of_result ~src r)
+
+let try_assemble_with_args t ~args ~src ~obj =
+  let* r = run_as_capturing t (args @ [ "-o"; Fpath.to_string obj; Fpath.to_string src ]) in
+  Ok (r, gas_outcome_of_result ~src r)
 
 (* {1 The tool gate's two invocations}
 

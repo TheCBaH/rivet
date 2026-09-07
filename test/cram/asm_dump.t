@@ -221,6 +221,7 @@
     [62 cost=0] fnstsw           fnstsw(){1101111111100000}
     [63 cost=0] sahf             sahf(){10011110}
     [64 cost=0] mov-r-imm8       mov-r-imm8(){prefixes 10110 reg:3u imm:8u}
+    [65 cost=0] fadd-st0-x87     fadd-st0-x87(){11011000 11 000 st:3u}
   prefixes(){no-asz opsz no-rex}
   alu-acc-imm-opcode(){opcode:8u}
   imm-sym32(){le32}
@@ -472,6 +473,7 @@
     [62 cost=0] fnstsw           fnstsw(){1101111111100000}
     [63 cost=0] sahf             sahf(){10011110}
     [64 cost=0] mov-r-imm8       mov-r-imm8(){prefixes 10110 reg:3u imm:8u}
+    [65 cost=0] fadd-st0-x87     fadd-st0-x87(){11011000 11 000 st:3u}
   prefixes(){asz opsz rex}
   alu-acc-imm-opcode(){opcode:8u}
   imm-sym32(){le32}
@@ -1253,6 +1255,7 @@
   alt riscv32
     [0 cost=0] pair             riscv32-pair(){auipc-i-pair:64u}
     [1 cost=0] word             riscv32-word(){instruction:32u}
+    [2 cost=0] compressed       riscv32-compressed(){compressed-instruction:16u}
   ########## riscv64 tokens
   1 7 directive .option
   9 5 ident nopic
@@ -1447,3 +1450,4 @@
   alt riscv64
     [0 cost=0] pair             riscv64-pair(){auipc-i-pair:64u}
     [1 cost=0] word             riscv64-word(){instruction:32u}
+    [2 cost=0] compressed       riscv64-compressed(){compressed-instruction:16u}

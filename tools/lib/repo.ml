@@ -57,6 +57,14 @@ let resolve ~cli ~env ~cwd =
 let path t = t
 let fixture_corpus t = Fpath.(t / "asm" / "fixtures" / "compcert-3.17")
 let gas_xref_corpus t = Fpath.(t / "asm" / "fixtures" / "gas-xref")
+let isa_generated_corpus t = Fpath.(t / "asm" / "fixtures" / Isa_generated_case.fixture_dir_name)
+
+(* Isa_gen_difficult itself depends on Repo (its case/normalize builders take
+   a Repo.t), so - unlike Isa_generated_case, a dependency-free schema module
+   - it cannot be referenced from here without a module cycle; "isa-difficult"
+   is duplicated as a literal and must be kept equal to
+   Isa_gen_difficult.fixture_dir_name (checked by test_isa_gen_difficult.ml). *)
+let isa_difficult_corpus t = Fpath.(t / "asm" / "fixtures" / "isa-difficult")
 let corpus_work t = Fpath.(t / ".corpus-work")
 let corpus_c t target = Fpath.(t / "asm" / "fixtures" / "corpus" / "c" / Target.to_string target)
 

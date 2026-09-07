@@ -12,7 +12,20 @@
   test_supervisor
   test_tool_gate
   test_isa_inventory_riscv
-  test_isa_inventory_xed)
+  test_isa_inventory_xed
+  test_isa_norm_riscv
+  test_isa_norm_xed
+  test_isa_norm_jsonl
+  test_isa_source_snapshot_diff
+  test_isa_generated_case
+  test_isa_gen_pilot
+  test_isa_gen_render
+  test_isa_gen_case_build
+  test_isa_gen_oracle
+  test_isa_generated_corpus
+  test_isa_gen_ours
+  test_isa_gen_verdict
+  test_isa_gen_difficult)
  (modes byte native)
  (libraries compcert_tools err_trace bos fpath unix))
 
@@ -91,3 +104,108 @@
  (alias runtest)
  (action
   (run ./test_isa_inventory_xed.exe)))
+
+; Isa_norm_riscv against the five frozen NORM-01 pilot records
+; (§7), embedded as inline JSONL text taken
+; verbatim from the checked-in isa-db export - no filesystem dependency,
+; same convention as the two isa-inventory suites above.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_norm_riscv.exe)))
+
+; Isa_norm_xed against the two frozen NORM-01 pilot records, same convention.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_norm_xed.exe)))
+
+; Isa_norm_jsonl's codec against synthetic forms covering every
+; Isa_norm_model constructor, plus determinism and schema_version-mismatch
+; checks - a codec concern, independent of any one source's normalization.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_norm_jsonl.exe)))
+
+; Isa_source_snapshot_diff's pure diff plus load/diff_files against real
+; temporary files it writes and removes itself - no checked-in fixture
+; dependency, since the point is the mapping mechanism, not any one file.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_source_snapshot_diff.exe)))
+
+; Isa_generated_case's frozen schema/tier names (GAS-01) - a design freeze,
+; not generation logic: pins the exact frozen strings and proves the case/
+; artifact/verdict shapes compose for a representative of every verdict row.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_generated_case.exe)))
+
+; Isa_gen_pilot's own shape (GEN-01): counts, addw's single-target XLEN
+; restriction, and obligations naming real pilot form_ids. Grounding every
+; entry against real normalization output is repo_tests.ml's job instead.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_gen_pilot.exe)))
+
+; Isa_gen_render/Isa_gen_case_build/Isa_gen_oracle's pure parts (GAS-02):
+; syntax substitution, the canonical operand table, and the observed-form
+; check logic. No toolchain dependency - the real assembler invocation is
+; make asm-isa-generated-regen's job, never tools-test/tools-integration's.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_gen_render.exe)))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_gen_case_build.exe)))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_gen_oracle.exe)))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_generated_corpus.exe)))
+
+; Isa_gen_ours.normalized_argv: pure, no toolchain and no dune-exec subprocess
+; - the real tool/asm.exe invocation is make asm-isa-generated-regen's job,
+; never tools-test/tools-integration's (work package GAS, task GAS-04).
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_gen_ours.exe)))
+
+; Isa_gen_verdict.classify/known_syntax_gap: pure, against the real bytes and
+; diagnostics GAS-04's milestone measured for all 21 pilot cases.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_gen_verdict.exe)))
+
+; Isa_gen_difficult: pure manifest/case-building checks (entry shapes, legal
+; offset/label domains, render_source_lines wiring) - the real GNU/ours
+; invocation is make asm-isa-difficult-regen's job (work package GEN, task
+; GEN-03), never tools-test/tools-integration's.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_gen_difficult.exe)))

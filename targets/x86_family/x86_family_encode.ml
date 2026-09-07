@@ -323,6 +323,10 @@ module Opcode = struct
             gas_frontier.t's runtime-i64_utod.S/i64_utof.S), so it shares {!Flds}'s
             [mem_of_symbol] duality rather than {!Fldl}/{!Fstpl}/{!Fstps}'s memory-operand-only
             scope. *)
+    | Fadd
+        (** [fadd %st(i), %st] ([0xD8 0xC0+i]): register-stack add with ST0
+            as its implicit read-write destination.  This is deliberately not
+            the reverse-direction FADD_X87_ST0 or FADDP form. *)
     | Fucomp
     | Fnstcw
         (** [fnstcw mem] - x87 store-control-word ([0xD9 /7], M5, asm/docs/corpus.md -
@@ -416,6 +420,7 @@ module Opcode = struct
     | Flds -> "flds"
     | Fildll -> "fildll"
     | Fadds -> "fadds"
+    | Fadd -> "fadd"
     | Fucomp -> "fucomp"
     | Fnstcw -> "fnstcw"
     | Fldcw -> "fldcw"
@@ -616,7 +621,8 @@ module Instruction = struct
           | Opcode.Xorpd | Opcode.Pxor | Opcode.Movapd | Opcode.Cvtsd2ss | Opcode.Cvtss2sd
           | Opcode.Movsd | Opcode.Movss | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si
           | Opcode.Fldl | Opcode.Fstpl | Opcode.Fstps | Opcode.Flds | Opcode.Fildll | Opcode.Fadds
-          | Opcode.Fnstcw | Opcode.Fldcw | Opcode.Fistpll | Opcode.Fsubs | Opcode.Fnstsw ) as op ->
+          | Opcode.Fadd | Opcode.Fnstcw | Opcode.Fldcw | Opcode.Fistpll | Opcode.Fsubs
+          | Opcode.Fnstsw ) as op ->
             Fmt.pf ppf "%s %a" (Opcode.name op) Fmt.(list ~sep:(any ", ") Operand.pp) ops
         | _ ->
             Fmt.pf ppf "%s%s %a" (Opcode.name i.op) (suffix_of_width i.width)
@@ -772,6 +778,10 @@ module Lowered = struct
             fixture here selects, so [mem] is a bare {!Mem.t} rather than the general {!Rm.t}
             every GPR/xmm form above uses. [op] picks the opcode byte and ModR/M-reg extension
             the same way {!Sse_binop_r_rm}'s does. *)
+    | Fadd_st0_x87 of { src : Reg.t }
+        (** [0xD8 0xC0+i], with an implicit ST0 destination and explicit ST(i)
+            source.  Separate from {!Fpu_mem}: MOD=11 means a stack register,
+            not a memory address. *)
     | Fucomp
         (** [0xDD 0xE9] (M5, asm/docs/corpus.md - i64_dtou.S's own bare [fucomp]): x87
             compare-and-pop against the fixed stack slot [%st(1)] - GAS's bare, no-operand
@@ -859,6 +869,7 @@ module Lowered = struct
     | Cvtsi2f_r_rm { op; reg; rm; _ } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
     | Cvtf2i_r_rm { reg; rm; _ } -> Fmt.pf ppf "cvttsd2si %a, %a" Rm.pp rm Reg.pp reg
     | Fpu_mem { op; mem } -> Fmt.pf ppf "%s %a" (Opcode.name op) Mem.pp mem
+    | Fadd_st0_x87 { src } -> Fmt.pf ppf "fadd %a, %%st" Reg.pp src
     | Fucomp -> Fmt.string ppf "fucomp %st(1)"
     | Fnstsw -> Fmt.string ppf "fnstsw %ax"
     | Sahf -> Fmt.string ppf "sahf"
@@ -917,6 +928,7 @@ module Lowered = struct
     | Cvtf2i_r_rm x, Cvtf2i_r_rm y ->
         x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Fpu_mem x, Fpu_mem y -> x.op = y.op && Mem.equal x.mem y.mem
+    | Fadd_st0_x87 x, Fadd_st0_x87 y -> Reg.equal x.src y.src
     | Fucomp, Fucomp -> true
     | Fnstsw, Fnstsw -> true
     | Sahf, Sahf -> true
@@ -1442,6 +1454,8 @@ module Make (M : MODE) = struct
   let reg_at ~width n =
     match List.find_opt (fun (r : Reg.t) -> r.width = width && r.num = n) M.registers with
     | Some r -> r
+    | None when width = 80 && n >= 0 && n <= 7 ->
+        { Reg.name = Printf.sprintf "st(%d)" n; num = n; width }
     | None -> { Reg.name = Printf.sprintf "r%d?" n; num = n; width }
 
   (* The register a ModR/M or SIB field denotes when it is being used to form an
@@ -1755,6 +1769,7 @@ module Make (M : MODE) = struct
     (* [fadds] - x87 single-precision add, [fstps]/[flds]'s arithmetic sibling (M5,
        asm/docs/corpus.md - gas_frontier.t's i64_utod.S/i64_utof.S). *)
     | "fadds", _ -> Ok (Instruction.mk Opcode.Fadds 32 s.Surface.ops)
+    | "fadd", _ -> Ok (Instruction.mk Opcode.Fadd 32 s.Surface.ops)
     (* [fucomp] - bare, no operand: GAS's own spelling of [fucomp %st(1)], the compare-and-pop
        counterpart to [fldl]/[fstpl]/[fstps]/[flds]'s load/store family (M5,
        asm/docs/corpus.md - i64_dtou.S). *)
@@ -2380,6 +2395,12 @@ module Make (M : MODE) = struct
        is `disp(%esp)`). *)
     | (Opcode.Flds | Opcode.Fadds | Opcode.Fsubs), [ Operand.Sym e ] ->
         Ok [ Lowered.Fpu_mem { op = i.Instruction.op; mem = mem_of_symbol e } ]
+    (* FADD_ST0_X87: the source is a stack register and the destination is the
+       implicit top of stack.  Keep the reverse direction out of this case:
+       it is a different XED IFORM and opcode family. *)
+    | Opcode.Fadd, [ Operand.Reg src; Operand.Reg dest ]
+      when src.Reg.width = 80 && dest.Reg.width = 80 && dest.Reg.num = 0 ->
+        Ok [ Lowered.Fadd_st0_x87 { src } ]
     | Opcode.Fucomp, [] -> Ok [ Lowered.Fucomp ]
     (* [fnstsw %ax] (M5, asm/docs/corpus.md - i64_dtou.S): [%ax]'s width and number pin it to
        exactly that register, {!Shift_cl_rm}'s own count-in-%cl precedent for a fixed implicit
@@ -3044,6 +3065,18 @@ module Make (M : MODE) = struct
              | Rm.Mem mem -> Some (Lowered.Fpu_mem { op; mem })
              | Rm.Reg _ -> None)
          C.(prefixes_codec ** const ~width:8 (Int64.of_int opcode_byte) ** rm_codec))
+
+  let fadd_st0_x87_form =
+    C.alt ~label:"fadd-st0-x87" ~priority:65
+      (C.iso_fun ~name:"fadd-st0-x87"
+         ~encode:(function
+           | Lowered.Fadd_st0_x87 { src }
+             when src.Reg.width = 80 && src.Reg.num >= 0 && src.Reg.num <= 7 ->
+               Some ((), ((), ((), Int64.of_int src.Reg.num)))
+           | _ -> None)
+         ~decode:(fun ((), ((), ((), src))) ->
+           Some (Lowered.Fadd_st0_x87 { src = reg_at ~width:80 (Int64.to_int src) }))
+         C.(const ~width:8 0xD8L ** const ~width:2 3L ** const ~width:3 0L ** field ~width:3 "st"))
 
   (* [imull $10000,%ebx] / [imulq $56,%rax] ([0x69 id] / [0x6B ib], M5,
      asm/docs/corpus.md): the same short-immediate-first priority discipline
@@ -3857,6 +3890,7 @@ module Make (M : MODE) = struct
           fpu_mem_form ~label:"fldcw" ~priority:59 ~opcode_byte:0xD9 ~ext:5 ~op:Opcode.Fldcw;
           fpu_mem_form ~label:"fistpll" ~priority:60 ~opcode_byte:0xDF ~ext:7 ~op:Opcode.Fistpll;
           fpu_mem_form ~label:"fsubs" ~priority:61 ~opcode_byte:0xD8 ~ext:4 ~op:Opcode.Fsubs;
+          fadd_st0_x87_form;
           (* [0xDF 0xE0] ({!Lowered.Fnstsw} - [fnstsw %ax], M5, asm/docs/corpus.md):
              a fixed two-byte word, no ModR/M at all - {!Fucomp}'s exact shape, a
              different opcode pair. *)
@@ -4353,6 +4387,8 @@ module Make (M : MODE) = struct
             form = None;
           }
     | Lowered.Fpu_mem { op; mem } -> Some (Instruction.mk op 32 [ Operand.Mem mem ])
+    | Lowered.Fadd_st0_x87 { src } ->
+        Some (Instruction.mk Opcode.Fadd 32 [ Operand.Reg src; Operand.Reg (reg_at ~width:80 0) ])
     | Lowered.Fucomp -> Some (Instruction.mk Opcode.Fucomp 32 [])
     | Lowered.Fnstsw -> Some (Instruction.mk Opcode.Fnstsw 32 [ Operand.Reg (reg_at ~width:16 0) ])
     | Lowered.Sahf -> Some (Instruction.mk Opcode.Sahf 32 [])

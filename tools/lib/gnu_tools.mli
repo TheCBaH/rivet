@@ -113,6 +113,29 @@ val try_assemble :
     capture, matching the shell's `> file 2>&1` - the diagnostics are what is
     recorded, and splitting them would reorder interleaved output. *)
 
+val try_assemble_with_args :
+  t ->
+  args:string list ->
+  src:Fpath.t ->
+  obj:Fpath.t ->
+  (Tool_process.result * gas_outcome, Tool_error.t) Err.t
+(** Like {!try_assemble}, but [args] REPLACES [t]'s own frozen CompCert
+    [as_args] entirely rather than extending them - for a caller with its own
+    per-suite configuration (e.g. the isa-generated pilot's own
+    `-march`/`-mabi`/`-mno-relax`), which must not silently inherit or
+    reinterpret the frozen target flags ("extend tool configuration to
+    accept per-suite features rather than changing the frozen CompCert
+    target flags"). Still resolves the tool
+    BINARY through [t]'s own toolprefix, so the right cross assembler runs.
+
+    Returns the raw {!Tool_process.result} alongside the classified
+    {!gas_outcome}: a caller building a committed
+    {!Isa_generated_case.artifact} needs the real
+    [Process_status.t] and the merged stdout/stderr capture, not just
+    [Assembled]/[Rejected] - fabricating an exit status for the [Rejected]
+    case would be exactly the kind of unmeasured value this project's own
+    capture discipline rejects. *)
+
 type gate_step =
   | Step_ok
   | Step_failed of string

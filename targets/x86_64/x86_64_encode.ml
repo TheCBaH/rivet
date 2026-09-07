@@ -21,6 +21,9 @@ module Mode = struct
     @ X86_family_encode.Reg.base_regs 8 X86_family_encode.Reg.names_8l
     @ X86_family_encode.Reg.extended_regs 8 "b"
     @ X86_family_encode.Reg.base_regs 128 X86_family_encode.Reg.names_xmm
+    (* x87 is available in 64-bit mode too.  As on x86-32, [st(1)] through
+       [st(7)] are parsed directly by x86_family rather than enumerated here. *)
+    @ [ { X86_family_encode.Reg.name = "st"; num = 0; width = 80 } ]
 
   (* Measured against x86_64-linux-gnu-as by padding a .align 16 at each
      distance, not copied from a manual: the long-NOP family plus the CS-prefix

@@ -165,6 +165,201 @@ let test_isa_db_cross_validate repo =
         events;
       check "isa-db cross-validate" false
 
+(* Complete record accounting: pin the exact total/normalized
+   counts against the real checked-in exports, so a decode/dispatch
+   regression that silently stops matching a mnemonic/iform allowlist entry
+   (dropping the normalized count) or a corpus update (changing the total)
+   is caught here, not just "the command still exits Success" (every record
+   is Ok or Error by construction, so that alone proves nothing). *)
+let test_isa_norm_accounting repo =
+  let expect ~source target ~total ~normalized =
+    let label = Printf.sprintf "%s/%s" source (Target.to_string target) in
+    match Isa_norm_accounting.summarize repo ~source target with
+    | Ok (s : Isa_norm_accounting.summary) ->
+        check
+          (Printf.sprintf "isa-norm-accounting: %s: %d records (expected %d)" label s.total total)
+          (s.total = total);
+        check
+          (Printf.sprintf "isa-norm-accounting: %s: %d normalized (expected %d)" label s.normalized
+             normalized)
+          (s.normalized = normalized)
+    | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
+  in
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:29;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:40;
+  expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:9;
+  expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:9
+
+(* The family matrix is a second view over the same complete population,
+   not a hand-maintained support claim. Pinning its aggregate states makes a
+   source update or an accidental widening of support credit a reviewed
+   change, while the per-family invariant makes a dropped native family fail
+   even if an aggregate happens to stay plausible. *)
+let test_isa_family_admission repo =
+  let expect ~source target ~total ~normalized_only ~gas_generatable ~promoted_support ~blocked =
+    let label = Printf.sprintf "%s/%s" source (Target.to_string target) in
+    match Isa_family_admission.summarize repo ~source target with
+    | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
+    | Ok (summary : Isa_family_admission.summary) ->
+        let sums =
+          List.fold_left
+            (fun (n, g, p, u, b) (family : Isa_family_admission.family) ->
+              let t = family.tally in
+              check
+                (Printf.sprintf "isa-family-admission: %s/%s is total" label family.name)
+                (family.total = Isa_family_admission.tally_total t);
+              ( n + t.normalized_only,
+                g + t.gas_generatable,
+                p + t.promoted_support,
+                u + t.oracle_unavailable,
+                b + List.fold_left (fun count (_, n) -> count + n) 0 t.blocked ))
+            (0, 0, 0, 0, 0) summary.families
+        in
+        let n, g, p, u, b = sums in
+        check (Printf.sprintf "isa-family-admission: %s total" label) (summary.total = total);
+        check (Printf.sprintf "isa-family-admission: %s has families" label) (summary.families <> []);
+        check (Printf.sprintf "isa-family-admission: %s normalized-only" label) (n = normalized_only);
+        check (Printf.sprintf "isa-family-admission: %s gas-generatable" label) (g = gas_generatable);
+        check
+          (Printf.sprintf "isa-family-admission: %s promoted-support" label)
+          (p = promoted_support);
+        check (Printf.sprintf "isa-family-admission: %s oracle-unavailable" label) (u = 0);
+        check (Printf.sprintf "isa-family-admission: %s blockers" label) (b = blocked)
+  in
+  (* The isa-difficult corpus moved sw, beq and c.addi from normalized-only to
+     promoted-support on both profiles (its committed corpus - see
+     Isa_family_admission.promoted_case's own comment): 25->22 and 4->7 on
+     RV32, 35->32 and 5->8 on RV64; total/blocked/gas-generatable unchanged. *)
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:22 ~gas_generatable:0
+    ~promoted_support:7 ~blocked:1060;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:32 ~gas_generatable:0
+    ~promoted_support:8 ~blocked:1114;
+  expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0 ~gas_generatable:5
+    ~promoted_support:4 ~blocked:7878;
+  expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
+    ~promoted_support:4 ~blocked:10562
+
+(* Export and round-trip deterministic normalized JSONL: every
+   form Isa_norm_riscv/Isa_norm_xed produce from the real checked-in exports
+   - not just synthetic values, which Test_isa_norm_jsonl already covers for
+   every constructor - must survive Isa_norm_jsonl.encode_line followed by
+   decode_line unchanged. The pinned total is the sum of the accounting
+   tests' own pinned normalized counts (29+40+7+7); a drop here without a matching drop
+   there would mean the codec silently lost a form the accounting still
+   credits as normalized. *)
+let normalize_one source (rec_ : Isa_source_record.t) =
+  match source with
+  | "riscv_opcodes" -> Isa_norm_riscv.normalize rec_
+  | "xed_resolved" -> Isa_norm_xed.normalize rec_
+  | other -> Error { Isa_norm_model.rule = "unhandled-source"; message = other }
+
+let test_isa_norm_jsonl_roundtrip repo =
+  let roundtrip_count = ref 0 in
+  let check_source ~source target =
+    let label = Printf.sprintf "%s/%s" source (Target.to_string target) in
+    let path = Repo.isa_db_export repo ~source target in
+    match Isa_source_record.read_file path with
+    | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
+    | Ok records ->
+        List.iter
+          (fun rec_ ->
+            match normalize_one source rec_ with
+            | Error _ -> ()
+            | Ok (form : Isa_norm_model.form) -> (
+                incr roundtrip_count;
+                match Isa_norm_jsonl.encode_line form with
+                | Error e ->
+                    check
+                      (Format.asprintf "%s: %s: encode_line (%a)" label form.form_id
+                         (Err.Error.pp Tool_error.pp) e)
+                      false
+                | Ok line -> (
+                    match Isa_norm_jsonl.decode_line line with
+                    | Error e ->
+                        check
+                          (Format.asprintf "%s: %s: decode_line (%a)" label form.form_id
+                             (Err.Error.pp Tool_error.pp) e)
+                          false
+                    | Ok decoded ->
+                        check
+                          (Printf.sprintf "%s: %s: round-trips" label form.form_id)
+                          (decoded = form))))
+          records
+  in
+  check_source ~source:"riscv_opcodes" Target.Riscv32;
+  check_source ~source:"riscv_opcodes" Target.Riscv64;
+  check_source ~source:"xed_resolved" Target.X86_32;
+  check_source ~source:"xed_resolved" Target.X86_64;
+  check
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 87)"
+       !roundtrip_count)
+    (!roundtrip_count = 87)
+
+(* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
+   against the real checked-in exports, not just Test_isa_source_snapshot_diff's
+   synthetic pairs. Only one snapshot is pinned today, so diffing each file
+   against itself is the whole real workflow currently available - but it is
+   the actual load/diff/report path a real future snapshot bump would use,
+   proving it against real data (correct decoding of every real record_id,
+   real fingerprinting, no spurious drift) rather than only against
+   hand-built pairs. *)
+let test_isa_source_snapshot_diff repo =
+  let expect ~source target ~total =
+    let label = Printf.sprintf "%s/%s" source (Target.to_string target) in
+    let path = Repo.isa_db_export repo ~source target in
+    match Isa_source_snapshot_diff.diff_files path path with
+    | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
+    | Ok r ->
+        check
+          (Printf.sprintf "isa-snapshot-diff: %s: no drift against itself" label)
+          (r.added = 0 && r.removed = 0 && r.changed = 0);
+        check
+          (Printf.sprintf "isa-snapshot-diff: %s: %d ids unchanged (expected %d)" label r.unchanged
+             total)
+          (r.unchanged = total)
+  in
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154;
+  expect ~source:"xed_resolved" Target.X86_32 ~total:7887;
+  expect ~source:"xed_resolved" Target.X86_64 ~total:10571
+
+(* The pilot manifest freezes form_ids against what normalization produces
+   TODAY (Isa_gen_pilot.mli: "must equal what Isa_norm_riscv/Isa_norm_xed
+   actually produce today"); this is what makes that a checked claim rather
+   than an assertion. Isa_gen_pilot.normalize_entry is the shared lookup
+   the case builder also uses - this is deliberately not a duplicate. *)
+let test_gen_pilot_manifest repo =
+  List.iter
+    (fun (entry : Isa_gen_pilot.pilot_entry) ->
+      let label = Printf.sprintf "%s: %s" (Target.to_string entry.target) entry.lookup_key in
+      match Isa_gen_pilot.normalize_entry repo entry with
+      | Error e ->
+          check (Format.asprintf "gen-pilot: %s: %a" label (Err.Error.pp Tool_error.pp) e) false
+      | Ok (form : Isa_norm_model.form) ->
+          check
+            (Printf.sprintf "gen-pilot: %s normalizes to %s (got %s)" label entry.form_id
+               form.form_id)
+            (String.equal form.form_id entry.form_id))
+    Isa_gen_pilot.all
+
+(* The non-frozen difficult-form manifest freezes form_ids the same way
+   the pilot does; Isa_gen_difficult.normalize_entry delegates to
+   Isa_gen_pilot.normalize_entry, so this is the same real-export grounding
+   check as test_gen_pilot_manifest, over Isa_gen_difficult.all instead. *)
+let test_gen_difficult_manifest repo =
+  List.iter
+    (fun (entry : Isa_gen_difficult.entry) ->
+      let label = Printf.sprintf "%s: %s" (Target.to_string entry.target) entry.case_id in
+      match Isa_gen_difficult.normalize_entry repo entry with
+      | Error e ->
+          check (Format.asprintf "gen-difficult: %s: %a" label (Err.Error.pp Tool_error.pp) e) false
+      | Ok (form : Isa_norm_model.form) ->
+          check
+            (Printf.sprintf "gen-difficult: %s normalizes to %s (got %s)" label entry.form_id
+               form.form_id)
+            (String.equal form.form_id entry.form_id))
+    Isa_gen_difficult.all
+
 let () =
   if Array.length Sys.argv < 2 then (
     prerr_endline "usage: repo_tests.exe <repository-root>";
@@ -184,6 +379,12 @@ let () =
   test_target_sets root;
   test_derived_invariants root;
   test_isa_db_cross_validate repo;
+  test_isa_norm_accounting repo;
+  test_isa_family_admission repo;
+  test_isa_norm_jsonl_roundtrip repo;
+  test_isa_source_snapshot_diff repo;
+  test_gen_pilot_manifest repo;
+  test_gen_difficult_manifest repo;
   if !failures > 0 then (
     Printf.printf "repo_tests: %d failures\n" !failures;
     exit 1)

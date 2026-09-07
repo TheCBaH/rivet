@@ -184,10 +184,87 @@ let isa_db_cross_validate_cmd =
        ~doc:"Check every isa-inventory manifest row against the checked-in isa-db/ JSONL export")
     Cmdliner.Term.(const run $ common)
 
+let isa_norm_accounting_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Isa_norm_accounting.run) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "norm-accounting"
+       ~doc:
+         "Report, per checked-in isa-db export, how many records Isa_norm_riscv/Isa_norm_xed \
+          normalize versus which diagnostic rule turns each remaining one away")
+    Cmdliner.Term.(const run $ common)
+
+let isa_family_admission_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Isa_family_admission.run) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "family-admission"
+       ~doc:
+         "Classify every checked-in ISA-source record by source-native family as normalized-only, \
+          GAS-generatable, promoted-support, oracle-unavailable, or its specific blocker")
+    Cmdliner.Term.(const run $ common)
+
 let isa_inventory_cmd =
   Cmdliner.Cmd.group
     (Cmdliner.Cmd.info "isa-inventory" ~doc:"The whole-ISA instruction/extension inventory")
-    [ isa_inventory_regen_cmd; isa_db_cross_validate_cmd ]
+    [
+      isa_inventory_regen_cmd;
+      isa_db_cross_validate_cmd;
+      isa_norm_accounting_cmd;
+      isa_family_admission_cmd;
+    ]
+
+(* Isa_generated_case.cli_group_name/make_target freeze this group's own name
+   and its Make targets' names; "check" replays the corpus "regen" commits,
+   offline and without a toolchain. *)
+let isa_generated_check_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Check_cmd.isa_generated_check) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "check"
+       ~doc:
+         "Replay the committed isa-generated pilot corpus offline, without a toolchain, and reject \
+          any pilot manifest entry missing from it")
+    Cmdliner.Term.(const run $ common)
+
+let isa_generated_regen_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Isa_generated_cmd.regen) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "regen"
+       ~doc:
+         "Build and run the frozen S3 pilot manifest's canonical cases against the real cross GNU \
+          binutils, reporting exact bytes and observed-form checks, and commit the corpus \
+          isa-generated check replays")
+    Cmdliner.Term.(const run $ common)
+
+let isa_generated_cmd =
+  Cmdliner.Cmd.group
+    (Cmdliner.Cmd.info "isa-generated" ~doc:"The pilot GAS differential generator")
+    [ isa_generated_check_cmd; isa_generated_regen_cmd ]
+
+(* Isa_gen_difficult.cli_group_name/check_make_target/regen_make_target freeze
+   this group's own name and Make targets, mirroring isa-generated's own
+   naming above but for the separate, non-frozen difficult-form corpus. *)
+let isa_difficult_check_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Check_cmd.isa_difficult_check) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "check"
+       ~doc:
+         "Replay the committed isa-difficult corpus offline, without a toolchain, and reject any \
+          difficult manifest entry missing from it")
+    Cmdliner.Term.(const run $ common)
+
+let isa_difficult_regen_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Isa_difficult_cmd.regen) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "regen"
+       ~doc:
+         "Build and run the difficult-form manifest's cases (RISC-V sw/beq legal offset and \
+          branch-label domains) against the real cross GNU binutils, and commit the corpus \
+          isa-difficult check replays")
+    Cmdliner.Term.(const run $ common)
+
+let isa_difficult_cmd =
+  Cmdliner.Cmd.group
+    (Cmdliner.Cmd.info "isa-difficult" ~doc:"The difficult-form GAS differential generator")
+    [ isa_difficult_check_cmd; isa_difficult_regen_cmd ]
 
 let corpus_check_cmd =
   let run (err_trace, root) = (err_trace, with_repo root Corpus_classify_cmd.check) in
@@ -353,7 +430,16 @@ let tool_gate_cmd =
 let main_cmd =
   Cmdliner.Cmd.group
     (Cmdliner.Cmd.info "compcert-tools" ~doc:"CompCert assembler repository tooling")
-    [ fixture_cmd; gas_xref_cmd; corpus_cmd; isa_inventory_cmd; targets_cmd; tool_gate_cmd ]
+    [
+      fixture_cmd;
+      gas_xref_cmd;
+      corpus_cmd;
+      isa_inventory_cmd;
+      isa_generated_cmd;
+      isa_difficult_cmd;
+      targets_cmd;
+      tool_gate_cmd;
+    ]
 
 let () =
   (* At the entry point, not at module initialization: this is a process-wide

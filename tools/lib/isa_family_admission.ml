@@ -1,0 +1,194 @@
+module SMap = Map.Make (String)
+
+type state =
+  | Normalized_only
+  | Gas_generatable
+  | Promoted_support
+  | Oracle_unavailable of string
+  | Blocked of string
+
+type tally = {
+  normalized_only : int;
+  gas_generatable : int;
+  promoted_support : int;
+  oracle_unavailable : int;
+  blocked : (string * int) list;
+}
+
+type family = { name : string; total : int; tally : tally }
+type summary = { total : int; families : family list }
+
+type mutable_tally = {
+  mutable normalized_only : int;
+  mutable gas_generatable : int;
+  mutable promoted_support : int;
+  mutable oracle_unavailable : int;
+  mutable blocked : int SMap.t;
+}
+
+let empty () =
+  {
+    normalized_only = 0;
+    gas_generatable = 0;
+    promoted_support = 0;
+    oracle_unavailable = 0;
+    blocked = SMap.empty;
+  }
+
+let bump map key = SMap.update key (function None -> Some 1 | Some n -> Some (n + 1)) map
+
+let record tally = function
+  | Normalized_only -> tally.normalized_only <- tally.normalized_only + 1
+  | Gas_generatable -> tally.gas_generatable <- tally.gas_generatable + 1
+  | Promoted_support -> tally.promoted_support <- tally.promoted_support + 1
+  | Oracle_unavailable reason ->
+      tally.oracle_unavailable <- tally.oracle_unavailable + 1;
+      tally.blocked <- bump tally.blocked ("oracle-unavailable:" ^ reason)
+  | Blocked rule -> tally.blocked <- bump tally.blocked rule
+
+let tally_of (t : mutable_tally) : tally =
+  {
+    normalized_only = t.normalized_only;
+    gas_generatable = t.gas_generatable;
+    promoted_support = t.promoted_support;
+    oracle_unavailable = t.oracle_unavailable;
+    blocked = SMap.bindings t.blocked;
+  }
+
+let tally_total (t : tally) =
+  t.normalized_only + t.gas_generatable + t.promoted_support + t.oracle_unavailable
+  + List.fold_left (fun n (_, count) -> n + count) 0 t.blocked
+
+let family_of (rec_ : Isa_source_record.t) =
+  match rec_.provenance with
+  | Isa_source_record.Riscv_provenance { extension = Some extension; _ } -> extension
+  | Isa_source_record.Xed_provenance { isa_set = Some isa_set; _ } -> isa_set
+  | Isa_source_record.Riscv_provenance _ -> "<missing-riscv-extension>"
+  | Isa_source_record.Xed_provenance _ -> "<missing-xed-isa-set>"
+  | Isa_source_record.Other -> "<unexpected-source-provenance>"
+
+let normalize source rec_ =
+  match source with
+  | "riscv_opcodes" -> Isa_norm_riscv.normalize rec_
+  | "xed_resolved" -> Isa_norm_xed.normalize rec_
+  | other -> Error { Isa_norm_model.rule = "unhandled-source"; message = other }
+
+(* These are the exact credit-bearing rows of the committed S3 pilot
+   corpus, plus the isa-difficult corpus (sw/beq/c.addi - every one of
+   whose committed records carries verdict=Pass, checked in
+   asm/fixtures/isa-difficult/cases.jsonl: beq's own per-instruction
+   Isa_gen_oracle finding reads Different_observed_form only because its
+   two-instruction rendered source is longer than that single-form check's
+   fixed-width assumption, not because GAS or "ours" picked a different form -
+   the credit-bearing signal is Isa_gen_verdict's direct GAS-vs-ours byte
+   comparison, which is Pass for all twenty committed cases; see
+   Isa_gen_difficult.mli's own comment on beq_entries).  A pilot/difficult
+   spelling that reaches a different GNU encoding or that our parser rejects
+   is deliberately only GAS-generatable; it cannot gain support credit merely
+   because a neighboring form happens to encode the same operation. *)
+let promoted_case ~target ~form_id ~lookup_key =
+  match (target, form_id, lookup_key) with
+  | (Target.Riscv32 | Target.Riscv64), ("riscv:add" | "riscv:sub" | "riscv:mul" | "riscv:addi"), _
+    ->
+      true
+  | Target.Riscv64, "riscv:addw", _ -> true
+  | (Target.X86_32 | Target.X86_64), "x86:ADD_GPRv_GPRv_01", "ADD_GPRv_GPRv_01" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:sw", "sw" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:beq", "beq" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:c.addi", "c.addi" -> true
+  | (Target.X86_32 | Target.X86_64), "x86:MOV_GPRv_MEMv", "MOV_GPRv_MEMv" -> true
+  | (Target.X86_32 | Target.X86_64), "x86:MOV_MEMv_GPRv", "MOV_MEMv_GPRv" -> true
+  | (Target.X86_32 | Target.X86_64), "x86:FADD_ST0_X87", "FADD_ST0_X87" -> true
+  | _ -> false
+
+let pilot_case ~target ~form_id ~lookup_key =
+  List.exists
+    (fun (entry : Isa_gen_pilot.pilot_entry) ->
+      entry.target = target
+      && String.equal entry.form_id form_id
+      && String.equal entry.lookup_key lookup_key)
+    Isa_gen_pilot.all
+  || List.exists
+       (fun (entry : Isa_gen_difficult.entry) ->
+         entry.target = target
+         && String.equal entry.form_id form_id
+         && String.equal entry.lookup_key lookup_key)
+       Isa_gen_difficult.all
+
+let lookup_key source (rec_ : Isa_source_record.t) =
+  match (source, rec_.provenance) with
+  | "riscv_opcodes", _ -> rec_.native_name
+  | "xed_resolved", Isa_source_record.Xed_provenance { iform = Some iform; _ } -> iform
+  | _ -> ""
+
+let state_of ~source ~target rec_ =
+  match normalize source rec_ with
+  | Error diagnostic -> Blocked diagnostic.rule
+  | Ok (form : Isa_norm_model.form) ->
+      let key = lookup_key source rec_ in
+      if promoted_case ~target ~form_id:form.form_id ~lookup_key:key then Promoted_support
+      else if pilot_case ~target ~form_id:form.form_id ~lookup_key:key then Gas_generatable
+      else Normalized_only
+
+let summarize repo ~source target =
+  let ( let* ) = Result.bind in
+  let* records = Isa_source_record.read_file (Repo.isa_db_export repo ~source target) in
+  let tallies = Hashtbl.create 64 in
+  List.iter
+    (fun (rec_ : Isa_source_record.t) ->
+      let name = family_of rec_ in
+      let tally =
+        match Hashtbl.find_opt tallies name with
+        | Some tally -> tally
+        | None ->
+            let tally = empty () in
+            Hashtbl.add tallies name tally;
+            tally
+      in
+      record tally (state_of ~source ~target rec_))
+    records;
+  let families =
+    Hashtbl.to_seq tallies |> List.of_seq
+    |> List.map (fun (name, tally) ->
+        { name; total = tally_total (tally_of tally); tally = tally_of tally })
+    |> List.sort (fun a b -> String.compare a.name b.name)
+  in
+  Ok { total = List.length records; families }
+
+let report_lines ~label (summary : summary) =
+  let header =
+    Printf.sprintf "isa-family-admission: %s: %d records, %d families" label summary.total
+      (List.length summary.families)
+  in
+  let line family =
+    let t = family.tally in
+    let blockers =
+      match t.blocked with
+      | [] -> "-"
+      | items ->
+          String.concat ","
+            (List.map (fun (rule, count) -> Printf.sprintf "%s=%d" rule count) items)
+    in
+    Printf.sprintf
+      "  %-28s total=%-5d normalized-only=%-4d gas-generatable=%-4d promoted-support=%-4d \
+       oracle-unavailable=%-4d blocker=%s"
+      family.name family.total t.normalized_only t.gas_generatable t.promoted_support
+      t.oracle_unavailable blockers
+  in
+  header :: List.map line summary.families
+
+let targets_and_sources =
+  [
+    ("riscv_opcodes", Target.Riscv32);
+    ("riscv_opcodes", Target.Riscv64);
+    ("xed_resolved", Target.X86_32);
+    ("xed_resolved", Target.X86_64);
+  ]
+
+let run repo =
+  Command.accumulate targets_and_sources ~f:(fun (source, target) ->
+      match summarize repo ~source target with
+      | Error e -> Command.of_error e
+      | Ok summary ->
+          let label = Printf.sprintf "%s/%s" source (Target.to_string target) in
+          Command.ok (List.map Diagnostic.stdout (report_lines ~label summary)))
