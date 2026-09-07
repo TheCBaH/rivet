@@ -50,6 +50,11 @@ let test_counts () =
     && List.length Isa_gen_difficult.fsub_d_entries = 2
     && List.length Isa_gen_difficult.fmul_d_entries = 2
     && List.length Isa_gen_difficult.fdiv_d_entries = 2);
+  check "flw/fld/fsw/fsd entries have 2 entries each (interior-offset x 2 profiles)"
+    (List.length Isa_gen_difficult.flw_entries = 2
+    && List.length Isa_gen_difficult.fld_entries = 2
+    && List.length Isa_gen_difficult.fsw_entries = 2
+    && List.length Isa_gen_difficult.fsd_entries = 2);
   check "sh1add_entries has 2 entries (Zba scale-one form x 2 profiles)"
     (List.length Isa_gen_difficult.sh1add_entries = 2);
   check "sh2add/sh3add entries have 2 entries each (Zba scale-two/scale-three x 2 profiles)"
@@ -241,6 +246,10 @@ let test_counts () =
       + List.length Isa_gen_difficult.fsub_d_entries
       + List.length Isa_gen_difficult.fmul_d_entries
       + List.length Isa_gen_difficult.fdiv_d_entries
+      + List.length Isa_gen_difficult.flw_entries
+      + List.length Isa_gen_difficult.fld_entries
+      + List.length Isa_gen_difficult.fsw_entries
+      + List.length Isa_gen_difficult.fsd_entries
       + List.length Isa_gen_difficult.sh1add_entries
       + List.length Isa_gen_difficult.sh2add_entries
       + List.length Isa_gen_difficult.sh3add_entries
@@ -340,7 +349,55 @@ let test_counts () =
       + List.length Isa_gen_difficult.amominu_d_entries
       + List.length Isa_gen_difficult.amomaxu_d_entries
       + List.length Isa_gen_difficult.sc_d_entries
-      + List.length Isa_gen_difficult.lr_d_entries)
+      + List.length Isa_gen_difficult.lr_d_entries
+      + List.length Isa_gen_difficult.fsgnj_s_entries
+      + List.length Isa_gen_difficult.fsgnjn_s_entries
+      + List.length Isa_gen_difficult.fsgnjx_s_entries
+      + List.length Isa_gen_difficult.fsgnj_d_entries
+      + List.length Isa_gen_difficult.fsgnjn_d_entries
+      + List.length Isa_gen_difficult.fsgnjx_d_entries
+      + List.length Isa_gen_difficult.fmin_s_entries
+      + List.length Isa_gen_difficult.fmax_s_entries
+      + List.length Isa_gen_difficult.fmin_d_entries
+      + List.length Isa_gen_difficult.fmax_d_entries
+      + List.length Isa_gen_difficult.fsqrt_s_entries
+      + List.length Isa_gen_difficult.fsqrt_d_entries
+      + List.length Isa_gen_difficult.fclass_s_entries
+      + List.length Isa_gen_difficult.fclass_d_entries
+      + List.length Isa_gen_difficult.fmadd_s_entries
+      + List.length Isa_gen_difficult.fmsub_s_entries
+      + List.length Isa_gen_difficult.fnmsub_s_entries
+      + List.length Isa_gen_difficult.fnmadd_s_entries
+      + List.length Isa_gen_difficult.fmadd_d_entries
+      + List.length Isa_gen_difficult.fmsub_d_entries
+      + List.length Isa_gen_difficult.fnmsub_d_entries
+      + List.length Isa_gen_difficult.fnmadd_d_entries
+      + List.length Isa_gen_difficult.feq_s_entries
+      + List.length Isa_gen_difficult.fle_s_entries
+      + List.length Isa_gen_difficult.flt_s_entries
+      + List.length Isa_gen_difficult.feq_d_entries
+      + List.length Isa_gen_difficult.fle_d_entries
+      + List.length Isa_gen_difficult.flt_d_entries
+      + List.length Isa_gen_difficult.fmv_x_w_entries
+      + List.length Isa_gen_difficult.fmv_w_x_entries
+      + List.length Isa_gen_difficult.fcvt_w_s_entries
+      + List.length Isa_gen_difficult.fcvt_wu_s_entries
+      + List.length Isa_gen_difficult.fcvt_s_w_entries
+      + List.length Isa_gen_difficult.fcvt_s_wu_entries
+      + List.length Isa_gen_difficult.fcvt_w_d_entries
+      + List.length Isa_gen_difficult.fcvt_wu_d_entries
+      + List.length Isa_gen_difficult.fcvt_d_w_entries
+      + List.length Isa_gen_difficult.fcvt_d_wu_entries
+      + List.length Isa_gen_difficult.fcvt_s_d_entries
+      + List.length Isa_gen_difficult.fcvt_d_s_entries
+      + List.length Isa_gen_difficult.fcvt_l_d_entries
+      + List.length Isa_gen_difficult.fcvt_lu_d_entries
+      + List.length Isa_gen_difficult.fcvt_l_s_entries
+      + List.length Isa_gen_difficult.fcvt_lu_s_entries
+      + List.length Isa_gen_difficult.fcvt_s_l_entries
+      + List.length Isa_gen_difficult.fcvt_s_lu_entries
+      + List.length Isa_gen_difficult.fcvt_d_l_entries
+      + List.length Isa_gen_difficult.fcvt_d_lu_entries)
 
 let test_case_ids_distinct () =
   let ids = List.map (fun (e : Isa_gen_difficult.entry) -> e.case_id) Isa_gen_difficult.all in
@@ -460,6 +517,251 @@ let test_f_arith_s_domain () =
    @ Isa_gen_difficult.fmul_s_entries @ Isa_gen_difficult.fdiv_s_entries
    @ Isa_gen_difficult.fadd_d_entries @ Isa_gen_difficult.fsub_d_entries
    @ Isa_gen_difficult.fmul_d_entries @ Isa_gen_difficult.fdiv_d_entries)
+
+(* flw/fld/fsw/fsd: value/base/offset operands, value a floating-point
+   register rather than sw's own GPR. *)
+let test_f_ldst_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses value, base, offset operands in that order" e.case_id)
+        (List.map fst e.operands = [ "value"; "base"; "offset" ]
+        && List.map snd e.operands = [ "fa0"; "a1"; "8" ]);
+      check
+        (Printf.sprintf "%s: configuration enables scalar FP" e.case_id)
+        (List.exists
+           (fun arg -> String.contains arg 'f' || String.contains arg 'd')
+           e.configuration))
+    (Isa_gen_difficult.flw_entries @ Isa_gen_difficult.fld_entries @ Isa_gen_difficult.fsw_entries
+   @ Isa_gen_difficult.fsd_entries)
+
+(* fsgnj.s/fsgnjn.s/fsgnjx.s/fsgnj.d/fsgnjn.d/fsgnjx.d: the general
+   three-distinct-FP-register sign-injection form; distinct rs1/rs2 registers
+   distinguish this from the fneg.s/fneg.d/fmv.d rs1=rs2 pseudo-alias forms
+   the encoder implemented before this pass. *)
+let test_f_sgnj_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses distinct floating-point register operands" e.case_id)
+        (List.map snd e.operands = [ "ft0"; "ft1"; "ft2" ]);
+      check
+        (Printf.sprintf "%s: flags distinct source registers" e.case_id)
+        (List.mem "distinct-source-registers" e.rule_ids);
+      check
+        (Printf.sprintf "%s: configuration enables scalar FP" e.case_id)
+        (List.exists
+           (fun arg -> String.contains arg 'f' || String.contains arg 'd')
+           e.configuration))
+    (Isa_gen_difficult.fsgnj_s_entries @ Isa_gen_difficult.fsgnjn_s_entries
+   @ Isa_gen_difficult.fsgnjx_s_entries @ Isa_gen_difficult.fsgnj_d_entries
+   @ Isa_gen_difficult.fsgnjn_d_entries @ Isa_gen_difficult.fsgnjx_d_entries)
+
+(* fmin.s/fmax.s/fmin.d/fmax.d: the same three-distinct-FP-register shape as
+   {!test_f_sgnj_domain}, but no pseudo-alias shares this word. *)
+let test_f_minmax_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses distinct floating-point register operands" e.case_id)
+        (List.map snd e.operands = [ "ft0"; "ft1"; "ft2" ]);
+      check
+        (Printf.sprintf "%s: flags min-vs-max selection" e.case_id)
+        (List.mem "min-max-select" e.rule_ids);
+      check
+        (Printf.sprintf "%s: configuration enables scalar FP" e.case_id)
+        (List.exists
+           (fun arg -> String.contains arg 'f' || String.contains arg 'd')
+           e.configuration))
+    (Isa_gen_difficult.fmin_s_entries @ Isa_gen_difficult.fmax_s_entries
+   @ Isa_gen_difficult.fmin_d_entries @ Isa_gen_difficult.fmax_d_entries)
+
+(* fsqrt.s/fsqrt.d: {!f_arith_entry}'s own shape minus the third operand. *)
+let test_f_sqrt_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, rs1 floating-point register operands" e.case_id)
+        (List.map snd e.operands = [ "ft0"; "ft1" ]);
+      check
+        (Printf.sprintf "%s: selects measured implicit dynamic rounding" e.case_id)
+        (List.mem "implicit-dynamic-rounding" e.rule_ids);
+      check
+        (Printf.sprintf "%s: configuration enables scalar FP" e.case_id)
+        (List.exists
+           (fun arg -> String.contains arg 'f' || String.contains arg 'd')
+           e.configuration))
+    (Isa_gen_difficult.fsqrt_s_entries @ Isa_gen_difficult.fsqrt_d_entries)
+
+(* fclass.s/fclass.d: [rd] is a GPR, [rs1] is FP. *)
+let test_f_class_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses a GPR result and an FP source" e.case_id)
+        (List.map snd e.operands = [ "a0"; "ft1" ]);
+      check (Printf.sprintf "%s: flags the GPR result" e.case_id) (List.mem "gpr-result" e.rule_ids);
+      check
+        (Printf.sprintf "%s: configuration enables scalar FP" e.case_id)
+        (List.exists
+           (fun arg -> String.contains arg 'f' || String.contains arg 'd')
+           e.configuration))
+    (Isa_gen_difficult.fclass_s_entries @ Isa_gen_difficult.fclass_d_entries)
+
+(* fmadd.s/fmsub.s/fnmsub.s/fnmadd.s/fmadd.d/fmsub.d/fnmsub.d/fnmadd.d: RISC-V's
+   only R4-type mnemonics, {!test_f_sqrt_domain}'s implicit-dynamic-rounding
+   shape with two more distinct FP register operands. *)
+let test_f_fma_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, rs1, rs2, rs3 floating-point register operands" e.case_id)
+        (List.map snd e.operands = [ "ft0"; "ft1"; "ft2"; "ft3" ]);
+      check
+        (Printf.sprintf "%s: selects measured implicit dynamic rounding" e.case_id)
+        (List.mem "implicit-dynamic-rounding" e.rule_ids);
+      check
+        (Printf.sprintf "%s: configuration enables scalar FP" e.case_id)
+        (List.exists
+           (fun arg -> String.contains arg 'f' || String.contains arg 'd')
+           e.configuration))
+    (Isa_gen_difficult.fmadd_s_entries @ Isa_gen_difficult.fmsub_s_entries
+   @ Isa_gen_difficult.fnmsub_s_entries @ Isa_gen_difficult.fnmadd_s_entries
+   @ Isa_gen_difficult.fmadd_d_entries @ Isa_gen_difficult.fmsub_d_entries
+   @ Isa_gen_difficult.fnmsub_d_entries @ Isa_gen_difficult.fnmadd_d_entries)
+
+(* feq.s/fle.s/flt.s/feq.d/fle.d/flt.d: [rd] is a GPR (the boolean result),
+   [rs1]/[rs2] are FP - the mirror image of {!test_f_fma_domain}'s all-FPR
+   shape. *)
+let test_f_cmp_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses a GPR result and two FP sources" e.case_id)
+        (List.map snd e.operands = [ "a0"; "ft1"; "ft2" ]);
+      check (Printf.sprintf "%s: flags the GPR result" e.case_id) (List.mem "gpr-result" e.rule_ids);
+      check
+        (Printf.sprintf "%s: configuration enables scalar FP" e.case_id)
+        (List.exists
+           (fun arg -> String.contains arg 'f' || String.contains arg 'd')
+           e.configuration))
+    (Isa_gen_difficult.feq_s_entries @ Isa_gen_difficult.fle_s_entries
+   @ Isa_gen_difficult.flt_s_entries @ Isa_gen_difficult.feq_d_entries
+   @ Isa_gen_difficult.fle_d_entries @ Isa_gen_difficult.flt_d_entries)
+
+(* fmv.x.w/fmv.w.x: bit-for-bit moves, not conversions, each with a plain GPR
+   operand on one side and a plain FP operand on the other. *)
+let test_fmv_w_domain () =
+  check "fmv.x.w: uses a GPR result and an FP source"
+    (List.for_all
+       (fun (e : Isa_gen_difficult.entry) -> List.map snd e.operands = [ "a0"; "ft1" ])
+       Isa_gen_difficult.fmv_x_w_entries);
+  check "fmv.w.x: uses an FP result and a GPR source"
+    (List.for_all
+       (fun (e : Isa_gen_difficult.entry) -> List.map snd e.operands = [ "ft0"; "a1" ])
+       Isa_gen_difficult.fmv_w_x_entries)
+
+(* fcvt.w.s/fcvt.wu.s/fcvt.s.w/fcvt.s.wu: real conversions (unlike
+   {!test_fmv_w_domain}'s bit-for-bit moves), so - like {!test_f_fma_domain}
+   and {!test_f_cmp_domain} - each carries a genuine implicit-dynamic-rounding
+   [rm]. *)
+let test_f_cvt_w_s_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses a GPR result and an FP source" e.case_id)
+        (List.map snd e.operands = [ "a0"; "ft1" ]);
+      check (Printf.sprintf "%s: flags the GPR result" e.case_id) (List.mem "gpr-result" e.rule_ids);
+      check
+        (Printf.sprintf "%s: selects measured implicit dynamic rounding" e.case_id)
+        (List.mem "implicit-dynamic-rounding" e.rule_ids))
+    (Isa_gen_difficult.fcvt_w_s_entries @ Isa_gen_difficult.fcvt_wu_s_entries);
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses an FP result and a GPR source" e.case_id)
+        (List.map snd e.operands = [ "ft0"; "a1" ]);
+      check (Printf.sprintf "%s: flags the FP result" e.case_id) (List.mem "fpr-result" e.rule_ids);
+      check
+        (Printf.sprintf "%s: selects measured implicit dynamic rounding" e.case_id)
+        (List.mem "implicit-dynamic-rounding" e.rule_ids))
+    (Isa_gen_difficult.fcvt_s_w_entries @ Isa_gen_difficult.fcvt_s_wu_entries)
+
+(* fcvt.w.d/fcvt.wu.d/fcvt.d.w/fcvt.d.wu/fcvt.s.d/fcvt.d.s: the D-extension
+   conversions {!test_f_cvt_w_s_domain} left open. fcvt.w.d/fcvt.wu.d keep
+   the dynamic-rounding default; fcvt.d.w/fcvt.d.wu and the widening
+   fcvt.d.s get the always-exact default instead - real hardware's own
+   "never loses precision" pair. *)
+let test_f_cvt_w_d_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses a GPR result and an FP source" e.case_id)
+        (List.map snd e.operands = [ "a0"; "ft1" ]);
+      check (Printf.sprintf "%s: flags the GPR result" e.case_id) (List.mem "gpr-result" e.rule_ids);
+      check
+        (Printf.sprintf "%s: selects measured implicit dynamic rounding" e.case_id)
+        (List.mem "implicit-dynamic-rounding" e.rule_ids))
+    (Isa_gen_difficult.fcvt_w_d_entries @ Isa_gen_difficult.fcvt_wu_d_entries);
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses an FP result and a GPR source" e.case_id)
+        (List.map snd e.operands = [ "ft0"; "a1" ]);
+      check (Printf.sprintf "%s: flags the FP result" e.case_id) (List.mem "fpr-result" e.rule_ids);
+      check
+        (Printf.sprintf "%s: selects measured implicit exact rounding" e.case_id)
+        (List.mem "implicit-exact-rounding" e.rule_ids))
+    (Isa_gen_difficult.fcvt_d_w_entries @ Isa_gen_difficult.fcvt_d_wu_entries);
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses two floating-point operands, no GPR" e.case_id)
+        (List.map snd e.operands = [ "ft0"; "ft1" ]))
+    (Isa_gen_difficult.fcvt_s_d_entries @ Isa_gen_difficult.fcvt_d_s_entries);
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: selects measured implicit dynamic rounding" e.case_id)
+        (List.mem "implicit-dynamic-rounding" e.rule_ids))
+    Isa_gen_difficult.fcvt_s_d_entries;
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: selects measured implicit exact rounding" e.case_id)
+        (List.mem "implicit-exact-rounding" e.rule_ids))
+    Isa_gen_difficult.fcvt_d_s_entries
+
+(* fcvt.l.d/fcvt.lu.d/fcvt.d.l/fcvt.d.lu/fcvt.l.s/fcvt.lu.s/fcvt.s.l/fcvt.s.lu:
+   the RV64-only long conversions {!test_f_cvt_w_d_domain} left open - every
+   one keeps the family's usual dynamic-rounding default (unlike
+   fcvt.d.w/fcvt.d.wu's always-exact one, since a 64-bit long is not always
+   exact in a double), and every entries list targets RV64 only. *)
+let test_f_cvt_l_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check (Printf.sprintf "%s: targets riscv64 only" e.case_id) (e.target = Target.Riscv64);
+      check
+        (Printf.sprintf "%s: selects measured implicit dynamic rounding" e.case_id)
+        (List.mem "implicit-dynamic-rounding" e.rule_ids))
+    (Isa_gen_difficult.fcvt_l_d_entries @ Isa_gen_difficult.fcvt_lu_d_entries
+   @ Isa_gen_difficult.fcvt_l_s_entries @ Isa_gen_difficult.fcvt_lu_s_entries
+   @ Isa_gen_difficult.fcvt_s_l_entries @ Isa_gen_difficult.fcvt_s_lu_entries
+   @ Isa_gen_difficult.fcvt_d_l_entries @ Isa_gen_difficult.fcvt_d_lu_entries);
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses a GPR result and an FP source" e.case_id)
+        (List.map snd e.operands = [ "a0"; "ft1" ]))
+    (Isa_gen_difficult.fcvt_l_d_entries @ Isa_gen_difficult.fcvt_lu_d_entries
+   @ Isa_gen_difficult.fcvt_l_s_entries @ Isa_gen_difficult.fcvt_lu_s_entries);
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses an FP result and a GPR source" e.case_id)
+        (List.map snd e.operands = [ "ft0"; "a1" ]))
+    (Isa_gen_difficult.fcvt_s_l_entries @ Isa_gen_difficult.fcvt_s_lu_entries
+   @ Isa_gen_difficult.fcvt_d_l_entries @ Isa_gen_difficult.fcvt_d_lu_entries)
 
 let test_sh1add_domain () =
   List.iter
@@ -715,6 +1017,17 @@ let () =
   test_no_entry_uses_x0 ();
   test_x86_address_and_x87_domains ();
   test_f_arith_s_domain ();
+  test_f_ldst_domain ();
+  test_f_sgnj_domain ();
+  test_f_minmax_domain ();
+  test_f_sqrt_domain ();
+  test_f_class_domain ();
+  test_f_fma_domain ();
+  test_f_cmp_domain ();
+  test_fmv_w_domain ();
+  test_f_cvt_w_s_domain ();
+  test_f_cvt_w_d_domain ();
+  test_f_cvt_l_domain ();
   test_sh1add_domain ();
   test_minmax_domain ();
   test_unary_gpr_domain ();

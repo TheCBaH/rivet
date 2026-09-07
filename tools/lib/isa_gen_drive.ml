@@ -81,7 +81,7 @@ let run_case ~prefix ~label repo (case : Isa_generated_case.case)
               Some Isa_generated_corpus.{ case; gas = artifact; ours = None; finding; verdict };
           }
       | Isa_gen_oracle.Unexpected_relocation { relocations; _ } ->
-          (* Plan §5.4: never compare unresolved object placeholders - "ours"
+          (* Never compare unresolved object placeholders - "ours"
              is not invoked at all here, matching Rejected's own shape
              (Isa_gen_verdict.Gas_unexpected_relocation). *)
           let verdict =

@@ -6,18 +6,21 @@ type outcome =
 
 let le_int_of_bytes bytes =
   let n = String.length bytes in
-  let v = ref 0 in
+  (* ISA encoding words are unsigned 32-bit quantities.  Do not use OCaml's
+     machine [int] here: it has only 31 value bits on i386 and armv7 hosts. *)
+  let v = ref 0L in
   for i = n - 1 downto 0 do
-    v := (!v lsl 8) lor Char.code bytes.[i]
+    v := Int64.logor (Int64.shift_left !v 8) (Int64.of_int (Char.code bytes.[i]))
   done;
   !v
 
 let hex_of_first_byte bytes =
   if String.length bytes = 0 then "<empty>" else Printf.sprintf "0x%02x" (Char.code bytes.[0])
 
-(* [mask]/[value] (isa-db hex strings, e.g. "0x707f") and [opcode] (e.g.
-   "0x81") are both already valid OCaml integer-literal syntax - [int_of_string]
-   parses the "0x" prefix itself, no stripping needed. *)
+(* [mask]/[value] (isa-db hex strings, e.g. "0xfe00707f") and [opcode]
+   (e.g. "0x81") are both already valid OCaml integer-literal syntax.  RISC-V
+   masks and values may use all 32 bits, so parse them as [Int64] rather than
+   a host-width [int]. *)
 let observed_form_check (encoding : Isa_norm_model.encoding) bytes =
   match encoding with
   | Isa_norm_model.Riscv_encoding { width_bits; mask; value } ->
@@ -28,12 +31,12 @@ let observed_form_check (encoding : Isa_norm_model.encoding) bytes =
              width_bits (String.length bytes))
       else
         let observed = le_int_of_bytes bytes in
-        let m = int_of_string mask and want = int_of_string value in
-        if observed land m = want then Ok ()
+        let m = Int64.of_string mask and want = Int64.of_string value in
+        if Int64.equal (Int64.logand observed m) want then Ok ()
         else
           Error
-            (Printf.sprintf "0x%x & mask 0x%x = 0x%x, expected value 0x%x" observed m
-               (observed land m) want)
+            (Printf.sprintf "0x%Lx & mask 0x%Lx = 0x%Lx, expected value 0x%Lx" observed m
+               (Int64.logand observed m) want)
   | Isa_norm_model.X86_encoding { opcode; _ } ->
       let expected = String.lowercase_ascii opcode in
       let observed = String.lowercase_ascii (hex_of_first_byte bytes) in
@@ -45,9 +48,9 @@ let contains ~needle haystack =
   let rec go i = i + n <= h && (String.sub haystack i n = needle || go (i + 1)) in
   n = 0 || go 0
 
-(* Plan §5.4: "Begin with relocation-free instructions in .text ... Inspect
+(* Begin with relocation-free instructions in .text: inspect
    relocation tables and fail if a supposedly relocation-free case contains
-   one. Never compare unresolved object placeholders with our bound image."
+   one, never comparing unresolved object placeholders with our bound image.
    Every current pilot case is a plain register/immediate instruction with no
    symbol reference, so none is expected to trip this - but nothing upstream
    of this check enforces that expectation, and a placeholder byte compared as

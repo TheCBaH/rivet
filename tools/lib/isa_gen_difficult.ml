@@ -189,6 +189,352 @@ let fsub_d_entries = List.map (f_arith_entry "fsub.d") [ Target.Riscv32; Target.
 let fmul_d_entries = List.map (f_arith_entry "fmul.d") [ Target.Riscv32; Target.Riscv64 ]
 let fdiv_d_entries = List.map (f_arith_entry "fdiv.d") [ Target.Riscv32; Target.Riscv64 ]
 
+(* flw/fld/fsw/fsd: F/D's floating-point loads and stores - already fully
+   implemented by the encoder's shared f_load_desc/f_store_desc path (this
+   closes only the normalization/corpus/admission side, no encoder change).
+   Reuses f_arith_configuration_for's own "im"+precision march convention;
+   confirmed real GNU as rejects fld/fsd under a bare "f"-only march
+   ("extension `d' required") and accepts all four under "d" (D implies F). *)
+let f_ldst_entry ~mnemonic ~precision target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:interior-offset:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "interior-offset" ];
+    operands = [ ("value", "fa0"); ("base", "a1"); ("offset", "8") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = f_arith_configuration_for precision target;
+  }
+
+let flw_entries =
+  List.map (f_ldst_entry ~mnemonic:"flw" ~precision:"f") [ Target.Riscv32; Target.Riscv64 ]
+
+let fld_entries =
+  List.map (f_ldst_entry ~mnemonic:"fld" ~precision:"d") [ Target.Riscv32; Target.Riscv64 ]
+
+let fsw_entries =
+  List.map (f_ldst_entry ~mnemonic:"fsw" ~precision:"f") [ Target.Riscv32; Target.Riscv64 ]
+
+let fsd_entries =
+  List.map (f_ldst_entry ~mnemonic:"fsd" ~precision:"d") [ Target.Riscv32; Target.Riscv64 ]
+
+(* fsgnj.s/fsgnjn.s/fsgnjx.s/fsgnj.d/fsgnjn.d/fsgnjx.d: the general
+   three-distinct-FP-register sign-injection form the encoder's own
+   f_sgnj3_desc closes (its rs1=rs2 alias siblings fneg.s/fneg.d/fmv.d
+   predate this pass). Distinct rs1/rs2 registers here is what
+   exercises the general form rather than the pseudo-alias one. *)
+let f_sgnj_entry mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id =
+      Printf.sprintf "riscv:%s:distinct-source-registers:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "distinct-source-registers" ];
+    operands = [ ("rd", "ft0"); ("rs1", "ft1"); ("rs2", "ft2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration =
+      f_arith_configuration_for (if String.ends_with ~suffix:".d" mnemonic then "d" else "f") target;
+  }
+
+let fsgnj_s_entries = List.map (f_sgnj_entry "fsgnj.s") [ Target.Riscv32; Target.Riscv64 ]
+let fsgnjn_s_entries = List.map (f_sgnj_entry "fsgnjn.s") [ Target.Riscv32; Target.Riscv64 ]
+let fsgnjx_s_entries = List.map (f_sgnj_entry "fsgnjx.s") [ Target.Riscv32; Target.Riscv64 ]
+let fsgnj_d_entries = List.map (f_sgnj_entry "fsgnj.d") [ Target.Riscv32; Target.Riscv64 ]
+let fsgnjn_d_entries = List.map (f_sgnj_entry "fsgnjn.d") [ Target.Riscv32; Target.Riscv64 ]
+let fsgnjx_d_entries = List.map (f_sgnj_entry "fsgnjx.d") [ Target.Riscv32; Target.Riscv64 ]
+
+(* fmin.s/fmax.s/fmin.d/fmax.d: the same three-distinct-FP-register shape as
+   {!f_sgnj_entry}, but no pseudo-alias sharing this word to distinguish
+   from - "min-max-select" documents which of the pair the fixed funct3
+   selects, not a register-identity concern. *)
+let f_minmax_entry mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:min-max-select:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "min-max-select" ];
+    operands = [ ("rd", "ft0"); ("rs1", "ft1"); ("rs2", "ft2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration =
+      f_arith_configuration_for (if String.ends_with ~suffix:".d" mnemonic then "d" else "f") target;
+  }
+
+let fmin_s_entries = List.map (f_minmax_entry "fmin.s") [ Target.Riscv32; Target.Riscv64 ]
+let fmax_s_entries = List.map (f_minmax_entry "fmax.s") [ Target.Riscv32; Target.Riscv64 ]
+let fmin_d_entries = List.map (f_minmax_entry "fmin.d") [ Target.Riscv32; Target.Riscv64 ]
+let fmax_d_entries = List.map (f_minmax_entry "fmax.d") [ Target.Riscv32; Target.Riscv64 ]
+
+(* fsqrt.s/fsqrt.d: {!f_arith_entry}'s own shape minus the third operand -
+   [rs2] is a fixed selector the source record's own mask fixes, not a
+   real register. *)
+let f_sqrt_entry mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:bare-dynamic-rounding:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "implicit-dynamic-rounding" ];
+    operands = [ ("rd", "ft0"); ("rs1", "ft1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration =
+      f_arith_configuration_for (if String.ends_with ~suffix:".d" mnemonic then "d" else "f") target;
+  }
+
+let fsqrt_s_entries = List.map (f_sqrt_entry "fsqrt.s") [ Target.Riscv32; Target.Riscv64 ]
+let fsqrt_d_entries = List.map (f_sqrt_entry "fsqrt.d") [ Target.Riscv32; Target.Riscv64 ]
+
+(* fclass.s/fclass.d: [rd] is a GPR (the classification bitmask), [rs1] FP -
+   the mirror image of {!f_ldst_entry}'s value/base register-class split,
+   here on a plain two-register R-type instead of a load/store. *)
+let f_class_entry mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:gpr-result:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "gpr-result" ];
+    operands = [ ("rd", "a0"); ("rs1", "ft1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration =
+      f_arith_configuration_for (if String.ends_with ~suffix:".d" mnemonic then "d" else "f") target;
+  }
+
+let fclass_s_entries = List.map (f_class_entry "fclass.s") [ Target.Riscv32; Target.Riscv64 ]
+let fclass_d_entries = List.map (f_class_entry "fclass.d") [ Target.Riscv32; Target.Riscv64 ]
+
+(* fmadd.s/fmsub.s/fnmsub.s/fnmadd.s/fmadd.d/fmsub.d/fnmsub.d/fnmadd.d:
+   {!f_sqrt_entry}'s own implicit-dynamic-rounding shape with two more
+   distinct FP register operands ([rs2], [rs3]) - RISC-V's only R4-type
+   mnemonics. *)
+let f_fma_entry mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:bare-dynamic-rounding:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "implicit-dynamic-rounding" ];
+    operands = [ ("rd", "ft0"); ("rs1", "ft1"); ("rs2", "ft2"); ("rs3", "ft3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration =
+      f_arith_configuration_for (if String.ends_with ~suffix:".d" mnemonic then "d" else "f") target;
+  }
+
+let fmadd_s_entries = List.map (f_fma_entry "fmadd.s") [ Target.Riscv32; Target.Riscv64 ]
+let fmsub_s_entries = List.map (f_fma_entry "fmsub.s") [ Target.Riscv32; Target.Riscv64 ]
+let fnmsub_s_entries = List.map (f_fma_entry "fnmsub.s") [ Target.Riscv32; Target.Riscv64 ]
+let fnmadd_s_entries = List.map (f_fma_entry "fnmadd.s") [ Target.Riscv32; Target.Riscv64 ]
+let fmadd_d_entries = List.map (f_fma_entry "fmadd.d") [ Target.Riscv32; Target.Riscv64 ]
+let fmsub_d_entries = List.map (f_fma_entry "fmsub.d") [ Target.Riscv32; Target.Riscv64 ]
+let fnmsub_d_entries = List.map (f_fma_entry "fnmsub.d") [ Target.Riscv32; Target.Riscv64 ]
+let fnmadd_d_entries = List.map (f_fma_entry "fnmadd.d") [ Target.Riscv32; Target.Riscv64 ]
+
+(* feq.s/fle.s/flt.s/feq.d/fle.d/flt.d: [rd] is a GPR (the boolean result),
+   [rs1]/[rs2] are FP - the mirror image of {!f_fma_entry}'s all-FPR shape. *)
+let f_cmp_entry mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:gpr-result:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "gpr-result" ];
+    operands = [ ("rd", "a0"); ("rs1", "ft1"); ("rs2", "ft2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration =
+      f_arith_configuration_for (if String.ends_with ~suffix:".d" mnemonic then "d" else "f") target;
+  }
+
+let feq_s_entries = List.map (f_cmp_entry "feq.s") [ Target.Riscv32; Target.Riscv64 ]
+let fle_s_entries = List.map (f_cmp_entry "fle.s") [ Target.Riscv32; Target.Riscv64 ]
+let flt_s_entries = List.map (f_cmp_entry "flt.s") [ Target.Riscv32; Target.Riscv64 ]
+let feq_d_entries = List.map (f_cmp_entry "feq.d") [ Target.Riscv32; Target.Riscv64 ]
+let fle_d_entries = List.map (f_cmp_entry "fle.d") [ Target.Riscv32; Target.Riscv64 ]
+let flt_d_entries = List.map (f_cmp_entry "flt.d") [ Target.Riscv32; Target.Riscv64 ]
+
+(* fmv.x.w: bit-for-bit move (not a conversion), {!f_class_entry}'s own
+   GPR-result shape but with a plain FP source instead of a classification. *)
+let f_mv_x_w_entry target =
+  {
+    form_id = "riscv:fmv.x.w";
+    target;
+    lookup_key = "fmv.x.w";
+    case_id = Printf.sprintf "riscv:fmv.x.w:gpr-result:%s" (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "gpr-result" ];
+    operands = [ ("rd", "a0"); ("rs1", "ft1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = f_arith_configuration_for "f" target;
+  }
+
+let fmv_x_w_entries = List.map f_mv_x_w_entry [ Target.Riscv32; Target.Riscv64 ]
+
+(* fmv.w.x: {!f_mv_x_w_entry}'s reverse-direction sibling - [rd] FP, [rs1] a
+   plain GPR. *)
+let f_mv_w_x_entry target =
+  {
+    form_id = "riscv:fmv.w.x";
+    target;
+    lookup_key = "fmv.w.x";
+    case_id = Printf.sprintf "riscv:fmv.w.x:fpr-result:%s" (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "fpr-result" ];
+    operands = [ ("rd", "ft0"); ("rs1", "a1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = f_arith_configuration_for "f" target;
+  }
+
+let fmv_w_x_entries = List.map f_mv_w_x_entry [ Target.Riscv32; Target.Riscv64 ]
+
+(* fcvt.w.s/fcvt.wu.s: {!f_sqrt_entry}'s own implicit-dynamic-rounding shape
+   with [rd] a GPR (the converted integer) instead of FP - {!f_class_entry}'s
+   own register-class split, but with a genuine rounding-mode operand rather
+   than [fclass]'s fixed one. *)
+let f_cvt_w_s_entry mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:bare-dynamic-rounding:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "gpr-result"; "implicit-dynamic-rounding" ];
+    operands = [ ("rd", "a0"); ("rs1", "ft1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = f_arith_configuration_for "f" target;
+  }
+
+let fcvt_w_s_entries = List.map (f_cvt_w_s_entry "fcvt.w.s") [ Target.Riscv32; Target.Riscv64 ]
+let fcvt_wu_s_entries = List.map (f_cvt_w_s_entry "fcvt.wu.s") [ Target.Riscv32; Target.Riscv64 ]
+
+(* fcvt.s.w/fcvt.s.wu: {!f_cvt_w_s_entry}'s reverse direction - [rd] FP,
+   [rs1] a plain GPR, same genuine dynamic-rounding [rm]. *)
+let f_cvt_s_w_entry mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:bare-dynamic-rounding:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "fpr-result"; "implicit-dynamic-rounding" ];
+    operands = [ ("rd", "ft0"); ("rs1", "a1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = f_arith_configuration_for "f" target;
+  }
+
+let fcvt_s_w_entries = List.map (f_cvt_s_w_entry "fcvt.s.w") [ Target.Riscv32; Target.Riscv64 ]
+let fcvt_s_wu_entries = List.map (f_cvt_s_w_entry "fcvt.s.wu") [ Target.Riscv32; Target.Riscv64 ]
+
+(* fcvt.w.d/fcvt.wu.d: {!f_cvt_w_s_entry}'s own shape and dynamic-rounding
+   default, but the D-extension configuration instead of F. *)
+let f_cvt_w_d_entry mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:bare-dynamic-rounding:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "gpr-result"; "implicit-dynamic-rounding" ];
+    operands = [ ("rd", "a0"); ("rs1", "ft1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = f_arith_configuration_for "d" target;
+  }
+
+let fcvt_w_d_entries = List.map (f_cvt_w_d_entry "fcvt.w.d") [ Target.Riscv32; Target.Riscv64 ]
+let fcvt_wu_d_entries = List.map (f_cvt_w_d_entry "fcvt.wu.d") [ Target.Riscv32; Target.Riscv64 ]
+
+(* fcvt.l.d/fcvt.lu.d: {!f_cvt_w_d_entry}'s own shape and configuration,
+   RV64-only (no RV32 counterpart at all - riscv-opcodes only exports these
+   under rv64_d). *)
+let fcvt_l_d_entries = List.map (f_cvt_w_d_entry "fcvt.l.d") [ Target.Riscv64 ]
+let fcvt_lu_d_entries = List.map (f_cvt_w_d_entry "fcvt.lu.d") [ Target.Riscv64 ]
+
+(* fcvt.l.s/fcvt.lu.s: {!f_cvt_w_s_entry}'s own shape and F configuration,
+   RV64-only (rv64_f). *)
+let fcvt_l_s_entries = List.map (f_cvt_w_s_entry "fcvt.l.s") [ Target.Riscv64 ]
+let fcvt_lu_s_entries = List.map (f_cvt_w_s_entry "fcvt.lu.s") [ Target.Riscv64 ]
+
+(* fcvt.s.l/fcvt.s.lu: {!f_cvt_s_w_entry}'s own shape and F configuration,
+   RV64-only (rv64_f). *)
+let fcvt_s_l_entries = List.map (f_cvt_s_w_entry "fcvt.s.l") [ Target.Riscv64 ]
+let fcvt_s_lu_entries = List.map (f_cvt_s_w_entry "fcvt.s.lu") [ Target.Riscv64 ]
+
+(* fcvt.d.w/fcvt.d.wu: {!f_cvt_s_w_entry}'s own shape ([rd] FP, [rs1] a GPR),
+   but real hardware's "always exact" rne default rather than dynamic
+   rounding - a 32-bit integer always converts to double exactly. *)
+let f_cvt_d_w_entry mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:bare-exact-rounding:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "fpr-result"; "implicit-exact-rounding" ];
+    operands = [ ("rd", "ft0"); ("rs1", "a1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = f_arith_configuration_for "d" target;
+  }
+
+let fcvt_d_w_entries = List.map (f_cvt_d_w_entry "fcvt.d.w") [ Target.Riscv32; Target.Riscv64 ]
+let fcvt_d_wu_entries = List.map (f_cvt_d_w_entry "fcvt.d.wu") [ Target.Riscv32; Target.Riscv64 ]
+
+(* fcvt.d.l/fcvt.d.lu: {!f_cvt_d_w_entry}'s own shape ([rd] FP, [rs1] a GPR)
+   and D configuration, but the family's usual dynamic-rounding default
+   rather than {!f_cvt_d_w_entry}'s always-exact one - a 64-bit long does
+   not always fit exactly in a double, unlike a 32-bit int. RV64-only (no
+   RV32 counterpart - riscv-opcodes only exports these under rv64_d). *)
+let f_cvt_d_l_entry mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:bare-dynamic-rounding:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "fpr-register-class"; "fpr-result"; "implicit-dynamic-rounding" ];
+    operands = [ ("rd", "ft0"); ("rs1", "a1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = f_arith_configuration_for "d" target;
+  }
+
+let fcvt_d_l_entries = List.map (f_cvt_d_l_entry "fcvt.d.l") [ Target.Riscv64 ]
+let fcvt_d_lu_entries = List.map (f_cvt_d_l_entry "fcvt.d.lu") [ Target.Riscv64 ]
+
+(* fcvt.s.d/fcvt.d.s: float-to-float precision converts, [rd]/[rs1] both FP -
+   no GPR involved, so no register-class-mismatch tag - [fcvt.s.d]
+   (narrowing) keeps the family's usual dynamic-rounding default,
+   [fcvt.d.s] (widening, always exact) gets {!f_cvt_d_w_entry}'s own
+   exact-rounding tag instead. *)
+let f_cvt_f_f_entry mnemonic target =
+  let exact = String.equal mnemonic "fcvt.d.s" in
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id =
+      Printf.sprintf "riscv:%s:bare-%s-rounding:%s" mnemonic
+        (if exact then "exact" else "dynamic")
+        (Target.to_string target);
+    rule_ids =
+      [
+        "fpr-register-class";
+        (if exact then "implicit-exact-rounding" else "implicit-dynamic-rounding");
+      ];
+    operands = [ ("rd", "ft0"); ("rs1", "ft1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = f_arith_configuration_for "d" target;
+  }
+
+let fcvt_s_d_entries = List.map (f_cvt_f_f_entry "fcvt.s.d") [ Target.Riscv32; Target.Riscv64 ]
+let fcvt_d_s_entries = List.map (f_cvt_f_f_entry "fcvt.d.s") [ Target.Riscv32; Target.Riscv64 ]
+
 (* Zba's SH1ADD/SH2ADD/SH3ADD are the three scale variants of the same
    R-type shape (opcode 0x33, funct7 0x10, funct3 selects the shift amount),
    already normalized by the generic riscv:r_type_gpr_form path. Their *.uw
@@ -1153,26 +1499,36 @@ let zext_h_entries =
 let all =
   sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @ x86_fadd_entries @ fadd_s_entries
   @ fsub_s_entries @ fmul_s_entries @ fdiv_s_entries @ fadd_d_entries @ fsub_d_entries
-  @ fmul_d_entries @ fdiv_d_entries @ sh1add_entries @ sh2add_entries @ sh3add_entries
-  @ sh1adduw_entries @ sh2adduw_entries @ sh3adduw_entries @ min_entries @ minu_entries
-  @ max_entries @ maxu_entries @ andn_entries @ orn_entries @ xnor_entries @ rol_entries
-  @ ror_entries @ clz_entries @ ctz_entries @ cpop_entries @ sextb_entries @ sexth_entries
-  @ orcb_entries @ clzw_entries @ ctzw_entries @ cpopw_entries @ brev8_entries @ rev8_entries
-  @ pack_entries @ packh_entries @ packw_entries @ zip_entries @ unzip_entries @ rolw_entries
-  @ rorw_entries @ rori_entries @ roriw_entries @ zext_h_entries @ clmul_entries @ clmulh_entries
-  @ xperm4_entries @ xperm8_entries @ sha256sum0_entries @ sha256sum1_entries @ sha256sig0_entries
-  @ sha256sig1_entries @ sha512sum0_entries @ sha512sum1_entries @ sha512sig0_entries
-  @ sha512sig1_entries @ sha512sum0r_entries @ sha512sum1r_entries @ sha512sig0l_entries
-  @ sha512sig1l_entries @ sha512sig0h_entries @ sha512sig1h_entries @ aes64ds_entries
-  @ aes64dsm_entries @ aes64es_entries @ aes64esm_entries @ aes64ks2_entries @ aes64im_entries
-  @ aes64ks1i_entries @ aes32dsi_entries @ aes32dsmi_entries @ aes32esi_entries @ aes32esmi_entries
-  @ csrrw_entries @ csrrs_entries @ csrrc_entries @ csrrwi_entries @ csrrsi_entries @ csrrci_entries
-  @ csrr_entries @ csrw_entries @ csrs_entries @ csrc_entries @ csrwi_entries @ csrsi_entries
-  @ csrci_entries @ amoswap_w_entries @ amoadd_w_entries @ amoxor_w_entries @ amoand_w_entries
-  @ amoor_w_entries @ amomin_w_entries @ amomax_w_entries @ amominu_w_entries @ amomaxu_w_entries
-  @ sc_w_entries @ lr_w_entries @ amoswap_d_entries @ amoadd_d_entries @ amoxor_d_entries
-  @ amoand_d_entries @ amoor_d_entries @ amomin_d_entries @ amomax_d_entries @ amominu_d_entries
-  @ amomaxu_d_entries @ sc_d_entries @ lr_d_entries
+  @ fmul_d_entries @ fdiv_d_entries @ flw_entries @ fld_entries @ fsw_entries @ fsd_entries
+  @ sh1add_entries @ sh2add_entries @ sh3add_entries @ sh1adduw_entries @ sh2adduw_entries
+  @ sh3adduw_entries @ min_entries @ minu_entries @ max_entries @ maxu_entries @ andn_entries
+  @ orn_entries @ xnor_entries @ rol_entries @ ror_entries @ clz_entries @ ctz_entries
+  @ cpop_entries @ sextb_entries @ sexth_entries @ orcb_entries @ clzw_entries @ ctzw_entries
+  @ cpopw_entries @ brev8_entries @ rev8_entries @ pack_entries @ packh_entries @ packw_entries
+  @ zip_entries @ unzip_entries @ rolw_entries @ rorw_entries @ rori_entries @ roriw_entries
+  @ zext_h_entries @ clmul_entries @ clmulh_entries @ xperm4_entries @ xperm8_entries
+  @ sha256sum0_entries @ sha256sum1_entries @ sha256sig0_entries @ sha256sig1_entries
+  @ sha512sum0_entries @ sha512sum1_entries @ sha512sig0_entries @ sha512sig1_entries
+  @ sha512sum0r_entries @ sha512sum1r_entries @ sha512sig0l_entries @ sha512sig1l_entries
+  @ sha512sig0h_entries @ sha512sig1h_entries @ aes64ds_entries @ aes64dsm_entries @ aes64es_entries
+  @ aes64esm_entries @ aes64ks2_entries @ aes64im_entries @ aes64ks1i_entries @ aes32dsi_entries
+  @ aes32dsmi_entries @ aes32esi_entries @ aes32esmi_entries @ csrrw_entries @ csrrs_entries
+  @ csrrc_entries @ csrrwi_entries @ csrrsi_entries @ csrrci_entries @ csrr_entries @ csrw_entries
+  @ csrs_entries @ csrc_entries @ csrwi_entries @ csrsi_entries @ csrci_entries @ amoswap_w_entries
+  @ amoadd_w_entries @ amoxor_w_entries @ amoand_w_entries @ amoor_w_entries @ amomin_w_entries
+  @ amomax_w_entries @ amominu_w_entries @ amomaxu_w_entries @ sc_w_entries @ lr_w_entries
+  @ amoswap_d_entries @ amoadd_d_entries @ amoxor_d_entries @ amoand_d_entries @ amoor_d_entries
+  @ amomin_d_entries @ amomax_d_entries @ amominu_d_entries @ amomaxu_d_entries @ sc_d_entries
+  @ lr_d_entries @ fsgnj_s_entries @ fsgnjn_s_entries @ fsgnjx_s_entries @ fsgnj_d_entries
+  @ fsgnjn_d_entries @ fsgnjx_d_entries @ fmin_s_entries @ fmax_s_entries @ fmin_d_entries
+  @ fmax_d_entries @ fsqrt_s_entries @ fsqrt_d_entries @ fclass_s_entries @ fclass_d_entries
+  @ fmadd_s_entries @ fmsub_s_entries @ fnmsub_s_entries @ fnmadd_s_entries @ fmadd_d_entries
+  @ fmsub_d_entries @ fnmsub_d_entries @ fnmadd_d_entries @ feq_s_entries @ fle_s_entries
+  @ flt_s_entries @ feq_d_entries @ fle_d_entries @ flt_d_entries @ fmv_x_w_entries
+  @ fmv_w_x_entries @ fcvt_w_s_entries @ fcvt_wu_s_entries @ fcvt_s_w_entries @ fcvt_s_wu_entries
+  @ fcvt_w_d_entries @ fcvt_wu_d_entries @ fcvt_d_w_entries @ fcvt_d_wu_entries @ fcvt_s_d_entries
+  @ fcvt_d_s_entries @ fcvt_l_d_entries @ fcvt_lu_d_entries @ fcvt_l_s_entries @ fcvt_lu_s_entries
+  @ fcvt_s_l_entries @ fcvt_s_lu_entries @ fcvt_d_l_entries @ fcvt_d_lu_entries
 
 let pilot_entry_of (entry : entry) =
   let evidence =

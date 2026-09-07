@@ -331,21 +331,56 @@ module Make (P : PROFILE) = struct
       | Fdiv_s
       | Fneg_d
       | Fneg_s
+      | Fsgnj_s
+      | Fsgnj_d
+      | Fsgnjn_s
+      | Fsgnjn_d
+      | Fsgnjx_s
+      | Fsgnjx_d
+      | Fmin_s
+      | Fmax_s
+      | Fmin_d
+      | Fmax_d
+      | Fsqrt_s
+      | Fsqrt_d
+      | Fclass_s
+      | Fclass_d
+      | Fmadd_s
+      | Fmadd_d
+      | Fmsub_s
+      | Fmsub_d
+      | Fnmsub_s
+      | Fnmsub_d
+      | Fnmadd_s
+      | Fnmadd_d
       | Fmv_d
       | Fmv_x_d
       | Feq_d
       | Fle_d
       | Flt_d
       | Flt_s
+      | Feq_s
+      | Fle_s
+      | Fmv_x_w
+      | Fmv_w_x
       | Fcvt_w_d
       | Fcvt_wu_d
       | Fcvt_l_d
       | Fcvt_d_w
       | Fcvt_d_wu
       | Fcvt_s_w
+      | Fcvt_s_wu
+      | Fcvt_w_s
+      | Fcvt_wu_s
       | Fcvt_s_d
       | Fcvt_d_s
       | Fcvt_s_l
+      | Fcvt_lu_d
+      | Fcvt_d_l
+      | Fcvt_d_lu
+      | Fcvt_l_s
+      | Fcvt_lu_s
+      | Fcvt_s_lu
 
     let name = function
       | Add -> "add"
@@ -534,21 +569,56 @@ module Make (P : PROFILE) = struct
       | Fdiv_s -> "fdiv.s"
       | Fneg_d -> "fneg.d"
       | Fneg_s -> "fneg.s"
+      | Fsgnj_s -> "fsgnj.s"
+      | Fsgnj_d -> "fsgnj.d"
+      | Fsgnjn_s -> "fsgnjn.s"
+      | Fsgnjn_d -> "fsgnjn.d"
+      | Fsgnjx_s -> "fsgnjx.s"
+      | Fsgnjx_d -> "fsgnjx.d"
+      | Fmin_s -> "fmin.s"
+      | Fmax_s -> "fmax.s"
+      | Fmin_d -> "fmin.d"
+      | Fmax_d -> "fmax.d"
+      | Fsqrt_s -> "fsqrt.s"
+      | Fsqrt_d -> "fsqrt.d"
+      | Fclass_s -> "fclass.s"
+      | Fclass_d -> "fclass.d"
+      | Fmadd_s -> "fmadd.s"
+      | Fmadd_d -> "fmadd.d"
+      | Fmsub_s -> "fmsub.s"
+      | Fmsub_d -> "fmsub.d"
+      | Fnmsub_s -> "fnmsub.s"
+      | Fnmsub_d -> "fnmsub.d"
+      | Fnmadd_s -> "fnmadd.s"
+      | Fnmadd_d -> "fnmadd.d"
       | Fmv_d -> "fmv.d"
       | Fmv_x_d -> "fmv.x.d"
       | Feq_d -> "feq.d"
       | Fle_d -> "fle.d"
       | Flt_d -> "flt.d"
       | Flt_s -> "flt.s"
+      | Feq_s -> "feq.s"
+      | Fle_s -> "fle.s"
+      | Fmv_x_w -> "fmv.x.w"
+      | Fmv_w_x -> "fmv.w.x"
       | Fcvt_w_d -> "fcvt.w.d"
       | Fcvt_wu_d -> "fcvt.wu.d"
       | Fcvt_l_d -> "fcvt.l.d"
       | Fcvt_d_w -> "fcvt.d.w"
       | Fcvt_d_wu -> "fcvt.d.wu"
       | Fcvt_s_w -> "fcvt.s.w"
+      | Fcvt_s_wu -> "fcvt.s.wu"
+      | Fcvt_w_s -> "fcvt.w.s"
+      | Fcvt_wu_s -> "fcvt.wu.s"
       | Fcvt_s_d -> "fcvt.s.d"
       | Fcvt_d_s -> "fcvt.d.s"
       | Fcvt_s_l -> "fcvt.s.l"
+      | Fcvt_lu_d -> "fcvt.lu.d"
+      | Fcvt_d_l -> "fcvt.d.l"
+      | Fcvt_d_lu -> "fcvt.d.lu"
+      | Fcvt_l_s -> "fcvt.l.s"
+      | Fcvt_lu_s -> "fcvt.lu.s"
+      | Fcvt_s_lu -> "fcvt.s.lu"
 
     let all =
       [
@@ -738,21 +808,56 @@ module Make (P : PROFILE) = struct
         Fdiv_s;
         Fneg_d;
         Fneg_s;
+        Fsgnj_s;
+        Fsgnj_d;
+        Fsgnjn_s;
+        Fsgnjn_d;
+        Fsgnjx_s;
+        Fsgnjx_d;
+        Fmin_s;
+        Fmax_s;
+        Fmin_d;
+        Fmax_d;
+        Fsqrt_s;
+        Fsqrt_d;
+        Fclass_s;
+        Fclass_d;
+        Fmadd_s;
+        Fmadd_d;
+        Fmsub_s;
+        Fmsub_d;
+        Fnmsub_s;
+        Fnmsub_d;
+        Fnmadd_s;
+        Fnmadd_d;
         Fmv_d;
         Fmv_x_d;
         Feq_d;
         Fle_d;
         Flt_d;
         Flt_s;
+        Feq_s;
+        Fle_s;
+        Fmv_x_w;
+        Fmv_w_x;
         Fcvt_w_d;
         Fcvt_wu_d;
         Fcvt_l_d;
         Fcvt_d_w;
         Fcvt_d_wu;
         Fcvt_s_w;
+        Fcvt_s_wu;
+        Fcvt_w_s;
+        Fcvt_wu_s;
         Fcvt_s_d;
         Fcvt_d_s;
         Fcvt_s_l;
+        Fcvt_lu_d;
+        Fcvt_d_l;
+        Fcvt_d_lu;
+        Fcvt_l_s;
+        Fcvt_lu_s;
+        Fcvt_s_lu;
       ]
 
     let of_mnemonic s = List.find_opt (fun op -> String.equal (name op) s) all
@@ -810,14 +915,24 @@ module Make (P : PROFILE) = struct
         Some { rd_f = true; rs1_f = true; rs2_f = true; arity = 3; rm = Some 7 }
     | "fneg.d" | "fneg.s" | "fmv.d" ->
         Some { rd_f = true; rs1_f = true; rs2_f = true; arity = 2; rm = None }
-    | "feq.d" | "fle.d" | "flt.d" | "flt.s" ->
+    | "fsgnj.s" | "fsgnj.d" | "fsgnjn.s" | "fsgnjn.d" | "fsgnjx.s" | "fsgnjx.d" | "fmin.s"
+    | "fmax.s" | "fmin.d" | "fmax.d" ->
+        Some { rd_f = true; rs1_f = true; rs2_f = true; arity = 3; rm = None }
+    | "feq.d" | "fle.d" | "flt.d" | "flt.s" | "feq.s" | "fle.s" ->
         Some { rd_f = false; rs1_f = true; rs2_f = true; arity = 3; rm = None }
-    | "fcvt.w.d" | "fcvt.wu.d" | "fcvt.l.d" ->
+    | "fcvt.w.d" | "fcvt.wu.d" | "fcvt.l.d" | "fcvt.lu.d" | "fcvt.w.s" | "fcvt.wu.s" | "fcvt.l.s"
+    | "fcvt.lu.s" ->
         Some { rd_f = false; rs1_f = true; rs2_f = false; arity = 2; rm = Some 7 }
-    | "fmv.x.d" -> Some { rd_f = false; rs1_f = true; rs2_f = false; arity = 2; rm = None }
+    | "fmv.x.d" | "fmv.x.w" ->
+        Some { rd_f = false; rs1_f = true; rs2_f = false; arity = 2; rm = None }
+    | "fmv.w.x" -> Some { rd_f = true; rs1_f = false; rs2_f = false; arity = 2; rm = None }
+    | "fclass.s" | "fclass.d" ->
+        Some { rd_f = false; rs1_f = true; rs2_f = false; arity = 2; rm = None }
+    | "fsqrt.s" | "fsqrt.d" ->
+        Some { rd_f = true; rs1_f = true; rs2_f = false; arity = 2; rm = Some 7 }
     | "fcvt.d.w" | "fcvt.d.wu" ->
         Some { rd_f = true; rs1_f = false; rs2_f = false; arity = 2; rm = Some 0 }
-    | "fcvt.s.w" | "fcvt.s.l" ->
+    | "fcvt.s.w" | "fcvt.s.wu" | "fcvt.s.l" | "fcvt.s.lu" | "fcvt.d.l" | "fcvt.d.lu" ->
         Some { rd_f = true; rs1_f = false; rs2_f = false; arity = 2; rm = Some 7 }
     | "fcvt.s.d" -> Some { rd_f = true; rs1_f = true; rs2_f = false; arity = 2; rm = Some 7 }
     | "fcvt.d.s" -> Some { rd_f = true; rs1_f = true; rs2_f = false; arity = 2; rm = Some 0 }
@@ -862,6 +977,19 @@ module Make (P : PROFILE) = struct
           rs1 : int;
           rs2 : int;
         }
+      | R4 of {
+          name : string;
+          opcode : int;
+          fmt : int;
+          funct3 : int;
+          rd : int;
+          rs1 : int;
+          rs2 : int;
+          rs3 : int;
+        }
+          (** [fmadd]/[fmsub]/[fnmsub]/[fnmadd] - RISC-V's only R4-type instructions,
+              with a fourth real register operand ([rs3]) {!R} has no field for; see
+              {!f_fma_desc}. *)
       | I of {
           name : string;
           opcode : int;
@@ -912,6 +1040,9 @@ module Make (P : PROFILE) = struct
               Fmt.pf ppf "%s %s, %s, %s%s" x.name (reg_name rd_f x.rd) (reg_name rs1_f x.rs1)
                 (reg_name rs2_f x.rs2) (rm_suffix rm x.funct3)
           | None -> Fmt.pf ppf "%s x%d, x%d, x%d" x.name x.rd x.rs1 x.rs2)
+      | R4 x ->
+          Fmt.pf ppf "%s f%d, f%d, f%d, f%d%s" x.name x.rd x.rs1 x.rs2 x.rs3
+            (rm_suffix (Some 7) x.funct3)
       | I x when x.opcode = 0x03 || x.opcode = 0x67 ->
           Fmt.pf ppf "%s x%d, %a(x%d)" x.name x.rd pp_expr x.imm x.rs1
       | I x when x.opcode = 0x07 -> Fmt.pf ppf "%s f%d, %a(x%d)" x.name x.rd pp_expr x.imm x.rs1
@@ -1325,20 +1456,101 @@ module Make (P : PROFILE) = struct
   (* [fneg.d]/[fneg.s]/[fmv.d] - FSGNJN/FSGNJ with [rs2] forced equal to [rs1], real
      hardware's own alias (verified against real riscv64-linux-gnu-as/objdump:
      `fneg.d fs0, fs1` -> `22949453`, decoding back with [rs1] = [rs2] = 9). The
-     general two-different-register [fsgnj]/[fsgnjn]/[fsgnjx] this shares a word with
-     is not evidenced and not implemented. *)
+     general two-different-register [fsgnj]/[fsgnjn]/[fsgnjx] this shares a word
+     with is {!f_sgnj3_desc}. *)
   let f_sgnj_desc = function
     | Opcode.Fneg_s -> Some (1, 0x10)
     | Fneg_d -> Some (1, 0x11)
     | Fmv_d -> Some (0, 0x11)
     | _ -> None
 
-  (* Compares: [rd] is a GPR (the boolean result), [rs1]/[rs2] are FP. *)
+  (* General [fsgnj]/[fsgnjn]/[fsgnjx] with [rs1]/[rs2] distinct real registers
+     (verified against real riscv64-linux-gnu-as/objdump: `fsgnj.s fa0, fa1, fa2` ->
+     `20c58553`, `fsgnjn.d fa0, fa1, fa2` -> `22c59553`). Shares its word with
+     {!f_sgnj_desc}'s [rs1] = [rs2] aliases; the lowering/decode direction each
+     favor the pseudo name only when the registers actually coincide. *)
+  let f_sgnj3_desc = function
+    | Opcode.Fsgnj_s -> Some (0, 0x10)
+    | Fsgnjn_s -> Some (1, 0x10)
+    | Fsgnjx_s -> Some (2, 0x10)
+    | Fsgnj_d -> Some (0, 0x11)
+    | Fsgnjn_d -> Some (1, 0x11)
+    | Fsgnjx_d -> Some (2, 0x11)
+    | _ -> None
+
+  (* [fmin]/[fmax]: like {!f_sgnj3_desc}, funct3 is a real per-mnemonic
+     selector (0 = min, 1 = max), not a rounding mode (verified against real
+     riscv64-linux-gnu-as/objdump: `fmin.s fa0, fa1, fa2` -> `28c58553`,
+     `fmax.d fa0, fa1, fa2` -> `2ac59553`). *)
+  let f_minmax_desc = function
+    | Opcode.Fmin_s -> Some (0, 0x14)
+    | Fmax_s -> Some (1, 0x14)
+    | Fmin_d -> Some (0, 0x15)
+    | Fmax_d -> Some (1, 0x15)
+    | _ -> None
+
+  (* [fsqrt]: one FP source, [rs2] a fixed selector (00000) rather than a real
+     second operand - the same shape as {!f_to_f_desc}'s precision converts,
+     with [funct3] a genuine rounding mode like the arithmetic family
+     (verified against real riscv64-linux-gnu-as/objdump: `fsqrt.s fa0, fa1`
+     -> `5805f553`, `fsqrt.d fa0, fa1` -> `5a05f553`, funct3 = 7 = dyn). *)
+  let f_sqrt_desc = function
+    | Opcode.Fsqrt_s -> Some (7, 0x2c, 0)
+    | Fsqrt_d -> Some (7, 0x2d, 0)
+    | _ -> None
+
+  (* [fclass]: [rd] is a GPR (the classification bitmask), [rs1] is FP,
+     [rs2] a fixed selector (00000); [funct3] = 1 is a fixed per-mnemonic
+     identity bit, not a rounding mode, at the same (funct7, rs2=0) group
+     {!f_to_i_desc}'s [Fmv_x_d] shares with funct3 = 0 - kept in its own
+     table (not {!f_to_i_desc}) so it is never reachable through that
+     table's explicit-rounding-mode-override lowering arm, which real GNU
+     as itself rejects for any fixed-funct3 mnemonic in this group (verified:
+     `fmv.x.d a0, fa1, rtz` -> "illegal operands"; this project's own encoder
+     pre-dates this pass and does not enforce that rejection - a
+     latent gap, not one this slice's own new mnemonics reproduce). Verified
+     against real riscv64-linux-gnu-as/objdump: `fclass.s a0, fa1` ->
+     `e0059553`, `fclass.d a0, fa1` -> `e2059553`. *)
+  let f_class_desc = function
+    | Opcode.Fclass_s -> Some (1, 0x70, 0)
+    | Fclass_d -> Some (1, 0x71, 0)
+    | _ -> None
+
+  (* [fmadd]/[fmsub]/[fnmsub]/[fnmadd]: RISC-V's only R4-type instructions -
+     four real FP register operands ([rd], [rs1], [rs2], [rs3]) rather than
+     three, so unlike every other OP-FP form above this cannot reuse
+     {!Lowered.R}/[word_r]: the top 7 bits of the word split into [rs3] (5
+     bits) and a 2-bit [fmt] selector (00 = S, 01 = D) instead of one fixed
+     [funct7], and each mnemonic gets its own base opcode rather than sharing
+     OP-FP's [0x53] (verified against real riscv64-linux-gnu-as/objdump:
+     `fmadd.s fa0, fa1, fa2, fa3` -> `68c5f543`, `fmsub.d fa0, fa1, fa2, fa3`
+     -> `6ac5f547`, `fnmsub.s ...` -> `68c5f54b`, `fnmadd.d ...` ->
+     `6ac5f54f`; [rs3] = 13 = [fa3] in each case). [funct3] is a genuine
+     rounding mode like the arithmetic family (verified: `fmadd.s fa0, fa1,
+     fa2, fa3, rtz` -> `68c59543`, funct3 = 1); this slice, like
+     {!f_arith_desc}, only claims the bare dynamic-rounding spelling. *)
+  let f_fma_desc = function
+    | Opcode.Fmadd_s -> Some (0x43, 0)
+    | Fmadd_d -> Some (0x43, 1)
+    | Fmsub_s -> Some (0x47, 0)
+    | Fmsub_d -> Some (0x47, 1)
+    | Fnmsub_s -> Some (0x4b, 0)
+    | Fnmsub_d -> Some (0x4b, 1)
+    | Fnmadd_s -> Some (0x4f, 0)
+    | Fnmadd_d -> Some (0x4f, 1)
+    | _ -> None
+
+  (* Compares: [rd] is a GPR (the boolean result), [rs1]/[rs2] are FP. Verified
+     against real riscv64-linux-gnu-as/objdump: `feq.s a0, fa1, fa2` ->
+     `a0c5a553`, `fle.s a0, fa1, fa2` -> `a0c58553` (funct7 = 0x50, matching
+     [flt.s]'s own group). *)
   let f_cmp_desc = function
     | Opcode.Feq_d -> Some (2, 0x51)
     | Fle_d -> Some (0, 0x51)
     | Flt_d -> Some (1, 0x51)
     | Flt_s -> Some (1, 0x50)
+    | Feq_s -> Some (2, 0x50)
+    | Fle_s -> Some (0, 0x50)
     | _ -> None
 
   (* Float-to-integer converts, and [fmv.x.d] (bit-for-bit move, not a conversion) -
@@ -1348,15 +1560,42 @@ module Make (P : PROFILE) = struct
     | Opcode.Fcvt_w_d -> Some (7, 0x61, 0)
     | Fcvt_wu_d -> Some (7, 0x61, 1)
     | Fcvt_l_d -> Some (7, 0x61, 2)
+    | Fcvt_lu_d -> Some (7, 0x61, 3)
+    | Fcvt_w_s -> Some (7, 0x60, 0)
+    | Fcvt_wu_s -> Some (7, 0x60, 1)
+    | Fcvt_l_s -> Some (7, 0x60, 2)
+    | Fcvt_lu_s -> Some (7, 0x60, 3)
     | Fmv_x_d -> Some (0, 0x71, 0)
     | _ -> None
 
-  (* Integer-to-float converts - [rd] is FP, [rs1] is a GPR, [rs2] fixed. *)
+  (* [fmv.x.w]: [fmv.x.d]'s single-precision sibling (bit-for-bit move, not a
+     conversion), at the same (funct7, rs2 = 0) group {!f_class_desc}'s
+     [Fclass_s] shares with funct3 = 1 - kept in its own table (not
+     {!f_to_i_desc}, where [fmv.x.d] itself lives) for the same reason
+     {!f_class_desc} is: so it is never reachable through {!f_to_i_desc}'s
+     explicit-rounding-mode-override lowering arm and its documented latent
+     bug (see {!f_class_desc}'s own comment). Verified against real
+     riscv64-linux-gnu-as/objdump: `fmv.x.w a0, fa1` -> `e0058553` (funct7 =
+     0x70, funct3 = 0, matching [fclass.s]'s own group). *)
+  let f_mv_x_w_desc = function Opcode.Fmv_x_w -> Some (0, 0x70, 0) | _ -> None
+
+  (* Integer-to-float converts - [rd] is FP, [rs1] is a GPR, [rs2] fixed.
+     [fmv.w.x] (bit-for-bit move, not a conversion) shares this shape and has
+     no explicit-rounding-mode-override lowering arm to worry about - only
+     {!f_to_i_desc} has one - so it is safe to add directly here rather than
+     needing its own table the way [fmv.x.w] does. Verified against real
+     riscv64-linux-gnu-as/objdump: `fmv.w.x fa0, a1` -> `f0058553` (funct7 =
+     0x78, a group no other mnemonic in this table shares). *)
   let i_to_f_desc = function
     | Opcode.Fcvt_d_w -> Some (0, 0x69, 0)
     | Fcvt_d_wu -> Some (0, 0x69, 1)
+    | Fcvt_d_l -> Some (7, 0x69, 2)
+    | Fcvt_d_lu -> Some (7, 0x69, 3)
     | Fcvt_s_w -> Some (7, 0x68, 0)
+    | Fcvt_s_wu -> Some (7, 0x68, 1)
     | Fcvt_s_l -> Some (7, 0x68, 2)
+    | Fcvt_s_lu -> Some (7, 0x68, 3)
+    | Fmv_w_x -> Some (0, 0x78, 0)
     | _ -> None
 
   (* Float-to-float precision converts - [rd]/[rs1] both FP, [rs2] fixed (the source
@@ -1420,7 +1659,10 @@ module Make (P : PROFILE) = struct
         match (xreg a, expr_of imm) with
         | Some rd, Some imm when rd <> 0 -> Ok [ Lowered.Caddi { rd; imm } ]
         | _ -> wrong opn)
-    | (Opcode.Fcvt_l_d | Fmv_x_d | Fcvt_s_l), _ when xlen <> 64 ->
+    | ( ( Opcode.Fcvt_l_d | Fmv_x_d | Fcvt_s_l | Fcvt_lu_d | Fcvt_d_l | Fcvt_d_lu | Fcvt_l_s
+        | Fcvt_lu_s | Fcvt_s_lu ),
+        _ )
+      when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
     | ( ( Opcode.Amoswap_d | Amoadd_d | Amoxor_d | Amoand_d | Amoor_d | Amomin_d | Amomax_d
         | Amominu_d | Amomaxu_d | Lr_d | Sc_d ),
@@ -1825,10 +2067,40 @@ module Make (P : PROFILE) = struct
         | Some rd, Some rs1, Some rs2, Some (funct3, funct7) ->
             Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
         | _ -> wrong opn)
+    | op, [ a; b; c ] when Option.is_some (f_sgnj3_desc op) -> (
+        match (freg a, freg b, freg c, f_sgnj3_desc op) with
+        | Some rd, Some rs1, Some rs2, Some (funct3, funct7) ->
+            Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ a; b; c ] when Option.is_some (f_minmax_desc op) -> (
+        match (freg a, freg b, freg c, f_minmax_desc op) with
+        | Some rd, Some rs1, Some rs2, Some (funct3, funct7) ->
+            Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
     | op, [ a; b ] when Option.is_some (f_sgnj_desc op) -> (
         match (freg a, freg b, f_sgnj_desc op) with
         | Some rd, Some rs1, Some (funct3, funct7) ->
             Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 = rs1 } ]
+        | _ -> wrong opn)
+    | op, [ a; b ] when Option.is_some (f_sqrt_desc op) -> (
+        match (freg a, freg b, f_sqrt_desc op) with
+        | Some rd, Some rs1, Some (funct3, funct7, rs2) ->
+            Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ a; b ] when Option.is_some (f_class_desc op) -> (
+        match (xreg a, freg b, f_class_desc op) with
+        | Some rd, Some rs1, Some (funct3, funct7, rs2) ->
+            Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ a; b ] when Option.is_some (f_mv_x_w_desc op) -> (
+        match (xreg a, freg b, f_mv_x_w_desc op) with
+        | Some rd, Some rs1, Some (funct3, funct7, rs2) ->
+            Ok [ Lowered.R { name = opn; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ a; b; c; d ] when Option.is_some (f_fma_desc op) -> (
+        match (freg a, freg b, freg c, freg d, f_fma_desc op) with
+        | Some rd, Some rs1, Some rs2, Some rs3, Some (opcode, fmt) ->
+            Ok [ Lowered.R4 { name = opn; opcode; fmt; funct3 = 7; rd; rs1; rs2; rs3 } ]
         | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (f_cmp_desc op) -> (
         match (xreg a, freg b, freg c, f_cmp_desc op) with
@@ -2197,6 +2469,18 @@ module Make (P : PROFILE) = struct
                (field 15 5 (Int64.of_int rs1))
                (Int64.logor (field 20 5 (Int64.of_int rs2)) (field 25 7 (Int64.of_int funct7))))))
 
+  let word_r4 ~opcode ~fmt ~funct3 ~rd ~rs1 ~rs2 ~rs3 =
+    Int64.logor (Int64.of_int opcode)
+      (Int64.logor
+         (field 7 5 (Int64.of_int rd))
+         (Int64.logor
+            (field 12 3 (Int64.of_int funct3))
+            (Int64.logor
+               (field 15 5 (Int64.of_int rs1))
+               (Int64.logor
+                  (field 20 5 (Int64.of_int rs2))
+                  (Int64.logor (field 25 2 (Int64.of_int fmt)) (field 27 5 (Int64.of_int rs3)))))))
+
   let word_i ~opcode ~funct3 ~rd ~rs1 imm =
     Int64.logor (Int64.of_int opcode)
       (Int64.logor
@@ -2322,6 +2606,11 @@ module Make (P : PROFILE) = struct
     | Lowered.R x ->
         fixed
           (word_r ~opcode:x.opcode ~funct3:x.funct3 ~funct7:x.funct7 ~rd:x.rd ~rs1:x.rs1 ~rs2:x.rs2)
+          x.name
+    | Lowered.R4 x ->
+        fixed
+          (word_r4 ~opcode:x.opcode ~fmt:x.fmt ~funct3:x.funct3 ~rd:x.rd ~rs1:x.rs1 ~rs2:x.rs2
+             ~rs3:x.rs3)
           x.name
     | I x -> (
         match int64_expr x.imm with
@@ -2557,10 +2846,9 @@ module Make (P : PROFILE) = struct
      mnemonics also need [rs2] to disambiguate (a convert or move fixes its second
      "operand" to a selector rather than reading a real register - see
      {!f_shape_of_name}, which is what actually decides whether [rs2] is printed at
-     all). [fneg.d]/[fneg.s]/[fmv.d] are real hardware's [fsgnjn]/[fsgnj] with [rs1] =
-     [rs2] - this table alone cannot tell that apart from the general two-different-
-     operand form (unimplemented, unevidenced), so the caller checks [rs1 = rs2]
-     before accepting one of these three names. *)
+     all). This always resolves the sign-injection group to its general
+     [fsgnj]/[fsgnjn]/[fsgnjx] name; the caller downgrades to the [fneg.d]/[fneg.s]/
+     [fmv.d] pseudo names when [rs1 = rs2], matching real hardware's own alias. *)
   let f_r_name f3 f7 rs2 =
     (* The arithmetic and convert families' [f3] is a rounding mode, not part of a
        mnemonic's own identity (an explicit non-default one is a real, separate operand -
@@ -2579,26 +2867,64 @@ module Make (P : PROFILE) = struct
     | 0x61, 0 -> Some "fcvt.w.d"
     | 0x61, 1 -> Some "fcvt.wu.d"
     | 0x61, 2 -> Some "fcvt.l.d"
+    | 0x61, 3 -> Some "fcvt.lu.d"
     | 0x69, 0 -> Some "fcvt.d.w"
     | 0x69, 1 -> Some "fcvt.d.wu"
+    | 0x69, 2 -> Some "fcvt.d.l"
+    | 0x69, 3 -> Some "fcvt.d.lu"
     | 0x68, 0 -> Some "fcvt.s.w"
+    | 0x68, 1 -> Some "fcvt.s.wu"
     | 0x68, 2 -> Some "fcvt.s.l"
+    | 0x68, 3 -> Some "fcvt.s.lu"
+    | 0x60, 0 -> Some "fcvt.w.s"
+    | 0x60, 1 -> Some "fcvt.wu.s"
+    | 0x60, 2 -> Some "fcvt.l.s"
+    | 0x60, 3 -> Some "fcvt.lu.s"
+    | 0x78, 0 -> Some "fmv.w.x"
     | 0x20, 1 -> Some "fcvt.s.d"
     | 0x21, 0 -> Some "fcvt.d.s"
+    | 0x2c, _ -> Some "fsqrt.s"
+    | 0x2d, _ -> Some "fsqrt.d"
     | _ -> (
         match (f3, f7, rs2) with
-        | 1, 0x10, _ -> Some "fneg.s"
-        | 1, 0x11, _ -> Some "fneg.d"
-        | 0, 0x11, _ -> Some "fmv.d"
+        | 0, 0x10, _ -> Some "fsgnj.s"
+        | 1, 0x10, _ -> Some "fsgnjn.s"
+        | 2, 0x10, _ -> Some "fsgnjx.s"
+        | 0, 0x11, _ -> Some "fsgnj.d"
+        | 1, 0x11, _ -> Some "fsgnjn.d"
+        | 2, 0x11, _ -> Some "fsgnjx.d"
+        | 0, 0x14, _ -> Some "fmin.s"
+        | 1, 0x14, _ -> Some "fmax.s"
+        | 0, 0x15, _ -> Some "fmin.d"
+        | 1, 0x15, _ -> Some "fmax.d"
         | 0, 0x51, _ -> Some "fle.d"
         | 2, 0x51, _ -> Some "feq.d"
         | 1, 0x51, _ -> Some "flt.d"
         | 1, 0x50, _ -> Some "flt.s"
+        | 2, 0x50, _ -> Some "feq.s"
+        | 0, 0x50, _ -> Some "fle.s"
         | 0, 0x71, 0 -> Some "fmv.x.d"
+        | 0, 0x70, 0 -> Some "fmv.x.w"
+        | 1, 0x70, 0 -> Some "fclass.s"
+        | 1, 0x71, 0 -> Some "fclass.d"
         | _ -> None)
 
   let f_load_name = function 2 -> Some "flw" | 3 -> Some "fld" | _ -> None
   let f_store_name = function 2 -> Some "fsw" | 3 -> Some "fsd" | _ -> None
+
+  (* [fmadd]/[fmsub]/[fnmsub]/[fnmadd] - R4-type, its own base opcode per
+     mnemonic rather than OP-FP's shared [0x53]; see {!f_fma_desc}. *)
+  let f_r4_name opcode fmt =
+    match (opcode, fmt) with
+    | 0x43, 0 -> Some "fmadd.s"
+    | 0x43, 1 -> Some "fmadd.d"
+    | 0x47, 0 -> Some "fmsub.s"
+    | 0x47, 1 -> Some "fmsub.d"
+    | 0x4b, 0 -> Some "fnmsub.s"
+    | 0x4b, 1 -> Some "fnmsub.d"
+    | 0x4f, 0 -> Some "fnmadd.s"
+    | 0x4f, 1 -> Some "fnmadd.d"
+    | _ -> None
 
   type decode_context = { state : target_state; address : int64 }
 
@@ -2726,8 +3052,9 @@ module Make (P : PROFILE) = struct
             | 0x53 -> (
                 let n =
                   match f_r_name f3 f7 rs2 with
-                  | Some (("fneg.s" | "fneg.d" | "fmv.d") as n) when rs1 = rs2 -> Some n
-                  | Some ("fneg.s" | "fneg.d" | "fmv.d") -> None
+                  | Some "fsgnjn.s" when rs1 = rs2 -> Some "fneg.s"
+                  | Some "fsgnjn.d" when rs1 = rs2 -> Some "fneg.d"
+                  | Some "fsgnj.d" when rs1 = rs2 -> Some "fmv.d"
                   | other -> other
                 in
                 match n with
@@ -2754,6 +3081,15 @@ module Make (P : PROFILE) = struct
                           | Some _ | None -> base
                         in
                         Some (instruction (op_exn n) ops, n)))
+            | 0x43 | 0x47 | 0x4b | 0x4f ->
+                let rs3 = Int64.to_int (bits w 27 5) in
+                let fmt = Int64.to_int (bits w 25 2) in
+                Option.map
+                  (fun n ->
+                    ( instruction (op_exn n)
+                        [ f_operand rd; f_operand rs1; f_operand rs2; f_operand rs3 ],
+                      n ))
+                  (f_r4_name opc fmt)
             | 0x63 ->
                 let n =
                   match f3 with

@@ -39,6 +39,16 @@ let test_riscv_mismatch () =
   check "sub's bytes do not match add's mask/value"
     (is_err (Isa_gen_oracle.observed_form_check add_encoding "\x33\x85\xc5\x40"))
 
+let unimp_encoding : Isa_norm_model.encoding =
+  Riscv_encoding { width_bits = 32; mask = "0xffffffff"; value = "0xc0001073" }
+
+let test_riscv_full_width_word () =
+  (* Both values exceed a 31-bit OCaml [int].  This is the regression case for
+     i386 and armv7 hosts, whose earlier host-[int] implementation raised
+     [Failure("int_of_string")]. *)
+  check "a full-width RISC-V encoding is checked without host-int overflow"
+    (is_ok (Isa_gen_oracle.observed_form_check unimp_encoding "\x73\x10\x00\xc0"))
+
 let add_gprv_gprv_01 : Isa_norm_model.encoding =
   X86_encoding { space = "legacy"; opcode_map = 0; opcode = "0x01"; pattern = "" }
 
@@ -90,6 +100,7 @@ let () =
   test_riscv_match ();
   test_riscv_wrong_length ();
   test_riscv_mismatch ();
+  test_riscv_full_width_word ();
   test_x86_match ();
   test_x86_mismatch ();
   test_x86_empty_bytes ();

@@ -185,8 +185,8 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:188;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:232;
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:232;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:284;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:9;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:9
 
@@ -276,11 +276,43 @@ let test_isa_family_admission repo =
      are the first family here outside Zb/Zk - each a single, non-import-
      duplicated rv_zicsr record, XLEN-independent, so this slice moves 6
      records on EACH profile (6 mnemonics x 1 record, not x2/x3 the way
-     every import-duplicated slice above did). *)
+     every import-duplicated slice above did). fsgnj.s/fsgnjn.s/fsgnjx.s/
+     fsgnj.d/fsgnjn.d/fsgnjx.d are likewise each a single, non-import-
+     duplicated rv_f/rv_d record (rv_zfh's .h and rv_q's .q siblings are
+     separate native_names, not import duplicates of these), so this slice
+     also moves 6 records on EACH profile. fmin.s/fmax.s/fmin.d/fmax.d are
+     likewise each a single, non-import-duplicated rv_f/rv_d record, so
+     this slice moves 4 records on EACH profile. fsqrt.s/fsqrt.d/fclass.s/
+     fclass.d are likewise each a single, non-import-duplicated rv_f/rv_d
+     record, so this slice moves 4 records on EACH profile. fmadd.s/fmsub.s/
+     fnmsub.s/fnmadd.s/fmadd.d/fmsub.d/fnmsub.d/fnmadd.d are likewise each a
+     single, non-import-duplicated rv_f/rv_d record, so this slice moves 8
+     records on EACH profile. feq.s/fle.s/flt.s/feq.d/fle.d/flt.d are
+     likewise each a single, non-import-duplicated rv_f/rv_d record, so this
+     slice moves 6 records on EACH profile. fmv.x.w/fmv.w.x are likewise
+     each a single, non-import-duplicated rv_f record (XLEN-independent, no
+     rv_d sibling - the "w"/"s" name refers to single precision, not RV32),
+     so this slice moves 2 records on EACH profile. fcvt.w.s/fcvt.wu.s/
+     fcvt.s.w/fcvt.s.wu are likewise each a single, non-import-duplicated
+     rv_f record (XLEN-independent, no rv_d sibling), so this slice moves 4
+     records on EACH profile - straight from blocked (they never normalized
+     at all before this commit) to promoted-support, leaving
+     normalized_only unchanged. fcvt.w.d/fcvt.wu.d/fcvt.d.w/fcvt.d.wu/
+     fcvt.s.d/fcvt.d.s are likewise each a single, non-import-duplicated
+     rv_d record (XLEN-independent - the D extension has no RV32/RV64
+     split), so this slice moves 6 records on EACH profile, the same way
+     straight from blocked to promoted-support (these six already had
+     encoder support from an earlier pass, but had never been wired into
+     normalization/admission at all before this commit). fcvt.l.d/fcvt.lu.d/
+     fcvt.d.l/fcvt.d.lu/fcvt.l.s/fcvt.lu.s/fcvt.s.l/fcvt.s.lu are RV64-only
+     (rv64_d/rv64_f, no RV32 counterpart at all - riscv32.jsonl does not
+     even contain these 8 records), so this slice moves 8 records on RV64
+     ONLY, straight from blocked to promoted-support; RV32's own counts are
+     unaffected. *)
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
-    ~promoted_support:168 ~blocked:901;
+    ~promoted_support:212 ~blocked:857;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
-    ~promoted_support:202 ~blocked:922;
+    ~promoted_support:254 ~blocked:870;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0 ~gas_generatable:5
     ~promoted_support:4 ~blocked:7878;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
@@ -338,9 +370,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 438)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 534)"
        !roundtrip_count)
-    (!roundtrip_count = 438)
+    (!roundtrip_count = 534)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's

@@ -928,6 +928,60 @@ let test_lr_w () =
        (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "lr.w-aq-rl-not-modeled")
        form.diagnostics)
 
+(* flw: F's floating-point load, verbatim-extracted from the checked-in
+   riscv32.jsonl - representative of {!f_load_form} (fld shares the
+   identical shape, only the requirement/width differ). *)
+let flw_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "imm12", "width": 12}], "kind": "fixed_bits", "mask": "0x707f", "value": "0x2007", "width_bits": 32}, "kind": "instruction-form", "native_name": "flw", "origin": {"line": 1, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "imm12"], "raw": {"line": "flw       rd rs1 imm12 14..12=2 6..2=0x01 1..0=3", "tokens": ["flw", "rd", "rs1", "imm12", "14..12=2", "6..2=0x01", "1..0=3"]}, "upstream-resolved": {"mask": "0x707f", "match": "0x2007", "variable_fields": ["rd", "rs1", "imm12"]}}, "record_id": "riscv-opcodes:rv_f:flw@L1", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_flw () =
+  let rec_ = decode_or_fail "flw" flw_json in
+  let form = normalize_or_fail "flw" rec_ in
+  check "flw: requirement is the F feature" (form.requirement = Isa_norm_model.Req_feature "riscv:f");
+  check "flw: value is a floating-point register, base a GPR, offset a 12-bit signed immediate"
+    (match form.operands with
+    | [
+     { op_name = "value"; op_kind = Register { class_ = Riscv_fpr; excluded = [] }; role = Out; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+     {
+       op_name = "offset";
+       op_kind = Immediate { width_bits = 12; signed = true; runs = [ _ ]; _ };
+       _;
+     };
+    ] ->
+        true
+    | _ -> false);
+  check "flw: renders as value, offset(base)"
+    (Isa_norm_model.render_syntax form.syntax = "flw value, offset(base)")
+
+(* fsw: F's floating-point store, verbatim-extracted from the checked-in
+   riscv32.jsonl - representative of {!f_store_form} (fsd shares the
+   identical shape). *)
+let fsw_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 25, "name": "imm12hi", "width": 7}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 7, "name": "imm12lo", "width": 5}], "kind": "fixed_bits", "mask": "0x707f", "value": "0x2027", "width_bits": 32}, "kind": "instruction-form", "native_name": "fsw", "origin": {"line": 2, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["imm12hi", "rs1", "rs2", "imm12lo"], "raw": {"line": "fsw       imm12hi rs1 rs2 imm12lo 14..12=2 6..2=0x09 1..0=3", "tokens": ["fsw", "imm12hi", "rs1", "rs2", "imm12lo", "14..12=2", "6..2=0x09", "1..0=3"]}, "upstream-resolved": {"mask": "0x707f", "match": "0x2027", "variable_fields": ["imm12hi", "rs1", "rs2", "imm12lo"]}}, "record_id": "riscv-opcodes:rv_f:fsw@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_fsw () =
+  let rec_ = decode_or_fail "fsw" fsw_json in
+  let form = normalize_or_fail "fsw" rec_ in
+  check "fsw: requirement is the F feature" (form.requirement = Isa_norm_model.Req_feature "riscv:f");
+  check
+    "fsw: value is a floating-point register, base a GPR, offset a 12-bit signed split immediate"
+    (match form.operands with
+    | [
+     { op_name = "value"; op_kind = Register { class_ = Riscv_fpr; excluded = [] }; role = In; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+     {
+       op_name = "offset";
+       op_kind = Immediate { width_bits = 12; signed = true; runs = [ hi; lo ]; _ };
+       _;
+     };
+    ] ->
+        hi.field_name = "imm12hi" && hi.dest_hi = 11 && hi.dest_lo = 5 && lo.field_name = "imm12lo"
+        && lo.dest_hi = 4 && lo.dest_lo = 0
+    | _ -> false);
+  check "fsw: renders as value, offset(base)"
+    (Isa_norm_model.render_syntax form.syntax = "fsw value, offset(base)")
+
 (* pack/packh: the same Req_any R-type shape, but a four-way zbkb-only group
    (rv_zbkb/rv_zk/rv_zkn/rv_zks - no rv_zbb primary the way andn/orn/xnor/
    rol/ror have). *)
@@ -1366,6 +1420,565 @@ let test_other_f_arith_s () =
         (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1, rs2"))
     [ "fsub.s"; "fmul.s"; "fdiv.s"; "fadd.d"; "fsub.d"; "fmul.d"; "fdiv.d" ]
 
+(* fsgnj.s/fsgnjn.s/fsgnjx.s/fsgnj.d/fsgnjn.d/fsgnjx.d: the general
+   three-distinct-FP-register sign-injection form, verbatim-extracted from the
+   checked-in riscv32.jsonl. Unlike {!test_fadd_s}, no rm operand is modeled
+   (funct3 here is a fixed per-mnemonic selector, not a rounding mode). *)
+let fsgnj_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x20000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fsgnj.s", "origin": {"line": 12, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "fsgnj.s   rd rs1 rs2      31..27=0x04 14..12=0 26..25=0 6..2=0x14 1..0=3", "tokens": ["fsgnj.s", "rd", "rs1", "rs2", "31..27=0x04", "14..12=0", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x20000053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_f:fsgnj.s@L12", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fsgnjn_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x20001053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fsgnjn.s", "origin": {"line": 13, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "fsgnjn.s  rd rs1 rs2      31..27=0x04 14..12=1 26..25=0 6..2=0x14 1..0=3", "tokens": ["fsgnjn.s", "rd", "rs1", "rs2", "31..27=0x04", "14..12=1", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x20001053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_f:fsgnjn.s@L13", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fsgnjx_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x20002053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fsgnjx.s", "origin": {"line": 14, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "fsgnjx.s  rd rs1 rs2      31..27=0x04 14..12=2 26..25=0 6..2=0x14 1..0=3", "tokens": ["fsgnjx.s", "rd", "rs1", "rs2", "31..27=0x04", "14..12=2", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x20002053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_f:fsgnjx.s@L14", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fsgnj_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x22000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fsgnj.d", "origin": {"line": 12, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "fsgnj.d   rd rs1 rs2      31..27=0x04 14..12=0 26..25=1 6..2=0x14 1..0=3", "tokens": ["fsgnj.d", "rd", "rs1", "rs2", "31..27=0x04", "14..12=0", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x22000053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_d:fsgnj.d@L12", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fsgnjn_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x22001053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fsgnjn.d", "origin": {"line": 13, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "fsgnjn.d  rd rs1 rs2      31..27=0x04 14..12=1 26..25=1 6..2=0x14 1..0=3", "tokens": ["fsgnjn.d", "rd", "rs1", "rs2", "31..27=0x04", "14..12=1", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x22001053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_d:fsgnjn.d@L13", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fsgnjx_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x22002053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fsgnjx.d", "origin": {"line": 14, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "fsgnjx.d  rd rs1 rs2      31..27=0x04 14..12=2 26..25=1 6..2=0x14 1..0=3", "tokens": ["fsgnjx.d", "rd", "rs1", "rs2", "31..27=0x04", "14..12=2", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x22002053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_d:fsgnjx.d@L14", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_fsgnj () =
+  List.iter
+    (fun (mnemonic, json) ->
+      let rec_ = decode_or_fail mnemonic json in
+      let form = normalize_or_fail mnemonic rec_ in
+      let expected_feature =
+        if String.ends_with ~suffix:".d" mnemonic then "riscv:d" else "riscv:f"
+      in
+      check
+        (mnemonic ^ ": requirement is the expected F/D feature")
+        (form.requirement = Isa_norm_model.Req_feature expected_feature);
+      check
+        (mnemonic ^ ": rd/rs1/rs2 are floating registers, no rm operand")
+        (match form.operands with
+        | [
+         { op_name = "rd"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+         { op_name = "rs1"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+         { op_name = "rs2"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+        ] ->
+            true
+        | _ -> false);
+      check
+        (mnemonic ^ ": renders as rd, rs1, rs2")
+        (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1, rs2"))
+    [
+      ("fsgnj.s", fsgnj_s_json);
+      ("fsgnjn.s", fsgnjn_s_json);
+      ("fsgnjx.s", fsgnjx_s_json);
+      ("fsgnj.d", fsgnj_d_json);
+      ("fsgnjn.d", fsgnjn_d_json);
+      ("fsgnjx.d", fsgnjx_d_json);
+    ]
+
+(* fmin.s/fmax.s/fmin.d/fmax.d: the same three-FP-register, no-rm shape as
+   {!test_fsgnj}, verbatim-extracted from the checked-in riscv32.jsonl. *)
+let fmin_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x28000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fmin.s", "origin": {"line": 15, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "fmin.s    rd rs1 rs2      31..27=0x05 14..12=0 26..25=0 6..2=0x14 1..0=3", "tokens": ["fmin.s", "rd", "rs1", "rs2", "31..27=0x05", "14..12=0", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x28000053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_f:fmin.s@L15", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fmax_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x28001053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fmax.s", "origin": {"line": 16, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "fmax.s    rd rs1 rs2      31..27=0x05 14..12=1 26..25=0 6..2=0x14 1..0=3", "tokens": ["fmax.s", "rd", "rs1", "rs2", "31..27=0x05", "14..12=1", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x28001053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_f:fmax.s@L16", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fmin_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x2a000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fmin.d", "origin": {"line": 15, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "fmin.d    rd rs1 rs2      31..27=0x05 14..12=0 26..25=1 6..2=0x14 1..0=3", "tokens": ["fmin.d", "rd", "rs1", "rs2", "31..27=0x05", "14..12=0", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x2a000053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_d:fmin.d@L15", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fmax_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x2a001053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fmax.d", "origin": {"line": 16, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "fmax.d    rd rs1 rs2      31..27=0x05 14..12=1 26..25=1 6..2=0x14 1..0=3", "tokens": ["fmax.d", "rd", "rs1", "rs2", "31..27=0x05", "14..12=1", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x2a001053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_d:fmax.d@L16", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_fminmax () =
+  List.iter
+    (fun (mnemonic, json) ->
+      let rec_ = decode_or_fail mnemonic json in
+      let form = normalize_or_fail mnemonic rec_ in
+      let expected_feature =
+        if String.ends_with ~suffix:".d" mnemonic then "riscv:d" else "riscv:f"
+      in
+      check
+        (mnemonic ^ ": requirement is the expected F/D feature")
+        (form.requirement = Isa_norm_model.Req_feature expected_feature);
+      check
+        (mnemonic ^ ": rd/rs1/rs2 are floating registers, no rm operand")
+        (match form.operands with
+        | [
+         { op_name = "rd"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+         { op_name = "rs1"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+         { op_name = "rs2"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+        ] ->
+            true
+        | _ -> false);
+      check
+        (mnemonic ^ ": renders as rd, rs1, rs2")
+        (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1, rs2"))
+    [
+      ("fmin.s", fmin_s_json);
+      ("fmax.s", fmax_s_json);
+      ("fmin.d", fmin_d_json);
+      ("fmax.d", fmax_d_json);
+    ]
+
+(* fsqrt.s/fsqrt.d: {!test_fadd_s}'s own shape minus rs2, verbatim-extracted
+   from the checked-in riscv32.jsonl. *)
+let fsqrt_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0x58000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fsqrt.s", "origin": {"line": 11, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fsqrt.s   rd rs1 24..20=0 31..27=0x0B rm       26..25=0 6..2=0x14 1..0=3", "tokens": ["fsqrt.s", "rd", "rs1", "24..20=0", "31..27=0x0B", "rm", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0x58000053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv_f:fsqrt.s@L11", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fsqrt_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0x5a000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fsqrt.d", "origin": {"line": 11, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fsqrt.d   rd rs1 24..20=0 31..27=0x0B rm       26..25=1 6..2=0x14 1..0=3", "tokens": ["fsqrt.d", "rd", "rs1", "24..20=0", "31..27=0x0B", "rm", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0x5a000053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv_d:fsqrt.d@L11", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_fsqrt () =
+  List.iter
+    (fun (mnemonic, json) ->
+      let rec_ = decode_or_fail mnemonic json in
+      let form = normalize_or_fail mnemonic rec_ in
+      let expected_feature =
+        if String.ends_with ~suffix:".d" mnemonic then "riscv:d" else "riscv:f"
+      in
+      check
+        (mnemonic ^ ": requirement is the expected F/D feature")
+        (form.requirement = Isa_norm_model.Req_feature expected_feature);
+      check
+        (mnemonic ^ ": rd/rs1 are floating registers, rm is present but implicit")
+        (match form.operands with
+        | [
+         { op_name = "rd"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+         { op_name = "rs1"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+         { op_name = "rm"; op_kind = Rounding_mode; explicit = false; _ };
+        ] ->
+            true
+        | _ -> false);
+      check
+        (mnemonic ^ ": renders as rd, rs1")
+        (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1"))
+    [ ("fsqrt.s", fsqrt_s_json); ("fsqrt.d", fsqrt_d_json) ]
+
+(* fclass.s/fclass.d: [rd] is a GPR, [rs1] is FP, no [rm], verbatim-extracted
+   from the checked-in riscv32.jsonl. *)
+let fclass_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0xe0001053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fclass.s", "origin": {"line": 23, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1"], "raw": {"line": "fclass.s  rd rs1 24..20=0 31..27=0x1C 14..12=1 26..25=0 6..2=0x14 1..0=3", "tokens": ["fclass.s", "rd", "rs1", "24..20=0", "31..27=0x1C", "14..12=1", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0xe0001053", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv_f:fclass.s@L23", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fclass_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0xe2001053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fclass.d", "origin": {"line": 22, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1"], "raw": {"line": "fclass.d  rd rs1 24..20=0 31..27=0x1C 14..12=1 26..25=1 6..2=0x14 1..0=3", "tokens": ["fclass.d", "rd", "rs1", "24..20=0", "31..27=0x1C", "14..12=1", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0xe2001053", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv_d:fclass.d@L22", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_fclass () =
+  List.iter
+    (fun (mnemonic, json) ->
+      let rec_ = decode_or_fail mnemonic json in
+      let form = normalize_or_fail mnemonic rec_ in
+      let expected_feature =
+        if String.ends_with ~suffix:".d" mnemonic then "riscv:d" else "riscv:f"
+      in
+      check
+        (mnemonic ^ ": requirement is the expected F/D feature")
+        (form.requirement = Isa_norm_model.Req_feature expected_feature);
+      check
+        (mnemonic ^ ": rd is a GPR, rs1 is a floating register")
+        (match form.operands with
+        | [
+         { op_name = "rd"; op_kind = Register { class_ = Riscv_gpr; _ }; _ };
+         { op_name = "rs1"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+        ] ->
+            true
+        | _ -> false);
+      check
+        (mnemonic ^ ": renders as rd, rs1")
+        (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1"))
+    [ ("fclass.s", fclass_s_json); ("fclass.d", fclass_d_json) ]
+
+(* fmadd.s/fmsub.s/fnmsub.s/fnmadd.s/fmadd.d/fmsub.d/fnmsub.d/fnmadd.d:
+   RISC-V's only R4-type mnemonics - {!f_sqrt_form}'s implicit-dynamic-
+   rounding shape with two more distinct FP register operands ([rs2],
+   [rs3]), verbatim-extracted from the checked-in riscv32.jsonl. *)
+let fmadd_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 27, "name": "rs3", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0x600007f","value": "0x43", "width_bits": 32}, "kind": "instruction-form", "native_name": "fmadd.s", "origin": {"line": 3, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd","rs1", "rs2", "rs3", "rm"], "raw": {"line": "fmadd.s   rd rs1 rs2 rs3 rm 26..25=0 6..2=0x10 1..0=3", "tokens": ["fmadd.s", "rd", "rs1", "rs2", "rs3", "rm", "26..25=0", "6..2=0x10", "1..0=3"]}, "upstream-resolved": {"mask": "0x600007f", "match": "0x43", "variable_fields": ["rd", "rs1", "rs2", "rs3", "rm"]}}, "record_id":"riscv-opcodes:rv_f:fmadd.s@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fmsub_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 27, "name": "rs3", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0x600007f","value": "0x47", "width_bits": 32}, "kind": "instruction-form", "native_name": "fmsub.s", "origin": {"line": 4, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd","rs1", "rs2", "rs3", "rm"], "raw": {"line": "fmsub.s   rd rs1 rs2 rs3 rm 26..25=0 6..2=0x11 1..0=3", "tokens": ["fmsub.s", "rd", "rs1", "rs2", "rs3", "rm", "26..25=0", "6..2=0x11", "1..0=3"]}, "upstream-resolved": {"mask": "0x600007f", "match": "0x47", "variable_fields": ["rd", "rs1", "rs2", "rs3", "rm"]}}, "record_id":"riscv-opcodes:rv_f:fmsub.s@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fnmsub_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 27, "name": "rs3", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0x600007f","value": "0x4b", "width_bits": 32}, "kind": "instruction-form", "native_name": "fnmsub.s", "origin": {"line": 5, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rs2", "rs3", "rm"], "raw": {"line": "fnmsub.s  rd rs1rs2 rs3 rm 26..25=0 6..2=0x12 1..0=3", "tokens": ["fnmsub.s", "rd", "rs1", "rs2", "rs3", "rm", "26..25=0", "6..2=0x12", "1..0=3"]}, "upstream-resolved": {"mask": "0x600007f", "match": "0x4b", "variable_fields": ["rd", "rs1", "rs2", "rs3", "rm"]}}, "record_id": "riscv-opcodes:rv_f:fnmsub.s@L5", "relationships": [], "snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fnmadd_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 27, "name": "rs3", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0x600007f","value": "0x4f", "width_bits": 32}, "kind": "instruction-form", "native_name": "fnmadd.s", "origin": {"line": 6, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rs2", "rs3", "rm"], "raw": {"line": "fnmadd.s  rd rs1rs2 rs3 rm 26..25=0 6..2=0x13 1..0=3", "tokens": ["fnmadd.s", "rd", "rs1", "rs2", "rs3", "rm", "26..25=0", "6..2=0x13", "1..0=3"]}, "upstream-resolved": {"mask": "0x600007f", "match": "0x4f", "variable_fields": ["rd", "rs1", "rs2", "rs3", "rm"]}}, "record_id": "riscv-opcodes:rv_f:fnmadd.s@L6", "relationships": [], "snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fmadd_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 27, "name": "rs3", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0x600007f","value": "0x2000043", "width_bits": 32}, "kind": "instruction-form", "native_name": "fmadd.d", "origin": {"line": 3, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rs2", "rs3", "rm"], "raw": {"line": "fmadd.d   rd rs1 rs2 rs3 rm 26..25=1 6..2=0x10 1..0=3", "tokens": ["fmadd.d", "rd", "rs1", "rs2", "rs3", "rm", "26..25=1", "6..2=0x10", "1..0=3"]}, "upstream-resolved": {"mask": "0x600007f", "match": "0x2000043", "variable_fields": ["rd", "rs1", "rs2", "rs3", "rm"]}}, "record_id": "riscv-opcodes:rv_d:fmadd.d@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fmsub_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 27, "name": "rs3", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0x600007f","value": "0x2000047", "width_bits": 32}, "kind": "instruction-form", "native_name": "fmsub.d", "origin": {"line": 4, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rs2", "rs3", "rm"], "raw": {"line": "fmsub.d   rd rs1 rs2 rs3 rm 26..25=1 6..2=0x11 1..0=3", "tokens": ["fmsub.d", "rd", "rs1", "rs2", "rs3", "rm", "26..25=1", "6..2=0x11", "1..0=3"]}, "upstream-resolved": {"mask": "0x600007f", "match": "0x2000047", "variable_fields": ["rd", "rs1", "rs2", "rs3", "rm"]}}, "record_id": "riscv-opcodes:rv_d:fmsub.d@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fnmsub_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 27, "name": "rs3", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0x600007f","value": "0x200004b", "width_bits": 32}, "kind": "instruction-form", "native_name": "fnmsub.d", "origin": {"line": 5, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rs2", "rs3", "rm"], "raw": {"line": "fnmsub.d  rdrs1 rs2 rs3 rm 26..25=1 6..2=0x12 1..0=3", "tokens": ["fnmsub.d", "rd", "rs1", "rs2", "rs3", "rm", "26..25=1", "6..2=0x12", "1..0=3"]}, "upstream-resolved": {"mask": "0x600007f", "match": "0x200004b", "variable_fields": ["rd", "rs1", "rs2", "rs3", "rm"]}}, "record_id": "riscv-opcodes:rv_d:fnmsub.d@L5", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fnmadd_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 27, "name": "rs3", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0x600007f","value": "0x200004f", "width_bits": 32}, "kind": "instruction-form", "native_name": "fnmadd.d", "origin": {"line": 6, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rs2", "rs3", "rm"], "raw": {"line": "fnmadd.d  rdrs1 rs2 rs3 rm 26..25=1 6..2=0x13 1..0=3", "tokens": ["fnmadd.d", "rd", "rs1", "rs2", "rs3", "rm", "26..25=1", "6..2=0x13", "1..0=3"]}, "upstream-resolved": {"mask": "0x600007f", "match": "0x200004f", "variable_fields": ["rd", "rs1", "rs2", "rs3", "rm"]}}, "record_id": "riscv-opcodes:rv_d:fnmadd.d@L6", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_fma () =
+  List.iter
+    (fun (mnemonic, json) ->
+      let rec_ = decode_or_fail mnemonic json in
+      let form = normalize_or_fail mnemonic rec_ in
+      let expected_feature =
+        if String.ends_with ~suffix:".d" mnemonic then "riscv:d" else "riscv:f"
+      in
+      check
+        (mnemonic ^ ": requirement is the expected F/D feature")
+        (form.requirement = Isa_norm_model.Req_feature expected_feature);
+      check
+        (mnemonic ^ ": rd/rs1/rs2/rs3 are floating registers, rm is present but implicit")
+        (match form.operands with
+        | [
+         { op_name = "rd"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+         { op_name = "rs1"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+         { op_name = "rs2"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+         { op_name = "rs3"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+         { op_name = "rm"; op_kind = Rounding_mode; explicit = false; _ };
+        ] ->
+            true
+        | _ -> false);
+      check
+        (mnemonic ^ ": renders as rd, rs1, rs2, rs3")
+        (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1, rs2, rs3"))
+    [
+      ("fmadd.s", fmadd_s_json);
+      ("fmsub.s", fmsub_s_json);
+      ("fnmsub.s", fnmsub_s_json);
+      ("fnmadd.s", fnmadd_s_json);
+      ("fmadd.d", fmadd_d_json);
+      ("fmsub.d", fmsub_d_json);
+      ("fnmsub.d", fnmsub_d_json);
+      ("fnmadd.d", fnmadd_d_json);
+    ]
+
+(* feq.s/fle.s/flt.s/feq.d/fle.d/flt.d: rd is a GPR, rs1/rs2 are FP, verbatim-extracted from the checked-in riscv32.jsonl. *)
+let feq_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xa0002053", "width_bits": 32}, "kind": "instruction-form", "native_name": "feq.s", "origin": {"line": 20, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "feq.s     rd rs1 rs2      31..27=0x14 14..12=2 26..25=0 6..2=0x14 1..0=3", "tokens": ["feq.s", "rd", "rs1", "rs2", "31..27=0x14", "14..12=2", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xa0002053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_f:feq.s@L20", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fle_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xa0000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fle.s", "origin": {"line": 22, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "fle.s     rd rs1 rs2      31..27=0x14 14..12=0 26..25=0 6..2=0x14 1..0=3", "tokens": ["fle.s", "rd", "rs1", "rs2", "31..27=0x14", "14..12=0", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xa0000053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_f:fle.s@L22", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let flt_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xa0001053", "width_bits": 32}, "kind": "instruction-form", "native_name": "flt.s", "origin": {"line": 21, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "flt.s     rd rs1 rs2      31..27=0x14 14..12=1 26..25=0 6..2=0x14 1..0=3", "tokens": ["flt.s", "rd", "rs1", "rs2", "31..27=0x14", "14..12=1", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xa0001053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_f:flt.s@L21", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let feq_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xa2002053", "width_bits": 32}, "kind": "instruction-form", "native_name": "feq.d", "origin": {"line": 19, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "feq.d     rd rs1 rs2      31..27=0x14 14..12=2 26..25=1 6..2=0x14 1..0=3", "tokens": ["feq.d", "rd", "rs1", "rs2", "31..27=0x14", "14..12=2", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xa2002053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_d:feq.d@L19", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fle_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xa2000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fle.d", "origin": {"line": 21, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "fle.d     rd rs1 rs2      31..27=0x14 14..12=0 26..25=1 6..2=0x14 1..0=3", "tokens": ["fle.d", "rd", "rs1", "rs2", "31..27=0x14", "14..12=0", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xa2000053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_d:fle.d@L21", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let flt_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xa2001053", "width_bits": 32}, "kind": "instruction-form", "native_name": "flt.d", "origin": {"line": 20, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "flt.d     rd rs1 rs2      31..27=0x14 14..12=1 26..25=1 6..2=0x14 1..0=3", "tokens": ["flt.d", "rd", "rs1", "rs2", "31..27=0x14", "14..12=1", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xa2001053", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_d:flt.d@L20", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_fcmp () =
+  List.iter
+    (fun (mnemonic, json) ->
+      let rec_ = decode_or_fail mnemonic json in
+      let form = normalize_or_fail mnemonic rec_ in
+      let expected_feature =
+        if String.ends_with ~suffix:".d" mnemonic then "riscv:d" else "riscv:f"
+      in
+      check
+        (mnemonic ^ ": requirement is the expected F/D feature")
+        (form.requirement = Isa_norm_model.Req_feature expected_feature);
+      check
+        (mnemonic ^ ": rd is a GPR, rs1/rs2 are floating registers")
+        (match form.operands with
+        | [
+         { op_name = "rd"; op_kind = Register { class_ = Riscv_gpr; _ }; _ };
+         { op_name = "rs1"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+         { op_name = "rs2"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+        ] ->
+            true
+        | _ -> false);
+      check
+        (mnemonic ^ ": renders as rd, rs1, rs2")
+        (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1, rs2"))
+    [
+      ("feq.s", feq_s_json);
+      ("fle.s", fle_s_json);
+      ("flt.s", flt_s_json);
+      ("feq.d", feq_d_json);
+      ("fle.d", fle_d_json);
+      ("flt.d", flt_d_json);
+    ]
+
+(* fmv.x.w/fmv.w.x: bit-for-bit moves, not conversions, verbatim-extracted from the checked-in riscv32.jsonl. *)
+let fmv_x_w_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0xe0000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fmv.x.w", "origin": {"line": 19, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1"], "raw": {"line": "fmv.x.w   rd rs1 24..20=0 31..27=0x1C 14..12=0 26..25=0 6..2=0x14 1..0=3", "tokens": ["fmv.x.w", "rd", "rs1", "24..20=0", "31..27=0x1C", "14..12=0", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0xe0000053", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv_f:fmv.x.w@L19", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fmv_w_x_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0xf0000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fmv.w.x", "origin": {"line": 26, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1"], "raw": {"line": "fmv.w.x   rd rs1 24..20=0 31..27=0x1E 14..12=0 26..25=0 6..2=0x14 1..0=3", "tokens": ["fmv.w.x", "rd", "rs1", "24..20=0", "31..27=0x1E", "14..12=0", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0xf0000053", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv_f:fmv.w.x@L26", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_fmv_x_w () =
+  let rec_ = decode_or_fail "fmv.x.w" fmv_x_w_json in
+  let form = normalize_or_fail "fmv.x.w" rec_ in
+  check "fmv.x.w: requirement is the F feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:f");
+  check "fmv.x.w: rd is a GPR, rs1 a floating register"
+    (match form.operands with
+    | [
+     { op_name = "rd"; op_kind = Register { class_ = Riscv_gpr; _ }; _ };
+     { op_name = "rs1"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "fmv.x.w: renders as rd, rs1" (Isa_norm_model.render_syntax form.syntax = "fmv.x.w rd, rs1")
+
+let test_fmv_w_x () =
+  let rec_ = decode_or_fail "fmv.w.x" fmv_w_x_json in
+  let form = normalize_or_fail "fmv.w.x" rec_ in
+  check "fmv.w.x: requirement is the F feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:f");
+  check "fmv.w.x: rd is a floating register, rs1 a GPR"
+    (match form.operands with
+    | [
+     { op_name = "rd"; op_kind = Register { class_ = Riscv_fpr; _ }; _ };
+     { op_name = "rs1"; op_kind = Register { class_ = Riscv_gpr; _ }; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "fmv.w.x: renders as rd, rs1" (Isa_norm_model.render_syntax form.syntax = "fmv.w.x rd, rs1")
+
+(* fcvt.w.s/fcvt.wu.s/fcvt.s.w/fcvt.s.wu: the only scalar FP left unclaimed by an earlier
+   milestone this session - real conversions (unlike fmv.x.w/fmv.w.x's bit-for-bit moves),
+   verbatim-extracted from the checked-in isa-db/export/riscv_opcodes/riscv32.jsonl. *)
+let fcvt_w_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xc0000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.w.s", "origin": {"line": 17, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.w.s  rd rs1 24..20=0 31..27=0x18 rm       26..25=0 6..2=0x14 1..0=3", "tokens": ["fcvt.w.s", "rd", "rs1", "24..20=0", "31..27=0x18", "rm", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xc0000053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv_f:fcvt.w.s@L17", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_wu_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xc0100053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.wu.s", "origin": {"line": 18, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.wu.s rd rs1 24..20=1 31..27=0x18 rm       26..25=0 6..2=0x14 1..0=3", "tokens": ["fcvt.wu.s", "rd", "rs1", "24..20=1", "31..27=0x18", "rm", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xc0100053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv_f:fcvt.wu.s@L18", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_s_w_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xd0000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.s.w", "origin": {"line": 24, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.s.w  rd rs1 24..20=0 31..27=0x1A rm       26..25=0 6..2=0x14 1..0=3", "tokens": ["fcvt.s.w", "rd", "rs1", "24..20=0", "31..27=0x1A", "rm", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xd0000053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv_f:fcvt.s.w@L24", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_s_wu_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xd0100053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.s.wu", "origin": {"line": 25, "path": "extensions/rv_f"}, "provenance": {"extension": "rv_f", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.s.wu rd rs1 24..20=1 31..27=0x1A rm       26..25=0 6..2=0x14 1..0=3", "tokens": ["fcvt.s.wu", "rd", "rs1", "24..20=1", "31..27=0x1A", "rm", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xd0100053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv_f:fcvt.s.wu@L25", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_fcvt_w_s () =
+  let check_one mnemonic json =
+    let rec_ = decode_or_fail mnemonic json in
+    let form = normalize_or_fail mnemonic rec_ in
+    check
+      (mnemonic ^ ": requirement is the F feature")
+      (form.requirement = Isa_norm_model.Req_feature "riscv:f");
+    check
+      (mnemonic ^ ": rd is a GPR, rs1 a floating register, rm implicit dynamic")
+      (match form.operands with
+      | [
+       { op_name = "rd"; op_kind = Register { class_ = Riscv_gpr; _ }; role = Out; _ };
+       { op_name = "rs1"; op_kind = Register { class_ = Riscv_fpr; _ }; role = In; _ };
+       { op_name = "rm"; op_kind = Rounding_mode; explicit = false; _ };
+      ] ->
+          true
+      | _ -> false);
+    check
+      (mnemonic ^ ": renders as rd, rs1")
+      (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1")
+  in
+  check_one "fcvt.w.s" fcvt_w_s_json;
+  check_one "fcvt.wu.s" fcvt_wu_s_json
+
+let test_fcvt_s_w () =
+  let check_one mnemonic json =
+    let rec_ = decode_or_fail mnemonic json in
+    let form = normalize_or_fail mnemonic rec_ in
+    check
+      (mnemonic ^ ": requirement is the F feature")
+      (form.requirement = Isa_norm_model.Req_feature "riscv:f");
+    check
+      (mnemonic ^ ": rd is a floating register, rs1 a GPR, rm implicit dynamic")
+      (match form.operands with
+      | [
+       { op_name = "rd"; op_kind = Register { class_ = Riscv_fpr; _ }; role = Out; _ };
+       { op_name = "rs1"; op_kind = Register { class_ = Riscv_gpr; _ }; role = In; _ };
+       { op_name = "rm"; op_kind = Rounding_mode; explicit = false; _ };
+      ] ->
+          true
+      | _ -> false);
+    check
+      (mnemonic ^ ": renders as rd, rs1")
+      (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1")
+  in
+  check_one "fcvt.s.w" fcvt_s_w_json;
+  check_one "fcvt.s.wu" fcvt_s_wu_json
+
+(* fcvt.w.d/fcvt.wu.d/fcvt.d.w/fcvt.d.wu/fcvt.s.d/fcvt.d.s: the D-extension
+   conversions {!test_fcvt_w_s}/{!test_fcvt_s_w} left open - all six already
+   had encoder support from an earlier, pre-isa-consumption pass, verbatim-
+   extracted from the checked-in isa-db/export/riscv_opcodes/riscv32.jsonl. *)
+let fcvt_w_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xc2000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.w.d", "origin": {"line": 23, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.w.d  rd rs1 24..20=0 31..27=0x18 rm       26..25=1 6..2=0x14 1..0=3", "tokens": ["fcvt.w.d", "rd", "rs1", "24..20=0", "31..27=0x18", "rm", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xc2000053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv_d:fcvt.w.d@L23", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_wu_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xc2100053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.wu.d", "origin": {"line": 24, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.wu.d rd rs1 24..20=1 31..27=0x18 rm       26..25=1 6..2=0x14 1..0=3", "tokens": ["fcvt.wu.d", "rd", "rs1", "24..20=1", "31..27=0x18", "rm", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xc2100053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv_d:fcvt.wu.d@L24", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_d_w_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xd2000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.d.w", "origin": {"line": 25, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.d.w  rd rs1 24..20=0 31..27=0x1A rm       26..25=1 6..2=0x14 1..0=3", "tokens": ["fcvt.d.w", "rd", "rs1", "24..20=0", "31..27=0x1A", "rm", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xd2000053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv_d:fcvt.d.w@L25", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_d_wu_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xd2100053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.d.wu", "origin": {"line": 26, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.d.wu rd rs1 24..20=1 31..27=0x1A rm       26..25=1 6..2=0x14 1..0=3", "tokens": ["fcvt.d.wu", "rd", "rs1", "24..20=1", "31..27=0x1A", "rm", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xd2100053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv_d:fcvt.d.wu@L26", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_s_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0x40100053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.s.d", "origin": {"line": 17, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.s.d  rd rs1 24..20=1 31..27=0x08 rm       26..25=0 6..2=0x14 1..0=3", "tokens": ["fcvt.s.d", "rd", "rs1", "24..20=1", "31..27=0x08", "rm", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0x40100053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv_d:fcvt.s.d@L17", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_d_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0x42000053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.d.s", "origin": {"line": 18, "path": "extensions/rv_d"}, "provenance": {"extension": "rv_d", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.d.s  rd rs1 24..20=0 31..27=0x08 rm       26..25=1 6..2=0x14 1..0=3", "tokens": ["fcvt.d.s", "rd", "rs1", "24..20=0", "31..27=0x08", "rm", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0x42000053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv_d:fcvt.d.s@L18", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_fcvt_w_d () =
+  let check_one mnemonic json =
+    let rec_ = decode_or_fail mnemonic json in
+    let form = normalize_or_fail mnemonic rec_ in
+    check
+      (mnemonic ^ ": requirement is the D feature")
+      (form.requirement = Isa_norm_model.Req_feature "riscv:d");
+    check
+      (mnemonic ^ ": rd is a GPR, rs1 a floating register, rm implicit dynamic")
+      (match form.operands with
+      | [
+       { op_name = "rd"; op_kind = Register { class_ = Riscv_gpr; _ }; role = Out; _ };
+       { op_name = "rs1"; op_kind = Register { class_ = Riscv_fpr; _ }; role = In; _ };
+       { op_name = "rm"; op_kind = Rounding_mode; explicit = false; _ };
+      ] ->
+          true
+      | _ -> false);
+    check
+      (mnemonic ^ ": renders as rd, rs1")
+      (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1")
+  in
+  check_one "fcvt.w.d" fcvt_w_d_json;
+  check_one "fcvt.wu.d" fcvt_wu_d_json
+
+let test_fcvt_d_w () =
+  let check_one mnemonic json =
+    let rec_ = decode_or_fail mnemonic json in
+    let form = normalize_or_fail mnemonic rec_ in
+    check
+      (mnemonic ^ ": requirement is the D feature")
+      (form.requirement = Isa_norm_model.Req_feature "riscv:d");
+    check
+      (mnemonic ^ ": rd is a floating register, rs1 a GPR, rm implicit exact")
+      (match form.operands with
+      | [
+       { op_name = "rd"; op_kind = Register { class_ = Riscv_fpr; _ }; role = Out; _ };
+       { op_name = "rs1"; op_kind = Register { class_ = Riscv_gpr; _ }; role = In; _ };
+       { op_name = "rm"; op_kind = Rounding_mode; explicit = false; _ };
+      ] ->
+          true
+      | _ -> false);
+    check
+      (mnemonic ^ ": renders as rd, rs1")
+      (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1")
+  in
+  check_one "fcvt.d.w" fcvt_d_w_json;
+  check_one "fcvt.d.wu" fcvt_d_wu_json
+
+let test_fcvt_f_f () =
+  let check_one mnemonic json =
+    let rec_ = decode_or_fail mnemonic json in
+    let form = normalize_or_fail mnemonic rec_ in
+    check
+      (mnemonic ^ ": requirement is the D feature")
+      (form.requirement = Isa_norm_model.Req_feature "riscv:d");
+    check
+      (mnemonic ^ ": rd/rs1 are both floating registers, rm implicit")
+      (match form.operands with
+      | [
+       { op_name = "rd"; op_kind = Register { class_ = Riscv_fpr; _ }; role = Out; _ };
+       { op_name = "rs1"; op_kind = Register { class_ = Riscv_fpr; _ }; role = In; _ };
+       { op_name = "rm"; op_kind = Rounding_mode; explicit = false; _ };
+      ] ->
+          true
+      | _ -> false);
+    check
+      (mnemonic ^ ": renders as rd, rs1")
+      (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1")
+  in
+  check_one "fcvt.s.d" fcvt_s_d_json;
+  check_one "fcvt.d.s" fcvt_d_s_json
+
+(* fcvt.l.d/fcvt.lu.d/fcvt.d.l/fcvt.d.lu/fcvt.l.s/fcvt.lu.s/fcvt.s.l/fcvt.s.lu:
+   the RV64-only long conversions {!test_fcvt_w_d}/{!test_fcvt_d_w} left
+   open (they exist only in riscv64.jsonl - rv64_d/rv64_f, not rv_d/rv_f -
+   with no riscv32.jsonl counterpart at all), verbatim-extracted from the
+   checked-in isa-db/export/riscv_opcodes/riscv64.jsonl. *)
+let fcvt_l_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xc2200053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.l.d", "origin": {"line": 2, "path": "extensions/rv64_d"}, "provenance": {"extension": "rv64_d", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.l.d  rd rs1 24..20=2 31..27=0x18 rm       26..25=1 6..2=0x14 1..0=3", "tokens": ["fcvt.l.d", "rd", "rs1", "24..20=2", "31..27=0x18", "rm", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xc2200053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv64_d:fcvt.l.d@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_lu_d_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xc2300053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.lu.d", "origin": {"line": 3, "path": "extensions/rv64_d"}, "provenance": {"extension": "rv64_d", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.lu.d rd rs1 24..20=3 31..27=0x18 rm       26..25=1 6..2=0x14 1..0=3", "tokens": ["fcvt.lu.d", "rd", "rs1", "24..20=3", "31..27=0x18", "rm", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xc2300053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv64_d:fcvt.lu.d@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_d_l_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xd2200053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.d.l", "origin": {"line": 5, "path": "extensions/rv64_d"}, "provenance": {"extension": "rv64_d", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.d.l  rd rs1 24..20=2 31..27=0x1A rm       26..25=1 6..2=0x14 1..0=3", "tokens": ["fcvt.d.l", "rd", "rs1", "24..20=2", "31..27=0x1A", "rm", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xd2200053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv64_d:fcvt.d.l@L5", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_d_lu_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xd2300053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.d.lu", "origin": {"line": 6, "path": "extensions/rv64_d"}, "provenance": {"extension": "rv64_d", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.d.lu rd rs1 24..20=3 31..27=0x1A rm       26..25=1 6..2=0x14 1..0=3", "tokens": ["fcvt.d.lu", "rd", "rs1", "24..20=3", "31..27=0x1A", "rm", "26..25=1", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xd2300053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv64_d:fcvt.d.lu@L6", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_l_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xc0200053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.l.s", "origin": {"line": 3, "path": "extensions/rv64_f"}, "provenance": {"extension": "rv64_f", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.l.s  rd rs1 24..20=2 31..27=0x18 rm       26..25=0 6..2=0x14 1..0=3", "tokens": ["fcvt.l.s", "rd", "rs1", "24..20=2", "31..27=0x18", "rm", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xc0200053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv64_f:fcvt.l.s@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_lu_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xc0300053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.lu.s", "origin": {"line": 4, "path": "extensions/rv64_f"}, "provenance": {"extension": "rv64_f", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.lu.s rd rs1 24..20=3 31..27=0x18 rm       26..25=0 6..2=0x14 1..0=3", "tokens": ["fcvt.lu.s", "rd", "rs1", "24..20=3", "31..27=0x18", "rm", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xc0300053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv64_f:fcvt.lu.s@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_s_l_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xd0200053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.s.l", "origin": {"line": 5, "path": "extensions/rv64_f"}, "provenance": {"extension": "rv64_f", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.s.l  rd rs1 24..20=2 31..27=0x1A rm       26..25=0 6..2=0x14 1..0=3", "tokens": ["fcvt.s.l", "rd", "rs1", "24..20=2", "31..27=0x1A", "rm", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xd0200053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv64_f:fcvt.s.l@L5", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let fcvt_s_lu_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 25, "name": "bits[26:25]", "width": 2}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 12, "name": "rm", "width": 3}], "kind": "fixed_bits", "mask": "0xfff0007f", "value": "0xd0300053", "width_bits": 32}, "kind": "instruction-form", "native_name": "fcvt.s.lu", "origin": {"line": 6, "path": "extensions/rv64_f"}, "provenance": {"extension": "rv64_f", "operands": ["rd", "rs1", "rm"], "raw": {"line": "fcvt.s.lu rd rs1 24..20=3 31..27=0x1A rm       26..25=0 6..2=0x14 1..0=3", "tokens": ["fcvt.s.lu", "rd", "rs1", "24..20=3", "31..27=0x1A", "rm", "26..25=0", "6..2=0x14", "1..0=3"]}, "upstream-resolved": {"mask": "0xfff0007f", "match": "0xd0300053", "variable_fields": ["rd", "rs1", "rm"]}}, "record_id": "riscv-opcodes:rv64_f:fcvt.s.lu@L6", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_fcvt_l_d () =
+  let check_one mnemonic feature json =
+    let rec_ = decode_or_fail mnemonic json in
+    let form = normalize_or_fail mnemonic rec_ in
+    check
+      (mnemonic ^ ": requirement is RV64 + the expected feature")
+      (form.requirement = Isa_norm_model.Req_all [ Req_xlen 64; Req_feature feature ]);
+    check
+      (mnemonic ^ ": rd is a GPR, rs1 a floating register, rm implicit dynamic")
+      (match form.operands with
+      | [
+       { op_name = "rd"; op_kind = Register { class_ = Riscv_gpr; _ }; role = Out; _ };
+       { op_name = "rs1"; op_kind = Register { class_ = Riscv_fpr; _ }; role = In; _ };
+       { op_name = "rm"; op_kind = Rounding_mode; explicit = false; _ };
+      ] ->
+          true
+      | _ -> false);
+    check
+      (mnemonic ^ ": renders as rd, rs1")
+      (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1")
+  in
+  check_one "fcvt.l.d" "riscv:d" fcvt_l_d_json;
+  check_one "fcvt.lu.d" "riscv:d" fcvt_lu_d_json;
+  check_one "fcvt.l.s" "riscv:f" fcvt_l_s_json;
+  check_one "fcvt.lu.s" "riscv:f" fcvt_lu_s_json
+
+let test_fcvt_l_s () =
+  let check_one mnemonic feature json =
+    let rec_ = decode_or_fail mnemonic json in
+    let form = normalize_or_fail mnemonic rec_ in
+    check
+      (mnemonic ^ ": requirement is RV64 + the expected feature")
+      (form.requirement = Isa_norm_model.Req_all [ Req_xlen 64; Req_feature feature ]);
+    check
+      (mnemonic ^ ": rd is a floating register, rs1 a GPR, rm implicit dynamic")
+      (match form.operands with
+      | [
+       { op_name = "rd"; op_kind = Register { class_ = Riscv_fpr; _ }; role = Out; _ };
+       { op_name = "rs1"; op_kind = Register { class_ = Riscv_gpr; _ }; role = In; _ };
+       { op_name = "rm"; op_kind = Rounding_mode; explicit = false; _ };
+      ] ->
+          true
+      | _ -> false);
+    check
+      (mnemonic ^ ": renders as rd, rs1")
+      (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1")
+  in
+  check_one "fcvt.d.l" "riscv:d" fcvt_d_l_json;
+  check_one "fcvt.d.lu" "riscv:d" fcvt_d_lu_json;
+  check_one "fcvt.s.l" "riscv:f" fcvt_s_l_json;
+  check_one "fcvt.s.lu" "riscv:f" fcvt_s_lu_json
+
 let lui_json =
   (* A mnemonic outside both the frozen pilot set and the
      R-type/I-type allowlists (lui is U-type: a single 20-bit immediate, no
@@ -1541,6 +2154,8 @@ let () =
   test_csrci ();
   test_amoadd_w ();
   test_lr_w ();
+  test_flw ();
+  test_fsw ();
   test_andn_import_record_matches_primary ();
   test_clz ();
   test_ctz ();
@@ -1570,6 +2185,21 @@ let () =
   test_zext_h_rv32 ();
   test_fadd_s ();
   test_other_f_arith_s ();
+  test_fsgnj ();
+  test_fminmax ();
+  test_fsqrt ();
+  test_fclass ();
+  test_fma ();
+  test_fcmp ();
+  test_fmv_x_w ();
+  test_fmv_w_x ();
+  test_fcvt_w_s ();
+  test_fcvt_s_w ();
+  test_fcvt_w_d ();
+  test_fcvt_d_w ();
+  test_fcvt_f_f ();
+  test_fcvt_l_d ();
+  test_fcvt_l_s ();
   test_r_type_gpr ();
   test_i_type_imm ();
   test_relationship_resolution ();

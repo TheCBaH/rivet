@@ -129,6 +129,193 @@ val fsub_d_entries : entry list
 val fmul_d_entries : entry list
 val fdiv_d_entries : entry list
 
+val flw_entries : entry list
+(** [flw fa0, 8(a1)] on both profiles - F's floating-point load, already
+    fully implemented by the encoder's shared [f_load_desc] path; this
+    closes only the normalization/corpus/admission side. *)
+
+val fld_entries : entry list
+(** [fld fa0, 8(a1)] on both profiles, {!flw_entries}'s D (double-precision)
+    sibling. *)
+
+val fsw_entries : entry list
+(** [fsw fa0, 8(a1)] on both profiles - F's floating-point store, already
+    fully implemented by the encoder's shared [f_store_desc] path. *)
+
+val fsd_entries : entry list
+(** [fsd fa0, 8(a1)] on both profiles, {!fsw_entries}'s D (double-precision)
+    sibling. *)
+
+val fsgnj_s_entries : entry list
+(** [fsgnj.s ft0, ft1, ft2] on both profiles - the general three-distinct-FP-
+    register sign-injection form the encoder's [f_sgnj3_desc] closes; its
+    [rs1 = rs2] alias siblings [fneg.s]/[fneg.d]/[fmv.d] predate this
+    pass. *)
+
+val fsgnjn_s_entries : entry list
+(** {!fsgnj_s_entries}'s negated-sign sibling. *)
+
+val fsgnjx_s_entries : entry list
+(** {!fsgnj_s_entries}'s XOR-sign sibling. *)
+
+val fsgnj_d_entries : entry list
+(** {!fsgnj_s_entries}'s D (double-precision) sibling. *)
+
+val fsgnjn_d_entries : entry list
+(** {!fsgnjn_s_entries}'s D (double-precision) sibling. *)
+
+val fsgnjx_d_entries : entry list
+(** {!fsgnjx_s_entries}'s D (double-precision) sibling. *)
+
+val fmin_s_entries : entry list
+(** [fmin.s ft0, ft1, ft2] on both profiles - the same three-distinct-FP-
+    register shape as {!fsgnj_s_entries}, but no pseudo-alias shares this
+    word to distinguish from. *)
+
+val fmax_s_entries : entry list
+(** {!fmin_s_entries}'s max sibling. *)
+
+val fmin_d_entries : entry list
+(** {!fmin_s_entries}'s D (double-precision) sibling. *)
+
+val fmax_d_entries : entry list
+(** {!fmax_s_entries}'s D (double-precision) sibling. *)
+
+val fsqrt_s_entries : entry list
+(** [fsqrt.s ft0, ft1] on both profiles - {!fadd_s_entries}'s own shape
+    minus the third operand ([rs2] is a fixed selector, not a real
+    register). *)
+
+val fsqrt_d_entries : entry list
+(** {!fsqrt_s_entries}'s D (double-precision) sibling. *)
+
+val fclass_s_entries : entry list
+(** [fclass.s a0, ft1] on both profiles - [rd] is a GPR (the
+    classification bitmask), [rs1] FP. *)
+
+val fclass_d_entries : entry list
+(** {!fclass_s_entries}'s D (double-precision) sibling. *)
+
+val fmadd_s_entries : entry list
+(** [fmadd.s ft0, ft1, ft2, ft3] on both profiles - RISC-V's only R4-type
+    mnemonics, {!fsqrt_s_entries}'s implicit-dynamic-rounding shape with two
+    more distinct FP register operands. *)
+
+val fmsub_s_entries : entry list
+(** {!fmadd_s_entries}'s subtract-the-addend sibling. *)
+
+val fnmsub_s_entries : entry list
+(** {!fmadd_s_entries}'s negate-the-product sibling. *)
+
+val fnmadd_s_entries : entry list
+(** {!fmadd_s_entries}'s negate-the-sum sibling. *)
+
+val fmadd_d_entries : entry list
+(** {!fmadd_s_entries}'s D (double-precision) sibling. *)
+
+val fmsub_d_entries : entry list
+(** {!fmsub_s_entries}'s D (double-precision) sibling. *)
+
+val fnmsub_d_entries : entry list
+(** {!fnmsub_s_entries}'s D (double-precision) sibling. *)
+
+val fnmadd_d_entries : entry list
+(** {!fnmadd_s_entries}'s D (double-precision) sibling. *)
+
+val feq_s_entries : entry list
+(** [feq.s a0, ft1, ft2] on both profiles - [rd] is a GPR (the boolean
+    comparison result), [rs1]/[rs2] FP. *)
+
+val fle_s_entries : entry list
+(** {!feq_s_entries}'s less-or-equal sibling. *)
+
+val flt_s_entries : entry list
+(** {!feq_s_entries}'s less-than sibling. *)
+
+val feq_d_entries : entry list
+(** {!feq_s_entries}'s D (double-precision) sibling. *)
+
+val fle_d_entries : entry list
+(** {!fle_s_entries}'s D (double-precision) sibling. *)
+
+val flt_d_entries : entry list
+(** {!flt_s_entries}'s D (double-precision) sibling. *)
+
+val fmv_x_w_entries : entry list
+(** [fmv.x.w a0, ft1] on both profiles - bit-for-bit move, not a conversion,
+    [rd] a GPR, [rs1] FP. *)
+
+val fmv_w_x_entries : entry list
+(** [fmv.w.x ft0, a1] on both profiles - {!fmv_x_w_entries}'s
+    reverse-direction sibling, [rd] FP, [rs1] a GPR. *)
+
+val fcvt_w_s_entries : entry list
+(** [fcvt.w.s a0, ft1] on both profiles - {!fsqrt_s_entries}'s own
+    implicit-dynamic-rounding shape with [rd] a GPR instead of FP. *)
+
+val fcvt_wu_s_entries : entry list
+(** {!fcvt_w_s_entries}'s unsigned sibling. *)
+
+val fcvt_s_w_entries : entry list
+(** [fcvt.s.w ft0, a1] on both profiles - {!fcvt_w_s_entries}'s
+    reverse-direction sibling, [rd] FP, [rs1] a GPR. *)
+
+val fcvt_s_wu_entries : entry list
+(** {!fcvt_s_w_entries}'s unsigned sibling. *)
+
+val fcvt_w_d_entries : entry list
+(** [fcvt.w.d a0, ft1] on both profiles - {!fcvt_w_s_entries}'s own shape
+    and dynamic-rounding default, D-extension configuration. *)
+
+val fcvt_wu_d_entries : entry list
+(** {!fcvt_w_d_entries}'s unsigned sibling. *)
+
+val fcvt_d_w_entries : entry list
+(** [fcvt.d.w ft0, a1] on both profiles - {!fcvt_s_w_entries}'s own shape,
+    but real hardware's always-exact rne default rather than dynamic
+    rounding. *)
+
+val fcvt_d_wu_entries : entry list
+(** {!fcvt_d_w_entries}'s unsigned sibling. *)
+
+val fcvt_s_d_entries : entry list
+(** [fcvt.s.d ft0, ft1] on both profiles - float-to-float precision
+    convert, no GPR involved, dynamic-rounding default (narrowing). *)
+
+val fcvt_d_s_entries : entry list
+(** {!fcvt_s_d_entries}'s reverse direction (widening) - always-exact rne
+    default instead. *)
+
+val fcvt_l_d_entries : entry list
+(** [fcvt.l.d a0, ft1] on RV64 only (no RV32 counterpart) -
+    {!fcvt_w_d_entries}'s own shape and configuration. *)
+
+val fcvt_lu_d_entries : entry list
+(** {!fcvt_l_d_entries}'s unsigned sibling. *)
+
+val fcvt_l_s_entries : entry list
+(** [fcvt.l.s a0, ft1] on RV64 only - {!fcvt_w_s_entries}'s own shape and F
+    configuration. *)
+
+val fcvt_lu_s_entries : entry list
+(** {!fcvt_l_s_entries}'s unsigned sibling. *)
+
+val fcvt_s_l_entries : entry list
+(** [fcvt.s.l ft0, a1] on RV64 only - {!fcvt_s_w_entries}'s own shape and F
+    configuration. *)
+
+val fcvt_s_lu_entries : entry list
+(** {!fcvt_s_l_entries}'s unsigned sibling. *)
+
+val fcvt_d_l_entries : entry list
+(** [fcvt.d.l ft0, a1] on RV64 only - {!fcvt_d_w_entries}'s own shape and D
+    configuration, but the family's usual dynamic-rounding default rather
+    than the always-exact one (a 64-bit long is not always exact in a
+    double). *)
+
+val fcvt_d_lu_entries : entry list
+(** {!fcvt_d_l_entries}'s unsigned sibling. *)
+
 val sh1add_entries : entry list
 (** [sh1add a0, a1, a2] on RV32IM_Zba and RV64IM_Zba, Zba's scale-one R-type
     form. *)
@@ -593,7 +780,8 @@ val all : entry list
 (** [sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @
     x86_fadd_entries @ fadd_s_entries @ fsub_s_entries @ fmul_s_entries @
     fdiv_s_entries @ fadd_d_entries @ fsub_d_entries @ fmul_d_entries @
-    fdiv_d_entries @ sh1add_entries @ sh2add_entries @ sh3add_entries @
+    fdiv_d_entries @ flw_entries @ fld_entries @ fsw_entries @ fsd_entries @
+    sh1add_entries @ sh2add_entries @ sh3add_entries @
     sh1adduw_entries @ sh2adduw_entries @ sh3adduw_entries @ min_entries @
     minu_entries @ max_entries @ maxu_entries @ andn_entries @ orn_entries @
     xnor_entries @ rol_entries @ ror_entries @ clz_entries @ ctz_entries @
@@ -621,7 +809,20 @@ val all : entry list
     amoswap_d_entries @ amoadd_d_entries @ amoxor_d_entries @
     amoand_d_entries @ amoor_d_entries @ amomin_d_entries @
     amomax_d_entries @ amominu_d_entries @ amomaxu_d_entries @
-    sc_d_entries @ lr_d_entries]. *)
+    sc_d_entries @ lr_d_entries @ fsgnj_s_entries @ fsgnjn_s_entries @
+    fsgnjx_s_entries @ fsgnj_d_entries @ fsgnjn_d_entries @
+    fsgnjx_d_entries @ fmin_s_entries @ fmax_s_entries @ fmin_d_entries @
+    fmax_d_entries @ fsqrt_s_entries @ fsqrt_d_entries @ fclass_s_entries @
+    fclass_d_entries @ fmadd_s_entries @ fmsub_s_entries @
+    fnmsub_s_entries @ fnmadd_s_entries @ fmadd_d_entries @
+    fmsub_d_entries @ fnmsub_d_entries @ fnmadd_d_entries @ feq_s_entries @
+    fle_s_entries @ flt_s_entries @ feq_d_entries @ fle_d_entries @
+    flt_d_entries @ fmv_x_w_entries @ fmv_w_x_entries @ fcvt_w_s_entries @
+    fcvt_wu_s_entries @ fcvt_s_w_entries @ fcvt_s_wu_entries @ fcvt_w_d_entries @
+    fcvt_wu_d_entries @ fcvt_d_w_entries @ fcvt_d_wu_entries @ fcvt_s_d_entries @
+    fcvt_d_s_entries @ fcvt_l_d_entries @ fcvt_lu_d_entries @ fcvt_l_s_entries @
+    fcvt_lu_s_entries @ fcvt_s_l_entries @ fcvt_s_lu_entries @ fcvt_d_l_entries @
+    fcvt_d_lu_entries]. *)
 
 val normalize_entry : Repo.t -> entry -> (Isa_norm_model.form, Tool_error.t) Err.t
 (** Finds the real record in the checked-in riscv-opcodes export matching

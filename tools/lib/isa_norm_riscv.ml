@@ -25,8 +25,11 @@ let feature_of_extension = function
   | "rv_zknh" -> Req_feature "riscv:zknh"
   | "rv_zicsr" -> Req_feature "riscv:zicsr"
   | "rv_f" -> Req_feature "riscv:f"
+  | "rv_d" -> Req_feature "riscv:d"
   | "rv_a" -> Req_feature "riscv:a"
   | "rv64_a" -> Req_all [ Req_xlen 64; Req_feature "riscv:a" ]
+  | "rv64_f" -> Req_all [ Req_xlen 64; Req_feature "riscv:f" ]
+  | "rv64_d" -> Req_all [ Req_xlen 64; Req_feature "riscv:d" ]
   | "rv64_i" -> Req_xlen 64
   | "rv64_m" -> Req_all [ Req_xlen 64; Req_feature "riscv:m" ]
   | "rv64_zba" -> Req_all [ Req_xlen 64; Req_feature "riscv:zba" ]
@@ -1418,12 +1421,742 @@ let f_arith_form ~mnemonic (rec_ : R.t) =
           diagnostics = [];
         }
 
+(* fsgnj.s/fsgnjn.s/fsgnjx.s/fsgnj.d/fsgnjn.d/fsgnjx.d: unlike {!f_arith_mnemonics},
+   funct3 here is a real per-mnemonic selector baked into the source record's own
+   fixed-bits mask (rd_d/rs1/rs2 fixed_bits width 27 does not cover it, but bits
+   [14:12] are included in the mask - each of the three sign-injection mnemonics
+   per precision is a separate record with a distinct mask/value), not a
+   rounding-mode field - so no [rm] operand is modeled. *)
+let f_sgnj_mnemonics = [ "fsgnj.s"; "fsgnjn.s"; "fsgnjx.s"; "fsgnj.d"; "fsgnjn.d"; "fsgnjx.d" ]
+
+let f_sgnj_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = fpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = fpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rs2 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "rs1"; Syn_operand "rs2" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, rs2 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rd/rs1/rs2 are floating-point registers (rv_f/rv_d), not the GPR class \
+                   rd/rs1/rs2 denote in integer forms";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* fmin.s/fmax.s/fmin.d/fmax.d: the same three-FP-register, no-[rm] shape as
+   {!f_sgnj_form} (funct3 here selects min vs max, again a fixed
+   per-mnemonic selector baked into the record's own fixed-bits mask, not a
+   rounding mode). *)
+let f_minmax_mnemonics = [ "fmin.s"; "fmax.s"; "fmin.d"; "fmax.d" ]
+
+let f_minmax_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = fpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = fpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rs2 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "rs1"; Syn_operand "rs2" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, rs2 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rd/rs1/rs2 are floating-point registers (rv_f/rv_d), not the GPR class \
+                   rd/rs1/rs2 denote in integer forms";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* fsqrt.s/fsqrt.d: {!f_arith_form}'s own shape minus [rs2] (a fixed
+   selector, not a real second operand - the source record's own mask
+   fixes bits[24:20] to 0) - [rm] is a genuine, implicit dynamic-rounding
+   operand exactly like the arithmetic family. *)
+let f_sqrt_mnemonics = [ "fsqrt.s"; "fsqrt.d" ]
+
+let f_sqrt_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = fpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      let rm = { op_name = "rm"; op_kind = Rounding_mode; role = In; explicit = false } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rm ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs1" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, rm taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rd/rs1 are floating-point registers (rv_f/rv_d), not the GPR class rd/rs1 \
+                   denote in integer forms";
+              };
+              {
+                label = Inferred;
+                note =
+                  "the omitted rm operand is GNU as's dynamic-rounding default (funct3=7), \
+                   measured for this bare scalar spelling on rv32imf and rv64imf";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* fclass.s/fclass.d: [rd] is a GPR (the classification bitmask), [rs1] is
+   FP, no [rm] - [rs2] is again a fixed selector the source record's own
+   mask fixes, not a real operand. *)
+let f_class_mnemonics = [ "fclass.s"; "fclass.d" ]
+
+let f_class_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1 ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs1" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rd is a GPR (the classification bitmask), rs1 a floating-point register \
+                   (rv_f/rv_d)";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* fmadd.s/fmsub.s/fnmsub.s/fnmadd.s/fmadd.d/fmsub.d/fnmsub.d/fnmadd.d:
+   {!f_arith_form}'s own shape plus a fourth floating-point source ([rs3]) -
+   riscv-opcodes' own record already lists rd/rs1/rs2/rs3/rm verbatim, so
+   [riscv_encoding_of] needs no special handling; only the encoder's
+   R4-type word layout (rd/rs1/rs2/rs3 fields split differently than R-type's
+   rd/rs1/rs2/funct7 - see {!Riscv_family_encode.f_fma_desc}) is genuinely
+   new. Like {!f_arith_mnemonics}, this claims only the bare
+   dynamic-rounding spelling. *)
+let f_fma_mnemonics =
+  [ "fmadd.s"; "fmsub.s"; "fnmsub.s"; "fnmadd.s"; "fmadd.d"; "fmsub.d"; "fnmsub.d"; "fnmadd.d" ]
+
+let f_fma_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = fpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = fpr (); role = In; explicit = true } in
+      let rs3 = { op_name = "rs3"; op_kind = fpr (); role = In; explicit = true } in
+      let rm = { op_name = "rm"; op_kind = Rounding_mode; role = In; explicit = false } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rs2; rs3; rm ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [ Syn_operand "rd"; Syn_operand "rs1"; Syn_operand "rs2"; Syn_operand "rs3" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, rs2, rs3, rm taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rd/rs1/rs2/rs3 are floating-point registers (rv_f/rv_d), not the GPR class \
+                   rd/rs1/rs2 denote in integer forms";
+              };
+              {
+                label = Inferred;
+                note =
+                  "the omitted rm operand is GNU as's dynamic-rounding default (funct3=7), \
+                   measured for this bare fused-multiply-add spelling on rv32imf(d)/rv64imf(d)";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* flw/fld: I-type loads whose [rd] is a floating-point register, not the
+   GPR class {!i_type_imm_form}'s own [rd] denotes - otherwise byte-for-byte
+   {!sw_form}'s single-run [imm12] I-type sibling (both already fully
+   implemented by the encoder's shared [f_load_desc] path; this closes only
+   the normalization/corpus/admission side). *)
+let f_load_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let value = { op_name = "value"; op_kind = fpr (); role = Out; explicit = true } in
+      let base = { op_name = "base"; op_kind = gpr (); role = In; explicit = true } in
+      let offset =
+        {
+          op_name = "offset";
+          op_kind =
+            Immediate
+              {
+                width_bits = 12;
+                signed = true;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [
+                    { field_name = "imm12"; field_hi = 11; field_lo = 0; dest_hi = 11; dest_lo = 0 };
+                  ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ value; base; offset ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "value";
+                  Syn_group
+                    [ Syn_operand "offset"; Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, imm12 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "value (rd) is a floating-point register, not the GPR class rd denotes in \
+                   integer loads";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+            | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+            | _ -> []);
+        }
+
+(* fsw/fsd: S-type stores whose stored value is a floating-point register -
+   otherwise byte-for-byte {!sw_form}'s own imm12hi/imm12lo split-immediate
+   shape (also already fully implemented by the encoder's shared
+   [f_store_desc] path). *)
+let f_store_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let value = { op_name = "value"; op_kind = fpr (); role = In; explicit = true } in
+      let base = { op_name = "base"; op_kind = gpr (); role = In; explicit = true } in
+      let offset =
+        {
+          op_name = "offset";
+          op_kind =
+            Immediate
+              {
+                width_bits = 12;
+                signed = true;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [
+                    {
+                      field_name = "imm12hi";
+                      field_hi = 6;
+                      field_lo = 0;
+                      dest_hi = 11;
+                      dest_lo = 5;
+                    };
+                    { field_name = "imm12lo"; field_hi = 4; field_lo = 0; dest_hi = 4; dest_lo = 0 };
+                  ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ value; base; offset ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "value";
+                  Syn_group
+                    [ Syn_operand "offset"; Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields imm12hi, rs1, rs2, imm12lo taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "value (rs2) is a floating-point register, not the GPR class rs2 denotes in \
+                   integer stores";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+            | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+            | _ -> []);
+        }
+
+(* feq.s/fle.s/flt.s/feq.d/fle.d/flt.d: [rd] is a GPR (the boolean result),
+   [rs1]/[rs2] are FP - the mirror image of {!f_fma_form}'s all-FPR shape,
+   here with no [rm] at all (funct3 is a real comparison-kind selector, per
+   {!Riscv_family_encode.f_cmp_desc}). *)
+let f_cmp_mnemonics = [ "feq.s"; "fle.s"; "flt.s"; "feq.d"; "fle.d"; "flt.d" ]
+
+let f_cmp_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = fpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rs2 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "rs1"; Syn_operand "rs2" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, rs2 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rd is a GPR (the boolean comparison result), rs1/rs2 are floating-point \
+                   registers (rv_f/rv_d)";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* fmv.x.w: bit-for-bit move (not a conversion), [fmv.x.d]'s single-precision
+   sibling - [rd] a GPR, [rs1] FP, no [rm]. *)
+let f_mv_x_w_mnemonics = [ "fmv.x.w" ]
+
+let f_mv_x_w_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1 ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs1" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rd is a GPR (the raw bit pattern, sign-extended), rs1 a floating-point register \
+                   (rv_f); this is a bit-for-bit move, not a numeric conversion";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* fmv.w.x: [fmv.x.w]'s reverse-direction sibling - [rd] FP, [rs1] a GPR, no
+   [rm]. *)
+let f_mv_w_x_mnemonics = [ "fmv.w.x" ]
+
+let f_mv_w_x_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = fpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = gpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1 ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs1" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rd is a floating-point register (rv_f), rs1 a GPR (the raw bit pattern); this \
+                   is a bit-for-bit move, not a numeric conversion";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* fcvt.w.s/fcvt.wu.s/fcvt.w.d/fcvt.wu.d/fcvt.l.d/fcvt.lu.d/fcvt.l.s/fcvt.lu.s:
+   float-to-integer word/long converts, {!f_sqrt_form}'s own shape (a real,
+   genuine dynamic-rounding [rm], unlike [fmv.x.w]'s fixed funct3) with
+   [rd] a GPR instead of FP - [rs2] is again a fixed selector the source
+   record's own mask fixes, not a real operand. Every sibling here shares
+   this exact shape and dynamic-rounding default verbatim (`f_to_i_desc`'s
+   own funct3 = 7 for all eight); only {!requirement_of} distinguishes the
+   D-extension pairs (riscv:d) from the F-extension ones (riscv:f) and the
+   RV64-only long pairs (an added `Req_xlen 64`) from the XLEN-independent
+   word ones, automatically, from each record's own extension. *)
+let f_cvt_w_s_mnemonics =
+  [
+    "fcvt.w.s";
+    "fcvt.wu.s";
+    "fcvt.w.d";
+    "fcvt.wu.d";
+    "fcvt.l.d";
+    "fcvt.lu.d";
+    "fcvt.l.s";
+    "fcvt.lu.s";
+  ]
+
+let f_cvt_w_s_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      let rm = { op_name = "rm"; op_kind = Rounding_mode; role = In; explicit = false } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rm ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs1" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, rm taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note = "rd is a GPR (the truncated/rounded integer), rs1 a floating-point register";
+              };
+              {
+                label = Inferred;
+                note =
+                  "the omitted rm operand is GNU as's dynamic-rounding default (funct3=7), \
+                   measured for this bare scalar spelling on rv32imf and rv64imf";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* fcvt.s.w/fcvt.s.wu/fcvt.s.l/fcvt.s.lu/fcvt.d.l/fcvt.d.lu: {!f_cvt_w_s_form}'s
+   reverse direction - [rd] FP, [rs1] a GPR, same genuine dynamic-rounding
+   [rm] (unlike {!f_cvt_d_w_form}'s [fcvt.d.w]/[fcvt.d.wu] pair, [fcvt.d.l]/
+   [fcvt.d.lu] do NOT default to always-exact rne - a 64-bit long does not
+   always fit exactly in a double's 52-bit mantissa, confirmed against real
+   GNU as: `fcvt.d.l fa0, a1` -> `d225f553`, funct3 = 7 (dyn), not 0). *)
+let f_cvt_s_w_mnemonics =
+  [ "fcvt.s.w"; "fcvt.s.wu"; "fcvt.s.l"; "fcvt.s.lu"; "fcvt.d.l"; "fcvt.d.lu" ]
+
+let f_cvt_s_w_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = fpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = gpr (); role = In; explicit = true } in
+      let rm = { op_name = "rm"; op_kind = Rounding_mode; role = In; explicit = false } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rm ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs1" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, rm taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note = "rd is a floating-point register, rs1 a GPR (the source integer)";
+              };
+              {
+                label = Inferred;
+                note =
+                  "the omitted rm operand is GNU as's dynamic-rounding default (funct3=7), \
+                   measured for this bare scalar spelling on rv32imf and rv64imf";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* fcvt.d.w/fcvt.d.wu: {!f_cvt_s_w_form}'s own shape ([rd] FP, [rs1] a GPR)
+   but with real hardware's "always exact" rne=0 default instead of dyn=7
+   ([i_to_f_desc]'s own funct3 = 0 for both) - a 32-bit integer always fits
+   exactly in a double, so GAS picks the exact rounding mode rather than
+   reading fcsr, unlike every dynamic-rounding mnemonic above. *)
+let f_cvt_d_w_mnemonics = [ "fcvt.d.w"; "fcvt.d.wu" ]
+
+let f_cvt_d_w_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = fpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = gpr (); role = In; explicit = true } in
+      let rm = { op_name = "rm"; op_kind = Rounding_mode; role = In; explicit = false } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rm ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs1" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, rm taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note = "rd is a floating-point register, rs1 a GPR (the source integer)";
+              };
+              {
+                label = Inferred;
+                note =
+                  "the omitted rm operand is GNU as's always-exact default (funct3=0, rne), not \
+                   the dynamic default every arithmetic mnemonic uses - a 32-bit integer always \
+                   converts to double exactly, measured for this bare scalar spelling on rv32imfd \
+                   and rv64imfd";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* fcvt.s.d/fcvt.d.s: float-to-float precision converts, [rd]/[rs1] both FP
+   with no GPR operand at all - [rs2] is again a fixed selector (the source
+   format) the source record's own mask fixes. [fcvt.s.d] (narrowing,
+   double to single, can lose precision) defaults to dynamic rounding like
+   every arithmetic mnemonic; [fcvt.d.s] (widening, single to double,
+   always exact) defaults to rne=0 like {!f_cvt_d_w_form}'s pair. *)
+let f_cvt_f_f_mnemonics = [ "fcvt.s.d"; "fcvt.d.s" ]
+
+let f_cvt_f_f_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = fpr (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      let rm = { op_name = "rm"; op_kind = Rounding_mode; role = In; explicit = false } in
+      let default_note =
+        if String.equal mnemonic "fcvt.d.s" then
+          "the omitted rm operand is GNU as's always-exact default (funct3=0, rne) - \
+           single-to-double widening never loses precision"
+        else
+          "the omitted rm operand is GNU as's dynamic-rounding default (funct3=7) - \
+           double-to-single narrowing can lose precision"
+      in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rm ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs1" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1, rm taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note = "rd/rs1 are both floating-point registers, of different precisions";
+              };
+              { label = Inferred; note = default_note };
+            ];
+          diagnostics = [];
+        }
+
 let normalize (rec_ : R.t) =
   match rec_.native_name with
   | "sw" -> sw_form rec_
   | "beq" -> beq_form rec_
   | "c.addi" -> c_addi_form rec_
+  | "flw" -> f_load_form ~mnemonic:"flw" rec_
+  | "fld" -> f_load_form ~mnemonic:"fld" rec_
+  | "fsw" -> f_store_form ~mnemonic:"fsw" rec_
+  | "fsd" -> f_store_form ~mnemonic:"fsd" rec_
   | mnemonic when List.mem mnemonic f_arith_mnemonics -> f_arith_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic f_sgnj_mnemonics -> f_sgnj_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic f_minmax_mnemonics -> f_minmax_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic f_sqrt_mnemonics -> f_sqrt_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic f_class_mnemonics -> f_class_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic f_fma_mnemonics -> f_fma_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic f_cmp_mnemonics -> f_cmp_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic f_mv_x_w_mnemonics -> f_mv_x_w_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic f_mv_w_x_mnemonics -> f_mv_w_x_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic f_cvt_w_s_mnemonics -> f_cvt_w_s_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic f_cvt_s_w_mnemonics -> f_cvt_s_w_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic f_cvt_d_w_mnemonics -> f_cvt_d_w_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic f_cvt_f_f_mnemonics -> f_cvt_f_f_form ~mnemonic rec_
   | mnemonic when List.mem mnemonic r_type_mnemonics -> r_type_gpr_form ~mnemonic rec_
   | mnemonic when List.mem mnemonic i_type_mnemonics -> i_type_imm_form ~mnemonic rec_
   | mnemonic when List.mem mnemonic unary_gpr_mnemonics -> unary_gpr_form ~mnemonic rec_

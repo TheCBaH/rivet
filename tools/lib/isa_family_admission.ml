@@ -105,6 +105,53 @@ let promoted_case ~target ~form_id ~lookup_key =
       ("fadd.s" | "fsub.s" | "fmul.s" | "fdiv.s" | "fadd.d" | "fsub.d" | "fmul.d" | "fdiv.d") ) ->
       true
   | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:flw" | "riscv:fld" | "riscv:fsw" | "riscv:fsd"),
+      ("flw" | "fld" | "fsw" | "fsd") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ( "riscv:fsgnj.s" | "riscv:fsgnjn.s" | "riscv:fsgnjx.s" | "riscv:fsgnj.d" | "riscv:fsgnjn.d"
+      | "riscv:fsgnjx.d" ),
+      ("fsgnj.s" | "fsgnjn.s" | "fsgnjx.s" | "fsgnj.d" | "fsgnjn.d" | "fsgnjx.d") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:fmin.s" | "riscv:fmax.s" | "riscv:fmin.d" | "riscv:fmax.d"),
+      ("fmin.s" | "fmax.s" | "fmin.d" | "fmax.d") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:fsqrt.s" | "riscv:fsqrt.d" | "riscv:fclass.s" | "riscv:fclass.d"),
+      ("fsqrt.s" | "fsqrt.d" | "fclass.s" | "fclass.d") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ( "riscv:fmadd.s" | "riscv:fmsub.s" | "riscv:fnmsub.s" | "riscv:fnmadd.s" | "riscv:fmadd.d"
+      | "riscv:fmsub.d" | "riscv:fnmsub.d" | "riscv:fnmadd.d" ),
+      ( "fmadd.s" | "fmsub.s" | "fnmsub.s" | "fnmadd.s" | "fmadd.d" | "fmsub.d" | "fnmsub.d"
+      | "fnmadd.d" ) ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:feq.s" | "riscv:fle.s" | "riscv:flt.s" | "riscv:feq.d" | "riscv:fle.d" | "riscv:flt.d"),
+      ("feq.s" | "fle.s" | "flt.s" | "feq.d" | "fle.d" | "flt.d") ) ->
+      true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:fmv.x.w", "fmv.x.w" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:fmv.w.x", "fmv.w.x" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:fcvt.w.s", "fcvt.w.s" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:fcvt.wu.s", "fcvt.wu.s" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:fcvt.s.w", "fcvt.s.w" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:fcvt.s.wu", "fcvt.s.wu" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:fcvt.w.d", "fcvt.w.d" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:fcvt.wu.d", "fcvt.wu.d" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:fcvt.d.w", "fcvt.d.w" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:fcvt.d.wu", "fcvt.d.wu" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:fcvt.s.d", "fcvt.s.d" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:fcvt.d.s", "fcvt.d.s" -> true
+  | Target.Riscv64, "riscv:fcvt.l.d", "fcvt.l.d" -> true
+  | Target.Riscv64, "riscv:fcvt.lu.d", "fcvt.lu.d" -> true
+  | Target.Riscv64, "riscv:fcvt.d.l", "fcvt.d.l" -> true
+  | Target.Riscv64, "riscv:fcvt.d.lu", "fcvt.d.lu" -> true
+  | Target.Riscv64, "riscv:fcvt.l.s", "fcvt.l.s" -> true
+  | Target.Riscv64, "riscv:fcvt.lu.s", "fcvt.lu.s" -> true
+  | Target.Riscv64, "riscv:fcvt.s.l", "fcvt.s.l" -> true
+  | Target.Riscv64, "riscv:fcvt.s.lu", "fcvt.s.lu" -> true
+  | ( (Target.Riscv32 | Target.Riscv64),
       ("riscv:sh1add" | "riscv:sh2add" | "riscv:sh3add"),
       ("sh1add" | "sh2add" | "sh3add") ) ->
       true
