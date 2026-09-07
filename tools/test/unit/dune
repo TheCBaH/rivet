@@ -10,7 +10,9 @@
   test_manifest
   test_gnu_output
   test_supervisor
-  test_tool_gate)
+  test_tool_gate
+  test_isa_inventory_riscv
+  test_isa_inventory_xed)
  (modes byte native)
  (libraries compcert_tools err_trace bos fpath unix))
 
@@ -71,3 +73,21 @@
  (alias runtest)
  (action
   (run ./test_tool_gate.exe)))
+
+; Isa_inventory_riscv's pure parts: parse_extension_file, applies_to and the
+; renderers, all against inline text - no submodule dependency, see the file's
+; own header comment.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_inventory_riscv.exe)))
+
+; Isa_inventory_xed's pure parts: parse_datafile against both XED dialects
+; and the not64/mode64 aggregation, all against inline text - no submodule
+; dependency, see the file's own header comment.
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_inventory_xed.exe)))

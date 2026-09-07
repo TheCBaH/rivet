@@ -159,6 +159,10 @@ transitively require building the whole assembler.
 
 - `.ai/asm_plan.md` — the full design plan/spec for the assembler (large;
   search it rather than reading it end to end).
+- `asm/docs/isa-inventory.md` — the file format/schema for that whole-ISA
+  inventory (per-target `manifest.txt`/`summary.txt`, sourced from the
+  vendored `asm/vendor/isa-data/{riscv-opcodes,xed}` submodules); not to be
+  confused with the narrower, Milestone-5-scoped `asm/docs/riscv-inventory.md`.
 - `asm/docs/contracts.md` — frozen dump formats, `form_id` scheme, directive
   table, support matrix, and fixup/relaxation contract that tests compare
   against.

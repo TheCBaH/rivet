@@ -1,0 +1,26 @@
+; A dedicated parse-time performance regression test (asm/docs/corpus.md's
+; floats.c "One shared timeout" follow-up). See test_parse_perf.ml.
+;
+; An executable plus a rule rather than a (test) stanza, the same shape
+; test/props uses and for the same reason: (test) would put its executable in
+; this directory's @all alias regardless of enabled_if, which matters once
+; ASM_MELANGE=true disables driver.
+;
+; Native only: this needs Unix for wall-clock timing, the one thing js_of_ocaml
+; and Melange builds have no reason to exercise identically (a browser/Node
+; run's own timing is not the claim this test makes) - and driver itself is
+; gated the same way, so this follows its own dependency's own gate.
+
+(executable
+ (name test_parse_perf)
+ (modes exe)
+ (libraries driver unix)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_parse_perf.exe))
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))

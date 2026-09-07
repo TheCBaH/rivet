@@ -4,6 +4,11 @@ This inventory is the scope authority for the initial RISC-V implementation.
 It was generated from CompCert 3.17 on 2026-08-13; proposed instruction lists
 elsewhere do not widen this measured corpus.
 
+This is *not* a whole-ISA inventory - it only records what this specific
+measured corpus emits. For RISC-V's full instruction/extension set (and the
+same question for the other five targets), see `.ai/asm_plan.md`'s "Parallel
+track: whole-ISA instruction and extension inventory" section.
+
 ## Profiles and tools
 
 | Profile | CompCert target | Assembly flags | Link flags | ELF | QEMU |

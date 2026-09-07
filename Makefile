@@ -642,6 +642,29 @@ tools-gasxref-diff: tools-build asm-build
 	  git status --porcelain -- asm/fixtures/gas-xref; \
 	  echo "gas-xref corpus changed - review the diff above" >&2; exit 1; }
 
+# The whole-ISA instruction inventory (asm/docs/isa-inventory.md), RISC-V only
+# so far. Toolchain-free (it reads only the vendored asm/vendor/isa-data/
+# submodules, never a compiler), so unlike tools-gasxref-diff this needs no
+# asm-build edge - only the tool itself. Guarded separately from
+# asm-submodules rather than folded into it: isa-data is needed only for this
+# track, and asm-submodules also gates plain asm-build, which must not start
+# requiring a submodule the assembler itself never reads.
+tools-isa-inventory: tools-build
+	@test -f $(ASM_DIR)/vendor/isa-data/riscv-opcodes/upstream/extensions/rv_i || { \
+	  echo "$(ASM_DIR)/vendor/isa-data/riscv-opcodes/upstream is not checked out; run:" >&2; \
+	  echo "  git submodule update --init $(ASM_DIR)/vendor/isa-data/riscv-opcodes/upstream" >&2; \
+	  exit 1; }
+	@test -d $(ASM_DIR)/vendor/isa-data/xed/upstream/datafiles/avx || { \
+	  echo "$(ASM_DIR)/vendor/isa-data/xed/upstream is not checked out; run:" >&2; \
+	  echo "  git submodule update --init $(ASM_DIR)/vendor/isa-data/xed/upstream" >&2; \
+	  exit 1; }
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-inventory regen
+
+tools-isa-inventory-diff: tools-isa-inventory
+	@test -z "$$(git status --porcelain -- asm/fixtures/isa-inventory)" || { \
+	  git status --porcelain -- asm/fixtures/isa-inventory; \
+	  echo "isa-inventory changed - review the diff above" >&2; exit 1; }
+
 # The same control-flow properties, asserted against the OCaml implementation
 # with fake compilers. Needs the executable but no cross toolchain.
 tools-fixture-modes: tools-build
@@ -701,7 +724,7 @@ asm-exec: asm-runner asm-helpers asm-abi-conform asm-fixtures-check
 # What CI runs, and what to run locally before pushing. Formatting is checked
 # first: an unformatted tree is the cheapest failure to diagnose. asm-js is not
 # here — it needs Melange, hence OCaml 4.14, so it is its own CI job.
-asm-ci: asm-fmt-check asm-build asm-test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff asm-corpus-check-c asm-corpus-check-assemble-c asm-corpus-check-regression asm-corpus-check-compression asm-corpus-check-c-gcc asm-purity asm-planted asm-cross-smoke-selftest asm-characterize-verify asm-melange-optin asm-js-portable
+asm-ci: asm-fmt-check asm-build asm-test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-isa-inventory-diff asm-corpus-check-c asm-corpus-check-assemble-c asm-corpus-check-regression asm-corpus-check-compression asm-corpus-check-c-gcc asm-purity asm-planted asm-cross-smoke-selftest asm-characterize-verify asm-melange-optin asm-js-portable
 
 # One archive per target: Rocq extraction differs per architecture, so
 # compcert-export-archive alone only covers whichever target was last
@@ -718,6 +741,7 @@ compcert-export-archive-all:
   asm-compcert-adapter-test \
   asm-submodules asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
   tools-build tools-test tools-integration tools-boundary tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-matrix tools-matrix-diff \
+  tools-isa-inventory tools-isa-inventory-diff \
   asm-fixtures-check asm-characterize-verify asm-cross-setup asm-libc-cross-smoke asm-cross-smoke-selftest asm-fixtures-regen \
   asm-oracle asm-fixture-oracle asm-ci \
   asm-gas-xref-check asm-gas-xref-regen \

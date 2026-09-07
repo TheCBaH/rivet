@@ -170,6 +170,18 @@ let gas_xref_cmd =
     (Cmdliner.Cmd.info "gas-xref" ~doc:"The GNU as cross-reference corpus")
     [ gas_xref_check_cmd; gas_xref_regen_cmd ]
 
+let isa_inventory_regen_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Isa_inventory_cmd.regen) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "regen"
+       ~doc:"Rebuild the whole-ISA instruction inventory (RISC-V only so far)")
+    Cmdliner.Term.(const run $ common)
+
+let isa_inventory_cmd =
+  Cmdliner.Cmd.group
+    (Cmdliner.Cmd.info "isa-inventory" ~doc:"The whole-ISA instruction/extension inventory")
+    [ isa_inventory_regen_cmd ]
+
 let corpus_check_cmd =
   let run (err_trace, root) = (err_trace, with_repo root Corpus_classify_cmd.check) in
   Cmdliner.Cmd.v
@@ -334,7 +346,7 @@ let tool_gate_cmd =
 let main_cmd =
   Cmdliner.Cmd.group
     (Cmdliner.Cmd.info "compcert-tools" ~doc:"CompCert assembler repository tooling")
-    [ fixture_cmd; gas_xref_cmd; corpus_cmd; targets_cmd; tool_gate_cmd ]
+    [ fixture_cmd; gas_xref_cmd; corpus_cmd; isa_inventory_cmd; targets_cmd; tool_gate_cmd ]
 
 let () =
   (* At the entry point, not at module initialization: this is a process-wide

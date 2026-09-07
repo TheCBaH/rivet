@@ -58,6 +58,12 @@ jobs:
     - name: tool tests
       run: |
         ${{ env.EXEC }} make tools-test
+    # Toolchain-free (reads only the vendored asm/vendor/isa-data/ submodules,
+    # never a compiler) and platform-independent, so it belongs on every leg
+    # rather than gated like tools-integration/tools-fixture-modes below.
+    - name: isa-inventory diff
+      run: |
+        ${{ env.EXEC }} make tools-isa-inventory-diff
     # The focused tool build must reach no assembler library, which is what
     # keeps asm-fixtures-check free of an assembler build (tool.md gate 6). It
     # uses a private build directory, so it is safe alongside the ordinary

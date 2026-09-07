@@ -71,3 +71,12 @@ let corpus_compression t target =
 
 let corpus_c_gcc t target =
   Fpath.(t / "asm" / "fixtures" / "corpus" / "c-gcc" / Target.to_string target)
+
+let isa_data_riscv_opcodes t =
+  Fpath.(t / "asm" / "vendor" / "isa-data" / "riscv-opcodes" / "upstream")
+
+let isa_data_xed_upstream t = Fpath.(t / "asm" / "vendor" / "isa-data" / "xed" / "upstream")
+let isa_data_xed t = Fpath.(isa_data_xed_upstream t / "datafiles")
+
+let isa_inventory t target =
+  Fpath.(t / "asm" / "fixtures" / "isa-inventory" / Target.to_string target)
