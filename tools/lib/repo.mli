@@ -69,3 +69,10 @@ val isa_data_xed : t -> Fpath.t
 val isa_inventory : t -> Target.t -> Fpath.t
 (** [asm/fixtures/isa-inventory/<target>/], the whole-ISA inventory
     manifest/summary destination for that target. *)
+
+val isa_db_export : t -> source:string -> Target.t -> Fpath.t
+(** [isa-db/export/<source>/<target>.jsonl], the checked-in JSON Lines export
+    the standalone [isa-db/] Python project writes.
+    [source] is ["riscv_opcodes"] or ["xed"], matching isa-db's own naming -
+    not a {!Target.t}, since it is not one of the six targets. Consumed by
+    {!Isa_db_cross_validate}. *)

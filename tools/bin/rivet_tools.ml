@@ -177,10 +177,17 @@ let isa_inventory_regen_cmd =
        ~doc:"Rebuild the whole-ISA instruction inventory (RISC-V only so far)")
     Cmdliner.Term.(const run $ common)
 
+let isa_db_cross_validate_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Isa_db_cross_validate.check) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "cross-validate"
+       ~doc:"Check every isa-inventory manifest row against the checked-in isa-db/ JSONL export")
+    Cmdliner.Term.(const run $ common)
+
 let isa_inventory_cmd =
   Cmdliner.Cmd.group
     (Cmdliner.Cmd.info "isa-inventory" ~doc:"The whole-ISA instruction/extension inventory")
-    [ isa_inventory_regen_cmd ]
+    [ isa_inventory_regen_cmd; isa_db_cross_validate_cmd ]
 
 let corpus_check_cmd =
   let run (err_trace, root) = (err_trace, with_repo root Corpus_classify_cmd.check) in

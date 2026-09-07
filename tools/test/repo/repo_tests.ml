@@ -145,6 +145,26 @@ let test_derived_invariants root =
             && addr "LINK_BSS_ADDR" = addr "LINK_TEXT_ADDR" + 0x80000))
     Target.all
 
+(* Isa_db_cross_validate reads isa-db/export/*.jsonl, which lives outside
+   asm/ (the standalone isa-db/ Python project) - so like the rest of this
+   executable, it needs the real repository root rather than
+   %{workspace_root}, and belongs here rather than in a runtest rule. *)
+let test_isa_db_cross_validate repo =
+  match Isa_db_cross_validate.check repo with
+  | { Command.exit = `Success; events } ->
+      List.iter
+        (function
+          | Command.Output d -> Format.printf "  ok   %a@." Diagnostic.pp d
+          | Command.Fatal e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false)
+        events
+  | { Command.events; _ } ->
+      List.iter
+        (function
+          | Command.Output d -> Format.eprintf "%a@." Diagnostic.pp d
+          | Command.Fatal e -> Format.eprintf "%a@." (Err.Error.pp Tool_error.pp) e)
+        events;
+      check "isa-db cross-validate" false
+
 let () =
   if Array.length Sys.argv < 2 then (
     prerr_endline "usage: repo_tests.exe <repository-root>";
@@ -152,15 +172,18 @@ let () =
   let root = Fpath.v Sys.argv.(1) in
   (* The root is validated by the same sentinels every command uses, so a
      mis-passed argument fails here rather than producing confusing findings. *)
-  (match Repo.resolve ~cli:(Some root) ~env:(fun _ -> None) ~cwd:root with
-  | Ok _ -> ()
-  | Error e ->
-      prerr_endline (Tool_error.to_fatal_line (Err.Error.kind e));
-      exit 1);
+  let repo =
+    match Repo.resolve ~cli:(Some root) ~env:(fun _ -> None) ~cwd:root with
+    | Ok repo -> repo
+    | Error e ->
+        prerr_endline (Tool_error.to_fatal_line (Err.Error.kind e));
+        exit 1
+  in
   print_endline "repo_tests:";
   test_target_db_agrees root;
   test_target_sets root;
   test_derived_invariants root;
+  test_isa_db_cross_validate repo;
   if !failures > 0 then (
     Printf.printf "repo_tests: %d failures\n" !failures;
     exit 1)

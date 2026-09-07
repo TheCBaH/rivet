@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://compcert-devcontainer.example/isa-db/source_record.schema.v1.json",
+  "title": "ISA database source record (schema version 1)",
+  "description": "A single source-qualified fact extracted from one adapter (XED or riscv-opcodes, in this slice). Distinct from and more detailed than asm/docs/isa-inventory.md's manifest.txt schema version 1, which this file's own schema-version does not reuse or supersede. There is no jsonschema dependency in this environment, so normalize/schema_check.py enforces only the 'required' shape below, not the full schema (patterns, enums, $ref resolution).",
+  "type": "object",
+  "required": [
+    "record_id",
+    "source",
+    "kind",
+    "native_name",
+    "snapshot",
+    "origin",
+    "encoding",
+    "applicability",
+    "relationships",
+    "unresolved"
+  ],
+  "properties": {
+    "record_id": {
+      "type": "string",
+      "description": "Source-qualified, stable-within-a-snapshot identifier, e.g. 'xed:sse2:movq@amd64/sse2.txt:120' or 'riscv-opcodes:rv_zba:sh1add@rv_zba:1'."
+    },
+    "source": { "enum": ["xed", "riscv_opcodes"] },
+    "kind": { "enum": ["instruction-form", "pseudo-op", "import"] },
+    "native_name": { "type": "string" },
+    "snapshot": {
+      "type": "string",
+      "description": "'<source>@<commit>', matching sources.lock.json."
+    },
+    "origin": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string" },
+        "line": { "type": ["integer", "null"] }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Source-specific facts not shared across adapters (e.g. XED's directory group / EXTENSION / ISA_SET fields, or a RISC-V import/pseudo-op's textual target). Left loosely typed on purpose: it holds exactly what asm/docs/isa-inventory.md's manifest view intentionally discards."
+    },
+    "encoding": {
+      "type": "object",
+      "description": "Tagged union: 'fixed_bits' (riscv-opcodes numeric-field lines), 'opaque' (XED PATTERN token lists, and RISC-V import/pseudo-op records that do not define their own new bit pattern), or 'x86_encoding' (XED's resolved-but-textual facts via the gen_setup/read_xed_db.xed_reader_t path; not yet consumed by export/xed/*.jsonl, which stays on 'opaque' - see isa-db/README.md).",
+      "required": ["kind"],
+      "oneOf": [
+        {
+          "properties": {
+            "kind": { "const": "fixed_bits" },
+            "width_bits": { "type": "integer" },
+            "mask": { "type": "string", "description": "Hex string, e.g. '0xfe00707f'." },
+            "value": { "type": "string", "description": "Hex string, e.g. '0x20002033'." },
+            "fields": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "lsb", "width"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "lsb": { "type": "integer" },
+                  "width": { "type": "integer" }
+                }
+              }
+            }
+          },
+          "required": ["kind", "width_bits", "mask", "value", "fields"]
+        },
+        {
+          "properties": {
+            "kind": { "const": "opaque" },
+            "note": { "type": "string" }
+          },
+          "required": ["kind", "note"]
+        },
+        {
+          "properties": {
+            "kind": { "const": "x86_encoding" },
+            "space": { "enum": ["legacy", "vex", "evex", "xop"] },
+            "opcode_map": { "type": "integer" },
+            "opcode": { "type": "string", "description": "Hex string, e.g. '0x37'." },
+            "pattern": {
+              "type": "string",
+              "description": "XED's own resolved PATTERN token string (state-bits macro-expanded)."
+            },
+            "operands": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "type", "bits", "lookupfn_name", "rw", "visibility", "oc2"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "type": { "type": "string" },
+                  "bits": { "type": ["string", "array", "null"] },
+                  "lookupfn_name": { "type": ["string", "null"] },
+                  "rw": { "type": "string" },
+                  "visibility": { "type": "string" },
+                  "oc2": { "type": ["string", "null"] }
+                }
+              }
+            }
+          },
+          "required": ["kind", "space", "opcode_map", "opcode", "pattern", "operands"]
+        }
+      ]
+    },
+    "applicability": {
+      "type": "object",
+      "description": "Three-valued expression tree: {kind: all|any, of: [...]} or {kind: mode, equals|not_equals: 'mode16'|'mode32'|'mode64'}. An empty 'all' is unconditional. This slice only produces 'mode' nodes (x86 execution mode, from XED PATTERN tokens); RISC-V records carry an empty 'all' plus their extension name in provenance, not yet a typed 'feature' node - see isa-db/README.md's scope note.",
+      "required": ["kind"]
+    },
+    "relationships": {
+      "type": "array",
+      "description": "e.g. {kind: 'imports'|'specializes', target: <record_id-shaped string>}.",
+      "items": {
+        "type": "object",
+        "required": ["kind", "target"],
+        "properties": {
+          "kind": { "enum": ["imports", "specializes"] },
+          "target": { "type": "string" }
+        }
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Known gaps for this specific record, e.g. XED's un-honored UDELETE, or a RISC-V import whose target file this adapter did not itself validate exists."
+    }
+  }
+}

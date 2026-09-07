@@ -665,6 +665,17 @@ tools-isa-inventory-diff: tools-isa-inventory
 	  git status --porcelain -- asm/fixtures/isa-inventory; \
 	  echo "isa-inventory changed - review the diff above" >&2; exit 1; }
 
+# The same isa-db cross-validate check `tools-integration` already runs inside
+# repo_tests.exe (asm/tools/test/repo/repo_tests.ml), exposed standalone for
+# discoverability. Toolchain-free like
+# tools-isa-inventory-diff: it reads only checked-in files
+# (asm/fixtures/isa-inventory/, isa-db/export/), never the isa-data
+# submodules regen needs, so unlike tools-isa-inventory it has no submodule
+# guard. Not added to asm-ci - tools-integration already exercises it there;
+# this target is purely a convenience for running it in isolation.
+tools-isa-db-cross-validate: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-inventory cross-validate
+
 # The same control-flow properties, asserted against the OCaml implementation
 # with fake compilers. Needs the executable but no cross toolchain.
 tools-fixture-modes: tools-build
@@ -741,7 +752,7 @@ compcert-export-archive-all:
   asm-compcert-adapter-test \
   asm-submodules asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
   tools-build tools-test tools-integration tools-boundary tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-matrix tools-matrix-diff \
-  tools-isa-inventory tools-isa-inventory-diff \
+  tools-isa-inventory tools-isa-inventory-diff tools-isa-db-cross-validate \
   asm-fixtures-check asm-characterize-verify asm-cross-setup asm-libc-cross-smoke asm-cross-smoke-selftest asm-fixtures-regen \
   asm-oracle asm-fixture-oracle asm-ci \
   asm-gas-xref-check asm-gas-xref-regen \

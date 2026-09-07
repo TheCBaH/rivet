@@ -80,3 +80,6 @@ let isa_data_xed t = Fpath.(isa_data_xed_upstream t / "datafiles")
 
 let isa_inventory t target =
   Fpath.(t / "asm" / "fixtures" / "isa-inventory" / Target.to_string target)
+
+let isa_db_export t ~source target =
+  Fpath.(t / "isa-db" / "export" / source / (Target.to_string target ^ ".jsonl"))

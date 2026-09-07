@@ -12,8 +12,21 @@
 ; an alternation resolved at build time. digestif.c would add a host-C build to
 ; the make asm-build path on every platform leg, including linux/i386 and
 ; linux/arm/v7.
+;
+; jsont plus jsont.bytesrw (Isa_db_jsonl): jsont's core library is
+; codec-agnostic (Object/Base/etc. maps only); actually decoding JSON text
+; requires the bytesrw sublibrary, which is why both are named here rather
+; than jsont alone.
 
 (library
  (name compcert_tools)
  (modes byte native)
- (libraries err_trace bos fpath digestif.ocaml mtime.clock.os unix))
+ (libraries
+  err_trace
+  bos
+  fpath
+  digestif.ocaml
+  jsont
+  jsont.bytesrw
+  mtime.clock.os
+  unix))
