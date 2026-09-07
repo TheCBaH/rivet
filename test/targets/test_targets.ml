@@ -2870,6 +2870,99 @@ let%expect_test "riscv64: sllw/srlw/sraw with an immediate third operand alias s
       bytes 1b 53 36 00              [riscv64.srliw]
       bytes 9b d3 46 40              [riscv64.sraiw] |}]
 
+let%expect_test "riscv32/riscv64: Zba sh1add uses its distinct R-type funct7" =
+  show_lowered "riscv32" "\t.text\n\tsh1add a0, a1, a2\n";
+  show_lowered "riscv64" "\t.text\n\tsh1add a0, a1, a2\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 33 a5 c5 20              [riscv32.sh1add]
+    lowered t
+    section .text r-x align=1
+      bytes 33 a5 c5 20              [riscv64.sh1add] |}]
+
+let%expect_test "riscv32/riscv64: Zba sh2add/sh3add share sh1add's funct7 with a distinct funct3" =
+  show_lowered "riscv32" "\t.text\n\tsh2add a0, a1, a2\n\tsh3add a0, a1, a2\n";
+  show_lowered "riscv64" "\t.text\n\tsh2add a0, a1, a2\n\tsh3add a0, a1, a2\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 33 c5 c5 20              [riscv32.sh2add]
+      bytes 33 e5 c5 20              [riscv32.sh3add]
+    lowered t
+    section .text r-x align=1
+      bytes 33 c5 c5 20              [riscv64.sh2add]
+      bytes 33 e5 c5 20              [riscv64.sh3add] |}]
+
+let%expect_test "riscv32/riscv64: Zbb min/minu/max/maxu share an R-type shape distinct from Zba" =
+  show_lowered "riscv32"
+    "\t.text\n\tmin a0, a1, a2\n\tminu a0, a1, a2\n\tmax a0, a1, a2\n\tmaxu a0, a1, a2\n";
+  show_lowered "riscv64"
+    "\t.text\n\tmin a0, a1, a2\n\tminu a0, a1, a2\n\tmax a0, a1, a2\n\tmaxu a0, a1, a2\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 33 c5 c5 0a              [riscv32.min]
+      bytes 33 d5 c5 0a              [riscv32.minu]
+      bytes 33 e5 c5 0a              [riscv32.max]
+      bytes 33 f5 c5 0a              [riscv32.maxu]
+    lowered t
+    section .text r-x align=1
+      bytes 33 c5 c5 0a              [riscv64.min]
+      bytes 33 d5 c5 0a              [riscv64.minu]
+      bytes 33 e5 c5 0a              [riscv64.max]
+      bytes 33 f5 c5 0a              [riscv64.maxu] |}]
+
+let%expect_test "riscv32/riscv64: Zbb andn/orn/xnor/rol/ror are a Req_any-normalized R-type shape" =
+  show_lowered "riscv32"
+    "\t.text\n\
+     \tandn a0, a1, a2\n\
+     \torn a0, a1, a2\n\
+     \txnor a0, a1, a2\n\
+     \trol a0, a1, a2\n\
+     \tror a0, a1, a2\n";
+  show_lowered "riscv64"
+    "\t.text\n\
+     \tandn a0, a1, a2\n\
+     \torn a0, a1, a2\n\
+     \txnor a0, a1, a2\n\
+     \trol a0, a1, a2\n\
+     \tror a0, a1, a2\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 33 f5 c5 40              [riscv32.andn]
+      bytes 33 e5 c5 40              [riscv32.orn]
+      bytes 33 c5 c5 40              [riscv32.xnor]
+      bytes 33 95 c5 60              [riscv32.rol]
+      bytes 33 d5 c5 60              [riscv32.ror]
+    lowered t
+    section .text r-x align=1
+      bytes 33 f5 c5 40              [riscv64.andn]
+      bytes 33 e5 c5 40              [riscv64.orn]
+      bytes 33 c5 c5 40              [riscv64.xnor]
+      bytes 33 95 c5 60              [riscv64.rol]
+      bytes 33 d5 c5 60              [riscv64.ror] |}]
+
+let%expect_test
+    "riscv64: Zba sh1add.uw/sh2add.uw/sh3add.uw are the *.uw word-operand family, RV64-only" =
+  show_lowered "riscv64"
+    "\t.text\n\tsh1add.uw a0, a1, a2\n\tsh2add.uw a0, a1, a2\n\tsh3add.uw a0, a1, a2\n";
+  attempt "riscv32" ".text\nsh1add.uw a0, a1, a2\n";
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      bytes 3b a5 c5 20              [riscv64.sh1add.uw]
+      bytes 3b c5 c5 20              [riscv64.sh2add.uw]
+      bytes 3b e5 c5 20              [riscv64.sh3add.uw]
+    riscv32.lower: sh1add.uw is available only when XLEN is 64
+    |}]
+
 (* M5 corpus evidence: knucleotide.c's unsigned-modulo idiom (`x % array_len`
    where the operands are `size_t`) is RV32M/RV64M's own REMU, the one
    division-family opcode this corpus evidences - DIV/DIVU/REM are left

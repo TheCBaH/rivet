@@ -158,6 +158,46 @@ module Make (P : PROFILE) = struct
       | And
       | Mul
       | Remu
+      | Sh1add
+      | Sh2add
+      | Sh3add
+      | Min
+      | Minu
+      | Max
+      | Maxu
+      | Andn
+      | Orn
+      | Xnor
+      | Rol
+      | Ror
+      | Sh1adduw
+      | Sh2adduw
+      | Sh3adduw
+      | Clz
+      | Ctz
+      | Cpop
+      | Sextb
+      | Sexth
+      | Orcb
+      | Clzw
+      | Ctzw
+      | Cpopw
+      | Brev8
+      | Rev8
+      | Pack
+      | Packh
+      | Packw
+      | Zip
+      | Unzip
+      | Rolw
+      | Rorw
+      | Rori
+      | Roriw
+      | Zext_h
+      | Clmul
+      | Clmulh
+      | Xperm4
+      | Xperm8
       | Addw
       | Subw
       | Sllw
@@ -261,6 +301,46 @@ module Make (P : PROFILE) = struct
       | And -> "and"
       | Mul -> "mul"
       | Remu -> "remu"
+      | Sh1add -> "sh1add"
+      | Sh2add -> "sh2add"
+      | Sh3add -> "sh3add"
+      | Min -> "min"
+      | Minu -> "minu"
+      | Max -> "max"
+      | Maxu -> "maxu"
+      | Andn -> "andn"
+      | Orn -> "orn"
+      | Xnor -> "xnor"
+      | Rol -> "rol"
+      | Ror -> "ror"
+      | Sh1adduw -> "sh1add.uw"
+      | Sh2adduw -> "sh2add.uw"
+      | Sh3adduw -> "sh3add.uw"
+      | Clz -> "clz"
+      | Ctz -> "ctz"
+      | Cpop -> "cpop"
+      | Sextb -> "sext.b"
+      | Sexth -> "sext.h"
+      | Orcb -> "orc.b"
+      | Clzw -> "clzw"
+      | Ctzw -> "ctzw"
+      | Cpopw -> "cpopw"
+      | Brev8 -> "brev8"
+      | Rev8 -> "rev8"
+      | Pack -> "pack"
+      | Packh -> "packh"
+      | Packw -> "packw"
+      | Zip -> "zip"
+      | Unzip -> "unzip"
+      | Rolw -> "rolw"
+      | Rorw -> "rorw"
+      | Rori -> "rori"
+      | Roriw -> "roriw"
+      | Zext_h -> "zext.h"
+      | Clmul -> "clmul"
+      | Clmulh -> "clmulh"
+      | Xperm4 -> "xperm4"
+      | Xperm8 -> "xperm8"
       | Addw -> "addw"
       | Subw -> "subw"
       | Sllw -> "sllw"
@@ -365,6 +445,46 @@ module Make (P : PROFILE) = struct
         And;
         Mul;
         Remu;
+        Sh1add;
+        Sh2add;
+        Sh3add;
+        Min;
+        Minu;
+        Max;
+        Maxu;
+        Andn;
+        Orn;
+        Xnor;
+        Rol;
+        Ror;
+        Sh1adduw;
+        Sh2adduw;
+        Sh3adduw;
+        Clz;
+        Ctz;
+        Cpop;
+        Sextb;
+        Sexth;
+        Orcb;
+        Clzw;
+        Ctzw;
+        Cpopw;
+        Brev8;
+        Rev8;
+        Pack;
+        Packh;
+        Packw;
+        Zip;
+        Unzip;
+        Rolw;
+        Rorw;
+        Rori;
+        Roriw;
+        Zext_h;
+        Clmul;
+        Clmulh;
+        Xperm4;
+        Xperm8;
         Addw;
         Subw;
         Sllw;
@@ -689,6 +809,7 @@ module Make (P : PROFILE) = struct
     [ Target_error.shared
     | `Wrong_operands of string
     | `Rv64_only of string
+    | `Rv32_only of string
     | `Immediate_range of string
     | `Immediate_alignment of string
     | `Bad_modifier of string
@@ -705,6 +826,7 @@ module Make (P : PROFILE) = struct
     | #Target_error.shared as e -> Target_error.pp_shared ppf e
     | `Wrong_operands op -> Fmt.pf ppf "no %s form takes these operands" op
     | `Rv64_only op -> Fmt.pf ppf "%s is available only when XLEN is 64" op
+    | `Rv32_only op -> Fmt.pf ppf "%s is available only when XLEN is 32" op
     | `Immediate_range what -> Fmt.pf ppf "%s immediate is out of range" what
     | `Immediate_alignment what -> Fmt.pf ppf "%s target is not two-byte aligned" what
     | `Bad_modifier m -> Fmt.pf ppf "unsupported relocation modifier %s" m
@@ -767,12 +889,77 @@ module Make (P : PROFILE) = struct
     | And -> Some (0x33, 7, 0x00)
     | Mul -> Some (0x33, 0, 0x01)
     | Remu -> Some (0x33, 7, 0x01)
+    | Sh1add -> Some (0x33, 2, 0x10)
+    | Sh2add -> Some (0x33, 4, 0x10)
+    | Sh3add -> Some (0x33, 6, 0x10)
+    | Min -> Some (0x33, 4, 0x05)
+    | Minu -> Some (0x33, 5, 0x05)
+    | Max -> Some (0x33, 6, 0x05)
+    | Maxu -> Some (0x33, 7, 0x05)
+    | Andn -> Some (0x33, 7, 0x20)
+    | Orn -> Some (0x33, 6, 0x20)
+    | Xnor -> Some (0x33, 4, 0x20)
+    | Rol -> Some (0x33, 1, 0x30)
+    | Ror -> Some (0x33, 5, 0x30)
+    | Clmul -> Some (0x33, 1, 0x05)
+    | Clmulh -> Some (0x33, 3, 0x05)
+    | Xperm4 -> Some (0x33, 2, 0x14)
+    | Xperm8 -> Some (0x33, 4, 0x14)
+    | Sh1adduw -> Some (0x3b, 2, 0x10)
+    | Sh2adduw -> Some (0x3b, 4, 0x10)
+    | Sh3adduw -> Some (0x3b, 6, 0x10)
     | Addw -> Some (0x3b, 0, 0x00)
     | Subw -> Some (0x3b, 0, 0x20)
     | Sllw -> Some (0x3b, 1, 0x00)
     | Srlw -> Some (0x3b, 5, 0x00)
     | Sraw -> Some (0x3b, 5, 0x20)
     | Mulw -> Some (0x3b, 0, 0x01)
+    | Pack -> Some (0x33, 4, 0x04)
+    | Packh -> Some (0x33, 7, 0x04)
+    | Packw -> Some (0x3b, 4, 0x04)
+    | Rolw -> Some (0x3b, 1, 0x30)
+    | Rorw -> Some (0x3b, 5, 0x30)
+    | _ -> None
+
+  (* OP-IMM/OP-IMM-32 (opcodes 0x13/0x1b) "pseudo-unary" forms: Zbb's
+     population-count/sign-extend/byte family (clz, ctz, cpop, sext.b,
+     sext.h, orc.b and their RV64-only *w siblings). Unlike {!i_desc}, the
+     remaining bits are a fully fixed funct12 that selects the mnemonic, not
+     a genuine immediate operand - GAS syntax is "mnemonic rd, rs1" with no
+     immediate written at all. Hand-verified against the checked-in
+     riscv32.jsonl/riscv64.jsonl mask/value fields before writing this table
+     (e.g. clz 0x60001013, orc.b 0x28705013), then confirmed against real
+     riscv32-linux-gnu-as 2.43.1 / riscv64-linux-gnu-as 2.44. *)
+  let unary_imm_desc = function
+    | Opcode.Clz -> Some (0x13, 1, 0x600)
+    | Ctz -> Some (0x13, 1, 0x601)
+    | Cpop -> Some (0x13, 1, 0x602)
+    | Sextb -> Some (0x13, 1, 0x604)
+    | Sexth -> Some (0x13, 1, 0x605)
+    | Orcb -> Some (0x13, 5, 0x287)
+    | Clzw -> Some (0x1b, 1, 0x600)
+    | Ctzw -> Some (0x1b, 1, 0x601)
+    | Cpopw -> Some (0x1b, 1, 0x602)
+    | Brev8 -> Some (0x13, 5, 0x687)
+    (* [rev8] (byte-reverse) is the one form in this family whose funct12
+       genuinely differs by XLEN - 0x698 on RV32, 0x6b8 on RV64 - rather than
+       being a distinct RV64-only mnemonic (contrast {!Sh1adduw} etc). Real
+       GNU as accepts the bare mnemonic ["rev8"] on BOTH profiles (confirmed:
+       riscv32-linux-gnu-as REJECTS the source's own internal disambiguation
+       label "rev8.rv32" as an unrecognized opcode; only ["rev8"] assembles).
+       riscv-opcodes' own two native names for this - "rev8" (rv64_zbb
+       import group) and "rev8.rv32" (rv32_zbb import group) - are therefore
+       a source-internal table-key distinction, not two different
+       user-facing mnemonics; {!Isa_norm_riscv} maps both to this one
+       [Opcode.t] and rendered mnemonic. *)
+    | Rev8 -> Some (0x13, 5, if xlen = 64 then 0x6b8 else 0x698)
+    (* [zip]/[unzip] (Zbkb's RV32-only bit-interleave/de-interleave) - no
+       riscv-opcodes RV64 counterpart at all (confirmed: real
+       riscv64-linux-gnu-as rejects ["zip"] as an unrecognized opcode), so
+       these need an explicit RV32-only gate below, the mirror image of
+       every RV64-only sibling in this family. *)
+    | Zip -> Some (0x13, 1, 0x08f)
+    | Unzip -> Some (0x13, 5, 0x08f)
     | _ -> None
 
   (* An R-type mnemonic whose third operand is an immediate is GAS's alias for
@@ -781,7 +968,12 @@ module Make (P : PROFILE) = struct
      and/or/xor/add/slt/sltu/addw all assemble as andi/ori/xori/addi/slti/
      sltiu/addiw, while sub/subw/mul are rejected, exactly the ops with no
      I-type counterpart to name here. The shifts are the same rule: `sll x5,
-     x11, 2` decodes back as `slli t0, a1, 0x2`. *)
+     x11, 2` decodes back as `slli t0, a1, 0x2`. `ror`/`rorw` follow suit
+     (confirmed: `ror a0, a1, 5` assembles as `rori`) - but `rol`/`rolw` do
+     NOT (confirmed: `rol a0, a1, 5` is rejected as "illegal operands"),
+     since there is no `roli`/`roliw` - a left-rotate-by-immediate is
+     redundant with `rori`'s own complementary shift amount, so Zbb never
+     defined one. *)
   let imm_alias = function
     | Opcode.Add -> Some Opcode.Addi
     | Slt -> Some Slti
@@ -796,6 +988,8 @@ module Make (P : PROFILE) = struct
     | Sllw -> Some Slliw
     | Srlw -> Some Srliw
     | Sraw -> Some Sraiw
+    | Ror -> Some Rori
+    | Rorw -> Some Roriw
     | _ -> None
 
   let i_desc = function
@@ -812,6 +1006,8 @@ module Make (P : PROFILE) = struct
     | Slliw -> Some (0x1b, 1, 0, Some 32)
     | Srliw -> Some (0x1b, 5, 0, Some 32)
     | Sraiw -> Some (0x1b, 5, 0x20, Some 32)
+    | Rori -> Some (0x13, 5, (if xlen = 64 then 0x18 else 0x30), Some xlen)
+    | Roriw -> Some (0x1b, 5, 0x30, Some 32)
     | _ -> None
 
   let load_desc = function
@@ -921,10 +1117,14 @@ module Make (P : PROFILE) = struct
   let lower_instruction state i =
     let opn = Opcode.name i.Instruction.op in
     match (i.op, i.ops) with
-    | (Opcode.Addw | Subw | Sllw | Srlw | Sraw | Mulw), _ when xlen <> 64 ->
+    | ( ( Opcode.Addw | Subw | Sllw | Srlw | Sraw | Mulw | Sh1adduw | Sh2adduw | Sh3adduw | Clzw
+        | Ctzw | Cpopw | Packw | Rolw | Rorw ),
+        _ )
+      when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
-    | (Opcode.Addiw | Slliw | Srliw | Sraiw | Sext_w | Ld | Lwu | Sd), _ when xlen <> 64 ->
+    | (Opcode.Addiw | Slliw | Srliw | Sraiw | Roriw | Sext_w | Ld | Lwu | Sd), _ when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
+    | (Opcode.Zip | Unzip), _ when xlen <> 32 -> Error (diag ~pos:__POS__ (`Rv32_only opn))
     | Opcode.C_addi, _ when not state.rvc -> Error (diag ~pos:__POS__ (`Compressed_disabled opn))
     | Opcode.C_addi, [ a; imm ] -> (
         match (xreg a, expr_of imm) with
@@ -968,6 +1168,24 @@ module Make (P : PROFILE) = struct
             Ok
               [
                 Lowered.I { name = opn; opcode; funct3; funct_hi; shamt_bits = shamt; rd; rs1; imm };
+              ]
+        | _ -> wrong opn)
+    | op, [ a; b ] when Option.is_some (unary_imm_desc op) -> (
+        match (xreg a, xreg b, unary_imm_desc op) with
+        | Some rd, Some rs1, Some (opcode, funct3, funct12) ->
+            Ok
+              [
+                Lowered.I
+                  {
+                    name = opn;
+                    opcode;
+                    funct3;
+                    funct_hi = 0;
+                    shamt_bits = None;
+                    rd;
+                    rs1;
+                    imm = const funct12;
+                  };
               ]
         | _ -> wrong opn)
     | op, [ a; Operand.Mem m ] when Option.is_some (load_desc op) -> (
@@ -1188,6 +1406,33 @@ module Make (P : PROFILE) = struct
             Ok
               [
                 Lowered.R { name = "sltu"; opcode = 0x33; funct3 = 3; funct7 = 0; rd; rs1 = 0; rs2 };
+              ]
+        | _ -> wrong opn)
+    | Opcode.Zext_h, [ a; b ] -> (
+        (* [zext.h rd, rs] - Zbb's zero-extend-halfword pseudo, [pack rd, rs, zero] (RV32)
+           or [packw rd, rs, zero] (RV64) under a different spelling; riscv-opcodes exports
+           the RV32 case as a separate "zext.h.rv32" pseudo-op record specializing [pack],
+           but real GAS accepts the literal text `zext.h` (never `zext.h.rv32`) on BOTH
+           profiles - confirmed against real riscv32-linux-gnu-as (2.43.1) and
+           riscv64-linux-gnu-as (2.44): `zext.h a0, a1` assembles to `0805c533`/`0805c53b`
+           respectively, matching `pack`/`packw a0, a1, zero` bit-for-bit; both real
+           assemblers also reject a three- or one-operand `zext.h` outright ("illegal
+           operands"), which is why this is its own two-operand match arm rather than a
+           reuse of the generic three-register [r_desc] path {!Pack}/{!Packw} share. *)
+        match (xreg a, xreg b) with
+        | Some rd, Some rs1 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = (if xlen = 64 then "packw" else "pack");
+                    opcode = (if xlen = 64 then 0x3b else 0x33);
+                    funct3 = 4;
+                    funct7 = 0x04;
+                    rd;
+                    rs1;
+                    rs2 = 0;
+                  };
               ]
         | _ -> wrong opn)
     | Opcode.Sext_w, [ a; b ] -> (
@@ -1717,12 +1962,32 @@ module Make (P : PROFILE) = struct
     | 0x33, 7, 0 -> Some "and"
     | 0x33, 0, 1 -> Some "mul"
     | 0x33, 7, 1 -> Some "remu"
+    | 0x33, 2, 0x10 -> Some "sh1add"
+    | 0x33, 4, 0x10 -> Some "sh2add"
+    | 0x33, 6, 0x10 -> Some "sh3add"
+    | 0x33, 4, 0x05 -> Some "min"
+    | 0x33, 5, 0x05 -> Some "minu"
+    | 0x33, 6, 0x05 -> Some "max"
+    | 0x33, 7, 0x05 -> Some "maxu"
+    | 0x33, 7, 0x20 -> Some "andn"
+    | 0x33, 6, 0x20 -> Some "orn"
+    | 0x33, 4, 0x20 -> Some "xnor"
+    | 0x33, 1, 0x30 -> Some "rol"
+    | 0x33, 5, 0x30 -> Some "ror"
+    | 0x3b, 2, 0x10 -> Some "sh1add.uw"
+    | 0x3b, 4, 0x10 -> Some "sh2add.uw"
+    | 0x3b, 6, 0x10 -> Some "sh3add.uw"
     | 0x3b, 0, 0 -> Some "addw"
     | 0x3b, 0, 0x20 -> Some "subw"
     | 0x3b, 1, 0 -> Some "sllw"
     | 0x3b, 5, 0 -> Some "srlw"
     | 0x3b, 5, 0x20 -> Some "sraw"
     | 0x3b, 0, 1 -> Some "mulw"
+    | 0x33, 4, 0x04 -> Some "pack"
+    | 0x33, 7, 0x04 -> Some "packh"
+    | 0x3b, 4, 0x04 -> Some "packw"
+    | 0x3b, 1, 0x30 -> Some "rolw"
+    | 0x3b, 5, 0x30 -> Some "rorw"
     | _ -> None
 
   (* OP-FP (opcode [0x53]): unlike every integer R-type above, several of these
@@ -1818,18 +2083,39 @@ module Make (P : PROFILE) = struct
                   | 0x13, 1, 0 -> Some "slli"
                   | 0x13, 5, 0 -> Some "srli"
                   | 0x13, 5, x when x = if xlen = 64 then 0x10 else 0x20 -> Some "srai"
+                  | 0x13, 5, x when x = if xlen = 64 then 0x18 else 0x30 -> Some "rori"
                   | 0x1b, 0, _ -> Some "addiw"
                   | 0x1b, 1, 0 -> Some "slliw"
                   | 0x1b, 5, 0 -> Some "srliw"
                   | 0x1b, 5, 0x20 -> Some "sraiw"
+                  | 0x1b, 5, 0x30 -> Some "roriw"
+                  | 0x13, 1, _ when Int64.equal raw 0x600L -> Some "clz"
+                  | 0x13, 1, _ when Int64.equal raw 0x601L -> Some "ctz"
+                  | 0x13, 1, _ when Int64.equal raw 0x602L -> Some "cpop"
+                  | 0x13, 1, _ when Int64.equal raw 0x604L -> Some "sext.b"
+                  | 0x13, 1, _ when Int64.equal raw 0x605L -> Some "sext.h"
+                  | 0x13, 5, _ when Int64.equal raw 0x287L -> Some "orc.b"
+                  | 0x1b, 1, _ when Int64.equal raw 0x600L -> Some "clzw"
+                  | 0x1b, 1, _ when Int64.equal raw 0x601L -> Some "ctzw"
+                  | 0x1b, 1, _ when Int64.equal raw 0x602L -> Some "cpopw"
+                  | 0x13, 5, _ when Int64.equal raw 0x687L -> Some "brev8"
+                  | 0x13, 5, _ when Int64.equal raw (if xlen = 64 then 0x6b8L else 0x698L) ->
+                      Some "rev8"
+                  | 0x13, 1, _ when xlen = 32 && Int64.equal raw 0x08fL -> Some "zip"
+                  | 0x13, 5, _ when xlen = 32 && Int64.equal raw 0x08fL -> Some "unzip"
                   | _ -> None
                 in
                 Option.map
                   (fun n ->
-                    let shift = f3 = 1 || f3 = 5 in
-                    let width = if opc = 0x1b then 5 else if xlen = 64 then 6 else 5 in
-                    let v = if shift then bits w 20 width else sign_extend 12 raw in
-                    (instruction (op_exn n) [ reg rd; reg rs1; imm v ], n))
+                    match n with
+                    | "clz" | "ctz" | "cpop" | "sext.b" | "sext.h" | "orc.b" | "clzw" | "ctzw"
+                    | "cpopw" | "brev8" | "rev8" | "zip" | "unzip" ->
+                        (instruction (op_exn n) [ reg rd; reg rs1 ], n)
+                    | _ ->
+                        let shift = f3 = 1 || f3 = 5 in
+                        let width = if opc = 0x1b then 5 else if xlen = 64 then 6 else 5 in
+                        let v = if shift then bits w 20 width else sign_extend 12 raw in
+                        (instruction (op_exn n) [ reg rd; reg rs1; imm v ], n))
                   n
             | 0x03 ->
                 let n =

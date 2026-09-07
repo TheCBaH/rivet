@@ -39,13 +39,175 @@ let test_counts () =
     (List.length Isa_gen_difficult.x86_mov_entries = 4);
   check "x86_fadd_entries has 2 entries (one x87 stack form x 2 modes)"
     (List.length Isa_gen_difficult.x86_fadd_entries = 2);
+  check "fadd_s_entries has 2 entries (bare dynamic-rounding form x 2 profiles)"
+    (List.length Isa_gen_difficult.fadd_s_entries = 2);
+  check "fsub/fmul/fdiv scalar entries have 2 entries each (bare dynamic rounding x 2 profiles)"
+    (List.length Isa_gen_difficult.fsub_s_entries = 2
+    && List.length Isa_gen_difficult.fmul_s_entries = 2
+    && List.length Isa_gen_difficult.fdiv_s_entries = 2);
+  check "double scalar arithmetic entries have 2 entries each (bare dynamic rounding x 2 profiles)"
+    (List.length Isa_gen_difficult.fadd_d_entries = 2
+    && List.length Isa_gen_difficult.fsub_d_entries = 2
+    && List.length Isa_gen_difficult.fmul_d_entries = 2
+    && List.length Isa_gen_difficult.fdiv_d_entries = 2);
+  check "sh1add_entries has 2 entries (Zba scale-one form x 2 profiles)"
+    (List.length Isa_gen_difficult.sh1add_entries = 2);
+  check "sh2add/sh3add entries have 2 entries each (Zba scale-two/scale-three x 2 profiles)"
+    (List.length Isa_gen_difficult.sh2add_entries = 2
+    && List.length Isa_gen_difficult.sh3add_entries = 2);
+  check "min/minu/max/maxu entries have 2 entries each (Zbb comparisons x 2 profiles)"
+    (List.length Isa_gen_difficult.min_entries = 2
+    && List.length Isa_gen_difficult.minu_entries = 2
+    && List.length Isa_gen_difficult.max_entries = 2
+    && List.length Isa_gen_difficult.maxu_entries = 2);
+  check "sh1add.uw/sh2add.uw/sh3add.uw entries have 1 entry each (RV64-only, no RV32 counterpart)"
+    (List.length Isa_gen_difficult.sh1adduw_entries = 1
+    && List.length Isa_gen_difficult.sh2adduw_entries = 1
+    && List.length Isa_gen_difficult.sh3adduw_entries = 1
+    && List.for_all
+         (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv64)
+         (Isa_gen_difficult.sh1adduw_entries @ Isa_gen_difficult.sh2adduw_entries
+        @ Isa_gen_difficult.sh3adduw_entries));
+  check "andn/orn/xnor/rol/ror entries have 2 entries each (Zbb Req_any comparisons x 2 profiles)"
+    (List.length Isa_gen_difficult.andn_entries = 2
+    && List.length Isa_gen_difficult.orn_entries = 2
+    && List.length Isa_gen_difficult.xnor_entries = 2
+    && List.length Isa_gen_difficult.rol_entries = 2
+    && List.length Isa_gen_difficult.ror_entries = 2);
+  check "clmul/clmulh entries have 2 entries each (Zbc Req_any x 2 profiles)"
+    (List.length Isa_gen_difficult.clmul_entries = 2
+    && List.length Isa_gen_difficult.clmulh_entries = 2);
+  check "xperm4/xperm8 entries have 2 entries each (Zbkx Req_any x 2 profiles)"
+    (List.length Isa_gen_difficult.xperm4_entries = 2
+    && List.length Isa_gen_difficult.xperm8_entries = 2);
+  check
+    "clz/ctz/cpop/sext.b/sext.h/orc.b entries have 2 entries each (XLEN-independent x 2 profiles)"
+    (List.length Isa_gen_difficult.clz_entries = 2
+    && List.length Isa_gen_difficult.ctz_entries = 2
+    && List.length Isa_gen_difficult.cpop_entries = 2
+    && List.length Isa_gen_difficult.sextb_entries = 2
+    && List.length Isa_gen_difficult.sexth_entries = 2
+    && List.length Isa_gen_difficult.orcb_entries = 2);
+  check "clzw/ctzw/cpopw entries have 1 entry each (RV64-only, no RV32 counterpart)"
+    (List.length Isa_gen_difficult.clzw_entries = 1
+    && List.length Isa_gen_difficult.ctzw_entries = 1
+    && List.length Isa_gen_difficult.cpopw_entries = 1
+    && List.for_all
+         (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv64)
+         (Isa_gen_difficult.clzw_entries @ Isa_gen_difficult.ctzw_entries
+        @ Isa_gen_difficult.cpopw_entries));
+  check "brev8_entries has 2 entries (Zbkb four-way Req_any x 2 profiles)"
+    (List.length Isa_gen_difficult.brev8_entries = 2);
+  check "rev8_entries has 2 entries (byte-reverse, distinct lookup_key per profile)"
+    (List.length Isa_gen_difficult.rev8_entries = 2
+    && List.exists
+         (fun (e : Isa_gen_difficult.entry) ->
+           e.target = Target.Riscv32 && String.equal e.lookup_key "rev8.rv32")
+         Isa_gen_difficult.rev8_entries
+    && List.exists
+         (fun (e : Isa_gen_difficult.entry) ->
+           e.target = Target.Riscv64 && String.equal e.lookup_key "rev8")
+         Isa_gen_difficult.rev8_entries);
+  check "pack/packh_entries have 2 entries each (Zbkb four-way Req_any x 2 profiles)"
+    (List.length Isa_gen_difficult.pack_entries = 2
+    && List.length Isa_gen_difficult.packh_entries = 2);
+  check "packw_entries has 1 entry (RV64-only, no RV32 counterpart)"
+    (List.length Isa_gen_difficult.packw_entries = 1
+    && List.for_all
+         (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv64)
+         Isa_gen_difficult.packw_entries);
+  check "zip/unzip_entries have 1 entry each (RV32-only, no RV64 counterpart)"
+    (List.length Isa_gen_difficult.zip_entries = 1
+    && List.length Isa_gen_difficult.unzip_entries = 1
+    && List.for_all
+         (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv32)
+         (Isa_gen_difficult.zip_entries @ Isa_gen_difficult.unzip_entries));
+  check "rolw/rorw_entries have 1 entry each (RV64-only, no RV32 counterpart)"
+    (List.length Isa_gen_difficult.rolw_entries = 1
+    && List.length Isa_gen_difficult.rorw_entries = 1
+    && List.for_all
+         (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv64)
+         (Isa_gen_difficult.rolw_entries @ Isa_gen_difficult.rorw_entries));
+  check "rori_entries has 2 entries (profile-specific native_name split like rev8)"
+    (List.length Isa_gen_difficult.rori_entries = 2
+    && List.exists
+         (fun (e : Isa_gen_difficult.entry) ->
+           e.target = Target.Riscv32 && String.equal e.lookup_key "rori.rv32")
+         Isa_gen_difficult.rori_entries
+    && List.exists
+         (fun (e : Isa_gen_difficult.entry) ->
+           e.target = Target.Riscv64 && String.equal e.lookup_key "rori")
+         Isa_gen_difficult.rori_entries);
+  check "roriw_entries has 1 entry (RV64-only, no RV32 counterpart)"
+    (List.length Isa_gen_difficult.roriw_entries = 1
+    && List.for_all
+         (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv64)
+         Isa_gen_difficult.roriw_entries);
+  check "zext_h_entries has 2 entries (profile-specific native_name split like rev8)"
+    (List.length Isa_gen_difficult.zext_h_entries = 2
+    && List.exists
+         (fun (e : Isa_gen_difficult.entry) ->
+           e.target = Target.Riscv32 && String.equal e.lookup_key "zext.h.rv32")
+         Isa_gen_difficult.zext_h_entries
+    && List.exists
+         (fun (e : Isa_gen_difficult.entry) ->
+           e.target = Target.Riscv64 && String.equal e.lookup_key "zext.h")
+         Isa_gen_difficult.zext_h_entries);
   check "all includes every difficult-form family"
     (List.length Isa_gen_difficult.all
     = List.length Isa_gen_difficult.sw_entries
       + List.length Isa_gen_difficult.beq_entries
       + List.length Isa_gen_difficult.c_addi_entries
       + List.length Isa_gen_difficult.x86_mov_entries
-      + List.length Isa_gen_difficult.x86_fadd_entries)
+      + List.length Isa_gen_difficult.x86_fadd_entries
+      + List.length Isa_gen_difficult.fadd_s_entries
+      + List.length Isa_gen_difficult.fsub_s_entries
+      + List.length Isa_gen_difficult.fmul_s_entries
+      + List.length Isa_gen_difficult.fdiv_s_entries
+      + List.length Isa_gen_difficult.fadd_d_entries
+      + List.length Isa_gen_difficult.fsub_d_entries
+      + List.length Isa_gen_difficult.fmul_d_entries
+      + List.length Isa_gen_difficult.fdiv_d_entries
+      + List.length Isa_gen_difficult.sh1add_entries
+      + List.length Isa_gen_difficult.sh2add_entries
+      + List.length Isa_gen_difficult.sh3add_entries
+      + List.length Isa_gen_difficult.sh1adduw_entries
+      + List.length Isa_gen_difficult.sh2adduw_entries
+      + List.length Isa_gen_difficult.sh3adduw_entries
+      + List.length Isa_gen_difficult.min_entries
+      + List.length Isa_gen_difficult.minu_entries
+      + List.length Isa_gen_difficult.max_entries
+      + List.length Isa_gen_difficult.maxu_entries
+      + List.length Isa_gen_difficult.andn_entries
+      + List.length Isa_gen_difficult.orn_entries
+      + List.length Isa_gen_difficult.xnor_entries
+      + List.length Isa_gen_difficult.rol_entries
+      + List.length Isa_gen_difficult.ror_entries
+      + List.length Isa_gen_difficult.clz_entries
+      + List.length Isa_gen_difficult.ctz_entries
+      + List.length Isa_gen_difficult.cpop_entries
+      + List.length Isa_gen_difficult.sextb_entries
+      + List.length Isa_gen_difficult.sexth_entries
+      + List.length Isa_gen_difficult.orcb_entries
+      + List.length Isa_gen_difficult.clzw_entries
+      + List.length Isa_gen_difficult.ctzw_entries
+      + List.length Isa_gen_difficult.cpopw_entries
+      + List.length Isa_gen_difficult.brev8_entries
+      + List.length Isa_gen_difficult.rev8_entries
+      + List.length Isa_gen_difficult.pack_entries
+      + List.length Isa_gen_difficult.packh_entries
+      + List.length Isa_gen_difficult.packw_entries
+      + List.length Isa_gen_difficult.zip_entries
+      + List.length Isa_gen_difficult.unzip_entries
+      + List.length Isa_gen_difficult.rolw_entries
+      + List.length Isa_gen_difficult.rorw_entries
+      + List.length Isa_gen_difficult.rori_entries
+      + List.length Isa_gen_difficult.roriw_entries
+      + List.length Isa_gen_difficult.zext_h_entries
+      + List.length Isa_gen_difficult.clmul_entries
+      + List.length Isa_gen_difficult.clmulh_entries
+      + List.length Isa_gen_difficult.xperm4_entries
+      + List.length Isa_gen_difficult.xperm8_entries)
 
 let test_case_ids_distinct () =
   let ids = List.map (fun (e : Isa_gen_difficult.entry) -> e.case_id) Isa_gen_difficult.all in
@@ -147,6 +309,84 @@ let test_x86_address_and_x87_domains () =
         (List.mem "implicit-st0-destination" e.rule_ids))
     Isa_gen_difficult.x86_fadd_entries
 
+let test_f_arith_s_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses floating-point register operands" e.case_id)
+        (List.map snd e.operands = [ "ft0"; "ft1"; "ft2" ]);
+      check
+        (Printf.sprintf "%s: selects measured implicit dynamic rounding" e.case_id)
+        (List.mem "implicit-dynamic-rounding" e.rule_ids);
+      check
+        (Printf.sprintf "%s: configuration enables scalar FP" e.case_id)
+        (List.exists
+           (fun arg -> String.contains arg 'f' || String.contains arg 'd')
+           e.configuration))
+    (Isa_gen_difficult.fadd_s_entries @ Isa_gen_difficult.fsub_s_entries
+   @ Isa_gen_difficult.fmul_s_entries @ Isa_gen_difficult.fdiv_s_entries
+   @ Isa_gen_difficult.fadd_d_entries @ Isa_gen_difficult.fsub_d_entries
+   @ Isa_gen_difficult.fmul_d_entries @ Isa_gen_difficult.fdiv_d_entries)
+
+let test_sh1add_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses three ordinary GPR operands" e.case_id)
+        (List.map snd e.operands = [ "a0"; "a1"; "a2" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured Zba extension" e.case_id)
+        (List.exists (fun arg -> String.contains arg 'z') e.configuration))
+    (Isa_gen_difficult.sh1add_entries @ Isa_gen_difficult.sh2add_entries
+   @ Isa_gen_difficult.sh3add_entries)
+
+let test_minmax_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses three ordinary GPR operands" e.case_id)
+        (List.map snd e.operands = [ "a0"; "a1"; "a2" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured Zbb extension" e.case_id)
+        (List.exists (fun arg -> String.contains arg 'z') e.configuration))
+    (Isa_gen_difficult.min_entries @ Isa_gen_difficult.minu_entries @ Isa_gen_difficult.max_entries
+   @ Isa_gen_difficult.maxu_entries @ Isa_gen_difficult.andn_entries @ Isa_gen_difficult.orn_entries
+   @ Isa_gen_difficult.xnor_entries @ Isa_gen_difficult.rol_entries @ Isa_gen_difficult.ror_entries
+   @ Isa_gen_difficult.pack_entries @ Isa_gen_difficult.packh_entries
+   @ Isa_gen_difficult.packw_entries @ Isa_gen_difficult.rolw_entries
+   @ Isa_gen_difficult.rorw_entries @ Isa_gen_difficult.clmul_entries
+   @ Isa_gen_difficult.clmulh_entries @ Isa_gen_difficult.xperm4_entries
+   @ Isa_gen_difficult.xperm8_entries)
+
+let test_unary_gpr_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses two ordinary GPR operands, no immediate" e.case_id)
+        (List.map snd e.operands = [ "a0"; "a1" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured Zbb/Zbkb extension" e.case_id)
+        (List.exists (fun arg -> String.contains arg 'z') e.configuration))
+    (Isa_gen_difficult.clz_entries @ Isa_gen_difficult.ctz_entries @ Isa_gen_difficult.cpop_entries
+   @ Isa_gen_difficult.sextb_entries @ Isa_gen_difficult.sexth_entries
+   @ Isa_gen_difficult.orcb_entries @ Isa_gen_difficult.clzw_entries
+   @ Isa_gen_difficult.ctzw_entries @ Isa_gen_difficult.cpopw_entries
+   @ Isa_gen_difficult.brev8_entries @ Isa_gen_difficult.rev8_entries
+   @ Isa_gen_difficult.zip_entries @ Isa_gen_difficult.unzip_entries
+   @ Isa_gen_difficult.zext_h_entries)
+
+let test_shamt_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses two ordinary GPR operands plus a shamt immediate" e.case_id)
+        (List.map fst e.operands = [ "rd"; "rs1"; "shamt" ]
+        && List.map snd e.operands = [ "a0"; "a1"; "5" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured Zbb extension" e.case_id)
+        (List.exists (fun arg -> String.contains arg 'z') e.configuration))
+    (Isa_gen_difficult.rori_entries @ Isa_gen_difficult.roriw_entries)
+
 let test_render_source_lines () =
   check "render_source_lines matches render_source for a single line"
     (String.equal
@@ -192,6 +432,11 @@ let () =
   test_beq_uses_local_labels_both_directions ();
   test_no_entry_uses_x0 ();
   test_x86_address_and_x87_domains ();
+  test_f_arith_s_domain ();
+  test_sh1add_domain ();
+  test_minmax_domain ();
+  test_unary_gpr_domain ();
+  test_shamt_domain ();
   test_render_source_lines ();
   test_build_wraps_lines_before_and_after ();
   if !failures > 0 then (

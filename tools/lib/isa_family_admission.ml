@@ -99,6 +99,49 @@ let promoted_case ~target ~form_id ~lookup_key =
   | (Target.X86_32 | Target.X86_64), "x86:MOV_GPRv_MEMv", "MOV_GPRv_MEMv" -> true
   | (Target.X86_32 | Target.X86_64), "x86:MOV_MEMv_GPRv", "MOV_MEMv_GPRv" -> true
   | (Target.X86_32 | Target.X86_64), "x86:FADD_ST0_X87", "FADD_ST0_X87" -> true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ( "riscv:fadd.s" | "riscv:fsub.s" | "riscv:fmul.s" | "riscv:fdiv.s" | "riscv:fadd.d"
+      | "riscv:fsub.d" | "riscv:fmul.d" | "riscv:fdiv.d" ),
+      ("fadd.s" | "fsub.s" | "fmul.s" | "fdiv.s" | "fadd.d" | "fsub.d" | "fmul.d" | "fdiv.d") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:sh1add" | "riscv:sh2add" | "riscv:sh3add"),
+      ("sh1add" | "sh2add" | "sh3add") ) ->
+      true
+  | ( Target.Riscv64,
+      ("riscv:sh1add.uw" | "riscv:sh2add.uw" | "riscv:sh3add.uw"),
+      ("sh1add.uw" | "sh2add.uw" | "sh3add.uw") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:min" | "riscv:minu" | "riscv:max" | "riscv:maxu"),
+      ("min" | "minu" | "max" | "maxu") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:andn" | "riscv:orn" | "riscv:xnor" | "riscv:rol" | "riscv:ror"),
+      ("andn" | "orn" | "xnor" | "rol" | "ror") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:clz" | "riscv:ctz" | "riscv:cpop" | "riscv:sext.b" | "riscv:sext.h" | "riscv:orc.b"),
+      ("clz" | "ctz" | "cpop" | "sext.b" | "sext.h" | "orc.b") ) ->
+      true
+  | Target.Riscv64, ("riscv:clzw" | "riscv:ctzw" | "riscv:cpopw"), ("clzw" | "ctzw" | "cpopw") ->
+      true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:brev8", "brev8" -> true
+  | Target.Riscv64, "riscv:rev8", "rev8" -> true
+  | Target.Riscv32, "riscv:rev8", "rev8.rv32" -> true
+  | (Target.Riscv32 | Target.Riscv64), ("riscv:pack" | "riscv:packh"), ("pack" | "packh") -> true
+  | Target.Riscv64, "riscv:packw", "packw" -> true
+  | Target.Riscv32, ("riscv:zip" | "riscv:unzip"), ("zip" | "unzip") -> true
+  | Target.Riscv64, ("riscv:rolw" | "riscv:rorw"), ("rolw" | "rorw") -> true
+  | Target.Riscv64, "riscv:rori", "rori" -> true
+  | Target.Riscv32, "riscv:rori", "rori.rv32" -> true
+  | Target.Riscv64, "riscv:roriw", "roriw" -> true
+  | Target.Riscv64, "riscv:zext.h", "zext.h" -> true
+  | Target.Riscv32, "riscv:zext.h", "zext.h.rv32" -> true
+  | (Target.Riscv32 | Target.Riscv64), ("riscv:clmul" | "riscv:clmulh"), ("clmul" | "clmulh") ->
+      true
+  | (Target.Riscv32 | Target.Riscv64), ("riscv:xperm4" | "riscv:xperm8"), ("xperm4" | "xperm8") ->
+      true
   | _ -> false
 
 let pilot_case ~target ~form_id ~lookup_key =

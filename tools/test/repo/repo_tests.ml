@@ -185,8 +185,8 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:29;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:40;
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:122;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:150;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:9;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:9
 
@@ -226,14 +226,35 @@ let test_isa_family_admission repo =
         check (Printf.sprintf "isa-family-admission: %s oracle-unavailable" label) (u = 0);
         check (Printf.sprintf "isa-family-admission: %s blockers" label) (b = blocked)
   in
-  (* The isa-difficult corpus moved sw, beq and c.addi from normalized-only to
-     promoted-support on both profiles (its committed corpus - see
-     Isa_family_admission.promoted_case's own comment): 25->22 and 4->7 on
-     RV32, 35->32 and 5->8 on RV64; total/blocked/gas-generatable unchanged. *)
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:22 ~gas_generatable:0
-    ~promoted_support:7 ~blocked:1060;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:32 ~gas_generatable:0
-    ~promoted_support:8 ~blocked:1114;
+  (* Promotes the four bare scalar single-precision arithmetic forms
+     after persisted RV{32,64}IMF(D) cases pin their implicit dynamic rounding,
+     sh2add/sh3add after persisted RV{32,64}IM_Zba cases pin them alongside
+     sh1add (Zba's non-word scale family), min/minu/max/maxu after
+     persisted RV{32,64}IM_Zbb cases pin Zbb's single-extension comparison
+     family, sh1add.uw/sh2add.uw/sh3add.uw (RV64-only) after a persisted
+     RV64IM_Zba case pins each, closing Zba's *.uw word-operand family, and
+     andn/orn/xnor/rol/ror after a persisted RV{32,64}IM_Zbb case pins each
+     under its primary rv_zbb record - each mnemonic's Req_any also promotes
+     the four import-duplicate records (rv_zbkb/rv_zk/rv_zkn/rv_zks) that
+     independently normalize to the same form_id, so this slice moves 25
+     records per profile (5 mnemonics x 5 extension-membership records), not 5.
+     The Zbkb pack/packh/packw/zip/unzip slice, its rolw/rorw
+     continuation, and rori/rori.rv32/roriw (rori's own profile-specific
+     native_name split reusing rev8's Req_any groups, roriw the plain
+     RV64-only *w sibling) add further promoted records on top of that.
+     zext.h/zext.h.rv32 add one more promoted record per profile - unlike
+     rev8/rori, neither is import-duplicated, so this adds only 1 record
+     per profile, not 5. clmul/clmulh are import-duplicated five ways again
+     (rv_zbc/rv_zbkc/rv_zk/rv_zkn/rv_zks), identical on both profiles, so
+     this slice moves 10 records per profile (2 mnemonics x 5 records).
+     xperm4/xperm8 are import-duplicated four ways (rv_zbkx/rv_zk/rv_zkn/
+     rv_zks - no separate non-K sibling extension), identical on both
+     profiles, so this slice moves 8 records per profile (2 mnemonics x
+     4 records). *)
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
+    ~promoted_support:102 ~blocked:967;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
+    ~promoted_support:120 ~blocked:1004;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0 ~gas_generatable:5
     ~promoted_support:4 ~blocked:7878;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
@@ -244,9 +265,9 @@ let test_isa_family_admission repo =
    - not just synthetic values, which Test_isa_norm_jsonl already covers for
    every constructor - must survive Isa_norm_jsonl.encode_line followed by
    decode_line unchanged. The pinned total is the sum of the accounting
-   tests' own pinned normalized counts (29+40+7+7); a drop here without a matching drop
+   tests' own pinned normalized counts (36+47+9+9); a drop here without a matching drop
    there would mean the codec silently lost a form the accounting still
-   credits as normalized. *)
+   credits as normalized (67+81+9+9). *)
 let normalize_one source (rec_ : Isa_source_record.t) =
   match source with
   | "riscv_opcodes" -> Isa_norm_riscv.normalize rec_
@@ -291,9 +312,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 87)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 290)"
        !roundtrip_count)
-    (!roundtrip_count = 87)
+    (!roundtrip_count = 290)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's
