@@ -410,13 +410,13 @@ let vxor_vx_json =
 let vxor_vi_json =
   {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x2c003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vxor.vi", "origin": {"line": 310, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vxor.vi        31..26=0x0b vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vxor.vi", "31..26=0x0b", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x2c003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vxor.vi@L310", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
 
-let test_opivv_form ~mnemonic json =
+let test_opivv_form ?(feature = "v") ~mnemonic json =
   let rec_ = decode_or_fail mnemonic json in
   let form = normalize_or_fail mnemonic rec_ in
   check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
   check
-    (mnemonic ^ ": requirement is the v feature")
-    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+    (mnemonic ^ ": requirement is the " ^ feature ^ " feature")
+    (form.requirement = Isa_norm_model.Req_feature ("riscv:" ^ feature));
   check
     (mnemonic ^ ": renders as rd, rs2, rs1")
     (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2, rs1");
@@ -427,13 +427,13 @@ let test_opivv_form ~mnemonic json =
          match o.op_kind with Register { class_ = Riscv_vec; _ } -> true | _ -> false)
        form.operands)
 
-let test_opivx_form ~mnemonic json =
+let test_opivx_form ?(feature = "v") ~mnemonic json =
   let rec_ = decode_or_fail mnemonic json in
   let form = normalize_or_fail mnemonic rec_ in
   check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
   check
-    (mnemonic ^ ": requirement is the v feature")
-    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+    (mnemonic ^ ": requirement is the " ^ feature ^ " feature")
+    (form.requirement = Isa_norm_model.Req_feature ("riscv:" ^ feature));
   check
     (mnemonic ^ ": renders as rd, rs2, rs1")
     (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2, rs1");
@@ -473,13 +473,13 @@ let test_opfvf_form ~mnemonic json =
         true
     | _ -> false)
 
-let test_opmacc_vv_form ~mnemonic json =
+let test_opmacc_vv_form ?(feature = "v") ~mnemonic json =
   let rec_ = decode_or_fail mnemonic json in
   let form = normalize_or_fail mnemonic rec_ in
   check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
   check
-    (mnemonic ^ ": requirement is the v feature")
-    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+    (mnemonic ^ ": requirement is the " ^ feature ^ " feature")
+    (form.requirement = Isa_norm_model.Req_feature ("riscv:" ^ feature));
   check
     (mnemonic ^ ": renders as rd, rs1, rs2 (reordered relative to opivv_form)")
     (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1, rs2");
@@ -513,13 +513,13 @@ let test_opmacc_vx_form ~mnemonic json =
         true
     | _ -> false)
 
-let test_opfmacc_vf_form ~mnemonic json =
+let test_opfmacc_vf_form ?(feature = "v") ~mnemonic json =
   let rec_ = decode_or_fail mnemonic json in
   let form = normalize_or_fail mnemonic rec_ in
   check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
   check
-    (mnemonic ^ ": requirement is the v feature")
-    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+    (mnemonic ^ ": requirement is the " ^ feature ^ " feature")
+    (form.requirement = Isa_norm_model.Req_feature ("riscv:" ^ feature));
   check
     (mnemonic ^ ": renders as rd, rs1, rs2 (reordered relative to opfvf_form)")
     (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1, rs2");
@@ -536,13 +536,13 @@ let test_opfmacc_vf_form ~mnemonic json =
         true
     | _ -> false)
 
-let test_vext_form ~mnemonic json =
+let test_vext_form ?(feature = "v") ~mnemonic json =
   let rec_ = decode_or_fail mnemonic json in
   let form = normalize_or_fail mnemonic rec_ in
   check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
   check
-    (mnemonic ^ ": requirement is the v feature")
-    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+    (mnemonic ^ ": requirement is the " ^ feature ^ " feature")
+    (form.requirement = Isa_norm_model.Req_feature ("riscv:" ^ feature));
   check
     (mnemonic ^ ": renders as rd, rs2")
     (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2");
@@ -846,13 +846,13 @@ let test_vid_form json =
     | [ { op_kind = Register { class_ = Riscv_vec; _ }; _ } ] -> true
     | _ -> false)
 
-let test_opivi_form ?(imm_name = "simm5") ?(signed = true) ~mnemonic json =
+let test_opivi_form ?(imm_name = "simm5") ?(signed = true) ?(feature = "v") ~mnemonic json =
   let rec_ = decode_or_fail mnemonic json in
   let form = normalize_or_fail mnemonic rec_ in
   check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
   check
-    (mnemonic ^ ": requirement is the v feature")
-    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+    (mnemonic ^ ": requirement is the " ^ feature ^ " feature")
+    (form.requirement = Isa_norm_model.Req_feature ("riscv:" ^ feature));
   check
     (mnemonic ^ ": renders as rd, rs2, " ^ imm_name)
     (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2, " ^ imm_name);
@@ -3245,6 +3245,481 @@ let test_vs4r_v () =
           (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "vs4r.v-nf-not-modeled")
           form.diagnostics))
 
+(* Zvbc's vclmul/vclmulh: carry-less multiply (low/high half), verbatim-
+   extracted from the checked-in riscv64.jsonl (identical in riscv32.jsonl,
+   confirmed) - the same OPMVV/OPMVX shape {!test_opivv_form}/
+   [test_opivx_form] already cover, but under [rv_zvbc] rather than [rv_v],
+   so the requirement is [riscv:zvbc] (real GNU as accepts these mnemonics
+   under [-march=...zvbc] alone, no explicit [v] needed - see
+   {!Isa_norm_riscv.feature_of_extension}'s own comment on this). *)
+let vclmul_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x30002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vclmul.vv", "origin": {"line": 4, "path": "extensions/rv_zvbc"}, "provenance": {"extension": "rv_zvbc", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vclmul.vv    31..26=0x0C         vm vs2 vs1     14..12=0x2 vd 6..0=0x57", "tokens": ["vclmul.vv", "31..26=0x0C", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x30002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbc:vclmul.vv@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vclmul_vv () = test_opivv_form ~feature:"zvbc" ~mnemonic:"vclmul.vv" vclmul_vv_json
+
+let vclmul_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x30006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vclmul.vx", "origin": {"line": 5, "path": "extensions/rv_zvbc"}, "provenance": {"extension": "rv_zvbc", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vclmul.vx    31..26=0x0C         vm vs2 rs1     14..12=0x6 vd 6..0=0x57", "tokens": ["vclmul.vx", "31..26=0x0C", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x30006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbc:vclmul.vx@L5", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vclmul_vx () = test_opivx_form ~feature:"zvbc" ~mnemonic:"vclmul.vx" vclmul_vx_json
+
+let vclmulh_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x34002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vclmulh.vv", "origin": {"line": 8, "path": "extensions/rv_zvbc"}, "provenance": {"extension": "rv_zvbc", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vclmulh.vv   31..26=0x0D         vm vs2 vs1     14..12=0x2 vd 6..0=0x57", "tokens": ["vclmulh.vv", "31..26=0x0D", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x34002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbc:vclmulh.vv@L8", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vclmulh_vv () = test_opivv_form ~feature:"zvbc" ~mnemonic:"vclmulh.vv" vclmulh_vv_json
+
+let vclmulh_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x34006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vclmulh.vx", "origin": {"line": 9, "path": "extensions/rv_zvbc"}, "provenance": {"extension": "rv_zvbc", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vclmulh.vx   31..26=0x0D         vm vs2 rs1     14..12=0x6 vd 6..0=0x57", "tokens": ["vclmulh.vx", "31..26=0x0D", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x34006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbc:vclmulh.vx@L9", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vclmulh_vx () = test_opivx_form ~feature:"zvbc" ~mnemonic:"vclmulh.vx" vclmulh_vx_json
+
+(* Zvkg's vghsh.vv/vgmul.vv: vector GCM/GHASH, major opcode 0x77 (not OP-V's
+   0x57) - a genuinely new instruction space, so dispatched by
+   {!Isa_norm_riscv.zvk_ternary_form}/[zvk_unary_form] rather than any
+   existing generic OPIVV/OPMVV/OPFVV helper (those all wrongly imply an
+   optional trailing mask, which real GNU as rejects outright for this
+   opcode space). Taken verbatim from the checked-in riscv64.jsonl
+   (identical in riscv32.jsonl, confirmed). *)
+let vghsh_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xb2002077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vghsh.vv", "origin": {"line": 7, "path": "extensions/rv_zvkg"}, "provenance": {"extension": "rv_zvkg", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vghsh.vv 31..26=0x2C 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x77", "tokens": ["vghsh.vv", "31..26=0x2C", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xb2002077", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkg:vghsh.vv@L7", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vghsh_vv () =
+  let rec_ = decode_or_fail "vghsh.vv" vghsh_vv_json in
+  let form = normalize_or_fail "vghsh.vv" rec_ in
+  check "vghsh.vv: requirement is the zvkg feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:zvkg");
+  check "vghsh.vv: rd, rs2, rs1 all vector registers, in that order"
+    (match form.operands with
+    | [
+     { op_name = "rd"; op_kind = Register { class_ = Riscv_vec; _ }; role = Out; _ };
+     { op_name = "rs1"; op_kind = Register { class_ = Riscv_vec; _ }; role = In; _ };
+     { op_name = "rs2"; op_kind = Register { class_ = Riscv_vec; _ }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vghsh.vv: renders as rd, rs2, rs1"
+    (Isa_norm_model.render_syntax form.syntax = "vghsh.vv rd, rs2, rs1")
+
+let vgmul_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0xa208a077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vgmul.vv", "origin": {"line": 4, "path": "extensions/rv_zvkg"}, "provenance": {"extension": "rv_zvkg", "operands": ["vs2", "vd"], "raw": {"line": "vgmul.vv 31..26=0x28 25=1 vs2 19..15=0x11 14..12=0x2 vd 6..0=0x77", "tokens": ["vgmul.vv", "31..26=0x28", "25=1", "vs2", "19..15=0x11", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0xa208a077", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkg:vgmul.vv@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vgmul_vv () =
+  let rec_ = decode_or_fail "vgmul.vv" vgmul_vv_json in
+  let form = normalize_or_fail "vgmul.vv" rec_ in
+  check "vgmul.vv: requirement is the zvkg feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:zvkg");
+  check "vgmul.vv: rd, rs2 both vector registers, in that order, no third operand"
+    (match form.operands with
+    | [
+     { op_name = "rd"; op_kind = Register { class_ = Riscv_vec; _ }; role = Out; _ };
+     { op_name = "rs2"; op_kind = Register { class_ = Riscv_vec; _ }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vgmul.vv: renders as rd, rs2"
+    (Isa_norm_model.render_syntax form.syntax = "vgmul.vv rd, rs2")
+
+(* Zvknha's vsha2ms.vv/vsha2ch.vv/vsha2cl.vv: the same zvk_ternary_form
+   shape as vghsh.vv above, but a two-way Req_any (Zvknha imported
+   verbatim by Zvknhb - confirmed real GNU as accepts either alone; see
+   Isa_norm_riscv.alternative_extensions_by_mnemonic's own comment), the
+   first zvk_ternary_form caller to need requirement_of_mnemonic rather
+   than the plain single-feature requirement vghsh.vv/vgmul.vv get. Taken
+   verbatim from the checked-in riscv64.jsonl (identical in riscv32.jsonl,
+   confirmed). *)
+let vsha2ms_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xb6002077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsha2ms.vv", "origin": {"line": 7, "path": "extensions/rv_zvknha"}, "provenance": {"extension": "rv_zvknha", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vsha2ms.vv    31..26=0x2D 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x77", "tokens": ["vsha2ms.vv", "31..26=0x2D", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xb6002077", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvknha:vsha2ms.vv@L7", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsha2ms_vv () =
+  let rec_ = decode_or_fail "vsha2ms.vv" vsha2ms_vv_json in
+  let form = normalize_or_fail "vsha2ms.vv" rec_ in
+  check "vsha2ms.vv: requirement is Req_any [zvknha; zvknhb; zvkn]"
+    (form.requirement
+    = Isa_norm_model.Req_any
+        [ Req_feature "riscv:zvknha"; Req_feature "riscv:zvknhb"; Req_feature "riscv:zvkn" ]);
+  check "vsha2ms.vv: renders as rd, rs2, rs1"
+    (Isa_norm_model.render_syntax form.syntax = "vsha2ms.vv rd, rs2, rs1")
+
+let vsha2ch_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xba002077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsha2ch.vv", "origin": {"line": 8, "path": "extensions/rv_zvknha"}, "provenance": {"extension": "rv_zvknha", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vsha2ch.vv    31..26=0x2E 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x77", "tokens": ["vsha2ch.vv", "31..26=0x2E", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xba002077", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvknha:vsha2ch.vv@L8", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsha2ch_vv () =
+  let rec_ = decode_or_fail "vsha2ch.vv" vsha2ch_vv_json in
+  let form = normalize_or_fail "vsha2ch.vv" rec_ in
+  check "vsha2ch.vv: requirement is Req_any [zvknha; zvknhb; zvkn]"
+    (form.requirement
+    = Isa_norm_model.Req_any
+        [ Req_feature "riscv:zvknha"; Req_feature "riscv:zvknhb"; Req_feature "riscv:zvkn" ]);
+  check "vsha2ch.vv: renders as rd, rs2, rs1"
+    (Isa_norm_model.render_syntax form.syntax = "vsha2ch.vv rd, rs2, rs1")
+
+let vsha2cl_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xbe002077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsha2cl.vv", "origin": {"line": 9, "path": "extensions/rv_zvknha"}, "provenance": {"extension": "rv_zvknha", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vsha2cl.vv    31..26=0x2F 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x77", "tokens": ["vsha2cl.vv", "31..26=0x2F", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xbe002077", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvknha:vsha2cl.vv@L9", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsha2cl_vv () =
+  let rec_ = decode_or_fail "vsha2cl.vv" vsha2cl_vv_json in
+  let form = normalize_or_fail "vsha2cl.vv" rec_ in
+  check "vsha2cl.vv: requirement is Req_any [zvknha; zvknhb; zvkn]"
+    (form.requirement
+    = Isa_norm_model.Req_any
+        [ Req_feature "riscv:zvknha"; Req_feature "riscv:zvknhb"; Req_feature "riscv:zvkn" ]);
+  check "vsha2cl.vv: renders as rd, rs2, rs1"
+    (Isa_norm_model.render_syntax form.syntax = "vsha2cl.vv rd, rs2, rs1")
+
+(* Zvksed's vsm4k.vi/vsm4r.vv/vsm4r.vs: SM4 block-cipher helpers, opcode
+   0x77, no mask bit; vsm4k.vi is the first zvk_zimm5_form caller
+   (a new shape - unsigned zimm5 in vs1's field position); vsm4r.vv/vs
+   reuse zvk_unary_form but, like vsha2*.vv above, need
+   requirement_of_mnemonic's Req_any path (Zvksed imported by Zvks).
+   Taken verbatim from the checked-in riscv64.jsonl (identical in
+   riscv32.jsonl, confirmed). *)
+let vsm4k_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x86002077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsm4k.vi", "origin": {"line": 4, "path": "extensions/rv_zvksed"}, "provenance": {"extension": "rv_zvksed", "operands": ["vs2", "zimm5", "vd"], "raw": {"line": "vsm4k.vi     31..26=0x21 25=1 vs2 zimm5       14..12=0x2 vd 6..0=0x77", "tokens": ["vsm4k.vi", "31..26=0x21", "25=1", "vs2", "zimm5", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x86002077", "variable_fields": ["vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_zvksed:vsm4k.vi@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsm4k_vi () =
+  let rec_ = decode_or_fail "vsm4k.vi" vsm4k_vi_json in
+  let form = normalize_or_fail "vsm4k.vi" rec_ in
+  check "vsm4k.vi: requirement is Req_any [zvksed; zvks]"
+    (form.requirement
+    = Isa_norm_model.Req_any [ Req_feature "riscv:zvksed"; Req_feature "riscv:zvks" ]);
+  check "vsm4k.vi: rd/rs2 vector registers, zimm5 an unsigned 5-bit immediate"
+    (match form.operands with
+    | [
+     { op_name = "rd"; op_kind = Register { class_ = Riscv_vec; _ }; role = Out; _ };
+     { op_name = "rs2"; op_kind = Register { class_ = Riscv_vec; _ }; role = In; _ };
+     { op_name = "zimm5"; op_kind = Immediate { width_bits = 5; signed = false; _ }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vsm4k.vi: renders as rd, rs2, zimm5"
+    (Isa_norm_model.render_syntax form.syntax = "vsm4k.vi rd, rs2, zimm5")
+
+let vsm4r_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0xa2082077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsm4r.vv", "origin": {"line": 7, "path": "extensions/rv_zvksed"}, "provenance": {"extension": "rv_zvksed", "operands": ["vs2", "vd"], "raw": {"line": "vsm4r.vv     31..26=0x28 25=1 vs2 19..15=0x10 14..12=0x2 vd 6..0=0x77", "tokens": ["vsm4r.vv", "31..26=0x28", "25=1", "vs2", "19..15=0x10", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0xa2082077", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvksed:vsm4r.vv@L7", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsm4r_vv () =
+  let rec_ = decode_or_fail "vsm4r.vv" vsm4r_vv_json in
+  let form = normalize_or_fail "vsm4r.vv" rec_ in
+  check "vsm4r.vv: requirement is Req_any [zvksed; zvks]"
+    (form.requirement
+    = Isa_norm_model.Req_any [ Req_feature "riscv:zvksed"; Req_feature "riscv:zvks" ]);
+  check "vsm4r.vv: renders as rd, rs2"
+    (Isa_norm_model.render_syntax form.syntax = "vsm4r.vv rd, rs2")
+
+let vsm4r_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0xa6082077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsm4r.vs", "origin": {"line": 8, "path": "extensions/rv_zvksed"}, "provenance": {"extension": "rv_zvksed", "operands": ["vs2", "vd"], "raw": {"line": "vsm4r.vs     31..26=0x29 25=1 vs2 19..15=0x10 14..12=0x2 vd 6..0=0x77", "tokens": ["vsm4r.vs", "31..26=0x29", "25=1", "vs2", "19..15=0x10", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0xa6082077", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvksed:vsm4r.vs@L8", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsm4r_vs () =
+  let rec_ = decode_or_fail "vsm4r.vs" vsm4r_vs_json in
+  let form = normalize_or_fail "vsm4r.vs" rec_ in
+  check "vsm4r.vs: requirement is Req_any [zvksed; zvks]"
+    (form.requirement
+    = Isa_norm_model.Req_any [ Req_feature "riscv:zvksed"; Req_feature "riscv:zvks" ]);
+  check "vsm4r.vs: renders as rd, rs2"
+    (Isa_norm_model.render_syntax form.syntax = "vsm4r.vs rd, rs2")
+
+(* Zvksh's vsm3c.vi/vsm3me.vv: SM3 hash helpers, opcode 0x77, no mask bit -
+   vsm3c.vi is zvk_zimm5_form's second caller (reusing the shape
+   vsm4k.vi's own slice built), vsm3me.vv reuses zvk_ternary_form
+   verbatim (the same shape vghsh.vv/vsha2*.vv already use). Taken
+   verbatim from the checked-in riscv64.jsonl (identical in
+   riscv32.jsonl, confirmed). *)
+let vsm3c_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xae002077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsm3c.vi", "origin": {"line": 4, "path": "extensions/rv_zvksh"}, "provenance": {"extension": "rv_zvksh", "operands": ["vs2", "zimm5", "vd"], "raw": {"line": "vsm3c.vi     31..26=0x2B 25=1 vs2 zimm5 14..12=0x2 vd 6..0=0x77", "tokens": ["vsm3c.vi", "31..26=0x2B", "25=1", "vs2", "zimm5", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xae002077", "variable_fields": ["vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_zvksh:vsm3c.vi@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsm3c_vi () =
+  let rec_ = decode_or_fail "vsm3c.vi" vsm3c_vi_json in
+  let form = normalize_or_fail "vsm3c.vi" rec_ in
+  check "vsm3c.vi: requirement is Req_any [zvksh; zvks]"
+    (form.requirement
+    = Isa_norm_model.Req_any [ Req_feature "riscv:zvksh"; Req_feature "riscv:zvks" ]);
+  check "vsm3c.vi: renders as rd, rs2, zimm5"
+    (Isa_norm_model.render_syntax form.syntax = "vsm3c.vi rd, rs2, zimm5")
+
+let vsm3me_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x82002077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsm3me.vv", "origin": {"line": 7, "path": "extensions/rv_zvksh"}, "provenance": {"extension": "rv_zvksh", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vsm3me.vv    31..26=0x20 25=1 vs2 vs1   14..12=0x2 vd 6..0=0x77", "tokens": ["vsm3me.vv", "31..26=0x20", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x82002077", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvksh:vsm3me.vv@L7", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsm3me_vv () =
+  let rec_ = decode_or_fail "vsm3me.vv" vsm3me_vv_json in
+  let form = normalize_or_fail "vsm3me.vv" rec_ in
+  check "vsm3me.vv: requirement is Req_any [zvksh; zvks]"
+    (form.requirement
+    = Isa_norm_model.Req_any [ Req_feature "riscv:zvksh"; Req_feature "riscv:zvks" ]);
+  check "vsm3me.vv: renders as rd, rs2, rs1"
+    (Isa_norm_model.render_syntax form.syntax = "vsm3me.vv rd, rs2, rs1")
+
+(* Zvbb's bit-manipulation family - opcode 0x57 (OP-V proper), a real
+   vm bit throughout (unlike every prior rv_zv* slice's opcode-0x77
+   space), reusing {!opivv_form}/{!opivx_form}/{!opivi_form}/{!vext_form}
+   directly. [vandn]/[vbrev8]/[vrev8]/[vrol]/[vror] have a four-way
+   Req_any (Zvbb, plus a real-GNU-as-only "Zvkb" that never appears as an
+   actual riscv-opcodes record extension, plus Zvkn/Zvks which import
+   exactly this 9-mnemonic subset) - [vbrev]/[vclz]/[vcpop]/[vctz]/
+   [vwsll.*] need full Zvbb, no such alternative. Taken verbatim from the
+   checked-in riscv64.jsonl (identical in riscv32.jsonl, confirmed). *)
+let zvkb_subset_req_any =
+  Isa_norm_model.Req_any
+    [
+      Isa_norm_model.Req_feature "riscv:zvbb";
+      Req_feature "riscv:zvkb";
+      Req_feature "riscv:zvkn";
+      Req_feature "riscv:zvks";
+    ]
+
+let test_zvkb_opivv_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check
+    (mnemonic ^ ": requirement is Req_any [zvbb; zvkb; zvkn; zvks]")
+    (form.requirement = zvkb_subset_req_any);
+  check
+    (mnemonic ^ ": renders as rd, rs2, rs1")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2, rs1")
+
+let test_zvkb_opivx_form = test_zvkb_opivv_form
+
+let test_zvkb_vext_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check
+    (mnemonic ^ ": requirement is Req_any [zvbb; zvkb; zvkn; zvks]")
+    (form.requirement = zvkb_subset_req_any);
+  check
+    (mnemonic ^ ": renders as rd, rs2")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2")
+
+let vandn_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x4000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vandn.vv", "origin": {"line": 4, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vandn.vv     31..26=0x01 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vandn.vv", "31..26=0x01", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x4000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vandn.vv@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vandn_vv () = test_zvkb_opivv_form ~mnemonic:"vandn.vv" vandn_vv_json
+
+let vandn_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x4004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vandn.vx", "origin": {"line": 5, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vandn.vx     31..26=0x01 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vandn.vx", "31..26=0x01", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x4004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vandn.vx@L5", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vandn_vx () = test_zvkb_opivx_form ~mnemonic:"vandn.vx" vandn_vx_json
+
+let vbrev_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x48052057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vbrev.v", "origin": {"line": 8, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vbrev.v      31..26=0x12 vm vs2 19..15=0xA 14..12=0x2 vd 6..0=0x57", "tokens": ["vbrev.v", "31..26=0x12", "vm", "vs2", "19..15=0xA", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x48052057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vbrev.v@L8", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vbrev_v () = test_vext_form ~feature:"zvbb" ~mnemonic:"vbrev.v" vbrev_v_json
+
+let vbrev8_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x48042057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vbrev8.v", "origin": {"line": 11, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vbrev8.v     31..26=0x12 vm vs2 19..15=0x8 14..12=0x2 vd 6..0=0x57", "tokens": ["vbrev8.v", "31..26=0x12", "vm", "vs2", "19..15=0x8", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x48042057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vbrev8.v@L11", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vbrev8_v () = test_zvkb_vext_form ~mnemonic:"vbrev8.v" vbrev8_v_json
+
+let vclz_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x48062057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vclz.v", "origin": {"line": 17, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vclz.v       31..26=0x12 vm vs2 19..15=0xC 14..12=0x2 vd 6..0=0x57", "tokens": ["vclz.v", "31..26=0x12", "vm", "vs2", "19..15=0xC", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x48062057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vclz.v@L17", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vclz_v () = test_vext_form ~feature:"zvbb" ~mnemonic:"vclz.v" vclz_v_json
+
+let vcpop_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x48072057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vcpop.v", "origin": {"line": 23, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vcpop.v       31..26=0x12 vm vs2 19..15=0xE 14..12=0x2 vd 6..0=0x57", "tokens": ["vcpop.v", "31..26=0x12", "vm", "vs2", "19..15=0xE", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x48072057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vcpop.v@L23", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vcpop_v () = test_vext_form ~feature:"zvbb" ~mnemonic:"vcpop.v" vcpop_v_json
+
+let vctz_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x4806a057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vctz.v", "origin": {"line": 20, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vctz.v       31..26=0x12 vm vs2 19..15=0xD 14..12=0x2 vd 6..0=0x57", "tokens": ["vctz.v", "31..26=0x12", "vm", "vs2", "19..15=0xD", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x4806a057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vctz.v@L20", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vctz_v () = test_vext_form ~feature:"zvbb" ~mnemonic:"vctz.v" vctz_v_json
+
+let vrev8_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x4804a057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vrev8.v", "origin": {"line": 14, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vrev8.v      31..26=0x12 vm vs2 19..15=0x9 14..12=0x2 vd 6..0=0x57", "tokens": ["vrev8.v", "31..26=0x12", "vm", "vs2", "19..15=0x9", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x4804a057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vrev8.v@L14", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vrev8_v () = test_zvkb_vext_form ~mnemonic:"vrev8.v" vrev8_v_json
+
+let vrol_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x54000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vrol.vv", "origin": {"line": 26, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vrol.vv      31..26=0x15         vm vs2 vs1     14..12=0x0 vd 6..0=0x57", "tokens": ["vrol.vv", "31..26=0x15", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x54000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vrol.vv@L26", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vrol_vv () = test_zvkb_opivv_form ~mnemonic:"vrol.vv" vrol_vv_json
+
+let vrol_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x54004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vrol.vx", "origin": {"line": 27, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vrol.vx      31..26=0x15         vm vs2 rs1     14..12=0x4 vd 6..0=0x57", "tokens": ["vrol.vx", "31..26=0x15", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x54004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vrol.vx@L27", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vrol_vx () = test_zvkb_opivx_form ~mnemonic:"vrol.vx" vrol_vx_json
+
+let vror_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x50000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vror.vv", "origin": {"line": 30, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vror.vv      31..26=0x14         vm vs2 vs1     14..12=0x0 vd 6..0=0x57", "tokens": ["vror.vv", "31..26=0x14", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x50000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vror.vv@L30", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vror_vv () = test_zvkb_opivv_form ~mnemonic:"vror.vv" vror_vv_json
+
+let vror_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x50004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vror.vx", "origin": {"line": 31, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vror.vx      31..26=0x14         vm vs2 rs1     14..12=0x4 vd 6..0=0x57", "tokens": ["vror.vx", "31..26=0x14", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x50004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vror.vx@L31", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vror_vx () = test_zvkb_opivx_form ~mnemonic:"vror.vx" vror_vx_json
+
+(* vror.vi: a genuinely new shape - riscv-opcodes splits the 6-bit
+   unsigned rotate amount across zimm6hi (1 bit)/zimm6lo (5 bits), so
+   {!Isa_norm_riscv.vror_vi_form} concatenates them into one logical
+   6-bit zimm6 operand via two `runs` entries, the same technique
+   {!Isa_norm_riscv.sw_form}'s own imm12hi/imm12lo split already
+   established. *)
+let vror_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 27, "name": "bits[31:27]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 26, "name": "zimm6hi", "width": 1}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm6lo", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xf800707f", "value": "0x50003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vror.vi", "origin": {"line": 32, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["zimm6hi", "vm", "vs2", "zimm6lo", "vd"], "raw": {"line": "vror.vi      31..27=0xa  zimm6hi vm vs2 zimm6lo 14..12=0x3 vd 6..0=0x57", "tokens": ["vror.vi", "31..27=0xa", "zimm6hi", "vm", "vs2", "zimm6lo", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xf800707f", "match": "0x50003057", "variable_fields": ["zimm6hi", "vm", "vs2", "zimm6lo", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vror.vi@L32", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vror_vi () =
+  let rec_ = decode_or_fail "vror.vi" vror_vi_json in
+  let form = normalize_or_fail "vror.vi" rec_ in
+  check "vror.vi: requirement is Req_any [zvbb; zvkb; zvkn; zvks]"
+    (form.requirement = zvkb_subset_req_any);
+  check "vror.vi: rd/rs2 vector registers, zimm6 an unsigned 6-bit two-run immediate"
+    (match form.operands with
+    | [
+     { op_name = "rd"; op_kind = Register { class_ = Riscv_vec; _ }; role = Out; _ };
+     {
+       op_name = "zimm6";
+       op_kind =
+         Immediate
+           {
+             width_bits = 6;
+             signed = false;
+             runs =
+               [
+                 { field_name = "zimm6hi"; dest_hi = 5; dest_lo = 5; _ };
+                 { field_name = "zimm6lo"; dest_hi = 4; dest_lo = 0; _ };
+               ];
+             _;
+           };
+       role = In;
+       _;
+     };
+     { op_name = "rs2"; op_kind = Register { class_ = Riscv_vec; _ }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vror.vi: renders as rd, rs2, zimm6"
+    (Isa_norm_model.render_syntax form.syntax = "vror.vi rd, rs2, zimm6")
+
+let vwsll_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xd4000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwsll.vv", "origin": {"line": 35, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwsll.vv     31..26=0x35 vm vs2 vs1   14..12=0x0 vd 6..0=0x57", "tokens": ["vwsll.vv", "31..26=0x35", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xd4000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vwsll.vv@L35", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vwsll_vv () = test_opivv_form ~feature:"zvbb" ~mnemonic:"vwsll.vv" vwsll_vv_json
+
+let vwsll_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xd4004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwsll.vx", "origin": {"line": 36, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwsll.vx     31..26=0x35 vm vs2 rs1   14..12=0x4 vd 6..0=0x57", "tokens": ["vwsll.vx", "31..26=0x35", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xd4004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vwsll.vx@L36", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vwsll_vx () = test_opivx_form ~feature:"zvbb" ~mnemonic:"vwsll.vx" vwsll_vx_json
+
+let vwsll_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xd4003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwsll.vi", "origin": {"line": 37, "path": "extensions/rv_zvbb"}, "provenance": {"extension": "rv_zvbb", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vwsll.vi     31..26=0x35 vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vwsll.vi", "31..26=0x35", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xd4003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_zvbb:vwsll.vi@L37", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vwsll_vi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~feature:"zvbb" ~mnemonic:"vwsll.vi" vwsll_vi_json
+
+(* Zvkned's AES round/key-schedule family: opcode 0x77, no mask bit,
+   reusing zvk_unary_form/zvk_zimm5_form verbatim under a two-way
+   Req_any [zvkned; zvkn] (Zvkned imported by Zvkn alone - confirmed
+   real GNU as accepts `-march=...zvkn` alone; see
+   Isa_norm_riscv.alternative_extensions_by_mnemonic's own comment).
+   Taken verbatim from the checked-in riscv64.jsonl (identical in
+   riscv32.jsonl, confirmed). *)
+let zvkned_req_any =
+  Isa_norm_model.Req_any [ Isa_norm_model.Req_feature "riscv:zvkned"; Req_feature "riscv:zvkn" ]
+
+let test_zvkned_unary_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": requirement is Req_any [zvkned; zvkn]") (form.requirement = zvkned_req_any);
+  check
+    (mnemonic ^ ": renders as rd, rs2")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2")
+
+let test_zvkned_zimm5_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": requirement is Req_any [zvkned; zvkn]") (form.requirement = zvkned_req_any);
+  check
+    (mnemonic ^ ": renders as rd, rs2, zimm5")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2, zimm5")
+
+let vaesdf_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0xa200a077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaesdf.vv", "origin": {"line": 4, "path": "extensions/rv_zvkned"}, "provenance": {"extension": "rv_zvkned", "operands": ["vs2", "vd"], "raw": {"line": "vaesdf.vv    31..26=0x28 25=1 vs2 19..15=0x1 14..12=0x2 vd 6..0=0x77", "tokens": ["vaesdf.vv", "31..26=0x28", "25=1", "vs2", "19..15=0x1", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0xa200a077", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkned:vaesdf.vv@L4", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vaesdf_vv () = test_zvkned_unary_form ~mnemonic:"vaesdf.vv" vaesdf_vv_json
+
+let vaesdf_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0xa600a077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaesdf.vs", "origin": {"line": 5, "path": "extensions/rv_zvkned"}, "provenance": {"extension": "rv_zvkned", "operands": ["vs2", "vd"], "raw": {"line": "vaesdf.vs    31..26=0x29 25=1 vs2 19..15=0x1 14..12=0x2 vd 6..0=0x77", "tokens": ["vaesdf.vs", "31..26=0x29", "25=1", "vs2", "19..15=0x1", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0xa600a077", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkned:vaesdf.vs@L5", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vaesdf_vs () = test_zvkned_unary_form ~mnemonic:"vaesdf.vs" vaesdf_vs_json
+
+let vaesdm_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0xa2002077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaesdm.vv", "origin": {"line": 6, "path": "extensions/rv_zvkned"}, "provenance": {"extension": "rv_zvkned", "operands": ["vs2", "vd"], "raw": {"line": "vaesdm.vv    31..26=0x28 25=1 vs2 19..15=0x0 14..12=0x2 vd 6..0=0x77", "tokens": ["vaesdm.vv", "31..26=0x28", "25=1", "vs2", "19..15=0x0", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0xa2002077", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkned:vaesdm.vv@L6", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vaesdm_vv () = test_zvkned_unary_form ~mnemonic:"vaesdm.vv" vaesdm_vv_json
+
+let vaesdm_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0xa6002077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaesdm.vs", "origin": {"line": 7, "path": "extensions/rv_zvkned"}, "provenance": {"extension": "rv_zvkned", "operands": ["vs2", "vd"], "raw": {"line": "vaesdm.vs    31..26=0x29 25=1 vs2 19..15=0x0 14..12=0x2 vd 6..0=0x77", "tokens": ["vaesdm.vs", "31..26=0x29", "25=1", "vs2", "19..15=0x0", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0xa6002077", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkned:vaesdm.vs@L7", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vaesdm_vs () = test_zvkned_unary_form ~mnemonic:"vaesdm.vs" vaesdm_vs_json
+
+let vaesef_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0xa201a077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaesef.vv", "origin": {"line": 10, "path": "extensions/rv_zvkned"}, "provenance": {"extension": "rv_zvkned", "operands": ["vs2", "vd"], "raw": {"line": "vaesef.vv    31..26=0x28 25=1 vs2 19..15=0x3 14..12=0x2 vd 6..0=0x77", "tokens": ["vaesef.vv", "31..26=0x28", "25=1", "vs2", "19..15=0x3", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0xa201a077", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkned:vaesef.vv@L10", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vaesef_vv () = test_zvkned_unary_form ~mnemonic:"vaesef.vv" vaesef_vv_json
+
+let vaesef_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0xa601a077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaesef.vs", "origin": {"line": 11, "path": "extensions/rv_zvkned"}, "provenance": {"extension": "rv_zvkned", "operands": ["vs2", "vd"], "raw": {"line": "vaesef.vs    31..26=0x29 25=1 vs2 19..15=0x3 14..12=0x2 vd 6..0=0x77", "tokens": ["vaesef.vs", "31..26=0x29", "25=1", "vs2", "19..15=0x3", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0xa601a077", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkned:vaesef.vs@L11", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vaesef_vs () = test_zvkned_unary_form ~mnemonic:"vaesef.vs" vaesef_vs_json
+
+let vaesem_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0xa2012077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaesem.vv", "origin": {"line": 12, "path": "extensions/rv_zvkned"}, "provenance": {"extension": "rv_zvkned", "operands": ["vs2", "vd"], "raw": {"line": "vaesem.vv    31..26=0x28 25=1 vs2 19..15=0x2 14..12=0x2 vd 6..0=0x77", "tokens": ["vaesem.vv", "31..26=0x28", "25=1", "vs2", "19..15=0x2", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0xa2012077", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkned:vaesem.vv@L12", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vaesem_vv () = test_zvkned_unary_form ~mnemonic:"vaesem.vv" vaesem_vv_json
+
+let vaesem_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0xa6012077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaesem.vs", "origin": {"line": 13, "path": "extensions/rv_zvkned"}, "provenance": {"extension": "rv_zvkned", "operands": ["vs2", "vd"], "raw": {"line": "vaesem.vs    31..26=0x29 25=1 vs2 19..15=0x2 14..12=0x2 vd 6..0=0x77", "tokens": ["vaesem.vs", "31..26=0x29", "25=1", "vs2", "19..15=0x2", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0xa6012077", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkned:vaesem.vs@L13", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vaesem_vs () = test_zvkned_unary_form ~mnemonic:"vaesem.vs" vaesem_vs_json
+
+let vaesz_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0xa603a077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaesz.vs", "origin": {"line": 16, "path": "extensions/rv_zvkned"}, "provenance": {"extension": "rv_zvkned", "operands": ["vs2", "vd"], "raw": {"line": "vaesz.vs     31..26=0x29 25=1 vs2 19..15=0x7 14..12=0x2 vd 6..0=0x77", "tokens": ["vaesz.vs", "31..26=0x29", "25=1", "vs2", "19..15=0x7", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0xa603a077", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkned:vaesz.vs@L16", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vaesz_vs () = test_zvkned_unary_form ~mnemonic:"vaesz.vs" vaesz_vs_json
+
+let vaeskf1_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x8a002077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaeskf1.vi", "origin": {"line": 19, "path": "extensions/rv_zvkned"}, "provenance": {"extension": "rv_zvkned", "operands": ["vs2", "zimm5", "vd"], "raw": {"line": "vaeskf1.vi   31..26=0x22 25=1 vs2 zimm5      14..12=0x2 vd 6..0=0x77", "tokens": ["vaeskf1.vi", "31..26=0x22", "25=1", "vs2", "zimm5", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x8a002077", "variable_fields": ["vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkned:vaeskf1.vi@L19", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vaeskf1_vi () = test_zvkned_zimm5_form ~mnemonic:"vaeskf1.vi" vaeskf1_vi_json
+
+let vaeskf2_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xaa002077", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaeskf2.vi", "origin": {"line": 21, "path": "extensions/rv_zvkned"}, "provenance": {"extension": "rv_zvkned", "operands": ["vs2", "zimm5", "vd"], "raw": {"line": "vaeskf2.vi   31..26=0x2A 25=1 vs2 zimm5      14..12=0x2 vd 6..0=0x77", "tokens": ["vaeskf2.vi", "31..26=0x2A", "25=1", "vs2", "zimm5", "14..12=0x2", "vd", "6..0=0x77"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xaa002077", "variable_fields": ["vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_zvkned:vaeskf2.vi@L21", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vaeskf2_vi () = test_zvkned_zimm5_form ~mnemonic:"vaeskf2.vi" vaeskf2_vi_json
+
+(* Zvfbfmin's vfwcvtbf16.f.f.v/vfncvtbf16.f.f.w: bf16<->f32 conversion,
+   OP-V's own opcode 0x57 (not opcode 0x77 like every other rv_zv*
+   family since Zvkg), reusing vext_form verbatim - a plain Req_feature,
+   no Req_any (neither mnemonic is imported by any other extension in
+   this snapshot, confirmed by grepping the whole checked-in export).
+   Taken verbatim from the checked-in riscv64.jsonl (identical in
+   riscv32.jsonl, confirmed). *)
+let vfwcvtbf16_f_f_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x48069057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vfwcvtbf16.f.f.v", "origin": {"line": 2, "path": "extensions/rv_zvfbfmin"}, "provenance": {"extension": "rv_zvfbfmin", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vfwcvtbf16.f.f.v     31..26=0x12 vm vs2 19..15=0x0D 14..12=0x1 vd 6..0=0x57", "tokens": ["vfwcvtbf16.f.f.v", "31..26=0x12", "vm", "vs2", "19..15=0x0D", "14..12=0x1", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x48069057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvfbfmin:vfwcvtbf16.f.f.v@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vfwcvtbf16_f_f_v () =
+  test_vext_form ~feature:"zvfbfmin" ~mnemonic:"vfwcvtbf16.f.f.v" vfwcvtbf16_f_f_v_json
+
+let vfncvtbf16_f_f_w_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x480e9057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vfncvtbf16.f.f.w", "origin": {"line": 1, "path": "extensions/rv_zvfbfmin"}, "provenance": {"extension": "rv_zvfbfmin", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vfncvtbf16.f.f.w     31..26=0x12 vm vs2 19..15=0x1D 14..12=0x1 vd 6..0=0x57", "tokens": ["vfncvtbf16.f.f.w", "31..26=0x12", "vm", "vs2", "19..15=0x1D", "14..12=0x1", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x480e9057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_zvfbfmin:vfncvtbf16.f.f.w@L1", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vfncvtbf16_f_f_w () =
+  test_vext_form ~feature:"zvfbfmin" ~mnemonic:"vfncvtbf16.f.f.w" vfncvtbf16_f_f_w_json
+
+(* Zvfbfwma's vfwmaccbf16.vv/.vf: bf16 widening FMA, reusing the existing
+   reordered-operand macc shape verbatim - also a plain Req_feature, no
+   Req_any (confirmed absent from every rv_zvk*/rv_zvbb import list). *)
+let vfwmaccbf16_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xec001057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vfwmaccbf16.vv", "origin": {"line": 1, "path": "extensions/rv_zvfbfwma"}, "provenance": {"extension": "rv_zvfbfwma", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vfwmaccbf16.vv     31..26=0x3B vm vs2 vs1 14..12=0x1 vd 6..0=0x57", "tokens": ["vfwmaccbf16.vv", "31..26=0x3B", "vm", "vs2", "vs1", "14..12=0x1", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xec001057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvfbfwma:vfwmaccbf16.vv@L1", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vfwmaccbf16_vv () =
+  test_opmacc_vv_form ~feature:"zvfbfwma" ~mnemonic:"vfwmaccbf16.vv" vfwmaccbf16_vv_json
+
+let vfwmaccbf16_vf_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xec005057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vfwmaccbf16.vf", "origin": {"line": 2, "path": "extensions/rv_zvfbfwma"}, "provenance": {"extension": "rv_zvfbfwma", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vfwmaccbf16.vf     31..26=0x3B vm vs2 rs1 14..12=0x5 vd 6..0=0x57", "tokens": ["vfwmaccbf16.vf", "31..26=0x3B", "vm", "vs2", "rs1", "14..12=0x5", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xec005057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_zvfbfwma:vfwmaccbf16.vf@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vfwmaccbf16_vf () =
+  test_opfmacc_vf_form ~feature:"zvfbfwma" ~mnemonic:"vfwmaccbf16.vf" vfwmaccbf16_vf_json
+
 (* flw: F's floating-point load, verbatim-extracted from the checked-in
    riscv32.jsonl - representative of {!f_load_form} (fld shares the
    identical shape, only the requirement/width differ). *)
@@ -4482,6 +4957,51 @@ let () =
   test_vsuxei32_v ();
   test_vl2re32_v ();
   test_vs4r_v ();
+  test_vclmul_vv ();
+  test_vclmul_vx ();
+  test_vclmulh_vv ();
+  test_vclmulh_vx ();
+  test_vghsh_vv ();
+  test_vgmul_vv ();
+  test_vsha2ms_vv ();
+  test_vsha2ch_vv ();
+  test_vsha2cl_vv ();
+  test_vsm4k_vi ();
+  test_vsm4r_vv ();
+  test_vsm4r_vs ();
+  test_vsm3c_vi ();
+  test_vsm3me_vv ();
+  test_vandn_vv ();
+  test_vandn_vx ();
+  test_vbrev_v ();
+  test_vbrev8_v ();
+  test_vclz_v ();
+  test_vcpop_v ();
+  test_vctz_v ();
+  test_vrev8_v ();
+  test_vrol_vv ();
+  test_vrol_vx ();
+  test_vror_vv ();
+  test_vror_vx ();
+  test_vror_vi ();
+  test_vwsll_vv ();
+  test_vwsll_vx ();
+  test_vwsll_vi ();
+  test_vaesdf_vv ();
+  test_vaesdf_vs ();
+  test_vaesdm_vv ();
+  test_vaesdm_vs ();
+  test_vaesef_vv ();
+  test_vaesef_vs ();
+  test_vaesem_vv ();
+  test_vaesem_vs ();
+  test_vaesz_vs ();
+  test_vaeskf1_vi ();
+  test_vaeskf2_vi ();
+  test_vfwcvtbf16_f_f_v ();
+  test_vfncvtbf16_f_f_w ();
+  test_vfwmaccbf16_vv ();
+  test_vfwmaccbf16_vf ();
   test_flw ();
   test_fsw ();
   test_andn_import_record_matches_primary ();

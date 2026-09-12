@@ -981,6 +981,102 @@ let test_counts () =
     (List.length Isa_gen_difficult.vs4r_v_entries = 2);
   check "vs8r_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
     (List.length Isa_gen_difficult.vs8r_v_entries = 2);
+  check "vclmul_vv_entries has 2 entries (rv_zvbc, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vclmul_vv_entries = 2);
+  check "vclmul_vx_entries has 2 entries (rv_zvbc, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vclmul_vx_entries = 2);
+  check "vclmulh_vv_entries has 2 entries (rv_zvbc, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vclmulh_vv_entries = 2);
+  check "vclmulh_vx_entries has 2 entries (rv_zvbc, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vclmulh_vx_entries = 2);
+  check "vghsh_vv_entries has 2 entries (rv_zvkg, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vghsh_vv_entries = 2);
+  check "vgmul_vv_entries has 2 entries (rv_zvkg, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vgmul_vv_entries = 2);
+  check
+    "vsha2ms_vv_entries has 2 entries (rv_zvknha, one per profile, real Req_any with zvknhb/zvkn)"
+    (List.length Isa_gen_difficult.vsha2ms_vv_entries = 2);
+  check
+    "vsha2ch_vv_entries has 2 entries (rv_zvknha, one per profile, real Req_any with zvknhb/zvkn)"
+    (List.length Isa_gen_difficult.vsha2ch_vv_entries = 2);
+  check
+    "vsha2cl_vv_entries has 2 entries (rv_zvknha, one per profile, real Req_any with zvknhb/zvkn)"
+    (List.length Isa_gen_difficult.vsha2cl_vv_entries = 2);
+  check "vsm4k_vi_entries has 2 entries (rv_zvksed, one per profile, real Req_any with zvks)"
+    (List.length Isa_gen_difficult.vsm4k_vi_entries = 2);
+  check "vsm4r_vv_entries has 2 entries (rv_zvksed, one per profile, real Req_any with zvks)"
+    (List.length Isa_gen_difficult.vsm4r_vv_entries = 2);
+  check "vsm4r_vs_entries has 2 entries (rv_zvksed, one per profile, real Req_any with zvks)"
+    (List.length Isa_gen_difficult.vsm4r_vs_entries = 2);
+  check "vsm3c_vi_entries has 2 entries (rv_zvksh, one per profile, real Req_any with zvks)"
+    (List.length Isa_gen_difficult.vsm3c_vi_entries = 2);
+  check "vsm3me_vv_entries has 2 entries (rv_zvksh, one per profile, real Req_any with zvks)"
+    (List.length Isa_gen_difficult.vsm3me_vv_entries = 2);
+  check
+    "vandn_vv_entries has 2 entries (rv_zvbb, one per profile, real Req_any with zvkb/zvkn/zvks)"
+    (List.length Isa_gen_difficult.vandn_vv_entries = 2);
+  check
+    "vandn_vx_entries has 2 entries (rv_zvbb, one per profile, real Req_any with zvkb/zvkn/zvks)"
+    (List.length Isa_gen_difficult.vandn_vx_entries = 2);
+  check "vbrev_v_entries has 2 entries (rv_zvbb, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vbrev_v_entries = 2);
+  check
+    "vbrev8_v_entries has 2 entries (rv_zvbb, one per profile, real Req_any with zvkb/zvkn/zvks)"
+    (List.length Isa_gen_difficult.vbrev8_v_entries = 2);
+  check "vclz_v_entries has 2 entries (rv_zvbb, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vclz_v_entries = 2);
+  check "vcpop_v_entries has 2 entries (rv_zvbb, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vcpop_v_entries = 2);
+  check "vctz_v_entries has 2 entries (rv_zvbb, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vctz_v_entries = 2);
+  check "vrev8_v_entries has 2 entries (rv_zvbb, one per profile, real Req_any with zvkb/zvkn/zvks)"
+    (List.length Isa_gen_difficult.vrev8_v_entries = 2);
+  check "vrol_vv_entries has 2 entries (rv_zvbb, one per profile, real Req_any with zvkb/zvkn/zvks)"
+    (List.length Isa_gen_difficult.vrol_vv_entries = 2);
+  check "vrol_vx_entries has 2 entries (rv_zvbb, one per profile, real Req_any with zvkb/zvkn/zvks)"
+    (List.length Isa_gen_difficult.vrol_vx_entries = 2);
+  check "vror_vv_entries has 2 entries (rv_zvbb, one per profile, real Req_any with zvkb/zvkn/zvks)"
+    (List.length Isa_gen_difficult.vror_vv_entries = 2);
+  check "vror_vx_entries has 2 entries (rv_zvbb, one per profile, real Req_any with zvkb/zvkn/zvks)"
+    (List.length Isa_gen_difficult.vror_vx_entries = 2);
+  check "vror_vi_entries has 2 entries (rv_zvbb, one per profile, real Req_any with zvkb/zvkn/zvks)"
+    (List.length Isa_gen_difficult.vror_vi_entries = 2);
+  check "vwsll_vv_entries has 2 entries (rv_zvbb, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vwsll_vv_entries = 2);
+  check "vwsll_vx_entries has 2 entries (rv_zvbb, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vwsll_vx_entries = 2);
+  check "vwsll_vi_entries has 2 entries (rv_zvbb, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vwsll_vi_entries = 2);
+  check "vaesdf_vv_entries has 2 entries (rv_zvkned, one per profile, real Req_any with zvkn)"
+    (List.length Isa_gen_difficult.vaesdf_vv_entries = 2);
+  check "vaesdf_vs_entries has 2 entries (rv_zvkned, one per profile, real Req_any with zvkn)"
+    (List.length Isa_gen_difficult.vaesdf_vs_entries = 2);
+  check "vaesdm_vv_entries has 2 entries (rv_zvkned, one per profile, real Req_any with zvkn)"
+    (List.length Isa_gen_difficult.vaesdm_vv_entries = 2);
+  check "vaesdm_vs_entries has 2 entries (rv_zvkned, one per profile, real Req_any with zvkn)"
+    (List.length Isa_gen_difficult.vaesdm_vs_entries = 2);
+  check "vaesef_vv_entries has 2 entries (rv_zvkned, one per profile, real Req_any with zvkn)"
+    (List.length Isa_gen_difficult.vaesef_vv_entries = 2);
+  check "vaesef_vs_entries has 2 entries (rv_zvkned, one per profile, real Req_any with zvkn)"
+    (List.length Isa_gen_difficult.vaesef_vs_entries = 2);
+  check "vaesem_vv_entries has 2 entries (rv_zvkned, one per profile, real Req_any with zvkn)"
+    (List.length Isa_gen_difficult.vaesem_vv_entries = 2);
+  check "vaesem_vs_entries has 2 entries (rv_zvkned, one per profile, real Req_any with zvkn)"
+    (List.length Isa_gen_difficult.vaesem_vs_entries = 2);
+  check "vaesz_vs_entries has 2 entries (rv_zvkned, one per profile, real Req_any with zvkn)"
+    (List.length Isa_gen_difficult.vaesz_vs_entries = 2);
+  check "vaeskf1_vi_entries has 2 entries (rv_zvkned, one per profile, real Req_any with zvkn)"
+    (List.length Isa_gen_difficult.vaeskf1_vi_entries = 2);
+  check "vaeskf2_vi_entries has 2 entries (rv_zvkned, one per profile, real Req_any with zvkn)"
+    (List.length Isa_gen_difficult.vaeskf2_vi_entries = 2);
+  check "vfwcvtbf16_f_f_v_entries has 2 entries (rv_zvfbfmin, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vfwcvtbf16_f_f_v_entries = 2);
+  check "vfncvtbf16_f_f_w_entries has 2 entries (rv_zvfbfmin, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vfncvtbf16_f_f_w_entries = 2);
+  check "vfwmaccbf16_vv_entries has 2 entries (rv_zvfbfwma, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vfwmaccbf16_vv_entries = 2);
+  check "vfwmaccbf16_vf_entries has 2 entries (rv_zvfbfwma, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vfwmaccbf16_vf_entries = 2);
   check "all includes every difficult-form family"
     (List.length Isa_gen_difficult.all
     = List.length Isa_gen_difficult.sw_entries
@@ -1522,7 +1618,52 @@ let test_counts () =
       + List.length Isa_gen_difficult.vs1r_v_entries
       + List.length Isa_gen_difficult.vs2r_v_entries
       + List.length Isa_gen_difficult.vs4r_v_entries
-      + List.length Isa_gen_difficult.vs8r_v_entries)
+      + List.length Isa_gen_difficult.vs8r_v_entries
+      + List.length Isa_gen_difficult.vclmul_vv_entries
+      + List.length Isa_gen_difficult.vclmul_vx_entries
+      + List.length Isa_gen_difficult.vclmulh_vv_entries
+      + List.length Isa_gen_difficult.vclmulh_vx_entries
+      + List.length Isa_gen_difficult.vghsh_vv_entries
+      + List.length Isa_gen_difficult.vgmul_vv_entries
+      + List.length Isa_gen_difficult.vsha2ms_vv_entries
+      + List.length Isa_gen_difficult.vsha2ch_vv_entries
+      + List.length Isa_gen_difficult.vsha2cl_vv_entries
+      + List.length Isa_gen_difficult.vsm4k_vi_entries
+      + List.length Isa_gen_difficult.vsm4r_vv_entries
+      + List.length Isa_gen_difficult.vsm4r_vs_entries
+      + List.length Isa_gen_difficult.vsm3c_vi_entries
+      + List.length Isa_gen_difficult.vsm3me_vv_entries
+      + List.length Isa_gen_difficult.vandn_vv_entries
+      + List.length Isa_gen_difficult.vandn_vx_entries
+      + List.length Isa_gen_difficult.vbrev_v_entries
+      + List.length Isa_gen_difficult.vbrev8_v_entries
+      + List.length Isa_gen_difficult.vclz_v_entries
+      + List.length Isa_gen_difficult.vcpop_v_entries
+      + List.length Isa_gen_difficult.vctz_v_entries
+      + List.length Isa_gen_difficult.vrev8_v_entries
+      + List.length Isa_gen_difficult.vrol_vv_entries
+      + List.length Isa_gen_difficult.vrol_vx_entries
+      + List.length Isa_gen_difficult.vror_vv_entries
+      + List.length Isa_gen_difficult.vror_vx_entries
+      + List.length Isa_gen_difficult.vror_vi_entries
+      + List.length Isa_gen_difficult.vwsll_vv_entries
+      + List.length Isa_gen_difficult.vwsll_vx_entries
+      + List.length Isa_gen_difficult.vwsll_vi_entries
+      + List.length Isa_gen_difficult.vaesdf_vv_entries
+      + List.length Isa_gen_difficult.vaesdf_vs_entries
+      + List.length Isa_gen_difficult.vaesdm_vv_entries
+      + List.length Isa_gen_difficult.vaesdm_vs_entries
+      + List.length Isa_gen_difficult.vaesef_vv_entries
+      + List.length Isa_gen_difficult.vaesef_vs_entries
+      + List.length Isa_gen_difficult.vaesem_vv_entries
+      + List.length Isa_gen_difficult.vaesem_vs_entries
+      + List.length Isa_gen_difficult.vaesz_vs_entries
+      + List.length Isa_gen_difficult.vaeskf1_vi_entries
+      + List.length Isa_gen_difficult.vaeskf2_vi_entries
+      + List.length Isa_gen_difficult.vfwcvtbf16_f_f_v_entries
+      + List.length Isa_gen_difficult.vfncvtbf16_f_f_w_entries
+      + List.length Isa_gen_difficult.vfwmaccbf16_vv_entries
+      + List.length Isa_gen_difficult.vfwmaccbf16_vf_entries)
 
 let test_case_ids_distinct () =
   let ids = List.map (fun (e : Isa_gen_difficult.entry) -> e.case_id) Isa_gen_difficult.all in
@@ -2498,7 +2639,59 @@ let test_v_opiv_domain () =
   check_opmacc_vv Isa_gen_difficult.vfwmsac_vv_entries;
   check_opfmacc_vf Isa_gen_difficult.vfwmsac_vf_entries;
   check_opmacc_vv Isa_gen_difficult.vfwnmsac_vv_entries;
-  check_opfmacc_vf Isa_gen_difficult.vfwnmsac_vf_entries
+  check_opfmacc_vf Isa_gen_difficult.vfwnmsac_vf_entries;
+  check_opivv Isa_gen_difficult.vclmul_vv_entries;
+  check_opivx Isa_gen_difficult.vclmul_vx_entries;
+  check_opivv Isa_gen_difficult.vclmulh_vv_entries;
+  check_opivx Isa_gen_difficult.vclmulh_vx_entries;
+  check_opivv Isa_gen_difficult.vghsh_vv_entries;
+  check_vext Isa_gen_difficult.vgmul_vv_entries;
+  check_opivv Isa_gen_difficult.vsha2ms_vv_entries;
+  check_opivv Isa_gen_difficult.vsha2ch_vv_entries;
+  check_opivv Isa_gen_difficult.vsha2cl_vv_entries;
+  check_opivi_uimm ~imm_value:"5" Isa_gen_difficult.vsm4k_vi_entries;
+  check_vext Isa_gen_difficult.vsm4r_vv_entries;
+  check_vext Isa_gen_difficult.vsm4r_vs_entries;
+  check_opivi_uimm ~imm_value:"5" Isa_gen_difficult.vsm3c_vi_entries;
+  check_opivv Isa_gen_difficult.vsm3me_vv_entries;
+  check_opivv Isa_gen_difficult.vandn_vv_entries;
+  check_opivx Isa_gen_difficult.vandn_vx_entries;
+  check_vext Isa_gen_difficult.vbrev_v_entries;
+  check_vext Isa_gen_difficult.vbrev8_v_entries;
+  check_vext Isa_gen_difficult.vclz_v_entries;
+  check_vext Isa_gen_difficult.vcpop_v_entries;
+  check_vext Isa_gen_difficult.vctz_v_entries;
+  check_vext Isa_gen_difficult.vrev8_v_entries;
+  check_opivv Isa_gen_difficult.vrol_vv_entries;
+  check_opivx Isa_gen_difficult.vrol_vx_entries;
+  check_opivv Isa_gen_difficult.vror_vv_entries;
+  check_opivx Isa_gen_difficult.vror_vx_entries;
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses rd, rs2 vector registers and an unsigned zimm6 immediate"
+           e.case_id)
+        (List.map fst e.operands = [ "rd"; "rs2"; "zimm6" ]
+        && List.map snd e.operands = [ "v1"; "v2"; "40" ]))
+    Isa_gen_difficult.vror_vi_entries;
+  check_opivv Isa_gen_difficult.vwsll_vv_entries;
+  check_opivx Isa_gen_difficult.vwsll_vx_entries;
+  check_opivi_uimm ~imm_value:"5" Isa_gen_difficult.vwsll_vi_entries;
+  check_vext Isa_gen_difficult.vaesdf_vv_entries;
+  check_vext Isa_gen_difficult.vaesdf_vs_entries;
+  check_vext Isa_gen_difficult.vaesdm_vv_entries;
+  check_vext Isa_gen_difficult.vaesdm_vs_entries;
+  check_vext Isa_gen_difficult.vaesef_vv_entries;
+  check_vext Isa_gen_difficult.vaesef_vs_entries;
+  check_vext Isa_gen_difficult.vaesem_vv_entries;
+  check_vext Isa_gen_difficult.vaesem_vs_entries;
+  check_vext Isa_gen_difficult.vaesz_vs_entries;
+  check_opivi_uimm ~imm_value:"5" Isa_gen_difficult.vaeskf1_vi_entries;
+  check_opivi_uimm ~imm_value:"5" Isa_gen_difficult.vaeskf2_vi_entries;
+  check_vext Isa_gen_difficult.vfwcvtbf16_f_f_v_entries;
+  check_vext Isa_gen_difficult.vfncvtbf16_f_f_w_entries;
+  check_opmacc_vv Isa_gen_difficult.vfwmaccbf16_vv_entries;
+  check_opfmacc_vf Isa_gen_difficult.vfwmaccbf16_vf_entries
 
 let test_sh1add_domain () =
   List.iter

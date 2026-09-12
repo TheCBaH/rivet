@@ -185,8 +185,8 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:607;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:659;
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:692;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:744;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:9;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:9
 
@@ -549,11 +549,64 @@ let test_isa_family_admission repo =
      present identically on both profiles, so this slice moves 20
      records on EACH profile, straight from blocked to promoted-support
      - closing every remaining blocked rv_v record: the entire 375-record
-     family is now promoted-support. *)
+     family is now promoted-support. vclmul.vv/vclmul.vx/vclmulh.vv/
+     vclmulh.vx (4 mnemonics, Zvbc's carry-less multiply, the same OPMVV/
+     OPMVX shape as vmul/vdivu/etc.) are likewise each a single,
+     non-import-duplicated rv_zvbc record present identically on both
+     profiles, so this slice moves 4 records on EACH profile, straight
+     from blocked to promoted-support. vghsh.vv/vgmul.vv (2 mnemonics,
+     Zvkg's GCM/GHASH pair, a genuinely new major opcode - 0x77 rather
+     than OP-V's 0x57 - with no mask bit at all) are likewise each a
+     single, non-import-duplicated rv_zvkg record present identically on
+     both profiles, so this slice moves 2 records on EACH profile,
+     straight from blocked to promoted-support. vsha2ms.vv/vsha2ch.vv/
+     vsha2cl.vv (3 mnemonics, Zvknha's SHA-256 vector helpers, the same
+     opcode-0x77 no-mask ternary shape as vghsh.vv) are imported verbatim
+     by both rv_zvknhb (whose own 3 records are ONLY these imports, so
+     the entire family promotes) and rv_zvkn (a 23-record bundle
+     extension that also imports Zvbb's/Zvkned's own mnemonics, neither
+     promoted yet - only these 3 of its 23 records promote here), so
+     this slice moves 3 (rv_zvknha, non-import) + 3 (rv_zvknhb, import)
+     + 3 (rv_zvkn, import) = 9 records on EACH profile, straight from
+     blocked to promoted-support. vsm4k.vi/vsm4r.vv/vsm4r.vs (3
+     mnemonics, Zvksed's SM4 block-cipher helpers - vsm4k.vi the first
+     opcode-0x77 zimm5-ternary shape, vsm4r.vv/vs the fixed-vs1 unary
+     shape) are imported verbatim by rv_zvks alone (a 14-record bundle,
+     not fully promoted - only these 3 of its 14 records promote here),
+     so this slice moves 3 (rv_zvksed, non-import) + 3 (rv_zvks, import)
+     = 6 records on EACH profile, straight from blocked to
+     promoted-support. vsm3c.vi/vsm3me.vv (2 mnemonics, Zvksh's SM3 hash
+     helpers, reusing vsm4k.vi's own zimm5-ternary shape and vghsh.vv's
+     own ternary shape verbatim) are imported by rv_zvks alone too (5 of
+     its 14 records now promote), so this slice moves 2 (rv_zvksh,
+     non-import) + 2 (rv_zvks, import) = 4 records on EACH profile,
+     straight from blocked to promoted-support. Zvbb's bit-manipulation
+     family (16 mnemonics: vandn.vv/.vx, vbrev.v, vbrev8.v, vclz.v,
+     vcpop.v, vctz.v, vrev8.v, vrol.vv/.vx, vror.vv/.vx/.vi, vwsll.vv/
+     .vx/.vi - opcode 0x57/OP-V proper, unlike every other rv_zv* family
+     above) closes rv_zvbb entirely, and its own 9-mnemonic Zvkb subset
+     (vandn/vbrev8/vrev8/vrol/vror) is imported verbatim by BOTH rv_zvkn
+     and rv_zvks, closing rv_zvks entirely (its last 9 blocked records)
+     and rv_zvkn partway (12 of 23; the other 11 belong to not-yet-
+     promoted Zvkned). So this slice moves 16 (rv_zvbb, non-import) + 9
+     (rv_zvkn, import) + 9 (rv_zvks, import) = 34 records on EACH
+     profile, straight from blocked to promoted-support. Zvkned's AES
+     round/key-schedule family (11 mnemonics) is imported by rv_zvkn
+     alone, closing rv_zvkn entirely (its last 11 blocked records), so
+     this slice moves 11 (rv_zvkned, non-import) + 11 (rv_zvkn, import)
+     = 22 records on EACH profile, straight from blocked to
+     promoted-support. Zvfbfmin's bf16<->f32 conversion pair
+     (vfwcvtbf16.f.f.v/vfncvtbf16.f.f.w) and Zvfbfwma's bf16 widening
+     FMA pair (vfwmaccbf16.vv/.vf) are each single, non-import-
+     duplicated records with no alternative-extension group, so this
+     slice moves 4 records on EACH profile, straight from blocked to
+     promoted-support - closing the entire twelve-family rv_zv*
+     vector-crypto/bf16 scope: every rv_zv* family (and both bundle
+     extensions, rv_zvkn/rv_zvks) is now fully promoted. *)
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
-    ~promoted_support:587 ~blocked:482;
+    ~promoted_support:672 ~blocked:397;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
-    ~promoted_support:629 ~blocked:495;
+    ~promoted_support:714 ~blocked:410;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0 ~gas_generatable:5
     ~promoted_support:4 ~blocked:7878;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
@@ -611,9 +664,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 1284)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 1454)"
        !roundtrip_count)
-    (!roundtrip_count = 1284)
+    (!roundtrip_count = 1454)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's

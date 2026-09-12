@@ -1758,6 +1758,199 @@ val vs8r_v_entries : entry list
 (** [vs8r.v v1, (a0)] - {!vl8re8_v_entries}'s store-shape sibling
     (no width variant). *)
 
+val vclmul_vv_entries : entry list
+(** [vclmul.vv v1, v2, v3] under [-march=rv32i_zvbc]/[-march=rv64i_zvbc] -
+    Zvbc's carry-less multiply, the same operand shape as
+    {!vmul_vv_entries} but a distinct Zvbc configuration (real GNU as
+    rejects it under plain V). No [.vi] sibling. *)
+
+val vclmul_vx_entries : entry list
+(** [vclmul.vx v1, v2, a0] - {!vclmul_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vclmulh_vv_entries : entry list
+(** [vclmulh.vv v1, v2, v3] on RV32IV_Zvbc and RV64IV_Zvbc -
+    {!vclmul_vv_entries}'s high-half sibling. *)
+
+val vclmulh_vx_entries : entry list
+(** [vclmulh.vx v1, v2, a0] - {!vclmulh_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vghsh_vv_entries : entry list
+(** [vghsh.vv v1, v2, v3] under [-march=rv32i_zvkg]/[-march=rv64i_zvkg] -
+    Zvkg's GHASH-hash-subkey-multiply, major opcode 0x77 (not OP-V's
+    0x57). No masked sibling exists for this instruction space. *)
+
+val vgmul_vv_entries : entry list
+(** [vgmul.vv v1, v2] under the same Zvkg configuration - the same major
+    opcode 0x77 space with [vs1]'s field position fixed. No masked
+    sibling. *)
+
+val vsha2ms_vv_entries : entry list
+(** [vsha2ms.vv v1, v2, v3] under [-march=rv32i_zvknha]/
+    [-march=rv64i_zvknha] - Zvknha's SHA-256 message-schedule helper,
+    {!vghsh_vv_entries}'s own ternary shape under a different
+    extension/configuration. *)
+
+val vsha2ch_vv_entries : entry list
+(** [vsha2ch.vv v1, v2, v3] under the same Zvknha configuration -
+    {!vsha2ms_vv_entries}'s SHA-256 compression sibling. *)
+
+val vsha2cl_vv_entries : entry list
+(** [vsha2cl.vv v1, v2, v3] under the same Zvknha configuration -
+    {!vsha2ms_vv_entries}'s other SHA-256 compression sibling. *)
+
+val vsm4k_vi_entries : entry list
+(** [vsm4k.vi v1, v2, 5] under [-march=rv32i_zvksed]/
+    [-march=rv64i_zvksed] - Zvksed's SM4 key-schedule helper, opcode
+    0x77's own zimm5-ternary shape (an unsigned 5-bit immediate in
+    [vs1]'s field position, no mask bit). *)
+
+val vsm4r_vv_entries : entry list
+(** [vsm4r.vv v1, v2] under the same Zvksed configuration -
+    {!vgmul_vv_entries}'s own fixed-vs1 unary shape, different constant. *)
+
+val vsm4r_vs_entries : entry list
+(** [vsm4r.vs v1, v2] under the same Zvksed configuration -
+    {!vsm4r_vv_entries}'s scalar-broadcast-slot sibling (same fixed vs1
+    constant, different funct6). *)
+
+val vsm3c_vi_entries : entry list
+(** [vsm3c.vi v1, v2, 5] under [-march=rv32i_zvksh]/
+    [-march=rv64i_zvksh] - Zvksh's SM3 compression helper, reusing
+    {!vsm4k_vi_entries}'s own zimm5-ternary shape verbatim. *)
+
+val vsm3me_vv_entries : entry list
+(** [vsm3me.vv v1, v2, v3] under the same Zvksh configuration -
+    {!vghsh_vv_entries}'s own ternary shape verbatim. *)
+
+val vandn_vv_entries : entry list
+(** [vandn.vv v1, v2, v3] on RV32IV_Zvbb/RV64IV_Zvbb (opcode 0x57, OP-V
+    proper) - Zvbb's AND-NOT, the same OPIVV shape as {!vadd_vv_entries}
+    under a Zvbb configuration. *)
+
+val vandn_vx_entries : entry list
+(** [vandn.vx v1, v2, a0] - {!vandn_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vbrev_v_entries : entry list
+(** [vbrev.v v1, v2] - Zvbb's bit-reverse, {!vsext_vf2_entries}'s own
+    fixed-vs1 unary shape under a Zvbb configuration. *)
+
+val vbrev8_v_entries : entry list
+(** [vbrev8.v v1, v2] - {!vbrev_v_entries}'s within-byte-only sibling. *)
+
+val vclz_v_entries : entry list
+(** [vclz.v v1, v2] - Zvbb's count-leading-zeros, {!vbrev_v_entries}'s
+    own shape. *)
+
+val vcpop_v_entries : entry list
+(** [vcpop.v v1, v2] - Zvbb's population count, {!vbrev_v_entries}'s
+    own shape. *)
+
+val vctz_v_entries : entry list
+(** [vctz.v v1, v2] - Zvbb's count-trailing-zeros, {!vbrev_v_entries}'s
+    own shape. *)
+
+val vrev8_v_entries : entry list
+(** [vrev8.v v1, v2] - Zvbb's byte-reverse, {!vbrev_v_entries}'s own
+    shape. *)
+
+val vrol_vv_entries : entry list
+(** [vrol.vv v1, v2, v3] - Zvbb's rotate-left, {!vandn_vv_entries}'s own
+    shape. *)
+
+val vrol_vx_entries : entry list
+(** [vrol.vx v1, v2, a0] - {!vrol_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vror_vv_entries : entry list
+(** [vror.vv v1, v2, v3] - Zvbb's rotate-right, {!vandn_vv_entries}'s
+    own shape. *)
+
+val vror_vx_entries : entry list
+(** [vror.vx v1, v2, a0] - {!vror_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vror_vi_entries : entry list
+(** [vror.vi v1, v2, 40] - {!vror_vv_entries}'s immediate sibling, a
+    genuinely new split-immediate shape (unsigned zimm6, 0..63) - see
+    {!Isa_norm_riscv.vror_vi_form}'s own comment for the full finding. *)
+
+val vwsll_vv_entries : entry list
+(** [vwsll.vv v1, v2, v3] - Zvbb's widening shift-left-logical,
+    {!vandn_vv_entries}'s own shape (needs full Zvbb, no Zvkb
+    alternative). *)
+
+val vwsll_vx_entries : entry list
+(** [vwsll.vx v1, v2, a0] - {!vwsll_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vwsll_vi_entries : entry list
+(** [vwsll.vi v1, v2, 5] - {!vwsll_vv_entries}'s immediate sibling,
+    UNSIGNED zimm5 like {!vsll_vi_entries}'s own shift-amount immediate. *)
+
+val vaesdf_vv_entries : entry list
+(** [vaesdf.vv v1, v2] under [-march=rv32i_zvkned]/[-march=rv64i_zvkned] -
+    Zvkned's AES decrypt-final round, {!vgmul_vv_entries}'s own
+    fixed-vs1 unary shape under a Zvkned configuration. *)
+
+val vaesdf_vs_entries : entry list
+(** [vaesdf.vs v1, v2] - {!vaesdf_vv_entries}'s scalar-slot sibling. *)
+
+val vaesdm_vv_entries : entry list
+(** [vaesdm.vv v1, v2] - Zvkned's AES decrypt-middle round,
+    {!vaesdf_vv_entries}'s own shape. *)
+
+val vaesdm_vs_entries : entry list
+(** [vaesdm.vs v1, v2] - {!vaesdm_vv_entries}'s scalar-slot sibling. *)
+
+val vaesef_vv_entries : entry list
+(** [vaesef.vv v1, v2] - Zvkned's AES encrypt-final round,
+    {!vaesdf_vv_entries}'s own shape. *)
+
+val vaesef_vs_entries : entry list
+(** [vaesef.vs v1, v2] - {!vaesef_vv_entries}'s scalar-slot sibling. *)
+
+val vaesem_vv_entries : entry list
+(** [vaesem.vv v1, v2] - Zvkned's AES encrypt-middle round,
+    {!vaesdf_vv_entries}'s own shape. *)
+
+val vaesem_vs_entries : entry list
+(** [vaesem.vs v1, v2] - {!vaesem_vv_entries}'s scalar-slot sibling. *)
+
+val vaesz_vs_entries : entry list
+(** [vaesz.vs v1, v2] - Zvkned's AES zero-round-key XOR, the same shape
+    with no [.vv] sibling. *)
+
+val vaeskf1_vi_entries : entry list
+(** [vaeskf1.vi v1, v2, 5] - Zvkned's AES-128/192/256 key-schedule
+    round 1, {!vsm4k_vi_entries}'s own zimm5-ternary shape under a
+    Zvkned configuration. *)
+
+val vaeskf2_vi_entries : entry list
+(** [vaeskf2.vi v1, v2, 5] - Zvkned's AES-256 key-schedule round 2,
+    {!vaeskf1_vi_entries}'s own shape. *)
+
+val vfwcvtbf16_f_f_v_entries : entry list
+(** [vfwcvtbf16.f.f.v v1, v2] on RV32IV_Zvfbfmin/RV64IV_Zvfbfmin - OP-V's
+    own opcode 0x57 (not opcode 0x77 like every other rv_zv* family),
+    bf16-to-f32 widening conversion, {!vsext_vf2_entries}'s own
+    fixed-vs1 unary shape under a Zvfbfmin configuration. *)
+
+val vfncvtbf16_f_f_w_entries : entry list
+(** [vfncvtbf16.f.f.w v1, v2] - {!vfwcvtbf16_f_f_v_entries}'s f32-to-bf16
+    narrowing sibling. *)
+
+val vfwmaccbf16_vv_entries : entry list
+(** [vfwmaccbf16.vv v1, v2, v3] on RV32IV_Zvfbfwma/RV64IV_Zvfbfwma - bf16
+    widening fused-multiply-add, {!vfwmacc_vv_entries}'s own
+    reordered-operand macc shape under a Zvfbfwma configuration. *)
+
+val vfwmaccbf16_vf_entries : entry list
+(** [vfwmaccbf16.vf v1, fa0, v3] - {!vfwmaccbf16_vv_entries}'s
+    scalar-broadcast sibling. *)
+
 val sh1add_entries : entry list
 (** [sh1add a0, a1, a2] on RV32IM_Zba and RV64IM_Zba, Zba's scale-one R-type
     form. *)

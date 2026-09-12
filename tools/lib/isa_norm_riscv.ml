@@ -28,6 +28,33 @@ let feature_of_extension = function
   | "rv_d" -> Req_feature "riscv:d"
   | "rv_a" -> Req_feature "riscv:a"
   | "rv_v" -> Req_feature "riscv:v"
+  (* Zvbc (vector carry-less multiply): despite being a V sub-extension,
+     real GNU as accepts Zvbc mnemonics under [-march=rv64i_zvbc] alone (no
+     explicit [v]; confirmed byte-identical to [-march=rv64iv_zvbc]) but
+     rejects [-march=rv64iv] (no [zvbc]) with "extension `zvbc' required" -
+     so [riscv:zvbc] alone is the accurate requirement, not a [Req_all]
+     with [riscv:v]. *)
+  | "rv_zvbc" -> Req_feature "riscv:zvbc"
+  (* Zvkg (vector GCM/GHASH), the same real-GNU-as finding as Zvbc above:
+     confirmed accepted under [-march=...zvkg] alone, rejected under plain
+     [-march=...v] ("extension `zvkg' required"). *)
+  | "rv_zvkg" -> Req_feature "riscv:zvkg"
+  | "rv_zvknha" -> Req_feature "riscv:zvknha"
+  | "rv_zvknhb" -> Req_feature "riscv:zvknhb"
+  | "rv_zvkn" -> Req_feature "riscv:zvkn"
+  | "rv_zvksed" -> Req_feature "riscv:zvksed"
+  | "rv_zvks" -> Req_feature "riscv:zvks"
+  | "rv_zvksh" -> Req_feature "riscv:zvksh"
+  | "rv_zvbb" -> Req_feature "riscv:zvbb"
+  | "rv_zvkned" -> Req_feature "riscv:zvkned"
+  | "rv_zvfbfmin" -> Req_feature "riscv:zvfbfmin"
+  | "rv_zvfbfwma" -> Req_feature "riscv:zvfbfwma"
+  (* Zvkb never appears as a real riscv-opcodes record's own extension in
+     this snapshot - it exists only as a real-GNU-as-recognized
+     alternative for Zvbb's own bit-manipulation subset (see
+     {!alternative_extensions_by_mnemonic}'s own comment). Included here
+     purely so {!requirement_of_any} can list it as a Req_any feature. *)
+  | "rv_zvkb" -> Req_feature "riscv:zvkb"
   | "rv64_a" -> Req_all [ Req_xlen 64; Req_feature "riscv:a" ]
   | "rv64_f" -> Req_all [ Req_xlen 64; Req_feature "riscv:f" ]
   | "rv64_d" -> Req_all [ Req_xlen 64; Req_feature "riscv:d" ]
@@ -176,6 +203,69 @@ let alternative_extensions_by_mnemonic =
      zknd-rooted pair or vice versa - hand-verified, not assumed). *)
   let aes32d_import_group_rv32 = [ "rv32_zknd"; "rv32_zk"; "rv32_zkn" ] in
   let aes32e_import_group_rv32 = [ "rv32_zkne"; "rv32_zk"; "rv32_zkn" ] in
+  (* vsha2ms.vv/vsha2ch.vv/vsha2cl.vv (Zvknha's SHA-256 vector helpers) are a
+     three-way import group, XLEN-independent: riscv-opcodes' primary record
+     is rv_zvknha, imported by rv_zvknhb (SHA-256-and-512's superset
+     extension) and by rv_zvkn (the NIST vector-crypto bundle, which also
+     imports Zvbb's and Zvkned's own mnemonics - not modeled as an
+     alternative for those yet, only for this group, since this repository
+     hasn't promoted Zvbb/Zvkned themselves). Confirmed directly against
+     real GNU as (not just riscv-opcodes' relationships field): both
+     `-march=...i_zvknhb` and `-march=...i_zvkn` alone (no explicit
+     `zvknha`) assemble all three mnemonics byte-identical to
+     `-march=...i_zvknha`, and the "unrecognized opcode" error under plain V
+     literally names two of the three alternatives ("extension `zvknha' or
+     `zvknhb' required" - GNU as's own message happens not to mention
+     `zvkn`, but real assembly under `-march=...i_zvkn` alone still
+     succeeds, confirmed directly). Identical mnemonic/encoding on both
+     profiles, hand-verified identical mask/value across all three members
+     in the checked-in riscv64.jsonl before writing any code. *)
+  let zvknha_import_group = [ "rv_zvknha"; "rv_zvknhb"; "rv_zvkn" ] in
+  (* vsm4k.vi/vsm4r.vs/vsm4r.vv (Zvksed's SM4 block-cipher helpers) are a
+     two-way import group, XLEN-independent: riscv-opcodes' primary record
+     is rv_zvksed, imported by rv_zvks (the ShangMi vector-crypto bundle) -
+     confirmed directly against real GNU as: `-march=...i_zvks` alone (no
+     explicit `zvksed`) assembles all three mnemonics byte-identical to
+     `-march=...i_zvksed`. Unlike the Zvknha group above, only one importer
+     exists here - hand-verified by grepping every mnemonic's own
+     provenance.extension across the whole checked-in export, not assumed
+     from riscv-opcodes' relationships field alone. *)
+  let zvksed_import_group = [ "rv_zvksed"; "rv_zvks" ] in
+  (* vsm3c.vi/vsm3me.vv (Zvksh's SM3 hash helpers) are a two-way import
+     group like Zvksed's own above: primary rv_zvksh, imported by rv_zvks
+     alone - confirmed directly against real GNU as (`-march=...i_zvks`
+     alone assembles both mnemonics byte-identical to
+     `-march=...i_zvksh`), hand-verified no third alternative exists by
+     grepping every candidate's own provenance.extension across the whole
+     checked-in export before writing any code. *)
+  let zvksh_import_group = [ "rv_zvksh"; "rv_zvks" ] in
+  (* Zvbb's own bit-manipulation subset (vandn.vv/.vx, vbrev8.v, vrev8.v,
+     vrol.vv/.vx, vror.vv/.vx/.vi - 9 mnemonics, NOT vbrev.v/vclz.v/
+     vcpop.v/vctz.v/vwsll.* which need full Zvbb) is a genuinely different
+     kind of alternative-extensions group from every other entry in this
+     table: riscv-opcodes' own records only ever tag these as rv_zvbb (or,
+     for rv_zvkn/rv_zvks, an import of it) - there is no "rv_zvkb" record
+     anywhere in this snapshot at all. Real GNU as nonetheless accepts a
+     bare `-march=...zvkb` for exactly these 9 mnemonics (confirmed
+     directly, not inferred from riscv-opcodes), rejecting the
+     Zvbb-only four (`vbrev.v`/`vclz.v`/`vcpop.v`/`vctz.v`) and
+     `vwsll.*` the same way plain V rejects them - so Zvkb is included as
+     a fourth Req_any alternative purely on GNU-as-observed grounds, with
+     {!feature_of_extension}'s own "rv_zvkb" case existing only to name it,
+     never to classify a real record. rv_zvkn/rv_zvks both import exactly
+     this same 9-mnemonic subset (hand-verified against the checked-in
+     export - their own 23/14-record totals include Zvkned's/other
+     families' mnemonics too, out of scope here). *)
+  let zvkb_subset_group = [ "rv_zvbb"; "rv_zvkb"; "rv_zvkn"; "rv_zvks" ] in
+  (* Zvkned's AES round/key-schedule family (11 mnemonics) is a two-way
+     import group like Zvksed's own above: primary rv_zvkned, imported by
+     rv_zvkn alone (confirmed directly against real GNU as:
+     `-march=...i_zvkn` alone assembles all 11 mnemonics byte-identical
+     to `-march=...i_zvkned`) - hand-verified no third alternative
+     exists (unlike Zvbb's own Zvkb-subset) by grepping every mnemonic's
+     own provenance.extension across the whole checked-in export before
+     writing any code. *)
+  let zvkned_import_group = [ "rv_zvkned"; "rv_zvkn" ] in
   [
     ("andn", zbb_import_group);
     ("orn", zbb_import_group);
@@ -224,6 +314,34 @@ let alternative_extensions_by_mnemonic =
     ("aes32dsmi", aes32d_import_group_rv32);
     ("aes32esi", aes32e_import_group_rv32);
     ("aes32esmi", aes32e_import_group_rv32);
+    ("vsha2ms.vv", zvknha_import_group);
+    ("vsha2ch.vv", zvknha_import_group);
+    ("vsha2cl.vv", zvknha_import_group);
+    ("vsm4k.vi", zvksed_import_group);
+    ("vsm4r.vs", zvksed_import_group);
+    ("vsm4r.vv", zvksed_import_group);
+    ("vsm3c.vi", zvksh_import_group);
+    ("vsm3me.vv", zvksh_import_group);
+    ("vandn.vv", zvkb_subset_group);
+    ("vandn.vx", zvkb_subset_group);
+    ("vbrev8.v", zvkb_subset_group);
+    ("vrev8.v", zvkb_subset_group);
+    ("vrol.vv", zvkb_subset_group);
+    ("vrol.vx", zvkb_subset_group);
+    ("vror.vv", zvkb_subset_group);
+    ("vror.vx", zvkb_subset_group);
+    ("vror.vi", zvkb_subset_group);
+    ("vaesdf.vv", zvkned_import_group);
+    ("vaesdf.vs", zvkned_import_group);
+    ("vaesdm.vv", zvkned_import_group);
+    ("vaesdm.vs", zvkned_import_group);
+    ("vaesef.vv", zvkned_import_group);
+    ("vaesef.vs", zvkned_import_group);
+    ("vaesem.vv", zvkned_import_group);
+    ("vaesem.vs", zvkned_import_group);
+    ("vaesz.vs", zvkned_import_group);
+    ("vaeskf1.vi", zvkned_import_group);
+    ("vaeskf2.vi", zvkned_import_group);
   ]
 
 (* Builds [Req_any] over every extension in [extensions] once [rec_]'s own
@@ -2820,7 +2938,7 @@ let opivv_form ~mnemonic (rec_ : R.t) =
           arch = Riscv;
           native_name = rec_.native_name;
           source_record_ids = [ rec_.record_id ];
-          requirement = requirement_of rec_;
+          requirement = requirement_of_mnemonic ~mnemonic rec_;
           encoding;
           operands = [ rd; rs1; rs2 ];
           syntax =
@@ -2861,7 +2979,7 @@ let opivx_form ~mnemonic (rec_ : R.t) =
           arch = Riscv;
           native_name = rec_.native_name;
           source_record_ids = [ rec_.record_id ];
-          requirement = requirement_of rec_;
+          requirement = requirement_of_mnemonic ~mnemonic rec_;
           encoding;
           operands = [ rd; rs1; rs2 ];
           syntax =
@@ -2910,6 +3028,7 @@ let opivi_zimm5_mnemonics =
     "vrgather.vi";
     "vslideup.vi";
     "vslidedown.vi";
+    "vwsll.vi";
   ]
 
 let opivi_form ~mnemonic (rec_ : R.t) =
@@ -2961,6 +3080,79 @@ let opivi_form ~mnemonic (rec_ : R.t) =
                 label = Upstream;
                 note =
                   "operand fields vd, vs2, " ^ imm_name ^ " taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "GAS accepts an optional trailing mask operand (\", v0.t\") selecting vm=0 - not \
+                   modeled here, owned by the encoder";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* Zvbb's [vror.vi]: OPIVI's shape ([rd, rs2, imm], real selectable [vm])
+   but with a genuinely new immediate encoding - riscv-opcodes splits the
+   6-bit unsigned rotate amount across TWO non-adjacent fields,
+   [zimm6hi] (1 bit, occupying the bit position every other [.vi]
+   mnemonic's [vm] would sit at one position higher) and [zimm6lo] (5
+   bits, the usual immediate field position) - real GNU as's own range
+   message confirms 6 bits ("bad value for vector immediate field, value
+   must be 0...63", not "...0...31"). This is the same "multiple raw
+   fields concatenate into one logical operand" shape {!sw_form}'s own
+   [imm12hi]/[imm12lo] split already established, just unsigned and
+   high-part-first is reversed here (hi is the single top bit, lo the
+   low five) - modeled as one logical [zimm6] operand via two [runs]
+   entries rather than as two separate immediates. *)
+let vror_vi_form (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err "vror.vi-not-fixed-bits" msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = vreg (); role = Out; explicit = true } in
+      let imm =
+        {
+          op_name = "zimm6";
+          op_kind =
+            Immediate
+              {
+                width_bits = 6;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [
+                    { field_name = "zimm6hi"; field_hi = 0; field_lo = 0; dest_hi = 5; dest_lo = 5 };
+                    { field_name = "zimm6lo"; field_hi = 4; field_lo = 0; dest_hi = 4; dest_lo = 0 };
+                  ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      let rs2 = { op_name = "rs2"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:vror.vi";
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of_mnemonic ~mnemonic:"vror.vi" rec_;
+          encoding;
+          operands = [ rd; imm; rs2 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic = "vror.vi";
+              operands = [ Syn_operand "rd"; Syn_operand "rs2"; Syn_operand "zimm6" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields vd, vs2, zimm6hi, zimm6lo taken verbatim from encoding.fields; \
+                   zimm6hi/zimm6lo concatenate (hi first) into one logical 6-bit zimm6 operand";
               };
               {
                 label = Inferred;
@@ -3334,6 +3526,163 @@ let carry_vi_form ~mnemonic (rec_ : R.t) =
           diagnostics = [];
         }
 
+(* Zvkg's [vghsh.vv]/[vgmul.vv]: vector crypto's own major opcode 0x77 (not
+   OP-V's 0x57), a genuinely new instruction space this repository has not
+   modeled before. Unlike every OPIVV/OPMVV/OPFVV shape elsewhere in this
+   file, this space has no mask bit at all - bit 25 (where [vm] would sit)
+   is a fixed constant 1, not a toggle, and real GNU as rejects a trailing
+   [, v0.t] outright ("illegal operands") rather than defaulting it, the
+   same way [vlm.v]/[vsm.v]/the whole-register load/store family reject a
+   mask suffix. [zvk_ternary_form] is [vghsh.vv]'s plain three-vector-
+   register shape ([vd, vs2, vs1]); [zvk_unary_form] is [vgmul.vv]'s
+   two-register shape with [vs1]'s field position a fixed per-mnemonic
+   constant, the same "fixed field, not a real operand" precedent
+   {!vext_form} below already established for OP-V proper. *)
+let zvk_ternary_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = vreg (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = vreg (); role = In; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of_mnemonic ~mnemonic rec_;
+          encoding;
+          operands = [ rd; rs1; rs2 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "rs2"; Syn_operand "rs1" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields vd, vs2, vs1 taken verbatim from encoding.fields, renamed \
+                   rd/rs2/rs1";
+              };
+              {
+                label = Inferred;
+                note =
+                  "this instruction space (major opcode 0x77) has no mask bit at all - GAS rejects \
+                   a trailing \", v0.t\" outright, unlike OP-V proper";
+              };
+            ];
+          diagnostics = [];
+        }
+
+let zvk_unary_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = vreg (); role = Out; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of_mnemonic ~mnemonic rec_;
+          encoding;
+          operands = [ rd; rs2 ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs2" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields vd, vs2 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "the vs1 field position is a fixed per-mnemonic constant, not a genuine operand \
+                   - GAS syntax is \"mnemonic rd, rs2\" with nothing written there; the encoder \
+                   supplies the constant";
+              };
+              {
+                label = Inferred;
+                note =
+                  "this instruction space (major opcode 0x77) has no mask bit at all - GAS rejects \
+                   a trailing \", v0.t\" outright, unlike OP-V proper";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* Zvksed's [vsm4k.vi]: the same opcode-0x77, no-mask shape as
+   [vghsh.vv]/[vsha2ms.vv] above, but with an UNSIGNED 5-bit immediate
+   (riscv-opcodes' own "zimm5" field, 0..31 - confirmed by real GNU as's
+   own rejection message, "bad value for vector immediate field, value
+   must be 0...31") in [vs1]'s field position instead of a third vector
+   register - the same field {!opivi_form}'s own [opivi_zimm5_mnemonics]
+   branch already models for OP-V proper, just under this opcode/no-mask
+   space instead. *)
+let zvk_zimm5_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = vreg (); role = Out; explicit = true } in
+      let imm =
+        {
+          op_name = "zimm5";
+          op_kind =
+            Immediate
+              {
+                width_bits = 5;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs =
+                  [ { field_name = "zimm5"; field_hi = 4; field_lo = 0; dest_hi = 4; dest_lo = 0 } ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      let rs2 = { op_name = "rs2"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of_mnemonic ~mnemonic rec_;
+          encoding;
+          operands = [ rd; rs2; imm ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "rs2"; Syn_operand "zimm5" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields vd, vs2, zimm5 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "this instruction space (major opcode 0x77) has no mask bit at all - GAS rejects \
+                   a trailing \", v0.t\" outright, unlike OP-V proper";
+              };
+            ];
+          diagnostics = [];
+        }
+
 (* [vsext.vf2]/[vf4]/[vf8], [vzext.vf2]/[vf4]/[vf8]: OP-V's integer
    sign-/zero-extend family - a genuinely new two-vector-register shape
    ([rd, rs2], no third operand at all). Under the same OPMVV major
@@ -3355,7 +3704,7 @@ let vext_form ~mnemonic (rec_ : R.t) =
           arch = Riscv;
           native_name = rec_.native_name;
           source_record_ids = [ rec_.record_id ];
-          requirement = requirement_of rec_;
+          requirement = requirement_of_mnemonic ~mnemonic rec_;
           encoding;
           operands = [ rd; rs2 ];
           syntax =
@@ -3831,6 +4180,10 @@ let opivv_mnemonics =
     "vmsleu.vv";
     "vmsle.vv";
     "vsmul.vv";
+    "vandn.vv";
+    "vrol.vv";
+    "vror.vv";
+    "vwsll.vv";
   ]
 
 let opivx_mnemonics =
@@ -3870,6 +4223,10 @@ let opivx_mnemonics =
     "vslideup.vx";
     "vslidedown.vx";
     "vsmul.vx";
+    "vandn.vx";
+    "vrol.vx";
+    "vror.vx";
+    "vwsll.vx";
   ]
 
 let opivi_mnemonics =
@@ -3927,6 +4284,8 @@ let opmvv_mnemonics =
     "vredmin.vs";
     "vredmaxu.vs";
     "vredmax.vs";
+    "vclmul.vv";
+    "vclmulh.vv";
   ]
 
 let opmvx_mnemonics =
@@ -3956,6 +4315,8 @@ let opmvx_mnemonics =
     "vwmul.vx";
     "vslide1up.vx";
     "vslide1down.vx";
+    "vclmul.vx";
+    "vclmulh.vx";
   ]
 
 (* OP-V's OPFVV (funct3 = 1) shape - the entry point into the floating-point
@@ -4232,6 +4593,7 @@ let opfmacc_vv_mnemonics =
     "vfwnmacc.vv";
     "vfwmsac.vv";
     "vfwnmsac.vv";
+    "vfwmaccbf16.vv";
   ]
 
 let opfmacc_vf_mnemonics =
@@ -4248,6 +4610,7 @@ let opfmacc_vf_mnemonics =
     "vfwnmacc.vf";
     "vfwmsac.vf";
     "vfwnmsac.vf";
+    "vfwmaccbf16.vf";
   ]
 
 let opmacc_vv_mnemonics =
@@ -4463,6 +4826,8 @@ let normalize (rec_ : R.t) =
   | "vfncvt.rod.f.f.w" -> vext_form ~mnemonic:"vfncvt.rod.f.f.w" rec_
   | "vfncvt.rtz.xu.f.w" -> vext_form ~mnemonic:"vfncvt.rtz.xu.f.w" rec_
   | "vfncvt.rtz.x.f.w" -> vext_form ~mnemonic:"vfncvt.rtz.x.f.w" rec_
+  | "vfwcvtbf16.f.f.v" -> vext_form ~mnemonic:"vfwcvtbf16.f.f.v" rec_
+  | "vfncvtbf16.f.f.w" -> vext_form ~mnemonic:"vfncvtbf16.f.f.w" rec_
   | "vmsbf.m" -> vext_form ~mnemonic:"vmsbf.m" rec_
   | "vmsif.m" -> vext_form ~mnemonic:"vmsif.m" rec_
   | "vmsof.m" -> vext_form ~mnemonic:"vmsof.m" rec_
@@ -4526,6 +4891,34 @@ let normalize (rec_ : R.t) =
   | "vs2r.v" -> vsm_form ~mnemonic:"vs2r.v" rec_
   | "vs4r.v" -> vsm_form ~mnemonic:"vs4r.v" rec_
   | "vs8r.v" -> vsm_form ~mnemonic:"vs8r.v" rec_
+  | "vghsh.vv" -> zvk_ternary_form ~mnemonic:"vghsh.vv" rec_
+  | "vgmul.vv" -> zvk_unary_form ~mnemonic:"vgmul.vv" rec_
+  | "vsha2ms.vv" -> zvk_ternary_form ~mnemonic:"vsha2ms.vv" rec_
+  | "vsha2ch.vv" -> zvk_ternary_form ~mnemonic:"vsha2ch.vv" rec_
+  | "vsha2cl.vv" -> zvk_ternary_form ~mnemonic:"vsha2cl.vv" rec_
+  | "vsm4k.vi" -> zvk_zimm5_form ~mnemonic:"vsm4k.vi" rec_
+  | "vsm4r.vv" -> zvk_unary_form ~mnemonic:"vsm4r.vv" rec_
+  | "vsm4r.vs" -> zvk_unary_form ~mnemonic:"vsm4r.vs" rec_
+  | "vsm3c.vi" -> zvk_zimm5_form ~mnemonic:"vsm3c.vi" rec_
+  | "vsm3me.vv" -> zvk_ternary_form ~mnemonic:"vsm3me.vv" rec_
+  | "vbrev.v" -> vext_form ~mnemonic:"vbrev.v" rec_
+  | "vbrev8.v" -> vext_form ~mnemonic:"vbrev8.v" rec_
+  | "vclz.v" -> vext_form ~mnemonic:"vclz.v" rec_
+  | "vcpop.v" -> vext_form ~mnemonic:"vcpop.v" rec_
+  | "vctz.v" -> vext_form ~mnemonic:"vctz.v" rec_
+  | "vrev8.v" -> vext_form ~mnemonic:"vrev8.v" rec_
+  | "vror.vi" -> vror_vi_form rec_
+  | "vaesdf.vv" -> zvk_unary_form ~mnemonic:"vaesdf.vv" rec_
+  | "vaesdf.vs" -> zvk_unary_form ~mnemonic:"vaesdf.vs" rec_
+  | "vaesdm.vv" -> zvk_unary_form ~mnemonic:"vaesdm.vv" rec_
+  | "vaesdm.vs" -> zvk_unary_form ~mnemonic:"vaesdm.vs" rec_
+  | "vaesef.vv" -> zvk_unary_form ~mnemonic:"vaesef.vv" rec_
+  | "vaesef.vs" -> zvk_unary_form ~mnemonic:"vaesef.vs" rec_
+  | "vaesem.vv" -> zvk_unary_form ~mnemonic:"vaesem.vv" rec_
+  | "vaesem.vs" -> zvk_unary_form ~mnemonic:"vaesem.vs" rec_
+  | "vaesz.vs" -> zvk_unary_form ~mnemonic:"vaesz.vs" rec_
+  | "vaeskf1.vi" -> zvk_zimm5_form ~mnemonic:"vaeskf1.vi" rec_
+  | "vaeskf2.vi" -> zvk_zimm5_form ~mnemonic:"vaeskf2.vi" rec_
   | other ->
       err "unhandled-native-name"
         (Printf.sprintf

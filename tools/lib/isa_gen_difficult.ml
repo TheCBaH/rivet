@@ -2740,6 +2740,511 @@ let vs2r_v_entries = v_store_entries ~mnemonic:"vs2r.v"
 let vs4r_v_entries = v_store_entries ~mnemonic:"vs4r.v"
 let vs8r_v_entries = v_store_entries ~mnemonic:"vs8r.v"
 
+(* Zvbc's [vclmul]/[vclmulh]: carry-less multiply (low/high half), the same
+   OPMVV/OPMVX operand shape as [vmul]/etc., but rooted in Zvbc rather than
+   V - real GNU as rejects these mnemonics under plain [-march=...v]
+   ("extension `zvbc' required"), so {!opivv_entry}/{!opivx_entry} cannot be
+   reused as-is (they hardcode {!v_configuration_for}); confirmed against
+   real GNU as, byte-identical on RV32/RV64 under [-march=rv32i_zvbc]/
+   [-march=rv64i_zvbc] (no explicit [v] needed): `vclmul.vv/.vx` ->
+   `3221a0d7`/`322560d7`, `vclmulh.vv/.vx` -> `3621a0d7`/`362560d7`. *)
+let zvbc_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32i_zvbc"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64i_zvbc"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let zvbc_opivv_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-vector:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "zvbc-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvbc_configuration_for target;
+  }
+
+let zvbc_opivx_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-scalar:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "zvbc-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "a0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvbc_configuration_for target;
+  }
+
+let vclmul_vv_entries =
+  List.map (zvbc_opivv_entry ~mnemonic:"vclmul.vv") [ Target.Riscv32; Target.Riscv64 ]
+
+let vclmul_vx_entries =
+  List.map (zvbc_opivx_entry ~mnemonic:"vclmul.vx") [ Target.Riscv32; Target.Riscv64 ]
+
+let vclmulh_vv_entries =
+  List.map (zvbc_opivv_entry ~mnemonic:"vclmulh.vv") [ Target.Riscv32; Target.Riscv64 ]
+
+let vclmulh_vx_entries =
+  List.map (zvbc_opivx_entry ~mnemonic:"vclmulh.vx") [ Target.Riscv32; Target.Riscv64 ]
+
+(* Zvkg's [vghsh.vv]/[vgmul.vv]: vector GCM/GHASH, major opcode 0x77 (not
+   OP-V's 0x57) - see {!Isa_norm_riscv.zvk_ternary_form}/[zvk_unary_form]'s
+   own comment for the full finding. Real GNU as accepts these under
+   [-march=...zvkg] alone (no explicit [v] needed, the same finding as
+   Zvbc above), confirmed byte-identical on RV32/RV64: `vghsh.vv v1,v2,v3`
+   -> `b221a0f7`, `vgmul.vv v1,v2` -> `a228a0f7`; a trailing [, v0.t] on
+   either is "illegal operands" (no masked sibling for this opcode space at
+   all), so neither entry builder below has a masked counterpart. *)
+let zvkg_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32i_zvkg"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64i_zvkg"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let vghsh_vv_entry target =
+  {
+    form_id = "riscv:vghsh.vv";
+    target;
+    lookup_key = "vghsh.vv";
+    case_id = Printf.sprintf "riscv:vghsh.vv:vector-vector:%s" (Target.to_string target);
+    rule_ids = [ "zvkg-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvkg_configuration_for target;
+  }
+
+let vghsh_vv_entries = List.map vghsh_vv_entry [ Target.Riscv32; Target.Riscv64 ]
+
+let vgmul_vv_entry target =
+  {
+    form_id = "riscv:vgmul.vv";
+    target;
+    lookup_key = "vgmul.vv";
+    case_id = Printf.sprintf "riscv:vgmul.vv:unary:%s" (Target.to_string target);
+    rule_ids = [ "zvkg-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvkg_configuration_for target;
+  }
+
+let vgmul_vv_entries = List.map vgmul_vv_entry [ Target.Riscv32; Target.Riscv64 ]
+
+(* Zvknha's [vsha2ms.vv]/[vsha2ch.vv]/[vsha2cl.vv]: the same opcode-0x77
+   no-mask ternary shape as [vghsh.vv] above, under Zvknha's own
+   configuration rather than Zvkg's - the "one configuration proves
+   promotion" discipline every slice here uses, even though real GNU as
+   also accepts these three under plain Zvknhb (see
+   {!Isa_norm_riscv.alternative_extensions_by_mnemonic}'s own comment).
+   Confirmed against real GNU as, byte-identical on RV32/RV64:
+   `vsha2ms.vv v1,v2,v3` -> `b621a0f7`, `vsha2ch.vv v1,v2,v3` ->
+   `ba21a0f7`, `vsha2cl.vv v1,v2,v3` -> `be21a0f7`. *)
+let zvknha_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32i_zvknha"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64i_zvknha"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let vsha2ms_vv_entry target =
+  {
+    form_id = "riscv:vsha2ms.vv";
+    target;
+    lookup_key = "vsha2ms.vv";
+    case_id = Printf.sprintf "riscv:vsha2ms.vv:vector-vector:%s" (Target.to_string target);
+    rule_ids = [ "zvknha-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvknha_configuration_for target;
+  }
+
+let vsha2ms_vv_entries = List.map vsha2ms_vv_entry [ Target.Riscv32; Target.Riscv64 ]
+
+let vsha2ch_vv_entry target =
+  {
+    form_id = "riscv:vsha2ch.vv";
+    target;
+    lookup_key = "vsha2ch.vv";
+    case_id = Printf.sprintf "riscv:vsha2ch.vv:vector-vector:%s" (Target.to_string target);
+    rule_ids = [ "zvknha-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvknha_configuration_for target;
+  }
+
+let vsha2ch_vv_entries = List.map vsha2ch_vv_entry [ Target.Riscv32; Target.Riscv64 ]
+
+let vsha2cl_vv_entry target =
+  {
+    form_id = "riscv:vsha2cl.vv";
+    target;
+    lookup_key = "vsha2cl.vv";
+    case_id = Printf.sprintf "riscv:vsha2cl.vv:vector-vector:%s" (Target.to_string target);
+    rule_ids = [ "zvknha-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvknha_configuration_for target;
+  }
+
+let vsha2cl_vv_entries = List.map vsha2cl_vv_entry [ Target.Riscv32; Target.Riscv64 ]
+
+(* Zvksed's [vsm4k.vi]/[vsm4r.vv]/[vsm4r.vs]: SM4 block-cipher helpers,
+   opcode 0x77, no mask bit. `-march=...i_zvksed` proves promotion (real
+   GNU as also accepts plain `-march=...i_zvks` - see
+   {!Isa_norm_riscv.alternative_extensions_by_mnemonic}'s own comment).
+   Confirmed against real GNU as, byte-identical on RV32/RV64: `vsm4k.vi
+   v1,v2,5` -> `8622a0f7`, `vsm4r.vv v1,v2` -> `a22820f7`, `vsm4r.vs
+   v1,v2` -> `a62820f7`. *)
+let zvksed_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32i_zvksed"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64i_zvksed"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let vsm4k_vi_entry target =
+  {
+    form_id = "riscv:vsm4k.vi";
+    target;
+    lookup_key = "vsm4k.vi";
+    case_id = Printf.sprintf "riscv:vsm4k.vi:vector-immediate:%s" (Target.to_string target);
+    rule_ids = [ "zvksed-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("zimm5", "5") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvksed_configuration_for target;
+  }
+
+let vsm4k_vi_entries = List.map vsm4k_vi_entry [ Target.Riscv32; Target.Riscv64 ]
+
+let vsm4r_vv_entry target =
+  {
+    form_id = "riscv:vsm4r.vv";
+    target;
+    lookup_key = "vsm4r.vv";
+    case_id = Printf.sprintf "riscv:vsm4r.vv:unary:%s" (Target.to_string target);
+    rule_ids = [ "zvksed-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvksed_configuration_for target;
+  }
+
+let vsm4r_vv_entries = List.map vsm4r_vv_entry [ Target.Riscv32; Target.Riscv64 ]
+
+let vsm4r_vs_entry target =
+  {
+    form_id = "riscv:vsm4r.vs";
+    target;
+    lookup_key = "vsm4r.vs";
+    case_id = Printf.sprintf "riscv:vsm4r.vs:unary:%s" (Target.to_string target);
+    rule_ids = [ "zvksed-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvksed_configuration_for target;
+  }
+
+let vsm4r_vs_entries = List.map vsm4r_vs_entry [ Target.Riscv32; Target.Riscv64 ]
+
+(* Zvksh's [vsm3c.vi]/[vsm3me.vv]: SM3 hash helpers, opcode 0x77, no mask
+   bit. `-march=...i_zvksh` proves promotion (real GNU as also accepts
+   plain `-march=...i_zvks` - see
+   {!Isa_norm_riscv.alternative_extensions_by_mnemonic}'s own comment).
+   Confirmed against real GNU as, byte-identical on RV32/RV64: `vsm3c.vi
+   v1,v2,5` -> `ae22a0f7`, `vsm3me.vv v1,v2,v3` -> `8221a0f7`. *)
+let zvksh_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32i_zvksh"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64i_zvksh"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let vsm3c_vi_entry target =
+  {
+    form_id = "riscv:vsm3c.vi";
+    target;
+    lookup_key = "vsm3c.vi";
+    case_id = Printf.sprintf "riscv:vsm3c.vi:vector-immediate:%s" (Target.to_string target);
+    rule_ids = [ "zvksh-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("zimm5", "5") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvksh_configuration_for target;
+  }
+
+let vsm3c_vi_entries = List.map vsm3c_vi_entry [ Target.Riscv32; Target.Riscv64 ]
+
+let vsm3me_vv_entry target =
+  {
+    form_id = "riscv:vsm3me.vv";
+    target;
+    lookup_key = "vsm3me.vv";
+    case_id = Printf.sprintf "riscv:vsm3me.vv:vector-vector:%s" (Target.to_string target);
+    rule_ids = [ "zvksh-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvksh_configuration_for target;
+  }
+
+let vsm3me_vv_entries = List.map vsm3me_vv_entry [ Target.Riscv32; Target.Riscv64 ]
+
+(* Zvbb's bit-manipulation family - opcode 0x57 (OP-V proper, not the
+   opcode-0x77 vector-crypto space every other rv_zv* family in this file
+   uses), so {!opivv_entry}/{!opivx_entry}/{!opivi_entry}/{!vext_entry}
+   cannot be reused as-is (they hardcode {!v_configuration_for}) - the
+   same "one configuration proves promotion" discipline as every other
+   Zv* slice, just under a Zvbb configuration instead. Confirmed against
+   real GNU as, byte-identical on RV32/RV64: `vandn.vv v1,v2,v3` ->
+   `062180d7`, `vandn.vx v1,v2,a0` -> `062540d7`, `vrol.vv/.vx` ->
+   `562180d7`/`562540d7`, `vror.vv/.vx` -> `522180d7`/`522540d7`,
+   `vbrev.v` -> `4a2520d7`, `vbrev8.v` -> `4a2420d7`, `vclz.v` ->
+   `4a2620d7`, `vcpop.v` -> `4a2720d7`, `vctz.v` -> `4a26a0d7`,
+   `vrev8.v` -> `4a24a0d7`, `vwsll.vv/.vx` -> `d62180d7`/`d62540d7`. *)
+let zvbb_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32i_zvbb"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64i_zvbb"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let zvbb_opivv_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-vector:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "zvbb-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvbb_configuration_for target;
+  }
+
+let zvbb_opivv_entries ~mnemonic =
+  List.map (zvbb_opivv_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let zvbb_opivx_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-scalar:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "zvbb-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "a0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvbb_configuration_for target;
+  }
+
+let zvbb_opivx_entries ~mnemonic =
+  List.map (zvbb_opivx_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let zvbb_vext_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-unary:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "zvbb-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvbb_configuration_for target;
+  }
+
+let zvbb_vext_entries ~mnemonic =
+  List.map (zvbb_vext_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let vandn_vv_entries = zvbb_opivv_entries ~mnemonic:"vandn.vv"
+let vandn_vx_entries = zvbb_opivx_entries ~mnemonic:"vandn.vx"
+let vbrev_v_entries = zvbb_vext_entries ~mnemonic:"vbrev.v"
+let vbrev8_v_entries = zvbb_vext_entries ~mnemonic:"vbrev8.v"
+let vclz_v_entries = zvbb_vext_entries ~mnemonic:"vclz.v"
+let vcpop_v_entries = zvbb_vext_entries ~mnemonic:"vcpop.v"
+let vctz_v_entries = zvbb_vext_entries ~mnemonic:"vctz.v"
+let vrev8_v_entries = zvbb_vext_entries ~mnemonic:"vrev8.v"
+let vrol_vv_entries = zvbb_opivv_entries ~mnemonic:"vrol.vv"
+let vrol_vx_entries = zvbb_opivx_entries ~mnemonic:"vrol.vx"
+let vror_vv_entries = zvbb_opivv_entries ~mnemonic:"vror.vv"
+let vror_vx_entries = zvbb_opivx_entries ~mnemonic:"vror.vx"
+
+(* [vror.vi]: Zvbb's split-immediate shape - see
+   {!Isa_norm_riscv.vror_vi_form}'s own comment for the full finding.
+   UNSIGNED, range 0..63. Confirmed against real GNU as, byte-identical
+   on RV32/RV64: `vror.vi v1,v2,63` -> `562fb0d7`. *)
+let vror_vi_entry target =
+  {
+    form_id = "riscv:vror.vi";
+    target;
+    lookup_key = "vror.vi";
+    case_id = Printf.sprintf "riscv:vror.vi:vector-immediate:%s" (Target.to_string target);
+    rule_ids = [ "zvbb-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("zimm6", "40") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvbb_configuration_for target;
+  }
+
+let vror_vi_entries = List.map vror_vi_entry [ Target.Riscv32; Target.Riscv64 ]
+let vwsll_vv_entries = zvbb_opivv_entries ~mnemonic:"vwsll.vv"
+let vwsll_vx_entries = zvbb_opivx_entries ~mnemonic:"vwsll.vx"
+
+let vwsll_vi_entry target =
+  {
+    form_id = "riscv:vwsll.vi";
+    target;
+    lookup_key = "vwsll.vi";
+    case_id = Printf.sprintf "riscv:vwsll.vi:vector-immediate:%s" (Target.to_string target);
+    rule_ids = [ "zvbb-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("zimm5", "5") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvbb_configuration_for target;
+  }
+
+let vwsll_vi_entries = List.map vwsll_vi_entry [ Target.Riscv32; Target.Riscv64 ]
+
+(* Zvkned's AES round/key-schedule family - opcode 0x77, no mask bit.
+   `-march=...i_zvkned` proves promotion (real GNU as also accepts plain
+   `-march=...i_zvkn` - see
+   {!Isa_norm_riscv.alternative_extensions_by_mnemonic}'s own comment).
+   Confirmed against real GNU as, byte-identical on RV32/RV64:
+   `vaesdf.vv/.vs` -> `a220a0f7`/`a620a0f7`, `vaesdm.vv/.vs` ->
+   `a22020f7`/`a62020f7`, `vaesef.vv/.vs` -> `a221a0f7`/`a621a0f7`,
+   `vaesem.vv/.vs` -> `a22120f7`/`a62120f7`, `vaesz.vs` -> `a623a0f7`,
+   `vaeskf1.vi/vaeskf2.vi v1,v2,5` -> `8a22a0f7`/`aa22a0f7`. *)
+let zvkned_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32i_zvkned"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64i_zvkned"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let zvkned_unary_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-unary:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "zvkned-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvkned_configuration_for target;
+  }
+
+let zvkned_unary_entries ~mnemonic =
+  List.map (zvkned_unary_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let zvkned_zimm5_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-immediate:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "zvkned-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("zimm5", "5") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvkned_configuration_for target;
+  }
+
+let zvkned_zimm5_entries ~mnemonic =
+  List.map (zvkned_zimm5_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let vaesdf_vv_entries = zvkned_unary_entries ~mnemonic:"vaesdf.vv"
+let vaesdf_vs_entries = zvkned_unary_entries ~mnemonic:"vaesdf.vs"
+let vaesdm_vv_entries = zvkned_unary_entries ~mnemonic:"vaesdm.vv"
+let vaesdm_vs_entries = zvkned_unary_entries ~mnemonic:"vaesdm.vs"
+let vaesef_vv_entries = zvkned_unary_entries ~mnemonic:"vaesef.vv"
+let vaesef_vs_entries = zvkned_unary_entries ~mnemonic:"vaesef.vs"
+let vaesem_vv_entries = zvkned_unary_entries ~mnemonic:"vaesem.vv"
+let vaesem_vs_entries = zvkned_unary_entries ~mnemonic:"vaesem.vs"
+let vaesz_vs_entries = zvkned_unary_entries ~mnemonic:"vaesz.vs"
+let vaeskf1_vi_entries = zvkned_zimm5_entries ~mnemonic:"vaeskf1.vi"
+let vaeskf2_vi_entries = zvkned_zimm5_entries ~mnemonic:"vaeskf2.vi"
+
+(* Zvfbfmin's [vfwcvtbf16.f.f.v]/[vfncvtbf16.f.f.w]: bf16<->f32 widening/
+   narrowing conversion, OP-V's own opcode 0x57 (not the vector-crypto
+   opcode 0x77 every other rv_zv* family since Zvkg has used) - the same
+   {!vext_entry} fixed-vs1 unary shape [vfsqrt.v]/etc. already use, just
+   under a Zvfbfmin configuration. Confirmed against real GNU as,
+   byte-identical on RV32/RV64: `vfwcvtbf16.f.f.v v1,v2` -> `4a2690d7`,
+   `vfncvtbf16.f.f.w v1,v2` -> `4a2e90d7`. *)
+let zvfbfmin_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32i_zvfbfmin"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64i_zvfbfmin"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let zvfbfmin_vext_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-unary:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "zvfbfmin-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvfbfmin_configuration_for target;
+  }
+
+let vfwcvtbf16_f_f_v_entries =
+  List.map (zvfbfmin_vext_entry ~mnemonic:"vfwcvtbf16.f.f.v") [ Target.Riscv32; Target.Riscv64 ]
+
+let vfncvtbf16_f_f_w_entries =
+  List.map (zvfbfmin_vext_entry ~mnemonic:"vfncvtbf16.f.f.w") [ Target.Riscv32; Target.Riscv64 ]
+
+(* Zvfbfwma's [vfwmaccbf16.vv]/[vfwmaccbf16.vf]: bf16 widening
+   fused-multiply-add, the same reordered-operand macc shape
+   {!opmacc_vv_entry}/{!opfmacc_vf_entry} already model
+   ([<mnemonic> vd, vs1-or-rs1, vs2]), under a Zvfbfwma configuration.
+   Confirmed against real GNU as, byte-identical on RV32/RV64:
+   `vfwmaccbf16.vv v1,v2,v3` -> `ee3110d7`, `vfwmaccbf16.vf v1,fa0,v3`
+   -> `ee3550d7`. *)
+let zvfbfwma_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32i_zvfbfwma"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64i_zvfbfwma"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let vfwmaccbf16_vv_entry target =
+  {
+    form_id = "riscv:vfwmaccbf16.vv";
+    target;
+    lookup_key = "vfwmaccbf16.vv";
+    case_id = Printf.sprintf "riscv:vfwmaccbf16.vv:vector-vector:%s" (Target.to_string target);
+    rule_ids = [ "zvfbfwma-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs1", "v2"); ("rs2", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvfbfwma_configuration_for target;
+  }
+
+let vfwmaccbf16_vv_entries = List.map vfwmaccbf16_vv_entry [ Target.Riscv32; Target.Riscv64 ]
+
+let vfwmaccbf16_vf_entry target =
+  {
+    form_id = "riscv:vfwmaccbf16.vf";
+    target;
+    lookup_key = "vfwmaccbf16.vf";
+    case_id = Printf.sprintf "riscv:vfwmaccbf16.vf:vector-scalar:%s" (Target.to_string target);
+    rule_ids = [ "zvfbfwma-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs1", "fa0"); ("rs2", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zvfbfwma_configuration_for target;
+  }
+
+let vfwmaccbf16_vf_entries = List.map vfwmaccbf16_vf_entry [ Target.Riscv32; Target.Riscv64 ]
+
 let all =
   sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @ x86_fadd_entries @ fadd_s_entries
   @ fsub_s_entries @ fmul_s_entries @ fdiv_s_entries @ fadd_d_entries @ fsub_d_entries
@@ -2855,7 +3360,17 @@ let all =
   @ vl1re32_v_entries @ vl1re64_v_entries @ vl2re8_v_entries @ vl2re16_v_entries @ vl2re32_v_entries
   @ vl2re64_v_entries @ vl4re8_v_entries @ vl4re16_v_entries @ vl4re32_v_entries @ vl4re64_v_entries
   @ vl8re8_v_entries @ vl8re16_v_entries @ vl8re32_v_entries @ vl8re64_v_entries @ vs1r_v_entries
-  @ vs2r_v_entries @ vs4r_v_entries @ vs8r_v_entries
+  @ vs2r_v_entries @ vs4r_v_entries @ vs8r_v_entries @ vclmul_vv_entries @ vclmul_vx_entries
+  @ vclmulh_vv_entries @ vclmulh_vx_entries @ vghsh_vv_entries @ vgmul_vv_entries
+  @ vsha2ms_vv_entries @ vsha2ch_vv_entries @ vsha2cl_vv_entries @ vsm4k_vi_entries
+  @ vsm4r_vv_entries @ vsm4r_vs_entries @ vsm3c_vi_entries @ vsm3me_vv_entries @ vandn_vv_entries
+  @ vandn_vx_entries @ vbrev_v_entries @ vbrev8_v_entries @ vclz_v_entries @ vcpop_v_entries
+  @ vctz_v_entries @ vrev8_v_entries @ vrol_vv_entries @ vrol_vx_entries @ vror_vv_entries
+  @ vror_vx_entries @ vror_vi_entries @ vwsll_vv_entries @ vwsll_vx_entries @ vwsll_vi_entries
+  @ vaesdf_vv_entries @ vaesdf_vs_entries @ vaesdm_vv_entries @ vaesdm_vs_entries
+  @ vaesef_vv_entries @ vaesef_vs_entries @ vaesem_vv_entries @ vaesem_vs_entries @ vaesz_vs_entries
+  @ vaeskf1_vi_entries @ vaeskf2_vi_entries @ vfwcvtbf16_f_f_v_entries @ vfncvtbf16_f_f_w_entries
+  @ vfwmaccbf16_vv_entries @ vfwmaccbf16_vf_entries
 
 let pilot_entry_of (entry : entry) =
   let evidence =

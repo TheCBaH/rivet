@@ -766,6 +766,51 @@ module Make (P : PROFILE) = struct
       | Vs2r_v
       | Vs4r_v
       | Vs8r_v
+      | Vclmul_vv
+      | Vclmul_vx
+      | Vclmulh_vv
+      | Vclmulh_vx
+      | Vghsh_vv
+      | Vgmul_vv
+      | Vsha2ms_vv
+      | Vsha2ch_vv
+      | Vsha2cl_vv
+      | Vsm4k_vi
+      | Vsm4r_vv
+      | Vsm4r_vs
+      | Vsm3c_vi
+      | Vsm3me_vv
+      | Vandn_vv
+      | Vandn_vx
+      | Vbrev_v
+      | Vbrev8_v
+      | Vclz_v
+      | Vcpop_v
+      | Vctz_v
+      | Vrev8_v
+      | Vrol_vv
+      | Vrol_vx
+      | Vror_vv
+      | Vror_vx
+      | Vror_vi
+      | Vwsll_vv
+      | Vwsll_vx
+      | Vwsll_vi
+      | Vaesdf_vv
+      | Vaesdf_vs
+      | Vaesdm_vv
+      | Vaesdm_vs
+      | Vaesef_vv
+      | Vaesef_vs
+      | Vaesem_vv
+      | Vaesem_vs
+      | Vaesz_vs
+      | Vaeskf1_vi
+      | Vaeskf2_vi
+      | Vfwcvtbf16_f_f_v
+      | Vfncvtbf16_f_f_w
+      | Vfwmaccbf16_vv
+      | Vfwmaccbf16_vf
 
     let name = function
       | Add -> "add"
@@ -1379,6 +1424,51 @@ module Make (P : PROFILE) = struct
       | Vs2r_v -> "vs2r.v"
       | Vs4r_v -> "vs4r.v"
       | Vs8r_v -> "vs8r.v"
+      | Vclmul_vv -> "vclmul.vv"
+      | Vclmul_vx -> "vclmul.vx"
+      | Vclmulh_vv -> "vclmulh.vv"
+      | Vclmulh_vx -> "vclmulh.vx"
+      | Vghsh_vv -> "vghsh.vv"
+      | Vgmul_vv -> "vgmul.vv"
+      | Vsha2ms_vv -> "vsha2ms.vv"
+      | Vsha2ch_vv -> "vsha2ch.vv"
+      | Vsha2cl_vv -> "vsha2cl.vv"
+      | Vsm4k_vi -> "vsm4k.vi"
+      | Vsm4r_vv -> "vsm4r.vv"
+      | Vsm4r_vs -> "vsm4r.vs"
+      | Vsm3c_vi -> "vsm3c.vi"
+      | Vsm3me_vv -> "vsm3me.vv"
+      | Vandn_vv -> "vandn.vv"
+      | Vandn_vx -> "vandn.vx"
+      | Vbrev_v -> "vbrev.v"
+      | Vbrev8_v -> "vbrev8.v"
+      | Vclz_v -> "vclz.v"
+      | Vcpop_v -> "vcpop.v"
+      | Vctz_v -> "vctz.v"
+      | Vrev8_v -> "vrev8.v"
+      | Vrol_vv -> "vrol.vv"
+      | Vrol_vx -> "vrol.vx"
+      | Vror_vv -> "vror.vv"
+      | Vror_vx -> "vror.vx"
+      | Vror_vi -> "vror.vi"
+      | Vwsll_vv -> "vwsll.vv"
+      | Vwsll_vx -> "vwsll.vx"
+      | Vwsll_vi -> "vwsll.vi"
+      | Vaesdf_vv -> "vaesdf.vv"
+      | Vaesdf_vs -> "vaesdf.vs"
+      | Vaesdm_vv -> "vaesdm.vv"
+      | Vaesdm_vs -> "vaesdm.vs"
+      | Vaesef_vv -> "vaesef.vv"
+      | Vaesef_vs -> "vaesef.vs"
+      | Vaesem_vv -> "vaesem.vv"
+      | Vaesem_vs -> "vaesem.vs"
+      | Vaesz_vs -> "vaesz.vs"
+      | Vaeskf1_vi -> "vaeskf1.vi"
+      | Vaeskf2_vi -> "vaeskf2.vi"
+      | Vfwcvtbf16_f_f_v -> "vfwcvtbf16.f.f.v"
+      | Vfncvtbf16_f_f_w -> "vfncvtbf16.f.f.w"
+      | Vfwmaccbf16_vv -> "vfwmaccbf16.vv"
+      | Vfwmaccbf16_vf -> "vfwmaccbf16.vf"
 
     let all =
       [
@@ -1993,6 +2083,51 @@ module Make (P : PROFILE) = struct
         Vs2r_v;
         Vs4r_v;
         Vs8r_v;
+        Vclmul_vv;
+        Vclmul_vx;
+        Vclmulh_vv;
+        Vclmulh_vx;
+        Vghsh_vv;
+        Vgmul_vv;
+        Vsha2ms_vv;
+        Vsha2ch_vv;
+        Vsha2cl_vv;
+        Vsm4k_vi;
+        Vsm4r_vv;
+        Vsm4r_vs;
+        Vsm3c_vi;
+        Vsm3me_vv;
+        Vandn_vv;
+        Vandn_vx;
+        Vbrev_v;
+        Vbrev8_v;
+        Vclz_v;
+        Vcpop_v;
+        Vctz_v;
+        Vrev8_v;
+        Vrol_vv;
+        Vrol_vx;
+        Vror_vv;
+        Vror_vx;
+        Vror_vi;
+        Vwsll_vv;
+        Vwsll_vx;
+        Vwsll_vi;
+        Vaesdf_vv;
+        Vaesdf_vs;
+        Vaesdm_vv;
+        Vaesdm_vs;
+        Vaesef_vv;
+        Vaesef_vs;
+        Vaesem_vv;
+        Vaesem_vs;
+        Vaesz_vs;
+        Vaeskf1_vi;
+        Vaeskf2_vi;
+        Vfwcvtbf16_f_f_v;
+        Vfncvtbf16_f_f_w;
+        Vfwmaccbf16_vv;
+        Vfwmaccbf16_vf;
       ]
 
     let of_mnemonic s = List.find_opt (fun op -> String.equal (name op) s) all
@@ -3126,6 +3261,19 @@ module Make (P : PROFILE) = struct
        RV32/RV64: `vsmul.vx v1,v2,a0` -> `9e2540d7`; masked, e.g.
        `vsmul.vv v1,v2,v3,v0.t` -> `9c2180d7`. *)
     | Vsmul_vv -> Some 0x27
+    (* Zvbb's [vandn.vv]/[vrol.vv]/[vror.vv]/[vwsll.vv]: the same
+       OPIVV/OPIVX/OPIVI shape as [vadd]/etc. above, rooted in Zvbb rather
+       than plain V (with a real-GNU-as-only "Zvkb" alternative for
+       [vandn]/[vrol]/[vror] - see
+       {!Isa_norm_riscv.alternative_extensions_by_mnemonic}'s own
+       comment; [vwsll] needs full Zvbb, no Zvkb alternative). Confirmed
+       against real GNU as, byte-identical on RV32/RV64: `vandn.vv
+       v1,v2,v3` -> `062180d7`, `vrol.vv` -> `562180d7`, `vror.vv` ->
+       `522180d7`, `vwsll.vv` -> `d62180d7`. *)
+    | Vandn_vv -> Some 0x01
+    | Vrol_vv -> Some 0x15
+    | Vror_vv -> Some 0x14
+    | Vwsll_vv -> Some 0x35
     | _ -> None
 
   let opivx_funct6 = function
@@ -3181,6 +3329,15 @@ module Make (P : PROFILE) = struct
     | Vslideup_vx -> Some 0x0e
     | Vslidedown_vx -> Some 0x0f
     | Vsmul_vx -> Some 0x27
+    (* Zvbb's [vandn.vx]/[vrol.vx]/[vror.vx]/[vwsll.vx] - {!opivv_funct6}'s
+       own [vandn.vv]/etc. scalar-broadcast siblings. Confirmed against
+       real GNU as, byte-identical on RV32/RV64: `vandn.vx v1,v2,a0` ->
+       `062540d7`, `vrol.vx` -> `562540d7`, `vror.vx` -> `522540d7`,
+       `vwsll.vx` -> `d62540d7`. *)
+    | Vandn_vx -> Some 0x01
+    | Vrol_vx -> Some 0x15
+    | Vror_vx -> Some 0x14
+    | Vwsll_vx -> Some 0x35
     | _ -> None
 
   let opivi_funct6 = function
@@ -3228,6 +3385,11 @@ module Make (P : PROFILE) = struct
        `vslidedown.vi v1,v2,5` -> `3e22b0d7`. *)
     | Vslideup_vi -> Some 0x0e
     | Vslidedown_vi -> Some 0x0f
+    (* Zvbb's [vwsll.vi] - {!opivv_funct6}'s own [vwsll.vv] immediate
+       sibling, UNSIGNED [zimm5] like [vsll.vi]/etc. (see
+       {!opivi_unsigned} below). Confirmed against real GNU as,
+       byte-identical on RV32/RV64: `vwsll.vi v1,v2,5` -> `d622b0d7`. *)
+    | Vwsll_vi -> Some 0x35
     | _ -> None
 
   (* The saturating add/subtract family - `vsaddu`/`vsadd`/`vssubu`/`vssub` -
@@ -3262,7 +3424,7 @@ module Make (P : PROFILE) = struct
      "value must be 0...31" message). *)
   let opivi_unsigned = function
     | Opcode.Vsll_vi | Vsrl_vi | Vsra_vi | Vnsrl_wi | Vnsra_wi | Vnclipu_wi | Vnclip_wi | Vssrl_vi
-    | Vssra_vi | Vrgather_vi | Vslideup_vi | Vslidedown_vi ->
+    | Vssra_vi | Vrgather_vi | Vslideup_vi | Vslidedown_vi | Vwsll_vi ->
         true
     | _ -> false
 
@@ -3430,6 +3592,15 @@ module Make (P : PROFILE) = struct
     | Vredmin_vs -> Some 0x05
     | Vredmaxu_vs -> Some 0x06
     | Vredmax_vs -> Some 0x07
+    (* Zvbc's [vclmul]/[vclmulh]: carry-less multiply (low/high half), the
+       same OPMVV (funct3 = 2)/OPMVX (funct3 = 6) shape as [vmul]/etc. above,
+       no [.vi] sibling (real GNU as rejects [vclmul.vi] as "unrecognized
+       opcode"). Confirmed against real GNU as, byte-identical on RV32/RV64:
+       `vclmul.vv/.vx` -> `3221a0d7`/`322560d7`, `vclmulh.vv/.vx` ->
+       `3621a0d7`/`362560d7`; masked (`, v0.t`) drops the low funct7 bit,
+       e.g. `vclmul.vv v1,v2,v3,v0.t` -> `3021a0d7`. *)
+    | Vclmul_vv -> Some 0x0c
+    | Vclmulh_vv -> Some 0x0d
     | _ -> None
 
   let opmvx_funct6 = function
@@ -3456,6 +3627,10 @@ module Make (P : PROFILE) = struct
     | Vwmulu_vx -> Some 0x38
     | Vwmulsu_vx -> Some 0x3a
     | Vwmul_vx -> Some 0x3b
+    (* Zvbc's [vclmul.vx]/[vclmulh.vx] - {!opmvv_funct6}'s own [vclmul_vv]/
+       [vclmulh_vv] scalar-broadcast siblings. *)
+    | Vclmul_vx -> Some 0x0c
+    | Vclmulh_vx -> Some 0x0d
     (* [vslide1up]/[vslide1down]: the slide family's own single-element
        (scalar-insert) siblings - OPMVX (funct3 = 6), same funct6 values
        as {!opivx_funct6}'s [vslideup.vx]/[vslidedown.vx] (funct3 keeps
@@ -3708,19 +3883,17 @@ module Make (P : PROFILE) = struct
        (disambiguated purely by rs1-position, the same way [vfcvt.*.v]'s
        own six entries are). riscv-opcodes also lists two `bf16` sibling
        mnemonics, [vfwcvtbf16.f.f.v] (rs1 0x0d) and [vfncvtbf16.f.f.w] (rs1
-       0x1d) - both `rv_zvfbfmin`, a sub-extension with no existing
-       requirement/admission plumbing anywhere in this codebase, unlike
-       every other mnemonic promoted so far (all plain `rv_v`) - so they
-       are deliberately not admitted in this slice. Confirmed against real
-       GNU as, byte-identical on RV32/RV64: `vfwcvt.xu.f.v v1,v2` ->
-       `4a2410d7`, `vfwcvt.x.f.v` -> `4a2490d7`, `vfwcvt.f.xu.v` ->
-       `4a2510d7`, `vfwcvt.f.x.v` -> `4a2590d7`, `vfwcvt.f.f.v` ->
-       `4a2610d7`, `vfwcvt.rtz.xu.f.v` -> `4a2710d7`, `vfwcvt.rtz.x.f.v` ->
+       0x1d) - both `rv_zvfbfmin`. Confirmed against real GNU as,
+       byte-identical on RV32/RV64: `vfwcvt.xu.f.v v1,v2` -> `4a2410d7`,
+       `vfwcvt.x.f.v` -> `4a2490d7`, `vfwcvt.f.xu.v` -> `4a2510d7`,
+       `vfwcvt.f.x.v` -> `4a2590d7`, `vfwcvt.f.f.v` -> `4a2610d7`,
+       `vfwcvt.rtz.xu.f.v` -> `4a2710d7`, `vfwcvt.rtz.x.f.v` ->
        `4a2790d7`, `vfncvt.xu.f.w` -> `4a2810d7`, `vfncvt.x.f.w` ->
        `4a2890d7`, `vfncvt.f.xu.w` -> `4a2910d7`, `vfncvt.f.x.w` ->
        `4a2990d7`, `vfncvt.f.f.w` -> `4a2a10d7`, `vfncvt.rod.f.f.w` ->
        `4a2a90d7`, `vfncvt.rtz.xu.f.w` -> `4a2b10d7`, `vfncvt.rtz.x.f.w` ->
-       `4a2b90d7`; masked, e.g. `vfwcvt.f.x.v v1,v2,v0.t` -> `482590d7`. A
+       `4a2b90d7`, `vfwcvtbf16.f.f.v` -> `4a2690d7`, `vfncvtbf16.f.f.w` ->
+       `4a2e90d7`; masked, e.g. `vfwcvt.f.x.v v1,v2,v0.t` -> `482590d7`. A
        third operand is "illegal operands" on real GNU as, matching
        [vfcvt.*.v]'s own precedent - no `.vx`/`.vf`/`.vi` sibling for any
        of these. *)
@@ -3729,6 +3902,7 @@ module Make (P : PROFILE) = struct
     | Vfwcvt_f_xu_v -> Some (0x0a, 0x12)
     | Vfwcvt_f_x_v -> Some (0x0b, 0x12)
     | Vfwcvt_f_f_v -> Some (0x0c, 0x12)
+    | Vfwcvtbf16_f_f_v -> Some (0x0d, 0x12)
     | Vfwcvt_rtz_xu_f_v -> Some (0x0e, 0x12)
     | Vfwcvt_rtz_x_f_v -> Some (0x0f, 0x12)
     | Vfncvt_xu_f_w -> Some (0x10, 0x12)
@@ -3737,6 +3911,7 @@ module Make (P : PROFILE) = struct
     | Vfncvt_f_x_w -> Some (0x13, 0x12)
     | Vfncvt_f_f_w -> Some (0x14, 0x12)
     | Vfncvt_rod_f_f_w -> Some (0x15, 0x12)
+    | Vfncvtbf16_f_f_w -> Some (0x1d, 0x12)
     | Vfncvt_rtz_xu_f_w -> Some (0x16, 0x12)
     | Vfncvt_rtz_x_f_w -> Some (0x17, 0x12)
     | _ -> None
@@ -3828,6 +4003,13 @@ module Make (P : PROFILE) = struct
     | Vfwnmacc_vv -> Some 0x3d
     | Vfwmsac_vv -> Some 0x3e
     | Vfwnmsac_vv -> Some 0x3f
+    (* [vfwmaccbf16.vv]: Zvfbfwma's bf16 widening FMA - the identical
+       reordered-operand shape as [vfwmacc.vv]/etc. above, funct6 0x3b
+       (confirmed free of collision with 0x3c-0x3f above). Confirmed
+       against real GNU as, byte-identical on RV32/RV64:
+       `vfwmaccbf16.vv v1,v2,v3` -> `ee3110d7`; masked, e.g.
+       `vfwmaccbf16.vv v1,v2,v3,v0.t` -> `ec3110d7`. *)
+    | Vfwmaccbf16_vv -> Some 0x3b
     | _ -> None
 
   let opfmaccf_funct6 = function
@@ -3843,6 +4025,11 @@ module Make (P : PROFILE) = struct
     | Vfwnmacc_vf -> Some 0x3d
     | Vfwmsac_vf -> Some 0x3e
     | Vfwnmsac_vf -> Some 0x3f
+    (* [vfwmaccbf16.vf] - {!opfmacc_funct6}'s own [vfwmaccbf16.vv]
+       scalar-broadcast sibling. Confirmed against real GNU as,
+       byte-identical on RV32/RV64: `vfwmaccbf16.vf v1,fa0,v3` ->
+       `ee3550d7`. *)
+    | Vfwmaccbf16_vf -> Some 0x3b
     | _ -> None
 
   (* [vmand]/[vmandn]/[vmor]/[vmxor]/[vmorn]/[vmnand]/[vmnor]/[vmxnor]:
@@ -3917,6 +4104,115 @@ module Make (P : PROFILE) = struct
     | Vmsbf_m -> Some (0x1, 0x14)
     | Vmsof_m -> Some (0x2, 0x14)
     | Vmsif_m -> Some (0x3, 0x14)
+    (* Zvbb's [vbrev.v]/[vbrev8.v]/[vclz.v]/[vcpop.v]/[vctz.v]/[vrev8.v]:
+       the same OPMVV fixed-vs1 unary shape as [vsext]/etc. above, all
+       under funct6 0x12, disambiguated by their own distinct vs1-position
+       constants - confirmed by inspecting the real records directly,
+       not assumed from any pattern. [vbrev8.v]/[vrev8.v] have a
+       real-GNU-as-only "Zvkb" alternative (see
+       {!Isa_norm_riscv.alternative_extensions_by_mnemonic}'s own
+       comment); [vbrev.v]/[vclz.v]/[vcpop.v]/[vctz.v] need full Zvbb.
+       Confirmed against real GNU as, byte-identical on RV32/RV64:
+       `vbrev.v v1,v2` -> `4a2520d7`, `vbrev8.v` -> `4a2420d7`, `vclz.v`
+       -> `4a2620d7`, `vcpop.v` -> `4a2720d7`, `vctz.v` -> `4a26a0d7`,
+       `vrev8.v` -> `4a24a0d7`. *)
+    | Vbrev8_v -> Some (0x8, 0x12)
+    | Vrev8_v -> Some (0x9, 0x12)
+    | Vbrev_v -> Some (0xa, 0x12)
+    | Vclz_v -> Some (0xc, 0x12)
+    | Vctz_v -> Some (0xd, 0x12)
+    | Vcpop_v -> Some (0xe, 0x12)
+    | _ -> None
+
+  (* Zvkg's [vghsh.vv]/[vgmul.vv]: vector crypto's own major opcode 0x77
+     (not OP-V's 0x57) - a genuinely new instruction space. Bit 25 (where
+     [vm] would sit in OP-V proper) is architecturally fixed to 1 here, not
+     a real mask toggle, so [funct7 = (funct6 lsl 1) lor 1] unconditionally
+     rather than the usual [lor vm]; there is accordingly no masked sibling
+     to either mnemonic (real GNU as rejects a trailing [, v0.t] on either
+     as "illegal operands"). [vghsh.vv] is a plain three-vector-register
+     shape (funct6 0x2c); [vgmul.vv] is the same
+     "fixed-vs1-selects-suboperation" shape {!opmvv_unary_const}/
+     {!opfvv_unary_const} above already use for OP-V proper, just under
+     this different opcode/funct3 (funct6 0x28, vs1 fixed at 0x11).
+     Confirmed against real GNU as, byte-identical on RV32/RV64:
+     `vghsh.vv v1,v2,v3` -> `b221a0f7`, `vgmul.vv v1,v2` -> `a228a0f7`. *)
+  (* Zvknha's [vsha2ms.vv]/[vsha2ch.vv]/[vsha2cl.vv]: the same opcode-0x77,
+     no-mask ternary shape as {!zvk_ternary_funct6}'s own [vghsh.vv] above -
+     funct6 0x2d/0x2e/0x2f respectively. Real GNU as also accepts these
+     three under plain [-march=...zvknhb] (no [zvknha]), since Zvknhb
+     imports them verbatim - see {!Isa_norm_riscv.alternative_extensions_by_mnemonic}'s
+     own comment on this; the encoder itself doesn't care which extension
+     admitted the mnemonic, only the requirement layer does. Confirmed
+     against real GNU as, byte-identical on RV32/RV64: `vsha2ms.vv
+     v1,v2,v3` -> `b621a0f7`, `vsha2ch.vv v1,v2,v3` -> `ba21a0f7`,
+     `vsha2cl.vv v1,v2,v3` -> `be21a0f7`. *)
+  let zvk_ternary_funct6 = function
+    | Opcode.Vghsh_vv -> Some 0x2c
+    | Vsha2ms_vv -> Some 0x2d
+    | Vsha2ch_vv -> Some 0x2e
+    | Vsha2cl_vv -> Some 0x2f
+    (* Zvksh's [vsm3me.vv] - the same opcode-0x77 no-mask ternary shape,
+       funct6 0x20. Confirmed against real GNU as, byte-identical on
+       RV32/RV64: `vsm3me.vv v1,v2,v3` -> `8221a0f7`. *)
+    | Vsm3me_vv -> Some 0x20
+    | _ -> None
+
+  (* Zvksed's [vsm4r.vv]/[vsm4r.vs]: the same opcode-0x77 fixed-vs1 unary
+     shape as [vgmul.vv] above - funct6 0x28/0x29 respectively, vs1 fixed
+     at 0x10 for both (a different constant from [vgmul.vv]'s own 0x11,
+     confirmed by inspecting the real records directly rather than
+     assumed identical). Confirmed against real GNU as, byte-identical on
+     RV32/RV64: `vsm4r.vv v1,v2` -> `a22820f7`, `vsm4r.vs v1,v2` ->
+     `a62820f7`. *)
+  let zvk_unary_const = function
+    | Opcode.Vgmul_vv -> Some (0x11, 0x28)
+    | Vsm4r_vv -> Some (0x10, 0x28)
+    | Vsm4r_vs -> Some (0x10, 0x29)
+    (* Zvkned's AES round-function family - the same opcode-0x77 fixed-vs1
+       unary shape as [vgmul.vv]/[vsm4r.vv]/etc. above, all under funct6
+       0x28 (.vv)/0x29 (.vs) except [vaeskf1.vi]/[vaeskf2.vi] below (a
+       different shape entirely), disambiguated by 5 distinct
+       vs1-position constants (0x0/0x1/0x2/0x3/0x7). Confirmed against
+       real GNU as, byte-identical on RV32/RV64: `vaesdf.vv/.vs` ->
+       `a220a0f7`/`a620a0f7`, `vaesdm.vv/.vs` -> `a22020f7`/`a62020f7`,
+       `vaesef.vv/.vs` -> `a221a0f7`/`a621a0f7`, `vaesem.vv/.vs` ->
+       `a22120f7`/`a62120f7`, `vaesz.vs` -> `a623a0f7` (no [.vv] sibling -
+       real GNU as rejects `vaesz.vv` as "unrecognized opcode", matching
+       riscv-opcodes' own export). *)
+    | Vaesdm_vv -> Some (0x0, 0x28)
+    | Vaesdm_vs -> Some (0x0, 0x29)
+    | Vaesdf_vv -> Some (0x1, 0x28)
+    | Vaesdf_vs -> Some (0x1, 0x29)
+    | Vaesem_vv -> Some (0x2, 0x28)
+    | Vaesem_vs -> Some (0x2, 0x29)
+    | Vaesef_vv -> Some (0x3, 0x28)
+    | Vaesef_vs -> Some (0x3, 0x29)
+    | Vaesz_vs -> Some (0x7, 0x29)
+    | _ -> None
+
+  (* Zvksed's [vsm4k.vi]: the same opcode-0x77, no-mask shape as
+     [vghsh.vv]/[vsha2ms.vv] above, but with an unsigned 5-bit immediate
+     (riscv-opcodes' own "zimm5" field, encoded in the same bit positions
+     [rs1] would occupy) rather than a third vector register - funct6
+     0x21. Confirmed against real GNU as, byte-identical on RV32/RV64:
+     `vsm4k.vi v1,v2,5` -> `8622a0f7`; range-checked directly (0 and 31
+     accepted, 32 and -1 both "bad value for vector immediate field,
+     value must be 0...31"). *)
+  let zvk_zimm5_funct6 = function
+    | Opcode.Vsm4k_vi -> Some 0x21
+    (* Zvksh's [vsm3c.vi] - the same opcode-0x77 no-mask zimm5-ternary
+       shape as [vsm4k.vi] above, funct6 0x2b. Confirmed against real
+       GNU as, byte-identical on RV32/RV64: `vsm3c.vi v1,v2,5` ->
+       `ae22a0f7`. *)
+    | Vsm3c_vi -> Some 0x2b
+    (* Zvkned's [vaeskf1.vi]/[vaeskf2.vi] (AES key-schedule round
+       functions) - the same opcode-0x77 zimm5-ternary shape, funct6
+       0x22/0x2a. Confirmed against real GNU as, byte-identical on
+       RV32/RV64: `vaeskf1.vi v1,v2,5` -> `8a22a0f7`, `vaeskf2.vi
+       v1,v2,5` -> `aa22a0f7`. *)
+    | Vaeskf1_vi -> Some 0x22
+    | Vaeskf2_vi -> Some 0x2a
     | _ -> None
 
   (* [vcpop.m]/[vfirst.m]: the mask-population-count/first-set-bit-index
@@ -4636,6 +4932,61 @@ module Make (P : PROFILE) = struct
                   ]
             | _ -> wrong opn)
         | _ -> wrong opn)
+    | Opcode.Vror_vi, [ vd_op; vs2_op; imm_op ] -> (
+        (* [vror.vi vd, vs2, zimm6] - Zvbb's own split-immediate OPIVI
+           shape: funct3 = 3 like every other [.vi] mnemonic, but the
+           fixed portion is only 5 bits (bits[31:27] = 0xa) instead of
+           the usual 6-bit funct6, since bit 26 is the immediate's own
+           top bit ([zimm6hi]) rather than part of the opcode - so
+           [funct7 = (0xa lsl 2) lor (zimm6hi lsl 1) lor vm] instead of
+           the usual [(funct6 lsl 1) lor vm]; see
+           {!Isa_norm_riscv.vror_vi_form}'s own comment for the full
+           finding. UNSIGNED, range 0..63 (confirmed against real GNU
+           as: `vror.vi v1,v2,63` -> `562fb0d7`, `,64`/`,-1` both "bad
+           value for vector immediate field, value must be 0...63"). *)
+        match (vreg vd_op, vreg vs2_op, expr_of imm_op) with
+        | Some rd, Some rs2, Some e -> (
+            match int64_expr e with
+            | Some v when fits_unsigned 6 v ->
+                let rs1 = Int64.to_int (Int64.logand v 0x1fL) in
+                let zimm6hi = Int64.to_int (Int64.logand (Int64.shift_right_logical v 5) 0x1L) in
+                Ok
+                  [
+                    Lowered.R
+                      {
+                        name = opn;
+                        opcode = 0x57;
+                        funct3 = 3;
+                        funct7 = (0xa lsl 2) lor (zimm6hi lsl 1) lor 1;
+                        rd;
+                        rs1;
+                        rs2;
+                      };
+                  ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | Opcode.Vror_vi, [ vd_op; vs2_op; imm_op; mask ] when is_v0t mask -> (
+        match (vreg vd_op, vreg vs2_op, expr_of imm_op) with
+        | Some rd, Some rs2, Some e -> (
+            match int64_expr e with
+            | Some v when fits_unsigned 6 v ->
+                let rs1 = Int64.to_int (Int64.logand v 0x1fL) in
+                let zimm6hi = Int64.to_int (Int64.logand (Int64.shift_right_logical v 5) 0x1L) in
+                Ok
+                  [
+                    Lowered.R
+                      {
+                        name = opn;
+                        opcode = 0x57;
+                        funct3 = 3;
+                        funct7 = (0xa lsl 2) lor (zimm6hi lsl 1);
+                        rd;
+                        rs1;
+                        rs2;
+                      };
+                  ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
     | op, [ vd_op; vs2_op; vs1_op; carry ] when is_v0 carry && Option.is_some (carry_m_vv_funct6 op)
       -> (
         (* [<mnemonic> vd, vs2, vs1, v0] - OPIVV (funct3 = 0), [vm] fixed
@@ -4777,6 +5128,27 @@ module Make (P : PROFILE) = struct
               [
                 Lowered.R
                   { name = opn; opcode = 0x57; funct3 = 2; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; vs1_op ] when Option.is_some (zvk_ternary_funct6 op) -> (
+        (* [vghsh.vv vd, vs2, vs1] - Zvkg's own major opcode 0x77, no mask
+           bit at all (bit 25 fixed to 1); see {!zvk_ternary_funct6} above.
+           No masked-variant match clause exists for this shape - real GNU
+           as rejects a trailing [, v0.t] outright. *)
+        match (vreg vd_op, vreg vs2_op, vreg vs1_op, zvk_ternary_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x77;
+                    funct3 = 2;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
               ]
         | _ -> wrong opn)
     | op, [ vd_op; vs2_op; rs1_op ] when Option.is_some (opmvx_funct6 op) -> (
@@ -5075,6 +5447,53 @@ module Make (P : PROFILE) = struct
                 Lowered.R
                   { name = opn; opcode = 0x57; funct3 = 2; funct7 = funct6 lsl 1; rd; rs1; rs2 };
               ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op ] when Option.is_some (zvk_unary_const op) -> (
+        (* [vgmul.vv vd, vs2] - Zvkg's own major opcode 0x77, no mask bit
+           at all; see {!zvk_unary_const} above. No masked-variant match
+           clause exists for this shape either. *)
+        match (vreg vd_op, vreg vs2_op, zvk_unary_const op) with
+        | Some rd, Some rs2, Some (rs1, funct6) ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x77;
+                    funct3 = 2;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; imm_op ] when Option.is_some (zvk_zimm5_funct6 op) -> (
+        (* [vsm4k.vi vd, vs2, zimm5] - Zvkg's own major opcode 0x77, no
+           mask bit at all, the same "5-bit immediate in [rs1]'s field
+           position" trick {!opivi_funct6}'s own clause uses for OP-V
+           proper, but always UNSIGNED (this shape has no signed sibling
+           to disambiguate against) and with no masked-variant match arm
+           for this shape either. *)
+        match (vreg vd_op, vreg vs2_op, expr_of imm_op, zvk_zimm5_funct6 op) with
+        | Some rd, Some rs2, Some e, Some funct6 -> (
+            match int64_expr e with
+            | Some v when fits_unsigned 5 v ->
+                let rs1 = Int64.to_int (Int64.logand v 0x1fL) in
+                Ok
+                  [
+                    Lowered.R
+                      {
+                        name = opn;
+                        opcode = 0x77;
+                        funct3 = 2;
+                        funct7 = (funct6 lsl 1) lor 1;
+                        rd;
+                        rs1;
+                        rs2;
+                      };
+                  ]
+            | _ -> wrong opn)
         | _ -> wrong opn)
     | op, [ vd_op; vs2_op ] when Option.is_some (opfvv_unary_const op) -> (
         (* [<mnemonic> vd, vs2] - OPFVV (funct3 = 1) with a per-mnemonic
