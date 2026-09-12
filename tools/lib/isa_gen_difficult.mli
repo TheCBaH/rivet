@@ -1156,6 +1156,376 @@ val vsmul_vx_entries : entry list
 (** [vsmul.vx v1, v2, a0] - {!vsmul_vv_entries}'s scalar-broadcast
     sibling. *)
 
+val vfadd_vv_entries : entry list
+(** [vfadd.vv v1, v2, v3] on RV32IV and RV64IV - the entry point into OP-V's
+    floating-point arithmetic space (OPFVV), sharing {!vsub_vv_entries}'s
+    exact all-vector-register OPIVV shape (only funct3 differs, an
+    encoder-side concern). Real GNU as accepts it under plain [-march=rv32iv]/
+    [rv64iv] with no explicit F/D dependency enforced. *)
+
+val vfadd_vf_entries : entry list
+(** [vfadd.vf v1, v2, fa0] - {!vfadd_vv_entries}'s scalar-broadcast (OPFVF)
+    sibling; [rs1] is a floating-point register rather than a GPR. Has no
+    [.vi] sibling. *)
+
+val vfsub_vv_entries : entry list
+(** [vfsub.vv v1, v2, v3] - {!vfadd_vv_entries}'s subtract sibling, the
+    identical OPFVV shape. *)
+
+val vfsub_vf_entries : entry list
+(** [vfsub.vf v1, v2, fa0] - {!vfsub_vv_entries}'s scalar-broadcast (OPFVF)
+    sibling. *)
+
+val vfrsub_vf_entries : entry list
+(** [vfrsub.vf v1, v2, fa0] - the reverse-subtract OPFVF sibling; has no
+    [.vv] sibling (real GNU as rejects [vfrsub.vv] as unrecognized). *)
+
+val vfmul_vv_entries : entry list
+(** [vfmul.vv v1, v2, v3] - the same OPFVV shape as {!vfadd_vv_entries},
+    despite integer multiply's own OPMVV space. *)
+
+val vfmul_vf_entries : entry list
+(** [vfmul.vf v1, v2, fa0] - {!vfmul_vv_entries}'s scalar-broadcast (OPFVF)
+    sibling. *)
+
+val vfdiv_vv_entries : entry list
+(** [vfdiv.vv v1, v2, v3] - the same OPFVV shape as {!vfadd_vv_entries}. *)
+
+val vfdiv_vf_entries : entry list
+(** [vfdiv.vf v1, v2, fa0] - {!vfdiv_vv_entries}'s scalar-broadcast (OPFVF)
+    sibling. *)
+
+val vfrdiv_vf_entries : entry list
+(** [vfrdiv.vf v1, v2, fa0] - the reverse-divide OPFVF sibling; has no
+    [.vv] sibling (real GNU as rejects [vfrdiv.vv] as unrecognized). *)
+
+val vfmin_vv_entries : entry list
+(** [vfmin.vv v1, v2, v3] - the same OPFVV shape as {!vfadd_vv_entries}. *)
+
+val vfmin_vf_entries : entry list
+(** [vfmin.vf v1, v2, fa0] - {!vfmin_vv_entries}'s scalar-broadcast (OPFVF)
+    sibling. *)
+
+val vfmax_vv_entries : entry list
+(** [vfmax.vv v1, v2, v3] - the same OPFVV shape as {!vfadd_vv_entries}. *)
+
+val vfmax_vf_entries : entry list
+(** [vfmax.vf v1, v2, fa0] - {!vfmax_vv_entries}'s scalar-broadcast (OPFVF)
+    sibling. *)
+
+val vfsgnj_vv_entries : entry list
+(** [vfsgnj.vv v1, v2, v3] - the same OPFVV shape as {!vfadd_vv_entries}. *)
+
+val vfsgnj_vf_entries : entry list
+(** [vfsgnj.vf v1, v2, fa0] - {!vfsgnj_vv_entries}'s scalar-broadcast
+    (OPFVF) sibling. *)
+
+val vfsgnjn_vv_entries : entry list
+(** [vfsgnjn.vv v1, v2, v3] - the same OPFVV shape as
+    {!vfsgnj_vv_entries}. *)
+
+val vfsgnjn_vf_entries : entry list
+(** [vfsgnjn.vf v1, v2, fa0] - {!vfsgnjn_vv_entries}'s scalar-broadcast
+    (OPFVF) sibling. *)
+
+val vfsgnjx_vv_entries : entry list
+(** [vfsgnjx.vv v1, v2, v3] - the same OPFVV shape as
+    {!vfsgnj_vv_entries}. *)
+
+val vfsgnjx_vf_entries : entry list
+(** [vfsgnjx.vf v1, v2, fa0] - {!vfsgnjx_vv_entries}'s scalar-broadcast
+    (OPFVF) sibling. *)
+
+val vfsqrt_v_entries : entry list
+(** [vfsqrt.v v1, v2] - the floating unary family, the same "vd, vs2" shape
+    {!viota_m_entries} uses. *)
+
+val vfrsqrt7_v_entries : entry list
+(** [vfrsqrt7.v v1, v2] - the same unary shape as {!vfsqrt_v_entries}. *)
+
+val vfrec7_v_entries : entry list
+(** [vfrec7.v v1, v2] - the same unary shape as {!vfsqrt_v_entries}. *)
+
+val vfclass_v_entries : entry list
+(** [vfclass.v v1, v2] - the same unary shape as {!vfsqrt_v_entries}. *)
+
+val vfredosum_vs_entries : entry list
+(** [vfredosum.vs v1, v2, v3] - the floating vector-reduction family, the
+    same "rd, rs2, rs1" all-vector shape as {!vfadd_vv_entries} (OPFVV
+    rather than OPMVV). No [.vf]/[.vx] sibling exists. *)
+
+val vfredusum_vs_entries : entry list
+(** [vfredusum.vs v1, v2, v3] - the same shape as
+    {!vfredosum_vs_entries}. *)
+
+val vfredmin_vs_entries : entry list
+(** [vfredmin.vs v1, v2, v3] - the same shape as {!vfredosum_vs_entries}. *)
+
+val vfredmax_vs_entries : entry list
+(** [vfredmax.vs v1, v2, v3] - the same shape as {!vfredosum_vs_entries}. *)
+
+val vmfeq_vv_entries : entry list
+(** [vmfeq.vv v1, v2, v3] - the mask-writing floating comparison family,
+    the same "rd, rs2, rs1" shape as {!vfadd_vv_entries}. *)
+
+val vmfeq_vf_entries : entry list
+(** [vmfeq.vf v1, v2, fa0] - {!vmfeq_vv_entries}'s scalar-broadcast (OPFVF)
+    sibling. *)
+
+val vmfle_vv_entries : entry list
+(** [vmfle.vv v1, v2, v3] - the same shape as {!vmfeq_vv_entries}. *)
+
+val vmfle_vf_entries : entry list
+(** [vmfle.vf v1, v2, fa0] - the same shape as {!vmfeq_vf_entries}. *)
+
+val vmflt_vv_entries : entry list
+(** [vmflt.vv v1, v2, v3] - the same shape as {!vmfeq_vv_entries}. *)
+
+val vmflt_vf_entries : entry list
+(** [vmflt.vf v1, v2, fa0] - the same shape as {!vmfeq_vf_entries}. *)
+
+val vmfne_vv_entries : entry list
+(** [vmfne.vv v1, v2, v3] - the same shape as {!vmfeq_vv_entries}. *)
+
+val vmfne_vf_entries : entry list
+(** [vmfne.vf v1, v2, fa0] - the same shape as {!vmfeq_vf_entries}. *)
+
+val vmfgt_vf_entries : entry list
+(** [vmfgt.vf v1, v2, fa0] - the reverse-greater-than OPFVF sibling; has no
+    [.vv] sibling (real GNU as accepts [vmfgt.vv] only as a pseudo
+    reversing [vmflt.vv]'s operands, deliberately not admitted here). *)
+
+val vmfge_vf_entries : entry list
+(** [vmfge.vf v1, v2, fa0] - the reverse-greater-or-equal OPFVF sibling;
+    same [.vv]-exclusion reasoning as {!vmfgt_vf_entries}. *)
+
+val vfmv_f_s_entries : entry list
+(** [vfmv.f.s fa0, v2] - the FPR-typed mirror of {!vmv_x_s_entries}. *)
+
+val vfmv_s_f_entries : entry list
+(** [vfmv.s.f v1, fa0] - the FPR-typed mirror of {!vmv_s_x_entries}. *)
+
+val vfmv_v_f_entries : entry list
+(** [vfmv.v.f v1, fa0] - the FPR-typed sibling of {!vmv_v_x_entries}. *)
+
+val vfmerge_vfm_entries : entry list
+(** [vfmerge.vfm v1, v2, fa0, v0] - the FPR-typed mirror of
+    {!vmerge_vxm_entries}: mandatory literal [v0] fourth operand, no bare
+    (non-"m") sibling and no [, v0.t] masked form. *)
+
+val vfcvt_xu_f_v_entries : entry list
+(** [vfcvt.xu.f.v v1, v2] - the scalar-width float<->integer conversion
+    family, the same "vd, vs2" shape {!vfsqrt_v_entries} uses. *)
+
+val vfcvt_x_f_v_entries : entry list
+(** [vfcvt.x.f.v v1, v2] - the same shape as {!vfcvt_xu_f_v_entries}. *)
+
+val vfcvt_f_xu_v_entries : entry list
+(** [vfcvt.f.xu.v v1, v2] - the same shape as {!vfcvt_xu_f_v_entries}. *)
+
+val vfcvt_f_x_v_entries : entry list
+(** [vfcvt.f.x.v v1, v2] - the same shape as {!vfcvt_xu_f_v_entries}. *)
+
+val vfcvt_rtz_xu_f_v_entries : entry list
+(** [vfcvt.rtz.xu.f.v v1, v2] - the same shape as
+    {!vfcvt_xu_f_v_entries}. *)
+
+val vfcvt_rtz_x_f_v_entries : entry list
+(** [vfcvt.rtz.x.f.v v1, v2] - the same shape as {!vfcvt_xu_f_v_entries}. *)
+
+val vfmadd_vv_entries : entry list
+(** [vfmadd.vv v1, v2, v3] - the floating FMA family, {!vmacc_vv_entries}'s
+    exact reordered-operand shape. *)
+
+val vfmadd_vf_entries : entry list
+(** [vfmadd.vf v1, fa0, v3] - {!vfmadd_vv_entries}'s scalar-broadcast
+    (OPFVF) sibling; [rs1] is an FPR rather than a GPR. *)
+
+val vfnmadd_vv_entries : entry list
+(** [vfnmadd.vv v1, v2, v3] - the same shape as {!vfmadd_vv_entries}. *)
+
+val vfnmadd_vf_entries : entry list
+(** [vfnmadd.vf v1, fa0, v3] - the same shape as {!vfmadd_vf_entries}. *)
+
+val vfmsub_vv_entries : entry list
+(** [vfmsub.vv v1, v2, v3] - the same shape as {!vfmadd_vv_entries}. *)
+
+val vfmsub_vf_entries : entry list
+(** [vfmsub.vf v1, fa0, v3] - the same shape as {!vfmadd_vf_entries}. *)
+
+val vfnmsub_vv_entries : entry list
+(** [vfnmsub.vv v1, v2, v3] - the same shape as {!vfmadd_vv_entries}. *)
+
+val vfnmsub_vf_entries : entry list
+(** [vfnmsub.vf v1, fa0, v3] - the same shape as {!vfmadd_vf_entries}. *)
+
+val vfmacc_vv_entries : entry list
+(** [vfmacc.vv v1, v2, v3] - the same shape as {!vfmadd_vv_entries}. *)
+
+val vfmacc_vf_entries : entry list
+(** [vfmacc.vf v1, fa0, v3] - the same shape as {!vfmadd_vf_entries}. *)
+
+val vfnmacc_vv_entries : entry list
+(** [vfnmacc.vv v1, v2, v3] - the same shape as {!vfmadd_vv_entries}. *)
+
+val vfnmacc_vf_entries : entry list
+(** [vfnmacc.vf v1, fa0, v3] - the same shape as {!vfmadd_vf_entries}. *)
+
+val vfmsac_vv_entries : entry list
+(** [vfmsac.vv v1, v2, v3] - the same shape as {!vfmadd_vv_entries}. *)
+
+val vfmsac_vf_entries : entry list
+(** [vfmsac.vf v1, fa0, v3] - the same shape as {!vfmadd_vf_entries}. *)
+
+val vfnmsac_vv_entries : entry list
+(** [vfnmsac.vv v1, v2, v3] - the same shape as {!vfmadd_vv_entries}. *)
+
+val vfnmsac_vf_entries : entry list
+(** [vfnmsac.vf v1, fa0, v3] - the same shape as {!vfmadd_vf_entries}. *)
+
+val vfslide1up_vf_entries : entry list
+(** [vfslide1up.vf v1, v2, fa0] - {!vslide1up_vx_entries}'s floating OPFVF
+    sibling; has no [.vi] sibling. *)
+
+val vfslide1down_vf_entries : entry list
+(** [vfslide1down.vf v1, v2, fa0] - {!vfslide1up_vf_entries}'s downward
+    sibling. *)
+
+val vfwadd_vv_entries : entry list
+(** [vfwadd.vv v1, v2, v3] - the widening floating add, {!vfadd_vv_entries}'s
+    exact shape reused (operand width is invisible to the assembler). *)
+
+val vfwadd_vf_entries : entry list
+(** [vfwadd.vf v1, v2, fa0] - {!vfwadd_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vfwadd_wv_entries : entry list
+(** [vfwadd.wv v1, v2, v3] - {!vfwadd_vv_entries}'s wide-[vs2] sibling; same
+    shape. *)
+
+val vfwadd_wf_entries : entry list
+(** [vfwadd.wf v1, v2, fa0] - {!vfwadd_wv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vfwsub_vv_entries : entry list
+(** [vfwsub.vv v1, v2, v3] - the widening floating subtract,
+    {!vfwadd_vv_entries}'s exact shape reused. *)
+
+val vfwsub_vf_entries : entry list
+(** [vfwsub.vf v1, v2, fa0] - {!vfwsub_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vfwsub_wv_entries : entry list
+(** [vfwsub.wv v1, v2, v3] - {!vfwsub_vv_entries}'s wide-[vs2] sibling; same
+    shape. *)
+
+val vfwsub_wf_entries : entry list
+(** [vfwsub.wf v1, v2, fa0] - {!vfwsub_wv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vfwmul_vv_entries : entry list
+(** [vfwmul.vv v1, v2, v3] - the widening floating multiply,
+    {!vfwadd_vv_entries}'s exact shape reused; no [.wv]/[.wf] sibling. *)
+
+val vfwmul_vf_entries : entry list
+(** [vfwmul.vf v1, v2, fa0] - {!vfwmul_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vfwredosum_vs_entries : entry list
+(** [vfwredosum.vs v1, v2, v3] - the widening floating ordered-sum
+    reduction, {!vfredosum_vs_entries}'s exact shape reused; no [.vf]/[.vx]
+    sibling. *)
+
+val vfwredusum_vs_entries : entry list
+(** [vfwredusum.vs v1, v2, v3] - {!vfwredosum_vs_entries}'s unordered-sum
+    sibling. *)
+
+val vfwcvt_xu_f_v_entries : entry list
+(** [vfwcvt.xu.f.v v1, v2] - the widening float->unsigned-integer
+    conversion, {!vfcvt_xu_f_v_entries}'s exact "vd, vs2" shape reused. *)
+
+val vfwcvt_x_f_v_entries : entry list
+(** [vfwcvt.x.f.v v1, v2] - {!vfwcvt_xu_f_v_entries}'s signed sibling. *)
+
+val vfwcvt_f_xu_v_entries : entry list
+(** [vfwcvt.f.xu.v v1, v2] - the widening unsigned-integer->float
+    conversion, {!vfwcvt_xu_f_v_entries}'s exact shape reused. *)
+
+val vfwcvt_f_x_v_entries : entry list
+(** [vfwcvt.f.x.v v1, v2] - {!vfwcvt_f_xu_v_entries}'s signed sibling. *)
+
+val vfwcvt_f_f_v_entries : entry list
+(** [vfwcvt.f.f.v v1, v2] - the widening float->float conversion,
+    {!vfwcvt_xu_f_v_entries}'s exact shape reused. *)
+
+val vfwcvt_rtz_xu_f_v_entries : entry list
+(** [vfwcvt.rtz.xu.f.v v1, v2] - {!vfwcvt_xu_f_v_entries}'s
+    round-toward-zero sibling. *)
+
+val vfwcvt_rtz_x_f_v_entries : entry list
+(** [vfwcvt.rtz.x.f.v v1, v2] - {!vfwcvt_x_f_v_entries}'s round-toward-zero
+    sibling. *)
+
+val vfncvt_xu_f_w_entries : entry list
+(** [vfncvt.xu.f.w v1, v2] - the narrowing float->unsigned-integer
+    conversion, {!vfwcvt_xu_f_v_entries}'s exact shape reused. *)
+
+val vfncvt_x_f_w_entries : entry list
+(** [vfncvt.x.f.w v1, v2] - {!vfncvt_xu_f_w_entries}'s signed sibling. *)
+
+val vfncvt_f_xu_w_entries : entry list
+(** [vfncvt.f.xu.w v1, v2] - the narrowing unsigned-integer->float
+    conversion, {!vfncvt_xu_f_w_entries}'s exact shape reused. *)
+
+val vfncvt_f_x_w_entries : entry list
+(** [vfncvt.f.x.w v1, v2] - {!vfncvt_f_xu_w_entries}'s signed sibling. *)
+
+val vfncvt_f_f_w_entries : entry list
+(** [vfncvt.f.f.w v1, v2] - the narrowing float->float conversion,
+    {!vfncvt_xu_f_w_entries}'s exact shape reused. *)
+
+val vfncvt_rod_f_f_w_entries : entry list
+(** [vfncvt.rod.f.f.w v1, v2] - {!vfncvt_f_f_w_entries}'s
+    round-to-odd sibling. *)
+
+val vfncvt_rtz_xu_f_w_entries : entry list
+(** [vfncvt.rtz.xu.f.w v1, v2] - {!vfncvt_xu_f_w_entries}'s
+    round-toward-zero sibling. *)
+
+val vfncvt_rtz_x_f_w_entries : entry list
+(** [vfncvt.rtz.x.f.w v1, v2] - {!vfncvt_x_f_w_entries}'s round-toward-zero
+    sibling. *)
+
+val vfwmacc_vv_entries : entry list
+(** [vfwmacc.vv v1, v2, v3] - the widening floating fused-multiply-add,
+    {!vfmacc_vv_entries}'s exact reordered-operand shape reused. *)
+
+val vfwmacc_vf_entries : entry list
+(** [vfwmacc.vf v1, fa0, v3] - {!vfwmacc_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vfwnmacc_vv_entries : entry list
+(** [vfwnmacc.vv v1, v2, v3] - {!vfwmacc_vv_entries}'s negated sibling. *)
+
+val vfwnmacc_vf_entries : entry list
+(** [vfwnmacc.vf v1, fa0, v3] - {!vfwnmacc_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vfwmsac_vv_entries : entry list
+(** [vfwmsac.vv v1, v2, v3] - {!vfwmacc_vv_entries}'s subtract-form
+    sibling. *)
+
+val vfwmsac_vf_entries : entry list
+(** [vfwmsac.vf v1, fa0, v3] - {!vfwmsac_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vfwnmsac_vv_entries : entry list
+(** [vfwnmsac.vv v1, v2, v3] - {!vfwmsac_vv_entries}'s negated sibling. *)
+
+val vfwnmsac_vf_entries : entry list
+(** [vfwnmsac.vf v1, fa0, v3] - {!vfwnmsac_vv_entries}'s scalar-broadcast
+    sibling. *)
+
 val sh1add_entries : entry list
 (** [sh1add a0, a1, a2] on RV32IM_Zba and RV64IM_Zba, Zba's scale-one R-type
     form. *)

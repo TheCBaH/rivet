@@ -2591,6 +2591,54 @@ let carry_m_vx_form ~mnemonic (rec_ : R.t) =
           diagnostics = [];
         }
 
+(* [vfmerge.vfm]: the FPR-typed mirror of {!carry_m_vx_form} - the
+   identical mandatory-literal-`v0` shape, but [rs1] is a floating-point
+   register rather than a GPR. *)
+let carry_m_vf_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = vreg (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = vreg (); role = In; explicit = true } in
+      let vcarry = { op_name = "vcarry"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rs2; vcarry ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [ Syn_operand "rd"; Syn_operand "rs2"; Syn_operand "rs1"; Syn_operand "vcarry" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields vd, vs2, rs1 taken verbatim from encoding.fields, renamed \
+                   rd/rs2/rs1; rs1 is a floating-point register, not a GPR";
+              };
+              {
+                label = Inferred;
+                note =
+                  "vm is architecturally fixed at 0 for this family; GAS requires a mandatory, \
+                   literal fourth operand (\"v0\", not the \"v0.t\" mask-toggle sigil) supplying \
+                   the merge-select input - modeled here as a real operand, unlike every other \
+                   family's optional trailing mask";
+              };
+            ];
+          diagnostics = [];
+        }
+
 let carry_m_vi_form ~mnemonic (rec_ : R.t) =
   match riscv_encoding_of rec_ with
   | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
@@ -2975,12 +3023,91 @@ let mv_s_x_form (rec_ : R.t) =
           diagnostics = [];
         }
 
-(* [vmv.v.v]/[.v.x]/[.v.i]: OP-V's unconditional-move family - a
+(* [vfmv.f.s]: the FPR-typed mirror of {!mv_x_s_form} - the identical
+   shape, but the destination is a floating-point register rather than a
+   GPR (riscv-opcodes' own field is still named "rd"). *)
+let vfmv_f_s_form (rec_ : R.t) =
+  let mnemonic = "vfmv.f.s" in
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = fpr (); role = Out; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs2 ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs2" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields vd, vs2 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "the vs1 field position is a fixed constant and vm is architecturally fixed at 1 \
+                   - no masked (, v0.t) sibling exists; confirmed real GNU as rejects one as \
+                   illegal operands";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* [vfmv.s.f]: the mirror-image shape of {!vfmv_f_s_form} - a vector
+   destination and a floating-point-register source, with the same
+   fixed-[vs2]-constant, no-masked-sibling discipline as {!mv_s_x_form}. *)
+let vfmv_s_f_form (rec_ : R.t) =
+  let mnemonic = "vfmv.s.f" in
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = vreg (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1 ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs1" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields vd, rs1 taken verbatim from encoding.fields, renamed rd/rs1";
+              };
+              {
+                label = Inferred;
+                note =
+                  "the vs2 field position is a fixed constant and vm is architecturally fixed at 1 \
+                   - no masked (, v0.t) sibling exists; confirmed real GNU as rejects one as \
+                   illegal operands";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* [vmv.v.v]/[.v.x]/[.v.i]/[vfmv.v.f]: OP-V's unconditional-move family - a
    genuinely new two-operand shape: unlike every other OPIVV/OPIVX/OPIVI
    mnemonic there is no [vs2] operand at all (its field position is a
    fixed constant), and [vm] is fixed at 1 with no masked sibling
-   (confirmed real GNU as rejects `vmv.v.v v1,v2,v0.t`). *)
-let vmv_v_form ~mnemonic ~(rs1_kind : [ `Vreg | `Gpr | `Imm ]) (rec_ : R.t) =
+   (confirmed real GNU as rejects `vmv.v.v v1,v2,v0.t`). [vfmv.v.f] shares
+   this exact shape under OPFVF instead of OPIVX, with an FPR [rs1]. *)
+let vmv_v_form ~mnemonic ~(rs1_kind : [ `Vreg | `Gpr | `Imm | `Fpr ]) (rec_ : R.t) =
   match riscv_encoding_of rec_ with
   | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
   | Ok encoding ->
@@ -2989,6 +3116,7 @@ let vmv_v_form ~mnemonic ~(rs1_kind : [ `Vreg | `Gpr | `Imm ]) (rec_ : R.t) =
         match rs1_kind with
         | `Vreg -> ("rs1", { op_name = "rs1"; op_kind = vreg (); role = In; explicit = true })
         | `Gpr -> ("rs1", { op_name = "rs1"; op_kind = gpr (); role = In; explicit = true })
+        | `Fpr -> ("rs1", { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true })
         | `Imm ->
             ( "simm5",
               {
@@ -3345,6 +3473,111 @@ let opmvx_mnemonics =
     "vslide1down.vx";
   ]
 
+(* OP-V's OPFVV (funct3 = 1) shape - the entry point into the floating-point
+   arithmetic space - is the identical all-vector-register [rd, rs2, rs1]
+   shape {!opivv_form} already models (only funct3, an encoder-side concern,
+   differs), so it is reused unchanged, the same way {!opmvv_mnemonics}
+   reuses it for OPMVV. *)
+let opfvv_mnemonics =
+  [
+    "vfadd.vv";
+    "vfsub.vv";
+    "vfmul.vv";
+    "vfdiv.vv";
+    "vfmin.vv";
+    "vfmax.vv";
+    "vfsgnj.vv";
+    "vfsgnjn.vv";
+    "vfsgnjx.vv";
+    "vfredosum.vs";
+    "vfredusum.vs";
+    "vfredmin.vs";
+    "vfredmax.vs";
+    "vmfeq.vv";
+    "vmfle.vv";
+    "vmflt.vv";
+    "vmfne.vv";
+    "vfwadd.vv";
+    "vfwadd.wv";
+    "vfwsub.vv";
+    "vfwsub.wv";
+    "vfwmul.vv";
+    "vfwredosum.vs";
+    "vfwredusum.vs";
+  ]
+
+(* OPFVF (funct3 = 5)'s scalar-broadcast shape differs from {!opivx_form}'s
+   OPIVX/OPMVX shape in exactly one respect: the scalar operand ([rs1]) is a
+   floating-point register ({!fpr}), not a GPR. *)
+let opfvf_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = vreg (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rs2 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "rs2"; Syn_operand "rs1" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields vd, vs2, rs1 taken verbatim from encoding.fields, renamed \
+                   rd/rs2/rs1; rs1 is a floating-point register, not a GPR";
+              };
+              {
+                label = Inferred;
+                note =
+                  "GAS accepts an optional trailing mask operand (\", v0.t\") selecting vm=0 - not \
+                   modeled here, owned by the encoder";
+              };
+            ];
+          diagnostics = [];
+        }
+
+let opfvf_mnemonics =
+  [
+    "vfadd.vf";
+    "vfsub.vf";
+    "vfrsub.vf";
+    "vfmul.vf";
+    "vfdiv.vf";
+    "vfrdiv.vf";
+    "vfmin.vf";
+    "vfmax.vf";
+    "vfsgnj.vf";
+    "vfsgnjn.vf";
+    "vfsgnjx.vf";
+    "vmfeq.vf";
+    "vmfle.vf";
+    "vmflt.vf";
+    "vmfne.vf";
+    "vmfgt.vf";
+    "vmfge.vf";
+    "vfslide1up.vf";
+    "vfslide1down.vf";
+    "vfwadd.vf";
+    "vfwadd.wf";
+    "vfwsub.vf";
+    "vfwsub.wf";
+    "vfwmul.vf";
+  ]
+
 (* The multiply-accumulate family - [vmacc]/[vnmsac]/[vmadd]/[vnmsub] and
    their widening siblings [vwmaccu]/[vwmacc]/[vwmaccsu]/[vwmaccus] - is
    structurally the same OPMVV/OPMVX shape {!opivv_form}/{!opivx_form}
@@ -3448,6 +3681,89 @@ let opmacc_vx_form ~mnemonic (rec_ : R.t) =
             ];
           diagnostics = [];
         }
+
+(* [vfmadd]/[vfnmadd]/[vfmsub]/[vfnmsub]/[vfmacc]/[vfnmacc]/[vfmsac]/
+   [vfnmsac] `.vf`: the floating FMA family's scalar-broadcast form -
+   {!opmacc_vx_form}'s exact reordered-operand shape, but [rs1] is a
+   floating-point register rather than a GPR. *)
+let opfmacc_vf_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = vreg (); role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = fpr (); role = In; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1; rs2 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand "rs1"; Syn_operand "rs2" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields vd, vs2, rs1 taken verbatim from encoding.fields, renamed \
+                   rd/rs2/rs1; rs1 is a floating-point register, not a GPR";
+              };
+              {
+                label = Inferred;
+                note =
+                  "GAS's text operand order is \"mnemonic rd, rs1, rs2\", swapping the last two \
+                   operands relative to every other OPFVV/OPFVF mnemonic's \"rd, rs2, rs1\"";
+              };
+              {
+                label = Inferred;
+                note =
+                  "GAS accepts an optional trailing mask operand (\", v0.t\") selecting vm=0 - not \
+                   modeled here, owned by the encoder";
+              };
+            ];
+          diagnostics = [];
+        }
+
+let opfmacc_vv_mnemonics =
+  [
+    "vfmadd.vv";
+    "vfnmadd.vv";
+    "vfmsub.vv";
+    "vfnmsub.vv";
+    "vfmacc.vv";
+    "vfnmacc.vv";
+    "vfmsac.vv";
+    "vfnmsac.vv";
+    "vfwmacc.vv";
+    "vfwnmacc.vv";
+    "vfwmsac.vv";
+    "vfwnmsac.vv";
+  ]
+
+let opfmacc_vf_mnemonics =
+  [
+    "vfmadd.vf";
+    "vfnmadd.vf";
+    "vfmsub.vf";
+    "vfnmsub.vf";
+    "vfmacc.vf";
+    "vfnmacc.vf";
+    "vfmsac.vf";
+    "vfnmsac.vf";
+    "vfwmacc.vf";
+    "vfwnmacc.vf";
+    "vfwmsac.vf";
+    "vfwnmsac.vf";
+  ]
 
 let opmacc_vv_mnemonics =
   [ "vmacc.vv"; "vnmsac.vv"; "vmadd.vv"; "vnmsub.vv"; "vwmaccu.vv"; "vwmacc.vv"; "vwmaccsu.vv" ]
@@ -3608,6 +3924,10 @@ let normalize (rec_ : R.t) =
   | "vmv.v.v" -> vmv_v_form ~mnemonic:"vmv.v.v" ~rs1_kind:`Vreg rec_
   | "vmv.v.x" -> vmv_v_form ~mnemonic:"vmv.v.x" ~rs1_kind:`Gpr rec_
   | "vmv.v.i" -> vmv_v_form ~mnemonic:"vmv.v.i" ~rs1_kind:`Imm rec_
+  | "vfmv.f.s" -> vfmv_f_s_form rec_
+  | "vfmv.s.f" -> vfmv_s_f_form rec_
+  | "vfmv.v.f" -> vmv_v_form ~mnemonic:"vfmv.v.f" ~rs1_kind:`Fpr rec_
+  | "vfmerge.vfm" -> carry_m_vf_form ~mnemonic:"vfmerge.vfm" rec_
   | "vmv1r.v" -> whole_reg_move_form ~mnemonic:"vmv1r.v" rec_
   | "vmv2r.v" -> whole_reg_move_form ~mnemonic:"vmv2r.v" rec_
   | "vmv4r.v" -> whole_reg_move_form ~mnemonic:"vmv4r.v" rec_
@@ -3617,8 +3937,12 @@ let normalize (rec_ : R.t) =
   | mnemonic when List.mem mnemonic opivi_mnemonics -> opivi_form ~mnemonic rec_
   | mnemonic when List.mem mnemonic opmvv_mnemonics -> opivv_form ~mnemonic rec_
   | mnemonic when List.mem mnemonic opmvx_mnemonics -> opivx_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic opfvv_mnemonics -> opivv_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic opfvf_mnemonics -> opfvf_form ~mnemonic rec_
   | mnemonic when List.mem mnemonic opmacc_vv_mnemonics -> opmacc_vv_form ~mnemonic rec_
   | mnemonic when List.mem mnemonic opmacc_vx_mnemonics -> opmacc_vx_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic opfmacc_vv_mnemonics -> opmacc_vv_form ~mnemonic rec_
+  | mnemonic when List.mem mnemonic opfmacc_vf_mnemonics -> opfmacc_vf_form ~mnemonic rec_
   | "vsext.vf2" -> vext_form ~mnemonic:"vsext.vf2" rec_
   | "vsext.vf4" -> vext_form ~mnemonic:"vsext.vf4" rec_
   | "vsext.vf8" -> vext_form ~mnemonic:"vsext.vf8" rec_
@@ -3629,6 +3953,31 @@ let normalize (rec_ : R.t) =
   | "vid.v" -> vid_form rec_
   | mnemonic when List.mem mnemonic mm_mnemonics -> mm_form ~mnemonic rec_
   | "vcompress.vm" -> mm_form ~mnemonic:"vcompress.vm" rec_
+  | "vfsqrt.v" -> vext_form ~mnemonic:"vfsqrt.v" rec_
+  | "vfrsqrt7.v" -> vext_form ~mnemonic:"vfrsqrt7.v" rec_
+  | "vfrec7.v" -> vext_form ~mnemonic:"vfrec7.v" rec_
+  | "vfclass.v" -> vext_form ~mnemonic:"vfclass.v" rec_
+  | "vfcvt.xu.f.v" -> vext_form ~mnemonic:"vfcvt.xu.f.v" rec_
+  | "vfcvt.x.f.v" -> vext_form ~mnemonic:"vfcvt.x.f.v" rec_
+  | "vfcvt.f.xu.v" -> vext_form ~mnemonic:"vfcvt.f.xu.v" rec_
+  | "vfcvt.f.x.v" -> vext_form ~mnemonic:"vfcvt.f.x.v" rec_
+  | "vfcvt.rtz.xu.f.v" -> vext_form ~mnemonic:"vfcvt.rtz.xu.f.v" rec_
+  | "vfcvt.rtz.x.f.v" -> vext_form ~mnemonic:"vfcvt.rtz.x.f.v" rec_
+  | "vfwcvt.xu.f.v" -> vext_form ~mnemonic:"vfwcvt.xu.f.v" rec_
+  | "vfwcvt.x.f.v" -> vext_form ~mnemonic:"vfwcvt.x.f.v" rec_
+  | "vfwcvt.f.xu.v" -> vext_form ~mnemonic:"vfwcvt.f.xu.v" rec_
+  | "vfwcvt.f.x.v" -> vext_form ~mnemonic:"vfwcvt.f.x.v" rec_
+  | "vfwcvt.f.f.v" -> vext_form ~mnemonic:"vfwcvt.f.f.v" rec_
+  | "vfwcvt.rtz.xu.f.v" -> vext_form ~mnemonic:"vfwcvt.rtz.xu.f.v" rec_
+  | "vfwcvt.rtz.x.f.v" -> vext_form ~mnemonic:"vfwcvt.rtz.x.f.v" rec_
+  | "vfncvt.xu.f.w" -> vext_form ~mnemonic:"vfncvt.xu.f.w" rec_
+  | "vfncvt.x.f.w" -> vext_form ~mnemonic:"vfncvt.x.f.w" rec_
+  | "vfncvt.f.xu.w" -> vext_form ~mnemonic:"vfncvt.f.xu.w" rec_
+  | "vfncvt.f.x.w" -> vext_form ~mnemonic:"vfncvt.f.x.w" rec_
+  | "vfncvt.f.f.w" -> vext_form ~mnemonic:"vfncvt.f.f.w" rec_
+  | "vfncvt.rod.f.f.w" -> vext_form ~mnemonic:"vfncvt.rod.f.f.w" rec_
+  | "vfncvt.rtz.xu.f.w" -> vext_form ~mnemonic:"vfncvt.rtz.xu.f.w" rec_
+  | "vfncvt.rtz.x.f.w" -> vext_form ~mnemonic:"vfncvt.rtz.x.f.w" rec_
   | "vmsbf.m" -> vext_form ~mnemonic:"vmsbf.m" rec_
   | "vmsif.m" -> vext_form ~mnemonic:"vmsif.m" rec_
   | "vmsof.m" -> vext_form ~mnemonic:"vmsof.m" rec_

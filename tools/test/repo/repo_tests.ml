@@ -185,8 +185,8 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:448;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:500;
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:549;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:601;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:9;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:9
 
@@ -399,11 +399,115 @@ let test_isa_family_admission repo =
      vslide1up/vslide1down (OPMVX, no [.vi] sibling) - 6 mnemonics total -
      are likewise each a single, non-import-duplicated rv_v record present
      identically on both profiles, so this slice moves 6 records on EACH
+     profile, straight from blocked to promoted-support. vfadd.vv/vfadd.vf
+     (the entry point into OP-V's floating-point arithmetic space, OPFVV/
+     OPFVF) are likewise each a single, non-import-duplicated rv_v record
+     present identically on both profiles, so this slice moves 2 records on
+     EACH profile, straight from blocked to promoted-support. vfsub.vv/
+     vfsub.vf/vfrsub.vf (3 mnemonics, the subtract/reverse-subtract pair -
+     no [vfrsub.vv] sibling exists) are likewise each a single,
+     non-import-duplicated rv_v record present identically on both profiles,
+     so this slice moves 3 records on EACH profile, straight from blocked to
+     promoted-support. vfmul.vv/vfmul.vf/vfdiv.vv/vfdiv.vf/vfrdiv.vf (5
+     mnemonics, the multiply/divide/reverse-divide triple - still the
+     identical OPFVV/OPFVF shape, unlike integer multiply/divide's own
+     OPMVV/OPMVX space; vfrdiv has no [.vv] sibling) are likewise each a
+     single, non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 5 records on EACH profile, straight from
+     blocked to promoted-support. vfmin.vv/vfmin.vf/vfmax.vv/vfmax.vf (4
+     mnemonics, the min/max pair, full [.vv]/[.vf] shapes with no [.vi]
+     sibling for either) are likewise each a single, non-import-duplicated
+     rv_v record present identically on both profiles, so this slice moves
+     4 records on EACH profile, straight from blocked to promoted-support.
+     vfsgnj.vv/vfsgnj.vf/vfsgnjn.vv/vfsgnjn.vf/vfsgnjx.vv/vfsgnjx.vf (6
+     mnemonics, the sign-injection triple, full [.vv]/[.vf] shapes with no
+     [.vi] sibling for any) are likewise each a single, non-import-duplicated
+     rv_v record present identically on both profiles, so this slice moves
+     6 records on EACH profile, straight from blocked to promoted-support.
+     vfsqrt.v/vfrsqrt7.v/vfrec7.v/vfclass.v (4 mnemonics, the floating unary
+     family, the same [vd, vs2] shape vsext.vf2/etc. already use, funct6
+     0x13 disambiguated by a fixed rs1-position constant) are likewise each
+     a single, non-import-duplicated rv_v record present identically on
+     both profiles, so this slice moves 4 records on EACH profile, straight
+     from blocked to promoted-support. vfredosum.vs/vfredusum.vs/
+     vfredmin.vs/vfredmax.vs (4 mnemonics, the floating vector-reduction
+     family, the same [rd, rs2, rs1] all-vector shape as vfadd.vv/etc. but
+     under OPFVV rather than OPMVV) are likewise each a single,
+     non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 4 records on EACH profile, straight
+     from blocked to promoted-support. vmfeq.vv/vmfeq.vf/vmfle.vv/vmfle.vf/
+     vmflt.vv/vmflt.vf/vmfne.vv/vmfne.vf/vmfgt.vf/vmfge.vf (10 mnemonics,
+     the mask-writing floating comparison family, the same [rd, rs2, rs1]
+     shape as vfadd.vv/.vf - vmfgt/vmfge have no [.vv] sibling, matching
+     the integer vmsgt/vmsgtu precedent) are likewise each a single,
+     non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 10 records on EACH profile, straight
+     from blocked to promoted-support. vfmv.f.s/vfmv.s.f/vfmv.v.f (3
+     mnemonics, the FPR-typed mirror of vmv.x.s/vmv.s.x/vmv.v.x) are
+     likewise each a single, non-import-duplicated rv_v record present
+     identically on both profiles, so this slice moves 3 records on EACH
+     profile, straight from blocked to promoted-support. vfmerge.vfm (1
+     mnemonic, the FPR-typed mirror of vmerge.vxm) is likewise a single,
+     non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 1 record on EACH profile, straight from
+     blocked to promoted-support. vfcvt.xu.f.v/vfcvt.x.f.v/vfcvt.f.xu.v/
+     vfcvt.f.x.v/vfcvt.rtz.xu.f.v/vfcvt.rtz.x.f.v (6 mnemonics, the
+     scalar-width float<->integer conversion family, vext_form's exact
+     "vd, vs2" shape) are likewise each a single, non-import-duplicated
+     rv_v record present identically on both profiles, so this slice moves
+     6 records on EACH profile, straight from blocked to promoted-support.
+     vfmadd.vv/.vf/vfnmadd.vv/.vf/vfmsub.vv/.vf/vfnmsub.vv/.vf/vfmacc.vv/.vf/
+     vfnmacc.vv/.vf/vfmsac.vv/.vf/vfnmsac.vv/.vf (16 mnemonics, the floating
+     fused-multiply-add family, the same reordered [rd, rs1, rs2] shape as
+     vmacc/etc.) are likewise each a single, non-import-duplicated rv_v
+     record present identically on both profiles, so this slice moves 16
+     records on EACH profile, straight from blocked to promoted-support.
+     vfslide1up.vf/vfslide1down.vf (2 mnemonics, the slide family's floating
+     single-element siblings, OPFVF reusing opfvf_form's own shape verbatim)
+     are likewise each a single, non-import-duplicated rv_v record present
+     identically on both profiles, so this slice moves 2 records on EACH
+     profile, straight from blocked to promoted-support. vfwadd.vv/.vf/.wv/
+     .wf and vfwsub.vv/.vf/.wv/.wf (8 mnemonics, the widening floating add/
+     subtract pair - operand width is invisible to the assembler, so this
+     reuses opfvv_form/opfvf_form's shape verbatim, the same "width doesn't
+     change the encoding" precedent vwadd/vwsub's own promotion established)
+     are likewise each a single, non-import-duplicated rv_v record present
+     identically on both profiles, so this slice moves 8 records on EACH
+     profile, straight from blocked to promoted-support. vfwmul.vv/.vf (2
+     mnemonics, the widening floating multiply - no [.wv]/[.wf] sibling,
+     unlike vfwadd/vfwsub's symmetric pairs) are likewise each a single,
+     non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 2 records on EACH profile, straight
+     from blocked to promoted-support. vfwredosum.vs/vfwredusum.vs (2
+     mnemonics, the widening floating reduction pair, reusing
+     opfvv_funct6's own [rd, rs2, rs1] shape verbatim - vfwredsum.vs is a
+     real-GNU-as pseudo-op alias for vfwredusum.vs, riscv-opcodes' own
+     kind: pseudo-op record rather than a distinct kind: instruction-form
+     one, so it is not separately counted here) are likewise each a
+     single, non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 2 records on EACH profile, straight
+     from blocked to promoted-support. vfwcvt.xu.f.v/vfwcvt.x.f.v/
+     vfwcvt.f.xu.v/vfwcvt.f.x.v/vfwcvt.f.f.v/vfwcvt.rtz.xu.f.v/
+     vfwcvt.rtz.x.f.v/vfncvt.xu.f.w/vfncvt.x.f.w/vfncvt.f.xu.w/
+     vfncvt.f.x.w/vfncvt.f.f.w/vfncvt.rod.f.f.w/vfncvt.rtz.xu.f.w/
+     vfncvt.rtz.x.f.w (15 mnemonics, the widening/narrowing
+     float<->integer conversion families, reusing vfcvt.*.v's own "vd,
+     vs2" opfvv_unary_const shape verbatim under the same funct6 - the
+     two bf16 sibling mnemonics, rv_zvfbfmin, are deliberately not
+     admitted, having no existing requirement/admission plumbing) are
+     likewise each a single, non-import-duplicated rv_v record present
+     identically on both profiles, so this slice moves 15 records on EACH
+     profile, straight from blocked to promoted-support. vfwmacc.vv/.vf,
+     vfwnmacc.vv/.vf, vfwmsac.vv/.vf, vfwnmsac.vv/.vf (8 mnemonics, the
+     widening floating fused-multiply-add family, reusing
+     vfmacc/vfnmacc/vfmsac/vfnmsac's own reordered-operand shape verbatim)
+     are likewise each a single, non-import-duplicated rv_v record present
+     identically on both profiles, so this slice moves 8 records on EACH
      profile, straight from blocked to promoted-support. *)
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
-    ~promoted_support:428 ~blocked:641;
+    ~promoted_support:529 ~blocked:540;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
-    ~promoted_support:470 ~blocked:654;
+    ~promoted_support:571 ~blocked:553;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0 ~gas_generatable:5
     ~promoted_support:4 ~blocked:7878;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
@@ -461,9 +565,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 966)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 1168)"
        !roundtrip_count)
-    (!roundtrip_count = 966)
+    (!roundtrip_count = 1168)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's

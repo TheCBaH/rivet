@@ -2276,6 +2276,266 @@ let vmv8r_v_entries = whole_reg_move_entries ~mnemonic:"vmv8r.v" ~rd:"v8" ~rs2:"
 let vsmul_vv_entries = opivv_entries ~mnemonic:"vsmul.vv"
 let vsmul_vx_entries = opivx_entries ~mnemonic:"vsmul.vx"
 
+(* [vfadd]: the entry point into OP-V's floating-point arithmetic space
+   (OPFVV/OPFVF). [.vv] shares {!opivv_entries}'s exact all-vector-register
+   shape unchanged; [.vf] needs its own entry function since its scalar
+   operand is a floating-point register ([fa0]), not a GPR ([a0]). Real GNU
+   as accepts both under plain `-march=rv32iv`/`rv64iv` - no explicit F/D
+   dependency enforced at assembly time (see {!Riscv_family_encode.opfvv_funct6}
+   for the measured bytes). *)
+let opfvf_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-scalar:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "fa0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let opfvf_entries ~mnemonic = List.map (opfvf_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+let vfadd_vv_entries = opivv_entries ~mnemonic:"vfadd.vv"
+let vfadd_vf_entries = opfvf_entries ~mnemonic:"vfadd.vf"
+
+(* [vfsub]/[vfrsub]: {!vfadd_vv_entries}/[vfadd_vf_entries]'s exact shape,
+   just a different mnemonic - no [vfrsub.vv] sibling exists (real GNU as
+   rejects it as "unrecognized opcode"). *)
+let vfsub_vv_entries = opivv_entries ~mnemonic:"vfsub.vv"
+let vfsub_vf_entries = opfvf_entries ~mnemonic:"vfsub.vf"
+let vfrsub_vf_entries = opfvf_entries ~mnemonic:"vfrsub.vf"
+
+(* [vfmul]/[vfdiv]/[vfrdiv]: the same OPFVV/OPFVF shape as [vfadd]/[vfsub]
+   above - real GNU as keeps every OP-V floating arithmetic mnemonic in
+   OPFVV/OPFVF regardless of operation, unlike integer multiply/divide's own
+   OPMVV/OPMVX space. [vfrdiv] has no [.vv] sibling. *)
+let vfmul_vv_entries = opivv_entries ~mnemonic:"vfmul.vv"
+let vfmul_vf_entries = opfvf_entries ~mnemonic:"vfmul.vf"
+let vfdiv_vv_entries = opivv_entries ~mnemonic:"vfdiv.vv"
+let vfdiv_vf_entries = opfvf_entries ~mnemonic:"vfdiv.vf"
+let vfrdiv_vf_entries = opfvf_entries ~mnemonic:"vfrdiv.vf"
+
+(* [vfmin]/[vfmax]: the same OPFVV/OPFVF shape, full [.vv]/[.vf] pairs with
+   no [.vi] sibling for either. *)
+let vfmin_vv_entries = opivv_entries ~mnemonic:"vfmin.vv"
+let vfmin_vf_entries = opfvf_entries ~mnemonic:"vfmin.vf"
+let vfmax_vv_entries = opivv_entries ~mnemonic:"vfmax.vv"
+let vfmax_vf_entries = opfvf_entries ~mnemonic:"vfmax.vf"
+
+(* [vfsgnj]/[vfsgnjn]/[vfsgnjx]: the sign-injection triple, the same
+   OPFVV/OPFVF shape, full [.vv]/[.vf] pairs with no [.vi] sibling for
+   any. *)
+let vfsgnj_vv_entries = opivv_entries ~mnemonic:"vfsgnj.vv"
+let vfsgnj_vf_entries = opfvf_entries ~mnemonic:"vfsgnj.vf"
+let vfsgnjn_vv_entries = opivv_entries ~mnemonic:"vfsgnjn.vv"
+let vfsgnjn_vf_entries = opfvf_entries ~mnemonic:"vfsgnjn.vf"
+let vfsgnjx_vv_entries = opivv_entries ~mnemonic:"vfsgnjx.vv"
+let vfsgnjx_vf_entries = opfvf_entries ~mnemonic:"vfsgnjx.vf"
+
+(* [vfsqrt.v]/[vfrsqrt7.v]/[vfrec7.v]/[vfclass.v]: the floating unary
+   family, {!vext_entries}'s exact "vd, vs2" shape reused unchanged. *)
+let vfsqrt_v_entries = vext_entries ~mnemonic:"vfsqrt.v"
+let vfrsqrt7_v_entries = vext_entries ~mnemonic:"vfrsqrt7.v"
+let vfrec7_v_entries = vext_entries ~mnemonic:"vfrec7.v"
+let vfclass_v_entries = vext_entries ~mnemonic:"vfclass.v"
+
+(* [vfredosum]/[vfredusum]/[vfredmin]/[vfredmax.vs]: the floating
+   vector-reduction family, {!opivv_entries}'s exact "rd, rs2, rs1"
+   all-vector shape - OPFVV rather than OPMVV, so this reuses the same
+   entry builder [vredsum]/etc. use via {!opmvv_funct6}. No [.vf]/[.vx]
+   sibling exists for any of the four. *)
+let vfredosum_vs_entries = opivv_entries ~mnemonic:"vfredosum.vs"
+let vfredusum_vs_entries = opivv_entries ~mnemonic:"vfredusum.vs"
+let vfredmin_vs_entries = opivv_entries ~mnemonic:"vfredmin.vs"
+let vfredmax_vs_entries = opivv_entries ~mnemonic:"vfredmax.vs"
+
+(* [vmfeq]/[vmfle]/[vmflt]/[vmfne]/[vmfgt.vf]/[vmfge.vf]: the mask-writing
+   floating comparison family, {!opivv_entries}/{!opfvf_entries}'s exact
+   shape - [vmfgt]/[vmfge] have no [.vv] sibling (real GNU as accepts
+   `vmfgt.vv`/`vmfge.vv` only as a pseudo-instruction reversing
+   `vmflt.vv`/`vmfle.vv`'s own operands, deliberately not admitted here). *)
+let vmfeq_vv_entries = opivv_entries ~mnemonic:"vmfeq.vv"
+let vmfeq_vf_entries = opfvf_entries ~mnemonic:"vmfeq.vf"
+let vmfle_vv_entries = opivv_entries ~mnemonic:"vmfle.vv"
+let vmfle_vf_entries = opfvf_entries ~mnemonic:"vmfle.vf"
+let vmflt_vv_entries = opivv_entries ~mnemonic:"vmflt.vv"
+let vmflt_vf_entries = opfvf_entries ~mnemonic:"vmflt.vf"
+let vmfne_vv_entries = opivv_entries ~mnemonic:"vmfne.vv"
+let vmfne_vf_entries = opfvf_entries ~mnemonic:"vmfne.vf"
+let vmfgt_vf_entries = opfvf_entries ~mnemonic:"vmfgt.vf"
+let vmfge_vf_entries = opfvf_entries ~mnemonic:"vmfge.vf"
+
+(* [vfmv.f.s]/[vfmv.s.f]: the FPR-typed mirror of {!vmv_x_s_entries}/
+   [vmv_s_x_entries] - see {!Isa_norm_riscv.vfmv_f_s_form}/[vfmv_s_f_form].
+   Confirmed against real GNU as, byte-identical on RV32/RV64: `vfmv.f.s
+   fa0,v2` -> `42201557`, `vfmv.s.f v1,fa0` -> `420550d7`. *)
+let vfmv_f_s_entries =
+  List.map
+    (fun target ->
+      {
+        form_id = "riscv:vfmv.f.s";
+        target;
+        lookup_key = "vfmv.f.s";
+        case_id = Printf.sprintf "riscv:vfmv.f.s:vector-unary:%s" (Target.to_string target);
+        rule_ids = [ "v-enabled"; "vector-register-operands" ];
+        operands = [ ("rd", "fa0"); ("rs2", "v2") ];
+        lines_before = [];
+        lines_after = [];
+        configuration = v_configuration_for target;
+      })
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let vfmv_s_f_entries =
+  List.map
+    (fun target ->
+      {
+        form_id = "riscv:vfmv.s.f";
+        target;
+        lookup_key = "vfmv.s.f";
+        case_id = Printf.sprintf "riscv:vfmv.s.f:vector-scalar:%s" (Target.to_string target);
+        rule_ids = [ "v-enabled"; "vector-register-operands" ];
+        operands = [ ("rd", "v1"); ("rs1", "fa0") ];
+        lines_before = [];
+        lines_after = [];
+        configuration = v_configuration_for target;
+      })
+    [ Target.Riscv32; Target.Riscv64 ]
+
+(* [vfmv.v.f]: {!vmv_v_entries}'s exact shape, an FPR [rs1]. *)
+let vfmv_v_f_entries = vmv_v_entries ~mnemonic:"vfmv.v.f" ~rs1_name:"rs1" ~rs1_value:"fa0"
+
+(* [vfmerge.vfm]: {!carry_m_vx_entries}'s exact shape, an FPR [rs1]. *)
+let carry_m_vf_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-scalar:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "fa0"); ("vcarry", "v0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let carry_m_vf_entries ~mnemonic =
+  List.map (carry_m_vf_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let vfmerge_vfm_entries = carry_m_vf_entries ~mnemonic:"vfmerge.vfm"
+
+(* [vfcvt.xu.f.v]/[vfcvt.x.f.v]/[vfcvt.f.xu.v]/[vfcvt.f.x.v]/
+   [vfcvt.rtz.xu.f.v]/[vfcvt.rtz.x.f.v]: the scalar-width float<->integer
+   conversion family, {!vext_entries}'s exact "vd, vs2" shape reused
+   unchanged. *)
+let vfcvt_xu_f_v_entries = vext_entries ~mnemonic:"vfcvt.xu.f.v"
+let vfcvt_x_f_v_entries = vext_entries ~mnemonic:"vfcvt.x.f.v"
+let vfcvt_f_xu_v_entries = vext_entries ~mnemonic:"vfcvt.f.xu.v"
+let vfcvt_f_x_v_entries = vext_entries ~mnemonic:"vfcvt.f.x.v"
+let vfcvt_rtz_xu_f_v_entries = vext_entries ~mnemonic:"vfcvt.rtz.xu.f.v"
+let vfcvt_rtz_x_f_v_entries = vext_entries ~mnemonic:"vfcvt.rtz.x.f.v"
+
+(* [vfmadd]/[vfnmadd]/[vfmsub]/[vfnmsub]/[vfmacc]/[vfnmacc]/[vfmsac]/
+   [vfnmsac]: the floating FMA family - [.vv] reuses {!opmacc_vv_entries}'s
+   exact reordered-operand shape unchanged; [.vf] needs its own entry
+   function since its scalar operand is an FPR ([fa0]), not a GPR. *)
+let opfmacc_vf_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-scalar:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs1", "fa0"); ("rs2", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let opfmacc_vf_entries ~mnemonic =
+  List.map (opfmacc_vf_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let vfmadd_vv_entries = opmacc_vv_entries ~mnemonic:"vfmadd.vv"
+let vfmadd_vf_entries = opfmacc_vf_entries ~mnemonic:"vfmadd.vf"
+let vfnmadd_vv_entries = opmacc_vv_entries ~mnemonic:"vfnmadd.vv"
+let vfnmadd_vf_entries = opfmacc_vf_entries ~mnemonic:"vfnmadd.vf"
+let vfmsub_vv_entries = opmacc_vv_entries ~mnemonic:"vfmsub.vv"
+let vfmsub_vf_entries = opfmacc_vf_entries ~mnemonic:"vfmsub.vf"
+let vfnmsub_vv_entries = opmacc_vv_entries ~mnemonic:"vfnmsub.vv"
+let vfnmsub_vf_entries = opfmacc_vf_entries ~mnemonic:"vfnmsub.vf"
+let vfmacc_vv_entries = opmacc_vv_entries ~mnemonic:"vfmacc.vv"
+let vfmacc_vf_entries = opfmacc_vf_entries ~mnemonic:"vfmacc.vf"
+let vfnmacc_vv_entries = opmacc_vv_entries ~mnemonic:"vfnmacc.vv"
+let vfnmacc_vf_entries = opfmacc_vf_entries ~mnemonic:"vfnmacc.vf"
+let vfmsac_vv_entries = opmacc_vv_entries ~mnemonic:"vfmsac.vv"
+let vfmsac_vf_entries = opfmacc_vf_entries ~mnemonic:"vfmsac.vf"
+let vfnmsac_vv_entries = opmacc_vv_entries ~mnemonic:"vfnmsac.vv"
+let vfnmsac_vf_entries = opfmacc_vf_entries ~mnemonic:"vfnmsac.vf"
+let vfslide1up_vf_entries = opfvf_entries ~mnemonic:"vfslide1up.vf"
+let vfslide1down_vf_entries = opfvf_entries ~mnemonic:"vfslide1down.vf"
+
+(* [vfwmacc]/[vfwmsac]/[vfwnmacc]/[vfwnmsac]: the widening floating
+   fused-multiply-add family - {!vfmacc_vv_entries}/{!vfmacc_vf_entries}'s
+   exact reordered-operand shape reused unchanged. *)
+let vfwmacc_vv_entries = opmacc_vv_entries ~mnemonic:"vfwmacc.vv"
+let vfwmacc_vf_entries = opfmacc_vf_entries ~mnemonic:"vfwmacc.vf"
+let vfwnmacc_vv_entries = opmacc_vv_entries ~mnemonic:"vfwnmacc.vv"
+let vfwnmacc_vf_entries = opfmacc_vf_entries ~mnemonic:"vfwnmacc.vf"
+let vfwmsac_vv_entries = opmacc_vv_entries ~mnemonic:"vfwmsac.vv"
+let vfwmsac_vf_entries = opfmacc_vf_entries ~mnemonic:"vfwmsac.vf"
+let vfwnmsac_vv_entries = opmacc_vv_entries ~mnemonic:"vfwnmsac.vv"
+let vfwnmsac_vf_entries = opfmacc_vf_entries ~mnemonic:"vfwnmsac.vf"
+
+(* [vfwadd]/[vfwsub]: the widening floating add/subtract pair - [.vv]/[.wv]
+   reuse {!opivv_entries}'s exact all-vector-register shape unchanged (the
+   same reuse {!vwadd_vv_entries}/{!vwadd_wv_entries} rely on for the
+   integer widening group), [.vf]/[.wf] reuse {!opfvf_entries}'s scalar-FPR
+   shape unchanged. *)
+let vfwadd_vv_entries = opivv_entries ~mnemonic:"vfwadd.vv"
+let vfwadd_vf_entries = opfvf_entries ~mnemonic:"vfwadd.vf"
+let vfwadd_wv_entries = opivv_entries ~mnemonic:"vfwadd.wv"
+let vfwadd_wf_entries = opfvf_entries ~mnemonic:"vfwadd.wf"
+let vfwsub_vv_entries = opivv_entries ~mnemonic:"vfwsub.vv"
+let vfwsub_vf_entries = opfvf_entries ~mnemonic:"vfwsub.vf"
+let vfwsub_wv_entries = opivv_entries ~mnemonic:"vfwsub.wv"
+let vfwsub_wf_entries = opfvf_entries ~mnemonic:"vfwsub.wf"
+
+(* [vfwmul]: the widening floating multiply - {!vfwadd_vv_entries}'s exact
+   shape reused; no [.wv]/[.wf] sibling exists. *)
+let vfwmul_vv_entries = opivv_entries ~mnemonic:"vfwmul.vv"
+let vfwmul_vf_entries = opfvf_entries ~mnemonic:"vfwmul.vf"
+
+(* [vfwredosum]/[vfwredusum]: the widening floating reduction pair -
+   {!vfredosum_vs_entries}'s exact shape reused; no [.vf]/[.vx] sibling.
+   [vfwredsum.vs] is a real-GNU-as pseudo-op alias for [vfwredusum.vs]
+   (riscv-opcodes' own [kind: pseudo-op] record, not a distinct
+   [kind: instruction-form]), so it is not separately admitted here. *)
+let vfwredosum_vs_entries = opivv_entries ~mnemonic:"vfwredosum.vs"
+let vfwredusum_vs_entries = opivv_entries ~mnemonic:"vfwredusum.vs"
+
+(* [vfwcvt.*]/[vfncvt.*]: the widening/narrowing float<->integer conversion
+   families - {!vext_entries}'s exact "vd, vs2" shape reused unchanged, the
+   same shape [vfcvt.*.v] already uses. The two `bf16` sibling mnemonics
+   ([vfwcvtbf16.f.f.v]/[vfncvtbf16.f.f.w], both `rv_zvfbfmin`) are not
+   admitted in this slice - see {!Riscv_family_encode}'s
+   `opfvv_unary_const` comment. *)
+let vfwcvt_xu_f_v_entries = vext_entries ~mnemonic:"vfwcvt.xu.f.v"
+let vfwcvt_x_f_v_entries = vext_entries ~mnemonic:"vfwcvt.x.f.v"
+let vfwcvt_f_xu_v_entries = vext_entries ~mnemonic:"vfwcvt.f.xu.v"
+let vfwcvt_f_x_v_entries = vext_entries ~mnemonic:"vfwcvt.f.x.v"
+let vfwcvt_f_f_v_entries = vext_entries ~mnemonic:"vfwcvt.f.f.v"
+let vfwcvt_rtz_xu_f_v_entries = vext_entries ~mnemonic:"vfwcvt.rtz.xu.f.v"
+let vfwcvt_rtz_x_f_v_entries = vext_entries ~mnemonic:"vfwcvt.rtz.x.f.v"
+let vfncvt_xu_f_w_entries = vext_entries ~mnemonic:"vfncvt.xu.f.w"
+let vfncvt_x_f_w_entries = vext_entries ~mnemonic:"vfncvt.x.f.w"
+let vfncvt_f_xu_w_entries = vext_entries ~mnemonic:"vfncvt.f.xu.w"
+let vfncvt_f_x_w_entries = vext_entries ~mnemonic:"vfncvt.f.x.w"
+let vfncvt_f_f_w_entries = vext_entries ~mnemonic:"vfncvt.f.f.w"
+let vfncvt_rod_f_f_w_entries = vext_entries ~mnemonic:"vfncvt.rod.f.f.w"
+let vfncvt_rtz_xu_f_w_entries = vext_entries ~mnemonic:"vfncvt.rtz.xu.f.w"
+let vfncvt_rtz_x_f_w_entries = vext_entries ~mnemonic:"vfncvt.rtz.x.f.w"
+
 let all =
   sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @ x86_fadd_entries @ fadd_s_entries
   @ fsub_s_entries @ fmul_s_entries @ fdiv_s_entries @ fadd_d_entries @ fsub_d_entries
@@ -2354,7 +2614,31 @@ let all =
   @ vmsbc_vxm_entries @ vmsbc_vv_entries @ vmsbc_vx_entries @ vmerge_vvm_entries
   @ vmerge_vxm_entries @ vmerge_vim_entries @ vmv_x_s_entries @ vmv_s_x_entries @ vmv_v_v_entries
   @ vmv_v_x_entries @ vmv_v_i_entries @ vmv1r_v_entries @ vmv2r_v_entries @ vmv4r_v_entries
-  @ vmv8r_v_entries @ vsmul_vv_entries @ vsmul_vx_entries
+  @ vmv8r_v_entries @ vsmul_vv_entries @ vsmul_vx_entries @ vfadd_vv_entries @ vfadd_vf_entries
+  @ vfsub_vv_entries @ vfsub_vf_entries @ vfrsub_vf_entries @ vfmul_vv_entries @ vfmul_vf_entries
+  @ vfdiv_vv_entries @ vfdiv_vf_entries @ vfrdiv_vf_entries @ vfmin_vv_entries @ vfmin_vf_entries
+  @ vfmax_vv_entries @ vfmax_vf_entries @ vfsgnj_vv_entries @ vfsgnj_vf_entries @ vfsgnjn_vv_entries
+  @ vfsgnjn_vf_entries @ vfsgnjx_vv_entries @ vfsgnjx_vf_entries @ vfsqrt_v_entries
+  @ vfrsqrt7_v_entries @ vfrec7_v_entries @ vfclass_v_entries @ vfredosum_vs_entries
+  @ vfredusum_vs_entries @ vfredmin_vs_entries @ vfredmax_vs_entries @ vmfeq_vv_entries
+  @ vmfeq_vf_entries @ vmfle_vv_entries @ vmfle_vf_entries @ vmflt_vv_entries @ vmflt_vf_entries
+  @ vmfne_vv_entries @ vmfne_vf_entries @ vmfgt_vf_entries @ vmfge_vf_entries @ vfmv_f_s_entries
+  @ vfmv_s_f_entries @ vfmv_v_f_entries @ vfmerge_vfm_entries @ vfcvt_xu_f_v_entries
+  @ vfcvt_x_f_v_entries @ vfcvt_f_xu_v_entries @ vfcvt_f_x_v_entries @ vfcvt_rtz_xu_f_v_entries
+  @ vfcvt_rtz_x_f_v_entries @ vfmadd_vv_entries @ vfmadd_vf_entries @ vfnmadd_vv_entries
+  @ vfnmadd_vf_entries @ vfmsub_vv_entries @ vfmsub_vf_entries @ vfnmsub_vv_entries
+  @ vfnmsub_vf_entries @ vfmacc_vv_entries @ vfmacc_vf_entries @ vfnmacc_vv_entries
+  @ vfnmacc_vf_entries @ vfmsac_vv_entries @ vfmsac_vf_entries @ vfnmsac_vv_entries
+  @ vfnmsac_vf_entries @ vfslide1up_vf_entries @ vfslide1down_vf_entries @ vfwadd_vv_entries
+  @ vfwadd_vf_entries @ vfwadd_wv_entries @ vfwadd_wf_entries @ vfwsub_vv_entries
+  @ vfwsub_vf_entries @ vfwsub_wv_entries @ vfwsub_wf_entries @ vfwmul_vv_entries
+  @ vfwmul_vf_entries @ vfwredosum_vs_entries @ vfwredusum_vs_entries @ vfwcvt_xu_f_v_entries
+  @ vfwcvt_x_f_v_entries @ vfwcvt_f_xu_v_entries @ vfwcvt_f_x_v_entries @ vfwcvt_f_f_v_entries
+  @ vfwcvt_rtz_xu_f_v_entries @ vfwcvt_rtz_x_f_v_entries @ vfncvt_xu_f_w_entries
+  @ vfncvt_x_f_w_entries @ vfncvt_f_xu_w_entries @ vfncvt_f_x_w_entries @ vfncvt_f_f_w_entries
+  @ vfncvt_rod_f_f_w_entries @ vfncvt_rtz_xu_f_w_entries @ vfncvt_rtz_x_f_w_entries
+  @ vfwmacc_vv_entries @ vfwmacc_vf_entries @ vfwnmacc_vv_entries @ vfwnmacc_vf_entries
+  @ vfwmsac_vv_entries @ vfwmsac_vf_entries @ vfwnmsac_vv_entries @ vfwnmsac_vf_entries
 
 let pilot_entry_of (entry : entry) =
   let evidence =

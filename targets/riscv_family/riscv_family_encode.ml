@@ -607,6 +607,107 @@ module Make (P : PROFILE) = struct
       | Vmv8r_v
       | Vsmul_vv
       | Vsmul_vx
+      | Vfadd_vv
+      | Vfadd_vf
+      | Vfsub_vv
+      | Vfsub_vf
+      | Vfrsub_vf
+      | Vfmul_vv
+      | Vfmul_vf
+      | Vfdiv_vv
+      | Vfdiv_vf
+      | Vfrdiv_vf
+      | Vfmin_vv
+      | Vfmin_vf
+      | Vfmax_vv
+      | Vfmax_vf
+      | Vfsgnj_vv
+      | Vfsgnj_vf
+      | Vfsgnjn_vv
+      | Vfsgnjn_vf
+      | Vfsgnjx_vv
+      | Vfsgnjx_vf
+      | Vfsqrt_v
+      | Vfrsqrt7_v
+      | Vfrec7_v
+      | Vfclass_v
+      | Vfredosum_vs
+      | Vfredusum_vs
+      | Vfredmin_vs
+      | Vfredmax_vs
+      | Vmfeq_vv
+      | Vmfeq_vf
+      | Vmfle_vv
+      | Vmfle_vf
+      | Vmflt_vv
+      | Vmflt_vf
+      | Vmfne_vv
+      | Vmfne_vf
+      | Vmfgt_vf
+      | Vmfge_vf
+      | Vfmv_f_s
+      | Vfmv_s_f
+      | Vfmv_v_f
+      | Vfmerge_vfm
+      | Vfcvt_xu_f_v
+      | Vfcvt_x_f_v
+      | Vfcvt_f_xu_v
+      | Vfcvt_f_x_v
+      | Vfcvt_rtz_xu_f_v
+      | Vfcvt_rtz_x_f_v
+      | Vfmadd_vv
+      | Vfmadd_vf
+      | Vfnmadd_vv
+      | Vfnmadd_vf
+      | Vfmsub_vv
+      | Vfmsub_vf
+      | Vfnmsub_vv
+      | Vfnmsub_vf
+      | Vfmacc_vv
+      | Vfmacc_vf
+      | Vfnmacc_vv
+      | Vfnmacc_vf
+      | Vfmsac_vv
+      | Vfmsac_vf
+      | Vfnmsac_vv
+      | Vfnmsac_vf
+      | Vfslide1up_vf
+      | Vfslide1down_vf
+      | Vfwadd_vv
+      | Vfwadd_vf
+      | Vfwadd_wv
+      | Vfwadd_wf
+      | Vfwsub_vv
+      | Vfwsub_vf
+      | Vfwsub_wv
+      | Vfwsub_wf
+      | Vfwmul_vv
+      | Vfwmul_vf
+      | Vfwredosum_vs
+      | Vfwredusum_vs
+      | Vfwcvt_xu_f_v
+      | Vfwcvt_x_f_v
+      | Vfwcvt_f_xu_v
+      | Vfwcvt_f_x_v
+      | Vfwcvt_f_f_v
+      | Vfwcvt_rtz_xu_f_v
+      | Vfwcvt_rtz_x_f_v
+      | Vfncvt_xu_f_w
+      | Vfncvt_x_f_w
+      | Vfncvt_f_xu_w
+      | Vfncvt_f_x_w
+      | Vfncvt_f_f_w
+      | Vfncvt_rod_f_f_w
+      | Vfncvt_rtz_xu_f_w
+      | Vfncvt_rtz_x_f_w
+      | Vfwmacc_vv
+      | Vfwmacc_vf
+      | Vfwmsac_vv
+      | Vfwmsac_vf
+      | Vfwnmacc_vv
+      | Vfwnmacc_vf
+      | Vfwnmsac_vv
+      | Vfwnmsac_vf
 
     let name = function
       | Add -> "add"
@@ -1061,6 +1162,107 @@ module Make (P : PROFILE) = struct
       | Vmv8r_v -> "vmv8r.v"
       | Vsmul_vv -> "vsmul.vv"
       | Vsmul_vx -> "vsmul.vx"
+      | Vfadd_vv -> "vfadd.vv"
+      | Vfadd_vf -> "vfadd.vf"
+      | Vfsub_vv -> "vfsub.vv"
+      | Vfsub_vf -> "vfsub.vf"
+      | Vfrsub_vf -> "vfrsub.vf"
+      | Vfmul_vv -> "vfmul.vv"
+      | Vfmul_vf -> "vfmul.vf"
+      | Vfdiv_vv -> "vfdiv.vv"
+      | Vfdiv_vf -> "vfdiv.vf"
+      | Vfrdiv_vf -> "vfrdiv.vf"
+      | Vfmin_vv -> "vfmin.vv"
+      | Vfmin_vf -> "vfmin.vf"
+      | Vfmax_vv -> "vfmax.vv"
+      | Vfmax_vf -> "vfmax.vf"
+      | Vfsgnj_vv -> "vfsgnj.vv"
+      | Vfsgnj_vf -> "vfsgnj.vf"
+      | Vfsgnjn_vv -> "vfsgnjn.vv"
+      | Vfsgnjn_vf -> "vfsgnjn.vf"
+      | Vfsgnjx_vv -> "vfsgnjx.vv"
+      | Vfsgnjx_vf -> "vfsgnjx.vf"
+      | Vfsqrt_v -> "vfsqrt.v"
+      | Vfrsqrt7_v -> "vfrsqrt7.v"
+      | Vfrec7_v -> "vfrec7.v"
+      | Vfclass_v -> "vfclass.v"
+      | Vfredosum_vs -> "vfredosum.vs"
+      | Vfredusum_vs -> "vfredusum.vs"
+      | Vfredmin_vs -> "vfredmin.vs"
+      | Vfredmax_vs -> "vfredmax.vs"
+      | Vmfeq_vv -> "vmfeq.vv"
+      | Vmfeq_vf -> "vmfeq.vf"
+      | Vmfle_vv -> "vmfle.vv"
+      | Vmfle_vf -> "vmfle.vf"
+      | Vmflt_vv -> "vmflt.vv"
+      | Vmflt_vf -> "vmflt.vf"
+      | Vmfne_vv -> "vmfne.vv"
+      | Vmfne_vf -> "vmfne.vf"
+      | Vmfgt_vf -> "vmfgt.vf"
+      | Vmfge_vf -> "vmfge.vf"
+      | Vfmv_f_s -> "vfmv.f.s"
+      | Vfmv_s_f -> "vfmv.s.f"
+      | Vfmv_v_f -> "vfmv.v.f"
+      | Vfmerge_vfm -> "vfmerge.vfm"
+      | Vfcvt_xu_f_v -> "vfcvt.xu.f.v"
+      | Vfcvt_x_f_v -> "vfcvt.x.f.v"
+      | Vfcvt_f_xu_v -> "vfcvt.f.xu.v"
+      | Vfcvt_f_x_v -> "vfcvt.f.x.v"
+      | Vfcvt_rtz_xu_f_v -> "vfcvt.rtz.xu.f.v"
+      | Vfcvt_rtz_x_f_v -> "vfcvt.rtz.x.f.v"
+      | Vfmadd_vv -> "vfmadd.vv"
+      | Vfmadd_vf -> "vfmadd.vf"
+      | Vfnmadd_vv -> "vfnmadd.vv"
+      | Vfnmadd_vf -> "vfnmadd.vf"
+      | Vfmsub_vv -> "vfmsub.vv"
+      | Vfmsub_vf -> "vfmsub.vf"
+      | Vfnmsub_vv -> "vfnmsub.vv"
+      | Vfnmsub_vf -> "vfnmsub.vf"
+      | Vfmacc_vv -> "vfmacc.vv"
+      | Vfmacc_vf -> "vfmacc.vf"
+      | Vfnmacc_vv -> "vfnmacc.vv"
+      | Vfnmacc_vf -> "vfnmacc.vf"
+      | Vfmsac_vv -> "vfmsac.vv"
+      | Vfmsac_vf -> "vfmsac.vf"
+      | Vfnmsac_vv -> "vfnmsac.vv"
+      | Vfnmsac_vf -> "vfnmsac.vf"
+      | Vfslide1up_vf -> "vfslide1up.vf"
+      | Vfslide1down_vf -> "vfslide1down.vf"
+      | Vfwadd_vv -> "vfwadd.vv"
+      | Vfwadd_vf -> "vfwadd.vf"
+      | Vfwadd_wv -> "vfwadd.wv"
+      | Vfwadd_wf -> "vfwadd.wf"
+      | Vfwsub_vv -> "vfwsub.vv"
+      | Vfwsub_vf -> "vfwsub.vf"
+      | Vfwsub_wv -> "vfwsub.wv"
+      | Vfwsub_wf -> "vfwsub.wf"
+      | Vfwmul_vv -> "vfwmul.vv"
+      | Vfwmul_vf -> "vfwmul.vf"
+      | Vfwredosum_vs -> "vfwredosum.vs"
+      | Vfwredusum_vs -> "vfwredusum.vs"
+      | Vfwcvt_xu_f_v -> "vfwcvt.xu.f.v"
+      | Vfwcvt_x_f_v -> "vfwcvt.x.f.v"
+      | Vfwcvt_f_xu_v -> "vfwcvt.f.xu.v"
+      | Vfwcvt_f_x_v -> "vfwcvt.f.x.v"
+      | Vfwcvt_f_f_v -> "vfwcvt.f.f.v"
+      | Vfwcvt_rtz_xu_f_v -> "vfwcvt.rtz.xu.f.v"
+      | Vfwcvt_rtz_x_f_v -> "vfwcvt.rtz.x.f.v"
+      | Vfncvt_xu_f_w -> "vfncvt.xu.f.w"
+      | Vfncvt_x_f_w -> "vfncvt.x.f.w"
+      | Vfncvt_f_xu_w -> "vfncvt.f.xu.w"
+      | Vfncvt_f_x_w -> "vfncvt.f.x.w"
+      | Vfncvt_f_f_w -> "vfncvt.f.f.w"
+      | Vfncvt_rod_f_f_w -> "vfncvt.rod.f.f.w"
+      | Vfncvt_rtz_xu_f_w -> "vfncvt.rtz.xu.f.w"
+      | Vfncvt_rtz_x_f_w -> "vfncvt.rtz.x.f.w"
+      | Vfwmacc_vv -> "vfwmacc.vv"
+      | Vfwmacc_vf -> "vfwmacc.vf"
+      | Vfwmsac_vv -> "vfwmsac.vv"
+      | Vfwmsac_vf -> "vfwmsac.vf"
+      | Vfwnmacc_vv -> "vfwnmacc.vv"
+      | Vfwnmacc_vf -> "vfwnmacc.vf"
+      | Vfwnmsac_vv -> "vfwnmsac.vv"
+      | Vfwnmsac_vf -> "vfwnmsac.vf"
 
     let all =
       [
@@ -1516,6 +1718,107 @@ module Make (P : PROFILE) = struct
         Vmv8r_v;
         Vsmul_vv;
         Vsmul_vx;
+        Vfadd_vv;
+        Vfadd_vf;
+        Vfsub_vv;
+        Vfsub_vf;
+        Vfrsub_vf;
+        Vfmul_vv;
+        Vfmul_vf;
+        Vfdiv_vv;
+        Vfdiv_vf;
+        Vfrdiv_vf;
+        Vfmin_vv;
+        Vfmin_vf;
+        Vfmax_vv;
+        Vfmax_vf;
+        Vfsgnj_vv;
+        Vfsgnj_vf;
+        Vfsgnjn_vv;
+        Vfsgnjn_vf;
+        Vfsgnjx_vv;
+        Vfsgnjx_vf;
+        Vfsqrt_v;
+        Vfrsqrt7_v;
+        Vfrec7_v;
+        Vfclass_v;
+        Vfredosum_vs;
+        Vfredusum_vs;
+        Vfredmin_vs;
+        Vfredmax_vs;
+        Vmfeq_vv;
+        Vmfeq_vf;
+        Vmfle_vv;
+        Vmfle_vf;
+        Vmflt_vv;
+        Vmflt_vf;
+        Vmfne_vv;
+        Vmfne_vf;
+        Vmfgt_vf;
+        Vmfge_vf;
+        Vfmv_f_s;
+        Vfmv_s_f;
+        Vfmv_v_f;
+        Vfmerge_vfm;
+        Vfcvt_xu_f_v;
+        Vfcvt_x_f_v;
+        Vfcvt_f_xu_v;
+        Vfcvt_f_x_v;
+        Vfcvt_rtz_xu_f_v;
+        Vfcvt_rtz_x_f_v;
+        Vfmadd_vv;
+        Vfmadd_vf;
+        Vfnmadd_vv;
+        Vfnmadd_vf;
+        Vfmsub_vv;
+        Vfmsub_vf;
+        Vfnmsub_vv;
+        Vfnmsub_vf;
+        Vfmacc_vv;
+        Vfmacc_vf;
+        Vfnmacc_vv;
+        Vfnmacc_vf;
+        Vfmsac_vv;
+        Vfmsac_vf;
+        Vfnmsac_vv;
+        Vfnmsac_vf;
+        Vfslide1up_vf;
+        Vfslide1down_vf;
+        Vfwadd_vv;
+        Vfwadd_vf;
+        Vfwadd_wv;
+        Vfwadd_wf;
+        Vfwsub_vv;
+        Vfwsub_vf;
+        Vfwsub_wv;
+        Vfwsub_wf;
+        Vfwmul_vv;
+        Vfwmul_vf;
+        Vfwredosum_vs;
+        Vfwredusum_vs;
+        Vfwcvt_xu_f_v;
+        Vfwcvt_x_f_v;
+        Vfwcvt_f_xu_v;
+        Vfwcvt_f_x_v;
+        Vfwcvt_f_f_v;
+        Vfwcvt_rtz_xu_f_v;
+        Vfwcvt_rtz_x_f_v;
+        Vfncvt_xu_f_w;
+        Vfncvt_x_f_w;
+        Vfncvt_f_xu_w;
+        Vfncvt_f_x_w;
+        Vfncvt_f_f_w;
+        Vfncvt_rod_f_f_w;
+        Vfncvt_rtz_xu_f_w;
+        Vfncvt_rtz_x_f_w;
+        Vfwmacc_vv;
+        Vfwmacc_vf;
+        Vfwmsac_vv;
+        Vfwmsac_vf;
+        Vfwnmacc_vv;
+        Vfwnmacc_vf;
+        Vfwnmsac_vv;
+        Vfwnmsac_vf;
       ]
 
     let of_mnemonic s = List.find_opt (fun op -> String.equal (name op) s) all
@@ -2688,6 +2991,15 @@ module Make (P : PROFILE) = struct
     | Vmerge_vim -> Some 0x17
     | _ -> None
 
+  (* [vfmerge.vfm]: the FPR-typed mirror of [vmerge.vxm] - the identical
+     funct6 0x17, mandatory-literal-`v0` shape, but OPFVF (funct3 = 5)
+     rather than OPIVX, with a floating-point-register [rs1]. No bare
+     (non-"m") sibling and no `, v0.t` masked form exist (real GNU as
+     rejects both `vfmerge.vfm v1,v2,fa0` and `vfmerge.vfm
+     v1,v2,fa0,v0.t` as "illegal operands"). Confirmed against real GNU
+     as, byte-identical on RV32/RV64: `vfmerge.vfm v1,v2,fa0,v0` ->
+     `5c2550d7`. *)
+  let carry_m_vf_funct6 = function Opcode.Vfmerge_vfm -> Some 0x17 | _ -> None
   let carry_vv_funct6 = function Opcode.Vmadc_vv -> Some 0x11 | Vmsbc_vv -> Some 0x13 | _ -> None
   let carry_vx_funct6 = function Opcode.Vmadc_vx -> Some 0x11 | Vmsbc_vx -> Some 0x13 | _ -> None
   let carry_vi_funct6 = function Opcode.Vmadc_vi -> Some 0x11 | _ -> None
@@ -2824,6 +3136,279 @@ module Make (P : PROFILE) = struct
     | Vslide1down_vx -> Some 0x0f
     | _ -> None
 
+  (* [vfadd]: the entry point into OP-V's floating-point arithmetic space -
+     OPFVV (funct3 = 1)/OPFVF (funct3 = 5), a third major functional-unit
+     group distinct from OPIVV/OPIVX (funct3 0/4) and OPMVV/OPMVX (funct3
+     2/6), but the identical [vd, vs2, vs1-or-rs1]/[funct7 = (funct6 lsl 1)
+     lor vm] shape - [rs1] is a floating-point register ([Reg.F]) in the
+     [.vf] form rather than a GPR, the only difference from
+     {!opivx_funct6}'s own lowering arm. No [.vi] sibling exists (real GNU
+     as rejects `vfadd.vi` as "unrecognized opcode", matching riscv-opcodes'
+     own export, which has no such record). Confirmed against real GNU as
+     (`riscv64-linux-gnu-as` 2.44 `-march=rv64gv`, byte-identical on
+     `riscv32-linux-gnu-as` 2.43.1 `-march=rv32gv`, and also accepted with
+     no F/D at all under plain `-march=rv64iv`/`rv32iv` - real GNU as does
+     not enforce an F/D dependency on OP-V floating mnemonics at assembly
+     time, so this project's encoder does not either, matching every other
+     OP-V family's precedent): `vfadd.vv v1,v2,v3` -> `022190d7`,
+     `vfadd.vf v1,v2,fa0` -> `022550d7`; masked, e.g. `vfadd.vv
+     v1,v2,v3,v0.t` -> `002190d7`. *)
+  (* [vfsub]/[vfrsub]: the subtract/reverse-subtract pair, the identical
+     OPFVV/OPFVF shape as [vfadd] above (only the funct6 differs) - real GNU
+     as has no [vfrsub.vv] (rejected as "unrecognized opcode", matching
+     riscv-opcodes' own export, which has no such record - a reverse
+     vector-vector subtract would be redundant with a plain [vfsub.vv]).
+     Confirmed against real GNU as, byte-identical on RV32/RV64: `vfsub.vv
+     v1,v2,v3` -> `0a2190d7`, `vfsub.vf v1,v2,fa0` -> `0a2550d7`,
+     `vfrsub.vf v1,v2,fa0` -> `9e2550d7`; masked, e.g. `vfsub.vv
+     v1,v2,v3,v0.t` -> `082190d7`. *)
+  (* [vfmul]/[vfdiv]/[vfrdiv]: the multiply/divide/reverse-divide triple -
+     still the identical OPFVV/OPFVF shape (unlike integer [vmul]/[vdivu]/
+     etc., which live in OPMVV/OPMVX; every OP-V *floating* arithmetic
+     mnemonic surveyed so far stays in OPFVV/OPFVF regardless of operation).
+     [vfrdiv] has no [.vv] sibling (rejected as "unrecognized opcode",
+     matching riscv-opcodes' own export - a reverse vector-vector divide
+     would be redundant with a plain [vfdiv.vv], the same reasoning as
+     [vfrsub]); [vfmul] has no [.vi] sibling either (also rejected).
+     Confirmed against real GNU as, byte-identical on RV32/RV64: `vfmul.vv
+     v1,v2,v3` -> `922190d7`, `vfmul.vf v1,v2,fa0` -> `922550d7`, `vfdiv.vv`
+     -> `822190d7`, `vfdiv.vf` -> `822550d7`, `vfrdiv.vf` -> `862550d7`;
+     masked, e.g. `vfmul.vv v1,v2,v3,v0.t` -> `902190d7`. *)
+  (* [vfmin]/[vfmax]: the min/max pair, full [.vv]/[.vf] shapes with no
+     [.vi] sibling for either (rejected as "unrecognized opcode"). Confirmed
+     against real GNU as, byte-identical on RV32/RV64: `vfmin.vv v1,v2,v3`
+     -> `122190d7`, `vfmin.vf v1,v2,fa0` -> `122550d7`, `vfmax.vv` ->
+     `1a2190d7`, `vfmax.vf` -> `1a2550d7`; masked, e.g. `vfmin.vv
+     v1,v2,v3,v0.t` -> `102190d7`. *)
+  (* [vfsgnj]/[vfsgnjn]/[vfsgnjx]: the sign-injection triple, full [.vv]/
+     [.vf] shapes with no [.vi] sibling for any (rejected as "unrecognized
+     opcode"). Unlike scalar [fsgnj.s]/[fsgnj.d], real GNU as's vector forms
+     have no [rs1 = rs2] pseudo-alias shortcut to collide with (no
+     [vfneg.v]/[vfabs.v] mnemonics exist in riscv-opcodes' own export), so
+     this is a plain table extension with no alias-priority concern.
+     Confirmed against real GNU as, byte-identical on RV32/RV64: `vfsgnj.vv
+     v1,v2,v3` -> `222190d7`, `vfsgnj.vf v1,v2,fa0` -> `222550d7`,
+     `vfsgnjn.vv` -> `262190d7`, `vfsgnjn.vf` -> `262550d7`, `vfsgnjx.vv` ->
+     `2a2190d7`, `vfsgnjx.vf` -> `2a2550d7`; masked, e.g. `vfsgnj.vv
+     v1,v2,v3,v0.t` -> `202190d7`. *)
+  (* [vfredosum]/[vfredusum]/[vfredmin]/[vfredmax.vs]: the floating
+     vector-reduction family - the same [rd, rs2, rs1] shape as
+     [vfadd.vv]/etc. above ([rs1] carries the scalar/initial value, [rs2]
+     the vector to reduce, matching riscv-opcodes' own operand order and
+     the integer [vredsum]/etc. family's own convention), but OPFVV (funct3
+     = 1) rather than OPMVV, so this reuses the *existing* [opfvv_funct6]
+     table verbatim rather than needing a separate table the way
+     [vredsum]/etc. needed [opmvv_funct6]. No [.vf]/[.vx] sibling exists for
+     any of the four (real GNU as rejects `vfredosum.vf`/`vfredosum.vx` as
+     "unrecognized opcode"). Confirmed against real GNU as, byte-identical
+     on RV32/RV64: `vfredosum.vs v1,v2,v3` -> `0e2190d7`, `vfredusum.vs` ->
+     `062190d7`, `vfredmin.vs` -> `162190d7`, `vfredmax.vs` -> `1e2190d7`;
+     masked, e.g. `vfredosum.vs v1,v2,v3,v0.t` -> `0c2190d7`. *)
+  (* [vmfeq]/[vmfle]/[vmflt]/[vmfne]/[vmfgt.vf]/[vmfge.vf]: the
+     mask-writing floating comparison family - the same [rd, rs2, rs1]
+     shape as [vfadd.vv]/[.vf] above ([vd] holds a MASK result rather than
+     a plain vector, invisible at this encoder layer). [vmfgt]/[vmfge] have
+     no [.vv] sibling - real GNU as accepts `vmfgt.vv`/`vmfge.vv` only as a
+     pseudo-instruction reversing `vmflt.vv`/`vmfle.vv`'s own operands
+     (confirmed: `vmfgt.vv v1,v2,v3` assembles as `vmflt.vv v1,v3,v2`), the
+     same genuinely different alias-expansion feature this project's
+     integer [vmsgt]/[vmsgtu] deliberately do not admit either - so only
+     the six real riscv-opcodes records ([vmfeq]/[vmfle]/[vmflt]/[vmfne]
+     [.vv]/[.vf] plus [vmfgt.vf]/[vmfge.vf]) are admitted here. Confirmed
+     against real GNU as, byte-identical on RV32/RV64: `vmfeq.vv
+     v1,v2,v3` -> `622190d7`, `vmfeq.vf v1,v2,fa0` -> `622550d7`,
+     `vmfle.vv`/`vmfle.vf` -> `662190d7`/`662550d7`, `vmflt.vv`/`vmflt.vf`
+     -> `6e2190d7`/`6e2550d7`, `vmfne.vv`/`vmfne.vf` -> `722190d7`/
+     `722550d7`, `vmfgt.vf` -> `762550d7`, `vmfge.vf` -> `7e2550d7`. *)
+  let opfvv_funct6 = function
+    | Opcode.Vfadd_vv -> Some 0x00
+    | Vfsub_vv -> Some 0x02
+    | Vfmul_vv -> Some 0x24
+    | Vfdiv_vv -> Some 0x20
+    | Vfmin_vv -> Some 0x04
+    | Vfmax_vv -> Some 0x06
+    | Vfsgnj_vv -> Some 0x08
+    | Vfsgnjn_vv -> Some 0x09
+    | Vfsgnjx_vv -> Some 0x0a
+    | Vfredosum_vs -> Some 0x03
+    | Vfredusum_vs -> Some 0x01
+    | Vfredmin_vs -> Some 0x05
+    | Vfredmax_vs -> Some 0x07
+    | Vmfeq_vv -> Some 0x18
+    | Vmfle_vv -> Some 0x19
+    | Vmflt_vv -> Some 0x1b
+    | Vmfne_vv -> Some 0x1c
+    (* [vfwadd]/[vfwsub]: the widening floating add/subtract pair - operand
+       *width* (whether [vs1]/[vs2]/[rs1] read narrow or wide elements) is an
+       execution-time SEW/vtype concern invisible to the assembler, which
+       only encodes register field positions, so the [.vv]/[.vf] (both
+       narrow operands) and [.wv]/[.wf] (wide [vs2], narrow [vs1]/[rs1])
+       sibling pairs share the identical {!opfvv_funct6}/{!opfvf_funct6}
+       table/lowering-arm shape already used by [vfadd]/etc., the same
+       "operand width doesn't change the encoding" precedent
+       {!opmvv_funct6}'s own [vwaddu]/[vwadd]/[vwsubu]/[vwsub] widening
+       group established for the integer side. No [.vi] sibling for either
+       (rejected as "unrecognized opcode" on real GNU as, matching
+       riscv-opcodes' own export). Confirmed against real GNU as, byte-
+       identical on RV32/RV64: `vfwadd.vv v1,v2,v3` -> `c22190d7`,
+       `vfwadd.vf v1,v2,fa0` -> `c22550d7`, `vfwadd.wv` -> `d22190d7`,
+       `vfwadd.wf` -> `d22550d7`, `vfwsub.vv` -> `ca2190d7`, `vfwsub.vf` ->
+       `ca2550d7`, `vfwsub.wv` -> `da2190d7`, `vfwsub.wf` -> `da2550d7`;
+       masked, e.g. `vfwadd.vv v1,v2,v3,v0.t` -> `c02190d7`. *)
+    | Vfwadd_vv -> Some 0x30
+    | Vfwadd_wv -> Some 0x34
+    | Vfwsub_vv -> Some 0x32
+    | Vfwsub_wv -> Some 0x36
+    (* [vfwmul]: the widening floating multiply - the same table-extension
+       shape as {!opfvv_funct6}'s own [vfwadd]/[vfwsub] entries above; no
+       [.wv] sibling exists (real GNU as rejects `vfwmul.wv` as
+       "unrecognized opcode" - a wide-times-narrow multiply is not part of
+       riscv-opcodes' own export, unlike the widening add/subtract group's
+       symmetric `.wv`/`.wf` pair) and no `.vi` sibling either. Confirmed
+       against real GNU as, byte-identical on RV32/RV64: `vfwmul.vv
+       v1,v2,v3` -> `e22190d7`, `vfwmul.vf v1,v2,fa0` -> `e22550d7`;
+       masked, e.g. `vfwmul.vv v1,v2,v3,v0.t` -> `e02190d7`. *)
+    | Vfwmul_vv -> Some 0x38
+    (* [vfwredosum]/[vfwredusum]: the widening floating reduction pair -
+       {!opfvv_funct6}'s own [vfredosum]/[vfredusum] shape ([rd, rs2, rs1],
+       [rs1] the scalar/initial value, [rs2] the vector to reduce), just a
+       different funct6; no [.vf]/[.vx] sibling for either (rejected as
+       "unrecognized opcode" on real GNU as, matching [vfredosum]/
+       [vfredusum]'s own precedent). `vfwredsum.vs` is a real-GNU-as
+       pseudo-op alias for `vfwredusum.vs` (riscv-opcodes' own `kind:
+       pseudo-op`, `$pseudo_op rv_v::vfwredusum.vs` record, byte-identical
+       and not independently disassembled) rather than a distinct
+       `kind: instruction-form` record, so it is not separately admitted
+       here, matching every other alias-mnemonic precedent in this table.
+       Confirmed against real GNU as, byte-identical on RV32/RV64:
+       `vfwredosum.vs v1,v2,v3` -> `ce2190d7`, `vfwredusum.vs` ->
+       `c62190d7`, `vfwredsum.vs v1,v2,v3` (the pseudo-op) also ->
+       `c62190d7`; masked, e.g. `vfwredosum.vs v1,v2,v3,v0.t` ->
+       `cc2190d7`. *)
+    | Vfwredosum_vs -> Some 0x33
+    | Vfwredusum_vs -> Some 0x31
+    | _ -> None
+
+  let opfvf_funct6 = function
+    | Opcode.Vfadd_vf -> Some 0x00
+    | Vfsub_vf -> Some 0x02
+    | Vfrsub_vf -> Some 0x27
+    | Vfmul_vf -> Some 0x24
+    | Vfdiv_vf -> Some 0x20
+    | Vfrdiv_vf -> Some 0x21
+    | Vfmin_vf -> Some 0x04
+    | Vfmax_vf -> Some 0x06
+    | Vfsgnj_vf -> Some 0x08
+    | Vfsgnjn_vf -> Some 0x09
+    | Vfsgnjx_vf -> Some 0x0a
+    | Vmfeq_vf -> Some 0x18
+    | Vmfle_vf -> Some 0x19
+    | Vmflt_vf -> Some 0x1b
+    | Vmfne_vf -> Some 0x1c
+    | Vmfgt_vf -> Some 0x1d
+    | Vmfge_vf -> Some 0x1f
+    (* [vfslide1up.vf]/[vfslide1down.vf]: the slide family's floating
+       single-element (scalar-insert) siblings - OPFVF (funct3 = 5), the
+       same funct6 values as {!opmvx_funct6}'s [vslide1up.vx]/
+       [vslide1down.vx] (funct3 keeps the two spaces disjoint); no [.vi]
+       sibling, matching the integer siblings' own precedent. Confirmed
+       against real GNU as, byte-identical on RV32/RV64:
+       `vfslide1up.vf v1,v2,fa0` -> `3a2550d7`, `vfslide1down.vf` ->
+       `3e2550d7`; masked, e.g. `vfslide1up.vf v1,v2,fa0,v0.t` ->
+       `382550d7`. *)
+    | Vfslide1up_vf -> Some 0x0e
+    | Vfslide1down_vf -> Some 0x0f
+    (* [vfwadd]/[vfwsub]: the widening floating add/subtract pair's [.vf]/
+       [.wf] scalar-broadcast siblings - see {!opfvv_funct6}'s own
+       [vfwadd]/[vfwsub] comment for the full rationale (operand width is
+       invisible to the assembler, so this is a plain funct6-table
+       extension, the same precedent {!opmvv_funct6}'s [vwaddu]/[vwadd]/
+       [vwsubu]/[vwsub] widening group established for the integer side).
+       Confirmed against real GNU as, byte-identical on RV32/RV64:
+       `vfwadd.vf v1,v2,fa0` -> `c22550d7`, `vfwadd.wf` -> `d22550d7`,
+       `vfwsub.vf` -> `ca2550d7`, `vfwsub.wf` -> `da2550d7`; masked, e.g.
+       `vfwadd.vf v1,v2,fa0,v0.t` -> `c02550d7`. *)
+    | Vfwadd_vf -> Some 0x30
+    | Vfwadd_wf -> Some 0x34
+    | Vfwsub_vf -> Some 0x32
+    | Vfwsub_wf -> Some 0x36
+    | Vfwmul_vf -> Some 0x38
+    | _ -> None
+
+  (* [vfsqrt.v]/[vfrsqrt7.v]/[vfrec7.v]/[vfclass.v]: OP-V's floating unary
+     family - the same two-vector-register "vd, vs2" shape {!vext_form}/
+     {!opmvv_unary_const} model, but OPFVV (funct3 = 1) with its own fixed
+     funct6 (0x13), disambiguated purely by their own distinct rs1-position
+     constants (0x00/0x04/0x05/0x10) - kept in its own table/lowering-arm
+     pair since {!opmvv_unary_const}'s lowering arm fixes funct3 = 2, not 1.
+     A third operand is "illegal operands" on real GNU as (not "unrecognized
+     opcode"), matching {!opmvv_unary_const}'s own family's precedent - no
+     [.vx]/[.vf]/[.vi] sibling exists for any of the four. Confirmed against
+     real GNU as, byte-identical on RV32/RV64: `vfsqrt.v v1,v2` ->
+     `4e2010d7`, `vfrsqrt7.v v1,v2` -> `4e2210d7`, `vfrec7.v v1,v2` ->
+     `4e2290d7`, `vfclass.v v1,v2` -> `4e2810d7`; masked, e.g. `vfsqrt.v
+     v1,v2,v0.t` -> `4c2010d7`. *)
+  (* [vfcvt.xu.f.v]/[vfcvt.x.f.v]/[vfcvt.f.xu.v]/[vfcvt.f.x.v]/
+     [vfcvt.rtz.xu.f.v]/[vfcvt.rtz.x.f.v]: the scalar-width float<->integer
+     conversion family - {!opfvv_unary_const}'s exact shape, a different
+     fixed funct6 (0x12) from [vfsqrt.v]/etc.'s 0x13, disambiguated by
+     their own distinct rs1-position constants (0x00/0x01/0x02/0x03/0x06/
+     0x07). Confirmed against real GNU as, byte-identical on RV32/RV64:
+     `vfcvt.xu.f.v v1,v2` -> `4a2010d7`, `vfcvt.x.f.v` -> `4a2090d7`,
+     `vfcvt.f.xu.v` -> `4a2110d7`, `vfcvt.f.x.v` -> `4a2190d7`,
+     `vfcvt.rtz.xu.f.v` -> `4a2310d7`, `vfcvt.rtz.x.f.v` -> `4a2390d7`;
+     masked, e.g. `vfcvt.xu.f.v v1,v2,v0.t` -> `482010d7`. *)
+  let opfvv_unary_const = function
+    | Opcode.Vfsqrt_v -> Some (0x00, 0x13)
+    | Vfrsqrt7_v -> Some (0x04, 0x13)
+    | Vfrec7_v -> Some (0x05, 0x13)
+    | Vfclass_v -> Some (0x10, 0x13)
+    | Vfcvt_xu_f_v -> Some (0x00, 0x12)
+    | Vfcvt_x_f_v -> Some (0x01, 0x12)
+    | Vfcvt_f_xu_v -> Some (0x02, 0x12)
+    | Vfcvt_f_x_v -> Some (0x03, 0x12)
+    | Vfcvt_rtz_xu_f_v -> Some (0x06, 0x12)
+    | Vfcvt_rtz_x_f_v -> Some (0x07, 0x12)
+    (* [vfwcvt.*]/[vfncvt.*]: the widening/narrowing float<->integer
+       conversion families - the same {!opfvv_unary_const} shape as
+       [vfcvt.*.v]/[vfsqrt.v]/etc. above, just further rs1-position
+       constants under the *same* funct6 (0x12) [vfcvt.*.v] already uses
+       (disambiguated purely by rs1-position, the same way [vfcvt.*.v]'s
+       own six entries are). riscv-opcodes also lists two `bf16` sibling
+       mnemonics, [vfwcvtbf16.f.f.v] (rs1 0x0d) and [vfncvtbf16.f.f.w] (rs1
+       0x1d) - both `rv_zvfbfmin`, a sub-extension with no existing
+       requirement/admission plumbing anywhere in this codebase, unlike
+       every other mnemonic promoted so far (all plain `rv_v`) - so they
+       are deliberately not admitted in this slice. Confirmed against real
+       GNU as, byte-identical on RV32/RV64: `vfwcvt.xu.f.v v1,v2` ->
+       `4a2410d7`, `vfwcvt.x.f.v` -> `4a2490d7`, `vfwcvt.f.xu.v` ->
+       `4a2510d7`, `vfwcvt.f.x.v` -> `4a2590d7`, `vfwcvt.f.f.v` ->
+       `4a2610d7`, `vfwcvt.rtz.xu.f.v` -> `4a2710d7`, `vfwcvt.rtz.x.f.v` ->
+       `4a2790d7`, `vfncvt.xu.f.w` -> `4a2810d7`, `vfncvt.x.f.w` ->
+       `4a2890d7`, `vfncvt.f.xu.w` -> `4a2910d7`, `vfncvt.f.x.w` ->
+       `4a2990d7`, `vfncvt.f.f.w` -> `4a2a10d7`, `vfncvt.rod.f.f.w` ->
+       `4a2a90d7`, `vfncvt.rtz.xu.f.w` -> `4a2b10d7`, `vfncvt.rtz.x.f.w` ->
+       `4a2b90d7`; masked, e.g. `vfwcvt.f.x.v v1,v2,v0.t` -> `482590d7`. A
+       third operand is "illegal operands" on real GNU as, matching
+       [vfcvt.*.v]'s own precedent - no `.vx`/`.vf`/`.vi` sibling for any
+       of these. *)
+    | Vfwcvt_xu_f_v -> Some (0x08, 0x12)
+    | Vfwcvt_x_f_v -> Some (0x09, 0x12)
+    | Vfwcvt_f_xu_v -> Some (0x0a, 0x12)
+    | Vfwcvt_f_x_v -> Some (0x0b, 0x12)
+    | Vfwcvt_f_f_v -> Some (0x0c, 0x12)
+    | Vfwcvt_rtz_xu_f_v -> Some (0x0e, 0x12)
+    | Vfwcvt_rtz_x_f_v -> Some (0x0f, 0x12)
+    | Vfncvt_xu_f_w -> Some (0x10, 0x12)
+    | Vfncvt_x_f_w -> Some (0x11, 0x12)
+    | Vfncvt_f_xu_w -> Some (0x12, 0x12)
+    | Vfncvt_f_x_w -> Some (0x13, 0x12)
+    | Vfncvt_f_f_w -> Some (0x14, 0x12)
+    | Vfncvt_rod_f_f_w -> Some (0x15, 0x12)
+    | Vfncvt_rtz_xu_f_w -> Some (0x16, 0x12)
+    | Vfncvt_rtz_x_f_w -> Some (0x17, 0x12)
+    | _ -> None
+
   (* The multiply-accumulate family - [vmacc]/[vnmsac]/[vmadd]/[vnmsub] and
      their widening siblings [vwmaccu]/[vwmacc]/[vwmaccsu]/[vwmaccus] - uses
      the identical OPMVV (funct3 = 2)/OPMVX (funct3 = 6) funct6-plus-vm-into-
@@ -2864,6 +3449,68 @@ module Make (P : PROFILE) = struct
     | Vwmacc_vx -> Some 0x3d
     | Vwmaccus_vx -> Some 0x3e
     | Vwmaccsu_vx -> Some 0x3f
+    | _ -> None
+
+  (* [vfmadd]/[vfnmadd]/[vfmsub]/[vfnmsub]/[vfmacc]/[vfnmacc]/[vfmsac]/
+     [vfnmsac]: the floating fused multiply-add family - the identical
+     reordered-operand shape {!opmacc_funct6}/{!opmaccx_funct6} model
+     ([<mnemonic> vd, vs1-or-rs1, vs2]), but OPFVV (funct3 = 1)/OPFVF
+     (funct3 = 5) rather than OPMVV/OPMVX, with a floating-point-register
+     [rs1] in the [.vf] form. Confirmed by decoding the assembled word's
+     own vs1/vs2 field bits, not just accepted/rejected status:
+     `vfmacc.vv v1,v2,v3` places `v2` in the vs1 field position and `v3`
+     in the vs2 one (vd=1, vs1-field=2, vs2-field=3, funct6=0x2c);
+     `vfmacc.vf v1,fa0,v3` places `fa0` (f10) in the rs1 field position
+     and `v3` in the vs2 one (vd=1, rs1-field=10, vs2-field=3). Confirmed
+     against real GNU as, byte-identical on RV32/RV64: `vfmadd.vv` ->
+     `a23110d7`, `vfnmadd.vv` -> `a63110d7`, `vfmsub.vv` -> `aa3110d7`,
+     `vfnmsub.vv` -> `ae3110d7`, `vfmacc.vv` -> `b23110d7`, `vfmacc.vf
+     v1,fa0,v3` -> `b23550d7`, `vfnmacc.vv` -> `b63110d7`, `vfmsac.vv` ->
+     `ba3110d7`, `vfnmsac.vv` -> `be3110d7`; masked, e.g. `vfmacc.vv
+     v1,v2,v3,v0.t` -> `b03110d7`. *)
+  let opfmacc_funct6 = function
+    | Opcode.Vfmadd_vv -> Some 0x28
+    | Vfnmadd_vv -> Some 0x29
+    | Vfmsub_vv -> Some 0x2a
+    | Vfnmsub_vv -> Some 0x2b
+    | Vfmacc_vv -> Some 0x2c
+    | Vfnmacc_vv -> Some 0x2d
+    | Vfmsac_vv -> Some 0x2e
+    | Vfnmsac_vv -> Some 0x2f
+    (* [vfwmacc]/[vfwmsac]/[vfwnmacc]/[vfwnmsac]: the widening floating
+       fused-multiply-add family - the identical reordered-operand shape
+       {!opfmacc_funct6}/{!opfmaccf_funct6} model ([<mnemonic> vd,
+       vs1-or-rs1, vs2]) [vfmadd]/[vfmacc]/etc. already use, just a
+       different funct6 range; confirmed by decoding the assembled word's
+       own vs1/vs2 field bits, not just accepted/rejected status:
+       `vfwmacc.vv v1,v2,v3` places `v2` in the vs1 field position and
+       `v3` in the vs2 one (vd=1, vs1-field=2, vs2-field=3, funct6=0x3c).
+       No [.vi] sibling for any of the eight. Confirmed against real GNU
+       as, byte-identical on RV32/RV64: `vfwmacc.vv` -> `f23110d7`,
+       `vfwmacc.vf v1,fa0,v3` -> `f23550d7`, `vfwmsac.vv` -> `fa3110d7`,
+       `vfwmsac.vf` -> `fa3550d7`, `vfwnmacc.vv` -> `f63110d7`,
+       `vfwnmacc.vf` -> `f63550d7`, `vfwnmsac.vv` -> `fe3110d7`,
+       `vfwnmsac.vf` -> `fe3550d7`; masked, e.g. `vfwmacc.vv
+       v1,v2,v3,v0.t` -> `f03110d7`. *)
+    | Vfwmacc_vv -> Some 0x3c
+    | Vfwnmacc_vv -> Some 0x3d
+    | Vfwmsac_vv -> Some 0x3e
+    | Vfwnmsac_vv -> Some 0x3f
+    | _ -> None
+
+  let opfmaccf_funct6 = function
+    | Opcode.Vfmadd_vf -> Some 0x28
+    | Vfnmadd_vf -> Some 0x29
+    | Vfmsub_vf -> Some 0x2a
+    | Vfnmsub_vf -> Some 0x2b
+    | Vfmacc_vf -> Some 0x2c
+    | Vfnmacc_vf -> Some 0x2d
+    | Vfmsac_vf -> Some 0x2e
+    | Vfnmsac_vf -> Some 0x2f
+    | Vfwmacc_vf -> Some 0x3c
+    | Vfwnmacc_vf -> Some 0x3d
+    | Vfwmsac_vf -> Some 0x3e
+    | Vfwnmsac_vf -> Some 0x3f
     | _ -> None
 
   (* [vmand]/[vmandn]/[vmor]/[vmxor]/[vmorn]/[vmnand]/[vmnor]/[vmxnor]:
@@ -2971,6 +3618,18 @@ module Make (P : PROFILE) = struct
      `vmv.s.x v1,a0,v0.t`). Confirmed against real GNU as, byte-identical
      on RV32/RV64: `vmv.s.x v1,a0` -> `420560d7`. *)
   let x_to_v_unary_const = function Opcode.Vmv_s_x -> Some (0, 0x10) | _ -> None
+
+  (* [vfmv.f.s]/[vfmv.s.f]: the FPR-typed mirror image of {!mv_x_s_const}/
+     {!x_to_v_unary_const} - the identical fixed-constant/funct6 0x10
+     shape, but OPFVV (funct3 = 1)/OPFVF (funct3 = 5) rather than OPMVV/
+     OPMVX, and a floating-point register ([Reg.F]) rather than a GPR on
+     the scalar side. No masked sibling exists for either (real GNU as
+     rejects `vfmv.f.s fa0,v2,v0.t`/`vfmv.s.f v1,fa0,v0.t` as "illegal
+     operands"). Confirmed against real GNU as, byte-identical on
+     RV32/RV64: `vfmv.f.s fa0,v2` -> `42201557`, `vfmv.s.f v1,fa0` ->
+     `420550d7`. *)
+  let fmv_f_s_const = function Opcode.Vfmv_f_s -> Some (0, 0x10) | _ -> None
+  let f_to_v_unary_const = function Opcode.Vfmv_s_f -> Some (0, 0x10) | _ -> None
 
   (* [vmv.v.v]/[.v.x]/[.v.i]: OP-V's unconditional-move family - a
      genuinely new two-operand shape under OPIVV(funct3=0)/OPIVX(funct3=4)/
@@ -3537,6 +4196,18 @@ module Make (P : PROFILE) = struct
                   { name = opn; opcode = 0x57; funct3 = 4; funct7 = funct6 lsl 1; rd; rs1; rs2 };
               ]
         | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; rs1_op; carry ] when is_v0 carry && Option.is_some (carry_m_vf_funct6 op)
+      -> (
+        (* [vfmerge.vfm vd, vs2, rs1, v0] - OPFVF (funct3 = 5), [vm] fixed
+           at 0, FPR [rs1]; see {!carry_m_vf_funct6} above. *)
+        match (vreg vd_op, vreg vs2_op, freg rs1_op, carry_m_vf_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 5; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
     | op, [ vd_op; vs2_op; imm_op; carry ] when is_v0 carry && Option.is_some (carry_m_vi_funct6 op)
       -> (
         (* [<mnemonic> vd, vs2, simm5, v0] - OPIVI (funct3 = 3), [vm]
@@ -3671,6 +4342,64 @@ module Make (P : PROFILE) = struct
                   { name = opn; opcode = 0x57; funct3 = 6; funct7 = funct6 lsl 1; rd; rs1; rs2 };
               ]
         | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; vs1_op ] when Option.is_some (opfvv_funct6 op) -> (
+        (* [<mnemonic> vd, vs2, vs1] - OPFVV (funct3 = 1): the same
+           all-vector-register shape as OPIVV/OPMVV, just a different
+           funct3. *)
+        match (vreg vd_op, vreg vs2_op, vreg vs1_op, opfvv_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 1;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; vs1_op; mask ] when is_v0t mask && Option.is_some (opfvv_funct6 op) -> (
+        match (vreg vd_op, vreg vs2_op, vreg vs1_op, opfvv_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 1; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; rs1_op ] when Option.is_some (opfvf_funct6 op) -> (
+        (* [<mnemonic> vd, vs2, rs1] - OPFVF (funct3 = 5): the scalar-
+           broadcast shape, [rs1] a floating-point register ([Reg.F])
+           rather than OPIVX/OPMVX's GPR. *)
+        match (vreg vd_op, vreg vs2_op, freg rs1_op, opfvf_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 5;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; rs1_op; mask ] when is_v0t mask && Option.is_some (opfvf_funct6 op) -> (
+        match (vreg vd_op, vreg vs2_op, freg rs1_op, opfvf_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 5; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
     | op, [ vd_op; vs1_op; vs2_op ] when Option.is_some (opmacc_funct6 op) -> (
         (* [<mnemonic> vd, vs1, vs2] - OPMVV (funct3 = 2), multiply-
            accumulate's own reordered text operand order (see
@@ -3729,6 +4458,66 @@ module Make (P : PROFILE) = struct
               [
                 Lowered.R
                   { name = opn; opcode = 0x57; funct3 = 6; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs1_op; vs2_op ] when Option.is_some (opfmacc_funct6 op) -> (
+        (* [<mnemonic> vd, vs1, vs2] - OPFVV (funct3 = 1), the floating
+           FMA family's own reordered text operand order; see
+           {!opfmacc_funct6} above. *)
+        match (vreg vd_op, vreg vs1_op, vreg vs2_op, opfmacc_funct6 op) with
+        | Some rd, Some rs1, Some rs2, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 1;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs1_op; vs2_op; mask ] when is_v0t mask && Option.is_some (opfmacc_funct6 op)
+      -> (
+        match (vreg vd_op, vreg vs1_op, vreg vs2_op, opfmacc_funct6 op) with
+        | Some rd, Some rs1, Some rs2, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 1; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; rs1_op; vs2_op ] when Option.is_some (opfmaccf_funct6 op) -> (
+        (* [<mnemonic> vd, rs1, vs2] - OPFVF (funct3 = 5), the
+           scalar-broadcast sibling with the identical reordered text
+           operand order and a floating-point-register [rs1]. *)
+        match (vreg vd_op, freg rs1_op, vreg vs2_op, opfmaccf_funct6 op) with
+        | Some rd, Some rs1, Some rs2, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 5;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; rs1_op; vs2_op; mask ] when is_v0t mask && Option.is_some (opfmaccf_funct6 op)
+      -> (
+        match (vreg vd_op, freg rs1_op, vreg vs2_op, opfmaccf_funct6 op) with
+        | Some rd, Some rs1, Some rs2, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 5; funct7 = funct6 lsl 1; rd; rs1; rs2 };
               ]
         | _ -> wrong opn)
     | op, [ vd_op; vs2_op; vs1_op ] when Option.is_some (mm_funct6 op) -> (
@@ -3822,6 +4611,35 @@ module Make (P : PROFILE) = struct
                   { name = opn; opcode = 0x57; funct3 = 2; funct7 = funct6 lsl 1; rd; rs1; rs2 };
               ]
         | _ -> wrong opn)
+    | op, [ vd_op; vs2_op ] when Option.is_some (opfvv_unary_const op) -> (
+        (* [<mnemonic> vd, vs2] - OPFVV (funct3 = 1) with a per-mnemonic
+           fixed funct6 and a fixed per-mnemonic constant in [vs1]'s field
+           position; see {!opfvv_unary_const} above. *)
+        match (vreg vd_op, vreg vs2_op, opfvv_unary_const op) with
+        | Some rd, Some rs2, Some (rs1, funct6) ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 1;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; mask ] when is_v0t mask && Option.is_some (opfvv_unary_const op) -> (
+        match (vreg vd_op, vreg vs2_op, opfvv_unary_const op) with
+        | Some rd, Some rs2, Some (rs1, funct6) ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 1; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
     | op, [ vd_op; vs2_op ] when Option.is_some (opmvv_gpr_unary_const op) -> (
         (* [<mnemonic> rd, vs2] - the same shape as {!opmvv_unary_const}
            above but with a GPR destination; see {!opmvv_gpr_unary_const}. *)
@@ -3889,6 +4707,44 @@ module Make (P : PROFILE) = struct
                   };
               ]
         | _ -> wrong opn)
+    | op, [ vd_op; vs2_op ] when Option.is_some (fmv_f_s_const op) -> (
+        (* [vfmv.f.s rd, vs2] - the FPR-destination mirror of
+           {!mv_x_s_const}'s own lowering arm; see {!fmv_f_s_const} above. *)
+        match (freg vd_op, vreg vs2_op, fmv_f_s_const op) with
+        | Some rd, Some rs2, Some (rs1, funct6) ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 1;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; rs1_op ] when Option.is_some (f_to_v_unary_const op) -> (
+        (* [vfmv.s.f vd, rs1] - OPFVF (funct3 = 5), vector destination and
+           FPR source; see {!f_to_v_unary_const} above. *)
+        match (vreg vd_op, freg rs1_op, f_to_v_unary_const op) with
+        | Some rd, Some rs1, Some (rs2, funct6) ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 5;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
     | Opcode.Vmv_v_v, [ vd_op; vs1_op ] -> (
         (* [vmv.v.v vd, vs1] - OPIVV (funct3 = 0), no [vs2] operand at
            all (fixed constant 0), funct6 fixed at 0x17. *)
@@ -3923,6 +4779,20 @@ module Make (P : PROFILE) = struct
                       { name = opn; opcode = 0x57; funct3 = 3; funct7 = 0x2f; rd; rs1; rs2 = 0 };
                   ]
             | _ -> wrong opn)
+        | _ -> wrong opn)
+    | Opcode.Vfmv_v_f, [ vd_op; rs1_op ] -> (
+        (* [vfmv.v.f vd, rs1] - OPFVF (funct3 = 5), the FPR-scalar sibling
+           of [vmv.v.v]/[.v.x]/[.v.i], same fixed [vs2]-position constant
+           and funct6 0x17. Confirmed against real GNU as, byte-identical
+           on RV32/RV64: `vfmv.v.f v1,fa0` -> `5e0550d7`; a masked form is
+           "illegal operands" (no `, v0.t` sibling), matching the rest of
+           the [vmv.v.*] family. *)
+        match (vreg vd_op, freg rs1_op) with
+        | Some rd, Some rs1 ->
+            Ok
+              [
+                Lowered.R { name = opn; opcode = 0x57; funct3 = 5; funct7 = 0x2f; rd; rs1; rs2 = 0 };
+              ]
         | _ -> wrong opn)
     | op, [ vd_op; vs2_op ] when Option.is_some (whole_reg_move_const op) -> (
         (* [<mnemonic> vd, vs2] - OPIVI (funct3 = 3), whole-register-group
