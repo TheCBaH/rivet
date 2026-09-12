@@ -1526,6 +1526,238 @@ val vfwnmsac_vf_entries : entry list
 (** [vfwnmsac.vf v1, fa0, v3] - {!vfwnmsac_vv_entries}'s scalar-broadcast
     sibling. *)
 
+val vle8_v_entries : entry list
+(** [vle8.v v1, (a0)] - V's unit-stride vector-register load, the entry point
+    into the load/store slice of [rv_v]. *)
+
+val vle16_v_entries : entry list
+(** [vle16.v v1, (a0)] - {!vle8_v_entries}'s wider-element sibling. *)
+
+val vle32_v_entries : entry list
+(** [vle32.v v1, (a0)] - {!vle8_v_entries}'s wider-element sibling. *)
+
+val vle64_v_entries : entry list
+(** [vle64.v v1, (a0)] - {!vle8_v_entries}'s wider-element sibling. *)
+
+val vse8_v_entries : entry list
+(** [vse8.v v1, (a0)] - {!vle8_v_entries}'s store-shape sibling. *)
+
+val vse16_v_entries : entry list
+(** [vse16.v v1, (a0)] - {!vse8_v_entries}'s wider-element sibling. *)
+
+val vse32_v_entries : entry list
+(** [vse32.v v1, (a0)] - {!vse8_v_entries}'s wider-element sibling. *)
+
+val vse64_v_entries : entry list
+(** [vse64.v v1, (a0)] - {!vse8_v_entries}'s wider-element sibling. *)
+
+val vlm_v_entries : entry list
+(** [vlm.v v1, (a0)] - V's mask-register load, {!vle8_v_entries}'s exact
+    shape reused (no masked variant exists to note as out of scope). *)
+
+val vsm_v_entries : entry list
+(** [vsm.v v1, (a0)] - {!vlm_v_entries}'s store-shape sibling. *)
+
+val vle8ff_v_entries : entry list
+(** [vle8ff.v v1, (a0)] - V's fault-only-first unit-stride load,
+    {!vle8_v_entries}'s exact shape reused (no store counterpart). *)
+
+val vle16ff_v_entries : entry list
+(** [vle16ff.v v1, (a0)] - {!vle8ff_v_entries}'s wider-element sibling. *)
+
+val vle32ff_v_entries : entry list
+(** [vle32ff.v v1, (a0)] - {!vle8ff_v_entries}'s wider-element sibling. *)
+
+val vle64ff_v_entries : entry list
+(** [vle64ff.v v1, (a0)] - {!vle8ff_v_entries}'s wider-element sibling. *)
+
+val vlse8_v_entries : entry list
+(** [vlse8.v v1, (a0), a1] - V's strided vector-register load, a
+    three-operand "vd, (base), rs2" shape ({!vle8_v_entries}'s memory
+    operand plus a plain-GPR stride). *)
+
+val vlse16_v_entries : entry list
+(** [vlse16.v v1, (a0), a1] - {!vlse8_v_entries}'s wider-element sibling. *)
+
+val vlse32_v_entries : entry list
+(** [vlse32.v v1, (a0), a1] - {!vlse8_v_entries}'s wider-element sibling. *)
+
+val vlse64_v_entries : entry list
+(** [vlse64.v v1, (a0), a1] - {!vlse8_v_entries}'s wider-element sibling. *)
+
+val vsse8_v_entries : entry list
+(** [vsse8.v v1, (a0), a1] - {!vlse8_v_entries}'s store-shape sibling. *)
+
+val vsse16_v_entries : entry list
+(** [vsse16.v v1, (a0), a1] - {!vsse8_v_entries}'s wider-element sibling. *)
+
+val vsse32_v_entries : entry list
+(** [vsse32.v v1, (a0), a1] - {!vsse8_v_entries}'s wider-element sibling. *)
+
+val vsse64_v_entries : entry list
+(** [vsse64.v v1, (a0), a1] - {!vsse8_v_entries}'s wider-element sibling. *)
+
+val vluxei8_v_entries : entry list
+(** [vluxei8.v v1, (a0), v2] - V's unordered indexed vector-register
+    load, {!vlse8_v_entries}'s shape with a vector-register index in
+    place of the GPR stride. *)
+
+val vluxei16_v_entries : entry list
+(** [vluxei16.v v1, (a0), v2] - {!vluxei8_v_entries}'s wider-index
+    sibling. *)
+
+val vluxei32_v_entries : entry list
+(** [vluxei32.v v1, (a0), v2] - {!vluxei8_v_entries}'s wider-index
+    sibling. *)
+
+val vluxei64_v_entries : entry list
+(** [vluxei64.v v1, (a0), v2] - {!vluxei8_v_entries}'s wider-index
+    sibling. *)
+
+val vloxei8_v_entries : entry list
+(** [vloxei8.v v1, (a0), v2] - {!vluxei8_v_entries}'s ordered sibling
+    (mop=0b11 instead of 0b01). *)
+
+val vloxei16_v_entries : entry list
+(** [vloxei16.v v1, (a0), v2] - {!vloxei8_v_entries}'s wider-index
+    sibling. *)
+
+val vloxei32_v_entries : entry list
+(** [vloxei32.v v1, (a0), v2] - {!vloxei8_v_entries}'s wider-index
+    sibling. *)
+
+val vloxei64_v_entries : entry list
+(** [vloxei64.v v1, (a0), v2] - {!vloxei8_v_entries}'s wider-index
+    sibling. *)
+
+val vsuxei8_v_entries : entry list
+(** [vsuxei8.v v1, (a0), v2] - {!vluxei8_v_entries}'s store-shape
+    sibling. *)
+
+val vsuxei16_v_entries : entry list
+(** [vsuxei16.v v1, (a0), v2] - {!vsuxei8_v_entries}'s wider-index
+    sibling. *)
+
+val vsuxei32_v_entries : entry list
+(** [vsuxei32.v v1, (a0), v2] - {!vsuxei8_v_entries}'s wider-index
+    sibling. *)
+
+val vsuxei64_v_entries : entry list
+(** [vsuxei64.v v1, (a0), v2] - {!vsuxei8_v_entries}'s wider-index
+    sibling. *)
+
+val vsoxei8_v_entries : entry list
+(** [vsoxei8.v v1, (a0), v2] - {!vloxei8_v_entries}'s store-shape
+    sibling. *)
+
+val vsoxei16_v_entries : entry list
+(** [vsoxei16.v v1, (a0), v2] - {!vsoxei8_v_entries}'s wider-index
+    sibling. *)
+
+val vsoxei32_v_entries : entry list
+(** [vsoxei32.v v1, (a0), v2] - {!vsoxei8_v_entries}'s wider-index
+    sibling. *)
+
+val vsoxei64_v_entries : entry list
+(** [vsoxei64.v v1, (a0), v2] - {!vsoxei8_v_entries}'s wider-index
+    sibling. *)
+
+val vl1re8_v_entries : entry list
+(** [vl1re8.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl1re16_v_entries : entry list
+(** [vl1re16.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl1re32_v_entries : entry list
+(** [vl1re32.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl1re64_v_entries : entry list
+(** [vl1re64.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl2re8_v_entries : entry list
+(** [vl2re8.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl2re16_v_entries : entry list
+(** [vl2re16.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl2re32_v_entries : entry list
+(** [vl2re32.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl2re64_v_entries : entry list
+(** [vl2re64.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl4re8_v_entries : entry list
+(** [vl4re8.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl4re16_v_entries : entry list
+(** [vl4re16.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl4re32_v_entries : entry list
+(** [vl4re32.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl4re64_v_entries : entry list
+(** [vl4re64.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl8re8_v_entries : entry list
+(** [vl8re8.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl8re16_v_entries : entry list
+(** [vl8re16.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl8re32_v_entries : entry list
+(** [vl8re32.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vl8re64_v_entries : entry list
+(** [vl8re64.v v1, (a0)] - V's whole-register load,
+    {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
+    variant). *)
+
+val vs1r_v_entries : entry list
+(** [vs1r.v v1, (a0)] - {!vl1re8_v_entries}'s store-shape sibling
+    (no width variant). *)
+
+val vs2r_v_entries : entry list
+(** [vs2r.v v1, (a0)] - {!vl2re8_v_entries}'s store-shape sibling
+    (no width variant). *)
+
+val vs4r_v_entries : entry list
+(** [vs4r.v v1, (a0)] - {!vl4re8_v_entries}'s store-shape sibling
+    (no width variant). *)
+
+val vs8r_v_entries : entry list
+(** [vs8r.v v1, (a0)] - {!vl8re8_v_entries}'s store-shape sibling
+    (no width variant). *)
+
 val sh1add_entries : entry list
 (** [sh1add a0, a1, a2] on RV32IM_Zba and RV64IM_Zba, Zba's scale-one R-type
     form. *)

@@ -185,8 +185,8 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:549;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:601;
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:607;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:659;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:9;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:9
 
@@ -503,11 +503,57 @@ let test_isa_family_admission repo =
      vfmacc/vfnmacc/vfmsac/vfnmsac's own reordered-operand shape verbatim)
      are likewise each a single, non-import-duplicated rv_v record present
      identically on both profiles, so this slice moves 8 records on EACH
-     profile, straight from blocked to promoted-support. *)
+     profile, straight from blocked to promoted-support. vle8.v/vle16.v/
+     vle32.v/vle64.v/vse8.v/vse16.v/vse32.v/vse64.v (8 mnemonics, V's
+     unit-stride vector-register loads/stores, a genuinely new "vd/vs3,
+     (base)" memory-operand shape reusing lr_form's own zero-offset
+     encoding pattern with a vector register in place of a GPR) are
+     likewise each a single, non-import-duplicated rv_v record present
+     identically on both profiles, so this slice moves 8 records on EACH
+     profile, straight from blocked to promoted-support. vlm.v/vsm.v (2
+     mnemonics, V's mask-register load/store, the identical "vd/vs3,
+     (base)" shape but with a fixed lumop/sumop and vm permanently 1 - no
+     masked variant, and unlike the unit-stride family nf is not even a
+     free field in the source record) are likewise each a single,
+     non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 2 records on EACH profile, straight
+     from blocked to promoted-support. vle8ff.v/vle16ff.v/vle32ff.v/
+     vle64ff.v (4 mnemonics, V's fault-only-first unit-stride loads, the
+     identical "vd, (base)" load shape as vle8.v/etc. but with lumop
+     fixed to 0x10 instead of 0 - no store counterpart) are likewise each
+     a single, non-import-duplicated rv_v record present identically on
+     both profiles, so this slice moves 4 records on EACH profile,
+     straight from blocked to promoted-support. vlse8.v/vlse16.v/
+     vlse32.v/vlse64.v/vsse8.v/vsse16.v/vsse32.v/vsse64.v (8 mnemonics,
+     V's strided loads/stores, a genuinely new three-operand "vd/vs3,
+     (base), rs2" shape - the plain-GPR byte stride carried in the
+     word's rs2 field, mop=0b10) are likewise each a single,
+     non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 8 records on EACH profile, straight
+     from blocked to promoted-support. vluxei8.v/vluxei16.v/vluxei32.v/
+     vluxei64.v/vloxei8.v/vloxei16.v/vloxei32.v/vloxei64.v/vsuxei8.v/
+     vsuxei16.v/vsuxei32.v/vsuxei64.v/vsoxei8.v/vsoxei16.v/vsoxei32.v/
+     vsoxei64.v (16 mnemonics, V's indexed loads/stores, the strided
+     family's own three-operand shape with a vector-register index in
+     place of the GPR stride, mop=0b01/0b11 for unordered/ordered) are
+     likewise each a single, non-import-duplicated rv_v record present
+     identically on both profiles, so this slice moves 16 records on
+     EACH profile, straight from blocked to promoted-support - closing
+     out every remaining blocked rv_v load/store record except the
+     whole-register family. vl{1,2,4,8}re{8,16,32,64}.v/
+     vs{1,2,4,8}r.v (20 mnemonics, V's whole-register loads/stores - the
+     register count is baked into the mnemonic itself, so nf is fixed
+     rather than a free field, exactly like vlm.v/vsm.v, and both
+     vlm_form/vsm_form are reused verbatim with zero new normalization
+     code) are likewise each a single, non-import-duplicated rv_v record
+     present identically on both profiles, so this slice moves 20
+     records on EACH profile, straight from blocked to promoted-support
+     - closing every remaining blocked rv_v record: the entire 375-record
+     family is now promoted-support. *)
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
-    ~promoted_support:529 ~blocked:540;
+    ~promoted_support:587 ~blocked:482;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
-    ~promoted_support:571 ~blocked:553;
+    ~promoted_support:629 ~blocked:495;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0 ~gas_generatable:5
     ~promoted_support:4 ~blocked:7878;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
@@ -565,9 +611,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 1168)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 1284)"
        !roundtrip_count)
-    (!roundtrip_count = 1168)
+    (!roundtrip_count = 1284)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's

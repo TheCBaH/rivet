@@ -2957,6 +2957,294 @@ let test_lr_w () =
        (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "lr.w-aq-rl-not-modeled")
        form.diagnostics)
 
+(* vle32.v/vse32.v: V's unit-stride load/store shape, verbatim-extracted
+   from the checked-in riscv32.jsonl - representative of {!v_load_form}/
+   [v_store_form] (vle8.v/vle16.v/vle64.v and vse8.v/vse16.v/vse64.v share
+   the identical shape, only the width funct3 differs). *)
+let vle32_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 28, "name": "bits[28:28]", "width": 1}, {"lsb": 26, "name": "bits[27:26]", "width": 2}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 29, "name": "nf", "width": 3}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0x1df0707f", "value": "0x6007", "width_bits": 32}, "kind": "instruction-form", "native_name": "vle32.v", "origin": {"line": 25, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["nf", "vm", "rs1", "vd"], "raw": {"line": "vle32.v        nf 28=0 27..26=0 vm 24..20=0 rs1 14..12=0x6  vd 6..0=0x07", "tokens": ["vle32.v", "nf", "28=0", "27..26=0", "vm", "24..20=0", "rs1", "14..12=0x6", "vd", "6..0=0x07"]}, "upstream-resolved": {"mask": "0x1df0707f", "match": "0x6007", "variable_fields": ["nf", "vm", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vle32.v@L25", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vle32_v () =
+  let rec_ = decode_or_fail "vle32.v" vle32_v_json in
+  let form = normalize_or_fail "vle32.v" rec_ in
+  check "vle32.v: requirement is the V feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vle32.v: vd a vector register, base a GPR, in that order, no offset operand"
+    (match form.operands with
+    | [
+     { op_name = "vd"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = Out; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vle32.v: renders as vd, (base)"
+    (Isa_norm_model.render_syntax form.syntax = "vle32.v vd, (base)");
+  check "vle32.v: flags nf as not modeled"
+    (List.exists
+       (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "vle32.v-nf-not-modeled")
+       form.diagnostics)
+
+let vse32_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 28, "name": "bits[28:28]", "width": 1}, {"lsb": 26, "name": "bits[27:26]", "width": 2}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 29, "name": "nf", "width": 3}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vs3", "width": 5}], "kind": "fixed_bits", "mask": "0x1df0707f", "value": "0x6027", "width_bits": 32}, "kind": "instruction-form", "native_name": "vse32.v", "origin": {"line": 29, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["nf", "vm", "rs1", "vs3"], "raw": {"line": "vse32.v        nf 28=0 27..26=0 vm 24..20=0 rs1 14..12=0x6 vs3 6..0=0x27", "tokens": ["vse32.v", "nf", "28=0", "27..26=0", "vm", "24..20=0", "rs1", "14..12=0x6", "vs3", "6..0=0x27"]}, "upstream-resolved": {"mask": "0x1df0707f", "match": "0x6027", "variable_fields": ["nf", "vm", "rs1", "vs3"]}}, "record_id": "riscv-opcodes:rv_v:vse32.v@L29", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vse32_v () =
+  let rec_ = decode_or_fail "vse32.v" vse32_v_json in
+  let form = normalize_or_fail "vse32.v" rec_ in
+  check "vse32.v: requirement is the V feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vse32.v: vs3 a vector register, base a GPR, in that order, no offset operand"
+    (match form.operands with
+    | [
+     { op_name = "vs3"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = In; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vse32.v: renders as vs3, (base)"
+    (Isa_norm_model.render_syntax form.syntax = "vse32.v vs3, (base)");
+  check "vse32.v: flags nf as not modeled"
+    (List.exists
+       (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "vse32.v-nf-not-modeled")
+       form.diagnostics)
+
+(* vlm.v/vsm.v: V's mask-register load/store, verbatim-extracted from the
+   checked-in riscv32.jsonl - unlike vle32.v/vse32.v, nf is not even a
+   free field here (the record's own encoding.mask covers it), so there
+   is no nf-not-modeled diagnostic to check for. *)
+let vlm_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 28, "name": "bits[31:28]", "width": 4}, {"lsb": 26, "name": "bits[27:26]", "width": 2}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x2b00007", "width_bits": 32}, "kind": "instruction-form", "native_name": "vlm.v", "origin": {"line": 21, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["rs1", "vd"], "raw": {"line": "vlm.v          31..28=0 27..26=0 25=1 24..20=0xb rs1 14..12=0x0  vd 6..0=0x07", "tokens": ["vlm.v", "31..28=0", "27..26=0", "25=1", "24..20=0xb", "rs1", "14..12=0x0", "vd", "6..0=0x07"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x2b00007", "variable_fields": ["rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vlm.v@L21", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vlm_v () =
+  let rec_ = decode_or_fail "vlm.v" vlm_v_json in
+  let form = normalize_or_fail "vlm.v" rec_ in
+  check "vlm.v: requirement is the V feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vlm.v: vd a vector register, base a GPR, in that order, no offset operand"
+    (match form.operands with
+    | [
+     { op_name = "vd"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = Out; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vlm.v: renders as vd, (base)"
+    (Isa_norm_model.render_syntax form.syntax = "vlm.v vd, (base)");
+  check "vlm.v: no nf-not-modeled diagnostic (nf is not a free field here)"
+    (not
+       (List.exists
+          (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "vlm.v-nf-not-modeled")
+          form.diagnostics))
+
+let vsm_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 28, "name": "bits[31:28]", "width": 4}, {"lsb": 26, "name": "bits[27:26]", "width": 2}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vs3", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x2b00027", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsm.v", "origin": {"line": 22, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["rs1", "vs3"], "raw": {"line": "vsm.v          31..28=0 27..26=0 25=1 24..20=0xb rs1 14..12=0x0 vs3 6..0=0x27", "tokens": ["vsm.v", "31..28=0", "27..26=0", "25=1", "24..20=0xb", "rs1", "14..12=0x0", "vs3", "6..0=0x27"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x2b00027", "variable_fields": ["rs1", "vs3"]}}, "record_id": "riscv-opcodes:rv_v:vsm.v@L22", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsm_v () =
+  let rec_ = decode_or_fail "vsm.v" vsm_v_json in
+  let form = normalize_or_fail "vsm.v" rec_ in
+  check "vsm.v: requirement is the V feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vsm.v: vs3 a vector register, base a GPR, in that order, no offset operand"
+    (match form.operands with
+    | [
+     { op_name = "vs3"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = In; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vsm.v: renders as vs3, (base)"
+    (Isa_norm_model.render_syntax form.syntax = "vsm.v vs3, (base)");
+  check "vsm.v: no nf-not-modeled diagnostic (nf is not a free field here)"
+    (not
+       (List.exists
+          (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "vsm.v-nf-not-modeled")
+          form.diagnostics))
+
+(* vle32ff.v: V's fault-only-first unit-stride load, verbatim-extracted
+   from the checked-in riscv32.jsonl - representative of {!v_load_form}
+   reused directly (unlike vlm.v/vsm.v, nf/vm are free fields here, same
+   as vle32.v, just with lumop fixed to 0x10 instead of 0 - invisible at
+   this normalization layer, so {!v_load_form} needs no changes). *)
+let vle32ff_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 28, "name": "bits[28:28]", "width": 1}, {"lsb": 26, "name": "bits[27:26]", "width": 2}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 29, "name": "nf", "width": 3}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0x1df0707f", "value": "0x1006007", "width_bits": 32}, "kind": "instruction-form", "native_name": "vle32ff.v", "origin": {"line": 69, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["nf", "vm", "rs1", "vd"], "raw": {"line": "vle32ff.v        nf 28=0 27..26=0 vm 24..20=0x10 rs1 14..12=0x6  vd 6..0=0x07", "tokens": ["vle32ff.v", "nf", "28=0", "27..26=0", "vm", "24..20=0x10", "rs1", "14..12=0x6", "vd", "6..0=0x07"]}, "upstream-resolved": {"mask": "0x1df0707f", "match": "0x1006007", "variable_fields": ["nf", "vm", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vle32ff.v@L69", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vle32ff_v () =
+  let rec_ = decode_or_fail "vle32ff.v" vle32ff_v_json in
+  let form = normalize_or_fail "vle32ff.v" rec_ in
+  check "vle32ff.v: requirement is the V feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vle32ff.v: vd a vector register, base a GPR, in that order, no offset operand"
+    (match form.operands with
+    | [
+     { op_name = "vd"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = Out; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vle32ff.v: renders as vd, (base)"
+    (Isa_norm_model.render_syntax form.syntax = "vle32ff.v vd, (base)");
+  check "vle32ff.v: flags nf as not modeled"
+    (List.exists
+       (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "vle32ff.v-nf-not-modeled")
+       form.diagnostics)
+
+(* vlse32.v/vsse32.v: V's strided load/store, verbatim-extracted from the
+   checked-in riscv32.jsonl - representative of {!v_strided_load_form}/
+   [v_strided_store_form] (vlse8/16/64.v and vsse8/16/64.v share the
+   identical shape, only the requirement/width differ). *)
+let vlse32_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 28, "name": "bits[28:28]", "width": 1}, {"lsb": 26, "name": "bits[27:26]", "width": 2}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 29, "name": "nf", "width": 3}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0x1c00707f", "value": "0x8006007", "width_bits": 32}, "kind": "instruction-form", "native_name": "vlse32.v", "origin": {"line": 47, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["nf", "vm", "rs2", "rs1", "vd"], "raw": {"line": "vlse32.v        nf 28=0 27..26=2 vm rs2 rs1 14..12=0x6  vd 6..0=0x07", "tokens": ["vlse32.v", "nf", "28=0", "27..26=2", "vm", "rs2", "rs1", "14..12=0x6", "vd", "6..0=0x07"]}, "upstream-resolved": {"mask": "0x1c00707f", "match": "0x8006007", "variable_fields": ["nf", "vm", "rs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vlse32.v@L47", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vlse32_v () =
+  let rec_ = decode_or_fail "vlse32.v" vlse32_v_json in
+  let form = normalize_or_fail "vlse32.v" rec_ in
+  check "vlse32.v: requirement is the V feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vlse32.v: vd/base/rs2, vd a vector register, base/rs2 GPRs, no offset operand"
+    (match form.operands with
+    | [
+     { op_name = "vd"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = Out; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+     { op_name = "rs2"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vlse32.v: renders as vd, (base), rs2"
+    (Isa_norm_model.render_syntax form.syntax = "vlse32.v vd, (base), rs2");
+  check "vlse32.v: flags nf as not modeled"
+    (List.exists
+       (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "vlse32.v-nf-not-modeled")
+       form.diagnostics)
+
+let vsse32_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 28, "name": "bits[28:28]", "width": 1}, {"lsb": 26, "name": "bits[27:26]", "width": 2}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 29, "name": "nf", "width": 3}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vs3", "width": 5}], "kind": "fixed_bits", "mask": "0x1c00707f", "value": "0x8006027", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsse32.v", "origin": {"line": 51, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["nf", "vm", "rs2", "rs1", "vs3"], "raw": {"line": "vsse32.v        nf 28=0 27..26=2 vm rs2 rs1 14..12=0x6 vs3 6..0=0x27", "tokens": ["vsse32.v", "nf", "28=0", "27..26=2", "vm", "rs2", "rs1", "14..12=0x6", "vs3", "6..0=0x27"]}, "upstream-resolved": {"mask": "0x1c00707f", "match": "0x8006027", "variable_fields": ["nf", "vm", "rs2", "rs1", "vs3"]}}, "record_id": "riscv-opcodes:rv_v:vsse32.v@L51", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsse32_v () =
+  let rec_ = decode_or_fail "vsse32.v" vsse32_v_json in
+  let form = normalize_or_fail "vsse32.v" rec_ in
+  check "vsse32.v: requirement is the V feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vsse32.v: vs3/base/rs2, vs3 a vector register, base/rs2 GPRs, no offset operand"
+    (match form.operands with
+    | [
+     { op_name = "vs3"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = In; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+     { op_name = "rs2"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vsse32.v: renders as vs3, (base), rs2"
+    (Isa_norm_model.render_syntax form.syntax = "vsse32.v vs3, (base), rs2");
+  check "vsse32.v: flags nf as not modeled"
+    (List.exists
+       (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "vsse32.v-nf-not-modeled")
+       form.diagnostics)
+
+(* vluxei32.v/vsuxei32.v: V's indexed load/store, verbatim-extracted from
+   the checked-in riscv32.jsonl - representative of {!v_indexed_load_form}/
+   [v_indexed_store_form] (vluxei8/16/64.v, vsuxei8/16/64.v, and the
+   ordered vloxei*/vsoxei* siblings all share the identical shape, only
+   the requirement/width/mop differ). *)
+let vluxei32_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 28, "name": "bits[28:28]", "width": 1}, {"lsb": 26, "name": "bits[27:26]", "width": 2}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 29, "name": "nf", "width": 3}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0x1c00707f", "value": "0x4006007", "width_bits": 32}, "kind": "instruction-form", "native_name": "vluxei32.v", "origin": {"line": 36, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["nf", "vm", "vs2", "rs1", "vd"], "raw": {"line": "vluxei32.v     nf 28=0 27..26=1 vm vs2 rs1 14..12=0x6  vd 6..0=0x07", "tokens": ["vluxei32.v", "nf", "28=0", "27..26=1", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x07"]}, "upstream-resolved": {"mask": "0x1c00707f", "match": "0x4006007", "variable_fields": ["nf", "vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vluxei32.v@L36", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vluxei32_v () =
+  let rec_ = decode_or_fail "vluxei32.v" vluxei32_v_json in
+  let form = normalize_or_fail "vluxei32.v" rec_ in
+  check "vluxei32.v: requirement is the V feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vluxei32.v: vd/base/vs2, vd/vs2 vector registers, base a GPR, no offset operand"
+    (match form.operands with
+    | [
+     { op_name = "vd"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = Out; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+     { op_name = "vs2"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vluxei32.v: renders as vd, (base), vs2"
+    (Isa_norm_model.render_syntax form.syntax = "vluxei32.v vd, (base), vs2");
+  check "vluxei32.v: flags nf as not modeled"
+    (List.exists
+       (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "vluxei32.v-nf-not-modeled")
+       form.diagnostics)
+
+let vsuxei32_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 28, "name": "bits[28:28]", "width": 1}, {"lsb": 26, "name": "bits[27:26]", "width": 2}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 29, "name": "nf", "width": 3}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vs3", "width": 5}], "kind": "fixed_bits", "mask": "0x1c00707f", "value": "0x4006027", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsuxei32.v", "origin": {"line": 40, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["nf", "vm", "vs2", "rs1", "vs3"], "raw": {"line": "vsuxei32.v     nf 28=0 27..26=1 vm vs2 rs1 14..12=0x6 vs3 6..0=0x27", "tokens": ["vsuxei32.v", "nf", "28=0", "27..26=1", "vm", "vs2", "rs1", "14..12=0x6", "vs3", "6..0=0x27"]}, "upstream-resolved": {"mask": "0x1c00707f", "match": "0x4006027", "variable_fields": ["nf", "vm", "vs2", "rs1", "vs3"]}}, "record_id": "riscv-opcodes:rv_v:vsuxei32.v@L40", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsuxei32_v () =
+  let rec_ = decode_or_fail "vsuxei32.v" vsuxei32_v_json in
+  let form = normalize_or_fail "vsuxei32.v" rec_ in
+  check "vsuxei32.v: requirement is the V feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vsuxei32.v: vs3/base/vs2, vs3/vs2 vector registers, base a GPR, no offset operand"
+    (match form.operands with
+    | [
+     { op_name = "vs3"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = In; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+     { op_name = "vs2"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vsuxei32.v: renders as vs3, (base), vs2"
+    (Isa_norm_model.render_syntax form.syntax = "vsuxei32.v vs3, (base), vs2");
+  check "vsuxei32.v: flags nf as not modeled"
+    (List.exists
+       (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "vsuxei32.v-nf-not-modeled")
+       form.diagnostics)
+
+(* vl2re32.v/vs4r.v: V's whole-register load/store, verbatim-extracted
+   from the checked-in riscv32.jsonl - representative of {!vlm_form}/
+   [vsm_form] reused directly (the register-count/width is baked into
+   the mnemonic, so nf is not a free field here either, same as
+   vlm.v/vsm.v). *)
+let vl2re32_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 29, "name": "bits[31:29]", "width": 3}, {"lsb": 28, "name": "bits[28:28]", "width": 1}, {"lsb": 26, "name": "bits[27:26]", "width": 2}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x22806007", "width_bits": 32}, "kind": "instruction-form", "native_name": "vl2re32.v", "origin": {"line": 80, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["rs1", "vd"], "raw": {"line": "vl2re32.v      31..29=1 28=0 27..26=0 25=1 24..20=0x08 rs1 14..12=0x6 vd  6..0=0x07", "tokens": ["vl2re32.v", "31..29=1", "28=0", "27..26=0", "25=1", "24..20=0x08", "rs1", "14..12=0x6", "vd", "6..0=0x07"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x22806007", "variable_fields": ["rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vl2re32.v@L80", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vl2re32_v () =
+  let rec_ = decode_or_fail "vl2re32.v" vl2re32_v_json in
+  let form = normalize_or_fail "vl2re32.v" rec_ in
+  check "vl2re32.v: requirement is the V feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vl2re32.v: vd a vector register, base a GPR, in that order, no offset operand"
+    (match form.operands with
+    | [
+     { op_name = "vd"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = Out; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vl2re32.v: renders as vd, (base)"
+    (Isa_norm_model.render_syntax form.syntax = "vl2re32.v vd, (base)");
+  check "vl2re32.v: no nf-not-modeled diagnostic (nf is not a free field here)"
+    (not
+       (List.exists
+          (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "vl2re32.v-nf-not-modeled")
+          form.diagnostics))
+
+let vs4r_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 29, "name": "bits[31:29]", "width": 3}, {"lsb": 28, "name": "bits[28:28]", "width": 1}, {"lsb": 26, "name": "bits[27:26]", "width": 2}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vs3", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x62800027", "width_bits": 32}, "kind": "instruction-form", "native_name": "vs4r.v", "origin": {"line": 92, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["rs1", "vs3"], "raw": {"line": "vs4r.v         31..29=3 28=0 27..26=0 25=1 24..20=0x08 rs1 14..12=0x0 vs3 6..0=0x27", "tokens": ["vs4r.v", "31..29=3", "28=0", "27..26=0", "25=1", "24..20=0x08", "rs1", "14..12=0x0", "vs3", "6..0=0x27"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x62800027", "variable_fields": ["rs1", "vs3"]}}, "record_id": "riscv-opcodes:rv_v:vs4r.v@L92", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vs4r_v () =
+  let rec_ = decode_or_fail "vs4r.v" vs4r_v_json in
+  let form = normalize_or_fail "vs4r.v" rec_ in
+  check "vs4r.v: requirement is the V feature"
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check "vs4r.v: vs3 a vector register, base a GPR, in that order, no offset operand"
+    (match form.operands with
+    | [
+     { op_name = "vs3"; op_kind = Register { class_ = Riscv_vec; excluded = [] }; role = In; _ };
+     { op_name = "base"; op_kind = Register { class_ = Riscv_gpr; excluded = [] }; role = In; _ };
+    ] ->
+        true
+    | _ -> false);
+  check "vs4r.v: renders as vs3, (base)"
+    (Isa_norm_model.render_syntax form.syntax = "vs4r.v vs3, (base)");
+  check "vs4r.v: no nf-not-modeled diagnostic (nf is not a free field here)"
+    (not
+       (List.exists
+          (fun (d : Isa_norm_model.diagnostic) -> String.equal d.rule "vs4r.v-nf-not-modeled")
+          form.diagnostics))
+
 (* flw: F's floating-point load, verbatim-extracted from the checked-in
    riscv32.jsonl - representative of {!f_load_form} (fld shares the
    identical shape, only the requirement/width differ). *)
@@ -4183,6 +4471,17 @@ let () =
   test_csrci ();
   test_amoadd_w ();
   test_lr_w ();
+  test_vle32_v ();
+  test_vse32_v ();
+  test_vlm_v ();
+  test_vsm_v ();
+  test_vle32ff_v ();
+  test_vlse32_v ();
+  test_vsse32_v ();
+  test_vluxei32_v ();
+  test_vsuxei32_v ();
+  test_vl2re32_v ();
+  test_vs4r_v ();
   test_flw ();
   test_fsw ();
   test_andn_import_record_matches_primary ();

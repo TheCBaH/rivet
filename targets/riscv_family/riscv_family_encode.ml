@@ -708,6 +708,64 @@ module Make (P : PROFILE) = struct
       | Vfwnmacc_vf
       | Vfwnmsac_vv
       | Vfwnmsac_vf
+      | Vle8_v
+      | Vle16_v
+      | Vle32_v
+      | Vle64_v
+      | Vse8_v
+      | Vse16_v
+      | Vse32_v
+      | Vse64_v
+      | Vlm_v
+      | Vsm_v
+      | Vle8ff_v
+      | Vle16ff_v
+      | Vle32ff_v
+      | Vle64ff_v
+      | Vlse8_v
+      | Vlse16_v
+      | Vlse32_v
+      | Vlse64_v
+      | Vsse8_v
+      | Vsse16_v
+      | Vsse32_v
+      | Vsse64_v
+      | Vluxei8_v
+      | Vluxei16_v
+      | Vluxei32_v
+      | Vluxei64_v
+      | Vloxei8_v
+      | Vloxei16_v
+      | Vloxei32_v
+      | Vloxei64_v
+      | Vsuxei8_v
+      | Vsuxei16_v
+      | Vsuxei32_v
+      | Vsuxei64_v
+      | Vsoxei8_v
+      | Vsoxei16_v
+      | Vsoxei32_v
+      | Vsoxei64_v
+      | Vl1re8_v
+      | Vl1re16_v
+      | Vl1re32_v
+      | Vl1re64_v
+      | Vl2re8_v
+      | Vl2re16_v
+      | Vl2re32_v
+      | Vl2re64_v
+      | Vl4re8_v
+      | Vl4re16_v
+      | Vl4re32_v
+      | Vl4re64_v
+      | Vl8re8_v
+      | Vl8re16_v
+      | Vl8re32_v
+      | Vl8re64_v
+      | Vs1r_v
+      | Vs2r_v
+      | Vs4r_v
+      | Vs8r_v
 
     let name = function
       | Add -> "add"
@@ -1263,6 +1321,64 @@ module Make (P : PROFILE) = struct
       | Vfwnmacc_vf -> "vfwnmacc.vf"
       | Vfwnmsac_vv -> "vfwnmsac.vv"
       | Vfwnmsac_vf -> "vfwnmsac.vf"
+      | Vle8_v -> "vle8.v"
+      | Vle16_v -> "vle16.v"
+      | Vle32_v -> "vle32.v"
+      | Vle64_v -> "vle64.v"
+      | Vse8_v -> "vse8.v"
+      | Vse16_v -> "vse16.v"
+      | Vse32_v -> "vse32.v"
+      | Vse64_v -> "vse64.v"
+      | Vlm_v -> "vlm.v"
+      | Vsm_v -> "vsm.v"
+      | Vle8ff_v -> "vle8ff.v"
+      | Vle16ff_v -> "vle16ff.v"
+      | Vle32ff_v -> "vle32ff.v"
+      | Vle64ff_v -> "vle64ff.v"
+      | Vlse8_v -> "vlse8.v"
+      | Vlse16_v -> "vlse16.v"
+      | Vlse32_v -> "vlse32.v"
+      | Vlse64_v -> "vlse64.v"
+      | Vsse8_v -> "vsse8.v"
+      | Vsse16_v -> "vsse16.v"
+      | Vsse32_v -> "vsse32.v"
+      | Vsse64_v -> "vsse64.v"
+      | Vluxei8_v -> "vluxei8.v"
+      | Vluxei16_v -> "vluxei16.v"
+      | Vluxei32_v -> "vluxei32.v"
+      | Vluxei64_v -> "vluxei64.v"
+      | Vloxei8_v -> "vloxei8.v"
+      | Vloxei16_v -> "vloxei16.v"
+      | Vloxei32_v -> "vloxei32.v"
+      | Vloxei64_v -> "vloxei64.v"
+      | Vsuxei8_v -> "vsuxei8.v"
+      | Vsuxei16_v -> "vsuxei16.v"
+      | Vsuxei32_v -> "vsuxei32.v"
+      | Vsuxei64_v -> "vsuxei64.v"
+      | Vsoxei8_v -> "vsoxei8.v"
+      | Vsoxei16_v -> "vsoxei16.v"
+      | Vsoxei32_v -> "vsoxei32.v"
+      | Vsoxei64_v -> "vsoxei64.v"
+      | Vl1re8_v -> "vl1re8.v"
+      | Vl1re16_v -> "vl1re16.v"
+      | Vl1re32_v -> "vl1re32.v"
+      | Vl1re64_v -> "vl1re64.v"
+      | Vl2re8_v -> "vl2re8.v"
+      | Vl2re16_v -> "vl2re16.v"
+      | Vl2re32_v -> "vl2re32.v"
+      | Vl2re64_v -> "vl2re64.v"
+      | Vl4re8_v -> "vl4re8.v"
+      | Vl4re16_v -> "vl4re16.v"
+      | Vl4re32_v -> "vl4re32.v"
+      | Vl4re64_v -> "vl4re64.v"
+      | Vl8re8_v -> "vl8re8.v"
+      | Vl8re16_v -> "vl8re16.v"
+      | Vl8re32_v -> "vl8re32.v"
+      | Vl8re64_v -> "vl8re64.v"
+      | Vs1r_v -> "vs1r.v"
+      | Vs2r_v -> "vs2r.v"
+      | Vs4r_v -> "vs4r.v"
+      | Vs8r_v -> "vs8r.v"
 
     let all =
       [
@@ -1819,6 +1935,64 @@ module Make (P : PROFILE) = struct
         Vfwnmacc_vf;
         Vfwnmsac_vv;
         Vfwnmsac_vf;
+        Vle8_v;
+        Vle16_v;
+        Vle32_v;
+        Vle64_v;
+        Vse8_v;
+        Vse16_v;
+        Vse32_v;
+        Vse64_v;
+        Vlm_v;
+        Vsm_v;
+        Vle8ff_v;
+        Vle16ff_v;
+        Vle32ff_v;
+        Vle64ff_v;
+        Vlse8_v;
+        Vlse16_v;
+        Vlse32_v;
+        Vlse64_v;
+        Vsse8_v;
+        Vsse16_v;
+        Vsse32_v;
+        Vsse64_v;
+        Vluxei8_v;
+        Vluxei16_v;
+        Vluxei32_v;
+        Vluxei64_v;
+        Vloxei8_v;
+        Vloxei16_v;
+        Vloxei32_v;
+        Vloxei64_v;
+        Vsuxei8_v;
+        Vsuxei16_v;
+        Vsuxei32_v;
+        Vsuxei64_v;
+        Vsoxei8_v;
+        Vsoxei16_v;
+        Vsoxei32_v;
+        Vsoxei64_v;
+        Vl1re8_v;
+        Vl1re16_v;
+        Vl1re32_v;
+        Vl1re64_v;
+        Vl2re8_v;
+        Vl2re16_v;
+        Vl2re32_v;
+        Vl2re64_v;
+        Vl4re8_v;
+        Vl4re16_v;
+        Vl4re32_v;
+        Vl4re64_v;
+        Vl8re8_v;
+        Vl8re16_v;
+        Vl8re32_v;
+        Vl8re64_v;
+        Vs1r_v;
+        Vs2r_v;
+        Vs4r_v;
+        Vs8r_v;
       ]
 
     let of_mnemonic s = List.find_opt (fun op -> String.equal (name op) s) all
@@ -2320,6 +2494,164 @@ module Make (P : PROFILE) = struct
   let lr_desc = function
     | Opcode.Lr_w -> Some (0x2f, 2, 0x08)
     | Lr_d -> Some (0x2f, 3, 0x08)
+    | _ -> None
+
+  (* V's unit-stride loads/stores ([vle8/16/32/64.v vd, (rs1)] /
+     [vse8/16/32/64.v vs3, (rs1)]) - opcode LOAD-FP/STORE-FP (0x07/0x27), the
+     same "vd/vs3, (rs1)" no-offset shape as {!lr_desc} above, but with the
+     element width in [funct3] rather than a fixed opcode-selected width, and
+     the top 7 bits split into a fixed lumop/sumop=0 [rs2] plus a single vm
+     bit folded into [funct7] exactly the way {!opivv_funct6}'s masked/
+     unmasked pair already does. Confirmed against real GNU as, byte-
+     identical on RV32/RV64: `vle8.v v1,(a0)` -> `02050087`, `vle16.v` ->
+     `02055087`, `vle32.v` -> `02056087`, `vle64.v` -> `02057087`; masked,
+     e.g. `vle8.v v1,(a0),v0.t` -> `00050087`; `vse8/16/32/64.v v1,(a0)` ->
+     `020500a7`/`020550a7`/`020560a7`/`020570a7`. A written offset, even a
+     literal `0(a0)`, has no field to hold it - GAS still parses it (the
+     shared [offset(base)] production), but real GNU as rejects any nonzero
+     fold as "illegal operands" (`vle32.v v1,4(a0)`), so this requires
+     {!zero_offset} the same way {!amo3_desc}/{!lr_desc} do. *)
+  let vload_desc = function
+    | Opcode.Vle8_v -> Some 0
+    | Vle16_v -> Some 5
+    | Vle32_v -> Some 6
+    | Vle64_v -> Some 7
+    | _ -> None
+
+  let vstore_desc = function
+    | Opcode.Vse8_v -> Some 0
+    | Vse16_v -> Some 5
+    | Vse32_v -> Some 6
+    | Vse64_v -> Some 7
+    | _ -> None
+
+  (* [vle8/16/32/64ff.v vd, (rs1)]: V's fault-only-first unit-stride loads
+     - {!vload_desc}'s identical shape, but [lumop] (the [rs2] field) is
+     fixed to 0x10 instead of 0. Confirmed against real GNU as, byte-
+     identical on RV32/RV64: `vle8ff.v v1,(a0)` -> `03050087`, `vle16ff.v`
+     -> `03055087`, `vle32ff.v` -> `03056087`, `vle64ff.v` -> `03057087`;
+     masked, e.g. `vle8ff.v v1,(a0),v0.t` -> `01050087` (unlike
+     {!vlm_v}/[vsm_v], the masked spelling is accepted here, matching
+     {!vload_desc}'s own unit-stride precedent rather than the mask-
+     register one). *)
+  let vloadff_desc = function
+    | Opcode.Vle8ff_v -> Some 0
+    | Vle16ff_v -> Some 5
+    | Vle32ff_v -> Some 6
+    | Vle64ff_v -> Some 7
+    | _ -> None
+
+  (* [vlse8/16/32/64.v vd, (rs1), rs2] / [vsse8/16/32/64.v vs3, (rs1), rs2]:
+     V's strided loads/stores - the same "vd/vs3, (base)" memory operand
+     as {!vload_desc}/[vstore_desc], plus a third plain-GPR operand
+     (the byte stride) carried in the word's [rs2] field instead of the
+     unit-stride family's fixed 0 - mop = 0b10 (strided) rather than 0b00.
+     Confirmed against real GNU as, byte-identical on RV32/RV64:
+     `vlse8.v v1,(a0),a1` -> `0ab50087`, `vlse16.v` -> `0ab55087`,
+     `vlse32.v` -> `0ab56087`, `vlse64.v` -> `0ab57087`; `vsse8/16/32/
+     64.v v1,(a0),a1` -> `0ab500a7`/`0ab550a7`/`0ab560a7`/`0ab570a7`;
+     masked, e.g. `vlse32.v v1,(a0),a1,v0.t` -> `08b56087`. Negative
+     controls: `vlse32.v v1,4(a0),a1` and `vlse32.v v1,(a0)` (missing the
+     stride operand) are both "illegal operands". *)
+  let vstride_load_desc = function
+    | Opcode.Vlse8_v -> Some 0
+    | Vlse16_v -> Some 5
+    | Vlse32_v -> Some 6
+    | Vlse64_v -> Some 7
+    | _ -> None
+
+  let vstride_store_desc = function
+    | Opcode.Vsse8_v -> Some 0
+    | Vsse16_v -> Some 5
+    | Vsse32_v -> Some 6
+    | Vsse64_v -> Some 7
+    | _ -> None
+
+  (* [vl{u,o}xei8/16/32/64.v vd, (rs1), vs2] / [vs{u,o}xei8/16/32/64.v
+     vs3, (rs1), vs2]: V's indexed loads/stores - {!vstride_load_desc}/
+     [vstride_store_desc]'s identical three-operand shape, but the third
+     operand is a vector register (the element index, not a GPR stride)
+     and mop is 0b01 (unordered, "u") or 0b11 (ordered, "o") instead of
+     0b10. Confirmed against real GNU as, byte-identical on RV32/RV64:
+     `vluxei8.v v1,(a0),v2` -> `06250087` (mop=1), `vloxei8.v` ->
+     `0e250087` (mop=3), `vsuxei8.v` -> `062500a7`, `vsoxei8.v` ->
+     `0e2500a7`; masked, e.g. `vluxei32.v v1,(a0),v2,v0.t` -> `04256087`.
+     Negative controls: `vluxei32.v v1,4(a0),v2` (nonzero offset) and
+     `vluxei32.v v1,(a0)` (missing the index operand) are both "illegal
+     operands". *)
+  let vindexed_u_load_desc = function
+    | Opcode.Vluxei8_v -> Some 0
+    | Vluxei16_v -> Some 5
+    | Vluxei32_v -> Some 6
+    | Vluxei64_v -> Some 7
+    | _ -> None
+
+  let vindexed_o_load_desc = function
+    | Opcode.Vloxei8_v -> Some 0
+    | Vloxei16_v -> Some 5
+    | Vloxei32_v -> Some 6
+    | Vloxei64_v -> Some 7
+    | _ -> None
+
+  let vindexed_u_store_desc = function
+    | Opcode.Vsuxei8_v -> Some 0
+    | Vsuxei16_v -> Some 5
+    | Vsuxei32_v -> Some 6
+    | Vsuxei64_v -> Some 7
+    | _ -> None
+
+  let vindexed_o_store_desc = function
+    | Opcode.Vsoxei8_v -> Some 0
+    | Vsoxei16_v -> Some 5
+    | Vsoxei32_v -> Some 6
+    | Vsoxei64_v -> Some 7
+    | _ -> None
+
+  (* [vl{1,2,4,8}re{8,16,32,64}.v vd, (rs1)] / [vs{1,2,4,8}r.v vs3, (rs1)]:
+     V's whole-register loads/stores - the register count is baked into
+     the mnemonic itself (nf = count-1, riscv-opcodes' own record has no
+     free nf field at all, unlike every segmented-adjacent family above),
+     encoded as [lumop]/[sumop] = 0x08 (the [rs2] field) and [nf] folded
+     into the top of [funct7] alongside the always-1 [vm] - real GNU as
+     rejects a trailing mask operand outright, the same as {!vlm_v}/
+     [vsm_v]. Confirmed against real GNU as, byte-identical on RV32/RV64:
+     `vl1re8.v v1,(a0)` -> `02850087` (funct7=0x01), `vl2re8.v v2,(a0)`
+     -> `22850107` (funct7=0x11), `vl4re8.v v4,(a0)` -> `62850207`
+     (funct7=0x31), `vl8re8.v v8,(a0)` -> `e2850407` (funct7=0x71);
+     `vl{1,2,4,8}re16/32/64.v` shift funct3 to 5/6/7 exactly as every
+     other width-suffixed family; `vs1r.v v1,(a0)` -> `028500a7`,
+     `vs2r.v`/`vs4r.v`/`vs8r.v` -> `22850127`/`62850227`/`e2850427`
+     (funct3 fixed at 0 - stores have no width suffix). `vl2re8.v v1,
+     (a0)` (a register-count/operand mismatch) is accepted by real GNU
+     as - it is a semantic ABI convention, not an encoding constraint -
+     so this is not rejected here either; `vl3re8.v` (a non-power-of-2
+     count) is "unrecognized opcode" (no such mnemonic exists);
+     `vl1re8.v v1,(a0),v0.t` and `vl1re8.v v1,4(a0)` are both "illegal
+     operands". *)
+  let vwhole_load_desc = function
+    | Opcode.Vl1re8_v -> Some (0, 0x01)
+    | Vl1re16_v -> Some (5, 0x01)
+    | Vl1re32_v -> Some (6, 0x01)
+    | Vl1re64_v -> Some (7, 0x01)
+    | Vl2re8_v -> Some (0, 0x11)
+    | Vl2re16_v -> Some (5, 0x11)
+    | Vl2re32_v -> Some (6, 0x11)
+    | Vl2re64_v -> Some (7, 0x11)
+    | Vl4re8_v -> Some (0, 0x31)
+    | Vl4re16_v -> Some (5, 0x31)
+    | Vl4re32_v -> Some (6, 0x31)
+    | Vl4re64_v -> Some (7, 0x31)
+    | Vl8re8_v -> Some (0, 0x71)
+    | Vl8re16_v -> Some (5, 0x71)
+    | Vl8re32_v -> Some (6, 0x71)
+    | Vl8re64_v -> Some (7, 0x71)
+    | _ -> None
+
+  let vwhole_store_desc = function
+    | Opcode.Vs1r_v -> Some 0x01
+    | Vs2r_v -> Some 0x11
+    | Vs4r_v -> Some 0x31
+    | Vs8r_v -> Some 0x71
     | _ -> None
 
   (* OP-IMM/OP-IMM-32 (opcodes 0x13/0x1b) "pseudo-unary" forms: Zbb's
@@ -3717,6 +4049,139 @@ module Make (P : PROFILE) = struct
         match (xreg a, Reg.x m.base, lr_desc op) with
         | Some rd, Some rs1, Some (opcode, funct3, funct7) when zero_offset m.offset ->
             Ok [ Lowered.R { name = opn; opcode; funct3; funct7; rd; rs1; rs2 = 0 } ]
+        | _ -> wrong opn)
+    | op, [ vd_op; Operand.Mem m ] when Option.is_some (vload_desc op) -> (
+        (* [vle8/16/32/64.v vd, (rs1)], unmasked (vm = 1). *)
+        match (vreg vd_op, Reg.x m.base, vload_desc op) with
+        | Some rd, Some rs1, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x07; funct3; funct7 = 1; rd; rs1; rs2 = 0 } ]
+        | _ -> wrong opn)
+    | op, [ vd_op; Operand.Mem m; mask ] when is_v0t mask && Option.is_some (vload_desc op) -> (
+        (* Masked form: the same word with only the vm bit cleared. *)
+        match (vreg vd_op, Reg.x m.base, vload_desc op) with
+        | Some rd, Some rs1, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x07; funct3; funct7 = 0; rd; rs1; rs2 = 0 } ]
+        | _ -> wrong opn)
+    | op, [ vs3_op; Operand.Mem m ] when Option.is_some (vstore_desc op) -> (
+        (* [vse8/16/32/64.v vs3, (rs1)], unmasked (vm = 1). *)
+        match (vreg vs3_op, Reg.x m.base, vstore_desc op) with
+        | Some rd, Some rs1, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x27; funct3; funct7 = 1; rd; rs1; rs2 = 0 } ]
+        | _ -> wrong opn)
+    | op, [ vs3_op; Operand.Mem m; mask ] when is_v0t mask && Option.is_some (vstore_desc op) -> (
+        match (vreg vs3_op, Reg.x m.base, vstore_desc op) with
+        | Some rd, Some rs1, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x27; funct3; funct7 = 0; rd; rs1; rs2 = 0 } ]
+        | _ -> wrong opn)
+    | Opcode.Vlm_v, [ vd_op; Operand.Mem m ] -> (
+        (* [vlm.v vd, (rs1)] - the same shape as {!vload_desc} but with
+           lumop = 0b01011 (rs2 field) and vm fixed to 1; real GNU as
+           rejects a trailing mask operand outright. *)
+        match (vreg vd_op, Reg.x m.base) with
+        | Some rd, Some rs1 when zero_offset m.offset ->
+            Ok
+              [
+                Lowered.R { name = opn; opcode = 0x07; funct3 = 0; funct7 = 1; rd; rs1; rs2 = 0xb };
+              ]
+        | _ -> wrong opn)
+    | Opcode.Vsm_v, [ vs3_op; Operand.Mem m ] -> (
+        match (vreg vs3_op, Reg.x m.base) with
+        | Some rd, Some rs1 when zero_offset m.offset ->
+            Ok
+              [
+                Lowered.R { name = opn; opcode = 0x27; funct3 = 0; funct7 = 1; rd; rs1; rs2 = 0xb };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; Operand.Mem m ] when Option.is_some (vloadff_desc op) -> (
+        (* [vle8/16/32/64ff.v vd, (rs1)], unmasked (vm = 1). *)
+        match (vreg vd_op, Reg.x m.base, vloadff_desc op) with
+        | Some rd, Some rs1, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x07; funct3; funct7 = 1; rd; rs1; rs2 = 0x10 } ]
+        | _ -> wrong opn)
+    | op, [ vd_op; Operand.Mem m; mask ] when is_v0t mask && Option.is_some (vloadff_desc op) -> (
+        match (vreg vd_op, Reg.x m.base, vloadff_desc op) with
+        | Some rd, Some rs1, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x07; funct3; funct7 = 0; rd; rs1; rs2 = 0x10 } ]
+        | _ -> wrong opn)
+    | op, [ vd_op; Operand.Mem m; stride_op ] when Option.is_some (vstride_load_desc op) -> (
+        (* [vlse8/16/32/64.v vd, (rs1), rs2], unmasked (vm = 1); mop = 0b10
+           (strided) folds into funct7 alongside vm, same as the OPIVV
+           funct6/vm split. *)
+        match (vreg vd_op, Reg.x m.base, xreg stride_op, vstride_load_desc op) with
+        | Some rd, Some rs1, Some rs2, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x07; funct3; funct7 = 5; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ vd_op; Operand.Mem m; stride_op; mask ]
+      when is_v0t mask && Option.is_some (vstride_load_desc op) -> (
+        match (vreg vd_op, Reg.x m.base, xreg stride_op, vstride_load_desc op) with
+        | Some rd, Some rs1, Some rs2, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x07; funct3; funct7 = 4; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ vs3_op; Operand.Mem m; stride_op ] when Option.is_some (vstride_store_desc op) -> (
+        match (vreg vs3_op, Reg.x m.base, xreg stride_op, vstride_store_desc op) with
+        | Some rd, Some rs1, Some rs2, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x27; funct3; funct7 = 5; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ vs3_op; Operand.Mem m; stride_op; mask ]
+      when is_v0t mask && Option.is_some (vstride_store_desc op) -> (
+        match (vreg vs3_op, Reg.x m.base, xreg stride_op, vstride_store_desc op) with
+        | Some rd, Some rs1, Some rs2, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x27; funct3; funct7 = 4; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ vd_op; Operand.Mem m; idx_op ] when Option.is_some (vindexed_u_load_desc op) -> (
+        match (vreg vd_op, Reg.x m.base, vreg idx_op, vindexed_u_load_desc op) with
+        | Some rd, Some rs1, Some rs2, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x07; funct3; funct7 = 3; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ vd_op; Operand.Mem m; idx_op; mask ]
+      when is_v0t mask && Option.is_some (vindexed_u_load_desc op) -> (
+        match (vreg vd_op, Reg.x m.base, vreg idx_op, vindexed_u_load_desc op) with
+        | Some rd, Some rs1, Some rs2, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x07; funct3; funct7 = 2; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ vd_op; Operand.Mem m; idx_op ] when Option.is_some (vindexed_o_load_desc op) -> (
+        match (vreg vd_op, Reg.x m.base, vreg idx_op, vindexed_o_load_desc op) with
+        | Some rd, Some rs1, Some rs2, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x07; funct3; funct7 = 7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ vd_op; Operand.Mem m; idx_op; mask ]
+      when is_v0t mask && Option.is_some (vindexed_o_load_desc op) -> (
+        match (vreg vd_op, Reg.x m.base, vreg idx_op, vindexed_o_load_desc op) with
+        | Some rd, Some rs1, Some rs2, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x07; funct3; funct7 = 6; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ vs3_op; Operand.Mem m; idx_op ] when Option.is_some (vindexed_u_store_desc op) -> (
+        match (vreg vs3_op, Reg.x m.base, vreg idx_op, vindexed_u_store_desc op) with
+        | Some rd, Some rs1, Some rs2, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x27; funct3; funct7 = 3; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ vs3_op; Operand.Mem m; idx_op; mask ]
+      when is_v0t mask && Option.is_some (vindexed_u_store_desc op) -> (
+        match (vreg vs3_op, Reg.x m.base, vreg idx_op, vindexed_u_store_desc op) with
+        | Some rd, Some rs1, Some rs2, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x27; funct3; funct7 = 2; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ vs3_op; Operand.Mem m; idx_op ] when Option.is_some (vindexed_o_store_desc op) -> (
+        match (vreg vs3_op, Reg.x m.base, vreg idx_op, vindexed_o_store_desc op) with
+        | Some rd, Some rs1, Some rs2, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x27; funct3; funct7 = 7; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ vs3_op; Operand.Mem m; idx_op; mask ]
+      when is_v0t mask && Option.is_some (vindexed_o_store_desc op) -> (
+        match (vreg vs3_op, Reg.x m.base, vreg idx_op, vindexed_o_store_desc op) with
+        | Some rd, Some rs1, Some rs2, Some funct3 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x27; funct3; funct7 = 6; rd; rs1; rs2 } ]
+        | _ -> wrong opn)
+    | op, [ vd_op; Operand.Mem m ] when Option.is_some (vwhole_load_desc op) -> (
+        (* [vl{1,2,4,8}re{8,16,32,64}.v vd, (rs1)] - no masked variant. *)
+        match (vreg vd_op, Reg.x m.base, vwhole_load_desc op) with
+        | Some rd, Some rs1, Some (funct3, funct7) when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x07; funct3; funct7; rd; rs1; rs2 = 8 } ]
+        | _ -> wrong opn)
+    | op, [ vs3_op; Operand.Mem m ] when Option.is_some (vwhole_store_desc op) -> (
+        match (vreg vs3_op, Reg.x m.base, vwhole_store_desc op) with
+        | Some rd, Some rs1, Some funct7 when zero_offset m.offset ->
+            Ok [ Lowered.R { name = opn; opcode = 0x27; funct3 = 0; funct7; rd; rs1; rs2 = 8 } ]
         | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (r_desc op) -> (
         match (xreg a, xreg b, xreg c, r_desc op) with

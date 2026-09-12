@@ -865,6 +865,122 @@ let test_counts () =
     (List.length Isa_gen_difficult.vfwnmsac_vv_entries = 2);
   check "vfwnmsac_vf_entries has 2 entries (rv_v, one per profile, no Req_any)"
     (List.length Isa_gen_difficult.vfwnmsac_vf_entries = 2);
+  check "vle8_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vle8_v_entries = 2);
+  check "vle16_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vle16_v_entries = 2);
+  check "vle32_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vle32_v_entries = 2);
+  check "vle64_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vle64_v_entries = 2);
+  check "vse8_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vse8_v_entries = 2);
+  check "vse16_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vse16_v_entries = 2);
+  check "vse32_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vse32_v_entries = 2);
+  check "vse64_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vse64_v_entries = 2);
+  check "vlm_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vlm_v_entries = 2);
+  check "vsm_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsm_v_entries = 2);
+  check "vle8ff_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vle8ff_v_entries = 2);
+  check "vle16ff_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vle16ff_v_entries = 2);
+  check "vle32ff_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vle32ff_v_entries = 2);
+  check "vle64ff_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vle64ff_v_entries = 2);
+  check "vlse8_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vlse8_v_entries = 2);
+  check "vlse16_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vlse16_v_entries = 2);
+  check "vlse32_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vlse32_v_entries = 2);
+  check "vlse64_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vlse64_v_entries = 2);
+  check "vsse8_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsse8_v_entries = 2);
+  check "vsse16_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsse16_v_entries = 2);
+  check "vsse32_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsse32_v_entries = 2);
+  check "vsse64_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsse64_v_entries = 2);
+  check "vluxei8_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vluxei8_v_entries = 2);
+  check "vluxei16_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vluxei16_v_entries = 2);
+  check "vluxei32_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vluxei32_v_entries = 2);
+  check "vluxei64_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vluxei64_v_entries = 2);
+  check "vloxei8_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vloxei8_v_entries = 2);
+  check "vloxei16_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vloxei16_v_entries = 2);
+  check "vloxei32_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vloxei32_v_entries = 2);
+  check "vloxei64_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vloxei64_v_entries = 2);
+  check "vsuxei8_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsuxei8_v_entries = 2);
+  check "vsuxei16_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsuxei16_v_entries = 2);
+  check "vsuxei32_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsuxei32_v_entries = 2);
+  check "vsuxei64_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsuxei64_v_entries = 2);
+  check "vsoxei8_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsoxei8_v_entries = 2);
+  check "vsoxei16_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsoxei16_v_entries = 2);
+  check "vsoxei32_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsoxei32_v_entries = 2);
+  check "vsoxei64_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vsoxei64_v_entries = 2);
+  check "vl1re8_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl1re8_v_entries = 2);
+  check "vl1re16_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl1re16_v_entries = 2);
+  check "vl1re32_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl1re32_v_entries = 2);
+  check "vl1re64_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl1re64_v_entries = 2);
+  check "vl2re8_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl2re8_v_entries = 2);
+  check "vl2re16_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl2re16_v_entries = 2);
+  check "vl2re32_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl2re32_v_entries = 2);
+  check "vl2re64_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl2re64_v_entries = 2);
+  check "vl4re8_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl4re8_v_entries = 2);
+  check "vl4re16_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl4re16_v_entries = 2);
+  check "vl4re32_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl4re32_v_entries = 2);
+  check "vl4re64_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl4re64_v_entries = 2);
+  check "vl8re8_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl8re8_v_entries = 2);
+  check "vl8re16_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl8re16_v_entries = 2);
+  check "vl8re32_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl8re32_v_entries = 2);
+  check "vl8re64_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vl8re64_v_entries = 2);
+  check "vs1r_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vs1r_v_entries = 2);
+  check "vs2r_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vs2r_v_entries = 2);
+  check "vs4r_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vs4r_v_entries = 2);
+  check "vs8r_v_entries has 2 entries (rv_v, one per profile, no Req_any)"
+    (List.length Isa_gen_difficult.vs8r_v_entries = 2);
   check "all includes every difficult-form family"
     (List.length Isa_gen_difficult.all
     = List.length Isa_gen_difficult.sw_entries
@@ -1348,7 +1464,65 @@ let test_counts () =
       + List.length Isa_gen_difficult.vfwmsac_vv_entries
       + List.length Isa_gen_difficult.vfwmsac_vf_entries
       + List.length Isa_gen_difficult.vfwnmsac_vv_entries
-      + List.length Isa_gen_difficult.vfwnmsac_vf_entries)
+      + List.length Isa_gen_difficult.vfwnmsac_vf_entries
+      + List.length Isa_gen_difficult.vle8_v_entries
+      + List.length Isa_gen_difficult.vle16_v_entries
+      + List.length Isa_gen_difficult.vle32_v_entries
+      + List.length Isa_gen_difficult.vle64_v_entries
+      + List.length Isa_gen_difficult.vse8_v_entries
+      + List.length Isa_gen_difficult.vse16_v_entries
+      + List.length Isa_gen_difficult.vse32_v_entries
+      + List.length Isa_gen_difficult.vse64_v_entries
+      + List.length Isa_gen_difficult.vlm_v_entries
+      + List.length Isa_gen_difficult.vsm_v_entries
+      + List.length Isa_gen_difficult.vle8ff_v_entries
+      + List.length Isa_gen_difficult.vle16ff_v_entries
+      + List.length Isa_gen_difficult.vle32ff_v_entries
+      + List.length Isa_gen_difficult.vle64ff_v_entries
+      + List.length Isa_gen_difficult.vlse8_v_entries
+      + List.length Isa_gen_difficult.vlse16_v_entries
+      + List.length Isa_gen_difficult.vlse32_v_entries
+      + List.length Isa_gen_difficult.vlse64_v_entries
+      + List.length Isa_gen_difficult.vsse8_v_entries
+      + List.length Isa_gen_difficult.vsse16_v_entries
+      + List.length Isa_gen_difficult.vsse32_v_entries
+      + List.length Isa_gen_difficult.vluxei8_v_entries
+      + List.length Isa_gen_difficult.vluxei16_v_entries
+      + List.length Isa_gen_difficult.vluxei32_v_entries
+      + List.length Isa_gen_difficult.vluxei64_v_entries
+      + List.length Isa_gen_difficult.vloxei8_v_entries
+      + List.length Isa_gen_difficult.vloxei16_v_entries
+      + List.length Isa_gen_difficult.vloxei32_v_entries
+      + List.length Isa_gen_difficult.vloxei64_v_entries
+      + List.length Isa_gen_difficult.vsuxei8_v_entries
+      + List.length Isa_gen_difficult.vsuxei16_v_entries
+      + List.length Isa_gen_difficult.vsuxei32_v_entries
+      + List.length Isa_gen_difficult.vsuxei64_v_entries
+      + List.length Isa_gen_difficult.vsoxei8_v_entries
+      + List.length Isa_gen_difficult.vsoxei16_v_entries
+      + List.length Isa_gen_difficult.vsoxei32_v_entries
+      + List.length Isa_gen_difficult.vsoxei64_v_entries
+      + List.length Isa_gen_difficult.vsse64_v_entries
+      + List.length Isa_gen_difficult.vl1re8_v_entries
+      + List.length Isa_gen_difficult.vl1re16_v_entries
+      + List.length Isa_gen_difficult.vl1re32_v_entries
+      + List.length Isa_gen_difficult.vl1re64_v_entries
+      + List.length Isa_gen_difficult.vl2re8_v_entries
+      + List.length Isa_gen_difficult.vl2re16_v_entries
+      + List.length Isa_gen_difficult.vl2re32_v_entries
+      + List.length Isa_gen_difficult.vl2re64_v_entries
+      + List.length Isa_gen_difficult.vl4re8_v_entries
+      + List.length Isa_gen_difficult.vl4re16_v_entries
+      + List.length Isa_gen_difficult.vl4re32_v_entries
+      + List.length Isa_gen_difficult.vl4re64_v_entries
+      + List.length Isa_gen_difficult.vl8re8_v_entries
+      + List.length Isa_gen_difficult.vl8re16_v_entries
+      + List.length Isa_gen_difficult.vl8re32_v_entries
+      + List.length Isa_gen_difficult.vl8re64_v_entries
+      + List.length Isa_gen_difficult.vs1r_v_entries
+      + List.length Isa_gen_difficult.vs2r_v_entries
+      + List.length Isa_gen_difficult.vs4r_v_entries
+      + List.length Isa_gen_difficult.vs8r_v_entries)
 
 let test_case_ids_distinct () =
   let ids = List.map (fun (e : Isa_gen_difficult.entry) -> e.case_id) Isa_gen_difficult.all in
@@ -2534,6 +2708,90 @@ let test_lr_domain () =
            e.configuration))
     (Isa_gen_difficult.lr_w_entries @ Isa_gen_difficult.lr_d_entries)
 
+let test_v_ldst_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses vd, base operands in that order" e.case_id)
+        (List.map fst e.operands = [ "vd"; "base" ] && List.map snd e.operands = [ "v1"; "a0" ]);
+      check
+        (Printf.sprintf "%s: flags the vector-register-memory-operand rule" e.case_id)
+        (List.mem "vector-register-memory-operand" e.rule_ids))
+    (Isa_gen_difficult.vle8_v_entries @ Isa_gen_difficult.vle16_v_entries
+   @ Isa_gen_difficult.vle32_v_entries @ Isa_gen_difficult.vle64_v_entries
+   @ Isa_gen_difficult.vlm_v_entries @ Isa_gen_difficult.vle8ff_v_entries
+   @ Isa_gen_difficult.vle16ff_v_entries @ Isa_gen_difficult.vle32ff_v_entries
+   @ Isa_gen_difficult.vle64ff_v_entries @ Isa_gen_difficult.vl1re8_v_entries
+   @ Isa_gen_difficult.vl1re16_v_entries @ Isa_gen_difficult.vl1re32_v_entries
+   @ Isa_gen_difficult.vl1re64_v_entries @ Isa_gen_difficult.vl2re8_v_entries
+   @ Isa_gen_difficult.vl2re16_v_entries @ Isa_gen_difficult.vl2re32_v_entries
+   @ Isa_gen_difficult.vl2re64_v_entries @ Isa_gen_difficult.vl4re8_v_entries
+   @ Isa_gen_difficult.vl4re16_v_entries @ Isa_gen_difficult.vl4re32_v_entries
+   @ Isa_gen_difficult.vl4re64_v_entries @ Isa_gen_difficult.vl8re8_v_entries
+   @ Isa_gen_difficult.vl8re16_v_entries @ Isa_gen_difficult.vl8re32_v_entries
+   @ Isa_gen_difficult.vl8re64_v_entries);
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses vs3, base operands in that order" e.case_id)
+        (List.map fst e.operands = [ "vs3"; "base" ] && List.map snd e.operands = [ "v1"; "a0" ]);
+      check
+        (Printf.sprintf "%s: flags the vector-register-memory-operand rule" e.case_id)
+        (List.mem "vector-register-memory-operand" e.rule_ids))
+    (Isa_gen_difficult.vse8_v_entries @ Isa_gen_difficult.vse16_v_entries
+   @ Isa_gen_difficult.vse32_v_entries @ Isa_gen_difficult.vse64_v_entries
+   @ Isa_gen_difficult.vsm_v_entries @ Isa_gen_difficult.vs1r_v_entries
+   @ Isa_gen_difficult.vs2r_v_entries @ Isa_gen_difficult.vs4r_v_entries
+   @ Isa_gen_difficult.vs8r_v_entries);
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses vd, base, rs2 operands in that order" e.case_id)
+        (List.map fst e.operands = [ "vd"; "base"; "rs2" ]
+        && List.map snd e.operands = [ "v1"; "a0"; "a1" ]);
+      check
+        (Printf.sprintf "%s: flags the stride-gpr-operand rule" e.case_id)
+        (List.mem "stride-gpr-operand" e.rule_ids))
+    (Isa_gen_difficult.vlse8_v_entries @ Isa_gen_difficult.vlse16_v_entries
+   @ Isa_gen_difficult.vlse32_v_entries @ Isa_gen_difficult.vlse64_v_entries);
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses vs3, base, rs2 operands in that order" e.case_id)
+        (List.map fst e.operands = [ "vs3"; "base"; "rs2" ]
+        && List.map snd e.operands = [ "v1"; "a0"; "a1" ]);
+      check
+        (Printf.sprintf "%s: flags the stride-gpr-operand rule" e.case_id)
+        (List.mem "stride-gpr-operand" e.rule_ids))
+    (Isa_gen_difficult.vsse8_v_entries @ Isa_gen_difficult.vsse16_v_entries
+   @ Isa_gen_difficult.vsse32_v_entries @ Isa_gen_difficult.vsse64_v_entries);
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses vd, base, vs2 operands in that order" e.case_id)
+        (List.map fst e.operands = [ "vd"; "base"; "vs2" ]
+        && List.map snd e.operands = [ "v1"; "a0"; "v2" ]);
+      check
+        (Printf.sprintf "%s: flags the index-vreg-operand rule" e.case_id)
+        (List.mem "index-vreg-operand" e.rule_ids))
+    (Isa_gen_difficult.vluxei8_v_entries @ Isa_gen_difficult.vluxei16_v_entries
+   @ Isa_gen_difficult.vluxei32_v_entries @ Isa_gen_difficult.vluxei64_v_entries
+   @ Isa_gen_difficult.vloxei8_v_entries @ Isa_gen_difficult.vloxei16_v_entries
+   @ Isa_gen_difficult.vloxei32_v_entries @ Isa_gen_difficult.vloxei64_v_entries);
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses vs3, base, vs2 operands in that order" e.case_id)
+        (List.map fst e.operands = [ "vs3"; "base"; "vs2" ]
+        && List.map snd e.operands = [ "v1"; "a0"; "v2" ]);
+      check
+        (Printf.sprintf "%s: flags the index-vreg-operand rule" e.case_id)
+        (List.mem "index-vreg-operand" e.rule_ids))
+    (Isa_gen_difficult.vsuxei8_v_entries @ Isa_gen_difficult.vsuxei16_v_entries
+   @ Isa_gen_difficult.vsuxei32_v_entries @ Isa_gen_difficult.vsuxei64_v_entries
+   @ Isa_gen_difficult.vsoxei8_v_entries @ Isa_gen_difficult.vsoxei16_v_entries
+   @ Isa_gen_difficult.vsoxei32_v_entries @ Isa_gen_difficult.vsoxei64_v_entries)
+
 let test_render_source_lines () =
   check "render_source_lines matches render_source for a single line"
     (String.equal
@@ -2608,6 +2866,7 @@ let () =
   test_csr_write_imm_domain ();
   test_amo_domain ();
   test_lr_domain ();
+  test_v_ldst_domain ();
   test_render_source_lines ();
   test_build_wraps_lines_before_and_after ();
   if !failures > 0 then (

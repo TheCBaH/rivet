@@ -2536,6 +2536,210 @@ let vfncvt_rod_f_f_w_entries = vext_entries ~mnemonic:"vfncvt.rod.f.f.w"
 let vfncvt_rtz_xu_f_w_entries = vext_entries ~mnemonic:"vfncvt.rtz.xu.f.w"
 let vfncvt_rtz_x_f_w_entries = vext_entries ~mnemonic:"vfncvt.rtz.x.f.w"
 
+(* [vle8/16/32/64.v]/[vse8/16/32/64.v]: V's unit-stride loads/stores - the
+   first entry point into the 58-record blocked-only load/store slice of
+   [rv_v] ({!Isa_norm_riscv.v_load_form}/[v_store_form]). Confirmed against
+   real GNU as, identical on both profiles (V is XLEN-independent):
+   `vle8.v v1,(a0)` -> `02050087`, `vle16.v` -> `02055087`, `vle32.v` ->
+   `02056087`, `vle64.v` -> `02057087`; `vse8/16/32/64.v v1,(a0)` ->
+   `020500a7`/`020550a7`/`020560a7`/`020570a7`. The masked form (e.g.
+   `vle8.v v1,(a0),v0.t` -> `00050087`) and the rejected-nonzero-offset
+   negative control (`vle32.v v1,4(a0)` -> "illegal operands") are both
+   real-GNU-confirmed but not separately generated here, matching
+   {!opivv_entries}'s own scope (the trailing mask suffix is exercised by
+   the encoder's unit tests instead, per the tracker entry). *)
+let v_load_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:unit-stride:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-memory-operand" ];
+    operands = [ ("vd", "v1"); ("base", "a0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let v_load_entries ~mnemonic = List.map (v_load_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let v_store_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:unit-stride:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-memory-operand" ];
+    operands = [ ("vs3", "v1"); ("base", "a0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let v_store_entries ~mnemonic =
+  List.map (v_store_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let vle8_v_entries = v_load_entries ~mnemonic:"vle8.v"
+let vle16_v_entries = v_load_entries ~mnemonic:"vle16.v"
+let vle32_v_entries = v_load_entries ~mnemonic:"vle32.v"
+let vle64_v_entries = v_load_entries ~mnemonic:"vle64.v"
+let vse8_v_entries = v_store_entries ~mnemonic:"vse8.v"
+let vse16_v_entries = v_store_entries ~mnemonic:"vse16.v"
+let vse32_v_entries = v_store_entries ~mnemonic:"vse32.v"
+let vse64_v_entries = v_store_entries ~mnemonic:"vse64.v"
+
+(* [vlm.v]/[vsm.v]: V's mask-register load/store - {!v_load_entries}/
+   [v_store_entries]'s exact "vd/vs3, (a0)" shape reused unchanged (only
+   the lumop/sumop field and the encoder's forced vm=1 differ, neither
+   visible at this generator layer). Confirmed against real GNU as,
+   identical on both profiles: `vlm.v v1,(a0)` -> `02b50087`, `vsm.v
+   v1,(a0)` -> `02b500a7`; the masked form is rejected outright
+   (`vlm.v v1,(a0),v0.t` -> "illegal operands"), so unlike
+   {!vle8_v_entries} there is no masked variant to note as out of scope. *)
+let vlm_v_entries = v_load_entries ~mnemonic:"vlm.v"
+let vsm_v_entries = v_store_entries ~mnemonic:"vsm.v"
+
+(* [vle8/16/32/64ff.v]: V's fault-only-first unit-stride loads -
+   {!v_load_entries}'s exact "vd, (a0)" shape reused unchanged (the
+   fixed lumop is invisible here, same as {!vlm_v_entries} above). No
+   store counterpart exists (fault-only-first only matters for the read
+   side). Confirmed against real GNU as, identical on both profiles:
+   `vle8ff.v v1,(a0)` -> `03050087`, `vle16ff.v` -> `03055087`,
+   `vle32ff.v` -> `03056087`, `vle64ff.v` -> `03057087`. *)
+let vle8ff_v_entries = v_load_entries ~mnemonic:"vle8ff.v"
+let vle16ff_v_entries = v_load_entries ~mnemonic:"vle16ff.v"
+let vle32ff_v_entries = v_load_entries ~mnemonic:"vle32ff.v"
+let vle64ff_v_entries = v_load_entries ~mnemonic:"vle64ff.v"
+
+(* [vlse8/16/32/64.v]/[vsse8/16/32/64.v]: V's strided loads/stores - a
+   genuinely new "vd/vs3, (a0), rs2" three-operand shape
+   ({!Isa_norm_riscv.v_strided_load_form}/[v_strided_store_form]).
+   Confirmed against real GNU as, identical on both profiles: `vlse8.v
+   v1,(a0),a1` -> `0ab50087`, `vlse16.v` -> `0ab55087`, `vlse32.v` ->
+   `0ab56087`, `vlse64.v` -> `0ab57087`; `vsse8/16/32/64.v v1,(a0),a1` ->
+   `0ab500a7`/`0ab550a7`/`0ab560a7`/`0ab570a7`; masked, e.g. `vlse32.v
+   v1,(a0),a1,v0.t` -> `08b56087`, not separately generated here,
+   matching {!vle8_v_entries}'s own scope. *)
+let v_strided_load_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:strided:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-memory-operand"; "stride-gpr-operand" ];
+    operands = [ ("vd", "v1"); ("base", "a0"); ("rs2", "a1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let v_strided_load_entries ~mnemonic =
+  List.map (v_strided_load_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let v_strided_store_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:strided:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-memory-operand"; "stride-gpr-operand" ];
+    operands = [ ("vs3", "v1"); ("base", "a0"); ("rs2", "a1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let v_strided_store_entries ~mnemonic =
+  List.map (v_strided_store_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let vlse8_v_entries = v_strided_load_entries ~mnemonic:"vlse8.v"
+let vlse16_v_entries = v_strided_load_entries ~mnemonic:"vlse16.v"
+let vlse32_v_entries = v_strided_load_entries ~mnemonic:"vlse32.v"
+let vlse64_v_entries = v_strided_load_entries ~mnemonic:"vlse64.v"
+let vsse8_v_entries = v_strided_store_entries ~mnemonic:"vsse8.v"
+let vsse16_v_entries = v_strided_store_entries ~mnemonic:"vsse16.v"
+let vsse32_v_entries = v_strided_store_entries ~mnemonic:"vsse32.v"
+let vsse64_v_entries = v_strided_store_entries ~mnemonic:"vsse64.v"
+
+(* [vl{u,o}xei8/16/32/64.v]/[vs{u,o}xei8/16/32/64.v]: V's indexed
+   loads/stores - {!v_strided_load_entries}/[v_strided_store_entries]'s
+   exact three-operand shape reused, just with a vector-register index
+   in the third operand slot instead of a GPR stride (the fixed mop
+   value is invisible at this generator layer). Confirmed against real
+   GNU as, identical on both profiles: `vluxei8.v v1,(a0),v2` ->
+   `06250087`, `vloxei8.v` -> `0e250087`, `vsuxei8.v` -> `062500a7`,
+   `vsoxei8.v` -> `0e2500a7`; masked, e.g. `vluxei32.v v1,(a0),v2,v0.t`
+   -> `04256087`, not separately generated here, matching
+   {!vlse8_v_entries}'s own scope. *)
+let v_indexed_load_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:indexed:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-memory-operand"; "index-vreg-operand" ];
+    operands = [ ("vd", "v1"); ("base", "a0"); ("vs2", "v2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let v_indexed_load_entries ~mnemonic =
+  List.map (v_indexed_load_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let v_indexed_store_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:indexed:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-memory-operand"; "index-vreg-operand" ];
+    operands = [ ("vs3", "v1"); ("base", "a0"); ("vs2", "v2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let v_indexed_store_entries ~mnemonic =
+  List.map (v_indexed_store_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let vluxei8_v_entries = v_indexed_load_entries ~mnemonic:"vluxei8.v"
+let vluxei16_v_entries = v_indexed_load_entries ~mnemonic:"vluxei16.v"
+let vluxei32_v_entries = v_indexed_load_entries ~mnemonic:"vluxei32.v"
+let vluxei64_v_entries = v_indexed_load_entries ~mnemonic:"vluxei64.v"
+let vloxei8_v_entries = v_indexed_load_entries ~mnemonic:"vloxei8.v"
+let vloxei16_v_entries = v_indexed_load_entries ~mnemonic:"vloxei16.v"
+let vloxei32_v_entries = v_indexed_load_entries ~mnemonic:"vloxei32.v"
+let vloxei64_v_entries = v_indexed_load_entries ~mnemonic:"vloxei64.v"
+let vsuxei8_v_entries = v_indexed_store_entries ~mnemonic:"vsuxei8.v"
+let vsuxei16_v_entries = v_indexed_store_entries ~mnemonic:"vsuxei16.v"
+let vsuxei32_v_entries = v_indexed_store_entries ~mnemonic:"vsuxei32.v"
+let vsuxei64_v_entries = v_indexed_store_entries ~mnemonic:"vsuxei64.v"
+let vsoxei8_v_entries = v_indexed_store_entries ~mnemonic:"vsoxei8.v"
+let vsoxei16_v_entries = v_indexed_store_entries ~mnemonic:"vsoxei16.v"
+let vsoxei32_v_entries = v_indexed_store_entries ~mnemonic:"vsoxei32.v"
+let vsoxei64_v_entries = v_indexed_store_entries ~mnemonic:"vsoxei64.v"
+let vl1re8_v_entries = v_load_entries ~mnemonic:"vl1re8.v"
+let vl1re16_v_entries = v_load_entries ~mnemonic:"vl1re16.v"
+let vl1re32_v_entries = v_load_entries ~mnemonic:"vl1re32.v"
+let vl1re64_v_entries = v_load_entries ~mnemonic:"vl1re64.v"
+let vl2re8_v_entries = v_load_entries ~mnemonic:"vl2re8.v"
+let vl2re16_v_entries = v_load_entries ~mnemonic:"vl2re16.v"
+let vl2re32_v_entries = v_load_entries ~mnemonic:"vl2re32.v"
+let vl2re64_v_entries = v_load_entries ~mnemonic:"vl2re64.v"
+let vl4re8_v_entries = v_load_entries ~mnemonic:"vl4re8.v"
+let vl4re16_v_entries = v_load_entries ~mnemonic:"vl4re16.v"
+let vl4re32_v_entries = v_load_entries ~mnemonic:"vl4re32.v"
+let vl4re64_v_entries = v_load_entries ~mnemonic:"vl4re64.v"
+let vl8re8_v_entries = v_load_entries ~mnemonic:"vl8re8.v"
+let vl8re16_v_entries = v_load_entries ~mnemonic:"vl8re16.v"
+let vl8re32_v_entries = v_load_entries ~mnemonic:"vl8re32.v"
+let vl8re64_v_entries = v_load_entries ~mnemonic:"vl8re64.v"
+let vs1r_v_entries = v_store_entries ~mnemonic:"vs1r.v"
+let vs2r_v_entries = v_store_entries ~mnemonic:"vs2r.v"
+let vs4r_v_entries = v_store_entries ~mnemonic:"vs4r.v"
+let vs8r_v_entries = v_store_entries ~mnemonic:"vs8r.v"
+
 let all =
   sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @ x86_fadd_entries @ fadd_s_entries
   @ fsub_s_entries @ fmul_s_entries @ fdiv_s_entries @ fadd_d_entries @ fsub_d_entries
@@ -2639,6 +2843,19 @@ let all =
   @ vfncvt_rod_f_f_w_entries @ vfncvt_rtz_xu_f_w_entries @ vfncvt_rtz_x_f_w_entries
   @ vfwmacc_vv_entries @ vfwmacc_vf_entries @ vfwnmacc_vv_entries @ vfwnmacc_vf_entries
   @ vfwmsac_vv_entries @ vfwmsac_vf_entries @ vfwnmsac_vv_entries @ vfwnmsac_vf_entries
+  @ vle8_v_entries @ vle16_v_entries @ vle32_v_entries @ vle64_v_entries @ vse8_v_entries
+  @ vse16_v_entries @ vse32_v_entries @ vse64_v_entries @ vlm_v_entries @ vsm_v_entries
+  @ vle8ff_v_entries @ vle16ff_v_entries @ vle32ff_v_entries @ vle64ff_v_entries @ vlse8_v_entries
+  @ vlse16_v_entries @ vlse32_v_entries @ vlse64_v_entries @ vsse8_v_entries @ vsse16_v_entries
+  @ vsse32_v_entries @ vsse64_v_entries @ vluxei8_v_entries @ vluxei16_v_entries
+  @ vluxei32_v_entries @ vluxei64_v_entries @ vloxei8_v_entries @ vloxei16_v_entries
+  @ vloxei32_v_entries @ vloxei64_v_entries @ vsuxei8_v_entries @ vsuxei16_v_entries
+  @ vsuxei32_v_entries @ vsuxei64_v_entries @ vsoxei8_v_entries @ vsoxei16_v_entries
+  @ vsoxei32_v_entries @ vsoxei64_v_entries @ vl1re8_v_entries @ vl1re16_v_entries
+  @ vl1re32_v_entries @ vl1re64_v_entries @ vl2re8_v_entries @ vl2re16_v_entries @ vl2re32_v_entries
+  @ vl2re64_v_entries @ vl4re8_v_entries @ vl4re16_v_entries @ vl4re32_v_entries @ vl4re64_v_entries
+  @ vl8re8_v_entries @ vl8re16_v_entries @ vl8re32_v_entries @ vl8re64_v_entries @ vs1r_v_entries
+  @ vs2r_v_entries @ vs4r_v_entries @ vs8r_v_entries
 
 let pilot_entry_of (entry : entry) =
   let evidence =

@@ -1266,6 +1266,491 @@ let lr_form ~mnemonic (rec_ : R.t) =
               ];
         }
 
+(* V's unit-stride loads/stores: [vle8/16/32/64.v vd, (rs1)] /
+   [vse8/16/32/64.v vs3, (rs1)] - the same "vd/vs3, (rs1)" no-offset shape as
+   {!lr_form}, with a vector register (not a GPR) on the data side and the
+   element width baked into each mnemonic's own fixed [encoding.mask]/
+   [encoding.value] rather than a separate operand (see {!opivv_form}'s
+   analogous [vm]-not-modeled note for the trailing mask suffix). The source
+   record's own [nf] field (bits 31:29) is left free by riscv-opcodes'
+   [mask] - architecturally shared with the segmented [vlseg<nf>e<eew>.v]
+   family - but this snapshot's checked-in export has no segmented-mnemonic
+   records at all, and GAS's own bare [vle32.v] spelling always emits nf=0,
+   so only that canonical spelling is normalized here. *)
+let v_load_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let rd = { op_name = "vd"; op_kind = vreg (); role = Out; explicit = true } in
+      let base = { op_name = "base"; op_kind = gpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ rd; base ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "vd";
+                  Syn_group [ Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields vd, rs1 taken verbatim from encoding.fields, renamed base";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rs1 renders as GAS's parenthesized memory base with no encodable offset; GAS \
+                   accepts an optional trailing mask operand (\", v0.t\") selecting vm=0 - not \
+                   modeled here, owned by the encoder";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+              | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+              | _ -> [])
+            @ [
+                {
+                  rule = mnemonic ^ "-nf-not-modeled";
+                  message =
+                    "nf is a real encodable field shared with the segmented vlseg<nf>e<eew>.v \
+                     family (absent from this snapshot's export); only the bare nf=0 canonical \
+                     spelling is normalized here";
+                };
+              ];
+        }
+
+let v_store_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let vs3 = { op_name = "vs3"; op_kind = vreg (); role = In; explicit = true } in
+      let base = { op_name = "base"; op_kind = gpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ vs3; base ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "vs3";
+                  Syn_group [ Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields vs3, rs1 taken verbatim from encoding.fields, renamed base";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rs1 renders as GAS's parenthesized memory base with no encodable offset; GAS \
+                   accepts an optional trailing mask operand (\", v0.t\") selecting vm=0 - not \
+                   modeled here, owned by the encoder";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+              | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+              | _ -> [])
+            @ [
+                {
+                  rule = mnemonic ^ "-nf-not-modeled";
+                  message =
+                    "nf is a real encodable field shared with the segmented vsseg<nf>e<eew>.v \
+                     family (absent from this snapshot's export); only the bare nf=0 canonical \
+                     spelling is normalized here";
+                };
+              ];
+        }
+
+(* [vlm.v vd, (base)] / [vsm.v vs3, (base)]: V's mask-register load/store -
+   {!v_load_form}/[v_store_form]'s identical "vd/vs3, (base)" shape, but
+   the source record's own [lumop]/[sumop] field is fixed to 0b01011
+   (rather than 0 for the unit-stride family) and, unlike that family,
+   [vm] is fixed to 1 as well - real GNU as rejects a trailing mask
+   operand outright (`vlm.v v1,(a0),v0.t` -> "illegal operands"), so
+   unlike {!v_load_form} this shape has no unmodeled mask suffix to note,
+   and (confirmed against the checked-in riscv32.jsonl/riscv64.jsonl)
+   [nf] is not even a free field here - the record's own [encoding.mask]
+   covers it, so there is no nf-not-modeled diagnostic either. *)
+let vlm_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let rd = { op_name = "vd"; op_kind = vreg (); role = Out; explicit = true } in
+      let base = { op_name = "base"; op_kind = gpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ rd; base ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "vd";
+                  Syn_group [ Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields vd, rs1 taken verbatim from encoding.fields, renamed base";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rs1 renders as GAS's parenthesized memory base with no encodable offset; unlike \
+                   vle*.v/vse*.v, GAS accepts no trailing mask operand here (vm is fixed to 1)";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+            | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+            | _ -> []);
+        }
+
+let vsm_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let vs3 = { op_name = "vs3"; op_kind = vreg (); role = In; explicit = true } in
+      let base = { op_name = "base"; op_kind = gpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ vs3; base ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "vs3";
+                  Syn_group [ Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields vs3, rs1 taken verbatim from encoding.fields, renamed base";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rs1 renders as GAS's parenthesized memory base with no encodable offset; unlike \
+                   vle*.v/vse*.v, GAS accepts no trailing mask operand here (vm is fixed to 1)";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+            | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+            | _ -> []);
+        }
+
+(* [vlse8/16/32/64.v vd, (base), stride] / [vsse8/16/32/64.v vs3, (base),
+   stride]: V's strided loads/stores - {!v_load_form}/[v_store_form]'s
+   identical memory-operand pair, plus a third plain GPR operand (the
+   byte stride) the unit-stride family has no room for. Like
+   {!v_load_form}, [nf] is a free field the record's own encoding leaves
+   unconstrained (shared with the segmented `vlsseg<nf>e<eew>.v` family,
+   absent from this snapshot), so only the bare nf=0 spelling is
+   normalized here. *)
+let v_strided_load_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let rd = { op_name = "vd"; op_kind = vreg (); role = Out; explicit = true } in
+      let base = { op_name = "base"; op_kind = gpr (); role = In; explicit = true } in
+      let stride = { op_name = "rs2"; op_kind = gpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ rd; base; stride ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "vd";
+                  Syn_group [ Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                  Syn_operand "rs2";
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields vd, rs1, rs2 taken verbatim from encoding.fields, rs1 renamed \
+                   base";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rs1 renders as GAS's parenthesized memory base with no encodable offset, \
+                   followed by rs2 as the plain byte-stride operand; GAS accepts an optional \
+                   trailing mask operand (\", v0.t\") selecting vm=0 - not modeled here, owned by \
+                   the encoder";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+              | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+              | _ -> [])
+            @ [
+                {
+                  rule = mnemonic ^ "-nf-not-modeled";
+                  message =
+                    "nf is a real encodable field shared with the segmented vlsseg<nf>e<eew>.v \
+                     family (absent from this snapshot's export); only the bare nf=0 canonical \
+                     spelling is normalized here";
+                };
+              ];
+        }
+
+let v_strided_store_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let vs3 = { op_name = "vs3"; op_kind = vreg (); role = In; explicit = true } in
+      let base = { op_name = "base"; op_kind = gpr (); role = In; explicit = true } in
+      let stride = { op_name = "rs2"; op_kind = gpr (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ vs3; base; stride ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "vs3";
+                  Syn_group [ Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                  Syn_operand "rs2";
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields vs3, rs1, rs2 taken verbatim from encoding.fields, rs1 renamed \
+                   base";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rs1 renders as GAS's parenthesized memory base with no encodable offset, \
+                   followed by rs2 as the plain byte-stride operand; GAS accepts an optional \
+                   trailing mask operand (\", v0.t\") selecting vm=0 - not modeled here, owned by \
+                   the encoder";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+              | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+              | _ -> [])
+            @ [
+                {
+                  rule = mnemonic ^ "-nf-not-modeled";
+                  message =
+                    "nf is a real encodable field shared with the segmented vssseg<nf>e<eew>.v \
+                     family (absent from this snapshot's export); only the bare nf=0 canonical \
+                     spelling is normalized here";
+                };
+              ];
+        }
+
+(* [vl{u,o}xei8/16/32/64.v vd, (base), vs2] / [vs{u,o}xei8/16/32/64.v
+   vs3, (base), vs2]: V's indexed loads/stores - {!v_strided_load_form}/
+   [v_strided_store_form]'s identical three-operand shape, but the third
+   operand is a vector register (the source record's own "vs2" field,
+   the element index) rather than a GPR stride - ordered/unordered
+   ("o"/"u") differ only in the encoder's fixed mop value, invisible at
+   this normalization layer, so one pair of functions covers all 8
+   mnemonics. *)
+let v_indexed_load_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let rd = { op_name = "vd"; op_kind = vreg (); role = Out; explicit = true } in
+      let base = { op_name = "base"; op_kind = gpr (); role = In; explicit = true } in
+      let index = { op_name = "vs2"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ rd; base; index ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "vd";
+                  Syn_group [ Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                  Syn_operand "vs2";
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields vd, rs1, vs2 taken verbatim from encoding.fields, rs1 renamed \
+                   base";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rs1 renders as GAS's parenthesized memory base with no encodable offset, \
+                   followed by vs2 as the plain vector-register index operand; GAS accepts an \
+                   optional trailing mask operand (\", v0.t\") selecting vm=0 - not modeled here, \
+                   owned by the encoder";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+              | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+              | _ -> [])
+            @ [
+                {
+                  rule = mnemonic ^ "-nf-not-modeled";
+                  message =
+                    "nf is a real encodable field shared with the segmented vlsseg<nf>e<eew>.v \
+                     family (absent from this snapshot's export); only the bare nf=0 canonical \
+                     spelling is normalized here";
+                };
+              ];
+        }
+
+let v_indexed_store_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of rec_ in
+      let vs3 = { op_name = "vs3"; op_kind = vreg (); role = In; explicit = true } in
+      let base = { op_name = "base"; op_kind = gpr (); role = In; explicit = true } in
+      let index = { op_name = "vs2"; op_kind = vreg (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [ vs3; base; index ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "vs3";
+                  Syn_group [ Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                  Syn_operand "vs2";
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields vs3, rs1, vs2 taken verbatim from encoding.fields, rs1 renamed \
+                   base";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rs1 renders as GAS's parenthesized memory base with no encodable offset, \
+                   followed by vs2 as the plain vector-register index operand; GAS accepts an \
+                   optional trailing mask operand (\", v0.t\") selecting vm=0 - not modeled here, \
+                   owned by the encoder";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+              | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+              | _ -> [])
+            @ [
+                {
+                  rule = mnemonic ^ "-nf-not-modeled";
+                  message =
+                    "nf is a real encodable field shared with the segmented vssseg<nf>e<eew>.v \
+                     family (absent from this snapshot's export); only the bare nf=0 canonical \
+                     spelling is normalized here";
+                };
+              ];
+        }
+
 let r_type_mnemonics =
   [
     "add";
@@ -3983,6 +4468,64 @@ let normalize (rec_ : R.t) =
   | "vmsof.m" -> vext_form ~mnemonic:"vmsof.m" rec_
   | "vcpop.m" -> v_to_x_unary_form ~mnemonic:"vcpop.m" rec_
   | "vfirst.m" -> v_to_x_unary_form ~mnemonic:"vfirst.m" rec_
+  | "vle8.v" -> v_load_form ~mnemonic:"vle8.v" rec_
+  | "vle16.v" -> v_load_form ~mnemonic:"vle16.v" rec_
+  | "vle32.v" -> v_load_form ~mnemonic:"vle32.v" rec_
+  | "vle64.v" -> v_load_form ~mnemonic:"vle64.v" rec_
+  | "vse8.v" -> v_store_form ~mnemonic:"vse8.v" rec_
+  | "vse16.v" -> v_store_form ~mnemonic:"vse16.v" rec_
+  | "vse32.v" -> v_store_form ~mnemonic:"vse32.v" rec_
+  | "vse64.v" -> v_store_form ~mnemonic:"vse64.v" rec_
+  | "vlm.v" -> vlm_form ~mnemonic:"vlm.v" rec_
+  | "vsm.v" -> vsm_form ~mnemonic:"vsm.v" rec_
+  | "vle8ff.v" -> v_load_form ~mnemonic:"vle8ff.v" rec_
+  | "vle16ff.v" -> v_load_form ~mnemonic:"vle16ff.v" rec_
+  | "vle32ff.v" -> v_load_form ~mnemonic:"vle32ff.v" rec_
+  | "vle64ff.v" -> v_load_form ~mnemonic:"vle64ff.v" rec_
+  | "vlse8.v" -> v_strided_load_form ~mnemonic:"vlse8.v" rec_
+  | "vlse16.v" -> v_strided_load_form ~mnemonic:"vlse16.v" rec_
+  | "vlse32.v" -> v_strided_load_form ~mnemonic:"vlse32.v" rec_
+  | "vlse64.v" -> v_strided_load_form ~mnemonic:"vlse64.v" rec_
+  | "vsse8.v" -> v_strided_store_form ~mnemonic:"vsse8.v" rec_
+  | "vsse16.v" -> v_strided_store_form ~mnemonic:"vsse16.v" rec_
+  | "vsse32.v" -> v_strided_store_form ~mnemonic:"vsse32.v" rec_
+  | "vsse64.v" -> v_strided_store_form ~mnemonic:"vsse64.v" rec_
+  | "vluxei8.v" -> v_indexed_load_form ~mnemonic:"vluxei8.v" rec_
+  | "vluxei16.v" -> v_indexed_load_form ~mnemonic:"vluxei16.v" rec_
+  | "vluxei32.v" -> v_indexed_load_form ~mnemonic:"vluxei32.v" rec_
+  | "vluxei64.v" -> v_indexed_load_form ~mnemonic:"vluxei64.v" rec_
+  | "vloxei8.v" -> v_indexed_load_form ~mnemonic:"vloxei8.v" rec_
+  | "vloxei16.v" -> v_indexed_load_form ~mnemonic:"vloxei16.v" rec_
+  | "vloxei32.v" -> v_indexed_load_form ~mnemonic:"vloxei32.v" rec_
+  | "vloxei64.v" -> v_indexed_load_form ~mnemonic:"vloxei64.v" rec_
+  | "vsuxei8.v" -> v_indexed_store_form ~mnemonic:"vsuxei8.v" rec_
+  | "vsuxei16.v" -> v_indexed_store_form ~mnemonic:"vsuxei16.v" rec_
+  | "vsuxei32.v" -> v_indexed_store_form ~mnemonic:"vsuxei32.v" rec_
+  | "vsuxei64.v" -> v_indexed_store_form ~mnemonic:"vsuxei64.v" rec_
+  | "vsoxei8.v" -> v_indexed_store_form ~mnemonic:"vsoxei8.v" rec_
+  | "vsoxei16.v" -> v_indexed_store_form ~mnemonic:"vsoxei16.v" rec_
+  | "vsoxei32.v" -> v_indexed_store_form ~mnemonic:"vsoxei32.v" rec_
+  | "vsoxei64.v" -> v_indexed_store_form ~mnemonic:"vsoxei64.v" rec_
+  | "vl1re8.v" -> vlm_form ~mnemonic:"vl1re8.v" rec_
+  | "vl1re16.v" -> vlm_form ~mnemonic:"vl1re16.v" rec_
+  | "vl1re32.v" -> vlm_form ~mnemonic:"vl1re32.v" rec_
+  | "vl1re64.v" -> vlm_form ~mnemonic:"vl1re64.v" rec_
+  | "vl2re8.v" -> vlm_form ~mnemonic:"vl2re8.v" rec_
+  | "vl2re16.v" -> vlm_form ~mnemonic:"vl2re16.v" rec_
+  | "vl2re32.v" -> vlm_form ~mnemonic:"vl2re32.v" rec_
+  | "vl2re64.v" -> vlm_form ~mnemonic:"vl2re64.v" rec_
+  | "vl4re8.v" -> vlm_form ~mnemonic:"vl4re8.v" rec_
+  | "vl4re16.v" -> vlm_form ~mnemonic:"vl4re16.v" rec_
+  | "vl4re32.v" -> vlm_form ~mnemonic:"vl4re32.v" rec_
+  | "vl4re64.v" -> vlm_form ~mnemonic:"vl4re64.v" rec_
+  | "vl8re8.v" -> vlm_form ~mnemonic:"vl8re8.v" rec_
+  | "vl8re16.v" -> vlm_form ~mnemonic:"vl8re16.v" rec_
+  | "vl8re32.v" -> vlm_form ~mnemonic:"vl8re32.v" rec_
+  | "vl8re64.v" -> vlm_form ~mnemonic:"vl8re64.v" rec_
+  | "vs1r.v" -> vsm_form ~mnemonic:"vs1r.v" rec_
+  | "vs2r.v" -> vsm_form ~mnemonic:"vs2r.v" rec_
+  | "vs4r.v" -> vsm_form ~mnemonic:"vs4r.v" rec_
+  | "vs8r.v" -> vsm_form ~mnemonic:"vs8r.v" rec_
   | other ->
       err "unhandled-native-name"
         (Printf.sprintf

@@ -554,6 +554,64 @@ let promoted_case ~target ~form_id ~lookup_key =
   | (Target.Riscv32 | Target.Riscv64), "riscv:vfwmsac.vf", "vfwmsac.vf" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vfwnmsac.vv", "vfwnmsac.vv" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vfwnmsac.vf", "vfwnmsac.vf" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vle8.v", "vle8.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vle16.v", "vle16.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vle32.v", "vle32.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vle64.v", "vle64.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vse8.v", "vse8.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vse16.v", "vse16.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vse32.v", "vse32.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vse64.v", "vse64.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vlm.v", "vlm.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsm.v", "vsm.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vle8ff.v", "vle8ff.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vle16ff.v", "vle16ff.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vle32ff.v", "vle32ff.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vle64ff.v", "vle64ff.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vlse8.v", "vlse8.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vlse16.v", "vlse16.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vlse32.v", "vlse32.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vlse64.v", "vlse64.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsse8.v", "vsse8.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsse16.v", "vsse16.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsse32.v", "vsse32.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsse64.v", "vsse64.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vluxei8.v", "vluxei8.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vluxei16.v", "vluxei16.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vluxei32.v", "vluxei32.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vluxei64.v", "vluxei64.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vloxei8.v", "vloxei8.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vloxei16.v", "vloxei16.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vloxei32.v", "vloxei32.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vloxei64.v", "vloxei64.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsuxei8.v", "vsuxei8.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsuxei16.v", "vsuxei16.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsuxei32.v", "vsuxei32.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsuxei64.v", "vsuxei64.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsoxei8.v", "vsoxei8.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsoxei16.v", "vsoxei16.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsoxei32.v", "vsoxei32.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vsoxei64.v", "vsoxei64.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl1re8.v", "vl1re8.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl1re16.v", "vl1re16.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl1re32.v", "vl1re32.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl1re64.v", "vl1re64.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl2re8.v", "vl2re8.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl2re16.v", "vl2re16.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl2re32.v", "vl2re32.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl2re64.v", "vl2re64.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl4re8.v", "vl4re8.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl4re16.v", "vl4re16.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl4re32.v", "vl4re32.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl4re64.v", "vl4re64.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl8re8.v", "vl8re8.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl8re16.v", "vl8re16.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl8re32.v", "vl8re32.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl8re64.v", "vl8re64.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vs1r.v", "vs1r.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vs2r.v", "vs2r.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vs4r.v", "vs4r.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vs8r.v", "vs8r.v" -> true
   | _ -> false
 
 let pilot_case ~target ~form_id ~lookup_key =
