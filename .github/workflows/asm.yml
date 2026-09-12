@@ -30,7 +30,7 @@ jobs:
       with:
         submodules: true
     - name: devcontainer
-      uses: ./.github/workflows/actions/devcontainer
+      uses: TheCBaH/devcontainer-action/devcontainer@v1
       id: devcontainer
       env:
         OCAML_VERSION: ${{ matrix.ocaml_version }}
@@ -134,7 +134,7 @@ jobs:
       with:
         submodules: true
     - name: devcontainer
-      uses: ./.github/workflows/actions/devcontainer
+      uses: TheCBaH/devcontainer-action/devcontainer@v1
       id: devcontainer
       with:
         variant: ${{ env.OCAML_VERSION }}
@@ -194,7 +194,7 @@ jobs:
       with:
         submodules: true
     - name: devcontainer
-      uses: ./.github/workflows/actions/devcontainer
+      uses: TheCBaH/devcontainer-action/devcontainer@v1
       id: devcontainer
       with:
         variant: ${{ env.OCAML_VERSION }}
@@ -223,7 +223,7 @@ jobs:
       with:
         submodules: true
     - name: devcontainer
-      uses: ./.github/workflows/actions/devcontainer
+      uses: TheCBaH/devcontainer-action/devcontainer@v1
       id: devcontainer
       with:
         variant: ${{ env.OCAML_VERSION }}
@@ -271,7 +271,7 @@ jobs:
       with:
         submodules: true
     - name: devcontainer
-      uses: ./.github/workflows/actions/devcontainer
+      uses: TheCBaH/devcontainer-action/devcontainer@v1
       id: devcontainer
       with:
         variant: ${{ env.OCAML_VERSION }}
