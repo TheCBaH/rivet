@@ -367,6 +367,1288 @@ let test_vadd_vi () =
         r.field_name = "simm5" && r.dest_hi = 4 && r.dest_lo = 0
     | _ -> false)
 
+(* vsub/vrsub/vand/vor/vxor: OP-V's OPIVV/OPIVX/OPIVI shapes, generalized
+   by {!Isa_norm_riscv.opivv_form}/[opivx_form]/[opivi_form]. Taken verbatim
+   from the checked-in riscv64.jsonl (identical in riscv32.jsonl - V is
+   XLEN-independent). *)
+let vsub_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x8000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsub.vv", "origin": {"line": 261, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vsub.vv         31..26=0x02 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vsub.vv", "31..26=0x02", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x8000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsub.vv@L261", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsub_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x8004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsub.vx", "origin": {"line": 214, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vsub.vx        31..26=0x02 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vsub.vx", "31..26=0x02", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x8004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsub.vx@L214", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vrsub_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xc004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vrsub.vx", "origin": {"line": 215, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vrsub.vx       31..26=0x03 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vrsub.vx", "31..26=0x03", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xc004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vrsub.vx@L215", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vrsub_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xc003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vrsub.vi", "origin": {"line": 307, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vrsub.vi       31..26=0x03 vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vrsub.vi", "31..26=0x03", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xc003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vrsub.vi@L307", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vand_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x24000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vand.vv", "origin": {"line": 266, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vand.vv         31..26=0x09 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vand.vv", "31..26=0x09", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x24000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vand.vv@L266", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vand_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x24004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vand.vx", "origin": {"line": 220, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vand.vx        31..26=0x09 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vand.vx", "31..26=0x09", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x24004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vand.vx@L220", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vand_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x24003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vand.vi", "origin": {"line": 308, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vand.vi        31..26=0x09 vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vand.vi", "31..26=0x09", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x24003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vand.vi@L308", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vor_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x28000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vor.vv", "origin": {"line": 267, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vor.vv          31..26=0x0a vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vor.vv", "31..26=0x0a", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x28000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vor.vv@L267", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vor_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x28004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vor.vx", "origin": {"line": 221, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vor.vx         31..26=0x0a vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vor.vx", "31..26=0x0a", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x28004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vor.vx@L221", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vor_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x28003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vor.vi", "origin": {"line": 309, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vor.vi         31..26=0x0a vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vor.vi", "31..26=0x0a", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x28003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vor.vi@L309", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vxor_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x2c000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vxor.vv", "origin": {"line": 268, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vxor.vv         31..26=0x0b vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vxor.vv", "31..26=0x0b", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x2c000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vxor.vv@L268", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vxor_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x2c004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vxor.vx", "origin": {"line": 222, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vxor.vx        31..26=0x0b vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vxor.vx", "31..26=0x0b", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x2c004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vxor.vx@L222", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vxor_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x2c003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vxor.vi", "origin": {"line": 310, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vxor.vi        31..26=0x0b vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vxor.vi", "31..26=0x0b", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x2c003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vxor.vi@L310", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_opivv_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs2, rs1")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2, rs1");
+  check
+    (mnemonic ^ ": all three operands are vector registers")
+    (List.for_all
+       (fun (o : Isa_norm_model.operand) ->
+         match o.op_kind with Register { class_ = Riscv_vec; _ } -> true | _ -> false)
+       form.operands)
+
+let test_opivx_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs2, rs1")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2, rs1");
+  check
+    (mnemonic ^ ": rs1 is a GPR, rd/rs2 are vector registers")
+    (match
+       ( List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rs1") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rd") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rs2") form.operands )
+     with
+    | ( { op_kind = Register { class_ = Riscv_gpr; _ }; _ },
+        { op_kind = Register { class_ = Riscv_vec; _ }; _ },
+        { op_kind = Register { class_ = Riscv_vec; _ }; _ } ) ->
+        true
+    | _ -> false)
+
+let test_opmacc_vv_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs1, rs2 (reordered relative to opivv_form)")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1, rs2");
+  check
+    (mnemonic ^ ": all three operands are vector registers")
+    (List.for_all
+       (fun (o : Isa_norm_model.operand) ->
+         match o.op_kind with Register { class_ = Riscv_vec; _ } -> true | _ -> false)
+       form.operands)
+
+let test_opmacc_vx_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs1, rs2 (reordered relative to opivx_form)")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1, rs2");
+  check
+    (mnemonic ^ ": rs1 is a GPR, rd/rs2 are vector registers")
+    (match
+       ( List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rs1") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rd") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rs2") form.operands )
+     with
+    | ( { op_kind = Register { class_ = Riscv_gpr; _ }; _ },
+        { op_kind = Register { class_ = Riscv_vec; _ }; _ },
+        { op_kind = Register { class_ = Riscv_vec; _ }; _ } ) ->
+        true
+    | _ -> false)
+
+let test_vext_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs2")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2");
+  check
+    (mnemonic ^ ": both operands are vector registers")
+    (List.for_all
+       (fun (o : Isa_norm_model.operand) ->
+         match o.op_kind with Register { class_ = Riscv_vec; _ } -> true | _ -> false)
+       form.operands)
+
+let test_v_to_x_unary_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs2")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2");
+  check
+    (mnemonic ^ ": rd is a GPR, rs2 is a vector register")
+    (match
+       ( List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rd") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rs2") form.operands )
+     with
+    | ( { op_kind = Register { class_ = Riscv_gpr; _ }; _ },
+        { op_kind = Register { class_ = Riscv_vec; _ }; _ } ) ->
+        true
+    | _ -> false)
+
+let test_carry_m_vv_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs2, rs1, vcarry")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2, rs1, vcarry");
+  check
+    (mnemonic ^ ": all four operands are vector registers")
+    (List.for_all
+       (fun (o : Isa_norm_model.operand) ->
+         match o.op_kind with Register { class_ = Riscv_vec; _ } -> true | _ -> false)
+       form.operands)
+
+let test_carry_m_vx_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs2, rs1, vcarry")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2, rs1, vcarry");
+  check
+    (mnemonic ^ ": rs1 is a GPR, rd/rs2/vcarry are vector registers")
+    (match
+       ( List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rs1") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rd") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rs2") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "vcarry") form.operands )
+     with
+    | ( { op_kind = Register { class_ = Riscv_gpr; _ }; _ },
+        { op_kind = Register { class_ = Riscv_vec; _ }; _ },
+        { op_kind = Register { class_ = Riscv_vec; _ }; _ },
+        { op_kind = Register { class_ = Riscv_vec; _ }; _ } ) ->
+        true
+    | _ -> false)
+
+let test_carry_m_vi_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs2, simm5, vcarry")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2, simm5, vcarry");
+  check
+    (mnemonic ^ ": simm5 is a signed 5-bit immediate")
+    (match List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "simm5") form.operands with
+    | { op_kind = Immediate { width_bits = 5; signed = true; runs = [ r ]; _ }; _ } ->
+        r.field_name = "simm5" && r.dest_hi = 4 && r.dest_lo = 0
+    | _ -> false)
+
+let test_mv_x_s_form json =
+  let mnemonic = "vmv.x.s" in
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs2")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2");
+  check
+    (mnemonic ^ ": rd is a GPR, rs2 is a vector register")
+    (match
+       ( List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rd") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rs2") form.operands )
+     with
+    | ( { op_kind = Register { class_ = Riscv_gpr; _ }; _ },
+        { op_kind = Register { class_ = Riscv_vec; _ }; _ } ) ->
+        true
+    | _ -> false)
+
+let test_mv_s_x_form json =
+  let mnemonic = "vmv.s.x" in
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs1")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1");
+  check
+    (mnemonic ^ ": rd is a vector register, rs1 is a GPR")
+    (match
+       ( List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rd") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rs1") form.operands )
+     with
+    | ( { op_kind = Register { class_ = Riscv_vec; _ }; _ },
+        { op_kind = Register { class_ = Riscv_gpr; _ }; _ } ) ->
+        true
+    | _ -> false)
+
+let test_vmv_v_v_form json =
+  let mnemonic = "vmv.v.v" in
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": renders as rd, rs1")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1");
+  check
+    (mnemonic ^ ": both operands are vector registers")
+    (List.for_all
+       (fun (o : Isa_norm_model.operand) ->
+         match o.op_kind with Register { class_ = Riscv_vec; _ } -> true | _ -> false)
+       form.operands)
+
+let test_vmv_v_x_form json =
+  let mnemonic = "vmv.v.x" in
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": renders as rd, rs1")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs1");
+  check
+    (mnemonic ^ ": rd is a vector register, rs1 is a GPR")
+    (match
+       ( List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rd") form.operands,
+         List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "rs1") form.operands )
+     with
+    | ( { op_kind = Register { class_ = Riscv_vec; _ }; _ },
+        { op_kind = Register { class_ = Riscv_gpr; _ }; _ } ) ->
+        true
+    | _ -> false)
+
+let test_vmv_v_i_form json =
+  let mnemonic = "vmv.v.i" in
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": renders as rd, simm5")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, simm5");
+  check
+    (mnemonic ^ ": simm5 is a signed 5-bit immediate")
+    (match List.find (fun (o : Isa_norm_model.operand) -> o.op_name = "simm5") form.operands with
+    | { op_kind = Immediate { width_bits = 5; signed = true; runs = [ r ]; _ }; _ } ->
+        r.field_name = "simm5" && r.dest_hi = 4 && r.dest_lo = 0
+    | _ -> false)
+
+let test_whole_reg_move_form ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs2")
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2");
+  check
+    (mnemonic ^ ": both operands are vector registers")
+    (List.for_all
+       (fun (o : Isa_norm_model.operand) ->
+         match o.op_kind with Register { class_ = Riscv_vec; _ } -> true | _ -> false)
+       form.operands)
+
+let test_vid_form json =
+  let mnemonic = "vid.v" in
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check (mnemonic ^ ": renders as rd") (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd");
+  check
+    (mnemonic ^ ": has exactly one vector-register operand")
+    (match form.operands with
+    | [ { op_kind = Register { class_ = Riscv_vec; _ }; _ } ] -> true
+    | _ -> false)
+
+let test_opivi_form ?(imm_name = "simm5") ?(signed = true) ~mnemonic json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check (mnemonic ^ ": form_id") (form.form_id = "riscv:" ^ mnemonic);
+  check
+    (mnemonic ^ ": requirement is the v feature")
+    (form.requirement = Isa_norm_model.Req_feature "riscv:v");
+  check
+    (mnemonic ^ ": renders as rd, rs2, " ^ imm_name)
+    (Isa_norm_model.render_syntax form.syntax = mnemonic ^ " rd, rs2, " ^ imm_name);
+  check
+    (mnemonic ^ ": " ^ imm_name ^ " is a "
+    ^ (if signed then "signed" else "unsigned")
+    ^ " 5-bit immediate")
+    (match List.find (fun (o : Isa_norm_model.operand) -> o.op_name = imm_name) form.operands with
+    | { op_kind = Immediate { width_bits = 5; signed = s; runs = [ r ]; _ }; _ } ->
+        s = signed && r.field_name = imm_name && r.dest_hi = 4 && r.dest_lo = 0
+    | _ -> false)
+
+let test_vsub_vv () = test_opivv_form ~mnemonic:"vsub.vv" vsub_vv_json
+let test_vsub_vx () = test_opivx_form ~mnemonic:"vsub.vx" vsub_vx_json
+let test_vrsub_vx () = test_opivx_form ~mnemonic:"vrsub.vx" vrsub_vx_json
+let test_vrsub_vi () = test_opivi_form ~mnemonic:"vrsub.vi" vrsub_vi_json
+let test_vand_vv () = test_opivv_form ~mnemonic:"vand.vv" vand_vv_json
+let test_vand_vx () = test_opivx_form ~mnemonic:"vand.vx" vand_vx_json
+let test_vand_vi () = test_opivi_form ~mnemonic:"vand.vi" vand_vi_json
+let test_vor_vv () = test_opivv_form ~mnemonic:"vor.vv" vor_vv_json
+let test_vor_vx () = test_opivx_form ~mnemonic:"vor.vx" vor_vx_json
+let test_vor_vi () = test_opivi_form ~mnemonic:"vor.vi" vor_vi_json
+let test_vxor_vv () = test_opivv_form ~mnemonic:"vxor.vv" vxor_vv_json
+let test_vxor_vx () = test_opivx_form ~mnemonic:"vxor.vx" vxor_vx_json
+let test_vxor_vi () = test_opivi_form ~mnemonic:"vxor.vi" vxor_vi_json
+
+(* vsll/vsrl/vsra/vminu/vmin/vmaxu/vmax/vmul/vmulh/vmulhu/vmulhsu: OP-V's shift,
+   min/max, and OPMVV/OPMVX multiply-high families, generalized across the
+   same opivv_form/opivx_form/opivi_form shapes above. *)
+let vsll_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x94000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsll.vv", "origin": {"line": 291, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vsll.vv        31..26=0x25 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vsll.vv", "31..26=0x25", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x94000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsll.vv@L291", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsll_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x94004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsll.vx", "origin": {"line": 248, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vsll.vx        31..26=0x25 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vsll.vx", "31..26=0x25", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x94004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsll.vx@L248", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsll_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x94003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsll.vi", "origin": {"line": 329, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vsll.vi        31..26=0x25 vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vsll.vi", "31..26=0x25", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x94003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsll.vi@L329", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsrl_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xa0000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsrl.vv", "origin": {"line": 293, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vsrl.vv        31..26=0x28 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vsrl.vv", "31..26=0x28", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xa0000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsrl.vv@L293", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsrl_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xa0004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsrl.vx", "origin": {"line": 250, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vsrl.vx        31..26=0x28 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vsrl.vx", "31..26=0x28", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xa0004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsrl.vx@L250", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsrl_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xa0003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsrl.vi", "origin": {"line": 334, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vsrl.vi        31..26=0x28 vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vsrl.vi", "31..26=0x28", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xa0003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsrl.vi@L334", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsra_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xa4000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsra.vv", "origin": {"line": 294, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vsra.vv        31..26=0x29 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vsra.vv", "31..26=0x29", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xa4000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsra.vv@L294", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsra_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xa4004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsra.vx", "origin": {"line": 251, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vsra.vx        31..26=0x29 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vsra.vx", "31..26=0x29", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xa4004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsra.vx@L251", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsra_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xa4003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsra.vi", "origin": {"line": 335, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vsra.vi        31..26=0x29 vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vsra.vi", "31..26=0x29", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xa4003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsra.vi@L335", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vminu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x10000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vminu.vv", "origin": {"line": 262, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vminu.vv        31..26=0x04 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vminu.vv", "31..26=0x04", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x10000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vminu.vv@L262", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vminu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x10004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vminu.vx", "origin": {"line": 216, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vminu.vx       31..26=0x04 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vminu.vx", "31..26=0x04", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x10004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vminu.vx@L216", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmin_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x14000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmin.vv", "origin": {"line": 263, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmin.vv         31..26=0x05 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmin.vv", "31..26=0x05", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x14000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmin.vv@L263", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmin_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x14004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmin.vx", "origin": {"line": 217, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmin.vx        31..26=0x05 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmin.vx", "31..26=0x05", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x14004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmin.vx@L217", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmaxu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x18000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmaxu.vv", "origin": {"line": 264, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmaxu.vv        31..26=0x06 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmaxu.vv", "31..26=0x06", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x18000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmaxu.vv@L264", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmaxu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x18004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmaxu.vx", "origin": {"line": 218, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmaxu.vx       31..26=0x06 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmaxu.vx", "31..26=0x06", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x18004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmaxu.vx@L218", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmax_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x1c000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmax.vv", "origin": {"line": 265, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmax.vv         31..26=0x07 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmax.vv", "31..26=0x07", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x1c000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmax.vv@L265", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmax_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x1c004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmax.vx", "origin": {"line": 219, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmax.vx        31..26=0x07 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmax.vx", "31..26=0x07", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x1c004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmax.vx@L219", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmul_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x94002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmul.vv", "origin": {"line": 391, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmul.vv        31..26=0x25 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmul.vv", "31..26=0x25", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x94002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmul.vv@L391", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmul_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x94006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmul.vx", "origin": {"line": 429, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmul.vx        31..26=0x25 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vmul.vx", "31..26=0x25", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x94006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmul.vx@L429", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmulh_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x9c002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmulh.vv", "origin": {"line": 393, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmulh.vv       31..26=0x27 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmulh.vv", "31..26=0x27", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x9c002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmulh.vv@L393", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmulh_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x9c006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmulh.vx", "origin": {"line": 431, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmulh.vx       31..26=0x27 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vmulh.vx", "31..26=0x27", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x9c006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmulh.vx@L431", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmulhu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x90002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmulhu.vv", "origin": {"line": 390, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmulhu.vv      31..26=0x24 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmulhu.vv", "31..26=0x24", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x90002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmulhu.vv@L390", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmulhu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x90006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmulhu.vx", "origin": {"line": 428, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmulhu.vx      31..26=0x24 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vmulhu.vx", "31..26=0x24", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x90006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmulhu.vx@L428", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmulhsu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x98002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmulhsu.vv", "origin": {"line": 392, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmulhsu.vv     31..26=0x26 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmulhsu.vv", "31..26=0x26", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x98002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmulhsu.vv@L392", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmulhsu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x98006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmulhsu.vx", "origin": {"line": 430, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmulhsu.vx     31..26=0x26 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vmulhsu.vx", "31..26=0x26", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x98006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmulhsu.vx@L430", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsll_vv () = test_opivv_form ~mnemonic:"vsll.vv" vsll_vv_json
+let test_vsll_vx () = test_opivx_form ~mnemonic:"vsll.vx" vsll_vx_json
+
+let test_vsll_vi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~mnemonic:"vsll.vi" vsll_vi_json
+
+let test_vsrl_vv () = test_opivv_form ~mnemonic:"vsrl.vv" vsrl_vv_json
+let test_vsrl_vx () = test_opivx_form ~mnemonic:"vsrl.vx" vsrl_vx_json
+
+let test_vsrl_vi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~mnemonic:"vsrl.vi" vsrl_vi_json
+
+let test_vsra_vv () = test_opivv_form ~mnemonic:"vsra.vv" vsra_vv_json
+let test_vsra_vx () = test_opivx_form ~mnemonic:"vsra.vx" vsra_vx_json
+
+let test_vsra_vi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~mnemonic:"vsra.vi" vsra_vi_json
+
+let test_vminu_vv () = test_opivv_form ~mnemonic:"vminu.vv" vminu_vv_json
+let test_vminu_vx () = test_opivx_form ~mnemonic:"vminu.vx" vminu_vx_json
+let test_vmin_vv () = test_opivv_form ~mnemonic:"vmin.vv" vmin_vv_json
+let test_vmin_vx () = test_opivx_form ~mnemonic:"vmin.vx" vmin_vx_json
+let test_vmaxu_vv () = test_opivv_form ~mnemonic:"vmaxu.vv" vmaxu_vv_json
+let test_vmaxu_vx () = test_opivx_form ~mnemonic:"vmaxu.vx" vmaxu_vx_json
+let test_vmax_vv () = test_opivv_form ~mnemonic:"vmax.vv" vmax_vv_json
+let test_vmax_vx () = test_opivx_form ~mnemonic:"vmax.vx" vmax_vx_json
+let test_vmul_vv () = test_opivv_form ~mnemonic:"vmul.vv" vmul_vv_json
+let test_vmul_vx () = test_opivx_form ~mnemonic:"vmul.vx" vmul_vx_json
+let test_vmulh_vv () = test_opivv_form ~mnemonic:"vmulh.vv" vmulh_vv_json
+let test_vmulh_vx () = test_opivx_form ~mnemonic:"vmulh.vx" vmulh_vx_json
+let test_vmulhu_vv () = test_opivv_form ~mnemonic:"vmulhu.vv" vmulhu_vv_json
+let test_vmulhu_vx () = test_opivx_form ~mnemonic:"vmulhu.vx" vmulhu_vx_json
+let test_vmulhsu_vv () = test_opivv_form ~mnemonic:"vmulhsu.vv" vmulhsu_vv_json
+let test_vmulhsu_vx () = test_opivx_form ~mnemonic:"vmulhsu.vx" vmulhsu_vx_json
+
+let vdivu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x80002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vdivu.vv", "origin": {"line": 386, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vdivu.vv       31..26=0x20 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vdivu.vv", "31..26=0x20", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x80002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vdivu.vv@L386", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vdivu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x80006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vdivu.vx", "origin": {"line": 424, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vdivu.vx       31..26=0x20 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vdivu.vx", "31..26=0x20", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x80006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vdivu.vx@L424", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vdiv_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x84002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vdiv.vv", "origin": {"line": 387, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vdiv.vv        31..26=0x21 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vdiv.vv", "31..26=0x21", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x84002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vdiv.vv@L387", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vdiv_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x84006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vdiv.vx", "origin": {"line": 425, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vdiv.vx        31..26=0x21 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vdiv.vx", "31..26=0x21", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x84006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vdiv.vx@L425", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vremu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x88002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vremu.vv", "origin": {"line": 388, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vremu.vv       31..26=0x22 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vremu.vv", "31..26=0x22", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x88002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vremu.vv@L388", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vremu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x88006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vremu.vx", "origin": {"line": 426, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vremu.vx       31..26=0x22 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vremu.vx", "31..26=0x22", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x88006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vremu.vx@L426", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vrem_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x8c002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vrem.vv", "origin": {"line": 389, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vrem.vv        31..26=0x23 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vrem.vv", "31..26=0x23", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x8c002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vrem.vv@L389", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vrem_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x8c006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vrem.vx", "origin": {"line": 427, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vrem.vx        31..26=0x23 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vrem.vx", "31..26=0x23", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x8c006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vrem.vx@L427", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vdivu_vv () = test_opivv_form ~mnemonic:"vdivu.vv" vdivu_vv_json
+let test_vdivu_vx () = test_opivx_form ~mnemonic:"vdivu.vx" vdivu_vx_json
+let test_vdiv_vv () = test_opivv_form ~mnemonic:"vdiv.vv" vdiv_vv_json
+let test_vdiv_vx () = test_opivx_form ~mnemonic:"vdiv.vx" vdiv_vx_json
+let test_vremu_vv () = test_opivv_form ~mnemonic:"vremu.vv" vremu_vv_json
+let test_vremu_vx () = test_opivx_form ~mnemonic:"vremu.vx" vremu_vx_json
+let test_vrem_vv () = test_opivv_form ~mnemonic:"vrem.vv" vrem_vv_json
+let test_vrem_vx () = test_opivx_form ~mnemonic:"vrem.vx" vrem_vx_json
+
+let vsaddu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x80000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsaddu.vv", "origin": {"line": 287, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vsaddu.vv      31..26=0x20 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vsaddu.vv", "31..26=0x20", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x80000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsaddu.vv@L287", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsaddu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x80004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsaddu.vx", "origin": {"line": 244, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vsaddu.vx      31..26=0x20 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vsaddu.vx", "31..26=0x20", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x80004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsaddu.vx@L244", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsaddu_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x80003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsaddu.vi", "origin": {"line": 327, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vsaddu.vi      31..26=0x20 vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vsaddu.vi", "31..26=0x20", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x80003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsaddu.vi@L327", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsadd_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x84000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsadd.vv", "origin": {"line": 288, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vsadd.vv       31..26=0x21 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vsadd.vv", "31..26=0x21", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x84000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsadd.vv@L288", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsadd_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x84004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsadd.vx", "origin": {"line": 245, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vsadd.vx       31..26=0x21 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vsadd.vx", "31..26=0x21", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x84004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsadd.vx@L245", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsadd_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x84003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsadd.vi", "origin": {"line": 328, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vsadd.vi       31..26=0x21 vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vsadd.vi", "31..26=0x21", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x84003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsadd.vi@L328", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vssubu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x88000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vssubu.vv", "origin": {"line": 289, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vssubu.vv      31..26=0x22 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vssubu.vv", "31..26=0x22", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x88000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vssubu.vv@L289", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vssubu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x88004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vssubu.vx", "origin": {"line": 246, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vssubu.vx      31..26=0x22 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vssubu.vx", "31..26=0x22", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x88004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vssubu.vx@L246", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vssub_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x8c000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vssub.vv", "origin": {"line": 290, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vssub.vv       31..26=0x23 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vssub.vv", "31..26=0x23", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x8c000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vssub.vv@L290", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vssub_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x8c004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vssub.vx", "origin": {"line": 247, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vssub.vx       31..26=0x23 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vssub.vx", "31..26=0x23", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x8c004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vssub.vx@L247", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsaddu_vv () = test_opivv_form ~mnemonic:"vsaddu.vv" vsaddu_vv_json
+let test_vsaddu_vx () = test_opivx_form ~mnemonic:"vsaddu.vx" vsaddu_vx_json
+let test_vsaddu_vi () = test_opivi_form ~mnemonic:"vsaddu.vi" vsaddu_vi_json
+let test_vsadd_vv () = test_opivv_form ~mnemonic:"vsadd.vv" vsadd_vv_json
+let test_vsadd_vx () = test_opivx_form ~mnemonic:"vsadd.vx" vsadd_vx_json
+let test_vsadd_vi () = test_opivi_form ~mnemonic:"vsadd.vi" vsadd_vi_json
+let test_vssubu_vv () = test_opivv_form ~mnemonic:"vssubu.vv" vssubu_vv_json
+let test_vssubu_vx () = test_opivx_form ~mnemonic:"vssubu.vx" vssubu_vx_json
+let test_vssub_vv () = test_opivv_form ~mnemonic:"vssub.vv" vssub_vv_json
+let test_vssub_vx () = test_opivx_form ~mnemonic:"vssub.vx" vssub_vx_json
+
+let vaaddu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x20002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaaddu.vv", "origin": {"line": 352, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vaaddu.vv      31..26=0x08 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vaaddu.vv", "31..26=0x08", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x20002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vaaddu.vv@L352", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vaaddu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x20006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaaddu.vx", "origin": {"line": 415, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vaaddu.vx      31..26=0x08 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vaaddu.vx", "31..26=0x08", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x20006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vaaddu.vx@L415", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vaadd_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x24002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaadd.vv", "origin": {"line": 353, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vaadd.vv       31..26=0x09 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vaadd.vv", "31..26=0x09", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x24002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vaadd.vv@L353", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vaadd_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x24006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vaadd.vx", "origin": {"line": 416, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vaadd.vx       31..26=0x09 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vaadd.vx", "31..26=0x09", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x24006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vaadd.vx@L416", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vasubu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x28002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vasubu.vv", "origin": {"line": 354, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vasubu.vv      31..26=0x0a vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vasubu.vv", "31..26=0x0a", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x28002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vasubu.vv@L354", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vasubu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x28006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vasubu.vx", "origin": {"line": 417, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vasubu.vx      31..26=0x0a vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vasubu.vx", "31..26=0x0a", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x28006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vasubu.vx@L417", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vasub_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x2c002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vasub.vv", "origin": {"line": 355, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vasub.vv       31..26=0x0b vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vasub.vv", "31..26=0x0b", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x2c002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vasub.vv@L355", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vasub_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x2c006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vasub.vx", "origin": {"line": 418, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vasub.vx       31..26=0x0b vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vasub.vx", "31..26=0x0b", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x2c006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vasub.vx@L418", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vaaddu_vv () = test_opivv_form ~mnemonic:"vaaddu.vv" vaaddu_vv_json
+let test_vaaddu_vx () = test_opivx_form ~mnemonic:"vaaddu.vx" vaaddu_vx_json
+let test_vaadd_vv () = test_opivv_form ~mnemonic:"vaadd.vv" vaadd_vv_json
+let test_vaadd_vx () = test_opivx_form ~mnemonic:"vaadd.vx" vaadd_vx_json
+let test_vasubu_vv () = test_opivv_form ~mnemonic:"vasubu.vv" vasubu_vv_json
+let test_vasubu_vx () = test_opivx_form ~mnemonic:"vasubu.vx" vasubu_vx_json
+let test_vasub_vv () = test_opivv_form ~mnemonic:"vasub.vv" vasub_vv_json
+let test_vasub_vx () = test_opivx_form ~mnemonic:"vasub.vx" vasub_vx_json
+
+let vnsrl_wv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xb0000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnsrl.wv", "origin": {"line": 297, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vnsrl.wv       31..26=0x2c vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vnsrl.wv", "31..26=0x2c", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xb0000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnsrl.wv@L297", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnsrl_wx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xb0004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnsrl.wx", "origin": {"line": 254, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vnsrl.wx       31..26=0x2c vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vnsrl.wx", "31..26=0x2c", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xb0004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnsrl.wx@L254", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnsrl_wi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xb0003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnsrl.wi", "origin": {"line": 338, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vnsrl.wi       31..26=0x2c vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vnsrl.wi", "31..26=0x2c", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xb0003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnsrl.wi@L338", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnsra_wv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xb4000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnsra.wv", "origin": {"line": 298, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vnsra.wv       31..26=0x2d vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vnsra.wv", "31..26=0x2d", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xb4000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnsra.wv@L298", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnsra_wx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xb4004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnsra.wx", "origin": {"line": 255, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vnsra.wx       31..26=0x2d vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vnsra.wx", "31..26=0x2d", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xb4004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnsra.wx@L255", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnsra_wi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xb4003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnsra.wi", "origin": {"line": 339, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vnsra.wi       31..26=0x2d vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vnsra.wi", "31..26=0x2d", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xb4003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnsra.wi@L339", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnclipu_wv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xb8000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnclipu.wv", "origin": {"line": 299, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vnclipu.wv     31..26=0x2e vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vnclipu.wv", "31..26=0x2e", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xb8000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnclipu.wv@L299", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnclipu_wx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xb8004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnclipu.wx", "origin": {"line": 256, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vnclipu.wx     31..26=0x2e vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vnclipu.wx", "31..26=0x2e", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xb8004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnclipu.wx@L256", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnclipu_wi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xb8003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnclipu.wi", "origin": {"line": 340, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vnclipu.wi     31..26=0x2e vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vnclipu.wi", "31..26=0x2e", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xb8003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnclipu.wi@L340", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnclip_wv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xbc000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnclip.wv", "origin": {"line": 300, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vnclip.wv      31..26=0x2f vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vnclip.wv", "31..26=0x2f", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xbc000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnclip.wv@L300", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnclip_wx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xbc004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnclip.wx", "origin": {"line": 257, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vnclip.wx      31..26=0x2f vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vnclip.wx", "31..26=0x2f", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xbc004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnclip.wx@L257", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnclip_wi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xbc003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnclip.wi", "origin": {"line": 341, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vnclip.wi      31..26=0x2f vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vnclip.wi", "31..26=0x2f", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xbc003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnclip.wi@L341", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vnsrl_wv () = test_opivv_form ~mnemonic:"vnsrl.wv" vnsrl_wv_json
+let test_vnsrl_wx () = test_opivx_form ~mnemonic:"vnsrl.wx" vnsrl_wx_json
+
+let test_vnsrl_wi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~mnemonic:"vnsrl.wi" vnsrl_wi_json
+
+let test_vnsra_wv () = test_opivv_form ~mnemonic:"vnsra.wv" vnsra_wv_json
+let test_vnsra_wx () = test_opivx_form ~mnemonic:"vnsra.wx" vnsra_wx_json
+
+let test_vnsra_wi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~mnemonic:"vnsra.wi" vnsra_wi_json
+
+let test_vnclipu_wv () = test_opivv_form ~mnemonic:"vnclipu.wv" vnclipu_wv_json
+let test_vnclipu_wx () = test_opivx_form ~mnemonic:"vnclipu.wx" vnclipu_wx_json
+
+let test_vnclipu_wi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~mnemonic:"vnclipu.wi" vnclipu_wi_json
+
+let test_vnclip_wv () = test_opivv_form ~mnemonic:"vnclip.wv" vnclip_wv_json
+let test_vnclip_wx () = test_opivx_form ~mnemonic:"vnclip.wx" vnclip_wx_json
+
+let test_vnclip_wi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~mnemonic:"vnclip.wi" vnclip_wi_json
+
+let vssrl_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xa8000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vssrl.vv", "origin": {"line": 295, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vssrl.vv       31..26=0x2a vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vssrl.vv", "31..26=0x2a", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xa8000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vssrl.vv@L295", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vssrl_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xa8004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vssrl.vx", "origin": {"line": 252, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vssrl.vx       31..26=0x2a vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vssrl.vx", "31..26=0x2a", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xa8004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vssrl.vx@L252", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vssrl_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xa8003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vssrl.vi", "origin": {"line": 336, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vssrl.vi       31..26=0x2a vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vssrl.vi", "31..26=0x2a", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xa8003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vssrl.vi@L336", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vssra_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xac000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vssra.vv", "origin": {"line": 296, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vssra.vv       31..26=0x2b vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vssra.vv", "31..26=0x2b", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xac000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vssra.vv@L296", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vssra_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xac004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vssra.vx", "origin": {"line": 253, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vssra.vx       31..26=0x2b vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vssra.vx", "31..26=0x2b", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xac004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vssra.vx@L253", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vssra_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xac003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vssra.vi", "origin": {"line": 337, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vssra.vi       31..26=0x2b vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vssra.vi", "31..26=0x2b", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xac003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vssra.vi@L337", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vssrl_vv () = test_opivv_form ~mnemonic:"vssrl.vv" vssrl_vv_json
+let test_vssrl_vx () = test_opivx_form ~mnemonic:"vssrl.vx" vssrl_vx_json
+
+let test_vssrl_vi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~mnemonic:"vssrl.vi" vssrl_vi_json
+
+let test_vssra_vv () = test_opivv_form ~mnemonic:"vssra.vv" vssra_vv_json
+let test_vssra_vx () = test_opivx_form ~mnemonic:"vssra.vx" vssra_vx_json
+
+let test_vssra_vi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~mnemonic:"vssra.vi" vssra_vi_json
+
+let vrgather_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x30000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vrgather.vv", "origin": {"line": 269, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vrgather.vv     31..26=0x0c vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vrgather.vv", "31..26=0x0c", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x30000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vrgather.vv@L269", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vrgather_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x30004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vrgather.vx", "origin": {"line": 223, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vrgather.vx    31..26=0x0c vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vrgather.vx", "31..26=0x0c", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x30004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vrgather.vx@L223", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vrgather_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x30003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vrgather.vi", "origin": {"line": 311, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vrgather.vi    31..26=0x0c vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vrgather.vi", "31..26=0x0c", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x30003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vrgather.vi@L311", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vrgatherei16_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x38000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vrgatherei16.vv", "origin": {"line": 270, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vrgatherei16.vv 31..26=0x0e vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vrgatherei16.vv", "31..26=0x0e", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x38000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vrgatherei16.vv@L270", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vrgather_vv () = test_opivv_form ~mnemonic:"vrgather.vv" vrgather_vv_json
+let test_vrgather_vx () = test_opivx_form ~mnemonic:"vrgather.vx" vrgather_vx_json
+
+let test_vrgather_vi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~mnemonic:"vrgather.vi" vrgather_vi_json
+
+let test_vrgatherei16_vv () = test_opivv_form ~mnemonic:"vrgatherei16.vv" vrgatherei16_vv_json
+
+let vwaddu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xc0002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwaddu.vv", "origin": {"line": 399, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwaddu.vv      31..26=0x30 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwaddu.vv", "31..26=0x30", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xc0002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwaddu.vv@L399", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwaddu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xc0006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwaddu.vx", "origin": {"line": 437, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwaddu.vx      31..26=0x30 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwaddu.vx", "31..26=0x30", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xc0006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwaddu.vx@L437", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwadd_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xc4002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwadd.vv", "origin": {"line": 400, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwadd.vv       31..26=0x31 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwadd.vv", "31..26=0x31", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xc4002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwadd.vv@L400", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwadd_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xc4006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwadd.vx", "origin": {"line": 438, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwadd.vx       31..26=0x31 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwadd.vx", "31..26=0x31", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xc4006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwadd.vx@L438", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwsubu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xc8002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwsubu.vv", "origin": {"line": 401, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwsubu.vv      31..26=0x32 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwsubu.vv", "31..26=0x32", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xc8002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwsubu.vv@L401", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwsubu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xc8006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwsubu.vx", "origin": {"line": 439, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwsubu.vx      31..26=0x32 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwsubu.vx", "31..26=0x32", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xc8006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwsubu.vx@L439", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwsub_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xcc002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwsub.vv", "origin": {"line": 402, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwsub.vv       31..26=0x33 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwsub.vv", "31..26=0x33", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xcc002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwsub.vv@L402", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwsub_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xcc006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwsub.vx", "origin": {"line": 440, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwsub.vx       31..26=0x33 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwsub.vx", "31..26=0x33", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xcc006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwsub.vx@L440", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwaddu_wv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xd0002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwaddu.wv", "origin": {"line": 403, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwaddu.wv      31..26=0x34 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwaddu.wv", "31..26=0x34", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xd0002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwaddu.wv@L403", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwaddu_wx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xd0006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwaddu.wx", "origin": {"line": 441, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwaddu.wx      31..26=0x34 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwaddu.wx", "31..26=0x34", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xd0006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwaddu.wx@L441", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwadd_wv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xd4002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwadd.wv", "origin": {"line": 404, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwadd.wv       31..26=0x35 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwadd.wv", "31..26=0x35", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xd4002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwadd.wv@L404", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwadd_wx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xd4006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwadd.wx", "origin": {"line": 442, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwadd.wx       31..26=0x35 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwadd.wx", "31..26=0x35", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xd4006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwadd.wx@L442", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwsubu_wv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xd8002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwsubu.wv", "origin": {"line": 405, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwsubu.wv      31..26=0x36 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwsubu.wv", "31..26=0x36", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xd8002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwsubu.wv@L405", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwsubu_wx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xd8006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwsubu.wx", "origin": {"line": 443, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwsubu.wx      31..26=0x36 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwsubu.wx", "31..26=0x36", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xd8006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwsubu.wx@L443", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwsub_wv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xdc002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwsub.wv", "origin": {"line": 406, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwsub.wv       31..26=0x37 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwsub.wv", "31..26=0x37", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xdc002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwsub.wv@L406", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwsub_wx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xdc006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwsub.wx", "origin": {"line": 444, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwsub.wx       31..26=0x37 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwsub.wx", "31..26=0x37", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xdc006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwsub.wx@L444", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vwaddu_vv () = test_opivv_form ~mnemonic:"vwaddu.vv" vwaddu_vv_json
+let test_vwaddu_vx () = test_opivx_form ~mnemonic:"vwaddu.vx" vwaddu_vx_json
+let test_vwadd_vv () = test_opivv_form ~mnemonic:"vwadd.vv" vwadd_vv_json
+let test_vwadd_vx () = test_opivx_form ~mnemonic:"vwadd.vx" vwadd_vx_json
+let test_vwsubu_vv () = test_opivv_form ~mnemonic:"vwsubu.vv" vwsubu_vv_json
+let test_vwsubu_vx () = test_opivx_form ~mnemonic:"vwsubu.vx" vwsubu_vx_json
+let test_vwsub_vv () = test_opivv_form ~mnemonic:"vwsub.vv" vwsub_vv_json
+let test_vwsub_vx () = test_opivx_form ~mnemonic:"vwsub.vx" vwsub_vx_json
+let test_vwaddu_wv () = test_opivv_form ~mnemonic:"vwaddu.wv" vwaddu_wv_json
+let test_vwaddu_wx () = test_opivx_form ~mnemonic:"vwaddu.wx" vwaddu_wx_json
+let test_vwadd_wv () = test_opivv_form ~mnemonic:"vwadd.wv" vwadd_wv_json
+let test_vwadd_wx () = test_opivx_form ~mnemonic:"vwadd.wx" vwadd_wx_json
+let test_vwsubu_wv () = test_opivv_form ~mnemonic:"vwsubu.wv" vwsubu_wv_json
+let test_vwsubu_wx () = test_opivx_form ~mnemonic:"vwsubu.wx" vwsubu_wx_json
+let test_vwsub_wv () = test_opivv_form ~mnemonic:"vwsub.wv" vwsub_wv_json
+let test_vwsub_wx () = test_opivx_form ~mnemonic:"vwsub.wx" vwsub_wx_json
+
+let vwmulu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xe0002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmulu.vv", "origin": {"line": 407, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwmulu.vv      31..26=0x38 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwmulu.vv", "31..26=0x38", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xe0002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmulu.vv@L407", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwmulu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xe0006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmulu.vx", "origin": {"line": 445, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwmulu.vx      31..26=0x38 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwmulu.vx", "31..26=0x38", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xe0006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmulu.vx@L445", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwmulsu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xe8002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmulsu.vv", "origin": {"line": 408, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwmulsu.vv     31..26=0x3a vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwmulsu.vv", "31..26=0x3a", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xe8002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmulsu.vv@L408", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwmulsu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xe8006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmulsu.vx", "origin": {"line": 446, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwmulsu.vx     31..26=0x3a vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwmulsu.vx", "31..26=0x3a", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xe8006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmulsu.vx@L446", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwmul_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xec002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmul.vv", "origin": {"line": 409, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwmul.vv       31..26=0x3b vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwmul.vv", "31..26=0x3b", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xec002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmul.vv@L409", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwmul_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xec006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmul.vx", "origin": {"line": 447, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwmul.vx       31..26=0x3b vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwmul.vx", "31..26=0x3b", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xec006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmul.vx@L447", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vwmulu_vv () = test_opivv_form ~mnemonic:"vwmulu.vv" vwmulu_vv_json
+let test_vwmulu_vx () = test_opivx_form ~mnemonic:"vwmulu.vx" vwmulu_vx_json
+let test_vwmulsu_vv () = test_opivv_form ~mnemonic:"vwmulsu.vv" vwmulsu_vv_json
+let test_vwmulsu_vx () = test_opivx_form ~mnemonic:"vwmulsu.vx" vwmulsu_vx_json
+let test_vwmul_vv () = test_opivv_form ~mnemonic:"vwmul.vv" vwmul_vv_json
+let test_vwmul_vx () = test_opivx_form ~mnemonic:"vwmul.vx" vwmul_vx_json
+
+let vsext_vf2_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x4803a057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsext.vf2", "origin": {"line": 366, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vsext.vf2      31..26=0x12 vm vs2 19..15=7 14..12=0x2 vd 6..0=0x57", "tokens": ["vsext.vf2", "31..26=0x12", "vm", "vs2", "19..15=7", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x4803a057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsext.vf2@L366", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsext_vf4_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x4802a057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsext.vf4", "origin": {"line": 364, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vsext.vf4      31..26=0x12 vm vs2 19..15=5 14..12=0x2 vd 6..0=0x57", "tokens": ["vsext.vf4", "31..26=0x12", "vm", "vs2", "19..15=5", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x4802a057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsext.vf4@L364", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vsext_vf8_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x4801a057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsext.vf8", "origin": {"line": 362, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vsext.vf8      31..26=0x12 vm vs2 19..15=3 14..12=0x2 vd 6..0=0x57", "tokens": ["vsext.vf8", "31..26=0x12", "vm", "vs2", "19..15=3", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x4801a057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsext.vf8@L362", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vzext_vf2_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x48032057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vzext.vf2", "origin": {"line": 365, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vzext.vf2      31..26=0x12 vm vs2 19..15=6 14..12=0x2 vd 6..0=0x57", "tokens": ["vzext.vf2", "31..26=0x12", "vm", "vs2", "19..15=6", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x48032057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vzext.vf2@L365", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vzext_vf4_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x48022057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vzext.vf4", "origin": {"line": 363, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vzext.vf4      31..26=0x12 vm vs2 19..15=4 14..12=0x2 vd 6..0=0x57", "tokens": ["vzext.vf4", "31..26=0x12", "vm", "vs2", "19..15=4", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x48022057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vzext.vf4@L363", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vzext_vf8_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x48012057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vzext.vf8", "origin": {"line": 361, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vzext.vf8      31..26=0x12 vm vs2 19..15=2 14..12=0x2 vd 6..0=0x57", "tokens": ["vzext.vf8", "31..26=0x12", "vm", "vs2", "19..15=2", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x48012057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vzext.vf8@L361", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsext_vf2 () = test_vext_form ~mnemonic:"vsext.vf2" vsext_vf2_json
+let test_vsext_vf4 () = test_vext_form ~mnemonic:"vsext.vf4" vsext_vf4_json
+let test_vsext_vf8 () = test_vext_form ~mnemonic:"vsext.vf8" vsext_vf8_json
+let test_vzext_vf2 () = test_vext_form ~mnemonic:"vzext.vf2" vzext_vf2_json
+let test_vzext_vf4 () = test_vext_form ~mnemonic:"vzext.vf4" vzext_vf4_json
+let test_vzext_vf8 () = test_vext_form ~mnemonic:"vzext.vf8" vzext_vf8_json
+
+(* vmand/vmandn/vmor/vmxor/vmorn/vmnand/vmnor/vmxnor: OP-V's mask-register
+   logical family ([.mm]), normalized by {!Isa_norm_riscv.mm_form} - the
+   same [rd, rs2, rs1] all-vector-register shape [test_opivv_form] already
+   covers, so it is reused unchanged (see {!Isa_norm_riscv.mm_form}'s own
+   comment for why the *implementation* still needs a dedicated function:
+   there is no masked [, v0.t] sibling, a fact [test_opivv_form] does not
+   assert either way). Taken verbatim from the checked-in riscv64.jsonl
+   (identical in riscv32.jsonl, confirmed). *)
+let vmand_mm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x66002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmand.mm", "origin": {"line": 370, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmand.mm       31..26=0x19 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmand.mm", "31..26=0x19", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x66002057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmand.mm@L370", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmandn_mm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x62002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmandn.mm", "origin": {"line": 369, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmandn.mm      31..26=0x18 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmandn.mm", "31..26=0x18", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x62002057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmandn.mm@L369", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmor_mm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x6a002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmor.mm", "origin": {"line": 371, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmor.mm        31..26=0x1a 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmor.mm", "31..26=0x1a", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x6a002057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmor.mm@L371", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmxor_mm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x6e002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmxor.mm", "origin": {"line": 372, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmxor.mm       31..26=0x1b 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmxor.mm", "31..26=0x1b", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x6e002057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmxor.mm@L372", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmorn_mm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x72002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmorn.mm", "origin": {"line": 373, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmorn.mm       31..26=0x1c 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmorn.mm", "31..26=0x1c", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x72002057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmorn.mm@L373", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmnand_mm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x76002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmnand.mm", "origin": {"line": 374, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmnand.mm      31..26=0x1d 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmnand.mm", "31..26=0x1d", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x76002057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmnand.mm@L374", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmnor_mm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x7a002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmnor.mm", "origin": {"line": 375, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmnor.mm       31..26=0x1e 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmnor.mm", "31..26=0x1e", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x7a002057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmnor.mm@L375", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmxnor_mm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x7e002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmxnor.mm", "origin": {"line": 376, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmxnor.mm      31..26=0x1f 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmxnor.mm", "31..26=0x1f", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x7e002057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmxnor.mm@L376", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmand_mm () = test_opivv_form ~mnemonic:"vmand.mm" vmand_mm_json
+let test_vmandn_mm () = test_opivv_form ~mnemonic:"vmandn.mm" vmandn_mm_json
+let test_vmor_mm () = test_opivv_form ~mnemonic:"vmor.mm" vmor_mm_json
+let test_vmxor_mm () = test_opivv_form ~mnemonic:"vmxor.mm" vmxor_mm_json
+let test_vmorn_mm () = test_opivv_form ~mnemonic:"vmorn.mm" vmorn_mm_json
+let test_vmnand_mm () = test_opivv_form ~mnemonic:"vmnand.mm" vmnand_mm_json
+let test_vmnor_mm () = test_opivv_form ~mnemonic:"vmnor.mm" vmnor_mm_json
+let test_vmxnor_mm () = test_opivv_form ~mnemonic:"vmxnor.mm" vmxnor_mm_json
+
+let vid_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfdfff07f", "value": "0x5008a057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vid.v", "origin": {"line": 382, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vd"], "raw": {"line": "vid.v          31..26=0x14 vm 24..20=0 19..15=0x11 14..12=0x2 vd 6..0=0x57", "tokens": ["vid.v", "31..26=0x14", "vm", "24..20=0", "19..15=0x11", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfdfff07f", "match": "0x5008a057", "variable_fields": ["vm", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vid.v@L382", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vid_v () = test_vid_form vid_v_json
+
+let viota_m_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x50082057", "width_bits": 32}, "kind": "instruction-form", "native_name": "viota.m", "origin": {"line": 381, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vd"], "raw": {"line": "viota.m        31..26=0x14 vm vs2 19..15=0x10 14..12=0x2 vd 6..0=0x57", "tokens": ["viota.m", "31..26=0x14", "vm", "vs2", "19..15=0x10", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x50082057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:viota.m@L381", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_viota_m () = test_vext_form ~mnemonic:"viota.m" viota_m_json
+
+let vcompress_vm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x5e002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vcompress.vm", "origin": {"line": 368, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vcompress.vm   31..26=0x17 25=1 vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vcompress.vm", "31..26=0x17", "25=1", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x5e002057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vcompress.vm@L368", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vcompress_vm () = test_opivv_form ~mnemonic:"vcompress.vm" vcompress_vm_json
+
+let vmsbf_m_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x5000a057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsbf.m", "origin": {"line": 378, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vmsbf.m        31..26=0x14 vm vs2 19..15=0x01 14..12=0x2 vd 6..0=0x57", "tokens": ["vmsbf.m", "31..26=0x14", "vm", "vs2", "19..15=0x01", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x5000a057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsbf.m@L378", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmsbf_m () = test_vext_form ~mnemonic:"vmsbf.m" vmsbf_m_json
+
+let vmsif_m_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x5001a057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsif.m", "origin": {"line": 380, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vmsif.m        31..26=0x14 vm vs2 19..15=0x03 14..12=0x2 vd 6..0=0x57", "tokens": ["vmsif.m", "31..26=0x14", "vm", "vs2", "19..15=0x03", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x5001a057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsif.m@L380", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmsif_m () = test_vext_form ~mnemonic:"vmsif.m" vmsif_m_json
+
+let vmsof_m_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x50012057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsof.m", "origin": {"line": 379, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vd"], "raw": {"line": "vmsof.m        31..26=0x14 vm vs2 19..15=0x02 14..12=0x2 vd 6..0=0x57", "tokens": ["vmsof.m", "31..26=0x14", "vm", "vs2", "19..15=0x02", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x50012057", "variable_fields": ["vm", "vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsof.m@L379", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmsof_m () = test_vext_form ~mnemonic:"vmsof.m" vmsof_m_json
+
+let vcpop_m_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "rd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x40082057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vcpop.m", "origin": {"line": 383, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rd"], "raw": {"line": "vcpop.m        31..26=0x10 vm vs2 19..15=0x10 14..12=0x2 rd 6..0=0x57", "tokens": ["vcpop.m", "31..26=0x10", "vm", "vs2", "19..15=0x10", "14..12=0x2", "rd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x40082057", "variable_fields": ["vm", "vs2", "rd"]}}, "record_id": "riscv-opcodes:rv_v:vcpop.m@L383", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vcpop_m () = test_v_to_x_unary_form ~mnemonic:"vcpop.m" vcpop_m_json
+
+let vfirst_m_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "rd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc0ff07f", "value": "0x4008a057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vfirst.m", "origin": {"line": 384, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rd"], "raw": {"line": "vfirst.m       31..26=0x10 vm vs2 19..15=0x11 14..12=0x2 rd 6..0=0x57", "tokens": ["vfirst.m", "31..26=0x10", "vm", "vs2", "19..15=0x11", "14..12=0x2", "rd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc0ff07f", "match": "0x4008a057", "variable_fields": ["vm", "vs2", "rd"]}}, "record_id": "riscv-opcodes:rv_v:vfirst.m@L384", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vfirst_m () = test_v_to_x_unary_form ~mnemonic:"vfirst.m" vfirst_m_json
+
+let vadc_vvm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x40000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vadc.vvm", "origin": {"line": 272, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vadc.vvm       31..26=0x10 25=0 vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vadc.vvm", "31..26=0x10", "25=0", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x40000057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vadc.vvm@L272", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vadc_vvm () = test_carry_m_vv_form ~mnemonic:"vadc.vvm" vadc_vvm_json
+
+let vadc_vxm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x40004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vadc.vxm", "origin": {"line": 227, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "rs1", "vd"], "raw": {"line": "vadc.vxm       31..26=0x10 25=0 vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vadc.vxm", "31..26=0x10", "25=0", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x40004057", "variable_fields": ["vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vadc.vxm@L227", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vadc_vxm () = test_carry_m_vx_form ~mnemonic:"vadc.vxm" vadc_vxm_json
+
+let vadc_vim_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x40003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vadc.vim", "origin": {"line": 315, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "simm5", "vd"], "raw": {"line": "vadc.vim       31..26=0x10 25=0 vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vadc.vim", "31..26=0x10", "25=0", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x40003057", "variable_fields": ["vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vadc.vim@L315", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vadc_vim () = test_carry_m_vi_form ~mnemonic:"vadc.vim" vadc_vim_json
+
+let vmadc_vvm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x44000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmadc.vvm", "origin": {"line": 273, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmadc.vvm      31..26=0x11 25=0 vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmadc.vvm", "31..26=0x11", "25=0", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x44000057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmadc.vvm@L273", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmadc_vvm () = test_carry_m_vv_form ~mnemonic:"vmadc.vvm" vmadc_vvm_json
+
+let vmadc_vxm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x44004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmadc.vxm", "origin": {"line": 228, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "rs1", "vd"], "raw": {"line": "vmadc.vxm      31..26=0x11 25=0 vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmadc.vxm", "31..26=0x11", "25=0", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x44004057", "variable_fields": ["vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmadc.vxm@L228", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmadc_vxm () = test_carry_m_vx_form ~mnemonic:"vmadc.vxm" vmadc_vxm_json
+
+let vmadc_vim_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x44003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmadc.vim", "origin": {"line": 316, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "simm5", "vd"], "raw": {"line": "vmadc.vim      31..26=0x11 25=0 vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vmadc.vim", "31..26=0x11", "25=0", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x44003057", "variable_fields": ["vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmadc.vim@L316", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmadc_vim () = test_carry_m_vi_form ~mnemonic:"vmadc.vim" vmadc_vim_json
+
+let vmadc_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x46000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmadc.vv", "origin": {"line": 274, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmadc.vv       31..26=0x11 25=1 vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmadc.vv", "31..26=0x11", "25=1", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x46000057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmadc.vv@L274", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmadc_vv () = test_opivv_form ~mnemonic:"vmadc.vv" vmadc_vv_json
+
+let vmadc_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x46004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmadc.vx", "origin": {"line": 229, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "rs1", "vd"], "raw": {"line": "vmadc.vx       31..26=0x11 25=1 vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmadc.vx", "31..26=0x11", "25=1", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x46004057", "variable_fields": ["vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmadc.vx@L229", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmadc_vx () = test_opivx_form ~mnemonic:"vmadc.vx" vmadc_vx_json
+
+let vmadc_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x46003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmadc.vi", "origin": {"line": 317, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "simm5", "vd"], "raw": {"line": "vmadc.vi       31..26=0x11 25=1 vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vmadc.vi", "31..26=0x11", "25=1", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x46003057", "variable_fields": ["vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmadc.vi@L317", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmadc_vi () = test_opivi_form ~mnemonic:"vmadc.vi" vmadc_vi_json
+
+let vsbc_vvm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x48000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsbc.vvm", "origin": {"line": 275, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vsbc.vvm       31..26=0x12 25=0 vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vsbc.vvm", "31..26=0x12", "25=0", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x48000057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsbc.vvm@L275", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsbc_vvm () = test_carry_m_vv_form ~mnemonic:"vsbc.vvm" vsbc_vvm_json
+
+let vsbc_vxm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x48004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsbc.vxm", "origin": {"line": 230, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "rs1", "vd"], "raw": {"line": "vsbc.vxm       31..26=0x12 25=0 vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vsbc.vxm", "31..26=0x12", "25=0", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x48004057", "variable_fields": ["vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsbc.vxm@L230", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsbc_vxm () = test_carry_m_vx_form ~mnemonic:"vsbc.vxm" vsbc_vxm_json
+
+let vmsbc_vvm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x4c000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsbc.vvm", "origin": {"line": 276, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmsbc.vvm      31..26=0x13 25=0 vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmsbc.vvm", "31..26=0x13", "25=0", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x4c000057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsbc.vvm@L276", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmsbc_vvm () = test_carry_m_vv_form ~mnemonic:"vmsbc.vvm" vmsbc_vvm_json
+
+let vmsbc_vxm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x4c004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsbc.vxm", "origin": {"line": 231, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "rs1", "vd"], "raw": {"line": "vmsbc.vxm      31..26=0x13 25=0 vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmsbc.vxm", "31..26=0x13", "25=0", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x4c004057", "variable_fields": ["vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsbc.vxm@L231", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmsbc_vxm () = test_carry_m_vx_form ~mnemonic:"vmsbc.vxm" vmsbc_vxm_json
+
+let vmsbc_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x4e000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsbc.vv", "origin": {"line": 277, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmsbc.vv       31..26=0x13 25=1 vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmsbc.vv", "31..26=0x13", "25=1", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x4e000057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsbc.vv@L277", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmsbc_vv () = test_opivv_form ~mnemonic:"vmsbc.vv" vmsbc_vv_json
+
+let vmsbc_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x4e004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsbc.vx", "origin": {"line": 232, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "rs1", "vd"], "raw": {"line": "vmsbc.vx       31..26=0x13 25=1 vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmsbc.vx", "31..26=0x13", "25=1", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x4e004057", "variable_fields": ["vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsbc.vx@L232", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmsbc_vx () = test_opivx_form ~mnemonic:"vmsbc.vx" vmsbc_vx_json
+
+let vmerge_vvm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x5c000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmerge.vvm", "origin": {"line": 278, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vs1", "vd"], "raw": {"line": "vmerge.vvm     31..26=0x17 25=0 vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmerge.vvm", "31..26=0x17", "25=0", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x5c000057", "variable_fields": ["vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmerge.vvm@L278", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmerge_vvm () = test_carry_m_vv_form ~mnemonic:"vmerge.vvm" vmerge_vvm_json
+
+let vmerge_vxm_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x5c004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmerge.vxm", "origin": {"line": 233, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "rs1", "vd"], "raw": {"line": "vmerge.vxm     31..26=0x17 25=0 vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmerge.vxm", "31..26=0x17", "25=0", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x5c004057", "variable_fields": ["vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmerge.vxm@L233", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmerge_vxm () = test_carry_m_vx_form ~mnemonic:"vmerge.vxm" vmerge_vxm_json
+
+let vmerge_vim_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x5c003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmerge.vim", "origin": {"line": 318, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "simm5", "vd"], "raw": {"line": "vmerge.vim     31..26=0x17 25=0 vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vmerge.vim", "31..26=0x17", "25=0", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x5c003057", "variable_fields": ["vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmerge.vim@L318", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmerge_vim () = test_carry_m_vi_form ~mnemonic:"vmerge.vim" vmerge_vim_json
+
+let vmv_x_s_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "rd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0x42002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmv.x.s", "origin": {"line": 357, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "rd"], "raw": {"line": "vmv.x.s        31..26=0x10 25=1 vs2 19..15=0 14..12=0x2 rd 6..0=0x57", "tokens": ["vmv.x.s", "31..26=0x10", "25=1", "vs2", "19..15=0", "14..12=0x2", "rd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0x42002057", "variable_fields": ["vs2", "rd"]}}, "record_id": "riscv-opcodes:rv_v:vmv.x.s@L357", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmv_x_s () = test_mv_x_s_form vmv_x_s_json
+
+let vmv_s_x_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x42006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmv.s.x", "origin": {"line": 420, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["rs1", "vd"], "raw": {"line": "vmv.s.x        31..26=0x10 25=1 24..20=0 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vmv.s.x", "31..26=0x10", "25=1", "24..20=0", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x42006057", "variable_fields": ["rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmv.s.x@L420", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmv_s_x () = test_mv_s_x_form vmv_s_x_json
+
+let vmv_v_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x5e000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmv.v.v", "origin": {"line": 279, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs1", "vd"], "raw": {"line": "vmv.v.v        31..26=0x17 25=1 24..20=0 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmv.v.v", "31..26=0x17", "25=1", "24..20=0", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x5e000057", "variable_fields": ["vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmv.v.v@L279", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmv_v_v () = test_vmv_v_v_form vmv_v_v_json
+
+let vmv_v_x_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x5e004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmv.v.x", "origin": {"line": 234, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["rs1", "vd"], "raw": {"line": "vmv.v.x        31..26=0x17 25=1 24..20=0 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmv.v.x", "31..26=0x17", "25=1", "24..20=0", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x5e004057", "variable_fields": ["rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmv.v.x@L234", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmv_v_x () = test_vmv_v_x_form vmv_v_x_json
+
+let vmv_v_i_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x5e003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmv.v.i", "origin": {"line": 319, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["simm5", "vd"], "raw": {"line": "vmv.v.i        31..26=0x17 25=1 24..20=0 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vmv.v.i", "31..26=0x17", "25=1", "24..20=0", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x5e003057", "variable_fields": ["simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmv.v.i@L319", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmv_v_i () = test_vmv_v_i_form vmv_v_i_json
+
+let vmv1r_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0x9e003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmv1r.v", "origin": {"line": 330, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vd"], "raw": {"line": "vmv1r.v        31..26=0x27 25=1 vs2 19..15=0 14..12=0x3 vd 6..0=0x57", "tokens": ["vmv1r.v", "31..26=0x27", "25=1", "vs2", "19..15=0", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0x9e003057", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmv1r.v@L330", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmv1r_v () = test_whole_reg_move_form ~mnemonic:"vmv1r.v" vmv1r_v_json
+
+let vmv2r_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0x9e00b057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmv2r.v", "origin": {"line": 331, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vd"], "raw": {"line": "vmv2r.v        31..26=0x27 25=1 vs2 19..15=1 14..12=0x3 vd 6..0=0x57", "tokens": ["vmv2r.v", "31..26=0x27", "25=1", "vs2", "19..15=1", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0x9e00b057", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmv2r.v@L331", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmv2r_v () = test_whole_reg_move_form ~mnemonic:"vmv2r.v" vmv2r_v_json
+
+let vmv4r_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0x9e01b057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmv4r.v", "origin": {"line": 332, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vd"], "raw": {"line": "vmv4r.v        31..26=0x27 25=1 vs2 19..15=3 14..12=0x3 vd 6..0=0x57", "tokens": ["vmv4r.v", "31..26=0x27", "25=1", "vs2", "19..15=3", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0x9e01b057", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmv4r.v@L332", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmv4r_v () = test_whole_reg_move_form ~mnemonic:"vmv4r.v" vmv4r_v_json
+
+let vmv8r_v_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 25, "name": "bits[25:25]", "width": 1}, {"lsb": 15, "name": "bits[19:15]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfe0ff07f", "value": "0x9e03b057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmv8r.v", "origin": {"line": 333, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vs2", "vd"], "raw": {"line": "vmv8r.v        31..26=0x27 25=1 vs2 19..15=7 14..12=0x3 vd 6..0=0x57", "tokens": ["vmv8r.v", "31..26=0x27", "25=1", "vs2", "19..15=7", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfe0ff07f", "match": "0x9e03b057", "variable_fields": ["vs2", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmv8r.v@L333", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmv8r_v () = test_whole_reg_move_form ~mnemonic:"vmv8r.v" vmv8r_v_json
+
+let vsmul_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x9c000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsmul.vv", "origin": {"line": 292, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vsmul.vv       31..26=0x27 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vsmul.vv", "31..26=0x27", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x9c000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsmul.vv@L292", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsmul_vv () = test_opivv_form ~mnemonic:"vsmul.vv" vsmul_vv_json
+
+let vsmul_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x9c004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vsmul.vx", "origin": {"line": 249, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vsmul.vx       31..26=0x27 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vsmul.vx", "31..26=0x27", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x9c004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vsmul.vx@L249", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vsmul_vx () = test_opivx_form ~mnemonic:"vsmul.vx" vsmul_vx_json
+
+(* vredsum/vredand/vredor/vredxor/vredminu/vredmin/vredmaxu/vredmax and
+   vwredsumu/vwredsum: OP-V's vector-reduction family, dispatched by
+   {!Isa_norm_riscv.opmvv_mnemonics}/[opivv_mnemonics] straight to the same
+   {!Isa_norm_riscv.opivv_form} [test_opivv_form] already covers - a real,
+   selectable mask, unlike the mask-register-logical family above. Taken
+   verbatim from the checked-in riscv64.jsonl (identical in riscv32.jsonl,
+   confirmed). *)
+let vredsum_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x2057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vredsum.vs", "origin": {"line": 344, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vredsum.vs     31..26=0x00 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vredsum.vs", "31..26=0x00", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x2057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vredsum.vs@L344", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vredand_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x4002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vredand.vs", "origin": {"line": 345, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vredand.vs     31..26=0x01 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vredand.vs", "31..26=0x01", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x4002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vredand.vs@L345", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vredor_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x8002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vredor.vs", "origin": {"line": 346, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vredor.vs      31..26=0x02 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vredor.vs", "31..26=0x02", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x8002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vredor.vs@L346", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vredxor_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xc002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vredxor.vs", "origin": {"line": 347, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vredxor.vs     31..26=0x03 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vredxor.vs", "31..26=0x03", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xc002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vredxor.vs@L347", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vredminu_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x10002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vredminu.vs", "origin": {"line": 348, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vredminu.vs    31..26=0x04 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vredminu.vs", "31..26=0x04", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x10002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vredminu.vs@L348", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vredmin_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x14002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vredmin.vs", "origin": {"line": 349, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vredmin.vs     31..26=0x05 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vredmin.vs", "31..26=0x05", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x14002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vredmin.vs@L349", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vredmaxu_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x18002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vredmaxu.vs", "origin": {"line": 350, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vredmaxu.vs    31..26=0x06 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vredmaxu.vs", "31..26=0x06", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x18002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vredmaxu.vs@L350", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vredmax_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x1c002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vredmax.vs", "origin": {"line": 351, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vredmax.vs     31..26=0x07 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vredmax.vs", "31..26=0x07", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x1c002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vredmax.vs@L351", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwredsumu_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xc0000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwredsumu.vs", "origin": {"line": 302, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwredsumu.vs   31..26=0x30 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vwredsumu.vs", "31..26=0x30", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xc0000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwredsumu.vs@L302", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwredsum_vs_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xc4000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwredsum.vs", "origin": {"line": 303, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwredsum.vs    31..26=0x31 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vwredsum.vs", "31..26=0x31", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xc4000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwredsum.vs@L303", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vredsum_vs () = test_opivv_form ~mnemonic:"vredsum.vs" vredsum_vs_json
+let test_vredand_vs () = test_opivv_form ~mnemonic:"vredand.vs" vredand_vs_json
+let test_vredor_vs () = test_opivv_form ~mnemonic:"vredor.vs" vredor_vs_json
+let test_vredxor_vs () = test_opivv_form ~mnemonic:"vredxor.vs" vredxor_vs_json
+let test_vredminu_vs () = test_opivv_form ~mnemonic:"vredminu.vs" vredminu_vs_json
+let test_vredmin_vs () = test_opivv_form ~mnemonic:"vredmin.vs" vredmin_vs_json
+let test_vredmaxu_vs () = test_opivv_form ~mnemonic:"vredmaxu.vs" vredmaxu_vs_json
+let test_vredmax_vs () = test_opivv_form ~mnemonic:"vredmax.vs" vredmax_vs_json
+let test_vwredsumu_vs () = test_opivv_form ~mnemonic:"vwredsumu.vs" vwredsumu_vs_json
+let test_vwredsum_vs () = test_opivv_form ~mnemonic:"vwredsum.vs" vwredsum_vs_json
+
+(* vmseq/vmsne/vmsltu/vmslt/vmsleu/vmsle/vmsgtu/vmsgt: OP-V's mask-writing
+   comparison family, the full OPIVV/OPIVX/OPIVI shape (minus [.vv] for
+   vmsgtu/vmsgt and [.vi] for vmsltu/vmslt), dispatched by
+   {!Isa_norm_riscv.opivv_mnemonics}/[opivx_mnemonics]/[opivi_mnemonics] to
+   the same forms {!test_opivv_form}/[test_opivx_form]/[test_opivi_form]
+   already cover. Taken verbatim from the checked-in riscv64.jsonl
+   (identical in riscv32.jsonl, confirmed). *)
+let vmseq_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x60000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmseq.vv", "origin": {"line": 280, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmseq.vv       31..26=0x18 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmseq.vv", "31..26=0x18", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x60000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmseq.vv@L280", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmseq_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x60004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmseq.vx", "origin": {"line": 235, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmseq.vx       31..26=0x18 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmseq.vx", "31..26=0x18", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x60004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmseq.vx@L235", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmseq_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x60003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmseq.vi", "origin": {"line": 320, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vmseq.vi       31..26=0x18 vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vmseq.vi", "31..26=0x18", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x60003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmseq.vi@L320", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsne_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x64000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsne.vv", "origin": {"line": 281, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmsne.vv       31..26=0x19 vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmsne.vv", "31..26=0x19", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x64000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsne.vv@L281", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsne_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x64004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsne.vx", "origin": {"line": 236, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmsne.vx       31..26=0x19 vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmsne.vx", "31..26=0x19", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x64004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsne.vx@L236", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsne_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x64003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsne.vi", "origin": {"line": 321, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vmsne.vi       31..26=0x19 vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vmsne.vi", "31..26=0x19", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x64003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsne.vi@L321", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsltu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x68000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsltu.vv", "origin": {"line": 282, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmsltu.vv      31..26=0x1a vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmsltu.vv", "31..26=0x1a", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x68000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsltu.vv@L282", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsltu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x68004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsltu.vx", "origin": {"line": 237, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmsltu.vx      31..26=0x1a vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmsltu.vx", "31..26=0x1a", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x68004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsltu.vx@L237", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmslt_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x6c000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmslt.vv", "origin": {"line": 283, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmslt.vv       31..26=0x1b vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmslt.vv", "31..26=0x1b", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x6c000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmslt.vv@L283", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmslt_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x6c004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmslt.vx", "origin": {"line": 238, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmslt.vx       31..26=0x1b vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmslt.vx", "31..26=0x1b", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x6c004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmslt.vx@L238", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsleu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x70000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsleu.vv", "origin": {"line": 284, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmsleu.vv      31..26=0x1c vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmsleu.vv", "31..26=0x1c", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x70000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsleu.vv@L284", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsleu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x70004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsleu.vx", "origin": {"line": 239, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmsleu.vx      31..26=0x1c vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmsleu.vx", "31..26=0x1c", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x70004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsleu.vx@L239", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsleu_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x70003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsleu.vi", "origin": {"line": 322, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vmsleu.vi      31..26=0x1c vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vmsleu.vi", "31..26=0x1c", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x70003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsleu.vi@L322", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsle_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x74000057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsle.vv", "origin": {"line": 285, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmsle.vv       31..26=0x1d vm vs2 vs1 14..12=0x0 vd 6..0=0x57", "tokens": ["vmsle.vv", "31..26=0x1d", "vm", "vs2", "vs1", "14..12=0x0", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x74000057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsle.vv@L285", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsle_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x74004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsle.vx", "origin": {"line": 240, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmsle.vx       31..26=0x1d vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmsle.vx", "31..26=0x1d", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x74004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsle.vx@L240", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsle_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x74003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsle.vi", "origin": {"line": 323, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vmsle.vi       31..26=0x1d vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vmsle.vi", "31..26=0x1d", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x74003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsle.vi@L323", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsgtu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x78004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsgtu.vx", "origin": {"line": 241, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmsgtu.vx      31..26=0x1e vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmsgtu.vx", "31..26=0x1e", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x78004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsgtu.vx@L241", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsgtu_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x78003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsgtu.vi", "origin": {"line": 324, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vmsgtu.vi      31..26=0x1e vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vmsgtu.vi", "31..26=0x1e", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x78003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsgtu.vi@L324", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsgt_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x7c004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsgt.vx", "origin": {"line": 242, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmsgt.vx       31..26=0x1f vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vmsgt.vx", "31..26=0x1f", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x7c004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsgt.vx@L242", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmsgt_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "simm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x7c003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmsgt.vi", "origin": {"line": 325, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "simm5", "vd"], "raw": {"line": "vmsgt.vi       31..26=0x1f vm vs2 simm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vmsgt.vi", "31..26=0x1f", "vm", "vs2", "simm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x7c003057", "variable_fields": ["vm", "vs2", "simm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmsgt.vi@L325", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmseq_vv () = test_opivv_form ~mnemonic:"vmseq.vv" vmseq_vv_json
+let test_vmseq_vx () = test_opivx_form ~mnemonic:"vmseq.vx" vmseq_vx_json
+let test_vmseq_vi () = test_opivi_form ~mnemonic:"vmseq.vi" vmseq_vi_json
+let test_vmsne_vv () = test_opivv_form ~mnemonic:"vmsne.vv" vmsne_vv_json
+let test_vmsne_vx () = test_opivx_form ~mnemonic:"vmsne.vx" vmsne_vx_json
+let test_vmsne_vi () = test_opivi_form ~mnemonic:"vmsne.vi" vmsne_vi_json
+let test_vmsltu_vv () = test_opivv_form ~mnemonic:"vmsltu.vv" vmsltu_vv_json
+let test_vmsltu_vx () = test_opivx_form ~mnemonic:"vmsltu.vx" vmsltu_vx_json
+let test_vmslt_vv () = test_opivv_form ~mnemonic:"vmslt.vv" vmslt_vv_json
+let test_vmslt_vx () = test_opivx_form ~mnemonic:"vmslt.vx" vmslt_vx_json
+let test_vmsleu_vv () = test_opivv_form ~mnemonic:"vmsleu.vv" vmsleu_vv_json
+let test_vmsleu_vx () = test_opivx_form ~mnemonic:"vmsleu.vx" vmsleu_vx_json
+let test_vmsleu_vi () = test_opivi_form ~mnemonic:"vmsleu.vi" vmsleu_vi_json
+let test_vmsle_vv () = test_opivv_form ~mnemonic:"vmsle.vv" vmsle_vv_json
+let test_vmsle_vx () = test_opivx_form ~mnemonic:"vmsle.vx" vmsle_vx_json
+let test_vmsle_vi () = test_opivi_form ~mnemonic:"vmsle.vi" vmsle_vi_json
+let test_vmsgtu_vx () = test_opivx_form ~mnemonic:"vmsgtu.vx" vmsgtu_vx_json
+let test_vmsgtu_vi () = test_opivi_form ~mnemonic:"vmsgtu.vi" vmsgtu_vi_json
+let test_vmsgt_vx () = test_opivx_form ~mnemonic:"vmsgt.vx" vmsgt_vx_json
+let test_vmsgt_vi () = test_opivi_form ~mnemonic:"vmsgt.vi" vmsgt_vi_json
+
+(* vslideup/vslidedown/vslide1up/vslide1down: OP-V's slide family,
+   dispatched by {!Isa_norm_riscv.opivx_mnemonics}/[opivi_zimm5_mnemonics]/
+   [opmvx_mnemonics] to the same forms {!test_opivx_form}/[test_opivi_form]
+   already cover. Taken verbatim from the checked-in riscv64.jsonl
+   (identical in riscv32.jsonl, confirmed). *)
+let vslideup_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x38003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vslideup.vi", "origin": {"line": 312, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vslideup.vi    31..26=0x0e vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vslideup.vi", "31..26=0x0e", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x38003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vslideup.vi@L312", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vslideup_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x38004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vslideup.vx", "origin": {"line": 224, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vslideup.vx    31..26=0x0e vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vslideup.vx", "31..26=0x0e", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x38004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vslideup.vx@L224", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vslidedown_vi_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "zimm5", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x3c003057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vslidedown.vi", "origin": {"line": 313, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "zimm5", "vd"], "raw": {"line": "vslidedown.vi  31..26=0x0f vm vs2 zimm5 14..12=0x3 vd 6..0=0x57", "tokens": ["vslidedown.vi", "31..26=0x0f", "vm", "vs2", "zimm5", "14..12=0x3", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x3c003057", "variable_fields": ["vm", "vs2", "zimm5", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vslidedown.vi@L313", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vslidedown_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x3c004057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vslidedown.vx", "origin": {"line": 225, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vslidedown.vx  31..26=0x0f vm vs2 rs1 14..12=0x4 vd 6..0=0x57", "tokens": ["vslidedown.vx", "31..26=0x0f", "vm", "vs2", "rs1", "14..12=0x4", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x3c004057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vslidedown.vx@L225", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vslide1up_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x38006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vslide1up.vx", "origin": {"line": 421, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vslide1up.vx   31..26=0x0e vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vslide1up.vx", "31..26=0x0e", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x38006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vslide1up.vx@L421", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vslide1down_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0x3c006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vslide1down.vx", "origin": {"line": 422, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vslide1down.vx 31..26=0x0f vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vslide1down.vx", "31..26=0x0f", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0x3c006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vslide1down.vx@L422", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vslideup_vx () = test_opivx_form ~mnemonic:"vslideup.vx" vslideup_vx_json
+
+let test_vslideup_vi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~mnemonic:"vslideup.vi" vslideup_vi_json
+
+let test_vslidedown_vx () = test_opivx_form ~mnemonic:"vslidedown.vx" vslidedown_vx_json
+
+let test_vslidedown_vi () =
+  test_opivi_form ~imm_name:"zimm5" ~signed:false ~mnemonic:"vslidedown.vi" vslidedown_vi_json
+
+let test_vslide1up_vx () = test_opivx_form ~mnemonic:"vslide1up.vx" vslide1up_vx_json
+let test_vslide1down_vx () = test_opivx_form ~mnemonic:"vslide1down.vx" vslide1down_vx_json
+
+let vmacc_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xb4002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmacc.vv", "origin": {"line": 396, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmacc.vv       31..26=0x2d vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmacc.vv", "31..26=0x2d", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xb4002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmacc.vv@L396", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmacc_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xb4006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmacc.vx", "origin": {"line": 434, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmacc.vx       31..26=0x2d vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vmacc.vx", "31..26=0x2d", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xb4006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmacc.vx@L434", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnmsac_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xbc002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnmsac.vv", "origin": {"line": 397, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vnmsac.vv      31..26=0x2f vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vnmsac.vv", "31..26=0x2f", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xbc002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnmsac.vv@L397", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnmsac_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xbc006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnmsac.vx", "origin": {"line": 435, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vnmsac.vx      31..26=0x2f vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vnmsac.vx", "31..26=0x2f", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xbc006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnmsac.vx@L435", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmadd_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xa4002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmadd.vv", "origin": {"line": 394, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vmadd.vv       31..26=0x29 vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vmadd.vv", "31..26=0x29", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xa4002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmadd.vv@L394", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vmadd_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xa4006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vmadd.vx", "origin": {"line": 432, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vmadd.vx       31..26=0x29 vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vmadd.vx", "31..26=0x29", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xa4006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vmadd.vx@L432", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnmsub_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xac002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnmsub.vv", "origin": {"line": 395, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vnmsub.vv      31..26=0x2b vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vnmsub.vv", "31..26=0x2b", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xac002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnmsub.vv@L395", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vnmsub_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xac006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vnmsub.vx", "origin": {"line": 433, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vnmsub.vx      31..26=0x2b vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vnmsub.vx", "31..26=0x2b", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xac006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vnmsub.vx@L433", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwmaccu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xf0002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmaccu.vv", "origin": {"line": 410, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwmaccu.vv     31..26=0x3c vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwmaccu.vv", "31..26=0x3c", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xf0002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmaccu.vv@L410", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwmaccu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xf0006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmaccu.vx", "origin": {"line": 448, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwmaccu.vx     31..26=0x3c vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwmaccu.vx", "31..26=0x3c", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xf0006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmaccu.vx@L448", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwmacc_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xf4002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmacc.vv", "origin": {"line": 411, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwmacc.vv      31..26=0x3d vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwmacc.vv", "31..26=0x3d", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xf4002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmacc.vv@L411", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwmacc_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xf4006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmacc.vx", "origin": {"line": 449, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwmacc.vx      31..26=0x3d vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwmacc.vx", "31..26=0x3d", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xf4006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmacc.vx@L449", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwmaccsu_vv_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "vs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xfc002057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmaccsu.vv", "origin": {"line": 412, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "vs1", "vd"], "raw": {"line": "vwmaccsu.vv    31..26=0x3f vm vs2 vs1 14..12=0x2 vd 6..0=0x57", "tokens": ["vwmaccsu.vv", "31..26=0x3f", "vm", "vs2", "vs1", "14..12=0x2", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xfc002057", "variable_fields": ["vm", "vs2", "vs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmaccsu.vv@L412", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwmaccsu_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xfc006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmaccsu.vx", "origin": {"line": 451, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwmaccsu.vx    31..26=0x3f vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwmaccsu.vx", "31..26=0x3f", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xfc006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmaccsu.vx@L451", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let vwmaccus_vx_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 26, "name": "bits[31:26]", "width": 6}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 25, "name": "vm", "width": 1}, {"lsb": 20, "name": "vs2", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 7, "name": "vd", "width": 5}], "kind": "fixed_bits", "mask": "0xfc00707f", "value": "0xf8006057", "width_bits": 32}, "kind": "instruction-form", "native_name": "vwmaccus.vx", "origin": {"line": 450, "path": "extensions/rv_v"}, "provenance": {"extension": "rv_v", "operands": ["vm", "vs2", "rs1", "vd"], "raw": {"line": "vwmaccus.vx    31..26=0x3e vm vs2 rs1 14..12=0x6 vd 6..0=0x57", "tokens": ["vwmaccus.vx", "31..26=0x3e", "vm", "vs2", "rs1", "14..12=0x6", "vd", "6..0=0x57"]}, "upstream-resolved": {"mask": "0xfc00707f", "match": "0xf8006057", "variable_fields": ["vm", "vs2", "rs1", "vd"]}}, "record_id": "riscv-opcodes:rv_v:vwmaccus.vx@L450", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let test_vmacc_vv () = test_opmacc_vv_form ~mnemonic:"vmacc.vv" vmacc_vv_json
+let test_vmacc_vx () = test_opmacc_vx_form ~mnemonic:"vmacc.vx" vmacc_vx_json
+let test_vnmsac_vv () = test_opmacc_vv_form ~mnemonic:"vnmsac.vv" vnmsac_vv_json
+let test_vnmsac_vx () = test_opmacc_vx_form ~mnemonic:"vnmsac.vx" vnmsac_vx_json
+let test_vmadd_vv () = test_opmacc_vv_form ~mnemonic:"vmadd.vv" vmadd_vv_json
+let test_vmadd_vx () = test_opmacc_vx_form ~mnemonic:"vmadd.vx" vmadd_vx_json
+let test_vnmsub_vv () = test_opmacc_vv_form ~mnemonic:"vnmsub.vv" vnmsub_vv_json
+let test_vnmsub_vx () = test_opmacc_vx_form ~mnemonic:"vnmsub.vx" vnmsub_vx_json
+let test_vwmaccu_vv () = test_opmacc_vv_form ~mnemonic:"vwmaccu.vv" vwmaccu_vv_json
+let test_vwmaccu_vx () = test_opmacc_vx_form ~mnemonic:"vwmaccu.vx" vwmaccu_vx_json
+let test_vwmacc_vv () = test_opmacc_vv_form ~mnemonic:"vwmacc.vv" vwmacc_vv_json
+let test_vwmacc_vx () = test_opmacc_vx_form ~mnemonic:"vwmacc.vx" vwmacc_vx_json
+let test_vwmaccsu_vv () = test_opmacc_vv_form ~mnemonic:"vwmaccsu.vv" vwmaccsu_vv_json
+let test_vwmaccsu_vx () = test_opmacc_vx_form ~mnemonic:"vwmaccsu.vx" vwmaccsu_vx_json
+let test_vwmaccus_vx () = test_opmacc_vx_form ~mnemonic:"vwmaccus.vx" vwmaccus_vx_json
+
 let pack_json =
   {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":25,"name":"bits[31:25]","width":7},{"lsb":12,"name":"bits[14:12]","width":3},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"rs2","width":5}],"kind":"fixed_bits","mask":"0xfe00707f","value":"0x8004033","width_bits":32},"kind":"instruction-form","native_name":"pack","origin":{"line":6,"path":"extensions/rv_zbkb"},"provenance":{"extension":"rv_zbkb","operands":["rd","rs1","rs2"],"raw":{"line":"pack       rd rs1 rs2 31..25=4  14..12=4 6..2=0x0C 1..0=3","tokens":["pack","rd","rs1","rs2","31..25=4","14..12=4","6..2=0x0C","1..0=3"]},"upstream-resolved":{"mask":"0xfe00707f","match":"0x8004033","variable_fields":["rd","rs1","rs2"]}},"record_id":"riscv-opcodes:rv_zbkb:pack@L6","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
 
@@ -2314,6 +3596,216 @@ let () =
   test_vadd_vv ();
   test_vadd_vx ();
   test_vadd_vi ();
+  test_vsub_vv ();
+  test_vsub_vx ();
+  test_vrsub_vx ();
+  test_vrsub_vi ();
+  test_vand_vv ();
+  test_vand_vx ();
+  test_vand_vi ();
+  test_vor_vv ();
+  test_vor_vx ();
+  test_vor_vi ();
+  test_vxor_vv ();
+  test_vxor_vx ();
+  test_vxor_vi ();
+  test_vsll_vv ();
+  test_vsll_vx ();
+  test_vsll_vi ();
+  test_vsrl_vv ();
+  test_vsrl_vx ();
+  test_vsrl_vi ();
+  test_vsra_vv ();
+  test_vsra_vx ();
+  test_vsra_vi ();
+  test_vminu_vv ();
+  test_vminu_vx ();
+  test_vmin_vv ();
+  test_vmin_vx ();
+  test_vmaxu_vv ();
+  test_vmaxu_vx ();
+  test_vmax_vv ();
+  test_vmax_vx ();
+  test_vmul_vv ();
+  test_vmul_vx ();
+  test_vmulh_vv ();
+  test_vmulh_vx ();
+  test_vmulhu_vv ();
+  test_vmulhu_vx ();
+  test_vmulhsu_vv ();
+  test_vmulhsu_vx ();
+  test_vdivu_vv ();
+  test_vdivu_vx ();
+  test_vdiv_vv ();
+  test_vdiv_vx ();
+  test_vremu_vv ();
+  test_vremu_vx ();
+  test_vrem_vv ();
+  test_vrem_vx ();
+  test_vsaddu_vv ();
+  test_vsaddu_vx ();
+  test_vsaddu_vi ();
+  test_vsadd_vv ();
+  test_vsadd_vx ();
+  test_vsadd_vi ();
+  test_vssubu_vv ();
+  test_vssubu_vx ();
+  test_vssub_vv ();
+  test_vssub_vx ();
+  test_vaaddu_vv ();
+  test_vaaddu_vx ();
+  test_vaadd_vv ();
+  test_vaadd_vx ();
+  test_vasubu_vv ();
+  test_vasubu_vx ();
+  test_vasub_vv ();
+  test_vasub_vx ();
+  test_vnsrl_wv ();
+  test_vnsrl_wx ();
+  test_vnsrl_wi ();
+  test_vnsra_wv ();
+  test_vnsra_wx ();
+  test_vnsra_wi ();
+  test_vnclipu_wv ();
+  test_vnclipu_wx ();
+  test_vnclipu_wi ();
+  test_vnclip_wv ();
+  test_vnclip_wx ();
+  test_vnclip_wi ();
+  test_vssrl_vv ();
+  test_vssrl_vx ();
+  test_vssrl_vi ();
+  test_vssra_vv ();
+  test_vssra_vx ();
+  test_vssra_vi ();
+  test_vrgather_vv ();
+  test_vrgather_vx ();
+  test_vrgather_vi ();
+  test_vrgatherei16_vv ();
+  test_vwaddu_vv ();
+  test_vwaddu_vx ();
+  test_vwadd_vv ();
+  test_vwadd_vx ();
+  test_vwsubu_vv ();
+  test_vwsubu_vx ();
+  test_vwsub_vv ();
+  test_vwsub_vx ();
+  test_vwaddu_wv ();
+  test_vwaddu_wx ();
+  test_vwadd_wv ();
+  test_vwadd_wx ();
+  test_vwsubu_wv ();
+  test_vwsubu_wx ();
+  test_vwsub_wv ();
+  test_vwsub_wx ();
+  test_vwmulu_vv ();
+  test_vwmulu_vx ();
+  test_vwmulsu_vv ();
+  test_vwmulsu_vx ();
+  test_vwmul_vv ();
+  test_vwmul_vx ();
+  test_vsext_vf2 ();
+  test_vsext_vf4 ();
+  test_vsext_vf8 ();
+  test_vzext_vf2 ();
+  test_vzext_vf4 ();
+  test_vzext_vf8 ();
+  test_vmand_mm ();
+  test_vmandn_mm ();
+  test_vmor_mm ();
+  test_vmxor_mm ();
+  test_vmorn_mm ();
+  test_vmnand_mm ();
+  test_vmnor_mm ();
+  test_vmxnor_mm ();
+  test_vid_v ();
+  test_viota_m ();
+  test_vcompress_vm ();
+  test_vmsbf_m ();
+  test_vmsif_m ();
+  test_vmsof_m ();
+  test_vcpop_m ();
+  test_vfirst_m ();
+  test_vadc_vvm ();
+  test_vadc_vxm ();
+  test_vadc_vim ();
+  test_vmadc_vvm ();
+  test_vmadc_vxm ();
+  test_vmadc_vim ();
+  test_vmadc_vv ();
+  test_vmadc_vx ();
+  test_vmadc_vi ();
+  test_vsbc_vvm ();
+  test_vsbc_vxm ();
+  test_vmsbc_vvm ();
+  test_vmsbc_vxm ();
+  test_vmsbc_vv ();
+  test_vmsbc_vx ();
+  test_vmerge_vvm ();
+  test_vmerge_vxm ();
+  test_vmerge_vim ();
+  test_vmv_x_s ();
+  test_vmv_s_x ();
+  test_vmv_v_v ();
+  test_vmv_v_x ();
+  test_vmv_v_i ();
+  test_vmv1r_v ();
+  test_vmv2r_v ();
+  test_vmv4r_v ();
+  test_vmv8r_v ();
+  test_vsmul_vv ();
+  test_vsmul_vx ();
+  test_vredsum_vs ();
+  test_vredand_vs ();
+  test_vredor_vs ();
+  test_vredxor_vs ();
+  test_vredminu_vs ();
+  test_vredmin_vs ();
+  test_vredmaxu_vs ();
+  test_vredmax_vs ();
+  test_vwredsumu_vs ();
+  test_vwredsum_vs ();
+  test_vmseq_vv ();
+  test_vmseq_vx ();
+  test_vmseq_vi ();
+  test_vmsne_vv ();
+  test_vmsne_vx ();
+  test_vmsne_vi ();
+  test_vmsltu_vv ();
+  test_vmsltu_vx ();
+  test_vmslt_vv ();
+  test_vmslt_vx ();
+  test_vmsleu_vv ();
+  test_vmsleu_vx ();
+  test_vmsleu_vi ();
+  test_vmsle_vv ();
+  test_vmsle_vx ();
+  test_vmsle_vi ();
+  test_vmsgtu_vx ();
+  test_vmsgtu_vi ();
+  test_vmsgt_vx ();
+  test_vmsgt_vi ();
+  test_vslideup_vx ();
+  test_vslideup_vi ();
+  test_vslidedown_vx ();
+  test_vslidedown_vi ();
+  test_vslide1up_vx ();
+  test_vslide1down_vx ();
+  test_vmacc_vv ();
+  test_vmacc_vx ();
+  test_vnmsac_vv ();
+  test_vnmsac_vx ();
+  test_vmadd_vv ();
+  test_vmadd_vx ();
+  test_vnmsub_vv ();
+  test_vnmsub_vx ();
+  test_vwmaccu_vv ();
+  test_vwmaccu_vx ();
+  test_vwmacc_vv ();
+  test_vwmacc_vx ();
+  test_vwmaccsu_vv ();
+  test_vwmaccsu_vx ();
+  test_vwmaccus_vx ();
   test_r_type_gpr ();
   test_i_type_imm ();
   test_relationship_resolution ();

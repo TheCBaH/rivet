@@ -345,6 +345,817 @@ val vadd_vi_entries : entry list
 (** [vadd.vi v1, v2, -5] - {!vadd_vv_entries}'s immediate sibling, a real
     5-bit signed immediate. *)
 
+val vsub_vv_entries : entry list
+(** [vsub.vv v1, v2, v3] on RV32IV and RV64IV - {!vadd_vv_entries}'s
+    subtract sibling; has no [.vi] form (neither riscv-opcodes nor real GNU
+    as define one - subtract-by-immediate is covered by [vrsub.vi]). *)
+
+val vsub_vx_entries : entry list
+(** [vsub.vx v1, v2, a0] - {!vsub_vv_entries}'s scalar-broadcast sibling. *)
+
+val vrsub_vx_entries : entry list
+(** [vrsub.vx v1, v2, a0] on RV32IV and RV64IV - the reverse-subtract
+    ([vd = rs1 - vs2]) sibling; has no [.vv] form (riscv-opcodes exports
+    none, and real GNU as rejects [vrsub.vv] as an unrecognized opcode). *)
+
+val vrsub_vi_entries : entry list
+(** [vrsub.vi v1, v2, -5] - {!vrsub_vx_entries}'s immediate sibling, a real
+    5-bit signed immediate. *)
+
+val vand_vv_entries : entry list
+(** [vand.vv v1, v2, v3] on RV32IV and RV64IV - vector bitwise AND, the
+    first of three full [.vv]/[.vx]/[.vi] logical siblings. *)
+
+val vand_vx_entries : entry list
+(** [vand.vx v1, v2, a0] - {!vand_vv_entries}'s scalar-broadcast sibling. *)
+
+val vand_vi_entries : entry list
+(** [vand.vi v1, v2, -5] - {!vand_vv_entries}'s immediate sibling. *)
+
+val vor_vv_entries : entry list
+(** [vor.vv v1, v2, v3] on RV32IV and RV64IV - vector bitwise OR. *)
+
+val vor_vx_entries : entry list
+(** [vor.vx v1, v2, a0] - {!vor_vv_entries}'s scalar-broadcast sibling. *)
+
+val vor_vi_entries : entry list
+(** [vor.vi v1, v2, -5] - {!vor_vv_entries}'s immediate sibling. *)
+
+val vxor_vv_entries : entry list
+(** [vxor.vv v1, v2, v3] on RV32IV and RV64IV - vector bitwise XOR. *)
+
+val vxor_vx_entries : entry list
+(** [vxor.vx v1, v2, a0] - {!vxor_vv_entries}'s scalar-broadcast sibling. *)
+
+val vxor_vi_entries : entry list
+(** [vxor.vi v1, v2, -5] - {!vxor_vv_entries}'s immediate sibling. *)
+
+val vsll_vv_entries : entry list
+(** [vsll.vv v1, v2, v3] on RV32IV and RV64IV - OP-V's shift-left family,
+    the first to admit its full [.vi] sibling with an UNSIGNED immediate
+    (see {!vsll_vi_entries}). *)
+
+val vsll_vx_entries : entry list
+(** [vsll.vx v1, v2, a0] - {!vsll_vv_entries}'s scalar-broadcast sibling. *)
+
+val vsll_vi_entries : entry list
+(** [vsll.vi v1, v2, 31] - {!vsll_vv_entries}'s immediate sibling: a real
+    UNSIGNED 5-bit shift amount (0..31, riscv-opcodes' own "zimm5" field),
+    unlike every other admitted [.vi] mnemonic's SIGNED [simm5]. *)
+
+val vsrl_vv_entries : entry list
+(** [vsrl.vv v1, v2, v3] on RV32IV and RV64IV - {!vsll_vv_entries}'s
+    logical-shift-right sibling. *)
+
+val vsrl_vx_entries : entry list
+(** [vsrl.vx v1, v2, a0] - {!vsrl_vv_entries}'s scalar-broadcast sibling. *)
+
+val vsrl_vi_entries : entry list
+(** [vsrl.vi v1, v2, 5] - {!vsrl_vv_entries}'s UNSIGNED-immediate sibling. *)
+
+val vsra_vv_entries : entry list
+(** [vsra.vv v1, v2, v3] on RV32IV and RV64IV - {!vsll_vv_entries}'s
+    arithmetic-shift-right sibling. *)
+
+val vsra_vx_entries : entry list
+(** [vsra.vx v1, v2, a0] - {!vsra_vv_entries}'s scalar-broadcast sibling. *)
+
+val vsra_vi_entries : entry list
+(** [vsra.vi v1, v2, 5] - {!vsra_vv_entries}'s UNSIGNED-immediate sibling. *)
+
+val vminu_vv_entries : entry list
+(** [vminu.vv v1, v2, v3] on RV32IV and RV64IV - OP-V's min/max family;
+    [.vv]/[.vx] only, no [.vi] sibling (neither riscv-opcodes nor real GNU
+    as define one). *)
+
+val vminu_vx_entries : entry list
+(** [vminu.vx v1, v2, a0] - {!vminu_vv_entries}'s scalar-broadcast sibling. *)
+
+val vmin_vv_entries : entry list
+(** [vmin.vv v1, v2, v3] on RV32IV and RV64IV - {!vminu_vv_entries}'s
+    signed sibling. *)
+
+val vmin_vx_entries : entry list
+(** [vmin.vx v1, v2, a0] - {!vmin_vv_entries}'s scalar-broadcast sibling. *)
+
+val vmaxu_vv_entries : entry list
+(** [vmaxu.vv v1, v2, v3] on RV32IV and RV64IV - {!vminu_vv_entries}'s
+    max sibling. *)
+
+val vmaxu_vx_entries : entry list
+(** [vmaxu.vx v1, v2, a0] - {!vmaxu_vv_entries}'s scalar-broadcast sibling. *)
+
+val vmax_vv_entries : entry list
+(** [vmax.vv v1, v2, v3] on RV32IV and RV64IV - {!vmin_vv_entries}'s
+    max sibling. *)
+
+val vmax_vx_entries : entry list
+(** [vmax.vx v1, v2, a0] - {!vmax_vv_entries}'s scalar-broadcast sibling. *)
+
+val vmul_vv_entries : entry list
+(** [vmul.vv v1, v2, v3] on RV32IV and RV64IV - OP-V's second major
+    functional-unit group, OPMVV (funct3 = 2); the identical
+    all-vector-register operand layout as OPIVV, only funct3 differs. No
+    [.vi] sibling. *)
+
+val vmul_vx_entries : entry list
+(** [vmul.vx v1, v2, a0] - {!vmul_vv_entries}'s OPMVX (funct3 = 6)
+    scalar-broadcast sibling. *)
+
+val vmulh_vv_entries : entry list
+(** [vmulh.vv v1, v2, v3] on RV32IV and RV64IV - {!vmul_vv_entries}'s
+    high-half signed*signed sibling. *)
+
+val vmulh_vx_entries : entry list
+(** [vmulh.vx v1, v2, a0] - {!vmulh_vv_entries}'s scalar-broadcast sibling. *)
+
+val vmulhu_vv_entries : entry list
+(** [vmulhu.vv v1, v2, v3] on RV32IV and RV64IV - {!vmul_vv_entries}'s
+    high-half unsigned*unsigned sibling. *)
+
+val vmulhu_vx_entries : entry list
+(** [vmulhu.vx v1, v2, a0] - {!vmulhu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmulhsu_vv_entries : entry list
+(** [vmulhsu.vv v1, v2, v3] on RV32IV and RV64IV - {!vmul_vv_entries}'s
+    high-half signed*unsigned sibling. *)
+
+val vmulhsu_vx_entries : entry list
+(** [vmulhsu.vx v1, v2, a0] - {!vmulhsu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vdivu_vv_entries : entry list
+(** [vdivu.vv v1, v2, v3] on RV32IV and RV64IV - OP-V's divide/remainder
+    family, the same OPMVV shape as {!vmul_vv_entries}. No [.vi] sibling. *)
+
+val vdivu_vx_entries : entry list
+(** [vdivu.vx v1, v2, a0] - {!vdivu_vv_entries}'s scalar-broadcast sibling. *)
+
+val vdiv_vv_entries : entry list
+(** [vdiv.vv v1, v2, v3] on RV32IV and RV64IV - {!vdivu_vv_entries}'s signed
+    sibling. *)
+
+val vdiv_vx_entries : entry list
+(** [vdiv.vx v1, v2, a0] - {!vdiv_vv_entries}'s scalar-broadcast sibling. *)
+
+val vremu_vv_entries : entry list
+(** [vremu.vv v1, v2, v3] on RV32IV and RV64IV - {!vdivu_vv_entries}'s
+    remainder sibling. *)
+
+val vremu_vx_entries : entry list
+(** [vremu.vx v1, v2, a0] - {!vremu_vv_entries}'s scalar-broadcast sibling. *)
+
+val vrem_vv_entries : entry list
+(** [vrem.vv v1, v2, v3] on RV32IV and RV64IV - {!vremu_vv_entries}'s signed
+    sibling. *)
+
+val vrem_vx_entries : entry list
+(** [vrem.vx v1, v2, a0] - {!vrem_vv_entries}'s scalar-broadcast sibling. *)
+
+val vsaddu_vv_entries : entry list
+(** [vsaddu.vv v1, v2, v3] on RV32IV and RV64IV - OP-V's saturating
+    add/subtract family, the same OPIVV shape as {!vadd_vv_entries}. *)
+
+val vsaddu_vx_entries : entry list
+(** [vsaddu.vx v1, v2, a0] - {!vsaddu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vsaddu_vi_entries : entry list
+(** [vsaddu.vi v1, v2, -5] - {!vsaddu_vv_entries}'s SIGNED-immediate
+    sibling. *)
+
+val vsadd_vv_entries : entry list
+(** [vsadd.vv v1, v2, v3] on RV32IV and RV64IV - {!vsaddu_vv_entries}'s
+    signed sibling. *)
+
+val vsadd_vx_entries : entry list
+(** [vsadd.vx v1, v2, a0] - {!vsadd_vv_entries}'s scalar-broadcast sibling. *)
+
+val vsadd_vi_entries : entry list
+(** [vsadd.vi v1, v2, -5] - {!vsadd_vv_entries}'s SIGNED-immediate sibling. *)
+
+val vssubu_vv_entries : entry list
+(** [vssubu.vv v1, v2, v3] on RV32IV and RV64IV - {!vsaddu_vv_entries}'s
+    subtract sibling. No [.vi] sibling. *)
+
+val vssubu_vx_entries : entry list
+(** [vssubu.vx v1, v2, a0] - {!vssubu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vssub_vv_entries : entry list
+(** [vssub.vv v1, v2, v3] on RV32IV and RV64IV - {!vssubu_vv_entries}'s
+    signed sibling. No [.vi] sibling. *)
+
+val vssub_vx_entries : entry list
+(** [vssub.vx v1, v2, a0] - {!vssub_vv_entries}'s scalar-broadcast sibling. *)
+
+val vaaddu_vv_entries : entry list
+(** [vaaddu.vv v1, v2, v3] on RV32IV and RV64IV - OP-V's averaging
+    add/subtract family, the same OPMVV shape as {!vmul_vv_entries}. No
+    [.vi] sibling. *)
+
+val vaaddu_vx_entries : entry list
+(** [vaaddu.vx v1, v2, a0] - {!vaaddu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vaadd_vv_entries : entry list
+(** [vaadd.vv v1, v2, v3] on RV32IV and RV64IV - {!vaaddu_vv_entries}'s
+    signed sibling. *)
+
+val vaadd_vx_entries : entry list
+(** [vaadd.vx v1, v2, a0] - {!vaadd_vv_entries}'s scalar-broadcast sibling. *)
+
+val vasubu_vv_entries : entry list
+(** [vasubu.vv v1, v2, v3] on RV32IV and RV64IV - {!vaaddu_vv_entries}'s
+    subtract sibling. *)
+
+val vasubu_vx_entries : entry list
+(** [vasubu.vx v1, v2, a0] - {!vasubu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vasub_vv_entries : entry list
+(** [vasub.vv v1, v2, v3] on RV32IV and RV64IV - {!vasubu_vv_entries}'s
+    signed sibling. *)
+
+val vasub_vx_entries : entry list
+(** [vasub.vx v1, v2, a0] - {!vasub_vv_entries}'s scalar-broadcast sibling. *)
+
+val vnsrl_wv_entries : entry list
+(** [vnsrl.wv v1, v2, v3] on RV32IV and RV64IV - OP-V's narrowing
+    shift/clip family ([.wv]/[.wx]/[.wi], vs2 semantically wide), the same
+    OPIVV shape as {!vadd_vv_entries}. *)
+
+val vnsrl_wx_entries : entry list
+(** [vnsrl.wx v1, v2, a0] - {!vnsrl_wv_entries}'s scalar-broadcast sibling. *)
+
+val vnsrl_wi_entries : entry list
+(** [vnsrl.wi v1, v2, 31] - {!vnsrl_wv_entries}'s UNSIGNED-immediate
+    sibling. *)
+
+val vnsra_wv_entries : entry list
+(** [vnsra.wv v1, v2, v3] on RV32IV and RV64IV - {!vnsrl_wv_entries}'s
+    arithmetic-shift sibling. *)
+
+val vnsra_wx_entries : entry list
+(** [vnsra.wx v1, v2, a0] - {!vnsra_wv_entries}'s scalar-broadcast sibling. *)
+
+val vnsra_wi_entries : entry list
+(** [vnsra.wi v1, v2, 31] - {!vnsra_wv_entries}'s UNSIGNED-immediate
+    sibling. *)
+
+val vnclipu_wv_entries : entry list
+(** [vnclipu.wv v1, v2, v3] on RV32IV and RV64IV - {!vnsrl_wv_entries}'s
+    clip-to-unsigned sibling. *)
+
+val vnclipu_wx_entries : entry list
+(** [vnclipu.wx v1, v2, a0] - {!vnclipu_wv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vnclipu_wi_entries : entry list
+(** [vnclipu.wi v1, v2, 31] - {!vnclipu_wv_entries}'s UNSIGNED-immediate
+    sibling. *)
+
+val vnclip_wv_entries : entry list
+(** [vnclip.wv v1, v2, v3] on RV32IV and RV64IV - {!vnclipu_wv_entries}'s
+    signed sibling. *)
+
+val vnclip_wx_entries : entry list
+(** [vnclip.wx v1, v2, a0] - {!vnclip_wv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vnclip_wi_entries : entry list
+(** [vnclip.wi v1, v2, 31] - {!vnclip_wv_entries}'s UNSIGNED-immediate
+    sibling. *)
+
+val vssrl_vv_entries : entry list
+(** [vssrl.vv v1, v2, v3] on RV32IV and RV64IV - OP-V's scaling
+    shift-right family (logical/arithmetic, rounding), the same full
+    OPIVV/OPIVX/OPIVI shape as {!vsll_vv_entries} including the UNSIGNED
+    [zimm5] [.vi] immediate. *)
+
+val vssrl_vx_entries : entry list
+(** [vssrl.vx v1, v2, a0] - {!vssrl_vv_entries}'s scalar-broadcast sibling. *)
+
+val vssrl_vi_entries : entry list
+(** [vssrl.vi v1, v2, 31] - {!vssrl_vv_entries}'s UNSIGNED-immediate
+    sibling. *)
+
+val vssra_vv_entries : entry list
+(** [vssra.vv v1, v2, v3] on RV32IV and RV64IV - {!vssrl_vv_entries}'s
+    arithmetic-shift sibling. *)
+
+val vssra_vx_entries : entry list
+(** [vssra.vx v1, v2, a0] - {!vssra_vv_entries}'s scalar-broadcast sibling. *)
+
+val vssra_vi_entries : entry list
+(** [vssra.vi v1, v2, 31] - {!vssra_vv_entries}'s UNSIGNED-immediate
+    sibling. *)
+
+val vrgather_vv_entries : entry list
+(** [vrgather.vv v1, v2, v3] on RV32IV and RV64IV - OP-V's full-vector-
+    register gather/permute family, the same OPIVV shape as
+    {!vadd_vv_entries}. *)
+
+val vrgather_vx_entries : entry list
+(** [vrgather.vx v1, v2, a0] - {!vrgather_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vrgather_vi_entries : entry list
+(** [vrgather.vi v1, v2, 31] - {!vrgather_vv_entries}'s UNSIGNED-immediate
+    sibling. *)
+
+val vrgatherei16_vv_entries : entry list
+(** [vrgatherei16.vv v1, v2, v3] - {!vrgather_vv_entries}'s fixed-EEW16-
+    index sibling; no [.vx]/[.vi] siblings exist for it. *)
+
+val vwaddu_vv_entries : entry list
+(** [vwaddu.vv v1, v2, v3] on RV32IV and RV64IV - OP-V's widening
+    add/subtract family (both operands narrow), the same OPMVV shape as
+    {!vmul_vv_entries}. No [.vi] sibling. *)
+
+val vwaddu_vx_entries : entry list
+(** [vwaddu.vx v1, v2, a0] - {!vwaddu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vwadd_vv_entries : entry list
+(** [vwadd.vv v1, v2, v3] on RV32IV and RV64IV - {!vwaddu_vv_entries}'s
+    signed sibling. *)
+
+val vwadd_vx_entries : entry list
+(** [vwadd.vx v1, v2, a0] - {!vwadd_vv_entries}'s scalar-broadcast sibling. *)
+
+val vwsubu_vv_entries : entry list
+(** [vwsubu.vv v1, v2, v3] on RV32IV and RV64IV - {!vwaddu_vv_entries}'s
+    subtract sibling. *)
+
+val vwsubu_vx_entries : entry list
+(** [vwsubu.vx v1, v2, a0] - {!vwsubu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vwsub_vv_entries : entry list
+(** [vwsub.vv v1, v2, v3] on RV32IV and RV64IV - {!vwsubu_vv_entries}'s
+    signed sibling. *)
+
+val vwsub_vx_entries : entry list
+(** [vwsub.vx v1, v2, a0] - {!vwsub_vv_entries}'s scalar-broadcast sibling. *)
+
+val vwaddu_wv_entries : entry list
+(** [vwaddu.wv v1, v2, v3] on RV32IV and RV64IV - {!vwaddu_vv_entries}'s
+    wide-[vs2]-operand sibling. *)
+
+val vwaddu_wx_entries : entry list
+(** [vwaddu.wx v1, v2, a0] - {!vwaddu_wv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vwadd_wv_entries : entry list
+(** [vwadd.wv v1, v2, v3] on RV32IV and RV64IV - {!vwaddu_wv_entries}'s
+    signed sibling. *)
+
+val vwadd_wx_entries : entry list
+(** [vwadd.wx v1, v2, a0] - {!vwadd_wv_entries}'s scalar-broadcast sibling. *)
+
+val vwsubu_wv_entries : entry list
+(** [vwsubu.wv v1, v2, v3] on RV32IV and RV64IV - {!vwaddu_wv_entries}'s
+    subtract sibling. *)
+
+val vwsubu_wx_entries : entry list
+(** [vwsubu.wx v1, v2, a0] - {!vwsubu_wv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vwsub_wv_entries : entry list
+(** [vwsub.wv v1, v2, v3] on RV32IV and RV64IV - {!vwsubu_wv_entries}'s
+    signed sibling. *)
+
+val vwsub_wx_entries : entry list
+(** [vwsub.wx v1, v2, a0] - {!vwsub_wv_entries}'s scalar-broadcast sibling. *)
+
+val vwmulu_vv_entries : entry list
+(** [vwmulu.vv v1, v2, v3] on RV32IV and RV64IV - OP-V's widening multiply
+    family, the same OPMVV shape as {!vwaddu_vv_entries}. No [.vi]
+    sibling. *)
+
+val vwmulu_vx_entries : entry list
+(** [vwmulu.vx v1, v2, a0] - {!vwmulu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vwmulsu_vv_entries : entry list
+(** [vwmulsu.vv v1, v2, v3] on RV32IV and RV64IV - {!vwmulu_vv_entries}'s
+    signed*unsigned sibling. *)
+
+val vwmulsu_vx_entries : entry list
+(** [vwmulsu.vx v1, v2, a0] - {!vwmulsu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vwmul_vv_entries : entry list
+(** [vwmul.vv v1, v2, v3] on RV32IV and RV64IV - {!vwmulu_vv_entries}'s
+    signed sibling. *)
+
+val vwmul_vx_entries : entry list
+(** [vwmul.vx v1, v2, a0] - {!vwmul_vv_entries}'s scalar-broadcast sibling. *)
+
+val vsext_vf2_entries : entry list
+(** [vsext.vf2 v1, v2] on RV32IV and RV64IV - OP-V's integer sign-extend
+    family, a genuinely new two-vector-register shape ([rd, rs2], no
+    third operand). *)
+
+val vsext_vf4_entries : entry list
+(** [vsext.vf4 v1, v2] - {!vsext_vf2_entries}'s divide-by-4 sibling. *)
+
+val vsext_vf8_entries : entry list
+(** [vsext.vf8 v1, v2] - {!vsext_vf2_entries}'s divide-by-8 sibling. *)
+
+val vzext_vf2_entries : entry list
+(** [vzext.vf2 v1, v2] on RV32IV and RV64IV - {!vsext_vf2_entries}'s
+    zero-extend sibling. *)
+
+val vzext_vf4_entries : entry list
+(** [vzext.vf4 v1, v2] - {!vzext_vf2_entries}'s divide-by-4 sibling. *)
+
+val vzext_vf8_entries : entry list
+(** [vzext.vf8 v1, v2] - {!vzext_vf2_entries}'s divide-by-8 sibling. *)
+
+val vmand_mm_entries : entry list
+(** [vmand.mm v1, v2, v3] on RV32IV and RV64IV - OP-V's mask-register
+    logical family, the same [rd, rs2, rs1] shape as {!vsub_vv_entries}
+    with no masked sibling (architecturally [vm] is fixed at 1). *)
+
+val vmandn_mm_entries : entry list
+(** [vmandn.mm v1, v2, v3] - {!vmand_mm_entries}'s complement-first
+    sibling. *)
+
+val vmor_mm_entries : entry list
+(** [vmor.mm v1, v2, v3] - {!vmand_mm_entries}'s logical-or sibling. *)
+
+val vmxor_mm_entries : entry list
+(** [vmxor.mm v1, v2, v3] - {!vmand_mm_entries}'s logical-xor sibling. *)
+
+val vmorn_mm_entries : entry list
+(** [vmorn.mm v1, v2, v3] - {!vmand_mm_entries}'s complement-first
+    logical-or sibling. *)
+
+val vmnand_mm_entries : entry list
+(** [vmnand.mm v1, v2, v3] - {!vmand_mm_entries}'s negated sibling. *)
+
+val vmnor_mm_entries : entry list
+(** [vmnor.mm v1, v2, v3] - {!vmor_mm_entries}'s negated sibling. *)
+
+val vmxnor_mm_entries : entry list
+(** [vmxnor.mm v1, v2, v3] - {!vmxor_mm_entries}'s negated sibling. *)
+
+val vredsum_vs_entries : entry list
+(** [vredsum.vs v1, v2, v3] on RV32IV and RV64IV - OP-V's vector-reduction
+    family, the same [rd, rs2, rs1] shape as {!vsub_vv_entries} but with a
+    real, selectable mask (unlike {!vmand_mm_entries}). *)
+
+val vredand_vs_entries : entry list
+(** [vredand.vs v1, v2, v3] - {!vredsum_vs_entries}'s bitwise-and sibling. *)
+
+val vredor_vs_entries : entry list
+(** [vredor.vs v1, v2, v3] - {!vredsum_vs_entries}'s bitwise-or sibling. *)
+
+val vredxor_vs_entries : entry list
+(** [vredxor.vs v1, v2, v3] - {!vredsum_vs_entries}'s bitwise-xor sibling. *)
+
+val vredminu_vs_entries : entry list
+(** [vredminu.vs v1, v2, v3] - {!vredsum_vs_entries}'s unsigned-minimum
+    sibling. *)
+
+val vredmin_vs_entries : entry list
+(** [vredmin.vs v1, v2, v3] - {!vredsum_vs_entries}'s signed-minimum
+    sibling. *)
+
+val vredmaxu_vs_entries : entry list
+(** [vredmaxu.vs v1, v2, v3] - {!vredsum_vs_entries}'s unsigned-maximum
+    sibling. *)
+
+val vredmax_vs_entries : entry list
+(** [vredmax.vs v1, v2, v3] - {!vredsum_vs_entries}'s signed-maximum
+    sibling. *)
+
+val vwredsumu_vs_entries : entry list
+(** [vwredsumu.vs v1, v2, v3] - {!vredsum_vs_entries}'s widening unsigned-sum
+    sibling. *)
+
+val vwredsum_vs_entries : entry list
+(** [vwredsum.vs v1, v2, v3] - {!vredsum_vs_entries}'s widening signed-sum
+    sibling. *)
+
+val vmseq_vv_entries : entry list
+(** [vmseq.vv v1, v2, v3] on RV32IV and RV64IV - OP-V's mask-writing
+    equal-comparison family, the full OPIVV/OPIVX/OPIVI shape. *)
+
+val vmseq_vx_entries : entry list
+(** [vmseq.vx v1, v2, a0] - {!vmseq_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmseq_vi_entries : entry list
+(** [vmseq.vi v1, v2, -5] - {!vmseq_vv_entries}'s signed-immediate
+    sibling. *)
+
+val vmsne_vv_entries : entry list
+(** [vmsne.vv v1, v2, v3] - {!vmseq_vv_entries}'s not-equal sibling. *)
+
+val vmsne_vx_entries : entry list
+(** [vmsne.vx v1, v2, a0] - {!vmsne_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmsne_vi_entries : entry list
+(** [vmsne.vi v1, v2, -5] - {!vmsne_vv_entries}'s signed-immediate
+    sibling. *)
+
+val vmsltu_vv_entries : entry list
+(** [vmsltu.vv v1, v2, v3] - {!vmseq_vv_entries}'s unsigned
+    strictly-less-than sibling; has no [.vi] sibling. *)
+
+val vmsltu_vx_entries : entry list
+(** [vmsltu.vx v1, v2, a0] - {!vmsltu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmslt_vv_entries : entry list
+(** [vmslt.vv v1, v2, v3] - {!vmsltu_vv_entries}'s signed sibling; has no
+    [.vi] sibling. *)
+
+val vmslt_vx_entries : entry list
+(** [vmslt.vx v1, v2, a0] - {!vmslt_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmsleu_vv_entries : entry list
+(** [vmsleu.vv v1, v2, v3] - {!vmseq_vv_entries}'s unsigned
+    less-than-or-equal sibling. *)
+
+val vmsleu_vx_entries : entry list
+(** [vmsleu.vx v1, v2, a0] - {!vmsleu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmsleu_vi_entries : entry list
+(** [vmsleu.vi v1, v2, -5] - {!vmsleu_vv_entries}'s signed-immediate
+    sibling. *)
+
+val vmsle_vv_entries : entry list
+(** [vmsle.vv v1, v2, v3] - {!vmsleu_vv_entries}'s signed sibling. *)
+
+val vmsle_vx_entries : entry list
+(** [vmsle.vx v1, v2, a0] - {!vmsle_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmsle_vi_entries : entry list
+(** [vmsle.vi v1, v2, -5] - {!vmsle_vv_entries}'s signed-immediate
+    sibling. *)
+
+val vmsgtu_vx_entries : entry list
+(** [vmsgtu.vx v1, v2, a0] - {!vmsleu_vv_entries}'s unsigned
+    strictly-greater-than sibling; has no [.vv] sibling (real GNU as
+    accepts [vmsgtu.vv] only as a pseudo-instruction reversing
+    {!vmsltu_vv_entries}'s own operands). *)
+
+val vmsgtu_vi_entries : entry list
+(** [vmsgtu.vi v1, v2, -5] - {!vmsgtu_vx_entries}'s signed-immediate
+    sibling. *)
+
+val vmsgt_vx_entries : entry list
+(** [vmsgt.vx v1, v2, a0] - {!vmsgtu_vx_entries}'s signed sibling; has no
+    [.vv] sibling (real GNU as accepts [vmsgt.vv] only as a
+    pseudo-instruction reversing {!vmslt_vv_entries}'s own operands). *)
+
+val vmsgt_vi_entries : entry list
+(** [vmsgt.vi v1, v2, -5] - {!vmsgt_vx_entries}'s signed-immediate
+    sibling. *)
+
+val vslideup_vx_entries : entry list
+(** [vslideup.vx v1, v2, a0] on RV32IV and RV64IV - OP-V's slide family,
+    the same OPIVX shape as {!vsub_vx_entries}; has no [.vv] sibling. *)
+
+val vslideup_vi_entries : entry list
+(** [vslideup.vi v1, v2, 31] - {!vslideup_vx_entries}'s
+    UNSIGNED-immediate sibling. *)
+
+val vslidedown_vx_entries : entry list
+(** [vslidedown.vx v1, v2, a0] - {!vslideup_vx_entries}'s downward
+    sibling. *)
+
+val vslidedown_vi_entries : entry list
+(** [vslidedown.vi v1, v2, 31] - {!vslidedown_vx_entries}'s
+    UNSIGNED-immediate sibling. *)
+
+val vslide1up_vx_entries : entry list
+(** [vslide1up.vx v1, v2, a0] - {!vslideup_vx_entries}'s single-element
+    OPMVX sibling; has no [.vi] sibling. *)
+
+val vslide1down_vx_entries : entry list
+(** [vslide1down.vx v1, v2, a0] - {!vslide1up_vx_entries}'s downward
+    sibling. *)
+
+val vmacc_vv_entries : entry list
+(** [vmacc.vv v1, v2, v3] on RV32IV and RV64IV - the multiply-accumulate
+    family's own reordered text operand order ([vd, vs1, vs2] rather than
+    {!vsub_vv_entries}'s [vd, vs2, vs1]). *)
+
+val vmacc_vx_entries : entry list
+(** [vmacc.vx v1, a0, v3] - {!vmacc_vv_entries}'s scalar-broadcast sibling,
+    also reordered ([vd, rs1, vs2]). *)
+
+val vnmsac_vv_entries : entry list
+(** [vnmsac.vv v1, v2, v3] - {!vmacc_vv_entries}'s negated-multiply
+    sibling. *)
+
+val vnmsac_vx_entries : entry list
+(** [vnmsac.vx v1, a0, v3] - {!vnmsac_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmadd_vv_entries : entry list
+(** [vmadd.vv v1, v2, v3] - the same reordered shape as {!vmacc_vv_entries},
+    with the addend (rather than the product) held in [vd]. *)
+
+val vmadd_vx_entries : entry list
+(** [vmadd.vx v1, a0, v3] - {!vmadd_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vnmsub_vv_entries : entry list
+(** [vnmsub.vv v1, v2, v3] - {!vmadd_vv_entries}'s negated-multiply
+    sibling. *)
+
+val vnmsub_vx_entries : entry list
+(** [vnmsub.vx v1, a0, v3] - {!vnmsub_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vwmaccu_vv_entries : entry list
+(** [vwmaccu.vv v1, v2, v3] - the widening (unsigned x unsigned)
+    multiply-accumulate sibling of {!vmacc_vv_entries}, same reordered
+    shape. *)
+
+val vwmaccu_vx_entries : entry list
+(** [vwmaccu.vx v1, a0, v3] - {!vwmaccu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vwmacc_vv_entries : entry list
+(** [vwmacc.vv v1, v2, v3] - the widening (signed x signed)
+    multiply-accumulate sibling of {!vmacc_vv_entries}. *)
+
+val vwmacc_vx_entries : entry list
+(** [vwmacc.vx v1, a0, v3] - {!vwmacc_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vwmaccsu_vv_entries : entry list
+(** [vwmaccsu.vv v1, v2, v3] - the widening (signed x unsigned)
+    multiply-accumulate sibling of {!vmacc_vv_entries}. *)
+
+val vwmaccsu_vx_entries : entry list
+(** [vwmaccsu.vx v1, a0, v3] - {!vwmaccsu_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vwmaccus_vx_entries : entry list
+(** [vwmaccus.vx v1, a0, v3] - the widening (unsigned x signed)
+    multiply-accumulate mnemonic; has no [.vv] sibling (real GNU as rejects
+    [vwmaccus.vv] as "unrecognized opcode"). *)
+
+val vid_v_entries : entry list
+(** [vid.v v1] on RV32IV and RV64IV - OP-V's element-index instruction, the
+    first family with no [vs2]/[vs1]/[rs1] operand at all, just a
+    destination. *)
+
+val viota_m_entries : entry list
+(** [viota.m v1, v2] - shares {!vsext_vf2_entries}'s exact [rd, rs2]
+    shape. *)
+
+val vcompress_vm_entries : entry list
+(** [vcompress.vm v1, v2, v3] - shares {!vsub_vv_entries}'s exact
+    [rd, rs2, rs1] shape; has no masked [, v0.t] sibling (real GNU as
+    rejects one as "illegal operands"). *)
+
+val vmsbf_m_entries : entry list
+(** [vmsbf.m v1, v2] - shares {!vsext_vf2_entries}'s exact [rd, rs2]
+    shape. *)
+
+val vmsif_m_entries : entry list
+(** [vmsif.m v1, v2] - {!vmsbf_m_entries}'s "including-first" sibling. *)
+
+val vmsof_m_entries : entry list
+(** [vmsof.m v1, v2] - {!vmsbf_m_entries}'s "only-first" sibling. *)
+
+val vcpop_m_entries : entry list
+(** [vcpop.m a0, v2] - the same [rd, rs2] shape as {!vmsbf_m_entries} but
+    with a GPR destination. *)
+
+val vfirst_m_entries : entry list
+(** [vfirst.m a0, v2] - {!vcpop_m_entries}'s first-set-bit-index
+    sibling. *)
+
+val vadc_vvm_entries : entry list
+(** [vadc.vvm v1, v2, v3, v0] on RV32IV and RV64IV - add-with-carry, with
+    a mandatory literal [v0] 4th operand supplying the carry-in. *)
+
+val vadc_vxm_entries : entry list
+(** [vadc.vxm v1, v2, a0, v0] - {!vadc_vvm_entries}'s scalar-broadcast
+    sibling. *)
+
+val vadc_vim_entries : entry list
+(** [vadc.vim v1, v2, -5, v0] - {!vadc_vvm_entries}'s signed-immediate
+    sibling. *)
+
+val vmadc_vvm_entries : entry list
+(** [vmadc.vvm v1, v2, v3, v0] - compare-with-carry, the same
+    mandatory-[v0] shape as {!vadc_vvm_entries}. *)
+
+val vmadc_vxm_entries : entry list
+(** [vmadc.vxm v1, v2, a0, v0] - {!vmadc_vvm_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmadc_vim_entries : entry list
+(** [vmadc.vim v1, v2, -5, v0] - {!vmadc_vvm_entries}'s signed-immediate
+    sibling. *)
+
+val vmadc_vv_entries : entry list
+(** [vmadc.vv v1, v2, v3] - {!vmadc_vvm_entries}'s bare (no carry-in)
+    sibling; shares {!vsub_vv_entries}'s exact shape, with no masked
+    [, v0.t] sibling of its own. *)
+
+val vmadc_vx_entries : entry list
+(** [vmadc.vx v1, v2, a0] - {!vmadc_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmadc_vi_entries : entry list
+(** [vmadc.vi v1, v2, -5] - {!vmadc_vv_entries}'s signed-immediate
+    sibling. *)
+
+val vsbc_vvm_entries : entry list
+(** [vsbc.vvm v1, v2, v3, v0] - subtract-with-borrow, the same
+    mandatory-[v0] shape as {!vadc_vvm_entries}; has no bare (non-"m")
+    sibling. *)
+
+val vsbc_vxm_entries : entry list
+(** [vsbc.vxm v1, v2, a0, v0] - {!vsbc_vvm_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmsbc_vvm_entries : entry list
+(** [vmsbc.vvm v1, v2, v3, v0] - compare-with-borrow, the same
+    mandatory-[v0] shape as {!vadc_vvm_entries}. *)
+
+val vmsbc_vxm_entries : entry list
+(** [vmsbc.vxm v1, v2, a0, v0] - {!vmsbc_vvm_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmsbc_vv_entries : entry list
+(** [vmsbc.vv v1, v2, v3] - {!vmsbc_vvm_entries}'s bare (no borrow-in)
+    sibling; has no [.vi] sibling. *)
+
+val vmsbc_vx_entries : entry list
+(** [vmsbc.vx v1, v2, a0] - {!vmsbc_vv_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmerge_vvm_entries : entry list
+(** [vmerge.vvm v1, v2, v3, v0] - the same mandatory-[v0] shape as
+    {!vadc_vvm_entries}; has no bare (non-"m") sibling. *)
+
+val vmerge_vxm_entries : entry list
+(** [vmerge.vxm v1, v2, a0, v0] - {!vmerge_vvm_entries}'s scalar-broadcast
+    sibling. *)
+
+val vmerge_vim_entries : entry list
+(** [vmerge.vim v1, v2, -5, v0] - {!vmerge_vvm_entries}'s signed-immediate
+    sibling. *)
+
+val vmv_x_s_entries : entry list
+(** [vmv.x.s a0, v2] on RV32IV and RV64IV - OP-V's element-0-to-GPR
+    extract, a GPR-destination two-operand shape. *)
+
+val vmv_s_x_entries : entry list
+(** [vmv.s.x v1, a0] - {!vmv_x_s_entries}'s mirror-image
+    GPR-to-element-0 insert. *)
+
+val vmv_v_v_entries : entry list
+(** [vmv.v.v v1, v2] - OP-V's unconditional-move family, a two-operand
+    shape with no [vs2] operand at all. *)
+
+val vmv_v_x_entries : entry list
+(** [vmv.v.x v1, a0] - {!vmv_v_v_entries}'s scalar-broadcast sibling. *)
+
+val vmv_v_i_entries : entry list
+(** [vmv.v.i v1, 5] - {!vmv_v_v_entries}'s signed-immediate sibling. *)
+
+val vmv1r_v_entries : entry list
+(** [vmv1r.v v1, v2] on RV32IV and RV64IV - OP-V's whole-register-group
+    move; real GNU as does not enforce the register-group alignment
+    requirement at assembly time. *)
+
+val vmv2r_v_entries : entry list
+(** [vmv2r.v v2, v4] - {!vmv1r_v_entries}'s 2-register-group sibling. *)
+
+val vmv4r_v_entries : entry list
+(** [vmv4r.v v4, v8] - {!vmv1r_v_entries}'s 4-register-group sibling. *)
+
+val vmv8r_v_entries : entry list
+(** [vmv8r.v v8, v16] - {!vmv1r_v_entries}'s 8-register-group sibling. *)
+
+val vsmul_vv_entries : entry list
+(** [vsmul.vv v1, v2, v3] on RV32IV and RV64IV - the saturating
+    fixed-point multiply pair, sharing {!vsub_vv_entries}'s exact OPIVV
+    shape; has no [.vi] sibling. *)
+
+val vsmul_vx_entries : entry list
+(** [vsmul.vx v1, v2, a0] - {!vsmul_vv_entries}'s scalar-broadcast
+    sibling. *)
+
 val sh1add_entries : entry list
 (** [sh1add a0, a1, a2] on RV32IM_Zba and RV64IM_Zba, Zba's scale-one R-type
     form. *)

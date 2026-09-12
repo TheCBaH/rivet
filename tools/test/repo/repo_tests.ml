@@ -185,8 +185,8 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:238;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:290;
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:448;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:500;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:9;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:9
 
@@ -319,11 +319,91 @@ let test_isa_family_admission repo =
      vector-register arithmetic space) are likewise each a single,
      non-import-duplicated rv_v record present identically on both profiles,
      so this slice moves 3 records on EACH profile, straight from blocked to
-     promoted-support. *)
+     promoted-support. vsub.vv/vsub.vx, vrsub.vx/vrsub.vi, and
+     vand/vor/vxor's full .vv/.vx/.vi triples (13 mnemonics total - vsub has
+     no .vi sibling and vrsub has no .vv sibling, matching riscv-opcodes'
+     own export and real GNU as's "unrecognized opcode" rejection of both)
+     are likewise each a single, non-import-duplicated rv_v record present
+     identically on both profiles, so this slice moves 13 records on EACH
+     profile, straight from blocked to promoted-support. vsll/vsrl/vsra's
+     full .vv/.vx/.vi triples, vminu/vmin/vmaxu/vmax's .vv/.vx pairs (no .vi
+     sibling), and vmul/vmulh/vmulhu/vmulhsu's OPMVV/OPMVX .vv/.vx pairs (25
+     mnemonics total) are likewise each a single, non-import-duplicated rv_v
+     record present identically on both profiles, so this slice moves 25
+     records on EACH profile, straight from blocked to promoted-support.
+     vdivu/vdiv/vremu/vrem's OPMVV/OPMVX .vv/.vx pairs (8 mnemonics total, no
+     .vi sibling) are likewise each a single, non-import-duplicated rv_v
+     record present identically on both profiles, so this slice moves 8
+     records on EACH profile, straight from blocked to promoted-support.
+     vsaddu/vsadd/vssubu/vssub's OPIVV/OPIVX/OPIVI .vv/.vx(/.vi) forms (10
+     mnemonics total - vssubu/vssub have no .vi sibling) are likewise each a
+     single, non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 10 records on EACH profile, straight from
+     blocked to promoted-support. vaadd/vaaddu/vasub/vasubu's OPMVV/OPMVX
+     .vv/.vx pairs (8 mnemonics total, no .vi sibling) are likewise each a
+     single, non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 8 records on EACH profile, straight from
+     blocked to promoted-support. vnsrl/vnsra/vnclipu/vnclip's OPIVV/OPIVX/
+     OPIVI .wv/.wx/.wi forms (12 mnemonics total, the narrowing shift/clip
+     family - the [.w*] suffix denotes a semantically wide vs2, but the
+     assembler only encodes register/immediate field positions, identical
+     to the plain OPIVV/OPIVX/OPIVI shape) are likewise each a single,
+     non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 12 records on EACH profile, straight
+     from blocked to promoted-support. vssrl/vssra's full OPIVV/OPIVX/OPIVI
+     .vv/.vx/.vi forms (6 mnemonics total, the scaling shift-right family -
+     the same full triple shape as vsll/vsrl/vsra including the UNSIGNED
+     [.vi]) are likewise each a single, non-import-duplicated rv_v record
+     present identically on both profiles, so this slice moves 6 records on
+     EACH profile, straight from blocked to promoted-support. vrgather's
+     full OPIVV/OPIVX/OPIVI .vv/.vx/.vi forms plus vrgatherei16.vv (4
+     mnemonics total, the gather/permute family, the same shape as
+     vadd/etc.) are likewise each a single, non-import-duplicated rv_v
+     record present identically on both profiles, so this slice moves 4
+     records on EACH profile, straight from blocked to promoted-support.
+     vwaddu/vwadd/vwsubu/vwsub's OPMVV/OPMVX .vv/.vx/.wv/.wx forms (16
+     mnemonics total, the widening add/subtract family, no .vi sibling)
+     are likewise each a single, non-import-duplicated rv_v record present
+     identically on both profiles, so this slice moves 16 records on EACH
+     profile, straight from blocked to promoted-support. vwmulu/vwmulsu/
+     vwmul's OPMVV/OPMVX .vv/.vx forms (6 mnemonics total, the widening
+     multiply family, no .vi sibling) are likewise each a single,
+     non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 6 records on EACH profile, straight
+     from blocked to promoted-support. vsext/vzext's `.vf2`/`.vf4`/`.vf8`
+     forms (6 mnemonics total, a genuinely new two-vector-register shape
+     with no third operand) are likewise each a single, non-import-
+     duplicated rv_v record present identically on both profiles, so this
+     slice moves 6 records on EACH profile, straight from blocked to
+     promoted-support. vmand/vmandn/vmor/vmxor/vmorn/vmnand/vmnor/vmxnor
+     (8 mnemonics total, the mask-register logical family - the same
+     [rd, rs2, rs1] shape as vadd/etc. but with [vm] architecturally fixed
+     at 1, so no masked sibling exists) are likewise each a single,
+     non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 8 records on EACH profile, straight
+     from blocked to promoted-support. vredsum/vredand/vredor/vredxor/
+     vredminu/vredmin/vredmaxu/vredmax.vs (8 mnemonics, the plain
+     vector-reduction family, the same [rd, rs2, rs1] shape as vadd/etc.
+     but with a real, selectable mask) plus vwredsumu/vwredsum.vs (2
+     mnemonics, the widening-sum reduction pair, sharing OPIVV's funct3
+     space rather than OPMVV's) are likewise each a single,
+     non-import-duplicated rv_v record present identically on both
+     profiles, so this slice moves 10 records on EACH profile, straight
+     from blocked to promoted-support. vmseq/vmsne/vmsltu/vmslt/vmsleu/
+     vmsle/vmsgtu/vmsgt (20 mnemonics, the mask-writing comparison family,
+     full OPIVV/OPIVX/OPIVI shape minus [.vv] for vmsgtu/vmsgt and [.vi]
+     for vmsltu/vmslt) are likewise each a single, non-import-duplicated
+     rv_v record present identically on both profiles, so this slice moves
+     20 records on EACH profile, straight from blocked to promoted-support.
+     vslideup/vslidedown (OPIVX/OPIVI, no [.vv] sibling) plus
+     vslide1up/vslide1down (OPMVX, no [.vi] sibling) - 6 mnemonics total -
+     are likewise each a single, non-import-duplicated rv_v record present
+     identically on both profiles, so this slice moves 6 records on EACH
+     profile, straight from blocked to promoted-support. *)
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
-    ~promoted_support:218 ~blocked:851;
+    ~promoted_support:428 ~blocked:641;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
-    ~promoted_support:260 ~blocked:864;
+    ~promoted_support:470 ~blocked:654;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0 ~gas_generatable:5
     ~promoted_support:4 ~blocked:7878;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
@@ -381,9 +461,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 546)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 966)"
        !roundtrip_count)
-    (!roundtrip_count = 546)
+    (!roundtrip_count = 966)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's

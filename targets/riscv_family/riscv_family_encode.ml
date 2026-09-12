@@ -397,6 +397,216 @@ module Make (P : PROFILE) = struct
       | Vadd_vv
       | Vadd_vx
       | Vadd_vi
+      | Vsub_vv
+      | Vsub_vx
+      | Vrsub_vx
+      | Vrsub_vi
+      | Vand_vv
+      | Vand_vx
+      | Vand_vi
+      | Vor_vv
+      | Vor_vx
+      | Vor_vi
+      | Vxor_vv
+      | Vxor_vx
+      | Vxor_vi
+      | Vsll_vv
+      | Vsll_vx
+      | Vsll_vi
+      | Vsrl_vv
+      | Vsrl_vx
+      | Vsrl_vi
+      | Vsra_vv
+      | Vsra_vx
+      | Vsra_vi
+      | Vminu_vv
+      | Vminu_vx
+      | Vmin_vv
+      | Vmin_vx
+      | Vmaxu_vv
+      | Vmaxu_vx
+      | Vmax_vv
+      | Vmax_vx
+      | Vmul_vv
+      | Vmul_vx
+      | Vmulh_vv
+      | Vmulh_vx
+      | Vmulhu_vv
+      | Vmulhu_vx
+      | Vmulhsu_vv
+      | Vmulhsu_vx
+      | Vdivu_vv
+      | Vdivu_vx
+      | Vdiv_vv
+      | Vdiv_vx
+      | Vremu_vv
+      | Vremu_vx
+      | Vrem_vv
+      | Vrem_vx
+      | Vaadd_vv
+      | Vaadd_vx
+      | Vaaddu_vv
+      | Vaaddu_vx
+      | Vasub_vv
+      | Vasub_vx
+      | Vasubu_vv
+      | Vasubu_vx
+      | Vnclip_wv
+      | Vnclip_wx
+      | Vnclip_wi
+      | Vnclipu_wv
+      | Vnclipu_wx
+      | Vnclipu_wi
+      | Vnsra_wv
+      | Vnsra_wx
+      | Vnsra_wi
+      | Vnsrl_wv
+      | Vnsrl_wx
+      | Vnsrl_wi
+      | Vssrl_vv
+      | Vssrl_vx
+      | Vssrl_vi
+      | Vssra_vv
+      | Vssra_vx
+      | Vssra_vi
+      | Vrgather_vv
+      | Vrgather_vx
+      | Vrgather_vi
+      | Vrgatherei16_vv
+      | Vwaddu_vv
+      | Vwaddu_vx
+      | Vwadd_vv
+      | Vwadd_vx
+      | Vwsubu_vv
+      | Vwsubu_vx
+      | Vwsub_vv
+      | Vwsub_vx
+      | Vwaddu_wv
+      | Vwaddu_wx
+      | Vwadd_wv
+      | Vwadd_wx
+      | Vwsubu_wv
+      | Vwsubu_wx
+      | Vwsub_wv
+      | Vwsub_wx
+      | Vwmulu_vv
+      | Vwmulu_vx
+      | Vwmulsu_vv
+      | Vwmulsu_vx
+      | Vwmul_vv
+      | Vwmul_vx
+      | Vsext_vf2
+      | Vsext_vf4
+      | Vsext_vf8
+      | Vzext_vf2
+      | Vzext_vf4
+      | Vzext_vf8
+      | Vsadd_vv
+      | Vsadd_vx
+      | Vsadd_vi
+      | Vsaddu_vv
+      | Vsaddu_vx
+      | Vsaddu_vi
+      | Vssub_vv
+      | Vssub_vx
+      | Vssubu_vv
+      | Vssubu_vx
+      | Vmand_mm
+      | Vmandn_mm
+      | Vmor_mm
+      | Vmxor_mm
+      | Vmorn_mm
+      | Vmnand_mm
+      | Vmnor_mm
+      | Vmxnor_mm
+      | Vredsum_vs
+      | Vredand_vs
+      | Vredor_vs
+      | Vredxor_vs
+      | Vredminu_vs
+      | Vredmin_vs
+      | Vredmaxu_vs
+      | Vredmax_vs
+      | Vwredsumu_vs
+      | Vwredsum_vs
+      | Vmseq_vv
+      | Vmseq_vx
+      | Vmseq_vi
+      | Vmsne_vv
+      | Vmsne_vx
+      | Vmsne_vi
+      | Vmsltu_vv
+      | Vmsltu_vx
+      | Vmslt_vv
+      | Vmslt_vx
+      | Vmsleu_vv
+      | Vmsleu_vx
+      | Vmsleu_vi
+      | Vmsle_vv
+      | Vmsle_vx
+      | Vmsle_vi
+      | Vmsgtu_vx
+      | Vmsgtu_vi
+      | Vmsgt_vx
+      | Vmsgt_vi
+      | Vslideup_vx
+      | Vslideup_vi
+      | Vslidedown_vx
+      | Vslidedown_vi
+      | Vslide1up_vx
+      | Vslide1down_vx
+      | Vmacc_vv
+      | Vmacc_vx
+      | Vnmsac_vv
+      | Vnmsac_vx
+      | Vmadd_vv
+      | Vmadd_vx
+      | Vnmsub_vv
+      | Vnmsub_vx
+      | Vwmaccu_vv
+      | Vwmaccu_vx
+      | Vwmacc_vv
+      | Vwmacc_vx
+      | Vwmaccsu_vv
+      | Vwmaccsu_vx
+      | Vwmaccus_vx
+      | Vid_v
+      | Viota_m
+      | Vcompress_vm
+      | Vcpop_m
+      | Vfirst_m
+      | Vmsbf_m
+      | Vmsif_m
+      | Vmsof_m
+      | Vadc_vvm
+      | Vadc_vxm
+      | Vadc_vim
+      | Vmadc_vvm
+      | Vmadc_vxm
+      | Vmadc_vim
+      | Vmadc_vv
+      | Vmadc_vx
+      | Vmadc_vi
+      | Vsbc_vvm
+      | Vsbc_vxm
+      | Vmsbc_vvm
+      | Vmsbc_vxm
+      | Vmsbc_vv
+      | Vmsbc_vx
+      | Vmerge_vvm
+      | Vmerge_vxm
+      | Vmerge_vim
+      | Vmv_s_x
+      | Vmv_x_s
+      | Vmv_v_i
+      | Vmv_v_v
+      | Vmv_v_x
+      | Vmv1r_v
+      | Vmv2r_v
+      | Vmv4r_v
+      | Vmv8r_v
+      | Vsmul_vv
+      | Vsmul_vx
 
     let name = function
       | Add -> "add"
@@ -641,6 +851,216 @@ module Make (P : PROFILE) = struct
       | Vadd_vv -> "vadd.vv"
       | Vadd_vx -> "vadd.vx"
       | Vadd_vi -> "vadd.vi"
+      | Vsub_vv -> "vsub.vv"
+      | Vsub_vx -> "vsub.vx"
+      | Vrsub_vx -> "vrsub.vx"
+      | Vrsub_vi -> "vrsub.vi"
+      | Vand_vv -> "vand.vv"
+      | Vand_vx -> "vand.vx"
+      | Vand_vi -> "vand.vi"
+      | Vor_vv -> "vor.vv"
+      | Vor_vx -> "vor.vx"
+      | Vor_vi -> "vor.vi"
+      | Vxor_vv -> "vxor.vv"
+      | Vxor_vx -> "vxor.vx"
+      | Vxor_vi -> "vxor.vi"
+      | Vsll_vv -> "vsll.vv"
+      | Vsll_vx -> "vsll.vx"
+      | Vsll_vi -> "vsll.vi"
+      | Vsrl_vv -> "vsrl.vv"
+      | Vsrl_vx -> "vsrl.vx"
+      | Vsrl_vi -> "vsrl.vi"
+      | Vsra_vv -> "vsra.vv"
+      | Vsra_vx -> "vsra.vx"
+      | Vsra_vi -> "vsra.vi"
+      | Vminu_vv -> "vminu.vv"
+      | Vminu_vx -> "vminu.vx"
+      | Vmin_vv -> "vmin.vv"
+      | Vmin_vx -> "vmin.vx"
+      | Vmaxu_vv -> "vmaxu.vv"
+      | Vmaxu_vx -> "vmaxu.vx"
+      | Vmax_vv -> "vmax.vv"
+      | Vmax_vx -> "vmax.vx"
+      | Vmul_vv -> "vmul.vv"
+      | Vmul_vx -> "vmul.vx"
+      | Vmulh_vv -> "vmulh.vv"
+      | Vmulh_vx -> "vmulh.vx"
+      | Vmulhu_vv -> "vmulhu.vv"
+      | Vmulhu_vx -> "vmulhu.vx"
+      | Vmulhsu_vv -> "vmulhsu.vv"
+      | Vmulhsu_vx -> "vmulhsu.vx"
+      | Vdivu_vv -> "vdivu.vv"
+      | Vdivu_vx -> "vdivu.vx"
+      | Vdiv_vv -> "vdiv.vv"
+      | Vdiv_vx -> "vdiv.vx"
+      | Vremu_vv -> "vremu.vv"
+      | Vremu_vx -> "vremu.vx"
+      | Vrem_vv -> "vrem.vv"
+      | Vrem_vx -> "vrem.vx"
+      | Vaadd_vv -> "vaadd.vv"
+      | Vaadd_vx -> "vaadd.vx"
+      | Vaaddu_vv -> "vaaddu.vv"
+      | Vaaddu_vx -> "vaaddu.vx"
+      | Vasub_vv -> "vasub.vv"
+      | Vasub_vx -> "vasub.vx"
+      | Vasubu_vv -> "vasubu.vv"
+      | Vasubu_vx -> "vasubu.vx"
+      | Vnclip_wv -> "vnclip.wv"
+      | Vnclip_wx -> "vnclip.wx"
+      | Vnclip_wi -> "vnclip.wi"
+      | Vnclipu_wv -> "vnclipu.wv"
+      | Vnclipu_wx -> "vnclipu.wx"
+      | Vnclipu_wi -> "vnclipu.wi"
+      | Vnsra_wv -> "vnsra.wv"
+      | Vnsra_wx -> "vnsra.wx"
+      | Vnsra_wi -> "vnsra.wi"
+      | Vnsrl_wv -> "vnsrl.wv"
+      | Vnsrl_wx -> "vnsrl.wx"
+      | Vnsrl_wi -> "vnsrl.wi"
+      | Vssrl_vv -> "vssrl.vv"
+      | Vssrl_vx -> "vssrl.vx"
+      | Vssrl_vi -> "vssrl.vi"
+      | Vssra_vv -> "vssra.vv"
+      | Vssra_vx -> "vssra.vx"
+      | Vssra_vi -> "vssra.vi"
+      | Vrgather_vv -> "vrgather.vv"
+      | Vrgather_vx -> "vrgather.vx"
+      | Vrgather_vi -> "vrgather.vi"
+      | Vrgatherei16_vv -> "vrgatherei16.vv"
+      | Vwaddu_vv -> "vwaddu.vv"
+      | Vwaddu_vx -> "vwaddu.vx"
+      | Vwadd_vv -> "vwadd.vv"
+      | Vwadd_vx -> "vwadd.vx"
+      | Vwsubu_vv -> "vwsubu.vv"
+      | Vwsubu_vx -> "vwsubu.vx"
+      | Vwsub_vv -> "vwsub.vv"
+      | Vwsub_vx -> "vwsub.vx"
+      | Vwaddu_wv -> "vwaddu.wv"
+      | Vwaddu_wx -> "vwaddu.wx"
+      | Vwadd_wv -> "vwadd.wv"
+      | Vwadd_wx -> "vwadd.wx"
+      | Vwsubu_wv -> "vwsubu.wv"
+      | Vwsubu_wx -> "vwsubu.wx"
+      | Vwsub_wv -> "vwsub.wv"
+      | Vwsub_wx -> "vwsub.wx"
+      | Vwmulu_vv -> "vwmulu.vv"
+      | Vwmulu_vx -> "vwmulu.vx"
+      | Vwmulsu_vv -> "vwmulsu.vv"
+      | Vwmulsu_vx -> "vwmulsu.vx"
+      | Vwmul_vv -> "vwmul.vv"
+      | Vwmul_vx -> "vwmul.vx"
+      | Vsext_vf2 -> "vsext.vf2"
+      | Vsext_vf4 -> "vsext.vf4"
+      | Vsext_vf8 -> "vsext.vf8"
+      | Vzext_vf2 -> "vzext.vf2"
+      | Vzext_vf4 -> "vzext.vf4"
+      | Vzext_vf8 -> "vzext.vf8"
+      | Vsadd_vv -> "vsadd.vv"
+      | Vsadd_vx -> "vsadd.vx"
+      | Vsadd_vi -> "vsadd.vi"
+      | Vsaddu_vv -> "vsaddu.vv"
+      | Vsaddu_vx -> "vsaddu.vx"
+      | Vsaddu_vi -> "vsaddu.vi"
+      | Vssub_vv -> "vssub.vv"
+      | Vssub_vx -> "vssub.vx"
+      | Vssubu_vv -> "vssubu.vv"
+      | Vssubu_vx -> "vssubu.vx"
+      | Vmand_mm -> "vmand.mm"
+      | Vmandn_mm -> "vmandn.mm"
+      | Vmor_mm -> "vmor.mm"
+      | Vmxor_mm -> "vmxor.mm"
+      | Vmorn_mm -> "vmorn.mm"
+      | Vmnand_mm -> "vmnand.mm"
+      | Vmnor_mm -> "vmnor.mm"
+      | Vmxnor_mm -> "vmxnor.mm"
+      | Vredsum_vs -> "vredsum.vs"
+      | Vredand_vs -> "vredand.vs"
+      | Vredor_vs -> "vredor.vs"
+      | Vredxor_vs -> "vredxor.vs"
+      | Vredminu_vs -> "vredminu.vs"
+      | Vredmin_vs -> "vredmin.vs"
+      | Vredmaxu_vs -> "vredmaxu.vs"
+      | Vredmax_vs -> "vredmax.vs"
+      | Vwredsumu_vs -> "vwredsumu.vs"
+      | Vwredsum_vs -> "vwredsum.vs"
+      | Vmseq_vv -> "vmseq.vv"
+      | Vmseq_vx -> "vmseq.vx"
+      | Vmseq_vi -> "vmseq.vi"
+      | Vmsne_vv -> "vmsne.vv"
+      | Vmsne_vx -> "vmsne.vx"
+      | Vmsne_vi -> "vmsne.vi"
+      | Vmsltu_vv -> "vmsltu.vv"
+      | Vmsltu_vx -> "vmsltu.vx"
+      | Vmslt_vv -> "vmslt.vv"
+      | Vmslt_vx -> "vmslt.vx"
+      | Vmsleu_vv -> "vmsleu.vv"
+      | Vmsleu_vx -> "vmsleu.vx"
+      | Vmsleu_vi -> "vmsleu.vi"
+      | Vmsle_vv -> "vmsle.vv"
+      | Vmsle_vx -> "vmsle.vx"
+      | Vmsle_vi -> "vmsle.vi"
+      | Vmsgtu_vx -> "vmsgtu.vx"
+      | Vmsgtu_vi -> "vmsgtu.vi"
+      | Vmsgt_vx -> "vmsgt.vx"
+      | Vmsgt_vi -> "vmsgt.vi"
+      | Vslideup_vx -> "vslideup.vx"
+      | Vslideup_vi -> "vslideup.vi"
+      | Vslidedown_vx -> "vslidedown.vx"
+      | Vslidedown_vi -> "vslidedown.vi"
+      | Vslide1up_vx -> "vslide1up.vx"
+      | Vslide1down_vx -> "vslide1down.vx"
+      | Vmacc_vv -> "vmacc.vv"
+      | Vmacc_vx -> "vmacc.vx"
+      | Vnmsac_vv -> "vnmsac.vv"
+      | Vnmsac_vx -> "vnmsac.vx"
+      | Vmadd_vv -> "vmadd.vv"
+      | Vmadd_vx -> "vmadd.vx"
+      | Vnmsub_vv -> "vnmsub.vv"
+      | Vnmsub_vx -> "vnmsub.vx"
+      | Vwmaccu_vv -> "vwmaccu.vv"
+      | Vwmaccu_vx -> "vwmaccu.vx"
+      | Vwmacc_vv -> "vwmacc.vv"
+      | Vwmacc_vx -> "vwmacc.vx"
+      | Vwmaccsu_vv -> "vwmaccsu.vv"
+      | Vwmaccsu_vx -> "vwmaccsu.vx"
+      | Vwmaccus_vx -> "vwmaccus.vx"
+      | Vid_v -> "vid.v"
+      | Viota_m -> "viota.m"
+      | Vcompress_vm -> "vcompress.vm"
+      | Vcpop_m -> "vcpop.m"
+      | Vfirst_m -> "vfirst.m"
+      | Vmsbf_m -> "vmsbf.m"
+      | Vmsif_m -> "vmsif.m"
+      | Vmsof_m -> "vmsof.m"
+      | Vadc_vvm -> "vadc.vvm"
+      | Vadc_vxm -> "vadc.vxm"
+      | Vadc_vim -> "vadc.vim"
+      | Vmadc_vvm -> "vmadc.vvm"
+      | Vmadc_vxm -> "vmadc.vxm"
+      | Vmadc_vim -> "vmadc.vim"
+      | Vmadc_vv -> "vmadc.vv"
+      | Vmadc_vx -> "vmadc.vx"
+      | Vmadc_vi -> "vmadc.vi"
+      | Vsbc_vvm -> "vsbc.vvm"
+      | Vsbc_vxm -> "vsbc.vxm"
+      | Vmsbc_vvm -> "vmsbc.vvm"
+      | Vmsbc_vxm -> "vmsbc.vxm"
+      | Vmsbc_vv -> "vmsbc.vv"
+      | Vmsbc_vx -> "vmsbc.vx"
+      | Vmerge_vvm -> "vmerge.vvm"
+      | Vmerge_vxm -> "vmerge.vxm"
+      | Vmerge_vim -> "vmerge.vim"
+      | Vmv_s_x -> "vmv.s.x"
+      | Vmv_x_s -> "vmv.x.s"
+      | Vmv_v_i -> "vmv.v.i"
+      | Vmv_v_v -> "vmv.v.v"
+      | Vmv_v_x -> "vmv.v.x"
+      | Vmv1r_v -> "vmv1r.v"
+      | Vmv2r_v -> "vmv2r.v"
+      | Vmv4r_v -> "vmv4r.v"
+      | Vmv8r_v -> "vmv8r.v"
+      | Vsmul_vv -> "vsmul.vv"
+      | Vsmul_vx -> "vsmul.vx"
 
     let all =
       [
@@ -886,6 +1306,216 @@ module Make (P : PROFILE) = struct
         Vadd_vv;
         Vadd_vx;
         Vadd_vi;
+        Vsub_vv;
+        Vsub_vx;
+        Vrsub_vx;
+        Vrsub_vi;
+        Vand_vv;
+        Vand_vx;
+        Vand_vi;
+        Vor_vv;
+        Vor_vx;
+        Vor_vi;
+        Vxor_vv;
+        Vxor_vx;
+        Vxor_vi;
+        Vsll_vv;
+        Vsll_vx;
+        Vsll_vi;
+        Vsrl_vv;
+        Vsrl_vx;
+        Vsrl_vi;
+        Vsra_vv;
+        Vsra_vx;
+        Vsra_vi;
+        Vminu_vv;
+        Vminu_vx;
+        Vmin_vv;
+        Vmin_vx;
+        Vmaxu_vv;
+        Vmaxu_vx;
+        Vmax_vv;
+        Vmax_vx;
+        Vmul_vv;
+        Vmul_vx;
+        Vmulh_vv;
+        Vmulh_vx;
+        Vmulhu_vv;
+        Vmulhu_vx;
+        Vmulhsu_vv;
+        Vmulhsu_vx;
+        Vdivu_vv;
+        Vdivu_vx;
+        Vdiv_vv;
+        Vdiv_vx;
+        Vremu_vv;
+        Vremu_vx;
+        Vrem_vv;
+        Vrem_vx;
+        Vaadd_vv;
+        Vaadd_vx;
+        Vaaddu_vv;
+        Vaaddu_vx;
+        Vasub_vv;
+        Vasub_vx;
+        Vasubu_vv;
+        Vasubu_vx;
+        Vnclip_wv;
+        Vnclip_wx;
+        Vnclip_wi;
+        Vnclipu_wv;
+        Vnclipu_wx;
+        Vnclipu_wi;
+        Vnsra_wv;
+        Vnsra_wx;
+        Vnsra_wi;
+        Vnsrl_wv;
+        Vnsrl_wx;
+        Vnsrl_wi;
+        Vssrl_vv;
+        Vssrl_vx;
+        Vssrl_vi;
+        Vssra_vv;
+        Vssra_vx;
+        Vssra_vi;
+        Vrgather_vv;
+        Vrgather_vx;
+        Vrgather_vi;
+        Vrgatherei16_vv;
+        Vwaddu_vv;
+        Vwaddu_vx;
+        Vwadd_vv;
+        Vwadd_vx;
+        Vwsubu_vv;
+        Vwsubu_vx;
+        Vwsub_vv;
+        Vwsub_vx;
+        Vwaddu_wv;
+        Vwaddu_wx;
+        Vwadd_wv;
+        Vwadd_wx;
+        Vwsubu_wv;
+        Vwsubu_wx;
+        Vwsub_wv;
+        Vwsub_wx;
+        Vwmulu_vv;
+        Vwmulu_vx;
+        Vwmulsu_vv;
+        Vwmulsu_vx;
+        Vwmul_vv;
+        Vwmul_vx;
+        Vsext_vf2;
+        Vsext_vf4;
+        Vsext_vf8;
+        Vzext_vf2;
+        Vzext_vf4;
+        Vzext_vf8;
+        Vsadd_vv;
+        Vsadd_vx;
+        Vsadd_vi;
+        Vsaddu_vv;
+        Vsaddu_vx;
+        Vsaddu_vi;
+        Vssub_vv;
+        Vssub_vx;
+        Vssubu_vv;
+        Vssubu_vx;
+        Vmand_mm;
+        Vmandn_mm;
+        Vmor_mm;
+        Vmxor_mm;
+        Vmorn_mm;
+        Vmnand_mm;
+        Vmnor_mm;
+        Vmxnor_mm;
+        Vredsum_vs;
+        Vredand_vs;
+        Vredor_vs;
+        Vredxor_vs;
+        Vredminu_vs;
+        Vredmin_vs;
+        Vredmaxu_vs;
+        Vredmax_vs;
+        Vwredsumu_vs;
+        Vwredsum_vs;
+        Vmseq_vv;
+        Vmseq_vx;
+        Vmseq_vi;
+        Vmsne_vv;
+        Vmsne_vx;
+        Vmsne_vi;
+        Vmsltu_vv;
+        Vmsltu_vx;
+        Vmslt_vv;
+        Vmslt_vx;
+        Vmsleu_vv;
+        Vmsleu_vx;
+        Vmsleu_vi;
+        Vmsle_vv;
+        Vmsle_vx;
+        Vmsle_vi;
+        Vmsgtu_vx;
+        Vmsgtu_vi;
+        Vmsgt_vx;
+        Vmsgt_vi;
+        Vslideup_vx;
+        Vslideup_vi;
+        Vslidedown_vx;
+        Vslidedown_vi;
+        Vslide1up_vx;
+        Vslide1down_vx;
+        Vmacc_vv;
+        Vmacc_vx;
+        Vnmsac_vv;
+        Vnmsac_vx;
+        Vmadd_vv;
+        Vmadd_vx;
+        Vnmsub_vv;
+        Vnmsub_vx;
+        Vwmaccu_vv;
+        Vwmaccu_vx;
+        Vwmacc_vv;
+        Vwmacc_vx;
+        Vwmaccsu_vv;
+        Vwmaccsu_vx;
+        Vwmaccus_vx;
+        Vid_v;
+        Viota_m;
+        Vcompress_vm;
+        Vcpop_m;
+        Vfirst_m;
+        Vmsbf_m;
+        Vmsif_m;
+        Vmsof_m;
+        Vadc_vvm;
+        Vadc_vxm;
+        Vadc_vim;
+        Vmadc_vvm;
+        Vmadc_vxm;
+        Vmadc_vim;
+        Vmadc_vv;
+        Vmadc_vx;
+        Vmadc_vi;
+        Vsbc_vvm;
+        Vsbc_vxm;
+        Vmsbc_vvm;
+        Vmsbc_vxm;
+        Vmsbc_vv;
+        Vmsbc_vx;
+        Vmerge_vvm;
+        Vmerge_vxm;
+        Vmerge_vim;
+        Vmv_s_x;
+        Vmv_x_s;
+        Vmv_v_i;
+        Vmv_v_v;
+        Vmv_v_x;
+        Vmv1r_v;
+        Vmv2r_v;
+        Vmv4r_v;
+        Vmv8r_v;
+        Vsmul_vv;
+        Vsmul_vx;
       ]
 
     let of_mnemonic s = List.find_opt (fun op -> String.equal (name op) s) all
@@ -1065,14 +1695,41 @@ module Make (P : PROFILE) = struct
        elides a default rounding mode). *)
     let vm_suffix funct7 = if funct7 land 1 = 1 then "" else ", v0.t"
 
+    (* Every OPIVV/OPIVX/OPIVI mnemonic admitted so far ([vadd]/[vsub]'s
+       [.vv]/[.vx] siblings, [vrsub]'s [.vx]/[.vi] siblings, and
+       [vand]/[vor]/[vxor]'s full [.vv]/[.vx]/[.vi] triples) shares exactly
+       one of these three print shapes, keyed only by the GAS suffix on the
+       mnemonic string rather than by opcode - so one table-free string
+       check covers the whole admitted family instead of one match arm per
+       mnemonic. *)
+    let is_opivv_name name =
+      String.length name >= 3 && String.sub name (String.length name - 3) 3 = ".vv"
+
+    let is_opivx_name name =
+      String.length name >= 3 && String.sub name (String.length name - 3) 3 = ".vx"
+
+    let is_opivi_name name =
+      String.length name >= 3 && String.sub name (String.length name - 3) 3 = ".vi"
+
+    (* [vsll.vi]/[vsrl.vi]/[vsra.vi] carry an UNSIGNED 5-bit shift amount
+       (riscv-opcodes' own field name is [zimm5], range 0..31 - real GNU as
+       rejects both [-1] and [32]) rather than every other admitted [.vi]
+       mnemonic's signed [simm5] (-16..15), so the shared suffix-keyed print
+       shape above must not sign-extend these three. *)
+    let is_opivi_uimm_name = function "vsll.vi" | "vsrl.vi" | "vsra.vi" -> true | _ -> false
+
     let pp ppf = function
-      | R x when x.name = "vadd.vv" ->
+      | R x when is_opivv_name x.name ->
           Fmt.pf ppf "%s v%d, v%d, v%d%s" x.name x.rd x.rs2 x.rs1 (vm_suffix x.funct7)
-      | R x when x.name = "vadd.vx" ->
+      | R x when is_opivx_name x.name ->
           Fmt.pf ppf "%s v%d, v%d, x%d%s" x.name x.rd x.rs2 x.rs1 (vm_suffix x.funct7)
-      | R x when x.name = "vadd.vi" ->
-          let simm5 = if x.rs1 land 0x10 <> 0 then x.rs1 - 32 else x.rs1 in
-          Fmt.pf ppf "%s v%d, v%d, %d%s" x.name x.rd x.rs2 simm5 (vm_suffix x.funct7)
+      | R x when is_opivi_name x.name ->
+          let imm =
+            if is_opivi_uimm_name x.name then x.rs1
+            else if x.rs1 land 0x10 <> 0 then x.rs1 - 32
+            else x.rs1
+          in
+          Fmt.pf ppf "%s v%d, v%d, %d%s" x.name x.rd x.rs2 imm (vm_suffix x.funct7)
       | R x -> (
           match f_shape_of_name x.name with
           | Some { rd_f; rs1_f; rs2_f = _; arity = 2; rm } ->
@@ -1234,6 +1891,12 @@ module Make (P : PROFILE) = struct
      [Operand.Sym (Symbol "v0.t")] with no frontend change needed, the same
      way vsetvli/vsetivli's keyword tokens do). *)
   let is_v0t = function Operand.Sym (Asm_core.Expr.Symbol "v0.t") -> true | _ -> false
+
+  (* The add-with-carry/subtract-with-borrow family's mandatory carry-in
+     operand: a real, literal [v0] register (not the [v0.t] mask-toggle
+     sigil above) - real GNU as accepts only [v0] there, rejecting both
+     [v0.t] and any other vector register as "illegal operands". *)
+  let is_v0 = function Operand.Reg (Reg.V 0) -> true | _ -> false
   let rv64 op = if xlen = 64 then Ok () else Error (diag ~pos:__POS__ (`Rv64_only op))
   let wrong op = Error (diag ~pos:__POS__ (`Wrong_operands op))
 
@@ -1675,6 +2338,10 @@ module Make (P : PROFILE) = struct
     let lim = Int64.shift_left 1L (bits - 1) in
     Int64.compare v (Int64.neg lim) >= 0 && Int64.compare v lim < 0
 
+  let fits_unsigned bits v =
+    let lim = Int64.shift_left 1L bits in
+    Int64.compare v 0L >= 0 && Int64.compare v lim < 0
+
   let int64_expr e =
     match Asm_core.Expr.fold Asm_core.Expr.no_env e with
     | Ok (Asm_core.Expr.Const n) -> Bigint.to_int64_opt n
@@ -1746,6 +2413,596 @@ module Make (P : PROFILE) = struct
           | _ -> None)
     in
     go (-1) 0 tokens
+
+  (* OP-V's funct6 (bits[31:26], the field alongside vm that together fill
+     the R-type [funct7] span) for each admitted OPIVV/OPIVX/OPIVI mnemonic,
+     one small table per operand shape rather than duplicating six lowering
+     match arms per mnemonic - {!lower_instruction} composes
+     [funct7 = (funct6 lsl 1) lor vm] generically from whichever table
+     matches. Hand-verified against riscv-opcodes' own encoding and real
+     GNU as (`riscv64-linux-gnu-as` 2.44, `-march=rv64gv`) for every entry:
+     `vsub.vv v1,v2,v3` -> `0a2180d7`, `vsub.vx v1,v2,a0` -> `0a2540d7`,
+     `vrsub.vx v1,v2,a0` -> `0e2540d7`, `vrsub.vi v1,v2,-5` -> `0e2db0d7`,
+     `vand.vv/.vx/.vi` -> `262180d7`/`262540d7`/`262db0d7`,
+     `vor.vv/.vx/.vi` -> `2a2180d7`/`2a2540d7`/`2a2db0d7`,
+     `vxor.vv/.vx/.vi` -> `2e2180d7`/`2e2540d7`/`2e2db0d7` - all with vm=1
+     (unmasked). Real GNU as also confirms `vsub`/`vrsub` are genuinely
+     asymmetric ("vsub.vi"/"vrsub.vv" are both "unrecognized opcode", not
+     "illegal operands"), matching riscv-opcodes' own export, which has no
+     such records either. *)
+  let opivv_funct6 = function
+    | Opcode.Vadd_vv -> Some 0x00
+    | Vsub_vv -> Some 0x02
+    | Vand_vv -> Some 0x09
+    | Vor_vv -> Some 0x0a
+    | Vxor_vv -> Some 0x0b
+    | Vsll_vv -> Some 0x25
+    | Vsrl_vv -> Some 0x28
+    | Vsra_vv -> Some 0x29
+    | Vminu_vv -> Some 0x04
+    | Vmin_vv -> Some 0x05
+    | Vmaxu_vv -> Some 0x06
+    | Vmax_vv -> Some 0x07
+    | Vsaddu_vv -> Some 0x20
+    | Vsadd_vv -> Some 0x21
+    | Vssubu_vv -> Some 0x22
+    | Vssub_vv -> Some 0x23
+    | Vnsrl_wv -> Some 0x2c
+    | Vnsra_wv -> Some 0x2d
+    | Vnclipu_wv -> Some 0x2e
+    | Vnclip_wv -> Some 0x2f
+    | Vssrl_vv -> Some 0x2a
+    | Vssra_vv -> Some 0x2b
+    | Vrgather_vv -> Some 0x0c
+    | Vrgatherei16_vv -> Some 0x0e
+    (* [vwredsumu.vs]/[vwredsum.vs]: the widening-sum reduction pair - unlike
+       every other reduction below, riscv-opcodes' own encoding puts these in
+       OPIVV's funct3=0 space (confirmed against real GNU as: `vwredsumu.vs
+       v1,v2,v3` -> `c22180d7`, funct3 bits are 0, not OPMVV's 2), so they
+       belong in this table rather than {!opmvv_funct6}, even though 0x30/
+       0x31 already label unrelated OPMVV entries there (funct3 keeps the
+       two spaces disjoint). No [.vx]/[.vi] sibling exists for either. *)
+    | Vwredsumu_vs -> Some 0x30
+    | Vwredsum_vs -> Some 0x31
+    (* [vmseq]/[vmsne]/[vmsltu]/[vmslt]/[vmsleu]/[vmsle]: the vector-vector
+       forms of OP-V's mask-writing comparison family - the same OPIVV shape
+       as [vadd.vv]/etc. ([vd] just holds a MASK result rather than a plain
+       vector, invisible to this encoder layer). [vmsgtu]/[vmsgt] have no
+       [.vv] sibling (real GNU as accepts `vmsgt.vv`/`vmsgtu.vv` only as a
+       pseudo-instruction reversing `vmslt.vv`/`vmsltu.vv`'s own operands -
+       e.g. `vmsgt.vv v1,v2,v3` assembles as `vmslt.vv v1,v3,v2` - a
+       genuinely different alias-expansion feature, deliberately not
+       admitted here). Confirmed against real GNU as, byte-identical on
+       RV32/RV64: `vmseq.vv v1,v2,v3` -> `622180d7`, `vmsne.vv` ->
+       `662180d7`, `vmsltu.vv` -> `6a2180d7`, `vmslt.vv` -> `6e2180d7`,
+       `vmsleu.vv` -> `722180d7`, `vmsle.vv` -> `762180d7`. *)
+    | Vmseq_vv -> Some 0x18
+    | Vmsne_vv -> Some 0x19
+    | Vmsltu_vv -> Some 0x1a
+    | Vmslt_vv -> Some 0x1b
+    | Vmsleu_vv -> Some 0x1c
+    | Vmsle_vv -> Some 0x1d
+    (* [vsmul]: the saturating fixed-point multiply pair - the same OPIVV
+       (funct3 = 0)/OPIVX (funct3 = 4) shape as [vadd]/etc. above, not
+       OPMVV/OPMVX despite being a multiply (confirmed against real GNU
+       as: `vsmul.vv v1,v2,v3` -> `9e2180d7`, funct3 bits are 0). No
+       [.vi] sibling (real GNU as rejects `vsmul.vi` as "unrecognized
+       opcode"). Confirmed against real GNU as, byte-identical on
+       RV32/RV64: `vsmul.vx v1,v2,a0` -> `9e2540d7`; masked, e.g.
+       `vsmul.vv v1,v2,v3,v0.t` -> `9c2180d7`. *)
+    | Vsmul_vv -> Some 0x27
+    | _ -> None
+
+  let opivx_funct6 = function
+    | Opcode.Vadd_vx -> Some 0x00
+    | Vsub_vx -> Some 0x02
+    | Vrsub_vx -> Some 0x03
+    | Vand_vx -> Some 0x09
+    | Vor_vx -> Some 0x0a
+    | Vxor_vx -> Some 0x0b
+    | Vsll_vx -> Some 0x25
+    | Vsrl_vx -> Some 0x28
+    | Vsra_vx -> Some 0x29
+    | Vminu_vx -> Some 0x04
+    | Vmin_vx -> Some 0x05
+    | Vmaxu_vx -> Some 0x06
+    | Vmax_vx -> Some 0x07
+    | Vsaddu_vx -> Some 0x20
+    | Vsadd_vx -> Some 0x21
+    | Vssubu_vx -> Some 0x22
+    | Vssub_vx -> Some 0x23
+    | Vnsrl_wx -> Some 0x2c
+    | Vnsra_wx -> Some 0x2d
+    | Vnclipu_wx -> Some 0x2e
+    | Vnclip_wx -> Some 0x2f
+    | Vssrl_vx -> Some 0x2a
+    | Vssra_vx -> Some 0x2b
+    | Vrgather_vx -> Some 0x0c
+    (* [vmseq]/[vmsne]/[vmsltu]/[vmslt]/[vmsleu]/[vmsle]/[vmsgtu]/[vmsgt]:
+       the vector-scalar forms of the mask-writing comparison family above -
+       unlike the [.vv] shape, [vmsgtu]/[vmsgt] DO have a [.vx] sibling
+       (real GNU as's own text-order convention keeps `gt` meaningful when
+       comparing against a scalar broadcast, unlike vector-vector where it
+       is redundant with a reversed `lt`). Confirmed against real GNU as,
+       byte-identical on RV32/RV64: `vmseq.vx v1,v2,a0` -> `622540d7`,
+       `vmsne.vx` -> `662540d7`, `vmsltu.vx` -> `6a2540d7`, `vmslt.vx` ->
+       `6e2540d7`, `vmsleu.vx` -> `722540d7`, `vmsle.vx` -> `762540d7`,
+       `vmsgtu.vx` -> `7a2540d7`, `vmsgt.vx` -> `7e2540d7`. *)
+    | Vmseq_vx -> Some 0x18
+    | Vmsne_vx -> Some 0x19
+    | Vmsltu_vx -> Some 0x1a
+    | Vmslt_vx -> Some 0x1b
+    | Vmsleu_vx -> Some 0x1c
+    | Vmsle_vx -> Some 0x1d
+    | Vmsgtu_vx -> Some 0x1e
+    | Vmsgt_vx -> Some 0x1f
+    (* [vslideup]/[vslidedown]: OP-V's slide family - moves elements up/down
+       by a scalar or immediate offset. Same OPIVX shape as every other
+       [.vx] mnemonic (no [.vv] sibling - real GNU as rejects
+       `vslideup.vv` as "unrecognized opcode", matching riscv-opcodes'
+       own export). Confirmed against real GNU as, byte-identical on
+       RV32/RV64: `vslideup.vx v1,v2,a0` -> `3a2540d7`, `vslidedown.vx` ->
+       `3e2540d7`. *)
+    | Vslideup_vx -> Some 0x0e
+    | Vslidedown_vx -> Some 0x0f
+    | Vsmul_vx -> Some 0x27
+    | _ -> None
+
+  let opivi_funct6 = function
+    | Opcode.Vadd_vi -> Some 0x00
+    | Vrsub_vi -> Some 0x03
+    | Vand_vi -> Some 0x09
+    | Vor_vi -> Some 0x0a
+    | Vxor_vi -> Some 0x0b
+    | Vsll_vi -> Some 0x25
+    | Vsrl_vi -> Some 0x28
+    | Vsra_vi -> Some 0x29
+    | Vsaddu_vi -> Some 0x20
+    | Vsadd_vi -> Some 0x21
+    | Vnsrl_wi -> Some 0x2c
+    | Vnsra_wi -> Some 0x2d
+    | Vnclipu_wi -> Some 0x2e
+    | Vnclip_wi -> Some 0x2f
+    | Vssrl_vi -> Some 0x2a
+    | Vssra_vi -> Some 0x2b
+    | Vrgather_vi -> Some 0x0c
+    (* [vmseq]/[vmsne]/[vmsleu]/[vmsle]/[vmsgtu]/[vmsgt]: the
+       vector-immediate forms of the mask-writing comparison family above -
+       [vmsltu]/[vmslt] have no [.vi] sibling (real GNU as rejects
+       `vmslt.vi` as "unrecognized opcode": an immediate strict-less-than
+       is redundant with `vmsleu`/`vmsle` against one-less, which riscv-
+       opcodes' own export already omits accordingly). The immediate is
+       SIGNED [simm5], like every other admitted [.vi] mnemonic except the
+       shift-family UNSIGNED [zimm5] shapes. Confirmed against real GNU as,
+       byte-identical on RV32/RV64: `vmseq.vi v1,v2,-5` -> `622db0d7`,
+       `vmsne.vi` -> `662db0d7`, `vmsleu.vi` -> `722db0d7`, `vmsle.vi` ->
+       `762db0d7`, `vmsgtu.vi` -> `7a2db0d7`, `vmsgt.vi` -> `7e2db0d7`. *)
+    | Vmseq_vi -> Some 0x18
+    | Vmsne_vi -> Some 0x19
+    | Vmsleu_vi -> Some 0x1c
+    | Vmsle_vi -> Some 0x1d
+    | Vmsgtu_vi -> Some 0x1e
+    | Vmsgt_vi -> Some 0x1f
+    (* [vslideup.vi]/[vslidedown.vi]: {!Vslideup_vx}/[Vslidedown_vx]'s
+       immediate siblings - riscv-opcodes' own field name is UNSIGNED
+       [zimm5] (0..31, see {!opivi_unsigned}), not every other admitted
+       [.vi] mnemonic's SIGNED [simm5]. Confirmed against real GNU as,
+       byte-identical on RV32/RV64: `vslideup.vi v1,v2,5` -> `3a22b0d7`,
+       `vslideup.vi v1,v2,31` -> `3a2fb0d7` (accepted), `,32` rejected with
+       "bad value for vector immediate field, value must be 0...31";
+       `vslidedown.vi v1,v2,5` -> `3e22b0d7`. *)
+    | Vslideup_vi -> Some 0x0e
+    | Vslidedown_vi -> Some 0x0f
+    | _ -> None
+
+  (* The saturating add/subtract family - `vsaddu`/`vsadd`/`vssubu`/`vssub` -
+     shares the OPIVV/OPIVX/OPIVI shape verbatim (the assembler only encodes
+     the instruction; saturation itself is execution-time behavior, invisible
+     at this layer). `vsadd`/`vsaddu`'s [.vi] immediate is SIGNED [simm5],
+     like every other admitted [.vi] mnemonic except the shift trio above;
+     `vssub`/`vssubu` have no [.vi] sibling at all (real GNU as rejects
+     `vssub.vi` as "unrecognized opcode", matching riscv-opcodes' own
+     export). Confirmed against real GNU as, byte-identical on RV32/RV64:
+     `vsaddu.vv/.vx/.vi` -> `822180d7`/`822540d7`/`822db0d7`, `vsadd.vv/.vx/
+     .vi` -> `862180d7`/`862540d7`/`862db0d7`, `vssubu.vv/.vx` ->
+     `8a2180d7`/`8a2540d7`, `vssub.vv/.vx` -> `8e2180d7`/`8e2540d7`. *)
+
+  (* [vsll.vi]/[vsrl.vi]/[vsra.vi]'s shift-amount immediate is UNSIGNED
+     (riscv-opcodes' own field name is [zimm5], range 0..31) unlike every
+     other admitted [.vi] mnemonic's SIGNED [simm5] (-16..15). Confirmed
+     against real GNU as: `vsll.vi v1,v2,31` -> `962fb0d7` (accepted),
+     `vsll.vi v1,v2,32`/`,-1` both "bad value for vector immediate field,
+     value must be 0...31" - the mirror image of `vand.vi v1,v2,16`/`,-17`'s
+     own signed-range rejection message. The narrowing `.wi` family below -
+     `vnsrl.wi`/`vnsra.wi`/`vnclipu.wi`/`vnclip.wi` - shares this same
+     UNSIGNED [zimm5] shape (confirmed from riscv-opcodes' own
+     `provenance.operands`, and against real GNU as: `vnclip.wi v1,v2,31`
+     -> `be2fb0d7`, `vnclip.wi v1,v2,32` rejected with the identical
+     "value must be 0...31" message). The scaling shift family below -
+     `vssrl.vi`/`vssra.vi` - shares this same UNSIGNED [zimm5] shape too
+     (confirmed from riscv-opcodes' own `provenance.operands`, and against
+     real GNU as: `vssrl.vi v1,v2,31` -> `aa2fb0d7`). `vrgather.vi`'s index
+     immediate is UNSIGNED too (confirmed: `vrgather.vi v1,v2,31` ->
+     `322fb0d7`, `vrgather.vi v1,v2,32` rejected with the identical
+     "value must be 0...31" message). *)
+  let opivi_unsigned = function
+    | Opcode.Vsll_vi | Vsrl_vi | Vsra_vi | Vnsrl_wi | Vnsra_wi | Vnclipu_wi | Vnclip_wi | Vssrl_vi
+    | Vssra_vi | Vrgather_vi | Vslideup_vi | Vslidedown_vi ->
+        true
+    | _ -> false
+
+  (* The add-with-carry/subtract-with-borrow family - [vadc]/[vmadc]/
+     [vsbc]/[vmsbc] - is structurally the same OPIVV(funct3=0)/
+     OPIVX(funct3=4)/OPIVI(funct3=3) shape as {!opivv_funct6}/
+     {!opivx_funct6}/{!opivi_funct6} above, but [vm] is never a toggleable
+     mask here: riscv-opcodes' own mask for every one of these 15 records
+     covers bit 25 (0xfe00707f, not the usual 0xfc00707f), meaning [vm] is
+     baked into each opcode's own fixed encoding rather than left free.
+     The "m"-suffixed variants ([vadc.vvm]/[vmadc.vvm]/[vsbc.vvm]/
+     [vmsbc.vvm] and their [.vxm]/[.vim] siblings) have [vm] fixed at 0
+     and GAS syntax requires a literal, mandatory 4th operand spelled
+     exactly [v0] (not the [v0.t] mask-toggle sigil {!is_v0t} recognizes,
+     and not any other vector register) supplying the carry/borrow input;
+     the bare (non-"m") siblings - only [vmadc.vv]/[.vx]/[.vi] and
+     [vmsbc.vv]/[.vx] exist, since compare-with-carry/borrow can run with
+     no carry-in but add/subtract cannot - have [vm] fixed at 1 and take
+     no 4th operand at all, with no [, v0.t] masked form either.
+     Confirmed against real GNU as (`riscv64-linux-gnu-as` 2.44
+     `-march=rv64gv`, byte-identical on `riscv32-linux-gnu-as` 2.43.1
+     `-march=rv32gv`): `vadc.vvm v1,v2,v3,v0` -> `402180d7`, `vadc.vxm
+     v1,v2,a0,v0` -> `402540d7`, `vadc.vim v1,v2,5,v0` -> `4022b0d7`,
+     `vmadc.vvm v1,v2,v3,v0` -> `442180d7`, `vmadc.vv v1,v2,v3` ->
+     `462180d7`, `vsbc.vvm v1,v2,v3,v0` -> `482180d7`, `vmsbc.vvm
+     v1,v2,v3,v0` -> `4c2180d7`, `vmsbc.vv v1,v2,v3` -> `4e2180d7`
+     (funct6 0x10/0x11/0x12/0x13 for vadc/vmadc/vsbc/vmsbc respectively,
+     identical whether "m"-suffixed or bare); `vadc.vvm v1,v2,v3` (no
+     carry-in operand), `vmadc.vv v1,v2,v3,v0` (a carry-in operand on the
+     bare form), `vadc.vvm v1,v2,v3,v0.t` (the mask-toggle sigil instead
+     of a real [v0]), and `vadc.vvm v1,v2,v3,v1` (any other vector
+     register) are all "illegal operands" on real GNU as. [vmerge]
+     (funct6 0x17) shares this exact mandatory-[v0] shape too, with no
+     bare (non-"m") sibling at all - real GNU as rejects `vmerge.vvm
+     v1,v2,v3` (no carry-in operand) as "illegal operands". Confirmed
+     against real GNU as, byte-identical on RV32/RV64: `vmerge.vvm
+     v1,v2,v3,v0` -> `5c2180d7`, `vmerge.vxm v1,v2,a0,v0` -> `5c2540d7`,
+     `vmerge.vim v1,v2,5,v0` -> `5c22b0d7`. *)
+  let carry_m_vv_funct6 = function
+    | Opcode.Vadc_vvm -> Some 0x10
+    | Vmadc_vvm -> Some 0x11
+    | Vsbc_vvm -> Some 0x12
+    | Vmsbc_vvm -> Some 0x13
+    | Vmerge_vvm -> Some 0x17
+    | _ -> None
+
+  let carry_m_vx_funct6 = function
+    | Opcode.Vadc_vxm -> Some 0x10
+    | Vmadc_vxm -> Some 0x11
+    | Vsbc_vxm -> Some 0x12
+    | Vmsbc_vxm -> Some 0x13
+    | Vmerge_vxm -> Some 0x17
+    | _ -> None
+
+  let carry_m_vi_funct6 = function
+    | Opcode.Vadc_vim -> Some 0x10
+    | Vmadc_vim -> Some 0x11
+    | Vmerge_vim -> Some 0x17
+    | _ -> None
+
+  let carry_vv_funct6 = function Opcode.Vmadc_vv -> Some 0x11 | Vmsbc_vv -> Some 0x13 | _ -> None
+  let carry_vx_funct6 = function Opcode.Vmadc_vx -> Some 0x11 | Vmsbc_vx -> Some 0x13 | _ -> None
+  let carry_vi_funct6 = function Opcode.Vmadc_vi -> Some 0x11 | _ -> None
+
+  (* OP-V's second major-opcode-0x57 functional-unit group: OPMVV
+     (funct3 = 2, all-vector-register) and OPMVX (funct3 = 6,
+     scalar-broadcast) - the identical funct6-plus-vm-into-funct7
+     composition as OPIVV/OPIVX above, just a different funct3 pair and no
+     immediate ([.vi]) sibling (multiply has none in the base V extension).
+     Hand-verified against real GNU as (`riscv64-linux-gnu-as` 2.44,
+     `-march=rv64gv`, byte-identical on `riscv32-linux-gnu-as` 2.43.1):
+     `vmul.vv v1,v2,v3` -> `9621a0d7`, `vmul.vx v1,v2,a0` -> `962560d7`,
+     `vmulh.vv/.vx` -> `9e21a0d7`/`9e2560d7`, `vmulhu.vv/.vx` ->
+     `9221a0d7`/`922560d7`, `vmulhsu.vv/.vx` -> `9a21a0d7`/`9a2560d7`
+     (all vm=1, unmasked); `vminu.vi`/`vmul.vi` are both "unrecognized
+     opcode" on real GNU as, confirming neither family has an OPIVI
+     sibling. The divide/remainder family - `vdivu`/`vdiv`/`vremu`/`vrem`,
+     also OPMVV/OPMVX-only with no [.vi] sibling (real GNU as rejects
+     `vdiv.vi` as "unrecognized opcode") - shares the identical shape;
+     confirmed against real GNU as, byte-identical on RV32/RV64:
+     `vdivu.vv/.vx` -> `8221a0d7`/`822560d7`, `vdiv.vv/.vx` ->
+     `8621a0d7`/`862560d7`, `vremu.vv/.vx` -> `8a21a0d7`/`8a2560d7`,
+     `vrem.vv/.vx` -> `8e21a0d7`/`8e2560d7`. The averaging add/subtract
+     family - `vaadd`/`vaaddu`/`vasub`/`vasubu`, also OPMVV/OPMVX-only with
+     no [.vi] sibling (real GNU as rejects `vaadd.vi` as "unrecognized
+     opcode") - shares the identical shape; confirmed against real GNU as,
+     byte-identical on RV32/RV64: `vaaddu.vv/.vx` -> `2221a0d7`/`222560d7`,
+     `vaadd.vv/.vx` -> `2621a0d7`/`262560d7`, `vasubu.vv/.vx` ->
+     `2a21a0d7`/`2a2560d7`, `vasub.vv/.vx` -> `2e21a0d7`/`2e2560d7`. The
+     widening add/subtract family - `vwaddu`/`vwadd`/`vwsubu`/`vwsub`, each
+     with a `.vv`/`.vx` (both narrow operands) and `.wv`/`.wx` (`vs2` wide,
+     `vs1`/`rs1` narrow) sibling pair, also OPMVV/OPMVX-only with no [.vi]
+     sibling (real GNU as rejects `vwadd.vi` as "unrecognized opcode") -
+     shares the identical shape (the assembler only encodes register
+     field positions; operand *width* is an execution-time SEW/vtype
+     concern, invisible here); confirmed against real GNU as, byte-
+     identical on RV32/RV64: `vwaddu.vv/.vx` -> `c221a0d7`/`c22560d7`,
+     `vwadd.vv/.vx` -> `c621a0d7`/`c62560d7`, `vwsubu.vv/.vx` ->
+     `ca21a0d7`/`ca2560d7`, `vwsub.vv/.vx` -> `ce21a0d7`/`ce2560d7`,
+     `vwaddu.wv/.wx` -> `d221a0d7`/`d22560d7`, `vwadd.wv/.wx` ->
+     `d621a0d7`/`d62560d7`, `vwsubu.wv/.wx` -> `da21a0d7`/`da2560d7`,
+     `vwsub.wv/.wx` -> `de21a0d7`/`de2560d7`. The widening multiply family
+     - `vwmulu`/`vwmulsu`/`vwmul`, `.vv`/`.vx` only, no [.vi] sibling
+     (real GNU as rejects `vwmul.vi` as "unrecognized opcode") - shares
+     the identical shape and GAS text operand order (unlike the widening
+     multiply-*accumulate* `vwmacc*` family, deliberately not admitted
+     here: real GNU as swaps that family's last two text operands to
+     `vd, vs1-or-rs1, vs2` rather than this shape's `vd, vs2, vs1-or-
+     rs1`, a genuinely different shape not yet built); confirmed against
+     real GNU as, byte-identical on RV32/RV64: `vwmulu.vv/.vx` ->
+     `e221a0d7`/`e22560d7`, `vwmulsu.vv/.vx` -> `ea21a0d7`/`ea2560d7`,
+     `vwmul.vv/.vx` -> `ee21a0d7`/`ee2560d7`. *)
+  let opmvv_funct6 = function
+    | Opcode.Vmul_vv -> Some 0x25
+    | Vmulh_vv -> Some 0x27
+    | Vmulhu_vv -> Some 0x24
+    | Vmulhsu_vv -> Some 0x26
+    | Vdivu_vv -> Some 0x20
+    | Vdiv_vv -> Some 0x21
+    | Vremu_vv -> Some 0x22
+    | Vrem_vv -> Some 0x23
+    | Vaaddu_vv -> Some 0x08
+    | Vaadd_vv -> Some 0x09
+    | Vasubu_vv -> Some 0x0a
+    | Vasub_vv -> Some 0x0b
+    | Vwaddu_vv -> Some 0x30
+    | Vwadd_vv -> Some 0x31
+    | Vwsubu_vv -> Some 0x32
+    | Vwsub_vv -> Some 0x33
+    | Vwaddu_wv -> Some 0x34
+    | Vwadd_wv -> Some 0x35
+    | Vwsubu_wv -> Some 0x36
+    | Vwsub_wv -> Some 0x37
+    | Vwmulu_vv -> Some 0x38
+    | Vwmulsu_vv -> Some 0x3a
+    | Vwmul_vv -> Some 0x3b
+    (* [vredsum]/[vredand]/[vredor]/[vredxor]/[vredminu]/[vredmin]/
+       [vredmaxu]/[vredmax.vs]: the plain (non-widening) vector-reduction
+       family - the same [vd, vs2, vs1] shape as [vmul]/etc. above ([vs1]
+       carries the scalar/initial value, [vs2] the vector to reduce,
+       matching riscv-opcodes' own operand order), OPMVV (funct3 = 2), with
+       a real, selectable [vm] like every other reduction (unlike the
+       mask-register-logical family above). Confirmed against real GNU as,
+       byte-identical on RV32/RV64: `vredsum.vs v1,v2,v3` -> `022180d7`,
+       `vredand.vs` -> `062180d7`, `vredor.vs` -> `0a2180d7`, `vredxor.vs`
+       -> `0e2180d7`, `vredminu.vs` -> `122180d7`, `vredmin.vs` ->
+       `162180d7`, `vredmaxu.vs` -> `1a2180d7`, `vredmax.vs` -> `1e2180d7`;
+       masked (`, v0.t`) drops the low funct7 bit, e.g. `vredsum.vs
+       v1,v2,v3,v0.t` -> `002180d7`. No [.vx]/[.vi] sibling exists for any
+       of these eight. *)
+    | Vredsum_vs -> Some 0x00
+    | Vredand_vs -> Some 0x01
+    | Vredor_vs -> Some 0x02
+    | Vredxor_vs -> Some 0x03
+    | Vredminu_vs -> Some 0x04
+    | Vredmin_vs -> Some 0x05
+    | Vredmaxu_vs -> Some 0x06
+    | Vredmax_vs -> Some 0x07
+    | _ -> None
+
+  let opmvx_funct6 = function
+    | Opcode.Vmul_vx -> Some 0x25
+    | Vmulh_vx -> Some 0x27
+    | Vmulhu_vx -> Some 0x24
+    | Vmulhsu_vx -> Some 0x26
+    | Vdivu_vx -> Some 0x20
+    | Vdiv_vx -> Some 0x21
+    | Vremu_vx -> Some 0x22
+    | Vrem_vx -> Some 0x23
+    | Vaaddu_vx -> Some 0x08
+    | Vaadd_vx -> Some 0x09
+    | Vasubu_vx -> Some 0x0a
+    | Vasub_vx -> Some 0x0b
+    | Vwaddu_vx -> Some 0x30
+    | Vwadd_vx -> Some 0x31
+    | Vwsubu_vx -> Some 0x32
+    | Vwsub_vx -> Some 0x33
+    | Vwaddu_wx -> Some 0x34
+    | Vwadd_wx -> Some 0x35
+    | Vwsubu_wx -> Some 0x36
+    | Vwsub_wx -> Some 0x37
+    | Vwmulu_vx -> Some 0x38
+    | Vwmulsu_vx -> Some 0x3a
+    | Vwmul_vx -> Some 0x3b
+    (* [vslide1up]/[vslide1down]: the slide family's own single-element
+       (scalar-insert) siblings - OPMVX (funct3 = 6), same funct6 values
+       as {!opivx_funct6}'s [vslideup.vx]/[vslidedown.vx] (funct3 keeps
+       the two spaces disjoint); no [.vi] sibling (real GNU as rejects
+       `vslide1up.vi` as "unrecognized opcode" - inserting one element
+       needs a real scalar, not a 5-bit immediate). Confirmed against real
+       GNU as, byte-identical on RV32/RV64: `vslide1up.vx v1,v2,a0` ->
+       `3a2560d7`, `vslide1down.vx` -> `3e2560d7`. *)
+    | Vslide1up_vx -> Some 0x0e
+    | Vslide1down_vx -> Some 0x0f
+    | _ -> None
+
+  (* The multiply-accumulate family - [vmacc]/[vnmsac]/[vmadd]/[vnmsub] and
+     their widening siblings [vwmaccu]/[vwmacc]/[vwmaccsu]/[vwmaccus] - uses
+     the identical OPMVV (funct3 = 2)/OPMVX (funct3 = 6) funct6-plus-vm-into-
+     funct7 composition as {!opmvv_funct6}/{!opmvx_funct6} above, but real
+     GNU as swaps the last two text operands: [<mnemonic> vd, vs1-or-rs1,
+     vs2] rather than every other OPMVV/OPMVX mnemonic's [vd, vs2, vs1-or-
+     rs1] - confirmed by decoding the assembled word's own vs1/vs2 field
+     bits, not just accepted/rejected status (`vmacc.vv v1,v2,v3` places
+     `v2` in the vs1 field position and `v3` in the vs2 one). Kept in its
+     own tables/lowering arms rather than folding into {!opmvv_funct6}/
+     {!opmvx_funct6} for that reason. `vwmaccus` is the only member with no
+     [.vv] sibling (real GNU as rejects `vwmaccus.vv` as "unrecognized
+     opcode"). Confirmed against real GNU as (`riscv64-linux-gnu-as` 2.44
+     `-march=rv64gv`, byte-identical on `riscv32-linux-gnu-as` 2.43.1
+     `-march=rv32gv`): `vmacc.vv/.vx v1,v2,v3`/`v1,a0,v3` -> `b63120d7`/
+     `b63560d7`, `vnmsac.vv/.vx` -> `be3120d7`/`be3560d7`, `vmadd.vv/.vx` ->
+     `a63120d7`/`a63560d7`, `vnmsub.vv/.vx` -> `ae3120d7`/`ae3560d7`,
+     `vwmaccu.vv/.vx` -> `f23120d7`/`f23560d7`, `vwmacc.vv/.vx` ->
+     `f63120d7`/`f63560d7`, `vwmaccsu.vv/.vx` -> `fe3120d7`/`fe3560d7`,
+     `vwmaccus.vx` -> `fa3560d7` (all vm=1, unmasked; masked forms also
+     confirmed, e.g. `vmacc.vv v1,v2,v3,v0.t` -> `b43120d7`). *)
+  let opmacc_funct6 = function
+    | Opcode.Vmadd_vv -> Some 0x29
+    | Vnmsub_vv -> Some 0x2b
+    | Vmacc_vv -> Some 0x2d
+    | Vnmsac_vv -> Some 0x2f
+    | Vwmaccu_vv -> Some 0x3c
+    | Vwmacc_vv -> Some 0x3d
+    | Vwmaccsu_vv -> Some 0x3f
+    | _ -> None
+
+  let opmaccx_funct6 = function
+    | Opcode.Vmadd_vx -> Some 0x29
+    | Vnmsub_vx -> Some 0x2b
+    | Vmacc_vx -> Some 0x2d
+    | Vnmsac_vx -> Some 0x2f
+    | Vwmaccu_vx -> Some 0x3c
+    | Vwmacc_vx -> Some 0x3d
+    | Vwmaccus_vx -> Some 0x3e
+    | Vwmaccsu_vx -> Some 0x3f
+    | _ -> None
+
+  (* [vmand]/[vmandn]/[vmor]/[vmxor]/[vmorn]/[vmnand]/[vmnor]/[vmxnor]:
+     OP-V's mask-register logical family ([.mm] - all three operands are
+     mask registers, not general vector registers). Structurally this is
+     the same all-vector-register OPMVV (funct3 = 2) shape as
+     {!opmvv_funct6} above - [vd, vs2, vs1] with [funct7 = (funct6 lsl 1)
+     lor vm] - but [vm] is architecturally fixed at 1 (unmasked): unlike
+     every other OPMVV/OPIVV/OPIVX/OPIVI mnemonic, these have no masked
+     sibling, so this project keeps their funct6 lookup in its own table
+     ({!mm_funct6}) rather than adding them to {!opmvv_funct6}, and gives
+     them a dedicated three-operand-only lowering arm below with no
+     matching `, v0.t` arm. Confirmed against real GNU as
+     (`riscv64-linux-gnu-as` 2.44, `-march=rv64gv`, byte-identical on
+     `riscv32-linux-gnu-as` 2.43.1 `-march=rv32gv`): `vmand.mm v1,v2,v3` ->
+     `6621a0d7`, `vmandn.mm` -> `6221a0d7`, `vmor.mm` -> `6a21a0d7`,
+     `vmxor.mm` -> `6e21a0d7`, `vmorn.mm` -> `7221a0d7`, `vmnand.mm` ->
+     `7621a0d7`, `vmnor.mm` -> `7a21a0d7`, `vmxnor.mm` -> `7e21a0d7`
+     (`vd`/`vs2`/`vs1` = `v1`/`v2`/`v3`); `vmand.mm v1,v2,v3,v0.t`
+     is "illegal operands" on real GNU as, confirming no masked form.
+     [vcompress.vm] shares this exact fixed-vm-at-1, three-vector-register,
+     no-masked-sibling shape (funct6 = 0x17) - confirmed against real GNU
+     as: `vcompress.vm v1,v2,v3` -> `5e21a0d7`, `vcompress.vm
+     v1,v2,v3,v0.t` rejected as "illegal operands" - so it is added to this
+     same table and lowering arm rather than a dedicated one. *)
+  let mm_funct6 = function
+    | Opcode.Vmandn_mm -> Some 0x18
+    | Vmand_mm -> Some 0x19
+    | Vmor_mm -> Some 0x1a
+    | Vmxor_mm -> Some 0x1b
+    | Vmorn_mm -> Some 0x1c
+    | Vmnand_mm -> Some 0x1d
+    | Vmnor_mm -> Some 0x1e
+    | Vmxnor_mm -> Some 0x1f
+    | Vcompress_vm -> Some 0x17
+    | _ -> None
+
+  (* [vsext]/[vzext]: OP-V's integer sign-/zero-extend family - a genuinely
+     new two-vector-register shape (`vd, vs2`, no third operand at all),
+     under the same OPMVV major opcode/funct3 as [vmul]/etc. above
+     (funct6 = 0x12 fixed for all six) but with the field position every
+     other OPMVV/OPIVV mnemonic uses for [vs1]/[rs1] instead holding a
+     fixed per-mnemonic constant (riscv-opcodes' own "19..15=<n>" encoding
+     of the source-width divisor: vf8/vf4/vf2 -> 3/5/7 for sign-extend,
+     2/4/6 for zero-extend) rather than a real operand. Confirmed against
+     real GNU as, byte-identical on RV32/RV64: `vsext.vf2/.vf4/.vf8` ->
+     `4a23a0d7`/`4a22a0d7`/`4a21a0d7`, `vzext.vf2/.vf4/.vf8` ->
+     `4a2320d7`/`4a2220d7`/`4a2120d7` (unmasked; masked, e.g. `vsext.vf2
+     v1,v2,v0.t` -> `4823a0d7`); a third operand is "illegal operands" on
+     real GNU as, confirming no [.vx]/[.vi] sibling and no third operand
+     of any kind. [viota.m] (funct6 = 0x14) shares this exact shape - GAS's
+     `vd, vs2` with a different fixed rs1-position constant (0x10) - so the
+     table carries funct6 alongside the constant rather than assuming
+     vsext/vzext's own 0x12 for every entry. Confirmed against real GNU as,
+     byte-identical on RV32/RV64: `viota.m v1,v2` -> `522820d7` (unmasked),
+     `viota.m v1,v2,v0.t` -> `502820d7` (masked). [vmsbf.m]/[vmsif.m]/
+     [vmsof.m] (mask-set-before/including/only-first) share this same
+     shape too - funct6 = 0x14 like [viota.m], disambiguated purely by
+     their own distinct rs1-position constants (0x1/0x3/0x2). Confirmed
+     against real GNU as, byte-identical on RV32/RV64: `vmsbf.m v1,v2` ->
+     `5220a0d7`, `vmsif.m v1,v2` -> `5221a0d7`, `vmsof.m v1,v2` ->
+     `522120d7` (unmasked; masked, e.g. `vmsbf.m v1,v2,v0.t` ->
+     `5020a0d7`). *)
+  let opmvv_unary_const = function
+    | Opcode.Vsext_vf8 -> Some (3, 0x12)
+    | Vsext_vf4 -> Some (5, 0x12)
+    | Vsext_vf2 -> Some (7, 0x12)
+    | Vzext_vf8 -> Some (2, 0x12)
+    | Vzext_vf4 -> Some (4, 0x12)
+    | Vzext_vf2 -> Some (6, 0x12)
+    | Viota_m -> Some (0x10, 0x14)
+    | Vmsbf_m -> Some (0x1, 0x14)
+    | Vmsof_m -> Some (0x2, 0x14)
+    | Vmsif_m -> Some (0x3, 0x14)
+    | _ -> None
+
+  (* [vcpop.m]/[vfirst.m]: the mask-population-count/first-set-bit-index
+     pair - the exact same OPMVV two-operand shape as {!opmvv_unary_const}
+     above, but with a GPR destination rather than a vector-register one
+     (riscv-opcodes' own field is literally named "rd", not "vd"), so this
+     project keeps them in a separate table dispatched by a dedicated
+     lowering arm matching {!xreg} on the destination rather than
+     {!vreg}. Confirmed against real GNU as, byte-identical on RV32/RV64:
+     `vcpop.m a0,v2` -> `42282557`, `vfirst.m a0,v2` -> `4228a557`
+     (unmasked; masked, e.g. `vcpop.m a0,v2,v0.t` -> `40282557`); a third
+     operand is "illegal operands" on real GNU as. *)
+  let opmvv_gpr_unary_const = function
+    | Opcode.Vcpop_m -> Some (0x10, 0x10)
+    | Vfirst_m -> Some (0x11, 0x10)
+    | _ -> None
+
+  (* [vmv.x.s]: the same OPMVV two-operand GPR-destination shape as
+     {!opmvv_gpr_unary_const} above (funct6 0x10, fixed rs1-position
+     constant 0), but with no masked sibling at all - unlike [vcpop.m]/
+     [vfirst.m], real GNU as rejects `vmv.x.s a0,v2,v0.t` as "illegal
+     operands" - so this needs its own table/two-operand-only lowering
+     arm rather than reuse of {!opmvv_gpr_unary_const}'s masked arm.
+     Confirmed against real GNU as, byte-identical on RV32/RV64:
+     `vmv.x.s a0,v2` -> `42202557`. *)
+  let mv_x_s_const = function Opcode.Vmv_x_s -> Some (0, 0x10) | _ -> None
+
+  (* [vmv.s.x]: the mirror-image shape of {!mv_x_s_const} - a vector
+     destination and a GPR source, OPMVX (funct3 = 6), fixed vs2-position
+     constant 0, funct6 0x10, no masked sibling (real GNU as rejects
+     `vmv.s.x v1,a0,v0.t`). Confirmed against real GNU as, byte-identical
+     on RV32/RV64: `vmv.s.x v1,a0` -> `420560d7`. *)
+  let x_to_v_unary_const = function Opcode.Vmv_s_x -> Some (0, 0x10) | _ -> None
+
+  (* [vmv.v.v]/[.v.x]/[.v.i]: OP-V's unconditional-move family - a
+     genuinely new two-operand shape under OPIVV(funct3=0)/OPIVX(funct3=4)/
+     OPIVI(funct3=3): unlike every other admitted OPIVV/OPIVX/OPIVI
+     mnemonic, there is no [vs2] operand at all (its field position is a
+     fixed constant 0), funct6 is fixed at 0x17 for all three, and [vm] is
+     fixed at 1 with no masked sibling (real GNU as rejects `vmv.v.v
+     v1,v2,v0.t`). Confirmed against real GNU as, byte-identical on
+     RV32/RV64: `vmv.v.v v1,v2` -> `5e0100d7`, `vmv.v.x v1,a0` ->
+     `5e0540d7`, `vmv.v.i v1,5` -> `5e02b0d7`; a third operand is "illegal
+     operands" on real GNU as for every one of the three. *)
+
+  (* [vmv1r.v]/[vmv2r.v]/[vmv4r.v]/[vmv8r.v]: OP-V's whole-register-group
+     move family - the same two-vector-register shape {!vext_form}/
+     {!opmvv_unary_const} model, but under OPIVI (funct3 = 3) rather than
+     OPMVV, with a fixed funct6 (0x27) and a fixed per-mnemonic constant
+     (0/1/3/7, one less than the register-group count) in the field
+     position every OPIVI mnemonic uses for its immediate - real GNU as
+     does not enforce the group-count register-number alignment (e.g.
+     `vmv2r.v v1,v2` assembles even though `v1` is not 2-aligned) at
+     assembly time, so this project's own encoder does not either. [vm] is
+     fixed at 1 with no masked sibling (real GNU as rejects `vmv1r.v
+     v1,v2,v0.t`). Confirmed against real GNU as, byte-identical on
+     RV32/RV64: `vmv1r.v v1,v2` -> `9e2030d7`, `vmv2r.v v2,v4` ->
+     `9e40b157`, `vmv4r.v v4,v8` -> `9e81b257`, `vmv8r.v v8,v16` ->
+     `9f03b457`. *)
+  let whole_reg_move_const = function
+    | Opcode.Vmv1r_v -> Some 0
+    | Vmv2r_v -> Some 1
+    | Vmv4r_v -> Some 3
+    | Vmv8r_v -> Some 7
+    | _ -> None
 
   let symbol_of = function Operand.Sym (Asm_core.Expr.Symbol s) -> Some s | _ -> None
 
@@ -2147,68 +3404,532 @@ module Make (P : PROFILE) = struct
                   ]
             | _ -> wrong opn)
         | _ -> wrong opn)
-    | Opcode.Vadd_vv, [ vd_op; vs2_op; vs1_op ] -> (
-        (* [vadd.vv vd, vs2, vs1] - V's plain vector-vector integer add,
-           the entry point into the ~373-record OP-V arithmetic space. All
-           three operands are vector registers ([Reg.V], parsed with zero
+    | op, [ vd_op; vs2_op; vs1_op ] when Option.is_some (opivv_funct6 op) -> (
+        (* [<mnemonic> vd, vs2, vs1] - the OPIVV shape (funct3 = 0), all
+           three operands vector registers ([Reg.V], parsed with zero
            frontend changes the same way [vsetvli]'s keyword tokens were -
            [Reg.find] already resolves bare [v0]-[v31] generically). The
-           word's top 7 bits split into a 6-bit funct6 (0x00 for vadd) and a
-           1-bit vm (1 = unmasked, the implicit-v0.t-mask bit's own
-           complement) - together exactly the same 7-bit span
+           word's top 7 bits split into a 6-bit funct6 ({!opivv_funct6}) and
+           a 1-bit vm (1 = unmasked) - together exactly the same 7-bit span
            {!Lowered.R}/[word_r] already encodes any other R-type [funct7]
            across, so this reuses that path unchanged with
-           [funct7 = (funct6 lsl 1) lor vm]. Confirmed against real GNU as:
-           `vadd.vv v1, v2, v3` -> `022180d7` (funct7 = 0b0000001, vm = 1). *)
-        match (vreg vd_op, vreg vs2_op, vreg vs1_op) with
-        | Some rd, Some rs2, Some rs1 ->
-            Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 0; funct7 = 1; rd; rs1; rs2 } ]
+           [funct7 = (funct6 lsl 1) lor vm]. *)
+        match (vreg vd_op, vreg vs2_op, vreg vs1_op, opivv_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 0;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
         | _ -> wrong opn)
-    | Opcode.Vadd_vv, [ vd_op; vs2_op; vs1_op; mask ] when is_v0t mask -> (
-        (* Masked form: `vadd.vv v1, v2, v3, v0.t` -> `002180d7` (vm = 0,
-           the same word with only the vm bit cleared). *)
-        match (vreg vd_op, vreg vs2_op, vreg vs1_op) with
-        | Some rd, Some rs2, Some rs1 ->
-            Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 0; funct7 = 0; rd; rs1; rs2 } ]
+    | op, [ vd_op; vs2_op; vs1_op; mask ] when is_v0t mask && Option.is_some (opivv_funct6 op) -> (
+        (* Masked form: the same word with only the vm bit cleared. *)
+        match (vreg vd_op, vreg vs2_op, vreg vs1_op, opivv_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 0; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
         | _ -> wrong opn)
-    | Opcode.Vadd_vx, [ vd_op; vs2_op; rs1_op ] -> (
-        (* [vadd.vx vd, vs2, rs1] - the scalar-broadcast sibling: [rs1] is a
-           plain GPR (funct3 = 0b100, OPIVX), [vd]/[vs2] stay vector
-           registers. Confirmed against real GNU as: `vadd.vx v1, v2, a0` ->
-           `022540d7`. *)
-        match (vreg vd_op, vreg vs2_op, xreg rs1_op) with
-        | Some rd, Some rs2, Some rs1 ->
-            Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 4; funct7 = 1; rd; rs1; rs2 } ]
+    | op, [ vd_op; vs2_op; rs1_op ] when Option.is_some (opivx_funct6 op) -> (
+        (* [<mnemonic> vd, vs2, rs1] - the scalar-broadcast OPIVX shape
+           (funct3 = 4): [rs1] is a plain GPR, [vd]/[vs2] stay vector
+           registers. *)
+        match (vreg vd_op, vreg vs2_op, xreg rs1_op, opivx_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 4;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
         | _ -> wrong opn)
-    | Opcode.Vadd_vx, [ vd_op; vs2_op; rs1_op; mask ] when is_v0t mask -> (
-        match (vreg vd_op, vreg vs2_op, xreg rs1_op) with
-        | Some rd, Some rs2, Some rs1 ->
-            Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 4; funct7 = 0; rd; rs1; rs2 } ]
+    | op, [ vd_op; vs2_op; rs1_op; mask ] when is_v0t mask && Option.is_some (opivx_funct6 op) -> (
+        match (vreg vd_op, vreg vs2_op, xreg rs1_op, opivx_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 4; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
         | _ -> wrong opn)
-    | Opcode.Vadd_vi, [ vd_op; vs2_op; imm_op ] -> (
-        (* [vadd.vi vd, vs2, simm5] - the immediate sibling: a 5-bit SIGNED
-           immediate (-16..15) occupies the [rs1] field position (funct3 =
-           0b011, OPIVI), the same "reuse the field for something that isn't
-           a register" trick {!signed_csr}/[vsetivli]'s [uimm] already use.
-           Confirmed against real GNU as: `vadd.vi v1, v2, 5` -> `0222b0d7`;
-           `vadd.vi v1, v2, -5` -> `022db0d7` (simm5 field = 0b11011 = 27,
-           i.e. plain 5-bit two's complement, masked with 0x1f below). *)
-        match (vreg vd_op, vreg vs2_op, expr_of imm_op) with
-        | Some rd, Some rs2, Some e -> (
+    | op, [ vd_op; vs2_op; imm_op ] when Option.is_some (opivi_funct6 op) -> (
+        (* [<mnemonic> vd, vs2, simm5/zimm5] - the OPIVI shape (funct3 = 3):
+           a 5-bit immediate occupies the [rs1] field position, the same
+           "reuse the field for something that isn't a register" trick
+           {!signed_csr}/[vsetivli]'s [uimm] already use. SIGNED (-16..15)
+           for every mnemonic except {!opivi_unsigned}'s UNSIGNED (0..31)
+           shift-amount trio - either way, masking with [0x1f] produces the
+           correct 5-bit two's-complement field directly. *)
+        match (vreg vd_op, vreg vs2_op, expr_of imm_op, opivi_funct6 op) with
+        | Some rd, Some rs2, Some e, Some funct6 -> (
+            let fits = if opivi_unsigned op then fits_unsigned 5 else fits_signed 5 in
+            match int64_expr e with
+            | Some v when fits v ->
+                let rs1 = Int64.to_int (Int64.logand v 0x1fL) in
+                Ok
+                  [
+                    Lowered.R
+                      {
+                        name = opn;
+                        opcode = 0x57;
+                        funct3 = 3;
+                        funct7 = (funct6 lsl 1) lor 1;
+                        rd;
+                        rs1;
+                        rs2;
+                      };
+                  ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; imm_op; mask ] when is_v0t mask && Option.is_some (opivi_funct6 op) -> (
+        match (vreg vd_op, vreg vs2_op, expr_of imm_op, opivi_funct6 op) with
+        | Some rd, Some rs2, Some e, Some funct6 -> (
+            let fits = if opivi_unsigned op then fits_unsigned 5 else fits_signed 5 in
+            match int64_expr e with
+            | Some v when fits v ->
+                let rs1 = Int64.to_int (Int64.logand v 0x1fL) in
+                Ok
+                  [
+                    Lowered.R
+                      { name = opn; opcode = 0x57; funct3 = 3; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+                  ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; vs1_op; carry ] when is_v0 carry && Option.is_some (carry_m_vv_funct6 op)
+      -> (
+        (* [<mnemonic> vd, vs2, vs1, v0] - OPIVV (funct3 = 0), [vm] fixed
+           at 0, with a mandatory literal [v0] 4th operand; see
+           {!carry_m_vv_funct6} above. *)
+        match (vreg vd_op, vreg vs2_op, vreg vs1_op, carry_m_vv_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 0; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; rs1_op; carry ] when is_v0 carry && Option.is_some (carry_m_vx_funct6 op)
+      -> (
+        (* [<mnemonic> vd, vs2, rs1, v0] - OPIVX (funct3 = 4), [vm] fixed
+           at 0; see {!carry_m_vx_funct6} above. *)
+        match (vreg vd_op, vreg vs2_op, xreg rs1_op, carry_m_vx_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 4; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; imm_op; carry ] when is_v0 carry && Option.is_some (carry_m_vi_funct6 op)
+      -> (
+        (* [<mnemonic> vd, vs2, simm5, v0] - OPIVI (funct3 = 3), [vm]
+           fixed at 0; see {!carry_m_vi_funct6} above. *)
+        match (vreg vd_op, vreg vs2_op, expr_of imm_op, carry_m_vi_funct6 op) with
+        | Some rd, Some rs2, Some e, Some funct6 -> (
             match int64_expr e with
             | Some v when fits_signed 5 v ->
                 let rs1 = Int64.to_int (Int64.logand v 0x1fL) in
-                Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 3; funct7 = 1; rd; rs1; rs2 } ]
+                Ok
+                  [
+                    Lowered.R
+                      { name = opn; opcode = 0x57; funct3 = 3; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+                  ]
             | _ -> wrong opn)
         | _ -> wrong opn)
-    | Opcode.Vadd_vi, [ vd_op; vs2_op; imm_op; mask ] when is_v0t mask -> (
-        match (vreg vd_op, vreg vs2_op, expr_of imm_op) with
-        | Some rd, Some rs2, Some e -> (
+    | op, [ vd_op; vs2_op; vs1_op ] when Option.is_some (carry_vv_funct6 op) -> (
+        (* [<mnemonic> vd, vs2, vs1] - OPIVV (funct3 = 0), [vm] fixed at
+           1: no masked sibling and no carry-in operand exist for this
+           bare (non-"m") form; see {!carry_vv_funct6} above. *)
+        match (vreg vd_op, vreg vs2_op, vreg vs1_op, carry_vv_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 0;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; rs1_op ] when Option.is_some (carry_vx_funct6 op) -> (
+        (* [<mnemonic> vd, vs2, rs1] - OPIVX (funct3 = 4), [vm] fixed at
+           1; see {!carry_vx_funct6} above. *)
+        match (vreg vd_op, vreg vs2_op, xreg rs1_op, carry_vx_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 4;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; imm_op ] when Option.is_some (carry_vi_funct6 op) -> (
+        (* [<mnemonic> vd, vs2, simm5] - OPIVI (funct3 = 3), [vm] fixed at
+           1; see {!carry_vi_funct6} above. *)
+        match (vreg vd_op, vreg vs2_op, expr_of imm_op, carry_vi_funct6 op) with
+        | Some rd, Some rs2, Some e, Some funct6 -> (
             match int64_expr e with
             | Some v when fits_signed 5 v ->
                 let rs1 = Int64.to_int (Int64.logand v 0x1fL) in
-                Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 3; funct7 = 0; rd; rs1; rs2 } ]
+                Ok
+                  [
+                    Lowered.R
+                      {
+                        name = opn;
+                        opcode = 0x57;
+                        funct3 = 3;
+                        funct7 = (funct6 lsl 1) lor 1;
+                        rd;
+                        rs1;
+                        rs2;
+                      };
+                  ]
             | _ -> wrong opn)
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; vs1_op ] when Option.is_some (opmvv_funct6 op) -> (
+        (* [<mnemonic> vd, vs2, vs1] - OPMVV (funct3 = 2): the same
+           all-vector-register shape as OPIVV, just a different funct3. *)
+        match (vreg vd_op, vreg vs2_op, vreg vs1_op, opmvv_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 2;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; vs1_op; mask ] when is_v0t mask && Option.is_some (opmvv_funct6 op) -> (
+        match (vreg vd_op, vreg vs2_op, vreg vs1_op, opmvv_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 2; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; rs1_op ] when Option.is_some (opmvx_funct6 op) -> (
+        (* [<mnemonic> vd, vs2, rs1] - OPMVX (funct3 = 6): the same
+           scalar-broadcast shape as OPIVX, just a different funct3. *)
+        match (vreg vd_op, vreg vs2_op, xreg rs1_op, opmvx_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 6;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; rs1_op; mask ] when is_v0t mask && Option.is_some (opmvx_funct6 op) -> (
+        match (vreg vd_op, vreg vs2_op, xreg rs1_op, opmvx_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 6; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs1_op; vs2_op ] when Option.is_some (opmacc_funct6 op) -> (
+        (* [<mnemonic> vd, vs1, vs2] - OPMVV (funct3 = 2), multiply-
+           accumulate's own reordered text operand order (see
+           {!opmacc_funct6} above): the last two text operands are swapped
+           relative to every other OPMVV shape. *)
+        match (vreg vd_op, vreg vs1_op, vreg vs2_op, opmacc_funct6 op) with
+        | Some rd, Some rs1, Some rs2, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 2;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs1_op; vs2_op; mask ] when is_v0t mask && Option.is_some (opmacc_funct6 op) -> (
+        match (vreg vd_op, vreg vs1_op, vreg vs2_op, opmacc_funct6 op) with
+        | Some rd, Some rs1, Some rs2, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 2; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; rs1_op; vs2_op ] when Option.is_some (opmaccx_funct6 op) -> (
+        (* [<mnemonic> vd, rs1, vs2] - OPMVX (funct3 = 6), the scalar-
+           broadcast sibling of the arm above with the identical reordered
+           text operand order. *)
+        match (vreg vd_op, xreg rs1_op, vreg vs2_op, opmaccx_funct6 op) with
+        | Some rd, Some rs1, Some rs2, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 6;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; rs1_op; vs2_op; mask ] when is_v0t mask && Option.is_some (opmaccx_funct6 op)
+      -> (
+        match (vreg vd_op, xreg rs1_op, vreg vs2_op, opmaccx_funct6 op) with
+        | Some rd, Some rs1, Some rs2, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 6; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; vs1_op ] when Option.is_some (mm_funct6 op) -> (
+        (* [<mnemonic> vd, vs2, vs1] - OPMVV (funct3 = 2), [vm] fixed at 1:
+           no masked sibling exists for this family (see {!mm_funct6}
+           above), so unlike every other OPMVV shape there is no
+           corresponding four-operand `, v0.t` arm. *)
+        match (vreg vd_op, vreg vs2_op, vreg vs1_op, mm_funct6 op) with
+        | Some rd, Some rs2, Some rs1, Some funct6 ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 2;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | Opcode.Vid_v, [ vd_op ] -> (
+        (* [vid.v vd] - OP-V's element-index instruction, the first family
+           surveyed with no [vs2]/[vs1]/[rs1] operand at all: funct6 = 0x14
+           (OPMVV, funct3 = 2), and the field positions every other OPMVV
+           mnemonic uses for [vs1]/[vs2] are both fixed constants (0x11/0x0
+           respectively) rather than operands. Confirmed against real GNU
+           as, byte-identical on RV32/RV64: `vid.v v1` -> `5208a0d7`
+           (unmasked), `vid.v v1,v0.t` -> `5008a0d7` (masked). *)
+        match vreg vd_op with
+        | Some rd ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 2;
+                    funct7 = 0x29;
+                    rd;
+                    rs1 = 0x11;
+                    rs2 = 0x0;
+                  };
+              ]
+        | None -> wrong opn)
+    | Opcode.Vid_v, [ vd_op; mask ] when is_v0t mask -> (
+        match vreg vd_op with
+        | Some rd ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 2;
+                    funct7 = 0x28;
+                    rd;
+                    rs1 = 0x11;
+                    rs2 = 0x0;
+                  };
+              ]
+        | None -> wrong opn)
+    | op, [ vd_op; vs2_op ] when Option.is_some (opmvv_unary_const op) -> (
+        (* [<mnemonic> vd, vs2] - OPMVV (funct3 = 2) with a per-mnemonic
+           fixed funct6 and a fixed per-mnemonic constant in [vs1]'s field
+           position; see {!opmvv_unary_const} above. *)
+        match (vreg vd_op, vreg vs2_op, opmvv_unary_const op) with
+        | Some rd, Some rs2, Some (rs1, funct6) ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 2;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; mask ] when is_v0t mask && Option.is_some (opmvv_unary_const op) -> (
+        match (vreg vd_op, vreg vs2_op, opmvv_unary_const op) with
+        | Some rd, Some rs2, Some (rs1, funct6) ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 2; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op ] when Option.is_some (opmvv_gpr_unary_const op) -> (
+        (* [<mnemonic> rd, vs2] - the same shape as {!opmvv_unary_const}
+           above but with a GPR destination; see {!opmvv_gpr_unary_const}. *)
+        match (xreg vd_op, vreg vs2_op, opmvv_gpr_unary_const op) with
+        | Some rd, Some rs2, Some (rs1, funct6) ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 2;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op; mask ] when is_v0t mask && Option.is_some (opmvv_gpr_unary_const op) -> (
+        match (xreg vd_op, vreg vs2_op, opmvv_gpr_unary_const op) with
+        | Some rd, Some rs2, Some (rs1, funct6) ->
+            Ok
+              [
+                Lowered.R
+                  { name = opn; opcode = 0x57; funct3 = 2; funct7 = funct6 lsl 1; rd; rs1; rs2 };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op ] when Option.is_some (mv_x_s_const op) -> (
+        (* [vmv.x.s rd, vs2] - the same shape as {!opmvv_gpr_unary_const}
+           but with no masked sibling; see {!mv_x_s_const} above. *)
+        match (xreg vd_op, vreg vs2_op, mv_x_s_const op) with
+        | Some rd, Some rs2, Some (rs1, funct6) ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 2;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | op, [ vd_op; rs1_op ] when Option.is_some (x_to_v_unary_const op) -> (
+        (* [vmv.s.x vd, rs1] - OPMVX (funct3 = 6), vector destination and
+           GPR source, fixed [vs2]-position constant; see
+           {!x_to_v_unary_const} above. *)
+        match (vreg vd_op, xreg rs1_op, x_to_v_unary_const op) with
+        | Some rd, Some rs1, Some (rs2, funct6) ->
+            Ok
+              [
+                Lowered.R
+                  {
+                    name = opn;
+                    opcode = 0x57;
+                    funct3 = 6;
+                    funct7 = (funct6 lsl 1) lor 1;
+                    rd;
+                    rs1;
+                    rs2;
+                  };
+              ]
+        | _ -> wrong opn)
+    | Opcode.Vmv_v_v, [ vd_op; vs1_op ] -> (
+        (* [vmv.v.v vd, vs1] - OPIVV (funct3 = 0), no [vs2] operand at
+           all (fixed constant 0), funct6 fixed at 0x17. *)
+        match (vreg vd_op, vreg vs1_op) with
+        | Some rd, Some rs1 ->
+            Ok
+              [
+                Lowered.R { name = opn; opcode = 0x57; funct3 = 0; funct7 = 0x2f; rd; rs1; rs2 = 0 };
+              ]
+        | _ -> wrong opn)
+    | Opcode.Vmv_v_x, [ vd_op; rs1_op ] -> (
+        (* [vmv.v.x vd, rs1] - OPIVX (funct3 = 4), the scalar-broadcast
+           sibling of [vmv.v.v]. *)
+        match (vreg vd_op, xreg rs1_op) with
+        | Some rd, Some rs1 ->
+            Ok
+              [
+                Lowered.R { name = opn; opcode = 0x57; funct3 = 4; funct7 = 0x2f; rd; rs1; rs2 = 0 };
+              ]
+        | _ -> wrong opn)
+    | Opcode.Vmv_v_i, [ vd_op; imm_op ] -> (
+        (* [vmv.v.i vd, simm5] - OPIVI (funct3 = 3), the signed-immediate
+           sibling of [vmv.v.v]. *)
+        match (vreg vd_op, expr_of imm_op) with
+        | Some rd, Some e -> (
+            match int64_expr e with
+            | Some v when fits_signed 5 v ->
+                let rs1 = Int64.to_int (Int64.logand v 0x1fL) in
+                Ok
+                  [
+                    Lowered.R
+                      { name = opn; opcode = 0x57; funct3 = 3; funct7 = 0x2f; rd; rs1; rs2 = 0 };
+                  ]
+            | _ -> wrong opn)
+        | _ -> wrong opn)
+    | op, [ vd_op; vs2_op ] when Option.is_some (whole_reg_move_const op) -> (
+        (* [<mnemonic> vd, vs2] - OPIVI (funct3 = 3), whole-register-group
+           move; see {!whole_reg_move_const} above. *)
+        match (vreg vd_op, vreg vs2_op, whole_reg_move_const op) with
+        | Some rd, Some rs2, Some rs1 ->
+            Ok [ Lowered.R { name = opn; opcode = 0x57; funct3 = 3; funct7 = 0x4f; rd; rs1; rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (i_desc op) -> (
         match (xreg a, xreg b, expr_of c, i_desc op) with

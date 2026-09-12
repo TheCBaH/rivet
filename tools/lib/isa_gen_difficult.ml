@@ -1569,17 +1569,24 @@ let vsetivli_entry target =
 
 let vsetivli_entries = List.map vsetivli_entry [ Target.Riscv32; Target.Riscv64 ]
 
-(* [vadd.vv]/[vadd.vx]/[vadd.vi]: the entry point into OP-V's real
-   vector-register arithmetic space (as opposed to the configuration-setting
-   group above). Confirmed against real GNU as, identical on both profiles
-   (V is XLEN-independent): `vadd.vv v1, v2, v3` -> `022180d7`; `vadd.vx v1,
-   v2, a0` -> `022540d7`; `vadd.vi v1, v2, -5` -> `022db0d7`. *)
-let vadd_vv_entry target =
+(* OP-V's OPIVV/OPIVX/OPIVI shapes, generalized across every admitted
+   mnemonic (see {!Isa_norm_riscv.opivv_form}/[opivx_form]/[opivi_form] for
+   the matching normalization-side generalization): the entry point into
+   OP-V's real vector-register arithmetic space, as opposed to the
+   configuration-setting group above. Confirmed against real GNU as,
+   identical on both profiles (V is XLEN-independent): `vadd.vv v1, v2, v3`
+   -> `022180d7`; `vsub.vv v1, v2, v3` -> `0a2180d7`; `vadd.vx v1, v2, a0`
+   -> `022540d7`; `vsub.vx v1, v2, a0` -> `0a2540d7`; `vrsub.vx v1, v2, a0`
+   -> `0e2540d7`; `vadd.vi v1, v2, -5` -> `022db0d7`; `vrsub.vi v1, v2, -5`
+   -> `0e2db0d7`; `vand.vv/.vx/.vi`, `vor.vv/.vx/.vi`, `vxor.vv/.vx/.vi` ->
+   `262180d7`/`262540d7`/`262db0d7`, `2a2180d7`/`2a2540d7`/`2a2db0d7`,
+   `2e2180d7`/`2e2540d7`/`2e2db0d7`. *)
+let opivv_entry ~mnemonic target =
   {
-    form_id = "riscv:vadd.vv";
+    form_id = "riscv:" ^ mnemonic;
     target;
-    lookup_key = "vadd.vv";
-    case_id = Printf.sprintf "riscv:vadd.vv:vector-vector:%s" (Target.to_string target);
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-vector:%s" mnemonic (Target.to_string target);
     rule_ids = [ "v-enabled"; "vector-register-operands" ];
     operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "v3") ];
     lines_before = [];
@@ -1587,14 +1594,14 @@ let vadd_vv_entry target =
     configuration = v_configuration_for target;
   }
 
-let vadd_vv_entries = List.map vadd_vv_entry [ Target.Riscv32; Target.Riscv64 ]
+let opivv_entries ~mnemonic = List.map (opivv_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
 
-let vadd_vx_entry target =
+let opivx_entry ~mnemonic target =
   {
-    form_id = "riscv:vadd.vx";
+    form_id = "riscv:" ^ mnemonic;
     target;
-    lookup_key = "vadd.vx";
-    case_id = Printf.sprintf "riscv:vadd.vx:vector-scalar:%s" (Target.to_string target);
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-scalar:%s" mnemonic (Target.to_string target);
     rule_ids = [ "v-enabled"; "vector-register-operands" ];
     operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "a0") ];
     lines_before = [];
@@ -1602,22 +1609,672 @@ let vadd_vx_entry target =
     configuration = v_configuration_for target;
   }
 
-let vadd_vx_entries = List.map vadd_vx_entry [ Target.Riscv32; Target.Riscv64 ]
+let opivx_entries ~mnemonic = List.map (opivx_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
 
-let vadd_vi_entry target =
+(* [imm_name]/[imm_value] default to the SIGNED [simm5] shape every OPIVI
+   mnemonic but the shift trio uses; {!vsll_vi_entries}/etc. below pass the
+   UNSIGNED [zimm5]/["31"] pair instead, matching {!Isa_norm_riscv.opivi_form}'s
+   own field-name/signedness split. *)
+let opivi_entry ?(imm_name = "simm5") ?(imm_value = "-5") ~mnemonic target =
   {
-    form_id = "riscv:vadd.vi";
+    form_id = "riscv:" ^ mnemonic;
     target;
-    lookup_key = "vadd.vi";
-    case_id = Printf.sprintf "riscv:vadd.vi:vector-immediate:%s" (Target.to_string target);
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-immediate:%s" mnemonic (Target.to_string target);
     rule_ids = [ "v-enabled"; "vector-register-operands" ];
-    operands = [ ("rd", "v1"); ("rs2", "v2"); ("simm5", "-5") ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); (imm_name, imm_value) ];
     lines_before = [];
     lines_after = [];
     configuration = v_configuration_for target;
   }
 
-let vadd_vi_entries = List.map vadd_vi_entry [ Target.Riscv32; Target.Riscv64 ]
+let opivi_entries ?imm_name ?imm_value ~mnemonic () =
+  List.map (opivi_entry ?imm_name ?imm_value ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let vadd_vv_entries = opivv_entries ~mnemonic:"vadd.vv"
+let vadd_vx_entries = opivx_entries ~mnemonic:"vadd.vx"
+let vadd_vi_entries = opivi_entries ~mnemonic:"vadd.vi" ()
+let vsub_vv_entries = opivv_entries ~mnemonic:"vsub.vv"
+let vsub_vx_entries = opivx_entries ~mnemonic:"vsub.vx"
+let vrsub_vx_entries = opivx_entries ~mnemonic:"vrsub.vx"
+let vrsub_vi_entries = opivi_entries ~mnemonic:"vrsub.vi" ()
+let vand_vv_entries = opivv_entries ~mnemonic:"vand.vv"
+let vand_vx_entries = opivx_entries ~mnemonic:"vand.vx"
+let vand_vi_entries = opivi_entries ~mnemonic:"vand.vi" ()
+let vor_vv_entries = opivv_entries ~mnemonic:"vor.vv"
+let vor_vx_entries = opivx_entries ~mnemonic:"vor.vx"
+let vor_vi_entries = opivi_entries ~mnemonic:"vor.vi" ()
+let vxor_vv_entries = opivv_entries ~mnemonic:"vxor.vv"
+let vxor_vx_entries = opivx_entries ~mnemonic:"vxor.vx"
+let vxor_vi_entries = opivi_entries ~mnemonic:"vxor.vi" ()
+
+(* [vsll]/[vsrl]/[vsra]: OP-V's shift family, the first extension of the
+   OPIVV/OPIVX/OPIVI tables to reuse EVERY shape unchanged including the
+   full [.vi] triple - only [vsll_vi_entries]/etc.'s immediate is the
+   UNSIGNED [zimm5] (0..31) {!opivi_entry}'s optional arguments exist for.
+   Confirmed against real GNU as (`riscv64-linux-gnu-as` 2.44,
+   `-march=rv64gv`, byte-identical on RV32): `vsll.vv v1,v2,v3` ->
+   `962180d7`; `vsll.vx v1,v2,a0` -> `962540d7`; `vsll.vi v1,v2,31` ->
+   `962fb0d7`; `vsrl.vv/.vx/.vi 5` -> `a22180d7`/`a22540d7`/`a222b0d7`;
+   `vsra.vv/.vx/.vi 5` -> `a62180d7`/`a62540d7`/`a622b0d7`; `vsll.vi
+   v1,v2,32`/`,-1` both "bad value for vector immediate field, value must
+   be 0...31". *)
+let vsll_vv_entries = opivv_entries ~mnemonic:"vsll.vv"
+let vsll_vx_entries = opivx_entries ~mnemonic:"vsll.vx"
+let vsll_vi_entries = opivi_entries ~imm_name:"zimm5" ~imm_value:"31" ~mnemonic:"vsll.vi" ()
+let vsrl_vv_entries = opivv_entries ~mnemonic:"vsrl.vv"
+let vsrl_vx_entries = opivx_entries ~mnemonic:"vsrl.vx"
+let vsrl_vi_entries = opivi_entries ~imm_name:"zimm5" ~imm_value:"5" ~mnemonic:"vsrl.vi" ()
+let vsra_vv_entries = opivv_entries ~mnemonic:"vsra.vv"
+let vsra_vx_entries = opivx_entries ~mnemonic:"vsra.vx"
+let vsra_vi_entries = opivi_entries ~imm_name:"zimm5" ~imm_value:"5" ~mnemonic:"vsra.vi" ()
+
+(* [vminu]/[vmin]/[vmaxu]/[vmax]: OP-V's min/max family - [.vv]/[.vx] only,
+   no [.vi] sibling (riscv-opcodes exports none; real GNU as rejects
+   [vminu.vi] as "unrecognized opcode"). Confirmed against real GNU as:
+   `vminu.vv/.vx` -> `122180d7`/`122540d7`; `vmin.vv/.vx` ->
+   `162180d7`/`162540d7`; `vmaxu.vv/.vx` -> `1a2180d7`/`1a2540d7`;
+   `vmax.vv/.vx` -> `1e2180d7`/`1e2540d7`. *)
+let vminu_vv_entries = opivv_entries ~mnemonic:"vminu.vv"
+let vminu_vx_entries = opivx_entries ~mnemonic:"vminu.vx"
+let vmin_vv_entries = opivv_entries ~mnemonic:"vmin.vv"
+let vmin_vx_entries = opivx_entries ~mnemonic:"vmin.vx"
+let vmaxu_vv_entries = opivv_entries ~mnemonic:"vmaxu.vv"
+let vmaxu_vx_entries = opivx_entries ~mnemonic:"vmaxu.vx"
+let vmax_vv_entries = opivv_entries ~mnemonic:"vmax.vv"
+let vmax_vx_entries = opivx_entries ~mnemonic:"vmax.vx"
+
+(* [vmul]/[vmulh]/[vmulhu]/[vmulhsu]: OP-V's second major functional-unit
+   group, OPMVV (funct3 = 2)/OPMVX (funct3 = 6) - the identical
+   all-vector-register/scalar-broadcast operand layout as OPIVV/OPIVX
+   (real GNU as's operand-order/mask/rejection behavior is indistinguishable
+   from that family), so {!opivv_entries}/{!opivx_entries} are reused
+   unchanged; no [.vi] sibling exists for any of the four. Confirmed
+   against real GNU as: `vmul.vv/.vx` -> `9621a0d7`/`962560d7`;
+   `vmulh.vv/.vx` -> `9e21a0d7`/`9e2560d7`; `vmulhu.vv/.vx` ->
+   `9221a0d7`/`922560d7`; `vmulhsu.vv/.vx` -> `9a21a0d7`/`9a2560d7`. *)
+let vmul_vv_entries = opivv_entries ~mnemonic:"vmul.vv"
+let vmul_vx_entries = opivx_entries ~mnemonic:"vmul.vx"
+let vmulh_vv_entries = opivv_entries ~mnemonic:"vmulh.vv"
+let vmulh_vx_entries = opivx_entries ~mnemonic:"vmulh.vx"
+let vmulhu_vv_entries = opivv_entries ~mnemonic:"vmulhu.vv"
+let vmulhu_vx_entries = opivx_entries ~mnemonic:"vmulhu.vx"
+let vmulhsu_vv_entries = opivv_entries ~mnemonic:"vmulhsu.vv"
+let vmulhsu_vx_entries = opivx_entries ~mnemonic:"vmulhsu.vx"
+
+(* [vdivu]/[vdiv]/[vremu]/[vrem]: OP-V's divide/remainder family, the same
+   OPMVV/OPMVX shape as [vmul]/etc. above with no [.vi] sibling (real GNU as
+   rejects [vdiv.vi] as "unrecognized opcode"). Confirmed against real GNU
+   as, byte-identical on RV32/RV64: `vdivu.vv/.vx` -> `8221a0d7`/`822560d7`,
+   `vdiv.vv/.vx` -> `8621a0d7`/`862560d7`, `vremu.vv/.vx` ->
+   `8a21a0d7`/`8a2560d7`, `vrem.vv/.vx` -> `8e21a0d7`/`8e2560d7`. *)
+let vdivu_vv_entries = opivv_entries ~mnemonic:"vdivu.vv"
+let vdivu_vx_entries = opivx_entries ~mnemonic:"vdivu.vx"
+let vdiv_vv_entries = opivv_entries ~mnemonic:"vdiv.vv"
+let vdiv_vx_entries = opivx_entries ~mnemonic:"vdiv.vx"
+let vremu_vv_entries = opivv_entries ~mnemonic:"vremu.vv"
+let vremu_vx_entries = opivx_entries ~mnemonic:"vremu.vx"
+let vrem_vv_entries = opivv_entries ~mnemonic:"vrem.vv"
+let vrem_vx_entries = opivx_entries ~mnemonic:"vrem.vx"
+
+(* [vsaddu]/[vsadd]/[vssubu]/[vssub]: OP-V's saturating add/subtract
+   family, the same OPIVV/OPIVX/OPIVI shape as [vadd]/etc. - the assembler
+   only encodes the instruction, saturation is execution-time behavior
+   invisible here. [vsadd]/[vsaddu]'s [.vi] immediate is SIGNED [simm5],
+   like every [.vi] mnemonic but the shift trio; [vssub]/[vssubu] have no
+   [.vi] sibling (real GNU as rejects [vssub.vi] as "unrecognized
+   opcode"). Confirmed against real GNU as, byte-identical on RV32/RV64:
+   `vsaddu.vv/.vx/.vi` -> `822180d7`/`822540d7`/`822db0d7`, `vsadd.vv/.vx/
+   .vi` -> `862180d7`/`862540d7`/`862db0d7`, `vssubu.vv/.vx` ->
+   `8a2180d7`/`8a2540d7`, `vssub.vv/.vx` -> `8e2180d7`/`8e2540d7`. *)
+let vsaddu_vv_entries = opivv_entries ~mnemonic:"vsaddu.vv"
+let vsaddu_vx_entries = opivx_entries ~mnemonic:"vsaddu.vx"
+let vsaddu_vi_entries = opivi_entries ~mnemonic:"vsaddu.vi" ()
+let vsadd_vv_entries = opivv_entries ~mnemonic:"vsadd.vv"
+let vsadd_vx_entries = opivx_entries ~mnemonic:"vsadd.vx"
+let vsadd_vi_entries = opivi_entries ~mnemonic:"vsadd.vi" ()
+let vssubu_vv_entries = opivv_entries ~mnemonic:"vssubu.vv"
+let vssubu_vx_entries = opivx_entries ~mnemonic:"vssubu.vx"
+let vssub_vv_entries = opivv_entries ~mnemonic:"vssub.vv"
+let vssub_vx_entries = opivx_entries ~mnemonic:"vssub.vx"
+
+(* [vaadd]/[vaaddu]/[vasub]/[vasubu]: OP-V's averaging add/subtract
+   family, the same OPMVV/OPMVX shape as [vmul]/[vdivu]/etc. above with no
+   [.vi] sibling (real GNU as rejects [vaadd.vi] as "unrecognized
+   opcode"). Confirmed against real GNU as, byte-identical on RV32/RV64:
+   `vaaddu.vv/.vx` -> `2221a0d7`/`222560d7`, `vaadd.vv/.vx` ->
+   `2621a0d7`/`262560d7`, `vasubu.vv/.vx` -> `2a21a0d7`/`2a2560d7`,
+   `vasub.vv/.vx` -> `2e21a0d7`/`2e2560d7`. *)
+let vaaddu_vv_entries = opivv_entries ~mnemonic:"vaaddu.vv"
+let vaaddu_vx_entries = opivx_entries ~mnemonic:"vaaddu.vx"
+let vaadd_vv_entries = opivv_entries ~mnemonic:"vaadd.vv"
+let vaadd_vx_entries = opivx_entries ~mnemonic:"vaadd.vx"
+let vasubu_vv_entries = opivv_entries ~mnemonic:"vasubu.vv"
+let vasubu_vx_entries = opivx_entries ~mnemonic:"vasubu.vx"
+let vasub_vv_entries = opivv_entries ~mnemonic:"vasub.vv"
+let vasub_vx_entries = opivx_entries ~mnemonic:"vasub.vx"
+
+(* [vnsrl]/[vnsra]/[vnclipu]/[vnclip]: OP-V's narrowing shift/clip family -
+   the [.wv]/[.wx]/[.wi] suffix (vs2 is a "wide", 2xSEW operand
+   semantically) rather than [.vv]/[.vx]/[.vi], but the assembler only
+   encodes register/immediate field positions, which are identical to the
+   OPIVV/OPIVX/OPIVI shape [vadd]/etc. already use - so {!opivv_entries}/
+   {!opivx_entries}/{!opivi_entries} are reused unchanged. The [.wi]
+   immediate is UNSIGNED [zimm5] (0..31), like the shift trio. Confirmed
+   against real GNU as, byte-identical on RV32/RV64: `vnsrl.wv/.wx/.wi 31`
+   -> `b22180d7`/`b22540d7`/`b22fb0d7`, `vnsra.wv/.wx/.wi 31` ->
+   `b62180d7`/`b62540d7`/`b62fb0d7`, `vnclipu.wv/.wx/.wi 31` ->
+   `ba2180d7`/`ba2540d7`/`ba2fb0d7`, `vnclip.wv/.wx/.wi 31` ->
+   `be2180d7`/`be2540d7`/`be2fb0d7`; `vnclip.wi v1,v2,32` rejected with the
+   identical "value must be 0...31" message the shift trio's own [.vi]
+   siblings use. *)
+let vnsrl_wv_entries = opivv_entries ~mnemonic:"vnsrl.wv"
+let vnsrl_wx_entries = opivx_entries ~mnemonic:"vnsrl.wx"
+let vnsrl_wi_entries = opivi_entries ~imm_name:"zimm5" ~imm_value:"31" ~mnemonic:"vnsrl.wi" ()
+let vnsra_wv_entries = opivv_entries ~mnemonic:"vnsra.wv"
+let vnsra_wx_entries = opivx_entries ~mnemonic:"vnsra.wx"
+let vnsra_wi_entries = opivi_entries ~imm_name:"zimm5" ~imm_value:"31" ~mnemonic:"vnsra.wi" ()
+let vnclipu_wv_entries = opivv_entries ~mnemonic:"vnclipu.wv"
+let vnclipu_wx_entries = opivx_entries ~mnemonic:"vnclipu.wx"
+let vnclipu_wi_entries = opivi_entries ~imm_name:"zimm5" ~imm_value:"31" ~mnemonic:"vnclipu.wi" ()
+let vnclip_wv_entries = opivv_entries ~mnemonic:"vnclip.wv"
+let vnclip_wx_entries = opivx_entries ~mnemonic:"vnclip.wx"
+let vnclip_wi_entries = opivi_entries ~imm_name:"zimm5" ~imm_value:"31" ~mnemonic:"vnclip.wi" ()
+
+(* [vssrl]/[vssra]: OP-V's scaling shift-right family (logical/arithmetic,
+   rounding), the same full OPIVV/OPIVX/OPIVI shape as [vsll]/[vsrl]/
+   [vsra] above including the UNSIGNED [zimm5] [.vi] immediate. Confirmed
+   against real GNU as, byte-identical on RV32/RV64: `vssrl.vv/.vx/.vi 31`
+   -> `aa2180d7`/`aa2540d7`/`aa2fb0d7`, `vssra.vv/.vx/.vi 31` ->
+   `ae2180d7`/`ae2540d7`/`ae2fb0d7`. *)
+let vssrl_vv_entries = opivv_entries ~mnemonic:"vssrl.vv"
+let vssrl_vx_entries = opivx_entries ~mnemonic:"vssrl.vx"
+let vssrl_vi_entries = opivi_entries ~imm_name:"zimm5" ~imm_value:"31" ~mnemonic:"vssrl.vi" ()
+let vssra_vv_entries = opivv_entries ~mnemonic:"vssra.vv"
+let vssra_vx_entries = opivx_entries ~mnemonic:"vssra.vx"
+let vssra_vi_entries = opivi_entries ~imm_name:"zimm5" ~imm_value:"31" ~mnemonic:"vssra.vi" ()
+
+(* [vrgather]: OP-V's full-vector-register gather/permute family, the same
+   OPIVV/OPIVX/OPIVI shape as [vadd]/etc. (funct6 0x0c) plus
+   [vrgatherei16.vv] (a fixed-EEW16-index sibling, funct6 0x0e, [.vv] only
+   - no [.vx]/[.vi] siblings exist for it). The [.vi] index immediate is
+   UNSIGNED [zimm5], like the shift trio. Confirmed against real GNU as,
+   byte-identical on RV32/RV64: `vrgather.vv/.vx/.vi 31` ->
+   `322180d7`/`322540d7`/`322fb0d7`, `vrgatherei16.vv` -> `3a2180d7`. *)
+let vrgather_vv_entries = opivv_entries ~mnemonic:"vrgather.vv"
+let vrgather_vx_entries = opivx_entries ~mnemonic:"vrgather.vx"
+let vrgather_vi_entries = opivi_entries ~imm_name:"zimm5" ~imm_value:"31" ~mnemonic:"vrgather.vi" ()
+let vrgatherei16_vv_entries = opivv_entries ~mnemonic:"vrgatherei16.vv"
+
+(* [vwaddu]/[vwadd]/[vwsubu]/[vwsub]: OP-V's widening add/subtract family,
+   each with a `.vv`/`.vx` (both narrow operands) and `.wv`/`.wx` (`vs2`
+   wide, `vs1`/`rs1` narrow) sibling pair - the same OPMVV/OPMVX shape as
+   [vmul]/[vdivu]/etc. above with no [.vi] sibling; operand *width* is an
+   execution-time SEW/vtype concern the assembler does not encode.
+   Confirmed against real GNU as, byte-identical on RV32/RV64:
+   `vwaddu.vv/.vx` -> `c221a0d7`/`c22560d7`, `vwadd.vv/.vx` ->
+   `c621a0d7`/`c62560d7`, `vwsubu.vv/.vx` -> `ca21a0d7`/`ca2560d7`,
+   `vwsub.vv/.vx` -> `ce21a0d7`/`ce2560d7`, `vwaddu.wv/.wx` ->
+   `d221a0d7`/`d22560d7`, `vwadd.wv/.wx` -> `d621a0d7`/`d62560d7`,
+   `vwsubu.wv/.wx` -> `da21a0d7`/`da2560d7`, `vwsub.wv/.wx` ->
+   `de21a0d7`/`de2560d7`. *)
+let vwaddu_vv_entries = opivv_entries ~mnemonic:"vwaddu.vv"
+let vwaddu_vx_entries = opivx_entries ~mnemonic:"vwaddu.vx"
+let vwadd_vv_entries = opivv_entries ~mnemonic:"vwadd.vv"
+let vwadd_vx_entries = opivx_entries ~mnemonic:"vwadd.vx"
+let vwsubu_vv_entries = opivv_entries ~mnemonic:"vwsubu.vv"
+let vwsubu_vx_entries = opivx_entries ~mnemonic:"vwsubu.vx"
+let vwsub_vv_entries = opivv_entries ~mnemonic:"vwsub.vv"
+let vwsub_vx_entries = opivx_entries ~mnemonic:"vwsub.vx"
+let vwaddu_wv_entries = opivv_entries ~mnemonic:"vwaddu.wv"
+let vwaddu_wx_entries = opivx_entries ~mnemonic:"vwaddu.wx"
+let vwadd_wv_entries = opivv_entries ~mnemonic:"vwadd.wv"
+let vwadd_wx_entries = opivx_entries ~mnemonic:"vwadd.wx"
+let vwsubu_wv_entries = opivv_entries ~mnemonic:"vwsubu.wv"
+let vwsubu_wx_entries = opivx_entries ~mnemonic:"vwsubu.wx"
+let vwsub_wv_entries = opivv_entries ~mnemonic:"vwsub.wv"
+let vwsub_wx_entries = opivx_entries ~mnemonic:"vwsub.wx"
+
+(* [vwmulu]/[vwmulsu]/[vwmul]: OP-V's widening multiply family, `.vv`/`.vx`
+   only, no [.vi] sibling - the same OPMVV/OPMVX shape and GAS text
+   operand order as [vwadd]/etc. above (unlike the widening
+   multiply-*accumulate* `vwmacc*` family, deliberately not admitted here:
+   real GNU as swaps that family's last two text operands to `vd,
+   vs1-or-rs1, vs2` rather than this shape's `vd, vs2, vs1-or-rs1` - a
+   genuinely different shape not yet built). Confirmed against real GNU
+   as, byte-identical on RV32/RV64: `vwmulu.vv/.vx` -> `e221a0d7`/
+   `e22560d7`, `vwmulsu.vv/.vx` -> `ea21a0d7`/`ea2560d7`, `vwmul.vv/.vx` ->
+   `ee21a0d7`/`ee2560d7`. *)
+let vwmulu_vv_entries = opivv_entries ~mnemonic:"vwmulu.vv"
+let vwmulu_vx_entries = opivx_entries ~mnemonic:"vwmulu.vx"
+let vwmulsu_vv_entries = opivv_entries ~mnemonic:"vwmulsu.vv"
+let vwmulsu_vx_entries = opivx_entries ~mnemonic:"vwmulsu.vx"
+let vwmul_vv_entries = opivv_entries ~mnemonic:"vwmul.vv"
+let vwmul_vx_entries = opivx_entries ~mnemonic:"vwmul.vx"
+
+(* [vsext]/[vzext]: OP-V's integer sign-/zero-extend family - a genuinely
+   new two-vector-register shape ([rd, rs2], no third operand). Confirmed
+   against real GNU as, byte-identical on RV32/RV64: `vsext.vf2/.vf4/.vf8`
+   -> `4a23a0d7`/`4a22a0d7`/`4a21a0d7`, `vzext.vf2/.vf4/.vf8` ->
+   `4a2320d7`/`4a2220d7`/`4a2120d7`. *)
+let vext_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-unary:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let vext_entries ~mnemonic = List.map (vext_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+let vsext_vf2_entries = vext_entries ~mnemonic:"vsext.vf2"
+let vsext_vf4_entries = vext_entries ~mnemonic:"vsext.vf4"
+let vsext_vf8_entries = vext_entries ~mnemonic:"vsext.vf8"
+let vzext_vf2_entries = vext_entries ~mnemonic:"vzext.vf2"
+let vzext_vf4_entries = vext_entries ~mnemonic:"vzext.vf4"
+let vzext_vf8_entries = vext_entries ~mnemonic:"vzext.vf8"
+
+(* [vmand]/[vmandn]/[vmor]/[vmxor]/[vmorn]/[vmnand]/[vmnor]/[vmxnor]: OP-V's
+   mask-register logical family ([.mm]) - the same all-vector-register
+   [rd, rs2, rs1] shape {!opivv_entries} already builds for [vadd.vv]/etc.
+   (see {!Isa_norm_riscv.mm_form} for why the normalization side still
+   needs its own function despite this generator-side reuse: these have no
+   masked [, v0.t] sibling, which this entry shape does not represent
+   either way). Confirmed against real GNU as, byte-identical on RV32/RV64:
+   `vmand.mm v1,v2,v3` -> `6621a0d7`, `vmandn.mm` -> `6221a0d7`, `vmor.mm`
+   -> `6a21a0d7`, `vmxor.mm` -> `6e21a0d7`, `vmorn.mm` -> `7221a0d7`,
+   `vmnand.mm` -> `7621a0d7`, `vmnor.mm` -> `7a21a0d7`, `vmxnor.mm` ->
+   `7e21a0d7`. *)
+let vmand_mm_entries = opivv_entries ~mnemonic:"vmand.mm"
+let vmandn_mm_entries = opivv_entries ~mnemonic:"vmandn.mm"
+let vmor_mm_entries = opivv_entries ~mnemonic:"vmor.mm"
+let vmxor_mm_entries = opivv_entries ~mnemonic:"vmxor.mm"
+let vmorn_mm_entries = opivv_entries ~mnemonic:"vmorn.mm"
+let vmnand_mm_entries = opivv_entries ~mnemonic:"vmnand.mm"
+let vmnor_mm_entries = opivv_entries ~mnemonic:"vmnor.mm"
+let vmxnor_mm_entries = opivv_entries ~mnemonic:"vmxnor.mm"
+
+(* [vredsum]/[vredand]/[vredor]/[vredxor]/[vredminu]/[vredmin]/[vredmaxu]/
+   [vredmax.vs] and [vwredsumu]/[vwredsum.vs]: OP-V's vector-reduction
+   family - the same all-vector-register [rd, rs2, rs1] shape as
+   {!opivv_entries} already builds, with a real, selectable [vm] like every
+   other reduction (unlike the mask-register-logical family above).
+   Confirmed against real GNU as, byte-identical on RV32/RV64:
+   `vredsum.vs v1,v2,v3` -> `022180d7`, `vredand.vs` -> `062180d7`,
+   `vredor.vs` -> `0a2180d7`, `vredxor.vs` -> `0e2180d7`, `vredminu.vs` ->
+   `122180d7`, `vredmin.vs` -> `162180d7`, `vredmaxu.vs` -> `1a2180d7`,
+   `vredmax.vs` -> `1e2180d7`, `vwredsumu.vs` -> `c22180d7`, `vwredsum.vs`
+   -> `c62180d7`. *)
+let vredsum_vs_entries = opivv_entries ~mnemonic:"vredsum.vs"
+let vredand_vs_entries = opivv_entries ~mnemonic:"vredand.vs"
+let vredor_vs_entries = opivv_entries ~mnemonic:"vredor.vs"
+let vredxor_vs_entries = opivv_entries ~mnemonic:"vredxor.vs"
+let vredminu_vs_entries = opivv_entries ~mnemonic:"vredminu.vs"
+let vredmin_vs_entries = opivv_entries ~mnemonic:"vredmin.vs"
+let vredmaxu_vs_entries = opivv_entries ~mnemonic:"vredmaxu.vs"
+let vredmax_vs_entries = opivv_entries ~mnemonic:"vredmax.vs"
+let vwredsumu_vs_entries = opivv_entries ~mnemonic:"vwredsumu.vs"
+let vwredsum_vs_entries = opivv_entries ~mnemonic:"vwredsum.vs"
+
+(* [vmseq]/[vmsne]/[vmsltu]/[vmslt]/[vmsleu]/[vmsle]/[vmsgtu]/[vmsgt]: OP-V's
+   mask-writing comparison family, full OPIVV/OPIVX/OPIVI shape except
+   [vmsltu]/[vmslt] (no [.vi] sibling) and [vmsgtu]/[vmsgt] (no [.vv]
+   sibling - real GNU as accepts `vmsgt(u).vv` only as a pseudo-instruction
+   reversing `vmslt(u).vv`'s own operands, not admitted here). Confirmed
+   against real GNU as, byte-identical on RV32/RV64: `vmseq.vv/.vx/.vi` ->
+   `622180d7`/`622540d7`/`622db0d7`, `vmsne.vv/.vx/.vi` ->
+   `662180d7`/`662540d7`/`662db0d7`, `vmsltu.vv/.vx` ->
+   `6a2180d7`/`6a2540d7`, `vmslt.vv/.vx` -> `6e2180d7`/`6e2540d7`,
+   `vmsleu.vv/.vx/.vi` -> `722180d7`/`722540d7`/`722db0d7`, `vmsle.vv/.vx/
+   .vi` -> `762180d7`/`762540d7`/`762db0d7`, `vmsgtu.vx/.vi` ->
+   `7a2540d7`/`7a2db0d7`, `vmsgt.vx/.vi` -> `7e2540d7`/`7e2db0d7`. *)
+let vmseq_vv_entries = opivv_entries ~mnemonic:"vmseq.vv"
+let vmseq_vx_entries = opivx_entries ~mnemonic:"vmseq.vx"
+let vmseq_vi_entries = opivi_entries ~mnemonic:"vmseq.vi" ()
+let vmsne_vv_entries = opivv_entries ~mnemonic:"vmsne.vv"
+let vmsne_vx_entries = opivx_entries ~mnemonic:"vmsne.vx"
+let vmsne_vi_entries = opivi_entries ~mnemonic:"vmsne.vi" ()
+let vmsltu_vv_entries = opivv_entries ~mnemonic:"vmsltu.vv"
+let vmsltu_vx_entries = opivx_entries ~mnemonic:"vmsltu.vx"
+let vmslt_vv_entries = opivv_entries ~mnemonic:"vmslt.vv"
+let vmslt_vx_entries = opivx_entries ~mnemonic:"vmslt.vx"
+let vmsleu_vv_entries = opivv_entries ~mnemonic:"vmsleu.vv"
+let vmsleu_vx_entries = opivx_entries ~mnemonic:"vmsleu.vx"
+let vmsleu_vi_entries = opivi_entries ~mnemonic:"vmsleu.vi" ()
+let vmsle_vv_entries = opivv_entries ~mnemonic:"vmsle.vv"
+let vmsle_vx_entries = opivx_entries ~mnemonic:"vmsle.vx"
+let vmsle_vi_entries = opivi_entries ~mnemonic:"vmsle.vi" ()
+let vmsgtu_vx_entries = opivx_entries ~mnemonic:"vmsgtu.vx"
+let vmsgtu_vi_entries = opivi_entries ~mnemonic:"vmsgtu.vi" ()
+let vmsgt_vx_entries = opivx_entries ~mnemonic:"vmsgt.vx"
+let vmsgt_vi_entries = opivi_entries ~mnemonic:"vmsgt.vi" ()
+
+(* [vslideup]/[vslidedown]/[vslide1up]/[vslide1down]: OP-V's slide family -
+   [.vx]/[.vi] for [vslideup]/[vslidedown] (no [.vv] sibling), [.vx] only
+   for [vslide1up]/[vslide1down] (no [.vi] sibling - inserting one element
+   needs a real scalar). The [.vi] immediate is UNSIGNED [zimm5] (0..31),
+   like the shift-family shapes. Confirmed against real GNU as,
+   byte-identical on RV32/RV64: `vslideup.vx v1,v2,a0` -> `3a2540d7`,
+   `vslideup.vi v1,v2,5` -> `3a22b0d7`, `vslidedown.vx` -> `3e2540d7`,
+   `vslidedown.vi` -> `3e22b0d7`, `vslide1up.vx` -> `3a2560d7`,
+   `vslide1down.vx` -> `3e2560d7`. *)
+let vslideup_vx_entries = opivx_entries ~mnemonic:"vslideup.vx"
+let vslideup_vi_entries = opivi_entries ~imm_name:"zimm5" ~imm_value:"31" ~mnemonic:"vslideup.vi" ()
+let vslidedown_vx_entries = opivx_entries ~mnemonic:"vslidedown.vx"
+
+let vslidedown_vi_entries =
+  opivi_entries ~imm_name:"zimm5" ~imm_value:"31" ~mnemonic:"vslidedown.vi" ()
+
+let vslide1up_vx_entries = opivx_entries ~mnemonic:"vslide1up.vx"
+let vslide1down_vx_entries = opivx_entries ~mnemonic:"vslide1down.vx"
+
+(* The multiply-accumulate family - [vmacc]/[vnmsac]/[vmadd]/[vnmsub] and
+   the widening siblings [vwmaccu]/[vwmacc]/[vwmaccsu]/[vwmaccus] - shares
+   {!opivv_entry}/{!opivx_entry}'s operand names but real GNU as's text
+   order swaps the last two operands (see
+   {!Isa_norm_riscv.opmacc_vv_form}/[opmacc_vx_form]); [rs1] here always
+   carries the operand real GNU as accepts second (a vector register for
+   [.vv], a GPR for [.vx]), and [rs2] the one it accepts third. Confirmed
+   against real GNU as, byte-identical on RV32/RV64: `vmacc.vv v1,v2,v3` ->
+   `b63120d7`, `vmacc.vx v1,a0,v3` -> `b63560d7`, `vnmsac.vv/.vx` ->
+   `be3120d7`/`be3560d7`, `vmadd.vv/.vx` -> `a63120d7`/`a63560d7`,
+   `vnmsub.vv/.vx` -> `ae3120d7`/`ae3560d7`, `vwmaccu.vv/.vx` ->
+   `f23120d7`/`f23560d7`, `vwmacc.vv/.vx` -> `f63120d7`/`f63560d7`,
+   `vwmaccsu.vv/.vx` -> `fe3120d7`/`fe3560d7`, `vwmaccus.vx` ->
+   `fa3560d7` (`vwmaccus` has no [.vv] sibling). *)
+let opmacc_vv_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-vector:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs1", "v2"); ("rs2", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let opmacc_vv_entries ~mnemonic =
+  List.map (opmacc_vv_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let opmacc_vx_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-scalar:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs1", "a0"); ("rs2", "v3") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let opmacc_vx_entries ~mnemonic =
+  List.map (opmacc_vx_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let vmacc_vv_entries = opmacc_vv_entries ~mnemonic:"vmacc.vv"
+let vmacc_vx_entries = opmacc_vx_entries ~mnemonic:"vmacc.vx"
+let vnmsac_vv_entries = opmacc_vv_entries ~mnemonic:"vnmsac.vv"
+let vnmsac_vx_entries = opmacc_vx_entries ~mnemonic:"vnmsac.vx"
+let vmadd_vv_entries = opmacc_vv_entries ~mnemonic:"vmadd.vv"
+let vmadd_vx_entries = opmacc_vx_entries ~mnemonic:"vmadd.vx"
+let vnmsub_vv_entries = opmacc_vv_entries ~mnemonic:"vnmsub.vv"
+let vnmsub_vx_entries = opmacc_vx_entries ~mnemonic:"vnmsub.vx"
+let vwmaccu_vv_entries = opmacc_vv_entries ~mnemonic:"vwmaccu.vv"
+let vwmaccu_vx_entries = opmacc_vx_entries ~mnemonic:"vwmaccu.vx"
+let vwmacc_vv_entries = opmacc_vv_entries ~mnemonic:"vwmacc.vv"
+let vwmacc_vx_entries = opmacc_vx_entries ~mnemonic:"vwmacc.vx"
+let vwmaccsu_vv_entries = opmacc_vv_entries ~mnemonic:"vwmaccsu.vv"
+let vwmaccsu_vx_entries = opmacc_vx_entries ~mnemonic:"vwmaccsu.vx"
+let vwmaccus_vx_entries = opmacc_vx_entries ~mnemonic:"vwmaccus.vx"
+
+(* [vid.v]: OP-V's element-index instruction - the first family surveyed
+   with no [vs2]/[vs1]/[rs1] operand at all, just a destination (see
+   {!Isa_norm_riscv.vid_form}). Confirmed against real GNU as,
+   byte-identical on RV32/RV64: `vid.v v1` -> `5208a0d7`. *)
+let vid_v_entry target =
+  {
+    form_id = "riscv:vid.v";
+    target;
+    lookup_key = "vid.v";
+    case_id = Printf.sprintf "riscv:vid.v:vector-unary:%s" (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let vid_v_entries = List.map vid_v_entry [ Target.Riscv32; Target.Riscv64 ]
+
+(* [viota.m]: shares {!vext_entries}'s exact [rd, rs2] shape (see
+   {!Isa_norm_riscv.vext_form}'s reuse for the normalization side).
+   Confirmed against real GNU as, byte-identical on RV32/RV64: `viota.m
+   v1,v2` -> `522820d7`. *)
+let viota_m_entries = vext_entries ~mnemonic:"viota.m"
+
+(* [vcompress.vm]: shares {!opivv_entries}'s exact [rd, rs2, rs1] shape
+   (see {!Isa_norm_riscv.mm_form}'s reuse for the normalization side - no
+   masked sibling exists). Confirmed against real GNU as, byte-identical
+   on RV32/RV64: `vcompress.vm v1,v2,v3` -> `5e21a0d7`. *)
+let vcompress_vm_entries = opivv_entries ~mnemonic:"vcompress.vm"
+
+(* [vmsbf.m]/[vmsif.m]/[vmsof.m]: share {!vext_entries}'s exact
+   [rd, rs2] shape. Confirmed against real GNU as, byte-identical on
+   RV32/RV64: `vmsbf.m v1,v2` -> `5220a0d7`, `vmsif.m v1,v2` ->
+   `5221a0d7`, `vmsof.m v1,v2` -> `522120d7`. *)
+let vmsbf_m_entries = vext_entries ~mnemonic:"vmsbf.m"
+let vmsif_m_entries = vext_entries ~mnemonic:"vmsif.m"
+let vmsof_m_entries = vext_entries ~mnemonic:"vmsof.m"
+
+(* [vcpop.m]/[vfirst.m]: the same [rd, rs2] shape as {!vext_entries}
+   above but with a GPR destination (see
+   {!Isa_norm_riscv.v_to_x_unary_form}). Confirmed against real GNU as,
+   byte-identical on RV32/RV64: `vcpop.m a0,v2` -> `42282557`, `vfirst.m
+   a0,v2` -> `4228a557`. *)
+let v_to_x_unary_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-unary:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "a0"); ("rs2", "v2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let v_to_x_unary_entries ~mnemonic =
+  List.map (v_to_x_unary_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let vcpop_m_entries = v_to_x_unary_entries ~mnemonic:"vcpop.m"
+let vfirst_m_entries = v_to_x_unary_entries ~mnemonic:"vfirst.m"
+
+(* The add-with-carry/subtract-with-borrow family - [vadc]/[vmadc]/[vsbc]/
+   [vmsbc] - has a mandatory, literal [v0] 4th operand on its "m"-suffixed
+   variants (see {!Isa_norm_riscv.carry_m_vv_form}/[carry_m_vx_form]/
+   [carry_m_vi_form]); the bare (non-"m") siblings [vmadc.vv]/[.vx]/[.vi]
+   and [vmsbc.vv]/[.vx] share {!opivv_entries}/{!opivx_entries}/
+   {!opivi_entries}'s exact shape unchanged. Confirmed against real GNU
+   as, byte-identical on RV32/RV64: `vadc.vvm v1,v2,v3,v0` -> `402180d7`,
+   `vadc.vxm v1,v2,a0,v0` -> `402540d7`, `vadc.vim v1,v2,5,v0` ->
+   `4022b0d7`, `vmadc.vvm v1,v2,v3,v0` -> `442180d7`, `vmadc.vv v1,v2,v3`
+   -> `462180d7`, `vsbc.vvm v1,v2,v3,v0` -> `482180d7`, `vmsbc.vvm
+   v1,v2,v3,v0` -> `4c2180d7`, `vmsbc.vv v1,v2,v3` -> `4e2180d7`. *)
+let carry_m_vv_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-vector:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "v3"); ("vcarry", "v0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let carry_m_vv_entries ~mnemonic =
+  List.map (carry_m_vv_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let carry_m_vx_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-scalar:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("rs1", "a0"); ("vcarry", "v0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let carry_m_vx_entries ~mnemonic =
+  List.map (carry_m_vx_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let carry_m_vi_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-immediate:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); ("rs2", "v2"); ("simm5", "-5"); ("vcarry", "v0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let carry_m_vi_entries ~mnemonic =
+  List.map (carry_m_vi_entry ~mnemonic) [ Target.Riscv32; Target.Riscv64 ]
+
+let vadc_vvm_entries = carry_m_vv_entries ~mnemonic:"vadc.vvm"
+let vadc_vxm_entries = carry_m_vx_entries ~mnemonic:"vadc.vxm"
+let vadc_vim_entries = carry_m_vi_entries ~mnemonic:"vadc.vim"
+let vmadc_vvm_entries = carry_m_vv_entries ~mnemonic:"vmadc.vvm"
+let vmadc_vxm_entries = carry_m_vx_entries ~mnemonic:"vmadc.vxm"
+let vmadc_vim_entries = carry_m_vi_entries ~mnemonic:"vmadc.vim"
+let vmadc_vv_entries = opivv_entries ~mnemonic:"vmadc.vv"
+let vmadc_vx_entries = opivx_entries ~mnemonic:"vmadc.vx"
+let vmadc_vi_entries = opivi_entries ~mnemonic:"vmadc.vi" ()
+let vsbc_vvm_entries = carry_m_vv_entries ~mnemonic:"vsbc.vvm"
+let vsbc_vxm_entries = carry_m_vx_entries ~mnemonic:"vsbc.vxm"
+let vmsbc_vvm_entries = carry_m_vv_entries ~mnemonic:"vmsbc.vvm"
+let vmsbc_vxm_entries = carry_m_vx_entries ~mnemonic:"vmsbc.vxm"
+let vmsbc_vv_entries = opivv_entries ~mnemonic:"vmsbc.vv"
+let vmsbc_vx_entries = opivx_entries ~mnemonic:"vmsbc.vx"
+
+(* [vmerge]: shares {!carry_m_vv_entries}/{!carry_m_vx_entries}/
+   {!carry_m_vi_entries}'s exact mandatory-[v0] shape, with no bare
+   (non-"m") sibling. Confirmed against real GNU as, byte-identical on
+   RV32/RV64: `vmerge.vvm v1,v2,v3,v0` -> `5c2180d7`, `vmerge.vxm
+   v1,v2,a0,v0` -> `5c2540d7`, `vmerge.vim v1,v2,5,v0` -> `5c22b0d7`. *)
+let vmerge_vvm_entries = carry_m_vv_entries ~mnemonic:"vmerge.vvm"
+let vmerge_vxm_entries = carry_m_vx_entries ~mnemonic:"vmerge.vxm"
+let vmerge_vim_entries = carry_m_vi_entries ~mnemonic:"vmerge.vim"
+
+(* [vmv.x.s]/[vmv.s.x]: OP-V's scalar-move pair - the GPR-destination/
+   vector-destination two-operand shapes {!Isa_norm_riscv.mv_x_s_form}/
+   [mv_s_x_form] model. Confirmed against real GNU as, byte-identical on
+   RV32/RV64: `vmv.x.s a0,v2` -> `42202557`, `vmv.s.x v1,a0` ->
+   `420560d7`. *)
+let vmv_x_s_entries =
+  List.map
+    (fun target ->
+      {
+        form_id = "riscv:vmv.x.s";
+        target;
+        lookup_key = "vmv.x.s";
+        case_id = Printf.sprintf "riscv:vmv.x.s:vector-unary:%s" (Target.to_string target);
+        rule_ids = [ "v-enabled"; "vector-register-operands" ];
+        operands = [ ("rd", "a0"); ("rs2", "v2") ];
+        lines_before = [];
+        lines_after = [];
+        configuration = v_configuration_for target;
+      })
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let vmv_s_x_entries =
+  List.map
+    (fun target ->
+      {
+        form_id = "riscv:vmv.s.x";
+        target;
+        lookup_key = "vmv.s.x";
+        case_id = Printf.sprintf "riscv:vmv.s.x:vector-scalar:%s" (Target.to_string target);
+        rule_ids = [ "v-enabled"; "vector-register-operands" ];
+        operands = [ ("rd", "v1"); ("rs1", "a0") ];
+        lines_before = [];
+        lines_after = [];
+        configuration = v_configuration_for target;
+      })
+    [ Target.Riscv32; Target.Riscv64 ]
+
+(* [vmv.v.v]/[.v.x]/[.v.i]: OP-V's unconditional-move family (see
+   {!Isa_norm_riscv.vmv_v_form}). Confirmed against real GNU as,
+   byte-identical on RV32/RV64: `vmv.v.v v1,v2` -> `5e0100d7`, `vmv.v.x
+   v1,a0` -> `5e0540d7`, `vmv.v.i v1,5` -> `5e02b0d7`. *)
+let vmv_v_entry ~mnemonic ~rs1_name ~rs1_value target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-unary:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", "v1"); (rs1_name, rs1_value) ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let vmv_v_entries ~mnemonic ~rs1_name ~rs1_value =
+  List.map (vmv_v_entry ~mnemonic ~rs1_name ~rs1_value) [ Target.Riscv32; Target.Riscv64 ]
+
+let vmv_v_v_entries = vmv_v_entries ~mnemonic:"vmv.v.v" ~rs1_name:"rs1" ~rs1_value:"v2"
+let vmv_v_x_entries = vmv_v_entries ~mnemonic:"vmv.v.x" ~rs1_name:"rs1" ~rs1_value:"a0"
+let vmv_v_i_entries = vmv_v_entries ~mnemonic:"vmv.v.i" ~rs1_name:"simm5" ~rs1_value:"5"
+
+(* [vmv1r.v]/[vmv2r.v]/[vmv4r.v]/[vmv8r.v]: OP-V's whole-register-group
+   move family (see {!Isa_norm_riscv.whole_reg_move_form}). Confirmed
+   against real GNU as, byte-identical on RV32/RV64: `vmv1r.v v1,v2` ->
+   `9e2030d7`, `vmv2r.v v2,v4` -> `9e40b157`, `vmv4r.v v4,v8` ->
+   `9e81b257`, `vmv8r.v v8,v16` -> `9f03b457`. *)
+let whole_reg_move_entry ~mnemonic ~rd ~rs2 target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:vector-unary:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "v-enabled"; "vector-register-operands" ];
+    operands = [ ("rd", rd); ("rs2", rs2) ];
+    lines_before = [];
+    lines_after = [];
+    configuration = v_configuration_for target;
+  }
+
+let whole_reg_move_entries ~mnemonic ~rd ~rs2 =
+  List.map (whole_reg_move_entry ~mnemonic ~rd ~rs2) [ Target.Riscv32; Target.Riscv64 ]
+
+let vmv1r_v_entries = whole_reg_move_entries ~mnemonic:"vmv1r.v" ~rd:"v1" ~rs2:"v2"
+let vmv2r_v_entries = whole_reg_move_entries ~mnemonic:"vmv2r.v" ~rd:"v2" ~rs2:"v4"
+let vmv4r_v_entries = whole_reg_move_entries ~mnemonic:"vmv4r.v" ~rd:"v4" ~rs2:"v8"
+let vmv8r_v_entries = whole_reg_move_entries ~mnemonic:"vmv8r.v" ~rd:"v8" ~rs2:"v16"
+
+(* [vsmul]: the saturating fixed-point multiply pair - shares
+   {!opivv_entries}/{!opivx_entries}'s exact shape unchanged (OPIVV/OPIVX,
+   not OPMVV/OPMVX). Confirmed against real GNU as, byte-identical on
+   RV32/RV64: `vsmul.vv v1,v2,v3` -> `9e2180d7`, `vsmul.vx v1,v2,a0` ->
+   `9e2540d7`. *)
+let vsmul_vv_entries = opivv_entries ~mnemonic:"vsmul.vv"
+let vsmul_vx_entries = opivx_entries ~mnemonic:"vsmul.vx"
 
 let all =
   sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @ x86_fadd_entries @ fadd_s_entries
@@ -1653,6 +2310,51 @@ let all =
   @ fcvt_d_s_entries @ fcvt_l_d_entries @ fcvt_lu_d_entries @ fcvt_l_s_entries @ fcvt_lu_s_entries
   @ fcvt_s_l_entries @ fcvt_s_lu_entries @ fcvt_d_l_entries @ fcvt_d_lu_entries @ vsetvl_entries
   @ vsetvli_entries @ vsetivli_entries @ vadd_vv_entries @ vadd_vx_entries @ vadd_vi_entries
+  @ vsub_vv_entries @ vsub_vx_entries @ vrsub_vx_entries @ vrsub_vi_entries @ vand_vv_entries
+  @ vand_vx_entries @ vand_vi_entries @ vor_vv_entries @ vor_vx_entries @ vor_vi_entries
+  @ vxor_vv_entries @ vxor_vx_entries @ vxor_vi_entries @ vsll_vv_entries @ vsll_vx_entries
+  @ vsll_vi_entries @ vsrl_vv_entries @ vsrl_vx_entries @ vsrl_vi_entries @ vsra_vv_entries
+  @ vsra_vx_entries @ vsra_vi_entries @ vminu_vv_entries @ vminu_vx_entries @ vmin_vv_entries
+  @ vmin_vx_entries @ vmaxu_vv_entries @ vmaxu_vx_entries @ vmax_vv_entries @ vmax_vx_entries
+  @ vmul_vv_entries @ vmul_vx_entries @ vmulh_vv_entries @ vmulh_vx_entries @ vmulhu_vv_entries
+  @ vmulhu_vx_entries @ vmulhsu_vv_entries @ vmulhsu_vx_entries @ vdivu_vv_entries
+  @ vdivu_vx_entries @ vdiv_vv_entries @ vdiv_vx_entries @ vremu_vv_entries @ vremu_vx_entries
+  @ vrem_vv_entries @ vrem_vx_entries @ vsaddu_vv_entries @ vsaddu_vx_entries @ vsaddu_vi_entries
+  @ vsadd_vv_entries @ vsadd_vx_entries @ vsadd_vi_entries @ vssubu_vv_entries @ vssubu_vx_entries
+  @ vssub_vv_entries @ vssub_vx_entries @ vaaddu_vv_entries @ vaaddu_vx_entries @ vaadd_vv_entries
+  @ vaadd_vx_entries @ vasubu_vv_entries @ vasubu_vx_entries @ vasub_vv_entries @ vasub_vx_entries
+  @ vnsrl_wv_entries @ vnsrl_wx_entries @ vnsrl_wi_entries @ vnsra_wv_entries @ vnsra_wx_entries
+  @ vnsra_wi_entries @ vnclipu_wv_entries @ vnclipu_wx_entries @ vnclipu_wi_entries
+  @ vnclip_wv_entries @ vnclip_wx_entries @ vnclip_wi_entries @ vssrl_vv_entries @ vssrl_vx_entries
+  @ vssrl_vi_entries @ vssra_vv_entries @ vssra_vx_entries @ vssra_vi_entries @ vrgather_vv_entries
+  @ vrgather_vx_entries @ vrgather_vi_entries @ vrgatherei16_vv_entries @ vwaddu_vv_entries
+  @ vwaddu_vx_entries @ vwadd_vv_entries @ vwadd_vx_entries @ vwsubu_vv_entries @ vwsubu_vx_entries
+  @ vwsub_vv_entries @ vwsub_vx_entries @ vwaddu_wv_entries @ vwaddu_wx_entries @ vwadd_wv_entries
+  @ vwadd_wx_entries @ vwsubu_wv_entries @ vwsubu_wx_entries @ vwsub_wv_entries @ vwsub_wx_entries
+  @ vwmulu_vv_entries @ vwmulu_vx_entries @ vwmulsu_vv_entries @ vwmulsu_vx_entries
+  @ vwmul_vv_entries @ vwmul_vx_entries @ vsext_vf2_entries @ vsext_vf4_entries @ vsext_vf8_entries
+  @ vzext_vf2_entries @ vzext_vf4_entries @ vzext_vf8_entries @ vmand_mm_entries @ vmandn_mm_entries
+  @ vmor_mm_entries @ vmxor_mm_entries @ vmorn_mm_entries @ vmnand_mm_entries @ vmnor_mm_entries
+  @ vmxnor_mm_entries @ vredsum_vs_entries @ vredand_vs_entries @ vredor_vs_entries
+  @ vredxor_vs_entries @ vredminu_vs_entries @ vredmin_vs_entries @ vredmaxu_vs_entries
+  @ vredmax_vs_entries @ vwredsumu_vs_entries @ vwredsum_vs_entries @ vmseq_vv_entries
+  @ vmseq_vx_entries @ vmseq_vi_entries @ vmsne_vv_entries @ vmsne_vx_entries @ vmsne_vi_entries
+  @ vmsltu_vv_entries @ vmsltu_vx_entries @ vmslt_vv_entries @ vmslt_vx_entries @ vmsleu_vv_entries
+  @ vmsleu_vx_entries @ vmsleu_vi_entries @ vmsle_vv_entries @ vmsle_vx_entries @ vmsle_vi_entries
+  @ vmsgtu_vx_entries @ vmsgtu_vi_entries @ vmsgt_vx_entries @ vmsgt_vi_entries
+  @ vslideup_vx_entries @ vslideup_vi_entries @ vslidedown_vx_entries @ vslidedown_vi_entries
+  @ vslide1up_vx_entries @ vslide1down_vx_entries @ vmacc_vv_entries @ vmacc_vx_entries
+  @ vnmsac_vv_entries @ vnmsac_vx_entries @ vmadd_vv_entries @ vmadd_vx_entries @ vnmsub_vv_entries
+  @ vnmsub_vx_entries @ vwmaccu_vv_entries @ vwmaccu_vx_entries @ vwmacc_vv_entries
+  @ vwmacc_vx_entries @ vwmaccsu_vv_entries @ vwmaccsu_vx_entries @ vwmaccus_vx_entries
+  @ vid_v_entries @ viota_m_entries @ vcompress_vm_entries @ vmsbf_m_entries @ vmsif_m_entries
+  @ vmsof_m_entries @ vcpop_m_entries @ vfirst_m_entries @ vadc_vvm_entries @ vadc_vxm_entries
+  @ vadc_vim_entries @ vmadc_vvm_entries @ vmadc_vxm_entries @ vmadc_vim_entries @ vmadc_vv_entries
+  @ vmadc_vx_entries @ vmadc_vi_entries @ vsbc_vvm_entries @ vsbc_vxm_entries @ vmsbc_vvm_entries
+  @ vmsbc_vxm_entries @ vmsbc_vv_entries @ vmsbc_vx_entries @ vmerge_vvm_entries
+  @ vmerge_vxm_entries @ vmerge_vim_entries @ vmv_x_s_entries @ vmv_s_x_entries @ vmv_v_v_entries
+  @ vmv_v_x_entries @ vmv_v_i_entries @ vmv1r_v_entries @ vmv2r_v_entries @ vmv4r_v_entries
+  @ vmv8r_v_entries @ vsmul_vv_entries @ vsmul_vx_entries
 
 let pilot_entry_of (entry : entry) =
   let evidence =
