@@ -578,6 +578,168 @@ module Opcode = struct
             counterpart of {!Pshufb}'s own map-2 {!sse_binop_0f38_alt}. Confirmed against real GNU
             as: [palignr $5,%xmm2,%xmm1] -> [66 0f 3a 0f ca 05],
             [palignr $5,0x10(%esp),%xmm1] -> [66 0f 3a 0f 4c 24 10 05]. *)
+    | Roundps
+        (** [roundps $imm8, rm, reg] - packed round to integer, single precision, with an
+            explicit rounding-mode/exception-suppression control ([66 0F 3A 08 /r ib], SSE4.1): {!Palignr}'s own map-3 group at a different opcode byte, same
+            {!Lowered.Sse_binop_imm_r_rm} shape unchanged. Confirmed against real GNU as:
+            [roundps $5,%xmm2,%xmm1] -> [66 0f 3a 08 ca 05],
+            [roundps $5,0x10(%esp),%xmm1] -> [66 0f 3a 08 4c 24 10 05]. *)
+    | Roundpd
+        (** [roundpd $imm8, rm, reg] - packed round to integer, double precision
+            ([66 0F 3A 09 /r ib]), {!Roundps}'s sibling. *)
+    | Roundss
+        (** [roundss $imm8, rm, reg] - scalar round to integer, single precision
+            ([66 0F 3A 0A /r ib]); REG0's XED [rw="rw"] (unlike {!Roundps}'s [rw="w"], since the
+            scalar form leaves the destination's upper lanes untouched) still fits the same
+            unchanged shape - dataflow direction is a normalization-layer fact, not an
+            encoder-layer one, the same fact {!Pabsb}'s own doc comment already established. *)
+    | Roundsd
+        (** [roundsd $imm8, rm, reg] - scalar round to integer, double precision
+            ([66 0F 3A 0B /r ib]), {!Roundss}'s sibling. *)
+    | Pcmpeqq
+        (** [pcmpeqq rm, reg] - packed compare equal, qword lanes ([66 0F 38 29 /r], SSE4.1): {!Pshufb}'s own map-2 group at a different opcode byte, same
+            {!Lowered.Sse_binop_r_rm}/{!sse_binop_0f38_alt} shape unchanged. Confirmed against
+            real GNU as: [pcmpeqq %xmm2,%xmm1] -> [66 0f 38 29 ca],
+            [pcmpeqq 0x10(%esp),%xmm1] -> [66 0f 38 29 4c 24 10]. *)
+    | Pcmpgtq
+        (** [pcmpgtq rm, reg] - packed compare greater-than (signed), qword lanes
+            ([66 0F 38 37 /r]), {!Pcmpeqq}'s sibling. *)
+    | Packusdw
+        (** [packusdw rm, reg] - pack doubleword to word with unsigned saturation
+            ([66 0F 38 2B /r]), {!Pcmpeqq}'s own group at a different opcode byte. *)
+    | Pmaxsb
+        (** [pmaxsb rm, reg] - packed maximum, signed byte lanes ([66 0F 38 3C /r]),
+            {!Pcmpeqq}'s own group at a different opcode byte. *)
+    | Pmaxsd
+        (** [pmaxsd rm, reg] - packed maximum, signed doubleword lanes ([66 0F 38 3D /r]),
+            {!Pmaxsb}'s sibling. *)
+    | Pmaxud
+        (** [pmaxud rm, reg] - packed maximum, unsigned doubleword lanes ([66 0F 38 3F /r]),
+            {!Pmaxsb}'s sibling. *)
+    | Pmaxuw
+        (** [pmaxuw rm, reg] - packed maximum, unsigned word lanes ([66 0F 38 3E /r]),
+            {!Pmaxsb}'s sibling. *)
+    | Pminsb
+        (** [pminsb rm, reg] - packed minimum, signed byte lanes ([66 0F 38 38 /r]),
+            {!Pmaxsb}'s minimum-direction sibling. *)
+    | Pminsd
+        (** [pminsd rm, reg] - packed minimum, signed doubleword lanes ([66 0F 38 39 /r]),
+            {!Pminsb}'s sibling. *)
+    | Pminud
+        (** [pminud rm, reg] - packed minimum, unsigned doubleword lanes ([66 0F 38 3B /r]),
+            {!Pminsb}'s sibling. *)
+    | Pminuw
+        (** [pminuw rm, reg] - packed minimum, unsigned word lanes ([66 0F 38 3A /r]),
+            {!Pminsb}'s sibling. *)
+    | Pmuldq
+        (** [pmuldq rm, reg] - packed signed multiply, low 32 bits of each even qword lane widened
+            to 64 bits ([66 0F 38 28 /r]), {!Pcmpeqq}'s own group at a different opcode byte. *)
+    | Pmulld
+        (** [pmulld rm, reg] - packed signed multiply, doubleword lanes, low 32 bits of the
+            product ([66 0F 38 40 /r]), {!Pcmpeqq}'s own group at a different opcode byte. *)
+    | Phminposuw
+        (** [phminposuw rm, reg] - packed horizontal minimum of unsigned word lanes plus its
+            index ([66 0F 38 41 /r]): REG0's XED [rw="w"] (write-only, unlike every other member
+            here's [rw="rw"]) still fits {!Lowered.Sse_binop_r_rm}/{!sse_binop_0f38_alt} unchanged,
+            the same fact {!Pabsb}'s own doc comment already established. Confirmed against real
+            GNU as: [phminposuw %xmm2,%xmm1] -> [66 0f 38 41 ca],
+            [phminposuw 0x10(%esp),%xmm1] -> [66 0f 38 41 4c 24 10]. *)
+    | Ptest
+        (** [ptest rm, reg] - logical compare setting ZF/CF, no register written ([66 0F 38 17 /r],
+            SSE4.1): {!Pshufb}'s own map-2 group at a different opcode byte, same
+            {!Lowered.Sse_binop_r_rm}/{!sse_binop_0f38_alt} shape unchanged; REG0's XED [rw="r"] is a
+            normalization-layer fact, the same one {!Pabsb}'s doc comment already established.
+            Confirmed against real GNU as: [ptest %xmm2,%xmm1] -> [66 0f 38 17 ca],
+            [ptest 0x10(%esp),%xmm1] -> [66 0f 38 17 4c 24 10]. *)
+    | Pmovsxbw
+        (** [pmovsx{bw,bd,bq,wd,wq,dq} rm, reg] / [pmovzx...] - sign-/zero-extending packed move
+            ([66 0F 38 20..25] / [66 0F 38 30..35], SSE4.1), {!Ptest}'s own group. XED's
+            source width varies per form ([XMMq]/[XMMd]/[XMMw], [MEMq]/[MEMd]/[MEMw]) but AT&T
+            spelling carries no size, so the encoder shape is unchanged. Confirmed against real GNU
+            as: [pmovsxbw %xmm2,%xmm1] -> [66 0f 38 20 ca], [pmovzxdq 0x10(%esp),%xmm1] ->
+            [66 0f 38 35 4c 24 10]. *)
+    | Pmovsxbd  (** See {!Pmovsxbw}. *)
+    | Pmovsxbq  (** See {!Pmovsxbw}. *)
+    | Pmovsxwd  (** See {!Pmovsxbw}. *)
+    | Pmovsxwq  (** See {!Pmovsxbw}. *)
+    | Pmovsxdq  (** See {!Pmovsxbw}. *)
+    | Pmovzxbw  (** See {!Pmovsxbw}. *)
+    | Pmovzxbd  (** See {!Pmovsxbw}. *)
+    | Pmovzxbq  (** See {!Pmovsxbw}. *)
+    | Pmovzxwd  (** See {!Pmovsxbw}. *)
+    | Pmovzxwq  (** See {!Pmovsxbw}. *)
+    | Pmovzxdq  (** See {!Pmovsxbw}. *)
+    | Movntdqa
+        (** [movntdqa mem, reg] - non-temporal aligned load ([66 0F 38 2A /r], SSE4.1),
+            {!Ptest}'s own group, memory source only. Confirmed against real GNU as:
+            [movntdqa 0x10(%esp),%xmm1] -> [66 0f 38 2a 4c 24 10]. *)
+    | Blendvps
+        (** [blendvps %xmm0, rm, reg] - variable blend, single precision, per-dword mask taken from
+            the implicit [%xmm0] ([66 0F 38 14 /r], SSE4.1): {!Ptest}'s own map-2 group,
+            same {!Lowered.Sse_binop_r_rm}/{!sse_binop_0f38_alt} shape - the mask is not encoded.
+            Real GNU as accepts both spellings, the canonical three-operand one with an explicit
+            [%xmm0] first and the two-operand one without it, and emits identical bytes; only an
+            explicit [%xmm0] mask (register number 0, 128-bit) lowers, any other register falls to
+            the [No_form] catch-all. Confirmed against real GNU as: [blendvps %xmm0,%xmm2,%xmm1]
+            and [blendvps %xmm2,%xmm1] -> [66 0f 38 14 ca], [blendvpd %xmm0,0x10(%esp),%xmm1] ->
+            [66 0f 38 15 4c 24 10]. *)
+    | Blendvpd
+        (** [blendvpd %xmm0, rm, reg] - {!Blendvps}'s double-precision sibling ([66 0F 38 15 /r]). *)
+    | Pblendvb
+        (** [pblendvb %xmm0, rm, reg] - {!Blendvps}'s byte-lane sibling ([66 0F 38 10 /r]). *)
+    | Blendps
+        (** [blendps $imm8, rm, reg] - packed blend, single precision, per-dword mask selected by
+            [imm8] ([66 0F 3A 0C /r ib], SSE4.1): {!Palignr}'s own map-3 group at a
+            different opcode byte, same {!Lowered.Sse_binop_imm_r_rm}/{!sse_binop_imm_0f3a_alt}
+            shape unchanged. Confirmed against real GNU as: [blendps $5,%xmm2,%xmm1] ->
+            [66 0f 3a 0c ca 05], [blendps $5,0x10(%esp),%xmm1] -> [66 0f 3a 0c 4c 24 10 05]. *)
+    | Blendpd
+        (** [blendpd $imm8, rm, reg] - packed blend, double precision ([66 0F 3A 0D /r ib]),
+            {!Blendps}'s sibling. *)
+    | Dpps
+        (** [dpps $imm8, rm, reg] - packed dot product, single precision, with a broadcast/write
+            mask selected by [imm8] ([66 0F 3A 40 /r ib]), {!Blendps}'s own group at a different
+            opcode byte. *)
+    | Dppd
+        (** [dppd $imm8, rm, reg] - packed dot product, double precision ([66 0F 3A 41 /r ib]),
+            {!Dpps}'s sibling. *)
+    | Mpsadbw
+        (** [mpsadbw $imm8, rm, reg] - multiple packed sums of absolute differences, byte lanes,
+            with [imm8] selecting the comparison offsets ([66 0F 3A 42 /r ib]), {!Blendps}'s own
+            group at a different opcode byte. *)
+    | Pblendw
+        (** [pblendw $imm8, rm, reg] - packed blend, word lanes ([66 0F 3A 0E /r ib]),
+            {!Blendps}'s sibling. *)
+    | Insertps
+        (** [insertps $imm8, rm, reg] - insert a single-precision lane selected/zeroed by [imm8]
+            ([66 0F 3A 21 /r ib], SSE4.1): {!Blendps}'s own map-3 group at a different opcode
+            byte, same {!Lowered.Sse_binop_imm_r_rm}/{!sse_binop_imm_0f3a_alt} shape unchanged.
+            Confirmed against real GNU as: [insertps $0x10,%xmm2,%xmm1] -> [66 0f 3a 21 ca 10],
+            [insertps $0x10,0x10(%esp),%xmm1] -> [66 0f 3a 21 4c 24 10 10]. *)
+    | Pinsrb
+        (** [pinsrb $imm8, gpr32/m8, xmm] - packed insert byte ([66 0F 3A 20 /r ib], SSE4.1): {!Pinsrw}'s own cross-register-class field roles ([reg] the xmm destination,
+            [rm] a GPR32 or memory source) at opcode map 3, where the memory spelling exists
+            (unlike {!Pextrw}). Confirmed against real GNU as: [pinsrb $1,%eax,%xmm1] ->
+            [66 0f 3a 20 c8 01]. *)
+    | Pinsrd
+        (** [pinsrd $imm8, gpr32/m32, xmm] - packed insert dword ([66 0F 3A 22 /r ib]),
+            {!Pinsrb}'s sibling. The REX.W-promoted [pinsrq] sibling is not yet built. Confirmed
+            against real GNU as: [pinsrd $1,0x10(%esp),%xmm1] -> [66 0f 3a 22 4c 24 10 01]. *)
+    | Pextrb
+        (** [pextrb $imm8, xmm, gpr32/m8] - packed extract byte ([66 0F 3A 14 /r ib]), {!Pinsrb}'s
+            store-direction mirror with the xmm in the ModR/M [reg] field and the GPR32 or memory
+            destination in [rm] - the opposite field roles from {!Pextrw}'s own two-byte-opcode
+            layout, hence the same {!Lowered.Sse_binop_imm_r_rm} node as {!Pinsrb} with the AT&T
+            operand order reversed at lowering. Confirmed against real GNU as:
+            [pextrb $1,%xmm1,%eax] -> [66 0f 3a 14 c8 01], [pextrb $1,%xmm1,0x10(%esp)] ->
+            [66 0f 3a 14 4c 24 10 01]. *)
+    | Pextrd
+        (** [pextrd $imm8, xmm, gpr32/m32] - packed extract dword ([66 0F 3A 16 /r ib]),
+            {!Pextrb}'s sibling. The REX.W-promoted [pextrq] sibling is not yet built. *)
+    | Extractps
+        (** [extractps $imm8, xmm, gpr32/m32] - extract a single-precision lane ([66 0F 3A 17 /r
+            ib]), {!Pextrb}'s sibling. Confirmed against real GNU as: [extractps $1,%xmm1,%eax]
+            -> [66 0f 3a 17 c8 01]. *)
     | Movdqa
         (** [movdqa rm, reg] / [movdqa reg, rm] - integer/general XMM register move, aligned
             ([66 0F 6F /r] load, [66 0F 7F /r] store), {!Movaps}'s integer-classified
@@ -1346,6 +1508,53 @@ module Opcode = struct
     | Pabsw -> "pabsw"
     | Pabsd -> "pabsd"
     | Palignr -> "palignr"
+    | Roundps -> "roundps"
+    | Roundpd -> "roundpd"
+    | Roundss -> "roundss"
+    | Roundsd -> "roundsd"
+    | Pcmpeqq -> "pcmpeqq"
+    | Pcmpgtq -> "pcmpgtq"
+    | Packusdw -> "packusdw"
+    | Pmaxsb -> "pmaxsb"
+    | Pmaxsd -> "pmaxsd"
+    | Pmaxud -> "pmaxud"
+    | Pmaxuw -> "pmaxuw"
+    | Pminsb -> "pminsb"
+    | Pminsd -> "pminsd"
+    | Pminud -> "pminud"
+    | Pminuw -> "pminuw"
+    | Pmuldq -> "pmuldq"
+    | Pmulld -> "pmulld"
+    | Phminposuw -> "phminposuw"
+    | Ptest -> "ptest"
+    | Pmovsxbw -> "pmovsxbw"
+    | Pmovsxbd -> "pmovsxbd"
+    | Pmovsxbq -> "pmovsxbq"
+    | Pmovsxwd -> "pmovsxwd"
+    | Pmovsxwq -> "pmovsxwq"
+    | Pmovsxdq -> "pmovsxdq"
+    | Pmovzxbw -> "pmovzxbw"
+    | Pmovzxbd -> "pmovzxbd"
+    | Pmovzxbq -> "pmovzxbq"
+    | Pmovzxwd -> "pmovzxwd"
+    | Pmovzxwq -> "pmovzxwq"
+    | Pmovzxdq -> "pmovzxdq"
+    | Movntdqa -> "movntdqa"
+    | Blendvps -> "blendvps"
+    | Blendvpd -> "blendvpd"
+    | Pblendvb -> "pblendvb"
+    | Blendps -> "blendps"
+    | Blendpd -> "blendpd"
+    | Dpps -> "dpps"
+    | Dppd -> "dppd"
+    | Mpsadbw -> "mpsadbw"
+    | Pblendw -> "pblendw"
+    | Insertps -> "insertps"
+    | Pinsrb -> "pinsrb"
+    | Pinsrd -> "pinsrd"
+    | Pextrb -> "pextrb"
+    | Pextrd -> "pextrd"
+    | Extractps -> "extractps"
     | Movdqa -> "movdqa"
     | Movdqu -> "movdqu"
     | Pinsrw -> "pinsrw"
@@ -3164,6 +3373,53 @@ module Make (M : MODE) = struct
     | "pabsw", _ -> Ok (Instruction.mk Opcode.Pabsw 32 s.Surface.ops)
     | "pabsd", _ -> Ok (Instruction.mk Opcode.Pabsd 32 s.Surface.ops)
     | "palignr", _ -> Ok (Instruction.mk Opcode.Palignr 32 s.Surface.ops)
+    | "roundps", _ -> Ok (Instruction.mk Opcode.Roundps 32 s.Surface.ops)
+    | "roundpd", _ -> Ok (Instruction.mk Opcode.Roundpd 32 s.Surface.ops)
+    | "roundss", _ -> Ok (Instruction.mk Opcode.Roundss 32 s.Surface.ops)
+    | "roundsd", _ -> Ok (Instruction.mk Opcode.Roundsd 32 s.Surface.ops)
+    | "pcmpeqq", _ -> Ok (Instruction.mk Opcode.Pcmpeqq 32 s.Surface.ops)
+    | "pcmpgtq", _ -> Ok (Instruction.mk Opcode.Pcmpgtq 32 s.Surface.ops)
+    | "packusdw", _ -> Ok (Instruction.mk Opcode.Packusdw 32 s.Surface.ops)
+    | "pmaxsb", _ -> Ok (Instruction.mk Opcode.Pmaxsb 32 s.Surface.ops)
+    | "pmaxsd", _ -> Ok (Instruction.mk Opcode.Pmaxsd 32 s.Surface.ops)
+    | "pmaxud", _ -> Ok (Instruction.mk Opcode.Pmaxud 32 s.Surface.ops)
+    | "pmaxuw", _ -> Ok (Instruction.mk Opcode.Pmaxuw 32 s.Surface.ops)
+    | "pminsb", _ -> Ok (Instruction.mk Opcode.Pminsb 32 s.Surface.ops)
+    | "pminsd", _ -> Ok (Instruction.mk Opcode.Pminsd 32 s.Surface.ops)
+    | "pminud", _ -> Ok (Instruction.mk Opcode.Pminud 32 s.Surface.ops)
+    | "pminuw", _ -> Ok (Instruction.mk Opcode.Pminuw 32 s.Surface.ops)
+    | "pmuldq", _ -> Ok (Instruction.mk Opcode.Pmuldq 32 s.Surface.ops)
+    | "pmulld", _ -> Ok (Instruction.mk Opcode.Pmulld 32 s.Surface.ops)
+    | "phminposuw", _ -> Ok (Instruction.mk Opcode.Phminposuw 32 s.Surface.ops)
+    | "ptest", _ -> Ok (Instruction.mk Opcode.Ptest 32 s.Surface.ops)
+    | "pmovsxbw", _ -> Ok (Instruction.mk Opcode.Pmovsxbw 32 s.Surface.ops)
+    | "pmovsxbd", _ -> Ok (Instruction.mk Opcode.Pmovsxbd 32 s.Surface.ops)
+    | "pmovsxbq", _ -> Ok (Instruction.mk Opcode.Pmovsxbq 32 s.Surface.ops)
+    | "pmovsxwd", _ -> Ok (Instruction.mk Opcode.Pmovsxwd 32 s.Surface.ops)
+    | "pmovsxwq", _ -> Ok (Instruction.mk Opcode.Pmovsxwq 32 s.Surface.ops)
+    | "pmovsxdq", _ -> Ok (Instruction.mk Opcode.Pmovsxdq 32 s.Surface.ops)
+    | "pmovzxbw", _ -> Ok (Instruction.mk Opcode.Pmovzxbw 32 s.Surface.ops)
+    | "pmovzxbd", _ -> Ok (Instruction.mk Opcode.Pmovzxbd 32 s.Surface.ops)
+    | "pmovzxbq", _ -> Ok (Instruction.mk Opcode.Pmovzxbq 32 s.Surface.ops)
+    | "pmovzxwd", _ -> Ok (Instruction.mk Opcode.Pmovzxwd 32 s.Surface.ops)
+    | "pmovzxwq", _ -> Ok (Instruction.mk Opcode.Pmovzxwq 32 s.Surface.ops)
+    | "pmovzxdq", _ -> Ok (Instruction.mk Opcode.Pmovzxdq 32 s.Surface.ops)
+    | "movntdqa", _ -> Ok (Instruction.mk Opcode.Movntdqa 32 s.Surface.ops)
+    | "blendvps", _ -> Ok (Instruction.mk Opcode.Blendvps 32 s.Surface.ops)
+    | "blendvpd", _ -> Ok (Instruction.mk Opcode.Blendvpd 32 s.Surface.ops)
+    | "pblendvb", _ -> Ok (Instruction.mk Opcode.Pblendvb 32 s.Surface.ops)
+    | "blendps", _ -> Ok (Instruction.mk Opcode.Blendps 32 s.Surface.ops)
+    | "blendpd", _ -> Ok (Instruction.mk Opcode.Blendpd 32 s.Surface.ops)
+    | "dpps", _ -> Ok (Instruction.mk Opcode.Dpps 32 s.Surface.ops)
+    | "dppd", _ -> Ok (Instruction.mk Opcode.Dppd 32 s.Surface.ops)
+    | "mpsadbw", _ -> Ok (Instruction.mk Opcode.Mpsadbw 32 s.Surface.ops)
+    | "pblendw", _ -> Ok (Instruction.mk Opcode.Pblendw 32 s.Surface.ops)
+    | "insertps", _ -> Ok (Instruction.mk Opcode.Insertps 32 s.Surface.ops)
+    | "pinsrb", _ -> Ok (Instruction.mk Opcode.Pinsrb 32 s.Surface.ops)
+    | "pinsrd", _ -> Ok (Instruction.mk Opcode.Pinsrd 32 s.Surface.ops)
+    | "pextrb", _ -> Ok (Instruction.mk Opcode.Pextrb 32 s.Surface.ops)
+    | "pextrd", _ -> Ok (Instruction.mk Opcode.Pextrd 32 s.Surface.ops)
+    | "extractps", _ -> Ok (Instruction.mk Opcode.Extractps 32 s.Surface.ops)
     | "movdqa", _ -> Ok (Instruction.mk Opcode.Movdqa 32 s.Surface.ops)
     | "movdqu", _ -> Ok (Instruction.mk Opcode.Movdqu 32 s.Surface.ops)
     | "pinsrw", _ -> Ok (Instruction.mk Opcode.Pinsrw 32 s.Surface.ops)
@@ -3896,7 +4152,9 @@ module Make (M : MODE) = struct
        [imm, rm, reg] - GAS's [parse_one_operand] builds the same order for any instruction
        whose immediate comes first. *)
     | ( ( Opcode.Shufps | Opcode.Shufpd | Opcode.Cmpss | Opcode.Cmpsd | Opcode.Cmpps | Opcode.Cmppd
-        | Opcode.Pshufd | Opcode.Pshuflw | Opcode.Pshufhw | Opcode.Palignr ),
+        | Opcode.Pshufd | Opcode.Pshuflw | Opcode.Pshufhw | Opcode.Palignr | Opcode.Roundps
+        | Opcode.Roundpd | Opcode.Roundss | Opcode.Roundsd | Opcode.Blendps | Opcode.Blendpd
+        | Opcode.Dpps | Opcode.Dppd | Opcode.Mpsadbw | Opcode.Pblendw | Opcode.Insertps ),
         [ Operand.Imm v; Operand.Reg src; Operand.Reg reg ] ) -> (
         match imm_of v with
         | Error e -> Error e
@@ -3909,7 +4167,9 @@ module Make (M : MODE) = struct
                   ]
             | Error e, _ | _, Error e -> Error e))
     | ( ( Opcode.Shufps | Opcode.Shufpd | Opcode.Cmpss | Opcode.Cmpsd | Opcode.Cmpps | Opcode.Cmppd
-        | Opcode.Pshufd | Opcode.Pshuflw | Opcode.Pshufhw | Opcode.Palignr ),
+        | Opcode.Pshufd | Opcode.Pshuflw | Opcode.Pshufhw | Opcode.Palignr | Opcode.Roundps
+        | Opcode.Roundpd | Opcode.Roundss | Opcode.Roundsd | Opcode.Blendps | Opcode.Blendpd
+        | Opcode.Dpps | Opcode.Dppd | Opcode.Mpsadbw | Opcode.Pblendw | Opcode.Insertps ),
         [ Operand.Imm v; Operand.Mem m; Operand.Reg reg ] ) -> (
         match imm_of v with
         | Error e -> Error e
@@ -4044,7 +4304,13 @@ module Make (M : MODE) = struct
         | Opcode.Psraw | Opcode.Psrad | Opcode.Pshufb | Opcode.Phaddw | Opcode.Phaddd
         | Opcode.Phsubw | Opcode.Phsubd | Opcode.Psignb | Opcode.Psignw | Opcode.Psignd
         | Opcode.Pmaddubsw | Opcode.Pmulhrsw | Opcode.Phaddsw | Opcode.Phsubsw | Opcode.Pabsb
-        | Opcode.Pabsw | Opcode.Pabsd ),
+        | Opcode.Pabsw | Opcode.Pabsd | Opcode.Pcmpeqq | Opcode.Pcmpgtq | Opcode.Packusdw
+        | Opcode.Pmaxsb | Opcode.Pmaxsd | Opcode.Pmaxud | Opcode.Pmaxuw | Opcode.Pminsb
+        | Opcode.Pminsd | Opcode.Pminud | Opcode.Pminuw | Opcode.Pmuldq | Opcode.Pmulld
+        | Opcode.Phminposuw | Opcode.Blendvps | Opcode.Blendvpd | Opcode.Pblendvb | Opcode.Ptest
+        | Opcode.Pmovsxbw | Opcode.Pmovsxbd | Opcode.Pmovsxbq | Opcode.Pmovsxwd | Opcode.Pmovsxwq
+        | Opcode.Pmovsxdq | Opcode.Pmovzxbw | Opcode.Pmovzxbd | Opcode.Pmovzxbq | Opcode.Pmovzxwd
+        | Opcode.Pmovzxwq | Opcode.Pmovzxdq ),
         [ Operand.Reg src; Operand.Reg reg ] ) -> (
         match (xmm_ok src, xmm_ok reg) with
         | Ok (), Ok () ->
@@ -4072,7 +4338,13 @@ module Make (M : MODE) = struct
         | Opcode.Psraw | Opcode.Psrad | Opcode.Pshufb | Opcode.Phaddw | Opcode.Phaddd
         | Opcode.Phsubw | Opcode.Phsubd | Opcode.Psignb | Opcode.Psignw | Opcode.Psignd
         | Opcode.Pmaddubsw | Opcode.Pmulhrsw | Opcode.Phaddsw | Opcode.Phsubsw | Opcode.Pabsb
-        | Opcode.Pabsw | Opcode.Pabsd ),
+        | Opcode.Pabsw | Opcode.Pabsd | Opcode.Pcmpeqq | Opcode.Pcmpgtq | Opcode.Packusdw
+        | Opcode.Pmaxsb | Opcode.Pmaxsd | Opcode.Pmaxud | Opcode.Pmaxuw | Opcode.Pminsb
+        | Opcode.Pminsd | Opcode.Pminud | Opcode.Pminuw | Opcode.Pmuldq | Opcode.Pmulld
+        | Opcode.Phminposuw | Opcode.Blendvps | Opcode.Blendvpd | Opcode.Pblendvb | Opcode.Ptest
+        | Opcode.Pmovsxbw | Opcode.Pmovsxbd | Opcode.Pmovsxbq | Opcode.Pmovsxwd | Opcode.Pmovsxwq
+        | Opcode.Pmovsxdq | Opcode.Pmovzxbw | Opcode.Pmovzxbd | Opcode.Pmovzxbq | Opcode.Pmovzxwd
+        | Opcode.Pmovzxwq | Opcode.Pmovzxdq | Opcode.Movntdqa ),
         [ Operand.Mem m; Operand.Reg reg ] ) -> (
         match xmm_ok reg with
         | Error e -> Error e
@@ -4220,6 +4492,73 @@ module Make (M : MODE) = struct
                 Lowered.Movd_rm_r
                   { op = i.Instruction.op; width = i.Instruction.width; reg; rm = Rm.Mem m };
               ])
+    (* [blendvps %xmm0, rm, reg] ({!Opcode.Blendvps}'s own doc comment): the canonical spelling
+       with the implicit mask written out, lowered exactly like the two-operand one; a mask other
+       than [%xmm0] matches no arm. *)
+    | ( (Opcode.Blendvps | Opcode.Blendvpd | Opcode.Pblendvb),
+        [ Operand.Reg mask; Operand.Reg src; Operand.Reg reg ] )
+      when mask.Reg.num = 0 && mask.Reg.width = 128 -> (
+        match (xmm_ok src, xmm_ok reg) with
+        | Ok (), Ok () ->
+            Ok [ Lowered.Sse_binop_r_rm { op = i.Instruction.op; reg; rm = Rm.Reg src } ]
+        | Error e, _ | _, Error e -> Error e)
+    | ( (Opcode.Blendvps | Opcode.Blendvpd | Opcode.Pblendvb),
+        [ Operand.Reg mask; Operand.Mem m; Operand.Reg reg ] )
+      when mask.Reg.num = 0 && mask.Reg.width = 128 -> (
+        match xmm_ok reg with
+        | Error e -> Error e
+        | Ok () -> Ok [ Lowered.Sse_binop_r_rm { op = i.Instruction.op; reg; rm = Rm.Mem m } ])
+    (* [pinsrb]/[pinsrd] ({!Opcode.Pinsrb}'s own doc comment): [rm] is a GPR32 or memory source,
+       [reg] the xmm destination - {!Pinsrw}'s own arms below at opcode map 3. *)
+    | (Opcode.Pinsrb | Opcode.Pinsrd), [ Operand.Imm v; Operand.Reg src; Operand.Reg reg ] -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm -> (
+            match (width_ok src, xmm_ok reg) with
+            | Ok (), Ok () ->
+                Ok
+                  [
+                    Lowered.Sse_binop_imm_r_rm { op = i.Instruction.op; reg; rm = Rm.Reg src; imm };
+                  ]
+            | Error e, _ | _, Error e -> Error e))
+    | (Opcode.Pinsrb | Opcode.Pinsrd), [ Operand.Imm v; Operand.Mem m; Operand.Reg reg ] -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm -> (
+            match xmm_ok reg with
+            | Error e -> Error e
+            | Ok () ->
+                Ok [ Lowered.Sse_binop_imm_r_rm { op = i.Instruction.op; reg; rm = Rm.Mem m; imm } ]
+            ))
+    (* [pextrb]/[pextrd]/[extractps] ({!Opcode.Pextrb}'s own doc comment): the AT&T destination
+       (GPR32 or memory) is the ModR/M [rm], the xmm source the [reg] - the reverse of the
+       AT&T operand order, unlike {!Pextrw}. *)
+    | ( (Opcode.Pextrb | Opcode.Pextrd | Opcode.Extractps),
+        [ Operand.Imm v; Operand.Reg src; Operand.Reg dst ] ) -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm -> (
+            match (xmm_ok src, width_ok dst) with
+            | Ok (), Ok () ->
+                Ok
+                  [
+                    Lowered.Sse_binop_imm_r_rm
+                      { op = i.Instruction.op; reg = src; rm = Rm.Reg dst; imm };
+                  ]
+            | Error e, _ | _, Error e -> Error e))
+    | ( (Opcode.Pextrb | Opcode.Pextrd | Opcode.Extractps),
+        [ Operand.Imm v; Operand.Reg src; Operand.Mem m ] ) -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm -> (
+            match xmm_ok src with
+            | Error e -> Error e
+            | Ok () ->
+                Ok
+                  [
+                    Lowered.Sse_binop_imm_r_rm
+                      { op = i.Instruction.op; reg = src; rm = Rm.Mem m; imm };
+                  ]))
     (* [pinsrw $imm8, gpr32/m16, xmm] ({!Opcode.Pinsrw}'s own doc comment): {!Lowered.Sse_binop_imm_r_rm}'s
        cross-class member - [rm] is a GPR ([width_ok], not [xmm_ok] - {!Cvtsi2sd}'s own class split
        above) or memory, [reg] is xmm. *)
@@ -5195,6 +5534,37 @@ module Make (M : MODE) = struct
           (Opcode.Pabsb, 0x1CL);
           (Opcode.Pabsw, 0x1DL);
           (Opcode.Pabsd, 0x1EL);
+          (Opcode.Pmuldq, 0x28L);
+          (Opcode.Pcmpeqq, 0x29L);
+          (Opcode.Packusdw, 0x2BL);
+          (Opcode.Pminsb, 0x38L);
+          (Opcode.Pminsd, 0x39L);
+          (Opcode.Pminuw, 0x3AL);
+          (Opcode.Pminud, 0x3BL);
+          (Opcode.Pmaxsb, 0x3CL);
+          (Opcode.Pmaxsd, 0x3DL);
+          (Opcode.Pmaxuw, 0x3EL);
+          (Opcode.Pmaxud, 0x3FL);
+          (Opcode.Pmulld, 0x40L);
+          (Opcode.Phminposuw, 0x41L);
+          (Opcode.Pcmpgtq, 0x37L);
+          (Opcode.Pblendvb, 0x10L);
+          (Opcode.Blendvps, 0x14L);
+          (Opcode.Blendvpd, 0x15L);
+          (Opcode.Ptest, 0x17L);
+          (Opcode.Pmovsxbw, 0x20L);
+          (Opcode.Pmovsxbd, 0x21L);
+          (Opcode.Pmovsxbq, 0x22L);
+          (Opcode.Pmovsxwd, 0x23L);
+          (Opcode.Pmovsxwq, 0x24L);
+          (Opcode.Pmovsxdq, 0x25L);
+          (Opcode.Pmovzxbw, 0x30L);
+          (Opcode.Pmovzxbd, 0x31L);
+          (Opcode.Pmovzxbq, 0x32L);
+          (Opcode.Pmovzxwd, 0x33L);
+          (Opcode.Pmovzxwq, 0x34L);
+          (Opcode.Pmovzxdq, 0x35L);
+          (Opcode.Movntdqa, 0x2AL);
         ]
       (C.field ~width:8 "opcode")
 
@@ -5424,7 +5794,21 @@ module Make (M : MODE) = struct
      table since {!Palignr} is this map's only admitted mnemonic. *)
   let sse_binop_imm_0f3a_codec =
     C.iso_table ~name:"sse-binop-imm-0f3a-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Palignr, 0x0FL) ]
+      ~entries:
+        [
+          (Opcode.Palignr, 0x0FL);
+          (Opcode.Roundps, 0x08L);
+          (Opcode.Roundpd, 0x09L);
+          (Opcode.Roundss, 0x0AL);
+          (Opcode.Roundsd, 0x0BL);
+          (Opcode.Blendps, 0x0CL);
+          (Opcode.Blendpd, 0x0DL);
+          (Opcode.Insertps, 0x21L);
+          (Opcode.Pblendw, 0x0EL);
+          (Opcode.Dpps, 0x40L);
+          (Opcode.Dppd, 0x41L);
+          (Opcode.Mpsadbw, 0x42L);
+        ]
       (C.field ~width:8 "opcode")
 
   let sse_binop_imm_0f3a_alt ~label ~priority ~mandatory ~opcode_codec =
@@ -5449,6 +5833,40 @@ module Make (M : MODE) = struct
            asz_codec
            ** const ~width:8 (Int64.of_int mandatory)
            ** rex_codec ** const ~width:8 0x0FL ** const ~width:8 0x3AL ** opcode_codec ** rm_codec
+           ** le ~signedness:C.Unsigned ~width:8 "imm8"))
+
+  (* [pinsrb]/[pinsrd]/[pextrb]/[pextrd]/[extractps] ({!Opcode.Pinsrb}'s own doc comment):
+     {!sse_binop_imm_0f3a_alt}'s exact layout with [rm] decoded at width 32 (a GPR32 or memory
+     operand) rather than 128, {!sse_pinsrw_alt}'s own class split. Insert and extract share it:
+     both keep the xmm operand in the ModR/M [reg] field. *)
+  let sse_gpr_imm_0f3a_codec =
+    C.iso_table ~name:"sse-gpr-imm-0f3a-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:
+        [
+          (Opcode.Pextrb, 0x14L);
+          (Opcode.Pextrd, 0x16L);
+          (Opcode.Extractps, 0x17L);
+          (Opcode.Pinsrb, 0x20L);
+          (Opcode.Pinsrd, 0x22L);
+        ]
+      (C.field ~width:8 "opcode")
+
+  let sse_gpr_imm_0f3a_alt ~label ~priority ~opcode_codec =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Sse_binop_imm_r_rm { op; reg; rm; imm } ->
+               let p = prefixes_of ~width:32 ~reg:reg.num ~rm in
+               Some (p.asz, ((), (p.rex, ((), ((), (op, ({ re_reg = reg.num; re_rm = rm }, imm)))))))
+           | _ -> None)
+         ~decode:(fun (asz, ((), (rex, ((), ((), (op, (e, imm))))))) ->
+           let p = { asz; opsz = false; rex } in
+           Some
+             (Lowered.Sse_binop_imm_r_rm
+                { op; reg = reg_field ~p ~width:128 e.re_reg; rm = rm_of ~p ~width:32 e.re_rm; imm }))
+         C.(
+           asz_codec ** const ~width:8 0x66L ** rex_codec ** const ~width:8 0x0FL
+           ** const ~width:8 0x3AL ** opcode_codec ** rm_codec
            ** le ~signedness:C.Unsigned ~width:8 "imm8"))
 
   (* [pinsrw $imm8, gpr32/m16, xmm] ([66 0F C4 /r ib], {!Opcode.Pinsrw}'s own doc comment):
@@ -7154,6 +7572,8 @@ module Make (M : MODE) = struct
              from every map-1 alt above by construction (the extra [0x3A] byte). *)
           sse_binop_imm_0f3a_alt ~label:"sse-binop-imm-0f3a-66" ~priority:108 ~mandatory:0x66
             ~opcode_codec:sse_binop_imm_0f3a_codec;
+          sse_gpr_imm_0f3a_alt ~label:"sse-gpr-imm-0f3a-66" ~priority:109
+            ~opcode_codec:sse_gpr_imm_0f3a_codec;
           vex_binop_imm_rrr_alt ~label:"vex-binop-imm-f2" ~priority:77 ~pp:3
             ~opcode_codec:vex_binop_imm_f2_codec;
           vex_binop_imm_rrr_alt ~label:"vex-binop-imm-f3" ~priority:78 ~pp:2

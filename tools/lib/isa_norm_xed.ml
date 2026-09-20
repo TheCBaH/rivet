@@ -2782,6 +2782,134 @@ let movd_store_mr_form ~form_id ~mnemonic (rec_ : R.t) =
         (Printf.sprintf "expected MEM0/REG0 operands in that order, got %d" (List.length operands))
   | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
 
+(* PEXTRB/PEXTRD/EXTRACTPS memory-destination forms (PEXTRB_MEMb_XMMdq_IMMb):
+   {!movd_store_mr_form}'s own MEM0 (written) / REG0 (xmm, read) pair plus the trailing IMM0
+   {!pextrw_rr_form} adds, spelled (imm, xmm source, memory destination) in AT&T order. *)
+let pextr_store_mr_form ~form_id ~mnemonic (rec_ : R.t) =
+  match rec_.encoding with
+  | R.X86_encoding { space; opcode_map; opcode; pattern; operands = [ a; b; c ] }
+    when a.op_name = "MEM0" && b.op_name = "REG0" && c.op_name = "IMM0" ->
+      let mem =
+        {
+          op_name = "dest";
+          op_kind = Memory { width_bits = None };
+          role = role_of_rw a.rw;
+          explicit = true;
+        }
+      in
+      let src =
+        {
+          op_name = "src";
+          op_kind = Register { class_ = X86_xmm; excluded = [] };
+          role = role_of_rw b.rw;
+          explicit = true;
+        }
+      in
+      let imm =
+        {
+          op_name = "imm";
+          op_kind =
+            Immediate
+              {
+                width_bits = 8;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs = [];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "x86:" ^ form_id;
+          arch = X86;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding = X86_encoding { space; opcode_map; opcode; pattern };
+          operands = [ imm; src; mem ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_decorated ("$", Syn_operand "imm");
+                  Syn_decorated ("%", Syn_operand "src");
+                  Syn_operand "dest";
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  Printf.sprintf
+                    "MEM0 (rw=%s, dest), REG0 (rw=%s, src), IMM0 (rw=%s) taken verbatim from \
+                     encoding.operands"
+                    a.rw b.rw c.rw;
+              };
+              {
+                label = Inferred;
+                note = "AT&T operand order (imm, src, dest) is GAS convention, not a XED fact";
+              };
+            ];
+          diagnostics = [];
+        }
+  | R.X86_encoding { operands; _ } ->
+      err
+        (form_id ^ "-unrecognized-operands")
+        (Printf.sprintf "expected MEM0/REG0/IMM0 operands in that order, got %d"
+           (List.length operands))
+  | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
+
+(* BLENDVPS/BLENDVPD/PBLENDVB: {!xmm_binop_rr_form}/{!xmm_binop_rm_form}'s own two
+   explicit operands plus a trailing SUPPRESSED-visibility, fixed-[bits] [XED_REG_XMM0] mask
+   (REG2 for the register form, REG1 for the memory form). The mask is modelled as an
+   [Implicit_register] ({!alu_al_immb_form}'s own shape) and spelled [%xmm0] literally first, the
+   canonical GAS spelling; the delegate builds everything else from the two explicit operands. *)
+let xmm_blendv_form ~mem ~form_id ~mnemonic (rec_ : R.t) =
+  match rec_.encoding with
+  | R.X86_encoding ({ operands = [ a; b; m ]; _ } as e)
+    when m.visibility = "SUPPRESSED" && m.bits = Some "XED_REG_XMM0" -> (
+      let trimmed = { rec_ with encoding = R.X86_encoding { e with operands = [ a; b ] } } in
+      match (if mem then xmm_binop_rm_form else xmm_binop_rr_form) ~form_id ~mnemonic trimmed with
+      | Error _ as err -> err
+      | Ok (form : Isa_norm_model.form) ->
+          let mask =
+            {
+              op_name = "mask";
+              op_kind = Implicit_register { class_ = X86_xmm; native_name = "XED_REG_XMM0" };
+              role = role_of_rw m.rw;
+              explicit = false;
+            }
+          in
+          Ok
+            {
+              form with
+              operands = form.operands @ [ mask ];
+              syntax = { form.syntax with operands = Syn_literal "%xmm0" :: form.syntax.operands };
+              facts =
+                form.facts
+                @ [
+                    {
+                      label = Upstream;
+                      note =
+                        Printf.sprintf
+                          "%s (reg, SUPPRESSED, bits XED_REG_XMM0, rw=%s) taken verbatim" m.op_name
+                          m.rw;
+                    };
+                  ];
+            })
+  | R.X86_encoding _ ->
+      err
+        (form_id ^ "-unrecognized-operands")
+        "expected two explicit operands plus a suppressed XED_REG_XMM0 mask"
+  | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
+
 (* [pinsrw]'s own cross-register-class member (PINSRW_XMMdq_GPR32_IMMb): XED's resolved
    operands are REG0 (dest, rw - xmm, a partial-register merge exactly like {!Addsd}'s own dest,
    confirmed by the native record's own [rw] fact, not assumed), REG1 (src, r - GPR, not xmm) and
@@ -3678,6 +3806,40 @@ let normalize (rec_ : R.t) =
       pinsrw_rm_form ~form_id:"PINSRW_XMMdq_MEMw_IMMb" ~mnemonic:"pinsrw" rec_
   | Ok { iform = Some "PEXTRW_GPR32_XMMdq_IMMb"; _ } ->
       pextrw_rr_form ~form_id:"PEXTRW_GPR32_XMMdq_IMMb" ~mnemonic:"pextrw" rec_
+  | Ok { iform = Some "PEXTRB_MEMb_XMMdq_IMMb"; _ } ->
+      pextr_store_mr_form ~form_id:"PEXTRB_MEMb_XMMdq_IMMb" ~mnemonic:"pextrb" rec_
+  | Ok { iform = Some "PEXTRD_MEMd_XMMdq_IMMb"; _ } ->
+      pextr_store_mr_form ~form_id:"PEXTRD_MEMd_XMMdq_IMMb" ~mnemonic:"pextrd" rec_
+  | Ok { iform = Some "EXTRACTPS_MEMd_XMMps_IMMb"; _ } ->
+      pextr_store_mr_form ~form_id:"EXTRACTPS_MEMd_XMMps_IMMb" ~mnemonic:"extractps" rec_
+  | Ok { iform = Some "BLENDVPS_XMMdq_XMMdq"; _ } ->
+      xmm_blendv_form ~mem:false ~form_id:"BLENDVPS_XMMdq_XMMdq" ~mnemonic:"blendvps" rec_
+  | Ok { iform = Some "BLENDVPS_XMMdq_MEMdq"; _ } ->
+      xmm_blendv_form ~mem:true ~form_id:"BLENDVPS_XMMdq_MEMdq" ~mnemonic:"blendvps" rec_
+  | Ok { iform = Some "BLENDVPD_XMMdq_XMMdq"; _ } ->
+      xmm_blendv_form ~mem:false ~form_id:"BLENDVPD_XMMdq_XMMdq" ~mnemonic:"blendvpd" rec_
+  | Ok { iform = Some "BLENDVPD_XMMdq_MEMdq"; _ } ->
+      xmm_blendv_form ~mem:true ~form_id:"BLENDVPD_XMMdq_MEMdq" ~mnemonic:"blendvpd" rec_
+  | Ok { iform = Some "PBLENDVB_XMMdq_XMMdq"; _ } ->
+      xmm_blendv_form ~mem:false ~form_id:"PBLENDVB_XMMdq_XMMdq" ~mnemonic:"pblendvb" rec_
+  | Ok { iform = Some "PBLENDVB_XMMdq_MEMdq"; _ } ->
+      xmm_blendv_form ~mem:true ~form_id:"PBLENDVB_XMMdq_MEMdq" ~mnemonic:"pblendvb" rec_
+  (* [pinsrb]/[pinsrd]/[pextrb]/[pextrd]/[extractps] ({!Opcode.Pinsrb}'s own doc comment):
+     {!pinsrw_rr_form}/{!pinsrw_rm_form}/{!pextrw_rr_form}'s own operand shapes at opcode map 3. *)
+  | Ok { iform = Some "PINSRB_XMMdq_GPR32d_IMMb"; _ } ->
+      pinsrw_rr_form ~form_id:"PINSRB_XMMdq_GPR32d_IMMb" ~mnemonic:"pinsrb" rec_
+  | Ok { iform = Some "PINSRD_XMMdq_GPR32d_IMMb"; _ } ->
+      pinsrw_rr_form ~form_id:"PINSRD_XMMdq_GPR32d_IMMb" ~mnemonic:"pinsrd" rec_
+  | Ok { iform = Some "PINSRB_XMMdq_MEMb_IMMb"; _ } ->
+      pinsrw_rm_form ~form_id:"PINSRB_XMMdq_MEMb_IMMb" ~mnemonic:"pinsrb" rec_
+  | Ok { iform = Some "PINSRD_XMMdq_MEMd_IMMb"; _ } ->
+      pinsrw_rm_form ~form_id:"PINSRD_XMMdq_MEMd_IMMb" ~mnemonic:"pinsrd" rec_
+  | Ok { iform = Some "PEXTRB_GPR32d_XMMdq_IMMb"; _ } ->
+      pextrw_rr_form ~form_id:"PEXTRB_GPR32d_XMMdq_IMMb" ~mnemonic:"pextrb" rec_
+  | Ok { iform = Some "PEXTRD_GPR32d_XMMdq_IMMb"; _ } ->
+      pextrw_rr_form ~form_id:"PEXTRD_GPR32d_XMMdq_IMMb" ~mnemonic:"pextrd" rec_
+  | Ok { iform = Some "EXTRACTPS_GPR32d_XMMdq_IMMb"; _ } ->
+      pextrw_rr_form ~form_id:"EXTRACTPS_GPR32d_XMMdq_IMMb" ~mnemonic:"extractps" rec_
   | Ok { iform = Some "VPINSRW_XMMdq_XMMdq_GPR32d_IMMb"; _ } ->
       vpinsrw_rrr_form ~form_id:"VPINSRW_XMMdq_XMMdq_GPR32d_IMMb" ~mnemonic:"vpinsrw" rec_
   | Ok { iform = Some "VPINSRW_XMMdq_XMMdq_MEMw_IMMb"; _ } ->
@@ -4228,6 +4390,163 @@ let normalize (rec_ : R.t) =
       xmm_binop_imm_rr_form ~form_id:"PALIGNR_XMMdq_XMMdq_IMMb" ~mnemonic:"palignr" rec_
   | Ok { iform = Some "PALIGNR_XMMdq_MEMdq_IMMb"; _ } ->
       xmm_binop_imm_rm_form ~form_id:"PALIGNR_XMMdq_MEMdq_IMMb" ~mnemonic:"palignr" rec_
+  (* {!Opcode.Roundps}'s own doc comment: {!Palignr}'s own map-3 group, same shape. *)
+  | Ok { iform = Some "ROUNDPS_XMMps_XMMps_IMMb"; _ } ->
+      xmm_binop_imm_rr_form ~form_id:"ROUNDPS_XMMps_XMMps_IMMb" ~mnemonic:"roundps" rec_
+  | Ok { iform = Some "ROUNDPD_XMMpd_XMMpd_IMMb"; _ } ->
+      xmm_binop_imm_rr_form ~form_id:"ROUNDPD_XMMpd_XMMpd_IMMb" ~mnemonic:"roundpd" rec_
+  | Ok { iform = Some "ROUNDSS_XMMd_XMMd_IMMb"; _ } ->
+      xmm_binop_imm_rr_form ~form_id:"ROUNDSS_XMMd_XMMd_IMMb" ~mnemonic:"roundss" rec_
+  | Ok { iform = Some "ROUNDSD_XMMq_XMMq_IMMb"; _ } ->
+      xmm_binop_imm_rr_form ~form_id:"ROUNDSD_XMMq_XMMq_IMMb" ~mnemonic:"roundsd" rec_
+  | Ok { iform = Some "ROUNDPS_XMMps_MEMps_IMMb"; _ } ->
+      xmm_binop_imm_rm_form ~form_id:"ROUNDPS_XMMps_MEMps_IMMb" ~mnemonic:"roundps" rec_
+  | Ok { iform = Some "ROUNDPD_XMMpd_MEMpd_IMMb"; _ } ->
+      xmm_binop_imm_rm_form ~form_id:"ROUNDPD_XMMpd_MEMpd_IMMb" ~mnemonic:"roundpd" rec_
+  | Ok { iform = Some "ROUNDSS_XMMd_MEMd_IMMb"; _ } ->
+      xmm_binop_imm_rm_form ~form_id:"ROUNDSS_XMMd_MEMd_IMMb" ~mnemonic:"roundss" rec_
+  | Ok { iform = Some "ROUNDSD_XMMq_MEMq_IMMb"; _ } ->
+      xmm_binop_imm_rm_form ~form_id:"ROUNDSD_XMMq_MEMq_IMMb" ~mnemonic:"roundsd" rec_
+  (* {!Opcode.Pcmpeqq}'s own doc comment: {!Pshufb}'s own map-2 group, same shape. *)
+  | Ok { iform = Some "PCMPEQQ_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PCMPEQQ_XMMdq_XMMdq" ~mnemonic:"pcmpeqq" rec_
+  | Ok { iform = Some "PCMPGTQ_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PCMPGTQ_XMMdq_XMMdq" ~mnemonic:"pcmpgtq" rec_
+  | Ok { iform = Some "PACKUSDW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PACKUSDW_XMMdq_XMMdq" ~mnemonic:"packusdw" rec_
+  | Ok { iform = Some "PMAXSB_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMAXSB_XMMdq_XMMdq" ~mnemonic:"pmaxsb" rec_
+  | Ok { iform = Some "PMAXSD_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMAXSD_XMMdq_XMMdq" ~mnemonic:"pmaxsd" rec_
+  | Ok { iform = Some "PMAXUD_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMAXUD_XMMdq_XMMdq" ~mnemonic:"pmaxud" rec_
+  | Ok { iform = Some "PMAXUW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMAXUW_XMMdq_XMMdq" ~mnemonic:"pmaxuw" rec_
+  | Ok { iform = Some "PMINSB_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMINSB_XMMdq_XMMdq" ~mnemonic:"pminsb" rec_
+  | Ok { iform = Some "PMINSD_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMINSD_XMMdq_XMMdq" ~mnemonic:"pminsd" rec_
+  | Ok { iform = Some "PMINUD_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMINUD_XMMdq_XMMdq" ~mnemonic:"pminud" rec_
+  | Ok { iform = Some "PMINUW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMINUW_XMMdq_XMMdq" ~mnemonic:"pminuw" rec_
+  | Ok { iform = Some "PMULDQ_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMULDQ_XMMdq_XMMdq" ~mnemonic:"pmuldq" rec_
+  | Ok { iform = Some "PMULLD_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMULLD_XMMdq_XMMdq" ~mnemonic:"pmulld" rec_
+  | Ok { iform = Some "PHMINPOSUW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PHMINPOSUW_XMMdq_XMMdq" ~mnemonic:"phminposuw" rec_
+  | Ok { iform = Some "PTEST_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PTEST_XMMdq_XMMdq" ~mnemonic:"ptest" rec_
+  | Ok { iform = Some "PMOVSXBW_XMMdq_XMMq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMOVSXBW_XMMdq_XMMq" ~mnemonic:"pmovsxbw" rec_
+  | Ok { iform = Some "PMOVSXBD_XMMdq_XMMd"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMOVSXBD_XMMdq_XMMd" ~mnemonic:"pmovsxbd" rec_
+  | Ok { iform = Some "PMOVSXBQ_XMMdq_XMMw"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMOVSXBQ_XMMdq_XMMw" ~mnemonic:"pmovsxbq" rec_
+  | Ok { iform = Some "PMOVSXWD_XMMdq_XMMq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMOVSXWD_XMMdq_XMMq" ~mnemonic:"pmovsxwd" rec_
+  | Ok { iform = Some "PMOVSXWQ_XMMdq_XMMd"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMOVSXWQ_XMMdq_XMMd" ~mnemonic:"pmovsxwq" rec_
+  | Ok { iform = Some "PMOVSXDQ_XMMdq_XMMq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMOVSXDQ_XMMdq_XMMq" ~mnemonic:"pmovsxdq" rec_
+  | Ok { iform = Some "PMOVZXBW_XMMdq_XMMq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMOVZXBW_XMMdq_XMMq" ~mnemonic:"pmovzxbw" rec_
+  | Ok { iform = Some "PMOVZXBD_XMMdq_XMMd"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMOVZXBD_XMMdq_XMMd" ~mnemonic:"pmovzxbd" rec_
+  | Ok { iform = Some "PMOVZXBQ_XMMdq_XMMw"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMOVZXBQ_XMMdq_XMMw" ~mnemonic:"pmovzxbq" rec_
+  | Ok { iform = Some "PMOVZXWD_XMMdq_XMMq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMOVZXWD_XMMdq_XMMq" ~mnemonic:"pmovzxwd" rec_
+  | Ok { iform = Some "PMOVZXWQ_XMMdq_XMMd"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMOVZXWQ_XMMdq_XMMd" ~mnemonic:"pmovzxwq" rec_
+  | Ok { iform = Some "PMOVZXDQ_XMMdq_XMMq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMOVZXDQ_XMMdq_XMMq" ~mnemonic:"pmovzxdq" rec_
+  | Ok { iform = Some "PCMPEQQ_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PCMPEQQ_XMMdq_MEMdq" ~mnemonic:"pcmpeqq" rec_
+  | Ok { iform = Some "PCMPGTQ_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PCMPGTQ_XMMdq_MEMdq" ~mnemonic:"pcmpgtq" rec_
+  | Ok { iform = Some "PACKUSDW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PACKUSDW_XMMdq_MEMdq" ~mnemonic:"packusdw" rec_
+  | Ok { iform = Some "PMAXSB_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMAXSB_XMMdq_MEMdq" ~mnemonic:"pmaxsb" rec_
+  | Ok { iform = Some "PMAXSD_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMAXSD_XMMdq_MEMdq" ~mnemonic:"pmaxsd" rec_
+  | Ok { iform = Some "PMAXUD_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMAXUD_XMMdq_MEMdq" ~mnemonic:"pmaxud" rec_
+  | Ok { iform = Some "PMAXUW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMAXUW_XMMdq_MEMdq" ~mnemonic:"pmaxuw" rec_
+  | Ok { iform = Some "PMINSB_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMINSB_XMMdq_MEMdq" ~mnemonic:"pminsb" rec_
+  | Ok { iform = Some "PMINSD_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMINSD_XMMdq_MEMdq" ~mnemonic:"pminsd" rec_
+  | Ok { iform = Some "PMINUD_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMINUD_XMMdq_MEMdq" ~mnemonic:"pminud" rec_
+  | Ok { iform = Some "PMINUW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMINUW_XMMdq_MEMdq" ~mnemonic:"pminuw" rec_
+  | Ok { iform = Some "PMULDQ_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMULDQ_XMMdq_MEMdq" ~mnemonic:"pmuldq" rec_
+  | Ok { iform = Some "PMULLD_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMULLD_XMMdq_MEMdq" ~mnemonic:"pmulld" rec_
+  | Ok { iform = Some "PHMINPOSUW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PHMINPOSUW_XMMdq_MEMdq" ~mnemonic:"phminposuw" rec_
+  | Ok { iform = Some "PTEST_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PTEST_XMMdq_MEMdq" ~mnemonic:"ptest" rec_
+  | Ok { iform = Some "PMOVSXBW_XMMdq_MEMq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMOVSXBW_XMMdq_MEMq" ~mnemonic:"pmovsxbw" rec_
+  | Ok { iform = Some "PMOVSXBD_XMMdq_MEMd"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMOVSXBD_XMMdq_MEMd" ~mnemonic:"pmovsxbd" rec_
+  | Ok { iform = Some "PMOVSXBQ_XMMdq_MEMw"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMOVSXBQ_XMMdq_MEMw" ~mnemonic:"pmovsxbq" rec_
+  | Ok { iform = Some "PMOVSXWD_XMMdq_MEMq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMOVSXWD_XMMdq_MEMq" ~mnemonic:"pmovsxwd" rec_
+  | Ok { iform = Some "PMOVSXWQ_XMMdq_MEMd"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMOVSXWQ_XMMdq_MEMd" ~mnemonic:"pmovsxwq" rec_
+  | Ok { iform = Some "PMOVSXDQ_XMMdq_MEMq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMOVSXDQ_XMMdq_MEMq" ~mnemonic:"pmovsxdq" rec_
+  | Ok { iform = Some "PMOVZXBW_XMMdq_MEMq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMOVZXBW_XMMdq_MEMq" ~mnemonic:"pmovzxbw" rec_
+  | Ok { iform = Some "PMOVZXBD_XMMdq_MEMd"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMOVZXBD_XMMdq_MEMd" ~mnemonic:"pmovzxbd" rec_
+  | Ok { iform = Some "PMOVZXBQ_XMMdq_MEMw"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMOVZXBQ_XMMdq_MEMw" ~mnemonic:"pmovzxbq" rec_
+  | Ok { iform = Some "PMOVZXWD_XMMdq_MEMq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMOVZXWD_XMMdq_MEMq" ~mnemonic:"pmovzxwd" rec_
+  | Ok { iform = Some "PMOVZXWQ_XMMdq_MEMd"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMOVZXWQ_XMMdq_MEMd" ~mnemonic:"pmovzxwq" rec_
+  | Ok { iform = Some "PMOVZXDQ_XMMdq_MEMq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMOVZXDQ_XMMdq_MEMq" ~mnemonic:"pmovzxdq" rec_
+  | Ok { iform = Some "MOVNTDQA_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"MOVNTDQA_XMMdq_MEMdq" ~mnemonic:"movntdqa" rec_
+  (* {!Opcode.Blendps}'s own doc comment: {!Palignr}'s own map-3 group, same shape. *)
+  | Ok { iform = Some "BLENDPS_XMMdq_XMMdq_IMMb"; _ } ->
+      xmm_binop_imm_rr_form ~form_id:"BLENDPS_XMMdq_XMMdq_IMMb" ~mnemonic:"blendps" rec_
+  | Ok { iform = Some "BLENDPD_XMMdq_XMMdq_IMMb"; _ } ->
+      xmm_binop_imm_rr_form ~form_id:"BLENDPD_XMMdq_XMMdq_IMMb" ~mnemonic:"blendpd" rec_
+  | Ok { iform = Some "DPPS_XMMdq_XMMdq_IMMb"; _ } ->
+      xmm_binop_imm_rr_form ~form_id:"DPPS_XMMdq_XMMdq_IMMb" ~mnemonic:"dpps" rec_
+  | Ok { iform = Some "DPPD_XMMdq_XMMdq_IMMb"; _ } ->
+      xmm_binop_imm_rr_form ~form_id:"DPPD_XMMdq_XMMdq_IMMb" ~mnemonic:"dppd" rec_
+  | Ok { iform = Some "MPSADBW_XMMdq_XMMdq_IMMb"; _ } ->
+      xmm_binop_imm_rr_form ~form_id:"MPSADBW_XMMdq_XMMdq_IMMb" ~mnemonic:"mpsadbw" rec_
+  | Ok { iform = Some "PBLENDW_XMMdq_XMMdq_IMMb"; _ } ->
+      xmm_binop_imm_rr_form ~form_id:"PBLENDW_XMMdq_XMMdq_IMMb" ~mnemonic:"pblendw" rec_
+  | Ok { iform = Some "INSERTPS_XMMps_XMMps_IMMb"; _ } ->
+      xmm_binop_imm_rr_form ~form_id:"INSERTPS_XMMps_XMMps_IMMb" ~mnemonic:"insertps" rec_
+  | Ok { iform = Some "BLENDPS_XMMdq_MEMdq_IMMb"; _ } ->
+      xmm_binop_imm_rm_form ~form_id:"BLENDPS_XMMdq_MEMdq_IMMb" ~mnemonic:"blendps" rec_
+  | Ok { iform = Some "BLENDPD_XMMdq_MEMdq_IMMb"; _ } ->
+      xmm_binop_imm_rm_form ~form_id:"BLENDPD_XMMdq_MEMdq_IMMb" ~mnemonic:"blendpd" rec_
+  | Ok { iform = Some "DPPS_XMMdq_MEMdq_IMMb"; _ } ->
+      xmm_binop_imm_rm_form ~form_id:"DPPS_XMMdq_MEMdq_IMMb" ~mnemonic:"dpps" rec_
+  | Ok { iform = Some "DPPD_XMMdq_MEMdq_IMMb"; _ } ->
+      xmm_binop_imm_rm_form ~form_id:"DPPD_XMMdq_MEMdq_IMMb" ~mnemonic:"dppd" rec_
+  | Ok { iform = Some "MPSADBW_XMMdq_MEMdq_IMMb"; _ } ->
+      xmm_binop_imm_rm_form ~form_id:"MPSADBW_XMMdq_MEMdq_IMMb" ~mnemonic:"mpsadbw" rec_
+  | Ok { iform = Some "PBLENDW_XMMdq_MEMdq_IMMb"; _ } ->
+      xmm_binop_imm_rm_form ~form_id:"PBLENDW_XMMdq_MEMdq_IMMb" ~mnemonic:"pblendw" rec_
+  | Ok { iform = Some "INSERTPS_XMMps_MEMd_IMMb"; _ } ->
+      xmm_binop_imm_rm_form ~form_id:"INSERTPS_XMMps_MEMd_IMMb" ~mnemonic:"insertps" rec_
   (* {!Opcode.Movdqa}'s own doc comment: {!Movsd}/{!Movss}'s own load/store shape
      ({!xmm_mov_form}) for the memory directions, plus {!xmm_binop_rr_form} reused verbatim for
      the register-register form (a plain move's REG0 rw="w" is handled generically by

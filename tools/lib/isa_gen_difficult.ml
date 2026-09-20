@@ -653,6 +653,33 @@ let x86_sse_binop_rr_entries =
           "PABSB_XMMdq_XMMdq";
           "PABSW_XMMdq_XMMdq";
           "PABSD_XMMdq_XMMdq";
+          "PCMPEQQ_XMMdq_XMMdq";
+          "PCMPGTQ_XMMdq_XMMdq";
+          "PACKUSDW_XMMdq_XMMdq";
+          "PMAXSB_XMMdq_XMMdq";
+          "PMAXSD_XMMdq_XMMdq";
+          "PMAXUD_XMMdq_XMMdq";
+          "PMAXUW_XMMdq_XMMdq";
+          "PMINSB_XMMdq_XMMdq";
+          "PMINSD_XMMdq_XMMdq";
+          "PMINUD_XMMdq_XMMdq";
+          "PMINUW_XMMdq_XMMdq";
+          "PMULDQ_XMMdq_XMMdq";
+          "PMULLD_XMMdq_XMMdq";
+          "PHMINPOSUW_XMMdq_XMMdq";
+          "PTEST_XMMdq_XMMdq";
+          "PMOVSXBW_XMMdq_XMMq";
+          "PMOVSXBD_XMMdq_XMMd";
+          "PMOVSXBQ_XMMdq_XMMw";
+          "PMOVSXWD_XMMdq_XMMq";
+          "PMOVSXWQ_XMMdq_XMMd";
+          "PMOVSXDQ_XMMdq_XMMq";
+          "PMOVZXBW_XMMdq_XMMq";
+          "PMOVZXBD_XMMdq_XMMd";
+          "PMOVZXBQ_XMMdq_XMMw";
+          "PMOVZXWD_XMMdq_XMMq";
+          "PMOVZXWQ_XMMdq_XMMd";
+          "PMOVZXDQ_XMMdq_XMMq";
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -797,6 +824,34 @@ let x86_sse_binop_rm_entries =
           "PABSB_XMMdq_MEMdq";
           "PABSW_XMMdq_MEMdq";
           "PABSD_XMMdq_MEMdq";
+          "PCMPEQQ_XMMdq_MEMdq";
+          "PCMPGTQ_XMMdq_MEMdq";
+          "PACKUSDW_XMMdq_MEMdq";
+          "PMAXSB_XMMdq_MEMdq";
+          "PMAXSD_XMMdq_MEMdq";
+          "PMAXUD_XMMdq_MEMdq";
+          "PMAXUW_XMMdq_MEMdq";
+          "PMINSB_XMMdq_MEMdq";
+          "PMINSD_XMMdq_MEMdq";
+          "PMINUD_XMMdq_MEMdq";
+          "PMINUW_XMMdq_MEMdq";
+          "PMULDQ_XMMdq_MEMdq";
+          "PMULLD_XMMdq_MEMdq";
+          "PHMINPOSUW_XMMdq_MEMdq";
+          "PTEST_XMMdq_MEMdq";
+          "PMOVSXBW_XMMdq_MEMq";
+          "PMOVSXBD_XMMdq_MEMd";
+          "PMOVSXBQ_XMMdq_MEMw";
+          "PMOVSXWD_XMMdq_MEMq";
+          "PMOVSXWQ_XMMdq_MEMd";
+          "PMOVSXDQ_XMMdq_MEMq";
+          "PMOVZXBW_XMMdq_MEMq";
+          "PMOVZXBD_XMMdq_MEMd";
+          "PMOVZXBQ_XMMdq_MEMw";
+          "PMOVZXWD_XMMdq_MEMq";
+          "PMOVZXWQ_XMMdq_MEMd";
+          "PMOVZXDQ_XMMdq_MEMq";
+          "MOVNTDQA_XMMdq_MEMdq";
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -836,6 +891,17 @@ let x86_sse_binop_imm_rr_entries =
           ("PSHUFLW_XMMdq_XMMdq_IMMb", "27");
           ("PSHUFHW_XMMdq_XMMdq_IMMb", "27");
           ("PALIGNR_XMMdq_XMMdq_IMMb", "5");
+          ("ROUNDPS_XMMps_XMMps_IMMb", "5");
+          ("ROUNDPD_XMMpd_XMMpd_IMMb", "5");
+          ("ROUNDSS_XMMd_XMMd_IMMb", "5");
+          ("ROUNDSD_XMMq_XMMq_IMMb", "5");
+          ("BLENDPS_XMMdq_XMMdq_IMMb", "5");
+          ("BLENDPD_XMMdq_XMMdq_IMMb", "5");
+          ("DPPS_XMMdq_XMMdq_IMMb", "5");
+          ("DPPD_XMMdq_XMMdq_IMMb", "5");
+          ("MPSADBW_XMMdq_XMMdq_IMMb", "5");
+          ("PBLENDW_XMMdq_XMMdq_IMMb", "5");
+          ("INSERTPS_XMMps_XMMps_IMMb", "5");
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -872,6 +938,17 @@ let x86_sse_binop_imm_rm_entries =
           ("PSHUFLW_XMMdq_MEMdq_IMMb", "27");
           ("PSHUFHW_XMMdq_MEMdq_IMMb", "27");
           ("PALIGNR_XMMdq_MEMdq_IMMb", "5");
+          ("ROUNDPS_XMMps_MEMps_IMMb", "5");
+          ("ROUNDPD_XMMpd_MEMpd_IMMb", "5");
+          ("ROUNDSS_XMMd_MEMd_IMMb", "5");
+          ("ROUNDSD_XMMq_MEMq_IMMb", "5");
+          ("BLENDPS_XMMdq_MEMdq_IMMb", "5");
+          ("BLENDPD_XMMdq_MEMdq_IMMb", "5");
+          ("DPPS_XMMdq_MEMdq_IMMb", "5");
+          ("DPPD_XMMdq_MEMdq_IMMb", "5");
+          ("MPSADBW_XMMdq_MEMdq_IMMb", "5");
+          ("PBLENDW_XMMdq_MEMdq_IMMb", "5");
+          ("INSERTPS_XMMps_MEMd_IMMb", "5");
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -1645,6 +1722,67 @@ let x86_vmovd_store_mr_entries =
       x86_movd_store_mr_entry ~target ~form_id:"x86:VMOVD_MEMd_XMMd" ~lookup_key:"VMOVD_MEMd_XMMd")
     [ Target.X86_32; Target.X86_64 ]
 
+(* PEXTRB/PEXTRD/EXTRACTPS memory-destination forms ({!Isa_norm_xed.pextr_store_mr_form}'s own doc
+   comment): {!x86_movd_store_mr_entry}'s own stack-based addressing plus the trailing imm8. *)
+let x86_pextr_store_mr_entry ~target ~form_id ~lookup_key ~imm =
+  let stack, _, _ = x86_registers target in
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:store-base-disp8-sib:%s" form_id (Target.to_string target);
+    rule_ids = [ "store-base-disp8-sib"; "mixed-gpr-xmm-operands" ];
+    operands = [ ("imm", imm); ("src", "xmm0"); ("dest", Printf.sprintf "16(%%%s)" stack) ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_pextr_store_mr_entries =
+  List.concat_map
+    (fun form ->
+      List.map
+        (fun target ->
+          x86_pextr_store_mr_entry ~target ~form_id:("x86:" ^ form) ~lookup_key:form ~imm:"1")
+        [ Target.X86_32; Target.X86_64 ])
+    [ "PEXTRB_MEMb_XMMdq_IMMb"; "PEXTRD_MEMd_XMMdq_IMMb"; "EXTRACTPS_MEMd_XMMps_IMMb" ]
+
+(* BLENDVPS/BLENDVPD/PBLENDVB ({!Isa_norm_xed.xmm_blendv_form}'s own doc comment): the canonical
+   spelling writes the implicit [%xmm0] mask first, so [dest] is [%xmm2] here to keep the mask
+   distinguishable from it. *)
+let x86_blendv_entry ~target ~form_id ~lookup_key ~mem =
+  let stack, _, _ = x86_registers target in
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id =
+      Printf.sprintf "%s:%s:%s" form_id
+        (if mem then "load-base-disp8-sib" else "register-register")
+        (Target.to_string target);
+    rule_ids =
+      [ (if mem then "load-base-disp8-sib" else "canonical-spelling"); "xmm-register-operands" ];
+    operands =
+      [
+        (if mem then ("mem", Printf.sprintf "16(%%%s)" stack) else ("src", "xmm1")); ("dest", "xmm2");
+      ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_blendv_entries =
+  List.concat_map
+    (fun (name, mem) ->
+      List.map
+        (fun target ->
+          let lookup_key = name ^ if mem then "_XMMdq_MEMdq" else "_XMMdq_XMMdq" in
+          x86_blendv_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key ~mem)
+        [ Target.X86_32; Target.X86_64 ])
+    (List.concat_map
+       (fun name -> [ (name, false); (name, true) ])
+       [ "BLENDVPS"; "BLENDVPD"; "PBLENDVB" ])
+
 (* [pinsrw]'s own cross-register-class member ({!Isa_norm_xed.pinsrw_rr_form}'s own doc comment):
    {!x86_sse_binop_imm_rr_entry}'s own [imm]/[dest] shape with a GPR [src] rather than xmm,
    {!x86_cvtsi2f_rr_entry}'s own GPR-source convention. No 64-bit GPR variant exists (always
@@ -1663,11 +1801,13 @@ let x86_pinsrw_rr_entry ~target ~form_id ~lookup_key ~imm =
   }
 
 let x86_pinsrw_rr_entries =
-  List.map
-    (fun target ->
-      x86_pinsrw_rr_entry ~target ~form_id:"x86:PINSRW_XMMdq_GPR32_IMMb"
-        ~lookup_key:"PINSRW_XMMdq_GPR32_IMMb" ~imm:"1")
-    [ Target.X86_32; Target.X86_64 ]
+  List.concat_map
+    (fun form ->
+      List.map
+        (fun target ->
+          x86_pinsrw_rr_entry ~target ~form_id:("x86:" ^ form) ~lookup_key:form ~imm:"1")
+        [ Target.X86_32; Target.X86_64 ])
+    [ "PINSRW_XMMdq_GPR32_IMMb"; "PINSRB_XMMdq_GPR32d_IMMb"; "PINSRD_XMMdq_GPR32d_IMMb" ]
 
 (* {!x86_pinsrw_rr_entry}'s register<-memory sibling ({!x86_sse_binop_imm_rm_entry}'s own
    stack-based addressing). *)
@@ -1686,11 +1826,13 @@ let x86_pinsrw_rm_entry ~target ~form_id ~lookup_key ~imm =
   }
 
 let x86_pinsrw_rm_entries =
-  List.map
-    (fun target ->
-      x86_pinsrw_rm_entry ~target ~form_id:"x86:PINSRW_XMMdq_MEMw_IMMb"
-        ~lookup_key:"PINSRW_XMMdq_MEMw_IMMb" ~imm:"1")
-    [ Target.X86_32; Target.X86_64 ]
+  List.concat_map
+    (fun form ->
+      List.map
+        (fun target ->
+          x86_pinsrw_rm_entry ~target ~form_id:("x86:" ^ form) ~lookup_key:form ~imm:"1")
+        [ Target.X86_32; Target.X86_64 ])
+    [ "PINSRW_XMMdq_MEMw_IMMb"; "PINSRB_XMMdq_MEMb_IMMb"; "PINSRD_XMMdq_MEMd_IMMb" ]
 
 (* [pextrw]'s own cross-register-class member: {!x86_cvtf2i_rr_entry}'s own GPR-dest convention
    plus the trailing imm8. Also generates {!Vpextrw}'s own entry below (same shape, a different
@@ -1709,11 +1851,18 @@ let x86_pextrw_rr_entry ~target ~form_id ~lookup_key ~imm =
   }
 
 let x86_pextrw_rr_entries =
-  List.map
-    (fun target ->
-      x86_pextrw_rr_entry ~target ~form_id:"x86:PEXTRW_GPR32_XMMdq_IMMb"
-        ~lookup_key:"PEXTRW_GPR32_XMMdq_IMMb" ~imm:"1")
-    [ Target.X86_32; Target.X86_64 ]
+  List.concat_map
+    (fun form ->
+      List.map
+        (fun target ->
+          x86_pextrw_rr_entry ~target ~form_id:("x86:" ^ form) ~lookup_key:form ~imm:"1")
+        [ Target.X86_32; Target.X86_64 ])
+    [
+      "PEXTRW_GPR32_XMMdq_IMMb";
+      "PEXTRB_GPR32d_XMMdq_IMMb";
+      "PEXTRD_GPR32d_XMMdq_IMMb";
+      "EXTRACTPS_GPR32d_XMMdq_IMMb";
+    ]
 
 (* [vpinsrw]'s own cross-register-class member ({!Isa_norm_xed.vpinsrw_rrr_form}'s own doc
    comment): {!x86_vex_binop_imm_rrr_entry}'s own [imm]/[src1]/[dest] shape with a GPR [src2]
@@ -5153,21 +5302,22 @@ let all =
   @ x86_cvtsi2f_rm_entries @ x86_cvtf2i_rr_entries @ x86_cvtf2i_rm_entries
   @ x86_movd_load_rr_entries @ x86_movd_load_rm_entries @ x86_movd_store_rr_entries
   @ x86_movd_store_mr_entries @ x86_vmovd_load_rr_entries @ x86_vmovd_load_rm_entries
-  @ x86_vmovd_store_rr_entries @ x86_vmovd_store_mr_entries @ x86_pinsrw_rr_entries
-  @ x86_pinsrw_rm_entries @ x86_pextrw_rr_entries @ x86_vpinsrw_rrr_entries
-  @ x86_vpinsrw_rr_mem_entries @ x86_vpextrw_rr_entries @ x86_movmsk_entries @ x86_fadd_entries
-  @ fadd_s_entries @ fsub_s_entries @ fmul_s_entries @ fdiv_s_entries @ fadd_d_entries
-  @ fsub_d_entries @ fmul_d_entries @ fdiv_d_entries @ flw_entries @ fld_entries @ fsw_entries
-  @ fsd_entries @ sh1add_entries @ sh2add_entries @ sh3add_entries @ sh1adduw_entries
-  @ sh2adduw_entries @ sh3adduw_entries @ min_entries @ minu_entries @ max_entries @ maxu_entries
-  @ andn_entries @ orn_entries @ xnor_entries @ rol_entries @ ror_entries @ clz_entries
-  @ ctz_entries @ cpop_entries @ sextb_entries @ sexth_entries @ orcb_entries @ clzw_entries
-  @ ctzw_entries @ cpopw_entries @ brev8_entries @ rev8_entries @ pack_entries @ packh_entries
-  @ packw_entries @ zip_entries @ unzip_entries @ rolw_entries @ rorw_entries @ rori_entries
-  @ roriw_entries @ bclr_entries @ bext_entries @ binv_entries @ bset_entries @ bclri_entries
-  @ bexti_entries @ binvi_entries @ bseti_entries @ zext_h_entries @ clmul_entries @ clmulh_entries
-  @ clmulr_entries @ czero_eqz_entries @ czero_nez_entries @ sm3p0_entries @ sm3p1_entries
-  @ xperm4_entries @ xperm8_entries @ sha256sum0_entries @ sha256sum1_entries @ sha256sig0_entries
+  @ x86_vmovd_store_rr_entries @ x86_vmovd_store_mr_entries @ x86_blendv_entries
+  @ x86_pextr_store_mr_entries @ x86_pinsrw_rr_entries @ x86_pinsrw_rm_entries
+  @ x86_pextrw_rr_entries @ x86_vpinsrw_rrr_entries @ x86_vpinsrw_rr_mem_entries
+  @ x86_vpextrw_rr_entries @ x86_movmsk_entries @ x86_fadd_entries @ fadd_s_entries @ fsub_s_entries
+  @ fmul_s_entries @ fdiv_s_entries @ fadd_d_entries @ fsub_d_entries @ fmul_d_entries
+  @ fdiv_d_entries @ flw_entries @ fld_entries @ fsw_entries @ fsd_entries @ sh1add_entries
+  @ sh2add_entries @ sh3add_entries @ sh1adduw_entries @ sh2adduw_entries @ sh3adduw_entries
+  @ min_entries @ minu_entries @ max_entries @ maxu_entries @ andn_entries @ orn_entries
+  @ xnor_entries @ rol_entries @ ror_entries @ clz_entries @ ctz_entries @ cpop_entries
+  @ sextb_entries @ sexth_entries @ orcb_entries @ clzw_entries @ ctzw_entries @ cpopw_entries
+  @ brev8_entries @ rev8_entries @ pack_entries @ packh_entries @ packw_entries @ zip_entries
+  @ unzip_entries @ rolw_entries @ rorw_entries @ rori_entries @ roriw_entries @ bclr_entries
+  @ bext_entries @ binv_entries @ bset_entries @ bclri_entries @ bexti_entries @ binvi_entries
+  @ bseti_entries @ zext_h_entries @ clmul_entries @ clmulh_entries @ clmulr_entries
+  @ czero_eqz_entries @ czero_nez_entries @ sm3p0_entries @ sm3p1_entries @ xperm4_entries
+  @ xperm8_entries @ sha256sum0_entries @ sha256sum1_entries @ sha256sig0_entries
   @ sha256sig1_entries @ sha512sum0_entries @ sha512sum1_entries @ sha512sig0_entries
   @ sha512sig1_entries @ sha512sum0r_entries @ sha512sum1r_entries @ sha512sig0l_entries
   @ sha512sig1l_entries @ sha512sig0h_entries @ sha512sig1h_entries @ aes64ds_entries

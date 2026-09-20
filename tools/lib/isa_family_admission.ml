@@ -469,6 +469,99 @@ let promoted_case ~target ~form_id ~lookup_key =
   | (Target.X86_32 | Target.X86_64), "x86:PALIGNR_XMMdq_MEMdq_IMMb", "PALIGNR_XMMdq_MEMdq_IMMb" ->
       true
   | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:ROUNDPS_XMMps_XMMps_IMMb" | "x86:ROUNDPD_XMMpd_XMMpd_IMMb"
+      | "x86:ROUNDSS_XMMd_XMMd_IMMb" | "x86:ROUNDSD_XMMq_XMMq_IMMb" ),
+      ( "ROUNDPS_XMMps_XMMps_IMMb" | "ROUNDPD_XMMpd_XMMpd_IMMb" | "ROUNDSS_XMMd_XMMd_IMMb"
+      | "ROUNDSD_XMMq_XMMq_IMMb" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:ROUNDPS_XMMps_MEMps_IMMb" | "x86:ROUNDPD_XMMpd_MEMpd_IMMb"
+      | "x86:ROUNDSS_XMMd_MEMd_IMMb" | "x86:ROUNDSD_XMMq_MEMq_IMMb" ),
+      ( "ROUNDPS_XMMps_MEMps_IMMb" | "ROUNDPD_XMMpd_MEMpd_IMMb" | "ROUNDSS_XMMd_MEMd_IMMb"
+      | "ROUNDSD_XMMq_MEMq_IMMb" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:PCMPEQQ_XMMdq_XMMdq" | "x86:PCMPGTQ_XMMdq_XMMdq" | "x86:PACKUSDW_XMMdq_XMMdq"
+      | "x86:PMAXSB_XMMdq_XMMdq" | "x86:PMAXSD_XMMdq_XMMdq" | "x86:PMAXUD_XMMdq_XMMdq"
+      | "x86:PMAXUW_XMMdq_XMMdq" | "x86:PMINSB_XMMdq_XMMdq" | "x86:PMINSD_XMMdq_XMMdq"
+      | "x86:PMINUD_XMMdq_XMMdq" | "x86:PMINUW_XMMdq_XMMdq" | "x86:PMULDQ_XMMdq_XMMdq"
+      | "x86:PMULLD_XMMdq_XMMdq" | "x86:PHMINPOSUW_XMMdq_XMMdq" ),
+      ( "PCMPEQQ_XMMdq_XMMdq" | "PCMPGTQ_XMMdq_XMMdq" | "PACKUSDW_XMMdq_XMMdq"
+      | "PMAXSB_XMMdq_XMMdq" | "PMAXSD_XMMdq_XMMdq" | "PMAXUD_XMMdq_XMMdq" | "PMAXUW_XMMdq_XMMdq"
+      | "PMINSB_XMMdq_XMMdq" | "PMINSD_XMMdq_XMMdq" | "PMINUD_XMMdq_XMMdq" | "PMINUW_XMMdq_XMMdq"
+      | "PMULDQ_XMMdq_XMMdq" | "PMULLD_XMMdq_XMMdq" | "PHMINPOSUW_XMMdq_XMMdq" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:PCMPEQQ_XMMdq_MEMdq" | "x86:PCMPGTQ_XMMdq_MEMdq" | "x86:PACKUSDW_XMMdq_MEMdq"
+      | "x86:PMAXSB_XMMdq_MEMdq" | "x86:PMAXSD_XMMdq_MEMdq" | "x86:PMAXUD_XMMdq_MEMdq"
+      | "x86:PMAXUW_XMMdq_MEMdq" | "x86:PMINSB_XMMdq_MEMdq" | "x86:PMINSD_XMMdq_MEMdq"
+      | "x86:PMINUD_XMMdq_MEMdq" | "x86:PMINUW_XMMdq_MEMdq" | "x86:PMULDQ_XMMdq_MEMdq"
+      | "x86:PMULLD_XMMdq_MEMdq" | "x86:PHMINPOSUW_XMMdq_MEMdq" ),
+      ( "PCMPEQQ_XMMdq_MEMdq" | "PCMPGTQ_XMMdq_MEMdq" | "PACKUSDW_XMMdq_MEMdq"
+      | "PMAXSB_XMMdq_MEMdq" | "PMAXSD_XMMdq_MEMdq" | "PMAXUD_XMMdq_MEMdq" | "PMAXUW_XMMdq_MEMdq"
+      | "PMINSB_XMMdq_MEMdq" | "PMINSD_XMMdq_MEMdq" | "PMINUD_XMMdq_MEMdq" | "PMINUW_XMMdq_MEMdq"
+      | "PMULDQ_XMMdq_MEMdq" | "PMULLD_XMMdq_MEMdq" | "PHMINPOSUW_XMMdq_MEMdq" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:PTEST_XMMdq_XMMdq" | "x86:PMOVSXBW_XMMdq_XMMq" | "x86:PMOVSXBD_XMMdq_XMMd"
+      | "x86:PMOVSXBQ_XMMdq_XMMw" | "x86:PMOVSXWD_XMMdq_XMMq" | "x86:PMOVSXWQ_XMMdq_XMMd"
+      | "x86:PMOVSXDQ_XMMdq_XMMq" | "x86:PMOVZXBW_XMMdq_XMMq" | "x86:PMOVZXBD_XMMdq_XMMd"
+      | "x86:PMOVZXBQ_XMMdq_XMMw" | "x86:PMOVZXWD_XMMdq_XMMq" | "x86:PMOVZXWQ_XMMdq_XMMd"
+      | "x86:PMOVZXDQ_XMMdq_XMMq" ),
+      ( "PTEST_XMMdq_XMMdq" | "PMOVSXBW_XMMdq_XMMq" | "PMOVSXBD_XMMdq_XMMd" | "PMOVSXBQ_XMMdq_XMMw"
+      | "PMOVSXWD_XMMdq_XMMq" | "PMOVSXWQ_XMMdq_XMMd" | "PMOVSXDQ_XMMdq_XMMq"
+      | "PMOVZXBW_XMMdq_XMMq" | "PMOVZXBD_XMMdq_XMMd" | "PMOVZXBQ_XMMdq_XMMw"
+      | "PMOVZXWD_XMMdq_XMMq" | "PMOVZXWQ_XMMdq_XMMd" | "PMOVZXDQ_XMMdq_XMMq" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:PTEST_XMMdq_MEMdq" | "x86:PMOVSXBW_XMMdq_MEMq" | "x86:PMOVSXBD_XMMdq_MEMd"
+      | "x86:PMOVSXBQ_XMMdq_MEMw" | "x86:PMOVSXWD_XMMdq_MEMq" | "x86:PMOVSXWQ_XMMdq_MEMd"
+      | "x86:PMOVSXDQ_XMMdq_MEMq" | "x86:PMOVZXBW_XMMdq_MEMq" | "x86:PMOVZXBD_XMMdq_MEMd"
+      | "x86:PMOVZXBQ_XMMdq_MEMw" | "x86:PMOVZXWD_XMMdq_MEMq" | "x86:PMOVZXWQ_XMMdq_MEMd"
+      | "x86:PMOVZXDQ_XMMdq_MEMq" | "x86:MOVNTDQA_XMMdq_MEMdq" ),
+      ( "PTEST_XMMdq_MEMdq" | "PMOVSXBW_XMMdq_MEMq" | "PMOVSXBD_XMMdq_MEMd" | "PMOVSXBQ_XMMdq_MEMw"
+      | "PMOVSXWD_XMMdq_MEMq" | "PMOVSXWQ_XMMdq_MEMd" | "PMOVSXDQ_XMMdq_MEMq"
+      | "PMOVZXBW_XMMdq_MEMq" | "PMOVZXBD_XMMdq_MEMd" | "PMOVZXBQ_XMMdq_MEMw"
+      | "PMOVZXWD_XMMdq_MEMq" | "PMOVZXWQ_XMMdq_MEMd" | "PMOVZXDQ_XMMdq_MEMq"
+      | "MOVNTDQA_XMMdq_MEMdq" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:BLENDPS_XMMdq_XMMdq_IMMb" | "x86:BLENDPD_XMMdq_XMMdq_IMMb"
+      | "x86:DPPS_XMMdq_XMMdq_IMMb" | "x86:DPPD_XMMdq_XMMdq_IMMb" | "x86:MPSADBW_XMMdq_XMMdq_IMMb"
+      | "x86:PBLENDW_XMMdq_XMMdq_IMMb" ),
+      ( "BLENDPS_XMMdq_XMMdq_IMMb" | "BLENDPD_XMMdq_XMMdq_IMMb" | "DPPS_XMMdq_XMMdq_IMMb"
+      | "DPPD_XMMdq_XMMdq_IMMb" | "MPSADBW_XMMdq_XMMdq_IMMb" | "PBLENDW_XMMdq_XMMdq_IMMb" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:BLENDVPS_XMMdq_XMMdq" | "x86:BLENDVPS_XMMdq_MEMdq" | "x86:BLENDVPD_XMMdq_XMMdq"
+      | "x86:BLENDVPD_XMMdq_MEMdq" | "x86:PBLENDVB_XMMdq_XMMdq" | "x86:PBLENDVB_XMMdq_MEMdq" ),
+      ( "BLENDVPS_XMMdq_XMMdq" | "BLENDVPS_XMMdq_MEMdq" | "BLENDVPD_XMMdq_XMMdq"
+      | "BLENDVPD_XMMdq_MEMdq" | "PBLENDVB_XMMdq_XMMdq" | "PBLENDVB_XMMdq_MEMdq" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:PEXTRB_MEMb_XMMdq_IMMb" | "x86:PEXTRD_MEMd_XMMdq_IMMb" | "x86:EXTRACTPS_MEMd_XMMps_IMMb"),
+      ("PEXTRB_MEMb_XMMdq_IMMb" | "PEXTRD_MEMd_XMMdq_IMMb" | "EXTRACTPS_MEMd_XMMps_IMMb") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:PINSRB_XMMdq_GPR32d_IMMb" | "x86:PINSRD_XMMdq_GPR32d_IMMb"
+      | "x86:PINSRB_XMMdq_MEMb_IMMb" | "x86:PINSRD_XMMdq_MEMd_IMMb" | "x86:PEXTRB_GPR32d_XMMdq_IMMb"
+      | "x86:PEXTRD_GPR32d_XMMdq_IMMb" | "x86:EXTRACTPS_GPR32d_XMMdq_IMMb" ),
+      ( "PINSRB_XMMdq_GPR32d_IMMb" | "PINSRD_XMMdq_GPR32d_IMMb" | "PINSRB_XMMdq_MEMb_IMMb"
+      | "PINSRD_XMMdq_MEMd_IMMb" | "PEXTRB_GPR32d_XMMdq_IMMb" | "PEXTRD_GPR32d_XMMdq_IMMb"
+      | "EXTRACTPS_GPR32d_XMMdq_IMMb" ) ) ->
+      true
+  | (Target.X86_32 | Target.X86_64), "x86:INSERTPS_XMMps_XMMps_IMMb", "INSERTPS_XMMps_XMMps_IMMb" ->
+      true
+  | (Target.X86_32 | Target.X86_64), "x86:INSERTPS_XMMps_MEMd_IMMb", "INSERTPS_XMMps_MEMd_IMMb" ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:BLENDPS_XMMdq_MEMdq_IMMb" | "x86:BLENDPD_XMMdq_MEMdq_IMMb"
+      | "x86:DPPS_XMMdq_MEMdq_IMMb" | "x86:DPPD_XMMdq_MEMdq_IMMb" | "x86:MPSADBW_XMMdq_MEMdq_IMMb"
+      | "x86:PBLENDW_XMMdq_MEMdq_IMMb" ),
+      ( "BLENDPS_XMMdq_MEMdq_IMMb" | "BLENDPD_XMMdq_MEMdq_IMMb" | "DPPS_XMMdq_MEMdq_IMMb"
+      | "DPPD_XMMdq_MEMdq_IMMb" | "MPSADBW_XMMdq_MEMdq_IMMb" | "PBLENDW_XMMdq_MEMdq_IMMb" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
       ( "x86:PHADDW_XMMdq_MEMdq" | "x86:PHADDD_XMMdq_MEMdq" | "x86:PHSUBW_XMMdq_MEMdq"
       | "x86:PHSUBD_XMMdq_MEMdq" | "x86:PSIGNB_XMMdq_MEMdq" | "x86:PSIGNW_XMMdq_MEMdq"
       | "x86:PSIGND_XMMdq_MEMdq" | "x86:PMADDUBSW_XMMdq_MEMdq" | "x86:PMULHRSW_XMMdq_MEMdq" ),

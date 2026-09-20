@@ -1142,6 +1142,8 @@ let test_counts () =
       + List.length Isa_gen_difficult.x86_vmovd_load_rm_entries
       + List.length Isa_gen_difficult.x86_vmovd_store_rr_entries
       + List.length Isa_gen_difficult.x86_vmovd_store_mr_entries
+      + List.length Isa_gen_difficult.x86_blendv_entries
+      + List.length Isa_gen_difficult.x86_pextr_store_mr_entries
       + List.length Isa_gen_difficult.x86_pinsrw_rr_entries
       + List.length Isa_gen_difficult.x86_pinsrw_rm_entries
       + List.length Isa_gen_difficult.x86_pextrw_rr_entries
@@ -1773,10 +1775,10 @@ let test_counts () =
     (List.length Isa_gen_difficult.x86_vex_unop_rr_entries = 34);
   check "x86_vex_unop_rr_mem_entries has 32 entries (16 mnemonics, one per target)"
     (List.length Isa_gen_difficult.x86_vex_unop_rr_mem_entries = 32);
-  check "x86_sse_binop_imm_rr_entries has 20 entries (10 mnemonics, one per target)"
-    (List.length Isa_gen_difficult.x86_sse_binop_imm_rr_entries = 20);
-  check "x86_sse_binop_imm_rm_entries has 20 entries (10 mnemonics, one per target)"
-    (List.length Isa_gen_difficult.x86_sse_binop_imm_rm_entries = 20);
+  check "x86_sse_binop_imm_rr_entries has 42 entries (21 mnemonics, one per target)"
+    (List.length Isa_gen_difficult.x86_sse_binop_imm_rr_entries = 42);
+  check "x86_sse_binop_imm_rm_entries has 42 entries (21 mnemonics, one per target)"
+    (List.length Isa_gen_difficult.x86_sse_binop_imm_rm_entries = 42);
   check "x86_xmm_shift_imm_entries has 20 entries (10 mnemonics, one per target)"
     (List.length Isa_gen_difficult.x86_xmm_shift_imm_entries = 20);
   check "x86_vex_binop_imm_rrr_entries has 12 entries (6 mnemonics, one per target)"
