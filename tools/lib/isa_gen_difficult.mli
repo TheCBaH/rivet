@@ -207,6 +207,14 @@ val x86_sse_binop_imm_rm_entries : entry list
     on x86-32 and x86-64 - {!x86_sse_binop_imm_rr_entries}'s register<-memory
     sibling. *)
 
+val x86_xmm_shift_imm_entries : entry list
+(** [psllw]/[pslld]/[psllq]/[psrlw]/[psrld]/[psrlq]/[psraw]/[psrad $5, %xmm0] on x86-32 and
+    x86-64 - the immediate-count group-opcode sibling of {!x86_sse_binop_rr_entries}'s own
+    register/memory-count shift family, a single read-write register plus a concrete imm8 shift
+    count (no second register, unlike {!x86_sse_binop_imm_rr_entries}'s pair), confirmed against
+    real GNU as before {!Isa_norm_xed.xmm_shift_imm_form} and x86_family_encode.ml's own
+    [Lowered.Xmm_shift_imm_rm] shape were built. *)
+
 val x86_sse_mov_entries : entry list
 (** [movsd]/[movss 16(%esp|%rsp), %xmm0] (load) and [movsd]/[movss %xmm0,
     16(%esp|%rsp)] (store) on x86-32 and x86-64 - a plain move, not another
@@ -267,6 +275,15 @@ val x86_vex_unop_imm_rr_entries : entry list
 val x86_vex_unop_imm_rm_entries : entry list
 (** [vpshufd]/[vpshuflw]/[vpshufhw $27, 16(%esp|%rsp), %xmm0] on x86-32 and
     x86-64 - {!x86_vex_unop_imm_rr_entries}'s register<-memory sibling. *)
+
+val x86_vex_shift_imm_rrr_entries : entry list
+(** [vpsllw]/[vpslld]/[vpsllq]/[vpsrlw]/[vpsrld]/[vpsrlq]/[vpsraw]/[vpsrad $5, %xmm2, %xmm1] on
+    x86-32 and x86-64 - the VEX sibling of {!x86_xmm_shift_imm_entries}, byte-for-byte the same
+    [imm, src, dest] operand triple as {!x86_vex_unop_imm_rr_entries}'s own VPSHUFD family
+    (only [dest]'s real hardware role differs - VEX.vvvv here, not architecturally unused -
+    which this generator layer does not model), confirmed against real GNU as before
+    {!Isa_norm_xed.vex_shift_imm_rr_form} and x86_family_encode.ml's own
+    [Lowered.Vex_shift_imm_rm] shape were built. *)
 
 val x86_cvtsi2f_rr_entries : entry list
 (** [cvtsi2sd]/[cvtsi2ss %eax, %xmm0] on x86-32 and x86-64, plus

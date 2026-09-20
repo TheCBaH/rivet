@@ -1299,6 +1299,80 @@ let xmm_binop_imm_rm_form ~form_id ~mnemonic (rec_ : R.t) =
            (List.length operands))
   | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
 
+(* PSLLW/PSLLD/PSLLQ/PSRLW/PSRLD/PSRLQ/PSRAW/PSRAD's immediate-count group-opcode form:
+   {!xmm_binop_rr_form}'s single-register sibling - REG0 (dest, rw) and IMM0 (r), no REG1 at
+   all, since the ModR/M reg field this iform also carries is a fixed per-mnemonic opcode
+   extension (x86_family_encode.ml's [Lowered.Xmm_shift_imm_rm] doc comment), not a semantic
+   operand XED's own resolved operand list exposes. XED's own pattern also fixes MOD=3 for this
+   iform - register-only, no memory sibling exists at all. *)
+let xmm_shift_imm_form ~form_id ~mnemonic (rec_ : R.t) =
+  match rec_.encoding with
+  | R.X86_encoding { space; opcode_map; opcode; pattern; operands = [ a; b ] }
+    when a.op_name = "REG0" && b.op_name = "IMM0" ->
+      let dest =
+        {
+          op_name = "dest";
+          op_kind = Register { class_ = X86_xmm; excluded = [] };
+          role = role_of_rw a.rw;
+          explicit = true;
+        }
+      in
+      let imm =
+        {
+          op_name = "imm";
+          op_kind =
+            Immediate
+              {
+                width_bits = 8;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs = [];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "x86:" ^ form_id;
+          arch = X86;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding = X86_encoding { space; opcode_map; opcode; pattern };
+          operands = [ imm; dest ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [ Syn_decorated ("$", Syn_operand "imm"); Syn_decorated ("%", Syn_operand "dest") ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  Printf.sprintf "REG0 (rw=%s), IMM0 (rw=%s) taken verbatim from encoding.operands"
+                    a.rw b.rw;
+              };
+              {
+                label = Inferred;
+                note =
+                  "AT&T operand order (imm, dest) is GAS convention, not a XED fact; the ModR/M \
+                   reg field's fixed opcode extension is not a semantic operand XED exposes here";
+              };
+            ];
+          diagnostics = [];
+        }
+  | R.X86_encoding { operands; _ } ->
+      err
+        (form_id ^ "-unrecognized-operands")
+        (Printf.sprintf "expected REG0/IMM0 operands in that order, got %d" (List.length operands))
+  | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
+
 (* VEX-encoded scalar-double register-register binops (VADDSD/VSUBSD/VMULSD/
    VDIVSD_XMMdq_XMMdq_XMMq): the first x86 vector-extension (AVX) admission,
    as opposed to every {!xmm_binop_rr_form} caller above, which is legacy
@@ -1876,6 +1950,95 @@ let vex_unop_imm_rr_form ~form_id ~mnemonic (rec_ : R.t) =
                   "VEX.vvvv is architecturally unused (must be 1111) for this genuinely \
                    two-operand-plus-immediate form - confirmed against real GNU as rejecting a \
                    third register operand, same as {!vex_unop_rr_form}'s own non-immediate forms";
+              };
+            ];
+          diagnostics = [];
+        }
+  | R.X86_encoding { operands; _ } ->
+      err
+        (form_id ^ "-unrecognized-operands")
+        (Printf.sprintf "expected REG0/REG1/IMM0 operands in that order, got %d"
+           (List.length operands))
+  | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
+
+(* VPSLLW/VPSLLD/VPSLLQ/VPSRLW/VPSRLD/VPSRLQ/VPSRAW/VPSRAD's immediate-count group-opcode form
+  : {!vex_unop_imm_rr_form}'s own REG0/REG1/IMM0 operand shape, but unlike that
+   function's own fact - VEX.vvvv is genuinely real here (write, {!xmm_shift_imm_form}'s VEX
+   sibling): REG0 is XMM_N (vvvv, dest), not XMM_R (ModR/M reg) the way {!vex_unop_imm_rr_form}'s
+   own REG0 is - x86_family_encode.ml's [Lowered.Vex_shift_imm_rm] doc comment has the byte-level
+   detail. Register-only, same as {!xmm_shift_imm_form} - no memory sibling exists. *)
+let vex_shift_imm_rr_form ~form_id ~mnemonic (rec_ : R.t) =
+  match rec_.encoding with
+  | R.X86_encoding { space; opcode_map; opcode; pattern; operands = [ a; b; c ] }
+    when a.op_name = "REG0" && b.op_name = "REG1" && c.op_name = "IMM0" ->
+      let dest =
+        {
+          op_name = "dest";
+          op_kind = Register { class_ = X86_xmm; excluded = [] };
+          role = role_of_rw a.rw;
+          explicit = true;
+        }
+      in
+      let src =
+        {
+          op_name = "src";
+          op_kind = Register { class_ = X86_xmm; excluded = [] };
+          role = role_of_rw b.rw;
+          explicit = true;
+        }
+      in
+      let imm =
+        {
+          op_name = "imm";
+          op_kind =
+            Immediate
+              {
+                width_bits = 8;
+                signed = false;
+                implicit_low_zero_bits = 0;
+                nonzero = false;
+                runs = [];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "x86:" ^ form_id;
+          arch = X86;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding = X86_encoding { space; opcode_map; opcode; pattern };
+          operands = [ imm; src; dest ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_decorated ("$", Syn_operand "imm");
+                  Syn_decorated ("%", Syn_operand "src");
+                  Syn_decorated ("%", Syn_operand "dest");
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  Printf.sprintf
+                    "REG0 (rw=%s, dest, vvvv), REG1 (rw=%s, src, ModR/M r/m), IMM0 (rw=%s) taken \
+                     verbatim from encoding.operands"
+                    a.rw b.rw c.rw;
+              };
+              {
+                label = Inferred;
+                note =
+                  "the ModR/M reg field's fixed opcode extension is not a semantic operand XED \
+                   exposes here, the same {!xmm_shift_imm_form}'s own fact";
               };
             ];
           diagnostics = [];
@@ -3917,6 +4080,29 @@ let normalize (rec_ : R.t) =
       xmm_binop_rr_form ~form_id:"PAVGW_XMMdq_XMMdq" ~mnemonic:"pavgw" rec_
   | Ok { iform = Some "PSADBW_XMMdq_XMMdq"; _ } ->
       xmm_binop_rr_form ~form_id:"PSADBW_XMMdq_XMMdq" ~mnemonic:"psadbw" rec_
+  (* {!Opcode.Psllw}'s own doc comment: packed shift left/right logical/arithmetic,
+     register/memory shift-count form (opcodes 0xF1-0xF3/0xD1-0xD3/0xE1-0xE2, 66-mandatory-prefix
+     only, XED extension SSE2), the same plain xmm-xmm/xmm-memory shape as {!Paddb}. The separate
+     immediate-count group-opcode form (XED iform suffix [_IMMb]) is a distinct, not-yet-admitted
+     shape - nothing here claims it. Only the XMM iforms; the MMX ([MMXq]) iforms are the same
+     unrelated legacy register class {!Pmullw}'s own doc comment already excludes. Confirmed
+     against real GNU as (i686-linux-gnu-as/x86_64-linux-gnu-as 2.44). *)
+  | Ok { iform = Some "PSLLW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PSLLW_XMMdq_XMMdq" ~mnemonic:"psllw" rec_
+  | Ok { iform = Some "PSLLD_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PSLLD_XMMdq_XMMdq" ~mnemonic:"pslld" rec_
+  | Ok { iform = Some "PSLLQ_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PSLLQ_XMMdq_XMMdq" ~mnemonic:"psllq" rec_
+  | Ok { iform = Some "PSRLW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PSRLW_XMMdq_XMMdq" ~mnemonic:"psrlw" rec_
+  | Ok { iform = Some "PSRLD_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PSRLD_XMMdq_XMMdq" ~mnemonic:"psrld" rec_
+  | Ok { iform = Some "PSRLQ_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PSRLQ_XMMdq_XMMdq" ~mnemonic:"psrlq" rec_
+  | Ok { iform = Some "PSRAW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PSRAW_XMMdq_XMMdq" ~mnemonic:"psraw" rec_
+  | Ok { iform = Some "PSRAD_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PSRAD_XMMdq_XMMdq" ~mnemonic:"psrad" rec_
   | Ok { iform = Some "PMULLW_XMMdq_MEMdq"; _ } ->
       xmm_binop_rm_form ~form_id:"PMULLW_XMMdq_MEMdq" ~mnemonic:"pmullw" rec_
   | Ok { iform = Some "PMULHW_XMMdq_MEMdq"; _ } ->
@@ -3929,6 +4115,119 @@ let normalize (rec_ : R.t) =
       xmm_binop_rm_form ~form_id:"PAVGW_XMMdq_MEMdq" ~mnemonic:"pavgw" rec_
   | Ok { iform = Some "PSADBW_XMMdq_MEMdq"; _ } ->
       xmm_binop_rm_form ~form_id:"PSADBW_XMMdq_MEMdq" ~mnemonic:"psadbw" rec_
+  | Ok { iform = Some "PSLLW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PSLLW_XMMdq_MEMdq" ~mnemonic:"psllw" rec_
+  | Ok { iform = Some "PSLLD_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PSLLD_XMMdq_MEMdq" ~mnemonic:"pslld" rec_
+  | Ok { iform = Some "PSLLQ_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PSLLQ_XMMdq_MEMdq" ~mnemonic:"psllq" rec_
+  | Ok { iform = Some "PSRLW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PSRLW_XMMdq_MEMdq" ~mnemonic:"psrlw" rec_
+  | Ok { iform = Some "PSRLD_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PSRLD_XMMdq_MEMdq" ~mnemonic:"psrld" rec_
+  | Ok { iform = Some "PSRLQ_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PSRLQ_XMMdq_MEMdq" ~mnemonic:"psrlq" rec_
+  | Ok { iform = Some "PSRAW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PSRAW_XMMdq_MEMdq" ~mnemonic:"psraw" rec_
+  | Ok { iform = Some "PSRAD_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PSRAD_XMMdq_MEMdq" ~mnemonic:"psrad" rec_
+  (* {!Opcode.Psllw}'s own doc comment: the immediate-count group-opcode sibling of the
+     register/memory-count shift family just above - {!xmm_shift_imm_form}, register-only. *)
+  | Ok { iform = Some "PSLLW_XMMdq_IMMb"; _ } ->
+      xmm_shift_imm_form ~form_id:"PSLLW_XMMdq_IMMb" ~mnemonic:"psllw" rec_
+  | Ok { iform = Some "PSLLD_XMMdq_IMMb"; _ } ->
+      xmm_shift_imm_form ~form_id:"PSLLD_XMMdq_IMMb" ~mnemonic:"pslld" rec_
+  | Ok { iform = Some "PSLLQ_XMMdq_IMMb"; _ } ->
+      xmm_shift_imm_form ~form_id:"PSLLQ_XMMdq_IMMb" ~mnemonic:"psllq" rec_
+  | Ok { iform = Some "PSRLW_XMMdq_IMMb"; _ } ->
+      xmm_shift_imm_form ~form_id:"PSRLW_XMMdq_IMMb" ~mnemonic:"psrlw" rec_
+  | Ok { iform = Some "PSRLD_XMMdq_IMMb"; _ } ->
+      xmm_shift_imm_form ~form_id:"PSRLD_XMMdq_IMMb" ~mnemonic:"psrld" rec_
+  | Ok { iform = Some "PSRLQ_XMMdq_IMMb"; _ } ->
+      xmm_shift_imm_form ~form_id:"PSRLQ_XMMdq_IMMb" ~mnemonic:"psrlq" rec_
+  | Ok { iform = Some "PSRAW_XMMdq_IMMb"; _ } ->
+      xmm_shift_imm_form ~form_id:"PSRAW_XMMdq_IMMb" ~mnemonic:"psraw" rec_
+  | Ok { iform = Some "PSRAD_XMMdq_IMMb"; _ } ->
+      xmm_shift_imm_form ~form_id:"PSRAD_XMMdq_IMMb" ~mnemonic:"psrad" rec_
+  (* {!Opcode.Pslldq}'s own doc comment: the whole-register byte-shift siblings at the
+     same ext-opcode "group" table, ext 7/3 rather than 6/2/4 - {!xmm_shift_imm_form} unchanged. *)
+  | Ok { iform = Some "PSLLDQ_XMMdq_IMMb"; _ } ->
+      xmm_shift_imm_form ~form_id:"PSLLDQ_XMMdq_IMMb" ~mnemonic:"pslldq" rec_
+  | Ok { iform = Some "PSRLDQ_XMMdq_IMMb"; _ } ->
+      xmm_shift_imm_form ~form_id:"PSRLDQ_XMMdq_IMMb" ~mnemonic:"psrldq" rec_
+  (* {!Opcode.Pshufb}'s own doc comment: opcode map 2, but the same plain mandatory-66
+     [reg, rm] binop shape as every {!xmm_binop_rr_form}/{!xmm_binop_rm_form} member above - the
+     map distinction lives entirely in the encoder's own codec, not in this normalized shape. *)
+  | Ok { iform = Some "PSHUFB_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PSHUFB_XMMdq_XMMdq" ~mnemonic:"pshufb" rec_
+  | Ok { iform = Some "PSHUFB_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PSHUFB_XMMdq_MEMdq" ~mnemonic:"pshufb" rec_
+  (* {!Opcode.Phaddw}'s own doc comment: {!Pshufb}'s own map-2 group, same shape. *)
+  | Ok { iform = Some "PHADDW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PHADDW_XMMdq_XMMdq" ~mnemonic:"phaddw" rec_
+  | Ok { iform = Some "PHADDD_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PHADDD_XMMdq_XMMdq" ~mnemonic:"phaddd" rec_
+  | Ok { iform = Some "PHSUBW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PHSUBW_XMMdq_XMMdq" ~mnemonic:"phsubw" rec_
+  | Ok { iform = Some "PHSUBD_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PHSUBD_XMMdq_XMMdq" ~mnemonic:"phsubd" rec_
+  | Ok { iform = Some "PSIGNB_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PSIGNB_XMMdq_XMMdq" ~mnemonic:"psignb" rec_
+  | Ok { iform = Some "PSIGNW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PSIGNW_XMMdq_XMMdq" ~mnemonic:"psignw" rec_
+  | Ok { iform = Some "PSIGND_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PSIGND_XMMdq_XMMdq" ~mnemonic:"psignd" rec_
+  | Ok { iform = Some "PMADDUBSW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMADDUBSW_XMMdq_XMMdq" ~mnemonic:"pmaddubsw" rec_
+  | Ok { iform = Some "PMULHRSW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PMULHRSW_XMMdq_XMMdq" ~mnemonic:"pmulhrsw" rec_
+  | Ok { iform = Some "PHADDW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PHADDW_XMMdq_MEMdq" ~mnemonic:"phaddw" rec_
+  | Ok { iform = Some "PHADDD_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PHADDD_XMMdq_MEMdq" ~mnemonic:"phaddd" rec_
+  | Ok { iform = Some "PHSUBW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PHSUBW_XMMdq_MEMdq" ~mnemonic:"phsubw" rec_
+  | Ok { iform = Some "PHSUBD_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PHSUBD_XMMdq_MEMdq" ~mnemonic:"phsubd" rec_
+  | Ok { iform = Some "PSIGNB_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PSIGNB_XMMdq_MEMdq" ~mnemonic:"psignb" rec_
+  | Ok { iform = Some "PSIGNW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PSIGNW_XMMdq_MEMdq" ~mnemonic:"psignw" rec_
+  | Ok { iform = Some "PSIGND_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PSIGND_XMMdq_MEMdq" ~mnemonic:"psignd" rec_
+  | Ok { iform = Some "PMADDUBSW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMADDUBSW_XMMdq_MEMdq" ~mnemonic:"pmaddubsw" rec_
+  | Ok { iform = Some "PMULHRSW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PMULHRSW_XMMdq_MEMdq" ~mnemonic:"pmulhrsw" rec_
+  (* {!Opcode.Phaddsw}'s own doc comment: {!Phaddw}'s saturating sibling, same shape. *)
+  | Ok { iform = Some "PHADDSW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PHADDSW_XMMdq_XMMdq" ~mnemonic:"phaddsw" rec_
+  | Ok { iform = Some "PHSUBSW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PHSUBSW_XMMdq_XMMdq" ~mnemonic:"phsubsw" rec_
+  | Ok { iform = Some "PHADDSW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PHADDSW_XMMdq_MEMdq" ~mnemonic:"phaddsw" rec_
+  | Ok { iform = Some "PHSUBSW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PHSUBSW_XMMdq_MEMdq" ~mnemonic:"phsubsw" rec_
+  (* {!Opcode.Pabsb}'s own doc comment: REG0's XED [rw="w"] still fits
+     {!xmm_binop_rr_form}/{!xmm_binop_rm_form}'s generic [role_of_rw] unchanged. *)
+  | Ok { iform = Some "PABSB_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PABSB_XMMdq_XMMdq" ~mnemonic:"pabsb" rec_
+  | Ok { iform = Some "PABSW_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PABSW_XMMdq_XMMdq" ~mnemonic:"pabsw" rec_
+  | Ok { iform = Some "PABSD_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PABSD_XMMdq_XMMdq" ~mnemonic:"pabsd" rec_
+  | Ok { iform = Some "PABSB_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PABSB_XMMdq_MEMdq" ~mnemonic:"pabsb" rec_
+  | Ok { iform = Some "PABSW_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PABSW_XMMdq_MEMdq" ~mnemonic:"pabsw" rec_
+  | Ok { iform = Some "PABSD_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PABSD_XMMdq_MEMdq" ~mnemonic:"pabsd" rec_
+  (* {!Opcode.Palignr}'s own doc comment: opcode map 3, but the same [reg, rm, imm8]
+     shape as {!Pshufd}'s own {!xmm_binop_imm_rr_form}/{!xmm_binop_imm_rm_form}. *)
+  | Ok { iform = Some "PALIGNR_XMMdq_XMMdq_IMMb"; _ } ->
+      xmm_binop_imm_rr_form ~form_id:"PALIGNR_XMMdq_XMMdq_IMMb" ~mnemonic:"palignr" rec_
+  | Ok { iform = Some "PALIGNR_XMMdq_MEMdq_IMMb"; _ } ->
+      xmm_binop_imm_rm_form ~form_id:"PALIGNR_XMMdq_MEMdq_IMMb" ~mnemonic:"palignr" rec_
   (* {!Opcode.Movdqa}'s own doc comment: {!Movsd}/{!Movss}'s own load/store shape
      ({!xmm_mov_form}) for the memory directions, plus {!xmm_binop_rr_form} reused verbatim for
      the register-register form (a plain move's REG0 rw="w" is handled generically by
@@ -4304,6 +4603,26 @@ let normalize (rec_ : R.t) =
       vex_binop_rrr_form ~form_id:"VPAVGW_XMMdq_XMMdq_XMMdq" ~mnemonic:"vpavgw" rec_
   | Ok { iform = Some "VPSADBW_XMMdq_XMMdq_XMMdq"; _ } ->
       vex_binop_rrr_form ~form_id:"VPSADBW_XMMdq_XMMdq_XMMdq" ~mnemonic:"vpsadbw" rec_
+  (* {!Opcode.Vpsllw}'s own doc comment: the VEX sibling of the legacy
+     {!Psllw}/{!Pslld}/{!Psllq}/{!Psrlw}/{!Psrld}/{!Psrlq}/{!Psraw}/{!Psrad} register/memory-count
+     shift family, the same plain three-operand shape as {!Vpaddb}. No [vpsraq]: confirmed only
+     EVEX-encoded (`_AVX512`) iforms exist for that mnemonic in the captured XED data. *)
+  | Ok { iform = Some "VPSLLW_XMMdq_XMMdq_XMMdq"; _ } ->
+      vex_binop_rrr_form ~form_id:"VPSLLW_XMMdq_XMMdq_XMMdq" ~mnemonic:"vpsllw" rec_
+  | Ok { iform = Some "VPSLLD_XMMdq_XMMdq_XMMdq"; _ } ->
+      vex_binop_rrr_form ~form_id:"VPSLLD_XMMdq_XMMdq_XMMdq" ~mnemonic:"vpslld" rec_
+  | Ok { iform = Some "VPSLLQ_XMMdq_XMMdq_XMMdq"; _ } ->
+      vex_binop_rrr_form ~form_id:"VPSLLQ_XMMdq_XMMdq_XMMdq" ~mnemonic:"vpsllq" rec_
+  | Ok { iform = Some "VPSRLW_XMMdq_XMMdq_XMMdq"; _ } ->
+      vex_binop_rrr_form ~form_id:"VPSRLW_XMMdq_XMMdq_XMMdq" ~mnemonic:"vpsrlw" rec_
+  | Ok { iform = Some "VPSRLD_XMMdq_XMMdq_XMMdq"; _ } ->
+      vex_binop_rrr_form ~form_id:"VPSRLD_XMMdq_XMMdq_XMMdq" ~mnemonic:"vpsrld" rec_
+  | Ok { iform = Some "VPSRLQ_XMMdq_XMMdq_XMMdq"; _ } ->
+      vex_binop_rrr_form ~form_id:"VPSRLQ_XMMdq_XMMdq_XMMdq" ~mnemonic:"vpsrlq" rec_
+  | Ok { iform = Some "VPSRAW_XMMdq_XMMdq_XMMdq"; _ } ->
+      vex_binop_rrr_form ~form_id:"VPSRAW_XMMdq_XMMdq_XMMdq" ~mnemonic:"vpsraw" rec_
+  | Ok { iform = Some "VPSRAD_XMMdq_XMMdq_XMMdq"; _ } ->
+      vex_binop_rrr_form ~form_id:"VPSRAD_XMMdq_XMMdq_XMMdq" ~mnemonic:"vpsrad" rec_
   | Ok { iform = Some "VPMULLW_XMMdq_XMMdq_MEMdq"; _ } ->
       vex_binop_rr_mem_form ~form_id:"VPMULLW_XMMdq_XMMdq_MEMdq" ~mnemonic:"vpmullw" rec_
   | Ok { iform = Some "VPMULHW_XMMdq_XMMdq_MEMdq"; _ } ->
@@ -4316,6 +4635,45 @@ let normalize (rec_ : R.t) =
       vex_binop_rr_mem_form ~form_id:"VPAVGW_XMMdq_XMMdq_MEMdq" ~mnemonic:"vpavgw" rec_
   | Ok { iform = Some "VPSADBW_XMMdq_XMMdq_MEMdq"; _ } ->
       vex_binop_rr_mem_form ~form_id:"VPSADBW_XMMdq_XMMdq_MEMdq" ~mnemonic:"vpsadbw" rec_
+  | Ok { iform = Some "VPSLLW_XMMdq_XMMdq_MEMdq"; _ } ->
+      vex_binop_rr_mem_form ~form_id:"VPSLLW_XMMdq_XMMdq_MEMdq" ~mnemonic:"vpsllw" rec_
+  | Ok { iform = Some "VPSLLD_XMMdq_XMMdq_MEMdq"; _ } ->
+      vex_binop_rr_mem_form ~form_id:"VPSLLD_XMMdq_XMMdq_MEMdq" ~mnemonic:"vpslld" rec_
+  | Ok { iform = Some "VPSLLQ_XMMdq_XMMdq_MEMdq"; _ } ->
+      vex_binop_rr_mem_form ~form_id:"VPSLLQ_XMMdq_XMMdq_MEMdq" ~mnemonic:"vpsllq" rec_
+  | Ok { iform = Some "VPSRLW_XMMdq_XMMdq_MEMdq"; _ } ->
+      vex_binop_rr_mem_form ~form_id:"VPSRLW_XMMdq_XMMdq_MEMdq" ~mnemonic:"vpsrlw" rec_
+  | Ok { iform = Some "VPSRLD_XMMdq_XMMdq_MEMdq"; _ } ->
+      vex_binop_rr_mem_form ~form_id:"VPSRLD_XMMdq_XMMdq_MEMdq" ~mnemonic:"vpsrld" rec_
+  | Ok { iform = Some "VPSRLQ_XMMdq_XMMdq_MEMdq"; _ } ->
+      vex_binop_rr_mem_form ~form_id:"VPSRLQ_XMMdq_XMMdq_MEMdq" ~mnemonic:"vpsrlq" rec_
+  | Ok { iform = Some "VPSRAW_XMMdq_XMMdq_MEMdq"; _ } ->
+      vex_binop_rr_mem_form ~form_id:"VPSRAW_XMMdq_XMMdq_MEMdq" ~mnemonic:"vpsraw" rec_
+  | Ok { iform = Some "VPSRAD_XMMdq_XMMdq_MEMdq"; _ } ->
+      vex_binop_rr_mem_form ~form_id:"VPSRAD_XMMdq_XMMdq_MEMdq" ~mnemonic:"vpsrad" rec_
+  (* {!Opcode.Vpsllw}'s own doc comment: the VEX sibling of the legacy immediate-count
+     group-opcode shift form just above - {!vex_shift_imm_rr_form}, register-only. *)
+  | Ok { iform = Some "VPSLLW_XMMdq_XMMdq_IMMb"; _ } ->
+      vex_shift_imm_rr_form ~form_id:"VPSLLW_XMMdq_XMMdq_IMMb" ~mnemonic:"vpsllw" rec_
+  | Ok { iform = Some "VPSLLD_XMMdq_XMMdq_IMMb"; _ } ->
+      vex_shift_imm_rr_form ~form_id:"VPSLLD_XMMdq_XMMdq_IMMb" ~mnemonic:"vpslld" rec_
+  | Ok { iform = Some "VPSLLQ_XMMdq_XMMdq_IMMb"; _ } ->
+      vex_shift_imm_rr_form ~form_id:"VPSLLQ_XMMdq_XMMdq_IMMb" ~mnemonic:"vpsllq" rec_
+  | Ok { iform = Some "VPSRLW_XMMdq_XMMdq_IMMb"; _ } ->
+      vex_shift_imm_rr_form ~form_id:"VPSRLW_XMMdq_XMMdq_IMMb" ~mnemonic:"vpsrlw" rec_
+  | Ok { iform = Some "VPSRLD_XMMdq_XMMdq_IMMb"; _ } ->
+      vex_shift_imm_rr_form ~form_id:"VPSRLD_XMMdq_XMMdq_IMMb" ~mnemonic:"vpsrld" rec_
+  | Ok { iform = Some "VPSRLQ_XMMdq_XMMdq_IMMb"; _ } ->
+      vex_shift_imm_rr_form ~form_id:"VPSRLQ_XMMdq_XMMdq_IMMb" ~mnemonic:"vpsrlq" rec_
+  | Ok { iform = Some "VPSRAW_XMMdq_XMMdq_IMMb"; _ } ->
+      vex_shift_imm_rr_form ~form_id:"VPSRAW_XMMdq_XMMdq_IMMb" ~mnemonic:"vpsraw" rec_
+  | Ok { iform = Some "VPSRAD_XMMdq_XMMdq_IMMb"; _ } ->
+      vex_shift_imm_rr_form ~form_id:"VPSRAD_XMMdq_XMMdq_IMMb" ~mnemonic:"vpsrad" rec_
+  (* {!Opcode.Vpslldq}'s own doc comment: the VEX sibling of {!Pslldq}/{!Psrldq}. *)
+  | Ok { iform = Some "VPSLLDQ_XMMdq_XMMdq_IMMb"; _ } ->
+      vex_shift_imm_rr_form ~form_id:"VPSLLDQ_XMMdq_XMMdq_IMMb" ~mnemonic:"vpslldq" rec_
+  | Ok { iform = Some "VPSRLDQ_XMMdq_XMMdq_IMMb"; _ } ->
+      vex_shift_imm_rr_form ~form_id:"VPSRLDQ_XMMdq_XMMdq_IMMb" ~mnemonic:"vpsrldq" rec_
   (* {!Opcode.Vmovdqa}'s own doc comment: the VEX sibling of the legacy
      MOVDQA/MOVDQU family, reusing {!vex_unop_rr_form}/{!vex_unop_rr_mem_form} unchanged - load
      direction only (register-register and register<-memory), matching {!Vmovaps}'s own scope.

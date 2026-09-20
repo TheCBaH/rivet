@@ -630,6 +630,29 @@ let x86_sse_binop_rr_entries =
           "PAVGB_XMMdq_XMMdq";
           "PAVGW_XMMdq_XMMdq";
           "PSADBW_XMMdq_XMMdq";
+          "PSLLW_XMMdq_XMMdq";
+          "PSLLD_XMMdq_XMMdq";
+          "PSLLQ_XMMdq_XMMdq";
+          "PSRLW_XMMdq_XMMdq";
+          "PSRLD_XMMdq_XMMdq";
+          "PSRLQ_XMMdq_XMMdq";
+          "PSRAW_XMMdq_XMMdq";
+          "PSRAD_XMMdq_XMMdq";
+          "PSHUFB_XMMdq_XMMdq";
+          "PHADDW_XMMdq_XMMdq";
+          "PHADDD_XMMdq_XMMdq";
+          "PHSUBW_XMMdq_XMMdq";
+          "PHSUBD_XMMdq_XMMdq";
+          "PSIGNB_XMMdq_XMMdq";
+          "PSIGNW_XMMdq_XMMdq";
+          "PSIGND_XMMdq_XMMdq";
+          "PMADDUBSW_XMMdq_XMMdq";
+          "PMULHRSW_XMMdq_XMMdq";
+          "PHADDSW_XMMdq_XMMdq";
+          "PHSUBSW_XMMdq_XMMdq";
+          "PABSB_XMMdq_XMMdq";
+          "PABSW_XMMdq_XMMdq";
+          "PABSD_XMMdq_XMMdq";
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -751,6 +774,29 @@ let x86_sse_binop_rm_entries =
           "PAVGB_XMMdq_MEMdq";
           "PAVGW_XMMdq_MEMdq";
           "PSADBW_XMMdq_MEMdq";
+          "PSLLW_XMMdq_MEMdq";
+          "PSLLD_XMMdq_MEMdq";
+          "PSLLQ_XMMdq_MEMdq";
+          "PSRLW_XMMdq_MEMdq";
+          "PSRLD_XMMdq_MEMdq";
+          "PSRLQ_XMMdq_MEMdq";
+          "PSRAW_XMMdq_MEMdq";
+          "PSRAD_XMMdq_MEMdq";
+          "PSHUFB_XMMdq_MEMdq";
+          "PHADDW_XMMdq_MEMdq";
+          "PHADDD_XMMdq_MEMdq";
+          "PHSUBW_XMMdq_MEMdq";
+          "PHSUBD_XMMdq_MEMdq";
+          "PSIGNB_XMMdq_MEMdq";
+          "PSIGNW_XMMdq_MEMdq";
+          "PSIGND_XMMdq_MEMdq";
+          "PMADDUBSW_XMMdq_MEMdq";
+          "PMULHRSW_XMMdq_MEMdq";
+          "PHADDSW_XMMdq_MEMdq";
+          "PHSUBSW_XMMdq_MEMdq";
+          "PABSB_XMMdq_MEMdq";
+          "PABSW_XMMdq_MEMdq";
+          "PABSD_XMMdq_MEMdq";
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -789,6 +835,7 @@ let x86_sse_binop_imm_rr_entries =
           ("PSHUFD_XMMdq_XMMdq_IMMb", "27");
           ("PSHUFLW_XMMdq_XMMdq_IMMb", "27");
           ("PSHUFHW_XMMdq_XMMdq_IMMb", "27");
+          ("PALIGNR_XMMdq_XMMdq_IMMb", "5");
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -824,6 +871,44 @@ let x86_sse_binop_imm_rm_entries =
           ("PSHUFD_XMMdq_MEMdq_IMMb", "27");
           ("PSHUFLW_XMMdq_MEMdq_IMMb", "27");
           ("PSHUFHW_XMMdq_MEMdq_IMMb", "27");
+          ("PALIGNR_XMMdq_MEMdq_IMMb", "5");
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* PSLLW/PSLLD/PSLLQ/PSRLW/PSRLD/PSRLQ/PSRAW/PSRAD's immediate-count group-opcode form ({!Isa_norm_xed.xmm_shift_imm_form}'s own doc comment): a single [%xmm0] register (read-write)
+   plus a concrete imm8 shift count - unlike {!x86_sse_binop_imm_rr_entry}'s pair, there is no
+   second register at all. Confirmed against real GNU as: [psllw $0x5,%xmm1] -> [66 0f 71 f1 05].
+*)
+let x86_xmm_shift_imm_entry ~target ~form_id ~lookup_key ~imm =
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:register-register:%s" form_id (Target.to_string target);
+    rule_ids = [ "canonical-spelling"; "xmm-register-operands" ];
+    operands = [ ("imm", imm); ("dest", "xmm0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_xmm_shift_imm_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key ->
+          x86_xmm_shift_imm_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key ~imm:"5")
+        [
+          "PSLLW_XMMdq_IMMb";
+          "PSLLD_XMMdq_IMMb";
+          "PSLLQ_XMMdq_IMMb";
+          "PSRLW_XMMdq_IMMb";
+          "PSRLD_XMMdq_IMMb";
+          "PSRLQ_XMMdq_IMMb";
+          "PSRAW_XMMdq_IMMb";
+          "PSRAD_XMMdq_IMMb";
+          "PSLLDQ_XMMdq_IMMb";
+          "PSRLDQ_XMMdq_IMMb";
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -973,6 +1058,14 @@ let x86_vex_binop_rrr_entries =
           "VPAVGB_XMMdq_XMMdq_XMMdq";
           "VPAVGW_XMMdq_XMMdq_XMMdq";
           "VPSADBW_XMMdq_XMMdq_XMMdq";
+          "VPSLLW_XMMdq_XMMdq_XMMdq";
+          "VPSLLD_XMMdq_XMMdq_XMMdq";
+          "VPSLLQ_XMMdq_XMMdq_XMMdq";
+          "VPSRLW_XMMdq_XMMdq_XMMdq";
+          "VPSRLD_XMMdq_XMMdq_XMMdq";
+          "VPSRLQ_XMMdq_XMMdq_XMMdq";
+          "VPSRAW_XMMdq_XMMdq_XMMdq";
+          "VPSRAD_XMMdq_XMMdq_XMMdq";
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -1078,6 +1171,14 @@ let x86_vex_binop_rr_mem_entries =
           "VPAVGB_XMMdq_XMMdq_MEMdq";
           "VPAVGW_XMMdq_XMMdq_MEMdq";
           "VPSADBW_XMMdq_XMMdq_MEMdq";
+          "VPSLLW_XMMdq_XMMdq_MEMdq";
+          "VPSLLD_XMMdq_XMMdq_MEMdq";
+          "VPSLLQ_XMMdq_XMMdq_MEMdq";
+          "VPSRLW_XMMdq_XMMdq_MEMdq";
+          "VPSRLD_XMMdq_XMMdq_MEMdq";
+          "VPSRLQ_XMMdq_XMMdq_MEMdq";
+          "VPSRAW_XMMdq_XMMdq_MEMdq";
+          "VPSRAD_XMMdq_XMMdq_MEMdq";
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -1262,6 +1363,32 @@ let x86_vex_unop_imm_rr_entries =
           ("VPSHUFD_XMMdq_XMMdq_IMMb", "27");
           ("VPSHUFLW_XMMdq_XMMdq_IMMb", "27");
           ("VPSHUFHW_XMMdq_XMMdq_IMMb", "27");
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* VPSLLW/VPSLLD/VPSLLQ/VPSRLW/VPSRLD/VPSRLQ/VPSRAW/VPSRAD's immediate-count group-opcode form
+   ({!Isa_norm_xed.vex_shift_imm_rr_form}'s own doc comment): byte-for-byte the same
+   [imm, src, dest] operand triple as {!x86_vex_unop_imm_rr_entry}'s own VPSHUFD family, so this
+   reuses that builder verbatim rather than adding a new one - only [dst]'s real hardware role
+   differs (vvvv here, ModR/M reg there), which this generator layer does not model. Confirmed
+   against real GNU as: [vpsllw $0x5,%xmm2,%xmm1] -> [c5 f1 71 f2 05]. *)
+let x86_vex_shift_imm_rrr_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key ->
+          x86_vex_unop_imm_rr_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key ~imm:"5")
+        [
+          "VPSLLW_XMMdq_XMMdq_IMMb";
+          "VPSLLD_XMMdq_XMMdq_IMMb";
+          "VPSLLQ_XMMdq_XMMdq_IMMb";
+          "VPSRLW_XMMdq_XMMdq_IMMb";
+          "VPSRLD_XMMdq_XMMdq_IMMb";
+          "VPSRLQ_XMMdq_XMMdq_IMMb";
+          "VPSRAW_XMMdq_XMMdq_IMMb";
+          "VPSRAD_XMMdq_XMMdq_IMMb";
+          "VPSLLDQ_XMMdq_XMMdq_IMMb";
+          "VPSRLDQ_XMMdq_XMMdq_IMMb";
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -5022,11 +5149,12 @@ let all =
   @ x86_alu_memv_immb_entries @ x86_alu_memv_immz_entries @ x86_alu_gpr8_immb_entries
   @ x86_alu_memb_immb_entries @ x86_alu_al_immb_entries @ x86_sse_binop_rr_entries
   @ x86_sse_binop_rm_entries @ x86_sse_binop_imm_rr_entries @ x86_sse_binop_imm_rm_entries
-  @ x86_sse_mov_entries @ x86_cvtsi2f_rr_entries @ x86_cvtsi2f_rm_entries @ x86_cvtf2i_rr_entries
-  @ x86_cvtf2i_rm_entries @ x86_movd_load_rr_entries @ x86_movd_load_rm_entries
-  @ x86_movd_store_rr_entries @ x86_movd_store_mr_entries @ x86_vmovd_load_rr_entries
-  @ x86_vmovd_load_rm_entries @ x86_vmovd_store_rr_entries @ x86_vmovd_store_mr_entries
-  @ x86_pinsrw_rr_entries @ x86_pinsrw_rm_entries @ x86_pextrw_rr_entries @ x86_vpinsrw_rrr_entries
+  @ x86_xmm_shift_imm_entries @ x86_sse_mov_entries @ x86_cvtsi2f_rr_entries
+  @ x86_cvtsi2f_rm_entries @ x86_cvtf2i_rr_entries @ x86_cvtf2i_rm_entries
+  @ x86_movd_load_rr_entries @ x86_movd_load_rm_entries @ x86_movd_store_rr_entries
+  @ x86_movd_store_mr_entries @ x86_vmovd_load_rr_entries @ x86_vmovd_load_rm_entries
+  @ x86_vmovd_store_rr_entries @ x86_vmovd_store_mr_entries @ x86_pinsrw_rr_entries
+  @ x86_pinsrw_rm_entries @ x86_pextrw_rr_entries @ x86_vpinsrw_rrr_entries
   @ x86_vpinsrw_rr_mem_entries @ x86_vpextrw_rr_entries @ x86_movmsk_entries @ x86_fadd_entries
   @ fadd_s_entries @ fsub_s_entries @ fmul_s_entries @ fdiv_s_entries @ fadd_d_entries
   @ fsub_d_entries @ fmul_d_entries @ fdiv_d_entries @ flw_entries @ fld_entries @ fsw_entries
@@ -5159,7 +5287,7 @@ let all =
   @ vl2r_v_entries @ vl4r_v_entries @ vl8r_v_entries @ vle1_v_entries @ vse1_v_entries
   @ x86_vex_binop_rrr_entries @ x86_vex_binop_rr_mem_entries @ x86_vex_unop_rr_entries
   @ x86_vex_unop_rr_mem_entries @ x86_vex_binop_imm_rrr_entries @ x86_vex_binop_imm_rr_mem_entries
-  @ x86_vex_unop_imm_rr_entries @ x86_vex_unop_imm_rm_entries
+  @ x86_vex_unop_imm_rr_entries @ x86_vex_unop_imm_rm_entries @ x86_vex_shift_imm_rrr_entries
 
 (* The register/immediate ALU family's shared ModR/M reg-extension mapping
    (Opcode.of_ext's own domain, {!Isa_norm_xed.alu_gprv_immz_form}'s doc
