@@ -1114,6 +1114,16 @@ let test_counts () =
       + List.length Isa_gen_difficult.beq_entries
       + List.length Isa_gen_difficult.c_addi_entries
       + List.length Isa_gen_difficult.x86_mov_entries
+      + List.length Isa_gen_difficult.x86_alu_rr_entries
+      + List.length Isa_gen_difficult.x86_alu_memv_entries
+      + List.length Isa_gen_difficult.x86_alu_memv_gprv_entries
+      + List.length Isa_gen_difficult.x86_alu_immz_entries
+      + List.length Isa_gen_difficult.x86_alu_immb_entries
+      + List.length Isa_gen_difficult.x86_alu_memv_immb_entries
+      + List.length Isa_gen_difficult.x86_alu_memv_immz_entries
+      + List.length Isa_gen_difficult.x86_alu_gpr8_immb_entries
+      + List.length Isa_gen_difficult.x86_alu_memb_immb_entries
+      + List.length Isa_gen_difficult.x86_alu_al_immb_entries
       + List.length Isa_gen_difficult.x86_fadd_entries
       + List.length Isa_gen_difficult.fadd_s_entries
       + List.length Isa_gen_difficult.fsub_s_entries
@@ -1709,7 +1719,18 @@ let test_counts () =
       + List.length Isa_gen_difficult.vfwcvtbf16_f_f_v_entries
       + List.length Isa_gen_difficult.vfncvtbf16_f_f_w_entries
       + List.length Isa_gen_difficult.vfwmaccbf16_vv_entries
-      + List.length Isa_gen_difficult.vfwmaccbf16_vf_entries)
+      + List.length Isa_gen_difficult.vfwmaccbf16_vf_entries
+      + List.length Isa_gen_difficult.vpopc_m_entries
+      + List.length Isa_gen_difficult.vmandnot_mm_entries
+      + List.length Isa_gen_difficult.vmornot_mm_entries
+      + List.length Isa_gen_difficult.vfredsum_vs_entries
+      + List.length Isa_gen_difficult.vfwredsum_vs_entries
+      + List.length Isa_gen_difficult.vl1r_v_entries
+      + List.length Isa_gen_difficult.vl2r_v_entries
+      + List.length Isa_gen_difficult.vl4r_v_entries
+      + List.length Isa_gen_difficult.vl8r_v_entries
+      + List.length Isa_gen_difficult.vle1_v_entries
+      + List.length Isa_gen_difficult.vse1_v_entries)
 
 let test_case_ids_distinct () =
   let ids = List.map (fun (e : Isa_gen_difficult.entry) -> e.case_id) Isa_gen_difficult.all in

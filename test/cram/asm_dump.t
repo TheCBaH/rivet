@@ -151,6 +151,7 @@
   00000012  c3              ret                  [x86_32.ret]
   ########## x86_32 codec
   alt x86_32
+    [-2 cost=0] alu-acc-imm8     alu-acc-imm8(){prefixes alu-acc-imm8-opcode imm:8s}
     [-1 cost=0] alu-acc-imm      alu-acc-imm(){prefixes alu-acc-imm-opcode imm-sym32}
     [0 cost=0] alu-rm-imm8      alu-rm-imm8(){prefixes 10000011 modrm imm}
     [1 cost=0] alu-rm-imm32     alu-rm-imm32(){prefixes 10000001 modrm imm-sym32}
@@ -222,7 +223,9 @@
     [63 cost=0] sahf             sahf(){10011110}
     [64 cost=0] mov-r-imm8       mov-r-imm8(){prefixes 10110 reg:3u imm:8u}
     [65 cost=0] fadd-st0-x87     fadd-st0-x87(){11011000 11 000 st:3u}
+    [66 cost=0] alu-rm-imm8-byte alu-rm-imm8-byte(){prefixes 10000000 modrm imm:8s}
   prefixes(){no-asz opsz no-rex}
+  alu-acc-imm8-opcode(){opcode:8u}
   alu-acc-imm-opcode(){opcode:8u}
   imm-sym32(){le32}
   alt modrm
@@ -240,7 +243,7 @@
   alu-rm-r-op[9]{opcode:8u}
   le32(){<target:32@0 pcrel32-call>}
   cc[16]{cc:4u}
-  alu-r-rm-op[3]{opcode:8u}
+  alu-r-rm-op[8]{opcode:8u}
   no-asz(){()}
   no-rex(){()}
   sse-binop-f2-op[5]{opcode:8u}
@@ -406,6 +409,7 @@
   00000016  c3              ret                  [x86_64.ret]
   ########## x86_64 codec
   alt x86_64
+    [-2 cost=0] alu-acc-imm8     alu-acc-imm8(){prefixes alu-acc-imm8-opcode imm:8s}
     [-1 cost=0] alu-acc-imm      alu-acc-imm(){prefixes alu-acc-imm-opcode imm-sym32}
     [0 cost=0] alu-rm-imm8      alu-rm-imm8(){prefixes 10000011 modrm imm}
     [1 cost=0] alu-rm-imm32     alu-rm-imm32(){prefixes 10000001 modrm imm-sym32}
@@ -474,7 +478,9 @@
     [63 cost=0] sahf             sahf(){10011110}
     [64 cost=0] mov-r-imm8       mov-r-imm8(){prefixes 10110 reg:3u imm:8u}
     [65 cost=0] fadd-st0-x87     fadd-st0-x87(){11011000 11 000 st:3u}
+    [66 cost=0] alu-rm-imm8-byte alu-rm-imm8-byte(){prefixes 10000000 modrm imm:8s}
   prefixes(){asz opsz rex}
+  alu-acc-imm8-opcode(){opcode:8u}
   alu-acc-imm-opcode(){opcode:8u}
   imm-sym32(){le32}
   alt modrm
@@ -491,7 +497,7 @@
   alu-rm-r-op[9]{opcode:8u}
   le32(){<target:32@0 pcrel32-call>}
   cc[16]{cc:4u}
-  alu-r-rm-op[3]{opcode:8u}
+  alu-r-rm-op[8]{opcode:8u}
   alt asz
     [0 cost=0] asz-present      asz-present(){01100111}
     [1 cost=0] asz-absent       asz-absent(){()}

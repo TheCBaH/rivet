@@ -2175,7 +2175,35 @@ module Make (P : PROFILE) = struct
         Vfwmaccbf16_vf;
       ]
 
-    let of_mnemonic s = List.find_opt (fun op -> String.equal (name op) s) all
+    (* rv_v_aliases: riscv-opcodes' own deprecated pseudo-op spellings for
+       already-admitted rv_v mnemonics. Each one's mask/value is identical to
+       the canonical mnemonic it specializes (hand-verified against real GNU
+       as: riscv32-linux-gnu-as/riscv64-linux-gnu-as 2.43.1/2.44 both accept
+       every deprecated spelling under the same [-march=rv32imv]/[-march=
+       rv64imv] the canonical spelling needs, producing byte-identical
+       output), so resolving the deprecated spelling to the canonical
+       opcode here - rather than a distinct [Opcode.t] variant - is exact,
+       not an approximation; {!name}'s decode direction still only ever
+       renders the canonical spelling, matching real GNU as's own
+       disassembly. *)
+    let deprecated_mnemonic_aliases =
+      [
+        ("vpopc.m", "vcpop.m");
+        ("vmandnot.mm", "vmandn.mm");
+        ("vmornot.mm", "vmorn.mm");
+        ("vfredsum.vs", "vfredusum.vs");
+        ("vfwredsum.vs", "vfwredusum.vs");
+        ("vl1r.v", "vl1re8.v");
+        ("vl2r.v", "vl2re8.v");
+        ("vl4r.v", "vl4re8.v");
+        ("vl8r.v", "vl8re8.v");
+        ("vle1.v", "vlm.v");
+        ("vse1.v", "vsm.v");
+      ]
+
+    let of_mnemonic s =
+      let s = Option.value (List.assoc_opt s deprecated_mnemonic_aliases) ~default:s in
+      List.find_opt (fun op -> String.equal (name op) s) all
   end
 
   open Opcode

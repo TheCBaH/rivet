@@ -34,6 +34,16 @@ let feature_of_extension = function
   | "rv_d" -> Req_feature "riscv:d"
   | "rv_a" -> Req_feature "riscv:a"
   | "rv_v" -> Req_feature "riscv:v"
+  (* rv_v_aliases: riscv-opcodes' own deprecated-spelling pseudo-ops for
+     already-admitted rv_v mnemonics (e.g. vpopc.m for vcpop.m, vl1r.v for
+     vl1re8.v) - each `$pseudo_op` record's own mask/value is identical to
+     the canonical mnemonic it specializes (hand-verified for all eleven
+     against real GNU as: riscv32-linux-gnu-as/riscv64-linux-gnu-as 2.43.1/
+     2.44 both accept every deprecated spelling under the same [-march=
+     rv32imv]/[-march=rv64imv] the canonical spelling needs, producing
+     byte-identical output), so this is exactly [riscv:v], not a distinct
+     requirement. *)
+  | "rv_v_aliases" -> Req_feature "riscv:v"
   (* Zvbc (vector carry-less multiply): despite being a V sub-extension,
      real GNU as accepts Zvbc mnemonics under [-march=rv64i_zvbc] alone (no
      explicit [v]; confirmed byte-identical to [-march=rv64iv_zvbc]) but
@@ -4176,7 +4186,20 @@ let mm_form ~mnemonic (rec_ : R.t) =
 
 let mm_mnemonics =
   [
-    "vmand.mm"; "vmandn.mm"; "vmor.mm"; "vmxor.mm"; "vmorn.mm"; "vmnand.mm"; "vmnor.mm"; "vmxnor.mm";
+    "vmand.mm";
+    "vmandn.mm";
+    "vmor.mm";
+    "vmxor.mm";
+    "vmorn.mm";
+    "vmnand.mm";
+    "vmnor.mm";
+    "vmxnor.mm";
+    (* rv_v_aliases: riscv-opcodes' own deprecated spellings for vmandn.mm/
+       vmorn.mm, mask/value identical to the canonical mnemonic (hand-verified
+       against real GNU as - see feature_of_extension's own rv_v_aliases
+       comment). *)
+    "vmandnot.mm";
+    "vmornot.mm";
   ]
 
 let opivv_mnemonics =
@@ -4384,6 +4407,12 @@ let opfvv_mnemonics =
     "vfwmul.vv";
     "vfwredosum.vs";
     "vfwredusum.vs";
+    (* rv_v_aliases: riscv-opcodes' own deprecated spellings for
+       vfredusum.vs/vfwredusum.vs, mask/value identical to the canonical
+       mnemonic (hand-verified against real GNU as - see
+       feature_of_extension's own rv_v_aliases comment). *)
+    "vfredsum.vs";
+    "vfwredsum.vs";
   ]
 
 (* OPFVF (funct3 = 5)'s scalar-broadcast shape differs from {!opivx_form}'s
@@ -4891,6 +4920,10 @@ let normalize (rec_ : R.t) =
   | "vmsif.m" -> vext_form ~mnemonic:"vmsif.m" rec_
   | "vmsof.m" -> vext_form ~mnemonic:"vmsof.m" rec_
   | "vcpop.m" -> v_to_x_unary_form ~mnemonic:"vcpop.m" rec_
+  (* rv_v_aliases: riscv-opcodes' own deprecated spelling for vcpop.m, mask/
+     value identical to the canonical mnemonic (hand-verified against real
+     GNU as - see feature_of_extension's own rv_v_aliases comment). *)
+  | "vpopc.m" -> v_to_x_unary_form ~mnemonic:"vpopc.m" rec_
   | "vfirst.m" -> v_to_x_unary_form ~mnemonic:"vfirst.m" rec_
   | "vle8.v" -> v_load_form ~mnemonic:"vle8.v" rec_
   | "vle16.v" -> v_load_form ~mnemonic:"vle16.v" rec_
@@ -4902,6 +4935,11 @@ let normalize (rec_ : R.t) =
   | "vse64.v" -> v_store_form ~mnemonic:"vse64.v" rec_
   | "vlm.v" -> vlm_form ~mnemonic:"vlm.v" rec_
   | "vsm.v" -> vsm_form ~mnemonic:"vsm.v" rec_
+  (* rv_v_aliases: riscv-opcodes' own deprecated spellings for vlm.v/vsm.v,
+     mask/value identical to the canonical mnemonic (hand-verified against
+     real GNU as - see feature_of_extension's own rv_v_aliases comment). *)
+  | "vle1.v" -> vlm_form ~mnemonic:"vle1.v" rec_
+  | "vse1.v" -> vsm_form ~mnemonic:"vse1.v" rec_
   | "vle8ff.v" -> v_load_form ~mnemonic:"vle8ff.v" rec_
   | "vle16ff.v" -> v_load_form ~mnemonic:"vle16ff.v" rec_
   | "vle32ff.v" -> v_load_form ~mnemonic:"vle32ff.v" rec_
@@ -4934,18 +4972,26 @@ let normalize (rec_ : R.t) =
   | "vl1re16.v" -> vlm_form ~mnemonic:"vl1re16.v" rec_
   | "vl1re32.v" -> vlm_form ~mnemonic:"vl1re32.v" rec_
   | "vl1re64.v" -> vlm_form ~mnemonic:"vl1re64.v" rec_
+  (* rv_v_aliases: riscv-opcodes' own deprecated spellings for vl1re8.v/
+     vl2re8.v/vl4re8.v/vl8re8.v, mask/value identical to the canonical
+     mnemonic (hand-verified against real GNU as - see
+     feature_of_extension's own rv_v_aliases comment). *)
+  | "vl1r.v" -> vlm_form ~mnemonic:"vl1r.v" rec_
   | "vl2re8.v" -> vlm_form ~mnemonic:"vl2re8.v" rec_
   | "vl2re16.v" -> vlm_form ~mnemonic:"vl2re16.v" rec_
   | "vl2re32.v" -> vlm_form ~mnemonic:"vl2re32.v" rec_
   | "vl2re64.v" -> vlm_form ~mnemonic:"vl2re64.v" rec_
+  | "vl2r.v" -> vlm_form ~mnemonic:"vl2r.v" rec_
   | "vl4re8.v" -> vlm_form ~mnemonic:"vl4re8.v" rec_
   | "vl4re16.v" -> vlm_form ~mnemonic:"vl4re16.v" rec_
   | "vl4re32.v" -> vlm_form ~mnemonic:"vl4re32.v" rec_
   | "vl4re64.v" -> vlm_form ~mnemonic:"vl4re64.v" rec_
+  | "vl4r.v" -> vlm_form ~mnemonic:"vl4r.v" rec_
   | "vl8re8.v" -> vlm_form ~mnemonic:"vl8re8.v" rec_
   | "vl8re16.v" -> vlm_form ~mnemonic:"vl8re16.v" rec_
   | "vl8re32.v" -> vlm_form ~mnemonic:"vl8re32.v" rec_
   | "vl8re64.v" -> vlm_form ~mnemonic:"vl8re64.v" rec_
+  | "vl8r.v" -> vlm_form ~mnemonic:"vl8r.v" rec_
   | "vs1r.v" -> vsm_form ~mnemonic:"vs1r.v" rec_
   | "vs2r.v" -> vsm_form ~mnemonic:"vs2r.v" rec_
   | "vs4r.v" -> vsm_form ~mnemonic:"vs4r.v" rec_

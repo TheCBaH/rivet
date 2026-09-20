@@ -110,6 +110,77 @@ val x86_mov_entries : entry list
     base+disp8 SIB load and an indexed scale-4 disp32 store.  These are a
     bounded slice of XED's variable-width GPRv/MEMv forms. *)
 
+val x86_alu_rr_entries : entry list
+(** [subl]/[andl]/[orl]/[xorl]/[adcl]/[sbbl]/[cmpl]/[testl] register-register
+    on x86-32 and x86-64, each selecting the same [to_rm_r] opcode
+    [ADD_GPRv_GPRv_01]'s own pilot case selects (real GNU as always picks
+    this "low-numbered" iform for two register operands regardless of AT&T
+    argument order); each mnemonic's normalized form fixes the explicit
+    32-bit spelling since - unlike [add] - none of them assemble bare in
+    this project's own x86 frontend. *)
+
+val x86_alu_memv_entries : entry list
+(** [addl]/[adcl]/[xorl]/[subl]/[andl]/[orl]/[sbbl]/[cmpl] register<-memory
+    (base+disp8 SIB) on x86-32 and x86-64, {!x86_mov_entries}'s own
+    addressing generalized to every [to_r_rm] opcode this project's
+    encoder lowers with a memory source; [testl]'s own GPRv_MEMv form is
+    not included since it has no upstream-named XED iform to admit,
+    even though real GNU as accepts it. *)
+
+val x86_alu_memv_gprv_entries : entry list
+(** [addl]/[orl]/[adcl]/[sbbl]/[andl]/[subl]/[xorl]/[cmpl]/[testl]
+    memory<-register (base+disp8 SIB) on x86-32 and x86-64,
+    {!x86_alu_memv_entries}'s own addressing with the register-source and
+    memory-destination roles swapped to match AT&T's own [reg, mem] order;
+    [testl] is included here, unlike {!x86_alu_memv_entries}'s own
+    exclusion, since XED does export a [TEST_MEMv_GPRv] record. *)
+
+val x86_alu_immz_entries : entry list
+(** [orl]/[adcl]/[sbbl]/[andl]/[subl]/[xorl]/[cmpl] register/immediate on
+    x86-32 and x86-64, {!Isa_norm_xed.add_gprv_immz_form}'s own shape and
+    canonical S3-pilot immediate value generalized to an explicit-width
+    mnemonic for every ALU op except [add] itself (whose own
+    ADD_GPRv_IMMz form is a deliberate bare-mnemonic frontier-gap design
+    test, not reused here). *)
+
+val x86_alu_immb_entries : entry list
+(** [addl]/[orl]/[adcl]/[sbbl]/[andl]/[subl]/[xorl]/[cmpl] register/immediate
+    on x86-32 and x86-64, {!x86_alu_immz_entries}'s own shape with a
+    byte-fitting immediate (opcode 0x83) rather than the immz rung's own
+    (opcode 0x81) - includes [add] this time, since the immz family's own
+    [add] exclusion is specific to [ADD_GPRv_IMMz]'s bare-mnemonic design
+    test, not a precedent this rung repeats. *)
+
+val x86_alu_memv_immb_entries : entry list
+(** [addl]/[orl]/[adcl]/[sbbl]/[andl]/[subl]/[xorl]/[cmpl] memory<-immediate
+    (base+disp8 SIB, opcode 0x83) on x86-32 and x86-64, {!x86_alu_memv_entries}'s
+    own addressing combined with {!x86_alu_immb_entries}'s own byte-fitting
+    immediate. *)
+
+val x86_alu_memv_immz_entries : entry list
+(** [addl]/[orl]/[adcl]/[sbbl]/[andl]/[subl]/[xorl]/[cmpl] memory<-immediate
+    (base+disp8 SIB, opcode 0x81) on x86-32 and x86-64, {!x86_alu_memv_entries}'s
+    own addressing combined with {!x86_alu_immz_entries}'s own too-wide-for-a-byte
+    immediate. *)
+
+val x86_alu_gpr8_immb_entries : entry list
+(** [addb]/[orb]/[adcb]/[sbbb]/[andb]/[subb]/[xorb]/[cmpb] register/immediate
+    on x86-32 and x86-64 ([%cl], opcode 0x80) - GRP1's own byte-operand
+    rung, a genuinely different opcode from {!x86_alu_immb_entries}'s own
+    0x83 rung, not a narrower reading of it. *)
+
+val x86_alu_memb_immb_entries : entry list
+(** [addb]/[orb]/[adcb]/[sbbb]/[andb]/[subb]/[xorb]/[cmpb] memory<-immediate
+    (base+disp8 SIB, opcode 0x80) on x86-32 and x86-64,
+    {!x86_alu_memv_entries}'s own addressing combined with
+    {!x86_alu_gpr8_immb_entries}'s own byte-width immediate. *)
+
+val x86_alu_al_immb_entries : entry list
+(** [addb]/[orb]/[adcb]/[sbbb]/[andb]/[subb]/[xorb]/[cmpb] accumulator-immediate
+    ([%al], opcode [ext<<3 | 4]) on x86-32 and x86-64, using [$200] to also
+    exercise a raw-byte value outside the signed-imm8 range this form's
+    field still accepts unchanged. *)
+
 val x86_fadd_entries : entry list
 (** [fadd %st(1), %st] on x86-32 and x86-64, selecting XED's
     [FADD_ST0_X87] rather than its reverse-direction sibling. *)
@@ -784,6 +855,10 @@ val vmandn_mm_entries : entry list
 (** [vmandn.mm v1, v2, v3] - {!vmand_mm_entries}'s complement-first
     sibling. *)
 
+val vmandnot_mm_entries : entry list
+(** [vmandnot.mm v1, v2, v3] - riscv-opcodes' own deprecated spelling for
+    {!vmandn_mm_entries}, mask/value identical to the canonical mnemonic. *)
+
 val vmor_mm_entries : entry list
 (** [vmor.mm v1, v2, v3] - {!vmand_mm_entries}'s logical-or sibling. *)
 
@@ -793,6 +868,10 @@ val vmxor_mm_entries : entry list
 val vmorn_mm_entries : entry list
 (** [vmorn.mm v1, v2, v3] - {!vmand_mm_entries}'s complement-first
     logical-or sibling. *)
+
+val vmornot_mm_entries : entry list
+(** [vmornot.mm v1, v2, v3] - riscv-opcodes' own deprecated spelling for
+    {!vmorn_mm_entries}, mask/value identical to the canonical mnemonic. *)
 
 val vmnand_mm_entries : entry list
 (** [vmnand.mm v1, v2, v3] - {!vmand_mm_entries}'s negated sibling. *)
@@ -1037,6 +1116,10 @@ val vcpop_m_entries : entry list
 (** [vcpop.m a0, v2] - the same [rd, rs2] shape as {!vmsbf_m_entries} but
     with a GPR destination. *)
 
+val vpopc_m_entries : entry list
+(** [vpopc.m a0, v2] - riscv-opcodes' own deprecated spelling for
+    {!vcpop_m_entries}, mask/value identical to the canonical mnemonic. *)
+
 val vfirst_m_entries : entry list
 (** [vfirst.m a0, v2] - {!vcpop_m_entries}'s first-set-bit-index
     sibling. *)
@@ -1258,6 +1341,11 @@ val vfredusum_vs_entries : entry list
 (** [vfredusum.vs v1, v2, v3] - the same shape as
     {!vfredosum_vs_entries}. *)
 
+val vfredsum_vs_entries : entry list
+(** [vfredsum.vs v1, v2, v3] - riscv-opcodes' own deprecated spelling for
+    {!vfredusum_vs_entries}, mask/value identical to the canonical
+    mnemonic. *)
+
 val vfredmin_vs_entries : entry list
 (** [vfredmin.vs v1, v2, v3] - the same shape as {!vfredosum_vs_entries}. *)
 
@@ -1440,6 +1528,11 @@ val vfwredusum_vs_entries : entry list
 (** [vfwredusum.vs v1, v2, v3] - {!vfwredosum_vs_entries}'s unordered-sum
     sibling. *)
 
+val vfwredsum_vs_entries : entry list
+(** [vfwredsum.vs v1, v2, v3] - riscv-opcodes' own deprecated spelling for
+    {!vfwredusum_vs_entries}, mask/value identical to the canonical
+    mnemonic. *)
+
 val vfwcvt_xu_f_v_entries : entry list
 (** [vfwcvt.xu.f.v v1, v2] - the widening float->unsigned-integer
     conversion, {!vfcvt_xu_f_v_entries}'s exact "vd, vs2" shape reused. *)
@@ -1558,6 +1651,14 @@ val vlm_v_entries : entry list
 val vsm_v_entries : entry list
 (** [vsm.v v1, (a0)] - {!vlm_v_entries}'s store-shape sibling. *)
 
+val vle1_v_entries : entry list
+(** [vle1.v v1, (a0)] - riscv-opcodes' own deprecated spelling for
+    {!vlm_v_entries}, mask/value identical to the canonical mnemonic. *)
+
+val vse1_v_entries : entry list
+(** [vse1.v v1, (a0)] - riscv-opcodes' own deprecated spelling for
+    {!vsm_v_entries}, mask/value identical to the canonical mnemonic. *)
+
 val vle8ff_v_entries : entry list
 (** [vle8ff.v v1, (a0)] - V's fault-only-first unit-stride load,
     {!vle8_v_entries}'s exact shape reused (no store counterpart). *)
@@ -1667,6 +1768,10 @@ val vl1re8_v_entries : entry list
     {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
     variant). *)
 
+val vl1r_v_entries : entry list
+(** [vl1r.v v1, (a0)] - riscv-opcodes' own deprecated spelling for
+    {!vl1re8_v_entries}, mask/value identical to the canonical mnemonic. *)
+
 val vl1re16_v_entries : entry list
 (** [vl1re16.v v1, (a0)] - V's whole-register load,
     {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
@@ -1686,6 +1791,10 @@ val vl2re8_v_entries : entry list
 (** [vl2re8.v v1, (a0)] - V's whole-register load,
     {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
     variant). *)
+
+val vl2r_v_entries : entry list
+(** [vl2r.v v1, (a0)] - riscv-opcodes' own deprecated spelling for
+    {!vl2re8_v_entries}, mask/value identical to the canonical mnemonic. *)
 
 val vl2re16_v_entries : entry list
 (** [vl2re16.v v1, (a0)] - V's whole-register load,
@@ -1707,6 +1816,10 @@ val vl4re8_v_entries : entry list
     {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
     variant). *)
 
+val vl4r_v_entries : entry list
+(** [vl4r.v v1, (a0)] - riscv-opcodes' own deprecated spelling for
+    {!vl4re8_v_entries}, mask/value identical to the canonical mnemonic. *)
+
 val vl4re16_v_entries : entry list
 (** [vl4re16.v v1, (a0)] - V's whole-register load,
     {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
@@ -1726,6 +1839,10 @@ val vl8re8_v_entries : entry list
 (** [vl8re8.v v1, (a0)] - V's whole-register load,
     {!vle8_v_entries}'s shape reused (fixed lumop/nf, no masked
     variant). *)
+
+val vl8r_v_entries : entry list
+(** [vl8r.v v1, (a0)] - riscv-opcodes' own deprecated spelling for
+    {!vl8re8_v_entries}, mask/value identical to the canonical mnemonic. *)
 
 val vl8re16_v_entries : entry list
 (** [vl8re16.v v1, (a0)] - V's whole-register load,
@@ -2486,7 +2603,11 @@ val lr_d_entries : entry list
 
 val all : entry list
 (** [sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @
-    x86_fadd_entries @ fadd_s_entries @ fsub_s_entries @ fmul_s_entries @
+    x86_alu_rr_entries @ x86_alu_memv_entries @ x86_alu_memv_gprv_entries @ x86_alu_immz_entries @
+    x86_alu_immb_entries @ x86_alu_memv_immb_entries @ x86_alu_memv_immz_entries @
+    x86_alu_gpr8_immb_entries @ x86_alu_memb_immb_entries @ x86_alu_al_immb_entries @
+    x86_fadd_entries @ fadd_s_entries @
+    fsub_s_entries @ fmul_s_entries @
     fdiv_s_entries @ fadd_d_entries @ fsub_d_entries @ fmul_d_entries @
     fdiv_d_entries @ flw_entries @ fld_entries @ fsw_entries @ fsd_entries @
     sh1add_entries @ sh2add_entries @ sh3add_entries @

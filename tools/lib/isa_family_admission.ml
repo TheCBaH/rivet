@@ -93,6 +93,72 @@ let promoted_case ~target ~form_id ~lookup_key =
       true
   | Target.Riscv64, "riscv:addw", _ -> true
   | (Target.X86_32 | Target.X86_64), "x86:ADD_GPRv_GPRv_01", "ADD_GPRv_GPRv_01" -> true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:SUB_GPRv_GPRv_29" | "x86:AND_GPRv_GPRv_21" | "x86:OR_GPRv_GPRv_09"
+      | "x86:XOR_GPRv_GPRv_31" | "x86:ADC_GPRv_GPRv_11" | "x86:SBB_GPRv_GPRv_19"
+      | "x86:CMP_GPRv_GPRv_39" | "x86:TEST_GPRv_GPRv" ),
+      ( "SUB_GPRv_GPRv_29" | "AND_GPRv_GPRv_21" | "OR_GPRv_GPRv_09" | "XOR_GPRv_GPRv_31"
+      | "ADC_GPRv_GPRv_11" | "SBB_GPRv_GPRv_19" | "CMP_GPRv_GPRv_39" | "TEST_GPRv_GPRv" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:ADD_GPRv_MEMv" | "x86:ADC_GPRv_MEMv" | "x86:XOR_GPRv_MEMv" | "x86:SUB_GPRv_MEMv"
+      | "x86:AND_GPRv_MEMv" | "x86:OR_GPRv_MEMv" | "x86:SBB_GPRv_MEMv" | "x86:CMP_GPRv_MEMv" ),
+      ( "ADD_GPRv_MEMv" | "ADC_GPRv_MEMv" | "XOR_GPRv_MEMv" | "SUB_GPRv_MEMv" | "AND_GPRv_MEMv"
+      | "OR_GPRv_MEMv" | "SBB_GPRv_MEMv" | "CMP_GPRv_MEMv" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:ADD_MEMv_GPRv" | "x86:OR_MEMv_GPRv" | "x86:ADC_MEMv_GPRv" | "x86:SBB_MEMv_GPRv"
+      | "x86:AND_MEMv_GPRv" | "x86:SUB_MEMv_GPRv" | "x86:XOR_MEMv_GPRv" | "x86:CMP_MEMv_GPRv"
+      | "x86:TEST_MEMv_GPRv" ),
+      ( "ADD_MEMv_GPRv" | "OR_MEMv_GPRv" | "ADC_MEMv_GPRv" | "SBB_MEMv_GPRv" | "AND_MEMv_GPRv"
+      | "SUB_MEMv_GPRv" | "XOR_MEMv_GPRv" | "CMP_MEMv_GPRv" | "TEST_MEMv_GPRv" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:OR_GPRv_IMMz" | "x86:ADC_GPRv_IMMz" | "x86:SBB_GPRv_IMMz" | "x86:AND_GPRv_IMMz"
+      | "x86:SUB_GPRv_IMMz" | "x86:XOR_GPRv_IMMz" | "x86:CMP_GPRv_IMMz" ),
+      ( "OR_GPRv_IMMz" | "ADC_GPRv_IMMz" | "SBB_GPRv_IMMz" | "AND_GPRv_IMMz" | "SUB_GPRv_IMMz"
+      | "XOR_GPRv_IMMz" | "CMP_GPRv_IMMz" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:ADD_GPRv_IMMb" | "x86:OR_GPRv_IMMb" | "x86:ADC_GPRv_IMMb" | "x86:SBB_GPRv_IMMb"
+      | "x86:AND_GPRv_IMMb" | "x86:SUB_GPRv_IMMb" | "x86:XOR_GPRv_IMMb" | "x86:CMP_GPRv_IMMb" ),
+      ( "ADD_GPRv_IMMb" | "OR_GPRv_IMMb" | "ADC_GPRv_IMMb" | "SBB_GPRv_IMMb" | "AND_GPRv_IMMb"
+      | "SUB_GPRv_IMMb" | "XOR_GPRv_IMMb" | "CMP_GPRv_IMMb" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:ADD_MEMv_IMMb" | "x86:OR_MEMv_IMMb" | "x86:ADC_MEMv_IMMb" | "x86:SBB_MEMv_IMMb"
+      | "x86:AND_MEMv_IMMb" | "x86:SUB_MEMv_IMMb" | "x86:XOR_MEMv_IMMb" | "x86:CMP_MEMv_IMMb" ),
+      ( "ADD_MEMv_IMMb" | "OR_MEMv_IMMb" | "ADC_MEMv_IMMb" | "SBB_MEMv_IMMb" | "AND_MEMv_IMMb"
+      | "SUB_MEMv_IMMb" | "XOR_MEMv_IMMb" | "CMP_MEMv_IMMb" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:ADD_MEMv_IMMz" | "x86:OR_MEMv_IMMz" | "x86:ADC_MEMv_IMMz" | "x86:SBB_MEMv_IMMz"
+      | "x86:AND_MEMv_IMMz" | "x86:SUB_MEMv_IMMz" | "x86:XOR_MEMv_IMMz" | "x86:CMP_MEMv_IMMz" ),
+      ( "ADD_MEMv_IMMz" | "OR_MEMv_IMMz" | "ADC_MEMv_IMMz" | "SBB_MEMv_IMMz" | "AND_MEMv_IMMz"
+      | "SUB_MEMv_IMMz" | "XOR_MEMv_IMMz" | "CMP_MEMv_IMMz" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:ADD_GPR8_IMMb_80r0" | "x86:OR_GPR8_IMMb_80r1" | "x86:ADC_GPR8_IMMb_80r2"
+      | "x86:SBB_GPR8_IMMb_80r3" | "x86:AND_GPR8_IMMb_80r4" | "x86:SUB_GPR8_IMMb_80r5"
+      | "x86:XOR_GPR8_IMMb_80r6" | "x86:CMP_GPR8_IMMb_80r7" ),
+      ( "ADD_GPR8_IMMb_80r0" | "OR_GPR8_IMMb_80r1" | "ADC_GPR8_IMMb_80r2" | "SBB_GPR8_IMMb_80r3"
+      | "AND_GPR8_IMMb_80r4" | "SUB_GPR8_IMMb_80r5" | "XOR_GPR8_IMMb_80r6" | "CMP_GPR8_IMMb_80r7" )
+    ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:ADD_MEMb_IMMb_80r0" | "x86:OR_MEMb_IMMb_80r1" | "x86:ADC_MEMb_IMMb_80r2"
+      | "x86:SBB_MEMb_IMMb_80r3" | "x86:AND_MEMb_IMMb_80r4" | "x86:SUB_MEMb_IMMb_80r5"
+      | "x86:XOR_MEMb_IMMb_80r6" | "x86:CMP_MEMb_IMMb_80r7" ),
+      ( "ADD_MEMb_IMMb_80r0" | "OR_MEMb_IMMb_80r1" | "ADC_MEMb_IMMb_80r2" | "SBB_MEMb_IMMb_80r3"
+      | "AND_MEMb_IMMb_80r4" | "SUB_MEMb_IMMb_80r5" | "XOR_MEMb_IMMb_80r6" | "CMP_MEMb_IMMb_80r7" )
+    ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:ADD_AL_IMMb" | "x86:OR_AL_IMMb" | "x86:ADC_AL_IMMb" | "x86:SBB_AL_IMMb"
+      | "x86:AND_AL_IMMb" | "x86:SUB_AL_IMMb" | "x86:XOR_AL_IMMb" | "x86:CMP_AL_IMMb" ),
+      ( "ADD_AL_IMMb" | "OR_AL_IMMb" | "ADC_AL_IMMb" | "SBB_AL_IMMb" | "AND_AL_IMMb" | "SUB_AL_IMMb"
+      | "XOR_AL_IMMb" | "CMP_AL_IMMb" ) ) ->
+      true
   | (Target.Riscv32 | Target.Riscv64), "riscv:sw", "sw" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:beq", "beq" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:c.addi", "c.addi" -> true
@@ -676,6 +742,17 @@ let promoted_case ~target ~form_id ~lookup_key =
   | (Target.Riscv32 | Target.Riscv64), "riscv:vfncvtbf16.f.f.w", "vfncvtbf16.f.f.w" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vfwmaccbf16.vv", "vfwmaccbf16.vv" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vfwmaccbf16.vf", "vfwmaccbf16.vf" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vpopc.m", "vpopc.m" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vmandnot.mm", "vmandnot.mm" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vmornot.mm", "vmornot.mm" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vfredsum.vs", "vfredsum.vs" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vfwredsum.vs", "vfwredsum.vs" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl1r.v", "vl1r.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl2r.v", "vl2r.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl4r.v", "vl4r.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vl8r.v", "vl8r.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vle1.v", "vle1.v" -> true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:vse1.v", "vse1.v" -> true
   | _ -> false
 
 let pilot_case ~target ~form_id ~lookup_key =

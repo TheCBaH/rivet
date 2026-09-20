@@ -185,10 +185,10 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:711;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:763;
-  expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:9;
-  expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:9
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:722;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:774;
+  expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:89;
+  expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:89
 
 (* The family matrix is a second view over the same complete population,
    not a hand-maintained support claim. Pinning its aggregate states makes a
@@ -602,24 +602,112 @@ let test_isa_family_admission repo =
      slice moves 4 records on EACH profile, straight from blocked to
      promoted-support - closing the entire twelve-family rv_zv*
      vector-crypto/bf16 scope: every rv_zv* family (and both bundle
-     extensions, rv_zvkn/rv_zvks) is now fully promoted. *)
+     extensions, rv_zvkn/rv_zvks) is now fully promoted.
+
+     x86's SUB_GPRv_GPRv_29/AND_GPRv_GPRv_21/OR_GPRv_GPRv_09/
+     XOR_GPRv_GPRv_31/ADC_GPRv_GPRv_11/SBB_GPRv_GPRv_19/CMP_GPRv_GPRv_39/
+     TEST_GPRv_GPRv (the x86 continuation, ADD_GPRv_GPRv_01's own
+     [to_rm_r] opcode-selection precedent generalized to the rest of that
+     table) are each a single, non-import-duplicated I86 record, straight
+     from blocked to promoted-support, so this slice moves 8 records on
+     EACH x86 profile.
+
+     x86's ADD_GPRv_MEMv/ADC_GPRv_MEMv/XOR_GPRv_MEMv (the register<-memory
+     ALU direction, ADD/ADC/XOR being the only three [to_r_rm] opcodes
+     this project's encoder currently lowers with a memory source) are
+     each a single, non-import-duplicated I86 record, straight from
+     blocked to promoted-support, so this slice moves 3 records on EACH
+     x86 profile.
+
+     x86's SUB_GPRv_MEMv/AND_GPRv_MEMv/OR_GPRv_MEMv/SBB_GPRv_MEMv/
+     CMP_GPRv_MEMv (the register<-memory ALU direction's remaining five
+     [to_r_rm] opcodes, this session's first x86 slice needing real
+     encoder changes rather than only normalization/corpus wiring - new
+     [Opcode.to_r_rm] table entries, a generalized [Alu_r_rm] lowering
+     match arm, and a generalized [alu_r_rm_codec] entries list in
+     x86_family_encode.ml) are each a single, non-import-duplicated I86
+     record, straight from blocked to promoted-support, so this slice
+     moves 5 records on EACH x86 profile.
+
+     x86's OR_GPRv_IMMz/ADC_GPRv_IMMz/SBB_GPRv_IMMz/AND_GPRv_IMMz/
+     SUB_GPRv_IMMz/XOR_GPRv_IMMz/CMP_GPRv_IMMz (the rest of the
+     register/immediate ALU family, generalizing ADD_GPRv_IMMz's own
+     shape to an explicit-32-bit mnemonic the same way the
+     register-register slice generalized ADD_GPRv_GPRv_01's own bare
+     mnemonic) are each a single, non-import-duplicated I86 record,
+     straight from blocked to promoted-support; SBB needed its own small
+     encoder change too (Opcode.to_ext/of_ext gained the one gap at ext
+     3, and the Alu_rm_imm-producing lowering arm's opcode list gained
+     Sbb), so this slice moves 7 records on EACH x86 profile.
+
+     x86's ADD/OR/ADC/SBB/AND/SUB/XOR/CMP_GPRv_IMMb (the imm8 rung of the
+     same register/immediate ALU family, opcode 0x83 - includes ADD this
+     time, since the immz rung's own ADD exclusion is specific to
+     ADD_GPRv_IMMz's bare-mnemonic design test) plus the MEMv<-IMMb and
+     MEMv<-IMMz directions of all eight mnemonics (opcodes 0x83/0x81 with
+     a memory r/m) are each a single, non-import-duplicated I86 record,
+     straight from blocked to promoted-support, needing no encoder change
+     at all - this project's own [lower_instruction] already lowers an
+     [Operand.Mem] ALU-immediate destination through the same
+     [Lowered.Alu_rm_imm] codec the register destination uses - so this
+     slice moves 24 records on EACH x86 profile (8 + 8 + 8).
+
+     rv_v_aliases' eleven riscv-opcodes-native deprecated pseudo-op
+     spellings for already-admitted rv_v mnemonics - vpopc.m (vcpop.m),
+     vmandnot.mm/vmornot.mm (vmandn.mm/vmorn.mm), vfredsum.vs/vfwredsum.vs
+     (vfredusum.vs/vfwredusum.vs), vl1r.v/vl2r.v/vl4r.v/vl8r.v
+     (vl1re8.v/vl2re8.v/vl4re8.v/vl8re8.v), and vle1.v/vse1.v (vlm.v/
+     vsm.v) - are each a single, non-import-duplicated record whose own
+     mask/value is identical to the canonical mnemonic it specializes
+     (hand-verified against real GNU as for all eleven), so each reuses
+     the canonical mnemonic's own normalization shape function unchanged;
+     the assembler's own frontend needed one small addition -
+     [Opcode.of_mnemonic] resolves each deprecated spelling to the
+     canonical opcode before table lookup, rather than a new opcode
+     variant - confirmed byte-identical against real GNU as via this
+     project's own encoder too. This slice moves 11 records on EACH RISC-V
+     profile.
+
+     GRP1's own byte-operand rung of the register/immediate ALU family
+     (opcode 0x80, register or memory destination -
+     ADD/OR/ADC/SBB/AND/SUB/XOR/CMP_GPR8_IMMb_80r<N> and
+     _MEMb_IMMb_80r<N>) and the accumulator-immediate byte rung (opcode
+     ext<<3|4 - ADD/OR/ADC/SBB/AND/SUB/XOR/CMP_AL_IMMb) close the same eight
+     mnemonics' byte-width immediate space {!Isa_norm_xed.alu_gpr8_immb_form}/
+     {!alu_memb_immb_form}/{!alu_al_immb_form} normalize - a genuinely
+     different opcode from the GPRv rungs above, not a narrower reading of
+     one of them (x86_family_encode.ml's {!alu_form_byte}/
+     {!alu_acc_form_byte} doc comments explain why). This slice moves 24
+     records per x86 profile (8 mnemonics x 3 shapes).
+
+     The reverse, MEMv<-GPRv, ALU direction (ADD/OR/ADC/SBB/AND/SUB/XOR/
+     CMP/TEST_MEMv_GPRv - `addl %eax, 0x10(%esp)`) closes the last
+     unbuilt direction of the base legacy ALU/MOV opcode space: unlike
+     every family above, `Opcode.to_rm_r`'s own table already covered
+     this opcode (a memory r/m and a register r/m share one opcode per
+     operation, only ModR/M's mod field differs), so only the new
+     `Lowered.Alu_rm_r`-producing lowering arm and
+     {!Isa_norm_xed.alu_memv_gprv_form} were needed, no encoder table
+     change. TEST is included, unlike its own GPRv_MEMv load-direction
+     exclusion above - XED does export a `TEST_MEMv_GPRv` record. This
+     slice moves 9 records per x86 profile (9 mnemonics x 1 shape). *)
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
-    ~promoted_support:691 ~blocked:378;
+    ~promoted_support:702 ~blocked:367;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
-    ~promoted_support:733 ~blocked:391;
+    ~promoted_support:744 ~blocked:380;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0 ~gas_generatable:5
-    ~promoted_support:4 ~blocked:7878;
+    ~promoted_support:84 ~blocked:7798;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
-    ~promoted_support:4 ~blocked:10562
+    ~promoted_support:84 ~blocked:10482
 
 (* Export and round-trip deterministic normalized JSONL: every
    form Isa_norm_riscv/Isa_norm_xed produce from the real checked-in exports
    - not just synthetic values, which Test_isa_norm_jsonl already covers for
    every constructor - must survive Isa_norm_jsonl.encode_line followed by
    decode_line unchanged. The pinned total is the sum of the accounting
-   tests' own pinned normalized counts (36+47+9+9); a drop here without a matching drop
-   there would mean the codec silently lost a form the accounting still
-   credits as normalized (67+81+9+9). *)
+   tests' own pinned normalized counts (722+774+89+89); a drop here without a
+   matching drop there would mean the codec silently lost a form the
+   accounting still credits as normalized. *)
 let normalize_one source (rec_ : Isa_source_record.t) =
   match source with
   | "riscv_opcodes" -> Isa_norm_riscv.normalize rec_
@@ -664,9 +752,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 1492)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 1674)"
        !roundtrip_count)
-    (!roundtrip_count = 1492)
+    (!roundtrip_count = 1674)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's
