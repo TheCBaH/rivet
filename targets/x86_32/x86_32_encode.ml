@@ -37,6 +37,8 @@ module Mode = struct
     @ X86_family_encode.Reg.base_regs 16 X86_family_encode.Reg.names_16
     @ X86_family_encode.Reg.base_regs 8 [| "al"; "cl"; "dl"; "bl"; "ah"; "ch"; "dh"; "bh" |]
     @ X86_family_encode.Reg.base_regs 128 (Array.sub X86_family_encode.Reg.names_xmm 0 8)
+    @ X86_family_encode.Reg.base_regs 256 (Array.sub X86_family_encode.Reg.names_ymm 0 8)
+    @ X86_family_encode.Reg.base_regs 512 (Array.sub X86_family_encode.Reg.names_zmm 0 8)
     (* [st] (x87 top-of-stack, [%st] alone - [%st(1)]-[%st(7)] are parsed
        directly from the [Register "st"; Lparen; Int n; Rparen] token shape,
        x86_family.ml, and never reach this table). Width 80 is not a real

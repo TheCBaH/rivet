@@ -267,6 +267,11 @@
     [107 cost=0] sse-binop-0f38-66 sse-binop-0f38-66(){no-asz 01100110 no-rex 00001111 00111000 sse-binop-0f38-op modrm}
     [108 cost=0] sse-binop-imm-0f3a-66 sse-binop-imm-0f3a-66(){no-asz 01100110 no-rex 00001111 00111010 sse-binop-imm-0f3a-op modrm imm8:8u}
     [109 cost=0] sse-gpr-imm-0f3a-66 sse-gpr-imm-0f3a-66(){no-asz 01100110 no-rex 00001111 00111010 sse-gpr-imm-0f3a-op modrm imm8:8u}
+    [110 cost=0] vex3-map2-66-rrr vex3-map2-66-rrr(){11000100 vex3-byte1:8u vex3-byte2:8u vex3-map2-66-op modrm}
+    [111 cost=0] vex3-map3-66-imm-rrr vex3-map3-66-imm-rrr(){11000100 vex3-byte1:8u vex3-byte2:8u vex3-map3-66-op modrm imm8:8u}
+    [112 cost=0] vex3-map2-66-unop vex3-map2-66-unop(){11000100 vex3-byte1:8u vex3-byte2:8u vex3-map2-unop-op modrm}
+    [113 cost=0] evex-ps-rrr      evex-ps-rrr(){01100010 evex-p0:8u evex-p1:8u evex-p2:8u evex-ps-op modrm}
+    [114 cost=0] evex-pd-rrr      evex-pd-rrr(){01100010 evex-p0:8u evex-p1:8u evex-p2:8u evex-pd-op modrm}
   prefixes(){no-asz opsz no-rex}
   alu-acc-imm8-opcode(){opcode:8u}
   alu-acc-imm-opcode(){opcode:8u}
@@ -318,6 +323,11 @@
   sse-binop-0f38-op[46]{opcode:8u}
   sse-binop-imm-0f3a-op[12]{opcode:8u}
   sse-gpr-imm-0f3a-op[5]{opcode:8u}
+  vex3-map2-66-op[25]{opcode:8u}
+  vex3-map3-66-op[10]{opcode:8u}
+  vex3-map2-unop-op[18]{opcode:8u}
+  evex-ps-op[8]{opcode:8u}
+  evex-pd-op[8]{opcode:8u}
   alt opsz
     [0 cost=0] opsz-present     opsz-present(){01100110}
     [1 cost=0] opsz-absent      opsz-absent(){()}
@@ -591,6 +601,11 @@
     [107 cost=0] sse-binop-0f38-66 sse-binop-0f38-66(){asz 01100110 rex 00001111 00111000 sse-binop-0f38-op modrm}
     [108 cost=0] sse-binop-imm-0f3a-66 sse-binop-imm-0f3a-66(){asz 01100110 rex 00001111 00111010 sse-binop-imm-0f3a-op modrm imm8:8u}
     [109 cost=0] sse-gpr-imm-0f3a-66 sse-gpr-imm-0f3a-66(){asz 01100110 rex 00001111 00111010 sse-gpr-imm-0f3a-op modrm imm8:8u}
+    [110 cost=0] vex3-map2-66-rrr vex3-map2-66-rrr(){11000100 vex3-byte1:8u vex3-byte2:8u vex3-map2-66-op modrm}
+    [111 cost=0] vex3-map3-66-imm-rrr vex3-map3-66-imm-rrr(){11000100 vex3-byte1:8u vex3-byte2:8u vex3-map3-66-op modrm imm8:8u}
+    [112 cost=0] vex3-map2-66-unop vex3-map2-66-unop(){11000100 vex3-byte1:8u vex3-byte2:8u vex3-map2-unop-op modrm}
+    [113 cost=0] evex-ps-rrr      evex-ps-rrr(){01100010 evex-p0:8u evex-p1:8u evex-p2:8u evex-ps-op modrm}
+    [114 cost=0] evex-pd-rrr      evex-pd-rrr(){01100010 evex-p0:8u evex-p1:8u evex-p2:8u evex-pd-op modrm}
   prefixes(){asz opsz rex}
   alu-acc-imm8-opcode(){opcode:8u}
   alu-acc-imm-opcode(){opcode:8u}
@@ -645,6 +660,11 @@
   sse-binop-0f38-op[46]{opcode:8u}
   sse-binop-imm-0f3a-op[12]{opcode:8u}
   sse-gpr-imm-0f3a-op[5]{opcode:8u}
+  vex3-map2-66-op[25]{opcode:8u}
+  vex3-map3-66-op[10]{opcode:8u}
+  vex3-map2-unop-op[18]{opcode:8u}
+  evex-ps-op[8]{opcode:8u}
+  evex-pd-op[8]{opcode:8u}
   alt opsz
     [0 cost=0] opsz-present     opsz-present(){01100110}
     [1 cost=0] opsz-absent      opsz-absent(){()}

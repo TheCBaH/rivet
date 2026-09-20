@@ -226,7 +226,8 @@ module Make (M : MODE) = struct
        operand, not only the new SSE ones. *)
     let mem_reg_named n =
       match reg_named n with
-      | Ok r when r.Reg.width = 128 -> bad (`Xmm_in_memory_operand n)
+      | Ok r when r.Reg.width = 128 || r.Reg.width = 256 || r.Reg.width = 512 ->
+          bad (`Xmm_in_memory_operand n)
       | other -> other
     in
     let open Asm_syntax in

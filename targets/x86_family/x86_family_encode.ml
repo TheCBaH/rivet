@@ -50,6 +50,16 @@ module Reg = struct
      8/16/32/64 already mark the four GPR widths. *)
   let names_xmm = Array.init 16 (fun i -> Printf.sprintf "xmm%d" i)
 
+  (* [ymm0]-[ymm15] (AVX): {!names_xmm}'s own 256-bit sibling, width 256 serving as the
+     class marker for the same reason 128 does for xmm - a VEX instruction's [L] bit is read off
+     its operand registers' width, not carried separately. *)
+  let names_ymm = Array.init 16 (fun i -> Printf.sprintf "ymm%d" i)
+
+  (* [zmm0]-[zmm15] (AVX-512): {!names_ymm}'s own 512-bit sibling, width 512 as the class
+     marker for EVEX.L'L = 2. [zmm16]-[zmm31] need the EVEX [R'], [V'] and [X] extension bits and
+     are not modelled yet. *)
+  let names_zmm = Array.init 16 (fun i -> Printf.sprintf "zmm%d" i)
+
   let base_regs width names =
     Array.to_list (Array.mapi (fun i n -> { name = n; num = i; width }) names)
 
@@ -740,6 +750,81 @@ module Opcode = struct
         (** [extractps $imm8, xmm, gpr32/m32] - extract a single-precision lane ([66 0F 3A 17 /r
             ib]), {!Pextrb}'s sibling. Confirmed against real GNU as: [extractps $1,%xmm1,%eax]
             -> [66 0f 3a 17 c8 01]. *)
+    | Vpshufb
+        (** [vpshufb src2, src1, dst] - the VEX sibling of the legacy {!Pshufb} and the first
+            mnemonic needing the three-byte VEX prefix ([0xC4]): [VEX.128.66.0F38.WIG 00
+            /r], opcode map 2 selected by the prefix's own [mmmmm] field rather than a fixed [0x0F
+            0x38] escape pair. Same {!Lowered.Vex_binop_rr_rm} shape as {!Vpaddb}, so the same
+            two-byte-VEX register restriction on [src2] still applies here for now, and the whole
+            [VEX.128.66.0F38] group below ({!Vphaddw}..{!Vpmulld}) mirrors the legacy map-2 binop
+            table entry for entry. Confirmed against real GNU as: [vpmulld %xmm7,%xmm3,%xmm5] ->
+            [c4 e2 61 40 ef], [vpshufb 0x10(%esp),%xmm1,%xmm0] -> [c4 e2 71 00 44 24 10]. *)
+    | Vphaddw  (** See {!Vpshufb}. *)
+    | Vphaddd  (** See {!Vpshufb}. *)
+    | Vphaddsw  (** See {!Vpshufb}. *)
+    | Vpmaddubsw  (** See {!Vpshufb}. *)
+    | Vphsubw  (** See {!Vpshufb}. *)
+    | Vphsubd  (** See {!Vpshufb}. *)
+    | Vphsubsw  (** See {!Vpshufb}. *)
+    | Vpsignb  (** See {!Vpshufb}. *)
+    | Vpsignw  (** See {!Vpshufb}. *)
+    | Vpsignd  (** See {!Vpshufb}. *)
+    | Vpmulhrsw  (** See {!Vpshufb}. *)
+    | Vpmuldq  (** See {!Vpshufb}. *)
+    | Vpcmpeqq  (** See {!Vpshufb}. *)
+    | Vpackusdw  (** See {!Vpshufb}. *)
+    | Vpcmpgtq  (** See {!Vpshufb}. *)
+    | Vpminsb  (** See {!Vpshufb}. *)
+    | Vpminsd  (** See {!Vpshufb}. *)
+    | Vpminuw  (** See {!Vpshufb}. *)
+    | Vpminud  (** See {!Vpshufb}. *)
+    | Vpmaxsb  (** See {!Vpshufb}. *)
+    | Vpmaxsd  (** See {!Vpshufb}. *)
+    | Vpmaxuw  (** See {!Vpshufb}. *)
+    | Vpmaxud  (** See {!Vpshufb}. *)
+    | Vpmulld  (** See {!Vpshufb}. *)
+    | Vpalignr
+        (** [vpalignr $imm8, src2, src1, dst] - the VEX sibling of the legacy {!Palignr}, and the
+            first mnemonic in the [VEX.128.66.0F3A] map ([mmmmm = 3]) - {!Vpshufb}'s own
+            three-byte-prefix layout, with the trailing imm8 {!Lowered.Vex_binop_imm_rr_rm} adds.
+            The rest of the group ({!Vblendps}..{!Vinsertps}) mirrors the legacy map-3 binop table;
+            [vroundss]/[vroundsd] take a merge [src1] the way [roundss]/[roundsd] merge [dst].
+            Confirmed against real GNU as: [vpalignr $5,%xmm2,%xmm1,%xmm0] -> [c4 e3 71 0f c2
+            05]. *)
+    | Vblendps  (** See {!Vpalignr}. *)
+    | Vblendpd  (** See {!Vpalignr}. *)
+    | Vpblendw  (** See {!Vpalignr}. *)
+    | Vroundss  (** See {!Vpalignr}. *)
+    | Vroundsd  (** See {!Vpalignr}. *)
+    | Vdpps  (** See {!Vpalignr}. *)
+    | Vdppd  (** See {!Vpalignr}. *)
+    | Vmpsadbw  (** See {!Vpalignr}. *)
+    | Vinsertps  (** See {!Vpalignr}. *)
+    | Vpabsb
+        (** [vpabsb src, dst] - the VEX sibling of the legacy {!Pabsb}, the first two-operand
+            mnemonic in the [VEX.128.66.0F38] map: {!Vpshufb}'s three-byte prefix over
+            {!Lowered.Vex_unop_r_rm}'s architecturally-unused [vvvv = 1111]. The whole group
+            ({!Vpabsw}..{!Vmovntdqa}: [vpabs*], [vphminposuw], [vptest], [vpmovsx*]/[vpmovzx*])
+            mirrors the legacy map-2 unary table; [vmovntdqa] is memory-source only, like its
+            legacy sibling. Confirmed against real GNU as: [vpabsb %xmm2,%xmm1] -> [c4 e2 79 1c
+            ca], [vptest 0x10(%esp),%xmm1] -> [c4 e2 79 17 4c 24 10]. *)
+    | Vpabsw  (** See {!Vpabsb}. *)
+    | Vpabsd  (** See {!Vpabsb}. *)
+    | Vphminposuw  (** See {!Vpabsb}. *)
+    | Vptest  (** See {!Vpabsb}. *)
+    | Vpmovsxbw  (** See {!Vpabsb}. *)
+    | Vpmovsxbd  (** See {!Vpabsb}. *)
+    | Vpmovsxbq  (** See {!Vpabsb}. *)
+    | Vpmovsxwd  (** See {!Vpabsb}. *)
+    | Vpmovsxwq  (** See {!Vpabsb}. *)
+    | Vpmovsxdq  (** See {!Vpabsb}. *)
+    | Vpmovzxbw  (** See {!Vpabsb}. *)
+    | Vpmovzxbd  (** See {!Vpabsb}. *)
+    | Vpmovzxbq  (** See {!Vpabsb}. *)
+    | Vpmovzxwd  (** See {!Vpabsb}. *)
+    | Vpmovzxwq  (** See {!Vpabsb}. *)
+    | Vpmovzxdq  (** See {!Vpabsb}. *)
+    | Vmovntdqa  (** See {!Vpabsb}. *)
     | Movdqa
         (** [movdqa rm, reg] / [movdqa reg, rm] - integer/general XMM register move, aligned
             ([66 0F 6F /r] load, [66 0F 7F /r] store), {!Movaps}'s integer-classified
@@ -1555,6 +1640,59 @@ module Opcode = struct
     | Pextrb -> "pextrb"
     | Pextrd -> "pextrd"
     | Extractps -> "extractps"
+    | Vpshufb -> "vpshufb"
+    | Vphaddw -> "vphaddw"
+    | Vphaddd -> "vphaddd"
+    | Vphaddsw -> "vphaddsw"
+    | Vpmaddubsw -> "vpmaddubsw"
+    | Vphsubw -> "vphsubw"
+    | Vphsubd -> "vphsubd"
+    | Vphsubsw -> "vphsubsw"
+    | Vpsignb -> "vpsignb"
+    | Vpsignw -> "vpsignw"
+    | Vpsignd -> "vpsignd"
+    | Vpmulhrsw -> "vpmulhrsw"
+    | Vpmuldq -> "vpmuldq"
+    | Vpcmpeqq -> "vpcmpeqq"
+    | Vpackusdw -> "vpackusdw"
+    | Vpcmpgtq -> "vpcmpgtq"
+    | Vpminsb -> "vpminsb"
+    | Vpminsd -> "vpminsd"
+    | Vpminuw -> "vpminuw"
+    | Vpminud -> "vpminud"
+    | Vpmaxsb -> "vpmaxsb"
+    | Vpmaxsd -> "vpmaxsd"
+    | Vpmaxuw -> "vpmaxuw"
+    | Vpmaxud -> "vpmaxud"
+    | Vpmulld -> "vpmulld"
+    | Vpalignr -> "vpalignr"
+    | Vblendps -> "vblendps"
+    | Vblendpd -> "vblendpd"
+    | Vpblendw -> "vpblendw"
+    | Vroundss -> "vroundss"
+    | Vroundsd -> "vroundsd"
+    | Vdpps -> "vdpps"
+    | Vdppd -> "vdppd"
+    | Vmpsadbw -> "vmpsadbw"
+    | Vinsertps -> "vinsertps"
+    | Vpabsb -> "vpabsb"
+    | Vpabsw -> "vpabsw"
+    | Vpabsd -> "vpabsd"
+    | Vphminposuw -> "vphminposuw"
+    | Vptest -> "vptest"
+    | Vpmovsxbw -> "vpmovsxbw"
+    | Vpmovsxbd -> "vpmovsxbd"
+    | Vpmovsxbq -> "vpmovsxbq"
+    | Vpmovsxwd -> "vpmovsxwd"
+    | Vpmovsxwq -> "vpmovsxwq"
+    | Vpmovsxdq -> "vpmovsxdq"
+    | Vpmovzxbw -> "vpmovzxbw"
+    | Vpmovzxbd -> "vpmovzxbd"
+    | Vpmovzxbq -> "vpmovzxbq"
+    | Vpmovzxwd -> "vpmovzxwd"
+    | Vpmovzxwq -> "vpmovzxwq"
+    | Vpmovzxdq -> "vpmovzxdq"
+    | Vmovntdqa -> "vmovntdqa"
     | Movdqa -> "movdqa"
     | Movdqu -> "movdqu"
     | Pinsrw -> "pinsrw"
@@ -2032,9 +2170,20 @@ module Instruction = struct
           | Opcode.Psrld | Opcode.Psrlq | Opcode.Psraw | Opcode.Psrad | Opcode.Vpsllw
           | Opcode.Vpslld | Opcode.Vpsllq | Opcode.Vpsrlw | Opcode.Vpsrld | Opcode.Vpsrlq
           | Opcode.Vpsraw | Opcode.Vpsrad | Opcode.Movdqa | Opcode.Movdqu | Opcode.Vmovdqa
-          | Opcode.Vmovdqu | Opcode.Fldl | Opcode.Fstpl | Opcode.Fstps | Opcode.Flds | Opcode.Fildll
-          | Opcode.Fadds | Opcode.Fadd | Opcode.Fnstcw | Opcode.Fldcw | Opcode.Fistpll
-          | Opcode.Fsubs | Opcode.Fnstsw | Opcode.Movd ) as op ->
+          | Opcode.Vmovdqu | Opcode.Vpabsb | Opcode.Vpabsw | Opcode.Vpabsd | Opcode.Vphminposuw
+          | Opcode.Vptest | Opcode.Vpmovsxbw | Opcode.Vpmovsxbd | Opcode.Vpmovsxbq
+          | Opcode.Vpmovsxwd | Opcode.Vpmovsxwq | Opcode.Vpmovsxdq | Opcode.Vpmovzxbw
+          | Opcode.Vpmovzxbd | Opcode.Vpmovzxbq | Opcode.Vpmovzxwd | Opcode.Vpmovzxwq
+          | Opcode.Vpmovzxdq | Opcode.Vmovntdqa | Opcode.Vpalignr | Opcode.Vblendps
+          | Opcode.Vblendpd | Opcode.Vpblendw | Opcode.Vroundss | Opcode.Vroundsd | Opcode.Vdpps
+          | Opcode.Vdppd | Opcode.Vmpsadbw | Opcode.Vinsertps | Opcode.Vpshufb | Opcode.Vphaddw
+          | Opcode.Vphaddd | Opcode.Vphaddsw | Opcode.Vpmaddubsw | Opcode.Vphsubw | Opcode.Vphsubd
+          | Opcode.Vphsubsw | Opcode.Vpsignb | Opcode.Vpsignw | Opcode.Vpsignd | Opcode.Vpmulhrsw
+          | Opcode.Vpmuldq | Opcode.Vpcmpeqq | Opcode.Vpackusdw | Opcode.Vpcmpgtq | Opcode.Vpminsb
+          | Opcode.Vpminsd | Opcode.Vpminuw | Opcode.Vpminud | Opcode.Vpmaxsb | Opcode.Vpmaxsd
+          | Opcode.Vpmaxuw | Opcode.Vpmaxud | Opcode.Vpmulld | Opcode.Fldl | Opcode.Fstpl
+          | Opcode.Fstps | Opcode.Flds | Opcode.Fildll | Opcode.Fadds | Opcode.Fadd | Opcode.Fnstcw
+          | Opcode.Fldcw | Opcode.Fistpll | Opcode.Fsubs | Opcode.Fnstsw | Opcode.Movd ) as op ->
             Fmt.pf ppf "%s %a" (Opcode.name op) Fmt.(list ~sep:(any ", ") Operand.pp) ops
         | _ ->
             Fmt.pf ppf "%s%s %a" (Opcode.name i.op) (suffix_of_width i.width)
@@ -3420,6 +3569,59 @@ module Make (M : MODE) = struct
     | "pextrb", _ -> Ok (Instruction.mk Opcode.Pextrb 32 s.Surface.ops)
     | "pextrd", _ -> Ok (Instruction.mk Opcode.Pextrd 32 s.Surface.ops)
     | "extractps", _ -> Ok (Instruction.mk Opcode.Extractps 32 s.Surface.ops)
+    | "vpshufb", _ -> Ok (Instruction.mk Opcode.Vpshufb 32 s.Surface.ops)
+    | "vphaddw", _ -> Ok (Instruction.mk Opcode.Vphaddw 32 s.Surface.ops)
+    | "vphaddd", _ -> Ok (Instruction.mk Opcode.Vphaddd 32 s.Surface.ops)
+    | "vphaddsw", _ -> Ok (Instruction.mk Opcode.Vphaddsw 32 s.Surface.ops)
+    | "vpmaddubsw", _ -> Ok (Instruction.mk Opcode.Vpmaddubsw 32 s.Surface.ops)
+    | "vphsubw", _ -> Ok (Instruction.mk Opcode.Vphsubw 32 s.Surface.ops)
+    | "vphsubd", _ -> Ok (Instruction.mk Opcode.Vphsubd 32 s.Surface.ops)
+    | "vphsubsw", _ -> Ok (Instruction.mk Opcode.Vphsubsw 32 s.Surface.ops)
+    | "vpsignb", _ -> Ok (Instruction.mk Opcode.Vpsignb 32 s.Surface.ops)
+    | "vpsignw", _ -> Ok (Instruction.mk Opcode.Vpsignw 32 s.Surface.ops)
+    | "vpsignd", _ -> Ok (Instruction.mk Opcode.Vpsignd 32 s.Surface.ops)
+    | "vpmulhrsw", _ -> Ok (Instruction.mk Opcode.Vpmulhrsw 32 s.Surface.ops)
+    | "vpmuldq", _ -> Ok (Instruction.mk Opcode.Vpmuldq 32 s.Surface.ops)
+    | "vpcmpeqq", _ -> Ok (Instruction.mk Opcode.Vpcmpeqq 32 s.Surface.ops)
+    | "vpackusdw", _ -> Ok (Instruction.mk Opcode.Vpackusdw 32 s.Surface.ops)
+    | "vpcmpgtq", _ -> Ok (Instruction.mk Opcode.Vpcmpgtq 32 s.Surface.ops)
+    | "vpminsb", _ -> Ok (Instruction.mk Opcode.Vpminsb 32 s.Surface.ops)
+    | "vpminsd", _ -> Ok (Instruction.mk Opcode.Vpminsd 32 s.Surface.ops)
+    | "vpminuw", _ -> Ok (Instruction.mk Opcode.Vpminuw 32 s.Surface.ops)
+    | "vpminud", _ -> Ok (Instruction.mk Opcode.Vpminud 32 s.Surface.ops)
+    | "vpmaxsb", _ -> Ok (Instruction.mk Opcode.Vpmaxsb 32 s.Surface.ops)
+    | "vpmaxsd", _ -> Ok (Instruction.mk Opcode.Vpmaxsd 32 s.Surface.ops)
+    | "vpmaxuw", _ -> Ok (Instruction.mk Opcode.Vpmaxuw 32 s.Surface.ops)
+    | "vpmaxud", _ -> Ok (Instruction.mk Opcode.Vpmaxud 32 s.Surface.ops)
+    | "vpmulld", _ -> Ok (Instruction.mk Opcode.Vpmulld 32 s.Surface.ops)
+    | "vpalignr", _ -> Ok (Instruction.mk Opcode.Vpalignr 32 s.Surface.ops)
+    | "vblendps", _ -> Ok (Instruction.mk Opcode.Vblendps 32 s.Surface.ops)
+    | "vblendpd", _ -> Ok (Instruction.mk Opcode.Vblendpd 32 s.Surface.ops)
+    | "vpblendw", _ -> Ok (Instruction.mk Opcode.Vpblendw 32 s.Surface.ops)
+    | "vroundss", _ -> Ok (Instruction.mk Opcode.Vroundss 32 s.Surface.ops)
+    | "vroundsd", _ -> Ok (Instruction.mk Opcode.Vroundsd 32 s.Surface.ops)
+    | "vdpps", _ -> Ok (Instruction.mk Opcode.Vdpps 32 s.Surface.ops)
+    | "vdppd", _ -> Ok (Instruction.mk Opcode.Vdppd 32 s.Surface.ops)
+    | "vmpsadbw", _ -> Ok (Instruction.mk Opcode.Vmpsadbw 32 s.Surface.ops)
+    | "vinsertps", _ -> Ok (Instruction.mk Opcode.Vinsertps 32 s.Surface.ops)
+    | "vpabsb", _ -> Ok (Instruction.mk Opcode.Vpabsb 32 s.Surface.ops)
+    | "vpabsw", _ -> Ok (Instruction.mk Opcode.Vpabsw 32 s.Surface.ops)
+    | "vpabsd", _ -> Ok (Instruction.mk Opcode.Vpabsd 32 s.Surface.ops)
+    | "vphminposuw", _ -> Ok (Instruction.mk Opcode.Vphminposuw 32 s.Surface.ops)
+    | "vptest", _ -> Ok (Instruction.mk Opcode.Vptest 32 s.Surface.ops)
+    | "vpmovsxbw", _ -> Ok (Instruction.mk Opcode.Vpmovsxbw 32 s.Surface.ops)
+    | "vpmovsxbd", _ -> Ok (Instruction.mk Opcode.Vpmovsxbd 32 s.Surface.ops)
+    | "vpmovsxbq", _ -> Ok (Instruction.mk Opcode.Vpmovsxbq 32 s.Surface.ops)
+    | "vpmovsxwd", _ -> Ok (Instruction.mk Opcode.Vpmovsxwd 32 s.Surface.ops)
+    | "vpmovsxwq", _ -> Ok (Instruction.mk Opcode.Vpmovsxwq 32 s.Surface.ops)
+    | "vpmovsxdq", _ -> Ok (Instruction.mk Opcode.Vpmovsxdq 32 s.Surface.ops)
+    | "vpmovzxbw", _ -> Ok (Instruction.mk Opcode.Vpmovzxbw 32 s.Surface.ops)
+    | "vpmovzxbd", _ -> Ok (Instruction.mk Opcode.Vpmovzxbd 32 s.Surface.ops)
+    | "vpmovzxbq", _ -> Ok (Instruction.mk Opcode.Vpmovzxbq 32 s.Surface.ops)
+    | "vpmovzxwd", _ -> Ok (Instruction.mk Opcode.Vpmovzxwd 32 s.Surface.ops)
+    | "vpmovzxwq", _ -> Ok (Instruction.mk Opcode.Vpmovzxwq 32 s.Surface.ops)
+    | "vpmovzxdq", _ -> Ok (Instruction.mk Opcode.Vpmovzxdq 32 s.Surface.ops)
+    | "vmovntdqa", _ -> Ok (Instruction.mk Opcode.Vmovntdqa 32 s.Surface.ops)
     | "movdqa", _ -> Ok (Instruction.mk Opcode.Movdqa 32 s.Surface.ops)
     | "movdqu", _ -> Ok (Instruction.mk Opcode.Movdqu 32 s.Surface.ops)
     | "pinsrw", _ -> Ok (Instruction.mk Opcode.Pinsrw 32 s.Surface.ops)
@@ -3878,6 +4080,59 @@ module Make (M : MODE) = struct
     let xmm_ok (r : Reg.t) =
       if r.width = 128 then Ok ()
       else bad (`Sse_operand_class { sse_reg = r.name; sse_reg_width = r.width })
+    in
+    (* The 256-bit ([ymm], VEX.L = 1) counterpart of {!xmm_ok}, and the per-mnemonic gate on which
+       VEX instructions have a 256-bit form at all: only packed-float binops and the packed
+       moves/square roots are admitted here, so a [ymm] operand on any other mnemonic (scalar
+       [vaddsd], the integer group that needs AVX2, ...) still falls through to {!xmm_ok}'s error
+       rather than mis-encoding. *)
+    let ymm_ok (r : Reg.t) =
+      if r.width = 256 then Ok ()
+      else bad (`Sse_operand_class { sse_reg = r.name; sse_reg_width = r.width })
+    in
+    let zmm_ok (r : Reg.t) =
+      if r.width = 512 then Ok ()
+      else bad (`Sse_operand_class { sse_reg = r.name; sse_reg_width = r.width })
+    in
+    (* EVEX (AVX-512F, {!Opcode.Vaddps}'s own doc comment): only the register-register spelling of
+       the packed-float binops with an EVEX form is admitted at 512 bits, unmasked. *)
+    let evex512_binop = function
+      | Opcode.Vaddps | Opcode.Vsubps | Opcode.Vmulps | Opcode.Vdivps | Opcode.Vmaxps
+      | Opcode.Vminps | Opcode.Vunpcklps | Opcode.Vunpckhps | Opcode.Vaddpd | Opcode.Vsubpd
+      | Opcode.Vmulpd | Opcode.Vdivpd | Opcode.Vmaxpd | Opcode.Vminpd | Opcode.Vunpcklpd
+      | Opcode.Vunpckhpd ->
+          true
+      | _ -> false
+    in
+
+    let vex256_binop = function
+      | Opcode.Vaddps | Opcode.Vsubps | Opcode.Vmulps | Opcode.Vdivps | Opcode.Vandps
+      | Opcode.Vandnps | Opcode.Vorps | Opcode.Vxorps | Opcode.Vmaxps | Opcode.Vminps
+      | Opcode.Vunpcklps | Opcode.Vunpckhps | Opcode.Vaddpd | Opcode.Vsubpd | Opcode.Vmulpd
+      | Opcode.Vdivpd | Opcode.Vandpd | Opcode.Vandnpd | Opcode.Vorpd | Opcode.Vxorpd
+      | Opcode.Vmaxpd | Opcode.Vminpd | Opcode.Vunpcklpd | Opcode.Vunpckhpd | Opcode.Vpunpcklqdq
+      | Opcode.Vpunpckhqdq | Opcode.Vpunpcklbw | Opcode.Vpunpckhbw | Opcode.Vpunpcklwd
+      | Opcode.Vpunpckhwd | Opcode.Vpunpckldq | Opcode.Vpunpckhdq | Opcode.Vpaddb | Opcode.Vpaddw
+      | Opcode.Vpaddd | Opcode.Vpaddq | Opcode.Vpsubb | Opcode.Vpsubw | Opcode.Vpsubd
+      | Opcode.Vpsubq | Opcode.Vpcmpeqb | Opcode.Vpcmpeqw | Opcode.Vpcmpeqd | Opcode.Vpcmpgtb
+      | Opcode.Vpcmpgtw | Opcode.Vpcmpgtd | Opcode.Vpacksswb | Opcode.Vpackssdw | Opcode.Vpackuswb
+      | Opcode.Vpand | Opcode.Vpandn | Opcode.Vpor | Opcode.Vpminub | Opcode.Vpmaxub
+      | Opcode.Vpminsw | Opcode.Vpmaxsw | Opcode.Vpmullw | Opcode.Vpmulhw | Opcode.Vpmulhuw
+      | Opcode.Vpavgb | Opcode.Vpavgw | Opcode.Vpsadbw | Opcode.Vpshufb | Opcode.Vphaddw
+      | Opcode.Vphaddd | Opcode.Vphaddsw | Opcode.Vpmaddubsw | Opcode.Vphsubw | Opcode.Vphsubd
+      | Opcode.Vphsubsw | Opcode.Vpsignb | Opcode.Vpsignw | Opcode.Vpsignd | Opcode.Vpmulhrsw
+      | Opcode.Vpmuldq | Opcode.Vpcmpeqq | Opcode.Vpackusdw | Opcode.Vpcmpgtq | Opcode.Vpminsb
+      | Opcode.Vpminsd | Opcode.Vpminuw | Opcode.Vpminud | Opcode.Vpmaxsb | Opcode.Vpmaxsd
+      | Opcode.Vpmaxuw | Opcode.Vpmaxud | Opcode.Vpmulld ->
+          true
+      | _ -> false
+    in
+    let vex256_unop = function
+      | Opcode.Vsqrtps | Opcode.Vsqrtpd | Opcode.Vmovaps | Opcode.Vmovups | Opcode.Vmovapd
+      | Opcode.Vmovupd | Opcode.Vmovdqa | Opcode.Vmovdqu | Opcode.Vpabsb | Opcode.Vpabsw
+      | Opcode.Vpabsd | Opcode.Vptest | Opcode.Vmovntdqa ->
+          true
+      | _ -> false
     in
     (* The two-byte-VEX memory-operand counterpart of {!Vex_binop_rr_rm}'s
        own register-side [src2.num >= 8] check: a RIP base ([num = -1]) never
@@ -4616,6 +4871,39 @@ module Make (M : MODE) = struct
        {!Vex_rm_extended_register} names exactly which operand and why. A
        memory [src2] needs the same check on its base/index (if present)
        instead of on a register number directly - {!vex_mem_ok}. *)
+    (* 512-bit EVEX ([zmm]): every operand must be [zmm]; register source only. *)
+    | op, [ Operand.Reg src2; Operand.Reg src1; Operand.Reg dst ]
+      when dst.Reg.width = 512 && evex512_binop op -> (
+        match (zmm_ok src2, zmm_ok src1, zmm_ok dst) with
+        | Ok (), Ok (), Ok () ->
+            if src2.num >= 8 then bad (`Vex_rm_extended_register src2.name)
+            else Ok [ Lowered.Vex_binop_rr_rm { op; dst; src1; src2 = Rm.Reg src2 } ]
+        | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e)
+    (* 256-bit VEX ([ymm], {!Opcode.Vaddps}'s own doc comment): every operand must be [ymm], the
+       same [src2.num >= 8] / {!vex_mem_ok} restriction applies. *)
+    | op, [ Operand.Reg src2; Operand.Reg src1; Operand.Reg dst ]
+      when dst.Reg.width = 256 && vex256_binop op -> (
+        match (ymm_ok src2, ymm_ok src1, ymm_ok dst) with
+        | Ok (), Ok (), Ok () ->
+            if src2.num >= 8 then bad (`Vex_rm_extended_register src2.name)
+            else Ok [ Lowered.Vex_binop_rr_rm { op; dst; src1; src2 = Rm.Reg src2 } ]
+        | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e)
+    | op, [ Operand.Mem m; Operand.Reg src1; Operand.Reg dst ]
+      when dst.Reg.width = 256 && vex256_binop op -> (
+        match (ymm_ok src1, ymm_ok dst, vex_mem_ok m) with
+        | Ok (), Ok (), Ok () -> Ok [ Lowered.Vex_binop_rr_rm { op; dst; src1; src2 = Rm.Mem m } ]
+        | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e)
+    | op, [ Operand.Reg src; Operand.Reg dst ]
+      when dst.Reg.width = 256 && vex256_unop op && op <> Opcode.Vmovntdqa -> (
+        match (ymm_ok src, ymm_ok dst) with
+        | Ok (), Ok () ->
+            if src.num >= 8 then bad (`Vex_rm_extended_register src.name)
+            else Ok [ Lowered.Vex_unop_r_rm { op; dst; src = Rm.Reg src } ]
+        | Error e, _ | _, Error e -> Error e)
+    | op, [ Operand.Mem m; Operand.Reg dst ] when dst.Reg.width = 256 && vex256_unop op -> (
+        match (ymm_ok dst, vex_mem_ok m) with
+        | Ok (), Ok () -> Ok [ Lowered.Vex_unop_r_rm { op; dst; src = Rm.Mem m } ]
+        | Error e, _ | _, Error e -> Error e)
     | ( ( Opcode.Vaddsd | Opcode.Vsubsd | Opcode.Vmulsd | Opcode.Vdivsd | Opcode.Vaddss
         | Opcode.Vsubss | Opcode.Vmulss | Opcode.Vdivss | Opcode.Vaddps | Opcode.Vsubps
         | Opcode.Vmulps | Opcode.Vdivps | Opcode.Vaddpd | Opcode.Vsubpd | Opcode.Vmulpd
@@ -4633,7 +4921,12 @@ module Make (M : MODE) = struct
         | Opcode.Vpsllq | Opcode.Vpsrlw | Opcode.Vpsrld | Opcode.Vpsrlq | Opcode.Vpsraw
         | Opcode.Vpsrad | Opcode.Vmaxsd | Opcode.Vminsd | Opcode.Vmaxss | Opcode.Vminss
         | Opcode.Vmaxps | Opcode.Vminps | Opcode.Vmaxpd | Opcode.Vminpd | Opcode.Vsqrtsd
-        | Opcode.Vsqrtss ),
+        | Opcode.Vsqrtss | Opcode.Vpshufb | Opcode.Vphaddw | Opcode.Vphaddd | Opcode.Vphaddsw
+        | Opcode.Vpmaddubsw | Opcode.Vphsubw | Opcode.Vphsubd | Opcode.Vphsubsw | Opcode.Vpsignb
+        | Opcode.Vpsignw | Opcode.Vpsignd | Opcode.Vpmulhrsw | Opcode.Vpmuldq | Opcode.Vpcmpeqq
+        | Opcode.Vpackusdw | Opcode.Vpcmpgtq | Opcode.Vpminsb | Opcode.Vpminsd | Opcode.Vpminuw
+        | Opcode.Vpminud | Opcode.Vpmaxsb | Opcode.Vpmaxsd | Opcode.Vpmaxuw | Opcode.Vpmaxud
+        | Opcode.Vpmulld ),
         [ Operand.Reg src2; Operand.Reg src1; Operand.Reg dst ] ) -> (
         match (xmm_ok src2, xmm_ok src1, xmm_ok dst) with
         | Ok (), Ok (), Ok () ->
@@ -4659,7 +4952,12 @@ module Make (M : MODE) = struct
         | Opcode.Vpsllq | Opcode.Vpsrlw | Opcode.Vpsrld | Opcode.Vpsrlq | Opcode.Vpsraw
         | Opcode.Vpsrad | Opcode.Vmaxsd | Opcode.Vminsd | Opcode.Vmaxss | Opcode.Vminss
         | Opcode.Vmaxps | Opcode.Vminps | Opcode.Vmaxpd | Opcode.Vminpd | Opcode.Vsqrtsd
-        | Opcode.Vsqrtss ),
+        | Opcode.Vsqrtss | Opcode.Vpshufb | Opcode.Vphaddw | Opcode.Vphaddd | Opcode.Vphaddsw
+        | Opcode.Vpmaddubsw | Opcode.Vphsubw | Opcode.Vphsubd | Opcode.Vphsubsw | Opcode.Vpsignb
+        | Opcode.Vpsignw | Opcode.Vpsignd | Opcode.Vpmulhrsw | Opcode.Vpmuldq | Opcode.Vpcmpeqq
+        | Opcode.Vpackusdw | Opcode.Vpcmpgtq | Opcode.Vpminsb | Opcode.Vpminsd | Opcode.Vpminuw
+        | Opcode.Vpminud | Opcode.Vpmaxsb | Opcode.Vpmaxsd | Opcode.Vpmaxuw | Opcode.Vpmaxud
+        | Opcode.Vpmulld ),
         [ Operand.Mem m; Operand.Reg src1; Operand.Reg dst ] ) -> (
         match (xmm_ok src1, xmm_ok dst) with
         | Ok (), Ok () -> (
@@ -4691,7 +4989,12 @@ module Make (M : MODE) = struct
         | Opcode.Vpsllq | Opcode.Vpsrlw | Opcode.Vpsrld | Opcode.Vpsrlq | Opcode.Vpsraw
         | Opcode.Vpsrad | Opcode.Vmaxsd | Opcode.Vminsd | Opcode.Vmaxss | Opcode.Vminss
         | Opcode.Vmaxps | Opcode.Vminps | Opcode.Vmaxpd | Opcode.Vminpd | Opcode.Vsqrtsd
-        | Opcode.Vsqrtss ),
+        | Opcode.Vsqrtss | Opcode.Vpshufb | Opcode.Vphaddw | Opcode.Vphaddd | Opcode.Vphaddsw
+        | Opcode.Vpmaddubsw | Opcode.Vphsubw | Opcode.Vphsubd | Opcode.Vphsubsw | Opcode.Vpsignb
+        | Opcode.Vpsignw | Opcode.Vpsignd | Opcode.Vpmulhrsw | Opcode.Vpmuldq | Opcode.Vpcmpeqq
+        | Opcode.Vpackusdw | Opcode.Vpcmpgtq | Opcode.Vpminsb | Opcode.Vpminsd | Opcode.Vpminuw
+        | Opcode.Vpminud | Opcode.Vpmaxsb | Opcode.Vpmaxsd | Opcode.Vpmaxuw | Opcode.Vpmaxud
+        | Opcode.Vpmulld ),
         [ Operand.Sym e; Operand.Reg src1; Operand.Reg dst ] ) -> (
         match (xmm_ok src1, xmm_ok dst) with
         | Ok (), Ok () ->
@@ -4726,7 +5029,11 @@ module Make (M : MODE) = struct
     | ( ( Opcode.Vsqrtps | Opcode.Vsqrtpd | Opcode.Vmovaps | Opcode.Vmovups | Opcode.Vmovapd
         | Opcode.Vmovupd | Opcode.Vcomisd | Opcode.Vucomisd | Opcode.Vcomiss | Opcode.Vucomiss
         | Opcode.Vcvtps2pd | Opcode.Vcvtpd2ps | Opcode.Vcvtdq2ps | Opcode.Vcvtps2dq
-        | Opcode.Vcvttps2dq | Opcode.Vmovdqa | Opcode.Vmovdqu ),
+        | Opcode.Vcvttps2dq | Opcode.Vmovdqa | Opcode.Vmovdqu | Opcode.Vpabsb | Opcode.Vpabsw
+        | Opcode.Vpabsd | Opcode.Vphminposuw | Opcode.Vptest | Opcode.Vpmovsxbw | Opcode.Vpmovsxbd
+        | Opcode.Vpmovsxbq | Opcode.Vpmovsxwd | Opcode.Vpmovsxwq | Opcode.Vpmovsxdq
+        | Opcode.Vpmovzxbw | Opcode.Vpmovzxbd | Opcode.Vpmovzxbq | Opcode.Vpmovzxwd
+        | Opcode.Vpmovzxwq | Opcode.Vpmovzxdq ),
         [ Operand.Reg src; Operand.Reg dst ] ) -> (
         match (xmm_ok src, xmm_ok dst) with
         | Ok (), Ok () ->
@@ -4740,7 +5047,11 @@ module Make (M : MODE) = struct
     | ( ( Opcode.Vsqrtps | Opcode.Vsqrtpd | Opcode.Vmovaps | Opcode.Vmovups | Opcode.Vmovapd
         | Opcode.Vmovupd | Opcode.Vcomisd | Opcode.Vucomisd | Opcode.Vcomiss | Opcode.Vucomiss
         | Opcode.Vcvtps2pd | Opcode.Vcvtdq2ps | Opcode.Vcvtps2dq | Opcode.Vcvttps2dq
-        | Opcode.Vmovdqa | Opcode.Vmovdqu ),
+        | Opcode.Vmovdqa | Opcode.Vmovdqu | Opcode.Vpabsb | Opcode.Vpabsw | Opcode.Vpabsd
+        | Opcode.Vphminposuw | Opcode.Vptest | Opcode.Vpmovsxbw | Opcode.Vpmovsxbd
+        | Opcode.Vpmovsxbq | Opcode.Vpmovsxwd | Opcode.Vpmovsxwq | Opcode.Vpmovsxdq
+        | Opcode.Vpmovzxbw | Opcode.Vpmovzxbd | Opcode.Vpmovzxbq | Opcode.Vpmovzxwd
+        | Opcode.Vpmovzxwq | Opcode.Vpmovzxdq | Opcode.Vmovntdqa ),
         [ Operand.Mem m; Operand.Reg dst ] ) -> (
         match xmm_ok dst with
         | Ok () -> (
@@ -4763,7 +5074,9 @@ module Make (M : MODE) = struct
        {!Vex_binop_rr_rm}'s own [src2, src1, dst] operand order, with a leading imm8 -
        {!Lowered.Vex_binop_imm_rr_rm} rather than {!Vex_binop_rr_rm}. *)
     | ( ( Opcode.Vshufps | Opcode.Vshufpd | Opcode.Vcmpss | Opcode.Vcmpsd | Opcode.Vcmpps
-        | Opcode.Vcmppd ),
+        | Opcode.Vcmppd | Opcode.Vpalignr | Opcode.Vblendps | Opcode.Vblendpd | Opcode.Vpblendw
+        | Opcode.Vroundss | Opcode.Vroundsd | Opcode.Vdpps | Opcode.Vdppd | Opcode.Vmpsadbw
+        | Opcode.Vinsertps ),
         [ Operand.Imm v; Operand.Reg src2; Operand.Reg src1; Operand.Reg dst ] ) -> (
         match imm_of v with
         | Error e -> Error e
@@ -4779,7 +5092,9 @@ module Make (M : MODE) = struct
                     ]
             | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e))
     | ( ( Opcode.Vshufps | Opcode.Vshufpd | Opcode.Vcmpss | Opcode.Vcmpsd | Opcode.Vcmpps
-        | Opcode.Vcmppd ),
+        | Opcode.Vcmppd | Opcode.Vpalignr | Opcode.Vblendps | Opcode.Vblendpd | Opcode.Vpblendw
+        | Opcode.Vroundss | Opcode.Vroundsd | Opcode.Vdpps | Opcode.Vdppd | Opcode.Vmpsadbw
+        | Opcode.Vinsertps ),
         [ Operand.Imm v; Operand.Mem m; Operand.Reg src1; Operand.Reg dst ] ) -> (
         match imm_of v with
         | Error e -> Error e
@@ -6221,19 +6536,139 @@ module Make (M : MODE) = struct
     C.alt ~label ~priority
       (C.iso_fun ~name:label
          ~encode:(function
-           | Lowered.Vex_binop_rr_rm { op; dst; src1; src2 } when vex_rm_ok src2 ->
+           | Lowered.Vex_binop_rr_rm { op; dst; src1; src2 } when vex_rm_ok src2 && dst.width <> 512
+             ->
                let r_bit = if dst.num >= 8 then 0 else 1 in
                let vvvv = lnot src1.num land 0xF in
-               let byte2 = Int64.of_int ((r_bit lsl 7) lor (vvvv lsl 3) lor pp) in
+               let l = if dst.width = 256 then 1 else 0 in
+               let byte2 = Int64.of_int ((r_bit lsl 7) lor (vvvv lsl 3) lor (l lsl 2) lor pp) in
                Some ((), (byte2, (op, { re_reg = dst.num; re_rm = src2 })))
            | _ -> None)
          ~decode:(fun ((), (byte2, (op, e))) ->
            let b = Int64.to_int byte2 in
            let r_bit = (b lsr 7) land 1 in
            let vvvv = (b lsr 3) land 0xF in
-           let l = (b lsr 2) land 1 in
+           let width = if (b lsr 2) land 1 = 1 then 256 else 128 in
            let observed_pp = b land 3 in
-           if l <> 0 || observed_pp <> pp then None
+           if observed_pp <> pp then None
+           else
+             let dst_num = (e.re_reg land 7) + if r_bit = 0 then 8 else 0 in
+             let src1_num = lnot vvvv land 0xF in
+             let src2 =
+               match e.re_rm with Rm.Reg r -> Rm.Reg (retype ~width r) | Rm.Mem _ as m -> m
+             in
+             Some
+               (Lowered.Vex_binop_rr_rm
+                  { op; dst = reg_at ~width dst_num; src1 = reg_at ~width src1_num; src2 }))
+         C.(const ~width:8 0xC5L ** field ~width:8 "vex-byte2" ** opcode_codec ** rm_codec))
+
+  (* The three-byte VEX prefix ([0xC4], {!Opcode.Vpshufb}'s own doc comment): [0xC4], then [R X B
+     mmmmm] (all three extension bits inverted; [mmmmm = 2] selects opcode map 0F38), then [W vvvv
+     L pp]. {!vex_scalar_rrr_alt}'s own two-byte layout with one extra byte: [R] moves out of the
+     last byte into the middle one and [W = 0] takes its place. [X] and [B] stay 1 (unextended)
+     because [src2] is still restricted to registers below 8 ({!vex_rm_ok}). *)
+  let vex3_map2_66_codec =
+    C.iso_table ~name:"vex3-map2-66-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:
+        [
+          (Opcode.Vpshufb, 0x00L);
+          (Opcode.Vphaddw, 0x01L);
+          (Opcode.Vphaddd, 0x02L);
+          (Opcode.Vphaddsw, 0x03L);
+          (Opcode.Vpmaddubsw, 0x04L);
+          (Opcode.Vphsubw, 0x05L);
+          (Opcode.Vphsubd, 0x06L);
+          (Opcode.Vphsubsw, 0x07L);
+          (Opcode.Vpsignb, 0x08L);
+          (Opcode.Vpsignw, 0x09L);
+          (Opcode.Vpsignd, 0x0AL);
+          (Opcode.Vpmulhrsw, 0x0BL);
+          (Opcode.Vpmuldq, 0x28L);
+          (Opcode.Vpcmpeqq, 0x29L);
+          (Opcode.Vpackusdw, 0x2BL);
+          (Opcode.Vpcmpgtq, 0x37L);
+          (Opcode.Vpminsb, 0x38L);
+          (Opcode.Vpminsd, 0x39L);
+          (Opcode.Vpminuw, 0x3AL);
+          (Opcode.Vpminud, 0x3BL);
+          (Opcode.Vpmaxsb, 0x3CL);
+          (Opcode.Vpmaxsd, 0x3DL);
+          (Opcode.Vpmaxuw, 0x3EL);
+          (Opcode.Vpmaxud, 0x3FL);
+          (Opcode.Vpmulld, 0x40L);
+        ]
+      (C.field ~width:8 "opcode")
+
+  let vex3_map2_rrr_alt ~label ~priority ~pp ~opcode_codec =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Vex_binop_rr_rm { op; dst; src1; src2 } when vex_rm_ok src2 && dst.width <> 512
+             ->
+               let r_bit = if dst.num >= 8 then 0 else 1 in
+               let vvvv = lnot src1.num land 0xF in
+               let l = if dst.width = 256 then 1 else 0 in
+               let byte1 = Int64.of_int ((r_bit lsl 7) lor 0x40 lor 0x20 lor 2) in
+               let byte2 = Int64.of_int ((vvvv lsl 3) lor (l lsl 2) lor pp) in
+               Some ((), (byte1, (byte2, (op, { re_reg = dst.num; re_rm = src2 }))))
+           | _ -> None)
+         ~decode:(fun ((), (byte1, (byte2, (op, e)))) ->
+           let b1 = Int64.to_int byte1 and b2 = Int64.to_int byte2 in
+           let r_bit = (b1 lsr 7) land 1 in
+           let vvvv = (b2 lsr 3) land 0xF in
+           let w = (b2 lsr 7) land 1 in
+           let width = if (b2 lsr 2) land 1 = 1 then 256 else 128 in
+           if b1 land 0x7F <> 0x62 || w <> 0 || b2 land 3 <> pp then None
+           else
+             let dst_num = (e.re_reg land 7) + if r_bit = 0 then 8 else 0 in
+             let src1_num = lnot vvvv land 0xF in
+             let src2 =
+               match e.re_rm with Rm.Reg r -> Rm.Reg (retype ~width r) | Rm.Mem _ as m -> m
+             in
+             Some
+               (Lowered.Vex_binop_rr_rm
+                  { op; dst = reg_at ~width dst_num; src1 = reg_at ~width src1_num; src2 }))
+         C.(
+           const ~width:8 0xC4L ** field ~width:8 "vex3-byte1" ** field ~width:8 "vex3-byte2"
+           ** opcode_codec ** rm_codec))
+
+  (* {!Opcode.Vpalignr}'s own doc comment: {!vex3_map2_rrr_alt}'s layout for the [VEX.128.66.0F3A]
+     map ([mmmmm = 3]), with {!vex_binop_imm_rrr_alt}'s trailing imm8. *)
+  let vex3_map3_66_codec =
+    C.iso_table ~name:"vex3-map3-66-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:
+        [
+          (Opcode.Vpalignr, 0x0FL);
+          (Opcode.Vblendps, 0x0CL);
+          (Opcode.Vblendpd, 0x0DL);
+          (Opcode.Vpblendw, 0x0EL);
+          (Opcode.Vroundss, 0x0AL);
+          (Opcode.Vroundsd, 0x0BL);
+          (Opcode.Vdpps, 0x40L);
+          (Opcode.Vdppd, 0x41L);
+          (Opcode.Vmpsadbw, 0x42L);
+          (Opcode.Vinsertps, 0x21L);
+        ]
+      (C.field ~width:8 "opcode")
+
+  let vex3_map3_imm_rrr_alt ~label ~priority ~pp ~opcode_codec =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Vex_binop_imm_rr_rm { op; dst; src1; src2; imm } when vex_rm_ok src2 ->
+               let r_bit = if dst.num >= 8 then 0 else 1 in
+               let vvvv = lnot src1.num land 0xF in
+               let byte1 = Int64.of_int ((r_bit lsl 7) lor 0x40 lor 0x20 lor 3) in
+               let byte2 = Int64.of_int ((vvvv lsl 3) lor pp) in
+               Some ((), (byte1, (byte2, (op, ({ re_reg = dst.num; re_rm = src2 }, imm)))))
+           | _ -> None)
+         ~decode:(fun ((), (byte1, (byte2, (op, (e, imm))))) ->
+           let b1 = Int64.to_int byte1 and b2 = Int64.to_int byte2 in
+           let r_bit = (b1 lsr 7) land 1 in
+           let vvvv = (b2 lsr 3) land 0xF in
+           let w = (b2 lsr 7) land 1 in
+           let l = (b2 lsr 2) land 1 in
+           if b1 land 0x7F <> 0x63 || w <> 0 || l <> 0 || b2 land 3 <> pp then None
            else
              let dst_num = (e.re_reg land 7) + if r_bit = 0 then 8 else 0 in
              let src1_num = lnot vvvv land 0xF in
@@ -6241,9 +6676,144 @@ module Make (M : MODE) = struct
                match e.re_rm with Rm.Reg r -> Rm.Reg (retype ~width:128 r) | Rm.Mem _ as m -> m
              in
              Some
+               (Lowered.Vex_binop_imm_rr_rm
+                  {
+                    op;
+                    dst = reg_at ~width:128 dst_num;
+                    src1 = reg_at ~width:128 src1_num;
+                    src2;
+                    imm;
+                  }))
+         C.(
+           const ~width:8 0xC4L ** field ~width:8 "vex3-byte1" ** field ~width:8 "vex3-byte2"
+           ** opcode_codec ** rm_codec
+           ** le ~signedness:C.Unsigned ~width:8 "imm8"))
+
+  (* {!Opcode.Vpabsb}'s own doc comment: {!vex_unop_alt}'s layout ([vvvv] the literal [1111]) with
+     {!vex3_map2_rrr_alt}'s three-byte prefix. *)
+  let vex3_map2_unop_codec =
+    C.iso_table ~name:"vex3-map2-unop-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:
+        [
+          (Opcode.Vpabsb, 0x1CL);
+          (Opcode.Vpabsw, 0x1DL);
+          (Opcode.Vpabsd, 0x1EL);
+          (Opcode.Vphminposuw, 0x41L);
+          (Opcode.Vptest, 0x17L);
+          (Opcode.Vpmovsxbw, 0x20L);
+          (Opcode.Vpmovsxbd, 0x21L);
+          (Opcode.Vpmovsxbq, 0x22L);
+          (Opcode.Vpmovsxwd, 0x23L);
+          (Opcode.Vpmovsxwq, 0x24L);
+          (Opcode.Vpmovsxdq, 0x25L);
+          (Opcode.Vpmovzxbw, 0x30L);
+          (Opcode.Vpmovzxbd, 0x31L);
+          (Opcode.Vpmovzxbq, 0x32L);
+          (Opcode.Vpmovzxwd, 0x33L);
+          (Opcode.Vpmovzxwq, 0x34L);
+          (Opcode.Vpmovzxdq, 0x35L);
+          (Opcode.Vmovntdqa, 0x2AL);
+        ]
+      (C.field ~width:8 "opcode")
+
+  let vex3_map2_unop_alt ~label ~priority ~pp ~opcode_codec =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Vex_unop_r_rm { op; dst; src } when vex_rm_ok src ->
+               let r_bit = if dst.num >= 8 then 0 else 1 in
+               let l = if dst.width = 256 then 1 else 0 in
+               let byte1 = Int64.of_int ((r_bit lsl 7) lor 0x40 lor 0x20 lor 2) in
+               let byte2 = Int64.of_int ((0xF lsl 3) lor (l lsl 2) lor pp) in
+               Some ((), (byte1, (byte2, (op, { re_reg = dst.num; re_rm = src }))))
+           | _ -> None)
+         ~decode:(fun ((), (byte1, (byte2, (op, e)))) ->
+           let b1 = Int64.to_int byte1 and b2 = Int64.to_int byte2 in
+           let r_bit = (b1 lsr 7) land 1 in
+           let vvvv = (b2 lsr 3) land 0xF in
+           let w = (b2 lsr 7) land 1 in
+           let width = if (b2 lsr 2) land 1 = 1 then 256 else 128 in
+           if b1 land 0x7F <> 0x62 || w <> 0 || vvvv <> 0xF || b2 land 3 <> pp then None
+           else
+             let dst_num = (e.re_reg land 7) + if r_bit = 0 then 8 else 0 in
+             let src =
+               match e.re_rm with Rm.Reg r -> Rm.Reg (retype ~width r) | Rm.Mem _ as m -> m
+             in
+             Some (Lowered.Vex_unop_r_rm { op; dst = reg_at ~width dst_num; src }))
+         C.(
+           const ~width:8 0xC4L ** field ~width:8 "vex3-byte1" ** field ~width:8 "vex3-byte2"
+           ** opcode_codec ** rm_codec))
+
+  (* The EVEX prefix ([0x62], AVX-512, {!Opcode.Vaddps}'s own doc comment): [0x62], then [P0 = R X B
+     R' 0 mmm] (extension bits inverted; [mmm = 1] selects map 0F), [P1 = W vvvv 1 pp], [P2 = z L'L
+     b V' aaa] - here always unmasked ([z = 0], [aaa = 0]), no broadcast/rounding ([b = 0]), 512
+     bits ([L'L = 10]), and [R'] = [V'] = 1 (registers below 16). [W] is fixed per group: 0 for the
+     [ps] mnemonics, 1 for [pd] (unlike VEX, where the same opcodes are WIG). *)
+  let evex_ps_codec =
+    C.iso_table ~name:"evex-ps-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:
+        [
+          (Opcode.Vaddps, 0x58L);
+          (Opcode.Vsubps, 0x5CL);
+          (Opcode.Vmulps, 0x59L);
+          (Opcode.Vdivps, 0x5EL);
+          (Opcode.Vmaxps, 0x5FL);
+          (Opcode.Vminps, 0x5DL);
+          (Opcode.Vunpcklps, 0x14L);
+          (Opcode.Vunpckhps, 0x15L);
+        ]
+      (C.field ~width:8 "opcode")
+
+  let evex_pd_codec =
+    C.iso_table ~name:"evex-pd-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:
+        [
+          (Opcode.Vaddpd, 0x58L);
+          (Opcode.Vsubpd, 0x5CL);
+          (Opcode.Vmulpd, 0x59L);
+          (Opcode.Vdivpd, 0x5EL);
+          (Opcode.Vmaxpd, 0x5FL);
+          (Opcode.Vminpd, 0x5DL);
+          (Opcode.Vunpcklpd, 0x14L);
+          (Opcode.Vunpckhpd, 0x15L);
+        ]
+      (C.field ~width:8 "opcode")
+
+  let evex_binop_rrr_alt ~label ~priority ~pp ~w ~opcode_codec =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Vex_binop_rr_rm { op; dst; src1; src2 } when dst.width = 512 && vex_rm_ok src2
+             ->
+               let r_bit = if dst.num >= 8 then 0 else 1 in
+               let vvvv = lnot src1.num land 0xF in
+               let p0 = Int64.of_int ((r_bit lsl 7) lor 0x40 lor 0x20 lor 0x10 lor 1) in
+               let p1 = Int64.of_int ((w lsl 7) lor (vvvv lsl 3) lor 4 lor pp) in
+               Some ((), (p0, (p1, (0x48L, (op, { re_reg = dst.num; re_rm = src2 })))))
+           | _ -> None)
+         ~decode:(fun ((), (p0, (p1, (p2, (op, e))))) ->
+           let b0 = Int64.to_int p0 and b1 = Int64.to_int p1 in
+           if
+             b0 land 0x7F <> 0x71
+             || (b1 lsr 7) land 1 <> w
+             || b1 land 4 = 0
+             || b1 land 3 <> pp
+             || p2 <> 0x48L
+           then None
+           else
+             let r_bit = (b0 lsr 7) land 1 in
+             let vvvv = (b1 lsr 3) land 0xF in
+             let dst_num = (e.re_reg land 7) + if r_bit = 0 then 8 else 0 in
+             let src1_num = lnot vvvv land 0xF in
+             let src2 =
+               match e.re_rm with Rm.Reg r -> Rm.Reg (retype ~width:512 r) | Rm.Mem _ as m -> m
+             in
+             Some
                (Lowered.Vex_binop_rr_rm
-                  { op; dst = reg_at ~width:128 dst_num; src1 = reg_at ~width:128 src1_num; src2 }))
-         C.(const ~width:8 0xC5L ** field ~width:8 "vex-byte2" ** opcode_codec ** rm_codec))
+                  { op; dst = reg_at ~width:512 dst_num; src1 = reg_at ~width:512 src1_num; src2 }))
+         C.(
+           const ~width:8 0x62L ** field ~width:8 "evex-p0" ** field ~width:8 "evex-p1"
+           ** field ~width:8 "evex-p2" ** opcode_codec ** rm_codec))
 
   (* [pp = 0] - {!Opcode.Vsqrtps}'s own group: opcode 0x51 does not collide with
      {!vex_scalar_none_codec}'s entries (0x54-0x59/0x5C-0x5F), so this could have been added
@@ -6296,21 +6866,22 @@ module Make (M : MODE) = struct
          ~encode:(function
            | Lowered.Vex_unop_r_rm { op; dst; src } when vex_rm_ok src ->
                let r_bit = if dst.num >= 8 then 0 else 1 in
-               let byte2 = Int64.of_int ((r_bit lsl 7) lor (0xF lsl 3) lor pp) in
+               let l = if dst.width = 256 then 1 else 0 in
+               let byte2 = Int64.of_int ((r_bit lsl 7) lor (0xF lsl 3) lor (l lsl 2) lor pp) in
                Some ((), (byte2, (op, { re_reg = dst.num; re_rm = src })))
            | _ -> None)
          ~decode:(fun ((), (byte2, (op, e))) ->
            let b = Int64.to_int byte2 in
            let r_bit = (b lsr 7) land 1 in
-           let l = (b lsr 2) land 1 in
+           let width = if (b lsr 2) land 1 = 1 then 256 else 128 in
            let observed_pp = b land 3 in
-           if l <> 0 || observed_pp <> pp then None
+           if observed_pp <> pp then None
            else
              let dst_num = (e.re_reg land 7) + if r_bit = 0 then 8 else 0 in
              let src =
-               match e.re_rm with Rm.Reg r -> Rm.Reg (retype ~width:128 r) | Rm.Mem _ as m -> m
+               match e.re_rm with Rm.Reg r -> Rm.Reg (retype ~width r) | Rm.Mem _ as m -> m
              in
-             Some (Lowered.Vex_unop_r_rm { op; dst = reg_at ~width:128 dst_num; src }))
+             Some (Lowered.Vex_unop_r_rm { op; dst = reg_at ~width dst_num; src }))
          C.(const ~width:8 0xC5L ** field ~width:8 "vex-byte2" ** opcode_codec ** rm_codec))
 
   (* [vmovd] load direction ([VEX.128.66.0F.W0 6E /r]): {!vex_unop_alt}'s own two-byte-VEX
@@ -7551,6 +8122,16 @@ module Make (M : MODE) = struct
             ~opcode_codec:vex_scalar_none_codec;
           vex_scalar_rrr_alt ~label:"vex-scalar-66-rrr" ~priority:70 ~pp:1
             ~opcode_codec:vex_scalar_66_codec;
+          vex3_map2_rrr_alt ~label:"vex3-map2-66-rrr" ~priority:110 ~pp:1
+            ~opcode_codec:vex3_map2_66_codec;
+          vex3_map2_unop_alt ~label:"vex3-map2-66-unop" ~priority:112 ~pp:1
+            ~opcode_codec:vex3_map2_unop_codec;
+          evex_binop_rrr_alt ~label:"evex-ps-rrr" ~priority:113 ~pp:0 ~w:0
+            ~opcode_codec:evex_ps_codec;
+          evex_binop_rrr_alt ~label:"evex-pd-rrr" ~priority:114 ~pp:1 ~w:1
+            ~opcode_codec:evex_pd_codec;
+          vex3_map3_imm_rrr_alt ~label:"vex3-map3-66-imm-rrr" ~priority:111 ~pp:1
+            ~opcode_codec:vex3_map3_66_codec;
           vex_unop_alt ~label:"vex-unop-none" ~priority:71 ~pp:0 ~opcode_codec:vex_unop_none_codec;
           vex_unop_alt ~label:"vex-unop-66" ~priority:72 ~pp:1 ~opcode_codec:vex_unop_66_codec;
           (* [cmpsd]/[cmpss]: {!Cmpsd}/{!Cmpss}'s own one-entry mandatory-[F2]/[F3]

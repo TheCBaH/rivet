@@ -1039,14 +1039,14 @@ let x86_sse_mov_entries =
    three-real-register x86 entry, fixed to [%xmm2] (src2)/[%xmm1] (src1)/[%xmm0] (dest) -
    confirmed against real GNU as ({!Isa_norm_xed.vex_binop_rrr_form}'s own doc comment) -
    rather than {!x86_sse_binop_rr_entry}'s two-operand shape. *)
-let x86_vex_binop_rrr_entry ~target ~form_id ~lookup_key =
+let x86_vex_binop_rrr_entry ~vreg ~target ~form_id ~lookup_key =
   {
     form_id;
     target;
     lookup_key;
     case_id = Printf.sprintf "%s:register-register:%s" form_id (Target.to_string target);
     rule_ids = [ "canonical-spelling"; "vex-three-register-operands" ];
-    operands = [ ("src2", "xmm2"); ("src1", "xmm1"); ("dest", "xmm0") ];
+    operands = [ ("src2", vreg ^ "2"); ("src1", vreg ^ "1"); ("dest", vreg ^ "0") ];
     lines_before = [];
     lines_after = [];
     configuration = Isa_gen_case_build.configuration_for target;
@@ -1057,7 +1057,7 @@ let x86_vex_binop_rrr_entries =
     (fun target ->
       List.map
         (fun lookup_key ->
-          x86_vex_binop_rrr_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+          x86_vex_binop_rrr_entry ~vreg:"xmm" ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
         [
           "VADDSD_XMMdq_XMMdq_XMMq";
           "VSUBSD_XMMdq_XMMdq_XMMq";
@@ -1106,6 +1106,31 @@ let x86_vex_binop_rrr_entries =
           "VPUNPCKLDQ_XMMdq_XMMdq_XMMdq";
           "VPUNPCKHDQ_XMMdq_XMMdq_XMMdq";
           "VPADDB_XMMdq_XMMdq_XMMdq";
+          "VPSHUFB_XMMdq_XMMdq_XMMdq";
+          "VPHADDW_XMMdq_XMMdq_XMMdq";
+          "VPHADDD_XMMdq_XMMdq_XMMdq";
+          "VPHADDSW_XMMdq_XMMdq_XMMdq";
+          "VPMADDUBSW_XMMdq_XMMdq_XMMdq";
+          "VPHSUBW_XMMdq_XMMdq_XMMdq";
+          "VPHSUBD_XMMdq_XMMdq_XMMdq";
+          "VPHSUBSW_XMMdq_XMMdq_XMMdq";
+          "VPSIGNB_XMMdq_XMMdq_XMMdq";
+          "VPSIGNW_XMMdq_XMMdq_XMMdq";
+          "VPSIGND_XMMdq_XMMdq_XMMdq";
+          "VPMULHRSW_XMMdq_XMMdq_XMMdq";
+          "VPMULDQ_XMMdq_XMMdq_XMMdq";
+          "VPCMPEQQ_XMMdq_XMMdq_XMMdq";
+          "VPACKUSDW_XMMdq_XMMdq_XMMdq";
+          "VPCMPGTQ_XMMdq_XMMdq_XMMdq";
+          "VPMINSB_XMMdq_XMMdq_XMMdq";
+          "VPMINSD_XMMdq_XMMdq_XMMdq";
+          "VPMINUW_XMMdq_XMMdq_XMMdq";
+          "VPMINUD_XMMdq_XMMdq_XMMdq";
+          "VPMAXSB_XMMdq_XMMdq_XMMdq";
+          "VPMAXSD_XMMdq_XMMdq_XMMdq";
+          "VPMAXUW_XMMdq_XMMdq_XMMdq";
+          "VPMAXUD_XMMdq_XMMdq_XMMdq";
+          "VPMULLD_XMMdq_XMMdq_XMMdq";
           "VPADDW_XMMdq_XMMdq_XMMdq";
           "VPADDD_XMMdq_XMMdq_XMMdq";
           "VPADDQ_XMMdq_XMMdq_XMMdq";
@@ -1151,7 +1176,7 @@ let x86_vex_binop_rrr_entries =
    {!x86_sse_binop_rm_entry}'s base+disp8 SIB addressing standing in for
    [src2], which is register 4 ([%esp]/[%rsp]) on both targets and so always
    satisfies the two-byte-VEX base/index restriction. *)
-let x86_vex_binop_rr_mem_entry ~target ~form_id ~lookup_key =
+let x86_vex_binop_rr_mem_entry ~vreg ~target ~form_id ~lookup_key =
   let stack, _, _ = x86_registers target in
   {
     form_id;
@@ -1159,7 +1184,8 @@ let x86_vex_binop_rr_mem_entry ~target ~form_id ~lookup_key =
     lookup_key;
     case_id = Printf.sprintf "%s:load-base-disp8-sib:%s" form_id (Target.to_string target);
     rule_ids = [ "load-base-disp8-sib"; "vex-two-register-one-memory-operands" ];
-    operands = [ ("src2", Printf.sprintf "16(%%%s)" stack); ("src1", "xmm1"); ("dest", "xmm0") ];
+    operands =
+      [ ("src2", Printf.sprintf "16(%%%s)" stack); ("src1", vreg ^ "1"); ("dest", vreg ^ "0") ];
     lines_before = [];
     lines_after = [];
     configuration = Isa_gen_case_build.configuration_for target;
@@ -1170,7 +1196,7 @@ let x86_vex_binop_rr_mem_entries =
     (fun target ->
       List.map
         (fun lookup_key ->
-          x86_vex_binop_rr_mem_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+          x86_vex_binop_rr_mem_entry ~vreg:"xmm" ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
         [
           "VADDSD_XMMdq_XMMdq_MEMq";
           "VSUBSD_XMMdq_XMMdq_MEMq";
@@ -1219,6 +1245,31 @@ let x86_vex_binop_rr_mem_entries =
           "VPUNPCKLDQ_XMMdq_XMMdq_MEMdq";
           "VPUNPCKHDQ_XMMdq_XMMdq_MEMdq";
           "VPADDB_XMMdq_XMMdq_MEMdq";
+          "VPSHUFB_XMMdq_XMMdq_MEMdq";
+          "VPHADDW_XMMdq_XMMdq_MEMdq";
+          "VPHADDD_XMMdq_XMMdq_MEMdq";
+          "VPHADDSW_XMMdq_XMMdq_MEMdq";
+          "VPMADDUBSW_XMMdq_XMMdq_MEMdq";
+          "VPHSUBW_XMMdq_XMMdq_MEMdq";
+          "VPHSUBD_XMMdq_XMMdq_MEMdq";
+          "VPHSUBSW_XMMdq_XMMdq_MEMdq";
+          "VPSIGNB_XMMdq_XMMdq_MEMdq";
+          "VPSIGNW_XMMdq_XMMdq_MEMdq";
+          "VPSIGND_XMMdq_XMMdq_MEMdq";
+          "VPMULHRSW_XMMdq_XMMdq_MEMdq";
+          "VPMULDQ_XMMdq_XMMdq_MEMdq";
+          "VPCMPEQQ_XMMdq_XMMdq_MEMdq";
+          "VPACKUSDW_XMMdq_XMMdq_MEMdq";
+          "VPCMPGTQ_XMMdq_XMMdq_MEMdq";
+          "VPMINSB_XMMdq_XMMdq_MEMdq";
+          "VPMINSD_XMMdq_XMMdq_MEMdq";
+          "VPMINUW_XMMdq_XMMdq_MEMdq";
+          "VPMINUD_XMMdq_XMMdq_MEMdq";
+          "VPMAXSB_XMMdq_XMMdq_MEMdq";
+          "VPMAXSD_XMMdq_XMMdq_MEMdq";
+          "VPMAXUW_XMMdq_XMMdq_MEMdq";
+          "VPMAXUD_XMMdq_XMMdq_MEMdq";
+          "VPMULLD_XMMdq_XMMdq_MEMdq";
           "VPADDW_XMMdq_XMMdq_MEMdq";
           "VPADDD_XMMdq_XMMdq_MEMdq";
           "VPADDQ_XMMdq_XMMdq_MEMdq";
@@ -1290,6 +1341,16 @@ let x86_vex_binop_imm_rrr_entries =
           ("VCMPSD_XMMdq_XMMdq_XMMq_IMMb", "0");
           ("VCMPPS_XMMdq_XMMdq_XMMdq_IMMb", "0");
           ("VCMPPD_XMMdq_XMMdq_XMMdq_IMMb", "0");
+          ("VPALIGNR_XMMdq_XMMdq_XMMdq_IMMb", "5");
+          ("VBLENDPS_XMMdq_XMMdq_XMMdq_IMMb", "5");
+          ("VBLENDPD_XMMdq_XMMdq_XMMdq_IMMb", "5");
+          ("VPBLENDW_XMMdq_XMMdq_XMMdq_IMMb", "5");
+          ("VROUNDSS_XMMdq_XMMdq_XMMd_IMMb", "5");
+          ("VROUNDSD_XMMdq_XMMdq_XMMq_IMMb", "5");
+          ("VDPPS_XMMdq_XMMdq_XMMdq_IMMb", "5");
+          ("VDPPD_XMMdq_XMMdq_XMMdq_IMMb", "5");
+          ("VMPSADBW_XMMdq_XMMdq_XMMdq_IMMb", "5");
+          ("VINSERTPS_XMMdq_XMMdq_XMMdq_IMMb", "5");
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -1325,20 +1386,30 @@ let x86_vex_binop_imm_rr_mem_entries =
           ("VCMPSD_XMMdq_XMMdq_MEMq_IMMb", "0");
           ("VCMPPS_XMMdq_XMMdq_MEMdq_IMMb", "0");
           ("VCMPPD_XMMdq_XMMdq_MEMdq_IMMb", "0");
+          ("VPALIGNR_XMMdq_XMMdq_MEMdq_IMMb", "5");
+          ("VBLENDPS_XMMdq_XMMdq_MEMdq_IMMb", "5");
+          ("VBLENDPD_XMMdq_XMMdq_MEMdq_IMMb", "5");
+          ("VPBLENDW_XMMdq_XMMdq_MEMdq_IMMb", "5");
+          ("VROUNDSS_XMMdq_XMMdq_MEMd_IMMb", "5");
+          ("VROUNDSD_XMMdq_XMMdq_MEMq_IMMb", "5");
+          ("VDPPS_XMMdq_XMMdq_MEMdq_IMMb", "5");
+          ("VDPPD_XMMdq_XMMdq_MEMdq_IMMb", "5");
+          ("VMPSADBW_XMMdq_XMMdq_MEMdq_IMMb", "5");
+          ("VINSERTPS_XMMdq_XMMdq_MEMd_IMMb", "5");
         ])
     [ Target.X86_32; Target.X86_64 ]
 
 (* {!x86_vex_binop_rrr_entry}'s two-operand unary sibling ({!Isa_norm_xed.vex_unop_rr_form}'s
    own doc comment): [%xmm1] (src)/[%xmm0] (dest), no [vvvv]-carried third operand - real GNU
    as rejects a third operand for these mnemonics outright. *)
-let x86_vex_unop_rr_entry ~target ~form_id ~lookup_key =
+let x86_vex_unop_rr_entry ~vreg ~target ~form_id ~lookup_key =
   {
     form_id;
     target;
     lookup_key;
     case_id = Printf.sprintf "%s:register-register:%s" form_id (Target.to_string target);
     rule_ids = [ "canonical-spelling"; "vex-two-register-operands" ];
-    operands = [ ("src", "xmm1"); ("dest", "xmm0") ];
+    operands = [ ("src", vreg ^ "1"); ("dest", vreg ^ "0") ];
     lines_before = [];
     lines_after = [];
     configuration = Isa_gen_case_build.configuration_for target;
@@ -1348,7 +1419,8 @@ let x86_vex_unop_rr_entries =
   List.concat_map
     (fun target ->
       List.map
-        (fun lookup_key -> x86_vex_unop_rr_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+        (fun lookup_key ->
+          x86_vex_unop_rr_entry ~vreg:"xmm" ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
         [
           "VSQRTPS_XMMdq_XMMdq";
           "VSQRTPD_XMMdq_XMMdq";
@@ -1364,6 +1436,23 @@ let x86_vex_unop_rr_entries =
           "VCVTPD2PS_XMMdq_XMMdq";
           "VCVTDQ2PS_XMMdq_XMMdq";
           "VCVTPS2DQ_XMMdq_XMMdq";
+          "VPABSB_XMMdq_XMMdq";
+          "VPABSW_XMMdq_XMMdq";
+          "VPABSD_XMMdq_XMMdq";
+          "VPHMINPOSUW_XMMdq_XMMdq";
+          "VPTEST_XMMdq_XMMdq";
+          "VPMOVSXBW_XMMdq_XMMq";
+          "VPMOVSXBD_XMMdq_XMMd";
+          "VPMOVSXBQ_XMMdq_XMMw";
+          "VPMOVSXWD_XMMdq_XMMq";
+          "VPMOVSXWQ_XMMdq_XMMd";
+          "VPMOVSXDQ_XMMdq_XMMq";
+          "VPMOVZXBW_XMMdq_XMMq";
+          "VPMOVZXBD_XMMdq_XMMd";
+          "VPMOVZXBQ_XMMdq_XMMw";
+          "VPMOVZXWD_XMMdq_XMMq";
+          "VPMOVZXWQ_XMMdq_XMMd";
+          "VPMOVZXDQ_XMMdq_XMMq";
           "VCVTTPS2DQ_XMMdq_XMMdq";
           "VMOVDQA_XMMdq_XMMdq_6F";
           "VMOVDQU_XMMdq_XMMdq_6F";
@@ -1373,7 +1462,7 @@ let x86_vex_unop_rr_entries =
 (* {!x86_vex_unop_rr_entry}'s register<-memory sibling
    ({!Isa_norm_xed.vex_unop_rr_mem_form}'s own doc comment): {!x86_sse_binop_rm_entry}'s
    base+disp8 SIB addressing standing in for [src]. *)
-let x86_vex_unop_rr_mem_entry ~target ~form_id ~lookup_key =
+let x86_vex_unop_rr_mem_entry ~vreg ~target ~form_id ~lookup_key =
   let stack, _, _ = x86_registers target in
   {
     form_id;
@@ -1381,7 +1470,7 @@ let x86_vex_unop_rr_mem_entry ~target ~form_id ~lookup_key =
     lookup_key;
     case_id = Printf.sprintf "%s:load-base-disp8-sib:%s" form_id (Target.to_string target);
     rule_ids = [ "load-base-disp8-sib"; "vex-one-register-one-memory-operands" ];
-    operands = [ ("src", Printf.sprintf "16(%%%s)" stack); ("dest", "xmm0") ];
+    operands = [ ("src", Printf.sprintf "16(%%%s)" stack); ("dest", vreg ^ "0") ];
     lines_before = [];
     lines_after = [];
     configuration = Isa_gen_case_build.configuration_for target;
@@ -1392,7 +1481,7 @@ let x86_vex_unop_rr_mem_entries =
     (fun target ->
       List.map
         (fun lookup_key ->
-          x86_vex_unop_rr_mem_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+          x86_vex_unop_rr_mem_entry ~vreg:"xmm" ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
         [
           "VSQRTPS_XMMdq_MEMdq";
           "VSQRTPD_XMMdq_MEMdq";
@@ -1407,6 +1496,24 @@ let x86_vex_unop_rr_mem_entries =
           "VCVTPS2PD_XMMdq_MEMq";
           "VCVTDQ2PS_XMMdq_MEMdq";
           "VCVTPS2DQ_XMMdq_MEMdq";
+          "VPABSB_XMMdq_MEMdq";
+          "VPABSW_XMMdq_MEMdq";
+          "VPABSD_XMMdq_MEMdq";
+          "VPHMINPOSUW_XMMdq_MEMdq";
+          "VPTEST_XMMdq_MEMdq";
+          "VPMOVSXBW_XMMdq_MEMq";
+          "VPMOVSXBD_XMMdq_MEMd";
+          "VPMOVSXBQ_XMMdq_MEMw";
+          "VPMOVSXWD_XMMdq_MEMq";
+          "VPMOVSXWQ_XMMdq_MEMd";
+          "VPMOVSXDQ_XMMdq_MEMq";
+          "VPMOVZXBW_XMMdq_MEMq";
+          "VPMOVZXBD_XMMdq_MEMd";
+          "VPMOVZXBQ_XMMdq_MEMw";
+          "VPMOVZXWD_XMMdq_MEMq";
+          "VPMOVZXWQ_XMMdq_MEMd";
+          "VPMOVZXDQ_XMMdq_MEMq";
+          "VMOVNTDQA_XMMdq_MEMdq";
           "VCVTTPS2DQ_XMMdq_MEMdq";
           "VMOVDQA_XMMdq_MEMdq";
           "VMOVDQU_XMMdq_MEMdq";
@@ -1720,6 +1827,275 @@ let x86_vmovd_store_mr_entries =
   List.map
     (fun target ->
       x86_movd_store_mr_entry ~target ~form_id:"x86:VMOVD_MEMd_XMMd" ~lookup_key:"VMOVD_MEMd_XMMd")
+    [ Target.X86_32; Target.X86_64 ]
+
+(* 256-bit (ymm, VEX.L = 1) packed-float binops and moves/square roots ({!Isa_norm_xed.vex_binop_rrr_form}'s
+   [?vec] parameter): the same entry builders as the 128-bit groups above with [ymm] register names. *)
+let x86_vex256_binop_rrr_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key ->
+          x86_vex_binop_rrr_entry ~vreg:"ymm" ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+        [
+          "VADDPS_YMMqq_YMMqq_YMMqq";
+          "VSUBPS_YMMqq_YMMqq_YMMqq";
+          "VMULPS_YMMqq_YMMqq_YMMqq";
+          "VDIVPS_YMMqq_YMMqq_YMMqq";
+          "VANDPS_YMMqq_YMMqq_YMMqq";
+          "VANDNPS_YMMqq_YMMqq_YMMqq";
+          "VORPS_YMMqq_YMMqq_YMMqq";
+          "VXORPS_YMMqq_YMMqq_YMMqq";
+          "VMAXPS_YMMqq_YMMqq_YMMqq";
+          "VMINPS_YMMqq_YMMqq_YMMqq";
+          "VUNPCKLPS_YMMqq_YMMqq_YMMqq";
+          "VUNPCKHPS_YMMqq_YMMqq_YMMqq";
+          "VADDPD_YMMqq_YMMqq_YMMqq";
+          "VSUBPD_YMMqq_YMMqq_YMMqq";
+          "VMULPD_YMMqq_YMMqq_YMMqq";
+          "VDIVPD_YMMqq_YMMqq_YMMqq";
+          "VANDPD_YMMqq_YMMqq_YMMqq";
+          "VANDNPD_YMMqq_YMMqq_YMMqq";
+          "VORPD_YMMqq_YMMqq_YMMqq";
+          "VXORPD_YMMqq_YMMqq_YMMqq";
+          "VMAXPD_YMMqq_YMMqq_YMMqq";
+          "VMINPD_YMMqq_YMMqq_YMMqq";
+          "VUNPCKLPD_YMMqq_YMMqq_YMMqq";
+          "VUNPCKHPD_YMMqq_YMMqq_YMMqq";
+          "VPUNPCKLQDQ_YMMqq_YMMqq_YMMqq";
+          "VPUNPCKHQDQ_YMMqq_YMMqq_YMMqq";
+          "VPUNPCKLBW_YMMqq_YMMqq_YMMqq";
+          "VPUNPCKHBW_YMMqq_YMMqq_YMMqq";
+          "VPUNPCKLWD_YMMqq_YMMqq_YMMqq";
+          "VPUNPCKHWD_YMMqq_YMMqq_YMMqq";
+          "VPUNPCKLDQ_YMMqq_YMMqq_YMMqq";
+          "VPUNPCKHDQ_YMMqq_YMMqq_YMMqq";
+          "VPADDB_YMMqq_YMMqq_YMMqq";
+          "VPADDW_YMMqq_YMMqq_YMMqq";
+          "VPADDD_YMMqq_YMMqq_YMMqq";
+          "VPADDQ_YMMqq_YMMqq_YMMqq";
+          "VPSUBB_YMMqq_YMMqq_YMMqq";
+          "VPSUBW_YMMqq_YMMqq_YMMqq";
+          "VPSUBD_YMMqq_YMMqq_YMMqq";
+          "VPSUBQ_YMMqq_YMMqq_YMMqq";
+          "VPCMPEQB_YMMqq_YMMqq_YMMqq";
+          "VPCMPEQW_YMMqq_YMMqq_YMMqq";
+          "VPCMPEQD_YMMqq_YMMqq_YMMqq";
+          "VPCMPGTB_YMMqq_YMMqq_YMMqq";
+          "VPCMPGTW_YMMqq_YMMqq_YMMqq";
+          "VPCMPGTD_YMMqq_YMMqq_YMMqq";
+          "VPACKSSWB_YMMqq_YMMqq_YMMqq";
+          "VPACKSSDW_YMMqq_YMMqq_YMMqq";
+          "VPACKUSWB_YMMqq_YMMqq_YMMqq";
+          "VPAND_YMMqq_YMMqq_YMMqq";
+          "VPANDN_YMMqq_YMMqq_YMMqq";
+          "VPOR_YMMqq_YMMqq_YMMqq";
+          "VPMINUB_YMMqq_YMMqq_YMMqq";
+          "VPMAXUB_YMMqq_YMMqq_YMMqq";
+          "VPMINSW_YMMqq_YMMqq_YMMqq";
+          "VPMAXSW_YMMqq_YMMqq_YMMqq";
+          "VPMULLW_YMMqq_YMMqq_YMMqq";
+          "VPMULHW_YMMqq_YMMqq_YMMqq";
+          "VPMULHUW_YMMqq_YMMqq_YMMqq";
+          "VPAVGB_YMMqq_YMMqq_YMMqq";
+          "VPAVGW_YMMqq_YMMqq_YMMqq";
+          "VPSADBW_YMMqq_YMMqq_YMMqq";
+          "VPSHUFB_YMMqq_YMMqq_YMMqq";
+          "VPHADDW_YMMqq_YMMqq_YMMqq";
+          "VPHADDD_YMMqq_YMMqq_YMMqq";
+          "VPHADDSW_YMMqq_YMMqq_YMMqq";
+          "VPMADDUBSW_YMMqq_YMMqq_YMMqq";
+          "VPHSUBW_YMMqq_YMMqq_YMMqq";
+          "VPHSUBD_YMMqq_YMMqq_YMMqq";
+          "VPHSUBSW_YMMqq_YMMqq_YMMqq";
+          "VPSIGNB_YMMqq_YMMqq_YMMqq";
+          "VPSIGNW_YMMqq_YMMqq_YMMqq";
+          "VPSIGND_YMMqq_YMMqq_YMMqq";
+          "VPMULHRSW_YMMqq_YMMqq_YMMqq";
+          "VPMULDQ_YMMqq_YMMqq_YMMqq";
+          "VPCMPEQQ_YMMqq_YMMqq_YMMqq";
+          "VPACKUSDW_YMMqq_YMMqq_YMMqq";
+          "VPCMPGTQ_YMMqq_YMMqq_YMMqq";
+          "VPMINSB_YMMqq_YMMqq_YMMqq";
+          "VPMINSD_YMMqq_YMMqq_YMMqq";
+          "VPMINUW_YMMqq_YMMqq_YMMqq";
+          "VPMINUD_YMMqq_YMMqq_YMMqq";
+          "VPMAXSB_YMMqq_YMMqq_YMMqq";
+          "VPMAXSD_YMMqq_YMMqq_YMMqq";
+          "VPMAXUW_YMMqq_YMMqq_YMMqq";
+          "VPMAXUD_YMMqq_YMMqq_YMMqq";
+          "VPMULLD_YMMqq_YMMqq_YMMqq";
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+let x86_vex256_binop_rr_mem_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key ->
+          x86_vex_binop_rr_mem_entry ~vreg:"ymm" ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+        [
+          "VADDPS_YMMqq_YMMqq_MEMqq";
+          "VSUBPS_YMMqq_YMMqq_MEMqq";
+          "VMULPS_YMMqq_YMMqq_MEMqq";
+          "VDIVPS_YMMqq_YMMqq_MEMqq";
+          "VANDPS_YMMqq_YMMqq_MEMqq";
+          "VANDNPS_YMMqq_YMMqq_MEMqq";
+          "VORPS_YMMqq_YMMqq_MEMqq";
+          "VXORPS_YMMqq_YMMqq_MEMqq";
+          "VMAXPS_YMMqq_YMMqq_MEMqq";
+          "VMINPS_YMMqq_YMMqq_MEMqq";
+          "VUNPCKLPS_YMMqq_YMMqq_MEMqq";
+          "VUNPCKHPS_YMMqq_YMMqq_MEMqq";
+          "VADDPD_YMMqq_YMMqq_MEMqq";
+          "VSUBPD_YMMqq_YMMqq_MEMqq";
+          "VMULPD_YMMqq_YMMqq_MEMqq";
+          "VDIVPD_YMMqq_YMMqq_MEMqq";
+          "VANDPD_YMMqq_YMMqq_MEMqq";
+          "VANDNPD_YMMqq_YMMqq_MEMqq";
+          "VORPD_YMMqq_YMMqq_MEMqq";
+          "VXORPD_YMMqq_YMMqq_MEMqq";
+          "VMAXPD_YMMqq_YMMqq_MEMqq";
+          "VMINPD_YMMqq_YMMqq_MEMqq";
+          "VUNPCKLPD_YMMqq_YMMqq_MEMqq";
+          "VUNPCKHPD_YMMqq_YMMqq_MEMqq";
+          "VPUNPCKLQDQ_YMMqq_YMMqq_MEMqq";
+          "VPUNPCKHQDQ_YMMqq_YMMqq_MEMqq";
+          "VPUNPCKLBW_YMMqq_YMMqq_MEMqq";
+          "VPUNPCKHBW_YMMqq_YMMqq_MEMqq";
+          "VPUNPCKLWD_YMMqq_YMMqq_MEMqq";
+          "VPUNPCKHWD_YMMqq_YMMqq_MEMqq";
+          "VPUNPCKLDQ_YMMqq_YMMqq_MEMqq";
+          "VPUNPCKHDQ_YMMqq_YMMqq_MEMqq";
+          "VPADDB_YMMqq_YMMqq_MEMqq";
+          "VPADDW_YMMqq_YMMqq_MEMqq";
+          "VPADDD_YMMqq_YMMqq_MEMqq";
+          "VPADDQ_YMMqq_YMMqq_MEMqq";
+          "VPSUBB_YMMqq_YMMqq_MEMqq";
+          "VPSUBW_YMMqq_YMMqq_MEMqq";
+          "VPSUBD_YMMqq_YMMqq_MEMqq";
+          "VPSUBQ_YMMqq_YMMqq_MEMqq";
+          "VPCMPEQB_YMMqq_YMMqq_MEMqq";
+          "VPCMPEQW_YMMqq_YMMqq_MEMqq";
+          "VPCMPEQD_YMMqq_YMMqq_MEMqq";
+          "VPCMPGTB_YMMqq_YMMqq_MEMqq";
+          "VPCMPGTW_YMMqq_YMMqq_MEMqq";
+          "VPCMPGTD_YMMqq_YMMqq_MEMqq";
+          "VPACKSSWB_YMMqq_YMMqq_MEMqq";
+          "VPACKSSDW_YMMqq_YMMqq_MEMqq";
+          "VPACKUSWB_YMMqq_YMMqq_MEMqq";
+          "VPAND_YMMqq_YMMqq_MEMqq";
+          "VPANDN_YMMqq_YMMqq_MEMqq";
+          "VPOR_YMMqq_YMMqq_MEMqq";
+          "VPMINUB_YMMqq_YMMqq_MEMqq";
+          "VPMAXUB_YMMqq_YMMqq_MEMqq";
+          "VPMINSW_YMMqq_YMMqq_MEMqq";
+          "VPMAXSW_YMMqq_YMMqq_MEMqq";
+          "VPMULLW_YMMqq_YMMqq_MEMqq";
+          "VPMULHW_YMMqq_YMMqq_MEMqq";
+          "VPMULHUW_YMMqq_YMMqq_MEMqq";
+          "VPAVGB_YMMqq_YMMqq_MEMqq";
+          "VPAVGW_YMMqq_YMMqq_MEMqq";
+          "VPSADBW_YMMqq_YMMqq_MEMqq";
+          "VPSHUFB_YMMqq_YMMqq_MEMqq";
+          "VPHADDW_YMMqq_YMMqq_MEMqq";
+          "VPHADDD_YMMqq_YMMqq_MEMqq";
+          "VPHADDSW_YMMqq_YMMqq_MEMqq";
+          "VPMADDUBSW_YMMqq_YMMqq_MEMqq";
+          "VPHSUBW_YMMqq_YMMqq_MEMqq";
+          "VPHSUBD_YMMqq_YMMqq_MEMqq";
+          "VPHSUBSW_YMMqq_YMMqq_MEMqq";
+          "VPSIGNB_YMMqq_YMMqq_MEMqq";
+          "VPSIGNW_YMMqq_YMMqq_MEMqq";
+          "VPSIGND_YMMqq_YMMqq_MEMqq";
+          "VPMULHRSW_YMMqq_YMMqq_MEMqq";
+          "VPMULDQ_YMMqq_YMMqq_MEMqq";
+          "VPCMPEQQ_YMMqq_YMMqq_MEMqq";
+          "VPACKUSDW_YMMqq_YMMqq_MEMqq";
+          "VPCMPGTQ_YMMqq_YMMqq_MEMqq";
+          "VPMINSB_YMMqq_YMMqq_MEMqq";
+          "VPMINSD_YMMqq_YMMqq_MEMqq";
+          "VPMINUW_YMMqq_YMMqq_MEMqq";
+          "VPMINUD_YMMqq_YMMqq_MEMqq";
+          "VPMAXSB_YMMqq_YMMqq_MEMqq";
+          "VPMAXSD_YMMqq_YMMqq_MEMqq";
+          "VPMAXUW_YMMqq_YMMqq_MEMqq";
+          "VPMAXUD_YMMqq_YMMqq_MEMqq";
+          "VPMULLD_YMMqq_YMMqq_MEMqq";
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+let x86_vex256_unop_rr_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key ->
+          x86_vex_unop_rr_entry ~vreg:"ymm" ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+        [
+          "VSQRTPS_YMMqq_YMMqq";
+          "VSQRTPD_YMMqq_YMMqq";
+          "VMOVAPS_YMMqq_YMMqq_28";
+          "VMOVUPS_YMMqq_YMMqq_10";
+          "VMOVAPD_YMMqq_YMMqq_28";
+          "VMOVUPD_YMMqq_YMMqq_10";
+          "VMOVDQA_YMMqq_YMMqq_6F";
+          "VMOVDQU_YMMqq_YMMqq_6F";
+          "VPABSB_YMMqq_YMMqq";
+          "VPABSW_YMMqq_YMMqq";
+          "VPABSD_YMMqq_YMMqq";
+          "VPTEST_YMMqq_YMMqq";
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+let x86_vex256_unop_rr_mem_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key ->
+          x86_vex_unop_rr_mem_entry ~vreg:"ymm" ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+        [
+          "VSQRTPS_YMMqq_MEMqq";
+          "VSQRTPD_YMMqq_MEMqq";
+          "VMOVAPS_YMMqq_MEMqq";
+          "VMOVUPS_YMMqq_MEMqq";
+          "VMOVAPD_YMMqq_MEMqq";
+          "VMOVUPD_YMMqq_MEMqq";
+          "VMOVDQA_YMMqq_MEMqq";
+          "VMOVDQU_YMMqq_MEMqq";
+          "VPABSB_YMMqq_MEMqq";
+          "VPABSW_YMMqq_MEMqq";
+          "VPABSD_YMMqq_MEMqq";
+          "VPTEST_YMMqq_MEMqq";
+          "VMOVNTDQA_YMMqq_MEMqq";
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* 512-bit EVEX register-register packed-float binops ({!Isa_norm_xed.evex_binop_rrr_form}'s own doc
+   comment): the VEX three-register entry builder with [zmm] register names. *)
+let x86_evex512_binop_rrr_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key ->
+          x86_vex_binop_rrr_entry ~vreg:"zmm" ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+        [
+          "VADDPS_ZMMf32_MASKmskw_ZMMf32_ZMMf32_AVX512";
+          "VSUBPS_ZMMf32_MASKmskw_ZMMf32_ZMMf32_AVX512";
+          "VMULPS_ZMMf32_MASKmskw_ZMMf32_ZMMf32_AVX512";
+          "VDIVPS_ZMMf32_MASKmskw_ZMMf32_ZMMf32_AVX512";
+          "VMAXPS_ZMMf32_MASKmskw_ZMMf32_ZMMf32_AVX512";
+          "VMINPS_ZMMf32_MASKmskw_ZMMf32_ZMMf32_AVX512";
+          "VUNPCKLPS_ZMMf32_MASKmskw_ZMMf32_ZMMf32_AVX512";
+          "VUNPCKHPS_ZMMf32_MASKmskw_ZMMf32_ZMMf32_AVX512";
+          "VADDPD_ZMMf64_MASKmskw_ZMMf64_ZMMf64_AVX512";
+          "VSUBPD_ZMMf64_MASKmskw_ZMMf64_ZMMf64_AVX512";
+          "VMULPD_ZMMf64_MASKmskw_ZMMf64_ZMMf64_AVX512";
+          "VDIVPD_ZMMf64_MASKmskw_ZMMf64_ZMMf64_AVX512";
+          "VMAXPD_ZMMf64_MASKmskw_ZMMf64_ZMMf64_AVX512";
+          "VMINPD_ZMMf64_MASKmskw_ZMMf64_ZMMf64_AVX512";
+          "VUNPCKLPD_ZMMf64_MASKmskw_ZMMf64_ZMMf64_AVX512";
+          "VUNPCKHPD_ZMMf64_MASKmskw_ZMMf64_ZMMf64_AVX512";
+        ])
     [ Target.X86_32; Target.X86_64 ]
 
 (* PEXTRB/PEXTRD/EXTRACTPS memory-destination forms ({!Isa_norm_xed.pextr_store_mr_form}'s own doc
@@ -5435,9 +5811,11 @@ let all =
   @ vfwmaccbf16_vv_entries @ vfwmaccbf16_vf_entries @ vpopc_m_entries @ vmandnot_mm_entries
   @ vmornot_mm_entries @ vfredsum_vs_entries @ vfwredsum_vs_entries @ vl1r_v_entries
   @ vl2r_v_entries @ vl4r_v_entries @ vl8r_v_entries @ vle1_v_entries @ vse1_v_entries
-  @ x86_vex_binop_rrr_entries @ x86_vex_binop_rr_mem_entries @ x86_vex_unop_rr_entries
-  @ x86_vex_unop_rr_mem_entries @ x86_vex_binop_imm_rrr_entries @ x86_vex_binop_imm_rr_mem_entries
-  @ x86_vex_unop_imm_rr_entries @ x86_vex_unop_imm_rm_entries @ x86_vex_shift_imm_rrr_entries
+  @ x86_evex512_binop_rrr_entries @ x86_vex256_binop_rrr_entries @ x86_vex256_binop_rr_mem_entries
+  @ x86_vex256_unop_rr_entries @ x86_vex256_unop_rr_mem_entries @ x86_vex_binop_rrr_entries
+  @ x86_vex_binop_rr_mem_entries @ x86_vex_unop_rr_entries @ x86_vex_unop_rr_mem_entries
+  @ x86_vex_binop_imm_rrr_entries @ x86_vex_binop_imm_rr_mem_entries @ x86_vex_unop_imm_rr_entries
+  @ x86_vex_unop_imm_rm_entries @ x86_vex_shift_imm_rrr_entries
 
 (* The register/immediate ALU family's shared ModR/M reg-extension mapping
    (Opcode.of_ext's own domain, {!Isa_norm_xed.alu_gprv_immz_form}'s doc
