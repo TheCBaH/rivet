@@ -14,8 +14,8 @@ let le_int_of_bytes bytes =
   done;
   !v
 
-let hex_of_first_byte bytes =
-  if String.length bytes = 0 then "<empty>" else Printf.sprintf "0x%02x" (Char.code bytes.[0])
+let hex_of_byte_at i bytes =
+  if String.length bytes <= i then "<empty>" else Printf.sprintf "0x%02x" (Char.code bytes.[i])
 
 (* [mask]/[value] (isa-db hex strings, e.g. "0xfe00707f") and [opcode]
    (e.g. "0x81") are both already valid OCaml integer-literal syntax.  RISC-V
@@ -37,9 +37,23 @@ let observed_form_check (encoding : Isa_norm_model.encoding) bytes =
           Error
             (Printf.sprintf "0x%Lx & mask 0x%Lx = 0x%Lx, expected value 0x%Lx" observed m
                (Int64.logand observed m) want)
-  | Isa_norm_model.X86_encoding { opcode; _ } ->
+  | Isa_norm_model.X86_encoding { space; opcode; _ } ->
       let expected = String.lowercase_ascii opcode in
-      let observed = String.lowercase_ascii (hex_of_first_byte bytes) in
+      (* [space = "vex"] records carry only the trailing opcode byte in
+         [opcode]; the VEX prefix itself (not part of [opcode_map]) precedes
+         it and is 2 bytes (leading 0xc5) or 3 bytes (leading 0xc4) wide, a
+         width GAS - not this project - chooses freely for a given mnemonic
+         and operands. Every other [space] keeps the pre-existing plain
+         byte-0 comparison unchanged, including legacy mandatory-prefix
+         forms (e.g. F2/66 before the escape+opcode bytes), which this
+         function has never accounted for and still does not; that is a
+         separate, wider gap left for its own follow-up. *)
+      let opcode_offset =
+        if String.equal space "vex" && String.length bytes > 0 then
+          match Char.code bytes.[0] with 0xc5 -> 2 | 0xc4 -> 3 | _ -> 0
+        else 0
+      in
+      let observed = String.lowercase_ascii (hex_of_byte_at opcode_offset bytes) in
       if String.equal observed expected then Ok ()
       else Error (Printf.sprintf "expected leading byte %s, observed %s" expected observed)
 

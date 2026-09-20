@@ -224,6 +224,10 @@
     [64 cost=0] mov-r-imm8       mov-r-imm8(){prefixes 10110 reg:3u imm:8u}
     [65 cost=0] fadd-st0-x87     fadd-st0-x87(){11011000 11 000 st:3u}
     [66 cost=0] alu-rm-imm8-byte alu-rm-imm8-byte(){prefixes 10000000 modrm imm:8s}
+    [67 cost=0] vex-scalar-f2-rrr vex-scalar-f2-rrr(){11000101 vex-byte2:8u vex-scalar-f2-op modrm}
+    [68 cost=0] vex-scalar-f3-rrr vex-scalar-f3-rrr(){11000101 vex-byte2:8u vex-scalar-f3-op modrm}
+    [69 cost=0] vex-scalar-none-rrr vex-scalar-none-rrr(){11000101 vex-byte2:8u vex-scalar-none-op modrm}
+    [70 cost=0] vex-scalar-66-rrr vex-scalar-66-rrr(){11000101 vex-byte2:8u vex-scalar-66-op modrm}
   prefixes(){no-asz opsz no-rex}
   alu-acc-imm8-opcode(){opcode:8u}
   alu-acc-imm-opcode(){opcode:8u}
@@ -250,6 +254,10 @@
   sse-binop-f3-op[5]{opcode:8u}
   sse-binop-66-op[13]{opcode:8u}
   sse-binop-none-op[11]{opcode:8u}
+  vex-scalar-f2-op[4]{opcode:8u}
+  vex-scalar-f3-op[4]{opcode:8u}
+  vex-scalar-none-op[8]{opcode:8u}
+  vex-scalar-66-op[8]{opcode:8u}
   alt opsz
     [0 cost=0] opsz-present     opsz-present(){01100110}
     [1 cost=0] opsz-absent      opsz-absent(){()}
@@ -480,6 +488,10 @@
     [64 cost=0] mov-r-imm8       mov-r-imm8(){prefixes 10110 reg:3u imm:8u}
     [65 cost=0] fadd-st0-x87     fadd-st0-x87(){11011000 11 000 st:3u}
     [66 cost=0] alu-rm-imm8-byte alu-rm-imm8-byte(){prefixes 10000000 modrm imm:8s}
+    [67 cost=0] vex-scalar-f2-rrr vex-scalar-f2-rrr(){11000101 vex-byte2:8u vex-scalar-f2-op modrm}
+    [68 cost=0] vex-scalar-f3-rrr vex-scalar-f3-rrr(){11000101 vex-byte2:8u vex-scalar-f3-op modrm}
+    [69 cost=0] vex-scalar-none-rrr vex-scalar-none-rrr(){11000101 vex-byte2:8u vex-scalar-none-op modrm}
+    [70 cost=0] vex-scalar-66-rrr vex-scalar-66-rrr(){11000101 vex-byte2:8u vex-scalar-66-op modrm}
   prefixes(){asz opsz rex}
   alu-acc-imm8-opcode(){opcode:8u}
   alu-acc-imm-opcode(){opcode:8u}
@@ -509,6 +521,10 @@
   sse-binop-f3-op[5]{opcode:8u}
   sse-binop-66-op[13]{opcode:8u}
   sse-binop-none-op[11]{opcode:8u}
+  vex-scalar-f2-op[4]{opcode:8u}
+  vex-scalar-f3-op[4]{opcode:8u}
+  vex-scalar-none-op[8]{opcode:8u}
+  vex-scalar-66-op[8]{opcode:8u}
   alt opsz
     [0 cost=0] opsz-present     opsz-present(){01100110}
     [1 cost=0] opsz-absent      opsz-absent(){()}

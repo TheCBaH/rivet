@@ -669,6 +669,111 @@ let x86_sse_mov_entries =
       ])
     [ Target.X86_32; Target.X86_64 ]
 
+(* VEX-encoded scalar-double register-register binops (VADDSD/VSUBSD/VMULSD/VDIVSD): the
+   first x86 vector-extension (AVX) admission and this project's first genuine
+   three-real-register x86 entry, fixed to [%xmm2] (src2)/[%xmm1] (src1)/[%xmm0] (dest) -
+   confirmed against real GNU as ({!Isa_norm_xed.vex_binop_rrr_form}'s own doc comment) -
+   rather than {!x86_sse_binop_rr_entry}'s two-operand shape. *)
+let x86_vex_binop_rrr_entry ~target ~form_id ~lookup_key =
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:register-register:%s" form_id (Target.to_string target);
+    rule_ids = [ "canonical-spelling"; "vex-three-register-operands" ];
+    operands = [ ("src2", "xmm2"); ("src1", "xmm1"); ("dest", "xmm0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_vex_binop_rrr_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key ->
+          x86_vex_binop_rrr_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+        [
+          "VADDSD_XMMdq_XMMdq_XMMq";
+          "VSUBSD_XMMdq_XMMdq_XMMq";
+          "VMULSD_XMMdq_XMMdq_XMMq";
+          "VDIVSD_XMMdq_XMMdq_XMMq";
+          "VADDSS_XMMdq_XMMdq_XMMd";
+          "VSUBSS_XMMdq_XMMdq_XMMd";
+          "VMULSS_XMMdq_XMMdq_XMMd";
+          "VDIVSS_XMMdq_XMMdq_XMMd";
+          "VADDPS_XMMdq_XMMdq_XMMdq";
+          "VSUBPS_XMMdq_XMMdq_XMMdq";
+          "VMULPS_XMMdq_XMMdq_XMMdq";
+          "VDIVPS_XMMdq_XMMdq_XMMdq";
+          "VADDPD_XMMdq_XMMdq_XMMdq";
+          "VSUBPD_XMMdq_XMMdq_XMMdq";
+          "VMULPD_XMMdq_XMMdq_XMMdq";
+          "VDIVPD_XMMdq_XMMdq_XMMdq";
+          "VANDPS_XMMdq_XMMdq_XMMdq";
+          "VANDNPS_XMMdq_XMMdq_XMMdq";
+          "VORPS_XMMdq_XMMdq_XMMdq";
+          "VXORPS_XMMdq_XMMdq_XMMdq";
+          "VANDPD_XMMdq_XMMdq_XMMdq";
+          "VANDNPD_XMMdq_XMMdq_XMMdq";
+          "VORPD_XMMdq_XMMdq_XMMdq";
+          "VXORPD_XMMdq_XMMdq_XMMdq";
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* {!x86_vex_binop_rrr_entry}'s register<-memory sibling
+   ({!Isa_norm_xed.vex_binop_rr_mem_form}'s own doc comment):
+   {!x86_sse_binop_rm_entry}'s base+disp8 SIB addressing standing in for
+   [src2], which is register 4 ([%esp]/[%rsp]) on both targets and so always
+   satisfies the two-byte-VEX base/index restriction. *)
+let x86_vex_binop_rr_mem_entry ~target ~form_id ~lookup_key =
+  let stack, _, _ = x86_registers target in
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:load-base-disp8-sib:%s" form_id (Target.to_string target);
+    rule_ids = [ "load-base-disp8-sib"; "vex-two-register-one-memory-operands" ];
+    operands = [ ("src2", Printf.sprintf "16(%%%s)" stack); ("src1", "xmm1"); ("dest", "xmm0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_vex_binop_rr_mem_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key ->
+          x86_vex_binop_rr_mem_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+        [
+          "VADDSD_XMMdq_XMMdq_MEMq";
+          "VSUBSD_XMMdq_XMMdq_MEMq";
+          "VMULSD_XMMdq_XMMdq_MEMq";
+          "VDIVSD_XMMdq_XMMdq_MEMq";
+          "VADDSS_XMMdq_XMMdq_MEMd";
+          "VSUBSS_XMMdq_XMMdq_MEMd";
+          "VMULSS_XMMdq_XMMdq_MEMd";
+          "VDIVSS_XMMdq_XMMdq_MEMd";
+          "VADDPS_XMMdq_XMMdq_MEMdq";
+          "VSUBPS_XMMdq_XMMdq_MEMdq";
+          "VMULPS_XMMdq_XMMdq_MEMdq";
+          "VDIVPS_XMMdq_XMMdq_MEMdq";
+          "VADDPD_XMMdq_XMMdq_MEMdq";
+          "VSUBPD_XMMdq_XMMdq_MEMdq";
+          "VMULPD_XMMdq_XMMdq_MEMdq";
+          "VDIVPD_XMMdq_XMMdq_MEMdq";
+          "VANDPS_XMMdq_XMMdq_MEMdq";
+          "VANDNPS_XMMdq_XMMdq_MEMdq";
+          "VORPS_XMMdq_XMMdq_MEMdq";
+          "VXORPS_XMMdq_XMMdq_MEMdq";
+          "VANDPD_XMMdq_XMMdq_MEMdq";
+          "VANDNPD_XMMdq_XMMdq_MEMdq";
+          "VORPD_XMMdq_XMMdq_MEMdq";
+          "VXORPD_XMMdq_XMMdq_MEMdq";
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
 (* [cvtsi2sd]/[cvtsi2ss] register-source ({!Isa_norm_xed.cvtsi2f_rr_form}'s
    own doc comment): [%eax] (32-bit) is valid on both targets, while [%rax]
    (64-bit, [cvtsi2sdq]/[cvtsi2ssq]) only exists in 64-bit mode - unlike
@@ -4290,6 +4395,7 @@ let all =
   @ vfwmaccbf16_vv_entries @ vfwmaccbf16_vf_entries @ vpopc_m_entries @ vmandnot_mm_entries
   @ vmornot_mm_entries @ vfredsum_vs_entries @ vfwredsum_vs_entries @ vl1r_v_entries
   @ vl2r_v_entries @ vl4r_v_entries @ vl8r_v_entries @ vle1_v_entries @ vse1_v_entries
+  @ x86_vex_binop_rrr_entries @ x86_vex_binop_rr_mem_entries
 
 (* The register/immediate ALU family's shared ModR/M reg-extension mapping
    (Opcode.of_ext's own domain, {!Isa_norm_xed.alu_gprv_immz_form}'s doc
