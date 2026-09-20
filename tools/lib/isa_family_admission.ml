@@ -73,20 +73,11 @@ let normalize source rec_ =
   | "xed_resolved" -> Isa_norm_xed.normalize rec_
   | other -> Error { Isa_norm_model.rule = "unhandled-source"; message = other }
 
-(* These are the exact credit-bearing rows of the committed S3 pilot
-   corpus, plus the isa-difficult corpus (sw/beq/c.addi - every one of
-   whose committed records carries verdict=Pass, checked in
-   asm/fixtures/isa-difficult/cases.jsonl: beq's own per-instruction
-   Isa_gen_oracle finding reads Different_observed_form only because its
-   two-instruction rendered source is longer than that single-form check's
-   fixed-width assumption, not because GAS or "ours" picked a different form -
-   the credit-bearing signal is Isa_gen_verdict's direct GAS-vs-ours byte
-   comparison, which is Pass for all twenty committed cases; see
-   Isa_gen_difficult.mli's own comment on beq_entries).  A pilot/difficult
-   spelling that reaches a different GNU encoding or that our parser rejects
-   is deliberately only GAS-generatable; it cannot gain support credit merely
-   because a neighboring form happens to encode the same operation. *)
-let promoted_case ~target ~form_id ~lookup_key =
+(* [promoted_case] is split into several smaller functions: one huge string
+   match makes the 32-bit ARM OCaml 4.14 backend emit an out-of-range 16-bit
+   field that the assembler rejects. *)
+
+let promoted_case_part1 ~target ~form_id ~lookup_key =
   match (target, form_id, lookup_key) with
   | (Target.Riscv32 | Target.Riscv64), ("riscv:add" | "riscv:sub" | "riscv:mul" | "riscv:addi"), _
     ->
@@ -352,6 +343,10 @@ let promoted_case ~target ~form_id ~lookup_key =
       ( "PADDB_XMMdq_XMMdq" | "PADDW_XMMdq_XMMdq" | "PADDD_XMMdq_XMMdq" | "PADDQ_XMMdq_XMMdq"
       | "PSUBB_XMMdq_XMMdq" | "PSUBW_XMMdq_XMMdq" | "PSUBD_XMMdq_XMMdq" | "PSUBQ_XMMdq_XMMdq" ) ) ->
       true
+  | _ -> false
+
+let promoted_case_part2 ~target ~form_id ~lookup_key =
+  match (target, form_id, lookup_key) with
   | ( (Target.X86_32 | Target.X86_64),
       ( "x86:PADDB_XMMdq_MEMdq" | "x86:PADDW_XMMdq_MEMdq" | "x86:PADDD_XMMdq_MEMdq"
       | "x86:PADDQ_XMMdq_MEMdq" | "x86:PSUBB_XMMdq_MEMdq" | "x86:PSUBW_XMMdq_MEMdq"
@@ -614,6 +609,10 @@ let promoted_case ~target ~form_id ~lookup_key =
       | "VDIVSD_XMMdq_XMMdq_XMMq" | "VADDSS_XMMdq_XMMdq_XMMd" | "VSUBSS_XMMdq_XMMdq_XMMd"
       | "VMULSS_XMMdq_XMMdq_XMMd" | "VDIVSS_XMMdq_XMMdq_XMMd" ) ) ->
       true
+  | _ -> false
+
+let promoted_case_part3 ~target ~form_id ~lookup_key =
+  match (target, form_id, lookup_key) with
   | ( (Target.X86_32 | Target.X86_64),
       ( "x86:VADDSD_XMMdq_XMMdq_MEMq" | "x86:VSUBSD_XMMdq_XMMdq_MEMq"
       | "x86:VMULSD_XMMdq_XMMdq_MEMq" | "x86:VDIVSD_XMMdq_XMMdq_MEMq"
@@ -920,6 +919,10 @@ let promoted_case ~target ~form_id ~lookup_key =
       | "VMOVAPD_YMMqq_MEMqq" | "VMOVUPD_YMMqq_MEMqq" | "VMOVDQA_YMMqq_MEMqq"
       | "VMOVDQU_YMMqq_MEMqq" ) ) ->
       true
+  | _ -> false
+
+let promoted_case_part4 ~target ~form_id ~lookup_key =
+  match (target, form_id, lookup_key) with
   | ( (Target.X86_32 | Target.X86_64),
       ( "x86:VPUNPCKLQDQ_YMMqq_YMMqq_YMMqq" | "x86:VPUNPCKHQDQ_YMMqq_YMMqq_YMMqq"
       | "x86:VPUNPCKLBW_YMMqq_YMMqq_YMMqq" | "x86:VPUNPCKHBW_YMMqq_YMMqq_YMMqq"
@@ -1180,6 +1183,10 @@ let promoted_case ~target ~form_id ~lookup_key =
       ("x86:VPSLLDQ_XMMdq_XMMdq_IMMb" | "x86:VPSRLDQ_XMMdq_XMMdq_IMMb"),
       ("VPSLLDQ_XMMdq_XMMdq_IMMb" | "VPSRLDQ_XMMdq_XMMdq_IMMb") ) ->
       true
+  | _ -> false
+
+let promoted_case_part5 ~target ~form_id ~lookup_key =
+  match (target, form_id, lookup_key) with
   | ( (Target.X86_32 | Target.X86_64),
       ( "x86:VMOVDQA_XMMdq_XMMdq_6F" | "x86:VMOVDQU_XMMdq_XMMdq_6F" | "x86:VMOVDQA_XMMdq_MEMdq"
       | "x86:VMOVDQU_XMMdq_MEMdq" ),
@@ -1440,6 +1447,10 @@ let promoted_case ~target ~form_id ~lookup_key =
   | (Target.Riscv32 | Target.Riscv64), "riscv:vaadd.vv", "vaadd.vv" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vaadd.vx", "vaadd.vx" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vasubu.vv", "vasubu.vv" -> true
+  | _ -> false
+
+let promoted_case_part6 ~target ~form_id ~lookup_key =
+  match (target, form_id, lookup_key) with
   | (Target.Riscv32 | Target.Riscv64), "riscv:vasubu.vx", "vasubu.vx" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vasub.vv", "vasub.vv" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vasub.vx", "vasub.vx" -> true
@@ -1700,6 +1711,10 @@ let promoted_case ~target ~form_id ~lookup_key =
   | (Target.Riscv32 | Target.Riscv64), "riscv:vse64.v", "vse64.v" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vlm.v", "vlm.v" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vsm.v", "vsm.v" -> true
+  | _ -> false
+
+let promoted_case_part7 ~target ~form_id ~lookup_key =
+  match (target, form_id, lookup_key) with
   | (Target.Riscv32 | Target.Riscv64), "riscv:vle8ff.v", "vle8ff.v" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vle16ff.v", "vle16ff.v" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vle32ff.v", "vle32ff.v" -> true
@@ -1805,6 +1820,28 @@ let promoted_case ~target ~form_id ~lookup_key =
   | (Target.Riscv32 | Target.Riscv64), "riscv:vle1.v", "vle1.v" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vse1.v", "vse1.v" -> true
   | _ -> false
+
+(* These are the exact credit-bearing rows of the committed S3 pilot
+   corpus, plus the isa-difficult corpus (sw/beq/c.addi - every one of
+   whose committed records carries verdict=Pass, checked in
+   asm/fixtures/isa-difficult/cases.jsonl: beq's own per-instruction
+   Isa_gen_oracle finding reads Different_observed_form only because its
+   two-instruction rendered source is longer than that single-form check's
+   fixed-width assumption, not because GAS or "ours" picked a different form -
+   the credit-bearing signal is Isa_gen_verdict's direct GAS-vs-ours byte
+   comparison, which is Pass for all twenty committed cases; see
+   Isa_gen_difficult.mli's own comment on beq_entries).  A pilot/difficult
+   spelling that reaches a different GNU encoding or that our parser rejects
+   is deliberately only GAS-generatable; it cannot gain support credit merely
+   because a neighboring form happens to encode the same operation. *)
+let promoted_case ~target ~form_id ~lookup_key =
+  promoted_case_part1 ~target ~form_id ~lookup_key
+  || promoted_case_part2 ~target ~form_id ~lookup_key
+  || promoted_case_part3 ~target ~form_id ~lookup_key
+  || promoted_case_part4 ~target ~form_id ~lookup_key
+  || promoted_case_part5 ~target ~form_id ~lookup_key
+  || promoted_case_part6 ~target ~form_id ~lookup_key
+  || promoted_case_part7 ~target ~form_id ~lookup_key
 
 let pilot_case ~target ~form_id ~lookup_key =
   List.exists
