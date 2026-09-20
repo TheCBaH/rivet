@@ -184,7 +184,7 @@
     [24 cost=0] sse-binop-f2     sse-binop-f2(){no-asz 11110010 no-rex 00001111 sse-binop-f2-op modrm}
     [25 cost=0] sse-binop-f3     sse-binop-f3(){no-asz 11110011 no-rex 00001111 sse-binop-f3-op modrm}
     [26 cost=0] sse-binop-66     sse-binop-66(){no-asz 01100110 no-rex 00001111 sse-binop-66-op modrm}
-    [27 cost=0] sse-binop-none   sse-binop-none(){prefixes 0000111100101111 modrm}
+    [27 cost=0] sse-binop-none   sse-binop-none(){prefixes 00001111 sse-binop-none-op modrm}
     [28 cost=0] sse-movsd-load   sse-movsd-load(){no-asz 11110010 no-rex 0000111100010000 modrm}
     [29 cost=0] sse-movss-load   sse-movss-load(){no-asz 11110011 no-rex 0000111100010000 modrm}
     [30 cost=0] sse-movsd-store  sse-movsd-store(){no-asz 11110010 no-rex 0000111100010001 modrm}
@@ -248,7 +248,8 @@
   no-rex(){()}
   sse-binop-f2-op[5]{opcode:8u}
   sse-binop-f3-op[5]{opcode:8u}
-  sse-binop-66-op[5]{opcode:8u}
+  sse-binop-66-op[13]{opcode:8u}
+  sse-binop-none-op[11]{opcode:8u}
   alt opsz
     [0 cost=0] opsz-present     opsz-present(){01100110}
     [1 cost=0] opsz-absent      opsz-absent(){()}
@@ -439,7 +440,7 @@
     [24 cost=0] sse-binop-f2     sse-binop-f2(){asz 11110010 rex 00001111 sse-binop-f2-op modrm}
     [25 cost=0] sse-binop-f3     sse-binop-f3(){asz 11110011 rex 00001111 sse-binop-f3-op modrm}
     [26 cost=0] sse-binop-66     sse-binop-66(){asz 01100110 rex 00001111 sse-binop-66-op modrm}
-    [27 cost=0] sse-binop-none   sse-binop-none(){prefixes 0000111100101111 modrm}
+    [27 cost=0] sse-binop-none   sse-binop-none(){prefixes 00001111 sse-binop-none-op modrm}
     [28 cost=0] sse-movsd-load   sse-movsd-load(){asz 11110010 rex 0000111100010000 modrm}
     [29 cost=0] sse-movss-load   sse-movss-load(){asz 11110011 rex 0000111100010000 modrm}
     [30 cost=0] sse-movsd-store  sse-movsd-store(){asz 11110010 rex 0000111100010001 modrm}
@@ -506,7 +507,8 @@
     [1 cost=0] rex-absent       rex-absent(){()}
   sse-binop-f2-op[5]{opcode:8u}
   sse-binop-f3-op[5]{opcode:8u}
-  sse-binop-66-op[5]{opcode:8u}
+  sse-binop-66-op[13]{opcode:8u}
+  sse-binop-none-op[11]{opcode:8u}
   alt opsz
     [0 cost=0] opsz-present     opsz-present(){01100110}
     [1 cost=0] opsz-absent      opsz-absent(){()}

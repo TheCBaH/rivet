@@ -506,6 +506,303 @@ let x86_alu_al_immb_entries =
         ])
     [ Target.X86_32; Target.X86_64 ]
 
+(* SSE2 scalar-float register-register binops (ADDSD/SUBSD/MULSD/DIVSD):
+   the first xmm-register entries in this corpus, fixed to [%xmm1]
+   (source)/[%xmm0] (destination) - {!Isa_norm_xed.xmm_binop_rr_form}'s
+   own doc comment explains why this is the first admission needing the
+   model's [X86_xmm] register class. *)
+let x86_sse_binop_rr_entry ~target ~form_id ~lookup_key =
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:register-register:%s" form_id (Target.to_string target);
+    rule_ids = [ "canonical-spelling"; "xmm-register-operands" ];
+    operands = [ ("src", "xmm1"); ("dest", "xmm0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+(* MULSS/DIVSS (SSE) and COMISD/UCOMISD/COMISS/XORPD/PXOR/MOVAPD/CVTSD2SS/
+   CVTSS2SD (SSE2/SSE, {!Isa_norm_xed.normalize}'s own doc comment on the
+   rest of this shape) share ADDSD's exact register-register shape, so this
+   is the same generic entry builder over a longer lookup_key list, not a
+   new function. *)
+let x86_sse_binop_rr_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key ->
+          x86_sse_binop_rr_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+        [
+          "ADDSD_XMMsd_XMMsd";
+          "SUBSD_XMMsd_XMMsd";
+          "MULSD_XMMsd_XMMsd";
+          "DIVSD_XMMsd_XMMsd";
+          "MULSS_XMMss_XMMss";
+          "DIVSS_XMMss_XMMss";
+          "COMISD_XMMsd_XMMsd";
+          "UCOMISD_XMMsd_XMMsd";
+          "COMISS_XMMss_XMMss";
+          "XORPD_XMMxuq_XMMxuq";
+          "PXOR_XMMdq_XMMdq";
+          "MOVAPD_XMMpd_XMMpd_0F28";
+          "CVTSD2SS_XMMss_XMMsd";
+          "CVTSS2SD_XMMsd_XMMss";
+          "ANDPS_XMMxud_XMMxud";
+          "ANDNPS_XMMxud_XMMxud";
+          "ORPS_XMMxud_XMMxud";
+          "XORPS_XMMxud_XMMxud";
+          "ANDPD_XMMxuq_XMMxuq";
+          "ANDNPD_XMMxuq_XMMxuq";
+          "ORPD_XMMxuq_XMMxuq";
+          "MOVAPS_XMMps_XMMps_0F28";
+          "MOVUPS_XMMps_XMMps_0F10";
+          "MOVUPD_XMMpd_XMMpd_0F10";
+          "ADDPS_XMMps_XMMps";
+          "SUBPS_XMMps_XMMps";
+          "MULPS_XMMps_XMMps";
+          "DIVPS_XMMps_XMMps";
+          "ADDPD_XMMpd_XMMpd";
+          "SUBPD_XMMpd_XMMpd";
+          "MULPD_XMMpd_XMMpd";
+          "DIVPD_XMMpd_XMMpd";
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* SSE2 scalar-float register<-memory binops (ADDSD/SUBSD/MULSD/
+   DIVSD_XMMsd_MEMsd): {!x86_sse_binop_rr_entries}'s own sibling, with
+   {!x86_alu_memv_entry}'s base+disp8 SIB addressing standing in for the
+   [%xmm1] source ({!Isa_norm_xed.xmm_binop_rm_form}'s own doc comment). *)
+let x86_sse_binop_rm_entry ~target ~form_id ~lookup_key =
+  let stack, _, _ = x86_registers target in
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:load-base-disp8-sib:%s" form_id (Target.to_string target);
+    rule_ids = [ "load-base-disp8-sib"; "xmm-register-operands" ];
+    operands = [ ("mem", Printf.sprintf "16(%%%s)" stack); ("dest", "xmm0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+(* Its register<-memory sibling for the same longer mnemonic list. *)
+let x86_sse_binop_rm_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key ->
+          x86_sse_binop_rm_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+        [
+          "ADDSD_XMMsd_MEMsd";
+          "SUBSD_XMMsd_MEMsd";
+          "MULSD_XMMsd_MEMsd";
+          "DIVSD_XMMsd_MEMsd";
+          "MULSS_XMMss_MEMss";
+          "DIVSS_XMMss_MEMss";
+          "COMISD_XMMsd_MEMsd";
+          "UCOMISD_XMMsd_MEMsd";
+          "COMISS_XMMss_MEMss";
+          "XORPD_XMMxuq_MEMxuq";
+          "PXOR_XMMdq_MEMdq";
+          "MOVAPD_XMMpd_MEMpd";
+          "CVTSD2SS_XMMss_MEMsd";
+          "CVTSS2SD_XMMsd_MEMss";
+          "ANDPS_XMMxud_MEMxud";
+          "ANDNPS_XMMxud_MEMxud";
+          "ORPS_XMMxud_MEMxud";
+          "XORPS_XMMxud_MEMxud";
+          "ANDPD_XMMxuq_MEMxuq";
+          "ANDNPD_XMMxuq_MEMxuq";
+          "ORPD_XMMxuq_MEMxuq";
+          "MOVAPS_XMMps_MEMps";
+          "MOVUPS_XMMps_MEMps";
+          "MOVUPD_XMMpd_MEMpd";
+          "ADDPS_XMMps_MEMps";
+          "SUBPS_XMMps_MEMps";
+          "MULPS_XMMps_MEMps";
+          "DIVPS_XMMps_MEMps";
+          "ADDPD_XMMpd_MEMpd";
+          "SUBPD_XMMpd_MEMpd";
+          "MULPD_XMMpd_MEMpd";
+          "DIVPD_XMMpd_MEMpd";
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* [movsd]/[movss] load/store: {!x86_sse_binop_rm_entry}'s own stack-based
+   memory addressing and [%xmm0] destination, generalized with a [load]
+   direction flag the way {!x86_mov_entry} already generalizes
+   {!x86_alu_memv_entry} for GPRv MOV ({!Isa_norm_xed.xmm_mov_form}'s own
+   doc comment on why this is a plain move, not another binop entry). *)
+let x86_sse_mov_entry ~target ~form_id ~lookup_key ~load =
+  let stack, _, _ = x86_registers target in
+  let mem = Printf.sprintf "16(%%%s)" stack in
+  let label = if load then "load-base-disp8-sib" else "store-base-disp8-sib" in
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:%s:%s" form_id label (Target.to_string target);
+    rule_ids = [ label; "xmm-register-operands" ];
+    operands =
+      (if load then [ ("mem", mem); ("reg", "xmm0") ] else [ ("reg", "xmm0"); ("mem", mem) ]);
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_sse_mov_entries =
+  List.concat_map
+    (fun target ->
+      [
+        x86_sse_mov_entry ~target ~form_id:"x86:MOVSD_XMM_XMMdq_MEMsd"
+          ~lookup_key:"MOVSD_XMM_XMMdq_MEMsd" ~load:true;
+        x86_sse_mov_entry ~target ~form_id:"x86:MOVSD_XMM_MEMsd_XMMsd"
+          ~lookup_key:"MOVSD_XMM_MEMsd_XMMsd" ~load:false;
+        x86_sse_mov_entry ~target ~form_id:"x86:MOVSS_XMMdq_MEMss" ~lookup_key:"MOVSS_XMMdq_MEMss"
+          ~load:true;
+        x86_sse_mov_entry ~target ~form_id:"x86:MOVSS_MEMss_XMMss" ~lookup_key:"MOVSS_MEMss_XMMss"
+          ~load:false;
+      ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* [cvtsi2sd]/[cvtsi2ss] register-source ({!Isa_norm_xed.cvtsi2f_rr_form}'s
+   own doc comment): [%eax] (32-bit) is valid on both targets, while [%rax]
+   (64-bit, [cvtsi2sdq]/[cvtsi2ssq]) only exists in 64-bit mode - unlike
+   every prior SSE entry list, the 64-bit variants' own entry list is
+   X86_64-only rather than sweeping both targets. *)
+let x86_cvtsi2f_rr_entry ~target ~form_id ~lookup_key ~reg =
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:register-register:%s" form_id (Target.to_string target);
+    rule_ids = [ "canonical-spelling"; "mixed-gpr-xmm-operands" ];
+    operands = [ ("src", reg); ("dest", "xmm0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_cvtsi2f_rr_entries =
+  List.concat_map
+    (fun target ->
+      [
+        x86_cvtsi2f_rr_entry ~target ~form_id:"x86:CVTSI2SD_XMMsd_GPR32d"
+          ~lookup_key:"CVTSI2SD_XMMsd_GPR32d" ~reg:"eax";
+        x86_cvtsi2f_rr_entry ~target ~form_id:"x86:CVTSI2SS_XMMss_GPR32d"
+          ~lookup_key:"CVTSI2SS_XMMss_GPR32d" ~reg:"eax";
+      ])
+    [ Target.X86_32; Target.X86_64 ]
+  @ [
+      x86_cvtsi2f_rr_entry ~target:Target.X86_64 ~form_id:"x86:CVTSI2SD_XMMsd_GPR64q"
+        ~lookup_key:"CVTSI2SD_XMMsd_GPR64q" ~reg:"rax";
+      x86_cvtsi2f_rr_entry ~target:Target.X86_64 ~form_id:"x86:CVTSI2SS_XMMss_GPR64q"
+        ~lookup_key:"CVTSI2SS_XMMss_GPR64q" ~reg:"rax";
+    ]
+
+(* [cvtsi2sd]/[cvtsi2ss] memory-source sibling
+   ({!Isa_norm_xed.cvtsi2f_rm_form}'s own doc comment): the same
+   base+disp8 SIB addressing {!x86_sse_binop_rm_entry} already uses, with
+   the 64-bit [MEMq] variants kept X86_64-only for the same reason as
+   {!x86_cvtsi2f_rr_entries} above. *)
+let x86_cvtsi2f_rm_entry ~target ~form_id ~lookup_key =
+  let stack, _, _ = x86_registers target in
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:load-base-disp8-sib:%s" form_id (Target.to_string target);
+    rule_ids = [ "load-base-disp8-sib"; "mixed-gpr-xmm-operands" ];
+    operands = [ ("src", Printf.sprintf "16(%%%s)" stack); ("dest", "xmm0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_cvtsi2f_rm_entries =
+  List.concat_map
+    (fun target ->
+      [
+        x86_cvtsi2f_rm_entry ~target ~form_id:"x86:CVTSI2SD_XMMsd_MEMd"
+          ~lookup_key:"CVTSI2SD_XMMsd_MEMd";
+        x86_cvtsi2f_rm_entry ~target ~form_id:"x86:CVTSI2SS_XMMss_MEMd"
+          ~lookup_key:"CVTSI2SS_XMMss_MEMd";
+      ])
+    [ Target.X86_32; Target.X86_64 ]
+  @ [
+      x86_cvtsi2f_rm_entry ~target:Target.X86_64 ~form_id:"x86:CVTSI2SD_XMMsd_MEMq"
+        ~lookup_key:"CVTSI2SD_XMMsd_MEMq";
+      x86_cvtsi2f_rm_entry ~target:Target.X86_64 ~form_id:"x86:CVTSI2SS_XMMss_MEMq"
+        ~lookup_key:"CVTSI2SS_XMMss_MEMq";
+    ]
+
+(* [cvttsd2si] register-source ({!Isa_norm_xed.cvtf2i_rr_form}'s own doc
+   comment): the one bare mnemonic covers both GPR widths, so only the
+   operand register spelling ([%eax]/[%rax]) distinguishes the two entries;
+   the 64-bit destination variant is X86_64-only for the same reason as
+   {!x86_cvtsi2f_rr_entries} above. *)
+let x86_cvtf2i_rr_entry ~target ~form_id ~lookup_key ~reg =
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:register-register:%s" form_id (Target.to_string target);
+    rule_ids = [ "canonical-spelling"; "mixed-gpr-xmm-operands" ];
+    operands = [ ("src", "xmm0"); ("dest", reg) ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_cvtf2i_rr_entries =
+  List.concat_map
+    (fun target ->
+      [
+        x86_cvtf2i_rr_entry ~target ~form_id:"x86:CVTTSD2SI_GPR32d_XMMsd"
+          ~lookup_key:"CVTTSD2SI_GPR32d_XMMsd" ~reg:"eax";
+      ])
+    [ Target.X86_32; Target.X86_64 ]
+  @ [
+      x86_cvtf2i_rr_entry ~target:Target.X86_64 ~form_id:"x86:CVTTSD2SI_GPR64q_XMMsd"
+        ~lookup_key:"CVTTSD2SI_GPR64q_XMMsd" ~reg:"rax";
+    ]
+
+(* [cvttsd2si] memory-source sibling ({!Isa_norm_xed.cvtf2i_rm_form}'s own
+   doc comment): MEM0 is always a double regardless of GPR destination
+   width, so only the destination register spelling varies between the two
+   entries, the same base+disp8 SIB addressing as every other MEM0 entry
+   above. *)
+let x86_cvtf2i_rm_entry ~target ~form_id ~lookup_key ~reg =
+  let stack, _, _ = x86_registers target in
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:load-base-disp8-sib:%s" form_id (Target.to_string target);
+    rule_ids = [ "load-base-disp8-sib"; "mixed-gpr-xmm-operands" ];
+    operands = [ ("src", Printf.sprintf "16(%%%s)" stack); ("dest", reg) ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_cvtf2i_rm_entries =
+  List.concat_map
+    (fun target ->
+      [
+        x86_cvtf2i_rm_entry ~target ~form_id:"x86:CVTTSD2SI_GPR32d_MEMsd"
+          ~lookup_key:"CVTTSD2SI_GPR32d_MEMsd" ~reg:"eax";
+      ])
+    [ Target.X86_32; Target.X86_64 ]
+  @ [
+      x86_cvtf2i_rm_entry ~target:Target.X86_64 ~form_id:"x86:CVTTSD2SI_GPR64q_MEMsd"
+        ~lookup_key:"CVTTSD2SI_GPR64q_MEMsd" ~reg:"rax";
+    ]
+
 let fadd_entry target =
   {
     form_id = "x86:FADD_ST0_X87";
@@ -3861,7 +4158,9 @@ let all =
   sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @ x86_alu_rr_entries
   @ x86_alu_memv_entries @ x86_alu_memv_gprv_entries @ x86_alu_immz_entries @ x86_alu_immb_entries
   @ x86_alu_memv_immb_entries @ x86_alu_memv_immz_entries @ x86_alu_gpr8_immb_entries
-  @ x86_alu_memb_immb_entries @ x86_alu_al_immb_entries @ x86_fadd_entries @ fadd_s_entries
+  @ x86_alu_memb_immb_entries @ x86_alu_al_immb_entries @ x86_sse_binop_rr_entries
+  @ x86_sse_binop_rm_entries @ x86_sse_mov_entries @ x86_cvtsi2f_rr_entries @ x86_cvtsi2f_rm_entries
+  @ x86_cvtf2i_rr_entries @ x86_cvtf2i_rm_entries @ x86_fadd_entries @ fadd_s_entries
   @ fsub_s_entries @ fmul_s_entries @ fdiv_s_entries @ fadd_d_entries @ fsub_d_entries
   @ fmul_d_entries @ fdiv_d_entries @ flw_entries @ fld_entries @ fsw_entries @ fsd_entries
   @ sh1add_entries @ sh2add_entries @ sh3add_entries @ sh1adduw_entries @ sh2adduw_entries
@@ -4162,6 +4461,34 @@ let pilot_entry_of (entry : entry) =
            opcode's own bits rather than a ModR/M byte) / Lowered.Alu_rm_imm codec alternative \
            (opcode ext<<3|4, {!alu_acc_form_byte})"
           (alu_acc_ext_of lookup_key)
+    | ("ADDSD_XMMsd_XMMsd" | "SUBSD_XMMsd_XMMsd" | "MULSD_XMMsd_XMMsd" | "DIVSD_XMMsd_XMMsd") as
+      lookup_key ->
+        let opcode =
+          match lookup_key with
+          | "ADDSD_XMMsd_XMMsd" -> "0x58"
+          | "SUBSD_XMMsd_XMMsd" -> "0x5c"
+          | "MULSD_XMMsd_XMMsd" -> "0x59"
+          | "DIVSD_XMMsd_XMMsd" -> "0x5e"
+          | _ -> assert false
+        in
+        Printf.sprintf
+          "x86_family_encode.ml's sse_binop_f2_codec table entry (opcode 0xF2 0x0F %s) / \
+           Lowered.Sse_binop_r_rm codec alternative"
+          opcode
+    | ("ADDSD_XMMsd_MEMsd" | "SUBSD_XMMsd_MEMsd" | "MULSD_XMMsd_MEMsd" | "DIVSD_XMMsd_MEMsd") as
+      lookup_key ->
+        let opcode =
+          match lookup_key with
+          | "ADDSD_XMMsd_MEMsd" -> "0x58"
+          | "SUBSD_XMMsd_MEMsd" -> "0x5c"
+          | "MULSD_XMMsd_MEMsd" -> "0x59"
+          | "DIVSD_XMMsd_MEMsd" -> "0x5e"
+          | _ -> assert false
+        in
+        Printf.sprintf
+          "x86_family_encode.ml's sse_binop_f2_codec table entry (opcode 0xF2 0x0F %s) / \
+           Lowered.Sse_binop_r_rm codec alternative, memory r/m"
+          opcode
     | "FADD_ST0_X87" ->
         "x86_family_encode.ml's Lowered.Fadd_st0_x87 / fadd-st0-x87 codec alternative (0xD8 0xC0+i)"
     | ("fadd.s" | "fsub.s" | "fmul.s" | "fdiv.s" | "fadd.d" | "fsub.d" | "fmul.d" | "fdiv.d") as

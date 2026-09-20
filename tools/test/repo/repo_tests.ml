@@ -187,8 +187,8 @@ let test_isa_norm_accounting repo =
   in
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:722;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:774;
-  expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:89;
-  expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:89
+  expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:169;
+  expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:169
 
 (* The family matrix is a second view over the same complete population,
    not a hand-maintained support claim. Pinning its aggregate states makes a
@@ -690,23 +690,135 @@ let test_isa_family_admission repo =
      {!Isa_norm_xed.alu_memv_gprv_form} were needed, no encoder table
      change. TEST is included, unlike its own GPRv_MEMv load-direction
      exclusion above - XED does export a `TEST_MEMv_GPRv` record. This
-     slice moves 9 records per x86 profile (9 mnemonics x 1 shape). *)
+     slice moves 9 records per x86 profile (9 mnemonics x 1 shape), closing
+     the base legacy x86 ALU/MOV opcode space in full.
+
+     `ADDSD`/`SUBSD`/`MULSD`/`DIVSD_XMMsd_XMMsd` (SSE2 scalar-float
+     register-register binops, `addsd %xmm1, %xmm0`) are the first
+     xmm-register admission: `x86_family_encode.ml`'s own
+     `Lowered.Sse_binop_r_rm` and `sse_binop_f2_codec` table already fully
+     implement and fixture-verify these four ops (M5, asm/docs/corpus.md),
+     so this slice is pure normalization/admission wiring, needing only
+     the model's own new `X86_xmm` register class (`Isa_norm_model`'s own
+     docstring already names "vector masks, EVEX broadcast, VEX operands"
+     as exactly the kind of gap later normalization work is for) and
+     `Isa_norm_xed.xmm_binop_rr_form`. This slice moves 4 records per x86
+     profile and opens the entirely-unadmitted x86 vector/SIMD space the
+     prior milestone flagged as needing new infrastructure - register-memory
+     SSE forms, the remaining SSE/SSE2 op families, and VEX/EVEX all remain
+     unadmitted.
+
+     `ADDSD`/`SUBSD`/`MULSD`/`DIVSD_XMMsd_MEMsd` (the register<-memory
+     sibling, `addsd 16(%esp), %xmm0`) close that immediate follow-up: the
+     encoder's own `Lowered.Sse_binop_r_rm` already builds both directions
+     off one `rm : Rm.t` field, so this needed only the new
+     `Isa_norm_xed.xmm_binop_rm_form` normalizer, no encoder change. This
+     slice moves 4 more records per x86 profile.
+
+     `MULSS`/`DIVSS` (SSE, not SSE2 - `requirement_of` gained its own
+     `Req_feature "x86:sse"` case) and `COMISD`/`UCOMISD`/`COMISS`/`XORPD`/
+     `PXOR`/`MOVAPD_XMMpd_XMMpd_0F28`/`CVTSD2SS`/`CVTSS2SD` (SSE2/SSE) close
+     the rest of the plain xmm-xmm/xmm-memory binop shape in both directions:
+     `x86_family_encode.ml`'s existing `sse_binop_f3_codec`/
+     `sse_binop_66_codec`/`sse_binop_none_alt` machinery already fully
+     implements every one of these ten mnemonics, so `Isa_norm_xed.
+     xmm_binop_rr_form`/`xmm_binop_rm_form` needed only more dispatch cases,
+     no new shape or encoder change. `MOVAPD`'s own reverse `MEMpd<-XMMpd`
+     store direction and its redundant `_0F29` register-register iform stay
+     unadmitted, matching this file's to_rm_r "low-numbered iform" precedent
+     (confirmed against real GNU as: `movapd %xmm1, %xmm0` selects opcode
+     0x28). This slice moves 20 more records per x86 profile (10 mnemonics x
+     2 directions).
+
+     `MOVSD`/`MOVSS` load/store (`MOVSD_XMM_XMMdq_MEMsd`/
+     `MOVSD_XMM_MEMsd_XMMsd` and their MOVSS siblings) are a plain move, not
+     another binop: `x86_family_encode.ml`'s own comment on
+     `Lowered.Sse_mov_r_rm`/`Sse_mov_rm_r` already notes register-register
+     `movsd`/`movss` is unbuilt (unevidenced by the corpus), so only the
+     load/store direction is admitted here, via a new `Isa_norm_xed.
+     xmm_mov_form` generalizing `mov_gprv_memv_form`'s own `~load` direction
+     flag to the `X86_xmm` register class instead of `X86_gpr`. No encoder
+     change. This slice moves 4 more records per x86 profile.
+
+     `CVTSI2SD`/`CVTSI2SS` (GPR/memory source, XMM dest) and `CVTTSD2SI`
+     (XMM/memory source, GPR dest) close the named GPR-mixed conversion
+     follow-up: the model's first mixed-register-class shape, via four new
+     `Isa_norm_xed` forms (`cvtsi2f_rr_form`/`cvtsi2f_rm_form`/
+     `cvtf2i_rr_form`/`cvtf2i_rm_form`), no encoder change -
+     `x86_family_encode.ml`'s `Lowered.Cvtsi2f_r_rm`/`Cvtf2i_r_rm` already
+     implement both directions. XED reports the 32-bit and 64-bit GPR
+     widths (`GPR32d`/`GPR64q`, `MEMd`/`MEMq`) as separate records with
+     `provenance.mode_restriction` "unspecified"; a GPR64 operand implies
+     64-bit mode by register-class fact alone, so the 64-bit records carry
+     a derived `Req_mode {mode="mode64"; equals=true}` and are promoted on
+     `X86_64` only (confirmed against real GNU as: `cvtsi2sdq %rax, %xmm0`/
+     `cvttsd2si %xmm0, %rax` assemble only in 64-bit mode), while the
+     32-bit records promote on both targets like every prior x86 form.
+     This slice moves 12 more records per x86 profile (6 promoted on both
+     targets, 6 additionally promoted on `X86_64` only), closing the named
+     GPR-mixed conversion follow-up.
+
+     `ANDPS`/`ANDNPS`/`ORPS`/`XORPS` (SSE, no mandatory prefix) and
+     `ANDPD`/`ANDNPD`/`ORPD` (SSE2, 66 mandatory prefix) - `XORPD`'s packed
+     bitwise-logical siblings - reuse the plain xmm-xmm/xmm-memory binop
+     shape's normalization (`xmm_binop_rr_form`/`xmm_binop_rm_form`)
+     unchanged, but unlike every prior slice in this shape, none of the
+     seven existed in the encoder yet: this needed seven new `Opcode.t`
+     variants and opcode-table entries (generalizing the previously
+     hardcoded-single-member `sse_binop_none_alt` into a table-driven
+     `sse_binop_none_codec` the same way the 66-prefixed group already was),
+     still emitting the unchanged `Lowered.Sse_binop_r_rm` representation.
+     This slice moves 14 records per x86 profile (7 mnemonics x 2
+     directions).
+
+     `MOVAPS`/`MOVUPS` (SSE, no mandatory prefix) and `MOVUPD` (SSE2, 66
+     mandatory prefix) are `MOVAPD`'s data-movement siblings - aligned and
+     unaligned packed move - reusing the identical plain xmm-xmm/xmm-memory
+     binop shape and normalization unchanged; like `ANDPS`/etc., none
+     existed in the encoder, so this added three more `Opcode.t` variants
+     and opcode-table entries (`MOVAPS`/`MOVUPS` into `sse_binop_none_codec`,
+     `MOVUPD` into `sse_binop_66_codec`). Only the reg-dest load direction is
+     admitted, matching `MOVAPD`'s own precedent: each mnemonic's reverse
+     store direction (`MEMxx<-XMMxx`) is a distinct, real form not yet
+     built. Confirmed against real GNU as (i686-linux-gnu-as 2.44):
+     `movaps %xmm1,%xmm2` -> `0f 28 d1`, `movaps (%eax),%xmm2` -> `0f 28 10`,
+     `movups %xmm1,%xmm2` -> `0f 10 d1`, `movupd %xmm1,%xmm2` ->
+     `66 0f 10 d1`. This slice moves 6 more records per x86 profile (3
+     mnemonics x 2 directions).
+
+     `ADDPS`/`SUBPS`/`MULPS`/`DIVPS` (SSE, no mandatory prefix) and
+     `ADDPD`/`SUBPD`/`MULPD`/`DIVPD` (SSE2, 66 mandatory prefix) complete the
+     prefix square for opcodes `0x58`/`0x59`/`0x5C`/`0x5E` - the same four
+     bytes `ADDSD`/`MULSD`/`SUBSD`/`DIVSD` (F2-prefixed) and `ADDSS`/`MULSS`/
+     `SUBSS`/`DIVSS` (F3-prefixed) already use - the way `ANDPS`/etc. and
+     `MOVAPS`/etc. each completed the square for their own opcode groups.
+     Same plain xmm-xmm/xmm-memory binop shape and normalization unchanged;
+     none of the eight existed in the encoder, so this added eight more
+     `Opcode.t` variants and opcode-table entries (`ADDPS`/`SUBPS`/`MULPS`/
+     `DIVPS` into `sse_binop_none_codec`, `ADDPD`/`SUBPD`/`MULPD`/`DIVPD` into
+     `sse_binop_66_codec`). Confirmed against real GNU as (i686-linux-gnu-as/
+     x86_64-linux-gnu-as 2.44): `addps %xmm1,%xmm0` -> `0f 58 c1`, `addpd
+     %xmm1,%xmm0` -> `66 0f 58 c1`, and likewise for `sub`/`mul`/`div` at
+     `0x5C`/`0x59`/`0x5E`. This slice moves 16 more records per x86 profile (8
+     mnemonics x 2 directions), closing every already-encoder-supported
+     scalar/plain-binop-shaped SSE/SSE2 mnemonic; only VEX/EVEX remain
+     unadmitted in x86 vector/SIMD. *)
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
     ~promoted_support:702 ~blocked:367;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
     ~promoted_support:744 ~blocked:380;
-  expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0 ~gas_generatable:5
-    ~promoted_support:84 ~blocked:7798;
+  expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:6 ~gas_generatable:5
+    ~promoted_support:158 ~blocked:7718;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
-    ~promoted_support:84 ~blocked:10482
+    ~promoted_support:164 ~blocked:10402
 
 (* Export and round-trip deterministic normalized JSONL: every
    form Isa_norm_riscv/Isa_norm_xed produce from the real checked-in exports
    - not just synthetic values, which Test_isa_norm_jsonl already covers for
    every constructor - must survive Isa_norm_jsonl.encode_line followed by
    decode_line unchanged. The pinned total is the sum of the accounting
-   tests' own pinned normalized counts (722+774+89+89); a drop here without a
-   matching drop there would mean the codec silently lost a form the
+   tests' own pinned normalized counts (722+774+169+169); a drop here without
+   a matching drop there would mean the codec silently lost a form the
    accounting still credits as normalized. *)
 let normalize_one source (rec_ : Isa_source_record.t) =
   match source with
@@ -752,9 +864,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 1674)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 1834)"
        !roundtrip_count)
-    (!roundtrip_count = 1674)
+    (!roundtrip_count = 1834)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's

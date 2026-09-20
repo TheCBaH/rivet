@@ -181,6 +181,46 @@ val x86_alu_al_immb_entries : entry list
     exercise a raw-byte value outside the signed-imm8 range this form's
     field still accepts unchanged. *)
 
+val x86_sse_binop_rr_entries : entry list
+(** [addsd]/[subsd]/[mulsd]/[divsd %xmm1, %xmm0] on x86-32 and x86-64, the
+    first xmm-register entries in this corpus - already fully built and
+    fixture-verified by this project's own encoder before XED-driven admission. *)
+
+val x86_sse_binop_rm_entries : entry list
+(** [addsd]/[subsd]/[mulsd]/[divsd 16(%esp|%rsp), %xmm0] on x86-32 and
+    x86-64, {!x86_sse_binop_rr_entries}'s own register<-memory sibling,
+    also already fully built and fixture-verified by this project's own
+    encoder before XED-driven admission. *)
+
+val x86_sse_mov_entries : entry list
+(** [movsd]/[movss 16(%esp|%rsp), %xmm0] (load) and [movsd]/[movss %xmm0,
+    16(%esp|%rsp)] (store) on x86-32 and x86-64 - a plain move, not another
+    register<-memory binop, so {!x86_sse_binop_rm_entries}'s own memory
+    addressing and destination register are reused with a load/store
+    direction flag rather than folded into that entry builder. *)
+
+val x86_cvtsi2f_rr_entries : entry list
+(** [cvtsi2sd]/[cvtsi2ss %eax, %xmm0] on x86-32 and x86-64, plus
+    [cvtsi2sdq]/[cvtsi2ssq %rax, %xmm0] on x86-64 only (a GPR64 source
+    register only exists in 64-bit mode) - the first mixed-GPR/XMM entries
+    in this corpus. *)
+
+val x86_cvtsi2f_rm_entries : entry list
+(** [cvtsi2sd]/[cvtsi2ss 16(%esp|%rsp), %xmm0] on x86-32 and x86-64, plus
+    [cvtsi2sdq]/[cvtsi2ssq 16(%rsp), %xmm0] on x86-64 only,
+    {!x86_cvtsi2f_rr_entries}'s own memory-source sibling. *)
+
+val x86_cvtf2i_rr_entries : entry list
+(** [cvttsd2si %xmm0, %eax] on x86-32 and x86-64, plus [cvttsd2si %xmm0,
+    %rax] on x86-64 only - the one bare mnemonic covers both GPR
+    destination widths, so only the register operand distinguishes the
+    two entries. *)
+
+val x86_cvtf2i_rm_entries : entry list
+(** [cvttsd2si 16(%esp|%rsp), %eax] on x86-32 and x86-64, plus [cvttsd2si
+    16(%rsp), %rax] on x86-64 only, {!x86_cvtf2i_rr_entries}'s own
+    memory-source sibling. *)
+
 val x86_fadd_entries : entry list
 (** [fadd %st(1), %st] on x86-32 and x86-64, selecting XED's
     [FADD_ST0_X87] rather than its reverse-direction sibling. *)
@@ -2606,7 +2646,8 @@ val all : entry list
     x86_alu_rr_entries @ x86_alu_memv_entries @ x86_alu_memv_gprv_entries @ x86_alu_immz_entries @
     x86_alu_immb_entries @ x86_alu_memv_immb_entries @ x86_alu_memv_immz_entries @
     x86_alu_gpr8_immb_entries @ x86_alu_memb_immb_entries @ x86_alu_al_immb_entries @
-    x86_fadd_entries @ fadd_s_entries @
+    x86_sse_binop_rr_entries @ x86_sse_binop_rm_entries @ x86_sse_mov_entries @ x86_fadd_entries @
+    fadd_s_entries @
     fsub_s_entries @ fmul_s_entries @
     fdiv_s_entries @ fadd_d_entries @ fsub_d_entries @ fmul_d_entries @
     fdiv_d_entries @ flw_entries @ fld_entries @ fsw_entries @ fsd_entries @

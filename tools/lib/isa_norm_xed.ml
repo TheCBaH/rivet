@@ -37,6 +37,8 @@ let requirement_of (rec_ : R.t) =
   match xed_provenance_of rec_ with
   | Ok { extension = Some "BASE"; _ } -> applic ()
   | Ok { extension = Some "X87"; _ } -> req_and (Req_feature "x86:x87") (applic ())
+  | Ok { extension = Some "SSE"; _ } -> req_and (Req_feature "x86:sse") (applic ())
+  | Ok { extension = Some "SSE2"; _ } -> req_and (Req_feature "x86:sse2") (applic ())
   | Ok { extension = Some ext; _ } -> Req_unknown (Printf.sprintf "unmapped XED extension: %s" ext)
   | Ok { extension = None; _ } -> Req_unknown "XED record has no provenance.extension"
   | Error msg -> Req_unknown msg
@@ -984,6 +986,537 @@ let two_operand_gprv_form ~form_id ~mnemonic (rec_ : R.t) =
            (List.length operands))
   | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
 
+(* SSE2 scalar-float register-register binops (ADDSD/SUBSD/MULSD/
+   DIVSD_XMMsd_XMMsd): x86_family_encode.ml's own [Lowered.Sse_binop_r_rm],
+   already fully built and fixture-verified (M5, asm/docs/corpus.md) before
+   XED-driven admission began - this is the first XED-driven admission
+   of any xmm-register form, so it introduces the model's own [X86_xmm]
+   register class rather than reusing [X86_gpr]. XED orders REG0 (rw, the
+   destination) before REG1 (r, the source) - the reverse of AT&T's own
+   source-first spelling ([addsd %xmm1, %xmm0]) - so this reads the role
+   off each operand's own [rw] fact the same way {!two_operand_gprv_form}
+   does for GPRv, rather than assuming a fixed slot order. Register-memory
+   (XMMsd_MEMsd) is a separate, not-yet-admitted shape - nothing here
+   claims it. *)
+let xmm_binop_rr_form ~form_id ~mnemonic (rec_ : R.t) =
+  match rec_.encoding with
+  | R.X86_encoding { space; opcode_map; opcode; pattern; operands = [ a; b ] }
+    when a.op_name = "REG0" && b.op_name = "REG1" ->
+      let dest =
+        {
+          op_name = "dest";
+          op_kind = Register { class_ = X86_xmm; excluded = [] };
+          role = role_of_rw a.rw;
+          explicit = true;
+        }
+      in
+      let src =
+        {
+          op_name = "src";
+          op_kind = Register { class_ = X86_xmm; excluded = [] };
+          role = role_of_rw b.rw;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "x86:" ^ form_id;
+          arch = X86;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding = X86_encoding { space; opcode_map; opcode; pattern };
+          operands = [ src; dest ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [ Syn_decorated ("%", Syn_operand "src"); Syn_decorated ("%", Syn_operand "dest") ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  Printf.sprintf "REG0 (rw=%s), REG1 (rw=%s) taken verbatim from encoding.operands"
+                    a.rw b.rw;
+              };
+              {
+                label = Inferred;
+                note =
+                  "AT&T operand order (source, then destination) is GAS convention, not a XED fact";
+              };
+            ];
+          diagnostics = [];
+        }
+  | R.X86_encoding { operands; _ } ->
+      err
+        (form_id ^ "-unrecognized-operands")
+        (Printf.sprintf "expected REG0/REG1 operands in that order, got %d" (List.length operands))
+  | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
+
+(* SSE2 scalar-float register<-memory binops (ADDSD/SUBSD/MULSD/
+   DIVSD_XMMsd_MEMsd): {!xmm_binop_rr_form}'s own register-register sibling
+   with MEM0 standing in for REG1 - x86_family_encode.ml's own
+   [Lowered.Sse_binop_r_rm] already builds both directions off the same
+   [rm : Rm.t] field (its own doc comment: "a memory [rm] needs no check
+   here"), so this is a second normalizer over that one shape, not a second
+   encoder path. XED orders REG0 (rw, destination) before MEM0 (r, source)
+   here too, matching {!alu_gprv_memv_form}'s own REG0-before-MEM0
+   convention, so this mirrors that function's [mem; reg] operand order and
+   AT&T syntax exactly, with [X86_xmm] replacing [X86_gpr]. *)
+let xmm_binop_rm_form ~form_id ~mnemonic (rec_ : R.t) =
+  match rec_.encoding with
+  | R.X86_encoding { space; opcode_map; opcode; pattern; operands = [ a; b ] }
+    when a.op_name = "REG0" && b.op_name = "MEM0" ->
+      let dest =
+        {
+          op_name = "dest";
+          op_kind = Register { class_ = X86_xmm; excluded = [] };
+          role = role_of_rw a.rw;
+          explicit = true;
+        }
+      in
+      let mem =
+        {
+          op_name = "mem";
+          op_kind = Memory { width_bits = None };
+          role = role_of_rw b.rw;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "x86:" ^ form_id;
+          arch = X86;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding = X86_encoding { space; opcode_map; opcode; pattern };
+          operands = [ mem; dest ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "mem"; Syn_decorated ("%", Syn_operand "dest") ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  Printf.sprintf "REG0 (rw=%s), MEM0 (rw=%s) taken verbatim from encoding.operands"
+                    a.rw b.rw;
+              };
+              {
+                label = Inferred;
+                note =
+                  "AT&T operand order (source, then destination) is GAS convention, not a XED fact";
+              };
+            ];
+          diagnostics = [];
+        }
+  | R.X86_encoding { operands; _ } ->
+      err
+        (form_id ^ "-unrecognized-operands")
+        (Printf.sprintf "expected REG0/MEM0 operands in that order, got %d" (List.length operands))
+  | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
+
+(* [movsd]/[movss] load/store (MOVSD_XMM_XMMdq_MEMsd/MOVSD_XMM_MEMsd_XMMsd
+   and their MOVSS siblings): {!mov_gprv_memv_form}'s own load/store shape
+   with [X86_xmm] replacing [X86_gpr], and the mnemonic ("movsd"/"movss")
+   passed in rather than fixed to "movl", since GAS spells each mnemonic
+   explicitly rather than via a shared suffix. XED orders REG0 before MEM0
+   for the load direction and MEM0 before REG0 for the store direction,
+   exactly as {!mov_gprv_memv_form} already handles via [load]. Role is
+   fixed write-only(load)/read-only(store) rather than read off [rw],
+   matching MOVSD_XMM's own REG0/MEM0 facts ("w"/"r" for load, "r"/"w" for
+   store - never "rw" the way a real binop's destination is): a plain move,
+   unlike {!xmm_binop_rr_form}/{!xmm_binop_rm_form}'s shape above.
+   Register-register [movsd]/[movss] is deliberately not covered here,
+   matching x86_family_encode.ml's own comment that this project's encoder
+   does not build it (unevidenced by the corpus). *)
+let xmm_mov_form ~form_id ~mnemonic ~load (rec_ : R.t) =
+  match rec_.encoding with
+  | R.X86_encoding { space; opcode_map; opcode; pattern; operands = [ a; b ] }
+    when (a.op_name = "REG0" && b.op_name = "MEM0") || (a.op_name = "MEM0" && b.op_name = "REG0") ->
+      let reg =
+        {
+          op_name = "reg";
+          op_kind = Register { class_ = X86_xmm; excluded = [] };
+          role = (if load then Out else In);
+          explicit = true;
+        }
+      in
+      let mem =
+        {
+          op_name = "mem";
+          op_kind = Memory { width_bits = None };
+          role = (if load then In else Out);
+          explicit = true;
+        }
+      in
+      let operands, syntax_operands =
+        if load then ([ mem; reg ], [ Syn_operand "mem"; Syn_decorated ("%", Syn_operand "reg") ])
+        else ([ reg; mem ], [ Syn_decorated ("%", Syn_operand "reg"); Syn_operand "mem" ])
+      in
+      Ok
+        {
+          form_id = "x86:" ^ form_id;
+          arch = X86;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding = X86_encoding { space; opcode_map; opcode; pattern };
+          operands;
+          syntax = { dialect = "gas-att"; mnemonic; operands = syntax_operands };
+          concreteness = Concrete;
+          facts =
+            [ { label = Upstream; note = "REG0 and MEM0 taken verbatim from encoding.operands" } ];
+          diagnostics = [];
+        }
+  | R.X86_encoding { operands; _ } ->
+      err
+        (form_id ^ "-unrecognized-operands")
+        (Printf.sprintf "expected REG0/MEM0 operands, got %d" (List.length operands))
+  | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
+
+(* [cvtsi2sd]/[cvtsi2ss] register-source (CVTSI2SD_XMMsd_GPR32d/GPR64q and
+   their CVTSI2SS siblings): the model's first mixed-register-class shape -
+   REG0 is [X86_xmm] (the destination) while REG1 is [X86_gpr] (the source),
+   unlike {!xmm_binop_rr_form}'s xmm/xmm pair. XED gives the 32-bit
+   ([GPR32_B]) and 64-bit ([GPR64_B]) source width as two distinct records
+   sharing REG0/REG1's own positional order, and this project's own frontend
+   spells the two widths as distinct mnemonics ([cvtsi2sd]/[cvtsi2sdq]),
+   so [mnemonic] is passed in per form_id rather than derived from [oc2].
+   [mode64] adds [Req_mode {mode="mode64"; equals=true}]: the record's own
+   [provenance.mode_restriction] is "unspecified" here (a GPR64 register
+   operand implies 64-bit mode by register-class fact, not by an
+   applicability token {!requirement_of_applicability} would see), so this
+   is a derived requirement layered on top of {!requirement_of}'s
+   unconditional SSE/SSE2 feature, not a second read of the same source
+   fact. Memory-source (MEMd/MEMq) is a separate shape, {!cvtsi2f_rm_form}
+   below - nothing here claims it. *)
+let cvtsi2f_rr_form ~form_id ~mnemonic ~mode64 (rec_ : R.t) =
+  match rec_.encoding with
+  | R.X86_encoding { space; opcode_map; opcode; pattern; operands = [ a; b ] }
+    when a.op_name = "REG0" && b.op_name = "REG1" ->
+      let dest =
+        {
+          op_name = "dest";
+          op_kind = Register { class_ = X86_xmm; excluded = [] };
+          role = role_of_rw a.rw;
+          explicit = true;
+        }
+      in
+      let src =
+        {
+          op_name = "src";
+          op_kind = Register { class_ = X86_gpr; excluded = [] };
+          role = role_of_rw b.rw;
+          explicit = true;
+        }
+      in
+      let requirement =
+        if mode64 then req_and (Req_mode { mode = "mode64"; equals = true }) (requirement_of rec_)
+        else requirement_of rec_
+      in
+      Ok
+        {
+          form_id = "x86:" ^ form_id;
+          arch = X86;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding = X86_encoding { space; opcode_map; opcode; pattern };
+          operands = [ src; dest ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [ Syn_decorated ("%", Syn_operand "src"); Syn_decorated ("%", Syn_operand "dest") ];
+            };
+          concreteness = Concrete;
+          facts =
+            ([
+               {
+                 label = Upstream;
+                 note =
+                   Printf.sprintf "REG0 (rw=%s), REG1 (rw=%s) taken verbatim from encoding.operands"
+                     a.rw b.rw;
+               };
+               {
+                 label = Inferred;
+                 note =
+                   "AT&T operand order (source, then destination) is GAS convention, not a XED fact";
+               };
+             ]
+            @
+            if mode64 then
+              [
+                {
+                  label = Inferred;
+                  note =
+                    "mode64 requirement derived from the GPR64 source register class, since \
+                     provenance.mode_restriction is unspecified for this record";
+                };
+              ]
+            else []);
+          diagnostics = [];
+        }
+  | R.X86_encoding { operands; _ } ->
+      err
+        (form_id ^ "-unrecognized-operands")
+        (Printf.sprintf "expected REG0/REG1 operands in that order, got %d" (List.length operands))
+  | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
+
+(* [cvtsi2sd]/[cvtsi2ss] memory-source sibling (CVTSI2SD_XMMsd_MEMd/MEMq and
+   their CVTSI2SS siblings): {!cvtsi2f_rr_form}'s own shape with MEM0
+   standing in for REG1, the same way {!xmm_binop_rm_form} stands in for
+   {!xmm_binop_rr_form}'s REG1. *)
+let cvtsi2f_rm_form ~form_id ~mnemonic ~mode64 (rec_ : R.t) =
+  match rec_.encoding with
+  | R.X86_encoding { space; opcode_map; opcode; pattern; operands = [ a; b ] }
+    when a.op_name = "REG0" && b.op_name = "MEM0" ->
+      let dest =
+        {
+          op_name = "dest";
+          op_kind = Register { class_ = X86_xmm; excluded = [] };
+          role = role_of_rw a.rw;
+          explicit = true;
+        }
+      in
+      let mem =
+        {
+          op_name = "src";
+          op_kind = Memory { width_bits = None };
+          role = role_of_rw b.rw;
+          explicit = true;
+        }
+      in
+      let requirement =
+        if mode64 then req_and (Req_mode { mode = "mode64"; equals = true }) (requirement_of rec_)
+        else requirement_of rec_
+      in
+      Ok
+        {
+          form_id = "x86:" ^ form_id;
+          arch = X86;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding = X86_encoding { space; opcode_map; opcode; pattern };
+          operands = [ mem; dest ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "src"; Syn_decorated ("%", Syn_operand "dest") ];
+            };
+          concreteness = Concrete;
+          facts =
+            ([
+               {
+                 label = Upstream;
+                 note =
+                   Printf.sprintf "REG0 (rw=%s), MEM0 (rw=%s) taken verbatim from encoding.operands"
+                     a.rw b.rw;
+               };
+               {
+                 label = Inferred;
+                 note =
+                   "AT&T operand order (source, then destination) is GAS convention, not a XED fact";
+               };
+             ]
+            @
+            if mode64 then
+              [
+                {
+                  label = Inferred;
+                  note =
+                    "mode64 requirement derived from the GPR64-sized memory operand (MEMq), since \
+                     provenance.mode_restriction is unspecified for this record";
+                };
+              ]
+            else []);
+          diagnostics = [];
+        }
+  | R.X86_encoding { operands; _ } ->
+      err
+        (form_id ^ "-unrecognized-operands")
+        (Printf.sprintf "expected REG0/MEM0 operands in that order, got %d" (List.length operands))
+  | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
+
+(* [cvttsd2si] register-source (CVTTSD2SI_GPR32d_XMMsd/GPR64q_XMMsd):
+   {!cvtsi2f_rr_form}'s own mixed-register-class shape reversed - REG0 is
+   the [X86_gpr] destination here, REG1 the [X86_xmm] source. This
+   project's frontend spells both GPR widths with the one bare mnemonic
+   [cvttsd2si] (it reads the destination register's own width, exactly as
+   x86_family_encode.ml's own "cvttsd2si" parse-time comment documents, and
+   real GNU as does the same - confirmed against real GNU as: [cvttsd2si
+   %xmm0, %rax] and [cvttsd2siq %xmm0, %rax] assemble to the identical
+   bytes), so unlike {!cvtsi2f_rr_form} there is no per-width mnemonic
+   parameter. [mode64] carries the same derived-requirement reasoning as
+   {!cvtsi2f_rr_form}'s own doc comment, for the GPR64 destination instead
+   of a GPR64 source. *)
+let cvtf2i_rr_form ~form_id ~mode64 (rec_ : R.t) =
+  match rec_.encoding with
+  | R.X86_encoding { space; opcode_map; opcode; pattern; operands = [ a; b ] }
+    when a.op_name = "REG0" && b.op_name = "REG1" ->
+      let dest =
+        {
+          op_name = "dest";
+          op_kind = Register { class_ = X86_gpr; excluded = [] };
+          role = role_of_rw a.rw;
+          explicit = true;
+        }
+      in
+      let src =
+        {
+          op_name = "src";
+          op_kind = Register { class_ = X86_xmm; excluded = [] };
+          role = role_of_rw b.rw;
+          explicit = true;
+        }
+      in
+      let requirement =
+        if mode64 then req_and (Req_mode { mode = "mode64"; equals = true }) (requirement_of rec_)
+        else requirement_of rec_
+      in
+      Ok
+        {
+          form_id = "x86:" ^ form_id;
+          arch = X86;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding = X86_encoding { space; opcode_map; opcode; pattern };
+          operands = [ src; dest ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic = "cvttsd2si";
+              operands =
+                [ Syn_decorated ("%", Syn_operand "src"); Syn_decorated ("%", Syn_operand "dest") ];
+            };
+          concreteness = Concrete;
+          facts =
+            ([
+               {
+                 label = Upstream;
+                 note =
+                   Printf.sprintf "REG0 (rw=%s), REG1 (rw=%s) taken verbatim from encoding.operands"
+                     a.rw b.rw;
+               };
+               {
+                 label = Inferred;
+                 note =
+                   "AT&T operand order (source, then destination) is GAS convention, not a XED fact";
+               };
+             ]
+            @
+            if mode64 then
+              [
+                {
+                  label = Inferred;
+                  note =
+                    "mode64 requirement derived from the GPR64 destination register class, since \
+                     provenance.mode_restriction is unspecified for this record";
+                };
+              ]
+            else []);
+          diagnostics = [];
+        }
+  | R.X86_encoding { operands; _ } ->
+      err
+        (form_id ^ "-unrecognized-operands")
+        (Printf.sprintf "expected REG0/REG1 operands in that order, got %d" (List.length operands))
+  | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
+
+(* [cvttsd2si] memory-source sibling (CVTTSD2SI_GPR32d_MEMsd/GPR64q_MEMsd):
+   {!cvtf2i_rr_form}'s own shape with MEM0 standing in for REG1. Unlike
+   {!cvtsi2f_rm_form}'s MEMd/MEMq split, XED reports MEM0 here with a fixed
+   [oc2] of "sd" regardless of the GPR destination's own width - only the
+   destination varies between the 32-bit and 64-bit forms, never the
+   memory operand (always a double), so [mode64] alone (no per-width MEM0
+   fact) distinguishes the two records. *)
+let cvtf2i_rm_form ~form_id ~mode64 (rec_ : R.t) =
+  match rec_.encoding with
+  | R.X86_encoding { space; opcode_map; opcode; pattern; operands = [ a; b ] }
+    when a.op_name = "REG0" && b.op_name = "MEM0" ->
+      let dest =
+        {
+          op_name = "dest";
+          op_kind = Register { class_ = X86_gpr; excluded = [] };
+          role = role_of_rw a.rw;
+          explicit = true;
+        }
+      in
+      let mem =
+        {
+          op_name = "src";
+          op_kind = Memory { width_bits = None };
+          role = role_of_rw b.rw;
+          explicit = true;
+        }
+      in
+      let requirement =
+        if mode64 then req_and (Req_mode { mode = "mode64"; equals = true }) (requirement_of rec_)
+        else requirement_of rec_
+      in
+      Ok
+        {
+          form_id = "x86:" ^ form_id;
+          arch = X86;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding = X86_encoding { space; opcode_map; opcode; pattern };
+          operands = [ mem; dest ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic = "cvttsd2si";
+              operands = [ Syn_operand "src"; Syn_decorated ("%", Syn_operand "dest") ];
+            };
+          concreteness = Concrete;
+          facts =
+            ([
+               {
+                 label = Upstream;
+                 note =
+                   Printf.sprintf "REG0 (rw=%s), MEM0 (rw=%s) taken verbatim from encoding.operands"
+                     a.rw b.rw;
+               };
+               {
+                 label = Inferred;
+                 note =
+                   "AT&T operand order (source, then destination) is GAS convention, not a XED fact";
+               };
+             ]
+            @
+            if mode64 then
+              [
+                {
+                  label = Inferred;
+                  note =
+                    "mode64 requirement derived from the GPR64 destination register class, since \
+                     provenance.mode_restriction is unspecified for this record";
+                };
+              ]
+            else []);
+          diagnostics = [];
+        }
+  | R.X86_encoding { operands; _ } ->
+      err
+        (form_id ^ "-unrecognized-operands")
+        (Printf.sprintf "expected REG0/MEM0 operands in that order, got %d" (List.length operands))
+  | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
+
 let normalize (rec_ : R.t) =
   match xed_provenance_of rec_ with
   | Ok { iform = Some "ADD_GPRv_IMMz"; _ } -> add_gprv_immz_form rec_
@@ -1199,6 +1732,213 @@ let normalize (rec_ : R.t) =
       alu_al_immb_form ~form_id:"XOR_AL_IMMb" ~mnemonic:"xorb" rec_
   | Ok { iform = Some "CMP_AL_IMMb"; _ } ->
       alu_al_immb_form ~form_id:"CMP_AL_IMMb" ~mnemonic:"cmpb" rec_
+  (* The first xmm-register admission ({!xmm_binop_rr_form}'s own doc
+     comment): SSE2 scalar-float register-register binops, already fully
+     built and fixture-verified by this project's own encoder. *)
+  | Ok { iform = Some "ADDSD_XMMsd_XMMsd"; _ } ->
+      xmm_binop_rr_form ~form_id:"ADDSD_XMMsd_XMMsd" ~mnemonic:"addsd" rec_
+  | Ok { iform = Some "SUBSD_XMMsd_XMMsd"; _ } ->
+      xmm_binop_rr_form ~form_id:"SUBSD_XMMsd_XMMsd" ~mnemonic:"subsd" rec_
+  | Ok { iform = Some "MULSD_XMMsd_XMMsd"; _ } ->
+      xmm_binop_rr_form ~form_id:"MULSD_XMMsd_XMMsd" ~mnemonic:"mulsd" rec_
+  | Ok { iform = Some "DIVSD_XMMsd_XMMsd"; _ } ->
+      xmm_binop_rr_form ~form_id:"DIVSD_XMMsd_XMMsd" ~mnemonic:"divsd" rec_
+  (* Its register<-memory sibling ({!xmm_binop_rm_form}'s own doc comment). *)
+  | Ok { iform = Some "ADDSD_XMMsd_MEMsd"; _ } ->
+      xmm_binop_rm_form ~form_id:"ADDSD_XMMsd_MEMsd" ~mnemonic:"addsd" rec_
+  | Ok { iform = Some "SUBSD_XMMsd_MEMsd"; _ } ->
+      xmm_binop_rm_form ~form_id:"SUBSD_XMMsd_MEMsd" ~mnemonic:"subsd" rec_
+  | Ok { iform = Some "MULSD_XMMsd_MEMsd"; _ } ->
+      xmm_binop_rm_form ~form_id:"MULSD_XMMsd_MEMsd" ~mnemonic:"mulsd" rec_
+  | Ok { iform = Some "DIVSD_XMMsd_MEMsd"; _ } ->
+      xmm_binop_rm_form ~form_id:"DIVSD_XMMsd_MEMsd" ~mnemonic:"divsd" rec_
+  (* The rest of the plain xmm-xmm/xmm-memory binop shape {!xmm_binop_rr_form}/
+     {!xmm_binop_rm_form} already cover generically (their REG0/REG1 and
+     REG0/MEM0 match arms read every operand's role off its own [rw] fact,
+     never assuming ADDSD's own read-write destination): MULSS/DIVSS
+     (mandatory-prefix F3, {!requirement_of}'s SSE case - not SSE2, confirmed
+     from provenance.extension) and COMISD/UCOMISD/XORPD/PXOR/
+     MOVAPD_XMMpd_XMMpd_0F28 (mandatory-prefix 66, SSE2) and CVTSD2SS/
+     CVTSS2SD (already admitted for the F2/F3-mandatory-prefix binop rungs
+     above, this is their own xmm-xmm/xmm-memory pair) all reuse
+     x86_family_encode.ml's existing [sse_binop_f3_codec]/[sse_binop_66_codec]
+     tables with zero encoder change. COMISS has no mandatory prefix at all
+     ([sse_binop_none_alt]) but is still [Lowered.Sse_binop_r_rm] under the
+     hood, so the same two normalizers cover it too - confirmed against real
+     GNU as for every register-register and register<-memory spelling below.
+     MOVAPD's own reverse MEMpd<-XMMpd store direction (opcode 0x29, a
+     genuinely different Lowered/alt shape this project's encoder does not
+     build) and its redundant _0F29 register-register iform are deliberately
+     left unhandled here, matching this file's existing to_rm_r "low-numbered
+     iform" precedent (confirmed: real GNU as selects 0x28 for
+     [movapd %xmm1, %xmm0]). *)
+  | Ok { iform = Some "MULSS_XMMss_XMMss"; _ } ->
+      xmm_binop_rr_form ~form_id:"MULSS_XMMss_XMMss" ~mnemonic:"mulss" rec_
+  | Ok { iform = Some "DIVSS_XMMss_XMMss"; _ } ->
+      xmm_binop_rr_form ~form_id:"DIVSS_XMMss_XMMss" ~mnemonic:"divss" rec_
+  | Ok { iform = Some "COMISD_XMMsd_XMMsd"; _ } ->
+      xmm_binop_rr_form ~form_id:"COMISD_XMMsd_XMMsd" ~mnemonic:"comisd" rec_
+  | Ok { iform = Some "UCOMISD_XMMsd_XMMsd"; _ } ->
+      xmm_binop_rr_form ~form_id:"UCOMISD_XMMsd_XMMsd" ~mnemonic:"ucomisd" rec_
+  | Ok { iform = Some "COMISS_XMMss_XMMss"; _ } ->
+      xmm_binop_rr_form ~form_id:"COMISS_XMMss_XMMss" ~mnemonic:"comiss" rec_
+  | Ok { iform = Some "XORPD_XMMxuq_XMMxuq"; _ } ->
+      xmm_binop_rr_form ~form_id:"XORPD_XMMxuq_XMMxuq" ~mnemonic:"xorpd" rec_
+  | Ok { iform = Some "PXOR_XMMdq_XMMdq"; _ } ->
+      xmm_binop_rr_form ~form_id:"PXOR_XMMdq_XMMdq" ~mnemonic:"pxor" rec_
+  | Ok { iform = Some "MOVAPD_XMMpd_XMMpd_0F28"; _ } ->
+      xmm_binop_rr_form ~form_id:"MOVAPD_XMMpd_XMMpd_0F28" ~mnemonic:"movapd" rec_
+  | Ok { iform = Some "CVTSD2SS_XMMss_XMMsd"; _ } ->
+      xmm_binop_rr_form ~form_id:"CVTSD2SS_XMMss_XMMsd" ~mnemonic:"cvtsd2ss" rec_
+  | Ok { iform = Some "CVTSS2SD_XMMsd_XMMss"; _ } ->
+      xmm_binop_rr_form ~form_id:"CVTSS2SD_XMMsd_XMMss" ~mnemonic:"cvtss2sd" rec_
+  | Ok { iform = Some "MULSS_XMMss_MEMss"; _ } ->
+      xmm_binop_rm_form ~form_id:"MULSS_XMMss_MEMss" ~mnemonic:"mulss" rec_
+  | Ok { iform = Some "DIVSS_XMMss_MEMss"; _ } ->
+      xmm_binop_rm_form ~form_id:"DIVSS_XMMss_MEMss" ~mnemonic:"divss" rec_
+  | Ok { iform = Some "COMISD_XMMsd_MEMsd"; _ } ->
+      xmm_binop_rm_form ~form_id:"COMISD_XMMsd_MEMsd" ~mnemonic:"comisd" rec_
+  | Ok { iform = Some "UCOMISD_XMMsd_MEMsd"; _ } ->
+      xmm_binop_rm_form ~form_id:"UCOMISD_XMMsd_MEMsd" ~mnemonic:"ucomisd" rec_
+  | Ok { iform = Some "COMISS_XMMss_MEMss"; _ } ->
+      xmm_binop_rm_form ~form_id:"COMISS_XMMss_MEMss" ~mnemonic:"comiss" rec_
+  | Ok { iform = Some "XORPD_XMMxuq_MEMxuq"; _ } ->
+      xmm_binop_rm_form ~form_id:"XORPD_XMMxuq_MEMxuq" ~mnemonic:"xorpd" rec_
+  | Ok { iform = Some "PXOR_XMMdq_MEMdq"; _ } ->
+      xmm_binop_rm_form ~form_id:"PXOR_XMMdq_MEMdq" ~mnemonic:"pxor" rec_
+  | Ok { iform = Some "MOVAPD_XMMpd_MEMpd"; _ } ->
+      xmm_binop_rm_form ~form_id:"MOVAPD_XMMpd_MEMpd" ~mnemonic:"movapd" rec_
+  | Ok { iform = Some "CVTSD2SS_XMMss_MEMsd"; _ } ->
+      xmm_binop_rm_form ~form_id:"CVTSD2SS_XMMss_MEMsd" ~mnemonic:"cvtsd2ss" rec_
+  | Ok { iform = Some "CVTSS2SD_XMMsd_MEMss"; _ } ->
+      xmm_binop_rm_form ~form_id:"CVTSS2SD_XMMsd_MEMss" ~mnemonic:"cvtss2sd" rec_
+  (* [movsd]/[movss] load/store ({!xmm_mov_form}'s own doc comment). *)
+  | Ok { iform = Some "MOVSD_XMM_XMMdq_MEMsd"; _ } ->
+      xmm_mov_form ~form_id:"MOVSD_XMM_XMMdq_MEMsd" ~mnemonic:"movsd" ~load:true rec_
+  | Ok { iform = Some "MOVSD_XMM_MEMsd_XMMsd"; _ } ->
+      xmm_mov_form ~form_id:"MOVSD_XMM_MEMsd_XMMsd" ~mnemonic:"movsd" ~load:false rec_
+  | Ok { iform = Some "MOVSS_XMMdq_MEMss"; _ } ->
+      xmm_mov_form ~form_id:"MOVSS_XMMdq_MEMss" ~mnemonic:"movss" ~load:true rec_
+  | Ok { iform = Some "MOVSS_MEMss_XMMss"; _ } ->
+      xmm_mov_form ~form_id:"MOVSS_MEMss_XMMss" ~mnemonic:"movss" ~load:false rec_
+  (* [cvtsi2sd]/[cvtsi2ss]/[cvttsd2si] ({!cvtsi2f_rr_form}/{!cvtsi2f_rm_form}/
+     {!cvtf2i_rr_form}/{!cvtf2i_rm_form}'s own doc comments). *)
+  | Ok { iform = Some "CVTSI2SD_XMMsd_GPR32d"; _ } ->
+      cvtsi2f_rr_form ~form_id:"CVTSI2SD_XMMsd_GPR32d" ~mnemonic:"cvtsi2sd" ~mode64:false rec_
+  | Ok { iform = Some "CVTSI2SD_XMMsd_GPR64q"; _ } ->
+      cvtsi2f_rr_form ~form_id:"CVTSI2SD_XMMsd_GPR64q" ~mnemonic:"cvtsi2sdq" ~mode64:true rec_
+  | Ok { iform = Some "CVTSI2SD_XMMsd_MEMd"; _ } ->
+      cvtsi2f_rm_form ~form_id:"CVTSI2SD_XMMsd_MEMd" ~mnemonic:"cvtsi2sd" ~mode64:false rec_
+  | Ok { iform = Some "CVTSI2SD_XMMsd_MEMq"; _ } ->
+      cvtsi2f_rm_form ~form_id:"CVTSI2SD_XMMsd_MEMq" ~mnemonic:"cvtsi2sdq" ~mode64:true rec_
+  | Ok { iform = Some "CVTSI2SS_XMMss_GPR32d"; _ } ->
+      cvtsi2f_rr_form ~form_id:"CVTSI2SS_XMMss_GPR32d" ~mnemonic:"cvtsi2ss" ~mode64:false rec_
+  | Ok { iform = Some "CVTSI2SS_XMMss_GPR64q"; _ } ->
+      cvtsi2f_rr_form ~form_id:"CVTSI2SS_XMMss_GPR64q" ~mnemonic:"cvtsi2ssq" ~mode64:true rec_
+  | Ok { iform = Some "CVTSI2SS_XMMss_MEMd"; _ } ->
+      cvtsi2f_rm_form ~form_id:"CVTSI2SS_XMMss_MEMd" ~mnemonic:"cvtsi2ss" ~mode64:false rec_
+  | Ok { iform = Some "CVTSI2SS_XMMss_MEMq"; _ } ->
+      cvtsi2f_rm_form ~form_id:"CVTSI2SS_XMMss_MEMq" ~mnemonic:"cvtsi2ssq" ~mode64:true rec_
+  | Ok { iform = Some "CVTTSD2SI_GPR32d_XMMsd"; _ } ->
+      cvtf2i_rr_form ~form_id:"CVTTSD2SI_GPR32d_XMMsd" ~mode64:false rec_
+  | Ok { iform = Some "CVTTSD2SI_GPR64q_XMMsd"; _ } ->
+      cvtf2i_rr_form ~form_id:"CVTTSD2SI_GPR64q_XMMsd" ~mode64:true rec_
+  | Ok { iform = Some "CVTTSD2SI_GPR32d_MEMsd"; _ } ->
+      cvtf2i_rm_form ~form_id:"CVTTSD2SI_GPR32d_MEMsd" ~mode64:false rec_
+  | Ok { iform = Some "CVTTSD2SI_GPR64q_MEMsd"; _ } ->
+      cvtf2i_rm_form ~form_id:"CVTTSD2SI_GPR64q_MEMsd" ~mode64:true rec_
+  (* Packed bitwise-logical family: {!Opcode.Xorpd}'s siblings, the same plain
+     xmm-xmm/xmm-memory binop shape {!xmm_binop_rr_form}/{!xmm_binop_rm_form}
+     already cover generically. ANDPS/ANDNPS/ORPS/XORPS are XED extension SSE
+     (no mandatory prefix, {!requirement_of}'s SSE case); ANDPD/ANDNPD/ORPD
+     are SSE2 (66 mandatory prefix), like XORPD. Confirmed against real GNU
+     as (i686-linux-gnu-as 2.44) for every register-register and
+     register<-memory spelling below: `0F 54/55/56/57` for the ps forms,
+     `66 0F 54/55/56` for the pd forms. *)
+  | Ok { iform = Some "ANDPS_XMMxud_XMMxud"; _ } ->
+      xmm_binop_rr_form ~form_id:"ANDPS_XMMxud_XMMxud" ~mnemonic:"andps" rec_
+  | Ok { iform = Some "ANDNPS_XMMxud_XMMxud"; _ } ->
+      xmm_binop_rr_form ~form_id:"ANDNPS_XMMxud_XMMxud" ~mnemonic:"andnps" rec_
+  | Ok { iform = Some "ORPS_XMMxud_XMMxud"; _ } ->
+      xmm_binop_rr_form ~form_id:"ORPS_XMMxud_XMMxud" ~mnemonic:"orps" rec_
+  | Ok { iform = Some "XORPS_XMMxud_XMMxud"; _ } ->
+      xmm_binop_rr_form ~form_id:"XORPS_XMMxud_XMMxud" ~mnemonic:"xorps" rec_
+  | Ok { iform = Some "ANDPD_XMMxuq_XMMxuq"; _ } ->
+      xmm_binop_rr_form ~form_id:"ANDPD_XMMxuq_XMMxuq" ~mnemonic:"andpd" rec_
+  | Ok { iform = Some "ANDNPD_XMMxuq_XMMxuq"; _ } ->
+      xmm_binop_rr_form ~form_id:"ANDNPD_XMMxuq_XMMxuq" ~mnemonic:"andnpd" rec_
+  | Ok { iform = Some "ORPD_XMMxuq_XMMxuq"; _ } ->
+      xmm_binop_rr_form ~form_id:"ORPD_XMMxuq_XMMxuq" ~mnemonic:"orpd" rec_
+  | Ok { iform = Some "ANDPS_XMMxud_MEMxud"; _ } ->
+      xmm_binop_rm_form ~form_id:"ANDPS_XMMxud_MEMxud" ~mnemonic:"andps" rec_
+  | Ok { iform = Some "ANDNPS_XMMxud_MEMxud"; _ } ->
+      xmm_binop_rm_form ~form_id:"ANDNPS_XMMxud_MEMxud" ~mnemonic:"andnps" rec_
+  | Ok { iform = Some "ORPS_XMMxud_MEMxud"; _ } ->
+      xmm_binop_rm_form ~form_id:"ORPS_XMMxud_MEMxud" ~mnemonic:"orps" rec_
+  | Ok { iform = Some "XORPS_XMMxud_MEMxud"; _ } ->
+      xmm_binop_rm_form ~form_id:"XORPS_XMMxud_MEMxud" ~mnemonic:"xorps" rec_
+  | Ok { iform = Some "ANDPD_XMMxuq_MEMxuq"; _ } ->
+      xmm_binop_rm_form ~form_id:"ANDPD_XMMxuq_MEMxuq" ~mnemonic:"andpd" rec_
+  | Ok { iform = Some "ANDNPD_XMMxuq_MEMxuq"; _ } ->
+      xmm_binop_rm_form ~form_id:"ANDNPD_XMMxuq_MEMxuq" ~mnemonic:"andnpd" rec_
+  | Ok { iform = Some "ORPD_XMMxuq_MEMxuq"; _ } ->
+      xmm_binop_rm_form ~form_id:"ORPD_XMMxuq_MEMxuq" ~mnemonic:"orpd" rec_
+  (* {!Opcode.Movapd}'s data-movement siblings: aligned/unaligned packed move, single/double
+     precision. Same plain xmm-xmm/xmm-memory binop shape, load direction only - the register-
+     register iform carries an explicit `_0F28`/`_0F10` suffix in XED's own naming, disambiguating
+     it from the (unadmitted) `_0F29`/`_0F11` store direction the way MOVAPD's own iform already
+     does. Confirmed against real GNU as (i686-linux-gnu-as 2.44): `0F 28`/`0F 10` for MOVAPS/
+     MOVUPS (no mandatory prefix, XED extension SSE), `66 0F 10` for MOVUPD (SSE2, like MOVAPD). *)
+  | Ok { iform = Some "MOVAPS_XMMps_XMMps_0F28"; _ } ->
+      xmm_binop_rr_form ~form_id:"MOVAPS_XMMps_XMMps_0F28" ~mnemonic:"movaps" rec_
+  | Ok { iform = Some "MOVUPS_XMMps_XMMps_0F10"; _ } ->
+      xmm_binop_rr_form ~form_id:"MOVUPS_XMMps_XMMps_0F10" ~mnemonic:"movups" rec_
+  | Ok { iform = Some "MOVUPD_XMMpd_XMMpd_0F10"; _ } ->
+      xmm_binop_rr_form ~form_id:"MOVUPD_XMMpd_XMMpd_0F10" ~mnemonic:"movupd" rec_
+  | Ok { iform = Some "MOVAPS_XMMps_MEMps"; _ } ->
+      xmm_binop_rm_form ~form_id:"MOVAPS_XMMps_MEMps" ~mnemonic:"movaps" rec_
+  | Ok { iform = Some "MOVUPS_XMMps_MEMps"; _ } ->
+      xmm_binop_rm_form ~form_id:"MOVUPS_XMMps_MEMps" ~mnemonic:"movups" rec_
+  | Ok { iform = Some "MOVUPD_XMMpd_MEMpd"; _ } ->
+      xmm_binop_rm_form ~form_id:"MOVUPD_XMMpd_MEMpd" ~mnemonic:"movupd" rec_
+  (* {!Opcode.Addsd}'s packed-arithmetic siblings: the prefix square for opcodes
+     0x58/0x59/0x5C/0x5E, no mandatory prefix (ps, XED extension SSE) and 66 mandatory prefix
+     (pd, SSE2) - the same plain xmm-xmm/xmm-memory binop shape, the same way the ANDPS and
+     MOVAPS families completed the prefix square for their own opcode groups. Confirmed against
+     real GNU as (i686-linux-gnu-as/x86_64-linux-gnu-as 2.44): `0F 58/59/5C/5E` for the ps forms,
+     `66 0F 58/59/5C/5E` for the pd forms. *)
+  | Ok { iform = Some "ADDPS_XMMps_XMMps"; _ } ->
+      xmm_binop_rr_form ~form_id:"ADDPS_XMMps_XMMps" ~mnemonic:"addps" rec_
+  | Ok { iform = Some "SUBPS_XMMps_XMMps"; _ } ->
+      xmm_binop_rr_form ~form_id:"SUBPS_XMMps_XMMps" ~mnemonic:"subps" rec_
+  | Ok { iform = Some "MULPS_XMMps_XMMps"; _ } ->
+      xmm_binop_rr_form ~form_id:"MULPS_XMMps_XMMps" ~mnemonic:"mulps" rec_
+  | Ok { iform = Some "DIVPS_XMMps_XMMps"; _ } ->
+      xmm_binop_rr_form ~form_id:"DIVPS_XMMps_XMMps" ~mnemonic:"divps" rec_
+  | Ok { iform = Some "ADDPD_XMMpd_XMMpd"; _ } ->
+      xmm_binop_rr_form ~form_id:"ADDPD_XMMpd_XMMpd" ~mnemonic:"addpd" rec_
+  | Ok { iform = Some "SUBPD_XMMpd_XMMpd"; _ } ->
+      xmm_binop_rr_form ~form_id:"SUBPD_XMMpd_XMMpd" ~mnemonic:"subpd" rec_
+  | Ok { iform = Some "MULPD_XMMpd_XMMpd"; _ } ->
+      xmm_binop_rr_form ~form_id:"MULPD_XMMpd_XMMpd" ~mnemonic:"mulpd" rec_
+  | Ok { iform = Some "DIVPD_XMMpd_XMMpd"; _ } ->
+      xmm_binop_rr_form ~form_id:"DIVPD_XMMpd_XMMpd" ~mnemonic:"divpd" rec_
+  | Ok { iform = Some "ADDPS_XMMps_MEMps"; _ } ->
+      xmm_binop_rm_form ~form_id:"ADDPS_XMMps_MEMps" ~mnemonic:"addps" rec_
+  | Ok { iform = Some "SUBPS_XMMps_MEMps"; _ } ->
+      xmm_binop_rm_form ~form_id:"SUBPS_XMMps_MEMps" ~mnemonic:"subps" rec_
+  | Ok { iform = Some "MULPS_XMMps_MEMps"; _ } ->
+      xmm_binop_rm_form ~form_id:"MULPS_XMMps_MEMps" ~mnemonic:"mulps" rec_
+  | Ok { iform = Some "DIVPS_XMMps_MEMps"; _ } ->
+      xmm_binop_rm_form ~form_id:"DIVPS_XMMps_MEMps" ~mnemonic:"divps" rec_
+  | Ok { iform = Some "ADDPD_XMMpd_MEMpd"; _ } ->
+      xmm_binop_rm_form ~form_id:"ADDPD_XMMpd_MEMpd" ~mnemonic:"addpd" rec_
+  | Ok { iform = Some "SUBPD_XMMpd_MEMpd"; _ } ->
+      xmm_binop_rm_form ~form_id:"SUBPD_XMMpd_MEMpd" ~mnemonic:"subpd" rec_
+  | Ok { iform = Some "MULPD_XMMpd_MEMpd"; _ } ->
+      xmm_binop_rm_form ~form_id:"MULPD_XMMpd_MEMpd" ~mnemonic:"mulpd" rec_
+  | Ok { iform = Some "DIVPD_XMMpd_MEMpd"; _ } ->
+      xmm_binop_rm_form ~form_id:"DIVPD_XMMpd_MEMpd" ~mnemonic:"divpd" rec_
   | Ok { iform = Some other; _ } ->
       err "unhandled-iform"
         (Printf.sprintf
@@ -1209,9 +1949,17 @@ let normalize (rec_ : R.t) =
             ADD/OR/ADC/SBB/AND/SUB/XOR/CMP/TEST memory<-register forms, the explicit-32-bit-width \
             OR/ADC/SBB/AND/SUB/XOR/CMP register/immz forms, the explicit-32-bit-width \
             ADD/OR/ADC/SBB/AND/SUB/XOR/CMP register/immb forms, the explicit-32-bit-width \
-            ADD/OR/ADC/SBB/AND/SUB/XOR/CMP memory/immb and memory/immz forms, and the byte-width \
-            ADD/OR/ADC/SBB/AND/SUB/XOR/CMP register/immb, memory/immb, and accumulator/immb forms; \
-            %s is not one of them"
+            ADD/OR/ADC/SBB/AND/SUB/XOR/CMP memory/immb and memory/immz forms, the byte-width \
+            ADD/OR/ADC/SBB/AND/SUB/XOR/CMP register/immb, memory/immb, and accumulator/immb forms, \
+            the SSE2 ADDSD/SUBSD/MULSD/DIVSD register-register and register<-memory forms, the \
+            plain xmm-xmm/xmm-memory binop shape's MULSS/DIVSS/COMISD/UCOMISD/COMISS/XORPD/PXOR/ \
+            MOVAPD/CVTSD2SS/CVTSS2SD register-register and register<-memory forms, the MOVSD/MOVSS \
+            load/store forms, the mixed-GPR/XMM CVTSI2SD/CVTSI2SS/CVTTSD2SI register-register and \
+            register<-memory forms, the packed bitwise-logical ANDPS/ANDNPS/ORPS/XORPS/ \
+            ANDPD/ANDNPD/ORPD register-register and register<-memory forms, the MOVAPS/ \
+            MOVUPS/MOVUPD load-direction register-register and register<-memory forms, and the \
+            packed-arithmetic ADDPS/SUBPS/MULPS/DIVPS/ADDPD/SUBPD/MULPD/DIVPD register-register \
+            and register<-memory forms; %s is not one of them"
            other)
   | Ok { iform = None; _ } -> err "missing-iform" "XED record has no provenance.iform"
   | Error msg -> err "not-a-xed-record" msg

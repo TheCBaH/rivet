@@ -18,6 +18,7 @@ type register_class =
   | Riscv_vec  (** a RISC-V V vector register, v0..v31 *)
   | X86_gpr
   | X87_st  (** an x87 stack register, ST(0)..ST(7) *)
+  | X86_xmm  (** an SSE xmm register, xmm0..xmm15 *)
 
 type bit_run = { field_name : string; field_hi : int; field_lo : int; dest_hi : int; dest_lo : int }
 (** A destination bit range [dest_hi..dest_lo] of a reconstructed operand
