@@ -198,7 +198,9 @@ val x86_sse_binop_imm_rr_entries : entry list
     concrete imm8 selector, the first XMM-immediate-carrying legacy shape,
     confirmed against real GNU as before {!Isa_norm_xed.xmm_binop_imm_rr_form}
     and x86_family_encode.ml's own [Lowered.Sse_binop_imm_r_rm] shape were
-    built. *)
+    built. Also covers [cmpss]/[cmpsd]/[cmpps]/[cmppd] (same shape, opcode
+    0xC2) and [pshufd]/[pshuflw]/[pshufhw] (same byte-level shape, opcode
+    0x70, genuinely unary rather than a second read-write operand). *)
 
 val x86_sse_binop_imm_rm_entries : entry list
 (** [shufps $27, 16(%esp|%rsp), %xmm0]/[shufpd $1, 16(%esp|%rsp), %xmm0]
@@ -250,7 +252,21 @@ val x86_vex_binop_imm_rrr_entries : entry list
 
 val x86_vex_binop_imm_rr_mem_entries : entry list
 (** [vshufps]/[vshufpd $27, 16(%esp|%rsp), %xmm1, %xmm0] on x86-32 and
-    x86-64 - {!x86_vex_binop_imm_rrr_entries}'s register<-memory sibling. *)
+    x86-64 - {!x86_vex_binop_imm_rrr_entries}'s register<-memory sibling.
+    Also covers [vcmpss]/[vcmpsd]/[vcmpps]/[vcmppd] (same shape, opcode
+    0xC2). *)
+
+val x86_vex_unop_imm_rr_entries : entry list
+(** [vpshufd]/[vpshuflw]/[vpshufhw $27, %xmm1, %xmm0] on x86-32 and x86-64 -
+    {!x86_vex_unop_rr_entries}'s own [src]/[dest] pair plus a concrete imm8
+    selector, genuinely two-operand-plus-immediate (no real [vvvv] operand)
+    unlike {!x86_vex_binop_imm_rrr_entries}'s three-register shape, confirmed
+    against real GNU as before {!Isa_norm_xed.vex_unop_imm_rr_form} and
+    x86_family_encode.ml's own [Lowered.Vex_unop_imm_r_rm] shape were built. *)
+
+val x86_vex_unop_imm_rm_entries : entry list
+(** [vpshufd]/[vpshuflw]/[vpshufhw $27, 16(%esp|%rsp), %xmm0] on x86-32 and
+    x86-64 - {!x86_vex_unop_imm_rr_entries}'s register<-memory sibling. *)
 
 val x86_cvtsi2f_rr_entries : entry list
 (** [cvtsi2sd]/[cvtsi2ss %eax, %xmm0] on x86-32 and x86-64, plus
@@ -273,6 +289,71 @@ val x86_cvtf2i_rm_entries : entry list
 (** [cvttsd2si 16(%esp|%rsp), %eax] on x86-32 and x86-64, plus [cvttsd2si
     16(%rsp), %rax] on x86-64 only, {!x86_cvtf2i_rr_entries}'s own
     memory-source sibling. *)
+
+val x86_movd_load_rr_entries : entry list
+(** [movd %eax, %xmm0] on x86-32 and x86-64, plus [movq %rax, %xmm0] on
+    x86-64 only - {!x86_cvtsi2f_rr_entries}'s exact shape reused for the
+    GPR<->xmm data move family. *)
+
+val x86_movd_load_rm_entries : entry list
+(** [movd 16(%esp|%rsp), %xmm0] on x86-32 and x86-64 - {!x86_movd_load_rr_entries}'s
+    memory-source sibling. MOVQ's own memory-source form is deliberately not
+    generated: real GNU as routes that spelling to the unrelated scalar-xmm
+    [movq] instruction instead. *)
+
+val x86_movd_store_rr_entries : entry list
+(** [movd %xmm0, %eax] on x86-32 and x86-64, plus [movq %xmm0, %rax] on
+    x86-64 only - {!x86_cvtf2i_rr_entries}'s exact shape reused for the
+    store direction. *)
+
+val x86_movd_store_mr_entries : entry list
+(** [movd %xmm0, 16(%esp|%rsp)] on x86-32 and x86-64 - {!x86_movd_store_rr_entries}'s
+    memory-destination sibling, MOVQ excluded for the same reason as
+    {!x86_movd_load_rm_entries}. *)
+
+val x86_vmovd_load_rr_entries : entry list
+(** [vmovd %eax, %xmm0] on x86-32 and x86-64 - the VEX sibling of
+    {!x86_movd_load_rr_entries}, GPR32<->xmm only (no [vmovq] 64-bit-GPR sibling exists). *)
+
+val x86_vmovd_load_rm_entries : entry list
+(** [vmovd 16(%esp|%rsp), %xmm0] on x86-32 and x86-64 - {!x86_vmovd_load_rr_entries}'s
+    memory-source sibling. *)
+
+val x86_vmovd_store_rr_entries : entry list
+(** [vmovd %xmm0, %eax] on x86-32 and x86-64 - the VEX sibling of
+    {!x86_movd_store_rr_entries}. *)
+
+val x86_vmovd_store_mr_entries : entry list
+(** [vmovd %xmm0, 16(%esp|%rsp)] on x86-32 and x86-64 - {!x86_vmovd_store_rr_entries}'s
+    memory-destination sibling. *)
+
+val x86_pinsrw_rr_entries : entry list
+(** [pinsrw $1, %eax, %xmm0] on x86-32 and x86-64 - {!Isa_norm_xed.pinsrw_rr_form}'s own
+    cross-register-class member, a GPR source rather than xmm. *)
+
+val x86_pinsrw_rm_entries : entry list
+(** [pinsrw $1, 16(%esp|%rsp), %xmm0] on x86-32 and x86-64 - {!x86_pinsrw_rr_entries}'s
+    memory-source sibling. *)
+
+val x86_pextrw_rr_entries : entry list
+(** [pextrw $1, %xmm0, %eax] on x86-32 and x86-64 - {!Isa_norm_xed.pextrw_rr_form}'s own
+    cross-register-class member, a GPR destination rather than xmm. *)
+
+val x86_vpinsrw_rrr_entries : entry list
+(** [vpinsrw $1, %eax, %xmm1, %xmm0] on x86-32 and x86-64 - the VEX sibling of
+    {!x86_pinsrw_rr_entries}, a non-destructive three-register-plus-immediate shape. *)
+
+val x86_vpinsrw_rr_mem_entries : entry list
+(** [vpinsrw $1, 16(%esp|%rsp), %xmm1, %xmm0] on x86-32 and x86-64 -
+    {!x86_vpinsrw_rrr_entries}'s memory-source sibling. *)
+
+val x86_vpextrw_rr_entries : entry list
+(** [vpextrw $1, %xmm0, %eax] on x86-32 and x86-64 - {!x86_pextrw_rr_entries} reused verbatim
+    under the VEX iform's own lookup key. *)
+
+val x86_movmsk_entries : entry list
+(** [movmskps]/[movmskpd]/[pmovmskb] and their VEX siblings, [%xmm0, %eax], on x86-32 and x86-64 -
+    {!x86_cvtf2i_rr_entry} reused verbatim (no immediate) under each mnemonic's own lookup key. *)
 
 val x86_fadd_entries : entry list
 (** [fadd %st(1), %st] on x86-32 and x86-64, selecting XED's
