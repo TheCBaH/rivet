@@ -20,8 +20,14 @@ let feature_of_extension = function
   | "rv_zkn" -> Req_feature "riscv:zkn"
   | "rv_zks" -> Req_feature "riscv:zks"
   | "rv_zbc" -> Req_feature "riscv:zbc"
+  | "rv_zicond" -> Req_feature "riscv:zicond"
+  | "rv_zksh" -> Req_feature "riscv:zksh"
+  | "rv_zksed" -> Req_feature "riscv:zksed"
   | "rv_zbkc" -> Req_feature "riscv:zbkc"
   | "rv_zbkx" -> Req_feature "riscv:zbkx"
+  | "rv_zbs" -> Req_feature "riscv:zbs"
+  | "rv32_zbs" -> Req_all [ Req_xlen 32; Req_feature "riscv:zbs" ]
+  | "rv64_zbs" -> Req_all [ Req_xlen 64; Req_feature "riscv:zbs" ]
   | "rv_zknh" -> Req_feature "riscv:zknh"
   | "rv_zicsr" -> Req_feature "riscv:zicsr"
   | "rv_f" -> Req_feature "riscv:f"
@@ -203,6 +209,21 @@ let alternative_extensions_by_mnemonic =
      zknd-rooted pair or vice versa - hand-verified, not assumed). *)
   let aes32d_import_group_rv32 = [ "rv32_zknd"; "rv32_zk"; "rv32_zkn" ] in
   let aes32e_import_group_rv32 = [ "rv32_zkne"; "rv32_zk"; "rv32_zkn" ] in
+  (* sm3p0/sm3p1 (Zksh's SM3 message-schedule helpers) are a two-way import
+     group like Zvksed/Zvksh's own vector groups: primary rv_zksh, imported
+     by rv_zks alone (confirmed directly against real GNU as:
+     `-march=...i_zks` alone assembles both mnemonics byte-identical to
+     `-march=...i_zksh`), hand-verified no third alternative exists by
+     grepping every candidate's own provenance.extension across the whole
+     checked-in export before writing any code. *)
+  let zksh_import_group = [ "rv_zksh"; "rv_zks" ] in
+  (* sm4ed/sm4ks (Zksed's SM4 round/key-schedule functions) are the same
+     two-way import group as sm3p0/sm3p1 above, rooted in Zksed instead:
+     primary rv_zksed, imported by rv_zks alone (confirmed directly against
+     real GNU as: `-march=...i_zks` alone assembles both mnemonics
+     byte-identical to `-march=...i_zksed`, on both RV32 and RV64 - unlike
+     the AES-32 four, riscv-opcodes has no RV64 record split here at all). *)
+  let zksed_import_group = [ "rv_zksed"; "rv_zks" ] in
   (* vsha2ms.vv/vsha2ch.vv/vsha2cl.vv (Zvknha's SHA-256 vector helpers) are a
      three-way import group, XLEN-independent: riscv-opcodes' primary record
      is rv_zvknha, imported by rv_zvknhb (SHA-256-and-512's superset
@@ -314,6 +335,10 @@ let alternative_extensions_by_mnemonic =
     ("aes32dsmi", aes32d_import_group_rv32);
     ("aes32esi", aes32e_import_group_rv32);
     ("aes32esmi", aes32e_import_group_rv32);
+    ("sm3p0", zksh_import_group);
+    ("sm3p1", zksh_import_group);
+    ("sm4ed", zksed_import_group);
+    ("sm4ks", zksed_import_group);
     ("vsha2ms.vv", zvknha_import_group);
     ("vsha2ch.vv", zvknha_import_group);
     ("vsha2cl.vv", zvknha_import_group);
@@ -1914,6 +1939,10 @@ let r_type_mnemonics =
     "xnor";
     "rol";
     "ror";
+    "bclr";
+    "bext";
+    "binv";
+    "bset";
     "pack";
     "packh";
     "packw";
@@ -1921,6 +1950,9 @@ let r_type_mnemonics =
     "rorw";
     "clmul";
     "clmulh";
+    "clmulr";
+    "czero.eqz";
+    "czero.nez";
     "xperm4";
     "xperm8";
     "sha512sum0r";
@@ -1980,6 +2012,8 @@ let unary_gpr_mnemonics =
     "sha512sig0";
     "sha512sig1";
     "aes64im";
+    "sm3p0";
+    "sm3p1";
   ]
 
 (* The scalar floating-point arithmetic forms' rd/rs1/rs2 are floating
@@ -4672,6 +4706,25 @@ let normalize (rec_ : R.t) =
   | "rori" -> shamt_gpr_form ~mnemonic:"rori" ~width:6 rec_
   | "rori.rv32" -> shamt_gpr_form ~mnemonic:"rori" ~width:5 ~extension_lookup_key:"rori.rv32" rec_
   | "roriw" -> shamt_gpr_form ~mnemonic:"roriw" ~width:5 rec_
+  (* bclri/bexti/binvi/bseti: Zbs's own shift-amount-immediate shape, the
+     same two-GPR-plus-immediate operand layout as rori/roriw above, but
+     each mnemonic is a single, non-import-duplicated record on both
+     profiles (riscv64.jsonl's own "bclri" etc., 6-bit shamtd; riscv32.jsonl's
+     pseudo-op alias "bclri.rv32" etc., 5-bit shamtw) - so unlike rori.rv32,
+     no [extension_lookup_key] is needed: {!requirement_of_mnemonic} already
+     falls back to {!requirement_of}'s plain per-record extension lookup
+     when the rendered mnemonic has no {!alternative_extensions_by_mnemonic}
+     entry. Both profiles render as the bare mnemonic real GNU as accepts
+     (confirmed: `bclri.rv32` itself is rejected as an unrecognized opcode,
+     the same way `rori.rv32` is). *)
+  | "bclri" -> shamt_gpr_form ~mnemonic:"bclri" ~width:6 rec_
+  | "bclri.rv32" -> shamt_gpr_form ~mnemonic:"bclri" ~width:5 rec_
+  | "bexti" -> shamt_gpr_form ~mnemonic:"bexti" ~width:6 rec_
+  | "bexti.rv32" -> shamt_gpr_form ~mnemonic:"bexti" ~width:5 rec_
+  | "binvi" -> shamt_gpr_form ~mnemonic:"binvi" ~width:6 rec_
+  | "binvi.rv32" -> shamt_gpr_form ~mnemonic:"binvi" ~width:5 rec_
+  | "bseti" -> shamt_gpr_form ~mnemonic:"bseti" ~width:6 rec_
+  | "bseti.rv32" -> shamt_gpr_form ~mnemonic:"bseti" ~width:5 rec_
   (* aes64ks1i: the same two-GPR-plus-narrow-unsigned-immediate shape as
      rori/roriw above, reusing shamt_gpr_form's generalized [operand_name]/
      [field_name] overrides for riscv-opcodes' own "rnum" field (a 4-bit
@@ -4692,6 +4745,12 @@ let normalize (rec_ : R.t) =
       r_type_imm_gpr_form ~mnemonic:"aes32esi" ~width:2 ~operand_name:"bs" ~field_name:"bs" rec_
   | "aes32esmi" ->
       r_type_imm_gpr_form ~mnemonic:"aes32esmi" ~width:2 ~operand_name:"bs" ~field_name:"bs" rec_
+  (* sm4ed/sm4ks: Zksed's own SM4 round/key-schedule functions - the same
+     r_type_imm_gpr_form shape AES-32's own four use. *)
+  | "sm4ed" ->
+      r_type_imm_gpr_form ~mnemonic:"sm4ed" ~width:2 ~operand_name:"bs" ~field_name:"bs" rec_
+  | "sm4ks" ->
+      r_type_imm_gpr_form ~mnemonic:"sm4ks" ~width:2 ~operand_name:"bs" ~field_name:"bs" rec_
   (* Zicsr's register-source and immediate-source CSR forms. *)
   | "csrrw" -> csr_reg_form ~mnemonic:"csrrw" rec_
   | "csrrs" -> csr_reg_form ~mnemonic:"csrrs" rec_

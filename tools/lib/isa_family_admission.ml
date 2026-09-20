@@ -183,10 +183,29 @@ let promoted_case ~target ~form_id ~lookup_key =
   | Target.Riscv64, "riscv:rori", "rori" -> true
   | Target.Riscv32, "riscv:rori", "rori.rv32" -> true
   | Target.Riscv64, "riscv:roriw", "roriw" -> true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:bclr" | "riscv:bext" | "riscv:binv" | "riscv:bset"),
+      ("bclr" | "bext" | "binv" | "bset") ) ->
+      true
+  | ( Target.Riscv64,
+      ("riscv:bclri" | "riscv:bexti" | "riscv:binvi" | "riscv:bseti"),
+      ("bclri" | "bexti" | "binvi" | "bseti") ) ->
+      true
+  | ( Target.Riscv32,
+      ("riscv:bclri" | "riscv:bexti" | "riscv:binvi" | "riscv:bseti"),
+      ("bclri.rv32" | "bexti.rv32" | "binvi.rv32" | "bseti.rv32") ) ->
+      true
   | Target.Riscv64, "riscv:zext.h", "zext.h" -> true
   | Target.Riscv32, "riscv:zext.h", "zext.h.rv32" -> true
   | (Target.Riscv32 | Target.Riscv64), ("riscv:clmul" | "riscv:clmulh"), ("clmul" | "clmulh") ->
       true
+  | (Target.Riscv32 | Target.Riscv64), "riscv:clmulr", "clmulr" -> true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:czero.eqz" | "riscv:czero.nez"),
+      ("czero.eqz" | "czero.nez") ) ->
+      true
+  | (Target.Riscv32 | Target.Riscv64), ("riscv:sm3p0" | "riscv:sm3p1"), ("sm3p0" | "sm3p1") -> true
+  | (Target.Riscv32 | Target.Riscv64), ("riscv:sm4ed" | "riscv:sm4ks"), ("sm4ed" | "sm4ks") -> true
   | (Target.Riscv32 | Target.Riscv64), ("riscv:xperm4" | "riscv:xperm8"), ("xperm4" | "xperm8") ->
       true
   | ( (Target.Riscv32 | Target.Riscv64),

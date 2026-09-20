@@ -2106,6 +2106,42 @@ val roriw_entries : entry list
     unrecognized opcode), {!rori_entries}'s plain RV64-only *w sibling
     (opcode 0x1b, no profile-specific native_name split needed). *)
 
+val bclr_entries : entry list
+(** [bclr a0, a1, a2] on both profiles - Zbs's single-bit-clear form, the
+    same plain three-GPR R-type shape as {!andn_entries}, but a single,
+    non-import-duplicated rv_zbs record on each profile (no {!entry.lookup_key}
+    distinct from the rendered mnemonic needed). *)
+
+val bext_entries : entry list
+(** [bext a0, a1, a2] on both profiles, the same shape as {!bclr_entries}. *)
+
+val binv_entries : entry list
+(** [binv a0, a1, a2] on both profiles, the same shape as {!bclr_entries}. *)
+
+val bset_entries : entry list
+(** [bset a0, a1, a2] on both profiles, the same shape as {!bclr_entries}. *)
+
+val bclri_entries : entry list
+(** [bclri a0, a1, 5] on both profiles - Zbs's shift-amount-immediate
+    sibling of {!bclr_entries}, the same (rd, rs1, shamt) shape
+    {!rori_entries} uses. Uses riscv32.jsonl's own native_name
+    ["bclri.rv32"] as {!entry.lookup_key} on RV32 (5-bit shamtw) and
+    ["bclri"] on RV64 (6-bit shamtd), both rendering as the bare ["bclri"]
+    spelling real GNU as accepts on either profile (confirmed: it rejects
+    "bclri.rv32" itself as an unrecognized opcode, the same way it rejects
+    "rori.rv32"). Unlike {!rori_entries}, neither record is
+    import-duplicated, so normalization needs no separate
+    extension-lookup key from the rendered mnemonic. *)
+
+val bexti_entries : entry list
+(** [bexti a0, a1, 5] on both profiles, the same shape as {!bclri_entries}. *)
+
+val binvi_entries : entry list
+(** [binvi a0, a1, 5] on both profiles, the same shape as {!bclri_entries}. *)
+
+val bseti_entries : entry list
+(** [bseti a0, a1, 5] on both profiles, the same shape as {!bclri_entries}. *)
+
 val zext_h_entries : entry list
 (** [zext.h a0, a1] on both profiles - Zbb's zero-extend-halfword pseudo (rd,
     rs1), the same two-GPR-operand unary shape as {!clz_entries} but needing
@@ -2127,6 +2163,32 @@ val clmul_entries : entry list
 val clmulh_entries : entry list
 (** [clmulh a0, a1, a2] on both profiles, {!clmul_entries}'s high-half
     sibling (same Req_any group, opcode, funct7; only funct3 differs). *)
+
+val clmulr_entries : entry list
+(** [clmulr a0, a1, a2] on both profiles - Zbc's reversed carry-less
+    multiply, the same three-GPR R-type shape as {!clmul_entries} but
+    Zbc-only: riscv-opcodes has no rv_zbkc/rv_zk/rv_zkn/rv_zks import of it
+    at all (confirmed: real GNU as rejects it under [-march=...zbkc] alone),
+    so no Req_any is needed. *)
+
+val czero_eqz_entries : entry list
+(** [czero.eqz a0, a1, a2] on both profiles - Zicond's conditional-zero
+    pair, the same plain three-GPR R-type shape as {!clmul_entries}, a
+    single, non-import-duplicated rv_zicond record on each profile (no
+    Req_any needed). *)
+
+val czero_nez_entries : entry list
+(** [czero.nez a0, a1, a2] on both profiles, {!czero_eqz_entries}'s
+    complementary condition (same opcode/funct7; only funct3 differs). *)
+
+val sm3p0_entries : entry list
+(** [sm3p0 a0, a1] on both profiles - Zksh's SM3 message-schedule helper,
+    the same two-GPR unary shape as {!sha256sum0_entries} but a two-way
+    Req_any group (rv_zksh primary, imported by rv_zks alone). *)
+
+val sm3p1_entries : entry list
+(** [sm3p1 a0, a1] on both profiles, {!sm3p0_entries}'s sibling (same
+    Req_any group; only the funct12 differs). *)
 
 val xperm4_entries : entry list
 (** [xperm4 a0, a1, a2] on both profiles - Zbkx's crossbar-permute-nibble,
@@ -2264,6 +2326,17 @@ val aes32esmi_entries : entry list
 (** [aes32esmi a0, a1, a2, 3] on RV32 only, {!aes32esi_entries}'s
     mixed-columns sibling (same Req_any group, opcode, funct3; only the
     fixed 5-bit selector portion of funct7 differs). *)
+
+val sm4ed_entries : entry list
+(** [sm4ed a0, a1, a2, 3] on both profiles - Zksed's SM4 round function,
+    the same three-GPR-plus-bs-immediate shape as {!aes32dsi_entries} but a
+    two-way Req_any group (rv_zksed primary, imported by rv_zks alone) -
+    unlike AES-32, riscv-opcodes has a record on both profiles. *)
+
+val sm4ks_entries : entry list
+(** [sm4ks a0, a1, a2, 3] on both profiles, {!sm4ed_entries}'s
+    key-schedule sibling (same Req_any group; only the fixed 5-bit selector
+    portion of funct7 differs). *)
 
 val csrrw_entries : entry list
 (** [csrrw a0, 0x300, a1] on both profiles - Zicsr's register-source
@@ -2424,8 +2497,12 @@ val all : entry list
     clzw_entries @ ctzw_entries @ cpopw_entries @ brev8_entries @
     rev8_entries @ pack_entries @ packh_entries @ packw_entries @
     zip_entries @ unzip_entries @ rolw_entries @ rorw_entries @
-    rori_entries @ roriw_entries @ zext_h_entries @ clmul_entries @
-    clmulh_entries @ xperm4_entries @ xperm8_entries @ sha256sum0_entries @
+    rori_entries @ roriw_entries @ bclr_entries @ bext_entries @
+    binv_entries @ bset_entries @ bclri_entries @ bexti_entries @
+    binvi_entries @ bseti_entries @ zext_h_entries @ clmul_entries @
+    clmulh_entries @ clmulr_entries @ czero_eqz_entries @ czero_nez_entries @ sm3p0_entries @
+    sm3p1_entries @ xperm4_entries @
+    xperm8_entries @ sha256sum0_entries @
     sha256sum1_entries @ sha256sig0_entries @ sha256sig1_entries @
     sha512sum0_entries @ sha512sum1_entries @ sha512sig0_entries @
     sha512sig1_entries @ sha512sum0r_entries @ sha512sum1r_entries @
@@ -2434,6 +2511,7 @@ val all : entry list
     aes64es_entries @ aes64esm_entries @ aes64ks2_entries @
     aes64im_entries @ aes64ks1i_entries @ aes32dsi_entries @
     aes32dsmi_entries @ aes32esi_entries @ aes32esmi_entries @
+    sm4ed_entries @ sm4ks_entries @
     csrrw_entries @ csrrs_entries @ csrrc_entries @ csrrwi_entries @
     csrrsi_entries @ csrrci_entries @ csrr_entries @ csrw_entries @
     csrs_entries @ csrc_entries @ csrwi_entries @ csrsi_entries @

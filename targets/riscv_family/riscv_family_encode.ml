@@ -180,6 +180,14 @@ module Make (P : PROFILE) = struct
       | Xnor
       | Rol
       | Ror
+      | Bclr
+      | Bext
+      | Binv
+      | Bset
+      | Bclri
+      | Bexti
+      | Binvi
+      | Bseti
       | Sh1adduw
       | Sh2adduw
       | Sh3adduw
@@ -206,6 +214,13 @@ module Make (P : PROFILE) = struct
       | Zext_h
       | Clmul
       | Clmulh
+      | Clmulr
+      | Czero_eqz
+      | Czero_nez
+      | Sm3p0
+      | Sm3p1
+      | Sm4ed
+      | Sm4ks
       | Xperm4
       | Xperm8
       | Sha256sum0
@@ -838,6 +853,14 @@ module Make (P : PROFILE) = struct
       | Xnor -> "xnor"
       | Rol -> "rol"
       | Ror -> "ror"
+      | Bclr -> "bclr"
+      | Bext -> "bext"
+      | Binv -> "binv"
+      | Bset -> "bset"
+      | Bclri -> "bclri"
+      | Bexti -> "bexti"
+      | Binvi -> "binvi"
+      | Bseti -> "bseti"
       | Sh1adduw -> "sh1add.uw"
       | Sh2adduw -> "sh2add.uw"
       | Sh3adduw -> "sh3add.uw"
@@ -864,6 +887,13 @@ module Make (P : PROFILE) = struct
       | Zext_h -> "zext.h"
       | Clmul -> "clmul"
       | Clmulh -> "clmulh"
+      | Clmulr -> "clmulr"
+      | Czero_eqz -> "czero.eqz"
+      | Czero_nez -> "czero.nez"
+      | Sm3p0 -> "sm3p0"
+      | Sm3p1 -> "sm3p1"
+      | Sm4ed -> "sm4ed"
+      | Sm4ks -> "sm4ks"
       | Xperm4 -> "xperm4"
       | Xperm8 -> "xperm8"
       | Sha256sum0 -> "sha256sum0"
@@ -1497,6 +1527,14 @@ module Make (P : PROFILE) = struct
         Xnor;
         Rol;
         Ror;
+        Bclr;
+        Bext;
+        Binv;
+        Bset;
+        Bclri;
+        Bexti;
+        Binvi;
+        Bseti;
         Sh1adduw;
         Sh2adduw;
         Sh3adduw;
@@ -1523,6 +1561,13 @@ module Make (P : PROFILE) = struct
         Zext_h;
         Clmul;
         Clmulh;
+        Clmulr;
+        Czero_eqz;
+        Czero_nez;
+        Sm3p0;
+        Sm3p1;
+        Sm4ed;
+        Sm4ks;
         Xperm4;
         Xperm8;
         Sha256sum0;
@@ -2537,8 +2582,15 @@ module Make (P : PROFILE) = struct
     | Xnor -> Some (0x33, 4, 0x20)
     | Rol -> Some (0x33, 1, 0x30)
     | Ror -> Some (0x33, 5, 0x30)
+    | Bclr -> Some (0x33, 1, 0x24)
+    | Bext -> Some (0x33, 5, 0x24)
+    | Binv -> Some (0x33, 1, 0x34)
+    | Bset -> Some (0x33, 1, 0x14)
     | Clmul -> Some (0x33, 1, 0x05)
     | Clmulh -> Some (0x33, 3, 0x05)
+    | Clmulr -> Some (0x33, 2, 0x05)
+    | Czero_eqz -> Some (0x33, 5, 0x07)
+    | Czero_nez -> Some (0x33, 7, 0x07)
     | Xperm4 -> Some (0x33, 2, 0x14)
     | Xperm8 -> Some (0x33, 4, 0x14)
     (* SHA-512's RV32-only 32-bit-word-pair-split helpers (gated below;
@@ -2839,6 +2891,14 @@ module Make (P : PROFILE) = struct
     | Sha256sum1 -> Some (0x13, 1, 0x101)
     | Sha256sig0 -> Some (0x13, 1, 0x102)
     | Sha256sig1 -> Some (0x13, 1, 0x103)
+    (* Zksh's SM3 message-schedule helpers - the same two-GPR unary shape,
+       XLEN-independent, identical mnemonic/encoding on both profiles.
+       Hand-verified against the checked-in riscv32.jsonl/riscv64.jsonl
+       mask/value (sm3p0 0x10801013, sm3p1 0x10901013), then confirmed
+       against real riscv32-linux-gnu-as 2.43.1 / riscv64-linux-gnu-as
+       2.44. *)
+    | Sm3p0 -> Some (0x13, 1, 0x108)
+    | Sm3p1 -> Some (0x13, 1, 0x109)
     (* SHA-512's own message-schedule helpers - the same shape as SHA-256's
        above, RV64-only (gated below; riscv-opcodes has no RV32 record at
        all for these four - RV32 instead gets a genuinely different,
@@ -2881,6 +2941,10 @@ module Make (P : PROFILE) = struct
     | Sraw -> Some Sraiw
     | Ror -> Some Rori
     | Rorw -> Some Roriw
+    | Bclr -> Some Bclri
+    | Bext -> Some Bexti
+    | Binv -> Some Binvi
+    | Bset -> Some Bseti
     | _ -> None
 
   let i_desc = function
@@ -2899,6 +2963,10 @@ module Make (P : PROFILE) = struct
     | Sraiw -> Some (0x1b, 5, 0x20, Some 32)
     | Rori -> Some (0x13, 5, (if xlen = 64 then 0x18 else 0x30), Some xlen)
     | Roriw -> Some (0x1b, 5, 0x30, Some 32)
+    | Bclri -> Some (0x13, 1, (if xlen = 64 then 0x12 else 0x24), Some xlen)
+    | Bexti -> Some (0x13, 5, (if xlen = 64 then 0x12 else 0x24), Some xlen)
+    | Binvi -> Some (0x13, 1, (if xlen = 64 then 0x1a else 0x34), Some xlen)
+    | Bseti -> Some (0x13, 1, (if xlen = 64 then 0x0a else 0x14), Some xlen)
     | _ -> None
 
   let load_desc = function
@@ -4544,7 +4612,7 @@ module Make (P : PROFILE) = struct
                   ]
             | _ -> wrong opn)
         | _ -> wrong opn)
-    | (Opcode.Aes32dsi | Aes32dsmi | Aes32esi | Aes32esmi), [ a; b; c; bs ] -> (
+    | (Opcode.Aes32dsi | Aes32dsmi | Aes32esi | Aes32esmi | Sm4ed | Sm4ks), [ a; b; c; bs ] -> (
         (* [aes32dsi/aes32dsmi/aes32esi/aes32esmi rd, rs1, rs2, bs] - AES-32's
            byte-select-parameterized round functions. [bs] is a real,
            syntax-visible 2-bit immediate, but unlike [aes64ks1i]'s [rnum] it
@@ -4567,13 +4635,22 @@ module Make (P : PROFILE) = struct
            2.43.1 for all four mnemonics x all four bs values (16 cases):
            `aes32dsi a0,a1,a2,1` -> `6ac58533`, matching
            `(1 lsl 5) lor 0x15 = 0x35` as the composed funct7. Real GNU as
-           rejects all four mnemonics outright on RV64 (genuinely absent,
-           not merely extension-gated). *)
+           rejects all four AES-32 mnemonics outright on RV64 (genuinely
+           absent, not merely extension-gated).
+
+           [sm4ed]/[sm4ks] (Zksed's own SM4 round/key-schedule functions)
+           share this identical shape and [bs]-composition rule, but - unlike
+           the AES-32 four - real GNU as accepts BOTH on BOTH profiles
+           (confirmed: riscv32-linux-gnu-as 2.43.1 and riscv64-linux-gnu-as
+           2.44 both assemble `sm4ed a0,a1,a2,1` -> `70c58533`, matching
+           `(1 lsl 5) lor 0x18 = 0x38`). *)
         let base = function
           | Opcode.Aes32dsi -> Some 0x15
           | Aes32dsmi -> Some 0x17
           | Aes32esi -> Some 0x11
           | Aes32esmi -> Some 0x13
+          | Sm4ed -> Some 0x18
+          | Sm4ks -> Some 0x1a
           | _ -> None
         in
         match (xreg a, xreg b, xreg c, expr_of bs, base i.op) with

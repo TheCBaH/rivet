@@ -709,6 +709,81 @@ let clmulh_entries =
     (zbc_r_type_entry ~mnemonic:"clmulh" ~variant_name:"carryless-multiply-high")
     [ Target.Riscv32; Target.Riscv64 ]
 
+(* clmulr (reversed carry-less multiply): the same plain three-GPR R-type
+   shape as clmul/clmulh, but Zbc-only - riscv-opcodes has no rv_zbkc/rv_zk/
+   rv_zkn/rv_zks import of it at all (confirmed: real GNU as rejects it
+   under `-march=...zbkc` alone, "extension `zbc' required"), so no
+   Req_any is needed and {!requirement_of_mnemonic}'s plain per-record
+   fallback already gives the right answer. *)
+let clmulr_entries =
+  List.map
+    (zbc_r_type_entry ~mnemonic:"clmulr" ~variant_name:"carryless-multiply-reversed")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+(* czero.eqz/czero.nez (Zicond's conditional-zero pair): the same plain
+   three-GPR R-type shape as clmul/clmulr, a single, non-import-duplicated
+   rv_zicond record on each profile - no Req_any needed. *)
+let zicond_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32i_zicond"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64i_zicond"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let zicond_r_type_entry ~mnemonic ~variant_name target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic variant_name (Target.to_string target);
+    rule_ids = [ "zicond-enabled"; "three-gpr-operands"; variant_name ];
+    operands = [ ("rd", "a0"); ("rs1", "a1"); ("rs2", "a2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zicond_configuration_for target;
+  }
+
+let czero_eqz_entries =
+  List.map
+    (zicond_r_type_entry ~mnemonic:"czero.eqz" ~variant_name:"zero-if-equal-zero")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let czero_nez_entries =
+  List.map
+    (zicond_r_type_entry ~mnemonic:"czero.nez" ~variant_name:"zero-if-not-equal-zero")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+(* sm3p0/sm3p1 (Zksh's SM3 message-schedule helpers): the same two-GPR
+   unary shape as sha256sum0/etc, but a two-way Req_any group - primary
+   rv_zksh, imported by rv_zks alone. *)
+let zksh_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32im_zksh"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64im_zksh"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let zksh_unary_entry ~mnemonic ~variant_name target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic variant_name (Target.to_string target);
+    rule_ids = [ "zksh-enabled"; "two-gpr-operands"; variant_name ];
+    operands = [ ("rd", "a0"); ("rs1", "a1") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zksh_configuration_for target;
+  }
+
+let sm3p0_entries =
+  List.map
+    (zksh_unary_entry ~mnemonic:"sm3p0" ~variant_name:"message-schedule-p0")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let sm3p1_entries =
+  List.map
+    (zksh_unary_entry ~mnemonic:"sm3p1" ~variant_name:"message-schedule-p1")
+    [ Target.Riscv32; Target.Riscv64 ]
+
 (* xperm4/xperm8 (crossbar permute): the same plain three-GPR R-type shape
    and Req_any promotion discipline as clmul/clmulh above, but rooted in
    Zbkx (rv_zbkx primary, imported by rv_zk/rv_zkn/rv_zks - a four-way
@@ -1003,6 +1078,29 @@ let aes32esmi_entries =
     aes32_imm_entry ~mnemonic:"aes32esmi" ~variant_name:"encrypt-round-mixed"
       ~configuration_for:zkne_configuration_for Target.Riscv32;
   ]
+
+(* sm4ed/sm4ks (Zksed's SM4 round/key-schedule functions): the same
+   three-GPR-plus-bs-immediate shape as AES-32's own four, reusing
+   {!aes32_imm_entry} verbatim - but unlike AES-32, riscv-opcodes has a
+   record on BOTH profiles here (no RV32-only restriction; confirmed
+   against real GNU as both mnemonics assemble on RV64 too). *)
+let zksed_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32im_zksed"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64im_zksed"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let sm4ed_entries =
+  List.map
+    (aes32_imm_entry ~mnemonic:"sm4ed" ~variant_name:"round-function"
+       ~configuration_for:zksed_configuration_for)
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let sm4ks_entries =
+  List.map
+    (aes32_imm_entry ~mnemonic:"sm4ks" ~variant_name:"key-schedule"
+       ~configuration_for:zksed_configuration_for)
+    [ Target.Riscv32; Target.Riscv64 ]
 
 (* csrrw/csrrs/csrrc/csrrwi/csrrsi/csrrci: Zicsr's CSR forms, the first
    family here outside Zb/Zk - XLEN-independent (both profiles accept
@@ -1299,6 +1397,103 @@ let roriw_entries =
   [
     zbb_shamt_entry ~mnemonic:"roriw" ~lookup_key:"roriw"
       ~variant_name:"rotate-right-immediate-word" Target.Riscv64;
+  ]
+
+(* Zbs's single-bit manipulation family: bclr/bext/binv/bset (three-GPR
+   R-type, opcode 0x33, funct7 selects the operation) and their
+   shift-amount-immediate siblings bclri/bexti/binvi/bseti - the same
+   two-GPR-plus-immediate shape rori/roriw use, but each mnemonic is a
+   single, non-import-duplicated riscv-opcodes record on both profiles
+   (unlike andn/orn/xnor/rol/ror's five-way Req_any), so no [lookup_key]
+   distinct from the rendered mnemonic is needed even for the RV32 pseudo-op
+   "*.rv32" spellings - confirmed against real GNU as (riscv32-linux-gnu-as
+   2.43.1, riscv64-linux-gnu-as 2.44): all eight mnemonics assemble
+   byte-identical to the hand-computed riscv-opcodes mask/value on both
+   profiles, `bclr a0,a1,5`-style immediate operands alias to `bclri`
+   exactly the way `ror`/`rori` do, and out-of-range/malformed operands are
+   rejected the same way. *)
+let zbs_configuration_for = function
+  | Target.Riscv32 -> [ "-march=rv32i_zbs"; "-mabi=ilp32"; "-mno-relax" ]
+  | Target.Riscv64 -> [ "-march=rv64i_zbs"; "-mabi=lp64"; "-mno-relax" ]
+  | (Target.X86_32 | Target.X86_64 | Target.Arm | Target.Aarch64) as t ->
+      Isa_gen_case_build.configuration_for t
+
+let zbs_r_type_entry ~mnemonic ~variant_name target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic variant_name (Target.to_string target);
+    rule_ids = [ "zbs-enabled"; "three-gpr-operands"; variant_name ];
+    operands = [ ("rd", "a0"); ("rs1", "a1"); ("rs2", "a2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zbs_configuration_for target;
+  }
+
+let bclr_entries =
+  List.map
+    (zbs_r_type_entry ~mnemonic:"bclr" ~variant_name:"bit-clear")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let bext_entries =
+  List.map
+    (zbs_r_type_entry ~mnemonic:"bext" ~variant_name:"bit-extract")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let binv_entries =
+  List.map
+    (zbs_r_type_entry ~mnemonic:"binv" ~variant_name:"bit-invert")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let bset_entries =
+  List.map
+    (zbs_r_type_entry ~mnemonic:"bset" ~variant_name:"bit-set")
+    [ Target.Riscv32; Target.Riscv64 ]
+
+let zbs_shamt_entry ~mnemonic ~lookup_key ~variant_name target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic variant_name (Target.to_string target);
+    rule_ids = [ "zbs-enabled"; "gpr-shamt-operands"; variant_name ];
+    operands = [ ("rd", "a0"); ("rs1", "a1"); ("shamt", "5") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = zbs_configuration_for target;
+  }
+
+let bclri_entries =
+  [
+    zbs_shamt_entry ~mnemonic:"bclri" ~lookup_key:"bclri.rv32" ~variant_name:"bit-clear-immediate"
+      Target.Riscv32;
+    zbs_shamt_entry ~mnemonic:"bclri" ~lookup_key:"bclri" ~variant_name:"bit-clear-immediate"
+      Target.Riscv64;
+  ]
+
+let bexti_entries =
+  [
+    zbs_shamt_entry ~mnemonic:"bexti" ~lookup_key:"bexti.rv32" ~variant_name:"bit-extract-immediate"
+      Target.Riscv32;
+    zbs_shamt_entry ~mnemonic:"bexti" ~lookup_key:"bexti" ~variant_name:"bit-extract-immediate"
+      Target.Riscv64;
+  ]
+
+let binvi_entries =
+  [
+    zbs_shamt_entry ~mnemonic:"binvi" ~lookup_key:"binvi.rv32" ~variant_name:"bit-invert-immediate"
+      Target.Riscv32;
+    zbs_shamt_entry ~mnemonic:"binvi" ~lookup_key:"binvi" ~variant_name:"bit-invert-immediate"
+      Target.Riscv64;
+  ]
+
+let bseti_entries =
+  [
+    zbs_shamt_entry ~mnemonic:"bseti" ~lookup_key:"bseti.rv32" ~variant_name:"bit-set-immediate"
+      Target.Riscv32;
+    zbs_shamt_entry ~mnemonic:"bseti" ~lookup_key:"bseti" ~variant_name:"bit-set-immediate"
+      Target.Riscv64;
   ]
 
 (* Zbb's population-count/sign-extend/byte family: two plain GPR operands
@@ -3255,78 +3450,81 @@ let all =
   @ cpop_entries @ sextb_entries @ sexth_entries @ orcb_entries @ clzw_entries @ ctzw_entries
   @ cpopw_entries @ brev8_entries @ rev8_entries @ pack_entries @ packh_entries @ packw_entries
   @ zip_entries @ unzip_entries @ rolw_entries @ rorw_entries @ rori_entries @ roriw_entries
-  @ zext_h_entries @ clmul_entries @ clmulh_entries @ xperm4_entries @ xperm8_entries
-  @ sha256sum0_entries @ sha256sum1_entries @ sha256sig0_entries @ sha256sig1_entries
-  @ sha512sum0_entries @ sha512sum1_entries @ sha512sig0_entries @ sha512sig1_entries
-  @ sha512sum0r_entries @ sha512sum1r_entries @ sha512sig0l_entries @ sha512sig1l_entries
-  @ sha512sig0h_entries @ sha512sig1h_entries @ aes64ds_entries @ aes64dsm_entries @ aes64es_entries
-  @ aes64esm_entries @ aes64ks2_entries @ aes64im_entries @ aes64ks1i_entries @ aes32dsi_entries
-  @ aes32dsmi_entries @ aes32esi_entries @ aes32esmi_entries @ csrrw_entries @ csrrs_entries
-  @ csrrc_entries @ csrrwi_entries @ csrrsi_entries @ csrrci_entries @ csrr_entries @ csrw_entries
-  @ csrs_entries @ csrc_entries @ csrwi_entries @ csrsi_entries @ csrci_entries @ amoswap_w_entries
-  @ amoadd_w_entries @ amoxor_w_entries @ amoand_w_entries @ amoor_w_entries @ amomin_w_entries
-  @ amomax_w_entries @ amominu_w_entries @ amomaxu_w_entries @ sc_w_entries @ lr_w_entries
-  @ amoswap_d_entries @ amoadd_d_entries @ amoxor_d_entries @ amoand_d_entries @ amoor_d_entries
-  @ amomin_d_entries @ amomax_d_entries @ amominu_d_entries @ amomaxu_d_entries @ sc_d_entries
-  @ lr_d_entries @ fsgnj_s_entries @ fsgnjn_s_entries @ fsgnjx_s_entries @ fsgnj_d_entries
-  @ fsgnjn_d_entries @ fsgnjx_d_entries @ fmin_s_entries @ fmax_s_entries @ fmin_d_entries
-  @ fmax_d_entries @ fsqrt_s_entries @ fsqrt_d_entries @ fclass_s_entries @ fclass_d_entries
-  @ fmadd_s_entries @ fmsub_s_entries @ fnmsub_s_entries @ fnmadd_s_entries @ fmadd_d_entries
-  @ fmsub_d_entries @ fnmsub_d_entries @ fnmadd_d_entries @ feq_s_entries @ fle_s_entries
-  @ flt_s_entries @ feq_d_entries @ fle_d_entries @ flt_d_entries @ fmv_x_w_entries
-  @ fmv_w_x_entries @ fcvt_w_s_entries @ fcvt_wu_s_entries @ fcvt_s_w_entries @ fcvt_s_wu_entries
-  @ fcvt_w_d_entries @ fcvt_wu_d_entries @ fcvt_d_w_entries @ fcvt_d_wu_entries @ fcvt_s_d_entries
-  @ fcvt_d_s_entries @ fcvt_l_d_entries @ fcvt_lu_d_entries @ fcvt_l_s_entries @ fcvt_lu_s_entries
-  @ fcvt_s_l_entries @ fcvt_s_lu_entries @ fcvt_d_l_entries @ fcvt_d_lu_entries @ vsetvl_entries
-  @ vsetvli_entries @ vsetivli_entries @ vadd_vv_entries @ vadd_vx_entries @ vadd_vi_entries
-  @ vsub_vv_entries @ vsub_vx_entries @ vrsub_vx_entries @ vrsub_vi_entries @ vand_vv_entries
-  @ vand_vx_entries @ vand_vi_entries @ vor_vv_entries @ vor_vx_entries @ vor_vi_entries
-  @ vxor_vv_entries @ vxor_vx_entries @ vxor_vi_entries @ vsll_vv_entries @ vsll_vx_entries
-  @ vsll_vi_entries @ vsrl_vv_entries @ vsrl_vx_entries @ vsrl_vi_entries @ vsra_vv_entries
-  @ vsra_vx_entries @ vsra_vi_entries @ vminu_vv_entries @ vminu_vx_entries @ vmin_vv_entries
-  @ vmin_vx_entries @ vmaxu_vv_entries @ vmaxu_vx_entries @ vmax_vv_entries @ vmax_vx_entries
-  @ vmul_vv_entries @ vmul_vx_entries @ vmulh_vv_entries @ vmulh_vx_entries @ vmulhu_vv_entries
-  @ vmulhu_vx_entries @ vmulhsu_vv_entries @ vmulhsu_vx_entries @ vdivu_vv_entries
-  @ vdivu_vx_entries @ vdiv_vv_entries @ vdiv_vx_entries @ vremu_vv_entries @ vremu_vx_entries
-  @ vrem_vv_entries @ vrem_vx_entries @ vsaddu_vv_entries @ vsaddu_vx_entries @ vsaddu_vi_entries
-  @ vsadd_vv_entries @ vsadd_vx_entries @ vsadd_vi_entries @ vssubu_vv_entries @ vssubu_vx_entries
-  @ vssub_vv_entries @ vssub_vx_entries @ vaaddu_vv_entries @ vaaddu_vx_entries @ vaadd_vv_entries
-  @ vaadd_vx_entries @ vasubu_vv_entries @ vasubu_vx_entries @ vasub_vv_entries @ vasub_vx_entries
-  @ vnsrl_wv_entries @ vnsrl_wx_entries @ vnsrl_wi_entries @ vnsra_wv_entries @ vnsra_wx_entries
-  @ vnsra_wi_entries @ vnclipu_wv_entries @ vnclipu_wx_entries @ vnclipu_wi_entries
-  @ vnclip_wv_entries @ vnclip_wx_entries @ vnclip_wi_entries @ vssrl_vv_entries @ vssrl_vx_entries
-  @ vssrl_vi_entries @ vssra_vv_entries @ vssra_vx_entries @ vssra_vi_entries @ vrgather_vv_entries
-  @ vrgather_vx_entries @ vrgather_vi_entries @ vrgatherei16_vv_entries @ vwaddu_vv_entries
-  @ vwaddu_vx_entries @ vwadd_vv_entries @ vwadd_vx_entries @ vwsubu_vv_entries @ vwsubu_vx_entries
-  @ vwsub_vv_entries @ vwsub_vx_entries @ vwaddu_wv_entries @ vwaddu_wx_entries @ vwadd_wv_entries
-  @ vwadd_wx_entries @ vwsubu_wv_entries @ vwsubu_wx_entries @ vwsub_wv_entries @ vwsub_wx_entries
-  @ vwmulu_vv_entries @ vwmulu_vx_entries @ vwmulsu_vv_entries @ vwmulsu_vx_entries
-  @ vwmul_vv_entries @ vwmul_vx_entries @ vsext_vf2_entries @ vsext_vf4_entries @ vsext_vf8_entries
-  @ vzext_vf2_entries @ vzext_vf4_entries @ vzext_vf8_entries @ vmand_mm_entries @ vmandn_mm_entries
-  @ vmor_mm_entries @ vmxor_mm_entries @ vmorn_mm_entries @ vmnand_mm_entries @ vmnor_mm_entries
-  @ vmxnor_mm_entries @ vredsum_vs_entries @ vredand_vs_entries @ vredor_vs_entries
-  @ vredxor_vs_entries @ vredminu_vs_entries @ vredmin_vs_entries @ vredmaxu_vs_entries
-  @ vredmax_vs_entries @ vwredsumu_vs_entries @ vwredsum_vs_entries @ vmseq_vv_entries
-  @ vmseq_vx_entries @ vmseq_vi_entries @ vmsne_vv_entries @ vmsne_vx_entries @ vmsne_vi_entries
-  @ vmsltu_vv_entries @ vmsltu_vx_entries @ vmslt_vv_entries @ vmslt_vx_entries @ vmsleu_vv_entries
-  @ vmsleu_vx_entries @ vmsleu_vi_entries @ vmsle_vv_entries @ vmsle_vx_entries @ vmsle_vi_entries
-  @ vmsgtu_vx_entries @ vmsgtu_vi_entries @ vmsgt_vx_entries @ vmsgt_vi_entries
-  @ vslideup_vx_entries @ vslideup_vi_entries @ vslidedown_vx_entries @ vslidedown_vi_entries
-  @ vslide1up_vx_entries @ vslide1down_vx_entries @ vmacc_vv_entries @ vmacc_vx_entries
-  @ vnmsac_vv_entries @ vnmsac_vx_entries @ vmadd_vv_entries @ vmadd_vx_entries @ vnmsub_vv_entries
-  @ vnmsub_vx_entries @ vwmaccu_vv_entries @ vwmaccu_vx_entries @ vwmacc_vv_entries
-  @ vwmacc_vx_entries @ vwmaccsu_vv_entries @ vwmaccsu_vx_entries @ vwmaccus_vx_entries
-  @ vid_v_entries @ viota_m_entries @ vcompress_vm_entries @ vmsbf_m_entries @ vmsif_m_entries
-  @ vmsof_m_entries @ vcpop_m_entries @ vfirst_m_entries @ vadc_vvm_entries @ vadc_vxm_entries
-  @ vadc_vim_entries @ vmadc_vvm_entries @ vmadc_vxm_entries @ vmadc_vim_entries @ vmadc_vv_entries
-  @ vmadc_vx_entries @ vmadc_vi_entries @ vsbc_vvm_entries @ vsbc_vxm_entries @ vmsbc_vvm_entries
-  @ vmsbc_vxm_entries @ vmsbc_vv_entries @ vmsbc_vx_entries @ vmerge_vvm_entries
-  @ vmerge_vxm_entries @ vmerge_vim_entries @ vmv_x_s_entries @ vmv_s_x_entries @ vmv_v_v_entries
-  @ vmv_v_x_entries @ vmv_v_i_entries @ vmv1r_v_entries @ vmv2r_v_entries @ vmv4r_v_entries
-  @ vmv8r_v_entries @ vsmul_vv_entries @ vsmul_vx_entries @ vfadd_vv_entries @ vfadd_vf_entries
-  @ vfsub_vv_entries @ vfsub_vf_entries @ vfrsub_vf_entries @ vfmul_vv_entries @ vfmul_vf_entries
-  @ vfdiv_vv_entries @ vfdiv_vf_entries @ vfrdiv_vf_entries @ vfmin_vv_entries @ vfmin_vf_entries
-  @ vfmax_vv_entries @ vfmax_vf_entries @ vfsgnj_vv_entries @ vfsgnj_vf_entries @ vfsgnjn_vv_entries
+  @ bclr_entries @ bext_entries @ binv_entries @ bset_entries @ bclri_entries @ bexti_entries
+  @ binvi_entries @ bseti_entries @ zext_h_entries @ clmul_entries @ clmulh_entries @ clmulr_entries
+  @ czero_eqz_entries @ czero_nez_entries @ sm3p0_entries @ sm3p1_entries @ xperm4_entries
+  @ xperm8_entries @ sha256sum0_entries @ sha256sum1_entries @ sha256sig0_entries
+  @ sha256sig1_entries @ sha512sum0_entries @ sha512sum1_entries @ sha512sig0_entries
+  @ sha512sig1_entries @ sha512sum0r_entries @ sha512sum1r_entries @ sha512sig0l_entries
+  @ sha512sig1l_entries @ sha512sig0h_entries @ sha512sig1h_entries @ aes64ds_entries
+  @ aes64dsm_entries @ aes64es_entries @ aes64esm_entries @ aes64ks2_entries @ aes64im_entries
+  @ aes64ks1i_entries @ aes32dsi_entries @ aes32dsmi_entries @ aes32esi_entries @ aes32esmi_entries
+  @ sm4ed_entries @ sm4ks_entries @ csrrw_entries @ csrrs_entries @ csrrc_entries @ csrrwi_entries
+  @ csrrsi_entries @ csrrci_entries @ csrr_entries @ csrw_entries @ csrs_entries @ csrc_entries
+  @ csrwi_entries @ csrsi_entries @ csrci_entries @ amoswap_w_entries @ amoadd_w_entries
+  @ amoxor_w_entries @ amoand_w_entries @ amoor_w_entries @ amomin_w_entries @ amomax_w_entries
+  @ amominu_w_entries @ amomaxu_w_entries @ sc_w_entries @ lr_w_entries @ amoswap_d_entries
+  @ amoadd_d_entries @ amoxor_d_entries @ amoand_d_entries @ amoor_d_entries @ amomin_d_entries
+  @ amomax_d_entries @ amominu_d_entries @ amomaxu_d_entries @ sc_d_entries @ lr_d_entries
+  @ fsgnj_s_entries @ fsgnjn_s_entries @ fsgnjx_s_entries @ fsgnj_d_entries @ fsgnjn_d_entries
+  @ fsgnjx_d_entries @ fmin_s_entries @ fmax_s_entries @ fmin_d_entries @ fmax_d_entries
+  @ fsqrt_s_entries @ fsqrt_d_entries @ fclass_s_entries @ fclass_d_entries @ fmadd_s_entries
+  @ fmsub_s_entries @ fnmsub_s_entries @ fnmadd_s_entries @ fmadd_d_entries @ fmsub_d_entries
+  @ fnmsub_d_entries @ fnmadd_d_entries @ feq_s_entries @ fle_s_entries @ flt_s_entries
+  @ feq_d_entries @ fle_d_entries @ flt_d_entries @ fmv_x_w_entries @ fmv_w_x_entries
+  @ fcvt_w_s_entries @ fcvt_wu_s_entries @ fcvt_s_w_entries @ fcvt_s_wu_entries @ fcvt_w_d_entries
+  @ fcvt_wu_d_entries @ fcvt_d_w_entries @ fcvt_d_wu_entries @ fcvt_s_d_entries @ fcvt_d_s_entries
+  @ fcvt_l_d_entries @ fcvt_lu_d_entries @ fcvt_l_s_entries @ fcvt_lu_s_entries @ fcvt_s_l_entries
+  @ fcvt_s_lu_entries @ fcvt_d_l_entries @ fcvt_d_lu_entries @ vsetvl_entries @ vsetvli_entries
+  @ vsetivli_entries @ vadd_vv_entries @ vadd_vx_entries @ vadd_vi_entries @ vsub_vv_entries
+  @ vsub_vx_entries @ vrsub_vx_entries @ vrsub_vi_entries @ vand_vv_entries @ vand_vx_entries
+  @ vand_vi_entries @ vor_vv_entries @ vor_vx_entries @ vor_vi_entries @ vxor_vv_entries
+  @ vxor_vx_entries @ vxor_vi_entries @ vsll_vv_entries @ vsll_vx_entries @ vsll_vi_entries
+  @ vsrl_vv_entries @ vsrl_vx_entries @ vsrl_vi_entries @ vsra_vv_entries @ vsra_vx_entries
+  @ vsra_vi_entries @ vminu_vv_entries @ vminu_vx_entries @ vmin_vv_entries @ vmin_vx_entries
+  @ vmaxu_vv_entries @ vmaxu_vx_entries @ vmax_vv_entries @ vmax_vx_entries @ vmul_vv_entries
+  @ vmul_vx_entries @ vmulh_vv_entries @ vmulh_vx_entries @ vmulhu_vv_entries @ vmulhu_vx_entries
+  @ vmulhsu_vv_entries @ vmulhsu_vx_entries @ vdivu_vv_entries @ vdivu_vx_entries @ vdiv_vv_entries
+  @ vdiv_vx_entries @ vremu_vv_entries @ vremu_vx_entries @ vrem_vv_entries @ vrem_vx_entries
+  @ vsaddu_vv_entries @ vsaddu_vx_entries @ vsaddu_vi_entries @ vsadd_vv_entries @ vsadd_vx_entries
+  @ vsadd_vi_entries @ vssubu_vv_entries @ vssubu_vx_entries @ vssub_vv_entries @ vssub_vx_entries
+  @ vaaddu_vv_entries @ vaaddu_vx_entries @ vaadd_vv_entries @ vaadd_vx_entries @ vasubu_vv_entries
+  @ vasubu_vx_entries @ vasub_vv_entries @ vasub_vx_entries @ vnsrl_wv_entries @ vnsrl_wx_entries
+  @ vnsrl_wi_entries @ vnsra_wv_entries @ vnsra_wx_entries @ vnsra_wi_entries @ vnclipu_wv_entries
+  @ vnclipu_wx_entries @ vnclipu_wi_entries @ vnclip_wv_entries @ vnclip_wx_entries
+  @ vnclip_wi_entries @ vssrl_vv_entries @ vssrl_vx_entries @ vssrl_vi_entries @ vssra_vv_entries
+  @ vssra_vx_entries @ vssra_vi_entries @ vrgather_vv_entries @ vrgather_vx_entries
+  @ vrgather_vi_entries @ vrgatherei16_vv_entries @ vwaddu_vv_entries @ vwaddu_vx_entries
+  @ vwadd_vv_entries @ vwadd_vx_entries @ vwsubu_vv_entries @ vwsubu_vx_entries @ vwsub_vv_entries
+  @ vwsub_vx_entries @ vwaddu_wv_entries @ vwaddu_wx_entries @ vwadd_wv_entries @ vwadd_wx_entries
+  @ vwsubu_wv_entries @ vwsubu_wx_entries @ vwsub_wv_entries @ vwsub_wx_entries @ vwmulu_vv_entries
+  @ vwmulu_vx_entries @ vwmulsu_vv_entries @ vwmulsu_vx_entries @ vwmul_vv_entries
+  @ vwmul_vx_entries @ vsext_vf2_entries @ vsext_vf4_entries @ vsext_vf8_entries @ vzext_vf2_entries
+  @ vzext_vf4_entries @ vzext_vf8_entries @ vmand_mm_entries @ vmandn_mm_entries @ vmor_mm_entries
+  @ vmxor_mm_entries @ vmorn_mm_entries @ vmnand_mm_entries @ vmnor_mm_entries @ vmxnor_mm_entries
+  @ vredsum_vs_entries @ vredand_vs_entries @ vredor_vs_entries @ vredxor_vs_entries
+  @ vredminu_vs_entries @ vredmin_vs_entries @ vredmaxu_vs_entries @ vredmax_vs_entries
+  @ vwredsumu_vs_entries @ vwredsum_vs_entries @ vmseq_vv_entries @ vmseq_vx_entries
+  @ vmseq_vi_entries @ vmsne_vv_entries @ vmsne_vx_entries @ vmsne_vi_entries @ vmsltu_vv_entries
+  @ vmsltu_vx_entries @ vmslt_vv_entries @ vmslt_vx_entries @ vmsleu_vv_entries @ vmsleu_vx_entries
+  @ vmsleu_vi_entries @ vmsle_vv_entries @ vmsle_vx_entries @ vmsle_vi_entries @ vmsgtu_vx_entries
+  @ vmsgtu_vi_entries @ vmsgt_vx_entries @ vmsgt_vi_entries @ vslideup_vx_entries
+  @ vslideup_vi_entries @ vslidedown_vx_entries @ vslidedown_vi_entries @ vslide1up_vx_entries
+  @ vslide1down_vx_entries @ vmacc_vv_entries @ vmacc_vx_entries @ vnmsac_vv_entries
+  @ vnmsac_vx_entries @ vmadd_vv_entries @ vmadd_vx_entries @ vnmsub_vv_entries @ vnmsub_vx_entries
+  @ vwmaccu_vv_entries @ vwmaccu_vx_entries @ vwmacc_vv_entries @ vwmacc_vx_entries
+  @ vwmaccsu_vv_entries @ vwmaccsu_vx_entries @ vwmaccus_vx_entries @ vid_v_entries
+  @ viota_m_entries @ vcompress_vm_entries @ vmsbf_m_entries @ vmsif_m_entries @ vmsof_m_entries
+  @ vcpop_m_entries @ vfirst_m_entries @ vadc_vvm_entries @ vadc_vxm_entries @ vadc_vim_entries
+  @ vmadc_vvm_entries @ vmadc_vxm_entries @ vmadc_vim_entries @ vmadc_vv_entries @ vmadc_vx_entries
+  @ vmadc_vi_entries @ vsbc_vvm_entries @ vsbc_vxm_entries @ vmsbc_vvm_entries @ vmsbc_vxm_entries
+  @ vmsbc_vv_entries @ vmsbc_vx_entries @ vmerge_vvm_entries @ vmerge_vxm_entries
+  @ vmerge_vim_entries @ vmv_x_s_entries @ vmv_s_x_entries @ vmv_v_v_entries @ vmv_v_x_entries
+  @ vmv_v_i_entries @ vmv1r_v_entries @ vmv2r_v_entries @ vmv4r_v_entries @ vmv8r_v_entries
+  @ vsmul_vv_entries @ vsmul_vx_entries @ vfadd_vv_entries @ vfadd_vf_entries @ vfsub_vv_entries
+  @ vfsub_vf_entries @ vfrsub_vf_entries @ vfmul_vv_entries @ vfmul_vf_entries @ vfdiv_vv_entries
+  @ vfdiv_vf_entries @ vfrdiv_vf_entries @ vfmin_vv_entries @ vfmin_vf_entries @ vfmax_vv_entries
+  @ vfmax_vf_entries @ vfsgnj_vv_entries @ vfsgnj_vf_entries @ vfsgnjn_vv_entries
   @ vfsgnjn_vf_entries @ vfsgnjx_vv_entries @ vfsgnjx_vf_entries @ vfsqrt_v_entries
   @ vfrsqrt7_v_entries @ vfrec7_v_entries @ vfclass_v_entries @ vfredosum_vs_entries
   @ vfredusum_vs_entries @ vfredmin_vs_entries @ vfredmax_vs_entries @ vmfeq_vv_entries

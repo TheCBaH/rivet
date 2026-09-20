@@ -185,8 +185,8 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:692;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:744;
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:711;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:763;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:9;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:9
 
@@ -604,9 +604,9 @@ let test_isa_family_admission repo =
      vector-crypto/bf16 scope: every rv_zv* family (and both bundle
      extensions, rv_zvkn/rv_zvks) is now fully promoted. *)
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
-    ~promoted_support:672 ~blocked:397;
+    ~promoted_support:691 ~blocked:378;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
-    ~promoted_support:714 ~blocked:410;
+    ~promoted_support:733 ~blocked:391;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0 ~gas_generatable:5
     ~promoted_support:4 ~blocked:7878;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
@@ -664,9 +664,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 1454)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 1492)"
        !roundtrip_count)
-    (!roundtrip_count = 1454)
+    (!roundtrip_count = 1492)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's

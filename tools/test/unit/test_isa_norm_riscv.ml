@@ -58,6 +58,42 @@ let max_json =
 let maxu_json =
   {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":25,"name":"bits[31:25]","width":7},{"lsb":12,"name":"bits[14:12]","width":3},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"rs2","width":5}],"kind":"fixed_bits","mask":"0xfe00707f","value":"0xa007033","width_bits":32},"kind":"instruction-form","native_name":"maxu","origin":{"line":8,"path":"extensions/rv_zbb"},"provenance":{"extension":"rv_zbb","operands":["rd","rs1","rs2"],"raw":{"line":"maxu       rd rs1 rs2 31..25=5 14..12=7 6..2=0x0C 1..0=3","tokens":["maxu","rd","rs1","rs2","31..25=5","14..12=7","6..2=0x0C","1..0=3"]},"upstream-resolved":{"mask":"0xfe00707f","match":"0xa007033","variable_fields":["rd","rs1","rs2"]}},"record_id":"riscv-opcodes:rv_zbb:maxu@L8","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
 
+let bclr_json =
+  {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":25,"name":"bits[31:25]","width":7},{"lsb":12,"name":"bits[14:12]","width":3},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"rs2","width":5}],"kind":"fixed_bits","mask":"0xfe00707f","value":"0x48001033","width_bits":32},"kind":"instruction-form","native_name":"bclr","origin":{"line":1,"path":"extensions/rv_zbs"},"provenance":{"extension":"rv_zbs","operands":["rd","rs1","rs2"],"raw":{"line":"bclr rd rs1 rs2 31..25=0x24 14..12=1 6..2=0x0C 1..0=3","tokens":["bclr","rd","rs1","rs2","31..25=0x24","14..12=1","6..2=0x0C","1..0=3"]},"upstream-resolved":{"mask":"0xfe00707f","match":"0x48001033","variable_fields":["rd","rs1","rs2"]}},"record_id":"riscv-opcodes:rv_zbs:bclr@L1","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
+
+let bext_json =
+  {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":25,"name":"bits[31:25]","width":7},{"lsb":12,"name":"bits[14:12]","width":3},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"rs2","width":5}],"kind":"fixed_bits","mask":"0xfe00707f","value":"0x48005033","width_bits":32},"kind":"instruction-form","native_name":"bext","origin":{"line":2,"path":"extensions/rv_zbs"},"provenance":{"extension":"rv_zbs","operands":["rd","rs1","rs2"],"raw":{"line":"bext rd rs1 rs2 31..25=36 14..12=5 6..2=0x0C 1..0=3","tokens":["bext","rd","rs1","rs2","31..25=36","14..12=5","6..2=0x0C","1..0=3"]},"upstream-resolved":{"mask":"0xfe00707f","match":"0x48005033","variable_fields":["rd","rs1","rs2"]}},"record_id":"riscv-opcodes:rv_zbs:bext@L2","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
+
+let binv_json =
+  {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":25,"name":"bits[31:25]","width":7},{"lsb":12,"name":"bits[14:12]","width":3},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"rs2","width":5}],"kind":"fixed_bits","mask":"0xfe00707f","value":"0x68001033","width_bits":32},"kind":"instruction-form","native_name":"binv","origin":{"line":3,"path":"extensions/rv_zbs"},"provenance":{"extension":"rv_zbs","operands":["rd","rs1","rs2"],"raw":{"line":"binv rd rs1 rs2 31..25=52 14..12=1 6..2=0x0C 1..0=3","tokens":["binv","rd","rs1","rs2","31..25=52","14..12=1","6..2=0x0C","1..0=3"]},"upstream-resolved":{"mask":"0xfe00707f","match":"0x68001033","variable_fields":["rd","rs1","rs2"]}},"record_id":"riscv-opcodes:rv_zbs:binv@L3","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
+
+let bset_json =
+  {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":25,"name":"bits[31:25]","width":7},{"lsb":12,"name":"bits[14:12]","width":3},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"rs2","width":5}],"kind":"fixed_bits","mask":"0xfe00707f","value":"0x28001033","width_bits":32},"kind":"instruction-form","native_name":"bset","origin":{"line":4,"path":"extensions/rv_zbs"},"provenance":{"extension":"rv_zbs","operands":["rd","rs1","rs2"],"raw":{"line":"bset rd rs1 rs2 31..25=20 14..12=1 6..2=0x0C 1..0=3","tokens":["bset","rd","rs1","rs2","31..25=20","14..12=1","6..2=0x0C","1..0=3"]},"upstream-resolved":{"mask":"0xfe00707f","match":"0x28001033","variable_fields":["rd","rs1","rs2"]}},"record_id":"riscv-opcodes:rv_zbs:bset@L4","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
+
+let bclri_json =
+  {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":26,"name":"bits[31:26]","width":6},{"lsb":12,"name":"bits[14:12]","width":3},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"shamtd","width":6}],"kind":"fixed_bits","mask":"0xfc00707f","value":"0x48001013","width_bits":32},"kind":"instruction-form","native_name":"bclri","origin":{"line":1,"path":"extensions/rv64_zbs"},"provenance":{"extension":"rv64_zbs","operands":["rd","rs1","shamtd"],"raw":{"line":"bclri       rd rs1 31..26=0x12 shamtd 14..12=1 6..2=0x04 1..0=3","tokens":["bclri","rd","rs1","31..26=0x12","shamtd","14..12=1","6..2=0x04","1..0=3"]},"upstream-resolved":{"mask":"0xfc00707f","match":"0x48001013","variable_fields":["rd","rs1","shamtd"]}},"record_id":"riscv-opcodes:rv64_zbs:bclri@L1","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
+
+let bclri_rv32_json =
+  {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"shamtw","width":5}],"kind":"fixed_bits","mask":"0xfe00707f","value":"0x48001013","width_bits":32},"kind":"pseudo-op","native_name":"bclri.rv32","origin":{"line":1,"path":"extensions/rv32_zbs"},"provenance":{"extension":"rv32_zbs","operands":["rd","rs1","shamtw"],"raw":{"line":"$pseudo_op rv64_zbs::bclri bclri.rv32 rd rs1 31..25=0x24 shamtw 14..12=1 6..2=0x04 1..0=3","tokens":["$pseudo_op","rv64_zbs::bclri","bclri.rv32","rd","rs1","31..25=0x24","shamtw","14..12=1","6..2=0x04","1..0=3"]},"relationship-resolution":[{"candidates":[],"kind":"specializes","status":"missing"}],"specializes-reference":{"extension":"rv64_zbs","name":"bclri"},"upstream-resolved":{"mask":"0xfe00707f","match":"0x48001013","variable_fields":["rd","rs1","shamtw"]}},"record_id":"riscv-opcodes:rv32_zbs:bclri.rv32@L1","relationships":[{"kind":"specializes","target":"riscv-opcodes:rv64_zbs:bclri"}],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":["specializes-target not resolved to a concrete record_id by this adapter"]}|}
+
+let bexti_json =
+  {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":26,"name":"bits[31:26]","width":6},{"lsb":12,"name":"bits[14:12]","width":3},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"shamtd","width":6}],"kind":"fixed_bits","mask":"0xfc00707f","value":"0x48005013","width_bits":32},"kind":"instruction-form","native_name":"bexti","origin":{"line":2,"path":"extensions/rv64_zbs"},"provenance":{"extension":"rv64_zbs","operands":["rd","rs1","shamtd"],"raw":{"line":"bexti       rd rs1 31..26=0x12 shamtd 14..12=5 6..2=0x04 1..0=3","tokens":["bexti","rd","rs1","31..26=0x12","shamtd","14..12=5","6..2=0x04","1..0=3"]},"upstream-resolved":{"mask":"0xfc00707f","match":"0x48005013","variable_fields":["rd","rs1","shamtd"]}},"record_id":"riscv-opcodes:rv64_zbs:bexti@L2","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
+
+let bexti_rv32_json =
+  {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"shamtw","width":5}],"kind":"fixed_bits","mask":"0xfe00707f","value":"0x48005013","width_bits":32},"kind":"pseudo-op","native_name":"bexti.rv32","origin":{"line":2,"path":"extensions/rv32_zbs"},"provenance":{"extension":"rv32_zbs","operands":["rd","rs1","shamtw"],"raw":{"line":"$pseudo_op rv64_zbs::bexti bexti.rv32 rd rs1 31..25=0x24 shamtw 14..12=5 6..2=0x04 1..0=3","tokens":["$pseudo_op","rv64_zbs::bexti","bexti.rv32","rd","rs1","31..25=0x24","shamtw","14..12=5","6..2=0x04","1..0=3"]},"relationship-resolution":[{"candidates":[],"kind":"specializes","status":"missing"}],"specializes-reference":{"extension":"rv64_zbs","name":"bexti"},"upstream-resolved":{"mask":"0xfe00707f","match":"0x48005013","variable_fields":["rd","rs1","shamtw"]}},"record_id":"riscv-opcodes:rv32_zbs:bexti.rv32@L2","relationships":[{"kind":"specializes","target":"riscv-opcodes:rv64_zbs:bexti"}],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":["specializes-target not resolved to a concrete record_id by this adapter"]}|}
+
+let binvi_json =
+  {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":26,"name":"bits[31:26]","width":6},{"lsb":12,"name":"bits[14:12]","width":3},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"shamtd","width":6}],"kind":"fixed_bits","mask":"0xfc00707f","value":"0x68001013","width_bits":32},"kind":"instruction-form","native_name":"binvi","origin":{"line":3,"path":"extensions/rv64_zbs"},"provenance":{"extension":"rv64_zbs","operands":["rd","rs1","shamtd"],"raw":{"line":"binvi       rd rs1 31..26=0x1a shamtd 14..12=1 6..2=0x04 1..0=3","tokens":["binvi","rd","rs1","31..26=0x1a","shamtd","14..12=1","6..2=0x04","1..0=3"]},"upstream-resolved":{"mask":"0xfc00707f","match":"0x68001013","variable_fields":["rd","rs1","shamtd"]}},"record_id":"riscv-opcodes:rv64_zbs:binvi@L3","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
+
+let binvi_rv32_json =
+  {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"shamtw","width":5}],"kind":"fixed_bits","mask":"0xfe00707f","value":"0x68001013","width_bits":32},"kind":"pseudo-op","native_name":"binvi.rv32","origin":{"line":3,"path":"extensions/rv32_zbs"},"provenance":{"extension":"rv32_zbs","operands":["rd","rs1","shamtw"],"raw":{"line":"$pseudo_op rv64_zbs::binvi binvi.rv32 rd rs1 31..25=0x34 shamtw 14..12=1 6..2=0x04 1..0=3","tokens":["$pseudo_op","rv64_zbs::binvi","binvi.rv32","rd","rs1","31..25=0x34","shamtw","14..12=1","6..2=0x04","1..0=3"]},"relationship-resolution":[{"candidates":[],"kind":"specializes","status":"missing"}],"specializes-reference":{"extension":"rv64_zbs","name":"binvi"},"upstream-resolved":{"mask":"0xfe00707f","match":"0x68001013","variable_fields":["rd","rs1","shamtw"]}},"record_id":"riscv-opcodes:rv32_zbs:binvi.rv32@L3","relationships":[{"kind":"specializes","target":"riscv-opcodes:rv64_zbs:binvi"}],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":["specializes-target not resolved to a concrete record_id by this adapter"]}|}
+
+let bseti_json =
+  {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":26,"name":"bits[31:26]","width":6},{"lsb":12,"name":"bits[14:12]","width":3},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"shamtd","width":6}],"kind":"fixed_bits","mask":"0xfc00707f","value":"0x28001013","width_bits":32},"kind":"instruction-form","native_name":"bseti","origin":{"line":4,"path":"extensions/rv64_zbs"},"provenance":{"extension":"rv64_zbs","operands":["rd","rs1","shamtd"],"raw":{"line":"bseti       rd rs1 31..26=0x0a shamtd 14..12=1 6..2=0x04 1..0=3","tokens":["bseti","rd","rs1","31..26=0x0a","shamtd","14..12=1","6..2=0x04","1..0=3"]},"upstream-resolved":{"mask":"0xfc00707f","match":"0x28001013","variable_fields":["rd","rs1","shamtd"]}},"record_id":"riscv-opcodes:rv64_zbs:bseti@L4","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
+
+let bseti_rv32_json =
+  {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"shamtw","width":5}],"kind":"fixed_bits","mask":"0xfe00707f","value":"0x28001013","width_bits":32},"kind":"pseudo-op","native_name":"bseti.rv32","origin":{"line":4,"path":"extensions/rv32_zbs"},"provenance":{"extension":"rv32_zbs","operands":["rd","rs1","shamtw"],"raw":{"line":"$pseudo_op rv64_zbs::bseti bseti.rv32 rd rs1 31..25=0x14 shamtw 14..12=1 6..2=0x04 1..0=3","tokens":["$pseudo_op","rv64_zbs::bseti","bseti.rv32","rd","rs1","31..25=0x14","shamtw","14..12=1","6..2=0x04","1..0=3"]},"relationship-resolution":[{"candidates":[],"kind":"specializes","status":"missing"}],"specializes-reference":{"extension":"rv64_zbs","name":"bseti"},"upstream-resolved":{"mask":"0xfe00707f","match":"0x28001013","variable_fields":["rd","rs1","shamtw"]}},"record_id":"riscv-opcodes:rv32_zbs:bseti.rv32@L4","relationships":[{"kind":"specializes","target":"riscv-opcodes:rv64_zbs:bseti"}],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":["specializes-target not resolved to a concrete record_id by this adapter"]}|}
+
 let fadd_s_json =
   {|{"applicability":{"kind":"all","of":[]},"encoding":{"fields":[{"lsb":27,"name":"bits[31:27]","width":5},{"lsb":25,"name":"bits[26:25]","width":2},{"lsb":2,"name":"bits[6:2]","width":5},{"lsb":0,"name":"bits[1:0]","width":2},{"lsb":7,"name":"rd","width":5},{"lsb":15,"name":"rs1","width":5},{"lsb":20,"name":"rs2","width":5},{"lsb":12,"name":"rm","width":3}],"kind":"fixed_bits","mask":"0xfe00007f","value":"0x53","width_bits":32},"kind":"instruction-form","native_name":"fadd.s","origin":{"line":7,"path":"extensions/rv_f"},"provenance":{"extension":"rv_f","operands":["rd","rs1","rs2","rm"],"raw":{"line":"fadd.s    rd rs1 rs2      31..27=0x00 rm       26..25=0 6..2=0x14 1..0=3","tokens":["fadd.s","rd","rs1","rs2","31..27=0x00","rm","26..25=0","6..2=0x14","1..0=3"]},"upstream-resolved":{"mask":"0xfe00007f","match":"0x53","variable_fields":["rd","rs1","rs2","rm"]}},"record_id":"riscv-opcodes:rv_f:fadd.s@L7","relationships":[],"snapshot":"riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396","source":"riscv_opcodes","unresolved":[]}|}
 
@@ -258,6 +294,83 @@ let test_min () = test_r_type_gpr ~feature:"zbb" ~mnemonic:"min" ~json:min_json
 let test_minu () = test_r_type_gpr ~feature:"zbb" ~mnemonic:"minu" ~json:minu_json
 let test_max () = test_r_type_gpr ~feature:"zbb" ~mnemonic:"max" ~json:max_json
 let test_maxu () = test_r_type_gpr ~feature:"zbb" ~mnemonic:"maxu" ~json:maxu_json
+
+(* bclr/bext/binv/bset: Zbs's single-bit-manipulation family - the same
+   plain three-GPR R-type shape {!test_r_type_gpr} already exercises, each
+   mnemonic a single, non-import-duplicated rv_zbs record on both profiles
+   (no {!alternative_extensions_by_mnemonic} entry needed, unlike Zbb's
+   andn/orn/xnor/rol/ror). *)
+let test_bclr () = test_r_type_gpr ~feature:"zbs" ~mnemonic:"bclr" ~json:bclr_json
+let test_bext () = test_r_type_gpr ~feature:"zbs" ~mnemonic:"bext" ~json:bext_json
+let test_binv () = test_r_type_gpr ~feature:"zbs" ~mnemonic:"binv" ~json:binv_json
+let test_bset () = test_r_type_gpr ~feature:"zbs" ~mnemonic:"bset" ~json:bset_json
+
+(* bclri/bexti/binvi/bseti: Zbs's shift-amount-immediate siblings of
+   bclr/bext/binv/bset above - the same two-GPR-plus-unsigned-immediate
+   shape {!shamt_gpr_form} builds for rori/roriw/aes64ks1i, but each
+   mnemonic is a single, non-import-duplicated record per profile
+   (riscv64.jsonl's own "bclri" etc., 6-bit shamtd; riscv32.jsonl's
+   pseudo-op alias "bclri.rv32" etc., 5-bit shamtw), so - unlike
+   rori/rori.rv32 - {!requirement_of_mnemonic}'s plain per-record fallback
+   already gives the right Req_all [Req_xlen; Req_feature "riscv:zbs"]
+   answer with no {!alternative_extensions_by_mnemonic} entry or
+   [extension_lookup_key] needed. *)
+let test_shamt_gpr_xlen ~xlen ~width ~feature ~mnemonic ~lookup_mnemonic ~json =
+  let rec_ = decode_or_fail lookup_mnemonic json in
+  let form = normalize_or_fail lookup_mnemonic rec_ in
+  check
+    (Printf.sprintf "%s: requirement is RV%d plus the %s feature" lookup_mnemonic xlen feature)
+    (form.requirement
+    = Isa_norm_model.Req_all [ Req_xlen xlen; Req_feature (Printf.sprintf "riscv:%s" feature) ]);
+  check
+    (lookup_mnemonic ^ ": form_id matches the rendered mnemonic")
+    (String.equal form.form_id ("riscv:" ^ mnemonic));
+  check
+    (Printf.sprintf "%s: two GPR operands plus an unsigned %d-bit shamt immediate" lookup_mnemonic
+       width)
+    (match form.operands with
+    | [
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Immediate { width_bits; signed = false; _ }; _ };
+    ] ->
+        width_bits = width
+    | _ -> false);
+  check
+    (lookup_mnemonic ^ ": renders as the bare mnemonic rd, rs1, shamt")
+    (Isa_norm_model.render_syntax form.syntax = Printf.sprintf "%s rd, rs1, shamt" mnemonic)
+
+let test_bclri () =
+  test_shamt_gpr_xlen ~xlen:64 ~width:6 ~feature:"zbs" ~mnemonic:"bclri" ~lookup_mnemonic:"bclri"
+    ~json:bclri_json
+
+let test_bclri_rv32 () =
+  test_shamt_gpr_xlen ~xlen:32 ~width:5 ~feature:"zbs" ~mnemonic:"bclri"
+    ~lookup_mnemonic:"bclri.rv32" ~json:bclri_rv32_json
+
+let test_bexti () =
+  test_shamt_gpr_xlen ~xlen:64 ~width:6 ~feature:"zbs" ~mnemonic:"bexti" ~lookup_mnemonic:"bexti"
+    ~json:bexti_json
+
+let test_bexti_rv32 () =
+  test_shamt_gpr_xlen ~xlen:32 ~width:5 ~feature:"zbs" ~mnemonic:"bexti"
+    ~lookup_mnemonic:"bexti.rv32" ~json:bexti_rv32_json
+
+let test_binvi () =
+  test_shamt_gpr_xlen ~xlen:64 ~width:6 ~feature:"zbs" ~mnemonic:"binvi" ~lookup_mnemonic:"binvi"
+    ~json:binvi_json
+
+let test_binvi_rv32 () =
+  test_shamt_gpr_xlen ~xlen:32 ~width:5 ~feature:"zbs" ~mnemonic:"binvi"
+    ~lookup_mnemonic:"binvi.rv32" ~json:binvi_rv32_json
+
+let test_bseti () =
+  test_shamt_gpr_xlen ~xlen:64 ~width:6 ~feature:"zbs" ~mnemonic:"bseti" ~lookup_mnemonic:"bseti"
+    ~json:bseti_json
+
+let test_bseti_rv32 () =
+  test_shamt_gpr_xlen ~xlen:32 ~width:5 ~feature:"zbs" ~mnemonic:"bseti"
+    ~lookup_mnemonic:"bseti.rv32" ~json:bseti_rv32_json
 
 (* vsetvl: V's register-register configuration-setting instruction - the
    same plain three-GPR R-type shape {!test_r_type_gpr} already exercises,
@@ -2324,6 +2437,27 @@ let clmul_json =
 let clmulh_json =
   {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[31:25]", "width": 7}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xa003033", "width_bits": 32}, "kind": "instruction-form", "native_name": "clmulh", "origin": {"line": 3, "path": "extensions/rv_zbc"}, "provenance": {"extension": "rv_zbc", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "clmulh     rd rs1 rs2 31..25=5 14..12=3 6..2=0x0C 1..0=3", "tokens": ["clmulh", "rd", "rs1", "rs2", "31..25=5", "14..12=3", "6..2=0x0C", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xa003033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_zbc:clmulh@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
 
+let clmulr_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[31:25]", "width": 7}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xa002033", "width_bits": 32}, "kind": "instruction-form", "native_name": "clmulr", "origin": {"line": 2, "path": "extensions/rv_zbc"}, "provenance": {"extension": "rv_zbc", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "clmulr     rd rs1 rs2 31..25=5 14..12=2 6..2=0x0C 1..0=3", "tokens": ["clmulr", "rd", "rs1", "rs2", "31..25=5", "14..12=2", "6..2=0x0C", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xa002033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_zbc:clmulr@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let czero_eqz_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[31:25]", "width": 7}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xe005033", "width_bits": 32}, "kind": "instruction-form", "native_name": "czero.eqz", "origin": {"line": 1, "path": "extensions/rv_zicond"}, "provenance": {"extension": "rv_zicond", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "czero.eqz   rd rs1 rs2 31..25=7 14..12=5 6..2=0x0C 1..0=3", "tokens": ["czero.eqz", "rd", "rs1", "rs2", "31..25=7", "14..12=5", "6..2=0x0C", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xe005033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_zicond:czero.eqz@L1", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let czero_nez_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[31:25]", "width": 7}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0xe007033", "width_bits": 32}, "kind": "instruction-form", "native_name": "czero.nez", "origin": {"line": 2, "path": "extensions/rv_zicond"}, "provenance": {"extension": "rv_zicond", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "czero.nez   rd rs1 rs2 31..25=7 14..12=7 6..2=0x0C 1..0=3", "tokens": ["czero.nez", "rd", "rs1", "rs2", "31..25=7", "14..12=7", "6..2=0x0C", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0xe007033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_zicond:czero.nez@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sm3p0_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x10801013", "width_bits": 32}, "kind": "instruction-form", "native_name": "sm3p0", "origin": {"line": 2, "path": "extensions/rv_zksh"}, "provenance": {"extension": "rv_zksh", "operands": ["rd", "rs1"], "raw": {"line": "sm3p0         rd rs1 31..30=0 29..25=0b01000 24..20=0b01000 14..12=1 6..0=0x13", "tokens": ["sm3p0", "rd", "rs1", "31..30=0", "29..25=0b01000", "24..20=0b01000", "14..12=1", "6..0=0x13"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x10801013", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv_zksh:sm3p0@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sm3p1_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 30, "name": "bits[31:30]", "width": 2}, {"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 20, "name": "bits[24:20]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}], "kind": "fixed_bits", "mask": "0xfff0707f", "value": "0x10901013", "width_bits": 32}, "kind": "instruction-form", "native_name": "sm3p1", "origin": {"line": 3, "path": "extensions/rv_zksh"}, "provenance": {"extension": "rv_zksh", "operands": ["rd", "rs1"], "raw": {"line": "sm3p1         rd rs1 31..30=0 29..25=0b01000 24..20=0b01001 14..12=1 6..0=0x13", "tokens": ["sm3p1", "rd", "rs1", "31..30=0", "29..25=0b01000", "24..20=0b01001", "14..12=1", "6..0=0x13"]}, "upstream-resolved": {"mask": "0xfff0707f", "match": "0x10901013", "variable_fields": ["rd", "rs1"]}}, "record_id": "riscv-opcodes:rv_zksh:sm3p1@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sm4ed_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 30, "name": "bs", "width": 2}], "kind": "fixed_bits", "mask": "0x3e00707f", "value": "0x30000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "sm4ed", "origin": {"line": 2, "path": "extensions/rv_zksed"}, "provenance": {"extension": "rv_zksed", "operands": ["rd", "rs1", "rs2", "bs"], "raw": {"line": "sm4ed         rd rs1 rs2 bs 29..25=0b11000 14..12=0 6..0=0x33", "tokens": ["sm4ed", "rd", "rs1", "rs2", "bs", "29..25=0b11000", "14..12=0", "6..0=0x33"]}, "upstream-resolved": {"mask": "0x3e00707f", "match": "0x30000033", "variable_fields": ["rd", "rs1", "rs2", "bs"]}}, "record_id": "riscv-opcodes:rv_zksed:sm4ed@L2", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
+let sm4ks_json =
+  {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[29:25]", "width": 5}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 0, "name": "bits[6:0]", "width": 7}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}, {"lsb": 30, "name": "bs", "width": 2}], "kind": "fixed_bits", "mask": "0x3e00707f", "value": "0x34000033", "width_bits": 32}, "kind": "instruction-form", "native_name": "sm4ks", "origin": {"line": 3, "path": "extensions/rv_zksed"}, "provenance": {"extension": "rv_zksed", "operands": ["rd", "rs1", "rs2", "bs"], "raw": {"line": "sm4ks         rd rs1 rs2 bs 29..25=0b11010 14..12=0 6..0=0x33", "tokens": ["sm4ks", "rd", "rs1", "rs2", "bs", "29..25=0b11010", "14..12=0", "6..0=0x33"]}, "upstream-resolved": {"mask": "0x3e00707f", "match": "0x34000033", "variable_fields": ["rd", "rs1", "rs2", "bs"]}}, "record_id": "riscv-opcodes:rv_zksed:sm4ks@L3", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
+
 let xperm4_json =
   {|{"applicability": {"kind": "all", "of": []}, "encoding": {"fields": [{"lsb": 25, "name": "bits[31:25]", "width": 7}, {"lsb": 12, "name": "bits[14:12]", "width": 3}, {"lsb": 2, "name": "bits[6:2]", "width": 5}, {"lsb": 0, "name": "bits[1:0]", "width": 2}, {"lsb": 7, "name": "rd", "width": 5}, {"lsb": 15, "name": "rs1", "width": 5}, {"lsb": 20, "name": "rs2", "width": 5}], "kind": "fixed_bits", "mask": "0xfe00707f", "value": "0x28002033", "width_bits": 32}, "kind": "instruction-form", "native_name": "xperm4", "origin": {"line": 1, "path": "extensions/rv_zbkx"}, "provenance": {"extension": "rv_zbkx", "operands": ["rd", "rs1", "rs2"], "raw": {"line": "xperm4     rd rs1 rs2 31..25=20 14..12=2 6..2=0x0C 1..0=3", "tokens": ["xperm4", "rd", "rs1", "rs2", "31..25=20", "14..12=2", "6..2=0x0C", "1..0=3"]}, "upstream-resolved": {"mask": "0xfe00707f", "match": "0x28002033", "variable_fields": ["rd", "rs1", "rs2"]}}, "record_id": "riscv-opcodes:rv_zbkx:xperm4@L1", "relationships": [], "snapshot": "riscv_opcodes@7afd3dc8772909d8c94ceeb208467cff93896396", "source": "riscv_opcodes", "unresolved": []}|}
 
@@ -2528,6 +2662,28 @@ let test_clmul () =
 
 let test_clmulh () =
   test_r_type_gpr_any ~import_group:zbc_import_group ~mnemonic:"clmulh" ~json:clmulh_json
+
+(* clmulr: clmul/clmulh's reversed sibling, but Zbc-only - riscv-opcodes has
+   no rv_zbkc/rv_zk/rv_zkn/rv_zks import of it at all, so it uses the plain
+   single-feature {!test_r_type_gpr} rather than {!test_r_type_gpr_any}. *)
+let test_clmulr () = test_r_type_gpr ~feature:"zbc" ~mnemonic:"clmulr" ~json:clmulr_json
+
+(* czero.eqz/czero.nez: Zicond's conditional-zero pair, the same plain
+   three-GPR R-type shape as clmulr - a single, non-import-duplicated
+   rv_zicond record on each profile, no Req_any needed. *)
+let test_czero_eqz () = test_r_type_gpr ~feature:"zicond" ~mnemonic:"czero.eqz" ~json:czero_eqz_json
+let test_czero_nez () = test_r_type_gpr ~feature:"zicond" ~mnemonic:"czero.nez" ~json:czero_nez_json
+
+(* sm3p0/sm3p1: Zksh's SM3 message-schedule helpers, the same two-GPR
+   unary shape as sha256sum0/etc but a two-way Req_any group (primary
+   rv_zksh, imported by rv_zks alone). *)
+let zksh_import_group = [ "zksh"; "zks" ]
+
+let test_sm3p0 () =
+  test_unary_gpr_any ~import_group:zksh_import_group ~mnemonic:"sm3p0" ~json:sm3p0_json
+
+let test_sm3p1 () =
+  test_unary_gpr_any ~import_group:zksh_import_group ~mnemonic:"sm3p1" ~json:sm3p1_json
 
 (* xperm4/xperm8: the same three-GPR Req_any R-type shape, but a four-way
    zbkx-only group (rv_zbkx/rv_zk/rv_zkn/rv_zks - no separate non-K sibling
@@ -2783,6 +2939,43 @@ let test_aes32esi () =
 let test_aes32esmi () =
   test_r_type_imm_gpr_any_rv32 ~import_group:aes32e_import_group ~mnemonic:"aes32esmi"
     ~json:aes32esmi_json
+
+(* sm4ed/sm4ks: Zksed's SM4 round/key-schedule functions, the same
+   three-GPR-plus-bs-immediate shape as AES-32's own four - but unlike
+   AES-32, riscv-opcodes has a record on BOTH profiles, so the Req_any is
+   plain (no Req_xlen wrapping the two-way group). *)
+let test_r_type_imm_gpr_any ~import_group ~mnemonic ~json =
+  let rec_ = decode_or_fail mnemonic json in
+  let form = normalize_or_fail mnemonic rec_ in
+  check
+    (mnemonic ^ ": requirement is Req_any over the import-group features")
+    (form.requirement
+    = Isa_norm_model.Req_any
+        (List.map
+           (fun feature -> Isa_norm_model.Req_feature (Printf.sprintf "riscv:%s" feature))
+           import_group));
+  check
+    (mnemonic ^ ": three GPR operands plus an unsigned 2-bit bs immediate")
+    (match form.operands with
+    | [
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Register { class_ = Riscv_gpr; excluded = [] }; _ };
+     { op_kind = Immediate { width_bits = 2; signed = false; _ }; _ };
+    ] ->
+        true
+    | _ -> false);
+  check
+    (mnemonic ^ ": renders as rd, rs1, rs2, bs")
+    (Isa_norm_model.render_syntax form.syntax = Printf.sprintf "%s rd, rs1, rs2, bs" mnemonic)
+
+let zksed_import_group = [ "zksed"; "zks" ]
+
+let test_sm4ed () =
+  test_r_type_imm_gpr_any ~import_group:zksed_import_group ~mnemonic:"sm4ed" ~json:sm4ed_json
+
+let test_sm4ks () =
+  test_r_type_imm_gpr_any ~import_group:zksed_import_group ~mnemonic:"sm4ks" ~json:sm4ks_json
 
 (* csrrw/csrrs/csrrc: Zicsr's register-source CSR forms - a plain
    Req_feature (no import duplication, single rv_zicsr record per
@@ -4897,6 +5090,18 @@ let () =
   test_minu ();
   test_max ();
   test_maxu ();
+  test_bclr ();
+  test_bext ();
+  test_binv ();
+  test_bset ();
+  test_bclri ();
+  test_bclri_rv32 ();
+  test_bexti ();
+  test_bexti_rv32 ();
+  test_binvi ();
+  test_binvi_rv32 ();
+  test_bseti ();
+  test_bseti_rv32 ();
   test_andn ();
   test_orn ();
   test_xnor ();
@@ -4904,6 +5109,13 @@ let () =
   test_ror ();
   test_clmul ();
   test_clmulh ();
+  test_clmulr ();
+  test_czero_eqz ();
+  test_czero_nez ();
+  test_sm3p0 ();
+  test_sm3p1 ();
+  test_sm4ed ();
+  test_sm4ks ();
   test_xperm4 ();
   test_xperm8 ();
   test_sha256sum0 ();

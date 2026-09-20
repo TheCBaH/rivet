@@ -82,6 +82,14 @@ let test_counts () =
   check "clmul/clmulh entries have 2 entries each (Zbc Req_any x 2 profiles)"
     (List.length Isa_gen_difficult.clmul_entries = 2
     && List.length Isa_gen_difficult.clmulh_entries = 2);
+  check "clmulr entries have 2 entries (Zbc-only, no Req_any, 2 profiles)"
+    (List.length Isa_gen_difficult.clmulr_entries = 2);
+  check "czero.eqz/czero.nez entries have 2 entries each (Zicond-only, no Req_any, 2 profiles)"
+    (List.length Isa_gen_difficult.czero_eqz_entries = 2
+    && List.length Isa_gen_difficult.czero_nez_entries = 2);
+  check "sm3p0/sm3p1 entries have 2 entries each (Zksh Req_any x 2 profiles)"
+    (List.length Isa_gen_difficult.sm3p0_entries = 2
+    && List.length Isa_gen_difficult.sm3p1_entries = 2);
   check "xperm4/xperm8 entries have 2 entries each (Zbkx Req_any x 2 profiles)"
     (List.length Isa_gen_difficult.xperm4_entries = 2
     && List.length Isa_gen_difficult.xperm8_entries = 2);
@@ -139,6 +147,9 @@ let test_counts () =
          (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv32)
          (Isa_gen_difficult.aes32dsi_entries @ Isa_gen_difficult.aes32dsmi_entries
         @ Isa_gen_difficult.aes32esi_entries @ Isa_gen_difficult.aes32esmi_entries));
+  check "sm4ed/sm4ks entries have 2 entries each (Zksed Req_any, both profiles)"
+    (List.length Isa_gen_difficult.sm4ed_entries = 2
+    && List.length Isa_gen_difficult.sm4ks_entries = 2);
   check
     "csrrw/csrrs/csrrc/csrrwi/csrrsi/csrrci entries have 2 entries each (XLEN-independent x 2 \
      profiles)"
@@ -221,6 +232,26 @@ let test_counts () =
     && List.for_all
          (fun (e : Isa_gen_difficult.entry) -> e.target = Target.Riscv64)
          Isa_gen_difficult.roriw_entries);
+  check "bclr/bext/binv/bset_entries have 2 entries each (both profiles, no Req_any)"
+    (List.length Isa_gen_difficult.bclr_entries = 2
+    && List.length Isa_gen_difficult.bext_entries = 2
+    && List.length Isa_gen_difficult.binv_entries = 2
+    && List.length Isa_gen_difficult.bset_entries = 2);
+  check
+    "bclri/bexti/binvi/bseti_entries have 2 entries each (profile-specific native_name split, no \
+     lookup_key distinct from the rendered mnemonic)"
+    (List.length Isa_gen_difficult.bclri_entries = 2
+    && List.length Isa_gen_difficult.bexti_entries = 2
+    && List.length Isa_gen_difficult.binvi_entries = 2
+    && List.length Isa_gen_difficult.bseti_entries = 2
+    && List.exists
+         (fun (e : Isa_gen_difficult.entry) ->
+           e.target = Target.Riscv32 && String.equal e.lookup_key "bclri.rv32")
+         Isa_gen_difficult.bclri_entries
+    && List.exists
+         (fun (e : Isa_gen_difficult.entry) ->
+           e.target = Target.Riscv64 && String.equal e.lookup_key "bclri")
+         Isa_gen_difficult.bclri_entries);
   check "zext_h_entries has 2 entries (profile-specific native_name split like rev8)"
     (List.length Isa_gen_difficult.zext_h_entries = 2
     && List.exists
@@ -1131,9 +1162,22 @@ let test_counts () =
       + List.length Isa_gen_difficult.rorw_entries
       + List.length Isa_gen_difficult.rori_entries
       + List.length Isa_gen_difficult.roriw_entries
+      + List.length Isa_gen_difficult.bclr_entries
+      + List.length Isa_gen_difficult.bext_entries
+      + List.length Isa_gen_difficult.binv_entries
+      + List.length Isa_gen_difficult.bset_entries
+      + List.length Isa_gen_difficult.bclri_entries
+      + List.length Isa_gen_difficult.bexti_entries
+      + List.length Isa_gen_difficult.binvi_entries
+      + List.length Isa_gen_difficult.bseti_entries
       + List.length Isa_gen_difficult.zext_h_entries
       + List.length Isa_gen_difficult.clmul_entries
       + List.length Isa_gen_difficult.clmulh_entries
+      + List.length Isa_gen_difficult.clmulr_entries
+      + List.length Isa_gen_difficult.czero_eqz_entries
+      + List.length Isa_gen_difficult.czero_nez_entries
+      + List.length Isa_gen_difficult.sm3p0_entries
+      + List.length Isa_gen_difficult.sm3p1_entries
       + List.length Isa_gen_difficult.xperm4_entries
       + List.length Isa_gen_difficult.xperm8_entries
       + List.length Isa_gen_difficult.sha256sum0_entries
@@ -1161,6 +1205,8 @@ let test_counts () =
       + List.length Isa_gen_difficult.aes32dsmi_entries
       + List.length Isa_gen_difficult.aes32esi_entries
       + List.length Isa_gen_difficult.aes32esmi_entries
+      + List.length Isa_gen_difficult.sm4ed_entries
+      + List.length Isa_gen_difficult.sm4ks_entries
       + List.length Isa_gen_difficult.csrrw_entries
       + List.length Isa_gen_difficult.csrrs_entries
       + List.length Isa_gen_difficult.csrrc_entries
@@ -2720,13 +2766,15 @@ let test_minmax_domain () =
    @ Isa_gen_difficult.pack_entries @ Isa_gen_difficult.packh_entries
    @ Isa_gen_difficult.packw_entries @ Isa_gen_difficult.rolw_entries
    @ Isa_gen_difficult.rorw_entries @ Isa_gen_difficult.clmul_entries
-   @ Isa_gen_difficult.clmulh_entries @ Isa_gen_difficult.xperm4_entries
-   @ Isa_gen_difficult.xperm8_entries @ Isa_gen_difficult.sha512sum0r_entries
-   @ Isa_gen_difficult.sha512sum1r_entries @ Isa_gen_difficult.sha512sig0l_entries
-   @ Isa_gen_difficult.sha512sig1l_entries @ Isa_gen_difficult.sha512sig0h_entries
-   @ Isa_gen_difficult.sha512sig1h_entries @ Isa_gen_difficult.aes64ds_entries
-   @ Isa_gen_difficult.aes64dsm_entries @ Isa_gen_difficult.aes64es_entries
-   @ Isa_gen_difficult.aes64esm_entries @ Isa_gen_difficult.aes64ks2_entries)
+   @ Isa_gen_difficult.clmulh_entries @ Isa_gen_difficult.clmulr_entries
+   @ Isa_gen_difficult.czero_eqz_entries @ Isa_gen_difficult.czero_nez_entries
+   @ Isa_gen_difficult.xperm4_entries @ Isa_gen_difficult.xperm8_entries
+   @ Isa_gen_difficult.sha512sum0r_entries @ Isa_gen_difficult.sha512sum1r_entries
+   @ Isa_gen_difficult.sha512sig0l_entries @ Isa_gen_difficult.sha512sig1l_entries
+   @ Isa_gen_difficult.sha512sig0h_entries @ Isa_gen_difficult.sha512sig1h_entries
+   @ Isa_gen_difficult.aes64ds_entries @ Isa_gen_difficult.aes64dsm_entries
+   @ Isa_gen_difficult.aes64es_entries @ Isa_gen_difficult.aes64esm_entries
+   @ Isa_gen_difficult.aes64ks2_entries)
 
 let test_unary_gpr_domain () =
   List.iter
@@ -2747,7 +2795,8 @@ let test_unary_gpr_domain () =
    @ Isa_gen_difficult.sha256sum1_entries @ Isa_gen_difficult.sha256sig0_entries
    @ Isa_gen_difficult.sha256sig1_entries @ Isa_gen_difficult.sha512sum0_entries
    @ Isa_gen_difficult.sha512sum1_entries @ Isa_gen_difficult.sha512sig0_entries
-   @ Isa_gen_difficult.sha512sig1_entries @ Isa_gen_difficult.aes64im_entries)
+   @ Isa_gen_difficult.sha512sig1_entries @ Isa_gen_difficult.aes64im_entries
+   @ Isa_gen_difficult.sm3p0_entries @ Isa_gen_difficult.sm3p1_entries)
 
 let test_shamt_domain () =
   List.iter
@@ -2792,6 +2841,20 @@ let test_aes32_domain () =
         (List.exists (fun arg -> String.contains arg 'z') e.configuration))
     (Isa_gen_difficult.aes32dsi_entries @ Isa_gen_difficult.aes32dsmi_entries
    @ Isa_gen_difficult.aes32esi_entries @ Isa_gen_difficult.aes32esmi_entries)
+
+(* sm4ed/sm4ks: the same three-GPR-plus-bs-immediate shape {!test_aes32_domain}
+   checks, but unlike AES-32 these cover both profiles, not RV32-only. *)
+let test_sm4_domain () =
+  List.iter
+    (fun (e : Isa_gen_difficult.entry) ->
+      check
+        (Printf.sprintf "%s: uses three ordinary GPR operands plus a bs immediate" e.case_id)
+        (List.map fst e.operands = [ "rd"; "rs1"; "rs2"; "bs" ]
+        && List.map snd e.operands = [ "a0"; "a1"; "a2"; "3" ]);
+      check
+        (Printf.sprintf "%s: enables only the measured Zksed extension" e.case_id)
+        (List.exists (fun arg -> String.contains arg 'z') e.configuration))
+    (Isa_gen_difficult.sm4ed_entries @ Isa_gen_difficult.sm4ks_entries)
 
 (* csrrw/csrrs/csrrc: rd/csr/rs1 operands, GAS's own text order (not
    riscv-opcodes' rd/rs1/csr field order). *)
@@ -3052,6 +3115,7 @@ let () =
   test_shamt_domain ();
   test_aes64ks1i_domain ();
   test_aes32_domain ();
+  test_sm4_domain ();
   test_csr_reg_domain ();
   test_csr_imm_domain ();
   test_csrr_domain ();
