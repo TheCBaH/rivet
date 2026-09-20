@@ -291,6 +291,11 @@ module Opcode = struct
             mandatory-prefix group (M5, asm/docs/corpus.md - gas_frontier.t's
             runtime-i64_dtou.S's own float-to-unsigned range test). *)
     | Comiss
+    | Ucomiss
+        (** [ucomiss rm, reg] - unordered scalar single compare ([0F 2E /r], no mandatory
+            prefix), {!Comiss}'s exact sibling in the same [sse_binop_none_codec] table, one
+            more opcode byte at the same mandatory-prefix-free group - overlooked alongside
+            {!Ucomisd}'s own group when the comparison family was first admitted. *)
     | Xorpd
     | Pxor
         (** [pxor rm, reg] - packed bitwise XOR ([66 0F EF /r]), {!Xorpd}'s own mandatory-prefix
@@ -301,11 +306,43 @@ module Opcode = struct
     | Movapd
     | Cvtsd2ss
     | Cvtss2sd
+    | Cvtps2pd
+        (** [cvtps2pd rm, reg] - packed single-to-double conversion ([0F 5A /r], no mandatory
+            prefix), {!Cvtsd2ss}/{!Cvtss2sd}'s own opcode byte at the two remaining
+            mandatory-prefix groups (none/66 instead of F2/F3). Both register-register and
+            register<-memory confirmed unambiguous against real GNU as at this legacy encoding
+            (no VEX.L concept here at all) - see {!Vcvtpd2ps}'s own comment for the real
+            ambiguity its VEX sibling hits. *)
+    | Cvtpd2ps
+        (** [cvtpd2ps rm, reg] - packed double-to-single conversion ([66 0F 5A /r]),
+            {!Cvtps2pd}'s mandatory-66 counterpart at the same opcode byte. Also unambiguous
+            both ways at this legacy encoding, confirmed against real GNU as. *)
     | Movsd
     | Movss
     | Cvtsi2sd
     | Cvtsi2ss
     | Cvttsd2si
+    | Unpcklps
+        (** [unpcklps rm, reg] - packed interleave, low half, single precision ([0F 14 /r], no
+            mandatory prefix), the first genuine two-source-operand packed binop in
+            {!sse_binop_none_codec}'s own mandatory-prefix-free group ({!Andps}'s and
+            {!Comiss}'s group), a different opcode byte from either. *)
+    | Unpckhps
+        (** [unpckhps rm, reg] - packed interleave, high half, single precision ([0F 15 /r]),
+            {!Unpcklps}'s sibling. *)
+    | Unpcklpd
+        (** [unpcklpd rm, reg] - packed interleave, low half, double precision ([66 0F 14 /r]),
+            {!Unpcklps}'s mandatory-66-prefix counterpart at the same opcode byte. *)
+    | Unpckhpd
+        (** [unpckhpd rm, reg] - packed interleave, high half, double precision ([66 0F 15 /r]),
+            {!Unpcklpd}'s sibling. *)
+    | Punpcklqdq
+        (** [punpcklqdq rm, reg] - packed integer interleave, low half, quadword ([66 0F 6C /r]),
+            {!Unpcklps}'s own shape at a different opcode byte, 66-mandatory-prefix only (no
+            non-66 sibling - this is an integer SIMD op, not a float one). *)
+    | Punpckhqdq
+        (** [punpckhqdq rm, reg] - packed integer interleave, high half, quadword
+            ([66 0F 6D /r]), {!Punpcklqdq}'s sibling. *)
     | Andps
         (** [andps rm, reg] - packed bitwise AND, single precision ([0F 54 /r], no mandatory
             prefix - {!Comiss}'s own mandatory-prefix-free group at a different opcode byte). *)
@@ -357,6 +394,74 @@ module Opcode = struct
         (** [mulpd rm, reg] - packed multiply, double precision ([66 0F 59 /r]), {!Addpd}'s sibling. *)
     | Divpd
         (** [divpd rm, reg] - packed divide, double precision ([66 0F 5E /r]), {!Addpd}'s sibling. *)
+    | Maxss
+        (** [maxss rm, reg] - scalar maximum, single precision ([F3 0F 5F /r]), {!Addss}'s own
+            mandatory-prefix group at a different opcode byte. *)
+    | Minss
+        (** [minss rm, reg] - scalar minimum, single precision ([F3 0F 5D /r]), {!Maxss}'s
+            sibling. *)
+    | Maxsd
+        (** [maxsd rm, reg] - scalar maximum, double precision ([F2 0F 5F /r]), {!Maxss}'s
+            mandatory-[F2] counterpart at the same opcode byte and {!Addsd}'s own mandatory-prefix
+            group at a different opcode byte. *)
+    | Minsd
+        (** [minsd rm, reg] - scalar minimum, double precision ([F2 0F 5D /r]), {!Maxsd}'s sibling. *)
+    | Maxps
+        (** [maxps rm, reg] - packed maximum, single precision ([0F 5F /r], no mandatory prefix),
+            {!Maxss}'s mandatory-prefix-free counterpart at the same opcode byte and {!Addps}'s
+            own mandatory-prefix-free group at a different opcode byte. *)
+    | Minps
+        (** [minps rm, reg] - packed minimum, single precision ([0F 5D /r]), {!Maxps}'s sibling. *)
+    | Maxpd
+        (** [maxpd rm, reg] - packed maximum, double precision ([66 0F 5F /r]), {!Maxps}'s
+            mandatory-66-prefix counterpart at the same opcode byte and {!Addpd}'s own
+            mandatory-66-prefix group at a different opcode byte. *)
+    | Minpd
+        (** [minpd rm, reg] - packed minimum, double precision ([66 0F 5D /r]), {!Maxpd}'s sibling. *)
+    | Sqrtss
+        (** [sqrtss rm, reg] - scalar square root, single precision ([F3 0F 51 /r]), {!Addss}'s
+            own mandatory-prefix group at a different opcode byte. The first genuinely unary
+            member of this family - [reg] is only ever a destination architecturally, but XED
+            still marks it [rw] (a scalar op leaves the destination's upper 96 bits untouched),
+            the same convention {!Addsd}'s own [REG0] already has, so {!Lowered.Sse_binop_r_rm}
+            and its [xmm_binop_rr_form]/[xmm_binop_rm_form] normalizers need no change at all. *)
+    | Sqrtsd
+        (** [sqrtsd rm, reg] - scalar square root, double precision ([F2 0F 51 /r]), {!Sqrtss}'s
+            mandatory-[F2] counterpart at the same opcode byte. *)
+    | Sqrtps
+        (** [sqrtps rm, reg] - packed square root, single precision ([0F 51 /r], no mandatory
+            prefix), {!Sqrtss}'s mandatory-prefix-free counterpart at the same opcode byte. *)
+    | Sqrtpd
+        (** [sqrtpd rm, reg] - packed square root, double precision ([66 0F 51 /r]), {!Sqrtps}'s
+            mandatory-66-prefix counterpart at the same opcode byte. *)
+    | Shufps
+        (** [shufps $imm8, rm, reg] - packed shuffle, single precision ([0F C6 /r ib], no
+            mandatory prefix): the first XMM-immediate-carrying legacy shape - every SSE
+            mnemonic above has at most two real operands, but this one takes a genuine trailing
+            imm8 selector alongside its [reg]/[rm] pair, {!Lowered.Sse_binop_imm_r_rm} rather
+            than {!Lowered.Sse_binop_r_rm}. Confirmed against real GNU as: [shufps $0x1b,
+            %xmm2,%xmm1] -> [0f c6 ca 1b], both register-register and register<-memory
+            unambiguous at this legacy encoding. *)
+    | Shufpd
+        (** [shufpd $imm8, rm, reg] - packed shuffle, double precision ([66 0F C6 /r ib]),
+            {!Shufps}'s mandatory-66-prefix counterpart at the same opcode byte. *)
+    | Cmpss
+        (** [cmpss $imm8, rm, reg] - scalar compare, single precision ([F3 0F C2 /r ib]),
+            {!Addss}'s own four-mandatory-prefix-group shape at opcode 0xC2, but - like
+            {!Shufps} - with a trailing imm8 predicate selector: {!Lowered.Sse_binop_imm_r_rm}.
+            Confirmed against real GNU as: [cmpss $0x0,%xmm2,%xmm1] -> [f3 0f c2 ca 00]
+            (GNU as prints this back as the [cmpeqss] pseudo-mnemonic alias for imm8=0; only the
+            canonical [cmpss $imm, ...] spelling is admitted here, not the [cmpeq]/[cmplt]/etc.
+            mnemonic-suffix aliases). *)
+    | Cmpsd
+        (** [cmpsd $imm8, rm, reg] - {!Cmpss}'s mandatory-[F2] counterpart ([F2 0F C2 /r ib]). *)
+    | Cmpps
+        (** [cmpps $imm8, rm, reg] - packed compare, single precision ([0F C2 /r ib], no
+            mandatory prefix), {!Cmpss}'s mandatory-prefix-free counterpart at the same opcode
+            byte, joining {!Shufps}'s own mandatory-prefix-free imm8 group. *)
+    | Cmppd
+        (** [cmppd $imm8, rm, reg] - {!Cmpps}'s mandatory-66-prefix counterpart
+            ([66 0F C2 /r ib]), joining {!Shufpd}'s own mandatory-66 imm8 group. *)
     | Vaddsd
         (** [vaddsd src2, src1, dst] - VEX-encoded scalar-double add ([VEX.LIG.F2.0F.WIG 58 /r]),
             the first x86 vector-extension (AVX) form this project admits: unlike every opcode
@@ -406,6 +511,132 @@ module Opcode = struct
     | Vandnpd  (** [vandnpd src2, src1, dst] - {!Vandpd}'s sibling ([VEX.128.66.0F.WIG 55 /r]). *)
     | Vorpd  (** [vorpd src2, src1, dst] - {!Vandpd}'s sibling ([VEX.128.66.0F.WIG 56 /r]). *)
     | Vxorpd  (** [vxorpd src2, src1, dst] - {!Vandpd}'s sibling ([VEX.128.66.0F.WIG 57 /r]). *)
+    | Vunpcklps
+        (** [vunpcklps src2, src1, dst] - the VEX sibling of the legacy {!Unpcklps}/{!Unpckhps}/
+            {!Unpcklpd}/{!Unpckhpd} family ([VEX.128.0F.WIG 14 /r], [pp = 0]): same
+            [vex_scalar_none_codec] group {!Vaddps}/{!Vandps} already use, a disjoint opcode
+            byte. Confirmed against real GNU as (both [i686-linux-gnu-as] and
+            [x86_64-linux-gnu-as] 2.44): a genuine two-source-operand binop like {!Vandps}, not a
+            merge-only unop like {!Vsqrtps}, so it reuses {!Vex_binop_rr_rm} unchanged. *)
+    | Vunpckhps
+        (** [vunpckhps src2, src1, dst] - {!Vunpcklps}'s sibling ([VEX.128.0F.WIG 15 /r]). *)
+    | Vunpcklpd
+        (** [vunpcklpd src2, src1, dst] - {!Vunpcklps}'s packed-double sibling
+            ([VEX.128.66.0F.WIG 14 /r], [pp = 1], mandatory [66]). *)
+    | Vunpckhpd
+        (** [vunpckhpd src2, src1, dst] - {!Vunpcklpd}'s sibling ([VEX.128.66.0F.WIG 15 /r]). *)
+    | Vpunpcklqdq
+        (** [vpunpcklqdq src2, src1, dst] - the VEX sibling of the legacy {!Punpcklqdq}/
+            {!Punpckhqdq} family ([VEX.128.66.0F.WIG 6C /r], [pp = 1], mandatory [66] only - no
+            non-66 sibling, matching the legacy integer-SIMD-only shape). Confirmed against real
+            GNU as (both [i686-linux-gnu-as] and [x86_64-linux-gnu-as] 2.44): a genuine
+            two-source-operand binop like {!Vunpcklps}, reusing {!Vex_binop_rr_rm} unchanged. *)
+    | Vpunpckhqdq
+        (** [vpunpckhqdq src2, src1, dst] - {!Vpunpcklqdq}'s sibling ([VEX.128.66.0F.WIG 6D /r]). *)
+    | Vmaxsd
+        (** [vmaxsd src2, src1, dst] - the VEX sibling of the legacy {!Maxsd}/{!Minsd}/{!Maxss}/
+            {!Minss}/{!Maxps}/{!Minps}/{!Maxpd}/{!Minpd} family ([VEX.LIG.F2.0F.WIG 5F /r],
+            [pp = 3]): same [vex_scalar_f2_codec] group {!Vaddsd} already uses, a disjoint
+            opcode byte. *)
+    | Vminsd  (** [vminsd src2, src1, dst] - {!Vmaxsd}'s sibling ([VEX.LIG.F2.0F.WIG 5D /r]). *)
+    | Vmaxss
+        (** [vmaxss src2, src1, dst] - {!Vmaxsd}'s scalar-single sibling ([VEX.LIG.F3.0F.WIG 5F /r], [pp = 2]). *)
+    | Vminss  (** [vminss src2, src1, dst] - {!Vmaxss}'s sibling ([VEX.LIG.F3.0F.WIG 5D /r]). *)
+    | Vmaxps
+        (** [vmaxps src2, src1, dst] - {!Vmaxsd}'s packed-single sibling ([VEX.128.0F.WIG 5F /r], [pp = 0]). *)
+    | Vminps  (** [vminps src2, src1, dst] - {!Vmaxps}'s sibling ([VEX.128.0F.WIG 5D /r]). *)
+    | Vmaxpd
+        (** [vmaxpd src2, src1, dst] - {!Vmaxps}'s packed-double sibling ([VEX.128.66.0F.WIG 5F /r], [pp = 1]). *)
+    | Vminpd  (** [vminpd src2, src1, dst] - {!Vmaxpd}'s sibling ([VEX.128.66.0F.WIG 5D /r]). *)
+    | Vsqrtsd
+        (** [vsqrtsd src2, src1, dst] - the VEX sibling of the legacy {!Sqrtsd}/{!Sqrtss}/
+            {!Sqrtps}/{!Sqrtpd} family ([VEX.LIG.F2.0F.WIG 51 /r], [pp = 3]): same
+            [vex_scalar_f2_codec] group {!Vaddsd} already uses. Confirmed against real GNU as
+            that [src1] ([vvvv]) is real here too, even though the CPU only uses it to merge the
+            destination's upper bits rather than as a second arithmetic input - the byte-level
+            operand-to-field mapping is identical to {!Vmaxsd}'s, which is all this project's
+            encoder needs to reuse {!Vex_binop_rr_rm} unchanged. *)
+    | Vsqrtss
+        (** [vsqrtss src2, src1, dst] - {!Vsqrtsd}'s scalar-single sibling ([VEX.LIG.F3.0F.WIG 51 /r], [pp = 2]). *)
+    | Vsqrtps
+        (** [vsqrtps src, dst] - {!Vsqrtsd}'s packed-single sibling ([VEX.128.0F.WIG 51 /r],
+            [pp = 0]), genuinely two-operand: confirmed against real GNU as, which rejects a
+            third operand ("number of operands mismatch") since there is no scalar
+            upper-bits-preservation concept for a fully-packed op - see {!Vex_unop_r_rm}. *)
+    | Vsqrtpd
+        (** [vsqrtpd src, dst] - {!Vsqrtps}'s packed-double sibling ([VEX.128.66.0F.WIG 51 /r], [pp = 1]). *)
+    | Vmovaps
+        (** [vmovaps src, dst] - the VEX sibling of the legacy {!Movaps}/{!Movups}/{!Movapd}/
+            {!Movupd} family ([VEX.128.0F.WIG 28 /r], [pp = 0]), reusing {!Vex_unop_r_rm} the
+            same way {!Vsqrtps} does: confirmed against real GNU as that register-register and
+            register<-memory both use this opcode, with register-register also reachable through
+            the redundant [0x29] iform GAS never selects (the same "low-numbered iform" precedent
+            {!Movapd}'s own comment already established) - left unadmitted here too, along with
+            the real [MEMdq<-XMMdq] store direction, which is a separately admittable, genuinely
+            distinct opcode ([0x29]) rather than a redundancy. *)
+    | Vmovups
+        (** [vmovups src, dst] - {!Vmovaps}'s unaligned sibling ([VEX.128.0F.WIG 10 /r], [pp = 0]). *)
+    | Vmovapd
+        (** [vmovapd src, dst] - {!Vmovaps}'s packed-double sibling ([VEX.128.66.0F.WIG 28 /r], [pp = 1]). *)
+    | Vmovupd
+        (** [vmovupd src, dst] - {!Vmovups}'s packed-double sibling ([VEX.128.66.0F.WIG 10 /r], [pp = 1]). *)
+    | Vcomisd
+        (** [vcomisd src, dst] - the VEX sibling of the legacy {!Comisd}/{!Ucomisd}/{!Comiss}/
+            {!Ucomiss} family ([VEX.LIG.66.0F.WIG 2F /r], [pp = 1]), reusing {!Vex_unop_r_rm}
+            the same way {!Vsqrtps}/{!Vmovaps} do: confirmed against real GNU as that both
+            operands are read-only (no destination register is actually written; the real
+            result goes to EFLAGS) with [VEX.vvvv] the same literal [1111] "unused" pattern as
+            every other genuinely-two-operand VEX form - this project's encoder only assembles
+            bytes, so the ModRM/vvvv shape being identical to {!Vsqrtps}'s is what matters, not
+            which operand the CPU treats as writable. *)
+    | Vucomisd  (** [vucomisd src, dst] - {!Vcomisd}'s sibling ([VEX.LIG.66.0F.WIG 2E /r]). *)
+    | Vcomiss
+        (** [vcomiss src, dst] - {!Vcomisd}'s mandatory-prefix-free sibling
+            ([VEX.LIG.0F.WIG 2F /r], [pp = 0]). *)
+    | Vucomiss  (** [vucomiss src, dst] - {!Vcomiss}'s sibling ([VEX.LIG.0F.WIG 2E /r]). *)
+    | Vcvtps2pd
+        (** [vcvtps2pd src, dst] - the VEX sibling of the legacy {!Cvtps2pd}/{!Cvtpd2ps} family
+            ([VEX.128.0F.WIG 5A /r], [pp = 0]), reusing {!Vex_unop_r_rm} the same way
+            {!Vsqrtps}/{!Vmovaps}/{!Vcomisd} do. Confirmed against real GNU as: both
+            register-register and register<-memory are unambiguous, since the destination
+            register class ([xmm] here, never [ymm]) already pins which of VEX.128's [m64]
+            source or VEX.256's [m128] source is meant - unlike {!Vcvtpd2ps}. *)
+    | Vcvtpd2ps
+        (** [vcvtpd2ps src, dst] - {!Vcvtps2pd}'s mandatory-66 sibling
+            ([VEX.128.66.0F.WIG 5A /r], [pp = 1]). Register-register only: confirmed against
+            real GNU as that the register<-memory spelling is genuinely ambiguous here (unlike
+            every other {!Vex_unop_r_rm} mnemonic) - VEX.128's [xmm/m128] source and VEX.256's
+            [ymm/m256] source narrow to the *same* xmm destination class, so a bare memory
+            operand cannot disambiguate the way a register operand's own class does; real GNU as
+            rejects [vcvtpd2ps mem, %xmmN] outright ("operand size mismatch") and requires the
+            separate [vcvtpd2psx]/[vcvtpd2psy] disambiguating spellings this project's parser
+            does not implement. Left as a named follow-up rather than admitted. *)
+    | Vshufps
+        (** [vshufps $imm8, src2, src1, dst] - VEX-encoded packed shuffle, single precision
+            ([VEX.128.0F.WIG C6 /r ib], [pp = 0]), {!Shufps}'s non-destructive three-operand
+            VEX sibling: {!Lowered.Vex_binop_imm_rr_rm} rather than {!Lowered.Vex_binop_rr_rm},
+            since real [src1]/[src2] plus a trailing imm8 selector need a field {!Vex_binop_rr_rm}
+            has no room for. Confirmed against real GNU as: [vshufps $0x1b,%xmm3,%xmm2,%xmm1]
+            -> [c5 e8 c6 cb 1b]. *)
+    | Vshufpd
+        (** [vshufpd $imm8, src2, src1, dst] - {!Vshufps}'s mandatory-66 ([pp = 1]) sibling at
+            the same opcode byte ([VEX.128.66.0F.WIG C6 /r ib]). Confirmed against real GNU as:
+            [vshufpd $0x1,%xmm3,%xmm2,%xmm1] -> [c5 e9 c6 cb 01]. *)
+    | Vcmpss
+        (** [vcmpss $imm8, src2, src1, dst] - the VEX sibling of the legacy {!Cmpss}/{!Cmpsd}/
+            {!Cmpps}/{!Cmppd} family ([VEX.LIG.F3.0F.WIG C2 /r ib], [pp = 2]), reusing
+            {!Lowered.Vex_binop_imm_rr_rm} the same way {!Vshufps} does. Confirmed against real
+            GNU as: [vcmpss $0x0,%xmm3,%xmm2,%xmm1] -> [c5 ea c2 cb 00]. *)
+    | Vcmpsd
+        (** [vcmpsd $imm8, src2, src1, dst] - {!Vcmpss}'s mandatory-[F2] ([pp = 3]) counterpart
+            ([VEX.LIG.F2.0F.WIG C2 /r ib]). *)
+    | Vcmpps
+        (** [vcmpps $imm8, src2, src1, dst] - {!Vcmpss}'s mandatory-prefix-free ([pp = 0])
+            counterpart ([VEX.128.0F.WIG C2 /r ib]), joining {!Vshufps}'s own [pp = 0] imm8
+            group. *)
+    | Vcmppd
+        (** [vcmppd $imm8, src2, src1, dst] - {!Vcmpps}'s mandatory-66 ([pp = 1]) counterpart
+            ([VEX.128.66.0F.WIG C2 /r ib]), joining {!Vshufpd}'s own [pp = 1] imm8 group. *)
     | Fldl
     | Fstpl
     | Fstps
@@ -504,16 +735,25 @@ module Opcode = struct
     | Comisd -> "comisd"
     | Ucomisd -> "ucomisd"
     | Comiss -> "comiss"
+    | Ucomiss -> "ucomiss"
     | Xorpd -> "xorpd"
     | Pxor -> "pxor"
     | Movapd -> "movapd"
     | Cvtsd2ss -> "cvtsd2ss"
     | Cvtss2sd -> "cvtss2sd"
+    | Cvtps2pd -> "cvtps2pd"
+    | Cvtpd2ps -> "cvtpd2ps"
     | Movsd -> "movsd"
     | Movss -> "movss"
     | Cvtsi2sd -> "cvtsi2sd"
     | Cvtsi2ss -> "cvtsi2ss"
     | Cvttsd2si -> "cvttsd2si"
+    | Unpcklps -> "unpcklps"
+    | Unpckhps -> "unpckhps"
+    | Unpcklpd -> "unpcklpd"
+    | Unpckhpd -> "unpckhpd"
+    | Punpcklqdq -> "punpcklqdq"
+    | Punpckhqdq -> "punpckhqdq"
     | Andps -> "andps"
     | Andnps -> "andnps"
     | Orps -> "orps"
@@ -532,6 +772,24 @@ module Opcode = struct
     | Subpd -> "subpd"
     | Mulpd -> "mulpd"
     | Divpd -> "divpd"
+    | Maxss -> "maxss"
+    | Minss -> "minss"
+    | Maxsd -> "maxsd"
+    | Minsd -> "minsd"
+    | Maxps -> "maxps"
+    | Minps -> "minps"
+    | Maxpd -> "maxpd"
+    | Minpd -> "minpd"
+    | Sqrtss -> "sqrtss"
+    | Sqrtsd -> "sqrtsd"
+    | Sqrtps -> "sqrtps"
+    | Sqrtpd -> "sqrtpd"
+    | Shufps -> "shufps"
+    | Shufpd -> "shufpd"
+    | Cmpss -> "cmpss"
+    | Cmpsd -> "cmpsd"
+    | Cmpps -> "cmpps"
+    | Cmppd -> "cmppd"
     | Vaddsd -> "vaddsd"
     | Vsubsd -> "vsubsd"
     | Vmulsd -> "vmulsd"
@@ -556,6 +814,40 @@ module Opcode = struct
     | Vandnpd -> "vandnpd"
     | Vorpd -> "vorpd"
     | Vxorpd -> "vxorpd"
+    | Vunpcklps -> "vunpcklps"
+    | Vunpckhps -> "vunpckhps"
+    | Vunpcklpd -> "vunpcklpd"
+    | Vunpckhpd -> "vunpckhpd"
+    | Vpunpcklqdq -> "vpunpcklqdq"
+    | Vpunpckhqdq -> "vpunpckhqdq"
+    | Vmaxsd -> "vmaxsd"
+    | Vminsd -> "vminsd"
+    | Vmaxss -> "vmaxss"
+    | Vminss -> "vminss"
+    | Vmaxps -> "vmaxps"
+    | Vminps -> "vminps"
+    | Vmaxpd -> "vmaxpd"
+    | Vminpd -> "vminpd"
+    | Vsqrtsd -> "vsqrtsd"
+    | Vsqrtss -> "vsqrtss"
+    | Vsqrtps -> "vsqrtps"
+    | Vsqrtpd -> "vsqrtpd"
+    | Vmovaps -> "vmovaps"
+    | Vmovups -> "vmovups"
+    | Vmovapd -> "vmovapd"
+    | Vmovupd -> "vmovupd"
+    | Vcomisd -> "vcomisd"
+    | Vucomisd -> "vucomisd"
+    | Vcomiss -> "vcomiss"
+    | Vucomiss -> "vucomiss"
+    | Vcvtps2pd -> "vcvtps2pd"
+    | Vcvtpd2ps -> "vcvtpd2ps"
+    | Vshufps -> "vshufps"
+    | Vshufpd -> "vshufpd"
+    | Vcmpss -> "vcmpss"
+    | Vcmpsd -> "vcmpsd"
+    | Vcmpps -> "vcmpps"
+    | Vcmppd -> "vcmppd"
     | Fldl -> "fldl"
     | Fstpl -> "fstpl"
     | Fstps -> "fstps"
@@ -781,16 +1073,26 @@ module Instruction = struct
            [suffix_of_width] the way the fallback case below does. *)
         | ( Opcode.Addsd | Opcode.Subsd | Opcode.Mulsd | Opcode.Divsd | Opcode.Addss | Opcode.Subss
           | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Ucomisd | Opcode.Comiss
-          | Opcode.Xorpd | Opcode.Pxor | Opcode.Movapd | Opcode.Cvtsd2ss | Opcode.Cvtss2sd
-          | Opcode.Movsd | Opcode.Movss | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si
-          | Opcode.Andps | Opcode.Andnps | Opcode.Orps | Opcode.Xorps | Opcode.Andpd | Opcode.Andnpd
-          | Opcode.Orpd | Opcode.Movaps | Opcode.Movups | Opcode.Movupd | Opcode.Addps
-          | Opcode.Subps | Opcode.Mulps | Opcode.Divps | Opcode.Addpd | Opcode.Subpd | Opcode.Mulpd
-          | Opcode.Divpd | Opcode.Vaddsd | Opcode.Vsubsd | Opcode.Vmulsd | Opcode.Vdivsd
+          | Opcode.Ucomiss | Opcode.Xorpd | Opcode.Pxor | Opcode.Movapd | Opcode.Cvtsd2ss
+          | Opcode.Cvtss2sd | Opcode.Cvtps2pd | Opcode.Cvtpd2ps | Opcode.Movsd | Opcode.Movss
+          | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si | Opcode.Unpcklps | Opcode.Unpckhps
+          | Opcode.Unpcklpd | Opcode.Unpckhpd | Opcode.Punpcklqdq | Opcode.Punpckhqdq | Opcode.Andps
+          | Opcode.Andnps | Opcode.Orps | Opcode.Xorps | Opcode.Andpd | Opcode.Andnpd | Opcode.Orpd
+          | Opcode.Movaps | Opcode.Movups | Opcode.Movupd | Opcode.Addps | Opcode.Subps
+          | Opcode.Mulps | Opcode.Divps | Opcode.Addpd | Opcode.Subpd | Opcode.Mulpd | Opcode.Divpd
+          | Opcode.Maxss | Opcode.Minss | Opcode.Maxsd | Opcode.Minsd | Opcode.Maxps | Opcode.Minps
+          | Opcode.Maxpd | Opcode.Minpd | Opcode.Sqrtss | Opcode.Sqrtsd | Opcode.Sqrtps
+          | Opcode.Sqrtpd | Opcode.Vaddsd | Opcode.Vsubsd | Opcode.Vmulsd | Opcode.Vdivsd
           | Opcode.Vaddss | Opcode.Vsubss | Opcode.Vmulss | Opcode.Vdivss | Opcode.Vaddps
           | Opcode.Vsubps | Opcode.Vmulps | Opcode.Vdivps | Opcode.Vaddpd | Opcode.Vsubpd
           | Opcode.Vmulpd | Opcode.Vdivpd | Opcode.Vandps | Opcode.Vandnps | Opcode.Vorps
           | Opcode.Vxorps | Opcode.Vandpd | Opcode.Vandnpd | Opcode.Vorpd | Opcode.Vxorpd
+          | Opcode.Vmaxsd | Opcode.Vminsd | Opcode.Vmaxss | Opcode.Vminss | Opcode.Vmaxps
+          | Opcode.Vminps | Opcode.Vmaxpd | Opcode.Vminpd | Opcode.Vsqrtsd | Opcode.Vsqrtss
+          | Opcode.Vsqrtps | Opcode.Vsqrtpd | Opcode.Vmovaps | Opcode.Vmovups | Opcode.Vmovapd
+          | Opcode.Vmovupd | Opcode.Vcomisd | Opcode.Vucomisd | Opcode.Vcomiss | Opcode.Vucomiss
+          | Opcode.Vcvtps2pd | Opcode.Vcvtpd2ps | Opcode.Vunpcklps | Opcode.Vunpckhps
+          | Opcode.Vunpcklpd | Opcode.Vunpckhpd | Opcode.Vpunpcklqdq | Opcode.Vpunpckhqdq
           | Opcode.Fldl | Opcode.Fstpl | Opcode.Fstps | Opcode.Flds | Opcode.Fildll | Opcode.Fadds
           | Opcode.Fadd | Opcode.Fnstcw | Opcode.Fldcw | Opcode.Fistpll | Opcode.Fsubs
           | Opcode.Fnstsw ) as op ->
@@ -918,6 +1220,11 @@ module Lowered = struct
             (store) direction. *)
     | Sse_mov_rm_r of { op : Opcode.t; rm : Rm.t; reg : Reg.t }
         (** [F2/F3 0F 11 /r], the store direction: (xmm or mem)<-xmm. *)
+    | Sse_binop_imm_r_rm of { op : Opcode.t; reg : Reg.t; rm : Rm.t; imm : int64 }
+        (** [\[66/none\] 0F C6 /r ib] - {!Sse_binop_r_rm}'s trailing-immediate sibling
+            ([shufps]/[shufpd] only): the first XMM-immediate-carrying legacy shape, a plain
+            [Disp.t]-free [int64] since a shuffle selector is never a symbol the way
+            {!Alu_rm_imm}'s immediate can be. *)
     | Cvtsi2f_r_rm of { op : Opcode.t; width : int; reg : Reg.t; rm : Rm.t }
         (** [F2/F3 0F 2A /r], xmm<-(r/m32 or r/m64) - [cvtsi2sd]/[cvtsi2ss]. [reg] is xmm; [rm] is
             a GPR (or memory) at [width], which is also what selects REX.W - CompCert always
@@ -937,6 +1244,19 @@ module Lowered = struct
             prefix's own [vvvv] field, which reaches all of xmm0-15 directly with no separate
             extension bit; [dst] is the ModR/M reg field, extended by the VEX prefix's own R
             bit exactly as REX.R would. *)
+    | Vex_unop_r_rm of { op : Opcode.t; dst : Reg.t; src : Rm.t }
+        (** [VEX.128.pp.0F.WIG opcode /r] - {!Vex_binop_rr_rm}'s two-operand sibling for a VEX
+            mnemonic with no real [vvvv] operand ({!Opcode.Vsqrtps}'s own comment): [dst :=
+            f(src)]. The VEX prefix's [vvvv] field is architecturally unused (must be [1111])
+            for these forms - confirmed against real GNU as, which rejects a third operand
+            outright - so unlike {!Vex_binop_rr_rm} this shape has no [src1] field at all, and
+            the codec always emits the literal [1111] bit pattern rather than deriving it from
+            an operand. [src] is the ModR/M r/m field, subject to the same xmm0-7/low-8-GPR
+            two-byte-VEX restriction as {!Vex_binop_rr_rm}'s [src2]. *)
+    | Vex_binop_imm_rr_rm of { op : Opcode.t; dst : Reg.t; src1 : Reg.t; src2 : Rm.t; imm : int64 }
+        (** [VEX.128.pp.0F.WIG opcode /r ib] - {!Vex_binop_rr_rm}'s trailing-immediate sibling
+            ([vshufps]/[vshufpd] only): identical operand roles and two-byte-VEX restrictions,
+            plus a genuine imm8 selector {!Vex_binop_rr_rm} has no field for. *)
     | Setcc_rm of { cc : Cc.t; rm : Rm.t }
         (** [0F 90+cc /0] (M5 corpus evidence - [sete %al], [setl %r8b]). Always 8-bit; the ModR/M
             reg field is a fixed 0, not an operand or an extension table lookup - the condition is
@@ -1048,10 +1368,15 @@ module Lowered = struct
     | Sse_binop_r_rm { op; reg; rm } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
     | Sse_mov_r_rm { op; reg; rm } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
     | Sse_mov_rm_r { op; rm; reg } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Reg.pp reg Rm.pp rm
+    | Sse_binop_imm_r_rm { op; reg; rm; imm } ->
+        Fmt.pf ppf "%s $%Ld, %a, %a" (Opcode.name op) imm Rm.pp rm Reg.pp reg
     | Cvtsi2f_r_rm { op; reg; rm; _ } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
     | Cvtf2i_r_rm { reg; rm; _ } -> Fmt.pf ppf "cvttsd2si %a, %a" Rm.pp rm Reg.pp reg
     | Vex_binop_rr_rm { op; dst; src1; src2 } ->
         Fmt.pf ppf "%s %a, %a, %a" (Opcode.name op) Rm.pp src2 Reg.pp src1 Reg.pp dst
+    | Vex_unop_r_rm { op; dst; src } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp src Reg.pp dst
+    | Vex_binop_imm_rr_rm { op; dst; src1; src2; imm } ->
+        Fmt.pf ppf "%s $%Ld, %a, %a, %a" (Opcode.name op) imm Rm.pp src2 Reg.pp src1 Reg.pp dst
     | Fpu_mem { op; mem } -> Fmt.pf ppf "%s %a" (Opcode.name op) Mem.pp mem
     | Fadd_st0_x87 { src } -> Fmt.pf ppf "fadd %a, %%st" Reg.pp src
     | Fucomp -> Fmt.string ppf "fucomp %st(1)"
@@ -1107,12 +1432,19 @@ module Lowered = struct
         x.op = y.op && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Sse_mov_r_rm x, Sse_mov_r_rm y -> x.op = y.op && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Sse_mov_rm_r x, Sse_mov_rm_r y -> x.op = y.op && Rm.equal x.rm y.rm && Reg.equal x.reg y.reg
+    | Sse_binop_imm_r_rm x, Sse_binop_imm_r_rm y ->
+        x.op = y.op && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm && x.imm = y.imm
     | Cvtsi2f_r_rm x, Cvtsi2f_r_rm y ->
         x.op = y.op && x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Cvtf2i_r_rm x, Cvtf2i_r_rm y ->
         x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Vex_binop_rr_rm x, Vex_binop_rr_rm y ->
         x.op = y.op && Reg.equal x.dst y.dst && Reg.equal x.src1 y.src1 && Rm.equal x.src2 y.src2
+    | Vex_unop_r_rm x, Vex_unop_r_rm y ->
+        x.op = y.op && Reg.equal x.dst y.dst && Rm.equal x.src y.src
+    | Vex_binop_imm_rr_rm x, Vex_binop_imm_rr_rm y ->
+        x.op = y.op && Reg.equal x.dst y.dst && Reg.equal x.src1 y.src1 && Rm.equal x.src2 y.src2
+        && x.imm = y.imm
     | Fpu_mem x, Fpu_mem y -> x.op = y.op && Mem.equal x.mem y.mem
     | Fadd_st0_x87 x, Fadd_st0_x87 y -> Reg.equal x.src y.src
     | Fucomp, Fucomp -> true
@@ -1943,8 +2275,22 @@ module Make (M : MODE) = struct
     | "movapd", _ -> Ok (Instruction.mk Opcode.Movapd 32 s.Surface.ops)
     | "cvtsd2ss", _ -> Ok (Instruction.mk Opcode.Cvtsd2ss 32 s.Surface.ops)
     | "cvtss2sd", _ -> Ok (Instruction.mk Opcode.Cvtss2sd 32 s.Surface.ops)
+    (* {!Opcode.Cvtsd2ss}/{!Opcode.Cvtss2sd}'s own opcode byte, none/66 prefix instead of
+       F2/F3 - {!Opcode.Cvtps2pd}'s own doc comment. *)
+    | "cvtps2pd", _ -> Ok (Instruction.mk Opcode.Cvtps2pd 32 s.Surface.ops)
+    | "cvtpd2ps", _ -> Ok (Instruction.mk Opcode.Cvtpd2ps 32 s.Surface.ops)
     | "movsd", _ -> Ok (Instruction.mk Opcode.Movsd 32 s.Surface.ops)
     | "movss", _ -> Ok (Instruction.mk Opcode.Movss 32 s.Surface.ops)
+    (* Packed interleave family: the first genuine two-source-operand packed binop,
+       {!Opcode.Andps}'s own mandatory-prefix-free/66 group at a different opcode byte. *)
+    | "unpcklps", _ -> Ok (Instruction.mk Opcode.Unpcklps 32 s.Surface.ops)
+    | "unpckhps", _ -> Ok (Instruction.mk Opcode.Unpckhps 32 s.Surface.ops)
+    | "unpcklpd", _ -> Ok (Instruction.mk Opcode.Unpcklpd 32 s.Surface.ops)
+    | "unpckhpd", _ -> Ok (Instruction.mk Opcode.Unpckhpd 32 s.Surface.ops)
+    (* {!Opcode.Unpcklps}'s integer-SIMD sibling: 66-mandatory-prefix only, same
+       opcode byte at {!Opcode.Punpcklqdq}'s own doc comment. *)
+    | "punpcklqdq", _ -> Ok (Instruction.mk Opcode.Punpcklqdq 32 s.Surface.ops)
+    | "punpckhqdq", _ -> Ok (Instruction.mk Opcode.Punpckhqdq 32 s.Surface.ops)
     (* Packed bitwise-logical family: {!Opcode.Xorpd}'s siblings, all matched the same
        fixed-mnemonic way. *)
     | "andps", _ -> Ok (Instruction.mk Opcode.Andps 32 s.Surface.ops)
@@ -1970,6 +2316,35 @@ module Make (M : MODE) = struct
     | "subpd", _ -> Ok (Instruction.mk Opcode.Subpd 32 s.Surface.ops)
     | "mulpd", _ -> Ok (Instruction.mk Opcode.Mulpd 32 s.Surface.ops)
     | "divpd", _ -> Ok (Instruction.mk Opcode.Divpd 32 s.Surface.ops)
+    (* {!Opcode.Addsd}/{!Opcode.Addss}/{!Opcode.Addps}/{!Opcode.Addpd}'s min/max siblings
+      : the same four-prefix-group shape at opcodes 0x5D (min)/0x5F (max), overlooked in
+       the earlier arithmetic-family survey passes. *)
+    | "maxss", _ -> Ok (Instruction.mk Opcode.Maxss 32 s.Surface.ops)
+    | "minss", _ -> Ok (Instruction.mk Opcode.Minss 32 s.Surface.ops)
+    | "maxsd", _ -> Ok (Instruction.mk Opcode.Maxsd 32 s.Surface.ops)
+    | "minsd", _ -> Ok (Instruction.mk Opcode.Minsd 32 s.Surface.ops)
+    | "maxps", _ -> Ok (Instruction.mk Opcode.Maxps 32 s.Surface.ops)
+    | "minps", _ -> Ok (Instruction.mk Opcode.Minps 32 s.Surface.ops)
+    | "maxpd", _ -> Ok (Instruction.mk Opcode.Maxpd 32 s.Surface.ops)
+    | "minpd", _ -> Ok (Instruction.mk Opcode.Minpd 32 s.Surface.ops)
+    | "sqrtss", _ -> Ok (Instruction.mk Opcode.Sqrtss 32 s.Surface.ops)
+    | "sqrtsd", _ -> Ok (Instruction.mk Opcode.Sqrtsd 32 s.Surface.ops)
+    | "sqrtps", _ -> Ok (Instruction.mk Opcode.Sqrtps 32 s.Surface.ops)
+    | "sqrtpd", _ -> Ok (Instruction.mk Opcode.Sqrtpd 32 s.Surface.ops)
+    (* [shufps]/[shufpd]: the first XMM-immediate-carrying legacy shape, [imm, rm, reg]
+       in AT&T order matching [shld]'s own [imm, src, dst] operand order. *)
+    | "shufps", _ -> Ok (Instruction.mk Opcode.Shufps 32 s.Surface.ops)
+    | "shufpd", _ -> Ok (Instruction.mk Opcode.Shufpd 32 s.Surface.ops)
+    (* [cmpss]/[cmpsd]/[cmpps]/[cmppd]: {!Opcode.Addsd}'s own four-prefix-group shape
+       at opcode 0xC2, with {!Shufps}'s trailing imm8 - only the canonical [cmp{ss,sd,ps,pd}
+       $imm, ...] spelling, not the [cmpeq]/[cmplt]/etc. mnemonic-suffix pseudo-aliases. *)
+    | "cmpss", _ -> Ok (Instruction.mk Opcode.Cmpss 32 s.Surface.ops)
+    | "cmpsd", _ -> Ok (Instruction.mk Opcode.Cmpsd 32 s.Surface.ops)
+    | "cmpps", _ -> Ok (Instruction.mk Opcode.Cmpps 32 s.Surface.ops)
+    | "cmppd", _ -> Ok (Instruction.mk Opcode.Cmppd 32 s.Surface.ops)
+    (* {!Opcode.Comiss}'s own mandatory-prefix-free sibling ({!Opcode.Ucomiss}'s own doc
+       comment), overlooked alongside {!Opcode.Ucomisd} when this family was first admitted. *)
+    | "ucomiss", _ -> Ok (Instruction.mk Opcode.Ucomiss 32 s.Surface.ops)
     (* {!Opcode.Vaddsd}'s VEX-encoded family (x86 vector extensions): three real
        operands, [src2, src1, dst], not a suffix-bearing GPR mnemonic - matched the same
        fixed-mnemonic way as the rest of this SSE block. *)
@@ -1997,6 +2372,59 @@ module Make (M : MODE) = struct
     | "vandnpd", _ -> Ok (Instruction.mk Opcode.Vandnpd 32 s.Surface.ops)
     | "vorpd", _ -> Ok (Instruction.mk Opcode.Vorpd 32 s.Surface.ops)
     | "vxorpd", _ -> Ok (Instruction.mk Opcode.Vxorpd 32 s.Surface.ops)
+    (* {!Opcode.Vunpcklps}'s own doc comment: the VEX sibling of the legacy
+       UNPCKLPS/UNPCKHPS/UNPCKLPD/UNPCKHPD family, opcodes 0x14/0x15. *)
+    | "vunpcklps", _ -> Ok (Instruction.mk Opcode.Vunpcklps 32 s.Surface.ops)
+    | "vunpckhps", _ -> Ok (Instruction.mk Opcode.Vunpckhps 32 s.Surface.ops)
+    | "vunpcklpd", _ -> Ok (Instruction.mk Opcode.Vunpcklpd 32 s.Surface.ops)
+    | "vunpckhpd", _ -> Ok (Instruction.mk Opcode.Vunpckhpd 32 s.Surface.ops)
+    (* {!Opcode.Vpunpcklqdq}'s own doc comment: the VEX sibling of the legacy
+       PUNPCKLQDQ/PUNPCKHQDQ family, opcode 0x6C/0x6D, 66-mandatory-prefix only. *)
+    | "vpunpcklqdq", _ -> Ok (Instruction.mk Opcode.Vpunpcklqdq 32 s.Surface.ops)
+    | "vpunpckhqdq", _ -> Ok (Instruction.mk Opcode.Vpunpckhqdq 32 s.Surface.ops)
+    (* {!Opcode.Vaddsd}/{!Opcode.Vandps}'s min/max siblings: the VEX counterpart of the
+       legacy MAXSD/MINSD/MAXSS/MINSS/MAXPS/MINPS/MAXPD/MINPD family, opcodes 0x5F (max)/0x5D
+       (min) instead of 0x54-0x57. *)
+    | "vmaxsd", _ -> Ok (Instruction.mk Opcode.Vmaxsd 32 s.Surface.ops)
+    | "vminsd", _ -> Ok (Instruction.mk Opcode.Vminsd 32 s.Surface.ops)
+    | "vmaxss", _ -> Ok (Instruction.mk Opcode.Vmaxss 32 s.Surface.ops)
+    | "vminss", _ -> Ok (Instruction.mk Opcode.Vminss 32 s.Surface.ops)
+    | "vmaxps", _ -> Ok (Instruction.mk Opcode.Vmaxps 32 s.Surface.ops)
+    | "vminps", _ -> Ok (Instruction.mk Opcode.Vminps 32 s.Surface.ops)
+    | "vmaxpd", _ -> Ok (Instruction.mk Opcode.Vmaxpd 32 s.Surface.ops)
+    | "vminpd", _ -> Ok (Instruction.mk Opcode.Vminpd 32 s.Surface.ops)
+    (* {!Opcode.Vsqrtsd}'s own doc comment: the VEX sibling of the legacy
+       SQRTSD/SQRTSS/SQRTPS/SQRTPD family, opcode 0x51. *)
+    | "vsqrtsd", _ -> Ok (Instruction.mk Opcode.Vsqrtsd 32 s.Surface.ops)
+    | "vsqrtss", _ -> Ok (Instruction.mk Opcode.Vsqrtss 32 s.Surface.ops)
+    | "vsqrtps", _ -> Ok (Instruction.mk Opcode.Vsqrtps 32 s.Surface.ops)
+    | "vsqrtpd", _ -> Ok (Instruction.mk Opcode.Vsqrtpd 32 s.Surface.ops)
+    (* {!Opcode.Vmovaps}'s own doc comment: the VEX sibling of the legacy
+       MOVAPS/MOVUPS/MOVAPD/MOVUPD family, opcodes 0x28/0x10. *)
+    | "vmovaps", _ -> Ok (Instruction.mk Opcode.Vmovaps 32 s.Surface.ops)
+    | "vmovups", _ -> Ok (Instruction.mk Opcode.Vmovups 32 s.Surface.ops)
+    | "vmovapd", _ -> Ok (Instruction.mk Opcode.Vmovapd 32 s.Surface.ops)
+    | "vmovupd", _ -> Ok (Instruction.mk Opcode.Vmovupd 32 s.Surface.ops)
+    (* {!Opcode.Vcomisd}'s own doc comment: the VEX sibling of the legacy
+       COMISD/UCOMISD/COMISS/UCOMISS family, opcodes 0x2F/0x2E. *)
+    | "vcomisd", _ -> Ok (Instruction.mk Opcode.Vcomisd 32 s.Surface.ops)
+    | "vucomisd", _ -> Ok (Instruction.mk Opcode.Vucomisd 32 s.Surface.ops)
+    | "vcomiss", _ -> Ok (Instruction.mk Opcode.Vcomiss 32 s.Surface.ops)
+    | "vucomiss", _ -> Ok (Instruction.mk Opcode.Vucomiss 32 s.Surface.ops)
+    (* {!Opcode.Vcvtps2pd}'s own doc comment: the VEX sibling of the legacy
+       CVTPS2PD/CVTPD2PS family, opcode 0x5A. *)
+    | "vcvtps2pd", _ -> Ok (Instruction.mk Opcode.Vcvtps2pd 32 s.Surface.ops)
+    | "vcvtpd2ps", _ -> Ok (Instruction.mk Opcode.Vcvtpd2ps 32 s.Surface.ops)
+    (* {!Opcode.Vshufps}'s own doc comment: the VEX sibling of the legacy
+       SHUFPS/SHUFPD family, opcode 0xC6, [imm, src2, src1, dst] in AT&T order. *)
+    | "vshufps", _ -> Ok (Instruction.mk Opcode.Vshufps 32 s.Surface.ops)
+    | "vshufpd", _ -> Ok (Instruction.mk Opcode.Vshufpd 32 s.Surface.ops)
+    (* {!Opcode.Vcmpss}'s own doc comment: the VEX sibling of the legacy
+       CMPSS/CMPSD/CMPPS/CMPPD family, opcode 0xC2. *)
+    | "vcmpss", _ -> Ok (Instruction.mk Opcode.Vcmpss 32 s.Surface.ops)
+    | "vcmpsd", _ -> Ok (Instruction.mk Opcode.Vcmpsd 32 s.Surface.ops)
+    | "vcmpps", _ -> Ok (Instruction.mk Opcode.Vcmpps 32 s.Surface.ops)
+    | "vcmppd", _ -> Ok (Instruction.mk Opcode.Vcmppd 32 s.Surface.ops)
     (* {3 x87 (M5, asm/docs/corpus.md)}
 
        [fldl]/[fstpl]/[fstps]: ccomp's own double/single-precision spill and
@@ -2486,6 +2914,32 @@ module Make (M : MODE) = struct
                       { width = i.Instruction.width; reg = src; rm = Rm.Reg dst; imm };
                   ]
             | Error e, _ | _, Error e -> Error e))
+    (* [shufps $imm8, rm, reg]/[shufpd $imm8, rm, reg]: {!Opcode.Shld}'s own
+       [imm, src, dst] operand order just above, reused for [Sse_binop_imm_r_rm]'s
+       [imm, rm, reg] - GAS's [parse_one_operand] builds the same order for any instruction
+       whose immediate comes first. *)
+    | ( (Opcode.Shufps | Opcode.Shufpd | Opcode.Cmpss | Opcode.Cmpsd | Opcode.Cmpps | Opcode.Cmppd),
+        [ Operand.Imm v; Operand.Reg src; Operand.Reg reg ] ) -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm -> (
+            match (xmm_ok src, xmm_ok reg) with
+            | Ok (), Ok () ->
+                Ok
+                  [
+                    Lowered.Sse_binop_imm_r_rm { op = i.Instruction.op; reg; rm = Rm.Reg src; imm };
+                  ]
+            | Error e, _ | _, Error e -> Error e))
+    | ( (Opcode.Shufps | Opcode.Shufpd | Opcode.Cmpss | Opcode.Cmpsd | Opcode.Cmpps | Opcode.Cmppd),
+        [ Operand.Imm v; Operand.Mem m; Operand.Reg reg ] ) -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm -> (
+            match xmm_ok reg with
+            | Error e -> Error e
+            | Ok () ->
+                Ok [ Lowered.Sse_binop_imm_r_rm { op = i.Instruction.op; reg; rm = Rm.Mem m; imm } ]
+            ))
     | Opcode.Push, [ Operand.Reg r ] -> Ok [ Lowered.Push { reg = r } ]
     (* [pushl $sym] (M5, asm/docs/corpus.md), gcc's own idiom for materializing
        a symbol's address on the stack: {!Push_imm}'s [imm] carries it as a
@@ -2591,10 +3045,15 @@ module Make (M : MODE) = struct
        is nothing here to check that choice against. *)
     | ( ( Opcode.Addsd | Opcode.Subsd | Opcode.Mulsd | Opcode.Divsd | Opcode.Addss | Opcode.Subss
         | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Ucomisd | Opcode.Comiss
-        | Opcode.Xorpd | Opcode.Pxor | Opcode.Movapd | Opcode.Cvtsd2ss | Opcode.Cvtss2sd
-        | Opcode.Andps | Opcode.Andnps | Opcode.Orps | Opcode.Xorps | Opcode.Andpd | Opcode.Andnpd
-        | Opcode.Orpd | Opcode.Movaps | Opcode.Movups | Opcode.Movupd | Opcode.Addps | Opcode.Subps
-        | Opcode.Mulps | Opcode.Divps | Opcode.Addpd | Opcode.Subpd | Opcode.Mulpd | Opcode.Divpd ),
+        | Opcode.Ucomiss | Opcode.Xorpd | Opcode.Pxor | Opcode.Movapd | Opcode.Cvtsd2ss
+        | Opcode.Cvtss2sd | Opcode.Cvtps2pd | Opcode.Cvtpd2ps | Opcode.Andps | Opcode.Andnps
+        | Opcode.Orps | Opcode.Xorps | Opcode.Andpd | Opcode.Andnpd | Opcode.Orpd | Opcode.Movaps
+        | Opcode.Movups | Opcode.Movupd | Opcode.Addps | Opcode.Subps | Opcode.Mulps | Opcode.Divps
+        | Opcode.Addpd | Opcode.Subpd | Opcode.Mulpd | Opcode.Divpd | Opcode.Maxss | Opcode.Minss
+        | Opcode.Maxsd | Opcode.Minsd | Opcode.Maxps | Opcode.Minps | Opcode.Maxpd | Opcode.Minpd
+        | Opcode.Sqrtss | Opcode.Sqrtsd | Opcode.Sqrtps | Opcode.Sqrtpd | Opcode.Unpcklps
+        | Opcode.Unpckhps | Opcode.Unpcklpd | Opcode.Unpckhpd | Opcode.Punpcklqdq
+        | Opcode.Punpckhqdq ),
         [ Operand.Reg src; Operand.Reg reg ] ) -> (
         match (xmm_ok src, xmm_ok reg) with
         | Ok (), Ok () ->
@@ -2602,10 +3061,15 @@ module Make (M : MODE) = struct
         | Error e, _ | _, Error e -> Error e)
     | ( ( Opcode.Addsd | Opcode.Subsd | Opcode.Mulsd | Opcode.Divsd | Opcode.Addss | Opcode.Subss
         | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Ucomisd | Opcode.Comiss
-        | Opcode.Xorpd | Opcode.Pxor | Opcode.Movapd | Opcode.Cvtsd2ss | Opcode.Cvtss2sd
-        | Opcode.Andps | Opcode.Andnps | Opcode.Orps | Opcode.Xorps | Opcode.Andpd | Opcode.Andnpd
-        | Opcode.Orpd | Opcode.Movaps | Opcode.Movups | Opcode.Movupd | Opcode.Addps | Opcode.Subps
-        | Opcode.Mulps | Opcode.Divps | Opcode.Addpd | Opcode.Subpd | Opcode.Mulpd | Opcode.Divpd ),
+        | Opcode.Ucomiss | Opcode.Xorpd | Opcode.Pxor | Opcode.Movapd | Opcode.Cvtsd2ss
+        | Opcode.Cvtss2sd | Opcode.Cvtps2pd | Opcode.Cvtpd2ps | Opcode.Andps | Opcode.Andnps
+        | Opcode.Orps | Opcode.Xorps | Opcode.Andpd | Opcode.Andnpd | Opcode.Orpd | Opcode.Movaps
+        | Opcode.Movups | Opcode.Movupd | Opcode.Addps | Opcode.Subps | Opcode.Mulps | Opcode.Divps
+        | Opcode.Addpd | Opcode.Subpd | Opcode.Mulpd | Opcode.Divpd | Opcode.Maxss | Opcode.Minss
+        | Opcode.Maxsd | Opcode.Minsd | Opcode.Maxps | Opcode.Minps | Opcode.Maxpd | Opcode.Minpd
+        | Opcode.Sqrtss | Opcode.Sqrtsd | Opcode.Sqrtps | Opcode.Sqrtpd | Opcode.Unpcklps
+        | Opcode.Unpckhps | Opcode.Unpcklpd | Opcode.Unpckhpd | Opcode.Punpcklqdq
+        | Opcode.Punpckhqdq ),
         [ Operand.Mem m; Operand.Reg reg ] ) -> (
         match xmm_ok reg with
         | Error e -> Error e
@@ -2688,7 +3152,11 @@ module Make (M : MODE) = struct
         | Opcode.Vsubss | Opcode.Vmulss | Opcode.Vdivss | Opcode.Vaddps | Opcode.Vsubps
         | Opcode.Vmulps | Opcode.Vdivps | Opcode.Vaddpd | Opcode.Vsubpd | Opcode.Vmulpd
         | Opcode.Vdivpd | Opcode.Vandps | Opcode.Vandnps | Opcode.Vorps | Opcode.Vxorps
-        | Opcode.Vandpd | Opcode.Vandnpd | Opcode.Vorpd | Opcode.Vxorpd ),
+        | Opcode.Vandpd | Opcode.Vandnpd | Opcode.Vorpd | Opcode.Vxorpd | Opcode.Vunpcklps
+        | Opcode.Vunpckhps | Opcode.Vunpcklpd | Opcode.Vunpckhpd | Opcode.Vpunpcklqdq
+        | Opcode.Vpunpckhqdq | Opcode.Vmaxsd | Opcode.Vminsd | Opcode.Vmaxss | Opcode.Vminss
+        | Opcode.Vmaxps | Opcode.Vminps | Opcode.Vmaxpd | Opcode.Vminpd | Opcode.Vsqrtsd
+        | Opcode.Vsqrtss ),
         [ Operand.Reg src2; Operand.Reg src1; Operand.Reg dst ] ) -> (
         match (xmm_ok src2, xmm_ok src1, xmm_ok dst) with
         | Ok (), Ok (), Ok () ->
@@ -2701,7 +3169,11 @@ module Make (M : MODE) = struct
         | Opcode.Vsubss | Opcode.Vmulss | Opcode.Vdivss | Opcode.Vaddps | Opcode.Vsubps
         | Opcode.Vmulps | Opcode.Vdivps | Opcode.Vaddpd | Opcode.Vsubpd | Opcode.Vmulpd
         | Opcode.Vdivpd | Opcode.Vandps | Opcode.Vandnps | Opcode.Vorps | Opcode.Vxorps
-        | Opcode.Vandpd | Opcode.Vandnpd | Opcode.Vorpd | Opcode.Vxorpd ),
+        | Opcode.Vandpd | Opcode.Vandnpd | Opcode.Vorpd | Opcode.Vxorpd | Opcode.Vunpcklps
+        | Opcode.Vunpckhps | Opcode.Vunpcklpd | Opcode.Vunpckhpd | Opcode.Vpunpcklqdq
+        | Opcode.Vpunpckhqdq | Opcode.Vmaxsd | Opcode.Vminsd | Opcode.Vmaxss | Opcode.Vminss
+        | Opcode.Vmaxps | Opcode.Vminps | Opcode.Vmaxpd | Opcode.Vminpd | Opcode.Vsqrtsd
+        | Opcode.Vsqrtss ),
         [ Operand.Mem m; Operand.Reg src1; Operand.Reg dst ] ) -> (
         match (xmm_ok src1, xmm_ok dst) with
         | Ok (), Ok () -> (
@@ -2720,7 +3192,11 @@ module Make (M : MODE) = struct
         | Opcode.Vsubss | Opcode.Vmulss | Opcode.Vdivss | Opcode.Vaddps | Opcode.Vsubps
         | Opcode.Vmulps | Opcode.Vdivps | Opcode.Vaddpd | Opcode.Vsubpd | Opcode.Vmulpd
         | Opcode.Vdivpd | Opcode.Vandps | Opcode.Vandnps | Opcode.Vorps | Opcode.Vxorps
-        | Opcode.Vandpd | Opcode.Vandnpd | Opcode.Vorpd | Opcode.Vxorpd ),
+        | Opcode.Vandpd | Opcode.Vandnpd | Opcode.Vorpd | Opcode.Vxorpd | Opcode.Vunpcklps
+        | Opcode.Vunpckhps | Opcode.Vunpcklpd | Opcode.Vunpckhpd | Opcode.Vpunpcklqdq
+        | Opcode.Vpunpckhqdq | Opcode.Vmaxsd | Opcode.Vminsd | Opcode.Vmaxss | Opcode.Vminss
+        | Opcode.Vmaxps | Opcode.Vminps | Opcode.Vmaxpd | Opcode.Vminpd | Opcode.Vsqrtsd
+        | Opcode.Vsqrtss ),
         [ Operand.Sym e; Operand.Reg src1; Operand.Reg dst ] ) -> (
         match (xmm_ok src1, xmm_ok dst) with
         | Ok (), Ok () ->
@@ -2730,6 +3206,79 @@ module Make (M : MODE) = struct
                   { op = i.Instruction.op; dst; src1; src2 = Rm.Mem (mem_of_symbol e) };
               ]
         | Error e2, _ | _, Error e2 -> Error e2)
+    (* [vsqrtps]/[vsqrtpd]/[vmovaps]/[vmovups]/[vmovapd]/[vmovupd]/[vcomisd]/[vucomisd]/
+       [vcomiss]/[vucomiss] ({!Opcode.Vsqrtps}'s own doc comment): genuinely two-operand, no
+       [vvvv]-carried [src1] at all - {!Lowered.Vex_unop_r_rm} rather than {!Vex_binop_rr_rm}. *)
+    | ( ( Opcode.Vsqrtps | Opcode.Vsqrtpd | Opcode.Vmovaps | Opcode.Vmovups | Opcode.Vmovapd
+        | Opcode.Vmovupd | Opcode.Vcomisd | Opcode.Vucomisd | Opcode.Vcomiss | Opcode.Vucomiss
+        | Opcode.Vcvtps2pd | Opcode.Vcvtpd2ps ),
+        [ Operand.Reg src; Operand.Reg dst ] ) -> (
+        match (xmm_ok src, xmm_ok dst) with
+        | Ok (), Ok () ->
+            if src.num >= 8 then bad (`Vex_rm_extended_register src.name)
+            else Ok [ Lowered.Vex_unop_r_rm { op = i.Instruction.op; dst; src = Rm.Reg src } ]
+        | Error e, _ | _, Error e -> Error e)
+    (* {!Opcode.Vcvtpd2ps}'s own doc comment: its register<-memory spelling is genuinely
+       ambiguous in real GAS (needs the [x]/[y]-suffix disambiguation this project's parser
+       does not implement), so it is deliberately excluded from this arm and the [Sym] one
+       below - {!Opcode.Vcvtps2pd} has no such ambiguity and is included in both. *)
+    | ( ( Opcode.Vsqrtps | Opcode.Vsqrtpd | Opcode.Vmovaps | Opcode.Vmovups | Opcode.Vmovapd
+        | Opcode.Vmovupd | Opcode.Vcomisd | Opcode.Vucomisd | Opcode.Vcomiss | Opcode.Vucomiss
+        | Opcode.Vcvtps2pd ),
+        [ Operand.Mem m; Operand.Reg dst ] ) -> (
+        match xmm_ok dst with
+        | Ok () -> (
+            match vex_mem_ok m with
+            | Error e -> Error e
+            | Ok () -> Ok [ Lowered.Vex_unop_r_rm { op = i.Instruction.op; dst; src = Rm.Mem m } ])
+        | Error e -> Error e)
+    | ( ( Opcode.Vsqrtps | Opcode.Vsqrtpd | Opcode.Vmovaps | Opcode.Vmovups | Opcode.Vmovapd
+        | Opcode.Vmovupd | Opcode.Vcomisd | Opcode.Vucomisd | Opcode.Vcomiss | Opcode.Vucomiss
+        | Opcode.Vcvtps2pd ),
+        [ Operand.Sym e; Operand.Reg dst ] ) -> (
+        match xmm_ok dst with
+        | Ok () ->
+            Ok
+              [
+                Lowered.Vex_unop_r_rm { op = i.Instruction.op; dst; src = Rm.Mem (mem_of_symbol e) };
+              ]
+        | Error e2 -> Error e2)
+    (* [vshufps $imm8, src2, src1, dst]/[vshufpd $imm8, src2, src1, dst]:
+       {!Vex_binop_rr_rm}'s own [src2, src1, dst] operand order, with a leading imm8 -
+       {!Lowered.Vex_binop_imm_rr_rm} rather than {!Vex_binop_rr_rm}. *)
+    | ( ( Opcode.Vshufps | Opcode.Vshufpd | Opcode.Vcmpss | Opcode.Vcmpsd | Opcode.Vcmpps
+        | Opcode.Vcmppd ),
+        [ Operand.Imm v; Operand.Reg src2; Operand.Reg src1; Operand.Reg dst ] ) -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm -> (
+            match (xmm_ok src2, xmm_ok src1, xmm_ok dst) with
+            | Ok (), Ok (), Ok () ->
+                if src2.num >= 8 then bad (`Vex_rm_extended_register src2.name)
+                else
+                  Ok
+                    [
+                      Lowered.Vex_binop_imm_rr_rm
+                        { op = i.Instruction.op; dst; src1; src2 = Rm.Reg src2; imm };
+                    ]
+            | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e))
+    | ( ( Opcode.Vshufps | Opcode.Vshufpd | Opcode.Vcmpss | Opcode.Vcmpsd | Opcode.Vcmpps
+        | Opcode.Vcmppd ),
+        [ Operand.Imm v; Operand.Mem m; Operand.Reg src1; Operand.Reg dst ] ) -> (
+        match imm_of v with
+        | Error e -> Error e
+        | Ok imm -> (
+            match (xmm_ok src1, xmm_ok dst) with
+            | Ok (), Ok () -> (
+                match vex_mem_ok m with
+                | Error e -> Error e
+                | Ok () ->
+                    Ok
+                      [
+                        Lowered.Vex_binop_imm_rr_rm
+                          { op = i.Instruction.op; dst; src1; src2 = Rm.Mem m; imm };
+                      ])
+            | Error e, _ | _, Error e -> Error e))
     (* [fldl]/[fstpl]/[fstps]/[flds] (M5, asm/docs/corpus.md): ccomp's own x87
        double/single-precision spill-and-reload sequence around a `%st(0)`
        return value - always to/from a stack memory operand in this corpus,
@@ -3204,6 +3753,9 @@ module Make (M : MODE) = struct
           (Opcode.Mulsd, 0x59L);
           (Opcode.Divsd, 0x5EL);
           (Opcode.Cvtsd2ss, 0x5AL);
+          (Opcode.Maxsd, 0x5FL);
+          (Opcode.Minsd, 0x5DL);
+          (Opcode.Sqrtsd, 0x51L);
         ]
       (C.field ~width:8 "opcode")
 
@@ -3216,6 +3768,9 @@ module Make (M : MODE) = struct
           (Opcode.Mulss, 0x59L);
           (Opcode.Divss, 0x5EL);
           (Opcode.Cvtss2sd, 0x5AL);
+          (Opcode.Maxss, 0x5FL);
+          (Opcode.Minss, 0x5DL);
+          (Opcode.Sqrtss, 0x51L);
         ]
       (C.field ~width:8 "opcode")
 
@@ -3236,6 +3791,14 @@ module Make (M : MODE) = struct
           (Opcode.Subpd, 0x5CL);
           (Opcode.Mulpd, 0x59L);
           (Opcode.Divpd, 0x5EL);
+          (Opcode.Maxpd, 0x5FL);
+          (Opcode.Minpd, 0x5DL);
+          (Opcode.Sqrtpd, 0x51L);
+          (Opcode.Cvtpd2ps, 0x5AL);
+          (Opcode.Unpcklpd, 0x14L);
+          (Opcode.Unpckhpd, 0x15L);
+          (Opcode.Punpcklqdq, 0x6CL);
+          (Opcode.Punpckhqdq, 0x6DL);
         ]
       (C.field ~width:8 "opcode")
 
@@ -3270,6 +3833,7 @@ module Make (M : MODE) = struct
       ~entries:
         [
           (Opcode.Comiss, 0x2FL);
+          (Opcode.Ucomiss, 0x2EL);
           (Opcode.Andps, 0x54L);
           (Opcode.Andnps, 0x55L);
           (Opcode.Orps, 0x56L);
@@ -3280,6 +3844,12 @@ module Make (M : MODE) = struct
           (Opcode.Subps, 0x5CL);
           (Opcode.Mulps, 0x59L);
           (Opcode.Divps, 0x5EL);
+          (Opcode.Maxps, 0x5FL);
+          (Opcode.Minps, 0x5DL);
+          (Opcode.Sqrtps, 0x51L);
+          (Opcode.Cvtps2pd, 0x5AL);
+          (Opcode.Unpcklps, 0x14L);
+          (Opcode.Unpckhps, 0x15L);
         ]
       (C.field ~width:8 "opcode")
 
@@ -3340,6 +3910,82 @@ module Make (M : MODE) = struct
            asz_codec
            ** const ~width:8 (Int64.of_int mandatory)
            ** rex_codec ** const ~width:16 opcode16 ** rm_codec))
+
+  (* [shufpd]/[cmpsd]/[cmpss]/[cmppd]: {!shld_imm_form}'s two-byte-opcode-plus-trailing-
+     imm8 shape, spliced with {!sse_mov_rm_r_alt}'s mandatory-prefix layout and always-xmm
+     reg/rm - the first XMM-immediate-carrying legacy shape. Generalized over
+     [~mandatory]/[~opcode_codec] the same way {!sse_binop_alt} is: {!Cmpsd}/{!Cmpss} each need
+     their own one-entry mandatory-[F2]/[F3] group (opcode 0xC2 has no packed-only-vs-scalar
+     split the way {!Shufps}'s single opcode byte does), while {!Cmppd} joins {!Shufpd}'s own
+     mandatory-66 group and {!Cmpps} joins {!Shufps}'s own mandatory-prefix-free group below. *)
+  let sse_binop_imm_alt ~label ~priority ~mandatory ~opcode_codec =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Sse_binop_imm_r_rm { op; reg; rm; imm } ->
+               let p = prefixes_of ~width:32 ~reg:reg.num ~rm in
+               Some (p.asz, ((), (p.rex, ((), (op, ({ re_reg = reg.num; re_rm = rm }, imm))))))
+           | _ -> None)
+         ~decode:(fun (asz, ((), (rex, ((), (op, (e, imm)))))) ->
+           let p = { asz; opsz = false; rex } in
+           Some
+             (Lowered.Sse_binop_imm_r_rm
+                {
+                  op;
+                  reg = reg_field ~p ~width:128 e.re_reg;
+                  rm = rm_of ~p ~width:128 e.re_rm;
+                  imm;
+                }))
+         C.(
+           asz_codec
+           ** const ~width:8 (Int64.of_int mandatory)
+           ** rex_codec ** const ~width:8 0x0FL ** opcode_codec ** rm_codec
+           ** le ~signedness:C.Unsigned ~width:8 "imm8"))
+
+  let sse_binop_imm_66_codec =
+    C.iso_table ~name:"sse-binop-imm-66-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:[ (Opcode.Shufpd, 0xC6L); (Opcode.Cmppd, 0xC2L) ]
+      (C.field ~width:8 "opcode")
+
+  let sse_binop_imm_f2_codec =
+    C.iso_table ~name:"sse-binop-imm-f2-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:[ (Opcode.Cmpsd, 0xC2L) ]
+      (C.field ~width:8 "opcode")
+
+  let sse_binop_imm_f3_codec =
+    C.iso_table ~name:"sse-binop-imm-f3-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:[ (Opcode.Cmpss, 0xC2L) ]
+      (C.field ~width:8 "opcode")
+
+  (* [shufps]/[cmpps] ([0F C6|C2 /r ib], no mandatory prefix): {!sse_binop_imm_alt}'s
+     mandatory-prefix-free sibling, {!sse_binop_none_alt}'s [prefixes_codec] layout with the
+     same trailing imm8. *)
+  let sse_binop_imm_none_alt ~label ~priority ~opcode_codec =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Sse_binop_imm_r_rm { op; reg; rm; imm } ->
+               Some
+                 ( prefixes_of ~width:32 ~reg:reg.num ~rm,
+                   ((), (op, ({ re_reg = reg.num; re_rm = rm }, imm))) )
+           | _ -> None)
+         ~decode:(fun (p, ((), (op, (e, imm)))) ->
+           Some
+             (Lowered.Sse_binop_imm_r_rm
+                {
+                  op;
+                  reg = reg_field ~p ~width:128 e.re_reg;
+                  rm = rm_of ~p ~width:128 e.re_rm;
+                  imm;
+                }))
+         C.(
+           prefixes_codec ** const ~width:8 0x0FL ** opcode_codec ** rm_codec
+           ** le ~signedness:C.Unsigned ~width:8 "imm8"))
+
+  let sse_binop_imm_none_codec =
+    C.iso_table ~name:"sse-binop-imm-none-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:[ (Opcode.Shufps, 0xC6L); (Opcode.Cmpps, 0xC2L) ]
+      (C.field ~width:8 "opcode")
 
   (* [cvtsi2sd]/[cvtsi2ss] ([0F 2A]): the one place [~width] threaded into
      {!prefixes_of} is a real GPR width rather than the [32] REX.W-clear
@@ -3428,6 +4074,9 @@ module Make (M : MODE) = struct
           (Opcode.Vsubsd, 0x5CL);
           (Opcode.Vmulsd, 0x59L);
           (Opcode.Vdivsd, 0x5EL);
+          (Opcode.Vmaxsd, 0x5FL);
+          (Opcode.Vminsd, 0x5DL);
+          (Opcode.Vsqrtsd, 0x51L);
         ]
       (C.field ~width:8 "opcode")
 
@@ -3439,6 +4088,9 @@ module Make (M : MODE) = struct
           (Opcode.Vsubss, 0x5CL);
           (Opcode.Vmulss, 0x59L);
           (Opcode.Vdivss, 0x5EL);
+          (Opcode.Vmaxss, 0x5FL);
+          (Opcode.Vminss, 0x5DL);
+          (Opcode.Vsqrtss, 0x51L);
         ]
       (C.field ~width:8 "opcode")
 
@@ -3456,6 +4108,10 @@ module Make (M : MODE) = struct
           (Opcode.Vandnps, 0x55L);
           (Opcode.Vorps, 0x56L);
           (Opcode.Vxorps, 0x57L);
+          (Opcode.Vmaxps, 0x5FL);
+          (Opcode.Vminps, 0x5DL);
+          (Opcode.Vunpcklps, 0x14L);
+          (Opcode.Vunpckhps, 0x15L);
         ]
       (C.field ~width:8 "opcode")
 
@@ -3472,6 +4128,12 @@ module Make (M : MODE) = struct
           (Opcode.Vandnpd, 0x55L);
           (Opcode.Vorpd, 0x56L);
           (Opcode.Vxorpd, 0x57L);
+          (Opcode.Vmaxpd, 0x5FL);
+          (Opcode.Vminpd, 0x5DL);
+          (Opcode.Vunpcklpd, 0x14L);
+          (Opcode.Vunpckhpd, 0x15L);
+          (Opcode.Vpunpcklqdq, 0x6CL);
+          (Opcode.Vpunpckhqdq, 0x6DL);
         ]
       (C.field ~width:8 "opcode")
 
@@ -3519,6 +4181,128 @@ module Make (M : MODE) = struct
                (Lowered.Vex_binop_rr_rm
                   { op; dst = reg_at ~width:128 dst_num; src1 = reg_at ~width:128 src1_num; src2 }))
          C.(const ~width:8 0xC5L ** field ~width:8 "vex-byte2" ** opcode_codec ** rm_codec))
+
+  (* [pp = 0] - {!Opcode.Vsqrtps}'s own group: opcode 0x51 does not collide with
+     {!vex_scalar_none_codec}'s entries (0x54-0x59/0x5C-0x5F), so this could have been added
+     there, but a dedicated table keeps it paired with {!vex_unop_alt} the same way every other
+     [Lowered] constructor here has its own codec table(s), not a shared one keyed only by
+     opcode-byte disjointness. *)
+  let vex_unop_none_codec =
+    C.iso_table ~name:"vex-unop-none-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:
+        [
+          (Opcode.Vsqrtps, 0x51L);
+          (Opcode.Vmovaps, 0x28L);
+          (Opcode.Vmovups, 0x10L);
+          (Opcode.Vcomiss, 0x2FL);
+          (Opcode.Vucomiss, 0x2EL);
+          (Opcode.Vcvtps2pd, 0x5AL);
+        ]
+      (C.field ~width:8 "opcode")
+
+  (* [pp = 1] (mandatory [66]) - {!Vsqrtps}'s packed-double sibling. *)
+  let vex_unop_66_codec =
+    C.iso_table ~name:"vex-unop-66-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:
+        [
+          (Opcode.Vsqrtpd, 0x51L);
+          (Opcode.Vmovapd, 0x28L);
+          (Opcode.Vmovupd, 0x10L);
+          (Opcode.Vcomisd, 0x2FL);
+          (Opcode.Vucomisd, 0x2EL);
+          (Opcode.Vcvtpd2ps, 0x5AL);
+        ]
+      (C.field ~width:8 "opcode")
+
+  (* {!vex_scalar_rrr_alt}'s two-operand sibling for {!Lowered.Vex_unop_r_rm}: no [vvvv]
+     operand to derive a field from, so [byte2]'s [vvvv] bits are always the literal [1111]
+     ("unused") pattern rather than [lnot src1.num land 0xF]. *)
+  let vex_unop_alt ~label ~priority ~pp ~opcode_codec =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Vex_unop_r_rm { op; dst; src } when vex_rm_ok src ->
+               let r_bit = if dst.num >= 8 then 0 else 1 in
+               let byte2 = Int64.of_int ((r_bit lsl 7) lor (0xF lsl 3) lor pp) in
+               Some ((), (byte2, (op, { re_reg = dst.num; re_rm = src })))
+           | _ -> None)
+         ~decode:(fun ((), (byte2, (op, e))) ->
+           let b = Int64.to_int byte2 in
+           let r_bit = (b lsr 7) land 1 in
+           let l = (b lsr 2) land 1 in
+           let observed_pp = b land 3 in
+           if l <> 0 || observed_pp <> pp then None
+           else
+             let dst_num = (e.re_reg land 7) + if r_bit = 0 then 8 else 0 in
+             let src =
+               match e.re_rm with Rm.Reg r -> Rm.Reg (retype ~width:128 r) | Rm.Mem _ as m -> m
+             in
+             Some (Lowered.Vex_unop_r_rm { op; dst = reg_at ~width:128 dst_num; src }))
+         C.(const ~width:8 0xC5L ** field ~width:8 "vex-byte2" ** opcode_codec ** rm_codec))
+
+  (* [vshufps]/[vshufpd]/[vcmpss]/[vcmpsd]/[vcmpps]/[vcmppd] ([VEX.128.pp.0F.WIG C6|C2 /r ib]): {!vex_scalar_rrr_alt}'s trailing-immediate sibling for
+     {!Lowered.Vex_binop_imm_rr_rm} - same [vvvv]-carried [src1]/two-byte-VEX-restricted [src2]
+     as {!vex_scalar_rrr_alt}, plus the trailing imm8 {!shld_imm_form}'s legacy shape already
+     established the pattern for. Generalized over [~pp]/[~opcode_codec] the same way
+     {!vex_scalar_rrr_alt} is: {!Vcmpsd}/{!Vcmpss} each need their own one-entry [pp = 3]/[pp = 2]
+     group (opcode 0xC2 has no packed-only-vs-scalar split the way {!Vshufps}'s opcode 0xC6
+     does), while {!Vcmppd}/{!Vcmpps} join {!Vshufpd}/{!Vshufps}'s own [pp = 1]/[pp = 0]
+     groups. *)
+  let vex_binop_imm_rrr_alt ~label ~priority ~pp ~opcode_codec =
+    C.alt ~label ~priority
+      (C.iso_fun ~name:label
+         ~encode:(function
+           | Lowered.Vex_binop_imm_rr_rm { op; dst; src1; src2; imm } when vex_rm_ok src2 ->
+               let r_bit = if dst.num >= 8 then 0 else 1 in
+               let vvvv = lnot src1.num land 0xF in
+               let byte2 = Int64.of_int ((r_bit lsl 7) lor (vvvv lsl 3) lor pp) in
+               Some ((), (byte2, (op, ({ re_reg = dst.num; re_rm = src2 }, imm))))
+           | _ -> None)
+         ~decode:(fun ((), (byte2, (op, (e, imm)))) ->
+           let b = Int64.to_int byte2 in
+           let r_bit = (b lsr 7) land 1 in
+           let vvvv = (b lsr 3) land 0xF in
+           let l = (b lsr 2) land 1 in
+           let observed_pp = b land 3 in
+           if l <> 0 || observed_pp <> pp then None
+           else
+             let dst_num = (e.re_reg land 7) + if r_bit = 0 then 8 else 0 in
+             let src1_num = lnot vvvv land 0xF in
+             let src2 =
+               match e.re_rm with Rm.Reg r -> Rm.Reg (retype ~width:128 r) | Rm.Mem _ as m -> m
+             in
+             Some
+               (Lowered.Vex_binop_imm_rr_rm
+                  {
+                    op;
+                    dst = reg_at ~width:128 dst_num;
+                    src1 = reg_at ~width:128 src1_num;
+                    src2;
+                    imm;
+                  }))
+         C.(
+           const ~width:8 0xC5L ** field ~width:8 "vex-byte2" ** opcode_codec ** rm_codec
+           ** le ~signedness:C.Unsigned ~width:8 "imm8"))
+
+  let vex_binop_imm_none_codec =
+    C.iso_table ~name:"vex-binop-imm-none-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:[ (Opcode.Vshufps, 0xC6L); (Opcode.Vcmpps, 0xC2L) ]
+      (C.field ~width:8 "opcode")
+
+  let vex_binop_imm_66_codec =
+    C.iso_table ~name:"vex-binop-imm-66-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:[ (Opcode.Vshufpd, 0xC6L); (Opcode.Vcmppd, 0xC2L) ]
+      (C.field ~width:8 "opcode")
+
+  let vex_binop_imm_f2_codec =
+    C.iso_table ~name:"vex-binop-imm-f2-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:[ (Opcode.Vcmpsd, 0xC2L) ]
+      (C.field ~width:8 "opcode")
+
+  let vex_binop_imm_f3_codec =
+    C.iso_table ~name:"vex-binop-imm-f3-op" ~equal:( = ) ~show:Opcode.name
+      ~entries:[ (Opcode.Vcmpss, 0xC2L) ]
+      (C.field ~width:8 "opcode")
 
   (* Zero-/sign-extending move (M5, asm/docs/corpus.md): [0F B6/B7/BE/BF /r].
      No mandatory prefix, so this reuses [prefixes_codec] directly rather than
@@ -4423,6 +5207,31 @@ module Make (M : MODE) = struct
             ~opcode_codec:vex_scalar_none_codec;
           vex_scalar_rrr_alt ~label:"vex-scalar-66-rrr" ~priority:70 ~pp:1
             ~opcode_codec:vex_scalar_66_codec;
+          vex_unop_alt ~label:"vex-unop-none" ~priority:71 ~pp:0 ~opcode_codec:vex_unop_none_codec;
+          vex_unop_alt ~label:"vex-unop-66" ~priority:72 ~pp:1 ~opcode_codec:vex_unop_66_codec;
+          (* [cmpsd]/[cmpss]: {!Cmpsd}/{!Cmpss}'s own one-entry mandatory-[F2]/[F3]
+             groups, same ordering convention as {!sse_binop_alt}'s own F2/F3 groups above. *)
+          sse_binop_imm_alt ~label:"sse-binop-imm-f2" ~priority:73 ~mandatory:0xF2
+            ~opcode_codec:sse_binop_imm_f2_codec;
+          sse_binop_imm_alt ~label:"sse-binop-imm-f3" ~priority:74 ~mandatory:0xF3
+            ~opcode_codec:sse_binop_imm_f3_codec;
+          (* [sse-binop-imm-66] must be tried before [sse-binop-imm-none]: the mandatory-
+             prefix-free alt reuses [prefixes_codec] directly ({!sse_binop_none_alt}'s own
+             comment), whose [opsz_codec] field can ambiguously consume a genuine leading
+             mandatory [0x66] byte - the same reason {!sse_binop_alt}'s [66] group (priority 26)
+             is tried before {!sse_binop_none_alt} (priority 27) above. *)
+          sse_binop_imm_alt ~label:"sse-binop-imm-66" ~priority:75 ~mandatory:0x66
+            ~opcode_codec:sse_binop_imm_66_codec;
+          sse_binop_imm_none_alt ~label:"sse-binop-imm-none" ~priority:76
+            ~opcode_codec:sse_binop_imm_none_codec;
+          vex_binop_imm_rrr_alt ~label:"vex-binop-imm-f2" ~priority:77 ~pp:3
+            ~opcode_codec:vex_binop_imm_f2_codec;
+          vex_binop_imm_rrr_alt ~label:"vex-binop-imm-f3" ~priority:78 ~pp:2
+            ~opcode_codec:vex_binop_imm_f3_codec;
+          vex_binop_imm_rrr_alt ~label:"vex-binop-imm-none" ~priority:79 ~pp:0
+            ~opcode_codec:vex_binop_imm_none_codec;
+          vex_binop_imm_rrr_alt ~label:"vex-binop-imm-66" ~priority:80 ~pp:1
+            ~opcode_codec:vex_binop_imm_66_codec;
         ]
       (* M5 (asm/docs/corpus.md), unconditional for the same reason as the
          SSE block above: nothing here is bit-pattern-dead in either mode. *)
@@ -4628,6 +5437,7 @@ module Make (M : MODE) = struct
     | Lowered.Sse_binop_r_rm { rm; _ }
     | Lowered.Sse_mov_r_rm { rm; _ }
     | Lowered.Sse_mov_rm_r { rm; _ }
+    | Lowered.Sse_binop_imm_r_rm { rm; _ }
     | Lowered.Jmp_rm { rm } ->
         disp_expr rm
     | Lowered.Lea { mem; _ } | Lowered.Fpu_mem { mem; _ } -> disp_expr (Rm.Mem mem)
@@ -4980,6 +5790,19 @@ module Make (M : MODE) = struct
               ];
             form = None;
           }
+    | Lowered.Sse_binop_imm_r_rm { op; reg; rm; imm } ->
+        Some
+          {
+            Instruction.op;
+            width = 32;
+            ops =
+              [
+                Operand.Imm (Bigint.of_int64 imm);
+                (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+                Operand.Reg reg;
+              ];
+            form = None;
+          }
     | Lowered.Sse_mov_r_rm { op; reg; rm } ->
         Some
           {
@@ -5032,6 +5855,22 @@ module Make (M : MODE) = struct
         Some
           (Instruction.mk op 32
              [
+               (match src2 with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+               Operand.Reg src1;
+               Operand.Reg dst;
+             ])
+    | Lowered.Vex_unop_r_rm { op; dst; src } ->
+        Some
+          (Instruction.mk op 32
+             [
+               (match src with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
+               Operand.Reg dst;
+             ])
+    | Lowered.Vex_binop_imm_rr_rm { op; dst; src1; src2; imm } ->
+        Some
+          (Instruction.mk op 32
+             [
+               Operand.Imm (Bigint.of_int64 imm);
                (match src2 with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
                Operand.Reg src1;
                Operand.Reg dst;

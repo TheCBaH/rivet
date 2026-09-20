@@ -545,6 +545,7 @@ let x86_sse_binop_rr_entries =
           "COMISD_XMMsd_XMMsd";
           "UCOMISD_XMMsd_XMMsd";
           "COMISS_XMMss_XMMss";
+          "UCOMISS_XMMss_XMMss";
           "XORPD_XMMxuq_XMMxuq";
           "PXOR_XMMdq_XMMdq";
           "MOVAPD_XMMpd_XMMpd_0F28";
@@ -568,6 +569,26 @@ let x86_sse_binop_rr_entries =
           "SUBPD_XMMpd_XMMpd";
           "MULPD_XMMpd_XMMpd";
           "DIVPD_XMMpd_XMMpd";
+          "MAXSS_XMMss_XMMss";
+          "MINSS_XMMss_XMMss";
+          "MAXSD_XMMsd_XMMsd";
+          "MINSD_XMMsd_XMMsd";
+          "MAXPS_XMMps_XMMps";
+          "MINPS_XMMps_XMMps";
+          "MAXPD_XMMpd_XMMpd";
+          "MINPD_XMMpd_XMMpd";
+          "SQRTSS_XMMss_XMMss";
+          "SQRTSD_XMMsd_XMMsd";
+          "SQRTPS_XMMps_XMMps";
+          "SQRTPD_XMMpd_XMMpd";
+          "CVTPS2PD_XMMpd_XMMq";
+          "CVTPD2PS_XMMps_XMMpd";
+          "UNPCKLPS_XMMps_XMMq";
+          "UNPCKHPS_XMMps_XMMdq";
+          "UNPCKLPD_XMMpd_XMMq";
+          "UNPCKHPD_XMMpd_XMMq";
+          "PUNPCKLQDQ_XMMdq_XMMq";
+          "PUNPCKHQDQ_XMMdq_XMMq";
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -606,6 +627,7 @@ let x86_sse_binop_rm_entries =
           "COMISD_XMMsd_MEMsd";
           "UCOMISD_XMMsd_MEMsd";
           "COMISS_XMMss_MEMss";
+          "UCOMISS_XMMss_MEMss";
           "XORPD_XMMxuq_MEMxuq";
           "PXOR_XMMdq_MEMdq";
           "MOVAPD_XMMpd_MEMpd";
@@ -629,6 +651,93 @@ let x86_sse_binop_rm_entries =
           "SUBPD_XMMpd_MEMpd";
           "MULPD_XMMpd_MEMpd";
           "DIVPD_XMMpd_MEMpd";
+          "MAXSS_XMMss_MEMss";
+          "MINSS_XMMss_MEMss";
+          "MAXSD_XMMsd_MEMsd";
+          "MINSD_XMMsd_MEMsd";
+          "MAXPS_XMMps_MEMps";
+          "MINPS_XMMps_MEMps";
+          "MAXPD_XMMpd_MEMpd";
+          "MINPD_XMMpd_MEMpd";
+          "SQRTSS_XMMss_MEMss";
+          "SQRTSD_XMMsd_MEMsd";
+          "SQRTPS_XMMps_MEMps";
+          "SQRTPD_XMMpd_MEMpd";
+          "CVTPS2PD_XMMpd_MEMq";
+          "CVTPD2PS_XMMps_MEMpd";
+          "UNPCKLPS_XMMps_MEMdq";
+          "UNPCKHPS_XMMps_MEMdq";
+          "UNPCKLPD_XMMpd_MEMdq";
+          "UNPCKHPD_XMMpd_MEMdq";
+          "PUNPCKLQDQ_XMMdq_MEMdq";
+          "PUNPCKHQDQ_XMMdq_MEMdq";
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* SHUFPS/SHUFPD ({!Isa_norm_xed.xmm_binop_imm_rr_form}'s own doc comment): the first
+   XMM-immediate-carrying legacy shape, {!x86_sse_binop_rr_entry}'s own [src]/[dest] pair plus a
+   concrete imm8 selector. Confirmed against real GNU as: [shufps $0x1b,%xmm2,%xmm1] ->
+   [0f c6 ca 1b], [shufpd $0x1,%xmm2,%xmm1] -> [66 0f c6 ca 01]. Also covers CMPSS/CMPSD/CMPPS/
+   CMPPD, the same shape at opcode 0xC2 - confirmed [cmpss $0x0,%xmm2,%xmm1] ->
+   [f3 0f c2 ca 00]. *)
+let x86_sse_binop_imm_rr_entry ~target ~form_id ~lookup_key ~imm =
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:register-register:%s" form_id (Target.to_string target);
+    rule_ids = [ "canonical-spelling"; "xmm-register-operands" ];
+    operands = [ ("imm", imm); ("src", "xmm1"); ("dest", "xmm0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_sse_binop_imm_rr_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun (lookup_key, imm) ->
+          x86_sse_binop_imm_rr_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key ~imm)
+        [
+          ("SHUFPS_XMMps_XMMps_IMMb", "27");
+          ("SHUFPD_XMMpd_XMMpd_IMMb", "1");
+          ("CMPSS_XMMss_XMMss_IMMb", "0");
+          ("CMPSD_XMM_XMMsd_XMMsd_IMMb", "0");
+          ("CMPPS_XMMps_XMMps_IMMb", "0");
+          ("CMPPD_XMMpd_XMMpd_IMMb", "0");
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* Its register<-memory sibling ({!x86_sse_binop_rm_entry}'s own doc comment) plus the same
+   trailing imm8. *)
+let x86_sse_binop_imm_rm_entry ~target ~form_id ~lookup_key ~imm =
+  let stack, _, _ = x86_registers target in
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:load-base-disp8-sib:%s" form_id (Target.to_string target);
+    rule_ids = [ "load-base-disp8-sib"; "xmm-register-operands" ];
+    operands = [ ("imm", imm); ("mem", Printf.sprintf "16(%%%s)" stack); ("dest", "xmm0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_sse_binop_imm_rm_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun (lookup_key, imm) ->
+          x86_sse_binop_imm_rm_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key ~imm)
+        [
+          ("SHUFPS_XMMps_MEMps_IMMb", "27");
+          ("SHUFPD_XMMpd_MEMpd_IMMb", "1");
+          ("CMPSS_XMMss_MEMss_IMMb", "0");
+          ("CMPSD_XMM_XMMsd_MEMsd_IMMb", "0");
+          ("CMPPS_XMMps_MEMps_IMMb", "0");
+          ("CMPPD_XMMpd_MEMpd_IMMb", "0");
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -718,6 +827,22 @@ let x86_vex_binop_rrr_entries =
           "VANDNPD_XMMdq_XMMdq_XMMdq";
           "VORPD_XMMdq_XMMdq_XMMdq";
           "VXORPD_XMMdq_XMMdq_XMMdq";
+          "VMAXSD_XMMdq_XMMdq_XMMq";
+          "VMINSD_XMMdq_XMMdq_XMMq";
+          "VMAXSS_XMMdq_XMMdq_XMMd";
+          "VMINSS_XMMdq_XMMdq_XMMd";
+          "VMAXPS_XMMdq_XMMdq_XMMdq";
+          "VMINPS_XMMdq_XMMdq_XMMdq";
+          "VMAXPD_XMMdq_XMMdq_XMMdq";
+          "VMINPD_XMMdq_XMMdq_XMMdq";
+          "VSQRTSD_XMMdq_XMMdq_XMMq";
+          "VSQRTSS_XMMdq_XMMdq_XMMd";
+          "VUNPCKLPS_XMMdq_XMMdq_XMMdq";
+          "VUNPCKHPS_XMMdq_XMMdq_XMMdq";
+          "VUNPCKLPD_XMMdq_XMMdq_XMMdq";
+          "VUNPCKHPD_XMMdq_XMMdq_XMMdq";
+          "VPUNPCKLQDQ_XMMdq_XMMdq_XMMdq";
+          "VPUNPCKHQDQ_XMMdq_XMMdq_XMMdq";
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -771,6 +896,166 @@ let x86_vex_binop_rr_mem_entries =
           "VANDNPD_XMMdq_XMMdq_MEMdq";
           "VORPD_XMMdq_XMMdq_MEMdq";
           "VXORPD_XMMdq_XMMdq_MEMdq";
+          "VMAXSD_XMMdq_XMMdq_MEMq";
+          "VMINSD_XMMdq_XMMdq_MEMq";
+          "VMAXSS_XMMdq_XMMdq_MEMd";
+          "VMINSS_XMMdq_XMMdq_MEMd";
+          "VMAXPS_XMMdq_XMMdq_MEMdq";
+          "VMINPS_XMMdq_XMMdq_MEMdq";
+          "VMAXPD_XMMdq_XMMdq_MEMdq";
+          "VMINPD_XMMdq_XMMdq_MEMdq";
+          "VSQRTSD_XMMdq_XMMdq_MEMq";
+          "VSQRTSS_XMMdq_XMMdq_MEMd";
+          "VUNPCKLPS_XMMdq_XMMdq_MEMdq";
+          "VUNPCKHPS_XMMdq_XMMdq_MEMdq";
+          "VUNPCKLPD_XMMdq_XMMdq_MEMdq";
+          "VUNPCKHPD_XMMdq_XMMdq_MEMdq";
+          "VPUNPCKLQDQ_XMMdq_XMMdq_MEMdq";
+          "VPUNPCKHQDQ_XMMdq_XMMdq_MEMdq";
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* VSHUFPS/VSHUFPD ({!Isa_norm_xed.vex_binop_imm_rrr_form}'s own doc comment):
+   {!x86_vex_binop_rrr_entry}'s own three-register shape plus a concrete imm8 selector.
+   Confirmed against real GNU as: [vshufps $0x1b,%xmm2,%xmm1,%xmm0] -> [c5 f0 c6 c2 1b]. Also
+   covers VCMPSS/VCMPSD/VCMPPS/VCMPPD, the same shape at opcode 0xC2 - confirmed
+   [vcmpss $0x0,%xmm2,%xmm1,%xmm0] -> [c5 f2 c2 c2 00]. *)
+let x86_vex_binop_imm_rrr_entry ~target ~form_id ~lookup_key ~imm =
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:register-register:%s" form_id (Target.to_string target);
+    rule_ids = [ "canonical-spelling"; "vex-three-register-operands" ];
+    operands = [ ("imm", imm); ("src2", "xmm2"); ("src1", "xmm1"); ("dest", "xmm0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_vex_binop_imm_rrr_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun (lookup_key, imm) ->
+          x86_vex_binop_imm_rrr_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key ~imm)
+        [
+          ("VSHUFPS_XMMdq_XMMdq_XMMdq_IMMb", "27");
+          ("VSHUFPD_XMMdq_XMMdq_XMMdq_IMMb", "1");
+          ("VCMPSS_XMMdq_XMMdq_XMMd_IMMb", "0");
+          ("VCMPSD_XMMdq_XMMdq_XMMq_IMMb", "0");
+          ("VCMPPS_XMMdq_XMMdq_XMMdq_IMMb", "0");
+          ("VCMPPD_XMMdq_XMMdq_XMMdq_IMMb", "0");
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* {!x86_vex_binop_imm_rrr_entry}'s register<-memory sibling
+   ({!Isa_norm_xed.vex_binop_imm_rr_mem_form}'s own doc comment). *)
+let x86_vex_binop_imm_rr_mem_entry ~target ~form_id ~lookup_key ~imm =
+  let stack, _, _ = x86_registers target in
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:load-base-disp8-sib:%s" form_id (Target.to_string target);
+    rule_ids = [ "load-base-disp8-sib"; "vex-two-register-one-memory-operands" ];
+    operands =
+      [
+        ("imm", imm); ("src2", Printf.sprintf "16(%%%s)" stack); ("src1", "xmm1"); ("dest", "xmm0");
+      ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_vex_binop_imm_rr_mem_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun (lookup_key, imm) ->
+          x86_vex_binop_imm_rr_mem_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key ~imm)
+        [
+          ("VSHUFPS_XMMdq_XMMdq_MEMdq_IMMb", "27");
+          ("VSHUFPD_XMMdq_XMMdq_MEMdq_IMMb", "1");
+          ("VCMPSS_XMMdq_XMMdq_MEMd_IMMb", "0");
+          ("VCMPSD_XMMdq_XMMdq_MEMq_IMMb", "0");
+          ("VCMPPS_XMMdq_XMMdq_MEMdq_IMMb", "0");
+          ("VCMPPD_XMMdq_XMMdq_MEMdq_IMMb", "0");
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* {!x86_vex_binop_rrr_entry}'s two-operand unary sibling ({!Isa_norm_xed.vex_unop_rr_form}'s
+   own doc comment): [%xmm1] (src)/[%xmm0] (dest), no [vvvv]-carried third operand - real GNU
+   as rejects a third operand for these mnemonics outright. *)
+let x86_vex_unop_rr_entry ~target ~form_id ~lookup_key =
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:register-register:%s" form_id (Target.to_string target);
+    rule_ids = [ "canonical-spelling"; "vex-two-register-operands" ];
+    operands = [ ("src", "xmm1"); ("dest", "xmm0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_vex_unop_rr_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key -> x86_vex_unop_rr_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+        [
+          "VSQRTPS_XMMdq_XMMdq";
+          "VSQRTPD_XMMdq_XMMdq";
+          "VMOVAPS_XMMdq_XMMdq_28";
+          "VMOVUPS_XMMdq_XMMdq_10";
+          "VMOVAPD_XMMdq_XMMdq_28";
+          "VMOVUPD_XMMdq_XMMdq_10";
+          "VCOMISD_XMMq_XMMq";
+          "VUCOMISD_XMMdq_XMMq";
+          "VCOMISS_XMMd_XMMd";
+          "VUCOMISS_XMMdq_XMMd";
+          "VCVTPS2PD_XMMdq_XMMq";
+          "VCVTPD2PS_XMMdq_XMMdq";
+        ])
+    [ Target.X86_32; Target.X86_64 ]
+
+(* {!x86_vex_unop_rr_entry}'s register<-memory sibling
+   ({!Isa_norm_xed.vex_unop_rr_mem_form}'s own doc comment): {!x86_sse_binop_rm_entry}'s
+   base+disp8 SIB addressing standing in for [src]. *)
+let x86_vex_unop_rr_mem_entry ~target ~form_id ~lookup_key =
+  let stack, _, _ = x86_registers target in
+  {
+    form_id;
+    target;
+    lookup_key;
+    case_id = Printf.sprintf "%s:load-base-disp8-sib:%s" form_id (Target.to_string target);
+    rule_ids = [ "load-base-disp8-sib"; "vex-one-register-one-memory-operands" ];
+    operands = [ ("src", Printf.sprintf "16(%%%s)" stack); ("dest", "xmm0") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let x86_vex_unop_rr_mem_entries =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun lookup_key ->
+          x86_vex_unop_rr_mem_entry ~target ~form_id:("x86:" ^ lookup_key) ~lookup_key)
+        [
+          "VSQRTPS_XMMdq_MEMdq";
+          "VSQRTPD_XMMdq_MEMdq";
+          "VMOVAPS_XMMdq_MEMdq";
+          "VMOVUPS_XMMdq_MEMdq";
+          "VMOVAPD_XMMdq_MEMdq";
+          "VMOVUPD_XMMdq_MEMdq";
+          "VCOMISD_XMMq_MEMq";
+          "VUCOMISD_XMMdq_MEMq";
+          "VCOMISS_XMMd_MEMd";
+          "VUCOMISS_XMMdq_MEMd";
+          "VCVTPS2PD_XMMdq_MEMq";
         ])
     [ Target.X86_32; Target.X86_64 ]
 
@@ -4264,91 +4549,91 @@ let all =
   @ x86_alu_memv_entries @ x86_alu_memv_gprv_entries @ x86_alu_immz_entries @ x86_alu_immb_entries
   @ x86_alu_memv_immb_entries @ x86_alu_memv_immz_entries @ x86_alu_gpr8_immb_entries
   @ x86_alu_memb_immb_entries @ x86_alu_al_immb_entries @ x86_sse_binop_rr_entries
-  @ x86_sse_binop_rm_entries @ x86_sse_mov_entries @ x86_cvtsi2f_rr_entries @ x86_cvtsi2f_rm_entries
-  @ x86_cvtf2i_rr_entries @ x86_cvtf2i_rm_entries @ x86_fadd_entries @ fadd_s_entries
-  @ fsub_s_entries @ fmul_s_entries @ fdiv_s_entries @ fadd_d_entries @ fsub_d_entries
-  @ fmul_d_entries @ fdiv_d_entries @ flw_entries @ fld_entries @ fsw_entries @ fsd_entries
-  @ sh1add_entries @ sh2add_entries @ sh3add_entries @ sh1adduw_entries @ sh2adduw_entries
-  @ sh3adduw_entries @ min_entries @ minu_entries @ max_entries @ maxu_entries @ andn_entries
-  @ orn_entries @ xnor_entries @ rol_entries @ ror_entries @ clz_entries @ ctz_entries
-  @ cpop_entries @ sextb_entries @ sexth_entries @ orcb_entries @ clzw_entries @ ctzw_entries
-  @ cpopw_entries @ brev8_entries @ rev8_entries @ pack_entries @ packh_entries @ packw_entries
-  @ zip_entries @ unzip_entries @ rolw_entries @ rorw_entries @ rori_entries @ roriw_entries
-  @ bclr_entries @ bext_entries @ binv_entries @ bset_entries @ bclri_entries @ bexti_entries
-  @ binvi_entries @ bseti_entries @ zext_h_entries @ clmul_entries @ clmulh_entries @ clmulr_entries
-  @ czero_eqz_entries @ czero_nez_entries @ sm3p0_entries @ sm3p1_entries @ xperm4_entries
-  @ xperm8_entries @ sha256sum0_entries @ sha256sum1_entries @ sha256sig0_entries
-  @ sha256sig1_entries @ sha512sum0_entries @ sha512sum1_entries @ sha512sig0_entries
-  @ sha512sig1_entries @ sha512sum0r_entries @ sha512sum1r_entries @ sha512sig0l_entries
-  @ sha512sig1l_entries @ sha512sig0h_entries @ sha512sig1h_entries @ aes64ds_entries
-  @ aes64dsm_entries @ aes64es_entries @ aes64esm_entries @ aes64ks2_entries @ aes64im_entries
-  @ aes64ks1i_entries @ aes32dsi_entries @ aes32dsmi_entries @ aes32esi_entries @ aes32esmi_entries
-  @ sm4ed_entries @ sm4ks_entries @ csrrw_entries @ csrrs_entries @ csrrc_entries @ csrrwi_entries
-  @ csrrsi_entries @ csrrci_entries @ csrr_entries @ csrw_entries @ csrs_entries @ csrc_entries
-  @ csrwi_entries @ csrsi_entries @ csrci_entries @ amoswap_w_entries @ amoadd_w_entries
-  @ amoxor_w_entries @ amoand_w_entries @ amoor_w_entries @ amomin_w_entries @ amomax_w_entries
-  @ amominu_w_entries @ amomaxu_w_entries @ sc_w_entries @ lr_w_entries @ amoswap_d_entries
-  @ amoadd_d_entries @ amoxor_d_entries @ amoand_d_entries @ amoor_d_entries @ amomin_d_entries
-  @ amomax_d_entries @ amominu_d_entries @ amomaxu_d_entries @ sc_d_entries @ lr_d_entries
-  @ fsgnj_s_entries @ fsgnjn_s_entries @ fsgnjx_s_entries @ fsgnj_d_entries @ fsgnjn_d_entries
-  @ fsgnjx_d_entries @ fmin_s_entries @ fmax_s_entries @ fmin_d_entries @ fmax_d_entries
-  @ fsqrt_s_entries @ fsqrt_d_entries @ fclass_s_entries @ fclass_d_entries @ fmadd_s_entries
-  @ fmsub_s_entries @ fnmsub_s_entries @ fnmadd_s_entries @ fmadd_d_entries @ fmsub_d_entries
-  @ fnmsub_d_entries @ fnmadd_d_entries @ feq_s_entries @ fle_s_entries @ flt_s_entries
-  @ feq_d_entries @ fle_d_entries @ flt_d_entries @ fmv_x_w_entries @ fmv_w_x_entries
-  @ fcvt_w_s_entries @ fcvt_wu_s_entries @ fcvt_s_w_entries @ fcvt_s_wu_entries @ fcvt_w_d_entries
-  @ fcvt_wu_d_entries @ fcvt_d_w_entries @ fcvt_d_wu_entries @ fcvt_s_d_entries @ fcvt_d_s_entries
-  @ fcvt_l_d_entries @ fcvt_lu_d_entries @ fcvt_l_s_entries @ fcvt_lu_s_entries @ fcvt_s_l_entries
-  @ fcvt_s_lu_entries @ fcvt_d_l_entries @ fcvt_d_lu_entries @ vsetvl_entries @ vsetvli_entries
-  @ vsetivli_entries @ vadd_vv_entries @ vadd_vx_entries @ vadd_vi_entries @ vsub_vv_entries
-  @ vsub_vx_entries @ vrsub_vx_entries @ vrsub_vi_entries @ vand_vv_entries @ vand_vx_entries
-  @ vand_vi_entries @ vor_vv_entries @ vor_vx_entries @ vor_vi_entries @ vxor_vv_entries
-  @ vxor_vx_entries @ vxor_vi_entries @ vsll_vv_entries @ vsll_vx_entries @ vsll_vi_entries
-  @ vsrl_vv_entries @ vsrl_vx_entries @ vsrl_vi_entries @ vsra_vv_entries @ vsra_vx_entries
-  @ vsra_vi_entries @ vminu_vv_entries @ vminu_vx_entries @ vmin_vv_entries @ vmin_vx_entries
-  @ vmaxu_vv_entries @ vmaxu_vx_entries @ vmax_vv_entries @ vmax_vx_entries @ vmul_vv_entries
-  @ vmul_vx_entries @ vmulh_vv_entries @ vmulh_vx_entries @ vmulhu_vv_entries @ vmulhu_vx_entries
-  @ vmulhsu_vv_entries @ vmulhsu_vx_entries @ vdivu_vv_entries @ vdivu_vx_entries @ vdiv_vv_entries
-  @ vdiv_vx_entries @ vremu_vv_entries @ vremu_vx_entries @ vrem_vv_entries @ vrem_vx_entries
-  @ vsaddu_vv_entries @ vsaddu_vx_entries @ vsaddu_vi_entries @ vsadd_vv_entries @ vsadd_vx_entries
-  @ vsadd_vi_entries @ vssubu_vv_entries @ vssubu_vx_entries @ vssub_vv_entries @ vssub_vx_entries
-  @ vaaddu_vv_entries @ vaaddu_vx_entries @ vaadd_vv_entries @ vaadd_vx_entries @ vasubu_vv_entries
-  @ vasubu_vx_entries @ vasub_vv_entries @ vasub_vx_entries @ vnsrl_wv_entries @ vnsrl_wx_entries
-  @ vnsrl_wi_entries @ vnsra_wv_entries @ vnsra_wx_entries @ vnsra_wi_entries @ vnclipu_wv_entries
-  @ vnclipu_wx_entries @ vnclipu_wi_entries @ vnclip_wv_entries @ vnclip_wx_entries
-  @ vnclip_wi_entries @ vssrl_vv_entries @ vssrl_vx_entries @ vssrl_vi_entries @ vssra_vv_entries
-  @ vssra_vx_entries @ vssra_vi_entries @ vrgather_vv_entries @ vrgather_vx_entries
-  @ vrgather_vi_entries @ vrgatherei16_vv_entries @ vwaddu_vv_entries @ vwaddu_vx_entries
-  @ vwadd_vv_entries @ vwadd_vx_entries @ vwsubu_vv_entries @ vwsubu_vx_entries @ vwsub_vv_entries
-  @ vwsub_vx_entries @ vwaddu_wv_entries @ vwaddu_wx_entries @ vwadd_wv_entries @ vwadd_wx_entries
-  @ vwsubu_wv_entries @ vwsubu_wx_entries @ vwsub_wv_entries @ vwsub_wx_entries @ vwmulu_vv_entries
-  @ vwmulu_vx_entries @ vwmulsu_vv_entries @ vwmulsu_vx_entries @ vwmul_vv_entries
-  @ vwmul_vx_entries @ vsext_vf2_entries @ vsext_vf4_entries @ vsext_vf8_entries @ vzext_vf2_entries
-  @ vzext_vf4_entries @ vzext_vf8_entries @ vmand_mm_entries @ vmandn_mm_entries @ vmor_mm_entries
-  @ vmxor_mm_entries @ vmorn_mm_entries @ vmnand_mm_entries @ vmnor_mm_entries @ vmxnor_mm_entries
-  @ vredsum_vs_entries @ vredand_vs_entries @ vredor_vs_entries @ vredxor_vs_entries
-  @ vredminu_vs_entries @ vredmin_vs_entries @ vredmaxu_vs_entries @ vredmax_vs_entries
-  @ vwredsumu_vs_entries @ vwredsum_vs_entries @ vmseq_vv_entries @ vmseq_vx_entries
-  @ vmseq_vi_entries @ vmsne_vv_entries @ vmsne_vx_entries @ vmsne_vi_entries @ vmsltu_vv_entries
-  @ vmsltu_vx_entries @ vmslt_vv_entries @ vmslt_vx_entries @ vmsleu_vv_entries @ vmsleu_vx_entries
-  @ vmsleu_vi_entries @ vmsle_vv_entries @ vmsle_vx_entries @ vmsle_vi_entries @ vmsgtu_vx_entries
-  @ vmsgtu_vi_entries @ vmsgt_vx_entries @ vmsgt_vi_entries @ vslideup_vx_entries
-  @ vslideup_vi_entries @ vslidedown_vx_entries @ vslidedown_vi_entries @ vslide1up_vx_entries
-  @ vslide1down_vx_entries @ vmacc_vv_entries @ vmacc_vx_entries @ vnmsac_vv_entries
-  @ vnmsac_vx_entries @ vmadd_vv_entries @ vmadd_vx_entries @ vnmsub_vv_entries @ vnmsub_vx_entries
-  @ vwmaccu_vv_entries @ vwmaccu_vx_entries @ vwmacc_vv_entries @ vwmacc_vx_entries
-  @ vwmaccsu_vv_entries @ vwmaccsu_vx_entries @ vwmaccus_vx_entries @ vid_v_entries
-  @ viota_m_entries @ vcompress_vm_entries @ vmsbf_m_entries @ vmsif_m_entries @ vmsof_m_entries
-  @ vcpop_m_entries @ vfirst_m_entries @ vadc_vvm_entries @ vadc_vxm_entries @ vadc_vim_entries
-  @ vmadc_vvm_entries @ vmadc_vxm_entries @ vmadc_vim_entries @ vmadc_vv_entries @ vmadc_vx_entries
-  @ vmadc_vi_entries @ vsbc_vvm_entries @ vsbc_vxm_entries @ vmsbc_vvm_entries @ vmsbc_vxm_entries
-  @ vmsbc_vv_entries @ vmsbc_vx_entries @ vmerge_vvm_entries @ vmerge_vxm_entries
-  @ vmerge_vim_entries @ vmv_x_s_entries @ vmv_s_x_entries @ vmv_v_v_entries @ vmv_v_x_entries
-  @ vmv_v_i_entries @ vmv1r_v_entries @ vmv2r_v_entries @ vmv4r_v_entries @ vmv8r_v_entries
-  @ vsmul_vv_entries @ vsmul_vx_entries @ vfadd_vv_entries @ vfadd_vf_entries @ vfsub_vv_entries
-  @ vfsub_vf_entries @ vfrsub_vf_entries @ vfmul_vv_entries @ vfmul_vf_entries @ vfdiv_vv_entries
-  @ vfdiv_vf_entries @ vfrdiv_vf_entries @ vfmin_vv_entries @ vfmin_vf_entries @ vfmax_vv_entries
-  @ vfmax_vf_entries @ vfsgnj_vv_entries @ vfsgnj_vf_entries @ vfsgnjn_vv_entries
+  @ x86_sse_binop_rm_entries @ x86_sse_binop_imm_rr_entries @ x86_sse_binop_imm_rm_entries
+  @ x86_sse_mov_entries @ x86_cvtsi2f_rr_entries @ x86_cvtsi2f_rm_entries @ x86_cvtf2i_rr_entries
+  @ x86_cvtf2i_rm_entries @ x86_fadd_entries @ fadd_s_entries @ fsub_s_entries @ fmul_s_entries
+  @ fdiv_s_entries @ fadd_d_entries @ fsub_d_entries @ fmul_d_entries @ fdiv_d_entries @ flw_entries
+  @ fld_entries @ fsw_entries @ fsd_entries @ sh1add_entries @ sh2add_entries @ sh3add_entries
+  @ sh1adduw_entries @ sh2adduw_entries @ sh3adduw_entries @ min_entries @ minu_entries
+  @ max_entries @ maxu_entries @ andn_entries @ orn_entries @ xnor_entries @ rol_entries
+  @ ror_entries @ clz_entries @ ctz_entries @ cpop_entries @ sextb_entries @ sexth_entries
+  @ orcb_entries @ clzw_entries @ ctzw_entries @ cpopw_entries @ brev8_entries @ rev8_entries
+  @ pack_entries @ packh_entries @ packw_entries @ zip_entries @ unzip_entries @ rolw_entries
+  @ rorw_entries @ rori_entries @ roriw_entries @ bclr_entries @ bext_entries @ binv_entries
+  @ bset_entries @ bclri_entries @ bexti_entries @ binvi_entries @ bseti_entries @ zext_h_entries
+  @ clmul_entries @ clmulh_entries @ clmulr_entries @ czero_eqz_entries @ czero_nez_entries
+  @ sm3p0_entries @ sm3p1_entries @ xperm4_entries @ xperm8_entries @ sha256sum0_entries
+  @ sha256sum1_entries @ sha256sig0_entries @ sha256sig1_entries @ sha512sum0_entries
+  @ sha512sum1_entries @ sha512sig0_entries @ sha512sig1_entries @ sha512sum0r_entries
+  @ sha512sum1r_entries @ sha512sig0l_entries @ sha512sig1l_entries @ sha512sig0h_entries
+  @ sha512sig1h_entries @ aes64ds_entries @ aes64dsm_entries @ aes64es_entries @ aes64esm_entries
+  @ aes64ks2_entries @ aes64im_entries @ aes64ks1i_entries @ aes32dsi_entries @ aes32dsmi_entries
+  @ aes32esi_entries @ aes32esmi_entries @ sm4ed_entries @ sm4ks_entries @ csrrw_entries
+  @ csrrs_entries @ csrrc_entries @ csrrwi_entries @ csrrsi_entries @ csrrci_entries @ csrr_entries
+  @ csrw_entries @ csrs_entries @ csrc_entries @ csrwi_entries @ csrsi_entries @ csrci_entries
+  @ amoswap_w_entries @ amoadd_w_entries @ amoxor_w_entries @ amoand_w_entries @ amoor_w_entries
+  @ amomin_w_entries @ amomax_w_entries @ amominu_w_entries @ amomaxu_w_entries @ sc_w_entries
+  @ lr_w_entries @ amoswap_d_entries @ amoadd_d_entries @ amoxor_d_entries @ amoand_d_entries
+  @ amoor_d_entries @ amomin_d_entries @ amomax_d_entries @ amominu_d_entries @ amomaxu_d_entries
+  @ sc_d_entries @ lr_d_entries @ fsgnj_s_entries @ fsgnjn_s_entries @ fsgnjx_s_entries
+  @ fsgnj_d_entries @ fsgnjn_d_entries @ fsgnjx_d_entries @ fmin_s_entries @ fmax_s_entries
+  @ fmin_d_entries @ fmax_d_entries @ fsqrt_s_entries @ fsqrt_d_entries @ fclass_s_entries
+  @ fclass_d_entries @ fmadd_s_entries @ fmsub_s_entries @ fnmsub_s_entries @ fnmadd_s_entries
+  @ fmadd_d_entries @ fmsub_d_entries @ fnmsub_d_entries @ fnmadd_d_entries @ feq_s_entries
+  @ fle_s_entries @ flt_s_entries @ feq_d_entries @ fle_d_entries @ flt_d_entries @ fmv_x_w_entries
+  @ fmv_w_x_entries @ fcvt_w_s_entries @ fcvt_wu_s_entries @ fcvt_s_w_entries @ fcvt_s_wu_entries
+  @ fcvt_w_d_entries @ fcvt_wu_d_entries @ fcvt_d_w_entries @ fcvt_d_wu_entries @ fcvt_s_d_entries
+  @ fcvt_d_s_entries @ fcvt_l_d_entries @ fcvt_lu_d_entries @ fcvt_l_s_entries @ fcvt_lu_s_entries
+  @ fcvt_s_l_entries @ fcvt_s_lu_entries @ fcvt_d_l_entries @ fcvt_d_lu_entries @ vsetvl_entries
+  @ vsetvli_entries @ vsetivli_entries @ vadd_vv_entries @ vadd_vx_entries @ vadd_vi_entries
+  @ vsub_vv_entries @ vsub_vx_entries @ vrsub_vx_entries @ vrsub_vi_entries @ vand_vv_entries
+  @ vand_vx_entries @ vand_vi_entries @ vor_vv_entries @ vor_vx_entries @ vor_vi_entries
+  @ vxor_vv_entries @ vxor_vx_entries @ vxor_vi_entries @ vsll_vv_entries @ vsll_vx_entries
+  @ vsll_vi_entries @ vsrl_vv_entries @ vsrl_vx_entries @ vsrl_vi_entries @ vsra_vv_entries
+  @ vsra_vx_entries @ vsra_vi_entries @ vminu_vv_entries @ vminu_vx_entries @ vmin_vv_entries
+  @ vmin_vx_entries @ vmaxu_vv_entries @ vmaxu_vx_entries @ vmax_vv_entries @ vmax_vx_entries
+  @ vmul_vv_entries @ vmul_vx_entries @ vmulh_vv_entries @ vmulh_vx_entries @ vmulhu_vv_entries
+  @ vmulhu_vx_entries @ vmulhsu_vv_entries @ vmulhsu_vx_entries @ vdivu_vv_entries
+  @ vdivu_vx_entries @ vdiv_vv_entries @ vdiv_vx_entries @ vremu_vv_entries @ vremu_vx_entries
+  @ vrem_vv_entries @ vrem_vx_entries @ vsaddu_vv_entries @ vsaddu_vx_entries @ vsaddu_vi_entries
+  @ vsadd_vv_entries @ vsadd_vx_entries @ vsadd_vi_entries @ vssubu_vv_entries @ vssubu_vx_entries
+  @ vssub_vv_entries @ vssub_vx_entries @ vaaddu_vv_entries @ vaaddu_vx_entries @ vaadd_vv_entries
+  @ vaadd_vx_entries @ vasubu_vv_entries @ vasubu_vx_entries @ vasub_vv_entries @ vasub_vx_entries
+  @ vnsrl_wv_entries @ vnsrl_wx_entries @ vnsrl_wi_entries @ vnsra_wv_entries @ vnsra_wx_entries
+  @ vnsra_wi_entries @ vnclipu_wv_entries @ vnclipu_wx_entries @ vnclipu_wi_entries
+  @ vnclip_wv_entries @ vnclip_wx_entries @ vnclip_wi_entries @ vssrl_vv_entries @ vssrl_vx_entries
+  @ vssrl_vi_entries @ vssra_vv_entries @ vssra_vx_entries @ vssra_vi_entries @ vrgather_vv_entries
+  @ vrgather_vx_entries @ vrgather_vi_entries @ vrgatherei16_vv_entries @ vwaddu_vv_entries
+  @ vwaddu_vx_entries @ vwadd_vv_entries @ vwadd_vx_entries @ vwsubu_vv_entries @ vwsubu_vx_entries
+  @ vwsub_vv_entries @ vwsub_vx_entries @ vwaddu_wv_entries @ vwaddu_wx_entries @ vwadd_wv_entries
+  @ vwadd_wx_entries @ vwsubu_wv_entries @ vwsubu_wx_entries @ vwsub_wv_entries @ vwsub_wx_entries
+  @ vwmulu_vv_entries @ vwmulu_vx_entries @ vwmulsu_vv_entries @ vwmulsu_vx_entries
+  @ vwmul_vv_entries @ vwmul_vx_entries @ vsext_vf2_entries @ vsext_vf4_entries @ vsext_vf8_entries
+  @ vzext_vf2_entries @ vzext_vf4_entries @ vzext_vf8_entries @ vmand_mm_entries @ vmandn_mm_entries
+  @ vmor_mm_entries @ vmxor_mm_entries @ vmorn_mm_entries @ vmnand_mm_entries @ vmnor_mm_entries
+  @ vmxnor_mm_entries @ vredsum_vs_entries @ vredand_vs_entries @ vredor_vs_entries
+  @ vredxor_vs_entries @ vredminu_vs_entries @ vredmin_vs_entries @ vredmaxu_vs_entries
+  @ vredmax_vs_entries @ vwredsumu_vs_entries @ vwredsum_vs_entries @ vmseq_vv_entries
+  @ vmseq_vx_entries @ vmseq_vi_entries @ vmsne_vv_entries @ vmsne_vx_entries @ vmsne_vi_entries
+  @ vmsltu_vv_entries @ vmsltu_vx_entries @ vmslt_vv_entries @ vmslt_vx_entries @ vmsleu_vv_entries
+  @ vmsleu_vx_entries @ vmsleu_vi_entries @ vmsle_vv_entries @ vmsle_vx_entries @ vmsle_vi_entries
+  @ vmsgtu_vx_entries @ vmsgtu_vi_entries @ vmsgt_vx_entries @ vmsgt_vi_entries
+  @ vslideup_vx_entries @ vslideup_vi_entries @ vslidedown_vx_entries @ vslidedown_vi_entries
+  @ vslide1up_vx_entries @ vslide1down_vx_entries @ vmacc_vv_entries @ vmacc_vx_entries
+  @ vnmsac_vv_entries @ vnmsac_vx_entries @ vmadd_vv_entries @ vmadd_vx_entries @ vnmsub_vv_entries
+  @ vnmsub_vx_entries @ vwmaccu_vv_entries @ vwmaccu_vx_entries @ vwmacc_vv_entries
+  @ vwmacc_vx_entries @ vwmaccsu_vv_entries @ vwmaccsu_vx_entries @ vwmaccus_vx_entries
+  @ vid_v_entries @ viota_m_entries @ vcompress_vm_entries @ vmsbf_m_entries @ vmsif_m_entries
+  @ vmsof_m_entries @ vcpop_m_entries @ vfirst_m_entries @ vadc_vvm_entries @ vadc_vxm_entries
+  @ vadc_vim_entries @ vmadc_vvm_entries @ vmadc_vxm_entries @ vmadc_vim_entries @ vmadc_vv_entries
+  @ vmadc_vx_entries @ vmadc_vi_entries @ vsbc_vvm_entries @ vsbc_vxm_entries @ vmsbc_vvm_entries
+  @ vmsbc_vxm_entries @ vmsbc_vv_entries @ vmsbc_vx_entries @ vmerge_vvm_entries
+  @ vmerge_vxm_entries @ vmerge_vim_entries @ vmv_x_s_entries @ vmv_s_x_entries @ vmv_v_v_entries
+  @ vmv_v_x_entries @ vmv_v_i_entries @ vmv1r_v_entries @ vmv2r_v_entries @ vmv4r_v_entries
+  @ vmv8r_v_entries @ vsmul_vv_entries @ vsmul_vx_entries @ vfadd_vv_entries @ vfadd_vf_entries
+  @ vfsub_vv_entries @ vfsub_vf_entries @ vfrsub_vf_entries @ vfmul_vv_entries @ vfmul_vf_entries
+  @ vfdiv_vv_entries @ vfdiv_vf_entries @ vfrdiv_vf_entries @ vfmin_vv_entries @ vfmin_vf_entries
+  @ vfmax_vv_entries @ vfmax_vf_entries @ vfsgnj_vv_entries @ vfsgnj_vf_entries @ vfsgnjn_vv_entries
   @ vfsgnjn_vf_entries @ vfsgnjx_vv_entries @ vfsgnjx_vf_entries @ vfsqrt_v_entries
   @ vfrsqrt7_v_entries @ vfrec7_v_entries @ vfclass_v_entries @ vfredosum_vs_entries
   @ vfredusum_vs_entries @ vfredmin_vs_entries @ vfredmax_vs_entries @ vmfeq_vv_entries
@@ -4395,7 +4680,8 @@ let all =
   @ vfwmaccbf16_vv_entries @ vfwmaccbf16_vf_entries @ vpopc_m_entries @ vmandnot_mm_entries
   @ vmornot_mm_entries @ vfredsum_vs_entries @ vfwredsum_vs_entries @ vl1r_v_entries
   @ vl2r_v_entries @ vl4r_v_entries @ vl8r_v_entries @ vle1_v_entries @ vse1_v_entries
-  @ x86_vex_binop_rrr_entries @ x86_vex_binop_rr_mem_entries
+  @ x86_vex_binop_rrr_entries @ x86_vex_binop_rr_mem_entries @ x86_vex_unop_rr_entries
+  @ x86_vex_unop_rr_mem_entries @ x86_vex_binop_imm_rrr_entries @ x86_vex_binop_imm_rr_mem_entries
 
 (* The register/immediate ALU family's shared ModR/M reg-extension mapping
    (Opcode.of_ext's own domain, {!Isa_norm_xed.alu_gprv_immz_form}'s doc

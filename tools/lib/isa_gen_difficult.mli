@@ -192,6 +192,19 @@ val x86_sse_binop_rm_entries : entry list
     also already fully built and fixture-verified by this project's own
     encoder before XED-driven admission. *)
 
+val x86_sse_binop_imm_rr_entries : entry list
+(** [shufps $27, %xmm1, %xmm0]/[shufpd $1, %xmm1, %xmm0] on x86-32 and
+    x86-64 - {!x86_sse_binop_rr_entries}'s own [src]/[dest] pair plus a
+    concrete imm8 selector, the first XMM-immediate-carrying legacy shape,
+    confirmed against real GNU as before {!Isa_norm_xed.xmm_binop_imm_rr_form}
+    and x86_family_encode.ml's own [Lowered.Sse_binop_imm_r_rm] shape were
+    built. *)
+
+val x86_sse_binop_imm_rm_entries : entry list
+(** [shufps $27, 16(%esp|%rsp), %xmm0]/[shufpd $1, 16(%esp|%rsp), %xmm0]
+    on x86-32 and x86-64 - {!x86_sse_binop_imm_rr_entries}'s register<-memory
+    sibling. *)
+
 val x86_sse_mov_entries : entry list
 (** [movsd]/[movss 16(%esp|%rsp), %xmm0] (load) and [movsd]/[movss %xmm0,
     16(%esp|%rsp)] (store) on x86-32 and x86-64 - a plain move, not another
@@ -216,6 +229,28 @@ val x86_vex_binop_rr_mem_entries : entry list
     against real GNU as before {!Isa_norm_xed.vex_binop_rr_mem_form} and
     x86_family_encode.ml's own memory-operand extension of the two-byte-VEX
     encoder were built. *)
+
+val x86_vex_unop_rr_entries : entry list
+(** [vsqrtps]/[vsqrtpd %xmm1, %xmm0] on x86-32 and x86-64 -
+    {!x86_vex_binop_rrr_entries}'s two-operand sibling for a VEX mnemonic
+    with no real [vvvv] operand, confirmed against real GNU as (which
+    rejects a third operand outright) before {!Isa_norm_xed.vex_unop_rr_form}
+    and x86_family_encode.ml's own [Lowered.Vex_unop_r_rm] shape were built. *)
+
+val x86_vex_unop_rr_mem_entries : entry list
+(** [vsqrtps]/[vsqrtpd 16(%esp|%rsp), %xmm0] on x86-32 and x86-64 -
+    {!x86_vex_unop_rr_entries}'s register<-memory sibling. *)
+
+val x86_vex_binop_imm_rrr_entries : entry list
+(** [vshufps]/[vshufpd $27, %xmm2, %xmm1, %xmm0] on x86-32 and x86-64 -
+    {!x86_vex_binop_rrr_entries}'s own three-register shape plus a concrete
+    imm8 selector, confirmed against real GNU as before
+    {!Isa_norm_xed.vex_binop_imm_rrr_form} and x86_family_encode.ml's own
+    [Lowered.Vex_binop_imm_rr_rm] shape were built. *)
+
+val x86_vex_binop_imm_rr_mem_entries : entry list
+(** [vshufps]/[vshufpd $27, 16(%esp|%rsp), %xmm1, %xmm0] on x86-32 and
+    x86-64 - {!x86_vex_binop_imm_rrr_entries}'s register<-memory sibling. *)
 
 val x86_cvtsi2f_rr_entries : entry list
 (** [cvtsi2sd]/[cvtsi2ss %eax, %xmm0] on x86-32 and x86-64, plus

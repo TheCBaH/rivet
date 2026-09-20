@@ -169,23 +169,23 @@ let promoted_case ~target ~form_id ~lookup_key =
       ( "x86:ADDSD_XMMsd_XMMsd" | "x86:SUBSD_XMMsd_XMMsd" | "x86:MULSD_XMMsd_XMMsd"
       | "x86:DIVSD_XMMsd_XMMsd" | "x86:MULSS_XMMss_XMMss" | "x86:DIVSS_XMMss_XMMss"
       | "x86:COMISD_XMMsd_XMMsd" | "x86:UCOMISD_XMMsd_XMMsd" | "x86:COMISS_XMMss_XMMss"
-      | "x86:XORPD_XMMxuq_XMMxuq" | "x86:PXOR_XMMdq_XMMdq" | "x86:MOVAPD_XMMpd_XMMpd_0F28"
-      | "x86:CVTSD2SS_XMMss_XMMsd" | "x86:CVTSS2SD_XMMsd_XMMss" ),
+      | "x86:UCOMISS_XMMss_XMMss" | "x86:XORPD_XMMxuq_XMMxuq" | "x86:PXOR_XMMdq_XMMdq"
+      | "x86:MOVAPD_XMMpd_XMMpd_0F28" | "x86:CVTSD2SS_XMMss_XMMsd" | "x86:CVTSS2SD_XMMsd_XMMss" ),
       ( "ADDSD_XMMsd_XMMsd" | "SUBSD_XMMsd_XMMsd" | "MULSD_XMMsd_XMMsd" | "DIVSD_XMMsd_XMMsd"
       | "MULSS_XMMss_XMMss" | "DIVSS_XMMss_XMMss" | "COMISD_XMMsd_XMMsd" | "UCOMISD_XMMsd_XMMsd"
-      | "COMISS_XMMss_XMMss" | "XORPD_XMMxuq_XMMxuq" | "PXOR_XMMdq_XMMdq"
+      | "COMISS_XMMss_XMMss" | "UCOMISS_XMMss_XMMss" | "XORPD_XMMxuq_XMMxuq" | "PXOR_XMMdq_XMMdq"
       | "MOVAPD_XMMpd_XMMpd_0F28" | "CVTSD2SS_XMMss_XMMsd" | "CVTSS2SD_XMMsd_XMMss" ) ) ->
       true
   | ( (Target.X86_32 | Target.X86_64),
       ( "x86:ADDSD_XMMsd_MEMsd" | "x86:SUBSD_XMMsd_MEMsd" | "x86:MULSD_XMMsd_MEMsd"
       | "x86:DIVSD_XMMsd_MEMsd" | "x86:MULSS_XMMss_MEMss" | "x86:DIVSS_XMMss_MEMss"
       | "x86:COMISD_XMMsd_MEMsd" | "x86:UCOMISD_XMMsd_MEMsd" | "x86:COMISS_XMMss_MEMss"
-      | "x86:XORPD_XMMxuq_MEMxuq" | "x86:PXOR_XMMdq_MEMdq" | "x86:MOVAPD_XMMpd_MEMpd"
-      | "x86:CVTSD2SS_XMMss_MEMsd" | "x86:CVTSS2SD_XMMsd_MEMss" ),
+      | "x86:UCOMISS_XMMss_MEMss" | "x86:XORPD_XMMxuq_MEMxuq" | "x86:PXOR_XMMdq_MEMdq"
+      | "x86:MOVAPD_XMMpd_MEMpd" | "x86:CVTSD2SS_XMMss_MEMsd" | "x86:CVTSS2SD_XMMsd_MEMss" ),
       ( "ADDSD_XMMsd_MEMsd" | "SUBSD_XMMsd_MEMsd" | "MULSD_XMMsd_MEMsd" | "DIVSD_XMMsd_MEMsd"
       | "MULSS_XMMss_MEMss" | "DIVSS_XMMss_MEMss" | "COMISD_XMMsd_MEMsd" | "UCOMISD_XMMsd_MEMsd"
-      | "COMISS_XMMss_MEMss" | "XORPD_XMMxuq_MEMxuq" | "PXOR_XMMdq_MEMdq" | "MOVAPD_XMMpd_MEMpd"
-      | "CVTSD2SS_XMMss_MEMsd" | "CVTSS2SD_XMMsd_MEMss" ) ) ->
+      | "COMISS_XMMss_MEMss" | "UCOMISS_XMMss_MEMss" | "XORPD_XMMxuq_MEMxuq" | "PXOR_XMMdq_MEMdq"
+      | "MOVAPD_XMMpd_MEMpd" | "CVTSD2SS_XMMss_MEMsd" | "CVTSS2SD_XMMsd_MEMss" ) ) ->
       true
   | ( (Target.X86_32 | Target.X86_64),
       ( "x86:MOVSD_XMM_XMMdq_MEMsd" | "x86:MOVSD_XMM_MEMsd_XMMsd" | "x86:MOVSS_XMMdq_MEMss"
@@ -244,6 +244,80 @@ let promoted_case ~target ~form_id ~lookup_key =
       | "ADDPD_XMMpd_MEMpd" | "SUBPD_XMMpd_MEMpd" | "MULPD_XMMpd_MEMpd" | "DIVPD_XMMpd_MEMpd" ) ) ->
       true
   | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:MAXSS_XMMss_XMMss" | "x86:MINSS_XMMss_XMMss" | "x86:MAXSD_XMMsd_XMMsd"
+      | "x86:MINSD_XMMsd_XMMsd" | "x86:MAXPS_XMMps_XMMps" | "x86:MINPS_XMMps_XMMps"
+      | "x86:MAXPD_XMMpd_XMMpd" | "x86:MINPD_XMMpd_XMMpd" ),
+      ( "MAXSS_XMMss_XMMss" | "MINSS_XMMss_XMMss" | "MAXSD_XMMsd_XMMsd" | "MINSD_XMMsd_XMMsd"
+      | "MAXPS_XMMps_XMMps" | "MINPS_XMMps_XMMps" | "MAXPD_XMMpd_XMMpd" | "MINPD_XMMpd_XMMpd" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:MAXSS_XMMss_MEMss" | "x86:MINSS_XMMss_MEMss" | "x86:MAXSD_XMMsd_MEMsd"
+      | "x86:MINSD_XMMsd_MEMsd" | "x86:MAXPS_XMMps_MEMps" | "x86:MINPS_XMMps_MEMps"
+      | "x86:MAXPD_XMMpd_MEMpd" | "x86:MINPD_XMMpd_MEMpd" ),
+      ( "MAXSS_XMMss_MEMss" | "MINSS_XMMss_MEMss" | "MAXSD_XMMsd_MEMsd" | "MINSD_XMMsd_MEMsd"
+      | "MAXPS_XMMps_MEMps" | "MINPS_XMMps_MEMps" | "MAXPD_XMMpd_MEMpd" | "MINPD_XMMpd_MEMpd" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:SQRTSS_XMMss_XMMss" | "x86:SQRTSD_XMMsd_XMMsd" | "x86:SQRTPS_XMMps_XMMps"
+      | "x86:SQRTPD_XMMpd_XMMpd" ),
+      ("SQRTSS_XMMss_XMMss" | "SQRTSD_XMMsd_XMMsd" | "SQRTPS_XMMps_XMMps" | "SQRTPD_XMMpd_XMMpd") )
+    ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:SQRTSS_XMMss_MEMss" | "x86:SQRTSD_XMMsd_MEMsd" | "x86:SQRTPS_XMMps_MEMps"
+      | "x86:SQRTPD_XMMpd_MEMpd" ),
+      ("SQRTSS_XMMss_MEMss" | "SQRTSD_XMMsd_MEMsd" | "SQRTPS_XMMps_MEMps" | "SQRTPD_XMMpd_MEMpd") )
+    ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:CVTPS2PD_XMMpd_XMMq" | "x86:CVTPD2PS_XMMps_XMMpd"),
+      ("CVTPS2PD_XMMpd_XMMq" | "CVTPD2PS_XMMps_XMMpd") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:CVTPS2PD_XMMpd_MEMq" | "x86:CVTPD2PS_XMMps_MEMpd"),
+      ("CVTPS2PD_XMMpd_MEMq" | "CVTPD2PS_XMMps_MEMpd") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:UNPCKLPS_XMMps_XMMq" | "x86:UNPCKHPS_XMMps_XMMdq" | "x86:UNPCKLPD_XMMpd_XMMq"
+      | "x86:UNPCKHPD_XMMpd_XMMq" ),
+      ( "UNPCKLPS_XMMps_XMMq" | "UNPCKHPS_XMMps_XMMdq" | "UNPCKLPD_XMMpd_XMMq"
+      | "UNPCKHPD_XMMpd_XMMq" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:UNPCKLPS_XMMps_MEMdq" | "x86:UNPCKHPS_XMMps_MEMdq" | "x86:UNPCKLPD_XMMpd_MEMdq"
+      | "x86:UNPCKHPD_XMMpd_MEMdq" ),
+      ( "UNPCKLPS_XMMps_MEMdq" | "UNPCKHPS_XMMps_MEMdq" | "UNPCKLPD_XMMpd_MEMdq"
+      | "UNPCKHPD_XMMpd_MEMdq" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:PUNPCKLQDQ_XMMdq_XMMq" | "x86:PUNPCKHQDQ_XMMdq_XMMq"),
+      ("PUNPCKLQDQ_XMMdq_XMMq" | "PUNPCKHQDQ_XMMdq_XMMq") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:PUNPCKLQDQ_XMMdq_MEMdq" | "x86:PUNPCKHQDQ_XMMdq_MEMdq"),
+      ("PUNPCKLQDQ_XMMdq_MEMdq" | "PUNPCKHQDQ_XMMdq_MEMdq") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:SHUFPS_XMMps_XMMps_IMMb" | "x86:SHUFPD_XMMpd_XMMpd_IMMb"),
+      ("SHUFPS_XMMps_XMMps_IMMb" | "SHUFPD_XMMpd_XMMpd_IMMb") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:SHUFPS_XMMps_MEMps_IMMb" | "x86:SHUFPD_XMMpd_MEMpd_IMMb"),
+      ("SHUFPS_XMMps_MEMps_IMMb" | "SHUFPD_XMMpd_MEMpd_IMMb") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:CMPSS_XMMss_XMMss_IMMb" | "x86:CMPSD_XMM_XMMsd_XMMsd_IMMb"
+      | "x86:CMPPS_XMMps_XMMps_IMMb" | "x86:CMPPD_XMMpd_XMMpd_IMMb" ),
+      ( "CMPSS_XMMss_XMMss_IMMb" | "CMPSD_XMM_XMMsd_XMMsd_IMMb" | "CMPPS_XMMps_XMMps_IMMb"
+      | "CMPPD_XMMpd_XMMpd_IMMb" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:CMPSS_XMMss_MEMss_IMMb" | "x86:CMPSD_XMM_XMMsd_MEMsd_IMMb"
+      | "x86:CMPPS_XMMps_MEMps_IMMb" | "x86:CMPPD_XMMpd_MEMpd_IMMb" ),
+      ( "CMPSS_XMMss_MEMss_IMMb" | "CMPSD_XMM_XMMsd_MEMsd_IMMb" | "CMPPS_XMMps_MEMps_IMMb"
+      | "CMPPD_XMMpd_MEMpd_IMMb" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
       ( "x86:VADDSD_XMMdq_XMMdq_XMMq" | "x86:VSUBSD_XMMdq_XMMdq_XMMq"
       | "x86:VMULSD_XMMdq_XMMdq_XMMq" | "x86:VDIVSD_XMMdq_XMMdq_XMMq"
       | "x86:VADDSS_XMMdq_XMMdq_XMMd" | "x86:VSUBSS_XMMdq_XMMdq_XMMd"
@@ -296,6 +370,109 @@ let promoted_case ~target ~form_id ~lookup_key =
       ( "VANDPS_XMMdq_XMMdq_MEMdq" | "VANDNPS_XMMdq_XMMdq_MEMdq" | "VORPS_XMMdq_XMMdq_MEMdq"
       | "VXORPS_XMMdq_XMMdq_MEMdq" | "VANDPD_XMMdq_XMMdq_MEMdq" | "VANDNPD_XMMdq_XMMdq_MEMdq"
       | "VORPD_XMMdq_XMMdq_MEMdq" | "VXORPD_XMMdq_XMMdq_MEMdq" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:VMAXSD_XMMdq_XMMdq_XMMq" | "x86:VMINSD_XMMdq_XMMdq_XMMq"
+      | "x86:VMAXSS_XMMdq_XMMdq_XMMd" | "x86:VMINSS_XMMdq_XMMdq_XMMd"
+      | "x86:VMAXPS_XMMdq_XMMdq_XMMdq" | "x86:VMINPS_XMMdq_XMMdq_XMMdq"
+      | "x86:VMAXPD_XMMdq_XMMdq_XMMdq" | "x86:VMINPD_XMMdq_XMMdq_XMMdq" ),
+      ( "VMAXSD_XMMdq_XMMdq_XMMq" | "VMINSD_XMMdq_XMMdq_XMMq" | "VMAXSS_XMMdq_XMMdq_XMMd"
+      | "VMINSS_XMMdq_XMMdq_XMMd" | "VMAXPS_XMMdq_XMMdq_XMMdq" | "VMINPS_XMMdq_XMMdq_XMMdq"
+      | "VMAXPD_XMMdq_XMMdq_XMMdq" | "VMINPD_XMMdq_XMMdq_XMMdq" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:VMAXSD_XMMdq_XMMdq_MEMq" | "x86:VMINSD_XMMdq_XMMdq_MEMq"
+      | "x86:VMAXSS_XMMdq_XMMdq_MEMd" | "x86:VMINSS_XMMdq_XMMdq_MEMd"
+      | "x86:VMAXPS_XMMdq_XMMdq_MEMdq" | "x86:VMINPS_XMMdq_XMMdq_MEMdq"
+      | "x86:VMAXPD_XMMdq_XMMdq_MEMdq" | "x86:VMINPD_XMMdq_XMMdq_MEMdq" ),
+      ( "VMAXSD_XMMdq_XMMdq_MEMq" | "VMINSD_XMMdq_XMMdq_MEMq" | "VMAXSS_XMMdq_XMMdq_MEMd"
+      | "VMINSS_XMMdq_XMMdq_MEMd" | "VMAXPS_XMMdq_XMMdq_MEMdq" | "VMINPS_XMMdq_XMMdq_MEMdq"
+      | "VMAXPD_XMMdq_XMMdq_MEMdq" | "VMINPD_XMMdq_XMMdq_MEMdq" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:VSQRTSD_XMMdq_XMMdq_XMMq" | "x86:VSQRTSS_XMMdq_XMMdq_XMMd"),
+      ("VSQRTSD_XMMdq_XMMdq_XMMq" | "VSQRTSS_XMMdq_XMMdq_XMMd") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:VSQRTSD_XMMdq_XMMdq_MEMq" | "x86:VSQRTSS_XMMdq_XMMdq_MEMd"),
+      ("VSQRTSD_XMMdq_XMMdq_MEMq" | "VSQRTSS_XMMdq_XMMdq_MEMd") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:VSQRTPS_XMMdq_XMMdq" | "x86:VSQRTPD_XMMdq_XMMdq"),
+      ("VSQRTPS_XMMdq_XMMdq" | "VSQRTPD_XMMdq_XMMdq") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:VSQRTPS_XMMdq_MEMdq" | "x86:VSQRTPD_XMMdq_MEMdq"),
+      ("VSQRTPS_XMMdq_MEMdq" | "VSQRTPD_XMMdq_MEMdq") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:VMOVAPS_XMMdq_XMMdq_28" | "x86:VMOVUPS_XMMdq_XMMdq_10" | "x86:VMOVAPD_XMMdq_XMMdq_28"
+      | "x86:VMOVUPD_XMMdq_XMMdq_10" ),
+      ( "VMOVAPS_XMMdq_XMMdq_28" | "VMOVUPS_XMMdq_XMMdq_10" | "VMOVAPD_XMMdq_XMMdq_28"
+      | "VMOVUPD_XMMdq_XMMdq_10" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:VMOVAPS_XMMdq_MEMdq" | "x86:VMOVUPS_XMMdq_MEMdq" | "x86:VMOVAPD_XMMdq_MEMdq"
+      | "x86:VMOVUPD_XMMdq_MEMdq" ),
+      ("VMOVAPS_XMMdq_MEMdq" | "VMOVUPS_XMMdq_MEMdq" | "VMOVAPD_XMMdq_MEMdq" | "VMOVUPD_XMMdq_MEMdq")
+    ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:VCOMISD_XMMq_XMMq" | "x86:VUCOMISD_XMMdq_XMMq" | "x86:VCOMISS_XMMd_XMMd"
+      | "x86:VUCOMISS_XMMdq_XMMd" ),
+      ("VCOMISD_XMMq_XMMq" | "VUCOMISD_XMMdq_XMMq" | "VCOMISS_XMMd_XMMd" | "VUCOMISS_XMMdq_XMMd") )
+    ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:VCOMISD_XMMq_MEMq" | "x86:VUCOMISD_XMMdq_MEMq" | "x86:VCOMISS_XMMd_MEMd"
+      | "x86:VUCOMISS_XMMdq_MEMd" ),
+      ("VCOMISD_XMMq_MEMq" | "VUCOMISD_XMMdq_MEMq" | "VCOMISS_XMMd_MEMd" | "VUCOMISS_XMMdq_MEMd") )
+    ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:VCVTPS2PD_XMMdq_XMMq" | "x86:VCVTPD2PS_XMMdq_XMMdq"),
+      ("VCVTPS2PD_XMMdq_XMMq" | "VCVTPD2PS_XMMdq_XMMdq") ) ->
+      true
+  | (Target.X86_32 | Target.X86_64), "x86:VCVTPS2PD_XMMdq_MEMq", "VCVTPS2PD_XMMdq_MEMq" -> true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:VUNPCKLPS_XMMdq_XMMdq_XMMdq" | "x86:VUNPCKHPS_XMMdq_XMMdq_XMMdq"
+      | "x86:VUNPCKLPD_XMMdq_XMMdq_XMMdq" | "x86:VUNPCKHPD_XMMdq_XMMdq_XMMdq" ),
+      ( "VUNPCKLPS_XMMdq_XMMdq_XMMdq" | "VUNPCKHPS_XMMdq_XMMdq_XMMdq"
+      | "VUNPCKLPD_XMMdq_XMMdq_XMMdq" | "VUNPCKHPD_XMMdq_XMMdq_XMMdq" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:VUNPCKLPS_XMMdq_XMMdq_MEMdq" | "x86:VUNPCKHPS_XMMdq_XMMdq_MEMdq"
+      | "x86:VUNPCKLPD_XMMdq_XMMdq_MEMdq" | "x86:VUNPCKHPD_XMMdq_XMMdq_MEMdq" ),
+      ( "VUNPCKLPS_XMMdq_XMMdq_MEMdq" | "VUNPCKHPS_XMMdq_XMMdq_MEMdq"
+      | "VUNPCKLPD_XMMdq_XMMdq_MEMdq" | "VUNPCKHPD_XMMdq_XMMdq_MEMdq" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:VPUNPCKLQDQ_XMMdq_XMMdq_XMMdq" | "x86:VPUNPCKHQDQ_XMMdq_XMMdq_XMMdq"),
+      ("VPUNPCKLQDQ_XMMdq_XMMdq_XMMdq" | "VPUNPCKHQDQ_XMMdq_XMMdq_XMMdq") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:VPUNPCKLQDQ_XMMdq_XMMdq_MEMdq" | "x86:VPUNPCKHQDQ_XMMdq_XMMdq_MEMdq"),
+      ("VPUNPCKLQDQ_XMMdq_XMMdq_MEMdq" | "VPUNPCKHQDQ_XMMdq_XMMdq_MEMdq") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:VSHUFPS_XMMdq_XMMdq_XMMdq_IMMb" | "x86:VSHUFPD_XMMdq_XMMdq_XMMdq_IMMb"),
+      ("VSHUFPS_XMMdq_XMMdq_XMMdq_IMMb" | "VSHUFPD_XMMdq_XMMdq_XMMdq_IMMb") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ("x86:VSHUFPS_XMMdq_XMMdq_MEMdq_IMMb" | "x86:VSHUFPD_XMMdq_XMMdq_MEMdq_IMMb"),
+      ("VSHUFPS_XMMdq_XMMdq_MEMdq_IMMb" | "VSHUFPD_XMMdq_XMMdq_MEMdq_IMMb") ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:VCMPSS_XMMdq_XMMdq_XMMd_IMMb" | "x86:VCMPSD_XMMdq_XMMdq_XMMq_IMMb"
+      | "x86:VCMPPS_XMMdq_XMMdq_XMMdq_IMMb" | "x86:VCMPPD_XMMdq_XMMdq_XMMdq_IMMb" ),
+      ( "VCMPSS_XMMdq_XMMdq_XMMd_IMMb" | "VCMPSD_XMMdq_XMMdq_XMMq_IMMb"
+      | "VCMPPS_XMMdq_XMMdq_XMMdq_IMMb" | "VCMPPD_XMMdq_XMMdq_XMMdq_IMMb" ) ) ->
+      true
+  | ( (Target.X86_32 | Target.X86_64),
+      ( "x86:VCMPSS_XMMdq_XMMdq_MEMd_IMMb" | "x86:VCMPSD_XMMdq_XMMdq_MEMq_IMMb"
+      | "x86:VCMPPS_XMMdq_XMMdq_MEMdq_IMMb" | "x86:VCMPPD_XMMdq_XMMdq_MEMdq_IMMb" ),
+      ( "VCMPSS_XMMdq_XMMdq_MEMd_IMMb" | "VCMPSD_XMMdq_XMMdq_MEMq_IMMb"
+      | "VCMPPS_XMMdq_XMMdq_MEMdq_IMMb" | "VCMPPD_XMMdq_XMMdq_MEMdq_IMMb" ) ) ->
       true
   | ( (Target.Riscv32 | Target.Riscv64),
       ( "riscv:fadd.s" | "riscv:fsub.s" | "riscv:fmul.s" | "riscv:fdiv.s" | "riscv:fadd.d"
