@@ -82,7 +82,7 @@ let normalize source rec_ =
 let lookup_key source (rec_ : Isa_source_record.t) =
   match (source, rec_.provenance) with
   | "riscv_opcodes", _ -> rec_.native_name
-  | "xed_resolved", Isa_source_record.Xed_provenance { iform = Some iform; _ } -> iform
+  | "xed_resolved", _ -> Isa_x86_table.lookup_key rec_
   | _ -> ""
 
 (* Support credit is read from the committed differential corpora, never
@@ -238,18 +238,21 @@ let classify repo ~source target =
         | _ -> None)
       (List.combine classified normalized)
   in
-  (* an x86 table twin with no credit is blocked on the pseudo-prefix that would reach it *)
+  (* an x86 table twin no pseudo-prefix reaches is blocked on one *)
   let classified =
     if source <> "xed_resolved" then classified
     else
       let specs = List.filter_map (fun (rec_, _) -> Isa_x86_table.spec_of_record rec_) normalized in
       let secondary = Isa_x86_table.twins specs in
+      let reachable = Isa_x86_table.reachable_twins specs in
       List.map
         (fun c ->
+          let id = c.record.Isa_source_record.record_id in
           match c.state with
-          (* even with credit: a twin shares its primary's iform key, but GNU as never emits it *)
+          (* even with credit: a twin sharing its primary's iform, or one no pseudo-prefix
+             reaches, is never what GNU as emits for the spelling *)
           | (Normalized_only | Gas_generatable | Promoted_support)
-            when Hashtbl.mem secondary c.record.Isa_source_record.record_id ->
+            when Hashtbl.mem secondary id && not (Hashtbl.mem reachable id) ->
               { c with state = Blocked "needs-pseudo-prefix" }
           | _ -> c)
         classified

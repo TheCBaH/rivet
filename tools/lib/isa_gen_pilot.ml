@@ -114,10 +114,9 @@ let find_and_normalize_riscv ?form_id records ~native_name =
 let find_and_normalize_xed records ~iform =
   List.find_map
     (fun (r : Isa_source_record.t) ->
-      match r.provenance with
-      | Isa_source_record.Xed_provenance { iform = Some i; _ } when String.equal i iform -> (
-          match Isa_norm_xed.normalize r with Ok form -> Some form | Error _ -> None)
-      | _ -> None)
+      if String.equal (Isa_x86_table.lookup_key r) iform then
+        match Isa_norm_xed.normalize r with Ok form -> Some form | Error _ -> None
+      else None)
     records
 
 (* One read per export per process: a regeneration normalizes thousands of

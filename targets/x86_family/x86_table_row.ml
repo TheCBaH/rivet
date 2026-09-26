@@ -15,10 +15,17 @@ type field =
 type operand =
   | Reg of { cls : rclass; field : field }
   | Mem of { bits : int }  (** a ModR/M memory operand; [bits] is informational *)
+  | Vsib of { cls : rclass }
+      (** a VSIB memory operand: SIB always, its index a vector register of class [cls] *)
   | Imm of { bytes : int }  (** an immediate of 1, 2 or 4 bytes *)
   | Fixed_reg of string  (** a register the spelling names but the encoding implies: [%cl] *)
+  | One  (** the implied shift count of the D0/D1 forms, spelled [$1] *)
+  | Dfv  (** APX CCMP/CTEST's default flags [{dfv=of,sf,zf,cf}], in vvvv *)
+  | Rounding of { sae_only : bool }
+      (** EVEX embedded rounding ([{rn-sae}]: EVEX.b with the mode in L'L) or, [sae_only],
+          [{sae}] (EVEX.b, L'L = 0) *)
 
-type space = Legacy | Vex | Evex
+type space = Legacy | Vex | Evex | Xop  (** XOP: 8F, the VEX three-byte layout, maps 8-10 *)
 
 type row = {
   mnemonic : string;  (** the AT&T spelling *)
@@ -33,8 +40,18 @@ type row = {
       (** EVEX's compressed displacement scale N: a displacement that is a multiple of N and
           fits a byte after dividing is stored as disp8 (1 outside EVEX) *)
   digit : int;  (** a fixed ModR/M.reg value, or -1 *)
+  rm : int;  (** a fixed ModR/M.rm (register form, no rm operand), or -1 *)
   operands : operand list;  (** in AT&T order *)
   mode : int;  (** 0 in both modes; 64 or 32 when only that mode has the form *)
+  evex_p2 : int;
+      (** fixed EVEX P2 bits of an APX map-4 row: ND (0x10, a new destination in vvvv) and NF
+          (0x04, flags untouched: the [{nf}] pseudo-prefix) *)
+  mask : int;
+      (** EVEX opmask on the destination: 0 none, 1 [{%kN}] or [{%kN}{z}], 2 [{%kN}] only
+          (merging), 3 a [{%kN}] other than k0 required (gathers, scatters) *)
+  pseudo : string;
+      (** the pseudo-prefix that alone reaches this row: [nf], or [evex] for an APX promotion of
+          a legacy instruction (GNU encodes the plain spelling as the legacy one); or empty *)
   no_acc : int list;
       (** operand positions that must not be the accumulator: GNU as encodes that spelling with
           an accumulator-specific form ([xchg %ebx, %eax] is 0x93) *)

@@ -17,4 +17,8 @@ val normalize_hand_written :
   Isa_source_record.t -> (Isa_norm_model.form, Isa_norm_model.diagnostic) result
 (** {!normalize} without the generated-table fallback: the hand-written rules only. *)
 
+val table_owned : (Isa_norm_model.form, Isa_norm_model.diagnostic) result -> bool
+(** Whether a hand-written result leaves the record to the generated table: no rule claims it, or
+    it is the embedded-rounding variant of a hand-written EVEX form. *)
+
 val normalize : Isa_source_record.t -> (Isa_norm_model.form, Isa_norm_model.diagnostic) result

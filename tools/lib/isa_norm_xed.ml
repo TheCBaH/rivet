@@ -6036,9 +6036,19 @@ let normalize_hand_written (rec_ : R.t) =
 
 (* Records no hand-written rule claims may be generated table rows
    (DEC-X86-TABLE); see Isa_x86_table. *)
+(* The records a hand-written rule leaves to the generated table: those no rule claims, and the
+   embedded-rounding variants of hand-written EVEX forms. *)
+let table_owned = function
+  | Error { rule = "unhandled-iform"; _ } -> true
+  | Error { rule; _ } ->
+      let suffix = "-embedded-rounding" in
+      let n = String.length rule and k = String.length suffix in
+      n >= k && String.sub rule (n - k) k = suffix
+  | Ok _ -> false
+
 let normalize (rec_ : R.t) =
   match normalize_hand_written rec_ with
-  | Error { rule = "unhandled-iform"; _ } as unhandled -> (
+  | unhandled when table_owned unhandled -> (
       match Isa_x86_table.spec_of_record rec_ with
       | Some spec -> Ok (Isa_x86_table.form ~requirement:(requirement_of rec_) rec_ spec)
       | None -> unhandled)

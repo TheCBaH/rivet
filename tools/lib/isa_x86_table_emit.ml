@@ -8,10 +8,11 @@ let specs repo target =
   Ok
     (List.filter_map
        (fun rec_ ->
-         match Isa_norm_xed.normalize_hand_written rec_ with
-         | Error { Isa_norm_model.rule = "unhandled-iform"; _ } -> Isa_x86_table.spec_of_record rec_
-         | _ -> None)
-       records)
+         if Isa_norm_xed.table_owned (Isa_norm_xed.normalize_hand_written rec_) then
+           Isa_x86_table.spec_of_record rec_
+         else None)
+       records
+    |> Isa_x86_table.inherit_suffix_rule records)
 
 (* Every table-expressible record of one export, including those the hand-written rules own:
    twins are decided over all of them, and hand-written forms get rows too, used only when the
@@ -20,7 +21,9 @@ let all_specs repo target =
   let* records =
     Isa_source_record.read_file (Repo.isa_db_export repo ~source:"xed_resolved" target)
   in
-  Ok (List.filter_map Isa_x86_table.spec_of_record records)
+  Ok
+    (List.filter_map Isa_x86_table.spec_of_record records
+    |> Isa_x86_table.inherit_suffix_rule records)
 
 let render_class : Isa_x86_table.rclass -> string = function
   | Gpr8 -> "Gpr8"
@@ -47,6 +50,10 @@ let render_operand : Isa_x86_table.operand -> string = function
   | Mem { bits } -> Printf.sprintf "Mem { bits = %d }" bits
   | Imm { bytes } -> Printf.sprintf "Imm { bytes = %d }" bytes
   | Fixed_reg name -> Printf.sprintf "Fixed_reg %S" name
+  | Rounding { sae_only } -> Printf.sprintf "Rounding { sae_only = %b }" sae_only
+  | Vsib { cls } -> Printf.sprintf "Vsib { cls = %s }" (render_class cls)
+  | One -> "One"
+  | Dfv -> "Dfv"
 
 let render_row (s : Isa_x86_table.spec) =
   Printf.sprintf
@@ -61,17 +68,21 @@ let render_row (s : Isa_x86_table.spec) =
     \      l = %d;\n\
     \      disp8n = %d;\n\
     \      digit = %d;\n\
+    \      rm = %d;\n\
     \      operands = [ %s ];\n\
     \      mode = %d;\n\
+    \      evex_p2 = 0x%02x;\n\
+    \      mask = %d;\n\
+    \      pseudo = %S;\n\
     \      no_acc = [ %s ];\n\
     \      feature = %S;\n\
     \      source = %S;\n\
     \    };\n"
     s.mnemonic
-    (match s.space with `Vex -> "Vex" | `Evex -> "Evex" | `Legacy -> "Legacy")
-    s.map s.opcode s.prefix s.osz s.w s.l s.disp8n s.digit
+    (match s.space with `Vex -> "Vex" | `Evex -> "Evex" | `Xop -> "Xop" | `Legacy -> "Legacy")
+    s.map s.opcode s.prefix s.osz s.w s.l s.disp8n s.digit s.rm
     (String.concat "; " (List.map render_operand s.operands))
-    s.mode
+    s.mode s.evex_p2 s.mask s.pseudo
     (String.concat "; " (List.map string_of_int s.no_acc))
     (String.lowercase_ascii s.isa_set)
     s.iform
@@ -145,7 +156,27 @@ let emit repo =
   let is_secondary (s : Isa_x86_table.spec) =
     Hashtbl.mem secondary s.record_id || Hashtbl.mem secondary32 s.record_id
   in
-  let rows = List.filter (fun s -> not (is_secondary s)) rows @ List.filter is_secondary rows in
+  (* and in preference order, so a pseudo-prefix reaches the form GNU as picks *)
+  let rank = Isa_x86_table.twin_rank x64 and rank32 = Isa_x86_table.twin_rank x32 in
+  let rank_of (s : Isa_x86_table.spec) =
+    match Hashtbl.find_opt rank s.record_id with
+    | Some i -> i
+    | None -> Option.value (Hashtbl.find_opt rank32 s.record_id) ~default:0
+  in
+  let rows =
+    (* a $1 shift takes the D0/D1 form wherever the imm8 one would also fit *)
+    let one_first rows =
+      let one (s : Isa_x86_table.spec) =
+        List.exists (function Isa_x86_table.One -> true | _ -> false) s.operands
+      in
+      List.filter one rows @ List.filter (fun s -> not (one s)) rows
+    in
+    one_first (List.filter (fun s -> not (is_secondary s)) rows)
+    @ one_first
+        (List.stable_sort
+           (fun a b -> compare (rank_of a) (rank_of b))
+           (List.filter is_secondary rows))
+  in
   Ok
     (String.concat ""
        ([

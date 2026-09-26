@@ -577,7 +577,18 @@ let%expect_test "generated x86 table rows round-trip through the decoder" =
                     X86_family_encode.Operand.Mem
                       (X86_family_encode.Mem.of_base ~disp:(X86_family_encode.Disp.Const 16L)
                          (reg ~width:(if mode64 then 64 else 32) 3))
-                | Imm _ -> X86_family_encode.Operand.Imm (Foundation.Bigint.of_int 1))
+                | Imm _ -> X86_family_encode.Operand.Imm (Foundation.Bigint.of_int 1)
+                | Rounding { sae_only } -> X86_family_encode.Operand.Rc (if sae_only then 4 else 1)
+                | One -> X86_family_encode.Operand.Imm Foundation.Bigint.one
+                | Dfv -> X86_family_encode.Operand.Dfv 5
+                | Vsib { cls } ->
+                    X86_family_encode.Operand.Mem
+                      {
+                        X86_family_encode.Mem.base = Some (reg ~width:(if mode64 then 64 else 32) 3);
+                        index = Some (reg ~width:(Row.class_width cls) 5);
+                        scale = 4;
+                        disp = X86_family_encode.Disp.Const 16L;
+                      })
               r.operands
           in
           match encode r ops with

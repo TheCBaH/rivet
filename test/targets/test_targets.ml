@@ -1586,6 +1586,54 @@ let%expect_test "16-bit ALU forms other than mov are generated rows" =
     accepted
     |}]
 
+(* GNU as's pseudo-prefixes pick among same-spelled encodings; each byte sequence is GNU as
+   2.44's for the same line. *)
+let%expect_test "x86 pseudo-prefixes select the encoding" =
+  disasm "x86_64"
+    "\t.text\n\
+     \t{evex} vaddps %xmm1, %xmm2, %xmm3\n\
+     \t{vex} vpdpbusd %xmm1, %xmm2, %xmm3\n\
+     \tvpdpbusd %xmm1, %xmm2, %xmm3\n\
+     \t{store} movaps %xmm1, %xmm2\n\
+     \t{load} addl %eax, %ebx\n\
+     \trep movsw\n\
+     \tvaddps {rn-sae}, %zmm1, %zmm2, %zmm3\n\
+     \tvcmpps $1, {sae}, %zmm1, %zmm2, %k1\n\
+     \tvcvtsi2ss %eax, {rz-sae}, %xmm1, %xmm2\n\
+     \tvaddps %zmm1, %zmm2, %zmm3{%k2}{z}\n\
+     \tvmovups %zmm0, 64(%rax){%k3}\n\
+     \tvgatherdps 16(%rax,%zmm2,4), %zmm3{%k1}\n\
+     \tvaddps %zmm17, %zmm22, %zmm31\n\
+     \tvpgatherdd 16(%rax,%zmm18,4), %zmm29{%k1}\n\
+     \tadcl %eax, %ebx, %ecx\n\
+     \t{nf} addq $1000, 16(%rsp), %rdx\n\
+     \t{evex} tzcnt %eax, %ebx\n\
+     \t{nf} shlb $1, %cl\n\
+     \tccmpz {dfv=of,cf} %eax, %ebx\n";
+  attempt "x86_64" "\t.text\n\t{vex3} vaddps %xmm1, %xmm2, %xmm3\n";
+  [%expect
+    {|
+    40000000  62 f1 6c 08 58 d9                    {evex} vaddps %xmm1, %xmm2, %xmm3          [x86_64.vaddps]
+    40000006  c4 e2 69 50 d9                       {vex} vpdpbusd %xmm1, %xmm2, %xmm3         [x86_64.vpdpbusd]
+    4000000b  62 f2 6d 08 50 d9                    vpdpbusd %xmm1, %xmm2, %xmm3               [x86_64.vpdpbusd]
+    40000011  0f 29 ca                             {store} movaps %xmm1, %xmm2                [x86_64.movaps]
+    40000014  03 d8                                addl %eax, %ebx                            [x86_64.alu-r-rm.asz-absent.opsz-absent.rex-absent.reg]
+    40000016  66 f3 a5                             rep movsw                                  [x86_64.rep movsw]
+    40000019  62 f1 6c 18 58 d9                    vaddps {rn-sae}, %zmm1, %zmm2, %zmm3       [x86_64.vaddps]
+    4000001f  62 f1 6c 18 c2 c9 01                 vcmpps $1, {sae}, %zmm1, %zmm2, %k1        [x86_64.vcmpps]
+    40000026  62 f1 76 78 2a d0                    vcvtsi2ss %eax, {rz-sae}, %xmm1, %xmm2     [x86_64.vcvtsi2ss]
+    4000002c  62 f1 6c ca 58 d9                    vaddps %zmm1, %zmm2, %zmm3{%k2}{z}         [x86_64.vaddps]
+    40000032  62 f1 7c 4b 11 40 01                 vmovups %zmm0, 64(%rax){%k3}               [x86_64.vmovups]
+    40000039  62 f2 7d 49 92 5c 90 04              vgatherdps 16(%rax,%zmm2,4), %zmm3{%k1}    [x86_64.vgatherdps]
+    40000041  62 21 4c 40 58 f9                    vaddps %zmm17, %zmm22, %zmm31              [x86_64.vaddps]
+    40000047  62 62 7d 41 90 6c 90 04              vpgatherdd 16(%rax,%zmm18,4), %zmm29{%k1}  [x86_64.vpgatherdd]
+    4000004f  62 f4 74 18 11 c3                    adcl %eax, %ebx, %ecx                      [x86_64.adcl]
+    40000055  62 f4 ec 1c 81 44 24 10 e8 03 00 00  {nf} addq $1000, 16(%rsp), %rdx            [x86_64.addq]
+    40000061  62 f4 7c 08 f4 d8                    {evex} tzcnt %eax, %ebx                    [x86_64.tzcnt]
+    40000067  62 f4 7c 0c d0 e1                    {nf} shlb $1, %cl                          [x86_64.shlb]
+    4000006d  62 f4 4c 04 39 c3                    ccmpz {dfv=of,cf} %eax, %ebx               [x86_64.ccmpz]
+    x86.simplify: unknown instruction {vex3} vaddps |}]
+
 (* {1 M5 corpus-growth forms (asm/docs/corpus.md): actually assembling
    CompCert's [test/c/] corpus, not just parsing it}
 
