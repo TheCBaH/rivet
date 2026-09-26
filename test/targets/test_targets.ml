@@ -1609,7 +1609,10 @@ let%expect_test "x86 pseudo-prefixes select the encoding" =
      \t{nf} addq $1000, 16(%rsp), %rdx\n\
      \t{evex} tzcnt %eax, %ebx\n\
      \t{nf} shlb $1, %cl\n\
-     \tccmpz {dfv=of,cf} %eax, %ebx\n";
+     \tccmpz {dfv=of,cf} %eax, %ebx\n\
+     \tlock addw $1, (%rax)\n\
+     \tlock cmpxchg16b (%rax)\n\
+     \tpavgusb 16(%rsp), %mm3\n";
   attempt "x86_64" "\t.text\n\t{vex3} vaddps %xmm1, %xmm2, %xmm3\n";
   [%expect
     {|
@@ -1632,6 +1635,9 @@ let%expect_test "x86 pseudo-prefixes select the encoding" =
     40000061  62 f4 7c 08 f4 d8                    {evex} tzcnt %eax, %ebx                    [x86_64.tzcnt]
     40000067  62 f4 7c 0c d0 e1                    {nf} shlb $1, %cl                          [x86_64.shlb]
     4000006d  62 f4 4c 04 39 c3                    ccmpz {dfv=of,cf} %eax, %ebx               [x86_64.ccmpz]
+    40000073  66 f0 83 00 01                       lock addw $1, (%rax)                       [x86_64.lock addw]
+    40000078  f0 48 0f c7 08                       lock cmpxchg16b (%rax)                     [x86_64.lock cmpxchg16b]
+    4000007d  0f 0f 5c 24 10 bf                    pavgusb 16(%rsp), %mm3                     [x86_64.pavgusb]
     x86.simplify: unknown instruction {vex3} vaddps |}]
 
 (* {1 M5 corpus-growth forms (asm/docs/corpus.md): actually assembling
@@ -2357,14 +2363,12 @@ let%expect_test "fucomp is a bare, fixed-encoding compare-and-pop" =
    almabench.c's %st(1)). [find_reg] can never see this shape: the lexer
    splits the parens off the identifier the same way it does for any memory
    operand, so it is synthesized directly from the [n] literal
-   (x86_family.ml) rather than looked up. Parse-only: [fld] (register-only,
-   no size suffix - distinct from [fldl]'s own memory-only, double-precision
-   mnemonic above) is still not in the M1 instruction table, so the pipeline
-   fails one stage earlier still, at simplify's mnemonic lookup, before the
-   operand is ever consulted. *)
+   (x86_family.ml) rather than looked up. [fld] (register-only, no size suffix - distinct
+   from [fldl]'s own memory-only, double-precision mnemonic above) is a generated x87 row
+   (DEC-X86-TABLE). *)
 let%expect_test "%st(n) parses as a register operand" =
   attempt "x86_32" "\t.text\n\t.globl f\nf:\n\tfld %st(1)\n\tret\n";
-  [%expect {| x86.simplify: unknown instruction fld |}]
+  [%expect {| accepted |}]
 
 (* [leal sym, %reg] - a bare symbol used as [lea]'s source, the highest-signal
    single gap in the whole gcc corpus (12 `test/c/` recurrences: string-literal

@@ -77,6 +77,8 @@ module Reg = struct
         { name = Printf.sprintf "mm%d" i; num = i; width = X86_table_row.class_width Mmx })
     @ List.init 8 (fun i ->
         { name = Printf.sprintf "k%d" i; num = i; width = X86_table_row.class_width Kmask })
+    @ List.init 8 (fun i ->
+        { name = Printf.sprintf "tmm%d" i; num = i; width = X86_table_row.class_width Tmm })
 
   let base_regs width names =
     Array.to_list (Array.mapi (fun i n -> { name = n; num = i; width }) names)
@@ -8744,8 +8746,9 @@ module Make (M : MODE) = struct
           | Some reg, Some rm ->
               Option.map (fun m -> (reg, m)) (table_modrm ~n:r.disp8n ?vsib:!vsib ~reg rm)
           | None, None -> Some (0, ("", 0, (!opcode_low lsr 3) land 1))
-          (* a fixed ModR/M.reg and no rm operand: register form, rm 0 ([lfence] is 0F AE E8) *)
-          | Some reg, None when r.digit >= 0 ->
+          (* a fixed ModR/M.reg or rm and no rm operand: register form, rm fixed or 0 ([lfence] is
+             0F AE E8, [tilezero %tmm1] is ... 49 C8) *)
+          | Some reg, None when r.digit >= 0 || r.rm >= 0 ->
               Some
                 ( reg,
                   (String.make 1 (Char.chr (0xc0 lor ((reg land 7) lsl 3) lor max 0 r.rm)), 0, 0) )
@@ -8782,12 +8785,19 @@ module Make (M : MODE) = struct
                         else ""
                       in
                       let escape =
-                        match r.map with 1 -> "\x0f" | 2 -> "\x0f\x38" | 3 -> "\x0f\x3a" | _ -> ""
+                        match r.map with
+                        | 1 -> "\x0f"
+                        | 2 -> "\x0f\x38"
+                        | 3 -> "\x0f\x3a"
+                        | 4 -> "\x0f\x0f"
+                        | _ -> ""
                       in
+                      (* 3DNow! (0F 0F) puts its opcode byte last, after ModR/M and displacement *)
+                      let body = if r.map = 4 then tail ^ byte opcode else byte opcode ^ tail in
                       Some
                         ((if r.osz then "\x66" else "")
                         ^ (if r.prefix <> 0 then byte r.prefix else "")
-                        ^ rex ^ escape ^ byte opcode ^ tail)
+                        ^ rex ^ escape ^ body)
                 | T.Xop ->
                     (* 8F RXB.mmmmm W.vvvv.L.pp, always the three-byte form *)
                     if (not M.rex_allowed) && (rr = 1 || x = 1 || b = 1) then None
@@ -8912,7 +8922,8 @@ module Make (M : MODE) = struct
     let rec prefixes k osz rep =
       match at k with
       | Some 0x66 -> prefixes (k + 1) true rep
-      | Some ((0xf2 | 0xf3) as p) -> prefixes (k + 1) osz p
+      (* F0 (lock) sits in the same slot: a row names at most one of them *)
+      | Some ((0xf0 | 0xf2 | 0xf3) as p) -> prefixes (k + 1) osz p
       | _ -> (k, osz, rep)
     in
     let k, osz, rep = prefixes pos false 0 in
@@ -8995,13 +9006,15 @@ module Make (M : MODE) = struct
           match (at k, at (k + 1)) with
           | Some 0x0f, Some 0x38 -> (`Legacy 2, k + 2)
           | Some 0x0f, Some 0x3a -> (`Legacy 3, k + 2)
+          | Some 0x0f, Some 0x0f -> (`Legacy 4, k + 2)
           | Some 0x0f, _ -> (`Legacy 1, k + 1)
           | _ -> (`Legacy 0, k))
     in
-    match at k with
+    (* 3DNow!'s opcode byte comes last: read it per row, after the operands *)
+    match match space with `Legacy 4 -> Some (-1) | _ -> at k with
     | None -> None
     | Some opcode ->
-        let k = k + 1 in
+        let k = if opcode < 0 then k else k + 1 in
         let try_row i (r : T.row) =
           let header_ok, rr, xx, bb, w, vvvv, l =
             match (space, r.space) with
@@ -9075,7 +9088,11 @@ module Make (M : MODE) = struct
               (function T.Reg { field = T.Opcode_low; _ } -> true | _ -> false)
               r.operands
           in
-          let opcode_ok = if low then opcode land 0xf8 = r.opcode else r.opcode = opcode in
+          let opcode_ok =
+            if opcode < 0 then true
+            else if low then opcode land 0xf8 = r.opcode
+            else r.opcode = opcode
+          in
           if (not header_ok) || (not opcode_ok) || not (table_applies r) then None
           else
             let uses_modrm =
@@ -9205,7 +9222,8 @@ module Make (M : MODE) = struct
                                 in
                                 if cls = T.Gpr8 && num >= 4 && num < 8 && rex = 0 then
                                   failed := true;
-                                if (cls = T.Mmx || cls = T.Kmask) && num >= 8 then failed := true;
+                                if (cls = T.Mmx || cls = T.Kmask || cls = T.Tmm) && num >= 8 then
+                                  failed := true;
                                 Operand.Reg (reg_at ~width:(T.class_width cls) num)
                             | T.Rounding { sae_only } -> Operand.Rc (if sae_only then 4 else l)
                             | T.One -> Operand.Imm Bigint.one
@@ -9277,7 +9295,12 @@ module Make (M : MODE) = struct
                           | [] -> ops
                         else ops
                       in
-                      if !failed then None
+                      let k, failed =
+                        if opcode < 0 then
+                          if at k = Some r.opcode then (k + 1, !failed) else (k, true)
+                        else (k, !failed)
+                      in
+                      if failed then None
                       else Some (Instruction.mk (Opcode.Table i) 0 ops, r.mnemonic, k - pos))
         in
         let rec go i =
@@ -9296,6 +9319,9 @@ module Make (M : MODE) = struct
           [ Operand.Sym (Asm_core.Expr.Symbol op) ] ) ->
           let p = match p with "repz" -> "repe" | "repnz" -> "repne" | p -> p in
           { s with mnemonic = p ^ " " ^ op; ops = [] }
+      (* [lock addl $1, (%rax)]: the parser hands the instruction over as a leading symbol *)
+      | "lock", Operand.Sym (Asm_core.Expr.Symbol op) :: ops ->
+          { s with mnemonic = "lock " ^ op; ops }
       | _ -> s
     in
     match split_pseudo_prefix s.Surface.mnemonic with
@@ -9876,27 +9902,38 @@ module Make (M : MODE) = struct
      below is the [_ungated] one behind a single gate, so a disabled form is refused whichever
      path reached it. *)
 
-  let feature_gate ?origin state mnemonic =
-    match Target_component.feature_of_mnemonic components mnemonic with
+  (* A generated row's component follows from its ISA set: the x87 sets belong to x87 *)
+  let row_feature row =
+    match table_rows.(row).T.feature with
+    | "x87" | "fcmov" | "fcomi" | "sse3x87" -> Some X86_x87.component.feature
+    | _ -> None
+
+  let gate ?origin state mnemonic = function
     | Some f when not (Target_config.enabled state.config f) ->
         Error (diag ~pos:__POS__ ?origin (`Feature_disabled (mnemonic, f)))
     | _ -> Ok ()
 
+  let feature_gate ?origin state mnemonic =
+    gate ?origin state mnemonic (Target_component.feature_of_mnemonic components mnemonic)
+
   let required_feature (i : Instruction.t) =
-    Target_component.feature_of_mnemonic components (Opcode.name i.op)
+    match i.op with
+    | Opcode.Table row -> row_feature row
+    | op -> Target_component.feature_of_mnemonic components (Opcode.name op)
+
+  let instruction_gate ?origin state (i : Instruction.t) =
+    gate ?origin state (Opcode.name i.op) (required_feature i)
 
   let simplify_instruction state s =
     match simplify_instruction_ungated s with
     | Error _ as e -> e
     | Ok i -> (
-        match feature_gate ~origin:s.Surface.origin state (Opcode.name i.Instruction.op) with
+        match instruction_gate ~origin:s.Surface.origin state i with
         | Ok () -> Ok i
         | Error _ as e -> e)
 
   let lower_instruction state i =
-    match feature_gate state (Opcode.name i.Instruction.op) with
-    | Error _ as e -> e
-    | Ok () -> lower_instruction_ungated i
+    match instruction_gate state i with Error _ as e -> e | Ok () -> lower_instruction_ungated i
 
   (* The mnemonic of a lowered form that belongs to a component. *)
   let lowered_mnemonic = function
@@ -9907,18 +9944,21 @@ module Make (M : MODE) = struct
     | _ -> None
 
   let encode_in state l =
-    match lowered_mnemonic l with
-    | Some m -> ( match feature_gate state m with Error _ as e -> e | Ok () -> encode_ungated l)
-    | None -> encode_ungated l
+    match (l, lowered_mnemonic l) with
+    | Lowered.Table x, _ -> (
+        match gate state table_rows.(x.row).T.mnemonic (row_feature x.row) with
+        | Error _ as e -> e
+        | Ok () -> encode_ungated l)
+    | _, Some m -> (
+        match feature_gate state m with Error _ as e -> e | Ok () -> encode_ungated l)
+    | _, None -> encode_ungated l
 
   let encode l = encode_in default_state l
 
   let decode ctx bytes ~pos =
     match decode_ungated ctx bytes ~pos with
     | Ok (i, _, _) as ok -> (
-        match feature_gate ctx.state (Opcode.name i.Instruction.op) with
-        | Ok () -> ok
-        | Error _ as e -> e)
+        match instruction_gate ctx.state i with Ok () -> ok | Error _ as e -> e)
     | Error _ as e -> e
 
   (* {2 Fixups, padding, directives} *)

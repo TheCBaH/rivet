@@ -551,12 +551,8 @@ module Make (M : MODE) = struct
     go [] [] 0 slices
 
   let parse_operands ~mnemonic slices =
-    ignore mnemonic;
-    (* x86 needs no mnemonic-directed operand parsing: unlike ARM's [ldm sp!, {r0}]
-       there is no operand shape whose meaning depends on which instruction it
-       belongs to. The parameter is in the signature because ARM and AArch64 do
-       need it, and a signature with a per-target shape would not be one
-       signature. *)
+    (* x86's only mnemonic-directed operand parsing is the lock prefix below: unlike ARM's
+       [ldm sp!, {r0}] no operand shape depends on which instruction it belongs to. *)
     let rec go acc = function
       | [] -> Ok (List.rev acc)
       | s :: rest -> (
@@ -580,6 +576,19 @@ module Make (M : MODE) = struct
               | _ -> [ slice ])
           | _ -> [ slice ])
         slices
+    in
+    (* a prefix word before an instruction with operands ([lock addl $1, (%rax)]): the
+       instruction's mnemonic becomes a leading symbol operand, which simplify joins back *)
+    let slices =
+      match (mnemonic, slices) with
+      | "lock", (first :: rest_slices : Asm_syntax.Token.slice list) -> (
+          match first with
+          | m :: (_ :: _ as tail) when Asm_syntax.Token.kind m <> Asm_syntax.Token.Lparen -> (
+              match Asm_syntax.Token.kind m with
+              | Asm_syntax.Token.Ident _ -> [ m ] :: tail :: rest_slices
+              | _ -> slices)
+          | _ -> slices)
+      | _ -> slices
     in
     match regroup slices with
     | Error kind -> Error (parse_diag ~pos:__POS__ kind)

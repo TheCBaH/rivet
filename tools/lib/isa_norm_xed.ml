@@ -6051,5 +6051,8 @@ let normalize (rec_ : R.t) =
   | unhandled when table_owned unhandled -> (
       match Isa_x86_table.spec_of_record rec_ with
       | Some spec -> Ok (Isa_x86_table.form ~requirement:(requirement_of rec_) rec_ spec)
-      | None -> unhandled)
+      | None -> (
+          match Isa_x86_table.branch_form ~requirement:(requirement_of rec_) rec_ with
+          | Some form -> Ok form
+          | None -> unhandled))
   | result -> result

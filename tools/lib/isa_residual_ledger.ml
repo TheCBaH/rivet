@@ -61,32 +61,29 @@ let rows =
     {
       id = "RES-X86-LEGACY-SIMD";
       source = "xed_resolved";
-      families = [ "3DNOW"; "ACE_1"; "PENTIUMMMX"; "SSE"; "SSE2"; "SSE42"; "SSE4a"; "SSE_PREFETCH" ];
+      families = [ "PENTIUMMMX"; "SSE"; "SSE2"; "SSE42"; "SSE4a" ];
       capability =
-        "Legacy MMX/SSE/3DNow remainders: 3DNow's suffix-opcode encoding (0F 0F ... op), \
-         GPR-with-memory spellings that need a width suffix, and implicit operands. xmm and mm \
-         SSE/SSE2/SSSE3/SSE4/AES/PCLMUL/SHA/GFNI forms are promoted through DEC-X86-TABLE rows.";
+        "Legacy MMX/SSE remainders: GPR-with-memory spellings that need a width suffix, implicit \
+         operands, and same-iform twins GNU never emits. xmm, mm and 3DNow! forms are promoted \
+         through DEC-X86-TABLE rows.";
       evidence =
-        "family-admission: SSE, SSE2 and PENTIUMMMX are promoted but for a handful of records; \
-         3DNOW is unhandled";
+        "family-admission: SSE, SSE2, PENTIUMMMX and 3DNOW are promoted but for a handful of \
+         records";
       task = "GEN-05-X86-SIMD";
-      reopening_gate = "the table encodes 3DNow's trailing opcode byte";
+      reopening_gate = "a GAS spelling for the remaining records is probed";
     };
     {
       id = "RES-X86-X87";
       source = "xed_resolved";
-      families = [ "FCMOV"; "FCOMI"; "SSE3X87"; "X87" ];
+      families = [ "X87" ];
       capability =
-        "x87 beyond the thirteen implemented forms: real32/64/80 and int16/32/64 memory widths \
-         (fadds/fsubs also lack a register-indirect operand), stack-register forms in both \
-         directions, popping and reversed arithmetic, comparison and control forms, FCMOV/FCOMI.";
+        "x87 forms the generated table does not take: the 16-bit (14- and 94-byte) environment \
+         images and same-iform stack-register twins GNU never emits.";
       evidence =
-        "family-admission: all but one X87 record is unhandled; fadds 4(%esp) is rejected \
-         (test_components transcript) while GNU as accepts it";
+        "family-admission: X87/FCMOV/FCOMI are promoted through DEC-X86-TABLE rows (st(i) in \
+         ModR/M.rm, real/int memory suffixes, GNU's fsub/fdiv AT&T swap); a handful remain";
       task = "GEN-05-X86-X87";
-      reopening_gate =
-        "the x87 component grows its memory-width table and both stack directions are recipes with \
-         GAS spelling probes";
+      reopening_gate = "a GAS spelling for the remaining forms is probed";
     };
     {
       id = "RES-X86-BASE-INT";
@@ -94,10 +91,6 @@ let rows =
       families =
         [
           "CLDEMOTE";
-          "CLFLUSHOPT";
-          "CLFSH";
-          "CLWB";
-          "CMPXCHG16B";
           "FAT_NOP";
           "I186";
           "I286PROTECTED";
@@ -107,11 +100,9 @@ let rows =
           "I86";
           "LONGMODE";
           "PAUSE";
-          "PENTIUMREAL";
           "PPRO";
           "PPRO_UD0_LONG";
           "PPRO_UD0_SHORT";
-          "PREFETCHWT1";
           "PREFETCH_NOP";
           "RDWRFSGS";
         ];
@@ -162,18 +153,7 @@ let rows =
     {
       id = "RES-X86-AMX";
       source = "xed_resolved";
-      families =
-        [
-          "AMX_AVX512";
-          "AMX_BF16";
-          "AMX_COMPLEX";
-          "AMX_FP16";
-          "AMX_FP8";
-          "AMX_INT8";
-          "AMX_MOVRS";
-          "AMX_TILE";
-          "AMX_TILE_BASE";
-        ];
+      families = [ "AMX_MOVRS"; "AMX_TILE" ];
       capability =
         "Advanced Matrix Extensions: tile registers and the tile-configuration state, VEX-encoded \
          tile operations.";
@@ -190,35 +170,23 @@ let rows =
           "AMD_INVLPGB";
           "CET";
           "ENQCMD";
-          "FRED";
-          "FXSAVE";
-          "FXSAVE64";
           "HRESET";
           "IBHF";
           "ICACHE_PREFETCH";
           "INVPCID";
-          "KEYLOCKER_WIDE";
-          "LKGS";
           "MONITOR";
           "MONITORX";
           "MOVDIR64B";
           "MOVRS";
           "MPX";
           "PTWRITE";
-          "RDPID";
           "RTM";
           "SNP";
           "SVM";
-          "UINTR";
-          "USER_MSR";
           "VIA_PADLOCK_MONTMUL";
           "VTX";
           "WAITPKG";
           "WBNOINVD";
-          "XSAVE";
-          "XSAVEC";
-          "XSAVEOPT";
-          "XSAVES";
         ];
       capability =
         "System, virtualization, security and vendor extensions: privileged and MSR forms, state \

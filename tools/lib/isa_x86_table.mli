@@ -10,7 +10,7 @@
     and every visible operand is understood; anything else stays with the
     hand-written forms or blocked. *)
 
-type rclass = Gpr8 | Gpr16 | Gpr32 | Gpr64 | Gprv | Xmm | Ymm | Zmm | Mmx | Kmask
+type rclass = Gpr8 | Gpr16 | Gpr32 | Gpr64 | Gprv | Xmm | Ymm | Zmm | Mmx | Kmask | St | Tmm
 type field = Modrm_reg | Modrm_rm | Vvvv | Is4 | Opcode_low
 
 type operand =
@@ -49,6 +49,7 @@ type spec = {
   pseudo : string;
       (** the pseudo-prefix the row is reached only through: [nf], or [evex] for an APX
           promotion of a legacy instruction; empty otherwise *)
+  df64 : bool;  (** DF64(): 64-bit operand size by default in 64-bit mode, no REX.W *)
   no_acc : int list;  (** AT&T positions that must not be the accumulator *)
   widths : int list;  (** operand sizes of a width-variable (GPRv) form *)
 }
@@ -67,6 +68,12 @@ val form :
     immediates with [$], memory as given. *)
 
 val operand_name : int -> string
+
+val branch : Isa_source_record.t -> (string * int) option
+(** A relative near jcc/jmp/call record: its AT&T mnemonic and displacement width. *)
+
+val branch_form :
+  requirement:Isa_norm_model.requirement -> Isa_source_record.t -> Isa_norm_model.form option
 
 val lookup_key : Isa_source_record.t -> string
 (** The iform, told apart for an EVEX embedded-rounding register variant (which XED lists under

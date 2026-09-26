@@ -92,6 +92,9 @@ let x86_common =
           "addl $1, (%eax,%eax,3)" target;
         x86_entry ~name:"x87-disabled" ~category:"feature-disabled" ~mnemonic:"fldl"
           ~gas_configuration:[ no87 ] ~ours_features:"-x87" ~code:"feature" "fldl 8(%esp)" target;
+        (* a generated x87 row is gated by the same component *)
+        x86_entry ~name:"x87-row-disabled" ~category:"feature-disabled" ~mnemonic:"fsin"
+          ~gas_configuration:[ no87 ] ~ours_features:"-x87" ~code:"feature" "fsin" target;
       ])
     x86_profiles
 

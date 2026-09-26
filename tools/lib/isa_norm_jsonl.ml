@@ -76,6 +76,7 @@ let register_class_to_json : Isa_norm_model.register_class -> Jsont.json = funct
   | X86_zmm -> str "x86_zmm"
   | X86_mmx -> str "x86_mmx"
   | X86_kmask -> str "x86_kmask"
+  | X86_tmm -> str "x86_tmm"
 
 let register_class_of_json json =
   let* s = as_string json in
@@ -91,6 +92,7 @@ let register_class_of_json json =
   | "x86_zmm" -> Ok Isa_norm_model.X86_zmm
   | "x86_mmx" -> Ok Isa_norm_model.X86_mmx
   | "x86_kmask" -> Ok Isa_norm_model.X86_kmask
+  | "x86_tmm" -> Ok Isa_norm_model.X86_tmm
   | other -> err "unknown register_class: %s" other
 
 let bit_run_to_json (r : Isa_norm_model.bit_run) =

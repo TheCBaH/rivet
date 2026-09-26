@@ -7015,6 +7015,9 @@ let x86_table_entries_of ?(alt = false) ?prefix target (spec : Isa_x86_table.spe
     | Zmm -> Printf.sprintf "zmm%d" num
     (* eight of each, so no high variant *)
     | Mmx -> Printf.sprintf "mm%d" (num land 7)
+    | Tmm -> Printf.sprintf "tmm%d" (num land 7)
+    (* never st(0) beside the implied %st: GNU would take the other direction's form *)
+    | St -> Printf.sprintf "st(%d)" (if num land 7 = 0 then 7 else num land 7)
     | Kmask -> Printf.sprintf "k%d" (num land 7)
     | Gpr32 | Gprv -> if num < 8 then "e" ^ low8.(num) else Printf.sprintf "r%dd" num
     | Gpr64 -> if num < 8 then "r" ^ low8.(num) else Printf.sprintf "r%d" num
@@ -7202,11 +7205,12 @@ let x86_table_entries repo =
     let specs =
       List.filter
         (fun (s : Isa_x86_table.spec) ->
-          Isa_oracle_unavailable.find_record ~source:"xed_resolved" target ~extension:s.isa_set
-            ~native_name:
-              ( String.uppercase_ascii (String.concat "" [ s.iform ]) |> fun i ->
-                match String.index_opt i '_' with Some k -> String.sub i 0 k | None -> i )
-          = None)
+          Isa_oracle_unavailable.find ~source:"xed_resolved" target ~extension:s.isa_set = None
+          && Isa_oracle_unavailable.find_record ~source:"xed_resolved" target ~extension:s.isa_set
+               ~native_name:
+                 ( String.uppercase_ascii (String.concat "" [ s.iform ]) |> fun i ->
+                   match String.index_opt i '_' with Some k -> String.sub i 0 k | None -> i )
+             = None)
         specs
     in
     let specs =
@@ -7261,8 +7265,58 @@ let x86_table_entries repo =
   let* x64 = per_target Target.X86_64 in
   Ok (x32 @ x64)
 
+(* Relative jcc/jmp/call: a label reached with rel8 (one filler byte either side) or only with
+   rel32 (200 filler bytes); call has only rel32. *)
+let x86_branch_entries repo =
+  let ( let* ) = Result.bind in
+  let per_target target =
+    let* records =
+      Isa_source_record.read_file (Repo.isa_db_export repo ~source:"xed_resolved" target)
+    in
+    let seen = Hashtbl.create 64 in
+    Ok
+      (List.concat_map
+         (fun (r : Isa_source_record.t) ->
+           match (Isa_x86_table.branch r, r.provenance) with
+           | Some (_, bits), Isa_source_record.Xed_provenance { iform = Some iform; _ }
+             when not (Hashtbl.mem seen iform) ->
+               Hashtbl.replace seen iform ();
+               let entry variant ~label ~before ~after =
+                 {
+                   form_id = "x86:" ^ iform;
+                   target;
+                   lookup_key = iform;
+                   case_id =
+                     Printf.sprintf "x86:%s:branch-%s:%s" iform variant (Target.to_string target);
+                   rule_ids = [ "branch"; "branch-" ^ variant ];
+                   operands = [ ("target", label) ];
+                   lines_before = before;
+                   lines_after = after;
+                   configuration = Isa_gen_case_build.configuration_for target;
+                 }
+               in
+               if bits = 8 then
+                 [
+                   entry "rel8-forward" ~label:"1f" ~before:[] ~after:[ ".byte 0x90"; "1:" ];
+                   entry "rel8-backward" ~label:"1b" ~before:[ "1:"; ".byte 0x90" ] ~after:[];
+                 ]
+               else if r.native_name = "CALL_NEAR" then
+                 [ entry "rel32-forward" ~label:"1f" ~before:[] ~after:[ "1:" ] ]
+               else
+                 [
+                   entry "rel32-forward" ~label:"1f" ~before:[] ~after:[ ".zero 200"; "1:" ];
+                   entry "rel32-backward" ~label:"1b" ~before:[ "1:"; ".zero 200" ] ~after:[];
+                 ]
+           | _ -> [])
+         records)
+  in
+  let* x32 = per_target Target.X86_32 in
+  let* x64 = per_target Target.X86_64 in
+  Ok (x32 @ x64)
+
 let entries repo =
   let ( let* ) = Result.bind in
   let* table = table_entries repo in
   let* x86 = x86_table_entries repo in
-  Ok (all @ table @ x86)
+  let* branches = x86_branch_entries repo in
+  Ok (all @ table @ x86 @ branches)

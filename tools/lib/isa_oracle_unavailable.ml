@@ -110,6 +110,21 @@ let all =
            prefixed ISA extension `zicfiss' (riscv64-linux-gnu-as 2.44 accepts it)";
       };
     ]
+  (* XED's ACE_1 tile/zmm operations: GNU as 2.44 has none of them (tilemovcol, the top ops) and
+     only the zmm-destination tilemovrow *)
+  @ List.map
+      (fun target ->
+        {
+          source = "xed_resolved";
+          target;
+          extension = "ACE_1";
+          native_name = None;
+          reason = "gas-lacks-ace";
+          probe =
+            "x86_64-linux-gnu-as 2.44: no such instruction `tilemovcol'/`top2bf16ps'; `tilemovrow \
+             %ebx,%zmm2,%tmm1': operand size mismatch";
+        })
+      [ Target.X86_32; Target.X86_64 ]
   @ List.concat_map
       (fun target ->
         [
@@ -133,6 +148,7 @@ let x86_gas_lacks =
     (* undocumented one-byte opcodes GNU as has no mnemonic for *)
     "udb";
     "salc";
+    "fstpnce";
     "vcvtbf42hf8";
     "vcvtbf62hf8";
     "vcvtbf82bf4s";

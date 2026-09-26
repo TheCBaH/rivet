@@ -148,9 +148,9 @@ let%expect_test "x87: the implemented forms on both profiles" =
     -- x86_32: fistpll 4(%esp)
     40000000  df 7c 24 04  fistpll 4(%esp)  [x86_32.fistpll.opsz-absent.sib-disp8]
     -- x86_32: fadds 4(%esp)
-    x86.lower: no fadds form takes these operands
+    40000000  d8 44 24 04  fadds 4(%esp)  [x86_32.fadds.opsz-absent.sib-disp8]
     -- x86_32: fsubs 4(%esp)
-    x86.lower: no fsubs form takes these operands
+    40000000  d8 64 24 04  fsubs 4(%esp)  [x86_32.fsubs.opsz-absent.sib-disp8]
     -- x86_32: fnstcw 4(%esp)
     40000000  d9 7c 24 04  fnstcw 4(%esp)  [x86_32.fnstcw.opsz-absent.sib-disp8]
     -- x86_32: fldcw 4(%esp)
@@ -221,13 +221,13 @@ let%expect_test "x87: operand misuse" =
     -- x86_32: fldl %eax
     x86.lower: no fldl form takes these operands
     -- x86_32: fucomp %st(1)
-    x86.simplify: fucomp takes no operands in M5
+    40000000  dd e9  fucomp  [x86_32.fucomp]
     -- x86_32: fnstsw %bx
     x86.simplify: fnstsw is only supported as fnstsw %%ax in M5
     -- x86_32: fnstsw
     x86.simplify: fnstsw is only supported as fnstsw %%ax in M5
     -- x86_32: fadd %st, %st(1)
-    x86.lower: no fadd form takes these operands
+    40000000  dc c1  fadd %st, %st(1)  [x86_32.fadd]
     -- x86_32: faddp
     x86.simplify: unknown instruction faddp |}]
 
