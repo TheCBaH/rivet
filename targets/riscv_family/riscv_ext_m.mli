@@ -1,10 +1,9 @@
 (** The RISC-V multiply/divide components.
 
     The architecture splits integer multiplication out of M: Zmmul is the multiply-only subset and
-    M includes it and adds division and remainder. Only the forms the assembler implements are
-    listed: [mul] and the RV64-only [mulw] (Zmmul), and [remu] (M). The rest of M is captured by
-    the ISA database but not admitted, and stays visible as unimplemented rather than being
-    described here. *)
+    M includes it and adds division and remainder. Every RV32M/RV64M form is listed: [mul],
+    [mulh], [mulhsu], [mulhu] and the RV64-only [mulw] (Zmmul), and [div], [divu], [rem], [remu]
+    with the RV64-only [divw], [divuw], [remw], [remuw] (M). *)
 
 type form = {
   mnemonic : string;
@@ -25,4 +24,4 @@ val zmmul : Target_component.t
 (** Multiply only. Gated by the [zmmul] feature. *)
 
 val m : Target_component.t
-(** Adds [remu]. Gated by the [m] feature, which requires [zmmul]. *)
+(** Adds division and remainder. Gated by the [m] feature, which requires [zmmul]. *)

@@ -6100,6 +6100,244 @@ let c_beqz_bnez_entries ~mnemonic targets =
 let c_beqz_entries = c_beqz_bnez_entries ~mnemonic:"c.beqz" both_riscv
 let c_bnez_entries = c_beqz_bnez_entries ~mnemonic:"c.bnez" both_riscv
 
+(* RV32I/RV64I and M base-ISA forms the normalizer and encoder already
+   handled but no committed case named (FREE-01): plain three-GPR R-type
+   operations, and I-type immediates at both signed 12-bit endpoints (sltiu's
+   immediate is sign-extended too, so its range is the same). Word forms are
+   RV64-only. Baseline [-march=rv32im]/[rv64im], no [c], so GAS cannot
+   compress anything. *)
+let base_r_type_entry ~mnemonic target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:three-gpr:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "canonical-spelling"; "three-gpr-operands" ];
+    operands = [ ("rd", "a0"); ("rs1", "a1"); ("rs2", "a2") ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let base_i_type_entry ~mnemonic ~endpoint ~imm target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:imm12-%s:%s" mnemonic endpoint (Target.to_string target);
+    rule_ids = [ "canonical-spelling"; "boundary-imm12-" ^ endpoint ];
+    operands = [ ("rd", "a0"); ("rs1", "a1"); ("imm", imm) ];
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let base_i_type_entries ~mnemonic targets =
+  List.concat_map
+    (fun target ->
+      [
+        base_i_type_entry ~mnemonic ~endpoint:"max" ~imm:"2047" target;
+        base_i_type_entry ~mnemonic ~endpoint:"min" ~imm:"-2048" target;
+      ])
+    targets
+
+let base_entries =
+  List.concat_map
+    (fun mnemonic -> List.map (base_r_type_entry ~mnemonic) both_riscv)
+    [
+      "and";
+      "or";
+      "xor";
+      "sll";
+      "srl";
+      "sra";
+      "slt";
+      "sltu";
+      "mulh";
+      "mulhsu";
+      "mulhu";
+      "div";
+      "divu";
+      "rem";
+      "remu";
+    ]
+  @ List.map
+      (fun mnemonic -> base_r_type_entry ~mnemonic Target.Riscv64)
+      [ "sllw"; "srlw"; "sraw"; "subw"; "mulw"; "divw"; "divuw"; "remw"; "remuw" ]
+  @ List.concat_map
+      (fun mnemonic -> base_i_type_entries ~mnemonic both_riscv)
+      [ "andi"; "ori"; "xori"; "slti"; "sltiu" ]
+  @ base_i_type_entries ~mnemonic:"addiw" [ Target.Riscv64 ]
+
+(* GEN-05-RV-BASE: loads/stores at both imm12 endpoints, branches and jumps
+   to a label at a controlled distance (the beq recipe: forward over one
+   filler, backward over one), upper immediates at their range ends, shifts
+   at the top of their shamt range, and the operand-less system forms. *)
+let rv_base_entry ?(lookup_key = "") ?(configuration = []) ~form_id ~variant ~operands
+    ?(lines_before = []) ?(lines_after = []) target =
+  let mnemonic = String.sub form_id 6 (String.length form_id - 6) in
+  let mnemonic =
+    match String.index_opt mnemonic ':' with Some i -> String.sub mnemonic 0 i | None -> mnemonic
+  in
+  {
+    form_id;
+    target;
+    lookup_key = (if lookup_key = "" then mnemonic else lookup_key);
+    case_id = Printf.sprintf "%s:%s:%s" form_id variant (Target.to_string target);
+    rule_ids = [ variant ];
+    operands;
+    lines_before;
+    lines_after;
+    configuration =
+      (if configuration = [] then Isa_gen_case_build.configuration_for target else configuration);
+  }
+
+let rv_label_entries ~form_id ~operands targets =
+  List.concat_map
+    (fun target ->
+      [
+        rv_base_entry ~form_id ~variant:"branch-forward-label" ~operands:(operands "1f")
+          ~lines_after:[ "nop"; "1:" ] target;
+        rv_base_entry ~form_id ~variant:"branch-backward-label" ~operands:(operands "1b")
+          ~lines_before:[ "1:"; "nop" ] target;
+      ])
+    targets
+
+let rv_mem_entries ~form_id targets =
+  List.concat_map
+    (fun target ->
+      List.map
+        (fun (variant, offset) ->
+          rv_base_entry ~form_id ~variant
+            ~operands:[ ("value", "a0"); ("base", "a1"); ("offset", offset) ]
+            target)
+        [ ("boundary-max-positive-offset", "2047"); ("boundary-min-negative-offset", "-2048") ])
+    targets
+
+let rv64_only = [ Target.Riscv64 ]
+
+let rv_base_int_entries =
+  List.concat_map
+    (fun m -> rv_mem_entries ~form_id:("riscv:" ^ m) both_riscv)
+    [ "lb"; "lh"; "lw"; "lbu"; "lhu"; "sb"; "sh" ]
+  @ List.concat_map
+      (fun m -> rv_mem_entries ~form_id:("riscv:" ^ m) rv64_only)
+      [ "lwu"; "ld"; "sd" ]
+  @ List.concat_map
+      (fun m ->
+        rv_label_entries ~form_id:("riscv:" ^ m)
+          ~operands:(fun l -> [ ("lhs", "a0"); ("rhs", "a1"); ("offset", l) ])
+          both_riscv)
+      [ "bne"; "blt"; "bge"; "bltu"; "bgeu"; "bgt"; "ble"; "bgtu"; "bleu" ]
+  @ List.concat_map
+      (fun m ->
+        rv_label_entries ~form_id:("riscv:" ^ m)
+          ~operands:(fun l -> [ ("src", "a0"); ("offset", l) ])
+          both_riscv)
+      [ "beqz"; "bnez"; "bgez"; "bltz"; "blez"; "bgtz" ]
+  @ rv_label_entries ~form_id:"riscv:jal"
+      ~operands:(fun l -> [ ("link", "a0"); ("offset", l) ])
+      both_riscv
+  @ rv_label_entries ~form_id:"riscv:jal:implicit-ra"
+      ~operands:(fun l -> [ ("offset", l) ])
+      both_riscv
+  @ rv_label_entries ~form_id:"riscv:j" ~operands:(fun l -> [ ("offset", l) ]) both_riscv
+  @ List.concat_map
+      (fun target ->
+        [
+          rv_base_entry ~form_id:"riscv:jalr" ~variant:"boundary-max-positive-offset"
+            ~operands:[ ("link", "a0"); ("base", "a1"); ("offset", "2047") ]
+            target;
+          rv_base_entry ~form_id:"riscv:jalr" ~variant:"boundary-min-negative-offset"
+            ~operands:[ ("link", "a0"); ("base", "a1"); ("offset", "-2048") ]
+            target;
+          rv_base_entry ~form_id:"riscv:jalr:implicit-ra" ~variant:"register-target"
+            ~operands:[ ("base", "a1") ]
+            target;
+          rv_base_entry ~form_id:"riscv:jr" ~variant:"register-target"
+            ~operands:[ ("base", "a1") ]
+            target;
+        ]
+        @ List.concat_map
+            (fun m ->
+              [
+                rv_base_entry ~form_id:("riscv:" ^ m) ~variant:"boundary-zero-immediate"
+                  ~operands:[ ("rd", "a0"); ("imm", "0") ]
+                  target;
+                rv_base_entry ~form_id:("riscv:" ^ m) ~variant:"boundary-max-immediate"
+                  ~operands:[ ("rd", "a0"); ("imm", "0xfffff") ]
+                  target;
+              ])
+            [ "lui"; "auipc" ]
+        @ List.map
+            (fun m ->
+              rv_base_entry ~form_id:("riscv:" ^ m) ~variant:"no-operands" ~operands:[] target)
+            [ "ecall"; "ebreak"; "scall"; "sbreak"; "fence.tso" ]
+        @ [
+            rv_base_entry ~form_id:"riscv:pause" ~variant:"no-operands" ~operands:[]
+              ~configuration:
+                (match target with
+                | Target.Riscv32 -> [ "-march=rv32im_zihintpause"; "-mabi=ilp32"; "-mno-relax" ]
+                | _ -> [ "-march=rv64im_zihintpause"; "-mabi=lp64"; "-mno-relax" ])
+              target;
+          ])
+      both_riscv
+  @ List.map
+      (fun (m, key) ->
+        rv_base_entry ~form_id:("riscv:" ^ m) ~lookup_key:key
+          ~variant:(if key = m then "boundary-max-shamt5" else "boundary-max-shamt5-" ^ key)
+          ~operands:[ ("rd", "a0"); ("rs1", "a1"); ("shamt", "31") ]
+          Target.Riscv32)
+      [
+        ("slli", "slli");
+        ("srli", "srli");
+        ("srai", "srai");
+        ("slli", "slli_rv32");
+        ("srli", "srli_rv32");
+        ("srai", "srai_rv32");
+      ]
+  @ List.map
+      (fun m ->
+        rv_base_entry ~form_id:("riscv:" ^ m) ~variant:"boundary-max-shamt6"
+          ~operands:[ ("rd", "a0"); ("rs1", "a1"); ("shamt", "63") ]
+          Target.Riscv64)
+      [ "slli"; "srli"; "srai" ]
+  @ List.map
+      (fun m ->
+        rv_base_entry ~form_id:("riscv:" ^ m) ~variant:"boundary-max-shamt5"
+          ~operands:[ ("rd", "a0"); ("rs1", "a1"); ("shamt", "31") ]
+          Target.Riscv64)
+      [ "slliw"; "srliw"; "sraiw" ]
+
+(* c.j (both profiles) and RV32's c.jal: a compressed jump to a label over a
+   c.nop filler in each direction, under .option rvc. *)
+let c_jump_entries =
+  let entry ~mnemonic ~direction target =
+    let forward = direction = "forward" in
+    {
+      form_id = "riscv:" ^ mnemonic;
+      target;
+      lookup_key = mnemonic;
+      case_id = Printf.sprintf "riscv:%s:jump-%s:%s" mnemonic direction (Target.to_string target);
+      rule_ids = [ Printf.sprintf "branch-%s-label" direction ];
+      operands = [ ("offset", if forward then "1f" else "1b") ];
+      lines_before = (if forward then [ ".option rvc" ] else [ ".option rvc"; "1:"; "c.nop" ]);
+      lines_after = (if forward then [ "c.nop"; "1:"; ".option norvc" ] else [ ".option norvc" ]);
+      configuration = c_addi_configuration_for target;
+    }
+  in
+  List.concat_map
+    (fun target ->
+      [
+        entry ~mnemonic:"c.j" ~direction:"forward" target;
+        entry ~mnemonic:"c.j" ~direction:"backward" target;
+      ])
+    both_riscv
+  @ [
+      entry ~mnemonic:"c.jal" ~direction:"forward" Target.Riscv32;
+      entry ~mnemonic:"c.jal" ~direction:"backward" Target.Riscv32;
+    ]
+
 let alias_entries =
   mv_entries @ snez_entries @ neg_entries @ seqz_entries @ sltz_entries @ sgtz_entries
   @ zext_b_entries @ sext_w_entries @ nop_entries @ ret_entries @ fneg_s_entries @ fneg_d_entries
@@ -6107,17 +6345,17 @@ let alias_entries =
   @ fmv_s_x_entries
 
 let all =
-  sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @ x86_alu_rr_entries
-  @ x86_alu_memv_entries @ x86_alu_memv_gprv_entries @ x86_alu_immz_entries @ x86_alu_immb_entries
-  @ x86_alu_memv_immb_entries @ x86_alu_memv_immz_entries @ x86_alu_gpr8_immb_entries
-  @ x86_alu_memb_immb_entries @ x86_alu_al_immb_entries @ x86_sse_binop_rr_entries
-  @ x86_sse_binop_rm_entries @ x86_sse_binop_imm_rr_entries @ x86_sse_binop_imm_rm_entries
-  @ x86_xmm_shift_imm_entries @ x86_sse_mov_entries @ x86_cvtsi2f_rr_entries
-  @ x86_cvtsi2f_rm_entries @ x86_cvtf2i_rr_entries @ x86_cvtf2i_rm_entries
-  @ x86_movd_load_rr_entries @ x86_movd_load_rm_entries @ x86_movd_store_rr_entries
-  @ x86_movd_store_mr_entries @ x86_vmovd_load_rr_entries @ x86_vmovd_load_rm_entries
-  @ x86_vmovd_store_rr_entries @ x86_vmovd_store_mr_entries @ x86_blendv_entries
-  @ x86_pextr_store_mr_entries @ x86_pinsrw_rr_entries @ x86_pinsrw_rm_entries
+  base_entries @ rv_base_int_entries @ c_jump_entries @ sw_entries @ beq_entries @ c_addi_entries
+  @ x86_mov_entries @ x86_alu_rr_entries @ x86_alu_memv_entries @ x86_alu_memv_gprv_entries
+  @ x86_alu_immz_entries @ x86_alu_immb_entries @ x86_alu_memv_immb_entries
+  @ x86_alu_memv_immz_entries @ x86_alu_gpr8_immb_entries @ x86_alu_memb_immb_entries
+  @ x86_alu_al_immb_entries @ x86_sse_binop_rr_entries @ x86_sse_binop_rm_entries
+  @ x86_sse_binop_imm_rr_entries @ x86_sse_binop_imm_rm_entries @ x86_xmm_shift_imm_entries
+  @ x86_sse_mov_entries @ x86_cvtsi2f_rr_entries @ x86_cvtsi2f_rm_entries @ x86_cvtf2i_rr_entries
+  @ x86_cvtf2i_rm_entries @ x86_movd_load_rr_entries @ x86_movd_load_rm_entries
+  @ x86_movd_store_rr_entries @ x86_movd_store_mr_entries @ x86_vmovd_load_rr_entries
+  @ x86_vmovd_load_rm_entries @ x86_vmovd_store_rr_entries @ x86_vmovd_store_mr_entries
+  @ x86_blendv_entries @ x86_pextr_store_mr_entries @ x86_pinsrw_rr_entries @ x86_pinsrw_rm_entries
   @ x86_pextrw_rr_entries @ x86_vpinsrw_rrr_entries @ x86_vpinsrw_rr_mem_entries
   @ x86_vpextrw_rr_entries @ x86_movmsk_entries @ x86_fadd_entries @ fadd_s_entries @ fsub_s_entries
   @ fmul_s_entries @ fdiv_s_entries @ fadd_d_entries @ fsub_d_entries @ fmul_d_entries
@@ -6641,3 +6879,126 @@ let build (entry : entry) (form : Isa_norm_model.form) =
         configuration = entry.configuration;
         negative = false;
       }
+
+(* INF-05R/INF-03: one or two generated cases per table row (DEC-RV-TABLE)
+   and profile - representative registers (a0/a1/a2, fa0/fa1/fa2), and each
+   unsigned immediate at zero and at its maximum - built from the same
+   Isa_riscv_table rule that emits the encoder rows. *)
+(* The smallest and largest value a scattered immediate admits: aligned to
+   its scale, and never zero when it must not be. *)
+let scatter_value (sc : Isa_riscv_table.scatter) edge =
+  let step = 1 lsl sc.scale in
+  let top = if sc.signed then (1 lsl (sc.width - 1)) - step else (1 lsl sc.width) - step in
+  let bottom = if sc.signed then -(1 lsl (sc.width - 1)) else if sc.nonzero then step else 0 in
+  string_of_int (if edge = `High then top else bottom)
+
+let table_entries_of target (spec : Isa_riscv_table.spec) =
+  let gprs = [ "a0"; "a1"; "a2"; "a3" ] and fprs = [ "fa0"; "fa1"; "fa2"; "fa3" ] in
+  let assign ~edge =
+    List.concat
+      (List.mapi
+         (fun i (o : Isa_riscv_table.operand) ->
+           match o with
+           | Gpr { field; _ } -> [ (field, List.nth gprs i) ]
+           | Fpr { field; _ } -> [ (field, List.nth fprs i) ]
+           | Uimm { field; width; _ } ->
+               [ (field, if edge = `High then string_of_int ((1 lsl width) - 1) else "0") ]
+           | Mem_i _ | Mem_s _ ->
+               [ ("base", "a1"); ("offset", if edge = `High then "2047" else "-2048") ]
+           | Fli _ -> [ ("constant", if edge = `High then "0.5" else "min") ]
+           | Gpr_pair { field; _ } -> [ (field, List.nth [ "a0"; "a2"; "a4"; "a6" ] i) ]
+           | Mem_zero _ -> [ ("base", "a1") ]
+           | Creg { field; _ } -> [ (field, List.nth gprs i) ]
+           | Cfreg { field; _ } -> [ (field, List.nth fprs i) ]
+           | Gpr_except { field; _ } -> [ (field, "a0") ]
+           | Scatter sc -> [ ("imm", scatter_value sc edge) ]
+           | Cmem { offset; _ } -> [ ("base", "a1"); ("offset", scatter_value offset edge) ]
+           | Spmem { offset } -> [ ("offset", scatter_value offset edge) ]
+           | Cui _ -> [ ("imm", if edge = `High then "0xfffff" else "1") ]
+           | Sreg { field; _ } ->
+               [ (field, List.nth (if edge = `High then [ "s7"; "s6" ] else [ "s0"; "s1" ]) i) ]
+           | Rlist _ -> [ ("rlist", if edge = `High then "{ra, s0-s11}" else "{ra}") ]
+           | Stack_adj { push; _ } ->
+               let xlen = match target with Target.Riscv32 -> 32 | _ -> 64 in
+               let registers = if edge = `High then 13 else 1 in
+               let base = ((registers * (xlen / 8)) + 15) / 16 * 16 in
+               let v = if edge = `High then base + 48 else base in
+               [ ("stack_adj", string_of_int (if push then -v else v)) ]
+           | Uimm_min { field; width; min; _ } ->
+               [ (field, string_of_int (if edge = `High then (1 lsl width) - 1 else min)) ]
+           | Mem_hi _ -> [ ("base", "a1"); ("offset", if edge = `High then "2016" else "-2048") ]
+           | Fence_set { field; _ } ->
+               [ (field, if edge = `High then "iorw" else if field = "pred" then "rw" else "w") ]
+           | Fixed_gpr _ | Rm _ | Tied _ | Keyword _ -> [])
+         spec.operands)
+  in
+  let variants =
+    if List.exists (function Isa_riscv_table.Uimm _ -> true | _ -> false) spec.operands then
+      [ ("uimm-zero", `Low); ("uimm-max", `High) ]
+    else if
+      List.exists (function Isa_riscv_table.Mem_i _ | Mem_s _ -> true | _ -> false) spec.operands
+    then [ ("offset-min", `Low); ("offset-max", `High) ]
+    else if List.exists (function Isa_riscv_table.Mem_hi _ -> true | _ -> false) spec.operands
+    then [ ("offset-min", `Low); ("offset-max", `High) ]
+    else if
+      List.exists
+        (function Isa_riscv_table.Scatter _ | Cmem _ | Spmem _ | Cui _ -> true | _ -> false)
+        spec.operands
+    then [ ("imm-low", `Low); ("imm-high", `High) ]
+    else if
+      List.exists
+        (function Isa_riscv_table.Sreg _ | Rlist _ | Uimm_min _ -> true | _ -> false)
+        spec.operands
+    then [ ("operands-low", `Low); ("operands-high", `High) ]
+    else if List.exists (function Isa_riscv_table.Fence_set _ -> true | _ -> false) spec.operands
+    then [ ("sets-narrow", `Low); ("sets-full", `High) ]
+    else if List.exists (function Isa_riscv_table.Fli _ -> true | _ -> false) spec.operands then
+      [ ("constant-name", `Low); ("constant-value", `High) ]
+    else [ ("registers", `Low) ]
+  in
+  List.map
+    (fun (variant, edge) ->
+      {
+        form_id = "riscv:" ^ spec.native_name;
+        target;
+        lookup_key = spec.native_name;
+        case_id =
+          Printf.sprintf "riscv:%s:table-%s:%s" spec.native_name variant (Target.to_string target);
+        rule_ids = [ "table-row"; "table-" ^ variant; "feature:" ^ spec.feature ];
+        operands = assign ~edge;
+        lines_before = (if spec.width_bits = 16 then [ ".option rvc" ] else []);
+        lines_after = (if spec.width_bits = 16 then [ ".option norvc" ] else []);
+        configuration = Isa_riscv_table.march target spec;
+      })
+    variants
+
+let table_entries repo =
+  let ( let* ) = Result.bind in
+  let per_target target =
+    let* records =
+      Isa_source_record.read_file (Repo.isa_db_export repo ~source:"riscv_opcodes" target)
+    in
+    let available (spec : Isa_riscv_table.spec) =
+      Isa_oracle_unavailable.find ~source:"riscv_opcodes" target ~extension:spec.extension = None
+      && Isa_oracle_unavailable.find_record ~source:"riscv_opcodes" target ~extension:spec.extension
+           ~native_name:spec.native_name
+         = None
+    in
+    (* One case per distinct native name: an import repeats its record in
+       another extension file with the same form. *)
+    let unique =
+      List.fold_left
+        (fun acc (spec : Isa_riscv_table.spec) ->
+          if List.exists (fun (t : Isa_riscv_table.spec) -> t.native_name = spec.native_name) acc
+          then acc
+          else spec :: acc)
+        []
+        (List.filter available (List.filter_map Isa_riscv_table.spec_of_record records))
+    in
+    Ok (List.concat_map (table_entries_of target) (List.rev unique))
+  in
+  let* rv32 = per_target Target.Riscv32 in
+  let* rv64 = per_target Target.Riscv64 in
+  Ok (rv32 @ rv64)
+
+let entries repo = Result.map (fun table -> all @ table) (table_entries repo)

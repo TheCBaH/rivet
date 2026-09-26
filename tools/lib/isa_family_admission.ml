@@ -49,9 +49,7 @@ let record tally = function
   | Normalized_only -> tally.normalized_only <- tally.normalized_only + 1
   | Gas_generatable -> tally.gas_generatable <- tally.gas_generatable + 1
   | Promoted_support -> tally.promoted_support <- tally.promoted_support + 1
-  | Oracle_unavailable reason ->
-      tally.oracle_unavailable <- tally.oracle_unavailable + 1;
-      tally.blocked <- bump tally.blocked ("oracle-unavailable:" ^ reason)
+  | Oracle_unavailable _ -> tally.oracle_unavailable <- tally.oracle_unavailable + 1
   | Blocked rule -> tally.blocked <- bump tally.blocked rule
 
 let tally_of (t : mutable_tally) : tally =
@@ -145,16 +143,32 @@ let credit_of ~source ~target (records : Isa_source_record.t list)
     cases;
   credit
 
-let state_of ~source credit ~known rec_ normalized =
+let state_of ~source ~target credit ~known (rec_ : Isa_source_record.t) normalized =
+  let extension = family_of rec_ in
+  let unavailable () =
+    match
+      Isa_oracle_unavailable.find_record ~source target ~extension ~native_name:rec_.native_name
+    with
+    | Some _ as u -> u
+    | None -> Isa_oracle_unavailable.find ~source target ~extension
+  in
   match normalized with
-  | Error (diagnostic : Isa_norm_model.diagnostic) ->
-      if Isa_construct.is_catch_all diagnostic.rule then Blocked (Isa_construct.blocker known rec_)
-      else Blocked diagnostic.rule
-  | Ok (form : Isa_norm_model.form) ->
-      let k = (form.form_id, lookup_key source rec_) in
-      if Hashtbl.mem credit.promoted k then Promoted_support
-      else if Hashtbl.mem credit.attempted k then Gas_generatable
-      else Normalized_only
+  | Ok (form : Isa_norm_model.form)
+    when Hashtbl.mem credit.promoted (form.form_id, lookup_key source rec_) ->
+      Promoted_support
+  | _ -> (
+      match unavailable () with
+      | Some u -> Oracle_unavailable u.reason
+      | None -> (
+          match normalized with
+          | Error (diagnostic : Isa_norm_model.diagnostic) ->
+              if Isa_construct.is_catch_all diagnostic.rule then
+                Blocked (Isa_construct.blocker known rec_)
+              else Blocked diagnostic.rule
+          | Ok (form : Isa_norm_model.form) ->
+              if Hashtbl.mem credit.attempted (form.form_id, lookup_key source rec_) then
+                Gas_generatable
+              else Normalized_only))
 
 (* Per missing construct over the catch-all-blocked records: how many need it,
    and how many need nothing else (admitting it alone would unblock them). *)
@@ -200,25 +214,27 @@ let classify repo ~source target =
   let credit = credit_of ~source ~target records cases in
   let normalized = List.map (fun rec_ -> (rec_, normalize source rec_)) records in
   let known = Isa_construct.known_of (List.map (fun (r, n) -> (r, Result.is_ok n)) normalized) in
-  let unruled =
-    List.filter_map
-      (fun (rec_, n) ->
-        match n with
-        | Error (d : Isa_norm_model.diagnostic) when Isa_construct.is_catch_all d.rule -> Some rec_
-        | _ -> None)
-      normalized
-  in
   let classified =
     List.map
       (fun ((rec_ : Isa_source_record.t), n) ->
         {
           record = rec_;
           family = family_of rec_;
-          state = state_of ~source credit ~known rec_ n;
+          state = state_of ~source ~target credit ~known rec_ n;
           form_id =
             (match n with Ok (form : Isa_norm_model.form) -> Some form.form_id | Error _ -> None);
         })
       normalized
+  in
+  (* Rule-less records still blocked: an oracle-unavailable spelling is not. *)
+  let unruled =
+    List.filter_map
+      (fun (c, (_, n)) ->
+        match (c.state, n) with
+        | Blocked _, Error (d : Isa_norm_model.diagnostic) when Isa_construct.is_catch_all d.rule ->
+            Some c.record
+        | _ -> None)
+      (List.combine classified normalized)
   in
   Ok (classified, known, unruled)
 

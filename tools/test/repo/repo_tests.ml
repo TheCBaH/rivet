@@ -185,8 +185,8 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:754;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:813;
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:1071;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:1142;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:1033;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:1035
 
@@ -228,8 +228,21 @@ let test_isa_residual_ledger repo =
             = total))
         Isa_residual_ledger.inputs
 
+(* The generated RISC-V table rows are reviewed as a diff of a checked-in
+   file; a stale file would let the encoder drift from the capture. *)
+let test_isa_riscv_table repo =
+  match
+    Result.bind (Isa_riscv_table.emit repo) (fun text ->
+        Result.map
+          (fun committed -> String.equal text committed)
+          (Tool_fs.read (Isa_riscv_table.rows_path repo)))
+  with
+  | Ok current -> check "isa-table: riscv_table_rows.ml equals a fresh emission" current
+  | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
+
 let test_isa_family_admission repo =
-  let expect ~source target ~total ~normalized_only ~gas_generatable ~promoted_support ~blocked =
+  let expect ?(oracle_unavailable = 0) ~source target ~total ~normalized_only ~gas_generatable
+      ~promoted_support ~blocked =
     let label = Printf.sprintf "%s/%s" source (Target.to_string target) in
     match Isa_family_admission.summarize repo ~source target with
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
@@ -256,7 +269,9 @@ let test_isa_family_admission repo =
         check
           (Printf.sprintf "isa-family-admission: %s promoted-support" label)
           (p = promoted_support);
-        check (Printf.sprintf "isa-family-admission: %s oracle-unavailable" label) (u = 0);
+        check
+          (Printf.sprintf "isa-family-admission: %s oracle-unavailable" label)
+          (u = oracle_unavailable);
         check (Printf.sprintf "isa-family-admission: %s blockers" label) (b = blocked);
         let rules =
           List.concat_map
@@ -1037,10 +1052,12 @@ let test_isa_family_admission repo =
      fixup already exercises rather than adding anything container-width-specific. No shadow
      record under either profile's export (checked directly, the same way the rv32_zclsd
      scare above was caught). Moves 2 records per profile from blocked to promoted-support. *)
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
-    ~promoted_support:734 ~blocked:335;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
-    ~promoted_support:783 ~blocked:341;
+  (* RISC-V is complete: every record is promoted or oracle-unavailable with a recorded
+     probe (Isa_oracle_unavailable). *)
+  expect ~oracle_unavailable:32 ~source:"riscv_opcodes" Target.Riscv32 ~total:1089
+    ~normalized_only:0 ~gas_generatable:0 ~promoted_support:1057 ~blocked:0;
+  expect ~oracle_unavailable:14 ~source:"riscv_opcodes" Target.Riscv64 ~total:1154
+    ~normalized_only:0 ~gas_generatable:0 ~promoted_support:1140 ~blocked:0;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:6 ~gas_generatable:5
     ~promoted_support:1022 ~blocked:6854;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
@@ -1098,9 +1115,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 3635)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 4281)"
        !roundtrip_count)
-    (!roundtrip_count = 3635)
+    (!roundtrip_count = 4281)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's
@@ -1187,6 +1204,7 @@ let () =
   test_derived_invariants root;
   test_isa_db_cross_validate repo;
   test_isa_norm_accounting repo;
+  test_isa_riscv_table repo;
   test_isa_family_admission repo;
   test_isa_residual_ledger repo;
   test_isa_norm_jsonl_roundtrip repo;

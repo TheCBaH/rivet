@@ -5685,10 +5685,278 @@ let opmacc_vx_mnemonics =
     "vwmaccus.vx";
   ]
 
-let normalize (rec_ : R.t) =
+(* GEN-05-RV-BASE: the base-integer shapes the encoder already emits for
+   CompCert. [base_form] is the shared record-to-form wrapper; each shape
+   below only states its operands, syntax and the facts it infers. *)
+let base_form ?(form_id_suffix = "") ?(concreteness = Concrete) ~mnemonic ~operands ~syntax ~facts
+    (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of_mnemonic ~mnemonic rec_ in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic ^ form_id_suffix;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands;
+          syntax = { dialect = "gas-att"; mnemonic; operands = syntax };
+          concreteness;
+          facts;
+          diagnostics =
+            (match requirement with
+            | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+            | _ -> []);
+        }
+
+let imm_operand ~name ~width ~signed ?(low_zero = 0) runs =
+  {
+    op_name = name;
+    op_kind =
+      Immediate
+        { width_bits = width; signed; implicit_low_zero_bits = low_zero; nonzero = false; runs };
+    role = In;
+    explicit = true;
+  }
+
+let run field_name field_hi field_lo dest_hi dest_lo =
+  { field_name; field_hi; field_lo; dest_hi; dest_lo }
+
+let reg_operand ?(role = In) name = { op_name = name; op_kind = gpr (); role; explicit = true }
+
+let mem_syntax ~offset ~base =
+  Syn_group [ Syn_operand offset; Syn_literal "("; Syn_operand base; Syn_literal ")" ]
+
+(* lb/lh/lw/lbu/lhu/lwu/ld: I-type loads, [rd, imm12(rs1)]. *)
+let int_load_form ~mnemonic rec_ =
+  base_form ~mnemonic rec_
+    ~operands:
+      [
+        reg_operand ~role:Out "value";
+        reg_operand "base";
+        imm_operand ~name:"offset" ~width:12 ~signed:true [ run "imm12" 11 0 11 0 ];
+      ]
+    ~syntax:[ Syn_operand "value"; mem_syntax ~offset:"offset" ~base:"base" ]
+    ~facts:
+      [
+        {
+          label = Upstream;
+          note = "operand fields rd, rs1, imm12 taken verbatim from encoding.fields";
+        };
+        { label = Inferred; note = "GNU as spells the address as offset(base)" };
+      ]
+
+(* sb/sh/sd: {!sw_form}'s S-type shape for the other widths. *)
+let int_store_form ~mnemonic rec_ =
+  base_form ~mnemonic rec_
+    ~operands:
+      [
+        reg_operand "value";
+        reg_operand "base";
+        imm_operand ~name:"offset" ~width:12 ~signed:true
+          [ run "imm12hi" 6 0 11 5; run "imm12lo" 4 0 4 0 ];
+      ]
+    ~syntax:[ Syn_operand "value"; mem_syntax ~offset:"offset" ~base:"base" ]
+    ~facts:
+      [
+        {
+          label = Inferred;
+          note = "offset is the S-type imm12hi:imm12lo split (bits 11:5 then 4:0)";
+        };
+      ]
+
+let b_offset () =
+  imm_operand ~name:"offset" ~width:13 ~signed:true ~low_zero:1
+    [
+      run "bimm12hi" 6 6 12 12;
+      run "bimm12hi" 5 0 10 5;
+      run "bimm12lo" 4 1 4 1;
+      run "bimm12lo" 0 0 11 11;
+    ]
+
+let branch_facts =
+  [
+    { label = Inferred; note = "offset is the B-type imm[12|10:5|4:1|11] permutation" };
+    {
+      label = Inferred;
+      note = "GAS resolves offset from a label; cases use a label at a controlled distance";
+    };
+  ]
+
+(* bne/blt/bge/bltu/bgeu, and the operand-swapping pseudos bgt/ble/bgtu/bleu
+   (GNU as encodes [bgt a, b] as [blt b, a]; the pseudo record's own
+   rs1/rs2 fields already carry the swap). *)
+let branch_form ?alias_of ~mnemonic rec_ =
+  base_form ~mnemonic rec_
+    ~concreteness:(match alias_of with Some a -> Alias_of a | None -> Concrete)
+    ~operands:[ reg_operand "lhs"; reg_operand "rhs"; b_offset () ]
+    ~syntax:[ Syn_operand "lhs"; Syn_operand "rhs"; Syn_operand "offset" ]
+    ~facts:branch_facts
+
+(* beqz/bnez/bgez/bltz (register in rs1) and blez/bgtz (register in rs2):
+   compare-with-x0 pseudos. *)
+let branch_zero_form ~mnemonic ~alias_of rec_ =
+  base_form ~mnemonic rec_ ~concreteness:(Alias_of alias_of)
+    ~operands:[ reg_operand "src"; b_offset () ]
+    ~syntax:[ Syn_operand "src"; Syn_operand "offset" ]
+    ~facts:
+      ({ label = Upstream; note = "the other comparand is fixed to x0 by the pseudo record" }
+      :: branch_facts)
+
+let j_offset () =
+  imm_operand ~name:"offset" ~width:21 ~signed:true ~low_zero:1
+    [
+      run "jimm20" 19 19 20 20;
+      run "jimm20" 18 9 10 1;
+      run "jimm20" 8 8 11 11;
+      run "jimm20" 7 0 19 12;
+    ]
+
+let j_facts =
+  [
+    { label = Inferred; note = "offset is the J-type imm[20|10:1|11|19:12] permutation" };
+    { label = Inferred; note = "GAS resolves offset from a label; cases use a controlled label" };
+  ]
+
+(* jal rd, offset; and the [jal offset] (rd = ra) and [j offset] (rd = x0)
+   pseudos. The two [jal] records share a native name, so the implicit-ra
+   pseudo gets its own form id. *)
+let jal_form rec_ =
+  base_form ~mnemonic:"jal" rec_
+    ~operands:[ reg_operand ~role:Out "link"; j_offset () ]
+    ~syntax:[ Syn_operand "link"; Syn_operand "offset" ]
+    ~facts:j_facts
+
+let jal_pseudo_form ~mnemonic ~form_id_suffix rec_ =
+  base_form ~mnemonic ~form_id_suffix rec_ ~concreteness:(Alias_of "jal")
+    ~operands:[ j_offset () ]
+    ~syntax:[ Syn_operand "offset" ]
+    ~facts:({ label = Upstream; note = "rd is fixed by the pseudo record" } :: j_facts)
+
+(* jalr rd, imm12(rs1); and the [jalr rs1] (rd = ra) and [jr rs1] (rd = x0)
+   pseudos with a zero offset. *)
+let jalr_form rec_ =
+  base_form ~mnemonic:"jalr" rec_
+    ~operands:
+      [
+        reg_operand ~role:Out "link";
+        reg_operand "base";
+        imm_operand ~name:"offset" ~width:12 ~signed:true [ run "imm12" 11 0 11 0 ];
+      ]
+    ~syntax:[ Syn_operand "link"; mem_syntax ~offset:"offset" ~base:"base" ]
+    ~facts:[ { label = Inferred; note = "GNU as spells the target as offset(base)" } ]
+
+let jalr_pseudo_form ~mnemonic ~form_id_suffix rec_ =
+  base_form ~mnemonic ~form_id_suffix rec_ ~concreteness:(Alias_of "jalr")
+    ~operands:[ reg_operand "base" ]
+    ~syntax:[ Syn_operand "base" ]
+    ~facts:[ { label = Upstream; note = "rd and the offset are fixed by the pseudo record" } ]
+
+(* lui/auipc rd, imm20: the upper immediate as a plain 20-bit number (no
+   %hi/%pcrel_hi relocation operator). *)
+let upper_imm_form ~mnemonic rec_ =
+  base_form ~mnemonic rec_
+    ~operands:
+      [
+        reg_operand ~role:Out "rd";
+        imm_operand ~name:"imm" ~width:20 ~signed:false [ run "imm20" 19 0 19 0 ];
+      ]
+    ~syntax:[ Syn_operand "rd"; Syn_operand "imm" ]
+    ~facts:
+      [
+        {
+          label = Inferred;
+          note = "GNU as takes the upper immediate as an unsigned 20-bit value, 0..0xfffff";
+        };
+      ]
+
+(* ecall/ebreak, their deprecated scall/sbreak spellings, fence.tso and
+   pause: no operands. fence.tso's rs1/rd fields are not operands of the GNU
+   spelling, which encodes them as x0. *)
+let no_operand_form ?alias_of ~mnemonic rec_ =
+  base_form ~mnemonic rec_
+    ~concreteness:(match alias_of with Some a -> Alias_of a | None -> Concrete)
+    ~operands:[] ~syntax:[]
+    ~facts:
+      [
+        {
+          label = Inferred;
+          note = "GNU as spells this form without operands; any remaining fields encode as zero";
+        };
+      ]
+
+(* c.j / RV32 c.jal: CJ-format jumps, imm[11|4|9:8|10|6|7|3:1|5] in the 11-bit
+   c_imm12 field (instruction bits 12..2), 2-byte aligned. *)
+let c_jump_form ~mnemonic rec_ =
+  let bit field_bit value_bit = run "c_imm12" field_bit field_bit value_bit value_bit in
+  base_form ~mnemonic rec_ ~concreteness:Concrete
+    ~operands:
+      [
+        imm_operand ~name:"offset" ~width:12 ~signed:true ~low_zero:1
+          [
+            bit 10 11;
+            bit 9 4;
+            run "c_imm12" 8 7 9 8;
+            bit 6 10;
+            bit 5 6;
+            bit 4 7;
+            run "c_imm12" 3 1 3 1;
+            bit 0 5;
+          ];
+      ]
+    ~syntax:[ Syn_operand "offset" ]
+    ~facts:
+      [
+        { label = Inferred; note = "offset is the CJ-format imm[11|4|9:8|10|6|7|3:1|5] scatter" };
+        {
+          label = Inferred;
+          note = "GAS resolves offset from a label; cases use a controlled label";
+        };
+      ]
+
+let normalize_hand_written (rec_ : R.t) =
   match rec_.native_name with
   | "sw" -> sw_form rec_
+  | ("c.j" | "c.jal") as mnemonic -> c_jump_form ~mnemonic rec_
   | "beq" -> beq_form rec_
+  (* rv32_zilsd's register-pair [ld]/[sd] share the native names of RV64I's
+     doubleword forms; only the rv64_i records are these shapes. *)
+  | ("ld" | "sd") when Result.is_error (require_extension ~expected:"rv64_i" rec_) ->
+      err "unhandled-native-name" rec_.native_name
+  | ("lb" | "lh" | "lw" | "lbu" | "lhu" | "lwu" | "ld") as mnemonic -> int_load_form ~mnemonic rec_
+  | ("sb" | "sh" | "sd") as mnemonic -> int_store_form ~mnemonic rec_
+  | ("bne" | "blt" | "bge" | "bltu" | "bgeu") as mnemonic -> branch_form ~mnemonic rec_
+  | "bgt" -> branch_form ~mnemonic:"bgt" ~alias_of:"blt" rec_
+  | "ble" -> branch_form ~mnemonic:"ble" ~alias_of:"bge" rec_
+  | "bgtu" -> branch_form ~mnemonic:"bgtu" ~alias_of:"bltu" rec_
+  | "bleu" -> branch_form ~mnemonic:"bleu" ~alias_of:"bgeu" rec_
+  | "beqz" -> branch_zero_form ~mnemonic:"beqz" ~alias_of:"beq" rec_
+  | "bnez" -> branch_zero_form ~mnemonic:"bnez" ~alias_of:"bne" rec_
+  | "bgez" -> branch_zero_form ~mnemonic:"bgez" ~alias_of:"bge" rec_
+  | "bltz" -> branch_zero_form ~mnemonic:"bltz" ~alias_of:"blt" rec_
+  | "blez" -> branch_zero_form ~mnemonic:"blez" ~alias_of:"bge" rec_
+  | "bgtz" -> branch_zero_form ~mnemonic:"bgtz" ~alias_of:"blt" rec_
+  | "jal" when rec_.kind = "pseudo-op" ->
+      jal_pseudo_form ~mnemonic:"jal" ~form_id_suffix:":implicit-ra" rec_
+  | "jal" -> jal_form rec_
+  | "j" -> jal_pseudo_form ~mnemonic:"j" ~form_id_suffix:"" rec_
+  | "jalr" when rec_.kind = "pseudo-op" ->
+      jalr_pseudo_form ~mnemonic:"jalr" ~form_id_suffix:":implicit-ra" rec_
+  | "jalr" -> jalr_form rec_
+  | "jr" -> jalr_pseudo_form ~mnemonic:"jr" ~form_id_suffix:"" rec_
+  | ("lui" | "auipc") as mnemonic -> upper_imm_form ~mnemonic rec_
+  | ("ecall" | "ebreak" | "fence.tso" | "pause") as mnemonic -> no_operand_form ~mnemonic rec_
+  | "scall" -> no_operand_form ~mnemonic:"scall" ~alias_of:"ecall" rec_
+  | "sbreak" -> no_operand_form ~mnemonic:"sbreak" ~alias_of:"ebreak" rec_
+  | ("slli" | "srli" | "srai") as mnemonic when rec_.origin.path = "extensions/rv32_i" ->
+      shamt_gpr_form ~mnemonic ~width:5 rec_
+  | ("slli" | "srli" | "srai") as mnemonic -> shamt_gpr_form ~mnemonic ~width:6 rec_
+  | ("slli_rv32" | "srli_rv32" | "srai_rv32") as name ->
+      shamt_gpr_form ~mnemonic:(String.sub name 0 4) ~width:5 ~extension_lookup_key:name rec_
+  | ("slliw" | "srliw" | "sraiw") as mnemonic -> shamt_gpr_form ~mnemonic ~width:5 rec_
   | "c.addi" -> c_addi_form rec_
   | "c.and" -> ca_alu_form ~mnemonic:"c.and" rec_
   | "c.or" -> ca_alu_form ~mnemonic:"c.or" rec_
@@ -6085,3 +6353,15 @@ let normalize (rec_ : R.t) =
             fadd.s/fsub.s/fmul.s/fdiv.s/fadd.d/fsub.d/fmul.d/fdiv.d) plus the R-type/I-type \
             integer allowlists; %s is not one of them"
            other)
+
+(* Table-driven records (DEC-RV-TABLE) share one rule with the generated
+   encoder rows; see Isa_riscv_table. *)
+let table_form (rec_ : R.t) (spec : Isa_riscv_table.spec) =
+  let feature = Req_feature ("riscv:" ^ spec.feature) in
+  let requirement = if spec.xlen = 0 then feature else Req_all [ feature; Req_xlen spec.xlen ] in
+  Ok (Isa_riscv_table.form ~requirement rec_ spec)
+
+let normalize (rec_ : R.t) =
+  match Isa_riscv_table.spec_of_record rec_ with
+  | Some spec -> table_form rec_ spec
+  | None -> normalize_hand_written rec_

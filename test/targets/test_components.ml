@@ -73,28 +73,32 @@ let%expect_test "RISC-V M: the implemented mnemonics on both profiles" =
     -- riscv64: mulw x5, x6, x7
     40000000  bb 02 73 02  mulw x5, x6, x7  [riscv64.mulw] |}]
 
-let%expect_test "RISC-V M: mnemonics beyond the implemented subset are rejected" =
+let%expect_test "RISC-V M: the division and high-multiply forms assemble and decode" =
   List.iter
     (fun m -> one "riscv64" (m ^ " x5, x6, x7"))
-    [ "div"; "divu"; "rem"; "mulh"; "mulhu"; "mulhsu"; "divw"; "remw" ];
+    [ "div"; "divu"; "rem"; "mulh"; "mulhu"; "mulhsu"; "divw"; "divuw"; "remw"; "remuw" ];
   [%expect
     {|
     -- riscv64: div x5, x6, x7
-    riscv64.simplify: unknown instruction div
+    40000000  b3 42 73 02  div x5, x6, x7  [riscv64.div]
     -- riscv64: divu x5, x6, x7
-    riscv64.simplify: unknown instruction divu
+    40000000  b3 52 73 02  divu x5, x6, x7  [riscv64.divu]
     -- riscv64: rem x5, x6, x7
-    riscv64.simplify: unknown instruction rem
+    40000000  b3 62 73 02  rem x5, x6, x7  [riscv64.rem]
     -- riscv64: mulh x5, x6, x7
-    riscv64.simplify: unknown instruction mulh
+    40000000  b3 12 73 02  mulh x5, x6, x7  [riscv64.mulh]
     -- riscv64: mulhu x5, x6, x7
-    riscv64.simplify: unknown instruction mulhu
+    40000000  b3 32 73 02  mulhu x5, x6, x7  [riscv64.mulhu]
     -- riscv64: mulhsu x5, x6, x7
-    riscv64.simplify: unknown instruction mulhsu
+    40000000  b3 22 73 02  mulhsu x5, x6, x7  [riscv64.mulhsu]
     -- riscv64: divw x5, x6, x7
-    riscv64.simplify: unknown instruction divw
+    40000000  bb 42 73 02  divw x5, x6, x7  [riscv64.divw]
+    -- riscv64: divuw x5, x6, x7
+    40000000  bb 52 73 02  divuw x5, x6, x7  [riscv64.divuw]
     -- riscv64: remw x5, x6, x7
-    riscv64.simplify: unknown instruction remw |}]
+    40000000  bb 62 73 02  remw x5, x6, x7  [riscv64.remw]
+    -- riscv64: remuw x5, x6, x7
+    40000000  bb 72 73 02  remuw x5, x6, x7  [riscv64.remuw] |}]
 
 let%expect_test "RISC-V M: operand misuse" =
   one "riscv64" "mul x5, x6";
@@ -249,8 +253,8 @@ let%expect_test "component descriptors are structurally clean in every profile" 
   report "x86_64" X86_64_encode.components;
   [%expect
     {|
-    riscv32: riscv.zmmul feature=zmmul forms=2; riscv.m feature=m forms=1
-    riscv64: riscv.zmmul feature=zmmul forms=2; riscv.m feature=m forms=1
+    riscv32: riscv.zmmul feature=zmmul forms=5; riscv.m feature=m forms=8
+    riscv64: riscv.zmmul feature=zmmul forms=5; riscv.m feature=m forms=8
     x86_32: x86.x87 feature=x87 forms=13
     x86_64: x86.x87 feature=x87 forms=13 |}]
 
@@ -351,7 +355,192 @@ let%expect_test "M descriptors predict the assembled instruction word" =
   [%expect
     {|
     riscv32 mul: matches
+    riscv32 mulh: matches
+    riscv32 mulhsu: matches
+    riscv32 mulhu: matches
+    riscv32 div: matches
+    riscv32 divu: matches
+    riscv32 rem: matches
     riscv32 remu: matches
     riscv64 mul: matches
     riscv64 mulw: matches
-    riscv64 remu: matches |}]
+    riscv64 mulh: matches
+    riscv64 mulhsu: matches
+    riscv64 mulhu: matches
+    riscv64 div: matches
+    riscv64 divu: matches
+    riscv64 rem: matches
+    riscv64 remu: matches
+    riscv64 divw: matches
+    riscv64 divuw: matches
+    riscv64 remw: matches
+    riscv64 remuw: matches |}]
+
+(* The fence family against real riscv64-linux-gnu-as 2.44: bare [fence] is [fence iorw,iorw]
+   (0ff0000f), not [fence rw,w] (0310000f); [fence.tso] is 8330000f and Zihintpause's [pause]
+   0100000f. *)
+let%expect_test "RISC-V fence spellings match GNU as" =
+  List.iter (one "riscv64")
+    [ "fence"; "fence rw,w"; "fence r,rw"; "fence iorw,o"; "fence.tso"; "pause"; "fence rx,w" ];
+  [%expect
+    {|
+    -- riscv64: fence
+    40000000  0f 00 f0 0f  fence  [riscv64.fence]
+    -- riscv64: fence rw,w
+    40000000  0f 00 10 03  fence rw, w  [riscv64.fence rw,w]
+    -- riscv64: fence r,rw
+    40000000  0f 00 30 02  fence r, rw  [riscv64.fence r,rw]
+    -- riscv64: fence iorw,o
+    40000000  0f 00 40 0f  fence iorw, o  [riscv64.fence iorw,o]
+    -- riscv64: fence.tso
+    40000000  0f 00 30 83  fence.tso  [riscv64.fence.tso]
+    -- riscv64: pause
+    40000000  0f 00 00 01  pause  [riscv64.pause]
+    -- riscv64: fence rx,w
+    riscv64.lower: no fence form takes these operands |}]
+
+(* DEC-RV-TABLE priority and collision rules for the generated rows: a row never shares a
+   mnemonic with a hand-written form (the hand-written one would silently win), and the row's
+   own word decodes back to that row, not to a hand-written form or an earlier row. Operand fields are filled with distinct
+   non-zero values, so a general row is not mistaken for a pseudo that fixes one of them to
+   zero ([add.uw] with rs2 = x0 is [zext.w]). A HINT row ([ntl.*], [prefetch.*], [lpad]) is a
+   base instruction with rd = x0, which the hand-written decoder claims first by design; those
+   are listed. *)
+let%expect_test
+    "generated RISC-V table rows neither collide with nor are shadowed by hand-written forms" =
+  let module Rows = Riscv_family_encode.Riscv_table_rows in
+  let module Row = Riscv_family_encode.Riscv_table_row in
+  (* the instruction bit holding a scattered immediate's lowest value bit: a
+     valid, aligned, non-zero value *)
+  let lowest (sc : Row.scatter) =
+    let ibit, _ =
+      List.fold_left
+        (fun (bi, bv) (i, v) -> if v < bv then (i, v) else (bi, bv))
+        (0, max_int) sc.bits
+    in
+    Int64.shift_left 1L ibit
+  in
+  let check (type o) target xlen (of_mnemonic : string -> o option) (is_table : o -> int option)
+      (decode_index : string -> [ `Row of int | `Hand_written | `Nothing ]) =
+    let problems = ref [] and hints = ref [] and aliases = ref [] in
+    Array.iteri
+      (fun i (r : Row.row) ->
+        if r.xlen = 0 || r.xlen = xlen then (
+          (match Option.bind (of_mnemonic r.mnemonic) is_table with
+          | Some _ -> ()
+          | None ->
+              problems :=
+                Printf.sprintf "%s: shadowed by a hand-written form" r.mnemonic :: !problems);
+          let word, _ =
+            List.fold_left
+              (fun (w, prev) (k, (o : Row.operand)) ->
+                let v = Int64.of_int (k + 1) in
+                let put lsb = Int64.logor w (Int64.shift_left v lsb) in
+                match o with
+                | Gpr { lsb; _ } | Fpr { lsb } -> (put lsb, v)
+                | Uimm { lsb; _ } | Simm { lsb; _ } | Fli { lsb } -> (put lsb, prev)
+                | Mem_i { base } | Mem_s { base } | Mem_zero { base } | Mem_hi { base } ->
+                    (put base, prev)
+                | Creg { lsb } | Cfreg { lsb } -> (put lsb, prev)
+                | Gpr_except { lsb; _ } -> (put lsb, v)
+                | Scatter sc | Spmem { offset = sc } -> (Int64.logor w (lowest sc), prev)
+                | Cmem { base; offset } -> (Int64.logor (put base) (lowest offset), prev)
+                | Cui { lo; _ } -> (Int64.logor w (Int64.shift_left 1L lo), prev)
+                | Sreg { lsb } -> (put lsb, prev)
+                | Rlist { lsb } -> (Int64.logor w (Int64.shift_left 4L lsb), prev)
+                | Stack_adj _ -> (w, prev)
+                | Uimm_min { lsb; min; _ } ->
+                    (Int64.logor w (Int64.shift_left (Int64.of_int min) lsb), prev)
+                | Gpr_pair { lsb; _ } ->
+                    (Int64.logor w (Int64.shift_left (Int64.of_int (2 * (k + 1))) lsb), prev)
+                | Tied { lsb } -> (Int64.logor w (Int64.shift_left prev lsb), prev)
+                | Fixed_gpr _ | Rm _ | Keyword _ -> (w, prev))
+              (r.match_, 0L)
+              (List.mapi (fun k o -> (k, o)) r.operands)
+          in
+          let bytes =
+            String.init 4 (fun k ->
+                Char.chr (Int64.to_int (Int64.shift_right_logical word (8 * k)) land 0xff))
+          in
+          match decode_index bytes with
+          | `Row j when j = i -> ()
+          | `Row j
+            when Int64.equal Rows.rows.(j).mask r.mask && Int64.equal Rows.rows.(j).match_ r.match_
+            ->
+              aliases := Printf.sprintf "%s=%s" r.source Rows.rows.(j).source :: !aliases
+          | `Row j ->
+              problems :=
+                Printf.sprintf "%s: decodes as row %s" r.source Rows.rows.(j).source :: !problems
+          | `Hand_written -> hints := r.source :: !hints
+          | `Nothing -> problems := Printf.sprintf "%s: does not decode" r.source :: !problems))
+      Rows.rows;
+    Printf.printf
+      "%s: %s\n\
+      \  decoded as the hand-written form they are a hint of: %s\n\
+      \  identical encodings: %s\n"
+      target
+      (match !problems with [] -> "ok" | ps -> String.concat "; " (List.rev ps))
+      (String.concat " " (List.rev !hints))
+      (String.concat " " (List.rev !aliases))
+  in
+  check "riscv32" 32 Riscv32_encode.Opcode.of_mnemonic
+    (function Riscv32_encode.Opcode.Table i -> Some i | _ -> None)
+    (fun bytes ->
+      match
+        Riscv32_encode.decode_ungated
+          { state = Riscv32_encode.default_state; address = 0L }
+          bytes ~pos:0
+      with
+      | Ok ({ op = Riscv32_encode.Opcode.Table j; _ }, _, _) -> `Row j
+      | Ok _ -> `Hand_written
+      | Error _ -> `Nothing);
+  check "riscv64" 64 Riscv64_encode.Opcode.of_mnemonic
+    (function Riscv64_encode.Opcode.Table i -> Some i | _ -> None)
+    (fun bytes ->
+      match
+        Riscv64_encode.decode_ungated
+          { state = Riscv64_encode.default_state; address = 0L }
+          bytes ~pos:0
+      with
+      | Ok ({ op = Riscv64_encode.Opcode.Table j; _ }, _, _) -> `Row j
+      | Ok _ -> `Hand_written
+      | Error _ -> `Nothing);
+  [%expect
+    {|
+    riscv32: ok
+      decoded as the hand-written form they are a hint of: rv_zihintntl/ntl.all rv_zihintntl/ntl.p1 rv_zihintntl/ntl.pall rv_zihintntl/ntl.s1 rv_zicbo/prefetch.i rv_zicbo/prefetch.r rv_zicbo/prefetch.w rv_c_zihintntl/c.ntl.all rv_c_zihintntl/c.ntl.p1 rv_c_zihintntl/c.ntl.pall rv_c_zihintntl/c.ntl.s1 rv_zicfilp/lpad
+      identical encodings: rv_zcmop/c.mop.1=rv_c_zicfiss/c.sspush.x1 rv_zcmop/c.mop.5=rv_c_zicfiss/c.sspopchk.x5
+    riscv64: ok
+      decoded as the hand-written form they are a hint of: rv_zihintntl/ntl.all rv_zihintntl/ntl.p1 rv_zihintntl/ntl.pall rv_zihintntl/ntl.s1 rv_zicbo/prefetch.i rv_zicbo/prefetch.r rv_zicbo/prefetch.w rv_c_zihintntl/c.ntl.all rv_c_zihintntl/c.ntl.p1 rv_c_zihintntl/c.ntl.pall rv_c_zihintntl/c.ntl.s1 rv_zicfilp/lpad
+      identical encodings: rv_zcmop/c.mop.1=rv_c_zicfiss/c.sspush.x1 rv_zcmop/c.mop.5=rv_c_zicfiss/c.sspopchk.x5 |}]
+
+(* Table rows the generated differential cases cannot spell yet, pinned to real GNU as 2.44
+   bytes: an AMO's ordering suffixes ([amoadd.b] 0x00c5852f, [.aq] 0x04c5852f, [.rl]
+   0x02c5852f, [.aqrl] 0x06c5852f), and Zacas's register pairs - [amocas.d] on RV32 takes an
+   even rd/rs2 (GNU as: "illegal operands" for a1). *)
+let%expect_test "RISC-V table: AMO ordering suffixes and Zacas register pairs" =
+  List.iter (one "riscv64")
+    [
+      "amoadd.b a0, a2, (a1)";
+      "amoadd.b.aq a0, a2, (a1)";
+      "amoadd.b.rl a0, a2, (a1)";
+      "amoadd.b.aqrl a0, a2, (a1)";
+      "amocas.w.aqrl a0, a2, (a1)";
+    ];
+  List.iter (one "riscv32") [ "amocas.d a0, a2, (a1)"; "amocas.d a1, a2, (a1)" ];
+  [%expect
+    {|
+    -- riscv64: amoadd.b a0, a2, (a1)
+    40000000  2f 85 c5 00  amoadd.b x10, x12, 0(x11)  [riscv64.amoadd.b]
+    -- riscv64: amoadd.b.aq a0, a2, (a1)
+    40000000  2f 85 c5 04  amoadd.b.aq x10, x12, 0(x11)  [riscv64.amoadd.b.aq]
+    -- riscv64: amoadd.b.rl a0, a2, (a1)
+    40000000  2f 85 c5 02  amoadd.b.rl x10, x12, 0(x11)  [riscv64.amoadd.b.rl]
+    -- riscv64: amoadd.b.aqrl a0, a2, (a1)
+    40000000  2f 85 c5 06  amoadd.b.aqrl x10, x12, 0(x11)  [riscv64.amoadd.b.aqrl]
+    -- riscv64: amocas.w.aqrl a0, a2, (a1)
+    40000000  2f a5 c5 2e  amocas.w.aqrl x10, x12, 0(x11)  [riscv64.amocas.w.aqrl]
+    -- riscv32: amocas.d a0, a2, (a1)
+    40000000  2f b5 c5 28  amocas.d x10, x12, 0(x11)  [riscv32.amocas.d]
+    -- riscv32: amocas.d a1, a2, (a1)
+    riscv32.lower: no amocas.d form takes these operands |}]

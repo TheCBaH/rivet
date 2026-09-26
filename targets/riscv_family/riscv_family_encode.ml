@@ -3,6 +3,8 @@ module C = Codec
 
 (* Re-exported: the library's main module hides its siblings otherwise. *)
 module Riscv_ext_m = Riscv_ext_m
+module Riscv_table_row = Riscv_table_row
+module Riscv_table_rows = Riscv_table_rows
 
 module type PROFILE = sig
   val name : string
@@ -176,6 +178,12 @@ module Make (P : PROFILE) = struct
       | And
       | Mul
       | Remu
+      | Mulh
+      | Mulhsu
+      | Mulhu
+      | Div
+      | Divu
+      | Rem
       | Sh1add
       | Sh2add
       | Sh3add
@@ -297,6 +305,10 @@ module Make (P : PROFILE) = struct
       | Srlw
       | Sraw
       | Mulw
+      | Divw
+      | Divuw
+      | Remw
+      | Remuw
       | Addi
       | C_addi
       | C_and
@@ -319,6 +331,8 @@ module Make (P : PROFILE) = struct
       | C_ldsp
       | C_sdsp
       | C_beqz
+      | C_j
+      | C_jal
       | C_bnez
       | Slti
       | Sltiu
@@ -352,6 +366,14 @@ module Make (P : PROFILE) = struct
       | Bgeu
       | Bgtu
       | Bleu
+      | Bgt
+      | Ble
+      | Beqz
+      | Bnez
+      | Bgez
+      | Bltz
+      | Blez
+      | Bgtz
       | Lui
       | Auipc
       | Jal
@@ -371,6 +393,8 @@ module Make (P : PROFILE) = struct
       | Unimp
       | Fence_i
       | Fence
+      | Fence_tso
+      | Pause
       | Fld
       | Flw
       | Fsd
@@ -860,8 +884,10 @@ module Make (P : PROFILE) = struct
       | Vfncvtbf16_f_f_w
       | Vfwmaccbf16_vv
       | Vfwmaccbf16_vf
+      | Table of int  (** a generated {!Riscv_table_rows} row, by index (DEC-RV-TABLE) *)
 
     let name = function
+      | Table i -> Riscv_table_rows.rows.(i).Riscv_table_row.mnemonic
       | Add -> "add"
       | Sub -> "sub"
       | Sll -> "sll"
@@ -880,6 +906,12 @@ module Make (P : PROFILE) = struct
       | And -> "and"
       | Mul -> "mul"
       | Remu -> "remu"
+      | Mulh -> "mulh"
+      | Mulhsu -> "mulhsu"
+      | Mulhu -> "mulhu"
+      | Div -> "div"
+      | Divu -> "divu"
+      | Rem -> "rem"
       | Sh1add -> "sh1add"
       | Sh2add -> "sh2add"
       | Sh3add -> "sh3add"
@@ -1001,6 +1033,10 @@ module Make (P : PROFILE) = struct
       | Srlw -> "srlw"
       | Sraw -> "sraw"
       | Mulw -> "mulw"
+      | Divw -> "divw"
+      | Divuw -> "divuw"
+      | Remw -> "remw"
+      | Remuw -> "remuw"
       | Addi -> "addi"
       | C_addi -> "c.addi"
       | C_and -> "c.and"
@@ -1023,6 +1059,8 @@ module Make (P : PROFILE) = struct
       | C_ldsp -> "c.ldsp"
       | C_sdsp -> "c.sdsp"
       | C_beqz -> "c.beqz"
+      | C_j -> "c.j"
+      | C_jal -> "c.jal"
       | C_bnez -> "c.bnez"
       | Slti -> "slti"
       | Sltiu -> "sltiu"
@@ -1056,6 +1094,14 @@ module Make (P : PROFILE) = struct
       | Bgeu -> "bgeu"
       | Bgtu -> "bgtu"
       | Bleu -> "bleu"
+      | Bgt -> "bgt"
+      | Ble -> "ble"
+      | Beqz -> "beqz"
+      | Bnez -> "bnez"
+      | Bgez -> "bgez"
+      | Bltz -> "bltz"
+      | Blez -> "blez"
+      | Bgtz -> "bgtz"
       | Lui -> "lui"
       | Auipc -> "auipc"
       | Jal -> "jal"
@@ -1075,6 +1121,8 @@ module Make (P : PROFILE) = struct
       | Unimp -> "unimp"
       | Fence_i -> "fence.i"
       | Fence -> "fence"
+      | Fence_tso -> "fence.tso"
+      | Pause -> "pause"
       | Fld -> "fld"
       | Flw -> "flw"
       | Fsd -> "fsd"
@@ -1585,6 +1633,12 @@ module Make (P : PROFILE) = struct
         And;
         Mul;
         Remu;
+        Mulh;
+        Mulhsu;
+        Mulhu;
+        Div;
+        Divu;
+        Rem;
         Sh1add;
         Sh2add;
         Sh3add;
@@ -1706,6 +1760,10 @@ module Make (P : PROFILE) = struct
         Srlw;
         Sraw;
         Mulw;
+        Divw;
+        Divuw;
+        Remw;
+        Remuw;
         Addi;
         C_addi;
         C_and;
@@ -1728,6 +1786,8 @@ module Make (P : PROFILE) = struct
         C_ldsp;
         C_sdsp;
         C_beqz;
+        C_j;
+        C_jal;
         C_bnez;
         Slti;
         Sltiu;
@@ -1761,6 +1821,14 @@ module Make (P : PROFILE) = struct
         Bgeu;
         Bgtu;
         Bleu;
+        Bgt;
+        Ble;
+        Beqz;
+        Bnez;
+        Bgez;
+        Bltz;
+        Blez;
+        Bgtz;
         Lui;
         Auipc;
         Jal;
@@ -1780,6 +1848,8 @@ module Make (P : PROFILE) = struct
         Unimp;
         Fence_i;
         Fence;
+        Fence_tso;
+        Pause;
         Fld;
         Flw;
         Fsd;
@@ -2285,6 +2355,8 @@ module Make (P : PROFILE) = struct
     let deprecated_mnemonic_aliases =
       [
         ("vpopc.m", "vcpop.m");
+        ("scall", "ecall");
+        ("sbreak", "ebreak");
         ("vmandnot.mm", "vmandn.mm");
         ("vmornot.mm", "vmorn.mm");
         ("vfredsum.vs", "vfredusum.vs");
@@ -2297,9 +2369,25 @@ module Make (P : PROFILE) = struct
         ("vse1.v", "vsm.v");
       ]
 
+    (* The first generated row spelled [s] for this XLEN; lowering tries every
+       row with that spelling, so the index only names the mnemonic. *)
+    let table_index s =
+      let rows = Riscv_table_rows.rows in
+      let rec go i =
+        if i >= Array.length rows then None
+        else
+          let r = rows.(i) in
+          if String.equal r.Riscv_table_row.mnemonic s && (r.xlen = 0 || r.xlen = xlen) then
+            Some (Table i)
+          else go (i + 1)
+      in
+      go 0
+
     let of_mnemonic s =
       let s = Option.value (List.assoc_opt s deprecated_mnemonic_aliases) ~default:s in
-      List.find_opt (fun op -> String.equal (name op) s) all
+      match List.find_opt (fun op -> String.equal (name op) s) all with
+      | Some _ as op -> op
+      | None -> table_index s
   end
 
   open Opcode
@@ -2458,6 +2546,8 @@ module Make (P : PROFILE) = struct
       | J of { rd : int; target : Asm_core.Expr.t }
       | Pair of { name : string; rd : int; tmp : int; target : Asm_core.Expr.t; kind : pair_kind }
       | Fixed of { name : string; word : int64 }
+      | Fixed_half of { name : string; word : int64 }
+          (** a 16-bit compressed word with no fixup: a generated table row *)
       | Caddi of { rd : int; imm : Asm_core.Expr.t }
       | Cr2 of { name : string; funct6 : int; funct2 : int; rd_rs1 : int; rs2 : int }
           (** the CA-format compressed register-register ops ([c.and]/[c.or]/[c.xor]/[c.sub]/
@@ -2485,6 +2575,9 @@ module Make (P : PROFILE) = struct
       | Css of { name : string; funct3 : int; rs2 : int; imm : Asm_core.Expr.t }
           (** CSS-format compressed SP-relative stores ([c.swsp]/[c.sdsp]): the store-side
               sibling of {!Clsp}, same fixed-[x2]-base story. *)
+      | Cj of { name : string; funct3 : int; target : Asm_core.Expr.t }
+          (** CJ-format compressed jumps ([c.j], RV32's [c.jal]): a 12-bit signed, 2-byte-aligned
+              PC-relative target resolved via a {!fixup_kind.Jump12c} fixup. *)
       | Cb of { name : string; funct3 : int; rs1 : int; target : Asm_core.Expr.t }
           (** CB-format compressed conditional branches ([c.beqz]/[c.bnez]): [rs1] is a real
               register number (8..15) for the compressed 3-bit field, like {!Cl}. [target] is a
@@ -2568,6 +2661,7 @@ module Make (P : PROFILE) = struct
           Fmt.pf ppf "%s f%d, %a, x%d" x.name x.rd pp_expr x.target x.tmp
       | Pair x -> Fmt.pf ppf "%s x%d, %a" x.name x.rd pp_expr x.target
       | Fixed x -> Fmt.string ppf x.name
+      | Fixed_half x -> Fmt.string ppf x.name
       | Caddi x -> Fmt.pf ppf "c.addi x%d, %a" x.rd pp_expr x.imm
       | Cr2 x -> Fmt.pf ppf "%s x%d, x%d" x.name x.rd_rs1 x.rs2
       | Cr x when x.name = "c.ebreak" -> Fmt.string ppf x.name
@@ -2578,6 +2672,7 @@ module Make (P : PROFILE) = struct
       | Clsp x -> Fmt.pf ppf "%s x%d, %a(x2)" x.name x.rd pp_expr x.imm
       | Css x -> Fmt.pf ppf "%s x%d, %a(x2)" x.name x.rs2 pp_expr x.imm
       | Cb x -> Fmt.pf ppf "%s x%d, %a" x.name x.rs1 pp_expr x.target
+      | Cj x -> Fmt.pf ppf "%s %a" x.name pp_expr x.target
 
     let equal (a : t) b = a = b
   end
@@ -2587,6 +2682,7 @@ module Make (P : PROFILE) = struct
     | Abs64
     | Branch13
     | Branch9c
+    | Jump12c
     | Jal21
     | Pcrel_hi20
     | Pcrel_lo12_i
@@ -2602,6 +2698,7 @@ module Make (P : PROFILE) = struct
     | Abs64 -> "abs64"
     | Branch13 -> "pcrel-b13"
     | Branch9c -> "pcrel-b9c"
+    | Jump12c -> "pcrel-j12c"
     | Jal21 -> "pcrel-j21"
     | Pcrel_hi20 -> "pcrel-hi20"
     | Pcrel_lo12_i -> "pcrel-lo12-i"
@@ -2617,13 +2714,13 @@ module Make (P : PROFILE) = struct
   let fixup_family = function
     | Abs32 -> "abs32"
     | Abs64 -> "abs64"
-    | Branch13 | Branch9c | Jal21 -> "pcrel-branch"
+    | Branch13 | Branch9c | Jump12c | Jal21 -> "pcrel-branch"
     | Pcrel_hi20 | Pcrel_lo12_i | Pcrel_lo12_s -> "pcrel-address"
     | Call_hi20 | Call_lo12_i -> "pcrel-call"
     | Abs_hi20 | Abs_lo12_i | Abs_lo12_s -> "absolute-address"
 
   let fixup_role = function
-    | Branch13 | Branch9c | Jal21 -> Asm_core.Lowered_ast.Branch
+    | Branch13 | Branch9c | Jump12c | Jal21 -> Asm_core.Lowered_ast.Branch
     | Call_hi20 | Call_lo12_i -> Asm_core.Lowered_ast.Call
     | _ -> Asm_core.Lowered_ast.Data_address
 
@@ -2785,7 +2882,9 @@ module Make (P : PROFILE) = struct
     | Sra -> Some (0x33, 5, 0x20)
     | Or -> Some (0x33, 6, 0x00)
     | And -> Some (0x33, 7, 0x00)
-    | (Mul | Remu | Mulw) as op -> m_desc op
+    | (Mul | Remu | Mulh | Mulhsu | Mulhu | Div | Divu | Rem | Mulw | Divw | Divuw | Remw | Remuw)
+      as op ->
+        m_desc op
     | Sh1add -> Some (0x33, 2, 0x10)
     | Sh2add -> Some (0x33, 4, 0x10)
     | Sh3add -> Some (0x33, 6, 0x10)
@@ -4608,10 +4707,239 @@ module Make (P : PROFILE) = struct
     in
     go [] ops
 
+  (* An (i,o,r,w) fence flag set: a non-empty subsequence of "iorw", as a
+     4-bit field with i at bit 3. *)
+  let fence_set s =
+    let rec go acc pos k =
+      if k = String.length s then if acc = 0 then None else Some acc
+      else
+        match String.index_from_opt "iorw" pos s.[k] with
+        | Some j -> go (acc lor (1 lsl (3 - j))) (j + 1) (k + 1)
+        | None -> None
+    in
+    go 0 0 0
+
+  let fence_set_name v =
+    String.concat "" (List.filteri (fun j _ -> v land (1 lsl (3 - j)) <> 0) [ "i"; "o"; "r"; "w" ])
+
+  (* DEC-RV-TABLE: a generated row's operand, checked against its field and
+     placed at its bit position; [None] when the operand does not fit. *)
+  (* A scattered immediate: range, alignment and non-zero checks, then each
+     value bit to its instruction bit. *)
+  let table_scatter (sc : Riscv_table_row.scatter) v =
+    let aligned = Int64.rem v (Int64.shift_left 1L sc.scale) = 0L in
+    let in_range = if sc.signed then fits_signed sc.width v else fits_unsigned sc.width v in
+    if (not aligned) || (not in_range) || (sc.nonzero && v = 0L) then None
+    else
+      Some
+        (List.fold_left
+           (fun acc (ibit, vbit) ->
+             Int64.logor acc
+               (Int64.shift_left (Int64.logand (Int64.shift_right_logical v vbit) 1L) ibit))
+           0L sc.bits)
+
+  let table_field ?(acc = 0L) ~prev op (operand : Riscv_table_row.operand) =
+    let place lsb v = Some (Int64.shift_left v lsb) in
+    let low width v = Int64.logand v (Int64.sub (Int64.shift_left 1L width) 1L) in
+    let value () = Option.bind (expr_of op) int64_expr in
+    let mem_offset () =
+      match op with
+      | Operand.Mem m -> (
+          match (Reg.x m.base, int64_expr m.offset) with
+          | Some base, Some v when fits_signed 12 v -> Some (base, low 12 v)
+          | _ -> None)
+      | _ -> None
+    in
+    match operand with
+    | Gpr { lsb; nonzero } -> (
+        match xreg op with
+        | Some n when (not nonzero) || n <> 0 -> place lsb (Int64.of_int n)
+        | _ -> None)
+    | Fpr { lsb } -> Option.bind (freg op) (fun n -> place lsb (Int64.of_int n))
+    | Uimm { lsb; width } -> (
+        match value () with Some v when fits_unsigned width v -> place lsb v | _ -> None)
+    | Simm { lsb; width } -> (
+        match value () with Some v when fits_signed width v -> place lsb (low width v) | _ -> None)
+    | Fixed_gpr n -> ( match xreg op with Some m when m = n -> Some 0L | _ -> None)
+    | Rm { lsb; _ } -> (
+        match op with
+        | Operand.Sym (Asm_core.Expr.Symbol name) ->
+            Option.bind (rounding_mode_of_name name) (fun m -> place lsb (Int64.of_int m))
+        | _ -> None)
+    | Tied { lsb } -> Option.map (fun r -> Int64.shift_left (Int64.of_int r) lsb) prev
+    | Keyword k -> (
+        match op with
+        | Operand.Sym (Asm_core.Expr.Symbol s) when String.equal s k -> Some 0L
+        | _ -> None)
+    | Fli { lsb } -> (
+        match op with
+        | Operand.Sym (Asm_core.Expr.Symbol text) ->
+            Option.bind (Riscv_table_row.fli_index text) (fun i -> place lsb (Int64.of_int i))
+        | _ -> None)
+    | Mem_zero { base } -> (
+        match op with
+        | Operand.Mem m -> (
+            match (Reg.x m.base, int64_expr m.offset) with
+            | Some b, Some 0L -> place base (Int64.of_int b)
+            | _ -> None)
+        | _ -> None)
+    | Mem_hi { base } -> (
+        match op with
+        | Operand.Mem m -> (
+            match (Reg.x m.base, int64_expr m.offset) with
+            | Some b, Some v when fits_signed 12 v && Int64.rem v 32L = 0L ->
+                Some
+                  (Int64.logor
+                     (Int64.shift_left (Int64.of_int b) base)
+                     (Int64.shift_left (Int64.logand (Int64.shift_right v 5) 0x7fL) 25))
+            | _ -> None)
+        | _ -> None)
+    | Gpr_pair { lsb; below } -> (
+        match xreg op with
+        | Some n when xlen >= below || n land 1 = 0 -> place lsb (Int64.of_int n)
+        | _ -> None)
+    | Creg { lsb } -> (
+        match xreg op with
+        | Some n when n >= 8 && n <= 15 -> place lsb (Int64.of_int (n - 8))
+        | _ -> None)
+    | Cfreg { lsb } -> (
+        match freg op with
+        | Some n when n >= 8 && n <= 15 -> place lsb (Int64.of_int (n - 8))
+        | _ -> None)
+    | Gpr_except { lsb; except } -> (
+        match xreg op with
+        | Some n when not (List.mem n except) -> place lsb (Int64.of_int n)
+        | _ -> None)
+    | Scatter sc -> Option.bind (value ()) (table_scatter sc)
+    | Cmem { base; offset } -> (
+        match op with
+        | Operand.Mem m -> (
+            match (Reg.x m.base, int64_expr m.offset) with
+            | Some b, Some v when b >= 8 && b <= 15 ->
+                Option.map
+                  (fun f -> Int64.logor f (Int64.shift_left (Int64.of_int (b - 8)) base))
+                  (table_scatter offset v)
+            | _ -> None)
+        | _ -> None)
+    | Spmem { offset } -> (
+        match op with
+        | Operand.Mem m -> (
+            match (Reg.x m.base, int64_expr m.offset) with
+            | Some 2, Some v -> table_scatter offset v
+            | _ -> None)
+        | _ -> None)
+    | Cui { hi; lo } -> (
+        match value () with
+        | Some v when (v >= 1L && v <= 31L) || (v >= 0xfffe0L && v <= 0xfffffL) ->
+            Some
+              (Int64.logor
+                 (Int64.shift_left (Int64.logand (Int64.shift_right v 5) 1L) hi)
+                 (Int64.shift_left (Int64.logand v 0x1fL) lo))
+        | _ -> None)
+    | Sreg { lsb } ->
+        Option.bind (xreg op) (fun n ->
+            Option.bind (Riscv_table_row.sreg_code n) (fun c -> place lsb (Int64.of_int c)))
+    | Rlist { lsb } -> (
+        match op with
+        | Operand.Sym (Asm_core.Expr.Symbol text) ->
+            let compact = String.concat "" (String.split_on_char ' ' text) in
+            Option.bind (Riscv_table_row.rlist_code compact) (fun c -> place lsb (Int64.of_int c))
+        | _ -> None)
+    | Stack_adj { rlist; spimm; push } -> (
+        let code = Int64.to_int (Int64.logand (Int64.shift_right_logical acc rlist) 0xfL) in
+        let base = Riscv_table_row.rlist_base ~xlen code in
+        match value () with
+        | Some v ->
+            let magnitude = Int64.to_int (if push then Int64.neg v else v) in
+            let extra = magnitude - base in
+            if extra >= 0 && extra <= 48 && extra mod 16 = 0 then
+              place spimm (Int64.of_int (extra / 16))
+            else None
+        | None -> None)
+    | Uimm_min { lsb; width; min } -> (
+        match value () with
+        | Some v when fits_unsigned width v && Int64.to_int v >= min -> place lsb v
+        | _ -> None)
+    | Mem_i { base } ->
+        Option.map
+          (fun (b, v) ->
+            Int64.logor (Int64.shift_left (Int64.of_int b) base) (Int64.shift_left v 20))
+          (mem_offset ())
+    | Mem_s { base } ->
+        Option.map
+          (fun (b, v) ->
+            Int64.logor
+              (Int64.shift_left (Int64.of_int b) base)
+              (Int64.logor
+                 (Int64.shift_left (Int64.shift_right_logical v 5) 25)
+                 (Int64.shift_left (Int64.logand v 0x1fL) 7)))
+          (mem_offset ())
+
+  (* The register number of a register operand, for a following [Tied] field. *)
+  let table_reg op = match op with Operand.Reg (Reg.F n) -> Some n | _ -> xreg op
+  let table_row_applies (r : Riscv_table_row.row) = r.xlen = 0 || r.xlen = xlen
+
+  (* Every row spelled like row [i] is tried in table order; the first whose
+     operands all fit is the encoding. *)
+  let table_lower i ops =
+    let mnemonic = Riscv_table_rows.rows.(i).Riscv_table_row.mnemonic in
+    let encode_row (r : Riscv_table_row.row) =
+      (* [Tied] fields are not spelled; a trailing [Rm] may be omitted. *)
+      let spelled =
+        List.filter (function Riscv_table_row.Tied _ -> false | _ -> true) r.operands
+      in
+      let with_default =
+        match List.rev spelled with
+        | Riscv_table_row.Rm { lsb; default } :: _ when List.length ops = List.length spelled - 1 ->
+            Some (Int64.shift_left (Int64.of_int default) lsb)
+        | _ -> if List.length ops = List.length spelled then Some 0L else None
+      in
+      match with_default with
+      | None -> None
+      | Some extra ->
+          let rec go acc prev operands ops =
+            match (operands, ops) with
+            | [], [] -> Some acc
+            | (Riscv_table_row.Tied _ as t) :: rest, _ -> (
+                match table_field ~prev (Operand.Imm Bigint.zero) t with
+                | Some f -> go (Int64.logor acc f) prev rest ops
+                | None -> None)
+            | [ Riscv_table_row.Rm _ ], [] -> Some acc
+            | o :: rest, op :: ops -> (
+                match table_field ~acc ~prev op o with
+                | Some f -> go (Int64.logor acc f) (table_reg op) rest ops
+                | None -> None)
+            | _ -> None
+          in
+          go (Int64.logor r.match_ extra) None r.operands ops
+    in
+    let found =
+      Array.fold_left
+        (fun acc (r : Riscv_table_row.row) ->
+          match acc with
+          | Some _ -> acc
+          | None ->
+              if String.equal r.mnemonic mnemonic && table_row_applies r then encode_row r else None)
+        None Riscv_table_rows.rows
+    in
+    match found with
+    | Some word when Int64.logand word 3L <> 3L ->
+        Ok [ Lowered.Fixed_half { name = mnemonic; word } ]
+    | Some word -> Ok [ Lowered.Fixed { name = mnemonic; word } ]
+    | None -> wrong mnemonic
+
   let lower_instruction_ungated state i =
     let opn = Opcode.name i.Instruction.op in
     match (i.op, i.ops) with
-    | (Opcode.Mul | Remu | Mulw), _ when xlen <> 64 && m_rv64_only i.Instruction.op ->
+    | Opcode.Table row, _
+      when Int64.logand Riscv_table_rows.rows.(row).Riscv_table_row.match_ 3L <> 3L && not state.rvc
+      ->
+        Error (diag ~pos:__POS__ (`Compressed_disabled opn))
+    | Opcode.Table row, ops -> table_lower row ops
+    | ( ( Opcode.Mul | Remu | Mulh | Mulhsu | Mulhu | Div | Divu | Rem | Mulw | Divw | Divuw | Remw
+        | Remuw ),
+        _ )
+      when xlen <> 64 && m_rv64_only i.Instruction.op ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
     | ( ( Opcode.Addw | Subw | Sllw | Srlw | Sraw | Sh1adduw | Sh2adduw | Sh3adduw | Clzw | Ctzw
         | Cpopw | Packw | Rolw | Rorw | Sha512sum0 | Sha512sum1 | Sha512sig0 | Sha512sig1 | Aes64ds
@@ -4630,7 +4958,7 @@ module Make (P : PROFILE) = struct
         Error (diag ~pos:__POS__ (`Rv32_only opn))
     | ( ( Opcode.C_addi | C_and | C_or | C_xor | C_sub | C_addw | C_subw | C_jr | C_jalr | C_mv
         | C_add | C_ebreak | C_lw | C_sw | C_lwsp | C_swsp | C_ld | C_sd | C_ldsp | C_sdsp | C_beqz
-        | C_bnez ),
+        | C_j | C_jal | C_bnez ),
         _ )
       when not state.rvc ->
         Error (diag ~pos:__POS__ (`Compressed_disabled opn))
@@ -4681,6 +5009,14 @@ module Make (P : PROFILE) = struct
             let funct3 = if i.Instruction.op = Opcode.C_swsp then 6 else 7 in
             Ok [ Lowered.Css { name = opn; funct3; rs2; imm = m.offset } ]
         | _ -> wrong opn)
+    | Opcode.C_jal, _ when xlen <> 32 -> Error (diag ~pos:__POS__ (`Rv32_only opn))
+    | (Opcode.C_j | C_jal), [ target ] -> (
+        (* CJ format: quadrant 01, funct3 101 ([c.j]) or 001 ([c.jal], RV32 only - RV64 reuses
+           the encoding for [c.addiw]). *)
+        match expr_of target with
+        | Some target ->
+            Ok [ Lowered.Cj { name = opn; funct3 = (if i.op = Opcode.C_j then 5 else 1); target } ]
+        | None -> wrong opn)
     | (Opcode.C_beqz | C_bnez), [ a; target ] -> (
         match (xreg a, expr_of target) with
         | Some rs1, Some target when rs1 >= 8 && rs1 <= 15 ->
@@ -6251,6 +6587,34 @@ module Make (P : PROFILE) = struct
         | Some ra, Some rb, Some target, Some funct3 ->
             Ok [ Lowered.B { name = real_name; funct3; rs1 = rb; rs2 = ra; target } ]
         | _ -> wrong opn)
+    | (Opcode.Bgt | Ble), [ a; b; target ] -> (
+        (* The signed siblings of [bgtu]/[bleu]: [blt]/[bge] with the register
+           operands swapped. Checked against real riscv64-linux-gnu-as:
+           `bgt a0, a1, L` -> `blt a1, a0, L`; `ble a0, a1, L` -> `bge a1, a0, L`. *)
+        let real_op, real_name = if i.op = Bgt then (Opcode.Blt, "blt") else (Opcode.Bge, "bge") in
+        match (xreg a, xreg b, expr_of target, branch_desc real_op) with
+        | Some ra, Some rb, Some target, Some funct3 ->
+            Ok [ Lowered.B { name = real_name; funct3; rs1 = rb; rs2 = ra; target } ]
+        | _ -> wrong opn)
+    | (Opcode.Beqz | Bnez | Bgez | Bltz | Blez | Bgtz), [ a; target ] -> (
+        (* Compare-with-x0 pseudos. [beqz]/[bnez]/[bgez]/[bltz] put the register in
+           rs1 and x0 in rs2; [blez]/[bgtz] are [bge x0, rs]/[blt x0, rs]. Checked
+           against real riscv64-linux-gnu-as: `beqz a0` -> `beq a0,zero`, `blez a0`
+           -> `bge zero,a0`, `bgtz a0` -> `blt zero,a0`. *)
+        let real_op, real_name, reg_in_rs1 =
+          match i.op with
+          | Beqz -> (Opcode.Beq, "beq", true)
+          | Bnez -> (Opcode.Bne, "bne", true)
+          | Bgez -> (Opcode.Bge, "bge", true)
+          | Bltz -> (Opcode.Blt, "blt", true)
+          | Blez -> (Opcode.Bge, "bge", false)
+          | _ -> (Opcode.Blt, "blt", false)
+        in
+        match (xreg a, expr_of target, branch_desc real_op) with
+        | Some r, Some target, Some funct3 ->
+            let rs1, rs2 = if reg_in_rs1 then (r, 0) else (0, r) in
+            Ok [ Lowered.B { name = real_name; funct3; rs1; rs2; target } ]
+        | _ -> wrong opn)
     | ((Opcode.Lui | Auipc) as op), [ a; imm ] -> (
         match (xreg a, expr_of imm) with
         | Some rd, Some imm ->
@@ -6616,23 +6980,32 @@ module Make (P : PROFILE) = struct
     | Opcode.Ebreak, [] -> Ok [ Lowered.Fixed { name = "ebreak"; word = 0x00100073L } ]
     | Opcode.Unimp, [] -> Ok [ Lowered.Fixed { name = "unimp"; word = 0xc0001073L } ]
     | Opcode.Fence_i, [] -> Ok [ Lowered.Fixed { name = "fence.i"; word = 0x0000100fL } ]
+    | Opcode.Fence, [] ->
+        (* Bare [fence] is GNU as's [fence iorw,iorw]: `0ff0000f`. *)
+        Ok [ Lowered.Fixed { name = "fence"; word = 0x0ff0000fL } ]
     | ( Opcode.Fence,
-        ([] | [ Operand.Sym (Asm_core.Expr.Symbol "rw"); Operand.Sym (Asm_core.Expr.Symbol "w") ]) )
-      ->
-        (* [fence rw,w] - a memory barrier, opcode 0x0f/funct3 0 with no ModR/M-like
-           register fields ([rd]/[rs1] both fixed zero): [imm[11:0]] splits into a
-           4-bit [pred]/[succ] pair, each an (i,o,r,w) flag set, at bits 27:24/23:20.
-           Only this one predecessor/successor spelling is evidenced
-           (asm/helpers/riscv.c's own release-store fence, via
-           `__sync_synchronize`-style codegen), so - matching this project's own
-           narrow-scope precedent for a single-spelling fixed word ([fucomp],
-           [fence.i] above) - any other combination is a diagnostic rather than a
-           silently-computed one; the bare no-operand form is decode's own
-           round-trip spelling ({!Lowered.Fixed}'s [pp] prints no operand list, the
-           same convention [ret]/[ecall] already use). Checked against real
-           riscv64-linux-gnu-as/objdump: `fence rw,w` -> `0310000f`
-           (pred = 0b0011 = r|w, succ = 0b0001 = w). *)
-        Ok [ Lowered.Fixed { name = "fence"; word = 0x0310000fL } ]
+        [ Operand.Sym (Asm_core.Expr.Symbol pred); Operand.Sym (Asm_core.Expr.Symbol succ) ] ) -> (
+        (* [fence pred,succ]: opcode 0x0f/funct3 0 with rd = rs1 = x0 and fm = 0;
+           [pred]/[succ] are (i,o,r,w) flag sets at bits 27:24/23:20, each a
+           non-empty subset of "iorw" spelled in that order. Checked against real
+           riscv64-linux-gnu-as/objdump: `fence rw,w` -> `0310000f`, bare
+           [fence] -> `0ff0000f`. *)
+        match (fence_set pred, fence_set succ) with
+        | Some p, Some q ->
+            let word = Int64.of_int ((p lsl 24) lor (q lsl 20) lor 0x0f) in
+            let name =
+              if p = 0xf && q = 0xf then "fence" else Printf.sprintf "fence %s,%s" pred succ
+            in
+            Ok [ Lowered.Fixed { name; word } ]
+        | _ -> wrong opn)
+    | Opcode.Fence_tso, [] ->
+        (* [fence.tso]: fm = 1000, pred = succ = rw. Checked against real
+           riscv64-linux-gnu-as: `8330000f`. *)
+        Ok [ Lowered.Fixed { name = "fence.tso"; word = 0x8330000fL } ]
+    | Opcode.Pause, [] ->
+        (* Zihintpause [pause]: [fence w,0]. Checked against real
+           riscv64-linux-gnu-as (-march=..._zihintpause): `0100000f`. *)
+        Ok [ Lowered.Fixed { name = "pause"; word = 0x0100000fL } ]
     | _ -> wrong opn
 
   let lower_instruction state i =
@@ -6963,6 +7336,20 @@ module Make (P : PROFILE) = struct
       { bit_offset = 12; bit_width = 1; value_lsb = 8 };
     ]
 
+  (* c.j/c.jal's CJ-format offset, imm[11|4|9:8|10|6|7|3:1|5] in bits 12..2 (RISC-V ISA manual;
+     checked against real riscv32-linux-gnu-as: `c.j` +4 -> 0xa011, -2 -> 0xbffd). *)
+  let cj_slices =
+    [
+      { Asm_core.Lowered_ast.bit_offset = 12; bit_width = 1; value_lsb = 11 };
+      { bit_offset = 11; bit_width = 1; value_lsb = 4 };
+      { bit_offset = 9; bit_width = 2; value_lsb = 8 };
+      { bit_offset = 8; bit_width = 1; value_lsb = 10 };
+      { bit_offset = 7; bit_width = 1; value_lsb = 6 };
+      { bit_offset = 6; bit_width = 1; value_lsb = 7 };
+      { bit_offset = 3; bit_width = 3; value_lsb = 1 };
+      { bit_offset = 2; bit_width = 1; value_lsb = 5 };
+    ]
+
   let u_slices = [ { Asm_core.Lowered_ast.bit_offset = 12; bit_width = 20; value_lsb = 0 } ]
   let form bytes form fixups = { Asm_core.Lowered_ast.bytes; form; fixups }
   let bad_encode kind = Error (diag ~pos:__POS__ kind)
@@ -7031,6 +7418,16 @@ module Make (P : PROFILE) = struct
             Ok (`Fixed (form (bytes_of_half word) x.name []))
         | Some _ -> bad_encode (`Immediate_range x.name)
         | None -> bad_encode (`Immediate_range (x.name ^ " " ^ Asm_core.Expr.to_string x.imm)))
+    | Lowered.Cj x ->
+        let fx =
+          mk_fixup ~kind:Jump12c ~name:"target" ~slices:cj_slices ~byte_offset:0 ~container:2
+            ~range:(Asm_core.Lowered_ast.Signed 12) ~value:x.target ~pairing:Unpaired
+        in
+        Ok
+          (`Fixed
+             (form
+                (bytes_of_half (Int64.logor 0x1L (Int64.shift_left (Int64.of_int x.funct3) 13)))
+                x.name [ fx ]))
     | Lowered.Cb x ->
         let fx =
           mk_fixup ~kind:Branch9c ~name:"target" ~slices:cb_slices ~byte_offset:0 ~container:2
@@ -7204,6 +7601,7 @@ module Make (P : PROFILE) = struct
         in
         Ok (`Fixed (form (bytes_of_word hiword ^ bytes_of_word lowword) x.name [ hi; lo ]))
     | Fixed x -> fixed x.word x.name
+    | Fixed_half x -> Ok (`Fixed (form (bytes_of_half x.word) x.name []))
 
   (* The mnemonic of a lowered form that belongs to a component. Only [R] carries a component
      today: M's forms all lower to it. *)
@@ -7248,48 +7646,57 @@ module Make (P : PROFILE) = struct
   let op_exn s = Option.get (Opcode.of_mnemonic s)
   let instruction op ops = { Instruction.op; ops }
 
+  (* The M component's rows decode from the same table they encode from. *)
+  let m_name opcode f3 f7 =
+    List.find_map
+      (fun (f : Riscv_ext_m.form) ->
+        if f.opcode = opcode && f.funct3 = f3 && f.funct7 = f7 && ((not f.rv64_only) || xlen = 64)
+        then Some f.mnemonic
+        else None)
+      Riscv_ext_m.forms
+
   let r_name opcode f3 f7 =
-    match (opcode, f3, f7) with
-    | 0x33, 0, 0 -> Some "add"
-    | 0x33, 0, 0x20 -> Some "sub"
-    | 0x33, 1, 0 -> Some "sll"
-    | 0x33, 2, 0 -> Some "slt"
-    | 0x33, 3, 0 -> Some "sltu"
-    | 0x33, 4, 0 -> Some "xor"
-    | 0x33, 5, 0 -> Some "srl"
-    | 0x33, 5, 0x20 -> Some "sra"
-    | 0x33, 6, 0 -> Some "or"
-    | 0x33, 7, 0 -> Some "and"
-    | 0x33, 0, 1 -> Some "mul"
-    | 0x33, 7, 1 -> Some "remu"
-    | 0x33, 2, 0x10 -> Some "sh1add"
-    | 0x33, 4, 0x10 -> Some "sh2add"
-    | 0x33, 6, 0x10 -> Some "sh3add"
-    | 0x33, 4, 0x05 -> Some "min"
-    | 0x33, 5, 0x05 -> Some "minu"
-    | 0x33, 6, 0x05 -> Some "max"
-    | 0x33, 7, 0x05 -> Some "maxu"
-    | 0x33, 7, 0x20 -> Some "andn"
-    | 0x33, 6, 0x20 -> Some "orn"
-    | 0x33, 4, 0x20 -> Some "xnor"
-    | 0x33, 1, 0x30 -> Some "rol"
-    | 0x33, 5, 0x30 -> Some "ror"
-    | 0x3b, 2, 0x10 -> Some "sh1add.uw"
-    | 0x3b, 4, 0x10 -> Some "sh2add.uw"
-    | 0x3b, 6, 0x10 -> Some "sh3add.uw"
-    | 0x3b, 0, 0 -> Some "addw"
-    | 0x3b, 0, 0x20 -> Some "subw"
-    | 0x3b, 1, 0 -> Some "sllw"
-    | 0x3b, 5, 0 -> Some "srlw"
-    | 0x3b, 5, 0x20 -> Some "sraw"
-    | 0x3b, 0, 1 -> Some "mulw"
-    | 0x33, 4, 0x04 -> Some "pack"
-    | 0x33, 7, 0x04 -> Some "packh"
-    | 0x3b, 4, 0x04 -> Some "packw"
-    | 0x3b, 1, 0x30 -> Some "rolw"
-    | 0x3b, 5, 0x30 -> Some "rorw"
-    | 0x57, 7, 0x40 -> Some "vsetvl"
-    | _ -> None
+    match m_name opcode f3 f7 with
+    | Some _ as m -> m
+    | None -> (
+        match (opcode, f3, f7) with
+        | 0x33, 0, 0 -> Some "add"
+        | 0x33, 0, 0x20 -> Some "sub"
+        | 0x33, 1, 0 -> Some "sll"
+        | 0x33, 2, 0 -> Some "slt"
+        | 0x33, 3, 0 -> Some "sltu"
+        | 0x33, 4, 0 -> Some "xor"
+        | 0x33, 5, 0 -> Some "srl"
+        | 0x33, 5, 0x20 -> Some "sra"
+        | 0x33, 6, 0 -> Some "or"
+        | 0x33, 7, 0 -> Some "and"
+        | 0x33, 2, 0x10 -> Some "sh1add"
+        | 0x33, 4, 0x10 -> Some "sh2add"
+        | 0x33, 6, 0x10 -> Some "sh3add"
+        | 0x33, 4, 0x05 -> Some "min"
+        | 0x33, 5, 0x05 -> Some "minu"
+        | 0x33, 6, 0x05 -> Some "max"
+        | 0x33, 7, 0x05 -> Some "maxu"
+        | 0x33, 7, 0x20 -> Some "andn"
+        | 0x33, 6, 0x20 -> Some "orn"
+        | 0x33, 4, 0x20 -> Some "xnor"
+        | 0x33, 1, 0x30 -> Some "rol"
+        | 0x33, 5, 0x30 -> Some "ror"
+        | 0x3b, 2, 0x10 -> Some "sh1add.uw"
+        | 0x3b, 4, 0x10 -> Some "sh2add.uw"
+        | 0x3b, 6, 0x10 -> Some "sh3add.uw"
+        | 0x3b, 0, 0 -> Some "addw"
+        | 0x3b, 0, 0x20 -> Some "subw"
+        | 0x3b, 1, 0 -> Some "sllw"
+        | 0x3b, 5, 0 -> Some "srlw"
+        | 0x3b, 5, 0x20 -> Some "sraw"
+        | 0x33, 4, 0x04 -> Some "pack"
+        | 0x33, 7, 0x04 -> Some "packh"
+        | 0x3b, 4, 0x04 -> Some "packw"
+        | 0x3b, 1, 0x30 -> Some "rolw"
+        | 0x3b, 5, 0x30 -> Some "rorw"
+        | 0x57, 7, 0x40 -> Some "vsetvl"
+        | _ -> None)
 
   (* OP-FP (opcode [0x53]): unlike every integer R-type above, several of these
      mnemonics also need [rs2] to disambiguate (a convert or move fixes its second
@@ -7387,7 +7794,121 @@ module Make (P : PROFILE) = struct
 
   type decode_context = { state : target_state; address : int64 }
 
-  let decode_ungated ctx bytes ~pos =
+  (* DEC-RV-TABLE: tried only after the hand-written decoder finds nothing, so a
+     generated row never shadows a hand-written form. *)
+  let table_decode ?(half = false) w =
+    let rows = Riscv_table_rows.rows in
+    let field lsb width = bits w lsb width in
+    let unscatter (sc : Riscv_table_row.scatter) =
+      let v =
+        List.fold_left
+          (fun acc (ibit, vbit) -> Int64.logor acc (Int64.shift_left (field ibit 1) vbit))
+          0L sc.bits
+      in
+      let v = if sc.signed then sign_extend sc.width v else v in
+      if sc.nonzero && v = 0L then None else Some v
+    in
+    let operand (o : Riscv_table_row.operand) =
+      match o with
+      | Gpr { lsb; nonzero } ->
+          let n = Int64.to_int (field lsb 5) in
+          if nonzero && n = 0 then None else Some (Some (reg n))
+      | Fpr { lsb } -> Some (Some (f_operand (Int64.to_int (field lsb 5))))
+      | Uimm { lsb; width } -> Some (Some (imm (field lsb width)))
+      | Simm { lsb; width } -> Some (Some (imm (sign_extend width (field lsb width))))
+      | Fixed_gpr n -> Some (Some (reg n))
+      | Rm { lsb; default } ->
+          let m = Int64.to_int (field lsb 3) in
+          if m = default then Some None
+          else
+            Option.map
+              (fun name -> Some (Operand.Sym (Asm_core.Expr.Symbol name)))
+              (rounding_name_of_mode m)
+      | Tied _ -> Some None
+      | Keyword k -> Some (Some (Operand.Sym (Asm_core.Expr.Symbol k)))
+      | Fli { lsb } ->
+          Some
+            (Some
+               (Operand.Sym
+                  (Asm_core.Expr.Symbol Riscv_table_row.fli_constants.(Int64.to_int (field lsb 5)))))
+      | Mem_i { base } ->
+          Some (Some (mem (Int64.to_int (field base 5)) (sign_extend 12 (field 20 12))))
+      | Mem_zero { base } -> Some (Some (mem (Int64.to_int (field base 5)) 0L))
+      | Mem_hi { base } ->
+          Some
+            (Some
+               (mem
+                  (Int64.to_int (field base 5))
+                  (sign_extend 12 (Int64.shift_left (field 25 7) 5))))
+      | Gpr_pair { lsb; below } ->
+          let n = Int64.to_int (field lsb 5) in
+          if xlen < below && n land 1 = 1 then None else Some (Some (reg n))
+      | Creg { lsb } -> Some (Some (reg (8 + Int64.to_int (field lsb 3))))
+      | Cfreg { lsb } -> Some (Some (f_operand (8 + Int64.to_int (field lsb 3))))
+      | Gpr_except { lsb; except } ->
+          let n = Int64.to_int (field lsb 5) in
+          if List.mem n except then None else Some (Some (reg n))
+      | Scatter sc -> Option.map (fun v -> Some (imm v)) (unscatter sc)
+      | Cmem { base; offset } ->
+          Option.map (fun v -> Some (mem (8 + Int64.to_int (field base 3)) v)) (unscatter offset)
+      | Spmem { offset } -> Option.map (fun v -> Some (mem 2 v)) (unscatter offset)
+      | Cui { hi; lo } ->
+          let v6 = Int64.logor (Int64.shift_left (field hi 1) 5) (field lo 5) in
+          if v6 = 0L then None
+          else Some (Some (imm (if v6 >= 32L then Int64.logor 0xfffc0L v6 else v6)))
+      | Sreg { lsb } ->
+          Some (Some (reg (Riscv_table_row.sreg_register (Int64.to_int (field lsb 3)))))
+      | Rlist { lsb } ->
+          Option.map
+            (fun t -> Some (Operand.Sym (Asm_core.Expr.Symbol t)))
+            (Riscv_table_row.rlist_text (Int64.to_int (field lsb 4)))
+      | Stack_adj { rlist; spimm; push } ->
+          let code = Int64.to_int (field rlist 4) in
+          if code < 4 then None
+          else
+            let v = Riscv_table_row.rlist_base ~xlen code + (16 * Int64.to_int (field spimm 2)) in
+            Some (Some (imm (Int64.of_int (if push then -v else v))))
+      | Uimm_min { lsb; width; min } ->
+          let v = field lsb width in
+          if Int64.to_int v < min then None else Some (Some (imm v))
+      | Mem_s { base } ->
+          let v = Int64.logor (Int64.shift_left (field 25 7) 5) (field 7 5) in
+          Some (Some (mem (Int64.to_int (field base 5)) (sign_extend 12 v)))
+    in
+    (* A [Tied] field must repeat the register before it. *)
+    let tied_ok (r : Riscv_table_row.row) =
+      let rec go prev = function
+        | [] -> true
+        | Riscv_table_row.Tied { lsb } :: rest -> (
+            match prev with
+            | Some p -> Int64.equal (field lsb 5) (field p 5) && go prev rest
+            | None -> false)
+        | (Riscv_table_row.Gpr { lsb; _ } | Fpr { lsb }) :: rest -> go (Some lsb) rest
+        | _ :: rest -> go prev rest
+      in
+      go None r.operands
+    in
+    let rec go i =
+      if i >= Array.length rows then None
+      else
+        let r = rows.(i) in
+        if
+          table_row_applies r
+          && Int64.logand r.match_ 3L <> 3L = half
+          && Int64.equal (Int64.logand w r.mask) r.match_
+          && tied_ok r
+        then
+          let ops = List.map operand r.operands in
+          if List.mem None ops then go (i + 1)
+          else
+            Some
+              ( instruction (Opcode.Table i) (List.filter_map Fun.id (List.filter_map Fun.id ops)),
+                r.mnemonic )
+        else go (i + 1)
+    in
+    go 0
+
+  let decode_hand_written ctx bytes ~pos =
     if String.length bytes - pos < 2 then Error (diag ~pos:__POS__ `Decode_short)
     else if Char.code bytes.[pos] land 3 <> 3 then
       let half = read_half bytes pos in
@@ -7437,6 +7958,21 @@ module Make (P : PROFILE) = struct
                       (Int64.shift_left (bits half 11 1) 4)
                       (Int64.shift_left (bits half 12 1) 5)))))
       in
+      let c_j_offset () =
+        let b pos = bits half pos 1 in
+        sign_extend 12
+          (List.fold_left Int64.logor 0L
+             [
+               Int64.shift_left (b 12) 11;
+               Int64.shift_left (b 11) 4;
+               Int64.shift_left (bits half 9 2) 8;
+               Int64.shift_left (b 8) 10;
+               Int64.shift_left (b 7) 6;
+               Int64.shift_left (b 6) 7;
+               Int64.shift_left (bits half 3 3) 1;
+               Int64.shift_left (b 2) 5;
+             ])
+      in
       let c_beqz_bnez_offset () =
         sign_extend 9
           (Int64.logor
@@ -7456,6 +7992,10 @@ module Make (P : PROFILE) = struct
           match ca_name (funct6, funct2) with
           | Some n -> Ok (instruction (op_exn n) [ reg rd_rs1_c; reg rs2_c ], n, 2)
           | None -> Error (diag ~pos:__POS__ `Decode_no_match))
+      | 1, 5, _, _ ->
+          Ok (instruction Opcode.C_j [ sym (Int64.add ctx.address (c_j_offset ())) ], "c.j", 2)
+      | 1, 1, _, _ when xlen = 32 ->
+          Ok (instruction Opcode.C_jal [ sym (Int64.add ctx.address (c_j_offset ())) ], "c.jal", 2)
       | 1, 6, _, _ ->
           Ok
             ( instruction Opcode.C_beqz
@@ -7504,7 +8044,10 @@ module Make (P : PROFILE) = struct
             ( instruction Opcode.C_sdsp [ reg rs2_full; mem 2 (c_swsp_sdsp_offset ~hi3_shift:8) ],
               "c.sdsp",
               2 )
-      | _ -> Error (diag ~pos:__POS__ `Decode_no_match)
+      | _ -> (
+          match table_decode ~half:true half with
+          | Some (i, f) -> Ok (i, f, 2)
+          | None -> Error (diag ~pos:__POS__ `Decode_no_match))
     else if String.length bytes - pos < 4 then Error (diag ~pos:__POS__ `Decode_short)
     else
       let w = read_word bytes pos in
@@ -7701,7 +8244,20 @@ module Make (P : PROFILE) = struct
             | 0x73 when Int64.equal w 0x00100073L -> Some (instruction Opcode.Ebreak [], "ebreak")
             | 0x73 when Int64.equal w 0xc0001073L -> Some (instruction Opcode.Unimp [], "unimp")
             | 0x0f when Int64.equal w 0x0000100fL -> Some (instruction Opcode.Fence_i [], "fence.i")
-            | 0x0f when Int64.equal w 0x0310000fL -> Some (instruction Opcode.Fence [], "fence")
+            | 0x0f when Int64.equal w 0x8330000fL ->
+                Some (instruction Opcode.Fence_tso [], "fence.tso")
+            | 0x0f when Int64.equal w 0x0ff0000fL -> Some (instruction Opcode.Fence [], "fence")
+            | 0x0f when Int64.equal w 0x0100000fL -> Some (instruction Opcode.Pause [], "pause")
+            | 0x0f
+              when Int64.logand w 0xf00fffffL = 0x0000000fL
+                   && bits w 24 4 <> 0L
+                   && bits w 20 4 <> 0L ->
+                let p = fence_set_name (Int64.to_int (bits w 24 4))
+                and q = fence_set_name (Int64.to_int (bits w 20 4)) in
+                Some
+                  ( instruction Opcode.Fence
+                      [ Operand.Sym (Asm_core.Expr.Symbol p); Operand.Sym (Asm_core.Expr.Symbol q) ],
+                    Printf.sprintf "fence %s,%s" p q )
             | 0x2f when f7 land 0x3 = 0 -> (
                 (* Zaamo, bare-mnemonic spelling only (aq=rl=0 - see
                    {!amo3_desc}); aq/rl set is left undecoded rather than
@@ -7740,8 +8296,25 @@ module Make (P : PROFILE) = struct
             | _ -> None)
       in
       match result with
-      | None -> Error (diag ~pos:__POS__ `Decode_no_match)
+      | None -> (
+          match table_decode w with
+          | Some (i, f) -> Ok (i, f, 4)
+          | None -> Error (diag ~pos:__POS__ `Decode_no_match))
       | Some (i, f) -> Ok (i, f, 4)
+
+  (* Generated rows are tried whenever the hand-written decoder declines a word, whichever of its
+     arms declined it. *)
+  let decode_ungated ctx bytes ~pos =
+    match decode_hand_written ctx bytes ~pos with
+    | Ok _ as ok -> ok
+    | Error _ as e -> (
+        if String.length bytes - pos < 2 then e
+        else if Char.code bytes.[pos] land 3 <> 3 then
+          match table_decode ~half:true (read_half bytes pos) with
+          | Some (i, f) -> Ok (i, f, 2)
+          | None -> e
+        else if String.length bytes - pos < 4 then e
+        else match table_decode (read_word bytes pos) with Some (i, f) -> Ok (i, f, 4) | None -> e)
 
   (* Strict decoding: a word that is a disabled component's instruction is refused rather than
      printed as if it were assemblable under this configuration. *)
@@ -7855,6 +8428,7 @@ module Make (P : PROFILE) = struct
     | Abs64 -> Ok target
     | Branch13 -> aligned "branch" 13
     | Branch9c -> aligned "branch-c" 9
+    | Jump12c -> aligned "jump-c" 12
     | Jal21 -> aligned "jal" 21
     | Pcrel_hi20 | Call_hi20 ->
         if fits_signed 32 d then Ok (hi d) else Error (diag ~pos:__POS__ (`Immediate_range "auipc"))

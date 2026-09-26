@@ -50,23 +50,29 @@ let previous_records repo =
    so every artifact is exactly what a sequential run records and a failing
    case is reported under its own id. Report lines keep the manifest order. *)
 let regen repo =
-  let jobs =
-    List.map (fun e -> Positive e) Isa_gen_difficult.all
-    @ List.map (fun e -> Negative e) Isa_gen_negative.all
-  in
-  let previous = previous_records repo in
-  match Tool_parallel.map ~jobs:(Tool_parallel.default_jobs ()) (run_job ~previous repo) jobs with
+  match Isa_gen_difficult.entries repo with
   | Error e -> Command.of_error e
-  | Ok results ->
-      let records = List.filter_map (fun (r : Isa_gen_drive.result) -> r.record) results in
-      let write_command =
-        match
-          let* () = Tool_fs.mkdir_p (Repo.isa_difficult_corpus repo) in
-          Isa_generated_corpus.write Fpath.(Repo.isa_difficult_corpus repo / "cases.jsonl") records
-        with
-        | Ok () -> Command.ok []
-        | Error e -> Command.of_error e
+  | Ok entries -> (
+      let jobs =
+        List.map (fun e -> Positive e) entries @ List.map (fun e -> Negative e) Isa_gen_negative.all
       in
-      Command.accumulate
-        (List.map (fun (r : Isa_gen_drive.result) -> r.command) results @ [ write_command ])
-        ~f:Fun.id
+      let previous = previous_records repo in
+      match
+        Tool_parallel.map ~jobs:(Tool_parallel.default_jobs ()) (run_job ~previous repo) jobs
+      with
+      | Error e -> Command.of_error e
+      | Ok results ->
+          let records = List.filter_map (fun (r : Isa_gen_drive.result) -> r.record) results in
+          let write_command =
+            match
+              let* () = Tool_fs.mkdir_p (Repo.isa_difficult_corpus repo) in
+              Isa_generated_corpus.write
+                Fpath.(Repo.isa_difficult_corpus repo / "cases.jsonl")
+                records
+            with
+            | Ok () -> Command.ok []
+            | Error e -> Command.of_error e
+          in
+          Command.accumulate
+            (List.map (fun (r : Isa_gen_drive.result) -> r.command) results @ [ write_command ])
+            ~f:Fun.id)
