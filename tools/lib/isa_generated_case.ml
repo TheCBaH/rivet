@@ -51,6 +51,10 @@ let verdict_description = function
   | Negative_case_accepted ->
       "a negative case was accepted unexpectedly: failure per that case's own assertion"
 
+let is_hard_failure = function
+  | Byte_mismatch | Regression | Gas_rejected_valid_case | Negative_case_accepted -> true
+  | Pass | Frontier_gap | Oracle_unavailable _ | Blocked_unknown_requirement _ -> false
+
 type observation = { case : case; gas : artifact option; ours : artifact option; verdict : verdict }
 type tier = Offline_consumer | Gnu_regeneration | Producer_update
 

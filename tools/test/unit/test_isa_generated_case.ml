@@ -164,8 +164,21 @@ let test_observations_per_verdict () =
   in
   check "Negative_case_accepted: the case itself is marked negative" negative_accepted.case.negative
 
+(* Plan section 5.5: these four rows are failures an offline replay must not
+   accept; the rest are tracked, visible states. *)
+let test_hard_failures () =
+  let hard = List.filter Isa_generated_case.is_hard_failure all_verdicts in
+  check_eq "is_hard_failure: exactly the four failure rows"
+    ~expected:
+      (String.concat "|"
+         (List.map Isa_generated_case.verdict_description
+            Isa_generated_case.
+              [ Byte_mismatch; Regression; Gas_rejected_valid_case; Negative_case_accepted ]))
+    ~actual:(String.concat "|" (List.map Isa_generated_case.verdict_description hard))
+
 let () =
   print_endline "isa-generated-case:";
+  test_hard_failures ();
   test_frozen_names ();
   test_verdict_descriptions_distinct_and_nonempty ();
   test_observations_per_verdict ();

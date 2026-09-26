@@ -71,6 +71,12 @@ val verdict_description : verdict -> string
     so a report can render a verdict without a reader needing to consult the
     table. *)
 
+val is_hard_failure : verdict -> bool
+(** Whether a recorded verdict is a failure that must stop an offline check: a byte mismatch,
+    a regression, a GAS rejection of a supposedly valid case, or an unexpectedly accepted
+    negative. Frontier gaps, oracle-unavailable and blocked-unknown verdicts are tracked, visible
+    states rather than failures. *)
+
 type observation = { case : case; gas : artifact option; ours : artifact option; verdict : verdict }
 (** [gas]/[ours] are [None] exactly when generation was blocked before that
     tool ran: {!Blocked_unknown_requirement} always carries [gas = None;

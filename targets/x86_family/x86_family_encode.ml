@@ -5615,6 +5615,14 @@ module Make (M : MODE) = struct
   let prefixes_of ~width ~reg ~rm =
     { asz = asz_of ~rm; opsz = width = 16; rex = prefixes_of ~width ~reg ~rm }
 
+  (* {!prefixes_of} for a ModR/M-reg field that holds an opcode extension
+     (group-1/2/3's [/ext]) rather than a register number. The extension is
+     always below 8, so it never needs REX.R, and it must not be read as a
+     register: at [width = 8], values 4-7 would otherwise look like
+     SPL/BPL/SIL/DIL and force an empty REX byte, giving [andb $5, %cl] a
+     spurious [0x40] on x86-64. *)
+  let prefixes_of_ext ~width ~rm = prefixes_of ~width ~reg:0 ~rm
+
   let prefixes_codec : (prefixes, fixup_kind) C.t =
     C.iso_fun ~name:"prefixes"
       ~encode:(fun p -> Some (p.asz, (p.opsz, p.rex)))
@@ -7393,7 +7401,7 @@ module Make (M : MODE) = struct
                  | Disp.Sym _ -> imm_width = 32
                in
                if not fits then None
-               else Some (prefixes_of ~width ~reg:ext ~rm, ((), ({ re_reg = ext; re_rm = rm }, imm)))
+               else Some (prefixes_of_ext ~width ~rm, ((), ({ re_reg = ext; re_rm = rm }, imm)))
            | _ -> None)
          ~decode:(fun (rex, ((), (e, imm))) ->
            match Opcode.of_ext e.re_reg with
@@ -7493,9 +7501,9 @@ module Make (M : MODE) = struct
                   byte real [as] emits for it - the same reduce-before-
                   threading discipline {!alu_form}'s own comment explains. *)
                let v = to_width_signed ~width:8 v in
-               Some (prefixes_of ~width:8 ~reg:ext ~rm, ((), ({ re_reg = ext; re_rm = rm }, v)))
+               Some (prefixes_of_ext ~width:8 ~rm, ((), ({ re_reg = ext; re_rm = rm }, v)))
            | _ -> None)
-         ~decode:(fun (_rex, ((), (e, v))) ->
+         ~decode:(fun (rex, ((), (e, v))) ->
            match Opcode.of_ext e.re_reg with
            | None -> None
            | Some _ ->
@@ -7504,7 +7512,7 @@ module Make (M : MODE) = struct
                     {
                       ext = e.re_reg;
                       width = 8;
-                      rm = retype_rm ~width:8 e.re_rm;
+                      rm = rm_of ~p:rex ~width:8 e.re_rm;
                       imm = Disp.Const v;
                     }))
          C.(
@@ -7840,9 +7848,10 @@ module Make (M : MODE) = struct
                        Some
                          (prefixes_of ~width:8 ~reg:0 ~rm, ((), ({ re_reg = 0; re_rm = rm }, imm)))
                  | _ -> None)
-               ~decode:(fun (_rex, ((), (e, imm))) ->
+               ~decode:(fun (rex, ((), (e, imm))) ->
                  if e.re_reg <> 0 then None
-                 else Some (Lowered.Mov_rm_imm { width = 8; rm = retype_rm ~width:8 e.re_rm; imm }))
+                 else
+                   Some (Lowered.Mov_rm_imm { width = 8; rm = rm_of ~p:rex ~width:8 e.re_rm; imm }))
                C.(
                  prefixes_codec ** const ~width:8 0xC6L ** rm_codec
                  ** le ~signedness:C.Signed ~width:8 "imm8"));
@@ -7927,9 +7936,9 @@ module Make (M : MODE) = struct
                  | Lowered.Jmp_rm { rm } ->
                      Some (prefixes_of ~width:32 ~reg:4 ~rm, ((), { re_reg = 4; re_rm = rm }))
                  | _ -> None)
-               ~decode:(fun (_rex, ((), e)) ->
+               ~decode:(fun (rex, ((), e)) ->
                  if e.re_reg <> 4 then None
-                 else Some (Lowered.Jmp_rm { rm = retype_rm ~width:M.address_width e.re_rm }))
+                 else Some (Lowered.Jmp_rm { rm = rm_of ~p:rex ~width:M.address_width e.re_rm }))
                C.(prefixes_codec ** const ~width:8 0xFFL ** rm_codec));
           C.alt ~label:"ud2" ~priority:13
             (C.iso_fun ~name:"ud2"
@@ -8012,7 +8021,7 @@ module Make (M : MODE) = struct
             (C.iso_fun ~name:"unary-rm"
                ~encode:(function
                  | Lowered.Unary_rm { ext; width; rm } ->
-                     Some (prefixes_of ~width ~reg:ext ~rm, ((), { re_reg = ext; re_rm = rm }))
+                     Some (prefixes_of_ext ~width ~rm, ((), { re_reg = ext; re_rm = rm }))
                  | _ -> None)
                ~decode:(fun (rex, ((), e)) ->
                  match Opcode.of_unary_ext e.re_reg with
@@ -8047,7 +8056,7 @@ module Make (M : MODE) = struct
             (C.iso_fun ~name:"shift1-rm"
                ~encode:(function
                  | Lowered.Shift1_rm { ext; width; rm } ->
-                     Some (prefixes_of ~width ~reg:ext ~rm, ((), { re_reg = ext; re_rm = rm }))
+                     Some (prefixes_of_ext ~width ~rm, ((), { re_reg = ext; re_rm = rm }))
                  | _ -> None)
                ~decode:(fun (rex, ((), e)) ->
                  match Opcode.of_shift1_ext e.re_reg with
@@ -8219,8 +8228,7 @@ module Make (M : MODE) = struct
             (C.iso_fun ~name:"shift-imm-rm"
                ~encode:(function
                  | Lowered.Shift_imm_rm { ext; width; rm; imm } ->
-                     Some
-                       (prefixes_of ~width ~reg:ext ~rm, ((), ({ re_reg = ext; re_rm = rm }, imm)))
+                     Some (prefixes_of_ext ~width ~rm, ((), ({ re_reg = ext; re_rm = rm }, imm)))
                  | _ -> None)
                ~decode:(fun (rex, ((), (e, imm))) ->
                  match Opcode.of_shift1_ext e.re_reg with
@@ -8238,7 +8246,7 @@ module Make (M : MODE) = struct
             (C.iso_fun ~name:"shift-cl-rm"
                ~encode:(function
                  | Lowered.Shift_cl_rm { ext; width; rm } ->
-                     Some (prefixes_of ~width ~reg:ext ~rm, ((), { re_reg = ext; re_rm = rm }))
+                     Some (prefixes_of_ext ~width ~rm, ((), { re_reg = ext; re_rm = rm }))
                  | _ -> None)
                ~decode:(fun (rex, ((), e)) ->
                  match Opcode.of_shift1_ext e.re_reg with

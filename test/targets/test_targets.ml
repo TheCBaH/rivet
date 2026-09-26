@@ -3817,3 +3817,53 @@ let%expect_test "riscv64: fcvt.w.d/fcvt.l.d read an explicit rounding-mode opera
       bytes 53 1b 25 c2              [riscv64.fcvt.l.d]
       bytes d3 15 05 c2              [riscv64.fcvt.w.d]
       bytes d3 75 05 c2              [riscv64.fcvt.w.d] |}]
+
+(* The ModR/M-reg field of a byte-width [0x80 /ext] ALU form holds an opcode
+   extension, not a register. Extensions 4-7 ([and]/[sub]/[xor]/[cmp]) once
+   read as SPL/BPL/SIL/DIL and gave [andb $5, %cl] a spurious empty REX byte on
+   x86-64. Checked against x86_64-linux-gnu-as 2.44: all of these except the
+   [%sil]/[%dil] forms are REX-free; those two still need the empty REX. *)
+let%expect_test "x86_64: byte-width ALU immediates carry REX only for a real byte-register need" =
+  disasm "x86_64"
+    "\t.text\n\
+     \tandb $5, %cl\n\
+     \taddb $5, %cl\n\
+     \tsubb $5, %cl\n\
+     \txorb $5, %cl\n\
+     \tcmpb $1, %dl\n\
+     \tandb $5, %sil\n\
+     \txorb $3, %dil\n\
+     \tcmpb $1, %r9b\n\
+     \tandb $5, 4(%rax)\n";
+  [%expect
+    {|
+    40000000  80 e1 05     andb $5, %cl      [x86_64.alu-rm-imm8-byte.asz-absent.opsz-absent.rex-absent.reg]
+    40000003  80 c1 05     addb $5, %cl      [x86_64.alu-rm-imm8-byte.asz-absent.opsz-absent.rex-absent.reg]
+    40000006  80 e9 05     subb $5, %cl      [x86_64.alu-rm-imm8-byte.asz-absent.opsz-absent.rex-absent.reg]
+    40000009  80 f1 05     xorb $5, %cl      [x86_64.alu-rm-imm8-byte.asz-absent.opsz-absent.rex-absent.reg]
+    4000000c  80 fa 01     cmpb $1, %dl      [x86_64.alu-rm-imm8-byte.asz-absent.opsz-absent.rex-absent.reg]
+    4000000f  40 80 e6 05  andb $5, %sil     [x86_64.alu-rm-imm8-byte.asz-absent.opsz-absent.rex-present.reg]
+    40000013  40 80 f7 03  xorb $3, %dil     [x86_64.alu-rm-imm8-byte.asz-absent.opsz-absent.rex-present.reg]
+    40000017  41 80 f9 01  cmpb $1, %r9b     [x86_64.alu-rm-imm8-byte.asz-absent.opsz-absent.rex-present.reg]
+    4000001b  80 60 04 05  andb $5, 4(%rax)  [x86_64.alu-rm-imm8-byte.asz-absent.opsz-absent.rex-absent.base-disp8] |}]
+
+(* The byte-width [0x80]/[0xC6] and [jmp *rm] decoders once dropped REX.B/X and the
+   address-size prefix when rebuilding their r/m operand, so an extended register
+   or an [%eax]-based address read back as [%cl]/[%rax]-based. *)
+let%expect_test "x86_64: byte-immediate and jmp r/m forms decode their REX/address-size operands" =
+  disasm "x86_64"
+    "\t.text\n\
+     \tandb $5, %r9b\n\
+     \tmovb $5, 4(%r11)\n\
+     \tmovb $5, %r10b\n\
+     \tandb $5, 4(%eax)\n\
+     \tjmp *%r9\n\
+     \tjmp *8(%r12)\n";
+  [%expect
+    {|
+    40000000  41 80 e1 05     andb $5, %r9b     [x86_64.alu-rm-imm8-byte.asz-absent.opsz-absent.rex-present.reg]
+    40000004  41 c6 43 04 05  movb $5, 4(%r11)  [x86_64.mov-rm-imm8.asz-absent.opsz-absent.rex-present.base-disp8]
+    40000009  41 b2 05        movb $5, %r10b    [x86_64.mov-r-imm8.asz-absent.opsz-absent.rex-present]
+    4000000c  67 80 60 04 05  andb $5, 4(%eax)  [x86_64.alu-rm-imm8-byte.asz-present.opsz-absent.rex-absent.base-disp8]
+    40000011  41 ff e1        jmp *%r9          [x86_64.jmp-rm.asz-absent.opsz-absent.rex-present.reg]
+    40000014  41 ff 64 24 08  jmp *8(%r12)      [x86_64.jmp-rm.asz-absent.opsz-absent.rex-present.sib-disp8] |}]

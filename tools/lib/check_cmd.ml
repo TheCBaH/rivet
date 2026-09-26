@@ -165,6 +165,10 @@ let isa_generated_check repo =
                             | Error msg ->
                                 fatal Tool_error.Validate
                                   (Printf.sprintf "isa-generated check: %s: %s" label msg)
+                            | Ok () when Isa_generated_case.is_hard_failure r.verdict ->
+                                fatal Tool_error.Validate
+                                  (Printf.sprintf "isa-generated check: %s: %s" label
+                                     (Isa_generated_case.verdict_description r.verdict))
                             | Ok () ->
                                 Command.ok
                                   [
@@ -257,6 +261,10 @@ let isa_difficult_check repo =
                             | Error msg ->
                                 fatal Tool_error.Validate
                                   (Printf.sprintf "isa-difficult check: %s: %s" label msg)
+                            | Ok () when Isa_generated_case.is_hard_failure r.verdict ->
+                                fatal Tool_error.Validate
+                                  (Printf.sprintf "isa-difficult check: %s: %s" label
+                                     (Isa_generated_case.verdict_description r.verdict))
                             | Ok () ->
                                 Command.ok
                                   [
