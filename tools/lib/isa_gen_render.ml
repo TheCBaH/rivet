@@ -7,6 +7,8 @@ let rec result_map f = function
       let* ys = result_map f xs in
       Ok (y :: ys)
 
+let mnemonic_key = "#mnemonic"
+
 let render_line (s : Isa_norm_model.syntax_recipe) ~operands =
   let lookup name =
     match List.assoc_opt name operands with
@@ -23,11 +25,14 @@ let render_line (s : Isa_norm_model.syntax_recipe) ~operands =
         let* rendered = render_token tok in
         Ok (prefix ^ rendered)
   in
+  (* a case may spell the same form with another mnemonic: an operand-size suffix, an ordering
+     suffix *)
+  let mnemonic = Option.value (List.assoc_opt mnemonic_key operands) ~default:s.mnemonic in
   match s.operands with
-  | [] -> Ok s.mnemonic
+  | [] -> Ok mnemonic
   | toks ->
       let* rendered = result_map render_token toks in
-      Ok (s.mnemonic ^ " " ^ String.concat ", " rendered)
+      Ok (mnemonic ^ " " ^ String.concat ", " rendered)
 
 let render_source_lines lines = ".text\n" ^ String.concat "\n" lines ^ "\n"
 let render_source line = render_source_lines [ line ]

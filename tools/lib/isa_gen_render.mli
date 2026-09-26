@@ -5,6 +5,10 @@
     placeholder text for design-test inspection - because concrete case
     rendering is case-generation's concern, not the frozen normalized-model's. *)
 
+val mnemonic_key : string
+(** ["#mnemonic"]: an operand assignment under this name replaces the recipe's mnemonic, for a
+    case that spells the same form differently (an operand-size or ordering suffix). *)
+
 val render_line :
   Isa_norm_model.syntax_recipe -> operands:(string * string) list -> (string, string) result
 (** Walk the recipe exactly as {!Isa_norm_model.render_syntax} does, but look

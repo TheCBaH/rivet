@@ -3473,7 +3473,7 @@ let vpinsrw_rr_mem_form ~form_id ~mnemonic (rec_ : R.t) =
            (List.length operands))
   | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
 
-let normalize (rec_ : R.t) =
+let normalize_hand_written (rec_ : R.t) =
   match xed_provenance_of rec_ with
   | Ok { iform = Some "ADD_GPRv_IMMz"; _ } -> add_gprv_immz_form rec_
   | Ok { iform = Some "FADD_ST0_X87"; _ } -> fadd_st0_x87_form rec_
@@ -6033,3 +6033,13 @@ let normalize (rec_ : R.t) =
            other)
   | Ok { iform = None; _ } -> err "missing-iform" "XED record has no provenance.iform"
   | Error msg -> err "not-a-xed-record" msg
+
+(* Records no hand-written rule claims may be generated table rows
+   (DEC-X86-TABLE); see Isa_x86_table. *)
+let normalize (rec_ : R.t) =
+  match normalize_hand_written rec_ with
+  | Error { rule = "unhandled-iform"; _ } as unhandled -> (
+      match Isa_x86_table.spec_of_record rec_ with
+      | Some spec -> Ok (Isa_x86_table.form ~requirement:(requirement_of rec_) rec_ spec)
+      | None -> unhandled)
+  | result -> result

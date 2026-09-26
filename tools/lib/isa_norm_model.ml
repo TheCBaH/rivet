@@ -13,6 +13,8 @@ type register_class =
   | X86_xmm
   | X86_ymm
   | X86_zmm
+  | X86_mmx
+  | X86_kmask
 
 type bit_run = { field_name : string; field_hi : int; field_lo : int; dest_hi : int; dest_lo : int }
 

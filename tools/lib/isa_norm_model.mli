@@ -25,6 +25,8 @@ type register_class =
   | X86_xmm  (** an SSE xmm register, xmm0..xmm15 *)
   | X86_ymm  (** an AVX ymm register, ymm0..ymm15 (VEX.L = 1) *)
   | X86_zmm  (** an AVX-512 zmm register, zmm0..zmm15 (EVEX.L'L = 2) *)
+  | X86_mmx  (** an MMX register, mm0..mm7 *)
+  | X86_kmask  (** an AVX-512 opmask register, k0..k7 *)
 
 type bit_run = { field_name : string; field_hi : int; field_lo : int; dest_hi : int; dest_lo : int }
 (** A destination bit range [dest_hi..dest_lo] of a reconstructed operand

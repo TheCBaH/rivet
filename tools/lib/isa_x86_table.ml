@@ -1,0 +1,895 @@
+module R = Isa_source_record
+open Isa_norm_model
+
+type rclass = Gpr8 | Gpr16 | Gpr32 | Gpr64 | Gprv | Xmm | Ymm | Zmm | Mmx | Kmask
+type field = Modrm_reg | Modrm_rm | Vvvv | Is4 | Opcode_low
+
+type operand =
+  | Reg of { cls : rclass; field : field }
+  | Mem of { bits : int }
+  | Imm of { bytes : int }
+  | Fixed_reg of string
+
+type spec = {
+  record_id : string;
+  iform : string;
+  isa_set : string;
+  mnemonic : string;
+  space : [ `Legacy | `Vex | `Evex ];
+  map : int;
+  opcode : int;
+  prefix : int;
+  osz : bool;
+  w : int;
+  l : int;
+  digit : int;
+  operands : operand list;
+  mode : int;
+  disp8n : int;  (** EVEX's disp8*N scale; 1 elsewhere *)
+  sized : bool;  (** an integer form spelled with its operand-size suffix, added by {!expand} *)
+  no_acc : int list;  (** AT&T positions that must not be the accumulator *)
+  widths : int list;  (** the operand sizes a width-variable (GPRv) form takes *)
+}
+
+let starts_with ~prefix s =
+  String.length s >= String.length prefix && String.sub s 0 (String.length prefix) = prefix
+
+let ends_with ~suffix s =
+  let n = String.length s and k = String.length suffix in
+  n >= k && String.sub s (n - k) k = suffix
+
+let after ~prefix s = String.sub s (String.length prefix) (String.length s - String.length prefix)
+
+(* The pattern tokens this rule understands, with what each says. Any other
+   token leaves the record to hand-written work: an unknown constraint must
+   never be silently dropped. *)
+type pattern = {
+  vex : bool;
+  evex : bool;
+  esize : int;  (** ESIZE_n_BITS() *)
+  nelem : string;  (** NELEM_x(), the EVEX tuple type *)
+  vex_prefix : int option;
+  vl : int;
+  rexw : int;
+  memory : bool option;  (** [Some true]: MOD!=3; [Some false]: MOD=3 *)
+  digit : int;
+  mode64 : bool;
+  modrm : bool;
+  osz : int;  (** OSZ=: -1 unconstrained, 0, 1 *)
+  rep : int;  (** REP=: -1 unconstrained, 0, 2 (F2), 3 (F3) *)
+  refining66 : bool;  (** the 0x66 is a mandatory prefix, not an operand size *)
+  not64 : bool;  (** MODE!=2: the form does not exist in 64-bit mode *)
+  free_reg : bool;  (** REG[rrr] with no register operand behind it: GNU encodes 0 *)
+  srm_nonzero : bool;  (** SRM!=0: the opcode-embedded register is not the accumulator *)
+}
+
+let parse_pattern pattern =
+  let tokens = String.split_on_char ' ' pattern |> List.filter (fun t -> t <> "") in
+  let binary s = int_of_string_opt ("0b" ^ s) in
+  List.fold_left
+    (fun acc t ->
+      match acc with
+      | None -> None
+      | Some p -> (
+          if starts_with ~prefix:"0x" t || starts_with ~prefix:"0b" t then Some p
+          else
+            match t with
+            | "VEXVALID=1" -> Some { p with vex = true }
+            | "VEXVALID=2" -> Some { p with evex = true }
+            | "VL=2" -> Some { p with vl = 2 }
+            (* EVEX's defaults: U = 1, no zeroing, no broadcast or rounding, no mask *)
+            | "UBIT=1" | "ZEROING=0" | "BCRC=0" | "MASK=0" | "VEXDEST4=0b0" -> Some p
+            (* a scalar form's length field is ignored and encoded as 128 bits *)
+            | "FIX_ROUND_LEN128()" -> Some { p with vl = 0 }
+            | _ when starts_with ~prefix:"ESIZE_" t && ends_with ~suffix:"_BITS()" t ->
+                Option.map
+                  (fun e -> { p with esize = e })
+                  (int_of_string_opt (String.sub t 6 (String.length t - 13)))
+            | _ when starts_with ~prefix:"NELEM_" t && ends_with ~suffix:"()" t ->
+                Some { p with nelem = String.sub t 6 (String.length t - 8) }
+            | "MOD[mm]" | "RM[nnn]" | "REG[rrr]" | "SKIP_OSZ=1" | "MODRM()" | "SE_IMM8()"
+            | "UIMM8()" | "VEXDEST3=0b1" | "VEXDEST210=0b111" ->
+                Some
+                  {
+                    p with
+                    modrm = p.modrm || t = "MOD[mm]" || t = "RM[nnn]" || t = "REG[rrr]";
+                    free_reg = p.free_reg || t = "REG[rrr]";
+                  }
+            | "MOD!=3" -> Some { p with memory = Some true; modrm = true }
+            | "MOD=3" | "MOD[0b11]" -> Some { p with memory = Some false; modrm = true }
+            | "MODE=2" -> Some { p with mode64 = true }
+            | "MODE!=2" -> Some { p with not64 = true }
+            (* 32-bit mode only; MODE=0 (16-bit mode) is DEC-X86-MODE16's *)
+            | "MODE=1" -> Some { p with not64 = true }
+            | "SRM!=0" -> Some { p with srm_nonzero = true }
+            | "VL=0" -> Some { p with vl = 0 }
+            | "VL=1" -> Some { p with vl = 1 }
+            | "REXW=0" -> Some { p with rexw = 0 }
+            | "REXW=1" -> Some { p with rexw = 1 }
+            | "OSZ=0" -> Some { p with osz = 0 }
+            | "OSZ=1" -> Some { p with osz = 1 }
+            | "REP=0" -> Some { p with rep = 0 }
+            | "REP=2" -> Some { p with rep = 2 }
+            | "REP=3" -> Some { p with rep = 3 }
+            (* no constraint on the encoding: a 0x66 is tolerated, REX2 is APX's *)
+            | "REFINING66()" -> Some { p with refining66 = true }
+            (* TZCNT=1/LZCNT=1 select the F3 form from bsf/bsr, which REP=3 already states;
+               REP!=3 is the absence of that prefix *)
+            | "TZCNT=1" | "LZCNT=1" | "REP!=3" -> Some p
+            (* a string op's segment override is its default without a prefix *)
+            | "OVERRIDE_SEG0()" | "OVERRIDE_SEG1()" -> Some p
+            | "IGNORE66()" | "NOREX2=1" | "REX2=0" | "SIMM8()" | "SRM[rrr]" | "LOCK=0"
+            | "IMMUNE66()" | "SIMMz()" | "UIMM16()" ->
+                Some p
+            | _ when starts_with ~prefix:"VEX_PREFIX=" t ->
+                Option.map
+                  (fun v -> { p with vex_prefix = Some v })
+                  (int_of_string_opt (after ~prefix:"VEX_PREFIX=" t))
+            | _ when starts_with ~prefix:"MAP=" t -> Some p
+            | _ when starts_with ~prefix:"REG[0b" t && String.length t = 10 ->
+                Option.map (fun d -> { p with digit = d; modrm = true }) (binary (String.sub t 6 3))
+            | _ -> None))
+    (Some
+       {
+         vex = false;
+         evex = false;
+         esize = 0;
+         nelem = "";
+         vex_prefix = None;
+         vl = -1;
+         rexw = -1;
+         memory = None;
+         digit = -1;
+         mode64 = false;
+         modrm = false;
+         osz = -1;
+         rep = -1;
+         refining66 = false;
+         not64 = false;
+         free_reg = false;
+         srm_nonzero = false;
+       })
+    tokens
+
+let class_of_lookup lookup =
+  let classes =
+    [
+      ("ZMM_", (Zmm : rclass));
+      ("XMM_", Xmm);
+      ("YMM_", Ymm);
+      ("VGPR32_", Gpr32);
+      ("VGPR64_", Gpr64);
+      ("GPR32_", Gpr32);
+      ("GPR64_", Gpr64);
+      ("GPRv_", Gprv);
+      ("GPR8_", Gpr8);
+      ("GPR16_", Gpr16);
+      ("MMX_", Mmx);
+      ("MASK_", Kmask);
+    ]
+  in
+  match List.find_opt (fun (p, _) -> starts_with ~prefix:p lookup) classes with
+  | None -> None
+  | Some (p, cls) -> (
+      (* the 3 suffix is EVEX's 32-register range of the same field *)
+      let f = after ~prefix:p lookup in
+      let f = if ends_with ~suffix:"3" f then String.sub f 0 (String.length f - 1) else f in
+      match f with
+      | "R" -> Some (cls, Modrm_reg)
+      | "B" -> Some (cls, Modrm_rm)
+      | "N" -> Some (cls, Vvvv)
+      | "SE" -> Some (cls, Is4)
+      | "SB" -> Some (cls, Opcode_low)
+      | _ -> None)
+
+let mem_bits = function
+  | Some "b" -> 8
+  | Some "w" -> 16
+  | Some "d" -> 32
+  | Some "q" -> 64
+  | Some "dq" -> 128
+  | Some "qq" -> 256
+  | _ -> 0
+
+(* XED lists the destination first; AT&T lists it last. A width-variable memory operand ([v])
+   has bits = -1 and a [z] immediate bytes = 0 until {!expand} fixes the operand size. *)
+let operand_of (o : R.x86_operand) =
+  if o.visibility = "SUPPRESSED" then Some None
+    (* the broadcast element marker of a VEX broadcast: not an operand *)
+  else if o.op_name = "BCAST" && o.lookupfn_name = None then Some None
+    (* EVEX's optional write mask: absent means k0, the unmasked form this rule admits *)
+  else if o.lookupfn_name = Some "MASK1" then Some None
+  else if o.visibility = "IMPLICIT" then
+    match (o.op_type, o.bits) with
+    | "nt_lookup_fn", _ when o.lookupfn_name = Some "OrAX" -> Some (Some (Fixed_reg "?ax"))
+    | ( "reg",
+        Some
+          (( "XED_REG_CL" | "XED_REG_AL" | "XED_REG_AX" | "XED_REG_EAX" | "XED_REG_RAX"
+           | "XED_REG_DX" ) as r) ) ->
+        Some (Some (Fixed_reg (String.lowercase_ascii (after ~prefix:"XED_REG_" r))))
+    | _ -> None
+  else if o.visibility <> "DEFAULT" then None
+  else
+    match (o.op_type, o.lookupfn_name) with
+    | "imm_const", _ when starts_with ~prefix:"MEM0" o.op_name && o.oc2 = Some "v" ->
+        Some (Some (Mem { bits = -1 }))
+    | "imm_const", _ when starts_with ~prefix:"IMM0" o.op_name && o.oc2 = Some "z" ->
+        Some (Some (Imm { bytes = 0 }))
+    | "imm_const", _ when starts_with ~prefix:"IMM0" o.op_name && o.oc2 = Some "w" ->
+        Some (Some (Imm { bytes = 2 }))
+    | "nt_lookup_fn", Some lookup ->
+        Option.map (fun (cls, field) -> Some (Reg { cls; field })) (class_of_lookup lookup)
+    | "imm_const", _ when starts_with ~prefix:"MEM0" o.op_name ->
+        Some (Some (Mem { bits = mem_bits o.oc2 }))
+    | "imm_const", _ when starts_with ~prefix:"IMM0" o.op_name && o.oc2 = Some "b" ->
+        Some (Some (Imm { bytes = 1 }))
+    | _ -> None
+
+(* VEX forms whose AT&T spelling GNU as resolves to the EVEX twin by default;
+   the VEX encoding needs a {vex} pseudo-prefix this assembler does not parse. *)
+let needs_vex_pseudo_prefix = [ "AVX_VNNI"; "AVX_IFMA"; "AVX_NE_CONVERT" ]
+
+(* The AT&T spelling of an iclass: lower case, XED's 64-bit-operand string
+   compares spelled with GNU's [q] suffix, and the narrowing conversions whose
+   memory source width AT&T states with an [x]/[y] suffix. *)
+(* A conversion whose destination elements are narrower than its source's: from memory into an
+   xmm register, AT&T states the source width with an x (128), y (256) or z (512) suffix. *)
+let narrowing iclass =
+  let size t =
+    List.assoc_opt t
+      [
+        ("PD", 64);
+        ("QQ", 64);
+        ("UQQ", 64);
+        ("PS", 32);
+        ("DQ", 32);
+        ("UDQ", 32);
+        ("PH", 16);
+        ("PHX", 16);
+        ("BF16", 16);
+        ("W", 16);
+        ("BF8", 8);
+        ("HF8", 8);
+        ("BF8S", 8);
+        ("HF8S", 8);
+        ("DQS", 32);
+        ("UDQS", 32);
+      ]
+  in
+  starts_with ~prefix:"VCVT" iclass
+  &&
+  match String.index_opt iclass '2' with
+  | None -> false
+  | Some i -> (
+      let left = String.sub iclass 0 i
+      and right = String.sub iclass (i + 1) (String.length iclass - i - 1) in
+      let src =
+        List.find_map
+          (fun t -> if ends_with ~suffix:t left then size t else None)
+          [ "UQQ"; "QQ"; "PD"; "PS"; "UDQ"; "DQ"; "PH"; "W" ]
+      in
+      match (src, size right) with Some a, Some b -> a > b | _ -> false)
+
+let mem_to_xmm operands =
+  match List.filter (function Imm _ -> false | _ -> true) operands with
+  | [ Mem _; Reg { cls = Xmm; _ } ] -> true
+  | _ -> false
+
+let att_mnemonic ?(vl = -1) ~iclass operands =
+  let lower = String.lowercase_ascii iclass in
+  match iclass with
+  | "VPCMPESTRI64" | "VPCMPESTRM64" | "PCMPESTRI64" | "PCMPESTRM64" ->
+      String.sub lower 0 (String.length lower - 2) ^ "q"
+  (* GNU as has no q spelling for these: they are twins of the W-ignored forms *)
+  | "VPCMPISTRI64" | "VPCMPISTRM64" | "PCMPISTRI64" | "PCMPISTRM64" ->
+      String.sub lower 0 (String.length lower - 2)
+  | _ when narrowing iclass && vl >= 0 && mem_to_xmm operands -> (
+      lower ^ match vl with 0 -> "x" | 1 -> "y" | _ -> "z")
+  (* a class test of memory into a mask register states the vector width the same way *)
+  | _
+    when (starts_with ~prefix:"VFPCLASSP" iclass || starts_with ~prefix:"VFPCLASSBF16" iclass)
+         && vl >= 0
+         && List.exists (function Mem _ -> true | _ -> false) operands -> (
+      lower ^ match vl with 0 -> "x" | 1 -> "y" | _ -> "z")
+  (* XED disambiguates a few iclasses with a suffix GNU does not spell: MOVSD_XMM, PEXTRW_SSE4 *)
+  | _ when String.contains lower '_' -> String.sub lower 0 (String.index lower '_')
+  | _ -> lower
+
+(* A form the x86-32 export lists that 32-bit mode cannot encode: a legacy REX.W, a 64-bit GPR,
+   or a 64-bit-mode-only pattern. GNU as rejects each ("bad register name %rax"). *)
+let not_in_32bit_mode (rec_ : R.t) =
+  match rec_.encoding with
+  | R.X86_encoding { space; pattern; operands; _ } ->
+      let tokens = String.split_on_char ' ' pattern in
+      List.mem "MODE=2" tokens
+      || (space = "legacy" && List.mem "REXW=1" tokens)
+      || List.exists
+           (fun (o : R.x86_operand) ->
+             match o.lookupfn_name with
+             | Some l -> starts_with ~prefix:"GPR64_" l || starts_with ~prefix:"VGPR64_" l
+             | None -> false)
+           operands
+  | _ -> false
+
+(* The integer shapes the rule spells: one operand size throughout (so a single suffix names
+   it) and no mixed-width moves. *)
+(* The AT&T spelling of an integer iclass. XED's string-op dword forms end in D where AT&T says
+   l (GNU as warns "assuming movsl" and would read movsd as SSE); the 16-bit iret/pushf/popf
+   take w; far return and sysret state their operand size; a REP/REPE/REPNE iclass is the
+   prefix, a space and the string op. *)
+let integer_mnemonic ~rep native =
+  let op n =
+    match n with
+    | "MOVSD" | "CMPSD" | "STOSD" | "LODSD" | "SCASD" | "INSD" | "OUTSD" ->
+        String.lowercase_ascii (String.sub n 0 (String.length n - 1)) ^ "l"
+    | "IRET" | "PUSHF" | "POPF" -> String.lowercase_ascii n ^ "w"
+    | "PUSHA" | "POPA" -> String.lowercase_ascii n ^ "w"
+    | "PUSHAD" | "POPAD" -> String.lowercase_ascii (String.sub n 0 (String.length n - 1)) ^ "l"
+    | "IRETD" | "PUSHFD" | "POPFD" ->
+        String.lowercase_ascii (String.sub n 0 (String.length n - 1)) ^ "l"
+    | "RET_FAR" -> "lretl"
+    | "SYSRET" | "SYSRET_AMD" -> "sysretl"
+    | "SYSRET64" -> "sysretq"
+    | "SYSCALL_AMD" -> "syscall"
+    | _ -> String.lowercase_ascii n
+  in
+  match String.index_opt native '_' with
+  | Some i when List.mem (String.sub native 0 i) [ "REP"; "REPE"; "REPNE" ] ->
+      (* XED also lists an F2-prefixed REP_MOVS/STOS/LODS/INS/OUTS: GNU spells it repne *)
+      (if String.sub native 0 i = "REP" && rep = 2 then "repne"
+       else String.lowercase_ascii (String.sub native 0 i))
+      ^ " "
+      ^ op (String.sub native (i + 1) (String.length native - i - 1))
+  | _ -> op native
+
+let gpr_ok operands ~iclass =
+  let classes =
+    List.sort_uniq compare
+      (List.filter_map
+         (function
+           | Reg { cls = (Gpr8 | Gpr16 | Gpr32 | Gpr64 | Gprv) as c; _ } -> Some c
+           | Mem { bits = -1 } | Fixed_reg "?ax" -> Some Gprv
+           | Mem { bits = 8 } -> Some Gpr8
+           | Mem { bits = 16 } -> Some Gpr16
+           | Mem { bits = 32 } -> Some Gpr32
+           | Mem { bits = 64 } -> Some Gpr64
+           | Fixed_reg "al" -> Some Gpr8
+           | _ -> None)
+         operands)
+  in
+  (List.length classes = 1 || operands = [])
+  && (not (List.mem iclass [ "MOVZX"; "MOVSX"; "MOVSXD"; "BSWAP" ]))
+  (* GNU as keeps bound's Intel operand order in AT&T syntax *)
+  && iclass <> "BOUND"
+  (* the reserved-NOP register pairs have no GNU spelling: nop takes one operand *)
+  && (not (iclass = "NOP" && List.length operands > 1))
+  && List.for_all (function Reg { field = Vvvv | Is4; _ } -> false | _ -> true) operands
+
+(* The concrete rows of a spec: a width-variable integer form becomes its 16-, 32- and 64-bit
+   rows (0x66 / none / REX.W; a [z] immediate is 2 or 4 bytes), each spelled with its size
+   suffix. Any other spec is itself. *)
+let expand spec =
+  if not spec.sized then [ spec ]
+  else
+    let variable =
+      List.exists
+        (function
+          | Reg { cls = Gprv; _ } | Mem { bits = -1 } | Imm { bytes = 0 } -> true | _ -> false)
+        spec.operands
+    in
+    let classic =
+      List.mem spec.isa_set [ "PENTIUMREAL"; "PPRO"; "LONGMODE"; "I486REAL"; "PENTIUMMMX" ]
+      || String.length spec.isa_set > 1
+         && spec.isa_set.[0] = 'I'
+         && spec.isa_set.[1] >= '0'
+         && spec.isa_set.[1] <= '9'
+    in
+    (* GNU as rejects a size suffix on most newer integer instructions: a register operand or
+       the instruction itself states the size there. invlpg's byte operand is an address, and
+       invlpgb is another instruction. *)
+    let has_gpr_reg =
+      List.exists
+        (function Reg { cls = Gpr8 | Gpr16 | Gpr32 | Gpr64 | Gprv; _ } -> true | _ -> false)
+        spec.operands
+    in
+    let suffix w =
+      if ((not classic) && (has_gpr_reg || not variable)) || spec.iform = "INVLPG_MEMb" then ""
+      else match w with 8 -> "b" | 16 -> "w" | 32 -> "l" | _ -> "q"
+    in
+    if not variable then
+      let width =
+        List.find_map
+          (function
+            | Reg { cls = Gpr8; _ } -> Some 8
+            | Reg { cls = Gpr16; _ } -> Some 16
+            | Reg { cls = Gpr32; _ } -> Some 32
+            | Reg { cls = Gpr64; _ } -> Some 64
+            | Mem { bits } when bits > 0 -> Some bits
+            | Fixed_reg "al" -> Some 8
+            | _ -> None)
+          spec.operands
+      in
+      [
+        {
+          spec with
+          mnemonic = spec.mnemonic ^ Option.fold ~none:"" ~some:suffix width;
+          sized = false;
+        };
+      ]
+    else
+      List.map
+        (fun width ->
+          let operands =
+            List.map
+              (function
+                | Reg { cls = Gprv; field } ->
+                    Reg { cls = (match width with 16 -> Gpr16 | 32 -> Gpr32 | _ -> Gpr64); field }
+                | Mem { bits = -1 } -> Mem { bits = width }
+                | Imm { bytes = 0 } -> Imm { bytes = (if width = 16 then 2 else 4) }
+                | Fixed_reg "?ax" ->
+                    Fixed_reg (match width with 16 -> "ax" | 32 -> "eax" | _ -> "rax")
+                | o -> o)
+              spec.operands
+          in
+          {
+            spec with
+            mnemonic = spec.mnemonic ^ suffix width;
+            operands;
+            osz = width = 16;
+            w = (if width = 64 then 1 else spec.w);
+            mode = (if width = 64 then 64 else spec.mode);
+            sized = false;
+          })
+        (List.filter (fun w -> w <> 64 || spec.w <> 0) spec.widths)
+
+(* An opcode written as five bits and a register ([0b0100_0 SRM[rrr]], the short inc) is
+   exported as those five bits; the row wants the byte with the register bits clear. *)
+let opcode_byte ~pattern opcode =
+  match String.split_on_char ' ' pattern |> List.filter (fun t -> t <> "") with
+  | t :: _ when starts_with ~prefix:"0b" t ->
+      let bits = String.concat "" (String.split_on_char '_' (after ~prefix:"0b" t)) in
+      if String.length bits = 5 then opcode lsl 3 else opcode
+  | _ -> opcode
+
+(* EVEX's disp8*N scale from the tuple type (Intel SDM, "Compressed Displacement"), for the
+   non-broadcast memory form: FULL/FULLMEM the vector, HALF(MEM) half of it, QUARTER(MEM) and
+   EIGHTHMEM a quarter and an eighth, ONE/TUPLE1 one element, TUPLEn n elements, MEM128 16 bytes,
+   MOVDDUP 8 bytes at 128 bits and the vector above. *)
+let disp8_scale p =
+  let vector = 16 lsl max 0 p.vl and element = p.esize / 8 in
+  match p.nelem with
+  | "FULL" | "FULLMEM" -> vector
+  | "HALF" | "HALFMEM" -> vector / 2
+  | "QUARTER" | "QUARTERMEM" -> vector / 4
+  | "EIGHTHMEM" -> vector / 8
+  | "ONE" | "SCALAR" -> max 1 element
+  | "TUPLE2" -> 2 * element
+  | "TUPLE4" -> 4 * element
+  | "TUPLE8" -> 8 * element
+  | "MEM128" | "TUPLE1_4X" -> 16
+  | "MOVDDUP" -> if p.vl = 0 then 8 else vector
+  | _ -> 1
+
+let spec_of_record (rec_ : R.t) =
+  match (rec_.encoding, rec_.provenance) with
+  | ( R.X86_encoding { space = ("vex" | "evex") as space; opcode_map; opcode; pattern; operands },
+      R.Xed_provenance { iform = Some iform; isa_set = Some isa_set; _ } ) -> (
+      match (parse_pattern pattern, int_of_string_opt opcode) with
+      | _ when List.mem isa_set needs_vex_pseudo_prefix -> None
+      | Some p, Some opcode when (if space = "vex" then p.vex else p.evex) && p.modrm -> (
+          let ops = List.map operand_of operands in
+          if List.mem None ops then None
+          else
+            let xed_order = List.filter_map Fun.id (List.filter_map Fun.id ops) in
+            let has_mem = List.exists (function Mem _ -> true | _ -> false) xed_order in
+            let prefix =
+              match p.vex_prefix with
+              | Some 1 -> Some 0x66
+              | Some 2 -> Some 0xf2
+              | Some 3 -> Some 0xf3
+              | Some 0 -> Some 0
+              | _ -> None
+            in
+            match prefix with
+            | None -> None
+            | Some _ when p.memory = Some true <> has_mem -> None
+            | Some prefix ->
+                Some
+                  {
+                    record_id = rec_.record_id;
+                    iform;
+                    isa_set;
+                    mnemonic = att_mnemonic ~vl:p.vl ~iclass:rec_.native_name (List.rev xed_order);
+                    space = (if space = "vex" then `Vex else `Evex);
+                    map = opcode_map;
+                    opcode;
+                    prefix;
+                    osz = false;
+                    w = p.rexw;
+                    l = p.vl;
+                    digit = p.digit;
+                    operands = List.rev xed_order;
+                    mode = (if p.mode64 then 64 else if p.not64 then 32 else 0);
+                    disp8n = (if space = "evex" then disp8_scale p else 1);
+                    sized = false;
+                    no_acc = [];
+                    widths = [];
+                  })
+      | _ -> None)
+  | ( R.X86_encoding { space = "legacy"; opcode_map; opcode; pattern; operands },
+      R.Xed_provenance { iform = Some iform; isa_set = Some isa_set; _ } ) -> (
+      match
+        (parse_pattern pattern, Option.map (opcode_byte ~pattern) (int_of_string_opt opcode))
+      with
+      (* map 4 is 3DNow!'s 0F 0F escape with a trailing opcode byte *)
+      | Some p, Some opcode when (not p.vex) && opcode_map <= 3 -> (
+          let ops = List.map operand_of operands in
+          if List.mem None ops then None
+          else
+            let xed_order = List.filter_map Fun.id (List.filter_map Fun.id ops) in
+            let has_mem = List.exists (function Mem _ -> true | _ -> false) xed_order in
+            let has_gpr =
+              List.exists
+                (function Reg { cls = Gpr8 | Gpr16 | Gpr32 | Gpr64; _ } -> true | _ -> false)
+                xed_order
+            in
+            let has_xmm =
+              List.exists (function Reg { cls = Xmm | Mmx; _ } -> true | _ -> false) xed_order
+            in
+            (* the SSE shape first: xmm operands, the mandatory prefix from REP/OSZ *)
+            let prefix =
+              match (p.rep, p.osz) with
+              | 2, (-1 | 0) -> Some 0xf2
+              | 3, (-1 | 0) -> Some 0xf3
+              | (-1 | 0), 1 -> Some 0x66
+              | (-1 | 0), (-1 | 0) -> Some 0
+              | _ -> None
+            in
+            match prefix with
+            | Some prefix
+              when has_xmm && p.modrm
+                   && (not (has_mem && has_gpr))
+                   && p.memory = Some true = has_mem
+                   && List.for_all
+                        (function Reg { field = Vvvv | Is4; _ } -> false | _ -> true)
+                        xed_order ->
+                Some
+                  {
+                    record_id = rec_.record_id;
+                    iform;
+                    isa_set;
+                    mnemonic = att_mnemonic ~vl:p.vl ~iclass:rec_.native_name (List.rev xed_order);
+                    space = `Legacy;
+                    map = opcode_map;
+                    opcode;
+                    prefix;
+                    osz = false;
+                    w = p.rexw;
+                    l = -1;
+                    digit = p.digit;
+                    operands = List.rev xed_order;
+                    mode = (if p.mode64 then 64 else if p.not64 then 32 else 0);
+                    disp8n = 1;
+                    sized = false;
+                    no_acc = [];
+                    widths = [];
+                  }
+            | _
+              when (not has_xmm)
+                   && ((not p.modrm) || p.memory = Some true = has_mem)
+                   && gpr_ok xed_order ~iclass:rec_.native_name ->
+                (* OSZ=1 on a form whose width is fixed at 32/64 bits is a mandatory 0x66 (adcx,
+                   tpause), not an operand size *)
+                let sized16 =
+                  List.exists
+                    (function
+                      | Reg { cls = Gpr16 | Gprv; _ } | Mem { bits = -1 | 16 } -> true | _ -> false)
+                    xed_order
+                in
+                let mandatory66 = p.refining66 || (p.osz = 1 && not sized16) in
+                let prefix =
+                  match p.rep with 2 -> 0xf2 | 3 -> 0xf3 | _ -> if mandatory66 then 0x66 else 0
+                in
+                let digit =
+                  if
+                    p.digit < 0 && p.free_reg
+                    && not
+                         (List.exists
+                            (function Reg { field = Modrm_reg; _ } -> true | _ -> false)
+                            xed_order)
+                  then 0
+                  else p.digit
+                in
+                (* a fixed 16-bit operand takes 0x66 only where the pattern says so (lldt, ltr
+                   and verr have none) *)
+                let fixed16 =
+                  p.osz = 1 && (not mandatory66)
+                  && List.exists (function Reg { cls = Gpr16; _ } -> true | _ -> false) xed_order
+                in
+                Some
+                  {
+                    record_id = rec_.record_id;
+                    iform;
+                    isa_set;
+                    mnemonic = integer_mnemonic ~rep:p.rep rec_.native_name;
+                    space = `Legacy;
+                    map = opcode_map;
+                    opcode;
+                    prefix;
+                    (* a REP prefix with a mandatory 0x66 keeps both: rep movsw is 66 F3 A5 *)
+                    osz = fixed16 || (mandatory66 && p.rep >= 2);
+                    w = p.rexw;
+                    l = -1;
+                    digit;
+                    operands = List.rev xed_order;
+                    mode = (if p.mode64 then 64 else if p.not64 then 32 else 0);
+                    disp8n = 1;
+                    sized = true;
+                    no_acc =
+                      (if p.srm_nonzero then
+                         List.concat
+                           (List.mapi
+                              (fun k o ->
+                                match o with Reg { field = Opcode_low; _ } -> [ k ] | _ -> [])
+                              (List.rev xed_order))
+                       else []);
+                    (* GNU as spells lar/lsl/sldt/str with a q suffix but emits no REX.W *)
+                    widths =
+                      List.filter
+                        (fun w ->
+                          w <> 64
+                          || not
+                               (List.mem rec_.native_name
+                                  [ "LAR"; "LSL"; "SLDT"; "STR"; "LFS"; "LGS"; "LSS" ]))
+                        (match p.osz with
+                        | _ when mandatory66 -> [ 32; 64 ]
+                        | 1 -> [ 16 ]
+                        | 0 -> [ 32; 64 ]
+                        | _ -> [ 16; 32; 64 ]);
+                  }
+            | _ -> None)
+      | _ -> None)
+  | _ -> None
+
+let operand_name i = Printf.sprintf "op%d" i
+
+(* The row a normalized form and its first case describe: the 32-bit one of a width-variable
+   integer form. *)
+let canonical spec =
+  let rows = expand spec in
+  match
+    List.find_opt
+      (fun r ->
+        spec.sized
+        && List.exists
+             (function Reg { cls = Gpr32; _ } | Mem { bits = 32 } -> true | _ -> false)
+             r.operands)
+      rows
+  with
+  | Some r -> r
+  | None -> List.hd rows
+
+let form ~requirement (rec_ : R.t) spec =
+  let spec = canonical spec in
+  let class_ = function
+    | Xmm -> X86_xmm
+    | Ymm -> X86_ymm
+    | Zmm -> X86_zmm
+    | Mmx -> X86_mmx
+    | Kmask -> X86_kmask
+    | Gpr8 | Gpr16 | Gpr32 | Gpr64 | Gprv -> X86_gpr
+  in
+  let operands =
+    List.concat
+    @@ List.mapi
+         (fun i o ->
+           let op_kind =
+             match o with
+             | Fixed_reg _ -> None
+             | Reg { cls; _ } -> Some (Register { class_ = class_ cls; excluded = [] })
+             | Mem { bits } ->
+                 Some (Memory { width_bits = (if bits <= 0 then None else Some bits) })
+             | Imm { bytes } ->
+                 Some
+                   (Immediate
+                      {
+                        width_bits = 8 * bytes;
+                        signed = false;
+                        implicit_low_zero_bits = 0;
+                        nonzero = false;
+                        runs = [];
+                      })
+           in
+           Option.to_list
+             (Option.map
+                (fun op_kind -> { op_name = operand_name i; op_kind; role = In; explicit = true })
+                op_kind))
+         spec.operands
+  in
+  let syntax =
+    List.mapi
+      (fun i o ->
+        match o with
+        | Reg _ -> Syn_decorated ("%", Syn_operand (operand_name i))
+        | Imm _ -> Syn_decorated ("$", Syn_operand (operand_name i))
+        | Mem _ -> Syn_operand (operand_name i)
+        (* an implied register is assigned per case: its spelling follows the operand size *)
+        | Fixed_reg _ -> Syn_decorated ("%", Syn_operand (operand_name i)))
+      spec.operands
+  in
+  {
+    form_id = "x86:" ^ spec.iform;
+    arch = X86;
+    native_name = rec_.native_name;
+    source_record_ids = [ rec_.record_id ];
+    requirement;
+    encoding =
+      X86_encoding
+        {
+          space = (match spec.space with `Vex -> "vex" | `Evex -> "evex" | `Legacy -> "legacy");
+          opcode_map = spec.map;
+          opcode = Printf.sprintf "0x%02X" spec.opcode;
+          pattern = (match rec_.encoding with R.X86_encoding { pattern; _ } -> pattern | _ -> "");
+        };
+    operands;
+    syntax = { dialect = "gas-att"; mnemonic = spec.mnemonic; operands = syntax };
+    concreteness = Concrete;
+    facts =
+      [
+        {
+          label = Upstream;
+          note = "space, map, opcode, pattern and operand lookups taken verbatim from the record";
+        };
+        {
+          label = Inferred;
+          note =
+            "AT&T operand order is XED's explicit order reversed; the mnemonic is the XED iclass \
+             in lower case (DEC-X86-TABLE)";
+        };
+      ];
+    diagnostics = [];
+  }
+
+(* Two forms spelled the same way with the same operand shape (VMOVAPD's 0x28
+   and 0x29 register forms, FMA4's W0 and W1 register forms): GNU as reaches
+   only one of them from that spelling. The first in export order is the table
+   form; each later one maps to it. *)
+let twins specs =
+  let specs = List.concat_map expand specs in
+  let shape spec =
+    ( spec.mnemonic,
+      List.map
+        (function
+          | Reg { cls; _ } -> `Reg cls
+          | Mem _ -> `Mem
+          | Imm { bytes } -> `Imm bytes
+          | Fixed_reg n -> `Fixed n)
+        spec.operands )
+  in
+  let groups = Hashtbl.create 64 in
+  List.iter
+    (fun spec ->
+      let k = shape spec in
+      Hashtbl.replace groups k (spec :: Option.value (Hashtbl.find_opt groups k) ~default:[]))
+    specs;
+  let secondaries = Hashtbl.create 16 in
+  Hashtbl.iter
+    (fun _ group ->
+      let group = List.rev group in
+      let records = List.sort_uniq compare (List.map (fun s -> s.record_id) group) in
+      if List.length records > 1 then
+        (* GNU as encodes an is4 register form with VEX.W = 1 (the last source in ModR/M.rm) *)
+        let is4 s =
+          List.exists (function Reg { field = Is4; _ } -> true | _ -> false) s.operands
+        in
+        (* GNU as's choice among same-spelled forms, in order: an is4 form takes VEX.W = 1
+           (last source in ModR/M.rm) unless it also carries an immediate (vpermil2ps: W = 0);
+           a register move puts its destination in ModR/M.reg (the load opcode); otherwise
+           the W0 / W-ignored form. *)
+        let has_imm s = List.exists (function Imm _ -> true | _ -> false) s.operands in
+        let dest_in_reg s =
+          match List.rev s.operands with Reg { field = Modrm_reg; _ } :: _ -> true | _ -> false
+        in
+        let dest_in_rm s =
+          match List.rev s.operands with Reg { field = Modrm_rm; _ } :: _ -> true | _ -> false
+        in
+        let integer s =
+          List.for_all
+            (function Reg { cls = Xmm | Ymm | Zmm | Mmx | Kmask; _ } -> false | _ -> true)
+            s.operands
+        in
+        let short s =
+          List.exists (function Reg { field = Opcode_low; _ } -> true | _ -> false) s.operands
+        in
+        (* integer templates list the register-destination form second (0x00 before 0x02) while
+           SIMD moves list the load form first (0x28 before 0x29); the short 0x40+r form wins
+           where it exists; the multi-byte NOP is 0F 1F *)
+        let rank s =
+          ( s.space <> `Evex (* GNU picks VEX for a spelling both could encode *),
+            (if is4 s then if has_imm s then s.w <> 1 else s.w = 1 else true),
+            short s,
+            (if integer s then dest_in_rm s else dest_in_reg s),
+            s.opcode = 0x1f,
+            s.w <> 1 )
+        in
+        let primary =
+          List.fold_left
+            (fun best s -> if compare (rank s) (rank best) > 0 then s else best)
+            (List.hd group) group
+        in
+        List.iter
+          (fun s ->
+            if s.record_id <> primary.record_id then
+              Hashtbl.replace secondaries s.record_id primary.iform)
+          group)
+    groups;
+  secondaries
+
+(* The accumulator guard: for each integer spec, the AT&T positions where GNU as would pick an
+   accumulator-specific form of the same instruction (a sibling record with an implicit
+   AL/AX/EAX/RAX and the same operand kinds elsewhere). [xchg] is symmetric: either operand. *)
+let accumulator_positions (records : R.t list) spec =
+  let kind = function
+    | Reg { cls = Gpr8; _ } -> `Gpr 8
+    | Reg { cls = Gpr16; _ } -> `Gpr 16
+    | Reg { cls = Gpr32; _ } -> `Gpr 32
+    | Reg { cls = Gpr64; _ } -> `Gpr 64
+    | Reg { cls = Gprv; _ } -> `Gpr 0
+    | Reg _ -> `Vec
+    | Mem _ -> `Mem
+    (* the accumulator forms take a full-size immediate; an imm8 form is not their twin *)
+    | Imm { bytes } -> `Imm (bytes = 1)
+    | Fixed_reg n -> `Fixed n
+  in
+  (* the accumulator a sibling names, against the register width at the same position *)
+  let covers acc width =
+    match (acc, width) with
+    | "al", 8 | "ax", 16 | "eax", 32 | "rax", 64 -> true
+    | "?ax", (16 | 32 | 64) -> true
+    | _ -> false
+  in
+  let iclass =
+    match String.index_opt spec.iform '_' with
+    | Some i -> String.sub spec.iform 0 i
+    | None -> spec.iform
+  in
+  let siblings =
+    List.filter_map
+      (fun (r : R.t) ->
+        if r.native_name <> iclass then None
+        else
+          match r.encoding with
+          | R.X86_encoding { operands; _ } ->
+              let ops = List.map operand_of operands in
+              if List.mem None ops then None
+              else
+                Some
+                  (List.rev (List.map kind (List.filter_map Fun.id (List.filter_map Fun.id ops))))
+          | _ -> None)
+      records
+  in
+  let mine = List.map kind spec.operands in
+  let same a b = match (a, b) with `Gpr _, `Gpr _ -> true | _ -> a = b in
+  List.sort_uniq compare
+    (List.concat_map
+       (fun sib ->
+         if List.length sib <> List.length mine then []
+         else
+           let positions = List.mapi (fun i (a, b) -> (i, a, b)) (List.combine sib mine) in
+           let acc =
+             List.filter
+               (fun (_, a, b) -> match (a, b) with `Fixed n, `Gpr w -> covers n w | _ -> false)
+               positions
+           in
+           let rest_ok =
+             List.for_all
+               (fun (_, a, b) -> (match a with `Fixed _ -> true | _ -> false) || same a b)
+               positions
+           in
+           if acc = [] || not rest_ok then []
+           else if iclass = "XCHG" then
+             List.filter_map
+               (fun (i, _, b) -> match b with `Gpr _ -> Some i | _ -> None)
+               positions
+           else List.map (fun (i, _, _) -> i) acc)
+       siblings)

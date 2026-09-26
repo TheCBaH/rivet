@@ -3050,6 +3050,11 @@ val table_entries : Repo.t -> (entry list, Tool_error.t) Err.t
     that has the record: representative registers, and each unsigned
     immediate at zero and at its maximum. *)
 
+val x86_table_entries : Repo.t -> (entry list, Tool_error.t) Err.t
+(** Generated cases for every x86 table row ({!Isa_x86_table}): low registers
+    and a base+disp8 address in each mode, plus on x86-64 a high-register
+    variant (xmm8-15, r8-r15, an r9/r10 base+index address). *)
+
 val entries : Repo.t -> (entry list, Tool_error.t) Err.t
-(** {!all} followed by {!table_entries}: what regeneration and the offline
-    check iterate. *)
+(** {!all}, {!table_entries} and {!x86_table_entries}: what regeneration and the
+    offline check iterate. *)

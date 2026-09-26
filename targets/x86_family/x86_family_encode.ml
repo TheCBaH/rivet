@@ -21,6 +21,8 @@
 
 open Foundation
 module C = Codec
+module X86_table_row = X86_table_row
+module X86_table_rows = X86_table_rows
 
 (* {1 Registers}
 
@@ -59,6 +61,14 @@ module Reg = struct
      marker for EVEX.L'L = 2. [zmm16]-[zmm31] need the EVEX [R'], [V'] and [X] extension bits and
      are not modelled yet. *)
   let names_zmm = Array.init 16 (fun i -> Printf.sprintf "zmm%d" i)
+
+  (* [mm0]-[mm7] (MMX) and [k0]-[k7] (AVX-512 opmasks), used only by generated table rows; their
+     widths are {!X86_table_row.class_width}'s class markers. *)
+  let mm_and_k =
+    List.init 8 (fun i ->
+        { name = Printf.sprintf "mm%d" i; num = i; width = X86_table_row.class_width Mmx })
+    @ List.init 8 (fun i ->
+        { name = Printf.sprintf "k%d" i; num = i; width = X86_table_row.class_width Kmask })
 
   let base_regs width names =
     Array.to_list (Array.mapi (fun i n -> { name = n; num = i; width }) names)
@@ -251,6 +261,9 @@ module Cc = struct
 end
 
 module Opcode = struct
+  (** [sahf] - load [%ah] into the flags register ([0x9E]), bare, no operand,
+            {!Fucomp}/{!Fnstsw}'s exact fixed-opcode shape (M5, asm/docs/corpus.md -
+            same fixture as {!Fnstsw}). *)
   type t =
     | Add
     | Sub
@@ -1458,9 +1471,7 @@ module Opcode = struct
             encoded operand (M5, asm/docs/corpus.md - gas_frontier.t's
             runtime-i64_dtou.S own status-word-into-[sahf] idiom). *)
     | Sahf
-        (** [sahf] - load [%ah] into the flags register ([0x9E]), bare, no operand,
-            {!Fucomp}/{!Fnstsw}'s exact fixed-opcode shape (M5, asm/docs/corpus.md -
-            same fixture as {!Fnstsw}). *)
+    | Table of int  (** a generated {!X86_table_rows} row, by index (DEC-X86-TABLE) *)
 
   let name = function
     | Add -> "add"
@@ -1872,6 +1883,7 @@ module Opcode = struct
     | Fsubs -> "fsubs"
     | Fnstsw -> "fnstsw"
     | Sahf -> "sahf"
+    | Table i -> X86_table_rows.rows.(i).X86_table_row.mnemonic
 
   (* The opcodes the {!X86_x87} component owns. Its tables key forms by mnemonic; this list is
      the one place a mnemonic is turned back into a constructor, and the family checks at
@@ -2217,6 +2229,8 @@ type rm = Rm.t
    twice - once as the constructor and once as the extension - and the two
    could disagree. *)
 module Lowered = struct
+  (** [0x9E] (M5, asm/docs/corpus.md - same fixture as {!Fnstsw}): load [%ah] into the
+            flags register, bare, no operand, {!Fucomp}/{!Fnstsw}'s exact fixed-opcode shape. *)
   type t =
     | Alu_rm_imm of { ext : int; width : int; rm : Rm.t; imm : Disp.t }
         (** [imm] is a [Disp.t] rather than a bare [int64], for the same reason
@@ -2439,8 +2453,9 @@ module Lowered = struct
             [%ax] destination is implicit in the opcode and checked away in
             {!simplify_instruction} rather than carried here. *)
     | Sahf
-        (** [0x9E] (M5, asm/docs/corpus.md - same fixture as {!Fnstsw}): load [%ah] into the
-            flags register, bare, no operand, {!Fucomp}/{!Fnstsw}'s exact fixed-opcode shape. *)
+    | Table of { row : int; ops : Operand.t list }
+        (** a generated {!X86_table_rows} row (DEC-X86-TABLE); [row] names the mnemonic, and
+            encoding tries every row spelled the same way *)
 
   let pp ppf = function
     | Alu_rm_imm { ext; width; rm; imm } ->
@@ -2534,6 +2549,7 @@ module Lowered = struct
     | Fucomp -> Fmt.string ppf "fucomp %st(1)"
     | Fnstsw -> Fmt.string ppf "fnstsw %ax"
     | Sahf -> Fmt.string ppf "sahf"
+    | Table x -> Fmt.string ppf X86_table_rows.rows.(x.row).X86_table_row.mnemonic
 
   let equal a b =
     match (a, b) with
@@ -3374,7 +3390,7 @@ module Make (M : MODE) = struct
         branch_of m = None
         && (String.equal (String.sub m 0 i) "jmp" || Cc.split_after "j" (String.sub m 0 i) <> None)
 
-  let simplify_instruction_ungated s =
+  let simplify_hand_written s =
     let bad kind = Error (diag ~pos:__POS__ ~origin:s.Surface.origin kind) in
     let stem, suffix = split_suffix s.Surface.mnemonic in
     (* [~allow16] is narrowly scoped to [mov] (M5, asm/docs/corpus.md:
@@ -3413,9 +3429,14 @@ module Make (M : MODE) = struct
        one operand's own width disambiguates either way, so the suffix (if
        any) is accepted and ignored rather than validated against
        [M.address_width]. *)
-    | _, "pop" -> Ok (Instruction.mk Opcode.Pop M.address_width s.Surface.ops)
-    | _, "push" -> Ok (Instruction.mk Opcode.Push M.address_width s.Surface.ops)
-    | _, "dec" -> Ok (Instruction.mk Opcode.Dec M.address_width s.Surface.ops)
+    (* only the address width: [decb]/[pushw] are generated rows, not this form *)
+    | _, "pop" when suffix = None || suffix = Some M.address_width ->
+        Ok (Instruction.mk Opcode.Pop M.address_width s.Surface.ops)
+    | _, "push" when suffix = None || suffix = Some M.address_width ->
+        Ok (Instruction.mk Opcode.Push M.address_width s.Surface.ops)
+    (* the codec builds only x86-32's 0x48+r dec; x86-64's FF /1 is a generated row *)
+    | _, "dec" when (not M.rex_allowed) && (suffix = None || suffix = Some M.address_width) ->
+        Ok (Instruction.mk Opcode.Dec M.address_width s.Surface.ops)
     | "jmp", _ -> Ok (Instruction.mk Opcode.Jmp M.address_width s.Surface.ops)
     (* No size suffix, in either mode: a near call is rel32 on x86-32 and on
        x86-64 alike, so there is nothing for a suffix to select. *)
@@ -4054,7 +4075,7 @@ module Make (M : MODE) = struct
   let x87_symbol_op op =
     match x87_shape op with Some (X86_x87.Symbol | Memory_or_symbol) -> true | _ -> false
 
-  let lower_instruction_ungated i =
+  let lower_hand_written i =
     let bad kind = Error (diag ~pos:__POS__ kind) in
     let imm_of v =
       match Bigint.to_int64_opt v with
@@ -4256,7 +4277,9 @@ module Make (M : MODE) = struct
        {!Opcode.to_rm_r} above. *)
     | ( ( Opcode.Xor | Opcode.Cmp | Opcode.Sub | Opcode.Add | Opcode.Adc | Opcode.Test | Opcode.Sbb
         | Opcode.Or | Opcode.And ),
-        [ Operand.Reg a; Operand.Reg b ] ) -> (
+        [ Operand.Reg a; Operand.Reg b ] )
+    (* no byte-width opcode is built here: a [b]-suffixed form is a generated row's *)
+      when i.Instruction.width <> 8 -> (
         match (width_ok a, width_ok b) with
         | Ok (), Ok () ->
             Ok
@@ -4277,7 +4300,8 @@ module Make (M : MODE) = struct
        [TEST_GPRv_GPRv] already uses. *)
     | ( ( Opcode.Xor | Opcode.Cmp | Opcode.Sub | Opcode.Add | Opcode.Adc | Opcode.Test | Opcode.Sbb
         | Opcode.Or | Opcode.And ),
-        [ Operand.Reg r; Operand.Mem m ] ) -> (
+        [ Operand.Reg r; Operand.Mem m ] )
+      when i.Instruction.width <> 8 -> (
         match width_ok r with
         | Error e -> Error e
         | Ok () ->
@@ -4294,7 +4318,8 @@ module Make (M : MODE) = struct
        [Xor] here for the same reason they joined {!Opcode.to_r_rm} above. *)
     | ( ( Opcode.Adc | Opcode.Add | Opcode.Xor | Opcode.Sub | Opcode.And | Opcode.Or | Opcode.Sbb
         | Opcode.Cmp ),
-        [ Operand.Mem m; Operand.Reg r ] ) -> (
+        [ Operand.Mem m; Operand.Reg r ] )
+      when i.Instruction.width <> 8 -> (
         match width_ok r with
         | Error e -> Error e
         | Ok () ->
@@ -4463,6 +4488,9 @@ module Make (M : MODE) = struct
         | Error e -> Error e
         | Ok imm -> (
             match dst with
+            (* GNU as encodes an accumulator destination with the short 0xA8/0xA9 form, which
+               is a generated row's, not this one's *)
+            | Operand.Reg r when r.num = 0 -> bad (`No_form "test")
             | Operand.Reg r -> (
                 match width_ok r with
                 | Error e -> Error e
@@ -8461,6 +8489,572 @@ module Make (M : MODE) = struct
         Some rung
     | _ -> None
 
+  (* {2 Generated form rows (DEC-X86-TABLE)}
+
+     A byte-level encoder and decoder for X86_table_rows, beside the codec: rows are tried only
+     for mnemonics the hand-written forms do not know, and decoded only after the codec
+     declines. Addressing follows the same rules as the codec ({!needs_sib}, {!disp_form_of}). *)
+
+  module T = X86_table_row
+
+  let table_rows = X86_table_rows.rows
+
+  let table_applies (r : T.row) =
+    r.mode = 0 || (r.mode = 64 && M.rex_allowed) || (r.mode = 32 && not M.rex_allowed)
+
+  let table_reg_ok (cls : T.rclass) (r : Reg.t) =
+    r.width = T.class_width cls && r.num >= 0 && (M.rex_allowed || r.num < 8)
+
+  (* spl/bpl/sil/dil exist only with a REX prefix *)
+  let byte_reg_needs_rex (r : Reg.t) = r.width = 8 && r.num >= 4 && r.num < 8
+
+  let le_bytes n v =
+    String.init n (fun i ->
+        Char.chr (Int64.to_int (Int64.logand (Int64.shift_right_logical v (8 * i)) 0xffL)))
+
+  let fits_bytes n v =
+    let bits = 8 * n in
+    Int64.compare v (Int64.neg (Int64.shift_left 1L (bits - 1))) >= 0
+    && (bits >= 64 || Int64.compare v (Int64.shift_left 1L bits) < 0)
+
+  (* ModR/M, SIB and displacement for ModR/M.reg [reg] and an rm operand, with the REX.X and
+     REX.B bits they need. Memory must be a constant displacement off address-width registers. *)
+  let table_modrm ?(n = 1) ~reg rm =
+    let byte v = String.make 1 (Char.chr v) in
+    match rm with
+    | `Reg n -> Some (byte (0xc0 lor ((reg land 7) lsl 3) lor (n land 7)), 0, (n lsr 3) land 1)
+    | `Mem (m : Mem.t) -> (
+        let addr_ok = function
+          | None -> true
+          | Some (r : Reg.t) -> r.width = M.address_width && r.num >= 0 && not (is_rip r)
+        in
+        match m.disp with
+        | Disp.Sym _ -> None
+        | Disp.Const disp when addr_ok m.base && addr_ok m.index && m.base <> None -> (
+            (* EVEX stores disp8 scaled by N (disp8*N); a displacement that is not a multiple
+               of N, or whose quotient does not fit a byte, is a full disp32 *)
+            let form, disp =
+              match disp_form_of m with
+              | D_none -> (D_none, disp)
+              | (D_8 | D_32) as form when n <= 1 -> (form, disp)
+              | _ ->
+                  let q = Int64.div disp (Int64.of_int n) in
+                  if Int64.rem disp (Int64.of_int n) = 0L && fits_s8 q then (D_8, q)
+                  else (D_32, disp)
+            in
+            let md = match form with D_none -> 0 | D_8 -> 1 | D_32 -> 2 in
+            let disp_bytes =
+              match form with D_none -> "" | D_8 -> le_bytes 1 disp | D_32 -> le_bytes 4 disp
+            in
+            let x = match m.index with Some i -> (i.num lsr 3) land 1 | None -> 0 in
+            let b = match m.base with Some b -> (b.num lsr 3) land 1 | None -> 0 in
+            if needs_sib m then
+              match sib_of m with
+              | None -> None
+              | Some sb ->
+                  Some
+                    ( byte ((md lsl 6) lor ((reg land 7) lsl 3) lor 4)
+                      ^ byte ((sb.sc lsl 6) lor (sb.ix lsl 3) lor sb.bs)
+                      ^ disp_bytes,
+                      x,
+                      b )
+            else
+              match m.base with
+              | Some base ->
+                  Some
+                    ( byte ((md lsl 6) lor ((reg land 7) lsl 3) lor (base.num land 7)) ^ disp_bytes,
+                      x,
+                      b )
+              | None -> None)
+        | Disp.Const _ -> None)
+
+  let table_encode_row (r : T.row) ops =
+    let accumulator k =
+      match List.nth_opt ops k with
+      | Some (Operand.Reg (reg : Reg.t)) -> reg.num = 0 && List.mem reg.width [ 8; 16; 32; 64 ]
+      | _ -> false
+    in
+    if (not (table_applies r)) || List.length ops <> List.length r.operands then None
+    else if List.exists accumulator r.no_acc then None
+    else
+      let reg_field = ref (if r.digit >= 0 then Some r.digit else None) in
+      let rm = ref None and vvvv = ref None and is4 = ref None and imms = ref [] in
+      let opcode_low = ref 0 in
+      let rex_byte = ref false and ok = ref true in
+      List.iter2
+        (fun (o : T.operand) op ->
+          match (o, op) with
+          | T.Reg { cls; field }, Operand.Reg reg when table_reg_ok cls reg -> (
+              if byte_reg_needs_rex reg then rex_byte := true;
+              match field with
+              | T.Modrm_reg -> reg_field := Some reg.num
+              | T.Modrm_rm -> rm := Some (`Reg reg.num)
+              | T.Vvvv -> vvvv := Some reg.num
+              | T.Is4 -> is4 := Some reg.num
+              | T.Opcode_low -> opcode_low := reg.num)
+          | T.Fixed_reg name, Operand.Reg reg when String.equal reg.name name -> ()
+          | T.Mem _, Operand.Mem m -> rm := Some (`Mem m)
+          | T.Imm { bytes }, Operand.Imm v -> (
+              match Bigint.to_int64_opt v with
+              | Some v when fits_bytes bytes v -> imms := !imms @ [ le_bytes bytes v ]
+              | _ -> ok := false)
+          | _ -> ok := false)
+        r.operands ops;
+      if not !ok then None
+      else
+        let modrm =
+          match (!reg_field, !rm) with
+          | Some reg, Some rm -> Option.map (fun m -> (reg, m)) (table_modrm ~n:r.disp8n ~reg rm)
+          | None, None -> Some (0, ("", 0, (!opcode_low lsr 3) land 1))
+          (* a fixed ModR/M.reg and no rm operand: register form, rm 0 ([lfence] is 0F AE E8) *)
+          | Some reg, None when r.digit >= 0 ->
+              Some (reg, (String.make 1 (Char.chr (0xc0 lor ((reg land 7) lsl 3))), 0, 0))
+          | _ -> None
+        in
+        let opcode = r.opcode lor (!opcode_low land 7) in
+        match modrm with
+        | None -> None
+        | Some (reg, (modrm_bytes, x, b)) -> (
+            let rr = (reg lsr 3) land 1 in
+            let w = max 0 r.w and l = max 0 r.l in
+            (* an is4 register shares its byte with a 4-bit immediate (vpermil2ps) *)
+            let tail =
+              match (!is4, !imms) with
+              | Some n, [] -> Some (modrm_bytes ^ String.make 1 (Char.chr ((n land 15) lsl 4)))
+              | Some n, [ imm ] when Char.code imm.[0] < 16 ->
+                  Some
+                    (modrm_bytes
+                    ^ String.make 1 (Char.chr (((n land 15) lsl 4) lor Char.code imm.[0])))
+              | Some _, _ -> None
+              | None, imms -> Some (modrm_bytes ^ String.concat "" imms)
+            in
+            let byte v = String.make 1 (Char.chr v) in
+            match tail with
+            | None -> None
+            | Some tail -> (
+                match r.space with
+                | T.Legacy ->
+                    let need_rex = w = 1 || rr = 1 || x = 1 || b = 1 || !rex_byte in
+                    if need_rex && not M.rex_allowed then None
+                    else
+                      let rex =
+                        if need_rex then byte (0x40 lor (w lsl 3) lor (rr lsl 2) lor (x lsl 1) lor b)
+                        else ""
+                      in
+                      let escape =
+                        match r.map with 1 -> "\x0f" | 2 -> "\x0f\x38" | 3 -> "\x0f\x3a" | _ -> ""
+                      in
+                      Some
+                        ((if r.osz then "\x66" else "")
+                        ^ (if r.prefix <> 0 then byte r.prefix else "")
+                        ^ rex ^ escape ^ byte opcode ^ tail)
+                | T.Vex ->
+                    if (not M.rex_allowed) && (rr = 1 || x = 1 || b = 1) then None
+                    else
+                      let pp = match r.prefix with 0x66 -> 1 | 0xf3 -> 2 | 0xf2 -> 3 | _ -> 0 in
+                      let v = lnot (Option.value !vvvv ~default:0) land 15 in
+                      let prefix =
+                        if w = 0 && r.map = 1 && x = 0 && b = 0 then
+                          "\xc5" ^ byte (((1 - rr) lsl 7) lor (v lsl 3) lor (l lsl 2) lor pp)
+                        else
+                          "\xc4"
+                          ^ byte (((1 - rr) lsl 7) lor ((1 - x) lsl 6) lor ((1 - b) lsl 5) lor r.map)
+                          ^ byte ((w lsl 7) lor (v lsl 3) lor (l lsl 2) lor pp)
+                      in
+                      Some (prefix ^ byte opcode ^ tail)
+                | T.Evex ->
+                    (* 62 P0 P1 P2 with k0 (no masking), no zeroing, no broadcast; registers 0-15 *)
+                    let v = Option.value !vvvv ~default:0 in
+                    let pp = match r.prefix with 0x66 -> 1 | 0xf3 -> 2 | 0xf2 -> 3 | _ -> 0 in
+                    let p0 =
+                      ((1 - rr) lsl 7)
+                      lor ((1 - x) lsl 6)
+                      lor ((1 - b) lsl 5)
+                      lor (1 lsl 4) lor r.map
+                    in
+                    let p1 = (w lsl 7) lor ((lnot v land 15) lsl 3) lor (1 lsl 2) lor pp in
+                    let p2 = (l lsl 5) lor (1 lsl 3) in
+                    if (not M.rex_allowed) && (rr = 1 || x = 1 || b = 1) then None
+                    else Some ("\x62" ^ byte p0 ^ byte p1 ^ byte p2 ^ byte opcode ^ tail)))
+
+  (* Every applicable row spelled like row [i], in table order; the first whose operands fit. *)
+  let table_encode (x : [ `Row of int ]) ops =
+    let (`Row i) = x in
+    let mnemonic = table_rows.(i).T.mnemonic in
+    Array.fold_left
+      (fun acc (r : T.row) ->
+        match acc with
+        | Some _ -> acc
+        | None -> if String.equal r.mnemonic mnemonic then table_encode_row r ops else None)
+      None table_rows
+
+  let table_index mnemonic =
+    let rec go i =
+      if i >= Array.length table_rows then None
+      else if String.equal table_rows.(i).T.mnemonic mnemonic && table_applies table_rows.(i) then
+        Some i
+      else go (i + 1)
+    in
+    go 0
+
+  (* Decoding: prefixes (0x66, F2/F3, REX), then VEX or a legacy escape, then the opcode; every
+     row with that space, map and opcode is tried in table order. *)
+  let table_decode bytes pos =
+    let n = String.length bytes in
+    let at k = if k < n then Some (Char.code bytes.[k]) else None in
+    let rec prefixes k osz rep =
+      match at k with
+      | Some 0x66 -> prefixes (k + 1) true rep
+      | Some ((0xf2 | 0xf3) as p) -> prefixes (k + 1) osz p
+      | _ -> (k, osz, rep)
+    in
+    let k, osz, rep = prefixes pos false 0 in
+    let k, rex =
+      match at k with Some b when M.rex_allowed && b land 0xf0 = 0x40 -> (k + 1, b) | _ -> (k, 0)
+    in
+    let vex =
+      match (at k, at (k + 1), at (k + 2)) with
+      | Some 0x62, Some p0, Some p1
+        when rex = 0 && (M.rex_allowed || p0 land 0xc0 = 0xc0) && p1 land 4 = 4 && k + 3 < n ->
+          (* EVEX: only the unmasked, non-zeroing, non-broadcast form with registers 0-15 *)
+          let p2 = Char.code bytes.[k + 3] in
+          if p0 land 0x10 = 0 || p2 land 0x08 = 0 || p2 land 0x97 <> 0 then None
+          else
+            Some
+              ( k + 4,
+                `Evex
+                  ( 1 - ((p0 lsr 7) land 1),
+                    1 - ((p0 lsr 6) land 1),
+                    1 - ((p0 lsr 5) land 1),
+                    p0 land 7,
+                    (p1 lsr 7) land 1,
+                    lnot (p1 lsr 3) land 15,
+                    (p2 lsr 5) land 3,
+                    p1 land 3 ) )
+      | Some 0xc5, Some b1, _ when rex = 0 && (M.rex_allowed || b1 land 0xc0 = 0xc0) ->
+          Some
+            ( k + 2,
+              `Vex
+                ( 1 - ((b1 lsr 7) land 1),
+                  0,
+                  0,
+                  1,
+                  0,
+                  lnot (b1 lsr 3) land 15,
+                  (b1 lsr 2) land 1,
+                  b1 land 3 ) )
+      | Some 0xc4, Some b1, Some b2 when rex = 0 && (M.rex_allowed || b1 land 0xc0 = 0xc0) ->
+          Some
+            ( k + 3,
+              `Vex
+                ( 1 - ((b1 lsr 7) land 1),
+                  1 - ((b1 lsr 6) land 1),
+                  1 - ((b1 lsr 5) land 1),
+                  b1 land 31,
+                  (b2 lsr 7) land 1,
+                  lnot (b2 lsr 3) land 15,
+                  (b2 lsr 2) land 1,
+                  b2 land 3 ) )
+      | _ -> None
+    in
+    let space, k =
+      match vex with
+      | Some (k, v) -> (v, k)
+      | None -> (
+          match (at k, at (k + 1)) with
+          | Some 0x0f, Some 0x38 -> (`Legacy 2, k + 2)
+          | Some 0x0f, Some 0x3a -> (`Legacy 3, k + 2)
+          | Some 0x0f, _ -> (`Legacy 1, k + 1)
+          | _ -> (`Legacy 0, k))
+    in
+    match at k with
+    | None -> None
+    | Some opcode ->
+        let k = k + 1 in
+        let try_row i (r : T.row) =
+          let header_ok, rr, xx, bb, w, vvvv, l =
+            match (space, r.space) with
+            | `Legacy map, T.Legacy ->
+                let prefix_ok =
+                  match r.prefix with
+                  | 0x66 -> osz && rep = 0 && not r.osz
+                  | 0 -> rep = 0 && osz = r.osz
+                  | p -> rep = p && osz = r.osz
+                in
+                let w = (rex lsr 3) land 1 in
+                ( map = r.map && prefix_ok && (r.w < 0 || r.w = w),
+                  (rex lsr 2) land 1,
+                  (rex lsr 1) land 1,
+                  rex land 1,
+                  w,
+                  0,
+                  0 )
+            | `Vex (rr, xx, bb, map, w, vvvv, l, pp), T.Vex
+            | `Evex (rr, xx, bb, map, w, vvvv, l, pp), T.Evex ->
+                let want = match r.prefix with 0x66 -> 1 | 0xf3 -> 2 | 0xf2 -> 3 | _ -> 0 in
+                ( map = r.map && pp = want && (not osz) && rep = 0
+                  && (r.w < 0 || r.w = w)
+                  && (r.l < 0 || r.l = l)
+                  && (List.exists
+                        (function T.Reg { field = T.Vvvv; _ } -> true | _ -> false)
+                        r.operands
+                     || vvvv = 0),
+                  rr,
+                  xx,
+                  bb,
+                  w,
+                  vvvv,
+                  l )
+            | _ -> (false, 0, 0, 0, 0, 0, 0)
+          in
+          ignore w;
+          ignore l;
+          let low =
+            List.exists
+              (function T.Reg { field = T.Opcode_low; _ } -> true | _ -> false)
+              r.operands
+          in
+          let opcode_ok = if low then opcode land 0xf8 = r.opcode else r.opcode = opcode in
+          if (not header_ok) || (not opcode_ok) || not (table_applies r) then None
+          else
+            let uses_modrm =
+              r.digit >= 0
+              || List.exists
+                   (function
+                     | T.Reg { field = T.Modrm_reg | T.Modrm_rm; _ } | T.Mem _ -> true | _ -> false)
+                   r.operands
+            in
+            let has_mem = List.exists (function T.Mem _ -> true | _ -> false) r.operands in
+            let rm_reg =
+              List.exists
+                (function T.Reg { field = T.Modrm_rm; _ } -> true | _ -> false)
+                r.operands
+            in
+            let modrm = if uses_modrm then at k else Some 0 in
+            match modrm with
+            | None -> None
+            | Some mb -> (
+                let md = mb lsr 6 and reg = (mb lsr 3) land 7 lor (rr lsl 3) and rmf = mb land 7 in
+                let k = if uses_modrm then k + 1 else k in
+                if uses_modrm && r.digit >= 0 && (mb lsr 3) land 7 <> r.digit then None
+                else if uses_modrm && has_mem && md = 3 then None
+                else if uses_modrm && rm_reg && md <> 3 then None
+                else if uses_modrm && (not has_mem) && (not rm_reg) && mb land 0xc7 <> 0xc0 then
+                  None
+                else
+                  (* the memory operand, if any: SIB and displacement *)
+                  let mem, k =
+                    if not (has_mem && md <> 3) then (Some None, k)
+                    else
+                      let regat num = reg_at ~width:M.address_width num in
+                      let disp k md =
+                        match md with
+                        | 1 ->
+                            Option.map
+                              (fun b ->
+                                ( Int64.mul (Int64.of_int r.disp8n)
+                                    (Int64.of_int (if b >= 128 then b - 256 else b)),
+                                  k + 1 ))
+                              (at k)
+                        | 2 ->
+                            if k + 4 > n then None
+                            else
+                              let v = ref 0L in
+                              for j = 3 downto 0 do
+                                v :=
+                                  Int64.logor (Int64.shift_left !v 8)
+                                    (Int64.of_int (Char.code bytes.[k + j]))
+                              done;
+                              Some (Int64.of_int32 (Int64.to_int32 !v), k + 4)
+                        | _ -> Some (0L, k)
+                      in
+                      if rmf = 4 then
+                        match at k with
+                        | None -> (None, k)
+                        | Some sb -> (
+                            let sc = sb lsr 6
+                            and ix = (sb lsr 3) land 7 lor (xx lsl 3)
+                            and bs = sb land 7 lor (bb lsl 3) in
+                            if bs land 7 = 5 && md = 0 then (None, k)
+                            else
+                              match disp (k + 1) md with
+                              | None -> (None, k)
+                              | Some (d, k) ->
+                                  let index = if ix = 4 then None else Some (regat ix) in
+                                  ( Some
+                                      (Some
+                                         {
+                                           Mem.base = Some (regat bs);
+                                           index;
+                                           scale = scale_of_log2 sc;
+                                           disp = Disp.Const d;
+                                         }),
+                                    k ))
+                      else if rmf = 5 && md = 0 then (None, k)
+                      else
+                        match disp k md with
+                        | None -> (None, k)
+                        | Some (d, k) ->
+                            ( Some
+                                (Some
+                                   {
+                                     Mem.base = Some (regat (rmf lor (bb lsl 3)));
+                                     index = None;
+                                     scale = 1;
+                                     disp = Disp.Const d;
+                                   }),
+                              k )
+                  in
+                  match mem with
+                  | None -> None
+                  | Some mem ->
+                      let k = ref k and failed = ref false in
+                      let ops =
+                        List.map
+                          (fun (o : T.operand) ->
+                            match o with
+                            | T.Reg { cls; field } ->
+                                let num =
+                                  match field with
+                                  | T.Modrm_reg -> reg
+                                  | T.Modrm_rm -> rmf lor (bb lsl 3)
+                                  | T.Vvvv -> vvvv
+                                  | T.Is4 -> ( match at (n - 1) with _ -> 0)
+                                  | T.Opcode_low -> opcode land 7 lor (bb lsl 3)
+                                in
+                                if cls = T.Gpr8 && num >= 4 && num < 8 && rex = 0 then
+                                  failed := true;
+                                if (cls = T.Mmx || cls = T.Kmask) && num >= 8 then failed := true;
+                                Operand.Reg (reg_at ~width:(T.class_width cls) num)
+                            | T.Fixed_reg name -> (
+                                match find_reg name with
+                                | Some reg -> Operand.Reg reg
+                                | None ->
+                                    failed := true;
+                                    Operand.Imm Bigint.zero)
+                            | T.Mem _ -> (
+                                match mem with
+                                | Some m -> Operand.Mem m
+                                | None ->
+                                    failed := true;
+                                    Operand.Imm Bigint.zero)
+                            | T.Imm _
+                              when List.exists
+                                     (function T.Reg { field = T.Is4; _ } -> true | _ -> false)
+                                     r.operands ->
+                                (* filled from the is4 byte below *)
+                                Operand.Imm Bigint.zero
+                            | T.Imm { bytes = nb } ->
+                                if !k + nb > n then (
+                                  failed := true;
+                                  Operand.Imm Bigint.zero)
+                                else
+                                  let v = ref 0L in
+                                  for j = nb - 1 downto 0 do
+                                    v :=
+                                      Int64.logor (Int64.shift_left !v 8)
+                                        (Int64.of_int (Char.code bytes.[!k + j]))
+                                  done;
+                                  k := !k + nb;
+                                  Operand.Imm (Bigint.of_int64 !v))
+                          r.operands
+                      in
+                      (* an is4 register sits in the byte after everything else *)
+                      let ops, k =
+                        if
+                          List.exists
+                            (function T.Reg { field = T.Is4; _ } -> true | _ -> false)
+                            r.operands
+                        then
+                          match at !k with
+                          | None ->
+                              failed := true;
+                              (ops, !k)
+                          | Some b ->
+                              ( List.map2
+                                  (fun (o : T.operand) op ->
+                                    match o with
+                                    | T.Reg { cls; field = T.Is4 } ->
+                                        Operand.Reg (reg_at ~width:(T.class_width cls) (b lsr 4))
+                                    | T.Imm _ -> Operand.Imm (Bigint.of_int (b land 15))
+                                    | _ -> op)
+                                  r.operands ops,
+                                !k + 1 )
+                        else (ops, !k)
+                      in
+                      if !failed then None
+                      else Some (Instruction.mk (Opcode.Table i) 0 ops, r.mnemonic, k - pos))
+        in
+        let rec go i =
+          if i >= Array.length table_rows then None
+          else match try_row i table_rows.(i) with Some _ as found -> found | None -> go (i + 1)
+        in
+        go 0
+
+  (* A mnemonic the hand-written forms do not know may be a generated row's. *)
+  let simplify_instruction_ungated (s : Surface.t) =
+    (* [rep movsb] reaches here as the mnemonic [rep] with a symbol operand [movsb]: a repeat
+       prefix names the string-op row it is spelled with *)
+    let s =
+      match (s.Surface.mnemonic, s.Surface.ops) with
+      | ( (("rep" | "repe" | "repz" | "repne" | "repnz") as p),
+          [ Operand.Sym (Asm_core.Expr.Symbol op) ] ) ->
+          let p = match p with "repz" -> "repe" | "repnz" -> "repne" | p -> p in
+          { s with mnemonic = p ^ " " ^ op; ops = [] }
+      | _ -> s
+    in
+    (* GNU as lets a register operand fix the operand size, and rejects a suffix on most newer
+       integer instructions ([rdrand %eax]), so for a mnemonic the hand-written forms do not know
+       the register also names the sized row. A hand-written mnemonic keeps requiring its suffix
+       (see DEC-X86-SUFFIX). *)
+    let inferred =
+      List.filter_map
+        (function
+          | Operand.Reg (r : Reg.t) when List.mem r.width [ 8; 16; 32; 64 ] ->
+              Some (s.Surface.mnemonic ^ suffix_of_width r.width)
+          | _ -> None)
+        s.Surface.ops
+    in
+    let row spellings =
+      List.find_map
+        (fun m ->
+          match table_index m with
+          | Some i when table_encode (`Row i) s.Surface.ops <> None ->
+              Some (Instruction.mk (Opcode.Table i) 0 s.Surface.ops)
+          | _ -> None)
+        spellings
+    in
+    (* a spelling the hand-written forms reject (unknown, or [movq] with an xmm operand in 32-bit
+       mode), or accept but cannot lower for these operands (a high VEX register), may be a
+       generated row's *)
+    match simplify_hand_written s with
+    | Error e as err -> (
+        let spellings =
+          match Target_error.kind (Err.Error.kind e) with
+          | `Unknown_instruction _ -> s.Surface.mnemonic :: inferred
+          | _ -> [ s.Surface.mnemonic ]
+        in
+        match row spellings with Some i -> Ok i | None -> err)
+    | Ok i as ok -> (
+        match lower_hand_written i with
+        | Ok _ -> ok
+        | Error _ -> ( match row [ s.Surface.mnemonic ] with Some t -> Ok t | None -> ok))
+
+  (* A hand-written mnemonic can have generated rows for shapes its own forms do not take (a
+     ymm [vpslldq]); those are tried when the hand-written lowering declines. *)
+  let lower_instruction_ungated (i : Instruction.t) =
+    match i.op with
+    | Opcode.Table row -> Ok [ Lowered.Table { row; ops = i.ops } ]
+    | _ -> (
+        match lower_hand_written i with
+        | Ok _ as ok -> ok
+        | Error _ as declined -> (
+            let spellings = [ Opcode.name i.op; Opcode.name i.op ^ suffix_of_width i.width ] in
+            match List.find_map table_index spellings with
+            | Some row when table_encode (`Row row) i.ops <> None ->
+                Ok [ Lowered.Table { row; ops = i.ops } ]
+            | _ -> declined))
+
   let encode_ungated l =
     (* The codec names the phase when it is the only layer that could have seen
        the mistake - a pin for a rung that does not exist - and otherwise this
@@ -8468,16 +9062,25 @@ module Make (M : MODE) = struct
        it with a span, which is why [codec.unknown-rung] means a direct-lowered
        producer and nothing else. *)
     let fail (e : C.error) = Error (diag ~pos:__POS__ (`Codec e)) in
-    match pinned_rung l with
-    | Some rung -> (
-        match C.encode_rung codec ~rung l with
-        | Error e -> fail e
-        | Ok enc -> Ok (`Fixed (form_of l enc)))
-    | None -> (
-        match C.encode_ladder codec l with
-        | Error e -> fail e
-        | Ok [ one ] -> Ok (`Fixed (form_of l one))
-        | Ok forms -> Ok (`Relax (List.map (form_of l) forms)))
+    match l with
+    | Lowered.Table x -> (
+        match table_encode (`Row x.row) x.ops with
+        | Some bytes ->
+            Ok
+              (`Fixed
+                 { Asm_core.Lowered_ast.bytes; form = table_rows.(x.row).T.mnemonic; fixups = [] })
+        | None -> Error (diag ~pos:__POS__ (`No_form table_rows.(x.row).T.mnemonic)))
+    | _ -> (
+        match pinned_rung l with
+        | Some rung -> (
+            match C.encode_rung codec ~rung l with
+            | Error e -> fail e
+            | Ok enc -> Ok (`Fixed (form_of l enc)))
+        | None -> (
+            match C.encode_ladder codec l with
+            | Error e -> fail e
+            | Ok [ one ] -> Ok (`Fixed (form_of l one))
+            | Ok forms -> Ok (`Relax (List.map (form_of l) forms))))
 
   type decode_context = { state : target_state; address : int64 }
 
@@ -8911,11 +9514,15 @@ module Make (M : MODE) = struct
     | Lowered.Fucomp -> Some (Instruction.mk Opcode.Fucomp 32 [])
     | Lowered.Fnstsw -> Some (Instruction.mk Opcode.Fnstsw 32 [ Operand.Reg (reg_at ~width:16 0) ])
     | Lowered.Sahf -> Some (Instruction.mk Opcode.Sahf 32 [])
+    | Lowered.Table x -> Some (Instruction.mk (Opcode.Table x.row) 0 x.ops)
 
   let decode_ungated ctx bytes ~pos =
     let bits = C.Bits.of_bytes (String.sub bytes pos (String.length bytes - pos)) in
     match C.decode_bits codec bits with
-    | None -> Error (diag ~pos:__POS__ `Decode_no_match)
+    | None -> (
+        match table_decode bytes pos with
+        | Some (i, name, len) -> Ok (i, name, len)
+        | None -> Error (diag ~pos:__POS__ `Decode_no_match))
     | Some d -> (
         if d.C.consumed mod 8 <> 0 then Error (diag ~pos:__POS__ `Decode_partial_bytes)
         else

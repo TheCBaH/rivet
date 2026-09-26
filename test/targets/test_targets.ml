@@ -735,8 +735,8 @@ let%expect_test "an unknown directive is a diagnostic, never a silent skip" =
   [%expect {| simplify.directive: unknown directive .frobnicate |}]
 
 let%expect_test "an unknown instruction is a diagnostic" =
-  attempt "x86_64" "\t.text\n\txchgq %rax, %rbx\n";
-  [%expect {| x86.simplify: unknown instruction xchgq |}]
+  attempt "x86_64" "\t.text\n\tfrobq %rax, %rbx\n";
+  [%expect {| x86.simplify: unknown instruction frobq |}]
 
 let%expect_test "x86 refuses to guess an operand size" =
   attempt "x86_64" "\t.text\n\tmov $42, %eax\n";
@@ -1574,17 +1574,16 @@ let%expect_test "%r8w-%r15w and 16-bit mov: register-memory, register-register, 
     40000011  c3                 ret                  [x86_64.ret]
     |}]
 
-(* A 16-bit suffix on any other ALU mnemonic keeps its pre-existing, clearer
-   diagnostic rather than silently reaching [lower_instruction] and failing
-   there instead - the scope decision asm/docs/corpus.md's capability-ladder
-   section records: only [mov]'s corpus-evidenced 16-bit form was added. *)
-let%expect_test "a 16-bit suffix stays out of scope for every ALU mnemonic but mov" =
+(* The hand-written forms still build only [mov]'s 16-bit form; every other 16-bit ALU form is
+   a generated DEC-X86-TABLE row, which the hand-written simplify's out-of-scope diagnostic now
+   falls back to (bytes checked against GNU as by the isa-difficult corpus: [addw $1, %ax] is
+   66 83 c0 01, [xorw %ax, %cx] is 66 31 c1). *)
+let%expect_test "16-bit ALU forms other than mov are generated rows" =
   attempt "x86_64" "\t.text\n\t.globl f\nf:\n\taddw $1, %ax\n\tret\n";
   attempt "x86_64" "\t.text\n\t.globl f\nf:\n\txorw %ax, %cx\n\tret\n";
-  [%expect
-    {|
-    x86.simplify: 16-bit operands need the 0x66 prefix, which is not in M1 scope
-    x86.simplify: 16-bit operands need the 0x66 prefix, which is not in M1 scope
+  [%expect {|
+    accepted
+    accepted
     |}]
 
 (* {1 M5 corpus-growth forms (asm/docs/corpus.md): actually assembling

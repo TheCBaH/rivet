@@ -7001,4 +7001,181 @@ let table_entries repo =
   let* rv64 = per_target Target.Riscv64 in
   Ok (rv32 @ rv64)
 
-let entries repo = Result.map (fun table -> all @ table) (table_entries repo)
+(* INF-05X/INF-03: generated cases per x86 table row (DEC-X86-TABLE) and mode:
+   low registers with a base+disp8 address in both modes, and on x86-64 a
+   high-register variant (xmm8-15, r8-r15, an r9/r10 base+index) that needs
+   the REX/VEX extension bits; immediates at 0 and 255. *)
+let x86_table_entries_of ?(alt = false) target (spec : Isa_x86_table.spec) =
+  let canonical = Isa_x86_table.canonical spec in
+  let reg_name (cls : Isa_x86_table.rclass) num =
+    let low8 = [| "ax"; "cx"; "dx"; "bx"; "sp"; "bp"; "si"; "di" |] in
+    match cls with
+    | Xmm -> Printf.sprintf "xmm%d" num
+    | Ymm -> Printf.sprintf "ymm%d" num
+    | Zmm -> Printf.sprintf "zmm%d" num
+    (* eight of each, so no high variant *)
+    | Mmx -> Printf.sprintf "mm%d" (num land 7)
+    | Kmask -> Printf.sprintf "k%d" (num land 7)
+    | Gpr32 | Gprv -> if num < 8 then "e" ^ low8.(num) else Printf.sprintf "r%dd" num
+    | Gpr64 -> if num < 8 then "r" ^ low8.(num) else Printf.sprintf "r%d" num
+    | Gpr16 -> if num < 8 then low8.(num) else Printf.sprintf "r%dw" num
+    | Gpr8 -> if num < 4 then String.make 1 low8.(num).[0] ^ "l" else Printf.sprintf "r%db" num
+  in
+  let stack = match target with Target.X86_32 -> "esp" | _ -> "rsp" in
+  let entry (row : Isa_x86_table.spec) variant ~high =
+    let n = List.length row.operands in
+    let is4 =
+      List.exists
+        (function Isa_x86_table.Reg { field = Is4; _ } -> true | _ -> false)
+        row.operands
+    in
+    let operands =
+      List.concat
+        (List.mapi
+           (fun i (o : Isa_x86_table.operand) ->
+             (* registers count down to the destination, skipping ax/sp (special encodings) *)
+             let num =
+               let k = n - 1 - i in
+               if high then 8 + k else [| 1; 2; 3; 6; 7; 5 |].(min k 5)
+             in
+             match o with
+             | Reg { cls = (Xmm | Ymm) as cls; _ } ->
+                 [
+                   ( Isa_x86_table.operand_name i,
+                     reg_name cls (if high then 8 + n - 1 - i else n - 1 - i) );
+                 ]
+             | Reg { cls; _ } -> [ (Isa_x86_table.operand_name i, reg_name cls num) ]
+             | Mem _ ->
+                 [
+                   ( Isa_x86_table.operand_name i,
+                     if high then "16(%r9,%r10,4)" else Printf.sprintf "16(%%%s)" stack );
+                 ]
+             (* a wide immediate needs a value no shorter form holds: GNU as picks imm8 whenever
+                the value fits *)
+             | Imm { bytes } ->
+                 let v =
+                   match (bytes, high) with
+                   | 1, false -> "0"
+                   | 1, true -> if is4 then "15" else "127"
+                   | 2, false -> "300"
+                   | 2, true -> "30000"
+                   | _, false -> "300"
+                   | _, true -> "1000000"
+                 in
+                 [ (Isa_x86_table.operand_name i, v) ]
+             | Fixed_reg name -> [ (Isa_x86_table.operand_name i, name) ])
+           row.operands)
+    in
+    let operands =
+      if row.mnemonic = canonical.mnemonic && not alt then operands
+      else (Isa_gen_render.mnemonic_key, row.mnemonic) :: operands
+    in
+    {
+      form_id = "x86:" ^ spec.iform;
+      target;
+      lookup_key = spec.iform;
+      case_id =
+        Printf.sprintf "x86:%s:table-%s%s:%s" spec.iform
+          (if alt then "alt-" else "")
+          variant (Target.to_string target);
+      rule_ids =
+        [ "table-row"; "table-" ^ variant; "feature:" ^ String.lowercase_ascii spec.isa_set ];
+      operands;
+      lines_before = [];
+      lines_after = [];
+      configuration = Isa_gen_case_build.configuration_for target;
+    }
+  in
+  let rows =
+    List.filter
+      (fun (r : Isa_x86_table.spec) ->
+        match target with Target.X86_64 -> r.mode <> 32 | _ -> r.mode <> 64)
+      (Isa_x86_table.expand spec)
+  in
+  let width_tag (r : Isa_x86_table.spec) =
+    if List.length rows = 1 then ""
+    else
+      (* the operand size: a register's width if there is one, else the memory operand's *)
+      let reg_bits =
+        List.find_map
+          (function
+            | Isa_x86_table.Reg { cls = Gpr16; _ } -> Some 16
+            | Reg { cls = Gpr32; _ } -> Some 32
+            | Reg { cls = Gpr64; _ } -> Some 64
+            | Reg { cls = Gpr8; _ } | Fixed_reg "al" -> Some 8
+            | Fixed_reg "ax" -> Some 16
+            | Fixed_reg "eax" -> Some 32
+            | Fixed_reg "rax" -> Some 64
+            | _ -> None)
+          r.operands
+      in
+      let bits =
+        match reg_bits with
+        | Some _ -> reg_bits
+        | None ->
+            List.find_map
+              (function Isa_x86_table.Mem { bits } when bits > 0 -> Some bits | _ -> None)
+              r.operands
+      in
+      Printf.sprintf "-w%d" (Option.value bits ~default:0)
+  in
+  List.concat_map
+    (fun (r : Isa_x86_table.spec) ->
+      entry r ("regs-low" ^ width_tag r) ~high:false
+      ::
+      (match target with
+      | Target.X86_64 -> [ entry r ("regs-high" ^ width_tag r) ~high:true ]
+      | _ -> []))
+    rows
+
+let x86_table_entries repo =
+  let ( let* ) = Result.bind in
+  let per_target target =
+    let* specs = Isa_x86_table_emit.specs repo target in
+    let* all = Isa_x86_table_emit.all_specs repo target in
+    let specs =
+      List.filter
+        (fun (s : Isa_x86_table.spec) ->
+          Isa_oracle_unavailable.find_record ~source:"xed_resolved" target ~extension:s.isa_set
+            ~native_name:
+              ( String.uppercase_ascii (String.concat "" [ s.iform ]) |> fun i ->
+                match String.index_opt i '_' with Some k -> String.sub i 0 k | None -> i )
+          = None)
+        specs
+    in
+    let specs =
+      match target with
+      | Target.X86_32 ->
+          List.filter
+            (fun (s : Isa_x86_table.spec) -> s.mode <> 64 && not (s.w = 1 && s.space = `Legacy))
+            specs
+      | _ -> specs
+    in
+    let secondary = Isa_x86_table.twins all in
+    let specs =
+      List.filter (fun (s : Isa_x86_table.spec) -> not (Hashtbl.mem secondary s.record_id)) specs
+    in
+    (* one case per iform, plus one per further spelling of the same iform (XED lists rep movsw
+       with F2 too: GNU's repne movsw) *)
+    let unique =
+      List.fold_left
+        (fun acc (s : Isa_x86_table.spec) ->
+          if
+            List.exists
+              (fun ((t : Isa_x86_table.spec), _) -> t.iform = s.iform && t.mnemonic = s.mnemonic)
+              acc
+          then acc
+          else (s, List.exists (fun ((t : Isa_x86_table.spec), _) -> t.iform = s.iform) acc) :: acc)
+        [] specs
+    in
+    Ok (List.concat_map (fun (s, alt) -> x86_table_entries_of ~alt target s) (List.rev unique))
+  in
+  let* x32 = per_target Target.X86_32 in
+  let* x64 = per_target Target.X86_64 in
+  Ok (x32 @ x64)
+
+let entries repo =
+  let ( let* ) = Result.bind in
+  let* table = table_entries repo in
+  let* x86 = x86_table_entries repo in
+  Ok (all @ table @ x86)

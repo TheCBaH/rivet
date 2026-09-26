@@ -187,8 +187,8 @@ let test_isa_norm_accounting repo =
   in
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:1071;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:1142;
-  expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:1033;
-  expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:1035
+  expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:6610;
+  expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:6728
 
 (* The family matrix is a second view over the same complete population,
    not a hand-maintained support claim. Pinning its aggregate states makes a
@@ -238,6 +238,16 @@ let test_isa_riscv_table repo =
           (Tool_fs.read (Isa_riscv_table.rows_path repo)))
   with
   | Ok current -> check "isa-table: riscv_table_rows.ml equals a fresh emission" current
+  | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
+
+let test_isa_x86_table repo =
+  match
+    Result.bind (Isa_x86_table_emit.emit repo) (fun text ->
+        Result.map
+          (fun committed -> String.equal text committed)
+          (Tool_fs.read (Isa_x86_table_emit.rows_path repo)))
+  with
+  | Ok current -> check "isa-table: x86_table_rows.ml equals a fresh emission" current
   | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
 
 let test_isa_family_admission repo =
@@ -1058,10 +1068,10 @@ let test_isa_family_admission repo =
     ~normalized_only:0 ~gas_generatable:0 ~promoted_support:1057 ~blocked:0;
   expect ~oracle_unavailable:14 ~source:"riscv_opcodes" Target.Riscv64 ~total:1154
     ~normalized_only:0 ~gas_generatable:0 ~promoted_support:1140 ~blocked:0;
-  expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:6 ~gas_generatable:5
-    ~promoted_support:1022 ~blocked:6854;
-  expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
-    ~promoted_support:1030 ~blocked:9536
+  expect ~oracle_unavailable:137 ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:0
+    ~gas_generatable:3 ~promoted_support:5341 ~blocked:2406;
+  expect ~oracle_unavailable:115 ~source:"xed_resolved" Target.X86_64 ~total:10571
+    ~normalized_only:0 ~gas_generatable:3 ~promoted_support:5460 ~blocked:4993
 
 (* Export and round-trip deterministic normalized JSONL: every
    form Isa_norm_riscv/Isa_norm_xed produce from the real checked-in exports
@@ -1115,9 +1125,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 4281)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 15551)"
        !roundtrip_count)
-    (!roundtrip_count = 4281)
+    (!roundtrip_count = 15551)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's
@@ -1205,6 +1215,7 @@ let () =
   test_isa_db_cross_validate repo;
   test_isa_norm_accounting repo;
   test_isa_riscv_table repo;
+  test_isa_x86_table repo;
   test_isa_family_admission repo;
   test_isa_residual_ledger repo;
   test_isa_norm_jsonl_roundtrip repo;

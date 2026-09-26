@@ -544,3 +544,67 @@ let%expect_test "RISC-V table: AMO ordering suffixes and Zacas register pairs" =
     40000000  2f b5 c5 28  amocas.d x10, x12, 0(x11)  [riscv32.amocas.d]
     -- riscv32: amocas.d a1, a2, (a1)
     riscv32.lower: no amocas.d form takes these operands |}]
+
+(* DEC-X86-TABLE: every generated row's encoding of a representative operand list decodes back to
+   a form of the same length (the codec or a row), in each mode the row applies to. Rows are only
+   reached when the hand-written forms decline, so this pins that nothing they emit is
+   undecodable. *)
+let%expect_test "generated x86 table rows round-trip through the decoder" =
+  let module Row = X86_family_encode.X86_table_row in
+  let check (type d) target ~mode64 ~(reg : width:int -> int -> X86_family_encode.Reg.t)
+      ~(encode : Row.row -> X86_family_encode.Operand.t list -> string option)
+      ~(decode : string -> (int, d) result) =
+    let failures = ref [] and count = ref 0 in
+    Array.iter
+      (fun (r : Row.row) ->
+        if r.mode = 0 || mode64 then
+          let ops =
+            List.mapi
+              (fun k (o : Row.operand) ->
+                match o with
+                | Reg { cls; _ } ->
+                    X86_family_encode.Operand.Reg (reg ~width:(Row.class_width cls) (k + 1))
+                | Fixed_reg name ->
+                    X86_family_encode.Operand.Reg
+                      (match name with
+                      | "cl" -> reg ~width:8 1
+                      | "al" -> reg ~width:8 0
+                      | "ax" -> reg ~width:16 0
+                      | "eax" -> reg ~width:32 0
+                      | "dx" -> reg ~width:16 2
+                      | _ -> reg ~width:64 0)
+                | Mem _ ->
+                    X86_family_encode.Operand.Mem
+                      (X86_family_encode.Mem.of_base ~disp:(X86_family_encode.Disp.Const 16L)
+                         (reg ~width:(if mode64 then 64 else 32) 3))
+                | Imm _ -> X86_family_encode.Operand.Imm (Foundation.Bigint.of_int 1))
+              r.operands
+          in
+          match encode r ops with
+          | None -> ()
+          | Some bytes -> (
+              incr count;
+              match decode bytes with
+              | Ok len when len = String.length bytes -> ()
+              | _ -> failures := r.source :: !failures))
+      X86_family_encode.X86_table_rows.rows;
+    Printf.printf "%s: %s\n" target
+      (match !failures with [] -> "ok" | fs -> String.concat " " (List.rev fs))
+  in
+  check "x86_32" ~mode64:false ~reg:X86_32_encode.reg_at ~encode:X86_32_encode.table_encode_row
+    ~decode:(fun b ->
+      Result.map
+        (fun (_, _, len) -> len)
+        (X86_32_encode.decode_ungated
+           { state = X86_32_encode.default_state; address = 0L }
+           b ~pos:0));
+  check "x86_64" ~mode64:true ~reg:X86_64_encode.reg_at ~encode:X86_64_encode.table_encode_row
+    ~decode:(fun b ->
+      Result.map
+        (fun (_, _, len) -> len)
+        (X86_64_encode.decode_ungated
+           { state = X86_64_encode.default_state; address = 0L }
+           b ~pos:0));
+  [%expect {|
+    x86_32: ok
+    x86_64: ok |}]
