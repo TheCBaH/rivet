@@ -6,7 +6,7 @@
 
 (library
  (name riscv_family_encode)
- (modules riscv_family_encode riscv_ext_m)
+ (modules riscv_family_encode riscv_ext_m riscv_table_row riscv_table_rows)
  (modes byte native melange)
  (libraries
   foundation

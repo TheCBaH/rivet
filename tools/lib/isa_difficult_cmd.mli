@@ -10,4 +10,9 @@ val regen : Repo.t -> Command.t
     {!Isa_generated_cmd.regen} uses for the frozen pilot. Also writes
     every successfully-built case's {!Isa_generated_corpus.record} to the
     checked-in [asm/fixtures/isa-difficult/cases.jsonl] corpus, which
-    {!Check_cmd.isa_difficult_check} replays offline without a toolchain. *)
+    {!Check_cmd.isa_difficult_check} replays offline without a toolchain.
+
+    Cases run on forked workers ({!Tool_parallel},
+    [COMPCERT_TOOLS_JOBS]), and a committed record's GAS artifact is reused
+    when {!Isa_gen_oracle.reuse} finds it current; [COMPCERT_TOOLS_REGEN=full]
+    re-runs GAS for every case. *)

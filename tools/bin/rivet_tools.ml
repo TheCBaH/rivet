@@ -202,6 +202,35 @@ let isa_family_admission_cmd =
           GAS-generatable, promoted-support, oracle-unavailable, or its specific blocker")
     Cmdliner.Term.(const run $ common)
 
+let isa_family_records_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Isa_family_admission.record_lines) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "family-records"
+       ~doc:
+         "List every checked-in ISA-source record with its family, admission state, lookup key, \
+          normalized form id and record id")
+    Cmdliner.Term.(const run $ common)
+
+let isa_table_cmd =
+  let emit =
+    let run (err_trace, root) = (err_trace, with_repo root Isa_riscv_table.run_emit) in
+    Cmdliner.Cmd.v
+      (Cmdliner.Cmd.info "riscv-emit"
+         ~doc:
+           "Regenerate asm/targets/riscv_family/riscv_table_rows.ml from the riscv-opcodes exports")
+      Cmdliner.Term.(const run $ common)
+  in
+  let check =
+    let run (err_trace, root) = (err_trace, with_repo root Isa_riscv_table.run_check) in
+    Cmdliner.Cmd.v
+      (Cmdliner.Cmd.info "riscv-check"
+         ~doc:"Fail unless the checked-in RISC-V table rows equal a fresh emission")
+      Cmdliner.Term.(const run $ common)
+  in
+  Cmdliner.Cmd.group
+    (Cmdliner.Cmd.info "isa-table" ~doc:"Generated ISA form tables (DEC-RV-TABLE)")
+    [ emit; check ]
+
 let isa_residual_ledger_cmd =
   let run (err_trace, root) = (err_trace, with_repo root Isa_residual_ledger.run) in
   Cmdliner.Cmd.v
@@ -220,6 +249,7 @@ let isa_inventory_cmd =
       isa_db_cross_validate_cmd;
       isa_norm_accounting_cmd;
       isa_family_admission_cmd;
+      isa_family_records_cmd;
       isa_residual_ledger_cmd;
     ]
 
@@ -458,6 +488,7 @@ let main_cmd =
       isa_inventory_cmd;
       isa_generated_cmd;
       isa_difficult_cmd;
+      isa_table_cmd;
       targets_cmd;
       tool_gate_cmd;
     ]

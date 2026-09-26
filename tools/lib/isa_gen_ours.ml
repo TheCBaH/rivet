@@ -64,7 +64,7 @@ let git repo args ~label =
    against work-in-progress code is visibly distinguishable from one against a
    clean commit ([tool_label] must be resolved, never assumed from a prior
    measurement, extended to the one tool with no release to pin). *)
-let tool_label repo =
+let tool_label_uncached repo =
   let* head = git repo [ "rev-parse"; "HEAD" ] ~label:"isa-generated-ours git rev-parse" in
   let* status =
     git repo [ "status"; "--porcelain"; "--"; "asm" ] ~label:"isa-generated-ours git status"
@@ -72,6 +72,28 @@ let tool_label repo =
   let rev = String.trim (Option.value head.Tool_process.stdout ~default:"") in
   let dirty = String.trim (Option.value status.Tool_process.stdout ~default:"") <> "" in
   Ok (Printf.sprintf "ours-%s%s" rev (if dirty then "-dirty" else ""))
+
+(* Resolved once per process: the checkout does not change during one
+   regeneration, and two git calls per case dominated its cost. *)
+let labels : (string, string) Hashtbl.t = Hashtbl.create 1
+
+let tool_label repo =
+  let key = Fpath.to_string (Repo.path repo) in
+  match Hashtbl.find_opt labels key with
+  | Some label -> Ok label
+  | None ->
+      let* label = tool_label_uncached repo in
+      Hashtbl.replace labels key label;
+      Ok label
+
+(* The regeneration targets build the assembler first, so its executable is
+   normally already in [_build]; running it directly avoids an [opam exec]
+   plus [dune exec] round trip per case. Without a build, fall back to
+   [dune exec], which builds it. *)
+let asm_command repo argv =
+  let built = Fpath.(Repo.path repo / "asm" / "_build" / "default" / "tool" / "asm.exe") in
+  if Sys.file_exists (Fpath.to_string built) then (Fpath.to_string built, argv)
+  else ("opam", [ "exec"; "--"; "dune"; "exec"; "tool/asm.exe"; "--" ] @ argv)
 
 let run repo (case : Isa_generated_case.case) =
   let* tool_label = tool_label repo in
@@ -90,14 +112,14 @@ let run repo (case : Isa_generated_case.case) =
          case's `exit 1`, 2 on a `die` usage error) - accepting exactly {0; 1}
          means any other status (2, a signal, a timeout) fails this call
          rather than being misread as a case rejection. *)
+      let prog, args = asm_command repo argv in
       let* result =
         Tool_process.exec
           (Tool_process.spec
              ~cwd:Fpath.(Repo.path repo / "asm")
              ~stdout:Tool_process.Out_capture ~stderr:Tool_process.Err_capture
              ~accepted:(Process_status.Statuses [ 0; 1 ])
-             ~label:"isa-generated-ours asm.exe" "opam"
-             ([ "exec"; "--"; "dune"; "exec"; "tool/asm.exe"; "--" ] @ argv))
+             ~label:"isa-generated-ours asm.exe" prog args)
       in
       (* The scratch case.s path is machine-local and nondeterministic
          (Tool_workspace.with_scratch mints a fresh directory every call) -

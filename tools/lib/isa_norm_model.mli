@@ -16,6 +16,10 @@ type register_class =
   | Riscv_gpr
   | Riscv_fpr
   | Riscv_vec  (** a RISC-V V vector register, v0..v31 *)
+  | Riscv_gpr_c
+      (** the RVC compressed-register subset (x8..x15 / s0-s1,a0-a5), the
+          3-bit [rd'/rs1'/rs2'] fields the CIW/CL/CS/CA/CB compressed
+          instruction formats restrict their register operands to *)
   | X86_gpr
   | X87_st  (** an x87 stack register, ST(0)..ST(7) *)
   | X86_xmm  (** an SSE xmm register, xmm0..xmm15 *)

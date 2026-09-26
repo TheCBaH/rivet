@@ -185,8 +185,8 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:726;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:779;
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:1071;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:1142;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:1033;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:1035
 
@@ -228,8 +228,21 @@ let test_isa_residual_ledger repo =
             = total))
         Isa_residual_ledger.inputs
 
+(* The generated RISC-V table rows are reviewed as a diff of a checked-in
+   file; a stale file would let the encoder drift from the capture. *)
+let test_isa_riscv_table repo =
+  match
+    Result.bind (Isa_riscv_table.emit repo) (fun text ->
+        Result.map
+          (fun committed -> String.equal text committed)
+          (Tool_fs.read (Isa_riscv_table.rows_path repo)))
+  with
+  | Ok current -> check "isa-table: riscv_table_rows.ml equals a fresh emission" current
+  | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
+
 let test_isa_family_admission repo =
-  let expect ~source target ~total ~normalized_only ~gas_generatable ~promoted_support ~blocked =
+  let expect ?(oracle_unavailable = 0) ~source target ~total ~normalized_only ~gas_generatable
+      ~promoted_support ~blocked =
     let label = Printf.sprintf "%s/%s" source (Target.to_string target) in
     match Isa_family_admission.summarize repo ~source target with
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
@@ -256,8 +269,32 @@ let test_isa_family_admission repo =
         check
           (Printf.sprintf "isa-family-admission: %s promoted-support" label)
           (p = promoted_support);
-        check (Printf.sprintf "isa-family-admission: %s oracle-unavailable" label) (u = 0);
-        check (Printf.sprintf "isa-family-admission: %s blockers" label) (b = blocked)
+        check
+          (Printf.sprintf "isa-family-admission: %s oracle-unavailable" label)
+          (u = oracle_unavailable);
+        check (Printf.sprintf "isa-family-admission: %s blockers" label) (b = blocked);
+        let rules =
+          List.concat_map
+            (fun (f : Isa_family_admission.family) -> f.tally.blocked)
+            summary.families
+        in
+        let count_if p =
+          List.fold_left (fun acc (rule, n) -> if p rule then acc + n else acc) 0 rules
+        in
+        let prefixed p rule =
+          String.length rule >= String.length p && String.sub rule 0 (String.length p) = p
+        in
+        check
+          (Printf.sprintf "isa-family-admission: %s construct blockers cover every rule-less record"
+             label)
+          (count_if (fun r ->
+               prefixed "unsupported-encoding:" r
+               || prefixed "unknown-operand:" r || r = Isa_construct.no_rule)
+          = summary.unruled);
+        check
+          (Printf.sprintf "isa-family-admission: %s no-rule blockers are the known-only records"
+             label)
+          (count_if (String.equal Isa_construct.no_rule) = summary.known_only)
   in
   (* Promotes the four bare scalar single-precision arithmetic forms
      after persisted RV{32,64}IMF(D) cases pin their implicit dynamic rounding,
@@ -944,11 +981,83 @@ let test_isa_family_admission repo =
      riscv-opcodes $pseudo_op records with a fully fixed encoding, each an alias of the
      instruction it specializes - move 4 (RV32) and 5 (RV64) records from blocked to
      promoted-support after a persisted case per profile pins GNU as and this assembler to the
-     same bytes for the alias spelling. *)
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
-    ~promoted_support:706 ~blocked:363;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
-    ~promoted_support:749 ~blocked:375;
+     same bytes for the alias spelling.
+
+     [neg], [seqz], [sltz], [sgtz] and [zext.b] close RES-RV-BASE-INT's remaining named gap
+     (isa-consumption-tracker.md GEN-05-RV-BASE): the five base-ISA pseudo-ops GNU as 2.44
+     accepted but this assembler previously rejected outright. Each is a new two-operand
+     encoder alias (neg/sgtz reuse [Slt]/[Sub]'s all-zero-[rs1] entry point the same way
+     [snez] does for [sltu]; seqz/zext.b are genuine [sltiu]/[andi] immediate aliases) plus a
+     `unary_gpr_form` normalizer entry, verified against real riscv32-linux-gnu-as 2.43.1 and
+     riscv64-linux-gnu-as 2.44 (`neg a2,a3`->`40d00633`, `seqz a2,a3`->`0016b613`,
+     `sltz a2,a3`->`0006a633`, `sgtz a2,a3`->`00d02633`, `zext.b a2,a3`->`0ff6f613`, identical
+     on both profiles). All five are present on both RV32 and RV64, so this moves 5 records per
+     profile from blocked straight to promoted-support.
+
+     [fneg.s]/[fneg.d]/[fabs.s]/[fabs.d]/[fmv.s]/[fmv.d]/[fmv.x.s]/[fmv.s.x] close the
+     sign-injection/move slice of RES-RV-FP (GEN-05-RV-FP): the encoder already had
+     [fneg.s]/[fneg.d]/[fmv.d] (an [f_sgnj_desc] table entry each, `rs2` forced equal to `rs1`)
+     but no normalizer/admission credit, the same "encoded but uncredited" gap RES-RV-BASE-INT
+     had; [fabs.s]/[fabs.d]/[fmv.s] needed three new [f_sgnj_desc] entries, and
+     [fmv.x.s]/[fmv.s.x] two new entries in [f_mv_x_w_desc]/[i_to_f_desc] (byte-identical to
+     [fmv.x.w]/[fmv.w.x], the ISA-manual's own alternate spelling). Verified against real
+     riscv64-linux-gnu-as 2.44 (`fabs.s fa0,fa1`->`20b5a553`, `fabs.d fa0,fa1`->`22b5a553`,
+     `fmv.s fa0,fa1`->`20b58553`, `fmv.x.s a0,fa1`->`e0058553`, `fmv.s.x fa0,a1`->`f0058553`,
+     identical on RV32). All eight are present on both RV32 and RV64, moving 8 records per
+     profile from blocked to promoted-support; this closes every blocked record rv_d named,
+     so RES-RV-FP's own family list drops it (see isa_residual_ledger.ml).
+
+     [c.and]/[c.or]/[c.xor]/[c.sub] (both profiles) and RV64-only [c.addw]/[c.subw] open
+     RES-RV-COMPRESSED's reopening_gate for the first time (GEN-05-RV-C): the CA-format
+     compressed register-register class, needing a brand-new Riscv_gpr_c operand domain (the
+     RVC compressed x8..x15 register subset) since previously only [c.addi] was admitted in
+     this row. Verified against real riscv64-linux-gnu-as/riscv32-linux-gnu-as (`c.and
+     a0,a1`->`8d6d`, `c.addw a0,a1`->`9d2d`). Moves 4 records per profile from blocked to
+     promoted-support on RV32, 6 on RV64 (the *w pair is RV64-only).
+
+     [c.jr]/[c.jalr]/[c.mv]/[c.add]/[c.ebreak] (both profiles) close the CR-format
+     register-register cluster of the same row: unlike the CA-format class above, these range
+     over the full 0..31 GPR space with no compressed-subset restriction, reusing the plain
+     [gpr]/[gpr ~excluded:["x0"]] domains directly. [c.jr]/[c.jalr]'s register operand
+     genuinely excludes x0 (the rd_rs1=0 encoding is reserved/collides with a different real
+     form); [c.mv]/[c.add]'s rd does not - real GNU as accepts rd=x0 there as a documented
+     HINT, confirmed against real riscv64-linux-gnu-as (`c.jr ra`->`8082`, `c.mv
+     zero,a1`->`802e`, `c.add zero,a1`->`902e`, `c.ebreak`->`9002`). All five are present on
+     both RV32 and RV64, moving 5 records per profile from blocked to promoted-support.
+
+     [c.lw]/[c.sw]/[c.lwsp]/[c.swsp] (both profiles) and RV64-only [c.ld]/[c.sd]/[c.ldsp]/
+     [c.sdsp] close the row's CL/CS/CI/CSS-format load/store cluster: [c.lw]/[c.sw] reuse
+     Riscv_gpr_c like the CA-format class, [c.lwsp]/[c.swsp]'s base is fixed to x2/sp (a
+     Syn_literal, not an operand - the CI/CSS encodings have no rs1 field at all). [c.lw]'s
+     offset scatters its 5 raw bits as [inst5|hi3|inst6] (a genuine word-offset swap,
+     confirmed against real riscv64-linux-gnu-as/riscv32-linux-gnu-as: `c.lw
+     s0,68(s1)`->`40e0`); [c.ld]'s instead concatenate straight (no swap - doubleword
+     alignment leaves nothing to reorder). [c.lwsp]/[c.ldsp]'s rd excludes x0 like
+     [c.jr]/[c.jalr]'s operand (confirmed rejected); [c.swsp]/[c.sdsp]'s rs2 does not
+     (confirmed `c.swsp zero,68(sp)`->`c282` assembles - a store never writes back). RV32's
+     riscv-opcodes export also carries a same-named but genuinely different [c.ld]/[c.sd]/
+     [c.ldsp]/[c.sdsp] under rv32_zclsd (Zclsd's even-register-pair load/store, a $pseudo_op
+     of [c.flw]/[c.fsw]/[c.flwsp]/[c.fswsp] with narrower `_e`-suffixed register fields, not
+     the plain rv64_c fields this cluster models) - Isa_norm_riscv.require_extension pins
+     these four forms to rv64_c specifically so the shadowing rv32_zclsd records are left
+     blocked, not silently misencoded under the wrong register-class model. Moves 4 records
+     per profile from blocked to promoted-support on RV32, 8 on RV64 (the doubleword four are
+     RV64-only).
+
+     GEN-05-RV-C follow-up 4 then admitted c.beqz/c.bnez (CB-format, quadrant 1, both
+     profiles): the compressed sibling of beq's own B-type branch, rs1 restricted to the RVC
+     compressed subset (x8..x15) and a signed 9-bit PC-relative offset instead of B-type's
+     13-bit one - the project's first compressed (2-byte container) PC-relative fixup
+     (Branch9c/cb_slices), reusing the generic slice-patching machinery B's own Branch13
+     fixup already exercises rather than adding anything container-width-specific. No shadow
+     record under either profile's export (checked directly, the same way the rv32_zclsd
+     scare above was caught). Moves 2 records per profile from blocked to promoted-support. *)
+  (* RISC-V is complete: every record is promoted or oracle-unavailable with a recorded
+     probe (Isa_oracle_unavailable). *)
+  expect ~oracle_unavailable:32 ~source:"riscv_opcodes" Target.Riscv32 ~total:1089
+    ~normalized_only:0 ~gas_generatable:0 ~promoted_support:1057 ~blocked:0;
+  expect ~oracle_unavailable:14 ~source:"riscv_opcodes" Target.Riscv64 ~total:1154
+    ~normalized_only:0 ~gas_generatable:0 ~promoted_support:1140 ~blocked:0;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:6 ~gas_generatable:5
     ~promoted_support:1022 ~blocked:6854;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
@@ -1006,9 +1115,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 3573)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 4281)"
        !roundtrip_count)
-    (!roundtrip_count = 3573)
+    (!roundtrip_count = 4281)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's
@@ -1095,6 +1204,7 @@ let () =
   test_derived_invariants root;
   test_isa_db_cross_validate repo;
   test_isa_norm_accounting repo;
+  test_isa_riscv_table repo;
   test_isa_family_admission repo;
   test_isa_residual_ledger repo;
   test_isa_norm_jsonl_roundtrip repo;

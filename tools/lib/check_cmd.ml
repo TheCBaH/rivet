@@ -208,9 +208,12 @@ let isa_difficult_check repo =
     fatal ~path:corpus_path Tool_error.Read_file
       (Printf.sprintf "no corpus at %s - run --regen first" (Fpath.to_string corpus_path))
   else
-    match Isa_generated_corpus.load corpus_path with
+    match
+      Result.bind (Isa_generated_corpus.load corpus_path) (fun records ->
+          Result.map (fun entries -> (records, entries)) (Isa_gen_difficult.entries repo))
+    with
     | Error e -> Command.of_error e
-    | Ok records ->
+    | Ok (records, entries) ->
         let expected_ids = ref [] in
         let per_entry =
           List.map
@@ -275,7 +278,7 @@ let isa_difficult_check repo =
                                          (Isa_generated_case.verdict_description
                                             r.Isa_generated_corpus.verdict));
                                   ]))))
-            Isa_gen_difficult.all
+            entries
         in
         let negatives =
           List.map

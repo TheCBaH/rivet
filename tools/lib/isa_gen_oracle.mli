@@ -72,3 +72,15 @@ val run :
     resolved via {!Gnu_tools.version_line}, never assumed from a prior
     measurement (RV32/RV64 GAS version skew) - it is what gets persisted as
     this pilot's checked-in corpus. *)
+
+val reuse :
+  Isa_generated_case.case ->
+  Isa_norm_model.encoding ->
+  Isa_generated_case.artifact ->
+  ((outcome * Isa_generated_case.artifact) option, Tool_error.t) Err.t
+(** [reuse case encoding artifact] is [Some] of what {!run} would return when
+    [artifact] was recorded by this target's installed [as] (same tool label)
+    with [case]'s argv, recomputing the outcome from the recorded bytes and
+    diagnostic without running any tool; [None] when it must be re-run. The
+    caller is responsible for [artifact] having been recorded for an equal
+    [case]. *)
