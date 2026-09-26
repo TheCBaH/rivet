@@ -159,7 +159,7 @@ module Make (P : PROFILE) = struct
             { state with option_stack = (state.pic, state.relax, state.rvc) :: state.option_stack }
       | "pop" -> (
           match state.option_stack with
-          | (pic, relax, rvc) :: rest -> handled { pic; relax; rvc; option_stack = rest }
+          | (pic, relax, rvc) :: rest -> handled { state with pic; relax; rvc; option_stack = rest }
           | [] -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ `Option_stack_underflow))
       | "pic" -> handled { state with pic = true }
       | "nopic" -> handled { state with pic = false }

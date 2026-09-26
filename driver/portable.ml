@@ -87,8 +87,8 @@ let dump target ~which ~unit_name ~text =
         match which with
         | `Tokens -> D.dump_tokens ~source
         | `Source_ast -> D.dump_source_ast ~unit_name ~source
-        | `Normalized_ast -> D.dump_normalized_ast ~unit_name ~source
-        | `Lowered_ast -> D.dump_lowered_ast ~unit_name ~source
+        | `Normalized_ast -> D.dump_normalized_ast ~unit_name ~source ()
+        | `Lowered_ast -> D.dump_lowered_ast ~unit_name ~source ()
       in
       of_stage r)
 

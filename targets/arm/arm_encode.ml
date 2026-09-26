@@ -1284,11 +1284,17 @@ let fixup_role = function
   | Pcrel_b26 -> Asm_core.Lowered_ast.Branch
   | Pcrel_call -> Asm_core.Lowered_ast.Call
 
-type feature = No_features
 type target_state = { syntax : string; arch : string; fpu : string; thumb : bool }
 
 let default_state = { syntax = "divided"; arch = ""; fpu = ""; thumb = false }
-let default_features = []
+
+(* No separable components: this target's whole instruction set is the always-available base, so
+   there is nothing to enable or disable and every configuration is the empty one. *)
+let components : Target_component.t list = []
+let default_config = Target_config.default components
+let initial_state (_ : Target_config.t) = default_state
+let state_config (_ : target_state) = default_config
+let required_feature (_ : Instruction.t) : string option = None
 
 (* {1 The modified-immediate relation (§ M1.3)}
 
@@ -2401,6 +2407,7 @@ let error_kind_code : error_kind -> string = function
       "arm.fixup"
   | `No_data_relocation _ -> "arm.data-fixup"
   | `Padding_not_word_multiple -> "arm.nop"
+  | `Feature_disabled _ -> "arm.feature"
 
 let pp_error ppf e = pp_error_kind ppf (Target_error.kind e)
 let error_code e = error_kind_code (Target_error.kind e)
@@ -2419,8 +2426,7 @@ let make_surface_instruction ~mnemonic ~origin ops = Ok { Surface.mnemonic; ops;
 
 (* {1 Simplify} *)
 
-let simplify_instruction ~features s =
-  ignore features;
+let simplify_instruction (_ : target_state) s =
   let bad kind = Error (diag ~pos:__POS__ ~origin:s.Surface.origin kind) in
   let m = s.Surface.mnemonic in
   match Opcode.of_mnemonic m with
@@ -3013,6 +3019,8 @@ let encode l =
      a special case waiting to be forgotten. *)
   | Error (e : C.error) -> Error (diag ~pos:__POS__ (`Codec e))
   | Ok enc -> Ok (`Fixed (form_of l enc))
+
+let encode_in (_ : target_state) l = encode l
 
 type decode_context = { state : target_state; address : int64 }
 

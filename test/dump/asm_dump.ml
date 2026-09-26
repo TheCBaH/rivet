@@ -34,9 +34,9 @@ let run (name, text) =
   banner (name ^ " source ast");
   print_endline (ok (D.dump_source_ast ~unit_name ~source));
   banner (name ^ " normalized ast");
-  print_endline (ok (D.dump_normalized_ast ~unit_name ~source));
+  print_endline (ok (D.dump_normalized_ast ~unit_name ~source ()));
   banner (name ^ " lowered ast");
-  print_endline (ok (D.dump_lowered_ast ~unit_name ~source));
+  print_endline (ok (D.dump_lowered_ast ~unit_name ~source ()));
   let laid_out = ok (D.assemble ~unit_name ~source ()) in
   let plan = Image.plan_of laid_out in
   banner (name ^ " plan");

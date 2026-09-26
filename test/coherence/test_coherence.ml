@@ -121,7 +121,7 @@ let from_text () =
   match P.parse ~unit_name:"asm_test_entry" ~source with
   | Error ds -> failwith (Foundation.Diag.render ds)
   | Ok src -> (
-      match P.simplify src with
+      match P.simplify ~state:T.default_state src with
       | Error ds -> failwith (Foundation.Diag.render ds)
       | Ok (n, state) -> (n, state))
 

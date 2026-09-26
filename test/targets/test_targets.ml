@@ -155,7 +155,7 @@ target:
 addi x0, x0, 0
 |}
   in
-  (match D.dump_lowered_ast ~unit_name:"state" ~source:(source text) with
+  (match D.dump_lowered_ast ~unit_name:"state" ~source:(source text) () with
   | Ok dump -> print_string dump
   | Error ds ->
       List.iter
@@ -638,7 +638,7 @@ let%expect_test "binding-directive transitions match the measured GNU as table" 
   let (module D : Target_intf.Target.DRIVER) = driver "x86_64" in
   let show first second =
     let text = Printf.sprintf ".%s x\n.%s x\n" first second in
-    match D.dump_lowered_ast ~unit_name:"t" ~source:(source text) with
+    match D.dump_lowered_ast ~unit_name:"t" ~source:(source text) () with
     | Ok dump ->
         let symbol_line =
           List.find (fun l -> l <> "" && l <> "lowered t") (String.split_on_char '\n' dump)
@@ -811,7 +811,7 @@ let normalized target text =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Foundation.Span.source ~name:"<test>" ~contents:text in
-  match D.dump_normalized_ast ~unit_name:"t" ~source with
+  match D.dump_normalized_ast ~unit_name:"t" ~source () with
   | Ok s -> print_endline (String.trim s)
   | Error ds ->
       List.iter
@@ -857,7 +857,7 @@ let dump_norm target text =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Foundation.Span.source ~name:"<test>" ~contents:text in
-  match D.dump_normalized_ast ~unit_name:"t" ~source with
+  match D.dump_normalized_ast ~unit_name:"t" ~source () with
   | Ok s -> print_string s
   | Error ds ->
       List.iter
@@ -2840,7 +2840,7 @@ let%expect_test "riscv64: %pcrel_hi/%pcrel_lo resolve a symbol named like a regi
    pins srl/sra(w) alongside it. *)
 let show_lowered target text =
   let (module D : Target_intf.Target.DRIVER) = driver target in
-  match D.dump_lowered_ast ~unit_name:"t" ~source:(source text) with
+  match D.dump_lowered_ast ~unit_name:"t" ~source:(source text) () with
   | Ok dump -> print_string dump
   | Error ds ->
       List.iter

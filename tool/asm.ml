@@ -19,6 +19,10 @@ let usage =
       "";
       "  --target <t>            one of: " ^ String.concat ", " Driver.Registry.names;
       "  --fixed-base <addr>     bind the image at this address (hex with 0x, or decimal)";
+      "  --features <spec>       enable/disable optional components: none, +name, -name, \
+       comma-separated, applied left to right (default: all implemented)";
+      "  --inspect-disabled      with --dump-disasm=diagnostic: decode disabled components too, \
+       and mark them";
       "  --err_trace <spec>      off | boundaries | all; error provenance to stderr";
       "";
       "  --dump-tokens           the lexer";
@@ -30,6 +34,7 @@ let usage =
       "  --dump-disasm=diagnostic address, bytes, spelling and form id";
       "  --dump-bytes            assembled section bytes, in the project's committed hex-dump \
        format";
+      "  --dump-features         the effective feature configuration and the target's components";
       "  --dump-codec            the target's encoding tree";
       "  --check-codec           what Codec.check says about it";
       "";
@@ -41,6 +46,8 @@ type options = {
   mutable base : int64 option;
   mutable dumps : string list;
   mutable file : string option;
+  mutable features : Target_config.spec option;
+  mutable inspect : bool;
 }
 
 let die msg =
@@ -85,7 +92,9 @@ let () =
      callstack at every detection; asm/docs/errors.md §3 explains why that must
      be off here, and why the policy is not simply Err.Config.fast. *)
   Foundation.Err_policy.apply ();
-  let o = { target = None; base = None; dumps = []; file = None } in
+  let o =
+    { target = None; base = None; dumps = []; file = None; features = None; inspect = false }
+  in
   let args = Array.to_list Sys.argv in
   let rec go = function
     | [] -> ()
@@ -97,6 +106,14 @@ let () =
         go rest
     | "--fixed-base" :: b :: rest ->
         o.base <- Some (parse_base b);
+        go rest
+    | "--features" :: spec :: rest ->
+        (match Target_config.parse_spec spec with
+        | Ok s -> o.features <- Some s
+        | Error m -> die ("invalid --features " ^ spec ^ ": " ^ m));
+        go rest
+    | "--inspect-disabled" :: rest ->
+        o.inspect <- true;
         go rest
     (* Error tracing, off unless asked for. The monitor writes to stderr and
        never to stdout: asm/docs/errors.md §3 keeps Err provenance out of
@@ -151,7 +168,8 @@ let () =
      phase trail, and asm/docs/errors.md §3 keeps both out of what a cram
      baseline compares; the tracing switch is how they are asked for. *)
   let ok = function Ok v -> v | Error e -> report (Foundation.Diag.diagnostics e) in
-  let laid_out = lazy (ok (D.assemble ~unit_name ~source ())) in
+  let features = o.features in
+  let laid_out = lazy (ok (D.assemble ?features ~unit_name ~source ())) in
   (* Binding is the *host's* step (§9), so the CLI is the host here: it chooses
      the address, and the assembler only says what constraints it must satisfy.
      With no --fixed-base there is no bound image and only the plan exists. *)
@@ -184,18 +202,35 @@ let () =
       match d with
       | "dump-tokens" -> print_string (ok (D.dump_tokens ~source))
       | "dump-source-ast" -> print_endline (ok (D.dump_source_ast ~unit_name ~source))
-      | "dump-normalized-ast" -> print_endline (ok (D.dump_normalized_ast ~unit_name ~source))
-      | "dump-lowered-ast" -> print_endline (ok (D.dump_lowered_ast ~unit_name ~source))
+      | "dump-normalized-ast" ->
+          print_endline (ok (D.dump_normalized_ast ?features ~unit_name ~source ()))
+      | "dump-lowered-ast" ->
+          print_endline (ok (D.dump_lowered_ast ?features ~unit_name ~source ()))
       | "dump-image" -> print_endline (text_of_image ())
       | "dump-disasm=canonical" ->
           let bytes, address = bytes_and_base () in
-          print_string (ok (D.dump_disasm_canonical ~address bytes))
+          print_string (ok (D.dump_disasm_canonical ?features ~address bytes))
       | "dump-disasm=diagnostic" ->
           let bytes, address = bytes_and_base () in
-          print_string (ok (D.dump_disasm_diagnostic ~address bytes))
+          print_string (ok (D.dump_disasm_diagnostic ?features ~inspect:o.inspect ~address bytes))
       | "dump-bytes" ->
           let bytes, (_ : int64) = bytes_and_base () in
           print_string (hex_dump_of_bytes bytes)
+      | "dump-features" -> (
+          match D.configure (Option.value features ~default:Target_config.default_spec) with
+          | Error m -> die ("invalid --features: " ^ m)
+          | Ok config ->
+              Printf.printf "target: %s\n" D.name;
+              Printf.printf "enabled: %s\n"
+                (match Target_config.features config with
+                | [] -> "(none)"
+                | fs -> String.concat "," fs);
+              List.iter
+                (fun (c : Target_component.t) ->
+                  Printf.printf "component %s feature=%s%s: %s\n" c.id c.feature
+                    (if c.requires = [] then "" else " requires=" ^ String.concat "," c.requires)
+                    c.summary)
+                D.components)
       | "dump-codec" -> print_string (D.dump_codec ())
       | "check-codec" ->
           let ps = D.check_codec () in

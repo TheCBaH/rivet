@@ -107,12 +107,31 @@ module type ENCODE = sig
         positions are the same instruction. *)
   end
 
-  type feature
   type fixup_kind
   type target_state
 
   val default_state : target_state
-  val default_features : feature list
+  (** the state of an unconfigured assembly: every component the target implements enabled, and
+      every option at its default *)
+
+  (* {1 Configuration}
+
+     A target's optional instruction components (RISC-V M, x86 x87, ...) are published as data and
+     gated by feature name. The validated {!Target_config.t} lives inside {!target_state}, so it
+     reaches every stage that already takes the state, and each unit assembled by
+     [assemble_many] starts from its own initial state. *)
+
+  val components : Target_component.t list
+  (** the separable components this target has; empty for one whose whole instruction set is the
+      always-available base *)
+
+  val initial_state : Target_config.t -> target_state
+  (** [default_state] under a validated configuration *)
+
+  val state_config : target_state -> Target_config.t
+
+  val required_feature : Instruction.t -> string option
+  (** the feature gating [i]'s component, or [None] for a base instruction *)
 
   val make_surface_instruction :
     mnemonic:string -> origin:Origin.t -> Operand.t list -> (Surface.t, error) Err.t
@@ -122,12 +141,14 @@ module type ENCODE = sig
      Three functions, three ASTs (§4.2-§4.4). Each is total on its input type
      and pure: same inputs, same output, no state outside [target_state]. *)
 
-  val simplify_instruction : features:feature list -> Surface.t -> (Instruction.t, error) Err.t
+  val simplify_instruction : target_state -> Surface.t -> (Instruction.t, error) Err.t
   (** surface -> normalized: alias resolution, operand-order canonicalization, and the checks that
-      need only the instruction itself *)
+      need only the instruction itself - including that the form's component is enabled *)
 
   val lower_instruction : target_state -> Instruction.t -> (Lowered.t list, error) Err.t
-  (** normalized -> lowered: pseudo expansion, one to many. The list is ordered. *)
+  (** normalized -> lowered: pseudo expansion, one to many. The list is ordered. A disabled
+      component's instruction is refused here too, so a producer that builds normalized
+      instructions directly cannot bypass {!simplify_instruction}. *)
 
   (* {1 Encoding}
 
@@ -159,13 +180,28 @@ module type ENCODE = sig
       resolved displacement that fits the short form also fits the long one, so "several rungs
       succeeded" cannot distinguish them. *)
 
+  val encode_in :
+    target_state ->
+    Lowered.t ->
+    ( [ `Fixed of fixup_kind Asm_core.Lowered_ast.encoded_form
+      | `Relax of fixup_kind Asm_core.Lowered_ast.encoded_form list ],
+      error )
+    Err.t
+  (** {!encode} under a configuration: a lowered form belonging to a disabled component is
+      refused, so a caller that builds lowered instructions directly cannot emit one. [encode] is
+      this under {!default_state}. *)
+
   type decode_context = { state : target_state; address : int64 }
   (** decoding needs more than the bytes: on ARM the same word is a different instruction depending
       on the mode, and a PC-relative operand cannot be printed without the address *)
 
   val decode : decode_context -> string -> pos:int -> (Instruction.t * string * int, error) Err.t
   (** [(instruction, form_id, bytes_consumed)]. The form id is the codec's alternative path, so a
-      round-trip test can assert not just "the same instruction" but "the same encoding decision". *)
+      round-trip test can assert not just "the same instruction" but "the same encoding decision".
+
+      Strict: a word that is a disabled component's instruction is an error, so a decode never
+      presents as assemblable something the configuration would refuse. To inspect such bytes
+      anyway, decode under an all-enabled state and ask {!required_feature}. *)
 
   (* {1 Linking and padding} *)
 
