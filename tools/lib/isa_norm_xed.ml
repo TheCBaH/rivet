@@ -3473,7 +3473,7 @@ let vpinsrw_rr_mem_form ~form_id ~mnemonic (rec_ : R.t) =
            (List.length operands))
   | _ -> err (form_id ^ "-not-x86-encoding") "record's encoding is not XED x86_encoding"
 
-let normalize (rec_ : R.t) =
+let normalize_hand_written (rec_ : R.t) =
   match xed_provenance_of rec_ with
   | Ok { iform = Some "ADD_GPRv_IMMz"; _ } -> add_gprv_immz_form rec_
   | Ok { iform = Some "FADD_ST0_X87"; _ } -> fadd_st0_x87_form rec_
@@ -6033,3 +6033,26 @@ let normalize (rec_ : R.t) =
            other)
   | Ok { iform = None; _ } -> err "missing-iform" "XED record has no provenance.iform"
   | Error msg -> err "not-a-xed-record" msg
+
+(* Records no hand-written rule claims may be generated table rows
+   (DEC-X86-TABLE); see Isa_x86_table. *)
+(* The records a hand-written rule leaves to the generated table: those no rule claims, and the
+   embedded-rounding variants of hand-written EVEX forms. *)
+let table_owned = function
+  | Error { rule = "unhandled-iform"; _ } -> true
+  | Error { rule; _ } ->
+      let suffix = "-embedded-rounding" in
+      let n = String.length rule and k = String.length suffix in
+      n >= k && String.sub rule (n - k) k = suffix
+  | Ok _ -> false
+
+let normalize (rec_ : R.t) =
+  match normalize_hand_written rec_ with
+  | unhandled when table_owned unhandled -> (
+      match Isa_x86_table.spec_of_record rec_ with
+      | Some spec -> Ok (Isa_x86_table.form ~requirement:(requirement_of rec_) rec_ spec)
+      | None -> (
+          match Isa_x86_table.branch_form ~requirement:(requirement_of rec_) rec_ with
+          | Some form -> Ok form
+          | None -> unhandled))
+  | result -> result

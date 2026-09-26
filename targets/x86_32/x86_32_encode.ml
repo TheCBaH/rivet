@@ -47,6 +47,7 @@ module Mode = struct
        evidence, parse-level only, asm/docs/corpus.md): it exists purely as a
        class marker distinct from 8/16/32/64/128, the same convention
        [names_xmm]'s width 128 already established. *)
+    @ X86_family_encode.Reg.mm_and_k
     @ [ { X86_family_encode.Reg.name = "st"; num = 0; width = 80 } ]
 
   (* Measured against i686-linux-gnu-as, and *not* the 64-bit table: 32-bit GAS

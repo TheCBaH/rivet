@@ -73,10 +73,10 @@ CompCert's runtime library, per target.
   > done
   x86_32   i64_dtos     assembles
   x86_32   i64_dtou      error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
-  x86_32   i64_sar       error[x86.simplify]: 8-bit operands are not in M1 scope
+  x86_32   i64_sar      assembles
   x86_32   i64_sdiv     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
-  x86_32   i64_shl       error[x86.simplify]: 8-bit operands are not in M1 scope
-  x86_32   i64_shr       error[x86.simplify]: 8-bit operands are not in M1 scope
+  x86_32   i64_shl      assembles
+  x86_32   i64_shr      assembles
   x86_32   i64_smod     <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
   x86_32   i64_smulh    assembles
   x86_32   i64_stod     assembles
@@ -91,7 +91,7 @@ CompCert's runtime library, per target.
   x86_64   i64_dtou      error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
   x86_64   i64_utod     assembles
   x86_64   i64_utof     assembles
-  x86_64   vararg        error[x86.simplify]: 8-bit operands are not in M1 scope
+  x86_64   vararg       assembles
   arm      i64_dtos     assembles
   arm      i64_dtou     assembles
   arm      i64_sar      assembles
@@ -117,10 +117,9 @@ what M2 moves, and prose cannot regress.
   $ { for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
   >     for d in $corpus/$t/*/; do verdict $t $d/input.s; done
   >   done; } | sed 's/line [0-9]* col [0-9]*: //' | sort | uniq -c | sort -rn
-       33 assembles
+       37 assembles
         4 <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
         4 <synthesized by arm.encode>: error[image.undefined]: fixup target references undefined symbol __compcert_i64_udivmod
-        4  error[x86.simplify]: 8-bit operands are not in M1 scope
         4  error[simplify.directive]: .p2align takes a power-of-two exponent and is not in M2 scope; use .balign
         3  error[lex]: unexpected character '\194'
         1  error[lex]: unexpected character '<'

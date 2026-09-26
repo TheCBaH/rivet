@@ -297,11 +297,11 @@ let write path records =
         Ok (line :: acc))
       (Ok []) sorted
   in
-  Tool_fs.write path (String.concat "\n" (List.rev lines) ^ "\n")
+  Tool_fs.write_lines path (List.rev lines)
 
 let load path =
-  let* text = Tool_fs.read path in
-  let lines = String.split_on_char '\n' text |> List.filter (fun l -> String.trim l <> "") in
+  let* lines = Tool_fs.read_lines path in
+  let lines = List.filter (fun l -> String.trim l <> "") lines in
   let* records =
     List.fold_left
       (fun acc line ->
@@ -311,8 +311,15 @@ let load path =
       (Ok []) lines
   in
   let records = List.rev records in
-  let ids = List.map (fun (r : record) -> r.case.case_id) records in
-  match List.find_opt (fun id -> List.length (List.filter (String.equal id) ids) > 1) ids with
+  let seen = Hashtbl.create 4096 in
+  let dup_of (r : record) =
+    let id = r.case.case_id in
+    if Hashtbl.mem seen id then Some id
+    else (
+      Hashtbl.add seen id ();
+      None)
+  in
+  match List.find_map dup_of records with
   | Some dup -> fail (Printf.sprintf "duplicate case_id %S in %s" dup (Fpath.to_string path))
   | None -> Ok records
 

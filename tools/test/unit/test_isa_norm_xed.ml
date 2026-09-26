@@ -175,9 +175,10 @@ let test_mode64_requirement () =
 
 let test_unhandled_iform () =
   let json =
-    {|{"encoding":{"kind":"x86_encoding","opcode":"0x00","opcode_map":0,"operands":[],"pattern":"","space":"legacy"},"kind":"instruction-form","native_name":"NOP","origin":{"path":"obj/dgen/all-dec-instructions.txt"},"provenance":{"category":"WIDENOP","extension":"BASE","iform":"NOP","isa_set":"I86","mode_restriction":"unspecified"},"record_id":"xed:i86:NOP:0","snapshot":"xed@0bcb6237345c5066726dcc08b3d87928df3b5b26","source":"xed","unresolved":[]}|}
+    {|{"encoding":{"kind":"x86_encoding","opcode":"0x00","opcode_map":0,"operands":[],"pattern":"0x00 FROB()","space":"legacy"},"kind":"instruction-form","native_name":"FROB","origin":{"path":"obj/dgen/all-dec-instructions.txt"},"provenance":{"category":"WIDENOP","extension":"BASE","iform":"FROB","isa_set":"I86","mode_restriction":"unspecified"},"record_id":"xed:i86:FROB:0","snapshot":"xed@0bcb6237345c5066726dcc08b3d87928df3b5b26","source":"xed","unresolved":[]}|}
   in
-  let rec_ = decode_or_fail "NOP" json in
+  (* synthetic: a pattern token no rule understands *)
+  let rec_ = decode_or_fail "FROB" json in
   match Isa_norm_xed.normalize rec_ with
   | Error { rule = "unhandled-iform"; _ } -> check "unhandled iform reports, not fabricates" true
   | _ -> check "unhandled iform reports, not fabricates" false

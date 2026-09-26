@@ -7001,4 +7001,387 @@ let table_entries repo =
   let* rv64 = per_target Target.Riscv64 in
   Ok (rv32 @ rv64)
 
-let entries repo = Result.map (fun table -> all @ table) (table_entries repo)
+(* INF-05X/INF-03: generated cases per x86 table row (DEC-X86-TABLE) and mode:
+   low registers with a base+disp8 address in both modes, and on x86-64 a
+   high-register variant (xmm8-15, r8-r15, an r9/r10 base+index) that needs
+   the REX/VEX extension bits; immediates at 0 and 255. *)
+let x86_table_entries_of ?(alt = false) ?prefix target (spec : Isa_x86_table.spec) =
+  let canonical = Isa_x86_table.canonical spec in
+  let reg_name (cls : Isa_x86_table.rclass) num =
+    let low8 = [| "ax"; "cx"; "dx"; "bx"; "sp"; "bp"; "si"; "di" |] in
+    match cls with
+    | Xmm -> Printf.sprintf "xmm%d" num
+    | Ymm -> Printf.sprintf "ymm%d" num
+    | Zmm -> Printf.sprintf "zmm%d" num
+    (* eight of each, so no high variant *)
+    | Mmx -> Printf.sprintf "mm%d" (num land 7)
+    | Tmm -> Printf.sprintf "tmm%d" (num land 7)
+    (* cr0, cr2-cr4 and cr8 exist; dr0-dr3, dr6, dr7 *)
+    | Cr ->
+        Printf.sprintf "cr%d" (if num >= 8 then 8 else [| 0; 2; 3; 4; 0; 2; 3; 4 |].(num land 7))
+    | Dr ->
+        Printf.sprintf "dr%d" (if num >= 8 then 7 else [| 0; 1; 2; 3; 6; 7; 0; 1 |].(num land 7))
+    (* never st(0) beside the implied %st: GNU would take the other direction's form *)
+    | St -> Printf.sprintf "st(%d)" (if num land 7 = 0 then 7 else num land 7)
+    | Kmask -> Printf.sprintf "k%d" (num land 7)
+    | Gpr32 | Gprv -> if num < 8 then "e" ^ low8.(num) else Printf.sprintf "r%dd" num
+    | Gpr64 -> if num < 8 then "r" ^ low8.(num) else Printf.sprintf "r%d" num
+    | Gpr16 -> if num < 8 then low8.(num) else Printf.sprintf "r%dw" num
+    | Gpr8 -> if num < 4 then String.make 1 low8.(num).[0] ^ "l" else Printf.sprintf "r%db" num
+  in
+  let stack = match target with Target.X86_32 -> "esp" | _ -> "rsp" in
+  let entry ?(masked = false) ?(egpr = false) ?(bcst = false) (row : Isa_x86_table.spec) variant
+      ~high =
+    let n = List.length row.operands in
+    let is4 =
+      List.exists
+        (function Isa_x86_table.Reg { field = Is4; _ } -> true | _ -> false)
+        row.operands
+    in
+    let operands =
+      List.concat
+        (List.mapi
+           (fun i (o : Isa_x86_table.operand) ->
+             (* registers count down to the destination, skipping ax/sp (special encodings) *)
+             let num =
+               let k = n - 1 - i in
+               if high then 8 + k else [| 1; 2; 3; 6; 7; 5 |].(min k 5)
+             in
+             (* an EVEX row's high variant takes 24-31, setting both extension bits *)
+             let evex_high = high && row.space = `Evex in
+             match o with
+             | Reg { cls = (Xmm | Ymm | Zmm) as cls; field = Modrm_reg | Modrm_rm | Vvvv }
+               when evex_high ->
+                 [ (Isa_x86_table.operand_name i, reg_name cls (24 + n - 1 - i)) ]
+             | Reg { cls = (Xmm | Ymm) as cls; _ } ->
+                 [
+                   ( Isa_x86_table.operand_name i,
+                     reg_name cls (if high then 8 + n - 1 - i else n - 1 - i) );
+                 ]
+             (* APX's r16-r31 *)
+             | Reg { cls = (Gpr8 | Gpr16 | Gpr32 | Gpr64) as cls; _ } when egpr ->
+                 [ (Isa_x86_table.operand_name i, reg_name cls (16 + n - 1 - i)) ]
+             | Reg { cls; _ } -> [ (Isa_x86_table.operand_name i, reg_name cls num) ]
+             | Mem _ when egpr -> [ (Isa_x86_table.operand_name i, "16(%r25,%r26,4)") ]
+             (* a broadcast states the width, so GNU spells vfpclass without its x/y/z *)
+             | Mem _ when bcst ->
+                 [ (Isa_x86_table.operand_name i, Printf.sprintf "16(%%%s){1to%d}" stack row.bcst) ]
+             | Mem _ ->
+                 [
+                   ( Isa_x86_table.operand_name i,
+                     if high then "16(%r9,%r10,4)" else Printf.sprintf "16(%%%s)" stack );
+                 ]
+             (* a wide immediate needs a value no shorter form holds: GNU as picks imm8 whenever
+                the value fits *)
+             | Imm { bytes } ->
+                 let v =
+                   match (bytes, high) with
+                   | 1, false -> "0"
+                   | 1, true -> if is4 then "15" else "127"
+                   | 2, false -> "300"
+                   | 2, true -> "30000"
+                   | _, false -> "300"
+                   | _, true -> "1000000"
+                 in
+                 [ (Isa_x86_table.operand_name i, v) ]
+             | Fixed_reg name -> [ (Isa_x86_table.operand_name i, name) ]
+             (* the index apart from every register operand: GNU as rejects a gather whose mask,
+                index and destination coincide *)
+             | Vsib { cls } ->
+                 [
+                   ( Isa_x86_table.operand_name i,
+                     if high then
+                       Printf.sprintf "16(%%r9,%%%s,4)"
+                         (reg_name cls (if row.space = `Evex then 29 else 13))
+                     else Printf.sprintf "16(%%%s,%%%s,4)" stack (reg_name cls 5) );
+                 ]
+             | One -> [ (Isa_x86_table.operand_name i, "1") ]
+             (* spelled with the mnemonic, below *)
+             | Dfv -> []
+             | Rounding { sae_only } ->
+                 [
+                   ( Isa_x86_table.operand_name i,
+                     if sae_only then "{sae}" else if high then "{rz-sae}" else "{rn-sae}" );
+                 ])
+           row.operands)
+    in
+    (* an opmask on the destination: required by a gather or scatter, else a variant of its
+       own; {z} where the form allows zeroing *)
+    let operands =
+      if masked || row.mask = 3 then
+        let dest = Isa_x86_table.operand_name (n - 1) in
+        List.map
+          (fun (k, v) ->
+            if k = dest then (k, v ^ "{%k1}" ^ if masked && row.mask = 1 then "{z}" else "")
+            else (k, v))
+          operands
+      else operands
+    in
+    let operands =
+      if
+        bcst
+        && String.length row.mnemonic > 8
+        && String.sub row.mnemonic 0 8 = "vfpclass"
+        && List.mem row.mnemonic.[String.length row.mnemonic - 1] [ 'x'; 'y'; 'z' ]
+      then
+        (Isa_gen_render.mnemonic_key, String.sub row.mnemonic 0 (String.length row.mnemonic - 1))
+        :: operands
+      else operands
+    in
+    let operands =
+      match prefix with
+      (* a twin GNU as reaches only with a pseudo-prefix *)
+      | Some p ->
+          ( Isa_gen_render.mnemonic_key,
+            String.concat "" (List.map (fun w -> "{" ^ w ^ "} ") (String.split_on_char ' ' p))
+            ^ row.mnemonic
+            ^
+            if List.mem Isa_x86_table.Dfv row.operands then
+              if high then " {dfv=sf,zf}" else " {dfv=of,cf}"
+            else "" )
+          :: operands
+      (* CCMP/CTEST: the default flags follow the mnemonic with no comma *)
+      | None when List.mem Isa_x86_table.Dfv row.operands ->
+          ( Isa_gen_render.mnemonic_key,
+            row.mnemonic ^ if high then " {dfv=sf,zf}" else " {dfv=of,cf}" )
+          :: operands
+      | None ->
+          (* an APX promotion's spelling follows its legacy instruction, which the normalized
+             form (read from its record alone) cannot know *)
+          if row.mnemonic = canonical.mnemonic && (not alt) && not (row.space = `Evex && row.map = 4)
+          then operands
+          else (Isa_gen_render.mnemonic_key, row.mnemonic) :: operands
+    in
+    {
+      form_id = "x86:" ^ spec.iform;
+      target;
+      lookup_key = Isa_x86_table.spec_lookup_key spec;
+      case_id =
+        Printf.sprintf "x86:%s:table-%s%s%s:%s" spec.iform
+          (if alt then "alt-" else "")
+          (let k = Isa_x86_table.spec_lookup_key spec in
+           if k = spec.iform then ""
+           else
+             String.map
+               (fun c -> if c = '#' then '-' else c)
+               (String.sub k
+                  (String.length spec.iform + 1)
+                  (String.length k - String.length spec.iform - 1))
+             ^ "-")
+          variant (Target.to_string target);
+      rule_ids =
+        [ "table-row"; "table-" ^ variant; "feature:" ^ String.lowercase_ascii spec.isa_set ];
+      operands;
+      lines_before = [];
+      lines_after = [];
+      configuration = Isa_gen_case_build.configuration_for target;
+    }
+  in
+  let rows =
+    List.filter
+      (fun (r : Isa_x86_table.spec) ->
+        match target with Target.X86_64 -> r.mode <> 32 | _ -> r.mode <> 64)
+      (Isa_x86_table.expand spec)
+  in
+  let width_tag (r : Isa_x86_table.spec) =
+    if List.length rows = 1 then ""
+    else
+      (* the operand size: a register's width if there is one, else the memory operand's -
+         looking only where the unexpanded form is width-variable, if it says *)
+      let variable =
+        List.map
+          (function
+            | Isa_x86_table.Reg { cls = Gprv; _ } | Mem { bits = -1 } | Fixed_reg "?ax" -> true
+            | _ -> false)
+          spec.operands
+      in
+      let operands =
+        if List.length variable = List.length r.operands && List.mem true variable then
+          List.concat (List.map2 (fun v o -> if v then [ o ] else []) variable r.operands)
+        else r.operands
+      in
+      let reg_bits =
+        List.find_map
+          (function
+            | Isa_x86_table.Reg { cls = Gpr16; _ } -> Some 16
+            | Reg { cls = Gpr32; _ } -> Some 32
+            | Reg { cls = Gpr64; _ } -> Some 64
+            | Reg { cls = Gpr8; _ } | Fixed_reg "al" -> Some 8
+            | Fixed_reg "ax" -> Some 16
+            | Fixed_reg "eax" -> Some 32
+            | Fixed_reg "rax" -> Some 64
+            | _ -> None)
+          operands
+      in
+      let bits =
+        match reg_bits with
+        | Some _ -> reg_bits
+        | None ->
+            List.find_map
+              (function Isa_x86_table.Mem { bits } when bits > 0 -> Some bits | _ -> None)
+              operands
+      in
+      (* an immediate-only form (pushq $imm): its operand size from the row *)
+      let bits =
+        match bits with
+        | Some _ -> bits
+        | None -> Some (if r.osz then 16 else if r.mode = 64 then 64 else 32)
+      in
+      Printf.sprintf "-w%d" (Option.value bits ~default:0)
+  in
+  List.concat_map
+    (fun (r : Isa_x86_table.spec) ->
+      entry r ("regs-low" ^ width_tag r) ~high:false
+      ::
+      (match target with
+      | Target.X86_64 -> [ entry r ("regs-high" ^ width_tag r) ~high:true ]
+      | _ -> [])
+      @ (if r.mask = 1 || r.mask = 2 then
+           [ entry ~masked:true r ("mask-low" ^ width_tag r) ~high:false ]
+         else [])
+      @ (if r.bcst > 0 then [ entry ~bcst:true r ("bcst-low" ^ width_tag r) ~high:false ] else [])
+      @
+      (* APX's r16-r31: through REX2 in legacy maps 0 and 1, through EVEX *)
+      let gpr_reg =
+        List.exists
+          (function
+            | Isa_x86_table.Reg { cls = Gpr8 | Gpr16 | Gpr32 | Gpr64; _ } -> true | _ -> false)
+          r.operands
+      and mem = List.exists (function Isa_x86_table.Mem _ -> true | _ -> false) r.operands in
+      if
+        target = Target.X86_64
+        && ((r.space = `Legacy && r.map <= 1 && (not r.no_rex2) && (gpr_reg || mem))
+           || (r.space = `Evex && gpr_reg))
+      then [ entry ~egpr:true r ("regs-egpr" ^ width_tag r) ~high:true ]
+      else [])
+    rows
+
+let x86_table_entries repo =
+  let ( let* ) = Result.bind in
+  let per_target target =
+    let* specs = Isa_x86_table_emit.specs repo target in
+    let* all = Isa_x86_table_emit.all_specs repo target in
+    let specs =
+      List.filter
+        (fun (s : Isa_x86_table.spec) ->
+          Isa_oracle_unavailable.find ~source:"xed_resolved" target ~extension:s.isa_set = None
+          && Isa_oracle_unavailable.find_record ~source:"xed_resolved" target ~extension:s.isa_set
+               ~native_name:
+                 ( String.uppercase_ascii (String.concat "" [ s.iform ]) |> fun i ->
+                   match String.index_opt i '_' with Some k -> String.sub i 0 k | None -> i )
+             = None)
+        specs
+    in
+    let specs =
+      match target with
+      | Target.X86_32 ->
+          List.filter
+            (fun (s : Isa_x86_table.spec) -> s.mode <> 64 && not (s.w = 1 && s.space = `Legacy))
+            specs
+      | _ -> specs
+    in
+    let secondary = Isa_x86_table.twins all in
+    let reachable = Isa_x86_table.reachable_twins all in
+    let specs =
+      List.filter
+        (fun (s : Isa_x86_table.spec) ->
+          (not (Hashtbl.mem secondary s.record_id)) || Hashtbl.mem reachable s.record_id)
+        specs
+    in
+    (* one case per iform, plus one per further spelling of the same iform (XED lists rep movsw
+       with F2 too: GNU's repne movsw) *)
+    let unique =
+      List.fold_left
+        (fun acc (s : Isa_x86_table.spec) ->
+          if
+            List.exists
+              (fun ((t : Isa_x86_table.spec), _) ->
+                Isa_x86_table.spec_lookup_key t = Isa_x86_table.spec_lookup_key s
+                && t.mnemonic = s.mnemonic)
+              acc
+          then acc
+          else
+            ( s,
+              List.exists
+                (fun ((t : Isa_x86_table.spec), _) ->
+                  Isa_x86_table.spec_lookup_key t = Isa_x86_table.spec_lookup_key s)
+                acc )
+            :: acc)
+        [] specs
+    in
+    Ok
+      (List.concat_map
+         (fun ((s : Isa_x86_table.spec), alt) ->
+           let prefix =
+             match Hashtbl.find_opt reachable s.record_id with
+             | Some p -> Some p
+             | None -> if s.pseudo <> "" then Some s.pseudo else None
+           in
+           x86_table_entries_of ~alt ?prefix target s)
+         (List.rev unique))
+  in
+  let* x32 = per_target Target.X86_32 in
+  let* x64 = per_target Target.X86_64 in
+  Ok (x32 @ x64)
+
+(* Relative jcc/jmp/call: a label reached with rel8 (one filler byte either side) or only with
+   rel32 (200 filler bytes); call has only rel32. *)
+let x86_branch_entries repo =
+  let ( let* ) = Result.bind in
+  let per_target target =
+    let* records =
+      Isa_source_record.read_file (Repo.isa_db_export repo ~source:"xed_resolved" target)
+    in
+    let seen = Hashtbl.create 64 in
+    let directional = Isa_x86_table.directional_iforms records in
+    Ok
+      (List.concat_map
+         (fun (r : Isa_source_record.t) ->
+           match (Isa_x86_table.branch r, r.provenance) with
+           | Some (_, bits), Isa_source_record.Xed_provenance { iform = Some iform; isa_set; _ }
+             when (not (Hashtbl.mem seen iform))
+                  && Isa_oracle_unavailable.find_record ~source:"xed_resolved" target
+                       ~extension:(Option.value isa_set ~default:"")
+                       ~native_name:r.native_name
+                     = None ->
+               Hashtbl.replace seen iform ();
+               let entry variant ~label ~before ~after =
+                 {
+                   form_id = "x86:" ^ iform;
+                   target;
+                   (* the first record of an iform XED also lists with a decode-only opcode *)
+                   lookup_key = Isa_x86_table.lookup_key ~directional r;
+                   case_id =
+                     Printf.sprintf "x86:%s:branch-%s:%s" iform variant (Target.to_string target);
+                   rule_ids = [ "branch"; "branch-" ^ variant ];
+                   operands = [ ("target", label) ];
+                   lines_before = before;
+                   lines_after = after;
+                   configuration = Isa_gen_case_build.configuration_for target;
+                 }
+               in
+               if bits = 8 then
+                 [
+                   entry "rel8-forward" ~label:"1f" ~before:[] ~after:[ ".byte 0x90"; "1:" ];
+                   entry "rel8-backward" ~label:"1b" ~before:[ "1:"; ".byte 0x90" ] ~after:[];
+                 ]
+               else if r.native_name = "CALL_NEAR" then
+                 [ entry "rel32-forward" ~label:"1f" ~before:[] ~after:[ "1:" ] ]
+               else
+                 [
+                   entry "rel32-forward" ~label:"1f" ~before:[] ~after:[ ".zero 200"; "1:" ];
+                   entry "rel32-backward" ~label:"1b" ~before:[ "1:"; ".zero 200" ] ~after:[];
+                 ]
+           | _ -> [])
+         records)
+  in
+  let* x32 = per_target Target.X86_32 in
+  let* x64 = per_target Target.X86_64 in
+  Ok (x32 @ x64)
+
+let entries repo =
+  let ( let* ) = Result.bind in
+  let* table = table_entries repo in
+  let* x86 = x86_table_entries repo in
+  let* branches = x86_branch_entries repo in
+  Ok (all @ table @ x86 @ branches)

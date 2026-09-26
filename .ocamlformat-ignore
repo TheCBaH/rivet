@@ -1,1 +1,2 @@
 targets/riscv_family/riscv_table_rows.ml
+targets/x86_family/x86_table_rows.ml

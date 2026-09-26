@@ -92,6 +92,9 @@ let x86_common =
           "addl $1, (%eax,%eax,3)" target;
         x86_entry ~name:"x87-disabled" ~category:"feature-disabled" ~mnemonic:"fldl"
           ~gas_configuration:[ no87 ] ~ours_features:"-x87" ~code:"feature" "fldl 8(%esp)" target;
+        (* a generated x87 row is gated by the same component *)
+        x86_entry ~name:"x87-row-disabled" ~category:"feature-disabled" ~mnemonic:"fsin"
+          ~gas_configuration:[ no87 ] ~ours_features:"-x87" ~code:"feature" "fsin" target;
       ])
     x86_profiles
 
@@ -99,6 +102,9 @@ let x86_mode =
   [
     x86_entry ~name:"64-bit-register-in-32-bit-mode" ~category:"xlen-restricted" ~mnemonic:"movq"
       ~code:"operand" "movq %rax, %rbx" Target.X86_32;
+    (* XED's NOREX2: xsave cannot address through APX's r16-r31 *)
+    x86_entry ~name:"extended-gpr-without-rex2" ~category:"address-form" ~mnemonic:"xsave"
+      ~code:"lower" "xsave (%r25)" Target.X86_64;
   ]
 
 let all = riscv_common @ riscv_xlen @ x86_common @ x86_mode

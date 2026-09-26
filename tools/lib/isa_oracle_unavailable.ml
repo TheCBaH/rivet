@@ -110,6 +110,46 @@ let all =
            prefixed ISA extension `zicfiss' (riscv64-linux-gnu-as 2.44 accepts it)";
       };
     ]
+  (* jcxz tests %cx, which 64-bit mode cannot address as a counter *)
+  @ [
+      {
+        source = "xed_resolved";
+        target = Target.X86_64;
+        extension = "I386";
+        native_name = Some "JCXZ";
+        reason = "not-in-64-bit-mode";
+        probe = "x86_64-linux-gnu-as 2.44: `jcxz' is not supported in 64-bit mode";
+      };
+    ]
+  (* MPX: GNU as 2.44 removed it *)
+  @ List.map
+      (fun target ->
+        {
+          source = "xed_resolved";
+          target;
+          extension = "MPX";
+          native_name = None;
+          reason = "gas-lacks-mpx";
+          probe =
+            "x86_64-linux-gnu-as / i686-linux-gnu-as 2.44: `bndmk' is not supported on `x86_64' / \
+             `i386'";
+        })
+      [ Target.X86_32; Target.X86_64 ]
+  (* XED's ACE_1 tile/zmm operations: GNU as 2.44 has none of them (tilemovcol, the top ops) and
+     only the zmm-destination tilemovrow *)
+  @ List.map
+      (fun target ->
+        {
+          source = "xed_resolved";
+          target;
+          extension = "ACE_1";
+          native_name = None;
+          reason = "gas-lacks-ace";
+          probe =
+            "x86_64-linux-gnu-as 2.44: no such instruction `tilemovcol'/`top2bf16ps'; `tilemovrow \
+             %ebx,%zmm2,%tmm1': operand size mismatch";
+        })
+      [ Target.X86_32; Target.X86_64 ]
   @ List.concat_map
       (fun target ->
         [
@@ -125,6 +165,53 @@ let all =
         ])
       [ Target.Riscv32; Target.Riscv64 ]
 
+(* XED iclasses (lower case: the AT&T spelling) that x86_64-linux-gnu-as and
+   i686-linux-gnu-as 2.44 do not know: "no such instruction" for every spelling the
+   isa-difficult generator tried. *)
+let x86_gas_lacks =
+  [
+    (* undocumented one-byte opcodes GNU as has no mnemonic for *)
+    "udb";
+    "salc";
+    "fstpnce";
+    "vcvtbf42hf8";
+    "vcvtbf62hf8";
+    "vcvtbf82bf4s";
+    "vcvtbf82bf6s";
+    "vcvtbf82ps";
+    "vcvtbiasps2bf8";
+    "vcvtbiasps2bf8s";
+    "vcvtbiasps2hf8";
+    "vcvtbiasps2hf8s";
+    "vcvthf62hf8";
+    "vcvthf82bf4s";
+    "vcvthf82hf6s";
+    "vcvthf82ps";
+    "vcvtps2bf8";
+    "vcvtps2bf8s";
+    "vcvtps2hf8";
+    "vcvtps2hf8s";
+    "vcvtrops2hf8";
+    "vcvtrops2hf8s";
+    "vpmovssdb";
+    "vunpackb";
+  ]
+
+let x86_lacking ~source target ~extension ~native_name =
+  if source = "xed_resolved" && List.mem (String.lowercase_ascii native_name) x86_gas_lacks then
+    Some
+      {
+        source;
+        target;
+        extension;
+        native_name = Some native_name;
+        reason = "gas-lacks-instruction";
+        probe =
+          Printf.sprintf "x86_64-linux-gnu-as / i686-linux-gnu-as 2.44: no such instruction `%s'"
+            (String.lowercase_ascii native_name);
+      }
+  else None
+
 let find ~source target ~extension =
   List.find_opt
     (fun u ->
@@ -132,8 +219,11 @@ let find ~source target ~extension =
     all
 
 let find_record ~source target ~extension ~native_name =
-  List.find_opt
-    (fun u ->
-      u.source = source && u.target = target && u.extension = extension
-      && u.native_name = Some native_name)
-    all
+  match x86_lacking ~source target ~extension ~native_name with
+  | Some _ as u -> u
+  | None ->
+      List.find_opt
+        (fun u ->
+          u.source = source && u.target = target && u.extension = extension
+          && u.native_name = Some native_name)
+        all

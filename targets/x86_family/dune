@@ -12,7 +12,7 @@
 
 (library
  (name x86_family_encode)
- (modules x86_family_encode x86_x87)
+ (modules x86_family_encode x86_x87 x86_table_row x86_table_rows)
  (modes byte native)
  (libraries
   foundation

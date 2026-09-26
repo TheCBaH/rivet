@@ -19,263 +19,93 @@ let rows =
       source = "xed_resolved";
       families =
         [
-          "AVX10_2_BF16_128";
-          "AVX10_2_BF16_256";
-          "AVX10_2_BF16_512";
-          "AVX10_2_BF16_SCALAR";
-          "AVX10_MOVRS_128";
-          "AVX10_MOVRS_256";
-          "AVX10_MOVRS_512";
-          "AVX10_V2_AUX_128";
-          "AVX10_V2_AUX_256";
-          "AVX10_V2_AUX_512";
-          "AVX512BW_128";
           "AVX512BW_128N";
-          "AVX512BW_256";
-          "AVX512BW_512";
-          "AVX512BW_KOPD";
-          "AVX512BW_KOPQ";
-          "AVX512CD_128";
-          "AVX512CD_256";
-          "AVX512CD_512";
-          "AVX512DQ_128";
-          "AVX512DQ_128N";
-          "AVX512DQ_256";
-          "AVX512DQ_512";
-          "AVX512DQ_KOPB";
-          "AVX512DQ_KOPW";
-          "AVX512DQ_SCALAR";
-          "AVX512ER_512";
-          "AVX512ER_SCALAR";
           "AVX512F_128";
           "AVX512F_128N";
           "AVX512F_256";
           "AVX512F_512";
-          "AVX512F_KOPW";
           "AVX512F_SCALAR";
-          "AVX512PF_512";
-          "AVX512_4FMAPS_512";
-          "AVX512_4FMAPS_SCALAR";
-          "AVX512_4VNNIW_512";
-          "AVX512_BF16_128";
-          "AVX512_BF16_256";
-          "AVX512_BF16_512";
-          "AVX512_BITALG_128";
-          "AVX512_BITALG_256";
-          "AVX512_BITALG_512";
-          "AVX512_COM_EF_SCALAR";
-          "AVX512_FP16_128";
-          "AVX512_FP16_128N";
-          "AVX512_FP16_256";
-          "AVX512_FP16_512";
-          "AVX512_FP16_CONVERT_128";
-          "AVX512_FP16_CONVERT_256";
-          "AVX512_FP16_CONVERT_512";
-          "AVX512_FP16_SCALAR";
-          "AVX512_FP8_CONVERT_128";
-          "AVX512_FP8_CONVERT_256";
-          "AVX512_FP8_CONVERT_512";
-          "AVX512_GFNI_128";
-          "AVX512_GFNI_256";
-          "AVX512_GFNI_512";
-          "AVX512_IFMA_128";
-          "AVX512_IFMA_256";
-          "AVX512_IFMA_512";
-          "AVX512_MEDIAX_128";
-          "AVX512_MEDIAX_256";
-          "AVX512_MEDIAX_512";
-          "AVX512_MINMAX_128";
-          "AVX512_MINMAX_256";
-          "AVX512_MINMAX_512";
-          "AVX512_MINMAX_SCALAR";
           "AVX512_MOVZXC_128";
-          "AVX512_SAT_CVT_128";
-          "AVX512_SAT_CVT_256";
           "AVX512_SAT_CVT_512";
-          "AVX512_SAT_CVT_DS_128";
-          "AVX512_SAT_CVT_DS_256";
-          "AVX512_SAT_CVT_DS_512";
-          "AVX512_SAT_CVT_DS_SCALAR";
-          "AVX512_VAES_128";
-          "AVX512_VAES_256";
-          "AVX512_VAES_512";
-          "AVX512_VBMI2_128";
-          "AVX512_VBMI2_256";
-          "AVX512_VBMI2_512";
-          "AVX512_VBMI_128";
-          "AVX512_VBMI_256";
-          "AVX512_VBMI_512";
-          "AVX512_VNNI_128";
-          "AVX512_VNNI_256";
-          "AVX512_VNNI_512";
-          "AVX512_VNNI_FP16_128";
-          "AVX512_VNNI_FP16_256";
-          "AVX512_VNNI_FP16_512";
-          "AVX512_VNNI_INT16_128";
-          "AVX512_VNNI_INT16_256";
-          "AVX512_VNNI_INT16_512";
-          "AVX512_VNNI_INT8_128";
-          "AVX512_VNNI_INT8_256";
-          "AVX512_VNNI_INT8_512";
-          "AVX512_VP2INTERSECT_128";
-          "AVX512_VP2INTERSECT_256";
-          "AVX512_VP2INTERSECT_512";
-          "AVX512_VPCLMULQDQ_128";
-          "AVX512_VPCLMULQDQ_256";
-          "AVX512_VPCLMULQDQ_512";
-          "AVX512_VPOPCNTDQ_128";
-          "AVX512_VPOPCNTDQ_256";
-          "AVX512_VPOPCNTDQ_512";
         ];
       capability =
-        "EVEX (0x62) encoding beyond unmasked 512-bit register-register packed-float: opmask \
-         registers with {%k}/{z}, embedded broadcast and rounding/SAE (the BCRC records), disp8*N \
-         compressed displacements, xmm/ymm/zmm16-31 (R'/V'/X), 128/256-bit EVEX, and the \
-         integer/BW/DQ/FP16/VNNI/IFMA/VBMI/BF16/AVX10 mnemonics.";
+        "EVEX forms GNU as never emits for their spelling (same-spelled twins no pseudo-prefix \
+         separates) and XED's BCRC=1 register forms of conversions that take no rounding operand. \
+         Broadcast ({1toN}) and registers 16-31 remain obligations on promoted records.";
       evidence =
-        "family-admission: only the unmasked 512-bit register-register packed-float subset of \
-         AVX512F_512 is promoted; the BCRC=1 embedded-rounding records are reported as diagnosed";
+        "family-admission: AVX-512/AVX10.2 records are promoted through DEC-X86-TABLE EVEX rows \
+         with opmask ({%kN}, {z}), embedded rounding/{sae} and VSIB gathers/scatters; the \
+         remainder is twins and four BCRC=1 conversions";
       task = "GEN-05-X86-EVEX";
-      reopening_gate =
-        "memory operands and opmask decoration are implemented in the encoder and a per-family GAS \
-         -march probe exists";
+      reopening_gate = "a pseudo-prefix or spelling that reaches the twin exists in GNU as";
     };
     {
       id = "RES-X86-VEX";
       source = "xed_resolved";
-      families =
-        [
-          "AVX";
-          "AVX2";
-          "AVX2GATHER";
-          "AVXAES";
-          "AVX_GFNI";
-          "AVX_IFMA";
-          "AVX_NE_CONVERT";
-          "AVX_VNNI";
-          "AVX_VNNI_INT16";
-          "AVX_VNNI_INT8";
-          "F16C";
-          "FMA";
-          "FMA4";
-          "SHA512";
-          "SM3";
-          "SM4";
-          "SM4_128";
-          "SM4_256";
-          "SM4_512";
-          "VAES";
-          "VPCLMULQDQ";
-          "XOP";
-        ];
+      families = [ "AVX"; "FMA4"; "XOP" ];
       capability =
-        "VEX/XOP forms not yet admitted: four-operand and is4 encodings (FMA4, XOP), gathers (VSIB \
-         addressing), mixed xmm/ymm widths (shifts by xmm count, VPMOVSX/ZX, lane extract/insert), \
-         imm8-selector forms, VZEROUPPER/ALL, src2 registers 8-15 in the two-byte prefix, and the \
-         FMA/F16C/VAES/GFNI/VNNI families.";
+        "VEX/XOP forms GNU as never emits for their spelling: same-spelled twins no pseudo-prefix \
+         separates (the FMA4/XOP is4 register forms of the other VEX.W, vmovq's 6E/7E memory \
+         forms, vpcmpistri's W1 form), which share an iform or an encoding choice with GNU's.";
       evidence =
-        "family-admission: AVX and AVX2 are partly promoted; FMA and XOP are entirely unhandled";
+        "family-admission: most AVX/AVX2/FMA/F16C/VAES/GFNI/VNNI-INT forms are promoted through \
+         DEC-X86-TABLE rows, AVX-VNNI/IFMA/NE-CONVERT through {vex}, XOP/TBM/LWP through XOP rows; \
+         AVX2 gathers through VSIB rows; the remainder is twins";
       task = "GEN-05-X86-VEX";
-      reopening_gate = "VSIB addressing and the three-byte prefix for src2>=8 exist in the encoder";
+      reopening_gate = "a pseudo-prefix or spelling that reaches the twin exists in GNU as";
     };
     {
       id = "RES-X86-LEGACY-SIMD";
       source = "xed_resolved";
-      families =
-        [
-          "3DNOW";
-          "ACE_1";
-          "AES";
-          "GFNI";
-          "PCLMULQDQ";
-          "PENTIUMMMX";
-          "SHA";
-          "SSE";
-          "SSE2";
-          "SSE2MMX";
-          "SSE3";
-          "SSE4";
-          "SSE42";
-          "SSE4a";
-          "SSEMXCSR";
-          "SSE_PREFETCH";
-          "SSSE3MMX";
-        ];
+      families = [ "PENTIUMMMX"; "SSE"; "SSE2"; "SSE42"; "SSE4a" ];
       capability =
-        "Legacy MMX/SSE/3DNow remainders: the mm0-mm7 register class, imm8-selector forms, \
-         mandatory-prefix combinations, and AES/PCLMUL/SHA/GFNI legacy encodings. SSE2 packed and \
-         scalar forms are largely promoted.";
+        "Legacy MMX/SSE remainders: GPR-with-memory spellings that need a width suffix, implicit \
+         operands, and same-iform twins GNU never emits. xmm, mm and 3DNow! forms are promoted \
+         through DEC-X86-TABLE rows.";
       evidence =
-        "family-admission: SSE2 and SSE are mostly promoted; PENTIUMMMX and 3DNOW are entirely \
-         unhandled";
+        "family-admission: SSE, SSE2, PENTIUMMMX and 3DNOW are promoted but for a handful of \
+         records";
       task = "GEN-05-X86-SIMD";
-      reopening_gate =
-        "an MMX register class exists in the normalized model and each family has a GAS -march \
-         spelling";
+      reopening_gate = "a GAS spelling for the remaining records is probed";
     };
     {
       id = "RES-X86-X87";
       source = "xed_resolved";
-      families = [ "FCMOV"; "FCOMI"; "SSE3X87"; "X87" ];
+      families = [ "X87" ];
       capability =
-        "x87 beyond the thirteen implemented forms: real32/64/80 and int16/32/64 memory widths \
-         (fadds/fsubs also lack a register-indirect operand), stack-register forms in both \
-         directions, popping and reversed arithmetic, comparison and control forms, FCMOV/FCOMI.";
+        "x87 forms the generated table does not take: the 16-bit (14- and 94-byte) environment \
+         images and same-iform stack-register twins GNU never emits.";
       evidence =
-        "family-admission: all but one X87 record is unhandled; fadds 4(%esp) is rejected \
-         (test_components transcript) while GNU as accepts it";
+        "family-admission: X87/FCMOV/FCOMI are promoted through DEC-X86-TABLE rows (st(i) in \
+         ModR/M.rm, real/int memory suffixes, GNU's fsub/fdiv AT&T swap); a handful remain";
       task = "GEN-05-X86-X87";
-      reopening_gate =
-        "the x87 component grows its memory-width table and both stack directions are recipes with \
-         GAS spelling probes";
+      reopening_gate = "a GAS spelling for the remaining forms is probed";
     };
     {
       id = "RES-X86-BASE-INT";
       source = "xed_resolved";
       families =
         [
-          "ADOX_ADCX";
-          "BMI1";
-          "BMI2";
-          "CLDEMOTE";
-          "CLFLUSHOPT";
-          "CLFSH";
-          "CLWB";
-          "CLZERO";
-          "CMOV";
-          "CMPXCHG16B";
           "FAT_NOP";
           "I186";
           "I286PROTECTED";
-          "I286REAL";
           "I386";
-          "I486";
           "I486REAL";
           "I86";
-          "LAHF";
           "LONGMODE";
-          "LZCNT";
-          "MOVBE";
-          "PAUSE";
-          "PENTIUMREAL";
-          "POPCNT";
           "PPRO";
           "PPRO_UD0_LONG";
           "PPRO_UD0_SHORT";
-          "PREFETCHWT1";
           "PREFETCH_NOP";
-          "RDRAND";
-          "RDSEED";
-          "RDTSCP";
-          "RDWRFSGS";
-          "SEP";
-          "TBM";
         ];
       capability =
         "Integer, string, stack, flag, bit-manipulation and data-movement instructions outside the \
-         admitted ALU space: mode-dependent operand sizes, implicit-operand and string forms, \
-         segment registers, BMI/LZCNT/POPCNT, atomics (CMPXCHG16B), and cache/prefetch hints.";
-      evidence = "family-admission: most of I86 and all of I386, CMOV and BMI2 are unhandled";
+         generated rows: DF64/FORCE64 stack forms, implicit-operand and string forms, LOCK/REP, \
+         segment registers, mixed-width moves, atomics (CMPXCHG16B), and cache/prefetch hints.";
+      evidence =
+        "family-admission: CMOVcc, SETcc, BMI1/BMI2/LZCNT and single-width I86/I386 forms are \
+         promoted through DEC-X86-TABLE rows; the rest of I86/I386/I186 is stack, string and \
+         implicit-operand forms";
       task = "GEN-05-X86-INT";
       reopening_gate =
         "implicit-operand syntax and address-size/segment recipes exist and each family has a GAS \
@@ -287,61 +117,34 @@ let rows =
       families =
         [
           "APX_F";
-          "APX_F_ADX";
-          "APX_F_ADX_N3";
           "APX_F_AMX";
-          "APX_F_AMX_BASE";
           "APX_F_AMX_MOVRS";
           "APX_F_BMI1";
           "APX_F_BMI1_N3";
-          "APX_F_BMI2";
-          "APX_F_BMI2_N3";
-          "APX_F_CET";
-          "APX_F_CMPCCXADD";
           "APX_F_ENQCMD";
-          "APX_F_INVPCID";
-          "APX_F_KOPB";
-          "APX_F_KOPD";
-          "APX_F_KOPQ";
-          "APX_F_KOPW";
           "APX_F_LZCNT";
           "APX_F_LZCNT_N3";
           "APX_F_MOVBE";
           "APX_F_MOVDIR64B";
-          "APX_F_MOVDIRI";
           "APX_F_MOVRS";
-          "APX_F_MSR_IMM";
           "APX_F_N3";
           "APX_F_POPCNT";
           "APX_F_POPCNT_N3";
-          "APX_F_RAO_INT";
-          "APX_F_USER_MSR";
-          "APX_F_VMX";
         ];
       capability =
-        "Intel APX: REX2 and EVEX map-4 prefixes, r16-r31, new data destination (NDD), no-flags \
-         (NF) and conditional forms.";
-      evidence = "family-admission: every APX_* family is unhandled";
+        "Intel APX beyond the EVEX map-4 promotions, CCMP/CTEST and r16-r31: the REX2-only forms \
+         (push/pop with PPX, jmpabs), and promotions GNU spells differently from XED \
+         (setzu/imulzu, CFCMOV's store form); same-iform direction twins GNU never emits.";
+      evidence =
+        "family-admission: the APX_F map-4 promotions of legacy instructions (plain {evex}, NDD, \
+         {nf}, $1 shifts) and CCMP/CTEST with {dfv=} are promoted; REX2 and the rest remain";
       task = "GEN-05-X86-APX";
-      reopening_gate =
-        "the encoder models REX2/extended GPRs and a GAS accepting APX is probed; the capture \
-         already preserves the pattern";
+      reopening_gate = "the table models REX2-only encodings (PPX hints, jmpabs)";
     };
     {
       id = "RES-X86-AMX";
       source = "xed_resolved";
-      families =
-        [
-          "AMX_AVX512";
-          "AMX_BF16";
-          "AMX_COMPLEX";
-          "AMX_FP16";
-          "AMX_FP8";
-          "AMX_INT8";
-          "AMX_MOVRS";
-          "AMX_TILE";
-          "AMX_TILE_BASE";
-        ];
+      families = [ "AMX_MOVRS"; "AMX_TILE" ];
       capability =
         "Advanced Matrix Extensions: tile registers and the tile-configuration state, VEX-encoded \
          tile operations.";
@@ -355,64 +158,19 @@ let rows =
       source = "xed_resolved";
       families =
         [
-          "AMD";
           "AMD_INVLPGB";
-          "CET";
-          "CMPCCXADD";
           "ENQCMD";
-          "FRED";
-          "FXSAVE";
-          "FXSAVE64";
-          "HRESET";
           "IBHF";
           "ICACHE_PREFETCH";
-          "INVPCID";
-          "KEYLOCKER";
-          "KEYLOCKER_WIDE";
-          "LKGS";
-          "LWP";
-          "MCOMMIT";
           "MONITOR";
           "MONITORX";
           "MOVDIR64B";
-          "MOVDIRI";
           "MOVRS";
-          "MPX";
-          "MSRLIST";
-          "MSR_IMM";
-          "PBNDKB";
-          "PCONFIG";
-          "PKU";
-          "PTWRITE";
-          "RAO_INT";
-          "RDPID";
-          "RDPMC";
-          "RDPRU";
           "RTM";
-          "SERIALIZE";
-          "SGX";
-          "SGX_ENCLV";
-          "SMAP";
-          "SMX";
           "SNP";
           "SVM";
-          "TDX";
-          "TSX_LDTRK";
-          "UINTR";
-          "USER_MSR";
-          "VIA_PADLOCK_AES";
           "VIA_PADLOCK_MONTMUL";
-          "VIA_PADLOCK_RNG";
-          "VIA_PADLOCK_SHA";
-          "VMFUNC";
-          "VTX";
           "WAITPKG";
-          "WBNOINVD";
-          "WRMSRNS";
-          "XSAVE";
-          "XSAVEC";
-          "XSAVEOPT";
-          "XSAVES";
         ];
       capability =
         "System, virtualization, security and vendor extensions: privileged and MSR forms, state \

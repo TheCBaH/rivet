@@ -272,6 +272,16 @@
     [112 cost=0] vex3-map2-66-unop vex3-map2-66-unop(){11000100 vex3-byte1:8u vex3-byte2:8u vex3-map2-unop-op modrm}
     [113 cost=0] evex-ps-rrr      evex-ps-rrr(){01100010 evex-p0:8u evex-p1:8u evex-p2:8u evex-ps-op modrm}
     [114 cost=0] evex-pd-rrr      evex-pd-rrr(){01100010 evex-p0:8u evex-p1:8u evex-p2:8u evex-pd-op modrm}
+    [200 cost=0] short-loop       relax loop
+                                    d8               loop.d8(){11100010 <target:8@0 pcrel8-branch>}
+    [201 cost=0] short-loope      relax loope
+                                    d8               loope.d8(){11100001 <target:8@0 pcrel8-branch>}
+    [202 cost=0] short-loopne     relax loopne
+                                    d8               loopne.d8(){11100000 <target:8@0 pcrel8-branch>}
+    [203 cost=0] short-jecxz      relax jecxz
+                                    d8               jecxz.d8(){11100011 <target:8@0 pcrel8-branch>}
+    [204 cost=0] short-jcxz       relax jcxz
+                                    d8               jcxz.d8(){0110011111100011 <target:8@0 pcrel8-branch>}
   prefixes(){no-asz opsz no-rex}
   alu-acc-imm8-opcode(){opcode:8u}
   alu-acc-imm-opcode(){opcode:8u}
@@ -606,6 +616,16 @@
     [112 cost=0] vex3-map2-66-unop vex3-map2-66-unop(){11000100 vex3-byte1:8u vex3-byte2:8u vex3-map2-unop-op modrm}
     [113 cost=0] evex-ps-rrr      evex-ps-rrr(){01100010 evex-p0:8u evex-p1:8u evex-p2:8u evex-ps-op modrm}
     [114 cost=0] evex-pd-rrr      evex-pd-rrr(){01100010 evex-p0:8u evex-p1:8u evex-p2:8u evex-pd-op modrm}
+    [200 cost=0] short-loop       relax loop
+                                    d8               loop.d8(){11100010 <target:8@0 pcrel8-branch>}
+    [201 cost=0] short-loope      relax loope
+                                    d8               loope.d8(){11100001 <target:8@0 pcrel8-branch>}
+    [202 cost=0] short-loopne     relax loopne
+                                    d8               loopne.d8(){11100000 <target:8@0 pcrel8-branch>}
+    [203 cost=0] short-jrcxz      relax jrcxz
+                                    d8               jrcxz.d8(){11100011 <target:8@0 pcrel8-branch>}
+    [204 cost=0] short-jecxz      relax jecxz
+                                    d8               jecxz.d8(){0110011111100011 <target:8@0 pcrel8-branch>}
   prefixes(){asz opsz rex}
   alu-acc-imm8-opcode(){opcode:8u}
   alu-acc-imm-opcode(){opcode:8u}

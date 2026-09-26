@@ -50,8 +50,11 @@
 %type <unit> terminator
 %type <Statement.label> label
 %type <Statement.statement> statement
+%type <Foundation.Span.t * string list> pseudo_prefixes
 %type <Token.slice list> slices
 %type <Token.slice> slice
+%type <Token.slice> slice_tail
+%type <Token.t> atom_or_equals
 %type <Token.t> atom
 %type <Asm_core.Expr.t> expr
 
@@ -105,6 +108,17 @@ statement:
         { mnemonic = (match Token.kind $1 with Token.Ident s -> s | _ -> "");
           operands = $2;
           span = Token.span $1 } }
+  (* A braced pseudo-prefix before a mnemonic ([{evex} vaddps ...], [{load} movl ...]) chooses
+     among encodings of one spelling. It stays part of the mnemonic, [{evex} vaddps], for the
+     target to interpret or reject; no other statement starts with a brace. *)
+  | pseudo_prefixes IDENT slices
+    { Statement.Instruction
+        { mnemonic =
+            (match Token.kind $2 with
+             | Token.Ident m -> String.concat "" (List.map (fun p -> "{" ^ p ^ "} ") (snd $1)) ^ m
+             | _ -> "");
+          operands = $3;
+          span = fst $1 } }
   | IDENT EQUALS expr
     { Statement.Assignment
         { name = (match Token.kind $1 with Token.Ident s -> s | _ -> "");
@@ -116,6 +130,13 @@ statement:
           arguments = $2;
           span = Token.span $1 } }
 
+(* one or more braced pseudo-prefixes, [{evex} {load}]: the first one's span and the words *)
+pseudo_prefixes:
+  | LBRACE IDENT RBRACE
+    { (Token.span $1, [ (match Token.kind $2 with Token.Ident p -> p | _ -> "") ]) }
+  | LBRACE IDENT RBRACE pseudo_prefixes
+    { (Token.span $1, (match Token.kind $2 with Token.Ident p -> p | _ -> "") :: snd $4) }
+
 slices:
   | { [] }
   | slice { [ $1 ] }
@@ -123,7 +144,17 @@ slices:
 
 slice:
   | atom { [ $1 ] }
-  | atom slice { $1 :: $2 }
+  | atom slice_tail { $1 :: $2 }
+
+(* Past its first token a slice may hold [=]: x86's [{dfv=of,cf}]. Only past it, so that
+   [IDENT EQUALS] stays an assignment. *)
+slice_tail:
+  | atom_or_equals { [ $1 ] }
+  | atom_or_equals slice_tail { $1 :: $2 }
+
+atom_or_equals:
+  | atom { $1 }
+  | EQUALS { $1 }
 
 (* Every terminal that may appear inside an operand or a directive argument.
    COMMA separates slices, COLON introduces a label and EQUALS an assignment, so

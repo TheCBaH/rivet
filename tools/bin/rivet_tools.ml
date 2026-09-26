@@ -227,9 +227,23 @@ let isa_table_cmd =
          ~doc:"Fail unless the checked-in RISC-V table rows equal a fresh emission")
       Cmdliner.Term.(const run $ common)
   in
+  let x86_emit =
+    let run (err_trace, root) = (err_trace, with_repo root Isa_x86_table_emit.run_emit) in
+    Cmdliner.Cmd.v
+      (Cmdliner.Cmd.info "x86-emit"
+         ~doc:"Regenerate asm/targets/x86_family/x86_table_rows.ml from the XED exports")
+      Cmdliner.Term.(const run $ common)
+  in
+  let x86_check =
+    let run (err_trace, root) = (err_trace, with_repo root Isa_x86_table_emit.run_check) in
+    Cmdliner.Cmd.v
+      (Cmdliner.Cmd.info "x86-check"
+         ~doc:"Fail unless the checked-in x86 table rows equal a fresh emission")
+      Cmdliner.Term.(const run $ common)
+  in
   Cmdliner.Cmd.group
-    (Cmdliner.Cmd.info "isa-table" ~doc:"Generated ISA form tables (DEC-RV-TABLE)")
-    [ emit; check ]
+    (Cmdliner.Cmd.info "isa-table" ~doc:"Generated ISA form tables (DEC-RV-TABLE, DEC-X86-TABLE)")
+    [ emit; check; x86_emit; x86_check ]
 
 let isa_residual_ledger_cmd =
   let run (err_trace, root) = (err_trace, with_repo root Isa_residual_ledger.run) in
