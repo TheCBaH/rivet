@@ -1,8 +1,14 @@
 (library
  (name riscv_family_encode)
- (modules riscv_family_encode)
+ (modules riscv_family_encode riscv_ext_m)
  (modes byte native)
- (libraries foundation codec asm_core target_error target_encode)
+ (libraries
+  foundation
+  codec
+  asm_core
+  target_error
+  target_encode
+  target_features)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
 

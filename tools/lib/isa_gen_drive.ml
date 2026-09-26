@@ -102,3 +102,48 @@ let run_case ~prefix ~label repo (case : Isa_generated_case.case)
                 command = Command.ok [ Diagnostic.stdout (line (" " ^ suffix)) ];
                 record = Some Isa_generated_corpus.{ case; gas = artifact; ours; finding; verdict };
               }))
+
+(* A negative case: GAS is expected to reject, and so is ours, so unlike [run_case] "ours" always
+   runs. The committed record is replayed at once, which also checks that the rejection carries
+   the case's declared diagnostic category - a wrong-reason rejection fails regeneration rather
+   than being committed as a pass. *)
+let run_negative ~prefix ~label repo (case : Isa_generated_case.case)
+    (encoding : Isa_norm_model.encoding) =
+  match Isa_gen_oracle.run case encoding with
+  | Error e -> { command = Command.of_error e; record = None }
+  | Ok (outcome, gas_artifact) -> (
+      match Isa_gen_ours.run repo case with
+      | Error e -> { command = Command.of_error e; record = None }
+      | Ok (ours_outcome, ours_artifact) -> (
+          let gas_rejected = match outcome with Isa_gen_oracle.Rejected _ -> true | _ -> false in
+          let ours_rejected =
+            match ours_outcome with Isa_gen_ours.Rejected _ -> true | _ -> false
+          in
+          let verdict = Isa_gen_verdict.classify_negative ~gas_rejected ~ours_rejected in
+          let record =
+            Isa_generated_corpus.
+              {
+                case;
+                gas = gas_artifact;
+                ours = Some ours_artifact;
+                finding = finding_of_outcome outcome;
+                verdict;
+              }
+          in
+          let describe rejected = if rejected then "REJECTED" else "ACCEPTED" in
+          let line =
+            Printf.sprintf "%s: %s: NEGATIVE %s gas=%s ours=%s %s" prefix label
+              (flatten_source case.rendered_source)
+              (describe gas_rejected) (describe ours_rejected) (verdict_tag verdict)
+          in
+          match Isa_generated_corpus.replay record encoding with
+          | Ok () -> { command = Command.ok [ Diagnostic.stdout line ]; record = Some record }
+          | Error msg ->
+              {
+                command =
+                  Command.of_error
+                    (Err.Error.make ~pos:__POS__ ~pp_error:Tool_error.pp
+                       (Tool_error.v Tool_error.Validate
+                          (Printf.sprintf "%s: %s: %s" prefix label msg)));
+                record = None;
+              }))

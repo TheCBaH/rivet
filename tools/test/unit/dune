@@ -25,7 +25,9 @@
   test_isa_generated_corpus
   test_isa_gen_ours
   test_isa_gen_verdict
-  test_isa_gen_difficult)
+  test_isa_gen_difficult
+  test_isa_gen_negative
+  test_isa_residual_ledger)
  (modes byte native)
  (libraries compcert_tools err_trace bos fpath unix))
 
@@ -209,3 +211,13 @@
  (alias runtest)
  (action
   (run ./test_isa_gen_difficult.exe)))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_residual_ledger.exe)))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_isa_gen_negative.exe)))

@@ -56,3 +56,10 @@ let classify ~known_syntax_gap:gap = function
       else Isa_generated_case.Byte_mismatch
   | Both_ran { ours = Ours_rejected _; _ } ->
       if gap then Isa_generated_case.Frontier_gap else Isa_generated_case.Regression
+
+(* A negative case asserts rejection by both tools (plan section 5.5, row 8). Anything else is the
+   same failure: GAS accepting means the recipe is wrong, ours accepting what GAS refuses means
+   we would emit an encoding no reference assembler does. *)
+let classify_negative ~gas_rejected ~ours_rejected =
+  if gas_rejected && ours_rejected then Isa_generated_case.Pass
+  else Isa_generated_case.Negative_case_accepted

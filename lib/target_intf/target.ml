@@ -120,8 +120,28 @@ module type DRIVER = sig
   val name : string
   val triple : string
 
+  val components : Target_component.t list
+  (** the separable instruction components this target has, for a caller that wants to list or
+      validate feature names; empty when the whole instruction set is the base *)
+
+  val configure : Target_config.spec -> (Target_config.t, string) result
+  (** resolve a feature spec against {!components}: the observable effective configuration, or the
+      reason it is rejected. Every entry point below takes the same spec and resolves it the same
+      way, so [configure] is how a caller previews what it will get. *)
+
+  (* Every entry point below takes an optional [?features] spec. Omitting it is the unconfigured
+     assembler - every component the target implements enabled - so existing callers are
+     unchanged. A spec that does not resolve fails the call with a [config.invalid] diagnostic
+     before any source is read. Each unit of [assemble_many] starts from the same initial state,
+     so one unit's directives cannot change another's configuration. *)
+
   val assemble :
-    ?entry:string -> unit_name:string -> source:Span.source -> unit -> Image.laid_out Diag.t
+    ?entry:string ->
+    ?features:Target_config.spec ->
+    unit_name:string ->
+    source:Span.source ->
+    unit ->
+    Image.laid_out Diag.t
   (** Text in, laid-out image out - laid out but *not bound*: choosing addresses is the host's
       step and stays outside every target (§9). [Image.bind_image] is what turns the result into
       bytes at an address, and it is deliberately not part of this interface, because it is not
@@ -134,7 +154,12 @@ module type DRIVER = sig
       Omitting it keeps that inference as the fallback, which is what lets the four M1 fixtures
       call this unchanged. *)
 
-  val assemble_many : ?entry:string -> (string * Span.source) list -> unit -> Image.laid_out Diag.t
+  val assemble_many :
+    ?entry:string ->
+    ?features:Target_config.spec ->
+    (string * Span.source) list ->
+    unit ->
+    Image.laid_out Diag.t
   (** M3's multi-module entry point (.ai/asm_plan.md §12): every input lowered with its own
       [unit_name], then handed to [Image.plan_image] as one list, so a cross-input reference
       resolves through §2's rules rather than each input being planned alone. [Image.laid_out] is
@@ -156,17 +181,26 @@ module type DRIVER = sig
 
   val dump_tokens : source:Span.source -> string Diag.t
   val dump_source_ast : unit_name:string -> source:Span.source -> string Diag.t
-  val dump_normalized_ast : unit_name:string -> source:Span.source -> string Diag.t
-  val dump_lowered_ast : unit_name:string -> source:Span.source -> string Diag.t
 
-  val dump_disasm_canonical : address:int64 -> string -> string Diag.t
+  val dump_normalized_ast :
+    ?features:Target_config.spec -> unit_name:string -> source:Span.source -> unit -> string Diag.t
+
+  val dump_lowered_ast :
+    ?features:Target_config.spec -> unit_name:string -> source:Span.source -> unit -> string Diag.t
+
+  val dump_disasm_canonical :
+    ?features:Target_config.spec -> address:int64 -> string -> string Diag.t
   (** exactly re-parseable: feeding this back through the assembler must produce the identical
-      image, and a round-trip test does exactly that *)
+      image, and a round-trip test does exactly that. Strict: an instruction of a component the
+      configuration disables is a decode error, since it would not re-assemble. *)
 
-  val dump_disasm_diagnostic : address:int64 -> string -> string Diag.t
+  val dump_disasm_diagnostic :
+    ?features:Target_config.spec -> ?inspect:bool -> address:int64 -> string -> string Diag.t
   (** address, bytes, spelling and form id in columns. Read by humans and by the differential gate;
       **not** re-parseable, and no test may re-parse it - a format that had to satisfy both
-      audiences would satisfy neither. *)
+      audiences would satisfy neither. Strict by default; with [~inspect:true] it decodes every
+      component regardless of the configuration and marks each instruction the configuration would
+      refuse, so disabled code can be examined without pretending it assembles. *)
 
   val dump_codec : unit -> string
 

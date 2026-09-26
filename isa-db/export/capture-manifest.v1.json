@@ -1,6 +1,6 @@
 {
   "dirty-source-policy": "refuse",
-  "producer-revision": "sha256:57fc4e851340a737520c41c2d4f4727d8420c5a34c7034a9555c03d54f44c74f",
+  "producer-revision": "sha256:4c87af00c76b5a02c2a698057720e93ec6ce0ad0058e1b9fdae4e8822a9b8e7e",
   "schema": "isa-db-capture-manifest-v1",
   "source-record-schema": "source_record.schema.v1.json",
   "sources": {

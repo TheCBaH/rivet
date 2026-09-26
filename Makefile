@@ -481,6 +481,7 @@ asm-isa-generated-regen: tools-build asm-build
 # so growing it can never touch that one.
 asm-isa-difficult-check: tools-build
 	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult check
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult coverage
 
 asm-isa-difficult-regen: tools-build asm-build
 	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult regen
@@ -709,6 +710,15 @@ tools-isa-inventory-diff: tools-isa-inventory
 tools-isa-db-cross-validate: tools-build
 	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-inventory cross-validate
 
+# The residual ledger (asm/tools/lib/isa_residual_ledger.ml): prints every
+# source family that still has blocked records with its owning row (missing
+# capability, evidence, task, reopening gate) and fails if a blocked family is
+# unowned or doubly owned, or a row is stale. Toolchain-free - it reads only the
+# checked-in exports - and, like the target above, already exercised by
+# tools-integration inside asm-ci.
+tools-isa-residual-ledger: tools-build
+	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-inventory residual-ledger
+
 # Producer-only native-capture integrity check.  It intentionally stays out
 # of asm-ci: it reads the vendored source trees and requires Python, whereas
 # asm-ci's portable artifact checks consume only the committed JSONL files.
@@ -791,7 +801,7 @@ compcert-export-archive-all:
   asm-compcert-adapter-test \
   asm-submodules asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
   tools-build tools-test tools-integration tools-boundary tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-matrix tools-matrix-diff \
-  tools-isa-inventory tools-isa-inventory-diff tools-isa-db-cross-validate isa-db-capture-check \
+  tools-isa-inventory tools-isa-inventory-diff tools-isa-db-cross-validate tools-isa-residual-ledger isa-db-capture-check \
   asm-fixtures-check asm-characterize-verify asm-cross-setup asm-libc-cross-smoke asm-cross-smoke-selftest asm-fixtures-regen \
   asm-oracle asm-fixture-oracle asm-ci \
   asm-gas-xref-check asm-gas-xref-regen \

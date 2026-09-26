@@ -428,6 +428,90 @@ let test_replay_catches_unexplained_rejection_marked_frontier_gap () =
     "replay: an unexplained ours rejection committed as Frontier_gap instead of Regression - caught"
     (is_err (Isa_generated_corpus.replay mislabeled add_encoding))
 
+(* Negative records: both artifacts committed, verdict and diagnostic category recomputed. *)
+let negative_case : Isa_generated_case.case =
+  {
+    case_id = "negative:addi:imm12-out-of-range:riscv32";
+    target = Target.Riscv32;
+    form_id = "negative:addi";
+    source_record_ids = [];
+    rule_ids = [ "negative"; "category:immediate-range"; "expect-code:riscv32.fixup" ];
+    operands = [];
+    rendered_source = ".text\naddi a0, a1, 2048\n";
+    configuration = [ "-march=rv32im"; "-mabi=ilp32"; "-mno-relax" ];
+    negative = true;
+  }
+
+let negative_record ?(ours_bytes = None) ?(ours_stderr = "error[riscv32.fixup]: out of range")
+    ?(gas_bytes = None) ?(verdict = Isa_generated_case.Pass) () : Isa_generated_corpus.record =
+  {
+    case = negative_case;
+    gas =
+      sample_artifact ~case:negative_case ~exit_status:(Process_status.Exited 1) ~bytes:gas_bytes;
+    ours =
+      Some
+        (sample_ours_artifact ~case:negative_case ~exit_status:(Process_status.Exited 1)
+           ~bytes:ours_bytes ~stderr:ours_stderr);
+    finding =
+      (match gas_bytes with
+      | None -> Isa_generated_corpus.Gas_rejected { diagnostic = "illegal operands" }
+      | Some _ -> Isa_generated_corpus.Matches_normalized_encoding);
+    verdict;
+  }
+
+let dummy = Isa_gen_negative.dummy_encoding
+let replay_ok r = Isa_generated_corpus.replay r dummy = Ok ()
+
+let replay_error_mentions r needle =
+  match Isa_generated_corpus.replay r dummy with
+  | Ok () -> false
+  | Error msg ->
+      let n = String.length needle and h = String.length msg in
+      let rec go i = i + n <= h && (String.sub msg i n = needle || go (i + 1)) in
+      go 0
+
+let test_replay_negative () =
+  check "negative: both reject with the declared category replays" (replay_ok (negative_record ()));
+  check "negative: an accepted negative (ours) is caught, not committed as a pass"
+    (replay_error_mentions
+       (negative_record ~ours_bytes:(Some "13 85 05 80\n") ())
+       "does not match committed");
+  check "negative: an accepted negative recorded honestly replays as its own failing verdict"
+    (replay_ok
+       (negative_record ~ours_bytes:(Some "13 85 05 80\n")
+          ~verdict:Isa_generated_case.Negative_case_accepted ()));
+  check "negative: GAS accepting the source is caught as a stale pass"
+    (replay_error_mentions
+       (negative_record ~gas_bytes:(Some "13 85 05 00\n") ())
+       "does not match committed");
+  check "negative: rejecting for the wrong reason (wrong category) is caught"
+    (replay_error_mentions
+       (negative_record ~ours_stderr:"error[riscv32.lower]: no addi form takes these operands" ())
+       "riscv32.fixup");
+  check "negative: a missing ours artifact is caught"
+    (replay_error_mentions { (negative_record ()) with ours = None } "must commit an ours artifact");
+  check "negative: gas argv drift is caught"
+    (let r = negative_record () in
+     replay_error_mentions { r with gas = { r.gas with argv = [ "x" ] } } "gas.argv");
+  check "negative: a pass with no declared category is caught"
+    (replay_error_mentions
+       { (negative_record ()) with case = { negative_case with rule_ids = [ "negative" ] } }
+       "expect-code");
+  check "negative: is_hard_failure flags the accepted-negative verdict"
+    (Isa_generated_case.is_hard_failure Isa_generated_case.Negative_case_accepted)
+
+let test_ours_features_argv () =
+  let with_features =
+    { negative_case with rule_ids = "ours-features:none,+zmmul" :: negative_case.rule_ids }
+  in
+  check "ours: a plain case passes no --features"
+    (not (List.mem "--features" (Isa_gen_ours.normalized_argv negative_case)));
+  check "ours: an ours-features rule id becomes --features <spec>"
+    (List.mem "--features" (Isa_gen_ours.normalized_argv with_features)
+    && List.mem "none,+zmmul" (Isa_gen_ours.normalized_argv with_features));
+  check "ours: features_of_case reads the spec"
+    (Isa_gen_ours.features_of_case with_features = Some "none,+zmmul")
+
 let test_finding_of_outcome () =
   check "finding_of_outcome: Assembled_matching"
     (Isa_generated_corpus.finding_of_outcome
@@ -476,6 +560,8 @@ let () =
   test_replay_catches_ours_argv_drift ();
   test_replay_catches_stale_verdict_pass_to_byte_mismatch ();
   test_replay_catches_unexplained_rejection_marked_frontier_gap ();
+  test_replay_negative ();
+  test_ours_features_argv ();
   test_finding_of_outcome ();
   test_finding_description_nonempty ();
   if !failures > 0 then (

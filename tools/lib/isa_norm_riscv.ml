@@ -715,7 +715,7 @@ let r_type_gpr_form ~mnemonic (rec_ : R.t) =
    GNU as accepts on either profile - it rejects "rev8.rv32" outright), while
    its {!alternative_extensions_by_mnemonic} lookup must use the RV32-specific
    five-way group, not the RV64 one keyed by the rendered mnemonic "rev8". *)
-let unary_gpr_form ?extension_lookup_key ~mnemonic (rec_ : R.t) =
+let unary_gpr_form ?extension_lookup_key ?(source_field = "rs1") ?alias_of ~mnemonic (rec_ : R.t) =
   match riscv_encoding_of rec_ with
   | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
   | Ok encoding ->
@@ -723,7 +723,7 @@ let unary_gpr_form ?extension_lookup_key ~mnemonic (rec_ : R.t) =
         requirement_of_mnemonic ~mnemonic:(Option.value extension_lookup_key ~default:mnemonic) rec_
       in
       let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
-      let rs1 = { op_name = "rs1"; op_kind = gpr (); role = In; explicit = true } in
+      let rs1 = { op_name = source_field; op_kind = gpr (); role = In; explicit = true } in
       Ok
         {
           form_id = "riscv:" ^ mnemonic;
@@ -734,13 +734,19 @@ let unary_gpr_form ?extension_lookup_key ~mnemonic (rec_ : R.t) =
           encoding;
           operands = [ rd; rs1 ];
           syntax =
-            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs1" ] };
-          concreteness = Concrete;
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rd"; Syn_operand source_field ];
+            };
+          concreteness = (match alias_of with Some target -> Alias_of target | None -> Concrete);
           facts =
             [
               {
                 label = Upstream;
-                note = "operand fields rd, rs1 taken verbatim from encoding.fields";
+                note =
+                  Printf.sprintf "operand fields rd, %s taken verbatim from encoding.fields"
+                    source_field;
               };
               {
                 label = Inferred;
@@ -748,6 +754,39 @@ let unary_gpr_form ?extension_lookup_key ~mnemonic (rec_ : R.t) =
                   "the remaining encoding bits are a fully fixed funct12 selecting this mnemonic, \
                    not a genuine immediate operand - GAS syntax is \"mnemonic rd, rs1\" with no \
                    immediate written";
+              };
+            ];
+          diagnostics =
+            (match requirement with
+            | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
+            | _ -> []);
+        }
+
+(* A pseudo-op whose whole encoding is fixed and which takes no operand ([nop], [ret]): the
+   record's mask covers all 32 bits, so there is nothing to vary and GAS syntax is the bare
+   mnemonic. It is an alias of the instruction it specializes, recorded as such rather than as
+   an independent form. *)
+let alias_fixed_form ~mnemonic ~alias_of (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let requirement = requirement_of_mnemonic ~mnemonic rec_ in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement;
+          encoding;
+          operands = [];
+          syntax = { dialect = "gas-att"; mnemonic; operands = [] };
+          concreteness = Alias_of alias_of;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "the record's mask covers every bit: a fixed word with no operand";
               };
             ];
           diagnostics =
@@ -4716,6 +4755,14 @@ let normalize (rec_ : R.t) =
   | mnemonic when List.mem mnemonic r_type_mnemonics -> r_type_gpr_form ~mnemonic rec_
   | mnemonic when List.mem mnemonic i_type_mnemonics -> i_type_imm_form ~mnemonic rec_
   | mnemonic when List.mem mnemonic unary_gpr_mnemonics -> unary_gpr_form ~mnemonic rec_
+  (* Pseudo-ops of the base ISA: each is riscv-opcodes' own $pseudo_op record with a fully fixed
+     encoding, an alias of the instruction it specializes. [snez] reads its source from rs2,
+     because the record specializes [sltu rd, x0, rs2]. *)
+  | "mv" -> unary_gpr_form ~mnemonic:"mv" ~alias_of:"addi" rec_
+  | "snez" -> unary_gpr_form ~mnemonic:"snez" ~source_field:"rs2" ~alias_of:"sltu" rec_
+  | "sext.w" -> unary_gpr_form ~mnemonic:"sext.w" ~alias_of:"addiw" rec_
+  | "nop" -> alias_fixed_form ~mnemonic:"nop" ~alias_of:"addi" rec_
+  | "ret" -> alias_fixed_form ~mnemonic:"ret" ~alias_of:"jalr" rec_
   (* rev8 (byte-reverse): riscv64.jsonl's own native_name is already "rev8",
      dispatched like any other {!unary_gpr_mnemonics} entry above would be,
      but riscv32.jsonl's native_name is riscv-opcodes' internal

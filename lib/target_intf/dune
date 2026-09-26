@@ -24,11 +24,23 @@
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
 
+; target_features (modules target_component, target_config) holds the descriptors a family publishes for its separable
+; instruction components (asm/docs/contracts.md). Pure data, like target_error.
+
+(library
+ (name target_features)
+ (modules target_component target_config)
+ (wrapped false)
+ (modes byte native)
+ (libraries foundation fmt)
+ (enabled_if
+  (<> %{env:ASM_MELANGE=false} true)))
+
 (library
  (name target_encode)
  (modules target_encode)
  (modes byte native)
- (libraries foundation codec asm_core target_error)
+ (libraries foundation codec asm_core target_error target_features)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))
 
@@ -36,6 +48,13 @@
  (name target_intf)
  (modules target)
  (modes byte native)
- (libraries foundation codec asm_core asm_syntax image target_encode)
+ (libraries
+  foundation
+  codec
+  asm_core
+  asm_syntax
+  image
+  target_encode
+  target_features)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))

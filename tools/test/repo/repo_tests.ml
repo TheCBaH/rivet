@@ -185,8 +185,8 @@ let test_isa_norm_accounting repo =
           (s.normalized = normalized)
     | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
   in
-  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:722;
-  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:774;
+  expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized:726;
+  expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized:779;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized:1033;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized:1035
 
@@ -195,6 +195,39 @@ let test_isa_norm_accounting repo =
    source update or an accidental widening of support credit a reviewed
    change, while the per-family invariant makes a dropped native family fail
    even if an aggregate happens to stay plausible. *)
+(* The ledger against the real matrix: every blocked family is owned exactly once, no row is
+   stale, and the records the ledger owns are exactly the blocked records - so the promoted,
+   normalized-only and blocked counts partition each profile's full source denominator. *)
+let test_isa_residual_ledger repo =
+  match Isa_residual_ledger.cells repo with
+  | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
+  | Ok cells ->
+      let audit = Isa_residual_ledger.audit Isa_residual_ledger.rows cells in
+      List.iter
+        (fun p -> check ("isa-residual-ledger: " ^ p) false)
+        (Isa_residual_ledger.problems audit);
+      check "isa-residual-ledger: ledger is clean" (Isa_residual_ledger.is_clean audit);
+      List.iter
+        (fun (source, target) ->
+          let mine =
+            List.filter
+              (fun (c : Isa_residual_ledger.cell) ->
+                String.equal c.source source && c.target = target)
+              cells
+          in
+          let sum f = List.fold_left (fun acc c -> acc + f c) 0 mine in
+          let total = sum (fun (c : Isa_residual_ledger.cell) -> c.total) in
+          check
+            (Printf.sprintf "isa-residual-ledger: %s/%s every record is in exactly one state" source
+               (Target.to_string target))
+            (sum (fun (c : Isa_residual_ledger.cell) -> c.promoted)
+             + sum (fun c -> c.gas_generatable)
+             + sum (fun c -> c.normalized_only)
+             + sum (fun c -> c.oracle_unavailable)
+             + sum (fun c -> c.blocked)
+            = total))
+        Isa_residual_ledger.inputs
+
 let test_isa_family_admission repo =
   let expect ~source target ~total ~normalized_only ~gas_generatable ~promoted_support ~blocked =
     let label = Printf.sprintf "%s/%s" source (Target.to_string target) in
@@ -907,10 +940,15 @@ let test_isa_family_admission repo =
      `c5 e9 da cb`. 28 new records per x86 profile (14 legacy + 14 VEX, 7
      mnemonics x 2 directions each). SSE2 and AVX both move up by 14
      promoted-support records on each profile with this slice. *)
+  (* The alias class: [mv], [snez], [nop] and [ret] on both profiles and RV64-only [sext.w] -
+     riscv-opcodes $pseudo_op records with a fully fixed encoding, each an alias of the
+     instruction it specializes - move 4 (RV32) and 5 (RV64) records from blocked to
+     promoted-support after a persisted case per profile pins GNU as and this assembler to the
+     same bytes for the alias spelling. *)
   expect ~source:"riscv_opcodes" Target.Riscv32 ~total:1089 ~normalized_only:20 ~gas_generatable:0
-    ~promoted_support:702 ~blocked:367;
+    ~promoted_support:706 ~blocked:363;
   expect ~source:"riscv_opcodes" Target.Riscv64 ~total:1154 ~normalized_only:30 ~gas_generatable:0
-    ~promoted_support:744 ~blocked:380;
+    ~promoted_support:749 ~blocked:375;
   expect ~source:"xed_resolved" Target.X86_32 ~total:7887 ~normalized_only:6 ~gas_generatable:5
     ~promoted_support:1022 ~blocked:6854;
   expect ~source:"xed_resolved" Target.X86_64 ~total:10571 ~normalized_only:0 ~gas_generatable:5
@@ -921,7 +959,7 @@ let test_isa_family_admission repo =
    - not just synthetic values, which Test_isa_norm_jsonl already covers for
    every constructor - must survive Isa_norm_jsonl.encode_line followed by
    decode_line unchanged. The pinned total is the sum of the accounting
-   tests' own pinned normalized counts (722+774+354+356); a drop here without
+   tests' own pinned normalized counts (726+779+354+356); a drop here without
    a matching drop there would mean the codec silently lost a form the
    accounting still credits as normalized. *)
 let normalize_one source (rec_ : Isa_source_record.t) =
@@ -968,9 +1006,9 @@ let test_isa_norm_jsonl_roundtrip repo =
   check_source ~source:"xed_resolved" Target.X86_32;
   check_source ~source:"xed_resolved" Target.X86_64;
   check
-    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 3564)"
+    (Printf.sprintf "isa-norm-jsonl: %d real normalized forms round-tripped (expected 3573)"
        !roundtrip_count)
-    (!roundtrip_count = 3564)
+    (!roundtrip_count = 3573)
 
 (* Exercise the snapshot-update mapping report, Isa_source_snapshot_diff,
    against the real checked-in exports, not just Test_isa_source_snapshot_diff's
@@ -1058,6 +1096,7 @@ let () =
   test_isa_db_cross_validate repo;
   test_isa_norm_accounting repo;
   test_isa_family_admission repo;
+  test_isa_residual_ledger repo;
   test_isa_norm_jsonl_roundtrip repo;
   test_isa_source_snapshot_diff repo;
   test_gen_pilot_manifest repo;

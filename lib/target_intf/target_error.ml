@@ -19,7 +19,7 @@
 
    {1 The shared row}
 
-   Deliberately four tags. The obvious candidates mostly are not shared: x86
+   Deliberately five tags. The obvious candidates mostly are not shared: x86
    decodes "no form matches these bytes" where the two fixed-width targets match
    a *word*, and every range, alignment and padding message names something
    architecture-specific. Forcing those into one row would mean carrying a
@@ -57,10 +57,15 @@ type shared =
   [ `Unknown_instruction of string  (** the mnemonic no opcode table claims *)
   | `No_form of string  (** the opcode name; no encoding accepts these operands *)
   | `Immediate_too_wide  (** an immediate that does not fit int64 *)
-  | `Decode_no_normalized  (** a form decoded, and produced no instruction *) ]
+  | `Decode_no_normalized  (** a form decoded, and produced no instruction *)
+  | `Feature_disabled of string * string
+    (** a mnemonic and the feature it needs: the form exists, but its component is not enabled in
+        this configuration *)
+  ]
 
 let pp_shared ppf : shared -> unit = function
   | `Unknown_instruction m -> Fmt.pf ppf "unknown instruction %s" m
   | `No_form op -> Fmt.pf ppf "no %s form takes these operands" op
   | `Immediate_too_wide -> Fmt.string ppf "immediate does not fit 64 bits"
   | `Decode_no_normalized -> Fmt.string ppf "decoded a form with no normalized instruction"
+  | `Feature_disabled (m, f) -> Fmt.pf ppf "%s requires feature %s, which is not enabled" m f

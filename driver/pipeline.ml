@@ -38,7 +38,8 @@ module Make (T : T_intf.TARGET) = struct
     | `Data_value of Expr.error
     | `Data_fixup of string
     | `Directive_not_accepted of string
-    | `Relax_ladder of Lowered_ast.relax_error ]
+    | `Relax_ladder of Lowered_ast.relax_error
+    | `Invalid_configuration of string ]
 
   let pp_error ppf : error -> unit = function
     | `Local_label_survived n -> Fmt.pf ppf "numeric local label %d: survived resolution" n
@@ -54,6 +55,7 @@ module Make (T : T_intf.TARGET) = struct
     | `Data_fixup m -> Fmt.string ppf m
     | `Directive_not_accepted name -> Fmt.pf ppf "the target did not accept %s" name
     | `Relax_ladder e -> Lowered_ast.pp_relax_error ppf e
+    | `Invalid_configuration m -> Fmt.pf ppf "invalid feature configuration: %s" m
 
   let error_code : error -> string = function
     | `Local_label_survived _ -> "parse.local-label"
@@ -65,6 +67,7 @@ module Make (T : T_intf.TARGET) = struct
     | `Data_value _ | `Data_fixup _ -> "lower.data"
     | `Directive_not_accepted _ -> "lower.directive"
     | `Relax_ladder _ -> "lower.relax-ladder"
+    | `Invalid_configuration _ -> "config.invalid"
 
   let diag ?origin (e : error) =
     Diagnostic.of_error ~code:error_code ~pp:pp_error
@@ -82,6 +85,23 @@ module Make (T : T_intf.TARGET) = struct
      type because it may name Asm_syntax and the encoder's may not - see
      Target_intf.Target.TARGET. *)
   let parse_diagnostic e = T.parse_error_diagnostic (Err.Error.kind e)
+
+  (* {1 Configuration}
+
+     A caller's feature spec is resolved once per entry point, against this target's own
+     components, into the initial state every stage starts from. An unknown or contradictory
+     spec fails here with one diagnostic, before any source is read. [None] is the unconfigured
+     assembler: [T.default_state], every implemented component on. *)
+
+  let components = T.components
+  let configure spec = Target_config.resolve T.components spec
+
+  let initial_state = function
+    | None -> Ok T.default_state
+    | Some spec -> (
+        match configure spec with
+        | Ok c -> Ok (T.initial_state c)
+        | Error m -> Diag.fail ~pos:__POS__ [ diag (`Invalid_configuration m) ])
 
   (* {1 Stage 1 - text to source AST (§4.2)} *)
 
@@ -168,11 +188,11 @@ module Make (T : T_intf.TARGET) = struct
         Result.map (fun size -> Directive.Sym_size { name; size }) (fold size)
     | other -> Ok other
 
-  let simplify (m : T.Surface.t Source_ast.module_) =
+  let simplify ~state (m : T.Surface.t Source_ast.module_) =
     let errors = ref [] in
     let items = ref [] in
     let add i = items := i :: !items in
-    let state = ref T.default_state in
+    let state = ref state in
     List.iter
       (fun item ->
         match item with
@@ -180,7 +200,7 @@ module Make (T : T_intf.TARGET) = struct
         | Source_ast.Assignment { name; origin; _ } ->
             errors := diag ~origin (`Assignment_out_of_scope name) :: !errors
         | Source_ast.Instruction { insn; origin } -> (
-            match T.simplify_instruction ~features:T.default_features insn with
+            match T.simplify_instruction !state insn with
             | Error e -> errors := target_diagnostic e :: !errors
             | Ok i -> add (Normalized_ast.Instruction { insn = i; origin }))
         | Source_ast.Directive { name; arguments; origin } -> (
@@ -259,7 +279,7 @@ module Make (T : T_intf.TARGET) = struct
     let symbols : symbol_build list ref = ref [] in
     let commons : Lowered_ast.common list ref = ref [] in
     (* [state] is retained in the public entry point for direct normalized-AST
-       producers, but parsed programs always pass [default_state].  Target
+       producers, and parsed programs pass the initial state of the caller's configuration.  Target
        directives in [m] then replay in source order below. *)
     let state = ref state in
     let current = ref None in
@@ -464,7 +484,7 @@ module Make (T : T_intf.TARGET) = struct
                         let qualify (a : _ Lowered_ast.encoded_form) =
                           { a with Lowered_ast.form = T.name ^ "." ^ a.Lowered_ast.form }
                         in
-                        match T.encode l with
+                        match T.encode_in !state l with
                         | Error e -> errors := target_diagnostic e :: !errors
                         | Ok (`Fixed a) ->
                             let a = qualify a in
@@ -611,12 +631,13 @@ module Make (T : T_intf.TARGET) = struct
      (asm/docs/errors.md §2). The payload is untouched: a stage mark records
      that a failure crossed here, not a new failure. *)
 
-  let assemble ?entry ~unit_name ~source () =
+  let assemble ?entry ?features ~unit_name ~source () =
     let open Err.Syntax in
     let stage r = Diag.stage ~pos:__POS__ Err.Action.Map r in
+    let* state = initial_state features in
     let* src = stage (parse ~unit_name ~source) in
-    let* norm, _final_state = stage (simplify src) in
-    let* low = stage (lower ~state:T.default_state norm) in
+    let* norm, _final_state = stage (simplify ~state src) in
+    let* low = stage (lower ~state norm) in
     stage (plan ?entry low)
 
   (* M3's multi-module entry point. Every input is lowered independently
@@ -625,13 +646,16 @@ module Make (T : T_intf.TARGET) = struct
      circuit [lower_one]'s own three stages still use internally - and only
      the resulting module list crosses into [plan_many], the one place
      cross-input resolution (§2) actually happens. *)
-  let assemble_many ?entry (sources : (string * Span.source) list) () =
+  let assemble_many ?entry ?features (sources : (string * Span.source) list) () =
     let open Err.Syntax in
     let stage r = Diag.stage ~pos:__POS__ Err.Action.Map r in
+    let* state = initial_state features in
+    (* Every unit starts from the same initial state, so one unit's directives cannot leak
+       into the next. *)
     let lower_one (unit_name, source) =
       let* src = stage (parse ~unit_name ~source) in
-      let* norm, _final_state = stage (simplify src) in
-      stage (lower ~state:T.default_state norm)
+      let* norm, _final_state = stage (simplify ~state src) in
+      stage (lower ~state norm)
     in
     let* modules =
       Err.Accum.map ~pos:__POS__ lower_one sources
@@ -673,22 +697,25 @@ module Make (T : T_intf.TARGET) = struct
   let dump_source_ast ~unit_name ~source =
     Result.map (Fmt.to_to_string (Source_ast.pp T.Surface.pp)) (parse ~unit_name ~source)
 
-  let dump_normalized_ast ~unit_name ~source =
+  let dump_normalized_ast ?features ~unit_name ~source () =
+    let open Err.Syntax in
+    let* state = initial_state features in
     match parse ~unit_name ~source with
     | Error ds -> Error ds
     | Ok src ->
         Result.map
           (fun (n, _) -> Fmt.to_to_string (Normalized_ast.pp T.Instruction.pp) n)
-          (simplify src)
+          (simplify ~state src)
 
-  let dump_lowered_ast ~unit_name ~source =
+  let dump_lowered_ast ?features ~unit_name ~source () =
+    let open Err.Syntax in
+    let* state = initial_state features in
     match parse ~unit_name ~source with
     | Error ds -> Error ds
     | Ok src -> (
-        match simplify src with
+        match simplify ~state src with
         | Error ds -> Error ds
-        | Ok (n, _final_state) ->
-            Result.map (Fmt.to_to_string Lowered_ast.pp) (lower ~state:T.default_state n))
+        | Ok (n, _final_state) -> Result.map (Fmt.to_to_string Lowered_ast.pp) (lower ~state n))
 
   (* {2 The diagnostic disassembler (§6)}
 
@@ -764,7 +791,18 @@ module Make (T : T_intf.TARGET) = struct
 
   type disasm_row = { at : int64; run : string; text : string; form : string option }
 
-  let disassemble_lines ~address bytes =
+  let disassemble_lines ~state ~inspect ~address bytes =
+    (* Strict decoding refuses a disabled component's instruction. Inspection decodes under
+       every component enabled and notes which instructions the configuration would refuse. *)
+    let decode_state =
+      if inspect then T.initial_state (Target_config.default T.components) else state
+    in
+    let unmet insn =
+      match T.required_feature insn with
+      | Some f when not (Target_config.enabled (T.state_config state) f) ->
+          Printf.sprintf "  ; requires feature %s, which is not enabled" f
+      | _ -> ""
+    in
     let run_of pos n =
       String.concat " " (List.init n (fun i -> Printf.sprintf "%02x" (Char.code bytes.[pos + i])))
     in
@@ -783,22 +821,25 @@ module Make (T : T_intf.TARGET) = struct
                }
               :: acc)
         | None -> (
-            match T.decode { T.state = T.default_state; address = here } bytes ~pos with
+            match T.decode { T.state = decode_state; address = here } bytes ~pos with
             | Error e -> Diag.fail ~pos:__POS__ [ target_diagnostic e ]
             | Ok (insn, form, n) ->
                 go (pos + n)
                   ({
                      at = here;
                      run = run_of pos n;
-                     text = Fmt.to_to_string T.Instruction.pp insn;
+                     text =
+                       (Fmt.to_to_string T.Instruction.pp insn ^ if inspect then unmet insn else "");
                      form = Some form;
                    }
                   :: acc))
     in
     go 0 []
 
-  let dump_disasm_diagnostic ~address bytes =
-    match disassemble_lines ~address bytes with
+  let dump_disasm_diagnostic ?features ?(inspect = false) ~address bytes =
+    let open Err.Syntax in
+    let* state = initial_state features in
+    match disassemble_lines ~state ~inspect ~address bytes with
     | Error ds -> Error ds
     | Ok rows ->
         let wr = List.fold_left (fun a r -> max a (String.length r.run)) 0 rows in
@@ -811,8 +852,10 @@ module Make (T : T_intf.TARGET) = struct
                     (match r.form with Some f -> T.name ^ "." ^ f | None -> "padding"))
                 rows))
 
-  let dump_disasm_canonical ~address bytes =
-    match disassemble_lines ~address bytes with
+  let dump_disasm_canonical ?features ~address bytes =
+    let open Err.Syntax in
+    let* state = initial_state features in
+    match disassemble_lines ~state ~inspect:false ~address bytes with
     | Error ds -> Error ds
     | Ok rows -> Ok (String.concat "" (List.map (fun r -> "\t" ^ r.text ^ "\n") rows))
 

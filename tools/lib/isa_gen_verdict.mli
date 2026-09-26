@@ -81,3 +81,10 @@ val classify : known_syntax_gap:bool -> outcome -> Isa_generated_case.verdict
       small"): an UNEXPLAINED rejection of a case selected because it
       believed the form was already supported is a hard failure until someone
       reviews and records why, never a silent pass. *)
+
+val classify_negative : gas_rejected:bool -> ours_rejected:bool -> Isa_generated_case.verdict
+(** The verdict for a [negative = true] case: {!Isa_generated_case.Pass} exactly when both tools
+    rejected it, and {!Isa_generated_case.Negative_case_accepted} (row 8) otherwise - whether GAS
+    accepted it (the recipe is wrong) or only ours did (we would emit what no reference assembler
+    does). It says nothing about {e why} a tool rejected; the diagnostic category is checked
+    separately against the case's declared expectation. *)

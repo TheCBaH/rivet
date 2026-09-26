@@ -1108,6 +1108,23 @@ let test_counts () =
     (List.length Isa_gen_difficult.vfwmaccbf16_vv_entries = 2);
   check "vfwmaccbf16_vf_entries has 2 entries (rv_zvfbfwma, one per profile, no Req_any)"
     (List.length Isa_gen_difficult.vfwmaccbf16_vf_entries = 2);
+  check "alias entries: mv/snez/nop/ret one per profile, sext.w RV64 only"
+    (List.length Isa_gen_difficult.mv_entries = 2
+    && List.length Isa_gen_difficult.snez_entries = 2
+    && List.length Isa_gen_difficult.nop_entries = 2
+    && List.length Isa_gen_difficult.ret_entries = 2
+    && List.length Isa_gen_difficult.sext_w_entries = 1
+    && List.length Isa_gen_difficult.alias_entries = 9);
+  check "alias entries are all marked with the alias-spelling rule and name their target"
+    (List.for_all
+       (fun (e : Isa_gen_difficult.entry) ->
+         List.mem "alias-spelling" e.rule_ids
+         && List.exists (fun r -> String.length r > 9 && String.sub r 0 9 = "alias-of:") e.rule_ids)
+       Isa_gen_difficult.alias_entries);
+  check "snez reads its source from the record's rs2 operand"
+    (List.for_all
+       (fun (e : Isa_gen_difficult.entry) -> List.mem_assoc "rs2" e.operands)
+       Isa_gen_difficult.snez_entries);
   check "all includes every difficult-form family"
     (List.length Isa_gen_difficult.all
     = List.length Isa_gen_difficult.sw_entries
@@ -1217,6 +1234,7 @@ let test_counts () =
       + List.length Isa_gen_difficult.clmulh_entries
       + List.length Isa_gen_difficult.clmulr_entries
       + List.length Isa_gen_difficult.czero_eqz_entries
+      + List.length Isa_gen_difficult.alias_entries
       + List.length Isa_gen_difficult.czero_nez_entries
       + List.length Isa_gen_difficult.sm3p0_entries
       + List.length Isa_gen_difficult.sm3p1_entries

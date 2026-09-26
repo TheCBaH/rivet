@@ -106,3 +106,11 @@ val replay : record -> Isa_norm_model.encoding -> (unit, string) result
     This is the toolchain-free "replay" this corpus asks for: it never
     assembles anything on either side, it only recomputes over already-
     committed data. *)
+
+val expect_code_prefix : string
+(** ["expect-code:"]. A negative case declares the stable diagnostic category this project's
+    assembler must reject it with as a rule id [expect-code:<code>], for example
+    [expect-code:riscv64.fixup]; replay checks it against the committed diagnostic. GNU's own
+    error text is never matched - only that GAS rejected. *)
+
+val expected_code : Isa_generated_case.case -> string option

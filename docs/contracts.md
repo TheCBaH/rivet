@@ -1,7 +1,8 @@
 # Public OCaml contracts
 
 Frozen at M0.5; §5 added at M2, when fixups stopped being a declared model and
-started being constructed.
+started being constructed; §6 (feature configuration) added with the ISA-consumption
+work.
 
 This document freezes five things: the **canonical dump format** at every
 boundary, the **`form_id` scheme**, the **per-dialect directive table**, the
@@ -856,3 +857,90 @@ kind — an ARM split immediate needs the same slice extraction the patcher uses
 x86-64 and AArch64 are RELA. A split form produces **one record per
 instruction**, not per slice: `adrp` and `ldr :lo12:` are two records at two
 offsets matching two fixups, and §5.2's slices live *within* one record.
+
+---
+
+## 6. Feature configuration
+
+Added with the ISA-consumption work. A target's optional instruction
+components can be turned off, and once one is, no path emits or accepts its
+instructions.
+
+### 6.1 Components and features
+
+A **component** is an implementation boundary: a group of forms one module owns.
+A **feature** is the name that gates it. Each family publishes its components
+as data (`Target_component.t`: an id, the gating feature, `requires` and
+`conflicts`, and per form a codec label, mnemonics and upstream source
+mappings). Today:
+
+| target | components | feature | requires |
+|---|---|---|---|
+| riscv32, riscv64 | `riscv.zmmul` (`mul`, RV64 `mulw`) | `zmmul` | — |
+| riscv32, riscv64 | `riscv.m` (`remu`) | `m` | `zmmul` |
+| x86_32, x86_64 | `x86.x87` (13 forms) | `x87` | — |
+| arm, aarch64 | none | — | — |
+
+Everything not in a component is the always-available base. A component lists
+only the forms that exist, so **enabled does not mean the extension is fully
+implemented**: RISC-V M is `remu` and its Zmmul siblings, not division.
+
+### 6.2 Resolution policy
+
+The default enables every component the target implements, so an unconfigured
+assembler behaves as it always has. A spec is a comma-separated list processed
+left to right: `none` empties the set, `+f` (or `f`) enables `f` and what it
+requires, transitively, and `-f` disables exactly `f`. The result must be closed
+under `requires` and free of `conflicts`; a contradictory request is **rejected
+with an error naming both features**, never silently repaired. Unknown names are
+errors and list the names the target knows. `none,+m` and `none,+zmmul,+m` are
+the same; `-zmmul` is an error while `m` is on; `-m,-zmmul` is fine.
+
+Names are resolved once, at the boundary (`Target_config.resolve`), into a
+plain validated set. Nothing below re-parses a name.
+
+### 6.3 Where the configuration lives
+
+In `target_state`. Because that is already threaded through every stage that
+takes one, the configuration reaches lowering, encoding and decoding without a
+new parameter on each, and each unit of `assemble_many` starts from the same
+initial state, so one unit cannot change another's. `.option push`/`pop` do not
+touch it (no directive changes it). RISC-V `.attribute arch` stays ignored
+metadata and x86 `.arch` stays unsupported: features are selected by API or CLI,
+not by directive, until a compatibility decision says otherwise.
+
+### 6.4 Enforcement points
+
+One gate per family, `feature_gate`, checked wherever a form can be seen:
+
+| path | check |
+|---|---|
+| text | `simplify_instruction` (best diagnostic, with the source span) |
+| normalized instruction built directly | `lower_instruction` |
+| lowered form built directly | `encode_in` |
+| bytes | `decode`, strict |
+
+`encode` is `encode_in` under the default state, so old entry points are
+default-configuration wrappers. Pseudo-instruction expansion, relaxation and
+`.balign` padding reach the encoder only through these, and padding is
+target-defined filler that no component owns. The diagnostic is
+`<target>.feature`: `mul requires feature zmmul, which is not enabled`.
+
+### 6.5 Decode policy
+
+Decoding is strict: bytes that are a disabled component's instruction are an
+error, so a decode never presents as assemblable something the configuration
+would refuse. `--dump-disasm=canonical` is always strict (it must re-assemble).
+`--dump-disasm=diagnostic --inspect-disabled` decodes every component and marks
+each instruction the configuration would refuse (`; requires feature m, which is
+not enabled`); that output is not re-parseable, like the rest of the diagnostic
+dump.
+
+### 6.6 Public surface
+
+`DRIVER.components`, `DRIVER.configure`, and an optional `?features` spec on
+`assemble`, `assemble_many`, `dump_normalized_ast`, `dump_lowered_ast` and both
+disassembly dumps. A spec that does not resolve fails the call with
+`config.invalid` before any source is read. CLI: `--features <spec>`,
+`--dump-features`, `--inspect-disabled`. Omitting all of them is the previous
+behavior.

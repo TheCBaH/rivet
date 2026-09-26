@@ -17,8 +17,17 @@ let run_one repo (entry : Isa_gen_difficult.entry) =
           Isa_gen_drive.run_case ~prefix:Isa_gen_difficult.cli_group_name ~label repo case
             form.encoding)
 
+let run_negative repo (entry : Isa_gen_negative.entry) =
+  let case = Isa_gen_negative.case_of entry in
+  Isa_gen_drive.run_negative ~prefix:Isa_gen_difficult.cli_group_name
+    ~label:(Printf.sprintf "%s/%s" (Target.to_string entry.target) case.case_id)
+    repo case Isa_gen_negative.dummy_encoding
+
 let regen repo =
-  let results = List.map (run_one repo) Isa_gen_difficult.all in
+  let results =
+    List.map (run_one repo) Isa_gen_difficult.all
+    @ List.map (run_negative repo) Isa_gen_negative.all
+  in
   let records = List.filter_map (fun (r : Isa_gen_drive.result) -> r.record) results in
   let write_command =
     match

@@ -3,7 +3,7 @@
 
 (library
  (name test_targets)
- (modules test_targets)
+ (modules test_targets test_components test_features)
  (modes byte native)
  (libraries
   driver
@@ -18,6 +18,11 @@
   x86_64
   riscv32_encode
   riscv64_encode
+  riscv64
+  riscv_family_encode
+  x86_32_encode
+  x86_64_encode
+  target_features
   fmt)
  (inline_tests)
  (preprocess
