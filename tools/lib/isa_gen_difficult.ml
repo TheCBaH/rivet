@@ -5687,6 +5687,24 @@ let alias_entry ~mnemonic ~alias_of ~operands target =
 
 let both_riscv = [ Target.Riscv32; Target.Riscv64 ]
 
+(* {!alias_entry}'s own shape for the rv_f/rv_d sign-injection/move aliases
+   ([fneg.s]/[fneg.d]/[fabs.s]/[fabs.d]/[fmv.s]/[fmv.d]/[fmv.x.s]/[fmv.s.x]): FP register
+   operand names instead of {!alias_entry}'s GPR "a0"/"a1", and F/D's own -march=...f/...d
+   configuration ({!f_arith_configuration_for}) rather than the base-ISA config every other
+   {!alias_entry} caller uses. *)
+let fp_alias_entry ~mnemonic ~alias_of ~precision ~operands target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:alias:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "alias-spelling"; "alias-of:" ^ alias_of ];
+    operands;
+    lines_before = [];
+    lines_after = [];
+    configuration = f_arith_configuration_for precision target;
+  }
+
 let mv_entries =
   List.map
     (alias_entry ~mnemonic:"mv" ~alias_of:"addi" ~operands:[ ("rd", "a0"); ("rs1", "a1") ])
@@ -5695,6 +5713,31 @@ let mv_entries =
 let snez_entries =
   List.map
     (alias_entry ~mnemonic:"snez" ~alias_of:"sltu" ~operands:[ ("rd", "a0"); ("rs2", "a1") ])
+    both_riscv
+
+let neg_entries =
+  List.map
+    (alias_entry ~mnemonic:"neg" ~alias_of:"sub" ~operands:[ ("rd", "a0"); ("rs2", "a1") ])
+    both_riscv
+
+let seqz_entries =
+  List.map
+    (alias_entry ~mnemonic:"seqz" ~alias_of:"sltiu" ~operands:[ ("rd", "a0"); ("rs1", "a1") ])
+    both_riscv
+
+let sltz_entries =
+  List.map
+    (alias_entry ~mnemonic:"sltz" ~alias_of:"slt" ~operands:[ ("rd", "a0"); ("rs1", "a1") ])
+    both_riscv
+
+let sgtz_entries =
+  List.map
+    (alias_entry ~mnemonic:"sgtz" ~alias_of:"slt" ~operands:[ ("rd", "a0"); ("rs2", "a1") ])
+    both_riscv
+
+let zext_b_entries =
+  List.map
+    (alias_entry ~mnemonic:"zext.b" ~alias_of:"andi" ~operands:[ ("rd", "a0"); ("rs1", "a1") ])
     both_riscv
 
 let sext_w_entries =
@@ -5706,7 +5749,362 @@ let sext_w_entries =
 
 let nop_entries = List.map (alias_entry ~mnemonic:"nop" ~alias_of:"addi" ~operands:[]) both_riscv
 let ret_entries = List.map (alias_entry ~mnemonic:"ret" ~alias_of:"jalr" ~operands:[]) both_riscv
-let alias_entries = mv_entries @ snez_entries @ sext_w_entries @ nop_entries @ ret_entries
+
+let fneg_s_entries =
+  List.map
+    (fp_alias_entry ~mnemonic:"fneg.s" ~alias_of:"fsgnjn.s" ~precision:"f"
+       ~operands:[ ("rd", "fa0"); ("rs1", "fa1") ])
+    both_riscv
+
+let fneg_d_entries =
+  List.map
+    (fp_alias_entry ~mnemonic:"fneg.d" ~alias_of:"fsgnjn.d" ~precision:"d"
+       ~operands:[ ("rd", "fa0"); ("rs1", "fa1") ])
+    both_riscv
+
+let fabs_s_entries =
+  List.map
+    (fp_alias_entry ~mnemonic:"fabs.s" ~alias_of:"fsgnjx.s" ~precision:"f"
+       ~operands:[ ("rd", "fa0"); ("rs1", "fa1") ])
+    both_riscv
+
+let fabs_d_entries =
+  List.map
+    (fp_alias_entry ~mnemonic:"fabs.d" ~alias_of:"fsgnjx.d" ~precision:"d"
+       ~operands:[ ("rd", "fa0"); ("rs1", "fa1") ])
+    both_riscv
+
+let fmv_s_entries =
+  List.map
+    (fp_alias_entry ~mnemonic:"fmv.s" ~alias_of:"fsgnj.s" ~precision:"f"
+       ~operands:[ ("rd", "fa0"); ("rs1", "fa1") ])
+    both_riscv
+
+let fmv_d_entries =
+  List.map
+    (fp_alias_entry ~mnemonic:"fmv.d" ~alias_of:"fsgnj.d" ~precision:"d"
+       ~operands:[ ("rd", "fa0"); ("rs1", "fa1") ])
+    both_riscv
+
+let fmv_x_s_entries =
+  List.map
+    (fp_alias_entry ~mnemonic:"fmv.x.s" ~alias_of:"fmv.x.w" ~precision:"f"
+       ~operands:[ ("rd", "a0"); ("rs1", "fa1") ])
+    both_riscv
+
+let fmv_s_x_entries =
+  List.map
+    (fp_alias_entry ~mnemonic:"fmv.s.x" ~alias_of:"fmv.w.x" ~precision:"f"
+       ~operands:[ ("rd", "fa0"); ("rs1", "a1") ])
+    both_riscv
+
+(* c.and/c.or/c.xor/c.sub (CA format, both profiles) and their RV64-only
+   *w siblings c.addw/c.subw: {!c_addi_configuration_for}'s -march=..._c
+   config, bracketed the same [.option rvc]/[.option norvc] way c.addi's
+   own entries are. Concrete forms (each specializes a real instruction of
+   its own), not aliases, so these are not folded into {!alias_entry}'s
+   family - but they reuse its bracketing/configuration conventions. Two
+   register pairs per (mnemonic, target) exercise both ends of the 3-bit
+   compressed-register field (x8 and x15): hand-verified against real
+   riscv64-linux-gnu-as/riscv32-linux-gnu-as - `c.and s0,s1` -> `8c65`,
+   `c.and a4,a5` -> `8f7d`, `c.addw s0,s1` -> `9c25`, `c.addw a4,a5` ->
+   `9f3d` (and likewise for or/xor/sub/subw). *)
+let ca_alu_entry ~mnemonic ~target ~pair_label ~acc ~rs2 =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic pair_label (Target.to_string target);
+    rule_ids = [ pair_label ];
+    operands = [ ("acc", acc); ("rs2", rs2) ];
+    lines_before = [ ".option rvc" ];
+    lines_after = [ ".option norvc" ];
+    configuration = c_addi_configuration_for target;
+  }
+
+let ca_alu_entries ~mnemonic targets =
+  List.concat_map
+    (fun target ->
+      [
+        ca_alu_entry ~mnemonic ~target ~pair_label:"low-register-pair" ~acc:"s0" ~rs2:"s1";
+        ca_alu_entry ~mnemonic ~target ~pair_label:"high-register-pair" ~acc:"a4" ~rs2:"a5";
+      ])
+    targets
+
+let c_and_entries = ca_alu_entries ~mnemonic:"c.and" both_riscv
+let c_or_entries = ca_alu_entries ~mnemonic:"c.or" both_riscv
+let c_xor_entries = ca_alu_entries ~mnemonic:"c.xor" both_riscv
+let c_sub_entries = ca_alu_entries ~mnemonic:"c.sub" both_riscv
+let c_addw_entries = ca_alu_entries ~mnemonic:"c.addw" [ Target.Riscv64 ]
+let c_subw_entries = ca_alu_entries ~mnemonic:"c.subw" [ Target.Riscv64 ]
+
+(* c.jr/c.jalr (CR format, quadrant 2): unlike the CA-format cluster above,
+   the register operand ranges over the full 0..31 GPR space (no
+   compressed-subset restriction), so two boundary cases - ra (x1, low
+   end) and t6 (x31, high end) - exercise the field's full width instead
+   of a register-class boundary. Hand-verified against real
+   riscv64-linux-gnu-as/riscv32-linux-gnu-as: `c.jr ra` -> `8082`, `c.jr
+   t6` -> `8f82`, `c.jalr ra` -> `9082`, `c.jalr t6` -> `9f82`. *)
+let c_jr_jalr_entry ~mnemonic ~target ~reg_label ~rs1 =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic reg_label (Target.to_string target);
+    rule_ids = [ reg_label ];
+    operands = [ ("rs1", rs1) ];
+    lines_before = [ ".option rvc" ];
+    lines_after = [ ".option norvc" ];
+    configuration = c_addi_configuration_for target;
+  }
+
+let c_jr_jalr_entries ~mnemonic targets =
+  List.concat_map
+    (fun target ->
+      [
+        c_jr_jalr_entry ~mnemonic ~target ~reg_label:"boundary-low-register" ~rs1:"ra";
+        c_jr_jalr_entry ~mnemonic ~target ~reg_label:"boundary-high-register" ~rs1:"t6";
+      ])
+    targets
+
+let c_jr_entries = c_jr_jalr_entries ~mnemonic:"c.jr" both_riscv
+let c_jalr_entries = c_jr_jalr_entries ~mnemonic:"c.jalr" both_riscv
+
+(* c.mv/c.add (CR format, quadrant 2): same full-width register space as
+   c.jr/c.jalr above, plus a third case exercising the documented rd=x0
+   HINT (real hardware and real GNU as both accept it - unlike c.jr/c.jalr,
+   whose rs1=x0 is genuinely reserved/ambiguous, see
+   {!Isa_norm_riscv.c_jr_jalr_form}). Hand-verified against real
+   riscv64-linux-gnu-as/riscv32-linux-gnu-as: `c.mv ra,t6` -> `80fe`, `c.mv
+   t6,ra` -> `8f86`, `c.mv zero,t6` -> `807e` (and likewise `90fe`/`9f86`/
+   `907e` for c.add). *)
+(* [dest_key] is the normalizer's own operand name for the destination
+   register - "rd" for c.mv's pure-output form ({!Isa_norm_riscv.c_mv_form}),
+   "acc" for c.add's tied In_out accumulator ({!Isa_norm_riscv.c_add_form}) -
+   so this cannot be a single hardcoded key shared by both mnemonics. *)
+let c_mv_add_entry ~mnemonic ~dest_key ~target ~pair_label ~rd ~rs2 =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic pair_label (Target.to_string target);
+    rule_ids = [ pair_label ];
+    operands = [ (dest_key, rd); ("rs2", rs2) ];
+    lines_before = [ ".option rvc" ];
+    lines_after = [ ".option norvc" ];
+    configuration = c_addi_configuration_for target;
+  }
+
+let c_mv_add_entries ~mnemonic ~dest_key targets =
+  List.concat_map
+    (fun target ->
+      [
+        c_mv_add_entry ~mnemonic ~dest_key ~target ~pair_label:"boundary-low-to-high" ~rd:"ra"
+          ~rs2:"t6";
+        c_mv_add_entry ~mnemonic ~dest_key ~target ~pair_label:"boundary-high-to-low" ~rd:"t6"
+          ~rs2:"ra";
+        c_mv_add_entry ~mnemonic ~dest_key ~target ~pair_label:"rd-zero-hint" ~rd:"zero" ~rs2:"t6";
+      ])
+    targets
+
+let c_mv_entries = c_mv_add_entries ~mnemonic:"c.mv" ~dest_key:"rd" both_riscv
+let c_add_entries = c_mv_add_entries ~mnemonic:"c.add" ~dest_key:"acc" both_riscv
+
+(* c.ebreak (CR format, quadrant 2): the whole encoding is fixed, so one
+   case per profile is enough - no operand to vary. Hand-verified against
+   real riscv64-linux-gnu-as/riscv32-linux-gnu-as: `c.ebreak` -> `9002`. *)
+let c_ebreak_entry ~target =
+  {
+    form_id = "riscv:c.ebreak";
+    target;
+    lookup_key = "c.ebreak";
+    case_id = Printf.sprintf "riscv:c.ebreak:bare:%s" (Target.to_string target);
+    rule_ids = [ "bare" ];
+    operands = [];
+    lines_before = [ ".option rvc" ];
+    lines_after = [ ".option norvc" ];
+    configuration = c_addi_configuration_for target;
+  }
+
+let c_ebreak_entries = List.map (fun target -> c_ebreak_entry ~target) both_riscv
+
+(* c.lw/c.sw (CL/CS format, both profiles) and their RV64-only doubleword
+   siblings c.ld/c.sd: value/base reuse the CA-format cluster's compressed-
+   register boundary pairs (s0/s1 low, a4/a5 high); the offset in the
+   register-boundary cases (68 for word, 136 for doubleword) sets both
+   halves of the swapped low field simultaneously, so a byte match actually
+   exercises the reorder rather than a case where the swap is a no-op. A
+   third case per mnemonic pins the offset at its architectural max (124
+   word, 248 doubleword) to also exercise the immediate boundary. Hand-
+   verified against real riscv64-linux-gnu-as/riscv32-linux-gnu-as: `c.lw
+   s0,68(s1)` -> `40e0`, `c.ld s0,136(s1)` -> `64c0` (RV64). *)
+let c_lw_ld_entry ~mnemonic ~target ~case_label ~value ~base ~offset =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic case_label (Target.to_string target);
+    rule_ids = [ case_label ];
+    operands = [ ("value", value); ("base", base); ("offset", offset) ];
+    lines_before = [ ".option rvc" ];
+    lines_after = [ ".option norvc" ];
+    configuration = c_addi_configuration_for target;
+  }
+
+let c_lw_ld_entries ~mnemonic ~max_offset ~swap_offset targets =
+  List.concat_map
+    (fun target ->
+      [
+        c_lw_ld_entry ~mnemonic ~target ~case_label:"low-register-pair" ~value:"s0" ~base:"s1"
+          ~offset:swap_offset;
+        c_lw_ld_entry ~mnemonic ~target ~case_label:"high-register-pair" ~value:"a4" ~base:"a5"
+          ~offset:swap_offset;
+        c_lw_ld_entry ~mnemonic ~target ~case_label:"boundary-max-offset" ~value:"s0" ~base:"s1"
+          ~offset:max_offset;
+      ])
+    targets
+
+let c_lw_entries = c_lw_ld_entries ~mnemonic:"c.lw" ~max_offset:"124" ~swap_offset:"68" both_riscv
+let c_sw_entries = c_lw_ld_entries ~mnemonic:"c.sw" ~max_offset:"124" ~swap_offset:"68" both_riscv
+
+let c_ld_entries =
+  c_lw_ld_entries ~mnemonic:"c.ld" ~max_offset:"248" ~swap_offset:"136" [ Target.Riscv64 ]
+
+let c_sd_entries =
+  c_lw_ld_entries ~mnemonic:"c.sd" ~max_offset:"248" ~swap_offset:"136" [ Target.Riscv64 ]
+
+(* c.lwsp/c.ldsp (CI format, quadrant 2): rd ranges over the full 0..31 GPR
+   space like c.jr/c.jalr, so the same boundary registers (ra, t6) cover
+   it; excludes x0 the same way c.jr/c.jalr's rs1 does (see
+   {!Isa_norm_riscv.c_lwsp_form}), so unlike c.swsp/c.sdsp below there is
+   no zero-register HINT case here. The register-boundary cases' offset (68
+   word, 264 doubleword) sets multiple scattered offset bits at once; a
+   third case per mnemonic pins the offset at its architectural max (252
+   word, 504 doubleword). Hand-verified against real
+   riscv64-linux-gnu-as/riscv32-linux-gnu-as: `c.lwsp ra,68(sp)` -> `4096`,
+   `c.ldsp ra,264(sp)` -> `60b2` (RV64). *)
+let c_lwsp_ldsp_entry ~mnemonic ~target ~case_label ~rd ~offset =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic case_label (Target.to_string target);
+    rule_ids = [ case_label ];
+    operands = [ ("rd", rd); ("offset", offset) ];
+    lines_before = [ ".option rvc" ];
+    lines_after = [ ".option norvc" ];
+    configuration = c_addi_configuration_for target;
+  }
+
+let c_lwsp_ldsp_entries ~mnemonic ~max_offset ~swap_offset targets =
+  List.concat_map
+    (fun target ->
+      [
+        c_lwsp_ldsp_entry ~mnemonic ~target ~case_label:"boundary-low-register" ~rd:"ra"
+          ~offset:swap_offset;
+        c_lwsp_ldsp_entry ~mnemonic ~target ~case_label:"boundary-high-register" ~rd:"t6"
+          ~offset:swap_offset;
+        c_lwsp_ldsp_entry ~mnemonic ~target ~case_label:"boundary-max-offset" ~rd:"ra"
+          ~offset:max_offset;
+      ])
+    targets
+
+let c_lwsp_entries =
+  c_lwsp_ldsp_entries ~mnemonic:"c.lwsp" ~max_offset:"252" ~swap_offset:"68" both_riscv
+
+let c_ldsp_entries =
+  c_lwsp_ldsp_entries ~mnemonic:"c.ldsp" ~max_offset:"504" ~swap_offset:"264" [ Target.Riscv64 ]
+
+(* c.swsp/c.sdsp (CSS format, quadrant 2): rs2 does NOT exclude x0 (a store
+   never writes back - see {!Isa_norm_riscv.c_swsp_form}), so unlike
+   c.lwsp/c.ldsp above, one case exercises that documented zero-register
+   HINT directly instead of a second register boundary. A third case pins
+   the offset at its architectural max. Hand-verified against real
+   riscv64-linux-gnu-as/riscv32-linux-gnu-as: `c.swsp ra,68(sp)` -> `c286`,
+   `c.swsp zero,68(sp)` -> `c282`, `c.sdsp ra,264(sp)` -> `e606` (RV64). *)
+let c_swsp_sdsp_entry ~mnemonic ~target ~case_label ~rs2 ~offset =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:%s:%s" mnemonic case_label (Target.to_string target);
+    rule_ids = [ case_label ];
+    operands = [ ("rs2", rs2); ("offset", offset) ];
+    lines_before = [ ".option rvc" ];
+    lines_after = [ ".option norvc" ];
+    configuration = c_addi_configuration_for target;
+  }
+
+let c_swsp_sdsp_entries ~mnemonic ~max_offset ~swap_offset targets =
+  List.concat_map
+    (fun target ->
+      [
+        c_swsp_sdsp_entry ~mnemonic ~target ~case_label:"boundary-low-register" ~rs2:"ra"
+          ~offset:swap_offset;
+        c_swsp_sdsp_entry ~mnemonic ~target ~case_label:"rs2-zero-hint" ~rs2:"zero"
+          ~offset:swap_offset;
+        c_swsp_sdsp_entry ~mnemonic ~target ~case_label:"boundary-high-offset" ~rs2:"t6"
+          ~offset:max_offset;
+      ])
+    targets
+
+let c_swsp_entries =
+  c_swsp_sdsp_entries ~mnemonic:"c.swsp" ~max_offset:"252" ~swap_offset:"68" both_riscv
+
+let c_sdsp_entries =
+  c_swsp_sdsp_entries ~mnemonic:"c.sdsp" ~max_offset:"504" ~swap_offset:"264" [ Target.Riscv64 ]
+
+(* c.beqz/c.bnez (CB-format, quadrant 1, both profiles): {!beq_entries}'
+   own forward/backward label idiom, bracketed the same [.option rvc]/
+   [.option norvc] way every other compressed entry above is, with rs1
+   restricted to the RVC compressed subset (x8..x15) - the low end (s0) on
+   the forward case, the high end (a5) on the backward one, covering both
+   register-field extremes the way {!c_lw_ld_entry}'s own low/high-register
+   pair cases do. Unlike {!beq_entries}, there is no [nop] padding line
+   between the branch and its label: real GNU as opportunistically
+   compresses a plain [nop] to [c.nop] under [.option rvc] (a form of
+   relaxation this project does not model for a bare [nop] mnemonic), which
+   shifted the real byte layout out from under a fixed 4-byte assumption on
+   the first regen attempt (`make asm-isa-difficult-regen` reported
+   DIFFERENT-FORM/BYTE-MISMATCH on all 8 cases: real GAS emitted 4 bytes -
+   `c.beqz`+`c.nop` - where this project's tool emitted 6 - `c.beqz`+a
+   full-width `nop`). Dropping the padding line entirely (offset 2/-2, the
+   branch's own compressed width) sidesteps the ambiguity outright rather
+   than teaching the tool to relax [nop]. Hand-verified against real
+   riscv64-linux-gnu-as: `c.beqz s0,1f` / `1:` -> word `c009` (offset 2);
+   `1:` / `c.beqz a5,1b` -> word `c381` (offset -2). *)
+let c_beqz_bnez_entry ~mnemonic ~target ~direction ~rs1 ~offset ~lines_before ~lines_after =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:branch-%s:%s" mnemonic direction (Target.to_string target);
+    rule_ids = [ Printf.sprintf "branch-%s-label" direction ];
+    operands = [ ("rs1", rs1); ("offset", offset) ];
+    lines_before = ".option rvc" :: lines_before;
+    lines_after = lines_after @ [ ".option norvc" ];
+    configuration = c_addi_configuration_for target;
+  }
+
+let c_beqz_bnez_entries ~mnemonic targets =
+  List.concat_map
+    (fun target ->
+      [
+        c_beqz_bnez_entry ~mnemonic ~target ~direction:"forward" ~rs1:"s0" ~offset:"1f"
+          ~lines_before:[] ~lines_after:[ "1:" ];
+        c_beqz_bnez_entry ~mnemonic ~target ~direction:"backward" ~rs1:"a5" ~offset:"1b"
+          ~lines_before:[ "1:" ] ~lines_after:[];
+      ])
+    targets
+
+let c_beqz_entries = c_beqz_bnez_entries ~mnemonic:"c.beqz" both_riscv
+let c_bnez_entries = c_beqz_bnez_entries ~mnemonic:"c.bnez" both_riscv
+
+let alias_entries =
+  mv_entries @ snez_entries @ neg_entries @ seqz_entries @ sltz_entries @ sgtz_entries
+  @ zext_b_entries @ sext_w_entries @ nop_entries @ ret_entries @ fneg_s_entries @ fneg_d_entries
+  @ fabs_s_entries @ fabs_d_entries @ fmv_s_entries @ fmv_d_entries @ fmv_x_s_entries
+  @ fmv_s_x_entries
 
 let all =
   sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @ x86_alu_rr_entries
@@ -5855,7 +6253,11 @@ let all =
   @ x86_vex256_unop_rr_entries @ x86_vex256_unop_rr_mem_entries @ x86_vex_binop_rrr_entries
   @ x86_vex_binop_rr_mem_entries @ x86_vex_unop_rr_entries @ x86_vex_unop_rr_mem_entries
   @ x86_vex_binop_imm_rrr_entries @ x86_vex_binop_imm_rr_mem_entries @ x86_vex_unop_imm_rr_entries
-  @ x86_vex_unop_imm_rm_entries @ x86_vex_shift_imm_rrr_entries
+  @ x86_vex_unop_imm_rm_entries @ x86_vex_shift_imm_rrr_entries @ c_and_entries @ c_or_entries
+  @ c_xor_entries @ c_sub_entries @ c_addw_entries @ c_subw_entries @ c_jr_entries @ c_jalr_entries
+  @ c_mv_entries @ c_add_entries @ c_ebreak_entries @ c_lw_entries @ c_sw_entries @ c_ld_entries
+  @ c_sd_entries @ c_lwsp_entries @ c_ldsp_entries @ c_swsp_entries @ c_sdsp_entries
+  @ c_beqz_entries @ c_bnez_entries
 
 (* The register/immediate ALU family's shared ModR/M reg-extension mapping
    (Opcode.of_ext's own domain, {!Isa_norm_xed.alu_gprv_immz_form}'s doc
@@ -6146,6 +6548,21 @@ let pilot_entry_of (entry : entry) =
     | "snez" ->
         "riscv_family_encode.ml's lower_instruction Opcode.Snez arm: Lowered.R sltu rd, x0, rs2 \
          (opcode 0x33, funct3 3)"
+    | "neg" ->
+        "riscv_family_encode.ml's lower_instruction Opcode.Neg arm: Lowered.R sub rd, x0, rs2 \
+         (opcode 0x33, funct3 0, funct7 0x20)"
+    | "seqz" ->
+        "riscv_family_encode.ml's lower_instruction Opcode.Seqz arm: Lowered.I sltiu rd, rs1, 1 \
+         (opcode 0x13, funct3 3)"
+    | "sltz" ->
+        "riscv_family_encode.ml's lower_instruction Opcode.Sltz arm: Lowered.R slt rd, rs1, x0 \
+         (opcode 0x33, funct3 2)"
+    | "sgtz" ->
+        "riscv_family_encode.ml's lower_instruction Opcode.Sgtz arm: Lowered.R slt rd, x0, rs2 \
+         (opcode 0x33, funct3 2)"
+    | "zext.b" ->
+        "riscv_family_encode.ml's lower_instruction Opcode.Zext_b arm: Lowered.I andi rd, rs1, \
+         0xff (opcode 0x13, funct3 7)"
     | "sext.w" ->
         "riscv_family_encode.ml's lower_instruction Opcode.Sext_w arm: Lowered.I addiw rd, rs1, 0 \
          (opcode 0x1b, funct3 0)"

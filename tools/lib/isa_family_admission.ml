@@ -1820,10 +1820,35 @@ let promoted_case_part7 ~target ~form_id ~lookup_key =
   | (Target.Riscv32 | Target.Riscv64), "riscv:vle1.v", "vle1.v" -> true
   | (Target.Riscv32 | Target.Riscv64), "riscv:vse1.v", "vse1.v" -> true
   | ( (Target.Riscv32 | Target.Riscv64),
-      ("riscv:mv" | "riscv:snez" | "riscv:nop" | "riscv:ret"),
-      ("mv" | "snez" | "nop" | "ret") ) ->
+      ( "riscv:mv" | "riscv:snez" | "riscv:nop" | "riscv:ret" | "riscv:neg" | "riscv:seqz"
+      | "riscv:sltz" | "riscv:sgtz" | "riscv:zext.b" ),
+      ("mv" | "snez" | "nop" | "ret" | "neg" | "seqz" | "sltz" | "sgtz" | "zext.b") ) ->
       true
   | Target.Riscv64, "riscv:sext.w", "sext.w" -> true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ( "riscv:fneg.s" | "riscv:fneg.d" | "riscv:fabs.s" | "riscv:fabs.d" | "riscv:fmv.s"
+      | "riscv:fmv.d" | "riscv:fmv.x.s" | "riscv:fmv.s.x" ),
+      ("fneg.s" | "fneg.d" | "fabs.s" | "fabs.d" | "fmv.s" | "fmv.d" | "fmv.x.s" | "fmv.s.x") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:c.and" | "riscv:c.or" | "riscv:c.xor" | "riscv:c.sub"),
+      ("c.and" | "c.or" | "c.xor" | "c.sub") ) ->
+      true
+  | Target.Riscv64, ("riscv:c.addw" | "riscv:c.subw"), ("c.addw" | "c.subw") -> true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:c.jr" | "riscv:c.jalr" | "riscv:c.mv" | "riscv:c.add" | "riscv:c.ebreak"),
+      ("c.jr" | "c.jalr" | "c.mv" | "c.add" | "c.ebreak") ) ->
+      true
+  | ( (Target.Riscv32 | Target.Riscv64),
+      ("riscv:c.lw" | "riscv:c.sw" | "riscv:c.lwsp" | "riscv:c.swsp"),
+      ("c.lw" | "c.sw" | "c.lwsp" | "c.swsp") ) ->
+      true
+  | ( Target.Riscv64,
+      ("riscv:c.ld" | "riscv:c.sd" | "riscv:c.ldsp" | "riscv:c.sdsp"),
+      ("c.ld" | "c.sd" | "c.ldsp" | "c.sdsp") ) ->
+      true
+  | (Target.Riscv32 | Target.Riscv64), ("riscv:c.beqz" | "riscv:c.bnez"), ("c.beqz" | "c.bnez") ->
+      true
   | _ -> false
 
 (* These are the exact credit-bearing rows of the committed S3 pilot

@@ -68,6 +68,7 @@ let register_class_to_json : Isa_norm_model.register_class -> Jsont.json = funct
   | Riscv_gpr -> str "riscv_gpr"
   | Riscv_fpr -> str "riscv_fpr"
   | Riscv_vec -> str "riscv_vec"
+  | Riscv_gpr_c -> str "riscv_gpr_c"
   | X86_gpr -> str "x86_gpr"
   | X87_st -> str "x87_st"
   | X86_xmm -> str "x86_xmm"
@@ -80,6 +81,7 @@ let register_class_of_json json =
   | "riscv_gpr" -> Ok Isa_norm_model.Riscv_gpr
   | "riscv_fpr" -> Ok Isa_norm_model.Riscv_fpr
   | "riscv_vec" -> Ok Isa_norm_model.Riscv_vec
+  | "riscv_gpr_c" -> Ok Isa_norm_model.Riscv_gpr_c
   | "x86_gpr" -> Ok Isa_norm_model.X86_gpr
   | "x87_st" -> Ok Isa_norm_model.X87_st
   | "x86_xmm" -> Ok Isa_norm_model.X86_xmm

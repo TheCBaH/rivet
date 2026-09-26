@@ -93,6 +93,7 @@ let feature_of_extension = function
   | "rv32_zkn" -> Req_all [ Req_xlen 32; Req_feature "riscv:zkn" ]
   | "rv32_zks" -> Req_all [ Req_xlen 32; Req_feature "riscv:zks" ]
   | "rv32_zknh" -> Req_all [ Req_xlen 32; Req_feature "riscv:zknh" ]
+  | "rv64_c" -> Req_all [ Req_xlen 64; Req_feature "riscv:c" ]
   | ext -> Req_unknown (Printf.sprintf "unmapped riscv-opcodes extension: %s" ext)
 
 let riscv_encoding_of (rec_ : R.t) =
@@ -110,6 +111,30 @@ let requirement_of (rec_ : R.t) =
   | Ok { extension = Some ext; _ } -> feature_of_extension ext
   | Ok { extension = None; _ } -> Req_unknown "riscv-opcodes record has no provenance.extension"
   | Error msg -> Req_unknown msg
+
+(* Some mnemonics are shadowed: a different extension's own $pseudo_op
+   reuses the exact same name for a genuinely different instruction (not
+   just a different requirement). Concretely, riscv32.jsonl's rv32_zclsd
+   defines its own "c.ld"/"c.sd"/"c.ldsp"/"c.sdsp" - a register-PAIR
+   load/store pseudo-op specializing c.flw/c.fsw/c.flwsp/c.fswsp (even-only
+   rd_p_e/rs2_p_e/rd_n0_e/c_rs2_e register fields, width 2/2/4/4, not the
+   plain rd_p/rs2_p/rd_n0/c_rs2 fields the real rv64_c single-register
+   c.ld/c.sd/c.ldsp/c.sdsp use) - hand-verified by grepping every "c.ld"/
+   "c.sd"/"c.ldsp"/"c.sdsp"/"c.lw"/"c.sw"/"c.lwsp"/"c.swsp" record's own
+   provenance.extension across both checked-in riscv32.jsonl/riscv64.jsonl
+   exports: only these four mnemonics on riscv32 have a second, shadowing
+   record. A mnemonic-keyed dispatch alone cannot tell the two apart, so a
+   form for a mnemonic known to be shadowed must check the record's own
+   extension and refuse (leaving the shadowing record blocked, not
+   silently normalized/admitted under the wrong register-class model) -
+   see {!c_ld_sd_form}/{!c_ldsp_form}/{!c_sdsp_form}. *)
+let require_extension ~expected (rec_ : R.t) =
+  match riscv_provenance_of rec_ with
+  | Ok { extension = Some ext; _ } when ext = expected -> Ok ()
+  | Ok { extension = Some ext; _ } ->
+      Error (Printf.sprintf "record's extension is %s, not %s" ext expected)
+  | Ok { extension = None; _ } -> Error "riscv-opcodes record has no provenance.extension"
+  | Error msg -> Error msg
 
 (* The Zbb "alternative extension" blocker: riscv-opcodes exports andn/
    orn/xnor/rol/ror once per importing extension file (rv_zbb, the primary
@@ -402,6 +427,7 @@ let requirement_of_mnemonic ~mnemonic (rec_ : R.t) =
 let gpr ?(excluded = []) () = Register { class_ = Riscv_gpr; excluded }
 let fpr () = Register { class_ = Riscv_fpr; excluded = [] }
 let vreg () = Register { class_ = Riscv_vec; excluded = [] }
+let gpr_c () = Register { class_ = Riscv_gpr_c; excluded = [] }
 
 (* imm[hi:lo] <- one raw field's bits verbatim, high-to-low: sw's imm12hi
    (source bits 11:5) then imm12lo (bits 4:0). This is plain concatenation,
@@ -655,6 +681,894 @@ let c_addi_form (rec_ : R.t) =
           diagnostics = [];
         }
 
+(* c.and/c.or/c.xor/c.sub (CA format, quadrant 1 funct3=100 word ops) and
+   their RV64-only *w siblings c.addw/c.subw: both register operands are
+   restricted to the RVC compressed subset (x8..x15) by their own rd_rs1_p/
+   rs2_p field names, and rd_rs1_p is tied (same register read and
+   written). Each specializes a real instruction of its own (per
+   riscv-opcodes' [kind: instruction-form]), not a pseudo-op alias -
+   confirmed against real riscv64-linux-gnu-as/riscv32-linux-gnu-as: `c.and
+   a0,a1` -> 8d6d, `c.addw a0,a1` -> 9d2d, both under 2-operand GAS syntax
+   (the second operand supplies rs2; rd_rs1 is both read and written). *)
+let ca_alu_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let acc = { op_name = "acc"; op_kind = gpr_c (); role = In_out; explicit = true } in
+      let rs2 = { op_name = "rs2"; op_kind = gpr_c (); role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ acc; rs2 ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "acc"; Syn_operand "rs2" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd_rs1_p, rs2_p taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "both fields are 3-bit RVC compressed-register selectors (register number = \
+                   field + 8, i.e. x8..x15 / s0-s1,a0-a5); the record's own field-name suffix \
+                   ('_p') signals this, but the concrete x8..x15 domain is not itself stated";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* c.jr/c.jalr (CR format, quadrant 2, funct3=100): a single register
+   operand tied to rs1_n0/c_rs1_n0's mandatory-nonzero convention - unlike
+   c.mv/c.add's rd (below), real GNU as genuinely rejects x0 here (`c.jr
+   x0` / `c.jalr x0`: "illegal operands"), since the rd_rs1=0 encoding
+   collides with a different real form (the canonical all-zero illegal
+   instruction for c.jr, c.ebreak's own encoding for c.jalr) rather than
+   naming a defined HINT. *)
+let c_jr_jalr_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rs1 =
+        { op_name = "rs1"; op_kind = gpr ~excluded:[ "x0" ] (); role = In; explicit = true }
+      in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rs1 ];
+          syntax = { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rs1" ] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand field rs1_n0/c_rs1_n0 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "x0 excluded: the rd_rs1=0 encoding is reserved (c.jr) or collides with c.ebreak \
+                   (c.jalr), confirmed against real riscv64-linux-gnu-as - not stated by the \
+                   source record itself";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* c.mv (CR format, quadrant 2): rd is a pure output, unlike c.add's tied
+   accumulator (below). Unlike c.jr/c.jalr's rs1 above, real GNU as accepts
+   rd=x0 - the unpriv ISA manual documents rd=x0 with rs2!=0 as a defined
+   HINT here, not a reserved encoding: `c.mv x0, a1` assembles cleanly.
+   rs2 is genuinely required nonzero (rs2=0 collides with c.jr's own
+   encoding): `c.mv a0, x0` is rejected. Both confirmed against real
+   riscv64-linux-gnu-as. *)
+let c_mv_form (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err "c.mv-not-fixed-bits" msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = gpr (); role = Out; explicit = true } in
+      let rs2 =
+        { op_name = "rs2"; op_kind = gpr ~excluded:[ "x0" ] (); role = In; explicit = true }
+      in
+      Ok
+        {
+          form_id = "riscv:c.mv";
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs2 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic = "c.mv";
+              operands = [ Syn_operand "rd"; Syn_operand "rs2" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd_n0, c_rs2_n0 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rs2 excludes x0 (reserved: collides with c.jr's own encoding); rd's '_n0' \
+                   naming is not enforced by hardware - rd=x0 is a documented HINT, confirmed \
+                   against real riscv64-linux-gnu-as (`c.mv x0, a1` assembles)";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* c.add (CR format, quadrant 2): the RV64/RV32-shared register-register
+   accumulate sibling of {!c_mv_form} - acc (rd_rs1) is tied (In_out,
+   read as rs1 and written as rd), unlike c.mv's pure-output rd. Same
+   x0 story as c.mv: rs2 genuinely excludes x0 (collides with c.jalr's own
+   encoding), acc's x0 is a documented HINT, not reserved - confirmed
+   against real riscv64-linux-gnu-as (`c.add zero, a1` assembles, `c.add
+   a0, x0` is rejected). *)
+let c_add_form (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err "c.add-not-fixed-bits" msg
+  | Ok encoding ->
+      let acc = { op_name = "acc"; op_kind = gpr (); role = In_out; explicit = true } in
+      let rs2 =
+        { op_name = "rs2"; op_kind = gpr ~excluded:[ "x0" ] (); role = In; explicit = true }
+      in
+      Ok
+        {
+          form_id = "riscv:c.add";
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ acc; rs2 ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic = "c.add";
+              operands = [ Syn_operand "acc"; Syn_operand "rs2" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd_rs1_n0, c_rs2_n0 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rs2 excludes x0 (reserved: collides with c.jalr's own encoding); acc's '_n0' \
+                   naming is not enforced by hardware - acc=x0 is a documented HINT, confirmed \
+                   against real riscv64-linux-gnu-as (`c.add zero, a1` assembles)";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* c.ebreak (CR format, quadrant 2): the whole encoding.fields is fixed
+   (rd_rs1=0, rs2=0, funct4=9) - like c.addi/the CA-format ops above, a
+   real instruction-form specializing ebreak's compressed encoding, not a
+   pseudo-op alias (per riscv-opcodes' own [kind: instruction-form]), so
+   this stays Concrete rather than Alias_of ebreak. *)
+let c_ebreak_form (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err "c.ebreak-not-fixed-bits" msg
+  | Ok encoding ->
+      Ok
+        {
+          form_id = "riscv:c.ebreak";
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [];
+          syntax = { dialect = "gas-att"; mnemonic = "c.ebreak"; operands = [] };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "the record's mask covers every bit: a fixed word with no operand";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* c.lw/c.sw (CL/CS format, quadrant 0, both profiles): value/base are
+   restricted to the RVC compressed subset (x8..x15), like the CA-format
+   cluster above; value is written for c.lw (a load), read for c.sw (a
+   store) - [is_load] picks the role. The 7-bit unsigned, word-scaled
+   offset scatters its 5 raw bits as offset[5:3]=c_uimm7hi,
+   offset[2]=c_uimm7lo's high bit, offset[6]=c_uimm7lo's low bit - RISC-V's
+   own word-offset swap (the low field's two bits are not in dest-bit
+   order). Confirmed against real riscv64-linux-gnu-as/riscv32-linux-gnu-as:
+   `c.lw a0,4(a1)` -> word 0x41c8, `c.sw a0,4(a1)` -> word 0xc1c8. *)
+let c_lw_sw_form ~mnemonic ~is_load (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let value =
+        {
+          op_name = "value";
+          op_kind = gpr_c ();
+          role = (if is_load then Out else In);
+          explicit = true;
+        }
+      in
+      let base = { op_name = "base"; op_kind = gpr_c (); role = In; explicit = true } in
+      let offset =
+        {
+          op_name = "offset";
+          op_kind =
+            Immediate
+              {
+                width_bits = 7;
+                signed = false;
+                implicit_low_zero_bits = 2;
+                nonzero = false;
+                runs =
+                  [
+                    {
+                      field_name = "c_uimm7hi";
+                      field_hi = 2;
+                      field_lo = 0;
+                      dest_hi = 5;
+                      dest_lo = 3;
+                    };
+                    {
+                      field_name = "c_uimm7lo";
+                      field_hi = 1;
+                      field_lo = 1;
+                      dest_hi = 2;
+                      dest_lo = 2;
+                    };
+                    {
+                      field_name = "c_uimm7lo";
+                      field_hi = 0;
+                      field_lo = 0;
+                      dest_hi = 6;
+                      dest_lo = 6;
+                    };
+                  ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ value; base; offset ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands =
+                [
+                  Syn_operand "value";
+                  Syn_group
+                    [ Syn_operand "offset"; Syn_literal "("; Syn_operand "base"; Syn_literal ")" ];
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields (rd_p/rs1_p for c.lw, rs1_p/rs2_p for c.sw), c_uimm7hi, \
+                   c_uimm7lo taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "value/base restricted to the RVC compressed subset (x8..x15); offset is a 7-bit \
+                   unsigned word-scaled immediate, c_uimm7hi:c_uimm7lo permuted per the RISC-V ISA \
+                   manual's CL/CS-format layout - not stated by the source record itself";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* c.ld/c.sd (CL/CS format, quadrant 0, RV64 only): the doubleword-scaled
+   sibling of {!c_lw_sw_form} - the 5 raw offset bits instead concatenate
+   straight as offset[5:3]=c_uimm8hi, offset[7:6]=c_uimm8lo, with no swap
+   (the extra doubleword-alignment zero bit leaves nothing to reorder).
+   Confirmed: `c.ld a0,8(a1)` -> word 0x6588, `c.sd a0,8(a1)` -> word
+   0xe588. *)
+let c_ld_sd_form ~mnemonic ~is_load (rec_ : R.t) =
+  match require_extension ~expected:"rv64_c" rec_ with
+  | Error msg -> err (mnemonic ^ "-shadowed-extension") msg
+  | Ok () -> (
+      match riscv_encoding_of rec_ with
+      | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+      | Ok encoding ->
+          let value =
+            {
+              op_name = "value";
+              op_kind = gpr_c ();
+              role = (if is_load then Out else In);
+              explicit = true;
+            }
+          in
+          let base = { op_name = "base"; op_kind = gpr_c (); role = In; explicit = true } in
+          let offset =
+            {
+              op_name = "offset";
+              op_kind =
+                Immediate
+                  {
+                    width_bits = 8;
+                    signed = false;
+                    implicit_low_zero_bits = 3;
+                    nonzero = false;
+                    runs =
+                      [
+                        {
+                          field_name = "c_uimm8hi";
+                          field_hi = 2;
+                          field_lo = 0;
+                          dest_hi = 5;
+                          dest_lo = 3;
+                        };
+                        {
+                          field_name = "c_uimm8lo";
+                          field_hi = 1;
+                          field_lo = 0;
+                          dest_hi = 7;
+                          dest_lo = 6;
+                        };
+                      ];
+                  };
+              role = In;
+              explicit = true;
+            }
+          in
+          Ok
+            {
+              form_id = "riscv:" ^ mnemonic;
+              arch = Riscv;
+              native_name = rec_.native_name;
+              source_record_ids = [ rec_.record_id ];
+              requirement = requirement_of rec_;
+              encoding;
+              operands = [ value; base; offset ];
+              syntax =
+                {
+                  dialect = "gas-att";
+                  mnemonic;
+                  operands =
+                    [
+                      Syn_operand "value";
+                      Syn_group
+                        [
+                          Syn_operand "offset"; Syn_literal "("; Syn_operand "base"; Syn_literal ")";
+                        ];
+                    ];
+                };
+              concreteness = Concrete;
+              facts =
+                [
+                  {
+                    label = Upstream;
+                    note =
+                      "operand fields (rd_p/rs1_p for c.ld, rs1_p/rs2_p for c.sd), c_uimm8hi, \
+                       c_uimm8lo taken verbatim from encoding.fields";
+                  };
+                  {
+                    label = Inferred;
+                    note =
+                      "value/base restricted to the RVC compressed subset (x8..x15); offset is an \
+                       8-bit unsigned doubleword-scaled immediate, c_uimm8hi:c_uimm8lo \
+                       concatenated straight per the RISC-V ISA manual's CL/CS-format layout - not \
+                       stated by the source record itself";
+                  };
+                ];
+              diagnostics = [];
+            })
+
+(* c.lwsp (CI format, quadrant 2, both profiles): the SP-relative load
+   sibling of c.lw - base is architecturally fixed to x2 (sp), which the
+   CI-format encoding has no field for at all, so unlike c.lw's base it is
+   a fixed Syn_literal, not an operand (the same "fixed implicit operand"
+   shape Isa_norm_xed's alu_al_immb_form uses for %al). rd excludes x0
+   (rd=0 collides with a reserved encoding, confirmed rejected by real
+   riscv64-linux-gnu-as: `c.lwsp x0, 0(sp)` -> "illegal operands"). The
+   8-bit unsigned, word-scaled offset scatters its 6 raw bits as
+   offset[5]=c_uimm8sphi, offset[4:2]=c_uimm8splo's high 3 bits,
+   offset[7:6]=c_uimm8splo's low 2 bits (another word-offset swap).
+   Confirmed: `c.lwsp a0,4(sp)` -> word 0x4512. *)
+let c_lwsp_form (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err "c.lwsp-not-fixed-bits" msg
+  | Ok encoding ->
+      let rd =
+        { op_name = "rd"; op_kind = gpr ~excluded:[ "x0" ] (); role = Out; explicit = true }
+      in
+      let offset =
+        {
+          op_name = "offset";
+          op_kind =
+            Immediate
+              {
+                width_bits = 8;
+                signed = false;
+                implicit_low_zero_bits = 2;
+                nonzero = false;
+                runs =
+                  [
+                    {
+                      field_name = "c_uimm8sphi";
+                      field_hi = 0;
+                      field_lo = 0;
+                      dest_hi = 5;
+                      dest_lo = 5;
+                    };
+                    {
+                      field_name = "c_uimm8splo";
+                      field_hi = 4;
+                      field_lo = 2;
+                      dest_hi = 4;
+                      dest_lo = 2;
+                    };
+                    {
+                      field_name = "c_uimm8splo";
+                      field_hi = 1;
+                      field_lo = 0;
+                      dest_hi = 7;
+                      dest_lo = 6;
+                    };
+                  ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "riscv:c.lwsp";
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; offset ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic = "c.lwsp";
+              operands =
+                [
+                  Syn_operand "rd";
+                  Syn_group
+                    [ Syn_operand "offset"; Syn_literal "("; Syn_literal "sp"; Syn_literal ")" ];
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields rd_n0, c_uimm8sphi, c_uimm8splo taken verbatim from \
+                   encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "base is fixed to x2/sp: CI-format has no rs1 field at all, so it is a \
+                   Syn_literal, not an operand - not stated by the source record itself. rd \
+                   excludes x0 (reserved), confirmed against real riscv64-linux-gnu-as. offset is \
+                   an 8-bit unsigned word-scaled immediate, c_uimm8sphi:c_uimm8splo permuted per \
+                   the RISC-V ISA manual's CI-format layout";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* c.ldsp (CI format, quadrant 2, RV64 only): the doubleword-scaled sibling
+   of {!c_lwsp_form} - same fixed-x2-base, x0-excluded-rd story (confirmed:
+   `c.ldsp x0, 0(sp)` -> "illegal operands"), a differently-shaped 9-bit
+   offset: offset[5]=c_uimm9sphi, offset[4:3]=c_uimm9splo's high 2 bits,
+   offset[8:6]=c_uimm9splo's low 3 bits. Confirmed: `c.ldsp a0,8(sp)` ->
+   word 0x6522. *)
+let c_ldsp_form (rec_ : R.t) =
+  match require_extension ~expected:"rv64_c" rec_ with
+  | Error msg -> err "c.ldsp-shadowed-extension" msg
+  | Ok () -> (
+      match riscv_encoding_of rec_ with
+      | Error msg -> err "c.ldsp-not-fixed-bits" msg
+      | Ok encoding ->
+          let rd =
+            { op_name = "rd"; op_kind = gpr ~excluded:[ "x0" ] (); role = Out; explicit = true }
+          in
+          let offset =
+            {
+              op_name = "offset";
+              op_kind =
+                Immediate
+                  {
+                    width_bits = 9;
+                    signed = false;
+                    implicit_low_zero_bits = 3;
+                    nonzero = false;
+                    runs =
+                      [
+                        {
+                          field_name = "c_uimm9sphi";
+                          field_hi = 0;
+                          field_lo = 0;
+                          dest_hi = 5;
+                          dest_lo = 5;
+                        };
+                        {
+                          field_name = "c_uimm9splo";
+                          field_hi = 4;
+                          field_lo = 3;
+                          dest_hi = 4;
+                          dest_lo = 3;
+                        };
+                        {
+                          field_name = "c_uimm9splo";
+                          field_hi = 2;
+                          field_lo = 0;
+                          dest_hi = 8;
+                          dest_lo = 6;
+                        };
+                      ];
+                  };
+              role = In;
+              explicit = true;
+            }
+          in
+          Ok
+            {
+              form_id = "riscv:c.ldsp";
+              arch = Riscv;
+              native_name = rec_.native_name;
+              source_record_ids = [ rec_.record_id ];
+              requirement = requirement_of rec_;
+              encoding;
+              operands = [ rd; offset ];
+              syntax =
+                {
+                  dialect = "gas-att";
+                  mnemonic = "c.ldsp";
+                  operands =
+                    [
+                      Syn_operand "rd";
+                      Syn_group
+                        [ Syn_operand "offset"; Syn_literal "("; Syn_literal "sp"; Syn_literal ")" ];
+                    ];
+                };
+              concreteness = Concrete;
+              facts =
+                [
+                  {
+                    label = Upstream;
+                    note =
+                      "operand fields rd_n0, c_uimm9sphi, c_uimm9splo taken verbatim from \
+                       encoding.fields";
+                  };
+                  {
+                    label = Inferred;
+                    note =
+                      "base is fixed to x2/sp: CI-format has no rs1 field at all, so it is a \
+                       Syn_literal, not an operand - not stated by the source record itself. rd \
+                       excludes x0 (reserved), confirmed against real riscv64-linux-gnu-as. offset \
+                       is a 9-bit unsigned doubleword-scaled immediate, c_uimm9sphi:c_uimm9splo \
+                       permuted per the RISC-V ISA manual's CI-format layout";
+                  };
+                ];
+              diagnostics = [];
+            })
+
+(* c.swsp (CSS format, quadrant 2, both profiles): the SP-relative store
+   sibling of c.sw - base is fixed to x2/sp, same Syn_literal story as
+   {!c_lwsp_form}. Unlike c.lwsp's rd, rs2 does NOT exclude x0 (a store
+   never writes back, so there is no reserved-encoding collision):
+   confirmed `c.swsp x0, 0(sp)` assembles cleanly against real
+   riscv64-linux-gnu-as. The 8-bit unsigned, word-scaled offset scatters
+   its 6 raw bits as offset[7:6]=c_uimm8sp_s's low 2 bits,
+   offset[5:2]=c_uimm8sp_s's high 4 bits. Confirmed: `c.swsp a0,4(sp)` ->
+   word 0xc22a. *)
+let c_swsp_form (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err "c.swsp-not-fixed-bits" msg
+  | Ok encoding ->
+      let rs2 = { op_name = "rs2"; op_kind = gpr (); role = In; explicit = true } in
+      let offset =
+        {
+          op_name = "offset";
+          op_kind =
+            Immediate
+              {
+                width_bits = 8;
+                signed = false;
+                implicit_low_zero_bits = 2;
+                nonzero = false;
+                runs =
+                  [
+                    {
+                      field_name = "c_uimm8sp_s";
+                      field_hi = 5;
+                      field_lo = 2;
+                      dest_hi = 5;
+                      dest_lo = 2;
+                    };
+                    {
+                      field_name = "c_uimm8sp_s";
+                      field_hi = 1;
+                      field_lo = 0;
+                      dest_hi = 7;
+                      dest_lo = 6;
+                    };
+                  ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "riscv:c.swsp";
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rs2; offset ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic = "c.swsp";
+              operands =
+                [
+                  Syn_operand "rs2";
+                  Syn_group
+                    [ Syn_operand "offset"; Syn_literal "("; Syn_literal "sp"; Syn_literal ")" ];
+                ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields c_rs2, c_uimm8sp_s taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "base is fixed to x2/sp: CSS-format has no rs1 field at all, so it is a \
+                   Syn_literal, not an operand - not stated by the source record itself. rs2 does \
+                   not exclude x0 (a store never writes back), confirmed against real \
+                   riscv64-linux-gnu-as. offset is an 8-bit unsigned word-scaled immediate, \
+                   c_uimm8sp_s permuted per the RISC-V ISA manual's CSS-format layout";
+              };
+            ];
+          diagnostics = [];
+        }
+
+(* c.sdsp (CSS format, quadrant 2, RV64 only): the doubleword-scaled
+   sibling of {!c_swsp_form} - same fixed-x2-base, x0-not-excluded-rs2
+   story (confirmed: `c.sdsp x0, 0(sp)` assembles). The 9-bit unsigned
+   offset scatters its 6 raw bits as offset[8:6]=c_uimm9sp_s's low 3 bits,
+   offset[5:3]=c_uimm9sp_s's high 3 bits. Confirmed: `c.sdsp a0,8(sp)` ->
+   word 0xe42a. *)
+let c_sdsp_form (rec_ : R.t) =
+  match require_extension ~expected:"rv64_c" rec_ with
+  | Error msg -> err "c.sdsp-shadowed-extension" msg
+  | Ok () -> (
+      match riscv_encoding_of rec_ with
+      | Error msg -> err "c.sdsp-not-fixed-bits" msg
+      | Ok encoding ->
+          let rs2 = { op_name = "rs2"; op_kind = gpr (); role = In; explicit = true } in
+          let offset =
+            {
+              op_name = "offset";
+              op_kind =
+                Immediate
+                  {
+                    width_bits = 9;
+                    signed = false;
+                    implicit_low_zero_bits = 3;
+                    nonzero = false;
+                    runs =
+                      [
+                        {
+                          field_name = "c_uimm9sp_s";
+                          field_hi = 5;
+                          field_lo = 3;
+                          dest_hi = 5;
+                          dest_lo = 3;
+                        };
+                        {
+                          field_name = "c_uimm9sp_s";
+                          field_hi = 2;
+                          field_lo = 0;
+                          dest_hi = 8;
+                          dest_lo = 6;
+                        };
+                      ];
+                  };
+              role = In;
+              explicit = true;
+            }
+          in
+          Ok
+            {
+              form_id = "riscv:c.sdsp";
+              arch = Riscv;
+              native_name = rec_.native_name;
+              source_record_ids = [ rec_.record_id ];
+              requirement = requirement_of rec_;
+              encoding;
+              operands = [ rs2; offset ];
+              syntax =
+                {
+                  dialect = "gas-att";
+                  mnemonic = "c.sdsp";
+                  operands =
+                    [
+                      Syn_operand "rs2";
+                      Syn_group
+                        [ Syn_operand "offset"; Syn_literal "("; Syn_literal "sp"; Syn_literal ")" ];
+                    ];
+                };
+              concreteness = Concrete;
+              facts =
+                [
+                  {
+                    label = Upstream;
+                    note = "operand fields c_rs2, c_uimm9sp_s taken verbatim from encoding.fields";
+                  };
+                  {
+                    label = Inferred;
+                    note =
+                      "base is fixed to x2/sp: CSS-format has no rs1 field at all, so it is a \
+                       Syn_literal, not an operand - not stated by the source record itself. rs2 \
+                       does not exclude x0 (a store never writes back), confirmed against real \
+                       riscv64-linux-gnu-as. offset is a 9-bit unsigned doubleword-scaled \
+                       immediate, c_uimm9sp_s permuted per the RISC-V ISA manual's CSS-format \
+                       layout";
+                  };
+                ];
+              diagnostics = [];
+            })
+
+(* c.beqz/c.bnez (CB-format, quadrant 1, both profiles): the compressed
+   sibling of {!beq_form}'s B-type branch - rs1 is restricted to the RVC
+   compressed subset (x8..x15, like {!c_lw_sw_form}'s [base]), compared
+   implicitly against x0, with a 9-bit signed PC-relative offset instead of
+   B-type's 13-bit one. The scatter is a genuine bit permutation like
+   [beq]'s own B-type immediate, not a plain concatenation: c_bimm9hi (source
+   bits 12:10) holds imm[8] at its own top bit then imm[4:3]; c_bimm9lo
+   (source bits 6:2) holds imm[7:6] then imm[5] then imm[2:1]. Confirmed
+   against real riscv64-linux-gnu-as: `c.beqz s0,.+2` -> word 0xc009,
+   `c.beqz s0,.+122` -> word 0xcc2d. *)
+let c_beqz_bnez_form ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rs1 = { op_name = "rs1"; op_kind = gpr_c (); role = In; explicit = true } in
+      let offset =
+        {
+          op_name = "offset";
+          op_kind =
+            Immediate
+              {
+                width_bits = 9;
+                signed = true;
+                implicit_low_zero_bits = 1;
+                nonzero = false;
+                runs =
+                  [
+                    {
+                      field_name = "c_bimm9hi";
+                      field_hi = 2;
+                      field_lo = 2;
+                      dest_hi = 8;
+                      dest_lo = 8;
+                    };
+                    {
+                      field_name = "c_bimm9hi";
+                      field_hi = 1;
+                      field_lo = 0;
+                      dest_hi = 4;
+                      dest_lo = 3;
+                    };
+                    {
+                      field_name = "c_bimm9lo";
+                      field_hi = 4;
+                      field_lo = 3;
+                      dest_hi = 7;
+                      dest_lo = 6;
+                    };
+                    {
+                      field_name = "c_bimm9lo";
+                      field_hi = 2;
+                      field_lo = 1;
+                      dest_hi = 2;
+                      dest_lo = 1;
+                    };
+                    {
+                      field_name = "c_bimm9lo";
+                      field_hi = 0;
+                      field_lo = 0;
+                      dest_hi = 5;
+                      dest_lo = 5;
+                    };
+                  ];
+              };
+          role = In;
+          explicit = true;
+        }
+      in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rs1; offset ];
+          syntax =
+            {
+              dialect = "gas-att";
+              mnemonic;
+              operands = [ Syn_operand "rs1"; Syn_operand "offset" ];
+            };
+          concreteness = Concrete;
+          facts =
+            [
+              {
+                label = Upstream;
+                note =
+                  "operand fields rs1_p, c_bimm9lo, c_bimm9hi taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "rs1 restricted to the RVC compressed subset (x8..x15); offset is a signed 9-bit \
+                   B-type-style immediate, c_bimm9hi:c_bimm9lo permuted per the RISC-V ISA \
+                   manual's CB-format layout with an implicit zero low bit - not stated by the \
+                   source record itself";
+              };
+              {
+                label = Inferred;
+                note =
+                  "GAS resolves offset from a label, applying the PC-relative/alignment policy - \
+                   not modeled here";
+              };
+            ];
+          diagnostics = [];
+        }
+
 (* Generic R-type integer register-register form (the RISC-V
    add/sub/mul pilot): riscv-opcodes' [rd, rs1, rs2] variable_fields shape is
    shared by every base-integer and M-extension register-register op, with a
@@ -760,6 +1674,47 @@ let unary_gpr_form ?extension_lookup_key ?(source_field = "rs1") ?alias_of ~mnem
             (match requirement with
             | Req_unknown message -> [ { rule = mnemonic ^ "-xlen-unmodeled"; message } ]
             | _ -> []);
+        }
+
+(* {!unary_gpr_form}'s own shape generalized to floating-point sign-injection/move aliases -
+   [fneg.s]/[fneg.d]/[fabs.s]/[fabs.d]/[fmv.s]/[fmv.d] (both operands FP, [rs2] forced equal
+   to [rs1] by the source record's own mask, the remaining bits selecting fsgnj/fsgnjn/fsgnjx)
+   and [fmv.x.s]/[fmv.s.x] (one GPR, one FP - riscv-opcodes' own ISA-manual pseudo spelling of
+   [fmv.x.w]/[fmv.w.x], with no register forced equal to another). Every record here specializes
+   a real instruction that already has its own normalized form, so this is always an alias. *)
+let fp_unary_alias_form ~rd_kind ~rs1_kind ~alias_of ~mnemonic (rec_ : R.t) =
+  match riscv_encoding_of rec_ with
+  | Error msg -> err (mnemonic ^ "-not-fixed-bits") msg
+  | Ok encoding ->
+      let rd = { op_name = "rd"; op_kind = rd_kind; role = Out; explicit = true } in
+      let rs1 = { op_name = "rs1"; op_kind = rs1_kind; role = In; explicit = true } in
+      Ok
+        {
+          form_id = "riscv:" ^ mnemonic;
+          arch = Riscv;
+          native_name = rec_.native_name;
+          source_record_ids = [ rec_.record_id ];
+          requirement = requirement_of rec_;
+          encoding;
+          operands = [ rd; rs1 ];
+          syntax =
+            { dialect = "gas-att"; mnemonic; operands = [ Syn_operand "rd"; Syn_operand "rs1" ] };
+          concreteness = Alias_of alias_of;
+          facts =
+            [
+              {
+                label = Upstream;
+                note = "operand fields rd, rs1 taken verbatim from encoding.fields";
+              };
+              {
+                label = Inferred;
+                note =
+                  "the remaining encoding bits are fully fixed (a forced-equal rs2, or a fixed rs2 \
+                   = 0 selector for the fmv.x.*/fmv.*.x pair), selecting this pseudo spelling \
+                   rather than naming a genuine third operand";
+              };
+            ];
+          diagnostics = [];
         }
 
 (* A pseudo-op whose whole encoding is fixed and which takes no operand ([nop], [ret]): the
@@ -4735,6 +5690,27 @@ let normalize (rec_ : R.t) =
   | "sw" -> sw_form rec_
   | "beq" -> beq_form rec_
   | "c.addi" -> c_addi_form rec_
+  | "c.and" -> ca_alu_form ~mnemonic:"c.and" rec_
+  | "c.or" -> ca_alu_form ~mnemonic:"c.or" rec_
+  | "c.xor" -> ca_alu_form ~mnemonic:"c.xor" rec_
+  | "c.sub" -> ca_alu_form ~mnemonic:"c.sub" rec_
+  | "c.addw" -> ca_alu_form ~mnemonic:"c.addw" rec_
+  | "c.subw" -> ca_alu_form ~mnemonic:"c.subw" rec_
+  | "c.jr" -> c_jr_jalr_form ~mnemonic:"c.jr" rec_
+  | "c.jalr" -> c_jr_jalr_form ~mnemonic:"c.jalr" rec_
+  | "c.mv" -> c_mv_form rec_
+  | "c.add" -> c_add_form rec_
+  | "c.ebreak" -> c_ebreak_form rec_
+  | "c.lw" -> c_lw_sw_form ~mnemonic:"c.lw" ~is_load:true rec_
+  | "c.sw" -> c_lw_sw_form ~mnemonic:"c.sw" ~is_load:false rec_
+  | "c.ld" -> c_ld_sd_form ~mnemonic:"c.ld" ~is_load:true rec_
+  | "c.sd" -> c_ld_sd_form ~mnemonic:"c.sd" ~is_load:false rec_
+  | "c.lwsp" -> c_lwsp_form rec_
+  | "c.ldsp" -> c_ldsp_form rec_
+  | "c.swsp" -> c_swsp_form rec_
+  | "c.sdsp" -> c_sdsp_form rec_
+  | "c.beqz" -> c_beqz_bnez_form ~mnemonic:"c.beqz" rec_
+  | "c.bnez" -> c_beqz_bnez_form ~mnemonic:"c.bnez" rec_
   | "flw" -> f_load_form ~mnemonic:"flw" rec_
   | "fld" -> f_load_form ~mnemonic:"fld" rec_
   | "fsw" -> f_store_form ~mnemonic:"fsw" rec_
@@ -4760,9 +5736,40 @@ let normalize (rec_ : R.t) =
      because the record specializes [sltu rd, x0, rs2]. *)
   | "mv" -> unary_gpr_form ~mnemonic:"mv" ~alias_of:"addi" rec_
   | "snez" -> unary_gpr_form ~mnemonic:"snez" ~source_field:"rs2" ~alias_of:"sltu" rec_
+  | "neg" -> unary_gpr_form ~mnemonic:"neg" ~source_field:"rs2" ~alias_of:"sub" rec_
+  | "seqz" -> unary_gpr_form ~mnemonic:"seqz" ~alias_of:"sltiu" rec_
+  | "sltz" -> unary_gpr_form ~mnemonic:"sltz" ~alias_of:"slt" rec_
+  | "sgtz" -> unary_gpr_form ~mnemonic:"sgtz" ~source_field:"rs2" ~alias_of:"slt" rec_
+  | "zext.b" -> unary_gpr_form ~mnemonic:"zext.b" ~alias_of:"andi" rec_
   | "sext.w" -> unary_gpr_form ~mnemonic:"sext.w" ~alias_of:"addiw" rec_
   | "nop" -> alias_fixed_form ~mnemonic:"nop" ~alias_of:"addi" rec_
   | "ret" -> alias_fixed_form ~mnemonic:"ret" ~alias_of:"jalr" rec_
+  (* rv_f/rv_d sign-injection and move pseudo-ops: {!fp_unary_alias_form}, aliasing the
+     three-operand fsgnj/fsgnjn/fsgnjx instruction (or fmv.x.w/fmv.w.x) each specializes. *)
+  | "fneg.s" ->
+      fp_unary_alias_form ~rd_kind:(fpr ()) ~rs1_kind:(fpr ()) ~alias_of:"fsgnjn.s"
+        ~mnemonic:"fneg.s" rec_
+  | "fneg.d" ->
+      fp_unary_alias_form ~rd_kind:(fpr ()) ~rs1_kind:(fpr ()) ~alias_of:"fsgnjn.d"
+        ~mnemonic:"fneg.d" rec_
+  | "fabs.s" ->
+      fp_unary_alias_form ~rd_kind:(fpr ()) ~rs1_kind:(fpr ()) ~alias_of:"fsgnjx.s"
+        ~mnemonic:"fabs.s" rec_
+  | "fabs.d" ->
+      fp_unary_alias_form ~rd_kind:(fpr ()) ~rs1_kind:(fpr ()) ~alias_of:"fsgnjx.d"
+        ~mnemonic:"fabs.d" rec_
+  | "fmv.s" ->
+      fp_unary_alias_form ~rd_kind:(fpr ()) ~rs1_kind:(fpr ()) ~alias_of:"fsgnj.s" ~mnemonic:"fmv.s"
+        rec_
+  | "fmv.d" ->
+      fp_unary_alias_form ~rd_kind:(fpr ()) ~rs1_kind:(fpr ()) ~alias_of:"fsgnj.d" ~mnemonic:"fmv.d"
+        rec_
+  | "fmv.x.s" ->
+      fp_unary_alias_form ~rd_kind:(gpr ()) ~rs1_kind:(fpr ()) ~alias_of:"fmv.x.w"
+        ~mnemonic:"fmv.x.s" rec_
+  | "fmv.s.x" ->
+      fp_unary_alias_form ~rd_kind:(fpr ()) ~rs1_kind:(gpr ()) ~alias_of:"fmv.w.x"
+        ~mnemonic:"fmv.s.x" rec_
   (* rev8 (byte-reverse): riscv64.jsonl's own native_name is already "rev8",
      dispatched like any other {!unary_gpr_mnemonics} entry above would be,
      but riscv32.jsonl's native_name is riscv-opcodes' internal

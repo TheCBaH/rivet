@@ -22,9 +22,10 @@ let rows =
         "Source-derived recipes for the base integer ISA that the assembler already encodes: \
          memory operands (imm(rs1)) for loads/stores, PC-relative branch/jump operands, \
          upper-immediate and shift-amount shapes, and the remaining pseudo-ops (j, jr, \
-         branch-on-zero). Separately, neg, seqz, sltz, sgtz and zext.b are not accepted by the \
-         assembler at all (GNU as 2.44 accepts them), so they need an encoder alias before they \
-         can be admitted. mv, snez, sext.w, nop and ret are already promoted as the alias class.";
+         branch-on-zero). mv, snez, neg, seqz, sltz, sgtz, zext.b, sext.w, nop and ret are now \
+         promoted as the alias class - neg/seqz/sltz/sgtz/zext.b needed a new encoder alias each \
+         (GNU as 2.44 accepts them, this assembler previously did not); the rest reused an \
+         existing one.";
       evidence =
         "family-admission reports these families as unhandled-native-name; the assembler already \
          emits them (asm/test/targets transcripts, CompCert runtime fixtures)";
@@ -58,12 +59,22 @@ let rows =
          constraints, and an explicit .option rvc policy so baseline tests never compress \
          opportunistically.";
       evidence =
-        "family-admission credits only c.addi in this group; width derivation is already per \
-         record (CAP-01)";
+        "family-admission credits c.addi, the CA-format register-register class (c.and/c.or/ \
+         c.xor/c.sub on both profiles, c.addw/c.subw RV64-only), and the CR-format \
+         register-register cluster (c.jr/c.jalr/c.mv/c.add/c.ebreak, full 0..31 GPR space, no \
+         compressed-register-subset restriction) in this group; a compressed-register-subset \
+         operand domain (Riscv_gpr_c, x8..x15) now exists in the normalizer for the CA class, and \
+         the CR cluster's own x0 rules (reserved for c.jr/c.jalr's rs1, a documented HINT for \
+         c.mv/c.add's rd) are modeled directly on the plain gpr domain - but every other \
+         compressed form (loads/stores, branches, li/lui, addi16sp/4spn, andi/srli/srai, the \
+         *w/RV64-only siblings, and every rv_c_d/rv32_c_f/rv_zcb/rv_zcmp/... sub-extension) \
+         remains blocked; width derivation is already per record (CAP-01)";
       task = "GEN-05-RV-C";
       reopening_gate =
-        "a compressed-register-subset operand domain exists in the normalizer and c.* cases \
-         assemble under -march=..._c/_zca with --features/rvc scope recorded";
+        "a compressed-register-subset operand domain exists in the normalizer (done - see \
+         Riscv_gpr_c) and c.* cases assemble under -march=..._c/_zca with --features/rvc scope \
+         recorded (done for the CA-format and CR-format register-register classes; still open for \
+         every other compressed form)";
     };
     {
       id = "RES-RV-FP";
@@ -71,7 +82,6 @@ let rows =
       families =
         [
           "rv_f";
-          "rv_d";
           "rv_q";
           "rv64_d";
           "rv64_q";
@@ -89,12 +99,13 @@ let rows =
           "rv_q_zfhmin";
         ];
       capability =
-        "Floating-point leftovers: the sign-injection and move pseudo-ops (fabs, fneg, fmv), fcsr \
-         access pseudo-ops, quad and half precision, bfloat16 conversion, and Zfa. Scalar \
-         single/double arithmetic is already promoted.";
+        "Floating-point leftovers: fcsr access pseudo-ops (frcsr, frflags, frrm, fscsr, fsflags, \
+         fsflagsi, fsrm, fsrmi), quad and half precision, bfloat16 conversion, and Zfa. Scalar \
+         single/double arithmetic is already promoted; so is the sign-injection/move alias class \
+         (fabs.s, fabs.d, fneg.s, fneg.d, fmv.s, fmv.d, fmv.x.s, fmv.s.x) - rv_d's own pseudo-ops \
+         were entirely that class, so it no longer names a blocked family here.";
       evidence =
-        "family-admission: the fabs/fneg/fmv and fcsr pseudo-ops of rv_f/rv_d, and all of rv_q and \
-         rv_zfh, are unhandled";
+        "family-admission: rv_f's fcsr pseudo-ops, and all of rv_q and rv_zfh, are unhandled";
       task = "GEN-05-RV-FP";
       reopening_gate =
         "each precision has an FP-register operand class and rounding-mode recipe verified against \

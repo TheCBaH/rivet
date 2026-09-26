@@ -164,6 +164,11 @@ module Make (P : PROFILE) = struct
       | Slt
       | Sltu
       | Snez
+      | Neg
+      | Seqz
+      | Sltz
+      | Sgtz
+      | Zext_b
       | Xor
       | Srl
       | Sra
@@ -294,6 +299,27 @@ module Make (P : PROFILE) = struct
       | Mulw
       | Addi
       | C_addi
+      | C_and
+      | C_or
+      | C_xor
+      | C_sub
+      | C_addw
+      | C_subw
+      | C_jr
+      | C_jalr
+      | C_mv
+      | C_add
+      | C_ebreak
+      | C_lw
+      | C_sw
+      | C_lwsp
+      | C_swsp
+      | C_ld
+      | C_sd
+      | C_ldsp
+      | C_sdsp
+      | C_beqz
+      | C_bnez
       | Slti
       | Sltiu
       | Xori
@@ -359,6 +385,11 @@ module Make (P : PROFILE) = struct
       | Fdiv_s
       | Fneg_d
       | Fneg_s
+      | Fabs_d
+      | Fabs_s
+      | Fmv_s
+      | Fmv_x_s
+      | Fmv_s_x
       | Fsgnj_s
       | Fsgnj_d
       | Fsgnjn_s
@@ -837,6 +868,11 @@ module Make (P : PROFILE) = struct
       | Slt -> "slt"
       | Sltu -> "sltu"
       | Snez -> "snez"
+      | Neg -> "neg"
+      | Seqz -> "seqz"
+      | Sltz -> "sltz"
+      | Sgtz -> "sgtz"
+      | Zext_b -> "zext.b"
       | Xor -> "xor"
       | Srl -> "srl"
       | Sra -> "sra"
@@ -967,6 +1003,27 @@ module Make (P : PROFILE) = struct
       | Mulw -> "mulw"
       | Addi -> "addi"
       | C_addi -> "c.addi"
+      | C_and -> "c.and"
+      | C_or -> "c.or"
+      | C_xor -> "c.xor"
+      | C_sub -> "c.sub"
+      | C_addw -> "c.addw"
+      | C_subw -> "c.subw"
+      | C_jr -> "c.jr"
+      | C_jalr -> "c.jalr"
+      | C_mv -> "c.mv"
+      | C_add -> "c.add"
+      | C_ebreak -> "c.ebreak"
+      | C_lw -> "c.lw"
+      | C_sw -> "c.sw"
+      | C_lwsp -> "c.lwsp"
+      | C_swsp -> "c.swsp"
+      | C_ld -> "c.ld"
+      | C_sd -> "c.sd"
+      | C_ldsp -> "c.ldsp"
+      | C_sdsp -> "c.sdsp"
+      | C_beqz -> "c.beqz"
+      | C_bnez -> "c.bnez"
       | Slti -> "slti"
       | Sltiu -> "sltiu"
       | Xori -> "xori"
@@ -1032,6 +1089,11 @@ module Make (P : PROFILE) = struct
       | Fdiv_s -> "fdiv.s"
       | Fneg_d -> "fneg.d"
       | Fneg_s -> "fneg.s"
+      | Fabs_d -> "fabs.d"
+      | Fabs_s -> "fabs.s"
+      | Fmv_s -> "fmv.s"
+      | Fmv_x_s -> "fmv.x.s"
+      | Fmv_s_x -> "fmv.s.x"
       | Fsgnj_s -> "fsgnj.s"
       | Fsgnj_d -> "fsgnj.d"
       | Fsgnjn_s -> "fsgnjn.s"
@@ -1511,6 +1573,11 @@ module Make (P : PROFILE) = struct
         Slt;
         Sltu;
         Snez;
+        Neg;
+        Seqz;
+        Sltz;
+        Sgtz;
+        Zext_b;
         Xor;
         Srl;
         Sra;
@@ -1641,6 +1708,27 @@ module Make (P : PROFILE) = struct
         Mulw;
         Addi;
         C_addi;
+        C_and;
+        C_or;
+        C_xor;
+        C_sub;
+        C_addw;
+        C_subw;
+        C_jr;
+        C_jalr;
+        C_mv;
+        C_add;
+        C_ebreak;
+        C_lw;
+        C_sw;
+        C_lwsp;
+        C_swsp;
+        C_ld;
+        C_sd;
+        C_ldsp;
+        C_sdsp;
+        C_beqz;
+        C_bnez;
         Slti;
         Sltiu;
         Xori;
@@ -1706,6 +1794,11 @@ module Make (P : PROFILE) = struct
         Fdiv_s;
         Fneg_d;
         Fneg_s;
+        Fabs_d;
+        Fabs_s;
+        Fmv_s;
+        Fmv_x_s;
+        Fmv_s_x;
         Fsgnj_s;
         Fsgnj_d;
         Fsgnjn_s;
@@ -2366,6 +2459,38 @@ module Make (P : PROFILE) = struct
       | Pair of { name : string; rd : int; tmp : int; target : Asm_core.Expr.t; kind : pair_kind }
       | Fixed of { name : string; word : int64 }
       | Caddi of { rd : int; imm : Asm_core.Expr.t }
+      | Cr2 of { name : string; funct6 : int; funct2 : int; rd_rs1 : int; rs2 : int }
+          (** the CA-format compressed register-register ops ([c.and]/[c.or]/[c.xor]/[c.sub]/
+              [c.addw]/[c.subw]): [rd_rs1]/[rs2] are real register numbers (8..15), not the
+              3-bit compressed field - {!word_cr2} subtracts 8 when packing. *)
+      | Cr of { name : string; funct4 : int; rd_rs1 : int; rs2 : int }
+          (** the CR-format compressed register-register cluster ([c.jr]/[c.jalr]/[c.mv]/
+              [c.add]/[c.ebreak]): unlike {!Cr2}, [rd_rs1]/[rs2] range over the full 0..31 GPR
+              space (no compressed-subset restriction, no -8 bias) - [c.jr]/[c.jalr] set
+              [rs2 = 0], [c.ebreak] sets both fields to 0 with [funct4 = 9]. *)
+      | Cl of { name : string; funct3 : int; rd : int; rs1 : int; imm : Asm_core.Expr.t }
+          (** CL-format compressed loads ([c.lw]/[c.ld]): [rd]/[rs1] are real register
+              numbers (8..15) for the compressed 3-bit fields, like {!Cr2} - the packer
+              subtracts 8. [c.lw]'s 5 raw offset bits scatter as [inst5|hi3|inst6] (RISC-V's
+              own word-offset swap); [c.ld]'s instead concatenate straight as [lo2|hi3]
+              (doubleword alignment leaves no swap to do) - {!word_c_lw}/{!word_c_ld} differ
+              only in that shape, selected by [name] at the {!encode_ungated} call site. *)
+      | Cs of { name : string; funct3 : int; rs1 : int; rs2 : int; imm : Asm_core.Expr.t }
+          (** CS-format compressed stores ([c.sw]/[c.sd]): the store-side sibling of {!Cl}. *)
+      | Clsp of { name : string; funct3 : int; rd : int; imm : Asm_core.Expr.t }
+          (** CI-format compressed SP-relative loads ([c.lwsp]/[c.ldsp]): the base register
+              is architecturally fixed to [x2] (sp) - CI-format has no rs1 field at all, so
+              only [rd] and [imm] are ever assembled/decoded; confirmed against real
+              riscv64-linux-gnu-as ([c.lwsp a0,8(x1)] is rejected as illegal operands). *)
+      | Css of { name : string; funct3 : int; rs2 : int; imm : Asm_core.Expr.t }
+          (** CSS-format compressed SP-relative stores ([c.swsp]/[c.sdsp]): the store-side
+              sibling of {!Clsp}, same fixed-[x2]-base story. *)
+      | Cb of { name : string; funct3 : int; rs1 : int; target : Asm_core.Expr.t }
+          (** CB-format compressed conditional branches ([c.beqz]/[c.bnez]): [rs1] is a real
+              register number (8..15) for the compressed 3-bit field, like {!Cl}. [target] is a
+              PC-relative branch target resolved via a {!fixup_kind.Branch9c} fixup, the
+              compressed sibling of {!B}'s [Branch13] - a 9-bit signed, 2-byte-aligned offset
+              instead of [beq]/[bne]'s 13-bit one. *)
 
     let pp_expr ppf e = Asm_core.Expr.pp ppf e
     let reg_name isf n = Printf.sprintf "%s%d" (if isf then "f" else "x") n
@@ -2444,6 +2569,15 @@ module Make (P : PROFILE) = struct
       | Pair x -> Fmt.pf ppf "%s x%d, %a" x.name x.rd pp_expr x.target
       | Fixed x -> Fmt.string ppf x.name
       | Caddi x -> Fmt.pf ppf "c.addi x%d, %a" x.rd pp_expr x.imm
+      | Cr2 x -> Fmt.pf ppf "%s x%d, x%d" x.name x.rd_rs1 x.rs2
+      | Cr x when x.name = "c.ebreak" -> Fmt.string ppf x.name
+      | Cr x when x.name = "c.jr" || x.name = "c.jalr" -> Fmt.pf ppf "%s x%d" x.name x.rd_rs1
+      | Cr x -> Fmt.pf ppf "%s x%d, x%d" x.name x.rd_rs1 x.rs2
+      | Cl x -> Fmt.pf ppf "%s x%d, %a(x%d)" x.name x.rd pp_expr x.imm x.rs1
+      | Cs x -> Fmt.pf ppf "%s x%d, %a(x%d)" x.name x.rs2 pp_expr x.imm x.rs1
+      | Clsp x -> Fmt.pf ppf "%s x%d, %a(x2)" x.name x.rd pp_expr x.imm
+      | Css x -> Fmt.pf ppf "%s x%d, %a(x2)" x.name x.rs2 pp_expr x.imm
+      | Cb x -> Fmt.pf ppf "%s x%d, %a" x.name x.rs1 pp_expr x.target
 
     let equal (a : t) b = a = b
   end
@@ -2452,6 +2586,7 @@ module Make (P : PROFILE) = struct
     | Abs32
     | Abs64
     | Branch13
+    | Branch9c
     | Jal21
     | Pcrel_hi20
     | Pcrel_lo12_i
@@ -2466,6 +2601,7 @@ module Make (P : PROFILE) = struct
     | Abs32 -> "abs32"
     | Abs64 -> "abs64"
     | Branch13 -> "pcrel-b13"
+    | Branch9c -> "pcrel-b9c"
     | Jal21 -> "pcrel-j21"
     | Pcrel_hi20 -> "pcrel-hi20"
     | Pcrel_lo12_i -> "pcrel-lo12-i"
@@ -2481,13 +2617,13 @@ module Make (P : PROFILE) = struct
   let fixup_family = function
     | Abs32 -> "abs32"
     | Abs64 -> "abs64"
-    | Branch13 | Jal21 -> "pcrel-branch"
+    | Branch13 | Branch9c | Jal21 -> "pcrel-branch"
     | Pcrel_hi20 | Pcrel_lo12_i | Pcrel_lo12_s -> "pcrel-address"
     | Call_hi20 | Call_lo12_i -> "pcrel-call"
     | Abs_hi20 | Abs_lo12_i | Abs_lo12_s -> "absolute-address"
 
   let fixup_role = function
-    | Branch13 | Jal21 -> Asm_core.Lowered_ast.Branch
+    | Branch13 | Branch9c | Jal21 -> Asm_core.Lowered_ast.Branch
     | Call_hi20 | Call_lo12_i -> Asm_core.Lowered_ast.Call
     | _ -> Asm_core.Lowered_ast.Data_address
 
@@ -2624,6 +2760,19 @@ module Make (P : PROFILE) = struct
 
   let m_rv64_only op =
     match Riscv_ext_m.find (Opcode.name op) with Some f -> f.rv64_only | None -> false
+
+  (* CA-format compressed register-register ops (quadrant 1, funct3=100):
+     funct6 selects word- vs *w-width, funct2 selects the operation.
+     Hand-verified against real riscv64-linux-gnu-as/riscv32-linux-gnu-as
+     2.44/2.43.1 (`c.and a0,a1` -> 8d6d, `c.addw a0,a1` -> 9d2d). *)
+  let ca_desc = function
+    | Opcode.C_sub -> Some (0x23, 0)
+    | C_xor -> Some (0x23, 1)
+    | C_or -> Some (0x23, 2)
+    | C_and -> Some (0x23, 3)
+    | C_subw -> Some (0x27, 0)
+    | C_addw -> Some (0x27, 1)
+    | _ -> None
 
   let r_desc = function
     | Opcode.Add -> Some (0x33, 0, 0x00)
@@ -3079,15 +3228,21 @@ module Make (P : PROFILE) = struct
     | Fdiv_d -> Some (7, 0x0d)
     | _ -> None
 
-  (* [fneg.d]/[fneg.s]/[fmv.d] - FSGNJN/FSGNJ with [rs2] forced equal to [rs1], real
-     hardware's own alias (verified against real riscv64-linux-gnu-as/objdump:
-     `fneg.d fs0, fs1` -> `22949453`, decoding back with [rs1] = [rs2] = 9). The
-     general two-different-register [fsgnj]/[fsgnjn]/[fsgnjx] this shares a word
-     with is {!f_sgnj3_desc}. *)
+  (* [fneg.d]/[fneg.s]/[fmv.d]/[fabs.d]/[fabs.s]/[fmv.s] - FSGNJN/FSGNJ/FSGNJX with
+     [rs2] forced equal to [rs1], real hardware's own alias (verified against real
+     riscv64-linux-gnu-as/objdump: `fneg.d fs0, fs1` -> `22949453`, decoding back
+     with [rs1] = [rs2] = 9; `fabs.s fa0, fa1` -> `20b5a553`, `fabs.d fa0, fa1` ->
+     `22b5a553`, `fmv.s fa0, fa1` -> `20b58553`, funct3/funct7 unchanged from the
+     general [fsgnjx]/[fsgnj] forms - only the forced-equal operand makes these the
+     pseudo spelling). The general two-different-register [fsgnj]/[fsgnjn]/[fsgnjx]
+     this shares a word with is {!f_sgnj3_desc}. *)
   let f_sgnj_desc = function
     | Opcode.Fneg_s -> Some (1, 0x10)
     | Fneg_d -> Some (1, 0x11)
     | Fmv_d -> Some (0, 0x11)
+    | Fabs_s -> Some (2, 0x10)
+    | Fabs_d -> Some (2, 0x11)
+    | Fmv_s -> Some (0, 0x10)
     | _ -> None
 
   (* General [fsgnj]/[fsgnjn]/[fsgnjx] with [rs1]/[rs2] distinct real registers
@@ -3202,8 +3357,15 @@ module Make (P : PROFILE) = struct
      explicit-rounding-mode-override lowering arm and its documented latent
      bug (see {!f_class_desc}'s own comment). Verified against real
      riscv64-linux-gnu-as/objdump: `fmv.x.w a0, fa1` -> `e0058553` (funct7 =
-     0x70, funct3 = 0, matching [fclass.s]'s own group). *)
-  let f_mv_x_w_desc = function Opcode.Fmv_x_w -> Some (0, 0x70, 0) | _ -> None
+     0x70, funct3 = 0, matching [fclass.s]'s own group). [fmv.x.s] is the exact
+     same encoding under the ISA manual's pseudo-op spelling (verified against
+     real riscv64-linux-gnu-as/objdump: `fmv.x.s a0, fa1` -> `e0058553`,
+     byte-identical to [fmv.x.w]; GAS's own disassembly favors the [.w] name
+     regardless of which spelling was assembled). *)
+  let f_mv_x_w_desc = function
+    | Opcode.Fmv_x_w -> Some (0, 0x70, 0)
+    | Fmv_x_s -> Some (0, 0x70, 0)
+    | _ -> None
 
   (* Integer-to-float converts - [rd] is FP, [rs1] is a GPR, [rs2] fixed.
      [fmv.w.x] (bit-for-bit move, not a conversion) shares this shape and has
@@ -3222,6 +3384,11 @@ module Make (P : PROFILE) = struct
     | Fcvt_s_l -> Some (7, 0x68, 2)
     | Fcvt_s_lu -> Some (7, 0x68, 3)
     | Fmv_w_x -> Some (0, 0x78, 0)
+    (* [fmv.s.x] - [fmv.w.x]'s ISA-manual pseudo-op spelling, byte-identical
+       (verified against real riscv64-linux-gnu-as/objdump: `fmv.s.x fa0, a1` ->
+       `f0058553`, matching [fmv.w.x] exactly; same disassembly-favors-the-other-
+       name caveat as {!f_mv_x_w_desc}'s [fmv.x.s]). *)
+    | Fmv_s_x -> Some (0, 0x78, 0)
     | _ -> None
 
   (* Float-to-float precision converts - [rd]/[rs1] both FP, [rs2] fixed (the source
@@ -3245,6 +3412,13 @@ module Make (P : PROFILE) = struct
   let fits_unsigned bits v =
     let lim = Int64.shift_left 1L bits in
     Int64.compare v 0L >= 0 && Int64.compare v lim < 0
+
+  (* Every compressed load/store offset is an unsigned, alignment-scaled
+     immediate ([bits] total width including the implicit-zero low bits;
+     [scale] is 4 for word forms, 8 for doubleword forms) - e.g. [c.lw]/[c.sw]
+     are [bits = 7, scale = 4] (0..124), [c.ld]/[c.sd] are [bits = 8, scale = 8]
+     (0..248). *)
+  let fits_scaled_unsigned bits scale v = Int64.rem v scale = 0L && fits_unsigned bits v
 
   let int64_expr e =
     match Asm_core.Expr.fold Asm_core.Expr.no_env e with
@@ -4441,21 +4615,77 @@ module Make (P : PROFILE) = struct
         Error (diag ~pos:__POS__ (`Rv64_only opn))
     | ( ( Opcode.Addw | Subw | Sllw | Srlw | Sraw | Sh1adduw | Sh2adduw | Sh3adduw | Clzw | Ctzw
         | Cpopw | Packw | Rolw | Rorw | Sha512sum0 | Sha512sum1 | Sha512sig0 | Sha512sig1 | Aes64ds
-        | Aes64dsm | Aes64es | Aes64esm | Aes64ks2 | Aes64im | Aes64ks1i ),
+        | Aes64dsm | Aes64es | Aes64esm | Aes64ks2 | Aes64im | Aes64ks1i | C_addw | C_subw ),
         _ )
       when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
     | (Opcode.Addiw | Slliw | Srliw | Sraiw | Roriw | Sext_w | Ld | Lwu | Sd), _ when xlen <> 64 ->
+        Error (diag ~pos:__POS__ (`Rv64_only opn))
+    | (Opcode.C_ld | C_sd | C_ldsp | C_sdsp), _ when xlen <> 64 ->
         Error (diag ~pos:__POS__ (`Rv64_only opn))
     | ( ( Opcode.Zip | Unzip | Sha512sum0r | Sha512sum1r | Sha512sig0l | Sha512sig1l | Sha512sig0h
         | Sha512sig1h | Aes32dsi | Aes32dsmi | Aes32esi | Aes32esmi ),
         _ )
       when xlen <> 32 ->
         Error (diag ~pos:__POS__ (`Rv32_only opn))
-    | Opcode.C_addi, _ when not state.rvc -> Error (diag ~pos:__POS__ (`Compressed_disabled opn))
+    | ( ( Opcode.C_addi | C_and | C_or | C_xor | C_sub | C_addw | C_subw | C_jr | C_jalr | C_mv
+        | C_add | C_ebreak | C_lw | C_sw | C_lwsp | C_swsp | C_ld | C_sd | C_ldsp | C_sdsp | C_beqz
+        | C_bnez ),
+        _ )
+      when not state.rvc ->
+        Error (diag ~pos:__POS__ (`Compressed_disabled opn))
     | Opcode.C_addi, [ a; imm ] -> (
         match (xreg a, expr_of imm) with
         | Some rd, Some imm when rd <> 0 -> Ok [ Lowered.Caddi { rd; imm } ]
+        | _ -> wrong opn)
+    | op, [ a; b ] when Option.is_some (ca_desc op) -> (
+        match (xreg a, xreg b, ca_desc op) with
+        | Some rd_rs1, Some rs2, Some (funct6, funct2)
+          when rd_rs1 >= 8 && rd_rs1 <= 15 && rs2 >= 8 && rs2 <= 15 ->
+            Ok [ Lowered.Cr2 { name = opn; funct6; funct2; rd_rs1; rs2 } ]
+        | _ -> wrong opn)
+    | (Opcode.C_jr | C_jalr), [ a ] -> (
+        match xreg a with
+        | Some rd_rs1 when rd_rs1 <> 0 ->
+            let funct4 = if i.Instruction.op = Opcode.C_jr then 8 else 9 in
+            Ok [ Lowered.Cr { name = opn; funct4; rd_rs1; rs2 = 0 } ]
+        | _ -> wrong opn)
+    | (Opcode.C_mv | C_add), [ a; b ] -> (
+        match (xreg a, xreg b) with
+        | Some rd_rs1, Some rs2 when rs2 <> 0 ->
+            let funct4 = if i.Instruction.op = Opcode.C_mv then 8 else 9 in
+            Ok [ Lowered.Cr { name = opn; funct4; rd_rs1; rs2 } ]
+        | _ -> wrong opn)
+    | Opcode.C_ebreak, [] -> Ok [ Lowered.Cr { name = opn; funct4 = 9; rd_rs1 = 0; rs2 = 0 } ]
+    | (Opcode.C_lw | C_ld), [ a; Operand.Mem m ] -> (
+        match (xreg a, Reg.x m.base) with
+        | Some rd, Some rs1 when rd >= 8 && rd <= 15 && rs1 >= 8 && rs1 <= 15 ->
+            let funct3 = if i.Instruction.op = Opcode.C_lw then 2 else 3 in
+            Ok [ Lowered.Cl { name = opn; funct3; rd; rs1; imm = m.offset } ]
+        | _ -> wrong opn)
+    | (Opcode.C_sw | C_sd), [ a; Operand.Mem m ] -> (
+        match (xreg a, Reg.x m.base) with
+        | Some rs2, Some rs1 when rs2 >= 8 && rs2 <= 15 && rs1 >= 8 && rs1 <= 15 ->
+            let funct3 = if i.Instruction.op = Opcode.C_sw then 6 else 7 in
+            Ok [ Lowered.Cs { name = opn; funct3; rs1; rs2; imm = m.offset } ]
+        | _ -> wrong opn)
+    | (Opcode.C_lwsp | C_ldsp), [ a; Operand.Mem m ] -> (
+        match (xreg a, Reg.x m.base) with
+        | Some rd, Some 2 when rd <> 0 ->
+            let funct3 = if i.Instruction.op = Opcode.C_lwsp then 2 else 3 in
+            Ok [ Lowered.Clsp { name = opn; funct3; rd; imm = m.offset } ]
+        | _ -> wrong opn)
+    | (Opcode.C_swsp | C_sdsp), [ a; Operand.Mem m ] -> (
+        match (xreg a, Reg.x m.base) with
+        | Some rs2, Some 2 ->
+            let funct3 = if i.Instruction.op = Opcode.C_swsp then 6 else 7 in
+            Ok [ Lowered.Css { name = opn; funct3; rs2; imm = m.offset } ]
+        | _ -> wrong opn)
+    | (Opcode.C_beqz | C_bnez), [ a; target ] -> (
+        match (xreg a, expr_of target) with
+        | Some rs1, Some target when rs1 >= 8 && rs1 <= 15 ->
+            let funct3 = if i.Instruction.op = Opcode.C_beqz then 6 else 7 in
+            Ok [ Lowered.Cb { name = opn; funct3; rs1; target } ]
         | _ -> wrong opn)
     | ( ( Opcode.Fcvt_l_d | Fmv_x_d | Fcvt_s_l | Fcvt_lu_d | Fcvt_d_l | Fcvt_d_lu | Fcvt_l_s
         | Fcvt_lu_s | Fcvt_s_lu ),
@@ -6106,6 +6336,94 @@ module Make (P : PROFILE) = struct
                 Lowered.R { name = "sltu"; opcode = 0x33; funct3 = 3; funct7 = 0; rd; rs1 = 0; rs2 };
               ]
         | _ -> wrong opn)
+    | Opcode.Neg, [ a; b ] -> (
+        (* [neg rd, rs] - the base ISA's own negate pseudo, [sub rd, zero, rs] under a
+           different spelling (only ever reachable through [Sub]'s own three-register
+           form otherwise, which has no all-zero-[rs1] entry point of its own, the same
+           gap {!Snez} above fills for [sltu]). Checked against real
+           riscv64-linux-gnu-as/riscv32-linux-gnu-as/objdump: `neg a2, a3` -> `40d00633`
+           on both profiles, matching `sub a2, zero, a3` bit-for-bit. *)
+        match (xreg a, xreg b) with
+        | Some rd, Some rs2 ->
+            Ok
+              [
+                Lowered.R
+                  { name = "sub"; opcode = 0x33; funct3 = 0; funct7 = 0x20; rd; rs1 = 0; rs2 };
+              ]
+        | _ -> wrong opn)
+    | Opcode.Seqz, [ a; b ] -> (
+        (* [seqz rd, rs] - set-equal-zero, [sltiu rd, rs, 1] under a different spelling
+           (unsigned less-than-1 is exactly the zero test). Checked against real
+           riscv64-linux-gnu-as/riscv32-linux-gnu-as/objdump: `seqz a2, a3` -> `0016b613`
+           on both profiles, matching `sltiu a2, a3, 1` bit-for-bit. *)
+        match (xreg a, xreg b) with
+        | Some rd, Some rs1 ->
+            Ok
+              [
+                Lowered.I
+                  {
+                    name = "sltiu";
+                    opcode = 0x13;
+                    funct3 = 3;
+                    funct_hi = 0;
+                    shamt_bits = None;
+                    rd;
+                    rs1;
+                    imm = const 1;
+                  };
+              ]
+        | _ -> wrong opn)
+    | Opcode.Sltz, [ a; b ] -> (
+        (* [sltz rd, rs] - set-less-than-zero, [slt rd, rs, zero] under a different
+           spelling (only ever reachable through [Slt]'s own three-register form
+           otherwise, which has no all-zero-[rs2] entry point of its own). Checked
+           against real riscv64-linux-gnu-as/riscv32-linux-gnu-as/objdump:
+           `sltz a2, a3` -> `0006a633` on both profiles, matching `slt a2, a3, zero`
+           bit-for-bit. *)
+        match (xreg a, xreg b) with
+        | Some rd, Some rs1 ->
+            Ok
+              [
+                Lowered.R { name = "slt"; opcode = 0x33; funct3 = 2; funct7 = 0; rd; rs1; rs2 = 0 };
+              ]
+        | _ -> wrong opn)
+    | Opcode.Sgtz, [ a; b ] -> (
+        (* [sgtz rd, rs] - set-greater-than-zero, [slt rd, zero, rs] under a different
+           spelling (the [Sltz] arm's mirror image: [Slt]'s all-zero-[rs1] entry point).
+           Checked against real riscv64-linux-gnu-as/riscv32-linux-gnu-as/objdump:
+           `sgtz a2, a3` -> `00d02633` on both profiles, matching `slt a2, zero, a3`
+           bit-for-bit. *)
+        match (xreg a, xreg b) with
+        | Some rd, Some rs2 ->
+            Ok
+              [
+                Lowered.R { name = "slt"; opcode = 0x33; funct3 = 2; funct7 = 0; rd; rs1 = 0; rs2 };
+              ]
+        | _ -> wrong opn)
+    | Opcode.Zext_b, [ a; b ] -> (
+        (* [zext.b rd, rs] - the base ISA's own zero-extend-byte pseudo, [andi rd, rs,
+           0xff] under a different spelling; unlike {!Zext_h} below this needs no Zbb
+           dependency (it exists in [rv_i], not a bit-manipulation extension). Checked
+           against real riscv64-linux-gnu-as/riscv32-linux-gnu-as/objdump: `zext.b a2,
+           a3` -> `0ff6f613` on both profiles, matching `andi a2, a3, 0xff`
+           bit-for-bit. *)
+        match (xreg a, xreg b) with
+        | Some rd, Some rs1 ->
+            Ok
+              [
+                Lowered.I
+                  {
+                    name = "andi";
+                    opcode = 0x13;
+                    funct3 = 7;
+                    funct_hi = 0;
+                    shamt_bits = None;
+                    rd;
+                    rs1;
+                    imm = const 255;
+                  };
+              ]
+        | _ -> wrong opn)
     | Opcode.Zext_h, [ a; b ] -> (
         (* [zext.h rd, rs] - Zbb's zero-extend-halfword pseudo, [pack rd, rs, zero] (RV32)
            or [packw rd, rs, zero] (RV64) under a different spelling; riscv-opcodes exports
@@ -6409,6 +6727,181 @@ module Make (P : PROFILE) = struct
       (Int64.logor (field 2 5 imm)
          (Int64.logor (field 7 5 (Int64.of_int rd)) (field 12 1 (Int64.shift_right_logical imm 5))))
 
+  (* CA-format: quadrant(01) | rs2'[4:2] | funct2[6:5] | rd_rs1'[9:7] |
+     funct6[15:10], where rd_rs1'/rs2' are [rd_rs1]/[rs2] minus 8 (the
+     RVC compressed-register field). Confirmed against real
+     riscv64-linux-gnu-as: `c.and a0,a1` -> word 0x8d6d. *)
+  let word_cr2 ~funct6 ~funct2 ~rd_rs1 ~rs2 =
+    Int64.logor 0x1L
+      (Int64.logor
+         (field 2 3 (Int64.of_int (rs2 - 8)))
+         (Int64.logor
+            (field 5 2 (Int64.of_int funct2))
+            (Int64.logor (field 7 3 (Int64.of_int (rd_rs1 - 8))) (field 10 6 (Int64.of_int funct6)))))
+
+  (* CR-format: quadrant(10) | rs2[6:2] | rd_rs1[11:7] | funct4[15:12] -
+     the full-width sibling of {!word_cr2} ([c.jr]/[c.jalr]/[c.mv]/
+     [c.add]/[c.ebreak]): no -8 bias, [rd_rs1]/[rs2] are real 0..31 GPR
+     numbers. Confirmed against real riscv64-linux-gnu-as: `c.jr ra` ->
+     0x8082, `c.mv ra,t6` -> 0x80fe, `c.ebreak` -> 0x9002. *)
+  let word_cr ~funct4 ~rd_rs1 ~rs2 =
+    Int64.logor 0x2L
+      (Int64.logor
+         (field 2 5 (Int64.of_int rs2))
+         (Int64.logor (field 7 5 (Int64.of_int rd_rs1)) (field 12 4 (Int64.of_int funct4))))
+
+  (* CB-format compressed branches: quadrant(01) | rs1'[9:7] | funct3[15:13], where
+     rs1' is [rs1] minus 8 like {!word_cr2}; the offset bits are left zero here and
+     patched in later by the {!fixup_kind.Branch9c} fixup via {!cb_slices}, the same
+     split {!word_b} uses for [beq]/[bne]'s own [Branch13] fixup. *)
+  let word_cb ~funct3 ~rs1 =
+    Int64.logor 0x1L
+      (Int64.logor (field 7 3 (Int64.of_int (rs1 - 8))) (field 13 3 (Int64.of_int funct3)))
+
+  (* CL-format compressed loads: quadrant(00) | rd'[4:2] | offset bits | rs1'[9:7] |
+     offset bits | funct3[15:13], where rd'/rs1' are [rd]/[rs1] minus 8 like
+     {!word_cr2}. [c.lw]'s 5 raw offset bits scatter as [inst5|hi3|inst6] (RISC-V's
+     own word-offset swap, confirmed against real riscv64-linux-gnu-as: `c.lw
+     a0,4(a1)` -> word 0x41c8). *)
+  let word_c_lw ~funct3 ~rd ~rs1 offset =
+    Int64.logor
+      (field 2 3 (Int64.of_int (rd - 8)))
+      (Int64.logor
+         (field 5 1 (Int64.shift_right_logical offset 6))
+         (Int64.logor
+            (field 6 1 (Int64.shift_right_logical offset 2))
+            (Int64.logor
+               (field 7 3 (Int64.of_int (rs1 - 8)))
+               (Int64.logor
+                  (field 10 3 (Int64.shift_right_logical offset 3))
+                  (field 13 3 (Int64.of_int funct3))))))
+
+  (* [c.ld]'s 5 raw offset bits instead concatenate straight as [lo2|hi3] - the
+     extra doubleword-alignment zero bit leaves no swap to do, unlike {!word_c_lw}.
+     Confirmed: `c.ld a0,8(a1)` -> word 0x6588. *)
+  let word_c_ld ~funct3 ~rd ~rs1 offset =
+    Int64.logor
+      (field 2 3 (Int64.of_int (rd - 8)))
+      (Int64.logor
+         (field 5 2 (Int64.shift_right_logical offset 6))
+         (Int64.logor
+            (field 7 3 (Int64.of_int (rs1 - 8)))
+            (Int64.logor
+               (field 10 3 (Int64.shift_right_logical offset 3))
+               (field 13 3 (Int64.of_int funct3)))))
+
+  (* CS-format compressed stores: the store-side siblings of {!word_c_lw}/
+     {!word_c_ld} - same offset scatter, [rs2'] takes rd's field position.
+     Confirmed: `c.sw a0,4(a1)` -> word 0xc1c8, `c.sd a0,8(a1)` -> word 0xe588. *)
+  let word_c_sw ~funct3 ~rs1 ~rs2 offset =
+    Int64.logor
+      (field 2 3 (Int64.of_int (rs2 - 8)))
+      (Int64.logor
+         (field 5 1 (Int64.shift_right_logical offset 6))
+         (Int64.logor
+            (field 6 1 (Int64.shift_right_logical offset 2))
+            (Int64.logor
+               (field 7 3 (Int64.of_int (rs1 - 8)))
+               (Int64.logor
+                  (field 10 3 (Int64.shift_right_logical offset 3))
+                  (field 13 3 (Int64.of_int funct3))))))
+
+  let word_c_sd ~funct3 ~rs1 ~rs2 offset =
+    Int64.logor
+      (field 2 3 (Int64.of_int (rs2 - 8)))
+      (Int64.logor
+         (field 5 2 (Int64.shift_right_logical offset 6))
+         (Int64.logor
+            (field 7 3 (Int64.of_int (rs1 - 8)))
+            (Int64.logor
+               (field 10 3 (Int64.shift_right_logical offset 3))
+               (field 13 3 (Int64.of_int funct3)))))
+
+  (* CI-format compressed SP-relative loads: quadrant(10) | offset bits | rd[11:7]
+     (a real, un-biased 0..31 register - the base is fixed to x2/sp, which has no
+     encoding field at all) | offset bit | funct3[15:13]. [c.lwsp]'s 6 raw offset
+     bits scatter as [inst[3:2]|inst12|inst[6:4]] (confirmed against real
+     riscv64-linux-gnu-as: `c.lwsp a0,4(sp)` -> word 0x4512). *)
+  let word_c_lwsp ~funct3 ~rd offset =
+    Int64.logor 0x2L
+      (Int64.logor
+         (field 2 1 (Int64.shift_right_logical offset 6))
+         (Int64.logor
+            (field 3 1 (Int64.shift_right_logical offset 7))
+            (Int64.logor
+               (field 4 1 (Int64.shift_right_logical offset 2))
+               (Int64.logor
+                  (field 5 1 (Int64.shift_right_logical offset 3))
+                  (Int64.logor
+                     (field 6 1 (Int64.shift_right_logical offset 4))
+                     (Int64.logor
+                        (field 7 5 (Int64.of_int rd))
+                        (Int64.logor
+                           (field 12 1 (Int64.shift_right_logical offset 5))
+                           (field 13 3 (Int64.of_int funct3)))))))))
+
+  (* [c.ldsp] scatters its own 6 raw offset bits as [inst[4:2]|inst12|inst[6:5]] -
+     a different swap from {!word_c_lwsp} (doubleword alignment shifts which raw
+     bits are free). Confirmed: `c.ldsp a0,8(sp)` -> word 0x6522. *)
+  let word_c_ldsp ~funct3 ~rd offset =
+    Int64.logor 0x2L
+      (Int64.logor
+         (field 2 1 (Int64.shift_right_logical offset 6))
+         (Int64.logor
+            (field 3 1 (Int64.shift_right_logical offset 7))
+            (Int64.logor
+               (field 4 1 (Int64.shift_right_logical offset 8))
+               (Int64.logor
+                  (field 5 1 (Int64.shift_right_logical offset 3))
+                  (Int64.logor
+                     (field 6 1 (Int64.shift_right_logical offset 4))
+                     (Int64.logor
+                        (field 7 5 (Int64.of_int rd))
+                        (Int64.logor
+                           (field 12 1 (Int64.shift_right_logical offset 5))
+                           (field 13 3 (Int64.of_int funct3)))))))))
+
+  (* CSS-format compressed SP-relative stores: the store-side siblings of
+     {!word_c_lwsp}/{!word_c_ldsp} - [rs2] (a real, un-biased register - stores
+     never write back, so unlike [c.lwsp]'s [rd] there is no reserved x0 case)
+     takes the 5-bit field at bits[6:2] instead of [11:7]. Confirmed: `c.swsp
+     a0,4(sp)` -> word 0xc22a, `c.sdsp a0,8(sp)` -> word 0xe42a. *)
+  let word_c_swsp ~funct3 ~rs2 offset =
+    Int64.logor 0x2L
+      (Int64.logor
+         (field 2 5 (Int64.of_int rs2))
+         (Int64.logor
+            (field 7 1 (Int64.shift_right_logical offset 6))
+            (Int64.logor
+               (field 8 1 (Int64.shift_right_logical offset 7))
+               (Int64.logor
+                  (field 9 1 (Int64.shift_right_logical offset 2))
+                  (Int64.logor
+                     (field 10 1 (Int64.shift_right_logical offset 3))
+                     (Int64.logor
+                        (field 11 1 (Int64.shift_right_logical offset 4))
+                        (Int64.logor
+                           (field 12 1 (Int64.shift_right_logical offset 5))
+                           (field 13 3 (Int64.of_int funct3)))))))))
+
+  let word_c_sdsp ~funct3 ~rs2 offset =
+    Int64.logor 0x2L
+      (Int64.logor
+         (field 2 5 (Int64.of_int rs2))
+         (Int64.logor
+            (field 7 1 (Int64.shift_right_logical offset 6))
+            (Int64.logor
+               (field 8 1 (Int64.shift_right_logical offset 7))
+               (Int64.logor
+                  (field 9 1 (Int64.shift_right_logical offset 8))
+                  (Int64.logor
+                     (field 10 1 (Int64.shift_right_logical offset 3))
+                     (Int64.logor
+                        (field 11 1 (Int64.shift_right_logical offset 4))
+                        (Int64.logor
+                           (field 12 1 (Int64.shift_right_logical offset 5))
+                           (field 13 3 (Int64.of_int funct3)))))))))
+
   let bytes_of_word w =
     String.init 4 (fun i ->
         Char.chr (Int64.to_int (Int64.logand (Int64.shift_right_logical w (8 * i)) 0xffL)))
@@ -6458,6 +6951,18 @@ module Make (P : PROFILE) = struct
       { bit_offset = 31; bit_width = 1; value_lsb = 20 };
     ]
 
+  (* c.beqz/c.bnez's CB-format branch offset, {!b_slices}'s compressed sibling: a genuine
+     bit scatter (not a plain shift), hand-verified against real riscv64-linux-gnu-as/objdump
+     before writing any encoder code - see the GEN-05-RV-C follow-up 4 tracker entry. *)
+  let cb_slices =
+    [
+      { Asm_core.Lowered_ast.bit_offset = 3; bit_width = 2; value_lsb = 1 };
+      { bit_offset = 10; bit_width = 2; value_lsb = 3 };
+      { bit_offset = 2; bit_width = 1; value_lsb = 5 };
+      { bit_offset = 5; bit_width = 2; value_lsb = 6 };
+      { bit_offset = 12; bit_width = 1; value_lsb = 8 };
+    ]
+
   let u_slices = [ { Asm_core.Lowered_ast.bit_offset = 12; bit_width = 20; value_lsb = 0 } ]
   let form bytes form fixups = { Asm_core.Lowered_ast.bytes; form; fixups }
   let bad_encode kind = Error (diag ~pos:__POS__ kind)
@@ -6471,6 +6976,67 @@ module Make (P : PROFILE) = struct
             Ok (`Fixed (form (bytes_of_half (word_caddi ~rd:x.rd imm)) "c.addi" []))
         | Some _ -> bad_encode (`Immediate_range "c.addi")
         | None -> bad_encode (`Immediate_range ("c.addi " ^ Asm_core.Expr.to_string x.imm)))
+    | Lowered.Cr2 x ->
+        Ok
+          (`Fixed
+             (form
+                (bytes_of_half
+                   (word_cr2 ~funct6:x.funct6 ~funct2:x.funct2 ~rd_rs1:x.rd_rs1 ~rs2:x.rs2))
+                x.name []))
+    | Lowered.Cr x ->
+        Ok
+          (`Fixed
+             (form (bytes_of_half (word_cr ~funct4:x.funct4 ~rd_rs1:x.rd_rs1 ~rs2:x.rs2)) x.name []))
+    | Lowered.Cl x -> (
+        let bits, scale = if x.name = "c.lw" then (7, 4L) else (8, 8L) in
+        match int64_expr x.imm with
+        | Some offset when fits_scaled_unsigned bits scale offset ->
+            let word =
+              if x.name = "c.lw" then word_c_lw ~funct3:x.funct3 ~rd:x.rd ~rs1:x.rs1 offset
+              else word_c_ld ~funct3:x.funct3 ~rd:x.rd ~rs1:x.rs1 offset
+            in
+            Ok (`Fixed (form (bytes_of_half word) x.name []))
+        | Some _ -> bad_encode (`Immediate_range x.name)
+        | None -> bad_encode (`Immediate_range (x.name ^ " " ^ Asm_core.Expr.to_string x.imm)))
+    | Lowered.Cs x -> (
+        let bits, scale = if x.name = "c.sw" then (7, 4L) else (8, 8L) in
+        match int64_expr x.imm with
+        | Some offset when fits_scaled_unsigned bits scale offset ->
+            let word =
+              if x.name = "c.sw" then word_c_sw ~funct3:x.funct3 ~rs1:x.rs1 ~rs2:x.rs2 offset
+              else word_c_sd ~funct3:x.funct3 ~rs1:x.rs1 ~rs2:x.rs2 offset
+            in
+            Ok (`Fixed (form (bytes_of_half word) x.name []))
+        | Some _ -> bad_encode (`Immediate_range x.name)
+        | None -> bad_encode (`Immediate_range (x.name ^ " " ^ Asm_core.Expr.to_string x.imm)))
+    | Lowered.Clsp x -> (
+        let bits, scale = if x.name = "c.lwsp" then (8, 4L) else (9, 8L) in
+        match int64_expr x.imm with
+        | Some offset when fits_scaled_unsigned bits scale offset ->
+            let word =
+              if x.name = "c.lwsp" then word_c_lwsp ~funct3:x.funct3 ~rd:x.rd offset
+              else word_c_ldsp ~funct3:x.funct3 ~rd:x.rd offset
+            in
+            Ok (`Fixed (form (bytes_of_half word) x.name []))
+        | Some _ -> bad_encode (`Immediate_range x.name)
+        | None -> bad_encode (`Immediate_range (x.name ^ " " ^ Asm_core.Expr.to_string x.imm)))
+    | Lowered.Css x -> (
+        let bits, scale = if x.name = "c.swsp" then (8, 4L) else (9, 8L) in
+        match int64_expr x.imm with
+        | Some offset when fits_scaled_unsigned bits scale offset ->
+            let word =
+              if x.name = "c.swsp" then word_c_swsp ~funct3:x.funct3 ~rs2:x.rs2 offset
+              else word_c_sdsp ~funct3:x.funct3 ~rs2:x.rs2 offset
+            in
+            Ok (`Fixed (form (bytes_of_half word) x.name []))
+        | Some _ -> bad_encode (`Immediate_range x.name)
+        | None -> bad_encode (`Immediate_range (x.name ^ " " ^ Asm_core.Expr.to_string x.imm)))
+    | Lowered.Cb x ->
+        let fx =
+          mk_fixup ~kind:Branch9c ~name:"target" ~slices:cb_slices ~byte_offset:0 ~container:2
+            ~range:(Asm_core.Lowered_ast.Signed 9) ~value:x.target ~pairing:Unpaired
+        in
+        Ok (`Fixed (form (bytes_of_half (word_cb ~funct3:x.funct3 ~rs1:x.rs1)) x.name [ fx ]))
     | Lowered.R x ->
         fixed
           (word_r ~opcode:x.opcode ~funct3:x.funct3 ~funct7:x.funct7 ~rd:x.rd ~rs1:x.rs1 ~rs2:x.rs2)
@@ -6792,6 +7358,16 @@ module Make (P : PROFILE) = struct
         | 1, 0x71, 0 -> Some "fclass.d"
         | _ -> None)
 
+  (* CA-format decode: the inverse of {!ca_desc}, keyed by (funct6, funct2). *)
+  let ca_name = function
+    | 0x23, 0 -> Some "c.sub"
+    | 0x23, 1 -> Some "c.xor"
+    | 0x23, 2 -> Some "c.or"
+    | 0x23, 3 -> Some "c.and"
+    | 0x27, 0 -> Some "c.subw"
+    | 0x27, 1 -> Some "c.addw"
+    | _ -> None
+
   let f_load_name = function 2 -> Some "flw" | 3 -> Some "fld" | _ -> None
   let f_store_name = function 2 -> Some "fsw" | 3 -> Some "fsd" | _ -> None
 
@@ -6821,9 +7397,113 @@ module Make (P : PROFILE) = struct
       let imm_value =
         sign_extend 6 (Int64.logor (bits half 2 5) (Int64.shift_left (bits half 12 1) 5))
       in
+      let funct6 = Int64.to_int (bits half 10 6) in
+      let funct2 = Int64.to_int (bits half 5 2) in
+      let rd_rs1_c = Int64.to_int (bits half 7 3) + 8 in
+      let rs2_c = Int64.to_int (bits half 2 3) + 8 in
+      let b12 = Int64.to_int (bits half 12 1) in
+      let rs2_full = Int64.to_int (bits half 2 5) in
+      let c_lw_sw_offset () =
+        Int64.logor
+          (Int64.shift_left (bits half 5 1) 6)
+          (Int64.logor (Int64.shift_left (bits half 10 3) 3) (Int64.shift_left (bits half 6 1) 2))
+      in
+      let c_ld_sd_offset () =
+        Int64.logor (Int64.shift_left (bits half 5 2) 6) (Int64.shift_left (bits half 10 3) 3)
+      in
+      let c_lwsp_ldsp_offset ~hi3_shift =
+        Int64.logor
+          (Int64.shift_left (bits half 2 1) 6)
+          (Int64.logor
+             (Int64.shift_left (bits half 3 1) 7)
+             (Int64.logor
+                (Int64.shift_left (bits half 4 1) hi3_shift)
+                (Int64.logor
+                   (Int64.shift_left (bits half 5 1) 3)
+                   (Int64.logor
+                      (Int64.shift_left (bits half 6 1) 4)
+                      (Int64.shift_left (bits half 12 1) 5)))))
+      in
+      let c_swsp_sdsp_offset ~hi3_shift =
+        Int64.logor
+          (Int64.shift_left (bits half 7 1) 6)
+          (Int64.logor
+             (Int64.shift_left (bits half 8 1) 7)
+             (Int64.logor
+                (Int64.shift_left (bits half 9 1) hi3_shift)
+                (Int64.logor
+                   (Int64.shift_left (bits half 10 1) 3)
+                   (Int64.logor
+                      (Int64.shift_left (bits half 11 1) 4)
+                      (Int64.shift_left (bits half 12 1) 5)))))
+      in
+      let c_beqz_bnez_offset () =
+        sign_extend 9
+          (Int64.logor
+             (Int64.shift_left (bits half 12 1) 8)
+             (Int64.logor
+                (Int64.shift_left (bits half 5 2) 6)
+                (Int64.logor
+                   (Int64.shift_left (bits half 2 1) 5)
+                   (Int64.logor
+                      (Int64.shift_left (bits half 10 2) 3)
+                      (Int64.shift_left (bits half 3 2) 1)))))
+      in
       match (quadrant, funct3, rd, imm_value) with
       | 1, 0, rd, imm_value when rd <> 0 && imm_value <> 0L ->
           Ok (instruction Opcode.C_addi [ reg rd; imm imm_value ], "c.addi", 2)
+      | 1, 4, _, _ -> (
+          match ca_name (funct6, funct2) with
+          | Some n -> Ok (instruction (op_exn n) [ reg rd_rs1_c; reg rs2_c ], n, 2)
+          | None -> Error (diag ~pos:__POS__ `Decode_no_match))
+      | 1, 6, _, _ ->
+          Ok
+            ( instruction Opcode.C_beqz
+                [ reg rd_rs1_c; sym (Int64.add ctx.address (c_beqz_bnez_offset ())) ],
+              "c.beqz",
+              2 )
+      | 1, 7, _, _ ->
+          Ok
+            ( instruction Opcode.C_bnez
+                [ reg rd_rs1_c; sym (Int64.add ctx.address (c_beqz_bnez_offset ())) ],
+              "c.bnez",
+              2 )
+      | 2, 4, rd, _ -> (
+          match (b12, rs2_full, rd) with
+          | 0, 0, 0 -> Error (diag ~pos:__POS__ `Decode_no_match)
+          | 0, 0, rd -> Ok (instruction Opcode.C_jr [ reg rd ], "c.jr", 2)
+          | 0, rs2, rd -> Ok (instruction Opcode.C_mv [ reg rd; reg rs2 ], "c.mv", 2)
+          | 1, 0, 0 -> Ok (instruction Opcode.C_ebreak [], "c.ebreak", 2)
+          | 1, 0, rd -> Ok (instruction Opcode.C_jalr [ reg rd ], "c.jalr", 2)
+          | _, rs2, rd -> Ok (instruction Opcode.C_add [ reg rd; reg rs2 ], "c.add", 2))
+      | 0, 2, _, _ ->
+          Ok (instruction Opcode.C_lw [ reg rs2_c; mem rd_rs1_c (c_lw_sw_offset ()) ], "c.lw", 2)
+      | 0, 3, _, _ when xlen = 64 ->
+          Ok (instruction Opcode.C_ld [ reg rs2_c; mem rd_rs1_c (c_ld_sd_offset ()) ], "c.ld", 2)
+      | 0, 6, _, _ ->
+          Ok (instruction Opcode.C_sw [ reg rs2_c; mem rd_rs1_c (c_lw_sw_offset ()) ], "c.sw", 2)
+      | 0, 7, _, _ when xlen = 64 ->
+          Ok (instruction Opcode.C_sd [ reg rs2_c; mem rd_rs1_c (c_ld_sd_offset ()) ], "c.sd", 2)
+      | 2, 2, rd, _ when rd <> 0 ->
+          Ok
+            ( instruction Opcode.C_lwsp [ reg rd; mem 2 (c_lwsp_ldsp_offset ~hi3_shift:2) ],
+              "c.lwsp",
+              2 )
+      | 2, 3, rd, _ when xlen = 64 && rd <> 0 ->
+          Ok
+            ( instruction Opcode.C_ldsp [ reg rd; mem 2 (c_lwsp_ldsp_offset ~hi3_shift:8) ],
+              "c.ldsp",
+              2 )
+      | 2, 6, _, _ ->
+          Ok
+            ( instruction Opcode.C_swsp [ reg rs2_full; mem 2 (c_swsp_sdsp_offset ~hi3_shift:2) ],
+              "c.swsp",
+              2 )
+      | 2, 7, _, _ when xlen = 64 ->
+          Ok
+            ( instruction Opcode.C_sdsp [ reg rs2_full; mem 2 (c_swsp_sdsp_offset ~hi3_shift:8) ],
+              "c.sdsp",
+              2 )
       | _ -> Error (diag ~pos:__POS__ `Decode_no_match)
     else if String.length bytes - pos < 4 then Error (diag ~pos:__POS__ `Decode_short)
     else
@@ -7174,6 +7854,7 @@ module Make (P : PROFILE) = struct
         else Error (diag ~pos:__POS__ (`Immediate_range "32-bit address"))
     | Abs64 -> Ok target
     | Branch13 -> aligned "branch" 13
+    | Branch9c -> aligned "branch-c" 9
     | Jal21 -> aligned "jal" 21
     | Pcrel_hi20 | Call_hi20 ->
         if fits_signed 32 d then Ok (hi d) else Error (diag ~pos:__POS__ (`Immediate_range "auipc"))

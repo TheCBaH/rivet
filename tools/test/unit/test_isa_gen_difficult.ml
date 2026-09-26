@@ -1108,23 +1108,74 @@ let test_counts () =
     (List.length Isa_gen_difficult.vfwmaccbf16_vv_entries = 2);
   check "vfwmaccbf16_vf_entries has 2 entries (rv_zvfbfwma, one per profile, no Req_any)"
     (List.length Isa_gen_difficult.vfwmaccbf16_vf_entries = 2);
-  check "alias entries: mv/snez/nop/ret one per profile, sext.w RV64 only"
+  check "alias entries: mv/snez/neg/seqz/sltz/sgtz/zext.b/nop/ret one per profile, sext.w RV64 only"
     (List.length Isa_gen_difficult.mv_entries = 2
     && List.length Isa_gen_difficult.snez_entries = 2
+    && List.length Isa_gen_difficult.neg_entries = 2
+    && List.length Isa_gen_difficult.seqz_entries = 2
+    && List.length Isa_gen_difficult.sltz_entries = 2
+    && List.length Isa_gen_difficult.sgtz_entries = 2
+    && List.length Isa_gen_difficult.zext_b_entries = 2
     && List.length Isa_gen_difficult.nop_entries = 2
     && List.length Isa_gen_difficult.ret_entries = 2
-    && List.length Isa_gen_difficult.sext_w_entries = 1
-    && List.length Isa_gen_difficult.alias_entries = 9);
+    && List.length Isa_gen_difficult.sext_w_entries = 1);
+  check "alias entries: fneg.s/fneg.d/fabs.s/fabs.d/fmv.s/fmv.d/fmv.x.s/fmv.s.x one per profile"
+    (List.length Isa_gen_difficult.fneg_s_entries = 2
+    && List.length Isa_gen_difficult.fneg_d_entries = 2
+    && List.length Isa_gen_difficult.fabs_s_entries = 2
+    && List.length Isa_gen_difficult.fabs_d_entries = 2
+    && List.length Isa_gen_difficult.fmv_s_entries = 2
+    && List.length Isa_gen_difficult.fmv_d_entries = 2
+    && List.length Isa_gen_difficult.fmv_x_s_entries = 2
+    && List.length Isa_gen_difficult.fmv_s_x_entries = 2
+    && List.length Isa_gen_difficult.alias_entries = 35);
+  check
+    "CA-format entries: c.and/c.or/c.xor/c.sub two register pairs on both profiles, c.addw/c.subw \
+     RV64 only"
+    (List.length Isa_gen_difficult.c_and_entries = 4
+    && List.length Isa_gen_difficult.c_or_entries = 4
+    && List.length Isa_gen_difficult.c_xor_entries = 4
+    && List.length Isa_gen_difficult.c_sub_entries = 4
+    && List.length Isa_gen_difficult.c_addw_entries = 2
+    && List.length Isa_gen_difficult.c_subw_entries = 2);
+  check
+    "CR-format entries: c.jr/c.jalr two boundary registers, c.mv/c.add two boundary pairs plus \
+     rd=x0 HINT, c.ebreak bare - all on both profiles"
+    (List.length Isa_gen_difficult.c_jr_entries = 4
+    && List.length Isa_gen_difficult.c_jalr_entries = 4
+    && List.length Isa_gen_difficult.c_mv_entries = 6
+    && List.length Isa_gen_difficult.c_add_entries = 6
+    && List.length Isa_gen_difficult.c_ebreak_entries = 2);
+  check
+    "CL/CS/CI/CSS-format entries: c.lw/c.sw three cases on both profiles, c.ld/c.sd RV64 only, \
+     c.lwsp/c.ldsp/c.swsp/c.sdsp mirror the same split"
+    (List.length Isa_gen_difficult.c_lw_entries = 6
+    && List.length Isa_gen_difficult.c_sw_entries = 6
+    && List.length Isa_gen_difficult.c_ld_entries = 3
+    && List.length Isa_gen_difficult.c_sd_entries = 3
+    && List.length Isa_gen_difficult.c_lwsp_entries = 6
+    && List.length Isa_gen_difficult.c_ldsp_entries = 3
+    && List.length Isa_gen_difficult.c_swsp_entries = 6
+    && List.length Isa_gen_difficult.c_sdsp_entries = 3);
+  check "CB-format entries: c.beqz/c.bnez forward/backward branch cases on both profiles"
+    (List.length Isa_gen_difficult.c_beqz_entries = 4
+    && List.length Isa_gen_difficult.c_bnez_entries = 4);
   check "alias entries are all marked with the alias-spelling rule and name their target"
     (List.for_all
        (fun (e : Isa_gen_difficult.entry) ->
          List.mem "alias-spelling" e.rule_ids
          && List.exists (fun r -> String.length r > 9 && String.sub r 0 9 = "alias-of:") e.rule_ids)
        Isa_gen_difficult.alias_entries);
-  check "snez reads its source from the record's rs2 operand"
+  check "snez/neg/sgtz read their source from the record's rs2 operand"
     (List.for_all
        (fun (e : Isa_gen_difficult.entry) -> List.mem_assoc "rs2" e.operands)
-       Isa_gen_difficult.snez_entries);
+       (Isa_gen_difficult.snez_entries @ Isa_gen_difficult.neg_entries
+      @ Isa_gen_difficult.sgtz_entries));
+  check "seqz/sltz/zext.b read their source from the record's rs1 operand"
+    (List.for_all
+       (fun (e : Isa_gen_difficult.entry) -> List.mem_assoc "rs1" e.operands)
+       (Isa_gen_difficult.seqz_entries @ Isa_gen_difficult.sltz_entries
+      @ Isa_gen_difficult.zext_b_entries));
   check "all includes every difficult-form family"
     (List.length Isa_gen_difficult.all
     = List.length Isa_gen_difficult.sw_entries
@@ -1789,7 +1840,28 @@ let test_counts () =
       + List.length Isa_gen_difficult.x86_vex_binop_imm_rr_mem_entries
       + List.length Isa_gen_difficult.x86_vex_unop_imm_rr_entries
       + List.length Isa_gen_difficult.x86_vex_unop_imm_rm_entries
-      + List.length Isa_gen_difficult.x86_vex_shift_imm_rrr_entries);
+      + List.length Isa_gen_difficult.x86_vex_shift_imm_rrr_entries
+      + List.length Isa_gen_difficult.c_and_entries
+      + List.length Isa_gen_difficult.c_or_entries
+      + List.length Isa_gen_difficult.c_xor_entries
+      + List.length Isa_gen_difficult.c_sub_entries
+      + List.length Isa_gen_difficult.c_addw_entries
+      + List.length Isa_gen_difficult.c_subw_entries
+      + List.length Isa_gen_difficult.c_jr_entries
+      + List.length Isa_gen_difficult.c_jalr_entries
+      + List.length Isa_gen_difficult.c_mv_entries
+      + List.length Isa_gen_difficult.c_add_entries
+      + List.length Isa_gen_difficult.c_ebreak_entries
+      + List.length Isa_gen_difficult.c_lw_entries
+      + List.length Isa_gen_difficult.c_sw_entries
+      + List.length Isa_gen_difficult.c_ld_entries
+      + List.length Isa_gen_difficult.c_sd_entries
+      + List.length Isa_gen_difficult.c_lwsp_entries
+      + List.length Isa_gen_difficult.c_ldsp_entries
+      + List.length Isa_gen_difficult.c_swsp_entries
+      + List.length Isa_gen_difficult.c_sdsp_entries
+      + List.length Isa_gen_difficult.c_beqz_entries
+      + List.length Isa_gen_difficult.c_bnez_entries);
   check "x86_vex_binop_rrr_entries has 218 entries (109 mnemonics, one per target)"
     (List.length Isa_gen_difficult.x86_vex_binop_rrr_entries = 218);
   check "x86_vex_binop_rr_mem_entries has 218 entries (109 mnemonics, one per target)"

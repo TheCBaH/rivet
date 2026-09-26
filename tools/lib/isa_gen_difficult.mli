@@ -2822,6 +2822,21 @@ val mv_entries : entry list
 val snez_entries : entry list
 (** [snez a0, a1] on both profiles: [sltu a0, x0, a1]. The source operand is the record's [rs2]. *)
 
+val neg_entries : entry list
+(** [neg a0, a1] on both profiles: [sub a0, x0, a1]. The source operand is the record's [rs2]. *)
+
+val seqz_entries : entry list
+(** [seqz a0, a1] on both profiles: [sltiu a0, a1, 1]. *)
+
+val sltz_entries : entry list
+(** [sltz a0, a1] on both profiles: [slt a0, a1, x0]. *)
+
+val sgtz_entries : entry list
+(** [sgtz a0, a1] on both profiles: [slt a0, x0, a1]. The source operand is the record's [rs2]. *)
+
+val zext_b_entries : entry list
+(** [zext.b a0, a1] on both profiles: [andi a0, a1, 0xff]. *)
+
 val sext_w_entries : entry list
 (** [sext.w a0, a1], RV64 only: [addiw a0, a1, 0]. *)
 
@@ -2831,8 +2846,114 @@ val nop_entries : entry list
 val ret_entries : entry list
 (** [ret] on both profiles: [jalr x0, 0(ra)]. *)
 
+val fneg_s_entries : entry list
+(** [fneg.s fa0, fa1] on both profiles: [fsgnjn.s fa0, fa1, fa1]. *)
+
+val fneg_d_entries : entry list
+(** [fneg.d fa0, fa1] on both profiles: [fsgnjn.d fa0, fa1, fa1]. *)
+
+val fabs_s_entries : entry list
+(** [fabs.s fa0, fa1] on both profiles: [fsgnjx.s fa0, fa1, fa1]. *)
+
+val fabs_d_entries : entry list
+(** [fabs.d fa0, fa1] on both profiles: [fsgnjx.d fa0, fa1, fa1]. *)
+
+val fmv_s_entries : entry list
+(** [fmv.s fa0, fa1] on both profiles: [fsgnj.s fa0, fa1, fa1]. *)
+
+val fmv_d_entries : entry list
+(** [fmv.d fa0, fa1] on both profiles: [fsgnj.d fa0, fa1, fa1]. *)
+
+val fmv_x_s_entries : entry list
+(** [fmv.x.s a0, fa1] on both profiles: the ISA-manual pseudo spelling of [fmv.x.w a0, fa1]. *)
+
+val fmv_s_x_entries : entry list
+(** [fmv.s.x fa0, a1] on both profiles: the ISA-manual pseudo spelling of [fmv.w.x fa0, a1]. *)
+
 val alias_entries : entry list
 (** The alias coverage class: every entry whose rule ids include [alias-spelling]. *)
+
+val c_and_entries : entry list
+(** [c.and s0,s1]/[c.and a4,a5] on both profiles - the CA-format compressed
+    register-register class, not an alias. *)
+
+val c_or_entries : entry list
+(** [c.or s0,s1]/[c.or a4,a5] on both profiles. *)
+
+val c_xor_entries : entry list
+(** [c.xor s0,s1]/[c.xor a4,a5] on both profiles. *)
+
+val c_sub_entries : entry list
+(** [c.sub s0,s1]/[c.sub a4,a5] on both profiles. *)
+
+val c_addw_entries : entry list
+(** [c.addw s0,s1]/[c.addw a4,a5], RV64 only. *)
+
+val c_subw_entries : entry list
+(** [c.subw s0,s1]/[c.subw a4,a5], RV64 only. *)
+
+val c_jr_entries : entry list
+(** [c.jr ra]/[c.jr t6] on both profiles - the CR-format compressed
+    register-jump: full 0..31 GPR space, x0 excluded (reserved). *)
+
+val c_jalr_entries : entry list
+(** [c.jalr ra]/[c.jalr t6] on both profiles. *)
+
+val c_mv_entries : entry list
+(** [c.mv ra,t6]/[c.mv t6,ra]/[c.mv zero,t6] on both profiles - the third
+    case is the documented rd=x0 HINT, not reserved (unlike c.jr/c.jalr's
+    rs1). *)
+
+val c_add_entries : entry list
+(** [c.add ra,t6]/[c.add t6,ra]/[c.add zero,t6] on both profiles. *)
+
+val c_ebreak_entries : entry list
+(** [c.ebreak] on both profiles - the whole encoding is fixed, no operand. *)
+
+val c_lw_entries : entry list
+(** [c.lw s0,68(s1)]/[c.lw a4,68(a5)]/[c.lw s0,124(s1)] on both profiles -
+    the CL-format compressed load: value/base restricted to the RVC
+    compressed subset (x8..x15), a word-scaled offset with the two swapped
+    low bits both set, plus a max-offset boundary case. *)
+
+val c_sw_entries : entry list
+(** [c.sw s0,68(s1)]/[c.sw a4,68(a5)]/[c.sw s0,124(s1)] on both profiles -
+    the CS-format store-side sibling of {!c_lw_entries}. *)
+
+val c_ld_entries : entry list
+(** [c.ld s0,136(s1)]/[c.ld a4,136(a5)]/[c.ld s0,248(s1)], RV64 only - the
+    doubleword-scaled sibling of {!c_lw_entries} (straight concatenation,
+    no swap). *)
+
+val c_sd_entries : entry list
+(** [c.sd s0,136(s1)]/[c.sd a4,136(a5)]/[c.sd s0,248(s1)], RV64 only. *)
+
+val c_lwsp_entries : entry list
+(** [c.lwsp ra,68(sp)]/[c.lwsp t6,68(sp)]/[c.lwsp ra,252(sp)] on both
+    profiles - the CI-format SP-relative load: rd ranges over the full
+    0..31 GPR space (x0 excluded, reserved, like c.jr/c.jalr's rs1), base
+    fixed to x2/sp. *)
+
+val c_ldsp_entries : entry list
+(** [c.ldsp ra,264(sp)]/[c.ldsp t6,264(sp)]/[c.ldsp ra,504(sp)], RV64 only. *)
+
+val c_swsp_entries : entry list
+(** [c.swsp ra,68(sp)]/[c.swsp zero,68(sp)]/[c.swsp t6,252(sp)] on both
+    profiles - the CSS-format SP-relative store: rs2 does NOT exclude x0
+    (a store never writes back), so the middle case exercises that
+    documented zero-register HINT. *)
+
+val c_sdsp_entries : entry list
+(** [c.sdsp ra,264(sp)]/[c.sdsp zero,264(sp)]/[c.sdsp t6,504(sp)], RV64
+    only. *)
+
+val c_beqz_entries : entry list
+(** [c.beqz s0,1f]/[c.beqz a5,1b] on both profiles - the CB-format
+    compressed conditional branch, forward and backward label references
+    covering both ends of the compressed register subset. *)
+
+val c_bnez_entries : entry list
+(** [c.bnez]'s sibling of {!c_beqz_entries}. *)
 
 val all : entry list
 (** [sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @
