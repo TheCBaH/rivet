@@ -2,7 +2,7 @@
    captured XED export into X86_table_rows by [compcert_tools isa-table
    x86-emit]; nothing here reads the capture at run time. *)
 
-type rclass = Gpr8 | Gpr16 | Gpr32 | Gpr64 | Xmm | Ymm | Zmm | Mmx | Kmask | St | Tmm
+type rclass = Gpr8 | Gpr16 | Gpr32 | Gpr64 | Xmm | Ymm | Zmm | Mmx | Kmask | St | Tmm | Cr | Dr
 
 (* Where a register operand is encoded. *)
 type field =
@@ -46,12 +46,17 @@ type row = {
   evex_p2 : int;
       (** fixed EVEX P2 bits of an APX map-4 row: ND (0x10, a new destination in vvvv) and NF
           (0x04, flags untouched: the [{nf}] pseudo-prefix) *)
+  bcst : int;
+      (** EVEX broadcast: the element count N of [(mem){1toN}] (EVEX.b on a memory operand,
+          disp8 scaled by the element), or 0 *)
+  bcst_elem : int;  (** the broadcast element's bytes *)
   mask : int;
       (** EVEX opmask on the destination: 0 none, 1 [{%kN}] or [{%kN}{z}], 2 [{%kN}] only
           (merging), 3 a [{%kN}] other than k0 required (gathers, scatters) *)
   pseudo : string;
       (** the pseudo-prefix that alone reaches this row: [nf], or [evex] for an APX promotion of
           a legacy instruction (GNU encodes the plain spelling as the legacy one); or empty *)
+  no_rex2 : bool;  (** no REX2 prefix, so no r16-r31 (XED's NOREX2: xsave, ...) *)
   no_acc : int list;
       (** operand positions that must not be the accumulator: GNU as encodes that spelling with
           an accumulator-specific form ([xchg %ebx, %eax] is 0x93) *)
@@ -74,3 +79,6 @@ let class_width = function
   | St -> 80
   (* AMX tile registers *)
   | Tmm -> 1002
+  (* control and debug registers *)
+  | Cr -> 1003
+  | Dr -> 1004

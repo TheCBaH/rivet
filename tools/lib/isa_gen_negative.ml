@@ -102,6 +102,9 @@ let x86_mode =
   [
     x86_entry ~name:"64-bit-register-in-32-bit-mode" ~category:"xlen-restricted" ~mnemonic:"movq"
       ~code:"operand" "movq %rax, %rbx" Target.X86_32;
+    (* XED's NOREX2: xsave cannot address through APX's r16-r31 *)
+    x86_entry ~name:"extended-gpr-without-rex2" ~category:"address-form" ~mnemonic:"xsave"
+      ~code:"lower" "xsave (%r25)" Target.X86_64;
   ]
 
 let all = riscv_common @ riscv_xlen @ x86_common @ x86_mode

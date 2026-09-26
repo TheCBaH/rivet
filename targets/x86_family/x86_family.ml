@@ -248,17 +248,33 @@ module Make (M : MODE) = struct
           Some (List.length rest, Char.code r.[1] - Char.code '0', false)
       | _ -> None
     in
-    match split_mask (List.rev (List.map Token.kind slice)) with
-    | Some (n, k, zero) when n > 0 ->
-        Result.map
-          (fun op -> Operand.Masked { op; k; zero })
-          (parse_one_operand (List.filteri (fun i _ -> i < n) slice))
-    | _ -> (
-        match List.map Token.kind slice with
-        (* $imm *)
-        | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Operand.Imm v)
-        | Token.Immediate_sigil :: Token.Minus :: [ Token.Int v ] -> Ok (Operand.Imm (Bigint.neg v))
-        (* $symbol / $symbol+offset - a symbolic immediate (M5 classify-c-gcc
+    (* an EVEX broadcast after a memory operand: [4(%rax){1to8}] ({1to8} lexes as 1, to8) *)
+    let bcst =
+      match List.rev (List.map Token.kind slice) with
+      | Token.Rbrace :: Token.Ident t :: Token.Int one :: Token.Lbrace :: _
+        when Bigint.to_int_opt one = Some 1 && String.length t > 2 && String.sub t 0 2 = "to" ->
+          int_of_string_opt (String.sub t 2 (String.length t - 2))
+      | _ -> None
+    in
+    match bcst with
+    | Some n -> (
+        match parse_one_operand (List.filteri (fun i _ -> i < List.length slice - 4) slice) with
+        | Ok (Operand.Mem mem) -> Ok (Operand.Bcst { mem; n })
+        | Ok _ -> bad (`Malformed_memory_operand slice)
+        | Error e -> Error e)
+    | None -> (
+        match split_mask (List.rev (List.map Token.kind slice)) with
+        | Some (n, k, zero) when n > 0 ->
+            Result.map
+              (fun op -> Operand.Masked { op; k; zero })
+              (parse_one_operand (List.filteri (fun i _ -> i < n) slice))
+        | _ -> (
+            match List.map Token.kind slice with
+            (* $imm *)
+            | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Operand.Imm v)
+            | Token.Immediate_sigil :: Token.Minus :: [ Token.Int v ] ->
+                Ok (Operand.Imm (Bigint.neg v))
+            (* $symbol / $symbol+offset - a symbolic immediate (M5 classify-c-gcc
        corpus evidence: `movl $.LC0, %edi`, `addq $bodies+24, %rax`,
        `pushl $sym`). Tried after the two literal-integer shapes above so a
        plain `$5`/`$-5` still takes the cheaper, already-tested path; this
@@ -266,51 +282,51 @@ module Make (M : MODE) = struct
        a bare integer, matching the bottom fallback's own
        parse-the-remainder-as-an-expression approach for a bare (non-`$`)
        symbol operand. *)
-        | Token.Immediate_sigil :: _ :: _ -> (
-            match Asm_syntax.Parse_lines.parse_expression (List.tl slice) with
-            | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e })
-            | Ok e -> (
-                match Asm_core.Expr.fold Asm_core.Expr.no_env e with
-                | Ok (Asm_core.Expr.Const v) -> Ok (Operand.Imm v)
-                | Ok folded -> Ok (Operand.Imm_sym folded)
-                | Error _ -> Ok (Operand.Imm_sym e)))
-        (* %reg *)
-        | [ Token.Register n ] ->
-            Result.map (fun r -> Operand.Reg r) (reg_named n)
-            (* APX CCMP/CTEST's default flag values: {dfv=of,cf}, {dfv=} *)
-        | Token.Lbrace :: Token.Ident "dfv" :: Token.Equals :: rest -> (
-            let rec flags acc = function
-              | [ Token.Rbrace ] -> Some acc
-              | Token.Ident f :: rest -> (
-                  match f with
-                  | "of" -> flags (acc lor 8) rest
-                  | "sf" -> flags (acc lor 4) rest
-                  | "zf" -> flags (acc lor 2) rest
-                  | "cf" -> flags (acc lor 1) rest
-                  | _ -> None)
-              | _ -> None
-            in
-            match flags 0 rest with
-            | Some v -> Ok (Operand.Dfv v)
-            | None -> bad (`Malformed_memory_operand slice))
-        (* EVEX embedded rounding / suppress-all-exceptions: {rn-sae} ... {rz-sae}, {sae} *)
-        | [ Token.Lbrace; Token.Ident "sae"; Token.Rbrace ] -> Ok (Operand.Rc 4)
-        | [ Token.Lbrace; Token.Ident r; Token.Minus; Token.Ident "sae"; Token.Rbrace ]
-          when List.mem r [ "rn"; "rd"; "ru"; "rz" ] ->
-            Ok (Operand.Rc (match r with "rn" -> 0 | "rd" -> 1 | "ru" -> 2 | _ -> 3))
-        (* %st(n), the x87 stack-relative register form ([n] a literal 0-7) - a
+            | Token.Immediate_sigil :: _ :: _ -> (
+                match Asm_syntax.Parse_lines.parse_expression (List.tl slice) with
+                | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e })
+                | Ok e -> (
+                    match Asm_core.Expr.fold Asm_core.Expr.no_env e with
+                    | Ok (Asm_core.Expr.Const v) -> Ok (Operand.Imm v)
+                    | Ok folded -> Ok (Operand.Imm_sym folded)
+                    | Error _ -> Ok (Operand.Imm_sym e)))
+            (* %reg *)
+            | [ Token.Register n ] ->
+                Result.map (fun r -> Operand.Reg r) (reg_named n)
+                (* APX CCMP/CTEST's default flag values: {dfv=of,cf}, {dfv=} *)
+            | Token.Lbrace :: Token.Ident "dfv" :: Token.Equals :: rest -> (
+                let rec flags acc = function
+                  | [ Token.Rbrace ] -> Some acc
+                  | Token.Ident f :: rest -> (
+                      match f with
+                      | "of" -> flags (acc lor 8) rest
+                      | "sf" -> flags (acc lor 4) rest
+                      | "zf" -> flags (acc lor 2) rest
+                      | "cf" -> flags (acc lor 1) rest
+                      | _ -> None)
+                  | _ -> None
+                in
+                match flags 0 rest with
+                | Some v -> Ok (Operand.Dfv v)
+                | None -> bad (`Malformed_memory_operand slice))
+            (* EVEX embedded rounding / suppress-all-exceptions: {rn-sae} ... {rz-sae}, {sae} *)
+            | [ Token.Lbrace; Token.Ident "sae"; Token.Rbrace ] -> Ok (Operand.Rc 4)
+            | [ Token.Lbrace; Token.Ident r; Token.Minus; Token.Ident "sae"; Token.Rbrace ]
+              when List.mem r [ "rn"; "rd"; "ru"; "rz" ] ->
+                Ok (Operand.Rc (match r with "rn" -> 0 | "rd" -> 1 | "ru" -> 2 | _ -> 3))
+            (* %st(n), the x87 stack-relative register form ([n] a literal 0-7) - a
        shape [find_reg] can never see, since the lexer splits the parens off
        the identifier the same way it does for any other memory operand (M5
        classify-c-gcc corpus evidence: [almabench.c]'s [%st(1)]). Synthesized
        directly rather than looked up: no [st(n)]-named table entry exists for
        n>0 (only the bare [st] alone - x86_32_encode.ml), since nothing
        decodes an x87 operand back to text yet either. *)
-        | [ Token.Register "st"; Token.Lparen; Token.Int n; Token.Rparen ] -> (
-            match Bigint.to_int_opt n with
-            | Some n when n >= 0 && n <= 7 ->
-                Ok (Operand.Reg { Reg.name = Printf.sprintf "st(%d)" n; num = n; width = 80 })
-            | _ -> bad (`Cannot_parse_operand { slice; reason = `Malformed_expression slice }))
-        (* *<operand>, the indirect-jump/call target sigil. GNU as requires the
+            | [ Token.Register "st"; Token.Lparen; Token.Int n; Token.Rparen ] -> (
+                match Bigint.to_int_opt n with
+                | Some n when n >= 0 && n <= 7 ->
+                    Ok (Operand.Reg { Reg.name = Printf.sprintf "st(%d)" n; num = n; width = 80 })
+                | _ -> bad (`Cannot_parse_operand { slice; reason = `Malformed_expression slice }))
+            (* *<operand>, the indirect-jump/call target sigil. GNU as requires the
        [*] before a register ([*%eax]) or a memory operand ([*sym(,%eax,4)],
        M5 corpus evidence: asm/fixtures/corpus/c/x86_32/summary.txt's
        siphash24.c/vmach.c jump-table dispatch); we also accept it without one
@@ -323,201 +339,220 @@ module Make (M : MODE) = struct
        different addressing grammar, so every existing shape - register,
        any memory form, even a plain symbol - already means the right thing
        once the [*] itself is gone. *)
-        | Token.Star :: _ -> parse_one_operand (List.tl slice)
-        (* disp(%base) and (%base) *)
-        | [ Token.Lparen; Token.Register "rip"; Token.Rparen ] ->
-            if not M.rex_allowed then bad `Rip_requires_64bit
-            else
-              Ok
-                (Operand.Mem { Mem.base = Some rip_reg; index = None; scale = 1; disp = Disp.zero })
-        | [ Token.Lparen; Token.Register b; Token.Rparen ] ->
-            Result.map (fun b -> Operand.Mem (Mem.of_base b)) (mem_reg_named b)
-        (* [%rip] is not in the register table, so these two would report it as an
-       unknown register before the fallback ever saw it. *)
-        | [ Token.Int _; Token.Lparen; Token.Register "rip"; Token.Rparen ]
-        | Token.Minus :: Token.Int _ :: [ Token.Lparen; Token.Register "rip"; Token.Rparen ] -> (
-            if not M.rex_allowed then bad `Rip_requires_64bit
-            else
-              match split_rip slice with
-              | Some prefix ->
-                  Result.map
-                    (fun d ->
-                      Operand.Mem { Mem.base = Some rip_reg; index = None; scale = 1; disp = d })
-                    (disp_expression ~bad prefix)
-              | None -> bad (`Malformed_rip_operand slice))
-        | [ Token.Int d; Token.Lparen; Token.Register b; Token.Rparen ] -> (
-            match (Bigint.to_int64_opt d, mem_reg_named b) with
-            | Some d, Ok b -> Ok (Operand.Mem (Mem.of_base ~disp:(Disp.Const d) b))
-            | None, _ -> bad `Displacement_too_wide
-            | _, Error e -> Error e)
-        | Token.Minus :: Token.Int d :: [ Token.Lparen; Token.Register b; Token.Rparen ] -> (
-            match (Bigint.to_int64_opt d, mem_reg_named b) with
-            | Some d, Ok b -> Ok (Operand.Mem (Mem.of_base ~disp:(Disp.Const (Int64.neg d)) b))
-            | None, _ -> bad `Displacement_too_wide
-            | _, Error e -> Error e)
-        (* disp(%base,%index,scale), with the commas already consumed as slice
-       separators and the pieces rejoined by [regroup] - so the pattern is the
-       tokens that remain, not the ones the source wrote. *)
-        | [
-         Token.Int d; Token.Lparen; Token.Register b; Token.Register i; Token.Int s; Token.Rparen;
-        ] -> (
-            match
-              (Bigint.to_int64_opt d, Bigint.to_int_opt s, mem_reg_named b, index_reg_named i)
-            with
-            | Some d, Some s, Ok b, Ok i ->
-                if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
+            | Token.Star :: _ -> parse_one_operand (List.tl slice)
+            (* disp(%base) and (%base) *)
+            | [ Token.Lparen; Token.Register "rip"; Token.Rparen ] ->
+                if not M.rex_allowed then bad `Rip_requires_64bit
                 else
                   Ok
                     (Operand.Mem
-                       { Mem.base = Some b; index = Some i; scale = s; disp = Disp.Const d })
-            | _ -> bad (`Malformed_memory_operand slice))
-        (* -disp(%base,%index,scale) - the negative-displacement sibling of the
+                       { Mem.base = Some rip_reg; index = None; scale = 1; disp = Disp.zero })
+            | [ Token.Lparen; Token.Register b; Token.Rparen ] ->
+                Result.map (fun b -> Operand.Mem (Mem.of_base b)) (mem_reg_named b)
+            (* [%rip] is not in the register table, so these two would report it as an
+       unknown register before the fallback ever saw it. *)
+            | [ Token.Int _; Token.Lparen; Token.Register "rip"; Token.Rparen ]
+            | Token.Minus :: Token.Int _ :: [ Token.Lparen; Token.Register "rip"; Token.Rparen ]
+              -> (
+                if not M.rex_allowed then bad `Rip_requires_64bit
+                else
+                  match split_rip slice with
+                  | Some prefix ->
+                      Result.map
+                        (fun d ->
+                          Operand.Mem { Mem.base = Some rip_reg; index = None; scale = 1; disp = d })
+                        (disp_expression ~bad prefix)
+                  | None -> bad (`Malformed_rip_operand slice))
+            | [ Token.Int d; Token.Lparen; Token.Register b; Token.Rparen ] -> (
+                match (Bigint.to_int64_opt d, mem_reg_named b) with
+                | Some d, Ok b -> Ok (Operand.Mem (Mem.of_base ~disp:(Disp.Const d) b))
+                | None, _ -> bad `Displacement_too_wide
+                | _, Error e -> Error e)
+            | Token.Minus :: Token.Int d :: [ Token.Lparen; Token.Register b; Token.Rparen ] -> (
+                match (Bigint.to_int64_opt d, mem_reg_named b) with
+                | Some d, Ok b -> Ok (Operand.Mem (Mem.of_base ~disp:(Disp.Const (Int64.neg d)) b))
+                | None, _ -> bad `Displacement_too_wide
+                | _, Error e -> Error e)
+            (* disp(%base,%index,scale), with the commas already consumed as slice
+       separators and the pieces rejoined by [regroup] - so the pattern is the
+       tokens that remain, not the ones the source wrote. *)
+            | [
+             Token.Int d;
+             Token.Lparen;
+             Token.Register b;
+             Token.Register i;
+             Token.Int s;
+             Token.Rparen;
+            ] -> (
+                match
+                  (Bigint.to_int64_opt d, Bigint.to_int_opt s, mem_reg_named b, index_reg_named i)
+                with
+                | Some d, Some s, Ok b, Ok i ->
+                    if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
+                    else
+                      Ok
+                        (Operand.Mem
+                           { Mem.base = Some b; index = Some i; scale = s; disp = Disp.Const d })
+                | _ -> bad (`Malformed_memory_operand slice))
+            (* -disp(%base,%index,scale) - the negative-displacement sibling of the
        positive form just above (M5 corpus evidence: asm/fixtures/corpus/c/
        x86_64/summary.txt's sha1.c, "cannot parse operand" on
        [-1894007588(%esi,%r10d,1)]). Base, index and scale all present, only
        the displacement's sign differs, mirroring how the base-less SIB case
        below already has both a positive and a [Token.Minus]-prefixed
        alternative. *)
-        | Token.Minus
-          :: Token.Int d
-          :: [ Token.Lparen; Token.Register b; Token.Register i; Token.Int s; Token.Rparen ] -> (
-            match
-              (Bigint.to_int64_opt d, Bigint.to_int_opt s, mem_reg_named b, index_reg_named i)
-            with
-            | Some d, Some s, Ok b, Ok i ->
-                if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
-                else
-                  Ok
-                    (Operand.Mem
-                       {
-                         Mem.base = Some b;
-                         index = Some i;
-                         scale = s;
-                         disp = Disp.Const (Int64.neg d);
-                       })
-            | _ -> bad (`Malformed_memory_operand slice))
-        | [ Token.Lparen; Token.Register b; Token.Register i; Token.Int s; Token.Rparen ] -> (
-            match (Bigint.to_int_opt s, mem_reg_named b, index_reg_named i) with
-            | Some s, Ok b, Ok i ->
-                if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
-                else
-                  Ok
-                    (Operand.Mem { Mem.base = Some b; index = Some i; scale = s; disp = Disp.zero })
-            | _ -> bad (`Malformed_memory_operand slice))
-        (* disp(%base,%index), (%base,%index) and -disp(%base,%index) - the same
+            | Token.Minus
+              :: Token.Int d
+              :: [ Token.Lparen; Token.Register b; Token.Register i; Token.Int s; Token.Rparen ]
+              -> (
+                match
+                  (Bigint.to_int64_opt d, Bigint.to_int_opt s, mem_reg_named b, index_reg_named i)
+                with
+                | Some d, Some s, Ok b, Ok i ->
+                    if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
+                    else
+                      Ok
+                        (Operand.Mem
+                           {
+                             Mem.base = Some b;
+                             index = Some i;
+                             scale = s;
+                             disp = Disp.Const (Int64.neg d);
+                           })
+                | _ -> bad (`Malformed_memory_operand slice))
+            | [ Token.Lparen; Token.Register b; Token.Register i; Token.Int s; Token.Rparen ] -> (
+                match (Bigint.to_int_opt s, mem_reg_named b, index_reg_named i) with
+                | Some s, Ok b, Ok i ->
+                    if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
+                    else
+                      Ok
+                        (Operand.Mem
+                           { Mem.base = Some b; index = Some i; scale = s; disp = Disp.zero })
+                | _ -> bad (`Malformed_memory_operand slice))
+            (* disp(%base,%index), (%base,%index) and -disp(%base,%index) - the same
        three shapes just above with the scale omitted, which GAS defaults to 1
        (M5 classify-c-gcc corpus evidence: `leaq (%rax,%rax), %rsi`,
        `movb $1, -368(%rbp,%rax)` - checked against real i686-linux-gnu-as:
        `movl (%eax,%edx), %ecx` assembles byte-identically to
        `movl (%eax,%edx,1), %ecx`, mod=00 SIB scale=00 (i.e. 1)). *)
-        | [ Token.Int d; Token.Lparen; Token.Register b; Token.Register i; Token.Rparen ] -> (
-            match (Bigint.to_int64_opt d, mem_reg_named b, index_reg_named i) with
-            | Some d, Ok b, Ok i ->
-                Ok
-                  (Operand.Mem { Mem.base = Some b; index = Some i; scale = 1; disp = Disp.Const d })
-            | _ -> bad (`Malformed_memory_operand slice))
-        | Token.Minus
-          :: Token.Int d
-          :: [ Token.Lparen; Token.Register b; Token.Register i; Token.Rparen ] -> (
-            match (Bigint.to_int64_opt d, mem_reg_named b, index_reg_named i) with
-            | Some d, Ok b, Ok i ->
-                Ok
-                  (Operand.Mem
-                     {
-                       Mem.base = Some b;
-                       index = Some i;
-                       scale = 1;
-                       disp = Disp.Const (Int64.neg d);
-                     })
-            | _ -> bad (`Malformed_memory_operand slice))
-        | [ Token.Lparen; Token.Register b; Token.Register i; Token.Rparen ] -> (
-            match (mem_reg_named b, index_reg_named i) with
-            | Ok b, Ok i ->
-                Ok (Operand.Mem { Mem.base = Some b; index = Some i; scale = 1; disp = Disp.zero })
-            | Error e, _ | _, Error e -> Error e)
-        (* disp(,%index,scale) and (,%index,scale) - a SIB operand with no base
+            | [ Token.Int d; Token.Lparen; Token.Register b; Token.Register i; Token.Rparen ] -> (
+                match (Bigint.to_int64_opt d, mem_reg_named b, index_reg_named i) with
+                | Some d, Ok b, Ok i ->
+                    Ok
+                      (Operand.Mem
+                         { Mem.base = Some b; index = Some i; scale = 1; disp = Disp.Const d })
+                | _ -> bad (`Malformed_memory_operand slice))
+            | Token.Minus
+              :: Token.Int d
+              :: [ Token.Lparen; Token.Register b; Token.Register i; Token.Rparen ] -> (
+                match (Bigint.to_int64_opt d, mem_reg_named b, index_reg_named i) with
+                | Some d, Ok b, Ok i ->
+                    Ok
+                      (Operand.Mem
+                         {
+                           Mem.base = Some b;
+                           index = Some i;
+                           scale = 1;
+                           disp = Disp.Const (Int64.neg d);
+                         })
+                | _ -> bad (`Malformed_memory_operand slice))
+            | [ Token.Lparen; Token.Register b; Token.Register i; Token.Rparen ] -> (
+                match (mem_reg_named b, index_reg_named i) with
+                | Ok b, Ok i ->
+                    Ok
+                      (Operand.Mem
+                         { Mem.base = Some b; index = Some i; scale = 1; disp = Disp.zero })
+                | Error e, _ | _, Error e -> Error e)
+            (* disp(,%index,scale) and (,%index,scale) - a SIB operand with no base
        register, GCC/CompCert's standard array-index address idiom
        (M5 corpus evidence: asm/fixtures/corpus/c/x86_64/summary.txt). The
        comma before %index is a real token GAS requires, but [regroup] above
        already drops every comma when rejoining a parenthesized operand's
        slices, so what's left to match is the same shape as disp(%base,...)
        minus the base register - not a "commas matter" case. *)
-        | [ Token.Int d; Token.Lparen; Token.Register i; Token.Int s; Token.Rparen ] -> (
-            match (Bigint.to_int64_opt d, Bigint.to_int_opt s, index_reg_named i) with
-            | Some d, Some s, Ok i ->
-                if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
-                else
-                  Ok
-                    (Operand.Mem { Mem.base = None; index = Some i; scale = s; disp = Disp.Const d })
-            | _ -> bad (`Malformed_memory_operand slice))
-        | Token.Minus
-          :: Token.Int d
-          :: [ Token.Lparen; Token.Register i; Token.Int s; Token.Rparen ] -> (
-            match (Bigint.to_int64_opt d, Bigint.to_int_opt s, index_reg_named i) with
-            | Some d, Some s, Ok i ->
-                if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
-                else
-                  Ok
-                    (Operand.Mem
-                       {
-                         Mem.base = None;
-                         index = Some i;
-                         scale = s;
-                         disp = Disp.Const (Int64.neg d);
-                       })
-            | _ -> bad (`Malformed_memory_operand slice))
-        | [ Token.Lparen; Token.Register i; Token.Int s; Token.Rparen ] -> (
-            match (Bigint.to_int_opt s, index_reg_named i) with
-            | Some s, Ok i ->
-                if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
-                else
-                  Ok (Operand.Mem { Mem.base = None; index = Some i; scale = s; disp = Disp.zero })
-            | _ -> bad (`Malformed_memory_operand slice))
-        | _ -> (
-            (* [expr(%rip)]. Matched as a suffix rather than as a token pattern
+            | [ Token.Int d; Token.Lparen; Token.Register i; Token.Int s; Token.Rparen ] -> (
+                match (Bigint.to_int64_opt d, Bigint.to_int_opt s, index_reg_named i) with
+                | Some d, Some s, Ok i ->
+                    if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
+                    else
+                      Ok
+                        (Operand.Mem
+                           { Mem.base = None; index = Some i; scale = s; disp = Disp.Const d })
+                | _ -> bad (`Malformed_memory_operand slice))
+            | Token.Minus
+              :: Token.Int d
+              :: [ Token.Lparen; Token.Register i; Token.Int s; Token.Rparen ] -> (
+                match (Bigint.to_int64_opt d, Bigint.to_int_opt s, index_reg_named i) with
+                | Some d, Some s, Ok i ->
+                    if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
+                    else
+                      Ok
+                        (Operand.Mem
+                           {
+                             Mem.base = None;
+                             index = Some i;
+                             scale = s;
+                             disp = Disp.Const (Int64.neg d);
+                           })
+                | _ -> bad (`Malformed_memory_operand slice))
+            | [ Token.Lparen; Token.Register i; Token.Int s; Token.Rparen ] -> (
+                match (Bigint.to_int_opt s, index_reg_named i) with
+                | Some s, Ok i ->
+                    if log2_scale s = None then bad (`Bad_scale (Int64.of_int s))
+                    else
+                      Ok
+                        (Operand.Mem
+                           { Mem.base = None; index = Some i; scale = s; disp = Disp.zero })
+                | _ -> bad (`Malformed_memory_operand slice))
+            | _ -> (
+                (* [expr(%rip)]. Matched as a suffix rather than as a token pattern
            because the displacement is an arbitrary expression - [g+4(%rip)] is
            one operand - so what identifies the form is the three tokens at the
            end, not the shape of what precedes them. *)
-            match split_rip slice with
-            | Some prefix ->
-                if not M.rex_allowed then bad `Rip_requires_64bit
-                else
-                  Result.map
-                    (fun d ->
-                      Operand.Mem { Mem.base = Some rip_reg; index = None; scale = 1; disp = d })
-                    (disp_expression ~bad prefix)
-            | None -> (
-                match split_nobase_sib slice with
-                | Some (prefix, index, scale) -> (
-                    match (Bigint.to_int_opt scale, mem_reg_named index) with
-                    | Some scale, Ok index ->
-                        if log2_scale scale = None then bad (`Bad_scale (Int64.of_int scale))
-                        else
-                          Result.map
-                            (fun disp ->
-                              Operand.Mem { Mem.base = None; index = Some index; scale; disp })
-                            (disp_expression ~bad prefix)
-                    | _ -> bad (`Malformed_memory_operand slice))
+                match split_rip slice with
+                | Some prefix ->
+                    if not M.rex_allowed then bad `Rip_requires_64bit
+                    else
+                      Result.map
+                        (fun d ->
+                          Operand.Mem { Mem.base = Some rip_reg; index = None; scale = 1; disp = d })
+                        (disp_expression ~bad prefix)
                 | None -> (
-                    match split_base slice with
-                    | Some (prefix, base) -> (
-                        match mem_reg_named base with
-                        | Ok base ->
-                            Result.map
-                              (fun disp ->
-                                Operand.Mem { Mem.base = Some base; index = None; scale = 1; disp })
-                              (disp_expression ~bad prefix)
-                        | Error e -> Error e)
+                    match split_nobase_sib slice with
+                    | Some (prefix, index, scale) -> (
+                        match (Bigint.to_int_opt scale, mem_reg_named index) with
+                        | Some scale, Ok index ->
+                            if log2_scale scale = None then bad (`Bad_scale (Int64.of_int scale))
+                            else
+                              Result.map
+                                (fun disp ->
+                                  Operand.Mem { Mem.base = None; index = Some index; scale; disp })
+                                (disp_expression ~bad prefix)
+                        | _ -> bad (`Malformed_memory_operand slice))
                     | None -> (
-                        (* Last resort: anything that is not a register, an immediate or an
+                        match split_base slice with
+                        | Some (prefix, base) -> (
+                            match mem_reg_named base with
+                            | Ok base ->
+                                Result.map
+                                  (fun disp ->
+                                    Operand.Mem
+                                      { Mem.base = Some base; index = None; scale = 1; disp })
+                                  (disp_expression ~bad prefix)
+                            | Error e -> Error e)
+                        | None -> (
+                            (* Last resort: anything that is not a register, an immediate or an
                addressing form may still be an expression - a branch or call
                target. The common expression parser decides, rather than a
                second hand-written one here, so [foo+4] means the same thing in
                an operand as in a directive argument. *)
-                        match Asm_syntax.Parse_lines.parse_expression (strip_plt_suffix slice) with
-                        | Ok e -> Ok (Operand.Sym e)
-                        | Error e ->
-                            bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))))))
+                            match
+                              Asm_syntax.Parse_lines.parse_expression (strip_plt_suffix slice)
+                            with
+                            | Ok e -> Ok (Operand.Sym e)
+                            | Error e ->
+                                bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e })))))
+            ))
 
   (* The common parser splits a line at every top-level comma, and a scaled
      address has commas *inside* its parentheses: [0(%edi,%edi,1)] arrives as

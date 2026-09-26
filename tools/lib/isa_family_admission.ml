@@ -79,10 +79,10 @@ let normalize source rec_ =
   | "xed_resolved" -> Isa_norm_xed.normalize rec_
   | other -> Error { Isa_norm_model.rule = "unhandled-source"; message = other }
 
-let lookup_key source (rec_ : Isa_source_record.t) =
+let lookup_key ?directional source (rec_ : Isa_source_record.t) =
   match (source, rec_.provenance) with
   | "riscv_opcodes", _ -> rec_.native_name
-  | "xed_resolved", _ -> Isa_x86_table.lookup_key rec_
+  | "xed_resolved", _ -> Isa_x86_table.lookup_key ?directional rec_
   | _ -> ""
 
 (* Support credit is read from the committed differential corpora, never
@@ -103,6 +103,7 @@ let lookup_key source (rec_ : Isa_source_record.t) =
 type credit = {
   promoted : (string * string, unit) Hashtbl.t;
   attempted : (string * string, unit) Hashtbl.t;
+  directional : (string, unit) Hashtbl.t;  (** {!Isa_x86_table.directional_iforms} *)
 }
 
 let corpus_cases repo =
@@ -122,12 +123,13 @@ let corpus_cases repo =
 
 let credit_of ~source ~target (records : Isa_source_record.t list)
     (cases : (Isa_generated_corpus.record * bool) list) =
+  let directional = Isa_x86_table.directional_iforms records in
   let key_of_id = Hashtbl.create (List.length records) in
   List.iter
     (fun (rec_ : Isa_source_record.t) ->
-      Hashtbl.replace key_of_id rec_.record_id (lookup_key source rec_))
+      Hashtbl.replace key_of_id rec_.record_id (lookup_key ~directional source rec_))
     records;
-  let credit = { promoted = Hashtbl.create 1024; attempted = Hashtbl.create 1024 } in
+  let credit = { promoted = Hashtbl.create 1024; attempted = Hashtbl.create 1024; directional } in
   List.iter
     (fun ((r : Isa_generated_corpus.record), creditable) ->
       if r.case.target = target && not r.case.negative then
@@ -156,7 +158,8 @@ let state_of ~source ~target credit ~known (rec_ : Isa_source_record.t) normaliz
   | _ when target = Target.X86_32 && Isa_x86_table.not_in_32bit_mode rec_ ->
       Oracle_unavailable "not-encodable-in-32-bit-mode"
   | Ok (form : Isa_norm_model.form)
-    when Hashtbl.mem credit.promoted (form.form_id, lookup_key source rec_) ->
+    when Hashtbl.mem credit.promoted
+           (form.form_id, lookup_key ~directional:credit.directional source rec_) ->
       Promoted_support
   | _ -> (
       match unavailable () with
@@ -168,8 +171,10 @@ let state_of ~source ~target credit ~known (rec_ : Isa_source_record.t) normaliz
                 Blocked (Isa_construct.blocker known rec_)
               else Blocked diagnostic.rule
           | Ok (form : Isa_norm_model.form) ->
-              if Hashtbl.mem credit.attempted (form.form_id, lookup_key source rec_) then
-                Gas_generatable
+              if
+                Hashtbl.mem credit.attempted
+                  (form.form_id, lookup_key ~directional:credit.directional source rec_)
+              then Gas_generatable
               else Normalized_only))
 
 (* Per missing construct over the catch-all-blocked records: how many need it,
@@ -302,13 +307,16 @@ let record_lines repo =
       match classify repo ~source target with
       | Error e -> Command.of_error e
       | Ok (classified, _, _) ->
+          let directional =
+            Isa_x86_table.directional_iforms (List.map (fun c -> c.record) classified)
+          in
           let label = Printf.sprintf "%s/%s" source (Target.to_string target) in
           Command.ok
             (List.map
                (fun c ->
                  Diagnostic.stdout
                    (Printf.sprintf "%s %s %s %s %s %s" label c.family (state_label c.state)
-                      (lookup_key source c.record)
+                      (lookup_key ~directional source c.record)
                       (Option.value c.form_id ~default:"-")
                       c.record.record_id))
                classified))

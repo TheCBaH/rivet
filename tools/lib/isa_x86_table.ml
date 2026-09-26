@@ -1,7 +1,22 @@
 module R = Isa_source_record
 open Isa_norm_model
 
-type rclass = Gpr8 | Gpr16 | Gpr32 | Gpr64 | Gprv | Xmm | Ymm | Zmm | Mmx | Kmask | St | Tmm
+type rclass =
+  | Gpr8
+  | Gpr16
+  | Gpr32
+  | Gpr64
+  | Gprv
+  | Xmm
+  | Ymm
+  | Zmm
+  | Mmx
+  | Kmask
+  | St
+  | Tmm
+  | Cr
+  | Dr
+
 type field = Modrm_reg | Modrm_rm | Vvvv | Is4 | Opcode_low
 
 type operand =
@@ -30,6 +45,8 @@ type spec = {
   operands : operand list;
   mode : int;
   evex_p2 : int;  (** APX map 4: ND (0x10) and NF (0x04) *)
+  bcst : int;  (** EVEX broadcast element count N ({1toN}), or 0 *)
+  bcst_elem : int;  (** its element bytes *)
   mask : int;  (** EVEX opmask: 0 none, 1 merge or zero, 2 merge only, 3 required *)
   rm : int;  (** a fixed ModR/M.rm of a register-form encoding with no rm operand, or -1 *)
   disp8n : int;  (** EVEX's disp8*N scale; 1 elsewhere *)
@@ -37,6 +54,8 @@ type spec = {
   suffix_isa : string;
   pseudo : string;
   df64 : bool;  (** DF64(): 64-bit operand size by default in 64-bit mode, no REX.W *)
+  direction : string;  (** ["#0x03"] when the iform is XED's in both directions; else empty *)
+  no_rex2 : bool;  (** NOREX2=1: no REX2 prefix, so no r16-r31 *)
   no_acc : int list;  (** AT&T positions that must not be the accumulator *)
   widths : int list;  (** the operand sizes a width-variable (GPRv) form takes *)
 }
@@ -79,6 +98,7 @@ type pattern = {
   nf : bool;  (** APX NF=1: flags untouched *)
   df64 : bool;  (** DF64() *)
   lock : bool;  (** LOCK=1: the F0 prefix *)
+  norex2 : bool;  (** NOREX2=1 *)
   scc : int;  (** APX CCMP/CTEST (EVAPX_SCC()): the condition, in P2's low nibble; else -1 *)
   vsib : rclass option;  (** VMODRM_XMM() and kin: the memory operand's index class *)
   round : [ `None | `Rc | `Sae ];  (** AVX512_ROUND() / SAE(): what EVEX.b means here *)
@@ -106,6 +126,16 @@ let parse_pattern pattern =
             (* MASK=4: NF in EVEX.aaa, which NF=1 already states *)
             | "EVAPX()" | "ND=0" | "NF=0" | "MASK=4" | "ONE()" -> Some p
             | "DF64()" -> Some { p with df64 = true }
+            (* decoder-selection and feature tokens that constrain no encoded bit here: CET/P4/
+               CLDEMOTE/WBNOINVD pick among same-opcode forms the prefix already separates,
+               REXB=0/REXB4=0 keep nop apart from xchg %r8, FORCE64/IMMUNE66_LOOP64/EASZ=3 are
+               64-bit mode's defaults, CET_NO_TRACK a hint prefix left out *)
+            | "CET=1" | "P4=1" | "CLDEMOTE=1" | "WBNOINVD=0" | "WBNOINVD=1" | "REXB=0" | "REXB4=0"
+            | "FORCE64()" | "IMMUNE66_LOOP64()" | "CET_NO_TRACK()" | "EASZ=3" | "SRM=0"
+            | "UIMM8_1()" | "CR_WIDTH()" ->
+                Some p
+            (* a fixed opcode register (nop, pause: 0b1001_0 with register 0) *)
+            | "SRM[0b000]" -> Some p
             | "LOCK=1" -> Some { p with lock = true }
             (* CCMP/CTEST: SCC= is the condition; its NF= and MASK= bits restate it *)
             | "EVAPX_SCC()" -> Some { p with scc = max 0 p.scc }
@@ -167,8 +197,9 @@ let parse_pattern pattern =
             | "TZCNT=1" | "LZCNT=1" | "REP!=3" -> Some p
             (* a string op's segment override is its default without a prefix *)
             | "OVERRIDE_SEG0()" | "OVERRIDE_SEG1()" -> Some p
-            | "IGNORE66()" | "NOREX2=1" | "REX2=0" | "SIMM8()" | "SRM[rrr]" | "LOCK=0"
-            | "IMMUNE66()" | "SIMMz()" | "UIMM16()" | "UIMM32()" ->
+            | "NOREX2=1" -> Some { p with norex2 = true }
+            | "IGNORE66()" | "REX2=0" | "SIMM8()" | "SRM[rrr]" | "LOCK=0" | "IMMUNE66()" | "SIMMz()"
+            | "UIMM16()" | "UIMM32()" ->
                 Some p
             | _ when starts_with ~prefix:"VEX_PREFIX=" t ->
                 Option.map
@@ -206,6 +237,7 @@ let parse_pattern pattern =
          scc = -1;
          df64 = false;
          lock = false;
+         norex2 = false;
          vsib = None;
          round = `None;
        })
@@ -226,9 +258,15 @@ let class_of_lookup lookup =
       ("GPRv_", Gprv);
       ("GPR8_", Gpr8);
       ("GPR16_", Gpr16);
+      (* legacy y: 32 or 64 bits by REX.W, expanded like GPRv without the 16-bit row *)
+      ("GPRy_", Gprv);
       ("MMX_", Mmx);
       ("MASK_", Kmask);
       ("TMM_", Tmm);
+      ("CR_", Cr);
+      ("DR_", Dr);
+      (* movsxd's source: 32 bits beside a 64-bit destination *)
+      ("GPRz_", Gpr32);
     ]
   in
   match List.find_opt (fun (p, _) -> starts_with ~prefix:p lookup) classes with
@@ -431,6 +469,9 @@ let integer_mnemonic ~rep native =
     | "IRETD" | "PUSHFD" | "POPFD" ->
         String.lowercase_ascii (String.sub n 0 (String.length n - 1)) ^ "l"
     | "RET_FAR" -> "lretl"
+    | "RET_NEAR" -> "ret"
+    | "MOV_CR" | "MOV_DR" -> "mov"
+    | "CALL_NEAR" -> "call"
     | "SYSRET" | "SYSRET_AMD" -> "sysretl"
     | "SYSRET64" -> "sysretq"
     | "SYSCALL_AMD" -> "syscall"
@@ -473,7 +514,9 @@ let gpr_ok operands ~iclass =
          operands)
   in
   (List.length classes = 1
-  || operands = [] || movx iclass
+  || operands = [] || movx iclass || iclass = "MOVSXD"
+  (* immediates only: int $3, pushq $5, xabort $1 *)
+  || List.for_all (function Imm _ -> true | _ -> false) operands
   || List.for_all (function Mem _ -> true | _ -> false) operands
      (* far transfers take a *-marked memory operand; the reserved prefetch hints have no
         GNU spelling *)
@@ -481,7 +524,9 @@ let gpr_ok operands ~iclass =
      && not (starts_with ~prefix:"PREFETCH_RESERVED" iclass))
   (* no 16-to-16 movzww/movsww *)
   && (not (movx iclass && classes = [ Gpr16 ]))
-  && (not (List.mem iclass [ "MOVSXD"; "BSWAP" ]))
+  && (not (List.mem iclass [ "BSWAP"; "CRC32" ]))
+  (* movslq only: a 64-bit destination beside a 32-bit source *)
+  && ((not (iclass = "MOVSXD")) || classes = [ Gpr32; Gpr64 ] || classes = [ Gpr32; Gprv ])
   (* GNU as keeps bound's Intel operand order in AT&T syntax *)
   && iclass <> "BOUND"
   (* the reserved-NOP register pairs have no GNU spelling: nop takes one operand *)
@@ -664,6 +709,8 @@ let x87_spec (rec_ : R.t) ~iform ~isa_set ~opcode_map ~opcode ~pattern ~operands
             suffix_isa = isa_set;
             pseudo = "";
             df64 = false;
+            direction = "";
+            no_rex2 = p.norex2;
             mnemonic =
               (* GNU's AT&T x87 quirk: with %st(i) the destination, fsub and fsubr (fdiv and
                  fdivr) trade spellings *)
@@ -690,6 +737,8 @@ let x87_spec (rec_ : R.t) ~iform ~isa_set ~opcode_map ~opcode ~pattern ~operands
             mode = (if p.mode64 then 64 else if p.not64 then 32 else 0);
             disp8n = 1;
             evex_p2 = 0;
+            bcst = 0;
+            bcst_elem = 0;
             mask = 0;
             sized = false;
             no_acc = [];
@@ -703,6 +752,8 @@ let spec_of_record (rec_ : R.t) =
         { space = ("vex" | "evex" | "xop") as space; opcode_map; opcode; pattern; operands },
       R.Xed_provenance { iform = Some iform; isa_set = Some isa_set; _ } ) -> (
       match (parse_pattern pattern, int_of_string_opt opcode) with
+      (* crc32's source and destination widths differ *)
+      | _ when rec_.native_name = "CRC32" -> None
       | Some p, Some opcode
         when (match space with "vex" -> p.vex | "evex" -> p.evex | _ -> p.xop)
              && (p.modrm
@@ -748,6 +799,16 @@ let spec_of_record (rec_ : R.t) =
                 xed_order
             in
             let apx = space = "evex" && opcode_map = 4 in
+            let broadcast =
+              let elem = p.esize / 8 and vector = 16 lsl max 0 p.vl in
+              (* no byte-element broadcast (vcvthf82ph) *)
+              if space = "evex" && has_mem && p.vsib = None && elem > 1 then
+                match p.nelem with
+                | "FULL" -> (vector / elem, elem)
+                | "HALF" -> (vector / 2 / elem, elem)
+                | _ -> (0, 0)
+              else (0, 0)
+            in
             (* REG[rrr] with no register behind it: GNU encodes 0 *)
             let digit =
               if
@@ -784,6 +845,8 @@ let spec_of_record (rec_ : R.t) =
                     suffix_isa = (if apx then "" else isa_set);
                     (* CFCMOV's NF bit selects its store form, spelled plainly *)
                     df64 = p.df64;
+                    direction = "";
+                    no_rex2 = p.norex2;
                     pseudo =
                       (if p.nf && p.scc < 0 && not (starts_with ~prefix:"CFCMOV" rec_.native_name)
                        then "nf"
@@ -810,6 +873,9 @@ let spec_of_record (rec_ : R.t) =
                     evex_p2 =
                       (if p.scc >= 0 then p.scc
                        else (if p.nd then 0x10 else 0) lor if p.nf then 0x04 else 0);
+                    (* FULL and HALF tuples (not their -MEM forms) take a broadcast *)
+                    bcst = fst broadcast;
+                    bcst_elem = snd broadcast;
                     mask =
                       (let has l =
                          List.exists (fun (o : R.x86_operand) -> o.lookupfn_name = Some l) operands
@@ -882,6 +948,8 @@ let spec_of_record (rec_ : R.t) =
                     isa_set;
                     suffix_isa = isa_set;
                     df64 = p.df64;
+                    direction = "";
+                    no_rex2 = p.norex2;
                     pseudo = "";
                     mnemonic = att_mnemonic ~vl:p.vl ~iclass:rec_.native_name (List.rev xed_order);
                     space = `Legacy;
@@ -897,6 +965,8 @@ let spec_of_record (rec_ : R.t) =
                     mode = (if p.mode64 then 64 else if p.not64 then 32 else 0);
                     disp8n = 1;
                     evex_p2 = 0;
+                    bcst = 0;
+                    bcst_elem = 0;
                     mask = 0;
                     sized = false;
                     no_acc = [];
@@ -915,6 +985,14 @@ let spec_of_record (rec_ : R.t) =
                     xed_order
                 in
                 let mandatory66 = p.refining66 || (p.osz = 1 && not sized16) in
+                let y_width =
+                  List.exists
+                    (fun (o : R.x86_operand) ->
+                      match o.lookupfn_name with
+                      | Some l -> starts_with ~prefix:"GPRy_" l
+                      | None -> false)
+                    operands
+                in
                 let word_source =
                   List.exists
                     (function Reg { cls = Gpr16; _ } | Mem { bits = 16 } -> true | _ -> false)
@@ -949,9 +1027,12 @@ let spec_of_record (rec_ : R.t) =
                     isa_set;
                     suffix_isa = isa_set;
                     df64 = p.df64;
+                    direction = "";
+                    no_rex2 = p.norex2;
                     pseudo = "";
                     mnemonic =
-                      (if movx rec_.native_name then
+                      (if rec_.native_name = "MOVSXD" then "movsl"
+                       else if movx rec_.native_name then
                          (if rec_.native_name = "MOVZX" then "movz" else "movs")
                          ^
                          if
@@ -976,6 +1057,8 @@ let spec_of_record (rec_ : R.t) =
                     mode = (if p.mode64 then 64 else if p.not64 then 32 else 0);
                     disp8n = 1;
                     evex_p2 = 0;
+                    bcst = 0;
+                    bcst_elem = 0;
                     mask = 0;
                     sized = true;
                     no_acc =
@@ -997,6 +1080,8 @@ let spec_of_record (rec_ : R.t) =
                           (* nor is there a 16-to-16 movzww *)
                           && not (w = 16 && movx rec_.native_name && word_source))
                         (match p.osz with
+                        | _ when rec_.native_name = "MOVSXD" -> [ 64 ]
+                        | _ when y_width -> [ 32; 64 ]
                         | _ when mandatory66 -> [ 32; 64 ]
                         | 1 -> [ 16 ]
                         | 0 -> [ 32; 64 ]
@@ -1015,21 +1100,46 @@ let rounding_suffix = "#er"
 (* likewise an APX form's {nf} variant *)
 let nf_suffix = "#nf"
 
-let lookup_key (rec_ : R.t) =
+(* The iforms XED lists with more than one opcode: a two-register form in both directions (EVEX
+   vmovaps 28/29, APX add 01/03), which a case keyed on the iform alone could not tell apart. *)
+let directional_iforms (records : R.t list) =
+  let opcodes = Hashtbl.create 256 in
+  List.iter
+    (fun (r : R.t) ->
+      match (r.provenance, r.encoding) with
+      | R.Xed_provenance { iform = Some iform; _ }, R.X86_encoding { opcode; _ } ->
+          let seen = Option.value (Hashtbl.find_opt opcodes iform) ~default:[] in
+          if not (List.mem opcode seen) then Hashtbl.replace opcodes iform (opcode :: seen)
+      | _ -> ())
+    records;
+  let t = Hashtbl.create 64 in
+  Hashtbl.iter (fun iform ops -> if List.length ops > 1 then Hashtbl.replace t iform ()) opcodes;
+  t
+
+let no_directional : (string, unit) Hashtbl.t = Hashtbl.create 1
+
+let lookup_key ?(directional = no_directional) (rec_ : R.t) =
   match (rec_.provenance, rec_.encoding) with
-  | R.Xed_provenance { iform = Some iform; _ }, R.X86_encoding { pattern; _ } ->
+  | R.Xed_provenance { iform = Some iform; _ }, R.X86_encoding { pattern; _ } -> (
       let tokens = String.split_on_char ' ' pattern in
-      if List.mem "BCRC=1" tokens && List.mem "MOD=3" tokens then iform ^ rounding_suffix
-      else if List.mem "NF=1" tokens && not (List.mem "EVAPX_SCC()" tokens) then iform ^ nf_suffix
-      else iform
+      let key =
+        if List.mem "BCRC=1" tokens && List.mem "MOD=3" tokens then iform ^ rounding_suffix
+        else if List.mem "NF=1" tokens && not (List.mem "EVAPX_SCC()" tokens) then iform ^ nf_suffix
+        else iform
+      in
+      (* an iform XED lists in both directions: which one *)
+      match rec_.encoding with
+      | R.X86_encoding { opcode; _ } when Hashtbl.mem directional iform -> key ^ "#" ^ opcode
+      | _ -> key)
   | R.Xed_provenance { iform = Some iform; _ }, _ -> iform
   | _ -> ""
 
 let spec_lookup_key spec =
-  if List.exists (function Rounding _ -> true | _ -> false) spec.operands then
-    spec.iform ^ rounding_suffix
-  else if spec.evex_p2 land 4 <> 0 && not (List.mem Dfv spec.operands) then spec.iform ^ nf_suffix
-  else spec.iform
+  (if List.exists (function Rounding _ -> true | _ -> false) spec.operands then
+     spec.iform ^ rounding_suffix
+   else if spec.evex_p2 land 4 <> 0 && not (List.mem Dfv spec.operands) then spec.iform ^ nf_suffix
+   else spec.iform)
+  ^ spec.direction
 
 (* The row a normalized form and its first case describe: the 32-bit one of a width-variable
    integer form. *)
@@ -1055,6 +1165,7 @@ let form ~requirement (rec_ : R.t) spec =
     | Zmm -> X86_zmm
     | St -> X87_st
     | Tmm -> X86_tmm
+    | Cr | Dr -> X86_gpr
     | Mmx -> X86_mmx
     | Kmask -> X86_kmask
     | Gpr8 | Gpr16 | Gpr32 | Gpr64 | Gprv -> X86_gpr
@@ -1089,6 +1200,7 @@ let form ~requirement (rec_ : R.t) spec =
                 op_kind))
          spec.operands
   in
+  let indirect = List.mem rec_.native_name [ "CALL_NEAR"; "JMP" ] in
   let syntax =
     List.concat
     @@ List.mapi
@@ -1100,6 +1212,9 @@ let form ~requirement (rec_ : R.t) spec =
          spec.operands
     |> List.map (fun (i, o) ->
         match o with
+        (* an indirect call or jmp marks its target with a star *)
+        | Reg _ when indirect -> Syn_decorated ("*%", Syn_operand (operand_name i))
+        | Mem _ when indirect -> Syn_decorated ("*", Syn_operand (operand_name i))
         | Reg _ -> Syn_decorated ("%", Syn_operand (operand_name i))
         (* spelled whole, braces included: {rn-sae} *)
         | Rounding _ | Vsib _ | Dfv -> Syn_operand (operand_name i)
@@ -1251,16 +1366,33 @@ let twin_rank specs =
    which ModR/M field holds the destination. Only a twin with its own iform can be told apart
    from its primary by a case keyed on the iform. *)
 let pseudo_prefix ~(primary : spec) (s : spec) =
-  let dest x = match List.rev x.operands with Reg { field; _ } :: _ -> Some field | _ -> None in
-  if s.pseudo <> "" && primary.pseudo <> s.pseudo then Some s.pseudo
-  else if s.iform = primary.iform then None
-  else if s.space <> primary.space then
-    match s.space with `Evex -> Some "evex" | `Vex -> Some "vex" | `Legacy | `Xop -> None
+  (* the last ModR/M register: the destination, or an NDD form's second source *)
+  let dest x =
+    List.find_map
+      (function Reg { field = (Modrm_reg | Modrm_rm) as field; _ } -> Some field | _ -> None)
+      (List.rev x.operands)
+  in
+  (* space-separated when several apply ([evex load]): the twin's own pseudo-prefix, then the
+     encoding space or the direction that tells it from its primary; none when a case could
+     not name it apart (the same lookup key) *)
+  (* GNU takes no {load}/{store} on ccmp/ctest's {dfv=} form *)
+  if
+    (spec_lookup_key s = spec_lookup_key primary && s.opcode = primary.opcode)
+    || List.mem Dfv s.operands
+  then None
   else
-    match (dest s, dest primary) with
-    | Some Modrm_reg, Some Modrm_rm -> Some "load"
-    | Some Modrm_rm, Some Modrm_reg -> Some "store"
-    | _ -> None
+    let own = if s.pseudo <> "" then [ s.pseudo ] else [] in
+    let apart =
+      if s.space <> primary.space && s.pseudo = "" then
+        match s.space with `Evex -> [ "evex" ] | `Vex -> [ "vex" ] | `Legacy | `Xop -> []
+      else
+        match (dest s, dest primary) with
+        | Some Modrm_reg, Some Modrm_rm -> [ "load" ]
+        | Some Modrm_rm, Some Modrm_reg -> [ "store" ]
+        | _ -> []
+    in
+    if apart = [] && s.pseudo = primary.pseudo then None
+    else match own @ apart with [] -> None | ps -> Some (String.concat " " ps)
 
 (* A pseudo-prefix reaches the best-ranked twin it allows, so of several twins sharing a prefix
    only that one is reachable. *)
@@ -1354,7 +1486,8 @@ let accumulator_positions (records : R.t list) spec =
            else List.map (fun (i, _, _) -> i) acc)
        siblings)
 
-(* Relative near branches (jcc and jmp with rel8 or rel32, call rel32): the displacement is a
+(* Relative near branches (jcc and jmp with rel8 or rel32, call rel32, and the rel8-only
+   loop/loope/loopne/jecxz/jrcxz/jcxz): the displacement is a
    signed immediate GNU as resolves from a label, and the assembler's relaxation picks the
    width, so a case places its label at a distance only that width reaches. *)
 let branch (rec_ : R.t) =
@@ -1366,7 +1499,9 @@ let branch (rec_ : R.t) =
         && n.[0] = 'J'
         && not (List.mem n [ "JMP"; "JMP_FAR"; "JCXZ"; "JECXZ"; "JRCXZ"; "JMPABS" ])
       in
+      let rel8_only = List.mem n [ "LOOP"; "LOOPE"; "LOOPNE"; "JCXZ"; "JECXZ"; "JRCXZ" ] in
       match List.find_opt (fun (o : R.x86_operand) -> o.op_name = "RELBR") operands with
+      | Some o when rel8_only && o.oc2 = Some "b" -> Some (String.lowercase_ascii n, 8)
       | Some o when conditional || n = "JMP" || n = "CALL_NEAR" -> (
           let mnemonic = if n = "CALL_NEAR" then "call" else String.lowercase_ascii n in
           match o.oc2 with
@@ -1424,3 +1559,12 @@ let branch_form ~requirement (rec_ : R.t) =
           diagnostics = [];
         }
   | _ -> None
+
+let mark_directional (records : R.t list) specs =
+  let directional = directional_iforms records in
+  List.map
+    (fun s ->
+      if Hashtbl.mem directional s.iform then
+        { s with direction = Printf.sprintf "#0x%02X" s.opcode }
+      else s)
+    specs

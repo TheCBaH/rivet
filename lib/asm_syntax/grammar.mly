@@ -50,6 +50,7 @@
 %type <unit> terminator
 %type <Statement.label> label
 %type <Statement.statement> statement
+%type <Foundation.Span.t * string list> pseudo_prefixes
 %type <Token.slice list> slices
 %type <Token.slice> slice
 %type <Token.slice> slice_tail
@@ -110,14 +111,14 @@ statement:
   (* A braced pseudo-prefix before a mnemonic ([{evex} vaddps ...], [{load} movl ...]) chooses
      among encodings of one spelling. It stays part of the mnemonic, [{evex} vaddps], for the
      target to interpret or reject; no other statement starts with a brace. *)
-  | LBRACE IDENT RBRACE IDENT slices
+  | pseudo_prefixes IDENT slices
     { Statement.Instruction
         { mnemonic =
-            (match (Token.kind $2, Token.kind $4) with
-             | Token.Ident p, Token.Ident m -> "{" ^ p ^ "} " ^ m
+            (match Token.kind $2 with
+             | Token.Ident m -> String.concat "" (List.map (fun p -> "{" ^ p ^ "} ") (snd $1)) ^ m
              | _ -> "");
-          operands = $5;
-          span = Token.span $1 } }
+          operands = $3;
+          span = fst $1 } }
   | IDENT EQUALS expr
     { Statement.Assignment
         { name = (match Token.kind $1 with Token.Ident s -> s | _ -> "");
@@ -128,6 +129,13 @@ statement:
         { name = (match Token.kind $1 with Token.Directive s -> s | _ -> "");
           arguments = $2;
           span = Token.span $1 } }
+
+(* one or more braced pseudo-prefixes, [{evex} {load}]: the first one's span and the words *)
+pseudo_prefixes:
+  | LBRACE IDENT RBRACE
+    { (Token.span $1, [ (match Token.kind $2 with Token.Ident p -> p | _ -> "") ]) }
+  | LBRACE IDENT RBRACE pseudo_prefixes
+    { (Token.span $1, (match Token.kind $2 with Token.Ident p -> p | _ -> "") :: snd $4) }
 
 slices:
   | { [] }

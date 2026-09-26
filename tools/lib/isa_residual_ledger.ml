@@ -19,16 +19,12 @@ let rows =
       source = "xed_resolved";
       families =
         [
-          "AVX512BW_128";
           "AVX512BW_128N";
-          "AVX512BW_256";
-          "AVX512BW_512";
           "AVX512F_128";
           "AVX512F_128N";
           "AVX512F_256";
           "AVX512F_512";
           "AVX512F_SCALAR";
-          "AVX512_FP16_SCALAR";
           "AVX512_MOVZXC_128";
           "AVX512_SAT_CVT_512";
         ];
@@ -90,21 +86,17 @@ let rows =
       source = "xed_resolved";
       families =
         [
-          "CLDEMOTE";
           "FAT_NOP";
           "I186";
           "I286PROTECTED";
-          "I286REAL";
           "I386";
           "I486REAL";
           "I86";
           "LONGMODE";
-          "PAUSE";
           "PPRO";
           "PPRO_UD0_LONG";
           "PPRO_UD0_SHORT";
           "PREFETCH_NOP";
-          "RDWRFSGS";
         ];
       capability =
         "Integer, string, stack, flag, bit-manipulation and data-movement instructions outside the \
@@ -134,21 +126,20 @@ let rows =
           "APX_F_LZCNT_N3";
           "APX_F_MOVBE";
           "APX_F_MOVDIR64B";
-          "APX_F_MOVDIRI";
           "APX_F_MOVRS";
           "APX_F_N3";
           "APX_F_POPCNT";
           "APX_F_POPCNT_N3";
         ];
       capability =
-        "Intel APX beyond the EVEX map-4 promotions and CCMP/CTEST: REX2 and r16-r31, and \
-         promotions GNU spells differently from XED (setzu/imulzu, CFCMOV's store form); \
-         same-iform direction twins GNU never emits.";
+        "Intel APX beyond the EVEX map-4 promotions, CCMP/CTEST and r16-r31: the REX2-only forms \
+         (push/pop with PPX, jmpabs), and promotions GNU spells differently from XED \
+         (setzu/imulzu, CFCMOV's store form); same-iform direction twins GNU never emits.";
       evidence =
         "family-admission: the APX_F map-4 promotions of legacy instructions (plain {evex}, NDD, \
          {nf}, $1 shifts) and CCMP/CTEST with {dfv=} are promoted; REX2 and the rest remain";
       task = "GEN-05-X86-APX";
-      reopening_gate = "the encoder models REX2 and the extended GPRs r16-r31";
+      reopening_gate = "the table models REX2-only encodings (PPX hints, jmpabs)";
     };
     {
       id = "RES-X86-AMX";
@@ -168,25 +159,18 @@ let rows =
       families =
         [
           "AMD_INVLPGB";
-          "CET";
           "ENQCMD";
-          "HRESET";
           "IBHF";
           "ICACHE_PREFETCH";
-          "INVPCID";
           "MONITOR";
           "MONITORX";
           "MOVDIR64B";
           "MOVRS";
-          "MPX";
-          "PTWRITE";
           "RTM";
           "SNP";
           "SVM";
           "VIA_PADLOCK_MONTMUL";
-          "VTX";
           "WAITPKG";
-          "WBNOINVD";
         ];
       capability =
         "System, virtualization, security and vendor extensions: privileged and MSR forms, state \

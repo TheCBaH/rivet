@@ -79,12 +79,25 @@ module Reg = struct
         { name = Printf.sprintf "k%d" i; num = i; width = X86_table_row.class_width Kmask })
     @ List.init 8 (fun i ->
         { name = Printf.sprintf "tmm%d" i; num = i; width = X86_table_row.class_width Tmm })
+    @ List.init 16 (fun i ->
+        { name = Printf.sprintf "cr%d" i; num = i; width = X86_table_row.class_width Cr })
+    @ List.init 8 (fun i ->
+        { name = Printf.sprintf "dr%d" i; num = i; width = X86_table_row.class_width Dr })
 
   let base_regs width names =
     Array.to_list (Array.mapi (fun i n -> { name = n; num = i; width }) names)
 
   let extended_regs width suffix =
     List.init 8 (fun i -> { name = Printf.sprintf "r%d%s" (i + 8) suffix; num = i + 8; width })
+
+  (* APX's r16-r31 at every width (r16, r16d, r16w, r16b): x86-64 only, reached only by
+     generated rows (REX2 for legacy maps 0 and 1, EVEX elsewhere) *)
+  let apx_gprs =
+    List.concat_map
+      (fun (width, suffix) ->
+        List.init 16 (fun i ->
+            { name = Printf.sprintf "r%d%s" (i + 16) suffix; num = i + 16; width }))
+      [ (64, ""); (32, "d"); (16, "w"); (8, "b") ]
 
   (* Lookup by spelling over a mode's own register set. The set is a [MODE]
      field rather than a constant here, because [%rax] exists in 64-bit mode
@@ -172,6 +185,7 @@ module Operand = struct
     | Imm_sym of Asm_core.Expr.t
     | Sym of Asm_core.Expr.t
     | Dfv of int  (** APX [{dfv=...}]: OF 8, SF 4, ZF 2, CF 1 *)
+    | Bcst of { mem : Mem.t; n : int }  (** an EVEX broadcast source, [(mem){1toN}] *)
     | Masked of { op : t; k : int; zero : bool }
         (** an EVEX destination with an opmask: [%zmm0{%k1}], [{z}] for zeroing *)
     | Rc of int
@@ -192,6 +206,7 @@ module Operand = struct
     | Imm_sym e -> Fmt.pf ppf "$%s" (Asm_core.Expr.to_string e)
     | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
     | Rc n -> Fmt.pf ppf "{%s}" (rc_name n)
+    | Bcst { mem; n } -> Fmt.pf ppf "%a{1to%d}" Mem.pp mem n
     | Dfv v ->
         Fmt.pf ppf "{dfv=%s}"
           (String.concat ","
@@ -307,6 +322,7 @@ module Opcode = struct
     | Imul
     | Cmov of Cc.t
     | Jcc of Cc.t
+    | Short_branch of string  (** a rel8-only branch: loop, loope, loopne, jecxz, jrcxz, jcxz *)
     | Ud2
     | Pop
     | Jmp
@@ -1516,6 +1532,7 @@ module Opcode = struct
     | Imul -> "imul"
     | Cmov c -> "cmov" ^ Cc.name c
     | Jcc c -> "j" ^ Cc.name c
+    | Short_branch m -> m
     | Ud2 -> "ud2"
     | Pop -> "pop"
     | Jmp -> "jmp"
@@ -2120,30 +2137,44 @@ module Instruction = struct
         r.operands
     in
     let dest (r : X86_table_row.row) =
-      match List.rev r.operands with X86_table_row.Reg { field; _ } :: _ -> Some field | _ -> None
+      List.find_map
+        (function
+          | X86_table_row.Reg { field = (X86_table_row.Modrm_reg | Modrm_rm) as field; _ } ->
+              Some field
+          | _ -> None)
+        (List.rev r.operands)
     in
     let rec first j =
       if j >= i then None
       else
         let q = rows.(j) in
-        if String.equal q.mnemonic r.mnemonic && q.mode = r.mode && shape q = shape r then Some q
+        if
+          String.equal q.mnemonic r.mnemonic
+          && q.mode = r.mode
+          && shape q = shape r
+          && String.equal q.pseudo r.pseudo
+        then Some q
         else first (j + 1)
     in
-    if r.pseudo <> "" then "{" ^ r.pseudo ^ "} " ^ r.mnemonic
-    else
+    (* the row's own pseudo-prefix, then what tells it from the first same-shaped row reached
+       the same way: the encoding space, or the destination's ModR/M field *)
+    let own = if r.pseudo <> "" then [ r.pseudo ] else [] in
+    let apart =
       match first 0 with
-      | None -> r.mnemonic
+      | None -> []
       | Some q -> (
-          if q.space <> r.space then
+          if q.space <> r.space && r.pseudo = "" then
             match r.space with
-            | X86_table_row.Evex -> "{evex} " ^ r.mnemonic
-            | Vex -> "{vex} " ^ r.mnemonic
-            | Legacy | Xop -> r.mnemonic
+            | X86_table_row.Evex -> [ "evex" ]
+            | Vex -> [ "vex" ]
+            | Legacy | Xop -> []
           else
             match (dest r, dest q) with
-            | Some X86_table_row.Modrm_reg, Some X86_table_row.Modrm_rm -> "{load} " ^ r.mnemonic
-            | Some X86_table_row.Modrm_rm, Some X86_table_row.Modrm_reg -> "{store} " ^ r.mnemonic
-            | _ -> r.mnemonic)
+            | Some X86_table_row.Modrm_reg, Some X86_table_row.Modrm_rm -> [ "load" ]
+            | Some X86_table_row.Modrm_rm, Some X86_table_row.Modrm_reg -> [ "store" ]
+            | _ -> [])
+    in
+    String.concat "" (List.map (fun p -> "{" ^ p ^ "} ") (own @ apart)) ^ r.mnemonic
 
   let pp ppf i =
     match i.ops with
@@ -2152,14 +2183,35 @@ module Instruction = struct
         match i.op with
         (* a generated row's spelling is whole: no width suffix to add *)
         | Opcode.Table row -> (
+            let spelling = table_spelling row in
+            (* an EVEX-only operand already says EVEX; a broadcast states vfpclass's width *)
+            let evex_only =
+              List.exists
+                (function Operand.Bcst _ | Operand.Masked _ | Operand.Rc _ -> true | _ -> false)
+                ops
+            in
+            let spelling =
+              if evex_only && String.length spelling > 7 && String.sub spelling 0 7 = "{evex} " then
+                String.sub spelling 7 (String.length spelling - 7)
+              else spelling
+            in
+            let spelling =
+              let n = String.length spelling in
+              if
+                List.exists (function Operand.Bcst _ -> true | _ -> false) ops
+                && n > 8
+                && String.sub spelling 0 8 = "vfpclass"
+                && List.mem spelling.[n - 1] [ 'x'; 'y'; 'z' ]
+              then String.sub spelling 0 (n - 1)
+              else spelling
+            in
             match ops with
             (* {dfv=...} takes no comma after it *)
             | (Operand.Dfv _ as dfv) :: rest ->
-                Fmt.pf ppf "%s %a %a" (table_spelling row) Operand.pp dfv
+                Fmt.pf ppf "%s %a %a" spelling Operand.pp dfv
                   Fmt.(list ~sep:(any ", ") Operand.pp)
                   rest
-            | _ -> Fmt.pf ppf "%s %a" (table_spelling row) Fmt.(list ~sep:(any ", ") Operand.pp) ops
-            )
+            | _ -> Fmt.pf ppf "%s %a" spelling Fmt.(list ~sep:(any ", ") Operand.pp) ops)
         (* [pop]/[jmp] take no AT&T size suffix in M1 - their one operand's own
            width is what disambiguates, and [simplify_instruction] only
            recognizes the bare mnemonic. [jmp]'s indirect-target sigil is
@@ -2178,6 +2230,8 @@ module Instruction = struct
             Fmt.pf ppf "j%s%s %a" (Cc.name c) (form_suffix i)
               Fmt.(list ~sep:(any ", ") Operand.pp)
               ops
+        (* one rung, so no pin to spell *)
+        | Opcode.Short_branch m -> Fmt.pf ppf "%s %a" m Fmt.(list ~sep:(any ", ") Operand.pp) ops
         (* No size suffix: a near call is rel32 in both modes, so there is
            nothing for one to select, and GNU as writes none either. *)
         | Opcode.Call -> Fmt.pf ppf "call %a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
@@ -2359,6 +2413,10 @@ module Lowered = struct
     | Jcc_rel of { cc : Cc.t; target : Asm_core.Lowered_ast.branch }
         (** The two relaxing forms: [eb/e9] and [7x/0f 8x]. Unlike [call] these really do have two
             rungs, which is the whole reason {!Codec.Relax} exists. *)
+    | Short_rel of { mnemonic : string; target : Asm_core.Lowered_ast.branch }
+        (** a rel8-only branch ([e2] loop, [e1] loope, [e0] loopne, [e3] jecxz/jrcxz, with
+            0x67 where the counter is not the address width): one rung, so an out-of-range
+            target is an error, not a longer form *)
     | Call_rel of { target : Asm_core.Lowered_ast.branch }
         (** [e8 rel32]. The target is [Symbolic] from lowering and [Resolved] only from decode; the
             encoder dispatches on which, so a resolved displacement never rebuilds a ladder and a
@@ -2577,6 +2635,8 @@ module Lowered = struct
     | Jcc_rel { cc; target } ->
         Fmt.pf ppf "j%s %a" (Cc.name cc) Asm_core.Lowered_ast.pp_branch target
     | Call_rel { target } -> Fmt.pf ppf "call %a" Asm_core.Lowered_ast.pp_branch target
+    | Short_rel { mnemonic; target } ->
+        Fmt.pf ppf "%s %a" mnemonic Asm_core.Lowered_ast.pp_branch target
     | Push { reg } -> Fmt.pf ppf "push %a" Reg.pp reg
     | Push_imm { imm } -> Fmt.pf ppf "push $%s" (Disp.to_string imm)
     | Dec { reg } -> Fmt.pf ppf "dec %a" Reg.pp reg
@@ -2665,6 +2725,8 @@ module Lowered = struct
     | Jcc_rel x, Jcc_rel y ->
         Cc.equal x.cc y.cc && Asm_core.Lowered_ast.equal_branch x.target y.target
     | Call_rel x, Call_rel y -> Asm_core.Lowered_ast.equal_branch x.target y.target
+    | Short_rel x, Short_rel y ->
+        String.equal x.mnemonic y.mnemonic && Asm_core.Lowered_ast.equal_branch x.target y.target
     | Push x, Push y -> Reg.equal x.reg y.reg
     | Push_imm x, Push_imm y -> Disp.equal x.imm y.imm
     | Dec x, Dec y -> Reg.equal x.reg y.reg
@@ -3441,6 +3503,15 @@ module Make (M : MODE) = struct
      keeps a spelling and a form id from drifting apart. *)
   let branch_rungs = [ "d8"; "d32" ]
 
+  (* The rel8-only branches and their bytes before the displacement: the counter is the
+     address width's register (ecx/rcx), and 0x67 selects the other one (jecxz in 64-bit mode,
+     jcxz in 32-bit mode). *)
+  let short_branches =
+    [ ("loop", "\xe2"); ("loope", "\xe1"); ("loopne", "\xe0") ]
+    @
+    if M.rex_allowed then [ ("jrcxz", "\xe3"); ("jecxz", "\x67\xe3") ]
+    else [ ("jecxz", "\xe3"); ("jcxz", "\x67\xe3") ]
+
   (* [jmp], [jne], and either with a [.d8]/[.d32] pin. Returns the opcode and
      the pin, or [None] if the mnemonic is not a branch at all - which is why
      the caller can use it as a guard without a second parse. *)
@@ -3527,6 +3598,12 @@ module Make (M : MODE) = struct
     (* No size suffix, in either mode: a near call is rel32 on x86-32 and on
        x86-64 alike, so there is nothing for a suffix to select. *)
     | "call", _ -> Ok (Instruction.mk Opcode.Call M.address_width s.Surface.ops)
+    | m, _ when List.mem_assoc m short_branches ->
+        Ok (Instruction.mk (Opcode.Short_branch m) M.address_width s.Surface.ops)
+    (* GNU's aliases *)
+    | "loopz", _ -> Ok (Instruction.mk (Opcode.Short_branch "loope") M.address_width s.Surface.ops)
+    | "loopnz", _ ->
+        Ok (Instruction.mk (Opcode.Short_branch "loopne") M.address_width s.Surface.ops)
     (* {3 SSE2 scalar float (M5, asm/docs/corpus.md)}
 
        Fixed mnemonics, matched on the mnemonic directly rather than through
@@ -4274,7 +4351,7 @@ module Make (M : MODE) = struct
                       { ext; width = i.Instruction.width; rm = Rm.Mem m; imm = Disp.Const imm };
                   ]
             | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ | Operand.Rc _ | Operand.Masked _
-            | Operand.Dfv _ ->
+            | Operand.Dfv _ | Operand.Bcst _ ->
                 bad `Immediate_destination))
     (* [addq $bodies+24, %rax] - gcc's idiom for address arithmetic against a
        symbol's own address rather than through [lea] (M5, asm/docs/corpus.md).
@@ -4428,7 +4505,7 @@ module Make (M : MODE) = struct
         | Operand.Mem m ->
             Ok [ Lowered.Unary_rm { ext; width = i.Instruction.width; rm = Rm.Mem m } ]
         | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ | Operand.Rc _ | Operand.Masked _
-        | Operand.Dfv _ ->
+        | Operand.Dfv _ | Operand.Bcst _ ->
             bad `Immediate_destination)
     (* Group-2 shift/rotate, bare-mnemonic implicit-1 form ([shrq %rax]) - GAS's
        own shorter surface spelling of the explicit [$1, dst] one just below,
@@ -4445,7 +4522,7 @@ module Make (M : MODE) = struct
         | Operand.Mem m ->
             Ok [ Lowered.Shift1_rm { ext; width = i.Instruction.width; rm = Rm.Mem m } ]
         | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ | Operand.Rc _ | Operand.Masked _
-        | Operand.Dfv _ ->
+        | Operand.Dfv _ | Operand.Bcst _ ->
             bad `Immediate_destination)
     (* Group-2 shift/rotate, explicit-count form. A literal count of exactly 1
        still picks {!Lowered.Shift1_rm} - GAS's own shorter, canonical
@@ -4480,7 +4557,7 @@ module Make (M : MODE) = struct
             | _, Operand.Mem _ -> bad (`No_form (Opcode.name i.Instruction.op))
             | ( _,
                 ( Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ | Operand.Rc _
-                | Operand.Masked _ | Operand.Dfv _ ) ) ->
+                | Operand.Masked _ | Operand.Dfv _ | Operand.Bcst _ ) ) ->
                 bad `Immediate_destination))
     (* Group-2 shift/rotate, count-in-%cl (M5, asm/docs/corpus.md: [sall
        %cl,%eax]). [cl]'s width and number pin it to exactly %cl, not any
@@ -4499,7 +4576,7 @@ module Make (M : MODE) = struct
                 Ok [ Lowered.Shift_cl_rm { ext; width = i.Instruction.width; rm = Rm.Reg r } ])
         | Operand.Mem _ -> bad (`No_form (Opcode.name i.Instruction.op))
         | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ | Operand.Rc _ | Operand.Masked _
-        | Operand.Dfv _ ->
+        | Operand.Dfv _ | Operand.Bcst _ ->
             bad `Immediate_destination)
     (* [shldl $6,%ecx,%eax] (M5, asm/docs/corpus.md): SHLD's own three-operand
        AT&T form - GAS reverses Intel's [SHLD r/m32, r32, imm8] to put the
@@ -4596,7 +4673,7 @@ module Make (M : MODE) = struct
             | Operand.Mem m ->
                 Ok [ Lowered.Test_rm_imm { width = i.Instruction.width; rm = Rm.Mem m; imm } ]
             | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ | Operand.Rc _ | Operand.Masked _
-            | Operand.Dfv _ ->
+            | Operand.Dfv _ | Operand.Bcst _ ->
                 bad `Immediate_destination))
     | Opcode.Cmov cc, [ Operand.Reg a; Operand.Reg b ] -> (
         match (width_ok a, width_ok b) with
@@ -4637,6 +4714,12 @@ module Make (M : MODE) = struct
           [
             Lowered.Jmp_rel
               { target = Asm_core.Lowered_ast.Symbolic { value = e; rung = i.Instruction.form } };
+          ]
+    | Opcode.Short_branch mnemonic, [ Operand.Sym e ] ->
+        Ok
+          [
+            Lowered.Short_rel
+              { mnemonic; target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } };
           ]
     | Opcode.Jcc cc, [ Operand.Sym e ] ->
         Ok
@@ -7887,9 +7970,37 @@ module Make (M : MODE) = struct
     let listed = List.sort String.compare (List.map Opcode.name Opcode.x87) in
     if described <> listed then invalid_arg "x86 x87 component and Opcode.x87 disagree"
 
+  (* One single-rung ladder per rel8-only branch: relaxation has nowhere longer to go, so a
+     target out of rel8 range is refused. *)
+  let short_branch_alts =
+    List.mapi
+      (fun k (m, bytes) ->
+        let opcode =
+          String.fold_left
+            (fun acc c -> Int64.logor (Int64.shift_left acc 8) (Int64.of_int (Char.code c)))
+            0L bytes
+        in
+        C.alt ~label:("short-" ^ m) ~priority:(200 + k)
+          (C.relax ~name:m
+             [
+               C.rung ~label:"d8"
+                 (C.iso_fun ~name:(m ^ ".d8")
+                    ~encode:(function
+                      | Lowered.Short_rel { mnemonic; target } when String.equal mnemonic m ->
+                          Some ((), disp_of target)
+                      | _ -> None)
+                    ~decode:(fun ((), d) ->
+                      Some
+                        (Lowered.Short_rel { mnemonic = m; target = resolved ~rung:"d8" ~width:8 d }))
+                    C.(
+                      const ~width:(8 * String.length bytes) opcode
+                      ** le_fixup ~width:8 ~kind:Pcrel8_branch "target"));
+             ]))
+      short_branches
+
   let codec : (Lowered.t, fixup_kind) C.t =
     C.choice ~name:M.name
-      (general_alts @ moffs_alts @ x87_alts
+      (general_alts @ moffs_alts @ x87_alts @ short_branch_alts
       @ [
           (* 8-bit MOV is not the same opcode with a narrower width like every
              other case here - real x86 has no operand-size prefix or REX.W
@@ -8532,7 +8643,8 @@ module Make (M : MODE) = struct
   let expr_of_lowered : Lowered.t -> (string * Asm_core.Expr.t) list = function
     | Lowered.Call_rel { target = Asm_core.Lowered_ast.Symbolic { value; _ } }
     | Lowered.Jmp_rel { target = Asm_core.Lowered_ast.Symbolic { value; _ } }
-    | Lowered.Jcc_rel { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
+    | Lowered.Jcc_rel { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ }
+    | Lowered.Short_rel { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
         [ ("target", value) ]
     | Lowered.Alu_rm_imm { rm; imm; _ } -> (
         disp_expr rm @ match imm with Disp.Sym e -> [ ("imm", e) ] | Disp.Const _ -> [])
@@ -8580,11 +8692,13 @@ module Make (M : MODE) = struct
   let pinned_rung : Lowered.t -> string option = function
     | Lowered.Call_rel { target = Asm_core.Lowered_ast.Symbolic { rung; _ } }
     | Lowered.Jmp_rel { target = Asm_core.Lowered_ast.Symbolic { rung; _ } }
-    | Lowered.Jcc_rel { target = Asm_core.Lowered_ast.Symbolic { rung; _ }; _ } ->
+    | Lowered.Jcc_rel { target = Asm_core.Lowered_ast.Symbolic { rung; _ }; _ }
+    | Lowered.Short_rel { target = Asm_core.Lowered_ast.Symbolic { rung; _ }; _ } ->
         rung
     | Lowered.Call_rel { target = Asm_core.Lowered_ast.Resolved { rung; _ } }
     | Lowered.Jmp_rel { target = Asm_core.Lowered_ast.Resolved { rung; _ } }
-    | Lowered.Jcc_rel { target = Asm_core.Lowered_ast.Resolved { rung; _ }; _ } ->
+    | Lowered.Jcc_rel { target = Asm_core.Lowered_ast.Resolved { rung; _ }; _ }
+    | Lowered.Short_rel { target = Asm_core.Lowered_ast.Resolved { rung; _ }; _ } ->
         Some rung
     | _ -> None
 
@@ -8704,21 +8818,28 @@ module Make (M : MODE) = struct
       let reg_field = ref (if r.digit >= 0 then Some r.digit else None) in
       let rm = ref None and vvvv = ref None and is4 = ref None and imms = ref [] in
       let opcode_low = ref 0 in
-      let rounding = ref None and vsib = ref None in
+      let rounding = ref None and vsib = ref None and broadcast = ref false in
+      let rm_gpr = ref false in
       let rex_byte = ref false and ok = ref true in
+      let gpr (cls : T.rclass) = cls = T.Gpr8 || cls = T.Gpr16 || cls = T.Gpr32 || cls = T.Gpr64 in
       List.iter2
         (fun (o : T.operand) op ->
           match (o, op) with
-          (* registers 16-31 exist only in EVEX's reg, rm and vvvv fields *)
+          (* registers 16-31 exist only in EVEX's reg, rm and vvvv fields, and APX's r16-r31
+             also in REX2's reg, rm and opcode-register fields of legacy maps 0 and 1 *)
           | T.Reg { cls; field }, Operand.Reg reg
             when table_reg_ok cls reg
                  && (reg.num < 16
                     || r.space = T.Evex
-                       && (field = T.Modrm_reg || field = T.Modrm_rm || field = T.Vvvv)) -> (
+                       && (field = T.Modrm_reg || field = T.Modrm_rm || field = T.Vvvv)
+                    || r.space = T.Legacy && r.map <= 1 && gpr cls
+                       && (field = T.Modrm_reg || field = T.Modrm_rm || field = T.Opcode_low)) -> (
               if byte_reg_needs_rex reg then rex_byte := true;
               match field with
               | T.Modrm_reg -> reg_field := Some reg.num
-              | T.Modrm_rm -> rm := Some (`Reg reg.num)
+              | T.Modrm_rm ->
+                  rm_gpr := gpr cls;
+                  rm := Some (`Reg reg.num)
               | T.Vvvv -> vvvv := Some reg.num
               | T.Is4 -> is4 := Some reg.num
               | T.Opcode_low -> opcode_low := reg.num)
@@ -8730,6 +8851,9 @@ module Make (M : MODE) = struct
           | T.Rounding { sae_only = false }, Operand.Rc n when n >= 0 && n <= 3 ->
               rounding := Some n
           | T.Mem _, Operand.Mem m -> rm := Some (`Mem m)
+          | T.Mem _, Operand.Bcst { mem; n } when r.bcst > 0 && n = r.bcst ->
+              broadcast := true;
+              rm := Some (`Mem mem)
           | T.Vsib { cls }, Operand.Mem m ->
               vsib := Some (T.class_width cls);
               rm := Some (`Mem m)
@@ -8744,7 +8868,9 @@ module Make (M : MODE) = struct
         let modrm =
           match (!reg_field, !rm) with
           | Some reg, Some rm ->
-              Option.map (fun m -> (reg, m)) (table_modrm ~n:r.disp8n ?vsib:!vsib ~reg rm)
+              Option.map
+                (fun m -> (reg, m))
+                (table_modrm ~n:(if !broadcast then r.bcst_elem else r.disp8n) ?vsib:!vsib ~reg rm)
           | None, None -> Some (0, ("", 0, (!opcode_low lsr 3) land 1))
           (* a fixed ModR/M.reg or rm and no rm operand: register form, rm fixed or 0 ([lfence] is
              0F AE E8, [tilezero %tmm1] is ... 49 C8) *)
@@ -8759,6 +8885,19 @@ module Make (M : MODE) = struct
         | None -> None
         | Some (reg, (modrm_bytes, x, b)) -> (
             let rr = (reg lsr 3) land 1 in
+            (* APX's register bit 4: R4 for ModR/M.reg, B4 for a GPR rm, a base or an
+               opcode register, X4 for a GPR index (EVEX's X stays a vector rm's bit 4) *)
+            let bit4 (reg : Reg.t option) =
+              match reg with Some r -> (r.num lsr 4) land 1 | None -> 0
+            in
+            let r4 = (reg lsr 4) land 1 in
+            let b4, x4 =
+              match !rm with
+              | Some (`Mem (m : Mem.t)) -> (bit4 m.base, if !vsib = None then bit4 m.index else 0)
+              | Some (`Reg n) when !rm_gpr -> ((n lsr 4) land 1, 0)
+              | _ -> ((!opcode_low lsr 4) land 1, 0)
+            in
+            let x = if !rm_gpr then 0 else x in
             let w = max 0 r.w and l = max 0 r.l in
             (* an is4 register shares its byte with a 4-bit immediate (vpermil2ps) *)
             let tail =
@@ -8776,6 +8915,19 @@ module Make (M : MODE) = struct
             | None -> None
             | Some tail -> (
                 match r.space with
+                | T.Legacy when r4 = 1 || x4 = 1 || b4 = 1 ->
+                    (* REX2: D5, then M0 R4 X4 B4 W R3 X3 B3, for maps 0 and 1 only; M0 stands
+                       for the 0F escape *)
+                    if (not M.rex_allowed) || r.map > 1 || r.no_rex2 then None
+                    else
+                      let payload =
+                        (r.map lsl 7) lor (r4 lsl 6) lor (x4 lsl 5) lor (b4 lsl 4) lor (w lsl 3)
+                        lor (rr lsl 2) lor (x lsl 1) lor b
+                      in
+                      Some
+                        ((if r.osz then "\x66" else "")
+                        ^ (if r.prefix <> 0 then byte r.prefix else "")
+                        ^ "\xd5" ^ byte payload ^ byte opcode ^ tail)
                 | T.Legacy ->
                     let need_rex = w = 1 || rr = 1 || x = 1 || b = 1 || !rex_byte in
                     if need_rex && not M.rex_allowed then None
@@ -8798,6 +8950,7 @@ module Make (M : MODE) = struct
                         ((if r.osz then "\x66" else "")
                         ^ (if r.prefix <> 0 then byte r.prefix else "")
                         ^ rex ^ escape ^ body)
+                | (T.Xop | T.Vex) when r4 = 1 || x4 = 1 || b4 = 1 -> None
                 | T.Xop ->
                     (* 8F RXB.mmmmm W.vvvv.L.pp, always the three-byte form *)
                     if (not M.rex_allowed) && (rr = 1 || x = 1 || b = 1) then None
@@ -8835,16 +8988,20 @@ module Make (M : MODE) = struct
                       | _ -> (v lsr 4) land 1
                     in
                     let v = v land 15 in
-                    let b_bit, l = match !rounding with Some rc -> (1, rc) | None -> (0, l) in
+                    let b_bit, l =
+                      match !rounding with
+                      | Some rc -> (1, rc)
+                      | None -> ((if !broadcast then 1 else 0), l)
+                    in
                     let pp = match r.prefix with 0x66 -> 1 | 0xf3 -> 2 | 0xf2 -> 3 | _ -> 0 in
                     let p0 =
                       ((1 - rr) lsl 7)
                       lor ((1 - x) lsl 6)
                       lor ((1 - b) lsl 5)
                       lor ((1 - r') lsl 4)
-                      lor r.map
+                      lor (b4 lsl 3) lor r.map
                     in
-                    let p1 = (w lsl 7) lor ((lnot v land 15) lsl 3) lor (1 lsl 2) lor pp in
+                    let p1 = (w lsl 7) lor ((lnot v land 15) lsl 3) lor ((1 - x4) lsl 2) lor pp in
                     let aaa, z =
                       match opmask with
                       | Some (k, zero) -> (k, if zero then 1 else 0)
@@ -8883,27 +9040,42 @@ module Make (M : MODE) = struct
 
   (* GNU as's pseudo-prefixes, each a condition on the row: [{evex}] and [{vex}] the encoding
      space, [{load}] and [{store}] whether the destination is ModR/M.reg or ModR/M.rm. *)
-  let pseudo_prefix_allows prefix (r : T.row) =
+  (* Every prefix must allow the row, and a row reached only through a pseudo-prefix needs it
+     among them. *)
+  let pseudo_prefix_allows prefixes (r : T.row) =
+    (* the direction {load}/{store} choose: which ModR/M field holds the last ModR/M register
+       (the destination, or an NDD form's second source) *)
     let dest_field () =
-      match List.rev r.operands with T.Reg { field; _ } :: _ -> Some field | _ -> None
+      List.find_map
+        (function
+          | T.Reg { field = (T.Modrm_reg | T.Modrm_rm) as field; _ } -> Some field | _ -> None)
+        (List.rev r.operands)
     in
-    if r.pseudo <> "" then String.equal r.pseudo prefix
-    else
-      match prefix with
-      | "evex" -> r.space = T.Evex
-      | "vex" -> r.space = T.Vex
-      | "load" -> dest_field () = Some T.Modrm_reg
-      | "store" -> dest_field () = Some T.Modrm_rm
-      | _ -> false
+    (r.pseudo = "" || List.mem r.pseudo prefixes)
+    && List.for_all
+         (fun prefix ->
+           String.equal prefix r.pseudo
+           ||
+           match prefix with
+           | "evex" -> r.space = T.Evex
+           | "vex" -> r.space = T.Vex
+           | "load" -> dest_field () = Some T.Modrm_reg
+           | "store" -> dest_field () = Some T.Modrm_rm
+           | _ -> false)
+         prefixes
 
-  (* [{evex} vaddps] -> [Some ("evex", "vaddps")] *)
+  (* [{evex} {load} addl] -> [Some (["evex"; "load"], "addl")] *)
   let split_pseudo_prefix m =
-    if String.length m > 0 && m.[0] = '{' then
-      match String.index_opt m '}' with
-      | Some k when k + 1 < String.length m && m.[k + 1] = ' ' ->
-          Some (String.sub m 1 (k - 1), String.sub m (k + 2) (String.length m - k - 2))
-      | _ -> None
-    else None
+    let rec go acc m =
+      if String.length m > 0 && m.[0] = '{' then
+        match String.index_opt m '}' with
+        | Some k when k + 1 < String.length m && m.[k + 1] = ' ' ->
+            go (String.sub m 1 (k - 1) :: acc) (String.sub m (k + 2) (String.length m - k - 2))
+        | _ -> None
+      else if acc = [] then None
+      else Some (List.rev acc, m)
+    in
+    go [] m
 
   let table_index mnemonic =
     let rec go i =
@@ -8917,6 +9089,9 @@ module Make (M : MODE) = struct
   (* Decoding: prefixes (0x66, F2/F3, REX), then VEX or a legacy escape, then the opcode; every
      row with that space, map and opcode is tried in table order. *)
   let table_decode bytes pos =
+    let gpr_class (cls : T.rclass) =
+      cls = T.Gpr8 || cls = T.Gpr16 || cls = T.Gpr32 || cls = T.Gpr64
+    in
     let n = String.length bytes in
     let at k = if k < n then Some (Char.code bytes.[k]) else None in
     let rec prefixes k osz rep =
@@ -8931,17 +9106,31 @@ module Make (M : MODE) = struct
     let evex_b = ref 0 and evex_aaa = ref 0 and evex_z = ref 0 in
     (* EVEX.R' and EVEX.V' (register bit 4), as 1 when set *)
     let evex_r4 = ref 0 and evex_v4 = ref 0 in
-    let k, rex =
-      match at k with Some b when M.rex_allowed && b land 0xf0 = 0x40 -> (k + 1, b) | _ -> (k, 0)
+    (* APX's B4 and X4 (EVEX or REX2), as 1 when set; R4 shares evex_r4 *)
+    let apx_b4 = ref 0 and apx_x4 = ref 0 in
+    let k, rex, rex2_map =
+      match (at k, at (k + 1)) with
+      | Some b, _ when M.rex_allowed && b land 0xf0 = 0x40 -> (k + 1, b, None)
+      (* REX2: D5, then M0 R4 X4 B4 W R3 X3 B3 *)
+      | Some 0xd5, Some p when M.rex_allowed ->
+          evex_r4 := (p lsr 6) land 1;
+          apx_x4 := (p lsr 5) land 1;
+          apx_b4 := (p lsr 4) land 1;
+          (k + 2, 0x40 lor (p land 0x0f), Some ((p lsr 7) land 1))
+      | _ -> (k, 0, None)
     in
     let vex =
       match (at k, at (k + 1), at (k + 2)) with
       | Some 0x62, Some p0, Some p1
-        when rex = 0 && (M.rex_allowed || p0 land 0xc0 = 0xc0) && p1 land 4 = 4 && k + 3 < n ->
+        when rex = 0
+             && (M.rex_allowed || (p0 land 0xc0 = 0xc0 && p1 land 4 = 4 && p0 land 8 = 0))
+             && k + 3 < n ->
           (* EVEX with registers 0-15 *)
           let p2 = Char.code bytes.[k + 3] in
           if (not M.rex_allowed) && (p0 land 0x10 = 0 || p2 land 0x08 = 0) then None
           else (
+            apx_b4 := (p0 lsr 3) land 1;
+            apx_x4 := 1 - ((p1 lsr 2) land 1);
             evex_r4 := 1 - ((p0 lsr 4) land 1);
             evex_v4 := 1 - ((p2 lsr 3) land 1);
             evex_b := (p2 lsr 4) land 1;
@@ -9003,12 +9192,15 @@ module Make (M : MODE) = struct
       match vex with
       | Some (k, v) -> (v, k)
       | None -> (
-          match (at k, at (k + 1)) with
-          | Some 0x0f, Some 0x38 -> (`Legacy 2, k + 2)
-          | Some 0x0f, Some 0x3a -> (`Legacy 3, k + 2)
-          | Some 0x0f, Some 0x0f -> (`Legacy 4, k + 2)
-          | Some 0x0f, _ -> (`Legacy 1, k + 1)
-          | _ -> (`Legacy 0, k))
+          match rex2_map with
+          | Some map -> (`Legacy map, k)
+          | None -> (
+              match (at k, at (k + 1)) with
+              | Some 0x0f, Some 0x38 -> (`Legacy 2, k + 2)
+              | Some 0x0f, Some 0x3a -> (`Legacy 3, k + 2)
+              | Some 0x0f, Some 0x0f -> (`Legacy 4, k + 2)
+              | Some 0x0f, _ -> (`Legacy 1, k + 1)
+              | _ -> (`Legacy 0, k)))
     in
     (* 3DNow!'s opcode byte comes last: read it per row, after the operands *)
     match match space with `Legacy 4 -> Some (-1) | _ -> at k with
@@ -9018,6 +9210,7 @@ module Make (M : MODE) = struct
         let try_row i (r : T.row) =
           let header_ok, rr, xx, bb, w, vvvv, l =
             match (space, r.space) with
+            | `Legacy _, T.Legacy when r.no_rex2 && rex2_map <> None -> (false, 0, 0, 0, 0, 0, 0)
             | `Legacy map, T.Legacy ->
                 let prefix_ok =
                   match r.prefix with
@@ -9063,7 +9256,8 @@ module Make (M : MODE) = struct
             header_ok
             && (match r.space with
               | T.Evex when r.map = 4 || r.evex_p2 <> 0 -> true
-              | T.Evex -> !evex_b = 1 = rounding_row
+              (* EVEX.b: rounding on a register row, broadcast on a memory row that takes it *)
+              | T.Evex -> !evex_b = 1 = rounding_row || (!evex_b = 1 && r.bcst > 0)
               | _ -> true)
             (* the opmask the row allows; an APX row's ND and NF bits sit where EVEX.b and aaa do *)
             && (match r.space with
@@ -9082,6 +9276,15 @@ module Make (M : MODE) = struct
             && List.for_all
                  (function T.Rounding { sae_only = true } -> l = 0 | _ -> true)
                  r.operands
+            (* B4 and X4 must name something: a GPR rm or opcode register, a base, an index *)
+            && (!apx_b4 = 0
+               || List.exists
+                    (function
+                      | T.Reg { cls; field = T.Modrm_rm | T.Opcode_low } -> gpr_class cls
+                      | T.Mem _ | T.Vsib _ -> true
+                      | _ -> false)
+                    r.operands)
+            && (!apx_x4 = 0 || List.exists (function T.Mem _ -> true | _ -> false) r.operands)
           in
           let low =
             List.exists
@@ -9121,7 +9324,7 @@ module Make (M : MODE) = struct
             | Some mb -> (
                 let evex = r.space = T.Evex in
                 let md = mb lsr 6
-                and reg = (mb lsr 3) land 7 lor (rr lsl 3) lor if evex then !evex_r4 lsl 4 else 0
+                and reg = (mb lsr 3) land 7 lor (rr lsl 3) lor (!evex_r4 lsl 4)
                 and rmf = mb land 7 in
                 let k = if uses_modrm then k + 1 else k in
                 if uses_modrm && r.digit >= 0 && (mb lsr 3) land 7 <> r.digit then None
@@ -9141,7 +9344,9 @@ module Make (M : MODE) = struct
                         | 1 ->
                             Option.map
                               (fun b ->
-                                ( Int64.mul (Int64.of_int r.disp8n)
+                                ( Int64.mul
+                                    (Int64.of_int
+                                       (if !evex_b = 1 && r.bcst > 0 then r.bcst_elem else r.disp8n))
                                     (Int64.of_int (if b >= 128 then b - 256 else b)),
                                   k + 1 ))
                               (at k)
@@ -9162,8 +9367,10 @@ module Make (M : MODE) = struct
                         | None -> (None, k)
                         | Some sb -> (
                             let sc = sb lsr 6
-                            and ix = (sb lsr 3) land 7 lor (xx lsl 3)
-                            and bs = sb land 7 lor (bb lsl 3) in
+                            and ix =
+                              (sb lsr 3) land 7 lor (xx lsl 3)
+                              lor if vsib = None then !apx_x4 lsl 4 else 0
+                            and bs = sb land 7 lor (bb lsl 3) lor (!apx_b4 lsl 4) in
                             if bs land 7 = 5 && md = 0 then (None, k)
                             else
                               match disp (k + 1) md with
@@ -9195,7 +9402,8 @@ module Make (M : MODE) = struct
                             ( Some
                                 (Some
                                    {
-                                     Mem.base = Some (regat (rmf lor (bb lsl 3)));
+                                     Mem.base =
+                                       Some (regat (rmf lor (bb lsl 3) lor (!apx_b4 lsl 4)));
                                      index = None;
                                      scale = 1;
                                      disp = Disp.Const d;
@@ -9215,10 +9423,14 @@ module Make (M : MODE) = struct
                                   match field with
                                   | T.Modrm_reg -> reg
                                   | T.Modrm_rm ->
-                                      rmf lor (bb lsl 3) lor if evex then xx lsl 4 else 0
+                                      rmf lor (bb lsl 3)
+                                      lor
+                                      if gpr_class cls then !apx_b4 lsl 4
+                                      else if evex then xx lsl 4
+                                      else 0
                                   | T.Vvvv -> vvvv lor if evex then !evex_v4 lsl 4 else 0
                                   | T.Is4 -> ( match at (n - 1) with _ -> 0)
-                                  | T.Opcode_low -> opcode land 7 lor (bb lsl 3)
+                                  | T.Opcode_low -> opcode land 7 lor (bb lsl 3) lor (!apx_b4 lsl 4)
                                 in
                                 if cls = T.Gpr8 && num >= 4 && num < 8 && rex = 0 then
                                   failed := true;
@@ -9236,6 +9448,8 @@ module Make (M : MODE) = struct
                                     Operand.Imm Bigint.zero)
                             | T.Mem _ | T.Vsib _ -> (
                                 match mem with
+                                | Some m when r.space = T.Evex && !evex_b = 1 && r.bcst > 0 ->
+                                    Operand.Bcst { mem = m; n = r.bcst }
                                 | Some m -> Operand.Mem m
                                 | None ->
                                     failed := true;
@@ -9319,6 +9533,9 @@ module Make (M : MODE) = struct
           [ Operand.Sym (Asm_core.Expr.Symbol op) ] ) ->
           let p = match p with "repz" -> "repe" | "repnz" -> "repne" | p -> p in
           { s with mnemonic = p ^ " " ^ op; ops = [] }
+      (* GNU as encodes [int $3] as the one-byte int3 *)
+      | "int", [ Operand.Imm v ] when Bigint.to_int_opt v = Some 3 ->
+          { s with mnemonic = "int3"; ops = [] }
       (* [lock addl $1, (%rax)]: the parser hands the instruction over as a leading symbol *)
       | "lock", Operand.Sym (Asm_core.Expr.Symbol op) :: ops ->
           { s with mnemonic = "lock " ^ op; ops }
@@ -9369,20 +9586,30 @@ module Make (M : MODE) = struct
         let rec upper = function
           | Operand.Reg (r : Reg.t) -> r.num >= 16
           | Operand.Masked { op; _ } -> upper op
-          | Operand.Mem { Mem.index = Some (i : Reg.t); _ } -> i.num >= 16
+          | Operand.Mem { Mem.base; index; _ } ->
+              List.exists
+                (fun (r : Reg.t) -> r.num >= 16)
+                (Option.to_list base @ Option.to_list index)
           | _ -> false
         in
         let vector_index =
           List.exists
             (function
-              | Operand.Mem { Mem.index = Some (i : Reg.t); _ } ->
-                  not (List.mem i.width [ 16; 32; 64 ])
-              | Operand.Masked { op = Operand.Mem { Mem.index = Some (i : Reg.t); _ }; _ } ->
-                  not (List.mem i.width [ 16; 32; 64 ])
+              | Operand.Mem { Mem.index = Some (i : Reg.t); _ } as op ->
+                  (not (List.mem i.width [ 16; 32; 64 ])) || upper op
+              | Operand.Masked { op = Operand.Mem { Mem.index = Some (i : Reg.t); _ } as op; _ } ->
+                  (not (List.mem i.width [ 16; 32; 64 ])) || upper op
               | op -> upper op)
             s.Surface.ops
         in
-        if vector_index then
+        (* a broadcast states the vector width, so vfpclass is spelled without its x/y/z *)
+        let bcst = List.exists (function Operand.Bcst _ -> true | _ -> false) s.Surface.ops in
+        if bcst then
+          let m = s.Surface.mnemonic in
+          match row [ m; m ^ "x"; m ^ "y"; m ^ "z" ] with
+          | Some i -> Ok i
+          | None -> Error (diag ~pos:__POS__ (`No_form m))
+        else if vector_index then
           match row [ s.Surface.mnemonic ] with
           | Some i -> Ok i
           | None -> Error (diag ~pos:__POS__ (`No_form s.Surface.mnemonic))
@@ -9623,6 +9850,10 @@ module Make (M : MODE) = struct
     | Lowered.Jmp_rel { target } ->
         Some
           (Instruction.mk ?form:(rung_of target) Opcode.Jmp M.address_width
+             [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
+    | Lowered.Short_rel { mnemonic; target } ->
+        Some
+          (Instruction.mk (Opcode.Short_branch mnemonic) M.address_width
              [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
     | Lowered.Jcc_rel { cc; target } ->
         Some

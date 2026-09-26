@@ -1612,32 +1612,61 @@ let%expect_test "x86 pseudo-prefixes select the encoding" =
      \tccmpz {dfv=of,cf} %eax, %ebx\n\
      \tlock addw $1, (%rax)\n\
      \tlock cmpxchg16b (%rax)\n\
-     \tpavgusb 16(%rsp), %mm3\n";
+     \tpavgusb 16(%rsp), %mm3\n\
+     \taddl %r17d, %r18d, %r19d\n\
+     \taddl (%r20,%r21,4), %r22d, %r23d\n\
+     \tmovq (%r16), %r17\n\
+     \tpushq %r20\n\
+     \tmovzbl %r17b, %eax\n\
+     \tvaddps 4(%rax){1to8}, %ymm1, %ymm2{%k1}{z}\n\
+     \tvfpclassbf16 $0, 16(%rsp){1to8}, %k1\n\
+     \tnop\n\
+     \tint $3\n\
+     \tendbr64\n\
+     \t{load} addl %eax, %ebx, %ecx\n\
+     \t{evex} {load} addl %eax, %ebx\n\
+     \tloop 1f\n\
+     \tjrcxz 1f\n\
+     \t1:\n";
   attempt "x86_64" "\t.text\n\t{vex3} vaddps %xmm1, %xmm2, %xmm3\n";
   [%expect
     {|
-    40000000  62 f1 6c 08 58 d9                    {evex} vaddps %xmm1, %xmm2, %xmm3          [x86_64.vaddps]
-    40000006  c4 e2 69 50 d9                       {vex} vpdpbusd %xmm1, %xmm2, %xmm3         [x86_64.vpdpbusd]
-    4000000b  62 f2 6d 08 50 d9                    vpdpbusd %xmm1, %xmm2, %xmm3               [x86_64.vpdpbusd]
-    40000011  0f 29 ca                             {store} movaps %xmm1, %xmm2                [x86_64.movaps]
-    40000014  03 d8                                addl %eax, %ebx                            [x86_64.alu-r-rm.asz-absent.opsz-absent.rex-absent.reg]
-    40000016  66 f3 a5                             rep movsw                                  [x86_64.rep movsw]
-    40000019  62 f1 6c 18 58 d9                    vaddps {rn-sae}, %zmm1, %zmm2, %zmm3       [x86_64.vaddps]
-    4000001f  62 f1 6c 18 c2 c9 01                 vcmpps $1, {sae}, %zmm1, %zmm2, %k1        [x86_64.vcmpps]
-    40000026  62 f1 76 78 2a d0                    vcvtsi2ss %eax, {rz-sae}, %xmm1, %xmm2     [x86_64.vcvtsi2ss]
-    4000002c  62 f1 6c ca 58 d9                    vaddps %zmm1, %zmm2, %zmm3{%k2}{z}         [x86_64.vaddps]
-    40000032  62 f1 7c 4b 11 40 01                 vmovups %zmm0, 64(%rax){%k3}               [x86_64.vmovups]
-    40000039  62 f2 7d 49 92 5c 90 04              vgatherdps 16(%rax,%zmm2,4), %zmm3{%k1}    [x86_64.vgatherdps]
-    40000041  62 21 4c 40 58 f9                    vaddps %zmm17, %zmm22, %zmm31              [x86_64.vaddps]
-    40000047  62 62 7d 41 90 6c 90 04              vpgatherdd 16(%rax,%zmm18,4), %zmm29{%k1}  [x86_64.vpgatherdd]
-    4000004f  62 f4 74 18 11 c3                    adcl %eax, %ebx, %ecx                      [x86_64.adcl]
-    40000055  62 f4 ec 1c 81 44 24 10 e8 03 00 00  {nf} addq $1000, 16(%rsp), %rdx            [x86_64.addq]
-    40000061  62 f4 7c 08 f4 d8                    {evex} tzcnt %eax, %ebx                    [x86_64.tzcnt]
-    40000067  62 f4 7c 0c d0 e1                    {nf} shlb $1, %cl                          [x86_64.shlb]
-    4000006d  62 f4 4c 04 39 c3                    ccmpz {dfv=of,cf} %eax, %ebx               [x86_64.ccmpz]
-    40000073  66 f0 83 00 01                       lock addw $1, (%rax)                       [x86_64.lock addw]
-    40000078  f0 48 0f c7 08                       lock cmpxchg16b (%rax)                     [x86_64.lock cmpxchg16b]
-    4000007d  0f 0f 5c 24 10 bf                    pavgusb 16(%rsp), %mm3                     [x86_64.pavgusb]
+    40000000  62 f1 6c 08 58 d9                    {evex} vaddps %xmm1, %xmm2, %xmm3           [x86_64.vaddps]
+    40000006  c4 e2 69 50 d9                       {vex} vpdpbusd %xmm1, %xmm2, %xmm3          [x86_64.vpdpbusd]
+    4000000b  62 f2 6d 08 50 d9                    vpdpbusd %xmm1, %xmm2, %xmm3                [x86_64.vpdpbusd]
+    40000011  0f 29 ca                             {store} movaps %xmm1, %xmm2                 [x86_64.movaps]
+    40000014  03 d8                                addl %eax, %ebx                             [x86_64.alu-r-rm.asz-absent.opsz-absent.rex-absent.reg]
+    40000016  66 f3 a5                             rep movsw                                   [x86_64.rep movsw]
+    40000019  62 f1 6c 18 58 d9                    vaddps {rn-sae}, %zmm1, %zmm2, %zmm3        [x86_64.vaddps]
+    4000001f  62 f1 6c 18 c2 c9 01                 vcmpps $1, {sae}, %zmm1, %zmm2, %k1         [x86_64.vcmpps]
+    40000026  62 f1 76 78 2a d0                    vcvtsi2ss %eax, {rz-sae}, %xmm1, %xmm2      [x86_64.vcvtsi2ss]
+    4000002c  62 f1 6c ca 58 d9                    vaddps %zmm1, %zmm2, %zmm3{%k2}{z}          [x86_64.vaddps]
+    40000032  62 f1 7c 4b 11 40 01                 vmovups %zmm0, 64(%rax){%k3}                [x86_64.vmovups]
+    40000039  62 f2 7d 49 92 5c 90 04              vgatherdps 16(%rax,%zmm2,4), %zmm3{%k1}     [x86_64.vgatherdps]
+    40000041  62 21 4c 40 58 f9                    vaddps %zmm17, %zmm22, %zmm31               [x86_64.vaddps]
+    40000047  62 62 7d 41 90 6c 90 04              vpgatherdd 16(%rax,%zmm18,4), %zmm29{%k1}   [x86_64.vpgatherdd]
+    4000004f  62 f4 74 18 11 c3                    adcl %eax, %ebx, %ecx                       [x86_64.adcl]
+    40000055  62 f4 ec 1c 81 44 24 10 e8 03 00 00  {nf} addq $1000, 16(%rsp), %rdx             [x86_64.addq]
+    40000061  62 f4 7c 08 f4 d8                    {evex} tzcnt %eax, %ebx                     [x86_64.tzcnt]
+    40000067  62 f4 7c 0c d0 e1                    {nf} shlb $1, %cl                           [x86_64.shlb]
+    4000006d  62 f4 4c 04 39 c3                    ccmpz {dfv=of,cf} %eax, %ebx                [x86_64.ccmpz]
+    40000073  66 f0 83 00 01                       lock addw $1, (%rax)                        [x86_64.lock addw]
+    40000078  f0 48 0f c7 08                       lock cmpxchg16b (%rax)                      [x86_64.lock cmpxchg16b]
+    4000007d  0f 0f 5c 24 10 bf                    pavgusb 16(%rsp), %mm3                      [x86_64.pavgusb]
+    40000083  62 ec 64 10 01 ca                    addl %r17d, %r18d, %r19d                    [x86_64.addl]
+    40000089  62 ec 40 10 03 34 ac                 addl (%r20,%r21,4), %r22d, %r23d            [x86_64.addl]
+    40000090  d5 58 8b 08                          movq (%r16), %r17                           [x86_64.movq]
+    40000094  d5 10 54                             pushq %r20                                  [x86_64.pushq]
+    40000097  d5 90 b6 c1                          movzbl %r17b, %eax                          [x86_64.movzbl]
+    4000009b  62 f1 74 b9 58 50 01                 vaddps 4(%rax){1to8}, %ymm1, %ymm2{%k1}{z}  [x86_64.vaddps]
+    400000a2  62 f3 7f 18 66 4c 24 08 00           vfpclassbf16 $0, 16(%rsp){1to8}, %k1        [x86_64.vfpclassbf16x]
+    400000ab  90                                   .balign 2                                   [padding]
+    400000ac  cc                                   int3                                        [x86_64.int3]
+    400000ad  f3 0f 1e fa                          endbr64                                     [x86_64.endbr64]
+    400000b1  62 f4 74 18 03 d8                    {load} addl %eax, %ebx, %ecx                [x86_64.addl]
+    400000b7  62 f4 7c 08 03 d8                    {evex} {load} addl %eax, %ebx               [x86_64.addl]
+    400000bd  e2 02                                loop 1073742017                             [x86_64.short-loop.d8]
+    400000bf  e3 00                                jrcxz 1073742017                            [x86_64.short-jrcxz.d8]
     x86.simplify: unknown instruction {vex3} vaddps |}]
 
 (* {1 M5 corpus-growth forms (asm/docs/corpus.md): actually assembling

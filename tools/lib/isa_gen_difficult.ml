@@ -7016,6 +7016,11 @@ let x86_table_entries_of ?(alt = false) ?prefix target (spec : Isa_x86_table.spe
     (* eight of each, so no high variant *)
     | Mmx -> Printf.sprintf "mm%d" (num land 7)
     | Tmm -> Printf.sprintf "tmm%d" (num land 7)
+    (* cr0, cr2-cr4 and cr8 exist; dr0-dr3, dr6, dr7 *)
+    | Cr ->
+        Printf.sprintf "cr%d" (if num >= 8 then 8 else [| 0; 2; 3; 4; 0; 2; 3; 4 |].(num land 7))
+    | Dr ->
+        Printf.sprintf "dr%d" (if num >= 8 then 7 else [| 0; 1; 2; 3; 6; 7; 0; 1 |].(num land 7))
     (* never st(0) beside the implied %st: GNU would take the other direction's form *)
     | St -> Printf.sprintf "st(%d)" (if num land 7 = 0 then 7 else num land 7)
     | Kmask -> Printf.sprintf "k%d" (num land 7)
@@ -7025,7 +7030,8 @@ let x86_table_entries_of ?(alt = false) ?prefix target (spec : Isa_x86_table.spe
     | Gpr8 -> if num < 4 then String.make 1 low8.(num).[0] ^ "l" else Printf.sprintf "r%db" num
   in
   let stack = match target with Target.X86_32 -> "esp" | _ -> "rsp" in
-  let entry ?(masked = false) (row : Isa_x86_table.spec) variant ~high =
+  let entry ?(masked = false) ?(egpr = false) ?(bcst = false) (row : Isa_x86_table.spec) variant
+      ~high =
     let n = List.length row.operands in
     let is4 =
       List.exists
@@ -7052,7 +7058,14 @@ let x86_table_entries_of ?(alt = false) ?prefix target (spec : Isa_x86_table.spe
                    ( Isa_x86_table.operand_name i,
                      reg_name cls (if high then 8 + n - 1 - i else n - 1 - i) );
                  ]
+             (* APX's r16-r31 *)
+             | Reg { cls = (Gpr8 | Gpr16 | Gpr32 | Gpr64) as cls; _ } when egpr ->
+                 [ (Isa_x86_table.operand_name i, reg_name cls (16 + n - 1 - i)) ]
              | Reg { cls; _ } -> [ (Isa_x86_table.operand_name i, reg_name cls num) ]
+             | Mem _ when egpr -> [ (Isa_x86_table.operand_name i, "16(%r25,%r26,4)") ]
+             (* a broadcast states the width, so GNU spells vfpclass without its x/y/z *)
+             | Mem _ when bcst ->
+                 [ (Isa_x86_table.operand_name i, Printf.sprintf "16(%%%s){1to%d}" stack row.bcst) ]
              | Mem _ ->
                  [
                    ( Isa_x86_table.operand_name i,
@@ -7105,9 +7118,28 @@ let x86_table_entries_of ?(alt = false) ?prefix target (spec : Isa_x86_table.spe
       else operands
     in
     let operands =
+      if
+        bcst
+        && String.length row.mnemonic > 8
+        && String.sub row.mnemonic 0 8 = "vfpclass"
+        && List.mem row.mnemonic.[String.length row.mnemonic - 1] [ 'x'; 'y'; 'z' ]
+      then
+        (Isa_gen_render.mnemonic_key, String.sub row.mnemonic 0 (String.length row.mnemonic - 1))
+        :: operands
+      else operands
+    in
+    let operands =
       match prefix with
       (* a twin GNU as reaches only with a pseudo-prefix *)
-      | Some p -> (Isa_gen_render.mnemonic_key, "{" ^ p ^ "} " ^ row.mnemonic) :: operands
+      | Some p ->
+          ( Isa_gen_render.mnemonic_key,
+            String.concat "" (List.map (fun w -> "{" ^ w ^ "} ") (String.split_on_char ' ' p))
+            ^ row.mnemonic
+            ^
+            if List.mem Isa_x86_table.Dfv row.operands then
+              if high then " {dfv=sf,zf}" else " {dfv=of,cf}"
+            else "" )
+          :: operands
       (* CCMP/CTEST: the default flags follow the mnemonic with no comma *)
       | None when List.mem Isa_x86_table.Dfv row.operands ->
           ( Isa_gen_render.mnemonic_key,
@@ -7128,7 +7160,14 @@ let x86_table_entries_of ?(alt = false) ?prefix target (spec : Isa_x86_table.spe
         Printf.sprintf "x86:%s:table-%s%s%s:%s" spec.iform
           (if alt then "alt-" else "")
           (let k = Isa_x86_table.spec_lookup_key spec in
-           if k = spec.iform then "" else String.sub k (String.length spec.iform + 1) 2 ^ "-")
+           if k = spec.iform then ""
+           else
+             String.map
+               (fun c -> if c = '#' then '-' else c)
+               (String.sub k
+                  (String.length spec.iform + 1)
+                  (String.length k - String.length spec.iform - 1))
+             ^ "-")
           variant (Target.to_string target);
       rule_ids =
         [ "table-row"; "table-" ^ variant; "feature:" ^ String.lowercase_ascii spec.isa_set ];
@@ -7182,6 +7221,12 @@ let x86_table_entries_of ?(alt = false) ?prefix target (spec : Isa_x86_table.spe
               (function Isa_x86_table.Mem { bits } when bits > 0 -> Some bits | _ -> None)
               operands
       in
+      (* an immediate-only form (pushq $imm): its operand size from the row *)
+      let bits =
+        match bits with
+        | Some _ -> bits
+        | None -> Some (if r.osz then 16 else if r.mode = 64 then 64 else 32)
+      in
       Printf.sprintf "-w%d" (Option.value bits ~default:0)
   in
   List.concat_map
@@ -7191,9 +7236,23 @@ let x86_table_entries_of ?(alt = false) ?prefix target (spec : Isa_x86_table.spe
       (match target with
       | Target.X86_64 -> [ entry r ("regs-high" ^ width_tag r) ~high:true ]
       | _ -> [])
+      @ (if r.mask = 1 || r.mask = 2 then
+           [ entry ~masked:true r ("mask-low" ^ width_tag r) ~high:false ]
+         else [])
+      @ (if r.bcst > 0 then [ entry ~bcst:true r ("bcst-low" ^ width_tag r) ~high:false ] else [])
       @
-      if r.mask = 1 || r.mask = 2 then
-        [ entry ~masked:true r ("mask-low" ^ width_tag r) ~high:false ]
+      (* APX's r16-r31: through REX2 in legacy maps 0 and 1, through EVEX *)
+      let gpr_reg =
+        List.exists
+          (function
+            | Isa_x86_table.Reg { cls = Gpr8 | Gpr16 | Gpr32 | Gpr64; _ } -> true | _ -> false)
+          r.operands
+      and mem = List.exists (function Isa_x86_table.Mem _ -> true | _ -> false) r.operands in
+      if
+        target = Target.X86_64
+        && ((r.space = `Legacy && r.map <= 1 && (not r.no_rex2) && (gpr_reg || mem))
+           || (r.space = `Evex && gpr_reg))
+      then [ entry ~egpr:true r ("regs-egpr" ^ width_tag r) ~high:true ]
       else [])
     rows
 
@@ -7274,18 +7333,24 @@ let x86_branch_entries repo =
       Isa_source_record.read_file (Repo.isa_db_export repo ~source:"xed_resolved" target)
     in
     let seen = Hashtbl.create 64 in
+    let directional = Isa_x86_table.directional_iforms records in
     Ok
       (List.concat_map
          (fun (r : Isa_source_record.t) ->
            match (Isa_x86_table.branch r, r.provenance) with
-           | Some (_, bits), Isa_source_record.Xed_provenance { iform = Some iform; _ }
-             when not (Hashtbl.mem seen iform) ->
+           | Some (_, bits), Isa_source_record.Xed_provenance { iform = Some iform; isa_set; _ }
+             when (not (Hashtbl.mem seen iform))
+                  && Isa_oracle_unavailable.find_record ~source:"xed_resolved" target
+                       ~extension:(Option.value isa_set ~default:"")
+                       ~native_name:r.native_name
+                     = None ->
                Hashtbl.replace seen iform ();
                let entry variant ~label ~before ~after =
                  {
                    form_id = "x86:" ^ iform;
                    target;
-                   lookup_key = iform;
+                   (* the first record of an iform XED also lists with a decode-only opcode *)
+                   lookup_key = Isa_x86_table.lookup_key ~directional r;
                    case_id =
                      Printf.sprintf "x86:%s:branch-%s:%s" iform variant (Target.to_string target);
                    rule_ids = [ "branch"; "branch-" ^ variant ];

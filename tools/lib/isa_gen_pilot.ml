@@ -112,9 +112,10 @@ let find_and_normalize_riscv ?form_id records ~native_name =
   match matching with Some f -> Some f | None -> List.nth_opt forms 0
 
 let find_and_normalize_xed records ~iform =
+  let directional = Isa_x86_table.directional_iforms records in
   List.find_map
     (fun (r : Isa_source_record.t) ->
-      if String.equal (Isa_x86_table.lookup_key r) iform then
+      if String.equal (Isa_x86_table.lookup_key ~directional r) iform then
         match Isa_norm_xed.normalize r with Ok form -> Some form | Error _ -> None
       else None)
     records

@@ -10,7 +10,22 @@
     and every visible operand is understood; anything else stays with the
     hand-written forms or blocked. *)
 
-type rclass = Gpr8 | Gpr16 | Gpr32 | Gpr64 | Gprv | Xmm | Ymm | Zmm | Mmx | Kmask | St | Tmm
+type rclass =
+  | Gpr8
+  | Gpr16
+  | Gpr32
+  | Gpr64
+  | Gprv
+  | Xmm
+  | Ymm
+  | Zmm
+  | Mmx
+  | Kmask
+  | St
+  | Tmm
+  | Cr
+  | Dr
+
 type field = Modrm_reg | Modrm_rm | Vvvv | Is4 | Opcode_low
 
 type operand =
@@ -39,6 +54,8 @@ type spec = {
   operands : operand list;  (** AT&T order *)
   mode : int;  (** 0, or 64 for a 64-bit-only form *)
   evex_p2 : int;  (** APX map 4: ND (0x10) and NF (0x04) *)
+  bcst : int;  (** EVEX broadcast element count N ({1toN}), or 0 *)
+  bcst_elem : int;  (** its element bytes *)
   mask : int;  (** EVEX opmask: 0 none, 1 merge or zero, 2 merge only, 3 required *)
   rm : int;  (** a fixed ModR/M.rm of a register-form encoding with no rm operand, or -1 *)
   disp8n : int;  (** EVEX's disp8*N scale; 1 elsewhere *)
@@ -50,6 +67,8 @@ type spec = {
       (** the pseudo-prefix the row is reached only through: [nf], or [evex] for an APX
           promotion of a legacy instruction; empty otherwise *)
   df64 : bool;  (** DF64(): 64-bit operand size by default in 64-bit mode, no REX.W *)
+  direction : string;  (** ["#0x03"] when the iform is XED's in both directions; else empty *)
+  no_rex2 : bool;  (** NOREX2=1: no REX2 prefix, so no r16-r31 *)
   no_acc : int list;  (** AT&T positions that must not be the accumulator *)
   widths : int list;  (** operand sizes of a width-variable (GPRv) form *)
 }
@@ -75,7 +94,13 @@ val branch : Isa_source_record.t -> (string * int) option
 val branch_form :
   requirement:Isa_norm_model.requirement -> Isa_source_record.t -> Isa_norm_model.form option
 
-val lookup_key : Isa_source_record.t -> string
+val directional_iforms : Isa_source_record.t list -> (string, unit) Hashtbl.t
+(** The iforms XED lists with more than one opcode (both directions of a two-register form). *)
+
+val mark_directional : Isa_source_record.t list -> spec list -> spec list
+(** Sets [direction] on the specs of {!directional_iforms}. *)
+
+val lookup_key : ?directional:(string, unit) Hashtbl.t -> Isa_source_record.t -> string
 (** The iform, told apart for an EVEX embedded-rounding register variant (which XED lists under
     the plain form's iform) by a [#er] suffix, an APX [{nf}] variant by [#nf]. *)
 
