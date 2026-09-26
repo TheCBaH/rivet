@@ -46,9 +46,22 @@ let ours_and_verdict repo (case : Isa_generated_case.case) ~gas_hex =
   in
   Ok (verdict, Some ours_artifact, suffix)
 
-let run_case ~prefix ~label repo (case : Isa_generated_case.case)
+(* A previously committed GAS artifact for an equal case is reused when the
+   oracle confirms it is still current ({!Isa_gen_oracle.reuse}); otherwise GAS
+   runs. "Ours" always runs. *)
+let gas_side ?previous (case : Isa_generated_case.case) encoding =
+  let ( let* ) = Result.bind in
+  let* reused =
+    match previous with
+    | Some (prev : Isa_generated_corpus.record) when prev.case = case ->
+        Isa_gen_oracle.reuse case encoding prev.gas
+    | _ -> Ok None
+  in
+  match reused with Some r -> Ok r | None -> Isa_gen_oracle.run case encoding
+
+let run_case ?previous ~prefix ~label repo (case : Isa_generated_case.case)
     (encoding : Isa_norm_model.encoding) =
-  match Isa_gen_oracle.run case encoding with
+  match gas_side ?previous case encoding with
   | Error e -> { command = Command.of_error e; record = None }
   | Ok (outcome, artifact) -> (
       let finding = Isa_generated_corpus.finding_of_outcome outcome in
@@ -107,9 +120,9 @@ let run_case ~prefix ~label repo (case : Isa_generated_case.case)
    runs. The committed record is replayed at once, which also checks that the rejection carries
    the case's declared diagnostic category - a wrong-reason rejection fails regeneration rather
    than being committed as a pass. *)
-let run_negative ~prefix ~label repo (case : Isa_generated_case.case)
+let run_negative ?previous ~prefix ~label repo (case : Isa_generated_case.case)
     (encoding : Isa_norm_model.encoding) =
-  match Isa_gen_oracle.run case encoding with
+  match gas_side ?previous case encoding with
   | Error e -> { command = Command.of_error e; record = None }
   | Ok (outcome, gas_artifact) -> (
       match Isa_gen_ours.run repo case with

@@ -27,8 +27,8 @@ let rows =
          (GNU as 2.44 accepts them, this assembler previously did not); the rest reused an \
          existing one.";
       evidence =
-        "family-admission reports these families as unhandled-native-name; the assembler already \
-         emits them (asm/test/targets transcripts, CompCert runtime fixtures)";
+        "family-admission reports these families as lacking a normalizer rule; the assembler \
+         already emits them (asm/test/targets transcripts, CompCert runtime fixtures)";
       task = "GEN-05-RV-BASE";
       reopening_gate =
         "each remaining pseudo-op has an encoder alias, a normalizer rule and a differential case \
@@ -596,7 +596,7 @@ let rows =
          save/restore (XSAVE/FXSAVE), transactional memory, enclave/TDX/SGX, CET, virtualization \
          (VMX/SVM), key locker and VIA PadLock. Each needs a feature-name mapping, a GAS -march \
          spelling and an operand recipe, and most are not selectable by an ISA feature alone.";
-      evidence = "family-admission: 58 families, each unhandled-iform throughout";
+      evidence = "family-admission: 58 families, none with a normalizer rule";
       task = "GEN-05-X86-SYSTEM";
       reopening_gate =
         "a per-extension feature mapping and installed-GAS probe is recorded, and privileged forms \

@@ -16,6 +16,7 @@ val verdict_tag : Isa_generated_case.verdict -> string
     ["NEGATIVE-CASE-ACCEPTED"], one per {!Isa_generated_case.verdict} row. *)
 
 val run_case :
+  ?previous:Isa_generated_corpus.record ->
   prefix:string ->
   label:string ->
   Repo.t ->
@@ -28,9 +29,12 @@ val run_case :
     [<prefix>: <label>: ...]-prefixed stdout line ([prefix] is each caller's
     own {!Isa_generated_case.cli_group_name}/{!Isa_gen_difficult.cli_group_name},
     [label] a caller-chosen ["<target>/<id>"] string) plus, on success, an
-    {!Isa_generated_corpus.record} ready to persist. *)
+    {!Isa_generated_corpus.record} ready to persist. [previous], a committed
+    record for the same case id, lets the GAS half be reused instead of
+    re-run when {!Isa_gen_oracle.reuse} finds it current. *)
 
 val run_negative :
+  ?previous:Isa_generated_corpus.record ->
   prefix:string ->
   label:string ->
   Repo.t ->

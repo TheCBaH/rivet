@@ -85,11 +85,24 @@ let ( let* ) = Result.bind
 let normalized_argv (case : Isa_generated_case.case) =
   case.configuration @ [ "-o"; "case.o"; "case.s" ]
 
+(* The toolchain probe and the version line are per target, not per case:
+   resolved once per process and reused (a regeneration runs thousands of
+   cases against the same binaries). *)
+let probed_labels : (Target.t, string) Hashtbl.t = Hashtbl.create 8
+
+let gas_tool_label target tools =
+  match Hashtbl.find_opt probed_labels target with
+  | Some label -> Ok label
+  | None ->
+      let* () = Gnu_tools.require tools ~qemu:false in
+      let* tool_version = Gnu_tools.version_line tools `As in
+      let label = Printf.sprintf "%s-as-%s" (Target.to_string target) tool_version in
+      Hashtbl.replace probed_labels target label;
+      Ok label
+
 let run (case : Isa_generated_case.case) (encoding : Isa_norm_model.encoding) =
   let tools = Gnu_tools.for_target case.target in
-  let* () = Gnu_tools.require tools ~qemu:false in
-  let* tool_version = Gnu_tools.version_line tools `As in
-  let tool_label = Printf.sprintf "%s-as-%s" (Target.to_string case.target) tool_version in
+  let* tool_label = gas_tool_label case.target tools in
   Tool_workspace.with_scratch ~label:"isa-generated" (fun work ->
       let src = Fpath.(work / "case.s") in
       let obj = Fpath.(work / "case.o") in
@@ -103,7 +116,11 @@ let run (case : Isa_generated_case.case) (encoding : Isa_norm_model.encoding) =
             tool_label;
             argv = normalized_argv case;
             exit_status = result.Tool_process.status;
-            stdout = Option.value ~default:"" result.Tool_process.stdout;
+            stdout =
+              Gnu_tools.replace_all ~sub:(Fpath.to_string src) ~by:"case.s"
+                (Option.value ~default:"" result.Tool_process.stdout);
+            (* The scratch path is machine-local and differs per run; the
+               committed identity is the fixed basename, as in [argv]. *)
             stderr = "";
             (* Gnu_tools.run_as_capturing merges stdout/stderr into one
                capture (Err_to_stdout), matching the shell's `2>&1` - splitting
@@ -137,3 +154,37 @@ let run (case : Isa_generated_case.case) (encoding : Isa_norm_model.encoding) =
             match observed_form_check encoding bytes with
             | Ok () -> Ok (Assembled_matching { bytes_hex }, artifact)
             | Error detail -> Ok (Assembled_mismatched { bytes_hex; detail }, artifact)))
+
+(* The GAS half of a committed record is reusable when it was produced from
+   the same case by the same assembler version with the same argv: the
+   outcome is then recomputed from the recorded artifact exactly as
+   {!Isa_generated_corpus.replay} does, and only the encoding check - which
+   depends on today's normalizer - is re-run. *)
+let reuse (case : Isa_generated_case.case) (encoding : Isa_norm_model.encoding)
+    (artifact : Isa_generated_case.artifact) =
+  let tools = Gnu_tools.for_target case.target in
+  let* label = gas_tool_label case.target tools in
+  if (not (String.equal artifact.tool_label label)) || artifact.argv <> normalized_argv case then
+    Ok None
+  else
+    match artifact.bytes with
+    | None -> (
+        let result =
+          {
+            Tool_process.status = artifact.exit_status;
+            stdout = Some artifact.stdout;
+            stderr = None;
+          }
+        in
+        match Gnu_tools.gas_outcome_of_result ~src:(Fpath.v "case.s") result with
+        | Gnu_tools.Rejected body -> Ok (Some (Rejected body, artifact))
+        | Gnu_tools.Assembled -> Ok None)
+    | Some bytes_hex -> (
+        if artifact.relocations <> [] then
+          Ok
+            (Some (Unexpected_relocation { bytes_hex; relocations = artifact.relocations }, artifact))
+        else
+          let* raw = Hex_dump.parse bytes_hex in
+          match observed_form_check encoding raw with
+          | Ok () -> Ok (Some (Assembled_matching { bytes_hex }, artifact))
+          | Error detail -> Ok (Some (Assembled_mismatched { bytes_hex; detail }, artifact)))

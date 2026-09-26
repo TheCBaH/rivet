@@ -113,6 +113,14 @@ val try_assemble :
     capture, matching the shell's `> file 2>&1` - the diagnostics are what is
     recorded, and splitting them would reorder interleaved output. *)
 
+val gas_outcome_of_result : src:Fpath.t -> Tool_process.result -> gas_outcome
+(** Classify one [as] run from its merged output: [Rejected] carries the first
+    three Error/Warning lines with [src]'s path removed. *)
+
+val replace_all : sub:string -> by:string -> string -> string
+(** Every occurrence of [sub] replaced, left to right; used to scrub scratch
+    paths out of recorded tool output. *)
+
 val try_assemble_with_args :
   t ->
   args:string list ->

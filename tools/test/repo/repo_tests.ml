@@ -257,7 +257,29 @@ let test_isa_family_admission repo =
           (Printf.sprintf "isa-family-admission: %s promoted-support" label)
           (p = promoted_support);
         check (Printf.sprintf "isa-family-admission: %s oracle-unavailable" label) (u = 0);
-        check (Printf.sprintf "isa-family-admission: %s blockers" label) (b = blocked)
+        check (Printf.sprintf "isa-family-admission: %s blockers" label) (b = blocked);
+        let rules =
+          List.concat_map
+            (fun (f : Isa_family_admission.family) -> f.tally.blocked)
+            summary.families
+        in
+        let count_if p =
+          List.fold_left (fun acc (rule, n) -> if p rule then acc + n else acc) 0 rules
+        in
+        let prefixed p rule =
+          String.length rule >= String.length p && String.sub rule 0 (String.length p) = p
+        in
+        check
+          (Printf.sprintf "isa-family-admission: %s construct blockers cover every rule-less record"
+             label)
+          (count_if (fun r ->
+               prefixed "unsupported-encoding:" r
+               || prefixed "unknown-operand:" r || r = Isa_construct.no_rule)
+          = summary.unruled);
+        check
+          (Printf.sprintf "isa-family-admission: %s no-rule blockers are the known-only records"
+             label)
+          (count_if (String.equal Isa_construct.no_rule) = summary.known_only)
   in
   (* Promotes the four bare scalar single-precision arithmetic forms
      after persisted RV{32,64}IMF(D) cases pin their implicit dynamic rounding,

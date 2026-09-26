@@ -202,6 +202,15 @@ let isa_family_admission_cmd =
           GAS-generatable, promoted-support, oracle-unavailable, or its specific blocker")
     Cmdliner.Term.(const run $ common)
 
+let isa_family_records_cmd =
+  let run (err_trace, root) = (err_trace, with_repo root Isa_family_admission.record_lines) in
+  Cmdliner.Cmd.v
+    (Cmdliner.Cmd.info "family-records"
+       ~doc:
+         "List every checked-in ISA-source record with its family, admission state, lookup key, \
+          normalized form id and record id")
+    Cmdliner.Term.(const run $ common)
+
 let isa_residual_ledger_cmd =
   let run (err_trace, root) = (err_trace, with_repo root Isa_residual_ledger.run) in
   Cmdliner.Cmd.v
@@ -220,6 +229,7 @@ let isa_inventory_cmd =
       isa_db_cross_validate_cmd;
       isa_norm_accounting_cmd;
       isa_family_admission_cmd;
+      isa_family_records_cmd;
       isa_residual_ledger_cmd;
     ]
 

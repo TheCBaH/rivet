@@ -92,13 +92,24 @@ let source_of_target = function
   | Target.Riscv32 | Target.Riscv64 -> "riscv_opcodes"
   | _ -> "xed_resolved"
 
-let find_and_normalize_riscv records ~native_name =
-  List.find_map
-    (fun (r : Isa_source_record.t) ->
-      if String.equal r.native_name native_name then
-        match Isa_norm_riscv.normalize r with Ok form -> Some form | Error _ -> None
-      else None)
-    records
+(* Several records can share a native name (a real instruction and its
+   pseudo-op spelling, e.g. [jal rd, offset] and [jal offset]); the one whose
+   normalized form carries the entry's [form_id] is preferred. *)
+let find_and_normalize_riscv ?form_id records ~native_name =
+  let forms =
+    List.filter_map
+      (fun (r : Isa_source_record.t) ->
+        if String.equal r.native_name native_name then
+          match Isa_norm_riscv.normalize r with Ok form -> Some form | Error _ -> None
+        else None)
+      records
+  in
+  let matching =
+    match form_id with
+    | Some id -> List.find_opt (fun (f : Isa_norm_model.form) -> String.equal f.form_id id) forms
+    | None -> None
+  in
+  match matching with Some f -> Some f | None -> List.nth_opt forms 0
 
 let find_and_normalize_xed records ~iform =
   List.find_map
@@ -109,14 +120,29 @@ let find_and_normalize_xed records ~iform =
       | _ -> None)
     records
 
+(* One read per export per process: a regeneration normalizes thousands of
+   entries against the same four files. *)
+let exports : (string, Isa_source_record.t list) Hashtbl.t = Hashtbl.create 4
+
+let read_export path =
+  let key = Fpath.to_string path in
+  match Hashtbl.find_opt exports key with
+  | Some records -> Ok records
+  | None ->
+      let ( let* ) = Result.bind in
+      let* records = Isa_source_record.read_file path in
+      Hashtbl.replace exports key records;
+      Ok records
+
 let normalize_entry repo (entry : pilot_entry) =
   let ( let* ) = Result.bind in
   let source = source_of_target entry.target in
   let path = Repo.isa_db_export repo ~source entry.target in
-  let* records = Isa_source_record.read_file path in
+  let* records = read_export path in
   let found =
     match source with
-    | "riscv_opcodes" -> find_and_normalize_riscv records ~native_name:entry.lookup_key
+    | "riscv_opcodes" ->
+        find_and_normalize_riscv ~form_id:entry.form_id records ~native_name:entry.lookup_key
     | _ -> find_and_normalize_xed records ~iform:entry.lookup_key
   in
   match found with
