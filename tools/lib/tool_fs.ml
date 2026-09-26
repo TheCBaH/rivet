@@ -56,6 +56,33 @@ let write path contents =
         (Tool_error.v ~path ~cause Tool_error.Write_file
            (Printf.sprintf "cannot write %s" (Fpath.to_string path)))
 
+let read_lines path =
+  let rec go ic acc =
+    match In_channel.input_line ic with Some l -> go ic (l :: acc) | None -> Ok (List.rev acc)
+  in
+  match Bos.OS.File.with_ic path (fun ic () -> go ic []) () with
+  | Ok r -> r
+  | Error (`Msg cause) ->
+      Err.fail ~pos:__POS__ ~pp_error:Tool_error.pp
+        (Tool_error.v ~path ~cause Tool_error.Read_file
+           (Printf.sprintf "cannot read %s" (Fpath.to_string path)))
+
+let write_lines path lines =
+  let put oc () =
+    List.iter
+      (fun l ->
+        output_string oc l;
+        output_char oc '\n')
+      lines;
+    Ok ()
+  in
+  match Bos.OS.File.with_oc path put () with
+  | Ok (Ok ()) -> Ok ()
+  | Ok (Error (`Msg cause)) | Error (`Msg cause) ->
+      Err.fail ~pos:__POS__ ~pp_error:Tool_error.pp
+        (Tool_error.v ~path ~cause Tool_error.Write_file
+           (Printf.sprintf "cannot write %s" (Fpath.to_string path)))
+
 let mkdir_p path =
   match Bos.OS.Dir.create ~path:true path with
   | Ok _ -> Ok ()

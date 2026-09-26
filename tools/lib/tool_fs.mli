@@ -9,6 +9,15 @@ val files : root:Fpath.t -> exclude:(string -> bool) -> (string list, Tool_error
 val read : Fpath.t -> (string, Tool_error.t) Err.t
 val write : Fpath.t -> string -> (unit, Tool_error.t) Err.t
 
+val read_lines : Fpath.t -> (string list, Tool_error.t) Err.t
+(** The file's ['\n']-separated lines (a final newline does not add an empty
+    one), read a line at a time so the whole file never has to fit in one
+    string - it can exceed [Sys.max_string_length] (~16 MiB) on 32-bit hosts. *)
+
+val write_lines : Fpath.t -> string list -> (unit, Tool_error.t) Err.t
+(** Each line followed by ['\n'], written a line at a time for the same reason
+    as {!read_lines}. *)
+
 val mkdir_p : Fpath.t -> (unit, Tool_error.t) Err.t
 (** For scratch paths, which are plain [Fpath.t] rather than a workspace
     capability - the capability types exist to guard the ROOTS the tools own,
