@@ -29,3 +29,15 @@ val run_case :
     own {!Isa_generated_case.cli_group_name}/{!Isa_gen_difficult.cli_group_name},
     [label] a caller-chosen ["<target>/<id>"] string) plus, on success, an
     {!Isa_generated_corpus.record} ready to persist. *)
+
+val run_negative :
+  prefix:string ->
+  label:string ->
+  Repo.t ->
+  Isa_generated_case.case ->
+  Isa_norm_model.encoding ->
+  result
+(** Run a [negative = true] case through GAS and through this project's assembler. Both are
+    expected to reject it; the verdict is {!Isa_gen_verdict.classify_negative}. The record is
+    replayed before it is returned, so a rejection with the wrong diagnostic category is an error
+    rather than a committed pass. [encoding] is only consulted if GAS accepts the source. *)

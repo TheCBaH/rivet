@@ -6,8 +6,26 @@ let ( let* ) = Result.bind
    directory - mirrors Isa_gen_oracle.normalized_argv exactly, and for the
    same reason: removing temporary paths and timestamps from committed
    identities. *)
+(* The feature spec this case assembles under, declared as a rule id so the case schema, which
+   is shared with the GAS side, needs no new field: [ours-features:<spec>]. *)
+let features_rule_prefix = "ours-features:"
+
+let features_of_case (case : Isa_generated_case.case) =
+  List.find_map
+    (fun r ->
+      let n = String.length features_rule_prefix in
+      if String.length r >= n && String.equal (String.sub r 0 n) features_rule_prefix then
+        Some (String.sub r n (String.length r - n))
+      else None)
+    case.rule_ids
+
+let feature_args case =
+  match features_of_case case with Some spec -> [ "--features"; spec ] | None -> []
+
 let normalized_argv (case : Isa_generated_case.case) =
-  [ "--target"; Target.to_string case.target; "--fixed-base"; "0x0"; "--dump-bytes"; "case.s" ]
+  [ "--target"; Target.to_string case.target ]
+  @ feature_args case
+  @ [ "--fixed-base"; "0x0"; "--dump-bytes"; "case.s" ]
 
 let first_line s = match String.index_opt s '\n' with Some i -> String.sub s 0 i | None -> s
 
@@ -61,14 +79,9 @@ let run repo (case : Isa_generated_case.case) =
       let src = Fpath.(work / "case.s") in
       let* () = Tool_fs.write src case.rendered_source in
       let argv =
-        [
-          "--target";
-          Target.to_string case.target;
-          "--fixed-base";
-          "0x0";
-          "--dump-bytes";
-          Fpath.to_string src;
-        ]
+        [ "--target"; Target.to_string case.target ]
+        @ feature_args case
+        @ [ "--fixed-base"; "0x0"; "--dump-bytes"; Fpath.to_string src ]
       in
       (* Never in-process (Isa_gen_ours.mli): tool/asm.exe is a separately
          built executable, exactly the boundary gas_xref_cmd.ml's

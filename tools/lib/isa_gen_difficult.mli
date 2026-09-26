@@ -2816,6 +2816,24 @@ val sc_d_entries : entry list
 val lr_d_entries : entry list
 (** [lr.d a0, (a2)] on RV64 only, {!lr_w_entries}'s 64-bit sibling. *)
 
+val mv_entries : entry list
+(** [mv a0, a1] on both profiles: the alias spelling of [addi a0, a1, 0]. *)
+
+val snez_entries : entry list
+(** [snez a0, a1] on both profiles: [sltu a0, x0, a1]. The source operand is the record's [rs2]. *)
+
+val sext_w_entries : entry list
+(** [sext.w a0, a1], RV64 only: [addiw a0, a1, 0]. *)
+
+val nop_entries : entry list
+(** [nop] on both profiles: [addi x0, x0, 0]. *)
+
+val ret_entries : entry list
+(** [ret] on both profiles: [jalr x0, 0(ra)]. *)
+
+val alias_entries : entry list
+(** The alias coverage class: every entry whose rule ids include [alias-spelling]. *)
+
 val all : entry list
 (** [sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @
     x86_alu_rr_entries @ x86_alu_memv_entries @ x86_alu_memv_gprv_entries @ x86_alu_immz_entries @

@@ -123,6 +123,21 @@ let test_known_syntax_gap_false_for_different_diagnostic () =
        (Isa_gen_verdict.known_syntax_gap ~case_id:"x86:MOV_GPRv_IMMz:canonical:x86_64"
           ~diagnostic:"error[x86.simplify]: no form takes these operands"))
 
+(* Negative cases: rejection by both tools is the only pass; every other combination is the
+   accepted-negative failure, whichever tool accepted. *)
+let test_negative_verdicts () =
+  let v ~gas_rejected ~ours_rejected =
+    Isa_gen_verdict.classify_negative ~gas_rejected ~ours_rejected
+  in
+  check "negative: both reject is a pass"
+    (v ~gas_rejected:true ~ours_rejected:true = Isa_generated_case.Pass);
+  check "negative: ours accepting what GAS rejects is Negative_case_accepted"
+    (v ~gas_rejected:true ~ours_rejected:false = Isa_generated_case.Negative_case_accepted);
+  check "negative: GAS accepting the source is Negative_case_accepted"
+    (v ~gas_rejected:false ~ours_rejected:true = Isa_generated_case.Negative_case_accepted);
+  check "negative: both accepting is Negative_case_accepted"
+    (v ~gas_rejected:false ~ours_rejected:false = Isa_generated_case.Negative_case_accepted)
+
 let () =
   print_endline "isa-gen-verdict:";
   test_gas_rejected ();
@@ -137,6 +152,7 @@ let () =
   test_known_syntax_gap_matches_every_measured_case ();
   test_known_syntax_gap_false_for_unlisted_case ();
   test_known_syntax_gap_false_for_different_diagnostic ();
+  test_negative_verdicts ();
   if !failures > 0 then (
     Printf.printf "isa-gen-verdict: %d of %d checks failed\n" !failures !checks;
     exit 1)

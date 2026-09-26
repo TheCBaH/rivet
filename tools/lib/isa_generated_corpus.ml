@@ -417,6 +417,65 @@ let replay_ours_side (r : record) =
               (Isa_gen_verdict.Both_ran { gas_hex; ours = ours_result })
               ~known_syntax_gap:known_gap)
 
+(* A negative case is a positive assertion of rejection. Both artifacts are committed - unlike a
+   positive case, "ours" runs even though GAS rejected, since the point is that they agree - and
+   the verdict, the GAS finding and the declared diagnostic category are all recomputed from them. *)
+let expect_code_prefix = "expect-code:"
+
+let expected_code (case : Isa_generated_case.case) =
+  List.find_map
+    (fun rule ->
+      let n = String.length expect_code_prefix in
+      if String.length rule >= n && String.equal (String.sub rule 0 n) expect_code_prefix then
+        Some (String.sub rule n (String.length rule - n))
+      else None)
+    case.rule_ids
+
+let contains_substring ~needle haystack =
+  let n = String.length needle and h = String.length haystack in
+  let rec go i = i + n <= h && (String.sub haystack i n = needle || go (i + 1)) in
+  n = 0 || go 0
+
+let replay_negative (r : record) =
+  let expected_argv = Isa_gen_oracle.normalized_argv r.case in
+  if r.gas.argv <> expected_argv then
+    err "committed gas.argv [%s] does not match the recomputed [%s]" (String.concat " " r.gas.argv)
+      (String.concat " " expected_argv)
+  else
+    match r.ours with
+    | None -> err "a negative case must commit an ours artifact even when GAS rejected it"
+    | Some (ours : Isa_generated_case.artifact) -> (
+        let expected_ours = Isa_gen_ours.normalized_argv r.case in
+        if ours.argv <> expected_ours then
+          err "committed ours.argv [%s] does not match the recomputed [%s]"
+            (String.concat " " ours.argv) (String.concat " " expected_ours)
+        else
+          let gas_rejected = Option.is_none r.gas.bytes in
+          let ours_rejected = Option.is_none ours.bytes in
+          let* () =
+            match (r.finding, gas_rejected) with
+            | Gas_rejected _, true -> Ok ()
+            | Gas_rejected _, false -> err "finding is Gas_rejected but gas.bytes is present"
+            | _, true -> err "gas.bytes is None but the committed finding is not Gas_rejected"
+            | _, false -> Ok ()
+          in
+          let recomputed = Isa_gen_verdict.classify_negative ~gas_rejected ~ours_rejected in
+          if recomputed <> r.verdict then
+            err "recomputed verdict %s does not match committed %s - run --regen"
+              (Isa_generated_case.verdict_description recomputed)
+              (Isa_generated_case.verdict_description r.verdict)
+          else if recomputed <> Isa_generated_case.Pass then Ok ()
+          else
+            match expected_code r.case with
+            | None -> err "a negative case declares no %s<code> rule" expect_code_prefix
+            | Some code ->
+                if contains_substring ~needle:("error[" ^ code ^ "]") ours.stderr then Ok ()
+                else
+                  err "ours rejected the negative case, but not with category %s (stderr: %s)" code
+                    (String.trim ours.stderr))
+
 let replay (r : record) (encoding : Isa_norm_model.encoding) =
-  let* () = replay_gas_side r encoding in
-  replay_ours_side r
+  if r.case.negative then replay_negative r
+  else
+    let* () = replay_gas_side r encoding in
+    replay_ours_side r

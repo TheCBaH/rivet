@@ -17,6 +17,13 @@ type outcome =
           executable cannot depend on this library either - see its own comment). *)
   | Rejected of string  (** The assembler's rendered diagnostic (stderr), trimmed to one line. *)
 
+val features_rule_prefix : string
+(** ["ours-features:"]. A case whose rule ids include [ours-features:<spec>] is assembled by this
+    project's assembler under [--features <spec>], the counterpart of the GAS [-march] carried in
+    the case's [configuration]. *)
+
+val features_of_case : Isa_generated_case.case -> string option
+
 val normalized_argv : Isa_generated_case.case -> string list
 (** [["--target"; <target>; "--fixed-base"; "0x0"; "--dump-bytes"; "case.s"]] -
     the argv {!run} actually passes to [tool/asm.exe], but with the real

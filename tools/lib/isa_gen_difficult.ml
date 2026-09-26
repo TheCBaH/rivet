@@ -5668,6 +5668,46 @@ let vfwmaccbf16_vf_entry target =
 
 let vfwmaccbf16_vf_entries = List.map vfwmaccbf16_vf_entry [ Target.Riscv32; Target.Riscv64 ]
 
+(* Alias class. Each is a riscv-opcodes $pseudo_op record - a spelling of an instruction that
+   already has its own encoding - whose case asserts that GNU as and this assembler agree on the
+   bytes of the {e alias} spelling. The rule id [alias-spelling] is what marks the class;
+   [alias-of:<mnemonic>] names the instruction it specializes. *)
+let alias_entry ~mnemonic ~alias_of ~operands target =
+  {
+    form_id = "riscv:" ^ mnemonic;
+    target;
+    lookup_key = mnemonic;
+    case_id = Printf.sprintf "riscv:%s:alias:%s" mnemonic (Target.to_string target);
+    rule_ids = [ "alias-spelling"; "alias-of:" ^ alias_of ];
+    operands;
+    lines_before = [];
+    lines_after = [];
+    configuration = Isa_gen_case_build.configuration_for target;
+  }
+
+let both_riscv = [ Target.Riscv32; Target.Riscv64 ]
+
+let mv_entries =
+  List.map
+    (alias_entry ~mnemonic:"mv" ~alias_of:"addi" ~operands:[ ("rd", "a0"); ("rs1", "a1") ])
+    both_riscv
+
+let snez_entries =
+  List.map
+    (alias_entry ~mnemonic:"snez" ~alias_of:"sltu" ~operands:[ ("rd", "a0"); ("rs2", "a1") ])
+    both_riscv
+
+let sext_w_entries =
+  [
+    alias_entry ~mnemonic:"sext.w" ~alias_of:"addiw"
+      ~operands:[ ("rd", "a0"); ("rs1", "a1") ]
+      Target.Riscv64;
+  ]
+
+let nop_entries = List.map (alias_entry ~mnemonic:"nop" ~alias_of:"addi" ~operands:[]) both_riscv
+let ret_entries = List.map (alias_entry ~mnemonic:"ret" ~alias_of:"jalr" ~operands:[]) both_riscv
+let alias_entries = mv_entries @ snez_entries @ sext_w_entries @ nop_entries @ ret_entries
+
 let all =
   sw_entries @ beq_entries @ c_addi_entries @ x86_mov_entries @ x86_alu_rr_entries
   @ x86_alu_memv_entries @ x86_alu_memv_gprv_entries @ x86_alu_immz_entries @ x86_alu_immb_entries
@@ -5691,7 +5731,7 @@ let all =
   @ brev8_entries @ rev8_entries @ pack_entries @ packh_entries @ packw_entries @ zip_entries
   @ unzip_entries @ rolw_entries @ rorw_entries @ rori_entries @ roriw_entries @ bclr_entries
   @ bext_entries @ binv_entries @ bset_entries @ bclri_entries @ bexti_entries @ binvi_entries
-  @ bseti_entries @ zext_h_entries @ clmul_entries @ clmulh_entries @ clmulr_entries
+  @ bseti_entries @ zext_h_entries @ clmul_entries @ clmulh_entries @ clmulr_entries @ alias_entries
   @ czero_eqz_entries @ czero_nez_entries @ sm3p0_entries @ sm3p1_entries @ xperm4_entries
   @ xperm8_entries @ sha256sum0_entries @ sha256sum1_entries @ sha256sig0_entries
   @ sha256sig1_entries @ sha512sum0_entries @ sha512sum1_entries @ sha512sig0_entries
@@ -6100,6 +6140,19 @@ let pilot_entry_of (entry : entry) =
           | "sext.h" -> 0x605
           | "orc.b" -> 0x287
           | _ -> assert false)
+    | "mv" ->
+        "riscv_family_encode.ml's lower_instruction Opcode.Mv arm: Lowered.I addi rd, rs1, 0 \
+         (opcode 0x13, funct3 0)"
+    | "snez" ->
+        "riscv_family_encode.ml's lower_instruction Opcode.Snez arm: Lowered.R sltu rd, x0, rs2 \
+         (opcode 0x33, funct3 3)"
+    | "sext.w" ->
+        "riscv_family_encode.ml's lower_instruction Opcode.Sext_w arm: Lowered.I addiw rd, rs1, 0 \
+         (opcode 0x1b, funct3 0)"
+    | "nop" -> "riscv_family_encode.ml's lower_instruction Opcode.Nop arm: Lowered.I addi x0, x0, 0"
+    | "ret" ->
+        "riscv_family_encode.ml's lower_instruction Opcode.Ret arm: Lowered.I jalr x0, 0(ra) \
+         (opcode 0x67, funct3 0)"
     | "brev8" ->
         "riscv_family_encode.ml's unary_imm_desc Opcode.Brev8 / Lowered.I alternative (opcode \
          0x13, funct3 5, funct12 0x687)"

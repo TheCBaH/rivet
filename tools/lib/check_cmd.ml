@@ -277,6 +277,50 @@ let isa_difficult_check repo =
                                   ]))))
             Isa_gen_difficult.all
         in
+        let negatives =
+          List.map
+            (fun (entry : Isa_gen_negative.entry) ->
+              let case = Isa_gen_negative.case_of entry in
+              let label = Printf.sprintf "%s/%s" (Target.to_string entry.target) case.case_id in
+              expected_ids := case.case_id :: !expected_ids;
+              match
+                List.find_opt
+                  (fun (r : Isa_generated_corpus.record) ->
+                    String.equal r.case.Isa_generated_case.case_id case.case_id)
+                  records
+              with
+              | None ->
+                  fatal Tool_error.Validate
+                    (Printf.sprintf
+                       "isa-difficult check: %s: no committed negative case - run --regen" label)
+              | Some r -> (
+                  if not (Stdlib.( = ) r.Isa_generated_corpus.case case) then
+                    fatal Tool_error.Validate
+                      (Printf.sprintf
+                         "isa-difficult check: %s: the committed negative case does not match \
+                          Isa_gen_negative today - run --regen"
+                         label)
+                  else
+                    match Isa_generated_corpus.replay r Isa_gen_negative.dummy_encoding with
+                    | Error msg ->
+                        fatal Tool_error.Validate
+                          (Printf.sprintf "isa-difficult check: %s: %s" label msg)
+                    | Ok () when Isa_generated_case.is_hard_failure r.verdict ->
+                        fatal Tool_error.Validate
+                          (Printf.sprintf "isa-difficult check: %s: %s" label
+                             (Isa_generated_case.verdict_description r.verdict))
+                    | Ok () ->
+                        Command.ok
+                          [
+                            Diagnostic.stdout
+                              (Printf.sprintf "isa-difficult: %s: NEGATIVE %s" label
+                                 (match r.verdict with
+                                 | Isa_generated_case.Pass ->
+                                     "both reject, with the declared diagnostic category"
+                                 | v -> Isa_generated_case.verdict_description v));
+                          ]))
+            Isa_gen_negative.all
+        in
         let extras =
           List.filter_map
             (fun (r : Isa_generated_corpus.record) ->
@@ -290,7 +334,7 @@ let isa_difficult_check repo =
                         r.case.Isa_generated_case.case_id)))
             records
         in
-        Command.accumulate (per_entry @ extras) ~f:Fun.id
+        Command.accumulate (per_entry @ negatives @ extras) ~f:Fun.id
 
 let targets capability =
   Command.ok (List.map (fun t -> Diagnostic.stdout (Target.to_string t)) (Target.set capability))
