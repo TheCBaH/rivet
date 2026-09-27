@@ -1,0 +1,9 @@
+(library
+ (name test_native_exec)
+ (modes byte native)
+ (libraries native_exec driver target_intf foundation asm_core image)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (enabled_if
+  (= %{env:ASM_COMPCERT_EMBED=false} true)))

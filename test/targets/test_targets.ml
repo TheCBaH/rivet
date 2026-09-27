@@ -32,6 +32,7 @@ let%expect_test "every target's codec passes Codec.check" =
     arm: alt arm: nop and dp-imm have overlapping fixed bits; priority -1 before 3 decides
     arm: alt arm: movw and dp-imm have overlapping fixed bits; priority 1 before 3 decides
     arm: alt arm: movt and dp-imm have overlapping fixed bits; priority 2 before 3 decides
+    arm: alt arm: mul and ldst-x-reg have overlapping fixed bits; priority 10 before 45 decides
     arm: alt arm: vmov-reg-d and v3-d have overlapping fixed bits; priority 12 before 20 decides
     arm: alt arm: vmov-reg-s and v3-s have overlapping fixed bits; priority 13 before 21 decides
     arm: alt arm: vmov-imm-d and v3-d have overlapping fixed bits; priority 14 before 20 decides
@@ -50,7 +51,8 @@ let%expect_test "every target's codec passes Codec.check" =
     arm: alt arm: v3-s and vcvt-f32-s32 have overlapping fixed bits; priority 21 before 31 decides
     arm: alt arm: vmem-d and vldr-lit-d have overlapping fixed bits; priority 35 before 41 decides
     arm: alt arm: vmem-s and vldr-lit-s have overlapping fixed bits; priority 36 before 42 decides
-    aarch64: none
+    arm: alt arm: umull and ldst-x-reg have overlapping fixed bits; priority 43 before 45 decides
+    aarch64: alt aarch64: sxtw and sbfm have overlapping fixed bits; priority 41 before 101 decides
     riscv32: none
     riscv64: none
     |}]
@@ -3275,6 +3277,113 @@ let%expect_test "ADD/SUB (extended register): uxtb/uxtw/uxtx/sxtx, and rd/rn = s
     40000014  c0 03 5f d6  ret                        [aarch64.ret]
     |}]
 
+(* {1 Forms from the embedded CompCert corpus}
+
+   What CompCert emits for signed division, comparisons against small
+   negative constants or large multiples of 4096, signed bitfield reads,
+   static zero-initialized objects, large stack frames and inline struct
+   copies. Byte-for-byte checked against the host's GNU as 2.44 / objdump
+   before being written down:
+     1ac20dcc  sdiv w12, w14, w2        9ac40d27  sdiv x7, x9, x4
+     31000d9f  cmn w12, #0x3            b13ffc3f  cmn x1, #0xfff
+     3140101f  cmn w0, #0x4, lsl #12    7140113f  cmp w9, #0x4, lsl #12
+     13083807  sbfx w7, w0, #8, #7      9343f841  sbfx x1, x2, #3, #60
+     a8c147d0  ldp x16, x17, [x30], #16 28ff0be1  ldp w1, w2, [sp], #-8
+     a88145d0  stp x16, x17, [x14], #16 a9007bef  stp x15, x30, [sp]
+     a9200861  stp x1, x2, [x3, #-512]  a95f8be1  ldp x1, x2, [sp, #504]
+     29010be1  stp w1, w2, [sp, #8]
+     f84087d0  ldr x16, [x30], #8       f80085d0  str x16, [x14], #8
+     b85fc441  ldr w1, [x2], #-4        38001483  strb w3, [x4], #1
+     384ff4c5  ldrb w5, [x6], #255      785007e7  ldrh w7, [sp], #-256 *)
+let%expect_test "sdiv, cmn, auto-shifted cmp, sbfx, ldp/stp and post-indexed ldr/str" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tsdiv w12, w14, w2\n\
+     \tsdiv x7, x9, x4\n\
+     \tcmn w12, #3\n\
+     \tcmn x1, #4095\n\
+     \tcmn w0, #16384\n\
+     \tcmp w9, #16384\n\
+     \tsbfx w7, w0, 8, 7\n\
+     \tsbfx x1, x2, #3, #60\n\
+     \tldp x16, x17, [x30], #16\n\
+     \tldp w1, w2, [sp], #-8\n\
+     \tstp x16, x17, [x14], #16\n\
+     \tstp x15, x30, [sp, #0]\n\
+     \tstp x1, x2, [x3, #-512]\n\
+     \tldp x1, x2, [sp, #504]\n\
+     \tstp w1, w2, [sp, #8]\n\
+     \tldr x16, [x30], #8\n\
+     \tstr x16, [x14], #8\n\
+     \tldr w1, [x2], #-4\n\
+     \tstrb w3, [x4], #1\n\
+     \tldrb w5, [x6], #255\n\
+     \tldrh w7, [sp], #-256\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  cc 0d c2 1a  sdiv w12, w14, w2         [aarch64.sdiv]
+    40000004  27 0d c4 9a  sdiv x7, x9, x4           [aarch64.sdiv]
+    40000008  9f 0d 00 31  cmn w12, #3               [aarch64.adds-imm]
+    4000000c  3f fc 3f b1  cmn x1, #4095             [aarch64.adds-imm]
+    40000010  1f 10 40 31  cmn w0, #4, lsl #12       [aarch64.adds-imm]
+    40000014  3f 11 40 71  cmp w9, #4, lsl #12       [aarch64.subs-imm]
+    40000018  07 38 08 13  sbfx w7, w0, #8, #7       [aarch64.sbfm]
+    4000001c  41 f8 43 93  sbfx x1, x2, #3, #60      [aarch64.sbfm]
+    40000020  d0 47 c1 a8  ldp x16, x17, [x30], #16  [aarch64.ldp64-post]
+    40000024  e1 0b ff 28  ldp w1, w2, [sp], #-8     [aarch64.ldp32-post]
+    40000028  d0 45 81 a8  stp x16, x17, [x14], #16  [aarch64.stp64-post]
+    4000002c  ef 7b 00 a9  stp x15, x30, [sp]        [aarch64.stp64-off]
+    40000030  61 08 20 a9  stp x1, x2, [x3, #-512]   [aarch64.stp64-off]
+    40000034  e1 8b 5f a9  ldp x1, x2, [sp, #504]    [aarch64.ldp64-off]
+    40000038  e1 0b 01 29  stp w1, w2, [sp, #8]      [aarch64.stp32-off]
+    4000003c  d0 87 40 f8  ldr x16, [x30], #8        [aarch64.ldr64-post]
+    40000040  d0 85 00 f8  str x16, [x14], #8        [aarch64.str64-post]
+    40000044  41 c4 5f b8  ldr w1, [x2], #-4         [aarch64.ldr32-post]
+    40000048  83 14 00 38  strb w3, [x4], #1         [aarch64.str8-post]
+    4000004c  c5 f4 4f 38  ldrb w5, [x6], #255       [aarch64.ldr8-post]
+    40000050  e7 07 50 78  ldrh w7, [sp], #-256      [aarch64.ldr16-post]
+    40000054  c0 03 5f d6  ret                       [aarch64.ret] |}]
+
+(* [.local] then [.comm] allocates the object in the input's own [.bss] as a
+   local symbol, as GAS does (readelf on GNU's object: [scratch] is a LOCAL
+   OBJECT in [.bss]); a [.comm] without [.local] stays a common symbol. *)
+let%expect_test ".local plus .comm is a local .bss object, not a common one" =
+  let source_text =
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tadrp x9, scratch\n\
+     \tadd x9, x9, #:lo12:scratch\n\
+     \tret\n\
+     \t.local scratch\n\
+     \t.comm scratch, 4096, 8\n\
+     \t.comm counter, 4, 4\n"
+  in
+  let (module D : Target_intf.Target.DRIVER) = driver "aarch64" in
+  (match D.dump_lowered_ast ~unit_name:"t" ~source:(source source_text) () with
+  | Ok dump -> print_string dump
+  | Error ds -> print_string (Foundation.Diag.render ds));
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      label f
+      bytes 09 00 00 90              [aarch64.adrp]
+        @0/4B pc+0 page adrp-page s21 [29+2@0,5+19@2] = scratch
+      bytes 29 01 00 91              [aarch64.add-imm]
+        @0/4B pc+0 imm add-lo12 u12 [10+12@0] = scratch
+      bytes c0 03 5f d6              [aarch64.ret]
+    section .bss rw- align=8
+      align 8 fill<=00 00 00 00 00 00 00
+      label scratch
+      zero 4096
+    global f notype in .text
+    local scratch notype in .bss
+    comm counter size=4 align=4 |}]
+
 (* [[x20, x1]] with no extend token at all and [[x20, x1, lsl #0]] with an
    explicit unscaled [lsl #0] assemble to the same word on real [as]
    ([f8616a82] both - verified directly, distinct from the [lsl #3] case
@@ -3947,3 +4056,314 @@ let%expect_test "x86_64: byte-immediate and jmp r/m forms decode their REX/addre
     4000000c  67 80 60 04 05  andb $5, 4(%eax)  [x86_64.alu-rm-imm8-byte.asz-present.opsz-absent.rex-absent.base-disp8]
     40000011  41 ff e1        jmp *%r9          [x86_64.jmp-rm.asz-absent.opsz-absent.rex-present.reg]
     40000014  41 ff 64 24 08  jmp *8(%r12)      [x86_64.jmp-rm.asz-absent.opsz-absent.rex-present.sib-disp8] |}]
+
+(* [.p2align e] is an exponent: it normalizes to the byte count [2^e], the same
+   [Align] that [.balign 2^e] gives. Fill and max-skip operands, and exponents
+   past the portable cap of 29, are rejected rather than approximated. *)
+let%expect_test ".p2align normalizes to a power-of-two byte boundary" =
+  dump_norm "x86_32" "\t.text\n\t.p2align 4\n\tret\n\t.p2align 0\n\t.balign 16\n";
+  dump_norm "x86_32" "\t.text\n\t.p2align 30\n";
+  dump_norm "x86_32" "\t.text\n\t.p2align 4,,15\n";
+  dump_norm "x86_32" "\t.text\n\t.p2align 4, 0\n";
+  dump_norm "x86_32" "\t.text\n\t.p2align foo\n";
+  [%expect
+    {|
+    normalized t
+    section .text r-x
+    align 16
+    ret
+    align 1
+    align 16simplify.directive: .p2align needs an exponent from 0 to 29
+    parse: unexpected token
+    simplify.directive: .p2align: fill and max-skip arguments are not supported
+    simplify.directive: .p2align needs exactly one integer argument |}]
+
+(* The register-shift and unsigned-conversion forms CompCert prints for 64-bit
+   variable shifts ([Plsrv]/[Pasrv]/[Prorv]) and [double]/[float] to unsigned
+   integer ([Pfcvtzu]). Byte-for-byte checked against real
+   aarch64-linux-gnu-as/objdump 2.44: [9ac12403] [1ac62904] [9ac22c20] [1acb2549]
+   [9ac12803] [1ac32c41] [9e7900a4] [1e3900a4] [9e390020] [1e7903e0], in order. *)
+let%expect_test "lsr/asr/ror (register) and fcvtzu" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tlsr x3, x0, x1\n\
+     \tasr w4, w8, w6\n\
+     \tror x0, x1, x2\n\
+     \tlsr w9, w10, w11\n\
+     \tasr x3, x0, x1\n\
+     \tror w1, w2, w3\n\
+     \tfcvtzu x4, d5\n\
+     \tfcvtzu w4, s5\n\
+     \tfcvtzu x0, s1\n\
+     \tfcvtzu w0, d31\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  03 24 c1 9a  lsr x3, x0, x1    [aarch64.lsrv]
+    40000004  04 29 c6 1a  asr w4, w8, w6    [aarch64.asrv]
+    40000008  20 2c c2 9a  ror x0, x1, x2    [aarch64.rorv]
+    4000000c  49 25 cb 1a  lsr w9, w10, w11  [aarch64.lsrv]
+    40000010  03 28 c1 9a  asr x3, x0, x1    [aarch64.asrv]
+    40000014  41 2c c3 1a  ror w1, w2, w3    [aarch64.rorv]
+    40000018  a4 00 79 9e  fcvtzu x4, d5     [aarch64.fcvtzu-d]
+    4000001c  a4 00 39 1e  fcvtzu w4, s5     [aarch64.fcvtzu-s]
+    40000020  20 00 39 9e  fcvtzu x0, s1     [aarch64.fcvtzu-s]
+    40000024  e0 03 79 1e  fcvtzu w0, d31    [aarch64.fcvtzu-d]
+    40000028  c0 03 5f d6  ret               [aarch64.ret] |}]
+
+(* [movq $imm, %r64] takes its form from the value, as GNU as does: a sign-extended imm32 is
+   REX.W [C7 /0], anything wider REX.W [B8+r] imm64, which [movabsq] always spells. [cltd] and
+   [cqto] are the AT&T names of [cdq]/[cqo]. Every word checked against real
+   x86_64-linux-gnu-as 2.44; before the imm64 form existed a 64-bit [movq $imm] came out as
+   REX.W [B8+r] with only four immediate bytes. *)
+let%expect_test "x86_64 movq/movabsq immediates, cltd, cqto" =
+  disasm "x86_64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tmovq $5, %rax\n\
+     \tmovq $-1, %r9\n\
+     \tmovq $2147483647, %rcx\n\
+     \tmovq $-2147483648, %rdx\n\
+     \tmovq $2147483648, %rax\n\
+     \tmovq $5270498306774157605, %r11\n\
+     \tmovabsq $5270498306774157605, %rcx\n\
+     \tmovabsq $-9223372036854775808, %r15\n\
+     \tmovl $4294967295, %r8d\n\
+     \tcltd\n\
+     \tcqto\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  48 c7 c0 05 00 00 00           movq $5, %rax                     [x86_64.mov-r64-simm32.asz-absent.opsz-absent.rex-present.reg]
+    40000007  49 c7 c1 ff ff ff ff           movq $-1, %r9                     [x86_64.mov-r64-simm32.asz-absent.opsz-absent.rex-present.reg]
+    4000000e  48 c7 c1 ff ff ff 7f           movq $2147483647, %rcx            [x86_64.mov-r64-simm32.asz-absent.opsz-absent.rex-present.reg]
+    40000015  48 c7 c2 00 00 00 80           movq $-2147483648, %rdx           [x86_64.mov-r64-simm32.asz-absent.opsz-absent.rex-present.reg]
+    4000001c  48 b8 00 00 00 80 00 00 00 00  movq $2147483648, %rax            [x86_64.mov-r64-imm64.asz-absent.opsz-absent.rex-present]
+    40000026  49 bb 25 49 92 24 49 92 24 49  movq $5270498306774157605, %r11   [x86_64.mov-r64-imm64.asz-absent.opsz-absent.rex-present]
+    40000030  48 b9 25 49 92 24 49 92 24 49  movq $5270498306774157605, %rcx   [x86_64.mov-r64-imm64.asz-absent.opsz-absent.rex-present]
+    4000003a  49 bf 00 00 00 00 00 00 00 80  movq $-9223372036854775808, %r15  [x86_64.mov-r64-imm64.asz-absent.opsz-absent.rex-present]
+    40000044  41 b8 ff ff ff ff              movl $4294967295, %r8d            [x86_64.mov-r-imm.asz-absent.opsz-absent.rex-present]
+    4000004a  99                             cdq                               [x86_64.cdq]
+    4000004b  48 99                          cqo                               [x86_64.cqo]
+    4000004d  c3                             ret                               [x86_64.ret] |}]
+
+let%expect_test "movabsq is refused where GNU as would still emit ten bytes" =
+  let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "x86_64") in
+  let source = Foundation.Span.source ~name:"<test>" ~contents:"\t.text\n\tmovabsq $5, %rax\n" in
+  (match D.assemble ~unit_name:"t" ~source () with
+  | Ok _ -> print_endline "accepted"
+  | Error ds ->
+      List.iter
+        (fun d -> print_endline (Foundation.Diagnostic.message d))
+        (Foundation.Diag.diagnostics ds));
+  [%expect {| no movabsq form takes these operands |}]
+
+(* A symbolic memory operand on a form whose lowered value was missing from the x86 fixup
+   table lost its displacement silently: [cmpq .L1(%rip), %rdx] assembled to a RIP-relative
+   load of whatever followed the instruction. CompCert compares against 64-bit literals that
+   way. Every form that can hold a memory operand now carries its fixup. *)
+let%expect_test "x86_64 memory-source forms keep their symbolic displacement" =
+  let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "x86_64") in
+  List.iter
+    (fun insn ->
+      let text = "\t.text\n\t" ^ insn ^ "\n\t.section .rodata\n.L1:\t.quad 5\n" in
+      let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+      match D.dump_lowered_ast ~unit_name:"t" ~source () with
+      | Error _ -> Printf.printf "%-26s rejected\n" insn
+      | Ok s ->
+          let fixups =
+            String.split_on_char '\n' s
+            |> List.filter (fun l -> String.length l > 3 && String.sub (String.trim l) 0 1 = "@")
+          in
+          Printf.printf "%-26s %d fixup(s)%s\n" insn (List.length fixups)
+            (match fixups with f :: _ -> ": " ^ String.trim f | [] -> ""))
+    [
+      "cmpq .L1(%rip), %rdx";
+      "addq .L1(%rip), %rax";
+      "xorl .L1(%rip), %eax";
+      "movzbl .L1(%rip), %eax";
+      "movslq .L1(%rip), %rax";
+      "sete .L1(%rip)";
+      "testl $4, .L1(%rip)";
+    ];
+  [%expect
+    {|
+    cmpq .L1(%rip), %rdx       1 fixup(s): @3/4B pc+7 disp pcrel32-data s32 [0+32@0] = .L1
+    addq .L1(%rip), %rax       1 fixup(s): @3/4B pc+7 disp pcrel32-data s32 [0+32@0] = .L1
+    xorl .L1(%rip), %eax       1 fixup(s): @2/4B pc+6 disp pcrel32-data s32 [0+32@0] = .L1
+    movzbl .L1(%rip), %eax     1 fixup(s): @3/4B pc+7 disp pcrel32-data s32 [0+32@0] = .L1
+    movslq .L1(%rip), %rax     1 fixup(s): @3/4B pc+7 disp pcrel32-data s32 [0+32@0] = .L1
+    sete .L1(%rip)             1 fixup(s): @3/4B pc+7 disp pcrel32-data s32 [0+32@0] = .L1
+    testl $4, .L1(%rip)        1 fixup(s): @2/4B pc+10 disp pcrel32-data s32 [0+32@0] = .L1 |}]
+
+(* Post-indexed [ldr]/[str]/[ldrb]/[strb rt, \[rn\], #imm] (P = 0, W = 0): CompCert's inline
+   [memcpy] loop copies word by word that way. Byte-for-byte checked against real
+   arm-linux-gnueabihf-as 2.44: [e492c004] [e483c004] [e4d01001] [e4451001] [e4110fff]
+   [148d7008], in order. P = 0 with W = 1 is LDRT/STRT and does not decode as one of these. *)
+let%expect_test "arm post-indexed ldr/str/ldrb/strb" =
+  disasm "arm"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tldr r12, [r2], #4\n\
+     \tstr r12, [r3], #4\n\
+     \tldrb r1, [r0], #1\n\
+     \tstrb r1, [r5], #-1\n\
+     \tldr r0, [r1], #-4095\n\
+     \tstrne r7, [sp], #8\n\
+     \tbx lr\n";
+  [%expect
+    {|
+    40000000  04 c0 92 e4  ldr ip, [r2], #4      [arm.ldst-imm]
+    40000004  04 c0 83 e4  str ip, [r3], #4      [arm.ldst-imm]
+    40000008  01 10 d0 e4  ldrb r1, [r0], #1     [arm.ldst-imm]
+    4000000c  01 10 45 e4  strb r1, [r5], #-1    [arm.ldst-imm]
+    40000010  ff 0f 11 e4  ldr r0, [r1], #-4095  [arm.ldst-imm]
+    40000014  08 70 8d 14  strne r7, [sp], #8    [arm.ldst-imm]
+    40000018  1e ff 2f e1  bx lr                 [arm.bx] |}]
+
+(* The sign-extending loads, both addressing modes and both destination widths, and [sbfiz]:
+   what CompCert prints for [signed char]/[short] loads and a sign-extending shift. Byte-for-byte
+   checked against real aarch64-linux-gnu-as/objdump 2.44: [39c00c20] [39800062] [79c00ca4]
+   [798013e6] [b9800d07] [38eb6949] [78ae79ac] [b8b1da0f] [79dffe72] [131d1020] [93764c62]
+   [934220a4], in order. *)
+let%expect_test "aarch64 ldrsb/ldrsh/ldrsw and sbfiz" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tldrsb w0, [x1, #3]\n\
+     \tldrsb x2, [x3]\n\
+     \tldrsh w4, [x5, #6]\n\
+     \tldrsh x6, [sp, #8]\n\
+     \tldrsw x7, [x8, #12]\n\
+     \tldrsb w9, [x10, x11]\n\
+     \tldrsh x12, [x13, x14, lsl #1]\n\
+     \tldrsw x15, [x16, w17, sxtw #2]\n\
+     \tldrsh w18, [x19, #4094]\n\
+     \tsbfiz w0, w1, #3, #5\n\
+     \tsbfiz x2, x3, #10, #20\n\
+     \tsbfx x4, x5, #2, #7\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  20 0c c0 39  ldrsb w0, [x1, #3]              [aarch64.ldrsb-w]
+    40000004  62 00 80 39  ldrsb x2, [x3]                  [aarch64.ldrsb-x]
+    40000008  a4 0c c0 79  ldrsh w4, [x5, #6]              [aarch64.ldrsh-w]
+    4000000c  e6 13 80 79  ldrsh x6, [sp, #8]              [aarch64.ldrsh-x]
+    40000010  07 0d 80 b9  ldrsw x7, [x8, #12]             [aarch64.ldrsw-x]
+    40000014  49 69 eb 38  ldrsb w9, [x10, x11]            [aarch64.ldrsb-w-roff]
+    40000018  ac 79 ae 78  ldrsh x12, [x13, x14, lsl #1]   [aarch64.ldrsh-x-roff]
+    4000001c  0f da b1 b8  ldrsw x15, [x16, w17, sxtw #2]  [aarch64.ldrsw-x-roff]
+    40000020  72 fe df 79  ldrsh w18, [x19, #4094]         [aarch64.ldrsh-w]
+    40000024  20 10 1d 13  sbfiz w0, w1, #3, #5            [aarch64.sbfm]
+    40000028  62 4c 76 93  sbfiz x2, x3, #10, #20          [aarch64.sbfm]
+    4000002c  a4 20 42 93  sbfx x4, x5, #2, #7             [aarch64.sbfm]
+    40000030  c0 03 5f d6  ret                             [aarch64.ret] |}]
+
+(* The A32 "extra" loads and stores - [strh]/[ldrh]/[ldrsb]/[ldrsh] with an 8-bit immediate or a
+   register offset, at the offset or post-indexed - and [sbfx]: CompCert's [short]/[signed char]
+   accesses, its halfword [memcpy] loop and its narrow sign extension. Byte-for-byte checked
+   against real arm-linux-gnueabihf-as 2.44: [e1d100b6] [e14320b2] [e1d54ffe] [e1d760d0]
+   [e0d2c0b2] [e0c3c0b2] [e19100d2] [e11430b5] [e18760b8] [e15d9fff] [11d210f0] [e7af0051]
+   [e7a421d3] [e7a04fd5], in order. *)
+let%expect_test "arm ldrh/strh/ldrsb/ldrsh and sbfx" =
+  disasm "arm"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tldrh r0, [r1, #6]\n\
+     \tstrh r2, [r3, #-2]\n\
+     \tldrsh r4, [r5, #254]\n\
+     \tldrsb r6, [r7]\n\
+     \tldrh ip, [r2], #2\n\
+     \tstrh ip, [r3], #2\n\
+     \tldrsb r0, [r1, r2]\n\
+     \tldrh r3, [r4, -r5]\n\
+     \tstrh r6, [r7, r8]\n\
+     \tldrsh r9, [sp, #-255]\n\
+     \tldrshne r1, [r2]\n\
+     \tsbfx r0, r1, #0, #16\n\
+     \tsbfx r2, r3, #3, #5\n\
+     \tsbfx r4, r5, #31, #1\n\
+     \tbx lr\n";
+  [%expect
+    {|
+    40000000  b6 00 d1 e1  ldrh r0, [r1, #6]      [arm.ldst-x-imm]
+    40000004  b2 20 43 e1  strh r2, [r3, #-2]     [arm.ldst-x-imm]
+    40000008  fe 4f d5 e1  ldrsh r4, [r5, #254]   [arm.ldst-x-imm]
+    4000000c  d0 60 d7 e1  ldrsb r6, [r7]         [arm.ldst-x-imm]
+    40000010  b2 c0 d2 e0  ldrh ip, [r2], #2      [arm.ldst-x-imm]
+    40000014  b2 c0 c3 e0  strh ip, [r3], #2      [arm.ldst-x-imm]
+    40000018  d2 00 91 e1  ldrsb r0, [r1, r2]     [arm.ldst-x-reg]
+    4000001c  b5 30 14 e1  ldrh r3, [r4, -r5]     [arm.ldst-x-reg]
+    40000020  b8 60 87 e1  strh r6, [r7, r8]      [arm.ldst-x-reg]
+    40000024  ff 9f 5d e1  ldrsh r9, [sp, #-255]  [arm.ldst-x-imm]
+    40000028  f0 10 d2 11  ldrshne r1, [r2]       [arm.ldst-x-imm]
+    4000002c  51 00 af e7  sbfx r0, r1, #0, #16   [arm.sbfx]
+    40000030  d3 21 a4 e7  sbfx r2, r3, #3, #5    [arm.sbfx]
+    40000034  d5 4f a0 e7  sbfx r4, r5, #31, #1   [arm.sbfx]
+    40000038  1e ff 2f e1  bx lr                  [arm.bx] |}]
+
+(* Byte and bit reversal and leading-bit counts, as CompCert prints them for
+   [__builtin_bswap*], [__builtin_clz*] and [__builtin_ctz*]. Byte-for-byte checked against
+   GNU as 2.44 (the words are listed in each target's codec comment). *)
+let%expect_test "aarch64 rbit/rev16/rev32/rev/clz/cls" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \trbit w0, w1\n\
+     \trbit x2, x3\n\
+     \trev16 w4, w5\n\
+     \trev16 x6, x7\n\
+     \trev32 x8, x9\n\
+     \trev w10, w11\n\
+     \trev x12, x13\n\
+     \tclz w14, w15\n\
+     \tclz x16, x17\n\
+     \tcls w18, w19\n\
+     \tcls x20, x21\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  20 00 c0 5a  rbit w0, w1   [aarch64.rbit-w]
+    40000004  62 00 c0 da  rbit x2, x3   [aarch64.rbit-x]
+    40000008  a4 04 c0 5a  rev16 w4, w5  [aarch64.rev16-w]
+    4000000c  e6 04 c0 da  rev16 x6, x7  [aarch64.rev16-x]
+    40000010  28 09 c0 da  rev32 x8, x9  [aarch64.rev32-x]
+    40000014  6a 09 c0 5a  rev w10, w11  [aarch64.rev-w]
+    40000018  ac 0d c0 da  rev x12, x13  [aarch64.rev-x]
+    4000001c  ee 11 c0 5a  clz w14, w15  [aarch64.clz-w]
+    40000020  30 12 c0 da  clz x16, x17  [aarch64.clz-x]
+    40000024  72 16 c0 5a  cls w18, w19  [aarch64.cls-w]
+    40000028  b4 16 c0 da  cls x20, x21  [aarch64.cls-x]
+    4000002c  c0 03 5f d6  ret           [aarch64.ret] |}]
+
+let%expect_test "arm clz/rev/rev16" =
+  disasm "arm"
+    "\t.text\n\t.globl f\nf:\n\tclz r0, r1\n\trev r2, r3\n\trev16 r4, r5\n\tclzne ip, lr\n\tbx lr\n";
+  [%expect
+    {|
+    40000000  11 0f 6f e1  clz r0, r1    [arm.clz]
+    40000004  33 2f bf e6  rev r2, r3    [arm.rev]
+    40000008  b5 4f bf e6  rev16 r4, r5  [arm.rev16]
+    4000000c  1e cf 6f 11  clzne ip, lr  [arm.clz]
+    40000010  1e ff 2f e1  bx lr         [arm.bx] |}]
+
+let%expect_test "x86 bswap" =
+  disasm "x86_64"
+    "\t.text\n\t.globl f\nf:\n\tbswap %eax\n\tbswap %rdx\n\tbswap %r9d\n\tbswap %r15\n\tret\n";
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tbswap %esi\n\tret\n";
+  [%expect
+    {|
+    40000000  0f c8     bswap %eax  [x86_64.bswap-r.asz-absent.opsz-absent.rex-absent]
+    40000002  48 0f ca  bswap %rdx  [x86_64.bswap-r.asz-absent.opsz-absent.rex-present]
+    40000005  41 0f c9  bswap %r9d  [x86_64.bswap-r.asz-absent.opsz-absent.rex-present]
+    40000008  49 0f cf  bswap %r15  [x86_64.bswap-r.asz-absent.opsz-absent.rex-present]
+    4000000b  c3        ret         [x86_64.ret]
+    40000000  0f ce  bswap %esi  [x86_32.bswap-r.opsz-absent]
+    40000002  c3     ret         [x86_32.ret] |}]

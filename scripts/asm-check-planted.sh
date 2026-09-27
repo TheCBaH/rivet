@@ -130,7 +130,15 @@ new_library() {
   fi
 }
 
+# Each case's tree is a full copy of asm/ and is never read again once the case
+# is judged, so it is deleted straight away rather than at exit: keeping all of
+# them at once needs several GB of scratch space.
 plant() {
+  plant_case "$@"
+  rm -rf "${work:?}/$1"
+}
+
+plant_case() {
   local name=$1 mode=$2 outcome=$3 expect=$4 body=$5
   local asm="$work/$name"
   rm -rf "$asm"
@@ -244,6 +252,18 @@ plant js-runtime-stub purity reject-either 'ships a foreign object' "
   printf '//Provides: asm_fast_hash\nfunction asm_fast_hash(){return 0}\n' > lib/fastpath/runtime.js
   new_library lib/fastpath fastpath
   add_library lib/foundation/dune fastpath"
+
+# native_exec/ ships C stubs and is exempt from the stanza scan only while
+# every stanza in it is gated by ASM_COMPCERT_EMBED. One ungated stanza beside
+# the gated library must bring the scan back.
+plant research-stub-ungated purity audit-fail 'uses foreign_stubs' "
+  printf '\\n(rule\\n (with-stdout-to planted.txt\\n  (echo \\\"\\\")))\\n' >> native_exec/dune"
+
+# A per-target stanza may narrow the gate with an [and], but only after the
+# shared ASM_COMPCERT_EMBED operand. An [and] led by the per-target variable
+# alone must not count as gated.
+plant research-stub-pertarget-only purity audit-fail 'uses foreign_stubs' "
+  printf '\\n(rule\\n (action\\n  (with-stdout-to planted.txt\\n   (echo \\\"\\\")))\\n (enabled_if\\n  (and\\n   (= %%{env:ASM_COMPCERT_EMBED_AARCH64=false} true)\\n   (= %%{env:ASM_COMPCERT_EMBED=false} true))))\\n' >> native_exec/dune"
 
 # The test-only ppx tree leaking into production. ppx_expect is native-only and
 # pulls in time_now, which has C stubs, so this is a live risk rather than a

@@ -1,0 +1,14 @@
+; Runs a laid-out image natively, in this process: maps it, binds it at the
+; addresses obtained, and calls its entry. A research-host component, not
+; part of the assembler: no production library may depend on it, and it is
+; gated like ../compcert_embed so that the default builds stay free of C.
+
+(library
+ (name native_exec)
+ (modes byte native)
+ (libraries foundation asm_core image unix)
+ (foreign_stubs
+  (language c)
+  (names native_exec_stubs))
+ (enabled_if
+  (= %{env:ASM_COMPCERT_EMBED=false} true)))

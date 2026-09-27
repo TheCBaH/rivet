@@ -363,6 +363,95 @@ asm-compcert-adapter-test: asm-submodules compcert-lib-build-aarch64
 	  COMPCERT_CONFIG=$(CURDIR)/.compcert-lib-work/build/aarch64/compcert.ini \
 	  ASM_COMPCERT_ADAPTER=true opam exec -- dune build @runtest
 
+# The embed variant of each target's CompCert library: the pristine
+# compcert-lib-<target> sources plus the strict patch and injected modules in
+# tools/compcert-embed/, synced into compcert-lib-<target>-embed/ (package
+# compcert_<target>_embed). compcert-lib-<target> itself is never modified.
+# See tools/compcert-embed-sync.sh.
+EMBED_BUILD_GOALS     := $(addprefix compcert-lib-embed-build-,$(FIXTURE_TARGETS))
+EMBED_TEST_GOALS      := $(addprefix asm-compcert-embed-test-,$(FIXTURE_TARGETS))
+EMBED_TEST_ONLY_GOALS := $(addprefix asm-compcert-embed-test-only-,$(FIXTURE_TARGETS))
+
+.PHONY: $(EMBED_BUILD_GOALS)
+$(EMBED_BUILD_GOALS): compcert-lib-embed-build-%: compcert-lib-sync-%
+	tools/compcert-embed-sync.sh $*
+	cd compcert-lib-$*-embed && opam exec -- dune build @install
+
+# The environment that enables asm/compcert_embed for one target: its
+# variant on OCAMLPATH, the shared gate, and that target's own gate.
+# COMPCERT_CONFIG is unset on purpose: the variant must not need a
+# compcert.ini.
+embed_env = env -u COMPCERT_CONFIG \
+  OCAMLPATH=$(CURDIR)/compcert-lib-$(1)-embed/_build/install/default/lib:$$OCAMLPATH \
+  ASM_COMPCERT_EMBED=true ASM_COMPCERT_EMBED_$(shell echo $(1) | tr a-z A-Z)=true
+
+# What asm-compcert-embed-test-<target> builds and runs: the target's
+# library and its Tier A report (C -> assembly -> image against the
+# committed fixtures), on any host. When the target is the host's own ISA it
+# also runs native_exec's hand-written tests, and on an aarch64 host the
+# aarch64 suite that runs CompCert's output natively.
+EMBED_HOST_ISA := $(shell uname -m | sed -e 's/^amd64$$/x86_64/' -e 's/^arm64$$/aarch64/')
+embed_suites = @compcert_embed/targets/$(1)/all @compcert_embed/targets/$(1)/runtest \
+  $(if $(filter $(EMBED_HOST_ISA),$(1)),@native_exec/runtest \
+    $(if $(filter aarch64,$(1)),@compcert_embed/test/runtest))
+
+# In-process compile + assemble (+ native execution where the host runs the
+# target's ISA): asm/compcert_embed/, asm/native_exec/. Gated by
+# ASM_COMPCERT_EMBED like asm-compcert-adapter-test is by
+# ASM_COMPCERT_ADAPTER, and for the same reason: it needs Rocq.
+.PHONY: $(EMBED_TEST_GOALS) $(EMBED_TEST_ONLY_GOALS)
+$(EMBED_TEST_GOALS): asm-compcert-embed-test-%: asm-submodules compcert-lib-embed-build-%
+	$(MAKE) asm-compcert-embed-test-only-$*
+
+# The same, without re-running the (slow, Rocq-based) sync.
+$(EMBED_TEST_ONLY_GOALS): asm-compcert-embed-test-only-%:
+	cd $(ASM_DIR) && $(call embed_env,$*) opam exec -- dune build $(call embed_suites,$*)
+
+# The aarch64 names, kept from before the targets were split out.
+.PHONY: asm-compcert-embed-test asm-compcert-embed-test-only
+asm-compcert-embed-test: asm-compcert-embed-test-aarch64
+asm-compcert-embed-test-only: asm-compcert-embed-test-only-aarch64
+
+EMBED_ENV = $(call embed_env,aarch64)
+
+# The embedded corpus under each target's QEMU (the exec-ABI helper), and
+# natively as well where the host runs that target's ISA; every result must
+# equal the program's recorded expectation. Needs the helpers and QEMU, like
+# the other oracle legs, so it is not part of asm-compcert-embed-test.
+EMBED_QEMU_GOALS := $(addprefix asm-compcert-embed-qemu-,$(FIXTURE_TARGETS))
+.PHONY: $(EMBED_QEMU_GOALS) asm-compcert-embed-qemu asm-compcert-embed-soak \
+  asm-compcert-embed-corpus-check
+$(EMBED_QEMU_GOALS): asm-compcert-embed-qemu-%: asm-helpers
+	cd $(ASM_DIR) && $(call embed_env,$*) opam exec -- \
+	  dune build compcert_embed/targets/$*/test/qemu_diff.exe
+	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers \
+	  ./_build/default/compcert_embed/targets/$*/test/qemu_diff.exe compcert_embed/test/corpus
+asm-compcert-embed-qemu: asm-compcert-embed-qemu-aarch64
+
+# Compile-only soak for one target: SOAK_CYCLES compile+assemble cycles over
+# the corpus in one process, each checked against its first compile, with
+# heap and atom-table growth reported. Too slow for a test rule.
+EMBED_SOAK_GOALS := $(addprefix asm-compcert-embed-soak-,$(FIXTURE_TARGETS))
+.PHONY: $(EMBED_SOAK_GOALS)
+$(EMBED_SOAK_GOALS): asm-compcert-embed-soak-%:
+	cd $(ASM_DIR) && $(call embed_env,$*) opam exec -- \
+	  dune build compcert_embed/targets/$*/test/tier_a_test.exe
+	cd $(ASM_DIR) && ./_build/default/compcert_embed/targets/$*/test/tier_a_test.exe \
+	  --soak compcert_embed/test/corpus $(SOAK_CYCLES)
+
+# Checks every corpus program's recorded expectation against gcc for the
+# host and each cross target, LP64 and ILP32. Needs the cross toolchains and
+# QEMU.
+asm-compcert-embed-corpus-check:
+	$(ASM_DIR)/compcert_embed/test/corpus-expect.sh $(ASM_DIR)/compcert_embed/test/corpus
+
+# Thousands of compile+run cycles in one process, reporting memory growth.
+# SOAK_CYCLES defaults to 10000.
+SOAK_CYCLES ?= 10000
+asm-compcert-embed-soak:
+	cd $(ASM_DIR) && $(EMBED_ENV) opam exec -- dune build compcert_embed/test/soak.exe
+	cd $(ASM_DIR) && ./_build/default/compcert_embed/test/soak.exe compcert_embed/test/corpus $(SOAK_CYCLES)
+
 # Static pattern rules, not `%` implicit rules. GNU Make skips implicit rule
 # search for .PHONY targets, so an implicit pattern plus a phony expansion
 # yields "Nothing to be done" and exit 0 - a silent no-op. Static pattern rules
@@ -473,11 +562,11 @@ asm-isa-generated-regen: tools-build asm-build
 	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-generated regen
 
 # The isa-difficult non-frozen difficult-form GAS differential generator
-# (GEN-03; names frozen in Isa_gen_difficult).
+# (names frozen in Isa_gen_difficult).
 # Same two-mode split, tool/dependency shape and asm-build requirement as
 # isa-generated above, but for bounded difficult-form families (currently
 # RISC-V split-immediate/compressed cases and x86 addressing/x87) rather than
-# GEN-01's frozen 21-entry pilot, in its own corpus (asm/fixtures/isa-difficult/)
+# the frozen 21-entry pilot, in its own corpus (asm/fixtures/isa-difficult/)
 # so growing it can never touch that one.
 asm-isa-difficult-check: tools-build
 	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult check

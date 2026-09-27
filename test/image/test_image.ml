@@ -1197,3 +1197,21 @@ let%expect_test "an undefined weak reference resolves to 0, absolute and PC-rela
      itself part of the proof that the target genuinely resolved to a fixed,
      far-away address (0) rather than merely "not failing". *)
   [%expect {| b8 00 00 00 00 e9 f6 ef ff ff |}]
+
+(* [Bitpattern n] admits [-2^(n-1), 2^n): both readings of an n-bit field. A negative value -
+   a label difference whose target lies below its base, as in a RISC-V jump table - is inside
+   it; only values past either end are not. *)
+let%expect_test "Bitpattern admits both the signed and the unsigned reading" =
+  List.iter
+    (fun v -> Printf.printf "%Ld: %b\n" v (Lowered_ast.range_admits (Lowered_ast.Bitpattern 32) v))
+    [ -2147483649L; -2147483648L; -69436L; -1L; 0L; 2147483648L; 4294967295L; 4294967296L ];
+  [%expect
+    {|
+    -2147483649: false
+    -2147483648: true
+    -69436: true
+    -1: true
+    0: true
+    2147483648: true
+    4294967295: true
+    4294967296: false |}]

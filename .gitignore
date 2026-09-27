@@ -7,6 +7,7 @@
 /.fixture-work/
 /.playwright-browsers/
 /.tool-gate/
+/ai
 /asm/_build/
 /asm/test/browser/_work/
 /asm/test/browser/node_modules/
@@ -14,4 +15,4 @@
 /compcert-export.tar.gz
 /compcert-export/
 /compcert-extraction-*.tar.gz
-/compcert-extraction.tar.gz
+/compcert-lib-*-embed/

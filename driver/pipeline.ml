@@ -277,7 +277,8 @@ module Make (T : T_intf.TARGET) = struct
     let sections : section_build list ref = ref [] in
     let declared = ref [] in
     let symbols : symbol_build list ref = ref [] in
-    let commons : Lowered_ast.common list ref = ref [] in
+    let commons : (Lowered_ast.common * Origin.t) list ref = ref [] in
+    let made_local = ref [] in
     (* [state] is retained in the public entry point for direct normalized-AST
        producers, and parsed programs pass the initial state of the caller's configuration.  Target
        directives in [m] then replay in source order below. *)
@@ -458,11 +459,15 @@ module Make (T : T_intf.TARGET) = struct
                 sy.sy_binding <- apply_binding_directive sy.sy_binding `Weak
             | Directive.Local { name } ->
                 let sy = symbol name in
+                made_local := name :: !made_local;
                 sy.sy_binding <- apply_binding_directive sy.sy_binding `Local
             | Directive.Common { name; size; align } ->
                 commons :=
                   !commons
-                  @ [ { Lowered_ast.comm_name = name; comm_size = size; comm_align = align } ]
+                  @ [
+                      ( { Lowered_ast.comm_name = name; comm_size = size; comm_align = align },
+                        origin );
+                    ]
             | Directive.Sym_type { name; kind } -> (symbol name).sy_kind <- kind
             | Directive.Sym_size { name; size } ->
                 (symbol name).sy_size <- Some size;
@@ -510,6 +515,48 @@ module Make (T : T_intf.TARGET) = struct
                                 s.sb_frags <- Lowered_ast.Relax { alts; origin } :: s.sb_frags))
                       lowered))
       m.Normalized_ast.items;
+    (* [.local x] then [.comm x, size, align] is how a static zero-initialized object is spelled
+       (CompCert's [static long scratch[512];]): GAS then allocates [x] in this input's own
+       [.bss] as a local symbol rather than as a common one (checked with real as/readelf: a
+       LOCAL OBJECT in [.bss], not [COM]). A common left for the linker could never satisfy a
+       local reference, which only resolves within its own input. Decided on the final binding,
+       so [.globl] after [.local] still makes an ordinary common. *)
+    let local_commons, global_commons =
+      List.partition
+        (fun ((c : Lowered_ast.common), _) ->
+          List.mem c.Lowered_ast.comm_name !made_local
+          &&
+          match
+            List.find_opt (fun s -> String.equal s.sy_name c.Lowered_ast.comm_name) !symbols
+          with
+          | Some { sy_binding = Lowered_ast.Local; _ } -> true
+          | _ -> false)
+        !commons
+    in
+    if local_commons <> [] then begin
+      let saved = !current in
+      let bss = ensure_section ".bss" Perms.rw Lowered_ast.Nobits in
+      current := saved;
+      List.iter
+        (fun ((c : Lowered_ast.common), origin) ->
+          let name = c.Lowered_ast.comm_name in
+          bss.sb_align <- max bss.sb_align c.Lowered_ast.comm_align;
+          bss.sb_frags <-
+            Lowered_ast.Zero { length = c.Lowered_ast.comm_size; origin }
+            :: Lowered_ast.Label_def { name; origin }
+            :: Lowered_ast.Align
+                 {
+                   boundary = c.Lowered_ast.comm_align;
+                   fills =
+                     Array.init
+                       (max 0 (c.Lowered_ast.comm_align - 1))
+                       (fun i -> String.make (i + 1) '\000');
+                   origin;
+                 }
+            :: bss.sb_frags;
+          (symbol name).sy_section <- ".bss")
+        local_commons
+    end;
     if !errors <> [] then Diag.fail ~pos:__POS__ (List.rev !errors)
     else
       Ok
@@ -541,7 +588,7 @@ module Make (T : T_intf.TARGET) = struct
                   section = s.sy_section;
                 })
               !symbols;
-          commons = !commons;
+          commons = List.map fst global_commons;
           declared_sections = !declared;
         }
 
