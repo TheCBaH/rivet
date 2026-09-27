@@ -130,7 +130,15 @@ new_library() {
   fi
 }
 
+# Each case's tree is a full copy of asm/ and is never read again once the case
+# is judged, so it is deleted straight away rather than at exit: keeping all of
+# them at once needs several GB of scratch space.
 plant() {
+  plant_case "$@"
+  rm -rf "${work:?}/$1"
+}
+
+plant_case() {
   local name=$1 mode=$2 outcome=$3 expect=$4 body=$5
   local asm="$work/$name"
   rm -rf "$asm"

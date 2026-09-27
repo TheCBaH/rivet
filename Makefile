@@ -363,6 +363,33 @@ asm-compcert-adapter-test: asm-submodules compcert-lib-build-aarch64
 	  COMPCERT_CONFIG=$(CURDIR)/.compcert-lib-work/build/aarch64/compcert.ini \
 	  ASM_COMPCERT_ADAPTER=true opam exec -- dune build @runtest
 
+# The embed variant of the aarch64 CompCert library: the pristine
+# compcert-lib-aarch64 sources plus the strict patch and injected modules in
+# tools/compcert-embed/, synced into compcert-lib-aarch64-embed/ (package
+# compcert_aarch64_embed). compcert-lib-aarch64 itself is never modified. See
+# tools/compcert-embed-sync.sh.
+.PHONY: compcert-lib-embed-build-aarch64 asm-compcert-embed-test
+compcert-lib-embed-build-aarch64: compcert-lib-sync-aarch64
+	tools/compcert-embed-sync.sh aarch64
+	cd compcert-lib-aarch64-embed && opam exec -- dune build @install
+
+# In-process compile + assemble + native execution (asm/compcert_embed/,
+# asm/native_exec/). Gated by ASM_COMPCERT_EMBED like asm-compcert-adapter-test
+# is by ASM_COMPCERT_ADAPTER, and for the same reason: it needs Rocq. It also
+# builds C stubs and runs generated code natively, so it only makes sense on
+# an aarch64 host. COMPCERT_CONFIG is unset on purpose: the variant must not
+# need a compcert.ini.
+asm-compcert-embed-test: asm-submodules compcert-lib-embed-build-aarch64
+	$(MAKE) asm-compcert-embed-test-only
+
+# The same, without re-running the (slow, Rocq-based) sync.
+.PHONY: asm-compcert-embed-test-only
+asm-compcert-embed-test-only:
+	cd $(ASM_DIR) && env -u COMPCERT_CONFIG \
+	  OCAMLPATH=$(CURDIR)/compcert-lib-aarch64-embed/_build/install/default/lib:$$OCAMLPATH \
+	  ASM_COMPCERT_EMBED=true opam exec -- \
+	  dune build @compcert_embed/runtest @native_exec/runtest
+
 # Static pattern rules, not `%` implicit rules. GNU Make skips implicit rule
 # search for .PHONY targets, so an implicit pattern plus a phony expansion
 # yields "Nothing to be done" and exit 0 - a silent no-op. Static pattern rules
@@ -473,11 +500,11 @@ asm-isa-generated-regen: tools-build asm-build
 	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-generated regen
 
 # The isa-difficult non-frozen difficult-form GAS differential generator
-# (GEN-03; names frozen in Isa_gen_difficult).
+# (names frozen in Isa_gen_difficult).
 # Same two-mode split, tool/dependency shape and asm-build requirement as
 # isa-generated above, but for bounded difficult-form families (currently
 # RISC-V split-immediate/compressed cases and x86 addressing/x87) rather than
-# GEN-01's frozen 21-entry pilot, in its own corpus (asm/fixtures/isa-difficult/)
+# the frozen 21-entry pilot, in its own corpus (asm/fixtures/isa-difficult/)
 # so growing it can never touch that one.
 asm-isa-difficult-check: tools-build
 	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult check
