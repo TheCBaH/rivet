@@ -4307,3 +4307,63 @@ let%expect_test "arm ldrh/strh/ldrsb/ldrsh and sbfx" =
     40000030  d3 21 a4 e7  sbfx r2, r3, #3, #5    [arm.sbfx]
     40000034  d5 4f a0 e7  sbfx r4, r5, #31, #1   [arm.sbfx]
     40000038  1e ff 2f e1  bx lr                  [arm.bx] |}]
+
+(* Byte and bit reversal and leading-bit counts, as CompCert prints them for
+   [__builtin_bswap*], [__builtin_clz*] and [__builtin_ctz*]. Byte-for-byte checked against
+   GNU as 2.44 (the words are listed in each target's codec comment). *)
+let%expect_test "aarch64 rbit/rev16/rev32/rev/clz/cls" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \trbit w0, w1\n\
+     \trbit x2, x3\n\
+     \trev16 w4, w5\n\
+     \trev16 x6, x7\n\
+     \trev32 x8, x9\n\
+     \trev w10, w11\n\
+     \trev x12, x13\n\
+     \tclz w14, w15\n\
+     \tclz x16, x17\n\
+     \tcls w18, w19\n\
+     \tcls x20, x21\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  20 00 c0 5a  rbit w0, w1   [aarch64.rbit-w]
+    40000004  62 00 c0 da  rbit x2, x3   [aarch64.rbit-x]
+    40000008  a4 04 c0 5a  rev16 w4, w5  [aarch64.rev16-w]
+    4000000c  e6 04 c0 da  rev16 x6, x7  [aarch64.rev16-x]
+    40000010  28 09 c0 da  rev32 x8, x9  [aarch64.rev32-x]
+    40000014  6a 09 c0 5a  rev w10, w11  [aarch64.rev-w]
+    40000018  ac 0d c0 da  rev x12, x13  [aarch64.rev-x]
+    4000001c  ee 11 c0 5a  clz w14, w15  [aarch64.clz-w]
+    40000020  30 12 c0 da  clz x16, x17  [aarch64.clz-x]
+    40000024  72 16 c0 5a  cls w18, w19  [aarch64.cls-w]
+    40000028  b4 16 c0 da  cls x20, x21  [aarch64.cls-x]
+    4000002c  c0 03 5f d6  ret           [aarch64.ret] |}]
+
+let%expect_test "arm clz/rev/rev16" =
+  disasm "arm"
+    "\t.text\n\t.globl f\nf:\n\tclz r0, r1\n\trev r2, r3\n\trev16 r4, r5\n\tclzne ip, lr\n\tbx lr\n";
+  [%expect
+    {|
+    40000000  11 0f 6f e1  clz r0, r1    [arm.clz]
+    40000004  33 2f bf e6  rev r2, r3    [arm.rev]
+    40000008  b5 4f bf e6  rev16 r4, r5  [arm.rev16]
+    4000000c  1e cf 6f 11  clzne ip, lr  [arm.clz]
+    40000010  1e ff 2f e1  bx lr         [arm.bx] |}]
+
+let%expect_test "x86 bswap" =
+  disasm "x86_64"
+    "\t.text\n\t.globl f\nf:\n\tbswap %eax\n\tbswap %rdx\n\tbswap %r9d\n\tbswap %r15\n\tret\n";
+  disasm "x86_32" "\t.text\n\t.globl f\nf:\n\tbswap %esi\n\tret\n";
+  [%expect
+    {|
+    40000000  0f c8     bswap %eax  [x86_64.bswap-r.asz-absent.opsz-absent.rex-absent]
+    40000002  48 0f ca  bswap %rdx  [x86_64.bswap-r.asz-absent.opsz-absent.rex-present]
+    40000005  41 0f c9  bswap %r9d  [x86_64.bswap-r.asz-absent.opsz-absent.rex-present]
+    40000008  49 0f cf  bswap %r15  [x86_64.bswap-r.asz-absent.opsz-absent.rex-present]
+    4000000b  c3        ret         [x86_64.ret]
+    40000000  0f ce  bswap %esi  [x86_32.bswap-r.opsz-absent]
+    40000002  c3     ret         [x86_32.ret] |}]

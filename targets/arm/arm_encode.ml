@@ -540,6 +540,9 @@ module Opcode = struct
     | Ldrsb
     | Ldrsh
     | Sbfx
+    | Clz
+    | Rev
+    | Rev16
     | Udf
     | Bl
     | B
@@ -669,6 +672,9 @@ module Opcode = struct
     | Ldrsb -> "ldrsb"
     | Ldrsh -> "ldrsh"
     | Sbfx -> "sbfx"
+    | Clz -> "clz"
+    | Rev -> "rev"
+    | Rev16 -> "rev16"
     | Udf -> "udf"
     | Bl -> "bl"
     | Vmov_d -> "vmov.f64"
@@ -739,6 +745,9 @@ module Opcode = struct
     | "ldrsb" -> Some Ldrsb
     | "ldrsh" -> Some Ldrsh
     | "sbfx" -> Some Sbfx
+    | "clz" -> Some Clz
+    | "rev" -> Some Rev
+    | "rev16" -> Some Rev16
     | "udf" -> Some Udf
     | "bl" -> Some Bl
     | "push" -> Some Push
@@ -916,6 +925,10 @@ let x_bits k =
 
 let x_kind_of_bits b = List.find_map (fun (n, _, b') -> if b = b' then Some n else None) x_kinds
 
+(* [clz]/[rev]/[rev16 rd, rm]: [cond | hi | 1111 | Rd | 1111 | lo | Rm], one fixed pair of
+   fields per operation. *)
+let rd_rm_ops = [ ("clz", 0x16L, 0b0001L); ("rev", 0x6BL, 0b0011L); ("rev16", 0x6BL, 0b1011L) ]
+
 module Lowered = struct
   (* Every variant carries a condition, because every A32 word does. It is a
      field on each rather than a wrapper around the sum so that a form which
@@ -957,6 +970,9 @@ module Lowered = struct
             {!x_kinds}) - with an 8-bit immediate or a plain register offset, at the offset
             ([\[rn, off\]]) or post-indexed ([\[rn\], off]). Embedded-corpus evidence:
             CompCert's [short] and [signed char] accesses, and its halfword [memcpy] loop. *)
+    | Rd_rm of { cond : Cond.t; op : string; rd : Reg.t; rm : Reg.t }
+        (** [clz]/[rev]/[rev16 rd, rm] ({!rd_rm_ops}; embedded-corpus evidence: CompCert's
+            [__builtin_clz*] and [__builtin_bswap*]). *)
     | Sbfx of { cond : Cond.t; rd : Reg.t; rn : Reg.t; lsb : int; width : int }
         (** [sbfx rd, rn, #lsb, #width] - signed bitfield extract (embedded-corpus evidence:
             CompCert's sign extension of a narrow value). *)
@@ -1117,6 +1133,8 @@ module Lowered = struct
         else Fmt.pf ppf "%s%s %a, [%a, %s]" (x_name kind) (Cond.suffix cond) Reg.pp rt Reg.pp rn off
     | Sbfx { cond; rd; rn; lsb; width } ->
         Fmt.pf ppf "sbfx%s %a, %a, #%d, #%d" (Cond.suffix cond) Reg.pp rd Reg.pp rn lsb width
+    | Rd_rm { cond; op; rd; rm } ->
+        Fmt.pf ppf "%s%s %a, %a" op (Cond.suffix cond) Reg.pp rd Reg.pp rm
     | Ldst_reg { cond; load; byte; rt; rn; rm; negate; sh_kind; sh_amt } ->
         let sh =
           if sh_amt = 0 && sh_kind = 0 then ""
@@ -1252,6 +1270,8 @@ module Lowered = struct
         | X_imm a, X_imm b -> Int64.equal a b
         | X_reg a, X_reg b -> Reg.equal a.rm b.rm && a.negate = b.negate
         | _ -> false)
+    | Rd_rm x, Rd_rm y ->
+        Cond.equal x.cond y.cond && x.op = y.op && Reg.equal x.rd y.rd && Reg.equal x.rm y.rm
     | Sbfx x, Sbfx y ->
         Cond.equal x.cond y.cond && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && x.lsb = y.lsb
         && x.width = y.width
@@ -1527,6 +1547,19 @@ let movw_alt ~top =
       ** fixup ~width:4 ~value_lsb:12 ~kind "imm"
       ** reg_field "rd"
       ** fixup ~width:12 ~value_lsb:0 ~kind "imm")
+
+let rd_rm_alt name =
+  let _, hi, lo = List.find (fun (n, _, _) -> n = name) rd_rm_ops in
+  C.iso_fun ~name
+    ~encode:(function
+      | Lowered.Rd_rm { cond; op; rd; rm } when op = name ->
+          Some (cond, ((), ((), (rd, ((), ((), rm))))))
+      | _ -> None)
+    ~decode:(fun (cond, ((), ((), (rd, ((), ((), rm)))))) ->
+      Some (Lowered.Rd_rm { cond; op = name; rd; rm }))
+    C.(
+      cond_codec ** const ~width:8 hi ** const ~width:4 0xFL ** reg_field "rd"
+      ** const ~width:4 0xFL ** const ~width:4 lo ** reg_field "rm")
 
 let codec : (Lowered.t, fixup_kind) C.t =
   C.choice ~name:"arm"
@@ -1819,6 +1852,11 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.(
              cond_codec ** const ~width:7 0b0111101L ** field ~width:5 "widthm1" ** reg_field "rd"
              ** field ~width:5 "lsb" ** const ~width:3 0b101L ** reg_field "rn"));
+      (* Verified against real arm-linux-gnueabihf-as 2.44: [clz r0, r1] -> [e16f0f11],
+         [rev r2, r3] -> [e6bf2f33], [rev16 r4, r5] -> [e6bf4fb5], [clzne ip, lr] -> [116fcf1e]. *)
+      C.alt ~label:"clz" ~priority:47 (rd_rm_alt "clz");
+      C.alt ~label:"rev" ~priority:48 (rd_rm_alt "rev");
+      C.alt ~label:"rev16" ~priority:49 (rd_rm_alt "rev16");
       C.alt ~label:"ldst-reg" ~priority:6
         (C.iso_fun ~name:"ldst-reg"
            ~encode:(function
@@ -2817,6 +2855,8 @@ let lower_instruction state i =
               | Some v -> Result.bind (imm v) (fun o -> mk o true)
               | None -> bad `Offset_not_8bit)
           | _ -> bad (`No_form (Opcode.name op)))
+    | ((Opcode.Clz | Opcode.Rev | Opcode.Rev16) as op), [ Operand.Reg rd; Operand.Reg rm ] ->
+        Ok [ Lowered.Rd_rm { cond; op = Opcode.name op; rd; rm } ]
     | Opcode.Sbfx, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm lsb; Operand.Imm width ] -> (
         match (Bigint.to_int_opt lsb, Bigint.to_int_opt width) with
         | Some lsb, Some width when lsb >= 0 && lsb < 32 && width >= 1 && lsb + width <= 32 ->
@@ -3399,6 +3439,10 @@ let instruction_of_lowered ?(at = 0L) =
         | X_reg _, true -> []
       in
       if ops = [] then None else Some (Instruction.mk ~cond op ops)
+  | Lowered.Rd_rm { cond; op; rd; rm } ->
+      Option.map
+        (fun o -> Instruction.mk ~cond o [ Operand.Reg rd; Operand.Reg rm ])
+        (Opcode.of_mnemonic op)
   | Lowered.Sbfx { cond; rd; rn; lsb; width } ->
       Some
         (Instruction.mk ~cond Opcode.Sbfx

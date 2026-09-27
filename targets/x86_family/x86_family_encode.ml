@@ -325,6 +325,7 @@ module Opcode = struct
     | Short_branch of string  (** a rel8-only branch: loop, loope, loopne, jecxz, jrcxz, jcxz *)
     | Ud2
     | Pop
+    | Bswap
     | Jmp
     | Call
     | Push
@@ -1535,6 +1536,7 @@ module Opcode = struct
     | Short_branch m -> m
     | Ud2 -> "ud2"
     | Pop -> "pop"
+    | Bswap -> "bswap"
     | Jmp -> "jmp"
     | Call -> "call"
     | Push -> "push"
@@ -2218,6 +2220,9 @@ module Instruction = struct
            equally part of this spelling: it is what [parse_one_operand]'s
            [Token.Star] case, and GNU as, both expect. *)
         | Opcode.Pop -> Fmt.pf ppf "pop %a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        (* no size suffix: the register's width is the operand size, and CompCert prints the
+           bare mnemonic *)
+        | Opcode.Bswap -> Fmt.pf ppf "bswap %a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
         | Opcode.Jmp -> (
             match ops with
             (* A relative jump and an indirect one share a mnemonic and differ in
@@ -2408,6 +2413,9 @@ module Lowered = struct
     | Cmov_r_rm of { cc : Cc.t; width : int; reg : Reg.t; rm : Rm.t }  (** [0f 4x /r] *)
     | Ud2
     | Pop of { reg : Reg.t }
+    | Bswap_r of { width : int; reg : Reg.t }
+        (** [bswap %r32]/[bswap %r64] ([0F C8+r], REX.W for 64): CompCert's
+            [__builtin_bswap]/[__builtin_bswap64] (embedded-corpus evidence). *)
     | Jmp_rm of { rm : Rm.t }
     | Jmp_rel of { target : Asm_core.Lowered_ast.branch }
     | Jcc_rel of { cc : Cc.t; target : Asm_core.Lowered_ast.branch }
@@ -2630,6 +2638,7 @@ module Lowered = struct
     | Cmov_r_rm { cc; reg; rm; _ } -> Fmt.pf ppf "cmov%s %a, %a" (Cc.name cc) Rm.pp rm Reg.pp reg
     | Ud2 -> Fmt.string ppf "ud2"
     | Pop { reg } -> Fmt.pf ppf "pop %a" Reg.pp reg
+    | Bswap_r { reg; _ } -> Fmt.pf ppf "bswap %a" Reg.pp reg
     | Jmp_rm { rm } -> Fmt.pf ppf "jmp *%a" Rm.pp rm
     | Jmp_rel { target } -> Fmt.pf ppf "jmp %a" Asm_core.Lowered_ast.pp_branch target
     | Jcc_rel { cc; target } ->
@@ -2720,6 +2729,7 @@ module Lowered = struct
         Cc.equal x.cc y.cc && x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
     | Ud2, Ud2 -> true
     | Pop x, Pop y -> Reg.equal x.reg y.reg
+    | Bswap_r x, Bswap_r y -> x.width = y.width && Reg.equal x.reg y.reg
     | Jmp_rm x, Jmp_rm y -> Rm.equal x.rm y.rm
     | Jmp_rel x, Jmp_rel y -> Asm_core.Lowered_ast.equal_branch x.target y.target
     | Jcc_rel x, Jcc_rel y ->
@@ -3587,6 +3597,11 @@ module Make (M : MODE) = struct
        any) is accepted and ignored rather than validated against
        [M.address_width]. *)
     (* only the address width: [decb]/[pushw] are generated rows, not this form *)
+    (* [bswap] takes no suffix; its register names the width *)
+    | "bswap", _ -> (
+        match s.Surface.ops with
+        | [ Operand.Reg r ] -> Ok (Instruction.mk Opcode.Bswap r.Reg.width s.Surface.ops)
+        | _ -> bad (`No_form "bswap"))
     | _, "pop" when suffix = None || suffix = Some M.address_width ->
         Ok (Instruction.mk Opcode.Pop M.address_width s.Surface.ops)
     | _, "push" when suffix = None || suffix = Some M.address_width ->
@@ -4723,6 +4738,9 @@ module Make (M : MODE) = struct
     | Opcode.Ret, [] -> Ok [ Lowered.Ret ]
     | Opcode.Ud2, [] -> Ok [ Lowered.Ud2 ]
     | Opcode.Pop, [ Operand.Reg r ] -> Ok [ Lowered.Pop { reg = r } ]
+    | Opcode.Bswap, [ Operand.Reg r ] when r.Reg.width = 32 || (r.Reg.width = 64 && M.rex_allowed)
+      ->
+        Ok [ Lowered.Bswap_r { width = r.Reg.width; reg = r } ]
     | Opcode.Jmp, [ Operand.Reg r ] -> Ok [ Lowered.Jmp_rm { rm = Rm.Reg r } ]
     (* [jmp *sym(,%reg,scale)] - an indirect jump through a jump-table entry
        (M5 corpus, asm/docs/corpus.md: siphash24.c/vmach.c's [switch] dispatch).
@@ -8277,6 +8295,29 @@ module Make (M : MODE) = struct
                    (Lowered.Pop
                       { reg = reg_at ~width:M.address_width (Int64.to_int r + rex_bit _rex 1) }))
                C.(prefixes_codec ** const ~width:5 0b01011L ** field ~width:3 "reg"));
+          (* [bswap r]: [0F C8+r], the register in the opcode's low three bits (REX.B for
+             r8-r15) and REX.W for the 64-bit form. Verified against real GNU as 2.44:
+             x86_64 [bswap %eax] -> [0f c8], [bswap %rdx] -> [48 0f ca], [bswap %r9d] ->
+             [41 0f c9], [bswap %r15] -> [49 0f cf]; x86_32 [bswap %esi] -> [0f ce]. A 16-bit
+             [bswap] is undefined and does not decode. *)
+          C.alt ~label:"bswap-r" ~priority:302
+            (C.iso_fun ~name:"bswap-r"
+               ~encode:(function
+                 | Lowered.Bswap_r { width; reg } ->
+                     Some
+                       ( prefixes_of ~width ~reg:0 ~rm:(Rm.Reg reg),
+                         ((), ((), Int64.of_int (reg.num land 7))) )
+                 | _ -> None)
+               ~decode:(fun (rex, ((), ((), r))) ->
+                 let width = width_of_prefixes rex in
+                 if width = 16 then None
+                 else
+                   Some
+                     (Lowered.Bswap_r
+                        { width; reg = reg_at ~width (Int64.to_int r + rex_bit rex 1) }))
+               C.(
+                 prefixes_codec ** const ~width:8 0x0FL ** const ~width:5 0b11001L
+                 ** field ~width:3 "reg"));
           C.alt ~label:"jmp-rm" ~priority:12
             (C.iso_fun ~name:"jmp-rm"
                ~encode:(function
@@ -9940,6 +9981,7 @@ module Make (M : MODE) = struct
           }
     | Lowered.Ud2 -> Some (Instruction.mk Opcode.Ud2 M.address_width [])
     | Lowered.Pop { reg } -> Some (Instruction.mk Opcode.Pop M.address_width [ Operand.Reg reg ])
+    | Lowered.Bswap_r { width; reg } -> Some (Instruction.mk Opcode.Bswap width [ Operand.Reg reg ])
     | Lowered.Jmp_rm { rm } ->
         Some
           {

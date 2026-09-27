@@ -328,8 +328,8 @@ let%expect_test "x86 descriptor labels are all present in the codec dump" =
     [ ("x86_32", X86_32_encode.components); ("x86_64", X86_64_encode.components) ];
   [%expect
     {|
-    x86_32: 172 alternatives, all descriptor labels present
-    x86_64: 173 alternatives, all descriptor labels present |}]
+    x86_32: 173 alternatives, all descriptor labels present
+    x86_64: 174 alternatives, all descriptor labels present |}]
 
 (* The word a descriptor predicts for [mnemonic x5, x6, x7]: rd=5, rs1=6, rs2=7. *)
 let%expect_test "M descriptors predict the assembled instruction word" =

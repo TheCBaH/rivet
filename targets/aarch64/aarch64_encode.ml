@@ -280,6 +280,12 @@ module Opcode = struct
     | Ubfiz
     | Sbfx
     | Sbfiz
+    | Rbit
+    | Rev16
+    | Rev32
+    | Rev
+    | Clz
+    | Cls
     | Stp
     | Ldp
     | Ldr
@@ -346,6 +352,12 @@ module Opcode = struct
     | Ubfiz -> "ubfiz"
     | Sbfx -> "sbfx"
     | Sbfiz -> "sbfiz"
+    | Rbit -> "rbit"
+    | Rev16 -> "rev16"
+    | Rev32 -> "rev32"
+    | Rev -> "rev"
+    | Clz -> "clz"
+    | Cls -> "cls"
     | Stp -> "stp"
     | Ldp -> "ldp"
     | Ldr -> "ldr"
@@ -420,6 +432,12 @@ module Opcode = struct
     | "ubfiz" -> Some Ubfiz
     | "sbfx" -> Some Sbfx
     | "sbfiz" -> Some Sbfiz
+    | "rbit" -> Some Rbit
+    | "rev16" -> Some Rev16
+    | "rev32" -> Some Rev32
+    | "rev" -> Some Rev
+    | "clz" -> Some Clz
+    | "cls" -> Some Cls
     | "stp" -> Some Stp
     | "ldp" -> Some Ldp
     | "ldr" -> Some Ldr
@@ -573,6 +591,31 @@ type ubfm_alias = Ubfx of int * int | Ubfiz of int * int
 let ubfm_alias_of ~datasize ~immr ~imms =
   if imms >= immr then Ubfx (immr, imms - immr + 1)
   else Ubfiz ((datasize - immr) mod datasize, imms + 1)
+
+(* The "data-processing (1 source)" operations: bit and byte reversal, and leading-bit counts.
+   [Rev32] (reverse the bytes in each 32-bit half) exists only for a 64-bit register, where its
+   opcode is the one [Rev] has for a 32-bit register. *)
+type dp1 = Rbit | Rev16 | Rev32 | Rev | Clz | Cls
+
+let dp1_name = function
+  | Rbit -> "rbit"
+  | Rev16 -> "rev16"
+  | Rev32 -> "rev32"
+  | Rev -> "rev"
+  | Clz -> "clz"
+  | Cls -> "cls"
+
+(* The 6-bit opcode for [op] at [width], or [None] where there is no such instruction. *)
+let dp1_opcode op ~width =
+  match (op, width) with
+  | Rbit, _ -> Some 0
+  | Rev16, _ -> Some 1
+  | Rev32, 64 -> Some 2
+  | Rev32, _ -> None
+  | Rev, 32 -> Some 2
+  | Rev, _ -> Some 3
+  | Clz, _ -> Some 4
+  | Cls, _ -> Some 5
 
 module Lowered = struct
   type t =
@@ -728,6 +771,10 @@ module Lowered = struct
     | Sdiv of { rd : Reg.t; rn : Reg.t; rm : Reg.t }
         (** [sdiv rd, rn, rm] - {!Udiv}'s signed sibling, the same word with bit 10 set
             (embedded-corpus evidence: CompCert's signed [/] and [%]). *)
+    | Dp1 of { op : dp1; rd : Reg.t; rn : Reg.t }
+        (** [rbit]/[rev16]/[rev32]/[rev]/[clz]/[cls rd, rn] - "data-processing (1 source)"
+            (embedded-corpus evidence: CompCert's [__builtin_bswap*], [__builtin_clz*] and
+            [__builtin_ctz*]). *)
     | Shiftv of { shift : int; rd : Reg.t; rn : Reg.t; rm : Reg.t }
         (** [lsl]/[lsr]/[asr]/[ror rd, rn, rm] - {!Udiv}'s "data-processing (2 source)" cousins,
             LSLV/LSRV/ASRV/RORV's register-specified shift amount, one word whose 2-bit [op2] is
@@ -862,6 +909,7 @@ module Lowered = struct
     | Sdiv { rd; rn; rm } -> Fmt.pf ppf "sdiv %a, %a, %a" Reg.pp rd Reg.pp rn Reg.pp rm
     | Shiftv { shift; rd; rn; rm } ->
         Fmt.pf ppf "%s %a, %a, %a" (shift_name shift) Reg.pp rd Reg.pp rn Reg.pp rm
+    | Dp1 { op; rd; rn } -> Fmt.pf ppf "%s %a, %a" (dp1_name op) Reg.pp rd Reg.pp rn
     | Cset { cond; rd } -> Fmt.pf ppf "cset %a, %s" Reg.pp rd (Cond.name cond)
     | Cbz { nz; rt; target } ->
         Fmt.pf ppf "%s %a, %a"
@@ -1018,6 +1066,7 @@ module Lowered = struct
         Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm && Reg.equal x.ra y.ra
     | Udiv x, Udiv y -> Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm
     | Sdiv x, Sdiv y -> Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm
+    | Dp1 x, Dp1 y -> x.op = y.op && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn
     | Shiftv x, Shiftv y ->
         x.shift = y.shift && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm
     | Cset x, Cset y -> Cond.equal x.cond y.cond && Reg.equal x.rd y.rd
@@ -1900,6 +1949,27 @@ let shiftv_alt ~shift =
       field ~width:1 "sf" ** const ~width:10 0b0011010110L
       ** reg_field ~width:64 ~sp:false "rm"
       ** const ~width:6 (Int64.of_int (0b001000 lor shift))
+      ** reg_field ~width:64 ~sp:false "rn"
+      ** reg_field ~width:64 ~sp:false "rd")
+
+(* [rbit]/[rev16]/[rev32]/[rev]/[clz]/[cls rd, rn]: [sf 1 0 11010110 00000 opcode Rn Rd]. Verified
+   against real aarch64-linux-gnu-as/objdump 2.44: [rbit w0, w1] -> [5ac00020], [rbit x2, x3] ->
+   [dac00062], [rev16 w4, w5] -> [5ac004a4], [rev16 x6, x7] -> [dac004e6], [rev32 x8, x9] ->
+   [dac00928], [rev w10, w11] -> [5ac0096a], [rev x12, x13] -> [dac00dac], [clz w14, w15] ->
+   [5ac011ee], [clz x16, x17] -> [dac01230], [cls w18, w19] -> [5ac01672]. *)
+let dp1_alt op ~width =
+  let opcode_bits = Option.get (dp1_opcode op ~width) in
+  C.iso_fun
+    ~name:(Printf.sprintf "%s-%s" (dp1_name op) (if width = 64 then "x" else "w"))
+    ~encode:(function
+      | Lowered.Dp1 { op = o; rd; rn } when o = op && rd.Reg.width = width ->
+          Some ((), ((), (rn, rd)))
+      | _ -> None)
+    ~decode:(fun ((), ((), (rn, rd))) ->
+      Some (Lowered.Dp1 { op; rd = { rd with Reg.width }; rn = { rn with Reg.width } }))
+    C.(
+      const ~width:1 (if width = 64 then 1L else 0L)
+      ** const ~width:21 (Int64.of_int ((0b101101011000000 lsl 6) lor opcode_bits))
       ** reg_field ~width:64 ~sp:false "rn"
       ** reg_field ~width:64 ~sp:false "rd")
 
@@ -2852,6 +2922,19 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.alt ~label:"lsrv" ~priority:102 (shiftv_alt ~shift:1);
            C.alt ~label:"asrv" ~priority:103 (shiftv_alt ~shift:2);
            C.alt ~label:"rorv" ~priority:104 (shiftv_alt ~shift:3);
+           (* the data-processing (1 source) family, one alternative per operation and width
+              (each with its own fixed opcode), priorities 130-140 *)
+           C.alt ~label:"rbit-w" ~priority:130 (dp1_alt Rbit ~width:32);
+           C.alt ~label:"rbit-x" ~priority:131 (dp1_alt Rbit ~width:64);
+           C.alt ~label:"rev16-w" ~priority:132 (dp1_alt Rev16 ~width:32);
+           C.alt ~label:"rev16-x" ~priority:133 (dp1_alt Rev16 ~width:64);
+           C.alt ~label:"rev32-x" ~priority:134 (dp1_alt Rev32 ~width:64);
+           C.alt ~label:"rev-w" ~priority:135 (dp1_alt Rev ~width:32);
+           C.alt ~label:"rev-x" ~priority:136 (dp1_alt Rev ~width:64);
+           C.alt ~label:"clz-w" ~priority:137 (dp1_alt Clz ~width:32);
+           C.alt ~label:"clz-x" ~priority:138 (dp1_alt Clz ~width:64);
+           C.alt ~label:"cls-w" ~priority:139 (dp1_alt Cls ~width:32);
+           C.alt ~label:"cls-x" ~priority:140 (dp1_alt Cls ~width:64);
            C.alt ~label:"fneg-d" ~priority:70 (fneg_alt ~double:true);
            C.alt ~label:"fneg-s" ~priority:71 (fneg_alt ~double:false);
            C.alt ~label:"fcvt-d-to-s" ~priority:72 (fcvt_alt ~src_double:true);
@@ -3140,6 +3223,20 @@ let lower_instruction state i =
       Ok [ Lowered.Udiv { rd; rn; rm } ]
   | Opcode.Sdiv, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
       Ok [ Lowered.Sdiv { rd; rn; rm } ]
+  | ( ((Opcode.Rbit | Opcode.Rev16 | Opcode.Rev32 | Opcode.Rev | Opcode.Clz | Opcode.Cls) as op),
+      [ Operand.Reg rd; Operand.Reg rn ] ) ->
+      let d =
+        match op with
+        | Opcode.Rbit -> Rbit
+        | Opcode.Rev16 -> Rev16
+        | Opcode.Rev32 -> Rev32
+        | Opcode.Rev -> Rev
+        | Opcode.Clz -> Clz
+        | _ -> Cls
+      in
+      if rd.Reg.width <> rn.Reg.width || dp1_opcode d ~width:rd.Reg.width = None then
+        bad (`Wrong_register_width { opcode = Opcode.name op; expected = 64 })
+      else Ok [ Lowered.Dp1 { op = d; rd; rn } ]
   | ( ((Opcode.Lsl | Opcode.Lsr | Opcode.Asr | Opcode.Ror) as op),
       [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ) ->
       let shift = match op with Opcode.Lsl -> 0 | Opcode.Lsr -> 1 | Opcode.Asr -> 2 | _ -> 3 in
@@ -3905,6 +4002,17 @@ let instruction_of_lowered ?(at = 0L) = function
           ops =
             [ Operand.Reg rt; Operand.Mem { Mem.base = rn; offset; writeback = false; pre = true } ];
         }
+  | Lowered.Dp1 { op; rd; rn } ->
+      let op =
+        match op with
+        | Rbit -> Opcode.Rbit
+        | Rev16 -> Opcode.Rev16
+        | Rev32 -> Opcode.Rev32
+        | Rev -> Opcode.Rev
+        | Clz -> Opcode.Clz
+        | Cls -> Opcode.Cls
+      in
+      Some { Instruction.op; ops = [ Operand.Reg rd; Operand.Reg rn ] }
   | Lowered.Shiftv { shift; rd; rn; rm } ->
       let op =
         match shift with 0 -> Opcode.Lsl | 1 -> Opcode.Lsr | 2 -> Opcode.Asr | _ -> Opcode.Ror

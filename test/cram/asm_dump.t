@@ -284,6 +284,7 @@
                                     d8               jcxz.d8(){0110011111100011 <target:8@0 pcrel8-branch>}
     [300 cost=0] mov-r64-simm32   mov-r64-simm32(){prefixes 11000111 modrm le32}
     [301 cost=0] mov-r64-imm64    mov-r64-imm64(){prefixes 10111 reg:3u le64}
+    [302 cost=0] bswap-r          bswap-r(){prefixes 00001111 11001 reg:3u}
   prefixes(){no-asz opsz no-rex}
   alu-acc-imm8-opcode(){opcode:8u}
   alu-acc-imm-opcode(){opcode:8u}
@@ -631,6 +632,7 @@
                                     d8               jecxz.d8(){0110011111100011 <target:8@0 pcrel8-branch>}
     [300 cost=0] mov-r64-simm32   mov-r64-simm32(){prefixes 11000111 modrm le32}
     [301 cost=0] mov-r64-imm64    mov-r64-imm64(){prefixes 10111 reg:3u le64}
+    [302 cost=0] bswap-r          bswap-r(){prefixes 00001111 11001 reg:3u}
   prefixes(){asz opsz rex}
   alu-acc-imm8-opcode(){opcode:8u}
   alu-acc-imm-opcode(){opcode:8u}
@@ -971,6 +973,9 @@
     [44 cost=0] ldst-x-imm       ldst-x-imm(){cond 000 p:1u u:1u 1 0 l:1u rn rt imm4h:4u 1 s:1u h:1u 1 imm4l:4u}
     [45 cost=0] ldst-x-reg       ldst-x-reg(){cond 000 p:1u u:1u 0 0 l:1u rn rt 0000 1 s:1u h:1u 1 rm}
     [46 cost=0] sbfx             sbfx(){cond 0111101 widthm1:5u rd lsb:5u 101 rn}
+    [47 cost=0] clz              clz(){cond 00010110 1111 rd 1111 0001 rm}
+    [48 cost=0] rev              rev(){cond 01101011 1111 rd 1111 0011 rm}
+    [49 cost=0] rev16            rev16(){cond 01101011 1111 rd 1111 1011 rm}
   cond[16]{cond:4u}
   rm(){rm:4u}
   rd(){rd:4u}
@@ -1272,6 +1277,17 @@
     [117 cost=0] ldrsh-x-roff     ldrsh-x-roff(){01 111000 10 1 rm option:3u s:1u 10 rn rt}
     [118 cost=0] ldrsw-x          ldrsw-x(){10 111001 10 offset-scaled4 rn rt}
     [119 cost=0] ldrsw-x-roff     ldrsw-x-roff(){10 111000 10 1 rm option:3u s:1u 10 rn rt}
+    [130 cost=0] rbit-w           rbit-w(){0 101101011000000000000 rn rd}
+    [131 cost=0] rbit-x           rbit-x(){1 101101011000000000000 rn rd}
+    [132 cost=0] rev16-w          rev16-w(){0 101101011000000000001 rn rd}
+    [133 cost=0] rev16-x          rev16-x(){1 101101011000000000001 rn rd}
+    [134 cost=0] rev32-x          rev32-x(){1 101101011000000000010 rn rd}
+    [135 cost=0] rev-w            rev-w(){0 101101011000000000010 rn rd}
+    [136 cost=0] rev-x            rev-x(){1 101101011000000000011 rn rd}
+    [137 cost=0] clz-w            clz-w(){0 101101011000000000100 rn rd}
+    [138 cost=0] clz-x            clz-x(){1 101101011000000000100 rn rd}
+    [139 cost=0] cls-w            cls-w(){0 101101011000000000101 rn rd}
+    [140 cost=0] cls-x            cls-x(){1 101101011000000000101 rn rd}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}
