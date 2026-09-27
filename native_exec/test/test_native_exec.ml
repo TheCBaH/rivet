@@ -240,9 +240,9 @@ let%expect_test "rodata, data and bss are placed, bound and readable back" =
 let maps () =
   In_channel.with_open_bin "/proc/self/maps" In_channel.input_all |> String.split_on_char '\n'
 
-(* The permissions of the /proc/self/maps entries overlapping [lo, hi), with adjacent entries of
-   the same permissions counted once: whether the kernel merges adjacent anonymous mappings (Linux
-   does) or lists them separately (qemu-user's emulated maps does) is not what is under test. *)
+(* The permissions of every /proc/self/maps entry overlapping [lo, hi). An
+   entry can extend past the range: the kernel merges adjacent anonymous
+   mappings that have the same permissions. *)
 let pages_within ~lo ~hi =
   List.filter_map
     (fun l ->
@@ -256,8 +256,6 @@ let pages_within ~lo ~hi =
           | _ -> None)
       | _ -> None)
     (maps ())
-  |> List.fold_left (fun acc p -> match acc with q :: _ when q = p -> acc | _ -> p :: acc) []
-  |> List.rev
 
 let%expect_test "no page is ever writable and executable" =
   let events = ref [] in

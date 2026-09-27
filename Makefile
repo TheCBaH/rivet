@@ -428,31 +428,6 @@ $(EMBED_QEMU_GOALS): asm-compcert-embed-qemu-%: asm-helpers
 	  ./_build/default/compcert_embed/targets/$*/test/qemu_diff.exe compcert_embed/test/corpus
 asm-compcert-embed-qemu: asm-compcert-embed-qemu-aarch64
 
-# T4 without an x86_64 machine: the x86_64 target's native suites as an
-# x86_64 process under qemu-x86_64. The bytecode builds here; only the OCaml
-# runtime and the C stubs are x86_64, cross-built by
-# tools/compcert-embed/x86_64-under-qemu.sh. Runs native_exec's tests, the
-# x86_64 Tier A report, and the corpus natively (and isolated) in-process.
-# Needs the cross toolchain, QEMU and network access for the sources.
-X86_UNDER_QEMU = $(CURDIR)/tools/compcert-embed/x86_64-under-qemu.sh
-.PHONY: asm-compcert-embed-x86_64-under-qemu
-asm-compcert-embed-x86_64-under-qemu: asm-submodules compcert-lib-embed-build-x86_64
-	$(X86_UNDER_QEMU) setup
-	cd $(ASM_DIR) && $(call embed_env,x86_64) opam exec -- dune build \
-	  native_exec/test/byte/native_exec_tests.bc \
-	  compcert_embed/targets/x86_64/test/tier_a_test.bc \
-	  compcert_embed/targets/x86_64/test/qemu_diff.bc
-	cd $(ASM_DIR)/_build/default/native_exec/test && rm -f *.corrected && \
-	  $(X86_UNDER_QEMU) run byte/native_exec_tests.bc inline-test-runner test_native_exec \
-	    -source-tree-root ../.. -diff-cmd - && \
-	  if ls *.corrected > /dev/null 2>&1; then diff -u test_native_exec.ml *.corrected; exit 1; fi
-	cd $(ASM_DIR)/_build/default/compcert_embed/targets/x86_64/test && \
-	  $(X86_UNDER_QEMU) run tier_a_test.bc ../../../../fixtures/compcert-3.17 | \
-	  diff -u $(CURDIR)/$(ASM_DIR)/compcert_embed/targets/x86_64/test/tier_a.expected -
-	cd $(ASM_DIR) && $(X86_UNDER_QEMU) run \
-	  _build/default/compcert_embed/targets/x86_64/test/qemu_diff.bc --native-only \
-	  compcert_embed/test/corpus
-
 # Compile-only soak for one target: SOAK_CYCLES compile+assemble cycles over
 # the corpus in one process, each checked against its first compile, with
 # heap and atom-table growth reported. Too slow for a test rule.
