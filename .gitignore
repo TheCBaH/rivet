@@ -16,3 +16,4 @@
 /compcert-export/
 /compcert-extraction-*.tar.gz
 /compcert-lib-*-embed/
+/.x86_64-under-qemu/

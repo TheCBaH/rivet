@@ -1,10 +1,27 @@
-(* Native_exec on hand-written aarch64 assembly: no CompCert involved. *)
+(* Native_exec on hand-written assembly for the host's ISA: no CompCert involved. Each program
+   exists for every 64-bit host the assembler targets (aarch64, x86_64, riscv64) and computes the
+   same results, so the expectations below hold on all of them. The x86_64 and riscv64 versions
+   were checked by assembling them with GNU as, linking a C harness and running it under
+   qemu-x86_64/qemu-riscv64. *)
 
 open Asm_core
 
+let host =
+  match Native_exec.host_isa with
+  | Some h -> h
+  | None -> failwith "native_exec tests need a host ISA the assembler targets"
+
+let for_host ~aarch64 ~x86_64 ~riscv64 =
+  match host with
+  | "aarch64" -> aarch64
+  | "x86_64" -> x86_64
+  | "riscv64" -> riscv64
+  | h -> failwith ("no hand-written program for " ^ h)
+
 let assemble text =
+  let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find host) in
   let source = Foundation.Span.source ~name:"hand.s" ~contents:text in
-  match Driver.Registry.Aarch64.assemble ~entry:"entry" ~unit_name:"hand" ~source () with
+  match D.assemble ~entry:"entry" ~unit_name:"hand" ~source () with
   | Ok l -> l
   | Error e -> failwith (Foundation.Diag.render e)
 
@@ -19,26 +36,65 @@ let run ?observe ?read_globals ?(io = io_of_string "") laid =
   | Ok o -> o
   | Error e -> failwith (Format.asprintf "%a" Native_exec.pp_error e)
 
-let return42 = assemble "\t.text\n\t.globl entry\nentry:\n\tmovz\tx0, #42\n\tret\n"
+let return42 =
+  assemble
+    (for_host ~aarch64:"\t.text\n\t.globl entry\nentry:\n\tmovz\tx0, #42\n\tret\n"
+       ~x86_64:{|	.text
+	.globl entry
+entry:
+	movl	$42, %eax
+	ret
+|}
+       ~riscv64:{|	.text
+	.globl entry
+entry:
+	li	a0, 42
+	ret
+|})
 
 let%expect_test "mov x0, #42; ret returns 42" =
   Printf.printf "%Ld\n" (run return42).value;
   [%expect {| 42 |}]
 
 (* Reads a u64 from io[0], stores it plus one at io[8], and copies io[16] to
-   io[17]; returns the incremented value. *)
+   io[17]; returns the incremented value. [io] arrives in the first argument register. *)
 let roundtrip =
   assemble
-    "\t.text\n\
-     \t.globl entry\n\
-     entry:\n\
-     \tldr\tx1, [x0]\n\
-     \tadd\tx1, x1, #1\n\
-     \tstr\tx1, [x0, #8]\n\
-     \tldrb\tw2, [x0, #16]\n\
-     \tstrb\tw2, [x0, #17]\n\
-     \tadd\tx0, x1, #0\n\
-     \tret\n"
+    (for_host
+       ~aarch64:
+         "\t.text\n\
+          \t.globl entry\n\
+          entry:\n\
+          \tldr\tx1, [x0]\n\
+          \tadd\tx1, x1, #1\n\
+          \tstr\tx1, [x0, #8]\n\
+          \tldrb\tw2, [x0, #16]\n\
+          \tstrb\tw2, [x0, #17]\n\
+          \tadd\tx0, x1, #0\n\
+          \tret\n"
+       ~x86_64:
+         {|	.text
+	.globl entry
+entry:
+	movq	(%rdi), %rax
+	addq	$1, %rax
+	movq	%rax, 8(%rdi)
+	movb	16(%rdi), %cl
+	movb	%cl, 17(%rdi)
+	ret
+|}
+       ~riscv64:
+         {|	.text
+	.globl entry
+entry:
+	ld	t0, 0(a0)
+	addi	t0, t0, 1
+	sd	t0, 8(a0)
+	lbu	t1, 16(a0)
+	sb	t1, 17(a0)
+	mv	a0, t0
+	ret
+|})
 
 let%expect_test "entry reads and writes the io buffer" =
   let io = io_of_string "\x10\x00\x00\x00\x00\x00\x00\x00" in
@@ -58,43 +114,114 @@ let%expect_test "entry reads and writes the io buffer" =
    .rodata word, a .data word and a .bss word it first writes. *)
 let segments =
   assemble
-    "\t.text\n\
-     \t.globl entry\n\
-     entry:\n\
-     \tadrp\tx1, ro\n\
-     \tadd\tx1, x1, :lo12:ro\n\
-     \tldr\tw2, [x1]\n\
-     \tadrp\tx1, counter\n\
-     \tadd\tx1, x1, :lo12:counter\n\
-     \tldr\tw3, [x1]\n\
-     \tadd\tw3, w3, #1\n\
-     \tstr\tw3, [x1]\n\
-     \tadrp\tx1, zeroed\n\
-     \tadd\tx1, x1, :lo12:zeroed\n\
-     \tldr\tw4, [x1]\n\
-     \tmovz\tw5, #100\n\
-     \tstr\tw5, [x1]\n\
-     \tadd\tw0, w2, w3\n\
-     \tadd\tw0, w0, w4\n\
-     \tret\n\
-     \t.section\t.rodata\n\
-     \t.balign 4\n\
-     ro:\n\
-     \t.word\t1000\n\
-     \t.data\n\
-     \t.balign 4\n\
-     \t.globl counter\n\
-     counter:\n\
-     \t.word\t7\n\
-     \t.type counter, @object\n\
-     \t.size counter, 4\n\
-     \t.bss\n\
-     \t.balign 4\n\
-     \t.globl zeroed\n\
-     zeroed:\n\
-     \t.space\t4\n\
-     \t.type zeroed, @object\n\
-     \t.size zeroed, 4\n"
+    (for_host
+       ~aarch64:
+         "\t.text\n\
+          \t.globl entry\n\
+          entry:\n\
+          \tadrp\tx1, ro\n\
+          \tadd\tx1, x1, :lo12:ro\n\
+          \tldr\tw2, [x1]\n\
+          \tadrp\tx1, counter\n\
+          \tadd\tx1, x1, :lo12:counter\n\
+          \tldr\tw3, [x1]\n\
+          \tadd\tw3, w3, #1\n\
+          \tstr\tw3, [x1]\n\
+          \tadrp\tx1, zeroed\n\
+          \tadd\tx1, x1, :lo12:zeroed\n\
+          \tldr\tw4, [x1]\n\
+          \tmovz\tw5, #100\n\
+          \tstr\tw5, [x1]\n\
+          \tadd\tw0, w2, w3\n\
+          \tadd\tw0, w0, w4\n\
+          \tret\n\
+          \t.section\t.rodata\n\
+          \t.balign 4\n\
+          ro:\n\
+          \t.word\t1000\n\
+          \t.data\n\
+          \t.balign 4\n\
+          \t.globl counter\n\
+          counter:\n\
+          \t.word\t7\n\
+          \t.type counter, @object\n\
+          \t.size counter, 4\n\
+          \t.bss\n\
+          \t.balign 4\n\
+          \t.globl zeroed\n\
+          zeroed:\n\
+          \t.space\t4\n\
+          \t.type zeroed, @object\n\
+          \t.size zeroed, 4\n"
+       ~x86_64:
+         {|	.text
+	.globl entry
+entry:
+	movl	ro(%rip), %edx
+	movl	counter(%rip), %ecx
+	addl	$1, %ecx
+	movl	%ecx, counter(%rip)
+	movl	zeroed(%rip), %esi
+	movl	$100, %r8d
+	movl	%r8d, zeroed(%rip)
+	leal	(%rdx,%rcx), %eax
+	addl	%esi, %eax
+	ret
+	.section	.rodata
+	.balign 4
+ro:
+	.long	1000
+	.data
+	.balign 4
+	.globl counter
+counter:
+	.long	7
+	.type counter, @object
+	.size counter, 4
+	.bss
+	.balign 4
+	.globl zeroed
+zeroed:
+	.space	4
+	.type zeroed, @object
+	.size zeroed, 4
+|}
+       ~riscv64:
+         {|	.text
+	.globl entry
+entry:
+	lla	t0, ro
+	lw	t1, 0(t0)
+	lla	t0, counter
+	lw	t2, 0(t0)
+	addi	t2, t2, 1
+	sw	t2, 0(t0)
+	lla	t0, zeroed
+	lw	t3, 0(t0)
+	li	t4, 100
+	sw	t4, 0(t0)
+	add	a0, t1, t2
+	add	a0, a0, t3
+	ret
+	.section	.rodata
+	.balign 4
+ro:
+	.word	1000
+	.data
+	.balign 4
+	.globl counter
+counter:
+	.word	7
+	.type counter, @object
+	.size counter, 4
+	.bss
+	.balign 4
+	.globl zeroed
+zeroed:
+	.space	4
+	.type zeroed, @object
+	.size zeroed, 4
+|})
 
 let%expect_test "rodata, data and bss are placed, bound and readable back" =
   let o = run ~read_globals:[ "counter"; "zeroed" ] segments in
@@ -113,9 +240,9 @@ let%expect_test "rodata, data and bss are placed, bound and readable back" =
 let maps () =
   In_channel.with_open_bin "/proc/self/maps" In_channel.input_all |> String.split_on_char '\n'
 
-(* The permissions of every /proc/self/maps entry overlapping [lo, hi). An
-   entry can extend past the range: the kernel merges adjacent anonymous
-   mappings that have the same permissions. *)
+(* The permissions of the /proc/self/maps entries overlapping [lo, hi), with adjacent entries of
+   the same permissions counted once: whether the kernel merges adjacent anonymous mappings (Linux
+   does) or lists them separately (qemu-user's emulated maps does) is not what is under test. *)
 let pages_within ~lo ~hi =
   List.filter_map
     (fun l ->
@@ -129,6 +256,8 @@ let pages_within ~lo ~hi =
           | _ -> None)
       | _ -> None)
     (maps ())
+  |> List.fold_left (fun acc p -> match acc with q :: _ when q = p -> acc | _ -> p :: acc) []
+  |> List.rev
 
 let%expect_test "no page is ever writable and executable" =
   let events = ref [] in

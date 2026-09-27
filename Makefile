@@ -387,10 +387,13 @@ embed_env = env -u COMPCERT_CONFIG \
 
 # What asm-compcert-embed-test-<target> builds and runs: the target's
 # library and its Tier A report (C -> assembly -> image against the
-# committed fixtures). The aarch64 suite also covers native execution and
-# native_exec, whose hand-written tests are aarch64 code.
+# committed fixtures), on any host. When the target is the host's own ISA it
+# also runs native_exec's hand-written tests, and on an aarch64 host the
+# aarch64 suite that runs CompCert's output natively.
+EMBED_HOST_ISA := $(shell uname -m | sed -e 's/^amd64$$/x86_64/' -e 's/^arm64$$/aarch64/')
 embed_suites = @compcert_embed/targets/$(1)/all @compcert_embed/targets/$(1)/runtest \
-  $(if $(filter aarch64,$(1)),@compcert_embed/test/runtest @native_exec/runtest)
+  $(if $(filter $(EMBED_HOST_ISA),$(1)),@native_exec/runtest \
+    $(if $(filter aarch64,$(1)),@compcert_embed/test/runtest))
 
 # In-process compile + assemble (+ native execution where the host runs the
 # target's ISA): asm/compcert_embed/, asm/native_exec/. Gated by
@@ -411,14 +414,61 @@ asm-compcert-embed-test-only: asm-compcert-embed-test-only-aarch64
 
 EMBED_ENV = $(call embed_env,aarch64)
 
-# The embedded corpus run natively and under qemu-aarch64 (the exec-ABI
-# helper), which must agree. Needs the helpers and QEMU, like the other oracle
-# legs, so it is not part of asm-compcert-embed-test.
-.PHONY: asm-compcert-embed-qemu asm-compcert-embed-soak
-asm-compcert-embed-qemu: asm-helpers
-	cd $(ASM_DIR) && $(EMBED_ENV) opam exec -- dune build compcert_embed/test/qemu_diff.exe
+# The embedded corpus under each target's QEMU (the exec-ABI helper), and
+# natively as well where the host runs that target's ISA; every result must
+# equal the program's recorded expectation. Needs the helpers and QEMU, like
+# the other oracle legs, so it is not part of asm-compcert-embed-test.
+EMBED_QEMU_GOALS := $(addprefix asm-compcert-embed-qemu-,$(FIXTURE_TARGETS))
+.PHONY: $(EMBED_QEMU_GOALS) asm-compcert-embed-qemu asm-compcert-embed-soak \
+  asm-compcert-embed-corpus-check
+$(EMBED_QEMU_GOALS): asm-compcert-embed-qemu-%: asm-helpers
+	cd $(ASM_DIR) && $(call embed_env,$*) opam exec -- \
+	  dune build compcert_embed/targets/$*/test/qemu_diff.exe
 	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers \
-	  ./_build/default/compcert_embed/test/qemu_diff.exe compcert_embed/test/corpus
+	  ./_build/default/compcert_embed/targets/$*/test/qemu_diff.exe compcert_embed/test/corpus
+asm-compcert-embed-qemu: asm-compcert-embed-qemu-aarch64
+
+# T4 without an x86_64 machine: the x86_64 target's native suites as an
+# x86_64 process under qemu-x86_64. The bytecode builds here; only the OCaml
+# runtime and the C stubs are x86_64, cross-built by
+# tools/compcert-embed/x86_64-under-qemu.sh. Runs native_exec's tests, the
+# x86_64 Tier A report, and the corpus natively (and isolated) in-process.
+# Needs the cross toolchain, QEMU and network access for the sources.
+X86_UNDER_QEMU = $(CURDIR)/tools/compcert-embed/x86_64-under-qemu.sh
+.PHONY: asm-compcert-embed-x86_64-under-qemu
+asm-compcert-embed-x86_64-under-qemu: asm-submodules compcert-lib-embed-build-x86_64
+	$(X86_UNDER_QEMU) setup
+	cd $(ASM_DIR) && $(call embed_env,x86_64) opam exec -- dune build \
+	  native_exec/test/byte/native_exec_tests.bc \
+	  compcert_embed/targets/x86_64/test/tier_a_test.bc \
+	  compcert_embed/targets/x86_64/test/qemu_diff.bc
+	cd $(ASM_DIR)/_build/default/native_exec/test && rm -f *.corrected && \
+	  $(X86_UNDER_QEMU) run byte/native_exec_tests.bc inline-test-runner test_native_exec \
+	    -source-tree-root ../.. -diff-cmd - && \
+	  if ls *.corrected > /dev/null 2>&1; then diff -u test_native_exec.ml *.corrected; exit 1; fi
+	cd $(ASM_DIR)/_build/default/compcert_embed/targets/x86_64/test && \
+	  $(X86_UNDER_QEMU) run tier_a_test.bc ../../../../fixtures/compcert-3.17 | \
+	  diff -u $(CURDIR)/$(ASM_DIR)/compcert_embed/targets/x86_64/test/tier_a.expected -
+	cd $(ASM_DIR) && $(X86_UNDER_QEMU) run \
+	  _build/default/compcert_embed/targets/x86_64/test/qemu_diff.bc --native-only \
+	  compcert_embed/test/corpus
+
+# Compile-only soak for one target: SOAK_CYCLES compile+assemble cycles over
+# the corpus in one process, each checked against its first compile, with
+# heap and atom-table growth reported. Too slow for a test rule.
+EMBED_SOAK_GOALS := $(addprefix asm-compcert-embed-soak-,$(FIXTURE_TARGETS))
+.PHONY: $(EMBED_SOAK_GOALS)
+$(EMBED_SOAK_GOALS): asm-compcert-embed-soak-%:
+	cd $(ASM_DIR) && $(call embed_env,$*) opam exec -- \
+	  dune build compcert_embed/targets/$*/test/tier_a_test.exe
+	cd $(ASM_DIR) && ./_build/default/compcert_embed/targets/$*/test/tier_a_test.exe \
+	  --soak compcert_embed/test/corpus $(SOAK_CYCLES)
+
+# Checks every corpus program's recorded expectation against gcc for the
+# host and each cross target, LP64 and ILP32. Needs the cross toolchains and
+# QEMU.
+asm-compcert-embed-corpus-check:
+	$(ASM_DIR)/compcert_embed/test/corpus-expect.sh $(ASM_DIR)/compcert_embed/test/corpus
 
 # Thousands of compile+run cycles in one process, reporting memory growth.
 # SOAK_CYCLES defaults to 10000.

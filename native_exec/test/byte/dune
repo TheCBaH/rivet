@@ -1,0 +1,13 @@
+; native_exec's inline tests as a plain bytecode program, for running on a host
+; the build machine cannot execute: dune links inline-test runners as
+; self-contained executables with the build machine's runtime, while plain
+; bytecode runs under any ocamlrun given the target's stub libraries (see
+; tools/compcert-embed/x86_64-under-qemu.sh).
+
+(executable
+ (name native_exec_tests)
+ (modes byte)
+ (link_flags (-linkall))
+ (libraries test_native_exec ppx_inline_test.runner.lib ppx_expect.evaluator)
+ (enabled_if
+  (= %{env:ASM_COMPCERT_EMBED=false} true)))
