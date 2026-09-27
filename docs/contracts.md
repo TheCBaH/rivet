@@ -414,6 +414,7 @@ Four categories, and the category decides what happens:
 | `.bss` | ● | ● | ● | ● | ● | ● | semantic | `Section {name = ".bss"; perms = rw-; nobits = true}` |
 | `.align <n>` | ● | ● | | | | | semantic | `Align {boundary = n}` — **bytes** |
 | `.balign <n>` | | | ● | ● | ● | ● | semantic | `Align {boundary = n}` — **bytes** |
+| `.p2align <e>` | ● | ● | ● | ● | ● | ● | semantic | `Align {boundary = 2^e}` — **exponent**, `0 ≤ e ≤ 29`; fill and max-skip operands rejected |
 | `.globl <s>` | ● | ● | ● | ● | ● | ● | semantic | `Global {name = s}` |
 | `.local <s>` | ● | ● | ● | ● | ● | ● | semantic | `Local {name = s}` |
 | `.weak <s>` | ● | ● | ● | ● | ● | ● | semantic | `Weak {name = s}` |
@@ -479,10 +480,14 @@ Notes on the rows that are not obvious:
   `.align` meaning a power of two on some targets — does not arise for the six
   targets here, and the table above is the checked claim rather than a general
   one. A target where it does arise states its own unit in its directive handler.
-  `.p2align` is the case where the unit genuinely differs, and it is **rejected**
-  rather than treated as a synonym: its argument is an exponent, so accepting it
-  as a byte count would align `.p2align 4` to four bytes instead of sixteen — a
-  valid image at wrong addresses, which is the worst shape a bug can take.
+  `.p2align` is the case where the unit genuinely differs, and it is never
+  treated as a synonym: its argument is an exponent, so reading it as a byte
+  count would align `.p2align 4` to four bytes instead of sixteen — a valid
+  image at wrong addresses, which is the worst shape a bug can take. It has its
+  own row, normalized to the byte count `2^e`. It first appeared in CompCert's
+  own runtime helpers (`runtime/x86_32/i64_{dtou,utod,utof}.S`,
+  `runtime/x86_64/i64_dtou.S`), which an image links when generated code
+  calls them.
 
 - **`@function` versus `%function` is the *comment introducer* leaking into the
   syntax.** ARM uses `@` for comments, so `@function` would be a comment; GAS
@@ -640,11 +645,6 @@ Recorded here so that "not in the matrix" never has to be interpreted:
   resolver. Accepting one would report bindable state the API cannot satisfy
 - symbol assignment (`name = expr`), rejected at simplify: it needs a symbol
   flavour the lowered AST does not have, and no CompCert output uses it
-- `.p2align`, rejected rather than treated as a synonym for `.balign`, because
-  its argument is an exponent. No fixture emits one; when one does, it is
-  normalized rather than listed, with a portable maximum exponent of 29 — the
-  31-bit `int` on the `linux/i386` and `linux/arm/v7` legs cannot represent
-  `1 lsl 30` as a positive `int`
 - `.include`, conditional assembly, repetition, user macros (§4.10, later)
 - any form of object-file output — the lowered module carries what an object file
   would carry precisely so that none is ever written

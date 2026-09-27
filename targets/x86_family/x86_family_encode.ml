@@ -4132,6 +4132,22 @@ module Make (M : MODE) = struct
             Ok (Instruction.mk Opcode.Add a.Reg.width s.Surface.ops)
         | _ -> widthed ~allow8:true Opcode.Add)
     | _, "sub" -> widthed ~allow8:true Opcode.Sub
+    (* [movabsq $imm64, %r64]: GNU as's explicit spelling of MOV r64, imm64 (REX.W B8+r), which
+       CompCert prints for a 64-bit constant no sign-extended imm32 can hold (its x86
+       TargetPrinter's [Pmovq_ri]). For such a constant [movq] already selects exactly that
+       ten-byte form, so the spelling is accepted there and only there: for a smaller constant
+       GNU as still emits ten bytes where [movq] picks a shorter form, and that is refused rather
+       than encoded differently. *)
+    | "movabsq", _ -> (
+        match s.Surface.ops with
+        | [ Operand.Imm v; Operand.Reg r ] when M.rex_allowed && r.Reg.width = 64 -> (
+            match Bigint.to_int64_opt v with
+            | Some n
+              when Int64.compare n (Int64.of_int32 Int32.min_int) < 0
+                   || Int64.compare n (Int64.of_int32 Int32.max_int) > 0 ->
+                Ok (Instruction.mk Opcode.Mov 64 s.Surface.ops)
+            | _ -> bad (`No_form "movabsq"))
+        | _ -> bad (`No_form "movabsq"))
     | _, "mov" -> widthed ~allow8:true ~allow16:true Opcode.Mov
     | _, "lea" -> widthed Opcode.Lea
     | _, "xor" -> widthed ~allow8:true Opcode.Xor
@@ -4645,6 +4661,22 @@ module Make (M : MODE) = struct
         | Ok (), Ok () ->
             Ok [ Lowered.Imul_r_rm { width = i.Instruction.width; reg = b; rm = Rm.Reg a } ]
         | Error e, _ | _, Error e -> Error e)
+    (* [imulq .L100(%rip), %rdi]: the memory-source form, which CompCert emits to multiply
+       by a 64-bit literal. A generated row covered only a constant displacement; this one
+       carries a symbolic one as a fixup, like every other [Rm.Mem] form. *)
+    | Opcode.Imul, [ Operand.Mem m; Operand.Reg r ] -> (
+        match width_ok r with
+        | Error e -> Error e
+        | Ok () -> Ok [ Lowered.Imul_r_rm { width = i.Instruction.width; reg = r; rm = Rm.Mem m } ])
+    | Opcode.Imul, [ Operand.Sym e; Operand.Reg r ] -> (
+        match width_ok r with
+        | Error e2 -> Error e2
+        | Ok () ->
+            Ok
+              [
+                Lowered.Imul_r_rm
+                  { width = i.Instruction.width; reg = r; rm = Rm.Mem (mem_of_symbol e) };
+              ])
     (* [imull $10000,%ebx] / [imulq $56,%rax]: GAS's two-operand form, same
        register read as [rm] and written as [reg] - not a genuine
        [imul $imm,src,dst] with independent operands, since nothing here
@@ -7836,14 +7868,18 @@ module Make (M : MODE) = struct
       C.alt ~label:"mov-r-imm" ~priority:2
         (C.iso_fun ~name:"mov-r-imm"
            ~encode:(function
-             | Lowered.Mov_r_imm { width; reg; imm } when width <> 8 ->
+             | Lowered.Mov_r_imm { width; reg; imm } when width <> 8 && width <> 64 ->
                  Some
                    ( prefixes_of ~width ~reg:0 ~rm:(Rm.Reg reg),
                      (((), Int64.of_int (reg.num land 7)), imm) )
              | _ -> None)
            ~decode:(fun (rex, (((), r), imm)) ->
              let width = width_of_prefixes rex in
-             (* The register lives in the opcode's own low 3 bits, not a ModR/M
+             (* REX.W [B8+r] carries an imm64, which is {!mov-r64-imm64}'s; read here as an
+                imm32 it would swallow the next instruction's bytes. *)
+             if width = 64 then None
+             else
+               (* The register lives in the opcode's own low 3 bits, not a ModR/M
                 reg field, so it is REX.B (mask 1) that extends it to r8-r15/
                 r8d-r15d, not {!reg_field}'s REX.R (mask 4) - confirmed against
                 real x86_64-linux-gnu-as: [movl $5, %r8d] -> [41 b8 05 00 00
@@ -7852,9 +7888,9 @@ module Make (M : MODE) = struct
                 correct, but canonical disassembly mislabelled the
                 destination as %eax/%rax/... (register 0), which does not
                 round-trip through real as back to the original bytes. *)
-             Some
-               (Lowered.Mov_r_imm
-                  { width; reg = reg_at ~width (Int64.to_int r + rex_bit rex 1); imm }))
+               Some
+                 (Lowered.Mov_r_imm
+                    { width; reg = reg_at ~width (Int64.to_int r + rex_bit rex 1); imm }))
            C.(
              prefixes_codec
              ** (const ~width:5 0b10111L ** field ~width:3 "reg")
@@ -8100,6 +8136,56 @@ module Make (M : MODE) = struct
                ~encode:(function Lowered.Ret -> Some () | _ -> None)
                ~decode:(fun () -> Some Lowered.Ret)
                C.(const ~width:8 0xc3L));
+          (* [movq $imm, %r64]: GNU as's choice of form depends on the value alone. One that
+             fits a sign-extended imm32 is REX.W [C7 /0] with four immediate bytes; any other is
+             REX.W [B8+r] with eight ([movabs], which is also what [movabsq] always spells).
+             Confirmed against real x86_64-linux-gnu-as 2.44: [movq $5, %rax] ->
+             [48 c7 c0 05 00 00 00], [movq $-1, %r9] -> [49 c7 c1 ff ff ff ff], [movq
+             $2147483648, %rax] -> [48 b8 00 00 00 80 00 00 00 00], [movq $0x4924924924924925,
+             %r11] -> [49 bb 25 49 92 24 49 92 24 49]. Before these two alternatives the imm32
+             [B8+r] form above took every width, so a 64-bit [movq $imm] came out as REX.W
+             [B8+r] with only four immediate bytes - a ten-byte instruction to the CPU, reading
+             the next instruction as the rest of its immediate. A symbolic 64-bit immediate
+             has no form here (it would need a sign-extended 32-bit fixup) and is refused. *)
+          C.alt ~label:"mov-r64-simm32" ~priority:300
+            (C.iso_fun ~name:"mov-r64-simm32"
+               ~encode:(function
+                 | Lowered.Mov_r_imm { width = 64; reg; imm = Disp.Const v } when fits_s32 v ->
+                     Some
+                       ( prefixes_of ~width:64 ~reg:0 ~rm:(Rm.Reg reg),
+                         ((), ({ re_reg = 0; re_rm = Rm.Reg reg }, v)) )
+                 | _ -> None)
+               ~decode:(fun (rex, ((), (e, v))) ->
+                 match (width_of_prefixes rex, e.re_reg, rm_of ~p:rex ~width:64 e.re_rm) with
+                 | 64, 0, Rm.Reg reg ->
+                     Some (Lowered.Mov_r_imm { width = 64; reg; imm = Disp.Const v })
+                 | _ -> None)
+               C.(
+                 prefixes_codec ** const ~width:8 0xC7L ** rm_codec
+                 ** le ~signedness:C.Signed ~width:32 "imm32"));
+          C.alt ~label:"mov-r64-imm64" ~priority:301
+            (C.iso_fun ~name:"mov-r64-imm64"
+               ~encode:(function
+                 | Lowered.Mov_r_imm { width = 64; reg; imm = Disp.Const v } when not (fits_s32 v)
+                   ->
+                     Some
+                       ( prefixes_of ~width:64 ~reg:0 ~rm:(Rm.Reg reg),
+                         (((), Int64.of_int (reg.num land 7)), v) )
+                 | _ -> None)
+               ~decode:(fun (rex, (((), r), v)) ->
+                 if width_of_prefixes rex <> 64 || fits_s32 v then None
+                 else
+                   Some
+                     (Lowered.Mov_r_imm
+                        {
+                          width = 64;
+                          reg = reg_at ~width:64 (Int64.to_int r + rex_bit rex 1);
+                          imm = Disp.Const v;
+                        }))
+               C.(
+                 prefixes_codec
+                 ** (const ~width:5 0b10111L ** field ~width:3 "reg")
+                 ** le ~signedness:C.Signed ~width:64 "imm64"));
           C.alt ~label:"mov-rm-imm8" ~priority:9
             (C.iso_fun ~name:"mov-rm-imm8"
                ~encode:(function
@@ -8635,8 +8721,11 @@ module Make (M : MODE) = struct
      lowered value, because [Codec] sits below [asm_core] and cannot mention
      [Expr]. Pairing them is by name, which is what a placement's name is for. *)
   (* A memory operand's symbolic displacement, under the name its placement
-     carries. Every lowered form that can hold a [Rm.Mem] can hold one, so this
-     asks the operand rather than enumerating the forms. *)
+     carries. Every lowered form that can hold a [Rm.Mem] can hold one, so every
+     such form must be listed in [expr_of_lowered] below: [form_of] cannot tell a
+     missing entry from a constant operand, and a form missing there silently
+     loses its displacement. 22 forms were missing, among them [cmp]/[add]/[xor]
+     with a memory source, which CompCert emits against RIP-relative literals. *)
   let disp_expr (rm : Rm.t) =
     match rm with Rm.Mem { Mem.disp = Disp.Sym e; _ } -> [ ("disp", e) ] | _ -> []
 
@@ -8658,7 +8747,29 @@ module Make (M : MODE) = struct
     | Lowered.Sse_mov_r_rm { rm; _ }
     | Lowered.Sse_mov_rm_r { rm; _ }
     | Lowered.Sse_binop_imm_r_rm { rm; _ }
-    | Lowered.Jmp_rm { rm } ->
+    | Lowered.Jmp_rm { rm }
+    | Lowered.Alu_r_rm { rm; _ }
+    | Lowered.Cvtf2i_r_rm { rm; _ }
+    | Lowered.Cvtsi2f_r_rm { rm; _ }
+    | Lowered.Imul_r_rm_imm { rm; _ }
+    | Lowered.Movd_rm_r { rm; _ }
+    | Lowered.Movsxd_r_rm { rm; _ }
+    | Lowered.Movx_r_rm { rm; _ }
+    | Lowered.Setcc_rm { rm; _ }
+    | Lowered.Shift1_rm { rm; _ }
+    | Lowered.Shift_cl_rm { rm; _ }
+    | Lowered.Shift_imm_rm { rm; _ }
+    | Lowered.Shld_imm_rm { rm; _ }
+    | Lowered.Test_rm_imm { rm; _ }
+    | Lowered.Unary_rm { rm; _ }
+    | Lowered.Vex_movd_rm_r { rm; _ }
+    | Lowered.Vex_movd_r_rm { rm; _ }
+    | Lowered.Vex_shift_imm_rm { rm; _ }
+    | Lowered.Xmm_shift_imm_rm { rm; _ }
+    | Lowered.Vex_binop_imm_rr_rm { src2 = rm; _ }
+    | Lowered.Vex_binop_rr_rm { src2 = rm; _ }
+    | Lowered.Vex_unop_imm_r_rm { src = rm; _ }
+    | Lowered.Vex_unop_r_rm { src = rm; _ } ->
         disp_expr rm
     | Lowered.Lea { mem; _ } | Lowered.Fpu_mem { mem; _ } -> disp_expr (Rm.Mem mem)
     | Lowered.Mov_r_imm { imm = Disp.Sym e; _ } | Lowered.Push_imm { imm = Disp.Sym e } ->
@@ -9524,6 +9635,12 @@ module Make (M : MODE) = struct
         go 0
 
   (* A mnemonic the hand-written forms do not know may be a generated row's. *)
+  (* GNU as's AT&T names for the sign-extend-accumulator forms whose generated rows carry the
+     Intel name: CompCert prints [cltd] before a 32-bit signed divide and [cqto] before a 64-bit
+     one (its x86 TargetPrinter's [Pcltd]/[Pcqto]). A row only exists in a mode where the form
+     does, so [cqto] stays unknown to x86-32, as it is to GNU as there. *)
+  let att_spelling = function "cltd" -> [ "cdq" ] | "cqto" -> [ "cqo" ] | _ -> []
+
   let simplify_instruction_ungated (s : Surface.t) =
     (* [rep movsb] reaches here as the mnemonic [rep] with a symbol operand [movsb]: a repeat
        prefix names the string-op row it is spelled with *)
@@ -9621,7 +9738,8 @@ module Make (M : MODE) = struct
           | Error e as err -> (
               let spellings =
                 match Target_error.kind (Err.Error.kind e) with
-                | `Unknown_instruction _ -> s.Surface.mnemonic :: inferred
+                | `Unknown_instruction _ ->
+                    (s.Surface.mnemonic :: att_spelling s.Surface.mnemonic) @ inferred
                 | _ -> [ s.Surface.mnemonic ]
               in
               match row spellings with Some i -> Ok i | None -> err)

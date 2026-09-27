@@ -22,6 +22,11 @@ external clear_cache : int64 -> int -> unit = "native_exec_clear_cache"
 external copy_in : int64 -> string -> unit = "native_exec_copy_in"
 external copy_out : int64 -> int -> string = "native_exec_copy_out"
 external call : int64 -> io -> int64 = "native_exec_call"
+external host_isa_stub : unit -> string = "native_exec_host_isa"
+
+(* The target name of the ISA this process runs, if it is one the assembler
+   targets. Only images for that target can be run here. *)
+let host_isa = match host_isa_stub () with "" -> None | s -> Some s
 
 (* What a run does to memory, in order, for tests to assert on. *)
 type event =
@@ -41,6 +46,8 @@ type error =
   | Signal of int  (** isolated only: the child was killed by this signal (OCaml numbering) *)
   | Timeout of float  (** isolated only: the call ran longer than this many seconds *)
   | Child of string  (** isolated only: the child failed before reporting a result *)
+  | Foreign_target of { target : string; host : string option }
+      (** the image was built for a target this host cannot run in process *)
 
 let signal_name n =
   List.assoc_opt n
@@ -64,6 +71,9 @@ let pp_error ppf = function
   | Signal n -> Fmt.pf ppf "generated code was killed by %s" (signal_name n)
   | Timeout t -> Fmt.pf ppf "generated code ran longer than %gs" t
   | Child m -> Fmt.pf ppf "isolated run failed: %s" m
+  | Foreign_target { target; host } ->
+      Fmt.pf ppf "%s code cannot run natively on this host (%s)" target
+        (Option.value host ~default:"an ISA no target matches")
 
 let align_up n a = if a <= 1 then n else (n + a - 1) / a * a
 
@@ -209,6 +219,12 @@ let run_isolated ~timeout_s ?read_globals laid ~(io : io) =
           | Error e -> Error e)
       | Unix.WEXITED n -> Error (Child (Printf.sprintf "exited with status %d and no result" n)))
 
-let run ?observe ?read_globals ?(isolate = false) ?(timeout_s = 10.0) laid ~io =
-  if isolate then run_isolated ~timeout_s ?read_globals laid ~io
-  else run_here ?observe ?read_globals laid ~io
+(* [target] names the target [laid] was assembled for. When it is given and
+   is not the host's ISA, nothing is mapped or called: running another ISA's
+   bytes in this process would fault at best. *)
+let run ?target ?observe ?read_globals ?(isolate = false) ?(timeout_s = 10.0) laid ~io =
+  match target with
+  | Some t when host_isa <> Some t -> Error (Foreign_target { target = t; host = host_isa })
+  | _ ->
+      if isolate then run_isolated ~timeout_s ?read_globals laid ~io
+      else run_here ?observe ?read_globals laid ~io

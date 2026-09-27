@@ -15,4 +15,4 @@
 /compcert-export.tar.gz
 /compcert-export/
 /compcert-extraction-*.tar.gz
-/compcert-lib-aarch64-embed/
+/compcert-lib-*-embed/

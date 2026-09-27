@@ -282,6 +282,8 @@
                                     d8               jecxz.d8(){11100011 <target:8@0 pcrel8-branch>}
     [204 cost=0] short-jcxz       relax jcxz
                                     d8               jcxz.d8(){0110011111100011 <target:8@0 pcrel8-branch>}
+    [300 cost=0] mov-r64-simm32   mov-r64-simm32(){prefixes 11000111 modrm le32}
+    [301 cost=0] mov-r64-imm64    mov-r64-imm64(){prefixes 10111 reg:3u le64}
   prefixes(){no-asz opsz no-rex}
   alu-acc-imm8-opcode(){opcode:8u}
   alu-acc-imm-opcode(){opcode:8u}
@@ -338,6 +340,7 @@
   vex3-map2-unop-op[18]{opcode:8u}
   evex-ps-op[8]{opcode:8u}
   evex-pd-op[8]{opcode:8u}
+  le64(){imm64:64u}
   alt opsz
     [0 cost=0] opsz-present     opsz-present(){01100110}
     [1 cost=0] opsz-absent      opsz-absent(){()}
@@ -626,6 +629,8 @@
                                     d8               jrcxz.d8(){11100011 <target:8@0 pcrel8-branch>}
     [204 cost=0] short-jecxz      relax jecxz
                                     d8               jecxz.d8(){0110011111100011 <target:8@0 pcrel8-branch>}
+    [300 cost=0] mov-r64-simm32   mov-r64-simm32(){prefixes 11000111 modrm le32}
+    [301 cost=0] mov-r64-imm64    mov-r64-imm64(){prefixes 10111 reg:3u le64}
   prefixes(){asz opsz rex}
   alu-acc-imm8-opcode(){opcode:8u}
   alu-acc-imm-opcode(){opcode:8u}
@@ -685,6 +690,7 @@
   vex3-map2-unop-op[18]{opcode:8u}
   evex-ps-op[8]{opcode:8u}
   evex-pd-op[8]{opcode:8u}
+  le64(){imm64:64u}
   alt opsz
     [0 cost=0] opsz-present     opsz-present(){01100110}
     [1 cost=0] opsz-absent      opsz-absent(){()}
@@ -923,7 +929,7 @@
     [2 cost=0] movt             movt(){cond 00110100 <imm:4@12 movt-abs> rd <imm:12@0 movt-abs>}
     [3 cost=0] dp-imm           dp-imm(){cond 001 dp:4u s:1u rn rd modimm}
     [4 cost=0] dp-reg           dp-reg(){cond 000 dp:4u s:1u rn rd shift-amount:5u shift-kind:2u 0 rm}
-    [5 cost=0] ldst-imm         ldst-imm(){cond 010 1 u:1u b:1u w:1u l:1u rn rt imm12:12u}
+    [5 cost=0] ldst-imm         ldst-imm(){cond 010 p:1u u:1u b:1u w:1u l:1u rn rt imm12:12u}
     [6 cost=0] ldst-reg         ldst-reg(){cond 011 1 u:1u b:1u 0 l:1u rn rt shift-amount:5u shift-kind:2u 0 rm}
     [7 cost=0] udf              udf(){1110 01111111 imm12:12u 1111 imm4:4u}
     [8 cost=0] bl               bl(){cond 1011 <target:24@0 pcrel-call>}
@@ -962,6 +968,9 @@
     [41 cost=0] vldr-lit-d       vldr-lit-d(){cond 1101 1 D:1u 0 1 1111 Vd:4u 1011 <target:8@0 pcrel-vldr8>}
     [42 cost=0] vldr-lit-s       vldr-lit-s(){cond 1101 1 D:1u 0 1 1111 Vd:4u 1010 <target:8@0 pcrel-vldr8>}
     [43 cost=0] umull            umull(){cond 00001 00 s:1u rdhi rdlo rm 1001 rn}
+    [44 cost=0] ldst-x-imm       ldst-x-imm(){cond 000 p:1u u:1u 1 0 l:1u rn rt imm4h:4u 1 s:1u h:1u 1 imm4l:4u}
+    [45 cost=0] ldst-x-reg       ldst-x-reg(){cond 000 p:1u u:1u 0 0 l:1u rn rt 0000 1 s:1u h:1u 1 rm}
+    [46 cost=0] sbfx             sbfx(){cond 0111101 widthm1:5u rd lsb:5u 101 rn}
   cond[16]{cond:4u}
   rm(){rm:4u}
   rd(){rd:4u}
@@ -1248,6 +1257,21 @@
     [99 cost=0] ldr64-post       ldr64-post(){11 111000 01 0 imm9-scaled1 01 rn rt}
     [100 cost=0] str64-post       str64-post(){11 111000 00 0 imm9-scaled1 01 rn rt}
     [101 cost=0] sbfm             sbfm(){sf:1u 00100110 N:1u immr:6u imms:6u rn rd}
+    [102 cost=0] lsrv             lsrv(){sf:1u 0011010110 rm 001001 rn rd}
+    [103 cost=0] asrv             asrv(){sf:1u 0011010110 rm 001010 rn rd}
+    [104 cost=0] rorv             rorv(){sf:1u 0011010110 rm 001011 rn rd}
+    [105 cost=0] fcvtzu-d         fcvtzu-d(){sf:1u 0011110 01 111001000000 rn:5u rd:5u}
+    [106 cost=0] fcvtzu-s         fcvtzu-s(){sf:1u 0011110 00 111001000000 rn:5u rd:5u}
+    [110 cost=0] ldrsb-w          ldrsb-w(){00 111001 11 offset-scaled1 rn rt}
+    [111 cost=0] ldrsb-w-roff     ldrsb-w-roff(){00 111000 11 1 rm option:3u s:1u 10 rn rt}
+    [112 cost=0] ldrsb-x          ldrsb-x(){00 111001 10 offset-scaled1 rn rt}
+    [113 cost=0] ldrsb-x-roff     ldrsb-x-roff(){00 111000 10 1 rm option:3u s:1u 10 rn rt}
+    [114 cost=0] ldrsh-w          ldrsh-w(){01 111001 11 offset-scaled2 rn rt}
+    [115 cost=0] ldrsh-w-roff     ldrsh-w-roff(){01 111000 11 1 rm option:3u s:1u 10 rn rt}
+    [116 cost=0] ldrsh-x          ldrsh-x(){01 111001 10 offset-scaled2 rn rt}
+    [117 cost=0] ldrsh-x-roff     ldrsh-x-roff(){01 111000 10 1 rm option:3u s:1u 10 rn rt}
+    [118 cost=0] ldrsw-x          ldrsw-x(){10 111001 10 offset-scaled4 rn rt}
+    [119 cost=0] ldrsw-x-roff     ldrsw-x-roff(){10 111000 10 1 rm option:3u s:1u 10 rn rt}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}

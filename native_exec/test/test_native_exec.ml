@@ -188,3 +188,23 @@ let%expect_test "10,000 map/run/unmap cycles leave the mapping count unchanged" 
   Printf.printf "wrong results: %d, maps before %s after\n" !bad
     (if before = after then "=" else Printf.sprintf "%d <> %d" before after);
   [%expect {| wrong results: 0, maps before = after |}]
+
+let%expect_test "an image for another target is refused before anything is mapped" =
+  (* arm is never a host ISA: AArch32 code cannot run in a 64-bit process. *)
+  let events = ref 0 in
+  (match
+     Native_exec.run ~target:"arm" ~observe:(fun _ -> incr events) return42 ~io:(io_of_string "")
+   with
+  | Ok _ -> print_endline "unexpectedly Ok"
+  | Error (Native_exec.Foreign_target { target; _ }) ->
+      Printf.printf "refused %s, events %d\n" target !events
+  | Error e -> Format.printf "other error: %a\n" Native_exec.pp_error e);
+  [%expect {| refused arm, events 0 |}]
+
+let%expect_test "the host's own target name is accepted" =
+  match Native_exec.host_isa with
+  | None -> print_endline "no host ISA"
+  | Some isa ->
+      Printf.printf "%Ld\n"
+        (Result.get_ok (Native_exec.run ~target:isa return42 ~io:(io_of_string ""))).value;
+      [%expect {| 42 |}]

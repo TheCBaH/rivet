@@ -273,14 +273,21 @@ module Opcode = struct
     | Sdiv
     | Cset
     | Lsl
+    | Lsr
+    | Asr
+    | Ror
     | Ubfx
     | Ubfiz
     | Sbfx
+    | Sbfiz
     | Stp
     | Ldp
     | Ldr
     | Ldrb
     | Ldrh
+    | Ldrsb
+    | Ldrsh
+    | Ldrsw
     | Str
     | Strb
     | Strh
@@ -315,6 +322,7 @@ module Opcode = struct
     | Fneg
     | Fcvt
     | Fcvtzs
+    | Fcvtzu
     | Tst
 
   let name = function
@@ -331,13 +339,20 @@ module Opcode = struct
     | Sdiv -> "sdiv"
     | Cset -> "cset"
     | Lsl -> "lsl"
+    | Lsr -> "lsr"
+    | Asr -> "asr"
+    | Ror -> "ror"
     | Ubfx -> "ubfx"
     | Ubfiz -> "ubfiz"
     | Sbfx -> "sbfx"
+    | Sbfiz -> "sbfiz"
     | Stp -> "stp"
     | Ldp -> "ldp"
     | Ldr -> "ldr"
     | Ldrb -> "ldrb"
+    | Ldrsb -> "ldrsb"
+    | Ldrsh -> "ldrsh"
+    | Ldrsw -> "ldrsw"
     | Ldrh -> "ldrh"
     | Str -> "str"
     | Strb -> "strb"
@@ -373,6 +388,7 @@ module Opcode = struct
     | Fneg -> "fneg"
     | Fcvt -> "fcvt"
     | Fcvtzs -> "fcvtzs"
+    | Fcvtzu -> "fcvtzu"
     | Tst -> "tst"
 
   (* The surface spellings this target accepts, and the only place the mapping
@@ -397,14 +413,21 @@ module Opcode = struct
     | "sdiv" -> Some Sdiv
     | "cset" -> Some Cset
     | "lsl" -> Some Lsl
+    | "lsr" -> Some Lsr
+    | "asr" -> Some Asr
+    | "ror" -> Some Ror
     | "ubfx" -> Some Ubfx
     | "ubfiz" -> Some Ubfiz
     | "sbfx" -> Some Sbfx
+    | "sbfiz" -> Some Sbfiz
     | "stp" -> Some Stp
     | "ldp" -> Some Ldp
     | "ldr" -> Some Ldr
     | "ldrb" -> Some Ldrb
     | "ldrh" -> Some Ldrh
+    | "ldrsb" -> Some Ldrsb
+    | "ldrsh" -> Some Ldrsh
+    | "ldrsw" -> Some Ldrsw
     | "str" -> Some Str
     | "strb" -> Some Strb
     | "strh" -> Some Strh
@@ -438,6 +461,7 @@ module Opcode = struct
     | "fneg" -> Some Fneg
     | "fcvt" -> Some Fcvt
     | "fcvtzs" -> Some Fcvtzs
+    | "fcvtzu" -> Some Fcvtzu
     | "tst" -> Some Tst
     | m ->
         if String.length m > 2 && String.sub m 0 2 = "b." then
@@ -475,6 +499,7 @@ let access_all = [ B; H; W; X ]
 (* The register a load or store names is 32-bit for every size but the last:
    [ldrb w0] reads one byte into a [w] register. *)
 let access_reg_width = function X -> 64 | B | H | W -> 32
+let sx_mnemonic = function B -> "ldrsb" | H -> "ldrsh" | W | X -> "ldrsw"
 
 let ldst_mnemonic ~size ~load =
   (if load then "ldr" else "str") ^ match size with B -> "b" | H -> "h" | W | X -> ""
@@ -614,6 +639,11 @@ module Lowered = struct
     | Ldst_uoff of { size : access_size; load : bool; rt : Reg.t; rn : Reg.t; offset : Disp.t }
         (** One addressing mode, eight forms. The size decides the register width, the field scale
             and the relocation kind at once, so they cannot disagree. *)
+    | Ldst_sx of { size : access_size; rt : Reg.t; rn : Reg.t; offset : Disp.t }
+        (** [ldrsb]/[ldrsh]/[ldrsw rt, addr] - the sign-extending loads: {!Ldst_uoff}'s word, both
+            of its addressing modes, with [opc] [10] for a 64-bit [rt] and [11] for a 32-bit one
+            ([ldrsw] has only the 64-bit form). Embedded-corpus evidence: CompCert's [signed char]
+            and [short] loads. *)
     | Ldst_post of { size : access_size; load : bool; rt : Reg.t; rn : Reg.t; offset : int64 }
         (** [ldr]/[str] (and the byte/halfword forms) post-indexed, [[xn], #off] with a signed,
             unscaled 9-bit [offset] (embedded-corpus evidence: CompCert's inline struct copy,
@@ -698,12 +728,14 @@ module Lowered = struct
     | Sdiv of { rd : Reg.t; rn : Reg.t; rm : Reg.t }
         (** [sdiv rd, rn, rm] - {!Udiv}'s signed sibling, the same word with bit 10 set
             (embedded-corpus evidence: CompCert's signed [/] and [%]). *)
-    | Lslv of { rd : Reg.t; rn : Reg.t; rm : Reg.t }
-        (** [lsl rd, rn, rm] - {!Udiv}'s "data-processing (2 source)" cousin, LSLV's
-            register-specified shift amount (M5 corpus evidence: asm/docs/corpus.md's [nsieve.c]/
-            [nsievebits.c]; the immediate-shift-amount form, a [UBFM] alias, is not evidenced and
-            not implemented). [lsr]/[asr]/[ror] share the identical shape with a different 6-bit
-            opcode field but are not evidenced, so none is implemented alongside it. *)
+    | Shiftv of { shift : int; rd : Reg.t; rn : Reg.t; rm : Reg.t }
+        (** [lsl]/[lsr]/[asr]/[ror rd, rn, rm] - {!Udiv}'s "data-processing (2 source)" cousins,
+            LSLV/LSRV/ASRV/RORV's register-specified shift amount, one word whose 2-bit [op2] is
+            [shift] ({!shift_name}'s numbering). [lsl] is M5 corpus evidence (asm/docs/corpus.md's
+            [nsieve.c]/[nsievebits.c]); [lsr]/[asr]/[ror] are what CompCert prints for its
+            [Plsrv]/[Pasrv]/[Prorv] (embedded-corpus evidence: 64-bit variable shifts). The
+            immediate-shift-amount forms, [UBFM]/[SBFM] aliases, are not evidenced and not
+            implemented: CompCert prints those as [ubfx]/[ubfiz]/[sbfx]. *)
     | Cset of { cond : Cond.t; rd : Reg.t }
         (** [cset rd, cc] - [csinc rd, zr, zr, invert(cc)], the general condition-select family's
             "materialize a 0/1 boolean" alias (M5 corpus evidence: asm/docs/corpus.md's [chomp.c]/
@@ -768,8 +800,10 @@ module Lowered = struct
     | Fcvtzs of { rd : Reg.t; rn : Freg.t }
         (** [fcvtzs rd, rn] - float-to-signed-integer, round toward zero: the "conversion between
             floating-point and integer" word shape with [rmode] = [11], [opcode] = [000] (M5
-            corpus evidence: asm/docs/corpus.md's binarytrees.c/perlin.c). [fcvtzu] shares the
-            identical shape at [opcode] = [001] but is not evidenced. *)
+            corpus evidence: asm/docs/corpus.md's binarytrees.c/perlin.c). *)
+    | Fcvtzu of { rd : Reg.t; rn : Freg.t }
+        (** [fcvtzu rd, rn] - {!Fcvtzs}'s unsigned sibling, the same word at [opcode] = [001]
+            (embedded-corpus evidence: CompCert's [double] to [unsigned long] conversion). *)
     | Fmov_from_gpr of { rd : Freg.t; rn : Reg.t }
         (** [fmov dd, xn] / [fmov sd, wn] - move a general register's raw bits into a scalar FP
             register, no conversion (M5 corpus evidence: asm/docs/corpus.md's [fmov d9, xzr]/
@@ -820,11 +854,14 @@ module Lowered = struct
         | Ubfx (lsb, width) -> Fmt.pf ppf "ubfx %a, %a, #%d, #%d" Reg.pp rd Reg.pp rn lsb width
         | Ubfiz (lsb, width) -> Fmt.pf ppf "ubfiz %a, %a, #%d, #%d" Reg.pp rd Reg.pp rn lsb width)
     | Sxtw { rd; rn } -> Fmt.pf ppf "sxtw %a, %a" Reg.pp rd Reg.pp rn
-    | Sbfm { rd; rn; immr; imms } ->
-        Fmt.pf ppf "sbfx %a, %a, #%d, #%d" Reg.pp rd Reg.pp rn immr (imms - immr + 1)
+    | Sbfm { rd; rn; immr; imms } -> (
+        match ubfm_alias_of ~datasize:rd.Reg.width ~immr ~imms with
+        | Ubfx (lsb, width) -> Fmt.pf ppf "sbfx %a, %a, #%d, #%d" Reg.pp rd Reg.pp rn lsb width
+        | Ubfiz (lsb, width) -> Fmt.pf ppf "sbfiz %a, %a, #%d, #%d" Reg.pp rd Reg.pp rn lsb width)
     | Udiv { rd; rn; rm } -> Fmt.pf ppf "udiv %a, %a, %a" Reg.pp rd Reg.pp rn Reg.pp rm
     | Sdiv { rd; rn; rm } -> Fmt.pf ppf "sdiv %a, %a, %a" Reg.pp rd Reg.pp rn Reg.pp rm
-    | Lslv { rd; rn; rm } -> Fmt.pf ppf "lsl %a, %a, %a" Reg.pp rd Reg.pp rn Reg.pp rm
+    | Shiftv { shift; rd; rn; rm } ->
+        Fmt.pf ppf "%s %a, %a, %a" (shift_name shift) Reg.pp rd Reg.pp rn Reg.pp rm
     | Cset { cond; rd } -> Fmt.pf ppf "cset %a, %s" Reg.pp rd (Cond.name cond)
     | Cbz { nz; rt; target } ->
         Fmt.pf ppf "%s %a, %a"
@@ -834,6 +871,9 @@ module Lowered = struct
         Fmt.pf ppf "%s %a, [%a], #%Ld" (ldst_mnemonic ~size ~load) Reg.pp rt Reg.pp rn offset
     | Ldst_uoff { size; load; rt; rn; offset } ->
         Fmt.pf ppf "%s %a, %a" (ldst_mnemonic ~size ~load) Reg.pp rt Mem.pp
+          { Mem.base = rn; offset; writeback = false; pre = true }
+    | Ldst_sx { size; rt; rn; offset } ->
+        Fmt.pf ppf "%s %a, %a" (sx_mnemonic size) Reg.pp rt Mem.pp
           { Mem.base = rn; offset; writeback = false; pre = true }
     | Ldst_uoff_f { load; rt; rn; offset; _ } ->
         Fmt.pf ppf "%s %a, %a"
@@ -916,6 +956,7 @@ module Lowered = struct
     | Fneg { rd; rn } -> Fmt.pf ppf "fneg %a, %a" Freg.pp rd Freg.pp rn
     | Fcvt { rd; rn } -> Fmt.pf ppf "fcvt %a, %a" Freg.pp rd Freg.pp rn
     | Fcvtzs { rd; rn } -> Fmt.pf ppf "fcvtzs %a, %a" Reg.pp rd Freg.pp rn
+    | Fcvtzu { rd; rn } -> Fmt.pf ppf "fcvtzu %a, %a" Reg.pp rd Freg.pp rn
     | Fmov_from_gpr { rd; rn } -> Fmt.pf ppf "fmov %a, %a" Freg.pp rd Reg.pp rn
     | Fmov_reg { rd; rn } -> Fmt.pf ppf "fmov %a, %a" Freg.pp rd Freg.pp rn
 
@@ -946,6 +987,9 @@ module Lowered = struct
     | Ldst_uoff x, Ldst_uoff y ->
         x.size = y.size && x.load = y.load && Reg.equal x.rt y.rt && Reg.equal x.rn y.rn
         && Disp.equal x.offset y.offset
+    | Ldst_sx x, Ldst_sx y ->
+        x.size = y.size && Reg.equal x.rt y.rt && Reg.equal x.rn y.rn
+        && Disp.equal x.offset y.offset
     | Ldst_uoff_f x, Ldst_uoff_f y ->
         x.double = y.double && x.load = y.load && Freg.equal x.rt y.rt && Reg.equal x.rn y.rn
         && Disp.equal x.offset y.offset
@@ -974,7 +1018,8 @@ module Lowered = struct
         Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm && Reg.equal x.ra y.ra
     | Udiv x, Udiv y -> Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm
     | Sdiv x, Sdiv y -> Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm
-    | Lslv x, Lslv y -> Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm
+    | Shiftv x, Shiftv y ->
+        x.shift = y.shift && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm
     | Cset x, Cset y -> Cond.equal x.cond y.cond && Reg.equal x.rd y.rd
     | Csel x, Csel y ->
         Cond.equal x.cond y.cond && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn
@@ -998,6 +1043,7 @@ module Lowered = struct
     | Fneg x, Fneg y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Fcvt x, Fcvt y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Fcvtzs x, Fcvtzs y -> Reg.equal x.rd y.rd && Freg.equal x.rn y.rn
+    | Fcvtzu x, Fcvtzu y -> Reg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Fmov_from_gpr x, Fmov_from_gpr y -> Freg.equal x.rd y.rd && Reg.equal x.rn y.rn
     | Fmov_reg x, Fmov_reg y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | _ -> false
@@ -1417,6 +1463,68 @@ let ldst_roff_alt ~size ~load =
       ** reg_field ~width:64 ~sp:true "rn"
       ** reg_field ~width:rt_width ~sp:false "rt")
 
+(* [ldrsb]/[ldrsh]/[ldrsw] - {!ldst_alt}'s word with [opc] [10] (64-bit [rt]) or [11] (32-bit),
+   in both addressing modes. Verified against real aarch64-linux-gnu-as/objdump 2.44:
+   [ldrsb w0, [x1, #3]] -> [39c00c20], [ldrsb x2, [x3]] -> [39800062], [ldrsh w4, [x5, #6]] ->
+   [79c00ca4], [ldrsh x6, [sp, #8]] -> [798013e6], [ldrsw x7, [x8, #12]] -> [b9800d07],
+   [ldrsb w9, [x10, x11]] -> [38eb6949], [ldrsh x12, [x13, x14, lsl #1]] -> [78ae79ac],
+   [ldrsw x15, [x16, w17, sxtw #2]] -> [b8b1da0f]. *)
+let sx_opc ~x = if x then 0b10L else 0b11L
+
+let ldst_sx_alt ~size ~x =
+  let rt_width = if x then 64 else 32 in
+  C.iso_fun
+    ~name:(Printf.sprintf "%s-%s" (sx_mnemonic size) (if x then "x" else "w"))
+    ~encode:(function
+      | Lowered.Ldst_sx { size = sz; rt; rn; offset } when sz = size && rt.Reg.width = rt_width -> (
+          match offset with
+          | Disp.Reg _ -> None
+          | Disp.Const v -> Some ((), ((), ((), (v, (rn, rt)))))
+          | Disp.Sym _ -> Some ((), ((), ((), (0L, (rn, rt))))))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), (v, (rn, rt))))) ->
+      Some (Lowered.Ldst_sx { size; rt; rn; offset = Disp.Const v }))
+    C.(
+      const ~width:2 (Int64.of_int (access_code size))
+      ** const ~width:6 0b111001L
+      ** const ~width:2 (sx_opc ~x)
+      ** ldst_offset ~size "offset" ** reg_field ~width:64 ~sp:true "rn"
+      ** reg_field ~width:rt_width ~sp:false "rt")
+
+let ldst_sx_roff_alt ~size ~x =
+  let rt_width = if x then 64 else 32 in
+  C.iso_fun
+    ~name:(Printf.sprintf "%s-%s-roff" (sx_mnemonic size) (if x then "x" else "w"))
+    ~encode:(function
+      | Lowered.Ldst_sx { size = sz; rt; rn; offset = Disp.Reg { index; extend; amount } }
+        when sz = size && rt.Reg.width = rt_width -> (
+          match extend_option extend with
+          | None -> None
+          | Some opt ->
+              let s = match amount with Some 0 | None -> 0L | Some _ -> 1L in
+              Some ((), ((), ((), ((), (index, (Int64.of_int opt, (s, ((), (rn, rt))))))))))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), ((), (index, (opt, (s, ((), (rn, rt))))))))) ->
+      match extend_of_option (Int64.to_int opt) with
+      | None -> None
+      | Some extend ->
+          let scaled = Int64.equal s 1L in
+          let extend, amount =
+            if extend = "lsl" && not scaled then ("lsl", None)
+            else (extend, if scaled then Some (access_shift size) else None)
+          in
+          let index = { index with Reg.width = extend_index_width extend } in
+          Some (Lowered.Ldst_sx { size; rt; rn; offset = Disp.Reg { index; extend; amount } }))
+    C.(
+      const ~width:2 (Int64.of_int (access_code size))
+      ** const ~width:6 0b111000L
+      ** const ~width:2 (sx_opc ~x)
+      ** const ~width:1 1L
+      ** reg_field ~width:64 ~sp:false "rm"
+      ** field ~width:3 "option" ** field ~width:1 "s" ** const ~width:2 0b10L
+      ** reg_field ~width:64 ~sp:true "rn"
+      ** reg_field ~width:rt_width ~sp:false "rt")
+
 (* [ldr]/[str] into a scalar FP register - bit-for-bit {!ldst_alt}'s own word with the
    "SIMD&FP" bit set (verified against real aarch64-linux-gnu-as/objdump: [str d8, [sp,
    #16]] -> [fd000be8], versus {!ldst_alt}'s own GPR [str x8, [sp, #16]] shape at the
@@ -1767,6 +1875,58 @@ let fmov_from_gpr_alt ~double =
       field ~width:1 "sf" ** const ~width:7 0b0011110L
       ** const ~width:2 (if double then 1L else 0L)
       ** const ~width:12 (Int64.of_int (2048 + (0b111 * 64)))
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [lsl]/[lsr]/[asr]/[ror rd, rn, rm] at one [shift] kind: the "data-processing (2 source)"
+   word with [opcode] = [0010] ++ [shift]. *)
+let shiftv_alt ~shift =
+  C.iso_fun
+    ~name:(shift_name shift ^ "v")
+    ~encode:(function
+      | Lowered.Shiftv { shift = k; rd; rn; rm } when k = shift ->
+          Some ((if rd.Reg.width = 64 then 1L else 0L), ((), (rm, ((), (rn, rd)))))
+      | _ -> None)
+    ~decode:(fun (sf, ((), (rm, ((), (rn, rd))))) ->
+      let width = if Int64.equal sf 1L then 64 else 32 in
+      Some
+        (Lowered.Shiftv
+           {
+             shift;
+             rd = { rd with Reg.width };
+             rn = { rn with Reg.width };
+             rm = { rm with Reg.width };
+           }))
+    C.(
+      field ~width:1 "sf" ** const ~width:10 0b0011010110L
+      ** reg_field ~width:64 ~sp:false "rm"
+      ** const ~width:6 (Int64.of_int (0b001000 lor shift))
+      ** reg_field ~width:64 ~sp:false "rn"
+      ** reg_field ~width:64 ~sp:false "rd")
+
+(* [fcvtzu rd, rn] - {!fcvtzs_alt}'s unsigned sibling: [rmode] = [11], [opcode] = [001].
+   Verified against real aarch64-linux-gnu-as/objdump 2.44: [9e7900a4] for [fcvtzu x4, d5],
+   [1e3900a4] for [fcvtzu w4, s5]. *)
+let fcvtzu_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fcvtzu-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fcvtzu { rd; rn } when rn.Freg.double = double ->
+          Some
+            ( (if rd.Reg.width = 64 then 1L else 0L),
+              ((), ((), ((), (Int64.of_int rn.Freg.num, Int64.of_int rd.Reg.num)))) )
+      | _ -> None)
+    ~decode:(fun (sf, ((), ((), ((), (rn, rd))))) ->
+      let width = if Int64.equal sf 1L then 64 else 32 in
+      Some
+        (Lowered.Fcvtzu
+           {
+             rd = Reg.of_num ~width ~sp:false (Int64.to_int rd);
+             rn = Freg.of_num ~double (Int64.to_int rn);
+           }))
+    C.(
+      field ~width:1 "sf" ** const ~width:7 0b0011110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:12 (Int64.of_int (2048 + (0b11 * 512) + 64))
       ** field ~width:5 "rn" ** field ~width:5 "rd")
 
 (* [fcvtzs rd, rn] - float-to-signed-integer, round toward zero (M5 corpus evidence:
@@ -2156,31 +2316,11 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   ** const ~width:6 0b000011L
                   ** reg_field ~width:64 ~sp:false "rn"
                   ** reg_field ~width:64 ~sp:false "rd"));
-           (* [lsl rd, rn, rm] - {!Udiv}'s "data-processing (2 source)" cousin, LSLV's
-              register-specified shift amount (M5 corpus evidence: asm/docs/corpus.md's
-              [nsieve.c]/[nsievebits.c]). Verified against real aarch64-linux-gnu-as/objdump:
-              [1ac62115] for [lsl w21, w8, w6], [9ac22020] for [lsl x0, x1, x2]. *)
-           C.alt ~label:"lslv" ~priority:46
-             (C.iso_fun ~name:"lslv"
-                ~encode:(function
-                  | Lowered.Lslv { rd; rn; rm } ->
-                      Some ((if rd.Reg.width = 64 then 1L else 0L), ((), (rm, ((), (rn, rd)))))
-                  | _ -> None)
-                ~decode:(fun (sf, ((), (rm, ((), (rn, rd))))) ->
-                  let width = if Int64.equal sf 1L then 64 else 32 in
-                  Some
-                    (Lowered.Lslv
-                       {
-                         rd = { rd with Reg.width };
-                         rn = { rn with Reg.width };
-                         rm = { rm with Reg.width };
-                       }))
-                C.(
-                  field ~width:1 "sf" ** const ~width:10 0b0011010110L
-                  ** reg_field ~width:64 ~sp:false "rm"
-                  ** const ~width:6 0b001000L
-                  ** reg_field ~width:64 ~sp:false "rn"
-                  ** reg_field ~width:64 ~sp:false "rd"));
+           (* [lsl rd, rn, rm] - LSLV's register-specified shift amount (M5 corpus evidence:
+              asm/docs/corpus.md's [nsieve.c]/[nsievebits.c]). Verified against real
+              aarch64-linux-gnu-as/objdump: [1ac62115] for [lsl w21, w8, w6], [9ac22020] for
+              [lsl x0, x1, x2]. [lsrv]/[asrv]/[rorv] below are the same word at [op2] = 1/2/3. *)
+           C.alt ~label:"lslv" ~priority:46 (shiftv_alt ~shift:0);
            (* [cset rd, cc] - [csinc rd, zr, zr, invert(cc)] (M5 corpus evidence:
               asm/docs/corpus.md's [chomp.c]/[lists.c]). Same top bits {!Csel} already has ([op2] =
               01 for CSINC versus CSEL's 00), [rn]/[rm] fixed to the zero register rather than
@@ -2345,13 +2485,11 @@ let codec : (Lowered.t, fixup_kind) C.t =
                 ~decode:(fun (sf, ((), (_n, (immr, (imms, (rn, rd)))))) ->
                   let width = if Int64.equal sf 1L then 64 else 32 in
                   let immr = Int64.to_int immr and imms = Int64.to_int imms in
-                  (* Only the [sbfx] alias ([imms >= immr]) is implemented; any other SBFM word
-                     is left undecoded rather than printed as something that would not re-parse. *)
-                  if imms < immr then None
-                  else
-                    Some
-                      (Lowered.Sbfm
-                         { rd = { rd with Reg.width }; rn = { rn with Reg.width }; immr; imms }))
+                  (* Every SBFM word prints as [sbfx] ([imms >= immr]) or [sbfiz] (otherwise),
+                     both of which re-parse to it. *)
+                  Some
+                    (Lowered.Sbfm
+                       { rd = { rd with Reg.width }; rn = { rn with Reg.width }; immr; imms }))
                 C.(
                   field ~width:1 "sf" ** const ~width:8 0b00100110L ** field ~width:1 "N"
                   ** field ~width:6 "immr" ** field ~width:6 "imms"
@@ -2499,6 +2637,20 @@ let codec : (Lowered.t, fixup_kind) C.t =
                  (ldst_roff_alt ~size ~load:false);
              ])
            access_all;
+         (* The sign-extending loads, both addressing modes. Priorities 110-119. *)
+         List.concat_map
+           (fun (k, size, x) ->
+             [
+               C.alt
+                 ~label:(Printf.sprintf "%s-%s" (sx_mnemonic size) (if x then "x" else "w"))
+                 ~priority:(110 + (2 * k))
+                 (ldst_sx_alt ~size ~x);
+               C.alt
+                 ~label:(Printf.sprintf "%s-%s-roff" (sx_mnemonic size) (if x then "x" else "w"))
+                 ~priority:(111 + (2 * k))
+                 (ldst_sx_roff_alt ~size ~x);
+             ])
+           [ (0, B, false); (1, B, true); (2, H, false); (3, H, true); (4, W, true) ];
          (* [ldr]/[str] into a scalar FP register, both addressing modes, both widths -
             {!ldst_f_alt}/{!ldst_roff_f_alt}'s own comments. *)
          List.concat_map
@@ -2691,6 +2843,15 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.alt ~label:"fmov-from-gpr-s" ~priority:67 (fmov_from_gpr_alt ~double:false);
            C.alt ~label:"fcvtzs-d" ~priority:68 (fcvtzs_alt ~double:true);
            C.alt ~label:"fcvtzs-s" ~priority:69 (fcvtzs_alt ~double:false);
+           C.alt ~label:"fcvtzu-d" ~priority:105 (fcvtzu_alt ~double:true);
+           C.alt ~label:"fcvtzu-s" ~priority:106 (fcvtzu_alt ~double:false);
+           (* {!shiftv_alt}'s other three shift kinds (embedded-corpus evidence: CompCert's
+              [Plsrv]/[Pasrv]/[Prorv]). Verified against real aarch64-linux-gnu-as/objdump
+              2.44: [9ac12403] for [lsr x3, x0, x1], [1ac62904] for [asr w4, w8, w6], [9ac22c20]
+              for [ror x0, x1, x2]. *)
+           C.alt ~label:"lsrv" ~priority:102 (shiftv_alt ~shift:1);
+           C.alt ~label:"asrv" ~priority:103 (shiftv_alt ~shift:2);
+           C.alt ~label:"rorv" ~priority:104 (shiftv_alt ~shift:3);
            C.alt ~label:"fneg-d" ~priority:70 (fneg_alt ~double:true);
            C.alt ~label:"fneg-s" ~priority:71 (fneg_alt ~double:false);
            C.alt ~label:"fcvt-d-to-s" ~priority:72 (fcvt_alt ~src_double:true);
@@ -2979,8 +3140,10 @@ let lower_instruction state i =
       Ok [ Lowered.Udiv { rd; rn; rm } ]
   | Opcode.Sdiv, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
       Ok [ Lowered.Sdiv { rd; rn; rm } ]
-  | Opcode.Lsl, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
-      Ok [ Lowered.Lslv { rd; rn; rm } ]
+  | ( ((Opcode.Lsl | Opcode.Lsr | Opcode.Asr | Opcode.Ror) as op),
+      [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ) ->
+      let shift = match op with Opcode.Lsl -> 0 | Opcode.Lsr -> 1 | Opcode.Asr -> 2 | _ -> 3 in
+      Ok [ Lowered.Shiftv { shift; rd; rn; rm } ]
   (* [ubfx]/[ubfiz]'s own lsb/width pair is the one GNU AArch64 immediate spelled without a
      leading [#] in this corpus (every other immediate operand this target parses has one) - real
      [as] accepts both spellings, but ccomp/gcc only ever emit the bare one, which the common
@@ -3018,6 +3181,56 @@ let lower_instruction state i =
           else
             Ok [ Lowered.Ubfm { rd; rn; immr = (datasize - lsb) mod datasize; imms = width - 1 } ])
   (* [sbfx] - {!Opcode.Ubfx}'s signed sibling, with the same bare-or-[#] lsb/width pair. *)
+  (* [sbfiz] - {!Opcode.Sbfx}'s alias sibling on the same SBFM word, the way [ubfiz] is
+     [ubfx]'s: [immr = (datasize - lsb) mod datasize], [imms = width - 1]. CompCert prints it
+     for a sign-extending shift of a narrow value. *)
+  | ( Opcode.Sbfiz,
+      [
+        Operand.Reg rd;
+        Operand.Reg rn;
+        (Operand.Imm lsb_v | Operand.Sym (Asm_core.Expr.Const lsb_v));
+        (Operand.Imm width_v | Operand.Sym (Asm_core.Expr.Const width_v));
+      ] ) -> (
+      match (imm_of lsb_v, imm_of width_v) with
+      | Error e, _ | _, Error e -> Error e
+      | Ok lsb64, Ok width64 ->
+          let datasize = rd.Reg.width in
+          let lsb = Int64.to_int lsb64 and width = Int64.to_int width64 in
+          if lsb < 0 || lsb >= datasize || width < 1 || lsb + width > datasize then
+            bad `Bitfield_out_of_range
+          else
+            Ok [ Lowered.Sbfm { rd; rn; immr = (datasize - lsb) mod datasize; imms = width - 1 } ])
+  (* [ldrsb]/[ldrsh]/[ldrsw] - the addressing forms of the [ldr] case above (a numeric scaled
+     offset, a [:lo12:] symbol, a register offset), into a 64-bit or (not [ldrsw]) a 32-bit
+     [rt]. *)
+  | ((Opcode.Ldrsb | Opcode.Ldrsh | Opcode.Ldrsw) as op), [ Operand.Reg rt; Operand.Mem m ] -> (
+      let size = match op with Opcode.Ldrsb -> B | Opcode.Ldrsh -> H | _ -> W in
+      if rt.Reg.width <> 64 && (size = W || rt.Reg.width <> 32) then
+        bad (`Wrong_register_width { opcode = Opcode.name op; expected = 64 })
+      else if m.Mem.writeback then bad `Writeback_out_of_scope
+      else
+        match m.Mem.offset with
+        | Disp.Sym (Asm_core.Expr.Modifier ("lo12", value)) ->
+            Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = Disp.Sym value } ]
+        | Disp.Sym (Asm_core.Expr.Modifier (md, _)) -> bad (`Wrong_memory_modifier md)
+        | Disp.Sym _ -> bad `Missing_memory_modifier
+        | Disp.Const off ->
+            let scale = Int64.of_int (access_bytes size) in
+            if Int64.compare off 0L < 0 then bad `Unsigned_offset_only
+            else if not (Int64.equal (Int64.rem off scale) 0L) then bad (`Offset_not_scaled scale)
+            else if Int64.compare (Int64.div off scale) 4096L >= 0 then bad `Offset_not_12bit_scaled
+            else Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = Disp.Const off } ]
+        | Disp.Reg { index; extend; amount } -> (
+            let expected_index_width = extend_index_width extend in
+            if index.Reg.width <> expected_index_width then
+              bad (`Wrong_register_width { opcode = extend; expected = expected_index_width })
+            else
+              match amount with
+              | None | Some 0 ->
+                  Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = m.Mem.offset } ]
+              | Some n when n = access_shift size ->
+                  Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = m.Mem.offset } ]
+              | Some n -> bad (`Register_offset_shift_invalid n)))
   | ( Opcode.Sbfx,
       [
         Operand.Reg rd;
@@ -3464,6 +3677,7 @@ let lower_instruction state i =
   | Opcode.Fneg, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fneg { rd; rn } ]
   | Opcode.Fcvt, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvt { rd; rn } ]
   | Opcode.Fcvtzs, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvtzs { rd; rn } ]
+  | Opcode.Fcvtzu, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvtzu { rd; rn } ]
   | _ -> bad (`No_form (Opcode.name i.Instruction.op))
 
 (* {1 Encode and decode} *)
@@ -3535,6 +3749,7 @@ let expr_of_lowered : Lowered.t -> (string * Asm_core.Expr.t) list = function
      two by name, and a mismatch does not fail - it silently produces an
      encoding with no fixup, which then binds to the placeholder. *)
   | Lowered.Ldst_uoff { offset = Disp.Sym value; _ } -> [ ("offset", value) ]
+  | Lowered.Ldst_sx { offset = Disp.Sym value; _ } -> [ ("offset", value) ]
   | Lowered.Ldst_uoff_f { offset = Disp.Sym value; _ } -> [ ("offset", value) ]
   | Lowered.Add_imm { imm = Disp.Sym value; _ } -> [ ("imm", value) ]
   | _ -> []
@@ -3665,19 +3880,36 @@ let instruction_of_lowered ?(at = 0L) = function
       Some
         { Instruction.op = Opcode.Sdiv; ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] }
   | Lowered.Sbfm { rd; rn; immr; imms } ->
+      (* the same alias choice as {!Lowered.Ubfm}'s: [sbfx] when [imms >= immr], else [sbfiz] *)
+      let op, lsb, width =
+        match ubfm_alias_of ~datasize:rd.Reg.width ~immr ~imms with
+        | Ubfx (lsb, width) -> (Opcode.Sbfx, lsb, width)
+        | Ubfiz (lsb, width) -> (Opcode.Sbfiz, lsb, width)
+      in
       Some
         {
-          Instruction.op = Opcode.Sbfx;
+          Instruction.op;
           ops =
             [
               Operand.Reg rd;
               Operand.Reg rn;
-              Operand.Imm (Bigint.of_int immr);
-              Operand.Imm (Bigint.of_int (imms - immr + 1));
+              Operand.Imm (Bigint.of_int lsb);
+              Operand.Imm (Bigint.of_int width);
             ];
         }
-  | Lowered.Lslv { rd; rn; rm } ->
-      Some { Instruction.op = Opcode.Lsl; ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] }
+  | Lowered.Ldst_sx { size; rt; rn; offset } ->
+      Some
+        {
+          Instruction.op =
+            (match size with B -> Opcode.Ldrsb | H -> Opcode.Ldrsh | _ -> Opcode.Ldrsw);
+          ops =
+            [ Operand.Reg rt; Operand.Mem { Mem.base = rn; offset; writeback = false; pre = true } ];
+        }
+  | Lowered.Shiftv { shift; rd; rn; rm } ->
+      let op =
+        match shift with 0 -> Opcode.Lsl | 1 -> Opcode.Lsr | 2 -> Opcode.Asr | _ -> Opcode.Ror
+      in
+      Some { Instruction.op; ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] }
   | Lowered.Cset { cond; rd } ->
       Some
         {
@@ -3990,6 +4222,8 @@ let instruction_of_lowered ?(at = 0L) = function
       Some { Instruction.op = Opcode.Fcvt; ops = [ Operand.Freg rd; Operand.Freg rn ] }
   | Lowered.Fcvtzs { rd; rn } ->
       Some { Instruction.op = Opcode.Fcvtzs; ops = [ Operand.Reg rd; Operand.Freg rn ] }
+  | Lowered.Fcvtzu { rd; rn } ->
+      Some { Instruction.op = Opcode.Fcvtzu; ops = [ Operand.Reg rd; Operand.Freg rn ] }
   | Lowered.Fmov_from_gpr { rd; rn } ->
       Some { Instruction.op = Opcode.Fmov; ops = [ Operand.Freg rd; Operand.Reg rn ] }
   | Lowered.Fmov_reg { rd; rn } ->

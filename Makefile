@@ -363,32 +363,69 @@ asm-compcert-adapter-test: asm-submodules compcert-lib-build-aarch64
 	  COMPCERT_CONFIG=$(CURDIR)/.compcert-lib-work/build/aarch64/compcert.ini \
 	  ASM_COMPCERT_ADAPTER=true opam exec -- dune build @runtest
 
-# The embed variant of the aarch64 CompCert library: the pristine
-# compcert-lib-aarch64 sources plus the strict patch and injected modules in
-# tools/compcert-embed/, synced into compcert-lib-aarch64-embed/ (package
-# compcert_aarch64_embed). compcert-lib-aarch64 itself is never modified. See
-# tools/compcert-embed-sync.sh.
-.PHONY: compcert-lib-embed-build-aarch64 asm-compcert-embed-test
-compcert-lib-embed-build-aarch64: compcert-lib-sync-aarch64
-	tools/compcert-embed-sync.sh aarch64
-	cd compcert-lib-aarch64-embed && opam exec -- dune build @install
+# The embed variant of each target's CompCert library: the pristine
+# compcert-lib-<target> sources plus the strict patch and injected modules in
+# tools/compcert-embed/, synced into compcert-lib-<target>-embed/ (package
+# compcert_<target>_embed). compcert-lib-<target> itself is never modified.
+# See tools/compcert-embed-sync.sh.
+EMBED_BUILD_GOALS     := $(addprefix compcert-lib-embed-build-,$(FIXTURE_TARGETS))
+EMBED_TEST_GOALS      := $(addprefix asm-compcert-embed-test-,$(FIXTURE_TARGETS))
+EMBED_TEST_ONLY_GOALS := $(addprefix asm-compcert-embed-test-only-,$(FIXTURE_TARGETS))
 
-# In-process compile + assemble + native execution (asm/compcert_embed/,
-# asm/native_exec/). Gated by ASM_COMPCERT_EMBED like asm-compcert-adapter-test
-# is by ASM_COMPCERT_ADAPTER, and for the same reason: it needs Rocq. It also
-# builds C stubs and runs generated code natively, so it only makes sense on
-# an aarch64 host. COMPCERT_CONFIG is unset on purpose: the variant must not
-# need a compcert.ini.
-asm-compcert-embed-test: asm-submodules compcert-lib-embed-build-aarch64
-	$(MAKE) asm-compcert-embed-test-only
+.PHONY: $(EMBED_BUILD_GOALS)
+$(EMBED_BUILD_GOALS): compcert-lib-embed-build-%: compcert-lib-sync-%
+	tools/compcert-embed-sync.sh $*
+	cd compcert-lib-$*-embed && opam exec -- dune build @install
+
+# The environment that enables asm/compcert_embed for one target: its
+# variant on OCAMLPATH, the shared gate, and that target's own gate.
+# COMPCERT_CONFIG is unset on purpose: the variant must not need a
+# compcert.ini.
+embed_env = env -u COMPCERT_CONFIG \
+  OCAMLPATH=$(CURDIR)/compcert-lib-$(1)-embed/_build/install/default/lib:$$OCAMLPATH \
+  ASM_COMPCERT_EMBED=true ASM_COMPCERT_EMBED_$(shell echo $(1) | tr a-z A-Z)=true
+
+# What asm-compcert-embed-test-<target> builds and runs: the target's
+# library and its Tier A report (C -> assembly -> image against the
+# committed fixtures). The aarch64 suite also covers native execution and
+# native_exec, whose hand-written tests are aarch64 code.
+embed_suites = @compcert_embed/targets/$(1)/all @compcert_embed/targets/$(1)/runtest \
+  $(if $(filter aarch64,$(1)),@compcert_embed/test/runtest @native_exec/runtest)
+
+# In-process compile + assemble (+ native execution where the host runs the
+# target's ISA): asm/compcert_embed/, asm/native_exec/. Gated by
+# ASM_COMPCERT_EMBED like asm-compcert-adapter-test is by
+# ASM_COMPCERT_ADAPTER, and for the same reason: it needs Rocq.
+.PHONY: $(EMBED_TEST_GOALS) $(EMBED_TEST_ONLY_GOALS)
+$(EMBED_TEST_GOALS): asm-compcert-embed-test-%: asm-submodules compcert-lib-embed-build-%
+	$(MAKE) asm-compcert-embed-test-only-$*
 
 # The same, without re-running the (slow, Rocq-based) sync.
-.PHONY: asm-compcert-embed-test-only
-asm-compcert-embed-test-only:
-	cd $(ASM_DIR) && env -u COMPCERT_CONFIG \
-	  OCAMLPATH=$(CURDIR)/compcert-lib-aarch64-embed/_build/install/default/lib:$$OCAMLPATH \
-	  ASM_COMPCERT_EMBED=true opam exec -- \
-	  dune build @compcert_embed/runtest @native_exec/runtest
+$(EMBED_TEST_ONLY_GOALS): asm-compcert-embed-test-only-%:
+	cd $(ASM_DIR) && $(call embed_env,$*) opam exec -- dune build $(call embed_suites,$*)
+
+# The aarch64 names, kept from before the targets were split out.
+.PHONY: asm-compcert-embed-test asm-compcert-embed-test-only
+asm-compcert-embed-test: asm-compcert-embed-test-aarch64
+asm-compcert-embed-test-only: asm-compcert-embed-test-only-aarch64
+
+EMBED_ENV = $(call embed_env,aarch64)
+
+# The embedded corpus run natively and under qemu-aarch64 (the exec-ABI
+# helper), which must agree. Needs the helpers and QEMU, like the other oracle
+# legs, so it is not part of asm-compcert-embed-test.
+.PHONY: asm-compcert-embed-qemu asm-compcert-embed-soak
+asm-compcert-embed-qemu: asm-helpers
+	cd $(ASM_DIR) && $(EMBED_ENV) opam exec -- dune build compcert_embed/test/qemu_diff.exe
+	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers \
+	  ./_build/default/compcert_embed/test/qemu_diff.exe compcert_embed/test/corpus
+
+# Thousands of compile+run cycles in one process, reporting memory growth.
+# SOAK_CYCLES defaults to 10000.
+SOAK_CYCLES ?= 10000
+asm-compcert-embed-soak:
+	cd $(ASM_DIR) && $(EMBED_ENV) opam exec -- dune build compcert_embed/test/soak.exe
+	cd $(ASM_DIR) && ./_build/default/compcert_embed/test/soak.exe compcert_embed/test/corpus $(SOAK_CYCLES)
 
 # Static pattern rules, not `%` implicit rules. GNU Make skips implicit rule
 # search for .PHONY targets, so an implicit pattern plus a phony expansion

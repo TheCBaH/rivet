@@ -187,15 +187,23 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
       match int_arg () with
       | Some n when n > 0 -> Ok (Normalized (Directive.Align { boundary = n }))
       | _ -> reject ~pos:__POS__ (name ^ " needs a positive integer argument"))
-  | ".p2align" ->
-      (* Deliberately rejected rather than accepted as a synonym. Its argument
-         is an exponent, not a byte count, so treating it as one would silently
-         align [.p2align 4] to four bytes instead of sixteen - a difference that
-         produces a valid image and wrong addresses. It is absent from
-         asm/docs/contracts.md §3's table, and nothing outside that table
-         assembles. *)
-      reject ~pos:__POS__
-        ".p2align takes a power-of-two exponent and is not in M2 scope; use .balign"
+  (* [.p2align n] aligns to [2^n] bytes: its argument is an exponent, which is
+     why it is normalized here to the byte count [Align] carries rather than
+     sharing [.balign]'s row - read as a byte count, [.p2align 4] would align
+     to four bytes instead of sixteen, a valid image at wrong addresses. The
+     exponent is capped at 29, the largest whose power of two is a positive
+     [int] on every build this project supports (31-bit on linux/i386 and
+     linux/arm/v7). GAS's optional fill and max-skip operands are rejected
+     rather than ignored, since ignoring them would change what they say. *)
+  | ".p2align" -> (
+      match int_arg () with
+      | Some n when n >= 0 && n <= 29 -> Ok (Normalized (Directive.Align { boundary = 1 lsl n }))
+      | Some _ -> reject ~pos:__POS__ ".p2align needs an exponent from 0 to 29"
+      | None -> (
+          match arguments with
+          | _ :: _ :: _ ->
+              reject ~pos:__POS__ ".p2align: fill and max-skip arguments are not supported"
+          | _ -> reject ~pos:__POS__ ".p2align needs exactly one integer argument"))
   | ".globl" | ".global" -> (
       match one () with
       | Some n -> Ok (Normalized (Directive.Global { name = n }))

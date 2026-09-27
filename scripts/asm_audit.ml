@@ -302,9 +302,16 @@ let closure libs roots =
    it) deliberately ships C stubs. It is outside every default build: each of
    its stanzas is enabled only by ASM_COMPCERT_EMBED, so none of it can appear
    in the resolved closure above. That gate is what exempts a dune file here,
-   so a stanza in these directories that dropped it would be audited again. *)
+   so a stanza in these directories that dropped it would be audited again.
+   A per-target stanza may narrow the gate further, but only as the first
+   operand of an [and], so the ASM_COMPCERT_EMBED requirement still holds. *)
 let research_dirs = [ "native_exec/"; "compcert_embed/" ]
-let research_gate = "(enabled_if\n  (= %{env:ASM_COMPCERT_EMBED=false} true))"
+
+let research_gates =
+  [
+    "(enabled_if\n  (= %{env:ASM_COMPCERT_EMBED=false} true))";
+    "(enabled_if\n  (and\n   (= %{env:ASM_COMPCERT_EMBED=false} true)";
+  ]
 
 let research_gated asm_dir p s =
   let rel =
@@ -330,7 +337,7 @@ let research_gated asm_dir p s =
   in
   List.exists (fun d -> starts_with d rel) research_dirs
   && stanzas > 0
-  && count_from 0 0 research_gate >= stanzas
+  && List.fold_left (fun n g -> n + count_from 0 0 g) 0 research_gates >= stanzas
 
 let audit_purity asm_dir libs =
   (* A local library in an unrecognized directory would otherwise be neither a

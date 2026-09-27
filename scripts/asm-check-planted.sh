@@ -259,6 +259,12 @@ plant js-runtime-stub purity reject-either 'ships a foreign object' "
 plant research-stub-ungated purity audit-fail 'uses foreign_stubs' "
   printf '\\n(rule\\n (with-stdout-to planted.txt\\n  (echo \\\"\\\")))\\n' >> native_exec/dune"
 
+# A per-target stanza may narrow the gate with an [and], but only after the
+# shared ASM_COMPCERT_EMBED operand. An [and] led by the per-target variable
+# alone must not count as gated.
+plant research-stub-pertarget-only purity audit-fail 'uses foreign_stubs' "
+  printf '\\n(rule\\n (action\\n  (with-stdout-to planted.txt\\n   (echo \\\"\\\")))\\n (enabled_if\\n  (and\\n   (= %%{env:ASM_COMPCERT_EMBED_AARCH64=false} true)\\n   (= %%{env:ASM_COMPCERT_EMBED=false} true))))\\n' >> native_exec/dune"
+
 # The test-only ppx tree leaking into production. ppx_expect is native-only and
 # pulls in time_now, which has C stubs, so this is a live risk rather than a
 # hypothetical one.

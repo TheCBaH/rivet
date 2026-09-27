@@ -49,8 +49,10 @@ let range_admits r v =
         let half = two_pow (n - 1) in
         Int64.compare v (Int64.neg half) >= 0 && Int64.compare v half < 0
     | Bitpattern _ ->
+        (* Either reading: [-2^(n-1), 2^n). The upper bound is a signed comparison, since an
+           unsigned one would read every negative value as too large. *)
         let half = two_pow (n - 1) in
-        Int64.compare v (Int64.neg half) >= 0 && Int64.unsigned_compare v (two_pow n) < 0
+        Int64.compare v (Int64.neg half) >= 0 && (n = 63 || Int64.compare v (two_pow n) < 0)
 
 let pp_range ppf r =
   let tag = match r with Signed _ -> "s" | Unsigned _ -> "u" | Bitpattern _ -> "b" in

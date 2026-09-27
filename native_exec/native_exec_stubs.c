@@ -29,6 +29,22 @@ static void fail_errno(const char *what)
   caml_failwith(msg);
 }
 
+/* The ISA this process runs, named as the assembler's targets name
+   themselves, or "" for a host no target matches. */
+value native_exec_host_isa(value unit)
+{
+  (void)unit;
+#if defined(__aarch64__)
+  return caml_copy_string("aarch64");
+#elif defined(__x86_64__)
+  return caml_copy_string("x86_64");
+#elif defined(__riscv) && __riscv_xlen == 64
+  return caml_copy_string("riscv64");
+#else
+  return caml_copy_string("");
+#endif
+}
+
 value native_exec_page_size(value unit)
 {
   (void)unit;

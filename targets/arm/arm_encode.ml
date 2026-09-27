@@ -535,6 +535,11 @@ module Opcode = struct
     | Bx
     | Strb
     | Ldrb
+    | Strh
+    | Ldrh
+    | Ldrsb
+    | Ldrsh
+    | Sbfx
     | Udf
     | Bl
     | B
@@ -659,6 +664,11 @@ module Opcode = struct
     | Bx -> "bx"
     | Strb -> "strb"
     | Ldrb -> "ldrb"
+    | Strh -> "strh"
+    | Ldrh -> "ldrh"
+    | Ldrsb -> "ldrsb"
+    | Ldrsh -> "ldrsh"
+    | Sbfx -> "sbfx"
     | Udf -> "udf"
     | Bl -> "bl"
     | Vmov_d -> "vmov.f64"
@@ -724,6 +734,11 @@ module Opcode = struct
     | "bx" -> Some Bx
     | "strb" -> Some Strb
     | "ldrb" -> Some Ldrb
+    | "strh" -> Some Strh
+    | "ldrh" -> Some Ldrh
+    | "ldrsb" -> Some Ldrsb
+    | "ldrsh" -> Some Ldrsh
+    | "sbfx" -> Some Sbfx
     | "udf" -> Some Udf
     | "bl" -> Some Bl
     | "push" -> Some Push
@@ -877,6 +892,30 @@ end
    4-bit opcode field. Three constructors named add/sub/mov would each have to
    carry that field anyway, and could then disagree with their own name. *)
 
+(* The offset of an extra load/store ({!Lowered.Ldst_x}): an 8-bit magnitude with its sign,
+   or a register, added or subtracted. *)
+type x_offset = X_imm of int64 | X_reg of { rm : Reg.t; negate : bool }
+
+(* The extra load/store kinds, by their [L], [S], [H] bits. [S] = [H] = 0 is the multiply
+   space, and [L] = 0 with [S] = 1 is LDRD/STRD, neither of which is one of these. *)
+let x_kinds =
+  [
+    (0, "strh", (0L, 0L, 1L));
+    (1, "ldrh", (1L, 0L, 1L));
+    (2, "ldrsb", (1L, 1L, 0L));
+    (3, "ldrsh", (1L, 1L, 1L));
+  ]
+
+let x_name k =
+  match List.find_opt (fun (n, _, _) -> n = k) x_kinds with Some (_, m, _) -> m | None -> "?"
+
+let x_bits k =
+  match List.find_opt (fun (n, _, _) -> n = k) x_kinds with
+  | Some (_, _, b) -> b
+  | None -> (0L, 0L, 0L)
+
+let x_kind_of_bits b = List.find_map (fun (n, _, b') -> if b = b' then Some n else None) x_kinds
+
 module Lowered = struct
   (* Every variant carries a condition, because every A32 word does. It is a
      field on each rather than a wrapper around the sum so that a form which
@@ -902,7 +941,25 @@ module Lowered = struct
         rn : Reg.t;
         offset : int64;
         writeback : bool;
+        post : bool;
+            (** [\[rn\], #offset]: access at [rn], then add [offset] to it (P = 0, W = 0).
+                CompCert's inline [memcpy] loop copies that way. *)
       }
+    | Ldst_x of {
+        cond : Cond.t;
+        kind : int;
+        rt : Reg.t;
+        rn : Reg.t;
+        offset : x_offset;
+        post : bool;
+      }
+        (** The "extra" loads and stores - [strh]/[ldrh]/[ldrsb]/[ldrsh] ([kind] 0-3, see
+            {!x_kinds}) - with an 8-bit immediate or a plain register offset, at the offset
+            ([\[rn, off\]]) or post-indexed ([\[rn\], off]). Embedded-corpus evidence:
+            CompCert's [short] and [signed char] accesses, and its halfword [memcpy] loop. *)
+    | Sbfx of { cond : Cond.t; rd : Reg.t; rn : Reg.t; lsb : int; width : int }
+        (** [sbfx rd, rn, #lsb, #width] - signed bitfield extract (embedded-corpus evidence:
+            CompCert's sign extension of a narrow value). *)
     | Ldst_reg of {
         cond : Cond.t;
         load : bool;
@@ -1037,12 +1094,29 @@ module Lowered = struct
     | Shift_reg { cond; kind; rd; rm; rs } ->
         Fmt.pf ppf "%s%s %a, %a, %a" (shift_name kind) (Cond.suffix cond) Reg.pp rd Reg.pp rm Reg.pp
           rs
-    | Ldst_imm { cond; load; byte; rt; rn; offset; writeback } ->
-        Fmt.pf ppf "%s%s%s %a, [%a, #%Ld]%s"
-          (if load then "ldr" else "str")
-          (if byte then "b" else "")
-          (Cond.suffix cond) Reg.pp rt Reg.pp rn offset
-          (if writeback then "!" else "")
+    | Ldst_imm { cond; load; byte; rt; rn; offset; writeback; post } ->
+        if post then
+          Fmt.pf ppf "%s%s%s %a, [%a], #%Ld"
+            (if load then "ldr" else "str")
+            (if byte then "b" else "")
+            (Cond.suffix cond) Reg.pp rt Reg.pp rn offset
+        else
+          Fmt.pf ppf "%s%s%s %a, [%a, #%Ld]%s"
+            (if load then "ldr" else "str")
+            (if byte then "b" else "")
+            (Cond.suffix cond) Reg.pp rt Reg.pp rn offset
+            (if writeback then "!" else "")
+    | Ldst_x { cond; kind; rt; rn; offset; post } ->
+        let off =
+          match offset with
+          | X_imm v -> Printf.sprintf "#%Ld" v
+          | X_reg { rm; negate } -> (if negate then "-" else "") ^ rm.Reg.name
+        in
+        if post then
+          Fmt.pf ppf "%s%s %a, [%a], %s" (x_name kind) (Cond.suffix cond) Reg.pp rt Reg.pp rn off
+        else Fmt.pf ppf "%s%s %a, [%a, %s]" (x_name kind) (Cond.suffix cond) Reg.pp rt Reg.pp rn off
+    | Sbfx { cond; rd; rn; lsb; width } ->
+        Fmt.pf ppf "sbfx%s %a, %a, #%d, #%d" (Cond.suffix cond) Reg.pp rd Reg.pp rn lsb width
     | Ldst_reg { cond; load; byte; rt; rn; rm; negate; sh_kind; sh_amt } ->
         let sh =
           if sh_amt = 0 && sh_kind = 0 then ""
@@ -1169,6 +1243,18 @@ module Lowered = struct
     | Ldst_imm x, Ldst_imm y ->
         Cond.equal x.cond y.cond && x.load = y.load && x.byte = y.byte && Reg.equal x.rt y.rt
         && Reg.equal x.rn y.rn && Int64.equal x.offset y.offset && x.writeback = y.writeback
+        && x.post = y.post
+    | Ldst_x x, Ldst_x y -> (
+        Cond.equal x.cond y.cond && x.kind = y.kind && Reg.equal x.rt y.rt && Reg.equal x.rn y.rn
+        && x.post = y.post
+        &&
+        match (x.offset, y.offset) with
+        | X_imm a, X_imm b -> Int64.equal a b
+        | X_reg a, X_reg b -> Reg.equal a.rm b.rm && a.negate = b.negate
+        | _ -> false)
+    | Sbfx x, Sbfx y ->
+        Cond.equal x.cond y.cond && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && x.lsb = y.lsb
+        && x.width = y.width
     | Ldst_reg x, Ldst_reg y ->
         Cond.equal x.cond y.cond && x.load = y.load && x.byte = y.byte && Reg.equal x.rt y.rt
         && Reg.equal x.rn y.rn && Reg.equal x.rm y.rm && x.negate = y.negate
@@ -1584,40 +1670,44 @@ let codec : (Lowered.t, fixup_kind) C.t =
       C.alt ~label:"ldst-imm" ~priority:5
         (C.iso_fun ~name:"ldst-imm"
            ~encode:(function
-             | Lowered.Ldst_imm { cond; load; byte; rt; rn; offset; writeback } ->
+             | Lowered.Ldst_imm { cond; load; byte; rt; rn; offset; writeback; post } ->
                  let up = Int64.compare offset 0L >= 0 in
                  let mag = Int64.abs offset in
-                 if Int64.compare mag 4096L >= 0 then None
+                 if Int64.compare mag 4096L >= 0 || (post && writeback) then None
                  else
                    Some
                      ( cond,
                        ( (),
-                         ( (),
+                         ( (if post then 0L else 1L),
                            ( (if up then 1L else 0L),
                              ( (if byte then 1L else 0L),
                                ( (if writeback then 1L else 0L),
                                  ((if load then 1L else 0L), (rn, (rt, mag))) ) ) ) ) ) )
              | _ -> None)
-           ~decode:(fun (cond, ((), ((), (up, (byte, (w, (load, (rn, (rt, mag))))))))) ->
-             Some
-               (Lowered.Ldst_imm
-                  {
-                    cond;
-                    load = Int64.equal load 1L;
-                    byte = Int64.equal byte 1L;
-                    rt;
-                    rn;
-                    offset = (if Int64.equal up 1L then mag else Int64.neg mag);
-                    writeback = Int64.equal w 1L;
-                  }))
+           ~decode:(fun (cond, ((), (p, (up, (byte, (w, (load, (rn, (rt, mag))))))))) ->
+             let post = Int64.equal p 0L in
+             (* P = 0 with W = 1 is LDRT/STRT, the unprivileged access, not a writeback *)
+             if post && Int64.equal w 1L then None
+             else
+               Some
+                 (Lowered.Ldst_imm
+                    {
+                      cond;
+                      load = Int64.equal load 1L;
+                      byte = Int64.equal byte 1L;
+                      rt;
+                      rn;
+                      offset = (if Int64.equal up 1L then mag else Int64.neg mag);
+                      writeback = Int64.equal w 1L;
+                      post;
+                    }))
            C.(
-             cond_codec ** const ~width:3 2L ** const ~width:1 1L
-             (* P: pre-indexed - the only addressing this project parses
-                (asm/docs/corpus.md's classify-c-gcc: str/ldr writeback), so
-                P is still fixed; only W now varies. *)
-             ** field ~width:1 "u"
-             ** field ~width:1 "b" ** field ~width:1 "w" ** field ~width:1 "l" ** reg_field "rn"
-             ** reg_field "rt" ** field ~width:12 "imm12"));
+             cond_codec ** const ~width:3 2L
+             (* P: 1 for offset and pre-indexed addressing ([\[rn, #imm\]], [\[rn, #imm\]!]),
+                0 for post-indexed ([\[rn\], #imm]) *)
+             ** field ~width:1 "p"
+             ** field ~width:1 "u" ** field ~width:1 "b" ** field ~width:1 "w" ** field ~width:1 "l"
+             ** reg_field "rn" ** reg_field "rt" ** field ~width:12 "imm12"));
       (* Load and store, register offset: [ldr r2, [r1, r2, lsl #2]] / [ldrb
          r2, [r7, r0]]. Same word shape as ldst-imm one level up, but bit 25
          is set (the [I] bit ARM's own manual uses for this distinction) and
@@ -1627,6 +1717,108 @@ let codec : (Lowered.t, fixup_kind) C.t =
          field. Verified byte-for-byte against arm-linux-gnueabihf-as/objdump:
          [ldr r2, [r1, r2, lsl #2]] is [e7912102], [ldr r2, [r1, -r2]] is
          [e7112002], [ldr r2, [r1, r2, ror #7]] is [e79123e2]. *)
+      (* The extra loads and stores, 8-bit immediate: [cond 000 P U 1 W L Rn Rt imm4H 1 S H 1
+         imm4L], W = 0 (offset or post-indexed). Verified against real arm-linux-gnueabihf-as
+         2.44: [ldrh r0, [r1, #6]] -> [e1d100b6], [strh r2, [r3, #-2]] -> [e14320b2],
+         [ldrsh r4, [r5, #254]] -> [e1d54ffe], [ldrsb r6, [r7]] -> [e1d760d0],
+         [ldrh ip, [r2], #2] -> [e0d2c0b2], [strh ip, [r3], #2] -> [e0c3c0b2]. *)
+      C.alt ~label:"ldst-x-imm" ~priority:44
+        (C.iso_fun ~name:"ldst-x-imm"
+           ~encode:(function
+             | Lowered.Ldst_x { cond; kind; rt; rn; offset = X_imm v; post } ->
+                 let l, sb, h = x_bits kind in
+                 let mag = Int64.abs v in
+                 if Int64.compare mag 256L >= 0 then None
+                 else
+                   Some
+                     ( cond,
+                       ( (),
+                         ( (if post then 0L else 1L),
+                           ( (if Int64.compare v 0L >= 0 then 1L else 0L),
+                             ( (),
+                               ( (),
+                                 ( l,
+                                   ( rn,
+                                     ( rt,
+                                       ( Int64.shift_right mag 4,
+                                         ((), (sb, (h, ((), Int64.logand mag 15L)))) ) ) ) ) ) ) )
+                         ) ) )
+             | _ -> None)
+           ~decode:(fun
+               (cond, ((), (p, (u, ((), ((), (l, (rn, (rt, (hi, ((), (sb, (h, ((), lo))))))))))))))
+             ->
+             match x_kind_of_bits (l, sb, h) with
+             | None -> None
+             | Some kind ->
+                 let mag = Int64.logor (Int64.shift_left hi 4) lo in
+                 Some
+                   (Lowered.Ldst_x
+                      {
+                        cond;
+                        kind;
+                        rt;
+                        rn;
+                        offset = X_imm (if Int64.equal u 1L then mag else Int64.neg mag);
+                        post = Int64.equal p 0L;
+                      }))
+           C.(
+             cond_codec ** const ~width:3 0L ** field ~width:1 "p" ** field ~width:1 "u"
+             ** const ~width:1 1L (* I *) ** const ~width:1 0L (* W *)
+             ** field ~width:1 "l" ** reg_field "rn" ** reg_field "rt" ** field ~width:4 "imm4h"
+             ** const ~width:1 1L ** field ~width:1 "s" ** field ~width:1 "h" ** const ~width:1 1L
+             ** field ~width:4 "imm4l"));
+      (* The same, register offset: [imm4H] is 0000 and [imm4L] is [Rm]. Verified against real
+         arm-linux-gnueabihf-as 2.44: [ldrsb r0, [r1, r2]] -> [e19100d2], [ldrh r3, [r4, -r5]]
+         -> [e11430b5], [strh r6, [r7, r8]] -> [e18760b8]. *)
+      C.alt ~label:"ldst-x-reg" ~priority:45
+        (C.iso_fun ~name:"ldst-x-reg"
+           ~encode:(function
+             | Lowered.Ldst_x { cond; kind; rt; rn; offset = X_reg { rm; negate }; post } ->
+                 let l, sb, h = x_bits kind in
+                 Some
+                   ( cond,
+                     ( (),
+                       ( (if post then 0L else 1L),
+                         ( (if negate then 0L else 1L),
+                           ((), ((), (l, (rn, (rt, ((), ((), (sb, (h, ((), rm)))))))))) ) ) ) )
+             | _ -> None)
+           ~decode:(fun
+               (cond, ((), (p, (u, ((), ((), (l, (rn, (rt, ((), ((), (sb, (h, ((), rm))))))))))))))
+             ->
+             match x_kind_of_bits (l, sb, h) with
+             | None -> None
+             | Some kind ->
+                 Some
+                   (Lowered.Ldst_x
+                      {
+                        cond;
+                        kind;
+                        rt;
+                        rn;
+                        offset = X_reg { rm; negate = Int64.equal u 0L };
+                        post = Int64.equal p 0L;
+                      }))
+           C.(
+             cond_codec ** const ~width:3 0L ** field ~width:1 "p" ** field ~width:1 "u"
+             ** const ~width:1 0L (* I *) ** const ~width:1 0L (* W *)
+             ** field ~width:1 "l" ** reg_field "rn" ** reg_field "rt" ** const ~width:4 0L
+             ** const ~width:1 1L ** field ~width:1 "s" ** field ~width:1 "h" ** const ~width:1 1L
+             ** reg_field "rm"));
+      (* [sbfx rd, rn, #lsb, #width]: [cond 0111101 widthm1 Rd lsb 101 Rn]. Verified against
+         real arm-linux-gnueabihf-as 2.44: [sbfx r0, r1, #0, #16] -> [e7af0051],
+         [sbfx r2, r3, #3, #5] -> [e7a421d3]. *)
+      C.alt ~label:"sbfx" ~priority:46
+        (C.iso_fun ~name:"sbfx"
+           ~encode:(function
+             | Lowered.Sbfx { cond; rd; rn; lsb; width } ->
+                 Some (cond, ((), (Int64.of_int (width - 1), (rd, (Int64.of_int lsb, ((), rn))))))
+             | _ -> None)
+           ~decode:(fun (cond, ((), (w, (rd, (lsb, ((), rn)))))) ->
+             let lsb = Int64.to_int lsb and width = Int64.to_int w + 1 in
+             if lsb + width > 32 then None else Some (Lowered.Sbfx { cond; rd; rn; lsb; width }))
+           C.(
+             cond_codec ** const ~width:7 0b0111101L ** field ~width:5 "widthm1" ** reg_field "rd"
+             ** field ~width:5 "lsb" ** const ~width:3 0b101L ** reg_field "rn"));
       C.alt ~label:"ldst-reg" ~priority:6
         (C.iso_fun ~name:"ldst-reg"
            ~encode:(function
@@ -2318,6 +2510,8 @@ type error_kind =
   | `No_modified_immediate_2op of no_modified_immediate_2op
   | `Writeback_out_of_scope
   | `Offset_not_12bit
+  | `Offset_not_8bit
+  | `Bitfield_out_of_range
   | `Udf_imm16_overflow
   | `Wrong_relocation_modifier of wrong_relocation_modifier
   | `Missing_relocation_modifier of missing_relocation_modifier
@@ -2355,6 +2549,8 @@ let pp_error_kind ppf : error_kind -> unit = function
       Fmt.pf ppf "%s #%Ld has no A32 modified-immediate representation; movw is M2" opcode value
   | `Writeback_out_of_scope -> Fmt.string ppf "writeback addressing is not in M1 scope"
   | `Offset_not_12bit -> Fmt.string ppf "offset does not fit the 12-bit immediate"
+  | `Offset_not_8bit -> Fmt.string ppf "offset does not fit the 8-bit immediate"
+  | `Bitfield_out_of_range -> Fmt.string ppf "bitfield lsb/width do not fit 32 bits"
   | `Udf_imm16_overflow -> Fmt.string ppf "udf immediate does not fit 16 bits"
   | `Wrong_relocation_modifier { opcode; want; got } ->
       Fmt.pf ppf "%s takes #:%s:, not #:%s:" opcode want got
@@ -2394,11 +2590,11 @@ let error_kind_code : error_kind -> string = function
   | `Unknown_instruction _ -> "arm.simplify"
   | `Thumb_out_of_scope | `Immediate_too_wide | `Expected_register_or_shifted
   | `No_modified_immediate _ | `No_modified_immediate_2op _ | `Writeback_out_of_scope
-  | `Offset_not_12bit | `Udf_imm16_overflow | `Wrong_relocation_modifier _
-  | `Missing_relocation_modifier _ | `Imm16_overflow _ | `No_form _ | `No_vfp_immediate _
-  | `Vfp_offset_out_of_range _ | `Vmrs_unsupported_operands | `Push_needs_two_or_more_registers
-  | `Pop_needs_two_or_more_registers | `Vpush_needs_contiguous_registers
-  | `Shift_amount_out_of_range ->
+  | `Offset_not_12bit | `Offset_not_8bit | `Bitfield_out_of_range | `Udf_imm16_overflow
+  | `Wrong_relocation_modifier _ | `Missing_relocation_modifier _ | `Imm16_overflow _ | `No_form _
+  | `No_vfp_immediate _ | `Vfp_offset_out_of_range _ | `Vmrs_unsupported_operands
+  | `Push_needs_two_or_more_registers | `Pop_needs_two_or_more_registers
+  | `Vpush_needs_contiguous_registers | `Shift_amount_out_of_range ->
       "arm.lower"
   | `Codec e -> Option.value (Codec.code e) ~default:"arm.encode"
   | `Decode_short | `Decode_no_match | `Decode_no_normalized -> "arm.decode"
@@ -2458,7 +2654,8 @@ let lower_ldst ~bad ~cond ~load ~byte ~rt ~(m : Mem.t) =
       else
         Ok
           [
-            Lowered.Ldst_imm { cond; load; byte; rt; rn = m.base; offset; writeback = m.writeback };
+            Lowered.Ldst_imm
+              { cond; load; byte; rt; rn = m.base; offset; writeback = m.writeback; post = false };
           ]
   | Mem.Reg_offset { reg = rm; negate; kind = sh_kind; amount = sh_amt } ->
       (* Register-offset writeback ([str r0, [r1, r2]!]) is real ARM syntax
@@ -2567,12 +2764,64 @@ let lower_instruction state i =
        for free. *)
     | ((Opcode.Str | Opcode.Ldr) as op), [ Operand.Reg rt; Operand.Mem m ] ->
         lower_ldst ~bad ~cond ~load:(op = Opcode.Ldr) ~byte:false ~rt ~m
+    (* Post-indexed [ldr rt, \[rn\], #imm]: the operand parser reads the bracket and the
+       offset after it as two operands. CompCert's inline [memcpy] loop is the evidence. *)
+    | ( ((Opcode.Str | Opcode.Ldr | Opcode.Strb | Opcode.Ldrb) as op),
+        [
+          Operand.Reg rt;
+          Operand.Mem { base; offset = Mem.Imm 0L; writeback = false; pre = true };
+          Operand.Imm v;
+        ] ) -> (
+        match Bigint.to_int64_opt v with
+        | Some offset when Int64.compare (Int64.abs offset) 4096L < 0 ->
+            Ok
+              [
+                Lowered.Ldst_imm
+                  {
+                    cond;
+                    load = op = Opcode.Ldr || op = Opcode.Ldrb;
+                    byte = op = Opcode.Strb || op = Opcode.Ldrb;
+                    rt;
+                    rn = base;
+                    offset;
+                    writeback = false;
+                    post = true;
+                  };
+              ]
+        | _ -> bad `Offset_not_12bit)
     | Opcode.Strb, [ Operand.Reg rt; Operand.Mem m ] ->
         if m.writeback then bad `Writeback_out_of_scope
         else lower_ldst ~bad ~cond ~load:false ~byte:true ~rt ~m
     | Opcode.Ldrb, [ Operand.Reg rt; Operand.Mem m ] ->
         if m.writeback then bad `Writeback_out_of_scope
         else lower_ldst ~bad ~cond ~load:true ~byte:true ~rt ~m
+    (* The extra loads and stores ({!Lowered.Ldst_x}): an 8-bit immediate or a plain register
+       offset, and the post-indexed immediate form. *)
+    | ( ((Opcode.Strh | Opcode.Ldrh | Opcode.Ldrsb | Opcode.Ldrsh) as op),
+        Operand.Reg rt :: Operand.Mem m :: post_off ) -> (
+        let kind =
+          match op with Opcode.Strh -> 0 | Opcode.Ldrh -> 1 | Opcode.Ldrsb -> 2 | _ -> 3
+        in
+        let imm v =
+          if Int64.compare (Int64.abs v) 256L >= 0 then bad `Offset_not_8bit else Ok (X_imm v)
+        in
+        let mk offset post = Ok [ Lowered.Ldst_x { cond; kind; rt; rn = m.base; offset; post } ] in
+        if m.writeback then bad `Writeback_out_of_scope
+        else
+          match (m.offset, post_off) with
+          | Mem.Imm v, [] -> Result.bind (imm v) (fun o -> mk o false)
+          | Mem.Reg_offset { reg; negate; kind = 0; amount = 0 }, [] ->
+              mk (X_reg { rm = reg; negate }) false
+          | Mem.Imm 0L, [ Operand.Imm v ] -> (
+              match Bigint.to_int64_opt v with
+              | Some v -> Result.bind (imm v) (fun o -> mk o true)
+              | None -> bad `Offset_not_8bit)
+          | _ -> bad (`No_form (Opcode.name op)))
+    | Opcode.Sbfx, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm lsb; Operand.Imm width ] -> (
+        match (Bigint.to_int_opt lsb, Bigint.to_int_opt width) with
+        | Some lsb, Some width when lsb >= 0 && lsb < 32 && width >= 1 && lsb + width <= 32 ->
+            Ok [ Lowered.Sbfx { cond; rd; rn; lsb; width } ]
+        | _ -> bad `Bitfield_out_of_range)
     | Opcode.Bx, [ Operand.Reg rm ] -> Ok [ Lowered.Bx { cond; rm } ]
     | Opcode.Push, [ Operand.Reglist regs ] ->
         if List.length regs < 2 then bad `Push_needs_two_or_more_registers
@@ -3098,13 +3347,25 @@ let instruction_of_lowered ?(at = 0L) =
       Some
         (Instruction.mk ~cond (Opcode.Shift kind)
            [ Operand.Reg rd; Operand.Reg rm; Operand.Reg rs ])
-  | Lowered.Ldst_imm { cond; load; byte; rt; rn; offset; writeback } -> (
-      let mem_op = Operand.Mem { base = rn; offset = Mem.Imm offset; writeback; pre = true } in
+  | Lowered.Ldst_imm { cond; load; byte; rt; rn; offset; writeback; post } -> (
+      let ops =
+        if post then
+          [
+            Operand.Reg rt;
+            Operand.Mem { base = rn; offset = Mem.Imm 0L; writeback = false; pre = true };
+            Operand.Imm (Bigint.of_int64 offset);
+          ]
+        else
+          [
+            Operand.Reg rt;
+            Operand.Mem { base = rn; offset = Mem.Imm offset; writeback; pre = true };
+          ]
+      in
       match (load, byte) with
-      | false, false -> Some (Instruction.mk ~cond Opcode.Str [ Operand.Reg rt; mem_op ])
-      | true, false -> Some (Instruction.mk ~cond Opcode.Ldr [ Operand.Reg rt; mem_op ])
-      | false, true -> Some (Instruction.mk ~cond Opcode.Strb [ Operand.Reg rt; mem_op ])
-      | true, true -> Some (Instruction.mk ~cond Opcode.Ldrb [ Operand.Reg rt; mem_op ]))
+      | false, false -> Some (Instruction.mk ~cond Opcode.Str ops)
+      | true, false -> Some (Instruction.mk ~cond Opcode.Ldr ops)
+      | false, true -> Some (Instruction.mk ~cond Opcode.Strb ops)
+      | true, true -> Some (Instruction.mk ~cond Opcode.Ldrb ops))
   | Lowered.Ldst_reg { cond; load; byte; rt; rn; rm; negate; sh_kind; sh_amt } -> (
       let mem_op =
         Operand.Mem
@@ -3120,6 +3381,33 @@ let instruction_of_lowered ?(at = 0L) =
       | true, false -> Some (Instruction.mk ~cond Opcode.Ldr [ Operand.Reg rt; mem_op ])
       | false, true -> Some (Instruction.mk ~cond Opcode.Strb [ Operand.Reg rt; mem_op ])
       | true, true -> Some (Instruction.mk ~cond Opcode.Ldrb [ Operand.Reg rt; mem_op ]))
+  | Lowered.Ldst_x { cond; kind; rt; rn; offset; post } ->
+      let op =
+        match kind with
+        | 0 -> Opcode.Strh
+        | 1 -> Opcode.Ldrh
+        | 2 -> Opcode.Ldrsb
+        | _ -> Opcode.Ldrsh
+      in
+      let mem off = Operand.Mem { base = rn; offset = off; writeback = false; pre = true } in
+      let ops =
+        match (offset, post) with
+        | X_imm v, false -> [ Operand.Reg rt; mem (Mem.Imm v) ]
+        | X_imm v, true -> [ Operand.Reg rt; mem (Mem.Imm 0L); Operand.Imm (Bigint.of_int64 v) ]
+        | X_reg { rm; negate }, false ->
+            [ Operand.Reg rt; mem (Mem.Reg_offset { reg = rm; negate; kind = 0; amount = 0 }) ]
+        | X_reg _, true -> []
+      in
+      if ops = [] then None else Some (Instruction.mk ~cond op ops)
+  | Lowered.Sbfx { cond; rd; rn; lsb; width } ->
+      Some
+        (Instruction.mk ~cond Opcode.Sbfx
+           [
+             Operand.Reg rd;
+             Operand.Reg rn;
+             Operand.Imm (Bigint.of_int lsb);
+             Operand.Imm (Bigint.of_int width);
+           ])
   | Lowered.Bx { cond; rm } -> Some (Instruction.mk ~cond Opcode.Bx [ Operand.Reg rm ])
   | Lowered.Push { cond; regs } ->
       let members = List.filter (fun n -> regs land (1 lsl n) <> 0) (List.init 16 Fun.id) in
