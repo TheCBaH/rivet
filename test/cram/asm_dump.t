@@ -1186,6 +1186,7 @@
     [37 cost=0] movn             movn(){sf:1u 00100101 hw:2u imm16:16u rd}
     [38 cost=0] cbz              cbz(){sf:1u 011010 op:1u <target:19@0 pcrel-b19> rt}
     [39 cost=0] logical-shift    logical-shift(){sf:1u opc:2u 01010 shift:2u N:1u rm imm6:6u rn rd}
+    [40 cost=0] sdiv             sdiv(){sf:1u 0011010110 rm 000011 rn rd}
     [41 cost=0] sxtw             sxtw(){100100110 1 000000 011111 rn rd}
     [42 cost=0] msub             msub(){sf:1u 0011011000 rm 1 ra rn rd}
     [43 cost=0] udiv             udiv(){sf:1u 0011010110 rm 000010 rn rd}
@@ -1229,6 +1230,24 @@
     [81 cost=0] str64-f-roff     str64-f-roff(){11 111100 00 1 rm option:3u s:1u 10 rn rt:5u}
     [82 cost=0] fmov-reg-d       fmov-reg-d(){00011110 01 100000010000 rn:5u rd:5u}
     [83 cost=0] fmov-reg-s       fmov-reg-s(){00011110 00 100000010000 rn:5u rd:5u}
+    [84 cost=0] ldp64-post       ldp64-post(){1010100011 imm7-scaled8 rt2 rn rt}
+    [85 cost=0] ldp64-off        ldp64-off(){1010100101 imm7-scaled8 rt2 rn rt}
+    [86 cost=0] stp64-post       stp64-post(){1010100010 imm7-scaled8 rt2 rn rt}
+    [87 cost=0] stp64-off        stp64-off(){1010100100 imm7-scaled8 rt2 rn rt}
+    [88 cost=0] ldp32-post       ldp32-post(){0010100011 imm7-scaled4 rt2 rn rt}
+    [89 cost=0] ldp32-off        ldp32-off(){0010100101 imm7-scaled4 rt2 rn rt}
+    [90 cost=0] stp32-post       stp32-post(){0010100010 imm7-scaled4 rt2 rn rt}
+    [91 cost=0] stp32-off        stp32-off(){0010100100 imm7-scaled4 rt2 rn rt}
+    [92 cost=0] adds-imm         adds-imm(){sf:1u 01100010 sh:1u imm12:12u rn rd}
+    [93 cost=0] ldr8-post        ldr8-post(){00 111000 01 0 imm9-scaled1 01 rn rt}
+    [94 cost=0] str8-post        str8-post(){00 111000 00 0 imm9-scaled1 01 rn rt}
+    [95 cost=0] ldr16-post       ldr16-post(){01 111000 01 0 imm9-scaled1 01 rn rt}
+    [96 cost=0] str16-post       str16-post(){01 111000 00 0 imm9-scaled1 01 rn rt}
+    [97 cost=0] ldr32-post       ldr32-post(){10 111000 01 0 imm9-scaled1 01 rn rt}
+    [98 cost=0] str32-post       str32-post(){10 111000 00 0 imm9-scaled1 01 rn rt}
+    [99 cost=0] ldr64-post       ldr64-post(){11 111000 01 0 imm9-scaled1 01 rn rt}
+    [100 cost=0] str64-post       str64-post(){11 111000 00 0 imm9-scaled1 01 rn rt}
+    [101 cost=0] sbfm             sbfm(){sf:1u 00100110 N:1u immr:6u imms:6u rn rd}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}
@@ -1245,6 +1264,8 @@
   offset-scaled8(){<offset:12@0 ldst64-lo12>}
   fpimm8-d(){imm8:8u}
   fpimm8-s(){imm8:8u}
+  imm7-scaled4(){imm7:7s}
+  imm9-scaled1(){imm9:9s}
   ########## riscv32 tokens
   1 7 directive .option
   9 5 ident nopic

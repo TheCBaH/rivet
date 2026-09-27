@@ -50,7 +50,7 @@ let%expect_test "every target's codec passes Codec.check" =
     arm: alt arm: v3-s and vcvt-f32-s32 have overlapping fixed bits; priority 21 before 31 decides
     arm: alt arm: vmem-d and vldr-lit-d have overlapping fixed bits; priority 35 before 41 decides
     arm: alt arm: vmem-s and vldr-lit-s have overlapping fixed bits; priority 36 before 42 decides
-    aarch64: none
+    aarch64: alt aarch64: sxtw and sbfm have overlapping fixed bits; priority 41 before 101 decides
     riscv32: none
     riscv64: none
     |}]
@@ -3274,6 +3274,113 @@ let%expect_test "ADD/SUB (extended register): uxtb/uxtw/uxtx/sxtx, and rd/rn = s
     40000010  49 ed 2b cb  sub x9, x10, x11, sxtx #3  [aarch64.addsub-extend]
     40000014  c0 03 5f d6  ret                        [aarch64.ret]
     |}]
+
+(* {1 Forms from the embedded CompCert corpus}
+
+   What CompCert emits for signed division, comparisons against small
+   negative constants or large multiples of 4096, signed bitfield reads,
+   static zero-initialized objects, large stack frames and inline struct
+   copies. Byte-for-byte checked against the host's GNU as 2.44 / objdump
+   before being written down:
+     1ac20dcc  sdiv w12, w14, w2        9ac40d27  sdiv x7, x9, x4
+     31000d9f  cmn w12, #0x3            b13ffc3f  cmn x1, #0xfff
+     3140101f  cmn w0, #0x4, lsl #12    7140113f  cmp w9, #0x4, lsl #12
+     13083807  sbfx w7, w0, #8, #7      9343f841  sbfx x1, x2, #3, #60
+     a8c147d0  ldp x16, x17, [x30], #16 28ff0be1  ldp w1, w2, [sp], #-8
+     a88145d0  stp x16, x17, [x14], #16 a9007bef  stp x15, x30, [sp]
+     a9200861  stp x1, x2, [x3, #-512]  a95f8be1  ldp x1, x2, [sp, #504]
+     29010be1  stp w1, w2, [sp, #8]
+     f84087d0  ldr x16, [x30], #8       f80085d0  str x16, [x14], #8
+     b85fc441  ldr w1, [x2], #-4        38001483  strb w3, [x4], #1
+     384ff4c5  ldrb w5, [x6], #255      785007e7  ldrh w7, [sp], #-256 *)
+let%expect_test "sdiv, cmn, auto-shifted cmp, sbfx, ldp/stp and post-indexed ldr/str" =
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tsdiv w12, w14, w2\n\
+     \tsdiv x7, x9, x4\n\
+     \tcmn w12, #3\n\
+     \tcmn x1, #4095\n\
+     \tcmn w0, #16384\n\
+     \tcmp w9, #16384\n\
+     \tsbfx w7, w0, 8, 7\n\
+     \tsbfx x1, x2, #3, #60\n\
+     \tldp x16, x17, [x30], #16\n\
+     \tldp w1, w2, [sp], #-8\n\
+     \tstp x16, x17, [x14], #16\n\
+     \tstp x15, x30, [sp, #0]\n\
+     \tstp x1, x2, [x3, #-512]\n\
+     \tldp x1, x2, [sp, #504]\n\
+     \tstp w1, w2, [sp, #8]\n\
+     \tldr x16, [x30], #8\n\
+     \tstr x16, [x14], #8\n\
+     \tldr w1, [x2], #-4\n\
+     \tstrb w3, [x4], #1\n\
+     \tldrb w5, [x6], #255\n\
+     \tldrh w7, [sp], #-256\n\
+     \tret\n";
+  [%expect
+    {|
+    40000000  cc 0d c2 1a  sdiv w12, w14, w2         [aarch64.sdiv]
+    40000004  27 0d c4 9a  sdiv x7, x9, x4           [aarch64.sdiv]
+    40000008  9f 0d 00 31  cmn w12, #3               [aarch64.adds-imm]
+    4000000c  3f fc 3f b1  cmn x1, #4095             [aarch64.adds-imm]
+    40000010  1f 10 40 31  cmn w0, #4, lsl #12       [aarch64.adds-imm]
+    40000014  3f 11 40 71  cmp w9, #4, lsl #12       [aarch64.subs-imm]
+    40000018  07 38 08 13  sbfx w7, w0, #8, #7       [aarch64.sbfm]
+    4000001c  41 f8 43 93  sbfx x1, x2, #3, #60      [aarch64.sbfm]
+    40000020  d0 47 c1 a8  ldp x16, x17, [x30], #16  [aarch64.ldp64-post]
+    40000024  e1 0b ff 28  ldp w1, w2, [sp], #-8     [aarch64.ldp32-post]
+    40000028  d0 45 81 a8  stp x16, x17, [x14], #16  [aarch64.stp64-post]
+    4000002c  ef 7b 00 a9  stp x15, x30, [sp]        [aarch64.stp64-off]
+    40000030  61 08 20 a9  stp x1, x2, [x3, #-512]   [aarch64.stp64-off]
+    40000034  e1 8b 5f a9  ldp x1, x2, [sp, #504]    [aarch64.ldp64-off]
+    40000038  e1 0b 01 29  stp w1, w2, [sp, #8]      [aarch64.stp32-off]
+    4000003c  d0 87 40 f8  ldr x16, [x30], #8        [aarch64.ldr64-post]
+    40000040  d0 85 00 f8  str x16, [x14], #8        [aarch64.str64-post]
+    40000044  41 c4 5f b8  ldr w1, [x2], #-4         [aarch64.ldr32-post]
+    40000048  83 14 00 38  strb w3, [x4], #1         [aarch64.str8-post]
+    4000004c  c5 f4 4f 38  ldrb w5, [x6], #255       [aarch64.ldr8-post]
+    40000050  e7 07 50 78  ldrh w7, [sp], #-256      [aarch64.ldr16-post]
+    40000054  c0 03 5f d6  ret                       [aarch64.ret] |}]
+
+(* [.local] then [.comm] allocates the object in the input's own [.bss] as a
+   local symbol, as GAS does (readelf on GNU's object: [scratch] is a LOCAL
+   OBJECT in [.bss]); a [.comm] without [.local] stays a common symbol. *)
+let%expect_test ".local plus .comm is a local .bss object, not a common one" =
+  let source_text =
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tadrp x9, scratch\n\
+     \tadd x9, x9, #:lo12:scratch\n\
+     \tret\n\
+     \t.local scratch\n\
+     \t.comm scratch, 4096, 8\n\
+     \t.comm counter, 4, 4\n"
+  in
+  let (module D : Target_intf.Target.DRIVER) = driver "aarch64" in
+  (match D.dump_lowered_ast ~unit_name:"t" ~source:(source source_text) () with
+  | Ok dump -> print_string dump
+  | Error ds -> print_string (Foundation.Diag.render ds));
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      label f
+      bytes 09 00 00 90              [aarch64.adrp]
+        @0/4B pc+0 page adrp-page s21 [29+2@0,5+19@2] = scratch
+      bytes 29 01 00 91              [aarch64.add-imm]
+        @0/4B pc+0 imm add-lo12 u12 [10+12@0] = scratch
+      bytes c0 03 5f d6              [aarch64.ret]
+    section .bss rw- align=8
+      align 8 fill<=00 00 00 00 00 00 00
+      label scratch
+      zero 4096
+    global f notype in .text
+    local scratch notype in .bss
+    comm counter size=4 align=4 |}]
 
 (* [[x20, x1]] with no extend token at all and [[x20, x1, lsl #0]] with an
    explicit unscaled [lsl #0] assemble to the same word on real [as]

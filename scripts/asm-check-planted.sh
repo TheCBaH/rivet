@@ -253,6 +253,12 @@ plant js-runtime-stub purity reject-either 'ships a foreign object' "
   new_library lib/fastpath fastpath
   add_library lib/foundation/dune fastpath"
 
+# native_exec/ ships C stubs and is exempt from the stanza scan only while
+# every stanza in it is gated by ASM_COMPCERT_EMBED. One ungated stanza beside
+# the gated library must bring the scan back.
+plant research-stub-ungated purity audit-fail 'uses foreign_stubs' "
+  printf '\\n(rule\\n (with-stdout-to planted.txt\\n  (echo \\\"\\\")))\\n' >> native_exec/dune"
+
 # The test-only ppx tree leaking into production. ppx_expect is native-only and
 # pulls in time_now, which has C stubs, so this is a live risk rather than a
 # hypothetical one.

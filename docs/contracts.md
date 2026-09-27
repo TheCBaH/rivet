@@ -520,8 +520,11 @@ Notes on the rows that are not obvious:
   requested alignment, placed as an internal contribution to the canonical
   `.bss` group — and a strong (`.globl`-and-defined) symbol of the same name
   beats every `.comm` of it outright, with the commons simply discarded.
-  CompCert emits `.comm` for an uninitialized extern global and `.local` for
-  an uninitialized static; an initialized fixture never emits either, which is
+  A `.comm` whose name has been made `.local` in the same input (and not
+  `.globl` again since) is not a common symbol at all: as with GAS, it is
+  allocated in that input's own `.bss` as a local object, at lowering.
+  CompCert emits `.comm` for an uninitialized extern global and `.local` plus
+  `.comm` for an uninitialized static; an initialized fixture never emits either, which is
   why `cross_call`/`cross_data` don't exercise this path (see the M3 update
   note above §3).
 

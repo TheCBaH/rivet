@@ -6,6 +6,9 @@
 (library
  (name native_exec)
  (modes byte native)
- (libraries foundation image)
+ (libraries foundation asm_core image unix)
+ (foreign_stubs
+  (language c)
+  (names native_exec_stubs))
  (enabled_if
   (= %{env:ASM_COMPCERT_EMBED=false} true)))
