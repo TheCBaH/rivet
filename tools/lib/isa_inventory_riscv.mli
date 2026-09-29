@@ -1,7 +1,7 @@
-(** Phase A of the whole-ISA RISC-V inventory (asm/docs/isa-inventory.md):
+(** Phase A of the whole-ISA RISC-V inventory (docs/isa-inventory.md):
     mnemonic + extension only, mechanically read from the vendored
     [riscv-opcodes] submodule ({!Repo.isa_data_riscv_opcodes}). Phase B fields
-    (compcert-emitted, gcc-emitted, implementation state) are not computed
+    (gcc-emitted, implementation state) are not computed
     here - see that document's "Follow-up: sourcing Phase B" - every entry
     carries them as ["unknown"] and a deferral/promotion field of ["-"]. *)
 
@@ -46,7 +46,7 @@ val entries_for_target : Repo.t -> Target.t -> (entry list, Tool_error.t) Err.t
     than being treated as a data error. *)
 
 val render_manifest : source_commit:string -> Target.t -> entry list -> string
-(** [asm/docs/isa-inventory.md]'s manifest.txt format, source [riscv-opcodes]. *)
+(** [docs/isa-inventory.md]'s manifest.txt format, source [riscv-opcodes]. *)
 
 val render_summary : Target.t -> entry list -> string
-(** [asm/docs/isa-inventory.md]'s summary.txt format. *)
+(** [docs/isa-inventory.md]'s summary.txt format. *)

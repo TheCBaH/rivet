@@ -1,0 +1,19 @@
+
+/tmp/tmp.7VooFylEu6/riscv64-global_ldst.o:     file format elf64-littleriscv
+
+Sections:
+Idx Name          Size      VMA               LMA               File off  Algn
+  0 .text         00000014  0000000000000000  0000000000000000  00000040  2**2
+                  CONTENTS, ALLOC, LOAD, RELOC, READONLY, CODE
+  1 .data         00000004  0000000000000000  0000000000000000  00000054  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  2 .bss          00000000  0000000000000000  0000000000000000  00000058  2**0
+                  ALLOC
+  3 .comment      00000020  0000000000000000  0000000000000000  00000058  2**0
+                  CONTENTS, READONLY
+  4 .note.GNU-stack 00000000  0000000000000000  0000000000000000  00000078  2**0
+                  CONTENTS, READONLY
+  5 .eh_frame     00000028  0000000000000000  0000000000000000  00000078  2**3
+                  CONTENTS, ALLOC, LOAD, RELOC, READONLY, DATA
+  6 .riscv.attributes 00000055  0000000000000000  0000000000000000  000000a0  2**0
+                  CONTENTS, READONLY

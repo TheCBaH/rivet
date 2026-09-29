@@ -1,0 +1,9 @@
+
+/tmp/tmp.7VooFylEu6/arm-global_ldst.o:     file format elf32-littlearm
+
+RELOCATION RECORDS FOR [.text]:
+OFFSET   TYPE              VALUE
+00000000 R_ARM_MOVW_ABS_NC  asm_test_global
+00000004 R_ARM_MOVT_ABS    asm_test_global
+
+

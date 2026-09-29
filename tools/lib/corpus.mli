@@ -1,20 +1,41 @@
 (** Case discovery and manifest checking over a fixture or gas-xref corpus. *)
 
-type case = { name : string; root : Fpath.t }
+type corpus = {
+  sources : Fpath.t;  (** one directory per case: its C sources and [expected-status.txt] *)
+  outputs : Fpath.t;  (** one directory per case: what the compiler and the oracle generated *)
+}
 
-val discover : Fpath.t -> (case list, Tool_error.t) Err.t
-(** Every directory under the corpus root that has a [source/] subdirectory, in
-    bytewise order. A case is anything with that shape, so adding a fixture is
-    adding a directory - there is no list to forget to update.
+type case = {
+  name : string;
+  root : Fpath.t;  (** the case's output directory, [outputs/<name>], which may not exist yet *)
+  source_dir : Fpath.t;  (** [sources/<name>] *)
+}
+
+val discover : corpus -> (case list, Tool_error.t) Err.t
+(** Every directory under [sources] that holds a [.c] file, in bytewise order. A
+    case is anything with that shape, so adding a fixture is adding a directory -
+    there is no list to forget to update.
 
     An EMPTY discovery is an error, never an empty success: a run that found no
     cases and reported success is the failure mode the fixture scripts already
     guard against. *)
 
-val resolve : Fpath.t -> string -> (case, Tool_error.t) Err.t
+val resolve : corpus -> string -> (case, Tool_error.t) Err.t
 (** ONE case, by name. Callers resolve immediately before running each, which is
     what preserves the streaming behavior (P4): `--check return42 nope` prints
     return42's success line FIRST and then fails. *)
+
+val locate : case -> string -> Fpath.t
+(** Where a manifest's logical path lives on disk. [source/<file>] and
+    [expected-status.txt] are the author's files and resolve under [source_dir];
+    everything else is generated and resolves under [root]. Manifests keep the
+    paths they were written with when a case held its sources beside its
+    outputs, so the format does not depend on where the sources are kept. *)
+
+val case_files : case -> (string list, Tool_error.t) Err.t
+(** Every file a manifest may record for the case, by logical path, in one
+    bytewise order: the generated files under [root] (minus [manifest.txt*]),
+    and the author's under [source_dir]. *)
 
 val files : Fpath.t -> (string list, Tool_error.t) Err.t
 (** Every regular file under a case root except [manifest.txt*]. The glob is
@@ -37,10 +58,13 @@ val check : Fpath.t -> Manifest.t -> (int * finding list, Tool_error.t) Err.t
     interpolates the path as a REGEX, so a name containing a metacharacter is
     matched loosely. *)
 
+val check_case : case -> Manifest.t -> (int * finding list, Tool_error.t) Err.t
+(** {!check} over {!case_files}, resolving each recorded path with {!locate}. *)
+
 val stem_of_source : string -> (string, Tool_error.t) Err.t
 (** The basename without its .c suffix. This is why return42 keeps the
-    asm_test_entry.c spelling: CompCert writes the source path into its "#
-    Command line:" banner, so renaming the file would change every hash. *)
+    asm_test_entry.c spelling: a compiler that writes its command line into the
+    assembly would change every hash if the file were renamed. *)
 
 val previous_and_source : case -> (Manifest.t option * string, Tool_error.t) Err.t
 (** The case's committed manifest, if it has one, and the source path to build
@@ -49,12 +73,12 @@ val previous_and_source : case -> (Manifest.t option * string, Tool_error.t) Err
     SOURCE_REL comes from that manifest and only falls back to [source/<case>.c]
     for a case being generated for the first time. Deriving it rather than
     fixing it is what lets return42 keep the asm_test_entry.c spelling its
-    committed bytes were generated with: CompCert writes the source path into
+    committed bytes were generated with: the compiler writes the source path into
     its "# Command line:" banner, so renaming the file would change every one of
     that case's hashes. *)
 
 val source_units : case -> ((string * string) list, Tool_error.t) Err.t
-(** M3 (.ai/asm_plan.md §12): the case's [source-unit] records, or [[]] for a
+(** M3 (docs/design.md §12): the case's [source-unit] records, or [[]] for a
     case with no manifest yet, or one whose manifest predates M3 and carries
     only the single legacy [source] record - a caller reads that case's own ONE
     source through {!previous_and_source} exactly as before, and decides its own
@@ -64,7 +88,7 @@ val source_units : case -> ((string * string) list, Tool_error.t) Err.t
     being forced through one fabricated default. *)
 
 val origins : case -> ((string * string) list, Tool_error.t) Err.t
-(** M4 (.ai/asm_plan.md §12): the case's [origin] records as
+(** M4 (docs/design.md §12): the case's [origin] records as
     [(unit_stem, upstream_path)], or [[]] for a case with no manifest yet or no
     such records - the same shape and fallback as {!source_units}. *)
 
@@ -80,11 +104,11 @@ val supports_target : case -> Target.t -> (bool, Tool_error.t) Err.t
 
 type unit_source =
   | Compiled of { unit : string; c_path : string }
-      (** A unit compiled from a project [.c] file via [ccomp] - the only kind
+      (** A unit compiled from a project [.c] file via [the compiler] - the only kind
           that existed before M4. *)
   | Preexisting of { unit : string; origin : string }
       (** M4: a unit whose committed [<target>/<stem>.s] is preprocessed from an
-          upstream, not-project-authored [.S] source (e.g. a CompCert runtime
+          upstream, not-project-authored [.S] source (e.g. a runtime
           helper) rather than compiled - [unit] is always its declared stem. *)
 
 val unit_name : unit_source -> string
@@ -94,8 +118,8 @@ val sources : case -> (unit_source list, Tool_error.t) Err.t
     sorted by unit name. This is the one function fixture tooling should loop
     over - it never returns [[]], and every consumer (regen, verify, rehash, the
     GNU oracle, exec) sees units in this same order, matching
-    [asm/test/oracle/exec.ml]'s and
-    [asm/test/differential/test_differential.ml]'s independent
+    [test/oracle/exec.ml]'s and
+    [test/differential/test_differential.ml]'s independent
     lexical-by-filename traversal of the committed [.s] files those units
     materialize into.
 

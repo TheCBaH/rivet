@@ -28,7 +28,7 @@ val isa_difficult_check : Repo.t -> Command.t
 (** The same {!Isa_generated_case.Offline_consumer}-tier replay as
     {!isa_generated_check}, generalized over {!Isa_gen_difficult.all}/
     [normalize_entry]/[build] and the separate
-    [asm/fixtures/isa-difficult/cases.jsonl] corpus, so growing this
+    [fixtures/isa-difficult/cases.jsonl] corpus, so growing this
     non-frozen manifest can never touch the frozen pilot corpus. *)
 
 val targets : Target.capability -> Command.t

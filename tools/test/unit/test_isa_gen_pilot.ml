@@ -4,7 +4,7 @@
    real normalization output needs the checked-in exports and lives in
    repo_tests.ml instead, matching every other normalization/generator suite's split. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

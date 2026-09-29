@@ -1,0 +1,15 @@
+
+Symbol table '.symtab' contains 12 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+     1: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS direct_call.c
+     2: 0000000000000000     0 SECTION LOCAL  DEFAULT    1 .text
+     3: 0000000000000000     0 SECTION LOCAL  DEFAULT    3 .data
+     4: 0000000000000000     0 SECTION LOCAL  DEFAULT    4 .bss
+     5: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT    1 $x
+     6: 0000000000000000     0 SECTION LOCAL  DEFAULT    6 .note.GNU-stack
+     7: 0000000000000014     0 NOTYPE  LOCAL  DEFAULT    7 $d
+     8: 0000000000000000     0 SECTION LOCAL  DEFAULT    7 .eh_frame
+     9: 0000000000000000     0 SECTION LOCAL  DEFAULT    5 .comment
+    10: 0000000000000000     8 FUNC    GLOBAL DEFAULT    1 asm_test_callee
+    11: 0000000000000008    28 FUNC    GLOBAL DEFAULT    1 asm_test_entry

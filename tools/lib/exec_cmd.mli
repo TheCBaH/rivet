@@ -1,4 +1,4 @@
-(** [compcert-tools fixture exec] - execute every fixture under qemu-user.
+(** [rivet-tools fixture exec] - execute every fixture under qemu-user.
 
     The fixture .text/.rodata/.data stay at the controlled oracle addresses and
     a tiny freestanding _start in its own section turns the fixture's return

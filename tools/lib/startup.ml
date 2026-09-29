@@ -1,4 +1,4 @@
-(* Extracted VERBATIM from tools/asm-fixture-exec.sh's startup_for by script,
+(* Extracted VERBATIM from scripts/asm-fixture-exec.sh's startup_for by script,
    not retyped. That script was retired in Phase 8; this is now the definition
    rather than a copy of one. These are assembly sources whose bytes are assembled and then
    compared against a committed size, so a transcription slip would surface as

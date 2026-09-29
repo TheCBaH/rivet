@@ -1,0 +1,8 @@
+
+/tmp/tmp.7VooFylEu6/arm-direct_call.o:     file format elf32-littlearm
+
+RELOCATION RECORDS FOR [.text]:
+OFFSET   TYPE              VALUE
+00000010 R_ARM_CALL        asm_test_callee
+
+

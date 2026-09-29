@@ -46,7 +46,7 @@
 ;   err_trace  a LOCAL library of this project (tools/vendor/err_trace_local),
 ;              copied from the submodule. Not package-backed, so no row.
 ;   fmt        reached transitively through bos, and it is the INSTALLED opam
-;              package, not asm/vendor/fmt, which this project cannot see.
+;              package, not vendor/fmt, which this project cannot see.
 ;              Rule 4's business, never rule 1's.
 ;   rresult    a bos opam dependency that does NOT appear in the resolved dune
 ;              closure. Measured, not assumed.

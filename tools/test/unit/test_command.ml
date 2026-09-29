@@ -6,7 +6,7 @@
    and stderr and their order, and an event-list assertion would pass just as
    happily if render wrote everything to one stream. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 

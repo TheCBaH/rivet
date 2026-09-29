@@ -25,7 +25,7 @@ val section_size : string -> name:string -> string option
     absent. Used for the .start provenance check, where the comparison is
     between two objdump spellings and so never needs the numeric value. It is
     also a NOBITS section's only source of size (M3 §11,
-    .ai/asm_plan.md §12): objdump reports its full logical extent here even
+    docs/design.md §12): objdump reports its full logical extent here even
     though there is nothing to copy out of it. *)
 
 val section_is_nobits : string -> name:string -> bool

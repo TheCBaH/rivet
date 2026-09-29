@@ -5,7 +5,7 @@
    dependency, matching the isa-norm-riscv/isa-norm-xed unit suites'
    convention. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

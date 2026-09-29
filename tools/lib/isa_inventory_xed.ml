@@ -43,7 +43,7 @@ let field_value line ~field =
 
 (* One [{ ... }] block's accumulator. A block can carry several PATTERN
    lines (XED's hand-authored dialect) as well as just one (the generated
-   dialect) - see the .mli and asm/docs/isa-inventory.md. *)
+   dialect) - see the .mli and docs/isa-inventory.md. *)
 type block_state = {
   mutable iclass : string option;
   mutable isa_set : string option;
@@ -107,7 +107,7 @@ let parse_datafile ~extension text =
                  64-bit bit-flag: a PATTERN tagged mode16 or mode32 is just as
                  excluded from x86_64 as one tagged not64 (PUSHA/POPA/BOUND
                  have only mode16/mode32 forms and no not64 tag at all - see
-                 asm/docs/isa-inventory.md). Don't confuse this MODE token
+                 docs/isa-inventory.md). Don't confuse this MODE token
                  with the separate EAMODE one (eamode16/eamode32/eamode64,
                  address-size, not operating-mode). EAMODE64 and FORCE64()
                  do nevertheless imply long mode; EAMODE16/EAMODE32 do not
@@ -249,7 +249,7 @@ let render_manifest ~source_commit (target : Target.t) entries =
     (fun e ->
       Buffer.add_string b
         (Printf.sprintf
-           "mnemonic:%s\textension:%s\tcompcert-emitted:unknown\tgcc-emitted:unknown\tstate:unknown\tdeferral-reason:-\tpromotion-trigger:-\n"
+           "mnemonic:%s\textension:%s\tgcc-emitted:unknown\tstate:unknown\tdeferral-reason:-\tpromotion-trigger:-\n"
            (Manifest.escape e.mnemonic) (Manifest.escape e.extension)))
     entries;
   Buffer.contents b
@@ -268,6 +268,5 @@ let render_summary (target : Target.t) entries =
   |> List.sort (fun (a, _) (b, _) -> String.compare a b)
   |> List.iter (fun (ext, n) -> Buffer.add_string b (Printf.sprintf "by-extension:%s:%d\n" ext n));
   Buffer.add_string b (Printf.sprintf "by-state:unknown:%d\n" (List.length entries));
-  Buffer.add_string b "compcert-emitted:0\n";
   Buffer.add_string b "gcc-emitted:0\n";
   Buffer.contents b

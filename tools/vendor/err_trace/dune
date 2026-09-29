@@ -29,5 +29,6 @@
 
 (library
  (name err_trace)
+ (public_name rivet-tools.err_trace)
  (wrapped false)
  (modes byte native))

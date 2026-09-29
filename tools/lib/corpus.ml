@@ -1,35 +1,58 @@
-type case = { name : string; root : Fpath.t }
+type corpus = { sources : Fpath.t; outputs : Fpath.t }
+type case = { name : string; root : Fpath.t; source_dir : Fpath.t }
 
 let err ?path op detail =
   Err.fail ~pos:__POS__ ~pp_error:Tool_error.pp (Tool_error.v ?path op detail)
 
-let discover root =
-  match Sys.readdir (Fpath.to_string root) with
-  | exception Sys_error m -> err ~path:root Tool_error.Traverse m
+let is_dir p = Sys.file_exists (Fpath.to_string p) && Sys.is_directory (Fpath.to_string p)
+
+let case_of corpus name =
+  { name; root = Fpath.(corpus.outputs / name); source_dir = Fpath.(corpus.sources / name) }
+
+let has_c_file dir =
+  match Sys.readdir (Fpath.to_string dir) with
+  | exception Sys_error _ -> false
+  | entries -> Array.exists (fun e -> Filename.check_suffix e ".c") entries
+
+let discover corpus =
+  match Sys.readdir (Fpath.to_string corpus.sources) with
+  | exception Sys_error m -> err ~path:corpus.sources Tool_error.Traverse m
   | entries ->
       let names =
         Array.to_list entries
         |> List.filter (fun e ->
-            let s = Fpath.(to_string (root / e / "source")) in
-            Sys.file_exists s && Sys.is_directory s)
+            let d = Fpath.(corpus.sources / e) in
+            is_dir d && has_c_file d)
         |> List.sort String.compare
       in
       if names = [] then
-        err ~path:root Tool_error.Traverse
-          (Printf.sprintf "no cases under %s" (Fpath.to_string root))
-      else Ok (List.map (fun name -> { name; root = Fpath.(root / name) }) names)
+        err ~path:corpus.sources Tool_error.Traverse
+          (Printf.sprintf "no cases under %s" (Fpath.to_string corpus.sources))
+      else Ok (List.map (case_of corpus) names)
 
 let resolve corpus name =
   match Identifier.parse_case_name name with
   | Error e -> Error e
   | Ok id ->
       let name = Identifier.to_string id in
-      let root = Fpath.(corpus / name) in
-      if Sys.file_exists (Fpath.to_string root) && Sys.is_directory (Fpath.to_string root) then
-        Ok { name; root }
+      let case = case_of corpus name in
+      if is_dir case.source_dir then Ok case
       else
-        err ~path:root Tool_error.Validate
-          (Printf.sprintf "no such case '%s' under %s" name (Fpath.to_string corpus))
+        err ~path:case.source_dir Tool_error.Validate
+          (Printf.sprintf "no such case '%s' under %s" name (Fpath.to_string corpus.sources))
+
+(* A manifest names a case's files by the paths they had when the case kept its
+   sources beside its outputs: source/<file> and expected-status.txt. They are
+   the author's files, so they stay where the author keeps them. *)
+let expected_status = "expected-status.txt"
+
+let locate case rel =
+  let source_prefix = "source/" in
+  let n = String.length source_prefix in
+  if String.length rel > n && String.sub rel 0 n = source_prefix then
+    Fpath.(case.source_dir / String.sub rel n (String.length rel - n))
+  else if String.equal rel expected_status then Fpath.(case.source_dir / expected_status)
+  else Fpath.(case.root // v rel)
 
 (* manifest.txt*, not manifest.txt: --regen writes manifest.txt.new and
    manifest.txt.diff beside the fixtures, and a plain exclusion would record the
@@ -39,7 +62,7 @@ let resolve corpus name =
    `find . -type f ! -name 'manifest.txt*'` does - -name tests the basename
    wherever it appears. This is not a detail: the corpus contains nested
    oracle/linked/manifest.txt files, which are a DIFFERENT format written by
-   asm-fixture-oracle.sh, and anchoring the exclusion at the case root would
+   the oracle script, and anchoring the exclusion at the case root would
    record every one of them as an unrecorded file. *)
 let is_manifest_scratch rel =
   let base = Filename.basename rel in
@@ -54,8 +77,7 @@ let pp_finding ppf = function
   | Changed p -> Format.fprintf ppf "CHANGED %s" p
   | Unrecorded p -> Format.fprintf ppf "UNRECORDED %s" p
 
-let check root manifest =
-  let ( let* ) = Result.bind in
+let check_gen ~locate ~present manifest =
   let recorded = Manifest.hashes manifest in
   (* Exact set membership (D1), not a regex match: the shell interpolates the
      path into `grep -q "^sha256:$f\t"`, so a name containing a metacharacter
@@ -63,11 +85,10 @@ let check root manifest =
      one grep per file over the whole manifest. *)
   let recorded_set = Hashtbl.create 128 in
   List.iter (fun (p, h) -> Hashtbl.replace recorded_set p h) recorded;
-  let* present = files root in
   let findings =
     List.filter_map
       (fun (rel, expected) ->
-        let p = Fpath.(root // v rel) in
+        let p = locate rel in
         if not (Sys.file_exists (Fpath.to_string p)) then Some (Missing rel)
         else
           match Tool_fs.sha256 p with
@@ -86,6 +107,26 @@ let check root manifest =
       present
   in
   Ok (List.length recorded, findings @ unrecorded)
+
+let check root manifest =
+  let ( let* ) = Result.bind in
+  let* present = files root in
+  check_gen ~locate:(fun rel -> Fpath.(root // v rel)) ~present manifest
+
+(* Every file a case's manifest may record: the generated ones under its output
+   root, the author's under its source directory, all by their logical paths and
+   in one bytewise order. *)
+let case_files case =
+  let ( let* ) = Result.bind in
+  let* outputs = if is_dir case.root then files case.root else Ok [] in
+  let* authored = Tool_fs.files ~root:case.source_dir ~exclude:(fun _ -> false) in
+  let logical rel = if String.equal rel expected_status then rel else "source/" ^ rel in
+  Ok (List.sort String.compare (outputs @ List.map logical authored))
+
+let check_case case manifest =
+  let ( let* ) = Result.bind in
+  let* present = case_files case in
+  check_gen ~locate:(locate case) ~present manifest
 
 let stem_of_source rel =
   let ( let* ) = Result.bind in
@@ -116,7 +157,7 @@ let source_units case =
     | Error e -> Error (List.hd (Err.Error.kind e))
     | Ok m -> Manifest.source_units m
 
-(* M4 (.ai/asm_plan.md §12): a case's [origin:] records, or [[]] for a case
+(* M4 (docs/design.md §12): a case's [origin:] records, or [[]] for a case
    with no manifest yet or no such records - the same shape and fallback as
    {!source_units}. *)
 let origins case =
@@ -149,11 +190,11 @@ let supports_target case target =
   let* ts = supported_targets case in
   Ok (List.mem target ts)
 
-(* Top-level only (not recursive): a case's own [source/] directory is where
+(* Top-level only (not recursive): a case's own source directory is where
    its compilation units live, and going deeper would risk picking up a
    helper header or a nested fixture's own tree. *)
 let discover_c_files case =
-  let dir = Fpath.(case.root / "source") in
+  let dir = case.source_dir in
   match Sys.readdir (Fpath.to_string dir) with
   | exception Sys_error m -> err ~path:dir Tool_error.Traverse m
   | entries ->
@@ -207,12 +248,12 @@ let preexisting_units case =
   let* og = origins case in
   Ok (List.map (fun (unit, origin) -> Preexisting { unit; origin }) og)
 
-(* M4 (.ai/asm_plan.md §12): every compilation unit a case has, [Compiled]
+(* M4 (docs/design.md §12): every compilation unit a case has, [Compiled]
    (from a project [.c] file) or [Preexisting] (an upstream [.S] source,
-   e.g. a CompCert runtime helper, preprocessed rather than compiled) -
+   e.g. a runtime helper, preprocessed rather than compiled) -
    merged and sorted by unit name, the SAME comparison rule
-   [asm/test/oracle/exec.ml]'s [units_of] and
-   [asm/test/differential/test_differential.ml]'s [unit_paths] already apply
+   [test/oracle/exec.ml]'s [units_of] and
+   [test/differential/test_differential.ml]'s [unit_paths] already apply
    to committed [.s] filenames, so once a unit is materialized as an
    ordinary [<target>/<stem>.s] file every consumer agrees on one order by
    construction. Rejects two units (of either kind, including the implicit

@@ -3,62 +3,24 @@ let err op detail = Err.fail ~pos:__POS__ ~pp_error:Tool_error.pp (Tool_error.v 
 
 (* {1 The frontier sources}
 
-   Three groups answering different questions: `fixture` are positive controls
-   this assembler already handles; `helper` are our own hand-written ABI
-   helpers; `runtime` is CompCert's runtime library, the largest body of real
-   assembly available here. The runtime group covers all six targets: both
-   RISC-V profiles share CompCert's arch-named `runtime/riscV` directory (see
-   runtime_dir below), rather than each having its own target-named one. *)
+   Two groups answering different questions: `fixture` is a positive control
+   this assembler already handles - a generated fixture's own output; `helper`
+   are our own hand-written ABI helpers. Both are files this project produced,
+   assembled by GNU as, so a rejection is a statement about this assembler's
+   coverage and not about the file. *)
 
-type group = Fixture | Helper | Runtime
+type group = Fixture | Helper
 
-let group_name = function Fixture -> "fixture" | Helper -> "helper" | Runtime -> "runtime"
+let group_name = function Fixture -> "fixture" | Helper -> "helper"
 
-(* CompCert's runtime tree is arch-named, not target-named: both RISC-V
-   profiles share runtime/riscV, and it is the MODEL_ define below - not the
-   directory - that selects the 32- or 64-bit half of vararg.S. Every other
-   target's arch name and target name coincide. *)
-let runtime_dir = function Target.Riscv32 | Target.Riscv64 -> "riscV" | t -> Target.to_string t
-
-(* CompCert compiles its runtime with -DMODEL_/-DABI_/-DENDIANNESS_/-DSYS_
-   (modules/CompCert/runtime/Makefile:62) and the values are the ones its own
-   configure picks per target. Without them FUNCTION is left undefined and every
-   file preprocesses to text no assembler can read - which would have been
-   recorded as a frontier finding and would have been an artifact of how we
-   invoked cpp. *)
-let runtime_defines = function
-  | Target.Arm -> [ "-DMODEL_armv7a"; "-DABI_hardfloat"; "-DENDIANNESS_little"; "-DSYS_linux" ]
-  | Target.X86_32 -> [ "-DMODEL_32sse2"; "-DABI_standard"; "-DENDIANNESS_little"; "-DSYS_linux" ]
-  | Target.X86_64 -> [ "-DMODEL_64"; "-DABI_standard"; "-DENDIANNESS_little"; "-DSYS_linux" ]
-  | Target.Aarch64 -> [ "-DMODEL_default"; "-DABI_standard"; "-DENDIANNESS_little"; "-DSYS_linux" ]
-  | Target.Riscv32 -> [ "-DMODEL_32"; "-DABI_standard"; "-DENDIANNESS_little"; "-DSYS_linux" ]
-  | Target.Riscv64 -> [ "-DMODEL_64"; "-DABI_standard"; "-DENDIANNESS_little"; "-DSYS_linux" ]
-
-let frontier_sources repo target =
-  let root = Repo.path repo in
+let frontier_sources _repo target =
   let t = Target.to_string target in
-  let fixed =
-    [
-      (Fixture, "asm_test_entry", "asm/fixtures/compcert-3.17/return42/" ^ t ^ "/asm_test_entry.s");
-      (Helper, "helper", "asm/helpers/" ^ t ^ ".s");
-    ]
-  in
-  let dir = "modules/CompCert/runtime/" ^ runtime_dir target in
-  let runtime =
-    (* Sys.is_directory RAISES on a missing path, where the shell's `[ -d … ]`
-       is merely false. Every target now maps to a directory that exists; this
-       guard's remaining job is to fail soft if the submodule is uninitialized,
-       rather than to skip RISC-V. *)
-    let is_dir p = try Sys.is_directory p with Sys_error _ -> false in
-    if not (is_dir (Fpath.to_string Fpath.(root // v dir))) then []
-    else
-      Sys.readdir (Fpath.to_string Fpath.(root // v dir))
-      |> Array.to_list
-      |> List.filter (fun f -> Filename.check_suffix f ".S")
-      |> List.sort String.compare
-      |> List.map (fun f -> (Runtime, Filename.chop_suffix f ".S", dir ^ "/" ^ f))
-  in
-  fixed @ runtime
+  [
+    ( Fixture,
+      "asm_test_entry",
+      "fixtures/" ^ Repo.fixture_compiler_dir ^ "/return42/" ^ t ^ "/asm_test_entry.s" );
+    (Helper, "helper", "helpers/" ^ t ^ ".s");
+  ]
 
 (* {2 Recording one case}
 
@@ -93,10 +55,9 @@ let record_gas tools ~dir ~src ~include_dir =
    regenerated from an assembler that does not compile. *)
 let emit_generated repo ~into =
   Tool_process.exec
-    (Tool_process.spec
-       ~cwd:Fpath.(Repo.path repo / "asm")
-       ~stdout:Tool_process.Out_null ~stderr:Tool_process.Err_inherit
-       ~accepted:Process_status.Zero_only ~label:"snippet_emit" "opam"
+    (Tool_process.spec ~cwd:(Repo.path repo) ~stdout:Tool_process.Out_null
+       ~stderr:Tool_process.Err_inherit ~accepted:Process_status.Zero_only ~label:"snippet_emit"
+       "opam"
        [
          "exec"; "--"; "dune"; "exec"; "test/snippets/snippet_emit.exe"; "--"; Fpath.to_string into;
        ])
@@ -167,30 +128,19 @@ let regen repo =
                   in
                   let* () = Tool_fs.mkdir_p dir in
                   let input = Fpath.(dir / "input.s") in
-                  let* staged =
-                    if Filename.check_suffix rel ".S" then
-                      Gnu_tools.preprocess tools ~src ~out:input ~defines:(runtime_defines t)
-                        ~include_dir:Fpath.(Repo.path repo // v (Filename.dirname rel))
-                    else
-                      let* () = Tool_fs.copy ~src ~dst:input in
-                      Ok true
+                  let* () = Tool_fs.copy ~src ~dst:input in
+                  let* () = Tool_fs.write Fpath.(dir / "origin.txt") (rel ^ "\n") in
+                  (* The helpers .include a shared file, which gas resolves
+                     relative to -I. *)
+                  let include_dir =
+                    match group with
+                    | Helper -> Some Fpath.(Repo.path repo / "helpers")
+                    | Fixture -> None
                   in
-                  if not staged then
-                    let* () = Tool_fs.remove_tree dir in
-                    Ok m
-                  else
-                    let* () = Tool_fs.write Fpath.(dir / "origin.txt") (rel ^ "\n") in
-                    (* The helpers .include a shared file, which gas resolves
-                       relative to -I. *)
-                    let include_dir =
-                      match group with
-                      | Helper -> Some Fpath.(Repo.path repo / "asm" / "helpers")
-                      | _ -> None
-                    in
-                    (* Unlike the generated loop, a rejection here is RECORDED
-                       EVIDENCE and the run continues. *)
-                    let* _ = record_gas tools ~dir ~src:input ~include_dir in
-                    Ok (m + 1))
+                  (* Unlike the generated loop, a rejection here is RECORDED
+                     EVIDENCE and the run continues. *)
+                  let* _ = record_gas tools ~dir ~src:input ~include_dir in
+                  Ok (m + 1))
               (Ok acc) (frontier_sources repo t))
           (Ok 0) Target.all
       in
@@ -223,10 +173,10 @@ let regen repo =
             Ok ({ Manifest.key = Manifest.Sha256 rel; value = Some h } :: rs))
           (Ok
              [
-               { Manifest.key = Manifest.Generator; value = Some "compcert-tools gas-xref regen" };
+               { Manifest.key = Manifest.Generator; value = Some "rivet-tools gas-xref regen" };
                {
                  Manifest.key = Manifest.Inputs;
-                 value = Some "generated by asm/test/snippets/snippet_emit.ml from the AST corpus";
+                 value = Some "generated by test/snippets/snippet_emit.ml from the AST corpus";
                };
              ])
           files

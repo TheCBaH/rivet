@@ -2,7 +2,7 @@ let fatal ?path op detail =
   Command.of_error
     (Err.Error.make ~pos:__POS__ ~pp_error:Tool_error.pp (Tool_error.v ?path op detail))
 
-(* asm/docs/isa-inventory.md's manifest.txt: one [key:value<TAB>...] row per
+(* docs/isa-inventory.md's manifest.txt: one [key:value<TAB>...] row per
    line, plus a five-line [key:value] header (schema-version, target, source,
    source-commit, source-license) this check does not need. Every data row
    starts with "mnemonic:" - matching isa-db/tests/manifest_fixture.py's own

@@ -3,7 +3,7 @@
    repo_tests.ml's toolchain-required path (make asm-isa-generated-regen),
    never by tools-test/tools-integration. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

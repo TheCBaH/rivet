@@ -1,7 +1,7 @@
 (** Capabilities for the roots the tools work in.
 
     {b Construction never creates anything.} Resolving configuration must not
-    mutate the tree: asking whether an installed ccomp exists does not create
+    mutate the tree: asking whether an installed the compiler exists does not create
     .fixture-work today, a missing-compiler failure must not leave a new work
     root behind, and the Phase 2 check commands are read-only. So constructors
     validate lexical form, inspect the nearest existing ancestor, and return a
@@ -24,17 +24,7 @@ val child_path : child_owned -> Fpath.t
     These must EQUAL the canonical location - no override exists, and accepting
     one would let a corpus check silently run against a different corpus. *)
 
-val fixture_corpus : Repo.t -> read_root
 val gas_xref_corpus : Repo.t -> recreatable_root
-
-val corpus_work : Repo.t -> (recreatable_root, Tool_error.t) Err.t
-(** [<repo>/.corpus-work], recreated on every [classify-c] run. Unlike
-    {!fixture_corpus}/{!gas_xref_corpus} this directory is not part of the
-    checked-in tree, so its constructor checks for a symlinked component
-    before returning, the same guard {!fixture_work} and {!tool_gate_work}
-    apply to their (env-selected) roots. Not overridable by any environment
-    variable: it must stay repo-relative so paths handed to the C compiler
-    and the parser resolve the same way regardless of caller cwd. *)
 
 (** {2 Environment-selected roots}
 

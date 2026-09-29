@@ -1,4 +1,4 @@
 (executable
- (name compcert_tools)
+ (name rivet_tools)
  (modes byte native)
- (libraries compcert_tools cmdliner))
+ (libraries rivet_tools rivet_tools_cli))

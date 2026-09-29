@@ -10,7 +10,7 @@
 val configuration_for : Target.t -> string list
 (** The resolved argv fragment for a target's own per-suite features -
     RISC-V's `-march`/`-mabi`/`-mno-relax`, x86's empty list (the two cross
-    assemblers are already ISA-specific binaries) - NEVER CompCert's own
+    assemblers are already ISA-specific binaries) - NEVER the compiler's own
     frozen [Target.config] flags. *)
 
 val operands_for : string -> (string * string) list option

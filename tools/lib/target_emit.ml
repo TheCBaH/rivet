@@ -60,15 +60,13 @@ let target_arm target =
         Ok (match l with Some l -> l :: ls | None -> ls))
       (Ok [])
       [
-        (fun () -> assign ~field:"CONFIGURE_TARGET" c.Target.configure_target);
         (fun () -> assign ~field:"TOOLPREFIX" c.Target.toolprefix);
         (fun () -> assign ~field:"QEMU_BIN" c.Target.qemu_bin);
         (fun () ->
           match c.Target.qemu_sysroot with
           | None -> Ok None
           | Some s -> assign ~field:"QEMU_SYSROOT" s);
-        (fun () -> sh_array ~field:"CCOMP_EXTRA_ARGS" c.Target.ccomp_args);
-        (fun () -> sh_array ~field:"COMPCERT_CONFIGURE_ARGS" c.Target.compcert_configure_args);
+        (fun () -> sh_array ~field:"GCC_FIXTURE_ARGS" c.Target.gcc_fixture_args);
         (fun () -> sh_array ~field:"AS_FLAGS" c.Target.as_args);
         (fun () ->
           match c.Target.linker_emulation with
@@ -105,11 +103,10 @@ let header =
   {|#!/usr/bin/env bash
 # GENERATED FILE - do not edit. Regenerate with `make tools-matrix`.
 #
-# The source of truth is asm/tools/lib/target.ml. This file exists so that shell
-# consumers - tools/compcert-cross-smoke.sh, tools/compcert-fixture-setup.sh,
-# tools/asm-helpers.sh and the Makefile - read the same definition the OCaml
-# tooling does, without any of them acquiring a run-time dependency on a built
-# executable. `make tools-matrix-diff` regenerates it and fails if the working
+# The source of truth is tools/lib/target.ml. This file exists so that shell
+# consumers - scripts/asm-helpers.sh and the Makefile - read the same definition
+# the OCaml tooling does, without any of them acquiring a run-time dependency on
+# a built executable. `make tools-matrix-diff` regenerates it and fails if the working
 # tree changed, so an edit to target.ml that is not reflected here is caught in
 # CI rather than at whichever consumer next disagreed.
 #
@@ -118,29 +115,23 @@ let header =
 # compare cleanly and mean nothing.
 #
 # Capability sets are explicit: fixture work is freestanding and must not
-# accidentally acquire the libc requirement of the cross-smoke suite.
-#
-# The two suites also own disjoint work roots. tools/compcert-cross-smoke.sh
-# builds under .cross-smoke-work (CROSS_SMOKE_WORK); the fixture oracle builds
-# under .fixture-work (FIXTURE_WORK). Both recreate build/, install/ and
-# artifacts/ destructively per target, so a shared root meant either suite could
-# delete the other's evidence mid-run.
+# accidentally acquire a libc requirement.
 |}
 
 let config_doc =
   {|
-# Sets CONFIGURE_TARGET, TOOLPREFIX, QEMU_BIN, QEMU_SYSROOT,
-# CCOMP_EXTRA_ARGS, READELF_MACHINE for the given target. Even x86_32/x86_64
+# Sets TOOLPREFIX, QEMU_BIN, QEMU_SYSROOT, GCC_FIXTURE_ARGS, READELF_MACHINE for
+# the given target. Even x86_32/x86_64
 # use a dedicated cross-gcc package, not the host's native gcc -m32/-m64:
 # gcc-multilib conflicts with the arm/aarch64 cross-gcc packages.
 #
 # LINK_*_ADDR are the controlled-link addresses M2's differential gate uses.
-# They are the same numbers as asm/test/oracle/abi.ml's code_addr, rodata_addr
+# They are the same numbers as test/oracle/abi.ml's code_addr, rodata_addr
 # and data_addr (and, for LINK_BSS_ADDR, abi_v2.ml's bss_addr - M3), because
 # the GNU reference link, our own binder and the QEMU manifest must place a
 # section at one address or the post-link byte comparison compares two
 # different programs. abi.ml/abi_v2.ml stay the definition; Target.link
-# mirrors them, and asm/test/oracle/test_record.ml asserts they still agree.
+# mirrors them, and test/oracle/test_record.ml asserts they still agree.
 #
 # The addresses are emitted per target rather than computed here, so the
 # derivation lives in one language instead of two. It is abi.ml's window_base:
@@ -149,12 +140,10 @@ let config_doc =
 # with rodata at +0x10000, data at +0x20000, and bss at +0x80000 (the first
 # byte after the largest stack abi_v2.ml's stack_size_max permits).
 target_config() {
-  CONFIGURE_TARGET=""
   TOOLPREFIX=""
   QEMU_BIN=""
   QEMU_SYSROOT=""
-  CCOMP_EXTRA_ARGS=()
-  COMPCERT_CONFIGURE_ARGS=()
+  GCC_FIXTURE_ARGS=()
   AS_FLAGS=()
   LD_FLAGS=()
   LINKER_EMULATION=""
@@ -184,8 +173,7 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   case "${1:-fixture}" in
     fixture)   printf '%s\n' "${FIXTURE_TARGETS[@]}" ;;
     assembler) printf '%s\n' "${ASSEMBLER_TARGETS[@]}" ;;
-    libc)      printf '%s\n' "${LIBC_SMOKE_TARGETS[@]}" ;;
-    *) echo "usage: $0 [fixture|assembler|libc]" >&2; exit 2 ;;
+    *) echo "usage: $0 [fixture|assembler]" >&2; exit 2 ;;
   esac
 fi
 |}
@@ -204,7 +192,6 @@ let render () =
       [
         set_line "ASSEMBLER_TARGETS" (Target.set Target.Assembler);
         set_line "FIXTURE_TARGETS" (Target.set Target.Fixture);
-        set_line "LIBC_SMOKE_TARGETS" (Target.set Target.Libc_smoke);
         {|ALL_TARGETS=("${ASSEMBLER_TARGETS[@]}")|};
       ]
   in

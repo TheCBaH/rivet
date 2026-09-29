@@ -12,7 +12,7 @@
     {!Isa_generated_case}/{!Isa_generated_corpus}/{!Isa_gen_oracle}/
     {!Isa_gen_ours}/{!Isa_gen_verdict}'s generic machinery rather than
     inventing a second schema, and is persisted to its OWN corpus file
-    ([asm/fixtures/isa-difficult/cases.jsonl]) so growing it can never
+    ([fixtures/isa-difficult/cases.jsonl]) so growing it can never
     silently touch the frozen 21-entry pilot corpus. *)
 
 type entry = {
@@ -38,12 +38,12 @@ type entry = {
 }
 
 val fixture_dir_name : string
-(** ["isa-difficult"] under [asm/fixtures/] - this corpus's OWN tree, never
+(** ["isa-difficult"] under [fixtures/] - this corpus's OWN tree, never
     {!Isa_generated_case.fixture_dir_name}'s ["isa-generated"] (the
     frozen pilot) nor gas-xref's. *)
 
 val cli_group_name : string
-(** ["isa-difficult"], the [compcert_tools.exe isa-difficult check|regen]
+(** ["isa-difficult"], the [rivet_tools.exe isa-difficult check|regen]
     subcommand group, mirroring {!Isa_generated_case.cli_group_name}'s
     ["isa-generated"]. *)
 

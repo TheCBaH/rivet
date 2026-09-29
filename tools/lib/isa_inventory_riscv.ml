@@ -102,7 +102,7 @@ let render_manifest ~source_commit (target : Target.t) entries =
     (fun e ->
       Buffer.add_string b
         (Printf.sprintf
-           "mnemonic:%s\textension:%s\tcompcert-emitted:unknown\tgcc-emitted:unknown\tstate:unknown\tdeferral-reason:-\tpromotion-trigger:-\n"
+           "mnemonic:%s\textension:%s\tgcc-emitted:unknown\tstate:unknown\tdeferral-reason:-\tpromotion-trigger:-\n"
            (Manifest.escape e.mnemonic) (Manifest.escape e.extension)))
     entries;
   Buffer.contents b
@@ -121,6 +121,5 @@ let render_summary (target : Target.t) entries =
   |> List.sort (fun (a, _) (b, _) -> String.compare a b)
   |> List.iter (fun (ext, n) -> Buffer.add_string b (Printf.sprintf "by-extension:%s:%d\n" ext n));
   Buffer.add_string b (Printf.sprintf "by-state:unknown:%d\n" (List.length entries));
-  Buffer.add_string b "compcert-emitted:0\n";
   Buffer.add_string b "gcc-emitted:0\n";
   Buffer.contents b

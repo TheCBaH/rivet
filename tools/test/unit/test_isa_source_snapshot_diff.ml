@@ -3,7 +3,7 @@
    diff_files against real temporary files for the duplicate-id rejection
    and decode-error paths, which only arise from real file content. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

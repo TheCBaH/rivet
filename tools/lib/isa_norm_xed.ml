@@ -989,7 +989,7 @@ let two_operand_gprv_form ~form_id ~mnemonic (rec_ : R.t) =
 
 (* SSE2 scalar-float register-register binops (ADDSD/SUBSD/MULSD/
    DIVSD_XMMsd_XMMsd): x86_family_encode.ml's own [Lowered.Sse_binop_r_rm],
-   already fully built and fixture-verified (M5, asm/docs/corpus.md) before
+   already fully built and fixture-verified (M5) before
    XED-driven admission began - this is the first XED-driven admission
    of any xmm-register form, so it introduces the model's own [X86_xmm]
    register class rather than reusing [X86_gpr]. XED orders REG0 (rw, the

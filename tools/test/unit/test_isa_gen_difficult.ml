@@ -5,7 +5,7 @@
    in repo_tests.ml instead, matching Isa_gen_pilot's own split
    (test_isa_gen_pilot.ml). *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

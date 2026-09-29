@@ -5,15 +5,15 @@
     wrong-byte, wrong-form and unexpected-relocation controls, plus
     actionable minimal failure reproduction.
 
-    Never linked in-process: [compcert_tools] must never require building the
-    whole assembler (tools-boundary; tools/asm-check-purity.sh), so this shells
+    Never linked in-process: [rivet_tools] must never require building the
+    whole assembler (tools-boundary; scripts/asm-check-purity.sh), so this shells
     out to a separately built [tool/asm.exe], exactly the pattern
     [gas_xref_cmd.ml]'s [emit_generated] already uses for the same reason. *)
 
 type outcome =
   | Assembled of { bytes_hex : string }
       (** [tool/asm.exe]'s own committed hex-dump format (matching {!Hex_dump.of_bytes}
-          byte-for-byte, reproduced independently in [asm/tool/asm.ml] since that
+          byte-for-byte, reproduced independently in [tool/asm.ml] since that
           executable cannot depend on this library either - see its own comment). *)
   | Rejected of string  (** The assembler's rendered diagnostic (stderr), trimmed to one line. *)
 

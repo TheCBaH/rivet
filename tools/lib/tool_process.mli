@@ -2,7 +2,7 @@
 
     Phase 1 used a Bos backend. This replaces it, because three properties the
     fixture work needs cannot be expressed through Bos: a working directory
-    (CompCert embeds its command line in a banner, so the compile must run from
+    (the compiler embeds its command line in a banner, so the compile must run from
     inside the fixture directory with relative paths), independent capture of
     the two streams, and stderr merged into stdout as `2>&1` does.
 
@@ -20,7 +20,7 @@ type stderr_sink =
   | Err_to_stdout
       (** dup2 onto the stdout descriptor, exactly as `2>&1`. There is no stdout
           counterpart, because merging in the other direction is not a thing the
-          shell can express either - and `ccomp -version 2>&1 | head -1` is why
+          shell can express either - and `the compiler -version 2>&1 | head -1` is why
           this constructor exists: capturing separately and concatenating is NOT
           equivalent, since it loses the interleaving. *)
 

@@ -1,0 +1,8 @@
+; The tools' command line, apart from the executable so that another
+; executable can extend it. cmdliner is named here and in bin/dune, which are
+; the graph roots a dependency audit reads.
+
+(library
+ (name rivet_tools_cli)
+ (public_name rivet-tools.cli)
+ (libraries rivet_tools cmdliner))

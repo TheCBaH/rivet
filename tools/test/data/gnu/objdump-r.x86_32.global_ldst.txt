@@ -1,0 +1,9 @@
+
+/tmp/tmp.7VooFylEu6/x86_32-global_ldst.o:     file format elf32-i386
+
+RELOCATION RECORDS FOR [.text]:
+OFFSET   TYPE              VALUE
+00000001 R_386_32          asm_test_global
+00000009 R_386_32          asm_test_global
+
+

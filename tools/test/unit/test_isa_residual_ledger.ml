@@ -2,7 +2,7 @@
    provoked deliberately. The real ledger against the real matrix is checked by the repository
    test; this pins what the audit means. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

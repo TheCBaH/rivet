@@ -31,10 +31,10 @@ let run_job ~previous repo = function
   | Negative entry -> run_negative ~previous repo entry
 
 (* Incremental by default: the committed corpus supplies previous GAS
-   artifacts. [COMPCERT_TOOLS_REGEN=full] ignores it and re-runs every tool. *)
+   artifacts. [RIVET_TOOLS_REGEN=full] ignores it and re-runs every tool. *)
 let previous_records repo =
   let path = Fpath.(Repo.isa_difficult_corpus repo / "cases.jsonl") in
-  let full = Sys.getenv_opt "COMPCERT_TOOLS_REGEN" = Some "full" in
+  let full = Sys.getenv_opt "RIVET_TOOLS_REGEN" = Some "full" in
   let tbl = Hashtbl.create 4096 in
   (if (not full) && Sys.file_exists (Fpath.to_string path) then
      match Isa_generated_corpus.load path with

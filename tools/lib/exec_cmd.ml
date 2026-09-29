@@ -10,7 +10,7 @@ let timeout_s = 10
 let artifacts repo = Tool_workspace.exec_artifacts repo ~env:Sys.getenv_opt
 let hex_name section = String.sub section 1 (String.length section - 1)
 
-(* The oracle's own linked manifest (v2, M3 §11, .ai/asm_plan.md §12) is what
+(* The oracle's own linked manifest (v2, M3 §11, docs/design.md §12) is what
    says which sections this case's oracle covers at all - not a static list -
    since a NOBITS section (.bss) legitimately has no .hex artifact to check
    for, and "no .hex file" used to be exactly how a section was excluded from
@@ -57,9 +57,7 @@ let run_one repo ~target ~case_name =
         Printf.sprintf "qemu: %s/%s: skipped (unsupported target)" case_name target_s )
   else
     let* units = Corpus.unit_stems case in
-    let* want =
-      Expected_status.read ~case:case_name Fpath.(case.Corpus.root / "expected-status.txt")
-    in
+    let* want = Expected_status.read ~case:case_name (Corpus.locate case "expected-status.txt") in
     let unit_sources =
       List.map
         (fun (unit_name, stem) ->
@@ -168,7 +166,7 @@ let run_one repo ~target ~case_name =
                  genuinely absent section gives - so it is checked by its
                  logical size instead, read off the executed ELF's own
                  section headers and compared against the oracle's recorded
-                 size (M3 §11, .ai/asm_plan.md §12). *)
+                 size (M3 §11, docs/design.md §12). *)
                 let rec compare_sections = function
                   | [] -> Ok ()
                   | { le_section = section; le_kind = `Nobits; le_size } :: rest ->

@@ -11,7 +11,7 @@
     - [HAS_SYSROOT] is exactly [qemu_sysroot <> None], so it is a function;
     - the three [LINK_*_ADDR] are one arithmetic family, so they are one record.
 
-    tools/dev/dump-target-config.sh + the target_db_agrees integration test
+    scripts/dev/dump-target-config.sh + the target_db_agrees integration test
     compare all sixteen shell values verbatim ANYWAY, including HAS_SYSROOT, so
     a stale shell assignment cannot hide behind an equivalent derived value. *)
 
@@ -26,22 +26,17 @@ val of_string : string -> (t, Tool_error.t) Err.t
 
 val pp : Format.formatter -> t -> unit
 
-type capability = Fixture | Assembler | Libc_smoke
+type capability = Fixture | Assembler
 
 val set : capability -> t list
-(** [Libc_smoke] includes the sysroot-bearing targets, including [riscv32]
-    when its published Linux/glibc cross toolchain is installed.  [riscv64]
-    remains fixture-only because this project does not install an rv64 sysroot. *)
 
 type link = { text : int; rodata : int; data : int; bss : int }
 
 type config = {
-  configure_target : string;
   toolprefix : string;
   qemu_bin : string;
   qemu_sysroot : string option;
-  ccomp_args : string list;
-  compcert_configure_args : string list;
+  gcc_fixture_args : string list;  (** What a freestanding fixture is compiled with, after [-S]. *)
   as_args : string list;
   ld_args : string list;
   linker_emulation : string option;

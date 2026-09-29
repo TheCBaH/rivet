@@ -10,19 +10,20 @@ type key =
   | Generator
   | Source
   | Source_unit of string
-      (** M3 (.ai/asm_plan.md §12): one of several sources in a multi-source
+      (** M3 (docs/design.md §12): one of several sources in a multi-source
           case, keyed by its own unit name. The single-source [Source] key is
           unchanged and still what every case with one source carries - this is
           additive, not a replacement, so no existing manifest's bytes change.
       *)
   | Inputs  (** gas-xref only *)
-  | Ccomp_version of Target.t
-  | Ccomp_target of Target.t
-  | Ccomp_args of Target.t
-  | Ccomp_configure_args of Target.t
+  | Compiler_version of string * Target.t
+      (** [<compiler>-version:<target>]; the compiler is any lowercase word. *)
+  | Compiler_target of string * Target.t
+  | Compiler_args of string * Target.t
+  | Compiler_configure_args of string * Target.t
   | Sha256 of string
   | Abi_version
-      (** M4 (.ai/asm_plan.md §12): the fixture-exec ABI version a case
+      (** M4 (docs/design.md §12): the fixture-exec ABI version a case
           dispatches to - ["1"], ["2"] or ["3"]; absent means ["1"].
           Author-declared, never derived, so regen/rehash always carry it
           forward verbatim rather than computing it. *)
@@ -44,7 +45,7 @@ type key =
           built [Image.exports] at exec time, not here. *)
   | Origin of string
       (** M4: a unit whose committed [<target>/<stem>.s] is preprocessed from an
-          upstream, not-project-authored [.S] source (e.g. a CompCert runtime
+          upstream, not-project-authored [.S] source (e.g. a runtime
           helper) rather than compiled from a project [.c] file - keyed by the
           unit's own stem, exactly parallel to {!Source_unit}. The value is the
           upstream repo-relative source path. *)
@@ -52,9 +53,9 @@ type key =
 
 type record = { key : key; value : string option }
 (** [value = None] means the line has NO TAB at all, which is a different
-    manifest from one with an empty value: `printf 'ccomp-args:%s\n' "$t"` emits
-    a bare key when the array is empty, so `ccomp-args:aarch64` and
-    `ccomp-args:aarch64<TAB>` are distinct records. *)
+    manifest from one with an empty value: `printf 'the compiler-args:%s\n' "$t"` emits
+    a bare key when the array is empty, so `the compiler-args:aarch64` and
+    `the compiler-args:aarch64<TAB>` are distinct records. *)
 
 type t
 
@@ -69,7 +70,7 @@ val parse : string -> (t, Tool_error.t Err.Accum.errors) Err.t
     - duplicate [Sha256] paths and values that are not [0-9a-f]{64}] (D5);
     - TAB, newline or NUL in a KEY, and unsafe relative paths (D6) - the key
       side has no escape layer, so these could not round-trip;
-    - a duplicate [Ccomp_version] for one target (D12): the shell's
+    - a duplicate [Compiler_version] for one compiler and target (D12): the shell's
       carry-forward `grep` emits EVERY match, so today all duplicates are
       carried forward verbatim;
     - an invalid escape sequence in a value (D7): the shell's reader never

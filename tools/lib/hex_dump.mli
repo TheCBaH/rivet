@@ -1,7 +1,7 @@
 (** The committed hex dump format: lowercase, space-separated, 16 bytes per
     line, a newline after every line including the last.
 
-    Three copies of this existed in shell - asm-fixture-oracle.sh,
+    Three copies of this existed in shell - the oracle script,
     asm-fixture-exec.sh and asm-gas-xref.sh, all retired in Phase 8. This is
     the single one, and the duplication it replaced is why it exists. *)
 

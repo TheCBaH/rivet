@@ -5,7 +5,7 @@
    qemu holds a TCP port and the next run fails to bind with no indication why,
    and a deadline that never fires looks exactly like a hang. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

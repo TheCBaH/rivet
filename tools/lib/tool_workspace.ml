@@ -9,7 +9,6 @@ let child_path p = p
 let fail ?path detail =
   Err.fail ~pos:__POS__ ~pp_error:Tool_error.pp (Tool_error.v ?path Tool_error.Validate detail)
 
-let fixture_corpus repo = Repo.fixture_corpus repo
 let gas_xref_corpus repo = Repo.gas_xref_corpus repo
 
 (* Walk the prefixes that EXIST and reject a symlinked one. The root is
@@ -38,22 +37,13 @@ let forbidden repo p =
   let eq q = String.equal s (Fpath.to_string (Fpath.normalize q)) in
   if s = "/" then Some "the filesystem root"
   else if eq (Repo.path repo) then Some "the repository root"
-  else if eq (Repo.fixture_corpus repo) then Some "the fixture corpus"
+  else if eq (Repo.fixture_sources repo) || eq (Repo.fixture_corpus repo).Corpus.outputs then
+    Some "the fixture corpus"
   else if eq (Repo.gas_xref_corpus repo) then Some "the gas-xref corpus"
-  else if eq (Repo.corpus_work repo) then Some "the classify-c work root"
   else
     match Sys.getenv_opt "HOME" with
     | Some h when h <> "" && eq (Fpath.v h) -> Some "the home directory"
     | _ -> None
-
-(* Not built through from_env/validate_work_root: .corpus-work must stay
-   repo-relative (no external override), so only the symlink-planting guard
-   applies - there is no env value, absolute-ness or ".." to check. *)
-let corpus_work repo =
-  let ( let* ) = Result.bind in
-  let p = Fpath.normalize (Repo.corpus_work repo) in
-  let* () = no_symlinked_component p in
-  Ok p
 
 (* P5: an external root is allowed. D11: it must be absolute, free of "..", and
    free of symlinked components - none of which the shell checks today. *)
@@ -81,11 +71,11 @@ let fixture_work repo ~env = from_env repo ~env ~var:"FIXTURE_WORK" ~default:".f
 let exec_artifacts repo ~env =
   from_env repo ~env ~var:"FIXTURE_EXEC_ARTIFACTS" ~default:".fixture-exec-artifacts"
 
-(* ASM_TOOL_GATE_WORK, not TOOL_GATE_WORK: the tool gate is the one script whose
+(* RIVET_TOOL_GATE_WORK, not TOOL_GATE_WORK: the tool gate is the one script whose
    work-root variable carries the ASM_ prefix. Phase 1 declared this constructor
    before anything consumed it and got the name wrong, and nothing could notice
    until Phase 6 gave it a caller - a redirect that silently did nothing. *)
-let tool_gate_work repo ~env = from_env repo ~env ~var:"ASM_TOOL_GATE_WORK" ~default:".tool-gate"
+let tool_gate_work repo ~env = from_env repo ~env ~var:"RIVET_TOOL_GATE_WORK" ~default:".tool-gate"
 
 let child_of root components =
   let ( let* ) = Result.bind in
@@ -136,7 +126,7 @@ let with_scratch ~label f =
      directory's contents-free name via a fixed prefix rather than by
      interpolation. *)
   ignore label;
-  match Bos.OS.Dir.tmp "compcert-tools-%s" with
+  match Bos.OS.Dir.tmp "rivet-tools-%s" with
   | Error (`Msg cause) ->
       Err.fail ~pos:__POS__ ~pp_error:Tool_error.pp
         (Tool_error.v ~cause Tool_error.Write_file "cannot create a scratch directory")

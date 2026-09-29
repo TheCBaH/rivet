@@ -100,7 +100,7 @@ let resolve_program s env =
    deadlocks as soon as the child writes more than one pipe buffer - which the
    >1 MiB cases do. A file cannot fill. *)
 let with_tmp_file f =
-  let path = Filename.temp_file "compcert-tools-cap" "" in
+  let path = Filename.temp_file "rivet-tools-cap" "" in
   Fun.protect ~finally:(fun () -> try Sys.remove path with Sys_error _ -> ()) (fun () -> f path)
 
 let read_all path =
@@ -128,7 +128,7 @@ let exec s =
       | From_dev_null -> Unix.openfile "/dev/null" [ Unix.O_RDONLY ] 0
       | From_file p -> Unix.openfile (Fpath.to_string p) [ Unix.O_RDONLY ] 0
       | From_string str ->
-          let path = Filename.temp_file "compcert-tools-in" "" in
+          let path = Filename.temp_file "rivet-tools-in" "" in
           stdin_path := Some path;
           let oc = open_out_bin path in
           output_string oc str;
@@ -152,7 +152,7 @@ let exec s =
       | Err_capture -> Unix.openfile (Option.get err_cap) [ Unix.O_WRONLY; Unix.O_TRUNC ] 0o600
       (* 2>&1 is the SAME descriptor, deliberately - two descriptors onto one
          file would each carry their own offset and overwrite each other, losing
-         exactly the interleaving `ccomp -version 2>&1 | head -1` depends on. *)
+         exactly the interleaving `the compiler -version 2>&1 | head -1` depends on. *)
       | Err_to_stdout -> out_fd
     in
     let fd_in = open_stdin () in

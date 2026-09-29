@@ -3,7 +3,7 @@ type outcome = Up_to_date | Changed of string
 let ( let* ) = Result.bind
 let record key value = { Manifest.key; value }
 
-(* M4 (.ai/asm_plan.md §12): [Compiled] units only - a [Preexisting] unit's
+(* M4 (docs/design.md §12): [Compiled] units only - a [Preexisting] unit's
    identity comes from its own [origin:] record (carried forward
    unconditionally below, never re-derived here), not from a [source]/
    [source-unit] record, since it has no project [.c] file to name. *)
@@ -25,7 +25,7 @@ let source_records sources =
 (* M4: the five v3/target-restriction key families are author-declared, never
    derived from a toolchain or from [sources] - unconditionally carried
    forward from [previous], the same "don't drop what the manifest exists to
-   carry" reasoning [Ccomp_version]'s no-compiler branch already uses below,
+   carry" reasoning the compiler version's no-compiler branch already uses below,
    just without that branch's condition. *)
 let single_carry_forward previous key =
   match previous with
@@ -37,36 +37,27 @@ let carry_forward_family previous is_member =
   | None -> []
   | Some prev -> List.filter (fun r -> is_member r.Manifest.key) (Manifest.records prev)
 
-let records ~case ~targets ~work_root ~previous ~sources =
+let records ~case ~targets ~(compiler : Compiler.t) ~previous ~sources =
   let per_target t =
-    let c = Target.config t in
+    let version_key = Manifest.Compiler_version (compiler.Compiler.name, t) in
     let* version_records =
-      match Ccomp.installed t ~work_root with
-      | Some compiler ->
-          let* v = Ccomp.version compiler in
-          Ok [ record (Manifest.Ccomp_version t) (Some v) ]
-      | None -> (
-          (* Carried forward verbatim: --rehash runs with no compiler, and
-             dropping the record would silently lose the provenance the manifest
-             exists to carry. *)
-          match previous with
-          | None -> Ok []
-          | Some prev -> (
-              match Manifest.find prev (Manifest.Ccomp_version t) with
-              | None -> Ok []
-              | Some v -> Ok [ record (Manifest.Ccomp_version t) v ]))
+      if compiler.Compiler.installed t then
+        let* v = compiler.Compiler.version t in
+        Ok [ record version_key (Some v) ]
+      else
+        (* Carried forward verbatim: --rehash runs with no compiler, and
+           dropping the record would silently lose the provenance the manifest
+           exists to carry. *)
+        match previous with
+        | None -> Ok []
+        | Some prev -> (
+            match Manifest.find prev version_key with
+            | None -> Ok []
+            | Some v -> Ok [ record version_key v ])
     in
-    (* A BARE KEY when the list is empty - `printf 'ccomp-args:%s\n' "$t"` emits
-       no tab, and `ccomp-args:arm` is a different manifest from
-       `ccomp-args:arm<TAB>`. *)
-    let args_value = function [] -> None | l -> Some (String.concat " " l) in
     Ok
       (version_records
-      @ [
-          record (Manifest.Ccomp_target t) (Some c.Target.configure_target);
-          record (Manifest.Ccomp_args t) (args_value c.Target.ccomp_args);
-          record (Manifest.Ccomp_configure_args t) (args_value c.Target.compcert_configure_args);
-        ])
+      @ List.map (fun (key, value) -> record key value) (compiler.Compiler.provenance t))
   in
   let rec targets_records acc = function
     | [] -> Ok (List.rev acc)
@@ -75,14 +66,14 @@ let records ~case ~targets ~work_root ~previous ~sources =
         targets_records (List.rev_append rs acc) rest
   in
   let* target_records = targets_records [] targets in
-  let* files = Corpus.files case.Corpus.root in
+  let* files = Corpus.case_files case in
   let rec hash_records acc = function
     | [] -> Ok (List.rev acc)
     | f :: rest ->
         (* CHECKED, unlike the shell's `printf ... "$(hash_of ...)"`, where
            printf's success masked the substitution's failure and the record was
            written with an empty hash. *)
-        let* h = Tool_fs.sha256 Fpath.(case.Corpus.root // v f) in
+        let* h = Tool_fs.sha256 (Corpus.locate case f) in
         hash_records (record (Manifest.Sha256 f) (Some h) :: acc) rest
   in
   let* hashes = hash_records [] files in
@@ -94,7 +85,7 @@ let records ~case ~targets ~work_root ~previous ~sources =
       | _ -> false)
   in
   Ok
-    ((record Manifest.Generator (Some "compcert-tools fixture regen") :: source_records sources)
+    ((record Manifest.Generator (Some compiler.Compiler.generator) :: source_records sources)
     @ target_records @ hashes @ m4_carried)
 
 let run_diff ~old_path ~new_path =

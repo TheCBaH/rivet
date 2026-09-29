@@ -6,7 +6,7 @@
    shell matrix. Production code does not do this.
 
    Phase 7 moved ownership, so what this proves changed and the test stayed.
-   tools/target-matrix.sh is now GENERATED from Target by Target_emit, which
+   scripts/target-matrix.sh is now GENERATED from Target by Target_emit, which
    makes the comparison a round trip - OCaml to shell text, sourced by bash,
    back to a comparison. That is not a tautology and it is not weaker in the way
    that matters: it is exactly what catches a quoting bug, a lost array element,
@@ -15,7 +15,7 @@
    written shell - and it cannot, because nobody writes that shell any more.
    `make tools-matrix-diff` is what holds the committed file to the source. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 
@@ -51,22 +51,20 @@ let tsv s =
       | None -> Some (line, ""))
     (lines s)
 
-(* {1 All seventeen shell values, verbatim}
+(* {1 All fifteen shell values, verbatim}
 
    Including HAS_SYSROOT, which the OCaml side DERIVES. Comparing only the
    derived form would let a stale HAS_SYSROOT assignment in the shell hide
-   behind an equivalent computed value - and the shell is what the other seven
+   behind an equivalent computed value - and the shell is what the other
    scripts still read. *)
 let ocaml_view t =
   let c = Target.config t in
   let opt = Option.value ~default:"" in
   [
-    ("CONFIGURE_TARGET", c.Target.configure_target);
     ("TOOLPREFIX", c.Target.toolprefix);
     ("QEMU_BIN", c.Target.qemu_bin);
     ("QEMU_SYSROOT", opt c.Target.qemu_sysroot);
-    ("CCOMP_EXTRA_ARGS", String.concat " " c.Target.ccomp_args);
-    ("COMPCERT_CONFIGURE_ARGS", String.concat " " c.Target.compcert_configure_args);
+    ("GCC_FIXTURE_ARGS", String.concat " " c.Target.gcc_fixture_args);
     ("AS_FLAGS", String.concat " " c.Target.as_args);
     ("LD_FLAGS", String.concat " " c.Target.ld_args);
     ("LINKER_EMULATION", opt c.Target.linker_emulation);
@@ -81,7 +79,7 @@ let ocaml_view t =
   ]
 
 let test_target_db_agrees root =
-  let dump = Fpath.(root / "tools" / "dev" / "dump-target-config.sh") in
+  let dump = Fpath.(root / "scripts" / "dev" / "dump-target-config.sh") in
   List.iter
     (fun t ->
       let name = Target.to_string t in
@@ -91,8 +89,8 @@ let test_target_db_agrees root =
           let shell = tsv out in
           let ours = ocaml_view t in
           check
-            (Printf.sprintf "target_db: %s: all seventeen values present" name)
-            (List.length shell = 17 && List.length ours = 17);
+            (Printf.sprintf "target_db: %s: all fifteen values present" name)
+            (List.length shell = 15 && List.length ours = 15);
           List.iter
             (fun (k, v) ->
               match List.assoc_opt k shell with
@@ -102,10 +100,10 @@ let test_target_db_agrees root =
             ours)
     Target.all
 
-(* {2 The three target SETS, against the enumerator} *)
+(* {2 The target SETS, against the enumerator} *)
 
 let test_target_sets root =
-  let matrix = Fpath.(root / "tools" / "target-matrix.sh") in
+  let matrix = Fpath.(root / "scripts" / "target-matrix.sh") in
   List.iter
     (fun (arg, cap) ->
       match run_capture matrix [ arg ] with
@@ -115,12 +113,12 @@ let test_target_sets root =
             (Printf.sprintf "target sets: %s" arg)
             ~expected:(String.concat " " (lines out))
             ~actual:(String.concat " " (List.map Target.to_string (Target.set cap))))
-    [ ("fixture", Target.Fixture); ("assembler", Target.Assembler); ("libc", Target.Libc_smoke) ]
+    [ ("fixture", Target.Fixture); ("assembler", Target.Assembler) ]
 
 (* {3 The derived invariants, stated against the shell rather than assumed} *)
 
 let test_derived_invariants root =
-  let dump = Fpath.(root / "tools" / "dev" / "dump-target-config.sh") in
+  let dump = Fpath.(root / "scripts" / "dev" / "dump-target-config.sh") in
   List.iter
     (fun t ->
       let name = Target.to_string t in
@@ -146,7 +144,7 @@ let test_derived_invariants root =
     Target.all
 
 (* Isa_db_cross_validate reads isa-db/export/*.jsonl, which lives outside
-   asm/ (the standalone isa-db/ Python project) - so like the rest of this
+   the dune workspace of tools/ (the standalone isa-db/ Python project) - so like the rest of this
    executable, it needs the real repository root rather than
    %{workspace_root}, and belongs here rather than in a runtest rule. *)
 let test_isa_db_cross_validate repo =
@@ -777,7 +775,7 @@ let test_isa_family_admission repo =
      register-register binops, `addsd %xmm1, %xmm0`) are the first
      xmm-register admission: `x86_family_encode.ml`'s own
      `Lowered.Sse_binop_r_rm` and `sse_binop_f2_codec` table already fully
-     implement and fixture-verify these four ops (M5, asm/docs/corpus.md),
+     implement and fixture-verify these four ops (M5),
      so this slice is pure normalization/admission wiring, needing only
      the model's own new `X86_xmm` register class (`Isa_norm_model`'s own
      docstring already names "vector masks, EVEX broadcast, VEX operands"

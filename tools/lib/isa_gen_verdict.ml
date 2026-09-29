@@ -8,14 +8,14 @@ type outcome =
 
 (* Measured for real against every one of the 21 pilot cases: exactly these
    eight case_ids reject with this project's own x86 [Missing_size_suffix]
-   diagnostic (asm/targets/x86_family/x86_family_encode.ml's [widthed]) when
+   diagnostic (targets/x86_family/x86_family_encode.ml's [widthed]) when
    handed the SAME unsuffixed canonical GAS spelling
    (Isa_norm_xed.ml's [two_operand_gprv_form]/[add_gprv_immz_form] never emit
    an AT&T size suffix - that is a genuine source-syntax fact, not a
    rendering bug: GAS infers the width from the register operand, exactly as
    real GNU as's own manual documents). This project's x86 frontend has one
    narrow carve-out for suffixless register-register [add] (the comment on
-   the [_, "add"] case in x86_family_encode.ml, added for a real CompCert
+   the [_, "add"] case in x86_family_encode.ml, added for a real the compiler
    runtime fixture) and no other suffix-inference at all - not for [mov], and
    not for either immediate form. Confirmed independently at the byte level
    (x86_64-linux-gnu-as) that the explicit-suffix spelling assembles to

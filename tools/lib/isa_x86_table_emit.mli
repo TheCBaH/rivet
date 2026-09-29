@@ -1,5 +1,5 @@
 (** Emitting and checking the generated x86 rows
-    ([asm/targets/x86_family/x86_table_rows.ml], DEC-X86-TABLE): one row per
+    ([targets/x86_family/x86_table_rows.ml], DEC-X86-TABLE): one row per
     {!Isa_x86_table.spec} of a record that no hand-written rule of
     {!Isa_norm_xed} claims, from both committed XED exports. *)
 

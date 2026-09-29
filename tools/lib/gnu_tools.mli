@@ -127,12 +127,12 @@ val try_assemble_with_args :
   src:Fpath.t ->
   obj:Fpath.t ->
   (Tool_process.result * gas_outcome, Tool_error.t) Err.t
-(** Like {!try_assemble}, but [args] REPLACES [t]'s own frozen CompCert
+(** Like {!try_assemble}, but [args] REPLACES [t]'s own frozen the compiler
     [as_args] entirely rather than extending them - for a caller with its own
     per-suite configuration (e.g. the isa-generated pilot's own
     `-march`/`-mabi`/`-mno-relax`), which must not silently inherit or
     reinterpret the frozen target flags ("extend tool configuration to
-    accept per-suite features rather than changing the frozen CompCert
+    accept per-suite features rather than changing the frozen the compiler
     target flags"). Still resolves the tool
     BINARY through [t]'s own toolprefix, so the right cross assembler runs.
 

@@ -7,7 +7,7 @@ let err ?path op detail =
    them. The set is CLOSED: an allocated section outside it is a hard failure,
    because ld places an input section the script never names as an ORPHAN
    output section - it would be mapped into every executed image while being
-   recorded in no artifact at all. .bss is real M3 scope (.ai/asm_plan.md
+   recorded in no artifact at all. .bss is real M3 scope (docs/design.md
    §12), not a placeholder: it is NOBITS rather than PROGBITS, so it is
    handled separately below wherever that distinction matters. *)
 let alloc_sections = [ ".text"; ".rodata"; ".data"; ".bss" ]
@@ -59,7 +59,7 @@ let run_one repo ~target ~case_name =
         (* A single-source case's own evidence still lands directly in [out], byte-
          for-byte where every already-committed fixture keeps it; a multi-source
          case's per-unit evidence gets its own subdirectory, named after the
-         unit, per the oracle-evidence model (.ai/asm_plan.md §12/M3 §11). *)
+         unit, per the oracle-evidence model (docs/design.md §12/M3 §11). *)
         let unit_dir unit_name = match units with [ _ ] -> out | _ -> Fpath.(out / unit_name) in
         Tool_workspace.with_scratch ~label:"oracle" (fun work ->
             let objs = List.map (fun (_, o, _) -> o) unit_sources in
@@ -140,7 +140,7 @@ let run_one repo ~target ~case_name =
                reports it as absent-or-empty, the same signal a genuinely
                unallocated section gives - so its evidence is its LOGICAL size
                from the header table instead, and there is no .hex artifact for
-               it at all (M3 §11, .ai/asm_plan.md §12). *)
+               it at all (M3 §11, docs/design.md §12). *)
               let* present =
                 List.fold_left
                   (fun acc section ->
