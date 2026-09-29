@@ -1,6 +1,6 @@
 (* A cursor over a byte string, and a builder for one.
 
-   Pure OCaml over [string] and [Buffer] (.ai/asm_plan.md §3.7): no [Bigarray],
+   Pure OCaml over [string] and [Buffer] (docs/design.md §3.7): no [Bigarray],
    no native pointers, nothing that would stop this compiling under js_of_ocaml
    or Melange. That constraint is the reason this module exists at all rather
    than the code reaching for [Bytes.unsafe_get] and an offset.
@@ -15,7 +15,7 @@ type t = { data : string; pos : int; limit : int }
 (* The one way to build a cursor badly, and therefore this module's whole error
    domain. The payload is the three numbers that decide it, so a caller can say
    which bound it broke; the message is the one [invalid_arg] carried before.
-   See asm/docs/errors.md. *)
+   See docs/errors.md. *)
 type error = [ `Range_outside_string of range_outside_string ]
 
 (* [start] rather than [pos]: the cursor record below also has a [pos], and the

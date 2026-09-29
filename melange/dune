@@ -13,6 +13,6 @@
 ; make `dune build @all` require melc on every CI leg — including the OCaml 5.x
 ; legs, where Melange 5.1.0-414 (ocaml >= 4.14 & < 4.15) cannot be installed.
 ;
-; ASM_MELANGE is set explicitly by both CI jobs, never left to a default.
+; RIVET_MELANGE is set explicitly by both CI jobs, never left to a default.
 
 (vendored_dirs vendor)

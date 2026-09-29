@@ -57,7 +57,7 @@ module Make (P : PROFILE) = struct
         Error (parse_diag ~pos:__POS__ ~origin:(slice_origin slice) (`Cannot_parse_operand slice))
 
   (* [sym@plt]: GNU's marker that a call target may need to route through the
-     PLT, on a symbol CompCert cannot see defined in this translation unit -
+     PLT, on a symbol the compiler cannot see defined in this translation unit -
      the RISC-V spelling of the same construct x86 writes [sym@PLT] for.
      Semantically inert: [call sym@plt] and plain [call sym] both lower to the
      same [call-hi20]/[call-lo12-i] pair, so stripping the suffix before the
@@ -88,9 +88,9 @@ module Make (P : PROFILE) = struct
   (* [%pcrel_hi(f1)]'s parenthesized argument is the modifier's symbol, never
      a memory-operand base register - but [f1] is also a legal floating
      register spelling ([Reg.find] has no way to know which reading a bare
-     identifier is "for"), and CompCert is free to name a static function or
+     identifier is "for"), and the compiler is free to name a static function or
      variable anything, register spellings included (M5 corpus evidence:
-     test/regression/charlit.c's static [f1]; asm/docs/corpus.md). A single
+     test/regression/charlit.c's static [f1]; the corpus notes). A single
      leading [Token.Modifier] is unambiguous - a real [offset(base)] never
      starts with one - so it decides the reading before [Reg.find] is even
      consulted. *)

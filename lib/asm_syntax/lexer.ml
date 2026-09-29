@@ -1,4 +1,4 @@
-(* The dialect-aware lexer (.ai/asm_plan.md §4.6).
+(* The dialect-aware lexer (docs/design.md §4.6).
 
    Hand-written rather than generated, because what varies between the four
    dialects is not the grammar but the *character classes*: which byte starts a
@@ -11,7 +11,7 @@
 
 open Foundation
 
-(* The lexer's error domain (asm/docs/errors.md). The span travels beside the
+(* The lexer's error domain (docs/errors.md). The span travels beside the
    tag rather than inside it because these are *accumulated* and turned into
    diagnostics later, so the failure site is not the site that knows the origin -
    which is the one case §1's "do not duplicate the location" rule exempts.
@@ -146,7 +146,7 @@ let try_local_label c pos =
    digit, value 0), so it no longer needs its own branch.
 
    [\b]/[\f] (M5 classify-c-gcc corpus evidence: gcc's own string-literal
-   escaping - unlike ccomp's, which this project's fixtures never exercised -
+   escaping - unlike the compiler's, which this project's fixtures never exercised -
    uses both throughout [aes.c]/[sha3.c]/[siphash24.c]) are backspace ([0x08])
    and form feed ([0x0C]), checked against real [x86_64-linux-gnu-as] the same
    way: [.ascii "a\bc\fd"] assembles to the five bytes [61 08 63 0c 64].

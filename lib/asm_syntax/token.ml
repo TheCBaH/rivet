@@ -93,7 +93,7 @@ let pp_kind ppf = function
 
 let pp ppf t = pp_kind ppf t.kind
 
-(* The lowercase tag [--dump-tokens] prints (asm/docs/contracts.md §1.1). Not
+(* The lowercase tag [--dump-tokens] prints (docs/contracts.md §1.1). Not
    [pp_kind]: that renders the payload too, which is what a debug dump wants and
    what a byte-compared artifact must not have twice - the spelling is already
    the last column. *)

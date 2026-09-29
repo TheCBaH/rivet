@@ -15,10 +15,11 @@
         "ghcr.io/thecbah/ocaml-features/ocaml:1": {
             "version": "${localEnv:OCAML_VERSION}",
             "packages": "bos bytesrw cmdliner digestif fmt fpath jsont mtime js_of_ocaml-compiler js_of_ocaml-ppx menhir ocamlformat#0.28.1 ppx_expect qcheck zarith",
-            // Melange requires 'ocaml >= 4.14 & < 4.15', so it is installable on
-            // the 4.14 images only; the same devcontainer.json builds 4.14.3
-            // through 5.5.0.
-            "optional-packages": "melange",
+            // Pinned to the release that requires 'ocaml >= 4.14 & < 4.15', so it is
+            // installable on the 4.14 images only; the same devcontainer.json builds
+            // 4.14.3 through 5.5.0. Unpinned, newer Melange releases install on 5.x
+            // and make those legs run the opt-in half of `make melange-optin`.
+            "optional-packages": "melange#5.1.0-414",
             "system-packages": "libgmp-dev pkg-config"
         }
     },

@@ -1,4 +1,4 @@
-(* Normalized directives (.ai/asm_plan.md §4.3).
+(* Normalized directives (docs/design.md §4.3).
 
    The source AST keeps directive arguments as token slices, because GAS
    directive syntax is not one grammar - [.arch armv7-a] and [.size s, . - s]

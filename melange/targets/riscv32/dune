@@ -13,7 +13,7 @@
   target_encode
   riscv_family_encode)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name riscv32)
@@ -28,4 +28,4 @@
   riscv_family
   riscv32_encode)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))

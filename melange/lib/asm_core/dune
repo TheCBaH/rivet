@@ -7,6 +7,6 @@
 (library
  (name asm_core)
  (modes byte native melange)
- (libraries foundation fmt)
+ (libraries foundation rivet_fmt)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))

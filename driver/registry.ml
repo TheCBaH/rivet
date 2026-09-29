@@ -1,4 +1,4 @@
-(* The target registry (.ai/asm_plan.md §3.7, §5.1).
+(* The target registry (docs/design.md §3.7, §5.1).
 
    A pure value, not a mutable table populated by module-initialisation side
    effects. A registry that depended on link order would not survive being

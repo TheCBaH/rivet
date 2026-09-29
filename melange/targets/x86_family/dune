@@ -21,7 +21,7 @@
   target_encode
   target_features)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name x86_family)
@@ -35,4 +35,4 @@
   target_intf
   x86_family_encode)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))

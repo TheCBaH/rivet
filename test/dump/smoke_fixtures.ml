@@ -1,8 +1,8 @@
-(* Shared, pure multi-segment fixture and rendering logic (.ai/asm_plan.md
+(* Shared, pure multi-segment fixture and rendering logic (docs/design.md
    M5's real-browser harness). Extracted out of manifest_dump.ml, which used
    to hold this as a private module-level binding and print it directly, so
    that manifest_dump.ml and the browser smoke harness
-   (asm/test/browser/smoke.ml) both consume the exact same source and
+   (test/browser/smoke.ml) both consume the exact same source and
    rendering rather than one copying the other and silently drifting from
    it. manifest_dump.ml's own committed cram baseline is the regression
    check that this extraction changed nothing about its output. *)

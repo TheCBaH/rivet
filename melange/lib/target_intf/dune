@@ -13,16 +13,16 @@
  (modes byte native melange)
  (libraries foundation)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name target_features)
  (modules target_component target_config)
  (wrapped false)
  (modes byte native melange)
- (libraries foundation fmt)
+ (libraries foundation rivet_fmt)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name target_encode)
@@ -30,7 +30,7 @@
  (modes byte native melange)
  (libraries foundation codec asm_core target_error target_features)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name target_intf)
@@ -45,4 +45,4 @@
   target_encode
   target_features)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))

@@ -1,5 +1,6 @@
 (library
  (name riscv32_encode)
+ (public_name rivet.riscv32_encode)
  (modules riscv32_encode)
  (modes byte native)
  (libraries
@@ -10,10 +11,11 @@
   target_encode
   riscv_family_encode)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name riscv32)
+ (public_name rivet.riscv32)
  (modules riscv32)
  (modes byte native)
  (libraries
@@ -25,4 +27,4 @@
   riscv_family
   riscv32_encode)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

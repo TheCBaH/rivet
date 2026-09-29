@@ -1,4 +1,4 @@
-(* The Melange adapter (.ai/asm_plan.md §11.6).
+(* The Melange adapter (docs/design.md §11.6).
 
    The same alias of Driver.Portable that browser/jsoo exposes, for the same
    reasons; see that file for why neither carries a backend binding.

@@ -12,6 +12,7 @@
 
 (library
  (name x86_family_encode)
+ (public_name rivet.x86_family_encode)
  (modules x86_family_encode x86_x87 x86_table_row x86_table_rows)
  (modes byte native)
  (libraries
@@ -22,10 +23,11 @@
   target_encode
   target_features)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name x86_family)
+ (public_name rivet.x86_family)
  (modules x86_family)
  (modes byte native)
  (libraries
@@ -36,4 +38,4 @@
   target_intf
   x86_family_encode)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

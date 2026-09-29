@@ -1,4 +1,4 @@
-(* The common statement representation (.ai/asm_plan.md §4.7).
+(* The common statement representation (docs/design.md §4.7).
 
    A private frontend intermediate, not the public source AST: operands are
    still token slices here, and only a target parser can turn them into surface

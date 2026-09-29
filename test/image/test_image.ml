@@ -1,5 +1,5 @@
 (* The linker: relaxation, fixup patching, and multi-segment binding.
-   (.ai/asm_plan.md §8, §9; M2.C and M2.F0.)
+   (docs/design.md §8, §9; M2.C and M2.F0.)
 
    No target is linked. [Image] is parameterized over the fixup-kind type, so a
    locally declared kind exercises every path here without borrowing an
@@ -116,7 +116,7 @@ let plan ?(entry = "entry") m =
 let plan_many ?entry ms =
   Image.plan_image ~evaluate { Image.default_policy with entry_symbol = entry } ms
 
-(* The payload only: a linker failure is wrapped now, and asm/docs/errors.md §3
+(* The payload only: a linker failure is wrapped now, and docs/errors.md §3
    keeps Err provenance out of anything an expect baseline compares. *)
 let show_errors e =
   List.iter

@@ -7,7 +7,8 @@
 
 (library
  (name image)
+ (public_name rivet.image)
  (modes byte native)
- (libraries foundation asm_core fmt)
+ (libraries foundation asm_core rivet_fmt)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

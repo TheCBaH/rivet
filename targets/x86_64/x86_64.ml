@@ -1,4 +1,4 @@
-(* The x86_64 target (.ai/asm_plan.md §5.1).
+(* The x86_64 target (docs/design.md §5.1).
 
    The mode itself is in {!X86_64_encode}, beside the encoder it parameterizes,
    so that a consumer wanting x86-64 encoding without a parser has something to

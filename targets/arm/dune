@@ -12,16 +12,18 @@
 
 (library
  (name arm_encode)
+ (public_name rivet.arm_encode)
  (modules arm_encode)
  (modes byte native)
  (libraries foundation codec asm_core target_error target_encode)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name arm)
+ (public_name rivet.arm)
  (modules arm)
  (modes byte native)
  (libraries foundation codec asm_core asm_syntax target_intf arm_encode)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

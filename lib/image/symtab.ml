@@ -1,4 +1,4 @@
-(* The M3 linker data model (.ai/asm_plan.md §12, "Milestone 3"; the M3
+(* The M3 linker data model (docs/design.md §12, "Milestone 3"; the M3
    implementation plan's §1-§2). One input's symbols are not one input's
    business once more than one module links together: a name spelled the
    same in two inputs is not automatically the same symbol, and "declared"

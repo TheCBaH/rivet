@@ -4,11 +4,19 @@
 
 (library
  (name test_coherence)
+ (public_name rivet.test_support)
  (modules test_coherence)
  (modes byte native)
- (libraries driver image asm_core aarch64 foundation test_dump_inputs fmt)
+ (libraries
+  driver
+  image
+  asm_core
+  aarch64
+  foundation
+  test_dump_inputs
+  rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

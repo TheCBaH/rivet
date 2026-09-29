@@ -1,4 +1,4 @@
-(* Path coherence (.ai/asm_plan.md M1.7).
+(* Path coherence (docs/design.md M1.7).
 
    §4's claim is that each staged AST is a *public entry point*, not an internal
    step: a compiler that already has semantic instructions should hand over a

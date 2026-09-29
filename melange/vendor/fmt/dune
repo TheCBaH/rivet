@@ -9,9 +9,10 @@
  (files ../../../vendor/fmt/upstream/src/*.mli))
 
 (library
- (name fmt)
+ (name rivet_fmt)
+ (wrapped false)
  (modes byte native melange)
  (flags
   (:standard -w -a))
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))

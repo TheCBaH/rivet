@@ -1,5 +1,5 @@
 ; Spans, origins, diagnostics, arbitrary-precision integers, and the byte
-; cursor. This is the root of the production closure, and .ai/asm_plan.md §3.7
+; cursor. This is the root of the production closure, and docs/design.md §3.7
 ; forbids Unix, native pointers, bigarrays, and any C-backed package anywhere
 ; above it — so the only dependencies are the vendored pure-OCaml Fmt and
 ; err_trace. Both are vendored rather than taken from opam, and err_trace is
@@ -8,11 +8,12 @@
 ;
 ; Melange mode lives in melange/lib/foundation, which copy_files these same
 ; sources; the two stanzas share this library's name and are made mutually
-; exclusive by ASM_MELANGE, because dune cannot make `modes` conditional.
+; exclusive by RIVET_MELANGE, because dune cannot make `modes` conditional.
 
 (library
  (name foundation)
+ (public_name rivet.foundation)
  (modes byte native)
- (libraries fmt err_trace)
+ (libraries rivet_fmt err_trace)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

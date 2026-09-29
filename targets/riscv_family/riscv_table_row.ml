@@ -1,6 +1,6 @@
 (* One table-driven fixed-format RISC-V form (DEC-RV-TABLE). The rows
    themselves are generated from the captured riscv-opcodes export into
-   Riscv_table_rows by [compcert_tools isa-table riscv-emit]; nothing here
+   Riscv_table_rows by [rivet_tools isa-table riscv-emit]; nothing here
    reads the capture at run time. *)
 
 (* An immediate whose value bits are scattered over the instruction:

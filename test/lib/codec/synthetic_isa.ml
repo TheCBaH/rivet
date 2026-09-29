@@ -218,7 +218,7 @@ let checked_ladder : (branch, fixup_kind) t =
    Modelled on x86's real shape - a top-level [Alt] whose [jmp-rel] arm is
    itself a [Relax] node, each of whose *rungs* carries its own projecting
    [Iso_fun] (there is no single projection wrapping the whole ladder;
-   asm/docs/corpus.md, x86_family_encode.ml's [jmp_rung]) - beside another
+   the corpus notes, x86_family_encode.ml's [jmp_rung]) - beside another
    arm whose value can genuinely fail a range check.
 
    This is what [attempt]'s [Relax] case has to get right: every rung of
@@ -227,7 +227,7 @@ let checked_ladder : (branch, fixup_kind) t =
    that fix, the manufactured failure was recorded as the enclosing [Alt]'s
    [first_error] and permanently hid [fixed]'s own real,
    later [Field_does_not_fit] - the same masking gcc's `andl
-   $0xfffffffc,%edx` (M5, asm/docs/corpus.md) hit for real, reported as
+   $0xfffffffc,%edx` (M5) hit for real, reported as
    `x86.encode: relax jmp: no rung applies` regardless of which alternative
    and value actually failed. *)
 type relaxed = RBr of int64 | RFixed of int64

@@ -113,7 +113,7 @@ let parse_diagnostic ~span kind =
 let parse_program ~profile ~source =
   match Lexer.tokenize ~profile ~source with
   (* Shared: a lexical failure is reported here exactly as the lexer described
-     it, under the lexer's own code (asm/docs/errors.md §2). *)
+     it, under the lexer's own code (docs/errors.md §2). *)
   | Error e -> Diag.fail ~pos:__POS__ [ Lexer.diagnostic_of_error e ]
   | Ok tokens -> (
       let tokens = ensure_terminated tokens in
@@ -129,7 +129,7 @@ let parse_program ~profile ~source =
          boundary is allowed to absorb and re-raises everything else, where the
          previous handler would have caught only [Grammar.Error] but recorded
          nothing about the crossing. The [Catch] event it adds is what says a
-         failure entered our domain from a foreign one (asm/docs/errors.md §2).
+         failure entered our domain from a foreign one (docs/errors.md §2).
 
          The token is the one the supplier had not yet consumed - what the
          parser choked on - and is now carried rather than reduced to its

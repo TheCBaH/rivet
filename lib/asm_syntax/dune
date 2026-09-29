@@ -1,4 +1,4 @@
-; The target-independent front end (.ai/asm_plan.md §4.7): bytes of source text
+; The target-independent front end (docs/design.md §4.7): bytes of source text
 ; in, statements and token slices out.
 ;
 ; Split out of asm_core so that the two halves of the assembler can be linked
@@ -18,10 +18,11 @@
 
 (library
  (name asm_syntax)
+ (public_name rivet.asm_syntax)
  (modes byte native)
- (libraries foundation asm_core fmt)
+ (libraries foundation asm_core rivet_fmt)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 ; Menhir is invoked by an explicit rule rather than by the (menhir ...) stanza,
 ; because that stanza takes no enabled_if and needs a library to attach to - and
@@ -34,6 +35,6 @@
  (targets grammar.ml grammar.mli)
  (deps grammar.mly)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true))
+  (<> %{env:RIVET_MELANGE=false} true))
  (action
   (run menhir --base grammar %{deps})))

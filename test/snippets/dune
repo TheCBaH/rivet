@@ -50,7 +50,7 @@
   aarch64_encode
   riscv32_encode
   riscv64_encode
-  fmt)
+  rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -58,7 +58,7 @@
  (name test_snippets)
  (modules test_snippets)
  (modes byte native)
- (libraries snippet_corpus asm_oracle fmt)
+ (libraries snippet_corpus asm_oracle rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))

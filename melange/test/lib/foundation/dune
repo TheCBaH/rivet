@@ -13,9 +13,9 @@
  (name foundation_corpus)
  (modules bigint_corpus)
  (modes byte native melange)
- (libraries foundation fmt)
+ (libraries foundation rivet_fmt)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))
 
 (melange.emit
  (target js)
@@ -23,4 +23,4 @@
  (module_systems commonjs)
  (libraries foundation_corpus)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))

@@ -1,4 +1,4 @@
-(* The TARGET signature (.ai/asm_plan.md §5.1).
+(* The TARGET signature (docs/design.md §5.1).
 
    Signatures only. This package deliberately contains no implementation, so
    that every concrete target depends on a description it cannot influence, and
@@ -57,7 +57,7 @@ type ('state, 'insn, 'error) directive_result =
   | Unhandled
   | Rejected of 'error
       (** the target's own error domain, not a rendered diagnostic: a rejection here is an ordinary
-          typed failure and only becomes text at the reporting boundary (asm/docs/errors.md).
+          typed failure and only becomes text at the reporting boundary (docs/errors.md).
           {!TARGET} instantiates this with the {i wrapped} error, so a rejection carries the same
           detection origin every other target failure does. *)
 
@@ -87,7 +87,7 @@ module type TARGET = sig
 
      So the encoder's domain stays below source text and the front end gets its
      own above it, each carrying what it actually has. See
-     asm/docs/errors.md. *)
+     docs/errors.md. *)
 
   type parse_error
 
@@ -160,7 +160,7 @@ module type DRIVER = sig
     (string * Span.source) list ->
     unit ->
     Image.laid_out Diag.t
-  (** M3's multi-module entry point (.ai/asm_plan.md §12): every input lowered with its own
+  (** M3's multi-module entry point (docs/design.md §12): every input lowered with its own
       [unit_name], then handed to [Image.plan_image] as one list, so a cross-input reference
       resolves through §2's rules rather than each input being planned alone. [Image.laid_out] is
       already architecture-erased, so this needs no existential of its own - each target's own
@@ -174,7 +174,7 @@ module type DRIVER = sig
       statement of which requests survive erasure - and "classify this module's fixups" is one the
       differential oracle makes through nothing else. *)
 
-  (* The six dumps of asm/docs/contracts.md §1. Each is a separate entry point
+  (* The six dumps of docs/contracts.md §1. Each is a separate entry point
      rather than a [~stage] parameter, because they have genuinely different
      inputs: three take source text, two take bytes and an address, and one
      takes nothing. *)

@@ -2,7 +2,7 @@
    typed-error migration and after it.
 
    [Diagnostic.t] is a rendering; a typed error domain is the currency (see
-   asm/docs/errors.md). Between them sits [Err], whose wrapper carries the
+   docs/errors.md). Between them sits [Err], whose wrapper carries the
    detection origin and the semantic event trail. This module names the
    combinations the codebase actually needs, so that no caller has to spell out
    [Err.fail ~pp_error:Diagnostic.pp_all] and get the printer wrong.

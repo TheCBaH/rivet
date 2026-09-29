@@ -7,9 +7,9 @@
 (library
  (name asm_syntax)
  (modes byte native melange)
- (libraries foundation asm_core fmt)
+ (libraries foundation asm_core rivet_fmt)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))
 
 ; The Melange configuration owns the grammar build, because lib/asm_syntax's
 ; rule is disabled there (see lib/asm_syntax/dune). Exactly one of the two is
@@ -27,6 +27,6 @@
  (targets grammar.ml grammar.mli)
  (deps grammar.mly)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true))
+  (= %{env:RIVET_MELANGE=false} true))
  (action
   (run menhir --base grammar %{deps})))

@@ -1,4 +1,4 @@
-(* The lowered module AST (.ai/asm_plan.md §4.4, §7).
+(* The lowered module AST (docs/design.md §4.4, §7).
 
    One input unit, whether parsed or constructed directly, in the form the image
    builder consumes: logical sections with permissions, ordered fragments,
@@ -159,7 +159,7 @@ type 'k fragment =
    section`) until §6 wires real `.bss` content support. The field exists now
    because §4's merge step needs it: a same-name section fed both kinds by two
    different inputs is a dedicated rejection (the GNU probe in
-   asm/docs/m3-evidence found real `ld`, under this project's own linker-script
+   docs/m3-evidence found real `ld`, under this project's own linker-script
    shape, silently coerces that case into one PROGBITS section instead). *)
 type section_kind = Progbits | Nobits
 
@@ -181,12 +181,12 @@ let visibility_name = function
   | Protected -> "protected"
   | Internal -> "internal"
 
-(* M3 (.ai/asm_plan.md §12, "Milestone 3"). Replaces the bare [global : bool]
+(* M3 (docs/design.md §12, "Milestone 3"). Replaces the bare [global : bool]
    M1/M2 carried: a linker with more than one input needs a third state, since
    GNU's [.weak] is neither "visible link-wide with duplicate-definition
    rejection" ([Global]) nor "invisible outside this input" ([Local]) - a weak
    definition is link-wide visible but loses to a strong one instead of
-   conflicting with it (asm/docs/contracts.md, the M3 resolver). *)
+   conflicting with it (docs/contracts.md, the M3 resolver). *)
 type binding = Local | Global | Weak
 
 let binding_name = function Local -> "local" | Global -> "global" | Weak -> "weak"
@@ -274,7 +274,7 @@ let pp_fragment ppf = function
    them to match would reject the one case ladders exist for. *)
 (* The annotations are load-bearing: [symbol] also declares a [name] field and
    is declared later, so without them OCaml resolves a fixup's [name] to it. *)
-(* The ladder's error domain (asm/docs/errors.md). Every constructor carries the
+(* The ladder's error domain (docs/errors.md). Every constructor carries the
    rungs it is talking about rather than their names spliced into a sentence,
    which is what lets a caller report the pair without re-parsing the message.
    Rendering is unchanged. *)

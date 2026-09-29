@@ -1,4 +1,4 @@
-// Playwright driver for the real-browser smoke harness (.ai/asm_plan.md M5,
+// Playwright driver for the real-browser smoke harness (docs/design.md M5,
 // the deferred browser-harness item). This script only controls browser
 // process lifecycle - launch, navigate, wait for a terminal result, read it,
 // exit. All assembler logic and the jsoo/melange-vs-native comparison run

@@ -1,4 +1,4 @@
-(* Direct lexer tests (.ai/asm_plan.md §4.6, §11.1) for Lexer.scan_string's
+(* Direct lexer tests (docs/design.md §4.6, §11.1) for Lexer.scan_string's
    escape decoding.
 
    Nothing downstream renders a decoded string's *content*: Source_ast.pp
@@ -8,7 +8,7 @@
    dump-source-ast, dump-tokens, and every corpus/expect test downstream
    unnoticed. This is the one place that actually looks at the payload.
 
-   The octal-escape cases (M5 corpus evidence: asm/fixtures/corpus/c/x86_64,
+   The octal-escape cases (M5 corpus evidence: fixtures/corpus/c/x86_64,
    aes.c's string-literal table) were checked against the real, installed
    x86_64-linux-gnu-as/objdump (binutils 2.44) before being written down here -
    see lexer.ml's comment on scan_string. *)

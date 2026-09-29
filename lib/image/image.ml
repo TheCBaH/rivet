@@ -1,4 +1,4 @@
-(* The internal linker and the portable image contract (.ai/asm_plan.md §8, §9).
+(* The internal linker and the portable image contract (docs/design.md §8, §9).
 
    The production API stops here, and the stopping point is the design rather
    than an omission. Everything below manipulates ordinary pure-OCaml values and
@@ -21,10 +21,10 @@
 
    The linker is still restricted - no imports, and every unsupported
    condition is an explicit rejection rather than a silent partial result.
-   M2 removed the one-allocatable-section limit; M3 (.ai/asm_plan.md §12)
+   M2 removed the one-allocatable-section limit; M3 (docs/design.md §12)
    removes the one-module limit, merging same-named sections across inputs
    by name alone (a same-name PROGBITS/NOBITS kind mismatch is a dedicated
-   rejection instead - asm/docs/m3-evidence found real `ld`, under this
+   rejection instead - docs/m3-evidence found real `ld`, under this
    project's own controlled-link shape, silently coerces that case instead
    of keeping two sections) and resolving symbols across every input via
    [Symtab] rather than per-module. Weak and common-symbol precedence (M3
@@ -167,7 +167,7 @@ type t = {
   symbol_sizes : (string * int64) list;
 }
 
-(* The linker's error domain (asm/docs/errors.md), in two halves because the two
+(* The linker's error domain (docs/errors.md), in two halves because the two
    phases fail for unrelated reasons: [plan_image] is about a module that cannot
    be laid out, [bind_image] about addresses that do not satisfy the plan it
    produced. Splitting them is what lets a host tell "this program is wrong"
@@ -188,7 +188,7 @@ type link_error =
   | `No_section
   | `Section_kind_mismatch of string
     (** M3 §4: a PROGBITS contribution and a NOBITS contribution share this section name.
-          Measured GNU behavior (asm/docs/m3-evidence) under this project's own controlled-link
+          Measured GNU behavior (docs/m3-evidence) under this project's own controlled-link
           shape is to merge and coerce them to one type instead of rejecting - unsafe for the
           NOBITS model M3 builds, so this diverges from GNU on purpose. *)
   | `Duplicate_definition of string
@@ -333,7 +333,7 @@ let bind_error_code : bind_error -> string = function
   | `Fixup_value _ | `Fixup_target_too_wide _ -> "bind.fixup"
   | `Fixup_out_of_range _ -> "bind.fixup-range"
   (* The target named it; re-coding here would overwrite what only the target
-     could know (asm/docs/errors.md §2, delegation). *)
+     could know (docs/errors.md §2, delegation). *)
   | `Target_fixup d -> Diagnostic.code d
 
 let error_code : error -> string = function
@@ -599,13 +599,13 @@ let layout_section ~evaluate (sc : 'k Lowered_ast.section_content) =
 (* {1 plan_image}
 
    Every unsupported condition is an explicit rejection rather than a silent
-   partial result. M3 (.ai/asm_plan.md §12) removes the one-module limit:
+   partial result. M3 (docs/design.md §12) removes the one-module limit:
    sections merge across every input by name alone (§4), and symbols resolve
    across every input through [Symtab] (§2) instead of per-module. *)
 
 (* M3 §5: only x86_32/x86_64 need a real callback here - a merge-boundary gap
    fills with real NOP instructions on those two profiles alone, and only for
-   an executable section (asm/docs/m3-evidence). Zero is the measured,
+   an executable section (docs/m3-evidence). Zero is the measured,
    correct answer everywhere else, including every non-executable gap on
    every target, which is why it is the default rather than one target's
    special case. *)
@@ -871,7 +871,7 @@ let plan_image ~evaluate ?(fill = default_fill) ?section_pad policy
                   (target + logical_size, (unit_name, target) :: bases))
                 (0, []) contribs
             in
-            (* The runtime-vararg frontier gap (asm/docs/corpus.md, Follow-ups):
+            (* The runtime-vararg frontier gap (docs/corpus.md, Follow-ups):
                a target that sets [section_pad] (RISC-V alone, measured) rounds this
                PROGBITS section's own final size up to its recorded alignment, the same
                way GAS's own assembler does at end-of-section - distinct from the

@@ -24,7 +24,7 @@ let b = Bigint.of_string_exn
 
    The error branch renders the typed payload with the domain's own printer, and
    deliberately not the Err wrapper: this corpus is the seed of the cram baseline
-   and the three-backend equality gate, and asm/docs/errors.md §3 keeps
+   and the three-backend equality gate, and docs/errors.md §3 keeps
    provenance out of both. *)
 let pp_error ppf e = Bigint.pp_error ppf (Err.Error.kind e)
 let pp_result ok = Fmt.result ~ok ~error:Fmt.(any "error: " ++ pp_error)

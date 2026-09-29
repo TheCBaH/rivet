@@ -1,4 +1,4 @@
-(* Section permissions, as metadata (.ai/asm_plan.md §9).
+(* Section permissions, as metadata (docs/design.md §9).
 
    Recorded, never applied: no production package changes memory protection.
    These travel from a section directive through the lowered module into the
@@ -14,7 +14,7 @@ let executable t = t.execute
 let writable t = t.write
 let readable t = t.read
 
-(* Three characters, with [-] for absent, per asm/docs/contracts.md §1.4. Fixed
+(* Three characters, with [-] for absent, per docs/contracts.md §1.4. Fixed
    width matters: the lowered and image dumps put permissions in a column, and a
    variable-width field would make every downstream diff show alignment noise
    rather than the change. *)

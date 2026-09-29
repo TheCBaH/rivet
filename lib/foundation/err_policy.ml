@@ -6,7 +6,7 @@
    The one that must go is automatic stack capture. [Err.Config.default], which
    is what [Err] starts with if nobody says otherwise, uses [Origin] backtraces:
    every detected error calls [Printexc.get_callstack]. That text carries host
-   paths and frame counts, which .ai/asm_plan.md §3.7 bans from any diagnostic
+   paths and frame counts, which docs/design.md §3.7 bans from any diagnostic
    string, and it differs between native OCaml, js_of_ocaml and Melange - so a
    rendering that reached an expect or cram baseline could not agree across the
    three backends §11.6 requires. [Never] is therefore not a preference here, it
@@ -27,7 +27,7 @@
    duplicate it.
 
    Even so, no [Err] origin, stack, event or observation text may be rendered
-   into a baseline; see asm/docs/errors.md. Determinism here makes that rule
+   into a baseline; see docs/errors.md. Determinism here makes that rule
    cheap to hold, not unnecessary. *)
 
 (* Upstream added this preset from this project's adoption feedback. It is the

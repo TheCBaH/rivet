@@ -7,9 +7,9 @@
  (name test_image)
  (modules test_image)
  (modes byte native)
- (libraries image asm_core foundation fmt)
+ (libraries image asm_core foundation rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

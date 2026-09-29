@@ -119,14 +119,16 @@ add_library() {
 }
 
 # new_library <dir> <name> [library...] - a throwaway library in the copied tree.
+# Public, because lib/ is: dune drops a public library that depends on a private
+# one from `describe`, which would hide the planted edge from the audit.
 new_library() {
   local dir=$1 name=$2
   shift 2
   mkdir -p "$dir"
   if [ "$#" -gt 0 ]; then
-    printf '(library (name %s) (modes byte native) (libraries %s))\n' "$name" "$*" > "$dir/dune"
+    printf '(library (name %s) (public_name rivet.%s) (modes byte native) (libraries %s))\n' "$name" "$name" "$*" > "$dir/dune"
   else
-    printf '(library (name %s) (modes byte native))\n' "$name" > "$dir/dune"
+    printf '(library (name %s) (public_name rivet.%s) (modes byte native))\n' "$name" "$name" > "$dir/dune"
   fi
 }
 

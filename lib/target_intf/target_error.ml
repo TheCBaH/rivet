@@ -1,4 +1,4 @@
-(* What every target's error domain has in common (asm/docs/errors.md).
+(* What every target's error domain has in common (docs/errors.md).
 
    Two things, and the second is smaller than it looks.
 
@@ -34,7 +34,7 @@
    and [arm.lower] on another, because the phase that detects it differs, so the
    target names it.
 
-   Nothing here mentions an architecture: tools/asm-check-layers.sh rejects any
+   Nothing here mentions an architecture: scripts/asm-check-layers.sh rejects any
    source under lib/ that does, and a tag describing a *kind* of failure never
    needs to. *)
 

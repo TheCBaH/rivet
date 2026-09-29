@@ -1,4 +1,4 @@
-(* The encoding half of the TARGET signature (.ai/asm_plan.md §5.1).
+(* The encoding half of the TARGET signature (docs/design.md §5.1).
 
    Everything a target does once an instruction exists as a value: normalize
    it, lower it, encode it, decode it back, evaluate a fixup, pad a section.
@@ -66,7 +66,7 @@ module type ENCODE = sig
      failures around and renders them, and must not be able to inspect one.
      Each target's domain is {!Target_error.t} plus its own tags, so the shared
      kinds - unknown mnemonic, no such form, out of range - are one row rather
-     than three copies (asm/docs/errors.md §1).
+     than three copies (docs/errors.md §1).
 
      [error_diagnostic] is the erasure boundary, named so it is visible as one:
      {!Image} holds a target-supplied fixup evaluator and {!Target.DRIVER}
@@ -80,7 +80,7 @@ module type ENCODE = sig
   val error_diagnostic : error -> Diagnostic.t
 
   (* The three staged ASTs of §4.2-§4.4. The printers are the *canonical*
-     spellings asm/docs/contracts.md §1 fixes: a printer here is a contract,
+     spellings docs/contracts.md §1 fixes: a printer here is a contract,
      not a debugging aid, and its output is compared byte-for-byte across three
      runtimes. *)
 
@@ -241,7 +241,7 @@ module type ENCODE = sig
   val data_widths : (string * int) list
   (** The data directives this dialect spells, and the width in *bytes* each denotes. Asked before
       the common table, because there is no universal answer: [.word] is two bytes in GNU x86 syntax
-      and four on ARM and AArch64, and CompCert writes [.4byte] for a 32-bit address on ARM. A
+      and four on ARM and AArch64, and the compiler writes [.4byte] for a 32-bit address on ARM. A
       single shared table would be silently wrong for one of them. *)
 
   val data_fixup : width:int -> (fixup_kind, error) Err.t
@@ -255,7 +255,7 @@ module type ENCODE = sig
       nobody wrote. *)
 
   val merge_fill : (length:int -> string) option
-  (** M3 §5 (.ai/asm_plan.md §12): GNU's linker fill for a gap it inserts BETWEEN two modules'
+  (** M3 §5 (docs/design.md §12): GNU's linker fill for a gap it inserts BETWEEN two modules'
       contributions to one EXECUTABLE merged output section - distinct from {!nop_bytes}'s
       *assembler*-time [.align] padding within one module, and NOT always the same bytes even where
       both exist: measured directly (real [ld], all six targets), [x86_64]'s linker and assembler
