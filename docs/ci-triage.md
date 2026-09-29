@@ -1,6 +1,6 @@
 # Investigating a failed CI run
 
-This repo's Actions runs are on `TheCBaH/devcontainer.CompCert`. `gh` is
+This repo's Actions runs are on `TheCBaH/devcontainer.gcc`. `gh` is
 authenticated in this environment; these are the commands that actually work
 here, including a couple of `gh` quirks worth knowing up front.
 
@@ -10,7 +10,7 @@ A run URL looks like
 `.../actions/runs/<run-id>/job/<job-id>`. Both IDs are usable directly:
 
 ```sh
-gh run view <run-id> --repo TheCBaH/devcontainer.CompCert
+gh run view <run-id> --repo TheCBaH/devcontainer.gcc
 ```
 
 This prints every job's status plus the `ANNOTATIONS` section (exit codes,
@@ -24,7 +24,7 @@ logs". Go straight to the API instead, which reliably returns the full raw
 timestamped log:
 
 ```sh
-gh api repos/TheCBaH/devcontainer.CompCert/actions/jobs/<job-id>/logs \
+gh api repos/TheCBaH/devcontainer.gcc/actions/jobs/<job-id>/logs \
   > /tmp/job.log
 ```
 
@@ -40,17 +40,17 @@ searching for those first narrows down which step's output to read in full.
 ## Job IDs and conclusions for a run
 
 ```sh
-gh run view <run-id> --repo TheCBaH/devcontainer.CompCert \
+gh run view <run-id> --repo TheCBaH/devcontainer.gcc \
   --json jobs -q '.jobs[] | select(.conclusion=="failure") | .name'
 
-gh run view <run-id> --repo TheCBaH/devcontainer.CompCert \
+gh run view <run-id> --repo TheCBaH/devcontainer.gcc \
   --json jobs -q '.jobs[] | select(.name=="tool-gate") | .databaseId'
 ```
 
 ## Checking whether a failure is new or a repeat
 
 ```sh
-gh run list --repo TheCBaH/devcontainer.CompCert --workflow asm --limit 15 \
+gh run list --repo TheCBaH/devcontainer.gcc --workflow asm --limit 15 \
   --json databaseId,conclusion,headBranch,createdAt
 ```
 
@@ -63,7 +63,7 @@ way, as above.
 
 Once you know which `make` target failed (from the `##[group]Run
 devcontainer exec ... make <target>` line), reproduce it inside the same
-container setup — see `.ai/devcontainer-cli.md`. Match the job's env
+container setup — see `docs/devcontainer-cli.md`. Match the job's env
 exactly: `OCAML_VERSION` (top of the failed job's YAML step, e.g.
 `OCAML_VERSION: 5.5.0`) and `PLATFORM` (from the matrix entry, e.g.
 `linux/amd64`).
@@ -72,11 +72,11 @@ exactly: `OCAML_VERSION` (top of the failed job's YAML step, e.g.
 export OCAML_VERSION=5.5.0
 devcontainer up --workspace-folder .
 devcontainer exec --remote-env PLATFORM=linux/amd64 --workspace-folder . \
-  make asm-tool-gate
+  make tool-gate
 ```
 
 If a gate script suppresses a sub-process's stderr on the success path (e.g.
-`tools/asm-tool-gate.sh`'s `gdb_gate` redirects `qemu-system-aarch64`'s
+`scripts/asm-tool-gate.sh`'s `gdb_gate` redirects `qemu-system-aarch64`'s
 stderr to a log file that's never printed), rerun the failing piece by hand
 with output unsuppressed rather than trying to infer the cause from the
 gate's one-line failure message.

@@ -6,13 +6,13 @@ This repository's CI builds and runs containers with `@devcontainers/cli`
 same `up` and `exec` operations rather than invoking `docker build` directly.
 
 There are exactly two devcontainer configs in this repo:
-`.devcontainer/devcontainer.json` (the main OCaml/CompCert/asm image, the
+`.devcontainer/devcontainer.json` (the main OCaml/gcc/asm image, the
 default `--config`) and `.devcontainer/devcontainers.cli/devcontainer.json`
 (a small Debian-based meta-container whose only job is running
 `@devcontainers/cli` itself via docker-outside-of-docker, used to drive the
 other one from CI). There is no `javascript`/`octez`/`native-adapters`
 feature-suite split — everything the main image needs (js_of_ocaml, Melange,
-Rocq/`rocq-prover`, ...) is installed by the one `./features/ocaml` feature
+Menhir, ...) is installed by the one `./features/ocaml` feature
 invocation in `.devcontainer/devcontainer.json`.
 
 ## The image is Gentoo-based
@@ -82,7 +82,7 @@ part of a committed image layer.
 `riscv32-linux-gnu` is a genuinely new addition (the old Debian image only
 had `riscv64-linux-gnu` binutils+gcc, no libc) — it gives `asm`'s riscv32
 profile a real glibc sysroot, which is what let it join `LIBC_SMOKE_TARGETS`
-(see `asm/tools/lib/target.ml`'s `Libc_smoke` capability set).
+(see `tools/lib/target.ml`'s `Libc_smoke` capability set).
 
 ## Select the OCaml version and container
 
@@ -103,46 +103,40 @@ The versions and platforms CI actually builds are defined in
 CI also passes `--platform <docker-platform>` while building. Use that locally
 only when Docker has the required native host or binfmt emulation. Its generated
 `exec` prefix exports the matching `PLATFORM` as well, which the Makefile reads
-(see `compcert-configure`'s comment) to pick a target when `uname -m` would be
-unreliable (e.g. a 32-bit container on a 64-bit host):
+to pick a target when `uname -m` would be unreliable (e.g. a 32-bit container on
+a 64-bit host):
 
 ```sh
 devcontainer exec --remote-env PLATFORM=linux/arm64 \
-  --workspace-folder . make asm-build
+  --workspace-folder . make build
 ```
 
 ## Run checks
 
-This repo has no top-level `ci`/`bench`/`build` Make targets. The real
-equivalents:
+The real equivalents of a top-level `ci`/`build`:
 
 ```sh
-devcontainer exec --workspace-folder . make compcert       # configure + Rocq proof + build ccomp
-devcontainer exec --workspace-folder . make asm-ci          # the asm/ subproject's CI aggregate
+devcontainer exec --workspace-folder . make ci          # the CI aggregate
 ```
 
-`make asm-ci` bundles the pure-OCaml/dune checks that need no cross toolchain
-or QEMU (`asm-fmt-check`, `asm-build`, `asm-test`, `tools-test`,
-`tools-integration`, `tools-boundary`, `tools-matrix-diff`,
+`make ci` bundles the checks that need no execution environment beyond the
+toolchain the devcontainer already ships (`fmt-check`, `build`, `test`,
+`tools-test`, `tools-integration`, `tools-boundary`, `tools-matrix-diff`,
 `tools-fixture-modes`, `tools-oracle-diff`, `tools-gasxref-diff`,
-`asm-corpus-check-c`, `asm-purity`, `asm-planted`, `asm-cross-smoke-selftest`,
-`asm-characterize-verify`, `asm-melange-optin`, `asm-js-portable`). It does
-**not** include the toolchain-dependent targets CI runs as separate jobs:
+`tools-isa-inventory-diff`, `purity`, `planted`, `melange-optin`,
+`js-portable`). It does **not** include the targets CI runs as separate jobs:
 
 ```sh
-devcontainer exec --workspace-folder . make asm-tool-gate                 # six qemu-user binaries + cross toolchains + gdb
-devcontainer exec --workspace-folder . make asm-exec                      # runs test/oracle/exec.exe under QEMU per target
-devcontainer exec --workspace-folder . make asm-fixture-oracle-riscv32    # one of the six asm/CompCert targets
-devcontainer exec --workspace-folder . make asm-libc-cross-smoke          # full CompCert cross-builds, the libc-smoke target set
+devcontainer exec --workspace-folder . make tool-gate                 # six qemu-user binaries + cross toolchains + gdb
+devcontainer exec --workspace-folder . make exec                      # runs test/oracle/exec.exe under QEMU per target
+devcontainer exec --workspace-folder . make fixture-oracle-riscv32    # one of the six targets' oracle legs
 ```
 
-`tools/target-matrix.sh` (generated — see its header, regenerate with
-`make tools-matrix` after editing `asm/tools/lib/target.ml`) is the single
+`scripts/target-matrix.sh` (generated — see its header, regenerate with
+`make tools-matrix` after editing `tools/lib/target.ml`) is the single
 source of truth for the six target profiles (`x86_32 x86_64 arm aarch64
 riscv32 riscv64`) and which capability sets they belong to
-(`ASSEMBLER_TARGETS`/`FIXTURE_TARGETS` are all six; `LIBC_SMOKE_TARGETS` is a
-subset — check that file rather than assuming, it changes as riscv32 gains a
-real libc toolchain).
+(`ASSEMBLER_TARGETS`/`FIXTURE_TARGETS` are all six).
 
 `devcontainer up` is idempotent and reuses a container keyed by its workspace
 and configuration. The generated `.devcontainer/devcontainer-lock.json` files
@@ -194,7 +188,7 @@ its relative `dockerfile`/feature paths still resolve, and never committed:
 HOST_WS="$(docker inspect "$(hostname)" --format '{{index .Config.Labels "devcontainer.local_folder"}}')"
 OVERRIDE=.devcontainer/devcontainer.override.local.json
 cp .devcontainer/devcontainer.json "$OVERRIDE"
-sed -i "s#\"name\": \"CompCert devcontainer\",#&\n    \"workspaceFolder\": \"/workspaces/err-trace\",\n    \"workspaceMount\": \"source=${HOST_WS},target=/workspaces/err-trace,type=bind,consistency=cached\",#" "$OVERRIDE"
+sed -i "s#\"name\": \"gcc devcontainer\",#&\n    \"workspaceFolder\": \"/workspaces/err-trace\",\n    \"workspaceMount\": \"source=${HOST_WS},target=/workspaces/err-trace,type=bind,consistency=cached\",#" "$OVERRIDE"
 
 export OCAML_VERSION=4.14.3
 devcontainer up --workspace-folder /workspaces/err-trace --override-config "/workspaces/err-trace/$OVERRIDE"
@@ -261,7 +255,7 @@ tar --exclude=.git --exclude=_build --exclude='*.tar.gz' -cf - . \
   | devcontainer exec --workspace-folder . \
       tar -xf - -C "$SNAPSHOT_PATH"
 devcontainer exec --remote-env SNAPSHOT_PATH="$SNAPSHOT_PATH" \
-  --workspace-folder . bash -lc 'cd "$SNAPSHOT_PATH" && make asm-ci'
+  --workspace-folder . bash -lc 'cd "$SNAPSHOT_PATH" && make ci'
 ```
 
 When `up` failed as above, the same recipe works with `docker exec`, reading the
@@ -273,7 +267,7 @@ tar --exclude=.git --exclude=_build --exclude='*.tar.gz' \
   -cf - -C /workspaces/err-trace . \
   | docker exec -i -u vscode "$CONTAINER" tar -xf - -C "$SNAP"
 docker exec -u vscode -e OPAMROOT=/opt/opam "$CONTAINER" \
-  sh -lc "cd $SNAP && make asm-ci"
+  sh -lc "cd $SNAP && make ci"
 ```
 
 Use a newly created path for each independent snapshot so stale files cannot

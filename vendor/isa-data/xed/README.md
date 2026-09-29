@@ -12,9 +12,9 @@ whole-ISA inventory track, not source code the assembler links against.
 ## What it is for
 
 This is the primary source for the x86_32/x86_64 leg of the whole-ISA
-instruction/extension inventory track (`.ai/asm_plan.md`'s "Parallel track:
+instruction/extension inventory track (`docs/design.md`'s "Parallel track:
 whole-ISA instruction and extension inventory" section; sourcing survey:
-`.ai/isa-inventory-sources.md`; schema: `asm/docs/isa-inventory.md`).
+`docs/isa-inventory.md`; schema: `docs/isa-inventory.md`).
 
 `upstream/datafiles/` is literally one directory per extension (`avx512f`,
 `avx-vnni`, `apx-f`, `cet`, `amx-*`, ...) — the cleanest x86-specific
@@ -29,20 +29,20 @@ per-extension instruction/mnemonic partitioning.
 Same reasoning as `riscv-opcodes`: small (~29MB full checkout, `datafiles/`
 itself ~6.8MB), permissively licensed, and a submodule pins the exact commit
 the generated inventory was produced from, per the vendoring-tier
-recommendation in `.ai/isa-inventory-sources.md`.
+recommendation in `docs/isa-inventory.md`.
 
 This tree carries no dune files, so it needs no `data_only_dirs` marker —
-`asm/dune`'s `(vendored_dirs vendor)` already covers the whole `asm/vendor/`
+`dune`'s `(vendored_dirs vendor)` already covers the whole `vendor/`
 subtree.
 
 ## Upgrading
 
 ```sh
-git -C asm/vendor/isa-data/xed/upstream fetch origin main
-git -C asm/vendor/isa-data/xed/upstream checkout origin/main
-git add asm/vendor/isa-data/xed/upstream   # commits the new gitlink
+git -C vendor/isa-data/xed/upstream fetch origin main
+git -C vendor/isa-data/xed/upstream checkout origin/main
+git add vendor/isa-data/xed/upstream   # commits the new gitlink
 ```
 
-Then regenerate the inventory (see `asm/docs/isa-inventory.md` for the
+Then regenerate the inventory (see `docs/isa-inventory.md` for the
 generation command, once the pilot's tooling step lands) and re-check its
 diff-gate, the same way a `target-matrix.sh` regeneration is checked.

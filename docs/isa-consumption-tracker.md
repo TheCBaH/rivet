@@ -2,11 +2,11 @@
 
 Plan: [isa-consumption-plan.md](isa-consumption-plan.md). This file is the
 status authority. Phase 1 (S0–S7) is done; its full milestone and evidence log
-is in git history: `git show f4b93e4:.ai/isa-consumption-tracker.md`.
+is in git history: `git show f4b93e4:docs/isa-consumption-tracker.md`.
 
 The machine-checked authority for *what* is unadmitted is the residual ledger
-(`asm/tools/lib/isa_residual_ledger.ml`, `make tools-isa-residual-ledger`) and
-the family-admission report (`compcert_tools.exe isa-inventory
+(`tools/lib/isa_residual_ledger.ml`, `make tools-isa-residual-ledger`) and
+the family-admission report (`rivet_tools.exe isa-inventory
 family-admission`). This tracker orders and records the work; it never
 restates live counts except as dated before/after evidence.
 
@@ -55,7 +55,7 @@ reserved NOPs with no GNU spelling, SVM/SNP implicit-register forms).
 | DEC-X86-MODE16 | 16-bit-only forms in the `x86_32` export | not-started | — | Counted: 68 `MODE=0` (16-bit-mode) records in the `x86_32` export, 66 still blocked (the other 2 share an iform with a 32-bit record). Options: `.code16` (GAS supports it; this assembler would need a mode state) or record them out of scope. Awaiting the owner's decision |
 | DEC-X86-SUFFIX | Size-suffix inference for x86 mnemonics | needs owner decision | — | GAS infers the operand size from a register operand (`add $1000000, %ecx`); ours rejects unsuffixed mnemonics by design (`test_targets.ml` "x86 refuses to guess an operand size"). Blocks the pilot's ADD_GPRv_IMMz / MOV_GPRv_GPRv_89 / MOV_GPRv_IMMz (x86-64) credit |
 | FREE-01 | Cases for normalized-only / GAS-generatable records | done (RISC-V); x86 blocked | DEC-X86-SUFFIX, DEC-X86-MODE16 | x86 residue needs the two decisions below |
-| FREE-02 | Credit x86 forms already encoded for CompCert | ready | INF-02 helps | Enumerate encoder `Opcode`s without a normalized form |
+| FREE-02 | Credit x86 forms already encoded for gcc | ready | INF-02 helps | Enumerate encoder `Opcode`s without a normalized form |
 | GEN-05-RV-BASE | RISC-V base-integer remainder | done | — | `fence` admitted via the table rule (hand-encoded); ledger row deleted |
 | GEN-05-RV-ZBA | `add.uw`, `slli.uw`, `zext.w` | done | — | ledger row deleted |
 | GEN-05-RV-FP | Zfh/Zfhmin, Q, Zfa, Zfbfmin | done | — | ledger row deleted; explicit-`rm` spellings are encoded/decoded but not yet a case obligation (syntax model has no optional operand) |
@@ -76,8 +76,8 @@ reserved NOPs with no GNU spelling, SVM/SNP implicit-register forms).
 
 ### INF-01 — credit from evidence
 
-- [x] Build the promoted set from `asm/fixtures/isa-generated/` and
-  `asm/fixtures/isa-difficult/` records with a `Pass` verdict, excluding
+- [x] Build the promoted set from `fixtures/isa-generated/` and
+  `fixtures/isa-difficult/` records with a `Pass` verdict, excluding
   negatives, keyed by `(target, form_id, lookup_key)`.
 - [x] Derive `Gas_generatable` from the same corpora (non-passing positive
   cases) instead of re-listing `Isa_gen_pilot`/`Isa_gen_difficult` entries.
@@ -156,7 +156,7 @@ counts as known; masking is an obligation on already-credited records.
 - [x] Incremental by default: a committed record's GAS artifact is reused
   when case, argv and `as` version label are unchanged
   (`Isa_gen_oracle.reuse`); `ours` always re-runs.
-  `COMPCERT_TOOLS_REGEN=full` re-runs everything; `COMPCERT_TOOLS_JOBS`
+  `RIVET_TOOLS_REGEN=full` re-runs everything; `RIVET_TOOLS_JOBS`
   sets the worker count.
 - [ ] Sharding committed artifacts by profile/ledger row: not needed at the
   current size (3.5 MB, 3,375 cases); revisit when generated cases land
@@ -180,8 +180,8 @@ forms stay hand-written (fixups, relaxation, selection, compressed subsets).
 constructor plus encode/decode arms per mnemonic — ~10 lines in four places
 per form; (b) a hand-maintained table — cheaper, but restates the capture by
 hand and drifts; (c) **a generated, checked-in table — chosen.**
-- `compcert_tools isa-table riscv-emit` derives rows from the committed
-  riscv-opcodes export and writes `asm/targets/riscv_family/riscv_table_rows.ml`;
+- `rivet_tools isa-table riscv-emit` derives rows from the committed
+  riscv-opcodes export and writes `targets/riscv_family/riscv_table_rows.ml`;
   a toolchain-free check (repo test) fails when the file differs from a fresh
   emission, so review happens on the generated diff.
 - Row: mnemonic, mask, match, operands in GNU syntax order (GPR/FPR register
@@ -202,9 +202,9 @@ hand and drifts; (c) **a generated, checked-in table — chosen.**
 
 - [x] DEC-RV-TABLE recorded; RISC-V table encoder/decoder landed with Zimop,
   Zicfiss (RV64), the Zba word leftovers, the fcsr pseudos and
-  `fmv.d.x`/`fmv.x.d`; no byte changes elsewhere (asm-ci, js, Melange pass).
+  `fmv.d.x`/`fmv.x.d`; no byte changes elsewhere (ci, js, Melange pass).
 **DEC-X86-TABLE (2026-09-25, decided).** Same choice as DEC-RV-TABLE
-(generated, checked-in rows; `compcert_tools isa-table x86-emit`; a repo test
+(generated, checked-in rows; `rivet_tools isa-table x86-emit`; a repo test
 fails on a stale file), with x86 specifics:
 - Row: AT&T mnemonic, encoding space (legacy, VEX first; EVEX/XOP/REX2/map-4
   later), map, opcode, mandatory prefix, `W`/`L` (or "ignored"), fixed
@@ -229,7 +229,7 @@ fails on a stale file), with x86 specifics:
 
 - [x] DEC-X86-TABLE recorded; x86 row encoder landed with the VEX space
   (legacy space is next), no byte changes elsewhere.
-- [ ] Both: `make asm-js-portable`, `make asm-purity`, all six target
+- [ ] Both: `make js-portable`, `make purity`, all six target
   profiles' regressions, and codec checks pass.
 
 ### INF-06 — features everywhere
@@ -328,7 +328,7 @@ lands with its own small family, positive and negative cases.
 - Large literal `match` expressions break the 32-bit ARM OCaml 4.14 backend;
   shape generated tables accordingly.
 - Tier-two regeneration takes seconds since INF-04 but still needs the
-  cross toolchains and stays off `asm-ci`.
+  cross toolchains and stays off `ci`.
 
 ## Evidence record template
 
@@ -348,17 +348,17 @@ Unknowns, exceptions, follow-up task IDs:
 |---|---|---|
 | 2026-09-25 | Phase-2 baseline | `make tools-isa-residual-ledger` and `family-admission` at `f4b93e4`: counts in the baseline table; ledger owns all blocked records |
 | 2026-09-25 | GAS capability probe | `x86_64-linux-gnu-as` 2.44 accepts APX (r16, `{nf}`, NDD), EVEX mask/zeroing/broadcast, AVX10.2 `vminmaxps`, AMX `tdpbssd`, FMA, VSIB, XOP, MMX, 3DNow `femms`, `fadds 4(%rsp)`. RISC-V 2.44/2.43.1 accept Zfh, Zfa, Q, Zabha, Zacas, Zawrs, Zimop, Zcb, Zcmp, Zcmt, Zcmop, Zfbfmin, H, Zicbom, Zicfiss, Ssctr; reject Zalasr, Zilsd (RV32), `mnret` (Smrnmi) |
-| 2026-09-25 | INF-01 | Credit read from corpora; `family-admission` and `residual-ledger` byte-identical to `f4b93e4`; `tools-test`, `tools-integration`, `tools-boundary`, `asm-fmt-check` pass |
-| 2026-09-25 | INF-02 | Construct-keyed blockers and histogram in `family-admission`; counts unchanged; `tools-test`, `tools-integration`, `tools-boundary`, `asm-fmt-check` pass |
-| 2026-09-25 | INF-04 | difficult regen 12m22s → 6.3 s full / 2.9 s incremental, output identical; `family-records` listing added; `tools-test`, `tools-integration`, `tools-boundary`, `asm-isa-difficult-check`, `asm-fmt-check` pass |
-| 2026-09-25 | FREE-01 (RISC-V) + GEN-05-RV-BASE | Promoted RV32 734→796, RV64 783→858; blocked RV32 335→293, RV64 341→296; normalized-only 20/30→0; round-trip 3,635→3,722; difficult corpus 3,375→3,582 cases, all pass. GAS 2.44/2.43.1 probes: branch pseudos, `scall`/`sbreak`, `fence.tso`, `pause` (needs `zihintpause`). Fixed: bare `fence` encoded as `fence rw,w`; now `fence iorw,iorw` with general pred/succ sets. Shadow guard: `rv32_zilsd` `ld`/`sd` stay blocked. `asm-ci`, `asm-js-portable`, `asm-purity`, tools suites pass |
-| 2026-09-25 | INF-05R + GEN-05-RV-ZBA + fcsr/`fmv.*.d` + Zimop + Zicfiss | 58 generated rows (`isa-table riscv-emit`, checked by repo test); promoted RV32 796→844, RV64 858→916; blocked RV32 293→238, RV64 296→236; oracle-unavailable RV32 7 (Zicfiss ×5: RV32 GAS 2.43.1 lacks `zicfiss`; `mop.r.N`/`mop.rr.N` templates), RV64 2 (templates). Row collision/priority test caught `zext.w` decoding as `add.uw` (fixed: rows ordered by mask specificity) and `fmv.x.d` already hand-encoded (normalize-only). Fixed a latent double count of oracle-unavailable records as blocked. `asm-ci`, `asm-js-portable`, Melange runtest, `asm-purity`, tools suites pass |
+| 2026-09-25 | INF-01 | Credit read from corpora; `family-admission` and `residual-ledger` byte-identical to `f4b93e4`; `tools-test`, `tools-integration`, `tools-boundary`, `fmt-check` pass |
+| 2026-09-25 | INF-02 | Construct-keyed blockers and histogram in `family-admission`; counts unchanged; `tools-test`, `tools-integration`, `tools-boundary`, `fmt-check` pass |
+| 2026-09-25 | INF-04 | difficult regen 12m22s → 6.3 s full / 2.9 s incremental, output identical; `family-records` listing added; `tools-test`, `tools-integration`, `tools-boundary`, `isa-difficult-check`, `fmt-check` pass |
+| 2026-09-25 | FREE-01 (RISC-V) + GEN-05-RV-BASE | Promoted RV32 734→796, RV64 783→858; blocked RV32 335→293, RV64 341→296; normalized-only 20/30→0; round-trip 3,635→3,722; difficult corpus 3,375→3,582 cases, all pass. GAS 2.44/2.43.1 probes: branch pseudos, `scall`/`sbreak`, `fence.tso`, `pause` (needs `zihintpause`). Fixed: bare `fence` encoded as `fence rw,w`; now `fence iorw,iorw` with general pred/succ sets. Shadow guard: `rv32_zilsd` `ld`/`sd` stay blocked. `ci`, `js-portable`, `purity`, tools suites pass |
+| 2026-09-25 | INF-05R + GEN-05-RV-ZBA + fcsr/`fmv.*.d` + Zimop + Zicfiss | 58 generated rows (`isa-table riscv-emit`, checked by repo test); promoted RV32 796→844, RV64 858→916; blocked RV32 293→238, RV64 296→236; oracle-unavailable RV32 7 (Zicfiss ×5: RV32 GAS 2.43.1 lacks `zicfiss`; `mop.r.N`/`mop.rr.N` templates), RV64 2 (templates). Row collision/priority test caught `zext.w` decoding as `add.uw` (fixed: rows ordered by mask specificity) and `fmv.x.d` already hand-encoded (normalize-only). Fixed a latent double count of oracle-unavailable records as blocked. `ci`, `js-portable`, Melange runtest, `purity`, tools suites pass |
 | 2026-09-25 | GEN-05-RV-FP (table) | Table rule widened: rounding mode with GNU default (dyn, rne for exact widening conversions — confirmed by GAS on every generated case), tied `rs2=rs1`, `imm(base)` loads/stores, `fcvtmod.w.d ..., rtz` keyword, Zfa `fli.*` constants (name or value, incl. hex floats; parser passes the text through). 162+4 rows. Promoted RV32 844→943, RV64 916→1023; blocked RV32 238→139, RV64 236→129. RES-RV-FP closed. All gates pass incl. Melange runtest |
 | 2026-09-25 | GEN-05-RV-ATOMIC/PRIV/MISC + `fence` (table) | Rule widened: AMO `rd, rs2, (rs1)` with `.aq`/`.rl`/`.aqrl` rows, Zacas even/odd pairs, `hlv`/`hsv`, `cbo.* (rs1)`, `prefetch.* imm(rs1)` (offset multiple of 32), `lpad`, `fence` pred/succ (hand-encoded). 312 rows. Promoted RV32 943→1008, RV64 1023→1091; blocked RV32 139→59, RV64 129→50 — all compressed (`RES-RV-COMPRESSED`); oracle-unavailable RV32 22, RV64 13. Rows that are HINTs of base instructions (`ntl.*`, `prefetch.*`, `lpad`) decode as the base form by design (pinned). Suffix/pair rows pinned to GAS bytes in `test_components.ml`. All gates pass |
 | 2026-09-25 | GEN-05-RV-C — RISC-V complete | Table rule gains 16-bit rows (compressed x8–x15/f8–f15 registers, scattered/scaled immediates from a reviewed per-field layout, `off(rs1')`/`off(sp)`, `c.lui`'s upper immediate, Zcmp s-registers, register lists and XLEN-dependent stack adjustments, `cm.jalt`'s bounded index); the hand-written encoder gains `c.j`/`c.jal` with a CJ-format `Jump12c` fixup. 391 rows. Promoted RV32 1008→1057, RV64 1091→1140; **blocked 0 on both profiles**; oracle-unavailable RV32 32, RV64 14 (Zclsd, RV32 Zcmt, RV32 `cm.mva01s/mvsa01`, RV32 compressed Zicfiss, `c.mop.N` template, plus the earlier set). All gates pass |
 | 2026-09-25 | INF-05X — VEX table | `isa-table x86-emit` → 1,425 rows (VEX space; rows also for hand-written forms, used only when the hand-written encoder declines a shape such as xmm8-15). Byte-level encoder beside the codec (C5-when-possible, SIB/disp rules shared with the codec, is4 incl. is4+imm4), decode after the codec. Generated cases: low registers per mode, plus a high-register/r9+r10 variant on x86-64; all pass. GAS spelling rules found by the differential run: `x`/`y` suffixes for narrowing conversions from memory, `vpcmpestri{,m}q`, VNNI/IFMA/NE-CONVERT VEX forms need `{vex}` (excluded), same-spelling twins (FMA4 W0/W1, load/store move opcodes, `vpextrw`) reachable only via a pseudo-prefix → `needs-pseudo-prefix`. Promoted x86-32 1022→1784, x86-64 1030→1854; blocked 6854→6092, 9536→8712. Round-trip test over every row in both modes; all gates pass |
 | 2026-09-25 | GEN-05-X86-SIMD (xmm legacy rows) | Legacy-space rows for xmm/memory/imm8 forms with mandatory 66/F2/F3 prefixes (532 legacy rows). Row fallback moved into `simplify`: a row for the surface spelling is used when the hand-written forms reject it or cannot lower its operands (`movq %xmm` in 32-bit mode). Spelling rule: XED iclass suffixes (`MOVSD_XMM`, `PEXTRW_SSE4`) dropped. x86-32 records that 32-bit mode cannot encode (legacy REX.W, GPR64, MODE=2; GAS "bad register name %rax") are `oracle-unavailable: not-encodable-in-32-bit-mode` (22). Promoted x86-32 1784→1912, x86-64 1854→1987. All gates pass |
-| 2026-09-25 | GEN-05-X86-INT (first integer rows) | Legacy integer rows: GPRv expanded to 16/32/64-bit rows with `w/l/q` (unsuffixed where GAS rejects a suffix on newer ISA sets; register-inferred lookup only for mnemonics the hand-written forms do not know, so DEC-X86-SUFFIX stays open), fixed `%cl`/accumulator registers, opcode-embedded registers (short `inc/dec/xchg`), `z` immediates, mandatory 66 on fixed-width `OSZ=1` forms, 32-bit-only (`MODE!=2`) rows. Accumulator guard: a row refuses the accumulator where GAS uses an accumulator form (`xchg`, `test`/ALU `$imm32`). Twins: integer ops prefer the rm-destination opcode and the short form. **Hand-written encoder bugs found and fixed by the differential run**: `adcb/addb/…` register and memory forms emitted the 32-bit opcode (`adcb %dl,%cl` → `11 d1`, GAS `10 d1`); `decb %cl` emitted `49`; `testl $imm, %eax` used `F7 C0` (GAS `A9`) — those spellings now decline to generated rows. The gas-xref frontier now agrees with GNU as on 35 (was 31) CompCert runtime files. Promoted x86-32 1912→2155, x86-64 1987→2219 |
+| 2026-09-25 | GEN-05-X86-INT (first integer rows) | Legacy integer rows: GPRv expanded to 16/32/64-bit rows with `w/l/q` (unsuffixed where GAS rejects a suffix on newer ISA sets; register-inferred lookup only for mnemonics the hand-written forms do not know, so DEC-X86-SUFFIX stays open), fixed `%cl`/accumulator registers, opcode-embedded registers (short `inc/dec/xchg`), `z` immediates, mandatory 66 on fixed-width `OSZ=1` forms, 32-bit-only (`MODE!=2`) rows. Accumulator guard: a row refuses the accumulator where GAS uses an accumulator form (`xchg`, `test`/ALU `$imm32`). Twins: integer ops prefer the rm-destination opcode and the short form. **Hand-written encoder bugs found and fixed by the differential run**: `adcb/addb/…` register and memory forms emitted the 32-bit opcode (`adcb %dl,%cl` → `11 d1`, GAS `10 d1`); `decb %cl` emitted `49`; `testl $imm, %eax` used `F7 C0` (GAS `A9`) — those spellings now decline to generated rows. The gas-xref frontier now agrees with GNU as on 35 (was 31) gcc runtime files. Promoted x86-32 1912→2155, x86-64 1987→2219 |
 | 2026-09-25 | GEN-05-X86-EVEX (base rows) | EVEX rows in the generated table: P0-P2 with k0 (the unmasked form), L'L from VL (scalar LIG → 0), disp8*N from XED's tuple type and element size (checked: `vaddps 128(%rsp)` → disp8 02, `100(%rsp)` → disp32). EVEX xmm/ymm twins of VEX spellings resolve to VEX (GNU's choice) → `needs-pseudo-prefix`. Spelling: narrowing conversions from memory into xmm take `x`/`y`/`z`. 21 AVX10.2 iclasses GAS 2.44 lacks (`vcvtps2bf8`, …) recorded oracle-unavailable. Promoted x86-32 2155→4522, x86-64 2219→4590; blocked 5707→3226, 8349→5864. All gates pass |
 | 2026-09-25 | GEN-05-X86-EVEX / GEN-05-X86-SIMD (mm, k registers) | Register classes `Mmx` (mm0-mm7) and `Kmask` (k0-k7) in the row model, the normalized model (`x86_mmx`, `x86_kmask`) and both modes' register tables; widths are class markers apart from the GPRs'. Promotes the MMX/SSE2MMX/SSSE3MMX forms, the VEX k-ops (kand/kmov/kshift…), and EVEX compares/tests into a mask. `vfpclassp*`/`vfpclassbf16` from memory take x/y/z; mm and k moves prefer the load opcode among twins. 3DNow (map 4) stays blocked. Promoted x86-32 4522→5009, x86-64 4590→5081; blocked 3226→2739, 5864→5373. All gates pass |
 | 2026-09-25 | GEN-05-X86-INT (rule widening) | Rows for CMOVcc/SETcc (GNU accepts XED's `cmovnz`/`setnz` spellings), VEX GPR-with-memory forms (BMI1/BMI2 `andn (%rax),%ebx,%ecx`, CMPccXADD), memory-only fixed-width forms (a memory width counts as the operand size; non-classic ISA sets take no suffix, `invlpg` never does), AVX2 broadcasts (XED's `BCAST` marker is not an operand), and TZCNT/LZCNT (`TZCNT=1`, `REP!=3` tokens). Promoted x86-32 5009→5223, x86-64 5081→5335; blocked 2739→2525, 5373→5119. All gates pass |

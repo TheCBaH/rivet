@@ -231,7 +231,7 @@ character, because both strings travel through untouched.
 Each later commit emptied one module: real constructors in, `` `Diag `` uses
 out, and when the last one went the tag was dropped from that domain's row.
 
-`tools/asm-check-errors.sh` ratcheted that, one commit at a time: per-file
+`scripts/asm-check-errors.sh` ratcheted that, one commit at a time: per-file
 `Legacy_error` counts that could fall but never rise, and no file outside the
 baseline could acquire the row. It rose exactly once, when splitting the target
 domain in two created three new front-end domains - a reviewed regeneration, not

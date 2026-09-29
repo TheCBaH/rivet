@@ -1,7 +1,7 @@
 # M3 §3 GNU merge-behavior probe: evidence
 
 Real `as`/`ld` (GNU Binutils for Debian 2.44), all six assembler profiles,
-run directly against the toolprefixes and flags `asm/tools/lib/target.ml`
+run directly against the toolprefixes and flags `tools/lib/target.ml`
 uses (`riscv32` sharing `riscv64-linux-gnu-` binutils with
 `-march=rv32imafd -mabi=ilp32d -mno-relax` / `-m elf32lriscv --no-relax`).
 The linker script shape in both probe scripts matches this project's own
@@ -20,7 +20,7 @@ Files:
   supplementary: merge-gap fill for a non-executable PROGBITS (`.data`)
   contribution, on all six targets.
 
-## Findings (pinned contract for asm/lib/image/image.ml's M3 merge logic)
+## Findings (pinned contract for lib/image/image.ml's M3 merge logic)
 
 1. **Merge-gap offsets**: a contribution whose input section declares
    `sh_addralign = 16` (via a leading `.balign 16`) is placed by `ld` at

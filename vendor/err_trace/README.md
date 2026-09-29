@@ -26,7 +26,7 @@ transitively.
 
 ## Why vendored rather than an opam dependency
 
-`.ai/asm_plan.md` §1/§2.2/§3.7 ban C sources, foreign stubs, and C-backed
+`docs/design.md` §1/§2.2/§3.7 ban C sources, foreign stubs, and C-backed
 transitive dependencies from the production closure, and `tools/asm_audit.ml`
 enforces that with an `external_allowlist` that is **empty by design** — the
 closure is meant to need nothing from opam at all. Vendoring keeps that
@@ -55,9 +55,9 @@ purity audit to reject the result, so the protection cannot be lost silently.
 ## Upgrading
 
 ```sh
-git -C asm/vendor/err_trace/upstream fetch origin main
-git -C asm/vendor/err_trace/upstream checkout origin/main
-git add asm/vendor/err_trace/upstream # commits the new gitlink
+git -C vendor/err_trace/upstream fetch origin main
+git -C vendor/err_trace/upstream checkout origin/main
+git add vendor/err_trace/upstream # commits the new gitlink
 make asm-ci asm-melange asm-js        # all three backends, plus the audits
 ```
 

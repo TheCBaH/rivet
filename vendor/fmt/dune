@@ -1,12 +1,12 @@
 ; Vendored Fmt (see README.md). `upstream/` is a git submodule pinned at the
-; `v0.11.0` tag; the enclosing asm/dune marks this tree `vendored_dirs`, which
+; `v0.11.0` tag; the enclosing dune marks this tree `vendored_dirs`, which
 ; suppresses warnings here and leaves it out of `@fmt`, so the copy stays
 ; verifiable against the pinned submodule commit.
 ;
 ; The vendored copy is what makes Fmt usable here at all: the opam `fmt`
 ; package is built by topkg and installs a META template, which dune rejects
 ; for Melange ("not compatible with melange support"), so the production
-; closure could not depend on it and still satisfy .ai/asm_plan.md §11.6.
+; closure could not depend on it and still satisfy docs/design.md §11.6.
 ;
 ; Melange mode lives in melange/vendor/fmt, which copy_files these same
 ; sources.
@@ -26,6 +26,7 @@
 
 (library
  (name fmt)
+ (public_name rivet.fmt)
  (modes byte native)
  (enabled_if
   (<> %{env:ASM_MELANGE=false} true)))

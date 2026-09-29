@@ -3,7 +3,7 @@
 ; files we actually build. Its own dune files (test/dune, bench/dune) declare a
 ; test suite depending on ppx_expect, base, time_now and compiler-libs.
 ;
-; The enclosing asm/dune marks this tree `vendored_dirs`, which suppresses
+; The enclosing dune marks this tree `vendored_dirs`, which suppresses
 ; warnings and leaves it out of `@fmt`, but that alone does not stop dune
 ; reading `upstream/`'s own dune files: left visible, those stanzas land in
 ; `dune describe` output, and tools/asm_audit.ml classifies anything under
@@ -37,6 +37,7 @@
 
 (library
  (name err_trace)
+ (public_name rivet.err_trace)
  (wrapped false)
  (modes byte native)
  (enabled_if

@@ -1,23 +1,23 @@
-# Measured CompCert RISC-V inventory
+# Measured gcc RISC-V inventory
 
 This inventory is the scope authority for the initial RISC-V implementation.
-It was generated from CompCert 3.17 on 2026-08-13; proposed instruction lists
+It was generated from gcc 3.17 on 2026-08-13; proposed instruction lists
 elsewhere do not widen this measured corpus.
 
 This is *not* a whole-ISA inventory - it only records what this specific
 measured corpus emits. For RISC-V's full instruction/extension set (and the
-same question for the other five targets), see `.ai/asm_plan.md`'s "Parallel
+same question for the other five targets), see `docs/design.md`'s "Parallel
 track: whole-ISA instruction and extension inventory" section.
 
 ## Profiles and tools
 
-| Profile | CompCert target | Assembly flags | Link flags | ELF | QEMU |
+| Profile | gcc target | Assembly flags | Link flags | ELF | QEMU |
 |---|---|---|---|---|---|
 | `riscv32` | `rv32-linux` | `-march=rv32imafd -mabi=ilp32d -mno-relax` | `-m elf32lriscv --no-relax` | ELF32, RISC-V | `qemu-riscv32` |
 | `riscv64` | `rv64-linux` | `-march=rv64imafd -mabi=lp64d -mno-relax` | `-m elf64lriscv --no-relax` | ELF64, RISC-V | `qemu-riscv64` |
 
-Both CompCert configurations use `-no-runtime-lib -no-standard-headers` and a
-project-owned GCC probe wrapper. Fixture generation stops at `ccomp -S`.
+Both gcc configurations use `-no-runtime-lib -no-standard-headers` and a
+project-owned GCC probe wrapper. Fixture generation stops at `gcc -S`.
 RV32 uses the published crosstool-NG toolchain (GCC 14.2.0, Binutils 2.43.1)
 and RV64 uses Debian's GNU Binutils 2.44; QEMU is 10.0.11 in the recorded
 run. The exact tool banners are stored beside every fixture in
@@ -54,13 +54,13 @@ are resolved by the assembler and have no object relocation.
 
 The artifact set, manifest format, regeneration and execution contract are not
 RISC-V-specific: they are the common six-target pipeline documented in
-[fixture-oracle.md](fixture-oracle.md). `make asm-fixture-oracle-riscv32` and
-`make asm-fixture-oracle-riscv64` run the two RISC-V legs of it.
+[fixture-oracle.md](fixture-oracle.md). `make fixture-oracle-riscv32` and
+`make fixture-oracle-riscv64` run the two RISC-V legs of it.
 
 Only the settings above are RISC-V's own: the `-march`/`-mabi` pairs, the
 `elf32lriscv`/`elf64lriscv` link emulations, relaxation being disabled
 everywhere, the `-M no-aliases,numeric` disassembly, the freestanding
-`-no-runtime-lib -no-standard-headers` CompCert configuration, and the
+`-no-runtime-lib -no-standard-headers` gcc configuration, and the
 project-owned GCC probe wrapper that selects the exact ABI behind each
 profile's own tool prefix.  Development images install the published
 `riscv32-linux-gnu-` glibc toolchain for RV32, while Debian's packaged
