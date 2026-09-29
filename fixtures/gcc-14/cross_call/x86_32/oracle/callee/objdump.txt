@@ -1,0 +1,8 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_test_callee>:
+   0:	8b 44 24 04          	mov    0x4(%esp),%eax
+   4:	01 c0                	add    %eax,%eax
+   6:	c3                   	ret

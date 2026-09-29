@@ -5,7 +5,7 @@ let positive s =
   match int_of_string_opt (String.trim s) with Some n when n > 0 -> Some n | _ -> None
 
 let default_jobs () =
-  match Option.bind (Sys.getenv_opt "COMPCERT_TOOLS_JOBS") positive with
+  match Option.bind (Sys.getenv_opt "RIVET_TOOLS_JOBS") positive with
   | Some n -> n
   | None -> (
       match

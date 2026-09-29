@@ -4,7 +4,7 @@
    is a deliberate, visible diff) and prove the type shapes actually compose
    into an observation for a representative of every verdict row. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

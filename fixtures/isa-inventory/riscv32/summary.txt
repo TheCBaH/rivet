@@ -85,5 +85,4 @@ by-extension:rv_zvknha:3
 by-extension:rv_zvksed:3
 by-extension:rv_zvksh:2
 by-state:unknown:974
-compcert-emitted:0
 gcc-emitted:0

@@ -1,0 +1,30 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_test_sum>:
+   0:	8b 44 24 0c          	mov    0xc(%esp),%eax
+   4:	0f af 44 24 08       	imul   0x8(%esp),%eax
+   9:	03 44 24 04          	add    0x4(%esp),%eax
+   d:	2b 44 24 10          	sub    0x10(%esp),%eax
+  11:	c3                   	ret
+
+00000012 <asm_test_entry>:
+  12:	53                   	push   %ebx
+  13:	83 ec 10             	sub    $0x10,%esp
+  16:	c7 44 24 0c 07 00 00 	movl   $0x7,0xc(%esp)
+  1d:	00 
+  1e:	c7 44 24 08 05 00 00 	movl   $0x5,0x8(%esp)
+  25:	00 
+  26:	c7 44 24 04 09 00 00 	movl   $0x9,0x4(%esp)
+  2d:	00 
+  2e:	8b 44 24 0c          	mov    0xc(%esp),%eax
+  32:	8b 5c 24 08          	mov    0x8(%esp),%ebx
+  36:	8b 4c 24 04          	mov    0x4(%esp),%ecx
+  3a:	8b 54 24 08          	mov    0x8(%esp),%edx
+  3e:	0f af c3             	imul   %ebx,%eax
+  41:	29 c8                	sub    %ecx,%eax
+  43:	8d 44 50 06          	lea    0x6(%eax,%edx,2),%eax
+  47:	83 c4 10             	add    $0x10,%esp
+  4a:	5b                   	pop    %ebx
+  4b:	c3                   	ret

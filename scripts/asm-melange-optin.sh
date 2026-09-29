@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# The Melange opt-in, verified rather than asserted (.ai/asm_plan.md §3.2, an
+# The Melange opt-in, verified rather than asserted (docs/design.md §3.2, an
 # M0 exit criterion).
 #
 # The claim has two halves, and only the first is obvious:
 #
-#   with ASM_MELANGE unset, `dune rules @all` contains ZERO melc entries and
+#   with RIVET_MELANGE unset, `dune rules @all` contains ZERO melc entries and
 #   `dune build @all` succeeds - including where Melange is not available at
 #   all;
 #
-#   with ASM_MELANGE=true, the melange rules appear and build.
+#   with RIVET_MELANGE=true, the melange rules appear and build.
 #
 # The second half matters because a check with only the first would pass on a
 # tree where every Melange stanza had been deleted.
@@ -21,7 +21,7 @@
 # the machine that would not otherwise care.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-ASM_DIR=${ASM_DIR:-asm}
+ASM_DIR=${RIVET_DIR:-.}
 failures=0
 shim=""
 
@@ -43,8 +43,8 @@ rules_melc_count() {
 # installed" on every switch that has it and silently downgrade the check.
 melc_path="$(opam exec -- sh -c 'command -v melc' 2>/dev/null || true)"
 
-echo "== ASM_MELANGE unset =="
-unset ASM_MELANGE || true
+echo "== RIVET_MELANGE unset =="
+unset RIVET_MELANGE || true
 n="$(rules_melc_count)"
 if [ "$n" -eq 0 ]; then
   note "dune rules @all melc entries" "0"
@@ -82,20 +82,20 @@ else
   fi
 fi
 
-echo "== ASM_MELANGE=true =="
+echo "== RIVET_MELANGE=true =="
 if [ -z "$melc_path" ]; then
   # Not a skip that hides a failure: with no melc there is nothing that could
   # run these rules, and saying so is more useful than pretending to check. The
   # pinned CI leg is where this half is required to run.
   note "melc not installed" "the opt-in half cannot be verified on this switch"
 else
-  n="$(ASM_MELANGE=true rules_melc_count)"
+  n="$(RIVET_MELANGE=true rules_melc_count)"
   if [ "$n" -gt 0 ]; then
     note "dune rules @all melc entries" "$n"
   else
     fail "dune rules @all melc entries" "0 (the opt-in schedules nothing)"
   fi
-  if ( cd "$ASM_DIR" && ASM_MELANGE=true opam exec -- dune build @all ) >/dev/null 2>&1; then
+  if ( cd "$ASM_DIR" && RIVET_MELANGE=true opam exec -- dune build @all ) >/dev/null 2>&1; then
     note "dune build @all" "ok"
   else
     fail "dune build @all" "failed"

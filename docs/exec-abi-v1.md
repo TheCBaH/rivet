@@ -1,7 +1,7 @@
 # Execution ABI v1 — frozen
 
 **Status: frozen.** Four assembly helpers implement this document; they do not
-define it — writing this before any helper is the point (`.ai/asm_plan.md`
+define it — writing this before any helper is the point (`docs/design.md`
 guardrail 1), so that four assembly implementations never become the de facto
 specification. Any change to a wire layout, a state rule, a validation order, or
 an existing subcode is an **ABI v2** bump rather than an edit; §17 states the one
@@ -9,17 +9,17 @@ narrow addition permitted within v1.
 
 This is the contract between:
 
-- the **target-assembly helper** (`asm/helpers/<profile>.s`), assembled and
+- the **target-assembly helper** (`helpers/<profile>.s`), assembled and
   linked by the reference GNU `as`/`ld`, using direct Linux syscalls, **no C and
   no libc**, running under `qemu-<arch>` user mode; and
-- the **host runner** (`asm/test/oracle/qemu_user.ml`), which serializes a bound
+- the **host runner** (`test/oracle/qemu_user.ml`), which serializes a bound
   image into a manifest, invokes the helper, and normalizes the outcome.
 
 It is also the contract for the optional system-mode backend (§11.5.4 of
-`.ai/asm_plan.md`), which shares the result-block format. Where the two differ,
+`docs/design.md`), which shares the result-block format. Where the two differ,
 the difference is stated, never implied.
 
-Nothing in this document is a production API. Per `.ai/asm_plan.md` §9 the
+Nothing in this document is a production API. Per `docs/design.md` §9 the
 production packages stop at address binding; everything here lives in test-only
 code and checked-in target assembly.
 
@@ -71,7 +71,7 @@ count toward any budget. Containment plus pairwise non-overlap is the whole
 budget rule; there is deliberately no separate aggregate mapped-memory check,
 because it could never fail first and would have no reachable case.
 
-Only the three-segment part of this map is verified today (`.ai/asm_plan.md`
+Only the three-segment part of this map is verified today (`docs/design.md`
 records it at E2, established by a throwaway C probe that is not checked in). The
 window reservation, the dual-alias result mapping and the guarded stack are new
 mechanisms and stay unverified until the conformance suite reaches E3/E4. The
@@ -413,7 +413,7 @@ within min/max, and stack plus guard exactly matches the normative region; on
 | x86-32 / x86-64 | no instruction-alignment restriction |
 
 Additionally, the **x86 helpers execute `cld` before entry**: SysV requires a
-clear direction flag at a function boundary, and later CompCert-generated string
+clear direction flag at a function boundary, and later gcc-generated string
 operations must not inherit incidental helper state.
 
 ### 10.4 Resource limits

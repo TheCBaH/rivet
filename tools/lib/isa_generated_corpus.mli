@@ -1,5 +1,5 @@
 (** The persisted, checked-in corpus of the oracle's runs against
-    the frozen S3 pilot manifest ([asm/fixtures/isa-generated/cases.jsonl]),
+    the frozen S3 pilot manifest ([fixtures/isa-generated/cases.jsonl]),
     and the toolchain-free replay that checks it: replaying committed cases
     offline without producer/toolchain dependencies, rejecting unexplained
     missing cases or tools in required tiers, with wrong-byte, wrong-form and

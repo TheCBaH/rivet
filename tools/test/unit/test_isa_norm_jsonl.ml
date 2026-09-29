@@ -6,7 +6,7 @@
    normalization itself against real records; this suite is about the codec,
    which is a separate concern from any one source's normalization rules. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

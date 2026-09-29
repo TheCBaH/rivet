@@ -1,0 +1,17 @@
+
+/tmp/tmp.7VooFylEu6/riscv64-global_ldst.o:     file format elf64-littleriscv
+
+RELOCATION RECORDS FOR [.text]:
+OFFSET           TYPE              VALUE
+0000000000000000 R_RISCV_HI20      asm_test_global
+0000000000000004 R_RISCV_LO12_I    asm_test_global
+000000000000000c R_RISCV_LO12_S    asm_test_global
+
+
+RELOCATION RECORDS FOR [.eh_frame]:
+OFFSET           TYPE              VALUE
+000000000000001c R_RISCV_32_PCREL  .L0 
+0000000000000020 R_RISCV_ADD32     .L0 
+0000000000000020 R_RISCV_SUB32     .L0 
+
+

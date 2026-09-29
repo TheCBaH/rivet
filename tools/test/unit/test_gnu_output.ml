@@ -1,6 +1,6 @@
 (* The Phase 4 parsers, held to the bytes that are already committed.
 
-   Two argv arguments: the recorded binutils output (asm/tools/test/data/gnu)
+   Two argv arguments: the recorded binutils output (tools/test/data/gnu)
    and the fixture corpus. Every recorded pair is parsed and compared with the
    corresponding committed oracle artifact, so this suite proves byte-equality
    against the shell's awk WITHOUT needing a cross toolchain - the differential
@@ -12,7 +12,7 @@
    fails - which is the correct outcome, not a nuisance: the two must move
    together. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0
@@ -65,7 +65,7 @@ let test_against_corpus data corpus =
     (fun (target, case) ->
       let recorded kind = read Fpath.(data / Printf.sprintf "%s.%s.%s.txt" kind target case) in
       let committed name =
-        read Fpath.(corpus / "compcert-3.17" / case / target / "oracle" / name)
+        read Fpath.(corpus / Repo.fixture_compiler_dir / case / target / "oracle" / name)
       in
 
       (* reloc.txt: the REL/RELA decision comes from readelf -SW, never from
@@ -213,7 +213,7 @@ let test_symbols_shape () =
 let test_alloc_flags () =
   (* The flag is a whole word: a section flagged NOALLOC must not be reported
      as allocated by a substring match. The .bss line is the real measured
-     transcript (x86_64-linux-gnu-objdump 2.44, M3 §11, .ai/asm_plan.md §12):
+     transcript (x86_64-linux-gnu-objdump 2.44, M3 §11, docs/design.md §12):
      a NOBITS section carries ALLOC with no CONTENTS, the one flag word that
      tells section_is_nobits apart from a PROGBITS section. *)
   let h =

@@ -1,0 +1,7 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_test_callee>:
+   0:	00151513          	slli	x10,x10,0x1
+   4:	00008067          	jalr	x0,0(x1)

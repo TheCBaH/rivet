@@ -1,0 +1,2 @@
+.text	0x00000000	rel	R_ARM_MOVW_ABS_NC	shared_value	-
+.text	0x00000004	rel	R_ARM_MOVT_ABS	shared_value	-

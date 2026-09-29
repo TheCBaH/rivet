@@ -1,4 +1,4 @@
-(* Extracted VERBATIM from tools/asm-tool-gate.sh's snippet_for and
+(* Extracted VERBATIM from scripts/asm-tool-gate.sh's snippet_for and
    expected_status_for by script, not retyped. That script was retired in
    Phase 8; this is now the definition rather than a copy of one - the same discipline Startup
    follows, and for a sharper reason here.

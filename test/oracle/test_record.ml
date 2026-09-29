@@ -1,5 +1,5 @@
 (* Synthetic conformance cases for the recovery validator
-   (asm/docs/exec-abi-v1.md §15.2, required by §16.4).
+   (docs/exec-abi-v1.md §15.2, required by §16.4).
 
    These are the cases QEMU cannot produce. The user-mode helper never publishes
    a terminal fault - an unhandled guest signal kills the process, leaving

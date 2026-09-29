@@ -1,10 +1,10 @@
 (* Isa_gen_case_build: the canonical
    operand table covers every pilot entry and avoids the RISC-V x0/x86
    accumulator registers this module's own comment warns about, and
-   configuration_for never reuses Target.config's frozen CompCert flags. No
+   configuration_for never reuses Target.config's frozen the compiler flags. No
    toolchain needed - this module only renders text, it does not invoke one. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

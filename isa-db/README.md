@@ -112,7 +112,7 @@ assembler checks.
   kind of premature abstraction the design doc's own "preserve facts before
   reconciling" principle warns against building ahead of need.
 - `asm/tools` reads this project's export/ only for cross-validation
-  (`compcert-tools isa-inventory cross-validate`, run as part of
+  (`rivet-tools isa-inventory cross-validate`, run as part of
   `make tools-integration`/`asm-ci`): it asserts every
   checked-in manifest row has a matching isa-db record, but
   `Isa_inventory_xed`/`Isa_inventory_riscv` are otherwise untouched and remain

@@ -1,0 +1,8 @@
+
+/tmp/tmp.7VooFylEu6/x86_32-direct_call.o:     file format elf32-i386
+
+RELOCATION RECORDS FOR [.text]:
+OFFSET   TYPE              VALUE
+0000000a R_386_PC32        asm_test_callee
+
+

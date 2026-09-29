@@ -11,6 +11,6 @@ val regen : Repo.t -> Command.t
     normalized encoding, assembled but with a DIFFERENT observed form (a
     recorded finding, not necessarily a bug), or rejected by GAS. Also
     writes every successfully-built case's {!Isa_generated_corpus.record} to
-    the checked-in [asm/fixtures/isa-generated/cases.jsonl] corpus,
+    the checked-in [fixtures/isa-generated/cases.jsonl] corpus,
     which {!Check_cmd.isa_generated_check} replays offline without a
     toolchain. *)

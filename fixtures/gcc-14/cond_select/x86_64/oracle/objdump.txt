@@ -1,0 +1,28 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <asm_test_entry>:
+   0:	c7 44 24 fc 14 00 00 	movl   $0x14,-0x4(%rsp)
+   7:	00 
+   8:	c7 44 24 f8 16 00 00 	movl   $0x16,-0x8(%rsp)
+   f:	00 
+  10:	8b 54 24 fc          	mov    -0x4(%rsp),%edx
+  14:	8b 44 24 f8          	mov    -0x8(%rsp),%eax
+  18:	39 c2                	cmp    %eax,%edx
+  1a:	7d 22                	jge    3e <asm_test_entry+0x3e>
+  1c:	8b 54 24 f8          	mov    -0x8(%rsp),%edx
+  20:	8b 4c 24 fc          	mov    -0x4(%rsp),%ecx
+  24:	8b 44 24 f8          	mov    -0x8(%rsp),%eax
+  28:	39 c1                	cmp    %eax,%ecx
+  2a:	7e 18                	jle    44 <asm_test_entry+0x44>
+  2c:	8b 4c 24 fc          	mov    -0x4(%rsp),%ecx
+  30:	8d 42 14             	lea    0x14(%rdx),%eax
+  33:	39 ca                	cmp    %ecx,%edx
+  35:	ba 00 00 00 00       	mov    $0x0,%edx
+  3a:	0f 45 c2             	cmovne %edx,%eax
+  3d:	c3                   	ret
+  3e:	8b 54 24 fc          	mov    -0x4(%rsp),%edx
+  42:	eb dc                	jmp    20 <asm_test_entry+0x20>
+  44:	8b 4c 24 f8          	mov    -0x8(%rsp),%ecx
+  48:	eb e6                	jmp    30 <asm_test_entry+0x30>

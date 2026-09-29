@@ -11,7 +11,7 @@
    paths - where being quietly wrong costs exactly the information the gate is
    there to produce. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let contains hay needle =
   let n = String.length hay and m = String.length needle in

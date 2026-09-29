@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Planted-violation tests for the purity and layer audits.
 #
-# .ai/asm_plan.md's M0 exit criteria require the audits to "pass and reject every
+# docs/design.md's M0 exit criteria require the audits to "pass and reject every
 # planted violation" - an audit that has never been observed to fail proves
-# nothing. Each case copies asm/ to a scratch tree, introduces one violation,
+# nothing. Each case copies the repository to a scratch tree, introduces one violation,
 # and requires the audit to exit non-zero *and* to name the right thing.
 #
 # Violations are planted both directly and transitively, per the plan: a direct
@@ -11,7 +11,7 @@
 # anyway.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-ASM_SRC=${ASM_DIR:-asm}
+RIVET_SRC=${RIVET_DIR:-.}
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -130,7 +130,7 @@ new_library() {
   fi
 }
 
-# Each case's tree is a full copy of asm/ and is never read again once the case
+# Each case's tree is a full copy of the repository and is never read again once the case
 # is judged, so it is deleted straight away rather than at exit: keeping all of
 # them at once needs several GB of scratch space.
 plant() {
@@ -142,8 +142,9 @@ plant_case() {
   local name=$1 mode=$2 outcome=$3 expect=$4 body=$5
   local asm="$work/$name"
   rm -rf "$asm"
-  cp -r "$ASM_SRC" "$asm"
-  rm -rf "$asm/_build"
+  mkdir -p "$asm"
+  (cd "$RIVET_SRC" && tar --exclude=./_build --exclude=./.git --exclude=./.asm-helpers -cf - .) \
+    | tar -C "$asm" -xf -
   # `set -e` inside the subshell, so a stale edit anywhere in a multi-command
   # body aborts it. Without this only the LAST command's status would be read,
   # and a stale edit followed by a working one would report success.
@@ -201,7 +202,7 @@ plant_case() {
     return
   fi
 
-  opam exec -- ocaml tools/asm_audit.ml "$mode" "$desc" "$asm" >"$out" 2>&1 && rc=0 || rc=$?
+  opam exec -- ocaml scripts/asm_audit.ml "$mode" "$desc" "$asm" >"$out" 2>&1 && rc=0 || rc=$?
 
   case "$outcome" in
     audit-pass)
@@ -254,16 +255,10 @@ plant js-runtime-stub purity reject-either 'ships a foreign object' "
   add_library lib/foundation/dune fastpath"
 
 # native_exec/ ships C stubs and is exempt from the stanza scan only while
-# every stanza in it is gated by ASM_COMPCERT_EMBED. One ungated stanza beside
+# every stanza in it is gated by RIVET_NATIVE_EXEC. One ungated stanza beside
 # the gated library must bring the scan back.
 plant research-stub-ungated purity audit-fail 'uses foreign_stubs' "
   printf '\\n(rule\\n (with-stdout-to planted.txt\\n  (echo \\\"\\\")))\\n' >> native_exec/dune"
-
-# A per-target stanza may narrow the gate with an [and], but only after the
-# shared ASM_COMPCERT_EMBED operand. An [and] led by the per-target variable
-# alone must not count as gated.
-plant research-stub-pertarget-only purity audit-fail 'uses foreign_stubs' "
-  printf '\\n(rule\\n (action\\n  (with-stdout-to planted.txt\\n   (echo \\\"\\\")))\\n (enabled_if\\n  (and\\n   (= %%{env:ASM_COMPCERT_EMBED_AARCH64=false} true)\\n   (= %%{env:ASM_COMPCERT_EMBED=false} true))))\\n' >> native_exec/dune"
 
 # The test-only ppx tree leaking into production. ppx_expect is native-only and
 # pulls in time_now, which has C stubs, so this is a live risk rather than a
@@ -272,7 +267,7 @@ plant ppx-in-production purity reject-either 'reaches "ppx_expect"' \
   "add_library lib/foundation/dune ppx_expect"
 
 # The same leak arriving through a vendored submodule rather than through one of
-# our own stanzas. asm/vendor/err_trace/upstream is a whole upstream
+# our own stanzas. vendor/err_trace/upstream is a whole upstream
 # repository, and its own test/dune declares an inline-test library over
 # ppx_expect; vendor/err_trace/dune's `(data_only_dirs upstream)` line is what
 # stops dune reading it. Without that line, `core_tests` becomes a production
@@ -304,7 +299,7 @@ plant generic-to-target layers reject-either 'depends on target' "
 plant target-name-in-generic layers reject-either 'mentions target name' \
   "printf '\nlet is_64bit t = t = \"x86_64\"\n' >> lib/foundation/span.ml"
 
-# {1 The tool project boundary (tool.md §5)}
+# {1 The tool project boundary (docs/design.md)}
 #
 # The nested dune-project makes cross-project LIBRARY edges structurally
 # impossible, and these two cases are how that claim stops being a claim. Both
@@ -315,8 +310,8 @@ plant target-name-in-generic layers reject-either 'mentions target name' \
 plant tool-reaches-assembler tool-boundary build-fail 'Library "asm_core" not found' \
   "add_library tools/lib/dune asm_core"
 
-plant assembler-reaches-tool purity build-fail 'Library "compcert_tools" not found' \
-  "add_library lib/foundation/dune compcert_tools"
+plant assembler-reaches-tool purity build-fail 'Library "rivet_tools" not found' \
+  "add_library lib/foundation/dune rivet_tools"
 
 # Project scope stops local libraries; it does NOT stop opam packages. An
 # assembler stanza naming an external tool package builds fine, and only the
@@ -398,7 +393,7 @@ plant dep-parse-bare-digestif tool-dependencies audit-fail 'bare `digestif`' \
 
 # Rule 4: a transitive-only edge to a library outside the containment list. The
 # graph is mutated rather than the auditor's constant, because plant copies only
-# asm/ and then runs the REPOSITORY's original asm_audit.ml - a test that
+# the repository and then runs the REPOSITORY's original asm_audit.ml - a test that
 # deleted an allowlist entry from a copied auditor would not be running the
 # auditor it thinks it is.
 plant dep-transitive-outside-allowlist tool-dependencies audit-fail 'rule 4' "

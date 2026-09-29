@@ -5,10 +5,10 @@
    synthetic records covering every {!gas_finding}/{!Isa_generated_case.verdict}
    combination reachable today and a deliberately broken one of each kind.
    Check_cmd.isa_generated_check's own real-corpus exercise is repo_tests.ml's
-   job (needs the checked-in asm/fixtures/isa-generated/cases.jsonl), not this
+   job (needs the checked-in fixtures/isa-generated/cases.jsonl), not this
    toolchain-free suite's. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

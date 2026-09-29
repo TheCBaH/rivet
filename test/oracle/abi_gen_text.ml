@@ -1,4 +1,4 @@
-(* A small combinator for emitting GNU-assembler text (.ai/asm_plan.md M4
+(* A small combinator for emitting GNU-assembler text (docs/design.md M4
    Phase 3.2), deterministic and used instead of ad hoc string concatenation.
 
    [line] is intentionally thin - GAS itself does not care whether a given

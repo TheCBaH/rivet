@@ -1,0 +1,7 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <asm_test_callee>:
+   0:	531f7800 	lsl	w0, w0, #1
+   4:	d65f03c0 	ret

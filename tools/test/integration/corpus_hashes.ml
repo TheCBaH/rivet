@@ -4,7 +4,7 @@
    or a traversal that followed a symlink: 800-odd real files, compared against
    values the shell produced with sha256sum. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checked = ref 0
@@ -28,8 +28,24 @@ let record line =
         Some (String.sub key 7 (String.length key - 7), value)
       else None
 
-let check_manifest manifest =
-  let root = Fpath.parent manifest in
+(* A fixture manifest names the author's files as source/<file> and
+   expected-status.txt, which live under fixtures/c/<case>; everything else is
+   beside the manifest. *)
+let locate ~fixtures manifest rel =
+  let dir = Fpath.parent manifest in
+  let case = Fpath.basename dir in
+  let under_compiler_dir =
+    let parent = Fpath.basename (Fpath.parent dir) in
+    String.length parent > 4 && String.sub parent 0 4 = "gcc-"
+  in
+  let author = Fpath.(v fixtures / "c" / case) in
+  if not under_compiler_dir then Fpath.(dir // v rel)
+  else if rel = "expected-status.txt" then Fpath.(author / rel)
+  else if String.length rel > 7 && String.sub rel 0 7 = "source/" then
+    Fpath.(author / String.sub rel 7 (String.length rel - 7))
+  else Fpath.(dir // v rel)
+
+let check_manifest ~fixtures manifest =
   match Tool_fs.read manifest with
   | Error _ -> fail "cannot read %s" (Fpath.to_string manifest)
   | Ok text ->
@@ -40,7 +56,7 @@ let check_manifest manifest =
           | None -> ()
           | Some (rel, expected) -> (
               incr checked;
-              let p = Fpath.(root // v rel) in
+              let p = locate ~fixtures manifest rel in
               match Tool_fs.sha256 p with
               | Error _ -> fail "cannot hash %s" (Fpath.to_string p)
               | Ok got ->
@@ -67,6 +83,6 @@ let () =
   if ms = [] then (
     print_endline "  FAIL no manifests found";
     exit 1);
-  List.iter check_manifest ms;
+  List.iter (check_manifest ~fixtures) ms;
   Printf.printf "  %d manifests, %d sha256 records\n" (List.length ms) !checked;
   if !failures > 0 then exit 1 else print_endline "corpus_hashes: all checks passed"

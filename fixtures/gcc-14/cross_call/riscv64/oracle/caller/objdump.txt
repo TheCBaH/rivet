@@ -1,0 +1,15 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <asm_test_entry>:
+   0:	ff010113          	addi	x2,x2,-16
+   4:	00113423          	sd	x1,8(x2)
+   8:	01400513          	addi	x10,x0,20
+   c:	00000097          	auipc	x1,0x0
+			c: R_RISCV_CALL_PLT	asm_test_callee
+  10:	000080e7          	jalr	x1,0(x1) # c <asm_test_entry+0xc>
+  14:	0025051b          	addiw	x10,x10,2
+  18:	00813083          	ld	x1,8(x2)
+  1c:	01010113          	addi	x2,x2,16
+  20:	00008067          	jalr	x0,0(x1)

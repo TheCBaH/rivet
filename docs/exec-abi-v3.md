@@ -168,7 +168,7 @@ a v1/v2 one is, byte for byte.
 
 Implementation status: **all six profiles proven end to end.**
 Generated helpers (`test/oracle/abi_gen_main.exe --profile <name>
---abi-version 3`, `tools/asm-helpers.sh`'s `build_generated_one`) for x86_64,
+--abi-version 3`, `scripts/asm-helpers.sh`'s `build_generated_one`) for x86_64,
 x86_32, ARM and AArch64 all pass the complete conformance corpus under real
 `qemu-x86_64`/`qemu-i386`/`qemu-arm`/`qemu-aarch64`, including all four new
 subcodes above and a real multi-value `passed`/`failed` result, and each
@@ -181,7 +181,7 @@ ARM's and AArch64's generators, written with both lessons already in hand,
 each passed their first real run clean.
 
 RISC-V (both `riscv32` and `riscv64`) is also proven end to end, sharing one
-validator source (`asm/helpers/riscv.c`) between XLEN profiles exactly as its
+validator source (`helpers/riscv.c`) between XLEN profiles exactly as its
 v2 path already does — v3 is `ABI_VERSION`-guarded logic added to that same
 checked-in C file rather than a second file or a generated one, since C has
 no equivalent need for the legacy profiles' frozen/generated split. Because

@@ -6,10 +6,10 @@
 
    entries_for_target itself (the vendored-submodule directory traversal)
    is exercised indirectly by `make asm-ci`'s isa-inventory regen, not
-   duplicated here - see asm/docs/isa-inventory.md's "XED's data shape"
+   duplicated here - see docs/isa-inventory.md's "XED's data shape"
    section for the real data's own quirks these cases are drawn from. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0
@@ -89,7 +89,7 @@ let test_parse_longmode_without_mode_token () =
    tagged not64 or mode64. MODE is a three-way field (mode16/mode32/mode64),
    so a PATTERN restricted to mode16 or mode32 is just as excluded from
    x86_64 as one tagged not64 - missing this previously left PUSHA/POPA/BOUND
-   in the x86_64 manifest (asm/docs/isa-inventory.md's mode-applicability
+   in the x86_64 manifest (docs/isa-inventory.md's mode-applicability
    correction). *)
 let test_parse_mode16_and_mode32_only_excludes_64 () =
   let text =

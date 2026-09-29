@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://compcert-devcontainer.example/isa-db/source_record.schema.v1.json",
+  "$id": "https://rivet.example/isa-db/source_record.schema.v1.json",
   "title": "ISA database source record (schema version 1)",
   "description": "A single source-qualified fact extracted from one adapter (XED or riscv-opcodes, in this slice). Distinct from and more detailed than asm/docs/isa-inventory.md's manifest.txt schema version 1, which this file's own schema-version does not reuse or supersede. There is no jsonschema dependency in this environment, so normalize/schema_check.py enforces only the 'required' shape below, not the full schema (patterns, enums, $ref resolution).",
   "type": "object",

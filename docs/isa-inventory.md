@@ -1,24 +1,24 @@
 # The whole-ISA instruction/extension inventory
 
 This is the schema for the "Parallel track: whole-ISA instruction and
-extension inventory" section of `.ai/asm_plan.md`. This document only
+extension inventory" section of `docs/design.md`. This document only
 defines the *format* the pilot's two vendored sources feed into, not where
 they came from.
 
-Do not confuse this with `asm/docs/riscv-inventory.md`, which is a narrower,
-already-existing document scoped to Milestone 5's CompCert corpus. This
+Do not confuse this with `docs/riscv-inventory.md`, which is a narrower,
+already-existing document scoped to Milestone 5's gcc corpus. This
 document's inventory is normative per architecture — every mnemonic the
-reference source recognizes, whether or not CompCert or gcc ever emit it —
+reference source recognizes, whether or not gcc or gcc ever emit it —
 where `riscv-inventory.md` is scoped to what Milestone 5 actually measured.
 
 ## Why a schema document before a generator
 
-`.ai/asm_plan.md`'s own description of this track specifies five things an
-entry must carry (extension/level, CompCert/gcc-emitted, implementation
+`docs/design.md`'s own description of this track specifies five things an
+entry must carry (extension/level, gcc-emitted, implementation
 state, deferral reason, promotion trigger) but not a file format. Fixing the
 format here, against the two vendored sources
-(`asm/vendor/isa-data/riscv-opcodes`, `asm/vendor/isa-data/xed`) before
-writing the generator, follows the same discipline `asm/docs/contracts.md`
+(`vendor/isa-data/riscv-opcodes`, `vendor/isa-data/xed`) before
+writing the generator, follows the same discipline `docs/contracts.md`
 already applies to the pipeline's other boundary formats: the format is
 frozen and reviewable independent of the tool that produces it.
 
@@ -33,12 +33,12 @@ both are available from day one:
   `datafiles/<extension>/*-isa.xed.txt` files already are, one line/record
   per mnemonic, a normative machine-readable list. Producing this half of
   the inventory needs nothing beyond the two submodules already vendored —
-  no cross toolchain, no CompCert build, no corpus regen.
-- **Phase B — CompCert-/gcc-emitted, from the Milestone 5 corpora.** This is
+  no cross toolchain, no gcc build, no corpus regen.
+- **Phase B — gcc-/gcc-emitted, from the Milestone 5 corpora.** This is
   *not* currently derivable from what M5 already publishes:
-  `asm/fixtures/corpus/*/​<target>/manifest.txt` records a `generated-sha256`
+  `fixtures/corpus/*/​<target>/manifest.txt` records a `generated-sha256`
   of each corpus file's compiler output, not its content, so today there is
-  no checked-in record of *which mnemonics* CompCert/gcc actually emitted.
+  no checked-in record of *which mnemonics* gcc actually emitted.
   Producing this half needs a new, cross-toolchain-gated instrumentation
   step alongside `classify-c-<target>`/`classify-c-gcc-<target>` that
   additionally collects the mnemonic set seen across the corpus and
@@ -50,9 +50,9 @@ both are available from day one:
   project's own target modules, not the vendored data, and is deferred for
   the same reason.
 
-Until Phase B tooling lands, every entry's `compcert-emitted`/`gcc-emitted`/
+Until Phase B tooling lands, every entry's `gcc-emitted`/
 `state` fields are literally the string `unknown` — an explicit placeholder,
-not a silent gap, per `.ai/asm_plan.md`'s own "explicit deferral, not a
+not a silent gap, per `docs/design.md`'s own "explicit deferral, not a
 silent gap" rule for this track. A generator that only ever produces Phase A
 is still a complete, valid inventory under this schema; Phase B tightens it
 in place rather than changing its shape.
@@ -62,8 +62,8 @@ in place rather than changing its shape.
 One file per target, alongside the existing per-target corpus outputs:
 
 ```
-asm/fixtures/isa-inventory/<target>/manifest.txt
-asm/fixtures/isa-inventory/<target>/summary.txt
+fixtures/isa-inventory/<target>/manifest.txt
+fixtures/isa-inventory/<target>/summary.txt
 ```
 
 `<target>` is one of the six profiles (`x86_32`, `x86_64`, `arm`, `aarch64`,
@@ -78,14 +78,14 @@ x86 mode applicability" below.
 ## `manifest.txt` format
 
 Header lines first (`key:value`, one per line, matching
-`asm/fixtures/corpus/*/manifest.txt`'s own header convention), then one
+`fixtures/corpus/*/manifest.txt`'s own header convention), then one
 record line per mnemonic entry. Header:
 
 ```
 schema-version:1
 target:<target>
 source:<riscv-opcodes|xed>
-source-commit:<sha of asm/vendor/isa-data/<source>/upstream>
+source-commit:<sha of vendor/isa-data/<source>/upstream>
 source-license:<SPDX id, e.g. BSD-3-Clause or Apache-2.0>
 ```
 
@@ -93,7 +93,7 @@ Record line, tab-separated fields, alphabetically-sorted by `mnemonic` then
 `extension` for a stable diff:
 
 ```
-mnemonic:<lowercase mnemonic as spelled by the source>	extension:<source's own extension/table identifier>	compcert-emitted:<yes|no|unknown>	gcc-emitted:<yes|no|unknown>	state:<undefined|opcode-defined|lowered|encoded|decoded|byte-checked|unknown>	deferral-reason:<free text, or ->	promotion-trigger:<free text, or ->
+mnemonic:<lowercase mnemonic as spelled by the source>	extension:<source's own extension/table identifier>	gcc-emitted:<yes|no|unknown>	state:<undefined|opcode-defined|lowered|encoded|decoded|byte-checked|unknown>	deferral-reason:<free text, or ->	promotion-trigger:<free text, or ->
 ```
 
 Field notes:
@@ -114,7 +114,7 @@ Field notes:
   instruction it expands to) — pseudo-instructions are still something this
   project's parser must accept as an assembler mnemonic.
 - `deferral-reason`/`promotion-trigger` are `-` for any entry with
-  `compcert-emitted:yes` or `gcc-emitted:yes` (never deferred — M5 already
+  `gcc-emitted:yes` (never deferred — M5 already
   requires these), and required (non-`-`) for any entry with `state` other
   than `byte-checked`/`encoded`/`decoded`/`lowered`/`opcode-defined` once
   Phase B lands. While Phase B is unimplemented and the field reads
@@ -124,20 +124,19 @@ Field notes:
 
 ## `summary.txt` format
 
-Plain counts, matching the shape of `asm/fixtures/corpus/*/summary.txt`:
+Plain counts, matching the shape of `fixtures/corpus/*/summary.txt`:
 
 ```
 target:<target>
 total:<n>
 by-extension:<extension>:<n>            # one line per extension, sorted
 by-state:<state>:<n>                    # one line per state value, sorted
-compcert-emitted:<n>
 gcc-emitted:<n>
 ```
 
 ## Generation and the diff-gate
 
-**Implemented (2026-09-04), Phase A, both sources.** `compcert-tools
+**Implemented (2026-09-04), Phase A, both sources.** `rivet-tools
 isa-inventory regen` (`Isa_inventory_riscv` for `riscv32`/`riscv64`,
 `Isa_inventory_xed` for `x86_32`/`x86_64` - two independent modules; their
 ingestion formats turned out too different to unify, per the `.mli`s' own
@@ -149,8 +148,8 @@ establish: `regen` overwrites the checked-in files, the `-diff` target
 requires `git status --porcelain` to come back empty against them, so the
 inventory cannot silently drift from the vendored submodules' pinned
 commits. Both sources are toolchain-free (no compiler, no cross assembler),
-so `tools-isa-inventory-diff` is on the plain `asm-ci` path with no
-`asm-build` edge. `arm`/`aarch64` have no generator yet - see "Not yet
+so `tools-isa-inventory-diff` is on the plain `ci` path with no
+`build` edge. `arm`/`aarch64` have no generator yet - see "Not yet
 started" below. Phase B's corpus-derived fields, once implemented, stay on
 the toolchain-gated `*-oracle`/`*-regen` side of that split like every other
 corpus artifact, with a toolchain-free `*-check` counterpart.
@@ -168,7 +167,7 @@ Concretely, Phase B needs `corpus_classify_cmd.ml`/
 generated `.s` file's parsed AST — which the pipeline already builds, since
 `classify-c-<target>` runs `--dump-source-ast` — and collect the set of
 mnemonics used, publishing it as a new checked-in artifact (e.g.
-`asm/fixtures/corpus/mnemonics/<target>.txt`, one mnemonic per line) rather
+`fixtures/corpus/mnemonics/<target>.txt`, one mnemonic per line) rather
 than reusing today's hash-only manifest. The `isa-inventory` generator would
 then read that artifact the same toolchain-free way it reads the vendored
 submodules. This is deliberately not attempted in this pass.
@@ -177,7 +176,7 @@ submodules. This is deliberately not attempted in this pass.
 
 The RISC-V pilot (`Isa_inventory_riscv`) is done; this section replaces the
 original "open question" placeholder with what live inspection of
-`asm/vendor/isa-data/xed/upstream/datafiles/` actually shows, since it turned
+`vendor/isa-data/xed/upstream/datafiles/` actually shows, since it turned
 out messier than the sourcing survey assumed - read this before writing the
 x86 generator rather than re-deriving it.
 

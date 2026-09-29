@@ -3,7 +3,7 @@
    Every divergence this module deliberately introduces gets a test that EXPECTS
    the difference, so none of them can be mistaken for compatibility. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 
@@ -66,10 +66,10 @@ let test_parse () =
     (is_err (Manifest.parse (Printf.sprintf "sha256:a.s\t%s\n" (String.make 64 'A'))));
   (* D12: the shell's carry-forward grep emits EVERY match, so duplicates are
      carried forward verbatim today and the manifest grows on each rehash. *)
-  check "parse: a duplicate ccomp-version is rejected (D12)"
-    (is_err (Manifest.parse "ccomp-version:arm\tv1\nccomp-version:arm\tv2\n"));
+  check "parse: a duplicate cc-version is rejected (D12)"
+    (is_err (Manifest.parse "cc-version:arm\tv1\ncc-version:arm\tv2\n"));
   check "parse: two DIFFERENT targets are fine"
-    (is_ok (Manifest.parse "ccomp-version:arm\tv1\nccomp-version:x86_64\tv2\n"));
+    (is_ok (Manifest.parse "cc-version:arm\tv1\ncc-version:x86_64\tv2\n"));
   (* D6: the key side has no escape layer, so an unusable path cannot
      round-trip - it would become a different record, or two. *)
   check "parse: an absolute recorded path is rejected (D6)"
@@ -77,27 +77,27 @@ let test_parse () =
   check "parse: a recorded path escaping the case root is rejected (D6)"
     (is_err (Manifest.parse (Printf.sprintf "sha256:../../x\t%s\n" h)));
   (* A bare key and an empty value are DIFFERENT records. *)
-  (match parse_ok "ccomp-args:arm\n" with
+  (match parse_ok "cc-args:arm\n" with
   | Some m ->
       check "parse: a bare key has value None"
-        (Manifest.find m (Manifest.Ccomp_args Target.Arm) = Some None)
+        (Manifest.find m (Manifest.Compiler_args ("cc", Target.Arm)) = Some None)
   | None -> check "parse: a bare key has value None" false);
-  (match parse_ok "ccomp-args:arm\t\n" with
+  (match parse_ok "cc-args:arm\t\n" with
   | Some m ->
       check "parse: key + empty value has value (Some \"\")"
-        (Manifest.find m (Manifest.Ccomp_args Target.Arm) = Some (Some ""))
+        (Manifest.find m (Manifest.Compiler_args ("cc", Target.Arm)) = Some (Some ""))
   | None -> check "parse: key + empty value has value (Some \"\")" false);
   (* An unknown target in a targeted key is a parse error, not an Unknown
      record: silently keeping it would let a typo survive a rehash. *)
   check "parse: an unknown target in a key is rejected"
-    (is_err (Manifest.parse "ccomp-version:sparc\tv\n"));
+    (is_err (Manifest.parse "cc-version:sparc\tv\n"));
   (* P3: first wins. *)
   (match parse_ok "source\tsource/a.c\nsource\tsource/b.c\n" with
   | Some m ->
       check "parse: duplicate source - FIRST wins (P3)"
         (Manifest.source_rel m = Ok (Some "source/a.c"))
   | None -> check "parse: duplicate source - FIRST wins (P3)" false);
-  (* M3 (.ai/asm_plan.md §12): source-unit records are additive, keyed by
+  (* M3 (docs/design.md §12): source-unit records are additive, keyed by
      unit name, sorted for a deterministic build order. Unlike Source's own
      P3 first-wins, two records claiming the SAME unit name are ambiguous
      rather than redundant, so that is rejected instead. *)
@@ -118,7 +118,7 @@ let test_parse () =
         Manifest.source_rel m = Ok (Some "source/x.c")
         && Manifest.source_units m = Ok [ ("y", "source/y.c") ]
     | None -> false);
-  (* M4 (.ai/asm_plan.md §12): abi-version. *)
+  (* M4 (docs/design.md §12): abi-version. *)
   check "parse: abi-version 1/2 alone are accepted; 3 needs a pair (checked below)"
     (is_ok (Manifest.parse "abi-version\t1\n") && is_ok (Manifest.parse "abi-version\t2\n"));
   check "parse: an invalid abi-version value is rejected"
@@ -175,18 +175,15 @@ let test_parse () =
   check "parse: an invalid index on expected-value is rejected"
     (is_err (Manifest.parse "abi-version\t3\nexpected-value:0\t1\nobservation:0\ta 4 0\n"));
   (* M4: origin, exactly parallel to source-unit. *)
-  (match parse_ok "origin:i64_sdiv\tmodules/CompCert/runtime/x86_32/i64_sdiv.S\n" with
+  (match parse_ok "origin:helper_a\tupstream/helper_a.S\n" with
   | Some m ->
       check "parse: origin round-trips"
-        (Manifest.origins m = Ok [ ("i64_sdiv", "modules/CompCert/runtime/x86_32/i64_sdiv.S") ])
+        (Manifest.origins m = Ok [ ("helper_a", "upstream/helper_a.S") ])
   | None -> check "parse: origin round-trips" false);
   check "parse: a duplicate origin stem is rejected"
-    (is_err
-       (Manifest.parse
-          "origin:a\tmodules/CompCert/runtime/x86_32/i64_sdiv.S\n\
-           origin:a\tmodules/CompCert/runtime/x86_32/i64_smod.S\n"));
+    (is_err (Manifest.parse "origin:a\tupstream/helper_a.S\norigin:a\tupstream/helper_b.S\n"));
   check "parse: an origin stem with a slash is rejected (D6)"
-    (is_err (Manifest.parse "origin:a/b\tmodules/CompCert/runtime/x86_32/i64_sdiv.S\n"));
+    (is_err (Manifest.parse "origin:a/b\tupstream/helper_a.S\n"));
   check "parse: an empty manifest has no origin records"
     (match parse_ok "" with Some m -> Manifest.origins m = Ok [] | None -> false)
 
@@ -206,17 +203,16 @@ let test_serialize () =
     Manifest.of_records
       [
         { Manifest.key = Manifest.Sha256 "b.s"; value = Some h2 };
-        { Manifest.key = Manifest.Generator; value = Some "tools/asm-fixture-gen.sh" };
+        { Manifest.key = Manifest.Generator; value = Some "the fixture generator" };
         { Manifest.key = Manifest.Sha256 "a.s"; value = Some h };
-        { Manifest.key = Manifest.Ccomp_args Target.Arm; value = None };
+        { Manifest.key = Manifest.Compiler_args ("cc", Target.Arm); value = None };
       ]
   in
   let out = Manifest.serialize m in
   check_eq "serialize: bytewise sorted, bare key keeps no tab"
     ~expected:
       (Printf.sprintf
-         "ccomp-args:arm\ngenerator\ttools/asm-fixture-gen.sh\nsha256:a.s\t%s\nsha256:b.s\t%s\n" h
-         h2)
+         "cc-args:arm\ngenerator\tthe fixture generator\nsha256:a.s\t%s\nsha256:b.s\t%s\n" h h2)
     ~actual:out;
   (* The sort must be String.compare, which is bytewise, because that is what
      LC_ALL=C sort does - a locale-aware sort would order these differently. *)
@@ -231,7 +227,7 @@ let test_serialize () =
    corpus case root, and the gas-xref one.
 
    The corpus ALSO contains */oracle/linked/manifest.txt, which is a different
-   format entirely - asm-fixture-oracle.sh writes three-field records like
+   format entirely - the oracle script writes three-field records like
    ".text<TAB>0x40000000<TAB>linked/text.hex", a section-to-address-to-file
    table with no escaping layer. Pointing this parser at one would be a category
    error, and it is why the fixture scripts exclude manifest.txt* from traversal
@@ -274,7 +270,12 @@ let test_real_manifests fixtures =
 (* {5 Corpus} *)
 
 let test_corpus fixtures =
-  let corpus = Fpath.(v fixtures / "compcert-3.17") in
+  let corpus =
+    {
+      Corpus.sources = Fpath.(v fixtures / "c");
+      outputs = Fpath.(v fixtures / Repo.fixture_compiler_dir);
+    }
+  in
   (match Corpus.discover corpus with
   | Ok cases ->
       check "corpus: discovery finds the committed cases" (List.length cases >= 6);
@@ -283,7 +284,8 @@ let test_corpus fixtures =
          names = List.sort String.compare names)
   | Error _ -> check "corpus: discovery finds the committed cases" false);
   check "corpus: an empty corpus is an ERROR, not an empty success"
-    (is_err (Corpus.discover Fpath.(v fixtures / "does-not-exist")));
+    (is_err
+       (Corpus.discover { corpus with Corpus.sources = Fpath.(v fixtures / "does-not-exist") }));
   check "corpus: an unknown case name is rejected" (is_err (Corpus.resolve corpus "no_such_case"));
   check "corpus: a case name with a separator is rejected" (is_err (Corpus.resolve corpus "a/b"));
   check "corpus: a leading-dash case name is rejected" (is_err (Corpus.resolve corpus "-rf"));
@@ -310,7 +312,7 @@ let test_corpus fixtures =
           match Manifest.parse text with
           | Error _ -> check "corpus: a clean case has no findings" false
           | Ok m -> (
-              match Corpus.check case.Corpus.root m with
+              match Corpus.check_case case m with
               | Error _ -> check "corpus: a clean case has no findings" false
               | Ok (seen, findings) ->
                   check "corpus: a clean case has no findings" (findings = []);

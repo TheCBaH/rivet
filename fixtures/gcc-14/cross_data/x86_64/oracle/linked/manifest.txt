@@ -1,0 +1,2 @@
+.text	progbits	0x40000000	0x10	linked/text.hex
+.data	progbits	0x40020000	0x4	linked/data.hex

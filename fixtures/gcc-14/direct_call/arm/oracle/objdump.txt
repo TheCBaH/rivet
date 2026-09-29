@@ -1,0 +1,15 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_test_callee>:
+   0:	e1a00080 	lsl	r0, r0, #1
+   4:	e12fff1e 	bx	lr
+
+00000008 <asm_test_entry>:
+   8:	e92d4010 	push	{r4, lr}
+   c:	e3a00014 	mov	r0, #20
+  10:	ebfffffe 	bl	0 <asm_test_callee>
+			10: R_ARM_CALL	asm_test_callee
+  14:	e2800002 	add	r0, r0, #2
+  18:	e8bd8010 	pop	{r4, pc}

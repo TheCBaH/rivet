@@ -1,0 +1,3 @@
+.text	0x00000000	rela	R_AARCH64_ADR_PREL_PG_HI21	asm_test_global	0x0
+.text	0x00000004	rela	R_AARCH64_LDST32_ABS_LO12_NC	asm_test_global	0x0
+.text	0x0000000c	rela	R_AARCH64_LDST32_ABS_LO12_NC	asm_test_global	0x0

@@ -8,7 +8,7 @@
     runs the parent's own binary). *)
 
 val default_jobs : unit -> int
-(** [COMPCERT_TOOLS_JOBS] when set to a positive integer, else the online
+(** [RIVET_TOOLS_JOBS] when set to a positive integer, else the online
     processor count reported by [getconf], else 1. *)
 
 val map : jobs:int -> ('a -> 'b) -> 'a list -> ('b list, Tool_error.t) Err.t

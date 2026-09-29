@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
 # The OCaml fixture modes against fake compilers, in a throwaway corpus.
 #
-# This is the Phase 3 counterpart of tools/dev/test-asm-fixture-gen.sh, and it
-# asserts the SAME control-flow properties against the new implementation - the
-# ones Phase 0A found the shell getting wrong.
+# Asserts the control-flow properties of regen, verify and rehash that matter
+# most: a failed step writes no manifest, a gate violation writes nothing, a
+# scope change is installed and then reported, and every compiler invocation has
+# the shape the committed bytes depend on.
 #
-# Fake compilers are installed at $FIXTURE_WORK/install/<t>/bin/ccomp, NOT on
-# PATH: every call site spells that absolute path, so a PATH shim would never be
-# consulted.
+# Fake compilers are <toolprefix>gcc shims in a directory that leads PATH: the
+# real compiler is resolved by bare name, so this is exactly where it is looked
+# up.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd -- "$SCRIPT_DIR/../.." && pwd)
-EXE="$REPO_ROOT/asm/_build/default/tools/bin/compcert_tools.exe"
-[ -x "$EXE" ] || { echo "FATAL: compcert-tools not built - run 'make tools-build'" >&2; exit 1; }
+EXE="$REPO_ROOT/_build/default/tools/bin/rivet_tools.exe"
+[ -x "$EXE" ] || { echo "FATAL: rivet-tools not built - run 'make tools-build'" >&2; exit 1; }
+
+# shellcheck source=../target-matrix.sh
+. "$REPO_ROOT/scripts/target-matrix.sh"
 
 SCRATCH=$(mktemp -d)
 trap 'rm -rf -- "$SCRATCH"' EXIT
@@ -23,29 +27,27 @@ bad() { printf '  FAIL %s: %s\n' "$1" "$2" >&2; fail=$((fail + 1)); }
 
 new_repo() {
   local repo=$1; shift
-  mkdir -p "$repo/tools" "$repo/asm"
-  cp "$REPO_ROOT/tools/target-matrix.sh" "$repo/tools/"
+  mkdir -p "$repo/scripts" "$repo/fakebin"
+  cp "$REPO_ROOT/scripts/target-matrix.sh" "$repo/scripts/"
   : > "$repo/Makefile"
-  : > "$repo/asm/dune-project"
+  : > "$repo/dune-project"
   local c
   for c in "$@"; do
-    mkdir -p "$repo/asm/fixtures/compcert-3.17/$c/source"
-    printf 'int asm_test_entry(void) { return 42; }\n' > "$repo/asm/fixtures/compcert-3.17/$c/source/$c.c"
+    mkdir -p "$repo/fixtures/c/$c"
+    printf 'int asm_test_entry(void) { return 42; }\n' > "$repo/fixtures/c/$c/$c.c"
   done
 }
 
-install_fake_ccomp() {
-  local work=$1 target=$2 mode=$3
-  mkdir -p "$work/install/$target/bin"
-  cat > "$work/install/$target/bin/ccomp" <<EOF
+install_fake_gcc() {
+  local repo=$1 target=$2 mode=$3
+  target_config "$target"
+  cat > "$repo/fakebin/${TOOLPREFIX}gcc" <<EOF
 #!/usr/bin/env bash
 set -u
 mode=$mode
-# Recorded FIRST, before the -version early exit and before the shift loop
-# below consumes "\$@" - tool.md gate 3. argv is the load-bearing half of the
-# invocation shape: the flags decide the committed bytes, and CompCert writes
-# its own command line into a banner that is then hashed, so a wrong flag or an
-# absolutized path would change every hash in the case.
+# Recorded FIRST, before the --version early exit and before the shift loop
+# below consumes "\$@". argv is the load-bearing half of the invocation shape:
+# the flags decide the committed bytes.
 #
 # Arguments are separated by \\x1f rather than spaces, because a space-separated
 # log cannot distinguish one argument containing a space from two arguments -
@@ -56,16 +58,16 @@ mode=$mode
 # FAKE_LOG would then make every compile "fail". (No backticks in this comment
 # either - the heredoc delimiter is unquoted, so they would be substitution.)
 # ONE line per invocation, cwd and argv together. Two lines would have to be
-# re-paired by the reader, and the -version calls (which run from wherever the
-# process happens to be, and correctly so - version output does not depend on
-# cwd) would then be indistinguishable from compiles when asserting cwd.
+# re-paired by the reader, and the --version calls (which run from wherever the
+# process happens to be, and correctly so) would then be indistinguishable from
+# compiles when asserting cwd.
 if [ -n "\${FAKE_LOG:-}" ]; then
   { printf 'cwd=%s\targv=' "\$PWD"; printf '%s\x1f' "\$@"; printf '\n'
   } >> "\$FAKE_LOG"
 fi
-if [ "\${1:-}" = "-version" ]; then
+if [ "\${1:-}" = "--version" ]; then
   [ "\$mode" = fail-version ] && { echo "no version" >&2; exit 1; }
-  echo "The CompCert C compiler, version 3.17 (fake $target)"; exit 0
+  echo "${TOOLPREFIX}gcc (fake $target) 14.0.0"; exit 0
 fi
 [ "\$mode" = fail-compile ] && { echo "compilation failed" >&2; exit 1; }
 out=""
@@ -81,24 +83,24 @@ else
 fi
 exit 0
 EOF
-  chmod +x "$work/install/$target/bin/ccomp"
+  chmod +x "$repo/fakebin/${TOOLPREFIX}gcc"
 }
 
 install_all() {
-  local work=$1 mode=$2 odd=${3:-} odd_mode=${4:-}
+  local repo=$1 mode=$2 odd=${3:-} odd_mode=${4:-}
   for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
-    if [ "$t" = "$odd" ]; then install_fake_ccomp "$work" "$t" "$odd_mode"
-    else install_fake_ccomp "$work" "$t" "$mode"; fi
+    if [ "$t" = "$odd" ]; then install_fake_gcc "$repo" "$t" "$odd_mode"
+    else install_fake_gcc "$repo" "$t" "$mode"; fi
   done
 }
 
 # FAKE_LOG is always exported, so every fake compiler in every scenario records
-# its cwd and argv. The invocation-gate test below is the only one that reads
-# the log, but recording unconditionally means it cannot silently stop being
+# its cwd and argv. The invocation test below is the only one that reads the
+# log, but recording unconditionally means it cannot silently stop being
 # written by a scenario that forgets to opt in.
 run() {
   local repo=$1; shift
-  ( cd "$repo" && COMPCERT_REPO_ROOT="$repo" FIXTURE_WORK="$repo/work" \
+  ( cd "$repo" && PATH="$repo/fakebin:$PATH" RIVET_ROOT="$repo" \
       FAKE_LOG="$repo/fake.log" "$EXE" "$@" ) \
     >"$SCRATCH/out" 2>"$SCRATCH/err"
 }
@@ -119,9 +121,9 @@ stderr_has() {
 t_clean() {
   local name=clean-regen
   local repo="$SCRATCH/$name"
-  new_repo "$repo" alpha; install_all "$repo/work" good
+  new_repo "$repo" alpha; install_all "$repo" good
   local rc=0; run "$repo" fixture regen -- alpha || rc=$?
-  local root="$repo/asm/fixtures/compcert-3.17/alpha"
+  local root="$repo/fixtures/gcc-14/alpha"
   [ "$rc" = 0 ] || { bad "$name" "exit $rc"; return; }
   [ -f "$root/manifest.txt" ] || { bad "$name" "no manifest"; return; }
   [ -e "$root/manifest.txt.new" ] && { bad "$name" ".new left behind"; return; }
@@ -129,8 +131,8 @@ t_clean() {
   local n; n=$(grep -c '^sha256:' "$root/manifest.txt")
   [ "$n" = 7 ] || { bad "$name" "expected 7 sha256 records, got $n"; return; }
   grep -qE '^sha256:[^\t]*\t$' "$root/manifest.txt" && { bad "$name" "an empty hash"; return; }
-  local v; v=$(grep -c '^ccomp-version:' "$root/manifest.txt")
-  [ "$v" = 6 ] || { bad "$name" "expected 6 ccomp-version records, got $v"; return; }
+  local v; v=$(grep -c '^gcc-version:' "$root/manifest.txt")
+  [ "$v" = 6 ] || { bad "$name" "expected 6 gcc-version records, got $v"; return; }
   ok "$name"
 }
 
@@ -138,9 +140,9 @@ t_clean() {
 t_compile_fail() {
   local name=compiler-fails-midway
   local repo="$SCRATCH/$name"
-  new_repo "$repo" alpha; install_all "$repo/work" good arm fail-compile
+  new_repo "$repo" alpha; install_all "$repo" good arm fail-compile
   local rc=0; run "$repo" fixture regen -- alpha || rc=$?
-  local root="$repo/asm/fixtures/compcert-3.17/alpha"
+  local root="$repo/fixtures/gcc-14/alpha"
   [ "$rc" = 1 ] || { bad "$name" "exit $rc, wanted 1"; return; }
   stderr_has "$name" "fixture compilation failed for alpha/arm" || return
   assert_no_manifest "$name" "$root" || return
@@ -148,16 +150,15 @@ t_compile_fail() {
   ok "$name"
 }
 
-# 3. Gate violation: the case fails and NO manifest is written. This is the
-#    Phase 0A defect, asserted against the new implementation.
+# 3. Gate violation: the case fails and NO manifest is written.
 t_gate() {
   local name=gate-violation-writes-nothing
   local repo="$SCRATCH/$name"
-  new_repo "$repo" alpha; install_all "$repo/work" good riscv64 gate-violation
+  new_repo "$repo" alpha; install_all "$repo" good riscv64 gate-violation
   local rc=0; run "$repo" fixture regen -- alpha || rc=$?
   [ "$rc" = 1 ] || { bad "$name" "exit $rc, wanted 1"; return; }
   stderr_has "$name" "GATE alpha/riscv64: no asm_test_entry label" || return
-  assert_no_manifest "$name" "$repo/asm/fixtures/compcert-3.17/alpha" || return
+  assert_no_manifest "$name" "$repo/fixtures/gcc-14/alpha" || return
   ok "$name"
 }
 
@@ -165,7 +166,7 @@ t_gate() {
 t_two_cases() {
   local name=first-fails-second-runs
   local repo="$SCRATCH/$name"
-  new_repo "$repo" alpha beta; install_all "$repo/work" good riscv64 gate-violation
+  new_repo "$repo" alpha beta; install_all "$repo" good riscv64 gate-violation
   local rc=0; run "$repo" fixture regen -- alpha beta || rc=$?
   [ "$rc" = 1 ] || { bad "$name" "exit $rc"; return; }
   stderr_has "$name" "GATE alpha/riscv64" || return
@@ -173,15 +174,15 @@ t_two_cases() {
   ok "$name"
 }
 
-# 5. ccomp -version fails while the compiler is otherwise present: no manifest,
-#    and specifically not one carrying an EMPTY ccomp-version value.
+# 5. gcc --version fails while the compiler is otherwise present: no manifest,
+#    and specifically not one carrying an EMPTY gcc-version value.
 t_version_fail() {
   local name=version-failure-installs-nothing
   local repo="$SCRATCH/$name"
-  new_repo "$repo" alpha; install_all "$repo/work" good x86_64 fail-version
+  new_repo "$repo" alpha; install_all "$repo" good x86_64 fail-version
   local rc=0; run "$repo" fixture regen -- alpha || rc=$?
   [ "$rc" = 1 ] || { bad "$name" "exit $rc, wanted 1"; return; }
-  assert_no_manifest "$name" "$repo/asm/fixtures/compcert-3.17/alpha" || return
+  assert_no_manifest "$name" "$repo/fixtures/gcc-14/alpha" || return
   ok "$name"
 }
 
@@ -189,9 +190,9 @@ t_version_fail() {
 t_scope_change() {
   local name=rehash-installs-and-fails
   local repo="$SCRATCH/$name"
-  new_repo "$repo" alpha; install_all "$repo/work" good
+  new_repo "$repo" alpha; install_all "$repo" good
   run "$repo" fixture regen -- alpha
-  local root="$repo/asm/fixtures/compcert-3.17/alpha"
+  local root="$repo/fixtures/gcc-14/alpha"
   printf 'stray\n' > "$root/x86_64/stray.s"
   local rc=0; run "$repo" fixture rehash -- alpha || rc=$?
   [ "$rc" = 1 ] || { bad "$name" "exit $rc, wanted 1"; return; }
@@ -207,13 +208,13 @@ t_scope_change() {
 t_verify() {
   local name=verify
   local repo="$SCRATCH/$name"
-  new_repo "$repo" alpha beta; install_all "$repo/work" good
+  new_repo "$repo" alpha beta; install_all "$repo" good
   run "$repo" fixture regen -- alpha beta
   local rc=0; run "$repo" fixture verify x86_64 -- alpha beta || rc=$?
   [ "$rc" = 0 ] || { bad "$name" "clean verify exited $rc"; sed 's/^/       /' "$SCRATCH/err" >&2; return; }
   grep -q 'alpha/x86_64 regenerates byte-identically' "$SCRATCH/out" || { bad "$name" "no success line"; return; }
   # Now tamper with alpha only; beta must still be reported.
-  printf 'tampered\n' >> "$repo/asm/fixtures/compcert-3.17/alpha/x86_64/alpha.s"
+  printf 'tampered\n' >> "$repo/fixtures/gcc-14/alpha/x86_64/alpha.s"
   rc=0; run "$repo" fixture verify x86_64 -- alpha beta || rc=$?
   [ "$rc" = 1 ] || { bad "$name" "tampered verify exited $rc, wanted 1"; return; }
   grep -q '^---' "$SCRATCH/out" || { bad "$name" "the diff is not on stdout"; return; }
@@ -222,17 +223,15 @@ t_verify() {
   ok "$name"
 }
 
-# 8. The two target exits, which a naive CLI wiring collapses into one.
-#
-# The --legacy-prog usage text this used to assert retired with the launcher in
-# Phase 8. The DISTINCTION did not: no target at all is a malformed command line
-# and exits 2, while a target that is not one of the six is a rejected VALUE and
-# exits 1. A Cmdliner converter would have made both parse errors and exited 2
-# for each, which is exactly why the target is validated inside the term.
+# 8. The two target exits, which a naive CLI wiring collapses into one: no
+# target at all is a malformed command line and exits 2, while a target that is
+# not one of the six is a rejected VALUE and exits 1. A Cmdliner converter would
+# have made both parse errors and exited 2 for each, which is exactly why the
+# target is validated inside the term.
 t_usage() {
   local name=target-exit-codes
   local repo="$SCRATCH/$name"
-  new_repo "$repo" alpha; install_all "$repo/work" good
+  new_repo "$repo" alpha; install_all "$repo" good
   local rc=0; run "$repo" fixture verify || rc=$?
   [ "$rc" = 2 ] || { bad "$name" "no-target exited $rc, wanted 2"; return; }
   grep -q 'FATAL' "$SCRATCH/err" && { bad "$name" "no-target must NOT print a FATAL"; return; }
@@ -242,72 +241,76 @@ t_usage() {
   ok "$name"
 }
 
-# 9. tool.md gate 3 - the invocation shape the fake compilers actually observe.
+# 9. The invocation shape the fake compilers actually observe.
 #
 # Everything else in this file asserts what ended up on disk. This asserts what
 # was ASKED FOR, which is the only way to catch a difference that a fake
 # compiler is too simple to expose: a fake writes the same bytes whatever flags
-# it is handed, so a wrong -marm, an absolutized -o, or a missing -S would leave
-# every other test in this file green while changing every hash the real
-# compiler would produce.
+# it is handed, so a wrong flag or a missing -S would leave every other test in
+# this file green while changing every hash the real compiler would produce.
 #
-# Three properties, all of which the shell had and none of which is optional:
+# Three properties:
 #
-#   -S                     assembly out, not an object;
-#   ccomp_args per target  arm alone carries -marm;
-#   relative paths, both   CompCert embeds its command line in a banner that is
-#                          then hashed, so an absolute -o or source argument
-#                          writes this checkout's location into committed bytes.
+#   -S                       assembly out, not an object;
+#   gcc_fixture_args         exactly the target's flags, as scripts/target-matrix.sh
+#                            (generated from Target) spells them;
+#   relative paths, both     so no compiler that records its command line writes
+#                            this checkout's location into committed bytes.
 #
-# cwd is asserted too, and it differs by mode on purpose: regen compiles in the
-# fixture root because that is where the outputs belong, verify compiles in a
-# private scratch directory because it must not touch the corpus.
+# cwd is asserted too: both modes compile in a private scratch directory,
+# because regen must not leave partial outputs in the corpus and verify must not
+# touch the very bytes it is comparing against.
 t_invocation() {
   local name=invocation-shape
   local repo="$SCRATCH/$name"
-  new_repo "$repo" alpha; install_all "$repo/work" good
+  new_repo "$repo" alpha; install_all "$repo" good
 
-  # {1 regen: all six targets, cwd = the fixture root}
+  # {1 regen: all six targets}
   local rc=0; run "$repo" fixture regen -- alpha || rc=$?
   [ "$rc" = 0 ] || { bad "$name" "regen exited $rc"; return; }
-  local root="$repo/asm/fixtures/compcert-3.17/alpha"
 
-  # Compiles only: -o is what distinguishes them from the -version calls, which
+  # Compiles only: -o is what distinguishes them from the --version calls, which
   # run from the process's own cwd and correctly do not care where that is.
   local compiles; compiles=$(grep -F -- '-o' "$repo/fake.log" || true)
 
   local n; n=$(printf '%s\n' "$compiles" | grep -c . || true)
   [ "$n" = 6 ] || { bad "$name" "expected 6 compiles, logged $n"; return; }
 
-  local t want got
+  local t flags want got argv cwd
   for t in x86_32 x86_64 arm aarch64 riscv32 riscv64; do
-    case "$t" in
-      arm) want=$(printf 'cwd=%s\targv=-S\x1f-marm\x1f-fno-pie\x1f-o\x1f%s/alpha.s\x1fsource/alpha.c\x1f' "$root" "$t") ;;
-      *)   want=$(printf 'cwd=%s\targv=-S\x1f-fno-pie\x1f-o\x1f%s/alpha.s\x1fsource/alpha.c\x1f' "$root" "$t") ;;
-    esac
+    target_config "$t"
+    flags=""
+    for f in "${GCC_FIXTURE_ARGS[@]}"; do flags="$flags$f"$'\x1f'; done
+    want=$(printf -- '-S\x1f%s-o\x1f%s/alpha.s\x1fsource/alpha.c\x1f' "$flags" "$t")
     got=$(printf '%s\n' "$compiles" | grep -F "$t/alpha.s" | head -1)
-    if [ "$got" != "$want" ]; then
-      bad "$name" "$t: got $(printf '%q' "$got"), wanted $(printf '%q' "$want")"
+    argv=${got#*$'\t'argv=}
+    if [ "$argv" != "$want" ]; then
+      bad "$name" "$t: got $(printf '%q' "$argv"), wanted $(printf '%q' "$want")"
       return
     fi
+    cwd=${got%%$'\t'argv=*}; cwd=${cwd#cwd=}
+    case "$cwd" in
+      "$repo/fixtures"*) bad "$name" "regen compiled inside the corpus: $cwd"; return ;;
+      "") bad "$name" "regen recorded no cwd"; return ;;
+    esac
   done
 
-  # {2 verify: cwd is a scratch directory, NOT the corpus}
+  # {2 verify}
   rm -f "$repo/fake.log"
   rc=0; run "$repo" fixture verify -- x86_64 alpha || rc=$?
   [ "$rc" = 0 ] || { bad "$name" "verify exited $rc"; return; }
 
   local vline; vline=$(grep -F -- '-o' "$repo/fake.log" | head -1)
-  want=$(printf -- '-S\x1f-fno-pie\x1f-o\x1fx86_64/alpha.s\x1fsource/alpha.c\x1f')
+  target_config x86_64
+  flags=""
+  for f in "${GCC_FIXTURE_ARGS[@]}"; do flags="$flags$f"$'\x1f'; done
+  want=$(printf -- '-S\x1f%s-o\x1fx86_64/alpha.s\x1fsource/alpha.c\x1f' "$flags")
   got=${vline#*$'\t'argv=}
   [ "$got" = "$want" ] || { bad "$name" "verify argv: got $(printf '%q' "$got")"; return; }
 
-  # Relative in verify too, and compiled OUTSIDE the corpus. A verify that ran
-  # in the fixture root would overwrite the very bytes it is comparing against,
-  # so this assertion is about safety as much as about provenance.
   local vcwd; vcwd=${vline%%$'\t'argv=*}; vcwd=${vcwd#cwd=}
   case "$vcwd" in
-    "$repo/asm/fixtures"*) bad "$name" "verify compiled inside the corpus: $vcwd"; return ;;
+    "$repo/fixtures"*) bad "$name" "verify compiled inside the corpus: $vcwd"; return ;;
     "") bad "$name" "verify recorded no cwd"; return ;;
   esac
   ok "$name"

@@ -4,7 +4,7 @@
    child is absent afterwards. Counting entries in /tmp would pass on a machine
    where something else happened to clean up. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 
@@ -77,10 +77,11 @@ let test_identifier () =
 
 let make_repo root =
   write Fpath.(root / "Makefile") "";
+  Unix.mkdir Fpath.(to_string (root / "scripts")) 0o700;
+  write Fpath.(root / "scripts" / "target-matrix.sh") "";
+  write Fpath.(root / "dune-project") "";
   Unix.mkdir Fpath.(to_string (root / "tools")) 0o700;
-  write Fpath.(root / "tools" / "target-matrix.sh") "";
-  Unix.mkdir Fpath.(to_string (root / "asm")) 0o700;
-  write Fpath.(root / "asm" / "dune-project") ""
+  write Fpath.(root / "tools" / "dune-project") ""
 
 let no_env _ = None
 
@@ -92,14 +93,14 @@ let test_repo () =
       (match r with
       | Ok r ->
           check "repo: fixture corpus path"
-            (Fpath.to_string (Repo.fixture_corpus r)
-            = Fpath.to_string root ^ "/asm/fixtures/compcert-3.17")
+            ((Repo.fixture_corpus r).Corpus.outputs |> Fpath.to_string
+            = Fpath.to_string root ^ "/fixtures/" ^ Repo.fixture_compiler_dir)
       | Error _ -> check "repo: fixture corpus path" false);
-      (* THE %{workspace_root} TEST. asm/ is the dune workspace root but not the
-         repository root, and feeding it here must be rejected by name. *)
-      let asm = Fpath.(root / "asm") in
-      (match Repo.resolve ~cli:(Some asm) ~env:no_env ~cwd:asm with
-      | Ok _ -> check "repo: asm/ is REJECTED as a repository root" false
+      (* tools/ is a nested dune project but not the repository root, and
+         feeding it here must be rejected by name. *)
+      let nested = Fpath.(root / "tools") in
+      (match Repo.resolve ~cli:(Some nested) ~env:no_env ~cwd:nested with
+      | Ok _ -> check "repo: tools/ is REJECTED as a repository root" false
       | Error e ->
           let d = (Err.Error.kind e).Tool_error.detail in
           let contains needle =
@@ -107,19 +108,19 @@ let test_repo () =
             let rec go i = i + n <= m && (String.sub d i n = needle || go (i + 1)) in
             go 0
           in
-          check "repo: asm/ is REJECTED as a repository root" true;
+          check "repo: tools/ is REJECTED as a repository root" true;
           check "repo: the rejection names the missing sentinel" (contains "Makefile"));
       (* Precedence: cli beats the environment. *)
-      let env = function "COMPCERT_REPO_ROOT" -> Some (Fpath.to_string asm) | _ -> None in
-      check "repo: cli argument beats COMPCERT_REPO_ROOT"
-        (is_ok (Repo.resolve ~cli:(Some root) ~env ~cwd:asm));
+      let env = function "RIVET_ROOT" -> Some (Fpath.to_string nested) | _ -> None in
+      check "repo: cli argument beats RIVET_ROOT"
+        (is_ok (Repo.resolve ~cli:(Some root) ~env ~cwd:nested));
       (* And the environment beats the cwd search. *)
-      let env_ok = function "COMPCERT_REPO_ROOT" -> Some (Fpath.to_string root) | _ -> None in
-      check "repo: COMPCERT_REPO_ROOT is used when there is no cli argument"
-        (is_ok (Repo.resolve ~cli:None ~env:env_ok ~cwd:asm));
+      let env_ok = function "RIVET_ROOT" -> Some (Fpath.to_string root) | _ -> None in
+      check "repo: RIVET_ROOT is used when there is no cli argument"
+        (is_ok (Repo.resolve ~cli:None ~env:env_ok ~cwd:nested));
       (* Upward search finds the root from a nested directory. *)
       check "repo: upward search from a nested cwd"
-        (is_ok (Repo.resolve ~cli:None ~env:no_env ~cwd:asm)))
+        (is_ok (Repo.resolve ~cli:None ~env:no_env ~cwd:nested)))
 
 (* {3 Hex_dump} *)
 

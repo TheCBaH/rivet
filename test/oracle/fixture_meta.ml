@@ -1,14 +1,14 @@
-(* M4 (.ai/asm_plan.md §12): a small, complete, read-only mirror of exactly
-   the manifest record families [asm/tools/lib/manifest.ml]'s [Manifest]
+(* M4 (docs/design.md §12): a small, complete, read-only mirror of exactly
+   the manifest record families [tools/lib/manifest.ml]'s [Manifest]
    module also parses - [abi-version], [supported-targets],
    [expected-value:<i>], [observation:<i>].
 
-   [asm/tools] is a deliberately isolated Dune project (its own header
-   comment: an fmt/bos dependency conflict; zero references to any [asm/lib]
+   [tools] is a deliberately isolated Dune project (its own header
+   comment: an fmt/bos dependency conflict; zero references to any [lib]
    module today), so this project cannot depend on its [Manifest] module or
    its [Target.t]. This file is the one place in this milestone where the
    same manifest.txt format has two independent readers: [Manifest] in
-   [asm/tools] remains the sole WRITER/rehasher of these records - this
+   [tools] remains the sole WRITER/rehasher of these records - this
    module never writes one, and every field it decodes is already validated
    there before it can be committed. Its own checks below (index pairing,
    duplicates) are defense in depth on that already-validated file, not a

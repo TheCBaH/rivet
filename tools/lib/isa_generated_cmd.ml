@@ -20,7 +20,7 @@ let run_one repo (entry : Isa_gen_pilot.pilot_entry) =
 (* Every per-case report line streams exactly as before (the report
    vocabulary is unchanged); this additionally persists every
    successfully-built case's record to the checked-in corpus
-   (asm/fixtures/isa-generated/cases.jsonl), which `isa-generated check`
+   (fixtures/isa-generated/cases.jsonl), which `isa-generated check`
    (Check_cmd.isa_generated_check) replays offline. A SKIPped or errored entry
    simply contributes no record - `check` rebuilding that same entry hits the
    same SKIP/error path and reports it directly, rather than this command

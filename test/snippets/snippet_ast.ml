@@ -30,7 +30,7 @@
      [stack_over] must touch the guard page. Those are semantic assertions
      about the bytes, and no baseline promotion can satisfy them.
    - the differential gate, which compares this assembler against GNU as on the
-     fixture corpus, and [tools/asm-gas-xref.sh], which does the same for these
+     fixture corpus, and [scripts/asm-gas-xref.sh], which does the same for these
      snippets from the canonical text {!source_of} emits.
 
    {1 [Needs], and why it is still here}
@@ -127,7 +127,7 @@ module Make (T : Target_encode.ENCODE) = struct
 
   (* This harness reports refusals as prose, so a target failure is rendered on
      the way in. [Make] is generic over [T] and cannot hold a [T.error], which is
-     the same erasure the pipeline performs (asm/docs/errors.md §2). *)
+     the same erasure the pipeline performs (docs/errors.md §2). *)
   let message_of_error e = Foundation.Diagnostic.message (T.error_diagnostic (Err.Error.kind e))
 
   let evaluate kind ~place ~target =
@@ -246,18 +246,8 @@ module Aarch64_corpus = struct
   let mem ?(writeback = false) base offset =
     T.Operand.Mem { T.Mem.base = r base; offset = T.Disp.Const offset; writeback; pre = true }
 
-  (* The CompCert 3.17 prologue/epilogue, which is exactly the M1 fixture. *)
-  let return_n n =
-    A.assemble
-      T.Opcode.
-        [
-          insn Mov [ reg "x15"; reg "sp" ];
-          insn Stp [ reg "x15"; reg "x30"; mem ~writeback:true "sp" (-16L) ];
-          insn Movz [ reg "w0"; imm n ];
-          insn Ldr [ reg "x30"; mem "sp" 8L ];
-          insn Add [ reg "sp"; reg "sp"; imm 16 ];
-          insn Ret [ reg "x30" ];
-        ]
+  (* The minimal function returning [n]. *)
+  let return_n n = A.assemble T.Opcode.[ insn Movz [ reg "w0"; imm n ]; insn Ret [ reg "x30" ] ]
 
   let cases =
     {
@@ -345,19 +335,7 @@ module Arm_corpus = struct
   let mem base offset =
     T.Operand.Mem { T.Mem.base = r base; offset = T.Mem.Imm offset; writeback = false; pre = true }
 
-  let return_n n =
-    A.assemble
-      T.Opcode.
-        [
-          insn Mov [ reg "r12"; reg "sp" ];
-          insn Sub [ reg "sp"; reg "sp"; imm 8 ];
-          insn Str [ reg "r12"; mem "sp" 0L ];
-          insn Str [ reg "lr"; mem "sp" 4L ];
-          insn Mov [ reg "r0"; imm n ];
-          insn Ldr [ reg "lr"; mem "sp" 4L ];
-          insn Add [ reg "sp"; reg "sp"; imm 8 ];
-          insn Bx [ reg "lr" ];
-        ]
+  let return_n n = A.assemble T.Opcode.[ insn Mov [ reg "r0"; imm n ]; insn Bx [ reg "lr" ] ]
 
   let cases =
     {
@@ -616,23 +594,10 @@ module X86_shared = struct
   let here_plus k =
     Operand.Sym Asm_core.Expr.(Binary (Add, Current_location, Const (Foundation.Bigint.of_int k)))
 
-  (* [frame] is the §11 stack adjustment: 8 on x86-64 and 12 on x86-32, because
-     the return address differs in width and the ABI wants the stack 16-byte
-     aligned at the call. Getting it wrong is what the sp_align case exists to
-     catch, so it is a parameter here rather than a constant. *)
-  let return_n ~sp ~ax ~eax ~width ~frame n =
-    [
-      insn Opcode.Sub width [ imm frame; Operand.Reg sp ];
-      insn Opcode.Lea width [ Operand.Mem (Mem.of_base ~disp:(Disp.Const 16L) sp); Operand.Reg ax ];
-      insn Opcode.Mov width [ Operand.Reg ax; Operand.Mem (Mem.of_base sp) ];
-      (* The one line where the two modes agree exactly: [movl $42, %eax] is
-         byte-identical in 32- and 64-bit mode, which is why the fixtures use it
-         to pin that fact. So it is 32-bit wide in both, and takes [%eax] rather
-         than the mode's own accumulator. *)
-      insn Opcode.Mov 32 [ imm n; Operand.Reg eax ];
-      insn Opcode.Add width [ imm frame; Operand.Reg sp ];
-      insn Opcode.Ret width [];
-    ]
+  (* [movl $n, %eax] is byte-identical in 32- and 64-bit mode, so it is 32-bit
+     wide in both and takes [%eax] rather than the mode's own accumulator. *)
+  let return_n ~eax ~width n =
+    [ insn Opcode.Mov 32 [ imm n; Operand.Reg eax ]; insn Opcode.Ret width [] ]
 
   let trap_insns = [ insn Opcode.Ud2 32 [] ]
   let spin_insns ~width = [ insn Opcode.Jmp width [ here ] ]
@@ -664,7 +629,7 @@ module X86_shared = struct
       insn Opcode.Ret width [];
     ]
 
-  (* [entry_gap] is the same §11 return-address width as [return_n]'s [frame].
+  (* [entry_gap] is the §11 return-address width: 8 on x86-64, 4 on x86-32.
      The two [stack_*] cases probe one byte on either side of a 16384-byte gap
      below sp: [stack_full] touches its first byte, [stack_over] the byte just
      past it. *)
@@ -725,9 +690,7 @@ module X86_64_corpus = struct
 
   let cases =
     X86_shared.cases
-      ~return_n:(fun n ->
-        A.assemble
-          (X86_shared.return_n ~sp:(r "rsp") ~ax:(r "rax") ~eax:(r "eax") ~width:64 ~frame:8 n))
+      ~return_n:(fun n -> A.assemble (X86_shared.return_n ~eax:(r "eax") ~width:64 n))
       ~trap:(A.assemble X86_shared.trap_insns)
       ~callee_clobber:
         (A.assemble (X86_shared.callee_clobber_insns ~bx:(r "rbx") ~eax:(r "eax") ~width:64))
@@ -757,9 +720,7 @@ module X86_32_corpus = struct
 
   let cases =
     X86_shared.cases
-      ~return_n:(fun n ->
-        A.assemble
-          (X86_shared.return_n ~sp:(r "esp") ~ax:(r "eax") ~eax:(r "eax") ~width:32 ~frame:12 n))
+      ~return_n:(fun n -> A.assemble (X86_shared.return_n ~eax:(r "eax") ~width:32 n))
       ~trap:(A.assemble X86_shared.trap_insns)
       ~callee_clobber:
         (A.assemble (X86_shared.callee_clobber_insns ~bx:(r "ebx") ~eax:(r "eax") ~width:32))
@@ -785,7 +746,7 @@ end
 (* {1 The corpus}
 
    In the canonical target order every generated artifact and manifest in this
-   project uses (tools/target-matrix.sh). *)
+   project uses (scripts/target-matrix.sh). *)
 
 type target = {
   target : string;
@@ -895,7 +856,7 @@ let for_profile : Asm_oracle.Abi.profile -> (Sb.t, string) result = function
 
    The third rendering of one AST. The corpus already produces our bytes and a
    hexdump; this produces the file GNU as reads, from the same canonical
-   printer, so [tools/asm-gas-xref.sh] compares two assemblers on an input
+   printer, so [scripts/asm-gas-xref.sh] compares two assemblers on an input
    neither of them chose.
 
    The symbol is [asm_snippet] in every file: the M1 restricted linker wants one

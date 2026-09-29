@@ -1,7 +1,7 @@
 (* Tool_parallel: forked sharding keeps input order, runs in more than one process, and turns a
    worker failure into an error rather than a partial result. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

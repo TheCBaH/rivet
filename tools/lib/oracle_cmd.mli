@@ -1,4 +1,4 @@
-(** [compcert-tools fixture oracle] - the GNU reference-assembler oracle.
+(** [rivet-tools fixture oracle] - the GNU reference-assembler oracle.
 
     Runs the target's GNU [as] over a committed fixture and records what it
     produced: section headers, symbols, relocations, disassembly, the .text

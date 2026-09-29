@@ -1,5 +1,5 @@
-(* The execution ABI conformance suite (asm/docs/exec-abi-v1.md §16 and
-   asm/docs/exec-abi-v2.md).
+(* The execution ABI conformance suite (docs/exec-abi-v1.md §16 and
+   docs/exec-abi-v2.md).
 
    Drives each built helper under its emulator and checks the *exact* outcome:
    the exact subcode for a malformed manifest, the exact termination for a trap
@@ -29,12 +29,12 @@ open Asm_oracle
 open Asm_oracle_run
 
 let abi_version =
-  match Sys.getenv_opt "ASM_ABI_VERSION" with
+  match Sys.getenv_opt "RIVET_ABI_VERSION" with
   | None -> Abi.abi_version
   | Some "1" -> 1
   | Some "2" -> Abi_v2.abi_version
   | Some "3" -> Abi_v3.abi_version
-  | Some value -> invalid_arg ("ASM_ABI_VERSION must be 1, 2 or 3, got " ^ value)
+  | Some value -> invalid_arg ("RIVET_ABI_VERSION must be 1, 2 or 3, got " ^ value)
 
 let serialize t = Manifest.serialize ~abi_version t
 
@@ -433,7 +433,7 @@ let boundary_cases =
         patch_bytes b 0 "X");
   ]
 
-(* M3's fixed BSS window (.ai/asm_plan.md §12; the M3 plan's §11): a second,
+(* M3's fixed BSS window (docs/design.md §12; the M3 plan's §11): a second,
    pure zero-fill segment at [Abi_v2.bss_addr], with no payload bytes at all -
    exactly the shape [bind_image] produces for a NOBITS section. The address
    and its cap are not asserted in isolation; they are proven against the
@@ -512,9 +512,9 @@ let environment_cases =
 (* {1 v3: the observation-descriptor table (exec-abi-v3.md §§2-4)}
 
    All six profiles now have a real v3 helper to run these against: the four
-   legacy profiles via the generator (.ai/asm_plan.md M4 Phase 3.4, proved
+   legacy profiles via the generator (docs/design.md M4 Phase 3.4, proved
    x86_64 first, then generalized), and RISC-V (both XLEN profiles) via
-   asm/helpers/riscv.c's own ABI_VERSION-guarded v3 path. Every case here is
+   helpers/riscv.c's own ABI_VERSION-guarded v3 path. Every case here is
    scoped abi_versions:[3] - these manifests are not v1/v2-shaped, and
    patching one field of them under a v1/v2 run would not be testing a
    single difference against a canonical base the way the rest of this
@@ -555,7 +555,7 @@ let v3_write_and_return42 = function
   (* lui t0,0x30020 ; lui t1,0x11223 ; addi t1,t1,0x344 ; sw t1,0(t0) ;
      addi a0,zero,42 ; ret. t0/t1 (x5/x6, caller-saved temporaries), not any
      of s0-s11: those are the profile's checked callee-saved registers
-     (riscv_run_guest's twelve-register check in asm/helpers/riscv.c). Bytes
+     (riscv_run_guest's twelve-register check in helpers/riscv.c). Bytes
      confirmed by assembling with the real riscv64-linux-gnu-as -march=rv32imafd. *)
   | Abi.Riscv32 ->
       "\xb7\x02\x02\x30\x37\x33\x22\x11\x13\x03\x43\x34\x23\xa0\x62\x00\x13\x05\xa0\x02\x67\x80\x00\x00"
@@ -694,7 +694,7 @@ let exemption_for profile key =
 let () =
   let profiles =
     let available = Qemu_user.available_profiles ~abi_version () in
-    match Sys.getenv_opt "ASM_ABI_PROFILES" with
+    match Sys.getenv_opt "RIVET_ABI_PROFILES" with
     | None -> available
     | Some names ->
         let wanted = String.split_on_char ',' names |> List.map String.trim in

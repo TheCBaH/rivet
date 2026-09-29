@@ -1,0 +1,14 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <asm_test_callee>:
+   0:	8d 04 3f             	lea    (%rdi,%rdi,1),%eax
+   3:	c3                   	ret
+
+0000000000000004 <asm_test_entry>:
+   4:	bf 14 00 00 00       	mov    $0x14,%edi
+   9:	e8 00 00 00 00       	call   e <asm_test_entry+0xa>
+			a: R_X86_64_PLT32	asm_test_callee-0x4
+   e:	83 c0 02             	add    $0x2,%eax
+  11:	c3                   	ret

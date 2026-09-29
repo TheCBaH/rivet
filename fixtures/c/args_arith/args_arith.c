@@ -1,4 +1,4 @@
-/* M2's arithmetic slice (.ai/asm_plan.md §12, Milestone 2).
+/* M2's arithmetic slice (docs/design.md §12, Milestone 2).
 
    Two functions, because the slice has two halves that must not be merged.
    [asm_test_sum] is where integer *arguments* live: it is exported and never
@@ -7,7 +7,7 @@
    [asm_test_entry] is the executable half, and X1 requires it to take no
    arguments and return a determined value.
 
-   The locals are [volatile] so CompCert cannot fold the whole computation to
+   The locals are [volatile] so the compiler cannot fold the whole computation to
    [return 42] and leave nothing to assemble. That also makes the entry emit
    stack loads and stores, which is the memory shape this slice wants.
 
@@ -15,7 +15,7 @@
    real decision rather than the single-global inference M1 could get away
    with.
 
-   Deliberately no division or modulo. CompCert lowers `/ 3` to a signed
+   Deliberately no division or modulo. A compiler lowers `/ 3` to a signed
    multiply-high magic-number sequence - smull/mla on ARM, madd/sxtw on
    AArch64, imull/shrl on x86 - and that is a lowering axis of its own, not the
    add/sub/mul this slice is for. It can have its own fixture when it is worth

@@ -1,78 +1,66 @@
-# Devcontainer for CompCert
+# rivet
 
-[![CompCert devcontainer build](https://github.com/TheCBaH/devcontainer.CompCert/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/TheCBaH/devcontainer.CompCert/actions/workflows/build.yml)
+A retargetable assembler and linker in pure OCaml, for x86-32, x86-64, ARM,
+AArch64, RV32 and RV64. It reads GNU-syntax assembly, produces an in-memory
+image, and can bind that image at chosen addresses. There is no C code in the
+production closure: the same sources run natively, under js_of_ocaml, and
+under Melange. See [docs/design.md](docs/design.md).
 
-Devcontainer to build and check [CompCert](https://compcert.org/), the
-formally-verified C compiler, vendored here as the `modules/CompCert`
-submodule, using [Rocq](https://rocq-prover.org/) (formerly Coq).
-
-CompCert is not free software; this non-commercial distribution may only be used
-for evaluation, research, educational and personal purposes. See
-[modules/CompCert/LICENSE](modules/CompCert/LICENSE) for details. This repo's
-own [LICENSE](LICENSE) covers only the devcontainer and build tooling.
+[![ci](https://github.com/TheCBaH/rivet/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TheCBaH/rivet/actions/workflows/ci.yml)
 
 ## Get started
-* [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=1323060576)
-* Then, inside the devcontainer:
-  * `make compcert` configure and build CompCert (proof + `ccomp`) for the
-    native architecture
-  * `make compcert-check-proof` recheck the proof with `coqchk`/`rocqchk`
-  * `make compcert-test` run the CompCert test suite
+Inside the devcontainer (OCaml, dune, Menhir, the cross binutils and gcc, and
+qemu-user):
 
-List of OCaml/opam packages (including Rocq and Menhir) installed by the
-devcontainer is located in
-[.devcontainer/devcontainer.json](.devcontainer/devcontainer.json).
+* `git submodule update --init` fetch the vendored libraries
+* `make build` build everything
+* `make test` build and run the test suite
+* `make ci` what CI runs, and what to run before pushing
 
-## Rocq-free split build
-Rocq is only needed to check the proof and extract OCaml sources from it;
-building `ccomp` from those sources is plain OCaml.
+`tool/asm.exe` is the command line: `asm --target aarch64 file.s`.
 
-* `make compcert-extraction-archive` prove and extract, then archive the
-  extracted sources into `compcert-extraction.tar.gz` - the only step that
-  needs Rocq
-* `make compcert-build-from-archive` build `ccomp` from that archive alone
+## Evidence
+The assembler is checked against GNU as, not against its own opinion of itself.
 
-## CompCert as a dune library
-`compcert-lib/` is a standalone dune project that builds the same sources as a
-regular OCaml library (`compcert`), so CompCert can be depended on like any
-other library. `ccomp`'s CLI entry point, `driver/Driver.ml`, is kept out of the
-library as `bin/main.ml`.
+* The **fixture oracle** compiles a small C corpus with each target's cross gcc,
+  assembles the output with GNU binutils, links it, and runs the very bytes
+  under QEMU. The assembler's own image is then compared with that reference
+  link. It needs the cross toolchains and is not on the path of `make test`. See
+  [docs/fixture-oracle.md](docs/fixture-oracle.md).
+  * `make fixture-oracle-<target>` one target's complete leg
+  * `make fixture-oracle` all six
+* The **GAS differential** generators (`fixtures/isa-generated`,
+  `fixtures/isa-difficult`) and the **cross-reference** (`fixtures/gas-xref`)
+  hold the assembler to GNU as, instruction by instruction.
+* The **execution ABI** suite (`make abi-conform`, `make exec`) runs generated
+  helpers and the assembler's own image under qemu-user. See
+  [docs/exec-abi-v1.md](docs/exec-abi-v1.md).
 
-* `make compcert-lib-build` sync the sources into `compcert-lib/` (not
-  committed) and build them with dune
-* `make compcert-lib-run ARGS=-version` run the dune-built driver
+## Tooling
+`tools/` is a separate dune project providing `rivet-tools`, the fixture,
+manifest and oracle command line. It is kept apart from the assembler so that
+toolchain-free checks never require an assembler build, and it can be extended
+by another project: it is installed as the `rivet-tools` package, with the
+compiler that generates fixtures as a parameter.
 
-## Redistributable package
-For consumers who just want to `dune build` CompCert as a library, without
-cloning this repo or touching Rocq:
+## Vendored libraries
+[err_trace](https://github.com/TheCBaH/err_trace) is vendored as
+`vendor/err_trace/upstream` and [Fmt](https://github.com/dbuenzli/fmt) as
+`vendor/fmt/upstream`, so a fresh clone needs `git submodule update --init`
+before `make build`. See [vendor/err_trace/README.md](vendor/err_trace/README.md)
+and [vendor/fmt/README.md](vendor/fmt/README.md) for why they are vendored
+rather than taken from opam, and [docs/errors.md](docs/errors.md) for the error
+model err_trace supports.
 
-* `make compcert-export-archive` package that dune project plus CompCert's own
-  `LICENSE` into `compcert-export.tar.gz`, also published on `v*` tags
-* `make compcert-export-run ARGS=-version` build and run the unpacked archive
+## Using it from another project
+Every library a consumer needs has a public name in the `rivet` package
+(`rivet.driver`, `rivet.aarch64`, `rivet.foundation`, ...). Vendor this
+repository as a subdirectory with `(vendored_dirs vendor)`, and name the
+libraries as usual.
 
-## Retargetable assembler
-`asm/` is a standalone dune project - independent of the CompCert build, so it
-needs neither Rocq nor a cross toolchain - holding a retargetable assembler for
-x86-32, x86-64, ARM, AArch64, RV32 and RV64. See
-[.ai/asm_plan.md](.ai/asm_plan.md).
+## History
+This repository began as a directory of a larger one, and its history was carried
+over. Each such commit says `Split-from:` with the original repository and commit.
 
-* `make asm-ci` what CI runs, and what to run before pushing
-* `make asm-test` build and run the test suite
-
-The fixture oracle is the evidence pipeline behind those six targets: exact
-CompCert regeneration, GNU binutils differential artifacts, and freestanding
-QEMU execution of the very bytes the oracle accepted. It needs a cross
-toolchain and is not on the path of `make asm-test`. See
-[asm/docs/fixture-oracle.md](asm/docs/fixture-oracle.md).
-
-* `make asm-fixture-oracle-<target>` one target's complete leg
-* `make asm-fixture-oracle` all six
-
-It vendors [err_trace](https://github.com/TheCBaH/err_trace) as the
-`asm/vendor/err_trace/upstream` submodule and [Fmt](https://github.com/dbuenzli/fmt)
-as `asm/vendor/fmt/upstream`, so a fresh clone needs
-`git submodule update --init` before `make asm-build`. See
-[asm/vendor/err_trace/README.md](asm/vendor/err_trace/README.md) and
-[asm/vendor/fmt/README.md](asm/vendor/fmt/README.md) for why they are
-vendored rather than taken from opam, and
-[asm/docs/errors.md](asm/docs/errors.md) for the error model err_trace supports.
+## License
+[MIT](LICENSE).

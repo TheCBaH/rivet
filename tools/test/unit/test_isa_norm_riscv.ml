@@ -7,7 +7,7 @@
    dependency: {!Isa_source_record.of_line} decodes inline text, matching
    this directory's existing isa-inventory tests. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

@@ -4,7 +4,7 @@
     Distinct from {!Isa_db_jsonl}: that module is a deliberately narrow
     projection ([record_id]/[source]/[kind]/[native_name]/[provenance]'s
     [extension]/[group] only) built for cross-validation against
-    [asm/fixtures/isa-inventory]. This module decodes the [encoding] and the
+    [fixtures/isa-inventory]. This module decodes the [encoding] and the
     source-specific [provenance] facts too, because the OCaml normalization
     layer needs them to
     reconstruct assembly-level operand semantics and three-valued

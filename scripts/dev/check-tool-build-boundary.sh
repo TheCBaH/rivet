@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The focused tool build must compile no local library outside tools/.
 #
-# This is what keeps tool.md gate 6 true for the toolchain-free check targets:
+# This is what keeps the tool build boundary true for the toolchain-free check targets:
 # they gain a tools-build edge, and if that edge dragged in an assembler library
 # then `make asm-fixtures-check` would need an assembler build.
 #
@@ -25,7 +25,7 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd -- "$SCRIPT_DIR/../.." && pwd)
-ASM_DIR="$REPO_ROOT/asm"
+ASM_DIR="$REPO_ROOT"
 
 BUILD_DIR=$(mktemp -d)
 DESC=$(mktemp)
@@ -35,11 +35,11 @@ cd "$ASM_DIR"
 
 # Cold, targeted, and into a directory whose name is neither predictable nor
 # left behind.
-opam exec -- dune build --build-dir="$BUILD_DIR" tools/bin/compcert_tools.exe
+opam exec -- dune build --build-dir="$BUILD_DIR" tools/bin/rivet_tools.exe
 
 # The describe must come from the SAME build context, or the paths the auditor
 # normalizes against would not be the ones it just built.
 opam exec -- dune describe --lang 0.1 --build-dir="$BUILD_DIR" > "$DESC"
 
 cd "$REPO_ROOT"
-opam exec -- ocaml tools/asm_audit.ml tool-boundary "$DESC" "$ASM_DIR"
+opam exec -- ocaml scripts/asm_audit.ml tool-boundary "$DESC" "$ASM_DIR"

@@ -1,6 +1,6 @@
 (** The table-driven x86 forms (DEC-X86-TABLE): which captured XED records
     become rows of the assembler's generated
-    [asm/targets/x86_family/x86_table_rows.ml], read from each record's
+    [targets/x86_family/x86_table_rows.ml], read from each record's
     encoding pattern and operand list.
 
     One rule serves the emitter ({!Isa_x86_table_emit}), the normalizer

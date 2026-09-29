@@ -1,6 +1,6 @@
 // For format details, see https://aka.ms/devcontainer.json.
 {
-    "name": "CompCert devcontainer",
+    "name": "rivet devcontainer",
     "build":  {
         "dockerfile": "Dockerfile"
     },
@@ -14,13 +14,12 @@
         },
         "ghcr.io/thecbah/ocaml-features/ocaml:1": {
             "version": "${localEnv:OCAML_VERSION}",
-            "packages": "bos bytesrw cmdliner digestif fmt fpath jsont mtime js_of_ocaml-compiler js_of_ocaml-ppx menhir ocamlformat#0.28.1 ppx_expect rocq-prover qcheck zarith",
+            "packages": "bos bytesrw cmdliner digestif fmt fpath jsont mtime js_of_ocaml-compiler js_of_ocaml-ppx menhir ocamlformat#0.28.1 ppx_expect qcheck zarith",
             // Melange requires 'ocaml >= 4.14 & < 4.15', so it is installable on
             // the 4.14 images only; the same devcontainer.json builds 4.14.3
             // through 5.5.0.
             "optional-packages": "melange",
-            "system-packages": "libgmp-dev pkg-config",
-            "repositories": "rocq-released https://rocq-prover.org/opam/released"
+            "system-packages": "libgmp-dev pkg-config"
         }
     },
     "customizations": {
@@ -34,7 +33,7 @@
     "postCreateCommand": {
 	"submodules": "git submodule update --init --recursive --depth 1",
         // See .devcontainer/fix-opam-owner.sh: a blind `chown -R` here forces
-        // a full data copy-up of the whole opam/Rocq install on every fresh
+        // a full data copy-up of the whole opam install on every fresh
         // container (this host's overlay2 has metacopy disabled), even
         // though ownership is usually already correct from image build.
         "opam": "sudo .devcontainer/fix-opam-owner.sh $(id -u) $(id -g)"

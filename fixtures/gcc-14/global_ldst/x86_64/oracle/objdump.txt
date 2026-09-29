@@ -1,0 +1,11 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <asm_test_entry>:
+   0:	8b 05 00 00 00 00    	mov    0x0(%rip),%eax        # 6 <asm_test_entry+0x6>
+			2: R_X86_64_PC32	asm_test_global-0x4
+   6:	83 c0 16             	add    $0x16,%eax
+   9:	89 05 00 00 00 00    	mov    %eax,0x0(%rip)        # f <asm_test_entry+0xf>
+			b: R_X86_64_PC32	asm_test_global-0x4
+   f:	c3                   	ret

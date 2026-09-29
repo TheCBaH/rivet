@@ -1,0 +1,64 @@
+gcc-args:aarch64	-O1 -fno-inline -fno-section-anchors -ffreestanding -fno-pic -fno-pie -fno-asynchronous-unwind-tables
+gcc-args:arm	-marm -O1 -fno-inline -fno-section-anchors -ffreestanding -fno-pic -fno-pie -fno-asynchronous-unwind-tables
+gcc-args:riscv32	-O1 -fno-inline -fno-section-anchors -ffreestanding -fno-pic -fno-pie -fno-asynchronous-unwind-tables -march=rv32imafd -mabi=ilp32d -mno-relax -msmall-data-limit=0
+gcc-args:riscv64	-O1 -fno-inline -fno-section-anchors -ffreestanding -fno-pic -fno-pie -fno-asynchronous-unwind-tables -march=rv64imafd -mabi=lp64d -mno-relax -msmall-data-limit=0
+gcc-args:x86_32	-O1 -fno-inline -fno-section-anchors -ffreestanding -fno-pic -fno-pie -fno-asynchronous-unwind-tables
+gcc-args:x86_64	-O1 -fno-inline -fno-section-anchors -ffreestanding -fno-pic -fno-pie -fno-asynchronous-unwind-tables
+gcc-version:aarch64	aarch64-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0
+gcc-version:arm	arm-linux-gnueabihf-gcc (Debian 14.2.0-19) 14.2.0
+gcc-version:riscv32	riscv32-linux-gnu-gcc (crosstool-NG 1.27.0) 14.2.0
+gcc-version:riscv64	riscv64-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0
+gcc-version:x86_32	i686-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0
+gcc-version:x86_64	x86_64-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0
+generator	rivet-tools fixture regen
+sha256:aarch64/asm_test_entry.s	a7d50985466f9fd80e815c947247b51f2e2faaebf02d21d66a214eef75d05f95
+sha256:aarch64/oracle/linked/text.hex	e0a61311a0b5be1f00a125109f8e396715d7500b6425cc2195086b447ddd8c3e
+sha256:aarch64/oracle/objdump.txt	52bd137eafa7f32bfee466eade93bea63592cad9db702401657b1bb8db560211
+sha256:aarch64/oracle/readelf.txt	ae3085babc16dac8fbd156c7d0d7d2f1a98e920bfd7a85865b051f01a80900f9
+sha256:aarch64/oracle/reloc.txt	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256:aarch64/oracle/symbols.txt	22005b573c31428cf1f2a3192ef98962b9e9bc36b4400118452fd2a2150f1c92
+sha256:aarch64/oracle/text.hex	e0a61311a0b5be1f00a125109f8e396715d7500b6425cc2195086b447ddd8c3e
+sha256:aarch64/oracle/tool-versions.txt	75d5e93062bd6e9228dc0921cc4f7a4b54db958306f297ec5a83988e8584e18a
+sha256:arm/asm_test_entry.s	4f733d9987ca74b7be2ff154f56029251d08f831c3e157d8b92c04945b123bde
+sha256:arm/oracle/linked/text.hex	5c08b4ca703a3ae005d6602863112dd2ae0dd44c3f254620924fb9be76d23595
+sha256:arm/oracle/objdump.txt	d2f2b1333dd917f5196e656e487c5ec94a7574a3b0bdfcd739ea10eb3a210b1c
+sha256:arm/oracle/readelf.txt	e1455e9d1b028a93147f97500eda2104b85c2db7d409bfce45786436c6a8be56
+sha256:arm/oracle/reloc.txt	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256:arm/oracle/symbols.txt	b0d31ae8bf1875a9f6333e5ba9058c686d07a6738d839cfe0754de51694449c8
+sha256:arm/oracle/text.hex	5c08b4ca703a3ae005d6602863112dd2ae0dd44c3f254620924fb9be76d23595
+sha256:arm/oracle/tool-versions.txt	75d5e93062bd6e9228dc0921cc4f7a4b54db958306f297ec5a83988e8584e18a
+sha256:expected-status.txt	084c799cd551dd1d8d5c5f9a5d593b2e931f5e36122ee5c793c1d08a19839cc0
+sha256:riscv32/asm_test_entry.s	08d868cb1618bb94cfb2cec51c6629caab9967876c86e82211f82203611213bc
+sha256:riscv32/oracle/linked/text.hex	ee0a04bc6533534ef31166366a6f889ca4b1d23f94d6f8f525ef5de250436ddf
+sha256:riscv32/oracle/objdump.txt	18d52b0720f00e4d52229d08029e0d8a4e9364b352f0e3d8f3b8f444ace6aad4
+sha256:riscv32/oracle/readelf.txt	f6ecdef2ce07dc67573f14b608fa5df3f69e1c8caa088158b9559071adcbc06b
+sha256:riscv32/oracle/reloc.txt	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256:riscv32/oracle/symbols.txt	1883dd4f332a2bc07e6508e7f3f15d5f476c03fa44761fded5f889e5178aaa49
+sha256:riscv32/oracle/text.hex	ee0a04bc6533534ef31166366a6f889ca4b1d23f94d6f8f525ef5de250436ddf
+sha256:riscv32/oracle/tool-versions.txt	0466671691fd1bc0fbbbf56dda549f8004f178c1718fb0703f5aa81fe82cf8f3
+sha256:riscv64/asm_test_entry.s	4f8a57cb5e8afef205ef522ce9eb0178ef00c243d81b39b64196ca44bbeb5f5a
+sha256:riscv64/oracle/linked/text.hex	ee0a04bc6533534ef31166366a6f889ca4b1d23f94d6f8f525ef5de250436ddf
+sha256:riscv64/oracle/objdump.txt	5928e0590e3f6f037de4d14239ace6f3033bf2bb33034ad81fb94749951ab8bb
+sha256:riscv64/oracle/readelf.txt	a50885c668c022bb16ec854ad633754b3df282b54eade8c3e993649c42341e48
+sha256:riscv64/oracle/reloc.txt	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256:riscv64/oracle/symbols.txt	ca30b3c491d3f8496788f4768f3aa3b5d011d81b491d8defa62e65b127f5e9a0
+sha256:riscv64/oracle/text.hex	ee0a04bc6533534ef31166366a6f889ca4b1d23f94d6f8f525ef5de250436ddf
+sha256:riscv64/oracle/tool-versions.txt	75d5e93062bd6e9228dc0921cc4f7a4b54db958306f297ec5a83988e8584e18a
+sha256:source/asm_test_entry.c	4b31e3feb58498761cb66ce0bc5e136f7b9af73f047688f3a1a64818966c94cf
+sha256:x86_32/asm_test_entry.s	d7522e8f64d4f3ce1b76986f805e236ff8fff3f3875bdad37b328d90c3b23d3d
+sha256:x86_32/oracle/linked/text.hex	7522ac152bb885ea91b27d0f791c9e5a2627028ed28edc5bf28a712f8adbe247
+sha256:x86_32/oracle/objdump.txt	696cebc9eec6123d0adede80d84ffb5c955ba22eaa6aacd0642a9c819a8fed66
+sha256:x86_32/oracle/readelf.txt	5ff03be167f36167c0cf2b733dd4663f1b061d4617c5f43588adaeadc69c173f
+sha256:x86_32/oracle/reloc.txt	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256:x86_32/oracle/symbols.txt	2aee5c8d97022948bfb86fe951b75d7db917dbf5755b4cdf324a3d71b4a5036d
+sha256:x86_32/oracle/text.hex	7522ac152bb885ea91b27d0f791c9e5a2627028ed28edc5bf28a712f8adbe247
+sha256:x86_32/oracle/tool-versions.txt	75d5e93062bd6e9228dc0921cc4f7a4b54db958306f297ec5a83988e8584e18a
+sha256:x86_64/asm_test_entry.s	d7522e8f64d4f3ce1b76986f805e236ff8fff3f3875bdad37b328d90c3b23d3d
+sha256:x86_64/oracle/linked/text.hex	7522ac152bb885ea91b27d0f791c9e5a2627028ed28edc5bf28a712f8adbe247
+sha256:x86_64/oracle/objdump.txt	71580cdf9879b233607c8ec4f49cebde60610b69ede640a0fd6b8130bc017e56
+sha256:x86_64/oracle/readelf.txt	26b694229075c4da44b56f7db29fed0a3cbee4c6a5aa8945abef7fc4bb925de6
+sha256:x86_64/oracle/reloc.txt	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256:x86_64/oracle/symbols.txt	2aee5c8d97022948bfb86fe951b75d7db917dbf5755b4cdf324a3d71b4a5036d
+sha256:x86_64/oracle/text.hex	7522ac152bb885ea91b27d0f791c9e5a2627028ed28edc5bf28a712f8adbe247
+sha256:x86_64/oracle/tool-versions.txt	75d5e93062bd6e9228dc0921cc4f7a4b54db958306f297ec5a83988e8584e18a
+source	source/asm_test_entry.c

@@ -54,7 +54,7 @@ let result_addr p = Int64.add (window_base p) 0x30000L
 let guard_addr p = Int64.add (window_base p) 0x3f000L
 let stack_start p = Int64.add (window_base p) 0x40000L
 
-(* M3's fixed BSS window (.ai/asm_plan.md §12; the M3 plan's §11), additive to
+(* M3's fixed BSS window (docs/design.md §12; the M3 plan's §11), additive to
    v2 rather than v1: not a wire-format change (a segment's address and
    length are ordinary manifest fields either version can carry), but a new
    *policy* decision, and v1 is frozen to its own. [bss_addr] is exactly

@@ -2,7 +2,7 @@
    no toolchain and no dune-exec subprocess - the real tool/asm.exe invocation
    is make asm-isa-generated-regen's job, never tools-test/tools-integration's. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

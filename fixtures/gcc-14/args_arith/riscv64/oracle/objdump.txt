@@ -1,0 +1,30 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <asm_test_sum>:
+   0:	02c585bb          	mulw	x11,x11,x12
+   4:	00a5853b          	addw	x10,x11,x10
+   8:	40d5053b          	subw	x10,x10,x13
+   c:	00008067          	jalr	x0,0(x1)
+
+0000000000000010 <asm_test_entry>:
+  10:	ff010113          	addi	x2,x2,-16
+  14:	00700793          	addi	x15,x0,7
+  18:	00f12623          	sw	x15,12(x2)
+  1c:	00500793          	addi	x15,x0,5
+  20:	00f12423          	sw	x15,8(x2)
+  24:	00900793          	addi	x15,x0,9
+  28:	00f12223          	sw	x15,4(x2)
+  2c:	00c12783          	lw	x15,12(x2)
+  30:	00812683          	lw	x13,8(x2)
+  34:	00412703          	lw	x14,4(x2)
+  38:	00812503          	lw	x10,8(x2)
+  3c:	0005051b          	addiw	x10,x10,0
+  40:	02d787bb          	mulw	x15,x15,x13
+  44:	40e787bb          	subw	x15,x15,x14
+  48:	0015151b          	slliw	x10,x10,0x1
+  4c:	00f5053b          	addw	x10,x10,x15
+  50:	0065051b          	addiw	x10,x10,6
+  54:	01010113          	addi	x2,x2,16
+  58:	00008067          	jalr	x0,0(x1)

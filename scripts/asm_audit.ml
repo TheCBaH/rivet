@@ -1,6 +1,6 @@
-(* Purity and layer audit for asm/ (.ai/asm_plan.md §1, §2.2, §3.7, §5.1).
+(* Purity and layer audit for asm/ (docs/design.md §1, §2.2, §3.7, §5.1).
 
-   Run as `ocaml tools/asm_audit.ml <mode> <describe.sexp> <asm-dir>` by the two
+   Run as `ocaml scripts/asm_audit.ml <mode> <describe.sexp> <asm-dir>` by the two
    wrapper scripts beside it. Deliberately a standalone toplevel script rather
    than part of the asm/ dune tree: an auditor that had to be built by the thing
    it audits could not report on a tree that fails to build, and it would appear
@@ -32,7 +32,9 @@ let parse_sexps (s : string) : sexp list =
   (* Returns the parsed value and the index just past it. Recursive rather than
      stateful so there is no reader position to get out of step. *)
   let rec skip i = if i < n && is_space s.[i] then skip (i + 1) else i in
-  let rec atom i j = if j < n && not (is_delim s.[j]) then atom i (j + 1) else (String.sub s i (j - i), j) in
+  let rec atom i j =
+    if j < n && not (is_delim s.[j]) then atom i (j + 1) else (String.sub s i (j - i), j)
+  in
   let rec quoted i buf =
     if i >= n then (Buffer.contents buf, i)
     else
@@ -85,6 +87,7 @@ let field key = function
   | _ -> None
 
 let atom_of = function Some [ Atom a ] -> Some a | _ -> None
+
 let atoms_of = function
   | Some [ List l ] -> List.filter_map (function Atom a -> Some a | _ -> None) l
   | _ -> []
@@ -181,8 +184,10 @@ let build_context sexps =
 let relative_to_context ~context path =
   if path = context then Some ""
   else
-    let c = if String.length context > 0 && context.[String.length context - 1] = '/' then context
-            else context ^ "/" in
+    let c =
+      if String.length context > 0 && context.[String.length context - 1] = '/' then context
+      else context ^ "/"
+    in
     let lc = String.length c in
     if String.length path > lc && String.sub path 0 lc = c then
       Some (String.sub path lc (String.length path - lc))
@@ -193,7 +198,7 @@ let relative_to_context ~context path =
    The production closure is defined by *where a library lives*, not by an
    enumerated list of roots, so adding a package under lib/ or targets/ puts it
    under audit automatically instead of silently escaping one. melange/ mirrors
-   the same tree (see asm/melange/dune) and is classified identically. *)
+   the same tree (see melange/dune) and is classified identically. *)
 
 let strip_build d =
   let p = "_build/default/" in
@@ -205,7 +210,8 @@ let starts_with pre s =
   String.length s >= String.length pre && String.sub s 0 (String.length pre) = pre
 
 let production_dirs = [ "lib/"; "targets/"; "driver/"; "browser/"; "vendor/" ]
-(* "tools/" is the nested OCaml tool project (tool.md §5). It is additive, not a
+
+(* "tools/" is the nested OCaml tool project (docs/design.md). It is additive, not a
    widening: `under "tool/" "tools/lib"` is false, so the existing entry never
    covered it. One entry classifies BOTH tool libraries, because production_dirs
    is tested first and `under "vendor/" "tools/vendor/err_trace"` is false -
@@ -260,9 +266,7 @@ let rec walk dir f =
     Array.iter
       (fun e ->
         let p = Filename.concat dir e in
-        if e = "_build" || e = ".git" then ()
-        else if Sys.is_directory p then walk p f
-        else f p)
+        if e = "_build" || e = ".git" then () else if Sys.is_directory p then walk p f else f p)
       (Sys.readdir dir)
 
 let read_file p =
@@ -298,19 +302,19 @@ let closure libs roots =
   in
   List.filter_map (Hashtbl.find_opt by_uid) (go [] (List.map (fun l -> l.uid) roots))
 
-(* The in-process execution host (native_exec/, and compcert_embed/ beside
-   it) deliberately ships C stubs. It is outside every default build: each of
-   its stanzas is enabled only by ASM_COMPCERT_EMBED, so none of it can appear
-   in the resolved closure above. That gate is what exempts a dune file here,
-   so a stanza in these directories that dropped it would be audited again.
-   A per-target stanza may narrow the gate further, but only as the first
-   operand of an [and], so the ASM_COMPCERT_EMBED requirement still holds. *)
-let research_dirs = [ "native_exec/"; "compcert_embed/" ]
+(* The in-process execution host (native_exec/) deliberately ships C stubs. It
+   is outside every default build: each of its stanzas is enabled only by
+   RIVET_NATIVE_EXEC, so none of it can appear in the resolved closure above.
+   That gate is what exempts a dune file here, so a stanza in this directory
+   that dropped it would be audited again. A stanza may narrow the gate
+   further, but only as the first operand of an [and], so the
+   RIVET_NATIVE_EXEC requirement still holds. *)
+let research_dirs = [ "native_exec/" ]
 
 let research_gates =
   [
-    "(enabled_if\n  (= %{env:ASM_COMPCERT_EMBED=false} true))";
-    "(enabled_if\n  (and\n   (= %{env:ASM_COMPCERT_EMBED=false} true)";
+    "(enabled_if\n  (= %{env:RIVET_NATIVE_EXEC=false} true))";
+    "(enabled_if\n  (and\n   (= %{env:RIVET_NATIVE_EXEC=false} true)";
   ]
 
 let research_gated asm_dir p s =
@@ -324,15 +328,18 @@ let research_gated asm_dir p s =
     | None -> acc
     | Some j ->
         let acc =
-          if j + String.length needle <= String.length s
-             && String.sub s j (String.length needle) = needle
+          if
+            j + String.length needle <= String.length s
+            && String.sub s j (String.length needle) = needle
           then acc + 1
           else acc
         in
         count_from (j + 1) acc needle
   in
   let stanzas =
-    List.fold_left (fun n k -> n + count_from 0 0 ("(" ^ k ^ "\n")) 0
+    List.fold_left
+      (fun n k -> n + count_from 0 0 ("(" ^ k ^ "\n"))
+      0
       [ "library"; "executable"; "executables"; "test"; "tests"; "rule" ]
   in
   List.exists (fun d -> starts_with d rel) research_dirs
@@ -378,11 +385,15 @@ let audit_purity asm_dir libs =
      tree; external members are checked for installed stub archives. *)
   List.iter
     (fun l ->
-      let dir = if l.local then Filename.concat asm_dir (strip_build l.source_dir) else l.source_dir in
+      let dir =
+        if l.local then Filename.concat asm_dir (strip_build l.source_dir) else l.source_dir
+      in
       if Sys.file_exists dir && Sys.is_directory dir then
         Array.iter
           (fun e ->
-            let bad_ext = List.exists (fun x -> Filename.check_suffix e x) [ ".c"; ".h"; ".o"; ".a" ] in
+            let bad_ext =
+              List.exists (fun x -> Filename.check_suffix e x) [ ".c"; ".h"; ".o"; ".a" ]
+            in
             let bad_so = starts_with "dll" e && Filename.check_suffix e ".so" in
             if bad_ext || bad_so then
               fail "purity: %S ships a foreign object %s (in %s)" l.name e dir)
@@ -399,9 +410,7 @@ let audit_purity asm_dir libs =
       if Filename.basename p = "dune" then
         let s = read_file p in
         if not (research_gated asm_dir p s) then
-          List.iter
-            (fun k -> if contains s k then fail "purity: %s uses %s" p k)
-            forbidden_stanzas)
+          List.iter (fun k -> if contains s k then fail "purity: %s uses %s" p k) forbidden_stanzas)
 
 (* {1 The layer audit} *)
 
@@ -442,7 +451,7 @@ let audit_layers asm_dir libs =
 
 (* {1 The tool dependency manifest}
 
-   asm/tools/dependencies.sexp declares, per opam package, its version floor,
+   tools/dependencies.sexp declares, per opam package, its version floor,
    its scope, and the dune library names it supplies. There is no committed
    .opam file: an *.opam inside asm/ risks dune treating it as a project package,
    which affects @install and package inference in a project whose libraries
@@ -487,7 +496,8 @@ let parse_manifest path =
     else if s.[i] = '"' then bad i "quoted strings are not part of this grammar"
     else
       let rec fin j =
-        if j < n && (not (is_space s.[j])) && s.[j] <> '(' && s.[j] <> ')' && s.[j] <> ';' then fin (j + 1)
+        if j < n && (not (is_space s.[j])) && s.[j] <> '(' && s.[j] <> ')' && s.[j] <> ';' then
+          fin (j + 1)
         else j
       in
       let j = fin i in
@@ -545,7 +555,9 @@ let parse_manifest path =
         if ls = [] then bad i "package %s declares no libraries" pkg;
         if List.exists (fun l -> l = "digestif") ls then
           bad i "bare `digestif` is not a backend; name digestif.c or digestif.ocaml";
-        let i = match token i with Some (`Close, i) -> i | _ -> bad i "unterminated row for %s" pkg in
+        let i =
+          match token i with Some (`Close, i) -> i | _ -> bad i "unterminated row for %s" pkg
+        in
         rows ({ pkg; floor; scope; libs = ls } :: acc) i
   in
   let ds = rows [] 0 in
@@ -553,7 +565,9 @@ let parse_manifest path =
   let names = List.map (fun d -> d.pkg) ds in
   let sorted = List.sort String.compare names in
   let rec dup = function a :: (b :: _ as r) -> if a = b then Some a else dup r | _ -> None in
-  (match dup sorted with Some p -> fail_now "tool-dependencies: duplicate package %s" p | None -> ());
+  (match dup sorted with
+  | Some p -> fail_now "tool-dependencies: duplicate package %s" p
+  | None -> ());
   let all_libs = List.concat_map (fun d -> d.libs) ds in
   (match dup (List.sort String.compare all_libs) with
   | Some l -> fail_now "tool-dependencies: library %s is mapped by two packages" l
@@ -583,11 +597,7 @@ let opam_query args =
   let status = Sys.command cmd in
   let stderr_text = try read_file errf with _ -> "" in
   (try Sys.remove errf with _ -> ());
-  match status with
-  | 0 -> Yes
-  | 1 -> No
-  | 20 -> No_solution
-  | c -> Operational (c, stderr_text)
+  match status with 0 -> Yes | 1 -> No | 20 -> No_solution | c -> Operational (c, stderr_text)
 
 let check_floor d =
   (* Two stages, so "not installed at all" is distinguishable from "installed
@@ -598,7 +608,8 @@ let check_floor d =
       fail "tool-dependencies: opam failed operationally (status %d) checking %s: %s" c d.pkg
         (String.trim e)
   | No_solution ->
-      fail "tool-dependencies: opam reported no solution while checking whether %s is installed" d.pkg
+      fail "tool-dependencies: opam reported no solution while checking whether %s is installed"
+        d.pkg
   | Yes -> (
       match
         opam_query
@@ -619,24 +630,40 @@ let check_floor d =
    unexpected enter the closure", not "is every entry still used". Measured on
    OCaml 4.14.3 from the final stanzas; compiler-supplied unix is excluded. *)
 let tool_transitive_allowlist =
-  [ "astring"; "bos"; "bytesrw"; "cmdliner"; "digestif"; "digestif.ocaml"; "eqaf"; "fmt"; "fpath";
-    "jsont"; "jsont.bytesrw"; "logs"; "mtime"; "mtime.clock"; "mtime.clock.os"; "rresult"; "topkg";
-    "seq"; "stdlib-shims" ]
+  [
+    "astring";
+    "bos";
+    "bytesrw";
+    "cmdliner";
+    "digestif";
+    "digestif.ocaml";
+    "eqaf";
+    "fmt";
+    "fpath";
+    "jsont";
+    "jsont.bytesrw";
+    "logs";
+    "mtime";
+    "mtime.clock";
+    "mtime.clock.os";
+    "rresult";
+    "topkg";
+    "seq";
+    "stdlib-shims";
+  ]
 
 (* {4 The two tool modes} *)
 
 let ocaml_lib_dir () =
   let out = tmp_file "ocamlwhere" in
   let rc = Sys.command (Printf.sprintf "ocamlc -where >%s 2>/dev/null" (Filename.quote out)) in
-  let d = if rc = 0 then (try String.trim (read_file out) with _ -> "") else "" in
+  let d = if rc = 0 then try String.trim (read_file out) with _ -> "" else "" in
   (try Sys.remove out with _ -> ());
   d
 
 let tool_roots ~context libs exes =
   let under_tools p =
-    match relative_to_context ~context p with
-    | Some rel -> starts_with "tools/" rel
-    | None -> false
+    match relative_to_context ~context p with Some rel -> starts_with "tools/" rel | None -> false
   in
   let lib_roots = List.filter (fun l -> l.local && under_tools l.source_dir) libs in
   let exe_roots = List.filter (fun e -> List.exists under_tools e.exe_impls) exes in
@@ -647,8 +674,8 @@ let audit_tool_dependencies asm_dir libs exes context =
   if not (Sys.file_exists manifest) then fail_now "tool-dependencies: %s is missing" manifest;
   let deps = parse_manifest manifest in
   let lib_roots, exe_roots = tool_roots ~context libs exes in
-  if lib_roots = [] then fail_now "tool-dependencies: no tool libraries found - is asm/tools built?";
-  if exe_roots = [] then fail_now "tool-dependencies: no tool executables found - is asm/tools built?";
+  if lib_roots = [] then fail_now "tool-dependencies: no tool libraries found - is tools built?";
+  if exe_roots = [] then fail_now "tool-dependencies: no tool executables found - is tools built?";
   let by_uid = Hashtbl.create 64 in
   List.iter (fun l -> Hashtbl.replace by_uid l.uid l) libs;
   let resolve uid = Hashtbl.find_opt by_uid uid in
@@ -663,9 +690,12 @@ let audit_tool_dependencies asm_dir libs exes context =
   let switch_lib = ocaml_lib_dir () in
   (* unix is recognized as compiler-supplied BY ITS DIRECTORY, not by name: a
      name-only rule would let any external library called unix through. *)
-  let compiler_supplied l = (not l.local) && switch_lib <> "" && starts_with switch_lib l.source_dir in
+  let compiler_supplied l =
+    (not l.local) && switch_lib <> "" && starts_with switch_lib l.source_dir
+  in
   let direct_uids =
-    List.concat_map (fun l -> l.requires) lib_roots @ List.concat_map (fun e -> e.exe_requires) exe_roots
+    List.concat_map (fun l -> l.requires) lib_roots
+    @ List.concat_map (fun e -> e.exe_requires) exe_roots
   in
   let direct =
     List.filter_map resolve direct_uids
@@ -676,7 +706,9 @@ let audit_tool_dependencies asm_dir libs exes context =
   List.iter
     (fun l ->
       if not (List.mem l.name declared_libs) then
-        fail "tool-dependencies: rule 1: tool stanzas use external library %S, which no package in %s declares"
+        fail
+          "tool-dependencies: rule 1: tool stanzas use external library %S, which no package in %s \
+           declares"
           l.name manifest)
     direct;
   (* Rule 2: every declared package supplies at least one direct dependency.
@@ -684,18 +716,27 @@ let audit_tool_dependencies asm_dir libs exes context =
   List.iter
     (fun d ->
       if not (List.exists (fun l -> List.mem l.name d.libs) direct) then
-        fail "tool-dependencies: rule 2: package %s is declared but none of its libraries (%s) is used"
+        fail
+          "tool-dependencies: rule 2: package %s is declared but none of its libraries (%s) is used"
           d.pkg (String.concat " " d.libs))
     deps;
   (* Rule 3: floors, evaluated by opam. *)
   List.iter check_floor deps;
   (* Rule 4: the transitive external closure is contained. *)
-  let members = closure libs (lib_roots @ List.filter_map resolve (List.concat_map (fun e -> e.exe_requires) exe_roots)) in
+  let members =
+    closure libs
+      (lib_roots @ List.filter_map resolve (List.concat_map (fun e -> e.exe_requires) exe_roots))
+  in
   List.iter
     (fun l ->
-      if (not l.local) && (not (compiler_supplied l)) && not (List.mem l.name tool_transitive_allowlist)
+      if
+        (not l.local)
+        && (not (compiler_supplied l))
+        && not (List.mem l.name tool_transitive_allowlist)
       then
-        fail "tool-dependencies: rule 4: unexpected resolved library %S (in %s) is outside the transitive allowlist"
+        fail
+          "tool-dependencies: rule 4: unexpected resolved library %S (in %s) is outside the \
+           transitive allowlist"
           l.name l.source_dir)
     members;
   (* The devcontainer must be able to provide every declared package. *)
@@ -709,7 +750,7 @@ let audit_tool_dependencies asm_dir libs exes context =
       deps
   end
 
-(* The focused boundary: seeded from EXACTLY the compcert_tools executable, not
+(* The focused boundary: seeded from EXACTLY the rivet_tools executable, not
    from every tool root. tools-build builds one executable, so auditing the
    test, fake and integration closures would stop proving that target's actual
    boundary. *)
@@ -721,18 +762,20 @@ let audit_tool_boundary libs exes context =
         List.exists
           (fun p ->
             match relative_to_context ~context p with
-            | Some rel -> rel = "tools/bin/compcert_tools.ml"
+            | Some rel -> rel = "tools/bin/rivet_tools.ml"
             | None -> false)
           e.exe_impls)
       exes
   in
   (match root with
-  | [] -> fail_now "tool-boundary: no executable with implementation tools/bin/compcert_tools.ml"
+  | [] -> fail_now "tool-boundary: no executable with implementation tools/bin/rivet_tools.ml"
   | [ _ ] -> ()
-  | _ -> fail_now "tool-boundary: several executables claim tools/bin/compcert_tools.ml");
+  | _ -> fail_now "tool-boundary: several executables claim tools/bin/rivet_tools.ml");
   let by_uid = Hashtbl.create 64 in
   List.iter (fun l -> Hashtbl.replace by_uid l.uid l) libs;
-  let seeds = List.filter_map (Hashtbl.find_opt by_uid) (List.concat_map (fun e -> e.exe_requires) root) in
+  let seeds =
+    List.filter_map (Hashtbl.find_opt by_uid) (List.concat_map (fun e -> e.exe_requires) root)
+  in
   let members = closure libs seeds in
   let locals = List.filter (fun l -> l.local) members in
   note "focused local closure: %s" (String.concat " " (List.map (fun l -> l.name) locals));
@@ -740,11 +783,13 @@ let audit_tool_boundary libs exes context =
     (fun l ->
       match relative_to_context ~context l.source_dir with
       | None ->
-          fail "tool-boundary: local library %S has source_dir %s outside the build context %s" l.name
-            l.source_dir context
+          fail "tool-boundary: local library %S has source_dir %s outside the build context %s"
+            l.name l.source_dir context
       | Some rel ->
           if not (List.exists (fun p -> starts_with p rel) allowlist) then
-            fail "tool-boundary: the focused build reaches local library %S in %s, outside the allowlist (%s)"
+            fail
+              "tool-boundary: the focused build reaches local library %S in %s, outside the \
+               allowlist (%s)"
               l.name rel (String.concat " " allowlist))
     locals
 

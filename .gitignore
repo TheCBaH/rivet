@@ -1,5 +1,4 @@
 /.asm-helpers/
-/.compcert-lib-work/
 /.corpus-work/
 /.cross-smoke-work/
 /.devcontainer/devcontainer
@@ -8,11 +7,6 @@
 /.playwright-browsers/
 /.tool-gate/
 /ai
-/asm/_build/
-/asm/test/browser/_work/
-/asm/test/browser/node_modules/
-/compcert-export-*.tar.gz
-/compcert-export.tar.gz
-/compcert-export/
-/compcert-extraction-*.tar.gz
-/compcert-lib-*-embed/
+/_build/
+/test/browser/_work/
+/test/browser/node_modules/

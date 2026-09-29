@@ -1,6 +1,6 @@
 (** The table-driven RISC-V forms (DEC-RV-TABLE): which captured
     riscv-opcodes records become rows of the assembler's generated
-    [asm/targets/riscv_family/riscv_table_rows.ml], and the reviewed rule that
+    [targets/riscv_family/riscv_table_rows.ml], and the reviewed rule that
     gives each of their fields an operand domain.
 
     One rule serves three consumers, so they cannot disagree: the emitter
@@ -75,7 +75,7 @@ val march : Target.t -> spec -> string list
     [["-march=rv64im_zimop"; "-mabi=lp64"; "-mno-relax"]]. *)
 
 val rows_path : Repo.t -> Fpath.t
-(** [asm/targets/riscv_family/riscv_table_rows.ml]. *)
+(** [targets/riscv_family/riscv_table_rows.ml]. *)
 
 val emit : Repo.t -> (string, Tool_error.t) Err.t
 (** The generated OCaml source for {!rows_path}, from both committed

@@ -1,0 +1,7 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_test_callee>:
+   0:	e1a00080 	lsl	r0, r0, #1
+   4:	e12fff1e 	bx	lr

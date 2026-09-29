@@ -2,7 +2,7 @@
    catch-all blocker against a measured known set. The real exports are exercised through the
    family-admission report by the repository test. *)
 
-open Compcert_tools
+open Rivet_tools
 module R = Isa_source_record
 
 let failures = ref 0

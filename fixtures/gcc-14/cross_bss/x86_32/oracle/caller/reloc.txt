@@ -1,0 +1,2 @@
+.text	0x00000001	rel	R_386_32	shared_value	-
+.text	0x00000009	rel	R_386_32	shared_value	-

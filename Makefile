@@ -1,905 +1,441 @@
-COMPCERT_DIR := modules/CompCert
-COMPCERT_JOBS := $(shell nproc)
-COMPCERT_EXTRACTION_ARCHIVE := compcert-extraction.tar.gz
-COMPCERT_LIB_DIR := compcert-lib
-COMPCERT_EXPORT_ARCHIVE := compcert-export.tar.gz
-COMPCERT_EXPORT_DIR := compcert-export
-ASM_DIR := asm
-
-default: compcert
-
-# PLATFORM (linux/amd64, linux/i386, linux/arm/v7, ...) is the devcontainer
-# action's generic Docker-platform env var, forwarded into the container via
-# `devcontainer exec --remote-env`; when set it's preferred over `uname -m`,
-# which isn't reliable here: on a 32-bit container running on a 64-bit host
-# (e.g. linux/i386 on an amd64 host, linux/arm/v7 on an arm64 host) it
-# reports the *host's* 64-bit machine type, not the container's, since
-# nothing switches the process's kernel personality just because the
-# image/binaries are 32-bit. This has to stay a shell expression run from
-# the recipe (as opposed to a $(shell ...)-computed make variable): the case
-# statement's bare `pattern)` labels contain unbalanced parentheses, which
-# confuses make's own paren matching when used inside $(shell ...).
-# COMPCERT_TARGET overrides the PLATFORM/uname autodetection below with an
-# explicit target - used by compcert-export-archive-all. Read as a plain
-# shell env var (command-line make vars are auto-exported), not a make
-# $(if ...): wrapping the case statement in a make function hits the same
-# paren-matching confusion as the $(shell ...) gotcha above.
-compcert-configure:
-	cd $(COMPCERT_DIR) && opam exec -- ./configure $$( \
-	  if [ -n "$${COMPCERT_TARGET:-}" ]; then echo "$$COMPCERT_TARGET"; else \
-	  case "$$PLATFORM" in \
-	  linux/aarch64|linux/arm64) echo aarch64-linux ;; \
-	  linux/amd64|linux/x86_64) echo x86_64-linux ;; \
-	  linux/i386|linux/386) echo x86_32-linux ;; \
-	  linux/arm/v7*|linux/arm/v6*|linux/arm) echo arm-linux ;; \
-	  *) m=$$(uname -m); case "$$m" in \
-	       aarch64|arm64) echo aarch64-linux ;; \
-	       x86_64|amd64) echo x86_64-linux ;; \
-	       i686|i386) echo x86_32-linux ;; \
-	       armv7l|armv6l|arm) echo arm-linux ;; \
-	       *) echo x86_64-linux ;; \
-	     esac ;; \
-	  esac; fi)
-
-compcert-build:
-	cd $(COMPCERT_DIR) && opam exec -- $(MAKE) -j$(COMPCERT_JOBS) all
-
-compcert-check-proof:
-	cd $(COMPCERT_DIR) && opam exec -- $(MAKE) check-proof
-
-compcert-test:
-	cd $(COMPCERT_DIR)/test && opam exec -- $(MAKE) all
-	cd $(COMPCERT_DIR)/test && opam exec -- $(MAKE) test
-
-compcert: compcert-configure compcert-build
-
-# Split build: run the Rocq-dependent proof + extraction once, archive the
-# resulting sources, then let compcert-build-from-archive compile/link
-# ccomp from that archive alone, without touching Rocq again (the CI
-# workflow proves this by uninstalling rocq-prover before this runs).
-# Makefile.config is included because CompCert's own ./configure refuses
-# to run without Rocq present, even though its content (compiler paths,
-# target arch, ...) has nothing to do with Rocq.
-# `depend` has to run before `extraction`: CompCert's source lists (VLIB,
-# COMMON, ...) name files without their subdirectory, and it's only the
-# generated .depend file that tells make the .vo targets live under lib/,
-# common/, etc. Without it, coqc gets invoked on bare filenames and fails to
-# find them. CompCert's own `all`/`light` targets get this for free (they
-# run `depend` before `proof`/`extraction`); calling `extraction` directly
-# skips that, so it's done explicitly here.
-compcert-extraction-archive: compcert-configure
-	cd $(COMPCERT_DIR) && opam exec -- $(MAKE) -j$(COMPCERT_JOBS) depend
-	cd $(COMPCERT_DIR) && opam exec -- $(MAKE) -j$(COMPCERT_JOBS) extraction
-	cd $(COMPCERT_DIR) && tar -czf ../../$(COMPCERT_EXTRACTION_ARCHIVE) \
-	  Makefile.config extraction/*.ml extraction/*.mli
-
-compcert-extraction-unarchive:
-	tar -xzf $(COMPCERT_EXTRACTION_ARCHIVE) -C $(COMPCERT_DIR)
-
-# Everything ccomp's OCaml side needs to compile, besides the extraction
-# archive itself: the runtime config (compcert.ini/driver/Version.ml, both
-# cheap shell substitutions - no Rocq), tools/modorder, and the
-# Menhir/ocamllex-generated parser files, pulled in as a side effect of
-# computing .depend.extr.
-# tools/modorder (plain OCaml, no Rocq) is what turns .depend.extr into
-# ccomp's link order; Makefile.extr computes CCOMP_OBJS from it with
-# $(shell ...), so when it is missing the object list comes out *empty* and
-# `make -f Makefile.extr ccomp` cheerfully links an executable with no
-# modules in it - which then exits 0 on any argument, so even a -version
-# smoke test can't tell. CompCert's own `all` builds it via .depend.extr's
-# prerequisites; the split build calls Makefile.extr directly and has to ask
-# for it explicitly.
-compcert-prepare-sources: compcert-extraction-unarchive
-	cd $(COMPCERT_DIR) && opam exec -- $(MAKE) compcert.ini driver/Version.ml tools/modorder
-	cd $(COMPCERT_DIR) && opam exec -- $(MAKE) -f Makefile.extr depend
-
-compcert-build-from-archive: compcert-prepare-sources
-	cd $(COMPCERT_DIR) && opam exec -- $(MAKE) -f Makefile.extr ccomp
-
-# Alternative to compcert-build-from-archive: instead of compiling/linking
-# ccomp with CompCert's own hand-rolled ocamlc/ocamlopt+modorder Makefile,
-# copy the same hand-written + generated sources out into compcert-lib/ (a
-# standalone dune project, see compcert-lib/src/dune) and let dune resolve
-# module dependencies and link a library + our own bin/main.ml, so CompCert
-# can be depended on like an ordinary OCaml library. driver/Driver.ml is
-# excluded from the library and copied to bin/main.ml instead, since it's
-# ccomp's CLI entry point, not library code (see it for the ~3-call
-# sequence - Frontend.parse_c_file / Compiler.transf_c_program / print -
-# a from-scratch main.ml would drive the library the same way).
-# The module set comes from tools/modorder, i.e. exactly what CompCert links
-# into ccomp, rather than everything found in the source directories: those
-# also hold sources ccomp's own build never compiles (clightgen's export/*,
-# cparser/GCC.ml, backend/Json*.ml, ...), and dune compiles every module in
-# the directory, so some of them simply don't build (cparser/GCC.mli still
-# refers to a long-gone Builtins.t). modorder emits .cmx paths in link
-# order; the matching .ml (plus its .mli, when there is one) is what gets
-# copied, minus driver/Driver.ml, which becomes bin/main.ml.
-compcert-lib-sync: compcert-prepare-sources
-	rm -f $(COMPCERT_LIB_DIR)/src/*.ml $(COMPCERT_LIB_DIR)/src/*.mli
-	mkdir -p $(COMPCERT_LIB_DIR)/src $(COMPCERT_LIB_DIR)/bin
-	cd $(COMPCERT_DIR) && objs=$$(tools/modorder .depend.extr driver/Driver.cmx) && \
-	if [ -z "$$objs" ]; then echo "modorder listed no modules" >&2; exit 1; fi; \
-	for o in $$objs; do \
-	  src=$${o%.cmx}.ml; \
-	  if [ "$$src" != driver/Driver.ml ]; then \
-	    cp "$$src" $(CURDIR)/$(COMPCERT_LIB_DIR)/src/; \
-	    if [ -f "$${src}i" ]; then cp "$${src}i" $(CURDIR)/$(COMPCERT_LIB_DIR)/src/; fi; \
-	  fi; \
-	done
-	# Interface-only modules (cparser/C.mli, debug/D*Types.mli) have no .cmx,
-	# so modorder never names them, but the modules above won't compile
-	# without them - see also src/dune's modules_without_implementation.
-	arch=$$(grep '^ARCH=' $(COMPCERT_DIR)/Makefile.config | cut -d= -f2); \
-	for d in extraction lib common $$arch backend cfrontend cparser debug driver; do \
-	  for f in $(COMPCERT_DIR)/$$d/*.mli; do \
-	    [ -e "$$f" ] || continue; \
-	    [ -e "$${f%.mli}.ml" ] || cp $$f $(COMPCERT_LIB_DIR)/src/; \
-	  done; \
-	done
-	cp $(COMPCERT_DIR)/driver/Driver.ml $(COMPCERT_LIB_DIR)/bin/main.ml
-
-compcert-lib-build: compcert-lib-sync
-	cd $(COMPCERT_LIB_DIR) && opam exec -- dune build
-
-# ccomp looks for compcert.ini next to its own executable (or via
-# COMPCERT_CONFIG/-conf), which compcert-lib/_build isn't, so point it at
-# the one compcert-prepare-sources generated in $(COMPCERT_DIR) instead of
-# copying it into the dune tree.
-compcert-lib-run: compcert-lib-build
-	cd $(COMPCERT_LIB_DIR) && COMPCERT_CONFIG=$(CURDIR)/$(COMPCERT_DIR)/compcert.ini \
-	  opam exec -- dune exec bin/main.exe -- $(ARGS)
-
-# Redistributable package for consumers who just want to `dune build`
-# CompCert as a library, without cloning this repo or touching Rocq: the
-# same dune-project/src/bin tree compcert-lib-sync populates, plus
-# CompCert's own LICENSE (this project's top-level LICENSE only covers the
-# devcontainer/build tooling, not the CompCert sources being redistributed).
-# Staged into a throwaway directory first since `tar --append` doesn't work
-# on an already-gzipped archive.
-compcert-export-archive: compcert-lib-sync
-	rm -rf $(COMPCERT_EXPORT_DIR)
-	mkdir -p $(COMPCERT_EXPORT_DIR)
-	cp $(COMPCERT_LIB_DIR)/dune-project $(COMPCERT_EXPORT_DIR)/
-	cp -r $(COMPCERT_LIB_DIR)/src $(COMPCERT_EXPORT_DIR)/src
-	cp -r $(COMPCERT_LIB_DIR)/bin $(COMPCERT_EXPORT_DIR)/bin
-	rm -f $(COMPCERT_EXPORT_DIR)/src/.gitignore $(COMPCERT_EXPORT_DIR)/bin/.gitignore
-	cp $(COMPCERT_DIR)/LICENSE $(COMPCERT_EXPORT_DIR)/LICENSE
-	tar -czf $(COMPCERT_EXPORT_ARCHIVE) -C $(COMPCERT_EXPORT_DIR) .
-	rm -rf $(COMPCERT_EXPORT_DIR)
-
-compcert-export-unarchive:
-	rm -rf $(COMPCERT_EXPORT_DIR)
-	mkdir -p $(COMPCERT_EXPORT_DIR)
-	tar -xzf $(COMPCERT_EXPORT_ARCHIVE) -C $(COMPCERT_EXPORT_DIR)
-
-# Test fixture for the exported package: builds straight from the unpacked
-# archive's own dune-project/src/bin, instead of compcert-lib's live-synced
-# tree, so CI proves the exact dune file being published is buildable.
-compcert-export-build: compcert-export-unarchive
-	cd $(COMPCERT_EXPORT_DIR) && opam exec -- dune build
-
-compcert-export-run: compcert-export-build
-	cd $(COMPCERT_EXPORT_DIR) && COMPCERT_CONFIG=$(CURDIR)/$(COMPCERT_DIR)/compcert.ini \
-	  opam exec -- dune exec bin/main.exe -- $(ARGS)
-
-# The retargetable assembler (asm/), a standalone dune project independent of
-# the CompCert build above: it has its own dune-project, so `dune` run from
-# asm/ never descends into compcert-lib/ and none of these targets need Rocq,
-# a cross toolchain, or QEMU. See .ai/asm_plan.md.
+# The retargetable assembler: a dune project at the repository root, plus the
+# tools/ project that generates and checks its fixtures. See docs/design.md.
 #
-# asm-fmt rewrites sources in place; asm-fmt-check is the CI form, which fails
-# with a diff instead. Both go through dune's @fmt alias, so the vendored
-# sources under asm/vendor (marked (vendored_dirs) in asm/dune) are skipped and
-# stay byte-identical to upstream.
+# `asm-*` spellings of every goal below are kept as aliases for one release.
+
+default: build
+
+# fmt rewrites sources in place; fmt-check is the CI form, which fails with a
+# diff instead. Both go through dune's @fmt alias, so the vendored sources under
+# vendor/ (marked (vendored_dirs) in dune) are skipped and stay byte-identical
+# to upstream.
 #
-# Both depend on asm-fmt-ocamlformat rather than trusting whatever ocamlformat
-# a devcontainer image happens to ship. Previously the only thing enforcing
-# asm/.ocamlformat's `version = 0.28.1` pin was ocamlformat's own refusal to
-# run against a mismatched binary - a check that only fires if dune build @fmt
-# actually gets invoked with the wrong version already on PATH, and gives no
-# way to self-heal. Installing the pinned version explicitly, here, on every
-# run, makes asm-fmt/-check work the same way on any machine regardless of
-# what the image happened to ship.
-ASM_OCAMLFORMAT_VERSION := $(shell awk -F' *= *' '/^version/{print $$2}' $(ASM_DIR)/.ocamlformat)
+# Both depend on fmt-ocamlformat rather than trusting whatever ocamlformat a
+# devcontainer image happens to ship. The pin in .ocamlformat is otherwise only
+# enforced by ocamlformat's own refusal to run against a mismatched binary - a
+# check that gives no way to self-heal. Installing the pinned version
+# explicitly, here, on every run, makes fmt/fmt-check work the same way on any
+# machine regardless of what the image happened to ship.
+OCAMLFORMAT_VERSION := $(shell awk -F' *= *' '/^version/{print $$2}' .ocamlformat)
 
-asm-fmt-ocamlformat:
-	opam install -y ocamlformat.$(ASM_OCAMLFORMAT_VERSION)
+fmt-ocamlformat:
+	opam install -y ocamlformat.$(OCAMLFORMAT_VERSION)
 
-# err_trace and Fmt are both vendored as submodules (asm/vendor/err_trace/upstream,
-# asm/vendor/fmt/upstream) and their sources are copy_files'd into the build by
-# the enclosing directory's dune, so an uninitialized submodule is a build
-# failure - and an unhelpful one, since dune reports it as a missing rule for a
-# path rather than as a missing checkout. Checked here rather than in asm-ci so
-# that a bare `make asm-build` gets the same answer.
-asm-submodules:
-	@test -f $(ASM_DIR)/vendor/err_trace/upstream/src/err.ml || { \
-	  echo "$(ASM_DIR)/vendor/err_trace/upstream is not checked out; run:" >&2; \
-	  echo "  git submodule update --init $(ASM_DIR)/vendor/err_trace/upstream" >&2; \
+# err_trace and Fmt are both vendored as submodules (vendor/err_trace/upstream,
+# vendor/fmt/upstream) and their sources are copy_files'd into the build by the
+# enclosing directory's dune, so an uninitialized submodule is a build failure -
+# and an unhelpful one, since dune reports it as a missing rule for a path
+# rather than as a missing checkout. Checked here rather than in ci so that a
+# bare `make build` gets the same answer.
+submodules:
+	@test -f vendor/err_trace/upstream/src/err.ml || { \
+	  echo "vendor/err_trace/upstream is not checked out; run:" >&2; \
+	  echo "  git submodule update --init vendor/err_trace/upstream" >&2; \
 	  exit 1; }
-	@test -f $(ASM_DIR)/vendor/fmt/upstream/src/fmt.ml || { \
-	  echo "$(ASM_DIR)/vendor/fmt/upstream is not checked out; run:" >&2; \
-	  echo "  git submodule update --init $(ASM_DIR)/vendor/fmt/upstream" >&2; \
+	@test -f vendor/fmt/upstream/src/fmt.ml || { \
+	  echo "vendor/fmt/upstream is not checked out; run:" >&2; \
+	  echo "  git submodule update --init vendor/fmt/upstream" >&2; \
 	  exit 1; }
 
-asm-build: asm-submodules
-	cd $(ASM_DIR) && opam exec -- dune build @all
+build: submodules
+	opam exec -- dune build @all
 
-asm-test: asm-build asm-fixtures-check asm-gas-xref-check asm-isa-generated-check asm-isa-difficult-check
-	cd $(ASM_DIR) && opam exec -- dune build @runtest
+test: build fixtures-check gas-xref-check isa-generated-check isa-difficult-check
+	opam exec -- dune build @runtest
 
-asm-fmt: asm-fmt-ocamlformat
-	cd $(ASM_DIR) && opam exec -- dune build @fmt --auto-promote
+fmt: fmt-ocamlformat
+	opam exec -- dune build @fmt --auto-promote
 
-asm-fmt-check: asm-fmt-ocamlformat
-	cd $(ASM_DIR) && opam exec -- dune build @fmt
+fmt-check: fmt-ocamlformat
+	opam exec -- dune build @fmt
 
 # The Melange configuration. Declaring melange mode on a library schedules melc
 # in @all whether or not anything emits JavaScript, so it is gated on
-# ASM_MELANGE and the two configurations are built separately (asm/melange/dune
+# RIVET_MELANGE and the two configurations are built separately (melange/dune
 # explains why dune leaves no better option). This target needs Melange
-# installed and therefore an OCaml 4.14 switch; it is not part of asm-ci.
-asm-melange:
-	cd $(ASM_DIR) && ASM_MELANGE=true opam exec -- dune build @all
+# installed and therefore an OCaml 4.14 switch; it is not part of ci.
+melange:
+	RIVET_MELANGE=true opam exec -- dune build @all
 
-# Byte-identical output from native OCaml, js_of_ocaml/Node, and Melange/Node
-# (.ai/asm_plan.md §11.6). All three run the *same* committed cram baseline,
-# asm/test/cram/bigint_dump.t, with ASM_BACKEND choosing which artifact produces
-# it - so equality is the cram diff itself rather than a comparison between two
-# uncommitted outputs. Separate dune invocations because ASM_MELANGE changes
-# which library stanzas are enabled.
-asm-js: asm-build asm-js-portable
-	cd $(ASM_DIR) && ASM_BACKEND=melange ASM_MELANGE=true opam exec -- dune build @runtest
+# Byte-identical output from native OCaml, js_of_ocaml/Node, and Melange/Node.
+# All three run the *same* committed cram baseline, test/cram/bigint_dump.t,
+# with RIVET_BACKEND choosing which artifact produces it - so equality is the
+# cram diff itself rather than a comparison between two uncommitted outputs.
+# Separate dune invocations because RIVET_MELANGE changes which library stanzas
+# are enabled.
+js: build js-portable
+	RIVET_BACKEND=melange RIVET_MELANGE=true opam exec -- dune build @runtest
 
 # The two legs that need no Melange, split out so the portable CI matrix can run
-# them on every image. Melange 7.0.1-414 requires `ocaml >= 4.14 & < 4.15`, so
-# the third leg cannot run on the OCaml 5.x images the matrix also builds - but
+# them on every image. Melange requires `ocaml >= 4.14 & < 4.15`, so the third
+# leg cannot run on the OCaml 5.x images the matrix also builds - but
 # js_of_ocaml can, and leaving it out of the matrix entirely would mean the only
 # evidence that the closure compiles to JavaScript came from one pinned leg.
-asm-js-portable: asm-build
-	cd $(ASM_DIR) && ASM_BACKEND=native opam exec -- dune build @runtest
-	cd $(ASM_DIR) && ASM_BACKEND=jsoo opam exec -- dune build @runtest
+js-portable: build
+	RIVET_BACKEND=native opam exec -- dune build @runtest
+	RIVET_BACKEND=jsoo opam exec -- dune build @runtest
 
-# The real-browser smoke harness (.ai/asm_plan.md M5, the deferred
-# browser-harness item). A separate target, not a fourth ASM_BACKEND cram leg:
-# the cram ASM_BACKEND mechanism is built around one synchronous process's
-# stdout diffed against a committed transcript, while a real browser run is an
-# async multi-step lifecycle with a genuine heavy external dependency
-# (Chromium) the other cram files have no reason to acquire. Not reachable
-# from asm-ci or the broad platform matrix, matching the asm-melange/
-# asm-compcert-adapter-test precedent for extra-environment-cost legs.
+# The real-browser smoke harness. A separate target, not a fourth RIVET_BACKEND
+# cram leg: the cram mechanism is built around one synchronous process's stdout
+# diffed against a committed transcript, while a real browser run is an async
+# multi-step lifecycle with a genuine heavy external dependency (Chromium).
+# Not reachable from ci.
 #
-# asm-js is a prerequisite (proving three-build equality first is a cheap gate
-# before spending Chromium-launch time), but asm-melange deliberately is not:
-# the wrapper script already runs the one ASM_MELANGE=true dune build it
-# needs, and a second, overlapping @all build under a different environment
-# configuration in the same asm/_build tree would only contend with asm-js's
-# own builds under `make -j` for no added coverage.
-asm-js-browser: asm-js
-	tools/asm-browser-harness.sh
+# js is a prerequisite (proving three-build equality first is a cheap gate
+# before spending Chromium-launch time), but melange deliberately is not: the
+# wrapper script already runs the one RIVET_MELANGE=true dune build it needs.
+js-browser: js
+	scripts/asm-browser-harness.sh
 
-# The behavioral tool gate (§3.2, an M0 exit criterion). APT tooling is
-# range-checked rather than digest-pinned, and version numbers alone do not
-# establish compatibility where behaviour matters - so this asks the tools to do
-# the things the project depends on and records what answered. It needs the
-# cross toolchains, all six qemu-user binaries, qemu-system and gdb, but no
-# CompCert and no part of the assembler: it establishes E2 tool compatibility
-# only, and asm-abi-conform remains the distinct E4 transport proof.
-asm-tool-gate: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) tool-gate all
+# The in-process execution host: maps a laid-out image, binds it and calls its
+# entry. It ships C stubs, so it is gated by RIVET_NATIVE_EXEC and outside every
+# default build, and it runs code natively, so it is only meaningful on a host
+# of the target's own ISA. Not part of ci.
+native-exec: submodules
+	RIVET_NATIVE_EXEC=true opam exec -- dune build @native_exec/all @native_exec/runtest
 
-# The Melange opt-in, verified rather than asserted (§3.2). Checks both clean
+# The behavioral tool gate. APT tooling is range-checked rather than
+# digest-pinned, and version numbers alone do not establish compatibility where
+# behaviour matters - so this asks the tools to do the things the project
+# depends on and records what answered. It needs the cross toolchains, all six
+# qemu-user binaries, qemu-system and gdb, but no part of the assembler.
+tool-gate: tools-build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) tool-gate all
+
+# The Melange opt-in, verified rather than asserted. Checks both clean
 # configurations: zero melc rules and a successful build with Melange
-# unavailable, and the rules reappearing under ASM_MELANGE=true. Needs nothing
+# unavailable, and the rules reappearing under RIVET_MELANGE=true. Needs nothing
 # beyond dune, so it runs on every leg.
-asm-melange-optin:
-	tools/asm-melange-optin.sh
+melange-optin:
+	scripts/asm-melange-optin.sh
 
-# The M1 fixtures. §12 has a two-mode policy and the dependency edges here are
-# what enforce it: asm-fixtures-check needs NO cross toolchain, so every
-# ordinary test run and every portable CI leg consumes the checked-in bytes.
-# Only asm-fixtures-regen sits downstream of asm-cross-setup, which builds all
-# six CompCert installations and is far too expensive to put on the path of
-# `make asm-test`.
-# Repointed at the native executable (tool.md §11 Phase 2). The SCRIPT is
-# unchanged and remains the public shell implementation until Phase 3's
-# cutover; only this Make edge moves.
+# {1 Fixtures}
 #
-# This target now needs a dune build where it previously needed nothing but
-# bash and coreutils - divergence D2, and it lands on every platform leg
-# including the emulated linux/i386 and linux/arm/v7. It is not one of gate 6's
-# four forbidden dependencies, but it is real, and it is why tools-build is
-# TARGETED: `dune build @all` here would put an entire assembler build behind a
-# toolchain-free check.
-asm-fixtures-check: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture check
+# Two modes. fixtures-check needs NO cross toolchain, so every ordinary test run
+# and every portable CI leg consumes the checked-in bytes. Regenerating them
+# needs the six cross gcc/binutils toolchains and QEMU, and stays off that path.
+#
+# fixtures/c holds each case's C source and expected status; fixtures/gcc-14
+# holds what the cross gcc generated from it, with the GNU oracle artifacts.
+#
+# tools-build is TARGETED: `dune build @all` here would put an entire assembler
+# build behind a toolchain-free check.
+fixtures-check: tools-build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) fixture check
 
-# The fixture profiles come from tools/target-matrix.sh rather than a copy of
+# The fixture profiles come from scripts/target-matrix.sh rather than a copy of
 # the list here. $(shell) does not fail the build when its command fails, so
 # both the status and the cardinality are asserted: an empty or short set would
 # otherwise make the aggregate goal below run zero targets and report success.
-FIXTURE_TARGETS := $(shell tools/target-matrix.sh fixture)
+FIXTURE_TARGETS := $(shell scripts/target-matrix.sh fixture)
 ifneq ($(.SHELLSTATUS),0)
-$(error tools/target-matrix.sh fixture failed)
+$(error scripts/target-matrix.sh fixture failed)
 endif
 ifneq ($(words $(FIXTURE_TARGETS)),6)
 $(error expected 6 fixture targets, got '$(FIXTURE_TARGETS)')
 endif
 
-FIXTURE_SETUP_GOALS  := $(addprefix asm-fixture-setup-,$(FIXTURE_TARGETS))
-FIXTURE_VERIFY_GOALS := $(addprefix asm-fixtures-verify-,$(FIXTURE_TARGETS))
-FIXTURE_EXEC_GOALS   := $(addprefix asm-fixture-exec-,$(FIXTURE_TARGETS))
-FIXTURE_ORACLE_GOALS := $(addprefix asm-fixture-oracle-,$(FIXTURE_TARGETS))
-
-# Per-target compcert-lib: unlike compcert-lib-sync (which only ever reflects
-# whichever ARCH is currently configured in modules/CompCert/Makefile.config),
-# these sync any of the six targets into its own compcert-lib-<target>/src,
-# built as dune library compcert_<target> - so more than one target's
-# Asm.program can coexist for a future adapter to depend on. See
-# tools/compcert-lib-sync-target.sh. Never touches a cross toolchain
-# (extraction is pure Rocq+OCaml+Menhir), unlike the fixture goals below.
-COMPCERT_LIB_SYNC_GOALS  := $(addprefix compcert-lib-sync-,$(FIXTURE_TARGETS))
-COMPCERT_LIB_BUILD_GOALS := $(addprefix compcert-lib-build-,$(FIXTURE_TARGETS))
-
-.PHONY: $(COMPCERT_LIB_SYNC_GOALS)
-$(COMPCERT_LIB_SYNC_GOALS): compcert-lib-sync-%:
-	tools/compcert-lib-sync-target.sh $*
-
-.PHONY: $(COMPCERT_LIB_BUILD_GOALS)
-$(COMPCERT_LIB_BUILD_GOALS): compcert-lib-build-%: compcert-lib-sync-%
-	cd compcert-lib-$* && opam exec -- dune build
-
-# Proves the CompCert Asm.program adapter (asm/compcert_adapter/) against
-# test_coherence.ml's own assertions, for aarch64's return42 fixture. Not a
-# prerequisite of asm-test/asm-ci - needs Rocq (via
-# compcert-lib-build-aarch64) - gated by ASM_COMPCERT_ADAPTER exactly like
-# asm-melange-test is gated by ASM_MELANGE. Needs asm-submodules for the same
-# reason asm-build/asm-test do: foundation depends on the vendor/err_trace and
-# vendor/fmt submodules, and an uninitialized checkout should fail with that
-# target's actionable message rather than a dune missing-rule error.
-asm-compcert-adapter-test: asm-submodules compcert-lib-build-aarch64
-	cd compcert-lib-aarch64 && opam exec -- dune build @install
-	cd $(ASM_DIR) && \
-	  OCAMLPATH=$(CURDIR)/compcert-lib-aarch64/_build/install/default/lib:$$OCAMLPATH \
-	  COMPCERT_CONFIG=$(CURDIR)/.compcert-lib-work/build/aarch64/compcert.ini \
-	  ASM_COMPCERT_ADAPTER=true opam exec -- dune build @runtest
-
-# The embed variant of each target's CompCert library: the pristine
-# compcert-lib-<target> sources plus the strict patch and injected modules in
-# tools/compcert-embed/, synced into compcert-lib-<target>-embed/ (package
-# compcert_<target>_embed). compcert-lib-<target> itself is never modified.
-# See tools/compcert-embed-sync.sh.
-EMBED_BUILD_GOALS     := $(addprefix compcert-lib-embed-build-,$(FIXTURE_TARGETS))
-EMBED_TEST_GOALS      := $(addprefix asm-compcert-embed-test-,$(FIXTURE_TARGETS))
-EMBED_TEST_ONLY_GOALS := $(addprefix asm-compcert-embed-test-only-,$(FIXTURE_TARGETS))
-
-.PHONY: $(EMBED_BUILD_GOALS)
-$(EMBED_BUILD_GOALS): compcert-lib-embed-build-%: compcert-lib-sync-%
-	tools/compcert-embed-sync.sh $*
-	cd compcert-lib-$*-embed && opam exec -- dune build @install
-
-# The environment that enables asm/compcert_embed for one target: its
-# variant on OCAMLPATH, the shared gate, and that target's own gate.
-# COMPCERT_CONFIG is unset on purpose: the variant must not need a
-# compcert.ini.
-embed_env = env -u COMPCERT_CONFIG \
-  OCAMLPATH=$(CURDIR)/compcert-lib-$(1)-embed/_build/install/default/lib:$$OCAMLPATH \
-  ASM_COMPCERT_EMBED=true ASM_COMPCERT_EMBED_$(shell echo $(1) | tr a-z A-Z)=true
-
-# What asm-compcert-embed-test-<target> builds and runs: the target's
-# library and its Tier A report (C -> assembly -> image against the
-# committed fixtures), on any host. When the target is the host's own ISA it
-# also runs native_exec's hand-written tests, and on an aarch64 host the
-# aarch64 suite that runs CompCert's output natively.
-EMBED_HOST_ISA := $(shell uname -m | sed -e 's/^amd64$$/x86_64/' -e 's/^arm64$$/aarch64/')
-embed_suites = @compcert_embed/targets/$(1)/all @compcert_embed/targets/$(1)/runtest \
-  $(if $(filter $(EMBED_HOST_ISA),$(1)),@native_exec/runtest \
-    $(if $(filter aarch64,$(1)),@compcert_embed/test/runtest))
-
-# In-process compile + assemble (+ native execution where the host runs the
-# target's ISA): asm/compcert_embed/, asm/native_exec/. Gated by
-# ASM_COMPCERT_EMBED like asm-compcert-adapter-test is by
-# ASM_COMPCERT_ADAPTER, and for the same reason: it needs Rocq.
-.PHONY: $(EMBED_TEST_GOALS) $(EMBED_TEST_ONLY_GOALS)
-$(EMBED_TEST_GOALS): asm-compcert-embed-test-%: asm-submodules compcert-lib-embed-build-%
-	$(MAKE) asm-compcert-embed-test-only-$*
-
-# The same, without re-running the (slow, Rocq-based) sync.
-$(EMBED_TEST_ONLY_GOALS): asm-compcert-embed-test-only-%:
-	cd $(ASM_DIR) && $(call embed_env,$*) opam exec -- dune build $(call embed_suites,$*)
-
-# The aarch64 names, kept from before the targets were split out.
-.PHONY: asm-compcert-embed-test asm-compcert-embed-test-only
-asm-compcert-embed-test: asm-compcert-embed-test-aarch64
-asm-compcert-embed-test-only: asm-compcert-embed-test-only-aarch64
-
-EMBED_ENV = $(call embed_env,aarch64)
-
-# The embedded corpus under each target's QEMU (the exec-ABI helper), and
-# natively as well where the host runs that target's ISA; every result must
-# equal the program's recorded expectation. Needs the helpers and QEMU, like
-# the other oracle legs, so it is not part of asm-compcert-embed-test.
-EMBED_QEMU_GOALS := $(addprefix asm-compcert-embed-qemu-,$(FIXTURE_TARGETS))
-.PHONY: $(EMBED_QEMU_GOALS) asm-compcert-embed-qemu asm-compcert-embed-soak \
-  asm-compcert-embed-corpus-check
-$(EMBED_QEMU_GOALS): asm-compcert-embed-qemu-%: asm-helpers
-	cd $(ASM_DIR) && $(call embed_env,$*) opam exec -- \
-	  dune build compcert_embed/targets/$*/test/qemu_diff.exe
-	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers \
-	  ./_build/default/compcert_embed/targets/$*/test/qemu_diff.exe compcert_embed/test/corpus
-asm-compcert-embed-qemu: asm-compcert-embed-qemu-aarch64
-
-# Compile-only soak for one target: SOAK_CYCLES compile+assemble cycles over
-# the corpus in one process, each checked against its first compile, with
-# heap and atom-table growth reported. Too slow for a test rule.
-EMBED_SOAK_GOALS := $(addprefix asm-compcert-embed-soak-,$(FIXTURE_TARGETS))
-.PHONY: $(EMBED_SOAK_GOALS)
-$(EMBED_SOAK_GOALS): asm-compcert-embed-soak-%:
-	cd $(ASM_DIR) && $(call embed_env,$*) opam exec -- \
-	  dune build compcert_embed/targets/$*/test/tier_a_test.exe
-	cd $(ASM_DIR) && ./_build/default/compcert_embed/targets/$*/test/tier_a_test.exe \
-	  --soak compcert_embed/test/corpus $(SOAK_CYCLES)
-
-# Checks every corpus program's recorded expectation against gcc for the
-# host and each cross target, LP64 and ILP32. Needs the cross toolchains and
-# QEMU.
-asm-compcert-embed-corpus-check:
-	$(ASM_DIR)/compcert_embed/test/corpus-expect.sh $(ASM_DIR)/compcert_embed/test/corpus
-
-# Thousands of compile+run cycles in one process, reporting memory growth.
-# SOAK_CYCLES defaults to 10000.
-SOAK_CYCLES ?= 10000
-asm-compcert-embed-soak:
-	cd $(ASM_DIR) && $(EMBED_ENV) opam exec -- dune build compcert_embed/test/soak.exe
-	cd $(ASM_DIR) && ./_build/default/compcert_embed/test/soak.exe compcert_embed/test/corpus $(SOAK_CYCLES)
+FIXTURE_VERIFY_GOALS := $(addprefix fixtures-verify-,$(FIXTURE_TARGETS))
+FIXTURE_EXEC_GOALS   := $(addprefix fixture-exec-,$(FIXTURE_TARGETS))
+FIXTURE_ORACLE_GOALS := $(addprefix fixture-oracle-,$(FIXTURE_TARGETS))
 
 # Static pattern rules, not `%` implicit rules. GNU Make skips implicit rule
 # search for .PHONY targets, so an implicit pattern plus a phony expansion
 # yields "Nothing to be done" and exit 0 - a silent no-op. Static pattern rules
 # are explicit rules, so .PHONY does what it is meant to here.
-.PHONY: $(FIXTURE_SETUP_GOALS)
-$(FIXTURE_SETUP_GOALS): asm-fixture-setup-%:
-	tools/compcert-fixture-setup.sh $*
-
-# tools-build on every goal that reaches $(TOOLS_EXE), which since Phase 8 is
-# all of them: the shell implementations are gone and there is nothing else to
-# run. Without the edge the recipe would invoke a path that does not exist.
-#
-# asm-fixture-oracle-% is the one that matters most: the fixture-oracle CI job
-# runs it alone in a fresh checkout, with no prior job and no edge to
-# asm-fixtures-check, so it cannot inherit the build from anywhere else.
 .PHONY: $(FIXTURE_VERIFY_GOALS)
-$(FIXTURE_VERIFY_GOALS): asm-fixtures-verify-%: tools-build asm-fixture-setup-%
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture verify -- $*
+$(FIXTURE_VERIFY_GOALS): fixtures-verify-%: tools-build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) fixture verify -- $*
 
 .PHONY: $(FIXTURE_EXEC_GOALS)
-$(FIXTURE_EXEC_GOALS): asm-fixture-exec-%: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture exec -- $*
+$(FIXTURE_EXEC_GOALS): fixture-exec-%: tools-build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) fixture exec -- $*
 
 # One target's complete oracle leg, in the one order that makes the evidence
-# chain hold: strict profile, exact regeneration, GNU oracle, QEMU execution,
-# manifest completeness, clean tree. CI runs this goal rather than restating
-# the sequence, so local and CI ordering have a single definition.
+# chain hold: exact regeneration, GNU oracle, QEMU execution, manifest
+# completeness, clean tree. CI runs this goal rather than restating the
+# sequence, so local and CI ordering have a single definition.
 #
 # --check before git diff is load-bearing: git diff cannot see an untracked
 # file, so a newly produced oracle artifact would leave the leg reporting clean.
 # --check reports it as UNRECORDED. git diff stays because the manifest excludes
 # itself from its own hashes.
 .PHONY: $(FIXTURE_ORACLE_GOALS)
-$(FIXTURE_ORACLE_GOALS): asm-fixture-oracle-%: tools-build
-	tools/compcert-fixture-setup.sh $*
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture verify -- $*
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture oracle -- $*
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture exec -- $*
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture check
-	git diff --exit-code -- asm/fixtures/compcert-3.17
+$(FIXTURE_ORACLE_GOALS): fixture-oracle-%: tools-build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) fixture verify -- $*
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) fixture oracle -- $*
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) fixture exec -- $*
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) fixture check
+	git diff --exit-code -- fixtures/gcc-14
 
-asm-fixture-oracle:
-	@for t in $(FIXTURE_TARGETS); do $(MAKE) asm-fixture-oracle-$$t || exit 1; done
-
-# Six freestanding fixture compilers under .fixture-work. The libc cross-smoke
-# suite owns .cross-smoke-work and is no longer on this path: fixture work is
-# freestanding, so requiring a libc here would only import skips.
-asm-cross-setup:
-	tools/compcert-fixture-setup.sh all
-
-asm-libc-cross-smoke:
-	tools/compcert-cross-smoke.sh all
-
-# The suite's OK/FAIL/SKIP result, asserted without building anything. SKIP is
-# the state that matters and the one nothing tested: a target whose compiler or
-# emulator is absent is skipped rather than failed, and the run still exits 0,
-# which is what lets the suite pass on a 32-bit host. Both skip checks run
-# before any build, so this takes well under a second.
-#
-# It needs the x86_32 cross gcc and qemu-i386 in order to reach the FAIL and
-# emulator-absent branches, so - like tools-oracle-diff - it runs in a job with
-# the full cross toolchain rather than in the portable matrix, where on
-# linux/arm/v7 it would fail for a missing tool rather than for a defect.
-asm-cross-smoke-selftest:
-	tools/dev/test-cross-smoke-tristate.sh
+fixture-oracle:
+	@for t in $(FIXTURE_TARGETS); do $(MAKE) fixture-oracle-$$t || exit 1; done
 
 # A regeneration difference is a reviewed failure, not a refresh: it can change
-# accepted syntax, relocations, or instruction coverage, i.e. the M1 scope.
-asm-fixtures-regen: tools-build asm-cross-setup
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture regen
+# accepted syntax, relocations, or instruction coverage.
+fixtures-regen: tools-build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) fixture regen
 
-# The reference-assembler artifacts M1.5 compares our encoder against. --rehash
-# folds them into the same manifest, so asm-fixtures-check covers them too.
-asm-oracle: tools-build asm-fixtures-regen
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture oracle -- all
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture rehash
+# The reference-assembler artifacts the differential gate compares our encoder
+# against. rehash folds them into the same manifest, so fixtures-check covers
+# them too.
+oracle: tools-build fixtures-regen
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) fixture oracle -- all
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) fixture rehash
 
-# The GNU as cross-reference. Same two-mode policy as the fixtures above and
-# for the same reason, so the edges are the same shape: --check hashes the
-# committed corpus and needs no toolchain, --regen needs the six cross
-# binutils. It is NOT downstream of asm-cross-setup, unlike asm-fixtures-regen:
-# the inputs are generated from this project's own AST corpus rather than
-# compiled by CompCert, so binutils alone is the whole requirement.
-asm-gas-xref-check: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) gas-xref check
+# The GNU as cross-reference. Same two-mode policy as the fixtures above:
+# check hashes the committed corpus and needs no toolchain, regen needs the six
+# cross binutils. Its inputs are generated from this project's own AST corpus,
+# so binutils alone is the whole requirement.
+gas-xref-check: tools-build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) gas-xref check
 
-asm-gas-xref-regen: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) gas-xref regen
+gas-xref-regen: tools-build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) gas-xref regen
 
-# The isa-generated pilot GAS differential generator (GAS-02/GAS-03/GAS-04;
-# frozen names, GAS-01). Same two-mode split as gas-xref
-# above: --check replays the committed asm/fixtures/isa-generated/cases.jsonl
-# corpus offline and needs no toolchain (joining asm-test, matching
-# Isa_generated_case.joins_prerequisite_of Offline_consumer), --regen needs
-# the six targets' cross GNU binutils (in particular the RV32 one, which needs
+# The isa-generated pilot GAS differential generator. Same two-mode split as
+# gas-xref: check replays the committed fixtures/isa-generated/cases.jsonl
+# corpus offline and needs no toolchain, regen needs the six targets' cross GNU
+# binutils (in particular the RV32 one, which needs
 # /usr/local/riscv32-linux-gnu-toolchain/bin on PATH) and stays off that
-# critical path, matching
-# joins_prerequisite_of Gnu_regeneration. GAS-04's "ours" half additionally
-# shells out to this project's own tool/asm.exe (Isa_gen_ours, never linked
-# into compcert_tools - tools-boundary), so --regen also needs asm-build: with
-# it as a prerequisite, `dune exec tool/asm.exe` at regen time only ever runs
-# an already-built binary, so its exit code is unambiguously the assembler's
-# own (0 accepted, 1 rejected) rather than a dune build failure.
-asm-isa-generated-check: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-generated check
+# critical path. The "ours" half additionally shells out to this project's own
+# tool/asm.exe, so regen also needs build: with it as a prerequisite, `dune exec
+# tool/asm.exe` at regen time only ever runs an already-built binary, so its
+# exit code is unambiguously the assembler's own (0 accepted, 1 rejected)
+# rather than a dune build failure.
+isa-generated-check: tools-build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) isa-generated check
 
-asm-isa-generated-regen: tools-build asm-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-generated regen
+isa-generated-regen: tools-build build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) isa-generated regen
 
-# The isa-difficult non-frozen difficult-form GAS differential generator
-# (names frozen in Isa_gen_difficult).
-# Same two-mode split, tool/dependency shape and asm-build requirement as
-# isa-generated above, but for bounded difficult-form families (currently
-# RISC-V split-immediate/compressed cases and x86 addressing/x87) rather than
-# the frozen 21-entry pilot, in its own corpus (asm/fixtures/isa-difficult/)
-# so growing it can never touch that one.
-asm-isa-difficult-check: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult check
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult coverage
+# The isa-difficult non-frozen difficult-form GAS differential generator. Same
+# two-mode split, tool/dependency shape and build requirement as isa-generated,
+# but for bounded difficult-form families (currently RISC-V split-immediate and
+# compressed cases and x86 addressing/x87) in its own corpus
+# (fixtures/isa-difficult/), so growing it can never touch the frozen pilot.
+isa-difficult-check: tools-build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult check
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult coverage
 
-asm-isa-difficult-regen: tools-build asm-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult regen
+isa-difficult-regen: tools-build build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult regen
 
-# M5 corpus growth: classify CompCert's own test/c/ suite against the parser,
-# one manifest per target (asm/docs/corpus.md). Same two-mode split as
-# gas-xref above: --check needs no toolchain, classify-c-<target> needs that
-# target's cross compiler AND a CompCert build, hence asm-cross-setup as a
-# prerequisite (unlike asm-gas-xref-regen, classify-c compiles real CompCert
-# C sources). Static pattern rule over FIXTURE_TARGETS, same shape as
-# FIXTURE_SETUP_GOALS above - corpus_classify_cmd.ml exposes classify-c-<target>
-# as six explicit subcommands, never a --target flag (corpus.md's Follow-ups).
+# The transitive purity and layer audits, and the planted violations that prove
+# they can fail. Run these before treating a successful JavaScript build as
+# evidence of portability - a package shipping a JS runtime replacement for its
+# C primitives compiles cleanly and still breaks the no-C rule.
+purity: build
+	scripts/asm-check-purity.sh
+	scripts/asm-check-layers.sh
+
+planted: build
+	scripts/asm-check-planted.sh
+
+# {1 The OCaml tool project}
+
+TOOLS_EXE   := $(CURDIR)/_build/default/tools/bin/rivet_tools.exe
+TOOLS_ITEST := $(CURDIR)/_build/default/tools/test/repo/repo_tests.exe
+
+# TARGETED, never @all: `dune build @all` would drag the whole assembler in, so
+# every check-only target that later gains a tools-build edge would
+# transitively require an assembler build - which is what preserves the
+# toolchain-free property of fixtures-check.
 #
-# In asm-ci: asm/fixtures/corpus/c/x86_64/manifest.txt is now committed (a
-# real classify-c run, x86_64 only), so `check` has something to verify.
-asm-corpus-check-c: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus check
+# submodules because the tool project copy_files its err_trace sources from the
+# submodule, and without the guard dune reports a missing RULE for a path
+# rather than a missing checkout (see the comment on submodules itself).
+tools-build: submodules
+	opam exec -- dune build tools/bin/rivet_tools.exe
 
-CORPUS_CLASSIFY_GOALS := $(addprefix asm-corpus-classify-c-,$(FIXTURE_TARGETS))
-
-.PHONY: $(CORPUS_CLASSIFY_GOALS)
-$(CORPUS_CLASSIFY_GOALS): asm-corpus-classify-c-%: asm-build tools-build asm-cross-setup
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus classify-c-$*
-
-# The pipeline-level follow-up to classify-c above: same two-mode split, same
-# per-target cross-compiler/CompCert-build prerequisites, but the generated
-# .s files are run through the full parse/simplify/lower/encode/plan_image
-# pipeline (asm.exe with no --dump flag) rather than stopped at
-# --dump-source-ast. Published under asm/fixtures/corpus/c-assemble/<target>/
-# - a separate destination from classify-c's, so the two checks (and the two
-# regenerations) can never be conflated (asm/docs/corpus.md).
-asm-corpus-check-assemble-c: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus check-assemble
-
-CORPUS_ASSEMBLE_GOALS := $(addprefix asm-corpus-assemble-c-,$(FIXTURE_TARGETS))
-
-.PHONY: $(CORPUS_ASSEMBLE_GOALS)
-$(CORPUS_ASSEMBLE_GOALS): asm-corpus-assemble-c-%: asm-build tools-build asm-cross-setup
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus assemble-c-$*
-
-# classify-c's own siblings over CompCert's other two static, committed-source
-# test suites (test/regression/, test/compression/ - not test/abi/, whose
-# sources are generator-produced rather than committed; asm/docs/corpus.md's
-# Follow-ups). Same two-mode split, same per-target cross-compiler
-# prerequisite, same one-explicit-subcommand-per-target discipline.
-asm-corpus-check-regression: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus check-regression
-
-CORPUS_CLASSIFY_REGRESSION_GOALS := $(addprefix asm-corpus-classify-regression-,$(FIXTURE_TARGETS))
-
-.PHONY: $(CORPUS_CLASSIFY_REGRESSION_GOALS)
-$(CORPUS_CLASSIFY_REGRESSION_GOALS): asm-corpus-classify-regression-%: asm-build tools-build asm-cross-setup
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus classify-regression-$*
-
-asm-corpus-check-compression: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus check-compression
-
-CORPUS_CLASSIFY_COMPRESSION_GOALS := $(addprefix asm-corpus-classify-compression-,$(FIXTURE_TARGETS))
-
-.PHONY: $(CORPUS_CLASSIFY_COMPRESSION_GOALS)
-$(CORPUS_CLASSIFY_COMPRESSION_GOALS): asm-corpus-classify-compression-%: asm-build tools-build asm-cross-setup
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus classify-compression-$*
-
-# classify-c-gcc: classify-c's own second, independent-compiler sibling - the
-# identical test/c/*.c corpus, compiled with the SYSTEM cross gcc (Gcc) rather
-# than ccomp. Unlike every classify-* goal above, this is NOT downstream of
-# asm-cross-setup: all six cross gcc toolchains are plain packages the
-# devcontainer image already installs (asm/docs/corpus.md), so classifying
-# needs only a CompCert checkout (asm-build's own asm-submodules prerequisite)
-# and this project's own asm.exe/compcert_tools.exe - the same "no toolchain
-# build" edge asm-gas-xref-regen already has, for the same reason. Published
-# under its own asm/fixtures/corpus/c-gcc/<target>/, never conflated with
-# classify-c's asm/fixtures/corpus/c/<target>/.
-asm-corpus-check-c-gcc: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus check-c-gcc
-
-CORPUS_CLASSIFY_C_GCC_GOALS := $(addprefix asm-corpus-classify-c-gcc-,$(FIXTURE_TARGETS))
-
-.PHONY: $(CORPUS_CLASSIFY_C_GCC_GOALS)
-$(CORPUS_CLASSIFY_C_GCC_GOALS): asm-corpus-classify-c-gcc-%: asm-build tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) corpus classify-c-gcc-$*
-
-# The transitive purity and layer audits (§1, §2.2, §3.7, §5.1), and the
-# planted violations that prove they can fail. Guardrail 6: run these before
-# treating a successful JavaScript build as evidence of portability - a package
-# shipping a JS runtime replacement for its C primitives compiles cleanly and
-# still breaks the no-C rule.
-asm-purity: asm-build
-	tools/asm-check-purity.sh
-	tools/asm-check-layers.sh
-
-asm-planted: asm-build
-	tools/asm-check-planted.sh
-
-# Control-flow tests for asm-fixture-gen.sh --regen, using fake compilers in a
-# throwaway tree. No toolchain, no corpus and no build: this belongs on the
-# cheap side of the two-mode policy, alongside asm-fixtures-check, which is why
-# it takes no prerequisite.
-# {1 The OCaml tool project (tool.md §5)}
-
-TOOLS_EXE   := $(CURDIR)/$(ASM_DIR)/_build/default/tools/bin/compcert_tools.exe
-TOOLS_ITEST := $(CURDIR)/$(ASM_DIR)/_build/default/tools/test/repo/repo_tests.exe
-
-# TARGETED, never @all: `cd asm && dune build @all` would drag the whole
-# assembler in, so every check-only target that later gains a tools-build edge
-# would transitively require an assembler build - exactly what tool.md gate 6
-# forbids and what preserves §5's third property. `make -n` asserts this.
-#
-# asm-submodules because the tool project copy_files# its err_trace sources from
-# the submodule, and without the guard dune reports a missing RULE for a path
-# rather than a missing checkout (see the comment on asm-submodules itself).
-tools-build: asm-submodules
-	cd $(ASM_DIR) && opam exec -- dune build tools/bin/compcert_tools.exe
-
-tools-test: asm-submodules
-	cd $(ASM_DIR) && opam exec -- dune build @tools/runtest
+tools-test: submodules
+	opam exec -- dune build @tools/runtest
 
 # The repository-level suite is RUN BY MAKE, not by a dune runtest rule: it
-# reads Makefile, tools/target-matrix.sh and tools/dev/dump-target-config.sh,
-# all of which are outside the asm/ dune workspace, so a sandboxed action would
-# be depending on undeclared inputs. The root is passed as argv, which is also
-# why %{workspace_root} - asm/, not the repository root - never enters.
-tools-integration: asm-submodules
-	cd $(ASM_DIR) && opam exec -- dune build tools/test/repo/repo_tests.exe
+# reads Makefile, scripts/target-matrix.sh and scripts/dev/dump-target-config.sh,
+# which the tools/ project's sandboxed actions would be depending on as
+# undeclared inputs. The root is passed as argv.
+tools-integration: submodules
+	opam exec -- dune build tools/test/repo/repo_tests.exe
 	$(TOOLS_ITEST) $(CURDIR)
 
 # A cold targeted build into a private build directory, then the resolved
-# library closure of exactly the compcert_tools executable. It is on the CI path
-# because it is called load-bearing throughout: it is what keeps
-# asm-fixtures-check free of an assembler build. Its planted cases run in copied
-# trees, so no ordering constraint against the ordinary _build is needed.
-tools-boundary: asm-submodules
-	tools/dev/check-tool-build-boundary.sh
+# library closure of exactly the rivet_tools executable. It is on the CI path
+# because it is what keeps fixtures-check free of an assembler build. Its
+# planted cases run in copied trees, so no ordering constraint against the
+# ordinary _build is needed.
+tools-boundary: submodules
+	scripts/dev/check-tool-build-boundary.sh
 
-# tools/target-matrix.sh is a GENERATED file: Target owns the sixteen values and
-# this renders them for the shell consumers that drive ./configure, make and
-# linkhier. Generating rather than having those scripts query the executable is
-# what keeps compcert-fixture-setup.sh and asm-helpers.sh free of a dune build -
-# they are the first thing their CI jobs run.
+# scripts/target-matrix.sh is a GENERATED file: Target owns the values and this
+# renders them for the shell consumers. Generating rather than having those
+# scripts query the executable is what keeps asm-helpers.sh free of a dune
+# build - it is the first thing its CI job runs.
 #
-# Staged and moved rather than redirected in place: `> tools/target-matrix.sh`
+# Staged and moved rather than redirected in place: `> scripts/target-matrix.sh`
 # truncates before the tool runs, so a generator failure would destroy the file
 # it was asked to reproduce.
 tools-matrix: tools-build
-	@$(TOOLS_EXE) targets emit > tools/target-matrix.sh.new
-	@chmod 755 tools/target-matrix.sh.new
-	@mv tools/target-matrix.sh.new tools/target-matrix.sh
+	@$(TOOLS_EXE) targets emit > scripts/target-matrix.sh.new
+	@chmod 755 scripts/target-matrix.sh.new
+	@mv scripts/target-matrix.sh.new scripts/target-matrix.sh
 
-# The equivalence gate, in the pattern tools-oracle-diff established: regenerate
-# and require the working tree to stay clean. An edit to target.ml that is not
-# reflected in the shell fails here rather than at whichever consumer next
-# disagreed - and an edit to the shell alone fails here too, which is what makes
-# "do not edit" enforced rather than requested.
+# The equivalence gate: regenerate and require the working tree to stay clean.
+# An edit to target.ml that is not reflected in the shell fails here rather than
+# at whichever consumer next disagreed - and an edit to the shell alone fails
+# here too, which is what makes "do not edit" enforced rather than requested.
 tools-matrix-diff: tools-matrix
-	@test -z "$$(git status --porcelain -- tools/target-matrix.sh)" || { \
-	  git status --porcelain -- tools/target-matrix.sh; \
-	  echo "tools/target-matrix.sh is generated - edit asm/tools/lib/target.ml and run 'make tools-matrix'" >&2; \
+	@test -z "$$(git status --porcelain -- scripts/target-matrix.sh)" || { \
+	  git status --porcelain -- scripts/target-matrix.sh; \
+	  echo "scripts/target-matrix.sh is generated - edit tools/lib/target.ml and run 'make tools-matrix'" >&2; \
 	  exit 1; }
 
-# Phase 4's artifact gate, and the strongest one in the migration: re-record
-# every oracle artifact for all six targets with the OCaml implementation and
-# require the working tree to stay clean. 294 committed files, produced by the
-# AWK this phase replaces.
+# Re-record every oracle artifact for all six targets and require the working
+# tree to stay clean. It needs the cross BINUTILS but NOT the compiler - the
+# oracle reads the committed .s files rather than regenerating them - which is
+# why it is a cheap gate (about a second) rather than a toolchain build. `git
+# status` is the assertion; the recipe leaves the corpus regenerated either way,
+# so a failure can be inspected with an ordinary `git diff`.
 #
-# It needs the cross BINUTILS but NOT CompCert - the oracle reads the committed
-# .s files rather than regenerating them - which is why it is a cheap gate
-# (about a second) rather than a toolchain build. `git diff --exit-code` is the
-# assertion; the recipe leaves the corpus regenerated either way, so a failure
-# can be inspected with an ordinary `git diff`.
-#
-# In CI this runs in the abi-conform job, NOT the portable asm matrix: the
+# In CI this runs in the abi-conform job, NOT the portable matrix: the
 # devcontainer Dockerfile installs only the ARM cross set on armhf/armel, so on
 # linux/arm/v7 this would fail for a missing tool rather than a byte
-# difference. asm-ci below is a local aggregate and assumes a full toolchain.
+# difference. ci below is a local aggregate and assumes a full toolchain.
 tools-oracle-diff: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) fixture oracle all
-	@test -z "$$(git status --porcelain -- asm/fixtures/compcert-3.17)" || { \
-	  git status --porcelain -- asm/fixtures/compcert-3.17; \
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) fixture oracle all
+	@test -z "$$(git status --porcelain -- fixtures/gcc-14)" || { \
+	  git status --porcelain -- fixtures/gcc-14; \
 	  echo "oracle artifacts changed - review the diff above" >&2; exit 1; }
 
-# The same gate for the gas cross-reference: 483 committed files, rebuilt from
-# scratch (the command deletes the corpus root first) and required to come back
-# identical.
+# The same gate for the gas cross-reference, rebuilt from scratch (the command
+# deletes the corpus root first) and required to come back identical.
 #
 # Unlike tools-oracle-diff this DOES need the assembler built, because the
-# generated cases come from asm/test/snippets/snippet_emit.exe - by design, so
-# a corpus can never be regenerated from an assembler that does not compile.
-# Hence the asm-build edge, which tools-oracle-diff deliberately lacks.
-tools-gasxref-diff: tools-build asm-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) gas-xref regen
-	@test -z "$$(git status --porcelain -- asm/fixtures/gas-xref)" || { \
-	  git status --porcelain -- asm/fixtures/gas-xref; \
+# generated cases come from test/snippets/snippet_emit.exe - by design, so a
+# corpus can never be regenerated from an assembler that does not compile.
+tools-gasxref-diff: tools-build build
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) gas-xref regen
+	@test -z "$$(git status --porcelain -- fixtures/gas-xref)" || { \
+	  git status --porcelain -- fixtures/gas-xref; \
 	  echo "gas-xref corpus changed - review the diff above" >&2; exit 1; }
 
-# The whole-ISA instruction inventory (asm/docs/isa-inventory.md), RISC-V only
-# so far. Toolchain-free (it reads only the vendored asm/vendor/isa-data/
-# submodules, never a compiler), so unlike tools-gasxref-diff this needs no
-# asm-build edge - only the tool itself. Guarded separately from
-# asm-submodules rather than folded into it: isa-data is needed only for this
-# track, and asm-submodules also gates plain asm-build, which must not start
-# requiring a submodule the assembler itself never reads.
+# The whole-ISA instruction inventory (docs/isa-inventory.md), RISC-V and x86.
+# Toolchain-free (it reads only the vendored vendor/isa-data submodules, never a
+# compiler), so unlike tools-gasxref-diff this needs no build edge - only the
+# tool itself. Guarded separately from submodules rather than folded into it:
+# isa-data is needed only for this track, and submodules also gates plain build,
+# which must not start requiring a submodule the assembler itself never reads.
 tools-isa-inventory: tools-build
-	@test -f $(ASM_DIR)/vendor/isa-data/riscv-opcodes/upstream/extensions/rv_i || { \
-	  echo "$(ASM_DIR)/vendor/isa-data/riscv-opcodes/upstream is not checked out; run:" >&2; \
-	  echo "  git submodule update --init $(ASM_DIR)/vendor/isa-data/riscv-opcodes/upstream" >&2; \
+	@test -f vendor/isa-data/riscv-opcodes/upstream/extensions/rv_i || { \
+	  echo "vendor/isa-data/riscv-opcodes/upstream is not checked out; run:" >&2; \
+	  echo "  git submodule update --init vendor/isa-data/riscv-opcodes/upstream" >&2; \
 	  exit 1; }
-	@test -d $(ASM_DIR)/vendor/isa-data/xed/upstream/datafiles/avx || { \
-	  echo "$(ASM_DIR)/vendor/isa-data/xed/upstream is not checked out; run:" >&2; \
-	  echo "  git submodule update --init $(ASM_DIR)/vendor/isa-data/xed/upstream" >&2; \
+	@test -d vendor/isa-data/xed/upstream/datafiles/avx || { \
+	  echo "vendor/isa-data/xed/upstream is not checked out; run:" >&2; \
+	  echo "  git submodule update --init vendor/isa-data/xed/upstream" >&2; \
 	  exit 1; }
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-inventory regen
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) isa-inventory regen
 
 tools-isa-inventory-diff: tools-isa-inventory
-	@test -z "$$(git status --porcelain -- asm/fixtures/isa-inventory)" || { \
-	  git status --porcelain -- asm/fixtures/isa-inventory; \
+	@test -z "$$(git status --porcelain -- fixtures/isa-inventory)" || { \
+	  git status --porcelain -- fixtures/isa-inventory; \
 	  echo "isa-inventory changed - review the diff above" >&2; exit 1; }
 
-# The same isa-db cross-validate check `tools-integration` already runs inside
-# repo_tests.exe (asm/tools/test/repo/repo_tests.ml), exposed standalone for
-# discoverability. Toolchain-free like
+# The isa-db cross-validate check `tools-integration` already runs inside
+# repo_tests.exe, exposed standalone for discoverability. Toolchain-free like
 # tools-isa-inventory-diff: it reads only checked-in files
-# (asm/fixtures/isa-inventory/, isa-db/export/), never the isa-data
-# submodules regen needs, so unlike tools-isa-inventory it has no submodule
-# guard. Not added to asm-ci - tools-integration already exercises it there;
-# this target is purely a convenience for running it in isolation.
+# (fixtures/isa-inventory/, isa-db/export/), never the isa-data submodules regen
+# needs, so unlike tools-isa-inventory it has no submodule guard.
 tools-isa-db-cross-validate: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-inventory cross-validate
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) isa-inventory cross-validate
 
-# The residual ledger (asm/tools/lib/isa_residual_ledger.ml): prints every
-# source family that still has blocked records with its owning row (missing
-# capability, evidence, task, reopening gate) and fails if a blocked family is
-# unowned or doubly owned, or a row is stale. Toolchain-free - it reads only the
-# checked-in exports - and, like the target above, already exercised by
-# tools-integration inside asm-ci.
+# The residual ledger (tools/lib/isa_residual_ledger.ml): prints every source
+# family that still has blocked records with its owning row (missing capability,
+# evidence, task, reopening gate) and fails if a blocked family is unowned or
+# doubly owned, or a row is stale. Toolchain-free - it reads only the checked-in
+# exports - and already exercised by tools-integration inside ci.
 tools-isa-residual-ledger: tools-build
-	COMPCERT_REPO_ROOT=$(CURDIR) $(TOOLS_EXE) isa-inventory residual-ledger
+	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) isa-inventory residual-ledger
 
-# Producer-only native-capture integrity check.  It intentionally stays out
-# of asm-ci: it reads the vendored source trees and requires Python, whereas
-# asm-ci's portable artifact checks consume only the committed JSONL files.
+# Producer-only native-capture integrity check. It intentionally stays out of
+# ci: it reads the vendored source trees and requires Python, whereas ci's
+# portable artifact checks consume only the committed JSONL files.
 isa-db-capture-check:
 	cd isa-db && python3 -m export.verify
 
-# The same control-flow properties, asserted against the OCaml implementation
-# with fake compilers. Needs the executable but no cross toolchain.
+# Control-flow properties of regen, verify and rehash, asserted against the
+# OCaml implementation with fake compilers. Needs the executable but no cross
+# toolchain.
 tools-fixture-modes: tools-build
-	tools/dev/test-fixture-modes.sh
+	scripts/dev/test-fixture-modes.sh
 
-# Re-run the recorded shell behavior and compare. This is the migration's
-# reference: the OCaml replacements are held to these snapshots, so a change to
-# a shell entry point has to show up here before it can be silently ported.
-# Also toolchain-free, and it runs against a detached worktree of HEAD rather
-# than the working checkout, so nothing it does can touch the real corpus.
-asm-characterize-verify:
-	tools/dev/characterize.sh verify
-
-# The execution ABI (asm/docs/exec-abi-v1.md and exec-abi-v2.md). The
-# dependency edges are again what enforce a policy: neither asm-helpers nor
-# asm-abi-conform is reachable from asm-test or asm-ci, so `make asm-test` can
-# never acquire a hidden cross-toolchain or QEMU dependency (guardrail 4).
+# The execution ABI (docs/exec-abi-v1.md, -v2.md and -v3.md). The dependency
+# edges are what enforce a policy: neither helpers nor abi-conform is reachable
+# from test or ci, so `make test` can never acquire a hidden cross-toolchain or
+# QEMU dependency.
 #
-# asm-helpers builds the four legacy profiles in v1 and v2 modes, the RISC-V
-# profiles in v2 mode only, and - for the legacy profiles the generator
-# already supports (.ai/asm_plan.md M4 Phase 3.4: x86_64 today) - a v3
-# helper too. asm-abi-conform executes the four-profile v1 regression, the
-# complete six-profile v2 suite, and the v3 suite over whatever profiles have
-# a generated v3 helper, all under qemu-user.
-asm-helpers:
-	tools/asm-helpers.sh all
+# helpers builds the four legacy profiles in v1 and v2 modes, the RISC-V
+# profiles in v2 mode only, and - for the legacy profiles the generator already
+# supports (x86_64 today) - a v3 helper too. abi-conform executes the four-profile
+# v1 regression, the complete six-profile v2 suite, and the v3 suite over
+# whatever profiles have a generated v3 helper, all under qemu-user.
+helpers:
+	scripts/asm-helpers.sh all
 
-asm-runner: asm-build
-	cd $(ASM_DIR) && opam exec -- dune build test/oracle/conform.exe
+runner: build
+	opam exec -- dune build test/oracle/conform.exe
 
-# ASM_HELPERS_DIR is absolute because the driver runs from the build tree.
+# RIVET_HELPERS_DIR is absolute because the driver runs from the build tree.
 # run_control's v1 dependency stays independent of the v3 leg deliberately:
-# build_one's v1 calls in asm-helpers.sh are unconditional and untouched by
-# the v3 addition, so the first leg below never depends on the third having
-# built anything.
-asm-abi-conform: asm-runner asm-helpers
-	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers ASM_ABI_VERSION=1 \
+# build_one's v1 calls in asm-helpers.sh are unconditional and untouched by the
+# v3 addition, so the first leg below never depends on the third having built
+# anything.
+abi-conform: runner helpers
+	RIVET_HELPERS_DIR=$(CURDIR)/.asm-helpers RIVET_ABI_VERSION=1 \
 	  opam exec -- dune exec test/oracle/conform.exe
-	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers ASM_ABI_VERSION=2 \
+	RIVET_HELPERS_DIR=$(CURDIR)/.asm-helpers RIVET_ABI_VERSION=2 \
 	  opam exec -- dune exec test/oracle/conform.exe
-	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers ASM_ABI_VERSION=3 \
+	RIVET_HELPERS_DIR=$(CURDIR)/.asm-helpers RIVET_ABI_VERSION=3 \
 	  opam exec -- dune exec test/oracle/conform.exe
 
-# M1.6, the E5 rung: the assembler's own image bound at the ABI-v1 profile code
-# base and run under the same helpers. Separate from asm-abi-conform on purpose -
-# conform depends on no part of the assembler, so a broken assembler cannot make
-# the ABI suite pass, and this target is where the assembler is what is on trial.
-# The prerequisites are the plan's graph, not a convenience: E5 is not a claim
-# worth making until E4 holds, and the fixtures this binds are the checked-in
-# ones. Spelling the edges out is also what makes the target self-sufficient -
-# it never depends on another job having run first, which is what the fresh
-# full-oracle job needs and what makes it safe under parallel make.
-asm-exec: asm-runner asm-helpers asm-abi-conform asm-fixtures-check
-	cd $(ASM_DIR) && ASM_HELPERS_DIR=$(CURDIR)/.asm-helpers \
+# The assembler's own image bound at the ABI-v1 profile code base and run under
+# the same helpers. Separate from abi-conform on purpose - conform depends on no
+# part of the assembler, so a broken assembler cannot make the ABI suite pass,
+# and this target is where the assembler is what is on trial. The prerequisites
+# are the graph, not a convenience: this is not a claim worth making until the
+# ABI holds, and the fixtures this binds are the checked-in ones. Spelling the
+# edges out is also what makes the target self-sufficient - it never depends on
+# another job having run first, which is what the fresh full-oracle job needs
+# and what makes it safe under parallel make.
+exec: runner helpers abi-conform fixtures-check
+	RIVET_HELPERS_DIR=$(CURDIR)/.asm-helpers \
 	  opam exec -- dune exec test/oracle/exec.exe
 
 # What CI runs, and what to run locally before pushing. Formatting is checked
-# first: an unformatted tree is the cheapest failure to diagnose. asm-js is not
-# here — it needs Melange, hence OCaml 4.14, so it is its own CI job.
-asm-ci: asm-fmt-check asm-build asm-test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-isa-inventory-diff asm-corpus-check-c asm-corpus-check-assemble-c asm-corpus-check-regression asm-corpus-check-compression asm-corpus-check-c-gcc asm-purity asm-planted asm-cross-smoke-selftest asm-characterize-verify asm-melange-optin asm-js-portable
+# first: an unformatted tree is the cheapest failure to diagnose. js is not
+# here - it needs Melange, hence OCaml 4.14, so it is its own CI job.
+ci: fmt-check build test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-isa-inventory-diff purity planted melange-optin js-portable
 
-# One archive per target: Rocq extraction differs per architecture, so
-# compcert-export-archive alone only covers whichever target was last
-# configured. See tools/compcert-export-archive-all.sh.
-compcert-export-archive-all:
-	tools/compcert-export-archive-all.sh
+# The old spellings, for one release.
+ASM_ALIASES := build test fmt fmt-check ci melange js js-portable js-browser tool-gate \
+  melange-optin fixtures-check fixtures-regen fixture-oracle oracle gas-xref-check \
+  gas-xref-regen isa-generated-check isa-generated-regen isa-difficult-check \
+  isa-difficult-regen purity planted helpers runner abi-conform exec submodules
+ASM_ALIAS_GOALS := $(addprefix asm-,$(ASM_ALIASES)) \
+  $(addprefix asm-fixture-oracle-,$(FIXTURE_TARGETS)) $(addprefix asm-fixture-exec-,$(FIXTURE_TARGETS)) \
+  $(addprefix asm-fixtures-verify-,$(FIXTURE_TARGETS))
 
-.PHONY: default \
-  compcert compcert-configure compcert-build compcert-check-proof compcert-test \
-  compcert-extraction-archive compcert-extraction-unarchive compcert-prepare-sources \
-  compcert-build-from-archive compcert-lib-sync compcert-lib-build compcert-lib-run \
-  compcert-export-archive compcert-export-unarchive compcert-export-build compcert-export-run \
-  compcert-export-archive-all \
-  asm-compcert-adapter-test \
-  asm-submodules asm-build asm-test asm-fmt asm-fmt-check asm-melange asm-js asm-purity asm-planted \
-  tools-build tools-test tools-integration tools-boundary tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-matrix tools-matrix-diff \
-  tools-isa-inventory tools-isa-inventory-diff tools-isa-db-cross-validate tools-isa-residual-ledger isa-db-capture-check \
-  asm-fixtures-check asm-characterize-verify asm-cross-setup asm-libc-cross-smoke asm-cross-smoke-selftest asm-fixtures-regen \
-  asm-oracle asm-fixture-oracle asm-ci \
-  asm-gas-xref-check asm-gas-xref-regen \
-  asm-isa-generated-check asm-isa-generated-regen \
-  asm-isa-difficult-check asm-isa-difficult-regen \
-  asm-corpus-check-c $(CORPUS_CLASSIFY_GOALS) \
-  asm-corpus-check-assemble-c $(CORPUS_ASSEMBLE_GOALS) \
-  asm-corpus-check-regression $(CORPUS_CLASSIFY_REGRESSION_GOALS) \
-  asm-corpus-check-compression $(CORPUS_CLASSIFY_COMPRESSION_GOALS) \
-  asm-corpus-check-c-gcc $(CORPUS_CLASSIFY_C_GCC_GOALS) \
-  asm-helpers asm-runner asm-abi-conform asm-exec asm-tool-gate asm-melange-optin \
-  asm-js-portable asm-js-browser
+.PHONY: $(ASM_ALIAS_GOALS)
+$(addprefix asm-,$(ASM_ALIASES)): asm-%: %
+$(addprefix asm-fixture-oracle-,$(FIXTURE_TARGETS)): asm-fixture-oracle-%: fixture-oracle-%
+$(addprefix asm-fixture-exec-,$(FIXTURE_TARGETS)): asm-fixture-exec-%: fixture-exec-%
+$(addprefix asm-fixtures-verify-,$(FIXTURE_TARGETS)): asm-fixtures-verify-%: fixtures-verify-%
+
+.PHONY: default fmt-ocamlformat submodules build test fmt fmt-check melange js js-portable \
+  js-browser native-exec tool-gate melange-optin fixtures-check fixture-oracle fixtures-regen oracle \
+  gas-xref-check gas-xref-regen isa-generated-check isa-generated-regen \
+  isa-difficult-check isa-difficult-regen purity planted \
+  tools-build tools-test tools-integration tools-boundary tools-fixture-modes \
+  tools-oracle-diff tools-gasxref-diff tools-matrix tools-matrix-diff \
+  tools-isa-inventory tools-isa-inventory-diff tools-isa-db-cross-validate \
+  tools-isa-residual-ledger isa-db-capture-check helpers runner abi-conform exec ci

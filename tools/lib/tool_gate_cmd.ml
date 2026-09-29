@@ -6,7 +6,7 @@ type mode = All | User | System | Gdb
 
    Column widths and wording are the shell's, and they are load-bearing rather
    than cosmetic: the gate's output IS its artifact, read by whoever is asking
-   what a base-image update moved. tools/dev/compare-tool-gate.sh holds the two
+   what a base-image update moved. scripts/dev/compare-tool-gate.sh holds the two
    implementations to the same bytes. *)
 
 let note label detail = Diagnostic.stdout (Printf.sprintf "  %-34s %s" label detail)
@@ -234,7 +234,7 @@ let system_gate r =
    every attempt would fail, indistinguishably from a socket that never
    accepted. *)
 
-let gdb_port ~env = match env "ASM_TOOL_GATE_PORT" with Some s when s <> "" -> s | _ -> "14730"
+let gdb_port ~env = match env "RIVET_TOOL_GATE_PORT" with Some s when s <> "" -> s | _ -> "14730"
 
 let gdb_batch ~port ~log extra =
   let args =
@@ -375,8 +375,7 @@ let usage_error mode =
         Command.Output
           (Diagnostic.stderr
              (Printf.sprintf
-                "compcert-tools tool-gate: unknown mode '%s': expected all, user, system or gdb"
-                mode));
+                "rivet-tools tool-gate: unknown mode '%s': expected all, user, system or gdb" mode));
       ];
     exit = `Usage;
   }

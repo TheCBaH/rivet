@@ -1,4 +1,4 @@
-(** The behavioral tool gate (.ai/asm_plan.md §3.2, an M0 exit criterion).
+(** The behavioral tool gate (docs/design.md §3.2, an M0 exit criterion).
 
     APT tooling is range-checked rather than digest-pinned - devcontainer-lock
     pins feature references, not the mutable debian:13 base - and version numbers
@@ -32,7 +32,7 @@ val run : Repo.t -> mode:mode -> env:(string -> string option) -> Command.t
     that moved a tool under us stays visible in the artifact even when the gate
     failed for an unrelated reason.
 
-    [env] supplies ASM_TOOL_GATE_WORK and ASM_TOOL_GATE_PORT. *)
+    [env] supplies RIVET_TOOL_GATE_WORK and RIVET_TOOL_GATE_PORT. *)
 
 val usage_error : string -> Command.t
 (** An unknown mode: one line on stderr naming the four, exit 2. The mode is

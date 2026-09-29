@@ -10,7 +10,7 @@ type outcome = Up_to_date | Changed of string  (** the `diff -u` body, for the c
 val records :
   case:Corpus.case ->
   targets:Target.t list ->
-  work_root:Fpath.t ->
+  compiler:Compiler.t ->
   previous:Manifest.t option ->
   sources:Corpus.unit_source list ->
   (Manifest.record list, Tool_error.t) Err.t
@@ -26,19 +26,18 @@ val records :
     manifest, more than one emits a [source-unit:<name>] record per unit
     instead.
 
-    [ccomp-version:<t>] comes from the live compiler when one is installed and
-    is otherwise carried forward from [previous] verbatim - `--rehash` runs with
-    no compiler at all.
+    [<compiler>-version:<t>] comes from the live compiler when one is installed
+    and is otherwise carried forward from [previous] verbatim - `--rehash` runs
+    with no compiler at all. The other per-target records are the compiler's own
+    {!Compiler.t.provenance}; a bare key (no tab) is a [None] value, as the
+    shell's `printf '<compiler>-args:%s\n' "$t"` emitted for an empty argument
+    list. The [generator] record is the compiler's own.
 
-    [ccomp-args:<t>] and [ccomp-configure-args:<t>] emit a BARE KEY with no tab
-    when the argument list is empty, because `printf 'ccomp-args:%s\n' "$t"`
-    does.
-
-    M4 (.ai/asm_plan.md §12): [abi-version], [supported-targets],
+    M4 (docs/design.md §12): [abi-version], [supported-targets],
     [expected-value:*], [observation:*] and [origin:*] are author-declared,
     never derived from [sources]/a toolchain/the case's file tree - carried
     forward from [previous] UNCONDITIONALLY (not gated on "no compiler
-    installed" the way [ccomp-version] is), since nothing in this function could
+    installed" the way the compiler version is), since nothing in this function could
     regenerate them if dropped. *)
 
 val write :

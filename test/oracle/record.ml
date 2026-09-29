@@ -1,4 +1,4 @@
-(* The result-record recovery validator (asm/docs/exec-abi-v1.md §15.2).
+(* The result-record recovery validator (docs/exec-abi-v1.md §15.2).
 
    Four fixed steps, in this order, and the order is the whole design:
 

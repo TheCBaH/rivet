@@ -1,0 +1,7 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_test_entry>:
+   0:	e3a0002a 	mov	r0, #42	@ 0x2a
+   4:	e12fff1e 	bx	lr

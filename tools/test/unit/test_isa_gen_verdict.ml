@@ -3,7 +3,7 @@
    all 21 pilot cases (asm-isa-generated-regen, run against the real
    cross binutils and this project's own tool/asm.exe). *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

@@ -1,0 +1,13 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_test_entry>:
+   0:	e3003000 	movw	r3, #0
+			0: R_ARM_MOVW_ABS_NC	asm_test_global
+   4:	e3403000 	movt	r3, #0
+			4: R_ARM_MOVT_ABS	asm_test_global
+   8:	e5930000 	ldr	r0, [r3]
+   c:	e2800016 	add	r0, r0, #22
+  10:	e5830000 	str	r0, [r3]
+  14:	e12fff1e 	bx	lr

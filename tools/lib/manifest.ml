@@ -3,10 +3,10 @@ type key =
   | Source
   | Source_unit of string
   | Inputs
-  | Ccomp_version of Target.t
-  | Ccomp_target of Target.t
-  | Ccomp_args of Target.t
-  | Ccomp_configure_args of Target.t
+  | Compiler_version of string * Target.t
+  | Compiler_target of string * Target.t
+  | Compiler_args of string * Target.t
+  | Compiler_configure_args of string * Target.t
   | Sha256 of string
   | Abi_version
   | Supported_targets
@@ -76,10 +76,10 @@ let key_prefix = function
   | Source -> "source"
   | Source_unit name -> "source-unit:" ^ name
   | Inputs -> "inputs"
-  | Ccomp_version t -> "ccomp-version:" ^ Target.to_string t
-  | Ccomp_target t -> "ccomp-target:" ^ Target.to_string t
-  | Ccomp_args t -> "ccomp-args:" ^ Target.to_string t
-  | Ccomp_configure_args t -> "ccomp-configure-args:" ^ Target.to_string t
+  | Compiler_version (c, t) -> c ^ "-version:" ^ Target.to_string t
+  | Compiler_target (c, t) -> c ^ "-target:" ^ Target.to_string t
+  | Compiler_args (c, t) -> c ^ "-args:" ^ Target.to_string t
+  | Compiler_configure_args (c, t) -> c ^ "-configure-args:" ^ Target.to_string t
   | Sha256 p -> "sha256:" ^ p
   | Abi_version -> "abi-version"
   | Supported_targets -> "supported-targets"
@@ -128,70 +128,87 @@ let parse_key raw =
                         "record %S has an invalid index %S (must be a positive integer)" raw suffix))
             )
       in
-      match targeted "ccomp-version:" (fun t -> Ccomp_version t) with
+      (* <compiler>-version:<target>, -target:, -configure-args: and -args:. The
+         compiler is any lowercase word: which compilers a consumer generates
+         with is its own business, and a manifest names the one it used. *)
+      let compiler_key =
+        let is_name c = match c with 'a' .. 'z' | '0' .. '9' | '_' -> true | _ -> false in
+        List.find_map
+          (fun (suffix, build) ->
+            let n = String.length suffix in
+            let rec find i =
+              if i + n > String.length raw then None
+              else if String.sub raw i n = suffix then Some i
+              else find (i + 1)
+            in
+            match find 1 with
+            | None -> None
+            | Some i ->
+                let compiler = String.sub raw 0 i in
+                if String.for_all is_name compiler then
+                  targeted (compiler ^ suffix) (fun t -> build (compiler, t))
+                else None)
+          [
+            ("-version:", fun k -> Compiler_version (fst k, snd k));
+            ("-target:", fun k -> Compiler_target (fst k, snd k));
+            ("-configure-args:", fun k -> Compiler_configure_args (fst k, snd k));
+            ("-args:", fun k -> Compiler_args (fst k, snd k));
+          ]
+      in
+      match compiler_key with
       | Some r -> r
       | None -> (
-          match targeted "ccomp-target:" (fun t -> Ccomp_target t) with
+          match targeted_int "expected-value:" (fun i -> Expected_value i) with
           | Some r -> r
           | None -> (
-              match targeted "ccomp-configure-args:" (fun t -> Ccomp_configure_args t) with
+              match targeted_int "observation:" (fun i -> Observation i) with
               | Some r -> r
               | None -> (
-                  match targeted "ccomp-args:" (fun t -> Ccomp_args t) with
-                  | Some r -> r
-                  | None -> (
-                      match targeted_int "expected-value:" (fun i -> Expected_value i) with
-                      | Some r -> r
-                      | None -> (
-                          match targeted_int "observation:" (fun i -> Observation i) with
-                          | Some r -> r
-                          | None -> (
-                              match split_prefix raw "source-unit:" with
-                              | Some name -> (
-                                  (* Same D6 reasoning as sha256's path below: the key side
+                  match split_prefix raw "source-unit:" with
+                  | Some name -> (
+                      (* Same D6 reasoning as sha256's path below: the key side
                                      has no escape layer, so a name is one path COMPONENT
                                      (no '/', no leading '-'), not the freer [source]
                                      value itself. *)
-                                  match Identifier.parse name with
-                                  | Ok id -> Ok (Source_unit (Identifier.to_string id))
-                                  | Error e ->
-                                      fail_parse
-                                        (Printf.sprintf "record %S has an unusable unit name: %s"
-                                           raw (Err.Error.kind e).Tool_error.detail))
-                              | None -> (
-                                  match split_prefix raw "origin:" with
-                                  | Some stem -> (
-                                      (* Exactly [source-unit:]'s pattern: the key
+                      match Identifier.parse name with
+                      | Ok id -> Ok (Source_unit (Identifier.to_string id))
+                      | Error e ->
+                          fail_parse
+                            (Printf.sprintf "record %S has an unusable unit name: %s" raw
+                               (Err.Error.kind e).Tool_error.detail))
+                  | None -> (
+                      match split_prefix raw "origin:" with
+                      | Some stem -> (
+                          (* Exactly [source-unit:]'s pattern: the key
                                          carries the unit's own identity (one path
                                          component), and the value (parsed below,
                                          where the escape layer exists) carries the
                                          freer upstream path. *)
-                                      match Identifier.parse stem with
-                                      | Ok id -> Ok (Origin (Identifier.to_string id))
-                                      | Error e ->
-                                          fail_parse
-                                            (Printf.sprintf
-                                               "record %S has an unusable unit stem: %s" raw
-                                               (Err.Error.kind e).Tool_error.detail))
-                                  | None -> (
-                                      match split_prefix raw "sha256:" with
-                                      | Some path -> (
-                                          (* D6: corpus paths are validated. The key side has no
+                          match Identifier.parse stem with
+                          | Ok id -> Ok (Origin (Identifier.to_string id))
+                          | Error e ->
+                              fail_parse
+                                (Printf.sprintf "record %S has an unusable unit stem: %s" raw
+                                   (Err.Error.kind e).Tool_error.detail))
+                      | None -> (
+                          match split_prefix raw "sha256:" with
+                          | Some path -> (
+                              (* D6: corpus paths are validated. The key side has no
                                              escape layer, so a TAB or newline here could not
                                              round-trip - it would silently become a different
                                              record, or two. *)
-                                          match Identifier.relative_path path with
-                                          | Ok p -> Ok (Sha256 p)
-                                          | Error e ->
-                                              fail_parse
-                                                (Printf.sprintf "record %S has an unusable path: %s"
-                                                   raw (Err.Error.kind e).Tool_error.detail))
-                                      | None ->
-                                          (* P2: Unknown records parse, and are DROPPED on
+                              match Identifier.relative_path path with
+                              | Ok p -> Ok (Sha256 p)
+                              | Error e ->
+                                  fail_parse
+                                    (Printf.sprintf "record %S has an unusable path: %s" raw
+                                       (Err.Error.kind e).Tool_error.detail))
+                          | None ->
+                              (* P2: Unknown records parse, and are DROPPED on
                                              rehash - write_manifest reconstructs known
                                              records only, so preserving them here would
                                              invent a behavior the shell does not have. *)
-                                          Ok (Unknown raw))))))))))
+                              Ok (Unknown raw)))))))
 
 let is_hex_digit c = match c with '0' .. '9' | 'a' .. 'f' -> true | _ -> false
 
@@ -355,17 +372,16 @@ let parse text =
                   else (
                     Hashtbl.add seen_hash p ();
                     None)
-              (* D12: the shell's carry-forward is `grep "^ccomp-version:$t\t"`,
+              (* D12: the shell's carry-forward is `grep "^<compiler>-version:$t\t"`,
                  which emits EVERY match, so today all duplicates are carried
                  forward verbatim and the manifest grows. *)
-              | Ccomp_version t ->
-                  if Hashtbl.mem seen_version t then
+              | Compiler_version (c, t) ->
+                  if Hashtbl.mem seen_version (c, t) then
                     Some
                       (fail_parse
-                         (Printf.sprintf "duplicate ccomp-version record for %s"
-                            (Target.to_string t)))
+                         (Printf.sprintf "duplicate %s-version record for %s" c (Target.to_string t)))
                   else (
-                    Hashtbl.add seen_version t ();
+                    Hashtbl.add seen_version (c, t) ();
                     None)
               (* Unlike Source's own P3 first-wins: two sources claiming the
                  same unit name is ambiguous rather than redundant - there is

@@ -1,0 +1,51 @@
+There are 13 section headers, starting at offset 0x2f0:
+
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .text             PROGBITS        00000000 000034 000014 00  AX  0   0  4
+  [ 2] .rela.text        RELA            00000000 00023c 000024 0c   I 10   1  4
+  [ 3] .data             PROGBITS        00000000 000048 000000 00  WA  0   0  1
+  [ 4] .bss              NOBITS          00000000 000048 000000 00  WA  0   0  1
+  [ 5] .comment          PROGBITS        00000000 000048 000023 01  MS  0   0  1
+  [ 6] .note.GNU-stack   PROGBITS        00000000 00006b 000000 00      0   0  1
+  [ 7] .eh_frame         PROGBITS        00000000 00006c 000028 00   A  0   0  4
+  [ 8] .rela.eh_frame    RELA            00000000 000260 000024 0c   I 10   7  4
+  [ 9] .riscv.attributes RISCV_ATTRIBUTES 00000000 000094 000055 00      0   0  1
+  [10] .symtab           SYMTAB          00000000 0000ec 0000e0 10     11  12  4
+  [11] .strtab           STRTAB          00000000 0001cc 00006f 00      0   0  1
+  [12] .shstrtab         STRTAB          00000000 000284 00006b 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
+  L (link order), O (extra OS processing required), G (group), T (TLS),
+  C (compressed), x (unknown), o (OS specific), E (exclude),
+  D (mbind), p (processor specific)
+
+Relocation section '.rela.text' at offset 0x23c contains 3 entries:
+ Offset     Info    Type                Sym. Value  Symbol's Name + Addend
+00000000  00000d1a R_RISCV_HI20           00000000   shared_value + 0
+00000004  00000d1b R_RISCV_LO12_I         00000000   shared_value + 0
+0000000c  00000d1c R_RISCV_LO12_S         00000000   shared_value + 0
+
+Relocation section '.rela.eh_frame' at offset 0x260 contains 3 entries:
+ Offset     Info    Type                Sym. Value  Symbol's Name + Addend
+0000001c  00000539 R_RISCV_32_PCREL       00000000   .L0  + 0
+00000020  00000723 R_RISCV_ADD32          00000014   .L0  + 0
+00000020  00000527 R_RISCV_SUB32          00000000   .L0  + 0
+
+Symbol table '.symtab' contains 14 entries:
+   Num:    Value  Size Type    Bind   Vis      Ndx Name
+     0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND
+     1: 00000000     0 FILE    LOCAL  DEFAULT  ABS caller.c
+     2: 00000000     0 SECTION LOCAL  DEFAULT    1 .text
+     3: 00000000     0 SECTION LOCAL  DEFAULT    3 .data
+     4: 00000000     0 SECTION LOCAL  DEFAULT    4 .bss
+     5: 00000000     0 NOTYPE  LOCAL  DEFAULT    1 .L0
+     6: 00000000     0 NOTYPE  LOCAL  DEFAULT    1 $xrv32i2p1_m2p0_a2p1_f2p2_d2p2_zicsr2p0_zmmul1p0_zaamo1p0_zalrsc1p0
+     7: 00000014     0 NOTYPE  LOCAL  DEFAULT    1 .L0
+     8: 00000000     0 SECTION LOCAL  DEFAULT    6 .note.GNU-stack
+     9: 00000000     0 SECTION LOCAL  DEFAULT    5 .comment
+    10: 00000000     0 SECTION LOCAL  DEFAULT    7 .eh_frame
+    11: 00000000     0 SECTION LOCAL  DEFAULT    9 .riscv.attributes
+    12: 00000000    20 FUNC    GLOBAL DEFAULT    1 asm_test_entry
+    13: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND shared_value

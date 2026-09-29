@@ -1,9 +1,8 @@
-/* M2's global load/store slice (.ai/asm_plan.md §12, Milestone 2).
+/* M2's global load/store slice (docs/design.md §12, Milestone 2).
 
-   The initializer is non-zero on purpose. CompCert routes an uninitialized or
-   all-zero global to .comm or .bss (modules/CompCert/x86/TargetPrinter.ml:189,
-   and variable_section's ~bss argument), and common allocation and NOBITS
-   storage are both M3. A non-zero initializer puts the object in .data as
+   The initializer is non-zero on purpose. Compilers route an uninitialized or
+   all-zero global to .comm or .bss, and common allocation and NOBITS storage
+   are both M3. A non-zero initializer puts the object in .data as
    ordinary PROGBITS bytes, which is the second allocatable section M2 wants
    and nothing more.
 

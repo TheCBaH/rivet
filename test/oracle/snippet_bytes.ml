@@ -25,7 +25,7 @@
    anything but the values. *)
 
 type t = {
-  return42 : string;  (** the CompCert 3.17 return-42 fixture for this profile *)
+  return42 : string;  (** the compiler return-42 fixture for this profile *)
   return41 : string;  (** the same, with the constant-materializing immediate mutated *)
   trap : string;  (** §16.3, must trap at that instruction *)
   spin : string;  (** a guest that never returns *)

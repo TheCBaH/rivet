@@ -4,7 +4,7 @@
 # identity. Run over the resolved dependency graph, not over conventions.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-ASM_DIR=${ASM_DIR:-asm}
+ASM_DIR=${RIVET_DIR:-.}
 desc=$(mktemp); trap 'rm -f "$desc"' EXIT
 ( cd "$ASM_DIR" && opam exec -- dune describe --lang 0.1 ) > "$desc"
-opam exec -- ocaml tools/asm_audit.ml layers "$desc" "$ASM_DIR"
+opam exec -- ocaml scripts/asm_audit.ml layers "$desc" "$ASM_DIR"

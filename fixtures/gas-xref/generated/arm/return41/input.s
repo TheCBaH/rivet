@@ -5,11 +5,5 @@
 	.text
 	.globl asm_snippet
 asm_snippet:
-	mov ip, sp
-	sub sp, sp, #8
-	str ip, [sp, #0]
-	str lr, [sp, #4]
 	mov r0, #41
-	ldr lr, [sp, #4]
-	add sp, sp, #8
 	bx lr

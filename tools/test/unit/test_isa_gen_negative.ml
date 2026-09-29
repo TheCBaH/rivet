@@ -2,7 +2,7 @@
    case is the regenerated corpus's job (asm-isa-difficult-regen / -check); this pins what every
    entry must declare so a new one cannot be committed half-described. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

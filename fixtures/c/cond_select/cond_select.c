@@ -1,4 +1,4 @@
-/* M2's conditional slice (.ai/asm_plan.md §12, Milestone 2).
+/* M2's conditional slice (docs/design.md §12, Milestone 2).
 
    Comparison and conditional selection, which is where the condition code
    stops being a constant: ARM's A32 condition field is [cond_al] throughout

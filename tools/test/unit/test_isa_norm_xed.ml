@@ -5,7 +5,7 @@
    isa-db/export/xed_resolved/*.jsonl at this revision. No filesystem
    dependency, matching test_isa_norm_riscv.ml. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

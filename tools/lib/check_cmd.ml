@@ -19,7 +19,7 @@ let check_one (case : Corpus.case) =
         match Manifest.parse text with
         | Error e -> Command.of_errors (Err.Error.kind e)
         | Ok m -> (
-            match Corpus.check case.Corpus.root m with
+            match Corpus.check_case case m with
             | Error e -> Command.of_error e
             | Ok (seen, findings) ->
                 if seen = 0 then fatal Tool_error.Validate "manifest records no files"

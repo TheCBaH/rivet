@@ -1,5 +1,5 @@
-(* The QEMU user-mode host runner (asm/docs/exec-abi-v1.md §15, and §11.5.2 of
-   .ai/asm_plan.md's architecture).
+(* The QEMU user-mode host runner (docs/exec-abi-v1.md §15, and §11.5.2 of
+   docs/design.md's architecture).
 
    Serializes a manifest, runs the profile's helper under its emulator, enforces
    a wall-clock timeout, recovers the result record and normalizes the outcome.
@@ -22,7 +22,7 @@
    would be a guess presented as an observation.
 
    Unix lives here and only here on the host side. §3.7 bans it from every
-   production and browser package, and tools/asm-check-purity.sh enforces that
+   production and browser package, and scripts/asm-check-purity.sh enforces that
    over the resolved dependency DAG rather than by convention. *)
 
 open Asm_oracle
@@ -49,11 +49,11 @@ type t = {
 
 (* {1 Locating a profile's helper}
 
-   tools/asm-helpers.sh writes both the ELF and the emulator name, so the
-   matrix in tools/target-matrix.sh stays the single definition of which
+   scripts/asm-helpers.sh writes both the ELF and the emulator name, so the
+   matrix in scripts/target-matrix.sh stays the single definition of which
    emulator runs which profile. *)
 
-let helpers_dir () = try Sys.getenv "ASM_HELPERS_DIR" with Not_found -> ".asm-helpers"
+let helpers_dir () = try Sys.getenv "RIVET_HELPERS_DIR" with Not_found -> ".asm-helpers"
 
 let read_file path =
   let ic = open_in_bin path in
@@ -80,7 +80,7 @@ let available_profiles ?(abi_version = Abi.abi_version) () =
   List.filter (fun p -> helper_for ~abi_version p <> None) (Abi_v3.profiles_for_version abi_version)
 
 (* M0.3 requires helper hashes and tool versions in provenance;
-   tools/asm-helpers.sh records them beside the ELF and the conformance run
+   scripts/asm-helpers.sh records them beside the ELF and the conformance run
    reproduces them, so a result is attributable to the exact sources and
    emulator that produced it. The APT packages are range-checked rather than
    digest-pinned, so this is how a base-image update that moved QEMU or the

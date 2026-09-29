@@ -1,4 +1,4 @@
-; An executable plus a rule rather than a (test) stanza, matching asm/test's
+; An executable plus a rule rather than a (test) stanza, matching test's
 ; convention: (test) puts its executable in the directory's @all alias whatever
 ; its enabled_if says.
 
@@ -31,7 +31,7 @@
   test_isa_construct
   test_tool_parallel)
  (modes byte native)
- (libraries compcert_tools err_trace bos fpath unix))
+ (libraries rivet_tools err_trace bos fpath unix))
 
 (rule
  (alias runtest)
@@ -58,7 +58,8 @@
 (rule
  (alias runtest)
  (deps
-  (glob_files_rec %{workspace_root}/fixtures/compcert-3.17/**)
+  (glob_files_rec %{workspace_root}/fixtures/c/**)
+  (glob_files_rec %{workspace_root}/fixtures/gcc-14/**)
   (glob_files_rec %{workspace_root}/fixtures/gas-xref/**))
  (action
   (run ./test_manifest.exe %{workspace_root}/fixtures)))
@@ -70,7 +71,8 @@
 (rule
  (alias runtest)
  (deps
-  (glob_files_rec %{workspace_root}/fixtures/compcert-3.17/**)
+  (glob_files_rec %{workspace_root}/fixtures/c/**)
+  (glob_files_rec %{workspace_root}/fixtures/gcc-14/**)
   (glob_files_rec ../data/gnu/*))
  (action
   (run ./test_gnu_output.exe ../data/gnu %{workspace_root}/fixtures)))

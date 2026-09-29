@@ -1,7 +1,7 @@
-(** Phase A of the whole-ISA x86 inventory (asm/docs/isa-inventory.md):
+(** Phase A of the whole-ISA x86 inventory (docs/isa-inventory.md):
     mnemonic + extension only, mechanically read from the vendored Intel XED
     submodule ({!Repo.isa_data_xed}). Phase B fields are not computed here,
-    exactly as {!Isa_inventory_riscv}. See asm/docs/isa-inventory.md's "XED's
+    exactly as {!Isa_inventory_riscv}. See docs/isa-inventory.md's "XED's
     data shape, verified against the vendored checkout" for the format this
     module implements against - it is messier than riscv-opcodes' and this
     is the ONE place that should encode that knowledge. *)
@@ -49,7 +49,7 @@ val entries_for_target : Repo.t -> Target.t -> (entry list, Tool_error.t) Err.t
 (** Every entry across every extension directory - each read recursively, so
     a nested subdirectory like [amd/amdxop/] is reached too - plus
     [datafiles/]'s own loose files (extension ["base"]; see the "XED's data
-    shape" section of asm/docs/isa-inventory.md), whose {!entry.applies_32}
+    shape" section of docs/isa-inventory.md), whose {!entry.applies_32}
     (for [x86_32]) or {!entry.applies_64} (for [x86_64]) holds, sorted and
     deduplicated by [(mnemonic, extension)] - the same operand-form collapse
     {!Isa_inventory_riscv.entries_for_target} performs, for the same reason:
@@ -57,10 +57,10 @@ val entries_for_target : Repo.t -> Target.t -> (entry list, Tool_error.t) Err.t
     [x86_32]/[x86_64] returns [[]]. *)
 
 val render_manifest : source_commit:string -> Target.t -> entry list -> string
-(** asm/docs/isa-inventory.md's manifest.txt format, source [xed]. Takes the
+(** docs/isa-inventory.md's manifest.txt format, source [xed]. Takes the
     already-target-filtered {!entries_for_target} result, not raw entries -
     it renders [mnemonic]/[extension] only, the same shape
     {!Isa_inventory_riscv.render_manifest} produces. *)
 
 val render_summary : Target.t -> entry list -> string
-(** asm/docs/isa-inventory.md's summary.txt format. *)
+(** docs/isa-inventory.md's summary.txt format. *)

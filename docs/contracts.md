@@ -385,12 +385,12 @@ NOBITS, `.comm`/`.local`/`.weak` and the strong/common/weak resolver on all
 **six** targets (`x86_32`/`x86_64`/`arm`/`aarch64`/`riscv32`/`riscv64`). The
 directive table, data-directive table and support matrix below are updated
 to add those rows/columns. Multi-module linking itself is proven against
-two real, committed, six-target CompCert fixtures
-(`asm/fixtures/compcert-3.17/cross_call`, `cross_data`); those two link an
+two real, committed, six-target gcc fixtures
+(`fixtures/gcc-14/cross_call`, `cross_data`); those two link an
 initialized, strongly-`.globl`'d symbol across files and do not themselves
 exercise `.bss`/`.comm`/`.local`/`.weak` — that machinery is covered
-instead by the synthetic cases in `asm/test/targets/test_targets.ml` and
-`asm/test/image/test_image.ml`. See `.ai/asm_plan.md`'s Milestone 3 status.
+instead by the synthetic cases in `test/targets/test_targets.ml` and
+`test/image/test_image.ml`. See `docs/design.md`'s Milestone 3 status.
 
 Every directive the fixtures contain, and nothing else. **A directive not in
 this table is a diagnostic.** An assembler that ignores directives it does not
@@ -440,7 +440,7 @@ normalized by the common table on every target — `directives.ml` names no
 target — so their ● above is a fact about the shared parser, not six
 separate implementations. §3's directive-normalization code is followed by
 the M3 image-layer machinery: the strong/common/weak resolver
-(`asm/lib/image/symtab.ml`, `asm/lib/image/image.ml`'s `plan_image`) and
+(`lib/image/symtab.ml`, `lib/image/image.ml`'s `plan_image`) and
 NOBITS-section handling both live below the normalized-directive boundary
 and are equally target-independent. See the notes below the data-directive
 table for what a NOBITS section, and `.comm`/`.local`/`.weak`, do at that
@@ -466,7 +466,7 @@ being evaluated here.
 | `.xword` | | | | 8 | | | `Data {width; values}` |
 | `.dword` | | | | | 8 | 8 | `Data {width; values}` |
 
-CompCert emits `.4byte` for 32-bit address data on ARM and `.long` on x86, which
+gcc emits `.4byte` for 32-bit address data on ARM and `.long` on x86, which
 is why both spellings are present rather than one canonical name: the table
 absorbs the dialect, and nothing downstream of it knows there was one. `.dword`
 is riscv's own spelling of the same eight-byte width `.quad` already gives x86,
@@ -484,7 +484,7 @@ Notes on the rows that are not obvious:
   treated as a synonym: its argument is an exponent, so reading it as a byte
   count would align `.p2align 4` to four bytes instead of sixteen — a valid
   image at wrong addresses, which is the worst shape a bug can take. It has its
-  own row, normalized to the byte count `2^e`. It first appeared in CompCert's
+  own row, normalized to the byte count `2^e`. It first appeared in gcc's
   own runtime helpers (`runtime/x86_32/i64_{dtou,utod,utof}.S`,
   `runtime/x86_64/i64_dtou.S`), which an image links when generated code
   calls them.
@@ -528,7 +528,7 @@ Notes on the rows that are not obvious:
   A `.comm` whose name has been made `.local` in the same input (and not
   `.globl` again since) is not a common symbol at all: as with GAS, it is
   allocated in that input's own `.bss` as a local object, at lowering.
-  CompCert emits `.comm` for an uninitialized extern global and `.local` plus
+  gcc emits `.comm` for an uninitialized extern global and `.local` plus
   `.comm` for an uninitialized static; an initialized fixture never emits either, which is
   why `cross_call`/`cross_data` don't exercise this path (see the M3 update
   note above §3).
@@ -578,7 +578,7 @@ Legend:
 `link` covers multi-module linking (M3): module-local fragment/symbol/fixup
 namespaces, name-only section merging across inputs, and the strong/common/weak
 resolver behind §3's `.comm`/`.local`/`.weak` rows
-(`asm/lib/image/symtab.ml`, `asm/lib/image/image.ml`'s `plan_image`), proven
+(`lib/image/symtab.ml`, `lib/image/image.ml`'s `plan_image`), proven
 end to end by `cross_call` and `cross_data` on all six targets. Imports are
 still rejected: a fixup naming a symbol no input defines fails at planning,
 because `bind_image` takes section addresses and has no import resolver
@@ -598,7 +598,7 @@ against the measured ELF record. §5.7 is the contract.
 
 `execute-user` is ◐ because it runs the bound image under QEMU user mode via the
 checked-in helpers, so it needs cross binutils and four emulator binaries and
-lives in `asm-abi-conform` / `asm-exec`, not in `asm-portable`.
+lives in `abi-conform` / `exec`, not in the portable matrix.
 
 `execute-system` is ○ for every target still: the system profile is a separate
 non-required workflow and nothing asserts on it yet.
@@ -644,7 +644,7 @@ Recorded here so that "not in the matrix" never has to be interpreted:
   planning, because `bind_image` takes section addresses and has no import
   resolver. Accepting one would report bindable state the API cannot satisfy
 - symbol assignment (`name = expr`), rejected at simplify: it needs a symbol
-  flavour the lowered AST does not have, and no CompCert output uses it
+  flavour the lowered AST does not have, and no gcc output uses it
 - `.include`, conditional assembly, repetition, user macros (§4.10, later)
 - any form of object-file output — the lowered module carries what an object file
   would carry precisely so that none is ever written

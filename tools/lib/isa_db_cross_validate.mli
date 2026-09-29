@@ -1,7 +1,7 @@
 (** Cross-validation only, deliberately not a
     replacement for {!Isa_inventory_riscv}/{!Isa_inventory_xed}. For each of
     the four (source, profile) pairs, reads the checked-in
-    [asm/fixtures/isa-inventory/<target>/manifest.txt] and the checked-in
+    [fixtures/isa-inventory/<target>/manifest.txt] and the checked-in
     [isa-db/export/<source>/<target>.jsonl] (the standalone Python isa-db/
     project's export), and asserts every [(mnemonic, extension)]
     manifest row has a matching isa-db source record for that profile, and

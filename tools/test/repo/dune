@@ -1,5 +1,5 @@
-; A REPOSITORY-LEVEL integration test. It reads Makefile, tools/target-matrix.sh
-; and tools/dev/dump-target-config.sh, all of which are OUTSIDE the asm/ dune
+; A REPOSITORY-LEVEL integration test. It reads Makefile, scripts/target-matrix.sh
+; and scripts/dev/dump-target-config.sh, all of which are OUTSIDE the asm/ dune
 ; workspace, so it cannot be a runtest rule: reaching them through ../ or an
 ; absolute path would make a sandboxed action depend on undeclared inputs, which
 ; is worse than not sandboxing at all.
@@ -12,4 +12,4 @@
 (executables
  (names repo_tests)
  (modes byte native)
- (libraries compcert_tools err_trace bos fpath unix))
+ (libraries rivet_tools err_trace bos fpath unix))

@@ -91,12 +91,12 @@ type tier =
   | Producer_update  (** the existing Python producer lane; untouched by this work *)
 
 val fixture_dir_name : string
-(** ["isa-generated"] under [asm/fixtures/] - this generator's OWN corpus
+(** ["isa-generated"] under [fixtures/] - this generator's OWN corpus
     (the existing [gas-xref regen] recreates its own tree and
     should not own this corpus), never shared with gas-xref's. *)
 
 val cli_group_name : string
-(** ["isa-generated"], the planned [compcert_tools.exe isa-generated
+(** ["isa-generated"], the planned [rivet_tools.exe isa-generated
     check|regen] subcommand group, mirroring the existing [gas-xref]/
     [fixture] groups. *)
 

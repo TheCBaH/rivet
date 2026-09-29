@@ -58,16 +58,20 @@ let git repo args ~label =
        ~stderr:Tool_process.Err_capture ~accepted:Process_status.Zero_only ~label "git" args)
 
 (* "ours" has no fixed release version the way RV32 2.43.1 / RV64 2.44 does -
-   it is whatever this checkout's asm/ tree currently is, which is the entire
+   it is whatever this checkout's assembler currently is, which is the entire
    point of comparing against it. The git revision is the label; "-dirty" is
-   appended when asm/ itself has uncommitted changes, so a corpus regenerated
+   appended when the assembler's own sources have uncommitted changes, so a corpus regenerated
    against work-in-progress code is visibly distinguishable from one against a
    clean commit ([tool_label] must be resolved, never assumed from a prior
    measurement, extended to the one tool with no release to pin). *)
+let assembler_sources = [ "lib"; "targets"; "driver"; "tool"; "vendor"; "dune"; "dune-project" ]
+
 let tool_label_uncached repo =
   let* head = git repo [ "rev-parse"; "HEAD" ] ~label:"isa-generated-ours git rev-parse" in
   let* status =
-    git repo [ "status"; "--porcelain"; "--"; "asm" ] ~label:"isa-generated-ours git status"
+    git repo
+      ([ "status"; "--porcelain"; "--" ] @ assembler_sources)
+      ~label:"isa-generated-ours git status"
   in
   let rev = String.trim (Option.value head.Tool_process.stdout ~default:"") in
   let dirty = String.trim (Option.value status.Tool_process.stdout ~default:"") <> "" in
@@ -91,7 +95,7 @@ let tool_label repo =
    plus [dune exec] round trip per case. Without a build, fall back to
    [dune exec], which builds it. *)
 let asm_command repo argv =
-  let built = Fpath.(Repo.path repo / "asm" / "_build" / "default" / "tool" / "asm.exe") in
+  let built = Fpath.(Repo.path repo / "_build" / "default" / "tool" / "asm.exe") in
   if Sys.file_exists (Fpath.to_string built) then (Fpath.to_string built, argv)
   else ("opam", [ "exec"; "--"; "dune"; "exec"; "tool/asm.exe"; "--" ] @ argv)
 
@@ -115,9 +119,8 @@ let run repo (case : Isa_generated_case.case) =
       let prog, args = asm_command repo argv in
       let* result =
         Tool_process.exec
-          (Tool_process.spec
-             ~cwd:Fpath.(Repo.path repo / "asm")
-             ~stdout:Tool_process.Out_capture ~stderr:Tool_process.Err_capture
+          (Tool_process.spec ~cwd:(Repo.path repo) ~stdout:Tool_process.Out_capture
+             ~stderr:Tool_process.Err_capture
              ~accepted:(Process_status.Statuses [ 0; 1 ])
              ~label:"isa-generated-ours asm.exe" prog args)
       in

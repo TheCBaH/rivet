@@ -1,4 +1,4 @@
-(* Write each dogfoodable snippet as a .s file, for tools/asm-gas-xref.sh.
+(* Write each dogfoodable snippet as a .s file, for scripts/asm-gas-xref.sh.
 
    The text comes from the same canonical printer whose output test_snippets
    pins, so the file GNU as assembles and the bytes this project produces come

@@ -1,0 +1,7 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <asm_test_entry>:
+   0:	b8 2a 00 00 00       	mov    $0x2a,%eax
+   5:	c3                   	ret

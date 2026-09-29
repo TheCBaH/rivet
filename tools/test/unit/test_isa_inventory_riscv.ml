@@ -5,7 +5,7 @@
    traversal) is exercised indirectly by `make asm-ci`'s isa-inventory regen,
    not duplicated here. *)
 
-open Compcert_tools
+open Rivet_tools
 
 let failures = ref 0
 let checks = ref 0

@@ -5686,7 +5686,7 @@ let opmacc_vx_mnemonics =
   ]
 
 (* GEN-05-RV-BASE: the base-integer shapes the encoder already emits for
-   CompCert. [base_form] is the shared record-to-form wrapper; each shape
+   the compiler. [base_form] is the shared record-to-form wrapper; each shape
    below only states its operands, syntax and the facts it infers. *)
 let base_form ?(form_id_suffix = "") ?(concreteness = Concrete) ~mnemonic ~operands ~syntax ~facts
     (rec_ : R.t) =
