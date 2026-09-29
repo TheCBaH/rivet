@@ -1,4 +1,4 @@
-; The target-independent AST containers (.ai/asm_plan.md §4).
+; The target-independent AST containers (docs/design.md §4).
 ;
 ; Note what is *not* here. Two things, for two different reasons:
 ;
@@ -16,7 +16,8 @@
 
 (library
  (name asm_core)
+ (public_name rivet.asm_core)
  (modes byte native)
  (libraries foundation fmt)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

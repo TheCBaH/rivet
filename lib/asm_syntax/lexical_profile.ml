@@ -1,4 +1,4 @@
-(* The dialect configuration a target hands the lexer (.ai/asm_plan.md §4.6).
+(* The dialect configuration a target hands the lexer (docs/design.md §4.6).
 
    This exists because the same character means opposite things in the four
    dialects this project must read at once: [#] introduces an immediate on

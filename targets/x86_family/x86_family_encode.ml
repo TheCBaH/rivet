@@ -1,10 +1,10 @@
 (* Shared x86 encoding machinery: registers, addressing, REX, ModR/M, SIB,
-   displacements and immediates (.ai/asm_plan.md §5.1).
+   displacements and immediates (docs/design.md §5.1).
 
    The only family package. Everything here is built from the generic
    Seq/Iso/Alt combinators, and the x86 vocabulary lives here rather than in
    lib/codec - which is what keeps the codec EDSL target-agnostic and what
-   tools/asm-check-layers.sh enforces.
+   scripts/asm-check-layers.sh enforces.
 
    The family parameter [MODE] exposes real differences, per §5.1: register
    availability, default operand size, and whether a REX byte may exist at all.
@@ -169,14 +169,14 @@ module Operand = struct
      `addq $bodies+24, %rax`, `pushl $sym`, ...) is the [$]-spelled sibling
      [Sym] is not: a genuine immediate whose value is a symbol's address
      rather than a literal number - gcc's own idiom for materializing a
-     string/array address into a register or the stack, which ccomp's codegen
+     string/array address into a register or the stack, which the compiler's codegen
      (this project's only source of fixtures until now) never emitted. Kept
      as its own constructor rather than widening [Imm] to
      [Bigint.t Asm_core.Expr.t]-like union, so every existing [Imm v] site
      stays exactly as narrow as it was. All three evidenced forms now lower
      it: [mov]'s register-destination form ({!Lowered.Mov_r_imm}), the
      ALU-immediate form ({!Lowered.Alu_rm_imm}), and [push]'s immediate form
-     ({!Lowered.Push_imm}) - see asm/docs/corpus.md's classify-c-gcc
+     ({!Lowered.Push_imm}) - see classify-c-gcc
      section. *)
   type t =
     | Reg of Reg.t
@@ -308,7 +308,7 @@ end
 
 module Opcode = struct
   (** [sahf] - load [%ah] into the flags register ([0x9E]), bare, no operand,
-            {!Fucomp}/{!Fnstsw}'s exact fixed-opcode shape (M5, asm/docs/corpus.md -
+            {!Fucomp}/{!Fnstsw}'s exact fixed-opcode shape (M5, the corpus notes -
             same fixture as {!Fnstsw}). *)
   type t =
     | Add
@@ -359,7 +359,7 @@ module Opcode = struct
     | Ucomisd
         (** [ucomisd rm, reg] - unordered scalar double compare ([66 0F 2E /r]), {!Comisd}'s exact
             sibling in the same [sse_binop_66_codec] table, one more opcode byte at the same
-            mandatory-prefix group (M5, asm/docs/corpus.md - gas_frontier.t's
+            mandatory-prefix group (M5 - gas_frontier.t's
             runtime-i64_dtou.S's own float-to-unsigned range test). *)
     | Comiss
     | Ucomiss
@@ -371,7 +371,7 @@ module Opcode = struct
     | Pxor
         (** [pxor rm, reg] - packed bitwise XOR ([66 0F EF /r]), {!Xorpd}'s own mandatory-prefix
             group at a different opcode byte, evidenced only as the register-register
-            self-zeroing idiom [pxor %xmmN, %xmmN] (M5, asm/docs/corpus.md - gas_frontier.t's
+            self-zeroing idiom [pxor %xmmN, %xmmN] (M5 - gas_frontier.t's
             runtime-i64_utod.S/i64_utof.S, priming an accumulator ahead of an integer-to-float
             conversion). *)
     | Movapd
@@ -1485,7 +1485,7 @@ module Opcode = struct
         (** [fadds mem] - x87 single-precision add ([st(0) := st(0) + mem], [0xD8 /0]), a memory-
             source-only arithmetic sibling of {!Fldl}/{!Fstpl}/{!Fstps}/{!Flds}/{!Fildll}'s pure
             load/store family - same {!Lowered.Fpu_mem} shape, one more disjoint opcode/extension
-            pair. Evidenced only against a bare-symbol source (M5, asm/docs/corpus.md -
+            pair. Evidenced only against a bare-symbol source (M5, the corpus notes -
             gas_frontier.t's runtime-i64_utod.S/i64_utof.S), so it shares {!Flds}'s
             [mem_of_symbol] duality rather than {!Fldl}/{!Fstpl}/{!Fstps}'s memory-operand-only
             scope. *)
@@ -1495,28 +1495,28 @@ module Opcode = struct
             the reverse-direction FADD_X87_ST0 or FADDP form. *)
     | Fucomp
     | Fnstcw
-        (** [fnstcw mem] - x87 store-control-word ([0xD9 /7], M5, asm/docs/corpus.md -
+        (** [fnstcw mem] - x87 store-control-word ([0xD9 /7], M5, the corpus notes -
             gas_frontier.t's runtime-i64_dtos.S/i64_dtou.S own round-to-nearest-then-
             truncate idiom around an integer conversion). Shares {!Lowered.Fpu_mem}
             with {!Fldl}/.../{!Fadds}: same opcode-plus-ModR/M-extension shape, one
             more disjoint opcode/extension pair. *)
     | Fldcw
         (** [fldcw mem] - x87 load-control-word ([0xD9 /5]), {!Fnstcw}'s load-back
-            counterpart restoring the saved rounding mode (M5, asm/docs/corpus.md -
+            counterpart restoring the saved rounding mode (M5, the corpus notes -
             same fixtures as {!Fnstcw}). *)
     | Fistpll
         (** [fistpll mem] - x87 64-bit integer store-and-pop ([0xDF /7]), {!Fildll}'s
-            store direction (M5, asm/docs/corpus.md - same fixtures as {!Fnstcw}). *)
+            store direction (M5 - same fixtures as {!Fnstcw}). *)
     | Fsubs
         (** [fsubs mem] - x87 single-precision subtract ([st(0) := st(0) - mem],
             [0xD8 /4]), {!Fadds}'s exact sibling at a different ModR/M extension,
             including the same bare-symbol [mem_of_symbol] duality (M5,
-            asm/docs/corpus.md - gas_frontier.t's runtime-i64_dtou.S). *)
+            the corpus notes - gas_frontier.t's runtime-i64_dtou.S). *)
     | Fnstsw
         (** [fnstsw %ax] - x87 store-status-word into [%ax] ([0xDF 0xE0]), a fixed
             two-byte word with no ModR/M, the same "no operand" shape {!Fucomp}
             already uses - the [%ax] destination is implicit in the opcode, not an
-            encoded operand (M5, asm/docs/corpus.md - gas_frontier.t's
+            encoded operand (M5 - gas_frontier.t's
             runtime-i64_dtou.S own status-word-into-[sahf] idiom). *)
     | Sahf
     | Table of int  (** a generated {!X86_table_rows} row, by index (DEC-X86-TABLE) *)
@@ -1946,7 +1946,7 @@ module Opcode = struct
   (* The machine encodes add and sub as one opcode with the operation in the
      ModR/M reg field, so the opcode and its extension are two spellings of one
      fact and live together. [-1] is "not an ALU-immediate operation". [Adc]
-     (M4, .ai/asm_plan.md §12: the CompCert-runtime-helper fixture) needs only
+     (M4, docs/design.md §12: the runtime-helper fixture) needs only
      this immediate form - [i64_sdiv.S]/[i64_smod.S] never add it to a memory
      destination. [Sbb] fills ext 3, the one gap in
      this table, confirmed against real GNU as: [sbbl $1000000,%ecx] -> [81
@@ -1977,7 +1977,7 @@ module Opcode = struct
      [Add]/[Sbb]/[Test] (M4) join [Xor]/[Cmp]/[Sub] for the same reason those
      three were added - real bytes the i64_divmod runtime-helper fixture
      measurably selects (0x01/0x19/0x85 respectively), not speculative
-     coverage. [Adc] (M5, asm/docs/corpus.md - siphash24.c's [adcl %ecx,%edx],
+     coverage. [Adc] (M5 - siphash24.c's [adcl %ecx,%edx],
      the carry-propagation half of its 64-bit-add idiom) joins them the same
      way, checked against real i686-linux-gnu-as: [adcl %ecx,%edx] -> [11
      ca]. *)
@@ -2103,7 +2103,7 @@ module Instruction = struct
   (** [form] is B10's form preference: which rung of a relaxation ladder this instruction insists
       on, or [None] for "layout decides".
 
-      It is [None] from ordinary parsing, so CompCert's and a user's branches relax normally. It is
+      It is [None] from ordinary parsing, so the compiler's and a user's branches relax normally. It is
       [Some] from a decoded branch and from a size-suffixed mnemonic, and the reason it has to
       survive as far as here rather than being consumed at the text boundary is that canonical
       disassembly must reassemble byte-exactly: a near branch whose final displacement also fits
@@ -2220,7 +2220,7 @@ module Instruction = struct
            equally part of this spelling: it is what [parse_one_operand]'s
            [Token.Star] case, and GNU as, both expect. *)
         | Opcode.Pop -> Fmt.pf ppf "pop %a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
-        (* no size suffix: the register's width is the operand size, and CompCert prints the
+        (* no size suffix: the register's width is the operand size, and the compiler prints the
            bare mnemonic *)
         | Opcode.Bswap -> Fmt.pf ppf "bswap %a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
         | Opcode.Jmp -> (
@@ -2248,7 +2248,7 @@ module Instruction = struct
            width for a suffix to disambiguate - GAS accepts none. *)
         | Opcode.Setcc c ->
             Fmt.pf ppf "set%s %a" (Cc.name c) Fmt.(list ~sep:(any ", ") Operand.pp) ops
-        (* [movzbl]/[movsbl]/[movslq] (M5, asm/docs/corpus.md): [Opcode.name]
+        (* [movzbl]/[movsbl]/[movslq] (M5): [Opcode.name]
            already carries the *source* width as its own trailing letter
            ([movzb], [movsl], ...); appending [suffix_of_width i.width] here
            supplies the destination one, together reconstructing GAS's own
@@ -2257,7 +2257,7 @@ module Instruction = struct
             Fmt.pf ppf "%s%s %a" (Opcode.name op) (suffix_of_width i.width)
               Fmt.(list ~sep:(any ", ") Operand.pp)
               ops
-        (* M4 (.ai/asm_plan.md §12): [push]/[dec] are single-register-only here
+        (* M4 (docs/design.md §12): [push]/[dec] are single-register-only here
            (like [pop]), so their own operand always disambiguates - measured
            against the real i64_divmod runtime-helper oracle, GNU's objdump
            prints both with no suffix. *)
@@ -2274,7 +2274,7 @@ module Instruction = struct
            alongside this rule, plus M5's [Ror]/[Shl]/[Sar] (measured the
            same way against the same oracle: ["ror $0x1b,%eax"], ["shl
            $0x10,%eax"], ["sar $0x2,%eax"], but ["rorl $0x3,(%rax)"]) - and
-           M5's [Shld] (asm/docs/corpus.md - CompCert's own [shldl
+           M5's [Shld] (the compiler's own [shldl
            $6,%ecx,%eax], measured against real objdump as suffixless
            ["shld $0x6,%ecx,%eax"], its two register operands disambiguating
            the same way) - existing opcodes below keep their already-
@@ -2288,7 +2288,7 @@ module Instruction = struct
                 Fmt.(list ~sep:(any ", ") Operand.pp)
                 ops
         (* No AT&T size suffix on any of these, ever: they are fixed-name SSE
-           mnemonics (M5, asm/docs/corpus.md), not a stem plus a width letter
+           mnemonics (M5), not a stem plus a width letter
            - GAS never writes [addsdl] or [movsdq]. [i.width] here is not the
            128-bit xmm operand's width in the first place (see
            {!instruction_of_lowered}'s comment) so it must never reach
@@ -2374,18 +2374,18 @@ type rm = Rm.t
    twice - once as the constructor and once as the extension - and the two
    could disagree. *)
 module Lowered = struct
-  (** [0x9E] (M5, asm/docs/corpus.md - same fixture as {!Fnstsw}): load [%ah] into the
+  (** [0x9E] (M5 - same fixture as {!Fnstsw}): load [%ah] into the
             flags register, bare, no operand, {!Fucomp}/{!Fnstsw}'s exact fixed-opcode shape. *)
   type t =
     | Alu_rm_imm of { ext : int; width : int; rm : Rm.t; imm : Disp.t }
         (** [imm] is a [Disp.t] rather than a bare [int64], for the same reason
             as {!Mov_r_imm}'s: gcc's `addq $bodies+24, %rax` (M5,
-            asm/docs/corpus.md) writes a symbol's address as an ALU
+            the corpus notes) writes a symbol's address as an ALU
             immediate. *)
     | Mov_r_imm of { width : int; reg : Reg.t; imm : Disp.t }
         (** [imm] is a [Disp.t] rather than a bare [int64] - unlike every other
             immediate-carrying form here - because this is the one place a
-            gcc-only idiom (M5, asm/docs/corpus.md - [movl $.LC0,%edi]) writes
+            gcc-only idiom (M5 - [movl $.LC0,%edi]) writes
             a symbol's address as an immediate rather than through a memory
             operand; see {!sym_imm32}. *)
     | Mov_rm_r of { width : int; rm : Rm.t; reg : Reg.t }
@@ -2399,13 +2399,13 @@ module Lowered = struct
     | Imul_r_rm of { width : int; reg : Reg.t; rm : Rm.t }
         (** [0f af /r], and the other direction: the register operand is the destination. *)
     | Imul_r_rm_imm of { width : int; reg : Reg.t; rm : Rm.t; imm : int64 }
-        (** [0x69 /r id] / [0x6B /r ib] (M5, asm/docs/corpus.md - [imull $10000,%ebx], [imulq
+        (** [0x69 /r id] / [0x6B /r ib] (M5 - [imull $10000,%ebx], [imulq
             $56,%rax]): the two-operand AT&T form, where GAS writes the same register as both
             source and destination - [reg] and [rm] are therefore always equal at construction,
             never independently chosen the way the real three-operand instruction otherwise
             allows, since nothing here selects a genuine [imul $imm,src,dst]. *)
     | Test_rm_imm of { width : int; rm : Rm.t; imm : int64 }
-        (** [0xF7 /0 id] (M5, asm/docs/corpus.md - [testl $1,%edi]): TEST's own immediate form,
+        (** [0xF7 /0 id] (M5 - [testl $1,%edi]): TEST's own immediate form,
             structurally like {!Unary_rm}'s opcode and ext-in-ModR/M-reg layout but with a
             trailing immediate {!Unary_rm}'s forms never carry - so it is its own constructor
             rather than a field added to that one. Always a full-width immediate: unlike
@@ -2414,8 +2414,8 @@ module Lowered = struct
     | Ud2
     | Pop of { reg : Reg.t }
     | Bswap_r of { width : int; reg : Reg.t }
-        (** [bswap %r32]/[bswap %r64] ([0F C8+r], REX.W for 64): CompCert's
-            [__builtin_bswap]/[__builtin_bswap64] (embedded-corpus evidence). *)
+        (** [bswap %r32]/[bswap %r64] ([0F C8+r], REX.W for 64): the compiler's
+            [__builtin_bswap]/[__builtin_bswap64] (compiler-output evidence). *)
     | Jmp_rm of { rm : Rm.t }
     | Jmp_rel of { target : Asm_core.Lowered_ast.branch }
     | Jcc_rel of { cc : Cc.t; target : Asm_core.Lowered_ast.branch }
@@ -2431,7 +2431,7 @@ module Lowered = struct
             symbolic one never pretends to have a value. *)
     | Push of { reg : Reg.t }  (** [0x50+r], mirroring {!Pop}'s [0x58+r]. *)
     | Push_imm of { imm : Disp.t }
-        (** [0x6a ib] / [0x68 id] (M5, asm/docs/corpus.md - [pushl $sym]): push's own immediate
+        (** [0x6a ib] / [0x68 id] (M5 - [pushl $sym]): push's own immediate
             form, disjoint from {!Push}'s register-only [0x50+r]. [imm] is a {!Disp.t} for the
             same reason {!Mov_r_imm}'s and {!Alu_rm_imm}'s are - GAS lets [$sym] stand in for a
             numeric literal here too - and like {!Alu_rm_imm} it sign-extends, confirmed by real
@@ -2444,7 +2444,7 @@ module Lowered = struct
             "opcode plus ModR/M-reg extension" idea as {!Alu_rm_imm}, a disjoint table. *)
     | Alu_r_rm of { op : Opcode.t; width : int; reg : Reg.t; rm : Rm.t }
         (** The reg<-rm ALU direction: {!Alu_rm_r}'s mirror image, needed only because [Adc]/[Add]
-            (M4, .ai/asm_plan.md §12) are measured writing the register operand rather than the
+            (M4, docs/design.md §12) are measured writing the register operand rather than the
             r/m one - [adcl 0x20(%esp),%edx]. *)
     | Shift1_rm of { ext : int; width : int; rm : Rm.t }
         (** Group-2 shift/rotate-by-1 (opcode [0xD1]): a literal count of 1, always chosen over
@@ -2460,14 +2460,14 @@ module Lowered = struct
         (** Group-2 count-in-%cl (opcode [0xD3], M5 corpus evidence - [sall %cl,%eax]). Register
             destination only, for the same reason as {!Shift_imm_rm}. *)
     | Shld_imm_rm of { width : int; reg : Reg.t; rm : Rm.t; imm : int64 }
-        (** [0F A4 /r ib] (M5, asm/docs/corpus.md - [shldl $6,%ecx,%eax]): SHLD's own
+        (** [0F A4 /r ib] (M5 - [shldl $6,%ecx,%eax]): SHLD's own
             immediate-count double-precision shift, structurally {!imul_imm_form}'s two-byte-
             opcode-plus-trailing-imm shape rather than {!Shift_imm_rm}'s: the ModR/M reg field is
             a genuine register operand here (the bit-supplying source), not an extension code, so
             [reg] and [rm] mirror {!Alu_r_rm}'s pair rather than {!Shift_imm_rm}'s [ext]. Register
             destination only - no fixture in this corpus selects a memory destination. *)
     | Sse_binop_r_rm of { op : Opcode.t; reg : Reg.t; rm : Rm.t }
-        (** [\[66/F2/F3/none\] 0F opcode /r], reg<-rm (M5 corpus evidence, asm/docs/corpus.md):
+        (** [\[66/F2/F3/none\] 0F opcode /r], reg<-rm (M5 corpus evidence, the corpus notes):
             the SSE2 scalar-float arithmetic/compare/move family - [addsd subsd mulsd divsd addss
             subss mulss divss comisd comiss xorpd movapd cvtsd2ss cvtss2sd]. [reg] and a register
             [rm] are always xmm (width 128); a memory [rm] is unconstrained, as for any other ALU
@@ -2489,7 +2489,7 @@ module Lowered = struct
             {!Alu_rm_imm}'s immediate can be. *)
     | Cvtsi2f_r_rm of { op : Opcode.t; width : int; reg : Reg.t; rm : Rm.t }
         (** [F2/F3 0F 2A /r], xmm<-(r/m32 or r/m64) - [cvtsi2sd]/[cvtsi2ss]. [reg] is xmm; [rm] is
-            a GPR (or memory) at [width], which is also what selects REX.W - CompCert always
+            a GPR (or memory) at [width], which is also what selects REX.W - the compiler always
             spells the 64-bit source explicitly ([cvtsi2sdq]), so [width] comes from the mnemonic,
             not inferred from an operand. *)
     | Cvtf2i_r_rm of { width : int; reg : Reg.t; rm : Rm.t }
@@ -2595,12 +2595,12 @@ module Lowered = struct
             source.  Separate from {!Fpu_mem}: MOD=11 means a stack register,
             not a memory address. *)
     | Fucomp
-        (** [0xDD 0xE9] (M5, asm/docs/corpus.md - i64_dtou.S's own bare [fucomp]): x87
+        (** [0xDD 0xE9] (M5 - i64_dtou.S's own bare [fucomp]): x87
             compare-and-pop against the fixed stack slot [%st(1)] - GAS's bare, no-operand
             spelling of [fucomp %st(1)], the only form this corpus evidences, so unlike
             {!Fpu_mem} this carries no operand at all rather than a general [%st(n)]. *)
     | Fnstsw
-        (** [0xDF 0xE0] (M5, asm/docs/corpus.md - i64_dtou.S's own [fnstsw %ax]): x87
+        (** [0xDF 0xE0] (M5 - i64_dtou.S's own [fnstsw %ax]): x87
             store-status-word, {!Fucomp}'s exact "fixed two-byte word, no operand" shape - the
             [%ax] destination is implicit in the opcode and checked away in
             {!simplify_instruction} rather than carried here. *)
@@ -2924,7 +2924,7 @@ let sym_disp ~kind =
     (le_fixup ~width:32 ~kind "disp")
 
 (* The same idea as [sym_disp], for an immediate rather than a displacement
-   (M5, asm/docs/corpus.md - [movl $.LC0,%edi], gcc's idiom for materializing
+   (M5 - [movl $.LC0,%edi], gcc's idiom for materializing
    a string/array address into a register; also [addq $bodies+24,%rax], the
    same idiom as an ALU operand). [signedness] is not hard-coded the way
    [sym_disp]'s always-sign-extending decode is, because the two callers
@@ -2964,7 +2964,7 @@ let fits_s8 v = Int64.compare v (-128L) >= 0 && Int64.compare v 127L <= 0
 let fits_s32 v = Int64.compare v (-2147483648L) >= 0 && Int64.compare v 2147483647L <= 0
 
 (* GAS's own reading of a width-full immediate literal before any rung's
-   [fits_s8]/[fits_s32] range check runs (M5, asm/docs/corpus.md -
+   [fits_s8]/[fits_s32] range check runs (M5, the corpus notes -
    [vararg.S]'s real `andl $0xfffffffc,%edx`, GAS's own idiom for a 4-byte-
    alignment mask): the parsed literal is reduced modulo the *destination
    operand's* width and reinterpreted as two's-complement signed, not taken
@@ -3262,7 +3262,7 @@ module type MODE = sig
       and the 32-bit default target does not assume it. A shared table would be wrong in one mode. *)
 
   val merge_nop_table : string array
-  (** M3 §5 (.ai/asm_plan.md §12): the padding GNU's LINKER (not [as]) emits for a gap it inserts
+  (** M3 §5 (docs/design.md §12): the padding GNU's LINKER (not [as]) emits for a gap it inserts
       between two modules' contributions to one executable output section. Measured separately from
       {!nop_table}, and not always the same array: [x86_64]'s [ld] agrees with its [as] and reuses the
       long-NOP table, but [x86_32]'s [ld] fills with repeated 2-byte [66 90] alone, never the wider
@@ -3334,7 +3334,7 @@ module Make (M : MODE) = struct
   let retype_rm ~width = function Rm.Reg r -> Rm.Reg (retype ~width r) | Rm.Mem _ as m -> m
   let find_reg n = List.find_opt (fun (r : Reg.t) -> String.equal r.name n) M.registers
 
-  (* The encoder's error domain (asm/docs/errors.md). Below source text, so it
+  (* The encoder's error domain (docs/errors.md). Below source text, so it
      names no token; the front end's operand failures are a separate domain in
      x86_family.ml, for the reason {!Target_intf.Target.TARGET} gives. Inside
      [Make], so x86_32 and x86_64 share one domain the way they share one
@@ -3377,7 +3377,7 @@ module Make (M : MODE) = struct
   and register_width_mismatch = { reg : string; reg_width : int; insn_width : int }
 
   and sse_operand_class_mismatch = { sse_reg : string; sse_reg_width : int }
-  (** Always "expected xmm, found something else" (M5, asm/docs/corpus.md):
+  (** Always "expected xmm, found something else" (M5):
           reusing {!Reg.t}/{!Rm.t} for both GPR and xmm operands buys width- and
           number-generic ModR/M machinery for free, but it also means nothing
           else in this domain stops [addsd %eax, %xmm0] from lowering as if
@@ -3436,7 +3436,7 @@ module Make (M : MODE) = struct
 
   (* The phase that detected it, which is what the code has always named. The
      codec arm delegates: [Codec.code] is [Some] only where that layer is the
-     only one that could have seen the mistake (asm/docs/errors.md §2). *)
+     only one that could have seen the mistake (docs/errors.md §2). *)
   let error_kind_code : error_kind -> string = function
     | `Unknown_instruction _ | `Missing_size_suffix _ | `Prefix66_out_of_scope
     | `Operand8_out_of_scope | `No_64bit_size _ | `Ret_takes_operands | `Ud2_takes_operands
@@ -3487,7 +3487,7 @@ module Make (M : MODE) = struct
       | _ -> (m, None)
 
   (* [movzbl]/[movsbl]/[movslq] and the rest of the zero-/sign-extending move
-     family (M5, asm/docs/corpus.md): GAS spells these as [prefix] followed by
+     family (M5): GAS spells these as [prefix] followed by
      *two* one-letter widths (source, then destination), not a stem plus one
      trailing suffix - [split_suffix] cannot express this shape at all, so it
      gets its own small parser. [sw < dw] is what makes [movslq] (l then q)
@@ -3560,7 +3560,7 @@ module Make (M : MODE) = struct
   let simplify_hand_written s =
     let bad kind = Error (diag ~pos:__POS__ ~origin:s.Surface.origin kind) in
     let stem, suffix = split_suffix s.Surface.mnemonic in
-    (* [~allow16] is narrowly scoped to [mov] (M5, asm/docs/corpus.md:
+    (* [~allow16] is narrowly scoped to [mov] (M5, the corpus notes:
        [movw %r8w, 58(%rsp)]), the one 16-bit form this corpus evidences -
        every other ALU mnemonic keeps the blanket [Prefix66_out_of_scope]
        rejection with its own clear diagnostic, rather than silently
@@ -3590,7 +3590,7 @@ module Make (M : MODE) = struct
         if s.Surface.ops = [] then Ok (Instruction.mk Opcode.Ud2 M.address_width [])
         else bad `Ud2_takes_operands
     (* Matched on [stem], not the full mnemonic: real INRIA/GNU source spells
-       these WITH the operand-size suffix (M4, .ai/asm_plan.md §12 - the
+       these WITH the operand-size suffix (M4, docs/design.md §12 - the
        i64_divmod runtime-helper fixture's own [popl]/[pushl]/[decl]), and
        [split_suffix] already reduces both spellings to the same stem. The
        one operand's own width disambiguates either way, so the suffix (if
@@ -3619,7 +3619,7 @@ module Make (M : MODE) = struct
     | "loopz", _ -> Ok (Instruction.mk (Opcode.Short_branch "loope") M.address_width s.Surface.ops)
     | "loopnz", _ ->
         Ok (Instruction.mk (Opcode.Short_branch "loopne") M.address_width s.Surface.ops)
-    (* {3 SSE2 scalar float (M5, asm/docs/corpus.md)}
+    (* {3 SSE2 scalar float (M5)}
 
        Fixed mnemonics, matched on the mnemonic directly rather than through
        [stem]/[widthed]: none of these carry an AT&T size suffix - GAS never
@@ -4059,9 +4059,9 @@ module Make (M : MODE) = struct
     | "vmovmskps", _ -> Ok (Instruction.mk Opcode.Vmovmskps 32 s.Surface.ops)
     | "vmovmskpd", _ -> Ok (Instruction.mk Opcode.Vmovmskpd 32 s.Surface.ops)
     | "vpmovmskb", _ -> Ok (Instruction.mk Opcode.Vpmovmskb 32 s.Surface.ops)
-    (* {3 x87 (M5, asm/docs/corpus.md)}
+    (* {3 x87 (M5)}
 
-       [fldl]/[fstpl]/[fstps]: ccomp's own double/single-precision spill and
+       [fldl]/[fstpl]/[fstps]: the compiler's own double/single-precision spill and
        reload around a `%st(0)` return value. Like the SSE mnemonics above,
        matched on the full name rather than [stem]/[widthed] - the `l`/`s`
        here is GAS's fixed x87 spelling for the operand's memory width, not
@@ -4072,11 +4072,11 @@ module Make (M : MODE) = struct
         | Some op -> Ok (Instruction.mk op 32 (if op = Opcode.Fucomp then [] else s.Surface.ops))
         | None -> bad (`Unknown_instruction s.Surface.mnemonic))
     (* [sahf] - bare, no operand, {!Fucomp}'s exact fixed-opcode shape (M5,
-       asm/docs/corpus.md - same fixture as [fnstsw]). *)
+       the corpus notes - same fixture as [fnstsw]). *)
     | "sahf", _ ->
         if s.Surface.ops = [] then Ok (Instruction.mk Opcode.Sahf 32 [])
         else bad `Sahf_takes_operands
-    (* M5 (asm/docs/corpus.md): zero-/sign-extending move. Matched on the full
+    (* M5 : zero-/sign-extending move. Matched on the full
        mnemonic via {!movx_suffixes}, not on [stem] - see its own comment for
        why [split_suffix] cannot express this shape. [movslq] (src 32, dst 64)
        is included here at the [Instruction]/[Opcode] level like any other
@@ -4091,7 +4091,7 @@ module Make (M : MODE) = struct
         | Some (src_width, dw) -> Ok (Instruction.mk (Opcode.Movsx { src_width }) dw s.Surface.ops)
         | None -> bad (`Unknown_instruction s.Surface.mnemonic))
     (* [cvtsi2sd]/[cvtsi2ss] take their REX.W directly from the mnemonic:
-       CompCert always spells the 64-bit-source form explicitly ([cvtsi2sdq]/
+       the compiler always spells the 64-bit-source form explicitly ([cvtsi2sdq]/
        [cvtsi2ssq]), never infers it, so there is no operand to inspect here
        the way the bare-[add] case above inspects one. *)
     | "cvtsi2sd", _ -> Ok (Instruction.mk Opcode.Cvtsi2sd 32 s.Surface.ops)
@@ -4116,7 +4116,7 @@ module Make (M : MODE) = struct
     (* [cvttsd2siq]: the explicit-width spelling of the same instruction, {!Cvtsi2ss}'s own
        [cvtsi2ssq] precedent just above - always paired with a 64-bit destination register in
        this corpus, so byte-identical to the bare mnemonic reading its width off that register
-       (M5, asm/docs/corpus.md - gas_frontier.t's runtime-i64_dtou.S). *)
+       (M5 - gas_frontier.t's runtime-i64_dtou.S). *)
     | "cvttsd2siq", _ -> Ok (Instruction.mk Opcode.Cvttsd2si 64 s.Surface.ops)
     (* [movd]/[movq]: [movd] never collides with the generic width-suffix [mov] case
        below - 'd' is not a stripped suffix character - so it dispatches unconditionally, the
@@ -4133,7 +4133,7 @@ module Make (M : MODE) = struct
            | [ Operand.Reg a; Operand.Reg b ] -> a.Reg.width = 128 || b.Reg.width = 128
            | _ -> false ->
         Ok (Instruction.mk Opcode.Movd 64 s.Surface.ops)
-    (* M4 (.ai/asm_plan.md §12): the real i64_udivmod.S source spells its
+    (* M4 (docs/design.md §12): the real i64_udivmod.S source spells its
        one register-register [add] with no suffix at all ([add %ecx,
        %edx]) - valid GNU as, since the register operand disambiguates the
        same way it does for [cmov] below, and this is the only ALU form
@@ -4148,7 +4148,7 @@ module Make (M : MODE) = struct
         | _ -> widthed ~allow8:true Opcode.Add)
     | _, "sub" -> widthed ~allow8:true Opcode.Sub
     (* [movabsq $imm64, %r64]: GNU as's explicit spelling of MOV r64, imm64 (REX.W B8+r), which
-       CompCert prints for a 64-bit constant no sign-extended imm32 can hold (its x86
+       the compiler prints for a 64-bit constant no sign-extended imm32 can hold (its x86
        TargetPrinter's [Pmovq_ri]). For such a constant [movq] already selects exactly that
        ten-byte form, so the spelling is accepted there and only there: for a smaller constant
        GNU as still emits ten bytes where [movq] picks a shorter form, and that is refused rather
@@ -4169,7 +4169,7 @@ module Make (M : MODE) = struct
     | _, "and" -> widthed ~allow8:true Opcode.And
     | _, "cmp" -> widthed ~allow8:true Opcode.Cmp
     | _, "imul" -> widthed Opcode.Imul
-    (* M4 (.ai/asm_plan.md §12): the CompCert-runtime-helper fixture's own
+    (* M4 (docs/design.md §12): the runtime-helper fixture's own
        measured instruction set. *)
     | _, "neg" -> widthed Opcode.Neg
     | _, "test" -> widthed Opcode.Test
@@ -4179,18 +4179,18 @@ module Make (M : MODE) = struct
     | _, "div" -> widthed Opcode.Div
     | _, "rcr" -> widthed Opcode.Rcr
     | _, "shr" -> widthed Opcode.Shr
-    (* M5 (asm/docs/corpus.md): the x86_64 [test/c/] corpus's own measured
+    (* M5 : the x86_64 [test/c/] corpus's own measured
        instruction set. *)
     | _, "or" -> widthed ~allow8:true Opcode.Or
     | _, "not" -> widthed Opcode.Not
     | _, "ror" -> widthed Opcode.Ror
     (* GAS accepts both [shl] and [sal] for the same opcode; only [sal] is
-       evidenced (CompCert's own spelling), so only that stem is recognized -
+       evidenced (the compiler's own spelling), so only that stem is recognized -
        consistent with this function's general practice of not building an
        unevidenced mnemonic alias. *)
     | _, "sal" -> widthed Opcode.Shl
     | _, "sar" -> widthed Opcode.Sar
-    (* M5 (asm/docs/corpus.md): [shldl $6,%ecx,%eax], sha3.c/siphash24.c's
+    (* M5 : [shldl $6,%ecx,%eax], sha3.c/siphash24.c's
        64-bit-rotate idiom built from two 32-bit halves. *)
     | _, "shld" -> widthed Opcode.Shld
     (* The width comes from the operands rather than from a suffix, because
@@ -4220,14 +4220,14 @@ module Make (M : MODE) = struct
     | m, _ when Cc.split_after "cmov" m <> None -> (
         match (Cc.split_after "cmov" m, s.Surface.ops) with
         (* The width has to come from the destination (the second, always-a-register
-           operand), not the first: a memory source (M5, asm/docs/corpus.md -
+           operand), not the first: a memory source (M5, the corpus notes -
            gas_frontier.t's i64_smulh.S's own `cmovl 20(%esp), %eax`) carries no width
            of its own the way a register source does. *)
         | Some c, ([ Operand.Reg _; Operand.Reg r ] | [ Operand.Mem _; Operand.Reg r ]) ->
             Ok (Instruction.mk (Opcode.Cmov c) r.Reg.width s.Surface.ops)
         | Some _, _ -> bad `Cmov_operands
         | None, _ -> bad (`Unknown_instruction s.Surface.mnemonic))
-    (* M5 (asm/docs/corpus.md): [sete %al], [setl %r8b] - always 8-bit, so
+    (* M5 : [sete %al], [setl %r8b] - always 8-bit, so
        unlike [cmov] there is no operand width to read; the single operand's
        own class ([`Setcc_operands] otherwise) is all that is checked here. *)
     | m, _ when Cc.split_after "set" m <> None -> (
@@ -4247,7 +4247,7 @@ module Make (M : MODE) = struct
 
   (* An absolute memory reference by name. On x86-32 that is a bare disp32 with
      no base; on x86-64 the encodable form of the same reference is
-     RIP-relative, and CompCert writes it that way, so a bare symbol there would
+     RIP-relative, and the compiler writes it that way, so a bare symbol there would
      not encode - loudly, at [encode], rather than as a wrong address. *)
   let mem_of_symbol e =
     {
@@ -4283,7 +4283,7 @@ module Make (M : MODE) = struct
           (`Register_width_mismatch
              { reg = r.name; reg_width = r.width; insn_width = i.Instruction.width })
     in
-    (* xmm-side of the SSE operand-class check (M5, asm/docs/corpus.md); see
+    (* xmm-side of the SSE operand-class check (M5); see
        {!sse_operand_class_mismatch}'s comment for why the GPR side reuses
        [width_ok] instead of a mirrored helper here. *)
     let xmm_ok (r : Reg.t) =
@@ -4385,7 +4385,7 @@ module Make (M : MODE) = struct
             | Operand.Dfv _ | Operand.Bcst _ ->
                 bad `Immediate_destination))
     (* [addq $bodies+24, %rax] - gcc's idiom for address arithmetic against a
-       symbol's own address rather than through [lea] (M5, asm/docs/corpus.md).
+       symbol's own address rather than through [lea] (M5).
        Register destination only - no fixture evidences a symbolic-immediate
        memory destination for an ALU op. *)
     | ( (Opcode.Add | Opcode.Adc | Opcode.And | Opcode.Sub | Opcode.Cmp | Opcode.Or | Opcode.Xor),
@@ -4411,8 +4411,8 @@ module Make (M : MODE) = struct
             Ok [ Lowered.Mov_r_imm { width = i.Instruction.width; reg = r; imm = Disp.Const imm } ]
         | Error e, _ | _, Error e -> Error e)
     (* [movl $.LC0, %edi] - gcc's idiom for materializing a string/array
-       address into a register (M5, asm/docs/corpus.md), rather than through
-       [lea] against a memory operand the way ccomp's own codegen always did. *)
+       address into a register (M5), rather than through
+       [lea] against a memory operand the way the compiler's own codegen always did. *)
     | Opcode.Mov, [ Operand.Imm_sym e; Operand.Reg r ] -> (
         match width_ok r with
         | Error e -> Error e
@@ -4464,11 +4464,11 @@ module Make (M : MODE) = struct
         | Error e2 -> Error e2
         | Ok () ->
             Ok [ Lowered.Lea { width = i.Instruction.width; reg = r; mem = mem_of_symbol e } ])
-    (* M4 (.ai/asm_plan.md §12): [Add]/[Test]/[Sbb] join the pre-existing three
+    (* M4 (docs/design.md §12): [Add]/[Test]/[Sbb] join the pre-existing three
        here for the same reason they joined {!Opcode.to_rm_r} - real bytes
        the i64_divmod runtime-helper fixture measurably selects
        ([addl %ecx,%edx], [testl %esi,%esi], [sbbl %ecx,%edx]). [Adc] (M5,
-       asm/docs/corpus.md - siphash24.c's [adcl %ecx,%edx], the carry half of
+       the corpus notes - siphash24.c's [adcl %ecx,%edx], the carry half of
        its 64-bit add) joins them too, for the same reason it joined
        {!Opcode.to_rm_r} above. *)
     | ( ( Opcode.Xor | Opcode.Cmp | Opcode.Sub | Opcode.Add | Opcode.Adc | Opcode.Test | Opcode.Sbb
@@ -4540,7 +4540,7 @@ module Make (M : MODE) = struct
             bad `Immediate_destination)
     (* Group-2 shift/rotate, bare-mnemonic implicit-1 form ([shrq %rax]) - GAS's
        own shorter surface spelling of the explicit [$1, dst] one just below,
-       byte-identical either way (M5, asm/docs/corpus.md - gas_frontier.t's
+       byte-identical either way (M5 - gas_frontier.t's
        runtime-i64_utod.S/i64_utof.S). Lowers straight into the same
        {!Lowered.Shift1_rm} the explicit-count-1 case builds. *)
     | (Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar), [ dst ] -> (
@@ -4558,7 +4558,7 @@ module Make (M : MODE) = struct
     (* Group-2 shift/rotate, explicit-count form. A literal count of exactly 1
        still picks {!Lowered.Shift1_rm} - GAS's own shorter, canonical
        encoding (M4's original scope here) - and any other count is
-       {!Lowered.Shift_imm_rm} (M5, asm/docs/corpus.md: [rorl $27,%eax],
+       {!Lowered.Shift_imm_rm} (M5: [rorl $27,%eax],
        [sall $16,%eax], [sarl $2,%eax], [shrq $63,%rax]). Register
        destination only for a non-1 count: unlike {!Alu_rm_imm}, no fixture
        selects a memory destination at a count other than 1, so that shape
@@ -4590,7 +4590,7 @@ module Make (M : MODE) = struct
                 ( Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ | Operand.Rc _
                 | Operand.Masked _ | Operand.Dfv _ | Operand.Bcst _ ) ) ->
                 bad `Immediate_destination))
-    (* Group-2 shift/rotate, count-in-%cl (M5, asm/docs/corpus.md: [sall
+    (* Group-2 shift/rotate, count-in-%cl (M5: [sall
        %cl,%eax]). [cl]'s width and number pin it to exactly %cl, not any
        other byte register - GAS accepts no other register here, and this
        target's parser has no separate "the count register" operand class to
@@ -4609,7 +4609,7 @@ module Make (M : MODE) = struct
         | Operand.Imm _ | Operand.Imm_sym _ | Operand.Sym _ | Operand.Rc _ | Operand.Masked _
         | Operand.Dfv _ | Operand.Bcst _ ->
             bad `Immediate_destination)
-    (* [shldl $6,%ecx,%eax] (M5, asm/docs/corpus.md): SHLD's own three-operand
+    (* [shldl $6,%ecx,%eax] (M5): SHLD's own three-operand
        AT&T form - GAS reverses Intel's [SHLD r/m32, r32, imm8] to put the
        count first and the r/m destination last, exactly the order
        [parse_one_operand] already builds. Register destination only; no
@@ -4659,7 +4659,7 @@ module Make (M : MODE) = struct
                 Ok [ Lowered.Sse_binop_imm_r_rm { op = i.Instruction.op; reg; rm = Rm.Mem m; imm } ]
             ))
     | Opcode.Push, [ Operand.Reg r ] -> Ok [ Lowered.Push { reg = r } ]
-    (* [pushl $sym] (M5, asm/docs/corpus.md), gcc's own idiom for materializing
+    (* [pushl $sym] (M5), gcc's own idiom for materializing
        a symbol's address on the stack: {!Push_imm}'s [imm] carries it as a
        {!Disp.t} the same way {!Mov_r_imm}'s and {!Alu_rm_imm}'s already do. *)
     | Opcode.Push, [ Operand.Imm v ] -> (
@@ -4676,7 +4676,7 @@ module Make (M : MODE) = struct
         | Ok (), Ok () ->
             Ok [ Lowered.Imul_r_rm { width = i.Instruction.width; reg = b; rm = Rm.Reg a } ]
         | Error e, _ | _, Error e -> Error e)
-    (* [imulq .L100(%rip), %rdi]: the memory-source form, which CompCert emits to multiply
+    (* [imulq .L100(%rip), %rdi]: the memory-source form, which the compiler emits to multiply
        by a 64-bit literal. A generated row covered only a constant displacement; this one
        carries a symbolic one as a fixup, like every other [Rm.Mem] form. *)
     | Opcode.Imul, [ Operand.Mem m; Operand.Reg r ] -> (
@@ -4702,7 +4702,7 @@ module Make (M : MODE) = struct
             Ok
               [ Lowered.Imul_r_rm_imm { width = i.Instruction.width; reg = r; rm = Rm.Reg r; imm } ]
         | Error e, _ | _, Error e -> Error e)
-    (* [testl $1,%edi] (M5, asm/docs/corpus.md): TEST's own immediate form,
+    (* [testl $1,%edi] (M5): TEST's own immediate form,
        disjoint from the [reg,reg] pattern above. *)
     | Opcode.Test, [ Operand.Imm v; dst ] -> (
         match imm_of v with
@@ -4727,7 +4727,7 @@ module Make (M : MODE) = struct
         | Ok (), Ok () ->
             Ok [ Lowered.Cmov_r_rm { cc; width = i.Instruction.width; reg = b; rm = Rm.Reg a } ]
         | Error e, _ | _, Error e -> Error e)
-    (* [cmovl 20(%esp), %eax] (M5, asm/docs/corpus.md - gas_frontier.t's i64_smulh.S):
+    (* [cmovl 20(%esp), %eax] (M5 - gas_frontier.t's i64_smulh.S):
        {!Lowered.Cmov_r_rm}'s [rm] is already a general {!Rm.t} - this is the same
        shape as the register-register form above, just [Rm.Mem] instead of [Rm.Reg]. *)
     | Opcode.Cmov cc, [ Operand.Mem m; Operand.Reg b ] -> (
@@ -4743,7 +4743,7 @@ module Make (M : MODE) = struct
         Ok [ Lowered.Bswap_r { width = r.Reg.width; reg = r } ]
     | Opcode.Jmp, [ Operand.Reg r ] -> Ok [ Lowered.Jmp_rm { rm = Rm.Reg r } ]
     (* [jmp *sym(,%reg,scale)] - an indirect jump through a jump-table entry
-       (M5 corpus, asm/docs/corpus.md: siphash24.c/vmach.c's [switch] dispatch).
+       (M5 corpus, the corpus notes: siphash24.c/vmach.c's [switch] dispatch).
        [Jmp_rm] is already generic over [Rm.t] - the [jmp-rm] codec alt encodes
        whatever ModR/M+SIB [rm] carries - so this needs no new lowered form or
        codec, only the match arm the [Reg] case above never needed a [Mem]
@@ -4780,7 +4780,7 @@ module Make (M : MODE) = struct
                 target = Asm_core.Lowered_ast.Symbolic { value = e; rung = i.Instruction.form };
               };
           ]
-    (* {3 SSE2 scalar float (M5, asm/docs/corpus.md)}
+    (* {3 SSE2 scalar float (M5)}
 
        [reg] is always the destination and always xmm for the binop/mov-load
        family, matching every shape this corpus evidences; a register [rm]
@@ -4906,7 +4906,7 @@ module Make (M : MODE) = struct
         match xmm_ok reg with
         | Error e -> Error e
         | Ok () -> Ok [ Lowered.Sse_mov_rm_r { op = i.Instruction.op; rm = Rm.Mem m; reg } ])
-    (* [xorpd __negd_mask, %xmmN] (M5, asm/docs/corpus.md): ccomp's own
+    (* [xorpd __negd_mask, %xmmN] (M5): the compiler's own
        sign-flip idiom for float negation/`fabs`, reading a sign-mask
        constant from a bare symbol - the identical bare-symbol-source
        duality as [movsd]/[movss] just above, on the one binop mnemonic this
@@ -5494,7 +5494,7 @@ module Make (M : MODE) = struct
             if src.num >= 8 then bad (`Vex_rm_extended_register src.name)
             else Ok [ Lowered.Vex_unop_r_rm { op = i.Instruction.op; dst; src = Rm.Reg src } ]
         | Error e, _ | _, Error e -> Error e)
-    (* [fldl]/[fstpl]/[fstps]/[flds] (M5, asm/docs/corpus.md): ccomp's own x87
+    (* [fldl]/[fstpl]/[fstps]/[flds] (M5): the compiler's own x87
        double/single-precision spill-and-reload sequence around a `%st(0)`
        return value - always to/from a stack memory operand in this corpus,
        never a register, so {!Lowered.Fpu_mem} takes a bare {!Mem.t} rather
@@ -5502,7 +5502,7 @@ module Make (M : MODE) = struct
     | op, [ Operand.Mem m ] when x87_memory_op op ->
         Ok [ Lowered.Fpu_mem { op = i.Instruction.op; mem = m } ]
     (* [flds sym] / [fadds sym] / [fsubs sym] - a bare-symbol source, the same duality
-       [lea]/[movsd]/[xorpd] already read through [mem_of_symbol] (M5, asm/docs/corpus.md -
+       [lea]/[movsd]/[xorpd] already read through [mem_of_symbol] (M5, the corpus notes -
        i64_dtou.S's `flds LC1`/`fsubs LC1`; gas_frontier.t's i64_utod.S/i64_utof.S own
        `fadds LC1`). Scoped to [Flds]/[Fadds]/[Fsubs]: no fixture evidences a
        bare-symbol [fldl]/[fstpl]/[fstps] (every recurrence of those three
@@ -5516,14 +5516,14 @@ module Make (M : MODE) = struct
       when src.Reg.width = 80 && dest.Reg.width = 80 && dest.Reg.num = 0 ->
         Ok [ Lowered.Fadd_st0_x87 { src } ]
     | Opcode.Fucomp, [] -> Ok [ Lowered.Fucomp ]
-    (* [fnstsw %ax] (M5, asm/docs/corpus.md - i64_dtou.S): [%ax]'s width and number pin it to
+    (* [fnstsw %ax] (M5 - i64_dtou.S): [%ax]'s width and number pin it to
        exactly that register, {!Shift_cl_rm}'s own count-in-%cl precedent for a fixed implicit
        operand - any other register, or none, is rejected rather than silently accepted. *)
     | Opcode.Fnstsw, [ Operand.Reg ax ] when ax.Reg.width = 16 && ax.Reg.num = 0 ->
         Ok [ Lowered.Fnstsw ]
     | Opcode.Fnstsw, _ -> bad `Fnstsw_operand
     | Opcode.Sahf, [] -> Ok [ Lowered.Sahf ]
-    (* [sete %al]/[setl %r8b] (M5, asm/docs/corpus.md): [Instruction.width] is
+    (* [sete %al]/[setl %r8b] (M5): [Instruction.width] is
        always 8 here ({!simplify_instruction} pins it), so [width_ok] on the
        destination register is exactly the right check with no extra
        plumbing. *)
@@ -5532,7 +5532,7 @@ module Make (M : MODE) = struct
         | Error e -> Error e
         | Ok () -> Ok [ Lowered.Setcc_rm { cc; rm = Rm.Reg r } ])
     | Opcode.Setcc cc, [ Operand.Mem m ] -> Ok [ Lowered.Setcc_rm { cc; rm = Rm.Mem m } ]
-    (* Zero-/sign-extending move (M5, asm/docs/corpus.md). [src_width = 32]
+    (* Zero-/sign-extending move (M5). [src_width = 32]
        is [movslq] - a structurally different opcode ([0x63], no ModR/M-reg
        extension table, mandatory REX.W) from the [0F B6/B7/BE/BF] family the
        other widths share, so it gets its own {!Lowered.Movsxd_r_rm} rather
@@ -5733,7 +5733,7 @@ module Make (M : MODE) = struct
      legacy address-size prefix precedes REX.
 
      [asz] is 0x67, and in 64-bit mode it means "the address registers in this
-     memory operand are 32-bit". CompCert emits exactly that -
+     memory operand are 32-bit". the compiler emits exactly that -
      [leal 0(%edi,%edi,1), %eax] and [leal 2(%eax), %eax] - and omitting it does
      not produce a different-but-equal encoding: it addresses %rdi where the
      program said %edi. So it is derived from the operand rather than offered as
@@ -5768,7 +5768,7 @@ module Make (M : MODE) = struct
       in
       let w = width = 64 in
       (* {!Reg.names_8l} has no legacy AH/CH/DH/BH spelling at all - num 4-7
-         at width 8 is always SPL/BPL/SIL/DIL (M5, asm/docs/corpus.md:
+         at width 8 is always SPL/BPL/SIL/DIL (M5, the corpus notes:
          [movb %sil, 7(%rdi)]) - so an *empty* REX byte (0x40, every bit
          clear) has to be present whenever one of those four is named, purely
          to select that reading over the legacy one; [w]/[r]/[x]/[b] above
@@ -5841,7 +5841,7 @@ module Make (M : MODE) = struct
         ~decode:(fun () -> Some false)
         C.empty
 
-  (* The operand-size override (M5, asm/docs/corpus.md: [movw %r8w,
+  (* The operand-size override (M5: [movw %r8w,
      58(%rsp)]) - unlike [asz_codec]/[rex_codec] this exists in both modes
      (x86_32 has 16-bit operands too), so it is never the trivial
      [M.rex_allowed]-gated single-branch form the other two have. Ordering
@@ -5946,7 +5946,7 @@ module Make (M : MODE) = struct
   (* The ModR/M reg field, with REX.R put back the same way. *)
   let reg_field ~p ~width n = reg_at ~width (n + rex_bit p 4)
 
-  (* {3 SSE2 scalar float (M5, asm/docs/corpus.md)}
+  (* {3 SSE2 scalar float (M5)}
 
      [asz, mandatory-prefix, REX, 0F, opcode, rm] - one fixed shape per
      mandatory-prefix group, not one alt per mnemonic and not one alt
@@ -6550,7 +6550,7 @@ module Make (M : MODE) = struct
   (* [cvtsi2sd]/[cvtsi2ss] ([0F 2A]), and - via [~opcode16] - {!Movd}'s own load direction
      ([0F 6E]): the one place [~width] threaded into {!prefixes_of} is a real GPR width
      rather than the [32] REX.W-clear sentinel the rest of this section uses - [rm] is the
-     GPR/memory operand here, and its width is exactly what CompCert's [q] suffix already
+     GPR/memory operand here, and its width is exactly what the compiler's [q] suffix already
      pinned down in {!simplify_instruction} (or, for [movd]/[movq], what the frontend's own
      mnemonic dispatch already fixed - {!Movd}'s own doc comment). Generalized over [~opcode16]
      the same way {!sse_binop_alt} is generalized over [~opcode_codec]: [cvtsi2sd]/[cvtsi2ss]
@@ -7468,7 +7468,7 @@ module Make (M : MODE) = struct
       ~entries:[ (Opcode.Vmovmskps, 0x50L) ]
       (C.field ~width:8 "opcode")
 
-  (* Zero-/sign-extending move (M5, asm/docs/corpus.md): [0F B6/B7/BE/BF /r].
+  (* Zero-/sign-extending move (M5): [0F B6/B7/BE/BF /r].
      No mandatory prefix, so this reuses [prefixes_codec] directly rather than
      the SSE alts' split [asz_codec]/[rex_codec] - there is no third byte to
      splice between them. [reg] (destination, [width]) and [rm] (source,
@@ -7496,7 +7496,7 @@ module Make (M : MODE) = struct
                 }))
          C.(prefixes_codec ** const ~width:16 opcode16 ** rm_codec))
 
-  (* [movslq] ([0x63 /r], M5, asm/docs/corpus.md): REX.W mandatory (a 32-bit
+  (* [movslq] ([0x63 /r], M5, the corpus notes): REX.W mandatory (a 32-bit
      write already zero-extends, so a REX-less encoding would mean something
      else entirely), hence the hard-coded [~width:64] rather than a value
      threaded from the lowered form the way {!movx_alt} threads [width]. *)
@@ -7549,7 +7549,7 @@ module Make (M : MODE) = struct
          C.(const ~width:8 0xD8L ** const ~width:2 3L ** const ~width:3 0L ** field ~width:3 "st"))
 
   (* [imull $10000,%ebx] / [imulq $56,%rax] ([0x69 id] / [0x6B ib], M5,
-     asm/docs/corpus.md): the same short-immediate-first priority discipline
+     the corpus notes): the same short-immediate-first priority discipline
      as {!alu_form} - GAS picks [6B] whenever the immediate fits a sign-
      extended byte, and getting the order wrong would differ from every
      other assembler by three bytes per instruction, exactly as that
@@ -7590,7 +7590,7 @@ module Make (M : MODE) = struct
            ** le ~signedness:C.Signed ~width:imm_width "imm"))
 
   (* [0F A4 /r ib] ({!Lowered.Shld_imm_rm} - [shldl $6,%ecx,%eax], M5,
-     asm/docs/corpus.md): a two-byte opcode plus trailing imm8 like
+     the corpus notes): a two-byte opcode plus trailing imm8 like
      {!imul_imm_form}'s, but the ModR/M reg field here is a genuine register
      operand (the bit-supplying source), so it is threaded through
      [reg_field] on decode exactly as {!movx_alt}'s is, not looked up in an
@@ -7675,7 +7675,7 @@ module Make (M : MODE) = struct
      exactly the accumulator, %al/%ax/%eax/%rax - register number 0): a
      shorter accumulator-only encoding real [as] always prefers over the
      general ModR/M form whenever the immediate does not fit the imm8 rung
-     (M5, asm/docs/corpus.md - the corpus's own [addq $sym, %rax], a
+     (M5 - the corpus's own [addq $sym, %rax], a
      previously documented, deliberately-left-open byte mismatch: this
      encoder had no accumulator-specific alternative at all, so it always
      fell through to the longer ModR/M form; now fixed). No ModR/M or SIB
@@ -7913,7 +7913,7 @@ module Make (M : MODE) = struct
              prefixes_codec
              ** (const ~width:5 0b10111L ** field ~width:3 "reg")
              ** sym_imm32 ~kind:Abs32 ~signedness:C.Unsigned));
-      (* [movb $12, %ah] ([0xB0+reg ib], M5, asm/docs/corpus.md - gas_frontier.t's
+      (* [movb $12, %ah] ([0xB0+reg ib], M5, the corpus notes - gas_frontier.t's
          i64_dtos.S/i64_dtou.S own rounding-mode-byte idiom): {!Mov_r_imm}'s own
          8-bit sibling - a genuinely different opcode range ([0xB0]-[0xB7], not
          [0xB8]-[0xBF]) and a 1-byte immediate rather than {!sym_imm32}'s fixed
@@ -7962,7 +7962,7 @@ module Make (M : MODE) = struct
            them would be correct and would still fail the byte gate.
 
            32-bit only, deliberately: in 64-bit mode [a1]/[a3] take a *64-bit*
-           moffs - the [movabs] forms - and CompCert reaches a global through
+           moffs - the [movabs] forms - and the compiler reaches a global through
            RIP-relative addressing there anyway, so admitting them would add an
            encoding no fixture selects and a second reading of the same opcode.
 
@@ -8062,7 +8062,7 @@ module Make (M : MODE) = struct
              [Mov_rm_r]/[Mov_r_rm] needs a genuinely different opcode byte
              ([0x88]/[0x8A]) rather than [prefixes_of]'s usual REX.W
              selection - {!width_of_prefixes} can only ever produce 32 or 64.
-             M5, asm/docs/corpus.md: [movb %sil, 7(%rdi)]. *)
+             M5: [movb %sil, 7(%rdi)]. *)
           C.alt ~label:"mov-rm-r8" ~priority:46
             (C.iso_fun ~name:"mov-rm-r8"
                ~encode:(function
@@ -8384,7 +8384,7 @@ module Make (M : MODE) = struct
           C.alt ~label:"jcc-rel" ~priority:18
             (C.relax ~name:"jcc"
                [ C.rung ~label:"d8" (jcc_rung_short ()); C.rung ~label:"d32" (jcc_rung_near ()) ]);
-          (* M4 (.ai/asm_plan.md §12): the CompCert-runtime-helper fixture's
+          (* M4 (docs/design.md §12): the runtime-helper fixture's
              own measured forms, added alongside the opcode/lowering work
              above rather than folded into an existing alt - each is a
              distinct opcode byte or byte family. *)
@@ -8473,7 +8473,7 @@ module Make (M : MODE) = struct
                     Some (Lowered.Dec { reg = reg_at ~width:M.address_width (Int64.to_int r) }))
                   C.(const ~width:5 0b01001L ** field ~width:3 "reg"));
            ])
-      (* SSE2 scalar float (M5, asm/docs/corpus.md), unconditional - unlike
+      (* SSE2 scalar float (M5), unconditional - unlike
          [dec-r] just above, nothing here is bit-pattern-dead in 32-bit mode
          (every mandatory-prefix byte and opcode used here is free in both
          modes), so this is not a second [if M.rex_allowed] split. x86_32
@@ -8607,7 +8607,7 @@ module Make (M : MODE) = struct
           vex_shift_imm_alt ~label:"vex-shift-imm-d" ~priority:105 ~opcode:0x72;
           vex_shift_imm_alt ~label:"vex-shift-imm-q" ~priority:106 ~opcode:0x73;
         ]
-      (* M5 (asm/docs/corpus.md), unconditional for the same reason as the
+      (* M5 , unconditional for the same reason as the
          SSE block above: nothing here is bit-pattern-dead in either mode. *)
       @ [
           (* Group-2 shift/rotate, general immediate count ([0xC1 ib]) - the
@@ -8671,7 +8671,7 @@ module Make (M : MODE) = struct
           movsxd_alt ~label:"movsxd-r-rm" ~priority:42;
           imul_imm_form ~label:"imul-r-rm-imm8" ~priority:43 ~opcode_byte:0x6B ~imm_width:8;
           imul_imm_form ~label:"imul-r-rm-imm32" ~priority:44 ~opcode_byte:0x69 ~imm_width:32;
-          (* TEST's own immediate form ([0xF7 /0 id], M5, asm/docs/corpus.md
+          (* TEST's own immediate form ([0xF7 /0 id], M5, the corpus notes
              - [testl $1,%edi]): the ModR/M reg field is fixed at 0, the same
              "extension code, not an operand" shape as {!setcc-rm} above, not
              a lookup into {!Opcode.to_ext} - TEST is not part of that table
@@ -8696,7 +8696,7 @@ module Make (M : MODE) = struct
           push_imm_form ~label:"push-imm8" ~priority:48 ~opcode_byte:0x6a ~imm_width:8;
           push_imm_form ~label:"push-imm32" ~priority:49 ~opcode_byte:0x68 ~imm_width:32;
           shld_imm_form ~label:"shld-imm-rm" ~priority:53;
-          (* [0x9E] ({!Lowered.Sahf} - bare [sahf], M5, asm/docs/corpus.md): a fixed
+          (* [0x9E] ({!Lowered.Sahf} - bare [sahf], M5, the corpus notes): a fixed
              single-byte word, no ModR/M - {!Fucomp}/{!Fnstsw}'s exact shape at a
              one-byte-shorter opcode. *)
           C.alt ~label:"sahf" ~priority:63
@@ -8766,7 +8766,7 @@ module Make (M : MODE) = struct
      such form must be listed in [expr_of_lowered] below: [form_of] cannot tell a
      missing entry from a constant operand, and a form missing there silently
      loses its displacement. 22 forms were missing, among them [cmp]/[add]/[xor]
-     with a memory source, which CompCert emits against RIP-relative literals. *)
+     with a memory source, which the compiler emits against RIP-relative literals. *)
   let disp_expr (rm : Rm.t) =
     match rm with Rm.Mem { Mem.disp = Disp.Sym e; _ } -> [ ("disp", e) ] | _ -> []
 
@@ -9677,7 +9677,7 @@ module Make (M : MODE) = struct
 
   (* A mnemonic the hand-written forms do not know may be a generated row's. *)
   (* GNU as's AT&T names for the sign-extend-accumulator forms whose generated rows carry the
-     Intel name: CompCert prints [cltd] before a 32-bit signed divide and [cqto] before a 64-bit
+     Intel name: the compiler prints [cltd] before a 32-bit signed divide and [cqto] before a 64-bit
      one (its x86 TargetPrinter's [Pcltd]/[Pcqto]). A row only exists in a mode where the form
      does, so [cqto] stays unknown to x86-32, as it is to GNU as there. *)
   let att_spelling = function "cltd" -> [ "cdq" ] | "cqto" -> [ "cqo" ] | _ -> []
@@ -10383,7 +10383,7 @@ module Make (M : MODE) = struct
      offset 0, where the padding is empty - and the first fixture with two
      functions showed the published Intel table was the wrong thing to have
      assumed. See {!MODE.nop_table}. *)
-  (* Measured from the committed fixtures: CompCert emits [.long] for a 32-bit
+  (* Measured from the committed fixtures: the compiler emits [.long] for a 32-bit
      initializer in GNU x86 syntax. [.word] is *two* bytes here, unlike on the
      two fixed-width targets, which is the whole reason this table is per
      dialect rather than shared. *)
@@ -10392,7 +10392,7 @@ module Make (M : MODE) = struct
   let data_fixup ~width =
     match width with
     | 4 -> Ok Abs32
-    (* [.quad symbol] (M5, asm/docs/corpus.md - [testvec: ... .quad __stringlit_4]):
+    (* [.quad symbol] (M5 - [testvec: ... .quad __stringlit_4]):
        a full 64-bit absolute address, only representable in 64-bit mode
        ([M.rex_allowed] - x86-32 has no 8-byte general-purpose register or
        address width for this to mean anything, and no fixture needs it
@@ -10422,7 +10422,7 @@ module Make (M : MODE) = struct
     if length < 0 then Error (diag ~pos:__POS__ (`Negative_padding length))
     else Ok (fill_from nop_table length)
 
-  (* Measured (M3 §3/§5, .ai/asm_plan.md §12): a linker-inserted merge gap in an
+  (* Measured (M3 §3/§5, docs/design.md §12): a linker-inserted merge gap in an
      executable section is real NOP fill on both x86_32 and x86_64, from
      {!M.merge_nop_table} - NOT necessarily {!nop_table} again, since x86_32's
      ld and as disagree (see {!MODE.merge_nop_table}). Every other target's

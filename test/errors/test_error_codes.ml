@@ -8,7 +8,7 @@
    can see: that two domains do not claim the same code.
 
    The inventory is printed as well as asserted. A code is a user-visible
-   contract (asm/docs/contracts.md), so adding or moving one should read as a
+   contract (docs/contracts.md), so adding or moving one should read as a
    diff in this file rather than being discovered by a fixture.
 
    Enumeration is by *code*, not by constructor: several constructors share a
@@ -64,7 +64,7 @@ let () =
       `Fixup_target_differs "f";
     ];
   (* Codec answers [Some] only where it is the only layer that could have seen
-     the mistake (asm/docs/errors.md §2); everywhere else the caller's phase
+     the mistake (docs/errors.md §2); everywhere else the caller's phase
      names it, so those arms contribute no code of their own. *)
   List.iter
     (fun e -> match Codec.code e with Some c -> claim "Codec" c | None -> ())

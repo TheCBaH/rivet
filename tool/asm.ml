@@ -1,7 +1,7 @@
 (* The `asm` CLI.
 
    Outside the production closure by construction: it is an executable, so
-   nothing can depend on it, and tools/asm-check-purity.sh classifies tool/ as a
+   nothing can depend on it, and scripts/asm-check-purity.sh classifies tool/ as a
    non-production tree. This is where file I/O is allowed to live. §9's rule is
    that none of it leaks back into a library, which is why the whole of this file
    is argument handling, reading a file, and printing - every decision it makes
@@ -57,12 +57,12 @@ let die msg =
 let parse_base s =
   match Int64.of_string_opt s with Some v -> v | None -> die ("not an address: " ^ s)
 
-(* Isa_gen_ours (asm/tools/lib) shells out to this executable rather than
+(* Isa_gen_ours (tools/lib) shells out to this executable rather than
    linking it, so this project's own hex-dump format has to be reproduced here
-   rather than shared as a library call - tools/asm-check-purity.sh forbids the
-   dependency running the other way (compcert_tools must never require
+   rather than shared as a library call - scripts/asm-check-purity.sh forbids the
+   dependency running the other way (rivet_tools must never require
    building the whole assembler, tools-boundary). Byte-for-byte the same
-   algorithm as asm/tools/lib/hex_dump.ml's [of_bytes]: lowercase, space
+   algorithm as tools/lib/hex_dump.ml's [of_bytes]: lowercase, space
    separated, 16 bytes per line, a trailing newline after every line including
    the last, and [""] for zero bytes. *)
 let hex_dump_of_bytes s =
@@ -89,7 +89,7 @@ let read_file path =
 
 let () =
   (* First, before anything can fail. Err's own default captures a Printexc
-     callstack at every detection; asm/docs/errors.md §3 explains why that must
+     callstack at every detection; docs/errors.md §3 explains why that must
      be off here, and why the policy is not simply Err.Config.fast. *)
   Foundation.Err_policy.apply ();
   let o =
@@ -116,7 +116,7 @@ let () =
         o.inspect <- true;
         go rest
     (* Error tracing, off unless asked for. The monitor writes to stderr and
-       never to stdout: asm/docs/errors.md §3 keeps Err provenance out of
+       never to stdout: docs/errors.md §3 keeps Err provenance out of
        anything a cram baseline compares, and every dump above goes to stdout.
        The spec is parsed rather than read from the environment, so a build's
        behaviour is a property of its command line. *)
@@ -165,7 +165,7 @@ let () =
     exit 1
   in
   (* The payload only. A wrapped failure also carries a detection origin and the
-     phase trail, and asm/docs/errors.md §3 keeps both out of what a cram
+     phase trail, and docs/errors.md §3 keeps both out of what a cram
      baseline compares; the tracing switch is how they are asked for. *)
   let ok = function Ok v -> v | Error e -> report (Foundation.Diag.diagnostics e) in
   let features = o.features in

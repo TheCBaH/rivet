@@ -1,4 +1,4 @@
-(* The portable in-memory API (.ai/asm_plan.md §11.6).
+(* The portable in-memory API (docs/design.md §11.6).
 
    Plain OCaml over strings and int64s: assembly text in, a dump or image bytes
    out. No file paths, no Unix, no JavaScript value, no pointer. It is what the
@@ -16,7 +16,7 @@
    protection, flushes a cache or calls generated code - in a browser it could
    not, since a target virtual address is a layout value and not a pointer. *)
 
-(* This boundary's error domain (asm/docs/errors.md).
+(* This boundary's error domain (docs/errors.md).
 
    It used to be [string], on the grounds that the caller is JavaScript and a
    [Diagnostic.t] would have to be marshalled anyway. That reasoning covers the
@@ -66,7 +66,7 @@ let of_diagnostics ?pos ds = fail ?pos (`Diagnostics ds)
    [Err_policy] deliberately does not apply itself at module initialization -
    linking a library should not mutate process state. So a host that cares calls
    this once at startup; a host that does not still gets deterministic output,
-   because nothing here renders Err provenance (asm/docs/errors.md §3), and pays
+   because nothing here renders Err provenance (docs/errors.md §3), and pays
    only for the callstack Err's default captures at each detection. *)
 let set_trace_policy = Foundation.Err_policy.apply
 let targets = Registry.names
@@ -207,11 +207,11 @@ let exports b = b.image.Image.exports
 
 (* {1 Manifest}
 
-   M4 Phase 7 (.ai/asm_plan.md): a pure aggregation over the accessors above,
+   M4 Phase 7 (docs/design.md): a pure aggregation over the accessors above,
    for a caller that wants one call rather than [entry]/[exports]/[segments]/
    [section_bytes] stitched together by hand. Deliberately not the QEMU wire
    format ([test/oracle/manifest.ml] is test-only and reaches into [Abi]/
-   [Abi_v2], which has no place in a production package per .ai/asm_plan.md
+   [Abi_v2], which has no place in a production package per docs/design.md
    §9) - this is a plain, self-contained record a browser embedder can read
    directly or marshal to whatever shape its own host wants.
 

@@ -1,4 +1,4 @@
-(* Pure combining logic for the real-browser smoke harness (.ai/asm_plan.md
+(* Pure combining logic for the real-browser smoke harness (docs/design.md
    M5, the deferred browser-harness item). Reuses exactly the inputs and
    production entry points already proven three-way-identical by
    asm_dump.ml/manifest_dump.ml's own cram gates - Test_dump_inputs's x86_64
@@ -8,7 +8,7 @@
    second baseline to keep in sync with asm_dump.t/manifest_dump.t.
 
    No side effects here: smoke_native.ml, smoke_jsoo.ml, and the Melange
-   emit (asm/melange/test/browser/dune) are each a thin adapter around
+   emit (melange/test/browser/dune) are each a thin adapter around
    [run] below, which is why this module alone is safe to share across all
    three backends without duplication. *)
 

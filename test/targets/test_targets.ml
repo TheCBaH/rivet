@@ -283,7 +283,7 @@ let%expect_test "the bitmask-immediate relations round-trip exhaustively" =
       why: the field is N:immr:imms, so the domain is 8192 triples for 64-bit and 4096 for 32-bit; enumerating the values they decode to is a table scan rather than a sample
       failures: none |}]
 
-(* The two values CompCert actually asks for, and the one it cannot: a bitmask
+(* The two values the compiler actually asks for, and the one it cannot: a bitmask
    immediate is a rotated run of ones, so 7 and 6 are expressible and 5 - which
    is not a contiguous run - is not. *)
 let%expect_test "which small constants are bitmask immediates" =
@@ -1020,8 +1020,8 @@ let%expect_test "the same call on the two fixed-width targets" =
 (* {1 ARM [push {reglist}]}
 
    [push], GNU's alias for [stmdb sp!, {reglist}] (M5 corpus evidence:
-   asm/docs/corpus.md - test/regression/varargs1.c's own
-   [push {r0, r1, r2, r3}], CompCert's varargs-spill prologue). Byte-for-byte
+   the corpus notes - test/regression/varargs1.c's own
+   [push {r0, r1, r2, r3}], the compiler's varargs-spill prologue). Byte-for-byte
    checked against real arm-linux-gnueabihf-as/objdump:
      e92d000f  push {r0, r1, r2, r3}
      e92d4091  push {r0, r4, r7, lr}
@@ -1043,10 +1043,10 @@ let%expect_test "push needs two or more registers; one register is out of scope"
   [%expect
     {| arm.lower: push needs two or more registers; a single register is str rN, [sp, #-4]!, not in scope |}]
 
-(* {1 str/ldr pre-indexed writeback (classify-c-gcc, asm/docs/corpus.md)}
+(* {1 str/ldr pre-indexed writeback (classify-c-gcc, the corpus notes)}
 
    [str fp, [sp, #-4]!] - gcc's own single-register frame-pointer prologue
-   (not the [push {reglist}] pseudo-instruction just above, which CompCert's
+   (not the [push {reglist}] pseudo-instruction just above, which the compiler's
    own codegen uses instead and which stays scoped to two-or-more registers).
    Byte-for-byte checked against real arm-linux-gnueabihf-as/objdump:
      e52db004  str fp, [sp, #-4]!
@@ -1095,7 +1095,7 @@ let%expect_test "vmov.f32/f64 with a scientific-notation immediate" =
 (* {1 ARM [stmia]/[ldmia]/[pop {reglist}]}
 
    The LDM-class increment-after encoding, structurally distinct from
-   [push]'s STMDB-class one (asm/docs/corpus.md): evidenced by
+   [push]'s STMDB-class one : evidenced by
    [gas_frontier.t]'s runtime-helper corpus ([i64_udivmod]/[i64_umod]'s own
    [pop {reglist}] epilogues) and classify-c-gcc's [aes.c] ([stmia r3!, {r0,
    r1}]). Byte-for-byte checked against real arm-linux-gnueabihf-as/objdump:
@@ -1135,7 +1135,7 @@ let%expect_test "pop needs two or more registers; one register is out of scope" 
     {| arm.lower: pop needs two or more registers; a single register is ldr rN, [sp], #4, not in scope |}]
 
 (* [vpush.64 {d8-d9}] / [{d8, d9}] - almabench.c's/perlin.c's own D-register
-   reglist push (asm/docs/corpus.md). gcc's own VFP printer spells the range
+   reglist push . gcc's own VFP printer spells the range
    with a hyphen, not the GPR [push]'s flat comma list; both forms parse into
    the identical [Operand.Dreglist] and now lower/encode identically too, a
    VSTM-class encoding (base register + count, not a bitmask) distinct from
@@ -1175,7 +1175,7 @@ let%expect_test "vpush.64 needs a non-empty, contiguous, ascending D-register li
 
 (* {1 ARM [vadd]/[vsub]/[vmul]/[vdiv] single-precision ([.f32])}
 
-   asm/docs/corpus.md's assemble-c corpus (fftsp.c's [vmul.f32]/[vdiv.f32],
+   assemble-c corpus (fftsp.c's [vmul.f32]/[vdiv.f32],
    knucleotide.c's [vmul.f32]/[vdiv.f32]) evidences the single-precision form
    of the same V3 (add/sub/mul/div) family whose double-precision ([.f64], S
    registers) form was already fully encodable - {!Lowered.V3_s} and its codec
@@ -1218,9 +1218,9 @@ let%expect_test "vadd/vsub/vmul/vdiv.f32 share the .f64 family's V3 lowering, ov
 
 (* {1 ARM [vldr Dd/Sd, label] - a PC-relative literal-pool load}
 
-   asm/docs/corpus.md's assemble-c corpus (fftsp.c's/knucleotide.c's own
+   assemble-c corpus (fftsp.c's/knucleotide.c's own
    [vldr s0, .L104], a bare label with no brackets and no base register - a
-   gcc/ccomp-generated same-function trailing float-constant pool, the
+   gcc-generated same-function trailing float-constant pool, the
    commonest remaining ARM `assemble-c` gap once [.f32] arithmetic above
    stopped masking it). Structurally distinct from the already-complete
    {!Lowered.Vmem_d}/{!Lowered.Vmem_s} (a runtime base register plus an
@@ -1305,7 +1305,7 @@ let%expect_test "vstr to a bare label is not in scope (only vldr's literal form 
 (* {1 ARM [eor]/[rsb]/[orr]/[mvn] - the rest of the data-processing family}
 
    [add]/[sub]/[and]/[mov]/[cmp] already share one [dp]-parametrized lowering
-   ({!Lowered.Dp_imm}/{!Lowered.Dp_reg}); asm/docs/corpus.md's classify-c-gcc
+   ({!Lowered.Dp_imm}/{!Lowered.Dp_reg}); classify-c-gcc
    evidence ([sha1.c]/[sha3.c]'s [eor rd, rn, rm], [binarytrees.c]/[chomp.c]/
    [fft.c]'s [rsb rd, rn, #imm] and [rsb rd, rn, rm, lsl #n], [mandelbrot.c]/
    [siphash24.c]'s [orr rd, rn, rm[, lsl #n]], [qsort.c]'s [mvn rd, rm]/
@@ -1349,7 +1349,7 @@ let%expect_test "eor/rsb/orr/mvn share add/sub/and/mov's own data-processing low
 (* {1 ARM [lsl]/[lsr]/[asr]/[ror rd, rm, rs] and [nop]}
 
    [lsl rd, rm, rs] etc. are GNU's own mnemonics for [mov] with a
-   register-specified shift amount (asm/docs/corpus.md - gcc's [nsieve.c]/
+   register-specified shift amount (gcc's [nsieve.c]/
    [nsievebits.c]) - a different word shape from the already-supported
    immediate-shift-amount one ({!Lowered.Dp_reg}'s own [mov rd, rm, lsl #n]):
    bit 4 is the ARM manual's own register/immediate-shift discriminator, and
@@ -1384,7 +1384,7 @@ let%expect_test "lsl/lsr/asr/ror rd, rm, rs (register shift amount), and nop" =
     40000014  1e ff 2f e1  bx lr           [arm.bx]
     |}]
 
-(* [lsl]/[lsr]/[asr]/[ror rd, rm, #imm] (M5, asm/docs/corpus.md - gas_frontier.t's
+(* [lsl]/[lsr]/[asr]/[ror rd, rm, #imm] (M5 - gas_frontier.t's
    runtime-i64_dtou.S/i64_sar.S): the immediate-shift-amount sibling of the register-shift-amount
    form above - GNU's own mnemonics for [mov rd, rm, <shift> #imm], lowering into the identical
    {!Lowered.Dp_reg}/[mov] shape the two-operand-plus-[Shifted] spelling already builds. Real
@@ -1405,7 +1405,7 @@ let%expect_test "lsl/lsr/asr/ror rd, rm, #imm (immediate shift amount)" =
 (* {1 ARM [eor]/[orr]/[bic]'s own three-operand immediate form, and [adc]/[adds]}
 
    [rsb rd, rn, #imm] already shares [add]/[sub]/[and]'s own [dp-imm] lowering
-   (above); asm/docs/corpus.md's siphash24.c/sha3.c/mandelbrot.c/qsort.c/
+   (above); siphash24.c/sha3.c/mandelbrot.c/qsort.c/
    nsievebits.c evidence the identical shape for [eor]/[orr]/[bic] too, and
    [nsievebits.c]/[qsort.c] also evidence [bic]'s register form. [adc]
    (siphash24.c's 64-bit-add upper half) is the same three-register
@@ -1447,9 +1447,9 @@ let%expect_test "eor/orr/bic's three-operand immediate form, bic's register form
 
 (* {1 ARM [cmn]/[subs]/[rsbs]/[orrs]/[sbc]}
 
-   Five more flag-setting/compare data-processing forms (M5, asm/docs/corpus.md -
+   Five more flag-setting/compare data-processing forms (M5, the corpus notes -
    gas_frontier.t's runtime-i64_dtos.S/i64_dtou.S/i64_sar.S/i64_sdiv.S/i64_smod.S/
-   i64_udivmod.S, CompCert's own 64-bit software-arithmetic runtime helpers). [cmn]
+   i64_udivmod.S, the compiler's own 64-bit software-arithmetic runtime helpers). [cmn]
    (dp = 11) is {!Cmp}'s exact sibling test instruction, sharing {!is_compare}'s
    forced-[Rd]-zero/[S]-set shape - no dedicated lowering case needed beyond the table
    entry, unlike the next three. [subs]/[orrs] are {!Adds}'s own pattern applied to
@@ -1491,7 +1491,7 @@ let%expect_test "cmn, subs, rsbs, orrs, and sbc" =
    32-bit registers used as *addresses* in 64-bit mode. Omitting the 0x67 does
    not produce a different-but-equal encoding - it addresses %rdi where the
    program said %edi - so this is a correctness property, not a byte-parity
-   one. CompCert emits both shapes in the M2 fixtures. *)
+   one. the compiler emits both shapes in the M2 fixtures. *)
 
 let%expect_test "a 32-bit address in 64-bit mode carries 0x67, and decodes back" =
   disasm "x86_64"
@@ -1513,7 +1513,7 @@ let%expect_test "a 64-bit address carries no prefix" =
 
 (* {1 8-bit REX-extended sub-registers}
 
-   [%r8b]-[%r15b] (M5 corpus evidence: asm/fixtures/corpus/c/x86_64/
+   [%r8b]-[%r15b] (M5 corpus evidence: fixtures/corpus/c/x86_64/
    summary.txt - aes/knucleotide/sha1/sha3/siphash24/vmach all use one).
    x86_64_encode.ml's register list already had every other REX-extended
    width (64, 32, 16 is unused by any fixture and stays absent) but not this
@@ -1527,7 +1527,7 @@ let%expect_test "a 64-bit address carries no prefix" =
    already-existing boundary instead of failing earlier as an unknown
    register - i.e. the new register table entry is wired up correctly. *)
 (* M1 rejected reg/reg and reg/mem [movb] entirely (only [movb $imm,(mem)]
-   was in scope); M5 (asm/docs/corpus.md - [movb %sil, 7(%rdi)] and friends)
+   was in scope); M5 ([movb %sil, 7(%rdi)] and friends)
    lifted that, so both cases below now decode rather than error. [0x88],
    not [0x89] with an 8-bit width - the opcode byte itself carries the
    operand size for MOV, unlike every other form here where a shared opcode
@@ -1545,7 +1545,7 @@ let%expect_test "%r8b-%r15b are recognized registers, and 8-bit reg/reg mov uses
 
 (* {1 16-bit operand size, and REX-extended 16-bit sub-registers}
 
-   [%r8w]-[%r15w] (M5 corpus evidence: asm/docs/corpus.md -
+   [%r8w]-[%r15w] (M5 corpus evidence: the corpus notes -
    test/regression/bitfields10.c's [movw %r8w, 58(%rsp)]). Unlike the 8-bit
    case above, this needed more than a register-table row: no 16-bit operand
    size existed at all yet ([simplify_instruction]'s [widthed] rejected every
@@ -1671,15 +1671,15 @@ let%expect_test "x86 pseudo-prefixes select the encoding" =
     400000bf  e3 00                                jrcxz 1073742017                            [x86_64.short-jrcxz.d8]
     x86.simplify: unknown instruction {vex3} vaddps |}]
 
-(* {1 M5 corpus-growth forms (asm/docs/corpus.md): actually assembling
-   CompCert's [test/c/] corpus, not just parsing it}
+(* {1 M5 corpus-growth forms : actually assembling
+   the compiler's [test/c/] corpus, not just parsing it}
 
    Every byte sequence and canonical spelling below was checked against the
    real, installed [x86_64-linux-gnu-as]/[objdump] (binutils) before being
    promoted here - not hand-typed. *)
 
 let%expect_test
-    "or/and/xor in the register-register and mem-source shapes CompCert's own codegen needs" =
+    "or/and/xor in the register-register and mem-source shapes the compiler's own codegen needs" =
   disasm "x86_64"
     "\t.text\n\
      \t.globl f\n\
@@ -1774,7 +1774,7 @@ let%expect_test "the two-operand imul $imm,reg form (0x69/0x6B, short-immediate-
 
 (* An ALU-immediate/imul-immediate/push-immediate literal spelled as the
    unsigned-looking hex form of a negative value at its own operand width
-   (M5, asm/docs/corpus.md - [vararg.S]'s real `andl $0xfffffffc,%edx`, GAS's
+   (M5 - [vararg.S]'s real `andl $0xfffffffc,%edx`, GAS's
    own idiom for a 4-byte-alignment mask): the parsed literal (4294967292)
    must be reduced modulo the operand's width and reinterpreted as signed
    before any rung's range check runs, and that *reduced* value - not the
@@ -1814,8 +1814,8 @@ let%expect_test "TEST's own immediate form (0xF7 /0 id, always full-width, no im
 
 (* {1 Base-less scaled-index (SIB) memory operands}
 
-   [disp(,%index,scale)] - no base register, GCC/CompCert's array-index
-   address idiom (M5 corpus evidence: asm/fixtures/corpus/c/x86_64/
+   [disp(,%index,scale)] - no base register, gcc's array-index
+   address idiom (M5 corpus evidence: fixtures/corpus/c/x86_64/
    summary.txt). SIB.base=101 with mod=00 is reserved to mean "no base,
    disp32 always follows" - there is no shorter encoding, hence 8 bytes
    here where a real-base disp0/disp8 SIB form would take 3-4. *)
@@ -1853,7 +1853,7 @@ let%expect_test "a negative RIP-relative displacement redisplays with its sign" 
 
 (* A *symbolic* base-less-SIB displacement - [Te4(,%eax,4)] and the
    parenthesized-expression sibling [(tbl + 4)(,%ecx,8)] (M5 corpus evidence:
-   asm/fixtures/corpus/c/x86_32/summary.txt's aes.c/sha3.c). Unlike the
+   fixtures/corpus/c/x86_32/summary.txt's aes.c/sha3.c). Unlike the
    numeric cases just above, the displacement here is a fixup against a
    symbol, not a literal; [split_nobase_sib] (x86_family.ml) is what makes
    the parenthesized-expression shape parse at all - [(tbl + 4)] is itself a
@@ -1885,7 +1885,7 @@ let%expect_test "a base-less SIB operand with a symbolic displacement" =
     |}]
 
 (* [jmp *sym(,%reg,scale)] - an indirect jump through a jump-table entry
-   (M5 corpus evidence: asm/fixtures/corpus/c/x86_32/summary.txt's
+   (M5 corpus evidence: fixtures/corpus/c/x86_32/summary.txt's
    siphash24.c/vmach.c switch-dispatch code). [Opcode.Jmp, [Operand.Mem m]]
    (x86_family_encode.ml) is the only new lowering this needed - [Jmp_rm] was
    already generic over [Rm.t]. *)
@@ -1900,8 +1900,8 @@ let%expect_test "an indirect jmp through a base-less SIB jump-table entry" =
 (* {1 Base-only memory operands with a symbolic displacement}
 
    [sym(%base)] and the parenthesized-expression sibling [(sym + N)(%base)] -
-   no index, no scale, GCC/CompCert's plain struct/array-field address idiom
-   (M5 corpus evidence: asm/fixtures/corpus/c/x86_32/summary.txt's
+   no index, no scale, gcc's plain struct/array-field address idiom
+   (M5 corpus evidence: fixtures/corpus/c/x86_32/summary.txt's
    almabench.c/nbody.c/sha3.c - "cannot parse operand a(%eax)",
    "cannot parse operand (bodies + 24)(%eax)", "cannot parse operand
    (testvec + 4)(%edx)"). Unlike the base-less-SIB case above, the encoder
@@ -1933,8 +1933,8 @@ let%expect_test "a base-only memory operand with a symbolic displacement" =
 
 (* {1 SSE2 scalar float}
 
-   M5 corpus evidence (asm/docs/corpus.md): the register class and
-   instruction family CompCert's x86_64 double/float codegen needs.
+   M5 corpus evidence : the register class and
+   instruction family the compiler's x86_64 double/float codegen needs.
    Byte-for-byte hand-verified against the real, installed
    x86_64-linux-gnu-as/objdump (binutils 2.44) before being written down
    here - the same discipline the base-less-SIB fix above used. *)
@@ -2035,7 +2035,7 @@ let%expect_test "a RIP-relative binop memory operand (xorpd)" =
 
 (* x86_32 has xmm0-xmm7 (no REX byte, so no REX-extended xmm8-15 - GNU as
    rejects %xmm8 outright in 32-bit mode) with the identical opcode bytes as
-   x86_64 (M5 corpus evidence: asm/fixtures/corpus/c/x86_32/summary.txt -
+   x86_64 (M5 corpus evidence: fixtures/corpus/c/x86_32/summary.txt -
    "unknown register %xmmN" on every file with floating-point arithmetic).
    The SSE2 codec itself is already target-agnostic; this is a register-table
    addition only (x86_32_encode.ml). *)
@@ -2084,11 +2084,11 @@ let%expect_test "an xmm register used as a memory base is rejected at parse time
   attempt "x86_64" "\t.text\n\t.globl f\nf:\n\tmovsd (%xmm0), %xmm1\n\tret\n";
   [%expect {| x86.operand: %xmm0 cannot be used as a memory operand's base or index register |}]
 
-(* {1 classify-c-gcc forms (asm/docs/corpus.md): gcc's own idioms, not ccomp's}
+(* {1 classify-c-gcc forms : gcc's own idioms, not the compiler's}
 
-   Every M5 fixture above compiled its evidence with ccomp; classify-c-gcc
-   (asm/docs/corpus.md) runs the identical test/c/ corpus through the system
-   cross gcc instead, and gcc's assembly idioms are not the ones ccomp emits.
+   Every M5 fixture above compiled its evidence with the compiler; classify-c-gcc
+    runs the identical test/c/ corpus through the system
+   cross gcc instead, and gcc's assembly idioms are not the ones the compiler emits.
    Byte sequences below were checked against the real, installed
    i686-linux-gnu-as/x86_64-linux-gnu-as and objdump before being promoted
    here, the same discipline as every other [disasm] test in this file. *)
@@ -2193,12 +2193,12 @@ let%expect_test "addq $sym, %reg reads a symbolic ALU immediate" =
     |}]
 
 (* The accumulator-only ALU-immediate form ({!alu_acc_form}, M5,
-   asm/docs/corpus.md - the corpus's own literal `addq $bodies+24, %rax`):
+   the corpus notes - the corpus's own literal `addq $bodies+24, %rax`):
    until this session, this project's ALU-immediate encoder had no
    accumulator-specific alternative at all, so `addq $sym, %rax` fell
    through to the seven-byte ModR/M form instead of real `as`'s
    six-byte `05 id`/`48 05 id` one - a documented, deliberately-left-open
-   byte mismatch (`asm/docs/corpus.md`'s own Follow-ups entry), not
+   byte mismatch (`docs/corpus.md`'s own Follow-ups entry), not
    evidenced by any *rejection* since nothing here failed to lower, only to
    byte-match. Now fixed on both x86_32 and x86_64, with a plain literal
    alongside the symbolic form to show the priority order still picks the
@@ -2247,7 +2247,7 @@ let%expect_test "pushl $sym reads a symbolic immediate" =
     4000000a  c3              ret               [x86_32.ret]
     |}]
 
-(* [fldl]/[fstpl]/[fstps] (M5, asm/docs/corpus.md): ccomp's own x87
+(* [fldl]/[fstpl]/[fstps] (M5): the compiler's own x87
    double/single-precision spill-and-reload around a `%st(0)` return value -
    the highest-recurrence real gap left in x86_32's [assemble-c] corpus (72 +
    8 + 5 = 85 occurrences across almabench.c/binarytrees.c/bisect.c/fft.c/
@@ -2271,7 +2271,7 @@ let%expect_test "fldl/fstpl/fstps read/write a double/single memory operand" =
     4000000c  c3           ret             [x86_32.ret]
     |}]
 
-(* [shldl $imm8,%src,%dst] (M5, asm/docs/corpus.md - sha3.c/siphash24.c's
+(* [shldl $imm8,%src,%dst] (M5 - sha3.c/siphash24.c's
    64-bit-rotate idiom built from two 32-bit halves): SHLD's own immediate-
    count double-precision shift, [0F A4 /r ib]. AT&T reverses Intel's [SHLD
    r/m32, r32, imm8] order, putting the count first and the r/m destination
@@ -2291,7 +2291,7 @@ let%expect_test "shldl reads a register source and an immediate count" =
     40000008  c3           ret                   [x86_32.ret]
     |}]
 
-(* [adcl %reg,%reg] (M5, asm/docs/corpus.md - siphash24.c's carry-propagation
+(* [adcl %reg,%reg] (M5 - siphash24.c's carry-propagation
    half of its 64-bit add): the same [Alu_rm_r] rm<-reg direction [Add]/
    [Xor]/... already had, just a missing table entry - [Adc]'s own [0x11 /r]
    was absent from both {!Opcode.to_rm_r} and the reg-reg lowering match that
@@ -2307,7 +2307,7 @@ let%expect_test "adcl reads a register source (the rm<-reg direction)" =
     |}]
 
 (* [flds] - x87 single-precision *load*, [fstps]'s missing load counterpart
-   (M5, asm/docs/corpus.md - i64_dtou.S/i64_stof.S/i64_utof.S's own
+   (M5 - i64_dtou.S/i64_stof.S/i64_utof.S's own
    float<->int conversion helpers). Same opcode byte as [fstps] ([0xD9]),
    distinguished only by the ModR/M-reg extension (0 here, 3 there) - the
    identical shared-opcode-disjoint-extension shape {!Fldl}/{!Fstpl} already
@@ -2327,8 +2327,8 @@ let%expect_test "flds reads a double/single memory operand and a bare symbol" =
     4000000a  c3                 ret              [x86_32.ret]
     |}]
 
-(* [fildll] - x87 64-bit integer load ([0xDF /5], M5, asm/docs/corpus.md - gas_frontier.t's
-   runtime-i64_stod.S/i64_stof.S/i64_utod.S/i64_utof.S: CompCert's own int64-to-float
+(* [fildll] - x87 64-bit integer load ([0xDF /5], M5, the corpus notes - gas_frontier.t's
+   runtime-i64_stod.S/i64_stof.S/i64_utod.S/i64_utof.S: the compiler's own int64-to-float
    conversion runtime helpers). Same shared-opcode-disjoint-extension shape as
    {!Fldl}/{!Fstpl}/{!Fstps}/{!Flds}, memory-operand-only (every recurrence in this
    corpus is `disp(%esp)`, no bare-symbol source evidenced the way {!Flds}/{!Fadds}
@@ -2342,7 +2342,7 @@ let%expect_test "fildll reads a 64-bit integer memory operand" =
     40000004  c3           ret             [x86_32.ret]
     |}]
 
-(* [fadds] - x87 single-precision add ([0xD8 /0], M5, asm/docs/corpus.md - gas_frontier.t's
+(* [fadds] - x87 single-precision add ([0xD8 /0], M5, the corpus notes - gas_frontier.t's
    runtime-i64_utod.S/i64_utof.S). [fstps]/[flds]'s arithmetic sibling, sharing the same
    {!Lowered.Fpu_mem} shape and, since both corpus occurrences are `fadds LC1`, {!Flds}'s
    own [mem_of_symbol] bare-symbol duality rather than {!Fldl}/{!Fstpl}/{!Fstps}'s
@@ -2374,7 +2374,7 @@ let%expect_test "fadd reads an x87 stack source into implicit st0" =
     40000002  c3     ret               [x86_64.ret]
     |}]
 
-(* [fucomp] - bare, no operand (M5, asm/docs/corpus.md - i64_dtou.S's own compare-and-pop,
+(* [fucomp] - bare, no operand (M5 - i64_dtou.S's own compare-and-pop,
    x87's last remaining gap in this corpus after [fldl]/[fstpl]/[fstps]/[flds] above). GAS's
    own no-operand spelling of [fucomp %st(1)]: a fixed [0xDD 0xE9] word, no ModR/M at all - the
    same shape [ret]/[ud2] already use, just a different opcode pair; like those two, the
@@ -2432,8 +2432,8 @@ let%expect_test "movsd/movss sym, %xmmN reads a bare symbol's address" =
     40000008  f3 0f 10 0d 00 00 00 40  movss 1073741824, %xmm1  [x86_32.sse-movss-load.disp32-norm]
     40000010  c3                       ret                      [x86_32.ret] |}]
 
-(* [xorpd __negd_mask, %xmmN] - ccomp's own sign-flip idiom for float
-   negation/[fabs] (M5, asm/docs/corpus.md; found while regenerating
+(* [xorpd __negd_mask, %xmmN] - the compiler's own sign-flip idiom for float
+   negation/[fabs] (M5, the corpus notes; found while regenerating
    assemble-c's x86_32 manifest after the x87 fix below, where it became
    the corpus's own next-highest-signal reason - 6 recurrences across
    fftsp.c/nbody.c/others). Same bare-symbol duality as [movsd]/[movss]
@@ -2881,10 +2881,10 @@ let%expect_test "riscv64: cross-file call and pcrel-hi/lo data reference resolve
   riscv_two_input_case "riscv64";
   [%expect {| accepted |}]
 
-(* M5 corpus evidence (asm/docs/corpus.md - test/regression/charlit.c's
+(* M5 corpus evidence (test/regression/charlit.c's
    static [f1]): [%pcrel_hi(sym)]/[%pcrel_lo(sym)] must resolve [sym] as a
    symbol even when its spelling is also a legal register name - here the
-   floating register [f1] - because CompCert names statics from the source
+   floating register [f1] - because the compiler names statics from the source
    program, register spellings included. Before the fix, [f1] the register
    won the ambiguity and the modifier's own token was left with no operand,
    producing "cannot parse operand %pcrel_hi" on a file that has nothing else
@@ -2912,7 +2912,7 @@ let%expect_test "riscv64: %pcrel_hi/%pcrel_lo resolve a symbol named like a regi
   riscv_pcrel_register_name_collision "riscv64";
   [%expect {| accepted |}]
 
-(* M5 corpus evidence (asm/docs/corpus.md, assemble-c riscv32/riscv64): GAS
+(* M5 corpus evidence (docs/corpus.md, assemble-c riscv32/riscv64): GAS
    overloads sll/srl/sra(w) with a third register operand as the R-type
    register-shift-amount form, and with a third immediate operand as an
    alias for slli/srli/srai(w) - confirmed against real
@@ -3064,7 +3064,7 @@ let%expect_test "riscv32/riscv64: remu shares mul's R-type shape (funct3=7)" =
       bytes b3 f5 c5 02              [riscv64.remu] |}]
 
 (* M5 corpus evidence (siphash24.c on riscv64 only - RV32 has no 64-bit
-   literal-pool load): CompCert's own `ld rd, symbol` load-from-literal-pool
+   literal-pool load): the compiler's own `ld rd, symbol` load-from-literal-pool
    idiom is GAS's own pseudo-instruction, expanding to
    `auipc rd, %pcrel_hi(symbol); ld rd, %pcrel_lo(...)(rd)` - the same
    anchored hi/lo pairing `la`/`call` already share, with the second word an
@@ -3089,7 +3089,7 @@ let%expect_test "riscv32: ld rd, symbol is rejected (ld itself needs XLEN=64)" =
   attempt "riscv32" "\t.text\n\tld x31, .L100\n.L100:\n\t.quad 0\n";
   [%expect {| riscv32.lower: ld is available only when XLEN is 64 |}]
 
-(* M5 corpus evidence (asm/docs/corpus.md's vmach.c/siphash24.c): a switch
+(* M5 corpus evidence (vmach.c/siphash24.c): a switch
    statement's computed-goto jump table is `adr x16, .Ltable; add x16, x16,
    wN, uxtw #2; br x16` - `adr` materializes the table's own address (a
    byte-granular program-relative offset, unlike `adrp`'s page-shifted one)
@@ -3150,7 +3150,7 @@ let%expect_test "a branch to a same-section symbol in another input always takes
           | [] -> print_endline "(no segments)")));
   [%expect {| e9 00 00 00 00 c3 |}]
 
-(* {1 Portable manifest (.ai/asm_plan.md M4 Phase 7)}
+(* {1 Portable manifest (docs/design.md M4 Phase 7)}
 
    [Driver.Portable.manifest] is a pure aggregation over [entry]/[exports]/
    [segments]/[section_bytes] - proven here rather than re-deriving each
@@ -3244,7 +3244,7 @@ let%expect_test "register-offset addressing: uxtw/sxtw/sxtx/lsl, scaled and unsc
    Structurally distinct from ADD/SUB (shifted register) - a different fixed
    bit at 21 where the shifted form has a 2-bit shift kind, and [rd]/[rn] may
    be SP here where the shifted form forbids it. M5 corpus evidence
-   (asm/docs/corpus.md): [test/regression/int64.c]'s
+   : [test/regression/int64.c]'s
    [add x0, x0, x16, uxtx #0]. Byte-for-byte hand-verified against the real,
    installed aarch64-linux-gnu-as/objdump before being written down:
      8b306000  add x0, x0, x16, uxtx
@@ -3253,7 +3253,7 @@ let%expect_test "register-offset addressing: uxtw/sxtw/sxtx/lsl, scaled and unsc
      0b2800e6  add w6, w7, w8, uxtb
      cb2bed49  sub x9, x10, x11, sxtx #3
    (GNU's own canonical printer omits an implied [uxtx]/[#0]; this project
-   always prints the operand explicitly instead, matching what CompCert and
+   always prints the operand explicitly instead, matching what the compiler and
    this corpus fixture actually write - see {!Lowered.pp}'s [Addsub_extend]
    case.) *)
 let%expect_test "ADD/SUB (extended register): uxtb/uxtw/uxtx/sxtx, and rd/rn = sp" =
@@ -3277,9 +3277,9 @@ let%expect_test "ADD/SUB (extended register): uxtb/uxtw/uxtx/sxtx, and rd/rn = s
     40000014  c0 03 5f d6  ret                        [aarch64.ret]
     |}]
 
-(* {1 Forms from the embedded CompCert corpus}
+(* {1 Forms from the compiler-output corpus}
 
-   What CompCert emits for signed division, comparisons against small
+   What the compiler emits for signed division, comparisons against small
    negative constants or large multiples of 4096, signed bitfield reads,
    static zero-initialized objects, large stack frames and inline struct
    copies. Byte-for-byte checked against the host's GNU as 2.44 / objdump
@@ -3474,10 +3474,10 @@ let%expect_test "add ..., #:lo12:sym" =
     40000008  00 00 00 00  udf #0          [aarch64.udf]
     |}]
 
-(* {1 classify-c-gcc forms (asm/docs/corpus.md): the [#] is optional}
+(* {1 classify-c-gcc forms : the [#] is optional}
 
    Every AArch64 test above spells an immediate with a leading [#], because
-   that is what ccomp always emits. gcc's own aarch64 backend never does -
+   that is what the compiler always emits. gcc's own aarch64 backend never does -
    every one of the 5156 bracket-immediate offsets in the whole
    classify-c-gcc corpus omits it, and so does every shift/extend amount and
    FP immediate this section covers - which is why this target was 0/24
@@ -3558,7 +3558,7 @@ let%expect_test "eor/and/orr (shifted register), and mov between two general reg
    0xff000000 byte mask) never matched any entry in the bitmask domain, because
    [decode_bitmask]'s own 32-bit case always reconstructs a value already reduced to its low 32
    bits (never a negative int64), and nothing reduced the literal itself the same way before the
-   search - the identical shape ARM's own `to_width_signed` fix (asm/docs/corpus.md) already
+   search - the identical shape ARM's own `to_width_signed` fix  already
    named for a different encoder. Byte-checked against real aarch64-linux-gnu-as/objdump:
    `and w1, w4, #-16777216` -> `12081c81`; `and w2, w17, #16711680` (the positive spelling of the
    same bit pattern, confirming the fix does not regress the case that already worked) ->
@@ -3575,7 +3575,7 @@ let%expect_test "a 32-bit bitmask immediate spelled at its own width's negative 
 
 (* {1 AArch64 [movn]/[cbz]/[cbnz]/[sxtw]/[udiv]/[msub]/[cset]/[movk]/[lsl]/[ubfx]/[ubfiz]}
 
-   The rest of the M5 corpus's integer/control-flow slice (asm/docs/corpus.md), each its own
+   The rest of the M5 corpus's integer/control-flow slice , each its own
    evidenced word shape:
    - [movn] - {!Opcode.Movz}'s [opc] = 0 sibling.
    - [cbz]/[cbnz] - compare-and-branch, a different 19-bit-immediate word from [b.<cc>].
@@ -3586,7 +3586,7 @@ let%expect_test "a 32-bit bitmask immediate spelled at its own width's negative 
    - [lsl rd, rn, rm] - LSLV, register-specified shift amount (distinct from the immediate-shift
      form, unimplemented since unevidenced).
    - [ubfx]/[ubfiz rd, rn, lsb, width] - the general UBFM word, evidenced with the bare (no [#])
-     GNU spelling ccomp/gcc always use for these two operands specifically.
+     GNU spelling gcc always use for these two operands specifically.
    Byte-for-byte checked against real aarch64-linux-gnu-as/objdump:
      12800000  movn w0, #0
      b4ffffc0  cbz x0, .
@@ -3635,7 +3635,7 @@ let%expect_test "movn/cbz/cbnz/sxtw/udiv/msub/cset/movk/lsl/ubfx/ubfiz" =
 (* {1 AArch64 FP: fadd/fsub/fmul/fdiv, fcsel, fcmp (register), scvtf/ucvtf, fneg, fcvt,
    fcvtzs, fmov (general register, no conversion)}
 
-   The rest of the M5 corpus's floating-point slice (asm/docs/corpus.md - almabench.c/
+   The rest of the M5 corpus's floating-point slice (almabench.c/
    binarytrees.c/bisect.c/fft.c/fftsp.c/fftw.c/integr.c/knucleotide.c/mandelbrot.c/nbody.c/
    perlin.c/spectral.c), each its own evidenced word shape:
    - [fadd]/[fsub]/[fmul]/[fdiv] - "floating-point data-processing (2 source)", one word with
@@ -3748,7 +3748,7 @@ let%expect_test "the single-precision widths, fcvt's reverse direction, and fmov
 (* {1 AArch64 [ldr]/[str] into a scalar FP register}
 
    `assemble-c`'s dominant remaining aarch64 reason after the arithmetic/conversion family
-   above (asm/docs/corpus.md - almabench.c/bisect.c/fft.c/fftsp.c/fftw.c/integr.c/
+   above (almabench.c/bisect.c/fft.c/fftsp.c/fftw.c/integr.c/
    mandelbrot.c/nbody.c/perlin.c's own callee-saved [dN] spills, spectral.c/bisect.c's
    indexed array loads, knucleotide.c's [#:lo12:] float-constant load). Bit-for-bit the
    same word {!Ldst_uoff} already uses for a GPR, both addressing modes (unsigned-offset
@@ -3802,7 +3802,7 @@ let%expect_test "ldr dN/sN, [xN, #:lo12:sym] reads a symbolic low-12 offset" =
     4000000c  c0 03 5f d6  ret                   [aarch64.ret] |}]
 
 (* [fmov dd, dn] - register-to-register, no conversion (M5 corpus evidence:
-   asm/docs/corpus.md's almabench.c/bisect.c/... - ccomp's own float-value move between
+   almabench.c/bisect.c/... - the compiler's own float-value move between
    two live registers, `assemble-c`'s highest-signal remaining aarch64 reason once FP
    load/store above closed). {!Fneg}'s identical "floating-point data-processing (1
    source)" word at [opcode] = [000000]. Verified against real
@@ -3816,7 +3816,7 @@ let%expect_test "fmov dd, dn copies one scalar FP register to another" =
     40000004  65 40 20 1e  fmov s5, s3  [aarch64.fmov-reg-s]
     40000008  c0 03 5f d6  ret          [aarch64.ret] |}]
 
-(* [tst rn, #imm] - [ands zr, rn, #imm] with the result discarded (M5, asm/docs/corpus.md -
+(* [tst rn, #imm] - [ands zr, rn, #imm] with the result discarded (M5, the corpus notes -
    perlin.c, `assemble-c`'s last remaining aarch64 gap alongside the [add]/[sub] auto-shift
    below). {!Logical_imm}'s own [opc] = 3, [zr] baked in rather than carried - the same
    choice {!Cset} already makes for its own zr operands. Checked against real
@@ -3829,9 +3829,9 @@ let%expect_test "tst rn, #imm is ands zr, rn, #imm with the destination discarde
     40000004  c0 03 5f d6  ret         [aarch64.ret] |}]
 
 (* [add]/[sub] rd, rn, #imm where [imm] is a bare multiple of 4096 too large for the plain
-   12-bit field - GAS auto-selects the [lsl #12] form itself; ccomp never writes the
+   12-bit field - GAS auto-selects the [lsl #12] form itself; the compiler never writes the
    explicit four-operand spelling {!Sub}'s own [lsl #12] arm already reads (M5,
-   asm/docs/corpus.md - knucleotide.c's `add x23, x23, #8192`, `assemble-c`'s last aarch64
+   the corpus notes - knucleotide.c's `add x23, x23, #8192`, `assemble-c`'s last aarch64
    rejection reason in this corpus). Checked against real aarch64-linux-gnu-as/objdump:
    `add x23, x23, #8192` -> `91400af7`, decoding back as `add x23, x23, #0x2, lsl #12`;
    `sub x5, x5, #4096` -> `d14004a5`. *)
@@ -3845,7 +3845,7 @@ let%expect_test "add/sub auto-select the lsl #12 form for a bare multiple-of-409
 
 (* {1 RISC-V F/D: load/store, arithmetic, sign-inject moves}
 
-   Ordered Work item 3's floating-point second slice, RISC-V's own leg (M5, asm/docs/
+   Ordered Work item 3's floating-point second slice, RISC-V's own leg (M5, docs/
    corpus.md - almabench.c/bisect.c/fft.c/fftsp.c/fftw.c/integr.c/mandelbrot.c/nbody.c/
    perlin.c/spectral.c). [fld]/[fsd]/[flw]/[fsw] are bit-for-bit the same addressing mode
    integer [lw]/[sw] use (opcodes [0x07]/[0x27] rather than [0x03]/[0x23], into/from an FP
@@ -3966,7 +3966,7 @@ let%expect_test "riscv32: fld, fadd.d, fcvt.w.d/d.w encode identically to riscv6
    pseudo, the {!Lowered.Pair} shape [ld rd, symbol] already uses except the scratch
    register can't be [rd] itself here ([auipc] only ever writes a GPR, and [rd] is a
    scalar FP register) - so GAS spells it explicitly rather than reusing [rd] (M5,
-   asm/docs/corpus.md - almabench.c/fftsp.c/knucleotide.c's own float-constant loads,
+   the corpus notes - almabench.c/fftsp.c/knucleotide.c's own float-constant loads,
    `assemble-c`'s dominant remaining riscv reason once the rest of the F/D family closed).
    Checked against real riscv64-linux-gnu-as/objdump: `fld fa1, .L100, x31` expands to
    `auipc t6, %pcrel_hi(.L100); fld fa1, %pcrel_lo(...)(t6)`, placeholder bytes `00000f97
@@ -3989,7 +3989,7 @@ let%expect_test "riscv: fld/flw rd, symbol, xtmp is GAS's own auipc+load literal
     local .L100 notype in .text |}]
 
 (* [fcvt.w.d]/[fcvt.l.d] rd, rs1, rtz - an explicit rounding-mode operand overriding the
-   bare mnemonic's own dynamic-rounding default (M5, asm/docs/corpus.md - perlin.c's own
+   bare mnemonic's own dynamic-rounding default (M5 - perlin.c's own
    [(int)] cast, binarytrees.c's own [(long)] cast - C truncates toward zero, which the
    default dynamic mode does not guarantee). {!freg_shape}'s [rm] field is what both this
    and {!Lowered.pp}'s own reverse direction consult. Checked against real
@@ -4078,7 +4078,7 @@ let%expect_test ".p2align normalizes to a power-of-two byte boundary" =
     simplify.directive: .p2align: fill and max-skip arguments are not supported
     simplify.directive: .p2align needs exactly one integer argument |}]
 
-(* The register-shift and unsigned-conversion forms CompCert prints for 64-bit
+(* The register-shift and unsigned-conversion forms the compiler prints for 64-bit
    variable shifts ([Plsrv]/[Pasrv]/[Prorv]) and [double]/[float] to unsigned
    integer ([Pfcvtzu]). Byte-for-byte checked against real
    aarch64-linux-gnu-as/objdump 2.44: [9ac12403] [1ac62904] [9ac22c20] [1acb2549]
@@ -4163,7 +4163,7 @@ let%expect_test "movabsq is refused where GNU as would still emit ten bytes" =
 
 (* A symbolic memory operand on a form whose lowered value was missing from the x86 fixup
    table lost its displacement silently: [cmpq .L1(%rip), %rdx] assembled to a RIP-relative
-   load of whatever followed the instruction. CompCert compares against 64-bit literals that
+   load of whatever followed the instruction. the compiler compares against 64-bit literals that
    way. Every form that can hold a memory operand now carries its fixup. *)
 let%expect_test "x86_64 memory-source forms keep their symbolic displacement" =
   let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "x86_64") in
@@ -4199,7 +4199,7 @@ let%expect_test "x86_64 memory-source forms keep their symbolic displacement" =
     sete .L1(%rip)             1 fixup(s): @3/4B pc+7 disp pcrel32-data s32 [0+32@0] = .L1
     testl $4, .L1(%rip)        1 fixup(s): @2/4B pc+10 disp pcrel32-data s32 [0+32@0] = .L1 |}]
 
-(* Post-indexed [ldr]/[str]/[ldrb]/[strb rt, \[rn\], #imm] (P = 0, W = 0): CompCert's inline
+(* Post-indexed [ldr]/[str]/[ldrb]/[strb rt, \[rn\], #imm] (P = 0, W = 0): the compiler's inline
    [memcpy] loop copies word by word that way. Byte-for-byte checked against real
    arm-linux-gnueabihf-as 2.44: [e492c004] [e483c004] [e4d01001] [e4451001] [e4110fff]
    [148d7008], in order. P = 0 with W = 1 is LDRT/STRT and does not decode as one of these. *)
@@ -4226,7 +4226,7 @@ let%expect_test "arm post-indexed ldr/str/ldrb/strb" =
     40000018  1e ff 2f e1  bx lr                 [arm.bx] |}]
 
 (* The sign-extending loads, both addressing modes and both destination widths, and [sbfiz]:
-   what CompCert prints for [signed char]/[short] loads and a sign-extending shift. Byte-for-byte
+   what the compiler prints for [signed char]/[short] loads and a sign-extending shift. Byte-for-byte
    checked against real aarch64-linux-gnu-as/objdump 2.44: [39c00c20] [39800062] [79c00ca4]
    [798013e6] [b9800d07] [38eb6949] [78ae79ac] [b8b1da0f] [79dffe72] [131d1020] [93764c62]
    [934220a4], in order. *)
@@ -4265,7 +4265,7 @@ let%expect_test "aarch64 ldrsb/ldrsh/ldrsw and sbfiz" =
     40000030  c0 03 5f d6  ret                             [aarch64.ret] |}]
 
 (* The A32 "extra" loads and stores - [strh]/[ldrh]/[ldrsb]/[ldrsh] with an 8-bit immediate or a
-   register offset, at the offset or post-indexed - and [sbfx]: CompCert's [short]/[signed char]
+   register offset, at the offset or post-indexed - and [sbfx]: the compiler's [short]/[signed char]
    accesses, its halfword [memcpy] loop and its narrow sign extension. Byte-for-byte checked
    against real arm-linux-gnueabihf-as 2.44: [e1d100b6] [e14320b2] [e1d54ffe] [e1d760d0]
    [e0d2c0b2] [e0c3c0b2] [e19100d2] [e11430b5] [e18760b8] [e15d9fff] [11d210f0] [e7af0051]
@@ -4308,7 +4308,7 @@ let%expect_test "arm ldrh/strh/ldrsb/ldrsh and sbfx" =
     40000034  d5 4f a0 e7  sbfx r4, r5, #31, #1   [arm.sbfx]
     40000038  1e ff 2f e1  bx lr                  [arm.bx] |}]
 
-(* Byte and bit reversal and leading-bit counts, as CompCert prints them for
+(* Byte and bit reversal and leading-bit counts, as the compiler prints them for
    [__builtin_bswap*], [__builtin_clz*] and [__builtin_ctz*]. Byte-for-byte checked against
    GNU as 2.44 (the words are listed in each target's codec comment). *)
 let%expect_test "aarch64 rbit/rev16/rev32/rev/clz/cls" =

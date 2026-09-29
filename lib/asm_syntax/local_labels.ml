@@ -1,4 +1,4 @@
-(* Numeric local labels and their [1b]/[1f] references (.ai/asm_plan.md §4.6).
+(* Numeric local labels and their [1b]/[1f] references (docs/design.md §4.6).
 
    This runs on [Statement.line list] - before the target sees an operand - and
    that placement is the whole design. By the time an operand has been through
@@ -60,7 +60,7 @@ let resolve defs ~num ~dir ~line =
 
 (* Accumulated like the lexer's, and for the same reason carrying its own span:
    [run] collects every unresolved reference before returning, so the site that
-   builds the error is not the site that reports it (asm/docs/errors.md §1). *)
+   builds the error is not the site that reports it (docs/errors.md §1). *)
 type error_kind = [ `No_such_local of no_such_local | `Reserved_namespace of string ]
 
 (* [direction] mirrors [Token.Local_label]'s own payload rather than inventing a
@@ -170,6 +170,6 @@ let run lines =
 (* The presentation of one accumulated error. Here rather than in the pipeline
    because the code and the message are this module's to name: a caller that
    spelled the code itself would be a second place for the taxonomy to drift
-   (asm/docs/errors.md §2). *)
+   (docs/errors.md §2). *)
 let diagnostic_of_error (e : error) =
   Diagnostic.of_error ~origin:(Origin.text e.span) ~code:error_code ~pp:pp_error e

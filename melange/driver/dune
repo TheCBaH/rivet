@@ -22,4 +22,4 @@
   riscv64
   fmt)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))

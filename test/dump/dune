@@ -5,16 +5,17 @@
 ; the driver; asm_dump is the executable, built for native and js_of_ocaml here
 ; and emitted by Melange under melange/test/dump from the same source.
 ;
-; Neither is gated on ASM_MELANGE: the melange/ mirror declares every library in
+; Neither is gated on RIVET_MELANGE: the melange/ mirror declares every library in
 ; byte and native modes as well, so these link in both configurations - which is
 ; what lets the cram stanza name the artifacts unconditionally.
 
 (library
  (name test_dump_inputs)
+ (public_name rivet.test_dump_inputs)
  (modules test_dump_inputs)
  (modes byte native)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (executables
  (names asm_dump)
@@ -22,10 +23,10 @@
  (modes exe js)
  (libraries foundation image target_intf driver test_dump_inputs fmt))
 
-; The manifest three-build driver's shared fixture (.ai/asm_plan.md M4 Phase
+; The manifest three-build driver's shared fixture (docs/design.md M4 Phase
 ; 8, extended by M5's real-browser harness). A real library, not a module
 ; living beside manifest_dump.ml: an executable's modules cannot be linked by
-; another executable, and asm/test/browser/smoke.ml needs this exact source
+; another executable, and test/browser/smoke.ml needs this exact source
 ; and rendering, not a copy of it. Same enabled_if as test_dump_inputs, same
 ; reason.
 
@@ -35,9 +36,9 @@
  (modes byte native)
  (libraries driver asm_core fmt)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
-; The manifest three-build driver (.ai/asm_plan.md M4 Phase 8). Its own
+; The manifest three-build driver (docs/design.md M4 Phase 8). Its own
 ; stanza rather than a module of asm_dump: it reaches only [driver] and
 ; [asm_core] (for Perms.to_string), not [image]/[target_intf] directly, and a
 ; shared stanza would blur that.

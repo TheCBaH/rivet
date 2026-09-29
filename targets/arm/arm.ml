@@ -15,7 +15,7 @@
 open Foundation
 include Arm_encode
 
-(* The front end's error domain (asm/docs/errors.md). Separate from the
+(* The front end's error domain (docs/errors.md). Separate from the
    encoder's because it may name {!Asm_syntax} and the encoder's may not - see
    {!Target_intf.Target.TARGET} for why that split exists. *)
 type parse_error_kind =
@@ -214,7 +214,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
       | None, _ -> bad (`Unknown_register b)
       | _, None -> bad `Offset_too_wide)
   (* [Rn, #imm]! / [Rn, #-imm]! - pre-indexed with writeback (M5 corpus
-     evidence: asm/docs/corpus.md's classify-c-gcc, gcc's own frame-pointer
+     evidence: classify-c-gcc, gcc's own frame-pointer
      prologue `str fp, [sp, #-4]!`). The trailing [!] is the same [Token.Bang]
      the lexer already produces elsewhere; nothing splits it from the bracket
      group before it since no comma separates them, so it just extends this
@@ -344,14 +344,14 @@ let parse_one (slice : Asm_syntax.Token.slice) =
       match Asm_syntax.Parse_lines.parse_expression (List.tl slice) with
       | Ok e -> Ok (Operand.Sym e)
       | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))
-  (* [{r0, r1, r2, r3}] - [push]'s operand (M5, asm/docs/corpus.md:
+  (* [{r0, r1, r2, r3}] - [push]'s operand (M5, the corpus notes:
      test/regression/varargs1.c and friends). [regroup] has already rejoined
      the comma-split pieces by brace depth - and, per its own comment, without
      reinserting the commas themselves, which the common parser already
      consumed as slice boundaries - so this is one flat slice:
-     [Lbrace; Ident; Ident; ...; Rbrace], no ranges (CompCert's own ARM
+     [Lbrace; Ident; Ident; ...; Rbrace], no ranges (the compiler's own ARM
      codegen never writes [{r0-r3}], only the flat comma form). [{d8-d9}] -
-     [vpush.64]/[vpop.64]'s D-register list (M5, asm/docs/corpus.md
+     [vpush.64]/[vpop.64]'s D-register list (M5, the corpus notes
      classify-c-gcc: [vpush.64 {d8-d9}]) - is the same flat-slice grammar
      over {!Dreg.t}'s name space instead, dispatched on the first member
      since a "dN" spelling is never also a GPR name ({!Reg.find} and
@@ -409,7 +409,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
         | Ok regs -> Ok (Operand.Reglist regs)
         | Error _ as e -> e)
   (* [Rn!] with no brackets - [stmia]/[ldmia]'s own writeback base register
-     (M5, asm/docs/corpus.md classify-c-gcc: [stmia r3!, {r0, r1}]). *)
+     (M5, the corpus notes classify-c-gcc: [stmia r3!, {r0, r1}]). *)
   | [ Token.Ident r; Token.Bang ] -> (
       match Reg.find r with
       | Some reg -> Ok (Operand.Reg_writeback reg)
@@ -466,7 +466,7 @@ let handle_directive ~name ~argument state =
   | ".thumb" -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ `Thumb_directive_out_of_scope)
   | ".eabi_attribute" ->
       (* Recorded as handled and otherwise ignored: it is an ELF attribute, and
-         M1 produces no ELF. Rejecting it would fail every CompCert ARM file;
+         M1 produces no ELF. Rejecting it would fail every the compiler ARM file;
          treating it as unknown would be worse, because then a *misspelled*
          directive and this one would be indistinguishable. *)
       Target_intf.Target.Handled { state; emit = [] }

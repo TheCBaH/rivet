@@ -8,7 +8,7 @@
 ;                    "the values we check" has one definition; must stay free of
 ;                    ppx, Unix, and process state because it is compiled for
 ;                    js_of_ocaml and Melange too. Mirrored under melange/, hence
-;                    the same ASM_MELANGE gate the libraries use.
+;                    the same RIVET_MELANGE gate the libraries use.
 ;
 ; test_foundation    the ppx_expect tests. A library, not a test/executable
 ;                    stanza — ppx_expect refuses to run inline tests outside a
@@ -20,7 +20,7 @@
 ; bigint_laws /      portable executables, built for native *and* js_of_ocaml.
 ; bigint_dump        The laws assert quantified properties with no interesting
 ;                    output; the dump prints the corpus and is the seed for the
-;                    three-build equality gate (tools/asm-three-build.sh).
+;                    three-build equality gate (scripts/asm-three-build.sh).
 
 (library
  (name foundation_corpus)
@@ -28,7 +28,7 @@
  (modes byte native)
  (libraries foundation fmt)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name test_foundation)

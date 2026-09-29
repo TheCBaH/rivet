@@ -13,11 +13,11 @@
  (modules test_dump_inputs)
  (modes byte native melange)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))
 
-; Mirrors asm/test/dump/dune's smoke_fixtures library, same reason: a real
+; Mirrors test/dump/dune's smoke_fixtures library, same reason: a real
 ; library, not a module living beside manifest_dump.ml, so that
-; asm/melange/test/browser's smoke.ml emit can depend on it too.
+; melange/test/browser's smoke.ml emit can depend on it too.
 
 (library
  (name smoke_fixtures)
@@ -25,7 +25,7 @@
  (modes byte native melange)
  (libraries driver asm_core fmt)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))
 
 (melange.emit
  (target js)
@@ -42,4 +42,4 @@
   fmt
   smoke_fixtures)
  (enabled_if
-  (= %{env:ASM_MELANGE=false} true)))
+  (= %{env:RIVET_MELANGE=false} true)))

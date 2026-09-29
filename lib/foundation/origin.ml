@@ -1,4 +1,4 @@
-(* Diagnostic provenance, per .ai/asm_plan.md §4.1.
+(* Diagnostic provenance, per docs/design.md §4.1.
 
    This is deliberately not debugger or source-map information: it never enters
    a lowered module or a linked image, and exists only so a diagnostic can say

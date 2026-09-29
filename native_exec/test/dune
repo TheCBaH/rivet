@@ -6,4 +6,4 @@
  (preprocess
   (pps ppx_expect))
  (enabled_if
-  (= %{env:ASM_COMPCERT_EMBED=false} true)))
+  (= %{env:RIVET_NATIVE_EXEC=false} true)))

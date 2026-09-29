@@ -1,6 +1,6 @@
-(* The three-build equality driver (.ai/asm_plan.md M1.7, §11.6).
+(* The three-build equality driver (docs/design.md M1.7, §11.6).
 
-   Emits every dump of asm/docs/contracts.md §1, for every target, from one
+   Emits every dump of docs/contracts.md §1, for every target, from one
    source that is compiled three ways: native OCaml, js_of_ocaml under Node, and
    Melange under Node. The cram baseline is committed once, so running the same
    transcript under all three backends is literally an equality check.
@@ -10,7 +10,7 @@
 
 (* [Foundation.Diag.render] rather than [Diagnostic.render_all]: the driver's
    failures are wrapped, and the rendering is deliberately of the payload alone -
-   asm/docs/errors.md §3 keeps Err provenance out of anything a baseline
+   docs/errors.md §3 keeps Err provenance out of anything a baseline
    compares. *)
 let ok = function
   | Ok v -> v

@@ -1,11 +1,11 @@
 (** Diagnostics: the user-facing presentation of a failure.
 
     A diagnostic is a rendering, not an error. The error itself is a typed value in some module's
-    error domain (see [asm/docs/errors.md]); {!of_error} is where one becomes the other, and it is
+    error domain (see [docs/errors.md]); {!of_error} is where one becomes the other, and it is
     called once, at the reporting boundary, rather than at every layer that passes a failure along.
 
     Rendering is deterministic and free of host paths, locale, and process state
-    ([.ai/asm_plan.md] §3.7), because these strings go straight into expect output that must match
+    ([docs/design.md] §3.7), because these strings go straight into expect output that must match
     byte-for-byte across native OCaml, js_of_ocaml, and Melange. *)
 
 type severity = Error | Warning | Note

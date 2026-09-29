@@ -1,4 +1,4 @@
-(* The common directive table (asm/docs/contracts.md §3).
+(* The common directive table (docs/contracts.md §3).
 
    Architecture-independent by construction: it names no target and branches on
    no target. What varies between dialects is which *spelling* appears - [.align]
@@ -63,7 +63,7 @@ let sym_kind_of s =
    [.ident "GCC: ..."]) - like [.cfi_*], they change nothing this project
    assembles and are dropped rather than rejected, the same "understood and
    discarded, not silently ignored as unknown" distinction §2.2 draws (M5,
-   asm/docs/corpus.md: gcc's own freestanding riscv.c helper output carries
+   the corpus notes: gcc's own freestanding riscv.c helper output carries
    both on every profile). Real gcc emits both on every target, not just
    RISC-V, but classify-c-gcc's own check stops at --dump-source-ast - parse
    only, never reaching simplify, the phase that rejected these - so this is
@@ -245,7 +245,7 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
           (* [lift] keeps the parser's wrapper and [fold_errors] changes only
              the published payload domain. Rendering here would flatten the
              expression domain at exactly the boundary where
-             asm/docs/errors.md says to wrap it instead. *)
+             docs/errors.md says to wrap it instead. *)
           Parse_lines.parse_expression e |> Err.Accum.lift
           |> Err.Accum.fold_errors (reject_reasons ".size")
           |> Err.map (fun expr -> Normalized (Directive.Sym_size { name = text_of n; size = expr }))

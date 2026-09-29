@@ -12,7 +12,7 @@
  (modes byte native)
  (libraries codec foundation fmt)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name test_codec)
@@ -23,4 +23,4 @@
  (preprocess
   (pps ppx_expect))
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

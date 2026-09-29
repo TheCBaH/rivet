@@ -1,4 +1,4 @@
-(* The arm (A32) target description (.ai/asm_plan.md §5.1).
+(* The arm (A32) target description (docs/design.md §5.1).
 
    Not in a family functor with AArch64, per §5.1's explicit instruction: they
    share a vendor and nothing else. A32 is a fixed 32-bit word with a condition
@@ -61,7 +61,7 @@ end
 (* {1 VFP registers}
 
    Sixteen doubleword (D0-D15) and thirty-two singleword (S0-S31) extension
-   registers - VFPv2's range, which is what CompCert's ARM codegen ever
+   registers - VFPv2's range, which is what the compiler's ARM codegen ever
    emits (measured: the [test/c/] corpus never names D16 or above). Every VFP
    encoding splits a register's number across a non-adjacent 1-bit "extension"
    field and a 4-bit field elsewhere in the word - {!Dreg.hilo}/{!Sreg.hilo}
@@ -289,17 +289,17 @@ module Operand = struct
     | FImm of float
         (** a VFP modified-immediate literal, e.g. [#1.5] - {!Dreg.t}/{!Sreg.t}'s dot. *)
     | Reglist of int list
-        (** [{r0, r1, r2, r3}] - [push]'s operand (M5, asm/docs/corpus.md). Register *numbers*, not
+        (** [{r0, r1, r2, r3}] - [push]'s operand (M5). Register *numbers*, not
             {!Reg.t}s: the encoding is one bit per number and the surface order carries no
             information the bitmask does not already have, so keeping the list unsorted-as-written
             here would only invite a caller to rely on an order the instruction itself discards. *)
     | Reg_writeback of Reg.t
         (** [Rn!] with no brackets - [stmia]/[ldmia]'s own writeback base register (M5,
-            asm/docs/corpus.md classify-c-gcc: [stmia r3!, {r0, r1}]), a bare-register grammar
+            the corpus notes classify-c-gcc: [stmia r3!, {r0, r1}]), a bare-register grammar
             distinct from {!Mem.t}'s bracketed [\[Rn, #imm\]!] since STM/LDM's writeback amount is
             implicit rather than an explicit offset. *)
     | Dreglist of int list
-        (** [{d8, d9}] - [vpush.64]'s D-register list (M5, asm/docs/corpus.md classify-c-gcc:
+        (** [{d8, d9}] - [vpush.64]'s D-register list (M5, the corpus notes classify-c-gcc:
             [vpush.64 {d8, d9}]), structurally the same shape as {!Reglist} but over {!Dreg.t}'s
             number space rather than {!Reg.t}'s - the two are never a single list because a
             bitmask position means a different register in each. {!Opcode.Vpush} consumes it,
@@ -428,7 +428,7 @@ module V3 = struct
      three-D-register word shape at one more selector value - [ee010b02] -
      not a different encoding class the way its "different word shape" was
      once assumed to be; {!Lowered.V3_d}/[V3_s] needed no change at all
-     (M5, asm/docs/corpus.md - gas_frontier.t's runtime-i64_stod.S/
+     (M5 - gas_frontier.t's runtime-i64_stod.S/
      i64_stof.S/i64_utod.S/i64_utof.S, evidenced only as [vmla.f64]; the
      sibling selector values - [vmls]/[vnmla]/[vnmls]/[vnmul] - are not
      evidenced and not added). *)
@@ -458,7 +458,7 @@ module Opcode = struct
     | Cmn
         (** [cmn rn, #imm] - compare negative ([rn + op2], flags only, dp = 11), {!Cmp}'s own sibling
             test instruction: same [Rd = 0]/[S = 1]-forced shape {!is_compare} already generalizes,
-            just a different [dp] value (M5, asm/docs/corpus.md - gas_frontier.t's
+            just a different [dp] value (M5 - gas_frontier.t's
             runtime-i64_dtos.S/i64_dtou.S). Evidenced only as the immediate form. *)
     | Eor  (** [eor rd, rn, rm[, shift]] - bitwise XOR, the same data-processing family as {!And} *)
     | Rsb
@@ -474,13 +474,13 @@ module Opcode = struct
     | Adc
         (** [adc rd, rn, rm[, shift]] / [adc rd, rn, #imm] - add with carry, the same
             data-processing family as {!And}/{!Orr}/{!Bic}. The register form is evidenced in
-            asm/docs/corpus.md's [siphash24.c], the upper half of a 64-bit add {!Adds} already
+            [siphash24.c], the upper half of a 64-bit add {!Adds} already
             covers the lower half of; the immediate form ([adc rd, rn, #0], propagating a carry
             with no other addend) in gas_frontier.t's runtime-i64_smulh.S/i64_umulh.S's own
             128-bit-product carry-chain idiom. *)
     | Sbc
         (** [sbc rd, rn, rm] - subtract with carry, {!Adc}'s exact mirror (dp = 6), evidenced only in
-            the same plain register-register-register shape (M5, asm/docs/corpus.md -
+            the same plain register-register-register shape (M5, the corpus notes -
             gas_frontier.t's runtime-i64_dtos.S/i64_sdiv.S/i64_smod.S, the upper half of a 64-bit
             subtract {!Subs} covers the lower half of). *)
     | Adds
@@ -488,7 +488,7 @@ module Opcode = struct
             [s] = 1). The register form is evidenced as gcc's own carry-out idiom
             ([siphash24.c]'s 64-bit add built from two 32-bit halves); the immediate form as
             gas_frontier.t's runtime-i64_stof.S's own round-to-nearest carry-increment idiom
-            ([adds r2, r2, #1], M5, asm/docs/corpus.md). A [dp] value alone cannot tell [add] and
+            ([adds r2, r2, #1], M5, the corpus notes). A [dp] value alone cannot tell [add] and
             [adds] apart - only the already-present [s] field can - so this is its own opcode with
             its own dedicated lowering/printing case, the same relationship {!Cmp} already has to
             being "[sub] with [s] = 1 and no destination": {!to_dp} still maps it to 4, but it is
@@ -496,26 +496,26 @@ module Opcode = struct
             produces [s] = false. *)
     | Subs
         (** [subs rd, rn, rm] - {!Sub}'s own flag-setting form (dp = 2, [s] = 1), {!Adds}'s exact
-            counterpart on the other side of the family (M5, asm/docs/corpus.md - gas_frontier.t's
+            counterpart on the other side of the family (M5 - gas_frontier.t's
             runtime-i64_sdiv.S/i64_smod.S own absolute-value idiom). Register-register-register only,
             the one shape evidenced. *)
     | Rsbs
         (** [rsbs rd, rn, #imm] - {!Rsb}'s own flag-setting form (dp = 3, [s] = 1), evidenced only as
-            the immediate form (M5, asm/docs/corpus.md - gas_frontier.t's runtime-i64_sar.S's own
+            the immediate form (M5 - gas_frontier.t's runtime-i64_sar.S's own
             "32 - amount" idiom). *)
     | Orrs
         (** [orrs rd, rn, rm] - {!Orr}'s own flag-setting form (dp = 12, [s] = 1), evidenced only as
-            the register form, its result used only as a zero test (M5, asm/docs/corpus.md -
+            the register form, its result used only as a zero test (M5, the corpus notes -
             gas_frontier.t's runtime-i64_udivmod.S). *)
     | Adcs
         (** [adcs rd, rn, rm] - {!Adc}'s own flag-setting form (dp = 5, [s] = 1), {!Adds}'s own
             pattern applied to add-with-carry: evidenced only in this one register-register-
             register shape, the upper half of a 64-bit product's carry-propagating accumulation
-            (M5, asm/docs/corpus.md - gas_frontier.t's runtime-i64_smulh.S/i64_umulh.S). *)
+            (M5 - gas_frontier.t's runtime-i64_smulh.S/i64_umulh.S). *)
     | Sbcs
         (** [sbcs rd, rn, rm] - {!Sbc}'s own flag-setting form (dp = 6, [s] = 1), {!Adcs}'s exact
             mirror on the subtract side, evidenced only in the same register-register-register
-            shape (M5, asm/docs/corpus.md - gas_frontier.t's runtime-i64_smulh.S's own signed
+            shape (M5 - gas_frontier.t's runtime-i64_smulh.S's own signed
             128-bit-product borrow-chain idiom). *)
     | Mul
     | Mla
@@ -523,7 +523,7 @@ module Opcode = struct
         (** [umull RdLo, RdHi, Rn, Rm] - unsigned multiply long, a genuinely different word shape
             from {!Mul}/{!Mla} (two destination registers, RdLo:RdHi, rather than one): bits
             27:23 are a fixed [00001], not the [dp]/multiply-short prefixes any other opcode uses,
-            so it cannot overlap them (M5, asm/docs/corpus.md - gas_frontier.t's
+            so it cannot overlap them (M5 - gas_frontier.t's
             runtime-i64_smulh.S/i64_umulh.S's own 64-bit product idiom, cross-multiplying each
             operand's low/high 32-bit halves). Only the plain, unsigned, non-accumulating,
             non-flag-setting form is evidenced; {!Lowered.Umull}'s [s] field exists for the same
@@ -552,7 +552,7 @@ module Opcode = struct
         (** [it]/[ite] - the Thumb IT-block prefix. GAS accepts both spellings (and every other
             IT-block letter combination) in A32 source and emits nothing for any of them, so this
             one constructor covers all of them; see {!simplify_instruction}'s own comment (M5,
-            asm/docs/corpus.md - gas_frontier.t's runtime-i64_udivmod.S's own bare [it eq]). *)
+            the corpus notes - gas_frontier.t's runtime-i64_udivmod.S's own bare [it eq]). *)
     | Nop
         (** the dedicated ARMv7 hint encoding ([e320f000], the same bytes {!nop_bytes} already pads
             with) - not a data-processing alias the way {!Mvn}'s [mov]-family siblings are. *)
@@ -560,13 +560,13 @@ module Opcode = struct
         (** [lsl]/[lsr]/[asr]/[ror rd, rm, rs] - GNU's own mnemonics for {!Mov} with a
             register-specified shift amount, a different word shape from the already-supported
             immediate-shift-amount one ({!Lowered.Dp_reg}'s [sh_amt]: bit 4 is the immediate/register
-            discriminator, and CompCert's own codegen only ever emits the register form under these
+            discriminator, and the compiler's own codegen only ever emits the register form under these
             names, never [mov rd, rm, TYPE rs]). [int] is the shared shift-kind encoding
             {!shift_of_name}/{!shift_name} already use. *)
     | Shifts of int
         (** [lsls]/[lsrs]/[asrs]/[rors rd, rm, #imm] - {!Shift}'s own flag-setting sibling on the
             immediate-shift-amount form only ([s] = 1 on the identical [mov rd, rm, <shift> #imm]
-            shape; evidenced only as [lsrs], M5, asm/docs/corpus.md - gas_frontier.t's
+            shape; evidenced only as [lsrs], M5, the corpus notes - gas_frontier.t's
             runtime-i64_utof.S). A [dp]/[sh_kind] pair alone cannot tell [lsr #imm] from [lsrs #imm]
             apart - only [s] can, the same relationship {!Adds} already has to {!Add} - so this is
             its own opcode with its own dedicated lowering/decoding case rather than a field on
@@ -575,7 +575,7 @@ module Opcode = struct
         (** [rrx rd, rm] - GAS's dedicated two-operand mnemonic for rotate-right-with-extend
             (rotate through the carry flag by exactly one bit), encoded as [mov rd, rm, ror #0]
             - a ROR immediate shift of 0 means RRX rather than "no shift" the way an LSL 0 would
-            (M5, asm/docs/corpus.md - gas_frontier.t's runtime-i64_udivmod.S's own bare [rrx r2,
+            (M5 - gas_frontier.t's runtime-i64_udivmod.S's own bare [rrx r2,
             r2]). Kept separate from {!Shift}/{!Shifts} rather than reusing [Shift 3] with an
             implicit zero, since [ror rd, rm] (no immediate at all) is not evidenced and this
             keeps {!Shift}'s own three-operand-only scope untouched. Byte-identical to
@@ -603,7 +603,7 @@ module Opcode = struct
     | Vstr
     | Vpush
         (** [vpush.64 {dN, ...}], GNU's alias for [vstmdb sp!, {dN, ...}] - the D-register
-            reglist push (M5, asm/docs/corpus.md: almabench.c/fft.c/fftsp.c/perlin.c's own
+            reglist push (M5: almabench.c/fft.c/fftsp.c/perlin.c's own
             varargs-spill prologue). Unlike {!Push}'s STMDB encoding, there is no separate
             one-register alias to exclude: VPUSH's own encoding covers a single D register
             exactly as it covers several (verified against real
@@ -611,21 +611,21 @@ module Opcode = struct
             member up, provided it is contiguous and ascending. *)
     | Push
         (** [push {reglist}], GNU's alias for [stmdb sp!, {reglist}] - not a general STM/LDM (M5,
-            asm/docs/corpus.md: CompCert's own ARM codegen only ever emits this one multi-register
+            the corpus notes: the compiler's own ARM codegen only ever emits this one multi-register
             alias, always as its varargs-spill prologue). Scoped to two or more registers: GNU's own
             canonical printer spells a *one*-register [push {rN}] as [str rN, [sp, #-4]!] instead
             (verified against real [as]/[objdump]), a different encoding this corpus does not
             evidence and this opcode does not attempt. *)
     | Stmia
         (** [stmia Rn!, {reglist}] - increment-after STM, a different encoding class from
-                 [push]'s STMDB one (asm/docs/corpus.md: gcc's [aes.c]). Always carries the bare
+                 [push]'s STMDB one (gcc's [aes.c]). Always carries the bare
                  [Rn!] writeback base as an explicit operand, the only shape evidenced. *)
     | Ldmia
         (** [ldmia Rn!, {reglist}] - [Stmia]'s load counterpart, same encoding class with the
                  L bit set. *)
     | Pop
         (** [pop {reglist}], GNU's alias for [ldmia sp!, {reglist}] - the LDM-class counterpart of
-            [Push]'s STMDB alias (asm/docs/corpus.md: [gas_frontier.t]'s [i64_udivmod]/[i64_umod]
+            [Push]'s STMDB alias ([gas_frontier.t]'s [i64_udivmod]/[i64_umod]
             epilogues). Scoped to two or more registers for the same reason as [Push]: GNU spells a
             one-register [pop {rN}] as [ldr rN, [sp], #4] instead (verified against real
             [as]/[objdump]), a different encoding not attempted here. *)
@@ -956,7 +956,7 @@ module Lowered = struct
         writeback : bool;
         post : bool;
             (** [\[rn\], #offset]: access at [rn], then add [offset] to it (P = 0, W = 0).
-                CompCert's inline [memcpy] loop copies that way. *)
+                the compiler's inline [memcpy] loop copies that way. *)
       }
     | Ldst_x of {
         cond : Cond.t;
@@ -969,13 +969,13 @@ module Lowered = struct
         (** The "extra" loads and stores - [strh]/[ldrh]/[ldrsb]/[ldrsh] ([kind] 0-3, see
             {!x_kinds}) - with an 8-bit immediate or a plain register offset, at the offset
             ([\[rn, off\]]) or post-indexed ([\[rn\], off]). Embedded-corpus evidence:
-            CompCert's [short] and [signed char] accesses, and its halfword [memcpy] loop. *)
+            the compiler's [short] and [signed char] accesses, and its halfword [memcpy] loop. *)
     | Rd_rm of { cond : Cond.t; op : string; rd : Reg.t; rm : Reg.t }
-        (** [clz]/[rev]/[rev16 rd, rm] ({!rd_rm_ops}; embedded-corpus evidence: CompCert's
+        (** [clz]/[rev]/[rev16 rd, rm] ({!rd_rm_ops}; compiler-output evidence: the compiler's
             [__builtin_clz*] and [__builtin_bswap*]). *)
     | Sbfx of { cond : Cond.t; rd : Reg.t; rn : Reg.t; lsb : int; width : int }
-        (** [sbfx rd, rn, #lsb, #width] - signed bitfield extract (embedded-corpus evidence:
-            CompCert's sign extension of a narrow value). *)
+        (** [sbfx rd, rn, #lsb, #width] - signed bitfield extract (compiler-output evidence:
+            the compiler's sign extension of a narrow value). *)
     | Ldst_reg of {
         cond : Cond.t;
         load : bool;
@@ -994,7 +994,7 @@ module Lowered = struct
             of. *)
     | Ldm of { cond : Cond.t; load : bool; rn : Reg.t; regs : int }
         (** [stmia]/[ldmia]'s own increment-after encoding class, distinct from {!Push}'s STMDB one
-            (asm/docs/corpus.md). Always carries [rn] and forces W=1: the only evidenced shape is
+            . Always carries [rn] and forces W=1: the only evidenced shape is
             the bare [Rn!] writeback base, so there is no separate writeback flag to get wrong.
             {!Opcode.Pop} lowers into this too, with [rn] fixed to [Reg.sp] - the same relationship
             {!Push} has to [stmdb sp!] - and {!instruction_of_lowered} collapses it back to [pop]
@@ -1575,7 +1575,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
            ~decode:(fun (cond, ((), rm)) -> Some (Lowered.Bx { cond; rm }))
            C.(cond_codec ** const ~width:24 0x12FFF1L ** reg_field "rm"));
       (* [push {reglist}], GNU's [stmdb sp!, {reglist}] alias (M5,
-         asm/docs/corpus.md). [100 1 0 0 1 0] is STM's P=1/U=0/S=0/W=1/L=0
+         the corpus notes). [100 1 0 0 1 0] is STM's P=1/U=0/S=0/W=1/L=0
          (pre-indexed, decrement, no S-bit, writeback, store) - verified
          against real [arm-linux-gnueabihf-as]/[objdump]:
          [e92d000f] for [push {r0, r1, r2, r3}]. *)
@@ -1587,7 +1587,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
              Some (Lowered.Push { cond; regs = Int64.to_int regs }))
            C.(cond_codec ** const ~width:12 0b100100101101L ** field ~width:16 "reglist"));
       (* [stmia]/[ldmia Rn!, {reglist}], and [pop]'s own alias for the load
-         direction with [Rn = sp] (M5, asm/docs/corpus.md). Increment-after
+         direction with [Rn = sp] (M5). Increment-after
          STM/LDM: [100 0 1 0 1] is P=0/U=1/S=0/W=1 (post-indexed, increment,
          no S-bit, writeback forced - the only evidenced shape), leaving L
          (store/load) and Rn variable, unlike [push] above which bakes both
@@ -1607,7 +1607,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.(
              cond_codec ** const ~width:7 0b1000101L ** field ~width:1 "l" ** reg_field "rn"
              ** field ~width:16 "reglist"));
-      (* [vpush.64 {dN, ...}], GNU's [vstmdb sp!, {dN, ...}] alias (M5, asm/docs/corpus.md) -
+      (* [vpush.64 {dN, ...}], GNU's [vstmdb sp!, {dN, ...}] alias (M5) -
          the D-register cousin of [push] above, but VSTM-class rather than STMDB-class: no
          bitmask, only a base register and a count. [1101 0] is P=1/U=0 (pre-indexed,
          decrement), [D] is the base D-register's extension bit, [10] is W=1/L=0 (writeback,
@@ -1984,7 +1984,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
          Verified against real arm-linux-gnueabihf-as/objdump: [umull r4, r6, r0, r2] ->
          [e0864290]; bit 22 (0 here) selects unsigned vs. signed ([smull]) and bit 21 (0 here)
          selects multiply vs. multiply-accumulate ([umlal]) - both fixed at their {!Umull}-only
-         value, since only plain [umull] is evidenced (M5, asm/docs/corpus.md - gas_frontier.t's
+         value, since only plain [umull] is evidenced (M5 - gas_frontier.t's
          runtime-i64_smulh.S/i64_umulh.S). [s] stays a real field, as [mul]/[mla]'s own [s] does,
          even though nothing here ever lowers a [true] value ([umulls] is not evidenced either). *)
       C.alt ~label:"umull" ~priority:43
@@ -2443,7 +2443,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
              ** const ~width:4 0b1010L ** field ~width:8 "imm8"));
       (* [vldr Dd/Sd, label] - the literal-pool form of {!Vmem_d}/{!Vmem_s}'s own
          word, with [Rn] fixed to [pc] (0b1111) rather than a runtime register,
-         [L] fixed to 1 (load-only, asm/docs/corpus.md), and [U] fixed to 1
+         [L] fixed to 1 (load-only, the corpus notes), and [U] fixed to 1
          (forward-only: every corpus occurrence is a trailing same-function
          literal pool, and {!evaluate_fixup} rejects a negative distance rather
          than silently mis-encoding one). [imm8] is a fixup, not a plain field -
@@ -2509,7 +2509,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
              ** const ~width:4 0b1010L
              ** fixup ~width:8 ~kind:Pcrel_vldr8 "target"));
       (* [lsl]/[lsr]/[asr]/[ror rd, rm, rs] - {!Opcode.Shift}'s register-shift-amount form
-         (asm/docs/corpus.md: gcc's own [nsieve.c]/[nsievebits.c]). A [mov]-family word (dp = 13,
+         (gcc's own [nsieve.c]/[nsievebits.c]). A [mov]-family word (dp = 13,
          S = 0, Rn = 0 - the only evidenced shape) with Rs at bits 11:8 in place of {!Dp_reg}'s
          5-bit immediate shift amount, and bit 4 set rather than clear - the ARM manual's own
          register/immediate-shift discriminator, so this never overlaps {!Dp_reg}'s own fixed
@@ -2533,7 +2533,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
 let name = "arm"
 let triple = "arm-linux-gnueabihf"
 
-(* The A32 encoder's error domain (asm/docs/errors.md). Below source text, so it
+(* The A32 encoder's error domain (docs/errors.md). Below source text, so it
    names no token; the front end's operand failures are a separate domain in
    arm.ml, for the reason {!Target_intf.Target.TARGET} gives.
 
@@ -2698,7 +2698,7 @@ let lower_ldst ~bad ~cond ~load ~byte ~rt ~(m : Mem.t) =
   | Mem.Reg_offset { reg = rm; negate; kind = sh_kind; amount = sh_amt } ->
       (* Register-offset writeback ([str r0, [r1, r2]!]) is real ARM syntax
          but corpus-unevidenced (M5 classify-c-gcc's one finding, [sp, #-N]!,
-         is always an immediate offset - asm/docs/corpus.md) - stays out of
+         is always an immediate offset - the corpus notes) - stays out of
          scope here even though the immediate sibling just above is now in. *)
       if m.writeback then bad `Writeback_out_of_scope
       else
@@ -2794,7 +2794,7 @@ let lower_instruction state i =
             if encode_modimm imm = None then bad (`No_modified_immediate imm)
             else Ok [ Lowered.Dp_imm { cond; dp = Opcode.to_dp op; s = false; rd; rn; imm } ])
     (* str/ldr writeback ([str fp, [sp, #-4]!]) is M5 classify-c-gcc's one
-       corpus-evidenced writeback form (asm/docs/corpus.md: gcc's own
+       corpus-evidenced writeback form (gcc's own
        frame-pointer prologue idiom) - lower_ldst now honors m.writeback for
        an immediate offset instead of rejecting it outright. strb/ldrb below
        keep the blanket rejection: no byte-access writeback is evidenced, and
@@ -2803,7 +2803,7 @@ let lower_instruction state i =
     | ((Opcode.Str | Opcode.Ldr) as op), [ Operand.Reg rt; Operand.Mem m ] ->
         lower_ldst ~bad ~cond ~load:(op = Opcode.Ldr) ~byte:false ~rt ~m
     (* Post-indexed [ldr rt, \[rn\], #imm]: the operand parser reads the bracket and the
-       offset after it as two operands. CompCert's inline [memcpy] loop is the evidence. *)
+       offset after it as two operands. the compiler's inline [memcpy] loop is the evidence. *)
     | ( ((Opcode.Str | Opcode.Ldr | Opcode.Strb | Opcode.Ldrb) as op),
         [
           Operand.Reg rt;
@@ -2916,7 +2916,7 @@ let lower_instruction state i =
             else
               Ok [ Lowered.Dp_imm { cond; dp = Opcode.to_dp Opcode.Rsbs; s = true; rd; rn; imm } ])
     (* [adds rd, rn, #imm] - {!Adds}'s own immediate sibling, {!Rsbs}'s exact counterpart on the
-       other side of the family (M5, asm/docs/corpus.md - gas_frontier.t's runtime-i64_stof.S's
+       other side of the family (M5 - gas_frontier.t's runtime-i64_stof.S's
        own "round to nearest" carry-increment idiom, [adds r2, r2, #1]); {!Adds} itself was
        register-register-register only until now. *)
     | Opcode.Adds, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
@@ -2927,7 +2927,7 @@ let lower_instruction state i =
             else
               Ok [ Lowered.Dp_imm { cond; dp = Opcode.to_dp Opcode.Adds; s = true; rd; rn; imm } ])
     (* [subs rd, rn, #imm] - {!Adds}'s exact counterpart on the subtract side (M5,
-       asm/docs/corpus.md - gas_frontier.t's runtime-i64_udivmod.S's own loop-counter
+       the corpus notes - gas_frontier.t's runtime-i64_udivmod.S's own loop-counter
        decrement, [subs r8, r8, #1]); {!Subs} itself was register-register-register only
        until now. *)
     | Opcode.Subs, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
@@ -2942,7 +2942,7 @@ let lower_instruction state i =
         Ok [ Lowered.Shift_reg { cond; kind; rd; rm; rs } ]
     (* [lsl]/[lsr]/[asr]/[ror rd, rm, #imm] - GNU's own mnemonics for [mov rd, rm, <shift> #imm], the
        immediate-shift-amount sibling of the register-shift-amount form just above (M5,
-       asm/docs/corpus.md - gas_frontier.t's runtime-i64_dtou.S/i64_sar.S, evidenced only as [lsl]/
+       the corpus notes - gas_frontier.t's runtime-i64_dtou.S/i64_sar.S, evidenced only as [lsl]/
        [asr]). Lowers straight into the same {!Lowered.Dp_reg}/[mov] shape the generic register-form
        arm above already builds for [mov rd, rm, <shift> #imm]'s own two-operand-plus-[Shifted]
        spelling - byte-identical to real arm-linux-gnueabihf-as either way (verified). Unlike
@@ -3197,7 +3197,7 @@ let lower_instruction state i =
             [
               Lowered.Vmem_s { cond; load = i.Instruction.op = Opcode.Vldr; vd; rn = base; offset };
             ]
-    (* [vldr Dd/Sd, label] - a PC-relative literal-pool load (asm/docs/corpus.md:
+    (* [vldr Dd/Sd, label] - a PC-relative literal-pool load (docs/corpus.md:
        fftsp.c's/knucleotide.c's own [.f32] float constants). Load-only:
        {!Opcode.Vstr} never reaches here, since real hardware defines a
        store's [Rn = 1111] as UNPREDICTABLE and no fixture spells it. *)
@@ -3632,7 +3632,7 @@ let evaluate_fixup kind ~place ~target =
 (* A32 has an architectural no-op, so padding an executable section needs no
    table and no policy. A boundary that is not a multiple of four is rejected
    rather than padded with bytes, because a partial instruction is not a no-op. *)
-(* On ARM [.word] is four bytes, not two, and CompCert writes [.4byte] for a
+(* On ARM [.word] is four bytes, not two, and the compiler writes [.4byte] for a
    32-bit address - both spellings mean the same width here. *)
 let data_widths =
   [
@@ -3652,7 +3652,7 @@ let nop_bytes ~length =
   if length mod 4 <> 0 then Error (diag ~pos:__POS__ `Padding_not_word_multiple)
   else Ok (String.concat "" (List.init (length / 4) (fun _ -> "\x00\xf0\x20\xe3")))
 
-(* Measured (M3 §3/§5, .ai/asm_plan.md §12): a linker-inserted merge gap in an
+(* Measured (M3 §3/§5, docs/design.md §12): a linker-inserted merge gap in an
    executable section is plain zero fill on ARM, not NOP fill. *)
 let merge_fill = None
 

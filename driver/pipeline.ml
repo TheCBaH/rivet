@@ -1,4 +1,4 @@
-(* The architecture-independent pipeline (.ai/asm_plan.md §5.1's
+(* The architecture-independent pipeline (docs/design.md §5.1's
    [Make_assembler]).
 
    One functor, applied once per target, holding every stage that is not a
@@ -20,7 +20,7 @@ module Make (T : T_intf.TARGET) = struct
   let name = T.name
   let triple = T.triple
 
-  (* The pipeline's own error domain (asm/docs/errors.md) - the failures that
+  (* The pipeline's own error domain (docs/errors.md) - the failures that
      belong to no target and no library, but to the act of walking a module
      through the stages.
 
@@ -77,7 +77,7 @@ module Make (T : T_intf.TARGET) = struct
   (* Where a target's failure becomes part of the pipeline's report. This is the
      erasure boundary {!Target_encode.ENCODE} names: [Make] is generic over [T]
      and cannot hold a [T.error], so the target renders its own domain and a
-     diagnostic is what crosses (asm/docs/errors.md §2). Everything below this
+     diagnostic is what crosses (docs/errors.md §2). Everything below this
      call keeps the typed payload. *)
   let target_diagnostic e = T.error_diagnostic (Err.Error.kind e)
 
@@ -118,7 +118,7 @@ module Make (T : T_intf.TARGET) = struct
         let lines, label_errors = Local_labels.run lines in
         (* Shared, not wrapped: the tag means the same thing here as it does in
            [Local_labels] and reports under the same code, so this crossing
-           re-codes nothing (asm/docs/errors.md §2). *)
+           re-codes nothing (docs/errors.md §2). *)
         List.iter
           (fun (e : Local_labels.error) -> errors := Local_labels.diagnostic_of_error e :: !errors)
           label_errors;
@@ -516,7 +516,7 @@ module Make (T : T_intf.TARGET) = struct
                       lowered))
       m.Normalized_ast.items;
     (* [.local x] then [.comm x, size, align] is how a static zero-initialized object is spelled
-       (CompCert's [static long scratch[512];]): GAS then allocates [x] in this input's own
+       (the compiler's [static long scratch[512];]): GAS then allocates [x] in this input's own
        [.bss] as a local symbol rather than as a common one (checked with real as/readelf: a
        LOCAL OBJECT in [.bss], not [COM]). A common left for the linker could never satisfy a
        local reference, which only resolves within its own input. Decided on the final binding,
@@ -630,11 +630,11 @@ module Make (T : T_intf.TARGET) = struct
   (* The other erasure boundary: [Image] stores the fixup evaluator in a
      [laid_out], which the architecture-erased [DRIVER] hands around, so the
      closure cannot mention [T.error]. The target renders here, exactly as it
-     does at [target_diagnostic] (asm/docs/errors.md §2). *)
+     does at [target_diagnostic] (docs/errors.md §2). *)
   let evaluate kind ~place ~target =
     Result.map_error target_diagnostic (T.evaluate_fixup kind ~place ~target)
 
-  (* M3 §5's merge-gap fill (.ai/asm_plan.md §12): [T.merge_fill], where the
+  (* M3 §5's merge-gap fill (docs/design.md §12): [T.merge_fill], where the
      target has one, is its OWN linker's measured fill for a gap a merge
      inserts in an EXECUTABLE output section - not necessarily [T.nop_bytes]
      again (x86_32's ld and as disagree; see {!Target_encode.ENCODE.merge_fill}).
@@ -645,7 +645,7 @@ module Make (T : T_intf.TARGET) = struct
   let merge_fill ~executable pad =
     match T.merge_fill with Some f when executable -> f ~length:pad | _ -> String.make pad '\000'
 
-  (* The runtime-vararg frontier gap (asm/docs/corpus.md): [T.pad_section_to_alignment],
+  (* The runtime-vararg frontier gap : [T.pad_section_to_alignment],
      where set, rounds a merged Progbits section's own final size up to its recorded
      alignment - GAS's own end-of-section behavior on RISC-V alone, distinct from
      {!merge_fill}'s between-contribution gap above. The padding bytes are
@@ -675,7 +675,7 @@ module Make (T : T_intf.TARGET) = struct
      Each [Diag.stage] marks a phase boundary at the position of the crossing,
      which is what makes the event trail read parse -> simplify -> lower -> plan
      rather than leaving the phase implicit in a diagnostic code prefix
-     (asm/docs/errors.md §2). The payload is untouched: a stage mark records
+     (docs/errors.md §2). The payload is untouched: a stage mark records
      that a failure crossed here, not a new failure. *)
 
   let assemble ?entry ?features ~unit_name ~source () =
@@ -710,7 +710,7 @@ module Make (T : T_intf.TARGET) = struct
     in
     stage (plan_many ?entry modules)
 
-  (* {1 Dumps (asm/docs/contracts.md §1)} *)
+  (* {1 Dumps (docs/contracts.md §1)} *)
 
   (* The spelling column. Every token spells itself exactly, with two
      exceptions that have to be conventions rather than raw text: an [eol]
@@ -802,7 +802,7 @@ module Make (T : T_intf.TARGET) = struct
     let here = Int64.add address (Int64.of_int pos) in
     (* Two possible fill sources for the same run, not one: [T.nop_bytes] is
        what [as] emits for an [.align] gap within one module, and (M3 §5,
-       .ai/asm_plan.md §12) [T.merge_fill] is what [ld] emits for a gap the
+       docs/design.md §12) [T.merge_fill] is what [ld] emits for a gap the
        merge step inserts between two modules - and on x86_32 those are
        DIFFERENT byte sequences for the same length (nop_table's LEA forms
        vs. merge_fill's plain [66 90] chain). Neither table's bytes decode as

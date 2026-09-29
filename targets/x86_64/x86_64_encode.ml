@@ -1,4 +1,4 @@
-(* The x86_64 target (.ai/asm_plan.md §5.1).
+(* The x86_64 target (docs/design.md §5.1).
 
    The same family functor as x86_32 with a different mode. The extended
    registers exist here and the REX byte does; the default operand size does

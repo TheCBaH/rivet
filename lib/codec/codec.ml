@@ -1,4 +1,4 @@
-(* The typed bidirectional codec EDSL (.ai/asm_plan.md §4.9.1, §6).
+(* The typed bidirectional codec EDSL (docs/design.md §4.9.1, §6).
 
    An instruction description is a *value*, not a function. That is the whole
    point: an opaque encoding function cannot be inverted to give a decoder, nor
@@ -8,7 +8,7 @@
    a new traversal rather than a new obligation on every target.
 
    Two things this package must never acquire, both enforced by
-   tools/asm-check-layers.sh rather than by convention:
+   scripts/asm-check-layers.sh rather than by convention:
 
    - no target vocabulary. There is no ModR/M here, no REX, no condition code.
      x86's family combinators are built *from* these primitives in
@@ -264,7 +264,7 @@ let pp_error ppf : error -> unit = function
       Fmt.pf ppf "encode_rung: rung %s does not apply to this value; {%s} do" wanted
         (String.concat ", " applicable)
 
-(* The delegation of asm/docs/errors.md §2: [Some] only where this layer is the
+(* The delegation of docs/errors.md §2: [Some] only where this layer is the
    only one that could have seen the mistake, so a caller writes
    [Option.value (Codec.code e) ~default:own_code] and the reserved code cannot
    drift from the case that earns it. *)
@@ -399,7 +399,7 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
          "this value is not this form" case [Alt] already distinguishes from a
          genuine range failure - so the whole ladder must decline too, not
          report [`No_rung]. Without this, a [Relax] node reached by a value
-         that was never a candidate for it at all (M5, asm/docs/corpus.md: any
+         that was never a candidate for it at all (M5: any
          non-jmp instruction reaching the top-level [Alt]'s [jmp-rel]
          alternative) manufactures a spurious [Failed (`No_rung "jmp")] that
          [Alt]'s own scan then remembers as [first_error] and a later, real

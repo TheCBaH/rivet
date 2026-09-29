@@ -1,6 +1,6 @@
 (** Arbitrary-precision signed integers, pure OCaml.
 
-    [.ai/asm_plan.md] §5.3 bans Zarith/GMP from the production closure (it is a C-backed package),
+    [docs/design.md] §5.3 bans Zarith/GMP from the production closure (it is a C-backed package),
     so the minimal signed big-integer operations required by assembly expressions live here.
 
     Representation is sign-magnitude with an immutable little-endian list of base-2^14 limbs.
@@ -21,7 +21,7 @@ type t
     is the largest such caller, since [to_string] divides by ten and [fits_signed] shifts by a
     non-negative width.
 
-    See [asm/docs/errors.md]. *)
+    See [docs/errors.md]. *)
 
 type error =
   [ `Division_by_zero
@@ -103,7 +103,7 @@ val shift_right_exn : t -> int -> t
 
 (** {1 Field conversion}
 
-    This is where [.ai/asm_plan.md] §4.3's rule is enforced: range checks happen when an
+    This is where [docs/design.md] §4.3's rule is enforced: range checks happen when an
     arbitrary-precision value is narrowed to a specific field, never by letting a host integer
     overflow during folding. *)
 

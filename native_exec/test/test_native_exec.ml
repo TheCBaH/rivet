@@ -1,4 +1,4 @@
-(* Native_exec on hand-written assembly for the host's ISA: no CompCert involved. Each program
+(* Native_exec on hand-written assembly for the host's ISA: no the compiler involved. Each program
    exists for every 64-bit host the assembler targets (aarch64, x86_64, riscv64) and computes the
    same results, so the expectations below hold on all of them. The x86_64 and riscv64 versions
    were checked by assembling them with GNU as, linking a C harness and running it under

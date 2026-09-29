@@ -1,17 +1,17 @@
-(* A performance regression guard for the parse-time pathology asm/docs/
+(* A performance regression guard for the parse-time pathology docs/
    corpus.md's "One shared timeout, not a per-target rejection" note
-   describes: CompCert's test/regression/floats.c (~110K lines of generated
+   describes: the compiler's test/regression/floats.c (~110K lines of generated
    assembly) once made --dump-source-ast fail to return in any bounded time
    this project tried. That pathology is now fixed, but nothing short of a
    full corpus regen (needs a cross toolchain, and is deliberately kept off
    the asm-test/asm-ci path) would notice its return.
 
    This generates a comparably large, synthetic x86_64 source in-process
-   (no CompCert/Rocq dependency, so it runs on every asm-test/asm-ci leg) and
+   (no compiler dependency, so it runs on every asm-test/asm-ci leg) and
    bounds --dump-source-ast's own stage, [Driver.Portable.dump]'s
    `Source_ast case, against a realistic wall-clock budget rather than the
    corpus classifier's own generous 120s [classify_timeout_s]
-   (asm/tools/lib/corpus_classify_cmd.ml) - tight enough that a reintroduced
+   (tools/lib/corpus_classify_cmd.ml) - tight enough that a reintroduced
    quadratic-or-worse blowup fails fast instead of merely being bounded. *)
 
 let function_count = 20_000
@@ -49,8 +49,7 @@ let () =
        (fun _ ->
          Printf.eprintf
            "test_parse_perf: --dump-source-ast is still running past the %.1fs bound - this is the \
-            floats.c-style parse-time blowup asm/docs/corpus.md's \"One shared timeout\" note \
-            describes\n"
+            floats.c-style parse-time blowup \"One shared timeout\" note describes\n"
            bound_seconds;
          exit 1));
   ignore (Unix.alarm (int_of_float bound_seconds));
@@ -69,6 +68,6 @@ let () =
   if elapsed > bound_seconds then (
     Printf.eprintf
       "test_parse_perf: --dump-source-ast took %.3fs, over the %.1fs bound - this is the \
-       floats.c-style parse-time blowup asm/docs/corpus.md's \"One shared timeout\" note describes\n"
+       floats.c-style parse-time blowup \"One shared timeout\" note describes\n"
       elapsed bound_seconds;
     exit 1)

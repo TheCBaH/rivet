@@ -1,4 +1,4 @@
-(* The common expression language (.ai/asm_plan.md §4.8).
+(* The common expression language (docs/design.md §4.8).
 
    Shared by data directives, symbol assignments, alignment and instruction
    operands, and deliberately not extended per target: a target influences it
@@ -61,7 +61,7 @@ type env = { lookup : string -> Bigint.t option; here : Bigint.t option }
 
 let no_env = { lookup = (fun _ -> None); here = None }
 
-(* This module's error domain (asm/docs/errors.md).
+(* This module's error domain (docs/errors.md).
 
    [`Arithmetic] wraps rather than flattens: a division by zero is [Bigint]'s
    observation, and the seam that used to render it into a string here is gone.

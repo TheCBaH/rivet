@@ -3,7 +3,7 @@
    Three properties, each of which the rest of the migration relies on and none
    of which is obvious from reading the code.
 
-   Nothing here prints an origin, a stack, or an event: asm/docs/errors.md §3
+   Nothing here prints an origin, a stack, or an event: docs/errors.md §3
    forbids that in a baseline, and a test that violated the rule it is checking
    would be a poor guard. The observable facts are booleans and rendered
    diagnostics. *)

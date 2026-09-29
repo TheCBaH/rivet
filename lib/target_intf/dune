@@ -12,40 +12,44 @@
 ; description it cannot influence.
 
 ; target_error is the one module here that is *not* a signature: it is the
-; shared target error domain (asm/docs/errors.md). It needs its own library
+; shared target error domain (docs/errors.md). It needs its own library
 ; rather than joining target_encode, because a library whose name matches one of
 ; its modules treats that module as the whole interface and hides the rest.
 
 (library
  (name target_error)
+ (public_name rivet.target_error)
  (modules target_error)
  (modes byte native)
  (libraries foundation)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 ; target_features (modules target_component, target_config) holds the descriptors a family publishes for its separable
-; instruction components (asm/docs/contracts.md). Pure data, like target_error.
+; instruction components (docs/contracts.md). Pure data, like target_error.
 
 (library
  (name target_features)
+ (public_name rivet.target_features)
  (modules target_component target_config)
  (wrapped false)
  (modes byte native)
  (libraries foundation fmt)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name target_encode)
+ (public_name rivet.target_encode)
  (modules target_encode)
  (modes byte native)
  (libraries foundation codec asm_core target_error target_features)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name target_intf)
+ (public_name rivet.target_intf)
  (modules target)
  (modes byte native)
  (libraries
@@ -57,4 +61,4 @@
   target_encode
   target_features)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

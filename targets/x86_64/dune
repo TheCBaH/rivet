@@ -5,6 +5,7 @@
 
 (library
  (name x86_64_encode)
+ (public_name rivet.x86_64_encode)
  (modules x86_64_encode)
  (modes byte native)
  (libraries
@@ -15,12 +16,13 @@
   target_encode
   x86_family_encode)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name x86_64)
+ (public_name rivet.x86_64)
  (modules x86_64)
  (modes byte native)
  (libraries foundation codec asm_core target_intf x86_family x86_64_encode)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

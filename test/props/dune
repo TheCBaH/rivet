@@ -15,7 +15,7 @@
 
 ; An executable plus a rule rather than a (test) stanza: (test) puts its
 ; executable in the directory's @all alias whatever its enabled_if says, so
-; under ASM_MELANGE=true it would still try to link codec_corpus - which that
+; under RIVET_MELANGE=true it would still try to link codec_corpus - which that
 ; same opt-in has disabled.
 
 (executable
@@ -32,11 +32,11 @@
   foundation
   fmt)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (rule
  (alias runtest)
  (action
   (run ./test_props.exe))
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

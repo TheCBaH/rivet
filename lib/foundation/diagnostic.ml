@@ -1,7 +1,7 @@
 (* Diagnostics.
 
    Rendering is deterministic and free of host paths, locale, and process state
-   (.ai/asm_plan.md §3.7), because these strings go straight into expect output
+   (docs/design.md §3.7), because these strings go straight into expect output
    that must match byte-for-byte across native, js_of_ocaml, and Melange. *)
 
 type severity = Error | Warning | Note
@@ -17,7 +17,7 @@ type t = {
 let make ?(notes = []) ~severity ~code ~message ~origin () =
   { severity; code; message; origin; notes }
 
-(* The only constructor (see asm/docs/errors.md). A diagnostic is not something
+(* The only constructor (see docs/errors.md). A diagnostic is not something
    a failure site *writes*; it is the rendering of a typed error value, and the
    domain supplies both strings. [make] above is private to this module - the
    interface does not export it - so there is no way in that takes a

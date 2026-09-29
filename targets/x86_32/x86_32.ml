@@ -1,4 +1,4 @@
-(* The x86_32 target (.ai/asm_plan.md §5.1).
+(* The x86_32 target (docs/design.md §5.1).
 
    The mode itself is in {!X86_32_encode}, beside the encoder it parameterizes,
    so that a consumer wanting x86-32 encoding without a parser has something to

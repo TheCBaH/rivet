@@ -1,8 +1,8 @@
-(* The normalized semantic AST (.ai/asm_plan.md §4.3).
+(* The normalized semantic AST (docs/design.md §4.3).
 
    The preferred entry point for a compiler that wants the assembler to keep
    responsibility for form selection, pseudo lowering, fixups and layout - which
-   is exactly what the CompCert adapter will be. It has no dependence on textual
+   is exactly what the compiler adapter will be. It has no dependence on textual
    tokenization: directives are values, expressions are folded as far as they
    can honestly be folded, and instructions are canonical semantic operations
    rather than surface spellings. *)

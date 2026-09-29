@@ -27,7 +27,7 @@ open X86_family_encode
 module Make (M : MODE) = struct
   include X86_family_encode.Make (M)
 
-  (* The front end's error domain (asm/docs/errors.md). Separate from the
+  (* The front end's error domain (docs/errors.md). Separate from the
      encoder's because it may name {!Asm_syntax} and the encoder's may not - see
      {!Target_intf.Target.TARGET} for why that split exists.
 
@@ -122,8 +122,8 @@ module Make (M : MODE) = struct
   (* The trailing [(,%index,scale)] of a base-less SIB operand whose
      displacement is a symbolic expression rather than a bare integer
      literal - [Te4(,%eax,4)] and [(keccakf_rndc + 4)(,%ecx,8)] (M5 corpus
-     evidence: asm/fixtures/corpus/c/x86_32/summary.txt's aes.c/sha3.c/
-     knucleotide.c - the array/jump-table-lookup idiom CompCert's x86_32
+     evidence: fixtures/corpus/c/x86_32/summary.txt's aes.c/sha3.c/
+     knucleotide.c - the array/jump-table-lookup idiom the compiler's x86_32
      codegen uses instead of %rip-relative addressing). The purely-numeric
      sibling of this shape already has its own literal token patterns above
      ([Int d; Lparen; Register i; Int s; Rparen] and friends); this one is a
@@ -151,7 +151,7 @@ module Make (M : MODE) = struct
   (* The trailing [(%base)] of a base-only memory operand whose displacement
      is a symbolic expression rather than a bare integer literal -
      [a(%eax)] and the parenthesized-expression sibling [(bodies + 24)(%eax)]
-     (M5 corpus evidence: asm/fixtures/corpus/c/x86_32/summary.txt's
+     (M5 corpus evidence: fixtures/corpus/c/x86_32/summary.txt's
      almabench.c/nbody.c/sha3.c - the same struct/array-field idiom as the
      base-less-SIB case above, just without an index register). The purely-
      numeric sibling already has its own literal token patterns above
@@ -198,7 +198,7 @@ module Make (M : MODE) = struct
         | Error _ -> Ok (Disp.Sym e))
 
   (* [sym@PLT]: GNU's marker that a call target may need to route through the
-     PLT, on a symbol CompCert cannot see defined in this translation unit.
+     PLT, on a symbol the compiler cannot see defined in this translation unit.
      Semantically inert here - a plain [call sym] to an external or even a
      same-file [.globl] symbol already gets R_X86_64_PLT32 (measured: the M2
      direct_call fixture's same-file, .globl callee gets it with no [@PLT] in
@@ -328,7 +328,7 @@ module Make (M : MODE) = struct
                 | _ -> bad (`Cannot_parse_operand { slice; reason = `Malformed_expression slice }))
             (* *<operand>, the indirect-jump/call target sigil. GNU as requires the
        [*] before a register ([*%eax]) or a memory operand ([*sym(,%eax,4)],
-       M5 corpus evidence: asm/fixtures/corpus/c/x86_32/summary.txt's
+       M5 corpus evidence: fixtures/corpus/c/x86_32/summary.txt's
        siphash24.c/vmach.c jump-table dispatch); we also accept it without one
        below (falls through to the cases above/below), which is harmless
        since M1 has no direct/PC-relative jmp form to be confused with -
@@ -395,7 +395,7 @@ module Make (M : MODE) = struct
                            { Mem.base = Some b; index = Some i; scale = s; disp = Disp.Const d })
                 | _ -> bad (`Malformed_memory_operand slice))
             (* -disp(%base,%index,scale) - the negative-displacement sibling of the
-       positive form just above (M5 corpus evidence: asm/fixtures/corpus/c/
+       positive form just above (M5 corpus evidence: fixtures/corpus/c/
        x86_64/summary.txt's sha1.c, "cannot parse operand" on
        [-1894007588(%esi,%r10d,1)]). Base, index and scale all present, only
        the displacement's sign differs, mirroring how the base-less SIB case
@@ -464,8 +464,8 @@ module Make (M : MODE) = struct
                          { Mem.base = Some b; index = Some i; scale = 1; disp = Disp.zero })
                 | Error e, _ | _, Error e -> Error e)
             (* disp(,%index,scale) and (,%index,scale) - a SIB operand with no base
-       register, GCC/CompCert's standard array-index address idiom
-       (M5 corpus evidence: asm/fixtures/corpus/c/x86_64/summary.txt). The
+       register, gcc's standard array-index address idiom
+       (M5 corpus evidence: fixtures/corpus/c/x86_64/summary.txt). The
        comma before %index is a real token GAS requires, but [regroup] above
        already drops every comma when rejoining a parenthesized operand's
        slices, so what's left to match is the same shape as disp(%base,...)

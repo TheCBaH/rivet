@@ -1,4 +1,4 @@
-(* The source AST (.ai/asm_plan.md §4.2): the public result of parsing.
+(* The source AST (docs/design.md §4.2): the public result of parsing.
 
    Not tokens, and not the shallow statement representation - those are private
    frontend intermediates. This is the first boundary a direct producer may

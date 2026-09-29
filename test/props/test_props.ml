@@ -1,4 +1,4 @@
-(* Property tests (.ai/asm_plan.md M2.J).
+(* Property tests (docs/design.md M2.J).
 
    What belongs here and what does not. An expect test states one input and its
    whole answer, which is the right shape for a contract - the transcript *is*

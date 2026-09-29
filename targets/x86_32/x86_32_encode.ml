@@ -1,4 +1,4 @@
-(* The x86_32 target (.ai/asm_plan.md §5.1).
+(* The x86_32 target (docs/design.md §5.1).
 
    A mode parameter, not a copy: everything about how x86 encodes lives in
    x86_family, and what this file states is the three things that genuinely
@@ -21,7 +21,7 @@ module Mode = struct
      SSE2 codec itself (x86_family_encode.ml) is unconditional and already
      produces the identical opcode bytes in both modes (no REX prefix either
      way for xmm0-7); this register-table addition is the only x86_32 change
-     the M5 corpus (asm/docs/corpus.md) needs for SSE2 float support.
+     the M5 corpus  needs for SSE2 float support.
 
      8-bit registers are 32-bit mode's OWN spelling ([al]-[bl] then
      [ah]/[ch]/[dh]/[bh]), not {!X86_family_encode.Reg.names_8l} (that array is
@@ -44,7 +44,7 @@ module Mode = struct
        x86_family.ml, and never reach this table). Width 80 is not a real
        operand width (x87 is 80-bit extended precision, but nothing here
        lowers or encodes an x87 instruction yet - M5 classify-c-gcc corpus
-       evidence, parse-level only, asm/docs/corpus.md): it exists purely as a
+       evidence, parse-level only, the corpus notes): it exists purely as a
        class marker distinct from 8/16/32/64/128, the same convention
        [names_xmm]'s width 128 already established. *)
     @ X86_family_encode.Reg.mm_and_k

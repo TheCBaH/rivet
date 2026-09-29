@@ -1,6 +1,6 @@
 (* Source positions. Kept free of host paths: a [source] carries a caller-chosen
    name, so diagnostics never leak a filesystem layout into expect output
-   (.ai/asm_plan.md §3.7). *)
+   (docs/design.md §3.7). *)
 
 type source = { name : string; contents : string }
 type t = { source : source; offset : int; length : int; line : int; column : int }

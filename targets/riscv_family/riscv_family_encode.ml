@@ -2430,7 +2430,7 @@ module Make (P : PROFILE) = struct
      mnemonic (almost always [dyn] = [7], except the two conversions real hardware defines
      as always exact, which pick [rne] = [0] instead). A decoded [funct3] equal to the
      default prints no trailing operand at all; any other value round-trips through an
-     explicit one (M5, asm/docs/corpus.md - perlin.c/binarytrees.c's own [(int)]/[(long)]
+     explicit one (M5 - perlin.c/binarytrees.c's own [(int)]/[(long)]
      cast idiom, which truncates and so must override the default with [rtz], not read
      it). [feq.d]/[fle.d]/[flt.d]/[flt.s]'s own [funct3] is a real comparison-kind selector,
      not a rounding mode, so [rm] is [None] there even though the field sits at the same
@@ -2483,7 +2483,7 @@ module Make (P : PROFILE) = struct
       | Jalr
       | Load of int
       | Fload of int
-          (** [fld]/[flw]'s own literal-pool pseudo (M5, asm/docs/corpus.md - almabench.c/
+          (** [fld]/[flw]'s own literal-pool pseudo (M5 - almabench.c/
             fftsp.c/knucleotide.c/...): the same anchored [auipc]+load pairing as [Load],
             but the scratch register can never be [rd] itself the way [ld rd, symbol]
             reuses [rd] as its own [auipc] target - [rd] is a scalar FP register here, and
@@ -2536,7 +2536,7 @@ module Make (P : PROFILE) = struct
           imm : Asm_core.Expr.t;
         }
           (** [opcode] defaults to STORE's [0x23] for every integer store; the F/D extension's
-              [fsd]/[fsw] are the only other user, at STORE-FP's [0x27] (M5, asm/docs/corpus.md
+              [fsd]/[fsw] are the only other user, at STORE-FP's [0x27] (M5, the corpus notes
               - almabench.c/bisect.c/... callee-saved double spills). Everything else about the
               S-type word - the split 12-bit immediate, [rs1]/[rs2] field positions - is
               identical between the two opcodes, so this is one field rather than a second
@@ -3310,7 +3310,7 @@ module Make (P : PROFILE) = struct
     | _ -> None
 
   (* OP-FP (opcode [0x53]) descriptors, one table per operand shape (M5 corpus
-     evidence, asm/docs/corpus.md - almabench.c/bisect.c/fftsp.c/knucleotide.c/...).
+     evidence, the corpus notes - almabench.c/bisect.c/fftsp.c/knucleotide.c/...).
      [funct3] here is the rounding-mode field GAS's own bare mnemonic spelling
      always picks - `7` (dynamic) for the arithmetic family and every convert *to* a
      narrower or differently-rounded type, `0` (round-to-nearest-even) for a
@@ -6447,7 +6447,7 @@ module Make (P : PROFILE) = struct
            opcode-0x03 load rather than addi/jalr. Confirmed against real
            riscv64-linux-gnu-as. Scoped to `ld` alone since that is the only
            load pseudo this corpus evidences (a 64-bit constant pulled from a
-           `.rodata.cst8` literal, CompCert's own float/double materialization
+           `.rodata.cst8` literal, the compiler's own float/double materialization
            idiom on riscv64). *)
         match (xreg a, expr_of target, load_desc Opcode.Ld) with
         | Some rd, Some target, Some funct3 ->
@@ -6458,7 +6458,7 @@ module Make (P : PROFILE) = struct
            [auipc]+load pseudo as [ld] above, except the scratch register can't be [rd]
            itself ([auipc] only ever writes a GPR, and [rd] here is a scalar FP register),
            so GAS's own three-operand spelling names it explicitly (M5,
-           asm/docs/corpus.md - almabench.c/fftsp.c/knucleotide.c/...). *)
+           the corpus notes - almabench.c/fftsp.c/knucleotide.c/...). *)
         match (freg a, expr_of target, xreg b, f_load_desc op) with
         | Some rd, Some target, Some tmp, Some funct3 ->
             Ok [ Lowered.Pair { name = opn; rd; tmp; target; kind = Fload funct3 } ]
@@ -6543,7 +6543,7 @@ module Make (P : PROFILE) = struct
         | _ -> wrong opn)
     | op, [ a; b; Operand.Sym (Asm_core.Expr.Symbol rm) ] when Option.is_some (f_to_i_desc op) -> (
         (* [fcvt.w.d rd, rs1, rtz] - an explicit rounding-mode operand overriding the
-           bare mnemonic's own default (M5, asm/docs/corpus.md - perlin.c/binarytrees.c's
+           bare mnemonic's own default (M5 - perlin.c/binarytrees.c's
            own [(int)]/[(long)] C cast idiom, which truncates and so needs [rtz] rather
            than the default dynamic mode). Checked against real riscv64-linux-gnu-as:
            `fcvt.l.d x22, f10, rtz` -> `c2251b53` (funct3 = 1, matching {!rounding_modes}'
@@ -6575,7 +6575,7 @@ module Make (P : PROFILE) = struct
            disassembles the swapped-operand word back as the real underlying
            mnemonic, never the pseudo - this project's canonical printer follows
            that choice (the same alias-preference precedent as AArch64's
-           [ubfx]/[ubfiz], asm/docs/corpus.md's Capability ladder item 4), reusing
+           [ubfx]/[ubfiz], Capability ladder item 4), reusing
            [Lowered.B]'s existing shape rather than adding a name-only variant.
            Checked against real riscv64-linux-gnu-as/objdump: `bgtu a0, a1, .`
            -> `00a5e063`, decoding as `bltu a1, a0, .`; `bleu a0, a1, .` ->
@@ -6690,7 +6690,7 @@ module Make (P : PROFILE) = struct
            this project's canonical printer reuses the real underlying mnemonic
            the same way {!Mv}/{!Nop} above already reuse [addi]'s, rather than
            adding a second, decode-only spelling nothing here compares against
-           (M5, asm/docs/corpus.md - asm/helpers/riscv.c's own zero-test idiom).
+           (M5 - helpers/riscv.c's own zero-test idiom).
            Checked against real riscv64-linux-gnu-as/objdump: `snez a2, a3` ->
            `00d03633`, matching `sltu a2, zero, a3` bit-for-bit. *)
         match (xreg a, xreg b) with
@@ -6941,7 +6941,7 @@ module Make (P : PROFILE) = struct
                 (* GAS's own [li] expansion for a constant whose low 12 bits are
                    exactly zero collapses to a bare [lui] - no [addi], the
                    redundant "+0" GAS itself never emits - the only large-constant
-                   [li] shape this corpus evidences (asm/helpers/riscv.c's
+                   [li] shape this corpus evidences (helpers/riscv.c's
                    page/window-aligned address constants, e.g. `li a0,
                    0x30000000`). Checked against real riscv64-linux-gnu-as/
                    objdump: `li a0, 0x30000000` -> `lui a0, 0x30000`; `li a2,
@@ -7518,7 +7518,7 @@ module Make (P : PROFILE) = struct
                    independently): a real gap, not a dead branch - {!Abs_lo12_s}
                    already existed in {!fixup_kind} and in [evaluate_fixup]
                    below, but [S]'s own [encode] case never produced one (M5,
-                   asm/docs/corpus.md - asm/helpers/riscv.c's own absolute
+                   the corpus notes - helpers/riscv.c's own absolute
                    store to a page-local static, the first fixture to spell an
                    [S]-type absolute [%lo]). Checked against real
                    riscv64-linux-gnu-as: `sw a0,%lo(control_alias)(s6)` still
@@ -8459,7 +8459,7 @@ module Make (P : PROFILE) = struct
     if length mod 4 <> 0 then Error (diag ~pos:__POS__ `Padding_not_word_multiple)
     else Ok (String.concat "" (List.init (length / 4) (fun _ -> "\x13\x00\x00\x00")))
 
-  (* Measured (M3 §3/§5, .ai/asm_plan.md §12): a linker-inserted merge gap in an
+  (* Measured (M3 §3/§5, docs/design.md §12): a linker-inserted merge gap in an
      executable section is plain zero fill on both riscv32 and riscv64, not NOP
      fill - unlike the *assembler's own* end-of-section padding, which uses
      real [c.nop]/[nop] via [nop_bytes] above. *)
