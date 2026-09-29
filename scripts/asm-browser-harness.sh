@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The real-browser smoke harness (.ai/asm_plan.md M5, the deferred
+# The real-browser smoke harness (docs/design.md M5, the deferred
 # browser-harness item deferred at M0 §11.6 "until the image APIs and
 # broader assembler slices have stabilized" - M4's close is that
 # stabilization point). Proves that the same parser+encoder and
@@ -10,7 +10,7 @@
 #
 # Provisioning happens here, at run time, under whichever user invokes this
 # script - never baked into .devcontainer/Dockerfile. The default devcontainer
-# build context has no COPY, so asm/test/browser/package.json cannot exist
+# build context has no COPY, so test/browser/package.json cannot exist
 # inside a Dockerfile RUN step, and a root-built image would put Chromium in a
 # cache path the runtime user (vscode locally, a different user in CI) cannot
 # see. PLAYWRIGHT_BROWSERS_PATH is set to a repo-local, explicit directory so
@@ -23,7 +23,7 @@
 # smoke_jsoo.bc.js/the Melange smoke module as an incidental member.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-ASM_DIR=${ASM_DIR:-asm}
+ASM_DIR=${RIVET_DIR:-.}
 BROWSER_DIR="$ASM_DIR/test/browser"
 REPO_ROOT="$(pwd)"
 
@@ -52,7 +52,7 @@ note "playwright install chromium" "ok"
 note "dune build (native+jsoo smoke)" "ok"
 
 MELANGE_SMOKE_JS="$ASM_DIR/_build/default/melange/test/browser/js/melange/test/browser/smoke.js"
-( cd "$ASM_DIR" && ASM_MELANGE=true opam exec -- dune build ./melange/test/browser/ ) \
+( cd "$ASM_DIR" && RIVET_MELANGE=true opam exec -- dune build ./melange/test/browser/ ) \
   || fail "dune build (melange smoke)" "failed"
 [ -f "$MELANGE_SMOKE_JS" ] || fail "melange smoke output" "not found at $MELANGE_SMOKE_JS"
 note "dune build (melange smoke)" "ok"
@@ -85,7 +85,7 @@ note "jsoo bundle" "staged"
 # --- B.4: Melange CommonJS -> browser-loadable bundle, done here (not a Dune
 # rule: a Dune action's working directory is that rule's own _build
 # counterpart, not the repo root, so a bundling rule declared inside
-# asm/melange/test/browser/dune cannot resolve --prefix or name its input by
+# melange/test/browser/dune cannot resolve --prefix or name its input by
 # a simple relative path). IIFE format so it loads via a plain
 # <script src="..."> under a file:// page with no CORS/module-resolution
 # friction.
