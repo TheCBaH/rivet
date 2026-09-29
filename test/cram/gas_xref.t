@@ -92,12 +92,8 @@ and [ret x30] is printed [ret], by both.
 
   $ asm --target aarch64 --dump-disasm=diagnostic --fixed-base 0x0 \
   >   $corpus/generated/aarch64/return42/input.s
-  00000000  ef 03 00 91  mov x15, sp                [aarch64.add-imm]
-  00000004  ef 7b bf a9  stp x15, x30, [sp, #-16]!  [aarch64.stp-pre]
-  00000008  40 05 80 52  movz w0, #42               [aarch64.movz]
-  0000000c  fe 07 40 f9  ldr x30, [sp, #8]          [aarch64.ldr64]
-  00000010  ff 43 00 91  add sp, sp, #16            [aarch64.add-imm]
-  00000014  c0 03 5f d6  ret                        [aarch64.ret]
+  00000000  40 05 80 52  movz w0, #42  [aarch64.movz]
+  00000004  c0 03 5f d6  ret           [aarch64.ret]
 
   $ cat $corpus/generated/aarch64/return42/objdump.txt
   
@@ -105,12 +101,8 @@ and [ret x30] is printed [ret], by both.
   Disassembly of section .text:
   
   0000000000000000 <asm_snippet>:
-     0:	910003ef 	mov	x15, sp
-     4:	a9bf7bef 	stp	x15, x30, [sp, #-16]!
-     8:	52800540 	mov	w0, #0x2a                  	// #42
-     c:	f94007fe 	ldr	x30, [sp, #8]
-    10:	910043ff 	add	sp, sp, #0x10
-    14:	d65f03c0 	ret
+     0:	52800540 	mov	w0, #0x2a                  	// #42
+     4:	d65f03c0 	ret
 
 
 

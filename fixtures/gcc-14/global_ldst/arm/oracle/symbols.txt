@@ -1,0 +1,10 @@
+$a	local	default	1	defined
+$d	local	default	3	defined
+.ARM.attributes	local	default	7	defined
+.bss	local	default	4	defined
+.comment	local	default	5	defined
+.data	local	default	3	defined
+.note.GNU-stack	local	default	6	defined
+.text	local	default	1	defined
+asm_test_entry	global	default	1	defined
+asm_test_global	global	default	3	defined

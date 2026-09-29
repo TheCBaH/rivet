@@ -15,7 +15,7 @@
 open Foundation
 include Aarch64_encode
 
-(* The front end's error domain (asm/docs/errors.md). Separate from the
+(* The front end's error domain (docs/errors.md). Separate from the
    encoder's because it may name {!Asm_syntax} and the encoder's may not - see
    {!Target_intf.Target.TARGET} for why that split exists. *)
 type parse_error_kind =
@@ -263,7 +263,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
   (* The shift keywords ([lsl]/[lsr]/[asr]/[ror]) are ADD/SUB (shifted
      register)'s operand; the extend keywords are the *other* ADD/SUB
      register form - extended register, e.g. [add x0, x0, x16, uxtx #0]
-     (M5 corpus evidence: test/regression/int64.c, asm/docs/corpus.md).
+     (M5 corpus evidence: test/regression/int64.c, the corpus notes).
      Both spell as [<keyword> #<amount>] at this token shape, so one operand
      type ([Operand.Shift]) carries either; {!Aarch64_encode.lower_instruction}
      is what tells them apart, by which table ([shift_of_name] vs. the
@@ -383,9 +383,11 @@ let parse_operands ~mnemonic slices =
       go [] groups
 
 let handle_directive ~name ~argument state =
-  ignore name;
-  ignore argument;
-  ignore state;
-  (* A64 needs no target-state directive for the M1 fixtures: unlike ARM there
-     is no [.syntax], no [.arch] and no [.fpu] in them. *)
-  Target_intf.Target.Unhandled
+  match name with
+  (* gcc opens every AArch64 file with [.arch armv8-a], the base profile this
+     target implements. It is understood and changes nothing here; any other
+     level would widen what may be assembled, so it stays an unknown
+     directive rather than being silently accepted. *)
+  | ".arch" when String.equal (String.trim argument) "armv8-a" ->
+      Target_intf.Target.Handled { state; emit = [] }
+  | _ -> Target_intf.Target.Unhandled

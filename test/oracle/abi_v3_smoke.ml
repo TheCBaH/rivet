@@ -1,5 +1,5 @@
 (* A direct, standalone proof that a real, generated v3 helper implements
-   the multi-value result-block protocol (.ai/asm_plan.md M4 Phase 3.4's
+   the multi-value result-block protocol (docs/design.md M4 Phase 3.4's
    exit criterion: "x86_64's generated v3 helper passes a real QEMU run"
    with "a v3 multi-value result", proven before any real fixture uses it).
 
@@ -42,7 +42,7 @@ let manifest =
 let () =
   match Qemu_user.available_profiles ~abi_version:Abi_v3.abi_version () with
   | [] ->
-      Fmt.pr "abi-v3-smoke: no v3 helpers built - run tools/asm-helpers.sh's v3 path first@.";
+      Fmt.pr "abi-v3-smoke: no v3 helpers built - run scripts/asm-helpers.sh's v3 path first@.";
       exit 1
   | profiles when not (List.mem Abi.X86_64 profiles) ->
       Fmt.pr "abi-v3-smoke: no v3 x86_64 helper built@.";

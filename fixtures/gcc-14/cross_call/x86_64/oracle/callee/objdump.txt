@@ -1,0 +1,7 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <asm_test_callee>:
+   0:	8d 04 3f             	lea    (%rdi,%rdi,1),%eax
+   3:	c3                   	ret

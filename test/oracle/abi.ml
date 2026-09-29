@@ -1,4 +1,4 @@
-(* The wire constants of asm/docs/exec-abi-v1.md.
+(* The wire constants of docs/exec-abi-v1.md.
 
    This module is the single OCaml transcription of the frozen ABI: profiles,
    the normative address map, both wire layouts, the status/record-state
@@ -8,7 +8,7 @@
    validator and the conformance suite all read the same numbers, so a
    transcription mistake shows up once rather than three times in agreement.
 
-   Test-only (.ai/asm_plan.md §9: production stops at address binding), and
+   Test-only (docs/design.md §9: production stops at address binding), and
    deliberately free of Unix so it builds and runs on every CI leg, including
    the 31-bit linux/i386 and linux/arm/v7 ones. That is also why every address
    and every 64-bit wire field is [int64] rather than [int]: the 64-bit window
@@ -41,7 +41,7 @@ let profile_of_id = function
   | 6 -> Some Riscv64
   | _ -> None
 
-(* The names tools/target-matrix.sh uses, so a profile named on a command line,
+(* The names scripts/target-matrix.sh uses, so a profile named on a command line,
    in a fixture path and in a helper filename is spelled one way. *)
 let profile_name = function
   | X86_32 -> "x86_32"

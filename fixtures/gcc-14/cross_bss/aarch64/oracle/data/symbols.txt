@@ -1,0 +1,7 @@
+$d	local	default	3	defined
+.bss	local	default	3	defined
+.comment	local	default	4	defined
+.data	local	default	2	defined
+.note.GNU-stack	local	default	5	defined
+.text	local	default	1	defined
+shared_value	global	default	3	defined

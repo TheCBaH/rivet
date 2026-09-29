@@ -1,0 +1,51 @@
+There are 13 section headers, starting at offset 0x3b8:
+
+Section Headers:
+  [Nr] Name              Type            Address          Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            0000000000000000 000000 000000 00      0   0  0
+  [ 1] .text             PROGBITS        0000000000000000 000040 000014 00  AX  0   0  4
+  [ 2] .rela.text        RELA            0000000000000000 0002b8 000048 18   I 10   1  8
+  [ 3] .data             PROGBITS        0000000000000000 000054 000000 00  WA  0   0  1
+  [ 4] .bss              NOBITS          0000000000000000 000054 000000 00  WA  0   0  1
+  [ 5] .comment          PROGBITS        0000000000000000 000054 000020 01  MS  0   0  1
+  [ 6] .note.GNU-stack   PROGBITS        0000000000000000 000074 000000 00      0   0  1
+  [ 7] .eh_frame         PROGBITS        0000000000000000 000078 000028 00   A  0   0  8
+  [ 8] .rela.eh_frame    RELA            0000000000000000 000300 000048 18   I 10   7  8
+  [ 9] .riscv.attributes RISCV_ATTRIBUTES 0000000000000000 0000a0 000055 00      0   0  1
+  [10] .symtab           SYMTAB          0000000000000000 0000f8 000150 18     11  12  8
+  [11] .strtab           STRTAB          0000000000000000 000248 00006f 00      0   0  1
+  [12] .shstrtab         STRTAB          0000000000000000 000348 00006b 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
+  L (link order), O (extra OS processing required), G (group), T (TLS),
+  C (compressed), x (unknown), o (OS specific), E (exclude),
+  D (mbind), p (processor specific)
+
+Relocation section '.rela.text' at offset 0x2b8 contains 3 entries:
+    Offset             Info             Type               Symbol's Value  Symbol's Name + Addend
+0000000000000000  0000000d0000001a R_RISCV_HI20           0000000000000000 shared_value + 0
+0000000000000004  0000000d0000001b R_RISCV_LO12_I         0000000000000000 shared_value + 0
+000000000000000c  0000000d0000001c R_RISCV_LO12_S         0000000000000000 shared_value + 0
+
+Relocation section '.rela.eh_frame' at offset 0x300 contains 3 entries:
+    Offset             Info             Type               Symbol's Value  Symbol's Name + Addend
+000000000000001c  0000000600000039 R_RISCV_32_PCREL       0000000000000000 .L0  + 0
+0000000000000020  0000000700000023 R_RISCV_ADD32          0000000000000014 .L0  + 0
+0000000000000020  0000000600000027 R_RISCV_SUB32          0000000000000000 .L0  + 0
+
+Symbol table '.symtab' contains 14 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
+     1: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS caller.c
+     2: 0000000000000000     0 SECTION LOCAL  DEFAULT    1 .text
+     3: 0000000000000000     0 SECTION LOCAL  DEFAULT    3 .data
+     4: 0000000000000000     0 SECTION LOCAL  DEFAULT    4 .bss
+     5: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT    1 $xrv64i2p1_m2p0_a2p1_f2p2_d2p2_zicsr2p0_zmmul1p0_zaamo1p0_zalrsc1p0
+     6: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT    1 .L0
+     7: 0000000000000014     0 NOTYPE  LOCAL  DEFAULT    1 .L0
+     8: 0000000000000000     0 SECTION LOCAL  DEFAULT    6 .note.GNU-stack
+     9: 0000000000000000     0 SECTION LOCAL  DEFAULT    5 .comment
+    10: 0000000000000000     0 SECTION LOCAL  DEFAULT    7 .eh_frame
+    11: 0000000000000000     0 SECTION LOCAL  DEFAULT    9 .riscv.attributes
+    12: 0000000000000000    20 FUNC    GLOBAL DEFAULT    1 asm_test_entry
+    13: 0000000000000000     0 NOTYPE  GLOBAL DEFAULT  UND shared_value

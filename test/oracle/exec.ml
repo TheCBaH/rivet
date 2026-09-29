@@ -1,4 +1,4 @@
-(* Execution: E5 (.ai/asm_plan.md M1.6) and X1.
+(* Execution: E5 (docs/design.md M1.6) and X1.
 
    The last rung of the evidence ladder, and the only one where the assembler's
    own output is the thing that runs. Every earlier gate compares this
@@ -56,7 +56,11 @@ let stack_16k = 16 * 1024
    asm-exec is deliberately not reachable from asm-test, because it needs the
    cross-assembled helpers and four qemu-user binaries that the portable CI leg
    does not have. *)
-let corpus_root = "fixtures/compcert-3.17"
+let corpus_root = "fixtures/gcc-14"
+
+(* The author's files - C sources and expected-status.txt - live apart from what
+   the compiler generated. *)
+let sources_root = "fixtures/c"
 
 let read path =
   let ic = open_in_bin path in
@@ -73,7 +77,7 @@ let read path =
    expected-status.txt is a canonical decimal integer; this just trusts and
    parses it). *)
 let expected_value case =
-  let path = Filename.concat (Filename.concat corpus_root case) "expected-status.txt" in
+  let path = Filename.concat (Filename.concat sources_root case) "expected-status.txt" in
   let text = read path in
   match String.index_opt text '\n' with
   | Some i -> Int64.of_string (String.sub text 0 i)
@@ -82,7 +86,7 @@ let expected_value case =
 let cases () =
   Sys.readdir corpus_root |> Array.to_list
   |> List.filter (fun c ->
-      Sys.file_exists (Filename.concat (Filename.concat corpus_root c) "source"))
+      Sys.file_exists (Filename.concat (Filename.concat corpus_root c) "manifest.txt"))
   |> List.sort compare
 
 (* {1 Assembling the fixture at the profile's addresses}
@@ -102,7 +106,7 @@ let address_for profile section =
   | ".text" -> Abi.code_addr profile
   | ".rodata" -> Abi.rodata_addr profile
   | ".data" -> Abi.data_addr profile
-  (* M3 (.ai/asm_plan.md §12): a real NOBITS section is now possible, so it
+  (* M3 (docs/design.md §12): a real NOBITS section is now possible, so it
      needs its own address rather than aliasing .data's - two segments at one
      address was exactly M1's silent behavior Image.bind_image no longer
      tolerates once more than one segment can be nonempty (image.ml's
@@ -301,7 +305,7 @@ let describe (img : Image.t) =
    evidence of a defect, and only this layer knows which verdict was wanted.
    [Qemu_user.run] has no notion of an expected outcome and cannot tell "this
    is run_control working as intended" from "this is a real conformance
-   failure" - so the retry decision, and the [ASM_QEMU_TRACE] gate, live here.
+   failure" - so the retry decision, and the [RIVET_QEMU_TRACE] gate, live here.
 
    Only re-runs on an actual failure, and only when opted in: a default run
    (env unset) never calls [Qemu_user.run] a second time, so its output is
@@ -309,7 +313,7 @@ let describe (img : Image.t) =
 let maybe_trace ~abi_version ~profile ~manifest = function
   | Ok_ _ -> ()
   | Bad _ -> (
-      match Sys.getenv_opt "ASM_QEMU_TRACE" with
+      match Sys.getenv_opt "RIVET_QEMU_TRACE" with
       | None -> ()
       | Some _ -> (
           let traced =
@@ -320,10 +324,10 @@ let maybe_trace ~abi_version ~profile ~manifest = function
               ()
           in
           match traced.Qemu_user.trace with
-          | Some t -> Printf.printf "  trace (ASM_QEMU_TRACE):\n%s\n" t
-          | None -> Printf.printf "  trace (ASM_QEMU_TRACE): qemu wrote none\n"))
+          | Some t -> Printf.printf "  trace (RIVET_QEMU_TRACE):\n%s\n" t
+          | None -> Printf.printf "  trace (RIVET_QEMU_TRACE): qemu wrote none\n"))
 
-(* M4 (.ai/asm_plan.md §12): how many profiles each REQUIRED case (one whose
+(* M4 (docs/design.md §12): how many profiles each REQUIRED case (one whose
    manifest declares [abi-version: 3] - an opt-in, not the default) was
    actually attempted on, i.e. reached [assemble] rather than being skipped
    for an unsupported target. Checked after the whole profile loop

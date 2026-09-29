@@ -1,9 +1,9 @@
 (* Do this assembler and GNU as produce the same bytes?
 
-   test/differential asks that of one CompCert fixture per target. What it can
+   test/differential asks that of one the compiler fixture per target. What it can
    establish is bounded by what those fixtures contain: 24 encoding forms, all
    of them a function prologue and epilogue. This file asks the same question
-   over the whole corpus tools/asm-gas-xref.sh builds.
+   over the whole corpus scripts/asm-gas-xref.sh builds.
 
    Two trees, two different questions:
 
@@ -13,7 +13,7 @@
      the input is not in question. A rejection here is a bug.
 
    - [frontier] is the assembly in this tree that a real toolchain reads: our
-     own ABI helpers, and CompCert's runtime library. GNU as assembles all of
+     own ABI helpers, and the compiler's runtime library. GNU as assembles all of
      it. This assembler mostly cannot, by construction - contracts.md §2.3
      freezes M1 at 24 forms - so a rejection is a boundary rather than a
      failure. What must never happen is the third outcome: both assemblers
@@ -54,7 +54,7 @@ let bytes_of_hex_file path =
           if tok <> "" then Buffer.add_char buf (Char.chr (int_of_string ("0x" ^ tok)))));
   Buffer.contents buf
 
-(* The canonical target order tools/target-matrix.sh fixes, which is the order
+(* The canonical target order scripts/target-matrix.sh fixes, which is the order
    every generated artifact and manifest in this project uses. *)
 let targets = [ "x86_32"; "x86_64"; "arm"; "aarch64"; "riscv32"; "riscv64" ]
 
@@ -95,13 +95,12 @@ type verdict = Agree | Differ of string | Rejected of string | Gas_rejected
    placeholder (0), not the real displacement; the differential harness's own [our_bytes]
    has no such placeholder state to reproduce - [bind_image] always resolves every
    same-image reference to its real value, which is the entire point of a single-pass
-   assembler that also links (M3, asm/docs/corpus.md), and every fixture-oracle QEMU
+   assembler that also links (M3, the corpus notes), and every fixture-oracle QEMU
    execution test depends on exactly that behavior. So this specific relocation family is
    the one place two conforming assemblers may legitimately disagree on the raw bytes -
-   verified against real aarch64-linux-gnu-as/objdump for [runtime-vararg]: `b
-   __compcert_va_int64` (a tail call from `__compcert_va_composite` to an earlier function
-   in the same file) assembles to `14000000` (offset 0, deferred to
-   `R_AARCH64_JUMP26 __compcert_va_int64`) under real `as`, and to the real, already-
+   verified against real aarch64-linux-gnu-as/objdump: `b earlier_function` (a tail call
+   to an earlier function in the same file) assembles to `14000000` (offset 0, deferred
+   to `R_AARCH64_JUMP26 earlier_function`) under real `as`, and to the real, already-
    correct backward displacement under this project's own image binding. Every other
    relocation kind this corpus records (ADRP/ADD-lo12 pairs, PC-relative loads, ...) is
    *not* in this list: GNU computes and writes the real value for those directly, so a
@@ -109,7 +108,7 @@ type verdict = Agree | Differ of string | Rejected of string | Gas_rejected
 let deferred_relocation_kinds =
   [ "R_AARCH64_JUMP26"; "R_AARCH64_CALL26"; "R_ARM_CALL"; "R_ARM_JUMP24" ]
 
-(* [objdump.txt] carries lines like ["\t\t\tb0: R_AARCH64_JUMP26\t__compcert_va_int64"] -
+(* [objdump.txt] carries lines like ["\t\t\tb0: R_AARCH64_JUMP26\tsome_symbol"] -
    an offset, a colon, one of the [Elf_reloc] kind names, then the symbol. Extract the
    4-byte-word offsets of only the deferred-relocation kinds above. *)
 let deferred_relocation_offsets path =
@@ -295,42 +294,10 @@ let%expect_test "frontier corpus: agreement wherever both assemblers accept" =
   [%expect
     {|
     x86_32   fixture-asm_test_entry   agree
-    x86_32   runtime-i64_dtos         agree
-    x86_32   runtime-i64_dtou         agree
-    x86_32   runtime-i64_sar          agree
-    x86_32   runtime-i64_shl          agree
-    x86_32   runtime-i64_shr          agree
-    x86_32   runtime-i64_smulh        agree
-    x86_32   runtime-i64_stod         agree
-    x86_32   runtime-i64_stof         agree
-    x86_32   runtime-i64_udivmod      agree
-    x86_32   runtime-i64_umulh        agree
-    x86_32   runtime-i64_utod         agree
-    x86_32   runtime-i64_utof         agree
-    x86_32   runtime-vararg           agree
     x86_64   fixture-asm_test_entry   agree
-    x86_64   runtime-i64_utod         agree
-    x86_64   runtime-i64_utof         agree
-    x86_64   runtime-vararg           agree
     arm      fixture-asm_test_entry   agree
-    arm      runtime-i64_dtos         agree
-    arm      runtime-i64_dtou         agree
-    arm      runtime-i64_sar          agree
-    arm      runtime-i64_shl          agree
-    arm      runtime-i64_shr          agree
-    arm      runtime-i64_smulh        agree
-    arm      runtime-i64_stod         agree
-    arm      runtime-i64_stof         agree
-    arm      runtime-i64_udivmod      agree
-    arm      runtime-i64_umulh        agree
-    arm      runtime-i64_utod         agree
-    arm      runtime-i64_utof         agree
-    arm      runtime-vararg           agree
     aarch64  fixture-asm_test_entry   agree
-    aarch64  runtime-vararg           agree
     riscv32  fixture-asm_test_entry   agree
-    riscv32  runtime-vararg           agree
     riscv64  fixture-asm_test_entry   agree
-    riscv64  runtime-vararg           agree
 
-    38 agree, 0 differ, 15 beyond M1, 0 not assembled by GNU as |}]
+    6 agree, 0 differ, 6 beyond M1, 0 not assembled by GNU as |}]

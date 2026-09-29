@@ -1,0 +1,64 @@
+gcc-args:aarch64	-O1 -fno-inline -fno-section-anchors -ffreestanding -fno-pic -fno-pie -fno-asynchronous-unwind-tables
+gcc-args:arm	-marm -O1 -fno-inline -fno-section-anchors -ffreestanding -fno-pic -fno-pie -fno-asynchronous-unwind-tables
+gcc-args:riscv32	-O1 -fno-inline -fno-section-anchors -ffreestanding -fno-pic -fno-pie -fno-asynchronous-unwind-tables -march=rv32imafd -mabi=ilp32d -mno-relax -msmall-data-limit=0
+gcc-args:riscv64	-O1 -fno-inline -fno-section-anchors -ffreestanding -fno-pic -fno-pie -fno-asynchronous-unwind-tables -march=rv64imafd -mabi=lp64d -mno-relax -msmall-data-limit=0
+gcc-args:x86_32	-O1 -fno-inline -fno-section-anchors -ffreestanding -fno-pic -fno-pie -fno-asynchronous-unwind-tables
+gcc-args:x86_64	-O1 -fno-inline -fno-section-anchors -ffreestanding -fno-pic -fno-pie -fno-asynchronous-unwind-tables
+gcc-version:aarch64	aarch64-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0
+gcc-version:arm	arm-linux-gnueabihf-gcc (Debian 14.2.0-19) 14.2.0
+gcc-version:riscv32	riscv32-linux-gnu-gcc (crosstool-NG 1.27.0) 14.2.0
+gcc-version:riscv64	riscv64-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0
+gcc-version:x86_32	i686-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0
+gcc-version:x86_64	x86_64-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0
+generator	rivet-tools fixture regen
+sha256:aarch64/cond_select.s	c6e1b7f54d45c5ee34bb82c63df8540f6e50e107562c8ddfb39cd88e4621669d
+sha256:aarch64/oracle/linked/text.hex	a10f3a25ff1f99b36556c64f900db6a7b2df0acec8fac77f7405bbd066a51750
+sha256:aarch64/oracle/objdump.txt	b9e39b8f9b677f994bb898002cb149572a762449c9aad32d71d0e9b4970269e4
+sha256:aarch64/oracle/readelf.txt	86def20a6eb463671a123985dc3024fb9856651aca3b514e31f4865ccad1802b
+sha256:aarch64/oracle/reloc.txt	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256:aarch64/oracle/symbols.txt	22005b573c31428cf1f2a3192ef98962b9e9bc36b4400118452fd2a2150f1c92
+sha256:aarch64/oracle/text.hex	a10f3a25ff1f99b36556c64f900db6a7b2df0acec8fac77f7405bbd066a51750
+sha256:aarch64/oracle/tool-versions.txt	75d5e93062bd6e9228dc0921cc4f7a4b54db958306f297ec5a83988e8584e18a
+sha256:arm/cond_select.s	1548503e20d4b3e4ec3e74e537f6254196f6b2f7f8977b5cbbc51fefa2b34fe7
+sha256:arm/oracle/linked/text.hex	51c0ddf2df54d4ab35b04f2c5fd601801ad5dfd38a689b5fc16afa7a5c8a5302
+sha256:arm/oracle/objdump.txt	af9ce892a16f9f51293b9a01825e6f60f28a8ef8f10d891278ccac2b2e5985aa
+sha256:arm/oracle/readelf.txt	7cc2e0e22e2abbf7daf46b32fa5f374001af0b26bb3d5758dbba57ff556a3fb0
+sha256:arm/oracle/reloc.txt	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256:arm/oracle/symbols.txt	b0d31ae8bf1875a9f6333e5ba9058c686d07a6738d839cfe0754de51694449c8
+sha256:arm/oracle/text.hex	51c0ddf2df54d4ab35b04f2c5fd601801ad5dfd38a689b5fc16afa7a5c8a5302
+sha256:arm/oracle/tool-versions.txt	75d5e93062bd6e9228dc0921cc4f7a4b54db958306f297ec5a83988e8584e18a
+sha256:expected-status.txt	084c799cd551dd1d8d5c5f9a5d593b2e931f5e36122ee5c793c1d08a19839cc0
+sha256:riscv32/cond_select.s	68eeba8ad6f7a34702e0c424687b7bc9f5d3988681212ba211da319344664148
+sha256:riscv32/oracle/linked/text.hex	47508ae3126586a19947abcf3d26df5cac764c43ccfe15a914868f0f41d5f3c1
+sha256:riscv32/oracle/objdump.txt	9785832022d89af6a2912b9e80f64abdc55851b31ac1deece8fee8c236be6c14
+sha256:riscv32/oracle/readelf.txt	a2a2d032858febe80d8872d86551f38914f3b38987c394e3e58ad7da5e4084cc
+sha256:riscv32/oracle/reloc.txt	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256:riscv32/oracle/symbols.txt	1883dd4f332a2bc07e6508e7f3f15d5f476c03fa44761fded5f889e5178aaa49
+sha256:riscv32/oracle/text.hex	47508ae3126586a19947abcf3d26df5cac764c43ccfe15a914868f0f41d5f3c1
+sha256:riscv32/oracle/tool-versions.txt	0466671691fd1bc0fbbbf56dda549f8004f178c1718fb0703f5aa81fe82cf8f3
+sha256:riscv64/cond_select.s	d9b132701638006d3db3ec644b58ce4f1873ed13d01d2d27cd547e3d2ca6b43b
+sha256:riscv64/oracle/linked/text.hex	b2918be800f307373ac752a952d10a04efe7daad2c696f4958fe5a113beaf61f
+sha256:riscv64/oracle/objdump.txt	eb9f1cfe0e845e351ac2fd79db82e7ee601df172e1bbe886f61ef9bae7d4b188
+sha256:riscv64/oracle/readelf.txt	de6452577d0e862d9fc50fe6f3deab2552978898277e0088555e064ca5607aee
+sha256:riscv64/oracle/reloc.txt	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256:riscv64/oracle/symbols.txt	ca30b3c491d3f8496788f4768f3aa3b5d011d81b491d8defa62e65b127f5e9a0
+sha256:riscv64/oracle/text.hex	b2918be800f307373ac752a952d10a04efe7daad2c696f4958fe5a113beaf61f
+sha256:riscv64/oracle/tool-versions.txt	75d5e93062bd6e9228dc0921cc4f7a4b54db958306f297ec5a83988e8584e18a
+sha256:source/cond_select.c	f5742126bc0604e89da75f396365da4172f505bf2975cdac84846a540ba214fb
+sha256:x86_32/cond_select.s	46420dbf8d3aa3e82dd3e0cb650564b043dbc92d05ceb42807a4c151c8a4d3aa
+sha256:x86_32/oracle/linked/text.hex	14ec424e29b238135de3b1181042d2b75ea2d816e2d5f205c4ab5acbe7ed8fdb
+sha256:x86_32/oracle/objdump.txt	6a1f7f7f1123d3d8b28b8b18bb56ac018fa921ed4d59e0b3a6325ec7c2f0987c
+sha256:x86_32/oracle/readelf.txt	7265253d3e957da800b62f7f24e955943127dc2748bc05e3e6e4525c1c843456
+sha256:x86_32/oracle/reloc.txt	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256:x86_32/oracle/symbols.txt	2aee5c8d97022948bfb86fe951b75d7db917dbf5755b4cdf324a3d71b4a5036d
+sha256:x86_32/oracle/text.hex	14ec424e29b238135de3b1181042d2b75ea2d816e2d5f205c4ab5acbe7ed8fdb
+sha256:x86_32/oracle/tool-versions.txt	75d5e93062bd6e9228dc0921cc4f7a4b54db958306f297ec5a83988e8584e18a
+sha256:x86_64/cond_select.s	2abc23e03b0a541fef205254e731c3d3cc223d12b516696d3804746600146598
+sha256:x86_64/oracle/linked/text.hex	636a1476030158a33c35dfebb1c90a582b93094c47f4b57a0ceeb8a7d84d65f6
+sha256:x86_64/oracle/objdump.txt	331e7669c05adf14d5879975ba6518ec523e3ce1675ba40ab8a4aa2e3a173033
+sha256:x86_64/oracle/readelf.txt	2f5469fdf87d90d8ae955e705536e39786b8c15fb640eea639bbd91524de4547
+sha256:x86_64/oracle/reloc.txt	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256:x86_64/oracle/symbols.txt	2aee5c8d97022948bfb86fe951b75d7db917dbf5755b4cdf324a3d71b4a5036d
+sha256:x86_64/oracle/text.hex	636a1476030158a33c35dfebb1c90a582b93094c47f4b57a0ceeb8a7d84d65f6
+sha256:x86_64/oracle/tool-versions.txt	75d5e93062bd6e9228dc0921cc4f7a4b54db958306f297ec5a83988e8584e18a
+source	source/cond_select.c

@@ -1,4 +1,4 @@
-/* M3's cross-file data reference slice (.ai/asm_plan.md Milestone 3, section 12).
+/* M3's cross-file data reference slice (docs/design.md Milestone 3, section 12).
 
    shared_value is declared but never defined in this translation unit - the
    defining half lives in data.c, a separate input to the same link. This is

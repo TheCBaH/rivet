@@ -84,5 +84,4 @@ by-extension:xsavec:2
 by-extension:xsaveopt:2
 by-extension:xsaves:4
 by-state:unknown:2781
-compcert-emitted:0
 gcc-emitted:0

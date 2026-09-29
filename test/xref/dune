@@ -1,4 +1,4 @@
-; The GNU as cross-reference (tools/asm-gas-xref.sh).
+; The GNU as cross-reference (scripts/asm-gas-xref.sh).
 ;
 ; Reads the committed corpus as ordinary files and re-assembles each input with
 ; this project's own assembler, so this needs no cross toolchain and runs in
@@ -21,4 +21,4 @@
  (preprocess
   (pps ppx_expect))
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

@@ -1,4 +1,4 @@
-; The §16.3 snippets (asm/docs/exec-abi-v1.md), assembled from ASTs.
+; The §16.3 snippets (docs/exec-abi-v1.md), assembled from ASTs.
 ;
 ; Three stanzas over one corpus, and the split is what lets one AST produce all
 ; three renderings without any of them being written twice:
@@ -7,7 +7,7 @@
 ;                    and the per-profile view test/oracle's conformance driver
 ;                    runs under QEMU.
 ;   test_snippets    the expect baselines: one block per snippet per target.
-;   snippet_emit     writes each snippet as a .s file for tools/asm-gas-xref.sh,
+;   snippet_emit     writes each snippet as a .s file for scripts/asm-gas-xref.sh,
 ;                    so GNU as reads text produced by the same canonical printer
 ;                    the baselines pin. An executable rather than a rule,
 ;                    because `make asm-test` must never acquire a cross
@@ -31,7 +31,7 @@
 ; error rather than a runtime one.
 ;
 ; ppx_expect, hence native only, and outside the production closure by
-; construction - tools/asm-check-purity.sh classifies test/ as a non-production
+; construction - scripts/asm-check-purity.sh classifies test/ as a non-production
 ; tree and rejects any production library that reaches it.
 
 (library
@@ -52,7 +52,7 @@
   riscv64_encode
   fmt)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name test_snippets)
@@ -63,7 +63,7 @@
  (preprocess
   (pps ppx_expect))
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (executable
  (name snippet_emit)
@@ -71,4 +71,4 @@
  (modes exe)
  (libraries snippet_corpus unix)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))

@@ -13,7 +13,7 @@
    makes promotion a decision rather than a rubber stamp: {!Conform} executes
    them under QEMU, where [sp_align] must return 42 only when §11's entry
    alignment really holds and [trap] must fault at its instruction, and
-   [tools/asm-gas-xref.sh] assembles the same sequences with GNU as.
+   [scripts/asm-gas-xref.sh] assembles the same sequences with GNU as.
 
    {1 One block per snippet}
 
@@ -40,27 +40,17 @@ let check = function
 
 let%expect_test "x86_64 return42" =
   check X86_64_corpus.cases.return42;
-  [%expect
-    {|
-    | subq $8, %rsp
-    | leaq 16(%rsp), %rax
-    | movq %rax, (%rsp)
+  [%expect {|
     | movl $42, %eax
-    | addq $8, %rsp
     | ret
-    48 83 ec 08 48 8d 44 24 10 48 89 04 24 b8 2a 00 00 00 48 83 c4 08 c3 |}]
+    b8 2a 00 00 00 c3 |}]
 
 let%expect_test "x86_64 return41" =
   check X86_64_corpus.cases.return41;
-  [%expect
-    {|
-    | subq $8, %rsp
-    | leaq 16(%rsp), %rax
-    | movq %rax, (%rsp)
+  [%expect {|
     | movl $41, %eax
-    | addq $8, %rsp
     | ret
-    48 83 ec 08 48 8d 44 24 10 48 89 04 24 b8 29 00 00 00 48 83 c4 08 c3 |}]
+    b8 29 00 00 00 c3 |}]
 
 let%expect_test "x86_64 trap" =
   check X86_64_corpus.cases.trap;
@@ -130,27 +120,17 @@ let%expect_test "x86_64 callee_clobber" =
 
 let%expect_test "x86_32 return42" =
   check X86_32_corpus.cases.return42;
-  [%expect
-    {|
-    | subl $12, %esp
-    | leal 16(%esp), %eax
-    | movl %eax, (%esp)
+  [%expect {|
     | movl $42, %eax
-    | addl $12, %esp
     | ret
-    83 ec 0c 8d 44 24 10 89 04 24 b8 2a 00 00 00 83 c4 0c c3 |}]
+    b8 2a 00 00 00 c3 |}]
 
 let%expect_test "x86_32 return41" =
   check X86_32_corpus.cases.return41;
-  [%expect
-    {|
-    | subl $12, %esp
-    | leal 16(%esp), %eax
-    | movl %eax, (%esp)
+  [%expect {|
     | movl $41, %eax
-    | addl $12, %esp
     | ret
-    83 ec 0c 8d 44 24 10 89 04 24 b8 29 00 00 00 83 c4 0c c3 |}]
+    b8 29 00 00 00 c3 |}]
 
 let%expect_test "x86_32 trap" =
   check X86_32_corpus.cases.trap;
@@ -219,31 +199,17 @@ let%expect_test "x86_32 callee_clobber" =
 
 let%expect_test "arm return42" =
   check Arm_corpus.cases.return42;
-  [%expect
-    {|
-    | mov ip, sp
-    | sub sp, sp, #8
-    | str ip, [sp, #0]
-    | str lr, [sp, #4]
+  [%expect {|
     | mov r0, #42
-    | ldr lr, [sp, #4]
-    | add sp, sp, #8
     | bx lr
-    0d c0 a0 e1 08 d0 4d e2 00 c0 8d e5 04 e0 8d e5 2a 00 a0 e3 04 e0 9d e5 08 d0 8d e2 1e ff 2f e1 |}]
+    2a 00 a0 e3 1e ff 2f e1 |}]
 
 let%expect_test "arm return41" =
   check Arm_corpus.cases.return41;
-  [%expect
-    {|
-    | mov ip, sp
-    | sub sp, sp, #8
-    | str ip, [sp, #0]
-    | str lr, [sp, #4]
+  [%expect {|
     | mov r0, #41
-    | ldr lr, [sp, #4]
-    | add sp, sp, #8
     | bx lr
-    0d c0 a0 e1 08 d0 4d e2 00 c0 8d e5 04 e0 8d e5 29 00 a0 e3 04 e0 9d e5 08 d0 8d e2 1e ff 2f e1 |}]
+    29 00 a0 e3 1e ff 2f e1 |}]
 
 let%expect_test "arm trap" =
   check Arm_corpus.cases.trap;
@@ -314,27 +280,17 @@ let%expect_test "arm callee_clobber" =
 
 let%expect_test "aarch64 return42" =
   check Aarch64_corpus.cases.return42;
-  [%expect
-    {|
-    | mov x15, sp
-    | stp x15, x30, [sp, #-16]!
+  [%expect {|
     | movz w0, #42
-    | ldr x30, [sp, #8]
-    | add sp, sp, #16
     | ret
-    ef 03 00 91 ef 7b bf a9 40 05 80 52 fe 07 40 f9 ff 43 00 91 c0 03 5f d6 |}]
+    40 05 80 52 c0 03 5f d6 |}]
 
 let%expect_test "aarch64 return41" =
   check Aarch64_corpus.cases.return41;
-  [%expect
-    {|
-    | mov x15, sp
-    | stp x15, x30, [sp, #-16]!
+  [%expect {|
     | movz w0, #41
-    | ldr x30, [sp, #8]
-    | add sp, sp, #16
     | ret
-    ef 03 00 91 ef 7b bf a9 20 05 80 52 fe 07 40 f9 ff 43 00 91 c0 03 5f d6 |}]
+    20 05 80 52 c0 03 5f d6 |}]
 
 let%expect_test "aarch64 trap" =
   check Aarch64_corpus.cases.trap;

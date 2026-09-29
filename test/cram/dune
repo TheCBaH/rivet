@@ -1,7 +1,7 @@
-; The three-build equality gate (.ai/asm_plan.md §11.6) as one cram test.
+; The three-build equality gate (docs/design.md §11.6) as one cram test.
 ;
 ; There is a single committed baseline — bigint_dump.t — and the backend that
-; produces it is chosen by ASM_BACKEND at build time. Running the same .t under
+; produces it is chosen by RIVET_BACKEND at build time. Running the same .t under
 ; native, jsoo and melange is therefore literally an equality check: any
 ; divergence shows up as a cram diff against the one reviewed transcript,
 ; instead of as a comparison between two uncommitted outputs.
@@ -19,13 +19,13 @@
 ; rule time ($PWD inside an action is the rule's own directory). The
 ; (alias_rec) dep is what makes the emit actually exist before that runs.
 ;
-; ASM_BACKEND=melange additionally needs ASM_MELANGE=true, since melange mode is
+; RIVET_BACKEND=melange additionally needs RIVET_MELANGE=true, since melange mode is
 ; gated at the library level (see melange/dune); the Makefile sets both.
 
 (rule
  (targets run.sh)
  (enabled_if
-  (= %{env:ASM_BACKEND=native} native))
+  (= %{env:RIVET_BACKEND=native} native))
  (action
   (with-stdout-to
    run.sh
@@ -34,7 +34,7 @@
 (rule
  (targets run.sh)
  (enabled_if
-  (= %{env:ASM_BACKEND=native} jsoo))
+  (= %{env:RIVET_BACKEND=native} jsoo))
  (action
   (with-stdout-to
    run.sh
@@ -43,7 +43,7 @@
 (rule
  (targets run.sh)
  (enabled_if
-  (= %{env:ASM_BACKEND=native} melange))
+  (= %{env:RIVET_BACKEND=native} melange))
  (deps
   (alias_rec ../../melange/test/lib/foundation/default))
  (action
@@ -59,7 +59,7 @@
 ; own because a second (cram) stanza would need a second directory anyway, and
 ; these belong beside the other transcripts that read committed bytes.
 ;
-; The corpus is a glob rather than a list: tools/asm-gas-xref.sh --regen decides
+; The corpus is a glob rather than a list: scripts/asm-gas-xref.sh --regen decides
 ; how many cases there are, and a hand-maintained dep list would have to be
 ; edited every time the AST corpus learns a new snippet - which is exactly the
 ; second description this work exists to avoid.
@@ -79,7 +79,7 @@
   (glob_files_rec %{workspace_root}/fixtures/gas-xref/**)))
 
 ; The assembler-level three-build gate. Same shape as bigint_dump above: one
-; committed baseline, and ASM_BACKEND chooses which artifact produces it. The
+; committed baseline, and RIVET_BACKEND chooses which artifact produces it. The
 ; two baselines are separate files because they exercise different closures -
 ; bigint_dump reaches only foundation, asm_dump reaches every production
 ; library including all four targets - and a single merged transcript would not
@@ -88,7 +88,7 @@
 (rule
  (targets run_asm.sh)
  (enabled_if
-  (= %{env:ASM_BACKEND=native} native))
+  (= %{env:RIVET_BACKEND=native} native))
  (action
   (with-stdout-to
    run_asm.sh
@@ -97,7 +97,7 @@
 (rule
  (targets run_asm.sh)
  (enabled_if
-  (= %{env:ASM_BACKEND=native} jsoo))
+  (= %{env:RIVET_BACKEND=native} jsoo))
  (action
   (with-stdout-to
    run_asm.sh
@@ -106,7 +106,7 @@
 (rule
  (targets run_asm.sh)
  (enabled_if
-  (= %{env:ASM_BACKEND=native} melange))
+  (= %{env:RIVET_BACKEND=native} melange))
  (deps
   (alias_rec ../../melange/test/dump/default))
  (action
@@ -117,13 +117,13 @@
     -c
     "printf 'exec node %s/../../melange/test/dump/js/melange/test/dump/asm_dump.js\\n' \"$PWD\""))))
 
-; The manifest three-build gate (.ai/asm_plan.md M4 Phase 8), same run.sh
+; The manifest three-build gate (docs/design.md M4 Phase 8), same run.sh
 ; indirection as run_asm.sh above and for the same reason.
 
 (rule
  (targets run_manifest.sh)
  (enabled_if
-  (= %{env:ASM_BACKEND=native} native))
+  (= %{env:RIVET_BACKEND=native} native))
  (action
   (with-stdout-to
    run_manifest.sh
@@ -132,7 +132,7 @@
 (rule
  (targets run_manifest.sh)
  (enabled_if
-  (= %{env:ASM_BACKEND=native} jsoo))
+  (= %{env:RIVET_BACKEND=native} jsoo))
  (action
   (with-stdout-to
    run_manifest.sh
@@ -141,7 +141,7 @@
 (rule
  (targets run_manifest.sh)
  (enabled_if
-  (= %{env:ASM_BACKEND=native} melange))
+  (= %{env:RIVET_BACKEND=native} melange))
  (deps
   (alias_rec ../../melange/test/dump/default))
  (action

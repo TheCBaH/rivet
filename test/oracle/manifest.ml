@@ -1,4 +1,4 @@
-(* The ABI v1 manifest writer (asm/docs/exec-abi-v1.md §8, §10.1).
+(* The ABI v1 manifest writer (docs/exec-abi-v1.md §8, §10.1).
 
    Two jobs, and the second one shapes the interface. The first is to serialize
    a bound image into the canonical wire form the helpers accept. The second is

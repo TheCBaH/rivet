@@ -1,0 +1,1 @@
+fixtures/gcc-14/return42/arm/asm_test_entry.s

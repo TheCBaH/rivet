@@ -1,4 +1,4 @@
-(* Synthetic host-side coverage for ABI v3's wire layout (asm/docs/exec-abi-v3.md
+(* Synthetic host-side coverage for ABI v3's wire layout (docs/exec-abi-v3.md
    §2), scoped exactly to Phase 2's split exit criterion: [Manifest.serialize]'s
    byte layout for the observation-descriptor table, given synthetic
    segment/observation inputs - no helper, no [conform.exe]. Execution-based v3

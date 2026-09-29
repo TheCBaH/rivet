@@ -1,0 +1,24 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_test_entry>:
+   0:	83 ec 10             	sub    $0x10,%esp
+   3:	c7 44 24 0c 06 00 00 	movl   $0x6,0xc(%esp)
+   a:	00 
+   b:	8b 44 24 0c          	mov    0xc(%esp),%eax
+   f:	85 c0                	test   %eax,%eax
+  11:	7e 21                	jle    34 <asm_test_entry+0x34>
+  13:	b8 00 00 00 00       	mov    $0x0,%eax
+  18:	ba 00 00 00 00       	mov    $0x0,%edx
+  1d:	8d 76 00             	lea    0x0(%esi),%esi
+  20:	83 c2 07             	add    $0x7,%edx
+  23:	83 c0 01             	add    $0x1,%eax
+  26:	8b 4c 24 0c          	mov    0xc(%esp),%ecx
+  2a:	39 c1                	cmp    %eax,%ecx
+  2c:	7f f2                	jg     20 <asm_test_entry+0x20>
+  2e:	89 d0                	mov    %edx,%eax
+  30:	83 c4 10             	add    $0x10,%esp
+  33:	c3                   	ret
+  34:	ba 00 00 00 00       	mov    $0x0,%edx
+  39:	eb f3                	jmp    2e <asm_test_entry+0x2e>

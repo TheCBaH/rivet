@@ -986,7 +986,7 @@ _start:
         movw    $ST_RUNNING, R_STATUS(%r13)
 
         /* §10.3: SysV requires a clear direction flag at a function boundary,
-           and CompCert-generated string operations must not inherit incidental
+           and compiler-generated string operations must not inherit incidental
            helper state. */
         cld
         call    *%r11

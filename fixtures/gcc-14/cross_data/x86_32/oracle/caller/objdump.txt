@@ -1,0 +1,11 @@
+
+
+Disassembly of section .text:
+
+00000000 <asm_test_entry>:
+   0:	a1 00 00 00 00       	mov    0x0,%eax
+			1: R_386_32	shared_value
+   5:	83 c0 16             	add    $0x16,%eax
+   8:	a3 00 00 00 00       	mov    %eax,0x0
+			9: R_386_32	shared_value
+   d:	c3                   	ret

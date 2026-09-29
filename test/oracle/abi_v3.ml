@@ -1,10 +1,10 @@
-(* Additive execution ABI v3 metadata (asm/docs/exec-abi-v3.md). ABI v1 and v2
+(* Additive execution ABI v3 metadata (docs/exec-abi-v3.md). ABI v1 and v2
    remain in [Abi]/[Abi_v2] unchanged; this module owns the result-vector
    extension - the observation-descriptor table and its wire constants.
 
    Proven against the four legacy profiles first (docs/exec-abi-v3.md §6,
-   .ai/asm_plan.md M4), then against RISC-V (both XLEN profiles, sharing one
-   validator per asm/helpers/riscv.c's own header comment - the wire format
+   docs/design.md M4), then against RISC-V (both XLEN profiles, sharing one
+   validator per helpers/riscv.c's own header comment - the wire format
    is profile-agnostic, and RISC-V's v3 support is the same ABI_VERSION-guarded
    C source as its v2 path rather than a second file). [all_profiles] is
    [Abi.all_profiles] (the full six-profile v2 set): every profile this

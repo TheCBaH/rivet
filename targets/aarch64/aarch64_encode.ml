@@ -1,4 +1,4 @@
-(* The aarch64 (A64) target description (.ai/asm_plan.md §5.1).
+(* The aarch64 (A64) target description (docs/design.md §5.1).
 
    Deliberately not in a family functor with ARM. A64 is a different
    instruction set that happens to share a vendor: no condition field, no
@@ -73,7 +73,7 @@ end
    [Reg]'s own SP/zero-register ambiguity is resolved by instruction
    position, so a shared type would carry a distinction every consumer has
    to re-check for no case that needs it. Only [d]/[s] are here (M5's FMOV/
-   FCMP-immediate scope, asm/docs/corpus.md); [q]/[v] (NEON) are not. *)
+   FCMP-immediate scope, the corpus notes); [q]/[v] (NEON) are not. *)
 module Freg = struct
   type t = { num : int; double : bool }
 
@@ -173,7 +173,7 @@ module Operand = struct
     | Imm v -> Fmt.pf ppf "#%a" Bigint.pp v
     (* Objdump's own spelling ([%.18e], verified against real
        [aarch64-linux-gnu-objdump]: [#1.000000000000000000e+00], not
-       CompCert's source spelling [#1.0000000] - same rule as [Reg]'s
+       the compiler's source spelling [#1.0000000] - same rule as [Reg]'s
        canonical names ([sl]/[fp] rather than the [r10]/[r11] a source file
        might have written), because this printer is also what the decoded
        canonical dump uses and that dump is compared against objdump's. *)
@@ -484,6 +484,10 @@ module Opcode = struct
     | m ->
         if String.length m > 2 && String.sub m 0 2 = "b." then
           Option.map (fun c -> Bcond c) (Cond.of_name (String.sub m 2 (String.length m - 2)))
+        else if String.length m = 3 && m.[0] = 'b' then
+          (* gcc prints [bge]/[ble]/[bne]..., which GNU as reads as [b.ge]/[b.le]/[b.ne]. Every
+             real three-letter mnemonic beginning with [b] was matched above. *)
+          Option.map (fun c -> Bcond c) (Cond.of_name (String.sub m 1 2))
         else None
 end
 
@@ -565,7 +569,7 @@ let extend_alu_of_name = function
 let logical_name = function 0 -> "and" | 1 -> "orr" | 2 -> "eor" | 3 -> "ands" | _ -> "?"
 
 (* "Floating-point data-processing (2 source)"'s own 4-bit opcode field (M5
-   corpus evidence: asm/docs/corpus.md's almabench.c/fftw.c/... - fadd/fsub/
+   corpus evidence: almabench.c/fftw.c/... - fadd/fsub/
    fmul/fdiv). [fmax]/[fmin]/[fmaxnm]/[fminnm]/[fnmul] share the identical
    word shape at other opcode values but are not evidenced, so none of them
    is implemented alongside these four. *)
@@ -578,7 +582,7 @@ let fbinop_opcode = function
   | Opcode.Fsub -> Some 3
   | _ -> None
 
-(* UBFM's own two evidenced surface aliases (M5 corpus evidence: asm/docs/corpus.md's [ubfx]/
+(* UBFM's own two evidenced surface aliases (M5 corpus evidence: [ubfx]/
    [ubfiz]). Real hardware's canonical disassembly additionally prefers [uxtb]/[uxth]/[lsr] over
    these at particular [immr]/[imms] values, but nothing in this codebase compares decoded text
    against real objdump's text - only encoded bytes are compared (test/xref/test_xref.ml: "nothing
@@ -630,14 +634,14 @@ module Lowered = struct
         (** [ldp]/[stp] with a post-indexed ([post], [[xn], #off]) or signed-offset ([[xn, #off]])
             address - the LDP/STP family's other two index modes beside {!Stp_pre}'s pre-index
             store, which keeps its own constructor. [rt]/[rt2]'s width picks the access size (a
-            32-bit pair scales [offset] by 4, a 64-bit pair by 8). Embedded-corpus evidence: CompCert's
+            32-bit pair scales [offset] by 4, a 64-bit pair by 8). Embedded-corpus evidence: the compiler's
             inline struct copy ([ldp x16, x17, [x30], #16] / [stp x16, x17, [x14], #16]) and its
             large-frame prologue ([stp x15, x30, [sp, #0]]). *)
     | Movz of { rd : Reg.t; imm16 : int64; hw : int }
     | Movn of { rd : Reg.t; imm16 : int64; hw : int }
         (** [movn rd, #imm16, lsl #n] - {!Movz}'s bitwise-complement sibling ([opc] = 0 versus 2 in
             the shared MOVZ/MOVN/MOVK family), evidenced only with [hw] = 0 (M5 corpus evidence:
-            asm/docs/corpus.md's [qsort.c]). Its own constructor rather than a field on {!Movz}: the
+            [qsort.c]). Its own constructor rather than a field on {!Movz}: the
             two opcodes never round-trip into the same mnemonic the way a single flag would suggest
             - real objdump instead re-aliases a fully-representable [movn] as [mov #-N], which this
             project deliberately does not replicate (nothing here needs `--dump`'s text to match that
@@ -645,13 +649,13 @@ module Lowered = struct
     | Movk of { rd : Reg.t; imm16 : int64; hw : int }
         (** [movk rd, #imm16, lsl #n] - {!Movz}/{!Movn}'s "keep the other halfwords" sibling
             ([opc] = 3, the same family), evidenced only with [hw] = 1 (M5 corpus evidence:
-            asm/docs/corpus.md's [qsort.c]/[sha1.c]/[sha3.c]'s own multi-instruction 64-bit-constant
+            [qsort.c]/[sha1.c]/[sha3.c]'s own multi-instruction 64-bit-constant
             materialization). *)
     | Ubfm of { rd : Reg.t; rn : Reg.t; immr : int; imms : int }
         (** [ubfx]/[ubfiz rd, rn, #lsb, #width] - the general unsigned-bitfield-move word ([immr]/
             [imms], the same two-field shape {!Logical_imm}'s bitmask codec derives values from), a
             genuinely general instruction of which [ubfx]/[ubfiz] are the two evidenced aliases (M5
-            corpus evidence: asm/docs/corpus.md's [aes.c]'s own byte-extraction idiom for [ubfx],
+            corpus evidence: [aes.c]'s own byte-extraction idiom for [ubfx],
             [vmach.c]/[perlin.c]/etc. for [ubfiz]). [ubfx] is [immr = lsb, imms = lsb + width - 1];
             [ubfiz] is [immr = (datasize - lsb) mod datasize, imms = width - 1] - both round-trip
             through this one pair of fields, and printing always picks [ubfx] when [imms >= immr]
@@ -663,12 +667,12 @@ module Lowered = struct
             general [bfxil]/[sbfx] a nonzero [N] would select) is therefore not attempted. *)
     | Sbfm of { rd : Reg.t; rn : Reg.t; immr : int; imms : int }
         (** [sbfx rd, rn, #lsb, #width] - {!Ubfm}'s signed sibling ([opc] = 0 versus 2), evidenced
-            only through its [sbfx] alias (embedded-corpus evidence: CompCert's signed bitfield
+            only through its [sbfx] alias (compiler-output evidence: the compiler's signed bitfield
             reads), so [immr]/[imms] always print back as [sbfx]. {!Sxtw} is the fixed
             [immr = 0, imms = 31] 64-bit instance and decodes first. *)
     | Sxtw of { rd : Reg.t; rn : Reg.t }
         (** [sxtw xd, wn] - sign-extend, an [SBFM xd, xn, #0, #31] alias fixed at that one
-            [immr]/[imms] pair (M5 corpus evidence: asm/docs/corpus.md's [chomp.c]/[fannkuch.c]/
+            [immr]/[imms] pair (M5 corpus evidence: [chomp.c]/[fannkuch.c]/
             etc.); {!Sbfm} is the general signed bitfield move it is one instance of.
             [uxtw] needs no sibling constructor: on real hardware, writing a 32-bit register already
             zeroes the upper 32 bits of its 64-bit view, so [uxtw xd, wn] assembles to the identical
@@ -676,7 +680,7 @@ module Lowered = struct
             covers it. *)
     | Cbz of { nz : bool; rt : Reg.t; target : Asm_core.Lowered_ast.branch }
         (** [cbz]/[cbnz rt, target] - compare-and-branch, [nz] true for [cbnz] (M5 corpus evidence:
-            asm/docs/corpus.md's [binarytrees.c]/[bisect.c]/etc.). A different 19-bit-immediate word
+            [binarytrees.c]/[bisect.c]/etc.). A different 19-bit-immediate word
             shape from {!Bcond}'s (the fixed bits and [Rt] sit where {!Bcond}'s condition code does),
             but the same {!Pcrel_b19} fixup kind - both relocate a 19-bit word-count field. *)
     | Ldst_uoff of { size : access_size; load : bool; rt : Reg.t; rn : Reg.t; offset : Disp.t }
@@ -685,15 +689,15 @@ module Lowered = struct
     | Ldst_sx of { size : access_size; rt : Reg.t; rn : Reg.t; offset : Disp.t }
         (** [ldrsb]/[ldrsh]/[ldrsw rt, addr] - the sign-extending loads: {!Ldst_uoff}'s word, both
             of its addressing modes, with [opc] [10] for a 64-bit [rt] and [11] for a 32-bit one
-            ([ldrsw] has only the 64-bit form). Embedded-corpus evidence: CompCert's [signed char]
+            ([ldrsw] has only the 64-bit form). Embedded-corpus evidence: the compiler's [signed char]
             and [short] loads. *)
     | Ldst_post of { size : access_size; load : bool; rt : Reg.t; rn : Reg.t; offset : int64 }
         (** [ldr]/[str] (and the byte/halfword forms) post-indexed, [[xn], #off] with a signed,
-            unscaled 9-bit [offset] (embedded-corpus evidence: CompCert's inline struct copy,
+            unscaled 9-bit [offset] (compiler-output evidence: the compiler's inline struct copy,
             [ldr x16, [x30], #8] / [str x16, [x14], #8]). *)
     | Ldst_uoff_f of { double : bool; load : bool; rt : Freg.t; rn : Reg.t; offset : Disp.t }
         (** [ldr]/[str] into a scalar FP register rather than a GPR (M5 corpus evidence:
-            asm/docs/corpus.md's almabench.c/bisect.c/... - callee-saved [dN] spills, indexed
+            almabench.c/bisect.c/... - callee-saved [dN] spills, indexed
             array loads, and [#:lo12:] float-constant loads). Bit-for-bit the same word
             {!Ldst_uoff} uses (both the immediate-offset and the register-offset addressing
             forms), with the "SIMD&FP" discriminator bit set - verified against real
@@ -706,14 +710,14 @@ module Lowered = struct
         (** [br rn] - "unconditional branch to register", the same
             [1101011_0_opc_11111_000000_Rn_00000] word shape as {!Ret} with
             [opc = 000] rather than [010]: an indirect jump, not a return
-            (M5 corpus evidence: asm/docs/corpus.md's [vmach.c]/
+            (M5 corpus evidence: [vmach.c]/
             [siphash24.c], the same jump-table switch dispatch {!Adr}
             documents - `adr x16, .Ltable; add x16, x16, wN, uxtw #2;
             br x16`). *)
     | Adds_imm of { rd : Reg.t; rn : Reg.t; imm : int64; shift12 : bool }
         (** ADDS (immediate), evidenced only as [cmn rn, #imm] ([rd] = the zero register), the
             flag-setting sibling of {!Add_imm} the way [subs]/[cmp] is {!Sub_imm}'s (embedded-corpus
-            evidence: CompCert's comparisons against small negative constants). *)
+            evidence: the compiler's comparisons against small negative constants). *)
     | Sub_imm of { s : bool; rd : Reg.t; rn : Reg.t; imm : int64; shift12 : bool }
         (** [s] is the flag-setting bit, and it changes what [rd = 31] means: SP without it and the
             zero register with it. That is why the two are separate codec alternatives rather than
@@ -742,7 +746,7 @@ module Lowered = struct
         (** ADD/SUB (extended register) - structurally distinct from {!Addsub_shift}, not a shift
             with a different keyword table: [option] and [imm3] sit at different bit positions than
             [Addsub_shift]'s [shift]/[amount], and unlike that form [rd]/[rn] here may be SP (M5
-            corpus evidence: [add x0, x0, x16, uxtx #0], asm/docs/corpus.md). *)
+            corpus evidence: [add x0, x0, x16, uxtx #0], the corpus notes). *)
     | Logical_imm of { opc : int; rd : Reg.t; rn : Reg.t; imm : int64 }
         (** AND/ORR/EOR/ANDS with a bitmask immediate. *)
     | Logical_shift of {
@@ -758,34 +762,34 @@ module Lowered = struct
             [n] - {!Logical_imm}'s register-operand cousin, [opc] the identical 2-bit selector. Only
             [opc] = 1, [n] = false (ORR - [mov] between two general registers is real hardware's own
             "[orr rd, xzr, rm]" expansion), [opc] = 2, [n] = false (EOR), and [opc] = 0, [n] = true
-            (BIC) are evidenced (M5 corpus evidence: asm/docs/corpus.md's [aes.c]/[sha3.c] for [eor],
+            (BIC) are evidenced (M5 corpus evidence: [aes.c]/[sha3.c] for [eor],
             [sha3.c] for [bic]). *)
     | Madd of { rd : Reg.t; rn : Reg.t; rm : Reg.t; ra : Reg.t }
     | Msub of { rd : Reg.t; rn : Reg.t; rm : Reg.t; ra : Reg.t }
         (** {!Madd}'s subtract sibling ([o0] = 1 versus 0 in the same word shape). Unlike {!Madd},
-            no [ra] = zr alias ([mneg]) is evidenced (M5 corpus evidence: asm/docs/corpus.md's
+            no [ra] = zr alias ([mneg]) is evidenced (M5 corpus evidence: the corpus notes's
             [siphash24.c]), so none is printed. *)
     | Udiv of { rd : Reg.t; rn : Reg.t; rm : Reg.t }
-        (** [udiv rd, rn, rm] - unsigned divide (M5 corpus evidence: asm/docs/corpus.md's
+        (** [udiv rd, rn, rm] - unsigned divide (M5 corpus evidence: the corpus notes's
             [knucleotide.c]). {!Sdiv} is the same word shape with one bit flipped. *)
     | Sdiv of { rd : Reg.t; rn : Reg.t; rm : Reg.t }
         (** [sdiv rd, rn, rm] - {!Udiv}'s signed sibling, the same word with bit 10 set
-            (embedded-corpus evidence: CompCert's signed [/] and [%]). *)
+            (compiler-output evidence: the compiler's signed [/] and [%]). *)
     | Dp1 of { op : dp1; rd : Reg.t; rn : Reg.t }
         (** [rbit]/[rev16]/[rev32]/[rev]/[clz]/[cls rd, rn] - "data-processing (1 source)"
-            (embedded-corpus evidence: CompCert's [__builtin_bswap*], [__builtin_clz*] and
+            (compiler-output evidence: the compiler's [__builtin_bswap*], [__builtin_clz*] and
             [__builtin_ctz*]). *)
     | Shiftv of { shift : int; rd : Reg.t; rn : Reg.t; rm : Reg.t }
         (** [lsl]/[lsr]/[asr]/[ror rd, rn, rm] - {!Udiv}'s "data-processing (2 source)" cousins,
             LSLV/LSRV/ASRV/RORV's register-specified shift amount, one word whose 2-bit [op2] is
-            [shift] ({!shift_name}'s numbering). [lsl] is M5 corpus evidence (asm/docs/corpus.md's
-            [nsieve.c]/[nsievebits.c]); [lsr]/[asr]/[ror] are what CompCert prints for its
-            [Plsrv]/[Pasrv]/[Prorv] (embedded-corpus evidence: 64-bit variable shifts). The
+            [shift] ({!shift_name}'s numbering). [lsl] is M5 corpus evidence (docs/corpus.md's
+            [nsieve.c]/[nsievebits.c]); [lsr]/[asr]/[ror] are what the compiler prints for its
+            [Plsrv]/[Pasrv]/[Prorv] (compiler-output evidence: 64-bit variable shifts). The
             immediate-shift-amount forms, [UBFM]/[SBFM] aliases, are not evidenced and not
-            implemented: CompCert prints those as [ubfx]/[ubfiz]/[sbfx]. *)
+            implemented: the compiler prints those as [ubfx]/[ubfiz]/[sbfx]. *)
     | Cset of { cond : Cond.t; rd : Reg.t }
         (** [cset rd, cc] - [csinc rd, zr, zr, invert(cc)], the general condition-select family's
-            "materialize a 0/1 boolean" alias (M5 corpus evidence: asm/docs/corpus.md's [chomp.c]/
+            "materialize a 0/1 boolean" alias (M5 corpus evidence: [chomp.c]/
             [lists.c]). [zr]/[zr] are baked in rather than carried, since no fixture evidences a
             general [csinc rd, rn, rm, cc] this project would otherwise need a shared constructor
             for. *)
@@ -796,7 +800,7 @@ module Lowered = struct
             difference, [op = 0]), but the 21-bit immediate is a byte-granular
             program-relative offset, not a page count, so it materializes a
             precise address rather than a page base (M5 corpus evidence:
-            asm/docs/corpus.md's [vmach.c]/[siphash24.c], a switch statement's
+            [vmach.c]/[siphash24.c], a switch statement's
             computed-goto jump-table base). *)
     | B of { target : Asm_core.Lowered_ast.branch }
     | Bcond of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
@@ -811,30 +815,30 @@ module Lowered = struct
     | Fcmp_reg of { rn : Freg.t; rm : Freg.t }
         (** [fcmp dN, dM] - {!Fcmp_imm0}'s register-register sibling, the same "floating-point
             compare" word shape with [Rm] a real field instead of fixed zero and the trailing
-            5-bit opcode2 [00000] instead of [01000] (M5 corpus evidence: asm/docs/corpus.md's
+            5-bit opcode2 [00000] instead of [01000] (M5 corpus evidence: the corpus notes's
             [bisect.c]/[mandelbrot.c]/... - every [fcmp] this corpus writes against a nonzero
             right-hand side). *)
     | Fbinop of { opc : int; rd : Freg.t; rn : Freg.t; rm : Freg.t }
         (** "Floating-point data-processing (2 source)" - [fadd]/[fsub]/[fmul]/[fdiv] (M5 corpus
-            evidence: asm/docs/corpus.md's almabench.c/fftw.c/...), one word shape with a 4-bit
+            evidence: almabench.c/fftw.c/...), one word shape with a 4-bit
             [opc] selecting which - see {!fbinop_name}/{!fbinop_opcode}. All three registers are
             always the same width; nothing here re-derives [double] from more than [rd]. *)
     | Fcsel of { cond : Cond.t; rd : Freg.t; rn : Freg.t; rm : Freg.t }
         (** [fcsel dd, dn, dm, cc] - {!Csel}'s floating-point sibling, a distinct "floating-point
             conditional select" word (bits 11-10 = [11] versus {!Fbinop}'s [10]) rather than a
             shared constructor with it, since {!Csel}'s registers are {!Reg.t} and this one's are
-            {!Freg.t} (M5 corpus evidence: asm/docs/corpus.md's almabench.c/perlin.c). *)
+            {!Freg.t} (M5 corpus evidence: almabench.c/perlin.c). *)
     | Cvtf of { signed : bool; rd : Freg.t; rn : Reg.t }
         (** [scvtf]/[ucvtf] rd, rn - signed/unsigned integer-to-float, the "conversion between
             floating-point and integer" word shape with [rmode] fixed at [00] and [opcode] =
-            [010]/[011] (M5 corpus evidence: asm/docs/corpus.md's binarytrees.c/bisect.c/...).
+            [010]/[011] (M5 corpus evidence: binarytrees.c/bisect.c/...).
             [rn]'s own [Reg.width] carries the word's [sf] bit; [rd]'s [Freg.double] carries
             [type] - both already fields on their respective register values, so neither is
             duplicated here the way {!Movz}'s [hw] has to be (nothing about either bit can be
             recovered from the other register alone). *)
     | Fneg of { rd : Freg.t; rn : Freg.t }
         (** [fneg dd, dn] - "floating-point data-processing (1 source)", opcode [000010] (M5
-            corpus evidence: asm/docs/corpus.md's almabench.c/bisect.c/...). [fabs]/[fsqrt] share
+            corpus evidence: almabench.c/bisect.c/...). [fabs]/[fsqrt] share
             the identical word shape at other opcode values but are not evidenced, so neither is
             implemented alongside it. *)
     | Fcvt of { rd : Freg.t; rn : Freg.t }
@@ -842,25 +846,25 @@ module Lowered = struct
             "floating-point data-processing (1 source)" word {!Fneg} uses: [type] (source
             precision) and [opcode] (destination-select, [000100] to single / [000101] to
             double) together are fully determined by [rd.Freg.double]/[rn.Freg.double] being
-            opposite, so neither is a separate field (M5 corpus evidence: asm/docs/corpus.md's
+            opposite, so neither is a separate field (M5 corpus evidence: the corpus notes's
             fftsp.c/knucleotide.c). *)
     | Fcvtzs of { rd : Reg.t; rn : Freg.t }
         (** [fcvtzs rd, rn] - float-to-signed-integer, round toward zero: the "conversion between
             floating-point and integer" word shape with [rmode] = [11], [opcode] = [000] (M5
-            corpus evidence: asm/docs/corpus.md's binarytrees.c/perlin.c). *)
+            corpus evidence: binarytrees.c/perlin.c). *)
     | Fcvtzu of { rd : Reg.t; rn : Freg.t }
         (** [fcvtzu rd, rn] - {!Fcvtzs}'s unsigned sibling, the same word at [opcode] = [001]
-            (embedded-corpus evidence: CompCert's [double] to [unsigned long] conversion). *)
+            (compiler-output evidence: the compiler's [double] to [unsigned long] conversion). *)
     | Fmov_from_gpr of { rd : Freg.t; rn : Reg.t }
         (** [fmov dd, xn] / [fmov sd, wn] - move a general register's raw bits into a scalar FP
-            register, no conversion (M5 corpus evidence: asm/docs/corpus.md's [fmov d9, xzr]/
+            register, no conversion (M5 corpus evidence: [fmov d9, xzr]/
             [fmov s9, wzr] zeroing idiom in bisect.c/fft.c/fftsp.c/mandelbrot.c). The identical
             "conversion between floating-point and integer" word shape as {!Cvtf} at [opcode] =
             [111]; the reverse direction ([fmov xd, sn], [opcode] = [110]) is not evidenced, so
             only this one is implemented. *)
     | Fmov_reg of { rd : Freg.t; rn : Freg.t }
         (** [fmov dd, dn] - copy one scalar FP register to another, no conversion (M5 corpus
-            evidence: asm/docs/corpus.md's almabench.c/bisect.c/... - ccomp's own float-value
+            evidence: almabench.c/bisect.c/... - the compiler's own float-value
             move between two live registers). {!Fneg}'s identical "floating-point
             data-processing (1 source)" word at [opcode] = [000000]. *)
 
@@ -1190,7 +1194,7 @@ let stp_imm7_domain =
 
    A64's logical immediates are not values but *patterns*: a run of ones,
    rotated, replicated to fill the register. [orr w0, wzr, #7] - which is how
-   CompCert materializes a small constant - encodes 7 as "three ones, no
+   the compiler materializes a small constant - encodes 7 as "three ones, no
    rotation, element size 32".
 
    The relation is the architecture's own [DecodeBitMasks], transcribed rather
@@ -1870,7 +1874,7 @@ let fcsel_alt ~double =
       ** field ~width:5 "rn" ** field ~width:5 "rd")
 
 (* [scvtf]/[ucvtf] rd, rn - signed/unsigned integer-to-float (M5 corpus evidence:
-   asm/docs/corpus.md's binarytrees.c/bisect.c/...). Verified against real
+   binarytrees.c/bisect.c/...). Verified against real
    aarch64-linux-gnu-as/objdump: [1e620251] for [scvtf d17, w16]... (only [sf] and [type]
    vary the fixed word, both plain fields here rather than one alt per combination, exactly
    {!Udiv}'s own [sf]-as-field precedent). *)
@@ -1899,7 +1903,7 @@ let cvtf_alt ~signed ~double =
       ** field ~width:5 "rn" ** field ~width:5 "rd")
 
 (* [fmov dd, xn] / [fmov sd, wn] - move a general register's raw bits into a scalar FP
-   register (M5 corpus evidence: asm/docs/corpus.md's [fmov d9, xzr]/[fmov s9, wzr] zeroing
+   register (M5 corpus evidence: [fmov d9, xzr]/[fmov s9, wzr] zeroing
    idiom). {!Cvtf}'s identical "conversion" word at [opcode] = [111]. Verified against real
    aarch64-linux-gnu-as/objdump: [9e6703e9] for [fmov d9, xzr], [1e2703e9] for [fmov s9,
    wzr]. *)
@@ -2000,7 +2004,7 @@ let fcvtzu_alt ~double =
       ** field ~width:5 "rn" ** field ~width:5 "rd")
 
 (* [fcvtzs rd, rn] - float-to-signed-integer, round toward zero (M5 corpus evidence:
-   asm/docs/corpus.md's binarytrees.c/perlin.c). {!Cvtf}'s identical "conversion" word with
+   binarytrees.c/perlin.c). {!Cvtf}'s identical "conversion" word with
    [rmode] = [11], [opcode] = [000]. Verified against real aarch64-linux-gnu-as/objdump:
    [9e7800a4] for [fcvtzs x4, d5], [1e3800a4] for [fcvtzs w4, s5]. *)
 let fcvtzs_alt ~double =
@@ -2027,7 +2031,7 @@ let fcvtzs_alt ~double =
       ** field ~width:5 "rn" ** field ~width:5 "rd")
 
 (* "Floating-point data-processing (1 source)" - [fneg]/[fcvt] (M5 corpus evidence:
-   asm/docs/corpus.md's almabench.c/bisect.c/... for [fneg], fftsp.c/knucleotide.c for
+   almabench.c/bisect.c/... for [fneg], fftsp.c/knucleotide.c for
    [fcvt]). Verified against real aarch64-linux-gnu-as/objdump: [1e614020] for [fneg d0,
    d1], [1e624062] for [fcvt s2, d3] (opcode [000100], type = source = double), [1e22c062]
    for [fcvt d2, s3] (opcode [000101], type = source = single). *)
@@ -2339,7 +2343,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   ** reg_field ~width:64 ~sp:false "ra"
                   ** reg_field ~width:64 ~sp:false "rn"
                   ** reg_field ~width:64 ~sp:false "rd"));
-           (* [udiv rd, rn, rm] - unsigned divide (M5 corpus evidence: asm/docs/corpus.md's
+           (* [udiv rd, rn, rm] - unsigned divide (M5 corpus evidence: the corpus notes's
               [knucleotide.c]). Verified against real aarch64-linux-gnu-as/objdump: [1ac20820] for
               [udiv w0, w1, w2], [9ac20820] for [udiv x0, x1, x2]. *)
            C.alt ~label:"udiv" ~priority:43
@@ -2387,12 +2391,12 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   ** reg_field ~width:64 ~sp:false "rn"
                   ** reg_field ~width:64 ~sp:false "rd"));
            (* [lsl rd, rn, rm] - LSLV's register-specified shift amount (M5 corpus evidence:
-              asm/docs/corpus.md's [nsieve.c]/[nsievebits.c]). Verified against real
+              [nsieve.c]/[nsievebits.c]). Verified against real
               aarch64-linux-gnu-as/objdump: [1ac62115] for [lsl w21, w8, w6], [9ac22020] for
               [lsl x0, x1, x2]. [lsrv]/[asrv]/[rorv] below are the same word at [op2] = 1/2/3. *)
            C.alt ~label:"lslv" ~priority:46 (shiftv_alt ~shift:0);
            (* [cset rd, cc] - [csinc rd, zr, zr, invert(cc)] (M5 corpus evidence:
-              asm/docs/corpus.md's [chomp.c]/[lists.c]). Same top bits {!Csel} already has ([op2] =
+              [chomp.c]/[lists.c]). Same top bits {!Csel} already has ([op2] =
               01 for CSINC versus CSEL's 00), [rn]/[rm] fixed to the zero register rather than
               carried - no fixture evidences a general [csinc rd, rn, rm, cc]. Verified against real
               aarch64-linux-gnu-as/objdump: [1a9f17e0] for [cset w0, eq] (stored condition [ne], the
@@ -2498,7 +2502,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   ** field ~width:16 "imm16"
                   ** reg_field ~width:64 ~sp:false "rd"));
            (* [movk] - the third MOVZ/MOVN/MOVK family member, [opc] = 3 (M5 corpus evidence:
-              asm/docs/corpus.md's [qsort.c]/[sha1.c]/[sha3.c]). Verified against real
+              [qsort.c]/[sha1.c]/[sha3.c]). Verified against real
               aarch64-linux-gnu-as/objdump: [72a000a0] for [movk w0, #5, lsl #16]. *)
            C.alt ~label:"movk" ~priority:45
              (C.iso_fun ~name:"movk"
@@ -2518,7 +2522,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   ** field ~width:16 "imm16"
                   ** reg_field ~width:64 ~sp:false "rd"));
            (* [sxtw xd, wn] - a fixed [SBFM xd, xn, #0, #31] (M5 corpus evidence:
-              asm/docs/corpus.md's [chomp.c]/etc.). [N] always equals [sf] for a real SBFM word
+              [chomp.c]/etc.). [N] always equals [sf] for a real SBFM word
               (hardware UNDEFINED otherwise) and this project only ever produces or accepts the
               64-bit-destination form, so both are fixed consts alongside [immr]/[imms]. Verified
               against real aarch64-linux-gnu-as/objdump: [93407c60] for [sxtw x0, w3]. *)
@@ -2588,7 +2592,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   ** reg_field ~width:64 ~sp:false "rn"
                   ** reg_field ~width:64 ~sp:false "rd"));
            (* [cbz]/[cbnz rt, target] - compare-and-branch (M5 corpus evidence:
-              asm/docs/corpus.md's [binarytrees.c]/[bisect.c]/etc.). [op] (field, not const)
+              [binarytrees.c]/[bisect.c]/etc.). [op] (field, not const)
               distinguishes the two: 0 for [cbz], 1 for [cbnz]. Same {!Pcrel_b19} fixup kind as
               [b.<cc>], a different word shape (Rt sits where [b.<cc>]'s condition code does).
               Verified against real aarch64-linux-gnu-as/objdump: [b4ffffc0] for [cbz x0, .],
@@ -2620,7 +2624,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
               register-operand cousin, one more codec alt rather than eight ([opc] and [N] are
               fields, not consts, exactly as {!Logical_imm} already reads [opc]). Only [opc] = 1,
               [N] = 0 (ORR, real hardware's own [mov rd, rm] expansion), [opc] = 2, [N] = 0 (EOR),
-              and [opc] = 0, [N] = 1 (BIC) are evidenced (M5 corpus evidence: asm/docs/corpus.md's
+              and [opc] = 0, [N] = 1 (BIC) are evidenced (M5 corpus evidence: the corpus notes's
               [aes.c]/[sha3.c] for [eor], [sha3.c] for [bic]). Verified against real
               aarch64-linux-gnu-as/objdump: [4a020020] for [eor w0, w1, w2], [4a0d6085] for
               [eor w5, w4, w13, lsl #24], [aa0103e0] for [orr x0, xzr, x1] ([mov x0, x1]), [8a250063]
@@ -2915,7 +2919,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.alt ~label:"fcvtzs-s" ~priority:69 (fcvtzs_alt ~double:false);
            C.alt ~label:"fcvtzu-d" ~priority:105 (fcvtzu_alt ~double:true);
            C.alt ~label:"fcvtzu-s" ~priority:106 (fcvtzu_alt ~double:false);
-           (* {!shiftv_alt}'s other three shift kinds (embedded-corpus evidence: CompCert's
+           (* {!shiftv_alt}'s other three shift kinds (compiler-output evidence: the compiler's
               [Plsrv]/[Pasrv]/[Prorv]). Verified against real aarch64-linux-gnu-as/objdump
               2.44: [9ac12403] for [lsr x3, x0, x1], [1ac62904] for [asr w4, w8, w6], [9ac22c20]
               for [ror x0, x1, x2]. *)
@@ -2949,7 +2953,7 @@ let triple = "aarch64-linux-gnu"
 
 (* This target's error domain; see arm_encode.ml for why it is the shared row
    alone for now, and why [diag] returns the wrapped error. *)
-(* The A64 encoder's error domain (asm/docs/errors.md). Below source text, so it
+(* The A64 encoder's error domain (docs/errors.md). Below source text, so it
    names no token; the front end's operand failures are a separate domain in
    aarch64.ml, for the reason {!Target_intf.Target.TARGET} gives.
 
@@ -3086,16 +3090,30 @@ let simplify_instruction (_ : target_state) s =
   match Opcode.of_mnemonic s.Surface.mnemonic with
   | None -> bad (`Unknown_instruction s.Surface.mnemonic)
   | Some op -> (
+      (* GNU as reads an immediate with or without its [#]: [add w0, w0, 2] and
+         [add w0, w0, #2] are one instruction, and gcc prints the bare one. The
+         expression parser cannot tell a bare constant from a symbol reference, so
+         it arrives as [Sym (Const _)]. Where an operand is an address - a branch
+         target, [adr]/[adrp], a literal load - a constant really is one, and stays
+         that. *)
+      let bare_immediates ops =
+        let imm = function Operand.Sym (Asm_core.Expr.Const v) -> Operand.Imm v | o -> o in
+        match op with
+        | Opcode.B | Opcode.Bl | Opcode.Bcond _ | Opcode.Cbz | Opcode.Cbnz | Opcode.Adr
+        | Opcode.Adrp | Opcode.Ldr ->
+            ops
+        | _ -> List.map imm ops
+      in
       (* A [lsl #0] modifier is dropped; a nonzero one is kept, because [movz]
          encodes it in [hw] and dropping it would silently change the value. *)
       match List.rev s.Surface.ops with
       | Operand.Shift { Shift.kind = "lsl"; amount = 0 } :: rest ->
-          Ok { Instruction.op; ops = List.rev rest }
-      | _ -> Ok { Instruction.op; ops = s.Surface.ops })
+          Ok { Instruction.op; ops = bare_immediates (List.rev rest) }
+      | _ -> Ok { Instruction.op; ops = bare_immediates s.Surface.ops })
 
 (* {1 Lower} *)
 
-let lower_instruction state i =
+let rec lower_instruction state i =
   ignore state;
   let bad kind = Error (diag ~pos:__POS__ kind) in
   let imm_of v =
@@ -3107,8 +3125,59 @@ let lower_instruction state i =
   (* [mov xD, sp] and [mov sp, xS] are [add ..., #0]; [mov] between two general
      registers is [orr rd, xzr, rm] - real hardware's own expansion, now that
      {!Lowered.Logical_shift} exists to carry it (M5 corpus evidence:
-     asm/docs/corpus.md's synthesized "mov between two general registers"
+     synthesized "mov between two general registers"
      finding, e.g. [nsieve.c]). *)
+  (* [mov rd, #imm] is [movz], [movn] or [orr rd, zr, #imm], whichever holds the
+     value in one instruction, tried in that order - the choice GNU as makes. The
+     value is taken at the register's width, so a negative 32-bit constant is its
+     32-bit pattern. *)
+  | Opcode.Mov, [ Operand.Reg rd; Operand.Imm v ] when not rd.Reg.is_sp -> (
+      match imm_of v with
+      | Error e -> Error e
+      | Ok x -> (
+          let width = rd.Reg.width in
+          let mask = if width = 64 then -1L else 0xFFFFFFFFL in
+          let x = Int64.logand x mask in
+          let halfwords = width / 16 in
+          let half value i = Int64.logand (Int64.shift_right_logical value (16 * i)) 0xFFFFL in
+          let nonzero value =
+            List.filter (fun i -> not (Int64.equal (half value i) 0L)) (List.init halfwords Fun.id)
+          in
+          let single value =
+            match nonzero value with [] -> Some 0 | [ i ] -> Some i | _ -> None
+          in
+          let complement = Int64.logand (Int64.lognot x) mask in
+          match (single x, single complement) with
+          | Some hw, _ -> Ok [ Lowered.Movz { rd; imm16 = half x hw; hw } ]
+          | None, Some hw -> Ok [ Lowered.Movn { rd; imm16 = half complement hw; hw } ]
+          | None, None ->
+              lower_instruction state
+                {
+                  Instruction.op = Opcode.Orr;
+                  ops =
+                    [
+                      Operand.Reg rd;
+                      Operand.Reg { Reg.num = 31; width; is_sp = false };
+                      Operand.Imm v;
+                    ];
+                }))
+  (* [lsl]/[lsr]/[asr] by an immediate are the bitfield moves that shift. *)
+  | ( ((Opcode.Lsl | Opcode.Lsr | Opcode.Asr) as op),
+      [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] ) -> (
+      match imm_of v with
+      | Error e -> Error e
+      | Ok amount -> (
+          let size = rd.Reg.width in
+          let sh = Int64.to_int amount in
+          if rd.Reg.width <> rn.Reg.width then
+            bad (`Wrong_register_width { opcode = Opcode.name op; expected = size })
+          else if sh < 0 || sh >= size then bad `Shift_amount_too_large
+          else
+            match op with
+            | Opcode.Lsl ->
+                Ok [ Lowered.Ubfm { rd; rn; immr = (size - sh) mod size; imms = size - 1 - sh } ]
+            | Opcode.Lsr -> Ok [ Lowered.Ubfm { rd; rn; immr = sh; imms = size - 1 } ]
+            | _ -> Ok [ Lowered.Sbfm { rd; rn; immr = sh; imms = size - 1 } ]))
   | Opcode.Mov, [ Operand.Reg rd; Operand.Reg rn ] ->
       if rd.Reg.is_sp || rn.Reg.is_sp then
         Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const 0L; shift12 = false } ]
@@ -3135,7 +3204,7 @@ let lower_instruction state i =
           else
             (* GAS auto-selects the [lsl #12] form itself whenever a bare immediate is an
                exact multiple of 4096 that doesn't fit the plain 12-bit field (M5 corpus
-               evidence: asm/docs/corpus.md's knucleotide.c - ccomp writes the bare
+               evidence: knucleotide.c - the compiler writes the bare
                [add x23, x23, #8192], never the explicit four-operand spelling {!Sub}'s own
                [lsl #12] arm already reads). Verified against real
                aarch64-linux-gnu-as/objdump: [add x23, x23, #8192] -> [91400af7], decoding
@@ -3155,7 +3224,7 @@ let lower_instruction state i =
     ->
       if m <> "lo12" then bad (`Wrong_memory_modifier m)
       else Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Sym inner; shift12 = false } ]
-  (* The explicit four-operand [lsl #12] spelling - not evidenced from ccomp's own output
+  (* The explicit four-operand [lsl #12] spelling - not evidenced from the compiler's own output
      (which always writes the bare, auto-selected form above), but the canonical dump's own
      decode->reconstruct round trip produces exactly this operand list for a decoded
      [shift12] instruction, and it must re-lower to the identical [Lowered.Add_imm] rather
@@ -3243,7 +3312,7 @@ let lower_instruction state i =
       Ok [ Lowered.Shiftv { shift; rd; rn; rm } ]
   (* [ubfx]/[ubfiz]'s own lsb/width pair is the one GNU AArch64 immediate spelled without a
      leading [#] in this corpus (every other immediate operand this target parses has one) - real
-     [as] accepts both spellings, but ccomp/gcc only ever emit the bare one, which the common
+     [as] accepts both spellings, but gcc only ever emit the bare one, which the common
      expression parser reads as [Operand.Sym (Expr.Const _)], not [Operand.Imm], so both shapes
      have to be accepted here. *)
   | ( Opcode.Ubfx,
@@ -3279,7 +3348,7 @@ let lower_instruction state i =
             Ok [ Lowered.Ubfm { rd; rn; immr = (datasize - lsb) mod datasize; imms = width - 1 } ])
   (* [sbfx] - {!Opcode.Ubfx}'s signed sibling, with the same bare-or-[#] lsb/width pair. *)
   (* [sbfiz] - {!Opcode.Sbfx}'s alias sibling on the same SBFM word, the way [ubfiz] is
-     [ubfx]'s: [immr = (datasize - lsb) mod datasize], [imms = width - 1]. CompCert prints it
+     [ubfx]'s: [immr = (datasize - lsb) mod datasize], [imms = width - 1]. the compiler prints it
      for a sign-extending shift of a narrow value. *)
   | ( Opcode.Sbfiz,
       [
@@ -3490,7 +3559,7 @@ let lower_instruction state i =
   (* [ldr]/[str] into a scalar FP register - the identical addressing-mode handling as the GPR
      case above (bare-symbol [#:lo12:], scaled numeric offset, register-offset), just against
      {!Freg.t}'s two widths rather than {!access_size}'s four (M5 corpus evidence:
-     asm/docs/corpus.md's almabench.c/bisect.c/...). *)
+     almabench.c/bisect.c/...). *)
   | (Opcode.Ldr | Opcode.Str), [ Operand.Freg rt; Operand.Mem m ] -> (
       let load = match i.Instruction.op with Opcode.Ldr -> true | _ -> false in
       let size = if rt.Freg.double then X else W in
@@ -3610,8 +3679,8 @@ let lower_instruction state i =
       | _ -> bad `Too_many_operands)
   (* The immediate half of the same aliasing: [cmp] is a [subs] into the zero register and [cmn]
      an [adds] into it. A bare immediate that does not fit 12 bits but is a multiple of 4096 takes
-     the [lsl #12] form, as GAS selects it ({!Opcode.Add}'s own comment; embedded-corpus evidence:
-     CompCert's [cmp w9, #16384]). Verified against real as/objdump: [cmp w9, #16384] ->
+     the [lsl #12] form, as GAS selects it ({!Opcode.Add}'s own comment; compiler-output evidence:
+     the compiler's [cmp w9, #16384]). Verified against real as/objdump: [cmp w9, #16384] ->
      [7140113f], [cmn w12, #3] -> [31000d9f], [cmn w0, #16384] -> [3140101f]. *)
   | ((Opcode.Cmp | Opcode.Cmn) as op), Operand.Reg rn :: Operand.Imm v :: shift -> (
       let zr = { Reg.num = 31; width = rn.Reg.width; is_sp = false } in
@@ -3665,7 +3734,7 @@ let lower_instruction state i =
             bad (`Not_bitmask_immediate imm_raw)
           else Ok [ Lowered.Logical_imm { opc; rd; rn; imm } ])
   (* [tst rn, #imm] - [ands zr, rn, #imm] with the result discarded, {!Logical_imm}'s own
-     [opc] = 3 (M5 corpus evidence: asm/docs/corpus.md's perlin.c). [zr] is baked in rather
+     [opc] = 3 (M5 corpus evidence: perlin.c). [zr] is baked in rather
      than carried, the same "no general destination is evidenced" choice {!Cset} already
      makes for its own zr operands. *)
   | Opcode.Tst, [ Operand.Reg rn; Operand.Imm v ] -> (
@@ -3681,7 +3750,7 @@ let lower_instruction state i =
   (* [and rd, rn, rm] / [eor rd, rn, rm[, shift]] / [orr rd, rn, rm[, shift]] / [bic rd, rn, rm] -
      the register form of the same family, evidenced for [and] ([sha1.c]/[nsievebits.c]) and [eor]
      ([aes.c]/[sha3.c]), for [orr] specifically as [mov]'s own [orr rd, xzr, rm, lsl #n]
-     shifted-register spelling (ccomp's own scaled-move idiom, e.g. [binarytrees.c]'s
+     shifted-register spelling (the compiler's own scaled-move idiom, e.g. [binarytrees.c]'s
      [orr x1, xzr, x20, lsl #1]), and, with [N] = 1, [bic] ([sha3.c]). *)
   | ( ((Opcode.And | Opcode.Eor | Opcode.Orr | Opcode.Bic) as op),
       Operand.Reg rd :: Operand.Reg rn :: Operand.Reg rm :: rest ) -> (
@@ -3740,11 +3809,11 @@ let lower_instruction state i =
         bad (`Not_fp_modified_immediate value)
       else Ok [ Lowered.Fmov_imm { rd; value } ]
   (* [fmov dd, xn] / [fmov sd, wn] - move a general register's raw bits into a scalar FP
-     register (M5 corpus evidence: asm/docs/corpus.md's [fmov d9, xzr]/[fmov s9, wzr]). The
+     register (M5 corpus evidence: [fmov d9, xzr]/[fmov s9, wzr]). The
      reverse direction ([fmov xd, sn]) is not evidenced, so only this one is a [Lowered] case. *)
   | Opcode.Fmov, [ Operand.Freg rd; Operand.Reg rn ] -> Ok [ Lowered.Fmov_from_gpr { rd; rn } ]
   (* [fmov dd, dn] - register-to-register, no conversion (M5 corpus evidence:
-     asm/docs/corpus.md's almabench.c/bisect.c/...). *)
+     almabench.c/bisect.c/...). *)
   | Opcode.Fmov, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fmov_reg { rd; rn } ]
   (* FCMP(immediate) only ever compares against zero (§ "the codec"'s
      comment on [fcmp_imm0_alt]) - a nonzero literal is not a narrower case
@@ -3752,7 +3821,7 @@ let lower_instruction state i =
   | Opcode.Fcmp, [ Operand.Freg rn; Operand.Fimm value ] ->
       if Float.equal value 0.0 then Ok [ Lowered.Fcmp_imm0 { rn } ]
       else bad (`Fcmp_immediate_must_be_zero value)
-  (* [fcmp dN, dM] - the register-register form (M5 corpus evidence: asm/docs/corpus.md's
+  (* [fcmp dN, dM] - the register-register form (M5 corpus evidence: the corpus notes's
      bisect.c/mandelbrot.c/...). *)
   | Opcode.Fcmp, [ Operand.Freg rn; Operand.Freg rm ] -> Ok [ Lowered.Fcmp_reg { rn; rm } ]
   | ( (Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv),
@@ -4404,7 +4473,7 @@ let nop_bytes ~length =
   if length mod 4 <> 0 then Error (diag ~pos:__POS__ `Padding_not_word_multiple)
   else Ok (String.concat "" (List.init (length / 4) (fun _ -> "\x1f\x20\x03\xd5")))
 
-(* Measured (M3 §3/§5, .ai/asm_plan.md §12): a linker-inserted merge gap in an
+(* Measured (M3 §3/§5, docs/design.md §12): a linker-inserted merge gap in an
    executable section is plain zero fill on AArch64, not NOP fill. *)
 let merge_fill = None
 

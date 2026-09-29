@@ -1,1 +1,1 @@
-asm/helpers/x86_32.s
+helpers/x86_32.s

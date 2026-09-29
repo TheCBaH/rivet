@@ -1,10 +1,10 @@
-(* CLI for the ABI generator (.ai/asm_plan.md M4 Phase 3.2).
+(* CLI for the ABI generator (docs/design.md M4 Phase 3.2).
 
    Usage: abi_gen_main --profile <name> --abi-version <n>
 
    Prints the generated GAS source to stdout. This is the buildable,
    invocable executable round 3's review required in place of a library
-   module with no way to run it: [tools/asm-helpers.sh]'s [build_generated_one]
+   module with no way to run it: [scripts/asm-helpers.sh]'s [build_generated_one]
    invokes exactly this binary. *)
 
 let profile_of_string = function
@@ -38,7 +38,7 @@ let () =
   | Some _, Some n ->
       Printf.eprintf
         "abi_gen_main: --abi-version %d is not supported (only 3 is generated; v1/v2\n\
-         already have checked-in helpers under asm/helpers/)\n"
+         already have checked-in helpers under helpers/)\n"
         n;
       exit 2
   | None, _ -> usage ()

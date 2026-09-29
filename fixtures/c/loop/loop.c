@@ -1,4 +1,4 @@
-/* M2's loop slice (.ai/asm_plan.md §12, Milestone 2).
+/* M2's loop slice (docs/design.md §12, Milestone 2).
 
    A backward branch, which is what turns relaxation from a design note into a
    requirement: GNU as encodes both the forward exit test and the backward

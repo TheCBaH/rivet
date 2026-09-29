@@ -1,0 +1,5 @@
+as	GNU assembler (crosstool-NG 1.27.0) 2.43.1
+objdump	GNU objdump (crosstool-NG 1.27.0) 2.43.1
+readelf	GNU readelf (crosstool-NG 1.27.0) 2.43.1
+objcopy	GNU objcopy (crosstool-NG 1.27.0) 2.43.1
+ld	GNU ld (crosstool-NG 1.27.0) 2.43.1

@@ -1,0 +1,13 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <asm_test_entry>:
+   0:	90000001 	adrp	x1, 0 <shared_value>
+			0: R_AARCH64_ADR_PREL_PG_HI21	shared_value
+   4:	b9400020 	ldr	w0, [x1]
+			4: R_AARCH64_LDST32_ABS_LO12_NC	shared_value
+   8:	11005800 	add	w0, w0, #0x16
+   c:	b9000020 	str	w0, [x1]
+			c: R_AARCH64_LDST32_ABS_LO12_NC	shared_value
+  10:	d65f03c0 	ret
