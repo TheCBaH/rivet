@@ -29,4 +29,4 @@
  (public_name rivet.fmt)
  (modes byte native)
  (enabled_if
-  (<> %{env:ASM_MELANGE=false} true)))
+  (<> %{env:RIVET_MELANGE=false} true)))
