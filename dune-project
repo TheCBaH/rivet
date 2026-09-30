@@ -8,7 +8,8 @@
 
 (package
  (name rivet)
- (synopsis "Retargetable assembler and linker in pure OCaml"))
+ (synopsis "Retargetable assembler and linker in pure OCaml")
+ (allow_empty))
 
 ; 3.15, not 3.8: gating a library on %{env:...} needs it. Dune cannot make a
 ; library's `modes` conditional, and two same-named stanzas in one file crash
