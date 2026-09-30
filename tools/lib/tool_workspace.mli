@@ -26,6 +26,10 @@ val child_path : child_owned -> Fpath.t
 
 val gas_xref_corpus : Repo.t -> recreatable_root
 
+val repo_relative_work : Repo.t -> name:string -> (recreatable_root, Tool_error.t) Err.t
+(** [<repo>/<name>], for a consumer's own work root: fixed, so no override can
+    point it at something else, and checked for a symlinked component. *)
+
 (** {2 Environment-selected roots}
 
     External roots are supported (P5): FIXTURE_WORK and friends may point

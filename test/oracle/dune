@@ -60,6 +60,7 @@
 
 (library
  (name asm_oracle_run)
+ (public_name rivet.oracle_run)
  (modules qemu_user)
  (modes byte native)
  (libraries asm_oracle rivet_fmt unix)

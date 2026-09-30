@@ -32,8 +32,19 @@ let repo_root_flag =
 let resolve_repo cli =
   Repo.resolve ~cli:(Option.map Fpath.v cli) ~env:Sys.getenv_opt ~cwd:(Fpath.v (Sys.getcwd ()))
 
+(* Set once by [main] before any term runs. *)
+let fixtures_layout : (string * string) option ref = ref None
+
 let with_repo cli f =
-  match resolve_repo cli with Error e -> Command.of_error e | Ok repo -> f repo
+  match resolve_repo cli with
+  | Error e -> Command.of_error e
+  | Ok repo ->
+      let repo =
+        match !fixtures_layout with
+        | None -> repo
+        | Some (sources, outputs) -> Repo.with_fixtures repo ~sources ~outputs
+      in
+      f repo
 
 let cases_arg = Cmdliner.Arg.(value & pos_all string [] & info [] ~docv:"CASE")
 
@@ -393,7 +404,8 @@ let main_cmd ~compiler ~preexisting ~name ~doc ~extra =
     @ extra)
 
 let main ?preexisting ?(name = "rivet-tools") ?(doc = "Assembler repository tooling") ?(extra = [])
-    ~compiler () =
+    ?fixtures ~compiler () =
+  fixtures_layout := fixtures;
   (* At the entry point, not at module initialization: this is a process-wide
      policy and it belongs where the process starts. `deterministic` keeps the
      explicit ~pos:__POS__ origins and the semantic boundary events while

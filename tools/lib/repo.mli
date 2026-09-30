@@ -21,6 +21,11 @@ val resolve :
 
 val path : t -> Fpath.t
 
+val with_fixtures : t -> sources:string -> outputs:string -> t
+(** The same repository with its fixture corpus elsewhere: [sources] and
+    [outputs] are relative to the root. For a consumer whose compiler's output
+    lives in a different directory, or whose C sources are a submodule's. *)
+
 val fixture_sources : t -> Fpath.t
 (** [fixtures/c/], one directory per case: its C sources and
     [expected-status.txt]. *)

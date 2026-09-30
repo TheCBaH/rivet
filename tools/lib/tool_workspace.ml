@@ -77,6 +77,15 @@ let exec_artifacts repo ~env =
    until Phase 6 gave it a caller - a redirect that silently did nothing. *)
 let tool_gate_work repo ~env = from_env repo ~env ~var:"RIVET_TOOL_GATE_WORK" ~default:".tool-gate"
 
+(* Repo-relative and without an environment override, for a consumer's own work
+   root: only the symlink-planting guard applies, as there is no value to check. *)
+let repo_relative_work repo ~name =
+  let ( let* ) = Result.bind in
+  let* id = Identifier.parse name in
+  let p = Fpath.normalize Fpath.(Repo.path repo / Identifier.to_string id) in
+  let* () = no_symlinked_component p in
+  Ok p
+
 let child_of root components =
   let ( let* ) = Result.bind in
   let rec go acc = function

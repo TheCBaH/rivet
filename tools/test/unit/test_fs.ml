@@ -96,6 +96,18 @@ let test_repo () =
             ((Repo.fixture_corpus r).Corpus.outputs |> Fpath.to_string
             = Fpath.to_string root ^ "/fixtures/" ^ Repo.fixture_compiler_dir)
       | Error _ -> check "repo: fixture corpus path" false);
+      (match r with
+      | Ok r ->
+          let c =
+            Repo.fixture_corpus
+              (Repo.with_fixtures r ~sources:"vendor/x/fixtures/c" ~outputs:"fixtures/other")
+          in
+          let rel p = Fpath.to_string p in
+          check "repo: with_fixtures moves the sources"
+            (rel c.Corpus.sources = Fpath.to_string root ^ "/vendor/x/fixtures/c");
+          check "repo: with_fixtures moves the outputs"
+            (rel c.Corpus.outputs = Fpath.to_string root ^ "/fixtures/other")
+      | Error _ -> check "repo: with_fixtures" false);
       (* tools/ is a nested dune project but not the repository root, and
          feeding it here must be rejected by name. *)
       let nested = Fpath.(root / "tools") in

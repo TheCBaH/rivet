@@ -1,4 +1,10 @@
-type t = Fpath.t
+type fixtures = { sources : Fpath.t; outputs : Fpath.t }
+type t = { root : Fpath.t; fixtures : fixtures }
+
+let layout root =
+  { sources = Fpath.(root / "fixtures" / "c"); outputs = Fpath.(root / "fixtures" / "gcc-14") }
+
+let v root = { root; fixtures = layout root }
 
 (* All three are required. Makefile alone matches half the trees on a machine,
    and dune-project alone would match any dune project - including the nested
@@ -43,40 +49,46 @@ let resolve ~cli ~env ~cwd =
   match cli with
   | Some p ->
       let* p = canonical p in
-      validate p
+      let* p = validate p in
+      Ok (v p)
   | None -> (
       match env "RIVET_ROOT" with
       | Some s when s <> "" ->
           let* p = canonical (Fpath.v s) in
-          validate p
+          let* p = validate p in
+          Ok (v p)
       | Some _ | None ->
           let* cwd = canonical cwd in
-          search_upward cwd)
+          let* p = search_upward cwd in
+          Ok (v p))
 
-let path t = t
+let path t = t.root
+
+let with_fixtures t ~sources ~outputs =
+  {
+    t with
+    fixtures = { sources = Fpath.(t.root // v sources); outputs = Fpath.(t.root // v outputs) };
+  }
 
 (* The C sources and per-case expected status, and the generated assembly and
    oracle artifacts for them. The compiler and its major version name the
    second: a different compiler's output is a different corpus. *)
-let fixture_sources t = Fpath.(t / "fixtures" / "c")
+let fixture_sources t = t.fixtures.sources
 let fixture_compiler_dir = "gcc-14"
-
-let fixture_corpus t =
-  { Corpus.sources = fixture_sources t; outputs = Fpath.(t / "fixtures" / fixture_compiler_dir) }
-
-let gas_xref_corpus t = Fpath.(t / "fixtures" / "gas-xref")
-let isa_generated_corpus t = Fpath.(t / "fixtures" / Isa_generated_case.fixture_dir_name)
+let fixture_corpus t = { Corpus.sources = t.fixtures.sources; outputs = t.fixtures.outputs }
+let gas_xref_corpus t = Fpath.(t.root / "fixtures" / "gas-xref")
+let isa_generated_corpus t = Fpath.(t.root / "fixtures" / Isa_generated_case.fixture_dir_name)
 
 (* Isa_gen_difficult itself depends on Repo (its case/normalize builders take
    a Repo.t), so - unlike Isa_generated_case, a dependency-free schema module
    - it cannot be referenced from here without a module cycle; "isa-difficult"
    is duplicated as a literal and must be kept equal to
    Isa_gen_difficult.fixture_dir_name (checked by test_isa_gen_difficult.ml). *)
-let isa_difficult_corpus t = Fpath.(t / "fixtures" / "isa-difficult")
-let isa_data_riscv_opcodes t = Fpath.(t / "vendor" / "isa-data" / "riscv-opcodes" / "upstream")
-let isa_data_xed_upstream t = Fpath.(t / "vendor" / "isa-data" / "xed" / "upstream")
+let isa_difficult_corpus t = Fpath.(t.root / "fixtures" / "isa-difficult")
+let isa_data_riscv_opcodes t = Fpath.(t.root / "vendor" / "isa-data" / "riscv-opcodes" / "upstream")
+let isa_data_xed_upstream t = Fpath.(t.root / "vendor" / "isa-data" / "xed" / "upstream")
 let isa_data_xed t = Fpath.(isa_data_xed_upstream t / "datafiles")
-let isa_inventory t target = Fpath.(t / "fixtures" / "isa-inventory" / Target.to_string target)
+let isa_inventory t target = Fpath.(t.root / "fixtures" / "isa-inventory" / Target.to_string target)
 
 let isa_db_export t ~source target =
-  Fpath.(t / "isa-db" / "export" / source / (Target.to_string target ^ ".jsonl"))
+  Fpath.(t.root / "isa-db" / "export" / source / (Target.to_string target ^ ".jsonl"))
