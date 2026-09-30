@@ -17,9 +17,12 @@ val main :
   ?name:string ->
   ?doc:string ->
   ?extra:(bool * Rivet_tools.Command.t) Cmdliner.Cmd.t list ->
+  ?fixtures:string * string ->
   compiler:Rivet_tools.Compiler.t ->
   unit ->
   int
 (** Evaluates the command line and returns the exit code. [compiler] generates
     and verifies the fixture corpus. [extra] subcommands join the built-in
-    ones; each one's term yields [(err_trace, command)], as {!common} does. *)
+    ones; each one's term yields [(err_trace, command)], as {!common} does.
+    [fixtures] is [(sources, outputs)], both relative to the repository root,
+    when the fixture corpus is not [fixtures/c] and [fixtures/gcc-14]. *)
