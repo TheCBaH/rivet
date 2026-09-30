@@ -23,7 +23,7 @@
   x86_32_encode
   x86_64_encode
   target_features
-  fmt)
+  rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))

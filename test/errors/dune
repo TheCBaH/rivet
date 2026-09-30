@@ -21,7 +21,7 @@
   arm
   aarch64
   x86_64
-  fmt)
+  rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))

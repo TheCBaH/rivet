@@ -43,7 +43,7 @@
  (public_name rivet.oracle)
  (modules abi abi_v2 abi_v3 manifest record snippet_bytes)
  (modes byte native)
- (libraries fmt)
+ (libraries rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -51,7 +51,7 @@
  (name test_oracle)
  (modules test_record test_manifest)
  (modes byte native)
- (libraries asm_oracle fmt)
+ (libraries asm_oracle rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))
@@ -62,7 +62,7 @@
  (name asm_oracle_run)
  (modules qemu_user)
  (modes byte native)
- (libraries asm_oracle fmt unix)
+ (libraries asm_oracle rivet_fmt unix)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -79,7 +79,7 @@
  (name conform)
  (modules conform)
  (modes exe)
- (libraries asm_oracle asm_oracle_run snippet_corpus fmt)
+ (libraries asm_oracle asm_oracle_run snippet_corpus rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -91,7 +91,7 @@
  (name abi_v3_smoke)
  (modules abi_v3_smoke)
  (modes exe)
- (libraries asm_oracle asm_oracle_run fmt)
+ (libraries asm_oracle asm_oracle_run rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -127,6 +127,6 @@
   image
   target_intf
   foundation
-  fmt)
+  rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

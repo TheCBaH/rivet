@@ -9,6 +9,6 @@
 (library
  (name foundation)
  (modes byte native melange)
- (libraries fmt err_trace)
+ (libraries rivet_fmt err_trace)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

@@ -15,6 +15,6 @@
   aarch64
   riscv32
   riscv64
-  fmt)
+  rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

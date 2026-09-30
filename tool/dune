@@ -7,4 +7,4 @@
 (executable
  (name asm)
  (modes exe)
- (libraries foundation image target_intf driver fmt))
+ (libraries foundation image target_intf driver rivet_fmt))

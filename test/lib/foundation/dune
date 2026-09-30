@@ -26,7 +26,7 @@
  (name foundation_corpus)
  (modules bigint_corpus)
  (modes byte native)
- (libraries foundation fmt)
+ (libraries foundation rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -34,7 +34,7 @@
  (name test_foundation)
  (modules test_bigint test_err_policy)
  (modes byte native)
- (libraries foundation fmt foundation_corpus)
+ (libraries foundation rivet_fmt foundation_corpus)
  (inline_tests)
  (preprocess
   (pps ppx_expect)))

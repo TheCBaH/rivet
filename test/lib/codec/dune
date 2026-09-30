@@ -10,7 +10,7 @@
  (name codec_corpus)
  (modules synthetic_isa)
  (modes byte native)
- (libraries codec foundation fmt)
+ (libraries codec foundation rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -18,7 +18,7 @@
  (name test_codec)
  (modules test_codec)
  (modes byte native)
- (libraries codec codec_corpus foundation fmt)
+ (libraries codec codec_corpus foundation rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))

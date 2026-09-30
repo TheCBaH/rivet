@@ -20,7 +20,7 @@
  (name asm_syntax)
  (public_name rivet.asm_syntax)
  (modes byte native)
- (libraries foundation asm_core fmt)
+ (libraries foundation asm_core rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 

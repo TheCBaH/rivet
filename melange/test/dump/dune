@@ -23,7 +23,7 @@
  (name smoke_fixtures)
  (modules smoke_fixtures)
  (modes byte native melange)
- (libraries driver asm_core fmt)
+ (libraries driver asm_core rivet_fmt)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 
@@ -39,7 +39,7 @@
   test_dump_inputs
   asm_core
   err_trace
-  fmt
+  rivet_fmt
   smoke_fixtures)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

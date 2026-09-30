@@ -9,7 +9,8 @@
  (files ../../../vendor/fmt/upstream/src/*.mli))
 
 (library
- (name fmt)
+ (name rivet_fmt)
+ (wrapped false)
  (modes byte native melange)
  (flags
   (:standard -w -a))

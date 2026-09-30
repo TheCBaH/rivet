@@ -25,8 +25,9 @@
  (files upstream/src/fmt.mli))
 
 (library
- (name fmt)
+ (name rivet_fmt)
  (public_name rivet.fmt)
+ (wrapped false)
  (modes byte native)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

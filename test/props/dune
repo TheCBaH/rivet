@@ -30,7 +30,7 @@
   image
   driver
   foundation
-  fmt)
+  rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 

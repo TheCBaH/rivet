@@ -13,7 +13,7 @@
  (name test_lexer)
  (modules test_lexer)
  (modes byte native)
- (libraries foundation asm_syntax x86_64 fmt)
+ (libraries foundation asm_syntax x86_64 rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))
