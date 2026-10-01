@@ -104,7 +104,7 @@ build_generated_one() {
 
   local dir="$OUT_DIR/v$abi/$t"
   mkdir -p "$dir"
-  opam exec -- dune build test/oracle/abi_gen_main.exe
+  opam exec -- dune build --root . test/oracle/abi_gen_main.exe
   _build/default/test/oracle/abi_gen_main.exe --profile "$t" --abi-version "$abi" \
     > "$dir/generated.s"
   "$as" "${AS_FLAGS[@]}" --defsym "ABI_VERSION=$abi" -I "$SRC_DIR" -o "$dir/helper.o" "$dir/generated.s"
