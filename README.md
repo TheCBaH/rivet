@@ -44,13 +44,12 @@ by another project: it is installed as the `rivet-tools` package, with the
 compiler that generates fixtures as a parameter.
 
 ## Vendored libraries
-[err_trace](https://github.com/TheCBaH/err_trace) is vendored as
-`vendor/err_trace/upstream` and [Fmt](https://github.com/dbuenzli/fmt) as
-`vendor/fmt/upstream`, so a fresh clone needs `git submodule update --init`
-before `make build`. See [vendor/err_trace/README.md](vendor/err_trace/README.md)
-and [vendor/fmt/README.md](vendor/fmt/README.md) for why they are vendored
-rather than taken from opam, and [docs/errors.md](docs/errors.md) for the error
-model err_trace supports.
+[Fmt](https://github.com/dbuenzli/fmt) is vendored as `vendor/fmt/upstream`, so a
+fresh clone needs `git submodule update --init` before `make build`; see
+[vendor/fmt/README.md](vendor/fmt/README.md) for why it is not taken from opam.
+[err_trace](https://github.com/TheCBaH/err_trace) is an opam package (pure OCaml,
+and installed with a Melange mode when `melange` is present, so install `melange`
+first); see [docs/errors.md](docs/errors.md) for the error model it supports.
 
 ## Using it from another project
 Every library a consumer needs has a public name in the `rivet` package
@@ -59,15 +58,15 @@ repository as a subdirectory with `(vendored_dirs vendor)`, and name the
 libraries as usual.
 
 Or install it: `rivet.opam` builds the native libraries (with `Native_exec`)
-against the opam `fmt` and `err_trace`, from a source archive with no
+against the opam `fmt`, from a source archive with no
 submodules, e.g. `opam pin add rivet <archive URL>`.
 
-A consumer that already has its own Fmt and err_trace, and links them into the
-same executable, builds with `RIVET_EXTERNAL_DEPS=true`. The vendored copies
-are then not built; `rivet.fmt` and `rivet.err_trace` re-export the findlib
-libraries `fmt` and `err_trace` (opam, or a workspace package with those public
-names), so `Err.t` values cross the boundary without a second `Err` module.
-Melange builds keep the vendored copies. `make external-deps` builds and tests
+A consumer that already has its own Fmt, and links it into the same executable,
+builds with `RIVET_EXTERNAL_DEPS=true`. The vendored copy is then not built;
+`rivet.fmt` re-exports the findlib library `fmt` (opam, or a workspace package
+with that public name). The installed `err_trace` is always used,
+so `Err.t` values cross the boundary without a second `Err`
+module. Melange builds keep the vendored Fmt. `make external-deps` builds and tests
 this configuration in a throwaway workspace; `test/consumer` is the example.
 
 Embedding native code: `Native_exec.load` maps an image once, `call` runs it

@@ -1,10 +1,10 @@
 ; Spans, origins, diagnostics, arbitrary-precision integers, and the byte
 ; cursor. This is the root of the production closure, and docs/design.md §3.7
 ; forbids Unix, native pointers, bigarrays, and any C-backed package anywhere
-; above it — so the only dependencies are the vendored pure-OCaml Fmt and
-; err_trace. Both are vendored rather than taken from opam, and err_trace is
-; named here rather than higher up because foundation is the root of the
-; closure: everything above it gets `Err` transitively.
+; above it — so the only dependencies are the vendored pure-OCaml Fmt and the
+; pure-OCaml opam package err_trace (err_trace-melange under Melange), which it
+; re-exports. It is named here rather than higher up because foundation
+; is the root of the closure: everything above it gets `Err` transitively.
 ;
 ; Melange mode lives in melange/lib/foundation, which copy_files these same
 ; sources; the two stanzas share this library's name and are made mutually
@@ -14,6 +14,8 @@
  (name foundation)
  (public_name rivet.foundation)
  (modes byte native)
- (libraries rivet_fmt rivet_err_trace)
+ (libraries
+  rivet_fmt
+  (re_export err_trace))
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

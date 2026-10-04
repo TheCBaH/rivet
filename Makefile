@@ -21,17 +21,13 @@ OCAMLFORMAT_VERSION := $(shell awk -F' *= *' '/^version/{print $$2}' .ocamlforma
 fmt-ocamlformat:
 	opam install -y ocamlformat.$(OCAMLFORMAT_VERSION)
 
-# err_trace and Fmt are both vendored as submodules (vendor/err_trace/upstream,
-# vendor/fmt/upstream) and their sources are copy_files'd into the build by the
-# enclosing directory's dune, so an uninitialized submodule is a build failure -
+# Fmt is vendored as a submodule (vendor/fmt/upstream) and its sources are
+# copy_files'd into the build by the enclosing directory's dune, so an
+# uninitialized submodule is a build failure -
 # and an unhelpful one, since dune reports it as a missing rule for a path
 # rather than as a missing checkout. Checked here rather than in ci so that a
 # bare `make build` gets the same answer.
 submodules:
-	@test -f vendor/err_trace/upstream/src/err.ml || { \
-	  echo "vendor/err_trace/upstream is not checked out; run:" >&2; \
-	  echo "  git submodule update --init vendor/err_trace/upstream" >&2; \
-	  exit 1; }
 	@test -f vendor/fmt/upstream/src/fmt.ml || { \
 	  echo "vendor/fmt/upstream is not checked out; run:" >&2; \
 	  echo "  git submodule update --init vendor/fmt/upstream" >&2; \
@@ -109,8 +105,8 @@ tool-gate: tools-build
 melange-optin:
 	scripts/asm-melange-optin.sh
 
-# The opt-in configuration for a consumer that supplies its own Fmt and
-# err_trace (vendor/host/dune). test/consumer plays that consumer in a
+# The opt-in configuration for a consumer that supplies its own Fmt
+# (vendor/host/dune). test/consumer plays that consumer in a
 # throwaway workspace with this tree vendored inside it.
 external-deps: submodules
 	scripts/external-deps.sh
@@ -248,9 +244,9 @@ TOOLS_ITEST := $(CURDIR)/_build/default/tools/test/repo/repo_tests.exe
 # transitively require an assembler build - which is what preserves the
 # toolchain-free property of fixtures-check.
 #
-# submodules because the tool project copy_files its err_trace sources from the
-# submodule, and without the guard dune reports a missing RULE for a path
-# rather than a missing checkout (see the comment on submodules itself).
+# submodules because the tool project's Fmt comes from the submodule, and
+# without the guard dune reports a missing RULE for a path rather than a
+# missing checkout (see the comment on submodules itself).
 tools-build: submodules
 	opam exec -- dune build tools/bin/rivet_tools.exe
 

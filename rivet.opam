@@ -7,7 +7,7 @@ build includes Native_exec, which runs an image in the calling process.
 
 This package is built with RIVET_EXTERNAL_DEPS=true: it uses the installed
 fmt and err_trace, so a program linking it has one Fmt and one Err. It is not
-the standalone build (vendored Fmt and err_trace, from git submodules) nor the
+the standalone build (vendored Fmt, from a git submodule) nor the
 Melange one; see the README.
 """
 maintainer: "Vladimir N. Silyaev"

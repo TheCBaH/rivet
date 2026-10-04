@@ -1,8 +1,1 @@
 (lang dune 3.15)
-
-; The consumer: it vendors rivet (as ./rivet) and supplies its own err_trace
-; under the public name the installed package has.
-
-(package
- (name err_trace)
- (allow_empty))

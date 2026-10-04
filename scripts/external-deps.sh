@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds and runs test/consumer, a consumer that supplies its own Fmt and
-# err_trace (RIVET_EXTERNAL_DEPS=true), against a copy of this tree vendored
+# Builds and runs test/consumer, a consumer that supplies its own Fmt
+# (RIVET_EXTERNAL_DEPS=true), against a copy of this tree vendored
 # into a throwaway workspace: the arrangement a real consumer has, including
 # that the vendored tree must define nothing a consumer defines itself.
 set -euo pipefail

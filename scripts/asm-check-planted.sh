@@ -268,21 +268,6 @@ plant research-stub-ungated purity audit-fail 'uses foreign_stubs' "
 plant ppx-in-production purity reject-either 'reaches "ppx_expect"' \
   "add_library lib/foundation/dune ppx_expect"
 
-# The same leak arriving through a vendored submodule rather than through one of
-# our own stanzas. vendor/err_trace/upstream is a whole upstream
-# repository, and its own test/dune declares an inline-test library over
-# ppx_expect; vendor/err_trace/dune's `(data_only_dirs upstream)` line is what
-# stops dune reading it. Without that line, `core_tests` becomes a production
-# root - anything under vendor/ is production by `production_dirs` - and drags
-# base, time_now and the ppx_expect runtime into the closure, which grows from
-# 22 libraries to 42.
-#
-# Planted by deleting just that line rather than the whole file, because
-# deleting the file would also delete the err_trace library stanza right next
-# to it, breaking the build for an unrelated reason.
-plant vendor-submodule-visible purity reject-either 'reaches "base"' \
-  "edit vendor/err_trace/dune '/data_only_dirs/d'"
-
 # A production library depending on test code. Not a C problem - a closure
 # problem, and the one that would let a test helper end up in a shipped image.
 plant test-in-production purity reject-either 'non-production library' "
@@ -319,7 +304,7 @@ plant assembler-reaches-tool purity build-fail 'Library "rivet_tools" not found'
 # assembler stanza naming an external tool package builds fine, and only the
 # purity audit catches it - which is why the structural guarantee above does not
 # make this case redundant.
-plant assembler-reaches-tool-package purity audit-fail 'ships a foreign object' \
+plant assembler-reaches-tool-package purity audit-fail 'reaches external package "bos"' \
   "add_library lib/foundation/dune bos"
 
 # The auditor's own fail-closed branch. Its ALLOWLIST branch turns out to be

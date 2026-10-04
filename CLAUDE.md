@@ -19,8 +19,9 @@ The repository holds two dune projects:
    commands. Kept apart on purpose (see "Architecture").
 
 A fresh clone needs submodules initialized before building:
-`git submodule update --init` pulls in `vendor/err_trace/upstream` and
-`vendor/fmt/upstream`, which are vendored rather than taken from opam.
+`git submodule update --init` pulls in `vendor/fmt/upstream`, which is vendored
+rather than taken from opam. `err_trace` is an opam package, pinned in the
+devcontainer.
 
 ## Common commands
 
@@ -78,7 +79,7 @@ construct the source/semantic/lowered AST directly.
   boundary), `test/oracle/` (fixture oracle / ABI-conformance runners),
   `test/differential/`, `test/coherence/`, `test/errors/`, `test/xref/`,
   `test/snippets/`, `test/browser/`.
-- `vendor/{err_trace,fmt}/upstream` — git submodules, vendored (not taken from
+- `vendor/fmt/upstream` — git submodule, vendored (not taken from
   opam) rather than committed with their sources.
 - `melange/` mirrors the main source tree via `copy_files` so the Melange (JS)
   build can be gated behind `RIVET_MELANGE`/`RIVET_BACKEND` env vars without

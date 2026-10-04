@@ -113,7 +113,7 @@ jobs:
     - name: melange opt-in
       run: |
         ${{ env.EXEC }} make melange-optin
-    # Fmt and err_trace supplied by the consumer instead of vendored.
+    # Fmt supplied by the consumer instead of vendored.
     - name: external deps
       run: |
         ${{ env.EXEC }} make external-deps

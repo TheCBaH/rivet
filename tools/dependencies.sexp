@@ -19,6 +19,7 @@
 ; or `test`; the field exists from day one so the grammar does not have to
 ; change when the first test-only package arrives.
 
+(err_trace (>= 0.1.0) runtime (err_trace))
 (bos      (>= 0.2.1) runtime (bos))
 (fpath    (>= 0.7.3) runtime (fpath))
 (cmdliner (>= 1.2.0) runtime (cmdliner))
@@ -43,8 +44,6 @@
 
 ; Deliberately absent, so these read as decisions rather than omissions:
 ;
-;   err_trace  a LOCAL library of this project (tools/vendor/err_trace_local),
-;              copied from the submodule. Not package-backed, so no row.
 ;   fmt        reached transitively through bos, and it is the INSTALLED opam
 ;              package, not vendor/fmt, which this project cannot see.
 ;              Rule 4's business, never rule 1's.

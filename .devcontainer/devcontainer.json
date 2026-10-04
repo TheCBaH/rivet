@@ -15,12 +15,15 @@
         },
         "ghcr.io/thecbah/ocaml-features/ocaml:1": {
             "version": "${localEnv:OCAML_VERSION}",
-            "packages": "bos bytesrw cmdliner digestif fmt fpath jsont mtime js_of_ocaml-compiler js_of_ocaml-ppx menhir ocamlformat#0.28.1 ppx_expect qcheck zarith",
+            "packages": "bos bytesrw cmdliner digestif fmt fpath jsont mtime js_of_ocaml-compiler js_of_ocaml-ppx menhir ocamlformat#0.28.1 ppx_expect qcheck zarith err_trace#git+https://github.com/TheCBaH/err_trace#main",
             // Pinned to the release that requires 'ocaml >= 4.14 & < 4.15', so it is
             // installable on the 4.14 images only; the same devcontainer.json builds
             // 4.14.3 through 5.5.0. Unpinned, newer Melange releases install on 5.x
             // and make those legs run the opt-in half of `make melange-optin`.
-            "optional-packages": "melange#5.1.0-414",
+            // err_trace and err_trace-melange are pinned to its main branch (not on opam yet);
+            // err_trace-melange needs melange, so it is optional too, pinned after it.
+            // A '#sha' in the target needs ocaml-features >= 1.0.1.
+            "optional-packages": "melange#5.1.0-414 err_trace-melange#git+https://github.com/TheCBaH/err_trace#main",
             "system-packages": "libgmp-dev pkg-config"
         }
     },

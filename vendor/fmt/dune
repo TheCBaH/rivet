@@ -13,9 +13,9 @@
 ;
 ; `data_only_dirs` keeps upstream/'s own build files (B0.ml, pkg/, _tags) out
 ; of dune's view. Fmt 0.11.0 ships no dune files of its own, so nothing
-; upstream currently depends on this - but err_trace next door shows exactly
-; what goes wrong the day a vendored submodule's own build machinery is left
-; readable, so the same protection is applied here on principle.
+; upstream currently depends on this - but a vendored submodule whose own
+; build machinery is readable breaks the build, so the same protection is
+; applied here on principle.
 
 (data_only_dirs upstream)
 

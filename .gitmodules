@@ -1,7 +1,3 @@
-[submodule "vendor/err_trace/upstream"]
-	path = vendor/err_trace/upstream
-	url = https://github.com/TheCBaH/err_trace.git
-	branch = main
 [submodule "vendor/fmt/upstream"]
 	path = vendor/fmt/upstream
 	url = https://github.com/dbuenzli/fmt.git

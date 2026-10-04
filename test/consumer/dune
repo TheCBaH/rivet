@@ -1,23 +1,7 @@
 ; Built by scripts/external-deps.sh, with RIVET_EXTERNAL_DEPS=true. The
-; consumer's own Err is built from the same sources as the vendored one and
-; must be the one rivet's Foundation links against.
+; installed err_trace is the one rivet's Foundation links against.
 
 (vendored_dirs rivet)
-
-(copy_files#
- (files rivet/vendor/err_trace/upstream/src/err.ml))
-
-(copy_files#
- (files rivet/vendor/err_trace/upstream/src/err.mli))
-
-(library
- (name err_trace)
- (modules err)
- (public_name err_trace)
- (wrapped false)
- (modes byte native)
- (flags
-  (:standard -w -a)))
 
 (test
  (name consumer)

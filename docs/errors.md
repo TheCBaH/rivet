@@ -14,7 +14,7 @@ Two things are called errors here and they are not the same thing:
   `Diagnostic.of_error`. It is what a user reads and what the cram baselines
   pin. Nothing internal consumes it.
 
-Wrapping both is `Err`, the vendored [err_trace](../vendor/err_trace/README.md)
+Wrapping both is `Err`, [err_trace](https://github.com/TheCBaH/err_trace)
 library: `('a, 'e) Err.t = ('a, 'e Err.Error.t) result` keeps the typed payload
 while attaching a bounded detection origin and a bounded semantic event trail.
 

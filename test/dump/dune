@@ -47,10 +47,4 @@
  (names manifest_dump)
  (modules manifest_dump)
  (modes exe js)
- (libraries
-  foundation
-  driver
-  asm_core
-  rivet_err_trace
-  rivet_fmt
-  smoke_fixtures))
+ (libraries foundation driver asm_core rivet_fmt smoke_fixtures))

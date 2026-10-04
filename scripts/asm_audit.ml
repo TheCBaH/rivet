@@ -214,7 +214,7 @@ let production_dirs = [ "lib/"; "targets/"; "driver/"; "browser/"; "vendor/" ]
 (* "tools/" is the nested OCaml tool project (docs/design.md). It is additive, not a
    widening: `under "tool/" "tools/lib"` is false, so the existing entry never
    covered it. One entry classifies BOTH tool libraries, because production_dirs
-   is tested first and `under "vendor/" "tools/vendor/err_trace"` is false -
+   is tested first and `under "vendor/" "tools/lib"` is false -
    the test is a prefix test on the whole path, not a component search. *)
 let non_production_dirs = [ "test/"; "tool/"; "tools/" ]
 
@@ -254,10 +254,11 @@ let denied =
 
 let denied_prefixes = [ ("ctypes", "C-backed FFI"); ("core", "C-backed") ]
 
-(* External packages permitted inside the production closure. Empty on purpose:
-   Fmt is vendored precisely so that the closure needs nothing from opam, and
-   any addition here is a reviewed decision, not an accident. *)
-let external_allowlist : string list = []
+(* External packages permitted inside the production closure. Fmt is vendored
+   so that the closure needs almost nothing from opam; err_trace is the one
+   exception: dependency-free pure OCaml, installed with a Melange mode. Any
+   addition here is a reviewed decision, not an accident. *)
+let external_allowlist : string list = [ "err_trace"; "err_trace-melange" ]
 
 (* {1 Filesystem helpers} *)
 
@@ -373,8 +374,7 @@ let audit_purity asm_dir libs =
           if starts_with p l.name then fail "purity: production closure reaches %S (%s)" l.name why)
         denied_prefixes;
       if (not l.local) && not (List.mem l.name external_allowlist) then
-        fail "purity: production closure reaches external package %S (allowlist is empty by design)"
-          l.name;
+        fail "purity: production closure reaches external package %S (not in the allowlist)" l.name;
       if l.local && classify l = `Not_production then
         fail "purity: production closure reaches non-production library %S in %s" l.name
           (strip_build l.source_dir))
@@ -391,8 +391,15 @@ let audit_purity asm_dir libs =
       if Sys.file_exists dir && Sys.is_directory dir then
         Array.iter
           (fun e ->
+            (* An OCaml native archive installs as NAME.a beside NAME.cmxa; a
+               stub archive has no such partner. *)
+            let ocaml_archive =
+              Filename.check_suffix e ".a"
+              && Sys.file_exists (Filename.concat dir (Filename.chop_suffix e ".a" ^ ".cmxa"))
+            in
             let bad_ext =
               List.exists (fun x -> Filename.check_suffix e x) [ ".c"; ".h"; ".o"; ".a" ]
+              && not ocaml_archive
             in
             let bad_so = starts_with "dll" e && Filename.check_suffix e ".so" in
             if bad_ext || bad_so then
@@ -638,6 +645,7 @@ let tool_transitive_allowlist =
     "digestif";
     "digestif.ocaml";
     "eqaf";
+    "err_trace";
     "fmt";
     "fpath";
     "jsont";
