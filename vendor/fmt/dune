@@ -16,13 +16,22 @@
 ; upstream currently depends on this - but err_trace next door shows exactly
 ; what goes wrong the day a vendored submodule's own build machinery is left
 ; readable, so the same protection is applied here on principle.
+
 (data_only_dirs upstream)
 
 (copy_files#
- (files upstream/src/fmt.ml))
+ (files upstream/src/fmt.ml)
+ (enabled_if
+  (and
+   (<> %{env:RIVET_MELANGE=false} true)
+   (<> %{env:RIVET_EXTERNAL_DEPS=false} true))))
 
 (copy_files#
- (files upstream/src/fmt.mli))
+ (files upstream/src/fmt.mli)
+ (enabled_if
+  (and
+   (<> %{env:RIVET_MELANGE=false} true)
+   (<> %{env:RIVET_EXTERNAL_DEPS=false} true))))
 
 (library
  (name rivet_fmt)

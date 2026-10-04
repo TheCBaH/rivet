@@ -58,6 +58,10 @@ Every library a consumer needs has a public name in the `rivet` package
 repository as a subdirectory with `(vendored_dirs vendor)`, and name the
 libraries as usual.
 
+Or install it: `rivet.opam` builds the native libraries (with `Native_exec`)
+against the opam `fmt` and `err_trace`, from a source archive with no
+submodules, e.g. `opam pin add rivet <archive URL>`.
+
 A consumer that already has its own Fmt and err_trace, and links them into the
 same executable, builds with `RIVET_EXTERNAL_DEPS=true`. The vendored copies
 are then not built; `rivet.fmt` and `rivet.err_trace` re-export the findlib

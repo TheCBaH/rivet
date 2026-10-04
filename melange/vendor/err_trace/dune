@@ -6,11 +6,16 @@
 ; ../../../vendor/err_trace/dune marks the submodule `data_only_dirs`, which
 ; leaves its files reachable as ordinary sources - that is what lets these
 ; copy_files# cross into it.
-(copy_files#
- (files ../../../vendor/err_trace/upstream/src/err.ml))
 
 (copy_files#
- (files ../../../vendor/err_trace/upstream/src/err.mli))
+ (files ../../../vendor/err_trace/upstream/src/err.ml)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
+
+(copy_files#
+ (files ../../../vendor/err_trace/upstream/src/err.mli)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name rivet_err_trace)

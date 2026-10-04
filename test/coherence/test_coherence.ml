@@ -231,7 +231,7 @@ let direct_lowered : T.fixup_kind Lowered_ast.module_ =
     declared_sections = [ ".note.GNU-stack" ];
   }
 
-let render_lowered = Fmt.to_to_string Lowered_ast.pp
+let render_lowered m = Fmt.to_to_string Lowered_ast.pp m
 
 let%expect_test "lowering the direct normalized AST equals the direct lowered module" =
   match P.lower ~state:T.default_state direct_normalized with

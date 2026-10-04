@@ -18,6 +18,7 @@
 ;
 ; tools/asm-check-planted.sh has a case that deletes this line and requires the
 ; purity audit to reject the result, so the protection cannot be lost silently.
+
 (data_only_dirs upstream)
 
 ; `wrapped false` is upstream's own setting and is load-bearing: it is what
@@ -30,10 +31,18 @@
 ; `modes` conditional within one stanza either.
 
 (copy_files#
- (files upstream/src/err.ml))
+ (files upstream/src/err.ml)
+ (enabled_if
+  (and
+   (<> %{env:RIVET_MELANGE=false} true)
+   (<> %{env:RIVET_EXTERNAL_DEPS=false} true))))
 
 (copy_files#
- (files upstream/src/err.mli))
+ (files upstream/src/err.mli)
+ (enabled_if
+  (and
+   (<> %{env:RIVET_MELANGE=false} true)
+   (<> %{env:RIVET_EXTERNAL_DEPS=false} true))))
 
 (library
  (name rivet_err_trace)

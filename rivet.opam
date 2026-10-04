@@ -1,0 +1,29 @@
+opam-version: "2.0"
+synopsis: "Retargetable assembler and linker in pure OCaml"
+description: """
+Reads GNU-syntax assembly for x86-32, x86-64, ARM, AArch64, RV32 and RV64,
+produces an in-memory image, and binds it at chosen addresses. The native
+build includes Native_exec, which runs an image in the calling process.
+
+This package is built with RIVET_EXTERNAL_DEPS=true: it uses the installed
+fmt and err_trace, so a program linking it has one Fmt and one Err. It is not
+the standalone build (vendored Fmt and err_trace, from git submodules) nor the
+Melange one; see the README.
+"""
+maintainer: "Vladimir N. Silyaev"
+authors: ["Vladimir N. Silyaev"]
+license: "MIT"
+homepage: "https://github.com/TheCBaH/rivet"
+bug-reports: "https://github.com/TheCBaH/rivet/issues"
+depends: [
+  "ocaml" {>= "4.14.0"}
+  "dune" {>= "3.15"}
+  "menhir" {>= "20211128"}
+  "fmt"
+  "err_trace"
+  "ppx_expect"
+]
+build: [
+  ["env" "RIVET_NATIVE_EXEC=true" "RIVET_EXTERNAL_DEPS=true"
+   "dune" "build" "-p" name "-j" jobs "@install"]
+]

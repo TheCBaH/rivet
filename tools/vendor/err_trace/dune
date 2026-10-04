@@ -22,10 +22,14 @@
 ; under Melange, because nothing here builds to JavaScript.
 
 (copy_files#
- (files ../../../vendor/err_trace/upstream/src/err.ml))
+ (files ../../../vendor/err_trace/upstream/src/err.ml)
+ (enabled_if
+  (<> %{env:RIVET_EXTERNAL_DEPS=false} true)))
 
 (copy_files#
- (files ../../../vendor/err_trace/upstream/src/err.mli))
+ (files ../../../vendor/err_trace/upstream/src/err.mli)
+ (enabled_if
+  (<> %{env:RIVET_EXTERNAL_DEPS=false} true)))
 
 (library
  (name err_trace)

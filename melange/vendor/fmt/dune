@@ -2,11 +2,16 @@
 ; ../../../vendor/fmt/upstream/src; only the modes differ. Warnings are
 ; disabled explicitly here because `vendored_dirs` covers the source tree, not
 ; this copy's stanza.
-(copy_files#
- (files ../../../vendor/fmt/upstream/src/*.ml))
 
 (copy_files#
- (files ../../../vendor/fmt/upstream/src/*.mli))
+ (files ../../../vendor/fmt/upstream/src/*.ml)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
+
+(copy_files#
+ (files ../../../vendor/fmt/upstream/src/*.mli)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name rivet_fmt)
