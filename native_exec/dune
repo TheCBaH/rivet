@@ -11,5 +11,6 @@
  (foreign_stubs
   (language c)
   (names native_exec_stubs))
+ (c_library_flags (-ldl))
  (enabled_if
   (= %{env:RIVET_NATIVE_EXEC=false} true)))

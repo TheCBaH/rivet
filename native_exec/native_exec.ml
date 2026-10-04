@@ -21,8 +21,9 @@ external protect : int64 -> int -> int -> unit = "native_exec_protect"
 external clear_cache : int64 -> int -> unit = "native_exec_clear_cache"
 external copy_in : int64 -> string -> unit = "native_exec_copy_in"
 external copy_out : int64 -> int -> string = "native_exec_copy_out"
-external call : int64 -> io -> int64 = "native_exec_call"
+external call_entry : int64 -> io -> int64 = "native_exec_call"
 external host_isa_stub : unit -> string = "native_exec_host_isa"
+external symbol_stub : string -> int64 = "native_exec_symbol"
 
 (* The target name of the ISA this process runs, if it is one the assembler
    targets. Only images for that target can be run here. *)
@@ -48,6 +49,8 @@ type error =
   | Child of string  (** isolated only: the child failed before reporting a result *)
   | Foreign_target of { target : string; host : string option }
       (** the image was built for a target this host cannot run in process *)
+  | Closed  (** the loaded image was closed *)
+  | Missing_symbol of string  (** a host symbol to bind does not resolve in this process *)
 
 let signal_name n =
   List.assoc_opt n
@@ -74,6 +77,87 @@ let pp_error ppf = function
   | Foreign_target { target; host } ->
       Fmt.pf ppf "%s code cannot run natively on this host (%s)" target
         (Option.value host ~default:"an ISA no target matches")
+  | Closed -> Fmt.string ppf "the loaded image was closed"
+  | Missing_symbol n -> Fmt.pf ppf "host symbol %s does not resolve in this process" n
+
+(* {1 Host symbols}
+
+   The image linker is closed: an undefined symbol is an error. A host
+   function is therefore bound by defining its name in an extra unit, whose
+   code loads the address into a scratch register and jumps to it. The
+   address is absolute because a direct branch cannot reach an arbitrary
+   libc address; argument and return registers are untouched, so the callee
+   returns straight to the image's caller. Addresses belong to this process
+   and must not be cached across processes. *)
+
+let host_symbol name = match symbol_stub name with 0L -> None | a -> Some a
+
+let valid_symbol n =
+  n <> ""
+  && String.for_all
+       (function 'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '_' | '.' | '$' -> true | _ -> false)
+       n
+
+let trampoline ~target name addr =
+  let q k = Int64.to_int (Int64.logand (Int64.shift_right_logical addr (16 * k)) 0xffffL) in
+  let head = Printf.sprintf {|    .globl %s
+    .type %s, @function
+|} name name in
+  match target with
+  | "aarch64" ->
+      Ok
+        (Printf.sprintf
+           {|%s%s:
+    movz x16, #%d
+    movk x16, #%d, lsl #16
+    movk x16, #%d, lsl #32
+    movk x16, #%d, lsl #48
+    br x16
+|}
+           head name (q 0) (q 1) (q 2) (q 3))
+  | "x86_64" -> Ok (Printf.sprintf {|%s%s:
+    movabsq $%Ld, %%r11
+    jmp *%%r11
+|} head name addr)
+  | "riscv64" ->
+      Ok
+        (Printf.sprintf
+           {|    .balign 8
+%s%s:
+    auipc t1, 0
+    ld t1, 16(t1)
+    jr t1
+    nop
+    .quad %Ld
+|}
+           head name addr)
+  | t -> Error (Foreign_target { target = t; host = host_isa })
+
+(* Assembly text, for the assembler of [target], defining every name as a
+   jump to its address. Assemble it as one more unit beside the code that
+   calls the names. *)
+let trampolines ~target bindings =
+  List.iter
+    (fun (n, _) -> if not (valid_symbol n) then invalid_arg ("Native_exec.trampolines: " ^ n))
+    bindings;
+  List.fold_left
+    (fun acc (n, a) ->
+      match (acc, trampoline ~target n a) with
+      | Ok text, Ok t -> Ok (text ^ t)
+      | (Error _ as e), _ | _, (Error _ as e) -> e)
+    (Ok "    .text\n") bindings
+
+(* [trampolines] for names resolved in this process; the first one that does
+   not resolve is reported and nothing is generated. *)
+let bind_host ~target names =
+  let rec resolve acc = function
+    | [] -> trampolines ~target (List.rev acc)
+    | n :: rest -> (
+        match if valid_symbol n then host_symbol n else None with
+        | Some a -> resolve ((n, a) :: acc) rest
+        | None -> Error (Missing_symbol n))
+  in
+  resolve [] names
 
 let align_up n a = if a <= 1 then n else (n + a - 1) / a * a
 
@@ -96,66 +180,146 @@ let layout (plan : Image.plan) =
   in
   (List.rev offsets, max total page, max_align)
 
-let run_here ?(observe = fun (_ : event) -> ()) ?(read_globals = []) (laid : Image.laid_out)
-    ~(io : io) =
-  let plan = Image.plan_of laid in
-  if plan.entry = None then Error No_entry
-  else
-    let offsets, total, max_align = layout plan in
-    (* mmap only promises page alignment; over-reserve so a stricter
-       segment alignment can be met by moving the base up. *)
-    let size = total + (max_align - page_size ()) in
-    match map size with
-    | exception Failure m -> Error (Os m)
-    | mapping ->
-        observe (Mapped { base = mapping; size });
-        let base = Int64.of_int (align_up (Int64.to_int mapping) max_align) in
-        let finally () =
-          unmap mapping size;
-          observe (Unmapped { base = mapping; size })
-        in
-        Fun.protect ~finally (fun () ->
-            let addresses =
-              List.map (fun (n, off) -> (n, Int64.add base (Int64.of_int off))) offsets
+(* {1 Loading}
+
+   [load] owns everything up to a callable image: reserve, bind, copy,
+   protect, flush. [call] only invokes already-loaded code, any number of
+   times, and never maps or unmaps. [close] makes later calls fail with
+   [Closed] and releases the mapping once no call is active, so the unmap
+   happens exactly once, after the last call has returned. The caller owns
+   the io buffer of each call; nothing here is shared between calls but the
+   immutable code and data of the image. *)
+
+type loaded = {
+  mapping : int64;
+  size : int;
+  image : Image.t;
+  entry : int64;
+  observe : event -> unit;
+  active : int Atomic.t;
+  closed : bool Atomic.t;
+  released : bool Atomic.t;
+}
+
+let release t =
+  if Atomic.compare_and_set t.released false true then begin
+    unmap t.mapping t.size;
+    t.observe (Unmapped { base = t.mapping; size = t.size })
+  end
+
+let leave t = if Atomic.fetch_and_add t.active (-1) = 1 && Atomic.get t.closed then release t
+
+let close t =
+  Atomic.set t.closed true;
+  if Atomic.get t.active = 0 then release t
+
+let with_open t f =
+  Atomic.incr t.active;
+  Fun.protect
+    ~finally:(fun () -> leave t)
+    (fun () -> if Atomic.get t.closed then Error Closed else f ())
+
+let load ?(observe = fun (_ : event) -> ()) ?target (laid : Image.laid_out) =
+  match target with
+  | Some t when host_isa <> Some t -> Error (Foreign_target { target = t; host = host_isa })
+  | _ -> (
+      let plan = Image.plan_of laid in
+      if plan.entry = None then Error No_entry
+      else
+        let offsets, total, max_align = layout plan in
+        (* mmap only promises page alignment; over-reserve so a stricter
+           segment alignment can be met by moving the base up. *)
+        let size = total + (max_align - page_size ()) in
+        match map size with
+        | exception Failure m -> Error (Os m)
+        | mapping -> (
+            observe (Mapped { base = mapping; size });
+            let discard () =
+              unmap mapping size;
+              observe (Unmapped { base = mapping; size })
             in
-            match Image.bind_image laid ~addresses with
-            | Error e -> Error (Bind (Diag.render e))
-            | Ok (image : Image.t) -> (
-                try
-                  List.iter (fun (s : Image.segment) -> copy_in s.address s.bytes) image.segments;
-                  List.iter
-                    (fun (s : Image.segment) ->
-                      let size = align_up (String.length s.bytes + s.zero_fill) (page_size ()) in
-                      if size > 0 then begin
-                        protect s.address size (prot_bits s.perms);
-                        observe
-                          (Protected
-                             { segment = s.name; address = s.address; size; perms = s.perms })
-                      end)
-                    image.segments;
-                  List.iter
-                    (fun (s : Image.segment) ->
-                      let size = String.length s.bytes in
-                      if Perms.executable s.perms && size > 0 then begin
-                        clear_cache s.address size;
-                        observe (Flushed { segment = s.name; address = s.address; size })
-                      end)
-                    image.segments;
-                  let entry = Option.get image.entry in
-                  observe (Calling { entry });
-                  let value = call entry io in
-                  let read n =
-                    match (List.assoc_opt n image.exports, List.assoc_opt n image.symbol_sizes) with
-                    | Some a, Some sz -> Ok (n, copy_out a (Int64.to_int sz))
-                    | _ -> Error (Missing_global n)
-                  in
-                  let rec read_all acc = function
-                    | [] -> Ok { value; globals = List.rev acc }
-                    | n :: rest -> (
-                        match read n with Ok g -> read_all (g :: acc) rest | Error e -> Error e)
-                  in
-                  read_all [] read_globals
-                with Failure m -> Error (Os m)))
+            let base = Int64.of_int (align_up (Int64.to_int mapping) max_align) in
+            let populate () =
+              let addresses =
+                List.map (fun (n, off) -> (n, Int64.add base (Int64.of_int off))) offsets
+              in
+              match Image.bind_image laid ~addresses with
+              | Error e -> Error (Bind (Diag.render e))
+              | Ok (image : Image.t) -> (
+                  try
+                    List.iter (fun (s : Image.segment) -> copy_in s.address s.bytes) image.segments;
+                    List.iter
+                      (fun (s : Image.segment) ->
+                        let size = align_up (String.length s.bytes + s.zero_fill) (page_size ()) in
+                        if size > 0 then begin
+                          protect s.address size (prot_bits s.perms);
+                          observe
+                            (Protected
+                               { segment = s.name; address = s.address; size; perms = s.perms })
+                        end)
+                      image.segments;
+                    List.iter
+                      (fun (s : Image.segment) ->
+                        let size = String.length s.bytes in
+                        if Perms.executable s.perms && size > 0 then begin
+                          clear_cache s.address size;
+                          observe (Flushed { segment = s.name; address = s.address; size })
+                        end)
+                      image.segments;
+                    Ok image
+                  with Failure m -> Error (Os m))
+            in
+            match populate () with
+            | exception e ->
+                discard ();
+                raise e
+            | Error e ->
+                discard ();
+                Error e
+            | Ok image ->
+                Ok
+                  {
+                    mapping;
+                    size;
+                    image;
+                    entry = Option.get image.entry;
+                    observe;
+                    active = Atomic.make 0;
+                    closed = Atomic.make false;
+                    released = Atomic.make false;
+                  }))
+
+let call t ~(io : io) =
+  with_open t (fun () ->
+      t.observe (Calling { entry = t.entry });
+      try Ok (call_entry t.entry io) with Failure m -> Error (Os m))
+
+(* The bytes of an exported global with a known size, read from the live
+   mapping. *)
+let read_global t name =
+  with_open t (fun () ->
+      match (List.assoc_opt name t.image.exports, List.assoc_opt name t.image.symbol_sizes) with
+      | Some a, Some sz -> ( try Ok (copy_out a (Int64.to_int sz)) with Failure m -> Error (Os m))
+      | _ -> Error (Missing_global name))
+
+let run_here ?observe ?(read_globals = []) (laid : Image.laid_out) ~(io : io) =
+  match load ?observe laid with
+  | Error e -> Error e
+  | Ok t ->
+      Fun.protect
+        ~finally:(fun () -> close t)
+        (fun () ->
+          match call t ~io with
+          | Error e -> Error e
+          | Ok value ->
+              let rec read_all acc = function
+                | [] -> Ok { value; globals = List.rev acc }
+                | n :: rest -> (
+                    match read_global t n with
+                    | Ok bytes -> read_all ((n, bytes) :: acc) rest
+                    | Error e -> Error e)
+              in
+              read_all [] read_globals)
 
 (* {1 Isolation}
 

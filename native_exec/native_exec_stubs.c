@@ -4,6 +4,7 @@
    observed by tests. Addresses cross the boundary as int64. */
 
 #define _GNU_SOURCE
+#include <dlfcn.h>
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
@@ -112,4 +113,12 @@ value native_exec_call(value addr, value io)
   long (*entry)(void *) = (long (*)(void *))(uintptr_t)Int64_val(addr);
   long r = entry(Caml_ba_data_val(io));
   CAMLreturn(caml_copy_int64((int64_t)r));
+}
+
+/* The address of [name] in this process's global symbol scope, or 0. */
+value native_exec_symbol(value name)
+{
+  CAMLparam1(name);
+  void *p = dlsym(RTLD_DEFAULT, String_val(name));
+  CAMLreturn(caml_copy_int64((int64_t)(uintptr_t)p));
 }

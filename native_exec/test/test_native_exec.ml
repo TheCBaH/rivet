@@ -335,3 +335,228 @@ let%expect_test "the host's own target name is accepted" =
       Printf.printf "%Ld\n"
         (Result.get_ok (Native_exec.run ~target:isa return42 ~io:(io_of_string ""))).value;
       [%expect {| 42 |}]
+
+(* {1 Loaded images}
+
+   One [load] maps, binds, protects and flushes; every [call] only runs the code. *)
+
+let ok_or_fail = function
+  | Ok v -> v
+  | Error e -> failwith (Format.asprintf "%a" Native_exec.pp_error e)
+
+let u64_at io k =
+  let r = ref 0L in
+  for i = 7 downto 0 do
+    r := Int64.logor (Int64.shift_left !r 8) (Int64.of_int (Char.code io.{k + i}))
+  done;
+  !r
+
+let%expect_test "repeated calls share one mapping, which is released by close" =
+  let events = ref [] in
+  let t = ok_or_fail (Native_exec.load ~observe:(fun e -> events := e :: !events) roundtrip) in
+  let results =
+    List.map
+      (fun n ->
+        let io = io_of_string (String.make 1 (Char.chr n) ^ String.make 7 '\000') in
+        let v = ok_or_fail (Native_exec.call t ~io) in
+        (v, u64_at io 8))
+      [ 1; 2; 3 ]
+  in
+  List.iter (fun (v, w) -> Printf.printf "value %Ld, io[8] %Ld\n" v w) results;
+  let count f = List.length (List.filter f !events) in
+  Printf.printf "mapped %d, calling %d, unmapped before close %d\n"
+    (count (function Native_exec.Mapped _ -> true | _ -> false))
+    (count (function Native_exec.Calling _ -> true | _ -> false))
+    (count (function Native_exec.Unmapped _ -> true | _ -> false));
+  Native_exec.close t;
+  Printf.printf "unmapped after close %d\n"
+    (count (function Native_exec.Unmapped _ -> true | _ -> false));
+  [%expect
+    {|
+    value 2, io[8] 2
+    value 3, io[8] 3
+    value 4, io[8] 4
+    mapped 1, calling 3, unmapped before close 0
+    unmapped after close 1 |}]
+
+let%expect_test "a closed image refuses calls and close is idempotent" =
+  let unmapped = ref 0 in
+  let observe = function Native_exec.Unmapped _ -> incr unmapped | _ -> () in
+  let t = ok_or_fail (Native_exec.load ~observe return42) in
+  Native_exec.close t;
+  Native_exec.close t;
+  (match Native_exec.call t ~io:(io_of_string "") with
+  | Ok _ -> print_endline "unexpectedly Ok"
+  | Error e -> print_endline (Format.asprintf "%a" Native_exec.pp_error e));
+  (match Native_exec.read_global t "counter" with
+  | Ok _ -> print_endline "unexpectedly Ok"
+  | Error e -> print_endline (Format.asprintf "%a" Native_exec.pp_error e));
+  Printf.printf "unmapped %d\n" !unmapped;
+  [%expect {|
+    the loaded image was closed
+    the loaded image was closed
+    unmapped 1 |}]
+
+let%expect_test "close during a call defers the unmap until the call returns" =
+  let events = ref [] in
+  let t = ref None in
+  let observe e =
+    events := e :: !events;
+    match e with Native_exec.Calling _ -> Native_exec.close (Option.get !t) | _ -> ()
+  in
+  t := Some (ok_or_fail (Native_exec.load ~observe return42));
+  let v = ok_or_fail (Native_exec.call (Option.get !t) ~io:(io_of_string "")) in
+  Printf.printf "value %Ld\n" v;
+  List.iter
+    (function
+      | Native_exec.Calling _ -> print_endline "calling"
+      | Unmapped _ -> print_endline "unmapped"
+      | _ -> ())
+    (List.rev !events);
+  (match Native_exec.call (Option.get !t) ~io:(io_of_string "") with
+  | Ok _ -> print_endline "unexpectedly Ok"
+  | Error e -> print_endline (Format.asprintf "%a" Native_exec.pp_error e));
+  [%expect {|
+    value 42
+    calling
+    unmapped
+    the loaded image was closed |}]
+
+let%expect_test "globals are read from the live mapping between calls" =
+  let t = ok_or_fail (Native_exec.load segments) in
+  let read () =
+    String.concat ""
+      (List.map
+         (fun c -> Printf.sprintf "%02x" (Char.code c))
+         (List.of_seq (String.to_seq (ok_or_fail (Native_exec.read_global t "counter")))))
+  in
+  Printf.printf "before %s\n" (read ());
+  ignore (ok_or_fail (Native_exec.call t ~io:(io_of_string "")));
+  Printf.printf "after one call %s\n" (read ());
+  ignore (ok_or_fail (Native_exec.call t ~io:(io_of_string "")));
+  Printf.printf "after two calls %s\n" (read ());
+  (match Native_exec.read_global t "absent" with
+  | Ok _ -> print_endline "unexpectedly Ok"
+  | Error e -> print_endline (Format.asprintf "%a" Native_exec.pp_error e));
+  Native_exec.close t;
+  [%expect
+    {|
+    before 07000000
+    after one call 08000000
+    after two calls 09000000
+    global absent is not exported with a known size |}]
+
+let%expect_test "a foreign target is refused by load before anything is mapped" =
+  let events = ref 0 in
+  (match Native_exec.load ~target:"arm" ~observe:(fun _ -> incr events) return42 with
+  | Ok _ -> print_endline "unexpectedly Ok"
+  | Error (Native_exec.Foreign_target { target; _ }) ->
+      Printf.printf "refused %s, events %d\n" target !events
+  | Error e -> print_endline ("other error: " ^ Format.asprintf "%a" Native_exec.pp_error e));
+  [%expect {| refused arm, events 0 |}]
+
+(* {1 Host symbols} *)
+
+let assemble_units target units =
+  let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find target) in
+  let units =
+    List.map (fun (name, text) -> (name, Foundation.Span.source ~name ~contents:text)) units
+  in
+  D.assemble_many ~entry:"entry" units ()
+
+let strlen_caller = function
+  | "aarch64" ->
+      {|    .text
+    .globl entry
+entry:
+    sub sp, sp, #16
+    str x30, [sp]
+    bl strlen
+    ldr x30, [sp]
+    add sp, sp, #16
+    ret
+|}
+  | "x86_64" ->
+      {|    .text
+    .globl entry
+entry:
+    subq $8, %rsp
+    call strlen
+    addq $8, %rsp
+    ret
+|}
+  | "riscv64" ->
+      {|    .text
+    .globl entry
+entry:
+    addi sp, sp, -16
+    sd ra, 8(sp)
+    jal ra, strlen
+    ld ra, 8(sp)
+    addi sp, sp, 16
+    ret
+|}
+  | t -> failwith t
+
+let show_error e = print_endline (Format.asprintf "%a" Native_exec.pp_error e)
+
+let%expect_test "an image calling a host symbol is closed until the symbol is bound" =
+  (match assemble_units host [ ("main", strlen_caller host) ] with
+  | Ok _ -> print_endline "linked"
+  | Error e -> print_endline (Foundation.Diag.render e));
+  [%expect
+    {| <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol strlen |}]
+
+let%expect_test "a bound host symbol is called through its trampoline, repeatedly" =
+  let tramp = Result.get_ok (Native_exec.bind_host ~target:host [ "strlen" ]) in
+  let laid =
+    Result.get_ok (assemble_units host [ ("main", strlen_caller host); ("host", tramp) ])
+  in
+  let t = Result.get_ok (Native_exec.load laid) in
+  List.iter
+    (fun s ->
+      match Native_exec.call t ~io:(io_of_string s) with
+      | Ok v -> Printf.printf "%Ld\n" v
+      | Error e -> show_error e)
+    [ "hello"; ""; "twelve bytes" ];
+  Native_exec.close t;
+  [%expect {|
+    5
+    0
+    12 |}]
+
+let%expect_test "an unresolvable host symbol is reported and generates nothing" =
+  (match Native_exec.bind_host ~target:host [ "strlen"; "rivet_no_such_symbol" ] with
+  | Ok _ -> print_endline "bound"
+  | Error e -> show_error e);
+  [%expect {| host symbol rivet_no_such_symbol does not resolve in this process |}]
+
+let%expect_test "trampolines exist for the 64-bit targets and nothing else" =
+  List.iter
+    (fun target ->
+      let tramp =
+        Result.get_ok (Native_exec.trampolines ~target [ ("strlen", 0x123456789abcdef0L) ])
+      in
+      match assemble_units target [ ("main", strlen_caller target); ("host", tramp) ] with
+      | Ok laid ->
+          let text =
+            List.find
+              (fun (s : Image.segment_plan) -> s.seg_name = ".text")
+              (Image.plan_of laid).segments
+          in
+          Printf.printf "%s: assembles, .text %d bytes\n" target text.init_size
+      | Error e -> print_endline (Foundation.Diag.render e))
+    [ "aarch64"; "x86_64"; "riscv64" ];
+  (match Native_exec.trampolines ~target:"arm" [ ("f", 1L) ] with
+  | Ok _ -> print_endline "arm: generated"
+  | Error e -> show_error e);
+  (match Native_exec.trampolines ~target:host [ ("not a symbol", 1L) ] with
+  | exception Invalid_argument m -> print_endline m
+  | _ -> print_endline "accepted");
+  [%expect
+    {|
+    aarch64: assembles, .text 44 bytes
+    x86_64: assembles, .text 27 bytes
+    riscv64: assembles, .text 48 bytes
+    arm code cannot run natively on this host (x86_64)
+    Native_exec.trampolines: not a symbol |}]
