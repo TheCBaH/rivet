@@ -38,7 +38,7 @@
   driver
   test_dump_inputs
   asm_core
-  err_trace
+  rivet_err_trace
   rivet_fmt
   smoke_fixtures)
  (enabled_if

@@ -113,6 +113,10 @@ jobs:
     - name: melange opt-in
       run: |
         ${{ env.EXEC }} make melange-optin
+    # Fmt and err_trace supplied by the consumer instead of vendored.
+    - name: external deps
+      run: |
+        ${{ env.EXEC }} make external-deps
 
   # ABI v1 regression plus the complete six-profile v2 conformance suite.
   # Its own job, and deliberately not part of the matrix above: it builds the

@@ -1,0 +1,28 @@
+; Opt-in RIVET_EXTERNAL_DEPS=true: Fmt and err_trace come from the consumer
+; (opam, or a workspace package with those public names) instead of the
+; vendored copies, so one executable can link rivet and its own Err without
+; two modules of that name. Each library below keeps the vendored library's
+; name and public name, so nothing that depends on rivet changes; it only
+; re-exports the host library. Native only: Melange keeps the vendored copies.
+
+(library
+ (name rivet_fmt)
+ (public_name rivet.fmt)
+ (modules)
+ (libraries
+  (re_export fmt))
+ (enabled_if
+  (and
+   (<> %{env:RIVET_MELANGE=false} true)
+   (= %{env:RIVET_EXTERNAL_DEPS=false} true))))
+
+(library
+ (name rivet_err_trace)
+ (public_name rivet.err_trace)
+ (modules)
+ (libraries
+  (re_export err_trace))
+ (enabled_if
+  (and
+   (<> %{env:RIVET_MELANGE=false} true)
+   (= %{env:RIVET_EXTERNAL_DEPS=false} true))))

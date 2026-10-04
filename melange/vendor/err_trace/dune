@@ -13,7 +13,7 @@
  (files ../../../vendor/err_trace/upstream/src/err.mli))
 
 (library
- (name err_trace)
+ (name rivet_err_trace)
  (wrapped false)
  (modes byte native melange)
  (flags

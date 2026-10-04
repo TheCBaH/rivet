@@ -36,9 +36,11 @@
  (files upstream/src/err.mli))
 
 (library
- (name err_trace)
+ (name rivet_err_trace)
  (public_name rivet.err_trace)
  (wrapped false)
  (modes byte native)
  (enabled_if
-  (<> %{env:RIVET_MELANGE=false} true)))
+  (and
+   (<> %{env:RIVET_MELANGE=false} true)
+   (<> %{env:RIVET_EXTERNAL_DEPS=false} true))))

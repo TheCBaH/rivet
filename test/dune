@@ -1,0 +1,6 @@
+; test/consumer is a separate dune project, the root of a throwaway consumer
+; workspace that scripts/external-deps.sh assembles with this tree vendored
+; inside it. Here it is only data: its package must not exist in this
+; workspace, or in any consumer's that vendors it.
+
+(data_only_dirs consumer)

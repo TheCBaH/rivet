@@ -30,4 +30,6 @@
  (wrapped false)
  (modes byte native)
  (enabled_if
-  (<> %{env:RIVET_MELANGE=false} true)))
+  (and
+   (<> %{env:RIVET_MELANGE=false} true)
+   (<> %{env:RIVET_EXTERNAL_DEPS=false} true))))

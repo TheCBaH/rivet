@@ -24,7 +24,7 @@
   driver
   test_dump_inputs
   smoke_fixtures
-  err_trace))
+  rivet_err_trace))
 
 (executables
  (names smoke_native)

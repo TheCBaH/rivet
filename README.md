@@ -58,6 +58,20 @@ Every library a consumer needs has a public name in the `rivet` package
 repository as a subdirectory with `(vendored_dirs vendor)`, and name the
 libraries as usual.
 
+A consumer that already has its own Fmt and err_trace, and links them into the
+same executable, builds with `RIVET_EXTERNAL_DEPS=true`. The vendored copies
+are then not built; `rivet.fmt` and `rivet.err_trace` re-export the findlib
+libraries `fmt` and `err_trace` (opam, or a workspace package with those public
+names), so `Err.t` values cross the boundary without a second `Err` module.
+Melange builds keep the vendored copies. `make external-deps` builds and tests
+this configuration in a throwaway workspace; `test/consumer` is the example.
+
+Embedding native code: `Native_exec.load` maps an image once, `call` runs it
+any number of times, and `close` unmaps it after the last call. Host functions
+are bound with `Native_exec.bind_host`, which generates a unit of ISA-specific
+trampolines (aarch64, x86_64, riscv64) to assemble beside the image; the
+addresses are process-specific and must not be cached.
+
 ## History
 This repository began as a directory of a larger one, and its history was carried
 over. Each such commit says `Split-from:` with the original repository and commit.

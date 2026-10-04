@@ -109,6 +109,12 @@ tool-gate: tools-build
 melange-optin:
 	scripts/asm-melange-optin.sh
 
+# The opt-in configuration for a consumer that supplies its own Fmt and
+# err_trace (vendor/host/dune). test/consumer plays that consumer in a
+# throwaway workspace with this tree vendored inside it.
+external-deps: submodules
+	scripts/external-deps.sh
+
 # {1 Fixtures}
 #
 # Two modes. fixtures-check needs NO cross toolchain, so every ordinary test run
@@ -414,7 +420,7 @@ exec: runner helpers abi-conform fixtures-check
 # What CI runs, and what to run locally before pushing. Formatting is checked
 # first: an unformatted tree is the cheapest failure to diagnose. js is not
 # here - it needs Melange, hence OCaml 4.14, so it is its own CI job.
-ci: fmt-check build test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-isa-inventory-diff purity planted melange-optin js-portable
+ci: fmt-check build test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-isa-inventory-diff purity planted melange-optin external-deps js-portable
 
 # The old spellings, for one release.
 ASM_ALIASES := build test fmt fmt-check ci melange js js-portable js-browser tool-gate \
@@ -432,7 +438,7 @@ $(addprefix asm-fixture-exec-,$(FIXTURE_TARGETS)): asm-fixture-exec-%: fixture-e
 $(addprefix asm-fixtures-verify-,$(FIXTURE_TARGETS)): asm-fixtures-verify-%: fixtures-verify-%
 
 .PHONY: default fmt-ocamlformat submodules build test fmt fmt-check melange js js-portable \
-  js-browser native-exec tool-gate melange-optin fixtures-check fixture-oracle fixtures-regen oracle \
+  js-browser native-exec tool-gate melange-optin external-deps fixtures-check fixture-oracle fixtures-regen oracle \
   gas-xref-check gas-xref-regen isa-generated-check isa-generated-regen \
   isa-difficult-check isa-difficult-regen purity planted \
   tools-build tools-test tools-integration tools-boundary tools-fixture-modes \
