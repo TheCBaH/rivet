@@ -5431,3 +5431,40 @@ let merge_fill = None
 (* Measured: AArch64 GAS records a section's alignment without rounding its
    size up to it. *)
 let pad_section_to_alignment = false
+
+(* Typed trampolines for names resolved in the calling process: each name is a
+   global function that loads its address into x16 (the scratch the AAPCS64
+   reserves for exactly this) and jumps there, so the callee returns to the
+   caller's link register. The module is built as values, with no assembly text;
+   lay it out beside the code that calls the names. *)
+let host_trampolines (bindings : (string * int64) list) :
+    Instruction.t Asm_core.Normalized_ast.module_ =
+  let module N = Asm_core.Normalized_ast in
+  let module D = Asm_core.Directive in
+  let origin = Foundation.Origin.synthesized ~pass:"aarch64.host_trampolines" () in
+  let x16 = Operand.Reg { Reg.num = 16; width = 64; is_sp = false } in
+  let quarter addr k = Int64.logand (Int64.shift_right_logical addr (16 * k)) 0xffffL in
+  let imm v = Operand.Imm (Foundation.Bigint.of_int64 v) in
+  let ins op ops = N.Instruction { insn = { Instruction.op; ops }; origin } in
+  let dir directive = N.Directive { directive; origin } in
+  let stub (name, address) =
+    [
+      dir (D.Section { name = ".text"; perms = Asm_core.Perms.rx; nobits = false });
+      dir (D.Align { boundary = 4 });
+      dir (D.Global { name });
+      dir (D.Sym_type { name; kind = D.Function });
+      N.Label { name; origin };
+      ins Opcode.Movz [ x16; imm (quarter address 0) ];
+    ]
+    @ List.map
+        (fun k ->
+          ins Opcode.Movk
+            [ x16; imm (quarter address k); Operand.Shift { Shift.kind = "lsl"; amount = 16 * k } ])
+        [ 1; 2; 3 ]
+    @ [ ins Opcode.Br [ x16 ] ]
+  in
+  {
+    N.unit_name = "host";
+    items =
+      List.concat_map stub bindings @ [ dir (D.Declared_section { name = ".note.GNU-stack" }) ];
+  }
