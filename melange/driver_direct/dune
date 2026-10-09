@@ -1,0 +1,12 @@
+; Melange build of driver_direct. Same sources, copied rather than duplicated;
+; see melange/dune for why the tree is mirrored at all.
+
+(copy_files#
+ (files ../../driver_direct/*.ml))
+
+(library
+ (name driver_direct)
+ (modes byte native melange)
+ (libraries foundation codec asm_core image target_encode target_features)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))

@@ -1,0 +1,12 @@
+; The stages below source text, over a target's encoding half alone. A consumer
+; that builds normalized modules as values names this library and the target's
+; encoder, and its closure holds no lexer, no parser and no other target; the
+; text pipeline in driver includes it.
+
+(library
+ (name driver_direct)
+ (public_name rivet.driver_direct)
+ (modes byte native)
+ (libraries foundation codec asm_core image target_encode target_features)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))

@@ -1,0 +1,9 @@
+; A consumer that builds modules as values: the encoder of one target and the
+; stages below source text, with no lexer, parser or other target in its
+; closure. The forbidden library is what makes a regression a build error.
+
+(test
+ (name direct)
+ (modules direct)
+ (libraries foundation asm_core image driver_direct aarch64_encode fmt)
+ (forbidden_libraries asm_syntax driver target_intf aarch64))
