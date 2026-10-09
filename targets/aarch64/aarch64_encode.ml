@@ -5406,7 +5406,9 @@ let data_widths =
     (".short", 2);
     (".hword", 2);
     (".word", 4);
+    (".2byte", 2);
     (".4byte", 4);
+    (".8byte", 8);
     (".long", 4);
     (".quad", 8);
     (".xword", 8);
