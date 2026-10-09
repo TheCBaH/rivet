@@ -7481,7 +7481,16 @@ module Make (M : MODE) = struct
          ~encode:(function
            | Lowered.Movx_r_rm { zero_extend = ze; src_width = sw; width; reg; rm }
              when Bool.equal ze zero_extend && sw = src_width ->
-               Some (prefixes_of ~width ~reg:reg.num ~rm, ((), { re_reg = reg.num; re_rm = rm }))
+               (* {!prefixes_of} reads [width] as the operand's, which here is the
+                  destination's: a byte source named SPL/BPL/SIL/DIL still needs
+                  the empty REX that selects it over AH/CH/DH/BH *)
+               let p = prefixes_of ~width ~reg:reg.num ~rm in
+               let p =
+                 match (src_width, rm, p.rex) with
+                 | 8, Rm.Reg g, None when g.num >= 4 && g.num < 8 -> { p with rex = Some 0 }
+                 | _ -> p
+               in
+               Some (p, ((), { re_reg = reg.num; re_rm = rm }))
            | _ -> None)
          ~decode:(fun (rex, ((), e)) ->
            let width = width_of_prefixes rex in

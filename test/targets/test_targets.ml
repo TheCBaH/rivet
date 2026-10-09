@@ -1543,6 +1543,18 @@ let%expect_test "%r8b-%r15b are recognized registers, and 8-bit reg/reg mov uses
     40000002  c3     ret            [x86_64.ret]
     |}]
 
+(* A byte source named %spl-%dil needs the empty REX that selects it over
+   %ah-%bh, whatever the destination's width: [movzbl %dil, %edi] without one
+   is [movzbl %bh, %edi]. Bytes as [x86_64-linux-gnu-as] emits them. *)
+let%expect_test "movzbl and movsbl from %sil/%dil carry the empty REX" =
+  disasm "x86_64"
+    "\t.text\n\t.globl f\nf:\n\tmovzbl %dil, %edi\n\tmovsbl %sil, %eax\n\tmovzbl %cl, %eax\n\tret\n";
+  [%expect {|
+    40000000  40 0f b6 ff  movzbl %dil, %edi  [x86_64.movzx-b-r-rm.asz-absent.opsz-absent.rex-present.reg]
+    40000004  40 0f be c6  movsbl %sil, %eax  [x86_64.movsx-b-r-rm.asz-absent.opsz-absent.rex-present.reg]
+    40000008  0f b6 c1     movzbl %cl, %eax   [x86_64.movzx-b-r-rm.asz-absent.opsz-absent.rex-absent.reg]
+    4000000b  c3           ret                [x86_64.ret] |}]
+
 (* {1 16-bit operand size, and REX-extended 16-bit sub-registers}
 
    [%r8w]-[%r15w] (M5 corpus evidence: the corpus notes -
