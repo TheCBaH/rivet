@@ -4380,3 +4380,22 @@ let%expect_test "mrs and msr move FPCR through a 64-bit register" =
     40000008  00 44 3b d5  mrs x0, fpcr   [aarch64.mrs-fpcr]
     4000000c  1e 44 1b d5  msr fpcr, x30  [aarch64.msr-fpcr]
     40000010  c0 03 5f d6  ret            [aarch64.ret] |}]
+
+(* Scalar FP forms a compiler's selected code needs beyond the corpus's: [fsqrt], [frintz],
+   [fmadd], [fmax] and the move of FP bits to a general register. Checked against real
+   aarch64-linux-gnu-as/objdump byte for byte. *)
+let%expect_test "fsqrt, frintz, fmadd, fmax and fmov to a general register" =
+  disasm "aarch64"
+    "\t.text\n\t.globl f\nf:\n\tfsqrt d0, d1\n\tfsqrt s31, s2\n\tfrintz d0, d1\n\tfrintz s3, s30\n\tfmadd d0, d1, d2, d3\n\tfmadd s4, s5, s6, s7\n\tfmov x0, d1\n\tfmov w9, s30\n\tfmax d0, d1, d2\n\tfmax s3, s4, s31\n\tret\n";
+  [%expect {|
+    40000000  20 c0 61 1e  fsqrt d0, d1          [aarch64.fsqrt-d]
+    40000004  5f c0 21 1e  fsqrt s31, s2         [aarch64.fsqrt-s]
+    40000008  20 c0 65 1e  frintz d0, d1         [aarch64.frintz-d]
+    4000000c  c3 c3 25 1e  frintz s3, s30        [aarch64.frintz-s]
+    40000010  20 0c 42 1f  fmadd d0, d1, d2, d3  [aarch64.fmadd-d]
+    40000014  a4 1c 06 1f  fmadd s4, s5, s6, s7  [aarch64.fmadd-s]
+    40000018  20 00 66 9e  fmov x0, d1           [aarch64.fmov-to-gpr-d]
+    4000001c  c9 03 26 1e  fmov w9, s30          [aarch64.fmov-to-gpr-s]
+    40000020  20 48 62 1e  fmax d0, d1, d2       [aarch64.fmax-d]
+    40000024  83 48 3f 1e  fmax s3, s4, s31      [aarch64.fmax-s]
+    40000028  c0 03 5f d6  ret                   [aarch64.ret] |}]

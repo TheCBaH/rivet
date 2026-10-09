@@ -328,6 +328,10 @@ module Opcode = struct
     | Scvtf
     | Ucvtf
     | Fneg
+    | Fmax
+    | Fmadd
+    | Fsqrt
+    | Frintz
     | Fcvt
     | Fcvtzs
     | Fcvtzu
@@ -402,6 +406,10 @@ module Opcode = struct
     | Scvtf -> "scvtf"
     | Ucvtf -> "ucvtf"
     | Fneg -> "fneg"
+    | Fmax -> "fmax"
+    | Fmadd -> "fmadd"
+    | Fsqrt -> "fsqrt"
+    | Frintz -> "frintz"
     | Fcvt -> "fcvt"
     | Fcvtzs -> "fcvtzs"
     | Fcvtzu -> "fcvtzu"
@@ -483,6 +491,10 @@ module Opcode = struct
     | "scvtf" -> Some Scvtf
     | "ucvtf" -> Some Ucvtf
     | "fneg" -> Some Fneg
+    | "fmax" -> Some Fmax
+    | "fmadd" -> Some Fmadd
+    | "fsqrt" -> Some Fsqrt
+    | "frintz" -> Some Frintz
     | "fcvt" -> Some Fcvt
     | "fcvtzs" -> Some Fcvtzs
     | "fcvtzu" -> Some Fcvtzu
@@ -579,13 +591,20 @@ let logical_name = function 0 -> "and" | 1 -> "orr" | 2 -> "eor" | 3 -> "ands" |
    fmul/fdiv). [fmax]/[fmin]/[fmaxnm]/[fminnm]/[fnmul] share the identical
    word shape at other opcode values but are not evidenced, so none of them
    is implemented alongside these four. *)
-let fbinop_name = function 0 -> "fmul" | 1 -> "fdiv" | 2 -> "fadd" | 3 -> "fsub" | _ -> "?"
+let fbinop_name = function
+  | 0 -> "fmul"
+  | 1 -> "fdiv"
+  | 2 -> "fadd"
+  | 3 -> "fsub"
+  | 4 -> "fmax"
+  | _ -> "?"
 
 let fbinop_opcode = function
   | Opcode.Fmul -> Some 0
   | Opcode.Fdiv -> Some 1
   | Opcode.Fadd -> Some 2
   | Opcode.Fsub -> Some 3
+  | Opcode.Fmax -> Some 4
   | _ -> None
 
 (* UBFM's own two evidenced surface aliases (M5 corpus evidence: [ubfx]/
@@ -853,6 +872,17 @@ module Lowered = struct
             corpus evidence: almabench.c/bisect.c/...). [fabs]/[fsqrt] share
             the identical word shape at other opcode values but are not evidenced, so neither is
             implemented alongside it. *)
+    | Fsqrt of { rd : Freg.t; rn : Freg.t }
+        (** [fsqrt rd, rn] - {!Fneg}'s "floating-point data-processing (1 source)" word at [opcode]
+            = [000011]. *)
+    | Frintz of { rd : Freg.t; rn : Freg.t }
+        (** [frintz rd, rn] - round toward zero, the same word at [opcode] = [001011]. *)
+    | Fmadd of { rd : Freg.t; rn : Freg.t; rm : Freg.t; ra : Freg.t }
+        (** [fmadd rd, rn, rm, ra] - [ra + rn * rm] with one rounding: the "floating-point
+            data-processing (3 source)" word with [o1] = [o0] = 0. *)
+    | Fmov_to_gpr of { rd : Reg.t; rn : Freg.t }
+        (** [fmov xd, dn] / [fmov wd, sn] - a scalar FP register's raw bits into a general
+            register: {!Fmov_from_gpr}'s "conversion" word at [opcode] = [110]. *)
     | Fcvt of { rd : Freg.t; rn : Freg.t }
         (** [fcvt sd, dn] / [fcvt dd, sn] - the single<->double precision conversion, the same
             "floating-point data-processing (1 source)" word {!Fneg} uses: [type] (source
@@ -1020,6 +1050,11 @@ module Lowered = struct
     | Cvtf { signed; rd; rn } ->
         Fmt.pf ppf "%s %a, %a" (if signed then "scvtf" else "ucvtf") Freg.pp rd Reg.pp rn
     | Fneg { rd; rn } -> Fmt.pf ppf "fneg %a, %a" Freg.pp rd Freg.pp rn
+    | Fsqrt { rd; rn } -> Fmt.pf ppf "fsqrt %a, %a" Freg.pp rd Freg.pp rn
+    | Frintz { rd; rn } -> Fmt.pf ppf "frintz %a, %a" Freg.pp rd Freg.pp rn
+    | Fmadd { rd; rn; rm; ra } ->
+        Fmt.pf ppf "fmadd %a, %a, %a, %a" Freg.pp rd Freg.pp rn Freg.pp rm Freg.pp ra
+    | Fmov_to_gpr { rd; rn } -> Fmt.pf ppf "fmov %a, %a" Reg.pp rd Freg.pp rn
     | Fcvt { rd; rn } -> Fmt.pf ppf "fcvt %a, %a" Freg.pp rd Freg.pp rn
     | Fcvtzs { rd; rn } -> Fmt.pf ppf "fcvtzs %a, %a" Reg.pp rd Freg.pp rn
     | Fcvtzu { rd; rn } -> Fmt.pf ppf "fcvtzu %a, %a" Reg.pp rd Freg.pp rn
@@ -1110,6 +1145,12 @@ module Lowered = struct
         && Freg.equal x.rm y.rm
     | Cvtf x, Cvtf y -> x.signed = y.signed && Freg.equal x.rd y.rd && Reg.equal x.rn y.rn
     | Fneg x, Fneg y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
+    | Fsqrt x, Fsqrt y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
+    | Frintz x, Frintz y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
+    | Fmadd x, Fmadd y ->
+        Freg.equal x.rd y.rd && Freg.equal x.rn y.rn && Freg.equal x.rm y.rm
+        && Freg.equal x.ra y.ra
+    | Fmov_to_gpr x, Fmov_to_gpr y -> Reg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Fcvt x, Fcvt y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Fcvtzs x, Fcvtzs y -> Reg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Fcvtzu x, Fcvtzu y -> Reg.equal x.rd y.rd && Freg.equal x.rn y.rn
@@ -2094,6 +2135,96 @@ let fmov_reg_alt ~double =
       ** const ~width:12 (Int64.of_int (2048 + (0b000000 * 32) + 0b10000))
       ** field ~width:5 "rn" ** field ~width:5 "rd")
 
+(* [fsqrt] and [frintz]: {!fneg_alt}'s word at their own [opcode]. Verified against real
+   aarch64-linux-gnu-as/objdump: [1e61c020] for [fsqrt d0, d1], [1e659020] for [frintz d0, d1]. *)
+let funary1_alt ~double ~name ~opcode ~make ~view =
+  C.iso_fun
+    ~name:(Printf.sprintf "%s-%s" name (if double then "d" else "s"))
+    ~encode:(fun l ->
+      match view l with
+      | Some (rd, rn) when rd.Freg.double = double && rn.Freg.double = double ->
+          Some ((), ((), ((), (Int64.of_int rn.Freg.num, Int64.of_int rd.Freg.num))))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), (rn, rd)))) ->
+      Some
+        (make
+           ~rd:(Freg.of_num ~double (Int64.to_int rd))
+           ~rn:(Freg.of_num ~double (Int64.to_int rn))))
+    C.(
+      const ~width:8 0b00011110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:12 (Int64.of_int (2048 + (opcode * 32) + 0b10000))
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+let fsqrt_alt ~double =
+  funary1_alt ~double ~name:"fsqrt" ~opcode:0b000011
+    ~make:(fun ~rd ~rn -> Lowered.Fsqrt { rd; rn })
+    ~view:(function Lowered.Fsqrt { rd; rn } -> Some (rd, rn) | _ -> None)
+
+let frintz_alt ~double =
+  funary1_alt ~double ~name:"frintz" ~opcode:0b001011
+    ~make:(fun ~rd ~rn -> Lowered.Frintz { rd; rn })
+    ~view:(function Lowered.Frintz { rd; rn } -> Some (rd, rn) | _ -> None)
+
+(* [fmadd rd, rn, rm, ra]: the "floating-point data-processing (3 source)" word, [o1] = [o0] =
+   0. Verified against real aarch64-linux-gnu-as/objdump: [1f420c20] for [fmadd d0, d1, d2, d3]. *)
+let fmadd_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fmadd-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fmadd { rd; rn; rm; ra }
+        when rd.Freg.double = double && rn.Freg.double = double && rm.Freg.double = double
+             && ra.Freg.double = double ->
+          Some
+            ( (),
+              ( (),
+                ( (),
+                  ( Int64.of_int rm.Freg.num,
+                    ((), (Int64.of_int ra.Freg.num, (Int64.of_int rn.Freg.num, Int64.of_int rd.Freg.num)))
+                  ) ) ) )
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), (rm, ((), (ra, (rn, rd))))))) ->
+      Some
+        (Lowered.Fmadd
+           {
+             rd = Freg.of_num ~double (Int64.to_int rd);
+             rn = Freg.of_num ~double (Int64.to_int rn);
+             rm = Freg.of_num ~double (Int64.to_int rm);
+             ra = Freg.of_num ~double (Int64.to_int ra);
+           }))
+    C.(
+      const ~width:8 0b00011111L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:1 0L ** field ~width:5 "rm" ** const ~width:1 0L ** field ~width:5 "ra"
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [fmov xd, dn] / [fmov wd, sn]: {!fmov_from_gpr_alt}'s word at [opcode] = [110]. Verified
+   against real aarch64-linux-gnu-as/objdump: [9e660020] for [fmov x0, d1], [1e260020] for
+   [fmov w0, s1]. *)
+let fmov_to_gpr_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fmov-to-gpr-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fmov_to_gpr { rd; rn }
+        when rn.Freg.double = double && rd.Reg.width = if double then 64 else 32 ->
+          Some
+            ( (if rd.Reg.width = 64 then 1L else 0L),
+              ((), ((), ((), (Int64.of_int rn.Freg.num, Int64.of_int rd.Reg.num)))) )
+      | _ -> None)
+    ~decode:(fun (sf, ((), ((), ((), (rn, rd))))) ->
+      let width = if Int64.equal sf 1L then 64 else 32 in
+      Some
+        (Lowered.Fmov_to_gpr
+           {
+             rd = Reg.of_num ~width ~sp:false (Int64.to_int rd);
+             rn = Freg.of_num ~double (Int64.to_int rn);
+           }))
+    C.(
+      field ~width:1 "sf" ** const ~width:7 0b0011110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:12 (Int64.of_int (2048 + (0b110 * 64)))
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
 let fcvt_alt ~src_double =
   C.iso_fun
     ~name:(Printf.sprintf "fcvt-%s" (if src_double then "d-to-s" else "s-to-d"))
@@ -2971,6 +3102,16 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.alt ~label:"cls-x" ~priority:140 (dp1_alt Cls ~width:64);
            C.alt ~label:"fneg-d" ~priority:70 (fneg_alt ~double:true);
            C.alt ~label:"fneg-s" ~priority:71 (fneg_alt ~double:false);
+           C.alt ~label:"fsqrt-d" ~priority:143 (fsqrt_alt ~double:true);
+           C.alt ~label:"fsqrt-s" ~priority:144 (fsqrt_alt ~double:false);
+           C.alt ~label:"frintz-d" ~priority:145 (frintz_alt ~double:true);
+           C.alt ~label:"frintz-s" ~priority:146 (frintz_alt ~double:false);
+           C.alt ~label:"fmadd-d" ~priority:147 (fmadd_alt ~double:true);
+           C.alt ~label:"fmadd-s" ~priority:148 (fmadd_alt ~double:false);
+           C.alt ~label:"fmov-to-gpr-d" ~priority:149 (fmov_to_gpr_alt ~double:true);
+           C.alt ~label:"fmov-to-gpr-s" ~priority:150 (fmov_to_gpr_alt ~double:false);
+           C.alt ~label:"fmax-d" ~priority:151 (fbinop_alt ~double:true ~opc:4);
+           C.alt ~label:"fmax-s" ~priority:152 (fbinop_alt ~double:false ~opc:4);
            C.alt ~label:"fcvt-d-to-s" ~priority:72 (fcvt_alt ~src_double:true);
            C.alt ~label:"fcvt-s-to-d" ~priority:73 (fcvt_alt ~src_double:false);
            C.alt ~label:"fmov-reg-d" ~priority:82 (fmov_reg_alt ~double:true);
@@ -3858,7 +3999,7 @@ let rec lower_instruction state i =
   (* [fcmp dN, dM] - the register-register form (M5 corpus evidence: the corpus notes's
      bisect.c/mandelbrot.c/...). *)
   | Opcode.Fcmp, [ Operand.Freg rn; Operand.Freg rm ] -> Ok [ Lowered.Fcmp_reg { rn; rm } ]
-  | ( (Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv),
+  | ( (Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv | Opcode.Fmax),
       [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm ] ) -> (
       match fbinop_opcode i.Instruction.op with
       | Some opc -> Ok [ Lowered.Fbinop { opc; rd; rn; rm } ]
@@ -3875,6 +4016,11 @@ let rec lower_instruction state i =
   | Opcode.Ucvtf, [ Operand.Freg rd; Operand.Reg rn ] ->
       Ok [ Lowered.Cvtf { signed = false; rd; rn } ]
   | Opcode.Fneg, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fneg { rd; rn } ]
+  | Opcode.Fsqrt, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fsqrt { rd; rn } ]
+  | Opcode.Frintz, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Frintz { rd; rn } ]
+  | Opcode.Fmadd, [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm; Operand.Freg ra ] ->
+      Ok [ Lowered.Fmadd { rd; rn; rm; ra } ]
+  | Opcode.Fmov, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fmov_to_gpr { rd; rn } ]
   | Opcode.Fcvt, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvt { rd; rn } ]
   | Opcode.Fcvtzs, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvtzs { rd; rn } ]
   | Opcode.Fcvtzu, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvtzu { rd; rn } ]
@@ -4418,6 +4564,7 @@ let instruction_of_lowered ?(at = 0L) = function
         | 1 -> Opcode.Fdiv
         | 2 -> Opcode.Fadd
         | 3 -> Opcode.Fsub
+        | 4 -> Opcode.Fmax
         | _ -> Opcode.Fadd
       in
       Some { Instruction.op; ops = [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm ] }
@@ -4441,6 +4588,18 @@ let instruction_of_lowered ?(at = 0L) = function
         }
   | Lowered.Fneg { rd; rn } ->
       Some { Instruction.op = Opcode.Fneg; ops = [ Operand.Freg rd; Operand.Freg rn ] }
+  | Lowered.Fsqrt { rd; rn } ->
+      Some { Instruction.op = Opcode.Fsqrt; ops = [ Operand.Freg rd; Operand.Freg rn ] }
+  | Lowered.Frintz { rd; rn } ->
+      Some { Instruction.op = Opcode.Frintz; ops = [ Operand.Freg rd; Operand.Freg rn ] }
+  | Lowered.Fmadd { rd; rn; rm; ra } ->
+      Some
+        {
+          Instruction.op = Opcode.Fmadd;
+          ops = [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm; Operand.Freg ra ];
+        }
+  | Lowered.Fmov_to_gpr { rd; rn } ->
+      Some { Instruction.op = Opcode.Fmov; ops = [ Operand.Reg rd; Operand.Freg rn ] }
   | Lowered.Fcvt { rd; rn } ->
       Some { Instruction.op = Opcode.Fcvt; ops = [ Operand.Freg rd; Operand.Freg rn ] }
   | Lowered.Fcvtzs { rd; rn } ->

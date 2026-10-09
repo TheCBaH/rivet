@@ -1290,6 +1290,16 @@
     [140 cost=0] cls-x            cls-x(){1 101101011000000000101 rn rd}
     [141 cost=0] mrs-fpcr         mrs-fpcr(){110101010011101101000100000 rt}
     [142 cost=0] msr-fpcr         msr-fpcr(){110101010001101101000100000 rt}
+    [143 cost=0] fsqrt-d          fsqrt-d(){00011110 01 100001110000 rn:5u rd:5u}
+    [144 cost=0] fsqrt-s          fsqrt-s(){00011110 00 100001110000 rn:5u rd:5u}
+    [145 cost=0] frintz-d         frintz-d(){00011110 01 100101110000 rn:5u rd:5u}
+    [146 cost=0] frintz-s         frintz-s(){00011110 00 100101110000 rn:5u rd:5u}
+    [147 cost=0] fmadd-d          fmadd-d(){00011111 01 0 rm:5u 0 ra:5u rn:5u rd:5u}
+    [148 cost=0] fmadd-s          fmadd-s(){00011111 00 0 rm:5u 0 ra:5u rn:5u rd:5u}
+    [149 cost=0] fmov-to-gpr-d    fmov-to-gpr-d(){sf:1u 0011110 01 100110000000 rn:5u rd:5u}
+    [150 cost=0] fmov-to-gpr-s    fmov-to-gpr-s(){sf:1u 0011110 00 100110000000 rn:5u rd:5u}
+    [151 cost=0] fmax-d           fbinop-fmax-d(){000 11110 01 1 rm:5u 0100 10 rn:5u rd:5u}
+    [152 cost=0] fmax-s           fbinop-fmax-s(){000 11110 00 1 rm:5u 0100 10 rn:5u rd:5u}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}
