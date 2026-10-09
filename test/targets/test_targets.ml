@@ -4367,3 +4367,16 @@ let%expect_test "x86 bswap" =
     4000000b  c3        ret         [x86_64.ret]
     40000000  0f ce  bswap %esi  [x86_32.bswap-r.opsz-absent]
     40000002  c3     ret         [x86_32.ret] |}]
+
+(* [mrs rt, fpcr] and [msr fpcr, rt] - the one system register a producer needs to save, change
+   and restore the floating-point rounding mode. Checked against real
+   aarch64-linux-gnu-as/objdump: `mrs x17, fpcr` -> `d53b4411`, `msr fpcr, x17` -> `d51b4411`. *)
+let%expect_test "mrs and msr move FPCR through a 64-bit register" =
+  disasm "aarch64"
+    "\t.text\n\t.globl f\nf:\n\tmrs x17, fpcr\n\tmsr fpcr, x17\n\tmrs x0, fpcr\n\tmsr fpcr, x30\n\tret\n";
+  [%expect {|
+    40000000  11 44 3b d5  mrs x17, fpcr  [aarch64.mrs-fpcr]
+    40000004  11 44 1b d5  msr fpcr, x17  [aarch64.msr-fpcr]
+    40000008  00 44 3b d5  mrs x0, fpcr   [aarch64.mrs-fpcr]
+    4000000c  1e 44 1b d5  msr fpcr, x30  [aarch64.msr-fpcr]
+    40000010  c0 03 5f d6  ret            [aarch64.ret] |}]

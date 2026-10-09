@@ -299,6 +299,8 @@ module Opcode = struct
     | Strh
     | Ret
     | Br
+    | Mrs
+    | Msr
     | Sub
     | Cmp
     | Cmn
@@ -371,6 +373,8 @@ module Opcode = struct
     | Strh -> "strh"
     | Ret -> "ret"
     | Br -> "br"
+    | Mrs -> "mrs"
+    | Msr -> "msr"
     | Sub -> "sub"
     | Cmp -> "cmp"
     | Cmn -> "cmn"
@@ -450,6 +454,8 @@ module Opcode = struct
     | "strb" -> Some Strb
     | "strh" -> Some Strh
     | "ret" -> Some Ret
+    | "mrs" -> Some Mrs
+    | "msr" -> Some Msr
     | "br" -> Some Br
     | "sub" -> Some Sub
     | "cmp" -> Some Cmp
@@ -705,6 +711,12 @@ module Lowered = struct
             bit, the rest of the word identical. Only [S]/[D] (this project's only two
             {!Freg.t} widths) are implemented; [B]/[H]/[Q] are real A64 sizes this corpus does
             not evidence. *)
+    | Mrs_fpcr of { rt : Reg.t }
+        (** [mrs rt, fpcr] - the floating-point control register read into a 64-bit register. The
+            one system register this encoder knows: a producer that saves, changes and restores
+            the rounding mode needs exactly these two forms and no general system-register
+            operand. *)
+    | Msr_fpcr of { rt : Reg.t }  (** [msr fpcr, rt] - the register written to FPCR. *)
     | Ret of { rn : Reg.t }
     | Br of { rn : Reg.t }
         (** [br rn] - "unconditional branch to register", the same
@@ -932,6 +944,8 @@ module Lowered = struct
           (if load then "ldr" else "str")
           Freg.pp rt Mem.pp
           { Mem.base = rn; offset; writeback = false; pre = true }
+    | Mrs_fpcr { rt } -> Fmt.pf ppf "mrs %a, fpcr" Reg.pp rt
+    | Msr_fpcr { rt } -> Fmt.pf ppf "msr fpcr, %a" Reg.pp rt
     | Ret { rn } ->
         (* [ret x30] is spelled [ret]: x30 is the architectural default and every
            A64 disassembler elides it. Printing it would make the canonical dump
@@ -1045,6 +1059,8 @@ module Lowered = struct
     | Ldst_uoff_f x, Ldst_uoff_f y ->
         x.double = y.double && x.load = y.load && Freg.equal x.rt y.rt && Reg.equal x.rn y.rn
         && Disp.equal x.offset y.offset
+    | Mrs_fpcr x, Mrs_fpcr y -> Reg.equal x.rt y.rt
+    | Msr_fpcr x, Msr_fpcr y -> Reg.equal x.rt y.rt
     | Ret x, Ret y -> Reg.equal x.rn y.rn
     | Br x, Br y -> Reg.equal x.rn y.rn
     | Adds_imm x, Adds_imm y ->
@@ -2749,6 +2765,20 @@ let codec : (Lowered.t, fixup_kind) C.t =
              ])
            [ false; true ];
          [
+           (* [mrs rt, fpcr] and [msr fpcr, rt]: the system-register move (register) words
+              [1101010100_L_1_o0_op1_CRn_CRm_op2_Rt] with FPCR = S3_3_C4_C4_0, so the 27 bits above
+              [Rt] are fixed. Checked against real aarch64-linux-gnu-as/objdump:
+              [mrs x17, fpcr] -> [d53b4411], [msr fpcr, x17] -> [d51b4411]. *)
+           C.alt ~label:"mrs-fpcr" ~priority:141
+             (C.iso_fun ~name:"mrs-fpcr"
+                ~encode:(function Lowered.Mrs_fpcr { rt } -> Some ((), rt) | _ -> None)
+                ~decode:(fun ((), rt) -> Some (Lowered.Mrs_fpcr { rt }))
+                C.(const ~width:27 0x6A9DA20L ** reg_field ~width:64 ~sp:false "rt"));
+           C.alt ~label:"msr-fpcr" ~priority:142
+             (C.iso_fun ~name:"msr-fpcr"
+                ~encode:(function Lowered.Msr_fpcr { rt } -> Some ((), rt) | _ -> None)
+                ~decode:(fun ((), rt) -> Some (Lowered.Msr_fpcr { rt }))
+                C.(const ~width:27 0x6A8DA20L ** reg_field ~width:64 ~sp:false "rt"));
            C.alt ~label:"ret" ~priority:17
              (C.iso_fun ~name:"ret"
                 ~encode:(function Lowered.Ret { rn } -> Some ((), (rn, ())) | _ -> None)
@@ -3611,6 +3641,10 @@ let rec lower_instruction state i =
                         { double; load; rt; rn = m.Mem.base; offset = m.Mem.offset };
                     ]
               | Some n -> bad (`Register_offset_shift_invalid n)))
+  | Opcode.Mrs, [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "fpcr") ] ->
+      Ok [ Lowered.Mrs_fpcr { rt } ]
+  | Opcode.Msr, [ Operand.Sym (Asm_core.Expr.Symbol "fpcr"); Operand.Reg rt ] ->
+      Ok [ Lowered.Msr_fpcr { rt } ]
   | Opcode.Ret, [ Operand.Reg rn ] -> Ok [ Lowered.Ret { rn } ]
   | Opcode.Ret, [] -> Ok [ Lowered.Ret { rn = Reg.x30 } ]
   | Opcode.Br, [ Operand.Reg rn ] -> Ok [ Lowered.Br { rn } ]
@@ -4182,6 +4216,18 @@ let instruction_of_lowered ?(at = 0L) = function
           ops = (if rn.Reg.num = 30 && not rn.Reg.is_sp then [] else [ Operand.Reg rn ]);
         }
   | Lowered.Br { rn } -> Some { Instruction.op = Opcode.Br; ops = [ Operand.Reg rn ] }
+  | Lowered.Mrs_fpcr { rt } ->
+      Some
+        {
+          Instruction.op = Opcode.Mrs;
+          ops = [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "fpcr") ];
+        }
+  | Lowered.Msr_fpcr { rt } ->
+      Some
+        {
+          Instruction.op = Opcode.Msr;
+          ops = [ Operand.Sym (Asm_core.Expr.Symbol "fpcr"); Operand.Reg rt ];
+        }
   (* [adds zr, rn, #imm] is [cmn]; an [adds] that keeps its result has no surface spelling in
      this dialect, exactly like {!Lowered.Sub_imm}'s [subs] below. *)
   | Lowered.Adds_imm { rd; rn; imm; shift12 } ->

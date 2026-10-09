@@ -1288,6 +1288,8 @@
     [138 cost=0] clz-x            clz-x(){1 101101011000000000100 rn rd}
     [139 cost=0] cls-w            cls-w(){0 101101011000000000101 rn rd}
     [140 cost=0] cls-x            cls-x(){1 101101011000000000101 rn rd}
+    [141 cost=0] mrs-fpcr         mrs-fpcr(){110101010011101101000100000 rt}
+    [142 cost=0] msr-fpcr         msr-fpcr(){110101010001101101000100000 rt}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}
