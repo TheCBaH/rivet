@@ -7,6 +7,7 @@
   codec
   asm_core
   asm_syntax
+  driver_direct
   image
   target_intf
   x86_32

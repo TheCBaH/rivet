@@ -1,0 +1,16 @@
+; A consumer that builds modules as values: the encoder of one target and the
+; stages below source text, with no lexer, parser or other target in its
+; closure. The forbidden library is what makes a regression a build error.
+
+(test
+ (name direct)
+ (modules direct)
+ (libraries
+  rivet.foundation
+  rivet.asm_core
+  rivet.image
+  rivet.driver_direct
+  rivet.aarch64_encode
+  err_trace
+  fmt)
+ (forbidden_libraries rivet.asm_syntax rivet.driver rivet.target_intf rivet.aarch64))
