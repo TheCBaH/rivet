@@ -387,6 +387,7 @@ module Opcode = struct
     | Fcmge
     | Fcmgt
     | Bsl
+    | Bit
     | Not
     | Fmadd
     | Dup
@@ -478,6 +479,7 @@ module Opcode = struct
     | Fcmge -> "fcmge"
     | Fcmgt -> "fcmgt"
     | Bsl -> "bsl"
+    | Bit -> "bit"
     | Not -> "not"
     | Dup -> "dup"
     | Ins -> "ins"
@@ -576,6 +578,7 @@ module Opcode = struct
     | "fcmge" -> Some Fcmge
     | "fcmgt" -> Some Fcmgt
     | "bsl" -> Some Bsl
+    | "bit" -> Some Bit
     | "not" | "mvn" -> Some Not
     | "dup" -> Some Dup
     | "ins" -> Some Ins
@@ -790,15 +793,21 @@ let vun_name = function Vfneg -> "fneg" | Vfsqrt -> "fsqrt" | Vfrintz -> "frintz
 
 (* Bitwise vector operations on bytes: [U] and the two selector bits (23:22) of
    [0 Q U 01110 sel 1 Rm 000111 Rn Rd]. [Vbsl] takes its mask from the destination. *)
-type vlogic = Vand | Vbsl | Veor | Vorr
+type vlogic = Vand | Vbit | Vbsl | Veor | Vorr
 
 let vlogic_bits = function
   | Vand -> (0, 0b00)
   | Vorr -> (0, 0b10)
   | Veor -> (1, 0b00)
   | Vbsl -> (1, 0b01)
+  | Vbit -> (1, 0b10)
 
-let vlogic_name = function Vand -> "and" | Vorr -> "orr" | Veor -> "eor" | Vbsl -> "bsl"
+let vlogic_name = function
+  | Vand -> "and"
+  | Vorr -> "orr"
+  | Veor -> "eor"
+  | Vbsl -> "bsl"
+  | Vbit -> "bit"
 
 module Lowered = struct
   type t =
@@ -3325,6 +3334,8 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.alt ~label:"veor-8b" ~priority:207 (vlogic_alt ~op:Veor ~q:false);
            C.alt ~label:"vbsl-16b" ~priority:208 (vlogic_alt ~op:Vbsl ~q:true);
            C.alt ~label:"vbsl-8b" ~priority:209 (vlogic_alt ~op:Vbsl ~q:false);
+           C.alt ~label:"vbit-16b" ~priority:221 (vlogic_alt ~op:Vbit ~q:true);
+           C.alt ~label:"vbit-8b" ~priority:222 (vlogic_alt ~op:Vbit ~q:false);
            C.alt ~label:"vnot-16b" ~priority:210 (vnot_alt ~q:true);
            C.alt ~label:"vnot-8b" ~priority:211 (vnot_alt ~q:false);
            C.alt ~label:"vfcmeq-s2" ~priority:212 (vbin_alt ~op:Vfcmeq ~arr:Varr.S2);
@@ -4298,11 +4309,16 @@ let rec lower_instruction state i =
       | Varr.B8 -> Ok [ Lowered.Vlogic { op = Vorr; q = false; rd; rn; rm = rn } ]
       | Varr.B16 -> Ok [ Lowered.Vlogic { op = Vorr; q = true; rd; rn; rm = rn } ]
       | Varr.S2 | Varr.S4 | Varr.D2 -> bad `Vector_arrangement)
-  | ( ((Opcode.And | Opcode.Orr | Opcode.Eor | Opcode.Bsl) as o),
+  | ( ((Opcode.And | Opcode.Orr | Opcode.Eor | Opcode.Bsl | Opcode.Bit) as o),
       [ Operand.Vec (rd, a); Operand.Vec (rn, b); Operand.Vec (rm, c) ] )
     when Varr.equal a b && Varr.equal b c -> (
       let op =
-        match o with Opcode.And -> Vand | Opcode.Orr -> Vorr | Opcode.Eor -> Veor | _ -> Vbsl
+        match o with
+        | Opcode.And -> Vand
+        | Opcode.Orr -> Vorr
+        | Opcode.Eor -> Veor
+        | Opcode.Bit -> Vbit
+        | _ -> Vbsl
       in
       match a with
       | Varr.B8 -> Ok [ Lowered.Vlogic { op; q = false; rd; rn; rm } ]
@@ -4959,7 +4975,14 @@ let instruction_of_lowered ?(at = 0L) = function
       Some { Instruction.op = Opcode.Mov; ops = [ Operand.Vec (rd, a); Operand.Vec (rn, a) ] }
   | Lowered.Vlogic { op; q; rd; rn; rm } ->
       let a = if q then Varr.B16 else Varr.B8 in
-      let o = match op with Vand -> Opcode.And | Vorr -> Opcode.Orr | Veor -> Opcode.Eor | Vbsl -> Opcode.Bsl in
+      let o =
+        match op with
+        | Vand -> Opcode.And
+        | Vorr -> Opcode.Orr
+        | Veor -> Opcode.Eor
+        | Vbsl -> Opcode.Bsl
+        | Vbit -> Opcode.Bit
+      in
       Some
         {
           Instruction.op = o;

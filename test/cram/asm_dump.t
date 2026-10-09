@@ -1361,6 +1361,8 @@
     [218 cost=0] vfcmgt-s2        vfcmgt-2s(){00101110101 rm:5u 111001 rn:5u rd:5u}
     [219 cost=0] vfcmgt-s4        vfcmgt-4s(){01101110101 rm:5u 111001 rn:5u rd:5u}
     [220 cost=0] vfcmgt-d2        vfcmgt-2d(){01101110111 rm:5u 111001 rn:5u rd:5u}
+    [221 cost=0] vbit-16b         vbit-16b(){01101110101 rm:5u 000111 rn:5u rd:5u}
+    [222 cost=0] vbit-8b          vbit-8b(){00101110101 rm:5u 000111 rn:5u rd:5u}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}
