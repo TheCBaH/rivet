@@ -100,6 +100,22 @@ let slice_origin (s : Asm_syntax.Token.slice) =
   | Some sp -> Origin.text sp
   | None -> Origin.synthesized ~pass:"aarch64" ()
 
+(* [v12.4s] into register 12 and the suffix [4s]; [q3] into 3. *)
+let vector_name n =
+  match String.index_opt n '.' with
+  | Some i when i > 1 && n.[0] = 'v' -> (
+      match int_of_string_opt (String.sub n 1 (i - 1)) with
+      | Some r when r >= 0 && r <= 31 -> Some (r, String.sub n (i + 1) (String.length n - i - 1))
+      | _ -> None)
+  | _ -> None
+
+let q_name n =
+  if String.length n > 1 && n.[0] = 'q' then
+    match int_of_string_opt (String.sub n 1 (String.length n - 1)) with
+    | Some r when r >= 0 && r <= 31 -> Some r
+    | _ -> None
+  else None
+
 let parse_one (slice : Asm_syntax.Token.slice) =
   let origin = slice_origin slice in
   let bad kind = Error (parse_diag ~pos:__POS__ ~origin kind) in
@@ -156,6 +172,36 @@ let parse_one (slice : Asm_syntax.Token.slice) =
     match float_of_string_opt s with Some f -> Ok (Operand.Fimm f) | None -> bad `Offset_too_wide
   in
   match List.map Token.kind slice with
+  | [ Token.Ident n ] when Option.is_some (vector_name n) -> (
+      match vector_name n with
+      | Some (r, suffix) -> (
+          match Varr.of_name suffix with
+          | Some a -> Ok (Operand.Vec (r, a))
+          | None -> bad (`Unknown_register n))
+      | None -> bad (`Unknown_register n))
+  | [ Token.Ident n; Token.Lbracket; Token.Int i; Token.Rbracket ] when Option.is_some (vector_name n) -> (
+      match (vector_name n, Bigint.to_int_opt i) with
+      | Some (r, suffix), Some i -> (
+          match Lane.of_name suffix with
+          | Some l -> Ok (Operand.Vlane (r, l, i))
+          | None -> bad (`Unknown_register n))
+      | _ -> bad (`Unknown_register n))
+  | [ Token.Lbrace; Token.Ident n; Token.Rbrace ] when Option.is_some (vector_name n) -> (
+      match vector_name n with
+      | Some (r, suffix) -> (
+          match Varr.of_name suffix with
+          | Some a -> Ok (Operand.Vlist (r, a))
+          | None -> bad (`Unknown_register n))
+      | None -> bad (`Unknown_register n))
+  | [ Token.Lbrace; Token.Ident n; Token.Rbrace; Token.Lbracket; Token.Int i; Token.Rbracket ]
+    when Option.is_some (vector_name n) -> (
+      match (vector_name n, Bigint.to_int_opt i) with
+      | Some (r, suffix), Some i -> (
+          match Lane.of_name suffix with
+          | Some l -> Ok (Operand.Vlist_lane (r, l, i))
+          | None -> bad (`Unknown_register n))
+      | _ -> bad (`Unknown_register n))
+  | [ Token.Ident n ] when Option.is_some (q_name n) -> Ok (Operand.Qreg (Option.get (q_name n)))
   | [ Token.Ident n ] -> (
       (* A bare identifier is a register if the table knows it and a symbol
          otherwise. There is no sigil to tell them apart on this dialect, so

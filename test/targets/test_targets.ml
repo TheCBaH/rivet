@@ -4485,3 +4485,48 @@ let%expect_test "a constructed module prints as GNU assembler source" =
     g:
     	.zero	16
     	.section	.note.GNU-stack,"",%progbits |}]
+
+(* Advanced SIMD forms a compiler's selected vector code uses: arithmetic on two or four binary32
+   or two binary64 lanes, lane moves, single-lane and replicating loads and stores, Q-register
+   transfers and the two-lane conversions. Every word is the one real
+   aarch64-linux-gnu-as/objdump produces for the same source. *)
+let%expect_test "Advanced SIMD vector forms" =
+  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tfadd v0.4s, v1.4s, v2.4s\n\tfadd v3.2s, v4.2s, v5.2s\n\tfadd v0.2d, v1.2d, v2.2d\n\tfsub v0.4s, v1.4s, v2.4s\n\tfmul v0.4s, v1.4s, v2.4s\n\tfdiv v0.2d, v1.2d, v2.2d\n\tfmax v0.4s, v1.4s, v31.4s\n\tfmla v0.4s, v1.4s, v2.4s\n\tfmla v7.2d, v8.2d, v9.2d\n\tfneg v0.4s, v1.4s\n\tfsqrt v0.2d, v1.2d\n\tfrintz v0.4s, v1.4s\n\tmov v0.16b, v1.16b\n\tmov v0.8b, v1.8b\n\tdup v0.4s, v1.s[0]\n\tdup v0.2d, v1.d[0]\n\tdup v0.2s, v1.s[0]\n\tdup d0, v1.d[1]\n\tdup s0, v1.s[3]\n\tdup d0, v1.d[0]\n\tins v0.d[1], v1.d[0]\n\tins v0.s[2], v1.s[0]\n\tins v0.s[3], v1.s[0]\n\tins v0.d[1], v1.d[0]\n\tld1 {v0.s}[1], [x1]\n\tld1 {v0.d}[1], [x2]\n\tld1r {v0.4s}, [x1]\n\tld1r {v0.2d}, [x1]\n\tld1r {v0.2s}, [x1]\n\tst1 {v0.s}[3], [x1]\n\tst1 {v0.d}[1], [x1]\n\tldr q0, [x1, #16]\n\tstr q31, [sp, #4080]\n\tldr d0, [x1, #8]\n\tfcvtl v0.2d, v1.2s\n\tfcvtn v0.2s, v1.2d\n\tret\n";
+  [%expect {|
+    40000000  20 d4 22 4e  fadd v0.4s, v1.4s, v2.4s   [aarch64.vfadd-s4]
+    40000004  83 d4 25 0e  fadd v3.2s, v4.2s, v5.2s   [aarch64.vfadd-s2]
+    40000008  20 d4 62 4e  fadd v0.2d, v1.2d, v2.2d   [aarch64.vfadd-d2]
+    4000000c  20 d4 a2 4e  fsub v0.4s, v1.4s, v2.4s   [aarch64.vfsub-s4]
+    40000010  20 dc 22 6e  fmul v0.4s, v1.4s, v2.4s   [aarch64.vfmul-s4]
+    40000014  20 fc 62 6e  fdiv v0.2d, v1.2d, v2.2d   [aarch64.vfdiv-d2]
+    40000018  20 f4 3f 4e  fmax v0.4s, v1.4s, v31.4s  [aarch64.vfmax-s4]
+    4000001c  20 cc 22 4e  fmla v0.4s, v1.4s, v2.4s   [aarch64.vfmla-s4]
+    40000020  07 cd 69 4e  fmla v7.2d, v8.2d, v9.2d   [aarch64.vfmla-d2]
+    40000024  20 f8 a0 6e  fneg v0.4s, v1.4s          [aarch64.vfneg-s4]
+    40000028  20 f8 e1 6e  fsqrt v0.2d, v1.2d         [aarch64.vfsqrt-d2]
+    4000002c  20 98 a1 4e  frintz v0.4s, v1.4s        [aarch64.vfrintz-s4]
+    40000030  20 1c a1 4e  mov v0.16b, v1.16b         [aarch64.vmov-16b]
+    40000034  20 1c a1 0e  mov v0.8b, v1.8b           [aarch64.vmov-8b]
+    40000038  20 04 04 4e  dup v0.4s, v1.s[0]         [aarch64.vdup-q]
+    4000003c  20 04 08 4e  dup v0.2d, v1.d[0]         [aarch64.vdup-q]
+    40000040  20 04 04 0e  dup v0.2s, v1.s[0]         [aarch64.vdup-d]
+    40000044  20 04 18 5e  dup d0, v1.d[1]            [aarch64.vdup-scalar]
+    40000048  20 04 1c 5e  dup s0, v1.s[3]            [aarch64.vdup-scalar]
+    4000004c  20 04 08 5e  dup d0, v1.d[0]            [aarch64.vdup-scalar]
+    40000050  20 04 18 6e  ins v0.d[1], v1.d[0]       [aarch64.vins]
+    40000054  20 04 14 6e  ins v0.s[2], v1.s[0]       [aarch64.vins]
+    40000058  20 04 1c 6e  ins v0.s[3], v1.s[0]       [aarch64.vins]
+    4000005c  20 04 18 6e  ins v0.d[1], v1.d[0]       [aarch64.vins]
+    40000060  20 90 40 0d  ld1 {v0.s}[1], [x1]        [aarch64.vld1-s]
+    40000064  40 84 40 4d  ld1 {v0.d}[1], [x2]        [aarch64.vld1-d]
+    40000068  20 c8 40 4d  ld1r {v0.4s}, [x1]         [aarch64.vld1r-s4]
+    4000006c  20 cc 40 4d  ld1r {v0.2d}, [x1]         [aarch64.vld1r-d2]
+    40000070  20 c8 40 0d  ld1r {v0.2s}, [x1]         [aarch64.vld1r-s2]
+    40000074  20 90 00 4d  st1 {v0.s}[3], [x1]        [aarch64.vst1-s]
+    40000078  20 84 00 4d  st1 {v0.d}[1], [x1]        [aarch64.vst1-d]
+    4000007c  20 04 c0 3d  ldr q0, [x1, #16]          [aarch64.ldr-q]
+    40000080  ff ff 83 3d  str q31, [sp, #4080]       [aarch64.str-q]
+    40000084  20 04 40 fd  ldr d0, [x1, #8]           [aarch64.ldr64-f]
+    40000088  20 78 61 0e  fcvtl v0.2d, v1.2s         [aarch64.vfcvtl]
+    4000008c  20 68 61 0e  fcvtn v0.2s, v1.2d         [aarch64.vfcvtn]
+    40000090  c0 03 5f d6  ret                        [aarch64.ret] |}]
