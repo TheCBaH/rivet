@@ -62,6 +62,10 @@ type t =
           initialized NUL bytes in a PROGBITS section, pure logical extent in a NOBITS one - the
           image layer (not this one) decides which, from the section's own kind. *)
   | Target_state of { name : string; argument : string }
+  | Cfi of { name : string; argument : string }
+      (** a [.cfi_*] directive ([name] with its dot), carried so a producer's call-frame
+          information survives into a GNU export. It changes no byte of the image: lowering
+          drops it, and the text route reads and discards it as before. *)
 
 let pp ppf = function
   | Section { name; perms; nobits } ->
@@ -78,3 +82,4 @@ let pp ppf = function
       Fmt.pf ppf "data %d %a" width Fmt.(list ~sep:(any ", ") Expr.pp) values
   | Zero { length } -> Fmt.pf ppf "zero %d" length
   | Target_state { name; argument } -> Fmt.pf ppf "target-state %s %s" name argument
+  | Cfi { name; argument } -> Fmt.pf ppf "cfi %s %s" name argument

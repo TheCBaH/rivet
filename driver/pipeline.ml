@@ -473,6 +473,7 @@ module Make (T : T_intf.TARGET) = struct
                 (symbol name).sy_size <- Some size;
                 with_section origin (fun s ->
                     s.sb_frags <- Lowered_ast.Set_size { name; size; origin } :: s.sb_frags)
+            | Directive.Cfi _ -> ()
             | Directive.Target_state { name; argument } -> (
                 match T.handle_directive ~name ~argument !state with
                 | T_intf.Handled { state = s; _ } -> state := s
