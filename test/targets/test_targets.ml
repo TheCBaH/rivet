@@ -4367,3 +4367,203 @@ let%expect_test "x86 bswap" =
     4000000b  c3        ret         [x86_64.ret]
     40000000  0f ce  bswap %esi  [x86_32.bswap-r.opsz-absent]
     40000002  c3     ret         [x86_32.ret] |}]
+
+(* [mrs rt, fpcr] and [msr fpcr, rt] - the one system register a producer needs to save, change
+   and restore the floating-point rounding mode. Checked against real
+   aarch64-linux-gnu-as/objdump: `mrs x17, fpcr` -> `d53b4411`, `msr fpcr, x17` -> `d51b4411`. *)
+let%expect_test "mrs and msr move FPCR through a 64-bit register" =
+  disasm "aarch64"
+    "\t.text\n\t.globl f\nf:\n\tmrs x17, fpcr\n\tmsr fpcr, x17\n\tmrs x0, fpcr\n\tmsr fpcr, x30\n\tret\n";
+  [%expect {|
+    40000000  11 44 3b d5  mrs x17, fpcr  [aarch64.mrs-fpcr]
+    40000004  11 44 1b d5  msr fpcr, x17  [aarch64.msr-fpcr]
+    40000008  00 44 3b d5  mrs x0, fpcr   [aarch64.mrs-fpcr]
+    4000000c  1e 44 1b d5  msr fpcr, x30  [aarch64.msr-fpcr]
+    40000010  c0 03 5f d6  ret            [aarch64.ret] |}]
+
+(* Scalar FP forms a compiler's selected code needs beyond the corpus's: [fsqrt], [frintz],
+   [fmadd], [fmax] and the move of FP bits to a general register. Checked against real
+   aarch64-linux-gnu-as/objdump byte for byte. *)
+let%expect_test "fsqrt, frintz, fmadd, fmax and fmov to a general register" =
+  disasm "aarch64"
+    "\t.text\n\t.globl f\nf:\n\tfsqrt d0, d1\n\tfsqrt s31, s2\n\tfrintz d0, d1\n\tfrintz s3, s30\n\tfmadd d0, d1, d2, d3\n\tfmadd s4, s5, s6, s7\n\tfmov x0, d1\n\tfmov w9, s30\n\tfmax d0, d1, d2\n\tfmax s3, s4, s31\n\tret\n";
+  [%expect {|
+    40000000  20 c0 61 1e  fsqrt d0, d1          [aarch64.fsqrt-d]
+    40000004  5f c0 21 1e  fsqrt s31, s2         [aarch64.fsqrt-s]
+    40000008  20 c0 65 1e  frintz d0, d1         [aarch64.frintz-d]
+    4000000c  c3 c3 25 1e  frintz s3, s30        [aarch64.frintz-s]
+    40000010  20 0c 42 1f  fmadd d0, d1, d2, d3  [aarch64.fmadd-d]
+    40000014  a4 1c 06 1f  fmadd s4, s5, s6, s7  [aarch64.fmadd-s]
+    40000018  20 00 66 9e  fmov x0, d1           [aarch64.fmov-to-gpr-d]
+    4000001c  c9 03 26 1e  fmov w9, s30          [aarch64.fmov-to-gpr-s]
+    40000020  20 48 62 1e  fmax d0, d1, d2       [aarch64.fmax-d]
+    40000024  83 48 3f 1e  fmax s3, s4, s31      [aarch64.fmax-s]
+    40000028  c0 03 5f d6  ret                   [aarch64.ret] |}]
+
+(* A constructed module printed as GNU source: the text a producer hands the GNU assembler to
+   check the project's own encoding against. Symbolic operands carry GNU's relocation spelling. *)
+let%expect_test "a constructed module prints as GNU assembler source" =
+  let open Asm_core in
+  let origin = Foundation.Origin.synthesized ~pass:"test" () in
+  let x n = { Aarch64.Reg.num = n; width = 64; is_sp = false } in
+  let i op ops = Normalized_ast.Instruction { insn = { Aarch64.Instruction.op; ops }; origin } in
+  let d directive = Normalized_ast.Directive { directive; origin } in
+  let sym s = Aarch64.Operand.Sym (Expr.Symbol s) in
+  let reg n = Aarch64.Operand.Reg (x n) in
+  let m =
+    {
+      Normalized_ast.unit_name = "m";
+      items =
+        [
+          d (Directive.Section { name = ".text"; perms = Perms.rx; nobits = false });
+          d (Directive.Align { boundary = 4 });
+          d (Directive.Global { name = "f" });
+          d (Directive.Sym_type { name = "f"; kind = Directive.Function });
+          Normalized_ast.Label { name = "f"; origin };
+          i Aarch64.Opcode.Adrp
+            [ reg 1; sym "g" |> fun _ -> Aarch64.Operand.Sym (Expr.Binary (Expr.Add, Expr.Symbol "g", Expr.Const (Foundation.Bigint.of_int 8))) ];
+          i Aarch64.Opcode.Add
+            [
+              reg 1;
+              reg 1;
+              Aarch64.Operand.Sym
+                (Expr.Modifier ("lo12", Expr.Binary (Expr.Add, Expr.Symbol "g", Expr.Const (Foundation.Bigint.of_int 8))));
+            ];
+          i Aarch64.Opcode.Ldr
+            [
+              reg 2;
+              Aarch64.Operand.Mem
+                {
+                  Aarch64.Mem.base = x 1;
+                  offset = Aarch64.Disp.Sym (Expr.Modifier ("lo12", Expr.Symbol "g"));
+                  writeback = false;
+                  pre = true;
+                };
+            ];
+          i (Aarch64.Opcode.Bcond Aarch64.Cond.Ne) [ sym "f" ];
+          i Aarch64.Opcode.Cbz [ reg 2; sym "f" ];
+          i Aarch64.Opcode.Bl [ sym "f" ];
+          i Aarch64.Opcode.Ret [];
+          d (Directive.Sym_size
+               { name = "f"; size = Expr.Binary (Expr.Sub, Expr.Current_location, Expr.Symbol "f") });
+          d (Directive.Section { name = ".rodata"; perms = Perms.ro; nobits = false });
+          d (Directive.Data { width = 1; values = [ Expr.Const (Foundation.Bigint.of_int 1); Expr.Const (Foundation.Bigint.of_int 255) ] });
+          d (Directive.Data { width = 4; values = [ Expr.Symbol "g" ] });
+          d (Directive.Section { name = ".bss"; perms = Perms.rw; nobits = true });
+          d (Directive.Align { boundary = 16 });
+          d (Directive.Global { name = "g" });
+          d (Directive.Sym_type { name = "g"; kind = Directive.Object });
+          Normalized_ast.Label { name = "g"; origin };
+          d (Directive.Zero { length = 16 });
+          d (Directive.Declared_section { name = ".note.GNU-stack" });
+        ];
+    }
+  in
+  print_string
+    (Gnu_module.to_string { Gnu_module.type_char = '%' } ~instruction:Aarch64.Instruction.pp_gnu m);
+  [%expect {|
+    	.section	.text,"ax",%progbits
+    	.balign	4
+    	.globl	f
+    	.type	f,%function
+    f:
+    	adrp x1, (g + 8)
+    	add x1, x1, #:lo12:(g + 8)
+    	ldr x2, [x1, #:lo12:g]
+    	b.ne f
+    	cbz x2, f
+    	bl f
+    	ret
+    	.size	f,(. - f)
+    	.section	.rodata,"a",%progbits
+    	.byte	1,255
+    	.4byte	g
+    	.section	.bss,"aw",%nobits
+    	.balign	16
+    	.globl	g
+    	.type	g,%object
+    g:
+    	.zero	16
+    	.section	.note.GNU-stack,"",%progbits |}]
+
+(* Advanced SIMD forms a compiler's selected vector code uses: arithmetic on two or four binary32
+   or two binary64 lanes, lane moves, single-lane and replicating loads and stores, Q-register
+   transfers and the two-lane conversions. Every word is the one real
+   aarch64-linux-gnu-as/objdump produces for the same source. *)
+let%expect_test "Advanced SIMD vector forms" =
+  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tfadd v0.4s, v1.4s, v2.4s\n\tfadd v3.2s, v4.2s, v5.2s\n\tfadd v0.2d, v1.2d, v2.2d\n\tfsub v0.4s, v1.4s, v2.4s\n\tfmul v0.4s, v1.4s, v2.4s\n\tfdiv v0.2d, v1.2d, v2.2d\n\tfmax v0.4s, v1.4s, v31.4s\n\tfmla v0.4s, v1.4s, v2.4s\n\tfmla v7.2d, v8.2d, v9.2d\n\tfneg v0.4s, v1.4s\n\tfsqrt v0.2d, v1.2d\n\tfrintz v0.4s, v1.4s\n\tmov v0.16b, v1.16b\n\tmov v0.8b, v1.8b\n\tdup v0.4s, v1.s[0]\n\tdup v0.2d, v1.d[0]\n\tdup v0.2s, v1.s[0]\n\tdup d0, v1.d[1]\n\tdup s0, v1.s[3]\n\tdup d0, v1.d[0]\n\tins v0.d[1], v1.d[0]\n\tins v0.s[2], v1.s[0]\n\tins v0.s[3], v1.s[0]\n\tins v0.d[1], v1.d[0]\n\tld1 {v0.s}[1], [x1]\n\tld1 {v0.d}[1], [x2]\n\tld1r {v0.4s}, [x1]\n\tld1r {v0.2d}, [x1]\n\tld1r {v0.2s}, [x1]\n\tst1 {v0.s}[3], [x1]\n\tst1 {v0.d}[1], [x1]\n\tldr q0, [x1, #16]\n\tstr q31, [sp, #4080]\n\tldr d0, [x1, #8]\n\tfcvtl v0.2d, v1.2s\n\tfcvtn v0.2s, v1.2d\n\tret\n";
+  [%expect {|
+    40000000  20 d4 22 4e  fadd v0.4s, v1.4s, v2.4s   [aarch64.vfadd-s4]
+    40000004  83 d4 25 0e  fadd v3.2s, v4.2s, v5.2s   [aarch64.vfadd-s2]
+    40000008  20 d4 62 4e  fadd v0.2d, v1.2d, v2.2d   [aarch64.vfadd-d2]
+    4000000c  20 d4 a2 4e  fsub v0.4s, v1.4s, v2.4s   [aarch64.vfsub-s4]
+    40000010  20 dc 22 6e  fmul v0.4s, v1.4s, v2.4s   [aarch64.vfmul-s4]
+    40000014  20 fc 62 6e  fdiv v0.2d, v1.2d, v2.2d   [aarch64.vfdiv-d2]
+    40000018  20 f4 3f 4e  fmax v0.4s, v1.4s, v31.4s  [aarch64.vfmax-s4]
+    4000001c  20 cc 22 4e  fmla v0.4s, v1.4s, v2.4s   [aarch64.vfmla-s4]
+    40000020  07 cd 69 4e  fmla v7.2d, v8.2d, v9.2d   [aarch64.vfmla-d2]
+    40000024  20 f8 a0 6e  fneg v0.4s, v1.4s          [aarch64.vfneg-s4]
+    40000028  20 f8 e1 6e  fsqrt v0.2d, v1.2d         [aarch64.vfsqrt-d2]
+    4000002c  20 98 a1 4e  frintz v0.4s, v1.4s        [aarch64.vfrintz-s4]
+    40000030  20 1c a1 4e  mov v0.16b, v1.16b         [aarch64.vorr-16b]
+    40000034  20 1c a1 0e  mov v0.8b, v1.8b           [aarch64.vorr-8b]
+    40000038  20 04 04 4e  dup v0.4s, v1.s[0]         [aarch64.vdup-q]
+    4000003c  20 04 08 4e  dup v0.2d, v1.d[0]         [aarch64.vdup-q]
+    40000040  20 04 04 0e  dup v0.2s, v1.s[0]         [aarch64.vdup-d]
+    40000044  20 04 18 5e  dup d0, v1.d[1]            [aarch64.vdup-scalar]
+    40000048  20 04 1c 5e  dup s0, v1.s[3]            [aarch64.vdup-scalar]
+    4000004c  20 04 08 5e  dup d0, v1.d[0]            [aarch64.vdup-scalar]
+    40000050  20 04 18 6e  ins v0.d[1], v1.d[0]       [aarch64.vins]
+    40000054  20 04 14 6e  ins v0.s[2], v1.s[0]       [aarch64.vins]
+    40000058  20 04 1c 6e  ins v0.s[3], v1.s[0]       [aarch64.vins]
+    4000005c  20 04 18 6e  ins v0.d[1], v1.d[0]       [aarch64.vins]
+    40000060  20 90 40 0d  ld1 {v0.s}[1], [x1]        [aarch64.vld1-s]
+    40000064  40 84 40 4d  ld1 {v0.d}[1], [x2]        [aarch64.vld1-d]
+    40000068  20 c8 40 4d  ld1r {v0.4s}, [x1]         [aarch64.vld1r-s4]
+    4000006c  20 cc 40 4d  ld1r {v0.2d}, [x1]         [aarch64.vld1r-d2]
+    40000070  20 c8 40 0d  ld1r {v0.2s}, [x1]         [aarch64.vld1r-s2]
+    40000074  20 90 00 4d  st1 {v0.s}[3], [x1]        [aarch64.vst1-s]
+    40000078  20 84 00 4d  st1 {v0.d}[1], [x1]        [aarch64.vst1-d]
+    4000007c  20 04 c0 3d  ldr q0, [x1, #16]          [aarch64.ldr-q]
+    40000080  ff ff 83 3d  str q31, [sp, #4080]       [aarch64.str-q]
+    40000084  20 04 40 fd  ldr d0, [x1, #8]           [aarch64.ldr64-f]
+    40000088  20 78 61 0e  fcvtl v0.2d, v1.2s         [aarch64.vfcvtl]
+    4000008c  20 68 61 0e  fcvtn v0.2s, v1.2d         [aarch64.vfcvtn]
+    40000090  c0 03 5f d6  ret                        [aarch64.ret] |}]
+
+(* Vector compares, bitwise operations on bytes and the bitwise select that make a mask: the words
+   real aarch64-linux-gnu-as/objdump produces, with [mov] the [orr] of one register with itself. *)
+let%expect_test "Advanced SIMD masks" =
+  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tfcmeq v0.4s, v1.4s, v2.4s\n\tfcmge v0.4s, v1.4s, v2.4s\n\tfcmgt v0.4s, v1.4s, v2.4s\n\tfcmgt v0.2d, v1.2d, v31.2d\n\tfcmeq v3.2d, v4.2d, v5.2d\n\tand v0.16b, v1.16b, v2.16b\n\torr v0.16b, v1.16b, v2.16b\n\teor v0.16b, v1.16b, v2.16b\n\tnot v0.16b, v1.16b\n\tbsl v0.16b, v1.16b, v2.16b\n\tbsl v7.16b, v31.16b, v9.16b\n\tbit v0.16b, v1.16b, v2.16b\n\tbit v7.16b, v31.16b, v9.16b\n\tbit v0.8b, v1.8b, v2.8b\n\tdup v0.4s, w1\n\tdup v0.2d, x1\n\tdup v31.4s, w30\n\tdup v3.2s, w4\n\tmov v0.16b, v1.16b\n\tret\n";
+  [%expect {|
+    40000000  20 e4 22 4e  fcmeq v0.4s, v1.4s, v2.4s    [aarch64.vfcmeq-s4]
+    40000004  20 e4 22 6e  fcmge v0.4s, v1.4s, v2.4s    [aarch64.vfcmge-s4]
+    40000008  20 e4 a2 6e  fcmgt v0.4s, v1.4s, v2.4s    [aarch64.vfcmgt-s4]
+    4000000c  20 e4 ff 6e  fcmgt v0.2d, v1.2d, v31.2d   [aarch64.vfcmgt-d2]
+    40000010  83 e4 65 4e  fcmeq v3.2d, v4.2d, v5.2d    [aarch64.vfcmeq-d2]
+    40000014  20 1c 22 4e  and v0.16b, v1.16b, v2.16b   [aarch64.vand-16b]
+    40000018  20 1c a2 4e  orr v0.16b, v1.16b, v2.16b   [aarch64.vorr-16b]
+    4000001c  20 1c 22 6e  eor v0.16b, v1.16b, v2.16b   [aarch64.veor-16b]
+    40000020  20 58 20 6e  not v0.16b, v1.16b           [aarch64.vnot-16b]
+    40000024  20 1c 62 6e  bsl v0.16b, v1.16b, v2.16b   [aarch64.vbsl-16b]
+    40000028  e7 1f 69 6e  bsl v7.16b, v31.16b, v9.16b  [aarch64.vbsl-16b]
+    4000002c  20 1c a2 6e  bit v0.16b, v1.16b, v2.16b   [aarch64.vbit-16b]
+    40000030  e7 1f a9 6e  bit v7.16b, v31.16b, v9.16b  [aarch64.vbit-16b]
+    40000034  20 1c a2 2e  bit v0.8b, v1.8b, v2.8b      [aarch64.vbit-8b]
+    40000038  20 0c 04 4e  dup v0.4s, w1                [aarch64.vdup-gpr-q]
+    4000003c  20 0c 08 4e  dup v0.2d, x1                [aarch64.vdup-gpr-q]
+    40000040  df 0f 04 4e  dup v31.4s, w30              [aarch64.vdup-gpr-q]
+    40000044  83 0c 04 0e  dup v3.2s, w4                [aarch64.vdup-gpr-d]
+    40000048  20 1c a1 4e  mov v0.16b, v1.16b           [aarch64.vorr-16b]
+    4000004c  c0 03 5f d6  ret                          [aarch64.ret] |}]
+
+(* NZCV, the other system register a compiler's code reads and writes: a test harness seeds the
+   condition flags and reads them back. Checked against real aarch64-linux-gnu-as/objdump:
+   `mrs x9, nzcv` -> `d53b4209`, `msr nzcv, x9` -> `d51b4209`. *)
+let%expect_test "mrs and msr move NZCV through a 64-bit register" =
+  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tmrs x9, nzcv\n\tmsr nzcv, x9\n\tmsr nzcv, x30\n\tret\n";
+  [%expect {|
+    40000000  09 42 3b d5  mrs x9, nzcv   [aarch64.mrs-nzcv]
+    40000004  09 42 1b d5  msr nzcv, x9   [aarch64.msr-nzcv]
+    40000008  1e 42 1b d5  msr nzcv, x30  [aarch64.msr-nzcv]
+    4000000c  c0 03 5f d6  ret            [aarch64.ret] |}]

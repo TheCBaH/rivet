@@ -147,6 +147,49 @@ module Shift = struct
   type t = { kind : string; amount : int }
 end
 
+(* {1 Advanced SIMD}
+
+   The vector forms a compiler's selected code uses: arithmetic on two or four binary32 or two
+   binary64 lanes, lane moves, single-lane and replicating loads and stores, and the Q-register
+   transfers. A vector register is its number alone; the arrangement or lane belongs to the
+   operand that names it, as it does in the assembler's own syntax. *)
+
+(* The arrangement of a vector register: a 64-bit half or the whole 128 bits. *)
+module Varr = struct
+  type t = B8 | B16 | S2 | S4 | D2
+
+  let name = function B8 -> "8b" | B16 -> "16b" | S2 -> "2s" | S4 -> "4s" | D2 -> "2d"
+
+  let of_name = function
+    | "8b" -> Some B8
+    | "16b" -> Some B16
+    | "2s" -> Some S2
+    | "4s" -> Some S4
+    | "2d" -> Some D2
+    | _ -> None
+
+  let equal (a : t) b = a = b
+  let q = function B8 | S2 -> 0 | B16 | S4 | D2 -> 1
+  let sz = function D2 -> 1 | B8 | B16 | S2 | S4 -> 0
+end
+
+(* One lane's size: a binary32 or binary64 element. *)
+module Lane = struct
+  type t = S | D
+
+  let name = function S -> "s" | D -> "d"
+  let of_name = function "s" -> Some S | "d" -> Some D | _ -> None
+  let lanes = function S -> 4 | D -> 2
+
+  (* DUP and INS's [imm5]: the lane size's marker bit with the index above it. *)
+  let imm5 t i = match t with S -> (i lsl 3) lor 0b100 | D -> (i lsl 4) lor 0b1000
+
+  let of_imm5 v =
+    if v land 0b1111 = 0b1000 then Some (D, v lsr 4)
+    else if v land 0b111 = 0b100 then Some (S, v lsr 3)
+    else None
+end
+
 module Operand = struct
   type t =
     | Reg of Reg.t
@@ -166,6 +209,11 @@ module Operand = struct
     | Sym of Asm_core.Expr.t
         (** a branch or call target. Written without a [#], unlike an immediate: it is an address,
             not a value, and the two are spelled differently for that reason. *)
+    | Vec of int * Varr.t  (** [v0.4s] *)
+    | Vlane of int * Lane.t * int  (** [v0.s[1]] *)
+    | Vlist of int * Varr.t  (** [{v0.4s}] *)
+    | Vlist_lane of int * Lane.t * int  (** [{v0.s}[1]] *)
+    | Qreg of int  (** [q0] *)
 
   let pp ppf = function
     | Reg r -> Reg.pp ppf r
@@ -181,6 +229,11 @@ module Operand = struct
     | Mem m -> Mem.pp ppf m
     | Shift s -> Fmt.pf ppf "%s #%d" s.Shift.kind s.Shift.amount
     | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
+    | Vec (r, a) -> Fmt.pf ppf "v%d.%s" r (Varr.name a)
+    | Vlane (r, l, i) -> Fmt.pf ppf "v%d.%s[%d]" r (Lane.name l) i
+    | Vlist (r, a) -> Fmt.pf ppf "{v%d.%s}" r (Varr.name a)
+    | Vlist_lane (r, l, i) -> Fmt.pf ppf "{v%d.%s}[%d]" r (Lane.name l) i
+    | Qreg r -> Fmt.pf ppf "q%d" r
 end
 
 module Surface = struct
@@ -299,6 +352,8 @@ module Opcode = struct
     | Strh
     | Ret
     | Br
+    | Mrs
+    | Msr
     | Sub
     | Cmp
     | Cmn
@@ -326,6 +381,24 @@ module Opcode = struct
     | Scvtf
     | Ucvtf
     | Fneg
+    | Fmax
+    | Fmla
+    | Fcmeq
+    | Fcmge
+    | Fcmgt
+    | Bsl
+    | Bit
+    | Not
+    | Fmadd
+    | Dup
+    | Ins
+    | Ld1
+    | Ld1r
+    | St1
+    | Fcvtl
+    | Fcvtn
+    | Fsqrt
+    | Frintz
     | Fcvt
     | Fcvtzs
     | Fcvtzu
@@ -371,6 +444,8 @@ module Opcode = struct
     | Strh -> "strh"
     | Ret -> "ret"
     | Br -> "br"
+    | Mrs -> "mrs"
+    | Msr -> "msr"
     | Sub -> "sub"
     | Cmp -> "cmp"
     | Cmn -> "cmn"
@@ -398,6 +473,24 @@ module Opcode = struct
     | Scvtf -> "scvtf"
     | Ucvtf -> "ucvtf"
     | Fneg -> "fneg"
+    | Fmax -> "fmax"
+    | Fmla -> "fmla"
+    | Fcmeq -> "fcmeq"
+    | Fcmge -> "fcmge"
+    | Fcmgt -> "fcmgt"
+    | Bsl -> "bsl"
+    | Bit -> "bit"
+    | Not -> "not"
+    | Dup -> "dup"
+    | Ins -> "ins"
+    | Ld1 -> "ld1"
+    | Ld1r -> "ld1r"
+    | St1 -> "st1"
+    | Fcvtl -> "fcvtl"
+    | Fcvtn -> "fcvtn"
+    | Fmadd -> "fmadd"
+    | Fsqrt -> "fsqrt"
+    | Frintz -> "frintz"
     | Fcvt -> "fcvt"
     | Fcvtzs -> "fcvtzs"
     | Fcvtzu -> "fcvtzu"
@@ -450,6 +543,8 @@ module Opcode = struct
     | "strb" -> Some Strb
     | "strh" -> Some Strh
     | "ret" -> Some Ret
+    | "mrs" -> Some Mrs
+    | "msr" -> Some Msr
     | "br" -> Some Br
     | "sub" -> Some Sub
     | "cmp" -> Some Cmp
@@ -477,6 +572,24 @@ module Opcode = struct
     | "scvtf" -> Some Scvtf
     | "ucvtf" -> Some Ucvtf
     | "fneg" -> Some Fneg
+    | "fmax" -> Some Fmax
+    | "fmla" -> Some Fmla
+    | "fcmeq" -> Some Fcmeq
+    | "fcmge" -> Some Fcmge
+    | "fcmgt" -> Some Fcmgt
+    | "bsl" -> Some Bsl
+    | "bit" -> Some Bit
+    | "not" | "mvn" -> Some Not
+    | "dup" -> Some Dup
+    | "ins" -> Some Ins
+    | "ld1" -> Some Ld1
+    | "ld1r" -> Some Ld1r
+    | "st1" -> Some St1
+    | "fcvtl" -> Some Fcvtl
+    | "fcvtn" -> Some Fcvtn
+    | "fmadd" -> Some Fmadd
+    | "fsqrt" -> Some Fsqrt
+    | "frintz" -> Some Frintz
     | "fcvt" -> Some Fcvt
     | "fcvtzs" -> Some Fcvtzs
     | "fcvtzu" -> Some Fcvtzu
@@ -573,13 +686,20 @@ let logical_name = function 0 -> "and" | 1 -> "orr" | 2 -> "eor" | 3 -> "ands" |
    fmul/fdiv). [fmax]/[fmin]/[fmaxnm]/[fminnm]/[fnmul] share the identical
    word shape at other opcode values but are not evidenced, so none of them
    is implemented alongside these four. *)
-let fbinop_name = function 0 -> "fmul" | 1 -> "fdiv" | 2 -> "fadd" | 3 -> "fsub" | _ -> "?"
+let fbinop_name = function
+  | 0 -> "fmul"
+  | 1 -> "fdiv"
+  | 2 -> "fadd"
+  | 3 -> "fsub"
+  | 4 -> "fmax"
+  | _ -> "?"
 
 let fbinop_opcode = function
   | Opcode.Fmul -> Some 0
   | Opcode.Fdiv -> Some 1
   | Opcode.Fadd -> Some 2
   | Opcode.Fsub -> Some 3
+  | Opcode.Fmax -> Some 4
   | _ -> None
 
 (* UBFM's own two evidenced surface aliases (M5 corpus evidence: [ubfx]/
@@ -620,6 +740,61 @@ let dp1_opcode op ~width =
   | Rev, _ -> Some 3
   | Clz, _ -> Some 4
   | Cls, _ -> Some 5
+
+(* The system registers a producer reads and writes: the floating-point control and the condition
+   flags. Not a general system-register operand: exactly the two a compiler's code touches. *)
+type sysreg = Fpcr | Nzcv
+
+let sysreg_name = function Fpcr -> "fpcr" | Nzcv -> "nzcv"
+
+(* Advanced SIMD floating-point arithmetic, three-register and two-register. *)
+type vbin = Vfadd | Vfcmeq | Vfcmge | Vfcmgt | Vfdiv | Vfmax | Vfmla | Vfmul | Vfsub
+type vun = Vfneg | Vfrintz | Vfsqrt
+
+(* [U], [a] (bit 23) and the five-bit opcode of a three-register form. *)
+let vbin_bits = function
+  | Vfadd -> (0, 0, 0b11010)
+  | Vfsub -> (0, 1, 0b11010)
+  | Vfmul -> (1, 0, 0b11011)
+  | Vfdiv -> (1, 0, 0b11111)
+  | Vfmax -> (0, 0, 0b11110)
+  | Vfmla -> (0, 0, 0b11001)
+  | Vfcmeq -> (0, 0, 0b11100)
+  | Vfcmge -> (1, 0, 0b11100)
+  | Vfcmgt -> (1, 1, 0b11100)
+
+let vbin_name = function
+  | Vfadd -> "fadd"
+  | Vfsub -> "fsub"
+  | Vfmul -> "fmul"
+  | Vfdiv -> "fdiv"
+  | Vfmax -> "fmax"
+  | Vfmla -> "fmla"
+  | Vfcmeq -> "fcmeq"
+  | Vfcmge -> "fcmge"
+  | Vfcmgt -> "fcmgt"
+
+(* [U], [a] and the five-bit opcode of a two-register form. *)
+let vun_bits = function Vfneg -> (1, 1, 0b01111) | Vfsqrt -> (1, 1, 0b11111) | Vfrintz -> (0, 1, 0b11001)
+let vun_name = function Vfneg -> "fneg" | Vfsqrt -> "fsqrt" | Vfrintz -> "frintz"
+
+(* Bitwise vector operations on bytes: [U] and the two selector bits (23:22) of
+   [0 Q U 01110 sel 1 Rm 000111 Rn Rd]. [Vbsl] takes its mask from the destination. *)
+type vlogic = Vand | Vbit | Vbsl | Veor | Vorr
+
+let vlogic_bits = function
+  | Vand -> (0, 0b00)
+  | Vorr -> (0, 0b10)
+  | Veor -> (1, 0b00)
+  | Vbsl -> (1, 0b01)
+  | Vbit -> (1, 0b10)
+
+let vlogic_name = function
+  | Vand -> "and"
+  | Vorr -> "orr"
+  | Veor -> "eor"
+  | Vbsl -> "bsl"
+  | Vbit -> "bit"
 
 module Lowered = struct
   type t =
@@ -705,6 +880,35 @@ module Lowered = struct
             bit, the rest of the word identical. Only [S]/[D] (this project's only two
             {!Freg.t} widths) are implemented; [B]/[H]/[Q] are real A64 sizes this corpus does
             not evidence. *)
+    | Mrs of { sysreg : sysreg; rt : Reg.t }
+        (** [mrs rt, fpcr] - the floating-point control register read into a 64-bit register. The
+            one system register this encoder knows: a producer that saves, changes and restores
+            the rounding mode needs exactly these two forms and no general system-register
+            operand. *)
+    | Msr of { sysreg : sysreg; rt : Reg.t }  (** [msr sysreg, rt] - the register written to it. *)
+    | Vbin of { op : vbin; arr : Varr.t; rd : int; rn : int; rm : int }
+        (** [fadd]/[fsub]/[fmul]/[fdiv]/[fmax]/[fmla Vd.T, Vn.T, Vm.T] on [2s], [4s] or [2d]. *)
+    | Vun of { op : vun; arr : Varr.t; rd : int; rn : int }  (** [fneg]/[fsqrt]/[frintz Vd.T, Vn.T] *)
+    | Vlogic of { op : vlogic; q : bool; rd : int; rn : int; rm : int }
+        (** [and]/[orr]/[eor]/[bsl Vd.16b, Vn.16b, Vm.16b] (or [.8b]); [mov] is [orr] with both
+            sources the same register. *)
+    | Vnot of { q : bool; rd : int; rn : int }  (** [not Vd.16b, Vn.16b] (the assembler's [mvn]) *)
+    | Vcvt of { widen : bool; rd : int; rn : int }
+        (** [fcvtl Vd.2d, Vn.2s] / [fcvtn Vd.2s, Vn.2d]: the two-lane halves only. *)
+    | Vdup of { arr : Varr.t; rd : int; rn : int; index : int }
+        (** [dup Vd.T, Vn.Ts[i]]: one lane of the source to every lane. *)
+    | Vdup_gpr of { arr : Varr.t; rd : int; rn : Reg.t }
+        (** [dup Vd.T, Wn/Xn]: a general register to every lane. *)
+    | Vdup_scalar of { lane : Lane.t; rd : int; rn : int; index : int }
+        (** [dup Sd/Dd, Vn.Ts[i]] (the assembler's [mov Sd, Vn.s[i]]): a lane as a scalar. *)
+    | Vins of { lane : Lane.t; rd : int; didx : int; rn : int; sidx : int }
+        (** [ins Vd.Ts[i], Vn.Ts[j]]: one lane from another vector's lane. *)
+    | Vld1 of { load : bool; lane : Lane.t; vt : int; index : int; rn : Reg.t }
+        (** [ld1]/[st1 {Vt.Ts}[i], [Xn]]: one lane to or from memory. *)
+    | Vld1r of { arr : Varr.t; vt : int; rn : Reg.t }
+        (** [ld1r {Vt.T}, [Xn]]: one element to every lane. *)
+    | Qldst of { load : bool; rt : int; rn : Reg.t; offset : int64 }
+        (** [ldr]/[str Qt, [Xn, #offset]]: unsigned offset, a multiple of 16. *)
     | Ret of { rn : Reg.t }
     | Br of { rn : Reg.t }
         (** [br rn] - "unconditional branch to register", the same
@@ -841,6 +1045,17 @@ module Lowered = struct
             corpus evidence: almabench.c/bisect.c/...). [fabs]/[fsqrt] share
             the identical word shape at other opcode values but are not evidenced, so neither is
             implemented alongside it. *)
+    | Fsqrt of { rd : Freg.t; rn : Freg.t }
+        (** [fsqrt rd, rn] - {!Fneg}'s "floating-point data-processing (1 source)" word at [opcode]
+            = [000011]. *)
+    | Frintz of { rd : Freg.t; rn : Freg.t }
+        (** [frintz rd, rn] - round toward zero, the same word at [opcode] = [001011]. *)
+    | Fmadd of { rd : Freg.t; rn : Freg.t; rm : Freg.t; ra : Freg.t }
+        (** [fmadd rd, rn, rm, ra] - [ra + rn * rm] with one rounding: the "floating-point
+            data-processing (3 source)" word with [o1] = [o0] = 0. *)
+    | Fmov_to_gpr of { rd : Reg.t; rn : Freg.t }
+        (** [fmov xd, dn] / [fmov wd, sn] - a scalar FP register's raw bits into a general
+            register: {!Fmov_from_gpr}'s "conversion" word at [opcode] = [110]. *)
     | Fcvt of { rd : Freg.t; rn : Freg.t }
         (** [fcvt sd, dn] / [fcvt dd, sn] - the single<->double precision conversion, the same
             "floating-point data-processing (1 source)" word {!Fneg} uses: [type] (source
@@ -932,6 +1147,39 @@ module Lowered = struct
           (if load then "ldr" else "str")
           Freg.pp rt Mem.pp
           { Mem.base = rn; offset; writeback = false; pre = true }
+    | Vbin { op; arr; rd; rn; rm } ->
+        let a = Varr.name arr in
+        Fmt.pf ppf "%s v%d.%s, v%d.%s, v%d.%s" (vbin_name op) rd a rn a rm a
+    | Vun { op; arr; rd; rn } ->
+        let a = Varr.name arr in
+        Fmt.pf ppf "%s v%d.%s, v%d.%s" (vun_name op) rd a rn a
+    | Vlogic { op = Vorr; q; rd; rn; rm } when rn = rm ->
+        let a = if q then "16b" else "8b" in
+        Fmt.pf ppf "mov v%d.%s, v%d.%s" rd a rn a
+    | Vlogic { op; q; rd; rn; rm } ->
+        let a = if q then "16b" else "8b" in
+        Fmt.pf ppf "%s v%d.%s, v%d.%s, v%d.%s" (vlogic_name op) rd a rn a rm a
+    | Vnot { q; rd; rn } ->
+        let a = if q then "16b" else "8b" in
+        Fmt.pf ppf "not v%d.%s, v%d.%s" rd a rn a
+    | Vcvt { widen; rd; rn } ->
+        if widen then Fmt.pf ppf "fcvtl v%d.2d, v%d.2s" rd rn else Fmt.pf ppf "fcvtn v%d.2s, v%d.2d" rd rn
+    | Vdup { arr; rd; rn; index } ->
+        let lane = match arr with Varr.D2 -> Lane.D | _ -> Lane.S in
+        Fmt.pf ppf "dup v%d.%s, v%d.%s[%d]" rd (Varr.name arr) rn (Lane.name lane) index
+    | Vdup_gpr { arr; rd; rn } -> Fmt.pf ppf "dup v%d.%s, %a" rd (Varr.name arr) Reg.pp rn
+    | Vdup_scalar { lane; rd; rn; index } ->
+        Fmt.pf ppf "dup %s%d, v%d.%s[%d]" (Lane.name lane) rd rn (Lane.name lane) index
+    | Vins { lane; rd; didx; rn; sidx } ->
+        Fmt.pf ppf "ins v%d.%s[%d], v%d.%s[%d]" rd (Lane.name lane) didx rn (Lane.name lane) sidx
+    | Vld1 { load; lane; vt; index; rn } ->
+        Fmt.pf ppf "%s {v%d.%s}[%d], [%a]" (if load then "ld1" else "st1") vt (Lane.name lane) index
+          Reg.pp rn
+    | Vld1r { arr; vt; rn } -> Fmt.pf ppf "ld1r {v%d.%s}, [%a]" vt (Varr.name arr) Reg.pp rn
+    | Qldst { load; rt; rn; offset } ->
+        Fmt.pf ppf "%s q%d, [%a, #%Ld]" (if load then "ldr" else "str") rt Reg.pp rn offset
+    | Mrs { sysreg; rt } -> Fmt.pf ppf "mrs %a, %s" Reg.pp rt (sysreg_name sysreg)
+    | Msr { sysreg; rt } -> Fmt.pf ppf "msr %s, %a" (sysreg_name sysreg) Reg.pp rt
     | Ret { rn } ->
         (* [ret x30] is spelled [ret]: x30 is the architectural default and every
            A64 disassembler elides it. Printing it would make the canonical dump
@@ -1006,6 +1254,11 @@ module Lowered = struct
     | Cvtf { signed; rd; rn } ->
         Fmt.pf ppf "%s %a, %a" (if signed then "scvtf" else "ucvtf") Freg.pp rd Reg.pp rn
     | Fneg { rd; rn } -> Fmt.pf ppf "fneg %a, %a" Freg.pp rd Freg.pp rn
+    | Fsqrt { rd; rn } -> Fmt.pf ppf "fsqrt %a, %a" Freg.pp rd Freg.pp rn
+    | Frintz { rd; rn } -> Fmt.pf ppf "frintz %a, %a" Freg.pp rd Freg.pp rn
+    | Fmadd { rd; rn; rm; ra } ->
+        Fmt.pf ppf "fmadd %a, %a, %a, %a" Freg.pp rd Freg.pp rn Freg.pp rm Freg.pp ra
+    | Fmov_to_gpr { rd; rn } -> Fmt.pf ppf "fmov %a, %a" Reg.pp rd Freg.pp rn
     | Fcvt { rd; rn } -> Fmt.pf ppf "fcvt %a, %a" Freg.pp rd Freg.pp rn
     | Fcvtzs { rd; rn } -> Fmt.pf ppf "fcvtzs %a, %a" Reg.pp rd Freg.pp rn
     | Fcvtzu { rd; rn } -> Fmt.pf ppf "fcvtzu %a, %a" Reg.pp rd Freg.pp rn
@@ -1045,6 +1298,25 @@ module Lowered = struct
     | Ldst_uoff_f x, Ldst_uoff_f y ->
         x.double = y.double && x.load = y.load && Freg.equal x.rt y.rt && Reg.equal x.rn y.rn
         && Disp.equal x.offset y.offset
+    | Vbin x, Vbin y -> x.op = y.op && x.arr = y.arr && x.rd = y.rd && x.rn = y.rn && x.rm = y.rm
+    | Vun x, Vun y -> x.op = y.op && x.arr = y.arr && x.rd = y.rd && x.rn = y.rn
+    | Vlogic x, Vlogic y ->
+        x.op = y.op && x.q = y.q && x.rd = y.rd && x.rn = y.rn && x.rm = y.rm
+    | Vnot x, Vnot y -> x.q = y.q && x.rd = y.rd && x.rn = y.rn
+    | Vcvt x, Vcvt y -> x.widen = y.widen && x.rd = y.rd && x.rn = y.rn
+    | Vdup x, Vdup y -> x.arr = y.arr && x.rd = y.rd && x.rn = y.rn && x.index = y.index
+    | Vdup_gpr x, Vdup_gpr y -> x.arr = y.arr && x.rd = y.rd && Reg.equal x.rn y.rn
+    | Vdup_scalar x, Vdup_scalar y ->
+        x.lane = y.lane && x.rd = y.rd && x.rn = y.rn && x.index = y.index
+    | Vins x, Vins y ->
+        x.lane = y.lane && x.rd = y.rd && x.didx = y.didx && x.rn = y.rn && x.sidx = y.sidx
+    | Vld1 x, Vld1 y ->
+        x.load = y.load && x.lane = y.lane && x.vt = y.vt && x.index = y.index && Reg.equal x.rn y.rn
+    | Vld1r x, Vld1r y -> x.arr = y.arr && x.vt = y.vt && Reg.equal x.rn y.rn
+    | Qldst x, Qldst y ->
+        x.load = y.load && x.rt = y.rt && Reg.equal x.rn y.rn && Int64.equal x.offset y.offset
+    | Mrs x, Mrs y -> x.sysreg = y.sysreg && Reg.equal x.rt y.rt
+    | Msr x, Msr y -> x.sysreg = y.sysreg && Reg.equal x.rt y.rt
     | Ret x, Ret y -> Reg.equal x.rn y.rn
     | Br x, Br y -> Reg.equal x.rn y.rn
     | Adds_imm x, Adds_imm y ->
@@ -1094,6 +1366,12 @@ module Lowered = struct
         && Freg.equal x.rm y.rm
     | Cvtf x, Cvtf y -> x.signed = y.signed && Freg.equal x.rd y.rd && Reg.equal x.rn y.rn
     | Fneg x, Fneg y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
+    | Fsqrt x, Fsqrt y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
+    | Frintz x, Frintz y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
+    | Fmadd x, Fmadd y ->
+        Freg.equal x.rd y.rd && Freg.equal x.rn y.rn && Freg.equal x.rm y.rm
+        && Freg.equal x.ra y.ra
+    | Fmov_to_gpr x, Fmov_to_gpr y -> Reg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Fcvt x, Fcvt y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Fcvtzs x, Fcvtzs y -> Reg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Fcvtzu x, Fcvtzu y -> Reg.equal x.rd y.rd && Freg.equal x.rn y.rn
@@ -2078,6 +2356,333 @@ let fmov_reg_alt ~double =
       ** const ~width:12 (Int64.of_int (2048 + (0b000000 * 32) + 0b10000))
       ** field ~width:5 "rn" ** field ~width:5 "rd")
 
+(* [fsqrt] and [frintz]: {!fneg_alt}'s word at their own [opcode]. Verified against real
+   aarch64-linux-gnu-as/objdump: [1e61c020] for [fsqrt d0, d1], [1e659020] for [frintz d0, d1]. *)
+let funary1_alt ~double ~name ~opcode ~make ~view =
+  C.iso_fun
+    ~name:(Printf.sprintf "%s-%s" name (if double then "d" else "s"))
+    ~encode:(fun l ->
+      match view l with
+      | Some (rd, rn) when rd.Freg.double = double && rn.Freg.double = double ->
+          Some ((), ((), ((), (Int64.of_int rn.Freg.num, Int64.of_int rd.Freg.num))))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), (rn, rd)))) ->
+      Some
+        (make
+           ~rd:(Freg.of_num ~double (Int64.to_int rd))
+           ~rn:(Freg.of_num ~double (Int64.to_int rn))))
+    C.(
+      const ~width:8 0b00011110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:12 (Int64.of_int (2048 + (opcode * 32) + 0b10000))
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+let fsqrt_alt ~double =
+  funary1_alt ~double ~name:"fsqrt" ~opcode:0b000011
+    ~make:(fun ~rd ~rn -> Lowered.Fsqrt { rd; rn })
+    ~view:(function Lowered.Fsqrt { rd; rn } -> Some (rd, rn) | _ -> None)
+
+let frintz_alt ~double =
+  funary1_alt ~double ~name:"frintz" ~opcode:0b001011
+    ~make:(fun ~rd ~rn -> Lowered.Frintz { rd; rn })
+    ~view:(function Lowered.Frintz { rd; rn } -> Some (rd, rn) | _ -> None)
+
+(* [fmadd rd, rn, rm, ra]: the "floating-point data-processing (3 source)" word, [o1] = [o0] =
+   0. Verified against real aarch64-linux-gnu-as/objdump: [1f420c20] for [fmadd d0, d1, d2, d3]. *)
+let fmadd_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fmadd-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fmadd { rd; rn; rm; ra }
+        when rd.Freg.double = double && rn.Freg.double = double && rm.Freg.double = double
+             && ra.Freg.double = double ->
+          Some
+            ( (),
+              ( (),
+                ( (),
+                  ( Int64.of_int rm.Freg.num,
+                    ((), (Int64.of_int ra.Freg.num, (Int64.of_int rn.Freg.num, Int64.of_int rd.Freg.num)))
+                  ) ) ) )
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), (rm, ((), (ra, (rn, rd))))))) ->
+      Some
+        (Lowered.Fmadd
+           {
+             rd = Freg.of_num ~double (Int64.to_int rd);
+             rn = Freg.of_num ~double (Int64.to_int rn);
+             rm = Freg.of_num ~double (Int64.to_int rm);
+             ra = Freg.of_num ~double (Int64.to_int ra);
+           }))
+    C.(
+      const ~width:8 0b00011111L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:1 0L ** field ~width:5 "rm" ** const ~width:1 0L ** field ~width:5 "ra"
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [fmov xd, dn] / [fmov wd, sn]: {!fmov_from_gpr_alt}'s word at [opcode] = [110]. Verified
+   against real aarch64-linux-gnu-as/objdump: [9e660020] for [fmov x0, d1], [1e260020] for
+   [fmov w0, s1]. *)
+let fmov_to_gpr_alt ~double =
+  C.iso_fun
+    ~name:(Printf.sprintf "fmov-to-gpr-%s" (if double then "d" else "s"))
+    ~encode:(function
+      | Lowered.Fmov_to_gpr { rd; rn }
+        when rn.Freg.double = double && rd.Reg.width = if double then 64 else 32 ->
+          Some
+            ( (if rd.Reg.width = 64 then 1L else 0L),
+              ((), ((), ((), (Int64.of_int rn.Freg.num, Int64.of_int rd.Reg.num)))) )
+      | _ -> None)
+    ~decode:(fun (sf, ((), ((), ((), (rn, rd))))) ->
+      let width = if Int64.equal sf 1L then 64 else 32 in
+      Some
+        (Lowered.Fmov_to_gpr
+           {
+             rd = Reg.of_num ~width ~sp:false (Int64.to_int rd);
+             rn = Freg.of_num ~double (Int64.to_int rn);
+           }))
+    C.(
+      field ~width:1 "sf" ** const ~width:7 0b0011110L
+      ** const ~width:2 (if double then 1L else 0L)
+      ** const ~width:12 (Int64.of_int (2048 + (0b110 * 64)))
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [mrs rt, sysreg] and [msr sysreg, rt]: the system-register move (register) words
+   [1101010100_L_1_o0_op1_CRn_CRm_op2_Rt] with FPCR = S3_3_C4_C4_0 and NZCV = S3_3_C4_C2_0, so the 27
+   bits above [Rt] are fixed. Checked against real aarch64-linux-gnu-as/objdump: [mrs x17, fpcr] ->
+   [d53b4411], [msr nzcv, x9] -> [d51b4209]. *)
+let sysreg_alt ~read ~sysreg =
+  let top = if read then 0x6A9DA00L else 0x6A8DA00L in
+  let low = match sysreg with Fpcr -> 0x20L | Nzcv -> 0x10L in
+  C.iso_fun
+    ~name:(Printf.sprintf "%s-%s" (if read then "mrs" else "msr") (sysreg_name sysreg))
+    ~encode:(function
+      | Lowered.Mrs { sysreg = r; rt } when read && r = sysreg -> Some ((), rt)
+      | Lowered.Msr { sysreg = r; rt } when (not read) && r = sysreg -> Some ((), rt)
+      | _ -> None)
+    ~decode:(fun ((), rt) ->
+      Some (if read then Lowered.Mrs { sysreg; rt } else Lowered.Msr { sysreg; rt }))
+    C.(const ~width:27 (Int64.add top low) ** reg_field ~width:64 ~sp:false "rt")
+
+(* {1 Advanced SIMD codecs}
+
+   Words verified against real aarch64-linux-gnu-as/objdump; the fixed part of each is one wide
+   constant, so the tuple a codec yields is just its register and lane fields. *)
+
+let vw = Int64.of_int
+
+(* [fadd]/[fsub]/[fmul]/[fdiv]/[fmax]/[fmla] on one arrangement:
+   [0 Q U 01110 a sz 1 Rm opc 1 Rn Rd]. *)
+let vbin_alt ~op ~arr =
+  let u, a, opc = vbin_bits op in
+  let hi = (Varr.q arr lsl 9) lor (u lsl 8) lor (0b01110 lsl 3) lor (a lsl 2) lor (Varr.sz arr lsl 1) lor 1 in
+  C.iso_fun
+    ~name:(Printf.sprintf "v%s-%s" (vbin_name op) (Varr.name arr))
+    ~encode:(function
+      | Lowered.Vbin { op = o; arr = r; rd; rn; rm } when o = op && Varr.equal r arr ->
+          Some ((), (vw rm, ((), (vw rn, vw rd))))
+      | _ -> None)
+    ~decode:(fun ((), (rm, ((), (rn, rd)))) ->
+      Some (Lowered.Vbin { op; arr; rd = Int64.to_int rd; rn = Int64.to_int rn; rm = Int64.to_int rm }))
+    C.(
+      const ~width:11 (vw hi) ** field ~width:5 "rm"
+      ** const ~width:6 (vw ((opc lsl 1) lor 1))
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [fneg]/[fsqrt]/[frintz]: [0 Q U 01110 a sz 10000 opc 10 Rn Rd]. *)
+let vun_alt ~op ~arr =
+  let u, a, opc = vun_bits op in
+  let hi =
+    (Varr.q arr lsl 20) lor (u lsl 19) lor (0b01110 lsl 14) lor (a lsl 13) lor (Varr.sz arr lsl 12)
+    lor (0b10000 lsl 7) lor (opc lsl 2) lor 0b10
+  in
+  C.iso_fun
+    ~name:(Printf.sprintf "v%s-%s" (vun_name op) (Varr.name arr))
+    ~encode:(function
+      | Lowered.Vun { op = o; arr = r; rd; rn } when o = op && Varr.equal r arr ->
+          Some ((), (vw rn, vw rd))
+      | _ -> None)
+    ~decode:(fun ((), (rn, rd)) ->
+      Some (Lowered.Vun { op; arr; rd = Int64.to_int rd; rn = Int64.to_int rn }))
+    C.(const ~width:22 (vw hi) ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [and]/[orr]/[eor]/[bsl] on bytes: [0 Q U 01110 sel 1 Rm 000111 Rn Rd]. *)
+let vlogic_alt ~op ~q =
+  let u, sel = vlogic_bits op in
+  let hi = ((if q then 1 else 0) lsl 9) lor (u lsl 8) lor (0b01110 lsl 3) lor (sel lsl 1) lor 1 in
+  C.iso_fun
+    ~name:(Printf.sprintf "v%s-%s" (vlogic_name op) (if q then "16b" else "8b"))
+    ~encode:(function
+      | Lowered.Vlogic { op = o; q = q'; rd; rn; rm } when o = op && q' = q ->
+          Some ((), (vw rm, ((), (vw rn, vw rd))))
+      | _ -> None)
+    ~decode:(fun ((), (rm, ((), (rn, rd)))) ->
+      Some
+        (Lowered.Vlogic
+           { op; q; rd = Int64.to_int rd; rn = Int64.to_int rn; rm = Int64.to_int rm }))
+    C.(
+      const ~width:11 (vw hi) ** field ~width:5 "rm" ** const ~width:6 0b000111L
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [not Vd.16b, Vn.16b]: [0 Q 1 01110 00 10000 00101 10 Rn Rd]. *)
+let vnot_alt ~q =
+  let hi = ((if q then 1 else 0) lsl 20) lor (1 lsl 19) lor (0b01110 lsl 14) lor (0b10000 lsl 7) lor (0b00101 lsl 2) lor 0b10 in
+  C.iso_fun
+    ~name:(if q then "vnot-16b" else "vnot-8b")
+    ~encode:(function
+      | Lowered.Vnot { q = q'; rd; rn } when q' = q -> Some ((), (vw rn, vw rd))
+      | _ -> None)
+    ~decode:(fun ((), (rn, rd)) ->
+      Some (Lowered.Vnot { q; rd = Int64.to_int rd; rn = Int64.to_int rn }))
+    C.(const ~width:22 (vw hi) ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [fcvtl Vd.2d, Vn.2s] and [fcvtn Vd.2s, Vn.2d]. *)
+let vcvt_alt ~widen =
+  let hi = (0x0e617820 lxor if widen then 0 else 0x1000) lsr 10 in
+  C.iso_fun
+    ~name:(if widen then "vfcvtl" else "vfcvtn")
+    ~encode:(function
+      | Lowered.Vcvt { widen = w; rd; rn } when w = widen -> Some ((), (vw rn, vw rd))
+      | _ -> None)
+    ~decode:(fun ((), (rn, rd)) ->
+      Some (Lowered.Vcvt { widen; rd = Int64.to_int rd; rn = Int64.to_int rn }))
+    C.(const ~width:22 (vw hi) ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [dup Vd.T, Vn.Ts[i]]: [0 Q 0 01110000 imm5 000001 Rn Rd]. The lane size is in [imm5], so one
+   alternative per [Q]: the full register is [4s] or [2d], the half is [2s]. *)
+let vdup_alt ~q =
+  let hi = (q lsl 9) lor (0b01110 lsl 3) in
+  C.iso_fun
+    ~name:(if q = 1 then "vdup-q" else "vdup-d")
+    ~encode:(function
+      | Lowered.Vdup { arr; rd; rn; index } when Varr.q arr = q ->
+          let lane = match arr with Varr.D2 -> Lane.D | _ -> Lane.S in
+          Some ((), (vw (Lane.imm5 lane index), ((), (vw rn, vw rd))))
+      | _ -> None)
+    ~decode:(fun ((), (imm5, ((), (rn, rd)))) ->
+      match (Lane.of_imm5 (Int64.to_int imm5), q) with
+      | Some (Lane.S, index), 1 ->
+          Some (Lowered.Vdup { arr = Varr.S4; rd = Int64.to_int rd; rn = Int64.to_int rn; index })
+      | Some (Lane.D, index), 1 ->
+          Some (Lowered.Vdup { arr = Varr.D2; rd = Int64.to_int rd; rn = Int64.to_int rn; index })
+      | Some (Lane.S, index), _ ->
+          Some (Lowered.Vdup { arr = Varr.S2; rd = Int64.to_int rd; rn = Int64.to_int rn; index })
+      | _ -> None)
+    C.(
+      const ~width:11 (vw hi) ** field ~width:5 "imm5" ** const ~width:6 0b000001L
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [dup Vd.T, Wn/Xn]: [0 Q 0 01110000 imm5 000011 Rn Rd], the lane size in [imm5] again. *)
+let vdup_gpr_alt ~q =
+  let hi = (q lsl 9) lor (0b01110 lsl 3) in
+  C.iso_fun
+    ~name:(if q = 1 then "vdup-gpr-q" else "vdup-gpr-d")
+    ~encode:(function
+      | Lowered.Vdup_gpr { arr; rd; rn } when Varr.q arr = q ->
+          let lane = match arr with Varr.D2 -> Lane.D | _ -> Lane.S in
+          Some ((), (vw (Lane.imm5 lane 0), ((), (rn, vw rd))))
+      | _ -> None)
+    ~decode:(fun ((), (imm5, ((), (rn, rd)))) ->
+      let rd = Int64.to_int rd in
+      match (Lane.of_imm5 (Int64.to_int imm5), q) with
+      | Some (Lane.S, 0), 1 ->
+          Some (Lowered.Vdup_gpr { arr = Varr.S4; rd; rn = { rn with Reg.width = 32 } })
+      | Some (Lane.D, 0), 1 ->
+          Some (Lowered.Vdup_gpr { arr = Varr.D2; rd; rn = { rn with Reg.width = 64 } })
+      | Some (Lane.S, 0), _ ->
+          Some (Lowered.Vdup_gpr { arr = Varr.S2; rd; rn = { rn with Reg.width = 32 } })
+      | _ -> None)
+    C.(
+      const ~width:11 (vw hi) ** field ~width:5 "imm5" ** const ~width:6 0b000011L
+      ** reg_field ~width:64 ~sp:false "rn" ** field ~width:5 "rd")
+
+(* [dup Sd, Vn.s[i]] / [dup Dd, Vn.d[i]]: [01 0 11110000 imm5 000001 Rn Rd]. *)
+let vdup_scalar_alt =
+  C.iso_fun ~name:"vdup-scalar"
+    ~encode:(function
+      | Lowered.Vdup_scalar { lane; rd; rn; index } ->
+          Some ((), (vw (Lane.imm5 lane index), ((), (vw rn, vw rd))))
+      | _ -> None)
+    ~decode:(fun ((), (imm5, ((), (rn, rd)))) ->
+      match Lane.of_imm5 (Int64.to_int imm5) with
+      | Some (lane, index) ->
+          Some (Lowered.Vdup_scalar { lane; rd = Int64.to_int rd; rn = Int64.to_int rn; index })
+      | None -> None)
+    C.(
+      const ~width:11 0b01011110000L ** field ~width:5 "imm5" ** const ~width:6 0b000001L
+      ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [ins Vd.Ts[i], Vn.Ts[j]]: [01 1 01110000 imm5 0 imm4 1 Rn Rd]. *)
+let vins_alt =
+  C.iso_fun ~name:"vins"
+    ~encode:(function
+      | Lowered.Vins { lane; rd; didx; rn; sidx } ->
+          let imm4 = match lane with Lane.S -> sidx lsl 2 | Lane.D -> sidx lsl 3 in
+          Some ((), (vw (Lane.imm5 lane didx), ((), (vw imm4, ((), (vw rn, vw rd))))))
+      | _ -> None)
+    ~decode:(fun ((), (imm5, ((), (imm4, ((), (rn, rd)))))) ->
+      match Lane.of_imm5 (Int64.to_int imm5) with
+      | Some (lane, didx) ->
+          let imm4 = Int64.to_int imm4 in
+          let sidx = match lane with Lane.S -> imm4 lsr 2 | Lane.D -> imm4 lsr 3 in
+          let low_ok = match lane with Lane.S -> imm4 land 0b11 = 0 | Lane.D -> imm4 land 0b111 = 0 in
+          if low_ok then
+            Some (Lowered.Vins { lane; rd = Int64.to_int rd; didx; rn = Int64.to_int rn; sidx })
+          else None
+      | None -> None)
+    C.(
+      const ~width:11 0b01101110000L ** field ~width:5 "imm5" ** const ~width:1 0L
+      ** field ~width:4 "imm4" ** const ~width:1 1L ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [ld1]/[st1 {Vt.Ts}[i], [Xn]]: [0 Q 001101 0 L 0 00000 100 S size Rn Rt]. *)
+let vld1_alt ~load ~lane =
+  let size = match lane with Lane.S -> 0 | Lane.D -> 1 in
+  C.iso_fun
+    ~name:(Printf.sprintf "v%s-%s" (if load then "ld1" else "st1") (Lane.name lane))
+    ~encode:(function
+      | Lowered.Vld1 { load = l; lane = ln; vt; index; rn } when l = load && ln = lane ->
+          let q, s = match lane with Lane.S -> (index lsr 1, index land 1) | Lane.D -> (index, 0) in
+          Some ((), (vw q, ((), ((), (vw s, ((), (rn, vw vt)))))))
+      | _ -> None)
+    ~decode:(fun ((), (q, ((), ((), (s, ((), (rn, vt))))))) ->
+      let q = Int64.to_int q and s = Int64.to_int s in
+      let index, ok =
+        match lane with Lane.S -> ((q lsl 1) lor s, true) | Lane.D -> (q, s = 0)
+      in
+      if ok then Some (Lowered.Vld1 { load; lane; vt = Int64.to_int vt; index; rn }) else None)
+    C.(
+      const ~width:1 0L ** field ~width:1 "q"
+      ** const ~width:8 (vw ((0b0011010 lsl 1) lor if load then 1 else 0))
+      ** const ~width:9 0b000000100L ** field ~width:1 "s" ** const ~width:2 (vw size)
+      ** reg_field ~width:64 ~sp:true "rn" ** field ~width:5 "rt")
+
+(* [ld1r {Vt.T}, [Xn]]: [0 Q 0011010 1 0 00000 110 0 size Rn Rt]. *)
+let vld1r_alt ~arr =
+  let size = match arr with Varr.D2 -> 0b11 | _ -> 0b10 in
+  C.iso_fun
+    ~name:(Printf.sprintf "vld1r-%s" (Varr.name arr))
+    ~encode:(function
+      | Lowered.Vld1r { arr = a; vt; rn } when Varr.equal a arr -> Some ((), ((), ((), ((), (rn, vw vt)))))
+      | _ -> None)
+    ~decode:(fun ((), ((), ((), ((), (rn, vt))))) -> Some (Lowered.Vld1r { arr; vt = Int64.to_int vt; rn }))
+    C.(
+      const ~width:2 (vw (Varr.q arr)) ** const ~width:8 0b00110101L
+      ** const ~width:10 0b0000001100L ** const ~width:2 (vw size)
+      ** reg_field ~width:64 ~sp:true "rn" ** field ~width:5 "rt")
+
+(* [ldr]/[str Qt, [Xn, #imm]], the offset scaled by sixteen: [00 111101 1x imm12 Rn Rt]. *)
+let qldst_alt ~load =
+  C.iso_fun
+    ~name:(if load then "ldr-q" else "str-q")
+    ~encode:(function
+      | Lowered.Qldst { load = l; rt; rn; offset } when l = load ->
+          Some ((), (Int64.div offset 16L, (rn, vw rt)))
+      | _ -> None)
+    ~decode:(fun ((), (imm12, (rn, rt))) ->
+      Some (Lowered.Qldst { load; rt = Int64.to_int rt; rn; offset = Int64.mul imm12 16L }))
+    C.(
+      const ~width:10 (if load then 0b0011110111L else 0b0011110110L)
+      ** field ~width:12 "imm12" ** reg_field ~width:64 ~sp:true "rn" ** field ~width:5 "rt")
+
 let fcvt_alt ~src_double =
   C.iso_fun
     ~name:(Printf.sprintf "fcvt-%s" (if src_double then "d-to-s" else "s-to-d"))
@@ -2749,6 +3354,79 @@ let codec : (Lowered.t, fixup_kind) C.t =
              ])
            [ false; true ];
          [
+           (* [mrs rt, fpcr] and [msr fpcr, rt]: the system-register move (register) words
+              [1101010100_L_1_o0_op1_CRn_CRm_op2_Rt] with FPCR = S3_3_C4_C4_0, so the 27 bits above
+              [Rt] are fixed. Checked against real aarch64-linux-gnu-as/objdump:
+              [mrs x17, fpcr] -> [d53b4411], [msr fpcr, x17] -> [d51b4411]. *)
+           C.alt ~label:"vand-16b" ~priority:153 (vlogic_alt ~op:Vand ~q:true);
+           C.alt ~label:"vand-8b" ~priority:154 (vlogic_alt ~op:Vand ~q:false);
+           C.alt ~label:"vorr-16b" ~priority:204 (vlogic_alt ~op:Vorr ~q:true);
+           C.alt ~label:"vorr-8b" ~priority:205 (vlogic_alt ~op:Vorr ~q:false);
+           C.alt ~label:"veor-16b" ~priority:206 (vlogic_alt ~op:Veor ~q:true);
+           C.alt ~label:"veor-8b" ~priority:207 (vlogic_alt ~op:Veor ~q:false);
+           C.alt ~label:"vbsl-16b" ~priority:208 (vlogic_alt ~op:Vbsl ~q:true);
+           C.alt ~label:"vbsl-8b" ~priority:209 (vlogic_alt ~op:Vbsl ~q:false);
+           C.alt ~label:"vbit-16b" ~priority:221 (vlogic_alt ~op:Vbit ~q:true);
+           C.alt ~label:"vbit-8b" ~priority:222 (vlogic_alt ~op:Vbit ~q:false);
+           C.alt ~label:"vnot-16b" ~priority:210 (vnot_alt ~q:true);
+           C.alt ~label:"vnot-8b" ~priority:211 (vnot_alt ~q:false);
+           C.alt ~label:"vfcmeq-s2" ~priority:212 (vbin_alt ~op:Vfcmeq ~arr:Varr.S2);
+           C.alt ~label:"vfcmeq-s4" ~priority:213 (vbin_alt ~op:Vfcmeq ~arr:Varr.S4);
+           C.alt ~label:"vfcmeq-d2" ~priority:214 (vbin_alt ~op:Vfcmeq ~arr:Varr.D2);
+           C.alt ~label:"vfcmge-s2" ~priority:215 (vbin_alt ~op:Vfcmge ~arr:Varr.S2);
+           C.alt ~label:"vfcmge-s4" ~priority:216 (vbin_alt ~op:Vfcmge ~arr:Varr.S4);
+           C.alt ~label:"vfcmge-d2" ~priority:217 (vbin_alt ~op:Vfcmge ~arr:Varr.D2);
+           C.alt ~label:"vfcmgt-s2" ~priority:218 (vbin_alt ~op:Vfcmgt ~arr:Varr.S2);
+           C.alt ~label:"vfcmgt-s4" ~priority:219 (vbin_alt ~op:Vfcmgt ~arr:Varr.S4);
+           C.alt ~label:"vfcmgt-d2" ~priority:220 (vbin_alt ~op:Vfcmgt ~arr:Varr.D2);
+           C.alt ~label:"vfcvtl" ~priority:155 (vcvt_alt ~widen:true);
+           C.alt ~label:"vfcvtn" ~priority:156 (vcvt_alt ~widen:false);
+           C.alt ~label:"ldr-q" ~priority:157 (qldst_alt ~load:true);
+           C.alt ~label:"str-q" ~priority:158 (qldst_alt ~load:false);
+           C.alt ~label:"vfadd-s2" ~priority:159 (vbin_alt ~op:Vfadd ~arr:Varr.S2);
+           C.alt ~label:"vfadd-s4" ~priority:160 (vbin_alt ~op:Vfadd ~arr:Varr.S4);
+           C.alt ~label:"vfadd-d2" ~priority:161 (vbin_alt ~op:Vfadd ~arr:Varr.D2);
+           C.alt ~label:"vfsub-s2" ~priority:162 (vbin_alt ~op:Vfsub ~arr:Varr.S2);
+           C.alt ~label:"vfsub-s4" ~priority:163 (vbin_alt ~op:Vfsub ~arr:Varr.S4);
+           C.alt ~label:"vfsub-d2" ~priority:164 (vbin_alt ~op:Vfsub ~arr:Varr.D2);
+           C.alt ~label:"vfmul-s2" ~priority:165 (vbin_alt ~op:Vfmul ~arr:Varr.S2);
+           C.alt ~label:"vfmul-s4" ~priority:166 (vbin_alt ~op:Vfmul ~arr:Varr.S4);
+           C.alt ~label:"vfmul-d2" ~priority:167 (vbin_alt ~op:Vfmul ~arr:Varr.D2);
+           C.alt ~label:"vfdiv-s2" ~priority:168 (vbin_alt ~op:Vfdiv ~arr:Varr.S2);
+           C.alt ~label:"vfdiv-s4" ~priority:169 (vbin_alt ~op:Vfdiv ~arr:Varr.S4);
+           C.alt ~label:"vfdiv-d2" ~priority:170 (vbin_alt ~op:Vfdiv ~arr:Varr.D2);
+           C.alt ~label:"vfmax-s2" ~priority:171 (vbin_alt ~op:Vfmax ~arr:Varr.S2);
+           C.alt ~label:"vfmax-s4" ~priority:172 (vbin_alt ~op:Vfmax ~arr:Varr.S4);
+           C.alt ~label:"vfmax-d2" ~priority:173 (vbin_alt ~op:Vfmax ~arr:Varr.D2);
+           C.alt ~label:"vfmla-s2" ~priority:174 (vbin_alt ~op:Vfmla ~arr:Varr.S2);
+           C.alt ~label:"vfmla-s4" ~priority:175 (vbin_alt ~op:Vfmla ~arr:Varr.S4);
+           C.alt ~label:"vfmla-d2" ~priority:176 (vbin_alt ~op:Vfmla ~arr:Varr.D2);
+           C.alt ~label:"vfneg-s2" ~priority:177 (vun_alt ~op:Vfneg ~arr:Varr.S2);
+           C.alt ~label:"vfneg-s4" ~priority:178 (vun_alt ~op:Vfneg ~arr:Varr.S4);
+           C.alt ~label:"vfneg-d2" ~priority:179 (vun_alt ~op:Vfneg ~arr:Varr.D2);
+           C.alt ~label:"vfsqrt-s2" ~priority:180 (vun_alt ~op:Vfsqrt ~arr:Varr.S2);
+           C.alt ~label:"vfsqrt-s4" ~priority:181 (vun_alt ~op:Vfsqrt ~arr:Varr.S4);
+           C.alt ~label:"vfsqrt-d2" ~priority:182 (vun_alt ~op:Vfsqrt ~arr:Varr.D2);
+           C.alt ~label:"vfrintz-s2" ~priority:183 (vun_alt ~op:Vfrintz ~arr:Varr.S2);
+           C.alt ~label:"vfrintz-s4" ~priority:184 (vun_alt ~op:Vfrintz ~arr:Varr.S4);
+           C.alt ~label:"vfrintz-d2" ~priority:185 (vun_alt ~op:Vfrintz ~arr:Varr.D2);
+           C.alt ~label:"vld1-s" ~priority:191 (vld1_alt ~load:true ~lane:Lane.S);
+           C.alt ~label:"vst1-s" ~priority:192 (vld1_alt ~load:false ~lane:Lane.S);
+           C.alt ~label:"vld1-d" ~priority:195 (vld1_alt ~load:true ~lane:Lane.D);
+           C.alt ~label:"vst1-d" ~priority:196 (vld1_alt ~load:false ~lane:Lane.D);
+           C.alt ~label:"vld1r-s2" ~priority:197 (vld1r_alt ~arr:Varr.S2);
+           C.alt ~label:"vld1r-s4" ~priority:198 (vld1r_alt ~arr:Varr.S4);
+           C.alt ~label:"vld1r-d2" ~priority:199 (vld1r_alt ~arr:Varr.D2);
+           C.alt ~label:"vdup-q" ~priority:200 (vdup_alt ~q:1);
+           C.alt ~label:"vdup-d" ~priority:201 (vdup_alt ~q:0);
+           C.alt ~label:"vdup-scalar" ~priority:202 vdup_scalar_alt;
+           C.alt ~label:"vdup-gpr-q" ~priority:223 (vdup_gpr_alt ~q:1);
+           C.alt ~label:"vdup-gpr-d" ~priority:224 (vdup_gpr_alt ~q:0);
+           C.alt ~label:"vins" ~priority:203 vins_alt;
+           C.alt ~label:"mrs-fpcr" ~priority:141 (sysreg_alt ~read:true ~sysreg:Fpcr);
+           C.alt ~label:"msr-fpcr" ~priority:142 (sysreg_alt ~read:false ~sysreg:Fpcr);
+           C.alt ~label:"mrs-nzcv" ~priority:225 (sysreg_alt ~read:true ~sysreg:Nzcv);
+           C.alt ~label:"msr-nzcv" ~priority:226 (sysreg_alt ~read:false ~sysreg:Nzcv);
            C.alt ~label:"ret" ~priority:17
              (C.iso_fun ~name:"ret"
                 ~encode:(function Lowered.Ret { rn } -> Some ((), (rn, ())) | _ -> None)
@@ -2941,6 +3619,16 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.alt ~label:"cls-x" ~priority:140 (dp1_alt Cls ~width:64);
            C.alt ~label:"fneg-d" ~priority:70 (fneg_alt ~double:true);
            C.alt ~label:"fneg-s" ~priority:71 (fneg_alt ~double:false);
+           C.alt ~label:"fsqrt-d" ~priority:143 (fsqrt_alt ~double:true);
+           C.alt ~label:"fsqrt-s" ~priority:144 (fsqrt_alt ~double:false);
+           C.alt ~label:"frintz-d" ~priority:145 (frintz_alt ~double:true);
+           C.alt ~label:"frintz-s" ~priority:146 (frintz_alt ~double:false);
+           C.alt ~label:"fmadd-d" ~priority:147 (fmadd_alt ~double:true);
+           C.alt ~label:"fmadd-s" ~priority:148 (fmadd_alt ~double:false);
+           C.alt ~label:"fmov-to-gpr-d" ~priority:149 (fmov_to_gpr_alt ~double:true);
+           C.alt ~label:"fmov-to-gpr-s" ~priority:150 (fmov_to_gpr_alt ~double:false);
+           C.alt ~label:"fmax-d" ~priority:151 (fbinop_alt ~double:true ~opc:4);
+           C.alt ~label:"fmax-s" ~priority:152 (fbinop_alt ~double:false ~opc:4);
            C.alt ~label:"fcvt-d-to-s" ~priority:72 (fcvt_alt ~src_double:true);
            C.alt ~label:"fcvt-s-to-d" ~priority:73 (fcvt_alt ~src_double:false);
            C.alt ~label:"fmov-reg-d" ~priority:82 (fmov_reg_alt ~double:true);
@@ -2997,6 +3685,8 @@ type error_kind =
   | `Branch_not_word_aligned
   | `Branch_out_of_range
   | `Lo12_misaligned
+  | `Lane_out_of_range of int
+  | `Vector_arrangement
   | `No_data_relocation of int
   | `Padding_not_word_multiple ]
 
@@ -3053,6 +3743,8 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `Branch_not_word_aligned -> Fmt.string ppf "branch target is not word-aligned"
   | `Branch_out_of_range -> Fmt.string ppf "branch target is out of range"
   | `Lo12_misaligned -> Fmt.string ppf "low-12 target is not aligned to the access width"
+  | `Lane_out_of_range i -> Fmt.pf ppf "lane index %d is out of range for the element size" i
+  | `Vector_arrangement -> Fmt.string ppf "the vector arrangement is not one this form takes"
   | `No_data_relocation w -> Fmt.pf ppf "no absolute relocation for a %d-byte data initializer" w
   | `Padding_not_word_multiple ->
       Fmt.string ppf "A64 padding must be a whole number of four-byte instructions"
@@ -3611,6 +4303,112 @@ let rec lower_instruction state i =
                         { double; load; rt; rn = m.Mem.base; offset = m.Mem.offset };
                     ]
               | Some n -> bad (`Register_offset_shift_invalid n)))
+  (* Advanced SIMD. *)
+  | ( ((Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv | Opcode.Fmax | Opcode.Fmla
+       | Opcode.Fcmeq | Opcode.Fcmge | Opcode.Fcmgt) as o),
+      [ Operand.Vec (rd, a); Operand.Vec (rn, b); Operand.Vec (rm, c) ] )
+    when Varr.equal a b && Varr.equal b c -> (
+      match a with
+      | Varr.S2 | Varr.S4 | Varr.D2 ->
+          let op =
+            match o with
+            | Opcode.Fadd -> Vfadd
+            | Opcode.Fsub -> Vfsub
+            | Opcode.Fmul -> Vfmul
+            | Opcode.Fdiv -> Vfdiv
+            | Opcode.Fmax -> Vfmax
+            | Opcode.Fcmeq -> Vfcmeq
+            | Opcode.Fcmge -> Vfcmge
+            | Opcode.Fcmgt -> Vfcmgt
+            | _ -> Vfmla
+          in
+          Ok [ Lowered.Vbin { op; arr = a; rd; rn; rm } ]
+      | Varr.B8 | Varr.B16 -> bad `Vector_arrangement)
+  | ( ((Opcode.Fneg | Opcode.Fsqrt | Opcode.Frintz) as o),
+      [ Operand.Vec (rd, a); Operand.Vec (rn, b) ] )
+    when Varr.equal a b -> (
+      match a with
+      | Varr.S2 | Varr.S4 | Varr.D2 ->
+          let op = match o with Opcode.Fneg -> Vfneg | Opcode.Fsqrt -> Vfsqrt | _ -> Vfrintz in
+          Ok [ Lowered.Vun { op; arr = a; rd; rn } ]
+      | Varr.B8 | Varr.B16 -> bad `Vector_arrangement)
+  | Opcode.Mov, [ Operand.Vec (rd, a); Operand.Vec (rn, b) ] when Varr.equal a b -> (
+      match a with
+      | Varr.B8 -> Ok [ Lowered.Vlogic { op = Vorr; q = false; rd; rn; rm = rn } ]
+      | Varr.B16 -> Ok [ Lowered.Vlogic { op = Vorr; q = true; rd; rn; rm = rn } ]
+      | Varr.S2 | Varr.S4 | Varr.D2 -> bad `Vector_arrangement)
+  | ( ((Opcode.And | Opcode.Orr | Opcode.Eor | Opcode.Bsl | Opcode.Bit) as o),
+      [ Operand.Vec (rd, a); Operand.Vec (rn, b); Operand.Vec (rm, c) ] )
+    when Varr.equal a b && Varr.equal b c -> (
+      let op =
+        match o with
+        | Opcode.And -> Vand
+        | Opcode.Orr -> Vorr
+        | Opcode.Eor -> Veor
+        | Opcode.Bit -> Vbit
+        | _ -> Vbsl
+      in
+      match a with
+      | Varr.B8 -> Ok [ Lowered.Vlogic { op; q = false; rd; rn; rm } ]
+      | Varr.B16 -> Ok [ Lowered.Vlogic { op; q = true; rd; rn; rm } ]
+      | Varr.S2 | Varr.S4 | Varr.D2 -> bad `Vector_arrangement)
+  | Opcode.Not, [ Operand.Vec (rd, a); Operand.Vec (rn, b) ] when Varr.equal a b -> (
+      match a with
+      | Varr.B8 -> Ok [ Lowered.Vnot { q = false; rd; rn } ]
+      | Varr.B16 -> Ok [ Lowered.Vnot { q = true; rd; rn } ]
+      | Varr.S2 | Varr.S4 | Varr.D2 -> bad `Vector_arrangement)
+  | Opcode.Fcvtl, [ Operand.Vec (rd, Varr.D2); Operand.Vec (rn, Varr.S2) ] ->
+      Ok [ Lowered.Vcvt { widen = true; rd; rn } ]
+  | Opcode.Fcvtn, [ Operand.Vec (rd, Varr.S2); Operand.Vec (rn, Varr.D2) ] ->
+      Ok [ Lowered.Vcvt { widen = false; rd; rn } ]
+  | Opcode.Dup, [ Operand.Vec (rd, arr); Operand.Vlane (rn, lane, index) ] -> (
+      match (arr, lane) with
+      | (Varr.S2 | Varr.S4), Lane.S | Varr.D2, Lane.D ->
+          if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
+          else Ok [ Lowered.Vdup { arr; rd; rn; index } ]
+      | _ -> bad `Vector_arrangement)
+  | Opcode.Dup, [ Operand.Vec (rd, arr); Operand.Reg rn ] -> (
+      match (arr, rn.Reg.width) with
+      | (Varr.S2 | Varr.S4), 32 | Varr.D2, 64 -> Ok [ Lowered.Vdup_gpr { arr; rd; rn } ]
+      | _ -> bad `Vector_arrangement)
+  | Opcode.Dup, [ Operand.Freg rd; Operand.Vlane (rn, lane, index) ]
+    when rd.Freg.double = (lane = Lane.D) ->
+      if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
+      else Ok [ Lowered.Vdup_scalar { lane; rd = rd.Freg.num; rn; index } ]
+  | Opcode.Mov, [ Operand.Freg rd; Operand.Vlane (rn, lane, index) ]
+    when rd.Freg.double = (lane = Lane.D) ->
+      if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
+      else Ok [ Lowered.Vdup_scalar { lane; rd = rd.Freg.num; rn; index } ]
+  | (Opcode.Ins | Opcode.Mov), [ Operand.Vlane (rd, l1, didx); Operand.Vlane (rn, l2, sidx) ]
+    when l1 = l2 ->
+      if didx < 0 || didx >= Lane.lanes l1 || sidx < 0 || sidx >= Lane.lanes l1 then
+        bad (`Lane_out_of_range (if didx < 0 || didx >= Lane.lanes l1 then didx else sidx))
+      else Ok [ Lowered.Vins { lane = l1; rd; didx; rn; sidx } ]
+  | ((Opcode.Ld1 | Opcode.St1) as o), [ Operand.Vlist_lane (vt, lane, index); Operand.Mem m ]
+    when m.Mem.writeback = false && Disp.is_zero m.Mem.offset ->
+      if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
+      else Ok [ Lowered.Vld1 { load = o = Opcode.Ld1; lane; vt; index; rn = m.Mem.base } ]
+  | Opcode.Ld1r, [ Operand.Vlist (vt, arr); Operand.Mem m ]
+    when m.Mem.writeback = false && Disp.is_zero m.Mem.offset -> (
+      match arr with
+      | Varr.S2 | Varr.S4 | Varr.D2 -> Ok [ Lowered.Vld1r { arr; vt; rn = m.Mem.base } ]
+      | Varr.B8 | Varr.B16 -> bad `Vector_arrangement)
+  | ((Opcode.Ldr | Opcode.Str) as o), [ Operand.Qreg rt; Operand.Mem m ] when not m.Mem.writeback -> (
+      match m.Mem.offset with
+      | Disp.Const off ->
+          if Int64.compare off 0L < 0 || not (Int64.equal (Int64.rem off 16L) 0L) then
+            bad (`Offset_not_scaled off)
+          else if Int64.compare (Int64.div off 16L) 4096L >= 0 then bad `Offset_not_12bit_scaled
+          else Ok [ Lowered.Qldst { load = o = Opcode.Ldr; rt; rn = m.Mem.base; offset = off } ]
+      | Disp.Sym _ | Disp.Reg _ -> bad `Unsigned_offset_only)
+  | Opcode.Mrs, [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "fpcr") ] ->
+      Ok [ Lowered.Mrs { sysreg = Fpcr; rt } ]
+  | Opcode.Mrs, [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "nzcv") ] ->
+      Ok [ Lowered.Mrs { sysreg = Nzcv; rt } ]
+  | Opcode.Msr, [ Operand.Sym (Asm_core.Expr.Symbol "fpcr"); Operand.Reg rt ] ->
+      Ok [ Lowered.Msr { sysreg = Fpcr; rt } ]
+  | Opcode.Msr, [ Operand.Sym (Asm_core.Expr.Symbol "nzcv"); Operand.Reg rt ] ->
+      Ok [ Lowered.Msr { sysreg = Nzcv; rt } ]
   | Opcode.Ret, [ Operand.Reg rn ] -> Ok [ Lowered.Ret { rn } ]
   | Opcode.Ret, [] -> Ok [ Lowered.Ret { rn = Reg.x30 } ]
   | Opcode.Br, [ Operand.Reg rn ] -> Ok [ Lowered.Br { rn } ]
@@ -3824,7 +4622,7 @@ let rec lower_instruction state i =
   (* [fcmp dN, dM] - the register-register form (M5 corpus evidence: the corpus notes's
      bisect.c/mandelbrot.c/...). *)
   | Opcode.Fcmp, [ Operand.Freg rn; Operand.Freg rm ] -> Ok [ Lowered.Fcmp_reg { rn; rm } ]
-  | ( (Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv),
+  | ( (Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv | Opcode.Fmax),
       [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm ] ) -> (
       match fbinop_opcode i.Instruction.op with
       | Some opc -> Ok [ Lowered.Fbinop { opc; rd; rn; rm } ]
@@ -3841,6 +4639,11 @@ let rec lower_instruction state i =
   | Opcode.Ucvtf, [ Operand.Freg rd; Operand.Reg rn ] ->
       Ok [ Lowered.Cvtf { signed = false; rd; rn } ]
   | Opcode.Fneg, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fneg { rd; rn } ]
+  | Opcode.Fsqrt, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fsqrt { rd; rn } ]
+  | Opcode.Frintz, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Frintz { rd; rn } ]
+  | Opcode.Fmadd, [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm; Operand.Freg ra ] ->
+      Ok [ Lowered.Fmadd { rd; rn; rm; ra } ]
+  | Opcode.Fmov, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fmov_to_gpr { rd; rn } ]
   | Opcode.Fcvt, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvt { rd; rn } ]
   | Opcode.Fcvtzs, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvtzs { rd; rn } ]
   | Opcode.Fcvtzu, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvtzu { rd; rn } ]
@@ -4182,6 +4985,120 @@ let instruction_of_lowered ?(at = 0L) = function
           ops = (if rn.Reg.num = 30 && not rn.Reg.is_sp then [] else [ Operand.Reg rn ]);
         }
   | Lowered.Br { rn } -> Some { Instruction.op = Opcode.Br; ops = [ Operand.Reg rn ] }
+  | Lowered.Vbin { op; arr; rd; rn; rm } ->
+      let o =
+        match op with
+        | Vfadd -> Opcode.Fadd
+        | Vfsub -> Opcode.Fsub
+        | Vfmul -> Opcode.Fmul
+        | Vfdiv -> Opcode.Fdiv
+        | Vfmax -> Opcode.Fmax
+        | Vfmla -> Opcode.Fmla
+        | Vfcmeq -> Opcode.Fcmeq
+        | Vfcmge -> Opcode.Fcmge
+        | Vfcmgt -> Opcode.Fcmgt
+      in
+      Some
+        {
+          Instruction.op = o;
+          ops = [ Operand.Vec (rd, arr); Operand.Vec (rn, arr); Operand.Vec (rm, arr) ];
+        }
+  | Lowered.Vun { op; arr; rd; rn } ->
+      let o = match op with Vfneg -> Opcode.Fneg | Vfsqrt -> Opcode.Fsqrt | Vfrintz -> Opcode.Frintz in
+      Some { Instruction.op = o; ops = [ Operand.Vec (rd, arr); Operand.Vec (rn, arr) ] }
+  | Lowered.Vlogic { op = Vorr; q; rd; rn; rm } when rn = rm ->
+      let a = if q then Varr.B16 else Varr.B8 in
+      Some { Instruction.op = Opcode.Mov; ops = [ Operand.Vec (rd, a); Operand.Vec (rn, a) ] }
+  | Lowered.Vlogic { op; q; rd; rn; rm } ->
+      let a = if q then Varr.B16 else Varr.B8 in
+      let o =
+        match op with
+        | Vand -> Opcode.And
+        | Vorr -> Opcode.Orr
+        | Veor -> Opcode.Eor
+        | Vbsl -> Opcode.Bsl
+        | Vbit -> Opcode.Bit
+      in
+      Some
+        {
+          Instruction.op = o;
+          ops = [ Operand.Vec (rd, a); Operand.Vec (rn, a); Operand.Vec (rm, a) ];
+        }
+  | Lowered.Vnot { q; rd; rn } ->
+      let a = if q then Varr.B16 else Varr.B8 in
+      Some { Instruction.op = Opcode.Not; ops = [ Operand.Vec (rd, a); Operand.Vec (rn, a) ] }
+  | Lowered.Vcvt { widen; rd; rn } ->
+      if widen then
+        Some
+          {
+            Instruction.op = Opcode.Fcvtl;
+            ops = [ Operand.Vec (rd, Varr.D2); Operand.Vec (rn, Varr.S2) ];
+          }
+      else
+        Some
+          {
+            Instruction.op = Opcode.Fcvtn;
+            ops = [ Operand.Vec (rd, Varr.S2); Operand.Vec (rn, Varr.D2) ];
+          }
+  | Lowered.Vdup { arr; rd; rn; index } ->
+      let lane = match arr with Varr.D2 -> Lane.D | _ -> Lane.S in
+      Some { Instruction.op = Opcode.Dup; ops = [ Operand.Vec (rd, arr); Operand.Vlane (rn, lane, index) ] }
+  | Lowered.Vdup_gpr { arr; rd; rn } ->
+      Some { Instruction.op = Opcode.Dup; ops = [ Operand.Vec (rd, arr); Operand.Reg rn ] }
+  | Lowered.Vdup_scalar { lane; rd; rn; index } ->
+      Some
+        {
+          Instruction.op = Opcode.Dup;
+          ops = [ Operand.Freg { Freg.num = rd; double = lane = Lane.D }; Operand.Vlane (rn, lane, index) ];
+        }
+  | Lowered.Vins { lane; rd; didx; rn; sidx } ->
+      Some
+        {
+          Instruction.op = Opcode.Ins;
+          ops = [ Operand.Vlane (rd, lane, didx); Operand.Vlane (rn, lane, sidx) ];
+        }
+  | Lowered.Vld1 { load; lane; vt; index; rn } ->
+      Some
+        {
+          Instruction.op = (if load then Opcode.Ld1 else Opcode.St1);
+          ops =
+            [
+              Operand.Vlist_lane (vt, lane, index);
+              Operand.Mem { Mem.base = rn; offset = Disp.zero; writeback = false; pre = true };
+            ];
+        }
+  | Lowered.Vld1r { arr; vt; rn } ->
+      Some
+        {
+          Instruction.op = Opcode.Ld1r;
+          ops =
+            [
+              Operand.Vlist (vt, arr);
+              Operand.Mem { Mem.base = rn; offset = Disp.zero; writeback = false; pre = true };
+            ];
+        }
+  | Lowered.Qldst { load; rt; rn; offset } ->
+      Some
+        {
+          Instruction.op = (if load then Opcode.Ldr else Opcode.Str);
+          ops =
+            [
+              Operand.Qreg rt;
+              Operand.Mem { Mem.base = rn; offset = Disp.Const offset; writeback = false; pre = true };
+            ];
+        }
+  | Lowered.Mrs { sysreg; rt } ->
+      Some
+        {
+          Instruction.op = Opcode.Mrs;
+          ops = [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol (sysreg_name sysreg)) ];
+        }
+  | Lowered.Msr { sysreg; rt } ->
+      Some
+        {
+          Instruction.op = Opcode.Msr;
+          ops = [ Operand.Sym (Asm_core.Expr.Symbol (sysreg_name sysreg)); Operand.Reg rt ];
+        }
   (* [adds zr, rn, #imm] is [cmn]; an [adds] that keeps its result has no surface spelling in
      this dialect, exactly like {!Lowered.Sub_imm}'s [subs] below. *)
   | Lowered.Adds_imm { rd; rn; imm; shift12 } ->
@@ -4372,6 +5289,7 @@ let instruction_of_lowered ?(at = 0L) = function
         | 1 -> Opcode.Fdiv
         | 2 -> Opcode.Fadd
         | 3 -> Opcode.Fsub
+        | 4 -> Opcode.Fmax
         | _ -> Opcode.Fadd
       in
       Some { Instruction.op; ops = [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm ] }
@@ -4395,6 +5313,18 @@ let instruction_of_lowered ?(at = 0L) = function
         }
   | Lowered.Fneg { rd; rn } ->
       Some { Instruction.op = Opcode.Fneg; ops = [ Operand.Freg rd; Operand.Freg rn ] }
+  | Lowered.Fsqrt { rd; rn } ->
+      Some { Instruction.op = Opcode.Fsqrt; ops = [ Operand.Freg rd; Operand.Freg rn ] }
+  | Lowered.Frintz { rd; rn } ->
+      Some { Instruction.op = Opcode.Frintz; ops = [ Operand.Freg rd; Operand.Freg rn ] }
+  | Lowered.Fmadd { rd; rn; rm; ra } ->
+      Some
+        {
+          Instruction.op = Opcode.Fmadd;
+          ops = [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm; Operand.Freg ra ];
+        }
+  | Lowered.Fmov_to_gpr { rd; rn } ->
+      Some { Instruction.op = Opcode.Fmov; ops = [ Operand.Reg rd; Operand.Freg rn ] }
   | Lowered.Fcvt { rd; rn } ->
       Some { Instruction.op = Opcode.Fcvt; ops = [ Operand.Freg rd; Operand.Freg rn ] }
   | Lowered.Fcvtzs { rd; rn } ->
