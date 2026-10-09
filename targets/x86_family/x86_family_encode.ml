@@ -2354,6 +2354,22 @@ module Instruction = struct
             Fmt.pf ppf "%s%s %a" (Opcode.name i.op) (suffix_of_width i.width)
               Fmt.(list ~sep:(any ", ") Operand.pp)
               ops)
+
+  (* The same instruction spelled so that GNU as and this module's own text
+     parser both read it back: [pp] drops a size suffix where a register operand
+     already says the size (GAS accepts either spelling, the parser only the
+     suffixed one), and spells a 64-bit [movd] as GAS's [movq]. *)
+  let pp_gnu ppf i =
+    match (i.op, i.ops) with
+    | Opcode.Movd, _ :: _ when i.width = 64 ->
+        Fmt.pf ppf "movq %a" Fmt.(list ~sep:(any ", ") Operand.pp) i.ops
+    | ( ( Opcode.Neg | Opcode.Mul | Opcode.Div | Opcode.Test | Opcode.Adc | Opcode.Sbb
+        | Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar | Opcode.Shld ) as op,
+        _ :: _ ) ->
+        Fmt.pf ppf "%s%s %a" (Opcode.name op) (suffix_of_width i.width)
+          Fmt.(list ~sep:(any ", ") Operand.pp)
+          i.ops
+    | _ -> pp ppf i
 end
 
 module Rm = struct
