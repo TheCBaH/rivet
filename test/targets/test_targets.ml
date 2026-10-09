@@ -4399,3 +4399,89 @@ let%expect_test "fsqrt, frintz, fmadd, fmax and fmov to a general register" =
     40000020  20 48 62 1e  fmax d0, d1, d2       [aarch64.fmax-d]
     40000024  83 48 3f 1e  fmax s3, s4, s31      [aarch64.fmax-s]
     40000028  c0 03 5f d6  ret                   [aarch64.ret] |}]
+
+(* A constructed module printed as GNU source: the text a producer hands the GNU assembler to
+   check the project's own encoding against. Symbolic operands carry GNU's relocation spelling. *)
+let%expect_test "a constructed module prints as GNU assembler source" =
+  let open Asm_core in
+  let origin = Foundation.Origin.synthesized ~pass:"test" () in
+  let x n = { Aarch64.Reg.num = n; width = 64; is_sp = false } in
+  let i op ops = Normalized_ast.Instruction { insn = { Aarch64.Instruction.op; ops }; origin } in
+  let d directive = Normalized_ast.Directive { directive; origin } in
+  let sym s = Aarch64.Operand.Sym (Expr.Symbol s) in
+  let reg n = Aarch64.Operand.Reg (x n) in
+  let m =
+    {
+      Normalized_ast.unit_name = "m";
+      items =
+        [
+          d (Directive.Section { name = ".text"; perms = Perms.rx; nobits = false });
+          d (Directive.Align { boundary = 4 });
+          d (Directive.Global { name = "f" });
+          d (Directive.Sym_type { name = "f"; kind = Directive.Function });
+          Normalized_ast.Label { name = "f"; origin };
+          i Aarch64.Opcode.Adrp
+            [ reg 1; sym "g" |> fun _ -> Aarch64.Operand.Sym (Expr.Binary (Expr.Add, Expr.Symbol "g", Expr.Const (Foundation.Bigint.of_int 8))) ];
+          i Aarch64.Opcode.Add
+            [
+              reg 1;
+              reg 1;
+              Aarch64.Operand.Sym
+                (Expr.Modifier ("lo12", Expr.Binary (Expr.Add, Expr.Symbol "g", Expr.Const (Foundation.Bigint.of_int 8))));
+            ];
+          i Aarch64.Opcode.Ldr
+            [
+              reg 2;
+              Aarch64.Operand.Mem
+                {
+                  Aarch64.Mem.base = x 1;
+                  offset = Aarch64.Disp.Sym (Expr.Modifier ("lo12", Expr.Symbol "g"));
+                  writeback = false;
+                  pre = true;
+                };
+            ];
+          i (Aarch64.Opcode.Bcond Aarch64.Cond.Ne) [ sym "f" ];
+          i Aarch64.Opcode.Cbz [ reg 2; sym "f" ];
+          i Aarch64.Opcode.Bl [ sym "f" ];
+          i Aarch64.Opcode.Ret [];
+          d (Directive.Sym_size
+               { name = "f"; size = Expr.Binary (Expr.Sub, Expr.Current_location, Expr.Symbol "f") });
+          d (Directive.Section { name = ".rodata"; perms = Perms.ro; nobits = false });
+          d (Directive.Data { width = 1; values = [ Expr.Const (Foundation.Bigint.of_int 1); Expr.Const (Foundation.Bigint.of_int 255) ] });
+          d (Directive.Data { width = 4; values = [ Expr.Symbol "g" ] });
+          d (Directive.Section { name = ".bss"; perms = Perms.rw; nobits = true });
+          d (Directive.Align { boundary = 16 });
+          d (Directive.Global { name = "g" });
+          d (Directive.Sym_type { name = "g"; kind = Directive.Object });
+          Normalized_ast.Label { name = "g"; origin };
+          d (Directive.Zero { length = 16 });
+          d (Directive.Declared_section { name = ".note.GNU-stack" });
+        ];
+    }
+  in
+  print_string
+    (Gnu_module.to_string { Gnu_module.type_char = '%' } ~instruction:Aarch64.Instruction.pp_gnu m);
+  [%expect {|
+    	.section	.text,"ax",%progbits
+    	.balign	4
+    	.globl	f
+    	.type	f,%function
+    f:
+    	adrp x1, (g + 8)
+    	add x1, x1, #:lo12:(g + 8)
+    	ldr x2, [x1, #:lo12:g]
+    	b.ne f
+    	cbz x2, f
+    	bl f
+    	ret
+    	.size	f,(. - f)
+    	.section	.rodata,"a",%progbits
+    	.byte	1,255
+    	.4byte	g
+    	.section	.bss,"aw",%nobits
+    	.balign	16
+    	.globl	g
+    	.type	g,%object
+    g:
+    	.zero	16
+    	.section	.note.GNU-stack,"",%progbits |}]

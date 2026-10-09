@@ -518,6 +518,25 @@ module Instruction = struct
     match i.ops with
     | [] -> Fmt.string ppf (Opcode.name i.op)
     | ops -> Fmt.pf ppf "%s %a" (Opcode.name i.op) Fmt.(list ~sep:(any ", ") Operand.pp) ops
+
+  (* GNU assembler spelling. It differs from {!pp}, which is this project's canonical dump, only
+     where an operand names a symbol: a relocation modifier is [#:lo12:sym] in an immediate
+     position and inside the brackets of a memory operand, and the expression around it is GNU's. *)
+  let pp_gnu_operand ppf (o : Operand.t) =
+    match o with
+    | Operand.Sym (Asm_core.Expr.Modifier (m, e)) ->
+        Fmt.pf ppf "#:%s:%a" m Asm_core.Gnu_module.expr e
+    | Operand.Sym e -> Asm_core.Gnu_module.expr ppf e
+    | Operand.Mem { Mem.base; offset = Disp.Sym (Asm_core.Expr.Modifier (m, e)); writeback; _ } ->
+        Fmt.pf ppf "[%a, #:%s:%a]%s" Reg.pp base m Asm_core.Gnu_module.expr e
+          (if writeback then "!" else "")
+    | o -> Operand.pp ppf o
+
+  let pp_gnu ppf i =
+    match i.ops with
+    | [] -> Fmt.string ppf (Opcode.name i.op)
+    | ops ->
+        Fmt.pf ppf "%s %a" (Opcode.name i.op) Fmt.(list ~sep:(any ", ") pp_gnu_operand) ops
 end
 
 (* The low-12 relocation is *scaled by the access width*, which is why it is a
