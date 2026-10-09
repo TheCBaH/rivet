@@ -1365,6 +1365,8 @@
     [222 cost=0] vbit-8b          vbit-8b(){00101110101 rm:5u 000111 rn:5u rd:5u}
     [223 cost=0] vdup-gpr-q       vdup-gpr-q(){01001110000 imm5:5u 000011 rn rd:5u}
     [224 cost=0] vdup-gpr-d       vdup-gpr-d(){00001110000 imm5:5u 000011 rn rd:5u}
+    [225 cost=0] mrs-nzcv         mrs-nzcv(){110101010011101101000010000 rt}
+    [226 cost=0] msr-nzcv         msr-nzcv(){110101010001101101000010000 rt}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}

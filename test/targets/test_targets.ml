@@ -4556,3 +4556,14 @@ let%expect_test "Advanced SIMD masks" =
     40000044  83 0c 04 0e  dup v3.2s, w4                [aarch64.vdup-gpr-d]
     40000048  20 1c a1 4e  mov v0.16b, v1.16b           [aarch64.vorr-16b]
     4000004c  c0 03 5f d6  ret                          [aarch64.ret] |}]
+
+(* NZCV, the other system register a compiler's code reads and writes: a test harness seeds the
+   condition flags and reads them back. Checked against real aarch64-linux-gnu-as/objdump:
+   `mrs x9, nzcv` -> `d53b4209`, `msr nzcv, x9` -> `d51b4209`. *)
+let%expect_test "mrs and msr move NZCV through a 64-bit register" =
+  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tmrs x9, nzcv\n\tmsr nzcv, x9\n\tmsr nzcv, x30\n\tret\n";
+  [%expect {|
+    40000000  09 42 3b d5  mrs x9, nzcv   [aarch64.mrs-nzcv]
+    40000004  09 42 1b d5  msr nzcv, x9   [aarch64.msr-nzcv]
+    40000008  1e 42 1b d5  msr nzcv, x30  [aarch64.msr-nzcv]
+    4000000c  c0 03 5f d6  ret            [aarch64.ret] |}]

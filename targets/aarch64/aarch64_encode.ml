@@ -760,6 +760,12 @@ let dp1_opcode op ~width =
   | Clz, _ -> Some 4
   | Cls, _ -> Some 5
 
+(* The system registers a producer reads and writes: the floating-point control and the condition
+   flags. Not a general system-register operand: exactly the two a compiler's code touches. *)
+type sysreg = Fpcr | Nzcv
+
+let sysreg_name = function Fpcr -> "fpcr" | Nzcv -> "nzcv"
+
 (* Advanced SIMD floating-point arithmetic, three-register and two-register. *)
 type vbin = Vfadd | Vfcmeq | Vfcmge | Vfcmgt | Vfdiv | Vfmax | Vfmla | Vfmul | Vfsub
 type vun = Vfneg | Vfrintz | Vfsqrt
@@ -893,12 +899,12 @@ module Lowered = struct
             bit, the rest of the word identical. Only [S]/[D] (this project's only two
             {!Freg.t} widths) are implemented; [B]/[H]/[Q] are real A64 sizes this corpus does
             not evidence. *)
-    | Mrs_fpcr of { rt : Reg.t }
+    | Mrs of { sysreg : sysreg; rt : Reg.t }
         (** [mrs rt, fpcr] - the floating-point control register read into a 64-bit register. The
             one system register this encoder knows: a producer that saves, changes and restores
             the rounding mode needs exactly these two forms and no general system-register
             operand. *)
-    | Msr_fpcr of { rt : Reg.t }  (** [msr fpcr, rt] - the register written to FPCR. *)
+    | Msr of { sysreg : sysreg; rt : Reg.t }  (** [msr sysreg, rt] - the register written to it. *)
     | Vbin of { op : vbin; arr : Varr.t; rd : int; rn : int; rm : int }
         (** [fadd]/[fsub]/[fmul]/[fdiv]/[fmax]/[fmla Vd.T, Vn.T, Vm.T] on [2s], [4s] or [2d]. *)
     | Vun of { op : vun; arr : Varr.t; rd : int; rn : int }  (** [fneg]/[fsqrt]/[frintz Vd.T, Vn.T] *)
@@ -1191,8 +1197,8 @@ module Lowered = struct
     | Vld1r { arr; vt; rn } -> Fmt.pf ppf "ld1r {v%d.%s}, [%a]" vt (Varr.name arr) Reg.pp rn
     | Qldst { load; rt; rn; offset } ->
         Fmt.pf ppf "%s q%d, [%a, #%Ld]" (if load then "ldr" else "str") rt Reg.pp rn offset
-    | Mrs_fpcr { rt } -> Fmt.pf ppf "mrs %a, fpcr" Reg.pp rt
-    | Msr_fpcr { rt } -> Fmt.pf ppf "msr fpcr, %a" Reg.pp rt
+    | Mrs { sysreg; rt } -> Fmt.pf ppf "mrs %a, %s" Reg.pp rt (sysreg_name sysreg)
+    | Msr { sysreg; rt } -> Fmt.pf ppf "msr %s, %a" (sysreg_name sysreg) Reg.pp rt
     | Ret { rn } ->
         (* [ret x30] is spelled [ret]: x30 is the architectural default and every
            A64 disassembler elides it. Printing it would make the canonical dump
@@ -1328,8 +1334,8 @@ module Lowered = struct
     | Vld1r x, Vld1r y -> x.arr = y.arr && x.vt = y.vt && Reg.equal x.rn y.rn
     | Qldst x, Qldst y ->
         x.load = y.load && x.rt = y.rt && Reg.equal x.rn y.rn && Int64.equal x.offset y.offset
-    | Mrs_fpcr x, Mrs_fpcr y -> Reg.equal x.rt y.rt
-    | Msr_fpcr x, Msr_fpcr y -> Reg.equal x.rt y.rt
+    | Mrs x, Mrs y -> x.sysreg = y.sysreg && Reg.equal x.rt y.rt
+    | Msr x, Msr y -> x.sysreg = y.sysreg && Reg.equal x.rt y.rt
     | Ret x, Ret y -> Reg.equal x.rn y.rn
     | Br x, Br y -> Reg.equal x.rn y.rn
     | Adds_imm x, Adds_imm y ->
@@ -2459,6 +2465,23 @@ let fmov_to_gpr_alt ~double =
       ** const ~width:12 (Int64.of_int (2048 + (0b110 * 64)))
       ** field ~width:5 "rn" ** field ~width:5 "rd")
 
+(* [mrs rt, sysreg] and [msr sysreg, rt]: the system-register move (register) words
+   [1101010100_L_1_o0_op1_CRn_CRm_op2_Rt] with FPCR = S3_3_C4_C4_0 and NZCV = S3_3_C4_C2_0, so the 27
+   bits above [Rt] are fixed. Checked against real aarch64-linux-gnu-as/objdump: [mrs x17, fpcr] ->
+   [d53b4411], [msr nzcv, x9] -> [d51b4209]. *)
+let sysreg_alt ~read ~sysreg =
+  let top = if read then 0x6A9DA00L else 0x6A8DA00L in
+  let low = match sysreg with Fpcr -> 0x20L | Nzcv -> 0x10L in
+  C.iso_fun
+    ~name:(Printf.sprintf "%s-%s" (if read then "mrs" else "msr") (sysreg_name sysreg))
+    ~encode:(function
+      | Lowered.Mrs { sysreg = r; rt } when read && r = sysreg -> Some ((), rt)
+      | Lowered.Msr { sysreg = r; rt } when (not read) && r = sysreg -> Some ((), rt)
+      | _ -> None)
+    ~decode:(fun ((), rt) ->
+      Some (if read then Lowered.Mrs { sysreg; rt } else Lowered.Msr { sysreg; rt }))
+    C.(const ~width:27 (Int64.add top low) ** reg_field ~width:64 ~sp:false "rt")
+
 (* {1 Advanced SIMD codecs}
 
    Words verified against real aarch64-linux-gnu-as/objdump; the fixed part of each is one wide
@@ -3419,16 +3442,10 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.alt ~label:"vdup-gpr-q" ~priority:223 (vdup_gpr_alt ~q:1);
            C.alt ~label:"vdup-gpr-d" ~priority:224 (vdup_gpr_alt ~q:0);
            C.alt ~label:"vins" ~priority:203 vins_alt;
-           C.alt ~label:"mrs-fpcr" ~priority:141
-             (C.iso_fun ~name:"mrs-fpcr"
-                ~encode:(function Lowered.Mrs_fpcr { rt } -> Some ((), rt) | _ -> None)
-                ~decode:(fun ((), rt) -> Some (Lowered.Mrs_fpcr { rt }))
-                C.(const ~width:27 0x6A9DA20L ** reg_field ~width:64 ~sp:false "rt"));
-           C.alt ~label:"msr-fpcr" ~priority:142
-             (C.iso_fun ~name:"msr-fpcr"
-                ~encode:(function Lowered.Msr_fpcr { rt } -> Some ((), rt) | _ -> None)
-                ~decode:(fun ((), rt) -> Some (Lowered.Msr_fpcr { rt }))
-                C.(const ~width:27 0x6A8DA20L ** reg_field ~width:64 ~sp:false "rt"));
+           C.alt ~label:"mrs-fpcr" ~priority:141 (sysreg_alt ~read:true ~sysreg:Fpcr);
+           C.alt ~label:"msr-fpcr" ~priority:142 (sysreg_alt ~read:false ~sysreg:Fpcr);
+           C.alt ~label:"mrs-nzcv" ~priority:225 (sysreg_alt ~read:true ~sysreg:Nzcv);
+           C.alt ~label:"msr-nzcv" ~priority:226 (sysreg_alt ~read:false ~sysreg:Nzcv);
            C.alt ~label:"ret" ~priority:17
              (C.iso_fun ~name:"ret"
                 ~encode:(function Lowered.Ret { rn } -> Some ((), (rn, ())) | _ -> None)
@@ -4404,9 +4421,13 @@ let rec lower_instruction state i =
           else Ok [ Lowered.Qldst { load = o = Opcode.Ldr; rt; rn = m.Mem.base; offset = off } ]
       | Disp.Sym _ | Disp.Reg _ -> bad `Unsigned_offset_only)
   | Opcode.Mrs, [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "fpcr") ] ->
-      Ok [ Lowered.Mrs_fpcr { rt } ]
+      Ok [ Lowered.Mrs { sysreg = Fpcr; rt } ]
+  | Opcode.Mrs, [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "nzcv") ] ->
+      Ok [ Lowered.Mrs { sysreg = Nzcv; rt } ]
   | Opcode.Msr, [ Operand.Sym (Asm_core.Expr.Symbol "fpcr"); Operand.Reg rt ] ->
-      Ok [ Lowered.Msr_fpcr { rt } ]
+      Ok [ Lowered.Msr { sysreg = Fpcr; rt } ]
+  | Opcode.Msr, [ Operand.Sym (Asm_core.Expr.Symbol "nzcv"); Operand.Reg rt ] ->
+      Ok [ Lowered.Msr { sysreg = Nzcv; rt } ]
   | Opcode.Ret, [ Operand.Reg rn ] -> Ok [ Lowered.Ret { rn } ]
   | Opcode.Ret, [] -> Ok [ Lowered.Ret { rn = Reg.x30 } ]
   | Opcode.Br, [ Operand.Reg rn ] -> Ok [ Lowered.Br { rn } ]
@@ -5085,17 +5106,17 @@ let instruction_of_lowered ?(at = 0L) = function
               Operand.Mem { Mem.base = rn; offset = Disp.Const offset; writeback = false; pre = true };
             ];
         }
-  | Lowered.Mrs_fpcr { rt } ->
+  | Lowered.Mrs { sysreg; rt } ->
       Some
         {
           Instruction.op = Opcode.Mrs;
-          ops = [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "fpcr") ];
+          ops = [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol (sysreg_name sysreg)) ];
         }
-  | Lowered.Msr_fpcr { rt } ->
+  | Lowered.Msr { sysreg; rt } ->
       Some
         {
           Instruction.op = Opcode.Msr;
-          ops = [ Operand.Sym (Asm_core.Expr.Symbol "fpcr"); Operand.Reg rt ];
+          ops = [ Operand.Sym (Asm_core.Expr.Symbol (sysreg_name sysreg)); Operand.Reg rt ];
         }
   (* [adds zr, rn, #imm] is [cmn]; an [adds] that keeps its result has no surface spelling in
      this dialect, exactly like {!Lowered.Sub_imm}'s [subs] below. *)
