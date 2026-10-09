@@ -13,4 +13,8 @@
   rivet.aarch64_encode
   err_trace
   fmt)
- (forbidden_libraries rivet.asm_syntax rivet.driver rivet.target_intf rivet.aarch64))
+ (forbidden_libraries
+  rivet.asm_syntax
+  rivet.driver
+  rivet.target_intf
+  rivet.aarch64))

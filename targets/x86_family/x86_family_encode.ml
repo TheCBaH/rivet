@@ -10508,4 +10508,44 @@ module Make (M : MODE) = struct
   (* Measured: x86 GAS records a section's alignment without rounding its
      size up to it. *)
   let pad_section_to_alignment = false
+
+  (* Typed trampolines for names resolved in the calling process: each name is
+     a global function that loads its address into r11 (caller-saved and not an
+     argument register in the System V ABI) and jumps there, so the callee
+     returns to the caller. Built as values, with no assembly text; 64-bit modes
+     only, since the address is a 64-bit immediate. *)
+  let host_trampolines (bindings : (string * int64) list) :
+      Instruction.t Asm_core.Normalized_ast.module_ =
+    let module N = Asm_core.Normalized_ast in
+    let module D = Asm_core.Directive in
+    let origin = Foundation.Origin.synthesized ~pass:(M.name ^ ".host_trampolines") () in
+    let r11 =
+      match find_reg "r11" with
+      | Some r -> Operand.Reg r
+      | None -> invalid_arg "host_trampolines: this mode has no r11"
+    in
+    let make mnemonic ops =
+      match make_surface_instruction ~mnemonic ~origin ops with
+      | Error _ -> invalid_arg ("host_trampolines: " ^ mnemonic)
+      | Ok surface -> (
+          match simplify_instruction default_state surface with
+          | Ok insn -> N.Instruction { insn; origin }
+          | Error _ -> invalid_arg ("host_trampolines: " ^ mnemonic))
+    in
+    let dir directive = N.Directive { directive; origin } in
+    let stub (name, address) =
+      [
+        dir (D.Section { name = ".text"; perms = Asm_core.Perms.rx; nobits = false });
+        dir (D.Global { name });
+        dir (D.Sym_type { name; kind = D.Function });
+        N.Label { name; origin };
+        make "movq" [ Operand.Imm (Foundation.Bigint.of_int64 address); r11 ];
+        make "jmp" [ r11 ];
+      ]
+    in
+    {
+      N.unit_name = "host";
+      items =
+        List.concat_map stub bindings @ [ dir (D.Declared_section { name = ".note.GNU-stack" }) ];
+    }
 end

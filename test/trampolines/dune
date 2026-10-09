@@ -1,0 +1,19 @@
+; The typed host trampolines of the AArch64 and x86-64 encoders against the
+; assembly text Native_exec generates for the same names and addresses: the
+; two must lay out the same bytes. Needs Native_exec, so it is gated with it.
+
+(test
+ (name trampolines)
+ (modules trampolines)
+ (libraries
+  native_exec
+  driver
+  driver_direct
+  aarch64_encode
+  x86_64_encode
+  target_intf
+  foundation
+  asm_core
+  image)
+ (enabled_if
+  (= %{env:RIVET_NATIVE_EXEC=false} true)))
