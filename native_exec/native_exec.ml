@@ -24,6 +24,8 @@ external copy_out : int64 -> int -> string = "native_exec_copy_out"
 external call_entry : int64 -> io -> int64 = "native_exec_call"
 external host_isa_stub : unit -> string = "native_exec_host_isa"
 external symbol_stub : string -> int64 = "native_exec_symbol"
+external io_address : ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t -> int64
+  = "native_exec_io_address"
 
 (* The target name of the ISA this process runs, if it is one the assembler
    targets. Only images for that target can be run here. *)
@@ -51,6 +53,8 @@ type error =
       (** the image was built for a target this host cannot run in process *)
   | Closed  (** the loaded image was closed *)
   | Missing_symbol of string  (** a host symbol to bind does not resolve in this process *)
+  | Global_size of { name : string; expected : int; actual : int }
+      (** [write_global] was given other than the global's size in bytes *)
 
 let signal_name n =
   List.assoc_opt n
@@ -79,6 +83,8 @@ let pp_error ppf = function
         (Option.value host ~default:"an ISA no target matches")
   | Closed -> Fmt.string ppf "the loaded image was closed"
   | Missing_symbol n -> Fmt.pf ppf "host symbol %s does not resolve in this process" n
+  | Global_size { name; expected; actual } ->
+      Fmt.pf ppf "global %s is %d bytes, not the %d written" name expected actual
 
 (* {1 Host symbols}
 
@@ -300,6 +306,17 @@ let read_global t name =
   with_open t (fun () ->
       match (List.assoc_opt name t.image.exports, List.assoc_opt name t.image.symbol_sizes) with
       | Some a, Some sz -> ( try Ok (copy_out a (Int64.to_int sz)) with Failure m -> Error (Os m))
+      | _ -> Error (Missing_global name))
+
+(* Overwrites an exported global of known size with exactly that many bytes. The
+   segment holding it must be writable; writing a read-only one faults. *)
+let write_global t name bytes =
+  with_open t (fun () ->
+      match (List.assoc_opt name t.image.exports, List.assoc_opt name t.image.symbol_sizes) with
+      | Some a, Some sz ->
+          let expected = Int64.to_int sz and actual = String.length bytes in
+          if expected <> actual then Error (Global_size { name; expected; actual })
+          else ( try Ok (copy_in a bytes) with Failure m -> Error (Os m))
       | _ -> Error (Missing_global name))
 
 let run_here ?observe ?(read_globals = []) (laid : Image.laid_out) ~(io : io) =

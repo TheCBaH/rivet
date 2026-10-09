@@ -560,3 +560,35 @@ let%expect_test "trampolines exist for the 64-bit targets and nothing else" =
     riscv64: assembles, .text 48 bytes
     arm code cannot run natively on this host (x86_64)
     Native_exec.trampolines: not a symbol |}]
+
+let%expect_test "a global is written into the live mapping between calls" =
+  let t = ok_or_fail (Native_exec.load segments) in
+  let hex s =
+    String.concat "" (List.map (fun c -> Printf.sprintf "%02x" (Char.code c)) (List.of_seq (String.to_seq s)))
+  in
+  ignore (ok_or_fail (Native_exec.write_global t "counter" "\x20\x00\x00\x00"));
+  Printf.printf "written %s\n" (hex (ok_or_fail (Native_exec.read_global t "counter")));
+  ignore (ok_or_fail (Native_exec.call t ~io:(io_of_string "")));
+  Printf.printf "after a call %s\n" (hex (ok_or_fail (Native_exec.read_global t "counter")));
+  (match Native_exec.write_global t "counter" "\x01" with
+  | Ok () -> print_endline "unexpectedly Ok"
+  | Error e -> print_endline (Format.asprintf "%a" Native_exec.pp_error e));
+  (match Native_exec.write_global t "absent" "\x01" with
+  | Ok () -> print_endline "unexpectedly Ok"
+  | Error e -> print_endline (Format.asprintf "%a" Native_exec.pp_error e));
+  Native_exec.close t;
+  [%expect {|
+    written 20000000
+    after a call 21000000
+    global counter is 4 bytes, not the 1 written
+    global absent is not exported with a known size |}]
+
+let%expect_test "a buffer's address is stable and distinct per buffer" =
+  let a = io_of_string "abcd" and b = io_of_string "efgh" in
+  let aa = Native_exec.io_address a and ba = Native_exec.io_address b in
+  Gc.full_major ();
+  Printf.printf "stable %b distinct %b nonzero %b\n"
+    (Int64.equal aa (Native_exec.io_address a))
+    (not (Int64.equal aa ba))
+    (not (Int64.equal aa 0L));
+  [%expect {| stable true distinct true nonzero true |}]
