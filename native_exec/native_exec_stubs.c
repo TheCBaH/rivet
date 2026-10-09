@@ -115,6 +115,14 @@ value native_exec_call(value addr, value io)
   CAMLreturn(caml_copy_int64((int64_t)r));
 }
 
+/* The address of a bigarray's data: outside the OCaml heap, so it does not move
+   while the bigarray is alive. */
+value native_exec_io_address(value io)
+{
+  CAMLparam1(io);
+  CAMLreturn(caml_copy_int64((int64_t)(uintptr_t)Caml_ba_data_val(io)));
+}
+
 /* The address of [name] in this process's global symbol scope, or 0. */
 value native_exec_symbol(value name)
 {

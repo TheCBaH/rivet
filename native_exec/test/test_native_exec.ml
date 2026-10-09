@@ -582,3 +582,13 @@ let%expect_test "a global is written into the live mapping between calls" =
     after a call 21000000
     global counter is 4 bytes, not the 1 written
     global absent is not exported with a known size |}]
+
+let%expect_test "a buffer's address is stable and distinct per buffer" =
+  let a = io_of_string "abcd" and b = io_of_string "efgh" in
+  let aa = Native_exec.io_address a and ba = Native_exec.io_address b in
+  Gc.full_major ();
+  Printf.printf "stable %b distinct %b nonzero %b\n"
+    (Int64.equal aa (Native_exec.io_address a))
+    (not (Int64.equal aa ba))
+    (not (Int64.equal aa 0L));
+  [%expect {| stable true distinct true nonzero true |}]
