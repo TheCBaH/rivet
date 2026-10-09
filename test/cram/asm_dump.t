@@ -1363,6 +1363,8 @@
     [220 cost=0] vfcmgt-d2        vfcmgt-2d(){01101110111 rm:5u 111001 rn:5u rd:5u}
     [221 cost=0] vbit-16b         vbit-16b(){01101110101 rm:5u 000111 rn:5u rd:5u}
     [222 cost=0] vbit-8b          vbit-8b(){00101110101 rm:5u 000111 rn:5u rd:5u}
+    [223 cost=0] vdup-gpr-q       vdup-gpr-q(){01001110000 imm5:5u 000011 rn rd:5u}
+    [224 cost=0] vdup-gpr-d       vdup-gpr-d(){00001110000 imm5:5u 000011 rn rd:5u}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}

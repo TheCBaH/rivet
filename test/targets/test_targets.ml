@@ -4534,7 +4534,7 @@ let%expect_test "Advanced SIMD vector forms" =
 (* Vector compares, bitwise operations on bytes and the bitwise select that make a mask: the words
    real aarch64-linux-gnu-as/objdump produces, with [mov] the [orr] of one register with itself. *)
 let%expect_test "Advanced SIMD masks" =
-  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tfcmeq v0.4s, v1.4s, v2.4s\n\tfcmge v0.4s, v1.4s, v2.4s\n\tfcmgt v0.4s, v1.4s, v2.4s\n\tfcmgt v0.2d, v1.2d, v31.2d\n\tfcmeq v3.2d, v4.2d, v5.2d\n\tand v0.16b, v1.16b, v2.16b\n\torr v0.16b, v1.16b, v2.16b\n\teor v0.16b, v1.16b, v2.16b\n\tnot v0.16b, v1.16b\n\tbsl v0.16b, v1.16b, v2.16b\n\tbsl v7.16b, v31.16b, v9.16b\n\tbit v0.16b, v1.16b, v2.16b\n\tbit v7.16b, v31.16b, v9.16b\n\tbit v0.8b, v1.8b, v2.8b\n\tmov v0.16b, v1.16b\n\tret\n";
+  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tfcmeq v0.4s, v1.4s, v2.4s\n\tfcmge v0.4s, v1.4s, v2.4s\n\tfcmgt v0.4s, v1.4s, v2.4s\n\tfcmgt v0.2d, v1.2d, v31.2d\n\tfcmeq v3.2d, v4.2d, v5.2d\n\tand v0.16b, v1.16b, v2.16b\n\torr v0.16b, v1.16b, v2.16b\n\teor v0.16b, v1.16b, v2.16b\n\tnot v0.16b, v1.16b\n\tbsl v0.16b, v1.16b, v2.16b\n\tbsl v7.16b, v31.16b, v9.16b\n\tbit v0.16b, v1.16b, v2.16b\n\tbit v7.16b, v31.16b, v9.16b\n\tbit v0.8b, v1.8b, v2.8b\n\tdup v0.4s, w1\n\tdup v0.2d, x1\n\tdup v31.4s, w30\n\tdup v3.2s, w4\n\tmov v0.16b, v1.16b\n\tret\n";
   [%expect {|
     40000000  20 e4 22 4e  fcmeq v0.4s, v1.4s, v2.4s    [aarch64.vfcmeq-s4]
     40000004  20 e4 22 6e  fcmge v0.4s, v1.4s, v2.4s    [aarch64.vfcmge-s4]
@@ -4550,5 +4550,9 @@ let%expect_test "Advanced SIMD masks" =
     4000002c  20 1c a2 6e  bit v0.16b, v1.16b, v2.16b   [aarch64.vbit-16b]
     40000030  e7 1f a9 6e  bit v7.16b, v31.16b, v9.16b  [aarch64.vbit-16b]
     40000034  20 1c a2 2e  bit v0.8b, v1.8b, v2.8b      [aarch64.vbit-8b]
-    40000038  20 1c a1 4e  mov v0.16b, v1.16b           [aarch64.vorr-16b]
-    4000003c  c0 03 5f d6  ret                          [aarch64.ret] |}]
+    40000038  20 0c 04 4e  dup v0.4s, w1                [aarch64.vdup-gpr-q]
+    4000003c  20 0c 08 4e  dup v0.2d, x1                [aarch64.vdup-gpr-q]
+    40000040  df 0f 04 4e  dup v31.4s, w30              [aarch64.vdup-gpr-q]
+    40000044  83 0c 04 0e  dup v3.2s, w4                [aarch64.vdup-gpr-d]
+    40000048  20 1c a1 4e  mov v0.16b, v1.16b           [aarch64.vorr-16b]
+    4000004c  c0 03 5f d6  ret                          [aarch64.ret] |}]

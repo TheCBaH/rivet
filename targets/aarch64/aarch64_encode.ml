@@ -910,6 +910,8 @@ module Lowered = struct
         (** [fcvtl Vd.2d, Vn.2s] / [fcvtn Vd.2s, Vn.2d]: the two-lane halves only. *)
     | Vdup of { arr : Varr.t; rd : int; rn : int; index : int }
         (** [dup Vd.T, Vn.Ts[i]]: one lane of the source to every lane. *)
+    | Vdup_gpr of { arr : Varr.t; rd : int; rn : Reg.t }
+        (** [dup Vd.T, Wn/Xn]: a general register to every lane. *)
     | Vdup_scalar of { lane : Lane.t; rd : int; rn : int; index : int }
         (** [dup Sd/Dd, Vn.Ts[i]] (the assembler's [mov Sd, Vn.s[i]]): a lane as a scalar. *)
     | Vins of { lane : Lane.t; rd : int; didx : int; rn : int; sidx : int }
@@ -1178,6 +1180,7 @@ module Lowered = struct
     | Vdup { arr; rd; rn; index } ->
         let lane = match arr with Varr.D2 -> Lane.D | _ -> Lane.S in
         Fmt.pf ppf "dup v%d.%s, v%d.%s[%d]" rd (Varr.name arr) rn (Lane.name lane) index
+    | Vdup_gpr { arr; rd; rn } -> Fmt.pf ppf "dup v%d.%s, %a" rd (Varr.name arr) Reg.pp rn
     | Vdup_scalar { lane; rd; rn; index } ->
         Fmt.pf ppf "dup %s%d, v%d.%s[%d]" (Lane.name lane) rd rn (Lane.name lane) index
     | Vins { lane; rd; didx; rn; sidx } ->
@@ -1315,6 +1318,7 @@ module Lowered = struct
     | Vnot x, Vnot y -> x.q = y.q && x.rd = y.rd && x.rn = y.rn
     | Vcvt x, Vcvt y -> x.widen = y.widen && x.rd = y.rd && x.rn = y.rn
     | Vdup x, Vdup y -> x.arr = y.arr && x.rd = y.rd && x.rn = y.rn && x.index = y.index
+    | Vdup_gpr x, Vdup_gpr y -> x.arr = y.arr && x.rd = y.rd && Reg.equal x.rn y.rn
     | Vdup_scalar x, Vdup_scalar y ->
         x.lane = y.lane && x.rd = y.rd && x.rn = y.rn && x.index = y.index
     | Vins x, Vins y ->
@@ -2563,6 +2567,30 @@ let vdup_alt ~q =
       const ~width:11 (vw hi) ** field ~width:5 "imm5" ** const ~width:6 0b000001L
       ** field ~width:5 "rn" ** field ~width:5 "rd")
 
+(* [dup Vd.T, Wn/Xn]: [0 Q 0 01110000 imm5 000011 Rn Rd], the lane size in [imm5] again. *)
+let vdup_gpr_alt ~q =
+  let hi = (q lsl 9) lor (0b01110 lsl 3) in
+  C.iso_fun
+    ~name:(if q = 1 then "vdup-gpr-q" else "vdup-gpr-d")
+    ~encode:(function
+      | Lowered.Vdup_gpr { arr; rd; rn } when Varr.q arr = q ->
+          let lane = match arr with Varr.D2 -> Lane.D | _ -> Lane.S in
+          Some ((), (vw (Lane.imm5 lane 0), ((), (rn, vw rd))))
+      | _ -> None)
+    ~decode:(fun ((), (imm5, ((), (rn, rd)))) ->
+      let rd = Int64.to_int rd in
+      match (Lane.of_imm5 (Int64.to_int imm5), q) with
+      | Some (Lane.S, 0), 1 ->
+          Some (Lowered.Vdup_gpr { arr = Varr.S4; rd; rn = { rn with Reg.width = 32 } })
+      | Some (Lane.D, 0), 1 ->
+          Some (Lowered.Vdup_gpr { arr = Varr.D2; rd; rn = { rn with Reg.width = 64 } })
+      | Some (Lane.S, 0), _ ->
+          Some (Lowered.Vdup_gpr { arr = Varr.S2; rd; rn = { rn with Reg.width = 32 } })
+      | _ -> None)
+    C.(
+      const ~width:11 (vw hi) ** field ~width:5 "imm5" ** const ~width:6 0b000011L
+      ** reg_field ~width:64 ~sp:false "rn" ** field ~width:5 "rd")
+
 (* [dup Sd, Vn.s[i]] / [dup Dd, Vn.d[i]]: [01 0 11110000 imm5 000001 Rn Rd]. *)
 let vdup_scalar_alt =
   C.iso_fun ~name:"vdup-scalar"
@@ -3388,6 +3416,8 @@ let codec : (Lowered.t, fixup_kind) C.t =
            C.alt ~label:"vdup-q" ~priority:200 (vdup_alt ~q:1);
            C.alt ~label:"vdup-d" ~priority:201 (vdup_alt ~q:0);
            C.alt ~label:"vdup-scalar" ~priority:202 vdup_scalar_alt;
+           C.alt ~label:"vdup-gpr-q" ~priority:223 (vdup_gpr_alt ~q:1);
+           C.alt ~label:"vdup-gpr-d" ~priority:224 (vdup_gpr_alt ~q:0);
            C.alt ~label:"vins" ~priority:203 vins_alt;
            C.alt ~label:"mrs-fpcr" ~priority:141
              (C.iso_fun ~name:"mrs-fpcr"
@@ -4339,6 +4369,10 @@ let rec lower_instruction state i =
           if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
           else Ok [ Lowered.Vdup { arr; rd; rn; index } ]
       | _ -> bad `Vector_arrangement)
+  | Opcode.Dup, [ Operand.Vec (rd, arr); Operand.Reg rn ] -> (
+      match (arr, rn.Reg.width) with
+      | (Varr.S2 | Varr.S4), 32 | Varr.D2, 64 -> Ok [ Lowered.Vdup_gpr { arr; rd; rn } ]
+      | _ -> bad `Vector_arrangement)
   | Opcode.Dup, [ Operand.Freg rd; Operand.Vlane (rn, lane, index) ]
     when rd.Freg.double = (lane = Lane.D) ->
       if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
@@ -5007,6 +5041,8 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Vdup { arr; rd; rn; index } ->
       let lane = match arr with Varr.D2 -> Lane.D | _ -> Lane.S in
       Some { Instruction.op = Opcode.Dup; ops = [ Operand.Vec (rd, arr); Operand.Vlane (rn, lane, index) ] }
+  | Lowered.Vdup_gpr { arr; rd; rn } ->
+      Some { Instruction.op = Opcode.Dup; ops = [ Operand.Vec (rd, arr); Operand.Reg rn ] }
   | Lowered.Vdup_scalar { lane; rd; rn; index } ->
       Some
         {
