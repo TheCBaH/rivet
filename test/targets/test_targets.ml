@@ -1606,6 +1606,86 @@ let%expect_test "three-operand imul picks the rung whose immediate reads back" =
     40000026  66 69 c8 c8 00        imulw $200, %ax, %cx    [x86_64.imulw]
     4000002b  c3                    ret                     [x86_64.ret] |}]
 
+(* A [.cfi_*] directive a producer builds is printed for GNU and dropped by
+   lowering: the bytes are those of the module without it. *)
+let%expect_test "a Cfi directive prints for GNU and changes no byte" =
+  let origin = Foundation.Origin.synthesized ~pass:"test" () in
+  let ins =
+    match
+      X86_64.make_surface_instruction ~mnemonic:"ret" ~origin []
+    with
+    | Ok s -> (
+        match X86_64.simplify_instruction X86_64.default_state s with
+        | Ok i -> i
+        | Error _ -> failwith "ret")
+    | Error _ -> failwith "ret"
+  in
+  let module N = Asm_core.Normalized_ast in
+  let dir directive = N.Directive { directive; origin } in
+  let section =
+    dir
+      (Asm_core.Directive.Section
+         { name = ".text"; perms = Asm_core.Perms.rx; nobits = false })
+  in
+  let module_ items = { N.unit_name = "t"; items } in
+  let with_cfi =
+    module_
+      [
+        section;
+        dir (Asm_core.Directive.Global { name = "f" });
+        N.Label { name = "f"; origin };
+        dir (Asm_core.Directive.Cfi { name = ".cfi_startproc"; argument = "" });
+        dir (Asm_core.Directive.Cfi { name = ".cfi_def_cfa_offset"; argument = "16" });
+        N.Instruction { insn = ins; origin };
+        dir (Asm_core.Directive.Cfi { name = ".cfi_endproc"; argument = "" });
+      ]
+  in
+  let without =
+    module_
+      [
+        section;
+        dir (Asm_core.Directive.Global { name = "f" });
+        N.Label { name = "f"; origin };
+        N.Instruction { insn = ins; origin };
+      ]
+  in
+  print_string
+    (Asm_core.Gnu_module.to_string
+       { Asm_core.Gnu_module.type_char = '@' }
+       ~instruction:X86_64.Instruction.pp_gnu with_cfi);
+  let module P = Driver.Pipeline.Make (X86_64) in
+  let bytes m =
+    match P.lower ~state:X86_64.default_state m with
+    | Error _ -> "lowering failed"
+    | Ok l -> (
+        match P.plan ~entry:"f" l with
+        | Error _ -> "plan failed"
+        | Ok laid -> (
+            let plan = Image.plan_of laid in
+            let addresses =
+              List.map
+                (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x1000L))
+                plan.Image.segments
+            in
+            match Image.bind_image laid ~addresses with
+            | Error _ -> "bind failed"
+            | Ok img ->
+                String.concat ""
+                  (List.map
+                     (fun (s : Image.segment) -> String.escaped s.Image.bytes)
+                     img.Image.segments)))
+  in
+  Printf.printf "%b\n" (String.equal (bytes with_cfi) (bytes without));
+  [%expect {|
+    	.section	.text,"ax",@progbits
+    	.globl	f
+    f:
+    	.cfi_startproc
+    	.cfi_def_cfa_offset	16
+    	ret
+    	.cfi_endproc
+    true |}]
+
 (* {1 16-bit operand size, and REX-extended 16-bit sub-registers}
 
    [%r8w]-[%r15w] (M5 corpus evidence: the corpus notes -

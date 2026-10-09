@@ -2354,6 +2354,36 @@ module Instruction = struct
             Fmt.pf ppf "%s%s %a" (Opcode.name i.op) (suffix_of_width i.width)
               Fmt.(list ~sep:(any ", ") Operand.pp)
               ops)
+
+  (* The same instruction spelled so that GNU as and this module's own text
+     parser both read it back: [pp] drops a size suffix where a register operand
+     already says the size (GAS accepts either spelling, the parser only the
+     suffixed one), and spells a 64-bit [movd] as GAS's [movq]. *)
+  let pp_gnu ppf i =
+    match (i.op, i.ops) with
+    | Opcode.Movd, _ :: _ when i.width = 64 ->
+        Fmt.pf ppf "movq %a" Fmt.(list ~sep:(any ", ") Operand.pp) i.ops
+    | ( ( Opcode.Neg | Opcode.Mul | Opcode.Div | Opcode.Test | Opcode.Adc | Opcode.Sbb
+        | Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar | Opcode.Shld ) as op,
+        _ :: _ ) ->
+        Fmt.pf ppf "%s%s %a" (Opcode.name op) (suffix_of_width i.width)
+          Fmt.(list ~sep:(any ", ") Operand.pp)
+          i.ops
+    | _, _ :: _
+      when (match i.op with Opcode.Table _ -> false | _ -> true)
+           && List.exists
+                (function
+                  | Operand.Reg r ->
+                      String.length r.Reg.name > 3
+                      && (String.sub r.Reg.name 0 3 = "xmm" || String.sub r.Reg.name 0 3 = "ymm")
+                  | _ -> false)
+                i.ops
+           && (match i.op with
+              | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si -> false
+              | _ -> true) ->
+        (* an SSE mnemonic is whole: a width letter would make it another *)
+        Fmt.pf ppf "%s %a" (Opcode.name i.op) Fmt.(list ~sep:(any ", ") Operand.pp) i.ops
+    | _ -> pp ppf i
 end
 
 module Rm = struct
@@ -10422,7 +10452,18 @@ module Make (M : MODE) = struct
      initializer in GNU x86 syntax. [.word] is *two* bytes here, unlike on the
      two fixed-width targets, which is the whole reason this table is per
      dialect rather than shared. *)
-  let data_widths = [ (".byte", 1); (".short", 2); (".word", 2); (".long", 4); (".quad", 8) ]
+  let data_widths =
+    [
+      (".byte", 1);
+      (".short", 2);
+      (".word", 2);
+      (".long", 4);
+      (".quad", 8);
+      (* the spellings the module printer writes: [.<width>byte] *)
+      (".2byte", 2);
+      (".4byte", 4);
+      (".8byte", 8);
+    ]
 
   let data_fixup ~width =
     match width with
