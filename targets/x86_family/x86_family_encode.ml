@@ -9012,6 +9012,16 @@ module Make (M : MODE) = struct
       let rounding = ref None and vsib = ref None and broadcast = ref false in
       let rm_gpr = ref false in
       let rex_byte = ref false and ok = ref true in
+      (* the operand size an IMUL row's immediate is sign-extended to *)
+      let sext_imm_width =
+        if String.length r.source > 5 && String.sub r.source 0 5 = "IMUL_" then
+          List.find_map
+            (function
+              | T.Reg { cls = T.Gpr16 | T.Gpr32 | T.Gpr64 as cls; _ } -> Some (T.class_width cls)
+              | _ -> None)
+            r.operands
+        else None
+      in
       let gpr (cls : T.rclass) = cls = T.Gpr8 || cls = T.Gpr16 || cls = T.Gpr32 || cls = T.Gpr64 in
       List.iter2
         (fun (o : T.operand) op ->
@@ -9050,6 +9060,22 @@ module Make (M : MODE) = struct
               rm := Some (`Mem m)
           | T.Imm { bytes }, Operand.Imm v -> (
               match Bigint.to_int64_opt v with
+              (* IMUL's narrower immediates are sign-extended to the operand size, so a value
+                 the byte reads back differently is not that row's: [imulq $132, %r8, %rdi]
+                 is the imm32 row, not 0x84 as imm8, which means -124. *)
+              | Some v when sext_imm_width <> None ->
+                  let w = Option.get sext_imm_width in
+                  let v = to_width_signed ~width:w v in
+                  let bits = 8 * bytes in
+                  if
+                    bits < w
+                    && Int64.compare v (Int64.neg (Int64.shift_left 1L (bits - 1))) >= 0
+                    && Int64.compare v (Int64.shift_left 1L (bits - 1)) < 0
+                    || bits >= w
+                       && Int64.compare v (Int64.neg (Int64.shift_left 1L (bits - 1))) >= 0
+                       && (bits >= 64 || Int64.compare v (Int64.shift_left 1L (bits - 1)) < 0)
+                  then imms := !imms @ [ le_bytes bytes v ]
+                  else ok := false
               | Some v when fits_bytes bytes v -> imms := !imms @ [ le_bytes bytes v ]
               | _ -> ok := false)
           | _ -> ok := false)
