@@ -505,7 +505,7 @@ let%expect_test "an image calling a host symbol is closed until the symbol is bo
   | Ok _ -> print_endline "linked"
   | Error e -> print_endline (Foundation.Diag.render e));
   [%expect
-    {| <synthesized by aarch64.encode>: error[image.undefined]: fixup target references undefined symbol strlen |}]
+    {| <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol strlen |}]
 
 let%expect_test "a bound host symbol is called through its trampoline, repeatedly" =
   let tramp = Result.get_ok (Native_exec.bind_host ~target:host [ "strlen" ]) in
