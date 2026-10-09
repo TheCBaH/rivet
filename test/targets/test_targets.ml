@@ -1543,6 +1543,69 @@ let%expect_test "%r8b-%r15b are recognized registers, and 8-bit reg/reg mov uses
     40000002  c3     ret            [x86_64.ret]
     |}]
 
+(* A byte source named %spl-%dil needs the empty REX that selects it over
+   %ah-%bh, whatever the destination's width: [movzbl %dil, %edi] without one
+   is [movzbl %bh, %edi]. Bytes as [x86_64-linux-gnu-as] emits them. *)
+let%expect_test "movzbl and movsbl from %sil/%dil carry the empty REX" =
+  disasm "x86_64"
+    "\t.text\n\t.globl f\nf:\n\tmovzbl %dil, %edi\n\tmovsbl %sil, %eax\n\tmovzbl %cl, %eax\n\tret\n";
+  [%expect {|
+    40000000  40 0f b6 ff  movzbl %dil, %edi  [x86_64.movzx-b-r-rm.asz-absent.opsz-absent.rex-present.reg]
+    40000004  40 0f be c6  movsbl %sil, %eax  [x86_64.movsx-b-r-rm.asz-absent.opsz-absent.rex-present.reg]
+    40000008  0f b6 c1     movzbl %cl, %eax   [x86_64.movzx-b-r-rm.asz-absent.opsz-absent.rex-absent.reg]
+    4000000b  c3           ret                [x86_64.ret] |}]
+
+(* [pp] is the compiler's spelling: no size suffix where a register operand says
+   the size, and [movd] for a 64-bit move into an xmm register. GNU as reads
+   both; this module's own text parser reads only the suffixed ones, so
+   [pp_gnu] spells what both accept. *)
+let%expect_test "pp_gnu spells instructions both GNU as and the text parser read" =
+  let origin = Foundation.Origin.synthesized ~pass:"test" () in
+  let reg n = X86_64.Operand.Reg (Option.get (X86_64.find_reg n)) in
+  let imm n = X86_64.Operand.Imm (Foundation.Bigint.of_int n) in
+  let ins mnemonic ops =
+    match X86_64.make_surface_instruction ~mnemonic ~origin ops with
+    | Error _ -> failwith mnemonic
+    | Ok s -> (
+        match X86_64.simplify_instruction X86_64.default_state s with
+        | Ok i -> i
+        | Error _ -> failwith mnemonic)
+  in
+  List.iter
+    (fun i ->
+      Fmt.pr "%a | %a@." X86_64.Instruction.pp i X86_64.Instruction.pp_gnu i)
+    [
+      ins "testl" [ reg "r8d"; reg "r8d" ];
+      ins "negq" [ reg "rax" ];
+      ins "shll" [ imm 2; reg "eax" ];
+      ins "movq" [ reg "r8"; reg "xmm11" ];
+      ins "movd" [ reg "r8d"; reg "xmm11" ];
+      ins "movl" [ reg "eax"; reg "ecx" ];
+    ];
+  [%expect {|
+    test %r8d, %r8d | testl %r8d, %r8d
+    neg %rax | negq %rax
+    shll $2, %eax | shll $2, %eax
+    movd %r8, %xmm11 | movq %r8, %xmm11
+    movd %r8d, %xmm11 | movd %r8d, %xmm11
+    movl %eax, %ecx | movl %eax, %ecx |}]
+
+(* IMUL's immediate is sign-extended, so 128..255 does not fit the byte rung: GNU as
+   writes [imulq $132, %r8, %rdi] as the imm32 form; reading 0x84 as imm8 is -124. *)
+let%expect_test "three-operand imul picks the rung whose immediate reads back" =
+  disasm "x86_64"
+    "\t.text\n\t.globl f\nf:\n\timulq $132, %r8, %rdi\n\timull $200, %eax, %ecx\n\timulq $127, %r8, %rdi\n\timulq $-128, %r8, %rdi\n\timulq $-129, %r8, %rdi\n\timull $4294967295, %eax, %ecx\n\timulq $2147483647, %r8, %rdi\n\timulw $200, %ax, %cx\n\tret\n";
+  [%expect {|
+    40000000  49 69 f8 84 00 00 00  imulq $132, %r8         [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
+    40000007  69 c8 c8 00 00 00     imull $200, %eax        [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-absent.reg]
+    4000000d  49 6b f8 7f           imulq $127, %r8         [x86_64.imul-r-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
+    40000011  49 6b f8 80           imulq $-128, %r8        [x86_64.imul-r-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
+    40000015  49 69 f8 7f ff ff ff  imulq $-129, %r8        [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
+    4000001c  6b c8 ff              imull $-1, %eax         [x86_64.imul-r-rm-imm8.asz-absent.opsz-absent.rex-absent.reg]
+    4000001f  49 69 f8 ff ff ff 7f  imulq $2147483647, %r8  [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
+    40000026  66 69 c8 c8 00        imulw $200, %ax, %cx    [x86_64.imulw]
+    4000002b  c3                    ret                     [x86_64.ret] |}]
+
 (* {1 16-bit operand size, and REX-extended 16-bit sub-registers}
 
    [%r8w]-[%r15w] (M5 corpus evidence: the corpus notes -
