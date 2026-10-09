@@ -24,7 +24,8 @@ external copy_out : int64 -> int -> string = "native_exec_copy_out"
 external call_entry : int64 -> io -> int64 = "native_exec_call"
 external host_isa_stub : unit -> string = "native_exec_host_isa"
 external symbol_stub : string -> int64 = "native_exec_symbol"
-external io_address : io -> int64 = "native_exec_io_address"
+external io_address : ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t -> int64
+  = "native_exec_io_address"
 
 (* The target name of the ISA this process runs, if it is one the assembler
    targets. Only images for that target can be run here. *)
