@@ -1300,8 +1300,8 @@
     [150 cost=0] fmov-to-gpr-s    fmov-to-gpr-s(){sf:1u 0011110 00 100110000000 rn:5u rd:5u}
     [151 cost=0] fmax-d           fbinop-fmax-d(){000 11110 01 1 rm:5u 0100 10 rn:5u rd:5u}
     [152 cost=0] fmax-s           fbinop-fmax-s(){000 11110 00 1 rm:5u 0100 10 rn:5u rd:5u}
-    [153 cost=0] vmov-16b         vmov-16b(){01001110101 rm:5u 000111 rn:5u rd:5u}
-    [154 cost=0] vmov-8b          vmov-8b(){00001110101 rm:5u 000111 rn:5u rd:5u}
+    [153 cost=0] vand-16b         vand-16b(){01001110001 rm:5u 000111 rn:5u rd:5u}
+    [154 cost=0] vand-8b          vand-8b(){00001110001 rm:5u 000111 rn:5u rd:5u}
     [155 cost=0] vfcvtl           vfcvtl(){0000111001100001011110 rn:5u rd:5u}
     [156 cost=0] vfcvtn           vfcvtn(){0000111001100001011010 rn:5u rd:5u}
     [157 cost=0] ldr-q            ldr-q(){0011110111 imm12:12u rn rt:5u}
@@ -1344,6 +1344,23 @@
     [201 cost=0] vdup-d           vdup-d(){00001110000 imm5:5u 000001 rn:5u rd:5u}
     [202 cost=0] vdup-scalar      vdup-scalar(){01011110000 imm5:5u 000001 rn:5u rd:5u}
     [203 cost=0] vins             vins(){01101110000 imm5:5u 0 imm4:4u 1 rn:5u rd:5u}
+    [204 cost=0] vorr-16b         vorr-16b(){01001110101 rm:5u 000111 rn:5u rd:5u}
+    [205 cost=0] vorr-8b          vorr-8b(){00001110101 rm:5u 000111 rn:5u rd:5u}
+    [206 cost=0] veor-16b         veor-16b(){01101110001 rm:5u 000111 rn:5u rd:5u}
+    [207 cost=0] veor-8b          veor-8b(){00101110001 rm:5u 000111 rn:5u rd:5u}
+    [208 cost=0] vbsl-16b         vbsl-16b(){01101110011 rm:5u 000111 rn:5u rd:5u}
+    [209 cost=0] vbsl-8b          vbsl-8b(){00101110011 rm:5u 000111 rn:5u rd:5u}
+    [210 cost=0] vnot-16b         vnot-16b(){0110111000100000010110 rn:5u rd:5u}
+    [211 cost=0] vnot-8b          vnot-8b(){0010111000100000010110 rn:5u rd:5u}
+    [212 cost=0] vfcmeq-s2        vfcmeq-2s(){00001110001 rm:5u 111001 rn:5u rd:5u}
+    [213 cost=0] vfcmeq-s4        vfcmeq-4s(){01001110001 rm:5u 111001 rn:5u rd:5u}
+    [214 cost=0] vfcmeq-d2        vfcmeq-2d(){01001110011 rm:5u 111001 rn:5u rd:5u}
+    [215 cost=0] vfcmge-s2        vfcmge-2s(){00101110001 rm:5u 111001 rn:5u rd:5u}
+    [216 cost=0] vfcmge-s4        vfcmge-4s(){01101110001 rm:5u 111001 rn:5u rd:5u}
+    [217 cost=0] vfcmge-d2        vfcmge-2d(){01101110011 rm:5u 111001 rn:5u rd:5u}
+    [218 cost=0] vfcmgt-s2        vfcmgt-2s(){00101110101 rm:5u 111001 rn:5u rd:5u}
+    [219 cost=0] vfcmgt-s4        vfcmgt-4s(){01101110101 rm:5u 111001 rn:5u rd:5u}
+    [220 cost=0] vfcmgt-d2        vfcmgt-2d(){01101110111 rm:5u 111001 rn:5u rd:5u}
   rn(){rn:5u}
   rd(){rd:5u}
   rm(){rm:5u}

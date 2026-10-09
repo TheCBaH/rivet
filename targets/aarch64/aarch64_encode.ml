@@ -383,6 +383,11 @@ module Opcode = struct
     | Fneg
     | Fmax
     | Fmla
+    | Fcmeq
+    | Fcmge
+    | Fcmgt
+    | Bsl
+    | Not
     | Fmadd
     | Dup
     | Ins
@@ -469,6 +474,11 @@ module Opcode = struct
     | Fneg -> "fneg"
     | Fmax -> "fmax"
     | Fmla -> "fmla"
+    | Fcmeq -> "fcmeq"
+    | Fcmge -> "fcmge"
+    | Fcmgt -> "fcmgt"
+    | Bsl -> "bsl"
+    | Not -> "not"
     | Dup -> "dup"
     | Ins -> "ins"
     | Ld1 -> "ld1"
@@ -562,6 +572,11 @@ module Opcode = struct
     | "fneg" -> Some Fneg
     | "fmax" -> Some Fmax
     | "fmla" -> Some Fmla
+    | "fcmeq" -> Some Fcmeq
+    | "fcmge" -> Some Fcmge
+    | "fcmgt" -> Some Fcmgt
+    | "bsl" -> Some Bsl
+    | "not" | "mvn" -> Some Not
     | "dup" -> Some Dup
     | "ins" -> Some Ins
     | "ld1" -> Some Ld1
@@ -743,7 +758,7 @@ let dp1_opcode op ~width =
   | Cls, _ -> Some 5
 
 (* Advanced SIMD floating-point arithmetic, three-register and two-register. *)
-type vbin = Vfadd | Vfdiv | Vfmax | Vfmla | Vfmul | Vfsub
+type vbin = Vfadd | Vfcmeq | Vfcmge | Vfcmgt | Vfdiv | Vfmax | Vfmla | Vfmul | Vfsub
 type vun = Vfneg | Vfrintz | Vfsqrt
 
 (* [U], [a] (bit 23) and the five-bit opcode of a three-register form. *)
@@ -754,6 +769,9 @@ let vbin_bits = function
   | Vfdiv -> (1, 0, 0b11111)
   | Vfmax -> (0, 0, 0b11110)
   | Vfmla -> (0, 0, 0b11001)
+  | Vfcmeq -> (0, 0, 0b11100)
+  | Vfcmge -> (1, 0, 0b11100)
+  | Vfcmgt -> (1, 1, 0b11100)
 
 let vbin_name = function
   | Vfadd -> "fadd"
@@ -762,10 +780,25 @@ let vbin_name = function
   | Vfdiv -> "fdiv"
   | Vfmax -> "fmax"
   | Vfmla -> "fmla"
+  | Vfcmeq -> "fcmeq"
+  | Vfcmge -> "fcmge"
+  | Vfcmgt -> "fcmgt"
 
 (* [U], [a] and the five-bit opcode of a two-register form. *)
 let vun_bits = function Vfneg -> (1, 1, 0b01111) | Vfsqrt -> (1, 1, 0b11111) | Vfrintz -> (0, 1, 0b11001)
 let vun_name = function Vfneg -> "fneg" | Vfsqrt -> "fsqrt" | Vfrintz -> "frintz"
+
+(* Bitwise vector operations on bytes: [U] and the two selector bits (23:22) of
+   [0 Q U 01110 sel 1 Rm 000111 Rn Rd]. [Vbsl] takes its mask from the destination. *)
+type vlogic = Vand | Vbsl | Veor | Vorr
+
+let vlogic_bits = function
+  | Vand -> (0, 0b00)
+  | Vorr -> (0, 0b10)
+  | Veor -> (1, 0b00)
+  | Vbsl -> (1, 0b01)
+
+let vlogic_name = function Vand -> "and" | Vorr -> "orr" | Veor -> "eor" | Vbsl -> "bsl"
 
 module Lowered = struct
   type t =
@@ -860,8 +893,10 @@ module Lowered = struct
     | Vbin of { op : vbin; arr : Varr.t; rd : int; rn : int; rm : int }
         (** [fadd]/[fsub]/[fmul]/[fdiv]/[fmax]/[fmla Vd.T, Vn.T, Vm.T] on [2s], [4s] or [2d]. *)
     | Vun of { op : vun; arr : Varr.t; rd : int; rn : int }  (** [fneg]/[fsqrt]/[frintz Vd.T, Vn.T] *)
-    | Vmov of { q : bool; rd : int; rn : int }
-        (** [mov Vd.16b, Vn.16b] / [Vd.8b]: ORR with both sources the same register. *)
+    | Vlogic of { op : vlogic; q : bool; rd : int; rn : int; rm : int }
+        (** [and]/[orr]/[eor]/[bsl Vd.16b, Vn.16b, Vm.16b] (or [.8b]); [mov] is [orr] with both
+            sources the same register. *)
+    | Vnot of { q : bool; rd : int; rn : int }  (** [not Vd.16b, Vn.16b] (the assembler's [mvn]) *)
     | Vcvt of { widen : bool; rd : int; rn : int }
         (** [fcvtl Vd.2d, Vn.2s] / [fcvtn Vd.2s, Vn.2d]: the two-lane halves only. *)
     | Vdup of { arr : Varr.t; rd : int; rn : int; index : int }
@@ -1120,9 +1155,15 @@ module Lowered = struct
     | Vun { op; arr; rd; rn } ->
         let a = Varr.name arr in
         Fmt.pf ppf "%s v%d.%s, v%d.%s" (vun_name op) rd a rn a
-    | Vmov { q; rd; rn } ->
+    | Vlogic { op = Vorr; q; rd; rn; rm } when rn = rm ->
         let a = if q then "16b" else "8b" in
         Fmt.pf ppf "mov v%d.%s, v%d.%s" rd a rn a
+    | Vlogic { op; q; rd; rn; rm } ->
+        let a = if q then "16b" else "8b" in
+        Fmt.pf ppf "%s v%d.%s, v%d.%s, v%d.%s" (vlogic_name op) rd a rn a rm a
+    | Vnot { q; rd; rn } ->
+        let a = if q then "16b" else "8b" in
+        Fmt.pf ppf "not v%d.%s, v%d.%s" rd a rn a
     | Vcvt { widen; rd; rn } ->
         if widen then Fmt.pf ppf "fcvtl v%d.2d, v%d.2s" rd rn else Fmt.pf ppf "fcvtn v%d.2s, v%d.2d" rd rn
     | Vdup { arr; rd; rn; index } ->
@@ -1260,7 +1301,9 @@ module Lowered = struct
         && Disp.equal x.offset y.offset
     | Vbin x, Vbin y -> x.op = y.op && x.arr = y.arr && x.rd = y.rd && x.rn = y.rn && x.rm = y.rm
     | Vun x, Vun y -> x.op = y.op && x.arr = y.arr && x.rd = y.rd && x.rn = y.rn
-    | Vmov x, Vmov y -> x.q = y.q && x.rd = y.rd && x.rn = y.rn
+    | Vlogic x, Vlogic y ->
+        x.op = y.op && x.q = y.q && x.rd = y.rd && x.rn = y.rn && x.rm = y.rm
+    | Vnot x, Vnot y -> x.q = y.q && x.rd = y.rd && x.rn = y.rn
     | Vcvt x, Vcvt y -> x.widen = y.widen && x.rd = y.rd && x.rn = y.rn
     | Vdup x, Vdup y -> x.arr = y.arr && x.rd = y.rd && x.rn = y.rn && x.index = y.index
     | Vdup_scalar x, Vdup_scalar y ->
@@ -2445,20 +2488,35 @@ let vun_alt ~op ~arr =
       Some (Lowered.Vun { op; arr; rd = Int64.to_int rd; rn = Int64.to_int rn }))
     C.(const ~width:22 (vw hi) ** field ~width:5 "rn" ** field ~width:5 "rd")
 
-(* [mov Vd.16b, Vn.16b]: ORR with Rm = Rn. *)
-let vmov_alt ~q =
-  let hi = (if q then 1 else 0) lsl 9 lor (0b01110 lsl 3) lor 0b101 in
+(* [and]/[orr]/[eor]/[bsl] on bytes: [0 Q U 01110 sel 1 Rm 000111 Rn Rd]. *)
+let vlogic_alt ~op ~q =
+  let u, sel = vlogic_bits op in
+  let hi = ((if q then 1 else 0) lsl 9) lor (u lsl 8) lor (0b01110 lsl 3) lor (sel lsl 1) lor 1 in
   C.iso_fun
-    ~name:(if q then "vmov-16b" else "vmov-8b")
+    ~name:(Printf.sprintf "v%s-%s" (vlogic_name op) (if q then "16b" else "8b"))
     ~encode:(function
-      | Lowered.Vmov { q = q'; rd; rn } when q' = q -> Some ((), (vw rn, ((), (vw rn, vw rd))))
+      | Lowered.Vlogic { op = o; q = q'; rd; rn; rm } when o = op && q' = q ->
+          Some ((), (vw rm, ((), (vw rn, vw rd))))
       | _ -> None)
     ~decode:(fun ((), (rm, ((), (rn, rd)))) ->
-      if Int64.equal rm rn then Some (Lowered.Vmov { q; rd = Int64.to_int rd; rn = Int64.to_int rn })
-      else None)
+      Some
+        (Lowered.Vlogic
+           { op; q; rd = Int64.to_int rd; rn = Int64.to_int rn; rm = Int64.to_int rm }))
     C.(
       const ~width:11 (vw hi) ** field ~width:5 "rm" ** const ~width:6 0b000111L
       ** field ~width:5 "rn" ** field ~width:5 "rd")
+
+(* [not Vd.16b, Vn.16b]: [0 Q 1 01110 00 10000 00101 10 Rn Rd]. *)
+let vnot_alt ~q =
+  let hi = ((if q then 1 else 0) lsl 20) lor (1 lsl 19) lor (0b01110 lsl 14) lor (0b10000 lsl 7) lor (0b00101 lsl 2) lor 0b10 in
+  C.iso_fun
+    ~name:(if q then "vnot-16b" else "vnot-8b")
+    ~encode:(function
+      | Lowered.Vnot { q = q'; rd; rn } when q' = q -> Some ((), (vw rn, vw rd))
+      | _ -> None)
+    ~decode:(fun ((), (rn, rd)) ->
+      Some (Lowered.Vnot { q; rd = Int64.to_int rd; rn = Int64.to_int rn }))
+    C.(const ~width:22 (vw hi) ** field ~width:5 "rn" ** field ~width:5 "rd")
 
 (* [fcvtl Vd.2d, Vn.2s] and [fcvtn Vd.2s, Vn.2d]. *)
 let vcvt_alt ~widen =
@@ -3259,8 +3317,25 @@ let codec : (Lowered.t, fixup_kind) C.t =
               [1101010100_L_1_o0_op1_CRn_CRm_op2_Rt] with FPCR = S3_3_C4_C4_0, so the 27 bits above
               [Rt] are fixed. Checked against real aarch64-linux-gnu-as/objdump:
               [mrs x17, fpcr] -> [d53b4411], [msr fpcr, x17] -> [d51b4411]. *)
-           C.alt ~label:"vmov-16b" ~priority:153 (vmov_alt ~q:true);
-           C.alt ~label:"vmov-8b" ~priority:154 (vmov_alt ~q:false);
+           C.alt ~label:"vand-16b" ~priority:153 (vlogic_alt ~op:Vand ~q:true);
+           C.alt ~label:"vand-8b" ~priority:154 (vlogic_alt ~op:Vand ~q:false);
+           C.alt ~label:"vorr-16b" ~priority:204 (vlogic_alt ~op:Vorr ~q:true);
+           C.alt ~label:"vorr-8b" ~priority:205 (vlogic_alt ~op:Vorr ~q:false);
+           C.alt ~label:"veor-16b" ~priority:206 (vlogic_alt ~op:Veor ~q:true);
+           C.alt ~label:"veor-8b" ~priority:207 (vlogic_alt ~op:Veor ~q:false);
+           C.alt ~label:"vbsl-16b" ~priority:208 (vlogic_alt ~op:Vbsl ~q:true);
+           C.alt ~label:"vbsl-8b" ~priority:209 (vlogic_alt ~op:Vbsl ~q:false);
+           C.alt ~label:"vnot-16b" ~priority:210 (vnot_alt ~q:true);
+           C.alt ~label:"vnot-8b" ~priority:211 (vnot_alt ~q:false);
+           C.alt ~label:"vfcmeq-s2" ~priority:212 (vbin_alt ~op:Vfcmeq ~arr:Varr.S2);
+           C.alt ~label:"vfcmeq-s4" ~priority:213 (vbin_alt ~op:Vfcmeq ~arr:Varr.S4);
+           C.alt ~label:"vfcmeq-d2" ~priority:214 (vbin_alt ~op:Vfcmeq ~arr:Varr.D2);
+           C.alt ~label:"vfcmge-s2" ~priority:215 (vbin_alt ~op:Vfcmge ~arr:Varr.S2);
+           C.alt ~label:"vfcmge-s4" ~priority:216 (vbin_alt ~op:Vfcmge ~arr:Varr.S4);
+           C.alt ~label:"vfcmge-d2" ~priority:217 (vbin_alt ~op:Vfcmge ~arr:Varr.D2);
+           C.alt ~label:"vfcmgt-s2" ~priority:218 (vbin_alt ~op:Vfcmgt ~arr:Varr.S2);
+           C.alt ~label:"vfcmgt-s4" ~priority:219 (vbin_alt ~op:Vfcmgt ~arr:Varr.S4);
+           C.alt ~label:"vfcmgt-d2" ~priority:220 (vbin_alt ~op:Vfcmgt ~arr:Varr.D2);
            C.alt ~label:"vfcvtl" ~priority:155 (vcvt_alt ~widen:true);
            C.alt ~label:"vfcvtn" ~priority:156 (vcvt_alt ~widen:false);
            C.alt ~label:"ldr-q" ~priority:157 (qldst_alt ~load:true);
@@ -4190,7 +4265,8 @@ let rec lower_instruction state i =
                     ]
               | Some n -> bad (`Register_offset_shift_invalid n)))
   (* Advanced SIMD. *)
-  | ( ((Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv | Opcode.Fmax | Opcode.Fmla) as o),
+  | ( ((Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv | Opcode.Fmax | Opcode.Fmla
+       | Opcode.Fcmeq | Opcode.Fcmge | Opcode.Fcmgt) as o),
       [ Operand.Vec (rd, a); Operand.Vec (rn, b); Operand.Vec (rm, c) ] )
     when Varr.equal a b && Varr.equal b c -> (
       match a with
@@ -4202,6 +4278,9 @@ let rec lower_instruction state i =
             | Opcode.Fmul -> Vfmul
             | Opcode.Fdiv -> Vfdiv
             | Opcode.Fmax -> Vfmax
+            | Opcode.Fcmeq -> Vfcmeq
+            | Opcode.Fcmge -> Vfcmge
+            | Opcode.Fcmgt -> Vfcmgt
             | _ -> Vfmla
           in
           Ok [ Lowered.Vbin { op; arr = a; rd; rn; rm } ]
@@ -4216,8 +4295,23 @@ let rec lower_instruction state i =
       | Varr.B8 | Varr.B16 -> bad `Vector_arrangement)
   | Opcode.Mov, [ Operand.Vec (rd, a); Operand.Vec (rn, b) ] when Varr.equal a b -> (
       match a with
-      | Varr.B8 -> Ok [ Lowered.Vmov { q = false; rd; rn } ]
-      | Varr.B16 -> Ok [ Lowered.Vmov { q = true; rd; rn } ]
+      | Varr.B8 -> Ok [ Lowered.Vlogic { op = Vorr; q = false; rd; rn; rm = rn } ]
+      | Varr.B16 -> Ok [ Lowered.Vlogic { op = Vorr; q = true; rd; rn; rm = rn } ]
+      | Varr.S2 | Varr.S4 | Varr.D2 -> bad `Vector_arrangement)
+  | ( ((Opcode.And | Opcode.Orr | Opcode.Eor | Opcode.Bsl) as o),
+      [ Operand.Vec (rd, a); Operand.Vec (rn, b); Operand.Vec (rm, c) ] )
+    when Varr.equal a b && Varr.equal b c -> (
+      let op =
+        match o with Opcode.And -> Vand | Opcode.Orr -> Vorr | Opcode.Eor -> Veor | _ -> Vbsl
+      in
+      match a with
+      | Varr.B8 -> Ok [ Lowered.Vlogic { op; q = false; rd; rn; rm } ]
+      | Varr.B16 -> Ok [ Lowered.Vlogic { op; q = true; rd; rn; rm } ]
+      | Varr.S2 | Varr.S4 | Varr.D2 -> bad `Vector_arrangement)
+  | Opcode.Not, [ Operand.Vec (rd, a); Operand.Vec (rn, b) ] when Varr.equal a b -> (
+      match a with
+      | Varr.B8 -> Ok [ Lowered.Vnot { q = false; rd; rn } ]
+      | Varr.B16 -> Ok [ Lowered.Vnot { q = true; rd; rn } ]
       | Varr.S2 | Varr.S4 | Varr.D2 -> bad `Vector_arrangement)
   | Opcode.Fcvtl, [ Operand.Vec (rd, Varr.D2); Operand.Vec (rn, Varr.S2) ] ->
       Ok [ Lowered.Vcvt { widen = true; rd; rn } ]
@@ -4848,6 +4942,9 @@ let instruction_of_lowered ?(at = 0L) = function
         | Vfdiv -> Opcode.Fdiv
         | Vfmax -> Opcode.Fmax
         | Vfmla -> Opcode.Fmla
+        | Vfcmeq -> Opcode.Fcmeq
+        | Vfcmge -> Opcode.Fcmge
+        | Vfcmgt -> Opcode.Fcmgt
       in
       Some
         {
@@ -4857,9 +4954,20 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Vun { op; arr; rd; rn } ->
       let o = match op with Vfneg -> Opcode.Fneg | Vfsqrt -> Opcode.Fsqrt | Vfrintz -> Opcode.Frintz in
       Some { Instruction.op = o; ops = [ Operand.Vec (rd, arr); Operand.Vec (rn, arr) ] }
-  | Lowered.Vmov { q; rd; rn } ->
+  | Lowered.Vlogic { op = Vorr; q; rd; rn; rm } when rn = rm ->
       let a = if q then Varr.B16 else Varr.B8 in
       Some { Instruction.op = Opcode.Mov; ops = [ Operand.Vec (rd, a); Operand.Vec (rn, a) ] }
+  | Lowered.Vlogic { op; q; rd; rn; rm } ->
+      let a = if q then Varr.B16 else Varr.B8 in
+      let o = match op with Vand -> Opcode.And | Vorr -> Opcode.Orr | Veor -> Opcode.Eor | Vbsl -> Opcode.Bsl in
+      Some
+        {
+          Instruction.op = o;
+          ops = [ Operand.Vec (rd, a); Operand.Vec (rn, a); Operand.Vec (rm, a) ];
+        }
+  | Lowered.Vnot { q; rd; rn } ->
+      let a = if q then Varr.B16 else Varr.B8 in
+      Some { Instruction.op = Opcode.Not; ops = [ Operand.Vec (rd, a); Operand.Vec (rn, a) ] }
   | Lowered.Vcvt { widen; rd; rn } ->
       if widen then
         Some
