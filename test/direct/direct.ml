@@ -11,8 +11,7 @@ let origin = Origin.synthesized ~pass:"direct" ()
 let instruction op ops =
   match
     A.simplify_instruction A.default_state
-      (Result.get_ok
-         (A.make_surface_instruction ~mnemonic:(A.Opcode.name op) ~origin ops))
+      (Result.get_ok (A.make_surface_instruction ~mnemonic:(A.Opcode.name op) ~origin ops))
   with
   | Ok i -> i
   | Error _ -> failwith "simplify"
@@ -25,13 +24,10 @@ let () =
         [
           Normalized_ast.Directive
             {
-              directive =
-                Directive.Section
-                  { name = ".text"; perms = Perms.rx; nobits = false };
+              directive = Directive.Section { name = ".text"; perms = Perms.rx; nobits = false };
               origin;
             };
-          Normalized_ast.Directive
-            { directive = Directive.Global { name = "f" }; origin };
+          Normalized_ast.Directive { directive = Directive.Global { name = "f" }; origin };
           Normalized_ast.Label { name = "f"; origin };
           Normalized_ast.Instruction
             {
@@ -43,8 +39,7 @@ let () =
                   ];
               origin;
             };
-          Normalized_ast.Instruction
-            { insn = instruction A.Opcode.Ret []; origin };
+          Normalized_ast.Instruction { insn = instruction A.Opcode.Ret []; origin };
         ];
     }
   in

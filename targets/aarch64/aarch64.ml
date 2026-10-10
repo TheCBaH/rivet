@@ -179,7 +179,8 @@ let parse_one (slice : Asm_syntax.Token.slice) =
           | Some a -> Ok (Operand.Vec (r, a))
           | None -> bad (`Unknown_register n))
       | None -> bad (`Unknown_register n))
-  | [ Token.Ident n; Token.Lbracket; Token.Int i; Token.Rbracket ] when Option.is_some (vector_name n) -> (
+  | [ Token.Ident n; Token.Lbracket; Token.Int i; Token.Rbracket ]
+    when Option.is_some (vector_name n) -> (
       match (vector_name n, Bigint.to_int_opt i) with
       | Some (r, suffix), Some i -> (
           match Lane.of_name suffix with

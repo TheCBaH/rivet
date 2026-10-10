@@ -630,8 +630,7 @@ module Instruction = struct
   let pp_gnu ppf i =
     match i.ops with
     | [] -> Fmt.string ppf (Opcode.name i.op)
-    | ops ->
-        Fmt.pf ppf "%s %a" (Opcode.name i.op) Fmt.(list ~sep:(any ", ") pp_gnu_operand) ops
+    | ops -> Fmt.pf ppf "%s %a" (Opcode.name i.op) Fmt.(list ~sep:(any ", ") pp_gnu_operand) ops
 end
 
 (* The low-12 relocation is *scaled by the access width*, which is why it is a
@@ -794,7 +793,11 @@ let vbin_name = function
   | Vfcmgt -> "fcmgt"
 
 (* [U], [a] and the five-bit opcode of a two-register form. *)
-let vun_bits = function Vfneg -> (1, 1, 0b01111) | Vfsqrt -> (1, 1, 0b11111) | Vfrintz -> (0, 1, 0b11001)
+let vun_bits = function
+  | Vfneg -> (1, 1, 0b01111)
+  | Vfsqrt -> (1, 1, 0b11111)
+  | Vfrintz -> (0, 1, 0b11001)
+
 let vun_name = function Vfneg -> "fneg" | Vfsqrt -> "fsqrt" | Vfrintz -> "frintz"
 
 (* Bitwise vector operations on bytes: [U] and the two selector bits (23:22) of
@@ -907,7 +910,8 @@ module Lowered = struct
     | Msr of { sysreg : sysreg; rt : Reg.t }  (** [msr sysreg, rt] - the register written to it. *)
     | Vbin of { op : vbin; arr : Varr.t; rd : int; rn : int; rm : int }
         (** [fadd]/[fsub]/[fmul]/[fdiv]/[fmax]/[fmla Vd.T, Vn.T, Vm.T] on [2s], [4s] or [2d]. *)
-    | Vun of { op : vun; arr : Varr.t; rd : int; rn : int }  (** [fneg]/[fsqrt]/[frintz Vd.T, Vn.T] *)
+    | Vun of { op : vun; arr : Varr.t; rd : int; rn : int }
+        (** [fneg]/[fsqrt]/[frintz Vd.T, Vn.T] *)
     | Vlogic of { op : vlogic; q : bool; rd : int; rn : int; rm : int }
         (** [and]/[orr]/[eor]/[bsl Vd.16b, Vn.16b, Vm.16b] (or [.8b]); [mov] is [orr] with both
             sources the same register. *)
@@ -1182,7 +1186,8 @@ module Lowered = struct
         let a = if q then "16b" else "8b" in
         Fmt.pf ppf "not v%d.%s, v%d.%s" rd a rn a
     | Vcvt { widen; rd; rn } ->
-        if widen then Fmt.pf ppf "fcvtl v%d.2d, v%d.2s" rd rn else Fmt.pf ppf "fcvtn v%d.2s, v%d.2d" rd rn
+        if widen then Fmt.pf ppf "fcvtl v%d.2d, v%d.2s" rd rn
+        else Fmt.pf ppf "fcvtn v%d.2s, v%d.2d" rd rn
     | Vdup { arr; rd; rn; index } ->
         let lane = match arr with Varr.D2 -> Lane.D | _ -> Lane.S in
         Fmt.pf ppf "dup v%d.%s, v%d.%s[%d]" rd (Varr.name arr) rn (Lane.name lane) index
@@ -1192,8 +1197,9 @@ module Lowered = struct
     | Vins { lane; rd; didx; rn; sidx } ->
         Fmt.pf ppf "ins v%d.%s[%d], v%d.%s[%d]" rd (Lane.name lane) didx rn (Lane.name lane) sidx
     | Vld1 { load; lane; vt; index; rn } ->
-        Fmt.pf ppf "%s {v%d.%s}[%d], [%a]" (if load then "ld1" else "st1") vt (Lane.name lane) index
-          Reg.pp rn
+        Fmt.pf ppf "%s {v%d.%s}[%d], [%a]"
+          (if load then "ld1" else "st1")
+          vt (Lane.name lane) index Reg.pp rn
     | Vld1r { arr; vt; rn } -> Fmt.pf ppf "ld1r {v%d.%s}, [%a]" vt (Varr.name arr) Reg.pp rn
     | Qldst { load; rt; rn; offset } ->
         Fmt.pf ppf "%s q%d, [%a, #%Ld]" (if load then "ldr" else "str") rt Reg.pp rn offset
@@ -1319,8 +1325,7 @@ module Lowered = struct
         && Disp.equal x.offset y.offset
     | Vbin x, Vbin y -> x.op = y.op && x.arr = y.arr && x.rd = y.rd && x.rn = y.rn && x.rm = y.rm
     | Vun x, Vun y -> x.op = y.op && x.arr = y.arr && x.rd = y.rd && x.rn = y.rn
-    | Vlogic x, Vlogic y ->
-        x.op = y.op && x.q = y.q && x.rd = y.rd && x.rn = y.rn && x.rm = y.rm
+    | Vlogic x, Vlogic y -> x.op = y.op && x.q = y.q && x.rd = y.rd && x.rn = y.rn && x.rm = y.rm
     | Vnot x, Vnot y -> x.q = y.q && x.rd = y.rd && x.rn = y.rn
     | Vcvt x, Vcvt y -> x.widen = y.widen && x.rd = y.rd && x.rn = y.rn
     | Vdup x, Vdup y -> x.arr = y.arr && x.rd = y.rd && x.rn = y.rn && x.index = y.index
@@ -1330,7 +1335,8 @@ module Lowered = struct
     | Vins x, Vins y ->
         x.lane = y.lane && x.rd = y.rd && x.didx = y.didx && x.rn = y.rn && x.sidx = y.sidx
     | Vld1 x, Vld1 y ->
-        x.load = y.load && x.lane = y.lane && x.vt = y.vt && x.index = y.index && Reg.equal x.rn y.rn
+        x.load = y.load && x.lane = y.lane && x.vt = y.vt && x.index = y.index
+        && Reg.equal x.rn y.rn
     | Vld1r x, Vld1r y -> x.arr = y.arr && x.vt = y.vt && Reg.equal x.rn y.rn
     | Qldst x, Qldst y ->
         x.load = y.load && x.rt = y.rt && Reg.equal x.rn y.rn && Int64.equal x.offset y.offset
@@ -1388,8 +1394,7 @@ module Lowered = struct
     | Fsqrt x, Fsqrt y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Frintz x, Frintz y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Fmadd x, Fmadd y ->
-        Freg.equal x.rd y.rd && Freg.equal x.rn y.rn && Freg.equal x.rm y.rm
-        && Freg.equal x.ra y.ra
+        Freg.equal x.rd y.rd && Freg.equal x.rn y.rn && Freg.equal x.rm y.rm && Freg.equal x.ra y.ra
     | Fmov_to_gpr x, Fmov_to_gpr y -> Reg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Fcvt x, Fcvt y -> Freg.equal x.rd y.rd && Freg.equal x.rn y.rn
     | Fcvtzs x, Fcvtzs y -> Reg.equal x.rd y.rd && Freg.equal x.rn y.rn
@@ -2420,8 +2425,9 @@ let fmadd_alt ~double =
               ( (),
                 ( (),
                   ( Int64.of_int rm.Freg.num,
-                    ((), (Int64.of_int ra.Freg.num, (Int64.of_int rn.Freg.num, Int64.of_int rd.Freg.num)))
-                  ) ) ) )
+                    ( (),
+                      ( Int64.of_int ra.Freg.num,
+                        (Int64.of_int rn.Freg.num, Int64.of_int rd.Freg.num) ) ) ) ) ) )
       | _ -> None)
     ~decode:(fun ((), ((), ((), (rm, ((), (ra, (rn, rd))))))) ->
       Some
@@ -2493,7 +2499,9 @@ let vw = Int64.of_int
    [0 Q U 01110 a sz 1 Rm opc 1 Rn Rd]. *)
 let vbin_alt ~op ~arr =
   let u, a, opc = vbin_bits op in
-  let hi = (Varr.q arr lsl 9) lor (u lsl 8) lor (0b01110 lsl 3) lor (a lsl 2) lor (Varr.sz arr lsl 1) lor 1 in
+  let hi =
+    (Varr.q arr lsl 9) lor (u lsl 8) lor (0b01110 lsl 3) lor (a lsl 2) lor (Varr.sz arr lsl 1) lor 1
+  in
   C.iso_fun
     ~name:(Printf.sprintf "v%s-%s" (vbin_name op) (Varr.name arr))
     ~encode:(function
@@ -2501,9 +2509,11 @@ let vbin_alt ~op ~arr =
           Some ((), (vw rm, ((), (vw rn, vw rd))))
       | _ -> None)
     ~decode:(fun ((), (rm, ((), (rn, rd)))) ->
-      Some (Lowered.Vbin { op; arr; rd = Int64.to_int rd; rn = Int64.to_int rn; rm = Int64.to_int rm }))
+      Some
+        (Lowered.Vbin { op; arr; rd = Int64.to_int rd; rn = Int64.to_int rn; rm = Int64.to_int rm }))
     C.(
-      const ~width:11 (vw hi) ** field ~width:5 "rm"
+      const ~width:11 (vw hi)
+      ** field ~width:5 "rm"
       ** const ~width:6 (vw ((opc lsl 1) lor 1))
       ** field ~width:5 "rn" ** field ~width:5 "rd")
 
@@ -2511,7 +2521,9 @@ let vbin_alt ~op ~arr =
 let vun_alt ~op ~arr =
   let u, a, opc = vun_bits op in
   let hi =
-    (Varr.q arr lsl 20) lor (u lsl 19) lor (0b01110 lsl 14) lor (a lsl 13) lor (Varr.sz arr lsl 12)
+    (Varr.q arr lsl 20)
+    lor (u lsl 19) lor (0b01110 lsl 14) lor (a lsl 13)
+    lor (Varr.sz arr lsl 12)
     lor (0b10000 lsl 7) lor (opc lsl 2) lor 0b10
   in
   C.iso_fun
@@ -2536,20 +2548,22 @@ let vlogic_alt ~op ~q =
       | _ -> None)
     ~decode:(fun ((), (rm, ((), (rn, rd)))) ->
       Some
-        (Lowered.Vlogic
-           { op; q; rd = Int64.to_int rd; rn = Int64.to_int rn; rm = Int64.to_int rm }))
+        (Lowered.Vlogic { op; q; rd = Int64.to_int rd; rn = Int64.to_int rn; rm = Int64.to_int rm }))
     C.(
-      const ~width:11 (vw hi) ** field ~width:5 "rm" ** const ~width:6 0b000111L
-      ** field ~width:5 "rn" ** field ~width:5 "rd")
+      const ~width:11 (vw hi)
+      ** field ~width:5 "rm" ** const ~width:6 0b000111L ** field ~width:5 "rn"
+      ** field ~width:5 "rd")
 
 (* [not Vd.16b, Vn.16b]: [0 Q 1 01110 00 10000 00101 10 Rn Rd]. *)
 let vnot_alt ~q =
-  let hi = ((if q then 1 else 0) lsl 20) lor (1 lsl 19) lor (0b01110 lsl 14) lor (0b10000 lsl 7) lor (0b00101 lsl 2) lor 0b10 in
+  let hi =
+    ((if q then 1 else 0) lsl 20)
+    lor (1 lsl 19) lor (0b01110 lsl 14) lor (0b10000 lsl 7) lor (0b00101 lsl 2) lor 0b10
+  in
   C.iso_fun
     ~name:(if q then "vnot-16b" else "vnot-8b")
     ~encode:(function
-      | Lowered.Vnot { q = q'; rd; rn } when q' = q -> Some ((), (vw rn, vw rd))
-      | _ -> None)
+      | Lowered.Vnot { q = q'; rd; rn } when q' = q -> Some ((), (vw rn, vw rd)) | _ -> None)
     ~decode:(fun ((), (rn, rd)) ->
       Some (Lowered.Vnot { q; rd = Int64.to_int rd; rn = Int64.to_int rn }))
     C.(const ~width:22 (vw hi) ** field ~width:5 "rn" ** field ~width:5 "rd")
@@ -2560,8 +2574,7 @@ let vcvt_alt ~widen =
   C.iso_fun
     ~name:(if widen then "vfcvtl" else "vfcvtn")
     ~encode:(function
-      | Lowered.Vcvt { widen = w; rd; rn } when w = widen -> Some ((), (vw rn, vw rd))
-      | _ -> None)
+      | Lowered.Vcvt { widen = w; rd; rn } when w = widen -> Some ((), (vw rn, vw rd)) | _ -> None)
     ~decode:(fun ((), (rn, rd)) ->
       Some (Lowered.Vcvt { widen; rd = Int64.to_int rd; rn = Int64.to_int rn }))
     C.(const ~width:22 (vw hi) ** field ~width:5 "rn" ** field ~width:5 "rd")
@@ -2587,8 +2600,9 @@ let vdup_alt ~q =
           Some (Lowered.Vdup { arr = Varr.S2; rd = Int64.to_int rd; rn = Int64.to_int rn; index })
       | _ -> None)
     C.(
-      const ~width:11 (vw hi) ** field ~width:5 "imm5" ** const ~width:6 0b000001L
-      ** field ~width:5 "rn" ** field ~width:5 "rd")
+      const ~width:11 (vw hi)
+      ** field ~width:5 "imm5" ** const ~width:6 0b000001L ** field ~width:5 "rn"
+      ** field ~width:5 "rd")
 
 (* [dup Vd.T, Wn/Xn]: [0 Q 0 01110000 imm5 000011 Rn Rd], the lane size in [imm5] again. *)
 let vdup_gpr_alt ~q =
@@ -2611,8 +2625,10 @@ let vdup_gpr_alt ~q =
           Some (Lowered.Vdup_gpr { arr = Varr.S2; rd; rn = { rn with Reg.width = 32 } })
       | _ -> None)
     C.(
-      const ~width:11 (vw hi) ** field ~width:5 "imm5" ** const ~width:6 0b000011L
-      ** reg_field ~width:64 ~sp:false "rn" ** field ~width:5 "rd")
+      const ~width:11 (vw hi)
+      ** field ~width:5 "imm5" ** const ~width:6 0b000011L
+      ** reg_field ~width:64 ~sp:false "rn"
+      ** field ~width:5 "rd")
 
 (* [dup Sd, Vn.s[i]] / [dup Dd, Vn.d[i]]: [01 0 11110000 imm5 000001 Rn Rd]. *)
 let vdup_scalar_alt =
@@ -2643,7 +2659,9 @@ let vins_alt =
       | Some (lane, didx) ->
           let imm4 = Int64.to_int imm4 in
           let sidx = match lane with Lane.S -> imm4 lsr 2 | Lane.D -> imm4 lsr 3 in
-          let low_ok = match lane with Lane.S -> imm4 land 0b11 = 0 | Lane.D -> imm4 land 0b111 = 0 in
+          let low_ok =
+            match lane with Lane.S -> imm4 land 0b11 = 0 | Lane.D -> imm4 land 0b111 = 0
+          in
           if low_ok then
             Some (Lowered.Vins { lane; rd = Int64.to_int rd; didx; rn = Int64.to_int rn; sidx })
           else None
@@ -2659,19 +2677,20 @@ let vld1_alt ~load ~lane =
     ~name:(Printf.sprintf "v%s-%s" (if load then "ld1" else "st1") (Lane.name lane))
     ~encode:(function
       | Lowered.Vld1 { load = l; lane = ln; vt; index; rn } when l = load && ln = lane ->
-          let q, s = match lane with Lane.S -> (index lsr 1, index land 1) | Lane.D -> (index, 0) in
+          let q, s =
+            match lane with Lane.S -> (index lsr 1, index land 1) | Lane.D -> (index, 0)
+          in
           Some ((), (vw q, ((), ((), (vw s, ((), (rn, vw vt)))))))
       | _ -> None)
     ~decode:(fun ((), (q, ((), ((), (s, ((), (rn, vt))))))) ->
       let q = Int64.to_int q and s = Int64.to_int s in
-      let index, ok =
-        match lane with Lane.S -> ((q lsl 1) lor s, true) | Lane.D -> (q, s = 0)
-      in
+      let index, ok = match lane with Lane.S -> ((q lsl 1) lor s, true) | Lane.D -> (q, s = 0) in
       if ok then Some (Lowered.Vld1 { load; lane; vt = Int64.to_int vt; index; rn }) else None)
     C.(
       const ~width:1 0L ** field ~width:1 "q"
       ** const ~width:8 (vw ((0b0011010 lsl 1) lor if load then 1 else 0))
-      ** const ~width:9 0b000000100L ** field ~width:1 "s" ** const ~width:2 (vw size)
+      ** const ~width:9 0b000000100L ** field ~width:1 "s"
+      ** const ~width:2 (vw size)
       ** reg_field ~width:64 ~sp:true "rn" ** field ~width:5 "rt")
 
 (* [ld1r {Vt.T}, [Xn]]: [0 Q 0011010 1 0 00000 110 0 size Rn Rt]. *)
@@ -2680,12 +2699,15 @@ let vld1r_alt ~arr =
   C.iso_fun
     ~name:(Printf.sprintf "vld1r-%s" (Varr.name arr))
     ~encode:(function
-      | Lowered.Vld1r { arr = a; vt; rn } when Varr.equal a arr -> Some ((), ((), ((), ((), (rn, vw vt)))))
+      | Lowered.Vld1r { arr = a; vt; rn } when Varr.equal a arr ->
+          Some ((), ((), ((), ((), (rn, vw vt)))))
       | _ -> None)
-    ~decode:(fun ((), ((), ((), ((), (rn, vt))))) -> Some (Lowered.Vld1r { arr; vt = Int64.to_int vt; rn }))
+    ~decode:(fun ((), ((), ((), ((), (rn, vt))))) ->
+      Some (Lowered.Vld1r { arr; vt = Int64.to_int vt; rn }))
     C.(
-      const ~width:2 (vw (Varr.q arr)) ** const ~width:8 0b00110101L
-      ** const ~width:10 0b0000001100L ** const ~width:2 (vw size)
+      const ~width:2 (vw (Varr.q arr))
+      ** const ~width:8 0b00110101L ** const ~width:10 0b0000001100L
+      ** const ~width:2 (vw size)
       ** reg_field ~width:64 ~sp:true "rn" ** field ~width:5 "rt")
 
 (* [ldr]/[str Qt, [Xn, #imm]], the offset scaled by sixteen: [00 111101 1x imm12 Rn Rt]. *)
@@ -4323,8 +4345,8 @@ let rec lower_instruction state i =
                     ]
               | Some n -> bad (`Register_offset_shift_invalid n)))
   (* Advanced SIMD. *)
-  | ( ((Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv | Opcode.Fmax | Opcode.Fmla
-       | Opcode.Fcmeq | Opcode.Fcmge | Opcode.Fcmgt) as o),
+  | ( (( Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv | Opcode.Fmax | Opcode.Fmla
+       | Opcode.Fcmeq | Opcode.Fcmge | Opcode.Fcmgt ) as o),
       [ Operand.Vec (rd, a); Operand.Vec (rn, b); Operand.Vec (rm, c) ] )
     when Varr.equal a b && Varr.equal b c -> (
       match a with
@@ -4412,7 +4434,8 @@ let rec lower_instruction state i =
       match arr with
       | Varr.S2 | Varr.S4 | Varr.D2 -> Ok [ Lowered.Vld1r { arr; vt; rn = m.Mem.base } ]
       | Varr.B8 | Varr.B16 -> bad `Vector_arrangement)
-  | ((Opcode.Ldr | Opcode.Str) as o), [ Operand.Qreg rt; Operand.Mem m ] when not m.Mem.writeback -> (
+  | ((Opcode.Ldr | Opcode.Str) as o), [ Operand.Qreg rt; Operand.Mem m ] when not m.Mem.writeback
+    -> (
       match m.Mem.offset with
       | Disp.Const off ->
           if Int64.compare off 0L < 0 || not (Int64.equal (Int64.rem off 16L) 0L) then
@@ -5023,7 +5046,9 @@ let instruction_of_lowered ?(at = 0L) = function
           ops = [ Operand.Vec (rd, arr); Operand.Vec (rn, arr); Operand.Vec (rm, arr) ];
         }
   | Lowered.Vun { op; arr; rd; rn } ->
-      let o = match op with Vfneg -> Opcode.Fneg | Vfsqrt -> Opcode.Fsqrt | Vfrintz -> Opcode.Frintz in
+      let o =
+        match op with Vfneg -> Opcode.Fneg | Vfsqrt -> Opcode.Fsqrt | Vfrintz -> Opcode.Frintz
+      in
       Some { Instruction.op = o; ops = [ Operand.Vec (rd, arr); Operand.Vec (rn, arr) ] }
   | Lowered.Vlogic { op = Vorr; q; rd; rn; rm } when rn = rm ->
       let a = if q then Varr.B16 else Varr.B8 in
@@ -5061,14 +5086,21 @@ let instruction_of_lowered ?(at = 0L) = function
           }
   | Lowered.Vdup { arr; rd; rn; index } ->
       let lane = match arr with Varr.D2 -> Lane.D | _ -> Lane.S in
-      Some { Instruction.op = Opcode.Dup; ops = [ Operand.Vec (rd, arr); Operand.Vlane (rn, lane, index) ] }
+      Some
+        {
+          Instruction.op = Opcode.Dup;
+          ops = [ Operand.Vec (rd, arr); Operand.Vlane (rn, lane, index) ];
+        }
   | Lowered.Vdup_gpr { arr; rd; rn } ->
       Some { Instruction.op = Opcode.Dup; ops = [ Operand.Vec (rd, arr); Operand.Reg rn ] }
   | Lowered.Vdup_scalar { lane; rd; rn; index } ->
       Some
         {
           Instruction.op = Opcode.Dup;
-          ops = [ Operand.Freg { Freg.num = rd; double = lane = Lane.D }; Operand.Vlane (rn, lane, index) ];
+          ops =
+            [
+              Operand.Freg { Freg.num = rd; double = lane = Lane.D }; Operand.Vlane (rn, lane, index);
+            ];
         }
   | Lowered.Vins { lane; rd; didx; rn; sidx } ->
       Some
@@ -5103,7 +5135,8 @@ let instruction_of_lowered ?(at = 0L) = function
           ops =
             [
               Operand.Qreg rt;
-              Operand.Mem { Mem.base = rn; offset = Disp.Const offset; writeback = false; pre = true };
+              Operand.Mem
+                { Mem.base = rn; offset = Disp.Const offset; writeback = false; pre = true };
             ];
         }
   | Lowered.Mrs { sysreg; rt } ->
