@@ -5,6 +5,7 @@
 (test
  (name trampolines)
  (modules trampolines)
+ (optional)
  (libraries
   native_exec
   driver
