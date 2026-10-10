@@ -209,7 +209,7 @@ let strip_build d =
 let starts_with pre s =
   String.length s >= String.length pre && String.sub s 0 (String.length pre) = pre
 
-let production_dirs = [ "lib/"; "targets/"; "driver/"; "browser/"; "vendor/" ]
+let production_dirs = [ "lib/"; "targets/"; "driver/"; "driver_direct/"; "browser/"; "vendor/" ]
 
 (* "tools/" is the nested OCaml tool project (docs/design.md). It is additive, not a
    widening: `under "tool/" "tools/lib"` is false, so the existing entry never
