@@ -17,7 +17,6 @@ open Asm_syntax
 module T_intf = Target_intf.Target
 
 module Make (T : T_intf.TARGET) = struct
-
   (* The stages below source text are {!Pipeline_direct}'s, over this target's
      encoding half; what follows adds the front end. *)
   module D = Driver_direct.Pipeline_direct.Make (T)
@@ -193,7 +192,6 @@ module Make (T : T_intf.TARGET) = struct
       m.Source_ast.items;
     if !errors <> [] then Diag.fail ~pos:__POS__ (List.rev !errors)
     else Ok ({ Normalized_ast.unit_name = m.Source_ast.unit_name; items = List.rev !items }, !state)
-
 
   (* {1 Stage 3 - lower (§4.4, §7)}
 

@@ -108,7 +108,9 @@ module Make (T : Target_encode.ENCODE) = struct
      handler, whose rejections are already diagnostics. *)
   type 'state state_directive = Handled of 'state | Rejected of Diagnostic.t | Unhandled
 
-  let lower_with ~(target_state : name:string -> argument:string -> T.target_state -> T.target_state state_directive) ~state
+  let lower_with
+      ~(target_state :
+         name:string -> argument:string -> T.target_state -> T.target_state state_directive) ~state
       (m : T.Instruction.t Normalized_ast.module_) =
     let errors = ref [] in
     let sections : section_build list ref = ref [] in
@@ -315,8 +317,7 @@ module Make (T : Target_encode.ENCODE) = struct
                 match target_state ~name ~argument !state with
                 | Handled s -> state := s
                 | Rejected d -> errors := d :: !errors
-                | Unhandled ->
-                    errors := diag ~origin (`Directive_not_accepted name) :: !errors))
+                | Unhandled -> errors := diag ~origin (`Directive_not_accepted name) :: !errors))
         | Normalized_ast.Instruction { insn; origin } ->
             with_section origin (fun s ->
                 match T.lower_instruction !state insn with

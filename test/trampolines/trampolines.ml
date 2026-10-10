@@ -4,7 +4,8 @@ let bindings = [ ("host_f", 0x123456789abcdef0L); ("host_g", 0x0fedcba987654321L
 
 let text_bytes (laid : Image.laid_out) =
   let addresses =
-    List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x10000L))
+    List.map
+      (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0x10000L))
       (Image.plan_of laid).Image.segments
   in
   match Image.bind_image laid ~addresses with
@@ -16,7 +17,8 @@ let text_bytes (laid : Image.laid_out) =
       | Some s -> Ok s.Image.bytes
       | None -> Error "no .text")
 
-let hex s = String.concat "" (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i])))
+let hex s =
+  String.concat "" (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i])))
 
 let failed = ref false
 
@@ -48,8 +50,7 @@ let () =
   report "aarch64"
     (Result.map_error Diag.render
        (Result.bind
-          (A.lower ~state:Aarch64_encode.default_state
-             (Aarch64_encode.host_trampolines bindings))
+          (A.lower ~state:Aarch64_encode.default_state (Aarch64_encode.host_trampolines bindings))
           (fun l -> A.plan ~entry:"host_f" l)));
   let module X = Driver_direct.Pipeline_direct.Make (X86_64_encode) in
   report "x86_64"

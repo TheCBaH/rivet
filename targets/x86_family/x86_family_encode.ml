@@ -2363,8 +2363,8 @@ module Instruction = struct
     match (i.op, i.ops) with
     | Opcode.Movd, _ :: _ when i.width = 64 ->
         Fmt.pf ppf "movq %a" Fmt.(list ~sep:(any ", ") Operand.pp) i.ops
-    | ( ( Opcode.Neg | Opcode.Mul | Opcode.Div | Opcode.Test | Opcode.Adc | Opcode.Sbb
-        | Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar | Opcode.Shld ) as op,
+    | ( (( Opcode.Neg | Opcode.Mul | Opcode.Div | Opcode.Test | Opcode.Adc | Opcode.Sbb | Opcode.Rcr
+         | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar | Opcode.Shld ) as op),
         _ :: _ ) ->
         Fmt.pf ppf "%s%s %a" (Opcode.name op) (suffix_of_width i.width)
           Fmt.(list ~sep:(any ", ") Operand.pp)
@@ -2378,9 +2378,10 @@ module Instruction = struct
                       && (String.sub r.Reg.name 0 3 = "xmm" || String.sub r.Reg.name 0 3 = "ymm")
                   | _ -> false)
                 i.ops
-           && (match i.op with
-              | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si -> false
-              | _ -> true) ->
+           &&
+           match i.op with
+           | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si -> false
+           | _ -> true ->
         (* an SSE mnemonic is whole: a width letter would make it another *)
         Fmt.pf ppf "%s %a" (Opcode.name i.op) Fmt.(list ~sep:(any ", ") Operand.pp) i.ops
     | _ -> pp ppf i
@@ -9017,7 +9018,7 @@ module Make (M : MODE) = struct
         if String.length r.source > 5 && String.sub r.source 0 5 = "IMUL_" then
           List.find_map
             (function
-              | T.Reg { cls = T.Gpr16 | T.Gpr32 | T.Gpr64 as cls; _ } -> Some (T.class_width cls)
+              | T.Reg { cls = (T.Gpr16 | T.Gpr32 | T.Gpr64) as cls; _ } -> Some (T.class_width cls)
               | _ -> None)
             r.operands
         else None

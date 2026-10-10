@@ -1549,7 +1549,8 @@ let%expect_test "%r8b-%r15b are recognized registers, and 8-bit reg/reg mov uses
 let%expect_test "movzbl and movsbl from %sil/%dil carry the empty REX" =
   disasm "x86_64"
     "\t.text\n\t.globl f\nf:\n\tmovzbl %dil, %edi\n\tmovsbl %sil, %eax\n\tmovzbl %cl, %eax\n\tret\n";
-  [%expect {|
+  [%expect
+    {|
     40000000  40 0f b6 ff  movzbl %dil, %edi  [x86_64.movzx-b-r-rm.asz-absent.opsz-absent.rex-present.reg]
     40000004  40 0f be c6  movsbl %sil, %eax  [x86_64.movsx-b-r-rm.asz-absent.opsz-absent.rex-present.reg]
     40000008  0f b6 c1     movzbl %cl, %eax   [x86_64.movzx-b-r-rm.asz-absent.opsz-absent.rex-absent.reg]
@@ -1572,8 +1573,7 @@ let%expect_test "pp_gnu spells instructions both GNU as and the text parser read
         | Error _ -> failwith mnemonic)
   in
   List.iter
-    (fun i ->
-      Fmt.pr "%a | %a@." X86_64.Instruction.pp i X86_64.Instruction.pp_gnu i)
+    (fun i -> Fmt.pr "%a | %a@." X86_64.Instruction.pp i X86_64.Instruction.pp_gnu i)
     [
       ins "testl" [ reg "r8d"; reg "r8d" ];
       ins "negq" [ reg "rax" ];
@@ -1582,7 +1582,8 @@ let%expect_test "pp_gnu spells instructions both GNU as and the text parser read
       ins "movd" [ reg "r8d"; reg "xmm11" ];
       ins "movl" [ reg "eax"; reg "ecx" ];
     ];
-  [%expect {|
+  [%expect
+    {|
     test %r8d, %r8d | testl %r8d, %r8d
     neg %rax | negq %rax
     shll $2, %eax | shll $2, %eax
@@ -1594,8 +1595,20 @@ let%expect_test "pp_gnu spells instructions both GNU as and the text parser read
    writes [imulq $132, %r8, %rdi] as the imm32 form; reading 0x84 as imm8 is -124. *)
 let%expect_test "three-operand imul picks the rung whose immediate reads back" =
   disasm "x86_64"
-    "\t.text\n\t.globl f\nf:\n\timulq $132, %r8, %rdi\n\timull $200, %eax, %ecx\n\timulq $127, %r8, %rdi\n\timulq $-128, %r8, %rdi\n\timulq $-129, %r8, %rdi\n\timull $4294967295, %eax, %ecx\n\timulq $2147483647, %r8, %rdi\n\timulw $200, %ax, %cx\n\tret\n";
-  [%expect {|
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \timulq $132, %r8, %rdi\n\
+     \timull $200, %eax, %ecx\n\
+     \timulq $127, %r8, %rdi\n\
+     \timulq $-128, %r8, %rdi\n\
+     \timulq $-129, %r8, %rdi\n\
+     \timull $4294967295, %eax, %ecx\n\
+     \timulq $2147483647, %r8, %rdi\n\
+     \timulw $200, %ax, %cx\n\
+     \tret\n";
+  [%expect
+    {|
     40000000  49 69 f8 84 00 00 00  imulq $132, %r8         [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
     40000007  69 c8 c8 00 00 00     imull $200, %eax        [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-absent.reg]
     4000000d  49 6b f8 7f           imulq $127, %r8         [x86_64.imul-r-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
@@ -1611,9 +1624,7 @@ let%expect_test "three-operand imul picks the rung whose immediate reads back" =
 let%expect_test "a Cfi directive prints for GNU and changes no byte" =
   let origin = Foundation.Origin.synthesized ~pass:"test" () in
   let ins =
-    match
-      X86_64.make_surface_instruction ~mnemonic:"ret" ~origin []
-    with
+    match X86_64.make_surface_instruction ~mnemonic:"ret" ~origin [] with
     | Ok s -> (
         match X86_64.simplify_instruction X86_64.default_state s with
         | Ok i -> i
@@ -1623,9 +1634,7 @@ let%expect_test "a Cfi directive prints for GNU and changes no byte" =
   let module N = Asm_core.Normalized_ast in
   let dir directive = N.Directive { directive; origin } in
   let section =
-    dir
-      (Asm_core.Directive.Section
-         { name = ".text"; perms = Asm_core.Perms.rx; nobits = false })
+    dir (Asm_core.Directive.Section { name = ".text"; perms = Asm_core.Perms.rx; nobits = false })
   in
   let module_ items = { N.unit_name = "t"; items } in
   let with_cfi =
@@ -1676,7 +1685,8 @@ let%expect_test "a Cfi directive prints for GNU and changes no byte" =
                      img.Image.segments)))
   in
   Printf.printf "%b\n" (String.equal (bytes with_cfi) (bytes without));
-  [%expect {|
+  [%expect
+    {|
     	.section	.text,"ax",@progbits
     	.globl	f
     f:
@@ -4516,8 +4526,16 @@ let%expect_test "x86 bswap" =
    aarch64-linux-gnu-as/objdump: `mrs x17, fpcr` -> `d53b4411`, `msr fpcr, x17` -> `d51b4411`. *)
 let%expect_test "mrs and msr move FPCR through a 64-bit register" =
   disasm "aarch64"
-    "\t.text\n\t.globl f\nf:\n\tmrs x17, fpcr\n\tmsr fpcr, x17\n\tmrs x0, fpcr\n\tmsr fpcr, x30\n\tret\n";
-  [%expect {|
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tmrs x17, fpcr\n\
+     \tmsr fpcr, x17\n\
+     \tmrs x0, fpcr\n\
+     \tmsr fpcr, x30\n\
+     \tret\n";
+  [%expect
+    {|
     40000000  11 44 3b d5  mrs x17, fpcr  [aarch64.mrs-fpcr]
     40000004  11 44 1b d5  msr fpcr, x17  [aarch64.msr-fpcr]
     40000008  00 44 3b d5  mrs x0, fpcr   [aarch64.mrs-fpcr]
@@ -4529,8 +4547,22 @@ let%expect_test "mrs and msr move FPCR through a 64-bit register" =
    aarch64-linux-gnu-as/objdump byte for byte. *)
 let%expect_test "fsqrt, frintz, fmadd, fmax and fmov to a general register" =
   disasm "aarch64"
-    "\t.text\n\t.globl f\nf:\n\tfsqrt d0, d1\n\tfsqrt s31, s2\n\tfrintz d0, d1\n\tfrintz s3, s30\n\tfmadd d0, d1, d2, d3\n\tfmadd s4, s5, s6, s7\n\tfmov x0, d1\n\tfmov w9, s30\n\tfmax d0, d1, d2\n\tfmax s3, s4, s31\n\tret\n";
-  [%expect {|
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tfsqrt d0, d1\n\
+     \tfsqrt s31, s2\n\
+     \tfrintz d0, d1\n\
+     \tfrintz s3, s30\n\
+     \tfmadd d0, d1, d2, d3\n\
+     \tfmadd s4, s5, s6, s7\n\
+     \tfmov x0, d1\n\
+     \tfmov w9, s30\n\
+     \tfmax d0, d1, d2\n\
+     \tfmax s3, s4, s31\n\
+     \tret\n";
+  [%expect
+    {|
     40000000  20 c0 61 1e  fsqrt d0, d1          [aarch64.fsqrt-d]
     40000004  5f c0 21 1e  fsqrt s31, s2         [aarch64.fsqrt-s]
     40000008  20 c0 65 1e  frintz d0, d1         [aarch64.frintz-d]
@@ -4564,13 +4596,22 @@ let%expect_test "a constructed module prints as GNU assembler source" =
           d (Directive.Sym_type { name = "f"; kind = Directive.Function });
           Normalized_ast.Label { name = "f"; origin };
           i Aarch64.Opcode.Adrp
-            [ reg 1; sym "g" |> fun _ -> Aarch64.Operand.Sym (Expr.Binary (Expr.Add, Expr.Symbol "g", Expr.Const (Foundation.Bigint.of_int 8))) ];
+            [
+              reg 1;
+              ( sym "g" |> fun _ ->
+                Aarch64.Operand.Sym
+                  (Expr.Binary (Expr.Add, Expr.Symbol "g", Expr.Const (Foundation.Bigint.of_int 8)))
+              );
+            ];
           i Aarch64.Opcode.Add
             [
               reg 1;
               reg 1;
               Aarch64.Operand.Sym
-                (Expr.Modifier ("lo12", Expr.Binary (Expr.Add, Expr.Symbol "g", Expr.Const (Foundation.Bigint.of_int 8))));
+                (Expr.Modifier
+                   ( "lo12",
+                     Expr.Binary (Expr.Add, Expr.Symbol "g", Expr.Const (Foundation.Bigint.of_int 8))
+                   ));
             ];
           i Aarch64.Opcode.Ldr
             [
@@ -4587,10 +4628,20 @@ let%expect_test "a constructed module prints as GNU assembler source" =
           i Aarch64.Opcode.Cbz [ reg 2; sym "f" ];
           i Aarch64.Opcode.Bl [ sym "f" ];
           i Aarch64.Opcode.Ret [];
-          d (Directive.Sym_size
+          d
+            (Directive.Sym_size
                { name = "f"; size = Expr.Binary (Expr.Sub, Expr.Current_location, Expr.Symbol "f") });
           d (Directive.Section { name = ".rodata"; perms = Perms.ro; nobits = false });
-          d (Directive.Data { width = 1; values = [ Expr.Const (Foundation.Bigint.of_int 1); Expr.Const (Foundation.Bigint.of_int 255) ] });
+          d
+            (Directive.Data
+               {
+                 width = 1;
+                 values =
+                   [
+                     Expr.Const (Foundation.Bigint.of_int 1);
+                     Expr.Const (Foundation.Bigint.of_int 255);
+                   ];
+               });
           d (Directive.Data { width = 4; values = [ Expr.Symbol "g" ] });
           d (Directive.Section { name = ".bss"; perms = Perms.rw; nobits = true });
           d (Directive.Align { boundary = 16 });
@@ -4604,7 +4655,8 @@ let%expect_test "a constructed module prints as GNU assembler source" =
   in
   print_string
     (Gnu_module.to_string { Gnu_module.type_char = '%' } ~instruction:Aarch64.Instruction.pp_gnu m);
-  [%expect {|
+  [%expect
+    {|
     	.section	.text,"ax",%progbits
     	.balign	4
     	.globl	f
@@ -4634,8 +4686,49 @@ let%expect_test "a constructed module prints as GNU assembler source" =
    transfers and the two-lane conversions. Every word is the one real
    aarch64-linux-gnu-as/objdump produces for the same source. *)
 let%expect_test "Advanced SIMD vector forms" =
-  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tfadd v0.4s, v1.4s, v2.4s\n\tfadd v3.2s, v4.2s, v5.2s\n\tfadd v0.2d, v1.2d, v2.2d\n\tfsub v0.4s, v1.4s, v2.4s\n\tfmul v0.4s, v1.4s, v2.4s\n\tfdiv v0.2d, v1.2d, v2.2d\n\tfmax v0.4s, v1.4s, v31.4s\n\tfmla v0.4s, v1.4s, v2.4s\n\tfmla v7.2d, v8.2d, v9.2d\n\tfneg v0.4s, v1.4s\n\tfsqrt v0.2d, v1.2d\n\tfrintz v0.4s, v1.4s\n\tmov v0.16b, v1.16b\n\tmov v0.8b, v1.8b\n\tdup v0.4s, v1.s[0]\n\tdup v0.2d, v1.d[0]\n\tdup v0.2s, v1.s[0]\n\tdup d0, v1.d[1]\n\tdup s0, v1.s[3]\n\tdup d0, v1.d[0]\n\tins v0.d[1], v1.d[0]\n\tins v0.s[2], v1.s[0]\n\tins v0.s[3], v1.s[0]\n\tins v0.d[1], v1.d[0]\n\tld1 {v0.s}[1], [x1]\n\tld1 {v0.d}[1], [x2]\n\tld1r {v0.4s}, [x1]\n\tld1r {v0.2d}, [x1]\n\tld1r {v0.2s}, [x1]\n\tst1 {v0.s}[3], [x1]\n\tst1 {v0.d}[1], [x1]\n\tldr q0, [x1, #16]\n\tstr q31, [sp, #4080]\n\tldr d0, [x1, #8]\n\tfcvtl v0.2d, v1.2s\n\tfcvtn v0.2s, v1.2d\n\tret\n";
-  [%expect {|
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tfadd v0.4s, v1.4s, v2.4s\n\
+     \tfadd v3.2s, v4.2s, v5.2s\n\
+     \tfadd v0.2d, v1.2d, v2.2d\n\
+     \tfsub v0.4s, v1.4s, v2.4s\n\
+     \tfmul v0.4s, v1.4s, v2.4s\n\
+     \tfdiv v0.2d, v1.2d, v2.2d\n\
+     \tfmax v0.4s, v1.4s, v31.4s\n\
+     \tfmla v0.4s, v1.4s, v2.4s\n\
+     \tfmla v7.2d, v8.2d, v9.2d\n\
+     \tfneg v0.4s, v1.4s\n\
+     \tfsqrt v0.2d, v1.2d\n\
+     \tfrintz v0.4s, v1.4s\n\
+     \tmov v0.16b, v1.16b\n\
+     \tmov v0.8b, v1.8b\n\
+     \tdup v0.4s, v1.s[0]\n\
+     \tdup v0.2d, v1.d[0]\n\
+     \tdup v0.2s, v1.s[0]\n\
+     \tdup d0, v1.d[1]\n\
+     \tdup s0, v1.s[3]\n\
+     \tdup d0, v1.d[0]\n\
+     \tins v0.d[1], v1.d[0]\n\
+     \tins v0.s[2], v1.s[0]\n\
+     \tins v0.s[3], v1.s[0]\n\
+     \tins v0.d[1], v1.d[0]\n\
+     \tld1 {v0.s}[1], [x1]\n\
+     \tld1 {v0.d}[1], [x2]\n\
+     \tld1r {v0.4s}, [x1]\n\
+     \tld1r {v0.2d}, [x1]\n\
+     \tld1r {v0.2s}, [x1]\n\
+     \tst1 {v0.s}[3], [x1]\n\
+     \tst1 {v0.d}[1], [x1]\n\
+     \tldr q0, [x1, #16]\n\
+     \tstr q31, [sp, #4080]\n\
+     \tldr d0, [x1, #8]\n\
+     \tfcvtl v0.2d, v1.2s\n\
+     \tfcvtn v0.2s, v1.2d\n\
+     \tret\n";
+  [%expect
+    {|
     40000000  20 d4 22 4e  fadd v0.4s, v1.4s, v2.4s   [aarch64.vfadd-s4]
     40000004  83 d4 25 0e  fadd v3.2s, v4.2s, v5.2s   [aarch64.vfadd-s2]
     40000008  20 d4 62 4e  fadd v0.2d, v1.2d, v2.2d   [aarch64.vfadd-d2]
@@ -4677,8 +4770,32 @@ let%expect_test "Advanced SIMD vector forms" =
 (* Vector compares, bitwise operations on bytes and the bitwise select that make a mask: the words
    real aarch64-linux-gnu-as/objdump produces, with [mov] the [orr] of one register with itself. *)
 let%expect_test "Advanced SIMD masks" =
-  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tfcmeq v0.4s, v1.4s, v2.4s\n\tfcmge v0.4s, v1.4s, v2.4s\n\tfcmgt v0.4s, v1.4s, v2.4s\n\tfcmgt v0.2d, v1.2d, v31.2d\n\tfcmeq v3.2d, v4.2d, v5.2d\n\tand v0.16b, v1.16b, v2.16b\n\torr v0.16b, v1.16b, v2.16b\n\teor v0.16b, v1.16b, v2.16b\n\tnot v0.16b, v1.16b\n\tbsl v0.16b, v1.16b, v2.16b\n\tbsl v7.16b, v31.16b, v9.16b\n\tbit v0.16b, v1.16b, v2.16b\n\tbit v7.16b, v31.16b, v9.16b\n\tbit v0.8b, v1.8b, v2.8b\n\tdup v0.4s, w1\n\tdup v0.2d, x1\n\tdup v31.4s, w30\n\tdup v3.2s, w4\n\tmov v0.16b, v1.16b\n\tret\n";
-  [%expect {|
+  disasm "aarch64"
+    "\t.text\n\
+     \t.globl f\n\
+     f:\n\
+     \tfcmeq v0.4s, v1.4s, v2.4s\n\
+     \tfcmge v0.4s, v1.4s, v2.4s\n\
+     \tfcmgt v0.4s, v1.4s, v2.4s\n\
+     \tfcmgt v0.2d, v1.2d, v31.2d\n\
+     \tfcmeq v3.2d, v4.2d, v5.2d\n\
+     \tand v0.16b, v1.16b, v2.16b\n\
+     \torr v0.16b, v1.16b, v2.16b\n\
+     \teor v0.16b, v1.16b, v2.16b\n\
+     \tnot v0.16b, v1.16b\n\
+     \tbsl v0.16b, v1.16b, v2.16b\n\
+     \tbsl v7.16b, v31.16b, v9.16b\n\
+     \tbit v0.16b, v1.16b, v2.16b\n\
+     \tbit v7.16b, v31.16b, v9.16b\n\
+     \tbit v0.8b, v1.8b, v2.8b\n\
+     \tdup v0.4s, w1\n\
+     \tdup v0.2d, x1\n\
+     \tdup v31.4s, w30\n\
+     \tdup v3.2s, w4\n\
+     \tmov v0.16b, v1.16b\n\
+     \tret\n";
+  [%expect
+    {|
     40000000  20 e4 22 4e  fcmeq v0.4s, v1.4s, v2.4s    [aarch64.vfcmeq-s4]
     40000004  20 e4 22 6e  fcmge v0.4s, v1.4s, v2.4s    [aarch64.vfcmge-s4]
     40000008  20 e4 a2 6e  fcmgt v0.4s, v1.4s, v2.4s    [aarch64.vfcmgt-s4]
@@ -4704,8 +4821,10 @@ let%expect_test "Advanced SIMD masks" =
    condition flags and reads them back. Checked against real aarch64-linux-gnu-as/objdump:
    `mrs x9, nzcv` -> `d53b4209`, `msr nzcv, x9` -> `d51b4209`. *)
 let%expect_test "mrs and msr move NZCV through a 64-bit register" =
-  disasm "aarch64" "\t.text\n\t.globl f\nf:\n\tmrs x9, nzcv\n\tmsr nzcv, x9\n\tmsr nzcv, x30\n\tret\n";
-  [%expect {|
+  disasm "aarch64"
+    "\t.text\n\t.globl f\nf:\n\tmrs x9, nzcv\n\tmsr nzcv, x9\n\tmsr nzcv, x30\n\tret\n";
+  [%expect
+    {|
     40000000  09 42 3b d5  mrs x9, nzcv   [aarch64.mrs-nzcv]
     40000004  09 42 1b d5  msr nzcv, x9   [aarch64.msr-nzcv]
     40000008  1e 42 1b d5  msr nzcv, x30  [aarch64.msr-nzcv]

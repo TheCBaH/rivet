@@ -24,6 +24,7 @@ external copy_out : int64 -> int -> string = "native_exec_copy_out"
 external call_entry : int64 -> io -> int64 = "native_exec_call"
 external host_isa_stub : unit -> string = "native_exec_host_isa"
 external symbol_stub : string -> int64 = "native_exec_symbol"
+
 external io_address : ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t -> int64
   = "native_exec_io_address"
 
@@ -313,10 +314,10 @@ let read_global t name =
 let write_global t name bytes =
   with_open t (fun () ->
       match (List.assoc_opt name t.image.exports, List.assoc_opt name t.image.symbol_sizes) with
-      | Some a, Some sz ->
+      | Some a, Some sz -> (
           let expected = Int64.to_int sz and actual = String.length bytes in
           if expected <> actual then Error (Global_size { name; expected; actual })
-          else ( try Ok (copy_in a bytes) with Failure m -> Error (Os m))
+          else try Ok (copy_in a bytes) with Failure m -> Error (Os m))
       | _ -> Error (Missing_global name))
 
 let run_here ?observe ?(read_globals = []) (laid : Image.laid_out) ~(io : io) =
