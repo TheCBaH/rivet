@@ -2,7 +2,7 @@
 ; assembly text Native_exec generates for the same names and addresses: the
 ; two must lay out the same bytes. Needs Native_exec, so it is gated with it.
 
-(test
+(executable
  (name trampolines)
  (modules trampolines)
  (optional)
@@ -15,6 +15,11 @@
   target_intf
   foundation
   asm_core
-  image)
+  image))
+
+(rule
+ (alias runtest)
  (enabled_if
-  (= %{env:RIVET_NATIVE_EXEC=false} true)))
+  (= %{env:RIVET_NATIVE_EXEC=false} true))
+ (action
+  (run %{exe:trampolines.exe})))
