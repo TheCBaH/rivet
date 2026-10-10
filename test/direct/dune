@@ -13,8 +13,4 @@
   aarch64_encode
   err_trace
   fmt)
- (forbidden_libraries
-  asm_syntax
-  driver
-  target_intf
-  aarch64))
+ (forbidden_libraries asm_syntax driver target_intf aarch64))
