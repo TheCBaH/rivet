@@ -671,3 +671,55 @@ let%expect_test "RISC-V mnemonics without an owning component" =
       base: add sub sll slt sltu snez neg seqz sltz sgtz zext.b xor srl sra or and addw subw sllw srlw sraw addi slti sltiu xori ori andi slli srli srai addiw slliw srliw sraiw sext.w lb lh lw lbu lhu lwu ld sb sh sw sd beq bne blt bge bltu bgeu bgtu bleu bgt ble beqz bnez bgez bltz blez bgtz lui auipc jal jalr mv nop j jr call tail la lla li ret ecall ebreak unimp fence fence.tso pause
     riscv64: 0 vector, 0 compressed unowned
       base: add sub sll slt sltu snez neg seqz sltz sgtz zext.b xor srl sra or and addw subw sllw srlw sraw addi slti sltiu xori ori andi slli srli srai addiw slliw srliw sraiw sext.w lb lh lw lbu lhu lwu ld sb sh sw sd beq bne blt bge bltu bgeu bgtu bleu bgt ble beqz bnez bgez bltz blez bgtz lui auipc jal jalr mv nop j jr call tail la lla li ret ecall ebreak unimp fence fence.tso pause |}]
+
+(* Two generated rows overlap when one word can match both. Every overlap must be classified in the
+   policy, and a specialization must come first in table order, since that is the order rows are
+   tried in. *)
+let%expect_test "generated RISC-V rows that overlap are all classified" =
+  let module Rows = Riscv_family_encode.Riscv_table_rows in
+  let module Row = Riscv_family_encode.Riscv_table_row in
+  let module Policy = Riscv_family_encode.Riscv_overlap in
+  let rows = Rows.rows in
+  let counts = Hashtbl.create 4 in
+  let problems = ref [] in
+  Array.iteri
+    (fun i (a : Row.row) ->
+      Array.iteri
+        (fun j (b : Row.row) ->
+          let same_length = Int64.logand a.match_ 3L = 3L = (Int64.logand b.match_ 3L = 3L) in
+          let common = Int64.logand a.mask b.mask in
+          if
+            j > i && same_length
+            && (a.xlen = 0 || b.xlen = 0 || a.xlen = b.xlen)
+            && Int64.equal (Int64.logand a.match_ common) (Int64.logand b.match_ common)
+          then
+            match Policy.find a.mnemonic b.mnemonic with
+            | None ->
+                problems := Printf.sprintf "%s / %s unclassified" a.mnemonic b.mnemonic :: !problems
+            | Some r ->
+                let name =
+                  match r with
+                  | Policy.Specialization -> "specialization"
+                  | Disjoint_operands -> "disjoint operands"
+                  | Exclusive_by_configuration -> "exclusive by configuration"
+                in
+                Hashtbl.replace counts name
+                  (1 + Option.value (Hashtbl.find_opt counts name) ~default:0);
+                if
+                  r = Policy.Specialization
+                  && not
+                       (List.exists
+                          (fun (x, y, _) -> x = a.mnemonic && y = b.mnemonic)
+                          Policy.approved)
+                then
+                  problems := Printf.sprintf "%s must precede %s" b.mnemonic a.mnemonic :: !problems)
+        rows)
+    rows;
+  List.iter print_endline (List.rev !problems);
+  List.iter
+    (fun k -> Printf.printf "%s: %d\n" k (Hashtbl.find counts k))
+    (List.sort compare (Hashtbl.fold (fun k _ acc -> k :: acc) counts []));
+  [%expect {|
+    disjoint operands: 11
+    exclusive by configuration: 7
+    specialization: 15 |}]

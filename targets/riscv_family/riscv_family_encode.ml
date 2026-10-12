@@ -5,6 +5,7 @@ module C = Codec
 module Riscv_ext_m = Riscv_ext_m
 module Riscv_table_row = Riscv_table_row
 module Riscv_table_rows = Riscv_table_rows
+module Riscv_overlap = Riscv_overlap
 
 module type PROFILE = sig
   val name : string
