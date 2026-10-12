@@ -2726,7 +2726,7 @@ module Make (P : PROFILE) = struct
 
   (* The separable instruction components this family publishes (one per gating feature). The
      rest of the family is the always-available base. *)
-  let components = [ Riscv_ext_m.zmmul; Riscv_ext_m.m ]
+  let components = [ Riscv_ext_m.zmmul; Riscv_ext_m.m; Riscv_ext_fd.f; Riscv_ext_fd.d ]
 
   (* [config] is the validated feature set. It lives in the state, not beside it, so it rides
      everywhere the state already goes: each unit starts from the caller's initial state, and a
@@ -2806,10 +2806,15 @@ module Make (P : PROFILE) = struct
   (* The one place a form's component is checked against the configuration. Every stage that can
      see an opcode goes through it, so a disabled form is refused whichever path reached it. *)
   let feature_gate ?origin state mnemonic =
-    match Target_component.feature_of_mnemonic components mnemonic with
-    | Some f when not (Target_config.enabled state.config f) ->
-        Error (diag ~pos:__POS__ ?origin (`Feature_disabled (mnemonic, f)))
-    | _ -> Ok ()
+    match Target_component.legal components mnemonic with
+    | None -> Ok ()
+    | Some req -> (
+        match Target_component.Req.unmet (Target_config.enabled state.config) req with
+        | None -> Ok ()
+        | Some unmet ->
+            Error
+              (diag ~pos:__POS__ ?origin
+                 (`Feature_disabled (mnemonic, Fmt.str "%a" Target_component.Req.pp unmet))))
 
   let required_feature (i : Instruction.t) =
     Target_component.feature_of_mnemonic components (Opcode.name i.op)

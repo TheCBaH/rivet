@@ -83,24 +83,24 @@ let%expect_test "the effective configuration of each target" =
     [ "riscv32"; "riscv64"; "x86_32"; "x86_64"; "arm"; "aarch64" ];
   [%expect
     {|
-    riscv32  ""           -> m,zmmul
+    riscv32  ""           -> d,f,m,zmmul
     riscv32  "none"       ->
     riscv32  "none,+m"    -> m,zmmul
-    riscv32  "-m"         -> zmmul
+    riscv32  "-m"         -> d,f,zmmul
     riscv32  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv32  "-m,-zmmul"  ->
-    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m)
-    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m)
-    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m)
-    riscv64  ""           -> m,zmmul
+    riscv32  "-m,-zmmul"  -> d,f
+    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d)
+    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d)
+    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d)
+    riscv64  ""           -> d,f,m,zmmul
     riscv64  "none"       ->
     riscv64  "none,+m"    -> m,zmmul
-    riscv64  "-m"         -> zmmul
+    riscv64  "-m"         -> d,f,zmmul
     riscv64  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv64  "-m,-zmmul"  ->
-    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m)
-    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m)
-    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m)
+    riscv64  "-m,-zmmul"  -> d,f
+    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d)
+    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d)
+    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d)
     x86_32   ""           -> x87
     x86_32   "none"       ->
     x86_32   "none,+m"    -> error: unknown feature m (known: x87)
@@ -355,7 +355,7 @@ let%expect_test "an invalid configuration fails before any source is read" =
   [%expect
     {|
     riscv64  [-zmmul   ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: feature m requires zmmul, which is disabled
-    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m)
+    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m, f, d)
     arm      [x87      ] nop                    REFUSED config.invalid: invalid feature configuration: unknown feature x87 (known: (none)) |}]
 
 (* {1 Normalized and lowered instructions handed in directly} *)
@@ -620,8 +620,8 @@ let%expect_test "the default configuration is pinned" =
     x86_64   enabled=[x87] components=[x86.x87]
     arm      enabled=[] components=[]
     aarch64  enabled=[] components=[]
-    riscv32  enabled=[m,zmmul] components=[riscv.zmmul,riscv.m]
-    riscv64  enabled=[m,zmmul] components=[riscv.zmmul,riscv.m] |}]
+    riscv32  enabled=[d,f,m,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d]
+    riscv64  enabled=[d,f,m,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d] |}]
 
 (* [add.uw rd, rs, x0] is also [zext.w]; refusing the specialization leaves the general form. *)
 let%expect_test "a disabled specialization falls back to the enabled general form" =
@@ -648,3 +648,96 @@ let%expect_test "a disabled specialization falls back to the enabled general for
     no zext.w: add.uw (4 bytes)
     neither: refused
     |}]
+
+(* {1 Floating point} *)
+
+let%expect_test "F and D: text path, both XLENs" =
+  List.iter
+    (fun (target, features) ->
+      List.iter (show ~features target)
+        [
+          "flw f1, 0(x2)";
+          "fadd.s f1, f2, f3";
+          "fadd.d f1, f2, f3";
+          "fneg.d f1, f2";
+          "fmv.x.w x5, f1";
+          "add x5, x6, x7";
+        ])
+    [
+      ("riscv32", "none,+f,+d"); ("riscv64", "none,+f"); ("riscv64", "none"); ("riscv64", "none,+d");
+    ];
+  [%expect
+    {|
+    riscv32  [none,+f,+d] flw f1, 0(x2)          87 20 01 00
+    riscv32  [none,+f,+d] fadd.s f1, f2, f3      d3 70 31 00
+    riscv32  [none,+f,+d] fadd.d f1, f2, f3      d3 70 31 02
+    riscv32  [none,+f,+d] fneg.d f1, f2          d3 10 21 22
+    riscv32  [none,+f,+d] fmv.x.w x5, f1         d3 82 00 e0
+    riscv32  [none,+f,+d] add x5, x6, x7         b3 02 73 00
+    riscv64  [none,+f  ] flw f1, 0(x2)          87 20 01 00
+    riscv64  [none,+f  ] fadd.s f1, f2, f3      d3 70 31 00
+    riscv64  [none,+f  ] fadd.d f1, f2, f3      REFUSED riscv64.feature: fadd.d requires feature d, which is not enabled
+    riscv64  [none,+f  ] fneg.d f1, f2          REFUSED riscv64.feature: fneg.d requires feature d, which is not enabled
+    riscv64  [none,+f  ] fmv.x.w x5, f1         d3 82 00 e0
+    riscv64  [none,+f  ] add x5, x6, x7         b3 02 73 00
+    riscv64  [none     ] flw f1, 0(x2)          REFUSED riscv64.feature: flw requires feature f, which is not enabled
+    riscv64  [none     ] fadd.s f1, f2, f3      REFUSED riscv64.feature: fadd.s requires feature f, which is not enabled
+    riscv64  [none     ] fadd.d f1, f2, f3      REFUSED riscv64.feature: fadd.d requires feature d, which is not enabled
+    riscv64  [none     ] fneg.d f1, f2          REFUSED riscv64.feature: fneg.d requires feature d, which is not enabled
+    riscv64  [none     ] fmv.x.w x5, f1         REFUSED riscv64.feature: fmv.x.w requires feature f, which is not enabled
+    riscv64  [none     ] add x5, x6, x7         b3 02 73 00
+    riscv64  [none,+d  ] flw f1, 0(x2)          87 20 01 00
+    riscv64  [none,+d  ] fadd.s f1, f2, f3      d3 70 31 00
+    riscv64  [none,+d  ] fadd.d f1, f2, f3      d3 70 31 02
+    riscv64  [none,+d  ] fneg.d f1, f2          d3 10 21 22
+    riscv64  [none,+d  ] fmv.x.w x5, f1         d3 82 00 e0
+    riscv64  [none,+d  ] add x5, x6, x7         b3 02 73 00 |}]
+
+let%expect_test "F and D: lowered and decoded forms" =
+  let module E = Riscv64_encode in
+  let config text =
+    match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
+  in
+  let lowered =
+    E.Lowered.R { name = "fadd.s"; opcode = 0x53; funct3 = 7; funct7 = 0; rd = 1; rs1 = 2; rs2 = 3 }
+  in
+  List.iter
+    (fun features ->
+      let state = E.initial_state (config features) in
+      Printf.printf "%-10s encode_in -> %s\n" features
+        (match E.encode_in state lowered with
+        | Ok (`Fixed f) -> hex f.Asm_core.Lowered_ast.bytes
+        | Ok (`Relax _) -> "relax"
+        | Error e ->
+            "refused: " ^ Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))))
+    [ "none,+f"; "none" ];
+  let code =
+    bytes_of "riscv64" "\t.text\n\tfadd.d f1, f2, f3\n\tfmv.x.w x5, f1\n\taddi x5, x6, 1\n"
+  in
+  List.iter
+    (fun features ->
+      Printf.printf "-- %s\n" features;
+      disasm ~features "riscv64" code;
+      disasm ~features ~inspect:true "riscv64" code)
+    [ "none,+f"; "none,+f,+d"; "none" ];
+  [%expect
+    {|
+    none,+f    encode_in -> d3 70 31 00
+    none       encode_in -> refused: fadd.s requires feature f, which is not enabled
+    -- none,+f
+    REFUSED riscv64.feature: fadd.d requires feature d, which is not enabled
+    00001000  d3 70 31 02  fadd.d f1, f2, f3  ; requires feature d, which is not enabled  [riscv64.fadd.d]
+    00001004  d3 82 00 e0  fmv.x.w x5, f1                                                 [riscv64.fmv.x.w]
+    00001008  93 02 13 00  addi x5, x6, 1                                                 [riscv64.addi]
+    -- none,+f,+d
+    00001000  d3 70 31 02  fadd.d f1, f2, f3  [riscv64.fadd.d]
+    00001004  d3 82 00 e0  fmv.x.w x5, f1     [riscv64.fmv.x.w]
+    00001008  93 02 13 00  addi x5, x6, 1     [riscv64.addi]
+    00001000  d3 70 31 02  fadd.d f1, f2, f3  [riscv64.fadd.d]
+    00001004  d3 82 00 e0  fmv.x.w x5, f1     [riscv64.fmv.x.w]
+    00001008  93 02 13 00  addi x5, x6, 1     [riscv64.addi]
+    -- none
+    REFUSED riscv64.feature: fadd.d requires feature d, which is not enabled
+    00001000  d3 70 31 02  fadd.d f1, f2, f3  ; requires feature d, which is not enabled  [riscv64.fadd.d]
+    00001004  d3 82 00 e0  fmv.x.w x5, f1  ; requires feature f, which is not enabled     [riscv64.fmv.x.w]
+    00001008  93 02 13 00  addi x5, x6, 1                                                 [riscv64.addi] |}]
