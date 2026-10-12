@@ -1,9 +1,10 @@
 open Foundation
 
 module type PROFILE = Riscv_family_encode.PROFILE
+module type EXTENSIONS = Riscv_family_encode.EXTENSIONS
 
-module Make (P : PROFILE) = struct
-  include Riscv_family_encode.Make (P)
+module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
+  include Riscv_family_encode.Make_with (P) (E)
 
   type parse_error_kind =
     [ `Unknown_register of string
@@ -185,3 +186,10 @@ module Make (P : PROFILE) = struct
           Target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unsupported_option "relax"))
       | o -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unknown_option o))
 end
+
+module Make (P : PROFILE) =
+  Make_with
+    (P)
+    (struct
+      let definition = Riscv_family_encode.Riscv_extensions.standard ~xlen:P.xlen
+    end)

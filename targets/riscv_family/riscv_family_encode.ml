@@ -6,6 +6,7 @@ module Riscv_ext_m = Riscv_ext_m
 module Riscv_table_row = Riscv_table_row
 module Riscv_table_rows = Riscv_table_rows
 module Riscv_overlap = Riscv_overlap
+module Riscv_extensions = Riscv_extensions
 
 module type PROFILE = sig
   val name : string
@@ -13,9 +14,21 @@ module type PROFILE = sig
   val xlen : int
 end
 
-module Make (P : PROFILE) = struct
+module type EXTENSIONS = sig
+  val definition : Riscv_extensions.Validated.t
+end
+
+module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   open Asm_core.Lowered_ast
 
+  let () =
+    if Riscv_extensions.Validated.xlen E.definition <> P.xlen then
+      invalid_arg
+        (Printf.sprintf "%s: extensions validated for XLEN %d, profile is XLEN %d" P.name
+           (Riscv_extensions.Validated.xlen E.definition)
+           P.xlen)
+
+  let table_rows = Riscv_extensions.Validated.rows E.definition
   let name = P.name
   let triple = P.triple
   let xlen = P.xlen
@@ -888,7 +901,7 @@ module Make (P : PROFILE) = struct
       | Table of int  (** a generated {!Riscv_table_rows} row, by index (DEC-RV-TABLE) *)
 
     let name = function
-      | Table i -> Riscv_table_rows.rows.(i).Riscv_table_row.mnemonic
+      | Table i -> table_rows.(i).Riscv_table_row.mnemonic
       | Add -> "add"
       | Sub -> "sub"
       | Sll -> "sll"
@@ -2373,7 +2386,7 @@ module Make (P : PROFILE) = struct
     (* The first generated row spelled [s] for this XLEN; lowering tries every
        row with that spelling, so the index only names the mnemonic. *)
     let table_index s =
-      let rows = Riscv_table_rows.rows in
+      let rows = table_rows in
       let rec go i =
         if i >= Array.length rows then None
         else
@@ -2727,83 +2740,7 @@ module Make (P : PROFILE) = struct
 
   (* The separable instruction components this family publishes (one per gating feature). The
      rest of the family is the always-available base. *)
-  let components =
-    List.map
-      (Target_component.specialize ~xlen)
-      [
-        Riscv_ext_m.zmmul;
-        Riscv_ext_m.m;
-        Riscv_ext_fd.f;
-        Riscv_ext_fd.d;
-        Riscv_ext_a.a;
-        Riscv_ext_a.zacas;
-        Riscv_ext_a.zabha;
-        Riscv_ext_fp.q;
-        Riscv_ext_fp.zfh;
-        Riscv_ext_fp.zfhmin;
-        Riscv_ext_fp.zfa;
-        Riscv_ext_fp.zfbfmin;
-        Riscv_ext_b.zba;
-        Riscv_ext_b.zbb;
-        Riscv_ext_b.zbs;
-        Riscv_ext_b.zbc;
-        Riscv_ext_b.zbkb;
-        Riscv_ext_b.zbkc;
-        Riscv_ext_b.zbkx;
-        Riscv_ext_b.zknd;
-        Riscv_ext_b.zkne;
-        Riscv_ext_b.zknh;
-        Riscv_ext_b.zksed;
-        Riscv_ext_b.zksh;
-        Riscv_ext_b.zicond;
-        Riscv_ext_b.b;
-        Riscv_ext_b.zkn;
-        Riscv_ext_b.zks;
-        Riscv_ext_b.zk;
-        Riscv_ext_sys.zicsr;
-        Riscv_ext_sys.zifencei;
-        Riscv_ext_sys.zicntr;
-        Riscv_ext_sys.zihintntl;
-        Riscv_ext_sys.zawrs;
-        Riscv_ext_sys.zimop;
-        Riscv_ext_sys.zicfiss;
-        Riscv_ext_sys.zicfilp;
-        Riscv_ext_sys.zicbom;
-        Riscv_ext_sys.zicboz;
-        Riscv_ext_sys.zicbop;
-        Riscv_ext_sys.system;
-        Riscv_ext_sys.s;
-        Riscv_ext_sys.h;
-        Riscv_ext_sys.svinval;
-        Riscv_ext_sys.sdext;
-        Riscv_ext_sys.ssctr;
-        Riscv_ext_v.v;
-        Riscv_ext_v.zvbb;
-        Riscv_ext_v.zvkned;
-        Riscv_ext_v.zvbc;
-        Riscv_ext_v.zvknha;
-        Riscv_ext_v.zvksed;
-        Riscv_ext_v.zvkg;
-        Riscv_ext_v.zvksh;
-        Riscv_ext_v.zvfbfmin;
-        Riscv_ext_v.zvfbfwma;
-        Riscv_ext_v.zvkb;
-        Riscv_ext_v.zvknhb;
-        Riscv_ext_v.zvkn;
-        Riscv_ext_v.zvks;
-        Riscv_ext_v.zvknc;
-        Riscv_ext_v.zvkng;
-        Riscv_ext_v.zvksc;
-        Riscv_ext_v.zvksg;
-        Riscv_ext_c.zca;
-        Riscv_ext_c.zcd;
-        Riscv_ext_c.zcf;
-        Riscv_ext_c.zcb;
-        Riscv_ext_c.zcmp;
-        Riscv_ext_c.zcmt;
-        Riscv_ext_c.zcmop;
-        Riscv_ext_c.c;
-      ]
+  let components = Riscv_extensions.Validated.components E.definition
 
   (* [config] is the validated feature set. It lives in the state, not beside it, so it rides
      everywhere the state already goes: each unit starts from the caller's initial state, and a
@@ -4965,7 +4902,7 @@ module Make (P : PROFILE) = struct
   (* Every row spelled like row [i] is tried in table order; the first whose
      operands all fit is the encoding. *)
   let table_lower i ops =
-    let mnemonic = Riscv_table_rows.rows.(i).Riscv_table_row.mnemonic in
+    let mnemonic = table_rows.(i).Riscv_table_row.mnemonic in
     let encode_row (r : Riscv_table_row.row) =
       (* [Tied] fields are not spelled; a trailing [Rm] may be omitted. *)
       let spelled =
@@ -5003,7 +4940,7 @@ module Make (P : PROFILE) = struct
           | Some _ -> acc
           | None ->
               if String.equal r.mnemonic mnemonic && table_row_applies r then encode_row r else None)
-        None Riscv_table_rows.rows
+        None table_rows
     in
     match found with
     | Some word when Int64.logand word 3L <> 3L ->
@@ -5015,8 +4952,7 @@ module Make (P : PROFILE) = struct
     let opn = Opcode.name i.Instruction.op in
     match (i.op, i.ops) with
     | Opcode.Table row, _
-      when Int64.logand Riscv_table_rows.rows.(row).Riscv_table_row.match_ 3L <> 3L && not state.rvc
-      ->
+      when Int64.logand table_rows.(row).Riscv_table_row.match_ 3L <> 3L && not state.rvc ->
         Error (diag ~pos:__POS__ (`Compressed_disabled opn))
     | Opcode.Table row, ops -> table_lower row ops
     | ( ( Opcode.Mul | Remu | Mulh | Mulhsu | Mulhu | Div | Divu | Rem | Mulw | Divw | Divuw | Remw
@@ -7899,7 +7835,7 @@ module Make (P : PROFILE) = struct
   (* DEC-RV-TABLE: tried only after the hand-written decoder finds nothing, so a
      generated row never shadows a hand-written form. *)
   let table_matches ?(half = false) ?(legal = fun _ -> true) ~first_only w =
-    let rows = Riscv_table_rows.rows in
+    let rows = table_rows in
     let field lsb width = bits w lsb width in
     let unscatter (sc : Riscv_table_row.scatter) =
       let v =
@@ -8617,4 +8553,34 @@ module Make (P : PROFILE) = struct
      profiles - a multiple of its own 16-byte alignment - but 68/100/180 bytes
      (none a multiple of 16) on x86_32/arm/aarch64. *)
   let pad_section_to_alignment = true
+end
+
+module Make (P : PROFILE) =
+  Make_with
+    (P)
+    (struct
+      let definition = Riscv_extensions.standard ~xlen:P.xlen
+    end)
+
+module Extensions = struct
+  type definition = Riscv_extensions.definition = {
+    components : Target_component.t list;
+    rows : Riscv_table_row.row array;
+  }
+
+  module Validated = Riscv_extensions.Validated
+
+  let standard = Riscv_extensions.standard
+
+  (* The forms the encoder spells out in code do not depend on the profile. *)
+  let handwritten =
+    lazy
+      (let module Probe = Make (struct
+         let name = "probe"
+         let triple = "probe"
+         let xlen = 64
+       end) in
+      List.map Probe.Opcode.name Probe.Opcode.all)
+
+  let make ~xlen def = Riscv_extensions.make ~handwritten:(Lazy.force handwritten) ~xlen def
 end
