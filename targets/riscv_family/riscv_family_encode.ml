@@ -2727,72 +2727,82 @@ module Make (P : PROFILE) = struct
   (* The separable instruction components this family publishes (one per gating feature). The
      rest of the family is the always-available base. *)
   let components =
-    [
-      Riscv_ext_m.zmmul;
-      Riscv_ext_m.m;
-      Riscv_ext_fd.f;
-      Riscv_ext_fd.d;
-      Riscv_ext_a.a;
-      Riscv_ext_a.zacas;
-      Riscv_ext_a.zabha;
-      Riscv_ext_fp.q;
-      Riscv_ext_fp.zfh;
-      Riscv_ext_fp.zfhmin;
-      Riscv_ext_fp.zfa;
-      Riscv_ext_fp.zfbfmin;
-      Riscv_ext_b.zba;
-      Riscv_ext_b.zbb;
-      Riscv_ext_b.zbs;
-      Riscv_ext_b.zbc;
-      Riscv_ext_b.zbkb;
-      Riscv_ext_b.zbkc;
-      Riscv_ext_b.zbkx;
-      Riscv_ext_b.zknd;
-      Riscv_ext_b.zkne;
-      Riscv_ext_b.zknh;
-      Riscv_ext_b.zksed;
-      Riscv_ext_b.zksh;
-      Riscv_ext_b.zicond;
-      Riscv_ext_b.b;
-      Riscv_ext_b.zkn;
-      Riscv_ext_b.zks;
-      Riscv_ext_b.zk;
-      Riscv_ext_sys.zicsr;
-      Riscv_ext_sys.zifencei;
-      Riscv_ext_sys.zicntr;
-      Riscv_ext_sys.zihintntl;
-      Riscv_ext_sys.zawrs;
-      Riscv_ext_sys.zimop;
-      Riscv_ext_sys.zicfiss;
-      Riscv_ext_sys.zicfilp;
-      Riscv_ext_sys.zicbom;
-      Riscv_ext_sys.zicboz;
-      Riscv_ext_sys.zicbop;
-      Riscv_ext_sys.system;
-      Riscv_ext_sys.s;
-      Riscv_ext_sys.h;
-      Riscv_ext_sys.svinval;
-      Riscv_ext_sys.sdext;
-      Riscv_ext_sys.ssctr;
-      Riscv_ext_v.v;
-      Riscv_ext_v.zvbb;
-      Riscv_ext_v.zvkned;
-      Riscv_ext_v.zvbc;
-      Riscv_ext_v.zvknha;
-      Riscv_ext_v.zvksed;
-      Riscv_ext_v.zvkg;
-      Riscv_ext_v.zvksh;
-      Riscv_ext_v.zvfbfmin;
-      Riscv_ext_v.zvfbfwma;
-      Riscv_ext_v.zvkb;
-      Riscv_ext_v.zvknhb;
-      Riscv_ext_v.zvkn;
-      Riscv_ext_v.zvks;
-      Riscv_ext_v.zvknc;
-      Riscv_ext_v.zvkng;
-      Riscv_ext_v.zvksc;
-      Riscv_ext_v.zvksg;
-    ]
+    List.map
+      (Target_component.specialize ~xlen)
+      [
+        Riscv_ext_m.zmmul;
+        Riscv_ext_m.m;
+        Riscv_ext_fd.f;
+        Riscv_ext_fd.d;
+        Riscv_ext_a.a;
+        Riscv_ext_a.zacas;
+        Riscv_ext_a.zabha;
+        Riscv_ext_fp.q;
+        Riscv_ext_fp.zfh;
+        Riscv_ext_fp.zfhmin;
+        Riscv_ext_fp.zfa;
+        Riscv_ext_fp.zfbfmin;
+        Riscv_ext_b.zba;
+        Riscv_ext_b.zbb;
+        Riscv_ext_b.zbs;
+        Riscv_ext_b.zbc;
+        Riscv_ext_b.zbkb;
+        Riscv_ext_b.zbkc;
+        Riscv_ext_b.zbkx;
+        Riscv_ext_b.zknd;
+        Riscv_ext_b.zkne;
+        Riscv_ext_b.zknh;
+        Riscv_ext_b.zksed;
+        Riscv_ext_b.zksh;
+        Riscv_ext_b.zicond;
+        Riscv_ext_b.b;
+        Riscv_ext_b.zkn;
+        Riscv_ext_b.zks;
+        Riscv_ext_b.zk;
+        Riscv_ext_sys.zicsr;
+        Riscv_ext_sys.zifencei;
+        Riscv_ext_sys.zicntr;
+        Riscv_ext_sys.zihintntl;
+        Riscv_ext_sys.zawrs;
+        Riscv_ext_sys.zimop;
+        Riscv_ext_sys.zicfiss;
+        Riscv_ext_sys.zicfilp;
+        Riscv_ext_sys.zicbom;
+        Riscv_ext_sys.zicboz;
+        Riscv_ext_sys.zicbop;
+        Riscv_ext_sys.system;
+        Riscv_ext_sys.s;
+        Riscv_ext_sys.h;
+        Riscv_ext_sys.svinval;
+        Riscv_ext_sys.sdext;
+        Riscv_ext_sys.ssctr;
+        Riscv_ext_v.v;
+        Riscv_ext_v.zvbb;
+        Riscv_ext_v.zvkned;
+        Riscv_ext_v.zvbc;
+        Riscv_ext_v.zvknha;
+        Riscv_ext_v.zvksed;
+        Riscv_ext_v.zvkg;
+        Riscv_ext_v.zvksh;
+        Riscv_ext_v.zvfbfmin;
+        Riscv_ext_v.zvfbfwma;
+        Riscv_ext_v.zvkb;
+        Riscv_ext_v.zvknhb;
+        Riscv_ext_v.zvkn;
+        Riscv_ext_v.zvks;
+        Riscv_ext_v.zvknc;
+        Riscv_ext_v.zvkng;
+        Riscv_ext_v.zvksc;
+        Riscv_ext_v.zvksg;
+        Riscv_ext_c.zca;
+        Riscv_ext_c.zcd;
+        Riscv_ext_c.zcf;
+        Riscv_ext_c.zcb;
+        Riscv_ext_c.zcmp;
+        Riscv_ext_c.zcmt;
+        Riscv_ext_c.zcmop;
+        Riscv_ext_c.c;
+      ]
 
   (* [config] is the validated feature set. It lives in the state, not beside it, so it rides
      everywhere the state already goes: each unit starts from the caller's initial state, and a
@@ -2871,8 +2881,10 @@ module Make (P : PROFILE) = struct
 
   (* The one place a form's component is checked against the configuration. Every stage that can
      see an opcode goes through it, so a disabled form is refused whichever path reached it. *)
+  let legal_of_mnemonic = Target_component.legal components
+
   let feature_gate ?origin state mnemonic =
-    match Target_component.legal components mnemonic with
+    match legal_of_mnemonic mnemonic with
     | None -> Ok ()
     | Some req -> (
         match Target_component.Req.unmet (Target_config.enabled state.config) req with
@@ -2882,8 +2894,7 @@ module Make (P : PROFILE) = struct
               (diag ~pos:__POS__ ?origin
                  (`Feature_disabled (mnemonic, Fmt.str "%a" Target_component.Req.pp unmet))))
 
-  let required_feature (i : Instruction.t) =
-    Target_component.feature_of_mnemonic components (Opcode.name i.op)
+  let required (i : Instruction.t) = legal_of_mnemonic (Opcode.name i.op)
 
   let simplify_instruction state s =
     match Opcode.of_mnemonic s.Surface.mnemonic with
@@ -7674,17 +7685,36 @@ module Make (P : PROFILE) = struct
     | Fixed x -> fixed x.word x.name
     | Fixed_half x -> Ok (`Fixed (form (bytes_of_half x.word) x.name []))
 
-  (* The mnemonic of a lowered form that belongs to a component. Only [R] carries a component
-     today: M's forms all lower to it. *)
-  let lowered_mnemonic = function Lowered.R { name; _ } -> Some name | _ -> None
+  (* The mnemonic a lowered form is gated by. Every constructor is listed, so a new one has to
+     say which instruction it is. *)
+  let lowered_mnemonic = function
+    | Lowered.R { name; _ }
+    | R4 { name; _ }
+    | I { name; _ }
+    | S { name; _ }
+    | B { name; _ }
+    | U { name; _ }
+    | Pair { name; _ }
+    | Fixed { name; _ }
+    | Fixed_half { name; _ }
+    | Cr2 { name; _ }
+    | Cr { name; _ }
+    | Cl { name; _ }
+    | Cs { name; _ }
+    | Clsp { name; _ }
+    | Css { name; _ }
+    | Cj { name; _ }
+    | Cb { name; _ } ->
+        name
+    | J _ -> "jal"
+    | Caddi _ -> "c.addi"
 
   (* Encoding under a configuration, so a caller that builds lowered forms directly cannot
      emit a disabled component's instruction. [encode] is the default-configuration wrapper. *)
   let encode_in state l =
-    match lowered_mnemonic l with
-    | Some name -> (
-        match feature_gate state name with Error _ as e -> e | Ok () -> encode_ungated l)
-    | None -> encode_ungated l
+    match feature_gate state (lowered_mnemonic l) with
+    | Error _ as e -> e
+    | Ok () -> encode_ungated l
 
   let encode l = encode_in default_state l
 
@@ -7867,7 +7897,7 @@ module Make (P : PROFILE) = struct
 
   (* DEC-RV-TABLE: tried only after the hand-written decoder finds nothing, so a
      generated row never shadows a hand-written form. *)
-  let table_decode ?(half = false) ?(legal = fun _ -> true) w =
+  let table_matches ?(half = false) ?(legal = fun _ -> true) ~first_only w =
     let rows = Riscv_table_rows.rows in
     let field lsb width = bits w lsb width in
     let unscatter (sc : Riscv_table_row.scatter) =
@@ -7959,8 +7989,8 @@ module Make (P : PROFILE) = struct
       in
       go None r.operands
     in
-    let rec go i =
-      if i >= Array.length rows then None
+    let rec go i found =
+      if i >= Array.length rows then List.rev found
       else
         let r = rows.(i) in
         if
@@ -7970,14 +8000,19 @@ module Make (P : PROFILE) = struct
           && tied_ok r
         then
           let ops = List.map operand r.operands in
-          if List.mem None ops then go (i + 1)
+          if List.mem None ops then go (i + 1) found
           else
-            Some
+            let m =
               ( instruction (Opcode.Table i) (List.filter_map Fun.id (List.filter_map Fun.id ops)),
                 r.mnemonic )
-        else go (i + 1)
+            in
+            if first_only then [ m ] else go (i + 1) (m :: found)
+        else go (i + 1) found
     in
-    go 0
+    go 0 []
+
+  let table_decode ?half ?legal w =
+    match table_matches ?half ?legal ~first_only:true w with m :: _ -> Some m | [] -> None
 
   let decode_hand_written ctx bytes ~pos =
     if String.length bytes - pos < 2 then Error (diag ~pos:__POS__ `Decode_short)
@@ -8387,6 +8422,23 @@ module Make (P : PROFILE) = struct
     | Ok _ as ok -> ok
     | Error _ as e -> ( match table_fallback bytes ~pos with Some r -> Ok r | None -> e)
 
+  (* Every reading of the word, hand-written before generated and generated rows in table order,
+     whether or not the state enables it. *)
+  let decode_candidates ctx bytes ~pos =
+    let hand = match decode_hand_written ctx bytes ~pos with Ok r -> [ r ] | Error _ -> [] in
+    let rows =
+      if String.length bytes - pos < 2 then []
+      else if Char.code bytes.[pos] land 3 <> 3 then
+        List.map
+          (fun (i, f) -> (i, f, 2))
+          (table_matches ~half:true ~first_only:false (read_half bytes pos))
+      else if String.length bytes - pos < 4 then []
+      else
+        List.map (fun (i, f) -> (i, f, 4)) (table_matches ~first_only:false (read_word bytes pos))
+    in
+    hand
+    @ List.filter (fun (_, f, _) -> not (List.exists (fun (_, g, _) -> String.equal f g) hand)) rows
+
   (* The first candidate whose mnemonic satisfies [legal], hand-written before generated, so a
      disabled specialization falls back to an enabled general form. *)
   let decode_where ~legal ctx bytes ~pos =
@@ -8413,15 +8465,18 @@ module Make (P : PROFILE) = struct
             | Ok () -> e)
         | Error _ -> e)
 
-  (* The public codec describes the same real words as the explicit encoder
+  (* [codec_in state] is the codec of the forms [state]'s configuration enables; [codec] is the
+     default-configuration one, which leaves out the opt-in extensions.
+
+     The public codec describes the same real words as the explicit encoder
      and decoder above.  Symbol expressions and PC context live outside a raw
      word relation, so decoding canonicalizes them to a zero displacement; the
      fixup-bearing [encode] result remains the authority for layout.  The
      64-bit branch is one atomic AUIPC+I-format pair, never two independently
      selectable instructions. *)
-  let codec : (Lowered.t, fixup_kind) C.t =
+  let codec_in state : (Lowered.t, fixup_kind) C.t =
     let encoded_bits wanted l =
-      match encode l with
+      match encode_in state l with
       | Ok (`Fixed f) when String.length f.bytes = wanted ->
           if wanted = 2 then Some (read_half f.bytes 0)
           else if wanted = 4 then Some (read_word f.bytes 0)
@@ -8433,17 +8488,17 @@ module Make (P : PROFILE) = struct
       | Ok (`Fixed _) | Ok (`Ladder _) | Error _ -> None
     in
     let decode_word w =
-      match decode { state = default_state; address = 0L } (bytes_of_word w) ~pos:0 with
+      match decode { state; address = 0L } (bytes_of_word w) ~pos:0 with
       | Ok (instruction, _, 4) -> (
-          match lower_instruction default_state instruction with
+          match lower_instruction state instruction with
           | Ok [ lowered ] -> Some lowered
           | _ -> None)
       | Ok _ | Error _ -> None
     in
     let decode_half half =
-      match decode { state = default_state; address = 0L } (bytes_of_half half) ~pos:0 with
+      match decode { state; address = 0L } (bytes_of_half half) ~pos:0 with
       | Ok (instruction, _, 2) -> (
-          match lower_instruction { default_state with rvc = true } instruction with
+          match lower_instruction { state with rvc = true } instruction with
           | Ok [ lowered ] -> Some lowered
           | _ -> None)
       | Ok _ | Error _ -> None
@@ -8490,6 +8545,8 @@ module Make (P : PROFILE) = struct
           (C.iso_fun ~name:(P.name ^ "-pair") ~encode:(encoded_bits 8) ~decode:decode_pair
              (C.field ~width:64 "auipc-i-pair"));
       ]
+
+  let codec = codec_in default_state
 
   let evaluate_fixup kind ~place ~target =
     let d = Int64.sub target place in

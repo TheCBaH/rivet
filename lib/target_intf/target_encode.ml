@@ -130,8 +130,8 @@ module type ENCODE = sig
 
   val state_config : target_state -> Target_config.t
 
-  val required_feature : Instruction.t -> string option
-  (** the feature gating [i]'s component, or [None] for a base instruction *)
+  val required : Instruction.t -> Target_component.Req.t option
+  (** the predicate that makes [i] legal, or [None] for a base instruction *)
 
   val make_surface_instruction :
     mnemonic:string -> origin:Origin.t -> Operand.t list -> (Surface.t, error) Err.t
@@ -158,6 +158,8 @@ module type ENCODE = sig
      single tree. *)
 
   val codec : (Lowered.t, fixup_kind) Codec.t
+  (** The codec of the default configuration. A target with optional extensions may also offer a
+      codec per configuration; this one leaves out whatever the default does not enable. *)
 
   val encode :
     Lowered.t ->
@@ -201,7 +203,14 @@ module type ENCODE = sig
 
       Strict: a word that is a disabled component's instruction is an error, so a decode never
       presents as assemblable something the configuration would refuse. To inspect such bytes
-      anyway, decode under an all-enabled state and ask {!required_feature}. *)
+      anyway, decode under an all-enabled state and ask {!required}. *)
+
+  val decode_candidates : decode_context -> string -> pos:int -> (Instruction.t * string * int) list
+  (** Every reading of the word at [pos] that is a form of this target, in decode priority order,
+      whether or not the state enables it. Strict {!decode} returns the first legal one; an
+      inspector decodes under an all-enabled state and judges each against the caller's
+      configuration, so a word with several readings is never shown as unambiguous. A target with
+      one reading per word returns that single reading. *)
 
   (* {1 Linking and padding} *)
 

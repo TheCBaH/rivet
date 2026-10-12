@@ -1454,7 +1454,7 @@ let components : Target_component.t list = []
 let default_config = Target_config.default components
 let initial_state (_ : Target_config.t) = default_state
 let state_config (_ : target_state) = default_config
-let required_feature (_ : Instruction.t) : string option = None
+let required (_ : Instruction.t) : Target_component.Req.t option = None
 
 (* {1 Scaled immediates}
 
@@ -5501,3 +5501,6 @@ let host_trampolines (bindings : (string * int64) list) :
     items =
       List.concat_map stub bindings @ [ dir (D.Declared_section { name = ".note.GNU-stack" }) ];
   }
+
+let decode_candidates ctx bytes ~pos =
+  match decode ctx bytes ~pos with Ok r -> [ r ] | Error _ -> []

@@ -83,24 +83,24 @@ let%expect_test "the effective configuration of each target" =
     [ "riscv32"; "riscv64"; "x86_32"; "x86_64"; "arm"; "aarch64" ];
   [%expect
     {|
-    riscv32  ""           -> a,d,f,h,m,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
+    riscv32  ""           -> a,c,d,f,h,m,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zca,zcb,zcd,zcf,zcmop,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
     riscv32  "none"       ->
     riscv32  "none,+m"    -> m,zmmul
-    riscv32  "-m"         -> a,d,f,h,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
+    riscv32  "-m"         -> a,c,d,f,h,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zca,zcb,zcd,zcf,zcmop,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
     riscv32  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv32  "-m,-zmmul"  -> a,d,f,h,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
-    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
-    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
-    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
-    riscv64  ""           -> a,d,f,h,m,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
+    riscv32  "-m,-zmmul"  -> a,c,d,f,h,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zca,zcb,zcd,zcf,zcmop,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
+    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg, zca, zcd, zcf, zcb, zcmp, zcmt, zcmop, c)
+    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg, zca, zcd, zcf, zcb, zcmp, zcmt, zcmop, c)
+    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg, zca, zcd, zcf, zcb, zcmp, zcmt, zcmop, c)
+    riscv64  ""           -> a,c,d,f,h,m,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zca,zcb,zcd,zcmop,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
     riscv64  "none"       ->
     riscv64  "none,+m"    -> m,zmmul
-    riscv64  "-m"         -> a,d,f,h,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
+    riscv64  "-m"         -> a,c,d,f,h,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zca,zcb,zcd,zcmop,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
     riscv64  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv64  "-m,-zmmul"  -> a,d,f,h,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
-    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
-    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
-    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
+    riscv64  "-m,-zmmul"  -> a,c,d,f,h,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zca,zcb,zcd,zcmop,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
+    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg, zca, zcd, zcf, zcb, zcmp, zcmt, zcmop, c)
+    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg, zca, zcd, zcf, zcb, zcmp, zcmt, zcmop, c)
+    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg, zca, zcd, zcf, zcb, zcmp, zcmt, zcmop, c)
     x86_32   ""           -> x87
     x86_32   "none"       ->
     x86_32   "none,+m"    -> error: unknown feature m (known: x87)
@@ -355,7 +355,7 @@ let%expect_test "an invalid configuration fails before any source is read" =
   [%expect
     {|
     riscv64  [-zmmul   ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: feature m requires zmmul, which is disabled
-    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
+    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg, zca, zcd, zcf, zcb, zcmp, zcmt, zcmop, c)
     arm      [x87      ] nop                    REFUSED config.invalid: invalid feature configuration: unknown feature x87 (known: (none)) |}]
 
 (* {1 Normalized and lowered instructions handed in directly} *)
@@ -620,8 +620,8 @@ let%expect_test "the default configuration is pinned" =
     x86_64   enabled=[x87] components=[x86.x87]
     arm      enabled=[] components=[]
     aarch64  enabled=[] components=[]
-    riscv32  enabled=[a,d,f,h,m,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin,riscv.zba,riscv.zbb,riscv.zbs,riscv.zbc,riscv.zbkb,riscv.zbkc,riscv.zbkx,riscv.zknd,riscv.zkne,riscv.zknh,riscv.zksed,riscv.zksh,riscv.zicond,riscv.b,riscv.zkn,riscv.zks,riscv.zk,riscv.zicsr,riscv.zifencei,riscv.zicntr,riscv.zihintntl,riscv.zawrs,riscv.zimop,riscv.zicfiss,riscv.zicfilp,riscv.zicbom,riscv.zicboz,riscv.zicbop,riscv.system,riscv.s,riscv.h,riscv.svinval,riscv.sdext,riscv.ssctr,riscv.v,riscv.zvbb,riscv.zvkned,riscv.zvbc,riscv.zvknha,riscv.zvksed,riscv.zvkg,riscv.zvksh,riscv.zvfbfmin,riscv.zvfbfwma,riscv.zvkb,riscv.zvknhb,riscv.zvkn,riscv.zvks,riscv.zvknc,riscv.zvkng,riscv.zvksc,riscv.zvksg]
-    riscv64  enabled=[a,d,f,h,m,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin,riscv.zba,riscv.zbb,riscv.zbs,riscv.zbc,riscv.zbkb,riscv.zbkc,riscv.zbkx,riscv.zknd,riscv.zkne,riscv.zknh,riscv.zksed,riscv.zksh,riscv.zicond,riscv.b,riscv.zkn,riscv.zks,riscv.zk,riscv.zicsr,riscv.zifencei,riscv.zicntr,riscv.zihintntl,riscv.zawrs,riscv.zimop,riscv.zicfiss,riscv.zicfilp,riscv.zicbom,riscv.zicboz,riscv.zicbop,riscv.system,riscv.s,riscv.h,riscv.svinval,riscv.sdext,riscv.ssctr,riscv.v,riscv.zvbb,riscv.zvkned,riscv.zvbc,riscv.zvknha,riscv.zvksed,riscv.zvkg,riscv.zvksh,riscv.zvfbfmin,riscv.zvfbfwma,riscv.zvkb,riscv.zvknhb,riscv.zvkn,riscv.zvks,riscv.zvknc,riscv.zvkng,riscv.zvksc,riscv.zvksg] |}]
+    riscv32  enabled=[a,c,d,f,h,m,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zca,zcb,zcd,zcf,zcmop,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin,riscv.zba,riscv.zbb,riscv.zbs,riscv.zbc,riscv.zbkb,riscv.zbkc,riscv.zbkx,riscv.zknd,riscv.zkne,riscv.zknh,riscv.zksed,riscv.zksh,riscv.zicond,riscv.b,riscv.zkn,riscv.zks,riscv.zk,riscv.zicsr,riscv.zifencei,riscv.zicntr,riscv.zihintntl,riscv.zawrs,riscv.zimop,riscv.zicfiss,riscv.zicfilp,riscv.zicbom,riscv.zicboz,riscv.zicbop,riscv.system,riscv.s,riscv.h,riscv.svinval,riscv.sdext,riscv.ssctr,riscv.v,riscv.zvbb,riscv.zvkned,riscv.zvbc,riscv.zvknha,riscv.zvksed,riscv.zvkg,riscv.zvksh,riscv.zvfbfmin,riscv.zvfbfwma,riscv.zvkb,riscv.zvknhb,riscv.zvkn,riscv.zvks,riscv.zvknc,riscv.zvkng,riscv.zvksc,riscv.zvksg,riscv.zca,riscv.zcd,riscv.zcf,riscv.zcb,riscv.zcmp,riscv.zcmt,riscv.zcmop,riscv.c]
+    riscv64  enabled=[a,c,d,f,h,m,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zca,zcb,zcd,zcmop,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin,riscv.zba,riscv.zbb,riscv.zbs,riscv.zbc,riscv.zbkb,riscv.zbkc,riscv.zbkx,riscv.zknd,riscv.zkne,riscv.zknh,riscv.zksed,riscv.zksh,riscv.zicond,riscv.b,riscv.zkn,riscv.zks,riscv.zk,riscv.zicsr,riscv.zifencei,riscv.zicntr,riscv.zihintntl,riscv.zawrs,riscv.zimop,riscv.zicfiss,riscv.zicfilp,riscv.zicbom,riscv.zicboz,riscv.zicbop,riscv.system,riscv.s,riscv.h,riscv.svinval,riscv.sdext,riscv.ssctr,riscv.v,riscv.zvbb,riscv.zvkned,riscv.zvbc,riscv.zvknha,riscv.zvksed,riscv.zvkg,riscv.zvksh,riscv.zvfbfmin,riscv.zvfbfwma,riscv.zvkb,riscv.zvknhb,riscv.zvkn,riscv.zvks,riscv.zvknc,riscv.zvkng,riscv.zvksc,riscv.zvksg,riscv.zca,riscv.zcd,riscv.zcf,riscv.zcb,riscv.zcmp,riscv.zcmt,riscv.zcmop,riscv.c] |}]
 
 (* [add.uw rd, rs, x0] is also [zext.w]; refusing the specialization leaves the general form. *)
 let%expect_test "a disabled specialization falls back to the enabled general form" =
@@ -1139,3 +1139,251 @@ let%expect_test "vector configurations" =
     "none,+zvknhb"         -> d,f,v,zicsr,zvknha,zvknhb
     "-d"                   -> error: feature q requires d, which is disabled
     "-v,-zvbb,-zvkned"     -> error: feature zvbc requires v, which is disabled |}]
+
+(* {1 Every lowered form is gated} *)
+
+let%expect_test "RISC-V: lowered forms of each shape are refused when their extension is off" =
+  let module E = Riscv64_encode in
+  let config text =
+    match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
+  in
+  let imm n = Asm_core.Expr.Const (Foundation.Bigint.of_int n) in
+  let forms =
+    [
+      ( "R4",
+        E.Lowered.R4
+          {
+            name = "fmadd.s";
+            opcode = 0x43;
+            fmt = 0;
+            funct3 = 7;
+            rd = 1;
+            rs1 = 2;
+            rs2 = 3;
+            rs3 = 4;
+          } );
+      ( "I",
+        E.Lowered.I
+          {
+            name = "flw";
+            opcode = 0x07;
+            funct3 = 2;
+            funct_hi = 0;
+            shamt_bits = None;
+            rd = 1;
+            rs1 = 2;
+            imm = imm 0;
+          } );
+      ("S", E.Lowered.S { name = "fsw"; opcode = 0x27; funct3 = 2; rs1 = 2; rs2 = 1; imm = imm 0 });
+      ("Fixed", E.Lowered.Fixed { name = "mret"; word = 0x30200073L });
+    ]
+  in
+  List.iter
+    (fun (label, lowered) ->
+      List.iter
+        (fun features ->
+          let state = E.initial_state (config features) in
+          Printf.printf "%-6s %-10s -> %s\n" label features
+            (match E.encode_in state lowered with
+            | Ok (`Fixed f) -> hex f.Asm_core.Lowered_ast.bytes
+            | Ok (`Relax _) -> "relax"
+            | Error e ->
+                "refused: " ^ Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))))
+        [ "none,+f,+system"; "none" ])
+    forms;
+  [%expect
+    {|
+    R4     none,+f,+system -> c3 70 31 20
+    R4     none       -> refused: fmadd.s requires feature f, which is not enabled
+    I      none,+f,+system -> 87 20 01 00
+    I      none       -> refused: flw requires feature f, which is not enabled
+    S      none,+f,+system -> 27 20 11 00
+    S      none       -> refused: fsw requires feature f, which is not enabled
+    Fixed  none,+f,+system -> 73 00 20 30
+    Fixed  none       -> refused: mret requires feature system, which is not enabled |}]
+
+(* {1 Compressed} *)
+
+let%expect_test "0xb842 is c.fsdsp by default and cm.push under the Zcmp recipe" =
+  List.iter
+    (fun target ->
+      List.iter
+        (fun features ->
+          Printf.printf "-- %s %s\n" target features;
+          disasm ~features target "\x42\xb8")
+        [ ""; "-c,-zcd,+zcmp"; "-c,-zcd"; "none,+zca" ])
+    [ "riscv32"; "riscv64" ];
+  [%expect
+    {|
+    -- riscv32
+    00001000  42 b8  c.fsdsp f16, 48(x2)  [riscv32.c.fsdsp]
+    -- riscv32 -c,-zcd,+zcmp
+    00001000  42 b8  cm.push {ra}, -16  [riscv32.cm.push]
+    -- riscv32 -c,-zcd
+    REFUSED riscv32.feature: cm.push requires feature zcmp, which is not enabled
+    -- riscv32 none,+zca
+    REFUSED riscv32.feature: cm.push requires feature zcmp, which is not enabled
+    -- riscv64
+    00001000  42 b8  c.fsdsp f16, 48(x2)  [riscv64.c.fsdsp]
+    -- riscv64 -c,-zcd,+zcmp
+    00001000  42 b8  cm.push {ra}, -16  [riscv64.cm.push]
+    -- riscv64 -c,-zcd
+    REFUSED riscv64.feature: cm.push requires feature zcmp, which is not enabled
+    -- riscv64 none,+zca
+    REFUSED riscv64.feature: cm.push requires feature zcmp, which is not enabled |}]
+
+let%expect_test "compressed text path: C, Zcmp and the .option rvc permission" =
+  List.iter
+    (fun features ->
+      List.iter
+        (fun (rvc, text) ->
+          let source = "\t.text\n" ^ (if rvc then "\t.option rvc\n" else "") ^ "\t" ^ text ^ "\n" in
+          Printf.printf "%-16s %-5s %-24s %s\n" features
+            (if rvc then "rvc" else "norvc")
+            text
+            (outcome (assembled ~features "riscv64" source)))
+        [
+          (true, "c.lw x8, 0(x9)");
+          (true, "c.fld f8, 0(x9)");
+          (true, "c.mul x8, x9");
+          (true, "cm.push {ra}, -16");
+          (false, "c.lw x8, 0(x9)");
+        ])
+    [ ""; "none,+c"; "-c,-zcd,+zcmp"; "none,+zca,+zcb"; "none,+zca,+zcb,+zbb,+zmmul" ];
+  [%expect
+    {|
+                     rvc   c.lw x8, 0(x9)           80 40
+                     rvc   c.fld f8, 0(x9)          80 20
+                     rvc   c.mul x8, x9             45 9c
+                     rvc   cm.push {ra}, -16        REFUSED riscv64.feature: cm.push requires feature zcmp, which is not enabled
+                     norvc c.lw x8, 0(x9)           REFUSED riscv64.lower: c.lw requires .option rvc
+    none,+c          rvc   c.lw x8, 0(x9)           80 40
+    none,+c          rvc   c.fld f8, 0(x9)          REFUSED riscv64.feature: c.fld requires feature zcd, which is not enabled
+    none,+c          rvc   c.mul x8, x9             REFUSED riscv64.feature: c.mul requires feature zcb and zmmul, which is not enabled
+    none,+c          rvc   cm.push {ra}, -16        REFUSED riscv64.feature: cm.push requires feature zcmp, which is not enabled
+    none,+c          norvc c.lw x8, 0(x9)           REFUSED riscv64.lower: c.lw requires .option rvc
+    -c,-zcd,+zcmp    rvc   c.lw x8, 0(x9)           80 40
+    -c,-zcd,+zcmp    rvc   c.fld f8, 0(x9)          REFUSED riscv64.feature: c.fld requires feature zcd, which is not enabled
+    -c,-zcd,+zcmp    rvc   c.mul x8, x9             45 9c
+    -c,-zcd,+zcmp    rvc   cm.push {ra}, -16        42 b8
+    -c,-zcd,+zcmp    norvc c.lw x8, 0(x9)           REFUSED riscv64.lower: c.lw requires .option rvc
+    none,+zca,+zcb   rvc   c.lw x8, 0(x9)           80 40
+    none,+zca,+zcb   rvc   c.fld f8, 0(x9)          REFUSED riscv64.feature: c.fld requires feature zcd, which is not enabled
+    none,+zca,+zcb   rvc   c.mul x8, x9             REFUSED riscv64.feature: c.mul requires feature zmmul, which is not enabled
+    none,+zca,+zcb   rvc   cm.push {ra}, -16        REFUSED riscv64.feature: cm.push requires feature zcmp, which is not enabled
+    none,+zca,+zcb   norvc c.lw x8, 0(x9)           REFUSED riscv64.lower: c.lw requires .option rvc
+    none,+zca,+zcb,+zbb,+zmmul rvc   c.lw x8, 0(x9)           80 40
+    none,+zca,+zcb,+zbb,+zmmul rvc   c.fld f8, 0(x9)          REFUSED riscv64.feature: c.fld requires feature zcd, which is not enabled
+    none,+zca,+zcb,+zbb,+zmmul rvc   c.mul x8, x9             45 9c
+    none,+zca,+zcb,+zbb,+zmmul rvc   cm.push {ra}, -16        REFUSED riscv64.feature: cm.push requires feature zcmp, which is not enabled
+    none,+zca,+zcb,+zbb,+zmmul norvc c.lw x8, 0(x9)           REFUSED riscv64.lower: c.lw requires .option rvc |}]
+
+let%expect_test "the compressed groups on each XLEN" =
+  List.iter
+    (fun target ->
+      let components =
+        match target with "riscv32" -> Riscv32_encode.components | _ -> Riscv64_encode.components
+      in
+      List.iter
+        (fun text ->
+          match Target_config.resolve components (spec text) with
+          | Ok c ->
+              Printf.printf "%s %-24S -> %s\n" target text
+                (String.concat ","
+                   (List.filter
+                      (fun f -> String.get f 0 = 'z' && String.get f 1 = 'c')
+                      (Target_config.features c)))
+          | Error m -> Printf.printf "%s %-24S -> error: %s\n" target text m)
+        [
+          "";
+          "-zcd";
+          "-c,-zcd,+zcmp";
+          "-c,-zcd,+zcmt";
+          "-c,-zcd,+zcmp,+zcmt";
+          "none,+c";
+          "none,+c,+d";
+        ])
+    [ "riscv32"; "riscv64" ];
+  [%expect
+    {|
+    riscv32 ""                       -> zca,zcb,zcd,zcf,zcmop
+    riscv32 "-zcd"                   -> error: feature zcd is implied by c, which is enabled
+    riscv32 "-c,-zcd,+zcmp"          -> zca,zcb,zcf,zcmop,zcmp
+    riscv32 "-c,-zcd,+zcmt"          -> zca,zcb,zcf,zcmop,zcmt
+    riscv32 "-c,-zcd,+zcmp,+zcmt"    -> zca,zcb,zcf,zcmop,zcmp,zcmt
+    riscv32 "none,+c"                -> zca
+    riscv32 "none,+c,+d"             -> zca,zcd,zcf
+    riscv64 ""                       -> zca,zcb,zcd,zcmop
+    riscv64 "-zcd"                   -> error: feature zcd is implied by c, which is enabled
+    riscv64 "-c,-zcd,+zcmp"          -> zca,zcb,zcmop,zcmp
+    riscv64 "-c,-zcd,+zcmt"          -> zca,zcb,zcmop,zcmt
+    riscv64 "-c,-zcd,+zcmp,+zcmt"    -> zca,zcb,zcmop,zcmp,zcmt
+    riscv64 "none,+c"                -> zca
+    riscv64 "none,+c,+d"             -> zca,zcd |}]
+
+let%expect_test "inspection lists every reading of a word the configuration refuses" =
+  List.iter
+    (fun (target, features) ->
+      Printf.printf "-- %s %S\n" target features;
+      disasm ~features ~inspect:true target "\x42\xb8")
+    [
+      ("riscv32", "");
+      ("riscv32", "-c,-zcd");
+      ("riscv32", "-c,-zcd,+zcmp");
+      ("riscv64", "none,+zca");
+      ("riscv64", "none");
+    ];
+  [%expect
+    {|
+    -- riscv32 ""
+    00001000  42 b8  c.fsdsp f16, 48(x2)  [riscv32.c.fsdsp]
+    -- riscv32 "-c,-zcd"
+    00001000  42 b8  cm.push {ra}, -16  ; requires feature zcmp, which is not enabled  ; or c.fsdsp f16, 48(x2) (requires feature zcd, which is not enabled)  [riscv32.cm.push]
+    -- riscv32 "-c,-zcd,+zcmp"
+    00001000  42 b8  cm.push {ra}, -16  [riscv32.cm.push]
+    -- riscv64 "none,+zca"
+    00001000  42 b8  cm.push {ra}, -16  ; requires feature zcmp, which is not enabled  ; or c.fsdsp f16, 48(x2) (requires feature zcd, which is not enabled)  [riscv64.cm.push]
+    -- riscv64 "none"
+    00001000  42 b8  cm.push {ra}, -16  ; requires feature zcmp, which is not enabled  ; or c.fsdsp f16, 48(x2) (requires feature zcd, which is not enabled)  [riscv64.cm.push] |}]
+
+(* {1 Configured codec} *)
+
+let%expect_test "codec_in follows the configuration; the default codec leaves opt-ins out" =
+  let module E = Riscv64_encode in
+  let config text =
+    match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
+  in
+  let forms =
+    [
+      E.Lowered.Fixed_half { name = "cm.push"; word = 0xb842L };
+      E.Lowered.Fixed_half { name = "c.fsdsp"; word = 0xb842L };
+    ]
+  in
+  List.iter
+    (fun (label, codec) ->
+      List.iter
+        (fun value ->
+          match Codec.encode codec value with
+          | Error _ ->
+              Printf.printf "%-7s %-8s refused\n" label ((Fmt.to_to_string E.Lowered.pp) value)
+          | Ok encoded -> (
+              Printf.printf "%-7s %-8s %s" label
+                ((Fmt.to_to_string E.Lowered.pp) value)
+                (Codec.Bits.to_string encoded.Codec.bits);
+              match Codec.decode_bits codec encoded.bits with
+              | Some d -> Printf.printf " -> %s\n" ((Fmt.to_to_string E.Lowered.pp) d.Codec.value)
+              | None -> print_endline " -> no reading"))
+        forms)
+    [
+      ("default", E.codec);
+      ("zcmp", E.codec_in (E.initial_state (config "-c,-zcd,+zcmp")));
+      ("zcd", E.codec_in (E.initial_state (config "")));
+    ];
+  [%expect
+    {|
+    default cm.push  refused
+    default c.fsdsp  1011100001000010 -> c.fsdsp
+    zcmp    cm.push  1011100001000010 -> cm.push
+    zcmp    c.fsdsp  refused
+    zcd     cm.push  refused
+    zcd     c.fsdsp  1011100001000010 -> c.fsdsp |}]

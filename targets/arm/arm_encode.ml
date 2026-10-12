@@ -1400,7 +1400,7 @@ let components : Target_component.t list = []
 let default_config = Target_config.default components
 let initial_state (_ : Target_config.t) = default_state
 let state_config (_ : target_state) = default_config
-let required_feature (_ : Instruction.t) : string option = None
+let required (_ : Instruction.t) : Target_component.Req.t option = None
 
 (* {1 The modified-immediate relation (§ M1.3)}
 
@@ -3659,3 +3659,6 @@ let merge_fill = None
 (* Measured: ARM GAS records a section's alignment without rounding its size
    up to it. *)
 let pad_section_to_alignment = false
+
+let decode_candidates ctx bytes ~pos =
+  match decode ctx bytes ~pos with Ok r -> [ r ] | Error _ -> []
