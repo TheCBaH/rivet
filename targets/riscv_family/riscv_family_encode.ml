@@ -8466,15 +8466,18 @@ module Make (P : PROFILE) = struct
             | Ok () -> e)
         | Error _ -> e)
 
-  (* The public codec describes the same real words as the explicit encoder
+  (* [codec_in state] is the codec of the forms [state]'s configuration enables; [codec] is the
+     default-configuration one, which leaves out the opt-in extensions.
+
+     The public codec describes the same real words as the explicit encoder
      and decoder above.  Symbol expressions and PC context live outside a raw
      word relation, so decoding canonicalizes them to a zero displacement; the
      fixup-bearing [encode] result remains the authority for layout.  The
      64-bit branch is one atomic AUIPC+I-format pair, never two independently
      selectable instructions. *)
-  let codec : (Lowered.t, fixup_kind) C.t =
+  let codec_in state : (Lowered.t, fixup_kind) C.t =
     let encoded_bits wanted l =
-      match encode l with
+      match encode_in state l with
       | Ok (`Fixed f) when String.length f.bytes = wanted ->
           if wanted = 2 then Some (read_half f.bytes 0)
           else if wanted = 4 then Some (read_word f.bytes 0)
@@ -8486,17 +8489,17 @@ module Make (P : PROFILE) = struct
       | Ok (`Fixed _) | Ok (`Ladder _) | Error _ -> None
     in
     let decode_word w =
-      match decode { state = default_state; address = 0L } (bytes_of_word w) ~pos:0 with
+      match decode { state; address = 0L } (bytes_of_word w) ~pos:0 with
       | Ok (instruction, _, 4) -> (
-          match lower_instruction default_state instruction with
+          match lower_instruction state instruction with
           | Ok [ lowered ] -> Some lowered
           | _ -> None)
       | Ok _ | Error _ -> None
     in
     let decode_half half =
-      match decode { state = default_state; address = 0L } (bytes_of_half half) ~pos:0 with
+      match decode { state; address = 0L } (bytes_of_half half) ~pos:0 with
       | Ok (instruction, _, 2) -> (
-          match lower_instruction { default_state with rvc = true } instruction with
+          match lower_instruction { state with rvc = true } instruction with
           | Ok [ lowered ] -> Some lowered
           | _ -> None)
       | Ok _ | Error _ -> None
@@ -8543,6 +8546,8 @@ module Make (P : PROFILE) = struct
           (C.iso_fun ~name:(P.name ^ "-pair") ~encode:(encoded_bits 8) ~decode:decode_pair
              (C.field ~width:64 "auipc-i-pair"));
       ]
+
+  let codec = codec_in default_state
 
   let evaluate_fixup kind ~place ~target =
     let d = Int64.sub target place in

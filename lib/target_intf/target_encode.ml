@@ -158,6 +158,8 @@ module type ENCODE = sig
      single tree. *)
 
   val codec : (Lowered.t, fixup_kind) Codec.t
+  (** The codec of the default configuration. A target with optional extensions may also offer a
+      codec per configuration; this one leaves out whatever the default does not enable. *)
 
   val encode :
     Lowered.t ->

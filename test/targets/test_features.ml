@@ -1345,3 +1345,45 @@ let%expect_test "inspection lists every reading of a word the configuration refu
     00001000  42 b8  cm.push {ra}, -16  ; requires feature zcmp, which is not enabled  ; or c.fsdsp f16, 48(x2) (requires feature zcd, which is not enabled)  [riscv64.cm.push]
     -- riscv64 "none"
     00001000  42 b8  cm.push {ra}, -16  ; requires feature zcmp, which is not enabled  ; or c.fsdsp f16, 48(x2) (requires feature zcd, which is not enabled)  [riscv64.cm.push] |}]
+
+(* {1 Configured codec} *)
+
+let%expect_test "codec_in follows the configuration; the default codec leaves opt-ins out" =
+  let module E = Riscv64_encode in
+  let config text =
+    match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
+  in
+  let forms =
+    [
+      E.Lowered.Fixed_half { name = "cm.push"; word = 0xb842L };
+      E.Lowered.Fixed_half { name = "c.fsdsp"; word = 0xb842L };
+    ]
+  in
+  List.iter
+    (fun (label, codec) ->
+      List.iter
+        (fun value ->
+          match Codec.encode codec value with
+          | Error _ ->
+              Printf.printf "%-7s %-8s refused\n" label ((Fmt.to_to_string E.Lowered.pp) value)
+          | Ok encoded -> (
+              Printf.printf "%-7s %-8s %s" label
+                ((Fmt.to_to_string E.Lowered.pp) value)
+                (Codec.Bits.to_string encoded.Codec.bits);
+              match Codec.decode_bits codec encoded.bits with
+              | Some d -> Printf.printf " -> %s\n" ((Fmt.to_to_string E.Lowered.pp) d.Codec.value)
+              | None -> print_endline " -> no reading"))
+        forms)
+    [
+      ("default", E.codec);
+      ("zcmp", E.codec_in (E.initial_state (config "-c,-zcd,+zcmp")));
+      ("zcd", E.codec_in (E.initial_state (config "")));
+    ];
+  [%expect
+    {|
+    default cm.push  refused
+    default c.fsdsp  1011100001000010 -> c.fsdsp
+    zcmp    cm.push  1011100001000010 -> cm.push
+    zcmp    c.fsdsp  refused
+    zcd     cm.push  refused
+    zcd     c.fsdsp  1011100001000010 -> c.fsdsp |}]
