@@ -3659,3 +3659,6 @@ let merge_fill = None
 (* Measured: ARM GAS records a section's alignment without rounding its size
    up to it. *)
 let pad_section_to_alignment = false
+
+let decode_candidates ctx bytes ~pos =
+  match decode ctx bytes ~pos with Ok r -> [ r ] | Error _ -> []

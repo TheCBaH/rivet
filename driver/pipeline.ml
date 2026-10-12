@@ -376,23 +376,37 @@ module Make (T : T_intf.TARGET) = struct
   type disasm_row = { at : int64; run : string; text : string; form : string option }
 
   let disassemble_lines ~state ~inspect ~address bytes =
-    (* Strict decoding refuses a disabled component's instruction. Inspection decodes under
-       every component enabled and notes which instructions the configuration would refuse. *)
-    let decode_state =
+    (* Strict decoding refuses a disabled component's instruction. Inspection first decodes
+       strictly; a word the configuration refuses is read under every component enabled, and each
+       reading is judged against the caller's configuration. *)
+    let discovery_state =
       if inspect then T.initial_state (Target_config.all_enabled T.components) else state
     in
     let unmet insn =
       match T.required insn with
-      | None -> ""
-      | Some req -> (
-          match Target_component.Req.unmet (Target_config.enabled (T.state_config state)) req with
-          | Some u ->
-              Printf.sprintf "  ; requires feature %s, which is not enabled"
-                (Fmt.str "%a" Target_component.Req.pp u)
-          | None -> "")
+      | None -> None
+      | Some req ->
+          Option.map
+            (fun u -> Fmt.str "requires feature %a, which is not enabled" Target_component.Req.pp u)
+            (Target_component.Req.unmet (Target_config.enabled (T.state_config state)) req)
     in
     let run_of pos n =
       String.concat " " (List.init n (fun i -> Printf.sprintf "%02x" (Char.code bytes.[pos + i])))
+    in
+    let shown insn = Fmt.to_to_string T.Instruction.pp insn in
+    let readings here pos strict_error =
+      match T.decode_candidates { T.state = discovery_state; address = here } bytes ~pos with
+      | [] -> Diag.fail ~pos:__POS__ [ target_diagnostic strict_error ]
+      | (insn, form, n) :: others ->
+          let note i = match unmet i with Some m -> "  ; " ^ m | None -> "" in
+          let alternative (i, _, _) =
+            shown i ^ match unmet i with Some m -> " (" ^ m ^ ")" | None -> ""
+          in
+          let also =
+            if others = [] then ""
+            else "  ; or " ^ String.concat "; or " (List.map alternative others)
+          in
+          Ok (insn, form, n, note insn ^ also)
     in
     let rec go pos acc =
       if pos >= String.length bytes then Ok (List.rev acc)
@@ -409,17 +423,18 @@ module Make (T : T_intf.TARGET) = struct
                }
               :: acc)
         | None -> (
-            match T.decode { T.state = decode_state; address = here } bytes ~pos with
-            | Error e -> Diag.fail ~pos:__POS__ [ target_diagnostic e ]
-            | Ok (insn, form, n) ->
+            let decoded =
+              match T.decode { T.state; address = here } bytes ~pos with
+              | Ok (insn, form, n) -> Ok (insn, form, n, "")
+              | Error e ->
+                  if inspect then readings here pos e
+                  else Diag.fail ~pos:__POS__ [ target_diagnostic e ]
+            in
+            match decoded with
+            | Error _ as e -> e
+            | Ok (insn, form, n, note) ->
                 go (pos + n)
-                  ({
-                     at = here;
-                     run = run_of pos n;
-                     text =
-                       (Fmt.to_to_string T.Instruction.pp insn ^ if inspect then unmet insn else "");
-                     form = Some form;
-                   }
+                  ({ at = here; run = run_of pos n; text = shown insn ^ note; form = Some form }
                   :: acc))
     in
     go 0 []

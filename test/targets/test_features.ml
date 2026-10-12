@@ -1320,3 +1320,28 @@ let%expect_test "the compressed groups on each XLEN" =
     riscv64 "-c,-zcd,+zcmp,+zcmt"    -> zca,zcb,zcmop,zcmp,zcmt
     riscv64 "none,+c"                -> zca
     riscv64 "none,+c,+d"             -> zca,zcd |}]
+
+let%expect_test "inspection lists every reading of a word the configuration refuses" =
+  List.iter
+    (fun (target, features) ->
+      Printf.printf "-- %s %S\n" target features;
+      disasm ~features ~inspect:true target "\x42\xb8")
+    [
+      ("riscv32", "");
+      ("riscv32", "-c,-zcd");
+      ("riscv32", "-c,-zcd,+zcmp");
+      ("riscv64", "none,+zca");
+      ("riscv64", "none");
+    ];
+  [%expect
+    {|
+    -- riscv32 ""
+    00001000  42 b8  c.fsdsp f16, 48(x2)  [riscv32.c.fsdsp]
+    -- riscv32 "-c,-zcd"
+    00001000  42 b8  cm.push {ra}, -16  ; requires feature zcmp, which is not enabled  ; or c.fsdsp f16, 48(x2) (requires feature zcd, which is not enabled)  [riscv32.cm.push]
+    -- riscv32 "-c,-zcd,+zcmp"
+    00001000  42 b8  cm.push {ra}, -16  [riscv32.cm.push]
+    -- riscv64 "none,+zca"
+    00001000  42 b8  cm.push {ra}, -16  ; requires feature zcmp, which is not enabled  ; or c.fsdsp f16, 48(x2) (requires feature zcd, which is not enabled)  [riscv64.cm.push]
+    -- riscv64 "none"
+    00001000  42 b8  cm.push {ra}, -16  ; requires feature zcmp, which is not enabled  ; or c.fsdsp f16, 48(x2) (requires feature zcd, which is not enabled)  [riscv64.cm.push] |}]

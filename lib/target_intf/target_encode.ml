@@ -203,6 +203,13 @@ module type ENCODE = sig
       presents as assemblable something the configuration would refuse. To inspect such bytes
       anyway, decode under an all-enabled state and ask {!required}. *)
 
+  val decode_candidates : decode_context -> string -> pos:int -> (Instruction.t * string * int) list
+  (** Every reading of the word at [pos] that is a form of this target, in decode priority order,
+      whether or not the state enables it. Strict {!decode} returns the first legal one; an
+      inspector decodes under an all-enabled state and judges each against the caller's
+      configuration, so a word with several readings is never shown as unambiguous. A target with
+      one reading per word returns that single reading. *)
+
   (* {1 Linking and padding} *)
 
   val evaluate_fixup : fixup_kind -> place:int64 -> target:int64 -> (int64, error) Err.t

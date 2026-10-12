@@ -5501,3 +5501,6 @@ let host_trampolines (bindings : (string * int64) list) :
     items =
       List.concat_map stub bindings @ [ dir (D.Declared_section { name = ".note.GNU-stack" }) ];
   }
+
+let decode_candidates ctx bytes ~pos =
+  match decode ctx bytes ~pos with Ok r -> [ r ] | Error _ -> []

@@ -7897,7 +7897,7 @@ module Make (P : PROFILE) = struct
 
   (* DEC-RV-TABLE: tried only after the hand-written decoder finds nothing, so a
      generated row never shadows a hand-written form. *)
-  let table_decode ?(half = false) ?(legal = fun _ -> true) w =
+  let table_matches ?(half = false) ?(legal = fun _ -> true) ~first_only w =
     let rows = Riscv_table_rows.rows in
     let field lsb width = bits w lsb width in
     let unscatter (sc : Riscv_table_row.scatter) =
@@ -7989,8 +7989,8 @@ module Make (P : PROFILE) = struct
       in
       go None r.operands
     in
-    let rec go i =
-      if i >= Array.length rows then None
+    let rec go i found =
+      if i >= Array.length rows then List.rev found
       else
         let r = rows.(i) in
         if
@@ -8000,14 +8000,19 @@ module Make (P : PROFILE) = struct
           && tied_ok r
         then
           let ops = List.map operand r.operands in
-          if List.mem None ops then go (i + 1)
+          if List.mem None ops then go (i + 1) found
           else
-            Some
+            let m =
               ( instruction (Opcode.Table i) (List.filter_map Fun.id (List.filter_map Fun.id ops)),
                 r.mnemonic )
-        else go (i + 1)
+            in
+            if first_only then [ m ] else go (i + 1) (m :: found)
+        else go (i + 1) found
     in
-    go 0
+    go 0 []
+
+  let table_decode ?half ?legal w =
+    match table_matches ?half ?legal ~first_only:true w with m :: _ -> Some m | [] -> None
 
   let decode_hand_written ctx bytes ~pos =
     if String.length bytes - pos < 2 then Error (diag ~pos:__POS__ `Decode_short)
@@ -8416,6 +8421,23 @@ module Make (P : PROFILE) = struct
     match decode_hand_written ctx bytes ~pos with
     | Ok _ as ok -> ok
     | Error _ as e -> ( match table_fallback bytes ~pos with Some r -> Ok r | None -> e)
+
+  (* Every reading of the word, hand-written before generated and generated rows in table order,
+     whether or not the state enables it. *)
+  let decode_candidates ctx bytes ~pos =
+    let hand = match decode_hand_written ctx bytes ~pos with Ok r -> [ r ] | Error _ -> [] in
+    let rows =
+      if String.length bytes - pos < 2 then []
+      else if Char.code bytes.[pos] land 3 <> 3 then
+        List.map
+          (fun (i, f) -> (i, f, 2))
+          (table_matches ~half:true ~first_only:false (read_half bytes pos))
+      else if String.length bytes - pos < 4 then []
+      else
+        List.map (fun (i, f) -> (i, f, 4)) (table_matches ~first_only:false (read_word bytes pos))
+    in
+    hand
+    @ List.filter (fun (_, f, _) -> not (List.exists (fun (_, g, _) -> String.equal f g) hand)) rows
 
   (* The first candidate whose mnemonic satisfies [legal], hand-written before generated, so a
      disabled specialization falls back to an enabled general form. *)

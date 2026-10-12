@@ -10420,6 +10420,9 @@ module Make (M : MODE) = struct
         match instruction_gate ctx.state i with Ok () -> ok | Error _ as e -> e)
     | Error _ as e -> e
 
+  let decode_candidates ctx bytes ~pos =
+    match decode_ungated ctx bytes ~pos with Ok r -> [ r ] | Error _ -> []
+
   (* {2 Fixups, padding, directives} *)
 
   (* [place] arrives already biased by the fixup's [pc_bias], which on x86 is
