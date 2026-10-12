@@ -4,6 +4,7 @@
  (modules
   riscv_family_encode
   riscv_ext
+  riscv_ext_a
   riscv_ext_fd
   riscv_ext_m
   riscv_table_row

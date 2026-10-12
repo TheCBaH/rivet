@@ -10,7 +10,7 @@ let table_forms feature =
     [] Riscv_table_rows.rows
   |> List.rev
 
-let component ~id ~feature ?(requires = []) ~summary handwritten =
+let component ~id ~feature ?(requires = []) ?(legal = fun _ -> None) ~summary handwritten =
   let forms =
     handwritten
     @ List.filter (fun (m, _) -> not (List.mem_assoc m handwritten)) (table_forms feature)
@@ -32,7 +32,7 @@ let component ~id ~feature ?(requires = []) ~summary handwritten =
             Target_component.label = mnemonic;
             mnemonics = [ mnemonic ];
             sources = [ { Target_component.upstream = "riscv-opcodes"; name } ];
-            legal = None;
+            legal = legal mnemonic;
           })
         forms;
   }

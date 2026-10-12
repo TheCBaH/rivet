@@ -83,24 +83,24 @@ let%expect_test "the effective configuration of each target" =
     [ "riscv32"; "riscv64"; "x86_32"; "x86_64"; "arm"; "aarch64" ];
   [%expect
     {|
-    riscv32  ""           -> d,f,m,zmmul
+    riscv32  ""           -> a,d,f,m,zabha,zacas,zmmul
     riscv32  "none"       ->
     riscv32  "none,+m"    -> m,zmmul
-    riscv32  "-m"         -> d,f,zmmul
+    riscv32  "-m"         -> a,d,f,zabha,zacas,zmmul
     riscv32  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv32  "-m,-zmmul"  -> d,f
-    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d)
-    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d)
-    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d)
-    riscv64  ""           -> d,f,m,zmmul
+    riscv32  "-m,-zmmul"  -> a,d,f,zabha,zacas
+    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha)
+    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha)
+    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha)
+    riscv64  ""           -> a,d,f,m,zabha,zacas,zmmul
     riscv64  "none"       ->
     riscv64  "none,+m"    -> m,zmmul
-    riscv64  "-m"         -> d,f,zmmul
+    riscv64  "-m"         -> a,d,f,zabha,zacas,zmmul
     riscv64  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv64  "-m,-zmmul"  -> d,f
-    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d)
-    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d)
-    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d)
+    riscv64  "-m,-zmmul"  -> a,d,f,zabha,zacas
+    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha)
+    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha)
+    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha)
     x86_32   ""           -> x87
     x86_32   "none"       ->
     x86_32   "none,+m"    -> error: unknown feature m (known: x87)
@@ -355,7 +355,7 @@ let%expect_test "an invalid configuration fails before any source is read" =
   [%expect
     {|
     riscv64  [-zmmul   ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: feature m requires zmmul, which is disabled
-    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m, f, d)
+    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha)
     arm      [x87      ] nop                    REFUSED config.invalid: invalid feature configuration: unknown feature x87 (known: (none)) |}]
 
 (* {1 Normalized and lowered instructions handed in directly} *)
@@ -620,8 +620,8 @@ let%expect_test "the default configuration is pinned" =
     x86_64   enabled=[x87] components=[x86.x87]
     arm      enabled=[] components=[]
     aarch64  enabled=[] components=[]
-    riscv32  enabled=[d,f,m,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d]
-    riscv64  enabled=[d,f,m,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d] |}]
+    riscv32  enabled=[a,d,f,m,zabha,zacas,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha]
+    riscv64  enabled=[a,d,f,m,zabha,zacas,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha] |}]
 
 (* [add.uw rd, rs, x0] is also [zext.w]; refusing the specialization leaves the general form. *)
 let%expect_test "a disabled specialization falls back to the enabled general form" =
@@ -741,3 +741,65 @@ let%expect_test "F and D: lowered and decoded forms" =
     00001000  d3 70 31 02  fadd.d f1, f2, f3  ; requires feature d, which is not enabled  [riscv64.fadd.d]
     00001004  d3 82 00 e0  fmv.x.w x5, f1  ; requires feature f, which is not enabled     [riscv64.fmv.x.w]
     00001008  93 02 13 00  addi x5, x6, 1                                                 [riscv64.addi] |}]
+
+(* {1 Atomics} *)
+
+let%expect_test "A, Zacas and Zabha: text path" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv64")
+        [
+          "amoadd.w x5, x6, (x7)";
+          "lr.d x5, (x7)";
+          "amoadd.b x5, x6, (x7)";
+          "amocas.d x6, x8, (x7)";
+          "amocas.b x6, x8, (x7)";
+        ])
+    [ "none,+a"; "none,+zacas"; "none,+zabha"; "none,+zacas,+zabha"; "none" ];
+  [%expect
+    {|
+    riscv64  [none,+a  ] amoadd.w x5, x6, (x7)  af a2 63 00
+    riscv64  [none,+a  ] lr.d x5, (x7)          af b2 03 10
+    riscv64  [none,+a  ] amoadd.b x5, x6, (x7)  REFUSED riscv64.feature: amoadd.b requires feature zabha, which is not enabled
+    riscv64  [none,+a  ] amocas.d x6, x8, (x7)  REFUSED riscv64.feature: amocas.d requires feature zacas, which is not enabled
+    riscv64  [none,+a  ] amocas.b x6, x8, (x7)  REFUSED riscv64.feature: amocas.b requires feature zacas and zabha, which is not enabled
+    riscv64  [none,+zacas] amoadd.w x5, x6, (x7)  af a2 63 00
+    riscv64  [none,+zacas] lr.d x5, (x7)          af b2 03 10
+    riscv64  [none,+zacas] amoadd.b x5, x6, (x7)  REFUSED riscv64.feature: amoadd.b requires feature zabha, which is not enabled
+    riscv64  [none,+zacas] amocas.d x6, x8, (x7)  2f b3 83 28
+    riscv64  [none,+zacas] amocas.b x6, x8, (x7)  REFUSED riscv64.feature: amocas.b requires feature zabha, which is not enabled
+    riscv64  [none,+zabha] amoadd.w x5, x6, (x7)  af a2 63 00
+    riscv64  [none,+zabha] lr.d x5, (x7)          af b2 03 10
+    riscv64  [none,+zabha] amoadd.b x5, x6, (x7)  af 82 63 00
+    riscv64  [none,+zabha] amocas.d x6, x8, (x7)  REFUSED riscv64.feature: amocas.d requires feature zacas, which is not enabled
+    riscv64  [none,+zabha] amocas.b x6, x8, (x7)  REFUSED riscv64.feature: amocas.b requires feature zacas, which is not enabled
+    riscv64  [none,+zacas,+zabha] amoadd.w x5, x6, (x7)  af a2 63 00
+    riscv64  [none,+zacas,+zabha] lr.d x5, (x7)          af b2 03 10
+    riscv64  [none,+zacas,+zabha] amoadd.b x5, x6, (x7)  af 82 63 00
+    riscv64  [none,+zacas,+zabha] amocas.d x6, x8, (x7)  2f b3 83 28
+    riscv64  [none,+zacas,+zabha] amocas.b x6, x8, (x7)  2f 83 83 28
+    riscv64  [none     ] amoadd.w x5, x6, (x7)  REFUSED riscv64.feature: amoadd.w requires feature a, which is not enabled
+    riscv64  [none     ] lr.d x5, (x7)          REFUSED riscv64.feature: lr.d requires feature a, which is not enabled
+    riscv64  [none     ] amoadd.b x5, x6, (x7)  REFUSED riscv64.feature: amoadd.b requires feature zabha, which is not enabled
+    riscv64  [none     ] amocas.d x6, x8, (x7)  REFUSED riscv64.feature: amocas.d requires feature zacas, which is not enabled
+    riscv64  [none     ] amocas.b x6, x8, (x7)  REFUSED riscv64.feature: amocas.b requires feature zacas and zabha, which is not enabled |}]
+
+let%expect_test "A: a disabled atomic is refused when decoding" =
+  let code = bytes_of "riscv64" "\t.text\n\tamoadd.w x5, x6, (x7)\n\tadd x5, x6, x7\n" in
+  List.iter
+    (fun features ->
+      Printf.printf "-- %s\n" features;
+      disasm ~features "riscv64" code;
+      disasm ~features ~inspect:true "riscv64" code)
+    [ "none,+a"; "none" ];
+  [%expect
+    {|
+    -- none,+a
+    00001000  af a2 63 00  amoadd.w x5, x6, 0(x7)  [riscv64.amoadd.w]
+    00001004  b3 02 73 00  add x5, x6, x7          [riscv64.add]
+    00001000  af a2 63 00  amoadd.w x5, x6, 0(x7)  [riscv64.amoadd.w]
+    00001004  b3 02 73 00  add x5, x6, x7          [riscv64.add]
+    -- none
+    REFUSED riscv64.feature: amoadd.w requires feature a, which is not enabled
+    00001000  af a2 63 00  amoadd.w x5, x6, 0(x7)  ; requires feature a, which is not enabled  [riscv64.amoadd.w]
+    00001004  b3 02 73 00  add x5, x6, x7                                                      [riscv64.add] |}]

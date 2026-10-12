@@ -2726,7 +2726,16 @@ module Make (P : PROFILE) = struct
 
   (* The separable instruction components this family publishes (one per gating feature). The
      rest of the family is the always-available base. *)
-  let components = [ Riscv_ext_m.zmmul; Riscv_ext_m.m; Riscv_ext_fd.f; Riscv_ext_fd.d ]
+  let components =
+    [
+      Riscv_ext_m.zmmul;
+      Riscv_ext_m.m;
+      Riscv_ext_fd.f;
+      Riscv_ext_fd.d;
+      Riscv_ext_a.a;
+      Riscv_ext_a.zacas;
+      Riscv_ext_a.zabha;
+    ]
 
   (* [config] is the validated feature set. It lives in the state, not beside it, so it rides
      everywhere the state already goes: each unit starts from the caller's initial state, and a
