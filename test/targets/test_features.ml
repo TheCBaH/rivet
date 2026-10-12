@@ -622,3 +622,29 @@ let%expect_test "the default configuration is pinned" =
     aarch64  enabled=[] components=[]
     riscv32  enabled=[m,zmmul] components=[riscv.zmmul,riscv.m]
     riscv64  enabled=[m,zmmul] components=[riscv.zmmul,riscv.m] |}]
+
+(* [add.uw rd, rs, x0] is also [zext.w]; refusing the specialization leaves the general form. *)
+let%expect_test "a disabled specialization falls back to the enabled general form" =
+  let bytes = "\xbb\x00\x01\x08" in
+  let decode legal =
+    match
+      Riscv64_encode.decode_where ~legal
+        { state = Riscv64_encode.default_state; address = 0L }
+        bytes ~pos:0
+    with
+    | Ok (_, name, n) -> Printf.sprintf "%s (%d bytes)" name n
+    | Error _ -> "refused"
+  in
+  List.iter
+    (fun (label, legal) -> Printf.printf "%s: %s\n" label (decode legal))
+    [
+      ("all legal", fun _ -> true);
+      ("no zext.w", fun m -> m <> "zext.w");
+      ("neither", fun m -> m <> "zext.w" && m <> "add.uw");
+    ];
+  [%expect
+    {|
+    all legal: zext.w (4 bytes)
+    no zext.w: add.uw (4 bytes)
+    neither: refused
+    |}]

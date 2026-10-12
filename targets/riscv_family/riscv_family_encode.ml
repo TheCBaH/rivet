@@ -7796,7 +7796,7 @@ module Make (P : PROFILE) = struct
 
   (* DEC-RV-TABLE: tried only after the hand-written decoder finds nothing, so a
      generated row never shadows a hand-written form. *)
-  let table_decode ?(half = false) w =
+  let table_decode ?(half = false) ?(legal = fun _ -> true) w =
     let rows = Riscv_table_rows.rows in
     let field lsb width = bits w lsb width in
     let unscatter (sc : Riscv_table_row.scatter) =
@@ -7893,7 +7893,7 @@ module Make (P : PROFILE) = struct
       else
         let r = rows.(i) in
         if
-          table_row_applies r
+          table_row_applies r && legal r.mnemonic
           && Int64.logand r.match_ 3L <> 3L = half
           && Int64.equal (Int64.logand w r.mask) r.match_
           && tied_ok r
@@ -8302,29 +8302,45 @@ module Make (P : PROFILE) = struct
           | None -> Error (diag ~pos:__POS__ `Decode_no_match))
       | Some (i, f) -> Ok (i, f, 4)
 
+  let table_fallback ?legal bytes ~pos =
+    if String.length bytes - pos < 2 then None
+    else if Char.code bytes.[pos] land 3 <> 3 then
+      Option.map (fun (i, f) -> (i, f, 2)) (table_decode ~half:true ?legal (read_half bytes pos))
+    else if String.length bytes - pos < 4 then None
+    else Option.map (fun (i, f) -> (i, f, 4)) (table_decode ?legal (read_word bytes pos))
+
   (* Generated rows are tried whenever the hand-written decoder declines a word, whichever of its
      arms declined it. *)
   let decode_ungated ctx bytes ~pos =
     match decode_hand_written ctx bytes ~pos with
     | Ok _ as ok -> ok
-    | Error _ as e -> (
-        if String.length bytes - pos < 2 then e
-        else if Char.code bytes.[pos] land 3 <> 3 then
-          match table_decode ~half:true (read_half bytes pos) with
-          | Some (i, f) -> Ok (i, f, 2)
-          | None -> e
-        else if String.length bytes - pos < 4 then e
-        else match table_decode (read_word bytes pos) with Some (i, f) -> Ok (i, f, 4) | None -> e)
+    | Error _ as e -> ( match table_fallback bytes ~pos with Some r -> Ok r | None -> e)
 
-  (* Strict decoding: a word that is a disabled component's instruction is refused rather than
-     printed as if it were assemblable under this configuration. *)
+  (* The first candidate whose mnemonic satisfies [legal], hand-written before generated, so a
+     disabled specialization falls back to an enabled general form. *)
+  let decode_where ~legal ctx bytes ~pos =
+    let hand = decode_hand_written ctx bytes ~pos in
+    match hand with
+    | Ok (insn, _, _) when legal (Opcode.name insn.Instruction.op) -> hand
+    | _ -> (
+        match table_fallback ~legal bytes ~pos with
+        | Some r -> Ok r
+        | None -> (
+            match hand with Error _ -> hand | Ok _ -> Error (diag ~pos:__POS__ `Decode_no_match)))
+
+  (* Strict decoding: a word whose only readings are disabled is refused rather than printed as if
+     it were assemblable under this configuration. *)
   let decode ctx bytes ~pos =
-    match decode_ungated ctx bytes ~pos with
-    | Ok (insn, _, _) as ok -> (
-        match feature_gate ctx.state (Opcode.name insn.Instruction.op) with
-        | Ok () -> ok
-        | Error _ as e -> e)
-    | Error _ as e -> e
+    let legal name = Result.is_ok (feature_gate ctx.state name) in
+    match decode_where ~legal ctx bytes ~pos with
+    | Ok _ as ok -> ok
+    | Error _ as e -> (
+        match decode_ungated ctx bytes ~pos with
+        | Ok (insn, _, _) -> (
+            match feature_gate ctx.state (Opcode.name insn.Instruction.op) with
+            | Error _ as g -> g
+            | Ok () -> e)
+        | Error _ -> e)
 
   (* The public codec describes the same real words as the explicit encoder
      and decoder above.  Symbol expressions and PC context live outside a raw
