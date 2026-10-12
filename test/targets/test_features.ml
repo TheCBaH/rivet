@@ -511,7 +511,7 @@ let%expect_test "decode: canonical disassembly is strict and still re-assembles"
 
 (* {1 Scope, isolation and layout} *)
 
-let%expect_test "RISC-V .option push/pop leaves the configuration alone" =
+let%expect_test "RISC-V .option push/pop restores the configuration" =
   let module F = Riscv64 in
   let config =
     match Target_config.resolve F.components (spec "none,+zmmul") with
@@ -524,15 +524,58 @@ let%expect_test "RISC-V .option push/pop leaves the configuration alone" =
     | Target_intf.Target.Handled { state; _ } -> state
     | _ -> failwith directive
   in
-  let after = state |> step "push" |> step "rvc" |> step "pic" |> step "pop" in
-  Printf.printf "before: %s\nafter:  %s\nsame: %b\n"
-    (String.concat "," (Target_config.features (F.state_config state)))
-    (String.concat "," (Target_config.features (F.state_config after)))
+  let show state = String.concat "," (Target_config.features (F.state_config state)) in
+  let pushed = state |> step "push" |> step "rvc" |> step "pic" |> step "arch, +zba" in
+  let after = step "pop" pushed in
+  Printf.printf "before: %s\ninside: %s\nafter:  %s\nsame: %b\n" (show state) (show pushed)
+    (show after)
     (Target_config.equal (F.state_config state) (F.state_config after));
   [%expect {|
     before: zmmul
+    inside: zba,zmmul
     after:  zmmul
     same: true |}]
+
+let%expect_test "RISC-V .option arch edits the configuration mid-assembly" =
+  let cases =
+    [
+      ("-m, -zmmul then mul", "", "\t.option arch, -m, -zmmul\n\tmul x5, x6, x7");
+      ("-m, +zmmul then mul", "", "\t.option arch, -m, +zmmul\n\tmul x5, x6, x7");
+      ("-m, +zmmul then remu", "", "\t.option arch, -m, +zmmul\n\tremu x5, x6, x7");
+      ("+zba from none", "none", "\t.option arch, +zba\n\tsh1add x5, x6, x7");
+      ("versioned +zba2p0", "none", "\t.option arch, +zba2p0\n\tsh1add x5, x6, x7");
+      ("before the directive", "none", "\tsh1add x5, x6, x7\n\t.option arch, +zba");
+      ( "push/pop scope",
+        "none",
+        "\t.option push\n\t.option arch, +zba\n\t.option pop\n\tsh1add x5, x6, x7" );
+      ("+zbb refuses sh1add", "none", "\t.option arch, +zbb\n\tsh1add x5, x6, x7");
+      ("-zcd on default", "", "\t.option arch, -zcd");
+      ("zcmp recipe", "", "\t.option arch, -c, -zcd, +zcmp\n\t.option rvc\n\tcm.push {ra}, -16");
+      ("unknown", "", "\t.option arch, +nonsense");
+      ("unsigned", "", "\t.option arch, zba");
+      ("empty", "", "\t.option arch");
+    ]
+  in
+  List.iter
+    (fun (label, features, body) ->
+      Printf.printf "%-28s %s\n" label
+        (outcome (assembled ~features "riscv64" ("\t.text\n" ^ body ^ "\n"))))
+    cases;
+  [%expect
+    {|
+    -m, -zmmul then mul          REFUSED riscv64.feature: mul requires feature zmmul, which is not enabled
+    -m, +zmmul then mul          b3 02 73 02
+    -m, +zmmul then remu         REFUSED riscv64.feature: remu requires feature m, which is not enabled
+    +zba from none               b3 22 73 20
+    versioned +zba2p0            b3 22 73 20
+    before the directive         REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    push/pop scope               REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    +zbb refuses sh1add          REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    -zcd on default              REFUSED riscv64.directive: .option arch: feature zcd is implied by c, which is enabled
+    zcmp recipe                  42 b8
+    unknown                      REFUSED riscv64.directive: .option arch: unknown feature nonsense (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg, zca, zcd, zcf, zcb, zcmp, zcmt, zcmop, c)
+    unsigned                     REFUSED riscv64.directive: .option arch: expected +<extension> or -<extension>, got "zba"
+    empty                        REFUSED riscv64.directive: .option arch: expected +<extension> or -<extension>, got "" |}]
 
 let%expect_test "every unit of a multi-unit assembly gets the caller's configuration" =
   let (module D : Target_intf.Target.DRIVER) = driver "riscv64" in

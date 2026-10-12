@@ -429,7 +429,7 @@ Four categories, and the category decides what happens:
 | `.fpu <name>` | | | ● | | | | target state | ARM state |
 | `.arm` | | | ● | | | | target state | ARM state |
 | `.eabi_attribute <t>, <v>` | | | ● | | | | target state | ARM state |
-| `.option <mode>` | | | | | ● | ● | target state | RISC-V state — `push`/`pop` save and restore pic, relax and rvc; `pic`/`nopic`/`norelax` set their flag; `rvc`/`norvc` permit/forbid compressed encodings; `relax` and anything else is rejected |
+| `.option <mode>` | | | | | ● | ● | target state | RISC-V state — `push`/`pop` save and restore pic, relax, rvc and the feature set; `pic`/`nopic`/`norelax` set their flag; `rvc`/`norvc` permit/forbid compressed encodings; `arch, +ext/-ext` edits the feature set; `relax` and anything else is rejected |
 | `.cfi_startproc` | ● | ● | ● | ● | ● | ● | metadata | discarded |
 | `.cfi_endproc` | ● | ● | ● | ● | ● | ● | metadata | discarded |
 | `.cfi_adjust_cfa_offset <n>` | ● | ● | ● | ● | ● | ● | metadata | discarded |
@@ -922,10 +922,10 @@ plain validated set. Nothing below re-parses a name.
 In `target_state`. Because that is already threaded through every stage that
 takes one, the configuration reaches lowering, encoding and decoding without a
 new parameter on each, and each unit of `assemble_many` starts from the same
-initial state, so one unit cannot change another's. `.option push`/`pop` do not
-touch it (no directive changes it). RISC-V `.attribute arch` stays ignored
-metadata and x86 `.arch` stays unsupported: features are selected by API or CLI,
-not by directive, until a compatibility decision says otherwise.
+initial state, so one unit cannot change another's. RISC-V `.option arch,
++ext/-ext` edits it through the same resolver as the CLI (`docs/extensions.md`),
+and `.option push`/`pop` save and restore it. RISC-V `.attribute arch` stays
+ignored metadata and x86 `.arch` stays unsupported.
 
 ### 6.4 Enforcement points
 

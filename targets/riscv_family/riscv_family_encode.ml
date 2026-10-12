@@ -2744,13 +2744,13 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
 
   (* [config] is the validated feature set. It lives in the state, not beside it, so it rides
      everywhere the state already goes: each unit starts from the caller's initial state, and a
-     lowered fragment replays under the state it was written in. It is deliberately not part of
-     [option_stack]: no directive changes it, so [.option push]/[pop] have nothing to restore. *)
+     lowered fragment replays under the state it was written in. [.option arch] changes it, so
+     [option_stack] saves it with the flags. *)
   type target_state = {
     pic : bool;
     relax : bool;
     rvc : bool;
-    option_stack : (bool * bool * bool) list;
+    option_stack : (bool * bool * bool * Target_config.t) list;
     config : Target_config.t;
   }
 

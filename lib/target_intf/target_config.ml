@@ -129,7 +129,7 @@ let validate components set =
 
 (* [denied] holds the features the spec removed explicitly. A later [+f] overrides an earlier
    [-f], and [none] forgets both. *)
-let resolve components spec =
+let apply components start spec =
   let known_names = S.of_list (all_features components) in
   let step acc item =
     match acc with
@@ -151,10 +151,11 @@ let resolve components spec =
             let denied = S.add f denied in
             Ok (close components denied (S.remove f set), denied))
   in
-  match List.fold_left step (Ok (default components, S.empty)) spec with
+  match List.fold_left step (Ok (start, S.empty)) spec with
   | Error _ as e -> e
   | Ok (set, _) -> validate components set
 
+let resolve components spec = apply components (default components) spec
 let enabled t f = S.mem f t
 let features t = S.elements t
 let equal = S.equal

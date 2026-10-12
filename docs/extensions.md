@@ -52,6 +52,20 @@ with Zvbb need `zvbb` or `zvkb`.
 | `c.ntl.*` | `zihintntl` | `zihintntl` and `zca` |
 | `c.sspush`, `c.sspopchk` | `zicfiss` | `zicfiss` and `zcmop` |
 
+## Changing the set in the source
+
+`.option arch, <item>[, <item>...]` edits the enabled set from that point on.
+Each item is `+<ext>` or `-<ext>` with the feature names of the table below,
+case-insensitive, optionally followed by a GNU version (`+zba2p0`; the version
+is accepted and ignored, as one version of each extension is modelled). Items
+apply left to right with the same rules as `--features`
+(`Target_config.apply`): requirements are enabled, implications re-closed
+without re-adding a removed feature, and only the final set is validated, so
+`.option arch, -c, -zcd, +zcmp` is one valid step. A rejected directive leaves
+the set unchanged. `.option push`/`pop` save and restore the set together with
+the pic, relax and rvc flags. An unsigned item, an unknown or inapplicable
+feature, or a contradictory result is an error.
+
 ## Compressed
 
 `c` is an implication-only group: it implies `zca`, `zcd` when `d` is enabled
@@ -183,9 +197,10 @@ owns; the last column lists forms whose predicate is not just the feature.
 | zcmp | zca |  | zcd | no | 6 |  |
 | zcmt | zca |  | zcd | no | 1 |  |
 | zcmop | zca |  |  | yes | 8 |  |
-| c |  | zca, zcd if d |  | yes | 0 |  | |}]
+| c |  | zca, zcd if d |  | yes | 0 |  |
 
 ## Not covered
 
-The psABI, full GNU ISA-string intake (`-march=`), `.option arch`, `.insn` and
-runtime plugin loading are outside this model.
+The psABI, full GNU ISA-string intake (`-march=` and `.option arch, =<ISA>`),
+`.attribute arch` (still consumed and ignored), `.insn` and runtime plugin
+loading are outside this model.

@@ -53,6 +53,11 @@ val all_enabled : Target_component.t list -> t
 val resolve : Target_component.t list -> spec -> (t, string) result
 (** Apply a spec to the default configuration of these components. *)
 
+val apply : Target_component.t list -> t -> spec -> (t, string) result
+(** Apply a spec to an existing configuration, with the same policy as {!resolve}: the removals
+    that guard implications are those of this spec alone, and the result is validated. Used by
+    sources that change the set mid-assembly. *)
+
 val enabled : t -> string -> bool
 (** Whether a feature is on. A name no component declares is never enabled. *)
 
