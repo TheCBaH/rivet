@@ -873,31 +873,46 @@ instructions.
 
 A **component** is an implementation boundary: a group of forms one module owns.
 A **feature** is the name that gates it. Each family publishes its components
-as data (`Target_component.t`: an id, the gating feature, `requires` and
-`conflicts`, and per form a codec label, mnemonics and upstream source
-mappings). Today:
-
-| target | components | feature | requires |
-|---|---|---|---|
-| riscv32, riscv64 | `riscv.zmmul` (`mul`, RV64 `mulw`) | `zmmul` | — |
-| riscv32, riscv64 | `riscv.m` (`remu`) | `m` | `zmmul` |
-| x86_32, x86_64 | `x86.x87` (13 forms) | `x87` | — |
-| arm, aarch64 | none | — | — |
+as data (`Target_component.t`: an id, the gating feature, `requires`,
+`conflicts`, conditional `implies`, whether it is `default_on`, the XLENs it
+applies to, and per form a codec label, mnemonics, upstream source mappings and
+an optional legality predicate). RISC-V publishes the standard extensions the
+encoder implements (inventory and per-extension notes in
+[extensions.md](extensions.md)); x86 publishes `x86.x87` (feature `x87`); ARM and
+AArch64 publish none.
 
 Everything not in a component is the always-available base. A component lists
 only the forms that exist, so **enabled does not mean the extension is fully
-implemented**: RISC-V M is `remu` and its Zmmul siblings, not division.
+implemented**.
+
+A form is **owned** by one component (catalogue provenance) and **legal** under
+a predicate (`Target_component.Req`: a feature, all of several, or any of
+several). Ownership never gates; the predicate does. `amocas.b` is owned by
+Zacas and needs Zacas and Zabha; `andn` is owned by Zbb and needs Zbb or Zbkb.
 
 ### 6.2 Resolution policy
 
-The default enables every component the target implements, so an unconfigured
-assembler behaves as it always has. A spec is a comma-separated list processed
-left to right: `none` empties the set, `+f` (or `f`) enables `f` and what it
-requires, transitively, and `-f` disables exactly `f`. The result must be closed
-under `requires` and free of `conflicts`; a contradictory request is **rejected
-with an error naming both features**, never silently repaired. Unknown names are
-errors and list the names the target knows. `none,+m` and `none,+zmmul,+m` are
-the same; `-zmmul` is an error while `m` is on; `-m,-zmmul` is fine.
+The default is a **valid seed** the target defines: every component marked
+`default_on` and applicable at the target's XLEN, closed under `requires` and
+`implies`. For RISC-V it is the `rv{32,64}gc`-style set plus every other
+extension the encoder accepts that does not conflict, so an unconfigured
+assembler accepts what it always has. **Compatibility break:** Zcmp and Zcmt
+reuse the double-precision compressed load/store encodings, conflict with Zcd,
+and are therefore off by default. Their opt-in recipes are `-c,-zcd,+zcmp` and
+`-c,-zcd,+zcmt`; by default `0xb842` decodes as `c.fsdsp`.
+
+A spec is a comma-separated list processed left to right from that seed: `none`
+empties the set and forgets earlier removals, `+f` (or `f`) enables `f` and what
+it requires, transitively, and `-f` disables exactly `f` and records the removal.
+Implications are re-closed after every item and never re-add a removed feature,
+so `none,+c,+d` and `none,+d,+c` are the same. The final set must be closed under
+`requires` and `implies` and free of `conflicts`; a contradictory request is
+**rejected with an error naming both features**, never silently repaired
+(`-zcd` while `c` is on: "feature zcd is implied by c, which is enabled"). A
+feature that exists but not at this XLEN (`+zcf` on RV64) is reported as not
+applicable, distinct from an unknown name. Unknown names list the names the
+target knows. `none,+m` and `none,+zmmul,+m` are the same; `-zmmul` is an error
+while `m` is on; `-m,-zmmul` is fine.
 
 Names are resolved once, at the boundary (`Target_config.resolve`), into a
 plain validated set. Nothing below re-parses a name.
@@ -914,7 +929,7 @@ not by directive, until a compatibility decision says otherwise.
 
 ### 6.4 Enforcement points
 
-One gate per family, `feature_gate`, checked wherever a form can be seen:
+One gate per family, `feature_gate`, evaluates a form's predicate against the enabled set wherever a form can be seen. Every lowered constructor names the instruction it encodes, so none escapes it:
 
 | path | check |
 |---|---|
@@ -924,7 +939,8 @@ One gate per family, `feature_gate`, checked wherever a form can be seen:
 | bytes | `decode`, strict |
 
 `encode` is `encode_in` under the default state, so old entry points are
-default-configuration wrappers. Pseudo-instruction expansion, relaxation and
+default-configuration wrappers, and `codec` is the codec of the default
+configuration (RISC-V also offers `codec_in` for any other). Pseudo-instruction expansion, relaxation and
 `.balign` padding reach the encoder only through these, and padding is
 target-defined filler that no component owns. The diagnostic is
 `<target>.feature`: `mul requires feature zmmul, which is not enabled`.
@@ -933,11 +949,17 @@ target-defined filler that no component owns. The diagnostic is
 
 Decoding is strict: bytes that are a disabled component's instruction are an
 error, so a decode never presents as assemblable something the configuration
-would refuse. `--dump-disasm=canonical` is always strict (it must re-assemble).
-`--dump-disasm=diagnostic --inspect-disabled` decodes every component and marks
-each instruction the configuration would refuse (`; requires feature m, which is
-not enabled`); that output is not re-parseable, like the rest of the diagnostic
-dump.
+would refuse. When several forms match a word, the first one that is legal under
+the configuration wins, hand-written forms before generated ones, so a disabled
+specialization falls back to an enabled general form. `--dump-disasm=canonical`
+is always strict (it must re-assemble).
+
+`--dump-disasm=diagnostic --inspect-disabled` reads a word the configuration
+refuses with every component enabled and lists **every** reading, each with the
+part of its predicate the configuration does not meet (`; requires feature m,
+which is not enabled`; further readings follow as `; or ...`). A word the
+configuration accepts is shown as strict decode shows it. That output is not
+re-parseable, like the rest of the diagnostic dump.
 
 ### 6.6 Public surface
 
@@ -945,5 +967,5 @@ dump.
 `assemble`, `assemble_many`, `dump_normalized_ast`, `dump_lowered_ast` and both
 disassembly dumps. A spec that does not resolve fails the call with
 `config.invalid` before any source is read. CLI: `--features <spec>`,
-`--dump-features`, `--inspect-disabled`. Omitting all of them is the previous
-behavior.
+`--dump-features`, `--inspect-disabled`. Omitting all of them selects the
+default configuration (§6.2).
