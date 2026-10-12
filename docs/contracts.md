@@ -429,7 +429,7 @@ Four categories, and the category decides what happens:
 | `.fpu <name>` | | | ● | | | | target state | ARM state |
 | `.arm` | | | ● | | | | target state | ARM state |
 | `.eabi_attribute <t>, <v>` | | | ● | | | | target state | ARM state |
-| `.option <mode>` | | | | | ● | ● | target state | RISC-V state — no-op for `push`/`pop`/`pic`/`nopic`/`norelax`/`norvc`; `relax`/`rvc`/anything else is rejected |
+| `.option <mode>` | | | | | ● | ● | target state | RISC-V state — `push`/`pop` save and restore pic, relax and rvc; `pic`/`nopic`/`norelax` set their flag; `rvc`/`norvc` permit/forbid compressed encodings; `relax` and anything else is rejected |
 | `.cfi_startproc` | ● | ● | ● | ● | ● | ● | metadata | discarded |
 | `.cfi_endproc` | ● | ● | ● | ● | ● | ● | metadata | discarded |
 | `.cfi_adjust_cfa_offset <n>` | ● | ● | ● | ● | ● | ● | metadata | discarded |
