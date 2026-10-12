@@ -83,24 +83,24 @@ let%expect_test "the effective configuration of each target" =
     [ "riscv32"; "riscv64"; "x86_32"; "x86_64"; "arm"; "aarch64" ];
   [%expect
     {|
-    riscv32  ""           -> a,d,f,m,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin,zmmul
+    riscv32  ""           -> a,d,f,m,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh,zmmul
     riscv32  "none"       ->
     riscv32  "none,+m"    -> m,zmmul
-    riscv32  "-m"         -> a,d,f,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin,zmmul
+    riscv32  "-m"         -> a,d,f,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh,zmmul
     riscv32  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv32  "-m,-zmmul"  -> a,d,f,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin
-    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
-    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
-    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
-    riscv64  ""           -> a,d,f,m,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin,zmmul
+    riscv32  "-m,-zmmul"  -> a,d,f,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh
+    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
+    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
+    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
+    riscv64  ""           -> a,d,f,m,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh,zmmul
     riscv64  "none"       ->
     riscv64  "none,+m"    -> m,zmmul
-    riscv64  "-m"         -> a,d,f,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin,zmmul
+    riscv64  "-m"         -> a,d,f,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh,zmmul
     riscv64  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv64  "-m,-zmmul"  -> a,d,f,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin
-    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
-    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
-    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
+    riscv64  "-m,-zmmul"  -> a,d,f,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh
+    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
+    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
+    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
     x86_32   ""           -> x87
     x86_32   "none"       ->
     x86_32   "none,+m"    -> error: unknown feature m (known: x87)
@@ -355,7 +355,7 @@ let%expect_test "an invalid configuration fails before any source is read" =
   [%expect
     {|
     riscv64  [-zmmul   ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: feature m requires zmmul, which is disabled
-    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
+    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
     arm      [x87      ] nop                    REFUSED config.invalid: invalid feature configuration: unknown feature x87 (known: (none)) |}]
 
 (* {1 Normalized and lowered instructions handed in directly} *)
@@ -620,8 +620,8 @@ let%expect_test "the default configuration is pinned" =
     x86_64   enabled=[x87] components=[x86.x87]
     arm      enabled=[] components=[]
     aarch64  enabled=[] components=[]
-    riscv32  enabled=[a,d,f,m,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin]
-    riscv64  enabled=[a,d,f,m,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin] |}]
+    riscv32  enabled=[a,d,f,m,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin,riscv.zba,riscv.zbb,riscv.zbs,riscv.zbc,riscv.zbkb,riscv.zbkc,riscv.zbkx,riscv.zknd,riscv.zkne,riscv.zknh,riscv.zksed,riscv.zksh,riscv.zicond,riscv.b,riscv.zkn,riscv.zks,riscv.zk]
+    riscv64  enabled=[a,d,f,m,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin,riscv.zba,riscv.zbb,riscv.zbs,riscv.zbc,riscv.zbkb,riscv.zbkc,riscv.zbkx,riscv.zknd,riscv.zkne,riscv.zknh,riscv.zksed,riscv.zksh,riscv.zicond,riscv.b,riscv.zkn,riscv.zks,riscv.zk] |}]
 
 (* [add.uw rd, rs, x0] is also [zext.w]; refusing the specialization leaves the general form. *)
 let%expect_test "a disabled specialization falls back to the enabled general form" =
@@ -884,3 +884,86 @@ let%expect_test "Zfh implies Zfhmin" =
     "none,+zfhmin"     -> f,zfhmin
     "none,+q"          -> d,f,q
     "none,+zfa"        -> f,zfa |}]
+
+(* {1 Bit manipulation and scalar crypto} *)
+
+let%expect_test "Zbb, Zbkb, Zk: shared forms accept any providing extension" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv64")
+        [
+          "andn x5, x6, x7";
+          "min x5, x6, x7";
+          "pack x5, x6, x7";
+          "clmul x5, x6, x7";
+          "aes64ks1i x5, x6, 3";
+          "sha256sig0 x5, x6";
+          "sh1add x5, x6, x7";
+          "czero.eqz x5, x6, x7";
+        ])
+    [ "none,+zbb"; "none,+zbkb"; "none,+zk"; "none,+zks"; "none,+b"; "none" ];
+  [%expect
+    {|
+    riscv64  [none,+zbb] andn x5, x6, x7        b3 72 73 40
+    riscv64  [none,+zbb] min x5, x6, x7         b3 42 73 0a
+    riscv64  [none,+zbb] pack x5, x6, x7        REFUSED riscv64.feature: pack requires feature zbkb, which is not enabled
+    riscv64  [none,+zbb] clmul x5, x6, x7       REFUSED riscv64.feature: clmul requires feature one of zbc, zbkc, which is not enabled
+    riscv64  [none,+zbb] aes64ks1i x5, x6, 3    REFUSED riscv64.feature: aes64ks1i requires feature one of zknd, zkne, which is not enabled
+    riscv64  [none,+zbb] sha256sig0 x5, x6      REFUSED riscv64.feature: sha256sig0 requires feature zknh, which is not enabled
+    riscv64  [none,+zbb] sh1add x5, x6, x7      REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    riscv64  [none,+zbb] czero.eqz x5, x6, x7   REFUSED riscv64.feature: czero.eqz requires feature zicond, which is not enabled
+    riscv64  [none,+zbkb] andn x5, x6, x7        b3 72 73 40
+    riscv64  [none,+zbkb] min x5, x6, x7         REFUSED riscv64.feature: min requires feature zbb, which is not enabled
+    riscv64  [none,+zbkb] pack x5, x6, x7        b3 42 73 08
+    riscv64  [none,+zbkb] clmul x5, x6, x7       REFUSED riscv64.feature: clmul requires feature one of zbc, zbkc, which is not enabled
+    riscv64  [none,+zbkb] aes64ks1i x5, x6, 3    REFUSED riscv64.feature: aes64ks1i requires feature one of zknd, zkne, which is not enabled
+    riscv64  [none,+zbkb] sha256sig0 x5, x6      REFUSED riscv64.feature: sha256sig0 requires feature zknh, which is not enabled
+    riscv64  [none,+zbkb] sh1add x5, x6, x7      REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    riscv64  [none,+zbkb] czero.eqz x5, x6, x7   REFUSED riscv64.feature: czero.eqz requires feature zicond, which is not enabled
+    riscv64  [none,+zk ] andn x5, x6, x7        b3 72 73 40
+    riscv64  [none,+zk ] min x5, x6, x7         REFUSED riscv64.feature: min requires feature zbb, which is not enabled
+    riscv64  [none,+zk ] pack x5, x6, x7        b3 42 73 08
+    riscv64  [none,+zk ] clmul x5, x6, x7       b3 12 73 0a
+    riscv64  [none,+zk ] aes64ks1i x5, x6, 3    93 12 33 31
+    riscv64  [none,+zk ] sha256sig0 x5, x6      93 12 23 10
+    riscv64  [none,+zk ] sh1add x5, x6, x7      REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    riscv64  [none,+zk ] czero.eqz x5, x6, x7   REFUSED riscv64.feature: czero.eqz requires feature zicond, which is not enabled
+    riscv64  [none,+zks] andn x5, x6, x7        b3 72 73 40
+    riscv64  [none,+zks] min x5, x6, x7         REFUSED riscv64.feature: min requires feature zbb, which is not enabled
+    riscv64  [none,+zks] pack x5, x6, x7        b3 42 73 08
+    riscv64  [none,+zks] clmul x5, x6, x7       b3 12 73 0a
+    riscv64  [none,+zks] aes64ks1i x5, x6, 3    REFUSED riscv64.feature: aes64ks1i requires feature one of zknd, zkne, which is not enabled
+    riscv64  [none,+zks] sha256sig0 x5, x6      REFUSED riscv64.feature: sha256sig0 requires feature zknh, which is not enabled
+    riscv64  [none,+zks] sh1add x5, x6, x7      REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    riscv64  [none,+zks] czero.eqz x5, x6, x7   REFUSED riscv64.feature: czero.eqz requires feature zicond, which is not enabled
+    riscv64  [none,+b  ] andn x5, x6, x7        b3 72 73 40
+    riscv64  [none,+b  ] min x5, x6, x7         b3 42 73 0a
+    riscv64  [none,+b  ] pack x5, x6, x7        REFUSED riscv64.feature: pack requires feature zbkb, which is not enabled
+    riscv64  [none,+b  ] clmul x5, x6, x7       REFUSED riscv64.feature: clmul requires feature one of zbc, zbkc, which is not enabled
+    riscv64  [none,+b  ] aes64ks1i x5, x6, 3    REFUSED riscv64.feature: aes64ks1i requires feature one of zknd, zkne, which is not enabled
+    riscv64  [none,+b  ] sha256sig0 x5, x6      REFUSED riscv64.feature: sha256sig0 requires feature zknh, which is not enabled
+    riscv64  [none,+b  ] sh1add x5, x6, x7      b3 22 73 20
+    riscv64  [none,+b  ] czero.eqz x5, x6, x7   REFUSED riscv64.feature: czero.eqz requires feature zicond, which is not enabled
+    riscv64  [none     ] andn x5, x6, x7        REFUSED riscv64.feature: andn requires feature one of zbb, zbkb, which is not enabled
+    riscv64  [none     ] min x5, x6, x7         REFUSED riscv64.feature: min requires feature zbb, which is not enabled
+    riscv64  [none     ] pack x5, x6, x7        REFUSED riscv64.feature: pack requires feature zbkb, which is not enabled
+    riscv64  [none     ] clmul x5, x6, x7       REFUSED riscv64.feature: clmul requires feature one of zbc, zbkc, which is not enabled
+    riscv64  [none     ] aes64ks1i x5, x6, 3    REFUSED riscv64.feature: aes64ks1i requires feature one of zknd, zkne, which is not enabled
+    riscv64  [none     ] sha256sig0 x5, x6      REFUSED riscv64.feature: sha256sig0 requires feature zknh, which is not enabled
+    riscv64  [none     ] sh1add x5, x6, x7      REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    riscv64  [none     ] czero.eqz x5, x6, x7   REFUSED riscv64.feature: czero.eqz requires feature zicond, which is not enabled |}]
+
+let%expect_test "K groups are sums of their leaf extensions" =
+  List.iter
+    (fun text ->
+      match Target_config.resolve Riscv64_encode.components (spec text) with
+      | Ok c -> Printf.printf "%-14S -> %s\n" text (String.concat "," (Target_config.features c))
+      | Error m -> Printf.printf "%-14S -> error: %s\n" text m)
+    [ "none,+zk"; "none,+zks"; "none,+b"; "none,+zk,-zbkb"; "none,+zbc,-zbkc" ];
+  [%expect
+    {|
+    "none,+zk"     -> zbkb,zbkc,zbkx,zk,zkn,zknd,zkne,zknh
+    "none,+zks"    -> zbkb,zbkc,zbkx,zks,zksed,zksh
+    "none,+b"      -> b,zba,zbb,zbs
+    "none,+zk,-zbkb" -> error: feature zbkb is implied by zkn, which is enabled
+    "none,+zbc,-zbkc" -> zbc |}]

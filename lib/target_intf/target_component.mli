@@ -49,8 +49,8 @@ type t = {
   conflicts : string list;  (** features that cannot be enabled together with this one *)
   implies : (cond * string) list;
       (** features enabled whenever this one is on and the condition holds, such as RISC-V C
-          implying Zcd when D is present. A component with no forms and only implications is
-          valid. *)
+          implying Zcd when D is present. A component with no forms is valid when it has
+          implications or another component's legality names its feature. *)
   default_on : bool;  (** whether the default configuration enables it *)
   xlens : int list;  (** the XLENs it applies to; empty means all *)
   not_applicable : string option;

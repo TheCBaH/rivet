@@ -96,8 +96,18 @@ let rec cond_features = function
   | And cs -> List.concat_map cond_features cs
 
 let check components =
+  let referenced =
+    List.concat_map
+      (fun c ->
+        List.concat_map
+          (fun f -> match f.legal with None -> [] | Some r -> Req.features r)
+          c.forms)
+      components
+  in
   let per_component c =
-    (if c.forms = [] && c.implies = [] then [ Printf.sprintf "%s: no forms" c.id ] else [])
+    (if c.forms = [] && c.implies = [] && not (List.mem c.feature referenced) then
+       [ Printf.sprintf "%s: no forms" c.id ]
+     else [])
     @ List.concat_map
         (fun f ->
           (if f.mnemonics = [] then [ Printf.sprintf "%s: form %s has no mnemonic" c.id f.label ]

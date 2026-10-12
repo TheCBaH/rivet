@@ -5,6 +5,7 @@ val component :
   feature:string ->
   ?requires:string list ->
   ?implies:string list ->
+  ?default_on:bool ->
   ?legal:(string -> Target_component.Req.t option) ->
   summary:string ->
   (string * string) list ->

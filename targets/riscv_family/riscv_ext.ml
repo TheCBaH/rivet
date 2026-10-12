@@ -10,8 +10,8 @@ let table_forms feature =
     [] Riscv_table_rows.rows
   |> List.rev
 
-let component ~id ~feature ?(requires = []) ?(implies = []) ?(legal = fun _ -> None) ~summary
-    handwritten =
+let component ~id ~feature ?(requires = []) ?(implies = []) ?(default_on = true)
+    ?(legal = fun _ -> None) ~summary handwritten =
   let forms =
     handwritten
     @ List.filter (fun (m, _) -> not (List.mem_assoc m handwritten)) (table_forms feature)
@@ -22,7 +22,7 @@ let component ~id ~feature ?(requires = []) ?(implies = []) ?(legal = fun _ -> N
     requires;
     conflicts = [];
     implies = List.map (fun f -> (Target_component.Always, f)) implies;
-    default_on = true;
+    default_on;
     xlens = [];
     not_applicable = None;
     summary;

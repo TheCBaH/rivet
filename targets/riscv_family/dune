@@ -5,6 +5,7 @@
   riscv_family_encode
   riscv_ext
   riscv_ext_a
+  riscv_ext_b
   riscv_ext_fd
   riscv_ext_fp
   riscv_ext_m
