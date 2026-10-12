@@ -6,14 +6,21 @@
 
     {2 Policy}
 
-    - The default enables every component the target implements, so an unconfigured assembler
-      behaves as it always has. It does not claim that any extension is fully implemented: a
+    - The default is the target's own seed: the components marked [default_on], closed under
+      requirements and implications. It does not claim that any extension is fully implemented: a
       component lists only the forms that exist.
     - A {!spec} is processed left to right. [none] empties the set. [+f] (or a bare [f]) enables
-      [f] together with everything it requires, transitively. [-f] disables exactly [f].
-    - The result must be closed under requirements and free of conflicts. A contradictory request
-      - disabling a feature another enabled feature requires, or enabling two conflicting ones - is
-      rejected with an error naming both, rather than silently repaired.
+      [f] together with everything it requires, transitively, and overrides an earlier [-f].
+      [-f] disables exactly [f] and remembers the removal.
+    - Implications ([c] implying [zcd] when [d] is on) are re-closed after every item, never
+      adding a feature the spec removed, so the result does not depend on the order features were
+      named. Only the final set is validated.
+    - The result must be closed under requirements and implications and free of conflicts. A
+      contradictory request - disabling a feature another enabled feature requires or implies, or
+      enabling two conflicting ones - is rejected with an error naming both, rather than silently
+      repaired.
+    - Enabling a component that does not apply at the target's XLEN is an error distinct from an
+      unknown name.
     - Unknown feature names are errors, and list the names the target knows. *)
 
 type t
@@ -36,7 +43,12 @@ val parse_spec : string -> (spec, string) result
 val spec_to_string : spec -> string
 
 val default : Target_component.t list -> t
-(** Every component enabled. *)
+(** The default configuration: the applicable components marked [default_on], closed under
+    requirements and implications. *)
+
+val all_enabled : Target_component.t list -> t
+(** Every applicable component, conflicts ignored. Not a valid configuration; for inspection
+    to discover which instructions exist, never for assembling. *)
 
 val resolve : Target_component.t list -> spec -> (t, string) result
 (** Apply a spec to the default configuration of these components. *)

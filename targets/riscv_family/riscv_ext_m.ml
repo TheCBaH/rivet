@@ -36,6 +36,10 @@ let component ~id ~feature ~requires ~summary =
     feature;
     requires;
     conflicts = [];
+    implies = [];
+    default_on = true;
+    xlens = [];
+    not_applicable = None;
     summary;
     forms =
       List.filter_map
@@ -47,6 +51,7 @@ let component ~id ~feature ~requires ~summary =
                 Target_component.label = f.mnemonic;
                 mnemonics = [ f.mnemonic ];
                 sources = [ { upstream = "riscv-opcodes"; name = f.source } ];
+                legal = None;
               })
         forms;
   }

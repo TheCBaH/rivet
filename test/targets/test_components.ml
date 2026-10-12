@@ -260,7 +260,7 @@ let%expect_test "component descriptors are structurally clean in every profile" 
 
 let%expect_test "Target_component.check reports collisions" =
   let form label mnemonic sources : Target_component.form =
-    { label; mnemonics = [ mnemonic ]; sources }
+    { label; mnemonics = [ mnemonic ]; sources; legal = None }
   in
   let src = [ { Target_component.upstream = "test"; name = "n" } ] in
   let a : Target_component.t =
@@ -269,6 +269,10 @@ let%expect_test "Target_component.check reports collisions" =
       feature = "a";
       requires = [ "ghost" ];
       conflicts = [];
+      implies = [];
+      default_on = true;
+      xlens = [];
+      not_applicable = None;
       summary = "";
       forms = [ form "x" "op" src; form "x" "op2" [] ];
     }
@@ -279,12 +283,27 @@ let%expect_test "Target_component.check reports collisions" =
       feature = "b";
       requires = [];
       conflicts = [];
+      implies = [];
+      default_on = true;
+      xlens = [];
+      not_applicable = None;
       summary = "";
       forms = [ form "y" "op" src ];
     }
   in
   let empty : Target_component.t =
-    { id = "t.e"; feature = "e"; requires = []; conflicts = []; summary = ""; forms = [] }
+    {
+      id = "t.e";
+      feature = "e";
+      requires = [];
+      conflicts = [];
+      implies = [];
+      default_on = true;
+      xlens = [];
+      not_applicable = None;
+      summary = "";
+      forms = [];
+    }
   in
   List.iter print_endline (Target_component.check [ a; b; empty ]);
   [%expect

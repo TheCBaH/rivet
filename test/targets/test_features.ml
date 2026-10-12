@@ -142,7 +142,18 @@ let%expect_test "the effective configuration of each target" =
    synthetic set that has a conflict; the real targets declare none today. *)
 let%expect_test "requirements, conflicts and left-to-right order" =
   let component feature requires conflicts : Target_component.t =
-    { id = "t." ^ feature; feature; requires; conflicts; summary = ""; forms = [] }
+    {
+      id = "t." ^ feature;
+      feature;
+      requires;
+      conflicts;
+      implies = [];
+      default_on = true;
+      xlens = [];
+      not_applicable = None;
+      summary = "";
+      forms = [];
+    }
   in
   let cs =
     [ component "base" [] []; component "ext" [ "base" ] []; component "alt" [] [ "ext" ] ]
@@ -172,6 +183,97 @@ let%expect_test "requirements, conflicts and left-to-right order" =
     "-base"                -> error: feature ext requires base, which is disabled
     "-ext,-base"           -> alt
     "none,+ext,-base"      -> error: feature ext requires base, which is disabled |}]
+
+(* The compressed-extension shape: C implies Zca, Zcd when D is on and Zcf when F is on at XLEN
+   32; Zcmp conflicts with Zcd. Specialised to each XLEN, as a target does. *)
+let compressed ~xlen =
+  let base feature : Target_component.t =
+    {
+      id = "t." ^ feature;
+      feature;
+      requires = [];
+      conflicts = [];
+      implies = [];
+      default_on = true;
+      xlens = [];
+      not_applicable = None;
+      summary = "";
+      forms = [];
+    }
+  in
+  let c =
+    {
+      (base "c") with
+      implies = [ (Always, "zca"); (And [ Has "d" ], "zcd"); (And [ Has "f"; Xlen 32 ], "zcf") ];
+    }
+  in
+  List.map
+    (Target_component.specialize ~xlen)
+    [
+      base "f";
+      base "d";
+      base "zca";
+      base "zcd";
+      { (base "zcf") with xlens = [ 32 ] };
+      { (base "zcmp") with default_on = false; conflicts = [ "zcd" ]; requires = [ "zca" ] };
+      c;
+    ]
+
+let%expect_test "conditional implications keep explicit removals" =
+  List.iter
+    (fun xlen ->
+      let cs = compressed ~xlen in
+      Printf.printf "xlen %d default: %s\n" xlen
+        (String.concat "," (Target_config.features (Target_config.default cs)));
+      List.iter
+        (fun text ->
+          match Target_config.resolve cs (spec text) with
+          | Ok c ->
+              Printf.printf "  %-22S -> %s\n" text (String.concat "," (Target_config.features c))
+          | Error m -> Printf.printf "  %-22S -> error: %s\n" text m)
+        [
+          "";
+          "none,+c,+d";
+          "none,+d,+c";
+          "none,+c";
+          "none,+c,+f,+d";
+          "-zcd";
+          "-c,-zcd,+zcmp";
+          "-zcd,-c";
+          "-c,-zcd";
+          "-c,-zcd,+zcmp,-zca";
+          "none,+zcf";
+          "-zcd,+zcd";
+        ])
+    [ 32; 64 ];
+  [%expect
+    {|
+    xlen 32 default: c,d,f,zca,zcd,zcf
+      ""                     -> c,d,f,zca,zcd,zcf
+      "none,+c,+d"           -> c,d,zca,zcd
+      "none,+d,+c"           -> c,d,zca,zcd
+      "none,+c"              -> c,zca
+      "none,+c,+f,+d"        -> c,d,f,zca,zcd,zcf
+      "-zcd"                 -> error: feature zcd is implied by c, which is enabled
+      "-c,-zcd,+zcmp"        -> d,f,zca,zcf,zcmp
+      "-zcd,-c"              -> d,f,zca,zcf
+      "-c,-zcd"              -> d,f,zca,zcf
+      "-c,-zcd,+zcmp,-zca"   -> error: feature zcmp requires zca, which is disabled
+      "none,+zcf"            -> zcf
+      "-zcd,+zcd"            -> c,d,f,zca,zcd,zcf
+    xlen 64 default: c,d,f,zca,zcd
+      ""                     -> c,d,f,zca,zcd
+      "none,+c,+d"           -> c,d,zca,zcd
+      "none,+d,+c"           -> c,d,zca,zcd
+      "none,+c"              -> c,zca
+      "none,+c,+f,+d"        -> c,d,f,zca,zcd
+      "-zcd"                 -> error: feature zcd is implied by c, which is enabled
+      "-c,-zcd,+zcmp"        -> d,f,zca,zcmp
+      "-zcd,-c"              -> d,f,zca
+      "-c,-zcd"              -> d,f,zca
+      "-c,-zcd,+zcmp,-zca"   -> error: feature zcmp requires zca, which is disabled
+      "none,+zcf"            -> error: feature zcf is not applicable at XLEN 64
+      "-zcd,+zcd"            -> c,d,f,zca,zcd |}]
 
 (* {1 The text path} *)
 

@@ -81,6 +81,7 @@ let component : Target_component.t =
       Target_component.label;
       mnemonics = [ mnemonic ];
       sources = [ { upstream = "xed"; name = source } ];
+      legal = None;
     }
   in
   {
@@ -88,6 +89,10 @@ let component : Target_component.t =
     feature = "x87";
     requires = [];
     conflicts = [];
+    implies = [];
+    default_on = true;
+    xlens = [];
+    not_applicable = None;
     summary = "x87 loads, stores, single-precision add/subtract, control and status words";
     forms =
       List.map
