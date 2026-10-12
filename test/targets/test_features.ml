@@ -83,24 +83,24 @@ let%expect_test "the effective configuration of each target" =
     [ "riscv32"; "riscv64"; "x86_32"; "x86_64"; "arm"; "aarch64" ];
   [%expect
     {|
-    riscv32  ""           -> m,zmmul
+    riscv32  ""           -> a,d,f,h,m,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
     riscv32  "none"       ->
     riscv32  "none,+m"    -> m,zmmul
-    riscv32  "-m"         -> zmmul
+    riscv32  "-m"         -> a,d,f,h,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
     riscv32  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv32  "-m,-zmmul"  ->
-    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m)
-    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m)
-    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m)
-    riscv64  ""           -> m,zmmul
+    riscv32  "-m,-zmmul"  -> a,d,f,h,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
+    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
+    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
+    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
+    riscv64  ""           -> a,d,f,h,m,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
     riscv64  "none"       ->
     riscv64  "none,+m"    -> m,zmmul
-    riscv64  "-m"         -> zmmul
+    riscv64  "-m"         -> a,d,f,h,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
     riscv64  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv64  "-m,-zmmul"  ->
-    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m)
-    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m)
-    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m)
+    riscv64  "-m,-zmmul"  -> a,d,f,h,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh
+    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
+    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
+    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
     x86_32   ""           -> x87
     x86_32   "none"       ->
     x86_32   "none,+m"    -> error: unknown feature m (known: x87)
@@ -355,7 +355,7 @@ let%expect_test "an invalid configuration fails before any source is read" =
   [%expect
     {|
     riscv64  [-zmmul   ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: feature m requires zmmul, which is disabled
-    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m)
+    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg)
     arm      [x87      ] nop                    REFUSED config.invalid: invalid feature configuration: unknown feature x87 (known: (none)) |}]
 
 (* {1 Normalized and lowered instructions handed in directly} *)
@@ -620,5 +620,522 @@ let%expect_test "the default configuration is pinned" =
     x86_64   enabled=[x87] components=[x86.x87]
     arm      enabled=[] components=[]
     aarch64  enabled=[] components=[]
-    riscv32  enabled=[m,zmmul] components=[riscv.zmmul,riscv.m]
-    riscv64  enabled=[m,zmmul] components=[riscv.zmmul,riscv.m] |}]
+    riscv32  enabled=[a,d,f,h,m,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin,riscv.zba,riscv.zbb,riscv.zbs,riscv.zbc,riscv.zbkb,riscv.zbkc,riscv.zbkx,riscv.zknd,riscv.zkne,riscv.zknh,riscv.zksed,riscv.zksh,riscv.zicond,riscv.b,riscv.zkn,riscv.zks,riscv.zk,riscv.zicsr,riscv.zifencei,riscv.zicntr,riscv.zihintntl,riscv.zawrs,riscv.zimop,riscv.zicfiss,riscv.zicfilp,riscv.zicbom,riscv.zicboz,riscv.zicbop,riscv.system,riscv.s,riscv.h,riscv.svinval,riscv.sdext,riscv.ssctr,riscv.v,riscv.zvbb,riscv.zvkned,riscv.zvbc,riscv.zvknha,riscv.zvksed,riscv.zvkg,riscv.zvksh,riscv.zvfbfmin,riscv.zvfbfwma,riscv.zvkb,riscv.zvknhb,riscv.zvkn,riscv.zvks,riscv.zvknc,riscv.zvkng,riscv.zvksc,riscv.zvksg]
+    riscv64  enabled=[a,d,f,h,m,q,s,sdext,ssctr,svinval,system,v,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul,zvbb,zvbc,zvfbfmin,zvfbfwma,zvkb,zvkg,zvkned,zvknha,zvknhb,zvksed,zvksh] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin,riscv.zba,riscv.zbb,riscv.zbs,riscv.zbc,riscv.zbkb,riscv.zbkc,riscv.zbkx,riscv.zknd,riscv.zkne,riscv.zknh,riscv.zksed,riscv.zksh,riscv.zicond,riscv.b,riscv.zkn,riscv.zks,riscv.zk,riscv.zicsr,riscv.zifencei,riscv.zicntr,riscv.zihintntl,riscv.zawrs,riscv.zimop,riscv.zicfiss,riscv.zicfilp,riscv.zicbom,riscv.zicboz,riscv.zicbop,riscv.system,riscv.s,riscv.h,riscv.svinval,riscv.sdext,riscv.ssctr,riscv.v,riscv.zvbb,riscv.zvkned,riscv.zvbc,riscv.zvknha,riscv.zvksed,riscv.zvkg,riscv.zvksh,riscv.zvfbfmin,riscv.zvfbfwma,riscv.zvkb,riscv.zvknhb,riscv.zvkn,riscv.zvks,riscv.zvknc,riscv.zvkng,riscv.zvksc,riscv.zvksg] |}]
+
+(* [add.uw rd, rs, x0] is also [zext.w]; refusing the specialization leaves the general form. *)
+let%expect_test "a disabled specialization falls back to the enabled general form" =
+  let bytes = "\xbb\x00\x01\x08" in
+  let decode legal =
+    match
+      Riscv64_encode.decode_where ~legal
+        { state = Riscv64_encode.default_state; address = 0L }
+        bytes ~pos:0
+    with
+    | Ok (_, name, n) -> Printf.sprintf "%s (%d bytes)" name n
+    | Error _ -> "refused"
+  in
+  List.iter
+    (fun (label, legal) -> Printf.printf "%s: %s\n" label (decode legal))
+    [
+      ("all legal", fun _ -> true);
+      ("no zext.w", fun m -> m <> "zext.w");
+      ("neither", fun m -> m <> "zext.w" && m <> "add.uw");
+    ];
+  [%expect
+    {|
+    all legal: zext.w (4 bytes)
+    no zext.w: add.uw (4 bytes)
+    neither: refused
+    |}]
+
+(* {1 Floating point} *)
+
+let%expect_test "F and D: text path, both XLENs" =
+  List.iter
+    (fun (target, features) ->
+      List.iter (show ~features target)
+        [
+          "flw f1, 0(x2)";
+          "fadd.s f1, f2, f3";
+          "fadd.d f1, f2, f3";
+          "fneg.d f1, f2";
+          "fmv.x.w x5, f1";
+          "add x5, x6, x7";
+        ])
+    [
+      ("riscv32", "none,+f,+d"); ("riscv64", "none,+f"); ("riscv64", "none"); ("riscv64", "none,+d");
+    ];
+  [%expect
+    {|
+    riscv32  [none,+f,+d] flw f1, 0(x2)          87 20 01 00
+    riscv32  [none,+f,+d] fadd.s f1, f2, f3      d3 70 31 00
+    riscv32  [none,+f,+d] fadd.d f1, f2, f3      d3 70 31 02
+    riscv32  [none,+f,+d] fneg.d f1, f2          d3 10 21 22
+    riscv32  [none,+f,+d] fmv.x.w x5, f1         d3 82 00 e0
+    riscv32  [none,+f,+d] add x5, x6, x7         b3 02 73 00
+    riscv64  [none,+f  ] flw f1, 0(x2)          87 20 01 00
+    riscv64  [none,+f  ] fadd.s f1, f2, f3      d3 70 31 00
+    riscv64  [none,+f  ] fadd.d f1, f2, f3      REFUSED riscv64.feature: fadd.d requires feature d, which is not enabled
+    riscv64  [none,+f  ] fneg.d f1, f2          REFUSED riscv64.feature: fneg.d requires feature d, which is not enabled
+    riscv64  [none,+f  ] fmv.x.w x5, f1         d3 82 00 e0
+    riscv64  [none,+f  ] add x5, x6, x7         b3 02 73 00
+    riscv64  [none     ] flw f1, 0(x2)          REFUSED riscv64.feature: flw requires feature f, which is not enabled
+    riscv64  [none     ] fadd.s f1, f2, f3      REFUSED riscv64.feature: fadd.s requires feature f, which is not enabled
+    riscv64  [none     ] fadd.d f1, f2, f3      REFUSED riscv64.feature: fadd.d requires feature d, which is not enabled
+    riscv64  [none     ] fneg.d f1, f2          REFUSED riscv64.feature: fneg.d requires feature d, which is not enabled
+    riscv64  [none     ] fmv.x.w x5, f1         REFUSED riscv64.feature: fmv.x.w requires feature f, which is not enabled
+    riscv64  [none     ] add x5, x6, x7         b3 02 73 00
+    riscv64  [none,+d  ] flw f1, 0(x2)          87 20 01 00
+    riscv64  [none,+d  ] fadd.s f1, f2, f3      d3 70 31 00
+    riscv64  [none,+d  ] fadd.d f1, f2, f3      d3 70 31 02
+    riscv64  [none,+d  ] fneg.d f1, f2          d3 10 21 22
+    riscv64  [none,+d  ] fmv.x.w x5, f1         d3 82 00 e0
+    riscv64  [none,+d  ] add x5, x6, x7         b3 02 73 00 |}]
+
+let%expect_test "F and D: lowered and decoded forms" =
+  let module E = Riscv64_encode in
+  let config text =
+    match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
+  in
+  let lowered =
+    E.Lowered.R { name = "fadd.s"; opcode = 0x53; funct3 = 7; funct7 = 0; rd = 1; rs1 = 2; rs2 = 3 }
+  in
+  List.iter
+    (fun features ->
+      let state = E.initial_state (config features) in
+      Printf.printf "%-10s encode_in -> %s\n" features
+        (match E.encode_in state lowered with
+        | Ok (`Fixed f) -> hex f.Asm_core.Lowered_ast.bytes
+        | Ok (`Relax _) -> "relax"
+        | Error e ->
+            "refused: " ^ Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))))
+    [ "none,+f"; "none" ];
+  let code =
+    bytes_of "riscv64" "\t.text\n\tfadd.d f1, f2, f3\n\tfmv.x.w x5, f1\n\taddi x5, x6, 1\n"
+  in
+  List.iter
+    (fun features ->
+      Printf.printf "-- %s\n" features;
+      disasm ~features "riscv64" code;
+      disasm ~features ~inspect:true "riscv64" code)
+    [ "none,+f"; "none,+f,+d"; "none" ];
+  [%expect
+    {|
+    none,+f    encode_in -> d3 70 31 00
+    none       encode_in -> refused: fadd.s requires feature f, which is not enabled
+    -- none,+f
+    REFUSED riscv64.feature: fadd.d requires feature d, which is not enabled
+    00001000  d3 70 31 02  fadd.d f1, f2, f3  ; requires feature d, which is not enabled  [riscv64.fadd.d]
+    00001004  d3 82 00 e0  fmv.x.w x5, f1                                                 [riscv64.fmv.x.w]
+    00001008  93 02 13 00  addi x5, x6, 1                                                 [riscv64.addi]
+    -- none,+f,+d
+    00001000  d3 70 31 02  fadd.d f1, f2, f3  [riscv64.fadd.d]
+    00001004  d3 82 00 e0  fmv.x.w x5, f1     [riscv64.fmv.x.w]
+    00001008  93 02 13 00  addi x5, x6, 1     [riscv64.addi]
+    00001000  d3 70 31 02  fadd.d f1, f2, f3  [riscv64.fadd.d]
+    00001004  d3 82 00 e0  fmv.x.w x5, f1     [riscv64.fmv.x.w]
+    00001008  93 02 13 00  addi x5, x6, 1     [riscv64.addi]
+    -- none
+    REFUSED riscv64.feature: fadd.d requires feature d, which is not enabled
+    00001000  d3 70 31 02  fadd.d f1, f2, f3  ; requires feature d, which is not enabled  [riscv64.fadd.d]
+    00001004  d3 82 00 e0  fmv.x.w x5, f1  ; requires feature f, which is not enabled     [riscv64.fmv.x.w]
+    00001008  93 02 13 00  addi x5, x6, 1                                                 [riscv64.addi] |}]
+
+(* {1 Atomics} *)
+
+let%expect_test "A, Zacas and Zabha: text path" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv64")
+        [
+          "amoadd.w x5, x6, (x7)";
+          "lr.d x5, (x7)";
+          "amoadd.b x5, x6, (x7)";
+          "amocas.d x6, x8, (x7)";
+          "amocas.b x6, x8, (x7)";
+        ])
+    [ "none,+a"; "none,+zacas"; "none,+zabha"; "none,+zacas,+zabha"; "none" ];
+  [%expect
+    {|
+    riscv64  [none,+a  ] amoadd.w x5, x6, (x7)  af a2 63 00
+    riscv64  [none,+a  ] lr.d x5, (x7)          af b2 03 10
+    riscv64  [none,+a  ] amoadd.b x5, x6, (x7)  REFUSED riscv64.feature: amoadd.b requires feature zabha, which is not enabled
+    riscv64  [none,+a  ] amocas.d x6, x8, (x7)  REFUSED riscv64.feature: amocas.d requires feature zacas, which is not enabled
+    riscv64  [none,+a  ] amocas.b x6, x8, (x7)  REFUSED riscv64.feature: amocas.b requires feature zacas and zabha, which is not enabled
+    riscv64  [none,+zacas] amoadd.w x5, x6, (x7)  af a2 63 00
+    riscv64  [none,+zacas] lr.d x5, (x7)          af b2 03 10
+    riscv64  [none,+zacas] amoadd.b x5, x6, (x7)  REFUSED riscv64.feature: amoadd.b requires feature zabha, which is not enabled
+    riscv64  [none,+zacas] amocas.d x6, x8, (x7)  2f b3 83 28
+    riscv64  [none,+zacas] amocas.b x6, x8, (x7)  REFUSED riscv64.feature: amocas.b requires feature zabha, which is not enabled
+    riscv64  [none,+zabha] amoadd.w x5, x6, (x7)  af a2 63 00
+    riscv64  [none,+zabha] lr.d x5, (x7)          af b2 03 10
+    riscv64  [none,+zabha] amoadd.b x5, x6, (x7)  af 82 63 00
+    riscv64  [none,+zabha] amocas.d x6, x8, (x7)  REFUSED riscv64.feature: amocas.d requires feature zacas, which is not enabled
+    riscv64  [none,+zabha] amocas.b x6, x8, (x7)  REFUSED riscv64.feature: amocas.b requires feature zacas, which is not enabled
+    riscv64  [none,+zacas,+zabha] amoadd.w x5, x6, (x7)  af a2 63 00
+    riscv64  [none,+zacas,+zabha] lr.d x5, (x7)          af b2 03 10
+    riscv64  [none,+zacas,+zabha] amoadd.b x5, x6, (x7)  af 82 63 00
+    riscv64  [none,+zacas,+zabha] amocas.d x6, x8, (x7)  2f b3 83 28
+    riscv64  [none,+zacas,+zabha] amocas.b x6, x8, (x7)  2f 83 83 28
+    riscv64  [none     ] amoadd.w x5, x6, (x7)  REFUSED riscv64.feature: amoadd.w requires feature a, which is not enabled
+    riscv64  [none     ] lr.d x5, (x7)          REFUSED riscv64.feature: lr.d requires feature a, which is not enabled
+    riscv64  [none     ] amoadd.b x5, x6, (x7)  REFUSED riscv64.feature: amoadd.b requires feature zabha, which is not enabled
+    riscv64  [none     ] amocas.d x6, x8, (x7)  REFUSED riscv64.feature: amocas.d requires feature zacas, which is not enabled
+    riscv64  [none     ] amocas.b x6, x8, (x7)  REFUSED riscv64.feature: amocas.b requires feature zacas and zabha, which is not enabled |}]
+
+let%expect_test "A: a disabled atomic is refused when decoding" =
+  let code = bytes_of "riscv64" "\t.text\n\tamoadd.w x5, x6, (x7)\n\tadd x5, x6, x7\n" in
+  List.iter
+    (fun features ->
+      Printf.printf "-- %s\n" features;
+      disasm ~features "riscv64" code;
+      disasm ~features ~inspect:true "riscv64" code)
+    [ "none,+a"; "none" ];
+  [%expect
+    {|
+    -- none,+a
+    00001000  af a2 63 00  amoadd.w x5, x6, 0(x7)  [riscv64.amoadd.w]
+    00001004  b3 02 73 00  add x5, x6, x7          [riscv64.add]
+    00001000  af a2 63 00  amoadd.w x5, x6, 0(x7)  [riscv64.amoadd.w]
+    00001004  b3 02 73 00  add x5, x6, x7          [riscv64.add]
+    -- none
+    REFUSED riscv64.feature: amoadd.w requires feature a, which is not enabled
+    00001000  af a2 63 00  amoadd.w x5, x6, 0(x7)  ; requires feature a, which is not enabled  [riscv64.amoadd.w]
+    00001004  b3 02 73 00  add x5, x6, x7                                                      [riscv64.add] |}]
+
+let%expect_test "Zfa, Zfh, Q: mixed-format forms need both formats" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv64")
+        [
+          "fli.s f1, 1.0";
+          "fli.d f1, 1.0";
+          "fli.h f1, 1.0";
+          "fminm.q f1, f2, f3";
+          "fcvt.d.h f1, f2";
+          "fadd.h f1, f2, f3";
+          "flh f1, 0(x2)";
+          "fadd.q f1, f2, f3";
+        ])
+    [ "none,+zfa"; "none,+zfa,+d"; "none,+zfa,+zfh"; "none,+zfh,+d"; "none,+zfhmin"; "none,+q" ];
+  [%expect
+    {|
+    riscv64  [none,+zfa] fli.s f1, 1.0          d3 00 18 f0
+    riscv64  [none,+zfa] fli.d f1, 1.0          REFUSED riscv64.feature: fli.d requires feature d, which is not enabled
+    riscv64  [none,+zfa] fli.h f1, 1.0          REFUSED riscv64.feature: fli.h requires feature zfh, which is not enabled
+    riscv64  [none,+zfa] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature q, which is not enabled
+    riscv64  [none,+zfa] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature zfhmin and d, which is not enabled
+    riscv64  [none,+zfa] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
+    riscv64  [none,+zfa] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature zfhmin, which is not enabled
+    riscv64  [none,+zfa] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
+    riscv64  [none,+zfa,+d] fli.s f1, 1.0          d3 00 18 f0
+    riscv64  [none,+zfa,+d] fli.d f1, 1.0          d3 00 18 f2
+    riscv64  [none,+zfa,+d] fli.h f1, 1.0          REFUSED riscv64.feature: fli.h requires feature zfh, which is not enabled
+    riscv64  [none,+zfa,+d] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature q, which is not enabled
+    riscv64  [none,+zfa,+d] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature zfhmin, which is not enabled
+    riscv64  [none,+zfa,+d] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
+    riscv64  [none,+zfa,+d] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature zfhmin, which is not enabled
+    riscv64  [none,+zfa,+d] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
+    riscv64  [none,+zfa,+zfh] fli.s f1, 1.0          d3 00 18 f0
+    riscv64  [none,+zfa,+zfh] fli.d f1, 1.0          REFUSED riscv64.feature: fli.d requires feature d, which is not enabled
+    riscv64  [none,+zfa,+zfh] fli.h f1, 1.0          d3 00 18 f4
+    riscv64  [none,+zfa,+zfh] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature q, which is not enabled
+    riscv64  [none,+zfa,+zfh] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature d, which is not enabled
+    riscv64  [none,+zfa,+zfh] fadd.h f1, f2, f3      d3 70 31 04
+    riscv64  [none,+zfa,+zfh] flh f1, 0(x2)          87 10 01 00
+    riscv64  [none,+zfa,+zfh] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
+    riscv64  [none,+zfh,+d] fli.s f1, 1.0          REFUSED riscv64.feature: fli.s requires feature zfa, which is not enabled
+    riscv64  [none,+zfh,+d] fli.d f1, 1.0          REFUSED riscv64.feature: fli.d requires feature zfa, which is not enabled
+    riscv64  [none,+zfh,+d] fli.h f1, 1.0          REFUSED riscv64.feature: fli.h requires feature zfa, which is not enabled
+    riscv64  [none,+zfh,+d] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature zfa and q, which is not enabled
+    riscv64  [none,+zfh,+d] fcvt.d.h f1, f2        d3 00 21 42
+    riscv64  [none,+zfh,+d] fadd.h f1, f2, f3      d3 70 31 04
+    riscv64  [none,+zfh,+d] flh f1, 0(x2)          87 10 01 00
+    riscv64  [none,+zfh,+d] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
+    riscv64  [none,+zfhmin] fli.s f1, 1.0          REFUSED riscv64.feature: fli.s requires feature zfa, which is not enabled
+    riscv64  [none,+zfhmin] fli.d f1, 1.0          REFUSED riscv64.feature: fli.d requires feature zfa and d, which is not enabled
+    riscv64  [none,+zfhmin] fli.h f1, 1.0          REFUSED riscv64.feature: fli.h requires feature zfa and zfh, which is not enabled
+    riscv64  [none,+zfhmin] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature zfa and q, which is not enabled
+    riscv64  [none,+zfhmin] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature d, which is not enabled
+    riscv64  [none,+zfhmin] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
+    riscv64  [none,+zfhmin] flh f1, 0(x2)          87 10 01 00
+    riscv64  [none,+zfhmin] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
+    riscv64  [none,+q  ] fli.s f1, 1.0          REFUSED riscv64.feature: fli.s requires feature zfa, which is not enabled
+    riscv64  [none,+q  ] fli.d f1, 1.0          REFUSED riscv64.feature: fli.d requires feature zfa, which is not enabled
+    riscv64  [none,+q  ] fli.h f1, 1.0          REFUSED riscv64.feature: fli.h requires feature zfa and zfh, which is not enabled
+    riscv64  [none,+q  ] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature zfa, which is not enabled
+    riscv64  [none,+q  ] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature zfhmin, which is not enabled
+    riscv64  [none,+q  ] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
+    riscv64  [none,+q  ] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature zfhmin, which is not enabled
+    riscv64  [none,+q  ] fadd.q f1, f2, f3      d3 70 31 06 |}]
+
+let%expect_test "Zfh implies Zfhmin" =
+  List.iter
+    (fun text ->
+      match Target_config.resolve Riscv64_encode.components (spec text) with
+      | Ok c -> Printf.printf "%-18S -> %s\n" text (String.concat "," (Target_config.features c))
+      | Error m -> Printf.printf "%-18S -> error: %s\n" text m)
+    [ "none,+zfh"; "none,+zfh,-zfhmin"; "none,+zfhmin"; "none,+q"; "none,+zfa" ];
+  [%expect
+    {|
+    "none,+zfh"        -> f,zfh,zfhmin,zicsr
+    "none,+zfh,-zfhmin" -> error: feature zfhmin is implied by zfh, which is enabled
+    "none,+zfhmin"     -> f,zfhmin,zicsr
+    "none,+q"          -> d,f,q,zicsr
+    "none,+zfa"        -> f,zfa,zicsr |}]
+
+(* {1 Bit manipulation and scalar crypto} *)
+
+let%expect_test "Zbb, Zbkb, Zk: shared forms accept any providing extension" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv64")
+        [
+          "andn x5, x6, x7";
+          "min x5, x6, x7";
+          "pack x5, x6, x7";
+          "clmul x5, x6, x7";
+          "aes64ks1i x5, x6, 3";
+          "sha256sig0 x5, x6";
+          "sh1add x5, x6, x7";
+          "czero.eqz x5, x6, x7";
+        ])
+    [ "none,+zbb"; "none,+zbkb"; "none,+zk"; "none,+zks"; "none,+b"; "none" ];
+  [%expect
+    {|
+    riscv64  [none,+zbb] andn x5, x6, x7        b3 72 73 40
+    riscv64  [none,+zbb] min x5, x6, x7         b3 42 73 0a
+    riscv64  [none,+zbb] pack x5, x6, x7        REFUSED riscv64.feature: pack requires feature zbkb, which is not enabled
+    riscv64  [none,+zbb] clmul x5, x6, x7       REFUSED riscv64.feature: clmul requires feature one of zbc, zbkc, which is not enabled
+    riscv64  [none,+zbb] aes64ks1i x5, x6, 3    REFUSED riscv64.feature: aes64ks1i requires feature one of zknd, zkne, which is not enabled
+    riscv64  [none,+zbb] sha256sig0 x5, x6      REFUSED riscv64.feature: sha256sig0 requires feature zknh, which is not enabled
+    riscv64  [none,+zbb] sh1add x5, x6, x7      REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    riscv64  [none,+zbb] czero.eqz x5, x6, x7   REFUSED riscv64.feature: czero.eqz requires feature zicond, which is not enabled
+    riscv64  [none,+zbkb] andn x5, x6, x7        b3 72 73 40
+    riscv64  [none,+zbkb] min x5, x6, x7         REFUSED riscv64.feature: min requires feature zbb, which is not enabled
+    riscv64  [none,+zbkb] pack x5, x6, x7        b3 42 73 08
+    riscv64  [none,+zbkb] clmul x5, x6, x7       REFUSED riscv64.feature: clmul requires feature one of zbc, zbkc, which is not enabled
+    riscv64  [none,+zbkb] aes64ks1i x5, x6, 3    REFUSED riscv64.feature: aes64ks1i requires feature one of zknd, zkne, which is not enabled
+    riscv64  [none,+zbkb] sha256sig0 x5, x6      REFUSED riscv64.feature: sha256sig0 requires feature zknh, which is not enabled
+    riscv64  [none,+zbkb] sh1add x5, x6, x7      REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    riscv64  [none,+zbkb] czero.eqz x5, x6, x7   REFUSED riscv64.feature: czero.eqz requires feature zicond, which is not enabled
+    riscv64  [none,+zk ] andn x5, x6, x7        b3 72 73 40
+    riscv64  [none,+zk ] min x5, x6, x7         REFUSED riscv64.feature: min requires feature zbb, which is not enabled
+    riscv64  [none,+zk ] pack x5, x6, x7        b3 42 73 08
+    riscv64  [none,+zk ] clmul x5, x6, x7       b3 12 73 0a
+    riscv64  [none,+zk ] aes64ks1i x5, x6, 3    93 12 33 31
+    riscv64  [none,+zk ] sha256sig0 x5, x6      93 12 23 10
+    riscv64  [none,+zk ] sh1add x5, x6, x7      REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    riscv64  [none,+zk ] czero.eqz x5, x6, x7   REFUSED riscv64.feature: czero.eqz requires feature zicond, which is not enabled
+    riscv64  [none,+zks] andn x5, x6, x7        b3 72 73 40
+    riscv64  [none,+zks] min x5, x6, x7         REFUSED riscv64.feature: min requires feature zbb, which is not enabled
+    riscv64  [none,+zks] pack x5, x6, x7        b3 42 73 08
+    riscv64  [none,+zks] clmul x5, x6, x7       b3 12 73 0a
+    riscv64  [none,+zks] aes64ks1i x5, x6, 3    REFUSED riscv64.feature: aes64ks1i requires feature one of zknd, zkne, which is not enabled
+    riscv64  [none,+zks] sha256sig0 x5, x6      REFUSED riscv64.feature: sha256sig0 requires feature zknh, which is not enabled
+    riscv64  [none,+zks] sh1add x5, x6, x7      REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    riscv64  [none,+zks] czero.eqz x5, x6, x7   REFUSED riscv64.feature: czero.eqz requires feature zicond, which is not enabled
+    riscv64  [none,+b  ] andn x5, x6, x7        b3 72 73 40
+    riscv64  [none,+b  ] min x5, x6, x7         b3 42 73 0a
+    riscv64  [none,+b  ] pack x5, x6, x7        REFUSED riscv64.feature: pack requires feature zbkb, which is not enabled
+    riscv64  [none,+b  ] clmul x5, x6, x7       REFUSED riscv64.feature: clmul requires feature one of zbc, zbkc, which is not enabled
+    riscv64  [none,+b  ] aes64ks1i x5, x6, 3    REFUSED riscv64.feature: aes64ks1i requires feature one of zknd, zkne, which is not enabled
+    riscv64  [none,+b  ] sha256sig0 x5, x6      REFUSED riscv64.feature: sha256sig0 requires feature zknh, which is not enabled
+    riscv64  [none,+b  ] sh1add x5, x6, x7      b3 22 73 20
+    riscv64  [none,+b  ] czero.eqz x5, x6, x7   REFUSED riscv64.feature: czero.eqz requires feature zicond, which is not enabled
+    riscv64  [none     ] andn x5, x6, x7        REFUSED riscv64.feature: andn requires feature one of zbb, zbkb, which is not enabled
+    riscv64  [none     ] min x5, x6, x7         REFUSED riscv64.feature: min requires feature zbb, which is not enabled
+    riscv64  [none     ] pack x5, x6, x7        REFUSED riscv64.feature: pack requires feature zbkb, which is not enabled
+    riscv64  [none     ] clmul x5, x6, x7       REFUSED riscv64.feature: clmul requires feature one of zbc, zbkc, which is not enabled
+    riscv64  [none     ] aes64ks1i x5, x6, 3    REFUSED riscv64.feature: aes64ks1i requires feature one of zknd, zkne, which is not enabled
+    riscv64  [none     ] sha256sig0 x5, x6      REFUSED riscv64.feature: sha256sig0 requires feature zknh, which is not enabled
+    riscv64  [none     ] sh1add x5, x6, x7      REFUSED riscv64.feature: sh1add requires feature zba, which is not enabled
+    riscv64  [none     ] czero.eqz x5, x6, x7   REFUSED riscv64.feature: czero.eqz requires feature zicond, which is not enabled |}]
+
+let%expect_test "K groups are sums of their leaf extensions" =
+  List.iter
+    (fun text ->
+      match Target_config.resolve Riscv64_encode.components (spec text) with
+      | Ok c -> Printf.printf "%-14S -> %s\n" text (String.concat "," (Target_config.features c))
+      | Error m -> Printf.printf "%-14S -> error: %s\n" text m)
+    [ "none,+zk"; "none,+zks"; "none,+b"; "none,+zk,-zbkb"; "none,+zbc,-zbkc" ];
+  [%expect
+    {|
+    "none,+zk"     -> zbkb,zbkc,zbkx,zk,zkn,zknd,zkne,zknh
+    "none,+zks"    -> zbkb,zbkc,zbkx,zks,zksed,zksh
+    "none,+b"      -> b,zba,zbb,zbs
+    "none,+zk,-zbkb" -> error: feature zbkb is implied by zkn, which is enabled
+    "none,+zbc,-zbkc" -> zbc |}]
+
+(* {1 System, CSR and hints} *)
+
+let%expect_test "Zicsr, system and cache-management forms are gated" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv64")
+        [
+          "csrrw x5, 0x300, x6";
+          "csrr x5, 0x300";
+          "fence.i";
+          "frcsr x5";
+          "rdcycle x5";
+          "mret";
+          "wfi";
+          "sret";
+          "cbo.zero (x5)";
+          "ecall";
+        ])
+    [
+      "none,+zicsr";
+      "none,+f";
+      "none,+zicntr";
+      "none,+system";
+      "none,+zifencei,+zicbom,+zicboz";
+      "none";
+    ];
+  [%expect
+    {|
+    riscv64  [none,+zicsr] csrrw x5, 0x300, x6    f3 12 03 30
+    riscv64  [none,+zicsr] csrr x5, 0x300         f3 22 00 30
+    riscv64  [none,+zicsr] fence.i                REFUSED riscv64.feature: fence.i requires feature zifencei, which is not enabled
+    riscv64  [none,+zicsr] frcsr x5               REFUSED riscv64.feature: frcsr requires feature f, which is not enabled
+    riscv64  [none,+zicsr] rdcycle x5             REFUSED riscv64.feature: rdcycle requires feature zicntr, which is not enabled
+    riscv64  [none,+zicsr] mret                   REFUSED riscv64.feature: mret requires feature system, which is not enabled
+    riscv64  [none,+zicsr] wfi                    REFUSED riscv64.feature: wfi requires feature system, which is not enabled
+    riscv64  [none,+zicsr] sret                   REFUSED riscv64.feature: sret requires feature s, which is not enabled
+    riscv64  [none,+zicsr] cbo.zero (x5)          REFUSED riscv64.feature: cbo.zero requires feature zicboz, which is not enabled
+    riscv64  [none,+zicsr] ecall                  73 00 00 00
+    riscv64  [none,+f  ] csrrw x5, 0x300, x6    f3 12 03 30
+    riscv64  [none,+f  ] csrr x5, 0x300         f3 22 00 30
+    riscv64  [none,+f  ] fence.i                REFUSED riscv64.feature: fence.i requires feature zifencei, which is not enabled
+    riscv64  [none,+f  ] frcsr x5               f3 22 30 00
+    riscv64  [none,+f  ] rdcycle x5             REFUSED riscv64.feature: rdcycle requires feature zicntr, which is not enabled
+    riscv64  [none,+f  ] mret                   REFUSED riscv64.feature: mret requires feature system, which is not enabled
+    riscv64  [none,+f  ] wfi                    REFUSED riscv64.feature: wfi requires feature system, which is not enabled
+    riscv64  [none,+f  ] sret                   REFUSED riscv64.feature: sret requires feature s, which is not enabled
+    riscv64  [none,+f  ] cbo.zero (x5)          REFUSED riscv64.feature: cbo.zero requires feature zicboz, which is not enabled
+    riscv64  [none,+f  ] ecall                  73 00 00 00
+    riscv64  [none,+zicntr] csrrw x5, 0x300, x6    f3 12 03 30
+    riscv64  [none,+zicntr] csrr x5, 0x300         f3 22 00 30
+    riscv64  [none,+zicntr] fence.i                REFUSED riscv64.feature: fence.i requires feature zifencei, which is not enabled
+    riscv64  [none,+zicntr] frcsr x5               REFUSED riscv64.feature: frcsr requires feature f, which is not enabled
+    riscv64  [none,+zicntr] rdcycle x5             f3 22 00 c0
+    riscv64  [none,+zicntr] mret                   REFUSED riscv64.feature: mret requires feature system, which is not enabled
+    riscv64  [none,+zicntr] wfi                    REFUSED riscv64.feature: wfi requires feature system, which is not enabled
+    riscv64  [none,+zicntr] sret                   REFUSED riscv64.feature: sret requires feature s, which is not enabled
+    riscv64  [none,+zicntr] cbo.zero (x5)          REFUSED riscv64.feature: cbo.zero requires feature zicboz, which is not enabled
+    riscv64  [none,+zicntr] ecall                  73 00 00 00
+    riscv64  [none,+system] csrrw x5, 0x300, x6    REFUSED riscv64.feature: csrrw requires feature zicsr, which is not enabled
+    riscv64  [none,+system] csrr x5, 0x300         REFUSED riscv64.feature: csrr requires feature zicsr, which is not enabled
+    riscv64  [none,+system] fence.i                REFUSED riscv64.feature: fence.i requires feature zifencei, which is not enabled
+    riscv64  [none,+system] frcsr x5               REFUSED riscv64.feature: frcsr requires feature f, which is not enabled
+    riscv64  [none,+system] rdcycle x5             REFUSED riscv64.feature: rdcycle requires feature zicntr, which is not enabled
+    riscv64  [none,+system] mret                   73 00 20 30
+    riscv64  [none,+system] wfi                    73 00 50 10
+    riscv64  [none,+system] sret                   REFUSED riscv64.feature: sret requires feature s, which is not enabled
+    riscv64  [none,+system] cbo.zero (x5)          REFUSED riscv64.feature: cbo.zero requires feature zicboz, which is not enabled
+    riscv64  [none,+system] ecall                  73 00 00 00
+    riscv64  [none,+zifencei,+zicbom,+zicboz] csrrw x5, 0x300, x6    REFUSED riscv64.feature: csrrw requires feature zicsr, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] csrr x5, 0x300         REFUSED riscv64.feature: csrr requires feature zicsr, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] fence.i                0f 10 00 00
+    riscv64  [none,+zifencei,+zicbom,+zicboz] frcsr x5               REFUSED riscv64.feature: frcsr requires feature f, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] rdcycle x5             REFUSED riscv64.feature: rdcycle requires feature zicntr, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] mret                   REFUSED riscv64.feature: mret requires feature system, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] wfi                    REFUSED riscv64.feature: wfi requires feature system, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] sret                   REFUSED riscv64.feature: sret requires feature s, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] cbo.zero (x5)          0f a0 42 00
+    riscv64  [none,+zifencei,+zicbom,+zicboz] ecall                  73 00 00 00
+    riscv64  [none     ] csrrw x5, 0x300, x6    REFUSED riscv64.feature: csrrw requires feature zicsr, which is not enabled
+    riscv64  [none     ] csrr x5, 0x300         REFUSED riscv64.feature: csrr requires feature zicsr, which is not enabled
+    riscv64  [none     ] fence.i                REFUSED riscv64.feature: fence.i requires feature zifencei, which is not enabled
+    riscv64  [none     ] frcsr x5               REFUSED riscv64.feature: frcsr requires feature f, which is not enabled
+    riscv64  [none     ] rdcycle x5             REFUSED riscv64.feature: rdcycle requires feature zicntr, which is not enabled
+    riscv64  [none     ] mret                   REFUSED riscv64.feature: mret requires feature system, which is not enabled
+    riscv64  [none     ] wfi                    REFUSED riscv64.feature: wfi requires feature system, which is not enabled
+    riscv64  [none     ] sret                   REFUSED riscv64.feature: sret requires feature s, which is not enabled
+    riscv64  [none     ] cbo.zero (x5)          REFUSED riscv64.feature: cbo.zero requires feature zicboz, which is not enabled
+    riscv64  [none     ] ecall                  73 00 00 00 |}]
+
+let%expect_test "F requires Zicsr" =
+  List.iter
+    (fun text ->
+      match Target_config.resolve Riscv64_encode.components (spec text) with
+      | Ok c -> Printf.printf "%-22S -> %s\n" text (String.concat "," (Target_config.features c))
+      | Error m -> Printf.printf "%-22S -> error: %s\n" text m)
+    [ "none,+f"; "-zicsr"; "-f,-d,-zicsr" ];
+  [%expect
+    {|
+    "none,+f"              -> f,zicsr
+    "-zicsr"               -> error: feature f requires zicsr, which is disabled
+    "-f,-d,-zicsr"         -> error: feature q requires d, which is disabled |}]
+
+(* {1 Vector} *)
+
+let%expect_test "V and its crypto subsets" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv64")
+        [
+          "vadd.vv v1, v2, v3";
+          "vandn.vv v1, v2, v3";
+          "vaesdf.vv v1, v2";
+          "vsha2ms.vv v1, v2, v3";
+          "vclmul.vv v1, v2, v3";
+          "vsm4r.vv v1, v2";
+        ])
+    [ "none,+v"; "none,+zvbb"; "none,+zvkb"; "none,+zvkn"; "none,+zvks,+zvbc"; "none" ];
+  [%expect
+    {|
+    riscv64  [none,+v  ] vadd.vv v1, v2, v3     d7 80 21 02
+    riscv64  [none,+v  ] vandn.vv v1, v2, v3    REFUSED riscv64.feature: vandn.vv requires feature one of zvbb, zvkb, which is not enabled
+    riscv64  [none,+v  ] vaesdf.vv v1, v2       REFUSED riscv64.feature: vaesdf.vv requires feature zvkned, which is not enabled
+    riscv64  [none,+v  ] vsha2ms.vv v1, v2, v3  REFUSED riscv64.feature: vsha2ms.vv requires feature zvknha, which is not enabled
+    riscv64  [none,+v  ] vclmul.vv v1, v2, v3   REFUSED riscv64.feature: vclmul.vv requires feature zvbc, which is not enabled
+    riscv64  [none,+v  ] vsm4r.vv v1, v2        REFUSED riscv64.feature: vsm4r.vv requires feature zvksed, which is not enabled
+    riscv64  [none,+zvbb] vadd.vv v1, v2, v3     d7 80 21 02
+    riscv64  [none,+zvbb] vandn.vv v1, v2, v3    d7 80 21 06
+    riscv64  [none,+zvbb] vaesdf.vv v1, v2       REFUSED riscv64.feature: vaesdf.vv requires feature zvkned, which is not enabled
+    riscv64  [none,+zvbb] vsha2ms.vv v1, v2, v3  REFUSED riscv64.feature: vsha2ms.vv requires feature zvknha, which is not enabled
+    riscv64  [none,+zvbb] vclmul.vv v1, v2, v3   REFUSED riscv64.feature: vclmul.vv requires feature zvbc, which is not enabled
+    riscv64  [none,+zvbb] vsm4r.vv v1, v2        REFUSED riscv64.feature: vsm4r.vv requires feature zvksed, which is not enabled
+    riscv64  [none,+zvkb] vadd.vv v1, v2, v3     d7 80 21 02
+    riscv64  [none,+zvkb] vandn.vv v1, v2, v3    d7 80 21 06
+    riscv64  [none,+zvkb] vaesdf.vv v1, v2       REFUSED riscv64.feature: vaesdf.vv requires feature zvkned, which is not enabled
+    riscv64  [none,+zvkb] vsha2ms.vv v1, v2, v3  REFUSED riscv64.feature: vsha2ms.vv requires feature zvknha, which is not enabled
+    riscv64  [none,+zvkb] vclmul.vv v1, v2, v3   REFUSED riscv64.feature: vclmul.vv requires feature zvbc, which is not enabled
+    riscv64  [none,+zvkb] vsm4r.vv v1, v2        REFUSED riscv64.feature: vsm4r.vv requires feature zvksed, which is not enabled
+    riscv64  [none,+zvkn] vadd.vv v1, v2, v3     d7 80 21 02
+    riscv64  [none,+zvkn] vandn.vv v1, v2, v3    d7 80 21 06
+    riscv64  [none,+zvkn] vaesdf.vv v1, v2       f7 a0 20 a2
+    riscv64  [none,+zvkn] vsha2ms.vv v1, v2, v3  f7 a0 21 b6
+    riscv64  [none,+zvkn] vclmul.vv v1, v2, v3   REFUSED riscv64.feature: vclmul.vv requires feature zvbc, which is not enabled
+    riscv64  [none,+zvkn] vsm4r.vv v1, v2        REFUSED riscv64.feature: vsm4r.vv requires feature zvksed, which is not enabled
+    riscv64  [none,+zvks,+zvbc] vadd.vv v1, v2, v3     d7 80 21 02
+    riscv64  [none,+zvks,+zvbc] vandn.vv v1, v2, v3    d7 80 21 06
+    riscv64  [none,+zvks,+zvbc] vaesdf.vv v1, v2       REFUSED riscv64.feature: vaesdf.vv requires feature zvkned, which is not enabled
+    riscv64  [none,+zvks,+zvbc] vsha2ms.vv v1, v2, v3  REFUSED riscv64.feature: vsha2ms.vv requires feature zvknha, which is not enabled
+    riscv64  [none,+zvks,+zvbc] vclmul.vv v1, v2, v3   d7 a0 21 32
+    riscv64  [none,+zvks,+zvbc] vsm4r.vv v1, v2        f7 20 28 a2
+    riscv64  [none     ] vadd.vv v1, v2, v3     REFUSED riscv64.feature: vadd.vv requires feature v, which is not enabled
+    riscv64  [none     ] vandn.vv v1, v2, v3    REFUSED riscv64.feature: vandn.vv requires feature one of zvbb, zvkb, which is not enabled
+    riscv64  [none     ] vaesdf.vv v1, v2       REFUSED riscv64.feature: vaesdf.vv requires feature zvkned, which is not enabled
+    riscv64  [none     ] vsha2ms.vv v1, v2, v3  REFUSED riscv64.feature: vsha2ms.vv requires feature zvknha, which is not enabled
+    riscv64  [none     ] vclmul.vv v1, v2, v3   REFUSED riscv64.feature: vclmul.vv requires feature zvbc, which is not enabled
+    riscv64  [none     ] vsm4r.vv v1, v2        REFUSED riscv64.feature: vsm4r.vv requires feature zvksed, which is not enabled |}]
+
+let%expect_test "vector configurations" =
+  List.iter
+    (fun text ->
+      match Target_config.resolve Riscv64_encode.components (spec text) with
+      | Ok c -> Printf.printf "%-22S -> %s\n" text (String.concat "," (Target_config.features c))
+      | Error m -> Printf.printf "%-22S -> error: %s\n" text m)
+    [ "none,+v"; "none,+zvbb"; "none,+zvkn"; "none,+zvknhb"; "-d"; "-v,-zvbb,-zvkned" ];
+  [%expect
+    {|
+    "none,+v"              -> d,f,v,zicsr
+    "none,+zvbb"           -> d,f,v,zicsr,zvbb,zvkb
+    "none,+zvkn"           -> d,f,v,zicsr,zvkb,zvkn,zvkned,zvknha,zvknhb
+    "none,+zvknhb"         -> d,f,v,zicsr,zvknha,zvknhb
+    "-d"                   -> error: feature q requires d, which is disabled
+    "-v,-zvbb,-zvkned"     -> error: feature zvbc requires v, which is disabled |}]

@@ -253,8 +253,8 @@ let%expect_test "component descriptors are structurally clean in every profile" 
   report "x86_64" X86_64_encode.components;
   [%expect
     {|
-    riscv32: riscv.zmmul feature=zmmul forms=5; riscv.m feature=m forms=8
-    riscv64: riscv.zmmul feature=zmmul forms=5; riscv.m feature=m forms=8
+    riscv32: riscv.zmmul feature=zmmul forms=5; riscv.m feature=m forms=8; riscv.f feature=f forms=43; riscv.d feature=d forms=35; riscv.a feature=a forms=22; riscv.zacas feature=zacas forms=20; riscv.zabha feature=zabha forms=72; riscv.q feature=q forms=35; riscv.zfh feature=zfh forms=29; riscv.zfhmin feature=zfhmin forms=10; riscv.zfa feature=zfa forms=33; riscv.zfbfmin feature=zfbfmin forms=2; riscv.zba feature=zba forms=9; riscv.zbb feature=zbb forms=24; riscv.zbs feature=zbs forms=8; riscv.zbc feature=zbc forms=3; riscv.zbkb feature=zbkb forms=6; riscv.zbkc feature=zbkc forms=0; riscv.zbkx feature=zbkx forms=2; riscv.zknd feature=zknd forms=7; riscv.zkne feature=zkne forms=4; riscv.zknh feature=zknh forms=14; riscv.zksed feature=zksed forms=2; riscv.zksh feature=zksh forms=2; riscv.zicond feature=zicond forms=2; riscv.b feature=b forms=0; riscv.zkn feature=zkn forms=0; riscv.zks feature=zks forms=0; riscv.zk feature=zk forms=0; riscv.zicsr feature=zicsr forms=13; riscv.zifencei feature=zifencei forms=1; riscv.zicntr feature=zicntr forms=6; riscv.zihintntl feature=zihintntl forms=8; riscv.zawrs feature=zawrs forms=2; riscv.zimop feature=zimop forms=40; riscv.zicfiss feature=zicfiss forms=13; riscv.zicfilp feature=zicfilp forms=1; riscv.zicbom feature=zicbom forms=3; riscv.zicboz feature=zicboz forms=1; riscv.zicbop feature=zicbop forms=3; riscv.system feature=system forms=2; riscv.s feature=s forms=2; riscv.h feature=h forms=15; riscv.svinval feature=svinval forms=5; riscv.sdext feature=sdext forms=1; riscv.ssctr feature=ssctr forms=1; riscv.v feature=v forms=375; riscv.zvbb feature=zvbb forms=16; riscv.zvkned feature=zvkned forms=11; riscv.zvbc feature=zvbc forms=4; riscv.zvknha feature=zvknha forms=3; riscv.zvksed feature=zvksed forms=3; riscv.zvkg feature=zvkg forms=2; riscv.zvksh feature=zvksh forms=2; riscv.zvfbfmin feature=zvfbfmin forms=2; riscv.zvfbfwma feature=zvfbfwma forms=2; riscv.zvkb feature=zvkb forms=0; riscv.zvknhb feature=zvknhb forms=0; riscv.zvkn feature=zvkn forms=0; riscv.zvks feature=zvks forms=0; riscv.zvknc feature=zvknc forms=0; riscv.zvkng feature=zvkng forms=0; riscv.zvksc feature=zvksc forms=0; riscv.zvksg feature=zvksg forms=0
+    riscv64: riscv.zmmul feature=zmmul forms=5; riscv.m feature=m forms=8; riscv.f feature=f forms=43; riscv.d feature=d forms=35; riscv.a feature=a forms=22; riscv.zacas feature=zacas forms=20; riscv.zabha feature=zabha forms=72; riscv.q feature=q forms=35; riscv.zfh feature=zfh forms=29; riscv.zfhmin feature=zfhmin forms=10; riscv.zfa feature=zfa forms=33; riscv.zfbfmin feature=zfbfmin forms=2; riscv.zba feature=zba forms=9; riscv.zbb feature=zbb forms=24; riscv.zbs feature=zbs forms=8; riscv.zbc feature=zbc forms=3; riscv.zbkb feature=zbkb forms=6; riscv.zbkc feature=zbkc forms=0; riscv.zbkx feature=zbkx forms=2; riscv.zknd feature=zknd forms=7; riscv.zkne feature=zkne forms=4; riscv.zknh feature=zknh forms=14; riscv.zksed feature=zksed forms=2; riscv.zksh feature=zksh forms=2; riscv.zicond feature=zicond forms=2; riscv.b feature=b forms=0; riscv.zkn feature=zkn forms=0; riscv.zks feature=zks forms=0; riscv.zk feature=zk forms=0; riscv.zicsr feature=zicsr forms=13; riscv.zifencei feature=zifencei forms=1; riscv.zicntr feature=zicntr forms=6; riscv.zihintntl feature=zihintntl forms=8; riscv.zawrs feature=zawrs forms=2; riscv.zimop feature=zimop forms=40; riscv.zicfiss feature=zicfiss forms=13; riscv.zicfilp feature=zicfilp forms=1; riscv.zicbom feature=zicbom forms=3; riscv.zicboz feature=zicboz forms=1; riscv.zicbop feature=zicbop forms=3; riscv.system feature=system forms=2; riscv.s feature=s forms=2; riscv.h feature=h forms=15; riscv.svinval feature=svinval forms=5; riscv.sdext feature=sdext forms=1; riscv.ssctr feature=ssctr forms=1; riscv.v feature=v forms=375; riscv.zvbb feature=zvbb forms=16; riscv.zvkned feature=zvkned forms=11; riscv.zvbc feature=zvbc forms=4; riscv.zvknha feature=zvknha forms=3; riscv.zvksed feature=zvksed forms=3; riscv.zvkg feature=zvkg forms=2; riscv.zvksh feature=zvksh forms=2; riscv.zvfbfmin feature=zvfbfmin forms=2; riscv.zvfbfwma feature=zvfbfwma forms=2; riscv.zvkb feature=zvkb forms=0; riscv.zvknhb feature=zvknhb forms=0; riscv.zvkn feature=zvkn forms=0; riscv.zvks feature=zvks forms=0; riscv.zvknc feature=zvknc forms=0; riscv.zvkng feature=zvkng forms=0; riscv.zvksc feature=zvksc forms=0; riscv.zvksg feature=zvksg forms=0
     x86_32: x86.x87 feature=x87 forms=13
     x86_64: x86.x87 feature=x87 forms=13 |}]
 
@@ -638,3 +638,36 @@ let%expect_test "generated x86 table rows round-trip through the decoder" =
   [%expect {|
     x86_32: ok
     x86_64: ok |}]
+
+(* Every hand-written and generated mnemonic is owned by a component, or is part of the always
+   available base. The base is listed here so a new form cannot join it by omission. *)
+let%expect_test "RISC-V mnemonics without an owning component" =
+  let report target hand_written components =
+    let unowned = List.filter (fun n -> Target_component.legal components n = None) hand_written in
+    let unowned =
+      unowned
+      @ List.filter_map
+          (fun (r : Riscv_family_encode.Riscv_table_row.row) ->
+            if Target_component.legal components r.mnemonic <> None then None else Some r.mnemonic)
+          (Array.to_list Riscv_family_encode.Riscv_table_rows.rows)
+    in
+    let vector, rest = List.partition (fun n -> String.length n > 0 && n.[0] = 'v') unowned in
+    let compressed, base =
+      List.partition (fun n -> String.length n > 2 && String.sub n 0 2 = "c.") rest
+    in
+    Printf.printf "%s: %d vector, %d compressed unowned\n  base: %s\n" target (List.length vector)
+      (List.length compressed) (String.concat " " base)
+  in
+  let names (type a) (all : a list) name = List.map name all in
+  report "riscv32"
+    (names Riscv32_encode.Opcode.all Riscv32_encode.Opcode.name)
+    Riscv32_encode.components;
+  report "riscv64"
+    (names Riscv64_encode.Opcode.all Riscv64_encode.Opcode.name)
+    Riscv64_encode.components;
+  [%expect
+    {|
+    riscv32: 0 vector, 66 compressed unowned
+      base: add sub sll slt sltu snez neg seqz sltz sgtz zext.b xor srl sra or and addw subw sllw srlw sraw addi slti sltiu xori ori andi slli srli srai addiw slliw srliw sraiw sext.w lb lh lw lbu lhu lwu ld sb sh sw sd beq bne blt bge bltu bgeu bgtu bleu bgt ble beqz bnez bgez bltz blez bgtz lui auipc jal jalr mv nop j jr call tail la lla li ret ecall ebreak unimp fence fence.tso pause cm.mva01s cm.mvsa01 cm.pop cm.popret cm.popretz cm.push cm.jalt
+    riscv64: 0 vector, 66 compressed unowned
+      base: add sub sll slt sltu snez neg seqz sltz sgtz zext.b xor srl sra or and addw subw sllw srlw sraw addi slti sltiu xori ori andi slli srli srai addiw slliw srliw sraiw sext.w lb lh lw lbu lhu lwu ld sb sh sw sd beq bne blt bge bltu bgeu bgtu bleu bgt ble beqz bnez bgez bltz blez bgtz lui auipc jal jalr mv nop j jr call tail la lla li ret ecall ebreak unimp fence fence.tso pause cm.mva01s cm.mvsa01 cm.pop cm.popret cm.popretz cm.push cm.jalt |}]
