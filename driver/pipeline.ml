@@ -379,13 +379,17 @@ module Make (T : T_intf.TARGET) = struct
     (* Strict decoding refuses a disabled component's instruction. Inspection decodes under
        every component enabled and notes which instructions the configuration would refuse. *)
     let decode_state =
-      if inspect then T.initial_state (Target_config.default T.components) else state
+      if inspect then T.initial_state (Target_config.all_enabled T.components) else state
     in
     let unmet insn =
-      match T.required_feature insn with
-      | Some f when not (Target_config.enabled (T.state_config state) f) ->
-          Printf.sprintf "  ; requires feature %s, which is not enabled" f
-      | _ -> ""
+      match T.required insn with
+      | None -> ""
+      | Some req -> (
+          match Target_component.Req.unmet (Target_config.enabled (T.state_config state)) req with
+          | Some u ->
+              Printf.sprintf "  ; requires feature %s, which is not enabled"
+                (Fmt.str "%a" Target_component.Req.pp u)
+          | None -> "")
     in
     let run_of pos n =
       String.concat " " (List.init n (fun i -> Printf.sprintf "%02x" (Char.code bytes.[pos + i])))

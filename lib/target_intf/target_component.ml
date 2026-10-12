@@ -69,11 +69,18 @@ let specialize ~xlen c =
 
 let legal_of c f = Option.value f.legal ~default:(Req.Feature c.feature)
 
-let legal components m =
-  List.find_map
+let legal components =
+  let table = Hashtbl.create 1024 in
+  List.iter
     (fun c ->
-      List.find_map (fun f -> if List.mem m f.mnemonics then Some (legal_of c f) else None) c.forms)
-    components
+      List.iter
+        (fun f ->
+          List.iter
+            (fun m -> if not (Hashtbl.mem table m) then Hashtbl.add table m (legal_of c f))
+            f.mnemonics)
+        c.forms)
+    components;
+  Hashtbl.find_opt table
 
 let labels c = List.map (fun f -> f.label) c.forms
 let mnemonics c = List.concat_map (fun f -> f.mnemonics) c.forms

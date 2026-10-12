@@ -2871,8 +2871,10 @@ module Make (P : PROFILE) = struct
 
   (* The one place a form's component is checked against the configuration. Every stage that can
      see an opcode goes through it, so a disabled form is refused whichever path reached it. *)
+  let legal_of_mnemonic = Target_component.legal components
+
   let feature_gate ?origin state mnemonic =
-    match Target_component.legal components mnemonic with
+    match legal_of_mnemonic mnemonic with
     | None -> Ok ()
     | Some req -> (
         match Target_component.Req.unmet (Target_config.enabled state.config) req with
@@ -2882,8 +2884,7 @@ module Make (P : PROFILE) = struct
               (diag ~pos:__POS__ ?origin
                  (`Feature_disabled (mnemonic, Fmt.str "%a" Target_component.Req.pp unmet))))
 
-  let required_feature (i : Instruction.t) =
-    Target_component.feature_of_mnemonic components (Opcode.name i.op)
+  let required (i : Instruction.t) = legal_of_mnemonic (Opcode.name i.op)
 
   let simplify_instruction state s =
     match Opcode.of_mnemonic s.Surface.mnemonic with
@@ -7674,17 +7675,36 @@ module Make (P : PROFILE) = struct
     | Fixed x -> fixed x.word x.name
     | Fixed_half x -> Ok (`Fixed (form (bytes_of_half x.word) x.name []))
 
-  (* The mnemonic of a lowered form that belongs to a component. Only [R] carries a component
-     today: M's forms all lower to it. *)
-  let lowered_mnemonic = function Lowered.R { name; _ } -> Some name | _ -> None
+  (* The mnemonic a lowered form is gated by. Every constructor is listed, so a new one has to
+     say which instruction it is. *)
+  let lowered_mnemonic = function
+    | Lowered.R { name; _ }
+    | R4 { name; _ }
+    | I { name; _ }
+    | S { name; _ }
+    | B { name; _ }
+    | U { name; _ }
+    | Pair { name; _ }
+    | Fixed { name; _ }
+    | Fixed_half { name; _ }
+    | Cr2 { name; _ }
+    | Cr { name; _ }
+    | Cl { name; _ }
+    | Cs { name; _ }
+    | Clsp { name; _ }
+    | Css { name; _ }
+    | Cj { name; _ }
+    | Cb { name; _ } ->
+        name
+    | J _ -> "jal"
+    | Caddi _ -> "c.addi"
 
   (* Encoding under a configuration, so a caller that builds lowered forms directly cannot
      emit a disabled component's instruction. [encode] is the default-configuration wrapper. *)
   let encode_in state l =
-    match lowered_mnemonic l with
-    | Some name -> (
-        match feature_gate state name with Error _ as e -> e | Ok () -> encode_ungated l)
-    | None -> encode_ungated l
+    match feature_gate state (lowered_mnemonic l) with
+    | Error _ as e -> e
+    | Ok () -> encode_ungated l
 
   let encode l = encode_in default_state l
 

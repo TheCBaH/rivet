@@ -130,8 +130,8 @@ module type ENCODE = sig
 
   val state_config : target_state -> Target_config.t
 
-  val required_feature : Instruction.t -> string option
-  (** the feature gating [i]'s component, or [None] for a base instruction *)
+  val required : Instruction.t -> Target_component.Req.t option
+  (** the predicate that makes [i] legal, or [None] for a base instruction *)
 
   val make_surface_instruction :
     mnemonic:string -> origin:Origin.t -> Operand.t list -> (Surface.t, error) Err.t
@@ -201,7 +201,7 @@ module type ENCODE = sig
 
       Strict: a word that is a disabled component's instruction is an error, so a decode never
       presents as assemblable something the configuration would refuse. To inspect such bytes
-      anyway, decode under an all-enabled state and ask {!required_feature}. *)
+      anyway, decode under an all-enabled state and ask {!required}. *)
 
   (* {1 Linking and padding} *)
 

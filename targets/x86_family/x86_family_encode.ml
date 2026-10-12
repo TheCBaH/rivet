@@ -10378,6 +10378,8 @@ module Make (M : MODE) = struct
     | Opcode.Table row -> row_feature row
     | op -> Target_component.feature_of_mnemonic components (Opcode.name op)
 
+  let required i = Option.map (fun f -> Target_component.Req.Feature f) (required_feature i)
+
   let instruction_gate ?origin state (i : Instruction.t) =
     gate ?origin state (Opcode.name i.op) (required_feature i)
 

@@ -64,7 +64,8 @@ val specialize : xlen:int -> t -> t
 
 val legal : t list -> string -> Req.t option
 (** The legality predicate of the form spelled [mnemonic], or [None] when no component owns it - the
-    mnemonic is then part of the always-available base. *)
+    mnemonic is then part of the always-available base. Partially apply it to a component set once:
+    the lookup is then a table probe. *)
 
 val labels : t -> string list
 val mnemonics : t -> string list

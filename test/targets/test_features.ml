@@ -1139,3 +1139,65 @@ let%expect_test "vector configurations" =
     "none,+zvknhb"         -> d,f,v,zicsr,zvknha,zvknhb
     "-d"                   -> error: feature q requires d, which is disabled
     "-v,-zvbb,-zvkned"     -> error: feature zvbc requires v, which is disabled |}]
+
+(* {1 Every lowered form is gated} *)
+
+let%expect_test "RISC-V: lowered forms of each shape are refused when their extension is off" =
+  let module E = Riscv64_encode in
+  let config text =
+    match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
+  in
+  let imm n = Asm_core.Expr.Const (Foundation.Bigint.of_int n) in
+  let forms =
+    [
+      ( "R4",
+        E.Lowered.R4
+          {
+            name = "fmadd.s";
+            opcode = 0x43;
+            fmt = 0;
+            funct3 = 7;
+            rd = 1;
+            rs1 = 2;
+            rs2 = 3;
+            rs3 = 4;
+          } );
+      ( "I",
+        E.Lowered.I
+          {
+            name = "flw";
+            opcode = 0x07;
+            funct3 = 2;
+            funct_hi = 0;
+            shamt_bits = None;
+            rd = 1;
+            rs1 = 2;
+            imm = imm 0;
+          } );
+      ("S", E.Lowered.S { name = "fsw"; opcode = 0x27; funct3 = 2; rs1 = 2; rs2 = 1; imm = imm 0 });
+      ("Fixed", E.Lowered.Fixed { name = "mret"; word = 0x30200073L });
+    ]
+  in
+  List.iter
+    (fun (label, lowered) ->
+      List.iter
+        (fun features ->
+          let state = E.initial_state (config features) in
+          Printf.printf "%-6s %-10s -> %s\n" label features
+            (match E.encode_in state lowered with
+            | Ok (`Fixed f) -> hex f.Asm_core.Lowered_ast.bytes
+            | Ok (`Relax _) -> "relax"
+            | Error e ->
+                "refused: " ^ Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))))
+        [ "none,+f,+system"; "none" ])
+    forms;
+  [%expect
+    {|
+    R4     none,+f,+system -> c3 70 31 20
+    R4     none       -> refused: fmadd.s requires feature f, which is not enabled
+    I      none,+f,+system -> 87 20 01 00
+    I      none       -> refused: flw requires feature f, which is not enabled
+    S      none,+f,+system -> 27 20 11 00
+    S      none       -> refused: fsw requires feature f, which is not enabled
+    Fixed  none,+f,+system -> 73 00 20 30
+    Fixed  none       -> refused: mret requires feature system, which is not enabled |}]
