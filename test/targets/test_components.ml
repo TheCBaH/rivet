@@ -253,8 +253,8 @@ let%expect_test "component descriptors are structurally clean in every profile" 
   report "x86_64" X86_64_encode.components;
   [%expect
     {|
-    riscv32: riscv.zmmul feature=zmmul forms=5; riscv.m feature=m forms=8; riscv.f feature=f forms=43; riscv.d feature=d forms=35; riscv.a feature=a forms=22; riscv.zacas feature=zacas forms=20; riscv.zabha feature=zabha forms=72
-    riscv64: riscv.zmmul feature=zmmul forms=5; riscv.m feature=m forms=8; riscv.f feature=f forms=43; riscv.d feature=d forms=35; riscv.a feature=a forms=22; riscv.zacas feature=zacas forms=20; riscv.zabha feature=zabha forms=72
+    riscv32: riscv.zmmul feature=zmmul forms=5; riscv.m feature=m forms=8; riscv.f feature=f forms=43; riscv.d feature=d forms=35; riscv.a feature=a forms=22; riscv.zacas feature=zacas forms=20; riscv.zabha feature=zabha forms=72; riscv.q feature=q forms=35; riscv.zfh feature=zfh forms=29; riscv.zfhmin feature=zfhmin forms=10; riscv.zfa feature=zfa forms=33; riscv.zfbfmin feature=zfbfmin forms=2
+    riscv64: riscv.zmmul feature=zmmul forms=5; riscv.m feature=m forms=8; riscv.f feature=f forms=43; riscv.d feature=d forms=35; riscv.a feature=a forms=22; riscv.zacas feature=zacas forms=20; riscv.zabha feature=zabha forms=72; riscv.q feature=q forms=35; riscv.zfh feature=zfh forms=29; riscv.zfhmin feature=zfhmin forms=10; riscv.zfa feature=zfa forms=33; riscv.zfbfmin feature=zfbfmin forms=2
     x86_32: x86.x87 feature=x87 forms=13
     x86_64: x86.x87 feature=x87 forms=13 |}]
 

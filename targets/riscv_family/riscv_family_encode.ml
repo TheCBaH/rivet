@@ -2735,6 +2735,11 @@ module Make (P : PROFILE) = struct
       Riscv_ext_a.a;
       Riscv_ext_a.zacas;
       Riscv_ext_a.zabha;
+      Riscv_ext_fp.q;
+      Riscv_ext_fp.zfh;
+      Riscv_ext_fp.zfhmin;
+      Riscv_ext_fp.zfa;
+      Riscv_ext_fp.zfbfmin;
     ]
 
   (* [config] is the validated feature set. It lives in the state, not beside it, so it rides

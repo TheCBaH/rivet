@@ -4,6 +4,7 @@ val component :
   id:string ->
   feature:string ->
   ?requires:string list ->
+  ?implies:string list ->
   ?legal:(string -> Target_component.Req.t option) ->
   summary:string ->
   (string * string) list ->

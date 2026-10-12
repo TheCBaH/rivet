@@ -83,24 +83,24 @@ let%expect_test "the effective configuration of each target" =
     [ "riscv32"; "riscv64"; "x86_32"; "x86_64"; "arm"; "aarch64" ];
   [%expect
     {|
-    riscv32  ""           -> a,d,f,m,zabha,zacas,zmmul
+    riscv32  ""           -> a,d,f,m,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin,zmmul
     riscv32  "none"       ->
     riscv32  "none,+m"    -> m,zmmul
-    riscv32  "-m"         -> a,d,f,zabha,zacas,zmmul
+    riscv32  "-m"         -> a,d,f,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin,zmmul
     riscv32  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv32  "-m,-zmmul"  -> a,d,f,zabha,zacas
-    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha)
-    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha)
-    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha)
-    riscv64  ""           -> a,d,f,m,zabha,zacas,zmmul
+    riscv32  "-m,-zmmul"  -> a,d,f,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin
+    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
+    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
+    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
+    riscv64  ""           -> a,d,f,m,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin,zmmul
     riscv64  "none"       ->
     riscv64  "none,+m"    -> m,zmmul
-    riscv64  "-m"         -> a,d,f,zabha,zacas,zmmul
+    riscv64  "-m"         -> a,d,f,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin,zmmul
     riscv64  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv64  "-m,-zmmul"  -> a,d,f,zabha,zacas
-    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha)
-    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha)
-    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha)
+    riscv64  "-m,-zmmul"  -> a,d,f,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin
+    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
+    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
+    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
     x86_32   ""           -> x87
     x86_32   "none"       ->
     x86_32   "none,+m"    -> error: unknown feature m (known: x87)
@@ -355,7 +355,7 @@ let%expect_test "an invalid configuration fails before any source is read" =
   [%expect
     {|
     riscv64  [-zmmul   ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: feature m requires zmmul, which is disabled
-    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha)
+    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin)
     arm      [x87      ] nop                    REFUSED config.invalid: invalid feature configuration: unknown feature x87 (known: (none)) |}]
 
 (* {1 Normalized and lowered instructions handed in directly} *)
@@ -620,8 +620,8 @@ let%expect_test "the default configuration is pinned" =
     x86_64   enabled=[x87] components=[x86.x87]
     arm      enabled=[] components=[]
     aarch64  enabled=[] components=[]
-    riscv32  enabled=[a,d,f,m,zabha,zacas,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha]
-    riscv64  enabled=[a,d,f,m,zabha,zacas,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha] |}]
+    riscv32  enabled=[a,d,f,m,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin]
+    riscv64  enabled=[a,d,f,m,q,zabha,zacas,zfa,zfbfmin,zfh,zfhmin,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin] |}]
 
 (* [add.uw rd, rs, x0] is also [zext.w]; refusing the specialization leaves the general form. *)
 let%expect_test "a disabled specialization falls back to the enabled general form" =
@@ -803,3 +803,84 @@ let%expect_test "A: a disabled atomic is refused when decoding" =
     REFUSED riscv64.feature: amoadd.w requires feature a, which is not enabled
     00001000  af a2 63 00  amoadd.w x5, x6, 0(x7)  ; requires feature a, which is not enabled  [riscv64.amoadd.w]
     00001004  b3 02 73 00  add x5, x6, x7                                                      [riscv64.add] |}]
+
+let%expect_test "Zfa, Zfh, Q: mixed-format forms need both formats" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv64")
+        [
+          "fli.s f1, 1.0";
+          "fli.d f1, 1.0";
+          "fli.h f1, 1.0";
+          "fminm.q f1, f2, f3";
+          "fcvt.d.h f1, f2";
+          "fadd.h f1, f2, f3";
+          "flh f1, 0(x2)";
+          "fadd.q f1, f2, f3";
+        ])
+    [ "none,+zfa"; "none,+zfa,+d"; "none,+zfa,+zfh"; "none,+zfh,+d"; "none,+zfhmin"; "none,+q" ];
+  [%expect
+    {|
+    riscv64  [none,+zfa] fli.s f1, 1.0          d3 00 18 f0
+    riscv64  [none,+zfa] fli.d f1, 1.0          REFUSED riscv64.feature: fli.d requires feature d, which is not enabled
+    riscv64  [none,+zfa] fli.h f1, 1.0          REFUSED riscv64.feature: fli.h requires feature zfh, which is not enabled
+    riscv64  [none,+zfa] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature q, which is not enabled
+    riscv64  [none,+zfa] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature zfhmin and d, which is not enabled
+    riscv64  [none,+zfa] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
+    riscv64  [none,+zfa] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature zfhmin, which is not enabled
+    riscv64  [none,+zfa] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
+    riscv64  [none,+zfa,+d] fli.s f1, 1.0          d3 00 18 f0
+    riscv64  [none,+zfa,+d] fli.d f1, 1.0          d3 00 18 f2
+    riscv64  [none,+zfa,+d] fli.h f1, 1.0          REFUSED riscv64.feature: fli.h requires feature zfh, which is not enabled
+    riscv64  [none,+zfa,+d] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature q, which is not enabled
+    riscv64  [none,+zfa,+d] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature zfhmin, which is not enabled
+    riscv64  [none,+zfa,+d] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
+    riscv64  [none,+zfa,+d] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature zfhmin, which is not enabled
+    riscv64  [none,+zfa,+d] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
+    riscv64  [none,+zfa,+zfh] fli.s f1, 1.0          d3 00 18 f0
+    riscv64  [none,+zfa,+zfh] fli.d f1, 1.0          REFUSED riscv64.feature: fli.d requires feature d, which is not enabled
+    riscv64  [none,+zfa,+zfh] fli.h f1, 1.0          d3 00 18 f4
+    riscv64  [none,+zfa,+zfh] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature q, which is not enabled
+    riscv64  [none,+zfa,+zfh] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature d, which is not enabled
+    riscv64  [none,+zfa,+zfh] fadd.h f1, f2, f3      d3 70 31 04
+    riscv64  [none,+zfa,+zfh] flh f1, 0(x2)          87 10 01 00
+    riscv64  [none,+zfa,+zfh] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
+    riscv64  [none,+zfh,+d] fli.s f1, 1.0          REFUSED riscv64.feature: fli.s requires feature zfa, which is not enabled
+    riscv64  [none,+zfh,+d] fli.d f1, 1.0          REFUSED riscv64.feature: fli.d requires feature zfa, which is not enabled
+    riscv64  [none,+zfh,+d] fli.h f1, 1.0          REFUSED riscv64.feature: fli.h requires feature zfa, which is not enabled
+    riscv64  [none,+zfh,+d] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature zfa and q, which is not enabled
+    riscv64  [none,+zfh,+d] fcvt.d.h f1, f2        d3 00 21 42
+    riscv64  [none,+zfh,+d] fadd.h f1, f2, f3      d3 70 31 04
+    riscv64  [none,+zfh,+d] flh f1, 0(x2)          87 10 01 00
+    riscv64  [none,+zfh,+d] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
+    riscv64  [none,+zfhmin] fli.s f1, 1.0          REFUSED riscv64.feature: fli.s requires feature zfa, which is not enabled
+    riscv64  [none,+zfhmin] fli.d f1, 1.0          REFUSED riscv64.feature: fli.d requires feature zfa and d, which is not enabled
+    riscv64  [none,+zfhmin] fli.h f1, 1.0          REFUSED riscv64.feature: fli.h requires feature zfa and zfh, which is not enabled
+    riscv64  [none,+zfhmin] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature zfa and q, which is not enabled
+    riscv64  [none,+zfhmin] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature d, which is not enabled
+    riscv64  [none,+zfhmin] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
+    riscv64  [none,+zfhmin] flh f1, 0(x2)          87 10 01 00
+    riscv64  [none,+zfhmin] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
+    riscv64  [none,+q  ] fli.s f1, 1.0          REFUSED riscv64.feature: fli.s requires feature zfa, which is not enabled
+    riscv64  [none,+q  ] fli.d f1, 1.0          REFUSED riscv64.feature: fli.d requires feature zfa, which is not enabled
+    riscv64  [none,+q  ] fli.h f1, 1.0          REFUSED riscv64.feature: fli.h requires feature zfa and zfh, which is not enabled
+    riscv64  [none,+q  ] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature zfa, which is not enabled
+    riscv64  [none,+q  ] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature zfhmin, which is not enabled
+    riscv64  [none,+q  ] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
+    riscv64  [none,+q  ] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature zfhmin, which is not enabled
+    riscv64  [none,+q  ] fadd.q f1, f2, f3      d3 70 31 06 |}]
+
+let%expect_test "Zfh implies Zfhmin" =
+  List.iter
+    (fun text ->
+      match Target_config.resolve Riscv64_encode.components (spec text) with
+      | Ok c -> Printf.printf "%-18S -> %s\n" text (String.concat "," (Target_config.features c))
+      | Error m -> Printf.printf "%-18S -> error: %s\n" text m)
+    [ "none,+zfh"; "none,+zfh,-zfhmin"; "none,+zfhmin"; "none,+q"; "none,+zfa" ];
+  [%expect
+    {|
+    "none,+zfh"        -> f,zfh,zfhmin
+    "none,+zfh,-zfhmin" -> error: feature zfhmin is implied by zfh, which is enabled
+    "none,+zfhmin"     -> f,zfhmin
+    "none,+q"          -> d,f,q
+    "none,+zfa"        -> f,zfa |}]
