@@ -83,24 +83,24 @@ let%expect_test "the effective configuration of each target" =
     [ "riscv32"; "riscv64"; "x86_32"; "x86_64"; "arm"; "aarch64" ];
   [%expect
     {|
-    riscv32  ""           -> a,d,f,m,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh,zmmul
+    riscv32  ""           -> a,d,f,h,m,q,s,sdext,ssctr,svinval,system,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul
     riscv32  "none"       ->
     riscv32  "none,+m"    -> m,zmmul
-    riscv32  "-m"         -> a,d,f,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh,zmmul
+    riscv32  "-m"         -> a,d,f,h,q,s,sdext,ssctr,svinval,system,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul
     riscv32  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv32  "-m,-zmmul"  -> a,d,f,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh
-    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
-    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
-    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
-    riscv64  ""           -> a,d,f,m,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh,zmmul
+    riscv32  "-m,-zmmul"  -> a,d,f,h,q,s,sdext,ssctr,svinval,system,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh
+    riscv32  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr)
+    riscv32  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr)
+    riscv32  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr)
+    riscv64  ""           -> a,d,f,h,m,q,s,sdext,ssctr,svinval,system,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul
     riscv64  "none"       ->
     riscv64  "none,+m"    -> m,zmmul
-    riscv64  "-m"         -> a,d,f,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh,zmmul
+    riscv64  "-m"         -> a,d,f,h,q,s,sdext,ssctr,svinval,system,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul
     riscv64  "-zmmul"     -> error: feature m requires zmmul, which is disabled
-    riscv64  "-m,-zmmul"  -> a,d,f,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh
-    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
-    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
-    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
+    riscv64  "-m,-zmmul"  -> a,d,f,h,q,s,sdext,ssctr,svinval,system,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh
+    riscv64  "-x87"       -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr)
+    riscv64  "none,+x87"  -> error: unknown feature x87 (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr)
+    riscv64  "bogus"      -> error: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr)
     x86_32   ""           -> x87
     x86_32   "none"       ->
     x86_32   "none,+m"    -> error: unknown feature m (known: x87)
@@ -355,7 +355,7 @@ let%expect_test "an invalid configuration fails before any source is read" =
   [%expect
     {|
     riscv64  [-zmmul   ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: feature m requires zmmul, which is disabled
-    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk)
+    riscv64  [bogus    ] add x5, x6, x7         REFUSED config.invalid: invalid feature configuration: unknown feature bogus (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr)
     arm      [x87      ] nop                    REFUSED config.invalid: invalid feature configuration: unknown feature x87 (known: (none)) |}]
 
 (* {1 Normalized and lowered instructions handed in directly} *)
@@ -620,8 +620,8 @@ let%expect_test "the default configuration is pinned" =
     x86_64   enabled=[x87] components=[x86.x87]
     arm      enabled=[] components=[]
     aarch64  enabled=[] components=[]
-    riscv32  enabled=[a,d,f,m,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin,riscv.zba,riscv.zbb,riscv.zbs,riscv.zbc,riscv.zbkb,riscv.zbkc,riscv.zbkx,riscv.zknd,riscv.zkne,riscv.zknh,riscv.zksed,riscv.zksh,riscv.zicond,riscv.b,riscv.zkn,riscv.zks,riscv.zk]
-    riscv64  enabled=[a,d,f,m,q,zabha,zacas,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicond,zknd,zkne,zknh,zksed,zksh,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin,riscv.zba,riscv.zbb,riscv.zbs,riscv.zbc,riscv.zbkb,riscv.zbkc,riscv.zbkx,riscv.zknd,riscv.zkne,riscv.zknh,riscv.zksed,riscv.zksh,riscv.zicond,riscv.b,riscv.zkn,riscv.zks,riscv.zk] |}]
+    riscv32  enabled=[a,d,f,h,m,q,s,sdext,ssctr,svinval,system,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin,riscv.zba,riscv.zbb,riscv.zbs,riscv.zbc,riscv.zbkb,riscv.zbkc,riscv.zbkx,riscv.zknd,riscv.zkne,riscv.zknh,riscv.zksed,riscv.zksh,riscv.zicond,riscv.b,riscv.zkn,riscv.zks,riscv.zk,riscv.zicsr,riscv.zifencei,riscv.zicntr,riscv.zihintntl,riscv.zawrs,riscv.zimop,riscv.zicfiss,riscv.zicfilp,riscv.zicbom,riscv.zicboz,riscv.zicbop,riscv.system,riscv.s,riscv.h,riscv.svinval,riscv.sdext,riscv.ssctr]
+    riscv64  enabled=[a,d,f,h,m,q,s,sdext,ssctr,svinval,system,zabha,zacas,zawrs,zba,zbb,zbc,zbkb,zbkc,zbkx,zbs,zfa,zfbfmin,zfh,zfhmin,zicbom,zicbop,zicboz,zicfilp,zicfiss,zicntr,zicond,zicsr,zifencei,zihintntl,zimop,zknd,zkne,zknh,zksed,zksh,zmmul] components=[riscv.zmmul,riscv.m,riscv.f,riscv.d,riscv.a,riscv.zacas,riscv.zabha,riscv.q,riscv.zfh,riscv.zfhmin,riscv.zfa,riscv.zfbfmin,riscv.zba,riscv.zbb,riscv.zbs,riscv.zbc,riscv.zbkb,riscv.zbkc,riscv.zbkx,riscv.zknd,riscv.zkne,riscv.zknh,riscv.zksed,riscv.zksh,riscv.zicond,riscv.b,riscv.zkn,riscv.zks,riscv.zk,riscv.zicsr,riscv.zifencei,riscv.zicntr,riscv.zihintntl,riscv.zawrs,riscv.zimop,riscv.zicfiss,riscv.zicfilp,riscv.zicbom,riscv.zicboz,riscv.zicbop,riscv.system,riscv.s,riscv.h,riscv.svinval,riscv.sdext,riscv.ssctr] |}]
 
 (* [add.uw rd, rs, x0] is also [zext.w]; refusing the specialization leaves the general form. *)
 let%expect_test "a disabled specialization falls back to the enabled general form" =
@@ -879,11 +879,11 @@ let%expect_test "Zfh implies Zfhmin" =
     [ "none,+zfh"; "none,+zfh,-zfhmin"; "none,+zfhmin"; "none,+q"; "none,+zfa" ];
   [%expect
     {|
-    "none,+zfh"        -> f,zfh,zfhmin
+    "none,+zfh"        -> f,zfh,zfhmin,zicsr
     "none,+zfh,-zfhmin" -> error: feature zfhmin is implied by zfh, which is enabled
-    "none,+zfhmin"     -> f,zfhmin
-    "none,+q"          -> d,f,q
-    "none,+zfa"        -> f,zfa |}]
+    "none,+zfhmin"     -> f,zfhmin,zicsr
+    "none,+q"          -> d,f,q,zicsr
+    "none,+zfa"        -> f,zfa,zicsr |}]
 
 (* {1 Bit manipulation and scalar crypto} *)
 
@@ -967,3 +967,105 @@ let%expect_test "K groups are sums of their leaf extensions" =
     "none,+b"      -> b,zba,zbb,zbs
     "none,+zk,-zbkb" -> error: feature zbkb is implied by zkn, which is enabled
     "none,+zbc,-zbkc" -> zbc |}]
+
+(* {1 System, CSR and hints} *)
+
+let%expect_test "Zicsr, system and cache-management forms are gated" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv64")
+        [
+          "csrrw x5, 0x300, x6";
+          "csrr x5, 0x300";
+          "fence.i";
+          "frcsr x5";
+          "rdcycle x5";
+          "mret";
+          "wfi";
+          "sret";
+          "cbo.zero (x5)";
+          "ecall";
+        ])
+    [
+      "none,+zicsr";
+      "none,+f";
+      "none,+zicntr";
+      "none,+system";
+      "none,+zifencei,+zicbom,+zicboz";
+      "none";
+    ];
+  [%expect
+    {|
+    riscv64  [none,+zicsr] csrrw x5, 0x300, x6    f3 12 03 30
+    riscv64  [none,+zicsr] csrr x5, 0x300         f3 22 00 30
+    riscv64  [none,+zicsr] fence.i                REFUSED riscv64.feature: fence.i requires feature zifencei, which is not enabled
+    riscv64  [none,+zicsr] frcsr x5               REFUSED riscv64.feature: frcsr requires feature f, which is not enabled
+    riscv64  [none,+zicsr] rdcycle x5             REFUSED riscv64.feature: rdcycle requires feature zicntr, which is not enabled
+    riscv64  [none,+zicsr] mret                   REFUSED riscv64.feature: mret requires feature system, which is not enabled
+    riscv64  [none,+zicsr] wfi                    REFUSED riscv64.feature: wfi requires feature system, which is not enabled
+    riscv64  [none,+zicsr] sret                   REFUSED riscv64.feature: sret requires feature s, which is not enabled
+    riscv64  [none,+zicsr] cbo.zero (x5)          REFUSED riscv64.feature: cbo.zero requires feature zicboz, which is not enabled
+    riscv64  [none,+zicsr] ecall                  73 00 00 00
+    riscv64  [none,+f  ] csrrw x5, 0x300, x6    f3 12 03 30
+    riscv64  [none,+f  ] csrr x5, 0x300         f3 22 00 30
+    riscv64  [none,+f  ] fence.i                REFUSED riscv64.feature: fence.i requires feature zifencei, which is not enabled
+    riscv64  [none,+f  ] frcsr x5               f3 22 30 00
+    riscv64  [none,+f  ] rdcycle x5             REFUSED riscv64.feature: rdcycle requires feature zicntr, which is not enabled
+    riscv64  [none,+f  ] mret                   REFUSED riscv64.feature: mret requires feature system, which is not enabled
+    riscv64  [none,+f  ] wfi                    REFUSED riscv64.feature: wfi requires feature system, which is not enabled
+    riscv64  [none,+f  ] sret                   REFUSED riscv64.feature: sret requires feature s, which is not enabled
+    riscv64  [none,+f  ] cbo.zero (x5)          REFUSED riscv64.feature: cbo.zero requires feature zicboz, which is not enabled
+    riscv64  [none,+f  ] ecall                  73 00 00 00
+    riscv64  [none,+zicntr] csrrw x5, 0x300, x6    f3 12 03 30
+    riscv64  [none,+zicntr] csrr x5, 0x300         f3 22 00 30
+    riscv64  [none,+zicntr] fence.i                REFUSED riscv64.feature: fence.i requires feature zifencei, which is not enabled
+    riscv64  [none,+zicntr] frcsr x5               REFUSED riscv64.feature: frcsr requires feature f, which is not enabled
+    riscv64  [none,+zicntr] rdcycle x5             f3 22 00 c0
+    riscv64  [none,+zicntr] mret                   REFUSED riscv64.feature: mret requires feature system, which is not enabled
+    riscv64  [none,+zicntr] wfi                    REFUSED riscv64.feature: wfi requires feature system, which is not enabled
+    riscv64  [none,+zicntr] sret                   REFUSED riscv64.feature: sret requires feature s, which is not enabled
+    riscv64  [none,+zicntr] cbo.zero (x5)          REFUSED riscv64.feature: cbo.zero requires feature zicboz, which is not enabled
+    riscv64  [none,+zicntr] ecall                  73 00 00 00
+    riscv64  [none,+system] csrrw x5, 0x300, x6    REFUSED riscv64.feature: csrrw requires feature zicsr, which is not enabled
+    riscv64  [none,+system] csrr x5, 0x300         REFUSED riscv64.feature: csrr requires feature zicsr, which is not enabled
+    riscv64  [none,+system] fence.i                REFUSED riscv64.feature: fence.i requires feature zifencei, which is not enabled
+    riscv64  [none,+system] frcsr x5               REFUSED riscv64.feature: frcsr requires feature f, which is not enabled
+    riscv64  [none,+system] rdcycle x5             REFUSED riscv64.feature: rdcycle requires feature zicntr, which is not enabled
+    riscv64  [none,+system] mret                   73 00 20 30
+    riscv64  [none,+system] wfi                    73 00 50 10
+    riscv64  [none,+system] sret                   REFUSED riscv64.feature: sret requires feature s, which is not enabled
+    riscv64  [none,+system] cbo.zero (x5)          REFUSED riscv64.feature: cbo.zero requires feature zicboz, which is not enabled
+    riscv64  [none,+system] ecall                  73 00 00 00
+    riscv64  [none,+zifencei,+zicbom,+zicboz] csrrw x5, 0x300, x6    REFUSED riscv64.feature: csrrw requires feature zicsr, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] csrr x5, 0x300         REFUSED riscv64.feature: csrr requires feature zicsr, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] fence.i                0f 10 00 00
+    riscv64  [none,+zifencei,+zicbom,+zicboz] frcsr x5               REFUSED riscv64.feature: frcsr requires feature f, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] rdcycle x5             REFUSED riscv64.feature: rdcycle requires feature zicntr, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] mret                   REFUSED riscv64.feature: mret requires feature system, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] wfi                    REFUSED riscv64.feature: wfi requires feature system, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] sret                   REFUSED riscv64.feature: sret requires feature s, which is not enabled
+    riscv64  [none,+zifencei,+zicbom,+zicboz] cbo.zero (x5)          0f a0 42 00
+    riscv64  [none,+zifencei,+zicbom,+zicboz] ecall                  73 00 00 00
+    riscv64  [none     ] csrrw x5, 0x300, x6    REFUSED riscv64.feature: csrrw requires feature zicsr, which is not enabled
+    riscv64  [none     ] csrr x5, 0x300         REFUSED riscv64.feature: csrr requires feature zicsr, which is not enabled
+    riscv64  [none     ] fence.i                REFUSED riscv64.feature: fence.i requires feature zifencei, which is not enabled
+    riscv64  [none     ] frcsr x5               REFUSED riscv64.feature: frcsr requires feature f, which is not enabled
+    riscv64  [none     ] rdcycle x5             REFUSED riscv64.feature: rdcycle requires feature zicntr, which is not enabled
+    riscv64  [none     ] mret                   REFUSED riscv64.feature: mret requires feature system, which is not enabled
+    riscv64  [none     ] wfi                    REFUSED riscv64.feature: wfi requires feature system, which is not enabled
+    riscv64  [none     ] sret                   REFUSED riscv64.feature: sret requires feature s, which is not enabled
+    riscv64  [none     ] cbo.zero (x5)          REFUSED riscv64.feature: cbo.zero requires feature zicboz, which is not enabled
+    riscv64  [none     ] ecall                  73 00 00 00 |}]
+
+let%expect_test "F requires Zicsr" =
+  List.iter
+    (fun text ->
+      match Target_config.resolve Riscv64_encode.components (spec text) with
+      | Ok c -> Printf.printf "%-22S -> %s\n" text (String.concat "," (Target_config.features c))
+      | Error m -> Printf.printf "%-22S -> error: %s\n" text m)
+    [ "none,+f"; "-zicsr"; "-f,-d,-zicsr" ];
+  [%expect
+    {|
+    "none,+f"              -> f,zicsr
+    "-zicsr"               -> error: feature f requires zicsr, which is disabled
+    "-f,-d,-zicsr"         -> error: feature q requires d, which is disabled |}]

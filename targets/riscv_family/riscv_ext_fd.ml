@@ -80,7 +80,8 @@ let d_forms =
   ]
 
 let f =
-  Riscv_ext.component ~id:"riscv.f" ~feature:"f" ~summary:"single-precision floating point" f_forms
+  Riscv_ext.component ~id:"riscv.f" ~feature:"f" ~requires:[ "zicsr" ]
+    ~summary:"single-precision floating point" f_forms
 
 let d =
   Riscv_ext.component ~id:"riscv.d" ~feature:"d" ~requires:[ "f" ]
