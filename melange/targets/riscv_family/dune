@@ -15,6 +15,7 @@
   riscv_ext_fp
   riscv_ext_m
   riscv_ext_sys
+  riscv_ext_v
   riscv_table_row
   riscv_table_rows)
  (modes byte native melange)
