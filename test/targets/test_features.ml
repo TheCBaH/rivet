@@ -1,4 +1,4 @@
-(* Feature configuration: an optional component (RISC-V Zmmul/M, x86 x87) can be turned off,
+(* Feature configuration: an optional component (RISC-V Zmmul/M/D, x86 x87) can be turned off,
    and once it is, no path emits or accepts its instructions.
 
    Each section names the path it covers. The text path is the ordinary one; the others are the
@@ -308,6 +308,50 @@ let%expect_test "M on RV32, where mulw does not exist regardless" =
     riscv32  [none,+m  ] mulw x5, x6, x7        REFUSED riscv32.lower: mulw is available only when XLEN is 64
     riscv32  [none     ] mulw x5, x6, x7        REFUSED riscv32.feature: mulw requires feature zmmul, which is not enabled |}]
 
+(* Every binary64 form needs D, including generated rows owned by other extensions. *)
+let%expect_test "D: disabled, single precision stays and every binary64 form is refused" =
+  List.iter
+    (fun features ->
+      List.iter (show ?features "riscv32")
+        [
+          "fadd.s f1, f2, f3";
+          "flw f1, 0(a0)";
+          "fmv.s f1, f2";
+          "fcvt.s.w f1, a0";
+          "fadd.d f1, f2, f3";
+          "fld f1, 0(a0)";
+          "fsd f1, 8(a0)";
+          "fmv.d f1, f2";
+          "fcvt.s.d f1, f2";
+          "fli.d f1, 1.0";
+          "fmvh.x.d a0, f1";
+        ])
+    [ None; Some "none,+f,+zfa" ];
+  [%expect
+    {|
+    riscv32  [default  ] fadd.s f1, f2, f3      d3 70 31 00
+    riscv32  [default  ] flw f1, 0(a0)          87 20 05 00
+    riscv32  [default  ] fmv.s f1, f2           d3 00 21 20
+    riscv32  [default  ] fcvt.s.w f1, a0        d3 70 05 d0
+    riscv32  [default  ] fadd.d f1, f2, f3      d3 70 31 02
+    riscv32  [default  ] fld f1, 0(a0)          87 30 05 00
+    riscv32  [default  ] fsd f1, 8(a0)          27 34 15 00
+    riscv32  [default  ] fmv.d f1, f2           d3 00 21 22
+    riscv32  [default  ] fcvt.s.d f1, f2        d3 70 11 40
+    riscv32  [default  ] fli.d f1, 1.0          d3 00 18 f2
+    riscv32  [default  ] fmvh.x.d a0, f1        53 85 10 e2
+    riscv32  [none,+f,+zfa] fadd.s f1, f2, f3      d3 70 31 00
+    riscv32  [none,+f,+zfa] flw f1, 0(a0)          87 20 05 00
+    riscv32  [none,+f,+zfa] fmv.s f1, f2           d3 00 21 20
+    riscv32  [none,+f,+zfa] fcvt.s.w f1, a0        d3 70 05 d0
+    riscv32  [none,+f,+zfa] fadd.d f1, f2, f3      REFUSED riscv32.feature: fadd.d requires feature d, which is not enabled
+    riscv32  [none,+f,+zfa] fld f1, 0(a0)          REFUSED riscv32.feature: fld requires feature d, which is not enabled
+    riscv32  [none,+f,+zfa] fsd f1, 8(a0)          REFUSED riscv32.feature: fsd requires feature d, which is not enabled
+    riscv32  [none,+f,+zfa] fmv.d f1, f2           REFUSED riscv32.feature: fmv.d requires feature d, which is not enabled
+    riscv32  [none,+f,+zfa] fcvt.s.d f1, f2        REFUSED riscv32.feature: fcvt.s.d requires feature d, which is not enabled
+    riscv32  [none,+f,+zfa] fli.d f1, 1.0          REFUSED riscv32.feature: fli.d requires feature d, which is not enabled
+    riscv32  [none,+f,+zfa] fmvh.x.d a0, f1        REFUSED riscv32.feature: fmvh.x.d requires feature d, which is not enabled |}]
+
 let%expect_test "x87: enabled and disabled, with the base unaffected" =
   List.iter
     (fun features ->
@@ -488,6 +532,27 @@ let%expect_test "decode: strict refuses a disabled component, inspection marks i
     -- x86 inspect, x87 disabled
     00001000  dd 44 24 08  fldl 8(%esp)  ; requires feature x87, which is not enabled  [x86_32.fldl.opsz-absent.sib-disp8]
     00001004  c3           ret                                                         [x86_32.ret] |}]
+
+let%expect_test "decode: strict refuses a binary64 word with d disabled" =
+  let code = bytes_of "riscv32" "\t.text\n\tfadd.s f1, f2, f3\n\tfld f1, 0(a0)\n\tfmv.d f1, f2\n" in
+  print_endline "-- default";
+  disasm "riscv32" code;
+  print_endline "-- strict, d disabled";
+  disasm ~features:"none,+f" "riscv32" code;
+  print_endline "-- inspect, d disabled";
+  disasm ~features:"none,+f" ~inspect:true "riscv32" code;
+  [%expect
+    {|
+    -- default
+    00001000  d3 70 31 00  fadd.s f1, f2, f3  [riscv32.fadd.s]
+    00001004  87 30 05 00  fld f1, 0(x10)     [riscv32.fld]
+    00001008  d3 00 21 22  fmv.d f1, f2       [riscv32.fmv.d]
+    -- strict, d disabled
+    REFUSED riscv32.feature: fld requires feature d, which is not enabled
+    -- inspect, d disabled
+    00001000  d3 70 31 00  fadd.s f1, f2, f3                                           [riscv32.fadd.s]
+    00001004  87 30 05 00  fld f1, 0(x10)  ; requires feature d, which is not enabled  [riscv32.fld]
+    00001008  d3 00 21 22  fmv.d f1, f2  ; requires feature d, which is not enabled    [riscv32.fmv.d] |}]
 
 let%expect_test "decode: canonical disassembly is strict and still re-assembles" =
   let (module D : Target_intf.Target.DRIVER) = driver "riscv64" in
