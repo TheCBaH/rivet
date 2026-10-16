@@ -56,6 +56,11 @@ let standard_components =
     Riscv_ext_sys.svinval;
     Riscv_ext_sys.sdext;
     Riscv_ext_sys.ssctr;
+    Riscv_ext_v.zve32x;
+    Riscv_ext_v.zve32f;
+    Riscv_ext_v.zve64x;
+    Riscv_ext_v.zve64f;
+    Riscv_ext_v.zve64d;
     Riscv_ext_v.v;
     Riscv_ext_v.zvbb;
     Riscv_ext_v.zvkned;

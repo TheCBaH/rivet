@@ -1,6 +1,14 @@
-(** The RISC-V vector component and its crypto and BF16 subsets. V requires D; the subsets require V.
-    The Zvkn and Zvks suites are implication-only groups, off by default. *)
+(** The RISC-V vector components and their crypto and BF16 subsets. Zve32x, Zve32f and Zve64x own
+    the vector forms (integer, floating-point, and loads and stores of 64-bit elements); Zve64f,
+    Zve64d and V only imply them, and Zve64d requires D. The crypto subsets require Zve32x (Zvbc and
+    Zvknhb Zve64x) and the BF16 ones Zve32f. The Zvkn and Zvks suites are implication-only groups,
+    off by default. *)
 
+val zve32x : Target_component.t
+val zve32f : Target_component.t
+val zve64x : Target_component.t
+val zve64f : Target_component.t
+val zve64d : Target_component.t
 val v : Target_component.t
 val zvbb : Target_component.t
 val zvkned : Target_component.t

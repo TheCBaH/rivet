@@ -890,6 +890,13 @@ a predicate (`Target_component.Req`: a feature, all of several, or any of
 several). Ownership never gates; the predicate does. `amocas.b` is owned by
 Zacas and needs Zacas and Zabha; `andn` is owned by Zbb and needs Zbb or Zbkb.
 
+Every RISC-V form that reads or writes a binary64 value requires D. This
+includes the RV32D/RV64D instructions, the `fmv.d`/`fabs.d`/`fneg.d`
+pseudo-instructions, and the Zfa, Zfhmin and Q forms that take or produce one
+(`fli.d`, `fmvh.x.d`, `fcvt.d.h`, `fcvt.q.d`, ...). F is a separate component;
+`none,+f,+zfa` keeps single precision and Zfa enabled while refusing binary64
+forms. Disabling D from the default seed also requires disabling its dependents.
+
 ### 6.2 Resolution policy
 
 The default is a **valid seed** the target defines: every component marked

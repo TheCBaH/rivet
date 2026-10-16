@@ -25,6 +25,8 @@ alternatives on every form:
 - `zk` implies `zkn`; `zkn` implies `zbkb`, `zbkc`, `zbkx`, `zkne`, `zknd`,
   `zknh`; `zks` implies `zbkb`, `zbkc`, `zbkx`, `zksed`, `zksh`.
 - `b` implies `zba`, `zbb`, `zbs`.
+- `v` implies `zve64d`; `zve64d` implies `zve64f`; `zve64f` implies `zve32f`
+  and `zve64x`.
 - `zvkn`, `zvks` and their sums with `zvbc`/`zvkg` imply the vector crypto
   leaves; `zvbb` implies `zvkb`; `zvknhb` implies `zvknha`.
 - `zfh` implies `zfhmin`.
@@ -105,6 +107,21 @@ Its record is the single-field form (nf = 0, part of the row's mask) and the
 generator adds the segment forms with two to eight fields, spelled `seg<n>`
 after the addressing prefix: `vlseg2e8.v`, `vlsseg3e16.v`, `vluxseg4ei32.v`,
 `vsoxseg8ei64.v`. Whole-register loads and stores keep their own records.
+
+The rows tagged `v` belong to the embedded profiles, split the way GNU as gates
+them: the floating-point forms (`vf*` and `vmf*`, except the integer
+`vfirst.m`) to `zve32f`, loads and stores of 64-bit elements (width field 7) to
+`zve64x`, and the rest to `zve32x`. `zve64f`, `zve64d` and `v` add no encodings;
+SEW=64 arithmetic and double-precision elements are a `vtype` matter at run time.
+`zve64d` requires `d`, so a core without D names its profile explicitly, as
+Coral NPU's `rv32imf_zve32f_zicsr_zifencei_zbb_zfbfmin_zvfbfmin_zvfbfwma`
+becomes
+
+    --features none,+m,+f,+zicsr,+zifencei,+zbb,+zve32f,+zfbfmin,+zvfbfmin,+zvfbfwma
+
+Removing `v` alone keeps the profiles it implied, as removing `c` keeps `zca`.
+The crypto leaves require `zve32x` (`zvbc` and `zvknhb` `zve64x`), as the
+specification says; GNU as 2.43 does not check it.
 
 ## Row overlaps
 
@@ -194,18 +211,23 @@ owns; the last column lists forms whose predicate is not just the feature.
 | svinval |  |  |  | yes | 5 |  |
 | sdext |  |  |  | yes | 1 |  |
 | ssctr |  |  |  | yes | 1 |  |
-| v | d |  |  | yes | 627 |  |
-| zvbb | v | zvkb |  | yes | 16 | vandn.vv: one of zvbb, zvkb; vandn.vx: one of zvbb, zvkb; vbrev8.v: one of zvbb, zvkb; vrev8.v: one of zvbb, zvkb; vrol.vv: one of zvbb, zvkb; vrol.vx: one of zvbb, zvkb; vror.vv: one of zvbb, zvkb; vror.vx: one of zvbb, zvkb; vror.vi: one of zvbb, zvkb |
-| zvkned | v |  |  | yes | 11 |  |
-| zvbc | v |  |  | yes | 4 |  |
-| zvknha | v |  |  | yes | 3 |  |
-| zvksed | v |  |  | yes | 3 |  |
-| zvkg | v |  |  | yes | 2 |  |
-| zvksh | v |  |  | yes | 2 |  |
-| zvfbfmin | v |  |  | yes | 2 |  |
-| zvfbfwma | v |  |  | yes | 2 |  |
-| zvkb | v |  |  | yes | 0 |  |
-| zvknhb | v | zvknha |  | yes | 0 |  |
+| zve32x | zicsr |  |  | yes | 450 |  |
+| zve32f | zve32x, f |  |  | yes | 101 |  |
+| zve64x | zve32x |  |  | yes | 76 |  |
+| zve64f |  | zve32f, zve64x |  | yes | 0 |  |
+| zve64d | d | zve64f |  | yes | 0 |  |
+| v |  | zve64d |  | yes | 0 |  |
+| zvbb | zve32x | zvkb |  | yes | 16 | vandn.vv: one of zvbb, zvkb; vandn.vx: one of zvbb, zvkb; vbrev8.v: one of zvbb, zvkb; vrev8.v: one of zvbb, zvkb; vrol.vv: one of zvbb, zvkb; vrol.vx: one of zvbb, zvkb; vror.vv: one of zvbb, zvkb; vror.vx: one of zvbb, zvkb; vror.vi: one of zvbb, zvkb |
+| zvkned | zve32x |  |  | yes | 11 |  |
+| zvbc | zve64x |  |  | yes | 4 |  |
+| zvknha | zve32x |  |  | yes | 3 |  |
+| zvksed | zve32x |  |  | yes | 3 |  |
+| zvkg | zve32x |  |  | yes | 2 |  |
+| zvksh | zve32x |  |  | yes | 2 |  |
+| zvfbfmin | zve32f |  |  | yes | 2 |  |
+| zvfbfwma | zve32f, zfbfmin |  |  | yes | 2 |  |
+| zvkb | zve32x |  |  | yes | 0 |  |
+| zvknhb | zve64x | zvknha |  | yes | 0 |  |
 | zvkn |  | zvkned, zvknhb, zvkb |  | no | 0 |  |
 | zvks |  | zvksed, zvksh, zvkb |  | no | 0 |  |
 | zvknc |  | zvkn, zvbc |  | no | 0 |  |
