@@ -150,12 +150,21 @@ program can hold several compositions side by side, each with its own driver.
 A vendor definition must satisfy:
 
 - its components are off by default and appear after the standard ones;
-- every row lies in the custom-0..3 major opcode space (`0x0b`, `0x2b`, `0x5b`,
-  `0x7b`) with a full 7-bit opcode in its mask, is 32 bits wide, and has a
-  `match_` within its `mask`;
+- every row is 32 bits wide and has a `match_` within its `mask`;
+- no row overlaps a standard generated row of the XLEN. The hand-written forms
+  are code rather than masks, so for them the standard decoder must decline the
+  row's `match_` with its free bits clear, all set, and each set alone. A row
+  may therefore lie in the custom-0..3 opcodes or in space the standard
+  extensions leave reserved, such as the draft Zvt tile instructions in OP-V,
+  LOAD-FP/STORE-FP with `mew` set, and OP-VE;
 - no row repeats a mnemonic of a hand-written or standard form, no two rows
   overlap, every row's feature is a vendor component, and every row is listed by
   a vendor component.
+
+Vendor rows use the same operand kinds as the generated ones. `Indexed` spells
+a numbered name such as the matrix tile `mt3`: `<prefix>N` in canonical
+decimal, encoded as `N / scale` in a field, with `N` required to be a multiple
+of `scale`. Its prefix must not begin a register name.
 
 ## Components
 

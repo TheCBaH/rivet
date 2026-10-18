@@ -2267,6 +2267,14 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Fixed_vreg n -> ( match vreg op with Some m when m = n -> Some 0L | _ -> None)
     (* the keyword list is the rest of the operands: {!table_lower} encodes it *)
     | Vtype _ -> None
+    | Indexed { prefix; lsb; width; scale } -> (
+        match op with
+        | Operand.Sym (Asm_core.Expr.Symbol text) -> (
+            match Riscv_table_row.indexed_number ~prefix text with
+            | Some n when n mod scale = 0 && fits_unsigned width (Int64.of_int (n / scale)) ->
+                place lsb (Int64.of_int (n / scale))
+            | _ -> None)
+        | _ -> None)
 
   (* The register number of a register operand, for a following [Tied] field. *)
   let table_reg op = match op with Operand.Reg (Reg.F n) -> Some n | _ -> xreg op
@@ -4244,6 +4252,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           else Some (Some (Operand.Sym (Asm_core.Expr.Symbol "v0.t")))
       | Fixed_vreg n -> Some (Some (Operand.Reg (Reg.V n)))
       | Vtype _ -> None
+      | Indexed { prefix; lsb; width; scale } ->
+          let n = Int64.mul (field lsb width) (Int64.of_int scale) in
+          Some (Some (Operand.Sym (Asm_core.Expr.Symbol (prefix ^ Int64.to_string n))))
     in
     (* Every operand's spelling; a vtype is its four keywords, and a reserved one has none. *)
     let spelling (o : Riscv_table_row.operand) =
@@ -4922,5 +4933,29 @@ module Extensions = struct
        end) in
       List.map Probe.Opcode.name Probe.Opcode.all)
 
-  let make ~xlen def = Riscv_extensions.make ~handwritten:(Lazy.force handwritten) ~xlen def
+  (* The mnemonic the standard decoder reads a 32-bit word as, per XLEN. *)
+  let standard_reader xlen =
+    let module Probe = Make (struct
+      let name = "probe"
+      let triple = "probe"
+      let xlen = xlen
+    end) in
+    fun w ->
+      match
+        Probe.decode_hand_written
+          { Probe.state = Probe.default_state; address = 0L }
+          (Probe.bytes_of_word w) ~pos:0
+      with
+      | Ok (_, name, _) -> Some name
+      | Error _ -> None
+
+  let standard_readers = [ (32, lazy (standard_reader 32)); (64, lazy (standard_reader 64)) ]
+
+  let make ~xlen def =
+    let standard_reads =
+      match List.assoc_opt xlen standard_readers with
+      | Some r -> Lazy.force r
+      | None -> standard_reader xlen
+    in
+    Riscv_extensions.make ~handwritten:(Lazy.force handwritten) ~standard_reads ~xlen def
 end

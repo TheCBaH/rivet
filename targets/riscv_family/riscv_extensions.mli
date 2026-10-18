@@ -22,10 +22,17 @@ end
 val standard : xlen:int -> Validated.t
 (** The standard extensions alone. *)
 
-val make : handwritten:string list -> xlen:int -> definition -> (Validated.t, string list) result
+val make :
+  handwritten:string list ->
+  standard_reads:(int64 -> string option) ->
+  xlen:int ->
+  definition ->
+  (Validated.t, string list) result
 (** Compose [definition] with the standard extensions. [handwritten] lists the mnemonics of the
-    forms the encoder spells out in code. Every problem found is reported: component structure
+    forms the encoder spells out in code, and [standard_reads] is the mnemonic the standard decoder
+    (hand-written forms, then generated rows) reads a 32-bit word as. Every problem found is reported: component structure
     (duplicate features or mnemonics, unknown names, conflicts), vendor components on by default,
-    rows whose mnemonic collides with a hand-written or standard form, rows outside the
-    custom-0..3 opcode space or not 32 bits wide, overlapping rows, and rows no vendor component
-    lists. *)
+    rows whose mnemonic collides with a hand-written or standard form, rows not 32 bits wide,
+    rows overlapping a standard generated row of this XLEN, otherwise rows the standard decoder
+    reads (tried on the row's match with its free bits clear, all set, and each set alone), overlapping vendor
+    rows, and rows no vendor component lists. *)

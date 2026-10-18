@@ -62,6 +62,9 @@ type operand =
   | Vtype of { lsb : int; width : int }
       (** vsetvli/vsetivli's vtype, always last: the keyword list [e<sew>, m<lmul>, ta|tu,
           ma|mu], any non-empty subset in that order *)
+  | Indexed of { prefix : string; lsb : int; width : int; scale : int }
+      (** a numbered name such as a matrix tile [mt3]: [<prefix>N], N a multiple of [scale],
+          encoded as N / scale in [width] bits at [lsb]; [prefix] must not begin a register name *)
 
 type row = {
   mnemonic : string;
@@ -126,6 +129,17 @@ let fli_index text =
             else go (i + 1)
           in
           go 0)
+
+(* The number N of an [Indexed] spelling [<prefix>N], in canonical decimal: no sign and no leading
+   zero. *)
+let indexed_number ~prefix text =
+  let k = String.length prefix and n = String.length text in
+  if n <= k || n > k + 4 || not (String.equal (String.sub text 0 k) prefix) then None
+  else
+    let digits = String.sub text k (n - k) in
+    if String.for_all (fun c -> c >= '0' && c <= '9') digits && (digits = "0" || digits.[0] <> '0')
+    then int_of_string_opt digits
+    else None
 
 (* Zcmp register lists: the 4-bit [rlist] code for each spelling (whitespace
    removed), and the number of registers it saves. *)

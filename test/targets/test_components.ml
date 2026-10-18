@@ -474,7 +474,8 @@ let%expect_test
                     (Int64.logor w (Int64.shift_left (Int64.of_int (2 * (k + 1))) lsb), prev)
                 | Tied { lsb } -> (Int64.logor w (Int64.shift_left prev lsb), prev)
                 | Vreg { lsb } -> (put lsb, prev)
-                | Fixed_gpr _ | Rm _ | Keyword _ | Vm _ | Fixed_vreg _ | Vtype _ -> (w, prev))
+                | Fixed_gpr _ | Rm _ | Keyword _ | Vm _ | Fixed_vreg _ | Vtype _ | Indexed _ ->
+                    (w, prev))
               (r.match_, 0L)
               (List.mapi (fun k o -> (k, o)) r.operands)
           in

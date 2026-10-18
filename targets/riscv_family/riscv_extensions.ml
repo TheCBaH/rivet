@@ -96,16 +96,32 @@ let standard ~xlen =
     rows = Riscv_table_rows.rows;
   }
 
-(* The custom-0..3 major opcodes, which standard encodings never use. *)
-let custom_opcodes = [ 0x0b; 0x2b; 0x5b; 0x7b ]
-
 let overlap (a : Riscv_table_row.row) (b : Riscv_table_row.row) =
   let common = Int64.logand a.mask b.mask in
   Int64.equal (Int64.logand a.match_ common) (Int64.logand b.match_ common)
   && (a.xlen = 0 || b.xlen = 0 || a.xlen = b.xlen)
 
-let row_problems ~handwritten ~vendor_features (r : Riscv_table_row.row) =
+(* Words of a row's encoding space for the standard decoder to decline: the free bits clear, all
+   set, and each set alone. The hand-written forms are code rather than masks, so these witnesses
+   stand in for an exact overlap check with them. *)
+let witnesses (r : Riscv_table_row.row) =
+  let free = Int64.logand (Int64.lognot r.mask) 0xffffffffL in
+  let single =
+    List.filter_map
+      (fun b ->
+        let bit = Int64.shift_left 1L b in
+        if Int64.equal (Int64.logand free bit) 0L then None else Some (Int64.logor r.match_ bit))
+      (List.init 32 Fun.id)
+  in
+  r.match_ :: Int64.logor r.match_ free :: single
+
+let row_problems ~handwritten ~standard_reads ~standard_rows ~vendor_features
+    (r : Riscv_table_row.row) =
   let say fmt = Printf.ksprintf (fun m -> Printf.sprintf "row %s: %s" r.mnemonic m) fmt in
+  let wide =
+    Int64.logand r.match_ 3L = 3L && Int64.equal r.mask (Int64.logand r.mask 0xffffffffL)
+  in
+  let within = Int64.equal (Int64.logand r.match_ r.mask) r.match_ in
   (if List.mem r.mnemonic handwritten then [ say "collides with a hand-written form" ] else [])
   @ (if
        Array.exists
@@ -115,19 +131,28 @@ let row_problems ~handwritten ~vendor_features (r : Riscv_table_row.row) =
      else [])
   @ (if List.mem r.feature vendor_features then []
      else [ say "feature %s is not a vendor component" r.feature ])
-  @ (if Int64.logand r.match_ 3L <> 3L || not (Int64.equal r.mask (Int64.logand r.mask 0xffffffffL))
-     then [ say "must be a 32-bit instruction" ]
-     else [])
-  @ (if
-       List.mem (Int64.to_int (Int64.logand r.match_ 0x7fL)) custom_opcodes
-       && Int64.equal (Int64.logand r.mask 0x7fL) 0x7fL
-     then []
-     else [ say "must lie in the custom-0..3 opcode space" ])
+  @ (if wide then [] else [ say "must be a 32-bit instruction" ])
+  @ (if within then [] else [ say "match has bits outside the mask" ])
   @
-  if Int64.equal (Int64.logand r.match_ r.mask) r.match_ then []
-  else [ say "match has bits outside the mask" ]
+  if not (wide && within) then []
+  else
+    match
+      List.filter_map
+        (fun (s : Riscv_table_row.row) ->
+          if overlap r s then Some (say "overlaps standard form %s" s.mnemonic) else None)
+        (Array.to_list standard_rows)
+    with
+    | _ :: _ as overlaps -> overlaps
+    | [] -> (
+        match
+          List.find_map
+            (fun w -> Option.map (fun name -> (w, name)) (standard_reads w))
+            (witnesses r)
+        with
+        | Some (w, name) -> [ say "the standard decoder reads 0x%08Lx as %s" w name ]
+        | None -> [])
 
-let make ~handwritten ~xlen (def : definition) =
+let make ~handwritten ~standard_reads ~xlen (def : definition) =
   let vendor = List.map (Target_component.specialize ~xlen) def.components in
   let vendor_features = List.map (fun (c : Target_component.t) -> c.feature) vendor in
   let standard = (standard ~xlen).components in
@@ -142,8 +167,16 @@ let make ~handwritten ~xlen (def : definition) =
     @ Target_component.check components
   in
   let rows = def.rows in
+  let standard_rows =
+    Array.of_list
+      (List.filter
+         (fun (s : Riscv_table_row.row) -> s.xlen = 0 || s.xlen = xlen)
+         (Array.to_list Riscv_table_rows.rows))
+  in
   let row_problems =
-    List.concat_map (row_problems ~handwritten ~vendor_features) (Array.to_list rows)
+    List.concat_map
+      (row_problems ~handwritten ~standard_reads ~standard_rows ~vendor_features)
+      (Array.to_list rows)
   in
   let overlaps =
     List.concat

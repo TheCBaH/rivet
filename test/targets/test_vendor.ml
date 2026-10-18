@@ -74,7 +74,7 @@ let%expect_test "invalid definitions are reported by make, all at once" =
   try_make "valid" ~xlen:64 (vendor "xfoo" 0);
   try_make "handwritten" ~xlen:64 (vendor "add" 0);
   try_make "standard row" ~xlen:64 (vendor "zext.w" 0);
-  try_make "opcode space" ~xlen:64
+  try_make "standard space" ~xlen:64
     { (vendor "xfoo" 0) with rows = [| row ~opcode:0x33 ~funct3:0 "xfoo" |] };
   try_make "on by default" ~xlen:64
     { (vendor "xfoo" 0) with components = [ component ~default_on:true "xfoo" [ "xfoo" ] ] };
@@ -93,7 +93,10 @@ let%expect_test "invalid definitions are reported by make, all at once" =
     standard row: duplicate form label zext.w
     standard row: duplicate mnemonic zext.w
     standard row: row zext.w: collides with a standard generated form
-    opcode space: row xfoo: must lie in the custom-0..3 opcode space
+    standard space: row xfoo: overlaps standard form ntl.all
+    standard space: row xfoo: overlaps standard form ntl.p1
+    standard space: row xfoo: overlaps standard form ntl.pall
+    standard space: row xfoo: overlaps standard form ntl.s1
     on by default: vendor.xfoo: a vendor component must not be on by default
     overlap: rows xfoo and xbar overlap
     no owner: row xfoo: feature xfoo is not a vendor component
@@ -262,3 +265,101 @@ let%expect_test "a composition validated for another XLEN is refused" =
         print_endline "applied"
       with Invalid_argument m -> print_endline m));
   [%expect {| riscv64: extensions validated for XLEN 32, profile is XLEN 64 |}]
+
+(* Rows outside the custom opcodes, in space the standard extensions reserve: a matrix-tile
+   extension shaped like the draft Zvt, with tiles spelled [mt0]..[mt15]. *)
+let tile ~lsb ~width ~scale = Row.Indexed { prefix = "mt"; lsb; width; scale }
+
+let tile_row mnemonic mask match_ operands : Row.row =
+  { mnemonic; mask; match_; operands; xlen = 0; feature = "xtile"; source = "vendor/" ^ mnemonic }
+
+let tile_rows =
+  [|
+    tile_row "vtzero" 0xfffff0ffL 0x43e06057L [ tile ~lsb:8 ~width:4 ~scale:1 ];
+    tile_row "vtle32" 0xfe007fffL 0x52007007L
+      [ Row.Gpr { lsb = 20; nonzero = false }; Row.Mem_zero { base = 15 } ];
+    tile_row "vtmms.tvv" 0xfe0071ffL 0xf20000f7L
+      [ tile ~lsb:9 ~width:3 ~scale:2; Row.Vreg { lsb = 20 }; Row.Vreg { lsb = 15 } ];
+  |]
+
+let tile_definition : Ext.definition =
+  {
+    components =
+      [ { (component "xtile" [ "vtzero"; "vtle32"; "vtmms.tvv" ]) with requires = [ "zve32x" ] } ];
+    rows = tile_rows;
+  }
+
+let%expect_test "rows outside the custom opcodes must not overlap a standard form" =
+  let try_make label rows =
+    match Ext.make ~xlen:64 { tile_definition with rows } with
+    | Ok _ -> Printf.printf "%s: ok\n" label
+    | Error ps -> List.iter (Printf.printf "%s: %s\n" label) ps
+  in
+  try_make "tiles" tile_rows;
+  try_make "vadd" [| tile_row "vtzero" 0xffffffffL 0x02000057L [] |];
+  try_make "flw" [| tile_row "vtzero" 0x0000707fL 0x00002007L [] |];
+  [%expect
+    {|
+    tiles: ok
+    vadd: row vtzero: overlaps standard form vadd.vv
+    flw: row vtzero: the standard decoder reads 0x00002007 as flw |}]
+
+module Tile =
+  Riscv_family.Make_with
+    (P64)
+    (struct
+      let definition =
+        match Ext.make ~xlen:64 tile_definition with
+        | Ok v -> v
+        | Error ps -> failwith (String.concat "; " ps)
+    end)
+
+module Tile_driver = Driver.Pipeline.Make (Tile)
+
+let%expect_test "tile operands encode and decode by name" =
+  let tile = (module Tile_driver : Target_intf.Target.DRIVER) in
+  List.iter
+    (fun (features, text) ->
+      let bytes = assembled tile ~features text in
+      let disasm =
+        if String.starts_with ~prefix:"REFUSED" bytes then ""
+        else
+          let code =
+            String.concat ""
+              (List.map
+                 (fun b -> String.make 1 (Char.chr (int_of_string ("0x" ^ b))))
+                 (String.split_on_char ' ' bytes))
+          in
+          match
+            Tile_driver.dump_disasm_canonical
+              ~features:(Result.get_ok (Target_config.parse_spec features))
+              ~address:0L code
+          with
+          | Ok s -> String.trim s
+          | Error ds -> "REFUSED " ^ render ds
+      in
+      Printf.printf "%-26s %-12s %s\n" text bytes disasm)
+    [
+      ("+xtile", "vtzero mt3");
+      ("+xtile", "vtzero mt15");
+      ("+xtile", "vtzero mt16");
+      ("+xtile", "vtzero mt03");
+      ("+xtile", "vtzero x3");
+      ("+xtile", "vtle32 x5, (x6)");
+      ("+xtile", "vtmms.tvv mt4, v8, v16");
+      ("+xtile", "vtmms.tvv mt3, v8, v16");
+      ("none,+xtile", "vtzero mt3");
+      ("+zve32x", "vtzero mt3");
+    ];
+  [%expect
+    {|
+    vtzero mt3                 57 63 e0 43  vtzero mt3
+    vtzero mt15                57 6f e0 43  vtzero mt15
+    vtzero mt16                REFUSED riscv64.lower: no vtzero form takes these operands
+    vtzero mt03                REFUSED riscv64.lower: no vtzero form takes these operands
+    vtzero x3                  REFUSED riscv64.lower: no vtzero form takes these operands
+    vtle32 x5, (x6)            07 70 53 52  vtle32 x5, 0(x6)
+    vtmms.tvv mt4, v8, v16     f7 04 88 f2  vtmms.tvv mt4, v8, v16
+    vtmms.tvv mt3, v8, v16     REFUSED riscv64.lower: no vtmms.tvv form takes these operands
+    vtzero mt3                 57 63 e0 43  vtzero mt3
+    vtzero mt3                 REFUSED riscv64.feature: vtzero requires feature xtile, which is not enabled |}]
