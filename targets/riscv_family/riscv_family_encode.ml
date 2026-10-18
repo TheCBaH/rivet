@@ -4906,12 +4906,14 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let pad_section_to_alignment = true
 end
 
-module Make (P : PROFILE) =
-  Make_with
-    (P)
-    (struct
-      let definition = Riscv_extensions.standard ~xlen:P.xlen
-    end)
+(* The standard extensions, as a named functor: [Riscv_family.Make] applies [Make_with] to the
+   same path, so the encoder and the text frontend of one profile share their types. An anonymous
+   structure here would make every type of the two instances distinct. *)
+module Standard (P : PROFILE) = struct
+  let definition = Riscv_extensions.standard ~xlen:P.xlen
+end
+
+module Make (P : PROFILE) = Make_with (P) (Standard (P))
 
 module Extensions = struct
   type definition = Riscv_extensions.definition = {

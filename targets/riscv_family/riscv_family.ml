@@ -240,9 +240,4 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       | None, o -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unknown_option o))
 end
 
-module Make (P : PROFILE) =
-  Make_with
-    (P)
-    (struct
-      let definition = Riscv_family_encode.Riscv_extensions.standard ~xlen:P.xlen
-    end)
+module Make (P : PROFILE) = Make_with (P) (Riscv_family_encode.Standard (P))
