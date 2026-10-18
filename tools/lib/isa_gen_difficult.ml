@@ -6929,7 +6929,8 @@ let table_entries_of target (spec : Isa_riscv_table.spec) =
            | Mem_hi _ -> [ ("base", "a1"); ("offset", if edge = `High then "2016" else "-2048") ]
            | Fence_set { field; _ } ->
                [ (field, if edge = `High then "iorw" else if field = "pred" then "rw" else "w") ]
-           | Fixed_gpr _ | Rm _ | Tied _ | Keyword _ -> [])
+           | Fixed_gpr _ | Rm _ | Tied _ | Keyword _ -> []
+           | Simm _ | Vreg _ | Vm _ | Fixed_vreg _ | Vtype _ -> [])
          spec.operands)
   in
   let variants =
@@ -6993,7 +6994,11 @@ let table_entries repo =
           then acc
           else spec :: acc)
         []
-        (List.filter available (List.filter_map Isa_riscv_table.spec_of_record records))
+        (* the vector rows' GAS cases are their hand-written families' *)
+        (List.filter
+           (fun (spec : Isa_riscv_table.spec) ->
+             available spec && not (Isa_riscv_table.vector_file spec.extension))
+           (List.filter_map Isa_riscv_table.spec_of_record records))
     in
     Ok (List.concat_map (table_entries_of target) (List.rev unique))
   in

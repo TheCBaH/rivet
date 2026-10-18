@@ -38,6 +38,13 @@ type operand =
   | Rlist of { lsb : int }  (** Zcmp register list *)
   | Stack_adj of { rlist : int; spimm : int; push : bool }  (** Zcmp stack adjustment *)
   | Uimm_min of { field : string; lsb : int; width : int; min : int }
+  | Simm of { field : string; lsb : int; width : int }  (** a contiguous signed field *)
+  | Vreg of { field : string; lsb : int }  (** a vector register v0..v31 *)
+  | Vm of { lsb : int }
+      (** the vector mask bit: an optional trailing [v0.t] (vm = 0); omitted, vm = 1 *)
+  | Fixed_vreg of int  (** a vector register the spelling names but the encoding fixes *)
+  | Vtype of { lsb : int; width : int }
+      (** vsetvli/vsetivli's vtype, spelled as the trailing keyword list [e32, m1, ta, ma] *)
 
 and scatter = {
   signed : bool;
@@ -60,7 +67,14 @@ type spec = {
   feature : string;  (** the enabling extension, e.g. ["zimop"], ["zba"], ["f"] *)
   isa : string;  (** the [-march] ISA string after [rv32]/[rv64], e.g. ["imf_zfh"] *)
   ordering : bool;  (** aq/rl fields, spelled as [.aq]/[.rl]/[.aqrl] mnemonic suffixes *)
+  segments : bool;
+      (** a variable [nf] field: the record is the single-field load/store (nf = 0) and the
+          segment forms [vlseg2e8.v] .. [vlseg8e8.v] are further rows *)
 }
+
+val vector_file : string -> bool
+(** [rv_v] and the [rv_zv*] files: rows for the assembler, while the normalized forms and the GAS
+    cases of these records stay with their hand-written families. *)
 
 val spec_of_record : Isa_source_record.t -> spec option
 (** [Some] exactly for allowlisted, table-expressible records. *)

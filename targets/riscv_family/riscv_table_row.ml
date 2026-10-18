@@ -52,6 +52,16 @@ type operand =
   | Uimm_min of { lsb : int; width : int; min : int }  (** an unsigned field with a lower bound *)
   | Mem_s of { base : int }
       (** [imm12(base)] with the signed offset split into bits 31:25 and 11:7 *)
+  | Vreg of { lsb : int }  (** a 5-bit vector register field *)
+  | Vm of { lsb : int }
+      (** the vector mask bit, always last: a trailing [v0.t] encodes 0, and omitting it
+          encodes 1 (unmasked) *)
+  | Fixed_vreg of int
+      (** a vector register the spelling names but the encoding fixes, e.g. the [v0] of
+          [vmerge.vvm vd, vs2, vs1, v0] *)
+  | Vtype of { lsb : int; width : int }
+      (** vsetvli/vsetivli's vtype, always last: the keyword list [e<sew>, m<lmul>, ta|tu,
+          ma|mu], any non-empty subset in that order *)
 
 type row = {
   mnemonic : string;
@@ -150,3 +160,51 @@ let sreg_code n =
   if n = 8 || n = 9 then Some (n - 8) else if n >= 18 && n <= 23 then Some (n - 16) else None
 
 let sreg_register c = if c < 2 then c + 8 else c + 16
+
+(* V's vtype keywords, by category (SEW, LMUL, tail policy, mask policy) and the bits each sets:
+   vsew in 5:3, vlmul in 2:0, vta in 6, vma in 7. *)
+let vtype_keywords =
+  [
+    ("e8", (0, 0));
+    ("e16", (0, 1 lsl 3));
+    ("e32", (0, 2 lsl 3));
+    ("e64", (0, 3 lsl 3));
+    ("m1", (1, 0));
+    ("m2", (1, 1));
+    ("m4", (1, 2));
+    ("m8", (1, 3));
+    ("mf8", (1, 5));
+    ("mf4", (1, 6));
+    ("mf2", (1, 7));
+    ("tu", (2, 0));
+    ("ta", (2, 1 lsl 6));
+    ("mu", (3, 0));
+    ("ma", (3, 1 lsl 7));
+  ]
+
+(* GNU as accepts any non-empty subset of the categories, in order; an omitted one is zero
+   (e8, m1, tu, mu). *)
+let vtype_of_keywords words =
+  let rec go last acc = function
+    | [] -> Some acc
+    | w :: rest -> (
+        match List.assoc_opt w vtype_keywords with
+        | Some (category, bits) when category > last -> go category (acc lor bits) rest
+        | _ -> None)
+  in
+  if words = [] then None else go (-1) 0 words
+
+(* The four keywords that spell [v], or [None] for a reserved value. *)
+let keywords_of_vtype v =
+  let find category bits =
+    List.find_map
+      (fun (w, (c, b)) -> if c = category && b = bits then Some w else None)
+      vtype_keywords
+  in
+  if v lsr 8 <> 0 then None
+  else
+    match
+      (find 0 (v land 0x38), find 1 (v land 7), find 2 (v land (1 lsl 6)), find 3 (v land (1 lsl 7)))
+    with
+    | Some e, Some m, Some t, Some k -> Some [ e; m; t; k ]
+    | _ -> None

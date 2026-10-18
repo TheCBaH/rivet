@@ -6361,7 +6361,9 @@ let table_form (rec_ : R.t) (spec : Isa_riscv_table.spec) =
   let requirement = if spec.xlen = 0 then feature else Req_all [ feature; Req_xlen spec.xlen ] in
   Ok (Isa_riscv_table.form ~requirement rec_ spec)
 
+(* A vector record is a table row for the assembler but keeps its hand-written normalized form,
+   which the committed GAS cases are recorded against. *)
 let normalize (rec_ : R.t) =
   match Isa_riscv_table.spec_of_record rec_ with
-  | Some spec -> table_form rec_ spec
-  | None -> normalize_hand_written rec_
+  | Some spec when not (Isa_riscv_table.vector_file spec.extension) -> table_form rec_ spec
+  | Some _ | None -> normalize_hand_written rec_

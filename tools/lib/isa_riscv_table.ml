@@ -27,6 +27,11 @@ type operand =
   | Rlist of { lsb : int }
   | Stack_adj of { rlist : int; spimm : int; push : bool }
   | Uimm_min of { field : string; lsb : int; width : int; min : int }
+  | Simm of { field : string; lsb : int; width : int }
+  | Vreg of { field : string; lsb : int }
+  | Vm of { lsb : int }
+  | Fixed_vreg of int
+  | Vtype of { lsb : int; width : int }
 
 and scatter = { signed : bool; nonzero : bool; scale : int; width : int; bits : (int * int) list }
 
@@ -43,6 +48,7 @@ type spec = {
   feature : string;
   isa : string;
   ordering : bool;
+  segments : bool;
 }
 
 (* The families admitted through the table: extension file, admitted native
@@ -108,7 +114,19 @@ let allowlist =
     ("rv_c_zicfiss", None, "zicfiss", "imc_zicfiss_zcmop");
     ("rv_zcmp", None, "zcmp", "imc_zcmp");
     ("rv_zcmt", None, "zcmt", "imc_zcmt");
+    ("rv_v", None, "v", "iv");
+    ("rv_zvbb", None, "zvbb", "iv_zvbb");
+    ("rv_zvbc", None, "zvbc", "iv_zvbc");
+    ("rv_zvfbfmin", None, "zvfbfmin", "ifv_zvfbfmin");
+    ("rv_zvfbfwma", None, "zvfbfwma", "ifv_zvfbfwma");
+    ("rv_zvkg", None, "zvkg", "iv_zvkg");
+    ("rv_zvkned", None, "zvkned", "iv_zvkned");
+    ("rv_zvknha", None, "zvknha", "iv_zvknha");
+    ("rv_zvksed", None, "zvksed", "iv_zvksed");
+    ("rv_zvksh", None, "zvksh", "iv_zvksh");
   ]
+
+let vector_file extension = extension = "rv_v" || String.starts_with ~prefix:"rv_zv" extension
 
 (* Zicbo's file holds three extensions, each with its own -march name. *)
 let isa_overrides =
@@ -439,6 +457,118 @@ let operands_of ~extension ~mnemonic (fields : R.field list) variable_fields =
       | _ -> None)
   | names -> all (List.map one names)
 
+(* The multiply-add families, whose GNU spelling puts the multiplier before the vector it
+   multiplies: [vmacc.vv vd, vs1, vs2] where every other form is [vd, vs2, vs1]. *)
+let vector_macc =
+  [
+    "vfmacc";
+    "vfmadd";
+    "vfmsac";
+    "vfmsub";
+    "vfnmacc";
+    "vfnmadd";
+    "vfnmsac";
+    "vfnmsub";
+    "vfwmacc";
+    "vfwmaccbf16";
+    "vfwmsac";
+    "vfwnmacc";
+    "vfwnmsac";
+    "vmacc";
+    "vmadd";
+    "vnmsac";
+    "vnmsub";
+    "vwmacc";
+    "vwmaccsu";
+    "vwmaccu";
+    "vwmaccus";
+  ]
+
+(* A vector record's operands in GNU order: the destination ([vd], a store's [vs3], or [rd]),
+   then for a load or store the address and its stride or index, otherwise [vs2] and the second
+   source ([vs1], [rs1] or the immediate), the multiply-add families swapping the two; a [.vvm]
+   form's fixed-zero mask is spelled [v0], and a variable [vm] is the optional trailing [v0.t].
+   The scalar is an FPR in a [.vf]/[.wf] form and in the FP moves. *)
+let vector_operands ~mnemonic ~opcode (fields : R.field list) variable_fields =
+  let lsb name = Option.map (fun (f : R.field) -> f.lsb) (field_of fields name) in
+  let fp_scalar =
+    List.exists
+      (fun suffix -> ends_with ~suffix mnemonic)
+      [ ".vf"; ".wf"; ".vfm"; "vfmv.v.f"; "vfmv.s.f" ]
+  in
+  let vreg name = Option.map (fun l -> Vreg { field = name; lsb = l }) (lsb name) in
+  let scalar name =
+    Option.map
+      (fun l ->
+        if (name = "rs1" && fp_scalar) || (name = "rd" && mnemonic = "vfmv.f.s") then
+          Fpr { field = name; lsb = l }
+        else Gpr { field = name; lsb = l; nonzero = false })
+      (lsb name)
+  in
+  let first_of l = List.find_map Fun.id l in
+  let dst = first_of [ vreg "vd"; vreg "vs3"; scalar "rd" ] in
+  let mask = Option.map (fun l -> Vm { lsb = l }) (lsb "vm") in
+  let carry =
+    if
+      List.exists (fun suffix -> ends_with ~suffix mnemonic) [ ".vvm"; ".vxm"; ".vim"; ".vfm" ]
+      && mask = None
+    then Some (Fixed_vreg 0)
+    else None
+  in
+  let known =
+    [ "vd"; "vs3"; "rd"; "vs1"; "vs2"; "rs1"; "rs2"; "vm"; "nf"; "simm5"; "zimm5"; "zimm6hi" ]
+    @ [ "zimm6lo"; "zimm10"; "zimm11" ]
+  in
+  if List.exists (fun name -> not (List.mem name known)) variable_fields then None
+  else if dst = None then None
+  else
+    match mnemonic with
+    | "vsetvli" | "vsetivli" ->
+        let avl = if mnemonic = "vsetvli" then scalar "rs1" else None in
+        let avl =
+          match (avl, field_of fields "zimm5") with
+          | Some _, _ -> avl
+          | None, Some f -> Some (Uimm { field = "zimm5"; lsb = f.lsb; width = f.width })
+          | None, None -> None
+        in
+        let vtype =
+          match (field_of fields "zimm11", field_of fields "zimm10") with
+          | Some f, _ | None, Some f -> Some (Vtype { lsb = f.lsb; width = f.width })
+          | None, None -> None
+        in
+        Option.map
+          (fun l -> List.filter_map Fun.id l)
+          (if avl = None || vtype = None then None else Some [ dst; avl; vtype ])
+    | _ when opcode = 0x07 || opcode = 0x27 ->
+        Option.map
+          (fun base ->
+            List.filter_map Fun.id [ dst; Some (Mem_zero { base }); scalar "rs2"; vreg "vs2"; mask ])
+          (lsb "rs1")
+    | _ ->
+        let imm =
+          match (field_of fields "simm5", field_of fields "zimm5", lsb "zimm6hi") with
+          | Some f, _, _ -> Some (Simm { field = "simm5"; lsb = f.lsb; width = f.width })
+          | None, Some f, _ -> Some (Uimm { field = "zimm5"; lsb = f.lsb; width = f.width })
+          | None, None, Some hi ->
+              Option.map
+                (fun lo ->
+                  Scatter
+                    {
+                      signed = false;
+                      nonzero = false;
+                      scale = 0;
+                      width = 6;
+                      bits = (hi, 5) :: List.init 5 (fun k -> (lo + 4 - k, 4 - k));
+                    })
+                (lsb "zimm6lo")
+          | None, None, None -> None
+        in
+        let second = first_of [ vreg "vs1"; scalar "rs1"; imm ] in
+        let vs2 = vreg "vs2" in
+        let macc = List.mem (List.hd (String.split_on_char '.' mnemonic)) vector_macc in
+        let sources = if macc then [ second; vs2 ] else [ vs2; second ] in
+        Some (List.filter_map Fun.id ((dst :: sources) @ [ scalar "rs2"; carry; mask ]))
+
 let spec_of_record (rec_ : R.t) =
   match (rec_.encoding, rec_.provenance) with
   | ( R.Fixed_bits { width_bits = (16 | 32) as width_bits; mask; value; fields },
@@ -456,7 +586,14 @@ let spec_of_record (rec_ : R.t) =
                 String.sub mnemonic 0 (String.length mnemonic - 5)
               else mnemonic
             in
-            match operands_of ~extension ~mnemonic fields variable_fields with
+            let operands =
+              if vector_file extension then
+                let opcode = Int64.to_int (Int64.logand (Int64.of_string value) 0x7fL) in
+                vector_operands ~mnemonic ~opcode fields variable_fields
+              else operands_of ~extension ~mnemonic fields variable_fields
+            in
+            let segments = List.mem "nf" variable_fields in
+            match operands with
             | None -> None
             | Some operands ->
                 let operands =
@@ -481,7 +618,12 @@ let spec_of_record (rec_ : R.t) =
                     width_bits;
                     (* [c.nop]'s immediate fields are not spelled: GNU [c.nop] is the
                        all-zero one, the rest are c.addi x0 hints *)
-                    mask = (if mnemonic = "c.nop" then "0xffff" else mask);
+                    mask =
+                      (if mnemonic = "c.nop" then "0xffff"
+                       else if segments then
+                         (* nf is part of the spelling, not an operand *)
+                         Printf.sprintf "0x%Lx" (Int64.logor (Int64.of_string mask) 0xe0000000L)
+                       else mask);
                     match_ = value;
                     operands;
                     xlen;
@@ -494,6 +636,7 @@ let spec_of_record (rec_ : R.t) =
                       | Some (_, i) -> i
                       | None -> isa);
                     ordering = List.mem "aq" variable_fields && List.mem "rl" variable_fields;
+                    segments;
                   }))
   | _ -> None
 
@@ -705,7 +848,54 @@ let form ~requirement (rec_ : R.t) spec =
             explicit = true;
           };
         ]
-    | Fixed_gpr _ | Tied _ | Keyword _ -> []
+    | Simm { field; width; _ } ->
+        [
+          {
+            op_name = field;
+            op_kind =
+              imm_kind ~width ~signed:true
+                [
+                  {
+                    field_name = field;
+                    field_hi = width - 1;
+                    field_lo = 0;
+                    dest_hi = width - 1;
+                    dest_lo = 0;
+                  };
+                ];
+            role = In;
+            explicit = true;
+          };
+        ]
+    | Vreg { field; _ } ->
+        [
+          {
+            op_name = field;
+            op_kind = Register { class_ = Riscv_vec; excluded = [] };
+            role = (if field = "vd" then Out else In);
+            explicit = true;
+          };
+        ]
+    | Vtype { width; lsb } ->
+        [
+          {
+            op_name = "vtype";
+            op_kind =
+              imm_kind ~width ~signed:false
+                [
+                  {
+                    field_name = (if lsb = 20 && width = 11 then "zimm11" else "zimm10");
+                    field_hi = width - 1;
+                    field_lo = 0;
+                    dest_hi = width - 1;
+                    dest_lo = 0;
+                  };
+                ];
+            role = In;
+            explicit = true;
+          };
+        ]
+    | Fixed_gpr _ | Tied _ | Keyword _ | Vm _ | Fixed_vreg _ -> []
   in
   let syntax_token = function
     | Gpr { field; _ } | Fpr { field; _ } | Uimm { field; _ } -> Some (Syn_operand field)
@@ -724,6 +914,10 @@ let form ~requirement (rec_ : R.t) spec =
     | Mem_hi _ ->
         Some
           (Syn_group [ Syn_operand "offset"; Syn_literal "("; Syn_operand "base"; Syn_literal ")" ])
+    | Simm { field; _ } | Vreg { field; _ } -> Some (Syn_operand field)
+    | Vtype _ -> Some (Syn_operand "vtype")
+    | Fixed_vreg n -> Some (Syn_literal (Printf.sprintf "v%d" n))
+    | Vm _ -> None
     | Fixed_gpr n -> Some (Syn_literal (Printf.sprintf "x%d" n))
     | Keyword k -> Some (Syn_literal k)
     | Mem_i _ | Mem_s _ ->
@@ -824,6 +1018,11 @@ let render_operand = function
       Printf.sprintf "Stack_adj { rlist = %d; spimm = %d; push = %b }" rlist spimm push
   | Uimm_min { lsb; width; min; _ } ->
       Printf.sprintf "Uimm_min { lsb = %d; width = %d; min = %d }" lsb width min
+  | Simm { lsb; width; _ } -> Printf.sprintf "Simm { lsb = %d; width = %d }" lsb width
+  | Vreg { lsb; _ } -> Printf.sprintf "Vreg { lsb = %d }" lsb
+  | Vm { lsb } -> Printf.sprintf "Vm { lsb = %d }" lsb
+  | Fixed_vreg n -> Printf.sprintf "Fixed_vreg %d" n
+  | Vtype { lsb; width } -> Printf.sprintf "Vtype { lsb = %d; width = %d }" lsb width
 
 let render_row (spec, xlen) =
   Printf.sprintf
@@ -871,6 +1070,32 @@ let emit repo =
                 },
                 x ))
             [ ("", 0L); (".aq", 0x4000000L); (".rl", 0x2000000L); (".aqrl", bits) ])
+    (* a vector load/store with a variable nf: the segment forms, two to eight fields, spelled
+       with seg<n> after the addressing prefix ([vle8.v] -> [vlseg2e8.v], [vluxei8.v] ->
+       [vluxseg2ei8.v]) *)
+    |> List.concat_map (fun (s, x) ->
+        if not s.segments then [ (s, x) ]
+        else
+          let prefix =
+            List.find
+              (fun p -> starts_with ~prefix:p s.mnemonic && s.mnemonic.[String.length p] = 'e')
+              [ "vlux"; "vlox"; "vsux"; "vsox"; "vls"; "vss"; "vl"; "vs" ]
+          in
+          let rest =
+            String.sub s.mnemonic (String.length prefix)
+              (String.length s.mnemonic - String.length prefix)
+          in
+          (s, x)
+          :: List.init 7 (fun k ->
+              ( {
+                  s with
+                  mnemonic = Printf.sprintf "%sseg%d%s" prefix (k + 2) rest;
+                  match_ =
+                    Printf.sprintf "0x%Lx"
+                      (Int64.logor (Int64.of_string s.match_)
+                         (Int64.shift_left (Int64.of_int (k + 1)) 29));
+                },
+                x )))
     (* one row per distinct encoding: an import repeats its record in
        another extension file *)
     |> List.fold_left

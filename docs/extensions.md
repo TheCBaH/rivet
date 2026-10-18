@@ -84,6 +84,28 @@ both conflict with `zcd` and are off by default. To use them, drop C's `zcd`:
 `0xb842` decodes as `c.fsdsp` by default and as `cm.push` under the first
 recipe. This replaces the former behavior of accepting `cm.*` by default.
 
+## Vector
+
+Every V, Zvbb, Zvbc, Zvfbfmin, Zvfbfwma and Zvk* form is a generated table row,
+so the vector instructions encode and decode through one description. Operands
+follow GNU order: the destination (`vd`, a store's `vs3`, or `rd`), then the
+address with its stride or index for a load or store, otherwise `vs2` and the
+second source. The multiply-add families (`vmacc`, `vfmacc`, `vwmacc*`,
+`vfwmaccbf16`, ...) spell the multiplier first, `vd, vs1, vs2`. The mask is an
+optional trailing `v0.t`; a `.vvm`/`.vxm`/`.vim`/`.vfm` form with a fixed
+zero mask spells it `v0`. The scalar of a `.vf`/`.wf` form is an FPR.
+
+`vsetvli` and `vsetivli` take vtype as the keyword list `e<sew>, m<lmul>,
+ta|tu, ma|mu`: any non-empty subset in that order, an omitted category being
+zero. Decoding prints all four keywords; a reserved vtype (SEW above 64, LMUL
+code 4, or bits above 7) has no spelling and does not decode.
+
+A unit-stride, strided or indexed load or store has a variable `nf` field.
+Its record is the single-field form (nf = 0, part of the row's mask) and the
+generator adds the segment forms with two to eight fields, spelled `seg<n>`
+after the addressing prefix: `vlseg2e8.v`, `vlsseg3e16.v`, `vluxseg4ei32.v`,
+`vsoxseg8ei64.v`. Whole-register loads and stores keep their own records.
+
 ## Row overlaps
 
 Thirty-three pairs of generated rows have overlapping encodings. Each is
@@ -172,7 +194,7 @@ owns; the last column lists forms whose predicate is not just the feature.
 | svinval |  |  |  | yes | 5 |  |
 | sdext |  |  |  | yes | 1 |  |
 | ssctr |  |  |  | yes | 1 |  |
-| v | d |  |  | yes | 375 |  |
+| v | d |  |  | yes | 627 |  |
 | zvbb | v | zvkb |  | yes | 16 | vandn.vv: one of zvbb, zvkb; vandn.vx: one of zvbb, zvkb; vbrev8.v: one of zvbb, zvkb; vrev8.v: one of zvbb, zvkb; vrol.vv: one of zvbb, zvkb; vrol.vx: one of zvbb, zvkb; vror.vv: one of zvbb, zvkb; vror.vx: one of zvbb, zvkb; vror.vi: one of zvbb, zvkb |
 | zvkned | v |  |  | yes | 11 |  |
 | zvbc | v |  |  | yes | 4 |  |

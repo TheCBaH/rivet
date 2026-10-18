@@ -286,6 +286,15 @@ let rows : row array =
       source = "rv32_zicntr/rdtimeh";
     };
     {
+      mnemonic = "vid.v";
+      mask = 0xfdfff07fL;
+      match_ = 0x5008a057L;
+      operands = [ Vreg { lsb = 7 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vid.v";
+    };
+    {
       mnemonic = "fmv.d.x";
       mask = 0xfff0707fL;
       match_ = 0xf2000053L;
@@ -572,6 +581,312 @@ let rows : row array =
       xlen = 0;
       feature = "svinval";
       source = "rv_svinval_h/hinval.vvma";
+    };
+    {
+      mnemonic = "vfmv.f.s";
+      mask = 0xfe0ff07fL;
+      match_ = 0x42001057L;
+      operands = [ Fpr { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmv.f.s";
+    };
+    {
+      mnemonic = "vfmv.s.f";
+      mask = 0xfff0707fL;
+      match_ = 0x42005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmv.s.f";
+    };
+    {
+      mnemonic = "vfmv.v.f";
+      mask = 0xfff0707fL;
+      match_ = 0x5e005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmv.v.f";
+    };
+    {
+      mnemonic = "vl1re16.v";
+      mask = 0xfff0707fL;
+      match_ = 0x2805007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl1re16.v";
+    };
+    {
+      mnemonic = "vl1re32.v";
+      mask = 0xfff0707fL;
+      match_ = 0x2806007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl1re32.v";
+    };
+    {
+      mnemonic = "vl1re64.v";
+      mask = 0xfff0707fL;
+      match_ = 0x2807007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl1re64.v";
+    };
+    {
+      mnemonic = "vl1re8.v";
+      mask = 0xfff0707fL;
+      match_ = 0x2800007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl1re8.v";
+    };
+    {
+      mnemonic = "vl2re16.v";
+      mask = 0xfff0707fL;
+      match_ = 0x22805007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl2re16.v";
+    };
+    {
+      mnemonic = "vl2re32.v";
+      mask = 0xfff0707fL;
+      match_ = 0x22806007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl2re32.v";
+    };
+    {
+      mnemonic = "vl2re64.v";
+      mask = 0xfff0707fL;
+      match_ = 0x22807007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl2re64.v";
+    };
+    {
+      mnemonic = "vl2re8.v";
+      mask = 0xfff0707fL;
+      match_ = 0x22800007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl2re8.v";
+    };
+    {
+      mnemonic = "vl4re16.v";
+      mask = 0xfff0707fL;
+      match_ = 0x62805007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl4re16.v";
+    };
+    {
+      mnemonic = "vl4re32.v";
+      mask = 0xfff0707fL;
+      match_ = 0x62806007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl4re32.v";
+    };
+    {
+      mnemonic = "vl4re64.v";
+      mask = 0xfff0707fL;
+      match_ = 0x62807007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl4re64.v";
+    };
+    {
+      mnemonic = "vl4re8.v";
+      mask = 0xfff0707fL;
+      match_ = 0x62800007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl4re8.v";
+    };
+    {
+      mnemonic = "vl8re16.v";
+      mask = 0xfff0707fL;
+      match_ = 0xe2805007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl8re16.v";
+    };
+    {
+      mnemonic = "vl8re32.v";
+      mask = 0xfff0707fL;
+      match_ = 0xe2806007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl8re32.v";
+    };
+    {
+      mnemonic = "vl8re64.v";
+      mask = 0xfff0707fL;
+      match_ = 0xe2807007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl8re64.v";
+    };
+    {
+      mnemonic = "vl8re8.v";
+      mask = 0xfff0707fL;
+      match_ = 0xe2800007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vl8re8.v";
+    };
+    {
+      mnemonic = "vlm.v";
+      mask = 0xfff0707fL;
+      match_ = 0x2b00007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlm.v";
+    };
+    {
+      mnemonic = "vmv.s.x";
+      mask = 0xfff0707fL;
+      match_ = 0x42006057L;
+      operands = [ Vreg { lsb = 7 }; Gpr { lsb = 15; nonzero = false } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmv.s.x";
+    };
+    {
+      mnemonic = "vmv.v.i";
+      mask = 0xfff0707fL;
+      match_ = 0x5e003057L;
+      operands = [ Vreg { lsb = 7 }; Simm { lsb = 15; width = 5 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmv.v.i";
+    };
+    {
+      mnemonic = "vmv.v.v";
+      mask = 0xfff0707fL;
+      match_ = 0x5e000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmv.v.v";
+    };
+    {
+      mnemonic = "vmv.v.x";
+      mask = 0xfff0707fL;
+      match_ = 0x5e004057L;
+      operands = [ Vreg { lsb = 7 }; Gpr { lsb = 15; nonzero = false } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmv.v.x";
+    };
+    {
+      mnemonic = "vmv.x.s";
+      mask = 0xfe0ff07fL;
+      match_ = 0x42002057L;
+      operands = [ Gpr { lsb = 7; nonzero = false }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmv.x.s";
+    };
+    {
+      mnemonic = "vmv1r.v";
+      mask = 0xfe0ff07fL;
+      match_ = 0x9e003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmv1r.v";
+    };
+    {
+      mnemonic = "vmv2r.v";
+      mask = 0xfe0ff07fL;
+      match_ = 0x9e00b057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmv2r.v";
+    };
+    {
+      mnemonic = "vmv4r.v";
+      mask = 0xfe0ff07fL;
+      match_ = 0x9e01b057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmv4r.v";
+    };
+    {
+      mnemonic = "vmv8r.v";
+      mask = 0xfe0ff07fL;
+      match_ = 0x9e03b057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmv8r.v";
+    };
+    {
+      mnemonic = "vs1r.v";
+      mask = 0xfff0707fL;
+      match_ = 0x2800027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vs1r.v";
+    };
+    {
+      mnemonic = "vs2r.v";
+      mask = 0xfff0707fL;
+      match_ = 0x22800027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vs2r.v";
+    };
+    {
+      mnemonic = "vs4r.v";
+      mask = 0xfff0707fL;
+      match_ = 0x62800027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vs4r.v";
+    };
+    {
+      mnemonic = "vs8r.v";
+      mask = 0xfff0707fL;
+      match_ = 0xe2800027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vs8r.v";
+    };
+    {
+      mnemonic = "vsm.v";
+      mask = 0xfff0707fL;
+      match_ = 0x2b00027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsm.v";
     };
     {
       mnemonic = "fclass.h";
@@ -898,6 +1213,114 @@ let rows : row array =
       source = "rv_zimop/mop.r.9";
     };
     {
+      mnemonic = "vgmul.vv";
+      mask = 0xfe0ff07fL;
+      match_ = 0xa208a077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "zvkg";
+      source = "rv_zvkg/vgmul.vv";
+    };
+    {
+      mnemonic = "vaesdf.vs";
+      mask = 0xfe0ff07fL;
+      match_ = 0xa600a077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "zvkned";
+      source = "rv_zvkned/vaesdf.vs";
+    };
+    {
+      mnemonic = "vaesdf.vv";
+      mask = 0xfe0ff07fL;
+      match_ = 0xa200a077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "zvkned";
+      source = "rv_zvkned/vaesdf.vv";
+    };
+    {
+      mnemonic = "vaesdm.vs";
+      mask = 0xfe0ff07fL;
+      match_ = 0xa6002077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "zvkned";
+      source = "rv_zvkned/vaesdm.vs";
+    };
+    {
+      mnemonic = "vaesdm.vv";
+      mask = 0xfe0ff07fL;
+      match_ = 0xa2002077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "zvkned";
+      source = "rv_zvkned/vaesdm.vv";
+    };
+    {
+      mnemonic = "vaesef.vs";
+      mask = 0xfe0ff07fL;
+      match_ = 0xa601a077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "zvkned";
+      source = "rv_zvkned/vaesef.vs";
+    };
+    {
+      mnemonic = "vaesef.vv";
+      mask = 0xfe0ff07fL;
+      match_ = 0xa201a077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "zvkned";
+      source = "rv_zvkned/vaesef.vv";
+    };
+    {
+      mnemonic = "vaesem.vs";
+      mask = 0xfe0ff07fL;
+      match_ = 0xa6012077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "zvkned";
+      source = "rv_zvkned/vaesem.vs";
+    };
+    {
+      mnemonic = "vaesem.vv";
+      mask = 0xfe0ff07fL;
+      match_ = 0xa2012077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "zvkned";
+      source = "rv_zvkned/vaesem.vv";
+    };
+    {
+      mnemonic = "vaesz.vs";
+      mask = 0xfe0ff07fL;
+      match_ = 0xa603a077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "zvkned";
+      source = "rv_zvkned/vaesz.vs";
+    };
+    {
+      mnemonic = "vsm4r.vs";
+      mask = 0xfe0ff07fL;
+      match_ = 0xa6082077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "zvksed";
+      source = "rv_zvksed/vsm4r.vs";
+    };
+    {
+      mnemonic = "vsm4r.vv";
+      mask = 0xfe0ff07fL;
+      match_ = 0xa2082077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 } ];
+      xlen = 0;
+      feature = "zvksed";
+      source = "rv_zvksed/vsm4r.vv";
+    };
+    {
       mnemonic = "fmvh.x.d";
       mask = 0xfff0707fL;
       match_ = 0xe2100053L;
@@ -905,6 +1328,1275 @@ let rows : row array =
       xlen = 32;
       feature = "zfa";
       source = "rv32_d_zfa/fmvh.x.d";
+    };
+    {
+      mnemonic = "vcpop.m";
+      mask = 0xfc0ff07fL;
+      match_ = 0x40082057L;
+      operands = [ Gpr { lsb = 7; nonzero = false }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vcpop.m";
+    };
+    {
+      mnemonic = "vfclass.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x4c081057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfclass.v";
+    };
+    {
+      mnemonic = "vfcvt.f.x.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48019057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfcvt.f.x.v";
+    };
+    {
+      mnemonic = "vfcvt.f.xu.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48011057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfcvt.f.xu.v";
+    };
+    {
+      mnemonic = "vfcvt.rtz.x.f.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48039057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfcvt.rtz.x.f.v";
+    };
+    {
+      mnemonic = "vfcvt.rtz.xu.f.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48031057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfcvt.rtz.xu.f.v";
+    };
+    {
+      mnemonic = "vfcvt.x.f.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48009057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfcvt.x.f.v";
+    };
+    {
+      mnemonic = "vfcvt.xu.f.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfcvt.xu.f.v";
+    };
+    {
+      mnemonic = "vfirst.m";
+      mask = 0xfc0ff07fL;
+      match_ = 0x4008a057L;
+      operands = [ Gpr { lsb = 7; nonzero = false }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfirst.m";
+    };
+    {
+      mnemonic = "vfncvt.f.f.w";
+      mask = 0xfc0ff07fL;
+      match_ = 0x480a1057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfncvt.f.f.w";
+    };
+    {
+      mnemonic = "vfncvt.f.x.w";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48099057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfncvt.f.x.w";
+    };
+    {
+      mnemonic = "vfncvt.f.xu.w";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48091057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfncvt.f.xu.w";
+    };
+    {
+      mnemonic = "vfncvt.rod.f.f.w";
+      mask = 0xfc0ff07fL;
+      match_ = 0x480a9057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfncvt.rod.f.f.w";
+    };
+    {
+      mnemonic = "vfncvt.rtz.x.f.w";
+      mask = 0xfc0ff07fL;
+      match_ = 0x480b9057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfncvt.rtz.x.f.w";
+    };
+    {
+      mnemonic = "vfncvt.rtz.xu.f.w";
+      mask = 0xfc0ff07fL;
+      match_ = 0x480b1057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfncvt.rtz.xu.f.w";
+    };
+    {
+      mnemonic = "vfncvt.x.f.w";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48089057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfncvt.x.f.w";
+    };
+    {
+      mnemonic = "vfncvt.xu.f.w";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48081057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfncvt.xu.f.w";
+    };
+    {
+      mnemonic = "vfrec7.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x4c029057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfrec7.v";
+    };
+    {
+      mnemonic = "vfrsqrt7.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x4c021057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfrsqrt7.v";
+    };
+    {
+      mnemonic = "vfsqrt.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x4c001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfsqrt.v";
+    };
+    {
+      mnemonic = "vfwcvt.f.f.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48061057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwcvt.f.f.v";
+    };
+    {
+      mnemonic = "vfwcvt.f.x.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48059057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwcvt.f.x.v";
+    };
+    {
+      mnemonic = "vfwcvt.f.xu.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48051057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwcvt.f.xu.v";
+    };
+    {
+      mnemonic = "vfwcvt.rtz.x.f.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48079057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwcvt.rtz.x.f.v";
+    };
+    {
+      mnemonic = "vfwcvt.rtz.xu.f.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48071057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwcvt.rtz.xu.f.v";
+    };
+    {
+      mnemonic = "vfwcvt.x.f.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48049057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwcvt.x.f.v";
+    };
+    {
+      mnemonic = "vfwcvt.xu.f.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48041057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwcvt.xu.f.v";
+    };
+    {
+      mnemonic = "viota.m";
+      mask = 0xfc0ff07fL;
+      match_ = 0x50082057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/viota.m";
+    };
+    {
+      mnemonic = "vle16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x5007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16.v";
+    };
+    {
+      mnemonic = "vlseg2e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x20005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16.v";
+    };
+    {
+      mnemonic = "vlseg3e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x40005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16.v";
+    };
+    {
+      mnemonic = "vlseg4e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x60005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16.v";
+    };
+    {
+      mnemonic = "vlseg5e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x80005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16.v";
+    };
+    {
+      mnemonic = "vlseg6e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xa0005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16.v";
+    };
+    {
+      mnemonic = "vlseg7e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xc0005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16.v";
+    };
+    {
+      mnemonic = "vlseg8e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xe0005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16.v";
+    };
+    {
+      mnemonic = "vle16ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x1005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16ff.v";
+    };
+    {
+      mnemonic = "vlseg2e16ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x21005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16ff.v";
+    };
+    {
+      mnemonic = "vlseg3e16ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x41005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16ff.v";
+    };
+    {
+      mnemonic = "vlseg4e16ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x61005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16ff.v";
+    };
+    {
+      mnemonic = "vlseg5e16ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x81005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16ff.v";
+    };
+    {
+      mnemonic = "vlseg6e16ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xa1005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16ff.v";
+    };
+    {
+      mnemonic = "vlseg7e16ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xc1005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16ff.v";
+    };
+    {
+      mnemonic = "vlseg8e16ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xe1005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle16ff.v";
+    };
+    {
+      mnemonic = "vle32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x6007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32.v";
+    };
+    {
+      mnemonic = "vlseg2e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x20006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32.v";
+    };
+    {
+      mnemonic = "vlseg3e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x40006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32.v";
+    };
+    {
+      mnemonic = "vlseg4e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x60006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32.v";
+    };
+    {
+      mnemonic = "vlseg5e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x80006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32.v";
+    };
+    {
+      mnemonic = "vlseg6e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xa0006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32.v";
+    };
+    {
+      mnemonic = "vlseg7e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xc0006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32.v";
+    };
+    {
+      mnemonic = "vlseg8e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xe0006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32.v";
+    };
+    {
+      mnemonic = "vle32ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x1006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32ff.v";
+    };
+    {
+      mnemonic = "vlseg2e32ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x21006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32ff.v";
+    };
+    {
+      mnemonic = "vlseg3e32ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x41006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32ff.v";
+    };
+    {
+      mnemonic = "vlseg4e32ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x61006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32ff.v";
+    };
+    {
+      mnemonic = "vlseg5e32ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x81006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32ff.v";
+    };
+    {
+      mnemonic = "vlseg6e32ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xa1006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32ff.v";
+    };
+    {
+      mnemonic = "vlseg7e32ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xc1006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32ff.v";
+    };
+    {
+      mnemonic = "vlseg8e32ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xe1006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle32ff.v";
+    };
+    {
+      mnemonic = "vle64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x7007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64.v";
+    };
+    {
+      mnemonic = "vlseg2e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x20007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64.v";
+    };
+    {
+      mnemonic = "vlseg3e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x40007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64.v";
+    };
+    {
+      mnemonic = "vlseg4e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x60007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64.v";
+    };
+    {
+      mnemonic = "vlseg5e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x80007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64.v";
+    };
+    {
+      mnemonic = "vlseg6e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xa0007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64.v";
+    };
+    {
+      mnemonic = "vlseg7e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xc0007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64.v";
+    };
+    {
+      mnemonic = "vlseg8e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xe0007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64.v";
+    };
+    {
+      mnemonic = "vle64ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x1007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64ff.v";
+    };
+    {
+      mnemonic = "vlseg2e64ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x21007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64ff.v";
+    };
+    {
+      mnemonic = "vlseg3e64ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x41007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64ff.v";
+    };
+    {
+      mnemonic = "vlseg4e64ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x61007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64ff.v";
+    };
+    {
+      mnemonic = "vlseg5e64ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x81007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64ff.v";
+    };
+    {
+      mnemonic = "vlseg6e64ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xa1007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64ff.v";
+    };
+    {
+      mnemonic = "vlseg7e64ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xc1007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64ff.v";
+    };
+    {
+      mnemonic = "vlseg8e64ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xe1007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle64ff.v";
+    };
+    {
+      mnemonic = "vle8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x7L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8.v";
+    };
+    {
+      mnemonic = "vlseg2e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x20000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8.v";
+    };
+    {
+      mnemonic = "vlseg3e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x40000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8.v";
+    };
+    {
+      mnemonic = "vlseg4e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x60000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8.v";
+    };
+    {
+      mnemonic = "vlseg5e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x80000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8.v";
+    };
+    {
+      mnemonic = "vlseg6e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xa0000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8.v";
+    };
+    {
+      mnemonic = "vlseg7e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xc0000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8.v";
+    };
+    {
+      mnemonic = "vlseg8e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xe0000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8.v";
+    };
+    {
+      mnemonic = "vle8ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x1000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8ff.v";
+    };
+    {
+      mnemonic = "vlseg2e8ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x21000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8ff.v";
+    };
+    {
+      mnemonic = "vlseg3e8ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x41000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8ff.v";
+    };
+    {
+      mnemonic = "vlseg4e8ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x61000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8ff.v";
+    };
+    {
+      mnemonic = "vlseg5e8ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x81000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8ff.v";
+    };
+    {
+      mnemonic = "vlseg6e8ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xa1000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8ff.v";
+    };
+    {
+      mnemonic = "vlseg7e8ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xc1000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8ff.v";
+    };
+    {
+      mnemonic = "vlseg8e8ff.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xe1000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vle8ff.v";
+    };
+    {
+      mnemonic = "vmsbf.m";
+      mask = 0xfc0ff07fL;
+      match_ = 0x5000a057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsbf.m";
+    };
+    {
+      mnemonic = "vmsif.m";
+      mask = 0xfc0ff07fL;
+      match_ = 0x5001a057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsif.m";
+    };
+    {
+      mnemonic = "vmsof.m";
+      mask = 0xfc0ff07fL;
+      match_ = 0x50012057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsof.m";
+    };
+    {
+      mnemonic = "vse16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x5027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse16.v";
+    };
+    {
+      mnemonic = "vsseg2e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x20005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse16.v";
+    };
+    {
+      mnemonic = "vsseg3e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x40005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse16.v";
+    };
+    {
+      mnemonic = "vsseg4e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x60005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse16.v";
+    };
+    {
+      mnemonic = "vsseg5e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x80005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse16.v";
+    };
+    {
+      mnemonic = "vsseg6e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xa0005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse16.v";
+    };
+    {
+      mnemonic = "vsseg7e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xc0005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse16.v";
+    };
+    {
+      mnemonic = "vsseg8e16.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xe0005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse16.v";
+    };
+    {
+      mnemonic = "vse32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x6027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse32.v";
+    };
+    {
+      mnemonic = "vsseg2e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x20006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse32.v";
+    };
+    {
+      mnemonic = "vsseg3e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x40006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse32.v";
+    };
+    {
+      mnemonic = "vsseg4e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x60006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse32.v";
+    };
+    {
+      mnemonic = "vsseg5e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x80006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse32.v";
+    };
+    {
+      mnemonic = "vsseg6e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xa0006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse32.v";
+    };
+    {
+      mnemonic = "vsseg7e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xc0006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse32.v";
+    };
+    {
+      mnemonic = "vsseg8e32.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xe0006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse32.v";
+    };
+    {
+      mnemonic = "vse64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x7027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse64.v";
+    };
+    {
+      mnemonic = "vsseg2e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x20007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse64.v";
+    };
+    {
+      mnemonic = "vsseg3e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x40007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse64.v";
+    };
+    {
+      mnemonic = "vsseg4e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x60007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse64.v";
+    };
+    {
+      mnemonic = "vsseg5e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x80007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse64.v";
+    };
+    {
+      mnemonic = "vsseg6e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xa0007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse64.v";
+    };
+    {
+      mnemonic = "vsseg7e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xc0007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse64.v";
+    };
+    {
+      mnemonic = "vsseg8e64.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xe0007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse64.v";
+    };
+    {
+      mnemonic = "vse8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x27L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse8.v";
+    };
+    {
+      mnemonic = "vsseg2e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x20000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse8.v";
+    };
+    {
+      mnemonic = "vsseg3e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x40000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse8.v";
+    };
+    {
+      mnemonic = "vsseg4e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x60000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse8.v";
+    };
+    {
+      mnemonic = "vsseg5e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0x80000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse8.v";
+    };
+    {
+      mnemonic = "vsseg6e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xa0000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse8.v";
+    };
+    {
+      mnemonic = "vsseg7e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xc0000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse8.v";
+    };
+    {
+      mnemonic = "vsseg8e8.v";
+      mask = 0xfdf0707fL;
+      match_ = 0xe0000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vse8.v";
+    };
+    {
+      mnemonic = "vsext.vf2";
+      mask = 0xfc0ff07fL;
+      match_ = 0x4803a057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsext.vf2";
+    };
+    {
+      mnemonic = "vsext.vf4";
+      mask = 0xfc0ff07fL;
+      match_ = 0x4802a057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsext.vf4";
+    };
+    {
+      mnemonic = "vsext.vf8";
+      mask = 0xfc0ff07fL;
+      match_ = 0x4801a057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsext.vf8";
+    };
+    {
+      mnemonic = "vzext.vf2";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48032057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vzext.vf2";
+    };
+    {
+      mnemonic = "vzext.vf4";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48022057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vzext.vf4";
+    };
+    {
+      mnemonic = "vzext.vf8";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48012057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vzext.vf8";
+    };
+    {
+      mnemonic = "vbrev.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48052057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vbrev.v";
+    };
+    {
+      mnemonic = "vbrev8.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48042057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vbrev8.v";
+    };
+    {
+      mnemonic = "vclz.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48062057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vclz.v";
+    };
+    {
+      mnemonic = "vcpop.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48072057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vcpop.v";
+    };
+    {
+      mnemonic = "vctz.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x4806a057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vctz.v";
+    };
+    {
+      mnemonic = "vrev8.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x4804a057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vrev8.v";
+    };
+    {
+      mnemonic = "vfncvtbf16.f.f.w";
+      mask = 0xfc0ff07fL;
+      match_ = 0x480e9057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvfbfmin";
+      source = "rv_zvfbfmin/vfncvtbf16.f.f.w";
+    };
+    {
+      mnemonic = "vfwcvtbf16.f.f.v";
+      mask = 0xfc0ff07fL;
+      match_ = 0x48069057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvfbfmin";
+      source = "rv_zvfbfmin/vfwcvtbf16.f.f.v";
     };
     {
       mnemonic = "prefetch.i";
@@ -1562,6 +3254,267 @@ let rows : row array =
       xlen = 0;
       feature = "zfa";
       source = "rv_q_zfa/fminm.q";
+    };
+    {
+      mnemonic = "vadc.vim";
+      mask = 0xfe00707fL;
+      match_ = 0x40003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vadc.vim";
+    };
+    {
+      mnemonic = "vadc.vvm";
+      mask = 0xfe00707fL;
+      match_ = 0x40000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vadc.vvm";
+    };
+    {
+      mnemonic = "vadc.vxm";
+      mask = 0xfe00707fL;
+      match_ = 0x40004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vadc.vxm";
+    };
+    {
+      mnemonic = "vcompress.vm";
+      mask = 0xfe00707fL;
+      match_ = 0x5e002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vcompress.vm";
+    };
+    {
+      mnemonic = "vfmerge.vfm";
+      mask = 0xfe00707fL;
+      match_ = 0x5c005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmerge.vfm";
+    };
+    {
+      mnemonic = "vmadc.vi";
+      mask = 0xfe00707fL;
+      match_ = 0x46003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmadc.vi";
+    };
+    {
+      mnemonic = "vmadc.vim";
+      mask = 0xfe00707fL;
+      match_ = 0x44003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmadc.vim";
+    };
+    {
+      mnemonic = "vmadc.vv";
+      mask = 0xfe00707fL;
+      match_ = 0x46000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmadc.vv";
+    };
+    {
+      mnemonic = "vmadc.vvm";
+      mask = 0xfe00707fL;
+      match_ = 0x44000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmadc.vvm";
+    };
+    {
+      mnemonic = "vmadc.vx";
+      mask = 0xfe00707fL;
+      match_ = 0x46004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmadc.vx";
+    };
+    {
+      mnemonic = "vmadc.vxm";
+      mask = 0xfe00707fL;
+      match_ = 0x44004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmadc.vxm";
+    };
+    {
+      mnemonic = "vmand.mm";
+      mask = 0xfe00707fL;
+      match_ = 0x66002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmand.mm";
+    };
+    {
+      mnemonic = "vmandn.mm";
+      mask = 0xfe00707fL;
+      match_ = 0x62002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmandn.mm";
+    };
+    {
+      mnemonic = "vmerge.vim";
+      mask = 0xfe00707fL;
+      match_ = 0x5c003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmerge.vim";
+    };
+    {
+      mnemonic = "vmerge.vvm";
+      mask = 0xfe00707fL;
+      match_ = 0x5c000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmerge.vvm";
+    };
+    {
+      mnemonic = "vmerge.vxm";
+      mask = 0xfe00707fL;
+      match_ = 0x5c004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmerge.vxm";
+    };
+    {
+      mnemonic = "vmnand.mm";
+      mask = 0xfe00707fL;
+      match_ = 0x76002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmnand.mm";
+    };
+    {
+      mnemonic = "vmnor.mm";
+      mask = 0xfe00707fL;
+      match_ = 0x7a002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmnor.mm";
+    };
+    {
+      mnemonic = "vmor.mm";
+      mask = 0xfe00707fL;
+      match_ = 0x6a002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmor.mm";
+    };
+    {
+      mnemonic = "vmorn.mm";
+      mask = 0xfe00707fL;
+      match_ = 0x72002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmorn.mm";
+    };
+    {
+      mnemonic = "vmsbc.vv";
+      mask = 0xfe00707fL;
+      match_ = 0x4e000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsbc.vv";
+    };
+    {
+      mnemonic = "vmsbc.vvm";
+      mask = 0xfe00707fL;
+      match_ = 0x4c000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsbc.vvm";
+    };
+    {
+      mnemonic = "vmsbc.vx";
+      mask = 0xfe00707fL;
+      match_ = 0x4e004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsbc.vx";
+    };
+    {
+      mnemonic = "vmsbc.vxm";
+      mask = 0xfe00707fL;
+      match_ = 0x4c004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsbc.vxm";
+    };
+    {
+      mnemonic = "vmxnor.mm";
+      mask = 0xfe00707fL;
+      match_ = 0x7e002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmxnor.mm";
+    };
+    {
+      mnemonic = "vmxor.mm";
+      mask = 0xfe00707fL;
+      match_ = 0x6e002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmxor.mm";
+    };
+    {
+      mnemonic = "vsbc.vvm";
+      mask = 0xfe00707fL;
+      match_ = 0x48000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsbc.vvm";
+    };
+    {
+      mnemonic = "vsbc.vxm";
+      mask = 0xfe00707fL;
+      match_ = 0x48004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Fixed_vreg 0 ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsbc.vxm";
+    };
+    {
+      mnemonic = "vsetvl";
+      mask = 0xfe00707fL;
+      match_ = 0x80007057L;
+      operands = [ Gpr { lsb = 7; nonzero = false }; Gpr { lsb = 15; nonzero = false }; Gpr { lsb = 20; nonzero = false } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsetvl";
     };
     {
       mnemonic = "amoadd.b";
@@ -2608,6 +4561,87 @@ let rows : row array =
       source = "rv_zimop/mop.rr.7";
     };
     {
+      mnemonic = "vghsh.vv";
+      mask = 0xfe00707fL;
+      match_ = 0xb2002077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "zvkg";
+      source = "rv_zvkg/vghsh.vv";
+    };
+    {
+      mnemonic = "vaeskf1.vi";
+      mask = 0xfe00707fL;
+      match_ = 0x8a002077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 } ];
+      xlen = 0;
+      feature = "zvkned";
+      source = "rv_zvkned/vaeskf1.vi";
+    };
+    {
+      mnemonic = "vaeskf2.vi";
+      mask = 0xfe00707fL;
+      match_ = 0xaa002077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 } ];
+      xlen = 0;
+      feature = "zvkned";
+      source = "rv_zvkned/vaeskf2.vi";
+    };
+    {
+      mnemonic = "vsha2ch.vv";
+      mask = 0xfe00707fL;
+      match_ = 0xba002077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "zvknha";
+      source = "rv_zvknha/vsha2ch.vv";
+    };
+    {
+      mnemonic = "vsha2cl.vv";
+      mask = 0xfe00707fL;
+      match_ = 0xbe002077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "zvknha";
+      source = "rv_zvknha/vsha2cl.vv";
+    };
+    {
+      mnemonic = "vsha2ms.vv";
+      mask = 0xfe00707fL;
+      match_ = 0xb6002077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "zvknha";
+      source = "rv_zvknha/vsha2ms.vv";
+    };
+    {
+      mnemonic = "vsm4k.vi";
+      mask = 0xfe00707fL;
+      match_ = 0x86002077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 } ];
+      xlen = 0;
+      feature = "zvksed";
+      source = "rv_zvksed/vsm4k.vi";
+    };
+    {
+      mnemonic = "vsm3c.vi";
+      mask = 0xfe00707fL;
+      match_ = 0xae002077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 } ];
+      xlen = 0;
+      feature = "zvksh";
+      source = "rv_zvksh/vsm3c.vi";
+    };
+    {
+      mnemonic = "vsm3me.vv";
+      mask = 0xfe00707fL;
+      match_ = 0x82002077L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 } ];
+      xlen = 0;
+      feature = "zvksh";
+      source = "rv_zvksh/vsm3me.vv";
+    };
+    {
       mnemonic = "fmvp.d.x";
       mask = 0xfe00707fL;
       match_ = 0xb2000053L;
@@ -2689,6 +4723,3858 @@ let rows : row array =
       source = "rv_c_zihintntl/c.ntl.s1";
     };
     {
+      mnemonic = "vaadd.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x24002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vaadd.vv";
+    };
+    {
+      mnemonic = "vaadd.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x24006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vaadd.vx";
+    };
+    {
+      mnemonic = "vaaddu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x20002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vaaddu.vv";
+    };
+    {
+      mnemonic = "vaaddu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x20006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vaaddu.vx";
+    };
+    {
+      mnemonic = "vadd.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x3057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vadd.vi";
+    };
+    {
+      mnemonic = "vadd.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x57L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vadd.vv";
+    };
+    {
+      mnemonic = "vadd.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x4057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vadd.vx";
+    };
+    {
+      mnemonic = "vand.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x24003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vand.vi";
+    };
+    {
+      mnemonic = "vand.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x24000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vand.vv";
+    };
+    {
+      mnemonic = "vand.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x24004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vand.vx";
+    };
+    {
+      mnemonic = "vasub.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x2c002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vasub.vv";
+    };
+    {
+      mnemonic = "vasub.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x2c006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vasub.vx";
+    };
+    {
+      mnemonic = "vasubu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x28002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vasubu.vv";
+    };
+    {
+      mnemonic = "vasubu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x28006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vasubu.vx";
+    };
+    {
+      mnemonic = "vdiv.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x84002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vdiv.vv";
+    };
+    {
+      mnemonic = "vdiv.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x84006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vdiv.vx";
+    };
+    {
+      mnemonic = "vdivu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x80002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vdivu.vv";
+    };
+    {
+      mnemonic = "vdivu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x80006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vdivu.vx";
+    };
+    {
+      mnemonic = "vfadd.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x5057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfadd.vf";
+    };
+    {
+      mnemonic = "vfadd.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x1057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfadd.vv";
+    };
+    {
+      mnemonic = "vfdiv.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x80005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfdiv.vf";
+    };
+    {
+      mnemonic = "vfdiv.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x80001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfdiv.vv";
+    };
+    {
+      mnemonic = "vfmacc.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xb0005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmacc.vf";
+    };
+    {
+      mnemonic = "vfmacc.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xb0001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmacc.vv";
+    };
+    {
+      mnemonic = "vfmadd.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xa0005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmadd.vf";
+    };
+    {
+      mnemonic = "vfmadd.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xa0001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmadd.vv";
+    };
+    {
+      mnemonic = "vfmax.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x18005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmax.vf";
+    };
+    {
+      mnemonic = "vfmax.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x18001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmax.vv";
+    };
+    {
+      mnemonic = "vfmin.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x10005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmin.vf";
+    };
+    {
+      mnemonic = "vfmin.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x10001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmin.vv";
+    };
+    {
+      mnemonic = "vfmsac.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xb8005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmsac.vf";
+    };
+    {
+      mnemonic = "vfmsac.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xb8001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmsac.vv";
+    };
+    {
+      mnemonic = "vfmsub.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xa8005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmsub.vf";
+    };
+    {
+      mnemonic = "vfmsub.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xa8001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmsub.vv";
+    };
+    {
+      mnemonic = "vfmul.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x90005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmul.vf";
+    };
+    {
+      mnemonic = "vfmul.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x90001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfmul.vv";
+    };
+    {
+      mnemonic = "vfnmacc.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xb4005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfnmacc.vf";
+    };
+    {
+      mnemonic = "vfnmacc.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xb4001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfnmacc.vv";
+    };
+    {
+      mnemonic = "vfnmadd.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xa4005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfnmadd.vf";
+    };
+    {
+      mnemonic = "vfnmadd.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xa4001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfnmadd.vv";
+    };
+    {
+      mnemonic = "vfnmsac.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xbc005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfnmsac.vf";
+    };
+    {
+      mnemonic = "vfnmsac.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xbc001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfnmsac.vv";
+    };
+    {
+      mnemonic = "vfnmsub.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xac005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfnmsub.vf";
+    };
+    {
+      mnemonic = "vfnmsub.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xac001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfnmsub.vv";
+    };
+    {
+      mnemonic = "vfrdiv.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x84005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfrdiv.vf";
+    };
+    {
+      mnemonic = "vfredmax.vs";
+      mask = 0xfc00707fL;
+      match_ = 0x1c001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfredmax.vs";
+    };
+    {
+      mnemonic = "vfredmin.vs";
+      mask = 0xfc00707fL;
+      match_ = 0x14001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfredmin.vs";
+    };
+    {
+      mnemonic = "vfredosum.vs";
+      mask = 0xfc00707fL;
+      match_ = 0xc001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfredosum.vs";
+    };
+    {
+      mnemonic = "vfredusum.vs";
+      mask = 0xfc00707fL;
+      match_ = 0x4001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfredusum.vs";
+    };
+    {
+      mnemonic = "vfrsub.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x9c005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfrsub.vf";
+    };
+    {
+      mnemonic = "vfsgnj.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x20005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfsgnj.vf";
+    };
+    {
+      mnemonic = "vfsgnj.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x20001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfsgnj.vv";
+    };
+    {
+      mnemonic = "vfsgnjn.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x24005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfsgnjn.vf";
+    };
+    {
+      mnemonic = "vfsgnjn.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x24001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfsgnjn.vv";
+    };
+    {
+      mnemonic = "vfsgnjx.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x28005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfsgnjx.vf";
+    };
+    {
+      mnemonic = "vfsgnjx.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x28001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfsgnjx.vv";
+    };
+    {
+      mnemonic = "vfslide1down.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x3c005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfslide1down.vf";
+    };
+    {
+      mnemonic = "vfslide1up.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x38005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfslide1up.vf";
+    };
+    {
+      mnemonic = "vfsub.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x8005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfsub.vf";
+    };
+    {
+      mnemonic = "vfsub.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x8001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfsub.vv";
+    };
+    {
+      mnemonic = "vfwadd.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xc0005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwadd.vf";
+    };
+    {
+      mnemonic = "vfwadd.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xc0001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwadd.vv";
+    };
+    {
+      mnemonic = "vfwadd.wf";
+      mask = 0xfc00707fL;
+      match_ = 0xd0005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwadd.wf";
+    };
+    {
+      mnemonic = "vfwadd.wv";
+      mask = 0xfc00707fL;
+      match_ = 0xd0001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwadd.wv";
+    };
+    {
+      mnemonic = "vfwmacc.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xf0005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwmacc.vf";
+    };
+    {
+      mnemonic = "vfwmacc.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xf0001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwmacc.vv";
+    };
+    {
+      mnemonic = "vfwmsac.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xf8005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwmsac.vf";
+    };
+    {
+      mnemonic = "vfwmsac.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xf8001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwmsac.vv";
+    };
+    {
+      mnemonic = "vfwmul.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xe0005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwmul.vf";
+    };
+    {
+      mnemonic = "vfwmul.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xe0001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwmul.vv";
+    };
+    {
+      mnemonic = "vfwnmacc.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xf4005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwnmacc.vf";
+    };
+    {
+      mnemonic = "vfwnmacc.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xf4001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwnmacc.vv";
+    };
+    {
+      mnemonic = "vfwnmsac.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xfc005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwnmsac.vf";
+    };
+    {
+      mnemonic = "vfwnmsac.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xfc001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwnmsac.vv";
+    };
+    {
+      mnemonic = "vfwredosum.vs";
+      mask = 0xfc00707fL;
+      match_ = 0xcc001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwredosum.vs";
+    };
+    {
+      mnemonic = "vfwredusum.vs";
+      mask = 0xfc00707fL;
+      match_ = 0xc4001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwredusum.vs";
+    };
+    {
+      mnemonic = "vfwsub.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xc8005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwsub.vf";
+    };
+    {
+      mnemonic = "vfwsub.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xc8001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwsub.vv";
+    };
+    {
+      mnemonic = "vfwsub.wf";
+      mask = 0xfc00707fL;
+      match_ = 0xd8005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwsub.wf";
+    };
+    {
+      mnemonic = "vfwsub.wv";
+      mask = 0xfc00707fL;
+      match_ = 0xd8001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vfwsub.wv";
+    };
+    {
+      mnemonic = "vloxei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei16.v";
+    };
+    {
+      mnemonic = "vloxseg2ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x2c005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei16.v";
+    };
+    {
+      mnemonic = "vloxseg3ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4c005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei16.v";
+    };
+    {
+      mnemonic = "vloxseg4ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x6c005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei16.v";
+    };
+    {
+      mnemonic = "vloxseg5ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8c005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei16.v";
+    };
+    {
+      mnemonic = "vloxseg6ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xac005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei16.v";
+    };
+    {
+      mnemonic = "vloxseg7ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xcc005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei16.v";
+    };
+    {
+      mnemonic = "vloxseg8ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xec005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei16.v";
+    };
+    {
+      mnemonic = "vloxei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei32.v";
+    };
+    {
+      mnemonic = "vloxseg2ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x2c006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei32.v";
+    };
+    {
+      mnemonic = "vloxseg3ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4c006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei32.v";
+    };
+    {
+      mnemonic = "vloxseg4ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x6c006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei32.v";
+    };
+    {
+      mnemonic = "vloxseg5ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8c006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei32.v";
+    };
+    {
+      mnemonic = "vloxseg6ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xac006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei32.v";
+    };
+    {
+      mnemonic = "vloxseg7ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xcc006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei32.v";
+    };
+    {
+      mnemonic = "vloxseg8ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xec006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei32.v";
+    };
+    {
+      mnemonic = "vloxei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei64.v";
+    };
+    {
+      mnemonic = "vloxseg2ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x2c007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei64.v";
+    };
+    {
+      mnemonic = "vloxseg3ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4c007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei64.v";
+    };
+    {
+      mnemonic = "vloxseg4ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x6c007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei64.v";
+    };
+    {
+      mnemonic = "vloxseg5ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8c007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei64.v";
+    };
+    {
+      mnemonic = "vloxseg6ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xac007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei64.v";
+    };
+    {
+      mnemonic = "vloxseg7ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xcc007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei64.v";
+    };
+    {
+      mnemonic = "vloxseg8ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xec007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei64.v";
+    };
+    {
+      mnemonic = "vloxei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei8.v";
+    };
+    {
+      mnemonic = "vloxseg2ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x2c000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei8.v";
+    };
+    {
+      mnemonic = "vloxseg3ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4c000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei8.v";
+    };
+    {
+      mnemonic = "vloxseg4ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x6c000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei8.v";
+    };
+    {
+      mnemonic = "vloxseg5ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8c000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei8.v";
+    };
+    {
+      mnemonic = "vloxseg6ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xac000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei8.v";
+    };
+    {
+      mnemonic = "vloxseg7ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xcc000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei8.v";
+    };
+    {
+      mnemonic = "vloxseg8ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xec000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vloxei8.v";
+    };
+    {
+      mnemonic = "vlse16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse16.v";
+    };
+    {
+      mnemonic = "vlsseg2e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x28005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse16.v";
+    };
+    {
+      mnemonic = "vlsseg3e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x48005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse16.v";
+    };
+    {
+      mnemonic = "vlsseg4e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x68005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse16.v";
+    };
+    {
+      mnemonic = "vlsseg5e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x88005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse16.v";
+    };
+    {
+      mnemonic = "vlsseg6e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa8005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse16.v";
+    };
+    {
+      mnemonic = "vlsseg7e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc8005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse16.v";
+    };
+    {
+      mnemonic = "vlsseg8e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe8005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse16.v";
+    };
+    {
+      mnemonic = "vlse32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse32.v";
+    };
+    {
+      mnemonic = "vlsseg2e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x28006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse32.v";
+    };
+    {
+      mnemonic = "vlsseg3e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x48006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse32.v";
+    };
+    {
+      mnemonic = "vlsseg4e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x68006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse32.v";
+    };
+    {
+      mnemonic = "vlsseg5e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x88006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse32.v";
+    };
+    {
+      mnemonic = "vlsseg6e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa8006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse32.v";
+    };
+    {
+      mnemonic = "vlsseg7e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc8006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse32.v";
+    };
+    {
+      mnemonic = "vlsseg8e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe8006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse32.v";
+    };
+    {
+      mnemonic = "vlse64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse64.v";
+    };
+    {
+      mnemonic = "vlsseg2e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x28007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse64.v";
+    };
+    {
+      mnemonic = "vlsseg3e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x48007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse64.v";
+    };
+    {
+      mnemonic = "vlsseg4e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x68007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse64.v";
+    };
+    {
+      mnemonic = "vlsseg5e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x88007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse64.v";
+    };
+    {
+      mnemonic = "vlsseg6e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa8007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse64.v";
+    };
+    {
+      mnemonic = "vlsseg7e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc8007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse64.v";
+    };
+    {
+      mnemonic = "vlsseg8e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe8007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse64.v";
+    };
+    {
+      mnemonic = "vlse8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse8.v";
+    };
+    {
+      mnemonic = "vlsseg2e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x28000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse8.v";
+    };
+    {
+      mnemonic = "vlsseg3e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x48000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse8.v";
+    };
+    {
+      mnemonic = "vlsseg4e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x68000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse8.v";
+    };
+    {
+      mnemonic = "vlsseg5e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x88000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse8.v";
+    };
+    {
+      mnemonic = "vlsseg6e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa8000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse8.v";
+    };
+    {
+      mnemonic = "vlsseg7e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc8000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse8.v";
+    };
+    {
+      mnemonic = "vlsseg8e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe8000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vlse8.v";
+    };
+    {
+      mnemonic = "vluxei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei16.v";
+    };
+    {
+      mnemonic = "vluxseg2ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x24005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei16.v";
+    };
+    {
+      mnemonic = "vluxseg3ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x44005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei16.v";
+    };
+    {
+      mnemonic = "vluxseg4ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x64005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei16.v";
+    };
+    {
+      mnemonic = "vluxseg5ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x84005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei16.v";
+    };
+    {
+      mnemonic = "vluxseg6ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa4005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei16.v";
+    };
+    {
+      mnemonic = "vluxseg7ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc4005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei16.v";
+    };
+    {
+      mnemonic = "vluxseg8ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe4005007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei16.v";
+    };
+    {
+      mnemonic = "vluxei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei32.v";
+    };
+    {
+      mnemonic = "vluxseg2ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x24006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei32.v";
+    };
+    {
+      mnemonic = "vluxseg3ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x44006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei32.v";
+    };
+    {
+      mnemonic = "vluxseg4ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x64006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei32.v";
+    };
+    {
+      mnemonic = "vluxseg5ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x84006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei32.v";
+    };
+    {
+      mnemonic = "vluxseg6ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa4006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei32.v";
+    };
+    {
+      mnemonic = "vluxseg7ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc4006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei32.v";
+    };
+    {
+      mnemonic = "vluxseg8ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe4006007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei32.v";
+    };
+    {
+      mnemonic = "vluxei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei64.v";
+    };
+    {
+      mnemonic = "vluxseg2ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x24007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei64.v";
+    };
+    {
+      mnemonic = "vluxseg3ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x44007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei64.v";
+    };
+    {
+      mnemonic = "vluxseg4ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x64007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei64.v";
+    };
+    {
+      mnemonic = "vluxseg5ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x84007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei64.v";
+    };
+    {
+      mnemonic = "vluxseg6ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa4007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei64.v";
+    };
+    {
+      mnemonic = "vluxseg7ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc4007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei64.v";
+    };
+    {
+      mnemonic = "vluxseg8ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe4007007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei64.v";
+    };
+    {
+      mnemonic = "vluxei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei8.v";
+    };
+    {
+      mnemonic = "vluxseg2ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x24000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei8.v";
+    };
+    {
+      mnemonic = "vluxseg3ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x44000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei8.v";
+    };
+    {
+      mnemonic = "vluxseg4ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x64000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei8.v";
+    };
+    {
+      mnemonic = "vluxseg5ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x84000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei8.v";
+    };
+    {
+      mnemonic = "vluxseg6ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa4000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei8.v";
+    };
+    {
+      mnemonic = "vluxseg7ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc4000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei8.v";
+    };
+    {
+      mnemonic = "vluxseg8ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe4000007L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vluxei8.v";
+    };
+    {
+      mnemonic = "vmacc.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xb4002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmacc.vv";
+    };
+    {
+      mnemonic = "vmacc.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xb4006057L;
+      operands = [ Vreg { lsb = 7 }; Gpr { lsb = 15; nonzero = false }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmacc.vx";
+    };
+    {
+      mnemonic = "vmadd.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xa4002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmadd.vv";
+    };
+    {
+      mnemonic = "vmadd.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xa4006057L;
+      operands = [ Vreg { lsb = 7 }; Gpr { lsb = 15; nonzero = false }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmadd.vx";
+    };
+    {
+      mnemonic = "vmax.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x1c000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmax.vv";
+    };
+    {
+      mnemonic = "vmax.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x1c004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmax.vx";
+    };
+    {
+      mnemonic = "vmaxu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x18000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmaxu.vv";
+    };
+    {
+      mnemonic = "vmaxu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x18004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmaxu.vx";
+    };
+    {
+      mnemonic = "vmfeq.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x60005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmfeq.vf";
+    };
+    {
+      mnemonic = "vmfeq.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x60001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmfeq.vv";
+    };
+    {
+      mnemonic = "vmfge.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x7c005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmfge.vf";
+    };
+    {
+      mnemonic = "vmfgt.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x74005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmfgt.vf";
+    };
+    {
+      mnemonic = "vmfle.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x64005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmfle.vf";
+    };
+    {
+      mnemonic = "vmfle.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x64001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmfle.vv";
+    };
+    {
+      mnemonic = "vmflt.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x6c005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmflt.vf";
+    };
+    {
+      mnemonic = "vmflt.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x6c001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmflt.vv";
+    };
+    {
+      mnemonic = "vmfne.vf";
+      mask = 0xfc00707fL;
+      match_ = 0x70005057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Fpr { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmfne.vf";
+    };
+    {
+      mnemonic = "vmfne.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x70001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmfne.vv";
+    };
+    {
+      mnemonic = "vmin.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x14000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmin.vv";
+    };
+    {
+      mnemonic = "vmin.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x14004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmin.vx";
+    };
+    {
+      mnemonic = "vminu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x10000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vminu.vv";
+    };
+    {
+      mnemonic = "vminu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x10004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vminu.vx";
+    };
+    {
+      mnemonic = "vmseq.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x60003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmseq.vi";
+    };
+    {
+      mnemonic = "vmseq.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x60000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmseq.vv";
+    };
+    {
+      mnemonic = "vmseq.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x60004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmseq.vx";
+    };
+    {
+      mnemonic = "vmsgt.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x7c003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsgt.vi";
+    };
+    {
+      mnemonic = "vmsgt.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x7c004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsgt.vx";
+    };
+    {
+      mnemonic = "vmsgtu.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x78003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsgtu.vi";
+    };
+    {
+      mnemonic = "vmsgtu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x78004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsgtu.vx";
+    };
+    {
+      mnemonic = "vmsle.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x74003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsle.vi";
+    };
+    {
+      mnemonic = "vmsle.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x74000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsle.vv";
+    };
+    {
+      mnemonic = "vmsle.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x74004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsle.vx";
+    };
+    {
+      mnemonic = "vmsleu.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x70003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsleu.vi";
+    };
+    {
+      mnemonic = "vmsleu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x70000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsleu.vv";
+    };
+    {
+      mnemonic = "vmsleu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x70004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsleu.vx";
+    };
+    {
+      mnemonic = "vmslt.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x6c000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmslt.vv";
+    };
+    {
+      mnemonic = "vmslt.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x6c004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmslt.vx";
+    };
+    {
+      mnemonic = "vmsltu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x68000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsltu.vv";
+    };
+    {
+      mnemonic = "vmsltu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x68004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsltu.vx";
+    };
+    {
+      mnemonic = "vmsne.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x64003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsne.vi";
+    };
+    {
+      mnemonic = "vmsne.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x64000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsne.vv";
+    };
+    {
+      mnemonic = "vmsne.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x64004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmsne.vx";
+    };
+    {
+      mnemonic = "vmul.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x94002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmul.vv";
+    };
+    {
+      mnemonic = "vmul.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x94006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmul.vx";
+    };
+    {
+      mnemonic = "vmulh.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x9c002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmulh.vv";
+    };
+    {
+      mnemonic = "vmulh.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x9c006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmulh.vx";
+    };
+    {
+      mnemonic = "vmulhsu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x98002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmulhsu.vv";
+    };
+    {
+      mnemonic = "vmulhsu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x98006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmulhsu.vx";
+    };
+    {
+      mnemonic = "vmulhu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x90002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmulhu.vv";
+    };
+    {
+      mnemonic = "vmulhu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x90006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vmulhu.vx";
+    };
+    {
+      mnemonic = "vnclip.wi";
+      mask = 0xfc00707fL;
+      match_ = 0xbc003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnclip.wi";
+    };
+    {
+      mnemonic = "vnclip.wv";
+      mask = 0xfc00707fL;
+      match_ = 0xbc000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnclip.wv";
+    };
+    {
+      mnemonic = "vnclip.wx";
+      mask = 0xfc00707fL;
+      match_ = 0xbc004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnclip.wx";
+    };
+    {
+      mnemonic = "vnclipu.wi";
+      mask = 0xfc00707fL;
+      match_ = 0xb8003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnclipu.wi";
+    };
+    {
+      mnemonic = "vnclipu.wv";
+      mask = 0xfc00707fL;
+      match_ = 0xb8000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnclipu.wv";
+    };
+    {
+      mnemonic = "vnclipu.wx";
+      mask = 0xfc00707fL;
+      match_ = 0xb8004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnclipu.wx";
+    };
+    {
+      mnemonic = "vnmsac.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xbc002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnmsac.vv";
+    };
+    {
+      mnemonic = "vnmsac.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xbc006057L;
+      operands = [ Vreg { lsb = 7 }; Gpr { lsb = 15; nonzero = false }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnmsac.vx";
+    };
+    {
+      mnemonic = "vnmsub.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xac002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnmsub.vv";
+    };
+    {
+      mnemonic = "vnmsub.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xac006057L;
+      operands = [ Vreg { lsb = 7 }; Gpr { lsb = 15; nonzero = false }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnmsub.vx";
+    };
+    {
+      mnemonic = "vnsra.wi";
+      mask = 0xfc00707fL;
+      match_ = 0xb4003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnsra.wi";
+    };
+    {
+      mnemonic = "vnsra.wv";
+      mask = 0xfc00707fL;
+      match_ = 0xb4000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnsra.wv";
+    };
+    {
+      mnemonic = "vnsra.wx";
+      mask = 0xfc00707fL;
+      match_ = 0xb4004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnsra.wx";
+    };
+    {
+      mnemonic = "vnsrl.wi";
+      mask = 0xfc00707fL;
+      match_ = 0xb0003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnsrl.wi";
+    };
+    {
+      mnemonic = "vnsrl.wv";
+      mask = 0xfc00707fL;
+      match_ = 0xb0000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnsrl.wv";
+    };
+    {
+      mnemonic = "vnsrl.wx";
+      mask = 0xfc00707fL;
+      match_ = 0xb0004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vnsrl.wx";
+    };
+    {
+      mnemonic = "vor.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x28003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vor.vi";
+    };
+    {
+      mnemonic = "vor.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x28000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vor.vv";
+    };
+    {
+      mnemonic = "vor.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x28004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vor.vx";
+    };
+    {
+      mnemonic = "vredand.vs";
+      mask = 0xfc00707fL;
+      match_ = 0x4002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vredand.vs";
+    };
+    {
+      mnemonic = "vredmax.vs";
+      mask = 0xfc00707fL;
+      match_ = 0x1c002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vredmax.vs";
+    };
+    {
+      mnemonic = "vredmaxu.vs";
+      mask = 0xfc00707fL;
+      match_ = 0x18002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vredmaxu.vs";
+    };
+    {
+      mnemonic = "vredmin.vs";
+      mask = 0xfc00707fL;
+      match_ = 0x14002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vredmin.vs";
+    };
+    {
+      mnemonic = "vredminu.vs";
+      mask = 0xfc00707fL;
+      match_ = 0x10002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vredminu.vs";
+    };
+    {
+      mnemonic = "vredor.vs";
+      mask = 0xfc00707fL;
+      match_ = 0x8002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vredor.vs";
+    };
+    {
+      mnemonic = "vredsum.vs";
+      mask = 0xfc00707fL;
+      match_ = 0x2057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vredsum.vs";
+    };
+    {
+      mnemonic = "vredxor.vs";
+      mask = 0xfc00707fL;
+      match_ = 0xc002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vredxor.vs";
+    };
+    {
+      mnemonic = "vrem.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x8c002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vrem.vv";
+    };
+    {
+      mnemonic = "vrem.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x8c006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vrem.vx";
+    };
+    {
+      mnemonic = "vremu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x88002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vremu.vv";
+    };
+    {
+      mnemonic = "vremu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x88006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vremu.vx";
+    };
+    {
+      mnemonic = "vrgather.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x30003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vrgather.vi";
+    };
+    {
+      mnemonic = "vrgather.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x30000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vrgather.vv";
+    };
+    {
+      mnemonic = "vrgather.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x30004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vrgather.vx";
+    };
+    {
+      mnemonic = "vrgatherei16.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x38000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vrgatherei16.vv";
+    };
+    {
+      mnemonic = "vrsub.vi";
+      mask = 0xfc00707fL;
+      match_ = 0xc003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vrsub.vi";
+    };
+    {
+      mnemonic = "vrsub.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xc004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vrsub.vx";
+    };
+    {
+      mnemonic = "vsadd.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x84003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsadd.vi";
+    };
+    {
+      mnemonic = "vsadd.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x84000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsadd.vv";
+    };
+    {
+      mnemonic = "vsadd.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x84004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsadd.vx";
+    };
+    {
+      mnemonic = "vsaddu.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x80003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsaddu.vi";
+    };
+    {
+      mnemonic = "vsaddu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x80000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsaddu.vv";
+    };
+    {
+      mnemonic = "vsaddu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x80004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsaddu.vx";
+    };
+    {
+      mnemonic = "vslide1down.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x3c006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vslide1down.vx";
+    };
+    {
+      mnemonic = "vslide1up.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x38006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vslide1up.vx";
+    };
+    {
+      mnemonic = "vslidedown.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x3c003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vslidedown.vi";
+    };
+    {
+      mnemonic = "vslidedown.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x3c004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vslidedown.vx";
+    };
+    {
+      mnemonic = "vslideup.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x38003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vslideup.vi";
+    };
+    {
+      mnemonic = "vslideup.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x38004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vslideup.vx";
+    };
+    {
+      mnemonic = "vsll.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x94003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsll.vi";
+    };
+    {
+      mnemonic = "vsll.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x94000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsll.vv";
+    };
+    {
+      mnemonic = "vsll.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x94004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsll.vx";
+    };
+    {
+      mnemonic = "vsmul.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x9c000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsmul.vv";
+    };
+    {
+      mnemonic = "vsmul.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x9c004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsmul.vx";
+    };
+    {
+      mnemonic = "vsoxei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei16.v";
+    };
+    {
+      mnemonic = "vsoxseg2ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x2c005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei16.v";
+    };
+    {
+      mnemonic = "vsoxseg3ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4c005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei16.v";
+    };
+    {
+      mnemonic = "vsoxseg4ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x6c005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei16.v";
+    };
+    {
+      mnemonic = "vsoxseg5ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8c005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei16.v";
+    };
+    {
+      mnemonic = "vsoxseg6ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xac005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei16.v";
+    };
+    {
+      mnemonic = "vsoxseg7ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xcc005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei16.v";
+    };
+    {
+      mnemonic = "vsoxseg8ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xec005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei16.v";
+    };
+    {
+      mnemonic = "vsoxei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei32.v";
+    };
+    {
+      mnemonic = "vsoxseg2ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x2c006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei32.v";
+    };
+    {
+      mnemonic = "vsoxseg3ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4c006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei32.v";
+    };
+    {
+      mnemonic = "vsoxseg4ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x6c006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei32.v";
+    };
+    {
+      mnemonic = "vsoxseg5ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8c006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei32.v";
+    };
+    {
+      mnemonic = "vsoxseg6ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xac006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei32.v";
+    };
+    {
+      mnemonic = "vsoxseg7ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xcc006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei32.v";
+    };
+    {
+      mnemonic = "vsoxseg8ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xec006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei32.v";
+    };
+    {
+      mnemonic = "vsoxei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei64.v";
+    };
+    {
+      mnemonic = "vsoxseg2ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x2c007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei64.v";
+    };
+    {
+      mnemonic = "vsoxseg3ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4c007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei64.v";
+    };
+    {
+      mnemonic = "vsoxseg4ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x6c007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei64.v";
+    };
+    {
+      mnemonic = "vsoxseg5ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8c007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei64.v";
+    };
+    {
+      mnemonic = "vsoxseg6ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xac007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei64.v";
+    };
+    {
+      mnemonic = "vsoxseg7ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xcc007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei64.v";
+    };
+    {
+      mnemonic = "vsoxseg8ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xec007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei64.v";
+    };
+    {
+      mnemonic = "vsoxei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei8.v";
+    };
+    {
+      mnemonic = "vsoxseg2ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x2c000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei8.v";
+    };
+    {
+      mnemonic = "vsoxseg3ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4c000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei8.v";
+    };
+    {
+      mnemonic = "vsoxseg4ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x6c000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei8.v";
+    };
+    {
+      mnemonic = "vsoxseg5ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8c000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei8.v";
+    };
+    {
+      mnemonic = "vsoxseg6ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xac000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei8.v";
+    };
+    {
+      mnemonic = "vsoxseg7ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xcc000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei8.v";
+    };
+    {
+      mnemonic = "vsoxseg8ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xec000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsoxei8.v";
+    };
+    {
+      mnemonic = "vsra.vi";
+      mask = 0xfc00707fL;
+      match_ = 0xa4003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsra.vi";
+    };
+    {
+      mnemonic = "vsra.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xa4000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsra.vv";
+    };
+    {
+      mnemonic = "vsra.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xa4004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsra.vx";
+    };
+    {
+      mnemonic = "vsrl.vi";
+      mask = 0xfc00707fL;
+      match_ = 0xa0003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsrl.vi";
+    };
+    {
+      mnemonic = "vsrl.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xa0000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsrl.vv";
+    };
+    {
+      mnemonic = "vsrl.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xa0004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsrl.vx";
+    };
+    {
+      mnemonic = "vsse16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse16.v";
+    };
+    {
+      mnemonic = "vssseg2e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x28005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse16.v";
+    };
+    {
+      mnemonic = "vssseg3e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x48005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse16.v";
+    };
+    {
+      mnemonic = "vssseg4e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x68005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse16.v";
+    };
+    {
+      mnemonic = "vssseg5e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x88005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse16.v";
+    };
+    {
+      mnemonic = "vssseg6e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa8005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse16.v";
+    };
+    {
+      mnemonic = "vssseg7e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc8005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse16.v";
+    };
+    {
+      mnemonic = "vssseg8e16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe8005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse16.v";
+    };
+    {
+      mnemonic = "vsse32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse32.v";
+    };
+    {
+      mnemonic = "vssseg2e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x28006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse32.v";
+    };
+    {
+      mnemonic = "vssseg3e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x48006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse32.v";
+    };
+    {
+      mnemonic = "vssseg4e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x68006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse32.v";
+    };
+    {
+      mnemonic = "vssseg5e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x88006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse32.v";
+    };
+    {
+      mnemonic = "vssseg6e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa8006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse32.v";
+    };
+    {
+      mnemonic = "vssseg7e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc8006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse32.v";
+    };
+    {
+      mnemonic = "vssseg8e32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe8006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse32.v";
+    };
+    {
+      mnemonic = "vsse64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse64.v";
+    };
+    {
+      mnemonic = "vssseg2e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x28007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse64.v";
+    };
+    {
+      mnemonic = "vssseg3e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x48007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse64.v";
+    };
+    {
+      mnemonic = "vssseg4e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x68007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse64.v";
+    };
+    {
+      mnemonic = "vssseg5e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x88007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse64.v";
+    };
+    {
+      mnemonic = "vssseg6e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa8007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse64.v";
+    };
+    {
+      mnemonic = "vssseg7e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc8007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse64.v";
+    };
+    {
+      mnemonic = "vssseg8e64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe8007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse64.v";
+    };
+    {
+      mnemonic = "vsse8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x8000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse8.v";
+    };
+    {
+      mnemonic = "vssseg2e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x28000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse8.v";
+    };
+    {
+      mnemonic = "vssseg3e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x48000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse8.v";
+    };
+    {
+      mnemonic = "vssseg4e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x68000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse8.v";
+    };
+    {
+      mnemonic = "vssseg5e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x88000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse8.v";
+    };
+    {
+      mnemonic = "vssseg6e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa8000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse8.v";
+    };
+    {
+      mnemonic = "vssseg7e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc8000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse8.v";
+    };
+    {
+      mnemonic = "vssseg8e8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe8000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Gpr { lsb = 20; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsse8.v";
+    };
+    {
+      mnemonic = "vssra.vi";
+      mask = 0xfc00707fL;
+      match_ = 0xac003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vssra.vi";
+    };
+    {
+      mnemonic = "vssra.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xac000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vssra.vv";
+    };
+    {
+      mnemonic = "vssra.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xac004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vssra.vx";
+    };
+    {
+      mnemonic = "vssrl.vi";
+      mask = 0xfc00707fL;
+      match_ = 0xa8003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vssrl.vi";
+    };
+    {
+      mnemonic = "vssrl.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xa8000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vssrl.vv";
+    };
+    {
+      mnemonic = "vssrl.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xa8004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vssrl.vx";
+    };
+    {
+      mnemonic = "vssub.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x8c000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vssub.vv";
+    };
+    {
+      mnemonic = "vssub.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x8c004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vssub.vx";
+    };
+    {
+      mnemonic = "vssubu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x88000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vssubu.vv";
+    };
+    {
+      mnemonic = "vssubu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x88004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vssubu.vx";
+    };
+    {
+      mnemonic = "vsub.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x8000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsub.vv";
+    };
+    {
+      mnemonic = "vsub.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x8004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsub.vx";
+    };
+    {
+      mnemonic = "vsuxei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei16.v";
+    };
+    {
+      mnemonic = "vsuxseg2ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x24005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei16.v";
+    };
+    {
+      mnemonic = "vsuxseg3ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x44005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei16.v";
+    };
+    {
+      mnemonic = "vsuxseg4ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x64005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei16.v";
+    };
+    {
+      mnemonic = "vsuxseg5ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0x84005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei16.v";
+    };
+    {
+      mnemonic = "vsuxseg6ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa4005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei16.v";
+    };
+    {
+      mnemonic = "vsuxseg7ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc4005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei16.v";
+    };
+    {
+      mnemonic = "vsuxseg8ei16.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe4005027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei16.v";
+    };
+    {
+      mnemonic = "vsuxei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei32.v";
+    };
+    {
+      mnemonic = "vsuxseg2ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x24006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei32.v";
+    };
+    {
+      mnemonic = "vsuxseg3ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x44006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei32.v";
+    };
+    {
+      mnemonic = "vsuxseg4ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x64006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei32.v";
+    };
+    {
+      mnemonic = "vsuxseg5ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0x84006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei32.v";
+    };
+    {
+      mnemonic = "vsuxseg6ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa4006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei32.v";
+    };
+    {
+      mnemonic = "vsuxseg7ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc4006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei32.v";
+    };
+    {
+      mnemonic = "vsuxseg8ei32.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe4006027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei32.v";
+    };
+    {
+      mnemonic = "vsuxei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei64.v";
+    };
+    {
+      mnemonic = "vsuxseg2ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x24007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei64.v";
+    };
+    {
+      mnemonic = "vsuxseg3ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x44007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei64.v";
+    };
+    {
+      mnemonic = "vsuxseg4ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x64007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei64.v";
+    };
+    {
+      mnemonic = "vsuxseg5ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0x84007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei64.v";
+    };
+    {
+      mnemonic = "vsuxseg6ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa4007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei64.v";
+    };
+    {
+      mnemonic = "vsuxseg7ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc4007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei64.v";
+    };
+    {
+      mnemonic = "vsuxseg8ei64.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe4007027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei64.v";
+    };
+    {
+      mnemonic = "vsuxei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x4000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei8.v";
+    };
+    {
+      mnemonic = "vsuxseg2ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x24000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei8.v";
+    };
+    {
+      mnemonic = "vsuxseg3ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x44000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei8.v";
+    };
+    {
+      mnemonic = "vsuxseg4ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x64000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei8.v";
+    };
+    {
+      mnemonic = "vsuxseg5ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0x84000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei8.v";
+    };
+    {
+      mnemonic = "vsuxseg6ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xa4000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei8.v";
+    };
+    {
+      mnemonic = "vsuxseg7ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xc4000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei8.v";
+    };
+    {
+      mnemonic = "vsuxseg8ei8.v";
+      mask = 0xfc00707fL;
+      match_ = 0xe4000027L;
+      operands = [ Vreg { lsb = 7 }; Mem_zero { base = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsuxei8.v";
+    };
+    {
+      mnemonic = "vwadd.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xc4002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwadd.vv";
+    };
+    {
+      mnemonic = "vwadd.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xc4006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwadd.vx";
+    };
+    {
+      mnemonic = "vwadd.wv";
+      mask = 0xfc00707fL;
+      match_ = 0xd4002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwadd.wv";
+    };
+    {
+      mnemonic = "vwadd.wx";
+      mask = 0xfc00707fL;
+      match_ = 0xd4006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwadd.wx";
+    };
+    {
+      mnemonic = "vwaddu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xc0002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwaddu.vv";
+    };
+    {
+      mnemonic = "vwaddu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xc0006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwaddu.vx";
+    };
+    {
+      mnemonic = "vwaddu.wv";
+      mask = 0xfc00707fL;
+      match_ = 0xd0002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwaddu.wv";
+    };
+    {
+      mnemonic = "vwaddu.wx";
+      mask = 0xfc00707fL;
+      match_ = 0xd0006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwaddu.wx";
+    };
+    {
+      mnemonic = "vwmacc.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xf4002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmacc.vv";
+    };
+    {
+      mnemonic = "vwmacc.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xf4006057L;
+      operands = [ Vreg { lsb = 7 }; Gpr { lsb = 15; nonzero = false }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmacc.vx";
+    };
+    {
+      mnemonic = "vwmaccsu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xfc002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmaccsu.vv";
+    };
+    {
+      mnemonic = "vwmaccsu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xfc006057L;
+      operands = [ Vreg { lsb = 7 }; Gpr { lsb = 15; nonzero = false }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmaccsu.vx";
+    };
+    {
+      mnemonic = "vwmaccu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xf0002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmaccu.vv";
+    };
+    {
+      mnemonic = "vwmaccu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xf0006057L;
+      operands = [ Vreg { lsb = 7 }; Gpr { lsb = 15; nonzero = false }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmaccu.vx";
+    };
+    {
+      mnemonic = "vwmaccus.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xf8006057L;
+      operands = [ Vreg { lsb = 7 }; Gpr { lsb = 15; nonzero = false }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmaccus.vx";
+    };
+    {
+      mnemonic = "vwmul.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xec002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmul.vv";
+    };
+    {
+      mnemonic = "vwmul.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xec006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmul.vx";
+    };
+    {
+      mnemonic = "vwmulsu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xe8002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmulsu.vv";
+    };
+    {
+      mnemonic = "vwmulsu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xe8006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmulsu.vx";
+    };
+    {
+      mnemonic = "vwmulu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xe0002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmulu.vv";
+    };
+    {
+      mnemonic = "vwmulu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xe0006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwmulu.vx";
+    };
+    {
+      mnemonic = "vwredsum.vs";
+      mask = 0xfc00707fL;
+      match_ = 0xc4000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwredsum.vs";
+    };
+    {
+      mnemonic = "vwredsumu.vs";
+      mask = 0xfc00707fL;
+      match_ = 0xc0000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwredsumu.vs";
+    };
+    {
+      mnemonic = "vwsub.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xcc002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwsub.vv";
+    };
+    {
+      mnemonic = "vwsub.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xcc006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwsub.vx";
+    };
+    {
+      mnemonic = "vwsub.wv";
+      mask = 0xfc00707fL;
+      match_ = 0xdc002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwsub.wv";
+    };
+    {
+      mnemonic = "vwsub.wx";
+      mask = 0xfc00707fL;
+      match_ = 0xdc006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwsub.wx";
+    };
+    {
+      mnemonic = "vwsubu.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xc8002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwsubu.vv";
+    };
+    {
+      mnemonic = "vwsubu.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xc8006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwsubu.vx";
+    };
+    {
+      mnemonic = "vwsubu.wv";
+      mask = 0xfc00707fL;
+      match_ = 0xd8002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwsubu.wv";
+    };
+    {
+      mnemonic = "vwsubu.wx";
+      mask = 0xfc00707fL;
+      match_ = 0xd8006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vwsubu.wx";
+    };
+    {
+      mnemonic = "vxor.vi";
+      mask = 0xfc00707fL;
+      match_ = 0x2c003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Simm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vxor.vi";
+    };
+    {
+      mnemonic = "vxor.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x2c000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vxor.vv";
+    };
+    {
+      mnemonic = "vxor.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x2c004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vxor.vx";
+    };
+    {
       mnemonic = "c.mop.11";
       mask = 0xffffL;
       match_ = 0x6581L;
@@ -2759,6 +8645,150 @@ let rows : row array =
       xlen = 0;
       feature = "zcmop";
       source = "rv_zcmop/c.mop.9";
+    };
+    {
+      mnemonic = "vandn.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x4000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vandn.vv";
+    };
+    {
+      mnemonic = "vandn.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x4004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vandn.vx";
+    };
+    {
+      mnemonic = "vrol.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x54000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vrol.vv";
+    };
+    {
+      mnemonic = "vrol.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x54004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vrol.vx";
+    };
+    {
+      mnemonic = "vror.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x50000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vror.vv";
+    };
+    {
+      mnemonic = "vror.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x50004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vror.vx";
+    };
+    {
+      mnemonic = "vwsll.vi";
+      mask = 0xfc00707fL;
+      match_ = 0xd4003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Uimm { lsb = 15; width = 5 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vwsll.vi";
+    };
+    {
+      mnemonic = "vwsll.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xd4000057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vwsll.vv";
+    };
+    {
+      mnemonic = "vwsll.vx";
+      mask = 0xfc00707fL;
+      match_ = 0xd4004057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vwsll.vx";
+    };
+    {
+      mnemonic = "vclmul.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x30002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbc";
+      source = "rv_zvbc/vclmul.vv";
+    };
+    {
+      mnemonic = "vclmul.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x30006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbc";
+      source = "rv_zvbc/vclmul.vx";
+    };
+    {
+      mnemonic = "vclmulh.vv";
+      mask = 0xfc00707fL;
+      match_ = 0x34002057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Vreg { lsb = 15 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbc";
+      source = "rv_zvbc/vclmulh.vv";
+    };
+    {
+      mnemonic = "vclmulh.vx";
+      mask = 0xfc00707fL;
+      match_ = 0x34006057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Gpr { lsb = 15; nonzero = false }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbc";
+      source = "rv_zvbc/vclmulh.vx";
+    };
+    {
+      mnemonic = "vfwmaccbf16.vf";
+      mask = 0xfc00707fL;
+      match_ = 0xec005057L;
+      operands = [ Vreg { lsb = 7 }; Fpr { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvfbfwma";
+      source = "rv_zvfbfwma/vfwmaccbf16.vf";
+    };
+    {
+      mnemonic = "vfwmaccbf16.vv";
+      mask = 0xfc00707fL;
+      match_ = 0xec001057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 15 }; Vreg { lsb = 20 }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvfbfwma";
+      source = "rv_zvfbfwma/vfwmaccbf16.vv";
+    };
+    {
+      mnemonic = "vror.vi";
+      mask = 0xf800707fL;
+      match_ = 0x50003057L;
+      operands = [ Vreg { lsb = 7 }; Vreg { lsb = 20 }; Scatter { signed = false; nonzero = false; scale = 0; width = 6; bits = [ (26, 5); (19, 4); (18, 3); (17, 2); (16, 1); (15, 0) ] }; Vm { lsb = 25 } ];
+      xlen = 0;
+      feature = "zvbb";
+      source = "rv_zvbb/vror.vi";
     };
     {
       mnemonic = "fadd.q";
@@ -2887,6 +8917,15 @@ let rows : row array =
       source = "rv_zcb/c.zext.h";
     };
     {
+      mnemonic = "vsetivli";
+      mask = 0xc000707fL;
+      match_ = 0xc0007057L;
+      operands = [ Gpr { lsb = 7; nonzero = false }; Uimm { lsb = 15; width = 5 }; Vtype { lsb = 20; width = 10 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsetivli";
+    };
+    {
       mnemonic = "lpad";
       mask = 0xfffL;
       match_ = 0x17L;
@@ -2903,6 +8942,15 @@ let rows : row array =
       xlen = 64;
       feature = "zcb";
       source = "rv64_zcb/c.sext.w";
+    };
+    {
+      mnemonic = "vsetvli";
+      mask = 0x8000707fL;
+      match_ = 0x7057L;
+      operands = [ Gpr { lsb = 7; nonzero = false }; Gpr { lsb = 15; nonzero = false }; Vtype { lsb = 20; width = 11 } ];
+      xlen = 0;
+      feature = "v";
+      source = "rv_v/vsetvli";
     };
     {
       mnemonic = "c.addi16sp";
