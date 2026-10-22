@@ -935,7 +935,7 @@ let%expect_test "Zfa, Zfh, Q: mixed-format forms need both formats" =
     riscv64  [none,+zfa] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature q, which is not enabled
     riscv64  [none,+zfa] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature zfhmin and d, which is not enabled
     riscv64  [none,+zfa] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
-    riscv64  [none,+zfa] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature zfhmin, which is not enabled
+    riscv64  [none,+zfa] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature one of zfhmin, zfbfmin, which is not enabled
     riscv64  [none,+zfa] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
     riscv64  [none,+zfa,+d] fli.s f1, 1.0          d3 00 18 f0
     riscv64  [none,+zfa,+d] fli.d f1, 1.0          d3 00 18 f2
@@ -943,7 +943,7 @@ let%expect_test "Zfa, Zfh, Q: mixed-format forms need both formats" =
     riscv64  [none,+zfa,+d] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature q, which is not enabled
     riscv64  [none,+zfa,+d] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature zfhmin, which is not enabled
     riscv64  [none,+zfa,+d] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
-    riscv64  [none,+zfa,+d] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature zfhmin, which is not enabled
+    riscv64  [none,+zfa,+d] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature one of zfhmin, zfbfmin, which is not enabled
     riscv64  [none,+zfa,+d] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
     riscv64  [none,+zfa,+zfh] fli.s f1, 1.0          d3 00 18 f0
     riscv64  [none,+zfa,+zfh] fli.d f1, 1.0          REFUSED riscv64.feature: fli.d requires feature d, which is not enabled
@@ -975,7 +975,7 @@ let%expect_test "Zfa, Zfh, Q: mixed-format forms need both formats" =
     riscv64  [none,+q  ] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature zfa, which is not enabled
     riscv64  [none,+q  ] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature zfhmin, which is not enabled
     riscv64  [none,+q  ] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
-    riscv64  [none,+q  ] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature zfhmin, which is not enabled
+    riscv64  [none,+q  ] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature one of zfhmin, zfbfmin, which is not enabled
     riscv64  [none,+q  ] fadd.q f1, f2, f3      d3 70 31 06 |}]
 
 let%expect_test "Zfh implies Zfhmin" =
@@ -992,6 +992,40 @@ let%expect_test "Zfh implies Zfhmin" =
     "none,+zfhmin"     -> f,zfhmin,zicsr
     "none,+q"          -> d,f,q,zicsr
     "none,+zfa"        -> f,zfa,zicsr |}]
+
+let%expect_test "Zfbfmin shares Zfhmin's loads, stores and moves" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv32")
+        [
+          "flh f1, 0(x2)";
+          "fsh f1, 0(x2)";
+          "fmv.x.h a0, f1";
+          "fmv.h.x f1, a0";
+          "fcvt.s.h f1, f2";
+          "fcvt.bf16.s f1, f2";
+        ])
+    [ "none,+f"; "none,+zfbfmin"; "none,+zfhmin" ];
+  [%expect
+    {|
+    riscv32  [none,+f  ] flh f1, 0(x2)          REFUSED riscv32.feature: flh requires feature one of zfhmin, zfbfmin, which is not enabled
+    riscv32  [none,+f  ] fsh f1, 0(x2)          REFUSED riscv32.feature: fsh requires feature one of zfhmin, zfbfmin, which is not enabled
+    riscv32  [none,+f  ] fmv.x.h a0, f1         REFUSED riscv32.feature: fmv.x.h requires feature one of zfhmin, zfbfmin, which is not enabled
+    riscv32  [none,+f  ] fmv.h.x f1, a0         REFUSED riscv32.feature: fmv.h.x requires feature one of zfhmin, zfbfmin, which is not enabled
+    riscv32  [none,+f  ] fcvt.s.h f1, f2        REFUSED riscv32.feature: fcvt.s.h requires feature zfhmin, which is not enabled
+    riscv32  [none,+f  ] fcvt.bf16.s f1, f2     REFUSED riscv32.feature: fcvt.bf16.s requires feature zfbfmin, which is not enabled
+    riscv32  [none,+zfbfmin] flh f1, 0(x2)          87 10 01 00
+    riscv32  [none,+zfbfmin] fsh f1, 0(x2)          27 10 11 00
+    riscv32  [none,+zfbfmin] fmv.x.h a0, f1         53 85 00 e4
+    riscv32  [none,+zfbfmin] fmv.h.x f1, a0         d3 00 05 f4
+    riscv32  [none,+zfbfmin] fcvt.s.h f1, f2        REFUSED riscv32.feature: fcvt.s.h requires feature zfhmin, which is not enabled
+    riscv32  [none,+zfbfmin] fcvt.bf16.s f1, f2     d3 70 81 44
+    riscv32  [none,+zfhmin] flh f1, 0(x2)          87 10 01 00
+    riscv32  [none,+zfhmin] fsh f1, 0(x2)          27 10 11 00
+    riscv32  [none,+zfhmin] fmv.x.h a0, f1         53 85 00 e4
+    riscv32  [none,+zfhmin] fmv.h.x f1, a0         d3 00 05 f4
+    riscv32  [none,+zfhmin] fcvt.s.h f1, f2        d3 00 21 40
+    riscv32  [none,+zfhmin] fcvt.bf16.s f1, f2     REFUSED riscv32.feature: fcvt.bf16.s requires feature zfbfmin, which is not enabled |}]
 
 (* {1 Bit manipulation and scalar crypto} *)
 
@@ -1259,7 +1293,7 @@ let%expect_test "vector configurations" =
     "none,+zvbb"           -> zicsr,zvbb,zve32x,zvkb
     "none,+zvkn"           -> zicsr,zve32x,zve64x,zvkb,zvkn,zvkned,zvknha,zvknhb
     "none,+zvknhb"         -> zicsr,zve32x,zve64x,zvknha,zvknhb
-    "none,+zvfbfwma"       -> f,zfbfmin,zicsr,zve32f,zve32x,zvfbfwma
+    "none,+zvfbfwma"       -> f,zfbfmin,zicsr,zve32f,zve32x,zvfbfmin,zvfbfwma
     "-d"                   -> error: feature q requires d, which is disabled
     "-q,-d"                -> error: feature zve64d requires d, which is disabled |}]
 
@@ -1301,6 +1335,46 @@ let%expect_test "embedded vector profiles" =
     riscv32  [none,+zve64x] vle64.v v1, (a0)       87 70 05 02
     riscv32  [none,+zve64x] vfadd.vv v1, v2, v3    REFUSED riscv32.feature: vfadd.vv requires feature zve32f, which is not enabled
     riscv32  [none,+zve64x] vfwmaccbf16.vv v1, v2, v3 REFUSED riscv32.feature: vfwmaccbf16.vv requires feature zvfbfwma, which is not enabled |}]
+
+let%expect_test "vtype immediates are checked against ELEN" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv32")
+        [
+          "vsetvli t0, a0, e64, m1, ta, ma";
+          "vsetivli t0, 4, e64, m1, ta, ma";
+          "vsetvli t0, a0, e32, mf8, ta, ma";
+          "vsetvli t0, a0, e8, mf4, ta, ma";
+          "vsetvl t0, a0, a1";
+        ])
+    [ "none,+zve32f"; "none,+zve64x" ];
+  [%expect
+    {|
+    riscv32  [none,+zve32f] vsetvli t0, a0, e64, m1, ta, ma REFUSED riscv32.feature: vsetvli e64 requires feature zve64x, which is not enabled
+    riscv32  [none,+zve32f] vsetivli t0, 4, e64, m1, ta, ma REFUSED riscv32.feature: vsetivli e64 requires feature zve64x, which is not enabled
+    riscv32  [none,+zve32f] vsetvli t0, a0, e32, mf8, ta, ma REFUSED riscv32.feature: vsetvli mf8 requires feature zve64x, which is not enabled
+    riscv32  [none,+zve32f] vsetvli t0, a0, e8, mf4, ta, ma d7 72 65 0c
+    riscv32  [none,+zve32f] vsetvl t0, a0, a1      d7 72 b5 80
+    riscv32  [none,+zve64x] vsetvli t0, a0, e64, m1, ta, ma d7 72 85 0d
+    riscv32  [none,+zve64x] vsetivli t0, 4, e64, m1, ta, ma d7 72 82 cd
+    riscv32  [none,+zve64x] vsetvli t0, a0, e32, mf8, ta, ma d7 72 55 0d
+    riscv32  [none,+zve64x] vsetvli t0, a0, e8, mf4, ta, ma d7 72 65 0c
+    riscv32  [none,+zve64x] vsetvl t0, a0, a1      d7 72 b5 80 |}]
+
+let%expect_test "Zvfbfwma brings in the BF16 vector conversions" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv32")
+        [ "vfwcvtbf16.f.f.v v8, v4"; "vfncvtbf16.f.f.w v4, v8"; "vfwmaccbf16.vv v1, v2, v3" ])
+    [ "none,+zve32f"; "none,+zvfbfwma" ];
+  [%expect
+    {|
+    riscv32  [none,+zve32f] vfwcvtbf16.f.f.v v8, v4 REFUSED riscv32.feature: vfwcvtbf16.f.f.v requires feature zvfbfmin, which is not enabled
+    riscv32  [none,+zve32f] vfncvtbf16.f.f.w v4, v8 REFUSED riscv32.feature: vfncvtbf16.f.f.w requires feature zvfbfmin, which is not enabled
+    riscv32  [none,+zve32f] vfwmaccbf16.vv v1, v2, v3 REFUSED riscv32.feature: vfwmaccbf16.vv requires feature zvfbfwma, which is not enabled
+    riscv32  [none,+zvfbfwma] vfwcvtbf16.f.f.v v8, v4 57 94 46 4a
+    riscv32  [none,+zvfbfwma] vfncvtbf16.f.f.w v4, v8 57 92 8e 4a
+    riscv32  [none,+zvfbfwma] vfwmaccbf16.vv v1, v2, v3 d7 10 31 ee |}]
 
 (* {1 Every lowered form is gated} *)
 

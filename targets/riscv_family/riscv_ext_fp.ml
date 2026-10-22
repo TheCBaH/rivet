@@ -1,6 +1,7 @@
 (* Floating-point extensions beyond F and D. They have only generated rows. Zfa and Zfhmin forms
    that mix formats need the other format's component as well: the format is the last suffix of
-   the mnemonic, except for the moves that name the wider format first. *)
+   the mnemonic, except for the moves that name the wider format first. Zfbfmin shares Zfhmin's
+   half-word loads, stores and moves, which riscv-opcodes lists under Zfhmin only. *)
 
 module Req = Target_component.Req
 
@@ -36,6 +37,8 @@ let zfhmin =
     match m with
     | "fcvt.d.h" | "fcvt.h.d" -> Some (Req.All [ Feature "zfhmin"; Feature "d" ])
     | "fcvt.h.q" | "fcvt.q.h" -> Some (Req.All [ Feature "zfhmin"; Feature "q" ])
+    | "flh" | "fsh" | "fmv.x.h" | "fmv.h.x" ->
+        Some (Req.Any [ Feature "zfhmin"; Feature "zfbfmin" ])
     | _ -> None
   in
   Riscv_ext.component ~id:"riscv.zfhmin" ~feature:"zfhmin" ~requires:[ "f" ] ~legal
