@@ -74,7 +74,9 @@ let zvksh = leaf "zvksh" "vector SM3 hash function"
 let zvfbfmin = leaf "zvfbfmin" ~requires:[ "zve32f" ] "vector BF16 conversion"
 
 let zvfbfwma =
-  leaf "zvfbfwma" ~requires:[ "zve32f"; "zfbfmin" ] "vector BF16 widening multiply-accumulate"
+  leaf "zvfbfwma"
+    ~requires:[ "zve32f"; "zfbfmin"; "zvfbfmin" ]
+    "vector BF16 widening multiply-accumulate"
 
 let zvkb = leaf "zvkb" "vector cryptography bit manipulation"
 

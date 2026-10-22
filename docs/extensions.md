@@ -30,6 +30,7 @@ alternatives on every form:
 - `zvkn`, `zvks` and their sums with `zvbc`/`zvkg` imply the vector crypto
   leaves; `zvbb` implies `zvkb`; `zvknhb` implies `zvknha`.
 - `zfh` implies `zfhmin`.
+- `zvfbfwma` requires `zvfbfmin` and `zfbfmin`, so enabling it enables both.
 
 The groups are off by default so the leaves they imply can still be removed one
 at a time. A form shared by several leaves carries an `Any` predicate over the
@@ -235,7 +236,7 @@ owns; the last column lists forms whose predicate is not just the feature.
 | zvkg | zve32x |  |  | yes | 2 |  |
 | zvksh | zve32x |  |  | yes | 2 |  |
 | zvfbfmin | zve32f |  |  | yes | 2 |  |
-| zvfbfwma | zve32f, zfbfmin |  |  | yes | 2 |  |
+| zvfbfwma | zve32f, zfbfmin, zvfbfmin |  |  | yes | 2 |  |
 | zvkb | zve32x |  |  | yes | 0 |  |
 | zvknhb | zve64x | zvknha |  | yes | 0 |  |
 | zvkn |  | zvkned, zvknhb, zvkb |  | no | 0 |  |

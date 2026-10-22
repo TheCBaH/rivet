@@ -1293,7 +1293,7 @@ let%expect_test "vector configurations" =
     "none,+zvbb"           -> zicsr,zvbb,zve32x,zvkb
     "none,+zvkn"           -> zicsr,zve32x,zve64x,zvkb,zvkn,zvkned,zvknha,zvknhb
     "none,+zvknhb"         -> zicsr,zve32x,zve64x,zvknha,zvknhb
-    "none,+zvfbfwma"       -> f,zfbfmin,zicsr,zve32f,zve32x,zvfbfwma
+    "none,+zvfbfwma"       -> f,zfbfmin,zicsr,zve32f,zve32x,zvfbfmin,zvfbfwma
     "-d"                   -> error: feature q requires d, which is disabled
     "-q,-d"                -> error: feature zve64d requires d, which is disabled |}]
 
@@ -1335,6 +1335,21 @@ let%expect_test "embedded vector profiles" =
     riscv32  [none,+zve64x] vle64.v v1, (a0)       87 70 05 02
     riscv32  [none,+zve64x] vfadd.vv v1, v2, v3    REFUSED riscv32.feature: vfadd.vv requires feature zve32f, which is not enabled
     riscv32  [none,+zve64x] vfwmaccbf16.vv v1, v2, v3 REFUSED riscv32.feature: vfwmaccbf16.vv requires feature zvfbfwma, which is not enabled |}]
+
+let%expect_test "Zvfbfwma brings in the BF16 vector conversions" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv32")
+        [ "vfwcvtbf16.f.f.v v8, v4"; "vfncvtbf16.f.f.w v4, v8"; "vfwmaccbf16.vv v1, v2, v3" ])
+    [ "none,+zve32f"; "none,+zvfbfwma" ];
+  [%expect
+    {|
+    riscv32  [none,+zve32f] vfwcvtbf16.f.f.v v8, v4 REFUSED riscv32.feature: vfwcvtbf16.f.f.v requires feature zvfbfmin, which is not enabled
+    riscv32  [none,+zve32f] vfncvtbf16.f.f.w v4, v8 REFUSED riscv32.feature: vfncvtbf16.f.f.w requires feature zvfbfmin, which is not enabled
+    riscv32  [none,+zve32f] vfwmaccbf16.vv v1, v2, v3 REFUSED riscv32.feature: vfwmaccbf16.vv requires feature zvfbfwma, which is not enabled
+    riscv32  [none,+zvfbfwma] vfwcvtbf16.f.f.v v8, v4 57 94 46 4a
+    riscv32  [none,+zvfbfwma] vfncvtbf16.f.f.w v4, v8 57 92 8e 4a
+    riscv32  [none,+zvfbfwma] vfwmaccbf16.vv v1, v2, v3 d7 10 31 ee |}]
 
 (* {1 Every lowered form is gated} *)
 
