@@ -128,6 +128,24 @@ Removing `v` alone keeps the profiles it implied, as removing `c` keeps `zca`.
 The crypto leaves require `zve32x` (`zvbc` and `zvknhb` `zve64x`), as the
 specification says; GNU as 2.43 does not check it.
 
+## ISA strings
+
+`Riscv_family_encode.Riscv_isa` converts between configurations and ISA
+strings. `of_march "rv32imf_zve32f_zvfbfwma"` gives the XLEN and a spec starting
+from `none`, with `system` and `s` on (GNU as takes their instructions under any
+`-march`). Versions are accepted and ignored, `g` expands to
+`imafd_zicsr_zifencei`, and `zvl<n>b` is returned as `vlen`, since no feature
+models it. Unknown names fail in `Target_config.resolve`; Zaamo and Zalrsc are
+unknown because A is one component.
+
+`to_string ~xlen config` writes the resolved set in canonical order with
+ratified versions (`?isa_spec:`V2_2` uses 2.2's and folds Zicsr and Zifencei
+into I), adding the `zvl<n>b` the vector profile and `?vlen` imply. It writes
+Rivet's closure, which is not quite either assembler's: C brings in `zca` (and
+`zcf`, `zcd`) and Zvknhb implies Zvknha, which LLVM 19 leaves out; LLVM adds
+`zkr`, `zkt` to Zk and `zvkt` to Zvkn, and GNU as 2.44 adds `zaamo`, `zalrsc`
+to A. `test_features.ml` pins the output against LLVM 19.
+
 ## Row overlaps
 
 Thirty-three pairs of generated rows have overlapping encodings. Each is

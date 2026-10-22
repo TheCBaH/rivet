@@ -13,6 +13,7 @@
   riscv_ext_sys
   riscv_ext_v
   riscv_extensions
+  riscv_isa
   riscv_overlap
   riscv_table_row
   riscv_table_rows)
