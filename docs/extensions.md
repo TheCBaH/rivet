@@ -36,7 +36,8 @@ at a time. A form shared by several leaves carries an `Any` predicate over the
 leaves only: `andn`, `orn`, `xnor`, `rol`, `ror`, `rolw`, `rorw`, `rori`, `roriw`,
 `rev8` need `zbb` or `zbkb`; `clmul`, `clmulh` need `zbc` or `zbkc`;
 `aes64ks1i`, `aes64ks2` need `zknd` or `zkne`; the nine vector forms Zvkb shares
-with Zvbb need `zvbb` or `zvkb`.
+with Zvbb need `zvbb` or `zvkb`; `flh`, `fsh`, `fmv.x.h`, `fmv.h.x` need `zfhmin`
+or `zfbfmin` (riscv-opcodes lists them under Zfhmin only).
 
 ## Forms with a predicate beyond their owner
 
@@ -183,7 +184,7 @@ owns; the last column lists forms whose predicate is not just the feature.
 | zabha | a |  |  | yes | 72 |  |
 | q | d |  |  | yes | 35 |  |
 | zfh | f | zfhmin |  | yes | 29 |  |
-| zfhmin | f |  |  | yes | 10 | fcvt.d.h: zfhmin and d; fcvt.h.d: zfhmin and d; fcvt.h.q: zfhmin and q; fcvt.q.h: zfhmin and q |
+| zfhmin | f |  |  | yes | 10 | flh: one of zfhmin, zfbfmin; fsh: one of zfhmin, zfbfmin; fmv.x.h: one of zfhmin, zfbfmin; fmv.h.x: one of zfhmin, zfbfmin; fcvt.d.h: zfhmin and d; fcvt.h.d: zfhmin and d; fcvt.h.q: zfhmin and q; fcvt.q.h: zfhmin and q |
 | zfa | f |  |  | yes | 33 | fmvh.x.q: zfa and q; fcvtmod.w.d: zfa and d; fli.d: zfa and d; fli.q: zfa and q; fli.h: zfa and zfh; fmvh.x.d: zfa and d; fround.d: zfa and d; froundnx.d: zfa and d; fround.q: zfa and q; froundnx.q: zfa and q; fround.h: zfa and zfh; froundnx.h: zfa and zfh; fmvp.q.x: zfa and q; fleq.d: zfa and d; fltq.d: zfa and d; fmaxm.d: zfa and d; fminm.d: zfa and d; fleq.q: zfa and q; fltq.q: zfa and q; fmaxm.q: zfa and q; fminm.q: zfa and q; fleq.h: zfa and zfh; fltq.h: zfa and zfh; fmaxm.h: zfa and zfh; fminm.h: zfa and zfh; fmvp.d.x: zfa and d |
 | zfbfmin | f |  |  | yes | 2 |  |
 | zba |  |  |  | yes | 9 |  |

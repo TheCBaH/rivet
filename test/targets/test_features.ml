@@ -935,7 +935,7 @@ let%expect_test "Zfa, Zfh, Q: mixed-format forms need both formats" =
     riscv64  [none,+zfa] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature q, which is not enabled
     riscv64  [none,+zfa] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature zfhmin and d, which is not enabled
     riscv64  [none,+zfa] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
-    riscv64  [none,+zfa] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature zfhmin, which is not enabled
+    riscv64  [none,+zfa] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature one of zfhmin, zfbfmin, which is not enabled
     riscv64  [none,+zfa] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
     riscv64  [none,+zfa,+d] fli.s f1, 1.0          d3 00 18 f0
     riscv64  [none,+zfa,+d] fli.d f1, 1.0          d3 00 18 f2
@@ -943,7 +943,7 @@ let%expect_test "Zfa, Zfh, Q: mixed-format forms need both formats" =
     riscv64  [none,+zfa,+d] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature q, which is not enabled
     riscv64  [none,+zfa,+d] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature zfhmin, which is not enabled
     riscv64  [none,+zfa,+d] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
-    riscv64  [none,+zfa,+d] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature zfhmin, which is not enabled
+    riscv64  [none,+zfa,+d] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature one of zfhmin, zfbfmin, which is not enabled
     riscv64  [none,+zfa,+d] fadd.q f1, f2, f3      REFUSED riscv64.feature: fadd.q requires feature q, which is not enabled
     riscv64  [none,+zfa,+zfh] fli.s f1, 1.0          d3 00 18 f0
     riscv64  [none,+zfa,+zfh] fli.d f1, 1.0          REFUSED riscv64.feature: fli.d requires feature d, which is not enabled
@@ -975,7 +975,7 @@ let%expect_test "Zfa, Zfh, Q: mixed-format forms need both formats" =
     riscv64  [none,+q  ] fminm.q f1, f2, f3     REFUSED riscv64.feature: fminm.q requires feature zfa, which is not enabled
     riscv64  [none,+q  ] fcvt.d.h f1, f2        REFUSED riscv64.feature: fcvt.d.h requires feature zfhmin, which is not enabled
     riscv64  [none,+q  ] fadd.h f1, f2, f3      REFUSED riscv64.feature: fadd.h requires feature zfh, which is not enabled
-    riscv64  [none,+q  ] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature zfhmin, which is not enabled
+    riscv64  [none,+q  ] flh f1, 0(x2)          REFUSED riscv64.feature: flh requires feature one of zfhmin, zfbfmin, which is not enabled
     riscv64  [none,+q  ] fadd.q f1, f2, f3      d3 70 31 06 |}]
 
 let%expect_test "Zfh implies Zfhmin" =
@@ -992,6 +992,40 @@ let%expect_test "Zfh implies Zfhmin" =
     "none,+zfhmin"     -> f,zfhmin,zicsr
     "none,+q"          -> d,f,q,zicsr
     "none,+zfa"        -> f,zfa,zicsr |}]
+
+let%expect_test "Zfbfmin shares Zfhmin's loads, stores and moves" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv32")
+        [
+          "flh f1, 0(x2)";
+          "fsh f1, 0(x2)";
+          "fmv.x.h a0, f1";
+          "fmv.h.x f1, a0";
+          "fcvt.s.h f1, f2";
+          "fcvt.bf16.s f1, f2";
+        ])
+    [ "none,+f"; "none,+zfbfmin"; "none,+zfhmin" ];
+  [%expect
+    {|
+    riscv32  [none,+f  ] flh f1, 0(x2)          REFUSED riscv32.feature: flh requires feature one of zfhmin, zfbfmin, which is not enabled
+    riscv32  [none,+f  ] fsh f1, 0(x2)          REFUSED riscv32.feature: fsh requires feature one of zfhmin, zfbfmin, which is not enabled
+    riscv32  [none,+f  ] fmv.x.h a0, f1         REFUSED riscv32.feature: fmv.x.h requires feature one of zfhmin, zfbfmin, which is not enabled
+    riscv32  [none,+f  ] fmv.h.x f1, a0         REFUSED riscv32.feature: fmv.h.x requires feature one of zfhmin, zfbfmin, which is not enabled
+    riscv32  [none,+f  ] fcvt.s.h f1, f2        REFUSED riscv32.feature: fcvt.s.h requires feature zfhmin, which is not enabled
+    riscv32  [none,+f  ] fcvt.bf16.s f1, f2     REFUSED riscv32.feature: fcvt.bf16.s requires feature zfbfmin, which is not enabled
+    riscv32  [none,+zfbfmin] flh f1, 0(x2)          87 10 01 00
+    riscv32  [none,+zfbfmin] fsh f1, 0(x2)          27 10 11 00
+    riscv32  [none,+zfbfmin] fmv.x.h a0, f1         53 85 00 e4
+    riscv32  [none,+zfbfmin] fmv.h.x f1, a0         d3 00 05 f4
+    riscv32  [none,+zfbfmin] fcvt.s.h f1, f2        REFUSED riscv32.feature: fcvt.s.h requires feature zfhmin, which is not enabled
+    riscv32  [none,+zfbfmin] fcvt.bf16.s f1, f2     d3 70 81 44
+    riscv32  [none,+zfhmin] flh f1, 0(x2)          87 10 01 00
+    riscv32  [none,+zfhmin] fsh f1, 0(x2)          27 10 11 00
+    riscv32  [none,+zfhmin] fmv.x.h a0, f1         53 85 00 e4
+    riscv32  [none,+zfhmin] fmv.h.x f1, a0         d3 00 05 f4
+    riscv32  [none,+zfhmin] fcvt.s.h f1, f2        d3 00 21 40
+    riscv32  [none,+zfhmin] fcvt.bf16.s f1, f2     REFUSED riscv32.feature: fcvt.bf16.s requires feature zfbfmin, which is not enabled |}]
 
 (* {1 Bit manipulation and scalar crypto} *)
 
