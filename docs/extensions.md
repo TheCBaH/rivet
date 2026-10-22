@@ -115,6 +115,9 @@ them: the floating-point forms (`vf*` and `vmf*`, except the integer
 `vfirst.m`) to `zve32f`, loads and stores of 64-bit elements (width field 7) to
 `zve64x`, and the rest to `zve32x`. `zve64f`, `zve64d` and `v` add no encodings;
 SEW=64 arithmetic and double-precision elements are a `vtype` matter at run time.
+Without `zve64x` ELEN is 32, so `vsetvli` and `vsetivli` refuse `e64` (it would
+set `vill`) and `mf8` (reserved); `vsetvl` takes vtype from a register and is
+not checked.
 `zve64d` requires `d`, so a core without D names its profile explicitly, as
 Coral NPU's `rv32imf_zve32f_zicsr_zifencei_zbb_zfbfmin_zvfbfmin_zvfbfwma`
 becomes

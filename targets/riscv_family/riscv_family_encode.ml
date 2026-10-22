@@ -3983,8 +3983,23 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
 
   (* Encoding under a configuration, so a caller that builds lowered forms directly cannot
      emit a disabled component's instruction. [encode] is the default-configuration wrapper. *)
+  (* Without Zve64x ELEN is 32: SEW 64 sets vill and LMUL 1/8 is reserved. Only the immediate
+     vtype forms can be checked. *)
+  let vtype_gate state = function
+    | Lowered.Fixed { name = ("vsetvli" | "vsetivli") as name; word }
+      when not (Target_config.enabled state.config "zve64x") -> (
+        let vtype = Int64.to_int (Int64.shift_right_logical word 20) land 0xff in
+        let refuse setting =
+          Error (diag ~pos:__POS__ (`Feature_disabled (name ^ " " ^ setting, "zve64x")))
+        in
+        match ((vtype lsr 3) land 7, vtype land 7) with
+        | 3, _ -> refuse "e64"
+        | _, 5 -> refuse "mf8"
+        | _ -> Ok ())
+    | _ -> Ok ()
+
   let encode_in state l =
-    match feature_gate state (lowered_mnemonic l) with
+    match Result.bind (feature_gate state (lowered_mnemonic l)) (fun () -> vtype_gate state l) with
     | Error _ as e -> e
     | Ok () -> encode_ungated l
 

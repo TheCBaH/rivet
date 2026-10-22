@@ -1374,6 +1374,31 @@ let%expect_test "embedded vector profiles" =
     riscv32  [none,+zve64x] vfadd.vv v1, v2, v3    REFUSED riscv32.feature: vfadd.vv requires feature zve32f, which is not enabled
     riscv32  [none,+zve64x] vfwmaccbf16.vv v1, v2, v3 REFUSED riscv32.feature: vfwmaccbf16.vv requires feature zvfbfwma, which is not enabled |}]
 
+let%expect_test "vtype immediates are checked against ELEN" =
+  List.iter
+    (fun features ->
+      List.iter (show ~features "riscv32")
+        [
+          "vsetvli t0, a0, e64, m1, ta, ma";
+          "vsetivli t0, 4, e64, m1, ta, ma";
+          "vsetvli t0, a0, e32, mf8, ta, ma";
+          "vsetvli t0, a0, e8, mf4, ta, ma";
+          "vsetvl t0, a0, a1";
+        ])
+    [ "none,+zve32f"; "none,+zve64x" ];
+  [%expect
+    {|
+    riscv32  [none,+zve32f] vsetvli t0, a0, e64, m1, ta, ma REFUSED riscv32.feature: vsetvli e64 requires feature zve64x, which is not enabled
+    riscv32  [none,+zve32f] vsetivli t0, 4, e64, m1, ta, ma REFUSED riscv32.feature: vsetivli e64 requires feature zve64x, which is not enabled
+    riscv32  [none,+zve32f] vsetvli t0, a0, e32, mf8, ta, ma REFUSED riscv32.feature: vsetvli mf8 requires feature zve64x, which is not enabled
+    riscv32  [none,+zve32f] vsetvli t0, a0, e8, mf4, ta, ma d7 72 65 0c
+    riscv32  [none,+zve32f] vsetvl t0, a0, a1      d7 72 b5 80
+    riscv32  [none,+zve64x] vsetvli t0, a0, e64, m1, ta, ma d7 72 85 0d
+    riscv32  [none,+zve64x] vsetivli t0, 4, e64, m1, ta, ma d7 72 82 cd
+    riscv32  [none,+zve64x] vsetvli t0, a0, e32, mf8, ta, ma d7 72 55 0d
+    riscv32  [none,+zve64x] vsetvli t0, a0, e8, mf4, ta, ma d7 72 65 0c
+    riscv32  [none,+zve64x] vsetvl t0, a0, a1      d7 72 b5 80 |}]
+
 let%expect_test "Zvfbfwma brings in the BF16 vector conversions" =
   List.iter
     (fun features ->
