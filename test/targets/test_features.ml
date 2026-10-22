@@ -449,6 +449,44 @@ let%expect_test "RISC-V: a normalized instruction is refused at lowering, a lowe
     zmmul off: lower_instruction -> refused: mul requires feature zmmul, which is not enabled
     zmmul off: encode_in -> refused: mul requires feature zmmul, which is not enabled |}]
 
+let%expect_test "RISC-V: a refusal at lowering names the item it came from" =
+  let module E = Riscv32_encode in
+  let module P = Driver_direct.Pipeline_direct.Make (E) in
+  let open Asm_core in
+  let config =
+    match Target_config.resolve E.components (spec "none") with Ok c -> c | Error m -> failwith m
+  in
+  let origin = Foundation.Origin.producer ~tool:"kernel" ~item:"peak+8" () in
+  let x n = E.Operand.Reg (E.Reg.X n) in
+  let insn =
+    match
+      Result.bind
+        (E.make_surface_instruction ~mnemonic:"mul" ~origin [ x 5; x 6; x 7 ])
+        (E.simplify_instruction E.default_state)
+    with
+    | Ok i -> i
+    | Error _ -> failwith "simplify"
+  in
+  let m =
+    {
+      Normalized_ast.unit_name = "kernel";
+      items =
+        [
+          Normalized_ast.Directive
+            {
+              directive = Directive.Section { name = ".text"; perms = Perms.rx; nobits = false };
+              origin;
+            };
+          Normalized_ast.Instruction { insn; origin };
+        ];
+    }
+  in
+  (match P.lower ~state:(E.initial_state config) m with
+  | Ok _ -> print_endline "accepted"
+  | Error e -> print_string (Foundation.Diag.render e));
+  [%expect
+    {| <synthesized by riscv32 from <kernel:peak+8>>: error[riscv32.feature]: mul requires feature zmmul, which is not enabled |}]
+
 let%expect_test "x86: a lowered x87 form is refused at encoding, a base one is not" =
   let module E = X86_32_encode in
   let config text =

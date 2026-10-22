@@ -47,7 +47,9 @@ module Make (T : Target_encode.ENCODE) = struct
      erasure boundary {!Target_encode.ENCODE} names: [Make] is generic over [T]
      and cannot hold a [T.error], so the target renders its own domain and a
      diagnostic is what crosses (docs/errors.md §2). *)
-  let target_diagnostic e = T.error_diagnostic (Err.Error.kind e)
+  let target_diagnostic ?within e =
+    let d = T.error_diagnostic (Err.Error.kind e) in
+    match within with Some o -> Diagnostic.within o d | None -> d
 
   (* {1 Configuration}
 
@@ -321,7 +323,7 @@ module Make (T : Target_encode.ENCODE) = struct
         | Normalized_ast.Instruction { insn; origin } ->
             with_section origin (fun s ->
                 match T.lower_instruction !state insn with
-                | Error e -> errors := target_diagnostic e :: !errors
+                | Error e -> errors := target_diagnostic ~within:origin e :: !errors
                 | Ok lowered ->
                     List.iter
                       (fun l ->
@@ -329,7 +331,7 @@ module Make (T : Target_encode.ENCODE) = struct
                           { a with Lowered_ast.form = T.name ^ "." ^ a.Lowered_ast.form }
                         in
                         match T.encode_in !state l with
-                        | Error e -> errors := target_diagnostic e :: !errors
+                        | Error e -> errors := target_diagnostic ~within:origin e :: !errors
                         | Ok (`Fixed a) ->
                             let a = qualify a in
                             s.sb_frags <-

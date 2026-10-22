@@ -38,6 +38,7 @@ let code t = t.code
 let message t = t.message
 let origin t = t.origin
 let notes t = t.notes
+let within parent t = { t with origin = Origin.within parent t.origin }
 
 let pp_severity ppf s =
   Fmt.string ppf (match s with Error -> "error" | Warning -> "warning" | Note -> "note")

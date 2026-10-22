@@ -15,6 +15,11 @@ let text span = Text span
 let producer ?item ~tool () = Producer { tool; item }
 let synthesized ?parent ~pass () = Synthesized { pass; parent }
 
+(* A pass that had no origin to hand records none; the caller that knows the item supplies it. *)
+let within parent = function
+  | Synthesized { pass; parent = None } -> Synthesized { pass; parent = Some parent }
+  | o -> o
+
 let rec pp ppf = function
   | Text span -> Span.pp ppf span
   | Producer { tool; item } -> Fmt.pf ppf "<%s%a>" tool Fmt.(option (any ":" ++ string)) item

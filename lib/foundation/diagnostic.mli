@@ -47,6 +47,11 @@ val message : t -> string
 val origin : t -> Origin.t
 val notes : t -> string list
 
+val within : Origin.t -> t -> t
+(** [within parent d] attributes [d] to [parent] when its origin is a synthesized one with no
+    parent: a target that refuses an instruction it was handed without an origin says only which
+    pass refused it, and the caller knows the item. Any other origin is kept. *)
+
 (** {1 Rendering}
 
     None of these emit a breakable space, so the enclosing box's right margin can never reflow them:
