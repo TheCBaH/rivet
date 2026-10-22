@@ -1661,3 +1661,181 @@ let%expect_test "codec_in follows the configuration; the default codec leaves op
     zcmp    c.fsdsp  refused
     zcd     cm.push  refused
     zcd     c.fsdsp  1011100001000010 -> c.fsdsp |}]
+
+(* {1 ISA strings} *)
+
+module Riscv_isa = Riscv_family_encode.Riscv_isa
+
+(* LLVM 19.1.7's Tag_RISCV_arch for each -march ([clang -S]'s [.attribute 5]). The closures
+   differ: Rivet's C brings in zca (and zcf, zcd) and Zvknhb implies Zvknha, while LLVM adds zkr
+   and zkt to Zk and zvkt to Zvkn, which have no instructions. *)
+let llvm_arch =
+  [
+    ("rv32i", "rv32i2p1");
+    ("rv32imf", "rv32i2p1_m2p0_f2p2_zicsr2p0_zmmul1p0");
+    ("rv32imf_zve32f", "rv32i2p1_m2p0_f2p2_zicsr2p0_zmmul1p0_zve32f1p0_zve32x1p0_zvl32b1p0");
+    ( "rv32imf_zve32f_zvfbfwma",
+      "rv32i2p1_m2p0_f2p2_zicsr2p0_zmmul1p0_zfbfmin1p0_zve32f1p0_zve32x1p0_zvfbfmin1p0_zvfbfwma1p0_zvl32b1p0"
+    );
+    ( "rv32imf_zve32f_zicsr_zifencei_zbb_zfbfmin_zvfbfmin_zvfbfwma",
+      "rv32i2p1_m2p0_f2p2_zicsr2p0_zifencei2p0_zmmul1p0_zfbfmin1p0_zbb1p0_zve32f1p0_zve32x1p0_zvfbfmin1p0_zvfbfwma1p0_zvl32b1p0"
+    );
+    ("rv32imafdc", "rv32i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zmmul1p0");
+    ("rv32gc", "rv32i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zifencei2p0_zmmul1p0");
+    ("rv64gc", "rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zifencei2p0_zmmul1p0");
+    ( "rv64gcv",
+      "rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_v1p0_zicsr2p0_zifencei2p0_zmmul1p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvl128b1p0_zvl32b1p0_zvl64b1p0"
+    );
+    ( "rv64imafdcv_zvl256b",
+      "rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_v1p0_zicsr2p0_zmmul1p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvl128b1p0_zvl256b1p0_zvl32b1p0_zvl64b1p0"
+    );
+    ( "rv64gc_zba_zbb_zbs",
+      "rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zifencei2p0_zmmul1p0_zba1p0_zbb1p0_zbs1p0" );
+    ( "rv64gc_b",
+      "rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_b1p0_zicsr2p0_zifencei2p0_zmmul1p0_zba1p0_zbb1p0_zbs1p0" );
+    ( "rv64i_zk",
+      "rv64i2p1_zbkb1p0_zbkc1p0_zbkx1p0_zk1p0_zkn1p0_zknd1p0_zkne1p0_zknh1p0_zkr1p0_zkt1p0" );
+    ("rv64i_zkn", "rv64i2p1_zbkb1p0_zbkc1p0_zbkx1p0_zkn1p0_zknd1p0_zkne1p0_zknh1p0");
+    ("rv32i_zks", "rv32i2p1_zbkb1p0_zbkc1p0_zbkx1p0_zks1p0_zksed1p0_zksh1p0");
+    ( "rv64gcv_zvbb_zvkn",
+      "rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_v1p0_zicsr2p0_zifencei2p0_zmmul1p0_zvbb1p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvkb1p0_zvkn1p0_zvkned1p0_zvknhb1p0_zvkt1p0_zvl128b1p0_zvl32b1p0_zvl64b1p0"
+    );
+    ("rv32imc_zcb_zcmp", "rv32i2p1_m2p0_c2p0_zmmul1p0_zca1p0_zcb1p0_zcmp1p0");
+    ("rv32ifd_zca_zcf_zcd", "rv32i2p1_f2p2_d2p2_zicsr2p0_zca1p0_zcd1p0_zcf1p0");
+    ("rv64i_zfh", "rv64i2p1_f2p2_zicsr2p0_zfh1p0_zfhmin1p0");
+    ("rv64i_zfa_zfh_d", "rv64i2p1_f2p2_d2p2_zicsr2p0_zfa1p0_zfh1p0_zfhmin1p0");
+    ("rv64i_h", "rv64i2p1_h1p0");
+    ( "rv64i_zve64d",
+      "rv64i2p1_f2p2_d2p2_zicsr2p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvl32b1p0_zvl64b1p0"
+    );
+    ("rv32i_zve32x_zvl128b", "rv32i2p1_zicsr2p0_zve32x1p0_zvl128b1p0_zvl32b1p0_zvl64b1p0");
+    ( "rv64i_zicbom_zicboz_zicbop_zicond_zawrs_zimop_zcmop",
+      "rv64i2p1_zicbom1p0_zicbop1p0_zicboz1p0_zicond1p0_zimop1p0_zawrs1p0_zca1p0_zcmop1p0" );
+    ("rv64i_zihintntl_c", "rv64i2p1_c2p0_zihintntl1p0");
+    ("rv64i_svinval", "rv64i2p1_svinval1p0");
+    ("rv32i_zvbc_zve64x", "rv32i2p1_zicsr2p0_zvbc1p0_zve32x1p0_zve64x1p0_zvl32b1p0_zvl64b1p0");
+  ]
+
+let%expect_test "ISA strings: -march in, Tag_RISCV_arch out, against LLVM 19" =
+  List.iter
+    (fun (march, llvm) ->
+      let line =
+        match Riscv_isa.of_march march with
+        | Error m -> "error: " ^ m
+        | Ok { xlen; spec; vlen } -> (
+            let components =
+              if xlen = 32 then Riscv32_encode.components else Riscv64_encode.components
+            in
+            match Target_config.resolve components spec with
+            | Error m -> "error: " ^ m
+            | Ok c -> (
+                match Riscv_isa.to_string ?vlen ~xlen c with
+                | Error m -> "error: " ^ m
+                | Ok s ->
+                    let round =
+                      match Riscv_isa.of_march s with
+                      | Ok r -> (
+                          match Target_config.resolve components r.spec with
+                          | Ok c'
+                            when Target_config.equal c c'
+                                 && Riscv_isa.to_string ?vlen:r.vlen ~xlen c' = Ok s ->
+                              ""
+                          | _ -> " (no round trip)")
+                      | Error _ -> " (unparsable)"
+                    in
+                    if String.equal s llvm then "= llvm" ^ round
+                    else s ^ round ^ "\n" ^ String.make 32 ' ' ^ "llvm " ^ llvm))
+      in
+      Printf.printf "%-30s %s\n" march line)
+    llvm_arch;
+  [%expect
+    {|
+    rv32i                          = llvm
+    rv32imf                        = llvm
+    rv32imf_zve32f                 = llvm
+    rv32imf_zve32f_zvfbfwma        = llvm
+    rv32imf_zve32f_zicsr_zifencei_zbb_zfbfmin_zvfbfmin_zvfbfwma = llvm
+    rv32imafdc                     rv32i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zmmul1p0_zca1p0_zcd1p0_zcf1p0
+                                    llvm rv32i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zmmul1p0
+    rv32gc                         rv32i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zifencei2p0_zmmul1p0_zca1p0_zcd1p0_zcf1p0
+                                    llvm rv32i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zifencei2p0_zmmul1p0
+    rv64gc                         rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zifencei2p0_zmmul1p0_zca1p0_zcd1p0
+                                    llvm rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zifencei2p0_zmmul1p0
+    rv64gcv                        rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_v1p0_zicsr2p0_zifencei2p0_zmmul1p0_zca1p0_zcd1p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvl128b1p0_zvl32b1p0_zvl64b1p0
+                                    llvm rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_v1p0_zicsr2p0_zifencei2p0_zmmul1p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvl128b1p0_zvl32b1p0_zvl64b1p0
+    rv64imafdcv_zvl256b            rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_v1p0_zicsr2p0_zmmul1p0_zca1p0_zcd1p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvl128b1p0_zvl256b1p0_zvl32b1p0_zvl64b1p0
+                                    llvm rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_v1p0_zicsr2p0_zmmul1p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvl128b1p0_zvl256b1p0_zvl32b1p0_zvl64b1p0
+    rv64gc_zba_zbb_zbs             rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zifencei2p0_zmmul1p0_zca1p0_zcd1p0_zba1p0_zbb1p0_zbs1p0
+                                    llvm rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zifencei2p0_zmmul1p0_zba1p0_zbb1p0_zbs1p0
+    rv64gc_b                       rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_b1p0_zicsr2p0_zifencei2p0_zmmul1p0_zca1p0_zcd1p0_zba1p0_zbb1p0_zbs1p0
+                                    llvm rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_b1p0_zicsr2p0_zifencei2p0_zmmul1p0_zba1p0_zbb1p0_zbs1p0
+    rv64i_zk                       rv64i2p1_zbkb1p0_zbkc1p0_zbkx1p0_zk1p0_zkn1p0_zknd1p0_zkne1p0_zknh1p0
+                                    llvm rv64i2p1_zbkb1p0_zbkc1p0_zbkx1p0_zk1p0_zkn1p0_zknd1p0_zkne1p0_zknh1p0_zkr1p0_zkt1p0
+    rv64i_zkn                      = llvm
+    rv32i_zks                      = llvm
+    rv64gcv_zvbb_zvkn              rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_v1p0_zicsr2p0_zifencei2p0_zmmul1p0_zca1p0_zcd1p0_zvbb1p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvkb1p0_zvkn1p0_zvkned1p0_zvknha1p0_zvknhb1p0_zvl128b1p0_zvl32b1p0_zvl64b1p0
+                                    llvm rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_v1p0_zicsr2p0_zifencei2p0_zmmul1p0_zvbb1p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvkb1p0_zvkn1p0_zvkned1p0_zvknhb1p0_zvkt1p0_zvl128b1p0_zvl32b1p0_zvl64b1p0
+    rv32imc_zcb_zcmp               = llvm
+    rv32ifd_zca_zcf_zcd            = llvm
+    rv64i_zfh                      = llvm
+    rv64i_zfa_zfh_d                = llvm
+    rv64i_h                        = llvm
+    rv64i_zve64d                   = llvm
+    rv32i_zve32x_zvl128b           = llvm
+    rv64i_zicbom_zicboz_zicbop_zicond_zawrs_zimop_zcmop = llvm
+    rv64i_zihintntl_c              rv64i2p1_c2p0_zihintntl1p0_zca1p0
+                                    llvm rv64i2p1_c2p0_zihintntl1p0
+    rv64i_svinval                  = llvm
+    rv32i_zvbc_zve64x              = llvm |}]
+
+let%expect_test "ISA strings: the 2.2 edition and malformed input" =
+  List.iter
+    (fun march ->
+      Printf.printf "%-22s %s\n" march
+        (match Riscv_isa.of_march ~isa_spec:`V2_2 march with
+        | Error m -> "error: " ^ m
+        | Ok { xlen; spec; vlen } -> (
+            match Target_config.resolve Riscv32_encode.components spec with
+            | Error m -> "error: " ^ m
+            | Ok c -> (
+                match Riscv_isa.to_string ~isa_spec:`V2_2 ?vlen ~xlen c with
+                | Ok s -> s
+                | Error m -> "error: " ^ m))))
+    [
+      "rv32imf";
+      "rv32imafd";
+      "rv32im";
+      "rv32imf_zve32f";
+      "rv32i2p0_m2p0_f2p0";
+      "RV32IMC";
+      "rv32e";
+      "rv32";
+      "rv128i";
+      "rv32i_zfoo";
+      "rv32i_zaamo";
+    ];
+  [%expect
+    {|
+    rv32imf                rv32i2p0_m2p0_f2p0_zmmul1p0
+    rv32imafd              rv32i2p0_m2p0_a2p0_f2p0_d2p0_zmmul1p0
+    rv32im                 rv32i2p0_m2p0_zmmul1p0
+    rv32imf_zve32f         rv32i2p0_m2p0_f2p0_zmmul1p0_zve32f1p0_zve32x1p0_zvl32b1p0
+    rv32i2p0_m2p0_f2p0     rv32i2p0_m2p0_f2p0_zmmul1p0
+    RV32IMC                rv32i2p0_m2p0_c2p0_zmmul1p0_zca1p0
+    rv32e                  error: rv32e: RV32E is not supported
+    rv32                   error: rv32: no base ISA
+    rv128i                 error: rv128i: an ISA string starts with rv32 or rv64
+    rv32i_zfoo             error: unknown feature zfoo (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, zve32x, zve32f, zve64x, zve64f, zve64d, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg, zca, zcd, zcf, zcb, zcmp, zcmt, zcmop, c)
+    rv32i_zaamo            error: unknown feature zaamo (known: zmmul, m, f, d, a, zacas, zabha, q, zfh, zfhmin, zfa, zfbfmin, zba, zbb, zbs, zbc, zbkb, zbkc, zbkx, zknd, zkne, zknh, zksed, zksh, zicond, b, zkn, zks, zk, zicsr, zifencei, zicntr, zihintntl, zawrs, zimop, zicfiss, zicfilp, zicbom, zicboz, zicbop, system, s, h, svinval, sdext, ssctr, zve32x, zve32f, zve64x, zve64f, zve64d, v, zvbb, zvkned, zvbc, zvknha, zvksed, zvkg, zvksh, zvfbfmin, zvfbfwma, zvkb, zvknhb, zvkn, zvks, zvknc, zvkng, zvksc, zvksg, zca, zcd, zcf, zcb, zcmp, zcmt, zcmop, c) |}]
+
+let%expect_test "ISA strings: every standard feature has a version" =
+  List.iter
+    (fun (xlen, components) ->
+      print_endline
+        (match Riscv_isa.to_string ~xlen (Target_config.all_enabled components) with
+        | Ok _ -> Printf.sprintf "rv%d: ok" xlen
+        | Error m -> m))
+    [ (32, Riscv32_encode.components); (64, Riscv64_encode.components) ];
+  [%expect {|
+    rv32: ok
+    rv64: ok |}]
