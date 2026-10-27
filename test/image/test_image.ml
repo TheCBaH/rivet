@@ -624,6 +624,61 @@ let%expect_test "a weak extern takes its import, else 0" =
         00 00 00 00
         34 12 00 00 |}]
 
+(* {1 Overlay groups} *)
+
+let code_section name frags =
+  {
+    Lowered_ast.sec =
+      { Lowered_ast.sec_name = name; perms = Perms.rx; alignment = 1; kind = Lowered_ast.Progbits };
+    fragments = frags;
+  }
+
+let overlays ?(b_calls = "entry") () =
+  module_
+    ~symbols:[ sym "entry"; sym "a" ~section:".ovl.a"; sym "b" ~section:".ovl.b" ]
+    [
+      text_section [ label "entry"; branch_to "a"; filler 3 ];
+      code_section ".ovl.a" [ label "a"; branch_to "entry"; filler 3 ];
+      code_section ".ovl.b" [ label "b"; branch_to b_calls ];
+    ]
+
+let slot = [ (".text", 0x40000000L); (".ovl.a", 0x40001000L); (".ovl.b", 0x40001000L) ]
+
+let%expect_test "an overlay group shares one run address" =
+  match plan (overlays ()) with
+  | Error ds -> show_errors ds
+  | Ok l ->
+      List.iter
+        (fun overlays ->
+          match Image.bind_image l ~addresses:slot ~overlays with
+          | Error ds -> show_errors ds
+          | Ok img ->
+              List.iter
+                (fun s -> Fmt.pr "%s %s@." s.Image.name (hex s.Image.bytes))
+                img.Image.segments)
+        [ []; [ [ ".ovl.a"; ".ovl.b" ] ]; [ [ ".text"; ".ovl.a" ] ]; [ [ ".ovl.a"; ".ovl.c" ] ] ];
+      [%expect
+        {|
+        bind.overlap: segments .ovl.a at 0x40001000 (8 bytes) and .ovl.b at 0x40001000 (5 bytes) overlap
+        .text e9 fb 0f 00 00 90 90 90
+        .ovl.a e9 fb ef ff ff 90 90 90
+        .ovl.b e9 fb ef ff ff
+        bind.overlap: segments .ovl.a at 0x40001000 (8 bytes) and .ovl.b at 0x40001000 (5 bytes) overlap
+        bind.cross-overlay: fixup target in overlay .text references a in overlay .ovl.a of the same group
+        bind.cross-overlay: fixup target in overlay .ovl.a references entry in overlay .text of the same group
+        bind.overlap: segments .ovl.a at 0x40001000 (8 bytes) and .ovl.b at 0x40001000 (5 bytes) overlap
+        bind.overlay: overlay group names no segment .ovl.c |}]
+
+let%expect_test "a reference between members of one group is rejected" =
+  match plan (overlays ~b_calls:"a" ()) with
+  | Error ds -> show_errors ds
+  | Ok l ->
+      (match Image.bind_image l ~addresses:slot ~overlays:[ [ ".ovl.a"; ".ovl.b" ] ] with
+      | Error ds -> show_errors ds
+      | Ok _ -> Fmt.pr "accepted@.");
+      [%expect
+        {| bind.cross-overlay: fixup target in overlay .ovl.b references a in overlay .ovl.a of the same group |}]
+
 (* {1 Paired fixups}
 
    A synthetic absolute split keeps this test target-independent: both words

@@ -231,6 +231,8 @@ type bind_error =
   | `Overlap of overlap
   | `No_address of string
   | `No_import of string
+  | `Overlay_unknown of string
+  | `Cross_overlay of cross_overlay
   | `Alignment of alignment
   | `Symbol_size of symbol_size
   | `Fixup_value of fixup_value
@@ -250,6 +252,7 @@ and overlap = {
 }
 
 and alignment = { segment : string; needs : int; address : int64 }
+and cross_overlay = { fixup : string; symbol : string; from_segment : string; to_segment : string }
 and symbol_size = { symbol : string; reason : Expr.error }
 and fixup_value = { fixup : string; reason : Expr.error }
 and fixup_out_of_range = { fixup : string; value : int64; range : Lowered_ast.range; at : int }
@@ -294,6 +297,10 @@ let pp_bind_error ppf : bind_error -> unit = function
         a_size b_name b_at b_size
   | `No_address s -> Fmt.pf ppf "no address for segment %s" s
   | `No_import n -> Fmt.pf ppf "no address for imported symbol %s" n
+  | `Overlay_unknown s -> Fmt.pf ppf "overlay group names no segment %s" s
+  | `Cross_overlay { fixup; symbol; from_segment; to_segment } ->
+      Fmt.pf ppf "fixup %s in overlay %s references %s in overlay %s of the same group" fixup
+        from_segment symbol to_segment
   | `Alignment { segment; needs; address } ->
       Fmt.pf ppf "segment %s needs %d-byte alignment, address is 0x%Lx" segment needs address
   | `Symbol_size { symbol; reason } -> Fmt.pf ppf "size of %s: %a" symbol Expr.pp_error reason
@@ -336,6 +343,8 @@ let bind_error_code : bind_error -> string = function
   | `Overlap _ -> "bind.overlap"
   | `No_address _ -> "bind.address"
   | `No_import _ -> "bind.import"
+  | `Overlay_unknown _ -> "bind.overlay"
+  | `Cross_overlay _ -> "bind.cross-overlay"
   | `Alignment _ -> "bind.alignment"
   | `Symbol_size _ -> "bind.size"
   | `Fixup_value _ | `Fixup_target_too_wide _ -> "bind.fixup"
@@ -1313,12 +1322,17 @@ let patch_container bytes ~at ~size ~slices ~value =
   done;
   Bytes.to_string out
 
-let bind_image ?(imports : (string * int64) list = []) (l : laid_out)
-    ~(addresses : (string * int64) list) =
+let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list list = [])
+    (l : laid_out) ~(addresses : (string * int64) list) =
   (* Two segments at one address was M1's silent behaviour, because there was
      only ever one segment. With .text and .data both present it would map one
      over the other and the byte comparison would be against a program that
-     cannot run. *)
+     cannot run. An overlay group is the one deliberate exception: its members
+     take turns at one run address, so they may overlap each other, and only
+     each other. *)
+  let same_group a b =
+    (not (String.equal a b)) && List.exists (fun g -> List.mem a g && List.mem b g) overlays
+  in
   let placed =
     List.filter_map
       (fun s ->
@@ -1343,7 +1357,7 @@ let bind_image ?(imports : (string * int64) list = []) (l : laid_out)
           (fun (n', a', sz') ->
             let e = Int64.add a (Int64.of_int sz) and e' = Int64.add a' (Int64.of_int sz') in
             reject_if ~pos:__POS__
-              (Int64.compare a e' < 0 && Int64.compare a' e < 0)
+              (Int64.compare a e' < 0 && Int64.compare a' e < 0 && not (same_group n n'))
               (`Overlap { a_name = n; a_at = a; a_size = sz; b_name = n'; b_at = a'; b_size = sz' }))
           rest
         @ overlap_checks rest
@@ -1372,6 +1386,39 @@ let bind_image ?(imports : (string * int64) list = []) (l : laid_out)
           (not (List.mem_assoc n imports || List.mem n l.weak_names))
           (`No_import n))
       l.plan.imports
+  in
+  let overlay_checks =
+    List.map
+      (fun n ->
+        reject_if ~pos:__POS__
+          (not (List.exists (fun s -> String.equal s.seg_name n) l.plan.segments))
+          (`Overlay_unknown n))
+      (List.sort_uniq compare (List.concat overlays))
+  in
+  (* Once two members share a slot, at most one is resident at a time, so a
+     reference from one into another reaches whatever happens to be loaded. *)
+  let cross_overlay_checks =
+    List.concat_map
+      (fun f ->
+        List.filter_map
+          (fun s ->
+            match
+              resolve_symbol ~definitions:l.definitions ~link_global:l.link_global
+                ~from_unit:f.rf_unit s
+            with
+            | Some d when same_group f.rf_section d.Symtab.d_section ->
+                Some
+                  (reject_if ~pos:__POS__ true
+                     (`Cross_overlay
+                        {
+                          fixup = f.rf_name;
+                          symbol = s;
+                          from_segment = f.rf_section;
+                          to_segment = d.Symtab.d_section;
+                        }))
+            | _ -> None)
+          (Expr.symbols f.rf_value))
+      l.fixups
   in
   let finish () =
     let errors = ref [] in
@@ -1544,7 +1591,8 @@ let bind_image ?(imports : (string * int64) list = []) (l : laid_out)
   in
   match
     Diag.validate_all ~pos:__POS__
-      (overflow_checks @ overlap_checks placed @ address_checks @ alignment_checks @ import_checks)
+      (overflow_checks @ overlap_checks placed @ address_checks @ alignment_checks @ import_checks
+     @ overlay_checks @ cross_overlay_checks)
   with
   | Error errors -> Error errors
   | Ok () -> finish ()

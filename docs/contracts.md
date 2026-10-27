@@ -183,6 +183,11 @@ is an *import*: the plan lists it under `import`, a referenced but undefined
 must supply its address (`bind.import` otherwise; an undefined weak extern still
 binds to 0). A definition in the link wins over an import of the same name.
 
+`bind_image` rejects overlapping segments (`bind.overlap`) except members of one
+`~overlays` group, which take turns at a shared run address. A fixup in one
+member that resolves into another member of the same group is
+`bind.cross-overlay`: only one of them is resident at a time.
+
 `declared` sections appear in `--dump-lowered-ast` (§1.4) and not here, which is
 the same rule stated twice: an unallocated section has no address, and this dump
 is the one that has addresses in it.
