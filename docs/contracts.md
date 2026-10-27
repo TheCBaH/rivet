@@ -160,6 +160,7 @@ Before binding (`plan_image`):
 segment <name> size=<n> zero=<n> align=<n> permissions=<perms>
 entry <name>
 export <name>
+import <name>
 unresolved <name>
 ```
 
@@ -175,10 +176,12 @@ export <name> = <hex> [size=<n>]
 plan is for: §9 splits layout from address assignment, so a plan that showed only
 what it had already decided would not say why the second step exists. It lists
 *outstanding placement-dependent fixups*, not symbols that could not be found —
-a fixup naming a symbol the module never defines is rejected during planning
-(`image.undefined`), because `bind_image` takes section addresses and has no
-import resolver, and reporting it as bindable state would promise something the
-API cannot deliver.
+a fixup naming a symbol no input defines is rejected during planning
+(`image.undefined`) unless the layout policy lists it in `externs`. Such a name
+is an *import*: the plan lists it under `import`, a referenced but undefined
+`.globl` of it is not `declared but never defined`, and `bind_image ~imports`
+must supply its address (`bind.import` otherwise; an undefined weak extern still
+binds to 0). A definition in the link wins over an import of the same name.
 
 `declared` sections appear in `--dump-lowered-ast` (§1.4) and not here, which is
 the same rule stated twice: an unallocated section has no address, and this dump
@@ -579,10 +582,9 @@ Legend:
 namespaces, name-only section merging across inputs, and the strong/common/weak
 resolver behind §3's `.comm`/`.local`/`.weak` rows
 (`lib/image/symtab.ml`, `lib/image/image.ml`'s `plan_image`), proven
-end to end by `cross_call` and `cross_data` on all six targets. Imports are
-still rejected: a fixup naming a symbol no input defines fails at planning,
-because `bind_image` takes section addresses and has no import resolver
-(§4.3). Every condition outside what `link` supports is an explicit tested
+end to end by `cross_call` and `cross_data` on all six targets. A fixup naming a symbol no input defines fails at planning unless the
+layout policy declares it an extern, whose address `bind_image ~imports` then
+supplies (§1.5). Every condition outside what `link` supports is an explicit tested
 rejection, which is why the cell is ● and not ◐ — the restriction that
 remains is implemented, not merely unimplemented.
 
@@ -725,7 +727,7 @@ expression, so applying a patch twice cannot double a displacement.
 `plan.unresolved` lists **placement-dependent fixups still outstanding** —
 locally defined symbols awaiting an address — which is what §9 says a plan
 reports and what binding satisfies. It is not a list of missing symbols; those
-are rejected during planning (§4.3).
+are rejected during planning (§4.3), or, for externs, listed in `plan.imports`.
 
 ### 5.5 Relaxation ladders
 

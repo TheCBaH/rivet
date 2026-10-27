@@ -475,8 +475,8 @@ let%expect_test "a fixup out of range is a diagnostic, not a truncation" =
     |}]
 
 let%expect_test "a fixup naming an undefined symbol is rejected at plan time" =
-  (* Not at bind: bind_image takes section addresses and has no import
-     resolver, so a plan that could never be bound must not be produced. *)
+  (* Not at bind: a name that is not an extern has no address bind_image could
+     be given, so a plan that could never be bound must not be produced. *)
   let m =
     module_ ~symbols:[ sym "entry" ] [ text_section [ label "entry"; branch_to "nowhere" ] ]
   in
@@ -505,6 +505,124 @@ let%expect_test "the plan reports its outstanding fixups" =
     export entry
     export here
     unresolved target |}]
+
+(* {1 Imports} *)
+
+let plan_externs ?(externs = []) m =
+  Image.plan_image ~evaluate
+    { Image.default_policy with entry_symbol = Some "entry"; externs }
+    [ m ]
+
+let importer () =
+  module_
+    ~symbols:[ sym "entry"; sym "helper" ]
+    [
+      text_section
+        [
+          label "entry";
+          branch_to "helper";
+          Lowered_ast.Bytes
+            {
+              bytes = "\xb8\x00\x00\x00\x00";
+              form = Some "t.mov-imm32";
+              fixups =
+                [
+                  fixup ~kind:Abs32 ~range:(Lowered_ast.Bitpattern 32) ~byte_offset:1 ~container:4
+                    ~pc_bias:0 ~slices:(whole_container ~bits:32)
+                    Expr.(Binary (Add, Symbol "table", Const (Bigint.of_int 4)));
+                ];
+              origin;
+            };
+        ];
+    ]
+
+let%expect_test "an extern is an import the plan names and bind resolves" =
+  (match plan_externs (importer ()) with Error ds -> show_errors ds | Ok _ -> Fmt.pr "accepted@.");
+  (match plan_externs ~externs:[ "helper"; "table"; "unused" ] (importer ()) with
+  | Error ds -> show_errors ds
+  | Ok l -> (
+      Fmt.pr "%a@." Image.pp_plan (Image.plan_of l);
+      (match
+         Image.bind_image l ~addresses:[ (".text", 0x40000000L) ] ~imports:[ ("table", 1L) ]
+       with
+      | Error ds -> show_errors ds
+      | Ok _ -> Fmt.pr "bound@.");
+      match
+        Image.bind_image l
+          ~addresses:[ (".text", 0x40000000L) ]
+          ~imports:[ ("helper", 0x40001000L); ("table", 0x20000000L); ("other", 0L) ]
+      with
+      | Error ds -> show_errors ds
+      | Ok img -> show_text img));
+  (* An undefined import keeps the longest rung: its distance is unknown at plan time. *)
+  [%expect
+    {|
+    image.undefined: symbol helper is declared but never defined
+    image.export: exported symbol helper is not defined
+    image.undefined: fixup target references undefined symbol helper
+    image.undefined: fixup target references undefined symbol table
+    segment .text size=10 zero=0 align=1 permissions=r-x
+    entry entry
+    export entry
+    import helper
+    import table
+    unresolved target
+    bind.import: no address for imported symbol helper
+    e9 fb 0f 00 00 b8 04 00 00 20 |}]
+
+let%expect_test "a definition wins over an import of the same name" =
+  let m =
+    module_
+      ~symbols:[ sym "entry"; sym "helper" ]
+      [ text_section [ label "entry"; branch_to "helper"; label "helper" ] ]
+  in
+  match plan_externs ~externs:[ "helper" ] m with
+  | Error ds -> show_errors ds
+  | Ok l ->
+      (Fmt.pr "imports=%d@." (List.length (Image.plan_of l).Image.imports);
+       match
+         Image.bind_image l ~addresses:[ (".text", 0x40000000L) ] ~imports:[ ("helper", 0L) ]
+       with
+       | Error ds -> show_errors ds
+       | Ok img -> show_text img);
+      [%expect {|
+    imports=0
+    eb 00 |}]
+
+let%expect_test "a weak extern takes its import, else 0" =
+  let m =
+    module_
+      ~symbols:[ sym "entry"; sym ~weak:true "table" ]
+      [
+        text_section
+          [
+            label "entry";
+            Lowered_ast.Bytes
+              {
+                bytes = "\x00\x00\x00\x00";
+                form = None;
+                fixups =
+                  [
+                    fixup ~kind:Abs32 ~range:(Lowered_ast.Bitpattern 32) ~byte_offset:0 ~container:4
+                      ~pc_bias:0 ~slices:(whole_container ~bits:32) (Expr.Symbol "table");
+                  ];
+                origin;
+              };
+          ];
+      ]
+  in
+  match plan_externs ~externs:[ "table" ] m with
+  | Error ds -> show_errors ds
+  | Ok l ->
+      List.iter
+        (fun imports ->
+          match Image.bind_image l ~addresses:[ (".text", 0x40000000L) ] ~imports with
+          | Error ds -> show_errors ds
+          | Ok img -> show_text img)
+        [ []; [ ("table", 0x1234L) ] ];
+      [%expect {|
+        00 00 00 00
+        34 12 00 00 |}]
 
 (* {1 Paired fixups}
 
