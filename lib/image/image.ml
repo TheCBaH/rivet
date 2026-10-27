@@ -19,7 +19,8 @@
    Collapsing them would force the assembler to choose addresses, which is
    precisely the decision an embedding host has to make.
 
-   The linker is still restricted - no imports, and every unsupported
+   The linker is still restricted - imports exist only for names the policy
+   lists as [externs], bound to host-supplied addresses - and every unsupported
    condition is an explicit rejection rather than a silent partial result.
    M2 removed the one-allocatable-section limit; M3 (docs/design.md §12)
    removes the one-module limit, merging same-named sections across inputs
@@ -45,9 +46,12 @@ type layout_policy = {
   entry_symbol : string option;
   exported : string list option;  (** [None] exports every global symbol *)
   max_size : int option;
+  externs : string list;
+      (** names no input has to define: a reference to one is an import, bound by [bind_image]'s
+          [~imports] *)
 }
 
-let default_policy = { entry_symbol = None; exported = None; max_size = None }
+let default_policy = { entry_symbol = None; exported = None; max_size = None; externs = [] }
 
 (* {1 What a plan says}
 
@@ -66,12 +70,13 @@ type plan = {
   segments : segment_plan list;
   entry : string option;
   exports : string list;
+  imports : string list;
+      (** the policy's externs that some fixup references and no input defines: the names
+          [bind_image]'s [~imports] has to supply *)
   unresolved : string list;
-      (** placement-dependent fixups still outstanding: locally defined symbols whose absolute
-          values await an address. Not "symbols we could not find" - a fixup naming a symbol this
-          module never defines is rejected during planning, because [bind_image] takes section
-          addresses and has no import resolver, and reporting it as bindable state would promise
-          something the API cannot deliver. *)
+      (** placement-dependent fixups still outstanding: their values await an address. Not
+          "symbols we could not find" - a fixup naming a symbol no input defines is rejected
+          during planning unless the name is an extern, in which case it is in [imports]. *)
 }
 
 (* The laid-out content. Opaque to a caller: it is [plan_image]'s working state,
@@ -225,6 +230,7 @@ type bind_error =
   [ `Overflow of overflow
   | `Overlap of overlap
   | `No_address of string
+  | `No_import of string
   | `Alignment of alignment
   | `Symbol_size of symbol_size
   | `Fixup_value of fixup_value
@@ -287,6 +293,7 @@ let pp_bind_error ppf : bind_error -> unit = function
       Fmt.pf ppf "segments %s at 0x%Lx (%d bytes) and %s at 0x%Lx (%d bytes) overlap" a_name a_at
         a_size b_name b_at b_size
   | `No_address s -> Fmt.pf ppf "no address for segment %s" s
+  | `No_import n -> Fmt.pf ppf "no address for imported symbol %s" n
   | `Alignment { segment; needs; address } ->
       Fmt.pf ppf "segment %s needs %d-byte alignment, address is 0x%Lx" segment needs address
   | `Symbol_size { symbol; reason } -> Fmt.pf ppf "size of %s: %a" symbol Expr.pp_error reason
@@ -328,6 +335,7 @@ let bind_error_code : bind_error -> string = function
   | `Overflow _ -> "bind.overflow"
   | `Overlap _ -> "bind.overlap"
   | `No_address _ -> "bind.address"
+  | `No_import _ -> "bind.import"
   | `Alignment _ -> "bind.alignment"
   | `Symbol_size _ -> "bind.size"
   | `Fixup_value _ | `Fixup_target_too_wide _ -> "bind.fixup"
@@ -1149,17 +1157,17 @@ let plan_image ~evaluate ?(fill = default_fill) ?section_pad policy
                         && String.equal d.Symtab.d_name s.Lowered_ast.name)
                       definitions
                 | Lowered_ast.Global ->
-                    List.exists
-                      (fun (d : Symtab.definition) ->
-                        String.equal d.Symtab.d_name s.Lowered_ast.name
-                        && d.Symtab.d_binding <> Lowered_ast.Local)
-                      definitions
+                    List.mem s.Lowered_ast.name policy.externs
+                    || List.exists
+                         (fun (d : Symtab.definition) ->
+                           String.equal d.Symtab.d_name s.Lowered_ast.name
+                           && d.Symtab.d_binding <> Lowered_ast.Local)
+                         definitions
                 | Lowered_ast.Weak -> true
               in
               if not ok then fail (`Declared_never_defined s.Lowered_ast.name))
             m.Lowered_ast.symbols)
         modules;
-      let exports = match policy.exported with None -> globals | Some names -> names in
       (* Preferably a link-global definition, since that is the one an entry
          or export name is supposed to mean - but an explicit entry/export
          name is not required to be [.globl]'d (M1/M2 never required it, and
@@ -1169,18 +1177,22 @@ let plan_image ~evaluate ?(fill = default_fill) ?section_pad policy
         Option.is_some (List.assoc_opt n link_global)
         || List.exists (fun (d : Symtab.definition) -> String.equal d.Symtab.d_name n) definitions
       in
+      let exports =
+        match policy.exported with
+        | None -> List.filter (fun n -> resolvable n || not (List.mem n policy.externs)) globals
+        | Some names -> names
+      in
       List.iter (fun n -> if not (resolvable n) then fail (`Export_undefined n)) exports;
       (match policy.entry_symbol with
       | Some e when not (resolvable e) -> fail (`Entry_undefined e)
       | _ -> ());
       (* A fixup naming a symbol nothing in this link defines cannot become a
-         bound image: [bind_image] takes section addresses and has no import
-         resolver, so accepting it would promise something the API cannot
-         deliver. True imports stay rejected past M3 too (Scope). The one
-         exception is a name declared [Weak] anywhere: §7 requires an
-         undefined weak reference to resolve to 0, not to fail, so it is not
-         an import - [bind_image]'s [address_of] substitutes the value
-         itself, using this same [weak_names] set. *)
+         bound image unless the host promised to supply it: a name in
+         [policy.externs] is an import, and [bind_image] requires its address.
+         The other exception is a name declared [Weak] anywhere: §7 requires an
+         undefined weak reference to resolve to 0, not to fail - [bind_image]'s
+         [address_of] substitutes the value itself, using this same
+         [weak_names] set, unless an import supplies one. *)
       let weak_names =
         List.sort_uniq compare
           (List.concat_map
@@ -1192,11 +1204,14 @@ let plan_image ~evaluate ?(fill = default_fill) ?section_pad policy
                  m.Lowered_ast.symbols)
              modules)
       in
+      let imports = ref [] in
       List.iter
         (fun f ->
           List.iter
             (fun s ->
-              if Option.is_none (resolve ~from_unit:f.rf_unit s) && not (List.mem s weak_names) then
+              if Option.is_some (resolve ~from_unit:f.rf_unit s) then ()
+              else if List.mem s policy.externs then imports := s :: !imports
+              else if not (List.mem s weak_names) then
                 fail ~origin:f.rf_origin (`Fixup_undefined_symbol { fixup = f.rf_name; symbol = s }))
             (Expr.symbols f.rf_value))
         fixups;
@@ -1233,6 +1248,7 @@ let plan_image ~evaluate ?(fill = default_fill) ?section_pad policy
                 segments;
                 entry = policy.entry_symbol;
                 exports;
+                imports = List.sort_uniq compare !imports;
                 (* Not "symbols we could not find" - those were just rejected -
                    but placement-dependent fixups still outstanding, which is
                    what §9 says a plan reports and what binding satisfies. *)
@@ -1297,7 +1313,8 @@ let patch_container bytes ~at ~size ~slices ~value =
   done;
   Bytes.to_string out
 
-let bind_image (l : laid_out) ~(addresses : (string * int64) list) =
+let bind_image ?(imports : (string * int64) list = []) (l : laid_out)
+    ~(addresses : (string * int64) list) =
   (* Two segments at one address was M1's silent behaviour, because there was
      only ever one segment. With .text and .data both present it would map one
      over the other and the byte comparison would be against a program that
@@ -1348,6 +1365,14 @@ let bind_image (l : laid_out) ~(addresses : (string * int64) list) =
         | None -> Ok ())
       l.plan.segments
   in
+  let import_checks =
+    List.map
+      (fun n ->
+        reject_if ~pos:__POS__
+          (not (List.mem_assoc n imports || List.mem n l.weak_names))
+          (`No_import n))
+      l.plan.imports
+  in
   let finish () =
     let errors = ref [] in
     let fail e = errors := diag e :: !errors in
@@ -1374,7 +1399,10 @@ let bind_image (l : laid_out) ~(addresses : (string * int64) list) =
         resolve_symbol ~definitions:l.definitions ~link_global:l.link_global ~from_unit name
       with
       | Some d -> address_of_def d
-      | None -> if List.mem name l.weak_names then Some 0L else None
+      | None -> (
+          match if List.mem name l.plan.imports then List.assoc_opt name imports else None with
+          | Some a -> Some a
+          | None -> if List.mem name l.weak_names then Some 0L else None)
     in
     (* Entry and exports are always link-global names by construction
        ([plan_image] checked them against [link_global] before this ever
@@ -1516,7 +1544,7 @@ let bind_image (l : laid_out) ~(addresses : (string * int64) list) =
   in
   match
     Diag.validate_all ~pos:__POS__
-      (overflow_checks @ overlap_checks placed @ address_checks @ alignment_checks)
+      (overflow_checks @ overlap_checks placed @ address_checks @ alignment_checks @ import_checks)
   with
   | Error errors -> Error errors
   | Ok () -> finish ()
@@ -1529,7 +1557,7 @@ let bind_image (l : laid_out) ~(addresses : (string * int64) list) =
 (* The annotation is load-bearing: [t] declares a [segments] field too, and it
    is declared later, so without it OCaml resolves [p.segments] to [t]'s. *)
 let pp_plan ppf (p : plan) =
-  Fmt.pf ppf "@[<v>%a%a%a%a@]"
+  Fmt.pf ppf "@[<v>%a%a%a%a%a@]"
     Fmt.(
       list ~sep:cut (fun ppf (s : segment_plan) ->
           Fmt.pf ppf "segment %s size=%d zero=%d align=%d permissions=%a" s.seg_name s.init_size
@@ -1539,6 +1567,8 @@ let pp_plan ppf (p : plan) =
     p.entry
     Fmt.(list ~sep:nop (fun ppf e -> Fmt.pf ppf "@,export %s" e))
     p.exports
+    Fmt.(list ~sep:nop (fun ppf i -> Fmt.pf ppf "@,import %s" i))
+    p.imports
     (* What binding still has to do, which is the other half of what a plan is
        for: §9 splits layout from address assignment, and a plan that showed only
        what it had already decided would not say why the second step exists. *)

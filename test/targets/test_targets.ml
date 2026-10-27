@@ -1000,6 +1000,59 @@ let%expect_test "a call to an undefined symbol is rejected at plan time" =
   attempt "x86_64" "\t.text\n\t.globl g\ng:\n\tcall nowhere\n";
   [%expect {| image.undefined: fixup target references undefined symbol nowhere |}]
 
+let%expect_test "riscv32: a call and an address taken of externs bind to their imports" =
+  let module P = Driver.Registry.Riscv32 in
+  let show ds =
+    List.iter
+      (fun d ->
+        Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
+      (Foundation.Diag.diagnostics ds)
+  in
+  let laid =
+    let open Err.Syntax in
+    let stage r = Foundation.Diag.stage ~pos:__POS__ Err.Action.Map r in
+    let* src =
+      stage
+        (P.parse ~unit_name:"t"
+           ~source:
+             (source "\t.text\n\t.globl entry\nentry:\n\tcall helper\n\tla a0, table\n\tret\n"))
+    in
+    let* norm, _ = stage (P.simplify ~state:Riscv32_encode.default_state src) in
+    let* low = stage (P.lower ~state:Riscv32_encode.default_state norm) in
+    stage (P.plan ~entry:"entry" ~externs:[ "helper"; "table"; "unused" ] low)
+  in
+  match laid with
+  | Error ds -> show ds
+  | Ok laid ->
+      (Printf.printf "imports %s\n" (String.concat " " (Image.plan_of laid).Image.imports);
+       (match Image.bind_image laid ~addresses:[ (".text", 0x800L) ] with
+       | Ok _ -> print_endline "bound without imports"
+       | Error ds -> show ds);
+       match
+         Image.bind_image laid
+           ~addresses:[ (".text", 0x800L) ]
+           ~imports:[ ("helper", 0x100L); ("table", 0x20010L) ]
+       with
+       | Error ds -> show ds
+       | Ok img -> (
+           match img.Image.segments with
+           | s :: _ -> (
+               match P.dump_disasm_diagnostic ~address:s.Image.address s.Image.bytes with
+               | Ok text -> print_string text
+               | Error ds -> show ds)
+           | [] -> print_endline "(no segments)"));
+      [%expect
+        {|
+    imports helper table
+    bind.import: no address for imported symbol helper
+    bind.import: no address for imported symbol table
+    00000800  97 00 00 00  auipc x1, 0         [riscv32.auipc]
+    00000804  e7 80 00 90  jalr x1, -1792(x1)  [riscv32.jalr]
+    00000808  37 05 02 00  lui x10, 32         [riscv32.lui]
+    0000080c  13 05 05 01  addi x10, x10, 16   [riscv32.addi]
+    00000810  67 80 00 00  jalr x0, 0(x1)      [riscv32.jalr]
+    |}]
+
 let%expect_test "the same call on the two fixed-width targets" =
   (* Both measure from somewhere other than the next byte - A64 from the
      instruction itself, A32 from the instruction plus eight - and both store a

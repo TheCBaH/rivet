@@ -448,7 +448,7 @@ module Make (T : Target_encode.ENCODE) = struct
      definition - would be a footgun, and cardinality over every input's
      [Global] declarations is the direct generalization of the single-module
      rule, not a new one. *)
-  let policy_for_many ?entry (modules : T.fixup_kind Lowered_ast.module_ list) =
+  let policy_for_many ?entry ?(externs = []) (modules : T.fixup_kind Lowered_ast.module_ list) =
     let globals =
       List.sort_uniq compare
         (List.concat_map
@@ -466,9 +466,10 @@ module Make (T : Target_encode.ENCODE) = struct
       | Some e -> Some e
       | None -> ( match globals with [ g ] -> Some g | _ -> None)
     in
-    { Image.default_policy with entry_symbol }
+    { Image.default_policy with entry_symbol; externs }
 
-  let policy_for ?entry (m : T.fixup_kind Lowered_ast.module_) = policy_for_many ?entry [ m ]
+  let policy_for ?entry ?externs (m : T.fixup_kind Lowered_ast.module_) =
+    policy_for_many ?entry ?externs [ m ]
 
   (* The other erasure boundary: [Image] stores the fixup evaluator in a
      [laid_out], which the architecture-erased [DRIVER] hands around, so the
@@ -504,11 +505,12 @@ module Make (T : Target_encode.ENCODE) = struct
           match T.nop_bytes ~length with Ok b -> b | Error _ -> String.make length '\000')
     else None
 
-  let plan ?entry m =
-    Image.plan_image ~evaluate ~fill:merge_fill ?section_pad (policy_for ?entry m) [ m ]
+  let plan ?entry ?externs m =
+    Image.plan_image ~evaluate ~fill:merge_fill ?section_pad (policy_for ?entry ?externs m) [ m ]
 
-  let plan_many ?entry (modules : T.fixup_kind Lowered_ast.module_ list) =
-    Image.plan_image ~evaluate ~fill:merge_fill ?section_pad (policy_for_many ?entry modules)
+  let plan_many ?entry ?externs (modules : T.fixup_kind Lowered_ast.module_ list) =
+    Image.plan_image ~evaluate ~fill:merge_fill ?section_pad
+      (policy_for_many ?entry ?externs modules)
       modules
 
   let fixup_observations = Image.fixup_observations
