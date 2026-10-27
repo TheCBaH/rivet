@@ -679,6 +679,34 @@ let%expect_test "a reference between members of one group is rejected" =
       [%expect
         {| bind.cross-overlay: fixup target in overlay .ovl.b references a in overlay .ovl.a of the same group |}]
 
+let%expect_test "overlays are stored apart from their shared slot" =
+  match plan (overlays ()) with
+  | Error ds -> show_errors ds
+  | Ok l ->
+      List.iter
+        (fun load_addresses ->
+          match
+            Image.bind_image l ~addresses:slot ~overlays:[ [ ".ovl.a"; ".ovl.b" ] ] ~load_addresses
+          with
+          | Error ds -> show_errors ds
+          | Ok img -> Fmt.pr "%a@." Image.pp img)
+        [
+          [ (".ovl.a", 0x40010000L); (".ovl.b", 0x40010008L) ];
+          [ (".ovl.a", 0x40010000L); (".ovl.b", 0x40000004L) ];
+          [ (".ovl.a", 0x40010000L); (".ovl.b", 0x40010004L) ];
+        ];
+      [%expect
+        {|
+        section .text address=0x40000000 size=8 permissions=r-x
+        section .ovl.a address=0x40001000 load=0x40010000 size=8 permissions=r-x
+        section .ovl.b address=0x40001000 load=0x40010008 size=5 permissions=r-x
+        entry 0x40000000
+        export entry = 0x40000000
+        export a = 0x40001000
+        export b = 0x40001000
+        bind.load-overlap: segment .ovl.b stored at 0x40000004 (5 bytes) overlaps .text at 0x40000000 (8 bytes)
+        bind.load-overlap: segment .ovl.a stored at 0x40010000 (8 bytes) overlaps .ovl.b at 0x40010004 (5 bytes) |}]
+
 (* {1 Paired fixups}
 
    A synthetic absolute split keeps this test target-independent: both words

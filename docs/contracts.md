@@ -167,7 +167,7 @@ unresolved <name>
 After binding (`bind_image`, i.e. with `--fixed-base`):
 
 ```text
-section <name> address=<hex> size=<n> permissions=<perms>
+section <name> address=<hex> [load=<hex>] size=<n> permissions=<perms>
 entry <hex>
 export <name> = <hex> [size=<n>]
 ```
@@ -187,6 +187,10 @@ binds to 0). A definition in the link wins over an import of the same name.
 `~overlays` group, which take turns at a shared run address. A fixup in one
 member that resolves into another member of the same group is
 `bind.cross-overlay`: only one of them is resident at a time.
+
+`~load_addresses` stores a segment's initialized bytes apart from its run
+address (`load=`, an ELF `p_paddr`). The stored bytes must not overlap another
+segment's run extent or another stored segment (`bind.load-overlap`).
 
 `declared` sections appear in `--dump-lowered-ast` (§1.4) and not here, which is
 the same rule stated twice: an unallocated section has no address, and this dump
