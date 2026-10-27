@@ -235,6 +235,7 @@ type bind_error =
   | `No_address of string
   | `No_import of string
   | `Overlay_unknown of string
+  | `Overlay_twice of string
   | `Cross_overlay of cross_overlay
   | `Alignment of alignment
   | `Symbol_size of symbol_size
@@ -303,10 +304,11 @@ let pp_bind_error ppf : bind_error -> unit = function
         a_size b_name b_at b_size
   | `No_address s -> Fmt.pf ppf "no address for segment %s" s
   | `No_import n -> Fmt.pf ppf "no address for imported symbol %s" n
-  | `Overlay_unknown s -> Fmt.pf ppf "overlay group names no segment %s" s
+  | `Overlay_unknown s -> Fmt.pf ppf "overlays name no segment %s" s
+  | `Overlay_twice s -> Fmt.pf ppf "segment %s is in more than one overlay" s
   | `Cross_overlay { fixup; symbol; from_segment; to_segment } ->
-      Fmt.pf ppf "fixup %s in overlay %s references %s in overlay %s of the same group" fixup
-        from_segment symbol to_segment
+      Fmt.pf ppf "fixup %s in %s references %s in %s, another overlay" fixup from_segment symbol
+        to_segment
   | `Alignment { segment; needs; address } ->
       Fmt.pf ppf "segment %s needs %d-byte alignment, address is 0x%Lx" segment needs address
   | `Symbol_size { symbol; reason } -> Fmt.pf ppf "size of %s: %a" symbol Expr.pp_error reason
@@ -350,7 +352,7 @@ let bind_error_code : bind_error -> string = function
   | `Load_overlap _ -> "bind.load-overlap"
   | `No_address _ -> "bind.address"
   | `No_import _ -> "bind.import"
-  | `Overlay_unknown _ -> "bind.overlay"
+  | `Overlay_unknown _ | `Overlay_twice _ -> "bind.overlay"
   | `Cross_overlay _ -> "bind.cross-overlay"
   | `Alignment _ -> "bind.alignment"
   | `Symbol_size _ -> "bind.size"
@@ -1335,11 +1337,18 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
   (* Two segments at one address was M1's silent behaviour, because there was
      only ever one segment. With .text and .data both present it would map one
      over the other and the byte comparison would be against a program that
-     cannot run. An overlay group is the one deliberate exception: its members
-     take turns at one run address, so they may overlap each other, and only
-     each other. *)
-  let same_group a b =
-    (not (String.equal a b)) && List.exists (fun g -> List.mem a g && List.mem b g) overlays
+     cannot run. Overlays are the one deliberate exception: each is a set of
+     segments, and overlays take turns in the same memory, so a segment of one
+     may overlap a segment of another - and nothing else. *)
+  let overlay_of n =
+    let rec find k = function
+      | [] -> None
+      | o :: rest -> if List.mem n o then Some k else find (k + 1) rest
+    in
+    find 0 overlays
+  in
+  let other_overlays a b =
+    match (overlay_of a, overlay_of b) with Some i, Some j -> i <> j | _ -> false
   in
   let placed =
     List.filter_map
@@ -1365,7 +1374,7 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
           (fun (n', a', sz') ->
             let e = Int64.add a (Int64.of_int sz) and e' = Int64.add a' (Int64.of_int sz') in
             reject_if ~pos:__POS__
-              (Int64.compare a e' < 0 && Int64.compare a' e < 0 && not (same_group n n'))
+              (Int64.compare a e' < 0 && Int64.compare a' e < 0 && not (other_overlays n n'))
               (`Overlap { a_name = n; a_at = a; a_size = sz; b_name = n'; b_at = a'; b_size = sz' }))
           rest
         @ overlap_checks rest
@@ -1429,15 +1438,20 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
     @ stored_pairs stored
   in
   let overlay_checks =
-    List.map
+    List.concat_map
       (fun n ->
-        reject_if ~pos:__POS__
-          (not (List.exists (fun s -> String.equal s.seg_name n) l.plan.segments))
-          (`Overlay_unknown n))
+        [
+          reject_if ~pos:__POS__
+            (not (List.exists (fun s -> String.equal s.seg_name n) l.plan.segments))
+            (`Overlay_unknown n);
+          reject_if ~pos:__POS__
+            (List.length (List.filter (List.mem n) overlays) > 1)
+            (`Overlay_twice n);
+        ])
       (List.sort_uniq compare (List.concat overlays))
   in
-  (* Once two members share a slot, at most one is resident at a time, so a
-     reference from one into another reaches whatever happens to be loaded. *)
+  (* At most one overlay is resident at a time, so a reference from one into
+     another reaches whatever happens to be loaded. *)
   let cross_overlay_checks =
     List.concat_map
       (fun f ->
@@ -1447,7 +1461,7 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
               resolve_symbol ~definitions:l.definitions ~link_global:l.link_global
                 ~from_unit:f.rf_unit s
             with
-            | Some d when same_group f.rf_section d.Symtab.d_section ->
+            | Some d when other_overlays f.rf_section d.Symtab.d_section ->
                 Some
                   (reject_if ~pos:__POS__ true
                      (`Cross_overlay

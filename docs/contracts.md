@@ -183,10 +183,11 @@ is an *import*: the plan lists it under `import`, a referenced but undefined
 must supply its address (`bind.import` otherwise; an undefined weak extern still
 binds to 0). A definition in the link wins over an import of the same name.
 
-`bind_image` rejects overlapping segments (`bind.overlap`) except members of one
-`~overlays` group, which take turns at a shared run address. A fixup in one
-member that resolves into another member of the same group is
-`bind.cross-overlay`: only one of them is resident at a time.
+`bind_image` rejects overlapping segments (`bind.overlap`) except segments of
+different overlays: `~overlays` lists each overlay as its set of segments, and
+overlays take turns in the same memory. A fixup in one overlay that resolves
+into another is `bind.cross-overlay`, since only one is resident at a time; a
+segment named by no plan or in two overlays is `bind.overlay`.
 
 `~load_addresses` stores a segment's initialized bytes apart from its run
 address (`load=`, an ELF `p_paddr`). The stored bytes must not overlap another

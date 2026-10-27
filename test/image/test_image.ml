@@ -624,7 +624,7 @@ let%expect_test "a weak extern takes its import, else 0" =
         00 00 00 00
         34 12 00 00 |}]
 
-(* {1 Overlay groups} *)
+(* {1 Overlays} *)
 
 let code_section name frags =
   {
@@ -644,7 +644,7 @@ let overlays ?(b_calls = "entry") () =
 
 let slot = [ (".text", 0x40000000L); (".ovl.a", 0x40001000L); (".ovl.b", 0x40001000L) ]
 
-let%expect_test "an overlay group shares one run address" =
+let%expect_test "overlays share one run address" =
   match plan (overlays ()) with
   | Error ds -> show_errors ds
   | Ok l ->
@@ -656,7 +656,14 @@ let%expect_test "an overlay group shares one run address" =
               List.iter
                 (fun s -> Fmt.pr "%s %s@." s.Image.name (hex s.Image.bytes))
                 img.Image.segments)
-        [ []; [ [ ".ovl.a"; ".ovl.b" ] ]; [ [ ".text"; ".ovl.a" ] ]; [ [ ".ovl.a"; ".ovl.c" ] ] ];
+        [
+          [];
+          [ [ ".ovl.a" ]; [ ".ovl.b" ] ];
+          [ [ ".ovl.a"; ".ovl.b" ] ];
+          [ [ ".text" ]; [ ".ovl.a" ]; [ ".ovl.b" ] ];
+          [ [ ".ovl.a" ]; [ ".ovl.b"; ".ovl.c" ] ];
+          [ [ ".ovl.a" ]; [ ".ovl.a"; ".ovl.b" ] ];
+        ];
       [%expect
         {|
         bind.overlap: segments .ovl.a at 0x40001000 (8 bytes) and .ovl.b at 0x40001000 (5 bytes) overlap
@@ -664,20 +671,85 @@ let%expect_test "an overlay group shares one run address" =
         .ovl.a e9 fb ef ff ff 90 90 90
         .ovl.b e9 fb ef ff ff
         bind.overlap: segments .ovl.a at 0x40001000 (8 bytes) and .ovl.b at 0x40001000 (5 bytes) overlap
-        bind.cross-overlay: fixup target in overlay .text references a in overlay .ovl.a of the same group
-        bind.cross-overlay: fixup target in overlay .ovl.a references entry in overlay .text of the same group
-        bind.overlap: segments .ovl.a at 0x40001000 (8 bytes) and .ovl.b at 0x40001000 (5 bytes) overlap
-        bind.overlay: overlay group names no segment .ovl.c |}]
+        bind.cross-overlay: fixup target in .text references a in .ovl.a, another overlay
+        bind.cross-overlay: fixup target in .ovl.a references entry in .text, another overlay
+        bind.cross-overlay: fixup target in .ovl.b references entry in .text, another overlay
+        bind.overlay: overlays name no segment .ovl.c
+        bind.overlay: segment .ovl.a is in more than one overlay |}]
 
-let%expect_test "a reference between members of one group is rejected" =
+let%expect_test "a reference into another overlay is rejected" =
   match plan (overlays ~b_calls:"a" ()) with
   | Error ds -> show_errors ds
   | Ok l ->
-      (match Image.bind_image l ~addresses:slot ~overlays:[ [ ".ovl.a"; ".ovl.b" ] ] with
+      (match Image.bind_image l ~addresses:slot ~overlays:[ [ ".ovl.a" ]; [ ".ovl.b" ] ] with
       | Error ds -> show_errors ds
       | Ok _ -> Fmt.pr "accepted@.");
       [%expect
-        {| bind.cross-overlay: fixup target in overlay .ovl.b references a in overlay .ovl.a of the same group |}]
+        {| bind.cross-overlay: fixup target in .ovl.b references a in .ovl.a, another overlay |}]
+
+(* An overlay of a text and a data segment: its text may address its own data,
+   another overlay may not, though the two data segments share a region. *)
+let%expect_test "an overlay is a set of segments" =
+  let address name =
+    Lowered_ast.Bytes
+      {
+        bytes = "\x00\x00\x00\x00";
+        form = None;
+        fixups =
+          [
+            fixup ~kind:Abs32 ~range:(Lowered_ast.Bitpattern 32) ~byte_offset:0 ~container:4
+              ~pc_bias:0 ~slices:(whole_container ~bits:32) (Expr.Symbol name);
+          ];
+        origin;
+      }
+  in
+  let data_section name frags =
+    {
+      Lowered_ast.sec =
+        {
+          Lowered_ast.sec_name = name;
+          perms = Perms.rw;
+          alignment = 4;
+          kind = Lowered_ast.Progbits;
+        };
+      fragments = frags;
+    }
+  in
+  let m b_data =
+    module_
+      ~symbols:[ sym "entry" ]
+      [
+        text_section [ label "entry"; filler 4 ];
+        code_section ".ovl.a" [ address "a_data" ];
+        data_section ".ovl.a.data" [ label "a_data"; filler 4 ];
+        code_section ".ovl.b" [ address b_data ];
+        data_section ".ovl.b.data" [ label "b_data"; filler 8 ];
+      ]
+  in
+  let addresses = slot @ [ (".ovl.a.data", 0x40002000L); (".ovl.b.data", 0x40002000L) ] in
+  List.iter
+    (fun (b_data, overlays) ->
+      match plan (m b_data) with
+      | Error ds -> show_errors ds
+      | Ok l -> (
+          match Image.bind_image l ~addresses ~overlays with
+          | Error ds -> show_errors ds
+          | Ok img ->
+              List.iter
+                (fun s -> Fmt.pr "%s %s@." s.Image.name (hex s.Image.bytes))
+                img.Image.segments))
+    [
+      ("b_data", [ [ ".ovl.a"; ".ovl.a.data" ]; [ ".ovl.b"; ".ovl.b.data" ] ]);
+      ("a_data", [ [ ".ovl.a"; ".ovl.a.data" ]; [ ".ovl.b"; ".ovl.b.data" ] ]);
+    ];
+  [%expect
+    {|
+    .text 90 90 90 90
+    .ovl.a 00 20 00 40
+    .ovl.a.data 90 90 90 90
+    .ovl.b 00 20 00 40
+    .ovl.b.data 90 90 90 90 90 90 90 90
+    bind.cross-overlay: fixup target in .ovl.b references a_data in .ovl.a.data, another overlay |}]
 
 let%expect_test "overlays are stored apart from their shared slot" =
   match plan (overlays ()) with
@@ -686,7 +758,8 @@ let%expect_test "overlays are stored apart from their shared slot" =
       List.iter
         (fun load_addresses ->
           match
-            Image.bind_image l ~addresses:slot ~overlays:[ [ ".ovl.a"; ".ovl.b" ] ] ~load_addresses
+            Image.bind_image l ~addresses:slot ~overlays:[ [ ".ovl.a" ]; [ ".ovl.b" ] ]
+              ~load_addresses
           with
           | Error ds -> show_errors ds
           | Ok img -> Fmt.pr "%a@." Image.pp img)
