@@ -167,7 +167,7 @@ unresolved <name>
 After binding (`bind_image`, i.e. with `--fixed-base`):
 
 ```text
-section <name> address=<hex> size=<n> permissions=<perms>
+section <name> address=<hex> [load=<hex>] size=<n> permissions=<perms>
 entry <hex>
 export <name> = <hex> [size=<n>]
 ```
@@ -182,6 +182,16 @@ is an *import*: the plan lists it under `import`, a referenced but undefined
 `.globl` of it is not `declared but never defined`, and `bind_image ~imports`
 must supply its address (`bind.import` otherwise; an undefined weak extern still
 binds to 0). A definition in the link wins over an import of the same name.
+
+`bind_image` rejects overlapping segments (`bind.overlap`) except segments of
+different overlays: `~overlays` lists each overlay as its set of segments, and
+overlays take turns in the same memory. A fixup in one overlay that resolves
+into another is `bind.cross-overlay`, since only one is resident at a time; a
+segment named by no plan or in two overlays is `bind.overlay`.
+
+`~load_addresses` stores a segment's initialized bytes apart from its run
+address (`load=`, an ELF `p_paddr`). The stored bytes must not overlap another
+segment's run extent or another stored segment (`bind.load-overlap`).
 
 `declared` sections appear in `--dump-lowered-ast` (§1.4) and not here, which is
 the same rule stated twice: an unallocated section has no address, and this dump

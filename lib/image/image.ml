@@ -161,6 +161,8 @@ type segment = {
   perms : Perms.t;
   alignment : int;
   address : int64;
+  load_address : int64 option;
+      (** where the initialized bytes are stored, when not at [address]: an ELF [p_paddr] *)
   bytes : string;
   zero_fill : int;
 }
@@ -229,8 +231,12 @@ and align_fill = { pad : int; boundary : int }
 type bind_error =
   [ `Overflow of overflow
   | `Overlap of overlap
+  | `Load_overlap of overlap
   | `No_address of string
   | `No_import of string
+  | `Overlay_unknown of string
+  | `Overlay_twice of string
+  | `Cross_overlay of cross_overlay
   | `Alignment of alignment
   | `Symbol_size of symbol_size
   | `Fixup_value of fixup_value
@@ -250,6 +256,7 @@ and overlap = {
 }
 
 and alignment = { segment : string; needs : int; address : int64 }
+and cross_overlay = { fixup : string; symbol : string; from_segment : string; to_segment : string }
 and symbol_size = { symbol : string; reason : Expr.error }
 and fixup_value = { fixup : string; reason : Expr.error }
 and fixup_out_of_range = { fixup : string; value : int64; range : Lowered_ast.range; at : int }
@@ -292,8 +299,16 @@ let pp_bind_error ppf : bind_error -> unit = function
   | `Overlap { a_name; a_at; a_size; b_name; b_at; b_size } ->
       Fmt.pf ppf "segments %s at 0x%Lx (%d bytes) and %s at 0x%Lx (%d bytes) overlap" a_name a_at
         a_size b_name b_at b_size
+  | `Load_overlap { a_name; a_at; a_size; b_name; b_at; b_size } ->
+      Fmt.pf ppf "segment %s stored at 0x%Lx (%d bytes) overlaps %s at 0x%Lx (%d bytes)" a_name a_at
+        a_size b_name b_at b_size
   | `No_address s -> Fmt.pf ppf "no address for segment %s" s
   | `No_import n -> Fmt.pf ppf "no address for imported symbol %s" n
+  | `Overlay_unknown s -> Fmt.pf ppf "overlays name no segment %s" s
+  | `Overlay_twice s -> Fmt.pf ppf "segment %s is in more than one overlay" s
+  | `Cross_overlay { fixup; symbol; from_segment; to_segment } ->
+      Fmt.pf ppf "fixup %s in %s references %s in %s, another overlay" fixup from_segment symbol
+        to_segment
   | `Alignment { segment; needs; address } ->
       Fmt.pf ppf "segment %s needs %d-byte alignment, address is 0x%Lx" segment needs address
   | `Symbol_size { symbol; reason } -> Fmt.pf ppf "size of %s: %a" symbol Expr.pp_error reason
@@ -334,8 +349,11 @@ let link_error_code : link_error -> string = function
 let bind_error_code : bind_error -> string = function
   | `Overflow _ -> "bind.overflow"
   | `Overlap _ -> "bind.overlap"
+  | `Load_overlap _ -> "bind.load-overlap"
   | `No_address _ -> "bind.address"
   | `No_import _ -> "bind.import"
+  | `Overlay_unknown _ | `Overlay_twice _ -> "bind.overlay"
+  | `Cross_overlay _ -> "bind.cross-overlay"
   | `Alignment _ -> "bind.alignment"
   | `Symbol_size _ -> "bind.size"
   | `Fixup_value _ | `Fixup_target_too_wide _ -> "bind.fixup"
@@ -1313,12 +1331,25 @@ let patch_container bytes ~at ~size ~slices ~value =
   done;
   Bytes.to_string out
 
-let bind_image ?(imports : (string * int64) list = []) (l : laid_out)
+let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list list = [])
+    ?(load_addresses : (string * int64) list = []) (l : laid_out)
     ~(addresses : (string * int64) list) =
   (* Two segments at one address was M1's silent behaviour, because there was
      only ever one segment. With .text and .data both present it would map one
      over the other and the byte comparison would be against a program that
-     cannot run. *)
+     cannot run. Overlays are the one deliberate exception: each is a set of
+     segments, and overlays take turns in the same memory, so a segment of one
+     may overlap a segment of another - and nothing else. *)
+  let overlay_of n =
+    let rec find k = function
+      | [] -> None
+      | o :: rest -> if List.mem n o then Some k else find (k + 1) rest
+    in
+    find 0 overlays
+  in
+  let other_overlays a b =
+    match (overlay_of a, overlay_of b) with Some i, Some j -> i <> j | _ -> false
+  in
   let placed =
     List.filter_map
       (fun s ->
@@ -1343,7 +1374,7 @@ let bind_image ?(imports : (string * int64) list = []) (l : laid_out)
           (fun (n', a', sz') ->
             let e = Int64.add a (Int64.of_int sz) and e' = Int64.add a' (Int64.of_int sz') in
             reject_if ~pos:__POS__
-              (Int64.compare a e' < 0 && Int64.compare a' e < 0)
+              (Int64.compare a e' < 0 && Int64.compare a' e < 0 && not (other_overlays n n'))
               (`Overlap { a_name = n; a_at = a; a_size = sz; b_name = n'; b_at = a'; b_size = sz' }))
           rest
         @ overlap_checks rest
@@ -1372,6 +1403,77 @@ let bind_image ?(imports : (string * int64) list = []) (l : laid_out)
           (not (List.mem_assoc n imports || List.mem n l.weak_names))
           (`No_import n))
       l.plan.imports
+  in
+  (* A segment stored apart from where it runs must not be stored over another
+     segment's run extent or over another stored segment. *)
+  let stored =
+    List.filter_map
+      (fun s ->
+        match List.assoc_opt s.seg_name load_addresses with
+        | Some la when s.init_size > 0 -> Some (s.seg_name, la, s.init_size)
+        | _ -> None)
+      l.plan.segments
+  in
+  let intersects (a, sz) (a', sz') =
+    Int64.compare a (Int64.add a' (Int64.of_int sz')) < 0
+    && Int64.compare a' (Int64.add a (Int64.of_int sz)) < 0
+  in
+  let load_overlap (n, a, sz) (n', a', sz') =
+    reject_if ~pos:__POS__
+      ((not (String.equal n n')) && intersects (a, sz) (a', sz'))
+      (`Load_overlap { a_name = n; a_at = a; a_size = sz; b_name = n'; b_at = a'; b_size = sz' })
+  in
+  let rec stored_pairs = function
+    | [] -> []
+    | x :: rest -> List.map (load_overlap x) rest @ stored_pairs rest
+  in
+  let load_checks =
+    List.map
+      (fun (n, a, sz) ->
+        reject_if ~pos:__POS__
+          (Int64.compare a 0L < 0 || Int64.compare (Int64.add a (Int64.of_int sz)) a < 0)
+          (`Overflow { segment = n; address = a; size = sz }))
+      stored
+    @ List.concat_map (fun x -> List.map (load_overlap x) placed) stored
+    @ stored_pairs stored
+  in
+  let overlay_checks =
+    List.concat_map
+      (fun n ->
+        [
+          reject_if ~pos:__POS__
+            (not (List.exists (fun s -> String.equal s.seg_name n) l.plan.segments))
+            (`Overlay_unknown n);
+          reject_if ~pos:__POS__
+            (List.length (List.filter (List.mem n) overlays) > 1)
+            (`Overlay_twice n);
+        ])
+      (List.sort_uniq compare (List.concat overlays))
+  in
+  (* At most one overlay is resident at a time, so a reference from one into
+     another reaches whatever happens to be loaded. *)
+  let cross_overlay_checks =
+    List.concat_map
+      (fun f ->
+        List.filter_map
+          (fun s ->
+            match
+              resolve_symbol ~definitions:l.definitions ~link_global:l.link_global
+                ~from_unit:f.rf_unit s
+            with
+            | Some d when other_overlays f.rf_section d.Symtab.d_section ->
+                Some
+                  (reject_if ~pos:__POS__ true
+                     (`Cross_overlay
+                        {
+                          fixup = f.rf_name;
+                          symbol = s;
+                          from_segment = f.rf_section;
+                          to_segment = d.Symtab.d_section;
+                        }))
+            | _ -> None)
+          (Expr.symbols f.rf_value))
+      l.fixups
   in
   let finish () =
     let errors = ref [] in
@@ -1530,6 +1632,7 @@ let bind_image ?(imports : (string * int64) list = []) (l : laid_out)
             perms = s.perms;
             alignment = s.alignment;
             address = (match List.assoc_opt s.seg_name addresses with Some a -> a | None -> 0L);
+            load_address = List.assoc_opt s.seg_name load_addresses;
             bytes = content_of s.seg_name;
             zero_fill = s.zero_fill;
           })
@@ -1544,7 +1647,8 @@ let bind_image ?(imports : (string * int64) list = []) (l : laid_out)
   in
   match
     Diag.validate_all ~pos:__POS__
-      (overflow_checks @ overlap_checks placed @ address_checks @ alignment_checks @ import_checks)
+      (overflow_checks @ overlap_checks placed @ address_checks @ alignment_checks @ import_checks
+     @ overlay_checks @ cross_overlay_checks @ load_checks)
   with
   | Error errors -> Error errors
   | Ok () -> finish ()
@@ -1585,7 +1689,9 @@ let pp ppf (t : t) =
              until common-symbol storage, §7), and reporting less than its
              true extent here would under-report exactly the segment kind
              this refactor exists to get right. *)
-          Fmt.pf ppf "section %s address=0x%Lx size=%d permissions=%a" s.name s.address
+          Fmt.pf ppf "section %s address=0x%Lx%a size=%d permissions=%a" s.name s.address
+            Fmt.(option (fun ppf a -> Fmt.pf ppf " load=0x%Lx" a))
+            s.load_address
             (String.length s.bytes + s.zero_fill)
             Perms.pp s.perms))
     t.segments
