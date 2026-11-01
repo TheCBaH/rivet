@@ -33,7 +33,9 @@ let word_bytes w =
 
 let word_of_bytes b =
   let v = ref 0L in
-  String.iteri (fun i c -> v := Int64.logor !v (Int64.shift_left (Int64.of_int (Char.code c)) (8 * i))) b;
+  String.iteri
+    (fun i c -> v := Int64.logor !v (Int64.shift_left (Int64.of_int (Char.code c)) (8 * i)))
+    b;
   !v
 
 let decoded ?features target bytes =
