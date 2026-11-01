@@ -432,7 +432,9 @@ module Mpause_driver = Driver.Pipeline.Make (Mpause)
 
 let%expect_test "mpause assembles, decodes, and leaves the standard system words alone" =
   let (module D : Target_intf.Target.DRIVER) = (module Mpause_driver) in
-  let word w = String.init 4 (fun i -> Char.chr ((w lsr (8 * i)) land 0xff)) in
+  let word w =
+    String.init 4 (fun i -> Char.chr Int64.(to_int (logand (shift_right_logical w (8 * i)) 0xffL)))
+  in
   let decode ?features w =
     let features =
       Option.map
@@ -451,19 +453,19 @@ let%expect_test "mpause assembles, decodes, and leaves the standard system words
         (assembled (module Mpause_driver) ?features "mpause"))
     [ None; Some "+mpause"; Some "none,+mpause" ];
   List.iter
-    (fun w -> Printf.printf "%08x %s\n" w (decode ~features:"+mpause" w))
+    (fun w -> Printf.printf "%08Lx %s\n" w (decode ~features:"+mpause" w))
     [
-      0x08000073;
-      0x00000073;
-      0x00100073;
-      0xc0001073;
-      0x30200073;
-      0x10500073;
-      0xb00022f3;
-      0x34029073;
-      0x3401d0f3;
+      0x08000073L;
+      0x00000073L;
+      0x00100073L;
+      0xc0001073L;
+      0x30200073L;
+      0x10500073L;
+      0xb00022f3L;
+      0x34029073L;
+      0x3401d0f3L;
     ];
-  Printf.printf "%08x %s\n" 0x08000073 (decode 0x08000073);
+  Printf.printf "%08Lx %s\n" 0x08000073L (decode 0x08000073L);
   [%expect
     {|
     default      REFUSED riscv64.feature: mpause requires feature mpause, which is not enabled

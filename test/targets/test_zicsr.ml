@@ -28,11 +28,12 @@ let assembled ?features target text =
       | Ok { Image.segments = s :: _; _ } -> Ok s.Image.bytes
       | Ok _ -> Error "no segments")
 
-let word_bytes w = String.init 4 (fun i -> Char.chr ((w lsr (8 * i)) land 0xff))
+let word_bytes w =
+  String.init 4 (fun i -> Char.chr Int64.(to_int (logand (shift_right_logical w (8 * i)) 0xffL)))
 
 let word_of_bytes b =
-  let v = ref 0 in
-  String.iteri (fun i c -> v := !v lor (Char.code c lsl (8 * i))) b;
+  let v = ref 0L in
+  String.iteri (fun i c -> v := Int64.logor !v (Int64.shift_left (Int64.of_int (Char.code c)) (8 * i))) b;
   !v
 
 let decoded ?features target bytes =
@@ -47,14 +48,14 @@ let round_trip target text =
   | Ok bytes -> (
       let w = word_of_bytes bytes in
       match decoded target bytes with
-      | Error m -> Printf.printf "%-28s %08x REFUSED %s\n" text w m
+      | Error m -> Printf.printf "%-28s %08Lx REFUSED %s\n" text w m
       | Ok back ->
           let same =
             match assembled target back with
             | Ok b -> if String.equal b bytes then "same" else "DIFFERENT"
             | Error m -> "REFUSED " ^ m
           in
-          Printf.printf "%-28s %08x %-28s %s\n" text w back same)
+          Printf.printf "%-28s %08Lx %-28s %s\n" text w back same)
 
 let%expect_test "every Zicsr form decodes to the text the assembler takes back" =
   List.iter (round_trip "riscv32")
@@ -113,9 +114,9 @@ let%expect_test "words the assembler does not produce from a CSR mnemonic" =
   List.iter
     (fun w ->
       match decoded "riscv32" (word_bytes w) with
-      | Ok t -> Printf.printf "%08x %s\n" w t
-      | Error m -> Printf.printf "%08x REFUSED %s\n" w m)
-    [ 0xc0001073; 0x00000073; 0x00100073; 0x30200073; 0x10500073; 0x00004073; 0x08000073 ];
+      | Ok t -> Printf.printf "%08Lx %s\n" w t
+      | Error m -> Printf.printf "%08Lx REFUSED %s\n" w m)
+    [ 0xc0001073L; 0x00000073L; 0x00100073L; 0x30200073L; 0x10500073L; 0x00004073L; 0x08000073L ];
   [%expect
     {|
     c0001073 unimp
@@ -129,7 +130,7 @@ let%expect_test "words the assembler does not produce from a CSR mnemonic" =
 let%expect_test "with Zicsr disabled the word is refused, not printed" =
   List.iter
     (fun features ->
-      match decoded ~features "riscv64" (word_bytes 0xb00022f3) with
+      match decoded ~features "riscv64" (word_bytes 0xb00022f3L) with
       | Ok t -> Printf.printf "%-12s %s\n" features t
       | Error m -> Printf.printf "%-12s REFUSED %s\n" features m)
     [ "none"; "none,+zicsr"; "none,+m" ];
@@ -144,7 +145,7 @@ let%expect_test "CSR names: each assembles to its number and decodes back to its
   let bad = ref 0 in
   List.iter
     (fun (name, n) ->
-      let expected = 0x2573 lor (n lsl 20) in
+      let expected = Int64.(logor 0x2573L (shift_left (of_int n) 20)) in
       let ok =
         match assembled "riscv64" ("csrr x10, " ^ name) with
         | Ok b when word_of_bytes b = expected -> (
