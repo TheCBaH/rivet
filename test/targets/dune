@@ -3,7 +3,7 @@
 
 (library
  (name test_targets)
- (modules test_targets test_components test_features test_vendor)
+ (modules test_targets test_components test_features test_vendor test_zicsr)
  (modes byte native)
  (libraries
   driver
@@ -26,7 +26,8 @@
   x86_64_encode
   target_features
   rivet_fmt)
- (inline_tests)
+ (inline_tests
+  (deps ../../fixtures/isa-difficult/cases.jsonl))
  (preprocess
   (pps ppx_expect))
  (enabled_if

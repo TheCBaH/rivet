@@ -3,6 +3,7 @@ module C = Codec
 
 (* Re-exported: the library's main module hides its siblings otherwise. *)
 module Riscv_ext_m = Riscv_ext_m
+module Riscv_csr = Riscv_csr
 module Riscv_table_row = Riscv_table_row
 module Riscv_table_rows = Riscv_table_rows
 module Riscv_overlap = Riscv_overlap
@@ -2082,6 +2083,14 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      `f1459573`, mhartid = 0xf14 = 3860 encoded via signed_csr = -236). *)
   let signed_csr csr = if Int64.compare csr 2048L >= 0 then Int64.sub csr 4096L else csr
 
+  (* The address a CSR operand stands for: a standard name (as GNU as takes it, ahead of any
+     symbol of that name) or an absolute expression. *)
+  let csr_number e =
+    match e with
+    | Asm_core.Expr.Symbol s -> (
+        match Riscv_csr.number s with Some n -> Some (Int64.of_int n) | None -> int64_expr e)
+    | _ -> int64_expr e
+
   (* Zaamo's [(rs1)] memory operand carries no real offset field - GAS
      accepts the [offset(base)] syntax generically, so this rejects any
      concrete nonzero fold rather than silently dropping it, matching real
@@ -2598,7 +2607,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            (Zicsr is XLEN-independent). *)
         match (xreg a, expr_of csr, xreg b) with
         | Some rd, Some csr_e, Some rs1 -> (
-            match int64_expr csr_e with
+            match csr_number csr_e with
             | Some csr when Int64.compare csr 0L >= 0 && Int64.compare csr 4095L <= 0 ->
                 let funct3 =
                   match i.op with Opcode.Csrrw -> 1 | Csrrs -> 2 | Csrrc -> 3 | _ -> assert false
@@ -2631,7 +2640,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            mstatus, 31` -> `300fd573`. *)
         match (xreg a, expr_of csr, expr_of zimm) with
         | Some rd, Some csr_e, Some zimm_e -> (
-            match (int64_expr csr_e, int64_expr zimm_e) with
+            match (csr_number csr_e, int64_expr zimm_e) with
             | Some csr, Some zimm
               when Int64.compare csr 0L >= 0
                    && Int64.compare csr 4095L <= 0
@@ -2668,7 +2677,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            zero` bit-for-bit. *)
         match (xreg a, expr_of csr) with
         | Some rd, Some csr_e -> (
-            match int64_expr csr_e with
+            match csr_number csr_e with
             | Some csr when Int64.compare csr 0L >= 0 && Int64.compare csr 4095L <= 0 ->
                 Ok
                   [
@@ -2698,7 +2707,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            inferred from the other. *)
         match (expr_of csr, xreg b) with
         | Some csr_e, Some rs1 -> (
-            match int64_expr csr_e with
+            match csr_number csr_e with
             | Some csr when Int64.compare csr 0L >= 0 && Int64.compare csr 4095L <= 0 ->
                 let funct3 =
                   match i.op with Opcode.Csrw -> 1 | Csrs -> 2 | Csrc -> 3 | _ -> assert false
@@ -2726,7 +2735,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            matching `csrrwi zero, mstatus, 5` bit-for-bit. *)
         match (expr_of csr, expr_of zimm) with
         | Some csr_e, Some zimm_e -> (
-            match (int64_expr csr_e, int64_expr zimm_e) with
+            match (csr_number csr_e, int64_expr zimm_e) with
             | Some csr, Some zimm
               when Int64.compare csr 0L >= 0
                    && Int64.compare csr 4095L <= 0
@@ -4653,6 +4662,32 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
             | 0x73 when Int64.equal w 0x73L -> Some (instruction Opcode.Ecall [], "ecall")
             | 0x73 when Int64.equal w 0x00100073L -> Some (instruction Opcode.Ebreak [], "ebreak")
             | 0x73 when Int64.equal w 0xc0001073L -> Some (instruction Opcode.Unimp [], "unimp")
+            | 0x73 when f3 <> 0 && f3 <> 4 ->
+                (* [unimp] above is itself a [csrrw] word and must stay ahead of this arm. The
+                   aliases are the ones the encoder takes back to the same word. *)
+                let csr =
+                  let n = Int64.to_int (bits w 20 12) in
+                  match Riscv_csr.name n with
+                  | Some name -> Operand.Sym (Asm_core.Expr.Symbol name)
+                  | None -> imm (Int64.of_int n)
+                in
+                let name, ops =
+                  match (f3, rd, rs1) with
+                  | 2, _, 0 when rd <> 0 -> ("csrr", [ reg rd; csr ])
+                  | 2, 0, 0 -> ("csrrs", [ reg rd; csr; reg rs1 ])
+                  | (1 | 2 | 3), 0, _ ->
+                      ((match f3 with 1 -> "csrw" | 2 -> "csrs" | _ -> "csrc"), [ csr; reg rs1 ])
+                  | (5 | 6 | 7), 0, _ ->
+                      ( (match f3 with 5 -> "csrwi" | 6 -> "csrsi" | _ -> "csrci"),
+                        [ csr; imm (Int64.of_int rs1) ] )
+                  | (1 | 2 | 3), _, _ ->
+                      ( (match f3 with 1 -> "csrrw" | 2 -> "csrrs" | _ -> "csrrc"),
+                        [ reg rd; csr; reg rs1 ] )
+                  | _ ->
+                      ( (match f3 with 5 -> "csrrwi" | 6 -> "csrrsi" | _ -> "csrrci"),
+                        [ reg rd; csr; imm (Int64.of_int rs1) ] )
+                in
+                Some (instruction (op_exn name) ops, name)
             | 0x0f when Int64.equal w 0x0000100fL -> Some (instruction Opcode.Fence_i [], "fence.i")
             | 0x0f when Int64.equal w 0x8330000fL ->
                 Some (instruction Opcode.Fence_tso [], "fence.tso")
