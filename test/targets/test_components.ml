@@ -529,10 +529,10 @@ let%expect_test
   [%expect
     {|
     riscv32: ok
-      decoded as the hand-written form they are a hint of: rv_zihintntl/ntl.all rv_zihintntl/ntl.p1 rv_zihintntl/ntl.pall rv_zihintntl/ntl.s1 rv_zicbo/prefetch.i rv_zicbo/prefetch.r rv_zicbo/prefetch.w rv_c_zihintntl/c.ntl.all rv_c_zihintntl/c.ntl.p1 rv_c_zihintntl/c.ntl.pall rv_c_zihintntl/c.ntl.s1 rv_zicfilp/lpad
+      decoded as the hand-written form they are a hint of: rv_zihintntl/ntl.all rv_zihintntl/ntl.p1 rv_zihintntl/ntl.pall rv_zihintntl/ntl.s1 rv_f/frcsr rv_f/frflags rv_f/frrm rv_zicntr/rdcycle rv_zicntr/rdinstret rv_zicntr/rdtime rv32_zicntr/rdcycleh rv32_zicntr/rdinstreth rv32_zicntr/rdtimeh rv_f/fscsr rv_f/fsflags rv_f/fsflagsi rv_f/fsrm rv_f/fsrmi rv_zicbo/prefetch.i rv_zicbo/prefetch.r rv_zicbo/prefetch.w rv_c_zihintntl/c.ntl.all rv_c_zihintntl/c.ntl.p1 rv_c_zihintntl/c.ntl.pall rv_c_zihintntl/c.ntl.s1 rv_zicfilp/lpad
       identical encodings: rv_zcmop/c.mop.1=rv_c_zicfiss/c.sspush.x1 rv_zcmop/c.mop.5=rv_c_zicfiss/c.sspopchk.x5
     riscv64: ok
-      decoded as the hand-written form they are a hint of: rv_zihintntl/ntl.all rv_zihintntl/ntl.p1 rv_zihintntl/ntl.pall rv_zihintntl/ntl.s1 rv_zicbo/prefetch.i rv_zicbo/prefetch.r rv_zicbo/prefetch.w rv_c_zihintntl/c.ntl.all rv_c_zihintntl/c.ntl.p1 rv_c_zihintntl/c.ntl.pall rv_c_zihintntl/c.ntl.s1 rv_zicfilp/lpad
+      decoded as the hand-written form they are a hint of: rv_zihintntl/ntl.all rv_zihintntl/ntl.p1 rv_zihintntl/ntl.pall rv_zihintntl/ntl.s1 rv_f/frcsr rv_f/frflags rv_f/frrm rv_zicntr/rdcycle rv_zicntr/rdinstret rv_zicntr/rdtime rv_f/fscsr rv_f/fsflags rv_f/fsflagsi rv_f/fsrm rv_f/fsrmi rv_zicbo/prefetch.i rv_zicbo/prefetch.r rv_zicbo/prefetch.w rv_c_zihintntl/c.ntl.all rv_c_zihintntl/c.ntl.p1 rv_c_zihintntl/c.ntl.pall rv_c_zihintntl/c.ntl.s1 rv_zicfilp/lpad
       identical encodings: rv_zcmop/c.mop.1=rv_c_zicfiss/c.sspush.x1 rv_zcmop/c.mop.5=rv_c_zicfiss/c.sspopchk.x5 |}]
 
 (* Table rows the generated differential cases cannot spell yet, pinned to real GNU as 2.44
