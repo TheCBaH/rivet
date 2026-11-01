@@ -15,6 +15,7 @@
   riscv_ext_fd
   riscv_ext_fp
   riscv_ext_m
+  riscv_csr
   riscv_ext_sys
   riscv_ext_v
   riscv_extensions

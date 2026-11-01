@@ -363,3 +363,119 @@ let%expect_test "tile operands encode and decode by name" =
     vtmms.tvv mt3, v8, v16     REFUSED riscv64.lower: no vtmms.tvv form takes these operands
     vtzero mt3                 57 63 e0 43  vtzero mt3
     vtzero mt3                 REFUSED riscv64.feature: vtzero requires feature xtile, which is not enabled |}]
+
+(* {1 A vendor word in the SYSTEM opcode space}
+
+   [mpause] is not RISC-V, but its word sits among the hand-written system forms and the Zicsr
+   words. Every word of that space the standard decoder reads is refused as a vendor row. *)
+
+let system_row ?(mask = 0xffffffffL) mnemonic match_ : Row.row =
+  {
+    mnemonic;
+    mask;
+    match_;
+    operands = [];
+    xlen = 0;
+    feature = mnemonic;
+    source = "vendor/" ^ mnemonic;
+  }
+
+let system_definition ?mask mnemonic match_ : Ext.definition =
+  {
+    components = [ component mnemonic [ mnemonic ] ];
+    rows = [| system_row ?mask mnemonic match_ |];
+  }
+
+let%expect_test "vendor rows in the SYSTEM space: accepted only where nothing standard reads" =
+  let try_make label ?mask mnemonic match_ =
+    match Ext.make ~xlen:64 (system_definition ?mask mnemonic match_) with
+    | Ok _ -> Printf.printf "%-18s ok\n" label
+    | Error (p :: more) -> Printf.printf "%-18s %s (+%d more)\n" label p (List.length more)
+    | Error [] -> assert false
+  in
+  try_make "mpause" "mpause" 0x08000073L;
+  try_make "ecall" "xecall" 0x00000073L;
+  try_make "unimp" "xunimp" 0xc0001073L;
+  try_make "csrrw word" "xcsr" 0x340110f3L;
+  try_make "csrrs word" "xcsr" 0xb00022f3L;
+  try_make "csrrwi word" "xcsr" 0x3401d0f3L;
+  try_make "csrr alias word" "xcsr" 0xb0002573L;
+  try_make "funct3 1 space" ~mask:0x0000707fL "xcsr" 0x00001073L;
+  try_make "funct3 5 space" ~mask:0x0000707fL "xcsr" 0x00005073L;
+  try_make "funct3 free" ~mask:0x0000007fL "xcsr" 0x00000073L;
+  try_make "rd free" ~mask:0xfff0707fL "xcsr" 0x34001073L;
+  [%expect
+    {|
+    mpause             ok
+    ecall              row xecall: the standard decoder reads 0x00000073 as ecall (+0 more)
+    unimp              row xunimp: the standard decoder reads 0xc0001073 as unimp (+0 more)
+    csrrw word         row xcsr: the standard decoder reads 0x340110f3 as csrrw (+0 more)
+    csrrs word         row xcsr: the standard decoder reads 0xb00022f3 as csrr (+0 more)
+    csrrwi word        row xcsr: the standard decoder reads 0x3401d0f3 as csrrwi (+0 more)
+    csrr alias word    row xcsr: the standard decoder reads 0xb0002573 as csrr (+0 more)
+    funct3 1 space     row xcsr: overlaps standard form fscsr (+2 more)
+    funct3 5 space     row xcsr: overlaps standard form fsflagsi (+1 more)
+    funct3 free        row xcsr: overlaps standard form sret (+83 more)
+    rd free            row xcsr: the standard decoder reads 0x34001073 as csrw (+0 more) |}]
+
+module Mpause =
+  Riscv_family.Make_with
+    (P64)
+    (struct
+      let definition =
+        match Ext.make ~xlen:64 (system_definition "mpause" 0x08000073L) with
+        | Ok v -> v
+        | Error ps -> failwith (String.concat "; " ps)
+    end)
+
+module Mpause_driver = Driver.Pipeline.Make (Mpause)
+
+let%expect_test "mpause assembles, decodes, and leaves the standard system words alone" =
+  let (module D : Target_intf.Target.DRIVER) = (module Mpause_driver) in
+  let word w = String.init 4 (fun i -> Char.chr ((w lsr (8 * i)) land 0xff)) in
+  let decode ?features w =
+    let features =
+      Option.map
+        (fun t ->
+          match Target_config.parse_spec t with Ok s -> s | Error m -> failwith ("bad spec: " ^ m))
+        features
+    in
+    match D.dump_disasm_canonical ?features ~address:0L (word w) with
+    | Ok s -> String.trim s
+    | Error ds -> "REFUSED " ^ render ds
+  in
+  List.iter
+    (fun features ->
+      Printf.printf "%-12s %s\n"
+        (Option.value features ~default:"default")
+        (assembled (module Mpause_driver) ?features "mpause"))
+    [ None; Some "+mpause"; Some "none,+mpause" ];
+  List.iter
+    (fun w -> Printf.printf "%08x %s\n" w (decode ~features:"+mpause" w))
+    [
+      0x08000073;
+      0x00000073;
+      0x00100073;
+      0xc0001073;
+      0x30200073;
+      0x10500073;
+      0xb00022f3;
+      0x34029073;
+      0x3401d0f3;
+    ];
+  Printf.printf "%08x %s\n" 0x08000073 (decode 0x08000073);
+  [%expect
+    {|
+    default      REFUSED riscv64.feature: mpause requires feature mpause, which is not enabled
+    +mpause      73 00 00 08
+    none,+mpause 73 00 00 08
+    08000073 mpause
+    00000073 ecall
+    00100073 ebreak
+    c0001073 unimp
+    30200073 mret
+    10500073 wfi
+    b00022f3 csrr x5, mcycle
+    34029073 csrw mscratch, x5
+    3401d0f3 csrrwi x1, mscratch, 3
+    08000073 REFUSED riscv64.feature: mpause requires feature mpause, which is not enabled |}]
