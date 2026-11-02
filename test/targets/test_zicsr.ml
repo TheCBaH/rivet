@@ -191,13 +191,18 @@ let%expect_test "decoder agrees with the isa-difficult corpus" =
     let start = find 0 in
     String.sub line start (String.index_from line start '"' - start)
   in
-  let lines =
-    In_channel.with_open_text "../../fixtures/isa-difficult/cases.jsonl" In_channel.input_all
+  let is_csr l =
+    String.length l > 0 && String.starts_with ~prefix:"riscv:csr" (field l "form_id")
   in
   let cases =
-    List.filter
-      (fun l -> String.length l > 0 && String.starts_with ~prefix:"riscv:csr" (field l "form_id"))
-      (String.split_on_char '\n' lines)
+    In_channel.with_open_text "../../fixtures/isa-difficult/cases.jsonl" (fun ic ->
+        let rec go acc =
+          match In_channel.input_line ic with
+          | None -> List.rev acc
+          | Some l when is_csr l -> go (l :: acc)
+          | Some _ -> go acc
+        in
+        go [])
   in
   let bad = ref 0 in
   List.iter
