@@ -433,7 +433,7 @@ let%expect_test "RISC-V: a normalized instruction is refused at lowering, a lowe
                 "refused: " ^ Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))));
       let lowered =
         E.Lowered.R
-          { name = "mul"; opcode = 0x33; funct3 = 0; funct7 = 1; rd = 5; rs1 = 6; rs2 = 7 }
+          { op = E.Opcode.Mul; opcode = 0x33; funct3 = 0; funct7 = 1; rd = 5; rs1 = 6; rs2 = 7 }
       in
       Printf.printf "%s: encode_in -> %s\n" label
         (match E.encode_in state lowered with
@@ -845,7 +845,8 @@ let%expect_test "F and D: lowered and decoded forms" =
     match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
   in
   let lowered =
-    E.Lowered.R { name = "fadd.s"; opcode = 0x53; funct3 = 7; funct7 = 0; rd = 1; rs1 = 2; rs2 = 3 }
+    E.Lowered.R
+      { op = E.Opcode.Fadd_s; opcode = 0x53; funct3 = 7; funct7 = 0; rd = 1; rs1 = 2; rs2 = 3 }
   in
   List.iter
     (fun features ->
@@ -1427,7 +1428,7 @@ let%expect_test "RISC-V: lowered forms of each shape are refused when their exte
       ( "R4",
         E.Lowered.R4
           {
-            name = "fmadd.s";
+            op = E.Opcode.Fmadd_s;
             opcode = 0x43;
             fmt = 0;
             funct3 = 7;
@@ -1439,7 +1440,7 @@ let%expect_test "RISC-V: lowered forms of each shape are refused when their exte
       ( "I",
         E.Lowered.I
           {
-            name = "flw";
+            op = E.Opcode.Flw;
             opcode = 0x07;
             funct3 = 2;
             funct_hi = 0;
@@ -1448,8 +1449,11 @@ let%expect_test "RISC-V: lowered forms of each shape are refused when their exte
             rs1 = 2;
             imm = imm 0;
           } );
-      ("S", E.Lowered.S { name = "fsw"; opcode = 0x27; funct3 = 2; rs1 = 2; rs2 = 1; imm = imm 0 });
-      ("Fixed", E.Lowered.Fixed { name = "mret"; word = 0x30200073L });
+      ( "S",
+        E.Lowered.S { op = E.Opcode.Fsw; opcode = 0x27; funct3 = 2; rs1 = 2; rs2 = 1; imm = imm 0 }
+      );
+      ( "Fixed",
+        E.Lowered.Fixed { op = Option.get (E.Opcode.of_mnemonic "mret"); word = 0x30200073L } );
     ]
   in
   List.iter
@@ -1629,8 +1633,8 @@ let%expect_test "codec_in follows the configuration; the default codec leaves op
   in
   let forms =
     [
-      E.Lowered.Fixed_half { name = "cm.push"; word = 0xb842L };
-      E.Lowered.Fixed_half { name = "c.fsdsp"; word = 0xb842L };
+      E.Lowered.Fixed_half { op = Option.get (E.Opcode.of_mnemonic "cm.push"); word = 0xb842L };
+      E.Lowered.Fixed_half { op = Option.get (E.Opcode.of_mnemonic "c.fsdsp"); word = 0xb842L };
     ]
   in
   List.iter
