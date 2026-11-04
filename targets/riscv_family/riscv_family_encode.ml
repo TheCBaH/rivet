@@ -3811,7 +3811,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      profiles - a multiple of its own 16-byte alignment - but 68/100/180 bytes
      (none a multiple of 16) on x86_32/arm/aarch64. *)
   let pad_section_to_alignment = true
-  let table_rows = generated_rows [@@ocaml.deprecated "Use Row and Opcode.Table's Row.t."]
+  (* Deprecated: name rows by [Row] and [Opcode.Table]'s [Row.t]. *)
+  let table_rows = generated_rows
 end
 
 (* The standard extensions, as a named functor: [Riscv_family.Make] applies [Make_with] to the
