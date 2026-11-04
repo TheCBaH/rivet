@@ -65,10 +65,6 @@ let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
       Lowered.I
         {
           op = Opcode.Addi;
-          opcode = 0x13;
-          funct3 = 0;
-          funct_hi = 0;
-          shamt_bits = None;
           rd = Reg.x 10;
           rs1 = Reg.zero;
           imm = Asm_core.Expr.Const (Foundation.Bigint.of_int 42);
