@@ -1446,7 +1446,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Some word -> Ok [ Lowered.Fixed { op = Opcode.Table row; word } ]
     | None -> wrong (Opcode.Table row)
 
-  let lower_instruction_ungated state i =
+  let lower_operands state i =
     let iop = i.Instruction.op in
     match (i.op, i.ops) with
     | Opcode.Table row, _
@@ -1838,17 +1838,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | Some rd, Some rs1, Some _ ->
             Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
         | _ -> wrong iop)
-    | op, [ a; b; Operand.Sym (Asm_core.Expr.Symbol rm) ] when Option.is_some (f_to_i_desc op) -> (
-        (* [fcvt.w.d rd, rs1, rtz] - an explicit rounding-mode operand overriding the
-           bare mnemonic's own default (M5 - perlin.c/binarytrees.c's
-           own [(int)]/[(long)] C cast idiom, which truncates and so needs [rtz] rather
-           than the default dynamic mode). Checked against real riscv64-linux-gnu-as:
-           `fcvt.l.d x22, f10, rtz` -> `c2251b53` (funct3 = 1, matching {!Rm}'s
-           [Rtz] = 1). *)
-        match (gx a, gf b, f_to_i_desc op, Rm.of_name rm) with
-        | Some rd, Some rs1, Some _, Some rm ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = Some rm } ]
-        | _ -> wrong iop)
     | op, [ a; b ] when Option.is_some (i_to_f_desc op) -> (
         match (gf a, gx b, i_to_f_desc op) with
         | Some rd, Some rs1, Some _ ->
@@ -2149,6 +2138,20 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            riscv64-linux-gnu-as (-march=..._zihintpause): `0100000f`. *)
         Ok [ Lowered.Fixed { op = Opcode.Pause; word = 0x0100000fL } ]
     | _ -> wrong iop
+
+  (* A trailing rounding mode on a form with a rounding field, as GAS takes it: [fcvt.l.d x22,
+     f10, rtz] -> [c2251b53]. *)
+  let lower_instruction_ungated state i =
+    let rounds = Option.is_some (default_rm i.Instruction.op) || Option.is_some (f_fma_desc i.op) in
+    match List.rev i.ops with
+    | Operand.Sym (Asm_core.Expr.Symbol s) :: rest when rounds && Option.is_some (Rm.of_name s) -> (
+        let rm = Option.get (Rm.of_name s) in
+        match lower_operands state { i with ops = List.rev rest } with
+        | Ok [ Lowered.R ({ rm = Some _; _ } as r) ] -> Ok [ Lowered.R { r with rm = Some rm } ]
+        | Ok [ Lowered.R4 r ] -> Ok [ Lowered.R4 { r with rm } ]
+        | Ok _ -> wrong i.op
+        | Error _ as e -> e)
+    | _ -> lower_operands state i
 
   let lower_instruction state i =
     match feature_gate state i.Instruction.op with
@@ -3027,6 +3030,14 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | 0x4f, 1 -> Some "fnmadd.d"
     | _ -> None
 
+  (* [ops] with the rounding mode [f3] appended unless it is [default]; [None] for a reserved one. *)
+  let rm_operands ~default f3 ops =
+    if Rm.to_funct3 default = f3 then Some ops
+    else
+      Option.map
+        (fun rm -> ops @ [ Operand.Sym (Asm_core.Expr.Symbol (Rm.name rm)) ])
+        (Rm.of_funct3 f3)
+
   type decode_context = { state : target_state; address : int64 }
 
   (* DEC-RV-TABLE: tried only after the hand-written decoder finds nothing, so a
@@ -3436,26 +3447,22 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                         (* An explicit, non-default rounding mode is a real trailing
                            operand a re-parse must see too, not only text {!Lowered.pp}
                            prints - {!rm_suffix}'s own condition, read back here from the
-                           other end. *)
+                           other end. A reserved mode (5, 6) has no spelling, so the word
+                           is declined. *)
                         let ops =
                           match shape.rm with
-                          | Some default when Rm.to_funct3 default <> f3 -> (
-                              match Rm.of_funct3 f3 with
-                              | Some rm ->
-                                  base @ [ Operand.Sym (Asm_core.Expr.Symbol (Rm.name rm)) ]
-                              | None -> base)
-                          | Some _ | None -> base
+                          | Some default -> rm_operands ~default f3 base
+                          | None -> Some base
                         in
-                        Some (instruction (op_exn n) ops, n)))
+                        Option.map (fun ops -> (instruction (op_exn n) ops, n)) ops))
             | 0x43 | 0x47 | 0x4b | 0x4f ->
                 let rs3 = Int64.to_int (bits w 27 5) in
                 let fmt = Int64.to_int (bits w 25 2) in
-                Option.map
-                  (fun n ->
-                    ( instruction (op_exn n)
-                        [ f_operand rd; f_operand rs1; f_operand rs2; f_operand rs3 ],
-                      n ))
-                  (f_r4_name opc fmt)
+                Option.bind (f_r4_name opc fmt) (fun n ->
+                    Option.map
+                      (fun ops -> (instruction (op_exn n) ops, n))
+                      (rm_operands ~default:Rm.Dyn f3
+                         [ f_operand rd; f_operand rs1; f_operand rs2; f_operand rs3 ]))
             | 0x63 ->
                 let n =
                   match f3 with

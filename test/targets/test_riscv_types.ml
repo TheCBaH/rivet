@@ -14,7 +14,7 @@ let%expect_test "every rounding mode round-trips through fcvt.w.s" =
     fcvt.w.s a0, fa0, rmm        c0054553 fcvt.w.s x10, f10, rmm       same
     fcvt.w.s a0, fa0, dyn        c0057553 fcvt.w.s x10, f10            same |}]
 
-let%expect_test "reserved rounding-mode encodings decode as before" =
+let%expect_test "reserved rounding-mode encodings are not instructions" =
   List.iter
     (fun f3 ->
       let w = Int64.logor 0xc0050553L (Int64.of_int (f3 lsl 12)) in
@@ -23,12 +23,12 @@ let%expect_test "reserved rounding-mode encodings decode as before" =
         w
         (match Test_zicsr.decoded "riscv64" (Test_zicsr.word_bytes w) with
         | Ok t -> t
-        | Error m -> "REFUSED " ^ m))
+        | Error _ -> Printf.sprintf ".word 0x%08Lx" w))
     [ 5; 6; 7 ];
   [%expect
     {|
-    funct3 5: of_funct3 none, c0055553 -> fcvt.w.s x10, f10
-    funct3 6: of_funct3 none, c0056553 -> fcvt.w.s x10, f10
+    funct3 5: of_funct3 none, c0055553 -> .word 0xc0055553
+    funct3 6: of_funct3 none, c0056553 -> .word 0xc0056553
     funct3 7: of_funct3 dyn, c0057553 -> fcvt.w.s x10, f10 |}]
 
 (* {1 Register classes} *)
@@ -158,6 +158,61 @@ let%expect_test "every sampled opcode round-trips through its encoding" =
     unsampled: la
     not decoded: bclr bext binv bset bclri bexti binvi bseti clmul clmulh clmulr czero.eqz czero.nez sm3p0 sm3p1 sm4ed sm4ks xperm4 xperm8 sha256sum0 sha256sum1 sha256sig0 sha256sig1 sha512sum0 sha512sum1 sha512sig0 sha512sig1 sha512sum0r sha512sum1r sha512sig0l sha512sig1l sha512sig0h sha512sig1h aes64ds aes64dsm aes64es aes64esm aes64ks2 aes64im aes64ks1i aes32dsi aes32dsmi aes32esi aes32esmi call tail lla
     differs: |}]
+
+(* {1 Rounding modes}
+
+   Every opcode with a rounding field, its sample word with each of the eight [funct3] values:
+   the canonical text re-assembles to the same bytes, or the word is declined (a [.word]). *)
+
+let%expect_test "every rounding field value round-trips or is a .word" =
+  let module E = Riscv64_encode in
+  let rounds op = Option.is_some (E.default_rm op) || Option.is_some (E.f_fma_desc op) in
+  let ops = List.filter rounds E.Opcode.all in
+  let words = Hashtbl.create 8 and bad = ref [] in
+  List.iter
+    (fun op ->
+      match S64.sample op with
+      | None -> bad := (E.Opcode.name op ^ ":unsampled") :: !bad
+      | Some (_, bytes) ->
+          let w = Test_zicsr.word_of_bytes bytes in
+          for f3 = 0 to 7 do
+            let w =
+              Int64.logor (Int64.logand w (Int64.lognot 0x7000L)) (Int64.of_int (f3 lsl 12))
+            in
+            let b = Test_zicsr.word_bytes w in
+            let outcome =
+              match Test_zicsr.decoded "riscv64" b with
+              | Error _ -> ".word"
+              | Ok text -> (
+                  match Test_zicsr.assembled "riscv64" text with
+                  | Ok b' when String.equal b b' -> "same"
+                  | Ok _ -> "different"
+                  | Error _ -> "refused")
+            in
+            let k = (f3, outcome) in
+            Hashtbl.replace words k (1 + Option.value (Hashtbl.find_opt words k) ~default:0);
+            if outcome = "different" || outcome = "refused" then
+              bad := Printf.sprintf "%s/%d:%s" (E.Opcode.name op) f3 outcome :: !bad
+          done)
+    ops;
+  Printf.printf "opcodes %d\n" (List.length ops);
+  for f3 = 0 to 7 do
+    let n o = Option.value (Hashtbl.find_opt words (f3, o)) ~default:0 in
+    Printf.printf "funct3 %d: same %d, .word %d\n" f3 (n "same") (n ".word")
+  done;
+  Printf.printf "bad [%s]\n" (String.concat " " (List.rev !bad));
+  [%expect
+    {|
+    opcodes 36
+    funct3 0: same 36, .word 0
+    funct3 1: same 36, .word 0
+    funct3 2: same 36, .word 0
+    funct3 3: same 36, .word 0
+    funct3 4: same 36, .word 0
+    funct3 5: same 0, .word 36
+    funct3 6: same 0, .word 36
+    funct3 7: same 36, .word 0
+    bad [] |}]
 
 (* {1 Derived encoding fields} *)
 
