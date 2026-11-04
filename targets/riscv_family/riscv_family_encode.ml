@@ -10,6 +10,9 @@ module Riscv_overlap = Riscv_overlap
 module Riscv_extensions = Riscv_extensions
 module Riscv_isa = Riscv_isa
 module Riscv_types = Riscv_types
+module Riscv_ops = Riscv_ops
+module Riscv_std_rows32 = Riscv_std_rows32
+module Riscv_std_rows64 = Riscv_std_rows64
 
 module type PROFILE = sig
   val name : string
@@ -126,30 +129,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       else Fmt.pf ppf "%s %a" s.mnemonic Fmt.(list ~sep:(any ", ") Operand.pp) s.ops
   end
 
-  module Instruction = struct
-    type t = { op : Opcode.t; ops : Operand.t list }
-
-    let mk op ops = { op; ops }
-
-    (* Where a Zicsr form's CSR is; a number there prints in hex, as GNU's does. *)
-    let csr_position = function
-      | Opcode.Csrw | Csrs | Csrc | Csrwi | Csrsi | Csrci -> Some 0
-      | Csrrw | Csrrs | Csrrc | Csrrwi | Csrrsi | Csrrci | Csrr -> Some 1
-      | _ -> None
-
-    let pp ppf i =
-      let csr = csr_position i.op in
-      let operand ppf (k, o) =
-        match o with
-        | Operand.Imm n when csr = Some k -> Bigint.pp_hex ppf n
-        | o -> Operand.pp ppf o
-      in
-      if i.ops = [] then Fmt.string ppf (Opcode.name i.op)
-      else
-        Fmt.pf ppf "%s %a" (Opcode.name i.op)
-          Fmt.(list ~sep:(any ", ") operand)
-          (List.mapi (fun k o -> (k, o)) i.ops)
-  end
+  module Instruction = Riscv_types.Instruction
 
   (* Which of an F/D instruction's [R]-shape operand positions is a scalar FP register
      rather than a GPR, and how many of the three fields printed. The generic [R]/[I]/[S]
@@ -558,8 +538,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      fields, the RV64-only gate and the descriptor, so they cannot drift apart. *)
   let m_desc op =
     Option.map (fun (f : Riscv_ext_m.form) -> (f.opcode, f.funct3, f.funct7)) (Riscv_ext_m.find op)
-
-  let m_rv64_only op = match Riscv_ext_m.find op with Some f -> f.rv64_only | None -> false
 
   (* CA-format compressed register-register ops (quadrant 1, funct3=100):
      funct6 selects word- vs *w-width, funct2 selects the operation.
@@ -1043,93 +1021,60 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   (* The fixed fields of each hand-written form, by opcode: the one place they are read when a
      {!Lowered} form is encoded. An opcode with no fields for a format is
      [`Format_mismatch]. *)
+  (* An opcode's encoding fields, read from Riscv_ops for this XLEN. *)
   module Desc = struct
     type r = { opcode : int; funct3 : int; funct7 : int; rs2 : int option }
-
-    let r op =
-      let reg (opcode, funct3, funct7) = Some { opcode; funct3; funct7; rs2 = None } in
-      let fp (funct3, funct7) = Some { opcode = 0x53; funct3; funct7; rs2 = None } in
-      let fp_sel (funct3, funct7, rs2) = Some { opcode = 0x53; funct3; funct7; rs2 = Some rs2 } in
-      let ( |? ) a b = match a with Some _ -> a | None -> b () in
-      ( ( ( ( ( ( ( ( ( ( ( (Option.bind (r_desc op) reg |? fun () -> Option.bind (amo3_desc op) reg)
-                          |? fun () ->
-                            Option.map
-                              (fun (opcode, funct3, funct7) ->
-                                { opcode; funct3; funct7; rs2 = Some 0 })
-                              (lr_desc op) )
-                        |? fun () -> Option.bind (f_arith_desc op) fp )
-                      |? fun () -> Option.bind (f_sgnj3_desc op) fp )
-                    |? fun () -> Option.bind (f_minmax_desc op) fp )
-                  |? fun () -> Option.bind (f_sgnj_desc op) fp )
-                |? fun () -> Option.bind (f_cmp_desc op) fp )
-              |? fun () -> Option.bind (f_sqrt_desc op) fp_sel )
-            |? fun () -> Option.bind (f_class_desc op) fp_sel )
-          |? fun () -> Option.bind (f_mv_x_w_desc op) fp_sel )
-        |? fun () -> Option.bind (f_to_i_desc op) fp_sel )
-      |? fun () -> Option.bind (i_to_f_desc op) fp_sel )
-      |? fun () -> Option.bind (f_to_f_desc op) fp_sel
-
-    (* AES-32/SM4: [funct7] is the byte select over these five bits. *)
-    let rbs = function
-      | Opcode.Aes32dsi -> Some 0x15
-      | Aes32dsmi -> Some 0x17
-      | Aes32esi -> Some 0x11
-      | Aes32esmi -> Some 0x13
-      | Sm4ed -> Some 0x18
-      | Sm4ks -> Some 0x1a
-      | _ -> None
-
-    let r4 = f_fma_desc
-
     type i = { opcode : int; funct3 : int; funct_hi : int; shamt_bits : int option }
 
-    let i op =
-      let plain opcode funct3 = Some { opcode; funct3; funct_hi = 0; shamt_bits = None } in
-      match i_desc op with
-      | Some (opcode, funct3, funct_hi, shamt_bits) -> Some { opcode; funct3; funct_hi; shamt_bits }
-      | None -> (
-          match (unary_imm_desc op, load_desc op, f_load_desc op) with
-          | Some (opcode, funct3, _), _, _ -> plain opcode funct3
-          | None, Some funct3, _ -> plain 0x03 funct3
-          | None, None, Some funct3 -> plain 0x07 funct3
-          | None, None, None -> (
-              match op with
-              | Opcode.Jalr -> plain 0x67 0
-              | Csrrw | Csrw -> plain 0x73 1
-              | Csrrs | Csrr | Csrs -> plain 0x73 2
-              | Csrrc | Csrc -> plain 0x73 3
-              | Csrrwi | Csrwi -> plain 0x73 5
-              | Csrrsi | Csrsi -> plain 0x73 6
-              | Csrrci | Csrci -> plain 0x73 7
-              | Aes64ks1i -> plain 0x13 1
-              | _ -> None))
+    let enc op =
+      Option.bind (Riscv_ops.find op) (fun (e : Riscv_ops.entry) ->
+          if xlen = 64 && Option.is_some e.enc64 then e.enc64 else e.enc)
+
+    let r op : r option =
+      match enc op with
+      | Some (Riscv_ops.Enc.R { opcode; funct3; funct7; rs2 }) ->
+          Some { opcode; funct3; funct7; rs2 }
+      | _ -> None
+
+    let rbs op = match enc op with Some (Riscv_ops.Enc.Rbs { funct7 }) -> Some funct7 | _ -> None
+
+    let r4 op =
+      match enc op with Some (Riscv_ops.Enc.R4 { opcode; fmt }) -> Some (opcode, fmt) | _ -> None
+
+    let i op : i option =
+      match enc op with
+      | Some (Riscv_ops.Enc.I { opcode; funct3 }) | Some (Riscv_ops.Enc.Unary { opcode; funct3; _ })
+        ->
+          Some { opcode; funct3; funct_hi = 0; shamt_bits = None }
+      | Some (Riscv_ops.Enc.Shift { funct3; funct6 }) ->
+          Some
+            {
+              opcode = 0x13;
+              funct3;
+              funct_hi = (if xlen = 64 then funct6 else funct6 * 2);
+              shamt_bits = Some xlen;
+            }
+      | Some (Riscv_ops.Enc.Shiftw { funct3; funct7 }) ->
+          Some { opcode = 0x1b; funct3; funct_hi = funct7; shamt_bits = Some 32 }
+      | _ -> None
 
     let s op =
-      match (store_desc op, f_store_desc op) with
-      | Some funct3, _ -> Some (0x23, funct3)
-      | None, Some funct3 -> Some (0x27, funct3)
-      | None, None -> None
-
-    let b = branch_desc
-    let u = function Opcode.Lui -> Some 0x37 | Auipc -> Some 0x17 | _ -> None
-    let ca = ca_desc
-
-    let cr = function
-      | Opcode.C_jr | C_mv -> Some 8
-      | C_jalr | C_add | C_ebreak -> Some 9
+      match enc op with
+      | Some (Riscv_ops.Enc.S { opcode; funct3 }) -> Some (opcode, funct3)
       | _ -> None
 
-    (* [funct3] of the CL, CS, CI (SP-relative), CSS, CJ and CB forms. *)
-    let c_funct3 = function
-      | Opcode.C_lw | C_lwsp -> Some 2
-      | C_ld | C_ldsp -> Some 3
-      | C_sw | C_swsp -> Some 6
-      | C_sd | C_sdsp -> Some 7
-      | C_j -> Some 5
-      | C_jal -> Some 1
-      | C_beqz -> Some 6
-      | C_bnez -> Some 7
+    let b op = match enc op with Some (Riscv_ops.Enc.B { funct3 }) -> Some funct3 | _ -> None
+    let u op = match enc op with Some (Riscv_ops.Enc.U { opcode }) -> Some opcode | _ -> None
+
+    let ca op =
+      match enc op with
+      | Some (Riscv_ops.Enc.Ca { funct6; funct2 }) -> Some (funct6, funct2)
       | _ -> None
+
+    let cr op = match enc op with Some (Riscv_ops.Enc.Cr { funct4 }) -> Some funct4 | _ -> None
+
+    let c_funct3 op =
+      match enc op with Some (Riscv_ops.Enc.C { funct3 }) -> Some funct3 | _ -> None
   end
 
   (* The rounding mode a form takes when none is written, for the forms that have one. *)
@@ -1140,36 +1085,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   module Cls = struct
     include Riscv_types.Cls
 
-    let of_opcode op =
-      let word opcode funct3 = of_word ~xlen (Int64.of_int (opcode lor (funct3 lsl 12))) in
-      let half quadrant funct3 = of_word ~xlen (Int64.of_int (quadrant lor (funct3 lsl 13))) in
-      let cr funct4 rd rs2 =
-        of_word ~xlen (Int64.of_int ((funct4 lsl 12) lor (rd lsl 7) lor (rs2 lsl 2) lor 2))
-      in
-      match op with
+    let of_opcode = function
       | Opcode.Table r -> Row.cls r
-      | C_addi -> half 1 0
-      | C_and | C_or | C_xor | C_sub | C_addw | C_subw -> half 1 4
-      | C_jr | C_jalr -> cr 8 1 0
-      | C_mv | C_add -> cr 8 1 1
-      | C_ebreak -> cr 9 0 0
-      | C_lw | C_ld | C_sw | C_sd -> half 0 (Option.get (Desc.c_funct3 op))
-      | C_lwsp | C_ldsp | C_swsp | C_sdsp -> half 2 (Option.get (Desc.c_funct3 op))
-      | C_j | C_jal | C_beqz | C_bnez -> half 1 (Option.get (Desc.c_funct3 op))
-      | Ecall | Ebreak -> word 0x73 0
-      | Unimp -> of_word ~xlen 0xc0001073L
-      | Fence | Fence_i | Fence_tso | Pause -> word 0x0f 0
-      | J | Jr | Ret | Call | Tail | Jal -> word 0x6f 0
-      | Beqz | Bnez | Bgez | Bltz | Blez | Bgtz | Bgt | Ble | Bgtu | Bleu -> word 0x63 0
-      | op -> (
-          match (Desc.r op, Desc.i op, Desc.s op, Desc.b op, Desc.u op, Desc.r4 op) with
-          | Some d, _, _, _, _, _ -> word d.opcode d.funct3
-          | None, Some d, _, _, _, _ -> word d.opcode d.funct3
-          | None, None, Some (opcode, funct3), _, _, _ -> word opcode funct3
-          | None, None, None, Some funct3, _, _ -> word 0x63 funct3
-          | None, None, None, None, Some opcode, _ -> word opcode 0
-          | None, None, None, None, None, Some (opcode, _) -> word opcode 0
-          | None, None, None, None, None, None -> Alu)
+      | op -> ( match Riscv_ops.find op with Some e -> e.cls | None -> Alu)
   end
 
   let fits_signed bits v =
@@ -1466,6 +1384,71 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Some word -> Ok [ Lowered.Fixed { op = Opcode.Table row; word } ]
     | None -> wrong (Opcode.Table row)
 
+  (* An opcode another XLEN has, from Riscv_ops. *)
+  let xlen_gate op =
+    match Option.map (fun (e : Riscv_ops.entry) -> e.xlen) (Riscv_ops.find op) with
+    | Some Rv64 when xlen <> 64 -> Some (`Rv64_only op)
+    | Some Rv32 when xlen <> 32 -> Some (`Rv32_only op)
+    | _ -> None
+
+  (* A form without [~lower] lowers from its table entry: the operands read by the entry's
+     operand kinds, the fields by its encoding. [None] when the operands are not of those kinds or
+     the encoding is not a regular one; the remaining arms then see them. *)
+  let regular op ops =
+    match Riscv_ops.find op with
+    | Some { lower = false; shape; _ } when List.length shape = List.length ops -> (
+        let arg (k : Riscv_ops.Kind.t) o =
+          match (k, o) with
+          | (X | Creg), _ -> Option.map (fun r -> `R (Reg.X r)) (xreg o)
+          | F, _ -> Option.map (fun r -> `R (Reg.F r)) (freg o)
+          | (Imm | Sym), _ -> Option.map (fun e -> `E e) (expr_of o)
+          | (Mem | Cmem | Spmem), Operand.Mem m -> Option.map (fun b -> `M (b, m.offset)) (gbase m)
+          | _ -> None
+        in
+        let args = List.map2 arg shape ops in
+        if List.mem None args then None
+        else
+          let args = List.map Option.get args in
+          let regs = List.filter_map (function `R r -> Some r | _ -> None) args in
+          let x r = Reg.to_x r in
+          match (Desc.enc op, args, regs) with
+          | Some (Riscv_ops.Enc.R _), [ `R rd; `R rs2; `M (rs1, off) ], _ ->
+              (* AMOs and sc: the memory operand's offset is never written *)
+              Some
+                (if zero_offset off then Ok [ Lowered.R { op; rd; rs1; rs2 = Some rs2; rm = None } ]
+                 else wrong op)
+          | Some (Riscv_ops.Enc.R _), [ `R rd; `M (rs1, off) ], _ ->
+              Some
+                (if zero_offset off then Ok [ Lowered.R { op; rd; rs1; rs2 = None; rm = None } ]
+                 else wrong op)
+          | Some (Riscv_ops.Enc.R _), _, [ rd; rs1; rs2 ] ->
+              Some (Ok [ Lowered.R { op; rd; rs1; rs2 = Some rs2; rm = default_rm op } ])
+          | Some (Riscv_ops.Enc.R { rs2 = sel; _ }), _, [ rd; rs1 ] ->
+              (* a fixed selector in [rs2], or the sign-injection pseudos' repeated [rs1] *)
+              let rs2 = if Option.is_some sel then None else Some rs1 in
+              Some (Ok [ Lowered.R { op; rd; rs1; rs2; rm = default_rm op } ])
+          | Some (Riscv_ops.Enc.R4 _), _, [ rd; rs1; rs2; rs3 ] ->
+              Some (Ok [ Lowered.R4 { op; rd; rs1; rs2; rs3; rm = Rm.Dyn } ])
+          | Some (Riscv_ops.Enc.Unary { funct12; _ }), _, [ rd; rs1 ] ->
+              Some (Ok [ Lowered.I { op; rd; rs1; imm = const funct12 } ])
+          | ( Some (Riscv_ops.Enc.I _ | Riscv_ops.Enc.Shift _ | Riscv_ops.Enc.Shiftw _),
+              [ `R rd; `M (rs1, imm) ],
+              _ )
+          | ( Some (Riscv_ops.Enc.I _ | Riscv_ops.Enc.Shift _ | Riscv_ops.Enc.Shiftw _),
+              [ `R rd; `R rs1; `E imm ],
+              _ ) ->
+              Some (Ok [ Lowered.I { op; rd; rs1; imm } ])
+          | Some (Riscv_ops.Enc.S _), [ `R rs2; `M (rs1, imm) ], _ ->
+              Some (Ok [ Lowered.S { op; rs1; rs2; imm } ])
+          | Some (Riscv_ops.Enc.B _), [ `R rs1; `R rs2; `E target ], _ -> (
+              match (x rs1, x rs2) with
+              | Some rs1, Some rs2 -> Some (Ok [ Lowered.B { op; rs1; rs2; target } ])
+              | _ -> None)
+          | Some (Riscv_ops.Enc.U _), [ `R rd; `E imm ], _ ->
+              Option.map (fun rd -> Ok [ Lowered.U { op; rd; imm } ]) (x rd)
+          | _ -> None)
+    | _ -> None
+
   let lower_operands state i =
     let iop = i.Instruction.op in
     match (i.op, i.ops) with
@@ -1473,26 +1456,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       when Int64.logand (Row.row row).Riscv_table_row.match_ 3L <> 3L && not state.rvc ->
         Error (diag ~pos:__POS__ (`Compressed_disabled iop))
     | Opcode.Table row, ops -> table_lower row ops
-    | ( ( Opcode.Mul | Remu | Mulh | Mulhsu | Mulhu | Div | Divu | Rem | Mulw | Divw | Divuw | Remw
-        | Remuw ),
-        _ )
-      when xlen <> 64 && m_rv64_only i.Instruction.op ->
-        Error (diag ~pos:__POS__ (`Rv64_only iop))
-    | ( ( Opcode.Addw | Subw | Sllw | Srlw | Sraw | Sh1adduw | Sh2adduw | Sh3adduw | Clzw | Ctzw
-        | Cpopw | Packw | Rolw | Rorw | Sha512sum0 | Sha512sum1 | Sha512sig0 | Sha512sig1 | Aes64ds
-        | Aes64dsm | Aes64es | Aes64esm | Aes64ks2 | Aes64im | Aes64ks1i | C_addw | C_subw ),
-        _ )
-      when xlen <> 64 ->
-        Error (diag ~pos:__POS__ (`Rv64_only iop))
-    | (Opcode.Addiw | Slliw | Srliw | Sraiw | Roriw | Sext_w | Ld | Lwu | Sd), _ when xlen <> 64 ->
-        Error (diag ~pos:__POS__ (`Rv64_only iop))
-    | (Opcode.C_ld | C_sd | C_ldsp | C_sdsp), _ when xlen <> 64 ->
-        Error (diag ~pos:__POS__ (`Rv64_only iop))
-    | ( ( Opcode.Zip | Unzip | Sha512sum0r | Sha512sum1r | Sha512sig0l | Sha512sig1l | Sha512sig0h
-        | Sha512sig1h | Aes32dsi | Aes32dsmi | Aes32esi | Aes32esmi ),
-        _ )
-      when xlen <> 32 ->
-        Error (diag ~pos:__POS__ (`Rv32_only iop))
+    | op, _ when Option.is_some (xlen_gate op) ->
+        Error (diag ~pos:__POS__ (Option.get (xlen_gate op)))
+    | op, ops when Option.is_some (regular op ops) -> Option.get (regular op ops)
     | ( ( Opcode.C_addi | C_and | C_or | C_xor | C_sub | C_addw | C_subw | C_jr | C_jalr | C_mv
         | C_add | C_ebreak | C_lw | C_sw | C_lwsp | C_swsp | C_ld | C_sd | C_ldsp | C_sdsp | C_beqz
         | C_j | C_jal | C_bnez ),
@@ -1535,7 +1501,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | Some rs2, Some sp when sp = Xreg.sp ->
             Ok [ Lowered.Css { op = iop; rs2; imm = m.offset } ]
         | _ -> wrong iop)
-    | Opcode.C_jal, _ when xlen <> 32 -> Error (diag ~pos:__POS__ (`Rv32_only iop))
     | (Opcode.C_j | C_jal), [ target ] -> (
         (* CJ format: quadrant 01, funct3 101 ([c.j]) or 001 ([c.jal], RV32 only - RV64 reuses
            the encoding for [c.addiw]). *)
@@ -1546,35 +1511,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         match (creg a, expr_of target) with
         | Some rs1, Some target -> Ok [ Lowered.Cb { op = iop; rs1; target } ]
         | _ -> wrong iop)
-    | ( ( Opcode.Fcvt_l_d | Fmv_x_d | Fcvt_s_l | Fcvt_lu_d | Fcvt_d_l | Fcvt_d_lu | Fcvt_l_s
-        | Fcvt_lu_s | Fcvt_s_lu ),
-        _ )
-      when xlen <> 64 ->
-        Error (diag ~pos:__POS__ (`Rv64_only iop))
-    | ( ( Opcode.Amoswap_d | Amoadd_d | Amoxor_d | Amoand_d | Amoor_d | Amomin_d | Amomax_d
-        | Amominu_d | Amomaxu_d | Lr_d | Sc_d ),
-        _ )
-      when xlen <> 64 ->
-        Error (diag ~pos:__POS__ (`Rv64_only iop))
-    | op, [ a; b; Operand.Mem m ] when Option.is_some (amo3_desc op) -> (
-        (* [amoOP rd, rs2, (rs1)] / [scOP rd, rs2, (rs1)] - the memory
-           operand's offset is never syntax-visible (real GNU as rejects
-           `amoadd.w a0, a1, 4(a2)`: "illegal operands"), so requiring a
-           literal zero here is what enforces that shape instead of
-           silently discarding a real one. *)
-        match (gx a, gx b, gbase m, amo3_desc op) with
-        | Some rd, Some rs2, Some rs1, Some _ when zero_offset m.offset ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs2; rm = None } ]
-        | _ -> wrong iop)
-    | op, [ a; Operand.Mem m ] when Option.is_some (lr_desc op) -> (
-        match (gx a, gbase m, lr_desc op) with
-        | Some rd, Some rs1, Some _ when zero_offset m.offset ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = None } ]
-        | _ -> wrong iop)
     | op, [ a; b; c ] when Option.is_some (r_desc op) -> (
         match (gx a, gx b, gx c, r_desc op) with
-        | Some rd, Some rs1, Some rs2, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs2; rm = None } ]
         | Some rd, Some rs1, None, _ -> (
             (* A third register-typed operand is the R-type form above; a third
                immediate-typed one is GAS's I-type alias, per imm_alias. An op
@@ -1760,19 +1698,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                   ]
             | _ -> wrong iop)
         | _ -> wrong iop)
-    | op, [ a; b; c ] when Option.is_some (i_desc op) -> (
-        match (gx a, gx b, expr_of c, i_desc op) with
-        | Some rd, Some rs1, Some imm, Some _ -> Ok [ Lowered.I { op = iop; rd; rs1; imm } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (unary_imm_desc op) -> (
-        match (gx a, gx b, unary_imm_desc op) with
-        | Some rd, Some rs1, Some (_, _, funct12) ->
-            Ok [ Lowered.I { op = iop; rd; rs1; imm = const funct12 } ]
-        | _ -> wrong iop)
-    | op, [ a; Operand.Mem m ] when Option.is_some (load_desc op) -> (
-        match (gx a, gbase m, load_desc op) with
-        | Some rd, Some rs1, Some _ -> Ok [ Lowered.I { op = iop; rd; rs1; imm = m.offset } ]
-        | _ -> wrong iop)
     | Opcode.Ld, [ a; (Operand.Sym _ as target) ] -> (
         (* GAS's own `ld rd, symbol` pseudo, a literal-pool load: auipc rd,
            %pcrel_hi(symbol); ld rd, %pcrel_lo(...)(rd) - the same anchored
@@ -1795,82 +1720,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         match (gf a, expr_of target, xreg b, f_load_desc op) with
         | Some rd, Some target, Some tmp, Some funct3 ->
             Ok [ Lowered.Pair { op = iop; rd; tmp; target; kind = Fload funct3 } ]
-        | _ -> wrong iop)
-    | op, [ a; Operand.Mem m ] when Option.is_some (store_desc op) -> (
-        match (gx a, gbase m, store_desc op) with
-        | Some rs2, Some rs1, Some _ -> Ok [ Lowered.S { op = iop; rs1; rs2; imm = m.offset } ]
-        | _ -> wrong iop)
-    | op, [ a; Operand.Mem m ] when Option.is_some (f_load_desc op) -> (
-        match (gf a, gbase m, f_load_desc op) with
-        | Some rd, Some rs1, Some _ -> Ok [ Lowered.I { op = iop; rd; rs1; imm = m.offset } ]
-        | _ -> wrong iop)
-    | op, [ a; Operand.Mem m ] when Option.is_some (f_store_desc op) -> (
-        match (gf a, gbase m, f_store_desc op) with
-        | Some rs2, Some rs1, Some _ -> Ok [ Lowered.S { op = iop; rs1; rs2; imm = m.offset } ]
-        | _ -> wrong iop)
-    | op, [ a; b; c ] when Option.is_some (f_arith_desc op) -> (
-        match (gf a, gf b, gf c, f_arith_desc op) with
-        | Some rd, Some rs1, Some rs2, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs2; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b; c ] when Option.is_some (f_sgnj3_desc op) -> (
-        match (gf a, gf b, gf c, f_sgnj3_desc op) with
-        | Some rd, Some rs1, Some rs2, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs2; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b; c ] when Option.is_some (f_minmax_desc op) -> (
-        match (gf a, gf b, gf c, f_minmax_desc op) with
-        | Some rd, Some rs1, Some rs2, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs2; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (f_sgnj_desc op) -> (
-        match (gf a, gf b, f_sgnj_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs1; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (f_sqrt_desc op) -> (
-        match (gf a, gf b, f_sqrt_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (f_class_desc op) -> (
-        match (gx a, gf b, f_class_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (f_mv_x_w_desc op) -> (
-        match (gx a, gf b, f_mv_x_w_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b; c; d ] when Option.is_some (f_fma_desc op) -> (
-        match (gf a, gf b, gf c, gf d, f_fma_desc op) with
-        | Some rd, Some rs1, Some rs2, Some rs3, Some _ ->
-            Ok [ Lowered.R4 { op = iop; rd; rs1; rs2; rs3; rm = Rm.Dyn } ]
-        | _ -> wrong iop)
-    | op, [ a; b; c ] when Option.is_some (f_cmp_desc op) -> (
-        match (gx a, gf b, gf c, f_cmp_desc op) with
-        | Some rd, Some rs1, Some rs2, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs2; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (f_to_i_desc op) -> (
-        match (gx a, gf b, f_to_i_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (i_to_f_desc op) -> (
-        match (gf a, gx b, i_to_f_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (f_to_f_desc op) -> (
-        match (gf a, gf b, f_to_f_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b; target ] when Option.is_some (branch_desc op) -> (
-        match (xreg a, xreg b, expr_of target, branch_desc op) with
-        | Some rs1, Some rs2, Some target, Some _ -> Ok [ Lowered.B { op = iop; rs1; rs2; target } ]
         | _ -> wrong iop)
     | (Opcode.Bgtu | Bleu), [ a; b; target ] -> (
         (* [bgtu rs,rt,label]/[bleu rs,rt,label] - GAS's own greater-than/
@@ -1917,10 +1766,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | Some r, Some target, Some _ ->
             let rs1, rs2 = if reg_in_rs1 then (r, Xreg.zero) else (Xreg.zero, r) in
             Ok [ Lowered.B { op = real_op; rs1; rs2; target } ]
-        | _ -> wrong iop)
-    | (Opcode.Lui | Auipc), [ a; imm ] -> (
-        match (xreg a, expr_of imm) with
-        | Some rd, Some imm -> Ok [ Lowered.U { op = iop; rd; imm } ]
         | _ -> wrong iop)
     | Opcode.Jal, [ a; target ] -> (
         match (xreg a, expr_of target) with
@@ -2905,57 +2750,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let op_exn s = Option.get (Opcode.of_mnemonic s)
   let instruction op ops = { Instruction.op; ops }
 
-  (* The M component's rows decode from the same table they encode from. *)
-  let m_name opcode f3 f7 =
-    List.find_map
-      (fun (f : Riscv_ext_m.form) ->
-        if f.opcode = opcode && f.funct3 = f3 && f.funct7 = f7 && ((not f.rv64_only) || xlen = 64)
-        then Some f.mnemonic
-        else None)
-      Riscv_ext_m.forms
-
-  let r_name opcode f3 f7 =
-    match m_name opcode f3 f7 with
-    | Some _ as m -> m
-    | None -> (
-        match (opcode, f3, f7) with
-        | 0x33, 0, 0 -> Some "add"
-        | 0x33, 0, 0x20 -> Some "sub"
-        | 0x33, 1, 0 -> Some "sll"
-        | 0x33, 2, 0 -> Some "slt"
-        | 0x33, 3, 0 -> Some "sltu"
-        | 0x33, 4, 0 -> Some "xor"
-        | 0x33, 5, 0 -> Some "srl"
-        | 0x33, 5, 0x20 -> Some "sra"
-        | 0x33, 6, 0 -> Some "or"
-        | 0x33, 7, 0 -> Some "and"
-        | 0x33, 2, 0x10 -> Some "sh1add"
-        | 0x33, 4, 0x10 -> Some "sh2add"
-        | 0x33, 6, 0x10 -> Some "sh3add"
-        | 0x33, 4, 0x05 -> Some "min"
-        | 0x33, 5, 0x05 -> Some "minu"
-        | 0x33, 6, 0x05 -> Some "max"
-        | 0x33, 7, 0x05 -> Some "maxu"
-        | 0x33, 7, 0x20 -> Some "andn"
-        | 0x33, 6, 0x20 -> Some "orn"
-        | 0x33, 4, 0x20 -> Some "xnor"
-        | 0x33, 1, 0x30 -> Some "rol"
-        | 0x33, 5, 0x30 -> Some "ror"
-        | 0x3b, 2, 0x10 -> Some "sh1add.uw"
-        | 0x3b, 4, 0x10 -> Some "sh2add.uw"
-        | 0x3b, 6, 0x10 -> Some "sh3add.uw"
-        | 0x3b, 0, 0 -> Some "addw"
-        | 0x3b, 0, 0x20 -> Some "subw"
-        | 0x3b, 1, 0 -> Some "sllw"
-        | 0x3b, 5, 0 -> Some "srlw"
-        | 0x3b, 5, 0x20 -> Some "sraw"
-        | 0x33, 4, 0x04 -> Some "pack"
-        | 0x33, 7, 0x04 -> Some "packh"
-        | 0x3b, 4, 0x04 -> Some "packw"
-        | 0x3b, 1, 0x30 -> Some "rolw"
-        | 0x3b, 5, 0x30 -> Some "rorw"
-        | _ -> None)
-
   (* OP-FP (opcode [0x53]): unlike every integer R-type above, several of these
      mnemonics also need [rs2] to disambiguate (a convert or move fixes its second
      "operand" to a selector rather than reading a real register - see
@@ -3198,7 +2992,132 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let table_decode ?half ?legal w =
     match table_matches ?half ?legal ~first_only:true w with m :: _ -> Some m | [] -> None
 
-  let decode_arms ctx bytes ~pos =
+  (* The regular integer forms read from their table entries: the fields each operand comes from by
+     the entry's encoding and kinds, the word with those fields zero, and a re-encoding check. *)
+  module Hand_decode = struct
+    type field =
+      | Rd
+      | Rs1
+      | Rs2
+      | Simm12
+      | Shamt of int
+      | Mem_i
+      | Mem_s
+      | Mem0
+      | Boff
+      | Uimm
+      | Bits of int * int
+
+    type entry = { op : Opcode.t; fields : field list; mask : int64; match_ : int64 }
+
+    let fields (e : Riscv_ops.entry) =
+      let open Riscv_ops.Kind in
+      match (Desc.enc e.op, e.shape) with
+      | _ when e.op = Opcode.Aes64ks1i -> Some [ Rd; Rs1; Bits (20, 4) ]
+      | _ when e.lower -> None
+      | Some (Riscv_ops.Enc.R _), [ X; X; X ] -> Some [ Rd; Rs1; Rs2 ]
+      | Some (Riscv_ops.Enc.R _), [ X; X; Mem ] -> Some [ Rd; Rs2; Mem0 ]
+      | Some (Riscv_ops.Enc.R _), [ X; Mem ] -> Some [ Rd; Mem0 ]
+      | Some (Riscv_ops.Enc.Rbs _), [ X; X; X; Imm ] -> Some [ Rd; Rs1; Rs2; Bits (30, 2) ]
+      | Some (Riscv_ops.Enc.I _), [ X; X; Imm ] -> Some [ Rd; Rs1; Simm12 ]
+      | Some (Riscv_ops.Enc.I _), [ X; Mem ] -> Some [ Rd; Mem_i ]
+      | Some (Riscv_ops.Enc.Shift _), [ X; X; Imm ] ->
+          Some [ Rd; Rs1; Shamt (if xlen = 64 then 6 else 5) ]
+      | Some (Riscv_ops.Enc.Shiftw _), [ X; X; Imm ] -> Some [ Rd; Rs1; Shamt 5 ]
+      | Some (Riscv_ops.Enc.Unary _), [ X; X ] -> Some [ Rd; Rs1 ]
+      | Some (Riscv_ops.Enc.S _), [ X; Mem ] -> Some [ Rs2; Mem_s ]
+      | Some (Riscv_ops.Enc.B _), [ X; X; Sym ] -> Some [ Rs1; Rs2; Boff ]
+      | Some (Riscv_ops.Enc.U _), [ X; Imm ] -> Some [ Rd; Uimm ]
+      | _ -> None
+
+    let ones lsb width = Int64.shift_left (Int64.sub (Int64.shift_left 1L width) 1L) lsb
+
+    let free = function
+      | Rd -> ones 7 5
+      | Rs1 | Mem0 -> ones 15 5
+      | Rs2 -> ones 20 5
+      | Simm12 -> ones 20 12
+      | Shamt n -> ones 20 n
+      | Mem_i -> Int64.logor (ones 15 5) (ones 20 12)
+      | Mem_s | Boff -> Int64.logor (ones 15 5) (Int64.logor (ones 7 5) (ones 25 7))
+      | Uimm -> ones 12 20
+      | Bits (lsb, width) -> ones lsb width
+
+    let s_imm w = sign_extend 12 (Int64.logor (bits w 7 5) (Int64.shift_left (bits w 25 7) 5))
+
+    let b_imm w =
+      sign_extend 13
+        (Int64.logor
+           (Int64.shift_left (bits w 31 1) 12)
+           (Int64.logor
+              (Int64.shift_left (bits w 7 1) 11)
+              (Int64.logor (Int64.shift_left (bits w 25 6) 5) (Int64.shift_left (bits w 8 4) 1))))
+
+    let operand ~address w = function
+      | Rd -> reg (Int64.to_int (bits w 7 5))
+      | Rs1 -> reg (Int64.to_int (bits w 15 5))
+      | Rs2 -> reg (Int64.to_int (bits w 20 5))
+      | Simm12 -> imm (sign_extend 12 (bits w 20 12))
+      | Shamt n -> imm (bits w 20 n)
+      | Mem_i -> mem (Int64.to_int (bits w 15 5)) (sign_extend 12 (bits w 20 12))
+      | Mem_s -> mem (Int64.to_int (bits w 15 5)) (s_imm w)
+      | Mem0 -> mem (Int64.to_int (bits w 15 5)) 0L
+      | Boff -> sym (Int64.add address (b_imm w))
+      | Uimm -> imm (sign_extend 20 (bits w 12 20))
+      | Bits (lsb, width) -> imm (bits w lsb width)
+
+    let word_of op ops =
+      match lower_operands default_state (instruction op ops) with
+      | Ok [ l ] -> (
+          match encode_ungated l with
+          | Ok (`Fixed f) when String.length f.bytes = 4 -> Some (read_word f.bytes 0)
+          | _ -> None)
+      | _ -> None
+
+    (* A branch's word is its opcode and [funct3]; any other's is its zero-operand encoding, so
+       an opcode this XLEN does not lower has no entry. *)
+    let entries =
+      List.filter_map
+        (fun (e : Riscv_ops.entry) ->
+          Option.bind (fields e) (fun fields ->
+              let mask =
+                Int64.logand 0xffffffffL
+                  (Int64.lognot (List.fold_left (fun m f -> Int64.logor m (free f)) 0L fields))
+              in
+              let match_ =
+                match Desc.enc e.op with
+                | Some (Riscv_ops.Enc.B { funct3 }) ->
+                    if Option.is_some (xlen_gate e.op) then None
+                    else Some (Int64.of_int (0x63 lor (funct3 lsl 12)))
+                | _ -> word_of e.op (List.map (operand ~address:0L 0L) fields)
+              in
+              Option.map (fun match_ -> { op = e.op; fields; mask; match_ }) match_))
+        (Array.to_list Riscv_ops.all)
+
+    let index =
+      let t = Hashtbl.create 512 in
+      List.iter
+        (fun e -> if not (Hashtbl.mem t (e.mask, e.match_)) then Hashtbl.add t (e.mask, e.match_) e)
+        entries;
+      t
+
+    let masks = List.sort_uniq Int64.compare (List.map (fun e -> e.mask) entries)
+
+    let decode ctx w =
+      List.find_map
+        (fun mask ->
+          Option.bind
+            (Hashtbl.find_opt index (mask, Int64.logand w mask))
+            (fun e ->
+              let ops = List.map (operand ~address:ctx.address w) e.fields in
+              let branch = List.mem Boff e.fields in
+              if branch || word_of e.op ops = Some w then
+                Some (instruction e.op ops, Opcode.name e.op)
+              else None))
+        masks
+  end
+
+  let decode_hand_written ctx bytes ~pos =
     if String.length bytes - pos < 2 then Error (diag ~pos:__POS__ `Decode_short)
     else if Char.code bytes.[pos] land 3 <> 3 then
       let half = read_half bytes pos in
@@ -3346,91 +3265,10 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       let rs1 = Int64.to_int (bits w 15 5) and rs2 = Int64.to_int (bits w 20 5) in
       let f7 = Int64.to_int (bits w 25 7) in
       let result =
-        match r_name opc f3 f7 with
-        | Some n when opc <> 0x3b || xlen = 64 ->
-            Some (instruction (op_exn n) [ reg rd; reg rs1; reg rs2 ], n)
-        | _ -> (
+        match Hand_decode.decode ctx w with
+        | Some _ as r -> r
+        | None -> (
             match opc with
-            | (0x13 | 0x1b) when opc = 0x13 || xlen = 64 ->
-                let raw = bits w 20 12 in
-                let funct_shift =
-                  if opc = 0x13 && xlen = 64 then Int64.to_int (bits w 26 6)
-                  else Int64.to_int (bits w 25 7)
-                in
-                let n =
-                  match (opc, f3, funct_shift) with
-                  | 0x13, 0, _ -> Some "addi"
-                  | 0x13, 2, _ -> Some "slti"
-                  | 0x13, 3, _ -> Some "sltiu"
-                  | 0x13, 4, _ -> Some "xori"
-                  | 0x13, 6, _ -> Some "ori"
-                  | 0x13, 7, _ -> Some "andi"
-                  | 0x13, 1, 0 -> Some "slli"
-                  | 0x13, 5, 0 -> Some "srli"
-                  | 0x13, 5, x when x = if xlen = 64 then 0x10 else 0x20 -> Some "srai"
-                  | 0x13, 5, x when x = if xlen = 64 then 0x18 else 0x30 -> Some "rori"
-                  | 0x1b, 0, _ -> Some "addiw"
-                  | 0x1b, 1, 0 -> Some "slliw"
-                  | 0x1b, 5, 0 -> Some "srliw"
-                  | 0x1b, 5, 0x20 -> Some "sraiw"
-                  | 0x1b, 5, 0x30 -> Some "roriw"
-                  | 0x13, 1, _ when Int64.equal raw 0x600L -> Some "clz"
-                  | 0x13, 1, _ when Int64.equal raw 0x601L -> Some "ctz"
-                  | 0x13, 1, _ when Int64.equal raw 0x602L -> Some "cpop"
-                  | 0x13, 1, _ when Int64.equal raw 0x604L -> Some "sext.b"
-                  | 0x13, 1, _ when Int64.equal raw 0x605L -> Some "sext.h"
-                  | 0x13, 5, _ when Int64.equal raw 0x287L -> Some "orc.b"
-                  | 0x1b, 1, _ when Int64.equal raw 0x600L -> Some "clzw"
-                  | 0x1b, 1, _ when Int64.equal raw 0x601L -> Some "ctzw"
-                  | 0x1b, 1, _ when Int64.equal raw 0x602L -> Some "cpopw"
-                  | 0x13, 5, _ when Int64.equal raw 0x687L -> Some "brev8"
-                  | 0x13, 5, _ when Int64.equal raw (if xlen = 64 then 0x6b8L else 0x698L) ->
-                      Some "rev8"
-                  | 0x13, 1, _ when xlen = 32 && Int64.equal raw 0x08fL -> Some "zip"
-                  | 0x13, 5, _ when xlen = 32 && Int64.equal raw 0x08fL -> Some "unzip"
-                  | _ -> None
-                in
-                Option.map
-                  (fun n ->
-                    match n with
-                    | "clz" | "ctz" | "cpop" | "sext.b" | "sext.h" | "orc.b" | "clzw" | "ctzw"
-                    | "cpopw" | "brev8" | "rev8" | "zip" | "unzip" ->
-                        (instruction (op_exn n) [ reg rd; reg rs1 ], n)
-                    | _ ->
-                        let shift = f3 = 1 || f3 = 5 in
-                        let width = if opc = 0x1b then 5 else if xlen = 64 then 6 else 5 in
-                        let v = if shift then bits w 20 width else sign_extend 12 raw in
-                        (instruction (op_exn n) [ reg rd; reg rs1; imm v ], n))
-                  n
-            | 0x03 ->
-                let n =
-                  match f3 with
-                  | 0 -> Some "lb"
-                  | 1 -> Some "lh"
-                  | 2 -> Some "lw"
-                  | 3 when xlen = 64 -> Some "ld"
-                  | 4 -> Some "lbu"
-                  | 5 -> Some "lhu"
-                  | 6 when xlen = 64 -> Some "lwu"
-                  | _ -> None
-                in
-                Option.map
-                  (fun n ->
-                    (instruction (op_exn n) [ reg rd; mem rs1 (sign_extend 12 (bits w 20 12)) ], n))
-                  n
-            | 0x23 ->
-                let n =
-                  match f3 with
-                  | 0 -> Some "sb"
-                  | 1 -> Some "sh"
-                  | 2 -> Some "sw"
-                  | 3 when xlen = 64 -> Some "sd"
-                  | _ -> None
-                in
-                let v =
-                  sign_extend 12 (Int64.logor (bits w 7 5) (Int64.shift_left (bits w 25 7) 5))
-                in
-                Option.map (fun n -> (instruction (op_exn n) [ reg rs2; mem rs1 v ], n)) n
             | 0x07 ->
                 Option.map
                   (fun n ->
@@ -3483,34 +3321,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                       (fun ops -> (instruction (op_exn n) ops, n))
                       (rm_operands ~default:Rm.Dyn f3
                          [ f_operand rd; f_operand rs1; f_operand rs2; f_operand rs3 ]))
-            | 0x63 ->
-                let n =
-                  match f3 with
-                  | 0 -> Some "beq"
-                  | 1 -> Some "bne"
-                  | 4 -> Some "blt"
-                  | 5 -> Some "bge"
-                  | 6 -> Some "bltu"
-                  | 7 -> Some "bgeu"
-                  | _ -> None
-                in
-                let v =
-                  sign_extend 13
-                    (Int64.logor
-                       (Int64.shift_left (bits w 31 1) 12)
-                       (Int64.logor
-                          (Int64.shift_left (bits w 7 1) 11)
-                          (Int64.logor
-                             (Int64.shift_left (bits w 25 6) 5)
-                             (Int64.shift_left (bits w 8 4) 1))))
-                in
-                Option.map
-                  (fun n ->
-                    (instruction (op_exn n) [ reg rs1; reg rs2; sym (Int64.add ctx.address v) ], n))
-                  n
-            | 0x37 | 0x17 ->
-                let n = if opc = 0x37 then "lui" else "auipc" in
-                Some (instruction (op_exn n) [ reg rd; imm (sign_extend 20 (bits w 12 20)) ], n)
             | 0x6f ->
                 let v =
                   sign_extend 21
@@ -3571,41 +3381,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                   ( instruction Opcode.Fence
                       [ Operand.Sym (Asm_core.Expr.Symbol p); Operand.Sym (Asm_core.Expr.Symbol q) ],
                     Printf.sprintf "fence %s,%s" p q )
-            | 0x2f when f7 land 0x3 = 0 -> (
-                (* Zaamo, bare-mnemonic spelling only (aq=rl=0 - see
-                   {!amo3_desc}); aq/rl set is left undecoded rather than
-                   silently dropped, since this project's own encoder never
-                   emits that bit pattern for any mnemonic yet. *)
-                let funct5 = f7 asr 2 in
-                let suffix =
-                  if f3 = 2 then Some ".w" else if f3 = 3 && xlen = 64 then Some ".d" else None
-                in
-                match suffix with
-                | None -> None
-                | Some suffix -> (
-                    let base =
-                      match funct5 with
-                      | 0x00 -> Some "amoadd"
-                      | 0x01 -> Some "amoswap"
-                      | 0x02 -> Some "lr"
-                      | 0x03 -> Some "sc"
-                      | 0x04 -> Some "amoxor"
-                      | 0x08 -> Some "amoor"
-                      | 0x0c -> Some "amoand"
-                      | 0x10 -> Some "amomin"
-                      | 0x14 -> Some "amomax"
-                      | 0x18 -> Some "amominu"
-                      | 0x1c -> Some "amomaxu"
-                      | _ -> None
-                    in
-                    match base with
-                    | None -> None
-                    | Some "lr" ->
-                        let n = "lr" ^ suffix in
-                        Some (instruction (op_exn n) [ reg rd; mem rs1 0L ], n)
-                    | Some base ->
-                        let n = base ^ suffix in
-                        Some (instruction (op_exn n) [ reg rd; reg rs2; mem rs1 0L ], n)))
             | _ -> None)
       in
       match result with
@@ -3614,89 +3389,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           | Some (i, f) -> Ok (i, f, 4)
           | None -> Error (diag ~pos:__POS__ `Decode_no_match))
       | Some (i, f) -> Ok (i, f, 4)
-
-  (* The hand-written integer forms the arms above have no reading of (Zbs, Zbc, Zbkb, Zbkx, Zkn,
-     Zks, Zicond), read back from their own encodings: each opcode's word with its operand fields
-     zero, the fields its operands come from, and a re-encoding check. Tried only on a word nothing
-     else reads, so no other reading changes. *)
-  module By_desc = struct
-    type field = Reg of int | Imm of int * int
-    type entry = { op : Opcode.t; fields : field list; mask : int64; match_ : int64 }
-
-    let fields op =
-      let r = [ Reg 7; Reg 15 ] in
-      let int_opcode o = o = 0x33 || o = 0x3b || o = 0x13 || o = 0x1b in
-      if Option.is_some (Desc.rbs op) then Some (r @ [ Reg 20; Imm (30, 2) ])
-      else if op = Opcode.Aes64ks1i then Some (r @ [ Imm (20, 4) ])
-      else if Option.is_some (unary_imm_desc op) then Some r
-      else
-        match (Desc.i op, Desc.r op) with
-        | Some { opcode; shamt_bits = Some w; _ }, _ when int_opcode opcode ->
-            Some (r @ [ Imm (20, if w = 64 then 6 else 5) ])
-        | _, Some { opcode; rs2 = None; _ } when int_opcode opcode -> Some (r @ [ Reg 20 ])
-        | _ -> None
-
-    let operand w = function
-      | Reg lsb -> reg (Int64.to_int (bits w lsb 5))
-      | Imm (lsb, width) -> imm (bits w lsb width)
-
-    let word_of op ops =
-      match lower_operands default_state (instruction op ops) with
-      | Ok [ l ] -> (
-          match encode_ungated l with
-          | Ok (`Fixed f) when String.length f.bytes = 4 -> Some (read_word f.bytes 0)
-          | _ -> None)
-      | _ -> None
-
-    let unread w =
-      Result.is_error (decode_arms { state = default_state; address = 0L } (bytes_of_word w) ~pos:0)
-
-    (* Opcodes this XLEN does not lower, and those the arms read, have no entry. *)
-    let entries =
-      List.filter_map
-        (fun op ->
-          Option.bind (fields op) (fun fields ->
-              let free =
-                List.fold_left
-                  (fun m f ->
-                    let lsb, width = match f with Reg l -> (l, 5) | Imm (l, w) -> (l, w) in
-                    Int64.logor m (Int64.shift_left (Int64.sub (Int64.shift_left 1L width) 1L) lsb))
-                  0L fields
-              in
-              Option.bind
-                (word_of op (List.map (operand 0L) fields))
-                (fun match_ ->
-                  if unread match_ then
-                    Some { op; fields; mask = Int64.logand 0xffffffffL (Int64.lognot free); match_ }
-                  else None)))
-        Opcode.all
-
-    let index =
-      let t = Hashtbl.create 256 in
-      List.iter
-        (fun e -> if not (Hashtbl.mem t (e.mask, e.match_)) then Hashtbl.add t (e.mask, e.match_) e)
-        entries;
-      t
-
-    let masks = List.sort_uniq Int64.compare (List.map (fun e -> e.mask) entries)
-
-    let decode w =
-      List.find_map
-        (fun mask ->
-          Option.bind
-            (Hashtbl.find_opt index (mask, Int64.logand w mask))
-            (fun e ->
-              let ops = List.map (operand w) e.fields in
-              if word_of e.op ops = Some w then Some (instruction e.op ops, Opcode.name e.op)
-              else None))
-        masks
-  end
-
-  let decode_hand_written ctx bytes ~pos =
-    match decode_arms ctx bytes ~pos with
-    | Error _ as e when String.length bytes - pos >= 4 && Char.code bytes.[pos] land 3 = 3 -> (
-        match By_desc.decode (read_word bytes pos) with Some (i, f) -> Ok (i, f, 4) | None -> e)
-    | r -> r
 
   let table_fallback ?legal bytes ~pos =
     if String.length bytes - pos < 2 then None

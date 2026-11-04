@@ -11,25 +11,26 @@ type form = {
   source : string;
 }
 
-let form ?(rv64_only = false) op feature opcode funct3 funct7 source =
-  { op; mnemonic = Opcode.mnemonic op; feature; opcode; funct3; funct7; rv64_only; source }
-
+(* Read from Riscv_ops: the forms either component owns, with their R-format fields. *)
 let forms =
-  [
-    form Opcode.Mul "zmmul" 0x33 0 0x01 "rv_m/mul";
-    form ~rv64_only:true Opcode.Mulw "zmmul" 0x3b 0 0x01 "rv64_m/mulw";
-    form Opcode.Mulh "zmmul" 0x33 1 0x01 "rv_m/mulh";
-    form Opcode.Mulhsu "zmmul" 0x33 2 0x01 "rv_m/mulhsu";
-    form Opcode.Mulhu "zmmul" 0x33 3 0x01 "rv_m/mulhu";
-    form Opcode.Div "m" 0x33 4 0x01 "rv_m/div";
-    form Opcode.Divu "m" 0x33 5 0x01 "rv_m/divu";
-    form Opcode.Rem "m" 0x33 6 0x01 "rv_m/rem";
-    form Opcode.Remu "m" 0x33 7 0x01 "rv_m/remu";
-    form ~rv64_only:true Opcode.Divw "m" 0x3b 4 0x01 "rv64_m/divw";
-    form ~rv64_only:true Opcode.Divuw "m" 0x3b 5 0x01 "rv64_m/divuw";
-    form ~rv64_only:true Opcode.Remw "m" 0x3b 6 0x01 "rv64_m/remw";
-    form ~rv64_only:true Opcode.Remuw "m" 0x3b 7 0x01 "rv64_m/remuw";
-  ]
+  List.filter_map
+    (fun (e : Riscv_ops.entry) ->
+      match (e.ext, e.enc, e.src) with
+      | [ feature ], Some (R { opcode; funct3; funct7; _ }), Some source
+        when String.equal feature "m" || String.equal feature "zmmul" ->
+          Some
+            {
+              op = e.op;
+              mnemonic = Opcode.mnemonic e.op;
+              feature;
+              opcode;
+              funct3;
+              funct7;
+              rv64_only = e.xlen = Rv64;
+              source;
+            }
+      | _ -> None)
+    (Array.to_list Riscv_ops.all)
 
 let find op = List.find_opt (fun f -> f.op = op) forms
 

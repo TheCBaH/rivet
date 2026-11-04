@@ -15,10 +15,16 @@ let hex b =
   String.concat " " (List.init (String.length b) (fun i -> Printf.sprintf "%02x" (Char.code b.[i])))
 
 (* The bytes of one instruction's text, laid out at 0x1000. *)
-let assemble target text =
+let spec features =
+  Option.map
+    (fun f ->
+      match Target_config.parse_spec f with Ok s -> s | Error m -> invalid_arg ("features: " ^ m))
+    features
+
+let assemble ?features target text =
   let (module D : Target_intf.Target.DRIVER) = driver target in
   let source = Foundation.Span.source ~name:"<asm>" ~contents:("\t.text\n\t" ^ text ^ "\n") in
-  match D.assemble ~unit_name:"t" ~source () with
+  match D.assemble ?features:(spec features) ~unit_name:"t" ~source () with
   | Error ds -> Error (render ds)
   | Ok laid_out -> (
       let plan = Image.plan_of laid_out in
@@ -30,9 +36,9 @@ let assemble target text =
       | Ok { Image.segments = s :: _; _ } -> Ok s.Image.bytes
       | Ok _ -> Error "no segments")
 
-let decode target bytes =
+let decode ?features target bytes =
   let (module D : Target_intf.Target.DRIVER) = driver target in
-  match D.dump_disasm_canonical ~address:0x1000L bytes with
+  match D.dump_disasm_canonical ?features:(spec features) ~address:0x1000L bytes with
   | Ok t -> Ok (String.trim t)
   | Error ds -> Error (render ds)
 
@@ -41,8 +47,17 @@ module Make (E : Target_encode.ENCODE) = struct
   let message e = Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))
 
   (* Every lowered form's bytes in order; a relaxable form takes its first rung. *)
-  let encode insn =
-    match E.lower_instruction E.default_state insn with
+  (* [features] as the driver takes them, e.g. ["+zbs,+zicond"]. *)
+  let state features =
+    match spec features with
+    | None -> E.default_state
+    | Some s -> (
+        match Target_config.resolve E.components s with
+        | Ok c -> E.initial_state c
+        | Error m -> invalid_arg ("features: " ^ m))
+
+  let encode ?features insn =
+    match E.lower_instruction (state features) insn with
     | Error e -> Error (message e)
     | Ok ls ->
         List.fold_left
@@ -54,16 +69,18 @@ module Make (E : Target_encode.ENCODE) = struct
                 | Error e -> Error (message e)))
           (Ok "") ls
 
-  let assemble = assemble E.name
-  let decode = decode E.name
+  let assemble ?features = assemble ?features E.name
+  let decode ?features = decode ?features E.name
 
-  let same_bytes insn text =
-    match (encode insn, assemble text) with Ok a, Ok b -> String.equal a b | _ -> false
+  let same_bytes ?features insn text =
+    match (encode ?features insn, assemble ?features text) with
+    | Ok a, Ok b -> String.equal a b
+    | _ -> false
 
   (* One line: the text, its bytes, and whether the instruction encodes to them. *)
-  let check insn text =
+  let check ?features insn text =
     let verdict, bytes =
-      match (encode insn, assemble text) with
+      match (encode ?features insn, assemble ?features text) with
       | Ok a, Ok b when String.equal a b -> ("same", hex b)
       | Ok a, Ok b -> ("DIFFERENT " ^ hex a, hex b)
       | Error m, _ -> ("ENCODE " ^ m, "")

@@ -374,22 +374,22 @@ let%expect_test "M descriptors predict the assembled instruction word" =
   [%expect
     {|
     riscv32 mul: matches
+    riscv32 remu: matches
     riscv32 mulh: matches
     riscv32 mulhsu: matches
     riscv32 mulhu: matches
     riscv32 div: matches
     riscv32 divu: matches
     riscv32 rem: matches
-    riscv32 remu: matches
     riscv64 mul: matches
-    riscv64 mulw: matches
+    riscv64 remu: matches
     riscv64 mulh: matches
     riscv64 mulhsu: matches
     riscv64 mulhu: matches
     riscv64 div: matches
     riscv64 divu: matches
     riscv64 rem: matches
-    riscv64 remu: matches
+    riscv64 mulw: matches
     riscv64 divw: matches
     riscv64 divuw: matches
     riscv64 remw: matches
