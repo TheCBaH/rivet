@@ -30,3 +30,131 @@ let%expect_test "reserved rounding-mode encodings decode as before" =
     funct3 5: of_funct3 none, c0055553 -> fcvt.w.s x10, f10
     funct3 6: of_funct3 none, c0056553 -> fcvt.w.s x10, f10
     funct3 7: of_funct3 dyn, c0057553 -> fcvt.w.s x10, f10 |}]
+
+(* {1 Register classes} *)
+
+let%expect_test "register indices are range-checked by class" =
+  let show = function Some _ -> "some" | None -> "none" in
+  Printf.printf "Xreg 31 %s, Xreg 32 %s, Xreg -1 %s, Creg 7 %s, Creg 8 %s, Creg 15 %s, Creg 16 %s\n"
+    (show (Types.Xreg.of_int 31))
+    (show (Types.Xreg.of_int 32))
+    (show (Types.Xreg.of_int (-1)))
+    (show (Types.Creg.of_int 7))
+    (show (Types.Creg.of_int 8))
+    (show (Types.Creg.of_int 15))
+    (show (Types.Creg.of_int 16));
+  [%expect
+    {| Xreg 31 some, Xreg 32 none, Xreg -1 none, Creg 7 none, Creg 8 some, Creg 15 some, Creg 16 none |}]
+
+let%expect_test "an FP instruction given integer registers is refused" =
+  let module E = Riscv64_encode in
+  let x n = E.Operand.Reg (E.Reg.x n) in
+  let insn = E.Instruction.mk E.Opcode.Fadd_s [ x 1; x 2; x 3 ] in
+  (match E.lower_instruction E.default_state insn with
+  | Ok _ -> print_endline "accepted"
+  | Error e ->
+      let d = E.error_diagnostic (Err.Error.kind e) in
+      Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d));
+  [%expect {| riscv64.lower: no fadd.s form takes these operands |}]
+
+(* {1 Every hand-written opcode}
+
+   Each opcode of [Opcode.all] gets the first operand list, shortest first, that it lowers to a
+   single form; that form must encode, decode and re-encode to the same bytes. The decoder has
+   no reading of some hand-written forms yet; they are listed. *)
+
+module type ENC = module type of Riscv64_encode
+
+module Sweep (E : ENC) = struct
+  let state = { E.default_state with E.rvc = true }
+
+  let atoms i =
+    let n = 8 + i in
+    [
+      E.Operand.Reg (E.Reg.x n);
+      E.Operand.Reg (E.Reg.f n);
+      E.Operand.Reg (E.Reg.v n);
+      E.Operand.Imm (Foundation.Bigint.of_int 1);
+      E.Operand.Mem { E.Mem.offset = Asm_core.Expr.Const Foundation.Bigint.zero; base = E.Reg.x n };
+      E.Operand.Mem { E.Mem.offset = Asm_core.Expr.Const Foundation.Bigint.zero; base = E.Reg.x 2 };
+      E.Operand.Sym (Asm_core.Expr.Symbol "l");
+    ]
+
+  let rec shapes n =
+    if n = 0 then [ [] ]
+    else
+      List.concat_map (fun rest -> List.map (fun a -> a :: rest) (atoms (n - 1))) (shapes (n - 1))
+
+  let candidates = List.concat_map (fun n -> List.map List.rev (shapes n)) [ 0; 1; 2; 3; 4 ]
+
+  let lowered op ops =
+    match E.lower_instruction_ungated state (E.Instruction.mk op ops) with
+    | Ok [ l ] -> (
+        match E.encode_ungated l with
+        | Ok (`Fixed f) -> Some (l, f.Asm_core.Lowered_ast.bytes)
+        | _ -> None)
+    | _ -> None
+
+  (* The first sample of [op], as its lowered form and bytes (a fixup's field left zero). *)
+  let sample op = List.find_map (lowered op) candidates
+
+  let reencoded bytes =
+    match E.decode_ungated { E.state; address = 0L } bytes ~pos:0 with
+    | Ok (insn, _, len) when len = String.length bytes -> (
+        match E.lower_instruction_ungated state insn with
+        | Ok [ l ] -> (
+            match E.encode_ungated l with
+            | Ok (`Fixed f) -> Ok f.Asm_core.Lowered_ast.bytes
+            | _ -> Error `Reencode)
+        | _ -> Error `Relower)
+    | _ -> Error `Decode
+
+  let samples = List.map (fun op -> (op, sample op)) E.Opcode.all
+end
+
+module S64 = Sweep (Riscv64_encode)
+module S32 = Sweep (Riscv32_encode)
+
+(* Each opcode with its sample from either XLEN. *)
+let samples =
+  List.map2
+    (fun (op, a) (_, b) ->
+      ( op,
+        match (a, b) with
+        | Some (l, bytes), _ -> Some (`Rv64 l, bytes)
+        | None, Some (l, bytes) -> Some (`Rv32 l, bytes)
+        | None, None -> None ))
+    S64.samples S32.samples
+
+let%expect_test "every sampled opcode round-trips through its encoding" =
+  let name = Riscv64_encode.Opcode.name in
+  let unsampled =
+    List.filter_map (fun (op, s) -> if s = None then Some (name op) else None) samples
+  in
+  let back =
+    List.filter_map
+      (fun (op, s) ->
+        let r =
+          match s with
+          | Some (`Rv64 _, bytes) -> Some (bytes, S64.reencoded bytes)
+          | Some (`Rv32 _, bytes) -> Some (bytes, S32.reencoded bytes)
+          | None -> None
+        in
+        Option.map (fun (bytes, r) -> (name op, bytes, r)) r)
+      samples
+  in
+  let names p =
+    String.concat " " (List.filter_map (fun (n, b, r) -> if p b r then Some n else None) back)
+  in
+  Printf.printf "opcodes %d, sampled %d\nunsampled: %s\nnot decoded: %s\ndiffers: %s\n"
+    (List.length samples)
+    (List.length samples - List.length unsampled)
+    (String.concat " " unsampled)
+    (names (fun _ r -> r = Error `Decode))
+    (names (fun b r -> match r with Ok b' -> b' <> b | Error `Decode -> false | Error _ -> true));
+  [%expect
+    {|
+    opcodes 304, sampled 303
+    unsampled: la
+    not decoded: bclr bext binv bset bclri bexti binvi bseti clmul clmulh clmulr czero.eqz czero.nez sm3p0 sm3p1 sm4ed sm4ks xperm4 xperm8 sha256sum0 sha256sum1 sha256sig0 sha256sig1 sha512sum0 sha512sum1 sha512sig0 sha512sig1 sha512sum0r sha512sum1r sha512sig0l sha512sig1l sha512sig0h sha512sig1h aes64ds aes64dsm aes64es aes64esm aes64ks2 aes64im aes64ks1i aes32dsi aes32dsmi aes32esi aes32esmi call tail lla
+    differs: |}]

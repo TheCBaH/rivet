@@ -3,15 +3,100 @@
 
 open Foundation
 
-module Reg = struct
-  type t = X of int | F of int | V of int
+(* Register numbers by class. Each is a [private int]: it reads as an int, but only the checked
+   [of_int] makes one, so an out-of-range or wrong-class number does not type-check. *)
+module type INDEX = sig
+  type t = private int
 
+  val of_int : int -> t option
+  val of_int_exn : int -> t
+  val to_int : t -> int
+  val equal : t -> t -> bool
+  val pp : t Fmt.t
+end
+
+module Index (B : sig
+  val prefix : string
+  val lo : int
+  val hi : int
+end) : INDEX = struct
+  type t = int
+
+  let of_int n = if n >= B.lo && n <= B.hi then Some n else None
+
+  let of_int_exn n =
+    match of_int n with
+    | Some r -> r
+    | None -> invalid_arg (Printf.sprintf "RISC-V register %s%d out of range" B.prefix n)
+
+  let to_int r = r
+  let equal = Int.equal
+  let pp ppf r = Fmt.pf ppf "%s%d" B.prefix r
+end
+
+module Xreg = struct
+  include Index (struct
+    let prefix = "x"
+    let lo = 0
+    let hi = 31
+  end)
+
+  let zero = of_int_exn 0
+  let ra = of_int_exn 1
+  let sp = of_int_exn 2
+end
+
+module Freg = Index (struct
+  let prefix = "f"
+  let lo = 0
+  let hi = 31
+end)
+
+module Vreg = Index (struct
+  let prefix = "v"
+  let lo = 0
+  let hi = 31
+end)
+
+(* The eight registers a compressed 3-bit field names, x8..x15 (f8..f15 for [Cfreg]). *)
+module Creg = struct
+  include Index (struct
+    let prefix = "x"
+    let lo = 8
+    let hi = 15
+  end)
+
+  let of_xreg r = of_int (Xreg.to_int r)
+  let to_xreg r = Xreg.of_int_exn (to_int r)
+  let field r = to_int r - 8
+end
+
+module Cfreg = struct
+  include Index (struct
+    let prefix = "f"
+    let lo = 8
+    let hi = 15
+  end)
+
+  let of_freg r = of_int (Freg.to_int r)
+  let to_freg r = Freg.of_int_exn (to_int r)
+  let field r = to_int r - 8
+end
+
+module Reg = struct
+  type t = X of Xreg.t | F of Freg.t | V of Vreg.t
+
+  let x n = X (Xreg.of_int_exn n)
+  let f n = F (Freg.of_int_exn n)
+  let v n = V (Vreg.of_int_exn n)
+  let zero = X Xreg.zero
+  let index = function X r -> Xreg.to_int r | F r -> Freg.to_int r | V r -> Vreg.to_int r
   let equal a b = a = b
 
   let name = function
-    | X n -> Printf.sprintf "x%d" n
-    | F n -> Printf.sprintf "f%d" n
-    | V n -> Printf.sprintf "v%d" n
+    | X n -> Printf.sprintf "x%d" (Xreg.to_int n)
+    | F n -> Printf.sprintf "f%d" (Freg.to_int n)
+    | V n -> Printf.sprintf "v%d" (Vreg.to_int n)
 
   let pp ppf r = Fmt.string ppf (name r)
 
@@ -102,13 +187,13 @@ module Reg = struct
     else None
 
   let find s =
-    match numbered "x" (fun n -> X n) s with
+    match numbered "x" x s with
     | Some _ as r -> r
     | None -> (
-        match numbered "f" (fun n -> F n) s with
+        match numbered "f" f s with
         | Some _ as r -> r
         | None -> (
-            match numbered "v" (fun n -> V n) s with
+            match numbered "v" v s with
             | Some _ as r -> r
             | None -> (
                 (* The two alias tables cannot collide: every f_aliases name
@@ -118,12 +203,12 @@ module Reg = struct
                    no ABI alias names at all - every RVV mnemonic spells vector
                    registers as bare [v0]-[v31]. *)
                 match List.assoc_opt s f_aliases with
-                | Some n -> Some (F n)
-                | None -> Option.map (fun n -> X n) (List.assoc_opt s aliases))))
+                | Some n -> Some (f n)
+                | None -> Option.map x (List.assoc_opt s aliases))))
 
-  let x = function X n -> Some n | F _ | V _ -> None
-  let x_exn = function X n -> n | F _ | V _ -> invalid_arg "RISC-V integer register required"
-  let of_x n = X (n land 31)
+  let to_x = function X r -> Some r | F _ | V _ -> None
+  let to_f = function F r -> Some r | X _ | V _ -> None
+  let to_v = function V r -> Some r | X _ | F _ -> None
 end
 
 module Mem = struct
