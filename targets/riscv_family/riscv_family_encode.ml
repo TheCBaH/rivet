@@ -31,10 +31,19 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            (Riscv_extensions.Validated.xlen E.definition)
            P.xlen)
 
-  let table_rows = Riscv_extensions.Validated.rows E.definition
+  let generated_rows = Riscv_extensions.Validated.rows E.definition
+  let row_ids = Riscv_extensions.Validated.ids E.definition
   let name = P.name
   let triple = P.triple
   let xlen = P.xlen
+
+  (* This instance's table rows: standard rows, then the vendor's. *)
+  module Row = struct
+    include Riscv_types.Row
+
+    let all = Array.to_list row_ids
+    let of_mnemonic s = List.filter (fun r -> String.equal (mnemonic r) s) all
+  end
 
   module Reg = Riscv_types.Reg
   module Mem = Riscv_types.Mem
@@ -49,9 +58,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   module Opcode = struct
     include Riscv_types.Opcode
 
-    let name = function
-      | Table i -> table_rows.(i).Riscv_table_row.mnemonic
-      | op -> Riscv_types.Opcode.mnemonic op
+    let name = function Table r -> Row.mnemonic r | op -> Riscv_types.Opcode.mnemonic op
 
     (* rv_v_aliases: riscv-opcodes' own deprecated pseudo-op spellings for
        already-admitted rv_v mnemonics. Each one's mask/value is identical to
@@ -84,16 +91,13 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     (* The first generated row spelled [s] for this XLEN; lowering tries every
        row with that spelling, so the index only names the mnemonic. *)
     let table_index s =
-      let rows = table_rows in
-      let rec go i =
-        if i >= Array.length rows then None
-        else
-          let r = rows.(i) in
-          if String.equal r.Riscv_table_row.mnemonic s && (r.xlen = 0 || r.xlen = xlen) then
-            Some (Table i)
-          else go (i + 1)
-      in
-      go 0
+      List.find_map
+        (fun r ->
+          let row = Row.row r in
+          if String.equal row.Riscv_table_row.mnemonic s && (row.xlen = 0 || row.xlen = xlen) then
+            Some (Table r)
+          else None)
+        Row.all
 
     let of_mnemonic s =
       let s = Option.value (List.assoc_opt s deprecated_mnemonic_aliases) ~default:s in
@@ -464,8 +468,11 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let legal_of_op =
     let hand = Hashtbl.create 512 in
     List.iter (fun op -> Hashtbl.replace hand op (legal_of_mnemonic (Opcode.name op))) Opcode.all;
-    let rows = Array.map (fun r -> legal_of_mnemonic r.Riscv_table_row.mnemonic) table_rows in
-    function Opcode.Table i -> rows.(i) | op -> Option.join (Hashtbl.find_opt hand op)
+    let rows = Array.map (fun r -> legal_of_mnemonic r.Riscv_table_row.mnemonic) generated_rows in
+    function
+    | Opcode.Table r when Row.index r < Array.length rows -> rows.(Row.index r)
+    | Opcode.Table r -> legal_of_mnemonic (Row.mnemonic r)
+    | op -> Option.join (Hashtbl.find_opt hand op)
 
   let feature_gate ?origin state op =
     match legal_of_op op with
@@ -1338,10 +1345,10 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let table_reg op = match op with Operand.Reg (Reg.F r) -> Some (Freg.to_int r) | _ -> xnum op
   let table_row_applies (r : Riscv_table_row.row) = r.xlen = 0 || r.xlen = xlen
 
-  (* Every row spelled like row [i] is tried in table order; the first whose
+  (* Every row spelled like [row] is tried in table order; the first whose
      operands all fit is the encoding. *)
-  let table_lower i ops =
-    let mnemonic = table_rows.(i).Riscv_table_row.mnemonic in
+  let table_lower row ops =
+    let mnemonic = Row.mnemonic row in
     let encode_row (r : Riscv_table_row.row) =
       (* [Tied] fields are not spelled; a trailing [Rm] or [Vm] may be omitted, and a trailing
          [Vtype] takes every remaining operand. *)
@@ -1389,19 +1396,19 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           | Some _ -> acc
           | None ->
               if String.equal r.mnemonic mnemonic && table_row_applies r then encode_row r else None)
-        None table_rows
+        None generated_rows
     in
     match found with
     | Some word when Int64.logand word 3L <> 3L ->
-        Ok [ Lowered.Fixed_half { op = Opcode.Table i; word } ]
-    | Some word -> Ok [ Lowered.Fixed { op = Opcode.Table i; word } ]
+        Ok [ Lowered.Fixed_half { op = Opcode.Table row; word } ]
+    | Some word -> Ok [ Lowered.Fixed { op = Opcode.Table row; word } ]
     | None -> wrong mnemonic
 
   let lower_instruction_ungated state i =
     let opn = Opcode.name i.Instruction.op and iop = i.Instruction.op in
     match (i.op, i.ops) with
     | Opcode.Table row, _
-      when Int64.logand table_rows.(row).Riscv_table_row.match_ 3L <> 3L && not state.rvc ->
+      when Int64.logand (Row.row row).Riscv_table_row.match_ 3L <> 3L && not state.rvc ->
         Error (diag ~pos:__POS__ (`Compressed_disabled opn))
     | Opcode.Table row, ops -> table_lower row ops
     | ( ( Opcode.Mul | Remu | Mulh | Mulhsu | Mulhu | Div | Divu | Rem | Mulw | Divw | Divuw | Remw
@@ -2783,8 +2790,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   (* Without Zve64x ELEN is 32: SEW 64 sets vill and LMUL 1/8 is reserved. Only the immediate
      vtype forms can be checked. *)
   let vtype_gate state = function
-    | Lowered.Fixed { op = Table _ as op; word }
-      when (match Opcode.name op with "vsetvli" | "vsetivli" -> true | _ -> false)
+    | Lowered.Fixed { op = Table r as op; word }
+      when (match Row.mnemonic r with "vsetvli" | "vsetivli" -> true | _ -> false)
            && not (Target_config.enabled state.config "zve64x") -> (
         let name = Opcode.name op in
         let vtype = Int64.to_int (Int64.shift_right_logical word 20) land 0xff in
@@ -2983,7 +2990,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   (* DEC-RV-TABLE: tried only after the hand-written decoder finds nothing, so a
      generated row never shadows a hand-written form. *)
   let table_matches ?(half = false) ?(legal = fun _ -> true) ~first_only w =
-    let rows = table_rows in
+    let rows = generated_rows in
     let field lsb width = bits w lsb width in
     let unscatter (sc : Riscv_table_row.scatter) =
       let v =
@@ -3097,7 +3104,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       else
         let r = rows.(i) in
         if
-          table_row_applies r && legal (Opcode.Table i)
+          table_row_applies r
+          && legal (Opcode.Table row_ids.(i))
           && Int64.logand r.match_ 3L <> 3L = half
           && Int64.equal (Int64.logand w r.mask) r.match_
           && tied_ok r
@@ -3106,7 +3114,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           if List.mem None ops then go (i + 1) found
           else
             let m =
-              (instruction (Opcode.Table i) (List.concat (List.filter_map Fun.id ops)), r.mnemonic)
+              ( instruction (Opcode.Table row_ids.(i)) (List.concat (List.filter_map Fun.id ops)),
+                r.mnemonic )
             in
             if first_only then [ m ] else go (i + 1) (m :: found)
         else go (i + 1) found
@@ -3760,6 +3769,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      profiles - a multiple of its own 16-byte alignment - but 68/100/180 bytes
      (none a multiple of 16) on x86_32/arm/aarch64. *)
   let pad_section_to_alignment = true
+  let table_rows = generated_rows [@@ocaml.deprecated "Use Row and Opcode.Table's Row.t."]
 end
 
 (* The standard extensions, as a named functor: [Riscv_family.Make] applies [Make_with] to the

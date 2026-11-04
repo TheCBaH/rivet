@@ -505,25 +505,25 @@ let%expect_test
       (String.concat " " (List.rev !aliases))
   in
   check "riscv32" 32 Riscv32_encode.Opcode.of_mnemonic
-    (function Riscv32_encode.Opcode.Table i -> Some i | _ -> None)
+    (function Riscv32_encode.Opcode.Table r -> Some (Riscv32_encode.Row.index r) | _ -> None)
     (fun bytes ->
       match
         Riscv32_encode.decode_ungated
           { state = Riscv32_encode.default_state; address = 0L }
           bytes ~pos:0
       with
-      | Ok ({ op = Riscv32_encode.Opcode.Table j; _ }, _, _) -> `Row j
+      | Ok ({ op = Riscv32_encode.Opcode.Table r; _ }, _, _) -> `Row (Riscv32_encode.Row.index r)
       | Ok _ -> `Hand_written
       | Error _ -> `Nothing);
   check "riscv64" 64 Riscv64_encode.Opcode.of_mnemonic
-    (function Riscv64_encode.Opcode.Table i -> Some i | _ -> None)
+    (function Riscv64_encode.Opcode.Table r -> Some (Riscv64_encode.Row.index r) | _ -> None)
     (fun bytes ->
       match
         Riscv64_encode.decode_ungated
           { state = Riscv64_encode.default_state; address = 0L }
           bytes ~pos:0
       with
-      | Ok ({ op = Riscv64_encode.Opcode.Table j; _ }, _, _) -> `Row j
+      | Ok ({ op = Riscv64_encode.Opcode.Table r; _ }, _, _) -> `Row (Riscv64_encode.Row.index r)
       | Ok _ -> `Hand_written
       | Error _ -> `Nothing);
   [%expect
@@ -733,10 +733,7 @@ let%expect_test "generated RISC-V rows that overlap are all classified" =
 module Agree (E : module type of Riscv64_encode) = struct
   let report () =
     let req r = Option.fold ~none:"-" ~some:(Fmt.str "%a" Target_component.Req.pp) r in
-    let rows =
-      Array.to_list
-        (Array.map (fun r -> r.Riscv_family_encode.Riscv_table_row.mnemonic) E.table_rows)
-    in
+    let rows = List.map E.Row.mnemonic E.Row.all in
     let listed =
       List.concat_map
         (fun (c : Target_component.t) ->
