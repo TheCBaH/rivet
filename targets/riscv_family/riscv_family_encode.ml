@@ -93,22 +93,27 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         ("vse1.v", "vsm.v");
       ]
 
-    (* The first generated row spelled [s] for this XLEN; lowering tries every
-       row with that spelling, so the index only names the mnemonic. *)
-    let table_index s =
-      List.find_map
+    (* Every spelling: a hand-written opcode before a row, the first of each, and for a row the
+       first one for this XLEN (lowering tries every row with that spelling, so the opcode only
+       names the mnemonic); a deprecated alias reads as its canonical spelling. *)
+    let by_spelling =
+      let t = Hashtbl.create 2048 in
+      List.iter
         (fun r ->
           let row = Row.row r in
-          if String.equal row.Riscv_table_row.mnemonic s && (row.xlen = 0 || row.xlen = xlen) then
-            Some (Table r)
-          else None)
-        Row.all
+          if (row.Riscv_table_row.xlen = 0 || row.xlen = xlen) && not (Hashtbl.mem t row.mnemonic)
+          then Hashtbl.add t row.mnemonic (Table r))
+        Row.all;
+      List.iter (fun op -> Hashtbl.replace t (name op) op) (List.rev all);
+      List.iter
+        (fun (alias, canonical) ->
+          match Hashtbl.find_opt t canonical with
+          | Some op -> Hashtbl.replace t alias op
+          | None -> Hashtbl.remove t alias)
+        deprecated_mnemonic_aliases;
+      t
 
-    let of_mnemonic s =
-      let s = Option.value (List.assoc_opt s deprecated_mnemonic_aliases) ~default:s in
-      match List.find_opt (fun op -> String.equal (name op) s) all with
-      | Some _ as op -> op
-      | None -> table_index s
+    let of_mnemonic s = Hashtbl.find_opt by_spelling s
   end
 
   open Opcode

@@ -361,6 +361,46 @@ let%expect_test "every standard row name is its row's spelling" =
     riscv32: 1034 names, 24 only for the other XLEN, wrong []
     riscv64: 1034 names, 9 only for the other XLEN, wrong [] |}]
 
+(* {1 Spelling lookup} *)
+
+module Lookup (E : ENC) = struct
+  (* The linear search [Opcode.of_mnemonic] did before its table. *)
+  let linear s =
+    let s = Option.value (List.assoc_opt s E.Opcode.deprecated_mnemonic_aliases) ~default:s in
+    match List.find_opt (fun op -> String.equal (E.Opcode.name op) s) E.Opcode.all with
+    | Some _ as op -> op
+    | None ->
+        List.find_map
+          (fun r ->
+            let row = E.Row.row r in
+            if
+              String.equal row.Riscv_family_encode.Riscv_table_row.mnemonic s
+              && (row.xlen = 0 || row.xlen = E.xlen)
+            then Some (E.Opcode.Table r)
+            else None)
+          E.Row.all
+
+  let check label =
+    let spellings =
+      List.map E.Opcode.name E.Opcode.all
+      @ List.map E.Row.mnemonic E.Row.all
+      @ List.concat_map (fun (a, c) -> [ a; c ]) E.Opcode.deprecated_mnemonic_aliases
+      @ [ ""; "nope"; "ADD" ]
+    in
+    let differ = List.filter (fun s -> E.Opcode.of_mnemonic s <> linear s) spellings in
+    Printf.printf "%s: %d spellings, %d differ [%s]\n" label (List.length spellings)
+      (List.length differ) (String.concat " " differ)
+end
+
+let%expect_test "the spelling table reads every spelling as the linear search did" =
+  let module L32 = Lookup (Riscv32_encode) in
+  let module L64 = Lookup (Riscv64_encode) in
+  L32.check "riscv32";
+  L64.check "riscv64";
+  [%expect {|
+    riscv32: 1372 spellings, 0 differ []
+    riscv64: 1372 spellings, 0 differ [] |}]
+
 (* {1 Instruction class} *)
 
 module Cls = Types.Cls
