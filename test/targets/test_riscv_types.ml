@@ -791,3 +791,30 @@ let%expect_test "every register of a class assembles in an instruction of that c
   Printf.printf "Xreg %d/32, Freg %d/32, Creg %d/8, Cfreg %d/8\n" (count x Types.Xreg.numbers)
     (count f Types.Freg.numbers) (count c Types.Creg.numbers) (count cf Types.Cfreg.numbers);
   [%expect {| Xreg 32/32, Freg 32/32, Creg 8/8, Cfreg 8/8 |}]
+
+(* {1 One instruction type} *)
+
+let%expect_test "every instance and the builders share one Instruction.t" =
+  let module Ops = Riscv_family_encode.Riscv_ops in
+  let built : Types.Instruction.t = Ops.add Types.Xreg.a0 Types.Xreg.a1 Types.Xreg.a2 in
+  let as64 (i : Riscv32_encode.Instruction.t) : Riscv64_encode.Instruction.t = i in
+  let bytes32 =
+    match Riscv32_encode.lower_instruction Riscv32_encode.default_state built with
+    | Ok [ l ] -> (
+        match Riscv32_encode.encode l with
+        | Ok (`Fixed f) -> Test_zicsr.word_of_bytes f.Asm_core.Lowered_ast.bytes
+        | _ -> 0L)
+    | _ -> 0L
+  in
+  let bytes64 =
+    match Riscv64_encode.lower_instruction Riscv64_encode.default_state (as64 built) with
+    | Ok [ l ] -> (
+        match Riscv64_encode.encode l with
+        | Ok (`Fixed f) -> Test_zicsr.word_of_bytes f.Asm_core.Lowered_ast.bytes
+        | _ -> 0L)
+    | _ -> 0L
+  in
+  Printf.printf "%s: riscv32 %08Lx, riscv64 %08Lx\n"
+    (Fmt.to_to_string Riscv32_encode.Instruction.pp built)
+    bytes32 bytes64;
+  [%expect {| add x10, x11, x12: riscv32 00c58533, riscv64 00c58533 |}]
