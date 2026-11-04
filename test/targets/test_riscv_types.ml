@@ -199,3 +199,237 @@ let%expect_test "a form paired with an opcode of another format is refused" =
       let d = E.error_diagnostic (Err.Error.kind e) in
       Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d));
   [%expect {| riscv64.internal.format: internal: lui has no R-format encoding |}]
+
+(* {1 Named standard rows} *)
+
+(* A name whose rows are all for the other XLEN still names one of them; [Opcode.of_mnemonic]
+   has no reading of it here. *)
+let%expect_test "every standard row name is its row's spelling" =
+  let check (type a) name all (mnemonic : a -> string) (of_mnemonic : string -> a option) =
+    let other = ref 0 in
+    let wrong =
+      List.filter_map
+        (fun (m, r) ->
+          match of_mnemonic m with
+          | _ when not (String.equal (mnemonic r) m) -> Some m
+          | Some r' when r' = r -> None
+          | Some _ -> Some m
+          | None ->
+              incr other;
+              None)
+        all
+    in
+    Printf.printf "%s: %d names, %d only for the other XLEN, wrong [%s]\n" name (List.length all)
+      !other (String.concat " " wrong)
+  in
+  let rows32 m =
+    match Riscv32_encode.Opcode.of_mnemonic m with
+    | Some (Riscv32_encode.Opcode.Table r) -> Some r
+    | _ -> None
+  in
+  let rows64 m =
+    match Riscv64_encode.Opcode.of_mnemonic m with
+    | Some (Riscv64_encode.Opcode.Table r) -> Some r
+    | _ -> None
+  in
+  check "riscv32" Riscv32_encode.Std_row.all Riscv32_encode.Row.mnemonic rows32;
+  check "riscv64" Riscv64_encode.Std_row.all Riscv64_encode.Row.mnemonic rows64;
+  [%expect
+    {|
+    riscv32: 1034 names, 24 only for the other XLEN, wrong []
+    riscv64: 1034 names, 9 only for the other XLEN, wrong [] |}]
+
+(* {1 Spelling lookup} *)
+
+module Lookup (E : ENC) = struct
+  (* The linear search [Opcode.of_mnemonic] did before its table. *)
+  let linear s =
+    let s = Option.value (List.assoc_opt s E.Opcode.deprecated_mnemonic_aliases) ~default:s in
+    match List.find_opt (fun op -> String.equal (E.Opcode.name op) s) E.Opcode.all with
+    | Some _ as op -> op
+    | None ->
+        List.find_map
+          (fun r ->
+            let row = E.Row.row r in
+            if
+              String.equal row.Riscv_family_encode.Riscv_table_row.mnemonic s
+              && (row.xlen = 0 || row.xlen = E.xlen)
+            then Some (E.Opcode.Table r)
+            else None)
+          E.Row.all
+
+  let check label =
+    let spellings =
+      List.map E.Opcode.name E.Opcode.all
+      @ List.map E.Row.mnemonic E.Row.all
+      @ List.concat_map (fun (a, c) -> [ a; c ]) E.Opcode.deprecated_mnemonic_aliases
+      @ [ ""; "nope"; "ADD" ]
+    in
+    let differ = List.filter (fun s -> E.Opcode.of_mnemonic s <> linear s) spellings in
+    Printf.printf "%s: %d spellings, %d differ [%s]\n" label (List.length spellings)
+      (List.length differ) (String.concat " " differ)
+end
+
+let%expect_test "the spelling table reads every spelling as the linear search did" =
+  let module L32 = Lookup (Riscv32_encode) in
+  let module L64 = Lookup (Riscv64_encode) in
+  L32.check "riscv32";
+  L64.check "riscv64";
+  [%expect {|
+    riscv32: 1372 spellings, 0 differ []
+    riscv64: 1372 spellings, 0 differ [] |}]
+
+(* {1 Instruction class} *)
+
+module Cls = Types.Cls
+
+let%expect_test "one word per class and compressed quadrant" =
+  List.iter
+    (fun (xlen, w, what) ->
+      Printf.printf "%-10s %08Lx %s\n" what w (Cls.name (Cls.of_word ~xlen w)))
+    [
+      (64, 0x00000013L, "addi");
+      (64, 0x00002003L, "lw");
+      (64, 0x00002007L, "flw");
+      (64, 0x00000007L, "vle8.v");
+      (64, 0x00002023L, "sw");
+      (64, 0x00002027L, "fsw");
+      (64, 0x00007027L, "vse64.v");
+      (64, 0x0000202fL, "amoadd.w");
+      (64, 0x00000063L, "beq");
+      (64, 0x0000006fL, "jal");
+      (64, 0x00000067L, "jalr");
+      (64, 0x00001073L, "csrrw");
+      (64, 0x00000073L, "ecall");
+      (64, 0x0000000fL, "fence");
+      (64, 0x00000053L, "fadd.s");
+      (64, 0x00000043L, "fmadd.s");
+      (64, 0x00000057L, "vadd.vv");
+      (64, 0x00000077L, "vaesz.vs");
+      (64, 0x0000000bL, "custom-0");
+      (64, 0x0000007bL, "custom-3");
+      (64, 0x0040L, "c.addi4spn");
+      (64, 0x4000L, "c.lw");
+      (64, 0x8000L, "c.lbu");
+      (64, 0x8800L, "c.sb");
+      (64, 0xc000L, "c.sw");
+      (64, 0x0001L, "c.nop");
+      (32, 0x2001L, "c.jal");
+      (64, 0x2001L, "c.addiw");
+      (64, 0xa001L, "c.j");
+      (64, 0xc001L, "c.beqz");
+      (64, 0x0002L, "c.slli");
+      (64, 0x4002L, "c.lwsp");
+      (64, 0x8082L, "c.jr");
+      (64, 0x9082L, "c.jalr");
+      (64, 0x8086L, "c.mv");
+      (64, 0x9002L, "c.ebreak");
+      (64, 0xc002L, "c.swsp");
+    ];
+  [%expect
+    {|
+    addi       00000013 alu
+    lw         00002003 load
+    flw        00002007 load
+    vle8.v     00000007 vector-load
+    sw         00002023 store
+    fsw        00002027 store
+    vse64.v    00007027 vector-store
+    amoadd.w   0000202f atomic
+    beq        00000063 branch
+    jal        0000006f jump
+    jalr       00000067 jump
+    csrrw      00001073 csr
+    ecall      00000073 system
+    fence      0000000f system
+    fadd.s     00000053 fp
+    fmadd.s    00000043 fp
+    vadd.vv    00000057 vector
+    vaesz.vs   00000077 vector
+    custom-0   0000000b custom
+    custom-3   0000007b custom
+    c.addi4spn 00000040 alu
+    c.lw       00004000 load
+    c.lbu      00008000 load
+    c.sb       00008800 store
+    c.sw       0000c000 store
+    c.nop      00000001 alu
+    c.jal      00002001 jump
+    c.addiw    00002001 alu
+    c.j        0000a001 jump
+    c.beqz     0000c001 branch
+    c.slli     00000002 alu
+    c.lwsp     00004002 load
+    c.jr       00008082 jump
+    c.jalr     00009082 jump
+    c.mv       00008086 alu
+    c.ebreak   00009002 system
+    c.swsp     0000c002 store |}]
+
+let%expect_test "no standard row is custom" =
+  let custom (type a) (all : a list) cls mnemonic =
+    List.filter_map (fun r -> if cls r = Cls.Custom then Some (mnemonic r) else None) all
+  in
+  Printf.printf "riscv32 [%s]\nriscv64 [%s]\n"
+    (String.concat " "
+       (custom Riscv32_encode.Row.all Riscv32_encode.Row.cls Riscv32_encode.Row.mnemonic))
+    (String.concat " "
+       (custom Riscv64_encode.Row.all Riscv64_encode.Row.cls Riscv64_encode.Row.mnemonic));
+  [%expect {|
+    riscv32 []
+    riscv64 [] |}]
+
+(* The word an encoding does its work in: the second of an auipc pair. *)
+let last_word bytes =
+  let n = String.length bytes in
+  let at = if n = 8 then 4 else 0 in
+  let len = if n = 2 then 2 else 4 in
+  let v = ref 0L in
+  for i = len - 1 downto 0 do
+    v := Int64.logor (Int64.shift_left !v 8) (Int64.of_int (Char.code bytes.[at + i]))
+  done;
+  !v
+
+let%expect_test "a hand-written opcode's class is its encoding's" =
+  let differ =
+    List.filter_map
+      (fun (op, s) ->
+        let xlen, cls =
+          match s with
+          | Some (`Rv64 _, _) -> (64, Riscv64_encode.Cls.of_opcode op)
+          | Some (`Rv32 _, _) -> (32, Riscv32_encode.Cls.of_opcode op)
+          | None -> (0, Cls.Alu)
+        in
+        match s with
+        | Some (_, bytes) ->
+            let by_word = Cls.of_word ~xlen (last_word bytes) in
+            if by_word = cls then None
+            else
+              Some
+                (Printf.sprintf "%s:%s/%s" (Riscv64_encode.Opcode.name op) (Cls.name cls)
+                   (Cls.name by_word))
+        | None -> None)
+      samples
+  in
+  Printf.printf "differ [%s]\n" (String.concat " " differ);
+  [%expect {| differ [] |}]
+
+(* {1 Error payloads} *)
+
+let%expect_test "lowering errors name their opcode" =
+  let module E = Riscv32_encode in
+  let x n = E.Operand.Reg (E.Reg.x n) in
+  let kind insn =
+    match E.lower_instruction E.default_state insn with
+    | Ok _ -> "accepted"
+    | Error e -> (
+        match Target_error.kind (Err.Error.kind e) with
+        | `Rv64_only E.Opcode.Ld -> "Rv64_only Ld"
+        | `Wrong_operands E.Opcode.Add -> "Wrong_operands Add"
+        | _ -> "other")
+  in
+  print_endline (kind (E.Instruction.mk E.Opcode.Ld [ x 1; x 2 ]));
+  print_endline (kind (E.Instruction.mk E.Opcode.Add [ x 1 ]));
+  [%expect {|
+    Rv64_only Ld
+    Wrong_operands Add |}]

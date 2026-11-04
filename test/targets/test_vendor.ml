@@ -494,3 +494,39 @@ let%expect_test "mpause assembles, decodes, and leaves the standard system words
     34029073 csrw mscratch, x5
     3401d0f3 csrrwi x1, mscratch, 3
     08000073 REFUSED riscv64.feature: mpause requires feature mpause, which is not enabled |}]
+
+let%expect_test "a vendor row's id carries its row" =
+  let show r =
+    Printf.printf "%s feature=%s source=%s index>=standard:%b\n" (Foo.Row.mnemonic r)
+      (Foo.Row.feature r) (Foo.Row.source r)
+      (Foo.Row.index r >= Array.length Riscv_family_encode.Riscv_table_rows.rows)
+  in
+  List.iter show (Foo.Row.of_mnemonic "xfoo");
+  (match Foo.Opcode.of_mnemonic "xfoo" with
+  | Some (Foo.Opcode.Table r) ->
+      Printf.printf "of_mnemonic names it: %b\n"
+        (List.exists (Foo.Row.equal r) (Foo.Row.of_mnemonic "xfoo"))
+  | _ -> print_endline "not a row");
+  Printf.printf "standard instance has it: %b\n" (Riscv64_encode.Row.of_mnemonic "xfoo" <> []);
+  [%expect
+    {|
+    xfoo feature=xfoo source=vendor/xfoo index>=standard:true
+    of_mnemonic names it: true
+    standard instance has it: false |}]
+
+let%expect_test "a vendor row's class is read off its word" =
+  List.iter
+    (fun m ->
+      List.iter
+        (fun r ->
+          Printf.printf "%s %s\n" m (Riscv_family_encode.Riscv_types.Cls.name (Tile.Row.cls r)))
+        (Tile.Row.of_mnemonic m))
+    [ "vtzero"; "vtle32"; "vtmms.tvv" ];
+  List.iter
+    (fun r -> Printf.printf "xfoo %s\n" (Riscv_family_encode.Riscv_types.Cls.name (Foo.Row.cls r)))
+    (Foo.Row.of_mnemonic "xfoo");
+  [%expect {|
+    vtzero vector
+    vtle32 vector-load
+    vtmms.tvv vector
+    xfoo custom |}]

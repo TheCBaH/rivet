@@ -96,8 +96,20 @@ val emit : Repo.t -> (string, Tool_error.t) Err.t
     riscv-opcodes exports: a record present in both profiles becomes one row
     with [xlen = 0], otherwise the row carries its profile's XLEN. *)
 
+val std_rows_path : Repo.t -> Fpath.t
+(** [targets/riscv_family/riscv_std_rows.ml]. *)
+
+val mangle : string -> string
+(** The OCaml name of a mnemonic's value in {!std_rows_path}: lower case, [.] to [_], and a
+    trailing [_] after a leading digit, an OCaml keyword or a name the module itself uses. *)
+
+val emit_files : Repo.t -> ((Fpath.t * string) list, Tool_error.t) Err.t
+(** {!emit} for {!rows_path}; for {!std_rows_path} the signature of the named rows, one value per
+    distinct mnemonic; and [riscv_std_rows32.ml]/[riscv_std_rows64.ml], its two instances. Fails
+    if two mnemonics mangle to the same name, naming both. *)
+
 val run_emit : Repo.t -> Command.t
-(** Write {!emit} to {!rows_path}. *)
+(** Write {!emit_files}. *)
 
 val run_check : Repo.t -> Command.t
-(** Fail unless {!rows_path} equals a fresh {!emit}. Toolchain-free. *)
+(** Fail unless the files equal a fresh {!emit_files}. Toolchain-free. *)

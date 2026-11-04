@@ -1,11 +1,17 @@
 type definition = { components : Target_component.t list; rows : Riscv_table_row.row array }
 
 module Validated = struct
-  type t = { xlen : int; components : Target_component.t list; rows : Riscv_table_row.row array }
+  type t = {
+    xlen : int;
+    components : Target_component.t list;
+    rows : Riscv_table_row.row array;
+    ids : Riscv_row.t array;
+  }
 
   let xlen t = t.xlen
   let components t = t.components
   let rows t = t.rows
+  let ids t = t.ids
 end
 
 let standard_components =
@@ -89,12 +95,13 @@ let standard_components =
     Riscv_ext_c.c;
   ]
 
+let validated ~xlen components rows =
+  { Validated.xlen; components; rows; ids = Array.mapi (Riscv_row.mint ~xlen) rows }
+
 let standard ~xlen =
-  {
-    Validated.xlen;
-    components = List.map (Target_component.specialize ~xlen) standard_components;
-    rows = Riscv_table_rows.rows;
-  }
+  validated ~xlen
+    (List.map (Target_component.specialize ~xlen) standard_components)
+    Riscv_table_rows.rows
 
 let overlap (a : Riscv_table_row.row) (b : Riscv_table_row.row) =
   let common = Int64.logand a.mask b.mask in
@@ -195,5 +202,5 @@ let make ~handwritten ~standard_reads ~xlen (def : definition) =
         else Some (Printf.sprintf "row %s: no vendor component lists it" r.mnemonic))
   in
   match component_problems @ row_problems @ overlaps @ unowned with
-  | [] -> Ok { Validated.xlen; components; rows = Array.append Riscv_table_rows.rows rows }
+  | [] -> Ok (validated ~xlen components (Array.append Riscv_table_rows.rows rows))
   | problems -> Error problems
