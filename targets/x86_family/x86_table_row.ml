@@ -63,22 +63,3 @@ type row = {
   feature : string;
   source : string;  (** the XED iform *)
 }
-
-let class_width = function
-  | Gpr8 -> 8
-  | Gpr16 -> 16
-  | Gpr32 -> 32
-  | Gpr64 -> 64
-  | Xmm -> 128
-  | Ymm -> 256
-  | Zmm -> 512
-  (* not operand widths: class markers apart from the GPRs' (an mm register is 64 bits wide) *)
-  | Mmx -> 1064
-  | Kmask -> 1001
-  (* x87 stack registers, the width marker the register table already gives them *)
-  | St -> 80
-  (* AMX tile registers *)
-  | Tmm -> 1002
-  (* control and debug registers *)
-  | Cr -> 1003
-  | Dr -> 1004
