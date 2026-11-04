@@ -128,6 +128,17 @@ module Bar =
       let definition = validated "xbar" 1
     end)
 
+(* Every RISC-V instance, standard or vendor, shares the family's types: these only compile if the
+   types are equal. *)
+module Types = Riscv_family_encode.Riscv_types
+
+let _ : Riscv32_encode.Opcode.t -> Riscv64_encode.Opcode.t = Fun.id
+let _ : Riscv64_encode.Opcode.t -> Foo.Opcode.t = Fun.id
+let _ : Foo.Opcode.t -> Types.Opcode.t = Fun.id
+let _ : Riscv32_encode.Reg.t -> Foo.Reg.t = Fun.id
+let _ : Riscv32_encode.Operand.t -> Foo.Operand.t = Fun.id
+let _ : Types.Mem.t -> Riscv64_encode.Mem.t = Fun.id
+
 module Foo_driver = Driver.Pipeline.Make (Foo)
 module Bar_driver = Driver.Pipeline.Make (Bar)
 
