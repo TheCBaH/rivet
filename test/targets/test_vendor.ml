@@ -225,7 +225,9 @@ let%expect_test "the configured codec and encoder agree on the golden words" =
     | Ok c -> Foo.initial_state c
     | Error m -> failwith m
   in
-  let lowered = Foo.Lowered.Fixed { name = "xfoo"; word = 0x0073028bL } in
+  let lowered =
+    Foo.Lowered.Fixed { op = Option.get (Foo.Opcode.of_mnemonic "xfoo"); word = 0x0073028bL }
+  in
   (match Foo.encode_in state lowered with
   | Ok (`Fixed f) -> Printf.printf "encode_in: %s\n" (hex f.Asm_core.Lowered_ast.bytes)
   | Ok _ -> print_endline "encode_in: relax"

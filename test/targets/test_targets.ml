@@ -64,7 +64,7 @@ let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
     [
       Lowered.I
         {
-          name = "addi";
+          op = Opcode.Addi;
           opcode = 0x13;
           funct3 = 0;
           funct_hi = 0;
@@ -74,7 +74,7 @@ let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
           imm = Asm_core.Expr.Const (Foundation.Bigint.of_int 42);
         };
       Lowered.Caddi { rd = 10; imm = Asm_core.Expr.Const (Foundation.Bigint.of_int (-1)) };
-      Lowered.Pair { name = "call"; rd = 1; tmp = 1; target = zero; kind = Jalr };
+      Lowered.Pair { op = Opcode.Call; rd = 1; tmp = 1; target = zero; kind = Jalr };
     ]
   in
   List.iter
