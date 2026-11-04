@@ -433,15 +433,7 @@ let%expect_test "RISC-V: a normalized instruction is refused at lowering, a lowe
                 "refused: " ^ Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))));
       let lowered =
         E.Lowered.R
-          {
-            op = E.Opcode.Mul;
-            opcode = 0x33;
-            funct3 = 0;
-            funct7 = 1;
-            rd = E.Reg.x 5;
-            rs1 = E.Reg.x 6;
-            rs2 = E.Reg.x 7;
-          }
+          { op = E.Opcode.Mul; rd = E.Reg.x 5; rs1 = E.Reg.x 6; rs2 = Some (E.Reg.x 7); rm = None }
       in
       Printf.printf "%s: encode_in -> %s\n" label
         (match E.encode_in state lowered with
@@ -856,12 +848,10 @@ let%expect_test "F and D: lowered and decoded forms" =
     E.Lowered.R
       {
         op = E.Opcode.Fadd_s;
-        opcode = 0x53;
-        funct3 = 7;
-        funct7 = 0;
         rd = E.Reg.f 1;
         rs1 = E.Reg.f 2;
-        rs2 = E.Reg.f 3;
+        rs2 = Some (E.Reg.f 3);
+        rm = Some E.Rm.Dyn;
       }
   in
   List.iter
@@ -1445,36 +1435,14 @@ let%expect_test "RISC-V: lowered forms of each shape are refused when their exte
         E.Lowered.R4
           {
             op = E.Opcode.Fmadd_s;
-            opcode = 0x43;
-            fmt = 0;
-            funct3 = 7;
             rd = E.Reg.f 1;
             rs1 = E.Reg.f 2;
             rs2 = E.Reg.f 3;
             rs3 = E.Reg.f 4;
+            rm = E.Rm.Dyn;
           } );
-      ( "I",
-        E.Lowered.I
-          {
-            op = E.Opcode.Flw;
-            opcode = 0x07;
-            funct3 = 2;
-            funct_hi = 0;
-            shamt_bits = None;
-            rd = E.Reg.f 1;
-            rs1 = E.Reg.x 2;
-            imm = imm 0;
-          } );
-      ( "S",
-        E.Lowered.S
-          {
-            op = E.Opcode.Fsw;
-            opcode = 0x27;
-            funct3 = 2;
-            rs1 = E.Reg.x 2;
-            rs2 = E.Reg.f 1;
-            imm = imm 0;
-          } );
+      ("I", E.Lowered.I { op = E.Opcode.Flw; rd = E.Reg.f 1; rs1 = E.Reg.x 2; imm = imm 0 });
+      ("S", E.Lowered.S { op = E.Opcode.Fsw; rs1 = E.Reg.x 2; rs2 = E.Reg.f 1; imm = imm 0 });
       ( "Fixed",
         E.Lowered.Fixed { op = Option.get (E.Opcode.of_mnemonic "mret"); word = 0x30200073L } );
     ]
