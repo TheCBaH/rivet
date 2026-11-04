@@ -1021,93 +1021,60 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   (* The fixed fields of each hand-written form, by opcode: the one place they are read when a
      {!Lowered} form is encoded. An opcode with no fields for a format is
      [`Format_mismatch]. *)
+  (* An opcode's encoding fields, read from Riscv_ops for this XLEN. *)
   module Desc = struct
     type r = { opcode : int; funct3 : int; funct7 : int; rs2 : int option }
-
-    let r op =
-      let reg (opcode, funct3, funct7) = Some { opcode; funct3; funct7; rs2 = None } in
-      let fp (funct3, funct7) = Some { opcode = 0x53; funct3; funct7; rs2 = None } in
-      let fp_sel (funct3, funct7, rs2) = Some { opcode = 0x53; funct3; funct7; rs2 = Some rs2 } in
-      let ( |? ) a b = match a with Some _ -> a | None -> b () in
-      ( ( ( ( ( ( ( ( ( ( ( (Option.bind (r_desc op) reg |? fun () -> Option.bind (amo3_desc op) reg)
-                          |? fun () ->
-                            Option.map
-                              (fun (opcode, funct3, funct7) ->
-                                { opcode; funct3; funct7; rs2 = Some 0 })
-                              (lr_desc op) )
-                        |? fun () -> Option.bind (f_arith_desc op) fp )
-                      |? fun () -> Option.bind (f_sgnj3_desc op) fp )
-                    |? fun () -> Option.bind (f_minmax_desc op) fp )
-                  |? fun () -> Option.bind (f_sgnj_desc op) fp )
-                |? fun () -> Option.bind (f_cmp_desc op) fp )
-              |? fun () -> Option.bind (f_sqrt_desc op) fp_sel )
-            |? fun () -> Option.bind (f_class_desc op) fp_sel )
-          |? fun () -> Option.bind (f_mv_x_w_desc op) fp_sel )
-        |? fun () -> Option.bind (f_to_i_desc op) fp_sel )
-      |? fun () -> Option.bind (i_to_f_desc op) fp_sel )
-      |? fun () -> Option.bind (f_to_f_desc op) fp_sel
-
-    (* AES-32/SM4: [funct7] is the byte select over these five bits. *)
-    let rbs = function
-      | Opcode.Aes32dsi -> Some 0x15
-      | Aes32dsmi -> Some 0x17
-      | Aes32esi -> Some 0x11
-      | Aes32esmi -> Some 0x13
-      | Sm4ed -> Some 0x18
-      | Sm4ks -> Some 0x1a
-      | _ -> None
-
-    let r4 = f_fma_desc
-
     type i = { opcode : int; funct3 : int; funct_hi : int; shamt_bits : int option }
 
-    let i op =
-      let plain opcode funct3 = Some { opcode; funct3; funct_hi = 0; shamt_bits = None } in
-      match i_desc op with
-      | Some (opcode, funct3, funct_hi, shamt_bits) -> Some { opcode; funct3; funct_hi; shamt_bits }
-      | None -> (
-          match (unary_imm_desc op, load_desc op, f_load_desc op) with
-          | Some (opcode, funct3, _), _, _ -> plain opcode funct3
-          | None, Some funct3, _ -> plain 0x03 funct3
-          | None, None, Some funct3 -> plain 0x07 funct3
-          | None, None, None -> (
-              match op with
-              | Opcode.Jalr -> plain 0x67 0
-              | Csrrw | Csrw -> plain 0x73 1
-              | Csrrs | Csrr | Csrs -> plain 0x73 2
-              | Csrrc | Csrc -> plain 0x73 3
-              | Csrrwi | Csrwi -> plain 0x73 5
-              | Csrrsi | Csrsi -> plain 0x73 6
-              | Csrrci | Csrci -> plain 0x73 7
-              | Aes64ks1i -> plain 0x13 1
-              | _ -> None))
+    let enc op =
+      Option.bind (Riscv_ops.find op) (fun (e : Riscv_ops.entry) ->
+          if xlen = 64 && Option.is_some e.enc64 then e.enc64 else e.enc)
+
+    let r op : r option =
+      match enc op with
+      | Some (Riscv_ops.Enc.R { opcode; funct3; funct7; rs2 }) ->
+          Some { opcode; funct3; funct7; rs2 }
+      | _ -> None
+
+    let rbs op = match enc op with Some (Riscv_ops.Enc.Rbs { funct7 }) -> Some funct7 | _ -> None
+
+    let r4 op =
+      match enc op with Some (Riscv_ops.Enc.R4 { opcode; fmt }) -> Some (opcode, fmt) | _ -> None
+
+    let i op : i option =
+      match enc op with
+      | Some (Riscv_ops.Enc.I { opcode; funct3 }) | Some (Riscv_ops.Enc.Unary { opcode; funct3; _ })
+        ->
+          Some { opcode; funct3; funct_hi = 0; shamt_bits = None }
+      | Some (Riscv_ops.Enc.Shift { funct3; funct6 }) ->
+          Some
+            {
+              opcode = 0x13;
+              funct3;
+              funct_hi = (if xlen = 64 then funct6 else funct6 * 2);
+              shamt_bits = Some xlen;
+            }
+      | Some (Riscv_ops.Enc.Shiftw { funct3; funct7 }) ->
+          Some { opcode = 0x1b; funct3; funct_hi = funct7; shamt_bits = Some 32 }
+      | _ -> None
 
     let s op =
-      match (store_desc op, f_store_desc op) with
-      | Some funct3, _ -> Some (0x23, funct3)
-      | None, Some funct3 -> Some (0x27, funct3)
-      | None, None -> None
-
-    let b = branch_desc
-    let u = function Opcode.Lui -> Some 0x37 | Auipc -> Some 0x17 | _ -> None
-    let ca = ca_desc
-
-    let cr = function
-      | Opcode.C_jr | C_mv -> Some 8
-      | C_jalr | C_add | C_ebreak -> Some 9
+      match enc op with
+      | Some (Riscv_ops.Enc.S { opcode; funct3 }) -> Some (opcode, funct3)
       | _ -> None
 
-    (* [funct3] of the CL, CS, CI (SP-relative), CSS, CJ and CB forms. *)
-    let c_funct3 = function
-      | Opcode.C_lw | C_lwsp -> Some 2
-      | C_ld | C_ldsp -> Some 3
-      | C_sw | C_swsp -> Some 6
-      | C_sd | C_sdsp -> Some 7
-      | C_j -> Some 5
-      | C_jal -> Some 1
-      | C_beqz -> Some 6
-      | C_bnez -> Some 7
+    let b op = match enc op with Some (Riscv_ops.Enc.B { funct3 }) -> Some funct3 | _ -> None
+    let u op = match enc op with Some (Riscv_ops.Enc.U { opcode }) -> Some opcode | _ -> None
+
+    let ca op =
+      match enc op with
+      | Some (Riscv_ops.Enc.Ca { funct6; funct2 }) -> Some (funct6, funct2)
       | _ -> None
+
+    let cr op = match enc op with Some (Riscv_ops.Enc.Cr { funct4 }) -> Some funct4 | _ -> None
+
+    let c_funct3 op =
+      match enc op with Some (Riscv_ops.Enc.C { funct3 }) -> Some funct3 | _ -> None
   end
 
   (* The rounding mode a form takes when none is written, for the forms that have one. *)
