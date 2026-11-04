@@ -2027,6 +2027,427 @@ module Opcode = struct
     | Sahf -> "sahf"
     | Table r -> Row.mnemonic r
 
+  (* Every hand-written opcode, rows aside. *)
+  let all =
+    Array.concat
+      [
+        [|
+          Add;
+          Sub;
+          Mov;
+          Lea;
+          Ret;
+          Xor;
+          And;
+          Cmp;
+          Imul;
+          Ud2;
+          Pop;
+          Bswap;
+          Jmp;
+          Call;
+          Push;
+          Neg;
+          Test;
+          Adc;
+          Sbb;
+          Mul;
+          Div;
+          Dec;
+          Rcr;
+          Shr;
+          Or;
+          Not;
+          Ror;
+          Shl;
+          Sar;
+          Shld;
+          Addsd;
+          Subsd;
+          Mulsd;
+          Divsd;
+          Addss;
+          Subss;
+          Mulss;
+          Divss;
+          Comisd;
+          Ucomisd;
+          Comiss;
+          Ucomiss;
+          Xorpd;
+          Pxor;
+          Movapd;
+          Cvtsd2ss;
+          Cvtss2sd;
+          Cvtps2pd;
+          Cvtpd2ps;
+          Cvtdq2ps;
+          Cvtps2dq;
+          Cvttps2dq;
+          Movsd;
+          Movss;
+          Cvtsi2sd;
+          Cvtsi2ss;
+          Cvttsd2si;
+          Unpcklps;
+          Unpckhps;
+          Unpcklpd;
+          Unpckhpd;
+          Punpcklqdq;
+          Punpckhqdq;
+          Punpcklbw;
+          Punpckhbw;
+          Punpcklwd;
+          Punpckhwd;
+          Punpckldq;
+          Punpckhdq;
+          Paddb;
+          Paddw;
+          Paddd;
+          Paddq;
+          Psubb;
+          Psubw;
+          Psubd;
+          Psubq;
+          Pcmpeqb;
+          Pcmpeqw;
+          Pcmpeqd;
+          Pcmpgtb;
+          Pcmpgtw;
+          Pcmpgtd;
+          Packsswb;
+          Packssdw;
+          Packuswb;
+          Pand;
+          Pandn;
+          Por;
+          Pminub;
+          Pmaxub;
+          Pminsw;
+          Pmaxsw;
+          Pmullw;
+          Pmulhw;
+          Pmulhuw;
+          Pavgb;
+          Pavgw;
+          Psadbw;
+          Psllw;
+          Pslld;
+          Psllq;
+          Psrlw;
+          Psrld;
+          Psrlq;
+          Psraw;
+          Psrad;
+          Pslldq;
+          Psrldq;
+          Pshufb;
+          Phaddw;
+          Phaddd;
+          Phsubw;
+          Phsubd;
+          Psignb;
+          Psignw;
+          Psignd;
+          Pmaddubsw;
+          Pmulhrsw;
+          Phaddsw;
+          Phsubsw;
+          Pabsb;
+          Pabsw;
+          Pabsd;
+          Palignr;
+          Roundps;
+          Roundpd;
+          Roundss;
+          Roundsd;
+          Pcmpeqq;
+          Pcmpgtq;
+          Packusdw;
+          Pmaxsb;
+          Pmaxsd;
+          Pmaxud;
+          Pmaxuw;
+          Pminsb;
+          Pminsd;
+          Pminud;
+          Pminuw;
+          Pmuldq;
+          Pmulld;
+          Phminposuw;
+          Ptest;
+          Pmovsxbw;
+          Pmovsxbd;
+          Pmovsxbq;
+          Pmovsxwd;
+          Pmovsxwq;
+          Pmovsxdq;
+          Pmovzxbw;
+          Pmovzxbd;
+          Pmovzxbq;
+          Pmovzxwd;
+          Pmovzxwq;
+          Pmovzxdq;
+          Movntdqa;
+          Blendvps;
+          Blendvpd;
+          Pblendvb;
+          Blendps;
+          Blendpd;
+          Dpps;
+          Dppd;
+          Mpsadbw;
+          Pblendw;
+          Insertps;
+          Pinsrb;
+          Pinsrd;
+          Pextrb;
+          Pextrd;
+          Extractps;
+          Vpshufb;
+          Vphaddw;
+          Vphaddd;
+          Vphaddsw;
+          Vpmaddubsw;
+          Vphsubw;
+          Vphsubd;
+          Vphsubsw;
+          Vpsignb;
+          Vpsignw;
+          Vpsignd;
+          Vpmulhrsw;
+          Vpmuldq;
+          Vpcmpeqq;
+          Vpackusdw;
+          Vpcmpgtq;
+          Vpminsb;
+          Vpminsd;
+          Vpminuw;
+          Vpminud;
+          Vpmaxsb;
+          Vpmaxsd;
+          Vpmaxuw;
+          Vpmaxud;
+          Vpmulld;
+          Vpalignr;
+          Vblendps;
+          Vblendpd;
+          Vpblendw;
+          Vroundss;
+          Vroundsd;
+          Vdpps;
+          Vdppd;
+          Vmpsadbw;
+          Vinsertps;
+          Vpabsb;
+          Vpabsw;
+          Vpabsd;
+          Vphminposuw;
+          Vptest;
+          Vpmovsxbw;
+          Vpmovsxbd;
+          Vpmovsxbq;
+          Vpmovsxwd;
+          Vpmovsxwq;
+          Vpmovsxdq;
+          Vpmovzxbw;
+          Vpmovzxbd;
+          Vpmovzxbq;
+          Vpmovzxwd;
+          Vpmovzxwq;
+          Vpmovzxdq;
+          Vmovntdqa;
+          Movdqa;
+          Movdqu;
+          Andps;
+          Andnps;
+          Orps;
+          Xorps;
+          Andpd;
+          Andnpd;
+          Orpd;
+          Movaps;
+          Movups;
+          Movupd;
+          Addps;
+          Subps;
+          Mulps;
+          Divps;
+          Addpd;
+          Subpd;
+          Mulpd;
+          Divpd;
+          Maxss;
+          Minss;
+          Maxsd;
+          Minsd;
+          Maxps;
+          Minps;
+          Maxpd;
+          Minpd;
+          Sqrtss;
+          Sqrtsd;
+          Sqrtps;
+          Sqrtpd;
+          Shufps;
+          Shufpd;
+          Cmpss;
+          Cmpsd;
+          Cmpps;
+          Cmppd;
+          Pshufd;
+          Pshuflw;
+          Pshufhw;
+          Movd;
+          Vaddsd;
+          Vsubsd;
+          Vmulsd;
+          Vdivsd;
+          Vaddss;
+          Vsubss;
+          Vmulss;
+          Vdivss;
+          Vaddps;
+          Vsubps;
+          Vmulps;
+          Vdivps;
+          Vaddpd;
+          Vsubpd;
+          Vmulpd;
+          Vdivpd;
+          Vandps;
+          Vandnps;
+          Vorps;
+          Vxorps;
+          Vandpd;
+          Vandnpd;
+          Vorpd;
+          Vxorpd;
+          Vunpcklps;
+          Vunpckhps;
+          Vunpcklpd;
+          Vunpckhpd;
+          Vpunpcklqdq;
+          Vpunpckhqdq;
+          Vpunpcklbw;
+          Vpunpckhbw;
+          Vpunpcklwd;
+          Vpunpckhwd;
+          Vpunpckldq;
+          Vpunpckhdq;
+          Vpaddb;
+          Vpaddw;
+          Vpaddd;
+          Vpaddq;
+          Vpsubb;
+          Vpsubw;
+          Vpsubd;
+          Vpsubq;
+          Vpcmpeqb;
+          Vpcmpeqw;
+          Vpcmpeqd;
+          Vpcmpgtb;
+          Vpcmpgtw;
+          Vpcmpgtd;
+          Vpacksswb;
+          Vpackssdw;
+          Vpackuswb;
+          Vpand;
+          Vpandn;
+          Vpor;
+          Vpminub;
+          Vpmaxub;
+          Vpminsw;
+          Vpmaxsw;
+          Vmaxsd;
+          Vminsd;
+          Vmaxss;
+          Vminss;
+          Vmaxps;
+          Vminps;
+          Vmaxpd;
+          Vminpd;
+          Vsqrtsd;
+          Vsqrtss;
+          Vsqrtps;
+          Vsqrtpd;
+          Vmovaps;
+          Vmovups;
+          Vmovapd;
+          Vmovupd;
+          Vcomisd;
+          Vucomisd;
+          Vcomiss;
+          Vucomiss;
+          Vcvtps2pd;
+          Vcvtpd2ps;
+          Vcvtdq2ps;
+          Vcvtps2dq;
+          Vcvttps2dq;
+          Vshufps;
+          Vshufpd;
+          Vcmpss;
+          Vcmpsd;
+          Vcmpps;
+          Vcmppd;
+          Vpshufd;
+          Vpshuflw;
+          Vpshufhw;
+          Vmovd;
+          Vpmullw;
+          Vpmulhw;
+          Vpmulhuw;
+          Vpavgb;
+          Vpavgw;
+          Vpsadbw;
+          Vpsllw;
+          Vpslld;
+          Vpsllq;
+          Vpsrlw;
+          Vpsrld;
+          Vpsrlq;
+          Vpsraw;
+          Vpsrad;
+          Vpslldq;
+          Vpsrldq;
+          Vmovdqa;
+          Vmovdqu;
+          Pinsrw;
+          Pextrw;
+          Vpinsrw;
+          Vpextrw;
+          Movmskps;
+          Movmskpd;
+          Pmovmskb;
+          Vmovmskps;
+          Vmovmskpd;
+          Vpmovmskb;
+          Fldl;
+          Fstpl;
+          Fstps;
+          Flds;
+          Fildll;
+          Fadds;
+          Fadd;
+          Fucomp;
+          Fnstcw;
+          Fldcw;
+          Fistpll;
+          Fsubs;
+          Fnstsw;
+          Sahf;
+        |];
+        Array.of_list (List.concat_map (fun c -> [ Cmov c; Jcc c; Setcc c ]) Cc.all);
+        Array.map (fun s -> Short_branch s) Short.[| Loop; Loope; Loopne; Jcxz; Jecxz; Jrcxz |];
+        [|
+          Movzx { src_width = 8 };
+          Movzx { src_width = 16 };
+          Movsx { src_width = 8 };
+          Movsx { src_width = 16 };
+          Movsx { src_width = 32 };
+        |];
+      ]
+
   (* The opcodes the {!X86_x87} component owns. Its tables key forms by mnemonic; this list is
      the one place a mnemonic is turned back into a constructor, and the family checks at
      instantiation that it and the component agree. *)
@@ -3419,7 +3840,9 @@ module Make (M : MODE) = struct
   let fixup_role = fixup_role
 
   (* The separable instruction components this family publishes. The rest is the base. *)
-  let components = [ X86_x87.component ]
+  (* Each component with the opcodes it owns; checked against its mnemonics below. *)
+  let component_ops = [ (X86_x87.component, Opcode.x87) ]
+  let components = List.map fst component_ops
 
   (* [config] is the validated feature set; see the RISC-V family's [target_state] for why it
      lives in the state. No directive changes it - [.arch] is not supported - so it is fixed
@@ -8154,10 +8577,14 @@ module Make (M : MODE) = struct
     @ [ fadd_st0_x87_form ]
 
   let () =
-    (* Every opcode the family lists as x87 must be one the component describes, and back. *)
-    let described = List.sort String.compare (Target_component.mnemonics X86_x87.component) in
-    let listed = List.sort String.compare (List.map Opcode.name Opcode.x87) in
-    if described <> listed then invalid_arg "x86 x87 component and Opcode.x87 disagree"
+    (* Every opcode the family lists for a component must be one it describes, and back. *)
+    List.iter
+      (fun (c, ops) ->
+        let described = List.sort String.compare (Target_component.mnemonics c) in
+        let listed = List.sort String.compare (List.map Opcode.name ops) in
+        if described <> listed then
+          invalid_arg ("x86 component " ^ c.Target_component.feature ^ " and its opcodes disagree"))
+      component_ops
 
   (* One single-rung ladder per rel8-only branch: relaxation has nowhere longer to go, so a
      target out of rel8 range is refused. *)
@@ -10468,18 +10895,21 @@ module Make (M : MODE) = struct
         Error (diag ~pos:__POS__ ?origin (`Feature_disabled (mnemonic, f)))
     | _ -> Ok ()
 
-  let feature_gate ?origin state mnemonic =
-    gate ?origin state mnemonic (Target_component.feature_of_mnemonic components mnemonic)
+  (* Each opcode's component, built once: rows by index, hand-written opcodes from the components'
+     opcode lists. *)
+  let op_feature =
+    let hand = Hashtbl.create 16 in
+    List.iter
+      (fun ((c : Target_component.t), ops) ->
+        List.iter (fun op -> Hashtbl.replace hand op c.feature) ops)
+      component_ops;
+    let rows = Array.init (Array.length table_rows) row_feature in
+    function Opcode.Table row -> rows.(Row.index row) | op -> Hashtbl.find_opt hand op
 
-  let required_feature (i : Instruction.t) =
-    match i.op with
-    | Opcode.Table row -> row_feature (Row.index row)
-    | op -> Target_component.feature_of_mnemonic components (Opcode.name op)
-
+  let feature_gate ?origin state op = gate ?origin state (Opcode.name op) (op_feature op)
+  let required_feature (i : Instruction.t) = op_feature i.op
   let required i = Option.map (fun f -> Target_component.Req.Feature f) (required_feature i)
-
-  let instruction_gate ?origin state (i : Instruction.t) =
-    gate ?origin state (Opcode.name i.op) (required_feature i)
+  let instruction_gate ?origin state (i : Instruction.t) = feature_gate ?origin state i.op
 
   let simplify_instruction state s =
     match simplify_instruction_ungated s with
@@ -10492,23 +10922,19 @@ module Make (M : MODE) = struct
   let lower_instruction state i =
     match instruction_gate state i with Error _ as e -> e | Ok () -> lower_instruction_ungated i
 
-  (* The mnemonic of a lowered form that belongs to a component. *)
-  let lowered_mnemonic = function
-    | Lowered.Fpu_mem { op; _ } -> Some (Opcode.name op)
-    | Lowered.Fadd_st0_x87 _ -> Some X86_x87.fadd_st0.mnemonic
-    | Lowered.Fucomp -> Some "fucomp"
-    | Lowered.Fnstsw -> Some "fnstsw"
+  (* The opcode of a lowered form that can belong to a component. *)
+  let lowered_op = function
+    | Lowered.Fpu_mem { op; _ } -> Some op
+    | Lowered.Fadd_st0_x87 _ -> Some Opcode.Fadd
+    | Lowered.Fucomp -> Some Opcode.Fucomp
+    | Lowered.Fnstsw -> Some Opcode.Fnstsw
+    | Lowered.Table x -> Some (Opcode.Table x.row)
     | _ -> None
 
   let encode_in state l =
-    match (l, lowered_mnemonic l) with
-    | Lowered.Table x, _ -> (
-        match gate state (Row.mnemonic x.row) (row_feature (Row.index x.row)) with
-        | Error _ as e -> e
-        | Ok () -> encode_ungated l)
-    | _, Some m -> (
-        match feature_gate state m with Error _ as e -> e | Ok () -> encode_ungated l)
-    | _, None -> encode_ungated l
+    match lowered_op l with
+    | Some op -> ( match feature_gate state op with Error _ as e -> e | Ok () -> encode_ungated l)
+    | None -> encode_ungated l
 
   let encode l = encode_in default_state l
 
