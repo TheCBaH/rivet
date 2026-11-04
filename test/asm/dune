@@ -1,0 +1,25 @@
+; Instruction values built in OCaml against the text they stand for, on every target: the
+; harness the typed builders are checked with.
+
+(library
+ (name test_asm)
+ (modules harness test_asm)
+ (modes byte native)
+ (libraries
+  driver
+  image
+  asm_core
+  target_intf
+  target_encode
+  foundation
+  arm_encode
+  aarch64_encode
+  x86_32_encode
+  x86_64_encode
+  riscv32_encode
+  riscv64_encode)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
