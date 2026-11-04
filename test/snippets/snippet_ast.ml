@@ -285,7 +285,8 @@ module Aarch64_corpus = struct
           T.Opcode.
             [
               insn Sub
-                T.Operand.[ reg "x1"; reg "sp"; imm 4; Shift { T.Shift.kind = "lsl"; amount = 12 } ];
+                T.Operand.
+                  [ reg "x1"; reg "sp"; imm 4; Shift { T.Shift.kind = T.Shift.Lsl; amount = 12 } ];
               insn Strb [ reg "wzr"; mem "x1" 0L ];
               insn Movz [ reg "w0"; imm 42 ];
               insn Ret [];
@@ -296,7 +297,8 @@ module Aarch64_corpus = struct
           T.Opcode.
             [
               insn Sub
-                T.Operand.[ reg "x1"; reg "sp"; imm 4; Shift { T.Shift.kind = "lsl"; amount = 12 } ];
+                T.Operand.
+                  [ reg "x1"; reg "sp"; imm 4; Shift { T.Shift.kind = T.Shift.Lsl; amount = 12 } ];
               insn Sub [ reg "x1"; reg "x1"; imm 1 ];
               insn Strb [ reg "wzr"; mem "x1" 0L ];
               insn Movz [ reg "w0"; imm 42 ];
