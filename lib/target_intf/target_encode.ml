@@ -19,6 +19,23 @@
 
 open Foundation
 
+(* One register class of a target: its numbers, the values that name them, and their spellings.
+   [numbers] is ascending and need not be contiguous or start at zero; [range] is [Some] only when
+   it is contiguous. *)
+module type REGS = sig
+  type t
+
+  val of_int : int -> t option
+  val of_int_exn : int -> t
+  val to_int : t -> int
+  val numbers : int list
+  val count : int
+  val mem : int -> bool
+  val all : t list
+  val range : (int * int) option
+  val name : t -> string
+end
+
 module type ENCODE = sig
   (* {1 Identity} *)
 
