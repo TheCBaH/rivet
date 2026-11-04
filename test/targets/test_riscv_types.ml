@@ -14,7 +14,7 @@ let%expect_test "every rounding mode round-trips through fcvt.w.s" =
     fcvt.w.s a0, fa0, rmm        c0054553 fcvt.w.s x10, f10, rmm       same
     fcvt.w.s a0, fa0, dyn        c0057553 fcvt.w.s x10, f10            same |}]
 
-let%expect_test "reserved rounding-mode encodings decode as before" =
+let%expect_test "reserved rounding-mode encodings are not instructions" =
   List.iter
     (fun f3 ->
       let w = Int64.logor 0xc0050553L (Int64.of_int (f3 lsl 12)) in
@@ -23,12 +23,12 @@ let%expect_test "reserved rounding-mode encodings decode as before" =
         w
         (match Test_zicsr.decoded "riscv64" (Test_zicsr.word_bytes w) with
         | Ok t -> t
-        | Error m -> "REFUSED " ^ m))
+        | Error _ -> Printf.sprintf ".word 0x%08Lx" w))
     [ 5; 6; 7 ];
   [%expect
     {|
-    funct3 5: of_funct3 none, c0055553 -> fcvt.w.s x10, f10
-    funct3 6: of_funct3 none, c0056553 -> fcvt.w.s x10, f10
+    funct3 5: of_funct3 none, c0055553 -> .word 0xc0055553
+    funct3 6: of_funct3 none, c0056553 -> .word 0xc0056553
     funct3 7: of_funct3 dyn, c0057553 -> fcvt.w.s x10, f10 |}]
 
 (* {1 Register classes} *)
@@ -60,8 +60,8 @@ let%expect_test "an FP instruction given integer registers is refused" =
 (* {1 Every hand-written opcode}
 
    Each opcode of [Opcode.all] gets the first operand list, shortest first, that it lowers to a
-   single form; that form must encode, decode and re-encode to the same bytes. The decoder has
-   no reading of some hand-written forms yet; they are listed. *)
+   single form; that form must encode, decode and re-encode to the same bytes. The auipc pairs
+   decode only through the codec; they are listed. *)
 
 module type ENC = module type of Riscv64_encode
 
@@ -156,8 +156,130 @@ let%expect_test "every sampled opcode round-trips through its encoding" =
     {|
     opcodes 304, sampled 303
     unsampled: la
-    not decoded: bclr bext binv bset bclri bexti binvi bseti clmul clmulh clmulr czero.eqz czero.nez sm3p0 sm3p1 sm4ed sm4ks xperm4 xperm8 sha256sum0 sha256sum1 sha256sig0 sha256sig1 sha512sum0 sha512sum1 sha512sig0 sha512sig1 sha512sum0r sha512sum1r sha512sig0l sha512sig1l sha512sig0h sha512sig1h aes64ds aes64dsm aes64es aes64esm aes64ks2 aes64im aes64ks1i aes32dsi aes32dsmi aes32esi aes32esmi call tail lla
+    not decoded: call tail lla
     differs: |}]
+
+(* The hand-written opcodes the decoder had no reading of before it read them back from their own
+   encodings: each round-trips on every XLEN that has it. *)
+let%expect_test "formerly undecodable opcodes round-trip on both XLENs" =
+  let names =
+    "bclr bext binv bset bclri bexti binvi bseti clmul clmulh clmulr czero.eqz czero.nez sm3p0 \
+     sm3p1 sm4ed sm4ks xperm4 xperm8 sha256sum0 sha256sum1 sha256sig0 sha256sig1 sha512sum0 \
+     sha512sum1 sha512sig0 sha512sig1 sha512sum0r sha512sum1r sha512sig0l sha512sig1l sha512sig0h \
+     sha512sig1h aes64ds aes64dsm aes64es aes64esm aes64ks2 aes64im aes64ks1i aes32dsi aes32dsmi \
+     aes32esi aes32esmi"
+  in
+  let names = List.filter (( <> ) "") (String.split_on_char ' ' names) in
+  let run label samples reencoded name =
+    let back =
+      List.filter_map
+        (fun (op, s) ->
+          if List.mem (name op) names then
+            Option.map (fun (_, bytes) -> (name op, bytes, reencoded bytes)) s
+          else None)
+        samples
+    in
+    let failed = List.filter_map (fun (n, b, r) -> if r = Ok b then None else Some n) back in
+    Printf.printf "%s: %d of %d sampled, failed [%s]\n" label (List.length back) (List.length names)
+      (String.concat " " failed)
+  in
+  run "riscv32" S32.samples S32.reencoded Riscv32_encode.Opcode.name;
+  run "riscv64" S64.samples S64.reencoded Riscv64_encode.Opcode.name;
+  [%expect {|
+    riscv32: 33 of 44 sampled, failed []
+    riscv64: 34 of 44 sampled, failed [] |}]
+
+(* The index only reads words no standard row matches, so no row's reading changes. *)
+let%expect_test "no hand-written index entry overlaps a standard row" =
+  let check (type r e) label (entries : e list) (entry : e -> string * int64 * int64)
+      (rows : r list) (row : r -> string * int64 * int64) =
+    let overlaps =
+      List.concat_map
+        (fun e ->
+          let n, m, v = entry e in
+          List.filter_map
+            (fun r ->
+              let rn, rm, rv = row r in
+              if Int64.(equal (logand (logxor v rv) (logand m rm)) 0L) then Some (n ^ "/" ^ rn)
+              else None)
+            rows)
+        entries
+    in
+    Printf.printf "%s: %d entries, overlaps [%s]\n" label (List.length entries)
+      (String.concat " " overlaps)
+  in
+  let module E32 = Riscv32_encode in
+  let module E64 = Riscv64_encode in
+  check "riscv32" E32.By_desc.entries
+    (fun e -> (E32.Opcode.name e.op, e.mask, e.match_))
+    E32.Row.all
+    (fun r ->
+      let x = E32.Row.row r in
+      (x.mnemonic, x.mask, x.match_));
+  check "riscv64" E64.By_desc.entries
+    (fun e -> (E64.Opcode.name e.op, e.mask, e.match_))
+    E64.Row.all
+    (fun r ->
+      let x = E64.Row.row r in
+      (x.mnemonic, x.mask, x.match_));
+  [%expect {|
+    riscv32: 33 entries, overlaps []
+    riscv64: 34 entries, overlaps [] |}]
+
+(* {1 Rounding modes}
+
+   Every opcode with a rounding field, its sample word with each of the eight [funct3] values:
+   the canonical text re-assembles to the same bytes, or the word is declined (a [.word]). *)
+
+let%expect_test "every rounding field value round-trips or is a .word" =
+  let module E = Riscv64_encode in
+  let rounds op = Option.is_some (E.default_rm op) || Option.is_some (E.f_fma_desc op) in
+  let ops = List.filter rounds E.Opcode.all in
+  let words = Hashtbl.create 8 and bad = ref [] in
+  List.iter
+    (fun op ->
+      match S64.sample op with
+      | None -> bad := (E.Opcode.name op ^ ":unsampled") :: !bad
+      | Some (_, bytes) ->
+          let w = Test_zicsr.word_of_bytes bytes in
+          for f3 = 0 to 7 do
+            let w =
+              Int64.logor (Int64.logand w (Int64.lognot 0x7000L)) (Int64.of_int (f3 lsl 12))
+            in
+            let b = Test_zicsr.word_bytes w in
+            let outcome =
+              match Test_zicsr.decoded "riscv64" b with
+              | Error _ -> ".word"
+              | Ok text -> (
+                  match Test_zicsr.assembled "riscv64" text with
+                  | Ok b' when String.equal b b' -> "same"
+                  | Ok _ -> "different"
+                  | Error _ -> "refused")
+            in
+            let k = (f3, outcome) in
+            Hashtbl.replace words k (1 + Option.value (Hashtbl.find_opt words k) ~default:0);
+            if outcome = "different" || outcome = "refused" then
+              bad := Printf.sprintf "%s/%d:%s" (E.Opcode.name op) f3 outcome :: !bad
+          done)
+    ops;
+  Printf.printf "opcodes %d\n" (List.length ops);
+  for f3 = 0 to 7 do
+    let n o = Option.value (Hashtbl.find_opt words (f3, o)) ~default:0 in
+    Printf.printf "funct3 %d: same %d, .word %d\n" f3 (n "same") (n ".word")
+  done;
+  Printf.printf "bad [%s]\n" (String.concat " " (List.rev !bad));
+  [%expect
+    {|
+    opcodes 36
+    funct3 0: same 36, .word 0
+    funct3 1: same 36, .word 0
+    funct3 2: same 36, .word 0
+    funct3 3: same 36, .word 0
+    funct3 4: same 36, .word 0
+    funct3 5: same 0, .word 36
+    funct3 6: same 0, .word 36
+    funct3 7: same 36, .word 0
+    bad [] |}]
 
 (* {1 Derived encoding fields} *)
 

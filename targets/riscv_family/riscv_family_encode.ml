@@ -1466,7 +1466,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Some word -> Ok [ Lowered.Fixed { op = Opcode.Table row; word } ]
     | None -> wrong (Opcode.Table row)
 
-  let lower_instruction_ungated state i =
+  let lower_operands state i =
     let iop = i.Instruction.op in
     match (i.op, i.ops) with
     | Opcode.Table row, _
@@ -1858,17 +1858,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | Some rd, Some rs1, Some _ ->
             Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
         | _ -> wrong iop)
-    | op, [ a; b; Operand.Sym (Asm_core.Expr.Symbol rm) ] when Option.is_some (f_to_i_desc op) -> (
-        (* [fcvt.w.d rd, rs1, rtz] - an explicit rounding-mode operand overriding the
-           bare mnemonic's own default (M5 - perlin.c/binarytrees.c's
-           own [(int)]/[(long)] C cast idiom, which truncates and so needs [rtz] rather
-           than the default dynamic mode). Checked against real riscv64-linux-gnu-as:
-           `fcvt.l.d x22, f10, rtz` -> `c2251b53` (funct3 = 1, matching {!Rm}'s
-           [Rtz] = 1). *)
-        match (gx a, gf b, f_to_i_desc op, Rm.of_name rm) with
-        | Some rd, Some rs1, Some _, Some rm ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = Some rm } ]
-        | _ -> wrong iop)
     | op, [ a; b ] when Option.is_some (i_to_f_desc op) -> (
         match (gf a, gx b, i_to_f_desc op) with
         | Some rd, Some rs1, Some _ ->
@@ -2169,6 +2158,20 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            riscv64-linux-gnu-as (-march=..._zihintpause): `0100000f`. *)
         Ok [ Lowered.Fixed { op = Opcode.Pause; word = 0x0100000fL } ]
     | _ -> wrong iop
+
+  (* A trailing rounding mode on a form with a rounding field, as GAS takes it: [fcvt.l.d x22,
+     f10, rtz] -> [c2251b53]. *)
+  let lower_instruction_ungated state i =
+    let rounds = Option.is_some (default_rm i.Instruction.op) || Option.is_some (f_fma_desc i.op) in
+    match List.rev i.ops with
+    | Operand.Sym (Asm_core.Expr.Symbol s) :: rest when rounds && Option.is_some (Rm.of_name s) -> (
+        let rm = Option.get (Rm.of_name s) in
+        match lower_operands state { i with ops = List.rev rest } with
+        | Ok [ Lowered.R ({ rm = Some _; _ } as r) ] -> Ok [ Lowered.R { r with rm = Some rm } ]
+        | Ok [ Lowered.R4 r ] -> Ok [ Lowered.R4 { r with rm } ]
+        | Ok _ -> wrong i.op
+        | Error _ as e -> e)
+    | _ -> lower_operands state i
 
   let lower_instruction state i =
     match feature_gate state i.Instruction.op with
@@ -3047,6 +3050,14 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | 0x4f, 1 -> Some "fnmadd.d"
     | _ -> None
 
+  (* [ops] with the rounding mode [f3] appended unless it is [default]; [None] for a reserved one. *)
+  let rm_operands ~default f3 ops =
+    if Rm.to_funct3 default = f3 then Some ops
+    else
+      Option.map
+        (fun rm -> ops @ [ Operand.Sym (Asm_core.Expr.Symbol (Rm.name rm)) ])
+        (Rm.of_funct3 f3)
+
   type decode_context = { state : target_state; address : int64 }
 
   (* DEC-RV-TABLE: tried only after the hand-written decoder finds nothing, so a
@@ -3187,7 +3198,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let table_decode ?half ?legal w =
     match table_matches ?half ?legal ~first_only:true w with m :: _ -> Some m | [] -> None
 
-  let decode_hand_written ctx bytes ~pos =
+  let decode_arms ctx bytes ~pos =
     if String.length bytes - pos < 2 then Error (diag ~pos:__POS__ `Decode_short)
     else if Char.code bytes.[pos] land 3 <> 3 then
       let half = read_half bytes pos in
@@ -3456,26 +3467,22 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                         (* An explicit, non-default rounding mode is a real trailing
                            operand a re-parse must see too, not only text {!Lowered.pp}
                            prints - {!rm_suffix}'s own condition, read back here from the
-                           other end. *)
+                           other end. A reserved mode (5, 6) has no spelling, so the word
+                           is declined. *)
                         let ops =
                           match shape.rm with
-                          | Some default when Rm.to_funct3 default <> f3 -> (
-                              match Rm.of_funct3 f3 with
-                              | Some rm ->
-                                  base @ [ Operand.Sym (Asm_core.Expr.Symbol (Rm.name rm)) ]
-                              | None -> base)
-                          | Some _ | None -> base
+                          | Some default -> rm_operands ~default f3 base
+                          | None -> Some base
                         in
-                        Some (instruction (op_exn n) ops, n)))
+                        Option.map (fun ops -> (instruction (op_exn n) ops, n)) ops))
             | 0x43 | 0x47 | 0x4b | 0x4f ->
                 let rs3 = Int64.to_int (bits w 27 5) in
                 let fmt = Int64.to_int (bits w 25 2) in
-                Option.map
-                  (fun n ->
-                    ( instruction (op_exn n)
-                        [ f_operand rd; f_operand rs1; f_operand rs2; f_operand rs3 ],
-                      n ))
-                  (f_r4_name opc fmt)
+                Option.bind (f_r4_name opc fmt) (fun n ->
+                    Option.map
+                      (fun ops -> (instruction (op_exn n) ops, n))
+                      (rm_operands ~default:Rm.Dyn f3
+                         [ f_operand rd; f_operand rs1; f_operand rs2; f_operand rs3 ]))
             | 0x63 ->
                 let n =
                   match f3 with
@@ -3607,6 +3614,89 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           | Some (i, f) -> Ok (i, f, 4)
           | None -> Error (diag ~pos:__POS__ `Decode_no_match))
       | Some (i, f) -> Ok (i, f, 4)
+
+  (* The hand-written integer forms the arms above have no reading of (Zbs, Zbc, Zbkb, Zbkx, Zkn,
+     Zks, Zicond), read back from their own encodings: each opcode's word with its operand fields
+     zero, the fields its operands come from, and a re-encoding check. Tried only on a word nothing
+     else reads, so no other reading changes. *)
+  module By_desc = struct
+    type field = Reg of int | Imm of int * int
+    type entry = { op : Opcode.t; fields : field list; mask : int64; match_ : int64 }
+
+    let fields op =
+      let r = [ Reg 7; Reg 15 ] in
+      let int_opcode o = o = 0x33 || o = 0x3b || o = 0x13 || o = 0x1b in
+      if Option.is_some (Desc.rbs op) then Some (r @ [ Reg 20; Imm (30, 2) ])
+      else if op = Opcode.Aes64ks1i then Some (r @ [ Imm (20, 4) ])
+      else if Option.is_some (unary_imm_desc op) then Some r
+      else
+        match (Desc.i op, Desc.r op) with
+        | Some { opcode; shamt_bits = Some w; _ }, _ when int_opcode opcode ->
+            Some (r @ [ Imm (20, if w = 64 then 6 else 5) ])
+        | _, Some { opcode; rs2 = None; _ } when int_opcode opcode -> Some (r @ [ Reg 20 ])
+        | _ -> None
+
+    let operand w = function
+      | Reg lsb -> reg (Int64.to_int (bits w lsb 5))
+      | Imm (lsb, width) -> imm (bits w lsb width)
+
+    let word_of op ops =
+      match lower_operands default_state (instruction op ops) with
+      | Ok [ l ] -> (
+          match encode_ungated l with
+          | Ok (`Fixed f) when String.length f.bytes = 4 -> Some (read_word f.bytes 0)
+          | _ -> None)
+      | _ -> None
+
+    let unread w =
+      Result.is_error (decode_arms { state = default_state; address = 0L } (bytes_of_word w) ~pos:0)
+
+    (* Opcodes this XLEN does not lower, and those the arms read, have no entry. *)
+    let entries =
+      List.filter_map
+        (fun op ->
+          Option.bind (fields op) (fun fields ->
+              let free =
+                List.fold_left
+                  (fun m f ->
+                    let lsb, width = match f with Reg l -> (l, 5) | Imm (l, w) -> (l, w) in
+                    Int64.logor m (Int64.shift_left (Int64.sub (Int64.shift_left 1L width) 1L) lsb))
+                  0L fields
+              in
+              Option.bind
+                (word_of op (List.map (operand 0L) fields))
+                (fun match_ ->
+                  if unread match_ then
+                    Some { op; fields; mask = Int64.logand 0xffffffffL (Int64.lognot free); match_ }
+                  else None)))
+        Opcode.all
+
+    let index =
+      let t = Hashtbl.create 256 in
+      List.iter
+        (fun e -> if not (Hashtbl.mem t (e.mask, e.match_)) then Hashtbl.add t (e.mask, e.match_) e)
+        entries;
+      t
+
+    let masks = List.sort_uniq Int64.compare (List.map (fun e -> e.mask) entries)
+
+    let decode w =
+      List.find_map
+        (fun mask ->
+          Option.bind
+            (Hashtbl.find_opt index (mask, Int64.logand w mask))
+            (fun e ->
+              let ops = List.map (operand w) e.fields in
+              if word_of e.op ops = Some w then Some (instruction e.op ops, Opcode.name e.op)
+              else None))
+        masks
+  end
+
+  let decode_hand_written ctx bytes ~pos =
+    match decode_arms ctx bytes ~pos with
+    | Error _ as e when String.length bytes - pos >= 4 && Char.code bytes.[pos] land 3 = 3 -> (
+        match By_desc.decode (read_word bytes pos) with Some (i, f) -> Ok (i, f, 4) | None -> e)
+    | r -> r
 
   let table_fallback ?legal bytes ~pos =
     if String.length bytes - pos < 2 then None
