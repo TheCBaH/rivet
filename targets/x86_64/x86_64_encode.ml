@@ -12,22 +12,22 @@ module Mode = struct
   let rex_allowed = true
 
   let registers =
-    X86_family_encode.Reg.base_regs 64 X86_family_encode.Reg.names_64
-    @ X86_family_encode.Reg.extended_regs 64 ""
-    @ X86_family_encode.Reg.base_regs 32 X86_family_encode.Reg.names_32
-    @ X86_family_encode.Reg.extended_regs 32 "d"
-    @ X86_family_encode.Reg.base_regs 16 X86_family_encode.Reg.names_16
-    @ X86_family_encode.Reg.extended_regs 16 "w"
-    @ X86_family_encode.Reg.base_regs 8 X86_family_encode.Reg.names_8l
-    @ X86_family_encode.Reg.extended_regs 8 "b"
-    @ X86_family_encode.Reg.base_regs 128 X86_family_encode.Reg.names_xmm
-    @ X86_family_encode.Reg.base_regs 256 X86_family_encode.Reg.names_ymm
-    @ X86_family_encode.Reg.base_regs 512 X86_family_encode.Reg.names_zmm
+    X86_family_encode.Reg.base_regs Gpr64 8
+    @ X86_family_encode.Reg.extended_regs Gpr64
+    @ X86_family_encode.Reg.base_regs Gpr32 8
+    @ X86_family_encode.Reg.extended_regs Gpr32
+    @ X86_family_encode.Reg.base_regs Gpr16 8
+    @ X86_family_encode.Reg.extended_regs Gpr16
+    @ X86_family_encode.Reg.base_regs Gpr8 8
+    @ X86_family_encode.Reg.extended_regs Gpr8
+    @ X86_family_encode.Reg.base_regs Xmm 16
+    @ X86_family_encode.Reg.base_regs Ymm 16
+    @ X86_family_encode.Reg.base_regs Zmm 16
     (* x87 is available in 64-bit mode too.  As on x86-32, [st(1)] through
        [st(7)] are parsed directly by x86_family rather than enumerated here. *)
     @ X86_family_encode.Reg.evex_upper
     @ X86_family_encode.Reg.apx_gprs @ X86_family_encode.Reg.mm_and_k
-    @ [ { X86_family_encode.Reg.name = "st"; num = 0; width = 80 } ]
+    @ [ { X86_family_encode.Reg.cls = St; num = 0 } ]
 
   (* Measured against x86_64-linux-gnu-as by padding a .align 16 at each
      distance, not copied from a manual: the long-NOP family plus the CS-prefix

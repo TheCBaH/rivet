@@ -226,16 +226,13 @@ module Make (M : MODE) = struct
        operand, not only the new SSE ones. *)
     let mem_reg_named n =
       match reg_named n with
-      | Ok r when r.Reg.width = 128 || r.Reg.width = 256 || r.Reg.width = 512 ->
-          bad (`Xmm_in_memory_operand n)
+      | Ok r when Rclass.is_vector r.Reg.cls -> bad (`Xmm_in_memory_operand n)
       | other -> other
     in
     (* an index may be a vector register: the VSIB address of a gather or scatter, which only
        a generated VSIB row accepts *)
     let index_reg_named n =
-      match reg_named n with
-      | Ok r when r.Reg.width = 128 || r.Reg.width = 256 || r.Reg.width = 512 -> Ok r
-      | _ -> mem_reg_named n
+      match reg_named n with Ok r when Rclass.is_vector r.Reg.cls -> Ok r | _ -> mem_reg_named n
     in
     let open Asm_syntax in
     (* an EVEX opmask after the operand: [%zmm0{%k1}], [%zmm0{%k1}{z}], [(%rax){%k1}] *)
@@ -323,8 +320,7 @@ module Make (M : MODE) = struct
        decodes an x87 operand back to text yet either. *)
             | [ Token.Register "st"; Token.Lparen; Token.Int n; Token.Rparen ] -> (
                 match Bigint.to_int_opt n with
-                | Some n when n >= 0 && n <= 7 ->
-                    Ok (Operand.Reg { Reg.name = Printf.sprintf "st(%d)" n; num = n; width = 80 })
+                | Some n when n >= 0 && n <= 7 -> Ok (Operand.Reg { Reg.cls = St; num = n })
                 | _ -> bad (`Cannot_parse_operand { slice; reason = `Malformed_expression slice }))
             (* *<operand>, the indirect-jump/call target sigil. GNU as requires the
        [*] before a register ([*%eax]) or a memory operand ([*sym(,%eax,4)],
