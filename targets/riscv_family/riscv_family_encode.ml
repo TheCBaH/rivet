@@ -2748,57 +2748,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let op_exn s = Option.get (Opcode.of_mnemonic s)
   let instruction op ops = { Instruction.op; ops }
 
-  (* The M component's rows decode from the same table they encode from. *)
-  let m_name opcode f3 f7 =
-    List.find_map
-      (fun (f : Riscv_ext_m.form) ->
-        if f.opcode = opcode && f.funct3 = f3 && f.funct7 = f7 && ((not f.rv64_only) || xlen = 64)
-        then Some f.mnemonic
-        else None)
-      Riscv_ext_m.forms
-
-  let r_name opcode f3 f7 =
-    match m_name opcode f3 f7 with
-    | Some _ as m -> m
-    | None -> (
-        match (opcode, f3, f7) with
-        | 0x33, 0, 0 -> Some "add"
-        | 0x33, 0, 0x20 -> Some "sub"
-        | 0x33, 1, 0 -> Some "sll"
-        | 0x33, 2, 0 -> Some "slt"
-        | 0x33, 3, 0 -> Some "sltu"
-        | 0x33, 4, 0 -> Some "xor"
-        | 0x33, 5, 0 -> Some "srl"
-        | 0x33, 5, 0x20 -> Some "sra"
-        | 0x33, 6, 0 -> Some "or"
-        | 0x33, 7, 0 -> Some "and"
-        | 0x33, 2, 0x10 -> Some "sh1add"
-        | 0x33, 4, 0x10 -> Some "sh2add"
-        | 0x33, 6, 0x10 -> Some "sh3add"
-        | 0x33, 4, 0x05 -> Some "min"
-        | 0x33, 5, 0x05 -> Some "minu"
-        | 0x33, 6, 0x05 -> Some "max"
-        | 0x33, 7, 0x05 -> Some "maxu"
-        | 0x33, 7, 0x20 -> Some "andn"
-        | 0x33, 6, 0x20 -> Some "orn"
-        | 0x33, 4, 0x20 -> Some "xnor"
-        | 0x33, 1, 0x30 -> Some "rol"
-        | 0x33, 5, 0x30 -> Some "ror"
-        | 0x3b, 2, 0x10 -> Some "sh1add.uw"
-        | 0x3b, 4, 0x10 -> Some "sh2add.uw"
-        | 0x3b, 6, 0x10 -> Some "sh3add.uw"
-        | 0x3b, 0, 0 -> Some "addw"
-        | 0x3b, 0, 0x20 -> Some "subw"
-        | 0x3b, 1, 0 -> Some "sllw"
-        | 0x3b, 5, 0 -> Some "srlw"
-        | 0x3b, 5, 0x20 -> Some "sraw"
-        | 0x33, 4, 0x04 -> Some "pack"
-        | 0x33, 7, 0x04 -> Some "packh"
-        | 0x3b, 4, 0x04 -> Some "packw"
-        | 0x3b, 1, 0x30 -> Some "rolw"
-        | 0x3b, 5, 0x30 -> Some "rorw"
-        | _ -> None)
-
   (* OP-FP (opcode [0x53]): unlike every integer R-type above, several of these
      mnemonics also need [rs2] to disambiguate (a convert or move fixes its second
      "operand" to a selector rather than reading a real register - see
@@ -3041,7 +2990,132 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let table_decode ?half ?legal w =
     match table_matches ?half ?legal ~first_only:true w with m :: _ -> Some m | [] -> None
 
-  let decode_arms ctx bytes ~pos =
+  (* The regular integer forms read from their table entries: the fields each operand comes from by
+     the entry's encoding and kinds, the word with those fields zero, and a re-encoding check. *)
+  module Hand_decode = struct
+    type field =
+      | Rd
+      | Rs1
+      | Rs2
+      | Simm12
+      | Shamt of int
+      | Mem_i
+      | Mem_s
+      | Mem0
+      | Boff
+      | Uimm
+      | Bits of int * int
+
+    type entry = { op : Opcode.t; fields : field list; mask : int64; match_ : int64 }
+
+    let fields (e : Riscv_ops.entry) =
+      let open Riscv_ops.Kind in
+      match (Desc.enc e.op, e.shape) with
+      | _ when e.op = Opcode.Aes64ks1i -> Some [ Rd; Rs1; Bits (20, 4) ]
+      | _ when e.lower -> None
+      | Some (Riscv_ops.Enc.R _), [ X; X; X ] -> Some [ Rd; Rs1; Rs2 ]
+      | Some (Riscv_ops.Enc.R _), [ X; X; Mem ] -> Some [ Rd; Rs2; Mem0 ]
+      | Some (Riscv_ops.Enc.R _), [ X; Mem ] -> Some [ Rd; Mem0 ]
+      | Some (Riscv_ops.Enc.Rbs _), [ X; X; X; Imm ] -> Some [ Rd; Rs1; Rs2; Bits (30, 2) ]
+      | Some (Riscv_ops.Enc.I _), [ X; X; Imm ] -> Some [ Rd; Rs1; Simm12 ]
+      | Some (Riscv_ops.Enc.I _), [ X; Mem ] -> Some [ Rd; Mem_i ]
+      | Some (Riscv_ops.Enc.Shift _), [ X; X; Imm ] ->
+          Some [ Rd; Rs1; Shamt (if xlen = 64 then 6 else 5) ]
+      | Some (Riscv_ops.Enc.Shiftw _), [ X; X; Imm ] -> Some [ Rd; Rs1; Shamt 5 ]
+      | Some (Riscv_ops.Enc.Unary _), [ X; X ] -> Some [ Rd; Rs1 ]
+      | Some (Riscv_ops.Enc.S _), [ X; Mem ] -> Some [ Rs2; Mem_s ]
+      | Some (Riscv_ops.Enc.B _), [ X; X; Sym ] -> Some [ Rs1; Rs2; Boff ]
+      | Some (Riscv_ops.Enc.U _), [ X; Imm ] -> Some [ Rd; Uimm ]
+      | _ -> None
+
+    let ones lsb width = Int64.shift_left (Int64.sub (Int64.shift_left 1L width) 1L) lsb
+
+    let free = function
+      | Rd -> ones 7 5
+      | Rs1 | Mem0 -> ones 15 5
+      | Rs2 -> ones 20 5
+      | Simm12 -> ones 20 12
+      | Shamt n -> ones 20 n
+      | Mem_i -> Int64.logor (ones 15 5) (ones 20 12)
+      | Mem_s | Boff -> Int64.logor (ones 15 5) (Int64.logor (ones 7 5) (ones 25 7))
+      | Uimm -> ones 12 20
+      | Bits (lsb, width) -> ones lsb width
+
+    let s_imm w = sign_extend 12 (Int64.logor (bits w 7 5) (Int64.shift_left (bits w 25 7) 5))
+
+    let b_imm w =
+      sign_extend 13
+        (Int64.logor
+           (Int64.shift_left (bits w 31 1) 12)
+           (Int64.logor
+              (Int64.shift_left (bits w 7 1) 11)
+              (Int64.logor (Int64.shift_left (bits w 25 6) 5) (Int64.shift_left (bits w 8 4) 1))))
+
+    let operand ~address w = function
+      | Rd -> reg (Int64.to_int (bits w 7 5))
+      | Rs1 -> reg (Int64.to_int (bits w 15 5))
+      | Rs2 -> reg (Int64.to_int (bits w 20 5))
+      | Simm12 -> imm (sign_extend 12 (bits w 20 12))
+      | Shamt n -> imm (bits w 20 n)
+      | Mem_i -> mem (Int64.to_int (bits w 15 5)) (sign_extend 12 (bits w 20 12))
+      | Mem_s -> mem (Int64.to_int (bits w 15 5)) (s_imm w)
+      | Mem0 -> mem (Int64.to_int (bits w 15 5)) 0L
+      | Boff -> sym (Int64.add address (b_imm w))
+      | Uimm -> imm (sign_extend 20 (bits w 12 20))
+      | Bits (lsb, width) -> imm (bits w lsb width)
+
+    let word_of op ops =
+      match lower_operands default_state (instruction op ops) with
+      | Ok [ l ] -> (
+          match encode_ungated l with
+          | Ok (`Fixed f) when String.length f.bytes = 4 -> Some (read_word f.bytes 0)
+          | _ -> None)
+      | _ -> None
+
+    (* A branch's word is its opcode and [funct3]; any other's is its zero-operand encoding, so
+       an opcode this XLEN does not lower has no entry. *)
+    let entries =
+      List.filter_map
+        (fun (e : Riscv_ops.entry) ->
+          Option.bind (fields e) (fun fields ->
+              let mask =
+                Int64.logand 0xffffffffL
+                  (Int64.lognot (List.fold_left (fun m f -> Int64.logor m (free f)) 0L fields))
+              in
+              let match_ =
+                match Desc.enc e.op with
+                | Some (Riscv_ops.Enc.B { funct3 }) ->
+                    if Option.is_some (xlen_gate e.op) then None
+                    else Some (Int64.of_int (0x63 lor (funct3 lsl 12)))
+                | _ -> word_of e.op (List.map (operand ~address:0L 0L) fields)
+              in
+              Option.map (fun match_ -> { op = e.op; fields; mask; match_ }) match_))
+        (Array.to_list Riscv_ops.all)
+
+    let index =
+      let t = Hashtbl.create 512 in
+      List.iter
+        (fun e -> if not (Hashtbl.mem t (e.mask, e.match_)) then Hashtbl.add t (e.mask, e.match_) e)
+        entries;
+      t
+
+    let masks = List.sort_uniq Int64.compare (List.map (fun e -> e.mask) entries)
+
+    let decode ctx w =
+      List.find_map
+        (fun mask ->
+          Option.bind
+            (Hashtbl.find_opt index (mask, Int64.logand w mask))
+            (fun e ->
+              let ops = List.map (operand ~address:ctx.address w) e.fields in
+              let branch = List.mem Boff e.fields in
+              if branch || word_of e.op ops = Some w then
+                Some (instruction e.op ops, Opcode.name e.op)
+              else None))
+        masks
+  end
+
+  let decode_hand_written ctx bytes ~pos =
     if String.length bytes - pos < 2 then Error (diag ~pos:__POS__ `Decode_short)
     else if Char.code bytes.[pos] land 3 <> 3 then
       let half = read_half bytes pos in
@@ -3189,91 +3263,10 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       let rs1 = Int64.to_int (bits w 15 5) and rs2 = Int64.to_int (bits w 20 5) in
       let f7 = Int64.to_int (bits w 25 7) in
       let result =
-        match r_name opc f3 f7 with
-        | Some n when opc <> 0x3b || xlen = 64 ->
-            Some (instruction (op_exn n) [ reg rd; reg rs1; reg rs2 ], n)
-        | _ -> (
+        match Hand_decode.decode ctx w with
+        | Some _ as r -> r
+        | None -> (
             match opc with
-            | (0x13 | 0x1b) when opc = 0x13 || xlen = 64 ->
-                let raw = bits w 20 12 in
-                let funct_shift =
-                  if opc = 0x13 && xlen = 64 then Int64.to_int (bits w 26 6)
-                  else Int64.to_int (bits w 25 7)
-                in
-                let n =
-                  match (opc, f3, funct_shift) with
-                  | 0x13, 0, _ -> Some "addi"
-                  | 0x13, 2, _ -> Some "slti"
-                  | 0x13, 3, _ -> Some "sltiu"
-                  | 0x13, 4, _ -> Some "xori"
-                  | 0x13, 6, _ -> Some "ori"
-                  | 0x13, 7, _ -> Some "andi"
-                  | 0x13, 1, 0 -> Some "slli"
-                  | 0x13, 5, 0 -> Some "srli"
-                  | 0x13, 5, x when x = if xlen = 64 then 0x10 else 0x20 -> Some "srai"
-                  | 0x13, 5, x when x = if xlen = 64 then 0x18 else 0x30 -> Some "rori"
-                  | 0x1b, 0, _ -> Some "addiw"
-                  | 0x1b, 1, 0 -> Some "slliw"
-                  | 0x1b, 5, 0 -> Some "srliw"
-                  | 0x1b, 5, 0x20 -> Some "sraiw"
-                  | 0x1b, 5, 0x30 -> Some "roriw"
-                  | 0x13, 1, _ when Int64.equal raw 0x600L -> Some "clz"
-                  | 0x13, 1, _ when Int64.equal raw 0x601L -> Some "ctz"
-                  | 0x13, 1, _ when Int64.equal raw 0x602L -> Some "cpop"
-                  | 0x13, 1, _ when Int64.equal raw 0x604L -> Some "sext.b"
-                  | 0x13, 1, _ when Int64.equal raw 0x605L -> Some "sext.h"
-                  | 0x13, 5, _ when Int64.equal raw 0x287L -> Some "orc.b"
-                  | 0x1b, 1, _ when Int64.equal raw 0x600L -> Some "clzw"
-                  | 0x1b, 1, _ when Int64.equal raw 0x601L -> Some "ctzw"
-                  | 0x1b, 1, _ when Int64.equal raw 0x602L -> Some "cpopw"
-                  | 0x13, 5, _ when Int64.equal raw 0x687L -> Some "brev8"
-                  | 0x13, 5, _ when Int64.equal raw (if xlen = 64 then 0x6b8L else 0x698L) ->
-                      Some "rev8"
-                  | 0x13, 1, _ when xlen = 32 && Int64.equal raw 0x08fL -> Some "zip"
-                  | 0x13, 5, _ when xlen = 32 && Int64.equal raw 0x08fL -> Some "unzip"
-                  | _ -> None
-                in
-                Option.map
-                  (fun n ->
-                    match n with
-                    | "clz" | "ctz" | "cpop" | "sext.b" | "sext.h" | "orc.b" | "clzw" | "ctzw"
-                    | "cpopw" | "brev8" | "rev8" | "zip" | "unzip" ->
-                        (instruction (op_exn n) [ reg rd; reg rs1 ], n)
-                    | _ ->
-                        let shift = f3 = 1 || f3 = 5 in
-                        let width = if opc = 0x1b then 5 else if xlen = 64 then 6 else 5 in
-                        let v = if shift then bits w 20 width else sign_extend 12 raw in
-                        (instruction (op_exn n) [ reg rd; reg rs1; imm v ], n))
-                  n
-            | 0x03 ->
-                let n =
-                  match f3 with
-                  | 0 -> Some "lb"
-                  | 1 -> Some "lh"
-                  | 2 -> Some "lw"
-                  | 3 when xlen = 64 -> Some "ld"
-                  | 4 -> Some "lbu"
-                  | 5 -> Some "lhu"
-                  | 6 when xlen = 64 -> Some "lwu"
-                  | _ -> None
-                in
-                Option.map
-                  (fun n ->
-                    (instruction (op_exn n) [ reg rd; mem rs1 (sign_extend 12 (bits w 20 12)) ], n))
-                  n
-            | 0x23 ->
-                let n =
-                  match f3 with
-                  | 0 -> Some "sb"
-                  | 1 -> Some "sh"
-                  | 2 -> Some "sw"
-                  | 3 when xlen = 64 -> Some "sd"
-                  | _ -> None
-                in
-                let v =
-                  sign_extend 12 (Int64.logor (bits w 7 5) (Int64.shift_left (bits w 25 7) 5))
-                in
-                Option.map (fun n -> (instruction (op_exn n) [ reg rs2; mem rs1 v ], n)) n
             | 0x07 ->
                 Option.map
                   (fun n ->
@@ -3326,34 +3319,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                       (fun ops -> (instruction (op_exn n) ops, n))
                       (rm_operands ~default:Rm.Dyn f3
                          [ f_operand rd; f_operand rs1; f_operand rs2; f_operand rs3 ]))
-            | 0x63 ->
-                let n =
-                  match f3 with
-                  | 0 -> Some "beq"
-                  | 1 -> Some "bne"
-                  | 4 -> Some "blt"
-                  | 5 -> Some "bge"
-                  | 6 -> Some "bltu"
-                  | 7 -> Some "bgeu"
-                  | _ -> None
-                in
-                let v =
-                  sign_extend 13
-                    (Int64.logor
-                       (Int64.shift_left (bits w 31 1) 12)
-                       (Int64.logor
-                          (Int64.shift_left (bits w 7 1) 11)
-                          (Int64.logor
-                             (Int64.shift_left (bits w 25 6) 5)
-                             (Int64.shift_left (bits w 8 4) 1))))
-                in
-                Option.map
-                  (fun n ->
-                    (instruction (op_exn n) [ reg rs1; reg rs2; sym (Int64.add ctx.address v) ], n))
-                  n
-            | 0x37 | 0x17 ->
-                let n = if opc = 0x37 then "lui" else "auipc" in
-                Some (instruction (op_exn n) [ reg rd; imm (sign_extend 20 (bits w 12 20)) ], n)
             | 0x6f ->
                 let v =
                   sign_extend 21
@@ -3414,41 +3379,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                   ( instruction Opcode.Fence
                       [ Operand.Sym (Asm_core.Expr.Symbol p); Operand.Sym (Asm_core.Expr.Symbol q) ],
                     Printf.sprintf "fence %s,%s" p q )
-            | 0x2f when f7 land 0x3 = 0 -> (
-                (* Zaamo, bare-mnemonic spelling only (aq=rl=0 - see
-                   {!amo3_desc}); aq/rl set is left undecoded rather than
-                   silently dropped, since this project's own encoder never
-                   emits that bit pattern for any mnemonic yet. *)
-                let funct5 = f7 asr 2 in
-                let suffix =
-                  if f3 = 2 then Some ".w" else if f3 = 3 && xlen = 64 then Some ".d" else None
-                in
-                match suffix with
-                | None -> None
-                | Some suffix -> (
-                    let base =
-                      match funct5 with
-                      | 0x00 -> Some "amoadd"
-                      | 0x01 -> Some "amoswap"
-                      | 0x02 -> Some "lr"
-                      | 0x03 -> Some "sc"
-                      | 0x04 -> Some "amoxor"
-                      | 0x08 -> Some "amoor"
-                      | 0x0c -> Some "amoand"
-                      | 0x10 -> Some "amomin"
-                      | 0x14 -> Some "amomax"
-                      | 0x18 -> Some "amominu"
-                      | 0x1c -> Some "amomaxu"
-                      | _ -> None
-                    in
-                    match base with
-                    | None -> None
-                    | Some "lr" ->
-                        let n = "lr" ^ suffix in
-                        Some (instruction (op_exn n) [ reg rd; mem rs1 0L ], n)
-                    | Some base ->
-                        let n = base ^ suffix in
-                        Some (instruction (op_exn n) [ reg rd; reg rs2; mem rs1 0L ], n)))
             | _ -> None)
       in
       match result with
@@ -3457,89 +3387,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           | Some (i, f) -> Ok (i, f, 4)
           | None -> Error (diag ~pos:__POS__ `Decode_no_match))
       | Some (i, f) -> Ok (i, f, 4)
-
-  (* The hand-written integer forms the arms above have no reading of (Zbs, Zbc, Zbkb, Zbkx, Zkn,
-     Zks, Zicond), read back from their own encodings: each opcode's word with its operand fields
-     zero, the fields its operands come from, and a re-encoding check. Tried only on a word nothing
-     else reads, so no other reading changes. *)
-  module By_desc = struct
-    type field = Reg of int | Imm of int * int
-    type entry = { op : Opcode.t; fields : field list; mask : int64; match_ : int64 }
-
-    let fields op =
-      let r = [ Reg 7; Reg 15 ] in
-      let int_opcode o = o = 0x33 || o = 0x3b || o = 0x13 || o = 0x1b in
-      if Option.is_some (Desc.rbs op) then Some (r @ [ Reg 20; Imm (30, 2) ])
-      else if op = Opcode.Aes64ks1i then Some (r @ [ Imm (20, 4) ])
-      else if Option.is_some (unary_imm_desc op) then Some r
-      else
-        match (Desc.i op, Desc.r op) with
-        | Some { opcode; shamt_bits = Some w; _ }, _ when int_opcode opcode ->
-            Some (r @ [ Imm (20, if w = 64 then 6 else 5) ])
-        | _, Some { opcode; rs2 = None; _ } when int_opcode opcode -> Some (r @ [ Reg 20 ])
-        | _ -> None
-
-    let operand w = function
-      | Reg lsb -> reg (Int64.to_int (bits w lsb 5))
-      | Imm (lsb, width) -> imm (bits w lsb width)
-
-    let word_of op ops =
-      match lower_operands default_state (instruction op ops) with
-      | Ok [ l ] -> (
-          match encode_ungated l with
-          | Ok (`Fixed f) when String.length f.bytes = 4 -> Some (read_word f.bytes 0)
-          | _ -> None)
-      | _ -> None
-
-    let unread w =
-      Result.is_error (decode_arms { state = default_state; address = 0L } (bytes_of_word w) ~pos:0)
-
-    (* Opcodes this XLEN does not lower, and those the arms read, have no entry. *)
-    let entries =
-      List.filter_map
-        (fun op ->
-          Option.bind (fields op) (fun fields ->
-              let free =
-                List.fold_left
-                  (fun m f ->
-                    let lsb, width = match f with Reg l -> (l, 5) | Imm (l, w) -> (l, w) in
-                    Int64.logor m (Int64.shift_left (Int64.sub (Int64.shift_left 1L width) 1L) lsb))
-                  0L fields
-              in
-              Option.bind
-                (word_of op (List.map (operand 0L) fields))
-                (fun match_ ->
-                  if unread match_ then
-                    Some { op; fields; mask = Int64.logand 0xffffffffL (Int64.lognot free); match_ }
-                  else None)))
-        Opcode.all
-
-    let index =
-      let t = Hashtbl.create 256 in
-      List.iter
-        (fun e -> if not (Hashtbl.mem t (e.mask, e.match_)) then Hashtbl.add t (e.mask, e.match_) e)
-        entries;
-      t
-
-    let masks = List.sort_uniq Int64.compare (List.map (fun e -> e.mask) entries)
-
-    let decode w =
-      List.find_map
-        (fun mask ->
-          Option.bind
-            (Hashtbl.find_opt index (mask, Int64.logand w mask))
-            (fun e ->
-              let ops = List.map (operand w) e.fields in
-              if word_of e.op ops = Some w then Some (instruction e.op ops, Opcode.name e.op)
-              else None))
-        masks
-  end
-
-  let decode_hand_written ctx bytes ~pos =
-    match decode_arms ctx bytes ~pos with
-    | Error _ as e when String.length bytes - pos >= 4 && Char.code bytes.[pos] land 3 = 3 -> (
-        match By_desc.decode (read_word bytes pos) with Some (i, f) -> Ok (i, f, 4) | None -> e)
-    | r -> r
 
   let table_fallback ?legal bytes ~pos =
     if String.length bytes - pos < 2 then None
