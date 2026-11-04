@@ -373,3 +373,23 @@ let%expect_test "a hand-written opcode's class is its encoding's" =
   in
   Printf.printf "differ [%s]\n" (String.concat " " differ);
   [%expect {| differ [] |}]
+
+(* {1 Error payloads} *)
+
+let%expect_test "lowering errors name their opcode" =
+  let module E = Riscv32_encode in
+  let x n = E.Operand.Reg (E.Reg.x n) in
+  let kind insn =
+    match E.lower_instruction E.default_state insn with
+    | Ok _ -> "accepted"
+    | Error e -> (
+        match Target_error.kind (Err.Error.kind e) with
+        | `Rv64_only E.Opcode.Ld -> "Rv64_only Ld"
+        | `Wrong_operands E.Opcode.Add -> "Wrong_operands Add"
+        | _ -> "other")
+  in
+  print_endline (kind (E.Instruction.mk E.Opcode.Ld [ x 1; x 2 ]));
+  print_endline (kind (E.Instruction.mk E.Opcode.Add [ x 1 ]));
+  [%expect {|
+    Rv64_only Ld
+    Wrong_operands Add |}]
