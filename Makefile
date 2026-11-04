@@ -428,7 +428,7 @@ ci-extra: js-browser ocaml5
 ocaml5:
 	docker run --rm -u $$(id -u):$$(id -g) -e HOME=/tmp -e DUNE_CACHE=disabled \
 	  -v $(CURDIR):/src -w /src $(OCAML5_IMAGE) \
-	  bash -lc 'opam exec -- dune build --build-dir _build-ocaml5 @all @runtest'
+	  bash -lc 'eval $$(opam env) && ocamlfind ocamlopt -version && dune build --build-dir _build-ocaml5 @all @runtest'
 
 # The old spellings, for one release.
 ASM_ALIASES := build test fmt fmt-check ci melange js js-portable js-browser tool-gate \
