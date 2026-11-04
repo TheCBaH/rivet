@@ -1266,7 +1266,7 @@ let render_std rows =
               \  val xlen : int\n\
                end) =\n\
                struct\n\
-              \  let row i = Riscv_row.mint i Riscv_table_rows.rows.(i)\n\
+              \  let row i = Riscv_row.mint ~xlen:X.xlen i Riscv_table_rows.rows.(i)\n\
               \  let by_xlen ~rv32 ~rv64 = row (if X.xlen = 32 then rv32 else rv64)\n\n";
             ]
            @ List.map value mnemonics

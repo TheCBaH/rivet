@@ -513,3 +513,20 @@ let%expect_test "a vendor row's id carries its row" =
     xfoo feature=xfoo source=vendor/xfoo index>=standard:true
     of_mnemonic names it: true
     standard instance has it: false |}]
+
+let%expect_test "a vendor row's class is read off its word" =
+  List.iter
+    (fun m ->
+      List.iter
+        (fun r ->
+          Printf.printf "%s %s\n" m (Riscv_family_encode.Riscv_types.Cls.name (Tile.Row.cls r)))
+        (Tile.Row.of_mnemonic m))
+    [ "vtzero"; "vtle32"; "vtmms.tvv" ];
+  List.iter
+    (fun r -> Printf.printf "xfoo %s\n" (Riscv_family_encode.Riscv_types.Cls.name (Foo.Row.cls r)))
+    (Foo.Row.of_mnemonic "xfoo");
+  [%expect {|
+    vtzero vector
+    vtle32 vector-load
+    vtmms.tvv alu
+    xfoo custom |}]
