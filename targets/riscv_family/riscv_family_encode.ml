@@ -45,6 +45,11 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     let of_mnemonic s = List.filter (fun r -> String.equal (mnemonic r) s) all
   end
 
+  (* The standard rows by name: [Std_row.vadd_vv] is the row [vadd.vv] reads as here. *)
+  module Std_row = Riscv_std_rows.Make (struct
+    let xlen = P.xlen
+  end)
+
   module Reg = Riscv_types.Reg
   module Mem = Riscv_types.Mem
   module Operand = Riscv_types.Operand
@@ -2791,7 +2796,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      vtype forms can be checked. *)
   let vtype_gate state = function
     | Lowered.Fixed { op = Table r as op; word }
-      when (match Row.mnemonic r with "vsetvli" | "vsetivli" -> true | _ -> false)
+      when (Row.equal r Std_row.vsetvli || Row.equal r Std_row.vsetivli)
            && not (Target_config.enabled state.config "zve64x") -> (
         let name = Opcode.name op in
         let vtype = Int64.to_int (Int64.shift_right_logical word 20) land 0xff in
