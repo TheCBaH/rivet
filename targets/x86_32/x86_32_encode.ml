@@ -33,12 +33,13 @@ module Mode = struct
      [%dh,%al]/[%bh,%al] encode ModRM.reg 4/5/6/7 respectively (M5
      classify-c-gcc corpus evidence: [binarytrees.c]'s [%ah]). *)
   let registers =
-    X86_family_encode.Reg.base_regs 32 X86_family_encode.Reg.names_32
-    @ X86_family_encode.Reg.base_regs 16 X86_family_encode.Reg.names_16
-    @ X86_family_encode.Reg.base_regs 8 [| "al"; "cl"; "dl"; "bl"; "ah"; "ch"; "dh"; "bh" |]
-    @ X86_family_encode.Reg.base_regs 128 (Array.sub X86_family_encode.Reg.names_xmm 0 8)
-    @ X86_family_encode.Reg.base_regs 256 (Array.sub X86_family_encode.Reg.names_ymm 0 8)
-    @ X86_family_encode.Reg.base_regs 512 (Array.sub X86_family_encode.Reg.names_zmm 0 8)
+    X86_family_encode.Reg.base_regs Gpr32 8
+    @ X86_family_encode.Reg.base_regs Gpr16 8
+    @ X86_family_encode.Reg.base_regs Gpr8 4
+    @ X86_family_encode.Reg.(in_class Gpr8_high (range 4 4))
+    @ X86_family_encode.Reg.base_regs Xmm 8
+    @ X86_family_encode.Reg.base_regs Ymm 8
+    @ X86_family_encode.Reg.base_regs Zmm 8
     (* [st] (x87 top-of-stack, [%st] alone - [%st(1)]-[%st(7)] are parsed
        directly from the [Register "st"; Lparen; Int n; Rparen] token shape,
        x86_family.ml, and never reach this table). Width 80 is not a real
@@ -48,7 +49,7 @@ module Mode = struct
        class marker distinct from 8/16/32/64/128, the same convention
        [names_xmm]'s width 128 already established. *)
     @ X86_family_encode.Reg.mm_and_k
-    @ [ { X86_family_encode.Reg.name = "st"; num = 0; width = 80 } ]
+    @ [ { X86_family_encode.Reg.cls = St; num = 0 } ]
 
   (* Measured against i686-linux-gnu-as, and *not* the 64-bit table: 32-bit GAS
      pads with [lea] forms because the long NOP is P6+ and the default 32-bit

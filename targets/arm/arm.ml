@@ -27,7 +27,8 @@ type parse_error_kind =
   | `Cannot_parse_operand of cannot_parse
   | `Unbalanced_brackets
   | `Bad_float_literal of string
-  | `Thumb_directive_out_of_scope ]
+  | `Thumb_directive_out_of_scope
+  | `Unknown_syntax of string ]
 
 and shift_amount_out_of_range = { amount : int; max : int }
 and cannot_parse = { slice : Asm_syntax.Token.slice; reason : Asm_syntax.Parse_lines.error_kind }
@@ -45,9 +46,10 @@ let pp_parse_error_kind ppf : parse_error_kind -> unit = function
   | `Unbalanced_brackets -> Fmt.string ppf "unbalanced brackets in operand"
   | `Bad_float_literal s -> Fmt.pf ppf "cannot parse floating-point literal %s" s
   | `Thumb_directive_out_of_scope -> Fmt.string ppf "Thumb is not in M1 scope"
+  | `Unknown_syntax s -> Fmt.pf ppf ".syntax %s: expected unified or divided" s
 
 let parse_error_kind_code : parse_error_kind -> string = function
-  | `Thumb_directive_out_of_scope -> "arm.directive"
+  | `Thumb_directive_out_of_scope | `Unknown_syntax _ -> "arm.directive"
   | `Unknown_register _ | `Unknown_shift _ | `Offset_too_wide | `Shift_amount_out_of_range _
   | `Shift_amount_too_wide | `Cannot_parse_operand _ | `Unbalanced_brackets | `Bad_float_literal _
     ->
@@ -459,9 +461,13 @@ let parse_operands ~mnemonic slices =
 
 let handle_directive ~name ~argument state =
   match name with
-  | ".syntax" -> Target_intf.Target.Handled { state = { state with syntax = argument }; emit = [] }
-  | ".arch" -> Target_intf.Target.Handled { state = { state with arch = argument }; emit = [] }
-  | ".fpu" -> Target_intf.Target.Handled { state = { state with fpu = argument }; emit = [] }
+  | ".syntax" -> (
+      match Arm_encode.Syntax.of_name (String.trim argument) with
+      | Some syntax -> Target_intf.Target.Handled { state = { state with syntax }; emit = [] }
+      | None -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unknown_syntax argument)))
+  | ".arch" | ".fpu" ->
+      (* Accepted for the compiler's preamble; the instruction set does not depend on them. *)
+      Target_intf.Target.Handled { state; emit = [] }
   | ".arm" -> Target_intf.Target.Handled { state = { state with thumb = false }; emit = [] }
   | ".thumb" -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ `Thumb_directive_out_of_scope)
   | ".eabi_attribute" ->

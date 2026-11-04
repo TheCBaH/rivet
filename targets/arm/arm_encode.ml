@@ -19,15 +19,14 @@ module C = Codec
 
    One table with aliases, rather than a table plus an alias map: [sp] and [r13]
    must produce the same encoding and the same diagnostic, and two structures
-   that have to agree eventually will not. [name] holds the canonical spelling,
-   which is what the disassembler prints; the alias is only an input spelling. *)
+   that have to agree eventually will not. A register is its number; {!name} is the
+   canonical spelling, which is what the disassembler prints; an alias is only an input
+   spelling. *)
 
 module Reg = struct
-  type t = { name : string; num : int }
+  type t = { num : int }
 
   let equal a b = a.num = b.num
-  let pp ppf r = Fmt.string ppf r.name
-  let all = List.init 16 (fun i -> { name = Printf.sprintf "r%d" i; num = i })
   let aliases = [ ("sp", 13); ("lr", 14); ("pc", 15); ("ip", 12); ("fp", 11); ("sl", 10) ]
 
   (* The canonical spelling of r13/r14/r15 is [sp]/[lr]/[pc]: that is what GNU
@@ -42,15 +41,18 @@ module Reg = struct
     | 15 -> "pc"
     | _ -> Printf.sprintf "r%d" n
 
-  let of_num n = { name = canonical_name (n land 15); num = n land 15 }
+  let name r = canonical_name r.num
+  let pp ppf r = Fmt.string ppf (name r)
+  let of_num n = { num = n land 15 }
 
-  let find name =
-    match List.assoc_opt name aliases with
+  let find spelling =
+    match List.assoc_opt spelling aliases with
     | Some n -> Some (of_num n)
-    | None -> (
-        match List.find_opt (fun r -> String.equal r.name name) all with
-        | Some r -> Some (of_num r.num)
-        | None -> None)
+    | None ->
+        List.find_map
+          (fun n ->
+            if String.equal (Printf.sprintf "r%d" n) spelling then Some (of_num n) else None)
+          (List.init 16 Fun.id)
 
   (* The two registers the procedure-call standard fixes, named because an AST
      written by hand says [Reg.lr] far more often than it says [r14]. *)
@@ -155,11 +157,11 @@ module Mem = struct
       match m.offset with
       | Imm v -> if Int64.equal v 0L then "" else Printf.sprintf ", #%Ld" v
       | Reg_offset { reg; negate; kind = 0; amount = 0 } ->
-          Printf.sprintf ", %s%s" (if negate then "-" else "") reg.Reg.name
+          Printf.sprintf ", %s%s" (if negate then "-" else "") (Reg.name reg)
       | Reg_offset { reg; negate; kind; amount } ->
           Printf.sprintf ", %s%s, %s #%d"
             (if negate then "-" else "")
-            reg.Reg.name (shift_name kind) amount
+            (Reg.name reg) (shift_name kind) amount
     in
     if m.pre then Fmt.pf ppf "[%a%s]%s" Reg.pp m.base off (if m.writeback then "!" else "")
     else Fmt.pf ppf "[%a]%s" Reg.pp m.base off
@@ -927,7 +929,8 @@ let x_kind_of_bits b = List.find_map (fun (n, _, b') -> if b = b' then Some n el
 
 (* [clz]/[rev]/[rev16 rd, rm]: [cond | hi | 1111 | Rd | 1111 | lo | Rm], one fixed pair of
    fields per operation. *)
-let rd_rm_ops = [ ("clz", 0x16L, 0b0001L); ("rev", 0x6BL, 0b0011L); ("rev16", 0x6BL, 0b1011L) ]
+let rd_rm_ops =
+  [ (Opcode.Clz, 0x16L, 0b0001L); (Opcode.Rev, 0x6BL, 0b0011L); (Opcode.Rev16, 0x6BL, 0b1011L) ]
 
 module Lowered = struct
   (* Every variant carries a condition, because every A32 word does. It is a
@@ -970,7 +973,7 @@ module Lowered = struct
             {!x_kinds}) - with an 8-bit immediate or a plain register offset, at the offset
             ([\[rn, off\]]) or post-indexed ([\[rn\], off]). Embedded-corpus evidence:
             the compiler's [short] and [signed char] accesses, and its halfword [memcpy] loop. *)
-    | Rd_rm of { cond : Cond.t; op : string; rd : Reg.t; rm : Reg.t }
+    | Rd_rm of { cond : Cond.t; op : Opcode.t; rd : Reg.t; rm : Reg.t }
         (** [clz]/[rev]/[rev16 rd, rm] ({!rd_rm_ops}; compiler-output evidence: the compiler's
             [__builtin_clz*] and [__builtin_bswap*]). *)
     | Sbfx of { cond : Cond.t; rd : Reg.t; rn : Reg.t; lsb : int; width : int }
@@ -1126,7 +1129,7 @@ module Lowered = struct
         let off =
           match offset with
           | X_imm v -> Printf.sprintf "#%Ld" v
-          | X_reg { rm; negate } -> (if negate then "-" else "") ^ rm.Reg.name
+          | X_reg { rm; negate } -> (if negate then "-" else "") ^ Reg.name rm
         in
         if post then
           Fmt.pf ppf "%s%s %a, [%a], %s" (x_name kind) (Cond.suffix cond) Reg.pp rt Reg.pp rn off
@@ -1134,7 +1137,7 @@ module Lowered = struct
     | Sbfx { cond; rd; rn; lsb; width } ->
         Fmt.pf ppf "sbfx%s %a, %a, #%d, #%d" (Cond.suffix cond) Reg.pp rd Reg.pp rn lsb width
     | Rd_rm { cond; op; rd; rm } ->
-        Fmt.pf ppf "%s%s %a, %a" op (Cond.suffix cond) Reg.pp rd Reg.pp rm
+        Fmt.pf ppf "%s%s %a, %a" (Opcode.name op) (Cond.suffix cond) Reg.pp rd Reg.pp rm
     | Ldst_reg { cond; load; byte; rt; rn; rm; negate; sh_kind; sh_amt } ->
         let sh =
           if sh_amt = 0 && sh_kind = 0 then ""
@@ -1390,9 +1393,17 @@ let fixup_role = function
   | Pcrel_b26 -> Asm_core.Lowered_ast.Branch
   | Pcrel_call -> Asm_core.Lowered_ast.Call
 
-type target_state = { syntax : string; arch : string; fpu : string; thumb : bool }
+(* The [.syntax] modes; the instructions this target takes read the same in both. *)
+module Syntax = struct
+  type t = Unified | Divided
 
-let default_state = { syntax = "divided"; arch = ""; fpu = ""; thumb = false }
+  let of_name = function "unified" -> Some Unified | "divided" -> Some Divided | _ -> None
+  let name = function Unified -> "unified" | Divided -> "divided"
+end
+
+type target_state = { syntax : Syntax.t; thumb : bool }
+
+let default_state = { syntax = Syntax.Divided; thumb = false }
 
 (* No separable components: this target's whole instruction set is the always-available base, so
    there is nothing to enable or disable and every configuration is the empty one. *)
@@ -1548,15 +1559,15 @@ let movw_alt ~top =
       ** reg_field "rd"
       ** fixup ~width:12 ~value_lsb:0 ~kind "imm")
 
-let rd_rm_alt name =
-  let _, hi, lo = List.find (fun (n, _, _) -> n = name) rd_rm_ops in
-  C.iso_fun ~name
+let rd_rm_alt rd_op =
+  let _, hi, lo = List.find (fun (o, _, _) -> o = rd_op) rd_rm_ops in
+  C.iso_fun ~name:(Opcode.name rd_op)
     ~encode:(function
-      | Lowered.Rd_rm { cond; op; rd; rm } when op = name ->
+      | Lowered.Rd_rm { cond; op; rd; rm } when op = rd_op ->
           Some (cond, ((), ((), (rd, ((), ((), rm))))))
       | _ -> None)
     ~decode:(fun (cond, ((), ((), (rd, ((), ((), rm)))))) ->
-      Some (Lowered.Rd_rm { cond; op = name; rd; rm }))
+      Some (Lowered.Rd_rm { cond; op = rd_op; rd; rm }))
     C.(
       cond_codec ** const ~width:8 hi ** const ~width:4 0xFL ** reg_field "rd"
       ** const ~width:4 0xFL ** const ~width:4 lo ** reg_field "rm")
@@ -1854,9 +1865,9 @@ let codec : (Lowered.t, fixup_kind) C.t =
              ** field ~width:5 "lsb" ** const ~width:3 0b101L ** reg_field "rn"));
       (* Verified against real arm-linux-gnueabihf-as 2.44: [clz r0, r1] -> [e16f0f11],
          [rev r2, r3] -> [e6bf2f33], [rev16 r4, r5] -> [e6bf4fb5], [clzne ip, lr] -> [116fcf1e]. *)
-      C.alt ~label:"clz" ~priority:47 (rd_rm_alt "clz");
-      C.alt ~label:"rev" ~priority:48 (rd_rm_alt "rev");
-      C.alt ~label:"rev16" ~priority:49 (rd_rm_alt "rev16");
+      C.alt ~label:"clz" ~priority:47 (rd_rm_alt Opcode.Clz);
+      C.alt ~label:"rev" ~priority:48 (rd_rm_alt Opcode.Rev);
+      C.alt ~label:"rev16" ~priority:49 (rd_rm_alt Opcode.Rev16);
       C.alt ~label:"ldst-reg" ~priority:6
         (C.iso_fun ~name:"ldst-reg"
            ~encode:(function
@@ -2553,7 +2564,7 @@ type error_kind =
   | `Udf_imm16_overflow
   | `Wrong_relocation_modifier of wrong_relocation_modifier
   | `Missing_relocation_modifier of missing_relocation_modifier
-  | `Imm16_overflow of string
+  | `Imm16_overflow of Opcode.t
   | `Codec of Codec.error
   | `Decode_short
   | `Decode_no_match
@@ -2572,9 +2583,9 @@ type error_kind =
   | `Vpush_needs_contiguous_registers
   | `Shift_amount_out_of_range ]
 
-and wrong_relocation_modifier = { opcode : string; want : string; got : string }
-and missing_relocation_modifier = { opcode : string; want : string }
-and no_modified_immediate_2op = { opcode : string; value : int64 }
+and wrong_relocation_modifier = { opcode : Opcode.t; want : string; got : string }
+and missing_relocation_modifier = { opcode : Opcode.t; want : string }
+and no_modified_immediate_2op = { opcode : Opcode.t; value : int64 }
 
 type error = error_kind Target_error.t
 
@@ -2584,17 +2595,18 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `Expected_register_or_shifted -> Fmt.string ppf "expected a register or a shifted register"
   | `No_modified_immediate v -> Fmt.pf ppf "#%Ld has no A32 modified-immediate representation" v
   | `No_modified_immediate_2op { opcode; value } ->
-      Fmt.pf ppf "%s #%Ld has no A32 modified-immediate representation; movw is M2" opcode value
+      Fmt.pf ppf "%s #%Ld has no A32 modified-immediate representation; movw is M2"
+        (Opcode.name opcode) value
   | `Writeback_out_of_scope -> Fmt.string ppf "writeback addressing is not in M1 scope"
   | `Offset_not_12bit -> Fmt.string ppf "offset does not fit the 12-bit immediate"
   | `Offset_not_8bit -> Fmt.string ppf "offset does not fit the 8-bit immediate"
   | `Bitfield_out_of_range -> Fmt.string ppf "bitfield lsb/width do not fit 32 bits"
   | `Udf_imm16_overflow -> Fmt.string ppf "udf immediate does not fit 16 bits"
   | `Wrong_relocation_modifier { opcode; want; got } ->
-      Fmt.pf ppf "%s takes #:%s:, not #:%s:" opcode want got
+      Fmt.pf ppf "%s takes #:%s:, not #:%s:" (Opcode.name opcode) want got
   | `Missing_relocation_modifier { opcode; want } ->
-      Fmt.pf ppf "%s needs a #:%s: operand" opcode want
-  | `Imm16_overflow op -> Fmt.pf ppf "%s immediate does not fit 16 bits" op
+      Fmt.pf ppf "%s needs a #:%s: operand" (Opcode.name opcode) want
+  | `Imm16_overflow op -> Fmt.pf ppf "%s immediate does not fit 16 bits" (Opcode.name op)
   | `Codec e -> Codec.pp_error ppf e
   | `Decode_short -> Fmt.string ppf "fewer than four bytes remain"
   | `Decode_no_match -> Fmt.string ppf "no form matches this word"
@@ -2720,7 +2732,7 @@ let lower_instruction state i =
         | Error e -> Error e
         | Ok imm ->
             if encode_modimm imm = None then
-              bad (`No_modified_immediate_2op { opcode = Opcode.name op; value = imm })
+              bad (`No_modified_immediate_2op { opcode = op; value = imm })
             else
               Ok
                 [
@@ -2856,7 +2868,7 @@ let lower_instruction state i =
               | None -> bad `Offset_not_8bit)
           | _ -> bad (`No_form (Opcode.name op)))
     | ((Opcode.Clz | Opcode.Rev | Opcode.Rev16) as op), [ Operand.Reg rd; Operand.Reg rm ] ->
-        Ok [ Lowered.Rd_rm { cond; op = Opcode.name op; rd; rm } ]
+        Ok [ Lowered.Rd_rm { cond; op; rd; rm } ]
     | Opcode.Sbfx, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm lsb; Operand.Imm width ] -> (
         match (Bigint.to_int_opt lsb, Bigint.to_int_opt width) with
         | Some lsb, Some width when lsb >= 0 && lsb < 32 && width >= 1 && lsb + width <= 32 ->
@@ -3100,14 +3112,14 @@ let lower_instruction state i =
                   };
               ]
         | Asm_core.Expr.Modifier (m, _) ->
-            bad (`Wrong_relocation_modifier { opcode = Opcode.name op; want; got = m })
-        | _ -> bad (`Missing_relocation_modifier { opcode = Opcode.name op; want }))
+            bad (`Wrong_relocation_modifier { opcode = op; want; got = m })
+        | _ -> bad (`Missing_relocation_modifier { opcode = op; want }))
     | ((Opcode.Movw | Opcode.Movt) as op), [ Operand.Reg rd; Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm ->
             if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
-              bad (`Imm16_overflow (Opcode.name op))
+              bad (`Imm16_overflow op)
             else
               Ok
                 [
@@ -3440,9 +3452,7 @@ let instruction_of_lowered ?(at = 0L) =
       in
       if ops = [] then None else Some (Instruction.mk ~cond op ops)
   | Lowered.Rd_rm { cond; op; rd; rm } ->
-      Option.map
-        (fun o -> Instruction.mk ~cond o [ Operand.Reg rd; Operand.Reg rm ])
-        (Opcode.of_mnemonic op)
+      Some (Instruction.mk ~cond op [ Operand.Reg rd; Operand.Reg rm ])
   | Lowered.Sbfx { cond; rd; rn; lsb; width } ->
       Some
         (Instruction.mk ~cond Opcode.Sbfx

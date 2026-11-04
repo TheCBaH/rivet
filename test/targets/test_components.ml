@@ -573,6 +573,7 @@ let%expect_test "RISC-V table: AMO ordering suffixes and Zacas register pairs" =
 let%expect_test "generated x86 table rows round-trip through the decoder" =
   let module Row = X86_family_encode.X86_table_row in
   let check (type d) target ~mode64 ~(reg : width:int -> int -> X86_family_encode.Reg.t)
+      ~(reg_of : cls:X86_family_encode.Rclass.t -> int -> X86_family_encode.Reg.t)
       ~(encode : Row.row -> X86_family_encode.Operand.t list -> string option)
       ~(decode : string -> (int, d) result) =
     let failures = ref [] and count = ref 0 in
@@ -584,7 +585,8 @@ let%expect_test "generated x86 table rows round-trip through the decoder" =
               (fun k (o : Row.operand) ->
                 match o with
                 | Reg { cls; _ } ->
-                    X86_family_encode.Operand.Reg (reg ~width:(Row.class_width cls) (k + 1))
+                    X86_family_encode.Operand.Reg
+                      (reg_of ~cls:(X86_family_encode.Rclass.of_row cls) (k + 1))
                 | Fixed_reg name ->
                     X86_family_encode.Operand.Reg
                       (match name with
@@ -606,7 +608,7 @@ let%expect_test "generated x86 table rows round-trip through the decoder" =
                     X86_family_encode.Operand.Mem
                       {
                         X86_family_encode.Mem.base = Some (reg ~width:(if mode64 then 64 else 32) 3);
-                        index = Some (reg ~width:(Row.class_width cls) 5);
+                        index = Some (reg_of ~cls:(X86_family_encode.Rclass.of_row cls) 5);
                         scale = 4;
                         disp = X86_family_encode.Disp.Const 16L;
                       })
@@ -623,15 +625,15 @@ let%expect_test "generated x86 table rows round-trip through the decoder" =
     Printf.printf "%s: %s\n" target
       (match !failures with [] -> "ok" | fs -> String.concat " " (List.rev fs))
   in
-  check "x86_32" ~mode64:false ~reg:X86_32_encode.reg_at ~encode:X86_32_encode.table_encode_row
-    ~decode:(fun b ->
+  check "x86_32" ~mode64:false ~reg:X86_32_encode.reg_at ~reg_of:X86_32_encode.reg_of
+    ~encode:X86_32_encode.table_encode_row ~decode:(fun b ->
       Result.map
         (fun (_, _, len) -> len)
         (X86_32_encode.decode_ungated
            { state = X86_32_encode.default_state; address = 0L }
            b ~pos:0));
-  check "x86_64" ~mode64:true ~reg:X86_64_encode.reg_at ~encode:X86_64_encode.table_encode_row
-    ~decode:(fun b ->
+  check "x86_64" ~mode64:true ~reg:X86_64_encode.reg_at ~reg_of:X86_64_encode.reg_of
+    ~encode:X86_64_encode.table_encode_row ~decode:(fun b ->
       Result.map
         (fun (_, _, len) -> len)
         (X86_64_encode.decode_ungated
