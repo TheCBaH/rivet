@@ -9,6 +9,7 @@
  (modules
   riscv_family_encode
   riscv_types
+  riscv_row
   riscv_ext
   riscv_ext_a
   riscv_ext_b
