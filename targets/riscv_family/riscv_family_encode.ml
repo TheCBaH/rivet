@@ -1389,6 +1389,64 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Some Rv32 when xlen <> 32 -> Some (`Rv32_only op)
     | _ -> None
 
+  (* A form without [~lower] lowers from its table entry: the operands read by the entry's
+     operand kinds, the fields by its encoding. [None] when the operands are not of those kinds or
+     the encoding is not a regular one; the remaining arms then see them. *)
+  let regular op ops =
+    match Riscv_ops.find op with
+    | Some { lower = false; shape; _ } when List.length shape = List.length ops -> (
+        let arg (k : Riscv_ops.Kind.t) o =
+          match (k, o) with
+          | (X | Creg), _ -> Option.map (fun r -> `R (Reg.X r)) (xreg o)
+          | F, _ -> Option.map (fun r -> `R (Reg.F r)) (freg o)
+          | (Imm | Sym), _ -> Option.map (fun e -> `E e) (expr_of o)
+          | (Mem | Cmem | Spmem), Operand.Mem m -> Option.map (fun b -> `M (b, m.offset)) (gbase m)
+          | _ -> None
+        in
+        let args = List.map2 arg shape ops in
+        if List.mem None args then None
+        else
+          let args = List.map Option.get args in
+          let regs = List.filter_map (function `R r -> Some r | _ -> None) args in
+          let x r = Reg.to_x r in
+          match (Desc.enc op, args, regs) with
+          | Some (Riscv_ops.Enc.R _), [ `R rd; `R rs2; `M (rs1, off) ], _ ->
+              (* AMOs and sc: the memory operand's offset is never written *)
+              Some
+                (if zero_offset off then Ok [ Lowered.R { op; rd; rs1; rs2 = Some rs2; rm = None } ]
+                 else wrong op)
+          | Some (Riscv_ops.Enc.R _), [ `R rd; `M (rs1, off) ], _ ->
+              Some
+                (if zero_offset off then Ok [ Lowered.R { op; rd; rs1; rs2 = None; rm = None } ]
+                 else wrong op)
+          | Some (Riscv_ops.Enc.R _), _, [ rd; rs1; rs2 ] ->
+              Some (Ok [ Lowered.R { op; rd; rs1; rs2 = Some rs2; rm = default_rm op } ])
+          | Some (Riscv_ops.Enc.R { rs2 = sel; _ }), _, [ rd; rs1 ] ->
+              (* a fixed selector in [rs2], or the sign-injection pseudos' repeated [rs1] *)
+              let rs2 = if Option.is_some sel then None else Some rs1 in
+              Some (Ok [ Lowered.R { op; rd; rs1; rs2; rm = default_rm op } ])
+          | Some (Riscv_ops.Enc.R4 _), _, [ rd; rs1; rs2; rs3 ] ->
+              Some (Ok [ Lowered.R4 { op; rd; rs1; rs2; rs3; rm = Rm.Dyn } ])
+          | Some (Riscv_ops.Enc.Unary { funct12; _ }), _, [ rd; rs1 ] ->
+              Some (Ok [ Lowered.I { op; rd; rs1; imm = const funct12 } ])
+          | ( Some (Riscv_ops.Enc.I _ | Riscv_ops.Enc.Shift _ | Riscv_ops.Enc.Shiftw _),
+              [ `R rd; `M (rs1, imm) ],
+              _ )
+          | ( Some (Riscv_ops.Enc.I _ | Riscv_ops.Enc.Shift _ | Riscv_ops.Enc.Shiftw _),
+              [ `R rd; `R rs1; `E imm ],
+              _ ) ->
+              Some (Ok [ Lowered.I { op; rd; rs1; imm } ])
+          | Some (Riscv_ops.Enc.S _), [ `R rs2; `M (rs1, imm) ], _ ->
+              Some (Ok [ Lowered.S { op; rs1; rs2; imm } ])
+          | Some (Riscv_ops.Enc.B _), [ `R rs1; `R rs2; `E target ], _ -> (
+              match (x rs1, x rs2) with
+              | Some rs1, Some rs2 -> Some (Ok [ Lowered.B { op; rs1; rs2; target } ])
+              | _ -> None)
+          | Some (Riscv_ops.Enc.U _), [ `R rd; `E imm ], _ ->
+              Option.map (fun rd -> Ok [ Lowered.U { op; rd; imm } ]) (x rd)
+          | _ -> None)
+    | _ -> None
+
   let lower_operands state i =
     let iop = i.Instruction.op in
     match (i.op, i.ops) with
@@ -1398,6 +1456,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Opcode.Table row, ops -> table_lower row ops
     | op, _ when Option.is_some (xlen_gate op) ->
         Error (diag ~pos:__POS__ (Option.get (xlen_gate op)))
+    | op, ops when Option.is_some (regular op ops) -> Option.get (regular op ops)
     | ( ( Opcode.C_addi | C_and | C_or | C_xor | C_sub | C_addw | C_subw | C_jr | C_jalr | C_mv
         | C_add | C_ebreak | C_lw | C_sw | C_lwsp | C_swsp | C_ld | C_sd | C_ldsp | C_sdsp | C_beqz
         | C_j | C_jal | C_bnez ),
@@ -1450,25 +1509,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         match (creg a, expr_of target) with
         | Some rs1, Some target -> Ok [ Lowered.Cb { op = iop; rs1; target } ]
         | _ -> wrong iop)
-    | op, [ a; b; Operand.Mem m ] when Option.is_some (amo3_desc op) -> (
-        (* [amoOP rd, rs2, (rs1)] / [scOP rd, rs2, (rs1)] - the memory
-           operand's offset is never syntax-visible (real GNU as rejects
-           `amoadd.w a0, a1, 4(a2)`: "illegal operands"), so requiring a
-           literal zero here is what enforces that shape instead of
-           silently discarding a real one. *)
-        match (gx a, gx b, gbase m, amo3_desc op) with
-        | Some rd, Some rs2, Some rs1, Some _ when zero_offset m.offset ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs2; rm = None } ]
-        | _ -> wrong iop)
-    | op, [ a; Operand.Mem m ] when Option.is_some (lr_desc op) -> (
-        match (gx a, gbase m, lr_desc op) with
-        | Some rd, Some rs1, Some _ when zero_offset m.offset ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = None } ]
-        | _ -> wrong iop)
     | op, [ a; b; c ] when Option.is_some (r_desc op) -> (
         match (gx a, gx b, gx c, r_desc op) with
-        | Some rd, Some rs1, Some rs2, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs2; rm = None } ]
         | Some rd, Some rs1, None, _ -> (
             (* A third register-typed operand is the R-type form above; a third
                immediate-typed one is GAS's I-type alias, per imm_alias. An op
@@ -1654,19 +1696,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                   ]
             | _ -> wrong iop)
         | _ -> wrong iop)
-    | op, [ a; b; c ] when Option.is_some (i_desc op) -> (
-        match (gx a, gx b, expr_of c, i_desc op) with
-        | Some rd, Some rs1, Some imm, Some _ -> Ok [ Lowered.I { op = iop; rd; rs1; imm } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (unary_imm_desc op) -> (
-        match (gx a, gx b, unary_imm_desc op) with
-        | Some rd, Some rs1, Some (_, _, funct12) ->
-            Ok [ Lowered.I { op = iop; rd; rs1; imm = const funct12 } ]
-        | _ -> wrong iop)
-    | op, [ a; Operand.Mem m ] when Option.is_some (load_desc op) -> (
-        match (gx a, gbase m, load_desc op) with
-        | Some rd, Some rs1, Some _ -> Ok [ Lowered.I { op = iop; rd; rs1; imm = m.offset } ]
-        | _ -> wrong iop)
     | Opcode.Ld, [ a; (Operand.Sym _ as target) ] -> (
         (* GAS's own `ld rd, symbol` pseudo, a literal-pool load: auipc rd,
            %pcrel_hi(symbol); ld rd, %pcrel_lo(...)(rd) - the same anchored
@@ -1689,82 +1718,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         match (gf a, expr_of target, xreg b, f_load_desc op) with
         | Some rd, Some target, Some tmp, Some funct3 ->
             Ok [ Lowered.Pair { op = iop; rd; tmp; target; kind = Fload funct3 } ]
-        | _ -> wrong iop)
-    | op, [ a; Operand.Mem m ] when Option.is_some (store_desc op) -> (
-        match (gx a, gbase m, store_desc op) with
-        | Some rs2, Some rs1, Some _ -> Ok [ Lowered.S { op = iop; rs1; rs2; imm = m.offset } ]
-        | _ -> wrong iop)
-    | op, [ a; Operand.Mem m ] when Option.is_some (f_load_desc op) -> (
-        match (gf a, gbase m, f_load_desc op) with
-        | Some rd, Some rs1, Some _ -> Ok [ Lowered.I { op = iop; rd; rs1; imm = m.offset } ]
-        | _ -> wrong iop)
-    | op, [ a; Operand.Mem m ] when Option.is_some (f_store_desc op) -> (
-        match (gf a, gbase m, f_store_desc op) with
-        | Some rs2, Some rs1, Some _ -> Ok [ Lowered.S { op = iop; rs1; rs2; imm = m.offset } ]
-        | _ -> wrong iop)
-    | op, [ a; b; c ] when Option.is_some (f_arith_desc op) -> (
-        match (gf a, gf b, gf c, f_arith_desc op) with
-        | Some rd, Some rs1, Some rs2, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs2; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b; c ] when Option.is_some (f_sgnj3_desc op) -> (
-        match (gf a, gf b, gf c, f_sgnj3_desc op) with
-        | Some rd, Some rs1, Some rs2, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs2; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b; c ] when Option.is_some (f_minmax_desc op) -> (
-        match (gf a, gf b, gf c, f_minmax_desc op) with
-        | Some rd, Some rs1, Some rs2, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs2; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (f_sgnj_desc op) -> (
-        match (gf a, gf b, f_sgnj_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs1; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (f_sqrt_desc op) -> (
-        match (gf a, gf b, f_sqrt_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (f_class_desc op) -> (
-        match (gx a, gf b, f_class_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (f_mv_x_w_desc op) -> (
-        match (gx a, gf b, f_mv_x_w_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b; c; d ] when Option.is_some (f_fma_desc op) -> (
-        match (gf a, gf b, gf c, gf d, f_fma_desc op) with
-        | Some rd, Some rs1, Some rs2, Some rs3, Some _ ->
-            Ok [ Lowered.R4 { op = iop; rd; rs1; rs2; rs3; rm = Rm.Dyn } ]
-        | _ -> wrong iop)
-    | op, [ a; b; c ] when Option.is_some (f_cmp_desc op) -> (
-        match (gx a, gf b, gf c, f_cmp_desc op) with
-        | Some rd, Some rs1, Some rs2, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = Some rs2; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (f_to_i_desc op) -> (
-        match (gx a, gf b, f_to_i_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (i_to_f_desc op) -> (
-        match (gf a, gx b, i_to_f_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b ] when Option.is_some (f_to_f_desc op) -> (
-        match (gf a, gf b, f_to_f_desc op) with
-        | Some rd, Some rs1, Some _ ->
-            Ok [ Lowered.R { op = iop; rd; rs1; rs2 = None; rm = default_rm op } ]
-        | _ -> wrong iop)
-    | op, [ a; b; target ] when Option.is_some (branch_desc op) -> (
-        match (xreg a, xreg b, expr_of target, branch_desc op) with
-        | Some rs1, Some rs2, Some target, Some _ -> Ok [ Lowered.B { op = iop; rs1; rs2; target } ]
         | _ -> wrong iop)
     | (Opcode.Bgtu | Bleu), [ a; b; target ] -> (
         (* [bgtu rs,rt,label]/[bleu rs,rt,label] - GAS's own greater-than/
@@ -1811,10 +1764,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | Some r, Some target, Some _ ->
             let rs1, rs2 = if reg_in_rs1 then (r, Xreg.zero) else (Xreg.zero, r) in
             Ok [ Lowered.B { op = real_op; rs1; rs2; target } ]
-        | _ -> wrong iop)
-    | (Opcode.Lui | Auipc), [ a; imm ] -> (
-        match (xreg a, expr_of imm) with
-        | Some rd, Some imm -> Ok [ Lowered.U { op = iop; rd; imm } ]
         | _ -> wrong iop)
     | Opcode.Jal, [ a; target ] -> (
         match (xreg a, expr_of target) with
