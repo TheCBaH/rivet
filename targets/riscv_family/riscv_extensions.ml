@@ -96,7 +96,7 @@ let standard_components =
   ]
 
 let validated ~xlen components rows =
-  { Validated.xlen; components; rows; ids = Array.mapi Riscv_row.mint rows }
+  { Validated.xlen; components; rows; ids = Array.mapi (Riscv_row.mint ~xlen) rows }
 
 let standard ~xlen =
   validated ~xlen

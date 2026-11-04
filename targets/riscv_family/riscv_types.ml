@@ -227,6 +227,8 @@ module Operand = struct
     | Mem m -> Mem.pp ppf m
 end
 
+module Cls = Riscv_cls
+
 (* A table row's identity, minted only where an instance's rows are built. *)
 module Row : sig
   type t = Riscv_row.t
@@ -236,6 +238,7 @@ module Row : sig
   val mnemonic : t -> string
   val feature : t -> string
   val source : t -> string
+  val cls : t -> Riscv_cls.t
   val equal : t -> t -> bool
   val compare : t -> t -> int
 end =
