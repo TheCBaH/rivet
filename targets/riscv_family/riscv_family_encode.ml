@@ -3178,7 +3178,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let table_decode ?half ?legal w =
     match table_matches ?half ?legal ~first_only:true w with m :: _ -> Some m | [] -> None
 
-  let decode_hand_written ctx bytes ~pos =
+  let decode_arms ctx bytes ~pos =
     if String.length bytes - pos < 2 then Error (diag ~pos:__POS__ `Decode_short)
     else if Char.code bytes.[pos] land 3 <> 3 then
       let half = read_half bytes pos in
@@ -3594,6 +3594,89 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           | Some (i, f) -> Ok (i, f, 4)
           | None -> Error (diag ~pos:__POS__ `Decode_no_match))
       | Some (i, f) -> Ok (i, f, 4)
+
+  (* The hand-written integer forms the arms above have no reading of (Zbs, Zbc, Zbkb, Zbkx, Zkn,
+     Zks, Zicond), read back from their own encodings: each opcode's word with its operand fields
+     zero, the fields its operands come from, and a re-encoding check. Tried only on a word nothing
+     else reads, so no other reading changes. *)
+  module By_desc = struct
+    type field = Reg of int | Imm of int * int
+    type entry = { op : Opcode.t; fields : field list; mask : int64; match_ : int64 }
+
+    let fields op =
+      let r = [ Reg 7; Reg 15 ] in
+      let int_opcode o = o = 0x33 || o = 0x3b || o = 0x13 || o = 0x1b in
+      if Option.is_some (Desc.rbs op) then Some (r @ [ Reg 20; Imm (30, 2) ])
+      else if op = Opcode.Aes64ks1i then Some (r @ [ Imm (20, 4) ])
+      else if Option.is_some (unary_imm_desc op) then Some r
+      else
+        match (Desc.i op, Desc.r op) with
+        | Some { opcode; shamt_bits = Some w; _ }, _ when int_opcode opcode ->
+            Some (r @ [ Imm (20, if w = 64 then 6 else 5) ])
+        | _, Some { opcode; rs2 = None; _ } when int_opcode opcode -> Some (r @ [ Reg 20 ])
+        | _ -> None
+
+    let operand w = function
+      | Reg lsb -> reg (Int64.to_int (bits w lsb 5))
+      | Imm (lsb, width) -> imm (bits w lsb width)
+
+    let word_of op ops =
+      match lower_operands default_state (instruction op ops) with
+      | Ok [ l ] -> (
+          match encode_ungated l with
+          | Ok (`Fixed f) when String.length f.bytes = 4 -> Some (read_word f.bytes 0)
+          | _ -> None)
+      | _ -> None
+
+    let unread w =
+      Result.is_error (decode_arms { state = default_state; address = 0L } (bytes_of_word w) ~pos:0)
+
+    (* Opcodes this XLEN does not lower, and those the arms read, have no entry. *)
+    let entries =
+      List.filter_map
+        (fun op ->
+          Option.bind (fields op) (fun fields ->
+              let free =
+                List.fold_left
+                  (fun m f ->
+                    let lsb, width = match f with Reg l -> (l, 5) | Imm (l, w) -> (l, w) in
+                    Int64.logor m (Int64.shift_left (Int64.sub (Int64.shift_left 1L width) 1L) lsb))
+                  0L fields
+              in
+              Option.bind
+                (word_of op (List.map (operand 0L) fields))
+                (fun match_ ->
+                  if unread match_ then
+                    Some { op; fields; mask = Int64.logand 0xffffffffL (Int64.lognot free); match_ }
+                  else None)))
+        Opcode.all
+
+    let index =
+      let t = Hashtbl.create 256 in
+      List.iter
+        (fun e -> if not (Hashtbl.mem t (e.mask, e.match_)) then Hashtbl.add t (e.mask, e.match_) e)
+        entries;
+      t
+
+    let masks = List.sort_uniq Int64.compare (List.map (fun e -> e.mask) entries)
+
+    let decode w =
+      List.find_map
+        (fun mask ->
+          Option.bind
+            (Hashtbl.find_opt index (mask, Int64.logand w mask))
+            (fun e ->
+              let ops = List.map (operand w) e.fields in
+              if word_of e.op ops = Some w then Some (instruction e.op ops, Opcode.name e.op)
+              else None))
+        masks
+  end
+
+  let decode_hand_written ctx bytes ~pos =
+    match decode_arms ctx bytes ~pos with
+    | Error _ as e when String.length bytes - pos >= 4 && Char.code bytes.[pos] land 3 = 3 -> (
+        match By_desc.decode (read_word bytes pos) with Some (i, f) -> Ok (i, f, 4) | None -> e)
+    | r -> r
 
   let table_fallback ?legal bytes ~pos =
     if String.length bytes - pos < 2 then None

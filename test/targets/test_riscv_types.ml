@@ -60,8 +60,8 @@ let%expect_test "an FP instruction given integer registers is refused" =
 (* {1 Every hand-written opcode}
 
    Each opcode of [Opcode.all] gets the first operand list, shortest first, that it lowers to a
-   single form; that form must encode, decode and re-encode to the same bytes. The decoder has
-   no reading of some hand-written forms yet; they are listed. *)
+   single form; that form must encode, decode and re-encode to the same bytes. The auipc pairs
+   decode only through the codec; they are listed. *)
 
 module type ENC = module type of Riscv64_encode
 
@@ -156,8 +156,75 @@ let%expect_test "every sampled opcode round-trips through its encoding" =
     {|
     opcodes 304, sampled 303
     unsampled: la
-    not decoded: bclr bext binv bset bclri bexti binvi bseti clmul clmulh clmulr czero.eqz czero.nez sm3p0 sm3p1 sm4ed sm4ks xperm4 xperm8 sha256sum0 sha256sum1 sha256sig0 sha256sig1 sha512sum0 sha512sum1 sha512sig0 sha512sig1 sha512sum0r sha512sum1r sha512sig0l sha512sig1l sha512sig0h sha512sig1h aes64ds aes64dsm aes64es aes64esm aes64ks2 aes64im aes64ks1i aes32dsi aes32dsmi aes32esi aes32esmi call tail lla
+    not decoded: call tail lla
     differs: |}]
+
+(* The hand-written opcodes the decoder had no reading of before it read them back from their own
+   encodings: each round-trips on every XLEN that has it. *)
+let%expect_test "formerly undecodable opcodes round-trip on both XLENs" =
+  let names =
+    "bclr bext binv bset bclri bexti binvi bseti clmul clmulh clmulr czero.eqz czero.nez sm3p0 \
+     sm3p1 sm4ed sm4ks xperm4 xperm8 sha256sum0 sha256sum1 sha256sig0 sha256sig1 sha512sum0 \
+     sha512sum1 sha512sig0 sha512sig1 sha512sum0r sha512sum1r sha512sig0l sha512sig1l sha512sig0h \
+     sha512sig1h aes64ds aes64dsm aes64es aes64esm aes64ks2 aes64im aes64ks1i aes32dsi aes32dsmi \
+     aes32esi aes32esmi"
+  in
+  let names = List.filter (( <> ) "") (String.split_on_char ' ' names) in
+  let run label samples reencoded name =
+    let back =
+      List.filter_map
+        (fun (op, s) ->
+          if List.mem (name op) names then
+            Option.map (fun (_, bytes) -> (name op, bytes, reencoded bytes)) s
+          else None)
+        samples
+    in
+    let failed = List.filter_map (fun (n, b, r) -> if r = Ok b then None else Some n) back in
+    Printf.printf "%s: %d of %d sampled, failed [%s]\n" label (List.length back) (List.length names)
+      (String.concat " " failed)
+  in
+  run "riscv32" S32.samples S32.reencoded Riscv32_encode.Opcode.name;
+  run "riscv64" S64.samples S64.reencoded Riscv64_encode.Opcode.name;
+  [%expect {|
+    riscv32: 33 of 44 sampled, failed []
+    riscv64: 34 of 44 sampled, failed [] |}]
+
+(* The index only reads words no standard row matches, so no row's reading changes. *)
+let%expect_test "no hand-written index entry overlaps a standard row" =
+  let check (type r e) label (entries : e list) (entry : e -> string * int64 * int64)
+      (rows : r list) (row : r -> string * int64 * int64) =
+    let overlaps =
+      List.concat_map
+        (fun e ->
+          let n, m, v = entry e in
+          List.filter_map
+            (fun r ->
+              let rn, rm, rv = row r in
+              if Int64.(equal (logand (logxor v rv) (logand m rm)) 0L) then Some (n ^ "/" ^ rn)
+              else None)
+            rows)
+        entries
+    in
+    Printf.printf "%s: %d entries, overlaps [%s]\n" label (List.length entries)
+      (String.concat " " overlaps)
+  in
+  let module E32 = Riscv32_encode in
+  let module E64 = Riscv64_encode in
+  check "riscv32" E32.By_desc.entries
+    (fun e -> (E32.Opcode.name e.op, e.mask, e.match_))
+    E32.Row.all
+    (fun r ->
+      let x = E32.Row.row r in
+      (x.mnemonic, x.mask, x.match_));
+  check "riscv64" E64.By_desc.entries
+    (fun e -> (E64.Opcode.name e.op, e.mask, e.match_))
+    E64.Row.all
+    (fun r ->
+      let x = E64.Row.row r in
+      (x.mnemonic, x.mask, x.match_));
+  [%expect {|
+    riscv32: 33 entries, overlaps []
+    riscv64: 34 entries, overlaps [] |}]
 
 (* {1 Rounding modes}
 
