@@ -40,6 +40,11 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   module Mem = Riscv_types.Mem
   module Operand = Riscv_types.Operand
   module Rm = Riscv_types.Rm
+  module Xreg = Riscv_types.Xreg
+  module Freg = Riscv_types.Freg
+  module Vreg = Riscv_types.Vreg
+  module Creg = Riscv_types.Creg
+  module Cfreg = Riscv_types.Cfreg
 
   module Opcode = struct
     include Riscv_types.Opcode
@@ -812,19 +817,19 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           opcode : int;
           funct3 : int;
           funct7 : int;
-          rd : int;
-          rs1 : int;
-          rs2 : int;
+          rd : Reg.t;
+          rs1 : Reg.t;
+          rs2 : Reg.t;
         }
       | R4 of {
           op : Opcode.t;
           opcode : int;
           fmt : int;
           funct3 : int;
-          rd : int;
-          rs1 : int;
-          rs2 : int;
-          rs3 : int;
+          rd : Reg.t;
+          rs1 : Reg.t;
+          rs2 : Reg.t;
+          rs3 : Reg.t;
         }
           (** [fmadd]/[fmsub]/[fnmsub]/[fnmadd] - RISC-V's only R4-type instructions,
               with a fourth real register operand ([rs3]) {!R} has no field for; see
@@ -835,16 +840,16 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           funct3 : int;
           funct_hi : int;
           shamt_bits : int option;
-          rd : int;
-          rs1 : int;
+          rd : Reg.t;
+          rs1 : Reg.t;
           imm : Asm_core.Expr.t;
         }
       | S of {
           op : Opcode.t;
           opcode : int;
           funct3 : int;
-          rs1 : int;
-          rs2 : int;
+          rs1 : Reg.t;
+          rs2 : Reg.t;
           imm : Asm_core.Expr.t;
         }
           (** [opcode] defaults to STORE's [0x23] for every integer store; the F/D extension's
@@ -853,44 +858,50 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
               S-type word - the split 12-bit immediate, [rs1]/[rs2] field positions - is
               identical between the two opcodes, so this is one field rather than a second
               constructor. *)
-      | B of { op : Opcode.t; funct3 : int; rs1 : int; rs2 : int; target : Asm_core.Expr.t }
-      | U of { op : Opcode.t; opcode : int; rd : int; imm : Asm_core.Expr.t }
-      | J of { rd : int; target : Asm_core.Expr.t }
-      | Pair of { op : Opcode.t; rd : int; tmp : int; target : Asm_core.Expr.t; kind : pair_kind }
+      | B of { op : Opcode.t; funct3 : int; rs1 : Xreg.t; rs2 : Xreg.t; target : Asm_core.Expr.t }
+      | U of { op : Opcode.t; opcode : int; rd : Xreg.t; imm : Asm_core.Expr.t }
+      | J of { rd : Xreg.t; target : Asm_core.Expr.t }
+      | Pair of {
+          op : Opcode.t;
+          rd : Reg.t;
+          tmp : Xreg.t;
+          target : Asm_core.Expr.t;
+          kind : pair_kind;
+        }
       | Fixed of { op : Opcode.t; word : int64 }
       | Fixed_half of { op : Opcode.t; word : int64 }
           (** a 16-bit compressed word with no fixup: a generated table row *)
-      | Caddi of { rd : int; imm : Asm_core.Expr.t }
-      | Cr2 of { op : Opcode.t; funct6 : int; funct2 : int; rd_rs1 : int; rs2 : int }
+      | Caddi of { rd : Xreg.t; imm : Asm_core.Expr.t }
+      | Cr2 of { op : Opcode.t; funct6 : int; funct2 : int; rd_rs1 : Creg.t; rs2 : Creg.t }
           (** the CA-format compressed register-register ops ([c.and]/[c.or]/[c.xor]/[c.sub]/
-              [c.addw]/[c.subw]): [rd_rs1]/[rs2] are real register numbers (8..15), not the
-              3-bit compressed field - {!word_cr2} subtracts 8 when packing. *)
-      | Cr of { op : Opcode.t; funct4 : int; rd_rs1 : int; rs2 : int }
+              [c.addw]/[c.subw]): [rd_rs1]/[rs2] are the registers (x8..x15); {!Creg.field} gives
+              the 3-bit compressed field. *)
+      | Cr of { op : Opcode.t; funct4 : int; rd_rs1 : Xreg.t; rs2 : Xreg.t }
           (** the CR-format compressed register-register cluster ([c.jr]/[c.jalr]/[c.mv]/
               [c.add]/[c.ebreak]): unlike {!Cr2}, [rd_rs1]/[rs2] range over the full 0..31 GPR
               space (no compressed-subset restriction, no -8 bias) - [c.jr]/[c.jalr] set
               [rs2 = 0], [c.ebreak] sets both fields to 0 with [funct4 = 9]. *)
-      | Cl of { op : Opcode.t; funct3 : int; rd : int; rs1 : int; imm : Asm_core.Expr.t }
+      | Cl of { op : Opcode.t; funct3 : int; rd : Creg.t; rs1 : Creg.t; imm : Asm_core.Expr.t }
           (** CL-format compressed loads ([c.lw]/[c.ld]): [rd]/[rs1] are real register
               numbers (8..15) for the compressed 3-bit fields, like {!Cr2} - the packer
               subtracts 8. [c.lw]'s 5 raw offset bits scatter as [inst5|hi3|inst6] (RISC-V's
               own word-offset swap); [c.ld]'s instead concatenate straight as [lo2|hi3]
               (doubleword alignment leaves no swap to do) - {!word_c_lw}/{!word_c_ld} differ
               only in that shape, selected by [name] at the {!encode_ungated} call site. *)
-      | Cs of { op : Opcode.t; funct3 : int; rs1 : int; rs2 : int; imm : Asm_core.Expr.t }
+      | Cs of { op : Opcode.t; funct3 : int; rs1 : Creg.t; rs2 : Creg.t; imm : Asm_core.Expr.t }
           (** CS-format compressed stores ([c.sw]/[c.sd]): the store-side sibling of {!Cl}. *)
-      | Clsp of { op : Opcode.t; funct3 : int; rd : int; imm : Asm_core.Expr.t }
+      | Clsp of { op : Opcode.t; funct3 : int; rd : Xreg.t; imm : Asm_core.Expr.t }
           (** CI-format compressed SP-relative loads ([c.lwsp]/[c.ldsp]): the base register
               is architecturally fixed to [x2] (sp) - CI-format has no rs1 field at all, so
               only [rd] and [imm] are ever assembled/decoded; confirmed against real
               riscv64-linux-gnu-as ([c.lwsp a0,8(x1)] is rejected as illegal operands). *)
-      | Css of { op : Opcode.t; funct3 : int; rs2 : int; imm : Asm_core.Expr.t }
+      | Css of { op : Opcode.t; funct3 : int; rs2 : Xreg.t; imm : Asm_core.Expr.t }
           (** CSS-format compressed SP-relative stores ([c.swsp]/[c.sdsp]): the store-side
               sibling of {!Clsp}, same fixed-[x2]-base story. *)
       | Cj of { op : Opcode.t; funct3 : int; target : Asm_core.Expr.t }
           (** CJ-format compressed jumps ([c.j], RV32's [c.jal]): a 12-bit signed, 2-byte-aligned
               PC-relative target resolved via a {!fixup_kind.Jump12c} fixup. *)
-      | Cb of { op : Opcode.t; funct3 : int; rs1 : int; target : Asm_core.Expr.t }
+      | Cb of { op : Opcode.t; funct3 : int; rs1 : Creg.t; target : Asm_core.Expr.t }
           (** CB-format compressed conditional branches ([c.beqz]/[c.bnez]): [rs1] is a real
               register number (8..15) for the compressed 3-bit field, like {!Cl}. [target] is a
               PC-relative branch target resolved via a {!fixup_kind.Branch9c} fixup, the
@@ -898,7 +909,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
               instead of [beq]/[bne]'s 13-bit one. *)
 
     let pp_expr ppf e = Asm_core.Expr.pp ppf e
-    let reg_name isf n = Printf.sprintf "%s%d" (if isf then "f" else "x") n
 
     let rm_suffix rm funct3 =
       match rm with
@@ -918,43 +928,44 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
 
     let pp ppf = function
       | R x -> (
+          let name = Opcode.name x.op in
           match f_shape x.op with
-          | Some { rd_f; rs1_f; rs2_f = _; arity = 2; rm } ->
-              Fmt.pf ppf "%s %s, %s%s" (Opcode.name x.op) (reg_name rd_f x.rd)
-                (reg_name rs1_f x.rs1) (rm_suffix rm x.funct3)
-          | Some { rd_f; rs1_f; rs2_f; arity = _; rm } ->
-              Fmt.pf ppf "%s %s, %s, %s%s" (Opcode.name x.op) (reg_name rd_f x.rd)
-                (reg_name rs1_f x.rs1) (reg_name rs2_f x.rs2) (rm_suffix rm x.funct3)
-          | None -> Fmt.pf ppf "%s x%d, x%d, x%d" (Opcode.name x.op) x.rd x.rs1 x.rs2)
+          | Some { arity = 2; rm; _ } ->
+              Fmt.pf ppf "%s %a, %a%s" name Reg.pp x.rd Reg.pp x.rs1 (rm_suffix rm x.funct3)
+          | Some { rm; _ } ->
+              Fmt.pf ppf "%s %a, %a, %a%s" name Reg.pp x.rd Reg.pp x.rs1 Reg.pp x.rs2
+                (rm_suffix rm x.funct3)
+          | None -> Fmt.pf ppf "%s %a, %a, %a" name Reg.pp x.rd Reg.pp x.rs1 Reg.pp x.rs2)
       | R4 x ->
-          Fmt.pf ppf "%s f%d, f%d, f%d, f%d%s" (Opcode.name x.op) x.rd x.rs1 x.rs2 x.rs3
+          Fmt.pf ppf "%s %a, %a, %a, %a%s" (Opcode.name x.op) Reg.pp x.rd Reg.pp x.rs1 Reg.pp x.rs2
+            Reg.pp x.rs3
             (rm_suffix (Some Rm.Dyn) x.funct3)
-      | I x when x.opcode = 0x03 || x.opcode = 0x67 ->
-          Fmt.pf ppf "%s x%d, %a(x%d)" (Opcode.name x.op) x.rd pp_expr x.imm x.rs1
-      | I x when x.opcode = 0x07 ->
-          Fmt.pf ppf "%s f%d, %a(x%d)" (Opcode.name x.op) x.rd pp_expr x.imm x.rs1
-      | I x -> Fmt.pf ppf "%s x%d, x%d, %a" (Opcode.name x.op) x.rd x.rs1 pp_expr x.imm
-      | S x when x.opcode = 0x27 ->
-          Fmt.pf ppf "%s f%d, %a(x%d)" (Opcode.name x.op) x.rs2 pp_expr x.imm x.rs1
-      | S x -> Fmt.pf ppf "%s x%d, %a(x%d)" (Opcode.name x.op) x.rs2 pp_expr x.imm x.rs1
-      | B x -> Fmt.pf ppf "%s x%d, x%d, %a" (Opcode.name x.op) x.rs1 x.rs2 pp_expr x.target
-      | U x -> Fmt.pf ppf "%s x%d, %a" (Opcode.name x.op) x.rd pp_expr x.imm
-      | J x -> Fmt.pf ppf "jal x%d, %a" x.rd pp_expr x.target
+      | I x when x.opcode = 0x03 || x.opcode = 0x07 || x.opcode = 0x67 ->
+          Fmt.pf ppf "%s %a, %a(%a)" (Opcode.name x.op) Reg.pp x.rd pp_expr x.imm Reg.pp x.rs1
+      | I x -> Fmt.pf ppf "%s %a, %a, %a" (Opcode.name x.op) Reg.pp x.rd Reg.pp x.rs1 pp_expr x.imm
+      | S x -> Fmt.pf ppf "%s %a, %a(%a)" (Opcode.name x.op) Reg.pp x.rs2 pp_expr x.imm Reg.pp x.rs1
+      | B x ->
+          Fmt.pf ppf "%s %a, %a, %a" (Opcode.name x.op) Xreg.pp x.rs1 Xreg.pp x.rs2 pp_expr x.target
+      | U x -> Fmt.pf ppf "%s %a, %a" (Opcode.name x.op) Xreg.pp x.rd pp_expr x.imm
+      | J x -> Fmt.pf ppf "jal %a, %a" Xreg.pp x.rd pp_expr x.target
       | Pair ({ kind = Fload _; _ } as x) ->
-          Fmt.pf ppf "%s f%d, %a, x%d" (Opcode.name x.op) x.rd pp_expr x.target x.tmp
-      | Pair x -> Fmt.pf ppf "%s x%d, %a" (Opcode.name x.op) x.rd pp_expr x.target
+          Fmt.pf ppf "%s %a, %a, %a" (Opcode.name x.op) Reg.pp x.rd pp_expr x.target Xreg.pp x.tmp
+      | Pair x -> Fmt.pf ppf "%s %a, %a" (Opcode.name x.op) Reg.pp x.rd pp_expr x.target
       | Fixed x -> Fmt.string ppf (fixed_name x.op x.word)
       | Fixed_half x -> Fmt.string ppf (Opcode.name x.op)
-      | Caddi x -> Fmt.pf ppf "c.addi x%d, %a" x.rd pp_expr x.imm
-      | Cr2 x -> Fmt.pf ppf "%s x%d, x%d" (Opcode.name x.op) x.rd_rs1 x.rs2
+      | Caddi x -> Fmt.pf ppf "c.addi %a, %a" Xreg.pp x.rd pp_expr x.imm
+      | Cr2 x -> Fmt.pf ppf "%s %a, %a" (Opcode.name x.op) Creg.pp x.rd_rs1 Creg.pp x.rs2
       | Cr ({ op = C_ebreak; _ } as x) -> Fmt.string ppf (Opcode.name x.op)
-      | Cr ({ op = C_jr | C_jalr; _ } as x) -> Fmt.pf ppf "%s x%d" (Opcode.name x.op) x.rd_rs1
-      | Cr x -> Fmt.pf ppf "%s x%d, x%d" (Opcode.name x.op) x.rd_rs1 x.rs2
-      | Cl x -> Fmt.pf ppf "%s x%d, %a(x%d)" (Opcode.name x.op) x.rd pp_expr x.imm x.rs1
-      | Cs x -> Fmt.pf ppf "%s x%d, %a(x%d)" (Opcode.name x.op) x.rs2 pp_expr x.imm x.rs1
-      | Clsp x -> Fmt.pf ppf "%s x%d, %a(x2)" (Opcode.name x.op) x.rd pp_expr x.imm
-      | Css x -> Fmt.pf ppf "%s x%d, %a(x2)" (Opcode.name x.op) x.rs2 pp_expr x.imm
-      | Cb x -> Fmt.pf ppf "%s x%d, %a" (Opcode.name x.op) x.rs1 pp_expr x.target
+      | Cr ({ op = C_jr | C_jalr; _ } as x) ->
+          Fmt.pf ppf "%s %a" (Opcode.name x.op) Xreg.pp x.rd_rs1
+      | Cr x -> Fmt.pf ppf "%s %a, %a" (Opcode.name x.op) Xreg.pp x.rd_rs1 Xreg.pp x.rs2
+      | Cl x ->
+          Fmt.pf ppf "%s %a, %a(%a)" (Opcode.name x.op) Creg.pp x.rd pp_expr x.imm Creg.pp x.rs1
+      | Cs x ->
+          Fmt.pf ppf "%s %a, %a(%a)" (Opcode.name x.op) Creg.pp x.rs2 pp_expr x.imm Creg.pp x.rs1
+      | Clsp x -> Fmt.pf ppf "%s %a, %a(x2)" (Opcode.name x.op) Xreg.pp x.rd pp_expr x.imm
+      | Css x -> Fmt.pf ppf "%s %a, %a(x2)" (Opcode.name x.op) Xreg.pp x.rs2 pp_expr x.imm
+      | Cb x -> Fmt.pf ppf "%s %a, %a" (Opcode.name x.op) Creg.pp x.rs1 pp_expr x.target
       | Cj x -> Fmt.pf ppf "%s %a" (Opcode.name x.op) pp_expr x.target
 
     let equal (a : t) b = a = b
@@ -1118,9 +1129,23 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Operand.Sym e -> Some e
     | _ -> None
 
-  let xreg = function Operand.Reg r -> Reg.x r | _ -> None
-  let freg = function Operand.Reg (Reg.F n) -> Some n | _ -> None
-  let vreg = function Operand.Reg (Reg.V n) -> Some n | _ -> None
+  let xreg = function Operand.Reg (Reg.X r) -> Some r | _ -> None
+  let freg = function Operand.Reg (Reg.F r) -> Some r | _ -> None
+  let vreg = function Operand.Reg (Reg.V r) -> Some r | _ -> None
+
+  (* The same operands as the class-tagged registers {!Lowered}'s R/I/S forms hold. *)
+  let gx op = Option.map (fun r -> Reg.X r) (xreg op)
+  let gf op = Option.map (fun r -> Reg.F r) (freg op)
+  let creg op = Option.bind (xreg op) Creg.of_xreg
+  let base (m : Mem.t) = Reg.to_x m.base
+  let gbase m = Option.map (fun r -> Reg.X r) (base m)
+  let cbase m = Option.bind (base m) Creg.of_xreg
+
+  (* Register numbers, for generated rows, which place fields by number. *)
+  let xnum op = Option.map Xreg.to_int (xreg op)
+  let fnum op = Option.map Freg.to_int (freg op)
+  let vnum op = Option.map Vreg.to_int (vreg op)
+  let base_num m = Option.map Xreg.to_int (base m)
 
   (* V's masked-operand marker: a bare trailing [v0.t] (never a real register
      by itself - [Reg.find] never returns a [V] for a name with a [.t] suffix,
@@ -1708,22 +1733,22 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     let mem_offset () =
       match op with
       | Operand.Mem m -> (
-          match (Reg.x m.base, int64_expr m.offset) with
+          match (base_num m, int64_expr m.offset) with
           | Some base, Some v when fits_signed 12 v -> Some (base, low 12 v)
           | _ -> None)
       | _ -> None
     in
     match operand with
     | Gpr { lsb; nonzero } -> (
-        match xreg op with
+        match xnum op with
         | Some n when (not nonzero) || n <> 0 -> place lsb (Int64.of_int n)
         | _ -> None)
-    | Fpr { lsb } -> Option.bind (freg op) (fun n -> place lsb (Int64.of_int n))
+    | Fpr { lsb } -> Option.bind (fnum op) (fun n -> place lsb (Int64.of_int n))
     | Uimm { lsb; width } -> (
         match value () with Some v when fits_unsigned width v -> place lsb v | _ -> None)
     | Simm { lsb; width } -> (
         match value () with Some v when fits_signed width v -> place lsb (low width v) | _ -> None)
-    | Fixed_gpr n -> ( match xreg op with Some m when m = n -> Some 0L | _ -> None)
+    | Fixed_gpr n -> ( match xnum op with Some m when m = n -> Some 0L | _ -> None)
     | Rm { lsb; _ } -> (
         match op with
         | Operand.Sym (Asm_core.Expr.Symbol name) ->
@@ -1742,14 +1767,14 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Mem_zero { base } -> (
         match op with
         | Operand.Mem m -> (
-            match (Reg.x m.base, int64_expr m.offset) with
+            match (base_num m, int64_expr m.offset) with
             | Some b, Some 0L -> place base (Int64.of_int b)
             | _ -> None)
         | _ -> None)
     | Mem_hi { base } -> (
         match op with
         | Operand.Mem m -> (
-            match (Reg.x m.base, int64_expr m.offset) with
+            match (base_num m, int64_expr m.offset) with
             | Some b, Some v when fits_signed 12 v && Int64.rem v 32L = 0L ->
                 Some
                   (Int64.logor
@@ -1758,26 +1783,26 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
             | _ -> None)
         | _ -> None)
     | Gpr_pair { lsb; below } -> (
-        match xreg op with
+        match xnum op with
         | Some n when xlen >= below || n land 1 = 0 -> place lsb (Int64.of_int n)
         | _ -> None)
     | Creg { lsb } -> (
-        match xreg op with
+        match xnum op with
         | Some n when n >= 8 && n <= 15 -> place lsb (Int64.of_int (n - 8))
         | _ -> None)
     | Cfreg { lsb } -> (
-        match freg op with
+        match fnum op with
         | Some n when n >= 8 && n <= 15 -> place lsb (Int64.of_int (n - 8))
         | _ -> None)
     | Gpr_except { lsb; except } -> (
-        match xreg op with
+        match xnum op with
         | Some n when not (List.mem n except) -> place lsb (Int64.of_int n)
         | _ -> None)
     | Scatter sc -> Option.bind (value ()) (table_scatter sc)
     | Cmem { base; offset } -> (
         match op with
         | Operand.Mem m -> (
-            match (Reg.x m.base, int64_expr m.offset) with
+            match (base_num m, int64_expr m.offset) with
             | Some b, Some v when b >= 8 && b <= 15 ->
                 Option.map
                   (fun f -> Int64.logor f (Int64.shift_left (Int64.of_int (b - 8)) base))
@@ -1787,7 +1812,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Spmem { offset } -> (
         match op with
         | Operand.Mem m -> (
-            match (Reg.x m.base, int64_expr m.offset) with
+            match (base_num m, int64_expr m.offset) with
             | Some 2, Some v -> table_scatter offset v
             | _ -> None)
         | _ -> None)
@@ -1800,7 +1825,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                  (Int64.shift_left (Int64.logand v 0x1fL) lo))
         | _ -> None)
     | Sreg { lsb } ->
-        Option.bind (xreg op) (fun n ->
+        Option.bind (xnum op) (fun n ->
             Option.bind (Riscv_table_row.sreg_code n) (fun c -> place lsb (Int64.of_int c)))
     | Rlist { lsb } -> (
         match op with
@@ -1837,9 +1862,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                  (Int64.shift_left (Int64.shift_right_logical v 5) 25)
                  (Int64.shift_left (Int64.logand v 0x1fL) 7)))
           (mem_offset ())
-    | Vreg { lsb } -> Option.bind (vreg op) (fun n -> place lsb (Int64.of_int n))
+    | Vreg { lsb } -> Option.bind (vnum op) (fun n -> place lsb (Int64.of_int n))
     | Vm _ -> if is_v0t op then Some 0L else None
-    | Fixed_vreg n -> ( match vreg op with Some m when m = n -> Some 0L | _ -> None)
+    | Fixed_vreg n -> ( match vnum op with Some m when m = n -> Some 0L | _ -> None)
     (* the keyword list is the rest of the operands: {!table_lower} encodes it *)
     | Vtype _ -> None
     | Indexed { prefix; lsb; width; scale } -> (
@@ -1852,7 +1877,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | _ -> None)
 
   (* The register number of a register operand, for a following [Tied] field. *)
-  let table_reg op = match op with Operand.Reg (Reg.F n) -> Some n | _ -> xreg op
+  let table_reg op = match op with Operand.Reg (Reg.F r) -> Some (Freg.to_int r) | _ -> xnum op
   let table_row_applies (r : Riscv_table_row.row) = r.xlen = 0 || r.xlen = xlen
 
   (* Every row spelled like row [i] is tried in table order; the first whose
@@ -1949,48 +1974,48 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         Error (diag ~pos:__POS__ (`Compressed_disabled opn))
     | Opcode.C_addi, [ a; imm ] -> (
         match (xreg a, expr_of imm) with
-        | Some rd, Some imm when rd <> 0 -> Ok [ Lowered.Caddi { rd; imm } ]
+        | Some rd, Some imm when rd <> Xreg.zero -> Ok [ Lowered.Caddi { rd; imm } ]
         | _ -> wrong opn)
     | op, [ a; b ] when Option.is_some (ca_desc op) -> (
-        match (xreg a, xreg b, ca_desc op) with
-        | Some rd_rs1, Some rs2, Some (funct6, funct2)
-          when rd_rs1 >= 8 && rd_rs1 <= 15 && rs2 >= 8 && rs2 <= 15 ->
+        match (creg a, creg b, ca_desc op) with
+        | Some rd_rs1, Some rs2, Some (funct6, funct2) ->
             Ok [ Lowered.Cr2 { op = iop; funct6; funct2; rd_rs1; rs2 } ]
         | _ -> wrong opn)
     | (Opcode.C_jr | C_jalr), [ a ] -> (
         match xreg a with
-        | Some rd_rs1 when rd_rs1 <> 0 ->
+        | Some rd_rs1 when rd_rs1 <> Xreg.zero ->
             let funct4 = if i.Instruction.op = Opcode.C_jr then 8 else 9 in
-            Ok [ Lowered.Cr { op = iop; funct4; rd_rs1; rs2 = 0 } ]
+            Ok [ Lowered.Cr { op = iop; funct4; rd_rs1; rs2 = Xreg.zero } ]
         | _ -> wrong opn)
     | (Opcode.C_mv | C_add), [ a; b ] -> (
         match (xreg a, xreg b) with
-        | Some rd_rs1, Some rs2 when rs2 <> 0 ->
+        | Some rd_rs1, Some rs2 when rs2 <> Xreg.zero ->
             let funct4 = if i.Instruction.op = Opcode.C_mv then 8 else 9 in
             Ok [ Lowered.Cr { op = iop; funct4; rd_rs1; rs2 } ]
         | _ -> wrong opn)
-    | Opcode.C_ebreak, [] -> Ok [ Lowered.Cr { op = iop; funct4 = 9; rd_rs1 = 0; rs2 = 0 } ]
+    | Opcode.C_ebreak, [] ->
+        Ok [ Lowered.Cr { op = iop; funct4 = 9; rd_rs1 = Xreg.zero; rs2 = Xreg.zero } ]
     | (Opcode.C_lw | C_ld), [ a; Operand.Mem m ] -> (
-        match (xreg a, Reg.x m.base) with
-        | Some rd, Some rs1 when rd >= 8 && rd <= 15 && rs1 >= 8 && rs1 <= 15 ->
+        match (creg a, cbase m) with
+        | Some rd, Some rs1 ->
             let funct3 = if i.Instruction.op = Opcode.C_lw then 2 else 3 in
             Ok [ Lowered.Cl { op = iop; funct3; rd; rs1; imm = m.offset } ]
         | _ -> wrong opn)
     | (Opcode.C_sw | C_sd), [ a; Operand.Mem m ] -> (
-        match (xreg a, Reg.x m.base) with
-        | Some rs2, Some rs1 when rs2 >= 8 && rs2 <= 15 && rs1 >= 8 && rs1 <= 15 ->
+        match (creg a, cbase m) with
+        | Some rs2, Some rs1 ->
             let funct3 = if i.Instruction.op = Opcode.C_sw then 6 else 7 in
             Ok [ Lowered.Cs { op = iop; funct3; rs1; rs2; imm = m.offset } ]
         | _ -> wrong opn)
     | (Opcode.C_lwsp | C_ldsp), [ a; Operand.Mem m ] -> (
-        match (xreg a, Reg.x m.base) with
-        | Some rd, Some 2 when rd <> 0 ->
+        match (xreg a, base m) with
+        | Some rd, Some sp when sp = Xreg.sp && rd <> Xreg.zero ->
             let funct3 = if i.Instruction.op = Opcode.C_lwsp then 2 else 3 in
             Ok [ Lowered.Clsp { op = iop; funct3; rd; imm = m.offset } ]
         | _ -> wrong opn)
     | (Opcode.C_swsp | C_sdsp), [ a; Operand.Mem m ] -> (
-        match (xreg a, Reg.x m.base) with
-        | Some rs2, Some 2 ->
+        match (xreg a, base m) with
+        | Some rs2, Some sp when sp = Xreg.sp ->
             let funct3 = if i.Instruction.op = Opcode.C_swsp then 6 else 7 in
             Ok [ Lowered.Css { op = iop; funct3; rs2; imm = m.offset } ]
         | _ -> wrong opn)
@@ -2003,8 +2028,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
             Ok [ Lowered.Cj { op = iop; funct3 = (if i.op = Opcode.C_j then 5 else 1); target } ]
         | None -> wrong opn)
     | (Opcode.C_beqz | C_bnez), [ a; target ] -> (
-        match (xreg a, expr_of target) with
-        | Some rs1, Some target when rs1 >= 8 && rs1 <= 15 ->
+        match (creg a, expr_of target) with
+        | Some rs1, Some target ->
             let funct3 = if i.Instruction.op = Opcode.C_beqz then 6 else 7 in
             Ok [ Lowered.Cb { op = iop; funct3; rs1; target } ]
         | _ -> wrong opn)
@@ -2024,17 +2049,17 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            `amoadd.w a0, a1, 4(a2)`: "illegal operands"), so requiring a
            literal zero here is what enforces that shape instead of
            silently discarding a real one. *)
-        match (xreg a, xreg b, Reg.x m.base, amo3_desc op) with
+        match (gx a, gx b, gbase m, amo3_desc op) with
         | Some rd, Some rs2, Some rs1, Some (opcode, funct3, funct7) when zero_offset m.offset ->
             Ok [ Lowered.R { op = iop; opcode; funct3; funct7; rd; rs1; rs2 } ]
         | _ -> wrong opn)
     | op, [ a; Operand.Mem m ] when Option.is_some (lr_desc op) -> (
-        match (xreg a, Reg.x m.base, lr_desc op) with
+        match (gx a, gbase m, lr_desc op) with
         | Some rd, Some rs1, Some (opcode, funct3, funct7) when zero_offset m.offset ->
-            Ok [ Lowered.R { op = iop; opcode; funct3; funct7; rd; rs1; rs2 = 0 } ]
+            Ok [ Lowered.R { op = iop; opcode; funct3; funct7; rd; rs1; rs2 = Reg.zero } ]
         | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (r_desc op) -> (
-        match (xreg a, xreg b, xreg c, r_desc op) with
+        match (gx a, gx b, gx c, r_desc op) with
         | Some rd, Some rs1, Some rs2, Some (opcode, funct3, funct7) ->
             Ok [ Lowered.R { op = iop; opcode; funct3; funct7; rd; rs1; rs2 } ]
         | Some rd, Some rs1, None, _ -> (
@@ -2078,7 +2103,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            a reserved round number is a real assembly-time error. The
            composed imm12 is the fixed 8-bit prefix 0x31 (bits[11:4]) with
            [rnum] in bits[3:0]. *)
-        match (xreg a, xreg b, expr_of imm) with
+        match (gx a, gx b, expr_of imm) with
         | Some rd, Some rs1, Some e -> (
             match int64_expr e with
             | Some rnum when Int64.compare rnum 0L >= 0 && Int64.compare rnum 10L <= 0 ->
@@ -2139,7 +2164,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           | Sm4ks -> Some 0x1a
           | _ -> None
         in
-        match (xreg a, xreg b, xreg c, expr_of bs, base i.op) with
+        match (gx a, gx b, gx c, expr_of bs, base i.op) with
         | Some rd, Some rs1, Some rs2, Some e, Some base -> (
             match int64_expr e with
             | Some bs when Int64.compare bs 0L >= 0 && Int64.compare bs 3L <= 0 ->
@@ -2170,7 +2195,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            as rejects 4096+ as "improper CSR address"); see {!signed_csr}
            for how that is encoded. Both profiles accept identical syntax
            (Zicsr is XLEN-independent). *)
-        match (xreg a, expr_of csr, xreg b) with
+        match (gx a, expr_of csr, gx b) with
         | Some rd, Some csr_e, Some rs1 -> (
             match csr_number csr_e with
             | Some csr when Int64.compare csr 0L >= 0 && Int64.compare csr 4095L <= 0 ->
@@ -2203,7 +2228,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            existing [rs1] field unchanged to carry [zimm] rather than a
            real register, confirmed against real GNU as: `csrrwi a0,
            mstatus, 31` -> `300fd573`. *)
-        match (xreg a, expr_of csr, expr_of zimm) with
+        match (gx a, expr_of csr, expr_of zimm) with
         | Some rd, Some csr_e, Some zimm_e -> (
             match (csr_number csr_e, int64_expr zimm_e) with
             | Some csr, Some zimm
@@ -2228,7 +2253,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                         funct_hi = 0;
                         shamt_bits = None;
                         rd;
-                        rs1 = Int64.to_int zimm;
+                        rs1 = Reg.x (Int64.to_int zimm);
                         imm = const (Int64.to_int (signed_csr csr));
                       };
                   ]
@@ -2240,7 +2265,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            with x0's value 0 is a no-op). Confirmed against real GNU as:
            `csrr a0, mstatus` -> `30002573`, matching `csrrs a0, mstatus,
            zero` bit-for-bit. *)
-        match (xreg a, expr_of csr) with
+        match (gx a, expr_of csr) with
         | Some rd, Some csr_e -> (
             match csr_number csr_e with
             | Some csr when Int64.compare csr 0L >= 0 && Int64.compare csr 4095L <= 0 ->
@@ -2254,7 +2279,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                         funct_hi = 0;
                         shamt_bits = None;
                         rd;
-                        rs1 = 0;
+                        rs1 = Reg.zero;
                         imm = const (Int64.to_int (signed_csr csr));
                       };
                   ]
@@ -2270,7 +2295,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            own declared operands order, [rs1, csr], matches neither this
            project's base-form order nor this one, so neither can be
            inferred from the other. *)
-        match (expr_of csr, xreg b) with
+        match (expr_of csr, gx b) with
         | Some csr_e, Some rs1 -> (
             match csr_number csr_e with
             | Some csr when Int64.compare csr 0L >= 0 && Int64.compare csr 4095L <= 0 ->
@@ -2286,7 +2311,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                         funct3;
                         funct_hi = 0;
                         shamt_bits = None;
-                        rd = 0;
+                        rd = Reg.zero;
                         rs1;
                         imm = const (Int64.to_int (signed_csr csr));
                       };
@@ -2318,21 +2343,21 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                         funct3;
                         funct_hi = 0;
                         shamt_bits = None;
-                        rd = 0;
-                        rs1 = Int64.to_int zimm;
+                        rd = Reg.zero;
+                        rs1 = Reg.x (Int64.to_int zimm);
                         imm = const (Int64.to_int (signed_csr csr));
                       };
                   ]
             | _ -> wrong opn)
         | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (i_desc op) -> (
-        match (xreg a, xreg b, expr_of c, i_desc op) with
+        match (gx a, gx b, expr_of c, i_desc op) with
         | Some rd, Some rs1, Some imm, Some (opcode, funct3, funct_hi, shamt) ->
             Ok
               [ Lowered.I { op = iop; opcode; funct3; funct_hi; shamt_bits = shamt; rd; rs1; imm } ]
         | _ -> wrong opn)
     | op, [ a; b ] when Option.is_some (unary_imm_desc op) -> (
-        match (xreg a, xreg b, unary_imm_desc op) with
+        match (gx a, gx b, unary_imm_desc op) with
         | Some rd, Some rs1, Some (opcode, funct3, funct12) ->
             Ok
               [
@@ -2350,7 +2375,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
               ]
         | _ -> wrong opn)
     | op, [ a; Operand.Mem m ] when Option.is_some (load_desc op) -> (
-        match (xreg a, Reg.x m.base, load_desc op) with
+        match (gx a, gbase m, load_desc op) with
         | Some rd, Some rs1, Some funct3 ->
             Ok
               [
@@ -2378,7 +2403,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            idiom on riscv64). *)
         match (xreg a, expr_of target, load_desc Opcode.Ld) with
         | Some rd, Some target, Some funct3 ->
-            Ok [ Lowered.Pair { op = iop; rd; tmp = rd; target; kind = Load funct3 } ]
+            Ok [ Lowered.Pair { op = iop; rd = Reg.X rd; tmp = rd; target; kind = Load funct3 } ]
         | _ -> wrong opn)
     | op, [ a; (Operand.Sym _ as target); b ] when Option.is_some (f_load_desc op) -> (
         (* [fld rd, symbol, xtmp] / [flw rd, symbol, xtmp] - the identical anchored
@@ -2386,17 +2411,17 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            itself ([auipc] only ever writes a GPR, and [rd] here is a scalar FP register),
            so GAS's own three-operand spelling names it explicitly (M5,
            the corpus notes - almabench.c/fftsp.c/knucleotide.c/...). *)
-        match (freg a, expr_of target, xreg b, f_load_desc op) with
+        match (gf a, expr_of target, xreg b, f_load_desc op) with
         | Some rd, Some target, Some tmp, Some funct3 ->
             Ok [ Lowered.Pair { op = iop; rd; tmp; target; kind = Fload funct3 } ]
         | _ -> wrong opn)
     | op, [ a; Operand.Mem m ] when Option.is_some (store_desc op) -> (
-        match (xreg a, Reg.x m.base, store_desc op) with
+        match (gx a, gbase m, store_desc op) with
         | Some rs2, Some rs1, Some funct3 ->
             Ok [ Lowered.S { op = iop; opcode = 0x23; funct3; rs1; rs2; imm = m.offset } ]
         | _ -> wrong opn)
     | op, [ a; Operand.Mem m ] when Option.is_some (f_load_desc op) -> (
-        match (freg a, Reg.x m.base, f_load_desc op) with
+        match (gf a, gbase m, f_load_desc op) with
         | Some rd, Some rs1, Some funct3 ->
             Ok
               [
@@ -2414,59 +2439,59 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
               ]
         | _ -> wrong opn)
     | op, [ a; Operand.Mem m ] when Option.is_some (f_store_desc op) -> (
-        match (freg a, Reg.x m.base, f_store_desc op) with
+        match (gf a, gbase m, f_store_desc op) with
         | Some rs2, Some rs1, Some funct3 ->
             Ok [ Lowered.S { op = iop; opcode = 0x27; funct3; rs1; rs2; imm = m.offset } ]
         | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (f_arith_desc op) -> (
-        match (freg a, freg b, freg c, f_arith_desc op) with
+        match (gf a, gf b, gf c, f_arith_desc op) with
         | Some rd, Some rs1, Some rs2, Some (funct3, funct7) ->
             Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (f_sgnj3_desc op) -> (
-        match (freg a, freg b, freg c, f_sgnj3_desc op) with
+        match (gf a, gf b, gf c, f_sgnj3_desc op) with
         | Some rd, Some rs1, Some rs2, Some (funct3, funct7) ->
             Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (f_minmax_desc op) -> (
-        match (freg a, freg b, freg c, f_minmax_desc op) with
+        match (gf a, gf b, gf c, f_minmax_desc op) with
         | Some rd, Some rs1, Some rs2, Some (funct3, funct7) ->
             Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b ] when Option.is_some (f_sgnj_desc op) -> (
-        match (freg a, freg b, f_sgnj_desc op) with
+        match (gf a, gf b, f_sgnj_desc op) with
         | Some rd, Some rs1, Some (funct3, funct7) ->
             Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 = rs1 } ]
         | _ -> wrong opn)
     | op, [ a; b ] when Option.is_some (f_sqrt_desc op) -> (
-        match (freg a, freg b, f_sqrt_desc op) with
+        match (gf a, gf b, f_sqrt_desc op) with
         | Some rd, Some rs1, Some (funct3, funct7, rs2) ->
-            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 = Reg.x rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b ] when Option.is_some (f_class_desc op) -> (
-        match (xreg a, freg b, f_class_desc op) with
+        match (gx a, gf b, f_class_desc op) with
         | Some rd, Some rs1, Some (funct3, funct7, rs2) ->
-            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 = Reg.x rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b ] when Option.is_some (f_mv_x_w_desc op) -> (
-        match (xreg a, freg b, f_mv_x_w_desc op) with
+        match (gx a, gf b, f_mv_x_w_desc op) with
         | Some rd, Some rs1, Some (funct3, funct7, rs2) ->
-            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 = Reg.x rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b; c; d ] when Option.is_some (f_fma_desc op) -> (
-        match (freg a, freg b, freg c, freg d, f_fma_desc op) with
+        match (gf a, gf b, gf c, gf d, f_fma_desc op) with
         | Some rd, Some rs1, Some rs2, Some rs3, Some (opcode, fmt) ->
             Ok [ Lowered.R4 { op = iop; opcode; fmt; funct3 = 7; rd; rs1; rs2; rs3 } ]
         | _ -> wrong opn)
     | op, [ a; b; c ] when Option.is_some (f_cmp_desc op) -> (
-        match (xreg a, freg b, freg c, f_cmp_desc op) with
+        match (gx a, gf b, gf c, f_cmp_desc op) with
         | Some rd, Some rs1, Some rs2, Some (funct3, funct7) ->
             Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b ] when Option.is_some (f_to_i_desc op) -> (
-        match (xreg a, freg b, f_to_i_desc op) with
+        match (gx a, gf b, f_to_i_desc op) with
         | Some rd, Some rs1, Some (funct3, funct7, rs2) ->
-            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 = Reg.x rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b; Operand.Sym (Asm_core.Expr.Symbol rm) ] when Option.is_some (f_to_i_desc op) -> (
         (* [fcvt.w.d rd, rs1, rtz] - an explicit rounding-mode operand overriding the
@@ -2475,19 +2500,19 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            than the default dynamic mode). Checked against real riscv64-linux-gnu-as:
            `fcvt.l.d x22, f10, rtz` -> `c2251b53` (funct3 = 1, matching {!Rm}'s
            [Rtz] = 1). *)
-        match (xreg a, freg b, f_to_i_desc op, Option.map Rm.to_funct3 (Rm.of_name rm)) with
+        match (gx a, gf b, f_to_i_desc op, Option.map Rm.to_funct3 (Rm.of_name rm)) with
         | Some rd, Some rs1, Some (_, funct7, rs2), Some funct3 ->
-            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 = Reg.x rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b ] when Option.is_some (i_to_f_desc op) -> (
-        match (freg a, xreg b, i_to_f_desc op) with
+        match (gf a, gx b, i_to_f_desc op) with
         | Some rd, Some rs1, Some (funct3, funct7, rs2) ->
-            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 = Reg.x rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b ] when Option.is_some (f_to_f_desc op) -> (
-        match (freg a, freg b, f_to_f_desc op) with
+        match (gf a, gf b, f_to_f_desc op) with
         | Some rd, Some rs1, Some (funct3, funct7, rs2) ->
-            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
+            Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 = Reg.x rs2 } ]
         | _ -> wrong opn)
     | op, [ a; b; target ] when Option.is_some (branch_desc op) -> (
         match (xreg a, xreg b, expr_of target, branch_desc op) with
@@ -2537,7 +2562,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         in
         match (xreg a, expr_of target, branch_desc real_op) with
         | Some r, Some target, Some funct3 ->
-            let rs1, rs2 = if reg_in_rs1 then (r, 0) else (0, r) in
+            let rs1, rs2 = if reg_in_rs1 then (r, Xreg.zero) else (Xreg.zero, r) in
             Ok [ Lowered.B { op = real_op; funct3; rs1; rs2; target } ]
         | _ -> wrong opn)
     | ((Opcode.Lui | Auipc) as op), [ a; imm ] -> (
@@ -2551,10 +2576,10 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | _ -> wrong opn)
     | Opcode.Jal, [ target ] -> (
         match expr_of target with
-        | Some target -> Ok [ Lowered.J { rd = 1; target } ]
+        | Some target -> Ok [ Lowered.J { rd = Xreg.ra; target } ]
         | None -> wrong opn)
     | Opcode.Jalr, [ a; Operand.Mem m ] -> (
-        match (xreg a, Reg.x m.base) with
+        match (gx a, gbase m) with
         | Some rd, Some rs1 ->
             Ok
               [
@@ -2572,7 +2597,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
               ]
         | _ -> wrong opn)
     | Opcode.Jalr, [ a; b; imm ] -> (
-        match (xreg a, xreg b, expr_of imm) with
+        match (gx a, gx b, expr_of imm) with
         | Some rd, Some rs1, Some imm ->
             Ok
               [
@@ -2590,7 +2615,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
               ]
         | _ -> wrong opn)
     | Opcode.Jalr, [ a ] | Opcode.Jr, [ a ] -> (
-        match xreg a with
+        match gx a with
         | Some rs1 ->
             Ok
               [
@@ -2601,7 +2626,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                     funct3 = 0;
                     funct_hi = 0;
                     shamt_bits = None;
-                    rd = (if i.op = Jalr then 1 else 0);
+                    rd = (if i.op = Jalr then Reg.x 1 else Reg.zero);
                     rs1;
                     imm = const 0;
                   };
@@ -2618,12 +2643,20 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            (M5 - helpers/riscv.c's own zero-test idiom).
            Checked against real riscv64-linux-gnu-as/objdump: `snez a2, a3` ->
            `00d03633`, matching `sltu a2, zero, a3` bit-for-bit. *)
-        match (xreg a, xreg b) with
+        match (gx a, gx b) with
         | Some rd, Some rs2 ->
             Ok
               [
                 Lowered.R
-                  { op = Opcode.Sltu; opcode = 0x33; funct3 = 3; funct7 = 0; rd; rs1 = 0; rs2 };
+                  {
+                    op = Opcode.Sltu;
+                    opcode = 0x33;
+                    funct3 = 3;
+                    funct7 = 0;
+                    rd;
+                    rs1 = Reg.zero;
+                    rs2;
+                  };
               ]
         | _ -> wrong opn)
     | Opcode.Neg, [ a; b ] -> (
@@ -2633,12 +2666,20 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            gap {!Snez} above fills for [sltu]). Checked against real
            riscv64-linux-gnu-as/riscv32-linux-gnu-as/objdump: `neg a2, a3` -> `40d00633`
            on both profiles, matching `sub a2, zero, a3` bit-for-bit. *)
-        match (xreg a, xreg b) with
+        match (gx a, gx b) with
         | Some rd, Some rs2 ->
             Ok
               [
                 Lowered.R
-                  { op = Opcode.Sub; opcode = 0x33; funct3 = 0; funct7 = 0x20; rd; rs1 = 0; rs2 };
+                  {
+                    op = Opcode.Sub;
+                    opcode = 0x33;
+                    funct3 = 0;
+                    funct7 = 0x20;
+                    rd;
+                    rs1 = Reg.zero;
+                    rs2;
+                  };
               ]
         | _ -> wrong opn)
     | Opcode.Seqz, [ a; b ] -> (
@@ -2646,7 +2687,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            (unsigned less-than-1 is exactly the zero test). Checked against real
            riscv64-linux-gnu-as/riscv32-linux-gnu-as/objdump: `seqz a2, a3` -> `0016b613`
            on both profiles, matching `sltiu a2, a3, 1` bit-for-bit. *)
-        match (xreg a, xreg b) with
+        match (gx a, gx b) with
         | Some rd, Some rs1 ->
             Ok
               [
@@ -2670,12 +2711,20 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            against real riscv64-linux-gnu-as/riscv32-linux-gnu-as/objdump:
            `sltz a2, a3` -> `0006a633` on both profiles, matching `slt a2, a3, zero`
            bit-for-bit. *)
-        match (xreg a, xreg b) with
+        match (gx a, gx b) with
         | Some rd, Some rs1 ->
             Ok
               [
                 Lowered.R
-                  { op = Opcode.Slt; opcode = 0x33; funct3 = 2; funct7 = 0; rd; rs1; rs2 = 0 };
+                  {
+                    op = Opcode.Slt;
+                    opcode = 0x33;
+                    funct3 = 2;
+                    funct7 = 0;
+                    rd;
+                    rs1;
+                    rs2 = Reg.zero;
+                  };
               ]
         | _ -> wrong opn)
     | Opcode.Sgtz, [ a; b ] -> (
@@ -2684,12 +2733,20 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            Checked against real riscv64-linux-gnu-as/riscv32-linux-gnu-as/objdump:
            `sgtz a2, a3` -> `00d02633` on both profiles, matching `slt a2, zero, a3`
            bit-for-bit. *)
-        match (xreg a, xreg b) with
+        match (gx a, gx b) with
         | Some rd, Some rs2 ->
             Ok
               [
                 Lowered.R
-                  { op = Opcode.Slt; opcode = 0x33; funct3 = 2; funct7 = 0; rd; rs1 = 0; rs2 };
+                  {
+                    op = Opcode.Slt;
+                    opcode = 0x33;
+                    funct3 = 2;
+                    funct7 = 0;
+                    rd;
+                    rs1 = Reg.zero;
+                    rs2;
+                  };
               ]
         | _ -> wrong opn)
     | Opcode.Zext_b, [ a; b ] -> (
@@ -2699,7 +2756,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            against real riscv64-linux-gnu-as/riscv32-linux-gnu-as/objdump: `zext.b a2,
            a3` -> `0ff6f613` on both profiles, matching `andi a2, a3, 0xff`
            bit-for-bit. *)
-        match (xreg a, xreg b) with
+        match (gx a, gx b) with
         | Some rd, Some rs1 ->
             Ok
               [
@@ -2727,7 +2784,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            assemblers also reject a three- or one-operand `zext.h` outright ("illegal
            operands"), which is why this is its own two-operand match arm rather than a
            reuse of the generic three-register [r_desc] path {!Pack}/{!Packw} share. *)
-        match (xreg a, xreg b) with
+        match (gx a, gx b) with
         | Some rd, Some rs1 ->
             Ok
               [
@@ -2739,7 +2796,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                     funct7 = 0x04;
                     rd;
                     rs1;
-                    rs2 = 0;
+                    rs2 = Reg.zero;
                   };
               ]
         | _ -> wrong opn)
@@ -2749,7 +2806,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            above already rejects it on RV32). Checked against real
            riscv64-linux-gnu-as/objdump: `sext.w a1, a2` -> `0006059b`, matching
            `addiw a1, a2, 0` bit-for-bit. *)
-        match (xreg a, xreg b) with
+        match (gx a, gx b) with
         | Some rd, Some rs1 ->
             Ok
               [
@@ -2767,7 +2824,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
               ]
         | _ -> wrong opn)
     | Opcode.Mv, [ a; b ] -> (
-        match (xreg a, xreg b) with
+        match (gx a, gx b) with
         | Some rd, Some rs1 ->
             Ok
               [
@@ -2794,14 +2851,14 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                 funct3 = 0;
                 funct_hi = 0;
                 shamt_bits = None;
-                rd = 0;
-                rs1 = 0;
+                rd = Reg.zero;
+                rs1 = Reg.zero;
                 imm = const 0;
               };
           ]
     | Opcode.J, [ target ] -> (
         match expr_of target with
-        | Some target -> Ok [ Lowered.J { rd = 0; target } ]
+        | Some target -> Ok [ Lowered.J { rd = Xreg.zero; target } ]
         | None -> wrong opn)
     | Opcode.Call, [ target ] | Opcode.Tail, [ target ] -> (
         match expr_of target with
@@ -2811,8 +2868,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                 Lowered.Pair
                   {
                     op = iop;
-                    rd = (if i.op = Call then 1 else 0);
-                    tmp = (if i.op = Call then 1 else 6);
+                    rd = (if i.op = Call then Reg.x 1 else Reg.zero);
+                    tmp = Xreg.of_int_exn (if i.op = Call then 1 else 6);
                     target;
                     kind = Jalr;
                   };
@@ -2821,7 +2878,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | ((Opcode.La | Lla) as op), [ a; target ] -> (
         match (xreg a, expr_of target) with
         | Some rd, Some target when op = Lla || state.pic ->
-            Ok [ Lowered.Pair { op = iop; rd; tmp = rd; target; kind = Addi } ]
+            Ok [ Lowered.Pair { op = iop; rd = Reg.X rd; tmp = rd; target; kind = Addi } ]
         | Some rd, Some target ->
             (* In non-PIC state GAS's [la] is the absolute LUI/ADDI pair.
                Keeping this decision in lowering makes source-ordered option
@@ -2843,8 +2900,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                     funct3 = 0;
                     funct_hi = 0;
                     shamt_bits = None;
-                    rd;
-                    rs1 = rd;
+                    rd = Reg.X rd;
+                    rs1 = Reg.X rd;
                     imm = Asm_core.Expr.Modifier ("%lo", target);
                   };
               ]
@@ -2862,8 +2919,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                       funct3 = 0;
                       funct_hi = 0;
                       shamt_bits = None;
-                      rd;
-                      rs1 = 0;
+                      rd = Reg.X rd;
+                      rs1 = Reg.zero;
                       imm;
                     };
                 ]
@@ -2904,8 +2961,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                 funct3 = 0;
                 funct_hi = 0;
                 shamt_bits = None;
-                rd = 0;
-                rs1 = 1;
+                rd = Reg.zero;
+                rs1 = Reg.x 1;
                 imm = const 0;
               };
           ]
@@ -2951,32 +3008,36 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let word_r ~opcode ~funct3 ~funct7 ~rd ~rs1 ~rs2 =
     Int64.logor (Int64.of_int opcode)
       (Int64.logor
-         (field 7 5 (Int64.of_int rd))
+         (field 7 5 (Int64.of_int (Reg.index rd)))
          (Int64.logor
             (field 12 3 (Int64.of_int funct3))
             (Int64.logor
-               (field 15 5 (Int64.of_int rs1))
-               (Int64.logor (field 20 5 (Int64.of_int rs2)) (field 25 7 (Int64.of_int funct7))))))
+               (field 15 5 (Int64.of_int (Reg.index rs1)))
+               (Int64.logor
+                  (field 20 5 (Int64.of_int (Reg.index rs2)))
+                  (field 25 7 (Int64.of_int funct7))))))
 
   let word_r4 ~opcode ~fmt ~funct3 ~rd ~rs1 ~rs2 ~rs3 =
     Int64.logor (Int64.of_int opcode)
       (Int64.logor
-         (field 7 5 (Int64.of_int rd))
+         (field 7 5 (Int64.of_int (Reg.index rd)))
          (Int64.logor
             (field 12 3 (Int64.of_int funct3))
             (Int64.logor
-               (field 15 5 (Int64.of_int rs1))
+               (field 15 5 (Int64.of_int (Reg.index rs1)))
                (Int64.logor
-                  (field 20 5 (Int64.of_int rs2))
-                  (Int64.logor (field 25 2 (Int64.of_int fmt)) (field 27 5 (Int64.of_int rs3)))))))
+                  (field 20 5 (Int64.of_int (Reg.index rs2)))
+                  (Int64.logor
+                     (field 25 2 (Int64.of_int fmt))
+                     (field 27 5 (Int64.of_int (Reg.index rs3))))))))
 
   let word_i ~opcode ~funct3 ~rd ~rs1 imm =
     Int64.logor (Int64.of_int opcode)
       (Int64.logor
-         (field 7 5 (Int64.of_int rd))
+         (field 7 5 (Int64.of_int (Reg.index rd)))
          (Int64.logor
             (field 12 3 (Int64.of_int funct3))
-            (Int64.logor (field 15 5 (Int64.of_int rs1)) (field 20 12 imm))))
+            (Int64.logor (field 15 5 (Int64.of_int (Reg.index rs1))) (field 20 12 imm))))
 
   let word_s ~opcode ~funct3 ~rs1 ~rs2 imm =
     Int64.logor (Int64.of_int opcode)
@@ -2984,9 +3045,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
          (Int64.logor
             (field 12 3 (Int64.of_int funct3))
             (Int64.logor
-               (field 15 5 (Int64.of_int rs1))
+               (field 15 5 (Int64.of_int (Reg.index rs1)))
                (Int64.logor
-                  (field 20 5 (Int64.of_int rs2))
+                  (field 20 5 (Int64.of_int (Reg.index rs2)))
                   (field 25 7 (Int64.shift_right_logical imm 5))))))
 
   let word_b ~funct3 ~rs1 ~rs2 imm =
@@ -2998,20 +3059,21 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
             (Int64.logor
                (field 12 3 (Int64.of_int funct3))
                (Int64.logor
-                  (field 15 5 (Int64.of_int rs1))
+                  (field 15 5 (Int64.of_int (Xreg.to_int rs1)))
                   (Int64.logor
-                     (field 20 5 (Int64.of_int rs2))
+                     (field 20 5 (Int64.of_int (Xreg.to_int rs2)))
                      (Int64.logor
                         (field 25 6 (Int64.shift_right_logical imm 5))
                         (field 31 1 (Int64.shift_right_logical imm 12))))))))
 
   let word_u ~opcode ~rd imm =
-    Int64.logor (Int64.of_int opcode) (Int64.logor (field 7 5 (Int64.of_int rd)) (field 12 20 imm))
+    Int64.logor (Int64.of_int opcode)
+      (Int64.logor (field 7 5 (Int64.of_int (Xreg.to_int rd))) (field 12 20 imm))
 
   let word_j ~rd imm =
     Int64.logor 0x6fL
       (Int64.logor
-         (field 7 5 (Int64.of_int rd))
+         (field 7 5 (Int64.of_int (Xreg.to_int rd)))
          (Int64.logor
             (field 12 8 (Int64.shift_right_logical imm 12))
             (Int64.logor
@@ -3028,19 +3090,23 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let word_caddi ~rd imm =
     Int64.logor 0x1L
       (Int64.logor (field 2 5 imm)
-         (Int64.logor (field 7 5 (Int64.of_int rd)) (field 12 1 (Int64.shift_right_logical imm 5))))
+         (Int64.logor
+            (field 7 5 (Int64.of_int (Xreg.to_int rd)))
+            (field 12 1 (Int64.shift_right_logical imm 5))))
 
   (* CA-format: quadrant(01) | rs2'[4:2] | funct2[6:5] | rd_rs1'[9:7] |
-     funct6[15:10], where rd_rs1'/rs2' are [rd_rs1]/[rs2] minus 8 (the
+     funct6[15:10], where rd_rs1'/rs2' are the {!Creg.field}s of [rd_rs1]/[rs2] (the
      RVC compressed-register field). Confirmed against real
      riscv64-linux-gnu-as: `c.and a0,a1` -> word 0x8d6d. *)
   let word_cr2 ~funct6 ~funct2 ~rd_rs1 ~rs2 =
     Int64.logor 0x1L
       (Int64.logor
-         (field 2 3 (Int64.of_int (rs2 - 8)))
+         (field 2 3 (Int64.of_int (Creg.field rs2)))
          (Int64.logor
             (field 5 2 (Int64.of_int funct2))
-            (Int64.logor (field 7 3 (Int64.of_int (rd_rs1 - 8))) (field 10 6 (Int64.of_int funct6)))))
+            (Int64.logor
+               (field 7 3 (Int64.of_int (Creg.field rd_rs1)))
+               (field 10 6 (Int64.of_int funct6)))))
 
   (* CR-format: quadrant(10) | rs2[6:2] | rd_rs1[11:7] | funct4[15:12] -
      the full-width sibling of {!word_cr2} ([c.jr]/[c.jalr]/[c.mv]/
@@ -3050,8 +3116,10 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let word_cr ~funct4 ~rd_rs1 ~rs2 =
     Int64.logor 0x2L
       (Int64.logor
-         (field 2 5 (Int64.of_int rs2))
-         (Int64.logor (field 7 5 (Int64.of_int rd_rs1)) (field 12 4 (Int64.of_int funct4))))
+         (field 2 5 (Int64.of_int (Xreg.to_int rs2)))
+         (Int64.logor
+            (field 7 5 (Int64.of_int (Xreg.to_int rd_rs1)))
+            (field 12 4 (Int64.of_int funct4))))
 
   (* CB-format compressed branches: quadrant(01) | rs1'[9:7] | funct3[15:13], where
      rs1' is [rs1] minus 8 like {!word_cr2}; the offset bits are left zero here and
@@ -3059,7 +3127,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      split {!word_b} uses for [beq]/[bne]'s own [Branch13] fixup. *)
   let word_cb ~funct3 ~rs1 =
     Int64.logor 0x1L
-      (Int64.logor (field 7 3 (Int64.of_int (rs1 - 8))) (field 13 3 (Int64.of_int funct3)))
+      (Int64.logor (field 7 3 (Int64.of_int (Creg.field rs1))) (field 13 3 (Int64.of_int funct3)))
 
   (* CL-format compressed loads: quadrant(00) | rd'[4:2] | offset bits | rs1'[9:7] |
      offset bits | funct3[15:13], where rd'/rs1' are [rd]/[rs1] minus 8 like
@@ -3068,13 +3136,13 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      a0,4(a1)` -> word 0x41c8). *)
   let word_c_lw ~funct3 ~rd ~rs1 offset =
     Int64.logor
-      (field 2 3 (Int64.of_int (rd - 8)))
+      (field 2 3 (Int64.of_int (Creg.field rd)))
       (Int64.logor
          (field 5 1 (Int64.shift_right_logical offset 6))
          (Int64.logor
             (field 6 1 (Int64.shift_right_logical offset 2))
             (Int64.logor
-               (field 7 3 (Int64.of_int (rs1 - 8)))
+               (field 7 3 (Int64.of_int (Creg.field rs1)))
                (Int64.logor
                   (field 10 3 (Int64.shift_right_logical offset 3))
                   (field 13 3 (Int64.of_int funct3))))))
@@ -3084,11 +3152,11 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      Confirmed: `c.ld a0,8(a1)` -> word 0x6588. *)
   let word_c_ld ~funct3 ~rd ~rs1 offset =
     Int64.logor
-      (field 2 3 (Int64.of_int (rd - 8)))
+      (field 2 3 (Int64.of_int (Creg.field rd)))
       (Int64.logor
          (field 5 2 (Int64.shift_right_logical offset 6))
          (Int64.logor
-            (field 7 3 (Int64.of_int (rs1 - 8)))
+            (field 7 3 (Int64.of_int (Creg.field rs1)))
             (Int64.logor
                (field 10 3 (Int64.shift_right_logical offset 3))
                (field 13 3 (Int64.of_int funct3)))))
@@ -3098,24 +3166,24 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      Confirmed: `c.sw a0,4(a1)` -> word 0xc1c8, `c.sd a0,8(a1)` -> word 0xe588. *)
   let word_c_sw ~funct3 ~rs1 ~rs2 offset =
     Int64.logor
-      (field 2 3 (Int64.of_int (rs2 - 8)))
+      (field 2 3 (Int64.of_int (Creg.field rs2)))
       (Int64.logor
          (field 5 1 (Int64.shift_right_logical offset 6))
          (Int64.logor
             (field 6 1 (Int64.shift_right_logical offset 2))
             (Int64.logor
-               (field 7 3 (Int64.of_int (rs1 - 8)))
+               (field 7 3 (Int64.of_int (Creg.field rs1)))
                (Int64.logor
                   (field 10 3 (Int64.shift_right_logical offset 3))
                   (field 13 3 (Int64.of_int funct3))))))
 
   let word_c_sd ~funct3 ~rs1 ~rs2 offset =
     Int64.logor
-      (field 2 3 (Int64.of_int (rs2 - 8)))
+      (field 2 3 (Int64.of_int (Creg.field rs2)))
       (Int64.logor
          (field 5 2 (Int64.shift_right_logical offset 6))
          (Int64.logor
-            (field 7 3 (Int64.of_int (rs1 - 8)))
+            (field 7 3 (Int64.of_int (Creg.field rs1)))
             (Int64.logor
                (field 10 3 (Int64.shift_right_logical offset 3))
                (field 13 3 (Int64.of_int funct3)))))
@@ -3138,7 +3206,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                   (Int64.logor
                      (field 6 1 (Int64.shift_right_logical offset 4))
                      (Int64.logor
-                        (field 7 5 (Int64.of_int rd))
+                        (field 7 5 (Int64.of_int (Xreg.to_int rd)))
                         (Int64.logor
                            (field 12 1 (Int64.shift_right_logical offset 5))
                            (field 13 3 (Int64.of_int funct3)))))))))
@@ -3159,7 +3227,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                   (Int64.logor
                      (field 6 1 (Int64.shift_right_logical offset 4))
                      (Int64.logor
-                        (field 7 5 (Int64.of_int rd))
+                        (field 7 5 (Int64.of_int (Xreg.to_int rd)))
                         (Int64.logor
                            (field 12 1 (Int64.shift_right_logical offset 5))
                            (field 13 3 (Int64.of_int funct3)))))))))
@@ -3172,7 +3240,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let word_c_swsp ~funct3 ~rs2 offset =
     Int64.logor 0x2L
       (Int64.logor
-         (field 2 5 (Int64.of_int rs2))
+         (field 2 5 (Int64.of_int (Xreg.to_int rs2)))
          (Int64.logor
             (field 7 1 (Int64.shift_right_logical offset 6))
             (Int64.logor
@@ -3190,7 +3258,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let word_c_sdsp ~funct3 ~rs2 offset =
     Int64.logor 0x2L
       (Int64.logor
-         (field 2 5 (Int64.of_int rs2))
+         (field 2 5 (Int64.of_int (Xreg.to_int rs2)))
          (Int64.logor
             (field 7 1 (Int64.shift_right_logical offset 6))
             (Int64.logor
@@ -3289,7 +3357,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     match l with
     | Lowered.Caddi x -> (
         match int64_expr x.imm with
-        | Some imm when x.rd <> 0 && imm <> 0L && fits_signed 6 imm ->
+        | Some imm when x.rd <> Xreg.zero && imm <> 0L && fits_signed 6 imm ->
             Ok (`Fixed (form (bytes_of_half (word_caddi ~rd:x.rd imm)) "c.addi" []))
         | Some _ -> bad_encode (`Immediate_range "c.addi")
         | None -> bad_encode (`Immediate_range ("c.addi " ^ Asm_core.Expr.to_string x.imm)))
@@ -3537,7 +3605,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           | Fload funct3 -> (0x07, funct3)
         in
         let hiword = word_u ~opcode:0x17 ~rd:x.tmp 0L in
-        let lowword = word_i ~opcode:lo_opcode ~funct3:lo_funct3 ~rd:x.rd ~rs1:x.tmp 0L in
+        let lowword = word_i ~opcode:lo_opcode ~funct3:lo_funct3 ~rd:x.rd ~rs1:(Reg.X x.tmp) 0L in
         let hi_kind, lo_kind =
           match x.kind with
           | Addi | Load _ | Fload _ -> (Pcrel_hi20, Pcrel_lo12_i)
@@ -3626,13 +3694,13 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       (Int64.of_int (Char.code s.[pos]))
       (Int64.shift_left (Int64.of_int (Char.code s.[pos + 1])) 8)
 
-  let reg n = Operand.Reg (Reg.of_x n)
-  let f_operand n = Operand.Reg (Reg.F (n land 31))
+  let reg n = Operand.Reg (Reg.x (n land 31))
+  let f_operand n = Operand.Reg (Reg.f (n land 31))
   let imm n = Operand.Imm (Bigint.of_int64 n)
   let sym n = Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 n))
 
   let mem rs1 n =
-    Operand.Mem { Mem.base = Reg.of_x rs1; offset = Asm_core.Expr.Const (Bigint.of_int64 n) }
+    Operand.Mem { Mem.base = Reg.x (rs1 land 31); offset = Asm_core.Expr.Const (Bigint.of_int64 n) }
 
   let op_exn s = Option.get (Opcode.of_mnemonic s)
   let instruction op ops = { Instruction.op; ops }
@@ -3864,11 +3932,11 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       | Mem_s { base } ->
           let v = Int64.logor (Int64.shift_left (field 25 7) 5) (field 7 5) in
           Some (Some (mem (Int64.to_int (field base 5)) (sign_extend 12 v)))
-      | Vreg { lsb } -> Some (Some (Operand.Reg (Reg.V (Int64.to_int (field lsb 5)))))
+      | Vreg { lsb } -> Some (Some (Operand.Reg (Reg.v (Int64.to_int (field lsb 5)))))
       | Vm { lsb } ->
           if field lsb 1 = 1L then Some None
           else Some (Some (Operand.Sym (Asm_core.Expr.Symbol "v0.t")))
-      | Fixed_vreg n -> Some (Some (Operand.Reg (Reg.V n)))
+      | Fixed_vreg n -> Some (Some (Operand.Reg (Reg.v n)))
       | Vtype _ -> None
       | Indexed { prefix; lsb; width; scale } ->
           let n = Int64.mul (field lsb width) (Int64.of_int scale) in
@@ -4453,16 +4521,33 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           Asm_core.Expr.Const (Bigint.of_int64 (Int64.add (Int64.shift_left high_imm 12) low_imm))
         in
         match low_opcode with
-        | 0x13 -> Some (Lowered.Pair { op = Opcode.La; rd; tmp; target; kind = Addi })
+        | 0x13 ->
+            Some
+              (Lowered.Pair
+                 { op = Opcode.La; rd = Reg.x rd; tmp = Xreg.of_int_exn tmp; target; kind = Addi })
         | 0x67 when rd = 1 && tmp = 1 ->
-            Some (Lowered.Pair { op = Opcode.Call; rd; tmp; target; kind = Jalr })
+            Some
+              (Lowered.Pair
+                 { op = Opcode.Call; rd = Reg.x rd; tmp = Xreg.of_int_exn tmp; target; kind = Jalr })
         | 0x67 when rd = 0 && tmp = 6 ->
-            Some (Lowered.Pair { op = Opcode.Tail; rd; tmp; target; kind = Jalr })
+            Some
+              (Lowered.Pair
+                 { op = Opcode.Tail; rd = Reg.x rd; tmp = Xreg.of_int_exn tmp; target; kind = Jalr })
         | 0x03 when rd = tmp && low_funct3 = 3 ->
-            Some (Lowered.Pair { op = Opcode.Ld; rd; tmp; target; kind = Load low_funct3 })
+            Some
+              (Lowered.Pair
+                 {
+                   op = Opcode.Ld;
+                   rd = Reg.x rd;
+                   tmp = Xreg.of_int_exn tmp;
+                   target;
+                   kind = Load low_funct3;
+                 })
         | 0x07 ->
             Option.map
-              (fun op -> Lowered.Pair { op; rd; tmp; target; kind = Fload low_funct3 })
+              (fun op ->
+                Lowered.Pair
+                  { op; rd = Reg.f rd; tmp = Xreg.of_int_exn tmp; target; kind = Fload low_funct3 })
               (match low_funct3 with 2 -> Some Opcode.Flw | 3 -> Some Opcode.Fld | _ -> None)
         | _ -> None
     in
