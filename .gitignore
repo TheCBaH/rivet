@@ -8,5 +8,6 @@
 /.tool-gate/
 /ai
 /_build/
+/_build-ocaml5/
 /test/browser/_work/
 /test/browser/node_modules/

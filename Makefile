@@ -418,6 +418,18 @@ exec: runner helpers abi-conform fixtures-check
 # here - it needs Melange, hence OCaml 4.14, so it is its own CI job.
 ci: fmt-check build test tools-test tools-integration tools-boundary tools-matrix-diff tools-fixture-modes tools-oracle-diff tools-gasxref-diff tools-isa-inventory-diff purity planted melange-optin external-deps js-portable
 
+# Checks only CI ran before: the real-browser harness (deep literals that Chromium cannot parse)
+# and an OCaml 5 build and test in that version's CI image (warnings that differ by compiler).
+# ocaml5 needs docker and the image, so it runs where docker is, not in the devcontainer; its
+# build directory is its own, so the 4.14 one stays valid.
+OCAML5_IMAGE ?= ghcr.io/thecbah/rivet/devcontainer-5.4.1-amd64:main
+ci-extra: js-browser ocaml5
+
+ocaml5:
+	docker run --rm -u $$(id -u):$$(id -g) -e HOME=/tmp -e DUNE_CACHE=disabled \
+	  -v $(CURDIR):/src -w /src $(OCAML5_IMAGE) \
+	  bash -lc 'eval $$(opam env) && ocamlfind ocamlopt -version && dune build --build-dir _build-ocaml5 @all @runtest'
+
 # The old spellings, for one release.
 ASM_ALIASES := build test fmt fmt-check ci melange js js-portable js-browser tool-gate \
   melange-optin fixtures-check fixtures-regen fixture-oracle oracle gas-xref-check \
@@ -434,7 +446,7 @@ $(addprefix asm-fixture-exec-,$(FIXTURE_TARGETS)): asm-fixture-exec-%: fixture-e
 $(addprefix asm-fixtures-verify-,$(FIXTURE_TARGETS)): asm-fixtures-verify-%: fixtures-verify-%
 
 .PHONY: default fmt-ocamlformat submodules build test fmt fmt-check melange js js-portable \
-  js-browser native-exec tool-gate melange-optin external-deps fixtures-check fixture-oracle fixtures-regen oracle \
+  js-browser ci-extra ocaml5 native-exec tool-gate melange-optin external-deps fixtures-check fixture-oracle fixtures-regen oracle \
   gas-xref-check gas-xref-regen isa-generated-check isa-generated-regen \
   isa-difficult-check isa-difficult-regen purity planted \
   tools-build tools-test tools-integration tools-boundary tools-fixture-modes \
