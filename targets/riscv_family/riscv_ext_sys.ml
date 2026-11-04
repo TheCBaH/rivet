@@ -1,28 +1,30 @@
 (* CSR access, fences, privileged, cache-management, hint and control-flow-integrity extensions.
    Most have only generated rows. *)
 
+module Opcode = Riscv_types.Opcode
+
 let zicsr =
   Riscv_ext.component ~id:"riscv.zicsr" ~feature:"zicsr"
     ~summary:"control and status register access"
     [
-      ("csrrw", "rv_zicsr/csrrw");
-      ("csrrs", "rv_zicsr/csrrs");
-      ("csrrc", "rv_zicsr/csrrc");
-      ("csrrwi", "rv_zicsr/csrrwi");
-      ("csrrsi", "rv_zicsr/csrrsi");
-      ("csrrci", "rv_zicsr/csrrci");
-      ("csrr", "rv_zicsr/csrr");
-      ("csrw", "rv_zicsr/csrw");
-      ("csrs", "rv_zicsr/csrs");
-      ("csrc", "rv_zicsr/csrc");
-      ("csrwi", "rv_zicsr/csrwi");
-      ("csrsi", "rv_zicsr/csrsi");
-      ("csrci", "rv_zicsr/csrci");
+      (Opcode.Csrrw, "rv_zicsr/csrrw");
+      (Opcode.Csrrs, "rv_zicsr/csrrs");
+      (Opcode.Csrrc, "rv_zicsr/csrrc");
+      (Opcode.Csrrwi, "rv_zicsr/csrrwi");
+      (Opcode.Csrrsi, "rv_zicsr/csrrsi");
+      (Opcode.Csrrci, "rv_zicsr/csrrci");
+      (Opcode.Csrr, "rv_zicsr/csrr");
+      (Opcode.Csrw, "rv_zicsr/csrw");
+      (Opcode.Csrs, "rv_zicsr/csrs");
+      (Opcode.Csrc, "rv_zicsr/csrc");
+      (Opcode.Csrwi, "rv_zicsr/csrwi");
+      (Opcode.Csrsi, "rv_zicsr/csrsi");
+      (Opcode.Csrci, "rv_zicsr/csrci");
     ]
 
 let zifencei =
   Riscv_ext.component ~id:"riscv.zifencei" ~feature:"zifencei" ~summary:"instruction-fetch fence"
-    [ ("fence.i", "rv_zifencei/fence.i") ]
+    [ (Opcode.Fence_i, "rv_zifencei/fence.i") ]
 
 let table ?(requires = []) ?legal feature summary =
   Riscv_ext.component ~id:("riscv." ^ feature) ~feature ~requires ?legal ~summary []
