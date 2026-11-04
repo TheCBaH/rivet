@@ -1270,9 +1270,15 @@ let render_std rows =
               \  let by_xlen ~rv32 ~rv64 = row (if X.xlen = 32 then rv32 else rv64)\n\n";
             ]
            @ List.map value mnemonics
-           @ [ "  (* Every value with its spelling. *)\n  let all =\n    [\n" ]
-           @ List.map (fun m -> Printf.sprintf "      (%S, %s);\n" m (mangle m)) mnemonics
-           @ [ "    ]\nend\n" ]))
+           @ [
+               "  (* Every value with its spelling; an array literal, so the JS backends do not \
+                nest a thousand conses. *)\n\
+               \  let all =\n\
+               \    Array.to_list\n\
+               \      [|\n";
+             ]
+           @ List.map (fun m -> Printf.sprintf "        (%S, %s);\n" m (mangle m)) mnemonics
+           @ [ "      |]\nend\n" ]))
 
 let emit_files repo =
   let* rows = selected_rows repo in
