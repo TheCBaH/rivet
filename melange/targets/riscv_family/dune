@@ -12,6 +12,8 @@
   riscv_cls
   riscv_row
   riscv_std_rows
+  riscv_std_rows32
+  riscv_std_rows64
   riscv_ext
   riscv_ext_a
   riscv_ext_b

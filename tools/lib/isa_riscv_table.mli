@@ -104,8 +104,9 @@ val mangle : string -> string
     trailing [_] after a leading digit, an OCaml keyword or a name the module itself uses. *)
 
 val emit_files : Repo.t -> ((Fpath.t * string) list, Tool_error.t) Err.t
-(** {!emit} for {!rows_path}, and for {!std_rows_path} a functor over the XLEN with one value per
-    distinct mnemonic. Fails if two mnemonics mangle to the same name, naming both. *)
+(** {!emit} for {!rows_path}; for {!std_rows_path} the signature of the named rows, one value per
+    distinct mnemonic; and [riscv_std_rows32.ml]/[riscv_std_rows64.ml], its two instances. Fails
+    if two mnemonics mangle to the same name, naming both. *)
 
 val run_emit : Repo.t -> Command.t
 (** Write {!emit_files}. *)
