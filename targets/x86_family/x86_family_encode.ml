@@ -362,6 +362,42 @@ module Cc = struct
       Option.map (fun c -> c) (of_name tail)
 end
 
+(* A generated row, as an opcode names it: its place in {!X86_table_rows.rows}. Only an index
+   into that table makes one. *)
+module Row : sig
+  type t
+
+  val of_index : int -> t
+  val index : t -> int
+  val row : t -> X86_table_row.row
+  val mnemonic : t -> string
+  val equal : t -> t -> bool
+end = struct
+  type t = int
+
+  let of_index i =
+    if i >= 0 && i < Array.length X86_table_rows.rows then i
+    else invalid_arg (Printf.sprintf "X86 Row.of_index %d" i)
+
+  let index i = i
+  let row i = X86_table_rows.rows.(i)
+  let mnemonic i = X86_table_rows.rows.(i).X86_table_row.mnemonic
+  let equal = Int.equal
+end
+
+(* The rel8-only branches: the loops and the counter-register jumps. *)
+module Short = struct
+  type t = Loop | Loope | Loopne | Jcxz | Jecxz | Jrcxz
+
+  let name = function
+    | Loop -> "loop"
+    | Loope -> "loope"
+    | Loopne -> "loopne"
+    | Jcxz -> "jcxz"
+    | Jecxz -> "jecxz"
+    | Jrcxz -> "jrcxz"
+end
+
 module Opcode = struct
   (** [sahf] - load [%ah] into the flags register ([0x9E]), bare, no operand,
             {!Fucomp}/{!Fnstsw}'s exact fixed-opcode shape (M5, the corpus notes -
@@ -378,7 +414,7 @@ module Opcode = struct
     | Imul
     | Cmov of Cc.t
     | Jcc of Cc.t
-    | Short_branch of string  (** a rel8-only branch: loop, loope, loopne, jecxz, jrcxz, jcxz *)
+    | Short_branch of Short.t  (** a rel8-only branch *)
     | Ud2
     | Pop
     | Bswap
@@ -1575,7 +1611,7 @@ module Opcode = struct
             encoded operand (M5 - gas_frontier.t's
             runtime-i64_dtou.S own status-word-into-[sahf] idiom). *)
     | Sahf
-    | Table of int  (** a generated {!X86_table_rows} row, by index (DEC-X86-TABLE) *)
+    | Table of Row.t  (** a generated {!X86_table_rows} row (DEC-X86-TABLE) *)
 
   let name = function
     | Add -> "add"
@@ -1589,7 +1625,7 @@ module Opcode = struct
     | Imul -> "imul"
     | Cmov c -> "cmov" ^ Cc.name c
     | Jcc c -> "j" ^ Cc.name c
-    | Short_branch m -> m
+    | Short_branch s -> Short.name s
     | Ud2 -> "ud2"
     | Pop -> "pop"
     | Bswap -> "bswap"
@@ -1989,7 +2025,7 @@ module Opcode = struct
     | Fsubs -> "fsubs"
     | Fnstsw -> "fnstsw"
     | Sahf -> "sahf"
-    | Table i -> X86_table_rows.rows.(i).X86_table_row.mnemonic
+    | Table r -> Row.mnemonic r
 
   (* The opcodes the {!X86_x87} component owns. Its tables key forms by mnemonic; this list is
      the one place a mnemonic is turned back into a constructor, and the family checks at
@@ -2241,7 +2277,7 @@ module Instruction = struct
         match i.op with
         (* a generated row's spelling is whole: no width suffix to add *)
         | Opcode.Table row -> (
-            let spelling = table_spelling row in
+            let spelling = table_spelling (Row.index row) in
             (* an EVEX-only operand already says EVEX; a broadcast states vfpclass's width *)
             let evex_only =
               List.exists
@@ -2292,7 +2328,8 @@ module Instruction = struct
               Fmt.(list ~sep:(any ", ") Operand.pp)
               ops
         (* one rung, so no pin to spell *)
-        | Opcode.Short_branch m -> Fmt.pf ppf "%s %a" m Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        | Opcode.Short_branch s ->
+            Fmt.pf ppf "%s %a" (Short.name s) Fmt.(list ~sep:(any ", ") Operand.pp) ops
         (* No size suffix: a near call is rel32 in both modes, so there is
            nothing for one to select, and GNU as writes none either. *)
         | Opcode.Call -> Fmt.pf ppf "call %a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
@@ -2505,7 +2542,7 @@ module Lowered = struct
     | Jcc_rel of { cc : Cc.t; target : Asm_core.Lowered_ast.branch }
         (** The two relaxing forms: [eb/e9] and [7x/0f 8x]. Unlike [call] these really do have two
             rungs, which is the whole reason {!Codec.Relax} exists. *)
-    | Short_rel of { mnemonic : string; target : Asm_core.Lowered_ast.branch }
+    | Short_rel of { op : Short.t; target : Asm_core.Lowered_ast.branch }
         (** a rel8-only branch ([e2] loop, [e1] loope, [e0] loopne, [e3] jecxz/jrcxz, with
             0x67 where the counter is not the address width): one rung, so an out-of-range
             target is an error, not a longer form *)
@@ -2689,7 +2726,7 @@ module Lowered = struct
             [%ax] destination is implicit in the opcode and checked away in
             {!simplify_instruction} rather than carried here. *)
     | Sahf
-    | Table of { row : int; ops : Operand.t list }
+    | Table of { row : Row.t; ops : Operand.t list }
         (** a generated {!X86_table_rows} row (DEC-X86-TABLE); [row] names the mnemonic, and
             encoding tries every row spelled the same way *)
 
@@ -2728,8 +2765,8 @@ module Lowered = struct
     | Jcc_rel { cc; target } ->
         Fmt.pf ppf "j%s %a" (Cc.name cc) Asm_core.Lowered_ast.pp_branch target
     | Call_rel { target } -> Fmt.pf ppf "call %a" Asm_core.Lowered_ast.pp_branch target
-    | Short_rel { mnemonic; target } ->
-        Fmt.pf ppf "%s %a" mnemonic Asm_core.Lowered_ast.pp_branch target
+    | Short_rel { op; target } ->
+        Fmt.pf ppf "%s %a" (Short.name op) Asm_core.Lowered_ast.pp_branch target
     | Push { reg } -> Fmt.pf ppf "push %a" Reg.pp reg
     | Push_imm { imm } -> Fmt.pf ppf "push $%s" (Disp.to_string imm)
     | Dec { reg } -> Fmt.pf ppf "dec %a" Reg.pp reg
@@ -2788,7 +2825,7 @@ module Lowered = struct
     | Fucomp -> Fmt.string ppf "fucomp %st(1)"
     | Fnstsw -> Fmt.string ppf "fnstsw %ax"
     | Sahf -> Fmt.string ppf "sahf"
-    | Table x -> Fmt.string ppf X86_table_rows.rows.(x.row).X86_table_row.mnemonic
+    | Table x -> Fmt.string ppf (Row.mnemonic x.row)
 
   let equal a b =
     match (a, b) with
@@ -2819,8 +2856,7 @@ module Lowered = struct
     | Jcc_rel x, Jcc_rel y ->
         Cc.equal x.cc y.cc && Asm_core.Lowered_ast.equal_branch x.target y.target
     | Call_rel x, Call_rel y -> Asm_core.Lowered_ast.equal_branch x.target y.target
-    | Short_rel x, Short_rel y ->
-        String.equal x.mnemonic y.mnemonic && Asm_core.Lowered_ast.equal_branch x.target y.target
+    | Short_rel x, Short_rel y -> x.op = y.op && Asm_core.Lowered_ast.equal_branch x.target y.target
     | Push x, Push y -> Reg.equal x.reg y.reg
     | Push_imm x, Push_imm y -> Disp.equal x.imm y.imm
     | Dec x, Dec y -> Reg.equal x.reg y.reg
@@ -3462,9 +3498,9 @@ module Make (M : MODE) = struct
     | `Vex_rm_extended_register of string ]
 
   and bad_branch_suffix = { mnemonic : string; rungs : string list }
-  and register_width_mismatch = { reg : string; reg_width : int; insn_width : int }
+  and register_width_mismatch = { reg : Reg.t; insn_width : int }
 
-  and sse_operand_class_mismatch = { sse_reg : string; sse_reg_width : int }
+  and sse_operand_class_mismatch = { sse_reg : Reg.t }
   (** Always "expected xmm, found something else" (M5):
           reusing {!Reg.t}/{!Rm.t} for both GPR and xmm operands buys width- and
           number-generic ModR/M machinery for free, but it also means nothing
@@ -3507,15 +3543,16 @@ module Make (M : MODE) = struct
     | `Displacement_not_32bit -> Fmt.string ppf "displacement does not fit 32 bits"
     | `No_data_relocation w -> Fmt.pf ppf "no absolute relocation for a %d-byte data initializer" w
     | `Negative_padding _ -> Fmt.string ppf "negative padding length"
-    | `Register_width_mismatch { reg; reg_width; insn_width } ->
-        Fmt.pf ppf "%s is %d-bit but the instruction is %d-bit" reg reg_width insn_width
+    | `Register_width_mismatch { reg; insn_width } ->
+        Fmt.pf ppf "%s is %d-bit but the instruction is %d-bit" (Reg.name reg) (Reg.width reg)
+          insn_width
     | `Shift_count_not_one n ->
         Fmt.pf ppf
           "shift/rotate-by-1 count must be exactly 1, got %Ld (the general immediate-count form is \
            not implemented)"
           n
-    | `Sse_operand_class { sse_reg; sse_reg_width } ->
-        Fmt.pf ppf "%s is %d-bit, expected an xmm register" sse_reg sse_reg_width
+    | `Sse_operand_class { sse_reg } ->
+        Fmt.pf ppf "%s is %d-bit, expected an xmm register" (Reg.name sse_reg) (Reg.width sse_reg)
     | `Vex_rm_extended_register reg ->
         Fmt.pf ppf
           "%s cannot be part of the r/m operand of a two-byte-VEX-encoded instruction (a register \
@@ -3605,10 +3642,15 @@ module Make (M : MODE) = struct
      address width's register (ecx/rcx), and 0x67 selects the other one (jecxz in 64-bit mode,
      jcxz in 32-bit mode). *)
   let short_branches =
-    [ ("loop", "\xe2"); ("loope", "\xe1"); ("loopne", "\xe0") ]
+    [ (Short.Loop, "\xe2"); (Loope, "\xe1"); (Loopne, "\xe0") ]
     @
-    if M.rex_allowed then [ ("jrcxz", "\xe3"); ("jecxz", "\x67\xe3") ]
-    else [ ("jecxz", "\xe3"); ("jcxz", "\x67\xe3") ]
+    if M.rex_allowed then [ (Short.Jrcxz, "\xe3"); (Jecxz, "\x67\xe3") ]
+    else [ (Short.Jecxz, "\xe3"); (Jcxz, "\x67\xe3") ]
+
+  let short_of_mnemonic m =
+    List.find_map
+      (fun (s, _) -> if String.equal (Short.name s) m then Some s else None)
+      short_branches
 
   (* [jmp], [jne], and either with a [.d8]/[.d32] pin. Returns the opcode and
      the pin, or [None] if the mnemonic is not a branch at all - which is why
@@ -3701,12 +3743,14 @@ module Make (M : MODE) = struct
     (* No size suffix, in either mode: a near call is rel32 on x86-32 and on
        x86-64 alike, so there is nothing for a suffix to select. *)
     | "call", _ -> Ok (Instruction.mk Opcode.Call M.address_width s.Surface.ops)
-    | m, _ when List.mem_assoc m short_branches ->
-        Ok (Instruction.mk (Opcode.Short_branch m) M.address_width s.Surface.ops)
+    | m, _ when Option.is_some (short_of_mnemonic m) ->
+        Ok
+          (Instruction.mk
+             (Opcode.Short_branch (Option.get (short_of_mnemonic m)))
+             M.address_width s.Surface.ops)
     (* GNU's aliases *)
-    | "loopz", _ -> Ok (Instruction.mk (Opcode.Short_branch "loope") M.address_width s.Surface.ops)
-    | "loopnz", _ ->
-        Ok (Instruction.mk (Opcode.Short_branch "loopne") M.address_width s.Surface.ops)
+    | "loopz", _ -> Ok (Instruction.mk (Opcode.Short_branch Loope) M.address_width s.Surface.ops)
+    | "loopnz", _ -> Ok (Instruction.mk (Opcode.Short_branch Loopne) M.address_width s.Surface.ops)
     (* {3 SSE2 scalar float (M5)}
 
        Fixed mnemonics, matched on the mnemonic directly rather than through
@@ -4366,17 +4410,13 @@ module Make (M : MODE) = struct
     in
     let width_ok (r : Reg.t) =
       if Reg.width r = i.Instruction.width then Ok ()
-      else
-        bad
-          (`Register_width_mismatch
-             { reg = Reg.name r; reg_width = Reg.width r; insn_width = i.Instruction.width })
+      else bad (`Register_width_mismatch { reg = r; insn_width = i.Instruction.width })
     in
     (* xmm-side of the SSE operand-class check (M5); see
        {!sse_operand_class_mismatch}'s comment for why the GPR side reuses
        [width_ok] instead of a mirrored helper here. *)
     let xmm_ok (r : Reg.t) =
-      if r.Reg.cls = Rclass.Xmm then Ok ()
-      else bad (`Sse_operand_class { sse_reg = Reg.name r; sse_reg_width = Reg.width r })
+      if r.Reg.cls = Rclass.Xmm then Ok () else bad (`Sse_operand_class { sse_reg = r })
     in
     (* The 256-bit ([ymm], VEX.L = 1) counterpart of {!xmm_ok}, and the per-mnemonic gate on which
        VEX instructions have a 256-bit form at all: only packed-float binops and the packed
@@ -4384,12 +4424,10 @@ module Make (M : MODE) = struct
        [vaddsd], the integer group that needs AVX2, ...) still falls through to {!xmm_ok}'s error
        rather than mis-encoding. *)
     let ymm_ok (r : Reg.t) =
-      if r.Reg.cls = Rclass.Ymm then Ok ()
-      else bad (`Sse_operand_class { sse_reg = Reg.name r; sse_reg_width = Reg.width r })
+      if r.Reg.cls = Rclass.Ymm then Ok () else bad (`Sse_operand_class { sse_reg = r })
     in
     let zmm_ok (r : Reg.t) =
-      if r.Reg.cls = Rclass.Zmm then Ok ()
-      else bad (`Sse_operand_class { sse_reg = Reg.name r; sse_reg_width = Reg.width r })
+      if r.Reg.cls = Rclass.Zmm then Ok () else bad (`Sse_operand_class { sse_reg = r })
     in
     (* EVEX (AVX-512F, {!Opcode.Vaddps}'s own doc comment): only the register-register spelling of
        the packed-float binops with an EVEX form is admitted at 512 bits, unmasked. *)
@@ -4853,11 +4891,11 @@ module Make (M : MODE) = struct
             Lowered.Jmp_rel
               { target = Asm_core.Lowered_ast.Symbolic { value = e; rung = i.Instruction.form } };
           ]
-    | Opcode.Short_branch mnemonic, [ Operand.Sym e ] ->
+    | Opcode.Short_branch op, [ Operand.Sym e ] ->
         Ok
           [
             Lowered.Short_rel
-              { mnemonic; target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } };
+              { op; target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } };
           ]
     | Opcode.Jcc cc, [ Operand.Sym e ] ->
         Ok
@@ -8127,7 +8165,8 @@ module Make (M : MODE) = struct
      target out of rel8 range is refused. *)
   let short_branch_alts =
     List.mapi
-      (fun k (m, bytes) ->
+      (fun k (s, bytes) ->
+        let m = Short.name s in
         let opcode =
           String.fold_left
             (fun acc c -> Int64.logor (Int64.shift_left acc 8) (Int64.of_int (Char.code c)))
@@ -8139,12 +8178,10 @@ module Make (M : MODE) = struct
                C.rung ~label:"d8"
                  (C.iso_fun ~name:(m ^ ".d8")
                     ~encode:(function
-                      | Lowered.Short_rel { mnemonic; target } when String.equal mnemonic m ->
-                          Some ((), disp_of target)
+                      | Lowered.Short_rel { op; target } when op = s -> Some ((), disp_of target)
                       | _ -> None)
                     ~decode:(fun ((), d) ->
-                      Some
-                        (Lowered.Short_rel { mnemonic = m; target = resolved ~rung:"d8" ~width:8 d }))
+                      Some (Lowered.Short_rel { op = s; target = resolved ~rung:"d8" ~width:8 d }))
                     C.(
                       const ~width:(8 * String.length bytes) opcode
                       ** le_fixup ~width:8 ~kind:Pcrel8_branch "target"));
@@ -9794,7 +9831,10 @@ module Make (M : MODE) = struct
                         else (k, !failed)
                       in
                       if failed then None
-                      else Some (Instruction.mk (Opcode.Table i) 0 ops, r.mnemonic, k - pos))
+                      else
+                        Some
+                          (Instruction.mk (Opcode.Table (Row.of_index i)) 0 ops, r.mnemonic, k - pos)
+                )
         in
         let rec go i =
           if i >= Array.length table_rows then None
@@ -9841,7 +9881,7 @@ module Make (M : MODE) = struct
             else go (i + 1)
         in
         match go 0 with
-        | Some i -> Ok (Instruction.mk (Opcode.Table i) 0 s.Surface.ops)
+        | Some i -> Ok (Instruction.mk (Opcode.Table (Row.of_index i)) 0 s.Surface.ops)
         | None -> Error (diag ~pos:__POS__ (`Unknown_instruction s.Surface.mnemonic)))
     | None -> (
         (* GNU as lets a register operand fix the operand size, and rejects a suffix on most newer
@@ -9861,7 +9901,7 @@ module Make (M : MODE) = struct
             (fun m ->
               match table_index m with
               | Some i when table_encode (`Row i) s.Surface.ops <> None ->
-                  Some (Instruction.mk (Opcode.Table i) 0 s.Surface.ops)
+                  Some (Instruction.mk (Opcode.Table (Row.of_index i)) 0 s.Surface.ops)
               | _ -> None)
             spellings
         in
@@ -9928,7 +9968,7 @@ module Make (M : MODE) = struct
             let spellings = [ Opcode.name i.op; Opcode.name i.op ^ suffix_of_width i.width ] in
             match List.find_map table_index spellings with
             | Some row when table_encode (`Row row) i.ops <> None ->
-                Ok [ Lowered.Table { row; ops = i.ops } ]
+                Ok [ Lowered.Table { row = Row.of_index row; ops = i.ops } ]
             | _ -> declined))
 
   let encode_ungated l =
@@ -9940,12 +9980,10 @@ module Make (M : MODE) = struct
     let fail (e : C.error) = Error (diag ~pos:__POS__ (`Codec e)) in
     match l with
     | Lowered.Table x -> (
-        match table_encode (`Row x.row) x.ops with
+        match table_encode (`Row (Row.index x.row)) x.ops with
         | Some bytes ->
-            Ok
-              (`Fixed
-                 { Asm_core.Lowered_ast.bytes; form = table_rows.(x.row).T.mnemonic; fixups = [] })
-        | None -> Error (diag ~pos:__POS__ (`No_form table_rows.(x.row).T.mnemonic)))
+            Ok (`Fixed { Asm_core.Lowered_ast.bytes; form = Row.mnemonic x.row; fixups = [] })
+        | None -> Error (diag ~pos:__POS__ (`No_form (Row.mnemonic x.row))))
     | _ -> (
         match pinned_rung l with
         | Some rung -> (
@@ -10138,9 +10176,9 @@ module Make (M : MODE) = struct
         Some
           (Instruction.mk ?form:(rung_of target) Opcode.Jmp M.address_width
              [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
-    | Lowered.Short_rel { mnemonic; target } ->
+    | Lowered.Short_rel { op; target } ->
         Some
-          (Instruction.mk (Opcode.Short_branch mnemonic) M.address_width
+          (Instruction.mk (Opcode.Short_branch op) M.address_width
              [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
     | Lowered.Jcc_rel { cc; target } ->
         Some
@@ -10437,7 +10475,7 @@ module Make (M : MODE) = struct
 
   let required_feature (i : Instruction.t) =
     match i.op with
-    | Opcode.Table row -> row_feature row
+    | Opcode.Table row -> row_feature (Row.index row)
     | op -> Target_component.feature_of_mnemonic components (Opcode.name op)
 
   let required i = Option.map (fun f -> Target_component.Req.Feature f) (required_feature i)
@@ -10467,7 +10505,7 @@ module Make (M : MODE) = struct
   let encode_in state l =
     match (l, lowered_mnemonic l) with
     | Lowered.Table x, _ -> (
-        match gate state table_rows.(x.row).T.mnemonic (row_feature x.row) with
+        match gate state (Row.mnemonic x.row) (row_feature (Row.index x.row)) with
         | Error _ as e -> e
         | Ok () -> encode_ungated l)
     | _, Some m -> (
