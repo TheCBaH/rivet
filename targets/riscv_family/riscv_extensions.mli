@@ -17,6 +17,9 @@ module Validated : sig
 
   val rows : t -> Riscv_table_row.row array
   (** Standard generated rows, then the vendor's. *)
+
+  val ids : t -> Riscv_row.t array
+  (** The rows' identities, in the same order. *)
 end
 
 val standard : xlen:int -> Validated.t
