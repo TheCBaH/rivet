@@ -4,6 +4,7 @@
  (modules
   riscv_family_encode
   riscv_types
+  riscv_ops
   riscv_cls
   riscv_row
   riscv_std_rows

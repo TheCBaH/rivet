@@ -10,6 +10,7 @@ module Riscv_overlap = Riscv_overlap
 module Riscv_extensions = Riscv_extensions
 module Riscv_isa = Riscv_isa
 module Riscv_types = Riscv_types
+module Riscv_ops = Riscv_ops
 
 module type PROFILE = sig
   val name : string
