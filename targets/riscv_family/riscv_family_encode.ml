@@ -46,9 +46,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   end
 
   (* The standard rows by name: [Std_row.vadd_vv] is the row [vadd.vv] reads as here. *)
-  module Std_row = Riscv_std_rows.Make (struct
-    let xlen = P.xlen
-  end)
+  module Std_row =
+    (val if P.xlen = 32 then (module Riscv_std_rows32 : Riscv_std_rows.S)
+         else (module Riscv_std_rows64 : Riscv_std_rows.S))
 
   module Reg = Riscv_types.Reg
   module Mem = Riscv_types.Mem
