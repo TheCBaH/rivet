@@ -555,3 +555,239 @@ let%expect_test "lowering errors name their opcode" =
   [%expect {|
     Rv64_only Ld
     Wrong_operands Add |}]
+
+(* {1 Register names and classes} *)
+
+module R = Types.Reg
+
+(* Every register value by its spelling. *)
+let named =
+  [
+    ("x0", R.x0);
+    ("x1", R.x1);
+    ("x2", R.x2);
+    ("x3", R.x3);
+    ("x4", R.x4);
+    ("x5", R.x5);
+    ("x6", R.x6);
+    ("x7", R.x7);
+    ("x8", R.x8);
+    ("x9", R.x9);
+    ("x10", R.x10);
+    ("x11", R.x11);
+    ("x12", R.x12);
+    ("x13", R.x13);
+    ("x14", R.x14);
+    ("x15", R.x15);
+    ("x16", R.x16);
+    ("x17", R.x17);
+    ("x18", R.x18);
+    ("x19", R.x19);
+    ("x20", R.x20);
+    ("x21", R.x21);
+    ("x22", R.x22);
+    ("x23", R.x23);
+    ("x24", R.x24);
+    ("x25", R.x25);
+    ("x26", R.x26);
+    ("x27", R.x27);
+    ("x28", R.x28);
+    ("x29", R.x29);
+    ("x30", R.x30);
+    ("x31", R.x31);
+    ("zero", R.zero);
+    ("ra", R.ra);
+    ("sp", R.sp);
+    ("gp", R.gp);
+    ("tp", R.tp);
+    ("t0", R.t0);
+    ("t1", R.t1);
+    ("t2", R.t2);
+    ("s0", R.s0);
+    ("fp", R.fp);
+    ("s1", R.s1);
+    ("a0", R.a0);
+    ("a1", R.a1);
+    ("a2", R.a2);
+    ("a3", R.a3);
+    ("a4", R.a4);
+    ("a5", R.a5);
+    ("a6", R.a6);
+    ("a7", R.a7);
+    ("s2", R.s2);
+    ("s3", R.s3);
+    ("s4", R.s4);
+    ("s5", R.s5);
+    ("s6", R.s6);
+    ("s7", R.s7);
+    ("s8", R.s8);
+    ("s9", R.s9);
+    ("s10", R.s10);
+    ("s11", R.s11);
+    ("t3", R.t3);
+    ("t4", R.t4);
+    ("t5", R.t5);
+    ("t6", R.t6);
+    ("f0", R.f0);
+    ("f1", R.f1);
+    ("f2", R.f2);
+    ("f3", R.f3);
+    ("f4", R.f4);
+    ("f5", R.f5);
+    ("f6", R.f6);
+    ("f7", R.f7);
+    ("f8", R.f8);
+    ("f9", R.f9);
+    ("f10", R.f10);
+    ("f11", R.f11);
+    ("f12", R.f12);
+    ("f13", R.f13);
+    ("f14", R.f14);
+    ("f15", R.f15);
+    ("f16", R.f16);
+    ("f17", R.f17);
+    ("f18", R.f18);
+    ("f19", R.f19);
+    ("f20", R.f20);
+    ("f21", R.f21);
+    ("f22", R.f22);
+    ("f23", R.f23);
+    ("f24", R.f24);
+    ("f25", R.f25);
+    ("f26", R.f26);
+    ("f27", R.f27);
+    ("f28", R.f28);
+    ("f29", R.f29);
+    ("f30", R.f30);
+    ("f31", R.f31);
+    ("ft0", R.ft0);
+    ("ft1", R.ft1);
+    ("ft2", R.ft2);
+    ("ft3", R.ft3);
+    ("ft4", R.ft4);
+    ("ft5", R.ft5);
+    ("ft6", R.ft6);
+    ("ft7", R.ft7);
+    ("fs0", R.fs0);
+    ("fs1", R.fs1);
+    ("fa0", R.fa0);
+    ("fa1", R.fa1);
+    ("fa2", R.fa2);
+    ("fa3", R.fa3);
+    ("fa4", R.fa4);
+    ("fa5", R.fa5);
+    ("fa6", R.fa6);
+    ("fa7", R.fa7);
+    ("fs2", R.fs2);
+    ("fs3", R.fs3);
+    ("fs4", R.fs4);
+    ("fs5", R.fs5);
+    ("fs6", R.fs6);
+    ("fs7", R.fs7);
+    ("fs8", R.fs8);
+    ("fs9", R.fs9);
+    ("fs10", R.fs10);
+    ("fs11", R.fs11);
+    ("ft8", R.ft8);
+    ("ft9", R.ft9);
+    ("ft10", R.ft10);
+    ("ft11", R.ft11);
+    ("v0", R.v0);
+    ("v1", R.v1);
+    ("v2", R.v2);
+    ("v3", R.v3);
+    ("v4", R.v4);
+    ("v5", R.v5);
+    ("v6", R.v6);
+    ("v7", R.v7);
+    ("v8", R.v8);
+    ("v9", R.v9);
+    ("v10", R.v10);
+    ("v11", R.v11);
+    ("v12", R.v12);
+    ("v13", R.v13);
+    ("v14", R.v14);
+    ("v15", R.v15);
+    ("v16", R.v16);
+    ("v17", R.v17);
+    ("v18", R.v18);
+    ("v19", R.v19);
+    ("v20", R.v20);
+    ("v21", R.v21);
+    ("v22", R.v22);
+    ("v23", R.v23);
+    ("v24", R.v24);
+    ("v25", R.v25);
+    ("v26", R.v26);
+    ("v27", R.v27);
+    ("v28", R.v28);
+    ("v29", R.v29);
+    ("v30", R.v30);
+    ("v31", R.v31);
+  ]
+
+let%expect_test "every register name is the parser's, and every parser spelling has a name" =
+  let wrong = List.filter_map (fun (n, r) -> if R.find n = Some r then None else Some n) named in
+  let spellings =
+    List.concat_map (fun p -> List.init 32 (fun i -> p ^ string_of_int i)) [ "x"; "f"; "v" ]
+    @ List.map fst R.aliases @ List.map fst R.f_aliases
+  in
+  let unnamed = List.filter (fun s -> not (List.mem_assoc s named)) spellings in
+  Printf.printf "names %d, wrong [%s], unnamed [%s]\n" (List.length named) (String.concat " " wrong)
+    (String.concat " " unnamed);
+  [%expect {| names 161, wrong [], unnamed [] |}]
+
+module Laws (C : Types.INDEX) = struct
+  let check label =
+    let some = List.filter (fun n -> C.of_int n <> None) (List.init 66 (fun i -> i - 1)) in
+    let ok =
+      [
+        ("of_int", some = C.numbers);
+        ("all", List.map C.to_int C.all = C.numbers);
+        ("round trip", List.for_all (fun n -> C.to_int (C.of_int_exn n) = n) C.numbers);
+        ("count", C.count = List.length C.numbers);
+        ( "mem",
+          List.for_all (fun n -> C.mem n = List.mem n C.numbers) (List.init 66 (fun i -> i - 1)) );
+        ( "range",
+          match C.range with
+          | Some (lo, hi) -> C.numbers = List.init (hi - lo + 1) (fun i -> lo + i)
+          | None -> false );
+      ]
+    in
+    Printf.printf "%-5s %d..%d %s, failed [%s]\n" label (List.hd C.numbers)
+      (List.nth C.numbers (C.count - 1))
+      (C.name (List.hd C.all))
+      (String.concat " " (List.filter_map (fun (n, b) -> if b then None else Some n) ok))
+end
+
+let%expect_test "each register class keeps the REGS laws" =
+  let module X = Laws (Types.Xreg) in
+  let module F = Laws (Types.Freg) in
+  let module V = Laws (Types.Vreg) in
+  let module C = Laws (Types.Creg) in
+  let module CF = Laws (Types.Cfreg) in
+  X.check "Xreg";
+  F.check "Freg";
+  V.check "Vreg";
+  C.check "Creg";
+  CF.check "Cfreg";
+  [%expect
+    {|
+    Xreg  0..31 x0, failed []
+    Freg  0..31 f0, failed []
+    Vreg  0..31 v0, failed []
+    Creg  8..15 x8, failed []
+    Cfreg 8..15 f8, failed [] |}]
+
+let%expect_test "every register of a class assembles in an instruction of that class" =
+  let count spell numbers =
+    List.length
+      (List.filter (fun n -> Result.is_ok (Test_zicsr.assembled "riscv64" (spell n))) numbers)
+  in
+  let x n = Printf.sprintf "add x%d, x%d, x%d" n n n in
+  let f n = Printf.sprintf "fadd.d f%d, f%d, f%d" n n n in
+  let c n = Printf.sprintf ".option rvc\n\tc.and x%d, x%d" n n in
+  let cf n = Printf.sprintf ".option rvc\n\tc.fld f%d, 0(x8)" n in
+  Printf.printf "Xreg %d/32, Freg %d/32, Creg %d/8, Cfreg %d/8\n" (count x Types.Xreg.numbers)
+    (count f Types.Freg.numbers) (count c Types.Creg.numbers) (count cf Types.Cfreg.numbers);
+  [%expect {| Xreg 32/32, Freg 32/32, Creg 8/8, Cfreg 8/8 |}]
