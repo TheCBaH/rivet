@@ -1304,13 +1304,16 @@ let std_rows_path_xlen repo xlen =
 let emit_files repo =
   let* rows = selected_rows repo in
   let* signature, rv32, rv64 = render_std rows in
-  Ok
+  let files =
     [
       (rows_path repo, render_rows rows);
       (std_rows_path repo, signature);
       (std_rows_path_xlen repo 32, rv32);
       (std_rows_path_xlen repo 64, rv64);
     ]
+  in
+  let* () = Emit_guard.check_files files in
+  Ok files
 
 let emit repo = Result.map (fun files -> snd (List.hd files)) (emit_files repo)
 

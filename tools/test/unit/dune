@@ -29,9 +29,23 @@
   test_isa_gen_negative
   test_isa_residual_ledger
   test_isa_construct
-  test_tool_parallel)
+  test_tool_parallel
+  test_emit_guard)
  (modes byte native)
  (libraries rivet_tools err_trace bos fpath unix))
+
+; The committed generated files must pass the guard their emitters apply.
+
+(rule
+ (alias runtest)
+ (deps
+  %{workspace_root}/targets/riscv_family/riscv_table_rows.ml
+  %{workspace_root}/targets/riscv_family/riscv_std_rows.ml
+  %{workspace_root}/targets/riscv_family/riscv_std_rows32.ml
+  %{workspace_root}/targets/riscv_family/riscv_std_rows64.ml
+  %{workspace_root}/targets/x86_family/x86_table_rows.ml)
+ (action
+  (run ./test_emit_guard.exe %{deps})))
 
 (rule
  (alias runtest)
