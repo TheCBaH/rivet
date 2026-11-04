@@ -3495,7 +3495,7 @@ module Make (M : MODE) = struct
     | `Shift_count_not_one of int64
     | `Setcc_operands
     | `Sse_operand_class of sse_operand_class_mismatch
-    | `Vex_rm_extended_register of string ]
+    | `Vex_rm_extended_register of Reg.t ]
 
   and bad_branch_suffix = { mnemonic : string; rungs : string list }
   and register_width_mismatch = { reg : Reg.t; insn_width : int }
@@ -3557,7 +3557,7 @@ module Make (M : MODE) = struct
         Fmt.pf ppf
           "%s cannot be part of the r/m operand of a two-byte-VEX-encoded instruction (a register \
            numbered 8 and above there needs the three-byte VEX prefix, not yet supported)"
-          reg
+          (Reg.name reg)
 
   (* The phase that detected it, which is what the code has always named. The
      codec arm delegates: [Codec.code] is [Some] only where that layer is the
@@ -4474,9 +4474,7 @@ module Make (M : MODE) = struct
        consumes the restricted 3-bit field, so it always passes here without
        a special case. *)
     let vex_mem_ok (m : Mem.t) =
-      let reg_ok (r : Reg.t) =
-        if r.num < 8 then Ok () else bad (`Vex_rm_extended_register (Reg.name r))
-      in
+      let reg_ok (r : Reg.t) = if r.num < 8 then Ok () else bad (`Vex_rm_extended_register r) in
       match (m.Mem.base, m.Mem.index) with
       | Some b, Some idx -> ( match reg_ok b with Ok () -> reg_ok idx | Error e -> Error e)
       | Some b, None -> reg_ok b
@@ -5256,7 +5254,7 @@ module Make (M : MODE) = struct
       when dst.Reg.cls = Rclass.Zmm && evex512_binop op -> (
         match (zmm_ok src2, zmm_ok src1, zmm_ok dst) with
         | Ok (), Ok (), Ok () ->
-            if src2.num >= 8 then bad (`Vex_rm_extended_register (Reg.name src2))
+            if src2.num >= 8 then bad (`Vex_rm_extended_register src2)
             else Ok [ Lowered.Vex_binop_rr_rm { op; dst; src1; src2 = Rm.Reg src2 } ]
         | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e)
     (* 256-bit VEX ([ymm], {!Opcode.Vaddps}'s own doc comment): every operand must be [ymm], the
@@ -5265,7 +5263,7 @@ module Make (M : MODE) = struct
       when dst.Reg.cls = Rclass.Ymm && vex256_binop op -> (
         match (ymm_ok src2, ymm_ok src1, ymm_ok dst) with
         | Ok (), Ok (), Ok () ->
-            if src2.num >= 8 then bad (`Vex_rm_extended_register (Reg.name src2))
+            if src2.num >= 8 then bad (`Vex_rm_extended_register src2)
             else Ok [ Lowered.Vex_binop_rr_rm { op; dst; src1; src2 = Rm.Reg src2 } ]
         | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e)
     | op, [ Operand.Mem m; Operand.Reg src1; Operand.Reg dst ]
@@ -5277,7 +5275,7 @@ module Make (M : MODE) = struct
       when dst.Reg.cls = Rclass.Ymm && vex256_unop op && op <> Opcode.Vmovntdqa -> (
         match (ymm_ok src, ymm_ok dst) with
         | Ok (), Ok () ->
-            if src.num >= 8 then bad (`Vex_rm_extended_register (Reg.name src))
+            if src.num >= 8 then bad (`Vex_rm_extended_register src)
             else Ok [ Lowered.Vex_unop_r_rm { op; dst; src = Rm.Reg src } ]
         | Error e, _ | _, Error e -> Error e)
     | op, [ Operand.Mem m; Operand.Reg dst ] when dst.Reg.cls = Rclass.Ymm && vex256_unop op -> (
@@ -5310,7 +5308,7 @@ module Make (M : MODE) = struct
         [ Operand.Reg src2; Operand.Reg src1; Operand.Reg dst ] ) -> (
         match (xmm_ok src2, xmm_ok src1, xmm_ok dst) with
         | Ok (), Ok (), Ok () ->
-            if src2.num >= 8 then bad (`Vex_rm_extended_register (Reg.name src2))
+            if src2.num >= 8 then bad (`Vex_rm_extended_register src2)
             else
               Ok
                 [ Lowered.Vex_binop_rr_rm { op = i.Instruction.op; dst; src1; src2 = Rm.Reg src2 } ]
@@ -5396,7 +5394,7 @@ module Make (M : MODE) = struct
         | Ok imm -> (
             match (xmm_ok src, xmm_ok dst) with
             | Ok (), Ok () ->
-                if src.num >= 8 then bad (`Vex_rm_extended_register (Reg.name src))
+                if src.num >= 8 then bad (`Vex_rm_extended_register src)
                 else
                   Ok
                     [
@@ -5417,7 +5415,7 @@ module Make (M : MODE) = struct
         [ Operand.Reg src; Operand.Reg dst ] ) -> (
         match (xmm_ok src, xmm_ok dst) with
         | Ok (), Ok () ->
-            if src.num >= 8 then bad (`Vex_rm_extended_register (Reg.name src))
+            if src.num >= 8 then bad (`Vex_rm_extended_register src)
             else Ok [ Lowered.Vex_unop_r_rm { op = i.Instruction.op; dst; src = Rm.Reg src } ]
         | Error e, _ | _, Error e -> Error e)
     (* {!Opcode.Vcvtpd2ps}'s own doc comment: its register<-memory spelling is genuinely
@@ -5463,7 +5461,7 @@ module Make (M : MODE) = struct
         | Ok imm -> (
             match (xmm_ok src2, xmm_ok src1, xmm_ok dst) with
             | Ok (), Ok (), Ok () ->
-                if src2.num >= 8 then bad (`Vex_rm_extended_register (Reg.name src2))
+                if src2.num >= 8 then bad (`Vex_rm_extended_register src2)
                 else
                   Ok
                     [
@@ -5499,7 +5497,7 @@ module Make (M : MODE) = struct
         | Ok imm -> (
             match (xmm_ok src, xmm_ok dst) with
             | Ok (), Ok () ->
-                if src.num >= 8 then bad (`Vex_rm_extended_register (Reg.name src))
+                if src.num >= 8 then bad (`Vex_rm_extended_register src)
                 else
                   Ok
                     [
@@ -5534,13 +5532,13 @@ module Make (M : MODE) = struct
         | Error _, Ok () -> (
             match width_ok a with
             | Ok () ->
-                if a.num >= 8 then bad (`Vex_rm_extended_register (Reg.name a))
+                if a.num >= 8 then bad (`Vex_rm_extended_register a)
                 else Ok [ Lowered.Vex_movd_r_rm { op = i.Instruction.op; dst = b; rm = Rm.Reg a } ]
             | Error e -> Error e)
         | Ok (), Error _ -> (
             match width_ok b with
             | Ok () ->
-                if b.num >= 8 then bad (`Vex_rm_extended_register (Reg.name b))
+                if b.num >= 8 then bad (`Vex_rm_extended_register b)
                 else Ok [ Lowered.Vex_movd_rm_r { op = i.Instruction.op; reg = a; rm = Rm.Reg b } ]
             | Error e -> Error e)
         | Ok (), Ok () | Error _, Error _ -> bad (`No_form (Opcode.name i.Instruction.op)))
@@ -5571,7 +5569,7 @@ module Make (M : MODE) = struct
         | Ok imm -> (
             match (width_ok src2, xmm_ok src1, xmm_ok dst) with
             | Ok (), Ok (), Ok () ->
-                if src2.num >= 8 then bad (`Vex_rm_extended_register (Reg.name src2))
+                if src2.num >= 8 then bad (`Vex_rm_extended_register src2)
                 else
                   Ok
                     [
@@ -5603,7 +5601,7 @@ module Make (M : MODE) = struct
         | Ok imm -> (
             match (xmm_ok src, width_ok dst) with
             | Ok (), Ok () ->
-                if src.num >= 8 then bad (`Vex_rm_extended_register (Reg.name src))
+                if src.num >= 8 then bad (`Vex_rm_extended_register src)
                 else
                   Ok
                     [
@@ -5617,7 +5615,7 @@ module Make (M : MODE) = struct
       -> (
         match (xmm_ok src, width_ok dst) with
         | Ok (), Ok () ->
-            if src.num >= 8 then bad (`Vex_rm_extended_register (Reg.name src))
+            if src.num >= 8 then bad (`Vex_rm_extended_register src)
             else Ok [ Lowered.Vex_unop_r_rm { op = i.Instruction.op; dst; src = Rm.Reg src } ]
         | Error e, _ | _, Error e -> Error e)
     (* [fldl]/[fstpl]/[fstps]/[flds] (M5): the compiler's own x87

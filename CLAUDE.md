@@ -61,7 +61,9 @@ construct the source/semantic/lowered AST directly.
 
 - Retargeting unit is *ISA x ABI x textual dialect x endianness x feature set*,
   not just ISA — the architecture-independent engine has no central per-ISA
-  register/opcode/relocation listing; that lives in target modules.
+  register/opcode/relocation listing; that lives in target modules. Each target
+  names registers, opcodes and operand kinds with its own concrete types; a
+  string there is a spelling or published data (`docs/design.md` §5.2).
 - `lib/{foundation,asm_core,asm_syntax,codec,image,target_intf}` — the
   architecture-independent engine (parsing/normalization/codec/image machinery
   and the `TARGET`-style module interfaces targets implement).
