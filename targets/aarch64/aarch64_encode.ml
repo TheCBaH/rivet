@@ -101,6 +101,27 @@ end
    is the reason: the offset is not known until the linker places [g], so a
    numeric field cannot hold it and a separate "symbolic load" form would be a
    second spelling of the same addressing mode. *)
+(* The index extends of a register offset and of ADD/SUB (extended register); [Lsl_ext] is the
+   [lsl] an index takes. *)
+module Extend = struct
+  type t = Uxtb | Uxth | Uxtw | Uxtx | Sxtb | Sxth | Sxtw | Sxtx | Lsl_ext
+
+  let all = [ Uxtb; Uxth; Uxtw; Uxtx; Sxtb; Sxth; Sxtw; Sxtx; Lsl_ext ]
+
+  let name = function
+    | Uxtb -> "uxtb"
+    | Uxth -> "uxth"
+    | Uxtw -> "uxtw"
+    | Uxtx -> "uxtx"
+    | Sxtb -> "sxtb"
+    | Sxth -> "sxth"
+    | Sxtw -> "sxtw"
+    | Sxtx -> "sxtx"
+    | Lsl_ext -> "lsl"
+
+  let of_name s = List.find_opt (fun e -> String.equal (name e) s) all
+end
+
 module Disp = struct
   (* [Reg] is the register-offset addressing form - [ldr w4, [x9, w10, uxtw
      #2]] - not a fourth [Mem] shape but a third [Disp] one, because base
@@ -118,7 +139,7 @@ module Disp = struct
   type t =
     | Const of int64
     | Sym of Asm_core.Expr.t
-    | Reg of { index : Reg.t; extend : string; amount : int option }
+    | Reg of { index : Reg.t; extend : Extend.t; amount : int option }
 
   let zero = Const 0L
   let is_zero = function Const v -> Int64.equal v 0L | Sym _ | Reg _ -> false
@@ -129,8 +150,10 @@ module Disp = struct
     | Sym e -> Asm_core.Expr.to_string e
     | Reg { index; extend; amount } ->
         let tail =
-          if extend = "lsl" && amount = None then ""
-          else ", " ^ extend ^ match amount with Some n -> Printf.sprintf " #%d" n | None -> ""
+          if extend = Extend.Lsl_ext && amount = None then ""
+          else
+            ", " ^ Extend.name extend
+            ^ match amount with Some n -> Printf.sprintf " #%d" n | None -> ""
         in
         Reg.name index ^ tail
 end
@@ -143,8 +166,25 @@ module Mem = struct
     Fmt.pf ppf "[%a%s]%s" Reg.pp m.base off (if m.writeback then "!" else "")
 end
 
+(* A shift or extend operand, [<keyword> #<amount>]: the shifted-register forms take a shift,
+   ADD/SUB (extended register) an extend. *)
 module Shift = struct
-  type t = { kind : string; amount : int }
+  type kind = Lsl | Lsr | Asr | Ror | Ext of Extend.t
+  type t = { kind : kind; amount : int }
+
+  let name = function
+    | Lsl -> "lsl"
+    | Lsr -> "lsr"
+    | Asr -> "asr"
+    | Ror -> "ror"
+    | Ext e -> Extend.name e
+
+  let of_name = function
+    | "lsl" -> Some Lsl
+    | "lsr" -> Some Lsr
+    | "asr" -> Some Asr
+    | "ror" -> Some Ror
+    | s -> Option.map (fun e -> Ext e) (Extend.of_name s)
 end
 
 (* {1 Advanced SIMD}
@@ -227,7 +267,7 @@ module Operand = struct
        canonical dump uses and that dump is compared against objdump's. *)
     | Fimm f -> Fmt.pf ppf "#%s" (Printf.sprintf "%.18e" f)
     | Mem m -> Mem.pp ppf m
-    | Shift s -> Fmt.pf ppf "%s #%d" s.Shift.kind s.Shift.amount
+    | Shift s -> Fmt.pf ppf "%s #%d" (Shift.name s.Shift.kind) s.Shift.amount
     | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
     | Vec (r, a) -> Fmt.pf ppf "v%d.%s" r (Varr.name a)
     | Vlane (r, l, i) -> Fmt.pf ppf "v%d.%s[%d]" r (Lane.name l) i
@@ -659,12 +699,14 @@ let ldst_mnemonic ~size ~load =
 
 let shift_name = function 0 -> "lsl" | 1 -> "lsr" | 2 -> "asr" | 3 -> "ror" | _ -> "?"
 
-let shift_of_name = function
-  | "lsl" -> Some 0
-  | "lsr" -> Some 1
-  | "asr" -> Some 2
-  | "ror" -> Some 3
-  | _ -> None
+let shift_code = function
+  | Shift.Lsl -> Some 0
+  | Lsr -> Some 1
+  | Asr -> Some 2
+  | Ror -> Some 3
+  | Ext _ -> None
+
+let shift_of_code = function 0 -> Shift.Lsl | 1 -> Lsr | 2 -> Asr | _ -> Ror
 
 (* ADD/SUB (extended register)'s own 3-bit "option" field - a different table
    from the register-offset addressing extend above ([extend_option]/
@@ -686,17 +728,18 @@ let extend_alu_name = function
   | 7 -> "sxtx"
   | _ -> "?"
 
-let extend_alu_of_name = function
-  | "uxtb" -> Some 0
-  | "uxth" -> Some 1
-  | "uxtw" -> Some 2
-  | "uxtx" -> Some 3
-  | "sxtb" -> Some 4
-  | "sxth" -> Some 5
-  | "sxtw" -> Some 6
-  | "sxtx" -> Some 7
-  | _ -> None
+let extend_alu_code = function
+  | Extend.Uxtb -> Some 0
+  | Uxth -> Some 1
+  | Uxtw -> Some 2
+  | Uxtx -> Some 3
+  | Sxtb -> Some 4
+  | Sxth -> Some 5
+  | Sxtw -> Some 6
+  | Sxtx -> Some 7
+  | Lsl_ext -> None
 
+let extend_alu_of_code c = List.find_opt (fun e -> extend_alu_code e = Some c) Extend.all
 let logical_name = function 0 -> "and" | 1 -> "orr" | 2 -> "eor" | 3 -> "ands" | _ -> "?"
 
 (* "Floating-point data-processing (2 source)"'s own 4-bit opcode field (M5
@@ -1757,24 +1800,24 @@ let ldst_post_alt ~size ~load =
    general-purpose load or store accepts; the other four the 3-bit field
    could hold are reserved for this instruction class. *)
 let extend_option = function
-  | "uxtw" -> Some 0b010
-  | "lsl" -> Some 0b011
-  | "sxtw" -> Some 0b110
-  | "sxtx" -> Some 0b111
-  | _ -> None
+  | Extend.Uxtw -> Some 0b010
+  | Lsl_ext -> Some 0b011
+  | Sxtw -> Some 0b110
+  | Sxtx -> Some 0b111
+  | Uxtb | Uxth | Uxtx | Sxtb | Sxth -> None
 
 let extend_of_option = function
-  | 0b010 -> Some "uxtw"
-  | 0b011 -> Some "lsl"
-  | 0b110 -> Some "sxtw"
-  | 0b111 -> Some "sxtx"
+  | 0b010 -> Some Extend.Uxtw
+  | 0b011 -> Some Extend.Lsl_ext
+  | 0b110 -> Some Extend.Sxtw
+  | 0b111 -> Some Extend.Sxtx
   | _ -> None
 
 (* [uxtw]/[sxtw] read a 32-bit [Wm]; [lsl]/[sxtx] read a 64-bit [Xm] - the
    option alone decides, there is no separate width bit, so decode fixes
    [index]'s width from the extend it just recovered rather than from the
    raw field. *)
-let extend_index_width = function "uxtw" | "sxtw" -> 32 | _ -> 64
+let extend_index_width = function Extend.Uxtw | Sxtw -> 32 | _ -> 64
 
 let ldst_roff_alt ~size ~load =
   let rt_width = access_reg_width size in
@@ -1802,7 +1845,7 @@ let ldst_roff_alt ~size ~load =
       | Some extend ->
           let scaled = Int64.equal s 1L in
           let extend, amount =
-            if extend = "lsl" && not scaled then ("lsl", None)
+            if extend = Extend.Lsl_ext && not scaled then (Extend.Lsl_ext, None)
             else (extend, if scaled then Some (access_shift size) else None)
           in
           let index = { index with Reg.width = extend_index_width extend } in
@@ -1865,7 +1908,7 @@ let ldst_sx_roff_alt ~size ~x =
       | Some extend ->
           let scaled = Int64.equal s 1L in
           let extend, amount =
-            if extend = "lsl" && not scaled then ("lsl", None)
+            if extend = Extend.Lsl_ext && not scaled then (Extend.Lsl_ext, None)
             else (extend, if scaled then Some (access_shift size) else None)
           in
           let index = { index with Reg.width = extend_index_width extend } in
@@ -1933,7 +1976,7 @@ let ldst_roff_f_alt ~double ~load =
       | Some extend ->
           let scaled = Int64.equal s 1L in
           let extend, amount =
-            if extend = "lsl" && not scaled then ("lsl", None)
+            if extend = Extend.Lsl_ext && not scaled then (Extend.Lsl_ext, None)
             else (extend, if scaled then Some (access_shift size) else None)
           in
           let index = { index with Reg.width = extend_index_width extend } in
@@ -3731,7 +3774,8 @@ type error_kind =
   | `No_data_relocation of int
   | `Padding_not_word_multiple ]
 
-and wrong_register_width = { opcode : string; expected : int }
+and wrong_register_width = { subject : width_subject; expected : int }
+and width_subject = Op of Opcode.t | Index of Extend.t
 
 type error = error_kind Target_error.t
 
@@ -3755,8 +3799,10 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `Pair_offset_range scale ->
       Fmt.pf ppf "ldp/stp offset must be a multiple of %d between %d and %d" scale (-64 * scale)
         (63 * scale)
-  | `Wrong_register_width { opcode; expected } ->
-      Fmt.pf ppf "%s needs a %d-bit register" opcode expected
+  | `Wrong_register_width { subject; expected } ->
+      Fmt.pf ppf "%s needs a %d-bit register"
+        (match subject with Op op -> Opcode.name op | Index e -> Extend.name e)
+        expected
   | `Writeback_out_of_scope -> Fmt.string ppf "writeback loads and stores are not in M2 scope"
   | `Wrong_memory_modifier m -> Fmt.pf ppf "a memory offset takes #:lo12:, not #:%s:" m
   | `Missing_memory_modifier -> Fmt.string ppf "a symbolic memory offset needs a #:lo12: modifier"
@@ -3840,7 +3886,7 @@ let simplify_instruction (_ : target_state) s =
       (* A [lsl #0] modifier is dropped; a nonzero one is kept, because [movz]
          encodes it in [hw] and dropping it would silently change the value. *)
       match List.rev s.Surface.ops with
-      | Operand.Shift { Shift.kind = "lsl"; amount = 0 } :: rest ->
+      | Operand.Shift { Shift.kind = Shift.Lsl; amount = 0 } :: rest ->
           Ok { Instruction.op; ops = bare_immediates (List.rev rest) }
       | _ -> Ok { Instruction.op; ops = bare_immediates s.Surface.ops })
 
@@ -3903,7 +3949,7 @@ let rec lower_instruction state i =
           let size = rd.Reg.width in
           let sh = Int64.to_int amount in
           if rd.Reg.width <> rn.Reg.width then
-            bad (`Wrong_register_width { opcode = Opcode.name op; expected = size })
+            bad (`Wrong_register_width { subject = Op op; expected = size })
           else if sh < 0 || sh >= size then bad `Shift_amount_too_large
           else
             match op with
@@ -3967,7 +4013,7 @@ let rec lower_instruction state i =
         Operand.Reg rd;
         Operand.Reg rn;
         Operand.Imm v;
-        Operand.Shift { Shift.kind = "lsl"; amount = 12 };
+        Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 };
       ] ) -> (
       match imm_of v with
       | Error e -> Error e
@@ -3980,7 +4026,7 @@ let rec lower_instruction state i =
       | Ok imm ->
           if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then bad `Movz_imm16_overflow
           else Ok [ Lowered.Movz { rd; imm16 = imm; hw = 0 } ])
-  | Opcode.Movz, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = "lsl"; amount } ]
+  | Opcode.Movz, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = Shift.Lsl; amount } ]
     -> (
       match imm_of v with
       | Error e -> Error e
@@ -3995,7 +4041,7 @@ let rec lower_instruction state i =
       | Ok imm ->
           if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then bad `Movz_imm16_overflow
           else Ok [ Lowered.Movn { rd; imm16 = imm; hw = 0 } ])
-  | Opcode.Movn, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = "lsl"; amount } ]
+  | Opcode.Movn, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = Shift.Lsl; amount } ]
     -> (
       match imm_of v with
       | Error e -> Error e
@@ -4010,7 +4056,7 @@ let rec lower_instruction state i =
       | Ok imm ->
           if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then bad `Movz_imm16_overflow
           else Ok [ Lowered.Movk { rd; imm16 = imm; hw = 0 } ])
-  | Opcode.Movk, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = "lsl"; amount } ]
+  | Opcode.Movk, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = Shift.Lsl; amount } ]
     -> (
       match imm_of v with
       | Error e -> Error e
@@ -4037,7 +4083,7 @@ let rec lower_instruction state i =
         | _ -> Cls
       in
       if rd.Reg.width <> rn.Reg.width || dp1_opcode d ~width:rd.Reg.width = None then
-        bad (`Wrong_register_width { opcode = Opcode.name op; expected = 64 })
+        bad (`Wrong_register_width { subject = Op op; expected = 64 })
       else Ok [ Lowered.Dp1 { op = d; rd; rn } ]
   | ( ((Opcode.Lsl | Opcode.Lsr | Opcode.Asr | Opcode.Ror) as op),
       [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ) ->
@@ -4105,7 +4151,7 @@ let rec lower_instruction state i =
   | ((Opcode.Ldrsb | Opcode.Ldrsh | Opcode.Ldrsw) as op), [ Operand.Reg rt; Operand.Mem m ] -> (
       let size = match op with Opcode.Ldrsb -> B | Opcode.Ldrsh -> H | _ -> W in
       if rt.Reg.width <> 64 && (size = W || rt.Reg.width <> 32) then
-        bad (`Wrong_register_width { opcode = Opcode.name op; expected = 64 })
+        bad (`Wrong_register_width { subject = Op op; expected = 64 })
       else if m.Mem.writeback then bad `Writeback_out_of_scope
       else
         match m.Mem.offset with
@@ -4122,7 +4168,8 @@ let rec lower_instruction state i =
         | Disp.Reg { index; extend; amount } -> (
             let expected_index_width = extend_index_width extend in
             if index.Reg.width <> expected_index_width then
-              bad (`Wrong_register_width { opcode = extend; expected = expected_index_width })
+              bad
+                (`Wrong_register_width { subject = Index extend; expected = expected_index_width })
             else
               match amount with
               | None | Some 0 ->
@@ -4194,7 +4241,7 @@ let rec lower_instruction state i =
       let pair_offset off ~post =
         let scale = if rt.Reg.width = 64 then 8L else 4L in
         if rt.Reg.width <> rt2.Reg.width then
-          bad (`Wrong_register_width { opcode = Opcode.name op; expected = rt.Reg.width })
+          bad (`Wrong_register_width { subject = Op op; expected = rt.Reg.width })
         else
           let q = Int64.div off scale in
           if
@@ -4226,8 +4273,7 @@ let rec lower_instruction state i =
         | _ -> if rt.Reg.width = 64 then X else W
       in
       let expected = access_reg_width size in
-      if rt.Reg.width <> expected then
-        bad (`Wrong_register_width { opcode = Opcode.name op; expected })
+      if rt.Reg.width <> expected then bad (`Wrong_register_width { subject = Op op; expected })
       else
         match imm_of v with
         | Error e -> Error e
@@ -4248,8 +4294,7 @@ let rec lower_instruction state i =
         | _ -> if rt.Reg.width = 64 then X else W
       in
       let expected = access_reg_width size in
-      if rt.Reg.width <> expected then
-        bad (`Wrong_register_width { opcode = Opcode.name op; expected })
+      if rt.Reg.width <> expected then bad (`Wrong_register_width { subject = Op op; expected })
       else if m.Mem.writeback then bad `Writeback_out_of_scope
       else
         match m.Mem.offset with
@@ -4279,7 +4324,8 @@ let rec lower_instruction state i =
         | Disp.Reg { index; extend; amount } -> (
             let expected_index_width = extend_index_width extend in
             if index.Reg.width <> expected_index_width then
-              bad (`Wrong_register_width { opcode = extend; expected = expected_index_width })
+              bad
+                (`Wrong_register_width { subject = Index extend; expected = expected_index_width })
             else
               match amount with
               | None | Some 0 ->
@@ -4328,7 +4374,8 @@ let rec lower_instruction state i =
         | Disp.Reg { index; extend; amount } -> (
             let expected_index_width = extend_index_width extend in
             if index.Reg.width <> expected_index_width then
-              bad (`Wrong_register_width { opcode = extend; expected = expected_index_width })
+              bad
+                (`Wrong_register_width { subject = Index extend; expected = expected_index_width })
             else
               match amount with
               | None | Some 0 ->
@@ -4476,7 +4523,7 @@ let rec lower_instruction state i =
         Operand.Reg rd;
         Operand.Reg rn;
         Operand.Imm v;
-        Operand.Shift { Shift.kind = "lsl"; amount = 12 };
+        Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 };
       ] ) -> (
       match imm_of v with
       | Error e -> Error e
@@ -4496,7 +4543,7 @@ let rec lower_instruction state i =
                 { sub = op = Opcode.Sub; s = false; rd; rn; rm; shift = 0; amount = 0 };
             ]
       | [ Operand.Shift { Shift.kind; amount } ] -> (
-          match shift_of_name kind with
+          match shift_code kind with
           | Some shift ->
               if amount < 0 || amount >= rd.Reg.width then bad `Shift_amount_too_large
               else
@@ -4506,8 +4553,8 @@ let rec lower_instruction state i =
                       { sub = op = Opcode.Sub; s = false; rd; rn; rm; shift; amount };
                   ]
           | None -> (
-              match extend_alu_of_name kind with
-              | None -> bad (`Not_a_shifted_register kind)
+              match match kind with Shift.Ext e -> extend_alu_code e | _ -> None with
+              | None -> bad (`Not_a_shifted_register (Shift.name kind))
               | Some option ->
                   if amount < 0 || amount > 4 then bad `Shift_amount_too_large
                   else
@@ -4538,7 +4585,7 @@ let rec lower_instruction state i =
             if Int64.equal (Int64.shift_left shifted 12) imm && fits shifted then
               Ok [ make shifted true ]
             else bad `Imm12_unshifted
-      | Ok imm, [ Operand.Shift { Shift.kind = "lsl"; amount = 12 } ] ->
+      | Ok imm, [ Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 } ] ->
           if fits imm then Ok [ make imm true ] else bad `Imm12_field
       | Ok _, _ -> bad `Too_many_operands)
   | Opcode.Cmp, [ Operand.Reg rn; Operand.Reg rm ] ->
@@ -4604,11 +4651,11 @@ let rec lower_instruction state i =
       match rest with
       | [] -> Ok [ Lowered.Logical_shift { opc; n; rd; rn; rm; shift = 0; amount = 0 } ]
       | [ Operand.Shift { Shift.kind; amount } ] -> (
-          match shift_of_name kind with
+          match shift_code kind with
           | Some shift ->
               if amount < 0 || amount >= rd.Reg.width then bad `Shift_amount_too_large
               else Ok [ Lowered.Logical_shift { opc; n; rd; rn; rm; shift; amount } ]
-          | None -> bad (`Not_a_shifted_register kind))
+          | None -> bad (`Not_a_shifted_register (Shift.name kind)))
       | _ -> bad `Too_many_operands)
   | Opcode.Madd, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Reg ra ] ->
       Ok [ Lowered.Madd { rd; rn; rm; ra } ]
@@ -4813,7 +4860,9 @@ let instruction_of_lowered ?(at = 0L) = function
           | Disp.Reg _ -> Operand.Imm (Bigint.of_int 0)
           (* unreachable: decode never produces this *)
         in
-        let tail = if shift12 then [ Operand.Shift { Shift.kind = "lsl"; amount = 12 } ] else [] in
+        let tail =
+          if shift12 then [ Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 } ] else []
+        in
         Some
           { Instruction.op = Opcode.Add; ops = Operand.Reg rd :: Operand.Reg rn :: imm_op :: tail }
   | Lowered.Ldst_pair { load; post; rt; rt2; rn; offset } ->
@@ -4858,7 +4907,8 @@ let instruction_of_lowered ?(at = 0L) = function
           ops =
             Operand.Reg rd
             :: Operand.Imm (Bigint.of_int64 imm16)
-            :: (if hw = 0 then [] else [ Operand.Shift { Shift.kind = "lsl"; amount = hw * 16 } ]);
+            ::
+            (if hw = 0 then [] else [ Operand.Shift { Shift.kind = Shift.Lsl; amount = hw * 16 } ]);
         }
   | Lowered.Movn { rd; imm16; hw } ->
       Some
@@ -4867,7 +4917,8 @@ let instruction_of_lowered ?(at = 0L) = function
           ops =
             Operand.Reg rd
             :: Operand.Imm (Bigint.of_int64 imm16)
-            :: (if hw = 0 then [] else [ Operand.Shift { Shift.kind = "lsl"; amount = hw * 16 } ]);
+            ::
+            (if hw = 0 then [] else [ Operand.Shift { Shift.kind = Shift.Lsl; amount = hw * 16 } ]);
         }
   | Lowered.Movk { rd; imm16; hw } ->
       Some
@@ -4876,7 +4927,8 @@ let instruction_of_lowered ?(at = 0L) = function
           ops =
             Operand.Reg rd
             :: Operand.Imm (Bigint.of_int64 imm16)
-            :: (if hw = 0 then [] else [ Operand.Shift { Shift.kind = "lsl"; amount = hw * 16 } ]);
+            ::
+            (if hw = 0 then [] else [ Operand.Shift { Shift.kind = Shift.Lsl; amount = hw * 16 } ]);
         }
   | Lowered.Msub { rd; rn; rm; ra } ->
       Some
@@ -5154,7 +5206,9 @@ let instruction_of_lowered ?(at = 0L) = function
   (* [adds zr, rn, #imm] is [cmn]; an [adds] that keeps its result has no surface spelling in
      this dialect, exactly like {!Lowered.Sub_imm}'s [subs] below. *)
   | Lowered.Adds_imm { rd; rn; imm; shift12 } ->
-      let tail = if shift12 then [ Operand.Shift { Shift.kind = "lsl"; amount = 12 } ] else [] in
+      let tail =
+        if shift12 then [ Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 } ] else []
+      in
       if rd.Reg.num = 31 && not rd.Reg.is_sp then
         Some
           {
@@ -5163,7 +5217,9 @@ let instruction_of_lowered ?(at = 0L) = function
           }
       else None
   | Lowered.Sub_imm { s; rd; rn; imm; shift12 } ->
-      let tail = if shift12 then [ Operand.Shift { Shift.kind = "lsl"; amount = 12 } ] else [] in
+      let tail =
+        if shift12 then [ Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 } ] else []
+      in
       if s then
         (* [subs xzr, rn, #imm] is [cmp], the same aliasing [Addsub_shift]
            applies to the register form. A [subs] that keeps its result has no
@@ -5188,7 +5244,7 @@ let instruction_of_lowered ?(at = 0L) = function
      either. *)
   | Lowered.Addsub_shift { sub; s; rd; rn; rm; shift; amount } ->
       let tail =
-        if amount = 0 then [] else [ Operand.Shift { Shift.kind = shift_name shift; amount } ]
+        if amount = 0 then [] else [ Operand.Shift { Shift.kind = shift_of_code shift; amount } ]
       in
       if sub && s && rd.Reg.num = 31 && not rd.Reg.is_sp then
         Some { Instruction.op = Opcode.Cmp; ops = Operand.Reg rn :: Operand.Reg rm :: tail }
@@ -5210,7 +5266,8 @@ let instruction_of_lowered ?(at = 0L) = function
                 Operand.Reg rd;
                 Operand.Reg rn;
                 Operand.Reg rm;
-                Operand.Shift { Shift.kind = extend_alu_name option; amount = imm3 };
+                Operand.Shift
+                  { Shift.kind = Ext (Option.get (extend_alu_of_code option)); amount = imm3 };
               ];
           }
   | Lowered.Logical_imm { opc; rd; rn; imm } -> (
@@ -5239,7 +5296,7 @@ let instruction_of_lowered ?(at = 0L) = function
       else
         let tail =
           if shift = 0 && amount = 0 then []
-          else [ Operand.Shift { Shift.kind = shift_name shift; amount } ]
+          else [ Operand.Shift { Shift.kind = shift_of_code shift; amount } ]
         in
         match (opc, n) with
         | 0, false ->
@@ -5492,7 +5549,11 @@ let host_trampolines (bindings : (string * int64) list) :
     @ List.map
         (fun k ->
           ins Opcode.Movk
-            [ x16; imm (quarter address k); Operand.Shift { Shift.kind = "lsl"; amount = 16 * k } ])
+            [
+              x16;
+              imm (quarter address k);
+              Operand.Shift { Shift.kind = Shift.Lsl; amount = 16 * k };
+            ])
         [ 1; 2; 3 ]
     @ [ ins Opcode.Br [ x16 ] ]
   in

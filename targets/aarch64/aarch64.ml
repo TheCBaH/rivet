@@ -23,7 +23,8 @@ type parse_error_kind =
   | `Shift_amount_too_wide
   | `Offset_too_wide
   | `Cannot_parse_operand of cannot_parse
-  | `Unbalanced_brackets ]
+  | `Unbalanced_brackets
+  | `Unknown_extend of string ]
 
 and cannot_parse = { slice : Asm_syntax.Token.slice; reason : Asm_syntax.Parse_lines.error_kind }
 
@@ -36,10 +37,11 @@ let pp_parse_error_kind ppf : parse_error_kind -> unit = function
   | `Cannot_parse_operand { slice; _ } ->
       Fmt.pf ppf "cannot parse operand %s" (Asm_syntax.Token.slice_text slice)
   | `Unbalanced_brackets -> Fmt.string ppf "unbalanced brackets in operand"
+  | `Unknown_extend e -> Fmt.pf ppf "unknown index extend %s" e
 
 let parse_error_kind_code : parse_error_kind -> string = function
   | `Unknown_register _ | `Shift_amount_too_wide | `Offset_too_wide | `Cannot_parse_operand _
-  | `Unbalanced_brackets ->
+  | `Unbalanced_brackets | `Unknown_extend _ ->
       "aarch64.operand"
 
 let pp_parse_error ppf e = pp_parse_error_kind ppf (Target_error.kind e)
@@ -129,8 +131,8 @@ let parse_one (slice : Asm_syntax.Token.slice) =
   let const_mem ~base ~offset ~writeback = mem ~base ~offset:(Disp.Const offset) ~writeback in
   let int64_of v = match Bigint.to_int64_opt v with Some x -> Some x | None -> None in
   let mem_reg ~base ~index ~extend ~amount =
-    match (Reg.find base, Reg.find index) with
-    | Some br, Some ir ->
+    match (Reg.find base, Reg.find index, Extend.of_name extend) with
+    | Some br, Some ir, Some extend ->
         Ok
           (Operand.Mem
              {
@@ -139,8 +141,9 @@ let parse_one (slice : Asm_syntax.Token.slice) =
                writeback = false;
                pre = true;
              })
-    | None, _ -> bad (`Unknown_register base)
-    | _, None -> bad (`Unknown_register index)
+    | None, _, _ -> bad (`Unknown_register base)
+    | _, None, _ -> bad (`Unknown_register index)
+    | Some _, Some _, None -> bad (`Unknown_extend extend)
   in
   (* [#1.0000000], [#0.5000000], [#1.] (ARM's own trailing-dot-no-fraction
      spelling also lexes the same way here, even though this corpus does not
@@ -313,7 +316,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
      (M5 corpus evidence: test/regression/int64.c, the corpus notes).
      Both spell as [<keyword> #<amount>] at this token shape, so one operand
      type ([Operand.Shift]) carries either; {!Aarch64_encode.lower_instruction}
-     is what tells them apart, by which table ([shift_of_name] vs. the
+     is what tells them apart, by which table ([shift_code] vs. the
      extended-register option table) recognizes [kind]. *)
   | [
    Token.Ident
@@ -323,7 +326,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
    Token.Int v;
   ] -> (
       match Bigint.to_int_opt v with
-      | Some n -> Ok (Operand.Shift { Shift.kind = k; amount = n })
+      | Some n -> Ok (Operand.Shift { Shift.kind = Option.get (Shift.of_name k); amount = n })
       | None -> bad `Shift_amount_too_wide)
   (* The [#]-less sibling (M5 classify-c-gcc corpus evidence:
      [add x9, x9, x16, uxtx 0] et al. - checked against real
@@ -336,7 +339,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
    Token.Int v;
   ] -> (
       match Bigint.to_int_opt v with
-      | Some n -> Ok (Operand.Shift { Shift.kind = k; amount = n })
+      | Some n -> Ok (Operand.Shift { Shift.kind = Option.get (Shift.of_name k); amount = n })
       | None -> bad `Shift_amount_too_wide)
   | [ Token.Lbracket; Token.Ident b; Token.Rbracket ] ->
       const_mem ~base:b ~offset:0L ~writeback:false
