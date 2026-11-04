@@ -4,6 +4,7 @@
    Each definition is also the opcode's typed builder. The encoder does not read it yet: a test
    holds it to the encoder's own tables until each consumer switches to it. *)
 
+open Foundation
 open Riscv_types
 
 module Kind = struct
@@ -22,51 +23,111 @@ module Kind = struct
     | Rm -> "rm"
 end
 
-(* A builder's operands, in the text's order: ['f] is the builder's type, ['r] its result. *)
-module Shape = struct
-  type ('f, 'r) t =
-    | Done : ('r, 'r) t
-    | X : ('f, 'r) t -> (Xreg.t -> 'f, 'r) t
-    | F : ('f, 'r) t -> (Freg.t -> 'f, 'r) t
-    | V : ('f, 'r) t -> (Vreg.t -> 'f, 'r) t
-    | Creg : ('f, 'r) t -> (Creg.t -> 'f, 'r) t
-    | Imm : ('f, 'r) t -> (Asm_core.Expr.t -> 'f, 'r) t
-    | Mem : ('f, 'r) t -> (Mem.t -> 'f, 'r) t
-    | Cmem : ('f, 'r) t -> (Mem.t -> 'f, 'r) t
-    | Spmem : ('f, 'r) t -> (Mem.t -> 'f, 'r) t
-    | Sym : ('f, 'r) t -> (Asm_core.Expr.t -> 'f, 'r) t
-    | Rm : ('f, 'r) t -> (Rm.t -> 'f, 'r) t
+(* A compressed load or store's memory operand: a base among x8..x15 and an offset. *)
+module Cmem = struct
+  type t = { base : Creg.t; offset : int }
+end
 
-  let rec kinds : type f r. (f, r) t -> Kind.t list = function
+(* A builder's operands, in the text's order. ['f] is the builder's type with immediates as [int]
+   ([int64] for [li]), ['g] the same with immediates as {!Asm_core.Expr.t} (the [_e] builder), ['r]
+   their result. *)
+module Shape = struct
+  type ('f, 'g, 'r) t =
+    | Done : ('r, 'r, 'r) t
+    | X : ('f, 'g, 'r) t -> (Xreg.t -> 'f, Xreg.t -> 'g, 'r) t
+    | F : ('f, 'g, 'r) t -> (Freg.t -> 'f, Freg.t -> 'g, 'r) t
+    | V : ('f, 'g, 'r) t -> (Vreg.t -> 'f, Vreg.t -> 'g, 'r) t
+    | Creg : ('f, 'g, 'r) t -> (Creg.t -> 'f, Creg.t -> 'g, 'r) t
+    | Imm : ('f, 'g, 'r) t -> (int -> 'f, Asm_core.Expr.t -> 'g, 'r) t
+    | Imm64 : ('f, 'g, 'r) t -> (int64 -> 'f, Asm_core.Expr.t -> 'g, 'r) t
+    | Mem : ('f, 'g, 'r) t -> (Mem.t -> 'f, Mem.t -> 'g, 'r) t
+    | Cmem : ('f, 'g, 'r) t -> (Cmem.t -> 'f, Cmem.t -> 'g, 'r) t
+    | Spmem : ('f, 'g, 'r) t -> (int -> 'f, int -> 'g, 'r) t
+    | Sym : ('f, 'g, 'r) t -> (Asm_core.Expr.t -> 'f, Asm_core.Expr.t -> 'g, 'r) t
+    | Rm : ('f, 'g, 'r) t -> (Rm.t -> 'f, Rm.t -> 'g, 'r) t
+
+  let rec kinds : type f g r. (f, g, r) t -> Kind.t list = function
     | Done -> []
     | X s -> Kind.X :: kinds s
     | F s -> Kind.F :: kinds s
     | V s -> Kind.V :: kinds s
     | Creg s -> Kind.Creg :: kinds s
     | Imm s -> Kind.Imm :: kinds s
+    | Imm64 s -> Kind.Imm :: kinds s
     | Mem s -> Kind.Mem :: kinds s
     | Cmem s -> Kind.Cmem :: kinds s
     | Spmem s -> Kind.Spmem :: kinds s
     | Sym s -> Kind.Sym :: kinds s
     | Rm s -> Kind.Rm :: kinds s
 
-  let imm = function Asm_core.Expr.Const n -> Operand.Imm n | e -> Operand.Sym e
+  let int n = Operand.Imm (Bigint.of_int n)
+  let expr = function Asm_core.Expr.Const n -> Operand.Imm n | e -> Operand.Sym e
+  let x r = Operand.Reg (Reg.X r)
 
-  let rec build : type f r. (f, r) t -> (Operand.t list -> r) -> f =
+  let mem ~base offset =
+    Operand.Mem { Mem.offset = Asm_core.Expr.Const (Bigint.of_int offset); base = Reg.X base }
+
+  let cmem (m : Cmem.t) = mem ~base:(Creg.to_xreg m.base) m.offset
+  let rm r = Operand.Sym (Asm_core.Expr.Symbol (Rm.name r))
+
+  let rec build : type f g r. (f, g, r) t -> (Operand.t list -> r) -> f =
    fun s k ->
     let next s o = build s (fun ops -> k (o :: ops)) in
     match s with
     | Done -> k []
-    | X s -> fun r -> next s (Operand.Reg (Reg.X r))
+    | X s -> fun r -> next s (x r)
     | F s -> fun r -> next s (Operand.Reg (Reg.F r))
     | V s -> fun r -> next s (Operand.Reg (Reg.V r))
-    | Creg s -> fun r -> next s (Operand.Reg (Reg.X (Riscv_types.Creg.to_xreg r)))
-    | Imm s -> fun e -> next s (imm e)
+    | Creg s -> fun r -> next s (x (Creg.to_xreg r))
+    | Imm s -> fun n -> next s (int n)
+    | Imm64 s -> fun n -> next s (Operand.Imm (Bigint.of_int64 n))
     | Mem s -> fun m -> next s (Operand.Mem m)
-    | Cmem s -> fun m -> next s (Operand.Mem m)
-    | Spmem s -> fun m -> next s (Operand.Mem m)
+    | Cmem s -> fun m -> next s (cmem m)
+    | Spmem s -> fun n -> next s (mem ~base:Xreg.sp n)
     | Sym s -> fun e -> next s (Operand.Sym e)
-    | Rm s -> fun r -> next s (Operand.Sym (Asm_core.Expr.Symbol (Riscv_types.Rm.name r)))
+    | Rm s -> fun r -> next s (rm r)
+
+  let rec build_e : type f g r. (f, g, r) t -> (Operand.t list -> r) -> g =
+   fun s k ->
+    let next s o = build_e s (fun ops -> k (o :: ops)) in
+    match s with
+    | Done -> k []
+    | X s -> fun r -> next s (x r)
+    | F s -> fun r -> next s (Operand.Reg (Reg.F r))
+    | V s -> fun r -> next s (Operand.Reg (Reg.V r))
+    | Creg s -> fun r -> next s (x (Creg.to_xreg r))
+    | Imm s -> fun e -> next s (expr e)
+    | Imm64 s -> fun e -> next s (expr e)
+    | Mem s -> fun m -> next s (Operand.Mem m)
+    | Cmem s -> fun m -> next s (cmem m)
+    | Spmem s -> fun n -> next s (mem ~base:Xreg.sp n)
+    | Sym s -> fun e -> next s (Operand.Sym e)
+    | Rm s -> fun r -> next s (rm r)
+
+  (* [f] applied to the sample operands: the register at position [i] is number [8 + i] (a
+     compressed register too), every immediate is [imm], a memory operand has offset 0, a target
+     is the symbol [l] and a rounding mode is [rtz]. *)
+  let rec sample : type f g r. (f, g, r) t -> int -> int -> f -> r =
+   fun s i imm f ->
+    match s with
+    | Done -> f
+    | X s -> sample s (i + 1) imm (f (Xreg.of_int_exn (8 + i)))
+    | F s -> sample s (i + 1) imm (f (Freg.of_int_exn (8 + i)))
+    | V s -> sample s (i + 1) imm (f (Vreg.of_int_exn (8 + i)))
+    | Creg s -> sample s (i + 1) imm (f (Creg.of_int_exn (8 + i)))
+    | Imm s -> sample s (i + 1) imm (f imm)
+    | Imm64 s -> sample s (i + 1) imm (f (Int64.of_int imm))
+    | Mem s ->
+        sample s (i + 1) imm
+          (f
+             {
+               Mem.offset = Asm_core.Expr.Const Bigint.zero;
+               base = Reg.X (Xreg.of_int_exn (8 + i));
+             })
+    | Cmem s -> sample s (i + 1) imm (f { Cmem.base = Creg.of_int_exn (8 + i); offset = 0 })
+    | Spmem s -> sample s (i + 1) imm (f 0)
+    | Sym s -> sample s (i + 1) imm (f (Asm_core.Expr.Symbol "l"))
+    | Rm s -> sample s (i + 1) imm (f Rm.Rtz)
 end
 
 (* The fields an encoding fixes. A shift's RV32 [funct7] is its RV64 [funct6] shifted left once. *)
@@ -100,206 +161,212 @@ type entry = {
   cls : Cls.t;
   rm : Rm.t option;
   lower : bool;  (** lowering stays code *)
+  sample : int -> Instruction.t;
+      (** the builder applied to {!Shape.sample}'s operands, with this immediate *)
 }
 
 let registry = ref []
 
+(* The builder over [int] immediates and the one over expressions. *)
 let def ?(also = []) ?enc ?enc64 ?(ext = []) ?(xlen = Any) ?rm ?(lower = false) ~cls op shape =
+  let b = Shape.build shape (Instruction.mk op) in
+  let sample imm = Shape.sample shape 0 imm b in
   registry :=
-    { op; shape = Shape.kinds shape; also; enc; enc64; ext; xlen; cls; rm; lower } :: !registry;
-  Shape.build shape (Instruction.mk op)
+    { op; shape = Shape.kinds shape; also; enc; enc64; ext; xlen; cls; rm; lower; sample }
+    :: !registry;
+  (b, Shape.build_e shape (Instruction.mk op))
 
-let add =
+let add, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x00; rs2 = None })
     ~also:Kind.[ [ X; X; Imm ]; [ X; X; Sym ] ]
     Opcode.Add
     Shape.(X (X (X Done)))
 
-let sub =
+let sub, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x20; rs2 = None })
     Opcode.Sub
     Shape.(X (X (X Done)))
 
-let sll =
+let sll, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 1; funct7 = 0x00; rs2 = None })
     ~also:Kind.[ [ X; X; Imm ]; [ X; X; Sym ] ]
     Opcode.Sll
     Shape.(X (X (X Done)))
 
-let slt =
+let slt, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 2; funct7 = 0x00; rs2 = None })
     ~also:Kind.[ [ X; X; Imm ]; [ X; X; Sym ] ]
     Opcode.Slt
     Shape.(X (X (X Done)))
 
-let sltu =
+let sltu, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 3; funct7 = 0x00; rs2 = None })
     ~also:Kind.[ [ X; X; Imm ]; [ X; X; Sym ] ]
     Opcode.Sltu
     Shape.(X (X (X Done)))
 
-let snez = def ~cls:Alu ~lower:true Opcode.Snez Shape.(X (X Done))
-let neg = def ~cls:Alu ~lower:true Opcode.Neg Shape.(X (X Done))
-let seqz = def ~cls:Alu ~lower:true Opcode.Seqz Shape.(X (X Done))
-let sltz = def ~cls:Alu ~lower:true Opcode.Sltz Shape.(X (X Done))
-let sgtz = def ~cls:Alu ~lower:true Opcode.Sgtz Shape.(X (X Done))
-let zext_b = def ~cls:Alu ~lower:true Opcode.Zext_b Shape.(X (X Done))
+let snez, _ = def ~cls:Alu ~lower:true Opcode.Snez Shape.(X (X Done))
+let neg, _ = def ~cls:Alu ~lower:true Opcode.Neg Shape.(X (X Done))
+let seqz, _ = def ~cls:Alu ~lower:true Opcode.Seqz Shape.(X (X Done))
+let sltz, _ = def ~cls:Alu ~lower:true Opcode.Sltz Shape.(X (X Done))
+let sgtz, _ = def ~cls:Alu ~lower:true Opcode.Sgtz Shape.(X (X Done))
+let zext_b, _ = def ~cls:Alu ~lower:true Opcode.Zext_b Shape.(X (X Done))
 
-let xor =
+let xor, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 4; funct7 = 0x00; rs2 = None })
     ~also:Kind.[ [ X; X; Imm ]; [ X; X; Sym ] ]
     Opcode.Xor
     Shape.(X (X (X Done)))
 
-let srl =
+let srl, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 5; funct7 = 0x00; rs2 = None })
     ~also:Kind.[ [ X; X; Imm ]; [ X; X; Sym ] ]
     Opcode.Srl
     Shape.(X (X (X Done)))
 
-let sra =
+let sra, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 5; funct7 = 0x20; rs2 = None })
     ~also:Kind.[ [ X; X; Imm ]; [ X; X; Sym ] ]
     Opcode.Sra
     Shape.(X (X (X Done)))
 
-let or_ =
+let or_, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 6; funct7 = 0x00; rs2 = None })
     ~also:Kind.[ [ X; X; Imm ]; [ X; X; Sym ] ]
     Opcode.Or
     Shape.(X (X (X Done)))
 
-let and_ =
+let and_, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 7; funct7 = 0x00; rs2 = None })
     ~also:Kind.[ [ X; X; Imm ]; [ X; X; Sym ] ]
     Opcode.And
     Shape.(X (X (X Done)))
 
-let mul =
+let mul, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x01; rs2 = None })
     ~ext:[ "zmmul" ] Opcode.Mul
     Shape.(X (X (X Done)))
 
-let remu =
+let remu, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 7; funct7 = 0x01; rs2 = None })
     ~ext:[ "m" ] Opcode.Remu
     Shape.(X (X (X Done)))
 
-let mulh =
+let mulh, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 1; funct7 = 0x01; rs2 = None })
     ~ext:[ "zmmul" ] Opcode.Mulh
     Shape.(X (X (X Done)))
 
-let mulhsu =
+let mulhsu, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 2; funct7 = 0x01; rs2 = None })
     ~ext:[ "zmmul" ] Opcode.Mulhsu
     Shape.(X (X (X Done)))
 
-let mulhu =
+let mulhu, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 3; funct7 = 0x01; rs2 = None })
     ~ext:[ "zmmul" ] Opcode.Mulhu
     Shape.(X (X (X Done)))
 
-let div =
+let div, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 4; funct7 = 0x01; rs2 = None })
     ~ext:[ "m" ] Opcode.Div
     Shape.(X (X (X Done)))
 
-let divu =
+let divu, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 5; funct7 = 0x01; rs2 = None })
     ~ext:[ "m" ] Opcode.Divu
     Shape.(X (X (X Done)))
 
-let rem =
+let rem, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 6; funct7 = 0x01; rs2 = None })
     ~ext:[ "m" ] Opcode.Rem
     Shape.(X (X (X Done)))
 
-let sh1add =
+let sh1add, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 2; funct7 = 0x10; rs2 = None })
     ~ext:[ "zba" ] Opcode.Sh1add
     Shape.(X (X (X Done)))
 
-let sh2add =
+let sh2add, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 4; funct7 = 0x10; rs2 = None })
     ~ext:[ "zba" ] Opcode.Sh2add
     Shape.(X (X (X Done)))
 
-let sh3add =
+let sh3add, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 6; funct7 = 0x10; rs2 = None })
     ~ext:[ "zba" ] Opcode.Sh3add
     Shape.(X (X (X Done)))
 
-let min =
+let min, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 4; funct7 = 0x05; rs2 = None })
     ~ext:[ "zbb" ] Opcode.Min
     Shape.(X (X (X Done)))
 
-let minu =
+let minu, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 5; funct7 = 0x05; rs2 = None })
     ~ext:[ "zbb" ] Opcode.Minu
     Shape.(X (X (X Done)))
 
-let max =
+let max, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 6; funct7 = 0x05; rs2 = None })
     ~ext:[ "zbb" ] Opcode.Max
     Shape.(X (X (X Done)))
 
-let maxu =
+let maxu, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 7; funct7 = 0x05; rs2 = None })
     ~ext:[ "zbb" ] Opcode.Maxu
     Shape.(X (X (X Done)))
 
-let andn =
+let andn, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 7; funct7 = 0x20; rs2 = None })
     ~ext:[ "zbb" ] Opcode.Andn
     Shape.(X (X (X Done)))
 
-let orn =
+let orn, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 6; funct7 = 0x20; rs2 = None })
     ~ext:[ "zbb" ] Opcode.Orn
     Shape.(X (X (X Done)))
 
-let xnor =
+let xnor, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 4; funct7 = 0x20; rs2 = None })
     ~ext:[ "zbb" ] Opcode.Xnor
     Shape.(X (X (X Done)))
 
-let rol =
+let rol, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 1; funct7 = 0x30; rs2 = None })
     ~ext:[ "zbb" ] Opcode.Rol
     Shape.(X (X (X Done)))
 
-let ror =
+let ror, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 5; funct7 = 0x30; rs2 = None })
     ~ext:[ "zbb" ]
@@ -307,7 +374,7 @@ let ror =
     Opcode.Ror
     Shape.(X (X (X Done)))
 
-let bclr =
+let bclr, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 1; funct7 = 0x24; rs2 = None })
     ~ext:[ "zbs" ]
@@ -315,7 +382,7 @@ let bclr =
     Opcode.Bclr
     Shape.(X (X (X Done)))
 
-let bext =
+let bext, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 5; funct7 = 0x24; rs2 = None })
     ~ext:[ "zbs" ]
@@ -323,7 +390,7 @@ let bext =
     Opcode.Bext
     Shape.(X (X (X Done)))
 
-let binv =
+let binv, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 1; funct7 = 0x34; rs2 = None })
     ~ext:[ "zbs" ]
@@ -331,7 +398,7 @@ let binv =
     Opcode.Binv
     Shape.(X (X (X Done)))
 
-let bset =
+let bset, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 1; funct7 = 0x14; rs2 = None })
     ~ext:[ "zbs" ]
@@ -339,7 +406,7 @@ let bset =
     Opcode.Bset
     Shape.(X (X (X Done)))
 
-let bclri =
+let bclri, bclri_e =
   def ~cls:Alu
     ~enc:(Shift { funct3 = 1; funct6 = 0x12 })
     ~ext:[ "zbs" ]
@@ -347,7 +414,7 @@ let bclri =
     Opcode.Bclri
     Shape.(X (X (Imm Done)))
 
-let bexti =
+let bexti, bexti_e =
   def ~cls:Alu
     ~enc:(Shift { funct3 = 5; funct6 = 0x12 })
     ~ext:[ "zbs" ]
@@ -355,7 +422,7 @@ let bexti =
     Opcode.Bexti
     Shape.(X (X (Imm Done)))
 
-let binvi =
+let binvi, binvi_e =
   def ~cls:Alu
     ~enc:(Shift { funct3 = 1; funct6 = 0x1a })
     ~ext:[ "zbs" ]
@@ -363,7 +430,7 @@ let binvi =
     Opcode.Binvi
     Shape.(X (X (Imm Done)))
 
-let bseti =
+let bseti, bseti_e =
   def ~cls:Alu
     ~enc:(Shift { funct3 = 1; funct6 = 0x0a })
     ~ext:[ "zbs" ]
@@ -371,128 +438,128 @@ let bseti =
     Opcode.Bseti
     Shape.(X (X (Imm Done)))
 
-let sh1add_uw =
+let sh1add_uw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 2; funct7 = 0x10; rs2 = None })
     ~ext:[ "zba" ] ~xlen:Rv64 Opcode.Sh1adduw
     Shape.(X (X (X Done)))
 
-let sh2add_uw =
+let sh2add_uw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 4; funct7 = 0x10; rs2 = None })
     ~ext:[ "zba" ] ~xlen:Rv64 Opcode.Sh2adduw
     Shape.(X (X (X Done)))
 
-let sh3add_uw =
+let sh3add_uw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 6; funct7 = 0x10; rs2 = None })
     ~ext:[ "zba" ] ~xlen:Rv64 Opcode.Sh3adduw
     Shape.(X (X (X Done)))
 
-let clz =
+let clz, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x600 })
     ~ext:[ "zbb" ] Opcode.Clz
     Shape.(X (X Done))
 
-let ctz =
+let ctz, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x601 })
     ~ext:[ "zbb" ] Opcode.Ctz
     Shape.(X (X Done))
 
-let cpop =
+let cpop, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x602 })
     ~ext:[ "zbb" ] Opcode.Cpop
     Shape.(X (X Done))
 
-let sext_b =
+let sext_b, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x604 })
     ~ext:[ "zbb" ] Opcode.Sextb
     Shape.(X (X Done))
 
-let sext_h =
+let sext_h, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x605 })
     ~ext:[ "zbb" ] Opcode.Sexth
     Shape.(X (X Done))
 
-let orc_b =
+let orc_b, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 5; funct12 = 0x287 })
     ~ext:[ "zbb" ] Opcode.Orcb
     Shape.(X (X Done))
 
-let clzw =
+let clzw, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x1b; funct3 = 1; funct12 = 0x600 })
     ~ext:[ "zbb" ] ~xlen:Rv64 Opcode.Clzw
     Shape.(X (X Done))
 
-let ctzw =
+let ctzw, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x1b; funct3 = 1; funct12 = 0x601 })
     ~ext:[ "zbb" ] ~xlen:Rv64 Opcode.Ctzw
     Shape.(X (X Done))
 
-let cpopw =
+let cpopw, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x1b; funct3 = 1; funct12 = 0x602 })
     ~ext:[ "zbb" ] ~xlen:Rv64 Opcode.Cpopw
     Shape.(X (X Done))
 
-let brev8 =
+let brev8, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 5; funct12 = 0x687 })
     ~ext:[ "zbkb" ] Opcode.Brev8
     Shape.(X (X Done))
 
-let rev8 =
+let rev8, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 5; funct12 = 0x698 })
     ~enc64:(Unary { opcode = 0x13; funct3 = 5; funct12 = 0x6b8 })
     ~ext:[ "zbb" ] Opcode.Rev8
     Shape.(X (X Done))
 
-let pack =
+let pack, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 4; funct7 = 0x04; rs2 = None })
     ~ext:[ "zbkb" ] Opcode.Pack
     Shape.(X (X (X Done)))
 
-let packh =
+let packh, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 7; funct7 = 0x04; rs2 = None })
     ~ext:[ "zbkb" ] Opcode.Packh
     Shape.(X (X (X Done)))
 
-let packw =
+let packw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 4; funct7 = 0x04; rs2 = None })
     ~ext:[ "zbkb" ] ~xlen:Rv64 Opcode.Packw
     Shape.(X (X (X Done)))
 
-let zip =
+let zip, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x08f })
     ~ext:[ "zbkb" ] ~xlen:Rv32 Opcode.Zip
     Shape.(X (X Done))
 
-let unzip =
+let unzip, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 5; funct12 = 0x08f })
     ~ext:[ "zbkb" ] ~xlen:Rv32 Opcode.Unzip
     Shape.(X (X Done))
 
-let rolw =
+let rolw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 1; funct7 = 0x30; rs2 = None })
     ~ext:[ "zbb" ] ~xlen:Rv64 Opcode.Rolw
     Shape.(X (X (X Done)))
 
-let rorw =
+let rorw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 5; funct7 = 0x30; rs2 = None })
     ~ext:[ "zbb" ] ~xlen:Rv64
@@ -500,7 +567,7 @@ let rorw =
     Opcode.Rorw
     Shape.(X (X (X Done)))
 
-let rori =
+let rori, rori_e =
   def ~cls:Alu
     ~enc:(Shift { funct3 = 5; funct6 = 0x18 })
     ~ext:[ "zbb" ]
@@ -508,7 +575,7 @@ let rori =
     Opcode.Rori
     Shape.(X (X (Imm Done)))
 
-let roriw =
+let roriw, roriw_e =
   def ~cls:Alu
     ~enc:(Shiftw { funct3 = 5; funct7 = 0x30 })
     ~ext:[ "zbb" ] ~xlen:Rv64
@@ -516,303 +583,303 @@ let roriw =
     Opcode.Roriw
     Shape.(X (X (Imm Done)))
 
-let zext_h = def ~cls:Alu ~ext:[ "zbb" ] ~lower:true Opcode.Zext_h Shape.(X (X Done))
+let zext_h, _ = def ~cls:Alu ~ext:[ "zbb" ] ~lower:true Opcode.Zext_h Shape.(X (X Done))
 
-let clmul =
+let clmul, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 1; funct7 = 0x05; rs2 = None })
     ~ext:[ "zbc" ] Opcode.Clmul
     Shape.(X (X (X Done)))
 
-let clmulh =
+let clmulh, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 3; funct7 = 0x05; rs2 = None })
     ~ext:[ "zbc" ] Opcode.Clmulh
     Shape.(X (X (X Done)))
 
-let clmulr =
+let clmulr, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 2; funct7 = 0x05; rs2 = None })
     ~ext:[ "zbc" ] Opcode.Clmulr
     Shape.(X (X (X Done)))
 
-let czero_eqz =
+let czero_eqz, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 5; funct7 = 0x07; rs2 = None })
     ~ext:[ "zicond" ] Opcode.Czero_eqz
     Shape.(X (X (X Done)))
 
-let czero_nez =
+let czero_nez, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 7; funct7 = 0x07; rs2 = None })
     ~ext:[ "zicond" ] Opcode.Czero_nez
     Shape.(X (X (X Done)))
 
-let sm3p0 =
+let sm3p0, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x108 })
     ~ext:[ "zksh" ] Opcode.Sm3p0
     Shape.(X (X Done))
 
-let sm3p1 =
+let sm3p1, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x109 })
     ~ext:[ "zksh" ] Opcode.Sm3p1
     Shape.(X (X Done))
 
-let sm4ed =
+let sm4ed, sm4ed_e =
   def ~cls:Alu
     ~enc:(Rbs { funct7 = 0x18 })
     ~ext:[ "zksed" ] Opcode.Sm4ed
     Shape.(X (X (X (Imm Done))))
 
-let sm4ks =
+let sm4ks, sm4ks_e =
   def ~cls:Alu
     ~enc:(Rbs { funct7 = 0x1a })
     ~ext:[ "zksed" ] Opcode.Sm4ks
     Shape.(X (X (X (Imm Done))))
 
-let xperm4 =
+let xperm4, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 2; funct7 = 0x14; rs2 = None })
     ~ext:[ "zbkx" ] Opcode.Xperm4
     Shape.(X (X (X Done)))
 
-let xperm8 =
+let xperm8, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 4; funct7 = 0x14; rs2 = None })
     ~ext:[ "zbkx" ] Opcode.Xperm8
     Shape.(X (X (X Done)))
 
-let sha256sum0 =
+let sha256sum0, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x100 })
     ~ext:[ "zknh" ] Opcode.Sha256sum0
     Shape.(X (X Done))
 
-let sha256sum1 =
+let sha256sum1, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x101 })
     ~ext:[ "zknh" ] Opcode.Sha256sum1
     Shape.(X (X Done))
 
-let sha256sig0 =
+let sha256sig0, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x102 })
     ~ext:[ "zknh" ] Opcode.Sha256sig0
     Shape.(X (X Done))
 
-let sha256sig1 =
+let sha256sig1, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x103 })
     ~ext:[ "zknh" ] Opcode.Sha256sig1
     Shape.(X (X Done))
 
-let sha512sum0 =
+let sha512sum0, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x104 })
     ~ext:[ "zknh" ] ~xlen:Rv64 Opcode.Sha512sum0
     Shape.(X (X Done))
 
-let sha512sum1 =
+let sha512sum1, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x105 })
     ~ext:[ "zknh" ] ~xlen:Rv64 Opcode.Sha512sum1
     Shape.(X (X Done))
 
-let sha512sig0 =
+let sha512sig0, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x106 })
     ~ext:[ "zknh" ] ~xlen:Rv64 Opcode.Sha512sig0
     Shape.(X (X Done))
 
-let sha512sig1 =
+let sha512sig1, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x107 })
     ~ext:[ "zknh" ] ~xlen:Rv64 Opcode.Sha512sig1
     Shape.(X (X Done))
 
-let sha512sum0r =
+let sha512sum0r, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x28; rs2 = None })
     ~ext:[ "zknh" ] ~xlen:Rv32 Opcode.Sha512sum0r
     Shape.(X (X (X Done)))
 
-let sha512sum1r =
+let sha512sum1r, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x29; rs2 = None })
     ~ext:[ "zknh" ] ~xlen:Rv32 Opcode.Sha512sum1r
     Shape.(X (X (X Done)))
 
-let sha512sig0l =
+let sha512sig0l, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x2a; rs2 = None })
     ~ext:[ "zknh" ] ~xlen:Rv32 Opcode.Sha512sig0l
     Shape.(X (X (X Done)))
 
-let sha512sig1l =
+let sha512sig1l, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x2b; rs2 = None })
     ~ext:[ "zknh" ] ~xlen:Rv32 Opcode.Sha512sig1l
     Shape.(X (X (X Done)))
 
-let sha512sig0h =
+let sha512sig0h, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x2e; rs2 = None })
     ~ext:[ "zknh" ] ~xlen:Rv32 Opcode.Sha512sig0h
     Shape.(X (X (X Done)))
 
-let sha512sig1h =
+let sha512sig1h, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x2f; rs2 = None })
     ~ext:[ "zknh" ] ~xlen:Rv32 Opcode.Sha512sig1h
     Shape.(X (X (X Done)))
 
-let aes64ds =
+let aes64ds, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x1d; rs2 = None })
     ~ext:[ "zknd" ] ~xlen:Rv64 Opcode.Aes64ds
     Shape.(X (X (X Done)))
 
-let aes64dsm =
+let aes64dsm, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x1f; rs2 = None })
     ~ext:[ "zknd" ] ~xlen:Rv64 Opcode.Aes64dsm
     Shape.(X (X (X Done)))
 
-let aes64es =
+let aes64es, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x19; rs2 = None })
     ~ext:[ "zkne" ] ~xlen:Rv64 Opcode.Aes64es
     Shape.(X (X (X Done)))
 
-let aes64esm =
+let aes64esm, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x1b; rs2 = None })
     ~ext:[ "zkne" ] ~xlen:Rv64 Opcode.Aes64esm
     Shape.(X (X (X Done)))
 
-let aes64ks2 =
+let aes64ks2, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x33; funct3 = 0; funct7 = 0x3f; rs2 = None })
     ~ext:[ "zknd" ] ~xlen:Rv64 Opcode.Aes64ks2
     Shape.(X (X (X Done)))
 
-let aes64im =
+let aes64im, _ =
   def ~cls:Alu
     ~enc:(Unary { opcode = 0x13; funct3 = 1; funct12 = 0x300 })
     ~ext:[ "zknd" ] ~xlen:Rv64 Opcode.Aes64im
     Shape.(X (X Done))
 
-let aes64ks1i =
+let aes64ks1i, aes64ks1i_e =
   def ~cls:Alu
     ~enc:(I { opcode = 0x13; funct3 = 1 })
     ~ext:[ "zknd" ] ~xlen:Rv64 ~lower:true Opcode.Aes64ks1i
     Shape.(X (X (Imm Done)))
 
-let aes32dsi =
+let aes32dsi, aes32dsi_e =
   def ~cls:Alu
     ~enc:(Rbs { funct7 = 0x15 })
     ~ext:[ "zknd" ] ~xlen:Rv32 Opcode.Aes32dsi
     Shape.(X (X (X (Imm Done))))
 
-let aes32dsmi =
+let aes32dsmi, aes32dsmi_e =
   def ~cls:Alu
     ~enc:(Rbs { funct7 = 0x17 })
     ~ext:[ "zknd" ] ~xlen:Rv32 Opcode.Aes32dsmi
     Shape.(X (X (X (Imm Done))))
 
-let aes32esi =
+let aes32esi, aes32esi_e =
   def ~cls:Alu
     ~enc:(Rbs { funct7 = 0x11 })
     ~ext:[ "zkne" ] ~xlen:Rv32 Opcode.Aes32esi
     Shape.(X (X (X (Imm Done))))
 
-let aes32esmi =
+let aes32esmi, aes32esmi_e =
   def ~cls:Alu
     ~enc:(Rbs { funct7 = 0x13 })
     ~ext:[ "zkne" ] ~xlen:Rv32 Opcode.Aes32esmi
     Shape.(X (X (X (Imm Done))))
 
-let csrrw =
+let csrrw, csrrw_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 1 })
     ~ext:[ "zicsr" ] Opcode.Csrrw
     Shape.(X (Imm (X Done)))
 
-let csrrs =
+let csrrs, csrrs_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 2 })
     ~ext:[ "zicsr" ] Opcode.Csrrs
     Shape.(X (Imm (X Done)))
 
-let csrrc =
+let csrrc, csrrc_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 3 })
     ~ext:[ "zicsr" ] Opcode.Csrrc
     Shape.(X (Imm (X Done)))
 
-let csrrwi =
+let csrrwi, csrrwi_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 5 })
     ~ext:[ "zicsr" ] Opcode.Csrrwi
     Shape.(X (Imm (Imm Done)))
 
-let csrrsi =
+let csrrsi, csrrsi_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 6 })
     ~ext:[ "zicsr" ] Opcode.Csrrsi
     Shape.(X (Imm (Imm Done)))
 
-let csrrci =
+let csrrci, csrrci_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 7 })
     ~ext:[ "zicsr" ] Opcode.Csrrci
     Shape.(X (Imm (Imm Done)))
 
-let csrr =
+let csrr, csrr_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 2 })
     ~ext:[ "zicsr" ] Opcode.Csrr
     Shape.(X (Imm Done))
 
-let csrw =
+let csrw, csrw_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 1 })
     ~ext:[ "zicsr" ] Opcode.Csrw
     Shape.(Imm (X Done))
 
-let csrs =
+let csrs, csrs_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 2 })
     ~ext:[ "zicsr" ] Opcode.Csrs
     Shape.(Imm (X Done))
 
-let csrc =
+let csrc, csrc_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 3 })
     ~ext:[ "zicsr" ] Opcode.Csrc
     Shape.(Imm (X Done))
 
-let csrwi =
+let csrwi, csrwi_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 5 })
     ~ext:[ "zicsr" ] Opcode.Csrwi
     Shape.(Imm (Imm Done))
 
-let csrsi =
+let csrsi, csrsi_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 6 })
     ~ext:[ "zicsr" ] Opcode.Csrsi
     Shape.(Imm (Imm Done))
 
-let csrci =
+let csrci, csrci_e =
   def ~cls:Csr
     ~enc:(I { opcode = 0x73; funct3 = 7 })
     ~ext:[ "zicsr" ] Opcode.Csrci
     Shape.(Imm (Imm Done))
 
-let amoswap_w =
+let amoswap_w, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 2; funct7 = 0x04; rs2 = None })
     ~ext:[ "a" ]
@@ -820,7 +887,7 @@ let amoswap_w =
     Opcode.Amoswap_w
     Shape.(X (X (Mem Done)))
 
-let amoadd_w =
+let amoadd_w, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 2; funct7 = 0x00; rs2 = None })
     ~ext:[ "a" ]
@@ -828,7 +895,7 @@ let amoadd_w =
     Opcode.Amoadd_w
     Shape.(X (X (Mem Done)))
 
-let amoxor_w =
+let amoxor_w, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 2; funct7 = 0x10; rs2 = None })
     ~ext:[ "a" ]
@@ -836,7 +903,7 @@ let amoxor_w =
     Opcode.Amoxor_w
     Shape.(X (X (Mem Done)))
 
-let amoand_w =
+let amoand_w, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 2; funct7 = 0x30; rs2 = None })
     ~ext:[ "a" ]
@@ -844,7 +911,7 @@ let amoand_w =
     Opcode.Amoand_w
     Shape.(X (X (Mem Done)))
 
-let amoor_w =
+let amoor_w, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 2; funct7 = 0x20; rs2 = None })
     ~ext:[ "a" ]
@@ -852,7 +919,7 @@ let amoor_w =
     Opcode.Amoor_w
     Shape.(X (X (Mem Done)))
 
-let amomin_w =
+let amomin_w, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 2; funct7 = 0x40; rs2 = None })
     ~ext:[ "a" ]
@@ -860,7 +927,7 @@ let amomin_w =
     Opcode.Amomin_w
     Shape.(X (X (Mem Done)))
 
-let amomax_w =
+let amomax_w, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 2; funct7 = 0x50; rs2 = None })
     ~ext:[ "a" ]
@@ -868,7 +935,7 @@ let amomax_w =
     Opcode.Amomax_w
     Shape.(X (X (Mem Done)))
 
-let amominu_w =
+let amominu_w, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 2; funct7 = 0x60; rs2 = None })
     ~ext:[ "a" ]
@@ -876,7 +943,7 @@ let amominu_w =
     Opcode.Amominu_w
     Shape.(X (X (Mem Done)))
 
-let amomaxu_w =
+let amomaxu_w, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 2; funct7 = 0x70; rs2 = None })
     ~ext:[ "a" ]
@@ -884,7 +951,7 @@ let amomaxu_w =
     Opcode.Amomaxu_w
     Shape.(X (X (Mem Done)))
 
-let lr_w =
+let lr_w, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 2; funct7 = 0x08; rs2 = Some 0 })
     ~ext:[ "a" ]
@@ -892,7 +959,7 @@ let lr_w =
     Opcode.Lr_w
     Shape.(X (Mem Done))
 
-let sc_w =
+let sc_w, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 2; funct7 = 0x0c; rs2 = None })
     ~ext:[ "a" ]
@@ -900,7 +967,7 @@ let sc_w =
     Opcode.Sc_w
     Shape.(X (X (Mem Done)))
 
-let amoswap_d =
+let amoswap_d, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 3; funct7 = 0x04; rs2 = None })
     ~ext:[ "a" ] ~xlen:Rv64
@@ -908,7 +975,7 @@ let amoswap_d =
     Opcode.Amoswap_d
     Shape.(X (X (Mem Done)))
 
-let amoadd_d =
+let amoadd_d, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 3; funct7 = 0x00; rs2 = None })
     ~ext:[ "a" ] ~xlen:Rv64
@@ -916,7 +983,7 @@ let amoadd_d =
     Opcode.Amoadd_d
     Shape.(X (X (Mem Done)))
 
-let amoxor_d =
+let amoxor_d, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 3; funct7 = 0x10; rs2 = None })
     ~ext:[ "a" ] ~xlen:Rv64
@@ -924,7 +991,7 @@ let amoxor_d =
     Opcode.Amoxor_d
     Shape.(X (X (Mem Done)))
 
-let amoand_d =
+let amoand_d, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 3; funct7 = 0x30; rs2 = None })
     ~ext:[ "a" ] ~xlen:Rv64
@@ -932,7 +999,7 @@ let amoand_d =
     Opcode.Amoand_d
     Shape.(X (X (Mem Done)))
 
-let amoor_d =
+let amoor_d, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 3; funct7 = 0x20; rs2 = None })
     ~ext:[ "a" ] ~xlen:Rv64
@@ -940,7 +1007,7 @@ let amoor_d =
     Opcode.Amoor_d
     Shape.(X (X (Mem Done)))
 
-let amomin_d =
+let amomin_d, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 3; funct7 = 0x40; rs2 = None })
     ~ext:[ "a" ] ~xlen:Rv64
@@ -948,7 +1015,7 @@ let amomin_d =
     Opcode.Amomin_d
     Shape.(X (X (Mem Done)))
 
-let amomax_d =
+let amomax_d, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 3; funct7 = 0x50; rs2 = None })
     ~ext:[ "a" ] ~xlen:Rv64
@@ -956,7 +1023,7 @@ let amomax_d =
     Opcode.Amomax_d
     Shape.(X (X (Mem Done)))
 
-let amominu_d =
+let amominu_d, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 3; funct7 = 0x60; rs2 = None })
     ~ext:[ "a" ] ~xlen:Rv64
@@ -964,7 +1031,7 @@ let amominu_d =
     Opcode.Amominu_d
     Shape.(X (X (Mem Done)))
 
-let amomaxu_d =
+let amomaxu_d, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 3; funct7 = 0x70; rs2 = None })
     ~ext:[ "a" ] ~xlen:Rv64
@@ -972,7 +1039,7 @@ let amomaxu_d =
     Opcode.Amomaxu_d
     Shape.(X (X (Mem Done)))
 
-let lr_d =
+let lr_d, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 3; funct7 = 0x08; rs2 = Some 0 })
     ~ext:[ "a" ] ~xlen:Rv64
@@ -980,7 +1047,7 @@ let lr_d =
     Opcode.Lr_d
     Shape.(X (Mem Done))
 
-let sc_d =
+let sc_d, _ =
   def ~cls:Atomic
     ~enc:(R { opcode = 0x2f; funct3 = 3; funct7 = 0x0c; rs2 = None })
     ~ext:[ "a" ] ~xlen:Rv64
@@ -988,7 +1055,7 @@ let sc_d =
     Opcode.Sc_d
     Shape.(X (X (Mem Done)))
 
-let addw =
+let addw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 0; funct7 = 0x00; rs2 = None })
     ~xlen:Rv64
@@ -996,13 +1063,13 @@ let addw =
     Opcode.Addw
     Shape.(X (X (X Done)))
 
-let subw =
+let subw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 0; funct7 = 0x20; rs2 = None })
     ~xlen:Rv64 Opcode.Subw
     Shape.(X (X (X Done)))
 
-let sllw =
+let sllw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 1; funct7 = 0x00; rs2 = None })
     ~xlen:Rv64
@@ -1010,7 +1077,7 @@ let sllw =
     Opcode.Sllw
     Shape.(X (X (X Done)))
 
-let srlw =
+let srlw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 5; funct7 = 0x00; rs2 = None })
     ~xlen:Rv64
@@ -1018,7 +1085,7 @@ let srlw =
     Opcode.Srlw
     Shape.(X (X (X Done)))
 
-let sraw =
+let sraw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 5; funct7 = 0x20; rs2 = None })
     ~xlen:Rv64
@@ -1026,214 +1093,216 @@ let sraw =
     Opcode.Sraw
     Shape.(X (X (X Done)))
 
-let mulw =
+let mulw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 0; funct7 = 0x01; rs2 = None })
     ~ext:[ "zmmul" ] ~xlen:Rv64 Opcode.Mulw
     Shape.(X (X (X Done)))
 
-let divw =
+let divw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 4; funct7 = 0x01; rs2 = None })
     ~ext:[ "m" ] ~xlen:Rv64 Opcode.Divw
     Shape.(X (X (X Done)))
 
-let divuw =
+let divuw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 5; funct7 = 0x01; rs2 = None })
     ~ext:[ "m" ] ~xlen:Rv64 Opcode.Divuw
     Shape.(X (X (X Done)))
 
-let remw =
+let remw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 6; funct7 = 0x01; rs2 = None })
     ~ext:[ "m" ] ~xlen:Rv64 Opcode.Remw
     Shape.(X (X (X Done)))
 
-let remuw =
+let remuw, _ =
   def ~cls:Alu
     ~enc:(R { opcode = 0x3b; funct3 = 7; funct7 = 0x01; rs2 = None })
     ~ext:[ "m" ] ~xlen:Rv64 Opcode.Remuw
     Shape.(X (X (X Done)))
 
-let addi =
+let addi, addi_e =
   def ~cls:Alu
     ~enc:(I { opcode = 0x13; funct3 = 0 })
     ~also:Kind.[ [ X; X; Sym ] ]
     Opcode.Addi
     Shape.(X (X (Imm Done)))
 
-let c_addi =
+let c_addi, c_addi_e =
   def ~cls:Alu ~ext:[ "zca" ] ~lower:true
     ~also:Kind.[ [ X; Sym ] ]
     Opcode.C_addi
     Shape.(X (Imm Done))
 
-let c_and =
+let c_and, _ =
   def ~cls:Alu
     ~enc:(Ca { funct6 = 0x23; funct2 = 3 })
     ~ext:[ "zca" ] Opcode.C_and
     Shape.(Creg (Creg Done))
 
-let c_or =
+let c_or, _ =
   def ~cls:Alu
     ~enc:(Ca { funct6 = 0x23; funct2 = 2 })
     ~ext:[ "zca" ] Opcode.C_or
     Shape.(Creg (Creg Done))
 
-let c_xor =
+let c_xor, _ =
   def ~cls:Alu
     ~enc:(Ca { funct6 = 0x23; funct2 = 1 })
     ~ext:[ "zca" ] Opcode.C_xor
     Shape.(Creg (Creg Done))
 
-let c_sub =
+let c_sub, _ =
   def ~cls:Alu
     ~enc:(Ca { funct6 = 0x23; funct2 = 0 })
     ~ext:[ "zca" ] Opcode.C_sub
     Shape.(Creg (Creg Done))
 
-let c_addw =
+let c_addw, _ =
   def ~cls:Alu
     ~enc:(Ca { funct6 = 0x27; funct2 = 1 })
     ~ext:[ "zca" ] ~xlen:Rv64 Opcode.C_addw
     Shape.(Creg (Creg Done))
 
-let c_subw =
+let c_subw, _ =
   def ~cls:Alu
     ~enc:(Ca { funct6 = 0x27; funct2 = 0 })
     ~ext:[ "zca" ] ~xlen:Rv64 Opcode.C_subw
     Shape.(Creg (Creg Done))
 
-let c_jr = def ~cls:Jump ~enc:(Cr { funct4 = 8 }) ~ext:[ "zca" ] Opcode.C_jr Shape.(X Done)
-let c_jalr = def ~cls:Jump ~enc:(Cr { funct4 = 9 }) ~ext:[ "zca" ] Opcode.C_jalr Shape.(X Done)
-let c_mv = def ~cls:Alu ~enc:(Cr { funct4 = 8 }) ~ext:[ "zca" ] Opcode.C_mv Shape.(X (X Done))
-let c_add = def ~cls:Alu ~enc:(Cr { funct4 = 9 }) ~ext:[ "zca" ] Opcode.C_add Shape.(X (X Done))
-let c_ebreak = def ~cls:System ~enc:(Cr { funct4 = 9 }) ~ext:[ "zca" ] Opcode.C_ebreak Shape.Done
-let c_lw = def ~cls:Load ~enc:(C { funct3 = 2 }) ~ext:[ "zca" ] Opcode.C_lw Shape.(Creg (Cmem Done))
+let c_jr, _ = def ~cls:Jump ~enc:(Cr { funct4 = 8 }) ~ext:[ "zca" ] Opcode.C_jr Shape.(X Done)
+let c_jalr, _ = def ~cls:Jump ~enc:(Cr { funct4 = 9 }) ~ext:[ "zca" ] Opcode.C_jalr Shape.(X Done)
+let c_mv, _ = def ~cls:Alu ~enc:(Cr { funct4 = 8 }) ~ext:[ "zca" ] Opcode.C_mv Shape.(X (X Done))
+let c_add, _ = def ~cls:Alu ~enc:(Cr { funct4 = 9 }) ~ext:[ "zca" ] Opcode.C_add Shape.(X (X Done))
+let c_ebreak, _ = def ~cls:System ~enc:(Cr { funct4 = 9 }) ~ext:[ "zca" ] Opcode.C_ebreak Shape.Done
 
-let c_sw =
+let c_lw, _ =
+  def ~cls:Load ~enc:(C { funct3 = 2 }) ~ext:[ "zca" ] Opcode.C_lw Shape.(Creg (Cmem Done))
+
+let c_sw, _ =
   def ~cls:Store ~enc:(C { funct3 = 6 }) ~ext:[ "zca" ] Opcode.C_sw Shape.(Creg (Cmem Done))
 
-let c_lwsp =
+let c_lwsp, _ =
   def ~cls:Load ~enc:(C { funct3 = 2 }) ~ext:[ "zca" ] Opcode.C_lwsp Shape.(X (Spmem Done))
 
-let c_swsp =
+let c_swsp, _ =
   def ~cls:Store ~enc:(C { funct3 = 6 }) ~ext:[ "zca" ] Opcode.C_swsp Shape.(X (Spmem Done))
 
-let c_ld =
+let c_ld, _ =
   def ~cls:Load
     ~enc:(C { funct3 = 3 })
     ~ext:[ "zca" ] ~xlen:Rv64 Opcode.C_ld
     Shape.(Creg (Cmem Done))
 
-let c_sd =
+let c_sd, _ =
   def ~cls:Store
     ~enc:(C { funct3 = 7 })
     ~ext:[ "zca" ] ~xlen:Rv64 Opcode.C_sd
     Shape.(Creg (Cmem Done))
 
-let c_ldsp =
+let c_ldsp, _ =
   def ~cls:Load
     ~enc:(C { funct3 = 3 })
     ~ext:[ "zca" ] ~xlen:Rv64 Opcode.C_ldsp
     Shape.(X (Spmem Done))
 
-let c_sdsp =
+let c_sdsp, _ =
   def ~cls:Store
     ~enc:(C { funct3 = 7 })
     ~ext:[ "zca" ] ~xlen:Rv64 Opcode.C_sdsp
     Shape.(X (Spmem Done))
 
-let c_beqz =
+let c_beqz, _ =
   def ~cls:Branch
     ~enc:(C { funct3 = 6 })
     ~ext:[ "zca" ]
-    ~also:Kind.[ [ Creg; Sym ] ]
+    ~also:Kind.[ [ Creg; Imm ] ]
     Opcode.C_beqz
-    Shape.(Creg (Imm Done))
+    Shape.(Creg (Sym Done))
 
-let c_j =
+let c_j, _ =
   def ~cls:Jump
     ~enc:(C { funct3 = 5 })
     ~ext:[ "zca" ]
-    ~also:Kind.[ [ Sym ] ]
+    ~also:Kind.[ [ Imm ] ]
     Opcode.C_j
-    Shape.(Imm Done)
+    Shape.(Sym Done)
 
-let c_jal =
+let c_jal, _ =
   def ~cls:Jump
     ~enc:(C { funct3 = 1 })
     ~ext:[ "zca" ] ~xlen:Rv32
-    ~also:Kind.[ [ Sym ] ]
+    ~also:Kind.[ [ Imm ] ]
     Opcode.C_jal
-    Shape.(Imm Done)
+    Shape.(Sym Done)
 
-let c_bnez =
+let c_bnez, _ =
   def ~cls:Branch
     ~enc:(C { funct3 = 7 })
     ~ext:[ "zca" ]
-    ~also:Kind.[ [ Creg; Sym ] ]
+    ~also:Kind.[ [ Creg; Imm ] ]
     Opcode.C_bnez
-    Shape.(Creg (Imm Done))
+    Shape.(Creg (Sym Done))
 
-let slti =
+let slti, slti_e =
   def ~cls:Alu
     ~enc:(I { opcode = 0x13; funct3 = 2 })
     ~also:Kind.[ [ X; X; Sym ] ]
     Opcode.Slti
     Shape.(X (X (Imm Done)))
 
-let sltiu =
+let sltiu, sltiu_e =
   def ~cls:Alu
     ~enc:(I { opcode = 0x13; funct3 = 3 })
     ~also:Kind.[ [ X; X; Sym ] ]
     Opcode.Sltiu
     Shape.(X (X (Imm Done)))
 
-let xori =
+let xori, xori_e =
   def ~cls:Alu
     ~enc:(I { opcode = 0x13; funct3 = 4 })
     ~also:Kind.[ [ X; X; Sym ] ]
     Opcode.Xori
     Shape.(X (X (Imm Done)))
 
-let ori =
+let ori, ori_e =
   def ~cls:Alu
     ~enc:(I { opcode = 0x13; funct3 = 6 })
     ~also:Kind.[ [ X; X; Sym ] ]
     Opcode.Ori
     Shape.(X (X (Imm Done)))
 
-let andi =
+let andi, andi_e =
   def ~cls:Alu
     ~enc:(I { opcode = 0x13; funct3 = 7 })
     ~also:Kind.[ [ X; X; Sym ] ]
     Opcode.Andi
     Shape.(X (X (Imm Done)))
 
-let slli =
+let slli, slli_e =
   def ~cls:Alu
     ~enc:(Shift { funct3 = 1; funct6 = 0x00 })
     ~also:Kind.[ [ X; X; Sym ] ]
     Opcode.Slli
     Shape.(X (X (Imm Done)))
 
-let srli =
+let srli, srli_e =
   def ~cls:Alu
     ~enc:(Shift { funct3 = 5; funct6 = 0x00 })
     ~also:Kind.[ [ X; X; Sym ] ]
     Opcode.Srli
     Shape.(X (X (Imm Done)))
 
-let srai =
+let srai, srai_e =
   def ~cls:Alu
     ~enc:(Shift { funct3 = 5; funct6 = 0x10 })
     ~also:Kind.[ [ X; X; Sym ] ]
     Opcode.Srai
     Shape.(X (X (Imm Done)))
 
-let addiw =
+let addiw, addiw_e =
   def ~cls:Alu
     ~enc:(I { opcode = 0x1b; funct3 = 0 })
     ~xlen:Rv64
@@ -1241,7 +1310,7 @@ let addiw =
     Opcode.Addiw
     Shape.(X (X (Imm Done)))
 
-let slliw =
+let slliw, slliw_e =
   def ~cls:Alu
     ~enc:(Shiftw { funct3 = 1; funct7 = 0x00 })
     ~xlen:Rv64
@@ -1249,7 +1318,7 @@ let slliw =
     Opcode.Slliw
     Shape.(X (X (Imm Done)))
 
-let srliw =
+let srliw, srliw_e =
   def ~cls:Alu
     ~enc:(Shiftw { funct3 = 5; funct7 = 0x00 })
     ~xlen:Rv64
@@ -1257,7 +1326,7 @@ let srliw =
     Opcode.Srliw
     Shape.(X (X (Imm Done)))
 
-let sraiw =
+let sraiw, sraiw_e =
   def ~cls:Alu
     ~enc:(Shiftw { funct3 = 5; funct7 = 0x20 })
     ~xlen:Rv64
@@ -1265,44 +1334,44 @@ let sraiw =
     Opcode.Sraiw
     Shape.(X (X (Imm Done)))
 
-let sext_w = def ~cls:Alu ~xlen:Rv64 ~lower:true Opcode.Sext_w Shape.(X (X Done))
+let sext_w, _ = def ~cls:Alu ~xlen:Rv64 ~lower:true Opcode.Sext_w Shape.(X (X Done))
 
-let lb =
+let lb, _ =
   def ~cls:Load
     ~enc:(I { opcode = 0x03; funct3 = 0 })
     ~also:Kind.[ [ X; Spmem ] ]
     Opcode.Lb
     Shape.(X (Mem Done))
 
-let lh =
+let lh, _ =
   def ~cls:Load
     ~enc:(I { opcode = 0x03; funct3 = 1 })
     ~also:Kind.[ [ X; Spmem ] ]
     Opcode.Lh
     Shape.(X (Mem Done))
 
-let lw =
+let lw, _ =
   def ~cls:Load
     ~enc:(I { opcode = 0x03; funct3 = 2 })
     ~also:Kind.[ [ X; Spmem ] ]
     Opcode.Lw
     Shape.(X (Mem Done))
 
-let lbu =
+let lbu, _ =
   def ~cls:Load
     ~enc:(I { opcode = 0x03; funct3 = 4 })
     ~also:Kind.[ [ X; Spmem ] ]
     Opcode.Lbu
     Shape.(X (Mem Done))
 
-let lhu =
+let lhu, _ =
   def ~cls:Load
     ~enc:(I { opcode = 0x03; funct3 = 5 })
     ~also:Kind.[ [ X; Spmem ] ]
     Opcode.Lhu
     Shape.(X (Mem Done))
 
-let lwu =
+let lwu, _ =
   def ~cls:Load
     ~enc:(I { opcode = 0x03; funct3 = 6 })
     ~xlen:Rv64
@@ -1310,7 +1379,7 @@ let lwu =
     Opcode.Lwu
     Shape.(X (Mem Done))
 
-let ld =
+let ld, _ =
   def ~cls:Load
     ~enc:(I { opcode = 0x03; funct3 = 3 })
     ~xlen:Rv64
@@ -1318,28 +1387,28 @@ let ld =
     Opcode.Ld
     Shape.(X (Mem Done))
 
-let sb =
+let sb, _ =
   def ~cls:Store
     ~enc:(S { opcode = 0x23; funct3 = 0 })
     ~also:Kind.[ [ X; Spmem ] ]
     Opcode.Sb
     Shape.(X (Mem Done))
 
-let sh =
+let sh, _ =
   def ~cls:Store
     ~enc:(S { opcode = 0x23; funct3 = 1 })
     ~also:Kind.[ [ X; Spmem ] ]
     Opcode.Sh
     Shape.(X (Mem Done))
 
-let sw =
+let sw, _ =
   def ~cls:Store
     ~enc:(S { opcode = 0x23; funct3 = 2 })
     ~also:Kind.[ [ X; Spmem ] ]
     Opcode.Sw
     Shape.(X (Mem Done))
 
-let sd =
+let sd, _ =
   def ~cls:Store
     ~enc:(S { opcode = 0x23; funct3 = 3 })
     ~xlen:Rv64
@@ -1347,109 +1416,109 @@ let sd =
     Opcode.Sd
     Shape.(X (Mem Done))
 
-let beq =
+let beq, _ =
   def ~cls:Branch
     ~enc:(B { funct3 = 0 })
-    ~also:Kind.[ [ X; X; Sym ] ]
+    ~also:Kind.[ [ X; X; Imm ] ]
     Opcode.Beq
-    Shape.(X (X (Imm Done)))
+    Shape.(X (X (Sym Done)))
 
-let bne =
+let bne, _ =
   def ~cls:Branch
     ~enc:(B { funct3 = 1 })
-    ~also:Kind.[ [ X; X; Sym ] ]
+    ~also:Kind.[ [ X; X; Imm ] ]
     Opcode.Bne
-    Shape.(X (X (Imm Done)))
+    Shape.(X (X (Sym Done)))
 
-let blt =
+let blt, _ =
   def ~cls:Branch
     ~enc:(B { funct3 = 4 })
-    ~also:Kind.[ [ X; X; Sym ] ]
+    ~also:Kind.[ [ X; X; Imm ] ]
     Opcode.Blt
-    Shape.(X (X (Imm Done)))
+    Shape.(X (X (Sym Done)))
 
-let bge =
+let bge, _ =
   def ~cls:Branch
     ~enc:(B { funct3 = 5 })
-    ~also:Kind.[ [ X; X; Sym ] ]
+    ~also:Kind.[ [ X; X; Imm ] ]
     Opcode.Bge
-    Shape.(X (X (Imm Done)))
+    Shape.(X (X (Sym Done)))
 
-let bltu =
+let bltu, _ =
   def ~cls:Branch
     ~enc:(B { funct3 = 6 })
-    ~also:Kind.[ [ X; X; Sym ] ]
+    ~also:Kind.[ [ X; X; Imm ] ]
     Opcode.Bltu
-    Shape.(X (X (Imm Done)))
+    Shape.(X (X (Sym Done)))
 
-let bgeu =
+let bgeu, _ =
   def ~cls:Branch
     ~enc:(B { funct3 = 7 })
-    ~also:Kind.[ [ X; X; Sym ] ]
+    ~also:Kind.[ [ X; X; Imm ] ]
     Opcode.Bgeu
-    Shape.(X (X (Imm Done)))
+    Shape.(X (X (Sym Done)))
 
-let bgtu =
-  def ~cls:Branch ~lower:true ~also:Kind.[ [ X; X; Sym ] ] Opcode.Bgtu Shape.(X (X (Imm Done)))
+let bgtu, _ =
+  def ~cls:Branch ~lower:true ~also:Kind.[ [ X; X; Imm ] ] Opcode.Bgtu Shape.(X (X (Sym Done)))
 
-let bleu =
-  def ~cls:Branch ~lower:true ~also:Kind.[ [ X; X; Sym ] ] Opcode.Bleu Shape.(X (X (Imm Done)))
+let bleu, _ =
+  def ~cls:Branch ~lower:true ~also:Kind.[ [ X; X; Imm ] ] Opcode.Bleu Shape.(X (X (Sym Done)))
 
-let bgt =
-  def ~cls:Branch ~lower:true ~also:Kind.[ [ X; X; Sym ] ] Opcode.Bgt Shape.(X (X (Imm Done)))
+let bgt, _ =
+  def ~cls:Branch ~lower:true ~also:Kind.[ [ X; X; Imm ] ] Opcode.Bgt Shape.(X (X (Sym Done)))
 
-let ble =
-  def ~cls:Branch ~lower:true ~also:Kind.[ [ X; X; Sym ] ] Opcode.Ble Shape.(X (X (Imm Done)))
+let ble, _ =
+  def ~cls:Branch ~lower:true ~also:Kind.[ [ X; X; Imm ] ] Opcode.Ble Shape.(X (X (Sym Done)))
 
-let beqz = def ~cls:Branch ~lower:true ~also:Kind.[ [ X; Sym ] ] Opcode.Beqz Shape.(X (Imm Done))
-let bnez = def ~cls:Branch ~lower:true ~also:Kind.[ [ X; Sym ] ] Opcode.Bnez Shape.(X (Imm Done))
-let bgez = def ~cls:Branch ~lower:true ~also:Kind.[ [ X; Sym ] ] Opcode.Bgez Shape.(X (Imm Done))
-let bltz = def ~cls:Branch ~lower:true ~also:Kind.[ [ X; Sym ] ] Opcode.Bltz Shape.(X (Imm Done))
-let blez = def ~cls:Branch ~lower:true ~also:Kind.[ [ X; Sym ] ] Opcode.Blez Shape.(X (Imm Done))
-let bgtz = def ~cls:Branch ~lower:true ~also:Kind.[ [ X; Sym ] ] Opcode.Bgtz Shape.(X (Imm Done))
+let beqz, _ = def ~cls:Branch ~lower:true ~also:Kind.[ [ X; Imm ] ] Opcode.Beqz Shape.(X (Sym Done))
+let bnez, _ = def ~cls:Branch ~lower:true ~also:Kind.[ [ X; Imm ] ] Opcode.Bnez Shape.(X (Sym Done))
+let bgez, _ = def ~cls:Branch ~lower:true ~also:Kind.[ [ X; Imm ] ] Opcode.Bgez Shape.(X (Sym Done))
+let bltz, _ = def ~cls:Branch ~lower:true ~also:Kind.[ [ X; Imm ] ] Opcode.Bltz Shape.(X (Sym Done))
+let blez, _ = def ~cls:Branch ~lower:true ~also:Kind.[ [ X; Imm ] ] Opcode.Blez Shape.(X (Sym Done))
+let bgtz, _ = def ~cls:Branch ~lower:true ~also:Kind.[ [ X; Imm ] ] Opcode.Bgtz Shape.(X (Sym Done))
 
-let lui =
+let lui, lui_e =
   def ~cls:Alu ~enc:(U { opcode = 0x37 }) ~also:Kind.[ [ X; Sym ] ] Opcode.Lui Shape.(X (Imm Done))
 
-let auipc =
+let auipc, auipc_e =
   def ~cls:Alu
     ~enc:(U { opcode = 0x17 })
     ~also:Kind.[ [ X; Sym ] ]
     Opcode.Auipc
     Shape.(X (Imm Done))
 
-let jal =
+let jal, _ =
   def ~cls:Jump ~lower:true
-    ~also:Kind.[ [ Sym ]; [ X; Imm ]; [ X; Sym ] ]
+    ~also:Kind.[ [ X; Imm ]; [ X; Sym ]; [ Imm ] ]
     Opcode.Jal
-    Shape.(Imm Done)
+    Shape.(Sym Done)
 
-let jalr =
+let jalr, _ =
   def ~cls:Jump
     ~enc:(I { opcode = 0x67; funct3 = 0 })
     ~also:Kind.[ [ X; Mem ]; [ X; Spmem ]; [ X; X; Imm ]; [ X; X; Sym ] ]
     Opcode.Jalr
     Shape.(X Done)
 
-let mv = def ~cls:Alu ~lower:true Opcode.Mv Shape.(X (X Done))
-let nop = def ~cls:Alu ~lower:true Opcode.Nop Shape.Done
-let j = def ~cls:Jump ~lower:true ~also:Kind.[ [ Sym ] ] Opcode.J Shape.(Imm Done)
-let jr = def ~cls:Jump ~lower:true Opcode.Jr Shape.(X Done)
-let call = def ~cls:Jump ~lower:true ~also:Kind.[ [ Sym ] ] Opcode.Call Shape.(Imm Done)
-let tail = def ~cls:Jump ~lower:true ~also:Kind.[ [ Sym ] ] Opcode.Tail Shape.(Imm Done)
-let la = def ~cls:Alu ~lower:true ~also:Kind.[ [ X; Sym ] ] Opcode.La Shape.(X (Imm Done))
-let lla = def ~cls:Alu ~lower:true ~also:Kind.[ [ X; Sym ] ] Opcode.Lla Shape.(X (Imm Done))
-let li = def ~cls:Alu ~lower:true ~also:Kind.[ [ X; Sym ] ] Opcode.Li Shape.(X (Imm Done))
-let ret = def ~cls:Jump ~lower:true Opcode.Ret Shape.Done
-let ecall = def ~cls:System ~lower:true Opcode.Ecall Shape.Done
-let ebreak = def ~cls:System ~lower:true Opcode.Ebreak Shape.Done
-let unimp = def ~cls:Csr ~lower:true Opcode.Unimp Shape.Done
-let fence_i = def ~cls:System ~ext:[ "zifencei" ] ~lower:true Opcode.Fence_i Shape.Done
-let fence = def ~cls:System ~lower:true Opcode.Fence Shape.Done
-let fence_tso = def ~cls:System ~lower:true Opcode.Fence_tso Shape.Done
-let pause = def ~cls:System ~lower:true Opcode.Pause Shape.Done
+let mv, _ = def ~cls:Alu ~lower:true Opcode.Mv Shape.(X (X Done))
+let nop, _ = def ~cls:Alu ~lower:true Opcode.Nop Shape.Done
+let j, _ = def ~cls:Jump ~lower:true ~also:Kind.[ [ Imm ] ] Opcode.J Shape.(Sym Done)
+let jr, _ = def ~cls:Jump ~lower:true Opcode.Jr Shape.(X Done)
+let call, _ = def ~cls:Jump ~lower:true ~also:Kind.[ [ Imm ] ] Opcode.Call Shape.(Sym Done)
+let tail, _ = def ~cls:Jump ~lower:true ~also:Kind.[ [ Imm ] ] Opcode.Tail Shape.(Sym Done)
+let la, _ = def ~cls:Alu ~lower:true ~also:Kind.[ [ X; Imm ] ] Opcode.La Shape.(X (Sym Done))
+let lla, _ = def ~cls:Alu ~lower:true ~also:Kind.[ [ X; Imm ] ] Opcode.Lla Shape.(X (Sym Done))
+let li, li_e = def ~cls:Alu ~lower:true ~also:Kind.[ [ X; Sym ] ] Opcode.Li Shape.(X (Imm64 Done))
+let ret, _ = def ~cls:Jump ~lower:true Opcode.Ret Shape.Done
+let ecall, _ = def ~cls:System ~lower:true Opcode.Ecall Shape.Done
+let ebreak, _ = def ~cls:System ~lower:true Opcode.Ebreak Shape.Done
+let unimp, _ = def ~cls:Csr ~lower:true Opcode.Unimp Shape.Done
+let fence_i, _ = def ~cls:System ~ext:[ "zifencei" ] ~lower:true Opcode.Fence_i Shape.Done
+let fence, _ = def ~cls:System ~lower:true Opcode.Fence Shape.Done
+let fence_tso, _ = def ~cls:System ~lower:true Opcode.Fence_tso Shape.Done
+let pause, _ = def ~cls:System ~lower:true Opcode.Pause Shape.Done
 
-let fld =
+let fld, _ =
   def ~cls:Load
     ~enc:(I { opcode = 0x07; funct3 = 3 })
     ~ext:[ "d" ]
@@ -1457,7 +1526,7 @@ let fld =
     Opcode.Fld
     Shape.(F (Mem Done))
 
-let flw =
+let flw, _ =
   def ~cls:Load
     ~enc:(I { opcode = 0x07; funct3 = 2 })
     ~ext:[ "f" ]
@@ -1465,7 +1534,7 @@ let flw =
     Opcode.Flw
     Shape.(F (Mem Done))
 
-let fsd =
+let fsd, _ =
   def ~cls:Store
     ~enc:(S { opcode = 0x27; funct3 = 3 })
     ~ext:[ "d" ]
@@ -1473,7 +1542,7 @@ let fsd =
     Opcode.Fsd
     Shape.(F (Mem Done))
 
-let fsw =
+let fsw, _ =
   def ~cls:Store
     ~enc:(S { opcode = 0x27; funct3 = 2 })
     ~ext:[ "f" ]
@@ -1481,7 +1550,7 @@ let fsw =
     Opcode.Fsw
     Shape.(F (Mem Done))
 
-let fadd_d =
+let fadd_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x01; rs2 = None })
     ~ext:[ "d" ] ~rm:Rm.Dyn
@@ -1489,7 +1558,7 @@ let fadd_d =
     Opcode.Fadd_d
     Shape.(F (F (F Done)))
 
-let fadd_s =
+let fadd_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x00; rs2 = None })
     ~ext:[ "f" ] ~rm:Rm.Dyn
@@ -1497,7 +1566,7 @@ let fadd_s =
     Opcode.Fadd_s
     Shape.(F (F (F Done)))
 
-let fsub_d =
+let fsub_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x05; rs2 = None })
     ~ext:[ "d" ] ~rm:Rm.Dyn
@@ -1505,7 +1574,7 @@ let fsub_d =
     Opcode.Fsub_d
     Shape.(F (F (F Done)))
 
-let fsub_s =
+let fsub_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x04; rs2 = None })
     ~ext:[ "f" ] ~rm:Rm.Dyn
@@ -1513,7 +1582,7 @@ let fsub_s =
     Opcode.Fsub_s
     Shape.(F (F (F Done)))
 
-let fmul_d =
+let fmul_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x09; rs2 = None })
     ~ext:[ "d" ] ~rm:Rm.Dyn
@@ -1521,7 +1590,7 @@ let fmul_d =
     Opcode.Fmul_d
     Shape.(F (F (F Done)))
 
-let fmul_s =
+let fmul_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x08; rs2 = None })
     ~ext:[ "f" ] ~rm:Rm.Dyn
@@ -1529,7 +1598,7 @@ let fmul_s =
     Opcode.Fmul_s
     Shape.(F (F (F Done)))
 
-let fdiv_d =
+let fdiv_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x0d; rs2 = None })
     ~ext:[ "d" ] ~rm:Rm.Dyn
@@ -1537,7 +1606,7 @@ let fdiv_d =
     Opcode.Fdiv_d
     Shape.(F (F (F Done)))
 
-let fdiv_s =
+let fdiv_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x0c; rs2 = None })
     ~ext:[ "f" ] ~rm:Rm.Dyn
@@ -1545,109 +1614,109 @@ let fdiv_s =
     Opcode.Fdiv_s
     Shape.(F (F (F Done)))
 
-let fneg_d =
+let fneg_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 1; funct7 = 0x11; rs2 = None })
     ~ext:[ "d" ] Opcode.Fneg_d
     Shape.(F (F Done))
 
-let fneg_s =
+let fneg_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 1; funct7 = 0x10; rs2 = None })
     ~ext:[ "f" ] Opcode.Fneg_s
     Shape.(F (F Done))
 
-let fabs_d =
+let fabs_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 2; funct7 = 0x11; rs2 = None })
     ~ext:[ "d" ] Opcode.Fabs_d
     Shape.(F (F Done))
 
-let fabs_s =
+let fabs_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 2; funct7 = 0x10; rs2 = None })
     ~ext:[ "f" ] Opcode.Fabs_s
     Shape.(F (F Done))
 
-let fmv_s =
+let fmv_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x10; rs2 = None })
     ~ext:[ "f" ] Opcode.Fmv_s
     Shape.(F (F Done))
 
-let fmv_x_s =
+let fmv_x_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x70; rs2 = Some 0 })
     ~ext:[ "f" ] Opcode.Fmv_x_s
     Shape.(X (F Done))
 
-let fmv_s_x =
+let fmv_s_x, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x78; rs2 = Some 0 })
     ~ext:[ "f" ] Opcode.Fmv_s_x
     Shape.(F (X Done))
 
-let fsgnj_s =
+let fsgnj_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x10; rs2 = None })
     ~ext:[ "f" ] Opcode.Fsgnj_s
     Shape.(F (F (F Done)))
 
-let fsgnj_d =
+let fsgnj_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x11; rs2 = None })
     ~ext:[ "d" ] Opcode.Fsgnj_d
     Shape.(F (F (F Done)))
 
-let fsgnjn_s =
+let fsgnjn_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 1; funct7 = 0x10; rs2 = None })
     ~ext:[ "f" ] Opcode.Fsgnjn_s
     Shape.(F (F (F Done)))
 
-let fsgnjn_d =
+let fsgnjn_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 1; funct7 = 0x11; rs2 = None })
     ~ext:[ "d" ] Opcode.Fsgnjn_d
     Shape.(F (F (F Done)))
 
-let fsgnjx_s =
+let fsgnjx_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 2; funct7 = 0x10; rs2 = None })
     ~ext:[ "f" ] Opcode.Fsgnjx_s
     Shape.(F (F (F Done)))
 
-let fsgnjx_d =
+let fsgnjx_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 2; funct7 = 0x11; rs2 = None })
     ~ext:[ "d" ] Opcode.Fsgnjx_d
     Shape.(F (F (F Done)))
 
-let fmin_s =
+let fmin_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x14; rs2 = None })
     ~ext:[ "f" ] Opcode.Fmin_s
     Shape.(F (F (F Done)))
 
-let fmax_s =
+let fmax_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 1; funct7 = 0x14; rs2 = None })
     ~ext:[ "f" ] Opcode.Fmax_s
     Shape.(F (F (F Done)))
 
-let fmin_d =
+let fmin_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x15; rs2 = None })
     ~ext:[ "d" ] Opcode.Fmin_d
     Shape.(F (F (F Done)))
 
-let fmax_d =
+let fmax_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 1; funct7 = 0x15; rs2 = None })
     ~ext:[ "d" ] Opcode.Fmax_d
     Shape.(F (F (F Done)))
 
-let fsqrt_s =
+let fsqrt_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x2c; rs2 = Some 0 })
     ~ext:[ "f" ] ~rm:Rm.Dyn
@@ -1655,7 +1724,7 @@ let fsqrt_s =
     Opcode.Fsqrt_s
     Shape.(F (F Done))
 
-let fsqrt_d =
+let fsqrt_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x2d; rs2 = Some 0 })
     ~ext:[ "d" ] ~rm:Rm.Dyn
@@ -1663,127 +1732,127 @@ let fsqrt_d =
     Opcode.Fsqrt_d
     Shape.(F (F Done))
 
-let fclass_s =
+let fclass_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 1; funct7 = 0x70; rs2 = Some 0 })
     ~ext:[ "f" ] Opcode.Fclass_s
     Shape.(X (F Done))
 
-let fclass_d =
+let fclass_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 1; funct7 = 0x71; rs2 = Some 0 })
     ~ext:[ "d" ] Opcode.Fclass_d
     Shape.(X (F Done))
 
-let fmadd_s =
+let fmadd_s, _ =
   def ~cls:Fp
     ~enc:(R4 { opcode = 0x43; fmt = 0 })
     ~ext:[ "f" ] Opcode.Fmadd_s
     Shape.(F (F (F (F Done))))
 
-let fmadd_d =
+let fmadd_d, _ =
   def ~cls:Fp
     ~enc:(R4 { opcode = 0x43; fmt = 1 })
     ~ext:[ "d" ] Opcode.Fmadd_d
     Shape.(F (F (F (F Done))))
 
-let fmsub_s =
+let fmsub_s, _ =
   def ~cls:Fp
     ~enc:(R4 { opcode = 0x47; fmt = 0 })
     ~ext:[ "f" ] Opcode.Fmsub_s
     Shape.(F (F (F (F Done))))
 
-let fmsub_d =
+let fmsub_d, _ =
   def ~cls:Fp
     ~enc:(R4 { opcode = 0x47; fmt = 1 })
     ~ext:[ "d" ] Opcode.Fmsub_d
     Shape.(F (F (F (F Done))))
 
-let fnmsub_s =
+let fnmsub_s, _ =
   def ~cls:Fp
     ~enc:(R4 { opcode = 0x4b; fmt = 0 })
     ~ext:[ "f" ] Opcode.Fnmsub_s
     Shape.(F (F (F (F Done))))
 
-let fnmsub_d =
+let fnmsub_d, _ =
   def ~cls:Fp
     ~enc:(R4 { opcode = 0x4b; fmt = 1 })
     ~ext:[ "d" ] Opcode.Fnmsub_d
     Shape.(F (F (F (F Done))))
 
-let fnmadd_s =
+let fnmadd_s, _ =
   def ~cls:Fp
     ~enc:(R4 { opcode = 0x4f; fmt = 0 })
     ~ext:[ "f" ] Opcode.Fnmadd_s
     Shape.(F (F (F (F Done))))
 
-let fnmadd_d =
+let fnmadd_d, _ =
   def ~cls:Fp
     ~enc:(R4 { opcode = 0x4f; fmt = 1 })
     ~ext:[ "d" ] Opcode.Fnmadd_d
     Shape.(F (F (F (F Done))))
 
-let fmv_d =
+let fmv_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x11; rs2 = None })
     ~ext:[ "d" ] Opcode.Fmv_d
     Shape.(F (F Done))
 
-let fmv_x_d =
+let fmv_x_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x71; rs2 = Some 0 })
     ~ext:[ "d" ] ~xlen:Rv64 Opcode.Fmv_x_d
     Shape.(X (F Done))
 
-let feq_d =
+let feq_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 2; funct7 = 0x51; rs2 = None })
     ~ext:[ "d" ] Opcode.Feq_d
     Shape.(X (F (F Done)))
 
-let fle_d =
+let fle_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x51; rs2 = None })
     ~ext:[ "d" ] Opcode.Fle_d
     Shape.(X (F (F Done)))
 
-let flt_d =
+let flt_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 1; funct7 = 0x51; rs2 = None })
     ~ext:[ "d" ] Opcode.Flt_d
     Shape.(X (F (F Done)))
 
-let flt_s =
+let flt_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 1; funct7 = 0x50; rs2 = None })
     ~ext:[ "f" ] Opcode.Flt_s
     Shape.(X (F (F Done)))
 
-let feq_s =
+let feq_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 2; funct7 = 0x50; rs2 = None })
     ~ext:[ "f" ] Opcode.Feq_s
     Shape.(X (F (F Done)))
 
-let fle_s =
+let fle_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x50; rs2 = None })
     ~ext:[ "f" ] Opcode.Fle_s
     Shape.(X (F (F Done)))
 
-let fmv_x_w =
+let fmv_x_w, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x70; rs2 = Some 0 })
     ~ext:[ "f" ] Opcode.Fmv_x_w
     Shape.(X (F Done))
 
-let fmv_w_x =
+let fmv_w_x, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x78; rs2 = Some 0 })
     ~ext:[ "f" ] Opcode.Fmv_w_x
     Shape.(F (X Done))
 
-let fcvt_w_d =
+let fcvt_w_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x61; rs2 = Some 0 })
     ~ext:[ "d" ] ~rm:Rm.Dyn
@@ -1791,7 +1860,7 @@ let fcvt_w_d =
     Opcode.Fcvt_w_d
     Shape.(X (F Done))
 
-let fcvt_wu_d =
+let fcvt_wu_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x61; rs2 = Some 1 })
     ~ext:[ "d" ] ~rm:Rm.Dyn
@@ -1799,7 +1868,7 @@ let fcvt_wu_d =
     Opcode.Fcvt_wu_d
     Shape.(X (F Done))
 
-let fcvt_l_d =
+let fcvt_l_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x61; rs2 = Some 2 })
     ~ext:[ "d" ] ~xlen:Rv64 ~rm:Rm.Dyn
@@ -1807,7 +1876,7 @@ let fcvt_l_d =
     Opcode.Fcvt_l_d
     Shape.(X (F Done))
 
-let fcvt_d_w =
+let fcvt_d_w, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x69; rs2 = Some 0 })
     ~ext:[ "d" ] ~rm:Rm.Rne
@@ -1815,7 +1884,7 @@ let fcvt_d_w =
     Opcode.Fcvt_d_w
     Shape.(F (X Done))
 
-let fcvt_d_wu =
+let fcvt_d_wu, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x69; rs2 = Some 1 })
     ~ext:[ "d" ] ~rm:Rm.Rne
@@ -1823,7 +1892,7 @@ let fcvt_d_wu =
     Opcode.Fcvt_d_wu
     Shape.(F (X Done))
 
-let fcvt_s_w =
+let fcvt_s_w, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x68; rs2 = Some 0 })
     ~ext:[ "f" ] ~rm:Rm.Dyn
@@ -1831,7 +1900,7 @@ let fcvt_s_w =
     Opcode.Fcvt_s_w
     Shape.(F (X Done))
 
-let fcvt_s_wu =
+let fcvt_s_wu, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x68; rs2 = Some 1 })
     ~ext:[ "f" ] ~rm:Rm.Dyn
@@ -1839,7 +1908,7 @@ let fcvt_s_wu =
     Opcode.Fcvt_s_wu
     Shape.(F (X Done))
 
-let fcvt_w_s =
+let fcvt_w_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x60; rs2 = Some 0 })
     ~ext:[ "f" ] ~rm:Rm.Dyn
@@ -1847,7 +1916,7 @@ let fcvt_w_s =
     Opcode.Fcvt_w_s
     Shape.(X (F Done))
 
-let fcvt_wu_s =
+let fcvt_wu_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x60; rs2 = Some 1 })
     ~ext:[ "f" ] ~rm:Rm.Dyn
@@ -1855,7 +1924,7 @@ let fcvt_wu_s =
     Opcode.Fcvt_wu_s
     Shape.(X (F Done))
 
-let fcvt_s_d =
+let fcvt_s_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x20; rs2 = Some 1 })
     ~ext:[ "d" ] ~rm:Rm.Dyn
@@ -1863,7 +1932,7 @@ let fcvt_s_d =
     Opcode.Fcvt_s_d
     Shape.(F (F Done))
 
-let fcvt_d_s =
+let fcvt_d_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 0; funct7 = 0x21; rs2 = Some 0 })
     ~ext:[ "d" ] ~rm:Rm.Rne
@@ -1871,7 +1940,7 @@ let fcvt_d_s =
     Opcode.Fcvt_d_s
     Shape.(F (F Done))
 
-let fcvt_s_l =
+let fcvt_s_l, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x68; rs2 = Some 2 })
     ~ext:[ "f" ] ~xlen:Rv64 ~rm:Rm.Dyn
@@ -1879,7 +1948,7 @@ let fcvt_s_l =
     Opcode.Fcvt_s_l
     Shape.(F (X Done))
 
-let fcvt_lu_d =
+let fcvt_lu_d, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x61; rs2 = Some 3 })
     ~ext:[ "d" ] ~xlen:Rv64 ~rm:Rm.Dyn
@@ -1887,7 +1956,7 @@ let fcvt_lu_d =
     Opcode.Fcvt_lu_d
     Shape.(X (F Done))
 
-let fcvt_d_l =
+let fcvt_d_l, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x69; rs2 = Some 2 })
     ~ext:[ "d" ] ~xlen:Rv64 ~rm:Rm.Dyn
@@ -1895,7 +1964,7 @@ let fcvt_d_l =
     Opcode.Fcvt_d_l
     Shape.(F (X Done))
 
-let fcvt_d_lu =
+let fcvt_d_lu, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x69; rs2 = Some 3 })
     ~ext:[ "d" ] ~xlen:Rv64 ~rm:Rm.Dyn
@@ -1903,7 +1972,7 @@ let fcvt_d_lu =
     Opcode.Fcvt_d_lu
     Shape.(F (X Done))
 
-let fcvt_l_s =
+let fcvt_l_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x60; rs2 = Some 2 })
     ~ext:[ "f" ] ~xlen:Rv64 ~rm:Rm.Dyn
@@ -1911,7 +1980,7 @@ let fcvt_l_s =
     Opcode.Fcvt_l_s
     Shape.(X (F Done))
 
-let fcvt_lu_s =
+let fcvt_lu_s, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x60; rs2 = Some 3 })
     ~ext:[ "f" ] ~xlen:Rv64 ~rm:Rm.Dyn
@@ -1919,7 +1988,7 @@ let fcvt_lu_s =
     Opcode.Fcvt_lu_s
     Shape.(X (F Done))
 
-let fcvt_s_lu =
+let fcvt_s_lu, _ =
   def ~cls:Fp
     ~enc:(R { opcode = 0x53; funct3 = 7; funct7 = 0x68; rs2 = Some 3 })
     ~ext:[ "f" ] ~xlen:Rv64 ~rm:Rm.Dyn
