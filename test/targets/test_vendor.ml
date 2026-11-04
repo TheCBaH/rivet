@@ -528,5 +528,5 @@ let%expect_test "a vendor row's class is read off its word" =
   [%expect {|
     vtzero vector
     vtle32 vector-load
-    vtmms.tvv alu
+    vtmms.tvv vector
     xfoo custom |}]

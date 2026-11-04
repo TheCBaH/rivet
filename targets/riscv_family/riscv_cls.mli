@@ -21,6 +21,7 @@ val all : t list
 val name : t -> string
 
 val of_word : xlen:int -> int64 -> t
-(** A 32-bit word by major opcode (and [funct3] for SYSTEM, LOAD-FP and STORE-FP); a 16-bit one
+(** A 32-bit word by major opcode (and [funct3] for SYSTEM, LOAD-FP and STORE-FP; OP-V and
+    OP-VE, the vector-crypto space, are both [Vector]); a 16-bit one
     by quadrant and [funct3]. [xlen] decides quadrant 1's [funct3 = 1]: [c.jal] on RV32,
     [c.addiw] on RV64. *)

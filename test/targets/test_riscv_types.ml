@@ -265,6 +265,7 @@ let%expect_test "one word per class and compressed quadrant" =
       (64, 0x00000053L, "fadd.s");
       (64, 0x00000043L, "fmadd.s");
       (64, 0x00000057L, "vadd.vv");
+      (64, 0x00000077L, "vaesz.vs");
       (64, 0x0000000bL, "custom-0");
       (64, 0x0000007bL, "custom-3");
       (64, 0x0040L, "c.addi4spn");
@@ -304,6 +305,7 @@ let%expect_test "one word per class and compressed quadrant" =
     fadd.s     00000053 fp
     fmadd.s    00000043 fp
     vadd.vv    00000057 vector
+    vaesz.vs   00000077 vector
     custom-0   0000000b custom
     custom-3   0000007b custom
     c.addi4spn 00000040 alu
