@@ -158,7 +158,7 @@ module Check (E : ENC) = struct
             @ bad "cls" (E.Cls.of_opcode op = e.cls)
             @ bad "ext" (exts op = e.ext)
             @ bad "fp" fp_ok
-            @ bad "shapes" (accepted op = shapes))
+            @ bad "shapes" (List.sort compare (accepted op) = List.sort compare shapes))
         ops
 end
 

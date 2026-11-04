@@ -1,0 +1,10 @@
+; Typed instruction builders, from the per-target opcode tables.
+
+(library
+ (name riscv_asm)
+ (public_name rivet.riscv_asm)
+ (modules riscv_asm)
+ (modes byte native)
+ (libraries foundation asm_core riscv_family_encode)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))

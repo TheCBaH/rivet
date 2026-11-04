@@ -1,2 +1,6 @@
+ok_riscv_asm: compiles
 ok_xreg: compiles
+rv32_has_no_ld: refused, mentions ld
+rv_c_lw_full_register: refused, mentions Creg
+rv_fadd_s_on_xregs: refused, mentions Freg
 rv_freg_for_xreg: refused, mentions Xreg
