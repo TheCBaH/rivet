@@ -3,7 +3,13 @@
 
 (library
  (name test_targets)
- (modules test_targets test_components test_features test_vendor test_zicsr)
+ (modules
+  test_targets
+  test_components
+  test_features
+  test_vendor
+  test_zicsr
+  test_riscv_types)
  (modes byte native)
  (libraries
   driver
