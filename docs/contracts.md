@@ -48,6 +48,13 @@ Three rules apply to all seven:
   and the temptation to normalize it away in the harness is how a real difference
   gets normalized away too.
 
+What the line format holds for a given instruction (a register spelling, an
+alias, an operand order) is versioned with the golden files, not frozen: a
+printer change lands together with its promoted goldens and is named in its
+commit. Two properties are invariant across such changes and are what the
+tests protect: canonical disassembly re-assembles to identical bytes, and
+native, js_of_ocaml and Melange print the same text for the same input.
+
 ### 1.1 `--dump-tokens` — the lexer
 
 One token per line:
