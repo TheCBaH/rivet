@@ -26,6 +26,11 @@ devcontainer.
 ## Common commands
 
 - `make ci` — what CI runs; run this before pushing.
+- `make ci-extra` — what only CI used to catch: `make js-browser` (a real
+  browser parsing the jsoo/Melange bundles) and `make ocaml5` (build and test
+  in the OCaml 5.4.1 CI image, into `_build-ocaml5/`). `ocaml5` needs docker,
+  so in a devcontainer run `make js-browser` inside it and `make ocaml5` on
+  the host. Run both before delivering generated code or large-module changes.
 - `make build` — `dune build @all`.
 - `make test` — build, then run the checked-in-fixture test suite
   (`dune build @runtest`) plus the fixture/gas-xref manifest checks.
