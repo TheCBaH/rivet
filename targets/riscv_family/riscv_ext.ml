@@ -13,6 +13,9 @@ let component ~id ~feature ?(requires = []) ?(conflicts = []) ?(implies = []) ?(
   let rows =
     Option.value rows ~default:(fun (r : Riscv_table_row.row) -> String.equal r.feature feature)
   in
+  let handwritten =
+    List.map (fun (op, name) -> (Riscv_types.Opcode.mnemonic op, name)) handwritten
+  in
   let forms =
     handwritten @ List.filter (fun (m, _) -> not (List.mem_assoc m handwritten)) (table_forms rows)
   in

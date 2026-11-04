@@ -785,8 +785,11 @@ let%expect_test "a disabled specialization falls back to the enabled general for
     (fun (label, legal) -> Printf.printf "%s: %s\n" label (decode legal))
     [
       ("all legal", fun _ -> true);
-      ("no zext.w", fun m -> m <> "zext.w");
-      ("neither", fun m -> m <> "zext.w" && m <> "add.uw");
+      ("no zext.w", fun op -> Riscv64_encode.Opcode.name op <> "zext.w");
+      ( "neither",
+        fun op ->
+          let m = Riscv64_encode.Opcode.name op in
+          m <> "zext.w" && m <> "add.uw" );
     ];
   [%expect
     {|
