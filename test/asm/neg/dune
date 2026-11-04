@@ -1,0 +1,21 @@
+; Instructions that must not compile: each case against the built rivet package, the result
+; compared with neg.expected.
+
+(rule
+ (deps
+  run.sh
+  (glob_files *.ml)
+  (package rivet))
+ (action
+  (with-stdout-to
+   neg.output
+   (run sh run.sh %{workspace_root}/../install/default/lib)))
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(rule
+ (alias runtest)
+ (action
+  (diff neg.expected neg.output))
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
