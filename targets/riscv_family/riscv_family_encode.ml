@@ -51,618 +51,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
 
     let name = function
       | Table i -> table_rows.(i).Riscv_table_row.mnemonic
-      | Add -> "add"
-      | Sub -> "sub"
-      | Sll -> "sll"
-      | Slt -> "slt"
-      | Sltu -> "sltu"
-      | Snez -> "snez"
-      | Neg -> "neg"
-      | Seqz -> "seqz"
-      | Sltz -> "sltz"
-      | Sgtz -> "sgtz"
-      | Zext_b -> "zext.b"
-      | Xor -> "xor"
-      | Srl -> "srl"
-      | Sra -> "sra"
-      | Or -> "or"
-      | And -> "and"
-      | Mul -> "mul"
-      | Remu -> "remu"
-      | Mulh -> "mulh"
-      | Mulhsu -> "mulhsu"
-      | Mulhu -> "mulhu"
-      | Div -> "div"
-      | Divu -> "divu"
-      | Rem -> "rem"
-      | Sh1add -> "sh1add"
-      | Sh2add -> "sh2add"
-      | Sh3add -> "sh3add"
-      | Min -> "min"
-      | Minu -> "minu"
-      | Max -> "max"
-      | Maxu -> "maxu"
-      | Andn -> "andn"
-      | Orn -> "orn"
-      | Xnor -> "xnor"
-      | Rol -> "rol"
-      | Ror -> "ror"
-      | Bclr -> "bclr"
-      | Bext -> "bext"
-      | Binv -> "binv"
-      | Bset -> "bset"
-      | Bclri -> "bclri"
-      | Bexti -> "bexti"
-      | Binvi -> "binvi"
-      | Bseti -> "bseti"
-      | Sh1adduw -> "sh1add.uw"
-      | Sh2adduw -> "sh2add.uw"
-      | Sh3adduw -> "sh3add.uw"
-      | Clz -> "clz"
-      | Ctz -> "ctz"
-      | Cpop -> "cpop"
-      | Sextb -> "sext.b"
-      | Sexth -> "sext.h"
-      | Orcb -> "orc.b"
-      | Clzw -> "clzw"
-      | Ctzw -> "ctzw"
-      | Cpopw -> "cpopw"
-      | Brev8 -> "brev8"
-      | Rev8 -> "rev8"
-      | Pack -> "pack"
-      | Packh -> "packh"
-      | Packw -> "packw"
-      | Zip -> "zip"
-      | Unzip -> "unzip"
-      | Rolw -> "rolw"
-      | Rorw -> "rorw"
-      | Rori -> "rori"
-      | Roriw -> "roriw"
-      | Zext_h -> "zext.h"
-      | Clmul -> "clmul"
-      | Clmulh -> "clmulh"
-      | Clmulr -> "clmulr"
-      | Czero_eqz -> "czero.eqz"
-      | Czero_nez -> "czero.nez"
-      | Sm3p0 -> "sm3p0"
-      | Sm3p1 -> "sm3p1"
-      | Sm4ed -> "sm4ed"
-      | Sm4ks -> "sm4ks"
-      | Xperm4 -> "xperm4"
-      | Xperm8 -> "xperm8"
-      | Sha256sum0 -> "sha256sum0"
-      | Sha256sum1 -> "sha256sum1"
-      | Sha256sig0 -> "sha256sig0"
-      | Sha256sig1 -> "sha256sig1"
-      | Sha512sum0 -> "sha512sum0"
-      | Sha512sum1 -> "sha512sum1"
-      | Sha512sig0 -> "sha512sig0"
-      | Sha512sig1 -> "sha512sig1"
-      | Sha512sum0r -> "sha512sum0r"
-      | Sha512sum1r -> "sha512sum1r"
-      | Sha512sig0l -> "sha512sig0l"
-      | Sha512sig1l -> "sha512sig1l"
-      | Sha512sig0h -> "sha512sig0h"
-      | Sha512sig1h -> "sha512sig1h"
-      | Aes64ds -> "aes64ds"
-      | Aes64dsm -> "aes64dsm"
-      | Aes64es -> "aes64es"
-      | Aes64esm -> "aes64esm"
-      | Aes64ks2 -> "aes64ks2"
-      | Aes64im -> "aes64im"
-      | Aes64ks1i -> "aes64ks1i"
-      | Aes32dsi -> "aes32dsi"
-      | Aes32dsmi -> "aes32dsmi"
-      | Aes32esi -> "aes32esi"
-      | Aes32esmi -> "aes32esmi"
-      | Csrrw -> "csrrw"
-      | Csrrs -> "csrrs"
-      | Csrrc -> "csrrc"
-      | Csrrwi -> "csrrwi"
-      | Csrrsi -> "csrrsi"
-      | Csrrci -> "csrrci"
-      | Csrr -> "csrr"
-      | Csrw -> "csrw"
-      | Csrs -> "csrs"
-      | Csrc -> "csrc"
-      | Csrwi -> "csrwi"
-      | Csrsi -> "csrsi"
-      | Csrci -> "csrci"
-      | Amoswap_w -> "amoswap.w"
-      | Amoadd_w -> "amoadd.w"
-      | Amoxor_w -> "amoxor.w"
-      | Amoand_w -> "amoand.w"
-      | Amoor_w -> "amoor.w"
-      | Amomin_w -> "amomin.w"
-      | Amomax_w -> "amomax.w"
-      | Amominu_w -> "amominu.w"
-      | Amomaxu_w -> "amomaxu.w"
-      | Lr_w -> "lr.w"
-      | Sc_w -> "sc.w"
-      | Amoswap_d -> "amoswap.d"
-      | Amoadd_d -> "amoadd.d"
-      | Amoxor_d -> "amoxor.d"
-      | Amoand_d -> "amoand.d"
-      | Amoor_d -> "amoor.d"
-      | Amomin_d -> "amomin.d"
-      | Amomax_d -> "amomax.d"
-      | Amominu_d -> "amominu.d"
-      | Amomaxu_d -> "amomaxu.d"
-      | Lr_d -> "lr.d"
-      | Sc_d -> "sc.d"
-      | Addw -> "addw"
-      | Subw -> "subw"
-      | Sllw -> "sllw"
-      | Srlw -> "srlw"
-      | Sraw -> "sraw"
-      | Mulw -> "mulw"
-      | Divw -> "divw"
-      | Divuw -> "divuw"
-      | Remw -> "remw"
-      | Remuw -> "remuw"
-      | Addi -> "addi"
-      | C_addi -> "c.addi"
-      | C_and -> "c.and"
-      | C_or -> "c.or"
-      | C_xor -> "c.xor"
-      | C_sub -> "c.sub"
-      | C_addw -> "c.addw"
-      | C_subw -> "c.subw"
-      | C_jr -> "c.jr"
-      | C_jalr -> "c.jalr"
-      | C_mv -> "c.mv"
-      | C_add -> "c.add"
-      | C_ebreak -> "c.ebreak"
-      | C_lw -> "c.lw"
-      | C_sw -> "c.sw"
-      | C_lwsp -> "c.lwsp"
-      | C_swsp -> "c.swsp"
-      | C_ld -> "c.ld"
-      | C_sd -> "c.sd"
-      | C_ldsp -> "c.ldsp"
-      | C_sdsp -> "c.sdsp"
-      | C_beqz -> "c.beqz"
-      | C_j -> "c.j"
-      | C_jal -> "c.jal"
-      | C_bnez -> "c.bnez"
-      | Slti -> "slti"
-      | Sltiu -> "sltiu"
-      | Xori -> "xori"
-      | Ori -> "ori"
-      | Andi -> "andi"
-      | Slli -> "slli"
-      | Srli -> "srli"
-      | Srai -> "srai"
-      | Addiw -> "addiw"
-      | Slliw -> "slliw"
-      | Srliw -> "srliw"
-      | Sraiw -> "sraiw"
-      | Sext_w -> "sext.w"
-      | Lb -> "lb"
-      | Lh -> "lh"
-      | Lw -> "lw"
-      | Lbu -> "lbu"
-      | Lhu -> "lhu"
-      | Lwu -> "lwu"
-      | Ld -> "ld"
-      | Sb -> "sb"
-      | Sh -> "sh"
-      | Sw -> "sw"
-      | Sd -> "sd"
-      | Beq -> "beq"
-      | Bne -> "bne"
-      | Blt -> "blt"
-      | Bge -> "bge"
-      | Bltu -> "bltu"
-      | Bgeu -> "bgeu"
-      | Bgtu -> "bgtu"
-      | Bleu -> "bleu"
-      | Bgt -> "bgt"
-      | Ble -> "ble"
-      | Beqz -> "beqz"
-      | Bnez -> "bnez"
-      | Bgez -> "bgez"
-      | Bltz -> "bltz"
-      | Blez -> "blez"
-      | Bgtz -> "bgtz"
-      | Lui -> "lui"
-      | Auipc -> "auipc"
-      | Jal -> "jal"
-      | Jalr -> "jalr"
-      | Mv -> "mv"
-      | Nop -> "nop"
-      | J -> "j"
-      | Jr -> "jr"
-      | Call -> "call"
-      | Tail -> "tail"
-      | La -> "la"
-      | Lla -> "lla"
-      | Li -> "li"
-      | Ret -> "ret"
-      | Ecall -> "ecall"
-      | Ebreak -> "ebreak"
-      | Unimp -> "unimp"
-      | Fence_i -> "fence.i"
-      | Fence -> "fence"
-      | Fence_tso -> "fence.tso"
-      | Pause -> "pause"
-      | Fld -> "fld"
-      | Flw -> "flw"
-      | Fsd -> "fsd"
-      | Fsw -> "fsw"
-      | Fadd_d -> "fadd.d"
-      | Fadd_s -> "fadd.s"
-      | Fsub_d -> "fsub.d"
-      | Fsub_s -> "fsub.s"
-      | Fmul_d -> "fmul.d"
-      | Fmul_s -> "fmul.s"
-      | Fdiv_d -> "fdiv.d"
-      | Fdiv_s -> "fdiv.s"
-      | Fneg_d -> "fneg.d"
-      | Fneg_s -> "fneg.s"
-      | Fabs_d -> "fabs.d"
-      | Fabs_s -> "fabs.s"
-      | Fmv_s -> "fmv.s"
-      | Fmv_x_s -> "fmv.x.s"
-      | Fmv_s_x -> "fmv.s.x"
-      | Fsgnj_s -> "fsgnj.s"
-      | Fsgnj_d -> "fsgnj.d"
-      | Fsgnjn_s -> "fsgnjn.s"
-      | Fsgnjn_d -> "fsgnjn.d"
-      | Fsgnjx_s -> "fsgnjx.s"
-      | Fsgnjx_d -> "fsgnjx.d"
-      | Fmin_s -> "fmin.s"
-      | Fmax_s -> "fmax.s"
-      | Fmin_d -> "fmin.d"
-      | Fmax_d -> "fmax.d"
-      | Fsqrt_s -> "fsqrt.s"
-      | Fsqrt_d -> "fsqrt.d"
-      | Fclass_s -> "fclass.s"
-      | Fclass_d -> "fclass.d"
-      | Fmadd_s -> "fmadd.s"
-      | Fmadd_d -> "fmadd.d"
-      | Fmsub_s -> "fmsub.s"
-      | Fmsub_d -> "fmsub.d"
-      | Fnmsub_s -> "fnmsub.s"
-      | Fnmsub_d -> "fnmsub.d"
-      | Fnmadd_s -> "fnmadd.s"
-      | Fnmadd_d -> "fnmadd.d"
-      | Fmv_d -> "fmv.d"
-      | Fmv_x_d -> "fmv.x.d"
-      | Feq_d -> "feq.d"
-      | Fle_d -> "fle.d"
-      | Flt_d -> "flt.d"
-      | Flt_s -> "flt.s"
-      | Feq_s -> "feq.s"
-      | Fle_s -> "fle.s"
-      | Fmv_x_w -> "fmv.x.w"
-      | Fmv_w_x -> "fmv.w.x"
-      | Fcvt_w_d -> "fcvt.w.d"
-      | Fcvt_wu_d -> "fcvt.wu.d"
-      | Fcvt_l_d -> "fcvt.l.d"
-      | Fcvt_d_w -> "fcvt.d.w"
-      | Fcvt_d_wu -> "fcvt.d.wu"
-      | Fcvt_s_w -> "fcvt.s.w"
-      | Fcvt_s_wu -> "fcvt.s.wu"
-      | Fcvt_w_s -> "fcvt.w.s"
-      | Fcvt_wu_s -> "fcvt.wu.s"
-      | Fcvt_s_d -> "fcvt.s.d"
-      | Fcvt_d_s -> "fcvt.d.s"
-      | Fcvt_s_l -> "fcvt.s.l"
-      | Fcvt_lu_d -> "fcvt.lu.d"
-      | Fcvt_d_l -> "fcvt.d.l"
-      | Fcvt_d_lu -> "fcvt.d.lu"
-      | Fcvt_l_s -> "fcvt.l.s"
-      | Fcvt_lu_s -> "fcvt.lu.s"
-      | Fcvt_s_lu -> "fcvt.s.lu"
-
-    let all =
-      [
-        Add;
-        Sub;
-        Sll;
-        Slt;
-        Sltu;
-        Snez;
-        Neg;
-        Seqz;
-        Sltz;
-        Sgtz;
-        Zext_b;
-        Xor;
-        Srl;
-        Sra;
-        Or;
-        And;
-        Mul;
-        Remu;
-        Mulh;
-        Mulhsu;
-        Mulhu;
-        Div;
-        Divu;
-        Rem;
-        Sh1add;
-        Sh2add;
-        Sh3add;
-        Min;
-        Minu;
-        Max;
-        Maxu;
-        Andn;
-        Orn;
-        Xnor;
-        Rol;
-        Ror;
-        Bclr;
-        Bext;
-        Binv;
-        Bset;
-        Bclri;
-        Bexti;
-        Binvi;
-        Bseti;
-        Sh1adduw;
-        Sh2adduw;
-        Sh3adduw;
-        Clz;
-        Ctz;
-        Cpop;
-        Sextb;
-        Sexth;
-        Orcb;
-        Clzw;
-        Ctzw;
-        Cpopw;
-        Brev8;
-        Rev8;
-        Pack;
-        Packh;
-        Packw;
-        Zip;
-        Unzip;
-        Rolw;
-        Rorw;
-        Rori;
-        Roriw;
-        Zext_h;
-        Clmul;
-        Clmulh;
-        Clmulr;
-        Czero_eqz;
-        Czero_nez;
-        Sm3p0;
-        Sm3p1;
-        Sm4ed;
-        Sm4ks;
-        Xperm4;
-        Xperm8;
-        Sha256sum0;
-        Sha256sum1;
-        Sha256sig0;
-        Sha256sig1;
-        Sha512sum0;
-        Sha512sum1;
-        Sha512sig0;
-        Sha512sig1;
-        Sha512sum0r;
-        Sha512sum1r;
-        Sha512sig0l;
-        Sha512sig1l;
-        Sha512sig0h;
-        Sha512sig1h;
-        Aes64ds;
-        Aes64dsm;
-        Aes64es;
-        Aes64esm;
-        Aes64ks2;
-        Aes64im;
-        Aes64ks1i;
-        Aes32dsi;
-        Aes32dsmi;
-        Aes32esi;
-        Aes32esmi;
-        Csrrw;
-        Csrrs;
-        Csrrc;
-        Csrrwi;
-        Csrrsi;
-        Csrrci;
-        Csrr;
-        Csrw;
-        Csrs;
-        Csrc;
-        Csrwi;
-        Csrsi;
-        Csrci;
-        Amoswap_w;
-        Amoadd_w;
-        Amoxor_w;
-        Amoand_w;
-        Amoor_w;
-        Amomin_w;
-        Amomax_w;
-        Amominu_w;
-        Amomaxu_w;
-        Lr_w;
-        Sc_w;
-        Amoswap_d;
-        Amoadd_d;
-        Amoxor_d;
-        Amoand_d;
-        Amoor_d;
-        Amomin_d;
-        Amomax_d;
-        Amominu_d;
-        Amomaxu_d;
-        Lr_d;
-        Sc_d;
-        Addw;
-        Subw;
-        Sllw;
-        Srlw;
-        Sraw;
-        Mulw;
-        Divw;
-        Divuw;
-        Remw;
-        Remuw;
-        Addi;
-        C_addi;
-        C_and;
-        C_or;
-        C_xor;
-        C_sub;
-        C_addw;
-        C_subw;
-        C_jr;
-        C_jalr;
-        C_mv;
-        C_add;
-        C_ebreak;
-        C_lw;
-        C_sw;
-        C_lwsp;
-        C_swsp;
-        C_ld;
-        C_sd;
-        C_ldsp;
-        C_sdsp;
-        C_beqz;
-        C_j;
-        C_jal;
-        C_bnez;
-        Slti;
-        Sltiu;
-        Xori;
-        Ori;
-        Andi;
-        Slli;
-        Srli;
-        Srai;
-        Addiw;
-        Slliw;
-        Srliw;
-        Sraiw;
-        Sext_w;
-        Lb;
-        Lh;
-        Lw;
-        Lbu;
-        Lhu;
-        Lwu;
-        Ld;
-        Sb;
-        Sh;
-        Sw;
-        Sd;
-        Beq;
-        Bne;
-        Blt;
-        Bge;
-        Bltu;
-        Bgeu;
-        Bgtu;
-        Bleu;
-        Bgt;
-        Ble;
-        Beqz;
-        Bnez;
-        Bgez;
-        Bltz;
-        Blez;
-        Bgtz;
-        Lui;
-        Auipc;
-        Jal;
-        Jalr;
-        Mv;
-        Nop;
-        J;
-        Jr;
-        Call;
-        Tail;
-        La;
-        Lla;
-        Li;
-        Ret;
-        Ecall;
-        Ebreak;
-        Unimp;
-        Fence_i;
-        Fence;
-        Fence_tso;
-        Pause;
-        Fld;
-        Flw;
-        Fsd;
-        Fsw;
-        Fadd_d;
-        Fadd_s;
-        Fsub_d;
-        Fsub_s;
-        Fmul_d;
-        Fmul_s;
-        Fdiv_d;
-        Fdiv_s;
-        Fneg_d;
-        Fneg_s;
-        Fabs_d;
-        Fabs_s;
-        Fmv_s;
-        Fmv_x_s;
-        Fmv_s_x;
-        Fsgnj_s;
-        Fsgnj_d;
-        Fsgnjn_s;
-        Fsgnjn_d;
-        Fsgnjx_s;
-        Fsgnjx_d;
-        Fmin_s;
-        Fmax_s;
-        Fmin_d;
-        Fmax_d;
-        Fsqrt_s;
-        Fsqrt_d;
-        Fclass_s;
-        Fclass_d;
-        Fmadd_s;
-        Fmadd_d;
-        Fmsub_s;
-        Fmsub_d;
-        Fnmsub_s;
-        Fnmsub_d;
-        Fnmadd_s;
-        Fnmadd_d;
-        Fmv_d;
-        Fmv_x_d;
-        Feq_d;
-        Fle_d;
-        Flt_d;
-        Flt_s;
-        Feq_s;
-        Fle_s;
-        Fmv_x_w;
-        Fmv_w_x;
-        Fcvt_w_d;
-        Fcvt_wu_d;
-        Fcvt_l_d;
-        Fcvt_d_w;
-        Fcvt_d_wu;
-        Fcvt_s_w;
-        Fcvt_s_wu;
-        Fcvt_w_s;
-        Fcvt_wu_s;
-        Fcvt_s_d;
-        Fcvt_d_s;
-        Fcvt_s_l;
-        Fcvt_lu_d;
-        Fcvt_d_l;
-        Fcvt_d_lu;
-        Fcvt_l_s;
-        Fcvt_lu_s;
-        Fcvt_s_lu;
-      ]
+      | op -> Riscv_types.Opcode.mnemonic op
 
     (* rv_v_aliases: riscv-opcodes' own deprecated pseudo-op spellings for
        already-admitted rv_v mnemonics. Each one's mask/value is identical to
@@ -1071,8 +460,15 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      see an opcode goes through it, so a disabled form is refused whichever path reached it. *)
   let legal_of_mnemonic = Target_component.legal components
 
-  let feature_gate ?origin state mnemonic =
-    match legal_of_mnemonic mnemonic with
+  (* Each opcode's requirement, looked up once from the components that publish its spelling. *)
+  let legal_of_op =
+    let hand = Hashtbl.create 512 in
+    List.iter (fun op -> Hashtbl.replace hand op (legal_of_mnemonic (Opcode.name op))) Opcode.all;
+    let rows = Array.map (fun r -> legal_of_mnemonic r.Riscv_table_row.mnemonic) table_rows in
+    function Opcode.Table i -> rows.(i) | op -> Option.join (Hashtbl.find_opt hand op)
+
+  let feature_gate ?origin state op =
+    match legal_of_op op with
     | None -> Ok ()
     | Some req -> (
         match Target_component.Req.unmet (Target_config.enabled state.config) req with
@@ -1080,15 +476,15 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | Some unmet ->
             Error
               (diag ~pos:__POS__ ?origin
-                 (`Feature_disabled (mnemonic, Fmt.str "%a" Target_component.Req.pp unmet))))
+                 (`Feature_disabled (Opcode.name op, Fmt.str "%a" Target_component.Req.pp unmet))))
 
-  let required (i : Instruction.t) = legal_of_mnemonic (Opcode.name i.op)
+  let required (i : Instruction.t) = legal_of_op i.op
 
   let simplify_instruction state s =
     match Opcode.of_mnemonic s.Surface.mnemonic with
     | None -> Error (diag ~pos:__POS__ ~origin:s.origin (`Unknown_instruction s.mnemonic))
     | Some op -> (
-        match feature_gate ~origin:s.origin state (Opcode.name op) with
+        match feature_gate ~origin:s.origin state op with
         | Error _ as e -> e
         | Ok () -> Ok { Instruction.op; ops = s.ops })
 
@@ -1129,12 +525,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   (* The M component's forms come from {!Riscv_ext_m}: one table owns the encoding
      fields, the RV64-only gate and the descriptor, so they cannot drift apart. *)
   let m_desc op =
-    Option.map
-      (fun (f : Riscv_ext_m.form) -> (f.opcode, f.funct3, f.funct7))
-      (Riscv_ext_m.find (Opcode.name op))
+    Option.map (fun (f : Riscv_ext_m.form) -> (f.opcode, f.funct3, f.funct7)) (Riscv_ext_m.find op)
 
-  let m_rv64_only op =
-    match Riscv_ext_m.find (Opcode.name op) with Some f -> f.rv64_only | None -> false
+  let m_rv64_only op = match Riscv_ext_m.find op with Some f -> f.rv64_only | None -> false
 
   (* CA-format compressed register-register ops (quadrant 1, funct3=100):
      funct6 selects word- vs *w-width, funct2 selects the operation.
@@ -2709,7 +2102,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | _ -> wrong opn
 
   let lower_instruction state i =
-    match feature_gate state (Opcode.name i.Instruction.op) with
+    match feature_gate state i.Instruction.op with
     | Error _ as e -> e
     | Ok () -> lower_instruction_ungated state i
 
@@ -3360,9 +2753,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Fixed x -> fixed x.word (Lowered.fixed_name x.op x.word)
     | Fixed_half x -> Ok (`Fixed (form (bytes_of_half x.word) (Opcode.name x.op) []))
 
-  (* The mnemonic a lowered form is gated by. Every constructor is listed, so a new one has to
+  (* The opcode a lowered form is gated by. Every constructor is listed, so a new one has to
      say which instruction it is. *)
-  let lowered_mnemonic = function
+  let lowered_op = function
     | Lowered.R { op; _ }
     | Rbs { op; _ }
     | R4 { op; _ }
@@ -3381,9 +2774,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Css { op; _ }
     | Cj { op; _ }
     | Cb { op; _ } ->
-        Opcode.name op
-    | J _ -> "jal"
-    | Caddi _ -> "c.addi"
+        op
+    | J _ -> Opcode.Jal
+    | Caddi _ -> Opcode.C_addi
 
   (* Encoding under a configuration, so a caller that builds lowered forms directly cannot
      emit a disabled component's instruction. [encode] is the default-configuration wrapper. *)
@@ -3405,7 +2798,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | _ -> Ok ()
 
   let encode_in state l =
-    match Result.bind (feature_gate state (lowered_mnemonic l)) (fun () -> vtype_gate state l) with
+    match Result.bind (feature_gate state (lowered_op l)) (fun () -> vtype_gate state l) with
     | Error _ as e -> e
     | Ok () -> encode_ungated l
 
@@ -3704,7 +3097,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       else
         let r = rows.(i) in
         if
-          table_row_applies r && legal r.mnemonic
+          table_row_applies r && legal (Opcode.Table i)
           && Int64.logand r.match_ 3L <> 3L = half
           && Int64.equal (Int64.logand w r.mask) r.match_
           && tied_ok r
@@ -4180,7 +3573,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let decode_where ~legal ctx bytes ~pos =
     let hand = decode_hand_written ctx bytes ~pos in
     match hand with
-    | Ok (insn, _, _) when legal (Opcode.name insn.Instruction.op) -> hand
+    | Ok (insn, _, _) when legal insn.Instruction.op -> hand
     | _ -> (
         match table_fallback ~legal bytes ~pos with
         | Some r -> Ok r
@@ -4190,15 +3583,13 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   (* Strict decoding: a word whose only readings are disabled is refused rather than printed as if
      it were assemblable under this configuration. *)
   let decode ctx bytes ~pos =
-    let legal name = Result.is_ok (feature_gate ctx.state name) in
+    let legal op = Result.is_ok (feature_gate ctx.state op) in
     match decode_where ~legal ctx bytes ~pos with
     | Ok _ as ok -> ok
     | Error _ as e -> (
         match decode_ungated ctx bytes ~pos with
         | Ok (insn, _, _) -> (
-            match feature_gate ctx.state (Opcode.name insn.Instruction.op) with
-            | Error _ as g -> g
-            | Ok () -> e)
+            match feature_gate ctx.state insn.Instruction.op with Error _ as g -> g | Ok () -> e)
         | Error _ -> e)
 
   (* [codec_in state] is the codec of the forms [state]'s configuration enables; [codec] is the
@@ -4391,14 +3782,7 @@ module Extensions = struct
   let standard = Riscv_extensions.standard
 
   (* The forms the encoder spells out in code do not depend on the profile. *)
-  let handwritten =
-    lazy
-      (let module Probe = Make (struct
-         let name = "probe"
-         let triple = "probe"
-         let xlen = 64
-       end) in
-      List.map Probe.Opcode.name Probe.Opcode.all)
+  let handwritten = lazy (List.map Riscv_types.Opcode.mnemonic Riscv_types.Opcode.all)
 
   (* The mnemonic the standard decoder reads a 32-bit word as, per XLEN. *)
   let standard_reader xlen =

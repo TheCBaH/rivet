@@ -4,6 +4,7 @@
    load/store, so they conflict with Zcd and are off by default. *)
 
 module Req = Target_component.Req
+module Opcode = Riscv_types.Opcode
 
 let in_c names (r : Riscv_table_row.row) = String.equal r.feature "c" && List.mem r.mnemonic names
 let double = [ "c.fld"; "c.fldsp"; "c.fsd"; "c.fsdsp" ]
@@ -11,30 +12,30 @@ let single = [ "c.flw"; "c.flwsp"; "c.fsw"; "c.fswsp" ]
 
 let zca_forms =
   [
-    ("c.addi", "rv_c/c.addi");
-    ("c.and", "rv_c/c.and");
-    ("c.or", "rv_c/c.or");
-    ("c.xor", "rv_c/c.xor");
-    ("c.sub", "rv_c/c.sub");
-    ("c.addw", "rv64_c/c.addw");
-    ("c.subw", "rv64_c/c.subw");
-    ("c.jr", "rv_c/c.jr");
-    ("c.jalr", "rv_c/c.jalr");
-    ("c.mv", "rv_c/c.mv");
-    ("c.add", "rv_c/c.add");
-    ("c.ebreak", "rv_c/c.ebreak");
-    ("c.lw", "rv_c/c.lw");
-    ("c.sw", "rv_c/c.sw");
-    ("c.lwsp", "rv_c/c.lwsp");
-    ("c.swsp", "rv_c/c.swsp");
-    ("c.ld", "rv64_c/c.ld");
-    ("c.sd", "rv64_c/c.sd");
-    ("c.ldsp", "rv64_c/c.ldsp");
-    ("c.sdsp", "rv64_c/c.sdsp");
-    ("c.beqz", "rv_c/c.beqz");
-    ("c.j", "rv_c/c.j");
-    ("c.jal", "rv32_c/c.jal");
-    ("c.bnez", "rv_c/c.bnez");
+    (Opcode.C_addi, "rv_c/c.addi");
+    (Opcode.C_and, "rv_c/c.and");
+    (Opcode.C_or, "rv_c/c.or");
+    (Opcode.C_xor, "rv_c/c.xor");
+    (Opcode.C_sub, "rv_c/c.sub");
+    (Opcode.C_addw, "rv64_c/c.addw");
+    (Opcode.C_subw, "rv64_c/c.subw");
+    (Opcode.C_jr, "rv_c/c.jr");
+    (Opcode.C_jalr, "rv_c/c.jalr");
+    (Opcode.C_mv, "rv_c/c.mv");
+    (Opcode.C_add, "rv_c/c.add");
+    (Opcode.C_ebreak, "rv_c/c.ebreak");
+    (Opcode.C_lw, "rv_c/c.lw");
+    (Opcode.C_sw, "rv_c/c.sw");
+    (Opcode.C_lwsp, "rv_c/c.lwsp");
+    (Opcode.C_swsp, "rv_c/c.swsp");
+    (Opcode.C_ld, "rv64_c/c.ld");
+    (Opcode.C_sd, "rv64_c/c.sd");
+    (Opcode.C_ldsp, "rv64_c/c.ldsp");
+    (Opcode.C_sdsp, "rv64_c/c.sdsp");
+    (Opcode.C_beqz, "rv_c/c.beqz");
+    (Opcode.C_j, "rv_c/c.j");
+    (Opcode.C_jal, "rv32_c/c.jal");
+    (Opcode.C_bnez, "rv_c/c.bnez");
   ]
 
 let zca =

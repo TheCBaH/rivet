@@ -6,7 +6,8 @@
     with the RV64-only [divw], [divuw], [remw], [remuw] (M). *)
 
 type form = {
-  mnemonic : string;
+  op : Riscv_types.Opcode.t;
+  mnemonic : string;  (** [Riscv_types.Opcode.mnemonic op] *)
   feature : string;  (** ["zmmul"] or ["m"] *)
   opcode : int;  (** major opcode, bits 6..0 *)
   funct3 : int;
@@ -17,8 +18,8 @@ type form = {
 
 val forms : form list
 
-val find : string -> form option
-(** The form spelled [mnemonic], if either component owns it. *)
+val find : Riscv_types.Opcode.t -> form option
+(** The form of [op], if either component owns it. *)
 
 val zmmul : Target_component.t
 (** Multiply only. Gated by the [zmmul] feature. *)
