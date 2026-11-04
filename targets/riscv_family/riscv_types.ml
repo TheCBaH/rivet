@@ -227,6 +227,20 @@ module Operand = struct
     | Mem m -> Mem.pp ppf m
 end
 
+(* A table row's identity, minted only where an instance's rows are built. *)
+module Row : sig
+  type t = Riscv_row.t
+
+  val index : t -> int
+  val row : t -> Riscv_table_row.row
+  val mnemonic : t -> string
+  val feature : t -> string
+  val source : t -> string
+  val equal : t -> t -> bool
+  val compare : t -> t -> int
+end =
+  Riscv_row
+
 module Opcode = struct
   type t =
     | Add
@@ -533,7 +547,7 @@ module Opcode = struct
     | Fcvt_l_s
     | Fcvt_lu_s
     | Fcvt_s_lu
-    | Table of int  (** a generated {!Riscv_table_rows} row, by index (DEC-RV-TABLE) *)
+    | Table of Row.t  (** a generated or vendor table row (DEC-RV-TABLE) *)
 
   (* The spelling of a hand-written opcode; a table row's is its row's, which only an instance of
      {!Riscv_family_encode.Make_with} knows. *)
