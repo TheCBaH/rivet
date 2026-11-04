@@ -78,9 +78,9 @@ module Make (E : Target_encode.ENCODE) = struct
     | _ -> false
 
   (* One line: the text, its bytes, and whether the instruction encodes to them. *)
-  let check insn text =
+  let check ?features insn text =
     let verdict, bytes =
-      match (encode insn, assemble text) with
+      match (encode ?features insn, assemble ?features text) with
       | Ok a, Ok b when String.equal a b -> ("same", hex b)
       | Ok a, Ok b -> ("DIFFERENT " ^ hex a, hex b)
       | Error m, _ -> ("ENCODE " ^ m, "")

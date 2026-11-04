@@ -43,7 +43,9 @@
   %{workspace_root}/targets/riscv_family/riscv_std_rows.ml
   %{workspace_root}/targets/riscv_family/riscv_std_rows32.ml
   %{workspace_root}/targets/riscv_family/riscv_std_rows64.ml
-  %{workspace_root}/targets/x86_family/x86_table_rows.ml)
+  %{workspace_root}/targets/x86_family/x86_table_rows.ml
+  %{workspace_root}/targets/riscv_asm/riscv_asm_rows32.ml
+  %{workspace_root}/targets/riscv_asm/riscv_asm_rows64.ml)
  (action
   (run ./test_emit_guard.exe %{deps})))
 

@@ -136,3 +136,63 @@ let%expect_test "builders read like the text" =
     riscv32  addi t0, t1, 7               93 02 73 00              same
     riscv32  fcvt.w.s a0, fa0             53 75 05 c0              same
     riscv32  sw a1, -4(s0)                23 2e b4 fe              same |}]
+
+let%expect_test "the RV32 library: hand-written and row builders read like the text" =
+  let module H = Harness.Make (Riscv32_encode) in
+  let features = "+v,+zfa,+zcb" in
+  let open Riscv32_asm in
+  List.iter
+    (fun (i, t) -> H.check ~features i t)
+    [
+      (add x1 x2 x3, "add x1, x2, x3");
+      (lw a0 (off sp 8), "lw a0, 8(sp)");
+      (vadd_vv v1 v2 v3 false, "vadd.vv v1, v2, v3");
+      (vadd_vv v1 v2 v3 true, "vadd.vv v1, v2, v3, v0.t");
+      (vsetvli a0 a1 [ "e32"; "m1"; "ta"; "ma" ], "vsetvli a0, a1, e32, m1, ta, ma");
+      (fli_s fa0 "0.5", "fli.s fa0, 0.5");
+    ];
+  (* Compressed rows need .option rvc; Zcmp excludes Zcd, which D brings with C. *)
+  let compressed features insn text =
+    let state =
+      let spec = Result.get_ok (Target_config.parse_spec features) in
+      let config = Result.get_ok (Target_config.resolve Riscv32_encode.components spec) in
+      { (Riscv32_encode.initial_state config) with rvc = true }
+    in
+    let bytes =
+      match Riscv32_encode.lower_instruction state insn with
+      | Ok [ l ] -> (
+          match Riscv32_encode.encode_in state l with
+          | Ok (`Fixed f) -> Ok f.Asm_core.Lowered_ast.bytes
+          | _ -> Error "encode")
+      | _ -> Error "lower"
+    in
+    let text_bytes = H.assemble ~features (".option rvc\n\t" ^ text) in
+    Printf.printf "riscv32  %-28s %s\n" text
+      (match (bytes, text_bytes) with
+      | Ok a, Ok b when String.equal a b -> Harness.hex b ^ " same"
+      | Ok a, Ok b -> "DIFFERENT " ^ Harness.hex a ^ " / " ^ Harness.hex b
+      | Error m, _ | _, Error m -> m)
+  in
+  compressed "+zcb" (c_lbu Creg.a0 (cmem Creg.s0 1)) "c.lbu a0, 1(s0)";
+  compressed "none,+zca,+zcmp" (cm_push "{ra, s0}" (-16)) "cm.push {ra, s0}, -16";
+  [%expect
+    {|
+    riscv32  add x1, x2, x3               b3 00 31 00              same
+    riscv32  lw a0, 8(sp)                 03 25 81 00              same
+    riscv32  vadd.vv v1, v2, v3           d7 80 21 02              same
+    riscv32  vadd.vv v1, v2, v3, v0.t     d7 80 21 00              same
+    riscv32  vsetvli a0, a1, e32, m1, ta, ma 57 f5 05 0d              same
+    riscv32  fli.s fa0, 0.5               53 05 16 f0              same
+    riscv32  c.lbu a0, 1(s0)              48 80 same
+    riscv32  cm.push {ra, s0}, -16        52 b8 same |}]
+
+let%expect_test "the RV64 library has the RV64 rows" =
+  let module H = Harness.Make (Riscv64_encode) in
+  let open Riscv64_asm in
+  List.iter
+    (fun (i, t) -> H.check ~features:"+zacas" i t)
+    [ (ld a0 (off sp 8), "ld a0, 8(sp)"); (amocas_q a0 a2 (off a1 0), "amocas.q a0, a2, (a1)") ];
+  [%expect
+    {|
+    riscv64  ld a0, 8(sp)                 03 35 81 00              same
+    riscv64  amocas.q a0, a2, (a1)        2f c5 c5 28              same |}]

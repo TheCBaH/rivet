@@ -450,6 +450,7 @@ end
 
 module Rv32 = struct
   include Common
+  module Rowkit = Riscv_asm_rowkit
 
   let zip = Riscv_ops.zip
   let unzip = Riscv_ops.unzip
@@ -472,6 +473,7 @@ end
 
 module Rv64 = struct
   include Common
+  module Rowkit = Riscv_asm_rowkit
 
   let sh1add_uw = Riscv_ops.sh1add_uw
   let sh2add_uw = Riscv_ops.sh2add_uw
@@ -547,3 +549,4 @@ module Rv64 = struct
 end
 
 include Common
+module Rowkit = Riscv_asm_rowkit
