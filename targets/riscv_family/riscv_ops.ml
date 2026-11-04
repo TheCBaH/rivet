@@ -107,7 +107,7 @@ let registry = ref []
 let def ?(also = []) ?enc ?enc64 ?(ext = []) ?(xlen = Any) ?rm ?(lower = false) ~cls op shape =
   registry :=
     { op; shape = Shape.kinds shape; also; enc; enc64; ext; xlen; cls; rm; lower } :: !registry;
-  Shape.build shape (fun ops -> (op, ops))
+  Shape.build shape (Instruction.mk op)
 
 let add =
   def ~cls:Alu

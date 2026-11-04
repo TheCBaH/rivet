@@ -1562,3 +1562,29 @@ module Rm = struct
 
   let of_name s = List.find_opt (fun r -> String.equal (name r) s) all
 end
+
+(* One instruction, shared by every instance: riscv32, riscv64 and vendor compositions build,
+   lower and print the same values. *)
+module Instruction = struct
+  type t = { op : Opcode.t; ops : Operand.t list }
+
+  let mk op ops = { op; ops }
+  let name = function Opcode.Table r -> Row.mnemonic r | op -> Opcode.mnemonic op
+
+  (* Where a Zicsr form's CSR is; a number there prints in hex, as GNU's does. *)
+  let csr_position = function
+    | Opcode.Csrw | Csrs | Csrc | Csrwi | Csrsi | Csrci -> Some 0
+    | Csrrw | Csrrs | Csrrc | Csrrwi | Csrrsi | Csrrci | Csrr -> Some 1
+    | _ -> None
+
+  let pp ppf i =
+    let csr = csr_position i.op in
+    let operand ppf (k, o) =
+      match o with Operand.Imm n when csr = Some k -> Bigint.pp_hex ppf n | o -> Operand.pp ppf o
+    in
+    if i.ops = [] then Fmt.string ppf (name i.op)
+    else
+      Fmt.pf ppf "%s %a" (name i.op)
+        Fmt.(list ~sep:(any ", ") operand)
+        (List.mapi (fun k o -> (k, o)) i.ops)
+end

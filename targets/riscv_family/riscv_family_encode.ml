@@ -127,30 +127,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       else Fmt.pf ppf "%s %a" s.mnemonic Fmt.(list ~sep:(any ", ") Operand.pp) s.ops
   end
 
-  module Instruction = struct
-    type t = { op : Opcode.t; ops : Operand.t list }
-
-    let mk op ops = { op; ops }
-
-    (* Where a Zicsr form's CSR is; a number there prints in hex, as GNU's does. *)
-    let csr_position = function
-      | Opcode.Csrw | Csrs | Csrc | Csrwi | Csrsi | Csrci -> Some 0
-      | Csrrw | Csrrs | Csrrc | Csrrwi | Csrrsi | Csrrci | Csrr -> Some 1
-      | _ -> None
-
-    let pp ppf i =
-      let csr = csr_position i.op in
-      let operand ppf (k, o) =
-        match o with
-        | Operand.Imm n when csr = Some k -> Bigint.pp_hex ppf n
-        | o -> Operand.pp ppf o
-      in
-      if i.ops = [] then Fmt.string ppf (Opcode.name i.op)
-      else
-        Fmt.pf ppf "%s %a" (Opcode.name i.op)
-          Fmt.(list ~sep:(any ", ") operand)
-          (List.mapi (fun k o -> (k, o)) i.ops)
-  end
+  module Instruction = Riscv_types.Instruction
 
   (* Which of an F/D instruction's [R]-shape operand positions is a scalar FP register
      rather than a GPR, and how many of the three fields printed. The generic [R]/[I]/[S]
