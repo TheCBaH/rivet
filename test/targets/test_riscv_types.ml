@@ -158,3 +158,44 @@ let%expect_test "every sampled opcode round-trips through its encoding" =
     unsampled: la
     not decoded: bclr bext binv bset bclri bexti binvi bseti clmul clmulh clmulr czero.eqz czero.nez sm3p0 sm3p1 sm4ed sm4ks xperm4 xperm8 sha256sum0 sha256sum1 sha256sig0 sha256sig1 sha512sum0 sha512sum1 sha512sig0 sha512sig1 sha512sum0r sha512sum1r sha512sig0l sha512sig1l sha512sig0h sha512sig1h aes64ds aes64dsm aes64es aes64esm aes64ks2 aes64im aes64ks1i aes32dsi aes32dsmi aes32esi aes32esmi call tail lla
     differs: |}]
+
+(* {1 Derived encoding fields} *)
+
+let%expect_test "no lowering reaches an opcode without fields for its format" =
+  let module E = Riscv64_encode in
+  let short = List.filter (fun ops -> List.length ops <= 3) S64.candidates in
+  let mismatched =
+    List.filter_map
+      (fun op ->
+        let bad ops =
+          match E.lower_instruction_ungated S64.state (E.Instruction.mk op ops) with
+          | Ok ls ->
+              List.exists
+                (fun l ->
+                  match E.encode_ungated l with
+                  | Error e -> (
+                      match Err.Error.kind e |> Target_error.kind with
+                      | `Format_mismatch _ -> true
+                      | _ -> false)
+                  | Ok _ -> false)
+                ls
+          | Error _ -> false
+        in
+        if List.exists bad short then Some (E.Opcode.name op) else None)
+      E.Opcode.all
+  in
+  Printf.printf "mismatched: [%s]\n" (String.concat " " mismatched);
+  [%expect {| mismatched: [] |}]
+
+let%expect_test "a form paired with an opcode of another format is refused" =
+  let module E = Riscv64_encode in
+  let l =
+    E.Lowered.R
+      { op = E.Opcode.Lui; rd = E.Reg.x 1; rs1 = E.Reg.x 2; rs2 = Some (E.Reg.x 3); rm = None }
+  in
+  (match E.encode_ungated l with
+  | Ok _ -> print_endline "encoded"
+  | Error e ->
+      let d = E.error_diagnostic (Err.Error.kind e) in
+      Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d));
+  [%expect {| riscv64.internal.format: internal: lui has no R-format encoding |}]
