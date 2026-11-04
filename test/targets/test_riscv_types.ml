@@ -189,8 +189,10 @@ let%expect_test "formerly undecodable opcodes round-trip on both XLENs" =
     riscv32: 33 of 44 sampled, failed []
     riscv64: 34 of 44 sampled, failed [] |}]
 
-(* The index only reads words no standard row matches, so no row's reading changes. *)
-let%expect_test "no hand-written index entry overlaps a standard row" =
+(* The hand-written decoder runs before the rows, as its arms did, so a row that specializes a
+   hand-written form (the [add] hints, [ori]'s prefetches, [auipc]'s landing pad) reads as before:
+   as the hand-written form. *)
+let%expect_test "hand-written decoder entries that overlap a standard row" =
   let check (type r e) label (entries : e list) (entry : e -> string * int64 * int64)
       (rows : r list) (row : r -> string * int64 * int64) =
     let overlaps =
@@ -210,21 +212,22 @@ let%expect_test "no hand-written index entry overlaps a standard row" =
   in
   let module E32 = Riscv32_encode in
   let module E64 = Riscv64_encode in
-  check "riscv32" E32.By_desc.entries
+  check "riscv32" E32.Hand_decode.entries
     (fun e -> (E32.Opcode.name e.op, e.mask, e.match_))
     E32.Row.all
     (fun r ->
       let x = E32.Row.row r in
       (x.mnemonic, x.mask, x.match_));
-  check "riscv64" E64.By_desc.entries
+  check "riscv64" E64.Hand_decode.entries
     (fun e -> (E64.Opcode.name e.op, e.mask, e.match_))
     E64.Row.all
     (fun r ->
       let x = E64.Row.row r in
       (x.mnemonic, x.mask, x.match_));
-  [%expect {|
-    riscv32: 33 entries, overlaps []
-    riscv64: 34 entries, overlaps [] |}]
+  [%expect
+    {|
+    riscv32: 112 entries, overlaps [add/ntl.all add/ntl.p1 add/ntl.pall add/ntl.s1 ori/prefetch.i ori/prefetch.r ori/prefetch.w auipc/lpad]
+    riscv64: 149 entries, overlaps [add/ntl.all add/ntl.p1 add/ntl.pall add/ntl.s1 ori/prefetch.i ori/prefetch.r ori/prefetch.w auipc/lpad] |}]
 
 (* {1 Rounding modes}
 
