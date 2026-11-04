@@ -109,8 +109,8 @@ let%expect_test "every Zicsr form decodes to the text the assembler takes back" 
     csrr x10, 0xf14              f1402573 csrr x10, mhartid            same
     csrw 0x340, x5               34029073 csrw mscratch, x5            same
     csrwi 0xb02, 0               b0205073 csrwi minstret, 0            same
-    csrrs x10, 0xfff, x31        ffffa573 csrrs x10, 4095, x31         same
-    csrrwi x31, 0x000, 31        000fdff3 csrrwi x31, 0, 31            same |}]
+    csrrs x10, 0xfff, x31        ffffa573 csrrs x10, 0xfff, x31        same
+    csrrwi x31, 0x000, 31        000fdff3 csrrwi x31, 0x0, 31          same |}]
 
 let%expect_test "words the assembler does not produce from a CSR mnemonic" =
   List.iter
@@ -178,7 +178,7 @@ let%expect_test "CSR operands: named, numeric, unknown" =
     csrr x5, mcycle              b00022f3 csrr x5, mcycle              same
     csrwi minstret, 0            b0205073 csrwi minstret, 0            same
     csrrw x1, mscratch, x2       340110f3 csrrw x1, mscratch, x2       same
-    csrr x5, 0x7c0               7c0022f3 csrr x5, 1984                same
+    csrr x5, 0x7c0               7c0022f3 csrr x5, 0x7c0               same
     csrr x5, nonsense            REFUSED riscv32.lower: no csrr form takes these operands |}]
 
 (* The words GNU as produced for the corpus's CSR cases decode, and the text assembles back to
