@@ -450,3 +450,31 @@ module Opcode = struct
     | Fcvt_s_lu
     | Table of int  (** a generated {!Riscv_table_rows} row, by index (DEC-RV-TABLE) *)
 end
+
+(* The RISC-V rounding modes (unprivileged spec, table "Rounding mode encoding"); [Dyn] reads
+   [frm]. Encodings 5 and 6 are reserved. *)
+module Rm = struct
+  type t = Rne | Rtz | Rdn | Rup | Rmm | Dyn
+
+  let all = [ Rne; Rtz; Rdn; Rup; Rmm; Dyn ]
+  let to_funct3 = function Rne -> 0 | Rtz -> 1 | Rdn -> 2 | Rup -> 3 | Rmm -> 4 | Dyn -> 7
+
+  let of_funct3 = function
+    | 0 -> Some Rne
+    | 1 -> Some Rtz
+    | 2 -> Some Rdn
+    | 3 -> Some Rup
+    | 4 -> Some Rmm
+    | 7 -> Some Dyn
+    | _ -> None
+
+  let name = function
+    | Rne -> "rne"
+    | Rtz -> "rtz"
+    | Rdn -> "rdn"
+    | Rup -> "rup"
+    | Rmm -> "rmm"
+    | Dyn -> "dyn"
+
+  let of_name s = List.find_opt (fun r -> String.equal (name r) s) all
+end

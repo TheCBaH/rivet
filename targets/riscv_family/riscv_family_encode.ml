@@ -39,6 +39,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   module Reg = Riscv_types.Reg
   module Mem = Riscv_types.Mem
   module Operand = Riscv_types.Operand
+  module Rm = Riscv_types.Rm
 
   module Opcode = struct
     include Riscv_types.Opcode
@@ -752,42 +753,33 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      it). [feq.d]/[fle.d]/[flt.d]/[flt.s]'s own [funct3] is a real comparison-kind selector,
      not a rounding mode, so [rm] is [None] there even though the field sits at the same
      bit position. *)
-  type freg_shape = { rd_f : bool; rs1_f : bool; rs2_f : bool; arity : int; rm : int option }
+  type freg_shape = { rd_f : bool; rs1_f : bool; rs2_f : bool; arity : int; rm : Rm.t option }
 
-  let f_shape_of_name = function
-    | "fadd.d" | "fadd.s" | "fsub.d" | "fsub.s" | "fmul.d" | "fmul.s" | "fdiv.d" | "fdiv.s" ->
-        Some { rd_f = true; rs1_f = true; rs2_f = true; arity = 3; rm = Some 7 }
-    | "fneg.d" | "fneg.s" | "fmv.d" ->
+  let f_shape : Opcode.t -> freg_shape option = function
+    | Fadd_d | Fadd_s | Fsub_d | Fsub_s | Fmul_d | Fmul_s | Fdiv_d | Fdiv_s ->
+        Some { rd_f = true; rs1_f = true; rs2_f = true; arity = 3; rm = Some Rm.Dyn }
+    | Fneg_d | Fneg_s | Fmv_d ->
         Some { rd_f = true; rs1_f = true; rs2_f = true; arity = 2; rm = None }
-    | "fsgnj.s" | "fsgnj.d" | "fsgnjn.s" | "fsgnjn.d" | "fsgnjx.s" | "fsgnjx.d" | "fmin.s"
-    | "fmax.s" | "fmin.d" | "fmax.d" ->
+    | Fsgnj_s | Fsgnj_d | Fsgnjn_s | Fsgnjn_d | Fsgnjx_s | Fsgnjx_d | Fmin_s | Fmax_s | Fmin_d
+    | Fmax_d ->
         Some { rd_f = true; rs1_f = true; rs2_f = true; arity = 3; rm = None }
-    | "feq.d" | "fle.d" | "flt.d" | "flt.s" | "feq.s" | "fle.s" ->
+    | Feq_d | Fle_d | Flt_d | Flt_s | Feq_s | Fle_s ->
         Some { rd_f = false; rs1_f = true; rs2_f = true; arity = 3; rm = None }
-    | "fcvt.w.d" | "fcvt.wu.d" | "fcvt.l.d" | "fcvt.lu.d" | "fcvt.w.s" | "fcvt.wu.s" | "fcvt.l.s"
-    | "fcvt.lu.s" ->
-        Some { rd_f = false; rs1_f = true; rs2_f = false; arity = 2; rm = Some 7 }
-    | "fmv.x.d" | "fmv.x.w" ->
+    | Fcvt_w_d | Fcvt_wu_d | Fcvt_l_d | Fcvt_lu_d | Fcvt_w_s | Fcvt_wu_s | Fcvt_l_s | Fcvt_lu_s ->
+        Some { rd_f = false; rs1_f = true; rs2_f = false; arity = 2; rm = Some Rm.Dyn }
+    | Fmv_x_d | Fmv_x_w -> Some { rd_f = false; rs1_f = true; rs2_f = false; arity = 2; rm = None }
+    | Fmv_w_x -> Some { rd_f = true; rs1_f = false; rs2_f = false; arity = 2; rm = None }
+    | Fclass_s | Fclass_d ->
         Some { rd_f = false; rs1_f = true; rs2_f = false; arity = 2; rm = None }
-    | "fmv.w.x" -> Some { rd_f = true; rs1_f = false; rs2_f = false; arity = 2; rm = None }
-    | "fclass.s" | "fclass.d" ->
-        Some { rd_f = false; rs1_f = true; rs2_f = false; arity = 2; rm = None }
-    | "fsqrt.s" | "fsqrt.d" ->
-        Some { rd_f = true; rs1_f = true; rs2_f = false; arity = 2; rm = Some 7 }
-    | "fcvt.d.w" | "fcvt.d.wu" ->
-        Some { rd_f = true; rs1_f = false; rs2_f = false; arity = 2; rm = Some 0 }
-    | "fcvt.s.w" | "fcvt.s.wu" | "fcvt.s.l" | "fcvt.s.lu" | "fcvt.d.l" | "fcvt.d.lu" ->
-        Some { rd_f = true; rs1_f = false; rs2_f = false; arity = 2; rm = Some 7 }
-    | "fcvt.s.d" -> Some { rd_f = true; rs1_f = true; rs2_f = false; arity = 2; rm = Some 7 }
-    | "fcvt.d.s" -> Some { rd_f = true; rs1_f = true; rs2_f = false; arity = 2; rm = Some 0 }
+    | Fsqrt_s | Fsqrt_d ->
+        Some { rd_f = true; rs1_f = true; rs2_f = false; arity = 2; rm = Some Rm.Dyn }
+    | Fcvt_d_w | Fcvt_d_wu ->
+        Some { rd_f = true; rs1_f = false; rs2_f = false; arity = 2; rm = Some Rm.Rne }
+    | Fcvt_s_w | Fcvt_s_wu | Fcvt_s_l | Fcvt_s_lu | Fcvt_d_l | Fcvt_d_lu ->
+        Some { rd_f = true; rs1_f = false; rs2_f = false; arity = 2; rm = Some Rm.Dyn }
+    | Fcvt_s_d -> Some { rd_f = true; rs1_f = true; rs2_f = false; arity = 2; rm = Some Rm.Dyn }
+    | Fcvt_d_s -> Some { rd_f = true; rs1_f = true; rs2_f = false; arity = 2; rm = Some Rm.Rne }
     | _ -> None
-
-  (* The six standard rounding-mode names (RISC-V unprivileged spec table 11.2), shared by
-     {!freg_shape}'s printing and by [lower_instruction]'s parsing of an explicit third
-     operand on a convert. *)
-  let rounding_modes = [ ("rne", 0); ("rtz", 1); ("rdn", 2); ("rup", 3); ("rmm", 4); ("dyn", 7) ]
-  let rounding_mode_of_name s = List.assoc_opt s rounding_modes
-  let rounding_name_of_mode m = List.find_opt (fun (_, v) -> v = m) rounding_modes |> Option.map fst
 
   let fence_set_name v =
     String.concat "" (List.filteri (fun j _ -> v land (1 lsl (3 - j)) <> 0) [ "i"; "o"; "r"; "w" ])
@@ -910,8 +902,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
 
     let rm_suffix rm funct3 =
       match rm with
-      | Some default when default <> funct3 -> (
-          match rounding_name_of_mode funct3 with Some n -> ", " ^ n | None -> "")
+      | Some default when Rm.to_funct3 default <> funct3 -> (
+          match Rm.of_funct3 funct3 with Some r -> ", " ^ Rm.name r | None -> "")
       | Some _ | None -> ""
 
     (* A [fence] word names its predecessor and successor sets unless both are [iorw]. *)
@@ -926,7 +918,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
 
     let pp ppf = function
       | R x -> (
-          match f_shape_of_name (Opcode.name x.op) with
+          match f_shape x.op with
           | Some { rd_f; rs1_f; rs2_f = _; arity = 2; rm } ->
               Fmt.pf ppf "%s %s, %s%s" (Opcode.name x.op) (reg_name rd_f x.rd)
                 (reg_name rs1_f x.rs1) (rm_suffix rm x.funct3)
@@ -936,7 +928,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           | None -> Fmt.pf ppf "%s x%d, x%d, x%d" (Opcode.name x.op) x.rd x.rs1 x.rs2)
       | R4 x ->
           Fmt.pf ppf "%s f%d, f%d, f%d, f%d%s" (Opcode.name x.op) x.rd x.rs1 x.rs2 x.rs3
-            (rm_suffix (Some 7) x.funct3)
+            (rm_suffix (Some Rm.Dyn) x.funct3)
       | I x when x.opcode = 0x03 || x.opcode = 0x67 ->
           Fmt.pf ppf "%s x%d, %a(x%d)" (Opcode.name x.op) x.rd pp_expr x.imm x.rs1
       | I x when x.opcode = 0x07 ->
@@ -1735,7 +1727,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Rm { lsb; _ } -> (
         match op with
         | Operand.Sym (Asm_core.Expr.Symbol name) ->
-            Option.bind (rounding_mode_of_name name) (fun m -> place lsb (Int64.of_int m))
+            Option.bind (Rm.of_name name) (fun m -> place lsb (Int64.of_int (Rm.to_funct3 m)))
         | _ -> None)
     | Tied { lsb } -> Option.map (fun r -> Int64.shift_left (Int64.of_int r) lsb) prev
     | Keyword k -> (
@@ -2481,9 +2473,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
            bare mnemonic's own default (M5 - perlin.c/binarytrees.c's
            own [(int)]/[(long)] C cast idiom, which truncates and so needs [rtz] rather
            than the default dynamic mode). Checked against real riscv64-linux-gnu-as:
-           `fcvt.l.d x22, f10, rtz` -> `c2251b53` (funct3 = 1, matching {!rounding_modes}'
-           own [rtz] = 1). *)
-        match (xreg a, freg b, f_to_i_desc op, rounding_mode_of_name rm) with
+           `fcvt.l.d x22, f10, rtz` -> `c2251b53` (funct3 = 1, matching {!Rm}'s
+           [Rtz] = 1). *)
+        match (xreg a, freg b, f_to_i_desc op, Option.map Rm.to_funct3 (Rm.of_name rm)) with
         | Some rd, Some rs1, Some (_, funct7, rs2), Some funct3 ->
             Ok [ Lowered.R { op = iop; opcode = 0x53; funct3; funct7; rd; rs1; rs2 } ]
         | _ -> wrong opn)
@@ -3699,7 +3691,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   (* OP-FP (opcode [0x53]): unlike every integer R-type above, several of these
      mnemonics also need [rs2] to disambiguate (a convert or move fixes its second
      "operand" to a selector rather than reading a real register - see
-     {!f_shape_of_name}, which is what actually decides whether [rs2] is printed at
+     {!f_shape}, which is what actually decides whether [rs2] is printed at
      all). This always resolves the sign-injection group to its general
      [fsgnj]/[fsgnjn]/[fsgnjx] name; the caller downgrades to the [fneg.d]/[fneg.s]/
      [fmv.d] pseudo names when [rs1 = rs2], matching real hardware's own alias. *)
@@ -3820,8 +3812,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           if m = default then Some None
           else
             Option.map
-              (fun name -> Some (Operand.Sym (Asm_core.Expr.Symbol name)))
-              (rounding_name_of_mode m)
+              (fun r -> Some (Operand.Sym (Asm_core.Expr.Symbol (Rm.name r))))
+              (Rm.of_funct3 m)
       | Tied _ -> Some None
       | Keyword k -> Some (Some (Operand.Sym (Asm_core.Expr.Symbol k)))
       | Fli { lsb } ->
@@ -4186,7 +4178,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                 match n with
                 | None -> None
                 | Some n -> (
-                    match f_shape_of_name n with
+                    match f_shape (op_exn n) with
                     | None -> None
                     | Some shape ->
                         let r isf v = if isf then f_operand v else reg v in
@@ -4200,9 +4192,10 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                            other end. *)
                         let ops =
                           match shape.rm with
-                          | Some default when default <> f3 -> (
-                              match rounding_name_of_mode f3 with
-                              | Some rm -> base @ [ Operand.Sym (Asm_core.Expr.Symbol rm) ]
+                          | Some default when Rm.to_funct3 default <> f3 -> (
+                              match Rm.of_funct3 f3 with
+                              | Some rm ->
+                                  base @ [ Operand.Sym (Asm_core.Expr.Symbol (Rm.name rm)) ]
                               | None -> base)
                           | Some _ | None -> base
                         in
