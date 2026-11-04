@@ -1401,9 +1401,9 @@ module Syntax = struct
   let name = function Unified -> "unified" | Divided -> "divided"
 end
 
-type target_state = { syntax : Syntax.t; arch : string; fpu : string; thumb : bool }
+type target_state = { syntax : Syntax.t; thumb : bool }
 
-let default_state = { syntax = Syntax.Divided; arch = ""; fpu = ""; thumb = false }
+let default_state = { syntax = Syntax.Divided; thumb = false }
 
 (* No separable components: this target's whole instruction set is the always-available base, so
    there is nothing to enable or disable and every configuration is the empty one. *)

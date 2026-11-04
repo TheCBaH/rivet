@@ -465,8 +465,9 @@ let handle_directive ~name ~argument state =
       match Arm_encode.Syntax.of_name (String.trim argument) with
       | Some syntax -> Target_intf.Target.Handled { state = { state with syntax }; emit = [] }
       | None -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unknown_syntax argument)))
-  | ".arch" -> Target_intf.Target.Handled { state = { state with arch = argument }; emit = [] }
-  | ".fpu" -> Target_intf.Target.Handled { state = { state with fpu = argument }; emit = [] }
+  | ".arch" | ".fpu" ->
+      (* Accepted for the compiler's preamble; the instruction set does not depend on them. *)
+      Target_intf.Target.Handled { state; emit = [] }
   | ".arm" -> Target_intf.Target.Handled { state = { state with thumb = false }; emit = [] }
   | ".thumb" -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ `Thumb_directive_out_of_scope)
   | ".eabi_attribute" ->
