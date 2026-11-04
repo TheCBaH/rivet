@@ -416,7 +416,7 @@ let%expect_test "RISC-V: a normalized instruction is refused at lowering, a lowe
     | Ok s -> s
     | Error _ -> failwith "surface"
   in
-  let x n = E.Operand.Reg (E.Reg.X n) in
+  let x n = E.Operand.Reg (E.Reg.x n) in
   let ops = [ x 5; x 6; x 7 ] in
   List.iter
     (fun (label, features) ->
@@ -433,7 +433,15 @@ let%expect_test "RISC-V: a normalized instruction is refused at lowering, a lowe
                 "refused: " ^ Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))));
       let lowered =
         E.Lowered.R
-          { op = E.Opcode.Mul; opcode = 0x33; funct3 = 0; funct7 = 1; rd = 5; rs1 = 6; rs2 = 7 }
+          {
+            op = E.Opcode.Mul;
+            opcode = 0x33;
+            funct3 = 0;
+            funct7 = 1;
+            rd = E.Reg.x 5;
+            rs1 = E.Reg.x 6;
+            rs2 = E.Reg.x 7;
+          }
       in
       Printf.printf "%s: encode_in -> %s\n" label
         (match E.encode_in state lowered with
@@ -457,7 +465,7 @@ let%expect_test "RISC-V: a refusal at lowering names the item it came from" =
     match Target_config.resolve E.components (spec "none") with Ok c -> c | Error m -> failwith m
   in
   let origin = Foundation.Origin.producer ~tool:"kernel" ~item:"peak+8" () in
-  let x n = E.Operand.Reg (E.Reg.X n) in
+  let x n = E.Operand.Reg (E.Reg.x n) in
   let insn =
     match
       Result.bind
@@ -846,7 +854,15 @@ let%expect_test "F and D: lowered and decoded forms" =
   in
   let lowered =
     E.Lowered.R
-      { op = E.Opcode.Fadd_s; opcode = 0x53; funct3 = 7; funct7 = 0; rd = 1; rs1 = 2; rs2 = 3 }
+      {
+        op = E.Opcode.Fadd_s;
+        opcode = 0x53;
+        funct3 = 7;
+        funct7 = 0;
+        rd = E.Reg.f 1;
+        rs1 = E.Reg.f 2;
+        rs2 = E.Reg.f 3;
+      }
   in
   List.iter
     (fun features ->
@@ -1432,10 +1448,10 @@ let%expect_test "RISC-V: lowered forms of each shape are refused when their exte
             opcode = 0x43;
             fmt = 0;
             funct3 = 7;
-            rd = 1;
-            rs1 = 2;
-            rs2 = 3;
-            rs3 = 4;
+            rd = E.Reg.f 1;
+            rs1 = E.Reg.f 2;
+            rs2 = E.Reg.f 3;
+            rs3 = E.Reg.f 4;
           } );
       ( "I",
         E.Lowered.I
@@ -1445,13 +1461,20 @@ let%expect_test "RISC-V: lowered forms of each shape are refused when their exte
             funct3 = 2;
             funct_hi = 0;
             shamt_bits = None;
-            rd = 1;
-            rs1 = 2;
+            rd = E.Reg.f 1;
+            rs1 = E.Reg.x 2;
             imm = imm 0;
           } );
       ( "S",
-        E.Lowered.S { op = E.Opcode.Fsw; opcode = 0x27; funct3 = 2; rs1 = 2; rs2 = 1; imm = imm 0 }
-      );
+        E.Lowered.S
+          {
+            op = E.Opcode.Fsw;
+            opcode = 0x27;
+            funct3 = 2;
+            rs1 = E.Reg.x 2;
+            rs2 = E.Reg.f 1;
+            imm = imm 0;
+          } );
       ( "Fixed",
         E.Lowered.Fixed { op = Option.get (E.Opcode.of_mnemonic "mret"); word = 0x30200073L } );
     ]
