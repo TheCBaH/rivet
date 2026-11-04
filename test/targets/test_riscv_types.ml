@@ -199,3 +199,42 @@ let%expect_test "a form paired with an opcode of another format is refused" =
       let d = E.error_diagnostic (Err.Error.kind e) in
       Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d));
   [%expect {| riscv64.internal.format: internal: lui has no R-format encoding |}]
+
+(* {1 Named standard rows} *)
+
+(* A name whose rows are all for the other XLEN still names one of them; [Opcode.of_mnemonic]
+   has no reading of it here. *)
+let%expect_test "every standard row name is its row's spelling" =
+  let check (type a) name all (mnemonic : a -> string) (of_mnemonic : string -> a option) =
+    let other = ref 0 in
+    let wrong =
+      List.filter_map
+        (fun (m, r) ->
+          match of_mnemonic m with
+          | _ when not (String.equal (mnemonic r) m) -> Some m
+          | Some r' when r' = r -> None
+          | Some _ -> Some m
+          | None ->
+              incr other;
+              None)
+        all
+    in
+    Printf.printf "%s: %d names, %d only for the other XLEN, wrong [%s]\n" name (List.length all)
+      !other (String.concat " " wrong)
+  in
+  let rows32 m =
+    match Riscv32_encode.Opcode.of_mnemonic m with
+    | Some (Riscv32_encode.Opcode.Table r) -> Some r
+    | _ -> None
+  in
+  let rows64 m =
+    match Riscv64_encode.Opcode.of_mnemonic m with
+    | Some (Riscv64_encode.Opcode.Table r) -> Some r
+    | _ -> None
+  in
+  check "riscv32" Riscv32_encode.Std_row.all Riscv32_encode.Row.mnemonic rows32;
+  check "riscv64" Riscv64_encode.Std_row.all Riscv64_encode.Row.mnemonic rows64;
+  [%expect
+    {|
+    riscv32: 1034 names, 24 only for the other XLEN, wrong []
+    riscv64: 1034 names, 9 only for the other XLEN, wrong [] |}]
