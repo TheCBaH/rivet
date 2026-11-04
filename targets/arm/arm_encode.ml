@@ -2564,7 +2564,7 @@ type error_kind =
   | `Udf_imm16_overflow
   | `Wrong_relocation_modifier of wrong_relocation_modifier
   | `Missing_relocation_modifier of missing_relocation_modifier
-  | `Imm16_overflow of string
+  | `Imm16_overflow of Opcode.t
   | `Codec of Codec.error
   | `Decode_short
   | `Decode_no_match
@@ -2606,7 +2606,7 @@ let pp_error_kind ppf : error_kind -> unit = function
       Fmt.pf ppf "%s takes #:%s:, not #:%s:" (Opcode.name opcode) want got
   | `Missing_relocation_modifier { opcode; want } ->
       Fmt.pf ppf "%s needs a #:%s: operand" (Opcode.name opcode) want
-  | `Imm16_overflow op -> Fmt.pf ppf "%s immediate does not fit 16 bits" op
+  | `Imm16_overflow op -> Fmt.pf ppf "%s immediate does not fit 16 bits" (Opcode.name op)
   | `Codec e -> Codec.pp_error ppf e
   | `Decode_short -> Fmt.string ppf "fewer than four bytes remain"
   | `Decode_no_match -> Fmt.string ppf "no form matches this word"
@@ -3119,7 +3119,7 @@ let lower_instruction state i =
         | Error e -> Error e
         | Ok imm ->
             if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
-              bad (`Imm16_overflow (Opcode.name op))
+              bad (`Imm16_overflow op)
             else
               Ok
                 [

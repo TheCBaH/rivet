@@ -822,6 +822,27 @@ code. Prefer:
 - Runtime validators for irregular constraints that gain little from type-level
   encoding.
 
+As built, each target names its registers, opcodes and small operand kinds with
+its own concrete variants and records; nothing typed for one architecture is
+accepted by another, and polymorphic variants appear only in the per-target
+`error_kind`. Strings remain only for spellings (`Surface.mnemonic`, user input
+quoted in a diagnostic, generated row data) and published data (component
+lists, feature names).
+
+- RISC-V: `Riscv_types` holds the family's types outside `Make_with`, so
+  riscv32, riscv64 and vendor compositions share them. Register numbers are
+  checked `private int`s by class (`Xreg`, `Freg`, `Vreg`, and `Creg`/`Cfreg`
+  for the x8..x15 a compressed field names); `Reg.t` tags the class. Lowered
+  forms carry their `Opcode.t` and operands only; a `Desc` table derives the
+  fixed fields per format. Table rows are an abstract `Row.t` minted where an
+  instance's rows are built; `Std_row` names every standard row, and `Cls.t`
+  classifies any word by its encoding.
+- x86: `Reg.t = { cls : Rclass.t; num }`, the spelling and operand width
+  derived from the pair; table rows are `Row.t`; the rel8 branches are
+  `Short.t`.
+- ARM: `Reg.t = { num }`; `.syntax` is `Syntax.t`.
+- AArch64: `Shift.kind` and `Extend.t` replace the shift and extend keywords.
+
 ### 5.3 Package boundaries
 
 A suitable source layout is:
