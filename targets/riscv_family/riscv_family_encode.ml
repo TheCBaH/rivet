@@ -537,8 +537,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let m_desc op =
     Option.map (fun (f : Riscv_ext_m.form) -> (f.opcode, f.funct3, f.funct7)) (Riscv_ext_m.find op)
 
-  let m_rv64_only op = match Riscv_ext_m.find op with Some f -> f.rv64_only | None -> false
-
   (* CA-format compressed register-register ops (quadrant 1, funct3=100):
      funct6 selects word- vs *w-width, funct2 selects the operation.
      Hand-verified against real riscv64-linux-gnu-as/riscv32-linux-gnu-as
@@ -1085,36 +1083,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   module Cls = struct
     include Riscv_types.Cls
 
-    let of_opcode op =
-      let word opcode funct3 = of_word ~xlen (Int64.of_int (opcode lor (funct3 lsl 12))) in
-      let half quadrant funct3 = of_word ~xlen (Int64.of_int (quadrant lor (funct3 lsl 13))) in
-      let cr funct4 rd rs2 =
-        of_word ~xlen (Int64.of_int ((funct4 lsl 12) lor (rd lsl 7) lor (rs2 lsl 2) lor 2))
-      in
-      match op with
+    let of_opcode = function
       | Opcode.Table r -> Row.cls r
-      | C_addi -> half 1 0
-      | C_and | C_or | C_xor | C_sub | C_addw | C_subw -> half 1 4
-      | C_jr | C_jalr -> cr 8 1 0
-      | C_mv | C_add -> cr 8 1 1
-      | C_ebreak -> cr 9 0 0
-      | C_lw | C_ld | C_sw | C_sd -> half 0 (Option.get (Desc.c_funct3 op))
-      | C_lwsp | C_ldsp | C_swsp | C_sdsp -> half 2 (Option.get (Desc.c_funct3 op))
-      | C_j | C_jal | C_beqz | C_bnez -> half 1 (Option.get (Desc.c_funct3 op))
-      | Ecall | Ebreak -> word 0x73 0
-      | Unimp -> of_word ~xlen 0xc0001073L
-      | Fence | Fence_i | Fence_tso | Pause -> word 0x0f 0
-      | J | Jr | Ret | Call | Tail | Jal -> word 0x6f 0
-      | Beqz | Bnez | Bgez | Bltz | Blez | Bgtz | Bgt | Ble | Bgtu | Bleu -> word 0x63 0
-      | op -> (
-          match (Desc.r op, Desc.i op, Desc.s op, Desc.b op, Desc.u op, Desc.r4 op) with
-          | Some d, _, _, _, _, _ -> word d.opcode d.funct3
-          | None, Some d, _, _, _, _ -> word d.opcode d.funct3
-          | None, None, Some (opcode, funct3), _, _, _ -> word opcode funct3
-          | None, None, None, Some funct3, _, _ -> word 0x63 funct3
-          | None, None, None, None, Some opcode, _ -> word opcode 0
-          | None, None, None, None, None, Some (opcode, _) -> word opcode 0
-          | None, None, None, None, None, None -> Alu)
+      | op -> ( match Riscv_ops.find op with Some e -> e.cls | None -> Alu)
   end
 
   let fits_signed bits v =
@@ -1411,6 +1382,13 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Some word -> Ok [ Lowered.Fixed { op = Opcode.Table row; word } ]
     | None -> wrong (Opcode.Table row)
 
+  (* An opcode another XLEN has, from Riscv_ops. *)
+  let xlen_gate op =
+    match Option.map (fun (e : Riscv_ops.entry) -> e.xlen) (Riscv_ops.find op) with
+    | Some Rv64 when xlen <> 64 -> Some (`Rv64_only op)
+    | Some Rv32 when xlen <> 32 -> Some (`Rv32_only op)
+    | _ -> None
+
   let lower_operands state i =
     let iop = i.Instruction.op in
     match (i.op, i.ops) with
@@ -1418,26 +1396,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       when Int64.logand (Row.row row).Riscv_table_row.match_ 3L <> 3L && not state.rvc ->
         Error (diag ~pos:__POS__ (`Compressed_disabled iop))
     | Opcode.Table row, ops -> table_lower row ops
-    | ( ( Opcode.Mul | Remu | Mulh | Mulhsu | Mulhu | Div | Divu | Rem | Mulw | Divw | Divuw | Remw
-        | Remuw ),
-        _ )
-      when xlen <> 64 && m_rv64_only i.Instruction.op ->
-        Error (diag ~pos:__POS__ (`Rv64_only iop))
-    | ( ( Opcode.Addw | Subw | Sllw | Srlw | Sraw | Sh1adduw | Sh2adduw | Sh3adduw | Clzw | Ctzw
-        | Cpopw | Packw | Rolw | Rorw | Sha512sum0 | Sha512sum1 | Sha512sig0 | Sha512sig1 | Aes64ds
-        | Aes64dsm | Aes64es | Aes64esm | Aes64ks2 | Aes64im | Aes64ks1i | C_addw | C_subw ),
-        _ )
-      when xlen <> 64 ->
-        Error (diag ~pos:__POS__ (`Rv64_only iop))
-    | (Opcode.Addiw | Slliw | Srliw | Sraiw | Roriw | Sext_w | Ld | Lwu | Sd), _ when xlen <> 64 ->
-        Error (diag ~pos:__POS__ (`Rv64_only iop))
-    | (Opcode.C_ld | C_sd | C_ldsp | C_sdsp), _ when xlen <> 64 ->
-        Error (diag ~pos:__POS__ (`Rv64_only iop))
-    | ( ( Opcode.Zip | Unzip | Sha512sum0r | Sha512sum1r | Sha512sig0l | Sha512sig1l | Sha512sig0h
-        | Sha512sig1h | Aes32dsi | Aes32dsmi | Aes32esi | Aes32esmi ),
-        _ )
-      when xlen <> 32 ->
-        Error (diag ~pos:__POS__ (`Rv32_only iop))
+    | op, _ when Option.is_some (xlen_gate op) ->
+        Error (diag ~pos:__POS__ (Option.get (xlen_gate op)))
     | ( ( Opcode.C_addi | C_and | C_or | C_xor | C_sub | C_addw | C_subw | C_jr | C_jalr | C_mv
         | C_add | C_ebreak | C_lw | C_sw | C_lwsp | C_swsp | C_ld | C_sd | C_ldsp | C_sdsp | C_beqz
         | C_j | C_jal | C_bnez ),
@@ -1480,7 +1440,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | Some rs2, Some sp when sp = Xreg.sp ->
             Ok [ Lowered.Css { op = iop; rs2; imm = m.offset } ]
         | _ -> wrong iop)
-    | Opcode.C_jal, _ when xlen <> 32 -> Error (diag ~pos:__POS__ (`Rv32_only iop))
     | (Opcode.C_j | C_jal), [ target ] -> (
         (* CJ format: quadrant 01, funct3 101 ([c.j]) or 001 ([c.jal], RV32 only - RV64 reuses
            the encoding for [c.addiw]). *)
@@ -1491,16 +1450,6 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         match (creg a, expr_of target) with
         | Some rs1, Some target -> Ok [ Lowered.Cb { op = iop; rs1; target } ]
         | _ -> wrong iop)
-    | ( ( Opcode.Fcvt_l_d | Fmv_x_d | Fcvt_s_l | Fcvt_lu_d | Fcvt_d_l | Fcvt_d_lu | Fcvt_l_s
-        | Fcvt_lu_s | Fcvt_s_lu ),
-        _ )
-      when xlen <> 64 ->
-        Error (diag ~pos:__POS__ (`Rv64_only iop))
-    | ( ( Opcode.Amoswap_d | Amoadd_d | Amoxor_d | Amoand_d | Amoor_d | Amomin_d | Amomax_d
-        | Amominu_d | Amomaxu_d | Lr_d | Sc_d ),
-        _ )
-      when xlen <> 64 ->
-        Error (diag ~pos:__POS__ (`Rv64_only iop))
     | op, [ a; b; Operand.Mem m ] when Option.is_some (amo3_desc op) -> (
         (* [amoOP rd, rs2, (rs1)] / [scOP rd, rs2, (rs1)] - the memory
            operand's offset is never syntax-visible (real GNU as rejects
