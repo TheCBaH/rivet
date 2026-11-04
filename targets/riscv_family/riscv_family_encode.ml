@@ -11,6 +11,8 @@ module Riscv_extensions = Riscv_extensions
 module Riscv_isa = Riscv_isa
 module Riscv_types = Riscv_types
 module Riscv_ops = Riscv_ops
+module Riscv_std_rows32 = Riscv_std_rows32
+module Riscv_std_rows64 = Riscv_std_rows64
 
 module type PROFILE = sig
   val name : string

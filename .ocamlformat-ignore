@@ -3,3 +3,5 @@ targets/x86_family/x86_table_rows.ml
 targets/riscv_family/riscv_std_rows.ml
 targets/riscv_family/riscv_std_rows32.ml
 targets/riscv_family/riscv_std_rows64.ml
+targets/riscv_asm/riscv_asm_rows32.ml
+targets/riscv_asm/riscv_asm_rows64.ml
