@@ -1115,6 +1115,43 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   (* The rounding mode a form takes when none is written, for the forms that have one. *)
   let default_rm op = Option.bind (f_shape op) (fun s -> s.rm)
 
+  (* An opcode's class: a row's from its row, a hand-written form's from the word its fixed
+     fields make, a pseudo-instruction's from the instruction it stands for. *)
+  module Cls = struct
+    include Riscv_types.Cls
+
+    let of_opcode op =
+      let word opcode funct3 = of_word ~xlen (Int64.of_int (opcode lor (funct3 lsl 12))) in
+      let half quadrant funct3 = of_word ~xlen (Int64.of_int (quadrant lor (funct3 lsl 13))) in
+      let cr funct4 rd rs2 =
+        of_word ~xlen (Int64.of_int ((funct4 lsl 12) lor (rd lsl 7) lor (rs2 lsl 2) lor 2))
+      in
+      match op with
+      | Opcode.Table r -> Row.cls r
+      | C_addi -> half 1 0
+      | C_and | C_or | C_xor | C_sub | C_addw | C_subw -> half 1 4
+      | C_jr | C_jalr -> cr 8 1 0
+      | C_mv | C_add -> cr 8 1 1
+      | C_ebreak -> cr 9 0 0
+      | C_lw | C_ld | C_sw | C_sd -> half 0 (Option.get (Desc.c_funct3 op))
+      | C_lwsp | C_ldsp | C_swsp | C_sdsp -> half 2 (Option.get (Desc.c_funct3 op))
+      | C_j | C_jal | C_beqz | C_bnez -> half 1 (Option.get (Desc.c_funct3 op))
+      | Ecall | Ebreak -> word 0x73 0
+      | Unimp -> of_word ~xlen 0xc0001073L
+      | Fence | Fence_i | Fence_tso | Pause -> word 0x0f 0
+      | J | Jr | Ret | Call | Tail | Jal -> word 0x6f 0
+      | Beqz | Bnez | Bgez | Bltz | Blez | Bgtz | Bgt | Ble | Bgtu | Bleu -> word 0x63 0
+      | op -> (
+          match (Desc.r op, Desc.i op, Desc.s op, Desc.b op, Desc.u op, Desc.r4 op) with
+          | Some d, _, _, _, _, _ -> word d.opcode d.funct3
+          | None, Some d, _, _, _, _ -> word d.opcode d.funct3
+          | None, None, Some (opcode, funct3), _, _, _ -> word opcode funct3
+          | None, None, None, Some funct3, _, _ -> word 0x63 funct3
+          | None, None, None, None, Some opcode, _ -> word opcode 0
+          | None, None, None, None, None, Some (opcode, _) -> word opcode 0
+          | None, None, None, None, None, None -> Alu)
+  end
+
   let fits_signed bits v =
     let lim = Int64.shift_left 1L (bits - 1) in
     Int64.compare v (Int64.neg lim) >= 0 && Int64.compare v lim < 0

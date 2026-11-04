@@ -6,7 +6,7 @@ module Make (X : sig
   val xlen : int
 end) =
 struct
-  let row i = Riscv_row.mint i Riscv_table_rows.rows.(i)
+  let row i = Riscv_row.mint ~xlen:X.xlen i Riscv_table_rows.rows.(i)
   let by_xlen ~rv32 ~rv64 = row (if X.xlen = 32 then rv32 else rv64)
 
   (** [sret] (rv_s/sret) *)
