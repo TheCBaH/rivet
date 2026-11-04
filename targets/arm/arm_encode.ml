@@ -1393,9 +1393,17 @@ let fixup_role = function
   | Pcrel_b26 -> Asm_core.Lowered_ast.Branch
   | Pcrel_call -> Asm_core.Lowered_ast.Call
 
-type target_state = { syntax : string; arch : string; fpu : string; thumb : bool }
+(* The [.syntax] modes; the instructions this target takes read the same in both. *)
+module Syntax = struct
+  type t = Unified | Divided
 
-let default_state = { syntax = "divided"; arch = ""; fpu = ""; thumb = false }
+  let of_name = function "unified" -> Some Unified | "divided" -> Some Divided | _ -> None
+  let name = function Unified -> "unified" | Divided -> "divided"
+end
+
+type target_state = { syntax : Syntax.t; arch : string; fpu : string; thumb : bool }
+
+let default_state = { syntax = Syntax.Divided; arch = ""; fpu = ""; thumb = false }
 
 (* No separable components: this target's whole instruction set is the always-available base, so
    there is nothing to enable or disable and every configuration is the empty one. *)
@@ -2575,9 +2583,9 @@ type error_kind =
   | `Vpush_needs_contiguous_registers
   | `Shift_amount_out_of_range ]
 
-and wrong_relocation_modifier = { opcode : string; want : string; got : string }
-and missing_relocation_modifier = { opcode : string; want : string }
-and no_modified_immediate_2op = { opcode : string; value : int64 }
+and wrong_relocation_modifier = { opcode : Opcode.t; want : string; got : string }
+and missing_relocation_modifier = { opcode : Opcode.t; want : string }
+and no_modified_immediate_2op = { opcode : Opcode.t; value : int64 }
 
 type error = error_kind Target_error.t
 
@@ -2588,16 +2596,16 @@ let pp_error_kind ppf : error_kind -> unit = function
   | `No_modified_immediate v -> Fmt.pf ppf "#%Ld has no A32 modified-immediate representation" v
   | `No_modified_immediate_2op { opcode; value } ->
       Fmt.pf ppf "%s #%Ld has no A32 modified-immediate representation; movw is M2"
-        opcode value
+        (Opcode.name opcode) value
   | `Writeback_out_of_scope -> Fmt.string ppf "writeback addressing is not in M1 scope"
   | `Offset_not_12bit -> Fmt.string ppf "offset does not fit the 12-bit immediate"
   | `Offset_not_8bit -> Fmt.string ppf "offset does not fit the 8-bit immediate"
   | `Bitfield_out_of_range -> Fmt.string ppf "bitfield lsb/width do not fit 32 bits"
   | `Udf_imm16_overflow -> Fmt.string ppf "udf immediate does not fit 16 bits"
   | `Wrong_relocation_modifier { opcode; want; got } ->
-      Fmt.pf ppf "%s takes #:%s:, not #:%s:" opcode want got
+      Fmt.pf ppf "%s takes #:%s:, not #:%s:" (Opcode.name opcode) want got
   | `Missing_relocation_modifier { opcode; want } ->
-      Fmt.pf ppf "%s needs a #:%s: operand" opcode want
+      Fmt.pf ppf "%s needs a #:%s: operand" (Opcode.name opcode) want
   | `Imm16_overflow op -> Fmt.pf ppf "%s immediate does not fit 16 bits" op
   | `Codec e -> Codec.pp_error ppf e
   | `Decode_short -> Fmt.string ppf "fewer than four bytes remain"
@@ -2724,7 +2732,7 @@ let lower_instruction state i =
         | Error e -> Error e
         | Ok imm ->
             if encode_modimm imm = None then
-              bad (`No_modified_immediate_2op { opcode = Opcode.name op; value = imm })
+              bad (`No_modified_immediate_2op { opcode = op; value = imm })
             else
               Ok
                 [
@@ -3104,8 +3112,8 @@ let lower_instruction state i =
                   };
               ]
         | Asm_core.Expr.Modifier (m, _) ->
-            bad (`Wrong_relocation_modifier { opcode = Opcode.name op; want; got = m })
-        | _ -> bad (`Missing_relocation_modifier { opcode = Opcode.name op; want }))
+            bad (`Wrong_relocation_modifier { opcode = op; want; got = m })
+        | _ -> bad (`Missing_relocation_modifier { opcode = op; want }))
     | ((Opcode.Movw | Opcode.Movt) as op), [ Operand.Reg rd; Operand.Imm v ] -> (
         match imm_of v with
         | Error e -> Error e
