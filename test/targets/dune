@@ -31,6 +31,7 @@
   riscv_family
   x86_32_encode
   x86_64_encode
+  x86_family_encode
   target_features
   rivet_fmt)
  (inline_tests
