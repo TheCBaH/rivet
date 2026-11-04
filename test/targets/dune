@@ -10,6 +10,7 @@
   test_vendor
   test_zicsr
   test_riscv_types
+  test_riscv_ops
   test_typed_isa)
  (modes byte native)
  (libraries
