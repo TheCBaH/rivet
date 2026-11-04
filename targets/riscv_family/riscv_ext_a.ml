@@ -1,30 +1,32 @@
 (* Atomics. Zacas and Zabha have only generated rows; amocas.b and amocas.h are Zacas encodings of
    Zabha-width operations, so they need both. *)
 
+module Opcode = Riscv_types.Opcode
+
 let a_forms =
   [
-    ("amoswap.w", "rv_a/amoswap.w");
-    ("amoadd.w", "rv_a/amoadd.w");
-    ("amoxor.w", "rv_a/amoxor.w");
-    ("amoand.w", "rv_a/amoand.w");
-    ("amoor.w", "rv_a/amoor.w");
-    ("amomin.w", "rv_a/amomin.w");
-    ("amomax.w", "rv_a/amomax.w");
-    ("amominu.w", "rv_a/amominu.w");
-    ("amomaxu.w", "rv_a/amomaxu.w");
-    ("lr.w", "rv_a/lr.w");
-    ("sc.w", "rv_a/sc.w");
-    ("amoswap.d", "rv64_a/amoswap.d");
-    ("amoadd.d", "rv64_a/amoadd.d");
-    ("amoxor.d", "rv64_a/amoxor.d");
-    ("amoand.d", "rv64_a/amoand.d");
-    ("amoor.d", "rv64_a/amoor.d");
-    ("amomin.d", "rv64_a/amomin.d");
-    ("amomax.d", "rv64_a/amomax.d");
-    ("amominu.d", "rv64_a/amominu.d");
-    ("amomaxu.d", "rv64_a/amomaxu.d");
-    ("lr.d", "rv64_a/lr.d");
-    ("sc.d", "rv64_a/sc.d");
+    (Opcode.Amoswap_w, "rv_a/amoswap.w");
+    (Opcode.Amoadd_w, "rv_a/amoadd.w");
+    (Opcode.Amoxor_w, "rv_a/amoxor.w");
+    (Opcode.Amoand_w, "rv_a/amoand.w");
+    (Opcode.Amoor_w, "rv_a/amoor.w");
+    (Opcode.Amomin_w, "rv_a/amomin.w");
+    (Opcode.Amomax_w, "rv_a/amomax.w");
+    (Opcode.Amominu_w, "rv_a/amominu.w");
+    (Opcode.Amomaxu_w, "rv_a/amomaxu.w");
+    (Opcode.Lr_w, "rv_a/lr.w");
+    (Opcode.Sc_w, "rv_a/sc.w");
+    (Opcode.Amoswap_d, "rv64_a/amoswap.d");
+    (Opcode.Amoadd_d, "rv64_a/amoadd.d");
+    (Opcode.Amoxor_d, "rv64_a/amoxor.d");
+    (Opcode.Amoand_d, "rv64_a/amoand.d");
+    (Opcode.Amoor_d, "rv64_a/amoor.d");
+    (Opcode.Amomin_d, "rv64_a/amomin.d");
+    (Opcode.Amomax_d, "rv64_a/amomax.d");
+    (Opcode.Amominu_d, "rv64_a/amominu.d");
+    (Opcode.Amomaxu_d, "rv64_a/amomaxu.d");
+    (Opcode.Lr_d, "rv64_a/lr.d");
+    (Opcode.Sc_d, "rv64_a/sc.d");
   ]
 
 let a = Riscv_ext.component ~id:"riscv.a" ~feature:"a" ~summary:"atomic memory operations" a_forms

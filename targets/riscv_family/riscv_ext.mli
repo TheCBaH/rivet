@@ -12,7 +12,7 @@ val component :
   ?rows:(Riscv_table_row.row -> bool) ->
   ?legal:(string -> Target_component.Req.t option) ->
   summary:string ->
-  (string * string) list ->
+  (Riscv_types.Opcode.t * string) list ->
   Target_component.t
-(** [component ~id ~feature ~summary forms] owns [forms] (mnemonic and riscv-opcodes record) and the
+(** [component ~id ~feature ~summary forms] owns [forms] (opcode and riscv-opcodes record) and the
     generated table rows selected by [rows], by default those whose feature is [feature]. [legal] gives a form's predicate when it is not just the component's feature. *)

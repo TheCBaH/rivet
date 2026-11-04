@@ -725,3 +725,57 @@ let%expect_test "generated RISC-V rows that overlap are all classified" =
     disjoint operands: 11
     exclusive by configuration: 7
     specialization: 15 |}]
+
+(* RISC-V legality is looked up by opcode; the published component lists stay spellings. Each
+   spelling a component lists names exactly one opcode or a table row, each opcode's typed
+   requirement is what the component list gives its spelling, and the opcodes with no requirement
+   are the base ISA's. *)
+module Agree (E : module type of Riscv64_encode) = struct
+  let report () =
+    let req r = Option.fold ~none:"-" ~some:(Fmt.str "%a" Target_component.Req.pp) r in
+    let rows =
+      Array.to_list
+        (Array.map (fun r -> r.Riscv_family_encode.Riscv_table_row.mnemonic) E.table_rows)
+    in
+    let listed =
+      List.concat_map
+        (fun (c : Target_component.t) ->
+          List.concat_map (fun (f : Target_component.form) -> f.mnemonics) c.forms)
+        E.components
+    in
+    let unmatched =
+      List.filter
+        (fun m ->
+          let ops = List.filter (fun op -> String.equal (E.Opcode.name op) m) E.Opcode.all in
+          match ops with [ _ ] -> false | [] -> not (List.mem m rows) | _ -> true)
+        (List.sort_uniq compare listed)
+    in
+    let disagree =
+      List.filter_map
+        (fun op ->
+          let typed = E.required (E.Instruction.mk op []) in
+          let named = Target_component.legal E.components (E.Opcode.name op) in
+          if req typed = req named then None else Some (E.Opcode.name op))
+        E.Opcode.all
+    in
+    let base =
+      List.filter_map
+        (fun op ->
+          if E.required (E.Instruction.mk op []) = None then Some (E.Opcode.name op) else None)
+        E.Opcode.all
+    in
+    Printf.printf "%s: unmatched [%s]; disagree [%s]\n  no requirement: %s\n" E.name
+      (String.concat " " unmatched) (String.concat " " disagree) (String.concat " " base)
+end
+
+let%expect_test "RISC-V components agree with the typed opcodes" =
+  let module A64 = Agree (Riscv64_encode) in
+  let module A32 = Agree (Riscv32_encode) in
+  A32.report ();
+  A64.report ();
+  [%expect
+    {|
+    riscv32: unmatched []; disagree []
+      no requirement: add sub sll slt sltu snez neg seqz sltz sgtz zext.b xor srl sra or and addw subw sllw srlw sraw addi slti sltiu xori ori andi slli srli srai addiw slliw srliw sraiw sext.w lb lh lw lbu lhu lwu ld sb sh sw sd beq bne blt bge bltu bgeu bgtu bleu bgt ble beqz bnez bgez bltz blez bgtz lui auipc jal jalr mv nop j jr call tail la lla li ret ecall ebreak unimp fence fence.tso pause
+    riscv64: unmatched []; disagree []
+      no requirement: add sub sll slt sltu snez neg seqz sltz sgtz zext.b xor srl sra or and addw subw sllw srlw sraw addi slti sltiu xori ori andi slli srli srai addiw slliw srliw sraiw sext.w lb lh lw lbu lhu lwu ld sb sh sw sd beq bne blt bge bltu bgeu bgtu bleu bgt ble beqz bnez bgez bltz blez bgtz lui auipc jal jalr mv nop j jr call tail la lla li ret ecall ebreak unimp fence fence.tso pause |}]

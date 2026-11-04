@@ -4,6 +4,7 @@
    implications, so a mnemonic's alternatives name only leaf extensions. *)
 
 module Req = Target_component.Req
+module Opcode = Riscv_types.Opcode
 
 let alternatives =
   [
@@ -30,109 +31,115 @@ let legal mnemonic =
 
 let zba_forms =
   [
-    ("sh1add", "rv_zba/sh1add");
-    ("sh2add", "rv_zba/sh2add");
-    ("sh3add", "rv_zba/sh3add");
-    ("sh1add.uw", "rv64_zba/sh1add.uw");
-    ("sh2add.uw", "rv64_zba/sh2add.uw");
-    ("sh3add.uw", "rv64_zba/sh3add.uw");
+    (Opcode.Sh1add, "rv_zba/sh1add");
+    (Opcode.Sh2add, "rv_zba/sh2add");
+    (Opcode.Sh3add, "rv_zba/sh3add");
+    (Opcode.Sh1adduw, "rv64_zba/sh1add.uw");
+    (Opcode.Sh2adduw, "rv64_zba/sh2add.uw");
+    (Opcode.Sh3adduw, "rv64_zba/sh3add.uw");
   ]
 
 let zbb_forms =
   [
-    ("min", "rv_zbb/min");
-    ("minu", "rv_zbb/minu");
-    ("max", "rv_zbb/max");
-    ("maxu", "rv_zbb/maxu");
-    ("andn", "rv_zbb/andn");
-    ("orn", "rv_zbb/orn");
-    ("xnor", "rv_zbb/xnor");
-    ("rol", "rv_zbb/rol");
-    ("ror", "rv_zbb/ror");
-    ("clz", "rv_zbb/clz");
-    ("ctz", "rv_zbb/ctz");
-    ("cpop", "rv_zbb/cpop");
-    ("sext.b", "rv_zbb/sext.b");
-    ("sext.h", "rv_zbb/sext.h");
-    ("orc.b", "rv_zbb/orc.b");
-    ("clzw", "rv64_zbb/clzw");
-    ("ctzw", "rv64_zbb/ctzw");
-    ("cpopw", "rv64_zbb/cpopw");
-    ("rev8", "rv32_zbkb/rev8");
-    ("rolw", "rv64_zbb/rolw");
-    ("rorw", "rv64_zbb/rorw");
-    ("rori", "rv64_zbb/rori");
-    ("roriw", "rv64_zbb/roriw");
-    ("zext.h", "rv64_zbb/zext.h");
+    (Opcode.Min, "rv_zbb/min");
+    (Opcode.Minu, "rv_zbb/minu");
+    (Opcode.Max, "rv_zbb/max");
+    (Opcode.Maxu, "rv_zbb/maxu");
+    (Opcode.Andn, "rv_zbb/andn");
+    (Opcode.Orn, "rv_zbb/orn");
+    (Opcode.Xnor, "rv_zbb/xnor");
+    (Opcode.Rol, "rv_zbb/rol");
+    (Opcode.Ror, "rv_zbb/ror");
+    (Opcode.Clz, "rv_zbb/clz");
+    (Opcode.Ctz, "rv_zbb/ctz");
+    (Opcode.Cpop, "rv_zbb/cpop");
+    (Opcode.Sextb, "rv_zbb/sext.b");
+    (Opcode.Sexth, "rv_zbb/sext.h");
+    (Opcode.Orcb, "rv_zbb/orc.b");
+    (Opcode.Clzw, "rv64_zbb/clzw");
+    (Opcode.Ctzw, "rv64_zbb/ctzw");
+    (Opcode.Cpopw, "rv64_zbb/cpopw");
+    (Opcode.Rev8, "rv32_zbkb/rev8");
+    (Opcode.Rolw, "rv64_zbb/rolw");
+    (Opcode.Rorw, "rv64_zbb/rorw");
+    (Opcode.Rori, "rv64_zbb/rori");
+    (Opcode.Roriw, "rv64_zbb/roriw");
+    (Opcode.Zext_h, "rv64_zbb/zext.h");
   ]
 
 let zbs_forms =
   [
-    ("bclr", "rv_zbs/bclr");
-    ("bext", "rv_zbs/bext");
-    ("binv", "rv_zbs/binv");
-    ("bset", "rv_zbs/bset");
-    ("bclri", "rv64_zbs/bclri");
-    ("bexti", "rv64_zbs/bexti");
-    ("binvi", "rv64_zbs/binvi");
-    ("bseti", "rv64_zbs/bseti");
+    (Opcode.Bclr, "rv_zbs/bclr");
+    (Opcode.Bext, "rv_zbs/bext");
+    (Opcode.Binv, "rv_zbs/binv");
+    (Opcode.Bset, "rv_zbs/bset");
+    (Opcode.Bclri, "rv64_zbs/bclri");
+    (Opcode.Bexti, "rv64_zbs/bexti");
+    (Opcode.Binvi, "rv64_zbs/binvi");
+    (Opcode.Bseti, "rv64_zbs/bseti");
   ]
 
 let zbc_forms =
-  [ ("clmul", "rv_zbc/clmul"); ("clmulh", "rv_zbc/clmulh"); ("clmulr", "rv_zbc/clmulr") ]
+  [
+    (Opcode.Clmul, "rv_zbc/clmul");
+    (Opcode.Clmulh, "rv_zbc/clmulh");
+    (Opcode.Clmulr, "rv_zbc/clmulr");
+  ]
 
 let zbkb_forms =
   [
-    ("brev8", "rv_zbkb/brev8");
-    ("pack", "rv_zbkb/pack");
-    ("packh", "rv_zbkb/packh");
-    ("packw", "rv64_zbkb/packw");
-    ("zip", "rv32_zbkb/zip");
-    ("unzip", "rv32_zbkb/unzip");
+    (Opcode.Brev8, "rv_zbkb/brev8");
+    (Opcode.Pack, "rv_zbkb/pack");
+    (Opcode.Packh, "rv_zbkb/packh");
+    (Opcode.Packw, "rv64_zbkb/packw");
+    (Opcode.Zip, "rv32_zbkb/zip");
+    (Opcode.Unzip, "rv32_zbkb/unzip");
   ]
 
-let zbkx_forms = [ ("xperm4", "rv_zbkx/xperm4"); ("xperm8", "rv_zbkx/xperm8") ]
+let zbkx_forms = [ (Opcode.Xperm4, "rv_zbkx/xperm4"); (Opcode.Xperm8, "rv_zbkx/xperm8") ]
 
 let zknd_forms =
   [
-    ("aes64ds", "rv64_zknd/aes64ds");
-    ("aes64dsm", "rv64_zknd/aes64dsm");
-    ("aes64ks2", "rv64_zknd/aes64ks2");
-    ("aes64im", "rv64_zknd/aes64im");
-    ("aes64ks1i", "rv64_zknd/aes64ks1i");
-    ("aes32dsi", "rv32_zknd/aes32dsi");
-    ("aes32dsmi", "rv32_zknd/aes32dsmi");
+    (Opcode.Aes64ds, "rv64_zknd/aes64ds");
+    (Opcode.Aes64dsm, "rv64_zknd/aes64dsm");
+    (Opcode.Aes64ks2, "rv64_zknd/aes64ks2");
+    (Opcode.Aes64im, "rv64_zknd/aes64im");
+    (Opcode.Aes64ks1i, "rv64_zknd/aes64ks1i");
+    (Opcode.Aes32dsi, "rv32_zknd/aes32dsi");
+    (Opcode.Aes32dsmi, "rv32_zknd/aes32dsmi");
   ]
 
 let zkne_forms =
   [
-    ("aes64es", "rv64_zkne/aes64es");
-    ("aes64esm", "rv64_zkne/aes64esm");
-    ("aes32esi", "rv32_zkne/aes32esi");
-    ("aes32esmi", "rv32_zkne/aes32esmi");
+    (Opcode.Aes64es, "rv64_zkne/aes64es");
+    (Opcode.Aes64esm, "rv64_zkne/aes64esm");
+    (Opcode.Aes32esi, "rv32_zkne/aes32esi");
+    (Opcode.Aes32esmi, "rv32_zkne/aes32esmi");
   ]
 
 let zknh_forms =
   [
-    ("sha256sum0", "rv_zknh/sha256sum0");
-    ("sha256sum1", "rv_zknh/sha256sum1");
-    ("sha256sig0", "rv_zknh/sha256sig0");
-    ("sha256sig1", "rv_zknh/sha256sig1");
-    ("sha512sum0", "rv64_zknh/sha512sum0");
-    ("sha512sum1", "rv64_zknh/sha512sum1");
-    ("sha512sig0", "rv64_zknh/sha512sig0");
-    ("sha512sig1", "rv64_zknh/sha512sig1");
-    ("sha512sum0r", "rv32_zknh/sha512sum0r");
-    ("sha512sum1r", "rv32_zknh/sha512sum1r");
-    ("sha512sig0l", "rv32_zknh/sha512sig0l");
-    ("sha512sig1l", "rv32_zknh/sha512sig1l");
-    ("sha512sig0h", "rv32_zknh/sha512sig0h");
-    ("sha512sig1h", "rv32_zknh/sha512sig1h");
+    (Opcode.Sha256sum0, "rv_zknh/sha256sum0");
+    (Opcode.Sha256sum1, "rv_zknh/sha256sum1");
+    (Opcode.Sha256sig0, "rv_zknh/sha256sig0");
+    (Opcode.Sha256sig1, "rv_zknh/sha256sig1");
+    (Opcode.Sha512sum0, "rv64_zknh/sha512sum0");
+    (Opcode.Sha512sum1, "rv64_zknh/sha512sum1");
+    (Opcode.Sha512sig0, "rv64_zknh/sha512sig0");
+    (Opcode.Sha512sig1, "rv64_zknh/sha512sig1");
+    (Opcode.Sha512sum0r, "rv32_zknh/sha512sum0r");
+    (Opcode.Sha512sum1r, "rv32_zknh/sha512sum1r");
+    (Opcode.Sha512sig0l, "rv32_zknh/sha512sig0l");
+    (Opcode.Sha512sig1l, "rv32_zknh/sha512sig1l");
+    (Opcode.Sha512sig0h, "rv32_zknh/sha512sig0h");
+    (Opcode.Sha512sig1h, "rv32_zknh/sha512sig1h");
   ]
 
-let zksed_forms = [ ("sm4ed", "rv_zksed/sm4ed"); ("sm4ks", "rv_zksed/sm4ks") ]
-let zksh_forms = [ ("sm3p0", "rv_zksh/sm3p0"); ("sm3p1", "rv_zksh/sm3p1") ]
-let zicond_forms = [ ("czero.eqz", "rv_zicond/czero.eqz"); ("czero.nez", "rv_zicond/czero.nez") ]
+let zksed_forms = [ (Opcode.Sm4ed, "rv_zksed/sm4ed"); (Opcode.Sm4ks, "rv_zksed/sm4ks") ]
+let zksh_forms = [ (Opcode.Sm3p0, "rv_zksh/sm3p0"); (Opcode.Sm3p1, "rv_zksh/sm3p1") ]
+
+let zicond_forms =
+  [ (Opcode.Czero_eqz, "rv_zicond/czero.eqz"); (Opcode.Czero_nez, "rv_zicond/czero.nez") ]
 
 let component ~feature ~summary forms =
   Riscv_ext.component ~id:("riscv." ^ feature) ~feature ~legal ~summary forms
