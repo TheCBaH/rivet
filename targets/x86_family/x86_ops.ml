@@ -6118,6 +6118,71 @@ let () =
 
 let all = Array.of_list (List.rev !registry)
 
+(* {1 Views} What the encoder reads: each table's opcodes and bytes, an opcode's component, and the
+   mode it exists in. *)
+
+let index =
+  lazy
+    (let h = Hashtbl.create 512 in
+     Array.iter (fun e -> Hashtbl.replace h e.op e) all;
+     h)
+
+let entry op = Hashtbl.find_opt (Lazy.force index) op
+let code f op = Option.bind (entry op) (fun e -> List.assoc_opt f e.forms)
+
+(* An opcode's byte in [f], or [-1]. *)
+let code_or_none f op = Option.value (code f op) ~default:(-1)
+
+let of_code f n =
+  Array.fold_left
+    (fun acc e ->
+      match acc with
+      | Some _ -> acc
+      | None -> if List.assoc_opt f e.forms = Some n then Some e.op else None)
+    None all
+
+(* [f]'s entries, as the codec tables take them. *)
+let table f =
+  Array.fold_right
+    (fun e acc ->
+      match List.assoc_opt f e.forms with Some n -> (e.op, Int64.of_int n) :: acc | None -> acc)
+    all []
+
+(* The ModR/M extension and opcode of an immediate vector shift, legacy or VEX. *)
+let shift_ext_opcode op =
+  match (code Form.Xmm_shift_ext op, code Form.Xmm_shift_opcode op) with
+  | Some x, Some o -> Some (x, o)
+  | _ -> (
+      match (code Form.Vex_shift_ext op, code Form.Vex_shift_opcode op) with
+      | Some x, Some o -> Some (x, o)
+      | _ -> None)
+
+let of_shift ~ext:(fx, fo) ~opcode x =
+  Array.fold_left
+    (fun acc e ->
+      match acc with
+      | Some _ -> acc
+      | None ->
+          if List.assoc_opt fx e.forms = Some x && List.assoc_opt fo e.forms = Some opcode then
+            Some e.op
+          else None)
+    None all
+
+let of_xmm_shift ~opcode x = of_shift ~ext:(Form.Xmm_shift_ext, Form.Xmm_shift_opcode) ~opcode x
+let of_vex_shift ~opcode x = of_shift ~ext:(Form.Vex_shift_ext, Form.Vex_shift_opcode) ~opcode x
+let feature op = Option.bind (entry op) (fun e -> e.feature)
+
+(* The opcodes [feature] publishes. *)
+let of_feature f =
+  Array.fold_right (fun e acc -> if e.feature = Some f then e.op :: acc else acc) all []
+
+(* Whether [op] exists in the mode whose address width is [bits]. *)
+let in_mode ~bits op =
+  match Option.map (fun e -> e.mode) (entry op) with
+  | Some Only32 -> bits = 32
+  | Some Only64 -> bits = 64
+  | Some Both | None -> true
+
 (* {1 Builders} *)
 let add a = mk Opcode.Add S.s_add a
 let add_rrr a = mk Opcode.Add S.s_add_rrr a

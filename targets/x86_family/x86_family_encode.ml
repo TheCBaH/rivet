@@ -24,6 +24,437 @@ module C = Codec
 include X86_types
 module X86_ops = X86_ops
 
+(* The lowered instruction names an *encoding shape*, not a mnemonic:
+   [Lowered.Alu_rm_imm] with [ext = 5] is `sub` and with [ext = 0] is `add`,
+   because the machine encodes both as opcode 0x83 with the operation in the
+   ModR/M reg field. A lowered type that still said "sub" would have to say it
+   twice - once as the constructor and once as the extension - and the two
+   could disagree. *)
+module Lowered = struct
+  (** [0x9E] (M5 - same fixture as {!Fnstsw}): load [%ah] into the
+            flags register, bare, no operand, {!Fucomp}/{!Fnstsw}'s exact fixed-opcode shape. *)
+  type t =
+    | Alu_rm_imm of { ext : int; width : int; rm : Rm.t; imm : Disp.t }
+        (** [imm] is a [Disp.t] rather than a bare [int64], for the same reason
+            as {!Mov_r_imm}'s: gcc's `addq $bodies+24, %rax` (M5,
+            the corpus notes) writes a symbol's address as an ALU
+            immediate. *)
+    | Mov_r_imm of { width : int; reg : Reg.t; imm : Disp.t }
+        (** [imm] is a [Disp.t] rather than a bare [int64] - unlike every other
+            immediate-carrying form here - because this is the one place a
+            gcc-only idiom (M5 - [movl $.LC0,%edi]) writes
+            a symbol's address as an immediate rather than through a memory
+            operand; see {!sym_imm32}. *)
+    | Mov_rm_r of { width : int; rm : Rm.t; reg : Reg.t }
+    | Mov_r_rm of { width : int; reg : Reg.t; rm : Rm.t }
+    | Lea of { width : int; reg : Reg.t; mem : Mem.t }
+    | Ret
+    | Mov_rm_imm of { width : int; rm : Rm.t; imm : int64 }
+        (** imm-to-memory move; M1 only ever builds [width = 8]. *)
+    | Alu_rm_r of { op : Opcode.t; width : int; rm : Rm.t; reg : Reg.t }
+        (** the r/m-written direction of a two-operand ALU op: one opcode byte selects which. *)
+    | Imul_r_rm of { width : int; reg : Reg.t; rm : Rm.t }
+        (** [0f af /r], and the other direction: the register operand is the destination. *)
+    | Imul_r_rm_imm of { width : int; reg : Reg.t; rm : Rm.t; imm : int64 }
+        (** [0x69 /r id] / [0x6B /r ib] (M5 - [imull $10000,%ebx], [imulq
+            $56,%rax]): the two-operand AT&T form, where GAS writes the same register as both
+            source and destination - [reg] and [rm] are therefore always equal at construction,
+            never independently chosen the way the real three-operand instruction otherwise
+            allows, since nothing here selects a genuine [imul $imm,src,dst]. *)
+    | Test_rm_imm of { width : int; rm : Rm.t; imm : int64 }
+        (** [0xF7 /0 id] (M5 - [testl $1,%edi]): TEST's own immediate form,
+            structurally like {!Unary_rm}'s opcode and ext-in-ModR/M-reg layout but with a
+            trailing immediate {!Unary_rm}'s forms never carry - so it is its own constructor
+            rather than a field added to that one. Always a full-width immediate: unlike
+            {!Alu_rm_imm}, TEST has no imm8/imm32 dual encoding to choose between. *)
+    | Cmov_r_rm of { cc : Cc.t; width : int; reg : Reg.t; rm : Rm.t }  (** [0f 4x /r] *)
+    | Ud2
+    | Pop of { reg : Reg.t }
+    | Bswap_r of { width : int; reg : Reg.t }
+        (** [bswap %r32]/[bswap %r64] ([0F C8+r], REX.W for 64): the compiler's
+            [__builtin_bswap]/[__builtin_bswap64] (compiler-output evidence). *)
+    | Jmp_rm of { rm : Rm.t }
+    | Jmp_rel of { target : Asm_core.Lowered_ast.branch }
+    | Jcc_rel of { cc : Cc.t; target : Asm_core.Lowered_ast.branch }
+        (** The two relaxing forms: [eb/e9] and [7x/0f 8x]. Unlike [call] these really do have two
+            rungs, which is the whole reason {!Codec.Relax} exists. *)
+    | Short_rel of { op : Short.t; target : Asm_core.Lowered_ast.branch }
+        (** a rel8-only branch ([e2] loop, [e1] loope, [e0] loopne, [e3] jecxz/jrcxz, with
+            0x67 where the counter is not the address width): one rung, so an out-of-range
+            target is an error, not a longer form *)
+    | Call_rel of { target : Asm_core.Lowered_ast.branch }
+        (** [e8 rel32]. The target is [Symbolic] from lowering and [Resolved] only from decode; the
+            encoder dispatches on which, so a resolved displacement never rebuilds a ladder and a
+            symbolic one never pretends to have a value. *)
+    | Push of { reg : Reg.t }  (** [0x50+r], mirroring {!Pop}'s [0x58+r]. *)
+    | Push_imm of { imm : Disp.t }
+        (** [0x6a ib] / [0x68 id] (M5 - [pushl $sym]): push's own immediate
+            form, disjoint from {!Push}'s register-only [0x50+r]. [imm] is a {!Disp.t} for the
+            same reason {!Mov_r_imm}'s and {!Alu_rm_imm}'s are - GAS lets [$sym] stand in for a
+            numeric literal here too - and like {!Alu_rm_imm} it sign-extends, confirmed by real
+            [as] emitting [R_X86_64_32S] for the symbolic case the same way it does there. *)
+    | Dec of { reg : Reg.t }
+        (** [0x48+r] - the single-byte 32-bit-only form; the general [0xFF /1] group is
+            unimplemented, no fixture selects it. *)
+    | Unary_rm of { ext : int; width : int; rm : Rm.t }
+        (** Group-3 (opcode [0xF7]): [Neg]/[Mul]/[Div], one r/m operand, no immediate - the same
+            "opcode plus ModR/M-reg extension" idea as {!Alu_rm_imm}, a disjoint table. *)
+    | Alu_r_rm of { op : Opcode.t; width : int; reg : Reg.t; rm : Rm.t }
+        (** The reg<-rm ALU direction: {!Alu_rm_r}'s mirror image, needed only because [Adc]/[Add]
+            (M4, docs/design.md §12) are measured writing the register operand rather than the
+            r/m one - [adcl 0x20(%esp),%edx]. *)
+    | Shift1_rm of { ext : int; width : int; rm : Rm.t }
+        (** Group-2 shift/rotate-by-1 (opcode [0xD1]): a literal count of 1, always chosen over
+            {!Shift_imm_rm} when the count is exactly 1 (GAS's own canonical choice - one byte
+            shorter). *)
+    | Shift_imm_rm of { ext : int; width : int; rm : Rm.t; imm : int64 }
+        (** Group-2 general immediate count (opcode [0xC1 ib], M5 corpus evidence -
+            [rorl $27,%eax], [sall $16,%eax], [sarl $2,%eax], [shrq $63,%rax]). Register
+            destination only - unlike {!Alu_rm_imm}, no fixture here selects a memory destination,
+            so it is not built (the same "measured forms only" scoping as everywhere else in this
+            module). *)
+    | Shift_cl_rm of { ext : int; width : int; rm : Rm.t }
+        (** Group-2 count-in-%cl (opcode [0xD3], M5 corpus evidence - [sall %cl,%eax]). Register
+            destination only, for the same reason as {!Shift_imm_rm}. *)
+    | Shld_imm_rm of { width : int; reg : Reg.t; rm : Rm.t; imm : int64 }
+        (** [0F A4 /r ib] (M5 - [shldl $6,%ecx,%eax]): SHLD's own
+            immediate-count double-precision shift, structurally {!imul_imm_form}'s two-byte-
+            opcode-plus-trailing-imm shape rather than {!Shift_imm_rm}'s: the ModR/M reg field is
+            a genuine register operand here (the bit-supplying source), not an extension code, so
+            [reg] and [rm] mirror {!Alu_r_rm}'s pair rather than {!Shift_imm_rm}'s [ext]. Register
+            destination only - no fixture in this corpus selects a memory destination. *)
+    | Sse_binop_r_rm of { op : Opcode.t; reg : Reg.t; rm : Rm.t }
+        (** [\[66/F2/F3/none\] 0F opcode /r], reg<-rm (M5 corpus evidence, the corpus notes):
+            the SSE2 scalar-float arithmetic/compare/move family - [addsd subsd mulsd divsd addss
+            subss mulss divss comisd comiss xorpd movapd cvtsd2ss cvtss2sd]. [reg] and a register
+            [rm] are always xmm (width 128); a memory [rm] is unconstrained, as for any other ALU
+            form. One constructor covers all fourteen mnemonics, encoded as four [C.alt]
+            alternatives grouped by mandatory prefix - not fourteen, and not one, since the
+            mandatory-prefix byte is fixed per alternative rather than a table value (see the
+            encoder's own comment on why one alt per mnemonic-family, not one per mnemonic, was
+            rejected). *)
+    | Sse_mov_r_rm of { op : Opcode.t; reg : Reg.t; rm : Rm.t }
+        (** [F2/F3 0F 10 /r], the load direction of [movsd]/[movss]: xmm<-(xmm or mem). Split from
+            {!Sse_binop_r_rm} because these two mnemonics are the only ones here with a real second
+            (store) direction. *)
+    | Sse_mov_rm_r of { op : Opcode.t; rm : Rm.t; reg : Reg.t }
+        (** [F2/F3 0F 11 /r], the store direction: (xmm or mem)<-xmm. *)
+    | Sse_binop_imm_r_rm of { op : Opcode.t; reg : Reg.t; rm : Rm.t; imm : int64 }
+        (** [\[66/none\] 0F C6 /r ib] - {!Sse_binop_r_rm}'s trailing-immediate sibling
+            ([shufps]/[shufpd] only): the first XMM-immediate-carrying legacy shape, a plain
+            [Disp.t]-free [int64] since a shuffle selector is never a symbol the way
+            {!Alu_rm_imm}'s immediate can be. *)
+    | Cvtsi2f_r_rm of { op : Opcode.t; width : int; reg : Reg.t; rm : Rm.t }
+        (** [F2/F3 0F 2A /r], xmm<-(r/m32 or r/m64) - [cvtsi2sd]/[cvtsi2ss]. [reg] is xmm; [rm] is
+            a GPR (or memory) at [width], which is also what selects REX.W - the compiler always
+            spells the 64-bit source explicitly ([cvtsi2sdq]), so [width] comes from the mnemonic,
+            not inferred from an operand. *)
+    | Cvtf2i_r_rm of { width : int; reg : Reg.t; rm : Rm.t }
+        (** [F2 0F 2C /r], (r32 or r64)<-(xmm or m64) - [cvttsd2si] only ([cvttss2si] is unevidenced
+            by this corpus). [reg] is a GPR at [width]; [rm] is xmm (or memory). *)
+    | Movd_rm_r of { op : Opcode.t; width : int; rm : Rm.t; reg : Reg.t }
+        (** [66 0F 7E /r] - {!Cvtsi2f_r_rm}'s store-direction sibling for [movd]/[movq]:
+            (gpr-or-mem)<-xmm. Byte-for-byte the same ModR/M-reg=xmm/ModR/M-rm=gpr-or-mem field
+            layout and REX.W-selecting [width] as {!Cvtsi2f_r_rm} (confirmed against real GNU as:
+            [movd %xmm0,%eax] -> [66 0f 7e c0], identical ModR/M byte to [movd %eax,%xmm0]'s own
+            [66 0f 6e c0], only the opcode byte differs) - but [reg] (xmm) is the source here
+            rather than the destination, so this is printed reg-first ([Sse_mov_rm_r]'s own AT&T
+            order) rather than {!Cvtsi2f_r_rm}'s rm-first order, the reason this is a distinct
+            constructor rather than a reuse. *)
+    | Vex_binop_rr_rm of { op : Opcode.t; dst : Reg.t; src1 : Reg.t; src2 : Rm.t }
+        (** [VEX.LIG.F2.0F.WIG opcode /r] - {!Opcode.Vaddsd}'s non-destructive three-operand
+            shape: [dst := src1 op src2]. [src2] is the ModR/M r/m field, register or memory;
+            a register [src2] is restricted to xmm0-7 and a memory [src2]'s base/index (if
+            present) to the low 8 GPRs - the two-byte-VEX prefix carries only a [vvvv] field
+            and one extension bit (for [dst]'s ModR/M reg field, in the [R] bit), with no
+            REX.X/B equivalent to extend a ModR/M r/m register or a SIB base/index past 7
+            ({!Opcode.Vaddsd}'s own comment has the byte-level detail). [src1] is the VEX
+            prefix's own [vvvv] field, which reaches all of xmm0-15 directly with no separate
+            extension bit; [dst] is the ModR/M reg field, extended by the VEX prefix's own R
+            bit exactly as REX.R would. *)
+    | Vex_unop_r_rm of { op : Opcode.t; dst : Reg.t; src : Rm.t }
+        (** [VEX.128.pp.0F.WIG opcode /r] - {!Vex_binop_rr_rm}'s two-operand sibling for a VEX
+            mnemonic with no real [vvvv] operand ({!Opcode.Vsqrtps}'s own comment): [dst :=
+            f(src)]. The VEX prefix's [vvvv] field is architecturally unused (must be [1111])
+            for these forms - confirmed against real GNU as, which rejects a third operand
+            outright - so unlike {!Vex_binop_rr_rm} this shape has no [src1] field at all, and
+            the codec always emits the literal [1111] bit pattern rather than deriving it from
+            an operand. [src] is the ModR/M r/m field, subject to the same xmm0-7/low-8-GPR
+            two-byte-VEX restriction as {!Vex_binop_rr_rm}'s [src2]. *)
+    | Vex_binop_imm_rr_rm of { op : Opcode.t; dst : Reg.t; src1 : Reg.t; src2 : Rm.t; imm : int64 }
+        (** [VEX.128.pp.0F.WIG opcode /r ib] - {!Vex_binop_rr_rm}'s trailing-immediate sibling
+            ([vshufps]/[vshufpd] only): identical operand roles and two-byte-VEX restrictions,
+            plus a genuine imm8 selector {!Vex_binop_rr_rm} has no field for. *)
+    | Vex_unop_imm_r_rm of { op : Opcode.t; dst : Reg.t; src : Rm.t; imm : int64 }
+        (** [VEX.128.pp.0F.WIG opcode /r ib] - {!Vex_unop_r_rm}'s trailing-immediate sibling
+            ([vpshufd]/[vpshuflw]/[vpshufhw] only): identical two-operand shape and two-byte-VEX
+            restriction, plus a genuine imm8 selector {!Vex_unop_r_rm} has no field for - unlike
+            {!Vex_binop_imm_rr_rm} there is no [src1]/[vvvv] operand at all, architecturally
+            unused (the literal [1111] pattern) the same way {!Vex_unop_r_rm}'s own [vvvv] is. *)
+    | Vex_movd_r_rm of { op : Opcode.t; dst : Reg.t; rm : Rm.t }
+        (** [VEX.128.66.0F.W0 6E /r] - {!Opcode.Vmovd}'s load direction, (gpr-or-mem)->xmm: the
+            VEX, GPR-crossing sibling of {!Vex_unop_r_rm}, built because {!Vex_unop_r_rm}'s own
+            [dst] is always constructed at width 128 (xmm), which does not fit [movd]'s GPR
+            destination-or-source pairing - mirrors {!Cvtsi2f_r_rm}'s load-direction role instead,
+            minus its [width] field, since {!Opcode.Vmovd}'s own comment explains why no REX.W-
+            equivalent variant exists in the two-byte VEX prefix at all (always GPR32). [dst] is
+            the ModR/M reg field (VEX.R-extended, reaching xmm0-15); [rm] is the ModR/M r/m field,
+            register or memory, subject to the same xmm0-7-or-low-8-GPR/low-8-base-index
+            two-byte-VEX restriction as {!Vex_unop_r_rm}'s own [src]. *)
+    | Vex_movd_rm_r of { op : Opcode.t; rm : Rm.t; reg : Reg.t }
+        (** [VEX.128.66.0F.W0 7E /r] - {!Vex_movd_r_rm}'s store-direction sibling: (gpr-or-mem)<-
+            xmm. Byte-for-byte the same field layout, only the opcode byte differs - [reg] (xmm)
+            is the source here rather than the destination, so this is printed reg-first
+            ({!Movd_rm_r}'s own AT&T order) rather than {!Vex_movd_r_rm}'s rm-first order, the
+            reason this is a distinct constructor rather than a reuse, exactly as {!Movd_rm_r}
+            is distinct from {!Cvtsi2f_r_rm}. *)
+    | Xmm_shift_imm_rm of { op : Opcode.t; rm : Rm.t; imm : int64 }
+        (** [66 0F 71/72/73 /ext ib] ({!Opcode.Psllw}'s own doc comment): the
+            immediate-count sibling of {!Sse_binop_r_rm}'s register/memory-count shift family
+            ([psllw]/[pslld]/[psllq]/[psrlw]/[psrld]/[psrlq]/[psraw]/[psrad]). The ModR/M reg
+            field is a fixed per-mnemonic opcode extension, the same "group" idea as
+            {!Shift_imm_rm}'s own [ext] - but unlike {!Shift_imm_rm}, [rm] is register-only:
+            confirmed against real GNU as, this iform has no memory alternative at all (XED's own
+            pattern fixes MOD=3). *)
+    | Vex_shift_imm_rm of { op : Opcode.t; dst : Reg.t; rm : Rm.t; imm : int64 }
+        (** [VEX.128.66.0F.WIG 71/72/73 /ext ib] - {!Xmm_shift_imm_rm}'s VEX sibling
+            ([vpsllw]/etc.): [dst] is the VEX prefix's own [vvvv] field (write), [rm] the ModR/M
+            r/m field (read, register-only for the same reason as {!Xmm_shift_imm_rm}'s own
+            [rm]) - unlike every other VEX immediate-carrying shape here, the ModR/M reg field
+            carries the same fixed opcode extension as the legacy form rather than a third
+            register operand, so there is no genuine third-register role despite [vvvv] being
+            real (unlike {!Vex_unop_imm_r_rm}'s architecturally-unused [vvvv]). *)
+    | Setcc_rm of { cc : Cc.t; rm : Rm.t }
+        (** [0F 90+cc /0] (M5 corpus evidence - [sete %al], [setl %r8b]). Always 8-bit; the ModR/M
+            reg field is a fixed 0, not an operand or an extension table lookup - the condition is
+            already fully carried by the opcode byte, the same way {!Cmov_r_rm}'s is. *)
+    | Movx_r_rm of { zero_extend : bool; src_width : int; width : int; reg : Reg.t; rm : Rm.t }
+        (** [0F B6/B7/BE/BF /r] (M5 corpus evidence - [movzbl], [movsbl]): zero- or sign-extending
+            move, [src_width] (8 or 16, the ModR/M-side width) always less than [width] (the
+            ModR/M-reg-side, destination width - REX.W's source, exactly as {!Cvtsi2f_r_rm}'s own
+            comment explains for a different width-mismatched pair). The 32-bit-source sign-extend
+            ([movslq], opcode [0x63]) is a structurally different encoding and is
+            {!Movsxd_r_rm} instead, not a third [src_width] here. *)
+    | Movsxd_r_rm of { reg : Reg.t; rm : Rm.t }
+        (** [0x63 /r] (M5 corpus evidence - [movslq]), REX.W mandatory: sign-extend r/m32 to r64.
+            Not a [Movx_r_rm] with [src_width = 32] - unlike the B6/B7/BE/BF family this is a
+            single fixed opcode byte with no zero-extending counterpart ([movzlq] is not a real
+            instruction; a 32-bit write already zero-extends). *)
+    | Fpu_mem of { op : Opcode.t; mem : Mem.t }
+        (** [0xD9|0xDD /ext] (M5 corpus evidence - [fldl]/[fstpl]/[fstps]): the x87 load/store-
+            and-pop family, evidenced only against a memory operand - the mod=11 ModR/M shape
+            this opcode family also permits means an [%st(n)] register operand instead, which no
+            fixture here selects, so [mem] is a bare {!Mem.t} rather than the general {!Rm.t}
+            every GPR/xmm form above uses. [op] picks the opcode byte and ModR/M-reg extension
+            the same way {!Sse_binop_r_rm}'s does. *)
+    | Fadd_st0_x87 of { src : Reg.t }
+        (** [0xD8 0xC0+i], with an implicit ST0 destination and explicit ST(i)
+            source.  Separate from {!Fpu_mem}: MOD=11 means a stack register,
+            not a memory address. *)
+    | Fucomp
+        (** [0xDD 0xE9] (M5 - i64_dtou.S's own bare [fucomp]): x87
+            compare-and-pop against the fixed stack slot [%st(1)] - GAS's bare, no-operand
+            spelling of [fucomp %st(1)], the only form this corpus evidences, so unlike
+            {!Fpu_mem} this carries no operand at all rather than a general [%st(n)]. *)
+    | Fnstsw
+        (** [0xDF 0xE0] (M5 - i64_dtou.S's own [fnstsw %ax]): x87
+            store-status-word, {!Fucomp}'s exact "fixed two-byte word, no operand" shape - the
+            [%ax] destination is implicit in the opcode and checked away in
+            {!simplify_instruction} rather than carried here. *)
+    | Sahf
+    | Table of { row : Row.t; ops : Operand.t list }
+        (** a generated {!X86_table_rows} row (DEC-X86-TABLE); [row] names the mnemonic, and
+            encoding tries every row spelled the same way *)
+
+  let pp ppf = function
+    | Alu_rm_imm { ext; width; rm; imm } ->
+        Fmt.pf ppf "%s%s $%s, %a"
+          (match X86_ops.of_code X86_ops.Form.Alu_ext ext with
+          | Some o -> Opcode.name o
+          | None -> "alu?")
+          (suffix_of_width width) (Disp.to_string imm) Rm.pp rm
+    | Mov_r_imm { width; reg; imm } ->
+        Fmt.pf ppf "mov%s $%s, %a" (suffix_of_width width) (Disp.to_string imm) Reg.pp reg
+    | Mov_rm_r { width; rm; reg } ->
+        Fmt.pf ppf "mov%s %a, %a" (suffix_of_width width) Reg.pp reg Rm.pp rm
+    | Mov_r_rm { width; reg; rm } ->
+        Fmt.pf ppf "mov%s %a, %a" (suffix_of_width width) Rm.pp rm Reg.pp reg
+    | Lea { width; reg; mem } ->
+        Fmt.pf ppf "lea%s %a, %a" (suffix_of_width width) Mem.pp mem Reg.pp reg
+    | Ret -> Fmt.string ppf "ret"
+    | Mov_rm_imm { width; rm; imm } ->
+        Fmt.pf ppf "mov%s $%Ld, %a" (suffix_of_width width) imm Rm.pp rm
+    | Alu_rm_r { op; width; rm; reg } ->
+        Fmt.pf ppf "%s%s %a, %a" (Opcode.name op) (suffix_of_width width) Reg.pp reg Rm.pp rm
+    | Imul_r_rm { width; reg; rm } ->
+        Fmt.pf ppf "imul%s %a, %a" (suffix_of_width width) Rm.pp rm Reg.pp reg
+    | Imul_r_rm_imm { width; imm; rm; _ } ->
+        Fmt.pf ppf "imul%s $%Ld, %a" (suffix_of_width width) imm Rm.pp rm
+    | Test_rm_imm { width; rm; imm } ->
+        Fmt.pf ppf "test%s $%Ld, %a" (suffix_of_width width) imm Rm.pp rm
+    (* No size suffix: both operands are registers, so the width is already on
+       the line, and GAS writes none either. *)
+    | Cmov_r_rm { cc; reg; rm; _ } -> Fmt.pf ppf "cmov%s %a, %a" (Cc.name cc) Rm.pp rm Reg.pp reg
+    | Ud2 -> Fmt.string ppf "ud2"
+    | Pop { reg } -> Fmt.pf ppf "pop %a" Reg.pp reg
+    | Bswap_r { reg; _ } -> Fmt.pf ppf "bswap %a" Reg.pp reg
+    | Jmp_rm { rm } -> Fmt.pf ppf "jmp *%a" Rm.pp rm
+    | Jmp_rel { target } -> Fmt.pf ppf "jmp %a" Asm_core.Lowered_ast.pp_branch target
+    | Jcc_rel { cc; target } ->
+        Fmt.pf ppf "j%s %a" (Cc.name cc) Asm_core.Lowered_ast.pp_branch target
+    | Call_rel { target } -> Fmt.pf ppf "call %a" Asm_core.Lowered_ast.pp_branch target
+    | Short_rel { op; target } ->
+        Fmt.pf ppf "%s %a" (Short.name op) Asm_core.Lowered_ast.pp_branch target
+    | Push { reg } -> Fmt.pf ppf "push %a" Reg.pp reg
+    | Push_imm { imm } -> Fmt.pf ppf "push $%s" (Disp.to_string imm)
+    | Dec { reg } -> Fmt.pf ppf "dec %a" Reg.pp reg
+    | Unary_rm { ext; width; rm } -> (
+        let name =
+          match X86_ops.of_code X86_ops.Form.Unary_ext ext with
+          | Some o -> Opcode.name o
+          | None -> "unary?"
+        in
+        match rm with
+        | Rm.Reg _ -> Fmt.pf ppf "%s %a" name Rm.pp rm
+        | Rm.Mem _ -> Fmt.pf ppf "%s%s %a" name (suffix_of_width width) Rm.pp rm)
+    | Alu_r_rm { op; reg; rm; _ } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
+    | Shift1_rm { ext; width; rm } -> (
+        let name =
+          match X86_ops.of_code X86_ops.Form.Shift_ext ext with
+          | Some o -> Opcode.name o
+          | None -> "shift1?"
+        in
+        match rm with
+        | Rm.Reg _ -> Fmt.pf ppf "%s $1, %a" name Rm.pp rm
+        | Rm.Mem _ -> Fmt.pf ppf "%s%s $1, %a" name (suffix_of_width width) Rm.pp rm)
+    | Shift_imm_rm { ext; imm; rm; _ } ->
+        let name =
+          match X86_ops.of_code X86_ops.Form.Shift_ext ext with
+          | Some o -> Opcode.name o
+          | None -> "shift?"
+        in
+        Fmt.pf ppf "%s $%Ld, %a" name imm Rm.pp rm
+    | Shift_cl_rm { ext; rm; _ } ->
+        let name =
+          match X86_ops.of_code X86_ops.Form.Shift_ext ext with
+          | Some o -> Opcode.name o
+          | None -> "shift?"
+        in
+        Fmt.pf ppf "%s %%cl, %a" name Rm.pp rm
+    | Shld_imm_rm { imm; reg; rm; _ } -> Fmt.pf ppf "shld $%Ld, %a, %a" imm Reg.pp reg Rm.pp rm
+    | Setcc_rm { cc; rm } -> Fmt.pf ppf "set%s %a" (Cc.name cc) Rm.pp rm
+    | Movx_r_rm { zero_extend; reg; rm; _ } ->
+        Fmt.pf ppf "%s %a, %a" (if zero_extend then "movzx" else "movsx") Rm.pp rm Reg.pp reg
+    | Movsxd_r_rm { reg; rm } -> Fmt.pf ppf "movslq %a, %a" Rm.pp rm Reg.pp reg
+    | Sse_binop_r_rm { op; reg; rm } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
+    | Sse_mov_r_rm { op; reg; rm } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
+    | Sse_mov_rm_r { op; rm; reg } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Reg.pp reg Rm.pp rm
+    | Sse_binop_imm_r_rm { op; reg; rm; imm } ->
+        Fmt.pf ppf "%s $%Ld, %a, %a" (Opcode.name op) imm Rm.pp rm Reg.pp reg
+    | Cvtsi2f_r_rm { op; reg; rm; _ } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp reg
+    | Cvtf2i_r_rm { reg; rm; _ } -> Fmt.pf ppf "cvttsd2si %a, %a" Rm.pp rm Reg.pp reg
+    | Movd_rm_r { op; reg; rm; _ } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Reg.pp reg Rm.pp rm
+    | Vex_binop_rr_rm { op; dst; src1; src2 } ->
+        Fmt.pf ppf "%s %a, %a, %a" (Opcode.name op) Rm.pp src2 Reg.pp src1 Reg.pp dst
+    | Vex_unop_r_rm { op; dst; src } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp src Reg.pp dst
+    | Vex_binop_imm_rr_rm { op; dst; src1; src2; imm } ->
+        Fmt.pf ppf "%s $%Ld, %a, %a, %a" (Opcode.name op) imm Rm.pp src2 Reg.pp src1 Reg.pp dst
+    | Vex_unop_imm_r_rm { op; dst; src; imm } ->
+        Fmt.pf ppf "%s $%Ld, %a, %a" (Opcode.name op) imm Rm.pp src Reg.pp dst
+    | Vex_movd_r_rm { op; dst; rm } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Rm.pp rm Reg.pp dst
+    | Vex_movd_rm_r { op; rm; reg } -> Fmt.pf ppf "%s %a, %a" (Opcode.name op) Reg.pp reg Rm.pp rm
+    | Xmm_shift_imm_rm { op; rm; imm } -> Fmt.pf ppf "%s $%Ld, %a" (Opcode.name op) imm Rm.pp rm
+    | Vex_shift_imm_rm { op; dst; rm; imm } ->
+        Fmt.pf ppf "%s $%Ld, %a, %a" (Opcode.name op) imm Rm.pp rm Reg.pp dst
+    | Fpu_mem { op; mem } -> Fmt.pf ppf "%s %a" (Opcode.name op) Mem.pp mem
+    | Fadd_st0_x87 { src } -> Fmt.pf ppf "fadd %a, %%st" Reg.pp src
+    | Fucomp -> Fmt.string ppf "fucomp %st(1)"
+    | Fnstsw -> Fmt.string ppf "fnstsw %ax"
+    | Sahf -> Fmt.string ppf "sahf"
+    | Table x -> Fmt.string ppf (Row.mnemonic x.row)
+
+  let equal a b =
+    match (a, b) with
+    | Alu_rm_imm x, Alu_rm_imm y ->
+        x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm && Disp.equal x.imm y.imm
+    | Mov_r_imm x, Mov_r_imm y ->
+        x.width = y.width && Reg.equal x.reg y.reg && Disp.equal x.imm y.imm
+    | Mov_rm_r x, Mov_rm_r y -> x.width = y.width && Rm.equal x.rm y.rm && Reg.equal x.reg y.reg
+    | Mov_r_rm x, Mov_r_rm y -> x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Lea x, Lea y -> x.width = y.width && Reg.equal x.reg y.reg && Mem.equal x.mem y.mem
+    | Ret, Ret -> true
+    | Mov_rm_imm x, Mov_rm_imm y ->
+        x.width = y.width && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
+    | Alu_rm_r x, Alu_rm_r y ->
+        x.op = y.op && x.width = y.width && Rm.equal x.rm y.rm && Reg.equal x.reg y.reg
+    | Imul_r_rm x, Imul_r_rm y -> x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Imul_r_rm_imm x, Imul_r_rm_imm y ->
+        x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
+    | Test_rm_imm x, Test_rm_imm y ->
+        x.width = y.width && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
+    | Cmov_r_rm x, Cmov_r_rm y ->
+        Cc.equal x.cc y.cc && x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Ud2, Ud2 -> true
+    | Pop x, Pop y -> Reg.equal x.reg y.reg
+    | Bswap_r x, Bswap_r y -> x.width = y.width && Reg.equal x.reg y.reg
+    | Jmp_rm x, Jmp_rm y -> Rm.equal x.rm y.rm
+    | Jmp_rel x, Jmp_rel y -> Asm_core.Lowered_ast.equal_branch x.target y.target
+    | Jcc_rel x, Jcc_rel y ->
+        Cc.equal x.cc y.cc && Asm_core.Lowered_ast.equal_branch x.target y.target
+    | Call_rel x, Call_rel y -> Asm_core.Lowered_ast.equal_branch x.target y.target
+    | Short_rel x, Short_rel y -> x.op = y.op && Asm_core.Lowered_ast.equal_branch x.target y.target
+    | Push x, Push y -> Reg.equal x.reg y.reg
+    | Push_imm x, Push_imm y -> Disp.equal x.imm y.imm
+    | Dec x, Dec y -> Reg.equal x.reg y.reg
+    | Unary_rm x, Unary_rm y -> x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm
+    | Alu_r_rm x, Alu_r_rm y ->
+        x.op = y.op && x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Shift1_rm x, Shift1_rm y -> x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm
+    | Shift_imm_rm x, Shift_imm_rm y ->
+        x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
+    | Shift_cl_rm x, Shift_cl_rm y -> x.ext = y.ext && x.width = y.width && Rm.equal x.rm y.rm
+    | Shld_imm_rm x, Shld_imm_rm y ->
+        x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
+    | Setcc_rm x, Setcc_rm y -> Cc.equal x.cc y.cc && Rm.equal x.rm y.rm
+    | Movx_r_rm x, Movx_r_rm y ->
+        x.zero_extend = y.zero_extend && x.src_width = y.src_width && x.width = y.width
+        && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Movsxd_r_rm x, Movsxd_r_rm y -> Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Sse_binop_r_rm x, Sse_binop_r_rm y ->
+        x.op = y.op && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Sse_mov_r_rm x, Sse_mov_r_rm y -> x.op = y.op && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Sse_mov_rm_r x, Sse_mov_rm_r y -> x.op = y.op && Rm.equal x.rm y.rm && Reg.equal x.reg y.reg
+    | Sse_binop_imm_r_rm x, Sse_binop_imm_r_rm y ->
+        x.op = y.op && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm && x.imm = y.imm
+    | Cvtsi2f_r_rm x, Cvtsi2f_r_rm y ->
+        x.op = y.op && x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Cvtf2i_r_rm x, Cvtf2i_r_rm y ->
+        x.width = y.width && Reg.equal x.reg y.reg && Rm.equal x.rm y.rm
+    | Movd_rm_r x, Movd_rm_r y ->
+        x.op = y.op && x.width = y.width && Rm.equal x.rm y.rm && Reg.equal x.reg y.reg
+    | Vex_binop_rr_rm x, Vex_binop_rr_rm y ->
+        x.op = y.op && Reg.equal x.dst y.dst && Reg.equal x.src1 y.src1 && Rm.equal x.src2 y.src2
+    | Vex_unop_r_rm x, Vex_unop_r_rm y ->
+        x.op = y.op && Reg.equal x.dst y.dst && Rm.equal x.src y.src
+    | Vex_binop_imm_rr_rm x, Vex_binop_imm_rr_rm y ->
+        x.op = y.op && Reg.equal x.dst y.dst && Reg.equal x.src1 y.src1 && Rm.equal x.src2 y.src2
+        && x.imm = y.imm
+    | Vex_unop_imm_r_rm x, Vex_unop_imm_r_rm y ->
+        x.op = y.op && Reg.equal x.dst y.dst && Rm.equal x.src y.src && x.imm = y.imm
+    | Vex_movd_r_rm x, Vex_movd_r_rm y -> x.op = y.op && Reg.equal x.dst y.dst && Rm.equal x.rm y.rm
+    | Vex_movd_rm_r x, Vex_movd_rm_r y -> x.op = y.op && Rm.equal x.rm y.rm && Reg.equal x.reg y.reg
+    | Xmm_shift_imm_rm x, Xmm_shift_imm_rm y ->
+        x.op = y.op && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
+    | Vex_shift_imm_rm x, Vex_shift_imm_rm y ->
+        x.op = y.op && Reg.equal x.dst y.dst && Rm.equal x.rm y.rm && Int64.equal x.imm y.imm
+    | Fpu_mem x, Fpu_mem y -> x.op = y.op && Mem.equal x.mem y.mem
+    | Fadd_st0_x87 x, Fadd_st0_x87 y -> Reg.equal x.src y.src
+    | Fucomp, Fucomp -> true
+    | Fnstsw, Fnstsw -> true
+    | Sahf, Sahf -> true
+    | _ -> false
+end
+
 (* {1 Fixups}
 
    The PC-relative kinds are split by *role* rather than merged into one
@@ -535,7 +966,9 @@ module Make (M : MODE) = struct
 
   (* The separable instruction components this family publishes. The rest is the base. *)
   (* Each component with the opcodes it owns; checked against its mnemonics below. *)
-  let component_ops = [ (X86_x87.component, Opcode.x87) ]
+  let x87_ops = X86_ops.of_feature X86_x87.component.feature
+  let of_x87_mnemonic m = List.find_opt (fun o -> String.equal (Opcode.name o) m) x87_ops
+  let component_ops = [ (X86_x87.component, x87_ops) ]
   let components = List.map fst component_ops
 
   (* [config] is the validated feature set; see the RISC-V family's [target_state] for why it
@@ -1316,7 +1749,7 @@ module Make (M : MODE) = struct
        here is GAS's fixed x87 spelling for the operand's memory width, not
        a general AT&T size suffix a second one could be appended to. *)
     | m, _ when X86_x87.owns m -> (
-        match Opcode.of_x87_mnemonic m with
+        match of_x87_mnemonic m with
         | Some Opcode.Fucomp when s.Surface.ops <> [] -> bad `Fucomp_takes_operands
         | Some op -> Ok (Instruction.mk op 32 (if op = Opcode.Fucomp then [] else s.Surface.ops))
         | None -> bad (`Unknown_instruction s.Surface.mnemonic))
@@ -1605,7 +2038,7 @@ module Make (M : MODE) = struct
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
-            let ext = Opcode.to_ext i.Instruction.op in
+            let ext = X86_ops.code_or_none X86_ops.Form.Alu_ext i.Instruction.op in
             match dst with
             | Operand.Reg r -> (
                 match width_ok r with
@@ -1634,7 +2067,7 @@ module Make (M : MODE) = struct
         match width_ok r with
         | Error e -> Error e
         | Ok () ->
-            let ext = Opcode.to_ext i.Instruction.op in
+            let ext = X86_ops.code_or_none X86_ops.Form.Alu_ext i.Instruction.op in
             Ok
               [
                 Lowered.Alu_rm_imm
@@ -1768,7 +2201,7 @@ module Make (M : MODE) = struct
     (* Group-3 unary forms: one r/m operand, register or memory
        ([negl 0x10(%esp)], [neg %esi], [mull %esi], [divl %ecx]). *)
     | (Opcode.Neg | Opcode.Mul | Opcode.Div | Opcode.Not), [ dst ] -> (
-        let ext = Opcode.to_unary_ext i.Instruction.op in
+        let ext = X86_ops.code_or_none X86_ops.Form.Unary_ext i.Instruction.op in
         match dst with
         | Operand.Reg r -> (
             match width_ok r with
@@ -1785,7 +2218,7 @@ module Make (M : MODE) = struct
        runtime-i64_utod.S/i64_utof.S). Lowers straight into the same
        {!Lowered.Shift1_rm} the explicit-count-1 case builds. *)
     | (Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar), [ dst ] -> (
-        let ext = Opcode.to_shift1_ext i.Instruction.op in
+        let ext = X86_ops.code_or_none X86_ops.Form.Shift_ext i.Instruction.op in
         match dst with
         | Operand.Reg r -> (
             match width_ok r with
@@ -1808,7 +2241,7 @@ module Make (M : MODE) = struct
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
-            let ext = Opcode.to_shift1_ext i.Instruction.op in
+            let ext = X86_ops.code_or_none X86_ops.Form.Shift_ext i.Instruction.op in
             match (imm, dst) with
             | 1L, Operand.Reg r -> (
                 match width_ok r with
@@ -1839,7 +2272,7 @@ module Make (M : MODE) = struct
        the immediate-count form above. *)
     | (Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar), [ Operand.Reg cl; dst ]
       when Reg.width cl = 8 && cl.Reg.num = 1 -> (
-        let ext = Opcode.to_shift1_ext i.Instruction.op in
+        let ext = X86_ops.code_or_none X86_ops.Form.Shift_ext i.Instruction.op in
         match dst with
         | Operand.Reg r -> (
             match width_ok r with
@@ -2881,38 +3314,13 @@ module Make (M : MODE) = struct
      width, which for the condition code means all sixteen values decode. *)
   let alu_rm_r_codec =
     C.iso_table ~name:"alu-rm-r-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        (List.filter_map
-           (fun op -> Option.map (fun b -> (op, b)) (Opcode.to_rm_r op))
-           [
-             Opcode.Xor;
-             Opcode.Cmp;
-             Opcode.Sub;
-             Opcode.Add;
-             Opcode.Adc;
-             Opcode.Sbb;
-             Opcode.Test;
-             Opcode.Or;
-             Opcode.And;
-           ])
+      ~entries:(X86_ops.table X86_ops.Form.Alu_rm_r)
       (C.field ~width:8 "opcode")
 
   (* The reg<-rm mirror of {!alu_rm_r_codec}, {!Opcode.to_r_rm}'s table. *)
   let alu_r_rm_codec =
     C.iso_table ~name:"alu-r-rm-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        (List.filter_map
-           (fun op -> Option.map (fun b -> (op, b)) (Opcode.to_r_rm op))
-           [
-             Opcode.Adc;
-             Opcode.Add;
-             Opcode.Xor;
-             Opcode.Sub;
-             Opcode.And;
-             Opcode.Or;
-             Opcode.Sbb;
-             Opcode.Cmp;
-           ])
+      ~entries:(X86_ops.table X86_ops.Form.Alu_r_rm)
       (C.field ~width:8 "opcode")
 
   let cc_codec =
@@ -3210,106 +3618,17 @@ module Make (M : MODE) = struct
 
   let sse_binop_f2_codec =
     C.iso_table ~name:"sse-binop-f2-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Addsd, 0x58L);
-          (Opcode.Subsd, 0x5CL);
-          (Opcode.Mulsd, 0x59L);
-          (Opcode.Divsd, 0x5EL);
-          (Opcode.Cvtsd2ss, 0x5AL);
-          (Opcode.Maxsd, 0x5FL);
-          (Opcode.Minsd, 0x5DL);
-          (Opcode.Sqrtsd, 0x51L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_binop_f2)
       (C.field ~width:8 "opcode")
 
   let sse_binop_f3_codec =
     C.iso_table ~name:"sse-binop-f3-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Addss, 0x58L);
-          (Opcode.Subss, 0x5CL);
-          (Opcode.Mulss, 0x59L);
-          (Opcode.Divss, 0x5EL);
-          (Opcode.Cvtss2sd, 0x5AL);
-          (Opcode.Maxss, 0x5FL);
-          (Opcode.Minss, 0x5DL);
-          (Opcode.Sqrtss, 0x51L);
-          (Opcode.Cvttps2dq, 0x5BL);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_binop_f3)
       (C.field ~width:8 "opcode")
 
   let sse_binop_66_codec =
     C.iso_table ~name:"sse-binop-66-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Comisd, 0x2FL);
-          (Opcode.Ucomisd, 0x2EL);
-          (Opcode.Xorpd, 0x57L);
-          (Opcode.Pxor, 0xEFL);
-          (Opcode.Movapd, 0x28L);
-          (Opcode.Andpd, 0x54L);
-          (Opcode.Andnpd, 0x55L);
-          (Opcode.Orpd, 0x56L);
-          (Opcode.Movupd, 0x10L);
-          (Opcode.Addpd, 0x58L);
-          (Opcode.Subpd, 0x5CL);
-          (Opcode.Mulpd, 0x59L);
-          (Opcode.Divpd, 0x5EL);
-          (Opcode.Maxpd, 0x5FL);
-          (Opcode.Minpd, 0x5DL);
-          (Opcode.Sqrtpd, 0x51L);
-          (Opcode.Cvtpd2ps, 0x5AL);
-          (Opcode.Cvtps2dq, 0x5BL);
-          (Opcode.Unpcklpd, 0x14L);
-          (Opcode.Unpckhpd, 0x15L);
-          (Opcode.Punpcklqdq, 0x6CL);
-          (Opcode.Punpckhqdq, 0x6DL);
-          (Opcode.Punpcklbw, 0x60L);
-          (Opcode.Punpckhbw, 0x68L);
-          (Opcode.Punpcklwd, 0x61L);
-          (Opcode.Punpckhwd, 0x69L);
-          (Opcode.Punpckldq, 0x62L);
-          (Opcode.Punpckhdq, 0x6AL);
-          (Opcode.Paddb, 0xFCL);
-          (Opcode.Paddw, 0xFDL);
-          (Opcode.Paddd, 0xFEL);
-          (Opcode.Paddq, 0xD4L);
-          (Opcode.Psubb, 0xF8L);
-          (Opcode.Psubw, 0xF9L);
-          (Opcode.Psubd, 0xFAL);
-          (Opcode.Psubq, 0xFBL);
-          (Opcode.Pcmpeqb, 0x74L);
-          (Opcode.Pcmpeqw, 0x75L);
-          (Opcode.Pcmpeqd, 0x76L);
-          (Opcode.Pcmpgtb, 0x64L);
-          (Opcode.Pcmpgtw, 0x65L);
-          (Opcode.Pcmpgtd, 0x66L);
-          (Opcode.Packsswb, 0x63L);
-          (Opcode.Packssdw, 0x6BL);
-          (Opcode.Packuswb, 0x67L);
-          (Opcode.Pand, 0xDBL);
-          (Opcode.Pandn, 0xDFL);
-          (Opcode.Por, 0xEBL);
-          (Opcode.Pminub, 0xDAL);
-          (Opcode.Pmaxub, 0xDEL);
-          (Opcode.Pminsw, 0xEAL);
-          (Opcode.Pmaxsw, 0xEEL);
-          (Opcode.Pmullw, 0xD5L);
-          (Opcode.Pmulhw, 0xE5L);
-          (Opcode.Pmulhuw, 0xE4L);
-          (Opcode.Pavgb, 0xE0L);
-          (Opcode.Pavgw, 0xE3L);
-          (Opcode.Psadbw, 0xF6L);
-          (Opcode.Psllw, 0xF1L);
-          (Opcode.Pslld, 0xF2L);
-          (Opcode.Psllq, 0xF3L);
-          (Opcode.Psrlw, 0xD1L);
-          (Opcode.Psrld, 0xD2L);
-          (Opcode.Psrlq, 0xD3L);
-          (Opcode.Psraw, 0xE1L);
-          (Opcode.Psrad, 0xE2L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_binop_66)
       (C.field ~width:8 "opcode")
 
   let sse_binop_alt ~label ~priority ~mandatory ~opcode_codec =
@@ -3335,55 +3654,7 @@ module Make (M : MODE) = struct
      rather than map 1. A one-entry table since {!Pshufb} is this map's only admitted mnemonic. *)
   let sse_binop_0f38_codec =
     C.iso_table ~name:"sse-binop-0f38-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Pshufb, 0x00L);
-          (Opcode.Phaddw, 0x01L);
-          (Opcode.Phaddd, 0x02L);
-          (Opcode.Pmaddubsw, 0x04L);
-          (Opcode.Phsubw, 0x05L);
-          (Opcode.Phsubd, 0x06L);
-          (Opcode.Psignb, 0x08L);
-          (Opcode.Psignw, 0x09L);
-          (Opcode.Psignd, 0x0AL);
-          (Opcode.Pmulhrsw, 0x0BL);
-          (Opcode.Phaddsw, 0x03L);
-          (Opcode.Phsubsw, 0x07L);
-          (Opcode.Pabsb, 0x1CL);
-          (Opcode.Pabsw, 0x1DL);
-          (Opcode.Pabsd, 0x1EL);
-          (Opcode.Pmuldq, 0x28L);
-          (Opcode.Pcmpeqq, 0x29L);
-          (Opcode.Packusdw, 0x2BL);
-          (Opcode.Pminsb, 0x38L);
-          (Opcode.Pminsd, 0x39L);
-          (Opcode.Pminuw, 0x3AL);
-          (Opcode.Pminud, 0x3BL);
-          (Opcode.Pmaxsb, 0x3CL);
-          (Opcode.Pmaxsd, 0x3DL);
-          (Opcode.Pmaxuw, 0x3EL);
-          (Opcode.Pmaxud, 0x3FL);
-          (Opcode.Pmulld, 0x40L);
-          (Opcode.Phminposuw, 0x41L);
-          (Opcode.Pcmpgtq, 0x37L);
-          (Opcode.Pblendvb, 0x10L);
-          (Opcode.Blendvps, 0x14L);
-          (Opcode.Blendvpd, 0x15L);
-          (Opcode.Ptest, 0x17L);
-          (Opcode.Pmovsxbw, 0x20L);
-          (Opcode.Pmovsxbd, 0x21L);
-          (Opcode.Pmovsxbq, 0x22L);
-          (Opcode.Pmovsxwd, 0x23L);
-          (Opcode.Pmovsxwq, 0x24L);
-          (Opcode.Pmovsxdq, 0x25L);
-          (Opcode.Pmovzxbw, 0x30L);
-          (Opcode.Pmovzxbd, 0x31L);
-          (Opcode.Pmovzxbq, 0x32L);
-          (Opcode.Pmovzxwd, 0x33L);
-          (Opcode.Pmovzxwq, 0x34L);
-          (Opcode.Pmovzxdq, 0x35L);
-          (Opcode.Movntdqa, 0x2AL);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_binop_0f38)
       (C.field ~width:8 "opcode")
 
   let sse_binop_0f38_alt ~label ~priority ~mandatory ~opcode_codec =
@@ -3417,7 +3688,7 @@ module Make (M : MODE) = struct
       (C.iso_fun ~name:label
          ~encode:(function
            | Lowered.Xmm_shift_imm_rm { op; rm; imm } -> (
-               match Opcode.xmm_shift_ext_opcode op with
+               match X86_ops.shift_ext_opcode op with
                | Some (ext, op_byte) when op_byte = opcode ->
                    let p = prefixes_of ~width:32 ~reg:ext ~rm in
                    Some (p.asz, ((), (p.rex, ((), ((), ({ re_reg = ext; re_rm = rm }, imm))))))
@@ -3427,7 +3698,7 @@ module Make (M : MODE) = struct
            match e.re_rm with
            | Rm.Mem _ -> None
            | Rm.Reg _ -> (
-               match Opcode.of_xmm_shift_ext_opcode ~opcode e.re_reg with
+               match X86_ops.of_xmm_shift ~opcode e.re_reg with
                | None -> None
                | Some op ->
                    let p = { asz; opsz = false; rex } in
@@ -3448,28 +3719,7 @@ module Make (M : MODE) = struct
      groups. *)
   let sse_binop_none_codec =
     C.iso_table ~name:"sse-binop-none-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Comiss, 0x2FL);
-          (Opcode.Ucomiss, 0x2EL);
-          (Opcode.Andps, 0x54L);
-          (Opcode.Andnps, 0x55L);
-          (Opcode.Orps, 0x56L);
-          (Opcode.Xorps, 0x57L);
-          (Opcode.Movaps, 0x28L);
-          (Opcode.Movups, 0x10L);
-          (Opcode.Addps, 0x58L);
-          (Opcode.Subps, 0x5CL);
-          (Opcode.Mulps, 0x59L);
-          (Opcode.Divps, 0x5EL);
-          (Opcode.Maxps, 0x5FL);
-          (Opcode.Minps, 0x5DL);
-          (Opcode.Sqrtps, 0x51L);
-          (Opcode.Cvtps2pd, 0x5AL);
-          (Opcode.Cvtdq2ps, 0x5BL);
-          (Opcode.Unpcklps, 0x14L);
-          (Opcode.Unpckhps, 0x15L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_binop_none)
       (C.field ~width:8 "opcode")
 
   let sse_binop_none_alt ~label ~priority ~opcode_codec =
@@ -3563,17 +3813,17 @@ module Make (M : MODE) = struct
 
   let sse_binop_imm_66_codec =
     C.iso_table ~name:"sse-binop-imm-66-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Shufpd, 0xC6L); (Opcode.Cmppd, 0xC2L); (Opcode.Pshufd, 0x70L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_binop_imm_66)
       (C.field ~width:8 "opcode")
 
   let sse_binop_imm_f2_codec =
     C.iso_table ~name:"sse-binop-imm-f2-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Cmpsd, 0xC2L); (Opcode.Pshuflw, 0x70L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_binop_imm_f2)
       (C.field ~width:8 "opcode")
 
   let sse_binop_imm_f3_codec =
     C.iso_table ~name:"sse-binop-imm-f3-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Cmpss, 0xC2L); (Opcode.Pshufhw, 0x70L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_binop_imm_f3)
       (C.field ~width:8 "opcode")
 
   (* [shufps]/[cmpps] ([0F C6|C2 /r ib], no mandatory prefix): {!sse_binop_imm_alt}'s
@@ -3603,7 +3853,7 @@ module Make (M : MODE) = struct
 
   let sse_binop_imm_none_codec =
     C.iso_table ~name:"sse-binop-imm-none-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Shufps, 0xC6L); (Opcode.Cmpps, 0xC2L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_binop_imm_none)
       (C.field ~width:8 "opcode")
 
   (* {!Opcode.Palignr}'s own doc comment: {!sse_binop_imm_alt}'s exact field layout, one
@@ -3612,21 +3862,7 @@ module Make (M : MODE) = struct
      table since {!Palignr} is this map's only admitted mnemonic. *)
   let sse_binop_imm_0f3a_codec =
     C.iso_table ~name:"sse-binop-imm-0f3a-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Palignr, 0x0FL);
-          (Opcode.Roundps, 0x08L);
-          (Opcode.Roundpd, 0x09L);
-          (Opcode.Roundss, 0x0AL);
-          (Opcode.Roundsd, 0x0BL);
-          (Opcode.Blendps, 0x0CL);
-          (Opcode.Blendpd, 0x0DL);
-          (Opcode.Insertps, 0x21L);
-          (Opcode.Pblendw, 0x0EL);
-          (Opcode.Dpps, 0x40L);
-          (Opcode.Dppd, 0x41L);
-          (Opcode.Mpsadbw, 0x42L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_binop_imm_0f3a)
       (C.field ~width:8 "opcode")
 
   let sse_binop_imm_0f3a_alt ~label ~priority ~mandatory ~opcode_codec =
@@ -3659,14 +3895,7 @@ module Make (M : MODE) = struct
      both keep the xmm operand in the ModR/M [reg] field. *)
   let sse_gpr_imm_0f3a_codec =
     C.iso_table ~name:"sse-gpr-imm-0f3a-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Pextrb, 0x14L);
-          (Opcode.Pextrd, 0x16L);
-          (Opcode.Extractps, 0x17L);
-          (Opcode.Pinsrb, 0x20L);
-          (Opcode.Pinsrd, 0x22L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_gpr_imm_0f3a)
       (C.field ~width:8 "opcode")
 
   let sse_gpr_imm_0f3a_alt ~label ~priority ~opcode_codec =
@@ -3747,7 +3976,7 @@ module Make (M : MODE) = struct
      {!sse_binop_alt} is - both members share the mandatory-66 prefix. *)
   let sse_movmsk_66_codec =
     C.iso_table ~name:"sse-movmsk-66-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Movmskpd, 0x50L); (Opcode.Pmovmskb, 0xD7L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_movmsk_66)
       (C.field ~width:8 "opcode")
 
   let sse_movmsk_alt ~label ~priority ~opcode_codec =
@@ -3772,7 +4001,7 @@ module Make (M : MODE) = struct
      single-entry table since {!Movmskps} has no other opcode-byte sibling at this shape. *)
   let sse_movmsk_none_codec =
     C.iso_table ~name:"sse-movmsk-none-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Movmskps, 0x50L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Sse_movmsk_none)
       (C.field ~width:8 "opcode")
 
   let sse_movmsk_none_alt ~label ~priority ~opcode_codec =
@@ -3905,117 +4134,25 @@ module Make (M : MODE) = struct
      does not build). *)
   let vex_scalar_f2_codec =
     C.iso_table ~name:"vex-scalar-f2-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Vaddsd, 0x58L);
-          (Opcode.Vsubsd, 0x5CL);
-          (Opcode.Vmulsd, 0x59L);
-          (Opcode.Vdivsd, 0x5EL);
-          (Opcode.Vmaxsd, 0x5FL);
-          (Opcode.Vminsd, 0x5DL);
-          (Opcode.Vsqrtsd, 0x51L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_scalar_f2)
       (C.field ~width:8 "opcode")
 
   let vex_scalar_f3_codec =
     C.iso_table ~name:"vex-scalar-f3-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Vaddss, 0x58L);
-          (Opcode.Vsubss, 0x5CL);
-          (Opcode.Vmulss, 0x59L);
-          (Opcode.Vdivss, 0x5EL);
-          (Opcode.Vmaxss, 0x5FL);
-          (Opcode.Vminss, 0x5DL);
-          (Opcode.Vsqrtss, 0x51L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_scalar_f3)
       (C.field ~width:8 "opcode")
 
   (* [pp = 0] (no mandatory prefix) - {!Vaddps}'s packed-single group, the same
      four opcode bytes as {!vex_scalar_f2_codec}/{!vex_scalar_f3_codec}. *)
   let vex_scalar_none_codec =
     C.iso_table ~name:"vex-scalar-none-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Vaddps, 0x58L);
-          (Opcode.Vsubps, 0x5CL);
-          (Opcode.Vmulps, 0x59L);
-          (Opcode.Vdivps, 0x5EL);
-          (Opcode.Vandps, 0x54L);
-          (Opcode.Vandnps, 0x55L);
-          (Opcode.Vorps, 0x56L);
-          (Opcode.Vxorps, 0x57L);
-          (Opcode.Vmaxps, 0x5FL);
-          (Opcode.Vminps, 0x5DL);
-          (Opcode.Vunpcklps, 0x14L);
-          (Opcode.Vunpckhps, 0x15L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_scalar_none)
       (C.field ~width:8 "opcode")
 
   (* [pp = 1] (mandatory [66]) - {!Vaddpd}'s packed-double group. *)
   let vex_scalar_66_codec =
     C.iso_table ~name:"vex-scalar-66-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Vaddpd, 0x58L);
-          (Opcode.Vsubpd, 0x5CL);
-          (Opcode.Vmulpd, 0x59L);
-          (Opcode.Vdivpd, 0x5EL);
-          (Opcode.Vandpd, 0x54L);
-          (Opcode.Vandnpd, 0x55L);
-          (Opcode.Vorpd, 0x56L);
-          (Opcode.Vxorpd, 0x57L);
-          (Opcode.Vmaxpd, 0x5FL);
-          (Opcode.Vminpd, 0x5DL);
-          (Opcode.Vunpcklpd, 0x14L);
-          (Opcode.Vunpckhpd, 0x15L);
-          (Opcode.Vpunpcklqdq, 0x6CL);
-          (Opcode.Vpunpckhqdq, 0x6DL);
-          (Opcode.Vpunpcklbw, 0x60L);
-          (Opcode.Vpunpckhbw, 0x68L);
-          (Opcode.Vpunpcklwd, 0x61L);
-          (Opcode.Vpunpckhwd, 0x69L);
-          (Opcode.Vpunpckldq, 0x62L);
-          (Opcode.Vpunpckhdq, 0x6AL);
-          (Opcode.Vpaddb, 0xFCL);
-          (Opcode.Vpaddw, 0xFDL);
-          (Opcode.Vpaddd, 0xFEL);
-          (Opcode.Vpaddq, 0xD4L);
-          (Opcode.Vpsubb, 0xF8L);
-          (Opcode.Vpsubw, 0xF9L);
-          (Opcode.Vpsubd, 0xFAL);
-          (Opcode.Vpsubq, 0xFBL);
-          (Opcode.Vpcmpeqb, 0x74L);
-          (Opcode.Vpcmpeqw, 0x75L);
-          (Opcode.Vpcmpeqd, 0x76L);
-          (Opcode.Vpcmpgtb, 0x64L);
-          (Opcode.Vpcmpgtw, 0x65L);
-          (Opcode.Vpcmpgtd, 0x66L);
-          (Opcode.Vpacksswb, 0x63L);
-          (Opcode.Vpackssdw, 0x6BL);
-          (Opcode.Vpackuswb, 0x67L);
-          (Opcode.Vpand, 0xDBL);
-          (Opcode.Vpandn, 0xDFL);
-          (Opcode.Vpor, 0xEBL);
-          (Opcode.Vpminub, 0xDAL);
-          (Opcode.Vpmaxub, 0xDEL);
-          (Opcode.Vpminsw, 0xEAL);
-          (Opcode.Vpmaxsw, 0xEEL);
-          (Opcode.Vpmullw, 0xD5L);
-          (Opcode.Vpmulhw, 0xE5L);
-          (Opcode.Vpmulhuw, 0xE4L);
-          (Opcode.Vpavgb, 0xE0L);
-          (Opcode.Vpavgw, 0xE3L);
-          (Opcode.Vpsadbw, 0xF6L);
-          (Opcode.Vpsllw, 0xF1L);
-          (Opcode.Vpslld, 0xF2L);
-          (Opcode.Vpsllq, 0xF3L);
-          (Opcode.Vpsrlw, 0xD1L);
-          (Opcode.Vpsrld, 0xD2L);
-          (Opcode.Vpsrlq, 0xD3L);
-          (Opcode.Vpsraw, 0xE1L);
-          (Opcode.Vpsrad, 0xE2L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_scalar_66)
       (C.field ~width:8 "opcode")
 
   (* Whether [rm] fits this two-byte-prefix slice's ModR/M/SIB, which has no
@@ -4072,34 +4209,7 @@ module Make (M : MODE) = struct
      because [src2] is still restricted to registers below 8 ({!vex_rm_ok}). *)
   let vex3_map2_66_codec =
     C.iso_table ~name:"vex3-map2-66-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Vpshufb, 0x00L);
-          (Opcode.Vphaddw, 0x01L);
-          (Opcode.Vphaddd, 0x02L);
-          (Opcode.Vphaddsw, 0x03L);
-          (Opcode.Vpmaddubsw, 0x04L);
-          (Opcode.Vphsubw, 0x05L);
-          (Opcode.Vphsubd, 0x06L);
-          (Opcode.Vphsubsw, 0x07L);
-          (Opcode.Vpsignb, 0x08L);
-          (Opcode.Vpsignw, 0x09L);
-          (Opcode.Vpsignd, 0x0AL);
-          (Opcode.Vpmulhrsw, 0x0BL);
-          (Opcode.Vpmuldq, 0x28L);
-          (Opcode.Vpcmpeqq, 0x29L);
-          (Opcode.Vpackusdw, 0x2BL);
-          (Opcode.Vpcmpgtq, 0x37L);
-          (Opcode.Vpminsb, 0x38L);
-          (Opcode.Vpminsd, 0x39L);
-          (Opcode.Vpminuw, 0x3AL);
-          (Opcode.Vpminud, 0x3BL);
-          (Opcode.Vpmaxsb, 0x3CL);
-          (Opcode.Vpmaxsd, 0x3DL);
-          (Opcode.Vpmaxuw, 0x3EL);
-          (Opcode.Vpmaxud, 0x3FL);
-          (Opcode.Vpmulld, 0x40L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex3_map2_66)
       (C.field ~width:8 "opcode")
 
   let vex3_map2_rrr_alt ~label ~priority ~pp ~opcode_codec =
@@ -4139,19 +4249,7 @@ module Make (M : MODE) = struct
      map ([mmmmm = 3]), with {!vex_binop_imm_rrr_alt}'s trailing imm8. *)
   let vex3_map3_66_codec =
     C.iso_table ~name:"vex3-map3-66-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Vpalignr, 0x0FL);
-          (Opcode.Vblendps, 0x0CL);
-          (Opcode.Vblendpd, 0x0DL);
-          (Opcode.Vpblendw, 0x0EL);
-          (Opcode.Vroundss, 0x0AL);
-          (Opcode.Vroundsd, 0x0BL);
-          (Opcode.Vdpps, 0x40L);
-          (Opcode.Vdppd, 0x41L);
-          (Opcode.Vmpsadbw, 0x42L);
-          (Opcode.Vinsertps, 0x21L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex3_map3_66)
       (C.field ~width:8 "opcode")
 
   let vex3_map3_imm_rrr_alt ~label ~priority ~pp ~opcode_codec =
@@ -4196,27 +4294,7 @@ module Make (M : MODE) = struct
      {!vex3_map2_rrr_alt}'s three-byte prefix. *)
   let vex3_map2_unop_codec =
     C.iso_table ~name:"vex3-map2-unop-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Vpabsb, 0x1CL);
-          (Opcode.Vpabsw, 0x1DL);
-          (Opcode.Vpabsd, 0x1EL);
-          (Opcode.Vphminposuw, 0x41L);
-          (Opcode.Vptest, 0x17L);
-          (Opcode.Vpmovsxbw, 0x20L);
-          (Opcode.Vpmovsxbd, 0x21L);
-          (Opcode.Vpmovsxbq, 0x22L);
-          (Opcode.Vpmovsxwd, 0x23L);
-          (Opcode.Vpmovsxwq, 0x24L);
-          (Opcode.Vpmovsxdq, 0x25L);
-          (Opcode.Vpmovzxbw, 0x30L);
-          (Opcode.Vpmovzxbd, 0x31L);
-          (Opcode.Vpmovzxbq, 0x32L);
-          (Opcode.Vpmovzxwd, 0x33L);
-          (Opcode.Vpmovzxwq, 0x34L);
-          (Opcode.Vpmovzxdq, 0x35L);
-          (Opcode.Vmovntdqa, 0x2AL);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex3_map2_unop)
       (C.field ~width:8 "opcode")
 
   let vex3_map2_unop_alt ~label ~priority ~pp ~opcode_codec =
@@ -4254,32 +4332,12 @@ module Make (M : MODE) = struct
      [ps] mnemonics, 1 for [pd] (unlike VEX, where the same opcodes are WIG). *)
   let evex_ps_codec =
     C.iso_table ~name:"evex-ps-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Vaddps, 0x58L);
-          (Opcode.Vsubps, 0x5CL);
-          (Opcode.Vmulps, 0x59L);
-          (Opcode.Vdivps, 0x5EL);
-          (Opcode.Vmaxps, 0x5FL);
-          (Opcode.Vminps, 0x5DL);
-          (Opcode.Vunpcklps, 0x14L);
-          (Opcode.Vunpckhps, 0x15L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Evex_ps)
       (C.field ~width:8 "opcode")
 
   let evex_pd_codec =
     C.iso_table ~name:"evex-pd-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Vaddpd, 0x58L);
-          (Opcode.Vsubpd, 0x5CL);
-          (Opcode.Vmulpd, 0x59L);
-          (Opcode.Vdivpd, 0x5EL);
-          (Opcode.Vmaxpd, 0x5FL);
-          (Opcode.Vminpd, 0x5DL);
-          (Opcode.Vunpcklpd, 0x14L);
-          (Opcode.Vunpckhpd, 0x15L);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Evex_pd)
       (C.field ~width:8 "opcode")
 
   let evex_binop_rrr_alt ~label ~priority ~pp ~w ~opcode_codec =
@@ -4325,39 +4383,20 @@ module Make (M : MODE) = struct
      opcode-byte disjointness. *)
   let vex_unop_none_codec =
     C.iso_table ~name:"vex-unop-none-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Vsqrtps, 0x51L);
-          (Opcode.Vmovaps, 0x28L);
-          (Opcode.Vmovups, 0x10L);
-          (Opcode.Vcomiss, 0x2FL);
-          (Opcode.Vucomiss, 0x2EL);
-          (Opcode.Vcvtps2pd, 0x5AL);
-          (Opcode.Vcvtdq2ps, 0x5BL);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_unop_none)
       (C.field ~width:8 "opcode")
 
   (* [pp = 1] (mandatory [66]) - {!Vsqrtps}'s packed-double sibling. *)
   let vex_unop_66_codec =
     C.iso_table ~name:"vex-unop-66-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:
-        [
-          (Opcode.Vsqrtpd, 0x51L);
-          (Opcode.Vmovapd, 0x28L);
-          (Opcode.Vmovupd, 0x10L);
-          (Opcode.Vcomisd, 0x2FL);
-          (Opcode.Vucomisd, 0x2EL);
-          (Opcode.Vcvtpd2ps, 0x5AL);
-          (Opcode.Vmovdqa, 0x6FL);
-          (Opcode.Vcvtps2dq, 0x5BL);
-        ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_unop_66)
       (C.field ~width:8 "opcode")
 
   (* [pp = 2] (mandatory [F3]) - {!Vmovdqu}'s own group, the first {!Lowered.Vex_unop_r_rm}
      mnemonic needing a mandatory-[F3] table. *)
   let vex_unop_f3_codec =
     C.iso_table ~name:"vex-unop-f3-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Vmovdqu, 0x6FL); (Opcode.Vcvttps2dq, 0x5BL) ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_unop_f3)
       (C.field ~width:8 "opcode")
 
   (* {!vex_scalar_rrr_alt}'s two-operand sibling for {!Lowered.Vex_unop_r_rm}: no [vvvv]
@@ -4501,7 +4540,7 @@ module Make (M : MODE) = struct
       (C.iso_fun ~name:label
          ~encode:(function
            | Lowered.Vex_shift_imm_rm { op; dst; rm; imm } when vex_rm_ok rm -> (
-               match Opcode.xmm_shift_ext_opcode op with
+               match X86_ops.shift_ext_opcode op with
                | Some (ext, op_byte) when op_byte = opcode ->
                    let vvvv = lnot dst.num land 0xF in
                    let byte2 = Int64.of_int ((1 lsl 7) lor (vvvv lsl 3) lor 1) in
@@ -4519,7 +4558,7 @@ module Make (M : MODE) = struct
                let observed_pp = b land 3 in
                if l <> 0 || observed_pp <> 1 || r_bit <> 1 then None
                else
-                 match Opcode.of_vex_shift_ext_opcode ~opcode e.re_reg with
+                 match X86_ops.of_vex_shift ~opcode e.re_reg with
                  | None -> None
                  | Some op ->
                      let dst_num = lnot vvvv land 0xF in
@@ -4539,22 +4578,22 @@ module Make (M : MODE) = struct
 
   let vex_binop_imm_none_codec =
     C.iso_table ~name:"vex-binop-imm-none-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Vshufps, 0xC6L); (Opcode.Vcmpps, 0xC2L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_binop_imm_none)
       (C.field ~width:8 "opcode")
 
   let vex_binop_imm_66_codec =
     C.iso_table ~name:"vex-binop-imm-66-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Vshufpd, 0xC6L); (Opcode.Vcmppd, 0xC2L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_binop_imm_66)
       (C.field ~width:8 "opcode")
 
   let vex_binop_imm_f2_codec =
     C.iso_table ~name:"vex-binop-imm-f2-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Vcmpsd, 0xC2L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_binop_imm_f2)
       (C.field ~width:8 "opcode")
 
   let vex_binop_imm_f3_codec =
     C.iso_table ~name:"vex-binop-imm-f3-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Vcmpss, 0xC2L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_binop_imm_f3)
       (C.field ~width:8 "opcode")
 
   (* {!vex_unop_alt}'s trailing-immediate sibling for {!Lowered.Vex_unop_imm_r_rm}
@@ -4587,17 +4626,17 @@ module Make (M : MODE) = struct
 
   let vex_unop_imm_66_codec =
     C.iso_table ~name:"vex-unop-imm-66-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Vpshufd, 0x70L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_unop_imm_66)
       (C.field ~width:8 "opcode")
 
   let vex_unop_imm_f2_codec =
     C.iso_table ~name:"vex-unop-imm-f2-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Vpshuflw, 0x70L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_unop_imm_f2)
       (C.field ~width:8 "opcode")
 
   let vex_unop_imm_f3_codec =
     C.iso_table ~name:"vex-unop-imm-f3-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Vpshufhw, 0x70L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_unop_imm_f3)
       (C.field ~width:8 "opcode")
 
   (* [vpinsrw $imm8, gpr32/m16, src1, dst] ([VEX.128.66.0F.WIG C4 /r ib], {!Opcode.Vpinsrw}'s own
@@ -4703,12 +4742,12 @@ module Make (M : MODE) = struct
 
   let vex_movmsk_66_codec =
     C.iso_table ~name:"vex-movmsk-66-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Vmovmskpd, 0x50L); (Opcode.Vpmovmskb, 0xD7L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_movmsk_66)
       (C.field ~width:8 "opcode")
 
   let vex_movmsk_none_codec =
     C.iso_table ~name:"vex-movmsk-none-op" ~equal:( = ) ~show:Opcode.name
-      ~entries:[ (Opcode.Vmovmskps, 0x50L) ]
+      ~entries:(X86_ops.table X86_ops.Form.Vex_movmsk_none)
       (C.field ~width:8 "opcode")
 
   (* Zero-/sign-extending move (M5): [0F B6/B7/BE/BF /r].
@@ -4908,7 +4947,7 @@ module Make (M : MODE) = struct
                else Some (prefixes_of_ext ~width ~rm, ((), ({ re_reg = ext; re_rm = rm }, imm)))
            | _ -> None)
          ~decode:(fun (rex, ((), (e, imm))) ->
-           match Opcode.of_ext e.re_reg with
+           match X86_ops.of_code X86_ops.Form.Alu_ext e.re_reg with
            | None -> None
            | Some _ ->
                let width = width_of_prefixes rex in
@@ -4971,7 +5010,7 @@ module Make (M : MODE) = struct
                if fits8 then None else Some (prefixes_of ~width ~reg:0 ~rm:(Rm.Reg r), (ext, imm))
            | _ -> None)
          ~decode:(fun (rex, (ext, imm)) ->
-           match Opcode.of_ext ext with
+           match X86_ops.of_code X86_ops.Form.Alu_ext ext with
            | None -> None
            | Some _ ->
                let width = width_of_prefixes rex in
@@ -5008,7 +5047,7 @@ module Make (M : MODE) = struct
                Some (prefixes_of_ext ~width:8 ~rm, ((), ({ re_reg = ext; re_rm = rm }, v)))
            | _ -> None)
          ~decode:(fun (rex, ((), (e, v))) ->
-           match Opcode.of_ext e.re_reg with
+           match X86_ops.of_code X86_ops.Form.Alu_ext e.re_reg with
            | None -> None
            | Some _ ->
                Some
@@ -5068,7 +5107,7 @@ module Make (M : MODE) = struct
                Some (prefixes_of ~width:8 ~reg:0 ~rm:(Rm.Reg r), (ext, to_width_signed ~width:8 v))
            | _ -> None)
          ~decode:(fun (_rex, (ext, v)) ->
-           match Opcode.of_ext ext with
+           match X86_ops.of_code X86_ops.Form.Alu_ext ext with
            | None -> None
            | Some _ ->
                Some
@@ -5250,7 +5289,7 @@ module Make (M : MODE) = struct
      rather than as a silently missing alternative. *)
   let x87_alts =
     let opcode_of mnemonic =
-      match Opcode.of_x87_mnemonic mnemonic with
+      match of_x87_mnemonic mnemonic with
       | Some op -> op
       | None -> invalid_arg ("x86 x87 component: no opcode for " ^ mnemonic)
     in
@@ -5667,7 +5706,7 @@ module Make (M : MODE) = struct
                      Some (prefixes_of_ext ~width ~rm, ((), { re_reg = ext; re_rm = rm }))
                  | _ -> None)
                ~decode:(fun (rex, ((), e)) ->
-                 match Opcode.of_unary_ext e.re_reg with
+                 match X86_ops.of_code X86_ops.Form.Unary_ext e.re_reg with
                  | None -> None
                  | Some _ ->
                      let width = width_of_prefixes rex in
@@ -5702,7 +5741,7 @@ module Make (M : MODE) = struct
                      Some (prefixes_of_ext ~width ~rm, ((), { re_reg = ext; re_rm = rm }))
                  | _ -> None)
                ~decode:(fun (rex, ((), e)) ->
-                 match Opcode.of_shift1_ext e.re_reg with
+                 match X86_ops.of_code X86_ops.Form.Shift_ext e.re_reg with
                  | None -> None
                  | Some _ ->
                      let width = width_of_prefixes rex in
@@ -5874,7 +5913,7 @@ module Make (M : MODE) = struct
                      Some (prefixes_of_ext ~width ~rm, ((), ({ re_reg = ext; re_rm = rm }, imm)))
                  | _ -> None)
                ~decode:(fun (rex, ((), (e, imm))) ->
-                 match Opcode.of_shift1_ext e.re_reg with
+                 match X86_ops.of_code X86_ops.Form.Shift_ext e.re_reg with
                  | None -> None
                  | Some _ ->
                      let width = width_of_prefixes rex in
@@ -5892,7 +5931,7 @@ module Make (M : MODE) = struct
                      Some (prefixes_of_ext ~width ~rm, ((), { re_reg = ext; re_rm = rm }))
                  | _ -> None)
                ~decode:(fun (rex, ((), e)) ->
-                 match Opcode.of_shift1_ext e.re_reg with
+                 match X86_ops.of_code X86_ops.Form.Shift_ext e.re_reg with
                  | None -> None
                  | Some _ ->
                      let width = width_of_prefixes rex in
@@ -7081,7 +7120,12 @@ module Make (M : MODE) = struct
     match i.op with
     | Opcode.Table row -> Ok [ Lowered.Table { row; ops = i.ops } ]
     | _ -> (
-        match lower_hand_written i with
+        (* a hand-written form of the other mode only ([dec %eax] is 0x48 in 32-bit mode alone) *)
+        let hand =
+          if X86_ops.in_mode ~bits:M.address_width i.op then lower_hand_written i
+          else Error (diag ~pos:__POS__ (`No_form (Opcode.name i.op)))
+        in
+        match hand with
         | Ok _ as ok -> ok
         | Error _ as declined -> (
             let spellings = [ Opcode.name i.op; Opcode.name i.op ^ suffix_of_width i.width ] in
@@ -7138,7 +7182,7 @@ module Make (M : MODE) = struct
     in
     function
     | Lowered.Alu_rm_imm { ext; width; rm; imm } -> (
-        match Opcode.of_ext ext with
+        match X86_ops.of_code X86_ops.Form.Alu_ext ext with
         | None -> None
         | Some op ->
             Some
@@ -7314,7 +7358,7 @@ module Make (M : MODE) = struct
              ])
     | Lowered.Dec { reg } -> Some (Instruction.mk Opcode.Dec M.address_width [ Operand.Reg reg ])
     | Lowered.Unary_rm { ext; width; rm } -> (
-        match Opcode.of_unary_ext ext with
+        match X86_ops.of_code X86_ops.Form.Unary_ext ext with
         | None -> None
         | Some op ->
             Some
@@ -7333,7 +7377,7 @@ module Make (M : MODE) = struct
             form = None;
           }
     | Lowered.Shift1_rm { ext; width; rm } -> (
-        match Opcode.of_shift1_ext ext with
+        match X86_ops.of_code X86_ops.Form.Shift_ext ext with
         | None -> None
         | Some op ->
             Some
@@ -7343,7 +7387,7 @@ module Make (M : MODE) = struct
                    (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
                  ]))
     | Lowered.Shift_imm_rm { ext; width; rm; imm } -> (
-        match Opcode.of_shift1_ext ext with
+        match X86_ops.of_code X86_ops.Form.Shift_ext ext with
         | None -> None
         | Some op ->
             Some
@@ -7353,7 +7397,7 @@ module Make (M : MODE) = struct
                    (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
                  ]))
     | Lowered.Shift_cl_rm { ext; width; rm } -> (
-        match Opcode.of_shift1_ext ext with
+        match X86_ops.of_code X86_ops.Form.Shift_ext ext with
         | None -> None
         | Some op ->
             Some
@@ -7589,16 +7633,10 @@ module Make (M : MODE) = struct
         Error (diag ~pos:__POS__ ?origin (`Feature_disabled (mnemonic, f)))
     | _ -> Ok ()
 
-  (* Each opcode's component, built once: rows by index, hand-written opcodes from the components'
-     opcode lists. *)
+  (* Each opcode's component: rows by index, hand-written opcodes from the table. *)
   let op_feature =
-    let hand = Hashtbl.create 16 in
-    List.iter
-      (fun ((c : Target_component.t), ops) ->
-        List.iter (fun op -> Hashtbl.replace hand op c.feature) ops)
-      component_ops;
     let rows = Array.init (Array.length table_rows) row_feature in
-    function Opcode.Table row -> rows.(Row.index row) | op -> Hashtbl.find_opt hand op
+    function Opcode.Table row -> rows.(Row.index row) | op -> X86_ops.feature op
 
   let feature_gate ?origin state op = gate ?origin state (Opcode.name op) (op_feature op)
   let required_feature (i : Instruction.t) = op_feature i.op

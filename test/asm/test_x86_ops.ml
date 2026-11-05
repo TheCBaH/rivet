@@ -216,43 +216,35 @@ let%expect_test "decoding a sample reads back as text with the same bytes" =
     x86_64: undecoded 7 [adc add and or sbb sub xor]
       not read back 130 [adc blendpd blendps blendvpd blendvps cmppd cmpps cmpsd cmpss div dppd dpps extractps fadds fsubs imul insertps movmskpd movmskps movntdqa mpsadbw neg pabsb pabsd pabsw packusdw palignr pblendvb pblendw pcmpeqq pcmpgtq pextrb pextrd pextrw phaddd phaddsw phaddw phminposuw phsubd phsubsw phsubw pinsrb pinsrd pinsrw pmaddubsw pmaxsb pmaxsd pmaxud pmaxuw pminsb pminsd pminud pminuw pmovmskb pmovsxbd pmovsxbq pmovsxbw pmovsxdq pmovsxwd pmovsxwq pmovzxbd pmovzxbq pmovzxbw pmovzxdq pmovzxwd pmovzxwq pmuldq pmulhrsw pmulld pshufb pshufd pshufhw pshuflw psignb psignd psignw pslldq psrldq ptest rcr ror roundpd roundps roundsd roundss sar shl shld shr shufpd shufps test vcmppd vcmpps vcmpsd vcmpss vcvtpd2ps vcvtps2pd vmovmskpd vmovmskps vpextrw vpinsrw vpmovmskb vpmovsxbd vpmovsxbq vpmovsxbw vpmovsxdq vpmovsxwd vpmovsxwq vpmovzxbd vpmovzxbq vpmovzxbw vpmovzxdq vpmovzxwd vpmovzxwq vpshufd vpshufhw vpshuflw vpslld vpslldq vpsllq vpsllw vpsrad vpsraw vpsrld vpsrldq vpsrlq vpsrlw vshufpd vshufps] |}]
 
-(* The table's forms are the encoder's constants, its components the encoder's legality. *)
-let%expect_test "the table agrees with the encoder" =
+(* What the encoder reads from the table: each table names one opcode per byte, the x87 component
+   publishes exactly the opcodes the table gives it, and the gated encoder agrees. *)
+let%expect_test "the encoder's views of the table" =
   let module E = X86_64_encode in
-  let bad = ref [] in
-  let form (e : Ops.entry) f = List.assoc_opt f e.forms in
+  let clashes = ref [] in
   Array.iter
     (fun (e : Ops.entry) ->
-      let n = Opcode.name e.op in
-      let agree what a b = if a <> b then bad := (n ^ " " ^ what) :: !bad in
-      agree "alu-ext"
-        (let x = Opcode.to_ext e.op in
-         if x < 0 then None else Some x)
-        (form e Alu_ext);
-      agree "alu-rm-r" (Option.map Int64.to_int (Opcode.to_rm_r e.op)) (form e Alu_rm_r);
-      agree "alu-r-rm" (Option.map Int64.to_int (Opcode.to_r_rm e.op)) (form e Alu_r_rm);
-      agree "unary-ext"
-        (let x = Opcode.to_unary_ext e.op in
-         if x < 0 then None else Some x)
-        (form e Unary_ext);
-      agree "shift-ext"
-        (let x = Opcode.to_shift1_ext e.op in
-         if x < 0 then None else Some x)
-        (form e Shift_ext);
-      let shift =
-        match
-          ( form e Xmm_shift_ext,
-            form e Xmm_shift_opcode,
-            form e Vex_shift_ext,
-            form e Vex_shift_opcode )
-        with
-        | Some x, Some o, None, None | None, None, Some x, Some o -> Some (x, o)
-        | _ -> None
-      in
-      agree "xmm-shift" (Opcode.xmm_shift_ext_opcode e.op) shift;
-      agree "feature" (E.op_feature e.op) e.feature)
+      List.iter
+        (fun (f, n) ->
+          match f with
+          | Ops.Form.Xmm_shift_ext | Xmm_shift_opcode | Vex_shift_ext | Vex_shift_opcode -> ()
+          | _ ->
+              if Ops.of_code f n <> Some e.op then
+                clashes := (Ops.Form.name f ^ " " ^ Opcode.name e.op) :: !clashes)
+        e.forms;
+      match Ops.shift_ext_opcode e.op with
+      | Some (x, o) ->
+          let back =
+            if Ops.code Ops.Form.Vex_shift_ext e.op <> None then Ops.of_vex_shift ~opcode:o x
+            else Ops.of_xmm_shift ~opcode:o x
+          in
+          if back <> Some e.op then clashes := ("shift " ^ Opcode.name e.op) :: !clashes
+      | None -> ())
     Ops.all;
-  Printf.printf "%d entries, %d opcodes; disagreements: [%s]\n" (Array.length Ops.all)
+  let x87_feature = (List.hd E.components).Target_component.feature in
+  let x87 = Ops.of_feature x87_feature in
+  Printf.printf "%d entries, %d opcodes; clashes [%s]; x87 %d, gated %b\n" (Array.length Ops.all)
     (Array.length Opcode.all)
-    (String.concat ", " (List.rev !bad));
-  [%expect {| 463 entries, 463 opcodes; disagreements: [] |}]
+    (String.concat ", " (List.rev !clashes))
+    (List.length x87)
+    (List.for_all (fun op -> E.op_feature op = Some x87_feature) x87);
+  [%expect {| 463 entries, 463 opcodes; clashes []; x87 13, gated true |}]
