@@ -8,9 +8,9 @@ open Foundation
 open X86_types
 
 (* Typed views of {!Reg.t}. A general register's width and a vector register's length are phantom
-   tags, so [add eax rbx] does not compile. [gpr]/[vec] are the registers a legacy or VEX form
-   reaches (0-15); [agpr]/[evec] add APX's and EVEX's upper sixteen, which only generated rows take,
-   and every [gpr]/[vec] widens to them. The per-mode libraries name the registers that exist. *)
+   tags, so [add eax rbx] does not compile, and so is the range: [gpr]/[vec] are the registers a
+   legacy or VEX form reaches (0-15), [agpr]/[evec] APX's and EVEX's upper sixteen, which only the
+   generated rows take. The per-mode libraries name the registers that exist. *)
 module View : sig
   type w8 = [ `W8 ]
   type w16 = [ `W16 ]
@@ -19,13 +19,20 @@ module View : sig
   type l128 = [ `L128 ]
   type l256 = [ `L256 ]
   type l512 = [ `L512 ]
-  type +'w gpr = private Reg.t
-  type +'l vec = private Reg.t
+  type lo = [ `Lo ]
+  type hi = [ `Hi ]
+
+  (* ['r]: [lo] for the registers 0-15, [hi] for APX's/EVEX's 16-31; a builder taking
+     [[< `Lo | `Hi ]] takes both *)
+  type (+'w, +'r) greg = private Reg.t
+  type (+'l, +'r) vreg = private Reg.t
+  type 'w gpr = ('w, lo) greg
+  type 'l vec = ('l, lo) vreg
+  type 'w agpr = ('w, hi) greg
+  type 'l evec = ('l, hi) vreg
   type xmm = l128 vec
   type ymm = l256 vec
   type zmm = l512 vec
-  type +'w agpr = private Reg.t
-  type +'l evec = private Reg.t
   type mmx = private Reg.t
   type kmask = private Reg.t
   type st = private Reg.t
@@ -33,15 +40,10 @@ module View : sig
   type creg = private Reg.t
   type dreg = private Reg.t
 
-  val apx : 'w gpr -> 'w agpr
-  val evex : 'l vec -> 'l evec
-
   (* Unchecked: for the register tables, which only build values of the class the tag names. *)
   module Unsafe : sig
-    val gpr : Reg.t -> 'w gpr
-    val vec : Reg.t -> 'l vec
-    val agpr : Reg.t -> 'w agpr
-    val evec : Reg.t -> 'l evec
+    val gpr : Reg.t -> ('w, 'r) greg
+    val vec : Reg.t -> ('l, 'r) vreg
     val mmx : Reg.t -> mmx
     val kmask : Reg.t -> kmask
     val st : Reg.t -> st
@@ -57,13 +59,17 @@ end = struct
   type l128 = [ `L128 ]
   type l256 = [ `L256 ]
   type l512 = [ `L512 ]
-  type 'w gpr = Reg.t
-  type 'l vec = Reg.t
+  type lo = [ `Lo ]
+  type hi = [ `Hi ]
+  type ('w, 'r) greg = Reg.t
+  type ('l, 'r) vreg = Reg.t
+  type 'w gpr = ('w, lo) greg
+  type 'l vec = ('l, lo) vreg
+  type 'w agpr = ('w, hi) greg
+  type 'l evec = ('l, hi) vreg
   type xmm = l128 vec
   type ymm = l256 vec
   type zmm = l512 vec
-  type 'w agpr = Reg.t
-  type 'l evec = Reg.t
   type mmx = Reg.t
   type kmask = Reg.t
   type st = Reg.t
@@ -71,14 +77,9 @@ end = struct
   type creg = Reg.t
   type dreg = Reg.t
 
-  let apx r = r
-  let evex r = r
-
   module Unsafe = struct
     let gpr r = r
     let vec r = r
-    let agpr r = r
-    let evec r = r
     let mmx r = r
     let kmask r = r
     let st r = r

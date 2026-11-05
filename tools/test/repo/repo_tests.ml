@@ -245,13 +245,19 @@ let test_isa_riscv_table repo =
   | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
 
 let test_isa_x86_table repo =
-  match
-    Result.bind (Isa_x86_table_emit.emit repo) (fun text ->
-        Result.map
-          (fun committed -> String.equal text committed)
-          (Tool_fs.read (Isa_x86_table_emit.rows_path repo)))
-  with
-  | Ok current -> check "isa-table: x86_table_rows.ml equals a fresh emission" current
+  match Isa_x86_table_emit.emit repo with
+  | Ok files ->
+      List.iter
+        (fun (path, text) ->
+          let current =
+            match Tool_fs.read path with
+            | Ok committed -> String.equal text committed
+            | Error _ -> false
+          in
+          check
+            (Printf.sprintf "isa-table: %s equals a fresh emission" (Fpath.basename path))
+            current)
+        files
   | Error e -> check (Format.asprintf "%a" (Err.Error.pp Tool_error.pp) e) false
 
 let test_isa_family_admission repo =

@@ -296,3 +296,56 @@ let%expect_test "branches to a label" =
     x86_32   jb l       same
     x86_32   loop l     same
     x86_32   jecxz l    same |}]
+
+let%expect_test "generated row builders read like the text" =
+  let module H64 = Harness.Make (X86_64_encode) in
+  let module H32 = Harness.Make (X86_32_encode) in
+  let open X86_64_asm in
+  let x16 = Xmm_evex.of_int_exn 16 and z31 = Zmm_evex.of_int_exn 31 in
+  List.iter
+    (fun (i, t) -> H64.check i t)
+    [
+      (cpuid, "cpuid");
+      (rdrand_r64 rax, "rdrand %rax");
+      (popcnt_r64r64 rcx rdx, "popcnt %rcx, %rdx");
+      (lzcnt_mr64 (mem rax) r9, "lzcnt (%rax), %r9");
+      (andn_r32r32r32 eax ebx ecx, "andn %eax, %ebx, %ecx");
+      (shlx_r64r64r64 rax rbx rcx, "shlx %rax, %rbx, %rcx");
+      (adcx_r32r32 eax ebx, "adcx %eax, %ebx");
+      (adcx_r32r32r32 eax ebx ecx, "adcx %eax, %ebx, %ecx");
+      (bsfq_rr (Gpr64_apx.of_int_exn 20) rax, "bsfq %r20, %rax");
+      (kmovw_kk k1 k2, "kmovw %k1, %k2");
+      (vpermt2d_zzz zmm1 zmm2 zmm3, "vpermt2d %zmm1, %zmm2, %zmm3");
+      (vpermt2d_xxx ~k:k1 ~z:true xmm1 x16 xmm3, "vpermt2d %xmm1, %xmm16, %xmm3{%k1}{z}");
+      (vpermt2d_bzz (mem rax) zmm2 z31, "vpermt2d (%rax){1to16}, %zmm2, %zmm31");
+      (vaddph_ezzz Evex.Rz_sae zmm1 zmm2 zmm3, "vaddph {rz-sae}, %zmm1, %zmm2, %zmm3");
+      (tdpbf16ps tmm1 tmm2 tmm3, "tdpbf16ps %tmm1, %tmm2, %tmm3");
+    ];
+  List.iter
+    (fun (i, t) -> H32.check i t)
+    X86_32_asm.
+      [
+        (cpuid, "cpuid");
+        (popcnt_r32r32 ecx edx, "popcnt %ecx, %edx");
+        (kmovw_kk k1 k2, "kmovw %k1, %k2");
+      ];
+  [%expect
+    {|
+    x86_64   cpuid                        0f a2                    same
+    x86_64   rdrand %rax                  48 0f c7 f0              same
+    x86_64   popcnt %rcx, %rdx            f3 48 0f b8 d1           same
+    x86_64   lzcnt (%rax), %r9            f3 4c 0f bd 08           same
+    x86_64   andn %eax, %ebx, %ecx        c4 e2 60 f2 c8           same
+    x86_64   shlx %rax, %rbx, %rcx        c4 e2 f9 f7 cb           same
+    x86_64   adcx %eax, %ebx              66 0f 38 f6 d8           same
+    x86_64   adcx %eax, %ebx, %ecx        62 f4 75 18 66 d8        same
+    x86_64   bsfq %r20, %rax              d5 98 bc c4              same
+    x86_64   kmovw %k1, %k2               c5 f8 90 d1              same
+    x86_64   vpermt2d %zmm1, %zmm2, %zmm3 62 f2 6d 48 7e d9        same
+    x86_64   vpermt2d %xmm1, %xmm16, %xmm3{%k1}{z} 62 f2 7d 81 7e d9        same
+    x86_64   vpermt2d (%rax){1to16}, %zmm2, %zmm31 62 62 6d 58 7e 38        same
+    x86_64   vaddph {rz-sae}, %zmm1, %zmm2, %zmm3 62 f5 6c 78 58 d9        same
+    x86_64   tdpbf16ps %tmm1, %tmm2, %tmm3 c4 e2 72 5c da           same
+    x86_32   cpuid                        0f a2                    same
+    x86_32   popcnt %ecx, %edx            f3 0f b8 d1              same
+    x86_32   kmovw %k1, %k2               c5 f8 90 d1              same |}]

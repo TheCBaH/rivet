@@ -4,6 +4,10 @@
 open X86_family_encode
 include X86_asm
 
+(* the generated rows' builders, under the hand-written ones and the register names *)
+module Rows = X86_asm_rows32
+include Rows
+
 module Gpr32 = Regs (struct
   type t = w32 gpr
 

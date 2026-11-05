@@ -4,6 +4,10 @@
 open X86_family_encode
 include X86_asm
 
+(* the generated rows' builders, under the hand-written ones and the register names *)
+module Rows = X86_asm_rows64
+include Rows
+
 module Gpr64 = Regs (struct
   type t = w64 gpr
 
@@ -191,7 +195,7 @@ module Gpr64_apx = Regs (struct
 
   let cls = Rclass.Gpr64
   let registers = X86_64_encode.Mode.registers
-  let make = View.Unsafe.agpr
+  let make = View.Unsafe.gpr
   let reg r = (r : t :> Reg.t)
 end)
 
@@ -217,7 +221,7 @@ module Gpr32_apx = Regs (struct
 
   let cls = Rclass.Gpr32
   let registers = X86_64_encode.Mode.registers
-  let make = View.Unsafe.agpr
+  let make = View.Unsafe.gpr
   let reg r = (r : t :> Reg.t)
 end)
 
@@ -243,7 +247,7 @@ module Gpr16_apx = Regs (struct
 
   let cls = Rclass.Gpr16
   let registers = X86_64_encode.Mode.registers
-  let make = View.Unsafe.agpr
+  let make = View.Unsafe.gpr
   let reg r = (r : t :> Reg.t)
 end)
 
@@ -269,7 +273,7 @@ module Gpr8_apx = Regs (struct
 
   let cls = Rclass.Gpr8
   let registers = X86_64_encode.Mode.registers
-  let make = View.Unsafe.agpr
+  let make = View.Unsafe.gpr
   let reg r = (r : t :> Reg.t)
 end)
 
@@ -295,7 +299,7 @@ module Xmm_evex = Regs (struct
 
   let cls = Rclass.Xmm
   let registers = X86_64_encode.Mode.registers
-  let make = View.Unsafe.evec
+  let make = View.Unsafe.vec
   let reg r = (r : t :> Reg.t)
 end)
 
@@ -321,7 +325,7 @@ module Ymm_evex = Regs (struct
 
   let cls = Rclass.Ymm
   let registers = X86_64_encode.Mode.registers
-  let make = View.Unsafe.evec
+  let make = View.Unsafe.vec
   let reg r = (r : t :> Reg.t)
 end)
 
@@ -347,7 +351,7 @@ module Zmm_evex = Regs (struct
 
   let cls = Rclass.Zmm
   let registers = X86_64_encode.Mode.registers
-  let make = View.Unsafe.evec
+  let make = View.Unsafe.vec
   let reg r = (r : t :> Reg.t)
 end)
 
