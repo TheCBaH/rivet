@@ -3,7 +3,15 @@
 
 (library
  (name test_asm)
- (modules harness test_asm test_riscv_asm test_x86_ops test_x86_asm)
+ (modules
+  harness
+  test_asm
+  test_riscv_asm
+  test_x86_ops
+  test_x86_asm
+  test_arm_ops
+  test_arm_regs
+  test_arm_asm)
  (modes byte native)
  (libraries
   driver
@@ -18,6 +26,7 @@
   riscv64_asm
   foundation
   arm_encode
+  arm_asm
   aarch64_encode
   x86_family_encode
   x86_32_encode

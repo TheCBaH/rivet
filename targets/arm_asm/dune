@@ -1,0 +1,10 @@
+; Typed ARM instruction builders, from the ARM opcode table.
+
+(library
+ (name arm_asm)
+ (public_name rivet.arm_asm)
+ (modules arm_asm)
+ (modes byte native)
+ (libraries foundation asm_core arm_encode)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))

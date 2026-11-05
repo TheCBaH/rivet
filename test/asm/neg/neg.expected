@@ -1,3 +1,9 @@
+arm_add_on_dregs: refused, mentions Dreg
+arm_vadd_f32_on_dregs: refused, mentions Dreg
+arm_vadd_f64_on_sregs: refused, mentions Sreg
+arm_vcvt_f64_s32_on_sregs: refused, mentions Sreg
+arm_vldr_d_on_sreg: refused, mentions Sreg
+ok_arm_asm: compiles
 ok_riscv32_asm: compiles
 ok_riscv_asm: compiles
 ok_x86_asm: compiles
