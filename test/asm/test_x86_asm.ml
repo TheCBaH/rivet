@@ -158,3 +158,141 @@ let%expect_test "memory and EVEX operands print as their text" =
     (%rax){1to16}
     {rz-sae}
     {sae} |}]
+
+let%expect_test "x86_64 builders read like the text" =
+  let module H = Harness.Make (X86_64_encode) in
+  let open X86_64_asm in
+  let l = Asm_core.Expr.Symbol "l" in
+  List.iter
+    (fun (i, t) -> H.check i t)
+    [
+      (add rax rbx, "addq %rax, %rbx");
+      (add eax ebx, "addl %eax, %ebx");
+      (add_i 5L rax, "addq $5, %rax");
+      (add_m (mem ~disp:8L rsp) rbx, "addq 8(%rsp), %rbx");
+      (add_rm r9 (mem ~index:rcx ~scale:4 rax), "addq %r9, (%rax,%rcx,4)");
+      (addl_im 1000L (mem rdi), "addl $1000, (%rdi)");
+      (sub_i (-1L) r12d, "subl $-1, %r12d");
+      (mov_i 0x123456789L rax, "movabsq $0x123456789, %rax");
+      (mov_m (rip ~disp:16L ()) ecx, "movl 16(%rip), %ecx");
+      (lea_m (mem ~disp:(-8L) rbp) rsi, "leaq -8(%rbp), %rsi");
+      (movzb al ecx, "movzbl %al, %ecx");
+      (cmovz rdx rax, "cmovz %rdx, %rax");
+      (cmovcc Cc.L r8 r9, "cmovl %r8, %r9");
+      (setcc Cc.Ne bl, "setne %bl");
+      (shl_i 3 rdx, "salq $3, %rdx");
+      (sar_cl r11d, "sarl %cl, %r11d");
+      (push rbp, "pushq %rbp");
+      (pop rbx, "popq %rbx");
+      (push_i 7L, "pushq $7");
+      (call_r rax, "call *%rax");
+      (ret, "ret");
+      (addsd xmm1 xmm2, "addsd %xmm1, %xmm2");
+      (vaddps ymm1 ymm2 ymm3, "vaddps %ymm1, %ymm2, %ymm3");
+      (vaddps_m (mem rax) xmm4 xmm5, "vaddps (%rax), %xmm4, %xmm5");
+      (cvtsi2sd rax xmm0, "cvtsi2sdq %rax, %xmm0");
+    ];
+  ignore l;
+  [%expect
+    {|
+    x86_64   addq %rax, %rbx              48 01 c3                 same
+    x86_64   addl %eax, %ebx              01 c3                    same
+    x86_64   addq $5, %rax                48 83 c0 05              same
+    x86_64   addq 8(%rsp), %rbx           48 03 5c 24 08           same
+    x86_64   addq %r9, (%rax,%rcx,4)      4c 01 0c 88              same
+    x86_64   addl $1000, (%rdi)           81 07 e8 03 00 00        same
+    x86_64   subl $-1, %r12d              41 83 ec ff              same
+    x86_64   movabsq $0x123456789, %rax   48 b8 89 67 45 23 01 00 00 00 same
+    x86_64   movl 16(%rip), %ecx          8b 0d 10 00 00 00        same
+    x86_64   leaq -8(%rbp), %rsi          48 8d 75 f8              same
+    x86_64   movzbl %al, %ecx             0f b6 c8                 same
+    x86_64   cmovz %rdx, %rax             48 0f 44 c2              same
+    x86_64   cmovl %r8, %r9               4d 0f 4c c8              same
+    x86_64   setne %bl                    0f 95 c3                 same
+    x86_64   salq $3, %rdx                48 c1 e2 03              same
+    x86_64   sarl %cl, %r11d              41 d3 fb                 same
+    x86_64   pushq %rbp                   55                       same
+    x86_64   popq %rbx                    5b                       same
+    x86_64   pushq $7                     6a 07                    same
+    x86_64   call *%rax                   ff d0                    same
+    x86_64   ret                          c3                       same
+    x86_64   addsd %xmm1, %xmm2           f2 0f 58 d1              same
+    x86_64   vaddps %ymm1, %ymm2, %ymm3   c5 ec 58 d9              same
+    x86_64   vaddps (%rax), %xmm4, %xmm5  c5 d8 58 28              same
+    x86_64   cvtsi2sdq %rax, %xmm0        f2 48 0f 2a c0           same |}]
+
+let%expect_test "x86_32 builders read like the text" =
+  let module H = Harness.Make (X86_32_encode) in
+  let open X86_32_asm in
+  List.iter
+    (fun (i, t) -> H.check i t)
+    [
+      (add eax ebx, "addl %eax, %ebx");
+      (add al bl, "addb %al, %bl");
+      (add_i 5L ecx, "addl $5, %ecx");
+      (add_m (mem ~disp:8L esp) ebx, "addl 8(%esp), %ebx");
+      (addl_im 1000L (mem edi), "addl $1000, (%edi)");
+      (mov_i 7L edx, "movl $7, %edx");
+      (movzb bl eax, "movzbl %bl, %eax");
+      (push ebp, "pushl %ebp");
+      (pop ebx, "popl %ebx");
+      (dec esi, "decl %esi");
+      (call_r eax, "call *%eax");
+      (ret, "ret");
+      (addsd xmm1 xmm2, "addsd %xmm1, %xmm2");
+      (fadd st1, "fadd %st, %st(1)");
+    ];
+  (* the movzx/movsx forms take no high byte register yet, from text either *)
+  (match H.assemble "movzbl %ah, %eax" with
+  | Ok b -> print_endline (Harness.hex b)
+  | Error m -> print_endline m);
+  [%expect
+    {|
+    x86_32   addl %eax, %ebx              01 c3                    same
+    x86_32   addb %al, %bl                00 c3                    same
+    x86_32   addl $5, %ecx                83 c1 05                 same
+    x86_32   addl 8(%esp), %ebx           03 5c 24 08              same
+    x86_32   addl $1000, (%edi)           81 07 e8 03 00 00        same
+    x86_32   movl $7, %edx                ba 07 00 00 00           same
+    x86_32   movzbl %bl, %eax             0f b6 c3                 same
+    x86_32   pushl %ebp                   55                       same
+    x86_32   popl %ebx                    5b                       same
+    x86_32   decl %esi                    4e                       same
+    x86_32   call *%eax                   ff d0                    same
+    x86_32   ret                          c3                       same
+    x86_32   addsd %xmm1, %xmm2           f2 0f 58 d1              same
+    x86_32   fadd %st, %st(1)             dc c1                    same
+    x86.encode: alt x86_32: no alternative applies |}]
+
+(* Branches: the displacement to the label after the instruction is zero. *)
+let%expect_test "branches to a label" =
+  let l = Asm_core.Expr.Symbol "l" in
+  let module H64 = Harness.Make (X86_64_encode) in
+  let module H32 = Harness.Make (X86_32_encode) in
+  let check name same (i, t) =
+    Printf.printf "%-8s %-10s %s\n" name t (if same i (t ^ "\nl:") then "same" else "DIFFERENT")
+  in
+  List.iter
+    (check "x86_64" (fun i t -> H64.same_bytes i t))
+    X86_64_asm.
+      [
+        (jmp l, "jmp l");
+        (je l, "je l");
+        (jcc Cc.Ge l, "jge l");
+        (jnz l, "jnz l");
+        (call l, "call l");
+      ];
+  List.iter
+    (check "x86_32" (fun i t -> H32.same_bytes i t))
+    X86_32_asm.[ (jmp l, "jmp l"); (jb l, "jb l"); (loop l, "loop l"); (jecxz l, "jecxz l") ];
+  [%expect
+    {|
+    x86_64   jmp l      same
+    x86_64   je l       same
+    x86_64   jge l      same
+    x86_64   jnz l      same
+    x86_64   call l     same
+    x86_32   jmp l      same
+    x86_32   jb l       same
+    x86_32   loop l     same
+    x86_32   jecxz l    same |}]

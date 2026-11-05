@@ -1,5 +1,10 @@
-(* What the x86 builder libraries share: the typed register views and the register classes'
-   numbers. {!X86_32_asm} and {!X86_64_asm} name the registers each mode has. *)
+(* What the x86 builder libraries share: the typed register views, the register classes' numbers,
+   memory and EVEX operands, and the builders that take a condition. {!X86_32_asm} and
+   {!X86_64_asm} name the registers each mode has and its builders: one per operand shape, in AT&T
+   order, named by the mnemonic and a suffix for the shape's immediates ([i]), memory ([m]),
+   symbols ([s]), [%cl] ([cl]) and leading registers ([rm]: a register into memory). A builder's
+   width is its general registers', or its size letter where none fixes it ([addl_im]); 32- and
+   64-bit immediates are [int64], an [_e] builder takes an {!Asm_core.Expr.t}. *)
 
 open X86_family_encode
 module View = X86_ops.View
@@ -102,3 +107,10 @@ let st_registers = List.init 8 (fun num -> { Reg.cls = St; num })
 (* The registers a legacy or VEX encoding reaches: numbers 16-31 (EVEX's upper vectors, APX's
    general registers) take their own views. *)
 let base_registers = List.filter (fun (r : Reg.t) -> r.num < 16)
+
+(* {1 Conditions} *)
+
+let setcc cc r = X86_ops.mk ~width:8 (Opcode.Setcc cc) X86_ops.S.s_sete r
+let setcc_m cc m = X86_ops.mk ~width:8 (Opcode.Setcc cc) X86_ops.S.s_sete_m m
+let cmovcc cc a = X86_ops.mk (Opcode.Cmov cc) X86_ops.S.s_cmove a
+let cmovcc_m cc a = X86_ops.mk (Opcode.Cmov cc) X86_ops.S.s_cmove_m a
