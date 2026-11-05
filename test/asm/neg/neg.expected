@@ -1,5 +1,7 @@
 ok_riscv32_asm: compiles
 ok_riscv_asm: compiles
+ok_x86_asm: compiles
+ok_x86_regs: compiles
 ok_xreg: compiles
 rv32_asm_fadd_s_on_xregs: refused, mentions Freg
 rv32_asm_vadd_on_xreg: refused, mentions Vreg
@@ -7,3 +9,11 @@ rv32_has_no_ld: refused, mentions ld
 rv_c_lw_full_register: refused, mentions Creg
 rv_fadd_s_on_xregs: refused, mentions Freg
 rv_freg_for_xreg: refused, mentions Xreg
+x86_32_has_no_addq_im: refused, mentions addq_im
+x86_32_has_no_rax: refused, mentions rax
+x86_32_has_no_rdrand_r64: refused, mentions rdrand_r64
+x86_64_add_width_mismatch: refused, mentions W64
+x86_64_vaddps_upper_xmm: refused, mentions `Hi
+x86_64_vex_gather_on_xmm16: refused, mentions `Hi
+x86_bswap_on_w16: refused, mentions W16
+x86_vaddps_length_mismatch: refused, mentions L256

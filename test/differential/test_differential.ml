@@ -959,8 +959,8 @@ let%expect_test "canonical disassembly reassembles to the same bytes" =
     global_ldst  aarch64  20 bytes reproduced
     global_ldst  riscv32  20 bytes reproduced
     global_ldst  riscv64  20 bytes reproduced
-    loop         x86_32   REASSEMBLE x86.simplify: test needs an operand-size suffix (b, w, l or q)
-    loop         x86_64   REASSEMBLE x86.simplify: test needs an operand-size suffix (b, w, l or q)
+    loop         x86_32   59 bytes reproduced
+    loop         x86_64   56 bytes reproduced
     loop         arm      68 bytes reproduced
     loop         aarch64  68 bytes reproduced
     loop         riscv32  60 bytes reproduced
