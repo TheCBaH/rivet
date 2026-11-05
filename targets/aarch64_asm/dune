@@ -1,0 +1,10 @@
+; Typed AArch64 instruction builders, from the AArch64 opcode table.
+
+(library
+ (name aarch64_asm)
+ (public_name rivet.aarch64_asm)
+ (modules aarch64_asm)
+ (modes byte native)
+ (libraries foundation asm_core aarch64_encode)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))

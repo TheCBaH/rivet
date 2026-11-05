@@ -11,7 +11,10 @@
   test_x86_asm
   test_arm_ops
   test_arm_regs
-  test_arm_asm)
+  test_arm_asm
+  test_aarch64_regs
+  test_aarch64_ops
+  test_aarch64_asm)
  (modes byte native)
  (libraries
   driver
@@ -28,6 +31,7 @@
   arm_encode
   arm_asm
   aarch64_encode
+  aarch64_asm
   x86_family_encode
   x86_32_encode
   x86_64_encode

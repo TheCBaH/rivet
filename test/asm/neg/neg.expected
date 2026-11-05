@@ -1,8 +1,16 @@
+aarch64_add_i_zr_destination: refused, mentions `Zr
+aarch64_add_sp_in_zr_position: refused, mentions `Sp
+aarch64_add_width_mismatch: refused, mentions `W
+aarch64_fadd_d_s_mix: refused, mentions `S
+aarch64_fadd_v_arrangement_mix: refused, mentions `D2
+aarch64_ldrb_on_x_register: refused, mentions View.x
+aarch64_scvtf_on_s_destination_from_d: refused, mentions View.d
 arm_add_on_dregs: refused, mentions Dreg
 arm_vadd_f32_on_dregs: refused, mentions Dreg
 arm_vadd_f64_on_sregs: refused, mentions Sreg
 arm_vcvt_f64_s32_on_sregs: refused, mentions Sreg
 arm_vldr_d_on_sreg: refused, mentions Sreg
+ok_aarch64_asm: compiles
 ok_arm_asm: compiles
 ok_riscv32_asm: compiles
 ok_riscv_asm: compiles

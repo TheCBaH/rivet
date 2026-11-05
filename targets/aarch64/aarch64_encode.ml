@@ -1,4 +1,4 @@
-(* The aarch64 (A64) target description (docs/design.md §5.1).
+(* The aarch64 (A64) target description (docs/design.md §5.1): the encoder; its instruction types are in {!Aarch64_types}.
 
    Deliberately not in a family functor with ARM. A64 is a different
    instruction set that happens to share a vendor: no condition field, no
@@ -21,633 +21,20 @@
 
 open Foundation
 module C = Codec
+include Aarch64_types
+module Aarch64_ops = Aarch64_ops
 
-(* {1 Registers}
-
-   Register 31 is [sp] in some instruction positions and [xzr] in others, and
-   nothing in the encoding says which - the *instruction* says. So the flag is
-   part of the register value and is checked at lowering, where the diagnostic
-   can name the operand, rather than being inferred at encode time where it
-   could only be guessed. *)
-
-module Reg = struct
-  type t = { num : int; width : int; is_sp : bool }
-
-  let equal a b = a.num = b.num && a.width = b.width && a.is_sp = b.is_sp
-
-  let name r =
-    let p = if r.width = 64 then "x" else "w" in
-    if r.num = 31 then if r.is_sp then if r.width = 64 then "sp" else "wsp" else p ^ "zr"
-    else Printf.sprintf "%s%d" p r.num
-
-  let pp ppf r = Fmt.string ppf (name r)
-
-  let find name =
-    let numbered prefix width =
-      let n = String.length prefix in
-      if String.length name > n && String.sub name 0 n = prefix then
-        match int_of_string_opt (String.sub name n (String.length name - n)) with
-        | Some i when i >= 0 && i <= 30 -> Some { num = i; width; is_sp = false }
-        | _ -> None
-      else None
-    in
-    match name with
-    | "sp" -> Some { num = 31; width = 64; is_sp = true }
-    | "wsp" -> Some { num = 31; width = 32; is_sp = true }
-    | "xzr" -> Some { num = 31; width = 64; is_sp = false }
-    | "wzr" -> Some { num = 31; width = 32; is_sp = false }
-    | _ -> ( match numbered "x" 64 with Some r -> Some r | None -> numbered "w" 32)
-
-  (* Decoding cannot recover [is_sp] from the bits, so it is supplied by the
-     position: the caller says whether this field is an SP-accepting one. *)
-  let of_num ~width ~sp n = { num = n land 31; width; is_sp = sp && n land 31 = 31 }
-
-  (* The link register, which [ret] defaults to and which the ABI helpers name
-     often enough that spelling the record out each time obscured the intent. *)
-  let x30 = { num = 30; width = 64; is_sp = false }
-end
-
-(* The scalar FP register file - [d0]-[d31]/[s0]-[s31] - kept separate from
-   [Reg] rather than folded into it with a "kind" tag: A64 has no register
-   that is sometimes general-purpose and sometimes floating-point the way
-   [Reg]'s own SP/zero-register ambiguity is resolved by instruction
-   position, so a shared type would carry a distinction every consumer has
-   to re-check for no case that needs it. Only [d]/[s] are here (M5's FMOV/
-   FCMP-immediate scope, the corpus notes); [q]/[v] (NEON) are not. *)
-module Freg = struct
-  type t = { num : int; double : bool }
-
-  let equal a b = a.num = b.num && a.double = b.double
-  let name r = Printf.sprintf "%s%d" (if r.double then "d" else "s") r.num
-  let pp ppf r = Fmt.string ppf (name r)
-
-  let find name =
-    let numbered prefix double =
-      let n = String.length prefix in
-      if String.length name > n && String.sub name 0 n = prefix then
-        match int_of_string_opt (String.sub name n (String.length name - n)) with
-        | Some i when i >= 0 && i <= 31 -> Some { num = i; double }
-        | _ -> None
-      else None
-    in
-    match numbered "d" true with Some r -> Some r | None -> numbered "s" false
-
-  let of_num ~double n = { num = n land 31; double }
-end
-
-(* {1 Operands} *)
-
-(* A memory offset is a number or an expression (§D2). [ldr w0, [x16, #:lo12:g]]
-   is the reason: the offset is not known until the linker places [g], so a
-   numeric field cannot hold it and a separate "symbolic load" form would be a
-   second spelling of the same addressing mode. *)
-(* The index extends of a register offset and of ADD/SUB (extended register); [Lsl_ext] is the
-   [lsl] an index takes. *)
-module Extend = struct
-  type t = Uxtb | Uxth | Uxtw | Uxtx | Sxtb | Sxth | Sxtw | Sxtx | Lsl_ext
-
-  let all = [ Uxtb; Uxth; Uxtw; Uxtx; Sxtb; Sxth; Sxtw; Sxtx; Lsl_ext ]
-
-  let name = function
-    | Uxtb -> "uxtb"
-    | Uxth -> "uxth"
-    | Uxtw -> "uxtw"
-    | Uxtx -> "uxtx"
-    | Sxtb -> "sxtb"
-    | Sxth -> "sxth"
-    | Sxtw -> "sxtw"
-    | Sxtx -> "sxtx"
-    | Lsl_ext -> "lsl"
-
-  let of_name s = List.find_opt (fun e -> String.equal (name e) s) all
-end
-
-module Disp = struct
-  (* [Reg] is the register-offset addressing form - [ldr w4, [x9, w10, uxtw
-     #2]] - not a fourth [Mem] shape but a third [Disp] one, because base
-     plus offset is the whole addressing relation and this is a third kind
-     of offset, exactly as [Sym] already is. [amount] is what the source
-     wrote: [None] when the extend name carried no [#N] at all ([uxtw]
-     alone, or the two-register form with no extend token at all - GAS
-     accepts that too and it means [lsl] unshifted), [Some n] when it did,
-     including [Some 0] - which is a real, distinct encoding (S=1) from
-     [None] (S=0) even though both add the index unscaled; verified against
-     real [as]/[objdump]: [[x20, x1]] and [[x20, x1, lsl #0]] assemble to
-     the same word and objdump prints both as the bare two-register form,
-     which is why decode reconstructs [amount = None] whenever the encoded
-     amount is unscaled, regardless of which spelling produced it. *)
-  type t =
-    | Const of int64
-    | Sym of Asm_core.Expr.t
-    | Reg of { index : Reg.t; extend : Extend.t; amount : int option }
-
-  let zero = Const 0L
-  let is_zero = function Const v -> Int64.equal v 0L | Sym _ | Reg _ -> false
-  let equal a b = match (a, b) with Const x, Const y -> Int64.equal x y | _ -> a = b
-
-  let to_string = function
-    | Const v -> Printf.sprintf "#%Ld" v
-    | Sym e -> Asm_core.Expr.to_string e
-    | Reg { index; extend; amount } ->
-        let tail =
-          if extend = Extend.Lsl_ext && amount = None then ""
-          else
-            ", " ^ Extend.name extend
-            ^ match amount with Some n -> Printf.sprintf " #%d" n | None -> ""
-        in
-        Reg.name index ^ tail
-end
-
-module Mem = struct
-  type t = { base : Reg.t; offset : Disp.t; writeback : bool; pre : bool }
-
-  let pp ppf m =
-    let off = if Disp.is_zero m.offset then "" else ", " ^ Disp.to_string m.offset in
-    Fmt.pf ppf "[%a%s]%s" Reg.pp m.base off (if m.writeback then "!" else "")
-end
-
-(* A shift or extend operand, [<keyword> #<amount>]: the shifted-register forms take a shift,
-   ADD/SUB (extended register) an extend. *)
-module Shift = struct
-  type kind = Lsl | Lsr | Asr | Ror | Ext of Extend.t
-  type t = { kind : kind; amount : int }
-
-  let name = function
-    | Lsl -> "lsl"
-    | Lsr -> "lsr"
-    | Asr -> "asr"
-    | Ror -> "ror"
-    | Ext e -> Extend.name e
-
-  let of_name = function
-    | "lsl" -> Some Lsl
-    | "lsr" -> Some Lsr
-    | "asr" -> Some Asr
-    | "ror" -> Some Ror
-    | s -> Option.map (fun e -> Ext e) (Extend.of_name s)
-end
-
-(* {1 Advanced SIMD}
-
-   The vector forms a compiler's selected code uses: arithmetic on two or four binary32 or two
-   binary64 lanes, lane moves, single-lane and replicating loads and stores, and the Q-register
-   transfers. A vector register is its number alone; the arrangement or lane belongs to the
-   operand that names it, as it does in the assembler's own syntax. *)
-
-(* The arrangement of a vector register: a 64-bit half or the whole 128 bits. *)
-module Varr = struct
-  type t = B8 | B16 | S2 | S4 | D2
-
-  let name = function B8 -> "8b" | B16 -> "16b" | S2 -> "2s" | S4 -> "4s" | D2 -> "2d"
-
-  let of_name = function
-    | "8b" -> Some B8
-    | "16b" -> Some B16
-    | "2s" -> Some S2
-    | "4s" -> Some S4
-    | "2d" -> Some D2
-    | _ -> None
-
-  let equal (a : t) b = a = b
-  let q = function B8 | S2 -> 0 | B16 | S4 | D2 -> 1
-  let sz = function D2 -> 1 | B8 | B16 | S2 | S4 -> 0
-end
-
-(* One lane's size: a binary32 or binary64 element. *)
-module Lane = struct
-  type t = S | D
-
-  let name = function S -> "s" | D -> "d"
-  let of_name = function "s" -> Some S | "d" -> Some D | _ -> None
-  let lanes = function S -> 4 | D -> 2
-
-  (* DUP and INS's [imm5]: the lane size's marker bit with the index above it. *)
-  let imm5 t i = match t with S -> (i lsl 3) lor 0b100 | D -> (i lsl 4) lor 0b1000
-
-  let of_imm5 v =
-    if v land 0b1111 = 0b1000 then Some (D, v lsr 4)
-    else if v land 0b111 = 0b100 then Some (S, v lsr 3)
-    else None
-end
-
-module Operand = struct
-  type t =
-    | Reg of Reg.t
-    | Freg of Freg.t
-    | Imm of Bigint.t
-    | Fimm of float
-        (** [#1.0000000] in [fmov d0, #1.0000000] - the scalar FP modified immediate FMOV and
-            FCMP(#0.0) take. A distinct constructor from [Imm] rather than a reinterpreted bit
-            pattern: the value is a *value*, and [Fimm]'s domain (what VFPExpandImm can express) is
-            not [Imm]'s (any integer that fits). *)
-    | Mem of Mem.t
-    | Shift of Shift.t
-        (** [lsl #0] in [movz w0, #42, lsl #0]. Not an operand in any real sense - it modifies the
-            immediate before it - but the common parser hands over comma-separated slices and this
-            is one of them. Simplify folds it into the operand it belongs to; a surface AST that
-            had already folded it could not report a shift applied to nothing. *)
-    | Sym of Asm_core.Expr.t
-        (** a branch or call target. Written without a [#], unlike an immediate: it is an address,
-            not a value, and the two are spelled differently for that reason. *)
-    | Vec of int * Varr.t  (** [v0.4s] *)
-    | Vlane of int * Lane.t * int  (** [v0.s[1]] *)
-    | Vlist of int * Varr.t  (** [{v0.4s}] *)
-    | Vlist_lane of int * Lane.t * int  (** [{v0.s}[1]] *)
-    | Qreg of int  (** [q0] *)
-
-  let pp ppf = function
-    | Reg r -> Reg.pp ppf r
-    | Freg r -> Freg.pp ppf r
-    | Imm v -> Fmt.pf ppf "#%a" Bigint.pp v
-    (* Objdump's own spelling ([%.18e], verified against real
-       [aarch64-linux-gnu-objdump]: [#1.000000000000000000e+00], not
-       the compiler's source spelling [#1.0000000] - same rule as [Reg]'s
-       canonical names ([sl]/[fp] rather than the [r10]/[r11] a source file
-       might have written), because this printer is also what the decoded
-       canonical dump uses and that dump is compared against objdump's. *)
-    | Fimm f -> Fmt.pf ppf "#%s" (Printf.sprintf "%.18e" f)
-    | Mem m -> Mem.pp ppf m
-    | Shift s -> Fmt.pf ppf "%s #%d" (Shift.name s.Shift.kind) s.Shift.amount
-    | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
-    | Vec (r, a) -> Fmt.pf ppf "v%d.%s" r (Varr.name a)
-    | Vlane (r, l, i) -> Fmt.pf ppf "v%d.%s[%d]" r (Lane.name l) i
-    | Vlist (r, a) -> Fmt.pf ppf "{v%d.%s}" r (Varr.name a)
-    | Vlist_lane (r, l, i) -> Fmt.pf ppf "{v%d.%s}[%d]" r (Lane.name l) i
-    | Qreg r -> Fmt.pf ppf "q%d" r
-end
-
-module Surface = struct
-  type t = { mnemonic : string; ops : Operand.t list; origin : Origin.t }
-
-  let pp ppf s =
-    match s.ops with
-    | [] -> Fmt.string ppf s.mnemonic
-    | ops -> Fmt.pf ppf "%s %a" s.mnemonic Fmt.(list ~sep:(any ", ") Operand.pp) ops
-end
-
-(* {1 Condition codes}
-
-   Unlike A32 a condition is not on every instruction: A64 has three consumers -
-   [b.<cc>], [csel] and the [cset] family - and this file needs the first two.
-   Declared in encoding order, so the code is the position, and all sixteen are
-   named because [decode] must be total over the field. *)
-module Cond = struct
-  type t = Eq | Ne | Cs | Cc | Mi | Pl | Vs | Vc | Hi | Ls | Ge | Lt | Gt | Le | Al | Nv
-
-  let all = [ Eq; Ne; Cs; Cc; Mi; Pl; Vs; Vc; Hi; Ls; Ge; Lt; Gt; Le; Al; Nv ]
-
-  let name = function
-    | Eq -> "eq"
-    | Ne -> "ne"
-    | Cs -> "cs"
-    | Cc -> "cc"
-    | Mi -> "mi"
-    | Pl -> "pl"
-    | Vs -> "vs"
-    | Vc -> "vc"
-    | Hi -> "hi"
-    | Ls -> "ls"
-    | Ge -> "ge"
-    | Lt -> "lt"
-    | Gt -> "gt"
-    | Le -> "le"
-    | Al -> "al"
-    | Nv -> "nv"
-
-  let equal (a : t) b = a = b
-
-  let code c =
-    let rec go i = function [] -> 14 | x :: rest -> if equal x c then i else go (i + 1) rest in
-    go 0 all
-
-  (* Input-only spellings, as on A32: objdump prints [cs] and [cc]. *)
-  let synonyms = [ ("hs", Cs); ("lo", Cc) ]
-
-  let of_name s =
-    match List.find_opt (fun c -> String.equal (name c) s) all with
-    | Some c -> Some c
-    | None -> List.assoc_opt s synonyms
-
-  (* [cset rd, cc] is [csinc rd, zr, zr, invert(cc)] - the condition that must hold for the
-     *complement* selection (real hardware's own encoding of the alias, not a semantic negation
-     this project computes at runtime). Every A64 condition but AL/NV pairs with the one flipping
-     its least-significant bit, and [cset] never evidences either of those two. *)
-  let invert = function
-    | Eq -> Ne
-    | Ne -> Eq
-    | Cs -> Cc
-    | Cc -> Cs
-    | Mi -> Pl
-    | Pl -> Mi
-    | Vs -> Vc
-    | Vc -> Vs
-    | Hi -> Ls
-    | Ls -> Hi
-    | Ge -> Lt
-    | Lt -> Ge
-    | Gt -> Le
-    | Le -> Gt
-    | Al -> Nv
-    | Nv -> Al
-end
-
+(* What the types leave to the table: spellings and parsing come from {!Aarch64_ops}. *)
 module Opcode = struct
-  type t =
-    | Add
-    | Mov
-    | Movz
-    | Movn
-    | Movk
-    | Cbz
-    | Cbnz
-    | Sxtw
-    | Uxtw
-    | Udiv
-    | Sdiv
-    | Cset
-    | Lsl
-    | Lsr
-    | Asr
-    | Ror
-    | Ubfx
-    | Ubfiz
-    | Sbfx
-    | Sbfiz
-    | Rbit
-    | Rev16
-    | Rev32
-    | Rev
-    | Clz
-    | Cls
-    | Stp
-    | Ldp
-    | Ldr
-    | Ldrb
-    | Ldrh
-    | Ldrsb
-    | Ldrsh
-    | Ldrsw
-    | Str
-    | Strb
-    | Strh
-    | Ret
-    | Br
-    | Mrs
-    | Msr
-    | Sub
-    | Cmp
-    | Cmn
-    | And
-    | Orr
-    | Eor
-    | Bic
-    | Madd
-    | Msub
-    | Mul
-    | Csel
-    | Adrp
-    | Adr
-    | B
-    | Bcond of Cond.t
-    | Udf
-    | Bl
-    | Fmov
-    | Fcmp
-    | Fadd
-    | Fsub
-    | Fmul
-    | Fdiv
-    | Fcsel
-    | Scvtf
-    | Ucvtf
-    | Fneg
-    | Fmax
-    | Fmla
-    | Fcmeq
-    | Fcmge
-    | Fcmgt
-    | Bsl
-    | Bit
-    | Not
-    | Fmadd
-    | Dup
-    | Ins
-    | Ld1
-    | Ld1r
-    | St1
-    | Fcvtl
-    | Fcvtn
-    | Fsqrt
-    | Frintz
-    | Fcvt
-    | Fcvtzs
-    | Fcvtzu
-    | Tst
+  include Opcode
 
-  let name = function
-    | Add -> "add"
-    | Mov -> "mov"
-    | Movz -> "movz"
-    | Movn -> "movn"
-    | Movk -> "movk"
-    | Cbz -> "cbz"
-    | Cbnz -> "cbnz"
-    | Sxtw -> "sxtw"
-    | Uxtw -> "uxtw"
-    | Udiv -> "udiv"
-    | Sdiv -> "sdiv"
-    | Cset -> "cset"
-    | Lsl -> "lsl"
-    | Lsr -> "lsr"
-    | Asr -> "asr"
-    | Ror -> "ror"
-    | Ubfx -> "ubfx"
-    | Ubfiz -> "ubfiz"
-    | Sbfx -> "sbfx"
-    | Sbfiz -> "sbfiz"
-    | Rbit -> "rbit"
-    | Rev16 -> "rev16"
-    | Rev32 -> "rev32"
-    | Rev -> "rev"
-    | Clz -> "clz"
-    | Cls -> "cls"
-    | Stp -> "stp"
-    | Ldp -> "ldp"
-    | Ldr -> "ldr"
-    | Ldrb -> "ldrb"
-    | Ldrsb -> "ldrsb"
-    | Ldrsh -> "ldrsh"
-    | Ldrsw -> "ldrsw"
-    | Ldrh -> "ldrh"
-    | Str -> "str"
-    | Strb -> "strb"
-    | Strh -> "strh"
-    | Ret -> "ret"
-    | Br -> "br"
-    | Mrs -> "mrs"
-    | Msr -> "msr"
-    | Sub -> "sub"
-    | Cmp -> "cmp"
-    | Cmn -> "cmn"
-    | And -> "and"
-    | Orr -> "orr"
-    | Eor -> "eor"
-    | Bic -> "bic"
-    | Madd -> "madd"
-    | Msub -> "msub"
-    | Mul -> "mul"
-    | Csel -> "csel"
-    | Adrp -> "adrp"
-    | Adr -> "adr"
-    | B -> "b"
-    | Bcond c -> "b." ^ Cond.name c
-    | Udf -> "udf"
-    | Bl -> "bl"
-    | Fmov -> "fmov"
-    | Fcmp -> "fcmp"
-    | Fadd -> "fadd"
-    | Fsub -> "fsub"
-    | Fmul -> "fmul"
-    | Fdiv -> "fdiv"
-    | Fcsel -> "fcsel"
-    | Scvtf -> "scvtf"
-    | Ucvtf -> "ucvtf"
-    | Fneg -> "fneg"
-    | Fmax -> "fmax"
-    | Fmla -> "fmla"
-    | Fcmeq -> "fcmeq"
-    | Fcmge -> "fcmge"
-    | Fcmgt -> "fcmgt"
-    | Bsl -> "bsl"
-    | Bit -> "bit"
-    | Not -> "not"
-    | Dup -> "dup"
-    | Ins -> "ins"
-    | Ld1 -> "ld1"
-    | Ld1r -> "ld1r"
-    | St1 -> "st1"
-    | Fcvtl -> "fcvtl"
-    | Fcvtn -> "fcvtn"
-    | Fmadd -> "fmadd"
-    | Fsqrt -> "fsqrt"
-    | Frintz -> "frintz"
-    | Fcvt -> "fcvt"
-    | Fcvtzs -> "fcvtzs"
-    | Fcvtzu -> "fcvtzu"
-    | Tst -> "tst"
-
-  (* The surface spellings this target accepts, and the only place the mapping
-     lives. [simplify_instruction] consults it rather than repeating the list,
-     so a mnemonic that is added here is accepted there by construction.
-
-     [b.<cc>] is the one spelling that is not a fixed string. It lexes as a
-     single identifier because [.] is an identifier character in this dialect -
-     the same reason [.L100] is one token - so the condition is split off here
-     rather than by the lexer. *)
-  let of_mnemonic = function
-    | "add" -> Some Add
-    | "mov" -> Some Mov
-    | "movz" -> Some Movz
-    | "movn" -> Some Movn
-    | "movk" -> Some Movk
-    | "cbz" -> Some Cbz
-    | "cbnz" -> Some Cbnz
-    | "sxtw" -> Some Sxtw
-    | "uxtw" -> Some Uxtw
-    | "udiv" -> Some Udiv
-    | "sdiv" -> Some Sdiv
-    | "cset" -> Some Cset
-    | "lsl" -> Some Lsl
-    | "lsr" -> Some Lsr
-    | "asr" -> Some Asr
-    | "ror" -> Some Ror
-    | "ubfx" -> Some Ubfx
-    | "ubfiz" -> Some Ubfiz
-    | "sbfx" -> Some Sbfx
-    | "sbfiz" -> Some Sbfiz
-    | "rbit" -> Some Rbit
-    | "rev16" -> Some Rev16
-    | "rev32" -> Some Rev32
-    | "rev" -> Some Rev
-    | "clz" -> Some Clz
-    | "cls" -> Some Cls
-    | "stp" -> Some Stp
-    | "ldp" -> Some Ldp
-    | "ldr" -> Some Ldr
-    | "ldrb" -> Some Ldrb
-    | "ldrh" -> Some Ldrh
-    | "ldrsb" -> Some Ldrsb
-    | "ldrsh" -> Some Ldrsh
-    | "ldrsw" -> Some Ldrsw
-    | "str" -> Some Str
-    | "strb" -> Some Strb
-    | "strh" -> Some Strh
-    | "ret" -> Some Ret
-    | "mrs" -> Some Mrs
-    | "msr" -> Some Msr
-    | "br" -> Some Br
-    | "sub" -> Some Sub
-    | "cmp" -> Some Cmp
-    | "cmn" -> Some Cmn
-    | "and" -> Some And
-    | "orr" -> Some Orr
-    | "eor" -> Some Eor
-    | "bic" -> Some Bic
-    | "madd" -> Some Madd
-    | "msub" -> Some Msub
-    | "mul" -> Some Mul
-    | "csel" -> Some Csel
-    | "adrp" -> Some Adrp
-    | "adr" -> Some Adr
-    | "b" -> Some B
-    | "udf" -> Some Udf
-    | "bl" -> Some Bl
-    | "fmov" -> Some Fmov
-    | "fcmp" -> Some Fcmp
-    | "fadd" -> Some Fadd
-    | "fsub" -> Some Fsub
-    | "fmul" -> Some Fmul
-    | "fdiv" -> Some Fdiv
-    | "fcsel" -> Some Fcsel
-    | "scvtf" -> Some Scvtf
-    | "ucvtf" -> Some Ucvtf
-    | "fneg" -> Some Fneg
-    | "fmax" -> Some Fmax
-    | "fmla" -> Some Fmla
-    | "fcmeq" -> Some Fcmeq
-    | "fcmge" -> Some Fcmge
-    | "fcmgt" -> Some Fcmgt
-    | "bsl" -> Some Bsl
-    | "bit" -> Some Bit
-    | "not" | "mvn" -> Some Not
-    | "dup" -> Some Dup
-    | "ins" -> Some Ins
-    | "ld1" -> Some Ld1
-    | "ld1r" -> Some Ld1r
-    | "st1" -> Some St1
-    | "fcvtl" -> Some Fcvtl
-    | "fcvtn" -> Some Fcvtn
-    | "fmadd" -> Some Fmadd
-    | "fsqrt" -> Some Fsqrt
-    | "frintz" -> Some Frintz
-    | "fcvt" -> Some Fcvt
-    | "fcvtzs" -> Some Fcvtzs
-    | "fcvtzu" -> Some Fcvtzu
-    | "tst" -> Some Tst
-    | m ->
-        if String.length m > 2 && String.sub m 0 2 = "b." then
-          Option.map (fun c -> Bcond c) (Cond.of_name (String.sub m 2 (String.length m - 2)))
-        else if String.length m = 3 && m.[0] = 'b' then
-          (* gcc prints [bge]/[ble]/[bne]..., which GNU as reads as [b.ge]/[b.le]/[b.ne]. Every
-             real three-letter mnemonic beginning with [b] was matched above. *)
-          Option.map (fun c -> Bcond c) (Cond.of_name (String.sub m 1 2))
-        else None
+  let name = Aarch64_ops.name
+  let of_mnemonic = Aarch64_ops.of_mnemonic
+  let all = Aarch64_ops.opcodes
 end
 
 module Instruction = struct
-  type t = { op : Opcode.t; ops : Operand.t list }
-
-  let mk op ops = { op; ops }
+  include Instruction
 
   let pp ppf i =
     match i.ops with
@@ -697,7 +84,7 @@ let sx_mnemonic = function B -> "ldrsb" | H -> "ldrsh" | W | X -> "ldrsw"
 let ldst_mnemonic ~size ~load =
   (if load then "ldr" else "str") ^ match size with B -> "b" | H -> "h" | W | X -> ""
 
-let shift_name = function 0 -> "lsl" | 1 -> "lsr" | 2 -> "asr" | 3 -> "ror" | _ -> "?"
+let shift_name = Aarch64_ops.shift_name
 
 let shift_code = function
   | Shift.Lsl -> Some 0
@@ -740,28 +127,15 @@ let extend_alu_code = function
   | Lsl_ext -> None
 
 let extend_alu_of_code c = List.find_opt (fun e -> extend_alu_code e = Some c) Extend.all
-let logical_name = function 0 -> "and" | 1 -> "orr" | 2 -> "eor" | 3 -> "ands" | _ -> "?"
+let logical_name = Aarch64_ops.logical_name
 
 (* "Floating-point data-processing (2 source)"'s own 4-bit opcode field (M5
    corpus evidence: almabench.c/fftw.c/... - fadd/fsub/
    fmul/fdiv). [fmax]/[fmin]/[fmaxnm]/[fminnm]/[fnmul] share the identical
    word shape at other opcode values but are not evidenced, so none of them
    is implemented alongside these four. *)
-let fbinop_name = function
-  | 0 -> "fmul"
-  | 1 -> "fdiv"
-  | 2 -> "fadd"
-  | 3 -> "fsub"
-  | 4 -> "fmax"
-  | _ -> "?"
-
-let fbinop_opcode = function
-  | Opcode.Fmul -> Some 0
-  | Opcode.Fdiv -> Some 1
-  | Opcode.Fadd -> Some 2
-  | Opcode.Fsub -> Some 3
-  | Opcode.Fmax -> Some 4
-  | _ -> None
+let fbinop_name = Aarch64_ops.fbinop_name
+let fbinop_opcode = Aarch64_ops.fbinop_opcode
 
 (* UBFM's own two evidenced surface aliases (M5 corpus evidence: [ubfx]/
    [ubfiz]). Real hardware's canonical disassembly additionally prefers [uxtb]/[uxth]/[lsr] over
@@ -782,25 +156,18 @@ let ubfm_alias_of ~datasize ~immr ~imms =
    opcode is the one [Rev] has for a 32-bit register. *)
 type dp1 = Rbit | Rev16 | Rev32 | Rev | Clz | Cls
 
-let dp1_name = function
-  | Rbit -> "rbit"
-  | Rev16 -> "rev16"
-  | Rev32 -> "rev32"
-  | Rev -> "rev"
-  | Clz -> "clz"
-  | Cls -> "cls"
+let dp1_op = function
+  | Rbit -> Opcode.Rbit
+  | Rev16 -> Opcode.Rev16
+  | Rev32 -> Opcode.Rev32
+  | Rev -> Opcode.Rev
+  | Clz -> Opcode.Clz
+  | Cls -> Opcode.Cls
+
+let dp1_name d = Aarch64_ops.name (dp1_op d)
 
 (* The 6-bit opcode for [op] at [width], or [None] where there is no such instruction. *)
-let dp1_opcode op ~width =
-  match (op, width) with
-  | Rbit, _ -> Some 0
-  | Rev16, _ -> Some 1
-  | Rev32, 64 -> Some 2
-  | Rev32, _ -> None
-  | Rev, 32 -> Some 2
-  | Rev, _ -> Some 3
-  | Clz, _ -> Some 4
-  | Cls, _ -> Some 5
+let dp1_opcode d ~width = Aarch64_ops.dp1_opcode (dp1_op d) ~width
 
 (* The system registers a producer reads and writes: the floating-point control and the condition
    flags. Not a general system-register operand: exactly the two a compiler's code touches. *)
@@ -812,54 +179,39 @@ let sysreg_name = function Fpcr -> "fpcr" | Nzcv -> "nzcv"
 type vbin = Vfadd | Vfcmeq | Vfcmge | Vfcmgt | Vfdiv | Vfmax | Vfmla | Vfmul | Vfsub
 type vun = Vfneg | Vfrintz | Vfsqrt
 
-(* [U], [a] (bit 23) and the five-bit opcode of a three-register form. *)
-let vbin_bits = function
-  | Vfadd -> (0, 0, 0b11010)
-  | Vfsub -> (0, 1, 0b11010)
-  | Vfmul -> (1, 0, 0b11011)
-  | Vfdiv -> (1, 0, 0b11111)
-  | Vfmax -> (0, 0, 0b11110)
-  | Vfmla -> (0, 0, 0b11001)
-  | Vfcmeq -> (0, 0, 0b11100)
-  | Vfcmge -> (1, 0, 0b11100)
-  | Vfcmgt -> (1, 1, 0b11100)
+let vbin_op = function
+  | Vfadd -> Opcode.Fadd
+  | Vfsub -> Opcode.Fsub
+  | Vfmul -> Opcode.Fmul
+  | Vfdiv -> Opcode.Fdiv
+  | Vfmax -> Opcode.Fmax
+  | Vfmla -> Opcode.Fmla
+  | Vfcmeq -> Opcode.Fcmeq
+  | Vfcmge -> Opcode.Fcmge
+  | Vfcmgt -> Opcode.Fcmgt
 
-let vbin_name = function
-  | Vfadd -> "fadd"
-  | Vfsub -> "fsub"
-  | Vfmul -> "fmul"
-  | Vfdiv -> "fdiv"
-  | Vfmax -> "fmax"
-  | Vfmla -> "fmla"
-  | Vfcmeq -> "fcmeq"
-  | Vfcmge -> "fcmge"
-  | Vfcmgt -> "fcmgt"
+(* [U], [a] (bit 23) and the five-bit opcode of a three-register form. *)
+let vbin_bits v = Aarch64_ops.vbin_bits (vbin_op v)
+let vbin_name v = Aarch64_ops.name (vbin_op v)
+let vun_op = function Vfneg -> Opcode.Fneg | Vfsqrt -> Opcode.Fsqrt | Vfrintz -> Opcode.Frintz
 
 (* [U], [a] and the five-bit opcode of a two-register form. *)
-let vun_bits = function
-  | Vfneg -> (1, 1, 0b01111)
-  | Vfsqrt -> (1, 1, 0b11111)
-  | Vfrintz -> (0, 1, 0b11001)
-
-let vun_name = function Vfneg -> "fneg" | Vfsqrt -> "fsqrt" | Vfrintz -> "frintz"
+let vun_bits v = Aarch64_ops.vun_bits (vun_op v)
+let vun_name v = Aarch64_ops.name (vun_op v)
 
 (* Bitwise vector operations on bytes: [U] and the two selector bits (23:22) of
    [0 Q U 01110 sel 1 Rm 000111 Rn Rd]. [Vbsl] takes its mask from the destination. *)
 type vlogic = Vand | Vbit | Vbsl | Veor | Vorr
 
-let vlogic_bits = function
-  | Vand -> (0, 0b00)
-  | Vorr -> (0, 0b10)
-  | Veor -> (1, 0b00)
-  | Vbsl -> (1, 0b01)
-  | Vbit -> (1, 0b10)
+let vlogic_op = function
+  | Vand -> Opcode.And
+  | Vorr -> Opcode.Orr
+  | Veor -> Opcode.Eor
+  | Vbsl -> Opcode.Bsl
+  | Vbit -> Opcode.Bit
 
-let vlogic_name = function
-  | Vand -> "and"
-  | Vorr -> "orr"
-  | Veor -> "eor"
-  | Vbsl -> "bsl"
-  | Vbit -> "bit"
+let vlogic_bits v = Aarch64_ops.vlogic_bits (vlogic_op v)
+let vlogic_name v = Aarch64_ops.name (vlogic_op v)
 
 module Lowered = struct
   type t =
@@ -1497,7 +849,9 @@ let components : Target_component.t list = []
 let default_config = Target_config.default components
 let initial_state (_ : Target_config.t) = default_state
 let state_config (_ : target_state) = default_config
-let required (_ : Instruction.t) : Target_component.Req.t option = None
+
+let required (i : Instruction.t) : Target_component.Req.t option =
+  Aarch64_ops.requirement i.Instruction.op
 
 (* {1 Scaled immediates}
 
@@ -3890,7 +3244,320 @@ let simplify_instruction (_ : target_state) s =
           Ok { Instruction.op; ops = bare_immediates (List.rev rest) }
       | _ -> Ok { Instruction.op; ops = bare_immediates s.Surface.ops })
 
-(* {1 Lower} *)
+(* {1 Lower}
+
+   The forms the table's encoding classes describe lower here, from the entry's class and its
+   operands; the rest - memory, address arithmetic, immediates with a choice of encoding, moves -
+   stay code in {!lower_instruction}. *)
+
+let sym_target e = Asm_core.Lowered_ast.Symbolic { value = e; rung = None }
+let zr width = { Reg.num = 31; width; is_sp = false }
+let dp1_of op = List.find_opt (fun d -> dp1_op d = op) [ Rbit; Rev16; Rev32; Rev; Clz; Cls ]
+
+let vbin_of op =
+  List.find_opt
+    (fun v -> vbin_op v = op)
+    [ Vfadd; Vfcmeq; Vfcmge; Vfcmgt; Vfdiv; Vfmax; Vfmla; Vfmul; Vfsub ]
+
+let vun_of op = List.find_opt (fun v -> vun_op v = op) [ Vfneg; Vfrintz; Vfsqrt ]
+let vlogic_of op = List.find_opt (fun v -> vlogic_op v = op) [ Vand; Vbit; Vbsl; Veor; Vorr ]
+
+let lower_regular i =
+  let op = i.Instruction.op in
+  let bad kind = Error (diag ~pos:__POS__ kind) in
+  let imm_of v =
+    match Bigint.to_int64_opt v with
+    | Some x -> Ok x
+    | None -> Error (diag ~pos:__POS__ `Immediate_too_wide)
+  in
+  let cond_of s k =
+    match Cond.of_name s with Some c -> k c | None -> bad (`Unknown_condition s)
+  in
+  let class_ : Aarch64_ops.Enc.t -> _ = function
+    | Aarch64_ops.Enc.Wide { opc } -> (
+        let make rd imm16 hw =
+          match opc with
+          | 0 -> Lowered.Movn { rd; imm16; hw }
+          | 2 -> Lowered.Movz { rd; imm16; hw }
+          | _ -> Lowered.Movk { rd; imm16; hw }
+        in
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Imm v ] -> (
+            match imm_of v with
+            | Error e -> Some (Error e)
+            | Ok imm ->
+                if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
+                  Some (bad `Movz_imm16_overflow)
+                else Some (Ok [ make rd imm 0 ]))
+        | [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = Shift.Lsl; amount } ] -> (
+            match imm_of v with
+            | Error e -> Some (Error e)
+            | Ok imm ->
+                if amount mod 16 <> 0 || amount / 16 > 3 then Some (bad `Movz_shift)
+                else if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
+                  Some (bad `Movz_imm16_overflow)
+                else Some (Ok [ make rd imm (amount / 16) ]))
+        | _ -> None)
+    | Aarch64_ops.Enc.Cbz { nz } -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rt; Operand.Sym e ] ->
+            Some (Ok [ Lowered.Cbz { nz; rt; target = sym_target e } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Sxtw -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Reg rn ] -> Some (Ok [ Lowered.Sxtw { rd; rn } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Uxtw -> (
+        (* [uxtw xd, wn] - real hardware's own "writing a W register zeroes the upper 32 bits of
+           its X view" rule means this assembles to the identical bits as [mov wd, wn], so it
+           reuses {!Lowered.Logical_shift} rather than a dedicated constructor. *)
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Reg rn ] ->
+            Some
+              (Ok
+                 [
+                   Lowered.Logical_shift
+                     {
+                       opc = 1;
+                       n = false;
+                       rd = { rd with Reg.width = 32 };
+                       rn = zr 32;
+                       rm = { rn with Reg.width = 32 };
+                       shift = 0;
+                       amount = 0;
+                     };
+                 ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Div { signed } -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
+            Some
+              (Ok [ (if signed then Lowered.Sdiv { rd; rn; rm } else Lowered.Udiv { rd; rn; rm }) ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Madd { sub } -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Reg ra ] ->
+            Some
+              (Ok
+                 [
+                   (if sub then Lowered.Msub { rd; rn; rm; ra } else Lowered.Madd { rd; rn; rm; ra });
+                 ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Mul -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
+            Some (Ok [ Lowered.Madd { rd; rn; rm; ra = zr rd.Reg.width } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Cset -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Symbol s) ] ->
+            Some (cond_of s (fun cond -> Ok [ Lowered.Cset { cond; rd } ]))
+        | _ -> None)
+    | Aarch64_ops.Enc.Csel -> (
+        (* The condition is spelled as a bare name, so it arrives from the common parser as a
+           symbol - there is nothing else it could be until this target says otherwise. *)
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Sym cond ] -> (
+            match cond with
+            | Asm_core.Expr.Symbol s ->
+                Some (cond_of s (fun cond -> Ok [ Lowered.Csel { cond; rd; rn; rm } ]))
+            | _ -> Some (bad `Csel_needs_condition))
+        | _ -> None)
+    | Aarch64_ops.Enc.Fcsel -> (
+        match i.Instruction.ops with
+        | [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm; Operand.Sym cond ] -> (
+            match cond with
+            | Asm_core.Expr.Symbol s ->
+                Some (cond_of s (fun cond -> Ok [ Lowered.Fcsel { cond; rd; rn; rm } ]))
+            | _ -> Some (bad `Csel_needs_condition))
+        | _ -> None)
+    | Aarch64_ops.Enc.Shiftv { code } -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
+            Some (Ok [ Lowered.Shiftv { shift = code; rd; rn; rm } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Bitfield { signed; lsl_alias } -> (
+        (* The lsb/width pair is the one GNU AArch64 immediate spelled without a leading [#] in
+           this corpus: real [as] accepts both spellings, but gcc only ever emits the bare one,
+           which the common expression parser reads as [Operand.Sym (Expr.Const _)], not
+           [Operand.Imm], so both shapes are accepted here. *)
+        match i.Instruction.ops with
+        | [
+         Operand.Reg rd;
+         Operand.Reg rn;
+         (Operand.Imm lsb_v | Operand.Sym (Asm_core.Expr.Const lsb_v));
+         (Operand.Imm width_v | Operand.Sym (Asm_core.Expr.Const width_v));
+        ] -> (
+            match (imm_of lsb_v, imm_of width_v) with
+            | Error e, _ | _, Error e -> Some (Error e)
+            | Ok lsb64, Ok width64 ->
+                let datasize = rd.Reg.width in
+                let lsb = Int64.to_int lsb64 and width = Int64.to_int width64 in
+                if lsb < 0 || lsb >= datasize || width < 1 || lsb + width > datasize then
+                  Some (bad `Bitfield_out_of_range)
+                else
+                  let immr, imms =
+                    if lsl_alias then ((datasize - lsb) mod datasize, width - 1)
+                    else (lsb, lsb + width - 1)
+                  in
+                  Some
+                    (Ok
+                       [
+                         (if signed then Lowered.Sbfm { rd; rn; immr; imms }
+                          else Lowered.Ubfm { rd; rn; immr; imms });
+                       ]))
+        | _ -> None)
+    | Aarch64_ops.Enc.Dp1 { w32; w64 } -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Reg rn ] ->
+            let d = Option.get (dp1_of op) in
+            if rd.Reg.width <> rn.Reg.width || (if rd.Reg.width = 64 then w64 else w32) = None then
+              Some (bad (`Wrong_register_width { subject = Op op; expected = 64 }))
+            else Some (Ok [ Lowered.Dp1 { op = d; rd; rn } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Ret -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rn ] -> Some (Ok [ Lowered.Ret { rn } ])
+        | [] -> Some (Ok [ Lowered.Ret { rn = Reg.x30 } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Br -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rn ] -> Some (Ok [ Lowered.Br { rn } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Mrs -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "fpcr") ] ->
+            Some (Ok [ Lowered.Mrs { sysreg = Fpcr; rt } ])
+        | [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "nzcv") ] ->
+            Some (Ok [ Lowered.Mrs { sysreg = Nzcv; rt } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Msr -> (
+        match i.Instruction.ops with
+        | [ Operand.Sym (Asm_core.Expr.Symbol "fpcr"); Operand.Reg rt ] ->
+            Some (Ok [ Lowered.Msr { sysreg = Fpcr; rt } ])
+        | [ Operand.Sym (Asm_core.Expr.Symbol "nzcv"); Operand.Reg rt ] ->
+            Some (Ok [ Lowered.Msr { sysreg = Nzcv; rt } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Adrp -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Sym e ] ->
+            Some (Ok [ Lowered.Adrp { rd; page = sym_target e } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Adr -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Sym e ] ->
+            Some (Ok [ Lowered.Adr { rd; offset = sym_target e } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.B -> (
+        match i.Instruction.ops with
+        | [ Operand.Sym e ] -> Some (Ok [ Lowered.B { target = sym_target e } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Bcond -> (
+        match (op, i.Instruction.ops) with
+        | Opcode.Bcond cond, [ Operand.Sym e ] ->
+            Some (Ok [ Lowered.Bcond { cond; target = sym_target e } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Bl -> (
+        match i.Instruction.ops with
+        | [ Operand.Sym e ] -> Some (Ok [ Lowered.Bl { target = sym_target e } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Udf -> (
+        match i.Instruction.ops with
+        | [ Operand.Imm v ] -> (
+            match imm_of v with
+            | Error e -> Some (Error e)
+            | Ok imm ->
+                if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
+                  Some (bad `Udf_imm16_overflow)
+                else Some (Ok [ Lowered.Udf { imm16 = imm } ]))
+        | _ -> None)
+    | Aarch64_ops.Enc.Fcmp -> (
+        (* FCMP(immediate) only ever compares against zero: a nonzero literal is not a narrower
+           case of this form, it is a different, unimplemented one. *)
+        match i.Instruction.ops with
+        | [ Operand.Freg rn; Operand.Fimm value ] ->
+            if Float.equal value 0.0 then Some (Ok [ Lowered.Fcmp_imm0 { rn } ])
+            else Some (bad (`Fcmp_immediate_must_be_zero value))
+        | [ Operand.Freg rn; Operand.Freg rm ] -> Some (Ok [ Lowered.Fcmp_reg { rn; rm } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Fbinop { opc } -> (
+        match i.Instruction.ops with
+        | [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm ] ->
+            Some (Ok [ Lowered.Fbinop { opc; rd; rn; rm } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Cvtf { signed } -> (
+        match i.Instruction.ops with
+        | [ Operand.Freg rd; Operand.Reg rn ] -> Some (Ok [ Lowered.Cvtf { signed; rd; rn } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Fp1 _ -> (
+        match i.Instruction.ops with
+        | [ Operand.Freg rd; Operand.Freg rn ] -> (
+            match op with
+            | Opcode.Fneg -> Some (Ok [ Lowered.Fneg { rd; rn } ])
+            | Opcode.Fsqrt -> Some (Ok [ Lowered.Fsqrt { rd; rn } ])
+            | _ -> Some (Ok [ Lowered.Frintz { rd; rn } ]))
+        | _ -> None)
+    | Aarch64_ops.Enc.Fmadd -> (
+        match i.Instruction.ops with
+        | [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm; Operand.Freg ra ] ->
+            Some (Ok [ Lowered.Fmadd { rd; rn; rm; ra } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Fcvt -> (
+        match i.Instruction.ops with
+        | [ Operand.Freg rd; Operand.Freg rn ] -> Some (Ok [ Lowered.Fcvt { rd; rn } ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Fcvtz { signed } -> (
+        match i.Instruction.ops with
+        | [ Operand.Reg rd; Operand.Freg rn ] ->
+            Some (Ok [ (if signed then Lowered.Fcvtzs { rd; rn } else Lowered.Fcvtzu { rd; rn }) ])
+        | _ -> None)
+    | Aarch64_ops.Enc.Vbin _ -> (
+        match i.Instruction.ops with
+        | [ Operand.Vec (rd, a); Operand.Vec (rn, b); Operand.Vec (rm, c) ]
+          when Varr.equal a b && Varr.equal b c -> (
+            match a with
+            | Varr.S2 | Varr.S4 | Varr.D2 ->
+                Some (Ok [ Lowered.Vbin { op = Option.get (vbin_of op); arr = a; rd; rn; rm } ])
+            | Varr.B8 | Varr.B16 -> Some (bad `Vector_arrangement))
+        | _ -> None)
+    | Aarch64_ops.Enc.Vun _ -> (
+        match i.Instruction.ops with
+        | [ Operand.Vec (rd, a); Operand.Vec (rn, b) ] when Varr.equal a b -> (
+            match a with
+            | Varr.S2 | Varr.S4 | Varr.D2 ->
+                Some (Ok [ Lowered.Vun { op = Option.get (vun_of op); arr = a; rd; rn } ])
+            | Varr.B8 | Varr.B16 -> Some (bad `Vector_arrangement))
+        | _ -> None)
+    | Aarch64_ops.Enc.Vlogic _ -> (
+        match i.Instruction.ops with
+        | [ Operand.Vec (rd, a); Operand.Vec (rn, b); Operand.Vec (rm, c) ]
+          when Varr.equal a b && Varr.equal b c -> (
+            let op = Option.get (vlogic_of op) in
+            match a with
+            | Varr.B8 -> Some (Ok [ Lowered.Vlogic { op; q = false; rd; rn; rm } ])
+            | Varr.B16 -> Some (Ok [ Lowered.Vlogic { op; q = true; rd; rn; rm } ])
+            | Varr.S2 | Varr.S4 | Varr.D2 -> Some (bad `Vector_arrangement))
+        | _ -> None)
+    | Aarch64_ops.Enc.Vnot -> (
+        match i.Instruction.ops with
+        | [ Operand.Vec (rd, a); Operand.Vec (rn, b) ] when Varr.equal a b -> (
+            match a with
+            | Varr.B8 -> Some (Ok [ Lowered.Vnot { q = false; rd; rn } ])
+            | Varr.B16 -> Some (Ok [ Lowered.Vnot { q = true; rd; rn } ])
+            | Varr.S2 | Varr.S4 | Varr.D2 -> Some (bad `Vector_arrangement))
+        | _ -> None)
+    | Aarch64_ops.Enc.Vcvt { widen } -> (
+        match (widen, i.Instruction.ops) with
+        | true, [ Operand.Vec (rd, Varr.D2); Operand.Vec (rn, Varr.S2) ] ->
+            Some (Ok [ Lowered.Vcvt { widen; rd; rn } ])
+        | false, [ Operand.Vec (rd, Varr.S2); Operand.Vec (rn, Varr.D2) ] ->
+            Some (Ok [ Lowered.Vcvt { widen; rd; rn } ])
+        | _ -> None)
+    | _ -> None
+  in
+  match Aarch64_ops.find_opt op with
+  | Some e -> List.find_map class_ e.Aarch64_ops.enc
+  | None -> None
 
 let rec lower_instruction state i =
   ignore state;
@@ -3900,843 +3567,575 @@ let rec lower_instruction state i =
     | Some x -> Ok x
     | None -> Error (diag ~pos:__POS__ `Immediate_too_wide)
   in
-  match (i.Instruction.op, i.Instruction.ops) with
-  (* [mov xD, sp] and [mov sp, xS] are [add ..., #0]; [mov] between two general
+  match lower_regular i with
+  | Some r -> r
+  | None -> (
+      match (i.Instruction.op, i.Instruction.ops) with
+      (* [mov xD, sp] and [mov sp, xS] are [add ..., #0]; [mov] between two general
      registers is [orr rd, xzr, rm] - real hardware's own expansion, now that
      {!Lowered.Logical_shift} exists to carry it (M5 corpus evidence:
      synthesized "mov between two general registers"
      finding, e.g. [nsieve.c]). *)
-  (* [mov rd, #imm] is [movz], [movn] or [orr rd, zr, #imm], whichever holds the
+      (* [mov rd, #imm] is [movz], [movn] or [orr rd, zr, #imm], whichever holds the
      value in one instruction, tried in that order - the choice GNU as makes. The
      value is taken at the register's width, so a negative 32-bit constant is its
      32-bit pattern. *)
-  | Opcode.Mov, [ Operand.Reg rd; Operand.Imm v ] when not rd.Reg.is_sp -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok x -> (
-          let width = rd.Reg.width in
-          let mask = if width = 64 then -1L else 0xFFFFFFFFL in
-          let x = Int64.logand x mask in
-          let halfwords = width / 16 in
-          let half value i = Int64.logand (Int64.shift_right_logical value (16 * i)) 0xFFFFL in
-          let nonzero value =
-            List.filter (fun i -> not (Int64.equal (half value i) 0L)) (List.init halfwords Fun.id)
-          in
-          let single value =
-            match nonzero value with [] -> Some 0 | [ i ] -> Some i | _ -> None
-          in
-          let complement = Int64.logand (Int64.lognot x) mask in
-          match (single x, single complement) with
-          | Some hw, _ -> Ok [ Lowered.Movz { rd; imm16 = half x hw; hw } ]
-          | None, Some hw -> Ok [ Lowered.Movn { rd; imm16 = half complement hw; hw } ]
-          | None, None ->
-              lower_instruction state
-                {
-                  Instruction.op = Opcode.Orr;
-                  ops =
-                    [
-                      Operand.Reg rd;
-                      Operand.Reg { Reg.num = 31; width; is_sp = false };
-                      Operand.Imm v;
-                    ];
-                }))
-  (* [lsl]/[lsr]/[asr] by an immediate are the bitfield moves that shift. *)
-  | ( ((Opcode.Lsl | Opcode.Lsr | Opcode.Asr) as op),
-      [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] ) -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok amount -> (
-          let size = rd.Reg.width in
-          let sh = Int64.to_int amount in
-          if rd.Reg.width <> rn.Reg.width then
-            bad (`Wrong_register_width { subject = Op op; expected = size })
-          else if sh < 0 || sh >= size then bad `Shift_amount_too_large
+      | Opcode.Mov, [ Operand.Reg rd; Operand.Imm v ] when not rd.Reg.is_sp -> (
+          match imm_of v with
+          | Error e -> Error e
+          | Ok x -> (
+              let width = rd.Reg.width in
+              let mask = if width = 64 then -1L else 0xFFFFFFFFL in
+              let x = Int64.logand x mask in
+              let halfwords = width / 16 in
+              let half value i = Int64.logand (Int64.shift_right_logical value (16 * i)) 0xFFFFL in
+              let nonzero value =
+                List.filter
+                  (fun i -> not (Int64.equal (half value i) 0L))
+                  (List.init halfwords Fun.id)
+              in
+              let single value =
+                match nonzero value with [] -> Some 0 | [ i ] -> Some i | _ -> None
+              in
+              let complement = Int64.logand (Int64.lognot x) mask in
+              match (single x, single complement) with
+              | Some hw, _ -> Ok [ Lowered.Movz { rd; imm16 = half x hw; hw } ]
+              | None, Some hw -> Ok [ Lowered.Movn { rd; imm16 = half complement hw; hw } ]
+              | None, None ->
+                  lower_instruction state
+                    {
+                      Instruction.op = Opcode.Orr;
+                      ops =
+                        [
+                          Operand.Reg rd;
+                          Operand.Reg { Reg.num = 31; width; is_sp = false };
+                          Operand.Imm v;
+                        ];
+                    }))
+      (* [lsl]/[lsr]/[asr] by an immediate are the bitfield moves that shift. *)
+      | ( ((Opcode.Lsl | Opcode.Lsr | Opcode.Asr) as op),
+          [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] ) -> (
+          match imm_of v with
+          | Error e -> Error e
+          | Ok amount -> (
+              let size = rd.Reg.width in
+              let sh = Int64.to_int amount in
+              if rd.Reg.width <> rn.Reg.width then
+                bad (`Wrong_register_width { subject = Op op; expected = size })
+              else if sh < 0 || sh >= size then bad `Shift_amount_too_large
+              else
+                match op with
+                | Opcode.Lsl ->
+                    Ok
+                      [ Lowered.Ubfm { rd; rn; immr = (size - sh) mod size; imms = size - 1 - sh } ]
+                | Opcode.Lsr -> Ok [ Lowered.Ubfm { rd; rn; immr = sh; imms = size - 1 } ]
+                | _ -> Ok [ Lowered.Sbfm { rd; rn; immr = sh; imms = size - 1 } ]))
+      | Opcode.Mov, [ Operand.Reg rd; Operand.Reg rn ] ->
+          if rd.Reg.is_sp || rn.Reg.is_sp then
+            Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const 0L; shift12 = false } ]
           else
-            match op with
-            | Opcode.Lsl ->
-                Ok [ Lowered.Ubfm { rd; rn; immr = (size - sh) mod size; imms = size - 1 - sh } ]
-            | Opcode.Lsr -> Ok [ Lowered.Ubfm { rd; rn; immr = sh; imms = size - 1 } ]
-            | _ -> Ok [ Lowered.Sbfm { rd; rn; immr = sh; imms = size - 1 } ]))
-  | Opcode.Mov, [ Operand.Reg rd; Operand.Reg rn ] ->
-      if rd.Reg.is_sp || rn.Reg.is_sp then
-        Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const 0L; shift12 = false } ]
-      else
-        Ok
-          [
-            Lowered.Logical_shift
-              {
-                opc = 1;
-                n = false;
-                rd;
-                rn = { Reg.num = 31; width = rd.Reg.width; is_sp = false };
-                rm = rn;
-                shift = 0;
-                amount = 0;
-              };
-          ]
-  | Opcode.Add, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm ->
-          if Int64.compare imm 0L >= 0 && Int64.compare imm 4096L < 0 then
-            Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const imm; shift12 = false } ]
-          else
-            (* GAS auto-selects the [lsl #12] form itself whenever a bare immediate is an
+            Ok
+              [
+                Lowered.Logical_shift
+                  {
+                    opc = 1;
+                    n = false;
+                    rd;
+                    rn = { Reg.num = 31; width = rd.Reg.width; is_sp = false };
+                    rm = rn;
+                    shift = 0;
+                    amount = 0;
+                  };
+              ]
+      | Opcode.Add, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
+          match imm_of v with
+          | Error e -> Error e
+          | Ok imm ->
+              if Int64.compare imm 0L >= 0 && Int64.compare imm 4096L < 0 then
+                Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const imm; shift12 = false } ]
+              else
+                (* GAS auto-selects the [lsl #12] form itself whenever a bare immediate is an
                exact multiple of 4096 that doesn't fit the plain 12-bit field (M5 corpus
                evidence: knucleotide.c - the compiler writes the bare
                [add x23, x23, #8192], never the explicit four-operand spelling {!Sub}'s own
                [lsl #12] arm already reads). Verified against real
                aarch64-linux-gnu-as/objdump: [add x23, x23, #8192] -> [91400af7], decoding
                back as [add x23, x23, #0x2, lsl #12]. *)
-            let shifted = Int64.shift_right_logical imm 12 in
-            if
-              Int64.equal (Int64.shift_left shifted 12) imm
-              && Int64.compare shifted 0L >= 0
-              && Int64.compare shifted 4096L < 0
-            then Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const shifted; shift12 = true } ]
-            else bad `Imm12_needs_shift)
-  (* [add x9, x9, #:lo12:Te4] - R_AARCH64_ADD_ABS_LO12_NC. Same shape as
+                let shifted = Int64.shift_right_logical imm 12 in
+                if
+                  Int64.equal (Int64.shift_left shifted 12) imm
+                  && Int64.compare shifted 0L >= 0
+                  && Int64.compare shifted 4096L < 0
+                then Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const shifted; shift12 = true } ]
+                else bad `Imm12_needs_shift)
+      (* [add x9, x9, #:lo12:Te4] - R_AARCH64_ADD_ABS_LO12_NC. Same shape as
      [ldr]/[str]'s own [#:lo12:] a few cases below: the modifier picked the
      form, so the expression underneath (with the modifier stripped) is what
      the lowered value stores. *)
-  | Opcode.Add, [ Operand.Reg rd; Operand.Reg rn; Operand.Sym (Asm_core.Expr.Modifier (m, inner)) ]
-    ->
-      if m <> "lo12" then bad (`Wrong_memory_modifier m)
-      else Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Sym inner; shift12 = false } ]
-  (* The explicit four-operand [lsl #12] spelling - not evidenced from the compiler's own output
+      | ( Opcode.Add,
+          [ Operand.Reg rd; Operand.Reg rn; Operand.Sym (Asm_core.Expr.Modifier (m, inner)) ] ) ->
+          if m <> "lo12" then bad (`Wrong_memory_modifier m)
+          else Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Sym inner; shift12 = false } ]
+      (* The explicit four-operand [lsl #12] spelling - not evidenced from the compiler's own output
      (which always writes the bare, auto-selected form above), but the canonical dump's own
      decode->reconstruct round trip produces exactly this operand list for a decoded
      [shift12] instruction, and it must re-lower to the identical [Lowered.Add_imm] rather
      than fail - the same reasoning as {!Sub}'s own arm just below. *)
-  | ( Opcode.Add,
-      [
-        Operand.Reg rd;
-        Operand.Reg rn;
-        Operand.Imm v;
-        Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 };
-      ] ) -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then bad `Imm12_field
-          else Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const imm; shift12 = true } ])
-  | Opcode.Movz, [ Operand.Reg rd; Operand.Imm v ] -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then bad `Movz_imm16_overflow
-          else Ok [ Lowered.Movz { rd; imm16 = imm; hw = 0 } ])
-  | Opcode.Movz, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = Shift.Lsl; amount } ]
-    -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm ->
-          if amount mod 16 <> 0 || amount / 16 > 3 then bad `Movz_shift
-          else if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
-            bad `Movz_imm16_overflow
-          else Ok [ Lowered.Movz { rd; imm16 = imm; hw = amount / 16 } ])
-  | Opcode.Movn, [ Operand.Reg rd; Operand.Imm v ] -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then bad `Movz_imm16_overflow
-          else Ok [ Lowered.Movn { rd; imm16 = imm; hw = 0 } ])
-  | Opcode.Movn, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = Shift.Lsl; amount } ]
-    -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm ->
-          if amount mod 16 <> 0 || amount / 16 > 3 then bad `Movz_shift
-          else if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
-            bad `Movz_imm16_overflow
-          else Ok [ Lowered.Movn { rd; imm16 = imm; hw = amount / 16 } ])
-  | Opcode.Movk, [ Operand.Reg rd; Operand.Imm v ] -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then bad `Movz_imm16_overflow
-          else Ok [ Lowered.Movk { rd; imm16 = imm; hw = 0 } ])
-  | Opcode.Movk, [ Operand.Reg rd; Operand.Imm v; Operand.Shift { Shift.kind = Shift.Lsl; amount } ]
-    -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm ->
-          if amount mod 16 <> 0 || amount / 16 > 3 then bad `Movz_shift
-          else if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then
-            bad `Movz_imm16_overflow
-          else Ok [ Lowered.Movk { rd; imm16 = imm; hw = amount / 16 } ])
-  | Opcode.Msub, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Reg ra ] ->
-      Ok [ Lowered.Msub { rd; rn; rm; ra } ]
-  | Opcode.Udiv, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
-      Ok [ Lowered.Udiv { rd; rn; rm } ]
-  | Opcode.Sdiv, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
-      Ok [ Lowered.Sdiv { rd; rn; rm } ]
-  | ( ((Opcode.Rbit | Opcode.Rev16 | Opcode.Rev32 | Opcode.Rev | Opcode.Clz | Opcode.Cls) as op),
-      [ Operand.Reg rd; Operand.Reg rn ] ) ->
-      let d =
-        match op with
-        | Opcode.Rbit -> Rbit
-        | Opcode.Rev16 -> Rev16
-        | Opcode.Rev32 -> Rev32
-        | Opcode.Rev -> Rev
-        | Opcode.Clz -> Clz
-        | _ -> Cls
-      in
-      if rd.Reg.width <> rn.Reg.width || dp1_opcode d ~width:rd.Reg.width = None then
-        bad (`Wrong_register_width { subject = Op op; expected = 64 })
-      else Ok [ Lowered.Dp1 { op = d; rd; rn } ]
-  | ( ((Opcode.Lsl | Opcode.Lsr | Opcode.Asr | Opcode.Ror) as op),
-      [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ) ->
-      let shift = match op with Opcode.Lsl -> 0 | Opcode.Lsr -> 1 | Opcode.Asr -> 2 | _ -> 3 in
-      Ok [ Lowered.Shiftv { shift; rd; rn; rm } ]
-  (* [ubfx]/[ubfiz]'s own lsb/width pair is the one GNU AArch64 immediate spelled without a
-     leading [#] in this corpus (every other immediate operand this target parses has one) - real
-     [as] accepts both spellings, but gcc only ever emit the bare one, which the common
-     expression parser reads as [Operand.Sym (Expr.Const _)], not [Operand.Imm], so both shapes
-     have to be accepted here. *)
-  | ( Opcode.Ubfx,
-      [
-        Operand.Reg rd;
-        Operand.Reg rn;
-        (Operand.Imm lsb_v | Operand.Sym (Asm_core.Expr.Const lsb_v));
-        (Operand.Imm width_v | Operand.Sym (Asm_core.Expr.Const width_v));
-      ] ) -> (
-      match (imm_of lsb_v, imm_of width_v) with
-      | Error e, _ | _, Error e -> Error e
-      | Ok lsb64, Ok width64 ->
-          let datasize = rd.Reg.width in
-          let lsb = Int64.to_int lsb64 and width = Int64.to_int width64 in
-          if lsb < 0 || lsb >= datasize || width < 1 || lsb + width > datasize then
-            bad `Bitfield_out_of_range
-          else Ok [ Lowered.Ubfm { rd; rn; immr = lsb; imms = lsb + width - 1 } ])
-  | ( Opcode.Ubfiz,
-      [
-        Operand.Reg rd;
-        Operand.Reg rn;
-        (Operand.Imm lsb_v | Operand.Sym (Asm_core.Expr.Const lsb_v));
-        (Operand.Imm width_v | Operand.Sym (Asm_core.Expr.Const width_v));
-      ] ) -> (
-      match (imm_of lsb_v, imm_of width_v) with
-      | Error e, _ | _, Error e -> Error e
-      | Ok lsb64, Ok width64 ->
-          let datasize = rd.Reg.width in
-          let lsb = Int64.to_int lsb64 and width = Int64.to_int width64 in
-          if lsb < 0 || lsb >= datasize || width < 1 || lsb + width > datasize then
-            bad `Bitfield_out_of_range
-          else
-            Ok [ Lowered.Ubfm { rd; rn; immr = (datasize - lsb) mod datasize; imms = width - 1 } ])
-  (* [sbfx] - {!Opcode.Ubfx}'s signed sibling, with the same bare-or-[#] lsb/width pair. *)
-  (* [sbfiz] - {!Opcode.Sbfx}'s alias sibling on the same SBFM word, the way [ubfiz] is
-     [ubfx]'s: [immr = (datasize - lsb) mod datasize], [imms = width - 1]. the compiler prints it
-     for a sign-extending shift of a narrow value. *)
-  | ( Opcode.Sbfiz,
-      [
-        Operand.Reg rd;
-        Operand.Reg rn;
-        (Operand.Imm lsb_v | Operand.Sym (Asm_core.Expr.Const lsb_v));
-        (Operand.Imm width_v | Operand.Sym (Asm_core.Expr.Const width_v));
-      ] ) -> (
-      match (imm_of lsb_v, imm_of width_v) with
-      | Error e, _ | _, Error e -> Error e
-      | Ok lsb64, Ok width64 ->
-          let datasize = rd.Reg.width in
-          let lsb = Int64.to_int lsb64 and width = Int64.to_int width64 in
-          if lsb < 0 || lsb >= datasize || width < 1 || lsb + width > datasize then
-            bad `Bitfield_out_of_range
-          else
-            Ok [ Lowered.Sbfm { rd; rn; immr = (datasize - lsb) mod datasize; imms = width - 1 } ])
-  (* [ldrsb]/[ldrsh]/[ldrsw] - the addressing forms of the [ldr] case above (a numeric scaled
+      | ( Opcode.Add,
+          [
+            Operand.Reg rd;
+            Operand.Reg rn;
+            Operand.Imm v;
+            Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 };
+          ] ) -> (
+          match imm_of v with
+          | Error e -> Error e
+          | Ok imm ->
+              if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then bad `Imm12_field
+              else Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Const imm; shift12 = true } ])
+      (* [ldrsb]/[ldrsh]/[ldrsw] - the addressing forms of the [ldr] case above (a numeric scaled
      offset, a [:lo12:] symbol, a register offset), into a 64-bit or (not [ldrsw]) a 32-bit
      [rt]. *)
-  | ((Opcode.Ldrsb | Opcode.Ldrsh | Opcode.Ldrsw) as op), [ Operand.Reg rt; Operand.Mem m ] -> (
-      let size = match op with Opcode.Ldrsb -> B | Opcode.Ldrsh -> H | _ -> W in
-      if rt.Reg.width <> 64 && (size = W || rt.Reg.width <> 32) then
-        bad (`Wrong_register_width { subject = Op op; expected = 64 })
-      else if m.Mem.writeback then bad `Writeback_out_of_scope
-      else
-        match m.Mem.offset with
-        | Disp.Sym (Asm_core.Expr.Modifier ("lo12", value)) ->
-            Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = Disp.Sym value } ]
-        | Disp.Sym (Asm_core.Expr.Modifier (md, _)) -> bad (`Wrong_memory_modifier md)
-        | Disp.Sym _ -> bad `Missing_memory_modifier
-        | Disp.Const off ->
-            let scale = Int64.of_int (access_bytes size) in
-            if Int64.compare off 0L < 0 then bad `Unsigned_offset_only
-            else if not (Int64.equal (Int64.rem off scale) 0L) then bad (`Offset_not_scaled scale)
-            else if Int64.compare (Int64.div off scale) 4096L >= 0 then bad `Offset_not_12bit_scaled
-            else Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = Disp.Const off } ]
-        | Disp.Reg { index; extend; amount } -> (
-            let expected_index_width = extend_index_width extend in
-            if index.Reg.width <> expected_index_width then
-              bad
-                (`Wrong_register_width { subject = Index extend; expected = expected_index_width })
-            else
-              match amount with
-              | None | Some 0 ->
-                  Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = m.Mem.offset } ]
-              | Some n when n = access_shift size ->
-                  Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = m.Mem.offset } ]
-              | Some n -> bad (`Register_offset_shift_invalid n)))
-  | ( Opcode.Sbfx,
-      [
-        Operand.Reg rd;
-        Operand.Reg rn;
-        (Operand.Imm lsb_v | Operand.Sym (Asm_core.Expr.Const lsb_v));
-        (Operand.Imm width_v | Operand.Sym (Asm_core.Expr.Const width_v));
-      ] ) -> (
-      match (imm_of lsb_v, imm_of width_v) with
-      | Error e, _ | _, Error e -> Error e
-      | Ok lsb64, Ok width64 ->
-          let datasize = rd.Reg.width in
-          let lsb = Int64.to_int lsb64 and width = Int64.to_int width64 in
-          if lsb < 0 || lsb >= datasize || width < 1 || lsb + width > datasize then
-            bad `Bitfield_out_of_range
-          else Ok [ Lowered.Sbfm { rd; rn; immr = lsb; imms = lsb + width - 1 } ])
-  | Opcode.Cset, [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Symbol s) ] -> (
-      match Cond.of_name s with
-      | Some cond -> Ok [ Lowered.Cset { cond; rd } ]
-      | None -> bad (`Unknown_condition s))
-  | ((Opcode.Cbz | Opcode.Cbnz) as op), [ Operand.Reg rt; Operand.Sym e ] ->
-      Ok
-        [
-          Lowered.Cbz
-            {
-              nz = op = Opcode.Cbnz;
-              rt;
-              target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None };
-            };
-        ]
-  | Opcode.Sxtw, [ Operand.Reg rd; Operand.Reg rn ] -> Ok [ Lowered.Sxtw { rd; rn } ]
-  (* [uxtw xd, wn] - real hardware's own "writing a W register zeroes the upper 32 bits of its X
-     view" rule means this assembles to the identical bits as [mov wd, wn] (verified against real
-     [as]/[objdump]), so it reuses {!Lowered.Logical_shift} rather than a dedicated constructor. *)
-  | Opcode.Uxtw, [ Operand.Reg rd; Operand.Reg rn ] ->
-      Ok
-        [
-          Lowered.Logical_shift
-            {
-              opc = 1;
-              n = false;
-              rd = { rd with Reg.width = 32 };
-              rn = { Reg.num = 31; width = 32; is_sp = false };
-              rm = { rn with Reg.width = 32 };
-              shift = 0;
-              amount = 0;
-            };
-        ]
-  | Opcode.Stp, [ Operand.Reg rt; Operand.Reg rt2; Operand.Mem m ] when m.Mem.writeback -> (
-      match m.Mem.offset with
-      | Disp.Sym _ -> bad `Stp_symbolic_offset
-      | Disp.Reg _ -> bad `Stp_symbolic_offset (* stp has no register-offset form at all *)
-      | Disp.Const off ->
-          if not (Int64.equal (Int64.rem off 8L) 0L) then bad `Stp_offset_alignment
-          else Ok [ Lowered.Stp_pre { rt; rt2; rn = m.Mem.base; offset = off } ])
-  (* [ldp]/[stp] with a signed offset ([[xn, #off]]) or post-indexed ([[xn], #off]): the pair
+      | ((Opcode.Ldrsb | Opcode.Ldrsh | Opcode.Ldrsw) as op), [ Operand.Reg rt; Operand.Mem m ] -> (
+          let size = match op with Opcode.Ldrsb -> B | Opcode.Ldrsh -> H | _ -> W in
+          if rt.Reg.width <> 64 && (size = W || rt.Reg.width <> 32) then
+            bad (`Wrong_register_width { subject = Op op; expected = 64 })
+          else if m.Mem.writeback then bad `Writeback_out_of_scope
+          else
+            match m.Mem.offset with
+            | Disp.Sym (Asm_core.Expr.Modifier ("lo12", value)) ->
+                Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = Disp.Sym value } ]
+            | Disp.Sym (Asm_core.Expr.Modifier (md, _)) -> bad (`Wrong_memory_modifier md)
+            | Disp.Sym _ -> bad `Missing_memory_modifier
+            | Disp.Const off ->
+                let scale = Int64.of_int (access_bytes size) in
+                if Int64.compare off 0L < 0 then bad `Unsigned_offset_only
+                else if not (Int64.equal (Int64.rem off scale) 0L) then
+                  bad (`Offset_not_scaled scale)
+                else if Int64.compare (Int64.div off scale) 4096L >= 0 then
+                  bad `Offset_not_12bit_scaled
+                else Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = Disp.Const off } ]
+            | Disp.Reg { index; extend; amount } -> (
+                let expected_index_width = extend_index_width extend in
+                if index.Reg.width <> expected_index_width then
+                  bad
+                    (`Wrong_register_width
+                       { subject = Index extend; expected = expected_index_width })
+                else
+                  match amount with
+                  | None | Some 0 ->
+                      Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = m.Mem.offset } ]
+                  | Some n when n = access_shift size ->
+                      Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = m.Mem.offset } ]
+                  | Some n -> bad (`Register_offset_shift_invalid n)))
+      | Opcode.Stp, [ Operand.Reg rt; Operand.Reg rt2; Operand.Mem m ] when m.Mem.writeback -> (
+          match m.Mem.offset with
+          | Disp.Sym _ -> bad `Stp_symbolic_offset
+          | Disp.Reg _ -> bad `Stp_symbolic_offset (* stp has no register-offset form at all *)
+          | Disp.Const off ->
+              if not (Int64.equal (Int64.rem off 8L) 0L) then bad `Stp_offset_alignment
+              else Ok [ Lowered.Stp_pre { rt; rt2; rn = m.Mem.base; offset = off } ])
+      (* [ldp]/[stp] with a signed offset ([[xn, #off]]) or post-indexed ([[xn], #off]): the pair
      family's two other index modes, {!Lowered.Ldst_pair}. Both registers share one width, which
      fixes the access size and so the scale of the 7-bit offset field. *)
-  | ( ((Opcode.Ldp | Opcode.Stp) as op),
-      (Operand.Reg rt :: Operand.Reg rt2 :: Operand.Mem m :: post_imm as ops) ) -> (
-      ignore ops;
-      let load = op = Opcode.Ldp in
-      let pair_offset off ~post =
-        let scale = if rt.Reg.width = 64 then 8L else 4L in
-        if rt.Reg.width <> rt2.Reg.width then
-          bad (`Wrong_register_width { subject = Op op; expected = rt.Reg.width })
-        else
-          let q = Int64.div off scale in
-          if
-            (not (Int64.equal (Int64.rem off scale) 0L))
-            || Int64.compare q (-64L) < 0
-            || Int64.compare q 63L > 0
-          then bad (`Pair_offset_range (Int64.to_int scale))
-          else Ok [ Lowered.Ldst_pair { load; post; rt; rt2; rn = m.Mem.base; offset = off } ]
-      in
-      match (m.Mem.offset, m.Mem.writeback, post_imm) with
-      | Disp.Const off, false, [] -> pair_offset off ~post:false
-      | Disp.Const 0L, false, [ Operand.Imm v ] -> (
-          match imm_of v with Error e -> Error e | Ok off -> pair_offset off ~post:true)
-      | (Disp.Sym _ | Disp.Reg _), _, _ -> bad `Stp_symbolic_offset
-      | _ -> bad `Stp_writeback_only)
-  (* Post-indexed [ldr]/[str], [[xn], #off]: at the surface a bare base and a separate
+      | ( ((Opcode.Ldp | Opcode.Stp) as op),
+          (Operand.Reg rt :: Operand.Reg rt2 :: Operand.Mem m :: post_imm as ops) ) -> (
+          ignore ops;
+          let load = op = Opcode.Ldp in
+          let pair_offset off ~post =
+            let scale = if rt.Reg.width = 64 then 8L else 4L in
+            if rt.Reg.width <> rt2.Reg.width then
+              bad (`Wrong_register_width { subject = Op op; expected = rt.Reg.width })
+            else
+              let q = Int64.div off scale in
+              if
+                (not (Int64.equal (Int64.rem off scale) 0L))
+                || Int64.compare q (-64L) < 0
+                || Int64.compare q 63L > 0
+              then bad (`Pair_offset_range (Int64.to_int scale))
+              else Ok [ Lowered.Ldst_pair { load; post; rt; rt2; rn = m.Mem.base; offset = off } ]
+          in
+          match (m.Mem.offset, m.Mem.writeback, post_imm) with
+          | Disp.Const off, false, [] -> pair_offset off ~post:false
+          | Disp.Const 0L, false, [ Operand.Imm v ] -> (
+              match imm_of v with Error e -> Error e | Ok off -> pair_offset off ~post:true)
+          | (Disp.Sym _ | Disp.Reg _), _, _ -> bad `Stp_symbolic_offset
+          | _ -> bad `Stp_writeback_only)
+      (* Post-indexed [ldr]/[str], [[xn], #off]: at the surface a bare base and a separate
      immediate. *)
-  | ( ((Opcode.Ldr | Opcode.Ldrb | Opcode.Ldrh | Opcode.Str | Opcode.Strb | Opcode.Strh) as op),
-      [
-        Operand.Reg rt;
-        Operand.Mem { Mem.offset = Disp.Const 0L; writeback = false; base; _ };
-        Operand.Imm v;
-      ] ) -> (
-      let load = match op with Opcode.Ldr | Opcode.Ldrb | Opcode.Ldrh -> true | _ -> false in
-      let size =
-        match op with
-        | Opcode.Ldrb | Opcode.Strb -> B
-        | Opcode.Ldrh | Opcode.Strh -> H
-        | _ -> if rt.Reg.width = 64 then X else W
-      in
-      let expected = access_reg_width size in
-      if rt.Reg.width <> expected then bad (`Wrong_register_width { subject = Op op; expected })
-      else
-        match imm_of v with
-        | Error e -> Error e
-        | Ok offset ->
-            if Int64.compare offset (-256L) < 0 || Int64.compare offset 255L > 0 then
-              bad `Post_index_offset_range
-            else Ok [ Lowered.Ldst_post { size; load; rt; rn = base; offset } ])
-  (* One lowering for all eight loads and stores. The mnemonic fixes the access
+      | ( ((Opcode.Ldr | Opcode.Ldrb | Opcode.Ldrh | Opcode.Str | Opcode.Strb | Opcode.Strh) as op),
+          [
+            Operand.Reg rt;
+            Operand.Mem { Mem.offset = Disp.Const 0L; writeback = false; base; _ };
+            Operand.Imm v;
+          ] ) -> (
+          let load = match op with Opcode.Ldr | Opcode.Ldrb | Opcode.Ldrh -> true | _ -> false in
+          let size =
+            match op with
+            | Opcode.Ldrb | Opcode.Strb -> B
+            | Opcode.Ldrh | Opcode.Strh -> H
+            | _ -> if rt.Reg.width = 64 then X else W
+          in
+          let expected = access_reg_width size in
+          if rt.Reg.width <> expected then bad (`Wrong_register_width { subject = Op op; expected })
+          else
+            match imm_of v with
+            | Error e -> Error e
+            | Ok offset ->
+                if Int64.compare offset (-256L) < 0 || Int64.compare offset 255L > 0 then
+                  bad `Post_index_offset_range
+                else Ok [ Lowered.Ldst_post { size; load; rt; rn = base; offset } ])
+      (* One lowering for all eight loads and stores. The mnemonic fixes the access
      size for the sub-word forms and the register width fixes it for the rest,
      so [ldr w0] and [ldr x0] are the same rule read twice rather than two. *)
-  | ( ((Opcode.Ldr | Opcode.Ldrb | Opcode.Ldrh | Opcode.Str | Opcode.Strb | Opcode.Strh) as op),
-      [ Operand.Reg rt; Operand.Mem m ] ) -> (
-      let load = match op with Opcode.Ldr | Opcode.Ldrb | Opcode.Ldrh -> true | _ -> false in
-      let size =
-        match op with
-        | Opcode.Ldrb | Opcode.Strb -> B
-        | Opcode.Ldrh | Opcode.Strh -> H
-        | _ -> if rt.Reg.width = 64 then X else W
-      in
-      let expected = access_reg_width size in
-      if rt.Reg.width <> expected then bad (`Wrong_register_width { subject = Op op; expected })
-      else if m.Mem.writeback then bad `Writeback_out_of_scope
-      else
-        match m.Mem.offset with
-        | Disp.Sym e -> (
-            (* §B7: the modifier chose the form, so what is stored is the
+      | ( ((Opcode.Ldr | Opcode.Ldrb | Opcode.Ldrh | Opcode.Str | Opcode.Strb | Opcode.Strh) as op),
+          [ Operand.Reg rt; Operand.Mem m ] ) -> (
+          let load = match op with Opcode.Ldr | Opcode.Ldrb | Opcode.Ldrh -> true | _ -> false in
+          let size =
+            match op with
+            | Opcode.Ldrb | Opcode.Strb -> B
+            | Opcode.Ldrh | Opcode.Strh -> H
+            | _ -> if rt.Reg.width = 64 then X else W
+          in
+          let expected = access_reg_width size in
+          if rt.Reg.width <> expected then bad (`Wrong_register_width { subject = Op op; expected })
+          else if m.Mem.writeback then bad `Writeback_out_of_scope
+          else
+            match m.Mem.offset with
+            | Disp.Sym e -> (
+                (* §B7: the modifier chose the form, so what is stored is the
                expression underneath. A [:lo12:] left in place would reach
                [bind_image] as a residual. *)
-            let inner =
-              match e with
-              | Asm_core.Expr.Modifier ("lo12", inner) -> Ok inner
-              | Asm_core.Expr.Modifier (m, _) -> Error (`Wrong_memory_modifier m)
-              | _ -> Error `Missing_memory_modifier
-            in
-            match inner with
-            | Error kind -> bad kind
-            | Ok value ->
-                Ok
-                  [ Lowered.Ldst_uoff { size; load; rt; rn = m.Mem.base; offset = Disp.Sym value } ]
-            )
-        | Disp.Const off ->
-            let scale = Int64.of_int (access_bytes size) in
-            if Int64.compare off 0L < 0 then bad `Unsigned_offset_only
-            else if not (Int64.equal (Int64.rem off scale) 0L) then bad (`Offset_not_scaled scale)
-            else if Int64.compare (Int64.div off scale) 4096L >= 0 then bad `Offset_not_12bit_scaled
-            else
-              Ok [ Lowered.Ldst_uoff { size; load; rt; rn = m.Mem.base; offset = Disp.Const off } ]
-        | Disp.Reg { index; extend; amount } -> (
-            let expected_index_width = extend_index_width extend in
-            if index.Reg.width <> expected_index_width then
-              bad
-                (`Wrong_register_width { subject = Index extend; expected = expected_index_width })
-            else
-              match amount with
-              | None | Some 0 ->
+                let inner =
+                  match e with
+                  | Asm_core.Expr.Modifier ("lo12", inner) -> Ok inner
+                  | Asm_core.Expr.Modifier (m, _) -> Error (`Wrong_memory_modifier m)
+                  | _ -> Error `Missing_memory_modifier
+                in
+                match inner with
+                | Error kind -> bad kind
+                | Ok value ->
+                    Ok
+                      [
+                        Lowered.Ldst_uoff
+                          { size; load; rt; rn = m.Mem.base; offset = Disp.Sym value };
+                      ])
+            | Disp.Const off ->
+                let scale = Int64.of_int (access_bytes size) in
+                if Int64.compare off 0L < 0 then bad `Unsigned_offset_only
+                else if not (Int64.equal (Int64.rem off scale) 0L) then
+                  bad (`Offset_not_scaled scale)
+                else if Int64.compare (Int64.div off scale) 4096L >= 0 then
+                  bad `Offset_not_12bit_scaled
+                else
                   Ok
-                    [ Lowered.Ldst_uoff { size; load; rt; rn = m.Mem.base; offset = m.Mem.offset } ]
-              | Some n when n = access_shift size ->
-                  Ok
-                    [ Lowered.Ldst_uoff { size; load; rt; rn = m.Mem.base; offset = m.Mem.offset } ]
-              | Some n -> bad (`Register_offset_shift_invalid n)))
-  (* [ldr]/[str] into a scalar FP register - the identical addressing-mode handling as the GPR
+                    [
+                      Lowered.Ldst_uoff { size; load; rt; rn = m.Mem.base; offset = Disp.Const off };
+                    ]
+            | Disp.Reg { index; extend; amount } -> (
+                let expected_index_width = extend_index_width extend in
+                if index.Reg.width <> expected_index_width then
+                  bad
+                    (`Wrong_register_width
+                       { subject = Index extend; expected = expected_index_width })
+                else
+                  match amount with
+                  | None | Some 0 ->
+                      Ok
+                        [
+                          Lowered.Ldst_uoff
+                            { size; load; rt; rn = m.Mem.base; offset = m.Mem.offset };
+                        ]
+                  | Some n when n = access_shift size ->
+                      Ok
+                        [
+                          Lowered.Ldst_uoff
+                            { size; load; rt; rn = m.Mem.base; offset = m.Mem.offset };
+                        ]
+                  | Some n -> bad (`Register_offset_shift_invalid n)))
+      (* [ldr]/[str] into a scalar FP register - the identical addressing-mode handling as the GPR
      case above (bare-symbol [#:lo12:], scaled numeric offset, register-offset), just against
      {!Freg.t}'s two widths rather than {!access_size}'s four (M5 corpus evidence:
      almabench.c/bisect.c/...). *)
-  | (Opcode.Ldr | Opcode.Str), [ Operand.Freg rt; Operand.Mem m ] -> (
-      let load = match i.Instruction.op with Opcode.Ldr -> true | _ -> false in
-      let size = if rt.Freg.double then X else W in
-      if m.Mem.writeback then bad `Writeback_out_of_scope
-      else
-        let double = rt.Freg.double in
-        match m.Mem.offset with
-        | Disp.Sym e -> (
-            let inner =
-              match e with
-              | Asm_core.Expr.Modifier ("lo12", inner) -> Ok inner
-              | Asm_core.Expr.Modifier (m, _) -> Error (`Wrong_memory_modifier m)
-              | _ -> Error `Missing_memory_modifier
-            in
-            match inner with
-            | Error kind -> bad kind
-            | Ok value ->
-                Ok
-                  [
-                    Lowered.Ldst_uoff_f
-                      { double; load; rt; rn = m.Mem.base; offset = Disp.Sym value };
-                  ])
-        | Disp.Const off ->
-            let scale = Int64.of_int (access_bytes size) in
-            if Int64.compare off 0L < 0 then bad `Unsigned_offset_only
-            else if not (Int64.equal (Int64.rem off scale) 0L) then bad (`Offset_not_scaled scale)
-            else if Int64.compare (Int64.div off scale) 4096L >= 0 then bad `Offset_not_12bit_scaled
-            else
-              Ok
-                [
-                  Lowered.Ldst_uoff_f { double; load; rt; rn = m.Mem.base; offset = Disp.Const off };
-                ]
-        | Disp.Reg { index; extend; amount } -> (
-            let expected_index_width = extend_index_width extend in
-            if index.Reg.width <> expected_index_width then
-              bad
-                (`Wrong_register_width { subject = Index extend; expected = expected_index_width })
-            else
-              match amount with
-              | None | Some 0 ->
-                  Ok
-                    [
-                      Lowered.Ldst_uoff_f
-                        { double; load; rt; rn = m.Mem.base; offset = m.Mem.offset };
-                    ]
-              | Some n when n = access_shift size ->
-                  Ok
-                    [
-                      Lowered.Ldst_uoff_f
-                        { double; load; rt; rn = m.Mem.base; offset = m.Mem.offset };
-                    ]
-              | Some n -> bad (`Register_offset_shift_invalid n)))
-  (* Advanced SIMD. *)
-  | ( (( Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv | Opcode.Fmax | Opcode.Fmla
-       | Opcode.Fcmeq | Opcode.Fcmge | Opcode.Fcmgt ) as o),
-      [ Operand.Vec (rd, a); Operand.Vec (rn, b); Operand.Vec (rm, c) ] )
-    when Varr.equal a b && Varr.equal b c -> (
-      match a with
-      | Varr.S2 | Varr.S4 | Varr.D2 ->
-          let op =
-            match o with
-            | Opcode.Fadd -> Vfadd
-            | Opcode.Fsub -> Vfsub
-            | Opcode.Fmul -> Vfmul
-            | Opcode.Fdiv -> Vfdiv
-            | Opcode.Fmax -> Vfmax
-            | Opcode.Fcmeq -> Vfcmeq
-            | Opcode.Fcmge -> Vfcmge
-            | Opcode.Fcmgt -> Vfcmgt
-            | _ -> Vfmla
-          in
-          Ok [ Lowered.Vbin { op; arr = a; rd; rn; rm } ]
-      | Varr.B8 | Varr.B16 -> bad `Vector_arrangement)
-  | ( ((Opcode.Fneg | Opcode.Fsqrt | Opcode.Frintz) as o),
-      [ Operand.Vec (rd, a); Operand.Vec (rn, b) ] )
-    when Varr.equal a b -> (
-      match a with
-      | Varr.S2 | Varr.S4 | Varr.D2 ->
-          let op = match o with Opcode.Fneg -> Vfneg | Opcode.Fsqrt -> Vfsqrt | _ -> Vfrintz in
-          Ok [ Lowered.Vun { op; arr = a; rd; rn } ]
-      | Varr.B8 | Varr.B16 -> bad `Vector_arrangement)
-  | Opcode.Mov, [ Operand.Vec (rd, a); Operand.Vec (rn, b) ] when Varr.equal a b -> (
-      match a with
-      | Varr.B8 -> Ok [ Lowered.Vlogic { op = Vorr; q = false; rd; rn; rm = rn } ]
-      | Varr.B16 -> Ok [ Lowered.Vlogic { op = Vorr; q = true; rd; rn; rm = rn } ]
-      | Varr.S2 | Varr.S4 | Varr.D2 -> bad `Vector_arrangement)
-  | ( ((Opcode.And | Opcode.Orr | Opcode.Eor | Opcode.Bsl | Opcode.Bit) as o),
-      [ Operand.Vec (rd, a); Operand.Vec (rn, b); Operand.Vec (rm, c) ] )
-    when Varr.equal a b && Varr.equal b c -> (
-      let op =
-        match o with
-        | Opcode.And -> Vand
-        | Opcode.Orr -> Vorr
-        | Opcode.Eor -> Veor
-        | Opcode.Bit -> Vbit
-        | _ -> Vbsl
-      in
-      match a with
-      | Varr.B8 -> Ok [ Lowered.Vlogic { op; q = false; rd; rn; rm } ]
-      | Varr.B16 -> Ok [ Lowered.Vlogic { op; q = true; rd; rn; rm } ]
-      | Varr.S2 | Varr.S4 | Varr.D2 -> bad `Vector_arrangement)
-  | Opcode.Not, [ Operand.Vec (rd, a); Operand.Vec (rn, b) ] when Varr.equal a b -> (
-      match a with
-      | Varr.B8 -> Ok [ Lowered.Vnot { q = false; rd; rn } ]
-      | Varr.B16 -> Ok [ Lowered.Vnot { q = true; rd; rn } ]
-      | Varr.S2 | Varr.S4 | Varr.D2 -> bad `Vector_arrangement)
-  | Opcode.Fcvtl, [ Operand.Vec (rd, Varr.D2); Operand.Vec (rn, Varr.S2) ] ->
-      Ok [ Lowered.Vcvt { widen = true; rd; rn } ]
-  | Opcode.Fcvtn, [ Operand.Vec (rd, Varr.S2); Operand.Vec (rn, Varr.D2) ] ->
-      Ok [ Lowered.Vcvt { widen = false; rd; rn } ]
-  | Opcode.Dup, [ Operand.Vec (rd, arr); Operand.Vlane (rn, lane, index) ] -> (
-      match (arr, lane) with
-      | (Varr.S2 | Varr.S4), Lane.S | Varr.D2, Lane.D ->
-          if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
-          else Ok [ Lowered.Vdup { arr; rd; rn; index } ]
-      | _ -> bad `Vector_arrangement)
-  | Opcode.Dup, [ Operand.Vec (rd, arr); Operand.Reg rn ] -> (
-      match (arr, rn.Reg.width) with
-      | (Varr.S2 | Varr.S4), 32 | Varr.D2, 64 -> Ok [ Lowered.Vdup_gpr { arr; rd; rn } ]
-      | _ -> bad `Vector_arrangement)
-  | Opcode.Dup, [ Operand.Freg rd; Operand.Vlane (rn, lane, index) ]
-    when rd.Freg.double = (lane = Lane.D) ->
-      if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
-      else Ok [ Lowered.Vdup_scalar { lane; rd = rd.Freg.num; rn; index } ]
-  | Opcode.Mov, [ Operand.Freg rd; Operand.Vlane (rn, lane, index) ]
-    when rd.Freg.double = (lane = Lane.D) ->
-      if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
-      else Ok [ Lowered.Vdup_scalar { lane; rd = rd.Freg.num; rn; index } ]
-  | (Opcode.Ins | Opcode.Mov), [ Operand.Vlane (rd, l1, didx); Operand.Vlane (rn, l2, sidx) ]
-    when l1 = l2 ->
-      if didx < 0 || didx >= Lane.lanes l1 || sidx < 0 || sidx >= Lane.lanes l1 then
-        bad (`Lane_out_of_range (if didx < 0 || didx >= Lane.lanes l1 then didx else sidx))
-      else Ok [ Lowered.Vins { lane = l1; rd; didx; rn; sidx } ]
-  | ((Opcode.Ld1 | Opcode.St1) as o), [ Operand.Vlist_lane (vt, lane, index); Operand.Mem m ]
-    when m.Mem.writeback = false && Disp.is_zero m.Mem.offset ->
-      if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
-      else Ok [ Lowered.Vld1 { load = o = Opcode.Ld1; lane; vt; index; rn = m.Mem.base } ]
-  | Opcode.Ld1r, [ Operand.Vlist (vt, arr); Operand.Mem m ]
-    when m.Mem.writeback = false && Disp.is_zero m.Mem.offset -> (
-      match arr with
-      | Varr.S2 | Varr.S4 | Varr.D2 -> Ok [ Lowered.Vld1r { arr; vt; rn = m.Mem.base } ]
-      | Varr.B8 | Varr.B16 -> bad `Vector_arrangement)
-  | ((Opcode.Ldr | Opcode.Str) as o), [ Operand.Qreg rt; Operand.Mem m ] when not m.Mem.writeback
-    -> (
-      match m.Mem.offset with
-      | Disp.Const off ->
-          if Int64.compare off 0L < 0 || not (Int64.equal (Int64.rem off 16L) 0L) then
-            bad (`Offset_not_scaled off)
-          else if Int64.compare (Int64.div off 16L) 4096L >= 0 then bad `Offset_not_12bit_scaled
-          else Ok [ Lowered.Qldst { load = o = Opcode.Ldr; rt; rn = m.Mem.base; offset = off } ]
-      | Disp.Sym _ | Disp.Reg _ -> bad `Unsigned_offset_only)
-  | Opcode.Mrs, [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "fpcr") ] ->
-      Ok [ Lowered.Mrs { sysreg = Fpcr; rt } ]
-  | Opcode.Mrs, [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "nzcv") ] ->
-      Ok [ Lowered.Mrs { sysreg = Nzcv; rt } ]
-  | Opcode.Msr, [ Operand.Sym (Asm_core.Expr.Symbol "fpcr"); Operand.Reg rt ] ->
-      Ok [ Lowered.Msr { sysreg = Fpcr; rt } ]
-  | Opcode.Msr, [ Operand.Sym (Asm_core.Expr.Symbol "nzcv"); Operand.Reg rt ] ->
-      Ok [ Lowered.Msr { sysreg = Nzcv; rt } ]
-  | Opcode.Ret, [ Operand.Reg rn ] -> Ok [ Lowered.Ret { rn } ]
-  | Opcode.Ret, [] -> Ok [ Lowered.Ret { rn = Reg.x30 } ]
-  | Opcode.Br, [ Operand.Reg rn ] -> Ok [ Lowered.Br { rn } ]
-  | Opcode.Sub, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm ->
-          if Int64.compare imm 0L >= 0 && Int64.compare imm 4096L < 0 then
-            Ok [ Lowered.Sub_imm { s = false; rd; rn; imm; shift12 = false } ]
+      | (Opcode.Ldr | Opcode.Str), [ Operand.Freg rt; Operand.Mem m ] -> (
+          let load = match i.Instruction.op with Opcode.Ldr -> true | _ -> false in
+          let size = if rt.Freg.double then X else W in
+          if m.Mem.writeback then bad `Writeback_out_of_scope
           else
-            (* {!Opcode.Add}'s own bare-multiple-of-4096 auto-select comment applies
+            let double = rt.Freg.double in
+            match m.Mem.offset with
+            | Disp.Sym e -> (
+                let inner =
+                  match e with
+                  | Asm_core.Expr.Modifier ("lo12", inner) -> Ok inner
+                  | Asm_core.Expr.Modifier (m, _) -> Error (`Wrong_memory_modifier m)
+                  | _ -> Error `Missing_memory_modifier
+                in
+                match inner with
+                | Error kind -> bad kind
+                | Ok value ->
+                    Ok
+                      [
+                        Lowered.Ldst_uoff_f
+                          { double; load; rt; rn = m.Mem.base; offset = Disp.Sym value };
+                      ])
+            | Disp.Const off ->
+                let scale = Int64.of_int (access_bytes size) in
+                if Int64.compare off 0L < 0 then bad `Unsigned_offset_only
+                else if not (Int64.equal (Int64.rem off scale) 0L) then
+                  bad (`Offset_not_scaled scale)
+                else if Int64.compare (Int64.div off scale) 4096L >= 0 then
+                  bad `Offset_not_12bit_scaled
+                else
+                  Ok
+                    [
+                      Lowered.Ldst_uoff_f
+                        { double; load; rt; rn = m.Mem.base; offset = Disp.Const off };
+                    ]
+            | Disp.Reg { index; extend; amount } -> (
+                let expected_index_width = extend_index_width extend in
+                if index.Reg.width <> expected_index_width then
+                  bad
+                    (`Wrong_register_width
+                       { subject = Index extend; expected = expected_index_width })
+                else
+                  match amount with
+                  | None | Some 0 ->
+                      Ok
+                        [
+                          Lowered.Ldst_uoff_f
+                            { double; load; rt; rn = m.Mem.base; offset = m.Mem.offset };
+                        ]
+                  | Some n when n = access_shift size ->
+                      Ok
+                        [
+                          Lowered.Ldst_uoff_f
+                            { double; load; rt; rn = m.Mem.base; offset = m.Mem.offset };
+                        ]
+                  | Some n -> bad (`Register_offset_shift_invalid n)))
+      | Opcode.Mov, [ Operand.Vec (rd, a); Operand.Vec (rn, b) ] when Varr.equal a b -> (
+          match a with
+          | Varr.B8 -> Ok [ Lowered.Vlogic { op = Vorr; q = false; rd; rn; rm = rn } ]
+          | Varr.B16 -> Ok [ Lowered.Vlogic { op = Vorr; q = true; rd; rn; rm = rn } ]
+          | Varr.S2 | Varr.S4 | Varr.D2 -> bad `Vector_arrangement)
+      | Opcode.Dup, [ Operand.Vec (rd, arr); Operand.Vlane (rn, lane, index) ] -> (
+          match (arr, lane) with
+          | (Varr.S2 | Varr.S4), Lane.S | Varr.D2, Lane.D ->
+              if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
+              else Ok [ Lowered.Vdup { arr; rd; rn; index } ]
+          | _ -> bad `Vector_arrangement)
+      | Opcode.Dup, [ Operand.Vec (rd, arr); Operand.Reg rn ] -> (
+          match (arr, rn.Reg.width) with
+          | (Varr.S2 | Varr.S4), 32 | Varr.D2, 64 -> Ok [ Lowered.Vdup_gpr { arr; rd; rn } ]
+          | _ -> bad `Vector_arrangement)
+      | Opcode.Dup, [ Operand.Freg rd; Operand.Vlane (rn, lane, index) ]
+        when rd.Freg.double = (lane = Lane.D) ->
+          if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
+          else Ok [ Lowered.Vdup_scalar { lane; rd = rd.Freg.num; rn; index } ]
+      | Opcode.Mov, [ Operand.Freg rd; Operand.Vlane (rn, lane, index) ]
+        when rd.Freg.double = (lane = Lane.D) ->
+          if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
+          else Ok [ Lowered.Vdup_scalar { lane; rd = rd.Freg.num; rn; index } ]
+      | (Opcode.Ins | Opcode.Mov), [ Operand.Vlane (rd, l1, didx); Operand.Vlane (rn, l2, sidx) ]
+        when l1 = l2 ->
+          if didx < 0 || didx >= Lane.lanes l1 || sidx < 0 || sidx >= Lane.lanes l1 then
+            bad (`Lane_out_of_range (if didx < 0 || didx >= Lane.lanes l1 then didx else sidx))
+          else Ok [ Lowered.Vins { lane = l1; rd; didx; rn; sidx } ]
+      | ((Opcode.Ld1 | Opcode.St1) as o), [ Operand.Vlist_lane (vt, lane, index); Operand.Mem m ]
+        when m.Mem.writeback = false && Disp.is_zero m.Mem.offset ->
+          if index < 0 || index >= Lane.lanes lane then bad (`Lane_out_of_range index)
+          else Ok [ Lowered.Vld1 { load = o = Opcode.Ld1; lane; vt; index; rn = m.Mem.base } ]
+      | Opcode.Ld1r, [ Operand.Vlist (vt, arr); Operand.Mem m ]
+        when m.Mem.writeback = false && Disp.is_zero m.Mem.offset -> (
+          match arr with
+          | Varr.S2 | Varr.S4 | Varr.D2 -> Ok [ Lowered.Vld1r { arr; vt; rn = m.Mem.base } ]
+          | Varr.B8 | Varr.B16 -> bad `Vector_arrangement)
+      | ((Opcode.Ldr | Opcode.Str) as o), [ Operand.Qreg rt; Operand.Mem m ]
+        when not m.Mem.writeback -> (
+          match m.Mem.offset with
+          | Disp.Const off ->
+              if Int64.compare off 0L < 0 || not (Int64.equal (Int64.rem off 16L) 0L) then
+                bad (`Offset_not_scaled off)
+              else if Int64.compare (Int64.div off 16L) 4096L >= 0 then bad `Offset_not_12bit_scaled
+              else Ok [ Lowered.Qldst { load = o = Opcode.Ldr; rt; rn = m.Mem.base; offset = off } ]
+          | Disp.Sym _ | Disp.Reg _ -> bad `Unsigned_offset_only)
+      | Opcode.Sub, [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] -> (
+          match imm_of v with
+          | Error e -> Error e
+          | Ok imm ->
+              if Int64.compare imm 0L >= 0 && Int64.compare imm 4096L < 0 then
+                Ok [ Lowered.Sub_imm { s = false; rd; rn; imm; shift12 = false } ]
+              else
+                (* {!Opcode.Add}'s own bare-multiple-of-4096 auto-select comment applies
                identically here - not yet evidenced for [sub] in this corpus, but the same
                GAS behavior for the identical word shape. *)
-            let shifted = Int64.shift_right_logical imm 12 in
-            if
-              Int64.equal (Int64.shift_left shifted 12) imm
-              && Int64.compare shifted 0L >= 0
-              && Int64.compare shifted 4096L < 0
-            then Ok [ Lowered.Sub_imm { s = false; rd; rn; imm = shifted; shift12 = true } ]
-            else bad `Imm12_needs_lsl12_form)
-  | ( Opcode.Sub,
-      [
-        Operand.Reg rd;
-        Operand.Reg rn;
-        Operand.Imm v;
-        Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 };
-      ] ) -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then bad `Imm12_field
-          else Ok [ Lowered.Sub_imm { s = false; rd; rn; imm; shift12 = true } ])
-  (* The register forms of ADD/SUB, and the comparison that is one of them.
+                let shifted = Int64.shift_right_logical imm 12 in
+                if
+                  Int64.equal (Int64.shift_left shifted 12) imm
+                  && Int64.compare shifted 0L >= 0
+                  && Int64.compare shifted 4096L < 0
+                then Ok [ Lowered.Sub_imm { s = false; rd; rn; imm = shifted; shift12 = true } ]
+                else bad `Imm12_needs_lsl12_form)
+      | ( Opcode.Sub,
+          [
+            Operand.Reg rd;
+            Operand.Reg rn;
+            Operand.Imm v;
+            Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 };
+          ] ) -> (
+          match imm_of v with
+          | Error e -> Error e
+          | Ok imm ->
+              if Int64.compare imm 0L < 0 || Int64.compare imm 4096L >= 0 then bad `Imm12_field
+              else Ok [ Lowered.Sub_imm { s = false; rd; rn; imm; shift12 = true } ])
+      (* The register forms of ADD/SUB, and the comparison that is one of them.
      A shift is a fourth operand at the surface and part of the third here. *)
-  | ( ((Opcode.Add | Opcode.Sub) as op),
-      (Operand.Reg rd :: Operand.Reg rn :: Operand.Reg rm :: rest as ops) ) -> (
-      ignore ops;
-      match rest with
-      | [] ->
-          Ok
-            [
-              Lowered.Addsub_shift
-                { sub = op = Opcode.Sub; s = false; rd; rn; rm; shift = 0; amount = 0 };
-            ]
-      | [ Operand.Shift { Shift.kind; amount } ] -> (
-          match shift_code kind with
-          | Some shift ->
-              if amount < 0 || amount >= rd.Reg.width then bad `Shift_amount_too_large
-              else
-                Ok
-                  [
-                    Lowered.Addsub_shift
-                      { sub = op = Opcode.Sub; s = false; rd; rn; rm; shift; amount };
-                  ]
-          | None -> (
-              match match kind with Shift.Ext e -> extend_alu_code e | _ -> None with
-              | None -> bad (`Not_a_shifted_register (Shift.name kind))
-              | Some option ->
-                  if amount < 0 || amount > 4 then bad `Shift_amount_too_large
+      | ( ((Opcode.Add | Opcode.Sub) as op),
+          (Operand.Reg rd :: Operand.Reg rn :: Operand.Reg rm :: rest as ops) ) -> (
+          ignore ops;
+          match rest with
+          | [] ->
+              Ok
+                [
+                  Lowered.Addsub_shift
+                    { sub = op = Opcode.Sub; s = false; rd; rn; rm; shift = 0; amount = 0 };
+                ]
+          | [ Operand.Shift { Shift.kind; amount } ] -> (
+              match shift_code kind with
+              | Some shift ->
+                  if amount < 0 || amount >= rd.Reg.width then bad `Shift_amount_too_large
                   else
                     Ok
                       [
-                        Lowered.Addsub_extend
-                          { sub = op = Opcode.Sub; s = false; rd; rn; rm; option; imm3 = amount };
-                      ]))
-      | _ -> bad `Too_many_operands)
-  (* The immediate half of the same aliasing: [cmp] is a [subs] into the zero register and [cmn]
+                        Lowered.Addsub_shift
+                          { sub = op = Opcode.Sub; s = false; rd; rn; rm; shift; amount };
+                      ]
+              | None -> (
+                  match match kind with Shift.Ext e -> extend_alu_code e | _ -> None with
+                  | None -> bad (`Not_a_shifted_register (Shift.name kind))
+                  | Some option ->
+                      if amount < 0 || amount > 4 then bad `Shift_amount_too_large
+                      else
+                        Ok
+                          [
+                            Lowered.Addsub_extend
+                              {
+                                sub = op = Opcode.Sub;
+                                s = false;
+                                rd;
+                                rn;
+                                rm;
+                                option;
+                                imm3 = amount;
+                              };
+                          ]))
+          | _ -> bad `Too_many_operands)
+      (* The immediate half of the same aliasing: [cmp] is a [subs] into the zero register and [cmn]
      an [adds] into it. A bare immediate that does not fit 12 bits but is a multiple of 4096 takes
      the [lsl #12] form, as GAS selects it ({!Opcode.Add}'s own comment; compiler-output evidence:
      the compiler's [cmp w9, #16384]). Verified against real as/objdump: [cmp w9, #16384] ->
      [7140113f], [cmn w12, #3] -> [31000d9f], [cmn w0, #16384] -> [3140101f]. *)
-  | ((Opcode.Cmp | Opcode.Cmn) as op), Operand.Reg rn :: Operand.Imm v :: shift -> (
-      let zr = { Reg.num = 31; width = rn.Reg.width; is_sp = false } in
-      let make imm shift12 =
-        if op = Opcode.Cmn then Lowered.Adds_imm { rd = zr; rn; imm; shift12 }
-        else Lowered.Sub_imm { s = true; rd = zr; rn; imm; shift12 }
-      in
-      let fits imm = Int64.compare imm 0L >= 0 && Int64.compare imm 4096L < 0 in
-      match (imm_of v, shift) with
-      | Error e, _ -> Error e
-      | Ok imm, [] ->
-          if fits imm then Ok [ make imm false ]
-          else
-            let shifted = Int64.shift_right_logical imm 12 in
-            if Int64.equal (Int64.shift_left shifted 12) imm && fits shifted then
-              Ok [ make shifted true ]
-            else bad `Imm12_unshifted
-      | Ok imm, [ Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 } ] ->
-          if fits imm then Ok [ make imm true ] else bad `Imm12_field
-      | Ok _, _ -> bad `Too_many_operands)
-  | Opcode.Cmp, [ Operand.Reg rn; Operand.Reg rm ] ->
-      (* There is no compare instruction: a comparison is a subtraction that
+      | ((Opcode.Cmp | Opcode.Cmn) as op), Operand.Reg rn :: Operand.Imm v :: shift -> (
+          let zr = { Reg.num = 31; width = rn.Reg.width; is_sp = false } in
+          let make imm shift12 =
+            if op = Opcode.Cmn then Lowered.Adds_imm { rd = zr; rn; imm; shift12 }
+            else Lowered.Sub_imm { s = true; rd = zr; rn; imm; shift12 }
+          in
+          let fits imm = Int64.compare imm 0L >= 0 && Int64.compare imm 4096L < 0 in
+          match (imm_of v, shift) with
+          | Error e, _ -> Error e
+          | Ok imm, [] ->
+              if fits imm then Ok [ make imm false ]
+              else
+                let shifted = Int64.shift_right_logical imm 12 in
+                if Int64.equal (Int64.shift_left shifted 12) imm && fits shifted then
+                  Ok [ make shifted true ]
+                else bad `Imm12_unshifted
+          | Ok imm, [ Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 } ] ->
+              if fits imm then Ok [ make imm true ] else bad `Imm12_field
+          | Ok _, _ -> bad `Too_many_operands)
+      | Opcode.Cmp, [ Operand.Reg rn; Operand.Reg rm ] ->
+          (* There is no compare instruction: a comparison is a subtraction that
          sets the flags and discards its result into the zero register, and
          reading it off [Opcode.Cmp] here is what keeps one encoding. *)
-      Ok
-        [
-          Lowered.Addsub_shift
-            {
-              sub = true;
-              s = true;
-              rd = { Reg.num = 31; width = rn.Reg.width; is_sp = false };
-              rn;
-              rm;
-              shift = 0;
-              amount = 0;
-            };
-        ]
-  | ( ((Opcode.And | Opcode.Orr | Opcode.Eor) as op),
-      [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] ) -> (
-      let opc = match op with Opcode.And -> 0 | Opcode.Orr -> 1 | _ -> 2 in
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm_raw ->
-          (* [decode_bitmask] only ever reconstructs a 32-bit datasize's value already reduced to
+          Ok
+            [
+              Lowered.Addsub_shift
+                {
+                  sub = true;
+                  s = true;
+                  rd = { Reg.num = 31; width = rn.Reg.width; is_sp = false };
+                  rn;
+                  rm;
+                  shift = 0;
+                  amount = 0;
+                };
+            ]
+      | ( ((Opcode.And | Opcode.Orr | Opcode.Eor) as op),
+          [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] ) -> (
+          let opc = match op with Opcode.And -> 0 | Opcode.Orr -> 1 | _ -> 2 in
+          match imm_of v with
+          | Error e -> Error e
+          | Ok imm_raw ->
+              (* [decode_bitmask] only ever reconstructs a 32-bit datasize's value already reduced to
              its low 32 bits (never a negative int64), so a literal spelled at its own width's
              negative extreme (gcc's own [#-16777216] for a byte-mask, `aes.c`) has to be reduced
              the identical way before the search - and before being stored, since the codec's own
              field is that same reduced value - or it can never match any entry in the domain. *)
-          let imm = if rd.Reg.width = 32 then Int64.logand imm_raw 0xFFFFFFFFL else imm_raw in
-          if encode_bitmask ~datasize:rd.Reg.width imm = None then
-            bad (`Not_bitmask_immediate imm_raw)
-          else Ok [ Lowered.Logical_imm { opc; rd; rn; imm } ])
-  (* [tst rn, #imm] - [ands zr, rn, #imm] with the result discarded, {!Logical_imm}'s own
+              let imm = if rd.Reg.width = 32 then Int64.logand imm_raw 0xFFFFFFFFL else imm_raw in
+              if encode_bitmask ~datasize:rd.Reg.width imm = None then
+                bad (`Not_bitmask_immediate imm_raw)
+              else Ok [ Lowered.Logical_imm { opc; rd; rn; imm } ])
+      (* [tst rn, #imm] - [ands zr, rn, #imm] with the result discarded, {!Logical_imm}'s own
      [opc] = 3 (M5 corpus evidence: perlin.c). [zr] is baked in rather
      than carried, the same "no general destination is evidenced" choice {!Cset} already
      makes for its own zr operands. *)
-  | Opcode.Tst, [ Operand.Reg rn; Operand.Imm v ] -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm_raw ->
-          let imm = if rn.Reg.width = 32 then Int64.logand imm_raw 0xFFFFFFFFL else imm_raw in
-          if encode_bitmask ~datasize:rn.Reg.width imm = None then
-            bad (`Not_bitmask_immediate imm_raw)
-          else
-            let rd = { Reg.num = 31; width = rn.Reg.width; is_sp = false } in
-            Ok [ Lowered.Logical_imm { opc = 3; rd; rn; imm } ])
-  (* [and rd, rn, rm] / [eor rd, rn, rm[, shift]] / [orr rd, rn, rm[, shift]] / [bic rd, rn, rm] -
+      | Opcode.Tst, [ Operand.Reg rn; Operand.Imm v ] -> (
+          match imm_of v with
+          | Error e -> Error e
+          | Ok imm_raw ->
+              let imm = if rn.Reg.width = 32 then Int64.logand imm_raw 0xFFFFFFFFL else imm_raw in
+              if encode_bitmask ~datasize:rn.Reg.width imm = None then
+                bad (`Not_bitmask_immediate imm_raw)
+              else
+                let rd = { Reg.num = 31; width = rn.Reg.width; is_sp = false } in
+                Ok [ Lowered.Logical_imm { opc = 3; rd; rn; imm } ])
+      (* [and rd, rn, rm] / [eor rd, rn, rm[, shift]] / [orr rd, rn, rm[, shift]] / [bic rd, rn, rm] -
      the register form of the same family, evidenced for [and] ([sha1.c]/[nsievebits.c]) and [eor]
      ([aes.c]/[sha3.c]), for [orr] specifically as [mov]'s own [orr rd, xzr, rm, lsl #n]
      shifted-register spelling (the compiler's own scaled-move idiom, e.g. [binarytrees.c]'s
      [orr x1, xzr, x20, lsl #1]), and, with [N] = 1, [bic] ([sha3.c]). *)
-  | ( ((Opcode.And | Opcode.Eor | Opcode.Orr | Opcode.Bic) as op),
-      Operand.Reg rd :: Operand.Reg rn :: Operand.Reg rm :: rest ) -> (
-      let opc, n =
-        match op with
-        | Opcode.Bic -> (0, true)
-        | Opcode.And -> (0, false)
-        | Opcode.Orr -> (1, false)
-        | _ -> (2, false)
-      in
-      match rest with
-      | [] -> Ok [ Lowered.Logical_shift { opc; n; rd; rn; rm; shift = 0; amount = 0 } ]
-      | [ Operand.Shift { Shift.kind; amount } ] -> (
-          match shift_code kind with
-          | Some shift ->
-              if amount < 0 || amount >= rd.Reg.width then bad `Shift_amount_too_large
-              else Ok [ Lowered.Logical_shift { opc; n; rd; rn; rm; shift; amount } ]
-          | None -> bad (`Not_a_shifted_register (Shift.name kind)))
-      | _ -> bad `Too_many_operands)
-  | Opcode.Madd, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Reg ra ] ->
-      Ok [ Lowered.Madd { rd; rn; rm; ra } ]
-  | Opcode.Mul, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] ->
-      Ok [ Lowered.Madd { rd; rn; rm; ra = { Reg.num = 31; width = rd.Reg.width; is_sp = false } } ]
-  | Opcode.Csel, [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Sym cond ] -> (
-      (* The condition is spelled as a bare name, so it arrives from the common
-         parser as a symbol - there is nothing else it could be until this
-         target says otherwise. *)
-      match cond with
-      | Asm_core.Expr.Symbol s -> (
-          match Cond.of_name s with
-          | Some c -> Ok [ Lowered.Csel { cond = c; rd; rn; rm } ]
-          | None -> bad (`Unknown_condition s))
-      | _ -> bad `Csel_needs_condition)
-  | Opcode.Adrp, [ Operand.Reg rd; Operand.Sym e ] ->
-      Ok [ Lowered.Adrp { rd; page = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
-  | Opcode.Adr, [ Operand.Reg rd; Operand.Sym e ] ->
-      Ok [ Lowered.Adr { rd; offset = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
-  | Opcode.B, [ Operand.Sym e ] ->
-      Ok [ Lowered.B { target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
-  | Opcode.Bcond c, [ Operand.Sym e ] ->
-      Ok
-        [
-          Lowered.Bcond
-            { cond = c; target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } };
-        ]
-  | Opcode.Udf, [ Operand.Imm v ] -> (
-      match imm_of v with
-      | Error e -> Error e
-      | Ok imm ->
-          if Int64.compare imm 0L < 0 || Int64.compare imm 65536L >= 0 then bad `Udf_imm16_overflow
-          else Ok [ Lowered.Udf { imm16 = imm } ])
-  | Opcode.Bl, [ Operand.Sym e ] ->
-      Ok [ Lowered.Bl { target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
-  | Opcode.Fmov, [ Operand.Freg rd; Operand.Fimm value ] ->
-      if encode_fp_imm8 ~double:rd.Freg.double value = None then
-        bad (`Not_fp_modified_immediate value)
-      else Ok [ Lowered.Fmov_imm { rd; value } ]
-  (* [fmov dd, xn] / [fmov sd, wn] - move a general register's raw bits into a scalar FP
+      | ( ((Opcode.And | Opcode.Eor | Opcode.Orr | Opcode.Bic) as op),
+          Operand.Reg rd :: Operand.Reg rn :: Operand.Reg rm :: rest ) -> (
+          let opc, n =
+            match op with
+            | Opcode.Bic -> (0, true)
+            | Opcode.And -> (0, false)
+            | Opcode.Orr -> (1, false)
+            | _ -> (2, false)
+          in
+          match rest with
+          | [] -> Ok [ Lowered.Logical_shift { opc; n; rd; rn; rm; shift = 0; amount = 0 } ]
+          | [ Operand.Shift { Shift.kind; amount } ] -> (
+              match shift_code kind with
+              | Some shift ->
+                  if amount < 0 || amount >= rd.Reg.width then bad `Shift_amount_too_large
+                  else Ok [ Lowered.Logical_shift { opc; n; rd; rn; rm; shift; amount } ]
+              | None -> bad (`Not_a_shifted_register (Shift.name kind)))
+          | _ -> bad `Too_many_operands)
+      | Opcode.Fmov, [ Operand.Freg rd; Operand.Fimm value ] ->
+          if encode_fp_imm8 ~double:rd.Freg.double value = None then
+            bad (`Not_fp_modified_immediate value)
+          else Ok [ Lowered.Fmov_imm { rd; value } ]
+      (* [fmov dd, xn] / [fmov sd, wn] - move a general register's raw bits into a scalar FP
      register (M5 corpus evidence: [fmov d9, xzr]/[fmov s9, wzr]). The
      reverse direction ([fmov xd, sn]) is not evidenced, so only this one is a [Lowered] case. *)
-  | Opcode.Fmov, [ Operand.Freg rd; Operand.Reg rn ] -> Ok [ Lowered.Fmov_from_gpr { rd; rn } ]
-  (* [fmov dd, dn] - register-to-register, no conversion (M5 corpus evidence:
+      | Opcode.Fmov, [ Operand.Freg rd; Operand.Reg rn ] -> Ok [ Lowered.Fmov_from_gpr { rd; rn } ]
+      (* [fmov dd, dn] - register-to-register, no conversion (M5 corpus evidence:
      almabench.c/bisect.c/...). *)
-  | Opcode.Fmov, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fmov_reg { rd; rn } ]
-  (* FCMP(immediate) only ever compares against zero (§ "the codec"'s
-     comment on [fcmp_imm0_alt]) - a nonzero literal is not a narrower case
-     of this form, it is a different, unimplemented one. *)
-  | Opcode.Fcmp, [ Operand.Freg rn; Operand.Fimm value ] ->
-      if Float.equal value 0.0 then Ok [ Lowered.Fcmp_imm0 { rn } ]
-      else bad (`Fcmp_immediate_must_be_zero value)
-  (* [fcmp dN, dM] - the register-register form (M5 corpus evidence: the corpus notes's
-     bisect.c/mandelbrot.c/...). *)
-  | Opcode.Fcmp, [ Operand.Freg rn; Operand.Freg rm ] -> Ok [ Lowered.Fcmp_reg { rn; rm } ]
-  | ( (Opcode.Fadd | Opcode.Fsub | Opcode.Fmul | Opcode.Fdiv | Opcode.Fmax),
-      [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm ] ) -> (
-      match fbinop_opcode i.Instruction.op with
-      | Some opc -> Ok [ Lowered.Fbinop { opc; rd; rn; rm } ]
-      | None -> bad (`No_form (Opcode.name i.Instruction.op)))
-  | Opcode.Fcsel, [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm; Operand.Sym cond ] -> (
-      match cond with
-      | Asm_core.Expr.Symbol s -> (
-          match Cond.of_name s with
-          | Some c -> Ok [ Lowered.Fcsel { cond = c; rd; rn; rm } ]
-          | None -> bad (`Unknown_condition s))
-      | _ -> bad `Csel_needs_condition)
-  | Opcode.Scvtf, [ Operand.Freg rd; Operand.Reg rn ] ->
-      Ok [ Lowered.Cvtf { signed = true; rd; rn } ]
-  | Opcode.Ucvtf, [ Operand.Freg rd; Operand.Reg rn ] ->
-      Ok [ Lowered.Cvtf { signed = false; rd; rn } ]
-  | Opcode.Fneg, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fneg { rd; rn } ]
-  | Opcode.Fsqrt, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fsqrt { rd; rn } ]
-  | Opcode.Frintz, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Frintz { rd; rn } ]
-  | Opcode.Fmadd, [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm; Operand.Freg ra ] ->
-      Ok [ Lowered.Fmadd { rd; rn; rm; ra } ]
-  | Opcode.Fmov, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fmov_to_gpr { rd; rn } ]
-  | Opcode.Fcvt, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvt { rd; rn } ]
-  | Opcode.Fcvtzs, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvtzs { rd; rn } ]
-  | Opcode.Fcvtzu, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fcvtzu { rd; rn } ]
-  | _ -> bad (`No_form (Opcode.name i.Instruction.op))
+      | Opcode.Fmov, [ Operand.Freg rd; Operand.Freg rn ] -> Ok [ Lowered.Fmov_reg { rd; rn } ]
+      | Opcode.Fmov, [ Operand.Reg rd; Operand.Freg rn ] -> Ok [ Lowered.Fmov_to_gpr { rd; rn } ]
+      | _ -> bad (`No_form (Opcode.name i.Instruction.op)))
 
 (* {1 Encode and decode} *)
 
@@ -4848,6 +4247,8 @@ let branch_operand ~at target =
   in
   Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 abs))
 
+let op_of enc = Option.get (Aarch64_ops.of_enc enc)
+
 let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Add_imm { rd; rn; imm; shift12 } ->
       if Disp.equal imm (Disp.Const 0L) && (not shift12) && (rd.Reg.is_sp || rn.Reg.is_sp) then
@@ -4868,7 +4269,7 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Ldst_pair { load; post; rt; rt2; rn; offset } ->
       Some
         {
-          Instruction.op = (if load then Opcode.Ldp else Opcode.Stp);
+          Instruction.op = op_of (Aarch64_ops.Enc.Ldst_pair { load });
           ops =
             (if post then
                (* [[xn], #off]: at the surface a post-index is a bare base and a separate
@@ -4891,7 +4292,7 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Stp_pre { rt; rt2; rn; offset } ->
       Some
         {
-          Instruction.op = Opcode.Stp;
+          Instruction.op = op_of (Aarch64_ops.Enc.Ldst_pair { load = false });
           ops =
             [
               Operand.Reg rt;
@@ -4903,7 +4304,7 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Movz { rd; imm16; hw } ->
       Some
         {
-          Instruction.op = Opcode.Movz;
+          Instruction.op = op_of (Aarch64_ops.Enc.Wide { opc = 2 });
           ops =
             Operand.Reg rd
             :: Operand.Imm (Bigint.of_int64 imm16)
@@ -4913,7 +4314,7 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Movn { rd; imm16; hw } ->
       Some
         {
-          Instruction.op = Opcode.Movn;
+          Instruction.op = op_of (Aarch64_ops.Enc.Wide { opc = 0 });
           ops =
             Operand.Reg rd
             :: Operand.Imm (Bigint.of_int64 imm16)
@@ -4923,7 +4324,7 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Movk { rd; imm16; hw } ->
       Some
         {
-          Instruction.op = Opcode.Movk;
+          Instruction.op = op_of (Aarch64_ops.Enc.Wide { opc = 3 });
           ops =
             Operand.Reg rd
             :: Operand.Imm (Bigint.of_int64 imm16)
@@ -4933,21 +4334,29 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Msub { rd; rn; rm; ra } ->
       Some
         {
-          Instruction.op = Opcode.Msub;
+          Instruction.op = op_of (Aarch64_ops.Enc.Madd { sub = true });
           ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Reg ra ];
         }
   | Lowered.Udiv { rd; rn; rm } ->
       Some
-        { Instruction.op = Opcode.Udiv; ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] }
+        {
+          Instruction.op = op_of (Aarch64_ops.Enc.Div { signed = false });
+          ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ];
+        }
   | Lowered.Sdiv { rd; rn; rm } ->
       Some
-        { Instruction.op = Opcode.Sdiv; ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] }
+        {
+          Instruction.op = op_of (Aarch64_ops.Enc.Div { signed = true });
+          ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ];
+        }
   | Lowered.Sbfm { rd; rn; immr; imms } ->
       (* the same alias choice as {!Lowered.Ubfm}'s: [sbfx] when [imms >= immr], else [sbfiz] *)
       let op, lsb, width =
         match ubfm_alias_of ~datasize:rd.Reg.width ~immr ~imms with
-        | Ubfx (lsb, width) -> (Opcode.Sbfx, lsb, width)
-        | Ubfiz (lsb, width) -> (Opcode.Sbfiz, lsb, width)
+        | Ubfx (lsb, width) ->
+            (op_of (Aarch64_ops.Enc.Bitfield { signed = true; lsl_alias = false }), lsb, width)
+        | Ubfiz (lsb, width) ->
+            (op_of (Aarch64_ops.Enc.Bitfield { signed = true; lsl_alias = true }), lsb, width)
       in
       Some
         {
@@ -4963,8 +4372,7 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Ldst_sx { size; rt; rn; offset } ->
       Some
         {
-          Instruction.op =
-            (match size with B -> Opcode.Ldrsb | H -> Opcode.Ldrsh | _ -> Opcode.Ldrsw);
+          Instruction.op = op_of (Aarch64_ops.Enc.Ldst_sx { size = min 2 (access_code size) });
           ops =
             [ Operand.Reg rt; Operand.Mem { Mem.base = rn; offset; writeback = false; pre = true } ];
         }
@@ -4980,14 +4388,12 @@ let instruction_of_lowered ?(at = 0L) = function
       in
       Some { Instruction.op; ops = [ Operand.Reg rd; Operand.Reg rn ] }
   | Lowered.Shiftv { shift; rd; rn; rm } ->
-      let op =
-        match shift with 0 -> Opcode.Lsl | 1 -> Opcode.Lsr | 2 -> Opcode.Asr | _ -> Opcode.Ror
-      in
+      let op = op_of (Aarch64_ops.Enc.Shiftv { code = shift }) in
       Some { Instruction.op; ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] }
   | Lowered.Cset { cond; rd } ->
       Some
         {
-          Instruction.op = Opcode.Cset;
+          Instruction.op = op_of Aarch64_ops.Enc.Cset;
           ops = [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Symbol (Cond.name cond)) ];
         }
   | Lowered.Ubfm { rd; rn; immr; imms } -> (
@@ -4995,7 +4401,8 @@ let instruction_of_lowered ?(at = 0L) = function
       | Ubfx (lsb, width) ->
           Some
             {
-              Instruction.op = Opcode.Ubfx;
+              Instruction.op =
+                op_of (Aarch64_ops.Enc.Bitfield { signed = false; lsl_alias = false });
               ops =
                 [
                   Operand.Reg rd;
@@ -5007,7 +4414,7 @@ let instruction_of_lowered ?(at = 0L) = function
       | Ubfiz (lsb, width) ->
           Some
             {
-              Instruction.op = Opcode.Ubfiz;
+              Instruction.op = op_of (Aarch64_ops.Enc.Bitfield { signed = false; lsl_alias = true });
               ops =
                 [
                   Operand.Reg rd;
@@ -5017,22 +4424,18 @@ let instruction_of_lowered ?(at = 0L) = function
                 ];
             })
   | Lowered.Sxtw { rd; rn } ->
-      Some { Instruction.op = Opcode.Sxtw; ops = [ Operand.Reg rd; Operand.Reg rn ] }
+      Some { Instruction.op = op_of Aarch64_ops.Enc.Sxtw; ops = [ Operand.Reg rd; Operand.Reg rn ] }
   | Lowered.Cbz { nz; rt; target } ->
       Some
         {
-          Instruction.op = (if nz then Opcode.Cbnz else Opcode.Cbz);
+          Instruction.op = op_of (Aarch64_ops.Enc.Cbz { nz });
           ops = [ Operand.Reg rt; branch_operand ~at target ];
         }
   | Lowered.Ldst_post { size; load; rt; rn; offset } ->
       let op =
-        match (size, load) with
-        | B, true -> Opcode.Ldrb
-        | B, false -> Opcode.Strb
-        | H, true -> Opcode.Ldrh
-        | H, false -> Opcode.Strh
-        | (W | X), true -> Opcode.Ldr
-        | (W | X), false -> Opcode.Str
+        op_of
+          (Aarch64_ops.Enc.Ldst
+             { load; size = (match size with B -> Some 0 | H -> Some 1 | W | X -> None) })
       in
       Some
         {
@@ -5046,13 +4449,9 @@ let instruction_of_lowered ?(at = 0L) = function
         }
   | Lowered.Ldst_uoff { size; load; rt; rn; offset } ->
       let op =
-        match (size, load) with
-        | B, true -> Opcode.Ldrb
-        | B, false -> Opcode.Strb
-        | H, true -> Opcode.Ldrh
-        | H, false -> Opcode.Strh
-        | (W | X), true -> Opcode.Ldr
-        | (W | X), false -> Opcode.Str
+        op_of
+          (Aarch64_ops.Enc.Ldst
+             { load; size = (match size with B -> Some 0 | H -> Some 1 | W | X -> None) })
       in
       Some
         {
@@ -5063,7 +4462,7 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Ldst_uoff_f { load; rt; rn; offset; _ } ->
       Some
         {
-          Instruction.op = (if load then Opcode.Ldr else Opcode.Str);
+          Instruction.op = op_of (Aarch64_ops.Enc.Ldst_f { load });
           ops =
             [
               Operand.Freg rt; Operand.Mem { Mem.base = rn; offset; writeback = false; pre = true };
@@ -5075,65 +4474,54 @@ let instruction_of_lowered ?(at = 0L) = function
          the assembler's own [lower] accept. *)
       Some
         {
-          Instruction.op = Opcode.Ret;
+          Instruction.op = op_of Aarch64_ops.Enc.Ret;
           ops = (if rn.Reg.num = 30 && not rn.Reg.is_sp then [] else [ Operand.Reg rn ]);
         }
-  | Lowered.Br { rn } -> Some { Instruction.op = Opcode.Br; ops = [ Operand.Reg rn ] }
+  | Lowered.Br { rn } ->
+      Some { Instruction.op = op_of Aarch64_ops.Enc.Br; ops = [ Operand.Reg rn ] }
   | Lowered.Vbin { op; arr; rd; rn; rm } ->
-      let o =
-        match op with
-        | Vfadd -> Opcode.Fadd
-        | Vfsub -> Opcode.Fsub
-        | Vfmul -> Opcode.Fmul
-        | Vfdiv -> Opcode.Fdiv
-        | Vfmax -> Opcode.Fmax
-        | Vfmla -> Opcode.Fmla
-        | Vfcmeq -> Opcode.Fcmeq
-        | Vfcmge -> Opcode.Fcmge
-        | Vfcmgt -> Opcode.Fcmgt
-      in
+      let u, a, opc = vbin_bits op in
       Some
         {
-          Instruction.op = o;
+          Instruction.op = op_of (Aarch64_ops.Enc.Vbin { u; a; opc });
           ops = [ Operand.Vec (rd, arr); Operand.Vec (rn, arr); Operand.Vec (rm, arr) ];
         }
   | Lowered.Vun { op; arr; rd; rn } ->
-      let o =
-        match op with Vfneg -> Opcode.Fneg | Vfsqrt -> Opcode.Fsqrt | Vfrintz -> Opcode.Frintz
-      in
-      Some { Instruction.op = o; ops = [ Operand.Vec (rd, arr); Operand.Vec (rn, arr) ] }
+      let u, a, opc = vun_bits op in
+      Some
+        {
+          Instruction.op = op_of (Aarch64_ops.Enc.Vun { u; a; opc });
+          ops = [ Operand.Vec (rd, arr); Operand.Vec (rn, arr) ];
+        }
   | Lowered.Vlogic { op = Vorr; q; rd; rn; rm } when rn = rm ->
       let a = if q then Varr.B16 else Varr.B8 in
       Some { Instruction.op = Opcode.Mov; ops = [ Operand.Vec (rd, a); Operand.Vec (rn, a) ] }
   | Lowered.Vlogic { op; q; rd; rn; rm } ->
       let a = if q then Varr.B16 else Varr.B8 in
-      let o =
-        match op with
-        | Vand -> Opcode.And
-        | Vorr -> Opcode.Orr
-        | Veor -> Opcode.Eor
-        | Vbsl -> Opcode.Bsl
-        | Vbit -> Opcode.Bit
-      in
+      let u, sel = vlogic_bits op in
       Some
         {
-          Instruction.op = o;
+          Instruction.op = op_of (Aarch64_ops.Enc.Vlogic { u; sel });
           ops = [ Operand.Vec (rd, a); Operand.Vec (rn, a); Operand.Vec (rm, a) ];
         }
   | Lowered.Vnot { q; rd; rn } ->
       let a = if q then Varr.B16 else Varr.B8 in
-      Some { Instruction.op = Opcode.Not; ops = [ Operand.Vec (rd, a); Operand.Vec (rn, a) ] }
+      Some
+        {
+          Instruction.op = op_of Aarch64_ops.Enc.Vnot;
+          ops = [ Operand.Vec (rd, a); Operand.Vec (rn, a) ];
+        }
   | Lowered.Vcvt { widen; rd; rn } ->
       if widen then
         Some
           {
-            Instruction.op = Opcode.Fcvtl;
+            Instruction.op = op_of (Aarch64_ops.Enc.Vcvt { widen = true });
             ops = [ Operand.Vec (rd, Varr.D2); Operand.Vec (rn, Varr.S2) ];
           }
       else
         Some
           {
-            Instruction.op = Opcode.Fcvtn;
+            Instruction.op = op_of (Aarch64_ops.Enc.Vcvt { widen = false });
             ops = [ Operand.Vec (rd, Varr.S2); Operand.Vec (rn, Varr.D2) ];
           }
   | Lowered.Vdup { arr; rd; rn; index } ->
@@ -5163,7 +4551,7 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Vld1 { load; lane; vt; index; rn } ->
       Some
         {
-          Instruction.op = (if load then Opcode.Ld1 else Opcode.St1);
+          Instruction.op = op_of (Aarch64_ops.Enc.Vld1 { load });
           ops =
             [
               Operand.Vlist_lane (vt, lane, index);
@@ -5173,7 +4561,7 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Vld1r { arr; vt; rn } ->
       Some
         {
-          Instruction.op = Opcode.Ld1r;
+          Instruction.op = op_of Aarch64_ops.Enc.Vld1r;
           ops =
             [
               Operand.Vlist (vt, arr);
@@ -5183,7 +4571,7 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Qldst { load; rt; rn; offset } ->
       Some
         {
-          Instruction.op = (if load then Opcode.Ldr else Opcode.Str);
+          Instruction.op = op_of (Aarch64_ops.Enc.Ldst_q { load });
           ops =
             [
               Operand.Qreg rt;
@@ -5194,13 +4582,13 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Mrs { sysreg; rt } ->
       Some
         {
-          Instruction.op = Opcode.Mrs;
+          Instruction.op = op_of Aarch64_ops.Enc.Mrs;
           ops = [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol (sysreg_name sysreg)) ];
         }
   | Lowered.Msr { sysreg; rt } ->
       Some
         {
-          Instruction.op = Opcode.Msr;
+          Instruction.op = op_of Aarch64_ops.Enc.Msr;
           ops = [ Operand.Sym (Asm_core.Expr.Symbol (sysreg_name sysreg)); Operand.Reg rt ];
         }
   (* [adds zr, rn, #imm] is [cmn]; an [adds] that keeps its result has no surface spelling in
@@ -5327,17 +4715,20 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Madd { rd; rn; rm; ra } ->
       if ra.Reg.num = 31 && not ra.Reg.is_sp then
         Some
-          { Instruction.op = Opcode.Mul; ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ] }
+          {
+            Instruction.op = op_of Aarch64_ops.Enc.Mul;
+            ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm ];
+          }
       else
         Some
           {
-            Instruction.op = Opcode.Madd;
+            Instruction.op = op_of (Aarch64_ops.Enc.Madd { sub = false });
             ops = [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Reg ra ];
           }
   | Lowered.Csel { cond; rd; rn; rm } ->
       Some
         {
-          Instruction.op = Opcode.Csel;
+          Instruction.op = op_of Aarch64_ops.Enc.Csel;
           ops =
             [
               Operand.Reg rd;
@@ -5357,7 +4748,7 @@ let instruction_of_lowered ?(at = 0L) = function
       in
       Some
         {
-          Instruction.op = Opcode.Adrp;
+          Instruction.op = op_of Aarch64_ops.Enc.Adrp;
           ops = [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 abs)) ];
         }
   | Lowered.Adr { rd; offset } ->
@@ -5371,26 +4762,33 @@ let instruction_of_lowered ?(at = 0L) = function
       in
       Some
         {
-          Instruction.op = Opcode.Adr;
+          Instruction.op = op_of Aarch64_ops.Enc.Adr;
           ops = [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 abs)) ];
         }
   | Lowered.Udf { imm16 } ->
-      Some { Instruction.op = Opcode.Udf; ops = [ Operand.Imm (Bigint.of_int64 imm16) ] }
+      Some
+        {
+          Instruction.op = op_of Aarch64_ops.Enc.Udf;
+          ops = [ Operand.Imm (Bigint.of_int64 imm16) ];
+        }
   (* Printed as the absolute target. A64 measures a branch from the instruction
      itself, so there is no length to add - which is why the bias is 0 and this
      needs only the address. The field is a word count, so the displacement is
      four times it. *)
   | Lowered.Bl { target } ->
-      Some { Instruction.op = Opcode.Bl; ops = [ branch_operand ~at target ] }
-  | Lowered.B { target } -> Some { Instruction.op = Opcode.B; ops = [ branch_operand ~at target ] }
+      Some { Instruction.op = op_of Aarch64_ops.Enc.Bl; ops = [ branch_operand ~at target ] }
+  | Lowered.B { target } ->
+      Some { Instruction.op = op_of Aarch64_ops.Enc.B; ops = [ branch_operand ~at target ] }
   | Lowered.Bcond { cond; target } ->
       Some { Instruction.op = Opcode.Bcond cond; ops = [ branch_operand ~at target ] }
   | Lowered.Fmov_imm { rd; value } ->
       Some { Instruction.op = Opcode.Fmov; ops = [ Operand.Freg rd; Operand.Fimm value ] }
   | Lowered.Fcmp_imm0 { rn } ->
-      Some { Instruction.op = Opcode.Fcmp; ops = [ Operand.Freg rn; Operand.Fimm 0.0 ] }
+      Some
+        { Instruction.op = op_of Aarch64_ops.Enc.Fcmp; ops = [ Operand.Freg rn; Operand.Fimm 0.0 ] }
   | Lowered.Fcmp_reg { rn; rm } ->
-      Some { Instruction.op = Opcode.Fcmp; ops = [ Operand.Freg rn; Operand.Freg rm ] }
+      Some
+        { Instruction.op = op_of Aarch64_ops.Enc.Fcmp; ops = [ Operand.Freg rn; Operand.Freg rm ] }
   | Lowered.Fbinop { opc; rd; rn; rm } ->
       let op =
         match opc with
@@ -5405,7 +4803,7 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Fcsel { cond; rd; rn; rm } ->
       Some
         {
-          Instruction.op = Opcode.Fcsel;
+          Instruction.op = op_of Aarch64_ops.Enc.Fcsel;
           ops =
             [
               Operand.Freg rd;
@@ -5417,7 +4815,7 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Cvtf { signed; rd; rn } ->
       Some
         {
-          Instruction.op = (if signed then Opcode.Scvtf else Opcode.Ucvtf);
+          Instruction.op = op_of (Aarch64_ops.Enc.Cvtf { signed });
           ops = [ Operand.Freg rd; Operand.Reg rn ];
         }
   | Lowered.Fneg { rd; rn } ->
@@ -5429,17 +4827,26 @@ let instruction_of_lowered ?(at = 0L) = function
   | Lowered.Fmadd { rd; rn; rm; ra } ->
       Some
         {
-          Instruction.op = Opcode.Fmadd;
+          Instruction.op = op_of Aarch64_ops.Enc.Fmadd;
           ops = [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm; Operand.Freg ra ];
         }
   | Lowered.Fmov_to_gpr { rd; rn } ->
       Some { Instruction.op = Opcode.Fmov; ops = [ Operand.Reg rd; Operand.Freg rn ] }
   | Lowered.Fcvt { rd; rn } ->
-      Some { Instruction.op = Opcode.Fcvt; ops = [ Operand.Freg rd; Operand.Freg rn ] }
+      Some
+        { Instruction.op = op_of Aarch64_ops.Enc.Fcvt; ops = [ Operand.Freg rd; Operand.Freg rn ] }
   | Lowered.Fcvtzs { rd; rn } ->
-      Some { Instruction.op = Opcode.Fcvtzs; ops = [ Operand.Reg rd; Operand.Freg rn ] }
+      Some
+        {
+          Instruction.op = op_of (Aarch64_ops.Enc.Fcvtz { signed = true });
+          ops = [ Operand.Reg rd; Operand.Freg rn ];
+        }
   | Lowered.Fcvtzu { rd; rn } ->
-      Some { Instruction.op = Opcode.Fcvtzu; ops = [ Operand.Reg rd; Operand.Freg rn ] }
+      Some
+        {
+          Instruction.op = op_of (Aarch64_ops.Enc.Fcvtz { signed = false });
+          ops = [ Operand.Reg rd; Operand.Freg rn ];
+        }
   | Lowered.Fmov_from_gpr { rd; rn } ->
       Some { Instruction.op = Opcode.Fmov; ops = [ Operand.Freg rd; Operand.Reg rn ] }
   | Lowered.Fmov_reg { rd; rn } ->
