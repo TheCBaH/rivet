@@ -455,6 +455,170 @@ module Lowered = struct
     | _ -> false
 end
 
+(* The instruction printers read the table for which mnemonics take no size suffix. *)
+module Instruction = struct
+  include Instruction
+
+  let pp ppf i =
+    match i.ops with
+    | [] -> Fmt.string ppf (Opcode.name i.op)
+    | ops -> (
+        match i.op with
+        (* a generated row's spelling is whole: no width suffix to add *)
+        | Opcode.Table row -> (
+            let spelling = table_spelling (Row.index row) in
+            (* an EVEX-only operand already says EVEX; a broadcast states vfpclass's width *)
+            let evex_only =
+              List.exists
+                (function Operand.Bcst _ | Operand.Masked _ | Operand.Rc _ -> true | _ -> false)
+                ops
+            in
+            let spelling =
+              if evex_only && String.length spelling > 7 && String.sub spelling 0 7 = "{evex} " then
+                String.sub spelling 7 (String.length spelling - 7)
+              else spelling
+            in
+            let spelling =
+              let n = String.length spelling in
+              if
+                List.exists (function Operand.Bcst _ -> true | _ -> false) ops
+                && n > 8
+                && String.sub spelling 0 8 = "vfpclass"
+                && List.mem spelling.[n - 1] [ 'x'; 'y'; 'z' ]
+              then String.sub spelling 0 (n - 1)
+              else spelling
+            in
+            match ops with
+            (* {dfv=...} takes no comma after it *)
+            | (Operand.Dfv _ as dfv) :: rest ->
+                Fmt.pf ppf "%s %a %a" spelling Operand.pp dfv
+                  Fmt.(list ~sep:(any ", ") Operand.pp)
+                  rest
+            | _ -> Fmt.pf ppf "%s %a" spelling Fmt.(list ~sep:(any ", ") Operand.pp) ops)
+        (* [pop]/[jmp] take no AT&T size suffix in M1 - their one operand's own
+           width is what disambiguates, and [simplify_instruction] only
+           recognizes the bare mnemonic. [jmp]'s indirect-target sigil is
+           equally part of this spelling: it is what [parse_one_operand]'s
+           [Token.Star] case, and GNU as, both expect. *)
+        | Opcode.Pop -> Fmt.pf ppf "pop %a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        (* no size suffix: the register's width is the operand size, and the compiler prints the
+           bare mnemonic *)
+        | Opcode.Bswap -> Fmt.pf ppf "bswap %a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        | Opcode.Jmp -> (
+            match ops with
+            (* A relative jump and an indirect one share a mnemonic and differ in
+               their operand, which is exactly how GAS tells them apart: the
+               sigil marks the indirect one. *)
+            | [ Operand.Sym _ ] ->
+                Fmt.pf ppf "jmp%s %a" (form_suffix i) Fmt.(list ~sep:(any ", ") Operand.pp) ops
+            | _ -> Fmt.pf ppf "jmp *%a" Fmt.(list ~sep:(any ", ") Operand.pp) ops)
+        | Opcode.Jcc c ->
+            Fmt.pf ppf "j%s%s %a" (Cc.name c) (form_suffix i)
+              Fmt.(list ~sep:(any ", ") Operand.pp)
+              ops
+        (* one rung, so no pin to spell *)
+        | Opcode.Short_branch s ->
+            Fmt.pf ppf "%s %a" (Short.name s) Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        (* No size suffix: a near call is rel32 in both modes, so there is
+           nothing for one to select, and GNU as writes none either. *)
+        | Opcode.Call -> Fmt.pf ppf "call %a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        (* Nor does a conditional move: both its operands are registers, so the
+           width is on the line already, and GAS accepts no suffix on it. *)
+        | Opcode.Cmov c ->
+            Fmt.pf ppf "cmov%s %a" (Cc.name c) Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        (* No AT&T size suffix: [sete]/[setl] are always 8-bit, so there is no
+           width for a suffix to disambiguate - GAS accepts none. *)
+        | Opcode.Setcc c ->
+            Fmt.pf ppf "set%s %a" (Cc.name c) Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        (* [movzbl]/[movsbl]/[movslq] (M5): [Opcode.name]
+           already carries the *source* width as its own trailing letter
+           ([movzb], [movsl], ...); appending [suffix_of_width i.width] here
+           supplies the destination one, together reconstructing GAS's own
+           two-suffix spelling. *)
+        | (Opcode.Movzx _ | Opcode.Movsx _) as op ->
+            Fmt.pf ppf "%s%s %a" (Opcode.name op) (suffix_of_width i.width)
+              Fmt.(list ~sep:(any ", ") Operand.pp)
+              ops
+        (* M4 (docs/design.md §12): [push]/[dec] are single-register-only here
+           (like [pop]), so their own operand always disambiguates - measured
+           against the real i64_divmod runtime-helper oracle, GNU's objdump
+           prints both with no suffix. *)
+        | Opcode.Push -> Fmt.pf ppf "push %a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        | Opcode.Dec -> Fmt.pf ppf "dec %a" Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        (* Unlike [push]/[dec], these can target memory with no register
+           operand anywhere on the line ([negl 0x10(%esp)]), where nothing
+           else carries a width - so the suffix is conditional on whether a
+           register operand is present, not absent outright. Measured
+           against the same oracle: any register operand present gets none
+           (["neg %esi"], ["adc $0x0,%esi"], ["adc 0x20(%esp),%edx"], ["rcr
+           $1,%ecx"]); an all-memory(+immediate) operand list keeps it
+           (["negl 0x10(%esp)"]). Scoped to exactly the M4 opcodes added
+           alongside this rule, plus M5's [Ror]/[Shl]/[Sar] (measured the
+           same way against the same oracle: ["ror $0x1b,%eax"], ["shl
+           $0x10,%eax"], ["sar $0x2,%eax"], but ["rorl $0x3,(%rax)"]) - and
+           M5's [Shld] (the compiler's own [shldl
+           $6,%ecx,%eax], measured against real objdump as suffixless
+           ["shld $0x6,%ecx,%eax"], its two register operands disambiguating
+           the same way) - existing opcodes below keep their already-
+           measured, unconditional suffix. *)
+        | ( Opcode.Neg | Opcode.Mul | Opcode.Div | Opcode.Test | Opcode.Adc | Opcode.Sbb
+          | Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar | Opcode.Shld ) as op ->
+            (* a shift's [%cl] count says nothing about the size *)
+            let sized =
+              match (op, ops) with
+              | ( (Opcode.Rcr | Shr | Ror | Shl | Sar | Shld),
+                  Operand.Reg { Reg.cls = Gpr8; num = 1 } :: (_ :: _ as rest) ) ->
+                  rest
+              | _ -> ops
+            in
+            if List.exists (function Operand.Reg _ -> true | _ -> false) sized then
+              Fmt.pf ppf "%s %a" (Opcode.name op) Fmt.(list ~sep:(any ", ") Operand.pp) ops
+            else
+              Fmt.pf ppf "%s%s %a" (Opcode.name op) (suffix_of_width i.width)
+                Fmt.(list ~sep:(any ", ") Operand.pp)
+                ops
+        (* No AT&T size suffix on any of these, ever: they are fixed-name SSE
+           mnemonics (M5), not a stem plus a width letter
+           - GAS never writes [addsdl] or [movsdq]. [i.width] here is not the
+           128-bit xmm operand's width in the first place (see
+           {!instruction_of_lowered}'s comment) so it must never reach
+           [suffix_of_width] the way the fallback case below does. *)
+        | op when X86_ops.plain op ->
+            Fmt.pf ppf "%s %a" (Opcode.name op) Fmt.(list ~sep:(any ", ") Operand.pp) ops
+        | _ ->
+            Fmt.pf ppf "%s%s %a" (Opcode.name i.op) (suffix_of_width i.width)
+              Fmt.(list ~sep:(any ", ") Operand.pp)
+              ops)
+
+  (* The same instruction spelled so that GNU as and this module's own text
+     parser both read it back: [pp] drops a size suffix where a register operand
+     already says the size (GAS accepts either spelling, the parser only the
+     suffixed one), and spells a 64-bit [movd] as GAS's [movq]. *)
+  let pp_gnu ppf i =
+    match (i.op, i.ops) with
+    | Opcode.Movd, _ :: _ when i.width = 64 ->
+        Fmt.pf ppf "movq %a" Fmt.(list ~sep:(any ", ") Operand.pp) i.ops
+    | ( (( Opcode.Neg | Opcode.Mul | Opcode.Div | Opcode.Test | Opcode.Adc | Opcode.Sbb | Opcode.Rcr
+         | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar | Opcode.Shld ) as op),
+        _ :: _ ) ->
+        Fmt.pf ppf "%s%s %a" (Opcode.name op) (suffix_of_width i.width)
+          Fmt.(list ~sep:(any ", ") Operand.pp)
+          i.ops
+    | _, _ :: _
+      when (match i.op with Opcode.Table _ -> false | _ -> true)
+           && List.exists
+                (function
+                  | Operand.Reg r -> r.Reg.cls = Rclass.Xmm || r.Reg.cls = Rclass.Ymm | _ -> false)
+                i.ops
+           &&
+           match i.op with
+           | Opcode.Cvtsi2sd | Opcode.Cvtsi2ss | Opcode.Cvttsd2si -> false
+           | _ -> true ->
+        (* an SSE mnemonic is whole: a width letter would make it another *)
+        Fmt.pf ppf "%s %a" (Opcode.name i.op) Fmt.(list ~sep:(any ", ") Operand.pp) i.ops
+    | _ -> pp ppf i
+end
+
 (* {1 Fixups}
 
    The PC-relative kinds are split by *role* rather than merged into one
@@ -1254,7 +1418,22 @@ module Make (M : MODE) = struct
        codec do not yet build for width 8 (register-register, either memory
        direction) still fails there with its own generic diagnostic, exactly
        as an unimplemented shape at any other width already does. *)
-    let widthed ?(allow8 = false) ?(allow16 = false) op =
+    (* [~infer]: with no suffix, the size of the last general register that is not a shift's
+       [%cl] count, as GNU as reads [neg %esi] and as {!Instruction.pp} prints it *)
+    let widthed ?(allow8 = false) ?(allow16 = false) ?(infer = false) op =
+      let inferred () =
+        let ops =
+          match s.Surface.ops with
+          | Operand.Reg { Reg.cls = Gpr8; num = 1 } :: (_ :: _ as rest) -> rest
+          | ops -> ops
+        in
+        List.fold_left
+          (fun acc -> function
+            | Operand.Reg r when List.mem (Reg.width r) [ 8; 16; 32; 64 ] -> Some (Reg.width r)
+            | _ -> acc)
+          None ops
+      in
+      let suffix = if suffix = None && infer then inferred () else suffix in
       match suffix with
       | None -> bad (`Missing_size_suffix s.Surface.mnemonic)
       | Some 16 when not allow16 -> bad `Prefix66_out_of_scope
@@ -1853,28 +2032,28 @@ module Make (M : MODE) = struct
     | _, "imul" -> widthed Opcode.Imul
     (* M4 (docs/design.md §12): the runtime-helper fixture's own
        measured instruction set. *)
-    | _, "neg" -> widthed Opcode.Neg
-    | _, "test" -> widthed Opcode.Test
-    | _, "adc" -> widthed ~allow8:true Opcode.Adc
-    | _, "sbb" -> widthed ~allow8:true Opcode.Sbb
-    | _, "mul" -> widthed Opcode.Mul
-    | _, "div" -> widthed Opcode.Div
-    | _, "rcr" -> widthed Opcode.Rcr
-    | _, "shr" -> widthed Opcode.Shr
+    | _, "neg" -> widthed ~infer:true Opcode.Neg
+    | _, "test" -> widthed ~infer:true Opcode.Test
+    | _, "adc" -> widthed ~infer:true ~allow8:true Opcode.Adc
+    | _, "sbb" -> widthed ~infer:true ~allow8:true Opcode.Sbb
+    | _, "mul" -> widthed ~infer:true Opcode.Mul
+    | _, "div" -> widthed ~infer:true Opcode.Div
+    | _, "rcr" -> widthed ~infer:true Opcode.Rcr
+    | _, "shr" -> widthed ~infer:true Opcode.Shr
     (* M5 : the x86_64 [test/c/] corpus's own measured
        instruction set. *)
     | _, "or" -> widthed ~allow8:true Opcode.Or
     | _, "not" -> widthed Opcode.Not
-    | _, "ror" -> widthed Opcode.Ror
+    | _, "ror" -> widthed ~infer:true Opcode.Ror
     (* GAS accepts both [shl] and [sal] for the same opcode; only [sal] is
        evidenced (the compiler's own spelling), so only that stem is recognized -
        consistent with this function's general practice of not building an
        unevidenced mnemonic alias. *)
-    | _, "sal" -> widthed Opcode.Shl
-    | _, "sar" -> widthed Opcode.Sar
+    | _, "sal" -> widthed ~infer:true Opcode.Shl
+    | _, "sar" -> widthed ~infer:true Opcode.Sar
     (* M5 : [shldl $6,%ecx,%eax], sha3.c/siphash24.c's
        64-bit-rotate idiom built from two 32-bit halves. *)
-    | _, "shld" -> widthed Opcode.Shld
+    | _, "shld" -> widthed ~infer:true Opcode.Shld
     (* The width comes from the operands rather than from a suffix, because
        there is no suffix to come from: GAS spells this [cmovne %%r8, %%rax] and
        rejects [cmovnel]. Both operands are registers here, so asking the first
@@ -2032,9 +2211,8 @@ module Make (M : MODE) = struct
       | None, None -> Ok ()
     in
     match (i.Instruction.op, i.Instruction.ops) with
-    | ( ( Opcode.Add | Opcode.Adc | Opcode.And | Opcode.Sub | Opcode.Cmp | Opcode.Or | Opcode.Xor
-        | Opcode.Sbb ),
-        [ Operand.Imm v; dst ] ) -> (
+    | _, [ Operand.Imm v; dst ] when X86_ops.in_forms i.Instruction.op X86_ops.Form.[ Alu_r_rm ]
+      -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
@@ -2062,8 +2240,9 @@ module Make (M : MODE) = struct
        symbol's own address rather than through [lea] (M5).
        Register destination only - no fixture evidences a symbolic-immediate
        memory destination for an ALU op. *)
-    | ( (Opcode.Add | Opcode.Adc | Opcode.And | Opcode.Sub | Opcode.Cmp | Opcode.Or | Opcode.Xor),
-        [ Operand.Imm_sym e; Operand.Reg r ] ) -> (
+    | _, [ Operand.Imm_sym e; Operand.Reg r ]
+      when X86_ops.in_forms i.Instruction.op X86_ops.Form.[ Alu_ext ]
+           && not (List.mem i.Instruction.op Opcode.[ Sbb ]) -> (
         match width_ok r with
         | Error e -> Error e
         | Ok () ->
@@ -2200,7 +2379,7 @@ module Make (M : MODE) = struct
               ])
     (* Group-3 unary forms: one r/m operand, register or memory
        ([negl 0x10(%esp)], [neg %esi], [mull %esi], [divl %ecx]). *)
-    | (Opcode.Neg | Opcode.Mul | Opcode.Div | Opcode.Not), [ dst ] -> (
+    | _, [ dst ] when X86_ops.in_forms i.Instruction.op X86_ops.Form.[ Unary_ext ] -> (
         let ext = X86_ops.code_or_none X86_ops.Form.Unary_ext i.Instruction.op in
         match dst with
         | Operand.Reg r -> (
@@ -2217,7 +2396,7 @@ module Make (M : MODE) = struct
        byte-identical either way (M5 - gas_frontier.t's
        runtime-i64_utod.S/i64_utof.S). Lowers straight into the same
        {!Lowered.Shift1_rm} the explicit-count-1 case builds. *)
-    | (Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar), [ dst ] -> (
+    | _, [ dst ] when X86_ops.in_forms i.Instruction.op X86_ops.Form.[ Shift_ext ] -> (
         let ext = X86_ops.code_or_none X86_ops.Form.Shift_ext i.Instruction.op in
         match dst with
         | Operand.Reg r -> (
@@ -2237,7 +2416,8 @@ module Make (M : MODE) = struct
        destination only for a non-1 count: unlike {!Alu_rm_imm}, no fixture
        selects a memory destination at a count other than 1, so that shape
        is not built. *)
-    | (Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar), [ Operand.Imm v; dst ] -> (
+    | _, [ Operand.Imm v; dst ] when X86_ops.in_forms i.Instruction.op X86_ops.Form.[ Shift_ext ]
+      -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
@@ -2270,8 +2450,10 @@ module Make (M : MODE) = struct
        target's parser has no separate "the count register" operand class to
        enforce it earlier. Register destination only, for the same reason as
        the immediate-count form above. *)
-    | (Opcode.Rcr | Opcode.Shr | Opcode.Ror | Opcode.Shl | Opcode.Sar), [ Operand.Reg cl; dst ]
-      when Reg.width cl = 8 && cl.Reg.num = 1 -> (
+    | _, [ Operand.Reg cl; dst ]
+      when X86_ops.in_forms i.Instruction.op X86_ops.Form.[ Shift_ext ]
+           && Reg.width cl = 8
+           && cl.Reg.num = 1 -> (
         let ext = X86_ops.code_or_none X86_ops.Form.Shift_ext i.Instruction.op in
         match dst with
         | Operand.Reg r -> (
@@ -2304,11 +2486,16 @@ module Make (M : MODE) = struct
        [imm, src, dst] operand order just above, reused for [Sse_binop_imm_r_rm]'s
        [imm, rm, reg] - GAS's [parse_one_operand] builds the same order for any instruction
        whose immediate comes first. *)
-    | ( ( Opcode.Shufps | Opcode.Shufpd | Opcode.Cmpss | Opcode.Cmpsd | Opcode.Cmpps | Opcode.Cmppd
-        | Opcode.Pshufd | Opcode.Pshuflw | Opcode.Pshufhw | Opcode.Palignr | Opcode.Roundps
-        | Opcode.Roundpd | Opcode.Roundss | Opcode.Roundsd | Opcode.Blendps | Opcode.Blendpd
-        | Opcode.Dpps | Opcode.Dppd | Opcode.Mpsadbw | Opcode.Pblendw | Opcode.Insertps ),
-        [ Operand.Imm v; Operand.Reg src; Operand.Reg reg ] ) -> (
+    | _, [ Operand.Imm v; Operand.Reg src; Operand.Reg reg ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.
+               [
+                 Sse_binop_imm_0f3a;
+                 Sse_binop_imm_none;
+                 Sse_binop_imm_66;
+                 Sse_binop_imm_f3;
+                 Sse_binop_imm_f2;
+               ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
@@ -2319,11 +2506,16 @@ module Make (M : MODE) = struct
                     Lowered.Sse_binop_imm_r_rm { op = i.Instruction.op; reg; rm = Rm.Reg src; imm };
                   ]
             | Error e, _ | _, Error e -> Error e))
-    | ( ( Opcode.Shufps | Opcode.Shufpd | Opcode.Cmpss | Opcode.Cmpsd | Opcode.Cmpps | Opcode.Cmppd
-        | Opcode.Pshufd | Opcode.Pshuflw | Opcode.Pshufhw | Opcode.Palignr | Opcode.Roundps
-        | Opcode.Roundpd | Opcode.Roundss | Opcode.Roundsd | Opcode.Blendps | Opcode.Blendpd
-        | Opcode.Dpps | Opcode.Dppd | Opcode.Mpsadbw | Opcode.Pblendw | Opcode.Insertps ),
-        [ Operand.Imm v; Operand.Mem m; Operand.Reg reg ] ) -> (
+    | _, [ Operand.Imm v; Operand.Mem m; Operand.Reg reg ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.
+               [
+                 Sse_binop_imm_0f3a;
+                 Sse_binop_imm_none;
+                 Sse_binop_imm_66;
+                 Sse_binop_imm_f3;
+                 Sse_binop_imm_f2;
+               ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
@@ -2465,79 +2657,27 @@ module Make (M : MODE) = struct
        built: unevidenced by this corpus, and unlike plain [mov] (which has a
        real fixture pinning its reg-reg direction to the store opcode) there
        is nothing here to check that choice against. *)
-    | ( ( Opcode.Addsd | Opcode.Subsd | Opcode.Mulsd | Opcode.Divsd | Opcode.Addss | Opcode.Subss
-        | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Ucomisd | Opcode.Comiss
-        | Opcode.Ucomiss | Opcode.Xorpd | Opcode.Pxor | Opcode.Movapd | Opcode.Cvtsd2ss
-        | Opcode.Cvtss2sd | Opcode.Cvtps2pd | Opcode.Cvtpd2ps | Opcode.Cvtdq2ps | Opcode.Cvtps2dq
-        | Opcode.Cvttps2dq | Opcode.Andps | Opcode.Andnps | Opcode.Orps | Opcode.Xorps
-        | Opcode.Andpd | Opcode.Andnpd | Opcode.Orpd | Opcode.Movaps | Opcode.Movups | Opcode.Movupd
-        | Opcode.Addps | Opcode.Subps | Opcode.Mulps | Opcode.Divps | Opcode.Addpd | Opcode.Subpd
-        | Opcode.Mulpd | Opcode.Divpd | Opcode.Maxss | Opcode.Minss | Opcode.Maxsd | Opcode.Minsd
-        | Opcode.Maxps | Opcode.Minps | Opcode.Maxpd | Opcode.Minpd | Opcode.Sqrtss | Opcode.Sqrtsd
-        | Opcode.Sqrtps | Opcode.Sqrtpd | Opcode.Unpcklps | Opcode.Unpckhps | Opcode.Unpcklpd
-        | Opcode.Unpckhpd | Opcode.Punpcklqdq | Opcode.Punpckhqdq | Opcode.Punpcklbw
-        | Opcode.Punpckhbw | Opcode.Punpcklwd | Opcode.Punpckhwd | Opcode.Punpckldq
-        | Opcode.Punpckhdq | Opcode.Paddb | Opcode.Paddw | Opcode.Paddd | Opcode.Paddq
-        | Opcode.Psubb | Opcode.Psubw | Opcode.Psubd | Opcode.Psubq | Opcode.Pcmpeqb
-        | Opcode.Pcmpeqw | Opcode.Pcmpeqd | Opcode.Pcmpgtb | Opcode.Pcmpgtw | Opcode.Pcmpgtd
-        | Opcode.Packsswb | Opcode.Packssdw | Opcode.Packuswb | Opcode.Pand | Opcode.Pandn
-        | Opcode.Por | Opcode.Pminub | Opcode.Pmaxub | Opcode.Pminsw | Opcode.Pmaxsw | Opcode.Pmullw
-        | Opcode.Pmulhw | Opcode.Pmulhuw | Opcode.Pavgb | Opcode.Pavgw | Opcode.Psadbw
-        | Opcode.Psllw | Opcode.Pslld | Opcode.Psllq | Opcode.Psrlw | Opcode.Psrld | Opcode.Psrlq
-        | Opcode.Psraw | Opcode.Psrad | Opcode.Pshufb | Opcode.Phaddw | Opcode.Phaddd
-        | Opcode.Phsubw | Opcode.Phsubd | Opcode.Psignb | Opcode.Psignw | Opcode.Psignd
-        | Opcode.Pmaddubsw | Opcode.Pmulhrsw | Opcode.Phaddsw | Opcode.Phsubsw | Opcode.Pabsb
-        | Opcode.Pabsw | Opcode.Pabsd | Opcode.Pcmpeqq | Opcode.Pcmpgtq | Opcode.Packusdw
-        | Opcode.Pmaxsb | Opcode.Pmaxsd | Opcode.Pmaxud | Opcode.Pmaxuw | Opcode.Pminsb
-        | Opcode.Pminsd | Opcode.Pminud | Opcode.Pminuw | Opcode.Pmuldq | Opcode.Pmulld
-        | Opcode.Phminposuw | Opcode.Blendvps | Opcode.Blendvpd | Opcode.Pblendvb | Opcode.Ptest
-        | Opcode.Pmovsxbw | Opcode.Pmovsxbd | Opcode.Pmovsxbq | Opcode.Pmovsxwd | Opcode.Pmovsxwq
-        | Opcode.Pmovsxdq | Opcode.Pmovzxbw | Opcode.Pmovzxbd | Opcode.Pmovzxbq | Opcode.Pmovzxwd
-        | Opcode.Pmovzxwq | Opcode.Pmovzxdq ),
-        [ Operand.Reg src; Operand.Reg reg ] ) -> (
+    | _, [ Operand.Reg src; Operand.Reg reg ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.
+               [ Sse_binop_f2; Sse_binop_f3; Sse_binop_66; Sse_binop_none; Sse_binop_0f38 ]
+           && not (List.mem i.Instruction.op Opcode.[ Movntdqa ]) -> (
         match (xmm_ok src, xmm_ok reg) with
         | Ok (), Ok () ->
             Ok [ Lowered.Sse_binop_r_rm { op = i.Instruction.op; reg; rm = Rm.Reg src } ]
         | Error e, _ | _, Error e -> Error e)
-    | ( ( Opcode.Addsd | Opcode.Subsd | Opcode.Mulsd | Opcode.Divsd | Opcode.Addss | Opcode.Subss
-        | Opcode.Mulss | Opcode.Divss | Opcode.Comisd | Opcode.Ucomisd | Opcode.Comiss
-        | Opcode.Ucomiss | Opcode.Xorpd | Opcode.Pxor | Opcode.Movapd | Opcode.Cvtsd2ss
-        | Opcode.Cvtss2sd | Opcode.Cvtps2pd | Opcode.Cvtpd2ps | Opcode.Cvtdq2ps | Opcode.Cvtps2dq
-        | Opcode.Cvttps2dq | Opcode.Andps | Opcode.Andnps | Opcode.Orps | Opcode.Xorps
-        | Opcode.Andpd | Opcode.Andnpd | Opcode.Orpd | Opcode.Movaps | Opcode.Movups | Opcode.Movupd
-        | Opcode.Addps | Opcode.Subps | Opcode.Mulps | Opcode.Divps | Opcode.Addpd | Opcode.Subpd
-        | Opcode.Mulpd | Opcode.Divpd | Opcode.Maxss | Opcode.Minss | Opcode.Maxsd | Opcode.Minsd
-        | Opcode.Maxps | Opcode.Minps | Opcode.Maxpd | Opcode.Minpd | Opcode.Sqrtss | Opcode.Sqrtsd
-        | Opcode.Sqrtps | Opcode.Sqrtpd | Opcode.Unpcklps | Opcode.Unpckhps | Opcode.Unpcklpd
-        | Opcode.Unpckhpd | Opcode.Punpcklqdq | Opcode.Punpckhqdq | Opcode.Punpcklbw
-        | Opcode.Punpckhbw | Opcode.Punpcklwd | Opcode.Punpckhwd | Opcode.Punpckldq
-        | Opcode.Punpckhdq | Opcode.Paddb | Opcode.Paddw | Opcode.Paddd | Opcode.Paddq
-        | Opcode.Psubb | Opcode.Psubw | Opcode.Psubd | Opcode.Psubq | Opcode.Pcmpeqb
-        | Opcode.Pcmpeqw | Opcode.Pcmpeqd | Opcode.Pcmpgtb | Opcode.Pcmpgtw | Opcode.Pcmpgtd
-        | Opcode.Packsswb | Opcode.Packssdw | Opcode.Packuswb | Opcode.Pand | Opcode.Pandn
-        | Opcode.Por | Opcode.Pminub | Opcode.Pmaxub | Opcode.Pminsw | Opcode.Pmaxsw | Opcode.Pmullw
-        | Opcode.Pmulhw | Opcode.Pmulhuw | Opcode.Pavgb | Opcode.Pavgw | Opcode.Psadbw
-        | Opcode.Psllw | Opcode.Pslld | Opcode.Psllq | Opcode.Psrlw | Opcode.Psrld | Opcode.Psrlq
-        | Opcode.Psraw | Opcode.Psrad | Opcode.Pshufb | Opcode.Phaddw | Opcode.Phaddd
-        | Opcode.Phsubw | Opcode.Phsubd | Opcode.Psignb | Opcode.Psignw | Opcode.Psignd
-        | Opcode.Pmaddubsw | Opcode.Pmulhrsw | Opcode.Phaddsw | Opcode.Phsubsw | Opcode.Pabsb
-        | Opcode.Pabsw | Opcode.Pabsd | Opcode.Pcmpeqq | Opcode.Pcmpgtq | Opcode.Packusdw
-        | Opcode.Pmaxsb | Opcode.Pmaxsd | Opcode.Pmaxud | Opcode.Pmaxuw | Opcode.Pminsb
-        | Opcode.Pminsd | Opcode.Pminud | Opcode.Pminuw | Opcode.Pmuldq | Opcode.Pmulld
-        | Opcode.Phminposuw | Opcode.Blendvps | Opcode.Blendvpd | Opcode.Pblendvb | Opcode.Ptest
-        | Opcode.Pmovsxbw | Opcode.Pmovsxbd | Opcode.Pmovsxbq | Opcode.Pmovsxwd | Opcode.Pmovsxwq
-        | Opcode.Pmovsxdq | Opcode.Pmovzxbw | Opcode.Pmovzxbd | Opcode.Pmovzxbq | Opcode.Pmovzxwd
-        | Opcode.Pmovzxwq | Opcode.Pmovzxdq | Opcode.Movntdqa ),
-        [ Operand.Mem m; Operand.Reg reg ] ) -> (
+    | _, [ Operand.Mem m; Operand.Reg reg ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.
+               [ Sse_binop_f2; Sse_binop_f3; Sse_binop_66; Sse_binop_none; Sse_binop_0f38 ] -> (
         match xmm_ok reg with
         | Error e -> Error e
         | Ok () -> Ok [ Lowered.Sse_binop_r_rm { op = i.Instruction.op; reg; rm = Rm.Mem m } ])
     (* [psllw $5, %xmm1] ({!Opcode.Psllw}'s own doc comment): the immediate-count sibling
        of the register/memory-count shift family just above - register-only, per
        {!Lowered.Xmm_shift_imm_rm}'s own comment. *)
-    | ( ( Opcode.Psllw | Opcode.Pslld | Opcode.Psllq | Opcode.Psrlw | Opcode.Psrld | Opcode.Psrlq
-        | Opcode.Psraw | Opcode.Psrad | Opcode.Pslldq | Opcode.Psrldq ),
-        [ Operand.Imm v; Operand.Reg dst ] ) -> (
+    | _, [ Operand.Imm v; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op X86_ops.Form.[ Xmm_shift_opcode ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
@@ -2783,8 +2923,8 @@ module Make (M : MODE) = struct
     (* [movmskps]/[movmskpd]/[pmovmskb] ({!Opcode.Movmskps}'s own doc comment): [rm] (source) is
        xmm, [reg] (dest) is a GPR32 - the same field roles as {!Pextrw} minus the immediate; no
        memory-source arm exists, matching real GNU as's own outright rejection of that spelling. *)
-    | (Opcode.Movmskps | Opcode.Movmskpd | Opcode.Pmovmskb), [ Operand.Reg src; Operand.Reg reg ]
-      -> (
+    | _, [ Operand.Reg src; Operand.Reg reg ]
+      when X86_ops.in_forms i.Instruction.op X86_ops.Form.[ Sse_movmsk_none; Sse_movmsk_66 ] -> (
         match (xmm_ok src, width_ok reg) with
         | Ok (), Ok () ->
             Ok [ Lowered.Sse_binop_r_rm { op = i.Instruction.op; reg; rm = Rm.Reg src } ]
@@ -2832,30 +2972,10 @@ module Make (M : MODE) = struct
         match (ymm_ok dst, vex_mem_ok m) with
         | Ok (), Ok () -> Ok [ Lowered.Vex_unop_r_rm { op; dst; src = Rm.Mem m } ]
         | Error e, _ | _, Error e -> Error e)
-    | ( ( Opcode.Vaddsd | Opcode.Vsubsd | Opcode.Vmulsd | Opcode.Vdivsd | Opcode.Vaddss
-        | Opcode.Vsubss | Opcode.Vmulss | Opcode.Vdivss | Opcode.Vaddps | Opcode.Vsubps
-        | Opcode.Vmulps | Opcode.Vdivps | Opcode.Vaddpd | Opcode.Vsubpd | Opcode.Vmulpd
-        | Opcode.Vdivpd | Opcode.Vandps | Opcode.Vandnps | Opcode.Vorps | Opcode.Vxorps
-        | Opcode.Vandpd | Opcode.Vandnpd | Opcode.Vorpd | Opcode.Vxorpd | Opcode.Vunpcklps
-        | Opcode.Vunpckhps | Opcode.Vunpcklpd | Opcode.Vunpckhpd | Opcode.Vpunpcklqdq
-        | Opcode.Vpunpckhqdq | Opcode.Vpunpcklbw | Opcode.Vpunpckhbw | Opcode.Vpunpcklwd
-        | Opcode.Vpunpckhwd | Opcode.Vpunpckldq | Opcode.Vpunpckhdq | Opcode.Vpaddb | Opcode.Vpaddw
-        | Opcode.Vpaddd | Opcode.Vpaddq | Opcode.Vpsubb | Opcode.Vpsubw | Opcode.Vpsubd
-        | Opcode.Vpsubq | Opcode.Vpcmpeqb | Opcode.Vpcmpeqw | Opcode.Vpcmpeqd | Opcode.Vpcmpgtb
-        | Opcode.Vpcmpgtw | Opcode.Vpcmpgtd | Opcode.Vpacksswb | Opcode.Vpackssdw | Opcode.Vpackuswb
-        | Opcode.Vpand | Opcode.Vpandn | Opcode.Vpor | Opcode.Vpminub | Opcode.Vpmaxub
-        | Opcode.Vpminsw | Opcode.Vpmaxsw | Opcode.Vpmullw | Opcode.Vpmulhw | Opcode.Vpmulhuw
-        | Opcode.Vpavgb | Opcode.Vpavgw | Opcode.Vpsadbw | Opcode.Vpsllw | Opcode.Vpslld
-        | Opcode.Vpsllq | Opcode.Vpsrlw | Opcode.Vpsrld | Opcode.Vpsrlq | Opcode.Vpsraw
-        | Opcode.Vpsrad | Opcode.Vmaxsd | Opcode.Vminsd | Opcode.Vmaxss | Opcode.Vminss
-        | Opcode.Vmaxps | Opcode.Vminps | Opcode.Vmaxpd | Opcode.Vminpd | Opcode.Vsqrtsd
-        | Opcode.Vsqrtss | Opcode.Vpshufb | Opcode.Vphaddw | Opcode.Vphaddd | Opcode.Vphaddsw
-        | Opcode.Vpmaddubsw | Opcode.Vphsubw | Opcode.Vphsubd | Opcode.Vphsubsw | Opcode.Vpsignb
-        | Opcode.Vpsignw | Opcode.Vpsignd | Opcode.Vpmulhrsw | Opcode.Vpmuldq | Opcode.Vpcmpeqq
-        | Opcode.Vpackusdw | Opcode.Vpcmpgtq | Opcode.Vpminsb | Opcode.Vpminsd | Opcode.Vpminuw
-        | Opcode.Vpminud | Opcode.Vpmaxsb | Opcode.Vpmaxsd | Opcode.Vpmaxuw | Opcode.Vpmaxud
-        | Opcode.Vpmulld ),
-        [ Operand.Reg src2; Operand.Reg src1; Operand.Reg dst ] ) -> (
+    | _, [ Operand.Reg src2; Operand.Reg src1; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.
+               [ Vex3_map2_66; Vex_scalar_f2; Vex_scalar_f3; Vex_scalar_none; Vex_scalar_66 ] -> (
         match (xmm_ok src2, xmm_ok src1, xmm_ok dst) with
         | Ok (), Ok (), Ok () ->
             if src2.num >= 8 then bad (`Vex_rm_extended_register src2)
@@ -2863,30 +2983,10 @@ module Make (M : MODE) = struct
               Ok
                 [ Lowered.Vex_binop_rr_rm { op = i.Instruction.op; dst; src1; src2 = Rm.Reg src2 } ]
         | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e)
-    | ( ( Opcode.Vaddsd | Opcode.Vsubsd | Opcode.Vmulsd | Opcode.Vdivsd | Opcode.Vaddss
-        | Opcode.Vsubss | Opcode.Vmulss | Opcode.Vdivss | Opcode.Vaddps | Opcode.Vsubps
-        | Opcode.Vmulps | Opcode.Vdivps | Opcode.Vaddpd | Opcode.Vsubpd | Opcode.Vmulpd
-        | Opcode.Vdivpd | Opcode.Vandps | Opcode.Vandnps | Opcode.Vorps | Opcode.Vxorps
-        | Opcode.Vandpd | Opcode.Vandnpd | Opcode.Vorpd | Opcode.Vxorpd | Opcode.Vunpcklps
-        | Opcode.Vunpckhps | Opcode.Vunpcklpd | Opcode.Vunpckhpd | Opcode.Vpunpcklqdq
-        | Opcode.Vpunpckhqdq | Opcode.Vpunpcklbw | Opcode.Vpunpckhbw | Opcode.Vpunpcklwd
-        | Opcode.Vpunpckhwd | Opcode.Vpunpckldq | Opcode.Vpunpckhdq | Opcode.Vpaddb | Opcode.Vpaddw
-        | Opcode.Vpaddd | Opcode.Vpaddq | Opcode.Vpsubb | Opcode.Vpsubw | Opcode.Vpsubd
-        | Opcode.Vpsubq | Opcode.Vpcmpeqb | Opcode.Vpcmpeqw | Opcode.Vpcmpeqd | Opcode.Vpcmpgtb
-        | Opcode.Vpcmpgtw | Opcode.Vpcmpgtd | Opcode.Vpacksswb | Opcode.Vpackssdw | Opcode.Vpackuswb
-        | Opcode.Vpand | Opcode.Vpandn | Opcode.Vpor | Opcode.Vpminub | Opcode.Vpmaxub
-        | Opcode.Vpminsw | Opcode.Vpmaxsw | Opcode.Vpmullw | Opcode.Vpmulhw | Opcode.Vpmulhuw
-        | Opcode.Vpavgb | Opcode.Vpavgw | Opcode.Vpsadbw | Opcode.Vpsllw | Opcode.Vpslld
-        | Opcode.Vpsllq | Opcode.Vpsrlw | Opcode.Vpsrld | Opcode.Vpsrlq | Opcode.Vpsraw
-        | Opcode.Vpsrad | Opcode.Vmaxsd | Opcode.Vminsd | Opcode.Vmaxss | Opcode.Vminss
-        | Opcode.Vmaxps | Opcode.Vminps | Opcode.Vmaxpd | Opcode.Vminpd | Opcode.Vsqrtsd
-        | Opcode.Vsqrtss | Opcode.Vpshufb | Opcode.Vphaddw | Opcode.Vphaddd | Opcode.Vphaddsw
-        | Opcode.Vpmaddubsw | Opcode.Vphsubw | Opcode.Vphsubd | Opcode.Vphsubsw | Opcode.Vpsignb
-        | Opcode.Vpsignw | Opcode.Vpsignd | Opcode.Vpmulhrsw | Opcode.Vpmuldq | Opcode.Vpcmpeqq
-        | Opcode.Vpackusdw | Opcode.Vpcmpgtq | Opcode.Vpminsb | Opcode.Vpminsd | Opcode.Vpminuw
-        | Opcode.Vpminud | Opcode.Vpmaxsb | Opcode.Vpmaxsd | Opcode.Vpmaxuw | Opcode.Vpmaxud
-        | Opcode.Vpmulld ),
-        [ Operand.Mem m; Operand.Reg src1; Operand.Reg dst ] ) -> (
+    | _, [ Operand.Mem m; Operand.Reg src1; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.
+               [ Vex3_map2_66; Vex_scalar_f2; Vex_scalar_f3; Vex_scalar_none; Vex_scalar_66 ] -> (
         match (xmm_ok src1, xmm_ok dst) with
         | Ok (), Ok () -> (
             match vex_mem_ok m with
@@ -2900,30 +3000,10 @@ module Make (M : MODE) = struct
        a synthesized [rip_reg] base on x86-64, an absolute disp32 on x86-32,
        neither of which ever names a real base/index register, so
        {!vex_mem_ok} is unneeded here (it always accepts [None]/[None]). *)
-    | ( ( Opcode.Vaddsd | Opcode.Vsubsd | Opcode.Vmulsd | Opcode.Vdivsd | Opcode.Vaddss
-        | Opcode.Vsubss | Opcode.Vmulss | Opcode.Vdivss | Opcode.Vaddps | Opcode.Vsubps
-        | Opcode.Vmulps | Opcode.Vdivps | Opcode.Vaddpd | Opcode.Vsubpd | Opcode.Vmulpd
-        | Opcode.Vdivpd | Opcode.Vandps | Opcode.Vandnps | Opcode.Vorps | Opcode.Vxorps
-        | Opcode.Vandpd | Opcode.Vandnpd | Opcode.Vorpd | Opcode.Vxorpd | Opcode.Vunpcklps
-        | Opcode.Vunpckhps | Opcode.Vunpcklpd | Opcode.Vunpckhpd | Opcode.Vpunpcklqdq
-        | Opcode.Vpunpckhqdq | Opcode.Vpunpcklbw | Opcode.Vpunpckhbw | Opcode.Vpunpcklwd
-        | Opcode.Vpunpckhwd | Opcode.Vpunpckldq | Opcode.Vpunpckhdq | Opcode.Vpaddb | Opcode.Vpaddw
-        | Opcode.Vpaddd | Opcode.Vpaddq | Opcode.Vpsubb | Opcode.Vpsubw | Opcode.Vpsubd
-        | Opcode.Vpsubq | Opcode.Vpcmpeqb | Opcode.Vpcmpeqw | Opcode.Vpcmpeqd | Opcode.Vpcmpgtb
-        | Opcode.Vpcmpgtw | Opcode.Vpcmpgtd | Opcode.Vpacksswb | Opcode.Vpackssdw | Opcode.Vpackuswb
-        | Opcode.Vpand | Opcode.Vpandn | Opcode.Vpor | Opcode.Vpminub | Opcode.Vpmaxub
-        | Opcode.Vpminsw | Opcode.Vpmaxsw | Opcode.Vpmullw | Opcode.Vpmulhw | Opcode.Vpmulhuw
-        | Opcode.Vpavgb | Opcode.Vpavgw | Opcode.Vpsadbw | Opcode.Vpsllw | Opcode.Vpslld
-        | Opcode.Vpsllq | Opcode.Vpsrlw | Opcode.Vpsrld | Opcode.Vpsrlq | Opcode.Vpsraw
-        | Opcode.Vpsrad | Opcode.Vmaxsd | Opcode.Vminsd | Opcode.Vmaxss | Opcode.Vminss
-        | Opcode.Vmaxps | Opcode.Vminps | Opcode.Vmaxpd | Opcode.Vminpd | Opcode.Vsqrtsd
-        | Opcode.Vsqrtss | Opcode.Vpshufb | Opcode.Vphaddw | Opcode.Vphaddd | Opcode.Vphaddsw
-        | Opcode.Vpmaddubsw | Opcode.Vphsubw | Opcode.Vphsubd | Opcode.Vphsubsw | Opcode.Vpsignb
-        | Opcode.Vpsignw | Opcode.Vpsignd | Opcode.Vpmulhrsw | Opcode.Vpmuldq | Opcode.Vpcmpeqq
-        | Opcode.Vpackusdw | Opcode.Vpcmpgtq | Opcode.Vpminsb | Opcode.Vpminsd | Opcode.Vpminuw
-        | Opcode.Vpminud | Opcode.Vpmaxsb | Opcode.Vpmaxsd | Opcode.Vpmaxuw | Opcode.Vpmaxud
-        | Opcode.Vpmulld ),
-        [ Operand.Sym e; Operand.Reg src1; Operand.Reg dst ] ) -> (
+    | _, [ Operand.Sym e; Operand.Reg src1; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.
+               [ Vex3_map2_66; Vex_scalar_f2; Vex_scalar_f3; Vex_scalar_none; Vex_scalar_66 ] -> (
         match (xmm_ok src1, xmm_ok dst) with
         | Ok (), Ok () ->
             Ok
@@ -2936,9 +3016,8 @@ module Make (M : MODE) = struct
        the legacy immediate-count shift arm above - [imm, src, dst], {!Opcode.Vpshufd}'s own
        operand order, into {!Lowered.Vex_shift_imm_rm} instead of {!Vex_unop_imm_r_rm} since
        [dst] is real vvvv here, not architecturally-unused. *)
-    | ( ( Opcode.Vpsllw | Opcode.Vpslld | Opcode.Vpsllq | Opcode.Vpsrlw | Opcode.Vpsrld
-        | Opcode.Vpsrlq | Opcode.Vpsraw | Opcode.Vpsrad | Opcode.Vpslldq | Opcode.Vpsrldq ),
-        [ Operand.Imm v; Operand.Reg src; Operand.Reg dst ] ) -> (
+    | _, [ Operand.Imm v; Operand.Reg src; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op X86_ops.Form.[ Vex_shift_ext ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
@@ -2954,15 +3033,10 @@ module Make (M : MODE) = struct
     (* [vsqrtps]/[vsqrtpd]/[vmovaps]/[vmovups]/[vmovapd]/[vmovupd]/[vcomisd]/[vucomisd]/
        [vcomiss]/[vucomiss] ({!Opcode.Vsqrtps}'s own doc comment): genuinely two-operand, no
        [vvvv]-carried [src1] at all - {!Lowered.Vex_unop_r_rm} rather than {!Vex_binop_rr_rm}. *)
-    | ( ( Opcode.Vsqrtps | Opcode.Vsqrtpd | Opcode.Vmovaps | Opcode.Vmovups | Opcode.Vmovapd
-        | Opcode.Vmovupd | Opcode.Vcomisd | Opcode.Vucomisd | Opcode.Vcomiss | Opcode.Vucomiss
-        | Opcode.Vcvtps2pd | Opcode.Vcvtpd2ps | Opcode.Vcvtdq2ps | Opcode.Vcvtps2dq
-        | Opcode.Vcvttps2dq | Opcode.Vmovdqa | Opcode.Vmovdqu | Opcode.Vpabsb | Opcode.Vpabsw
-        | Opcode.Vpabsd | Opcode.Vphminposuw | Opcode.Vptest | Opcode.Vpmovsxbw | Opcode.Vpmovsxbd
-        | Opcode.Vpmovsxbq | Opcode.Vpmovsxwd | Opcode.Vpmovsxwq | Opcode.Vpmovsxdq
-        | Opcode.Vpmovzxbw | Opcode.Vpmovzxbd | Opcode.Vpmovzxbq | Opcode.Vpmovzxwd
-        | Opcode.Vpmovzxwq | Opcode.Vpmovzxdq ),
-        [ Operand.Reg src; Operand.Reg dst ] ) -> (
+    | _, [ Operand.Reg src; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.[ Vex3_map2_unop; Vex_unop_none; Vex_unop_66; Vex_unop_f3 ]
+           && not (List.mem i.Instruction.op Opcode.[ Vmovntdqa ]) -> (
         match (xmm_ok src, xmm_ok dst) with
         | Ok (), Ok () ->
             if src.num >= 8 then bad (`Vex_rm_extended_register src)
@@ -2972,25 +3046,20 @@ module Make (M : MODE) = struct
        ambiguous in real GAS (needs the [x]/[y]-suffix disambiguation this project's parser
        does not implement), so it is deliberately excluded from this arm and the [Sym] one
        below - {!Opcode.Vcvtps2pd} has no such ambiguity and is included in both. *)
-    | ( ( Opcode.Vsqrtps | Opcode.Vsqrtpd | Opcode.Vmovaps | Opcode.Vmovups | Opcode.Vmovapd
-        | Opcode.Vmovupd | Opcode.Vcomisd | Opcode.Vucomisd | Opcode.Vcomiss | Opcode.Vucomiss
-        | Opcode.Vcvtps2pd | Opcode.Vcvtdq2ps | Opcode.Vcvtps2dq | Opcode.Vcvttps2dq
-        | Opcode.Vmovdqa | Opcode.Vmovdqu | Opcode.Vpabsb | Opcode.Vpabsw | Opcode.Vpabsd
-        | Opcode.Vphminposuw | Opcode.Vptest | Opcode.Vpmovsxbw | Opcode.Vpmovsxbd
-        | Opcode.Vpmovsxbq | Opcode.Vpmovsxwd | Opcode.Vpmovsxwq | Opcode.Vpmovsxdq
-        | Opcode.Vpmovzxbw | Opcode.Vpmovzxbd | Opcode.Vpmovzxbq | Opcode.Vpmovzxwd
-        | Opcode.Vpmovzxwq | Opcode.Vpmovzxdq | Opcode.Vmovntdqa ),
-        [ Operand.Mem m; Operand.Reg dst ] ) -> (
+    | _, [ Operand.Mem m; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.[ Vex3_map2_unop; Vex_unop_none; Vex_unop_66; Vex_unop_f3 ]
+           && not (List.mem i.Instruction.op Opcode.[ Vcvtpd2ps ]) -> (
         match xmm_ok dst with
         | Ok () -> (
             match vex_mem_ok m with
             | Error e -> Error e
             | Ok () -> Ok [ Lowered.Vex_unop_r_rm { op = i.Instruction.op; dst; src = Rm.Mem m } ])
         | Error e -> Error e)
-    | ( ( Opcode.Vsqrtps | Opcode.Vsqrtpd | Opcode.Vmovaps | Opcode.Vmovups | Opcode.Vmovapd
-        | Opcode.Vmovupd | Opcode.Vcomisd | Opcode.Vucomisd | Opcode.Vcomiss | Opcode.Vucomiss
-        | Opcode.Vcvtps2pd | Opcode.Vcvtdq2ps | Opcode.Vcvtps2dq | Opcode.Vcvttps2dq ),
-        [ Operand.Sym e; Operand.Reg dst ] ) -> (
+    | _, [ Operand.Sym e; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.[ Vex_unop_none; Vex_unop_66; Vex_unop_f3 ]
+           && not (List.mem i.Instruction.op Opcode.[ Vcvtpd2ps; Vmovdqa; Vmovdqu ]) -> (
         match xmm_ok dst with
         | Ok () ->
             Ok
@@ -3001,11 +3070,16 @@ module Make (M : MODE) = struct
     (* [vshufps $imm8, src2, src1, dst]/[vshufpd $imm8, src2, src1, dst]:
        {!Vex_binop_rr_rm}'s own [src2, src1, dst] operand order, with a leading imm8 -
        {!Lowered.Vex_binop_imm_rr_rm} rather than {!Vex_binop_rr_rm}. *)
-    | ( ( Opcode.Vshufps | Opcode.Vshufpd | Opcode.Vcmpss | Opcode.Vcmpsd | Opcode.Vcmpps
-        | Opcode.Vcmppd | Opcode.Vpalignr | Opcode.Vblendps | Opcode.Vblendpd | Opcode.Vpblendw
-        | Opcode.Vroundss | Opcode.Vroundsd | Opcode.Vdpps | Opcode.Vdppd | Opcode.Vmpsadbw
-        | Opcode.Vinsertps ),
-        [ Operand.Imm v; Operand.Reg src2; Operand.Reg src1; Operand.Reg dst ] ) -> (
+    | _, [ Operand.Imm v; Operand.Reg src2; Operand.Reg src1; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.
+               [
+                 Vex3_map3_66;
+                 Vex_binop_imm_none;
+                 Vex_binop_imm_66;
+                 Vex_binop_imm_f3;
+                 Vex_binop_imm_f2;
+               ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
@@ -3019,11 +3093,16 @@ module Make (M : MODE) = struct
                         { op = i.Instruction.op; dst; src1; src2 = Rm.Reg src2; imm };
                     ]
             | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e))
-    | ( ( Opcode.Vshufps | Opcode.Vshufpd | Opcode.Vcmpss | Opcode.Vcmpsd | Opcode.Vcmpps
-        | Opcode.Vcmppd | Opcode.Vpalignr | Opcode.Vblendps | Opcode.Vblendpd | Opcode.Vpblendw
-        | Opcode.Vroundss | Opcode.Vroundsd | Opcode.Vdpps | Opcode.Vdppd | Opcode.Vmpsadbw
-        | Opcode.Vinsertps ),
-        [ Operand.Imm v; Operand.Mem m; Operand.Reg src1; Operand.Reg dst ] ) -> (
+    | _, [ Operand.Imm v; Operand.Mem m; Operand.Reg src1; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.
+               [
+                 Vex3_map3_66;
+                 Vex_binop_imm_none;
+                 Vex_binop_imm_66;
+                 Vex_binop_imm_f3;
+                 Vex_binop_imm_f2;
+               ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
@@ -3040,8 +3119,9 @@ module Make (M : MODE) = struct
             | Error e, _ | _, Error e -> Error e))
     (* [vpshufd $imm8, src, dst]/[vpshuflw $imm8, src, dst]/[vpshufhw $imm8, src, dst] ({!Opcode.Vpshufd}'s own doc comment): {!Vex_unop_r_rm}'s own [src, dst] operand order,
        with a leading imm8 - {!Lowered.Vex_unop_imm_r_rm} rather than {!Vex_unop_r_rm}. *)
-    | ( (Opcode.Vpshufd | Opcode.Vpshuflw | Opcode.Vpshufhw),
-        [ Operand.Imm v; Operand.Reg src; Operand.Reg dst ] ) -> (
+    | _, [ Operand.Imm v; Operand.Reg src; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.[ Vex_unop_imm_66; Vex_unop_imm_f2; Vex_unop_imm_f3 ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
@@ -3055,8 +3135,9 @@ module Make (M : MODE) = struct
                         { op = i.Instruction.op; dst; src = Rm.Reg src; imm };
                     ]
             | Error e, _ | _, Error e -> Error e))
-    | ( (Opcode.Vpshufd | Opcode.Vpshuflw | Opcode.Vpshufhw),
-        [ Operand.Imm v; Operand.Mem m; Operand.Reg dst ] ) -> (
+    | _, [ Operand.Imm v; Operand.Mem m; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op
+             X86_ops.Form.[ Vex_unop_imm_66; Vex_unop_imm_f2; Vex_unop_imm_f3 ] -> (
         match imm_of v with
         | Error e -> Error e
         | Ok imm -> (
@@ -3161,8 +3242,8 @@ module Make (M : MODE) = struct
             | Error e, _ | _, Error e -> Error e))
     (* [vmovmskps]/[vmovmskpd]/[vpmovmskb] ({!Opcode.Vmovmskps}'s own doc comment): {!Vpextrw}'s
        own field roles and two-byte-VEX [src.num >= 8] restriction, minus the immediate. *)
-    | (Opcode.Vmovmskps | Opcode.Vmovmskpd | Opcode.Vpmovmskb), [ Operand.Reg src; Operand.Reg dst ]
-      -> (
+    | _, [ Operand.Reg src; Operand.Reg dst ]
+      when X86_ops.in_forms i.Instruction.op X86_ops.Form.[ Vex_movmsk_none; Vex_movmsk_66 ] -> (
         match (xmm_ok src, width_ok dst) with
         | Ok (), Ok () ->
             if src.num >= 8 then bad (`Vex_rm_extended_register src)
@@ -7281,13 +7362,14 @@ module Make (M : MODE) = struct
     (* [reg] is dropped: {!Lowered.Imul_r_rm_imm}'s own comment says why it
        always equals [rm] as constructed here, so only [rm] needs to survive
        into the two-operand AT&T spelling. *)
-    | Lowered.Imul_r_rm_imm { width; imm; rm; _ } ->
+    | Lowered.Imul_r_rm_imm { width; imm; rm; reg } ->
+        let src = match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m in
+        let imm = Operand.Imm (Bigint.of_int64 imm) in
         Some
           (Instruction.mk Opcode.Imul width
-             [
-               Operand.Imm (Bigint.of_int64 imm);
-               (match rm with Rm.Reg r -> Operand.Reg r | Rm.Mem m -> Operand.Mem m);
-             ])
+             (match rm with
+             | Rm.Reg r when Reg.equal r reg -> [ imm; src ]
+             | _ -> [ imm; src; Operand.Reg reg ]))
     | Lowered.Test_rm_imm { width; imm; rm } ->
         Some
           (Instruction.mk Opcode.Test width
@@ -7612,7 +7694,10 @@ module Make (M : MODE) = struct
           let len = d.C.consumed / 8 in
           match instruction_of_lowered ~at:ctx.address ~len d.C.value with
           | None -> Error (diag ~pos:__POS__ `Decode_no_normalized)
-          | Some i -> Ok (i, String.concat "." d.C.dform, len))
+          | Some i ->
+              (* the operands in the order and vector lengths the opcode's shapes give *)
+              let i = { i with Instruction.ops = X86_ops.read_back i.Instruction.op i.ops } in
+              Ok (i, String.concat "." d.C.dform, len))
 
   (* {2 Configuration}
 

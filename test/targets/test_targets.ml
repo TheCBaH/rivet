@@ -1659,15 +1659,15 @@ let%expect_test "three-operand imul picks the rung whose immediate reads back" =
      \tret\n";
   [%expect
     {|
-    40000000  49 69 f8 84 00 00 00  imulq $132, %r8         [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
-    40000007  69 c8 c8 00 00 00     imull $200, %eax        [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-absent.reg]
-    4000000d  49 6b f8 7f           imulq $127, %r8         [x86_64.imul-r-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
-    40000011  49 6b f8 80           imulq $-128, %r8        [x86_64.imul-r-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
-    40000015  49 69 f8 7f ff ff ff  imulq $-129, %r8        [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
-    4000001c  6b c8 ff              imull $-1, %eax         [x86_64.imul-r-rm-imm8.asz-absent.opsz-absent.rex-absent.reg]
-    4000001f  49 69 f8 ff ff ff 7f  imulq $2147483647, %r8  [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
-    40000026  66 69 c8 c8 00        imulw $200, %ax, %cx    [x86_64.imulw]
-    4000002b  c3                    ret                     [x86_64.ret] |}]
+    40000000  49 69 f8 84 00 00 00  imulq $132, %r8, %rdi         [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
+    40000007  69 c8 c8 00 00 00     imull $200, %eax, %ecx        [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-absent.reg]
+    4000000d  49 6b f8 7f           imulq $127, %r8, %rdi         [x86_64.imul-r-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
+    40000011  49 6b f8 80           imulq $-128, %r8, %rdi        [x86_64.imul-r-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
+    40000015  49 69 f8 7f ff ff ff  imulq $-129, %r8, %rdi        [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
+    4000001c  6b c8 ff              imull $-1, %eax, %ecx         [x86_64.imul-r-rm-imm8.asz-absent.opsz-absent.rex-absent.reg]
+    4000001f  49 69 f8 ff ff ff 7f  imulq $2147483647, %r8, %rdi  [x86_64.imul-r-rm-imm32.asz-absent.opsz-absent.rex-present.reg]
+    40000026  66 69 c8 c8 00        imulw $200, %ax, %cx          [x86_64.imulw]
+    4000002b  c3                    ret                           [x86_64.ret] |}]
 
 (* A [.cfi_*] directive a producer builds is printed for GNU and dropped by
    lowering: the bytes are those of the module without it. *)

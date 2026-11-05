@@ -6172,6 +6172,73 @@ let of_xmm_shift ~opcode x = of_shift ~ext:(Form.Xmm_shift_ext, Form.Xmm_shift_o
 let of_vex_shift ~opcode x = of_shift ~ext:(Form.Vex_shift_ext, Form.Vex_shift_opcode) ~opcode x
 let feature op = Option.bind (entry op) (fun e -> e.feature)
 
+(* Whether [op]'s text never takes an AT&T size letter: no builder's spelling has one. *)
+let plain op =
+  match entry op with
+  | Some e ->
+      e.builders <> [] && List.for_all (fun b -> not (String.contains b.spelling '%')) e.builders
+  | None -> false
+
+(* {2 Reading decoded operands back} A decoded form names its registers by encoding field; the
+   shapes say how its text orders them and which vector length each position has. *)
+
+let vec_len (r : Reg.t) = match r.cls with Xmm -> 128 | Ymm -> 256 | Zmm -> 512 | _ -> 0
+
+(* [b] takes [ops] position by position, vector lengths aside. *)
+let fits_loosely (b : builder) ops =
+  List.length b.kinds = List.length ops
+  && List.for_all2
+       (fun (k : Kind.t) (o : Operand.t) ->
+         match (k, o) with
+         | (X | Y | Z | V), Reg r -> vec_len r > 0
+         | (R | R8 | R16 | R32 | R64), Reg r -> List.mem (Reg.width r) [ 8; 16; 32; 64 ]
+         | Mm, Reg r -> r.cls = Mmx
+         | K, Reg r -> r.cls = Kmask
+         | (Sti | St0), Reg r -> r.cls = St
+         | M, Mem _ | (I | I32 | I64), (Imm _ | Imm_sym _) | S, (Sym _ | Mem _) -> true
+         | (Cl | Ax | Dx), Reg _ -> true
+         | _ -> false)
+       b.kinds ops
+
+(* The vector length a builder's shape gives an instruction whose widest register is [l]. *)
+let length_of (b : builder) l =
+  List.fold_left
+    (fun acc (k : Kind.t) ->
+      max acc
+        (match k with X -> 128 | Y -> 256 | Z -> 512 | V when List.mem l b.lengths -> l | _ -> 0))
+    0 b.kinds
+
+let read_back op ops =
+  match entry op with
+  | None -> ops
+  | Some e -> (
+      let fit ops = List.exists (fun b -> fits_loosely b ops) e.builders in
+      (* a store form decodes its destination field before the source *)
+      let ops =
+        match List.rev ops with
+        | a :: b :: rest when (not (fit ops)) && fit (List.rev (b :: a :: rest)) ->
+            List.rev (b :: a :: rest)
+        | _ -> ops
+      in
+      let l =
+        List.fold_left (fun acc -> function Operand.Reg r -> max acc (vec_len r) | _ -> acc) 0 ops
+      in
+      match List.find_opt (fun b -> fits_loosely b ops && length_of b l = l) e.builders with
+      | Some b when l > 0 ->
+          List.map2
+            (fun (k : Kind.t) (o : Operand.t) ->
+              match (k, o) with
+              | X, Reg r -> Operand.Reg { r with cls = Xmm }
+              | Y, Reg r -> Operand.Reg { r with cls = Ymm }
+              | Z, Reg r -> Operand.Reg { r with cls = Zmm }
+              | _ -> o)
+            b.kinds ops
+      | _ -> ops)
+
+(* Whether [op] has a form in one of [fs]: the regular forms a lowering arm builds. *)
+let in_forms op fs =
+  match entry op with Some e -> List.exists (fun (f, _) -> List.mem f fs) e.forms | None -> false
+
 (* The opcodes [feature] publishes. *)
 let of_feature f =
   Array.fold_right (fun e acc -> if e.feature = Some f then e.op :: acc else acc) all []
