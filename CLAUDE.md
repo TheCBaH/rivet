@@ -76,6 +76,14 @@ construct the source/semantic/lowered AST directly.
   architecture, each usually split into an `_encode` library (mode + encoder)
   and a front-end library (parses text, implements the target interface);
   `x86_family`/`riscv_family` hold logic shared across that ISA's variants.
+- Each target has a per-opcode table beside its types (`Riscv_ops`, `X86_ops`, `Arm_ops`,
+  `Aarch64_ops`): one entry per hand-written opcode, from which the encoder's constants,
+  spellings, legality, mode gating, regular lowering and decoding read, and whose operand lists
+  are the typed builders exported by `rivet.{riscv32,riscv64,x86_32,x86_64,arm,aarch64}_asm`
+  (`let open Aarch64_asm in [ add x1 x2 x3; ldr x0 (off sp 16) ]`; a wrong register class, width
+  or mode does not compile — `test/asm/neg`). Add an opcode as one table entry plus its builder,
+  and keep the module's `.mli` current (the generated `*_asm_rows*.mli` are regenerated with
+  `ocamlc -i` after `isa-table … -emit`). See `docs/design.md` §5.2.1.
 - `driver` — target-agnostic pipeline glue (`pipeline.ml`, `registry.ml`,
   `directives.ml`) that wires a chosen target into the stages above;
   `tool/asm.ml` is the CLI built on top of it.

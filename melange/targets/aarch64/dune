@@ -5,6 +5,9 @@
 (copy_files#
  (files ../../../targets/aarch64/*.ml))
 
+(copy_files#
+ (files ../../../targets/aarch64/*.mli))
+
 (library
  (name aarch64_encode)
  (modules aarch64_encode aarch64_types aarch64_ops)

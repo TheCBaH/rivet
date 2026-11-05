@@ -7,3 +7,7 @@ targets/riscv_asm/riscv_asm_rows32.ml
 targets/riscv_asm/riscv_asm_rows64.ml
 targets/x86_asm/x86_asm_rows32.ml
 targets/x86_asm/x86_asm_rows64.ml
+targets/riscv_asm/riscv_asm_rows32.mli
+targets/riscv_asm/riscv_asm_rows64.mli
+targets/x86_asm/x86_asm_rows32.mli
+targets/x86_asm/x86_asm_rows64.mli

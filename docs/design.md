@@ -841,7 +841,45 @@ lists, feature names).
   derived from the pair; table rows are `Row.t`; the rel8 branches are
   `Short.t`.
 - ARM: `Reg.t = { num }`; `.syntax` is `Syntax.t`.
-- AArch64: `Shift.kind` and `Extend.t` replace the shift and extend keywords.
+- AArch64: `Shift.kind` and `Extend.t` replace the shift and extend keywords; the register views
+  type a position's width and what register 31 means there (see 5.2.1).
+
+### 5.2.1 Per-target opcode tables and typed builders
+
+Each target keeps one definition per hand-written opcode in a table module beside its types:
+`Riscv_ops` (304 opcodes), `X86_ops` (463), `Arm_ops` (83) and `Aarch64_ops` (105). An entry is
+the opcode's spelling, its operand lists, the fields of its encoding class, the component that
+publishes it, its mode or XLEN, whether it reads or sets flags, and whether its lowering stays
+code. The other per-opcode facts are views of the table rather than tables of their own:
+spellings and `of_mnemonic`, the encoder's constants, legality (`required`), mode and XLEN
+gating, the regular part of lowering (`lower_regular`, per encoding class and operand list) and
+the opcode a decoded word is named by (`of_enc`). Opcodes whose lowering needs code (pseudo
+expansion, addressing with a choice of encoding) are marked and keep it. A new opcode is one
+entry; a test holds every entry to what the encoder accepts.
+
+Operand lists are typed values (`Shape`), and each is also the typed builder of that operand
+shape, one builder per shape named by the mnemonic with a suffix for the shape. The `*_asm`
+libraries export them with the target's registers (named values with the `REGS` laws) and operand
+helpers, so a wrong class, width, mode or reduced register set is a compile error. The generated
+row tables (RISC-V standard rows, x86 XED rows) get their builders from their emitters
+(`*_asm_rows*`). Registers are typed by what a position accepts: RISC-V `Xreg`/`Freg`/`Vreg`
+(`Creg`/`Cfreg` for the compressed forms), x86 `'w gpr` / `'l vec` with `` `Lo ``/`` `Hi ``
+for the APX and EVEX upper half, ARM `Reg`/`Dreg`/`Sreg`, AArch64 `('w, 'k) greg` (width, and
+whether register 31 is the stack pointer or the zero register) and `d`/`s` scalars.
+
+```ocaml
+let _ = Riscv32_asm.[ add x1 x2 x3; lw a0 (off sp 8); vadd_vv v1 v2 v3 false ]
+let _ = Riscv64_asm.[ add x1 x2 x3; ld a0 (off sp 8) ]
+let _ = X86_32_asm.[ add eax ebx; addl_im 1L (mem eax); ret ]
+let _ = X86_64_asm.[ add rax rbx; add_i 5L rax; vaddps ymm1 ymm2 ymm3 ]
+let _ = Arm_asm.[ add r0 r1 r2; adds ~cond:Cond.Ne r0 r1 r2; ldr r0 (mem r1) ]
+let _ = Aarch64_asm.[ add x1 x2 x3; ldr x0 (off sp 16); fadd_v (v4s v0) (v4s v1) (v4s v2) ]
+```
+
+`add x0 w1 x2` (AArch64), `fadd_s a0 a1 a2` (RISC-V), `X86_32_asm.rax` and `add eax rbx` do not
+compile (`test/asm/neg`). Every new module has an `.mli`: the table and builder interfaces of the
+hand-written modules are the compiler's inferred ones, and those of the generated row modules are
+regenerated with `ocamlc -i` after an emission (a stale one does not compile).
 
 ### 5.3 Package boundaries
 

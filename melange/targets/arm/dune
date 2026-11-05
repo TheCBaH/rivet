@@ -5,6 +5,9 @@
 (copy_files#
  (files ../../../targets/arm/*.ml))
 
+(copy_files#
+ (files ../../../targets/arm/*.mli))
+
 (library
  (name arm_encode)
  (modules arm_encode arm_types arm_ops)

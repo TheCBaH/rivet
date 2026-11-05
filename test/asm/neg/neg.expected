@@ -13,6 +13,7 @@ arm_vldr_d_on_sreg: refused, mentions Sreg
 ok_aarch64_asm: compiles
 ok_arm_asm: compiles
 ok_riscv32_asm: compiles
+ok_riscv64_asm: compiles
 ok_riscv_asm: compiles
 ok_x86_asm: compiles
 ok_x86_regs: compiles
