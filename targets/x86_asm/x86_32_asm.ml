@@ -122,6 +122,68 @@ let zmm5 = Zmm.of_int_exn 5
 let zmm6 = Zmm.of_int_exn 6
 let zmm7 = Zmm.of_int_exn 7
 
+module Tmm = Regs (struct
+  type t = tmm
+
+  let cls = Rclass.Tmm
+  let registers = X86_32_encode.Mode.registers
+  let make = View.Unsafe.tmm
+  let reg r = (r : t :> Reg.t)
+end)
+
+let tmm0 = Tmm.of_int_exn 0
+let tmm1 = Tmm.of_int_exn 1
+let tmm2 = Tmm.of_int_exn 2
+let tmm3 = Tmm.of_int_exn 3
+let tmm4 = Tmm.of_int_exn 4
+let tmm5 = Tmm.of_int_exn 5
+let tmm6 = Tmm.of_int_exn 6
+let tmm7 = Tmm.of_int_exn 7
+
+module Creg = Regs (struct
+  type t = creg
+
+  let cls = Rclass.Cr
+  let registers = X86_32_encode.Mode.registers
+  let make = View.Unsafe.creg
+  let reg r = (r : t :> Reg.t)
+end)
+
+let cr0 = Creg.of_int_exn 0
+let cr1 = Creg.of_int_exn 1
+let cr2 = Creg.of_int_exn 2
+let cr3 = Creg.of_int_exn 3
+let cr4 = Creg.of_int_exn 4
+let cr5 = Creg.of_int_exn 5
+let cr6 = Creg.of_int_exn 6
+let cr7 = Creg.of_int_exn 7
+let cr8 = Creg.of_int_exn 8
+let cr9 = Creg.of_int_exn 9
+let cr10 = Creg.of_int_exn 10
+let cr11 = Creg.of_int_exn 11
+let cr12 = Creg.of_int_exn 12
+let cr13 = Creg.of_int_exn 13
+let cr14 = Creg.of_int_exn 14
+let cr15 = Creg.of_int_exn 15
+
+module Dreg = Regs (struct
+  type t = dreg
+
+  let cls = Rclass.Dr
+  let registers = X86_32_encode.Mode.registers
+  let make = View.Unsafe.dreg
+  let reg r = (r : t :> Reg.t)
+end)
+
+let dr0 = Dreg.of_int_exn 0
+let dr1 = Dreg.of_int_exn 1
+let dr2 = Dreg.of_int_exn 2
+let dr3 = Dreg.of_int_exn 3
+let dr4 = Dreg.of_int_exn 4
+let dr5 = Dreg.of_int_exn 5
+let dr6 = Dreg.of_int_exn 6
+let dr7 = Dreg.of_int_exn 7
+
 module Mmx = Regs (struct
   type t = mmx
 

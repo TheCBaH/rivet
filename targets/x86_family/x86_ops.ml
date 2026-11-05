@@ -8,7 +8,9 @@ open Foundation
 open X86_types
 
 (* Typed views of {!Reg.t}. A general register's width and a vector register's length are phantom
-   tags, so [add eax rbx] does not compile. The per-mode libraries name the registers that exist. *)
+   tags, so [add eax rbx] does not compile. [gpr]/[vec] are the registers a legacy or VEX form
+   reaches (0-15); [agpr]/[evec] add APX's and EVEX's upper sixteen, which only generated rows take,
+   and every [gpr]/[vec] widens to them. The per-mode libraries name the registers that exist. *)
 module View : sig
   type w8 = [ `W8 ]
   type w16 = [ `W16 ]
@@ -22,17 +24,30 @@ module View : sig
   type xmm = l128 vec
   type ymm = l256 vec
   type zmm = l512 vec
+  type +'w agpr = private Reg.t
+  type +'l evec = private Reg.t
   type mmx = private Reg.t
   type kmask = private Reg.t
   type st = private Reg.t
+  type tmm = private Reg.t
+  type creg = private Reg.t
+  type dreg = private Reg.t
+
+  val apx : 'w gpr -> 'w agpr
+  val evex : 'l vec -> 'l evec
 
   (* Unchecked: for the register tables, which only build values of the class the tag names. *)
   module Unsafe : sig
     val gpr : Reg.t -> 'w gpr
     val vec : Reg.t -> 'l vec
+    val agpr : Reg.t -> 'w agpr
+    val evec : Reg.t -> 'l evec
     val mmx : Reg.t -> mmx
     val kmask : Reg.t -> kmask
     val st : Reg.t -> st
+    val tmm : Reg.t -> tmm
+    val creg : Reg.t -> creg
+    val dreg : Reg.t -> dreg
   end
 end = struct
   type w8 = [ `W8 ]
@@ -47,16 +62,29 @@ end = struct
   type xmm = l128 vec
   type ymm = l256 vec
   type zmm = l512 vec
+  type 'w agpr = Reg.t
+  type 'l evec = Reg.t
   type mmx = Reg.t
   type kmask = Reg.t
   type st = Reg.t
+  type tmm = Reg.t
+  type creg = Reg.t
+  type dreg = Reg.t
+
+  let apx r = r
+  let evex r = r
 
   module Unsafe = struct
     let gpr r = r
     let vec r = r
+    let agpr r = r
+    let evec r = r
     let mmx r = r
     let kmask r = r
     let st r = r
+    let tmm r = r
+    let creg r = r
+    let dreg r = r
   end
 end
 

@@ -186,6 +186,250 @@ let zmm13 = Zmm.of_int_exn 13
 let zmm14 = Zmm.of_int_exn 14
 let zmm15 = Zmm.of_int_exn 15
 
+module Gpr64_apx = Regs (struct
+  type t = w64 agpr
+
+  let cls = Rclass.Gpr64
+  let registers = X86_64_encode.Mode.registers
+  let make = View.Unsafe.agpr
+  let reg r = (r : t :> Reg.t)
+end)
+
+let r16 = Gpr64_apx.of_int_exn 16
+let r17 = Gpr64_apx.of_int_exn 17
+let r18 = Gpr64_apx.of_int_exn 18
+let r19 = Gpr64_apx.of_int_exn 19
+let r20 = Gpr64_apx.of_int_exn 20
+let r21 = Gpr64_apx.of_int_exn 21
+let r22 = Gpr64_apx.of_int_exn 22
+let r23 = Gpr64_apx.of_int_exn 23
+let r24 = Gpr64_apx.of_int_exn 24
+let r25 = Gpr64_apx.of_int_exn 25
+let r26 = Gpr64_apx.of_int_exn 26
+let r27 = Gpr64_apx.of_int_exn 27
+let r28 = Gpr64_apx.of_int_exn 28
+let r29 = Gpr64_apx.of_int_exn 29
+let r30 = Gpr64_apx.of_int_exn 30
+let r31 = Gpr64_apx.of_int_exn 31
+
+module Gpr32_apx = Regs (struct
+  type t = w32 agpr
+
+  let cls = Rclass.Gpr32
+  let registers = X86_64_encode.Mode.registers
+  let make = View.Unsafe.agpr
+  let reg r = (r : t :> Reg.t)
+end)
+
+let r16d = Gpr32_apx.of_int_exn 16
+let r17d = Gpr32_apx.of_int_exn 17
+let r18d = Gpr32_apx.of_int_exn 18
+let r19d = Gpr32_apx.of_int_exn 19
+let r20d = Gpr32_apx.of_int_exn 20
+let r21d = Gpr32_apx.of_int_exn 21
+let r22d = Gpr32_apx.of_int_exn 22
+let r23d = Gpr32_apx.of_int_exn 23
+let r24d = Gpr32_apx.of_int_exn 24
+let r25d = Gpr32_apx.of_int_exn 25
+let r26d = Gpr32_apx.of_int_exn 26
+let r27d = Gpr32_apx.of_int_exn 27
+let r28d = Gpr32_apx.of_int_exn 28
+let r29d = Gpr32_apx.of_int_exn 29
+let r30d = Gpr32_apx.of_int_exn 30
+let r31d = Gpr32_apx.of_int_exn 31
+
+module Gpr16_apx = Regs (struct
+  type t = w16 agpr
+
+  let cls = Rclass.Gpr16
+  let registers = X86_64_encode.Mode.registers
+  let make = View.Unsafe.agpr
+  let reg r = (r : t :> Reg.t)
+end)
+
+let r16w = Gpr16_apx.of_int_exn 16
+let r17w = Gpr16_apx.of_int_exn 17
+let r18w = Gpr16_apx.of_int_exn 18
+let r19w = Gpr16_apx.of_int_exn 19
+let r20w = Gpr16_apx.of_int_exn 20
+let r21w = Gpr16_apx.of_int_exn 21
+let r22w = Gpr16_apx.of_int_exn 22
+let r23w = Gpr16_apx.of_int_exn 23
+let r24w = Gpr16_apx.of_int_exn 24
+let r25w = Gpr16_apx.of_int_exn 25
+let r26w = Gpr16_apx.of_int_exn 26
+let r27w = Gpr16_apx.of_int_exn 27
+let r28w = Gpr16_apx.of_int_exn 28
+let r29w = Gpr16_apx.of_int_exn 29
+let r30w = Gpr16_apx.of_int_exn 30
+let r31w = Gpr16_apx.of_int_exn 31
+
+module Gpr8_apx = Regs (struct
+  type t = w8 agpr
+
+  let cls = Rclass.Gpr8
+  let registers = X86_64_encode.Mode.registers
+  let make = View.Unsafe.agpr
+  let reg r = (r : t :> Reg.t)
+end)
+
+let r16b = Gpr8_apx.of_int_exn 16
+let r17b = Gpr8_apx.of_int_exn 17
+let r18b = Gpr8_apx.of_int_exn 18
+let r19b = Gpr8_apx.of_int_exn 19
+let r20b = Gpr8_apx.of_int_exn 20
+let r21b = Gpr8_apx.of_int_exn 21
+let r22b = Gpr8_apx.of_int_exn 22
+let r23b = Gpr8_apx.of_int_exn 23
+let r24b = Gpr8_apx.of_int_exn 24
+let r25b = Gpr8_apx.of_int_exn 25
+let r26b = Gpr8_apx.of_int_exn 26
+let r27b = Gpr8_apx.of_int_exn 27
+let r28b = Gpr8_apx.of_int_exn 28
+let r29b = Gpr8_apx.of_int_exn 29
+let r30b = Gpr8_apx.of_int_exn 30
+let r31b = Gpr8_apx.of_int_exn 31
+
+module Xmm_evex = Regs (struct
+  type t = l128 evec
+
+  let cls = Rclass.Xmm
+  let registers = X86_64_encode.Mode.registers
+  let make = View.Unsafe.evec
+  let reg r = (r : t :> Reg.t)
+end)
+
+let xmm16 = Xmm_evex.of_int_exn 16
+let xmm17 = Xmm_evex.of_int_exn 17
+let xmm18 = Xmm_evex.of_int_exn 18
+let xmm19 = Xmm_evex.of_int_exn 19
+let xmm20 = Xmm_evex.of_int_exn 20
+let xmm21 = Xmm_evex.of_int_exn 21
+let xmm22 = Xmm_evex.of_int_exn 22
+let xmm23 = Xmm_evex.of_int_exn 23
+let xmm24 = Xmm_evex.of_int_exn 24
+let xmm25 = Xmm_evex.of_int_exn 25
+let xmm26 = Xmm_evex.of_int_exn 26
+let xmm27 = Xmm_evex.of_int_exn 27
+let xmm28 = Xmm_evex.of_int_exn 28
+let xmm29 = Xmm_evex.of_int_exn 29
+let xmm30 = Xmm_evex.of_int_exn 30
+let xmm31 = Xmm_evex.of_int_exn 31
+
+module Ymm_evex = Regs (struct
+  type t = l256 evec
+
+  let cls = Rclass.Ymm
+  let registers = X86_64_encode.Mode.registers
+  let make = View.Unsafe.evec
+  let reg r = (r : t :> Reg.t)
+end)
+
+let ymm16 = Ymm_evex.of_int_exn 16
+let ymm17 = Ymm_evex.of_int_exn 17
+let ymm18 = Ymm_evex.of_int_exn 18
+let ymm19 = Ymm_evex.of_int_exn 19
+let ymm20 = Ymm_evex.of_int_exn 20
+let ymm21 = Ymm_evex.of_int_exn 21
+let ymm22 = Ymm_evex.of_int_exn 22
+let ymm23 = Ymm_evex.of_int_exn 23
+let ymm24 = Ymm_evex.of_int_exn 24
+let ymm25 = Ymm_evex.of_int_exn 25
+let ymm26 = Ymm_evex.of_int_exn 26
+let ymm27 = Ymm_evex.of_int_exn 27
+let ymm28 = Ymm_evex.of_int_exn 28
+let ymm29 = Ymm_evex.of_int_exn 29
+let ymm30 = Ymm_evex.of_int_exn 30
+let ymm31 = Ymm_evex.of_int_exn 31
+
+module Zmm_evex = Regs (struct
+  type t = l512 evec
+
+  let cls = Rclass.Zmm
+  let registers = X86_64_encode.Mode.registers
+  let make = View.Unsafe.evec
+  let reg r = (r : t :> Reg.t)
+end)
+
+let zmm16 = Zmm_evex.of_int_exn 16
+let zmm17 = Zmm_evex.of_int_exn 17
+let zmm18 = Zmm_evex.of_int_exn 18
+let zmm19 = Zmm_evex.of_int_exn 19
+let zmm20 = Zmm_evex.of_int_exn 20
+let zmm21 = Zmm_evex.of_int_exn 21
+let zmm22 = Zmm_evex.of_int_exn 22
+let zmm23 = Zmm_evex.of_int_exn 23
+let zmm24 = Zmm_evex.of_int_exn 24
+let zmm25 = Zmm_evex.of_int_exn 25
+let zmm26 = Zmm_evex.of_int_exn 26
+let zmm27 = Zmm_evex.of_int_exn 27
+let zmm28 = Zmm_evex.of_int_exn 28
+let zmm29 = Zmm_evex.of_int_exn 29
+let zmm30 = Zmm_evex.of_int_exn 30
+let zmm31 = Zmm_evex.of_int_exn 31
+
+module Tmm = Regs (struct
+  type t = tmm
+
+  let cls = Rclass.Tmm
+  let registers = X86_64_encode.Mode.registers
+  let make = View.Unsafe.tmm
+  let reg r = (r : t :> Reg.t)
+end)
+
+let tmm0 = Tmm.of_int_exn 0
+let tmm1 = Tmm.of_int_exn 1
+let tmm2 = Tmm.of_int_exn 2
+let tmm3 = Tmm.of_int_exn 3
+let tmm4 = Tmm.of_int_exn 4
+let tmm5 = Tmm.of_int_exn 5
+let tmm6 = Tmm.of_int_exn 6
+let tmm7 = Tmm.of_int_exn 7
+
+module Creg = Regs (struct
+  type t = creg
+
+  let cls = Rclass.Cr
+  let registers = X86_64_encode.Mode.registers
+  let make = View.Unsafe.creg
+  let reg r = (r : t :> Reg.t)
+end)
+
+let cr0 = Creg.of_int_exn 0
+let cr1 = Creg.of_int_exn 1
+let cr2 = Creg.of_int_exn 2
+let cr3 = Creg.of_int_exn 3
+let cr4 = Creg.of_int_exn 4
+let cr5 = Creg.of_int_exn 5
+let cr6 = Creg.of_int_exn 6
+let cr7 = Creg.of_int_exn 7
+let cr8 = Creg.of_int_exn 8
+let cr9 = Creg.of_int_exn 9
+let cr10 = Creg.of_int_exn 10
+let cr11 = Creg.of_int_exn 11
+let cr12 = Creg.of_int_exn 12
+let cr13 = Creg.of_int_exn 13
+let cr14 = Creg.of_int_exn 14
+let cr15 = Creg.of_int_exn 15
+
+module Dreg = Regs (struct
+  type t = dreg
+
+  let cls = Rclass.Dr
+  let registers = X86_64_encode.Mode.registers
+  let make = View.Unsafe.dreg
+  let reg r = (r : t :> Reg.t)
+end)
+
+let dr0 = Dreg.of_int_exn 0
+let dr1 = Dreg.of_int_exn 1
+let dr2 = Dreg.of_int_exn 2
+let dr3 = Dreg.of_int_exn 3
+let dr4 = Dreg.of_int_exn 4
+let dr5 = Dreg.of_int_exn 5
+let dr6 = Dreg.of_int_exn 6
+let dr7 = Dreg.of_int_exn 7
+
 module Mmx = Regs (struct
   type t = mmx
 
@@ -239,3 +483,9 @@ let st4 = St.of_int_exn 4
 let st5 = St.of_int_exn 5
 let st6 = St.of_int_exn 6
 let st7 = St.of_int_exn 7
+
+(* [disp(%rip)]: RIP-relative. *)
+let rip ?(disp = 0L) () =
+  { Mem.base = Some Reg.rip; index = None; scale = 1; disp = Disp.Const disp }
+
+let rip_e disp = { (rip ()) with disp = Disp.Sym disp }

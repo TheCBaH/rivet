@@ -16,9 +16,47 @@ type 'l vec = 'l View.vec
 type xmm = View.xmm
 type ymm = View.ymm
 type zmm = View.zmm
+type 'w agpr = 'w View.agpr
+type 'l evec = 'l View.evec
 type mmx = View.mmx
 type kmask = View.kmask
 type st = View.st
+type tmm = View.tmm
+type creg = View.creg
+type dreg = View.dreg
+
+let apx = View.apx
+let evex = View.evex
+
+module Cc = Cc
+
+(* {1 Memory operands} [disp(base, index, scale)], AT&T's [8(%rsp)]. An address register is 32-
+   or 64-bit, the index the base's width. *)
+
+let reg (type w) (r : w gpr) = (r :> Reg.t)
+
+let mem ?(index : ([< `W32 | `W64 ] as 'w) gpr option) ?(scale = 1) ?(disp = 0L) (base : 'w gpr) =
+  { Mem.base = Some (reg base); index = Option.map reg index; scale; disp = Disp.Const disp }
+
+(* A displacement that is an expression: [sym+8(%rax)]. *)
+let mem_e ?index ?(scale = 1) disp base = { (mem ?index ~scale base) with disp = Disp.Sym disp }
+
+(* No base: an absolute address, [0x1000], or [0x1000(,%eax,4)]. *)
+let abs ?(index : [< `W32 | `W64 ] gpr option) ?(scale = 1) disp =
+  { Mem.base = None; index = Option.map reg index; scale; disp = Disp.Const disp }
+
+let abs_e ?index ?scale disp = { (abs ?index ?scale 0L) with disp = Disp.Sym disp }
+
+(* {1 EVEX operands} An opmask on a destination ([%zmm0{%k1}{z}]), a broadcast source
+   ([(%rax){1to16}]) and embedded rounding ([{rn-sae}], [{sae}]), as the generated rows take them. *)
+module Evex = struct
+  type rounding = Rn_sae | Rd_sae | Ru_sae | Rz_sae | Sae
+
+  let code = function Rn_sae -> 0 | Rd_sae -> 1 | Ru_sae -> 2 | Rz_sae -> 3 | Sae -> 4
+  let rounding r = Operand.Rc (code r)
+  let masked ?(zero = false) (k : kmask) op = Operand.Masked { op; k = (k :> Reg.t).Reg.num; zero }
+  let bcst (mem : Mem.t) n = Operand.Bcst { mem; n }
+end
 
 (* A register class of a mode: the numbers [registers] holds for [cls]. *)
 module Regs (C : sig
