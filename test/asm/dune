@@ -3,7 +3,7 @@
 
 (library
  (name test_asm)
- (modules harness test_asm test_riscv_asm test_x86_ops)
+ (modules harness test_asm test_riscv_asm test_x86_ops test_x86_asm)
  (modes byte native)
  (libraries
   driver
@@ -22,6 +22,9 @@
   x86_family_encode
   x86_32_encode
   x86_64_encode
+  x86_asm
+  x86_32_asm
+  x86_64_asm
   riscv32_encode
   riscv64_encode)
  (inline_tests)

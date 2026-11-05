@@ -1,0 +1,41 @@
+; Typed x86 instruction builders, from the x86 opcode table: what both modes share (x86_asm),
+; and per mode its registers and the builders that mode has.
+
+(library
+ (name x86_asm)
+ (public_name rivet.x86_asm)
+ (modules x86_asm)
+ (modes byte native)
+ (libraries foundation asm_core target_encode x86_family_encode)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name x86_32_asm)
+ (public_name rivet.x86_32_asm)
+ (modules x86_32_asm)
+ (modes byte native)
+ (libraries
+  foundation
+  asm_core
+  target_encode
+  x86_family_encode
+  x86_32_encode
+  x86_asm)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name x86_64_asm)
+ (public_name rivet.x86_64_asm)
+ (modules x86_64_asm)
+ (modes byte native)
+ (libraries
+  foundation
+  asm_core
+  target_encode
+  x86_family_encode
+  x86_64_encode
+  x86_asm)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
