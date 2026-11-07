@@ -18,6 +18,7 @@
   codec
   image
   driver
+  text_pipeline
   arm
   aarch64
   x86_64

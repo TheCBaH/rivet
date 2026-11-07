@@ -139,8 +139,8 @@ let _ : Riscv32_encode.Reg.t -> Foo.Reg.t = Fun.id
 let _ : Riscv32_encode.Operand.t -> Foo.Operand.t = Fun.id
 let _ : Types.Mem.t -> Riscv64_encode.Mem.t = Fun.id
 
-module Foo_driver = Driver.Pipeline.Make (Foo)
-module Bar_driver = Driver.Pipeline.Make (Bar)
+module Foo_driver = Pipeline.Make (Foo)
+module Bar_driver = Pipeline.Make (Bar)
 
 let assembled (module D : Target_intf.Target.DRIVER) ?features text =
   let features =
@@ -327,7 +327,7 @@ module Tile =
         | Error ps -> failwith (String.concat "; " ps)
     end)
 
-module Tile_driver = Driver.Pipeline.Make (Tile)
+module Tile_driver = Pipeline.Make (Tile)
 
 let%expect_test "tile operands encode and decode by name" =
   let tile = (module Tile_driver : Target_intf.Target.DRIVER) in
@@ -441,7 +441,7 @@ module Mpause =
         | Error ps -> failwith (String.concat "; " ps)
     end)
 
-module Mpause_driver = Driver.Pipeline.Make (Mpause)
+module Mpause_driver = Pipeline.Make (Mpause)
 
 let%expect_test "mpause assembles, decodes, and leaves the standard system words alone" =
   let (module D : Target_intf.Target.DRIVER) = (module Mpause_driver) in
