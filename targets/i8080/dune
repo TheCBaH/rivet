@@ -18,3 +18,20 @@
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
+(library
+ (name i8080)
+ (public_name rivet.i8080)
+ (modules i8080)
+ (modes byte native)
+ (libraries foundation codec asm_core asm_syntax target_intf i8080_encode)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name i8080_text)
+ (public_name rivet.i8080_text)
+ (modules i8080_text)
+ (modes byte native)
+ (libraries foundation asm_core asm_syntax image text_pipeline i8080)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
