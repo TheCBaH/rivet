@@ -281,6 +281,13 @@ plant generic-to-target layers reject-either 'depends on target' "
   printf 'let name = \"aarch64\"\n' > targets/aarch64/aarch64_target.ml
   add_library lib/foundation/dune aarch64_target"
 
+# The public-contract boundary of the in-tree i8080 target: another target, or
+# the driver that links every target, anywhere in its closure.
+plant i8080-reaches-target layers audit-fail 'i8080 library' "
+  add_library targets/i8080/dune arm"
+plant i8080-reaches-driver layers audit-fail 'i8080 library' "
+  add_library targets/i8080/dune driver"
+
 # A generic source branching on a target's identity. Compiles fine, which is
 # exactly why this one has to be checked textually rather than through the graph.
 plant target-name-in-generic layers reject-either 'mentions target name' \

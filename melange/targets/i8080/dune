@@ -1,0 +1,36 @@
+; Melange build of targets/i8080. Same sources, copied rather than duplicated;
+; see melange/dune for why the tree is mirrored at all. Three libraries, as in
+; targets/i8080/dune.
+
+(copy_files#
+ (files ../../../targets/i8080/*.ml))
+
+(library
+ (name i8080_encode)
+ (modules i8080_encode i8080_ops)
+ (modes byte native melange)
+ (libraries
+  foundation
+  codec
+  asm_core
+  target_error
+  target_encode
+  target_features)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name i8080)
+ (modules i8080)
+ (modes byte native melange)
+ (libraries foundation codec asm_core asm_syntax target_intf i8080_encode)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name i8080_text)
+ (modules i8080_text)
+ (modes byte native melange)
+ (libraries foundation asm_core asm_syntax image text_pipeline i8080)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
