@@ -4,6 +4,13 @@
 (executable
  (name i8080_tool)
  (modes native)
- (libraries i8080_as foundation)
+ (libraries
+  compute
+  i8080_as
+  i8080_ops
+  i8080_sem
+  i8080_text
+  i8080_run
+  foundation)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

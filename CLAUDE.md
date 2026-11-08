@@ -72,7 +72,7 @@ construct the source/semantic/lowered AST directly.
 - `lib/{foundation,asm_core,asm_syntax,codec,image,target_intf}` — the
   architecture-independent engine (parsing/normalization/codec/image machinery
   and the `TARGET`-style module interfaces targets implement).
-- `targets/i8080` — the Intel 8080, in-tree but on the public contracts only (no other target, no `driver` in its closure; `scripts/asm-check-layers.sh`). `i8080_text` assembles Intel-syntax text (`org`, labels, `db`/`dw`, `0x` literals) to bytes at an origin. See `docs/i8080-gaps.md`.
+- `targets/i8080` — the Intel 8080, in-tree but on the public contracts only (no other target, no `driver` in its closure; `scripts/asm-check-layers.sh`). `i8080_text` assembles Intel-syntax text (`org`, labels, `db`/`dw`, `0x` literals) to bytes at an origin; `i8080_as` reads the dialect of AS (macros, `equ`/`set`, several `org`, expression priorities) and `i8080_sem`/`i8080_run` are the behavioural model over `rivet.compute`: each descriptor-table entry carries its effect, run over concrete or term values. The oracle legs (`make fixture-oracle-i8080`) download a pinned release and are not part of `make ci`. See `docs/i8080-gaps.md` and `docs/i8080-oracle.md`.
 - `targets/{x86_32,x86_64,arm,aarch64,riscv32,riscv64}` — one target per
   architecture, each usually split into an `_encode` library (mode + encoder)
   and a front-end library (parses text, implements the target interface);

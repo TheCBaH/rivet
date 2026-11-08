@@ -1,13 +1,20 @@
-; The i8080 target: the 256-byte table against hand-checked fixtures, the
-; MVI/STA/HLT program, labels, data, origin and the diagnostics.
+; The i8080 target: the 256 bytes through decode, print and assemble, the
+; MVI/STA/HLT program, labels, data, origin and the diagnostics. Agreement with
+; third-party tools is the oracle leg's job (docs/i8080-oracle.md).
 
 (library
  (name test_i8080)
- (modules test_i8080 test_as)
+ (modules test_i8080 test_as test_sem test_symbolic)
  (modes byte native)
- (libraries foundation asm_core i8080 i8080_text i8080_as)
- (inline_tests
-  (deps opcodes.txt))
+ (libraries
+  foundation
+  asm_core
+  i8080
+  i8080_text
+  i8080_as
+  i8080_ops
+  i8080_sem)
+ (inline_tests)
  (preprocess
   (pps ppx_expect))
  (enabled_if

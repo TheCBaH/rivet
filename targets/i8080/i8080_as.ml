@@ -128,7 +128,7 @@ let tokenize s =
             incr k
           done;
           go !k (Id (String.lowercase_ascii (String.sub s i (!k - i))) :: acc))
-        else go !j (Num (int_of_string ("0x" ^ String.sub s (i + 1) (!j - i - 1))) :: acc))
+        else go !j (Num (number_of_word ("0" ^ String.sub s (i + 1) (!j - i - 1) ^ "h")) :: acc))
       else if is_id_start c then (
         let j = ref i in
         while !j < n && is_id s.[!j] do

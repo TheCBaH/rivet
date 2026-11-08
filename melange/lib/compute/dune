@@ -1,0 +1,11 @@
+; Melange build of lib/compute. Same sources, copied rather than duplicated;
+; see melange/dune for why the tree is mirrored at all.
+
+(copy_files#
+ (files ../../../lib/compute/*.ml))
+
+(library
+ (name compute)
+ (modes byte native melange)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))

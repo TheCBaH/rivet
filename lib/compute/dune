@@ -1,0 +1,12 @@
+; Target-neutral machine computation (docs/design.md, the behavioural
+; model): fixed-width values and byte memory behind two signatures, with a
+; concrete interpretation. An instruction's data effect is written once over
+; these signatures and run in any interpretation. Depends on nothing; the
+; layer audit keeps target vocabulary out.
+
+(library
+ (name compute)
+ (public_name rivet.compute)
+ (modes byte native)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))

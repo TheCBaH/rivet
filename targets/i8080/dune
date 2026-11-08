@@ -4,11 +4,21 @@
 ; rejects any dependency on another target or on the driver.
 
 (library
+ (name i8080_ops)
+ (public_name rivet.i8080_ops)
+ (modules i8080_ops)
+ (modes byte native)
+ (libraries compute)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(library
  (name i8080_encode)
  (public_name rivet.i8080_encode)
- (modules i8080_encode i8080_ops)
+ (modules i8080_encode)
  (modes byte native)
  (libraries
+  i8080_ops
   foundation
   codec
   asm_core
@@ -42,5 +52,23 @@
  (modules i8080_as)
  (modes byte native)
  (libraries foundation asm_core i8080_encode)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name i8080_sem)
+ (public_name rivet.i8080_sem)
+ (modules i8080_sem)
+ (modes byte native)
+ (libraries compute i8080_ops)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name i8080_run)
+ (public_name rivet.i8080_run)
+ (modules i8080_run)
+ (modes byte native)
+ (libraries i8080_sem)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

@@ -1,12 +1,6 @@
 let hex s =
   String.concat " " (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i])))
 
-let unhex s =
-  String.concat ""
-    (List.map
-       (fun h -> String.make 1 (Char.chr (int_of_string ("0x" ^ h))))
-       (List.filter (( <> ) "") (String.split_on_char ' ' s)))
-
 let render e = Foundation.Diagnostic.render_all (Foundation.Diag.diagnostics e)
 
 let assemble text =
@@ -14,57 +8,38 @@ let assemble text =
   | Ok { I8080_text.origin; bytes } -> Printf.sprintf "%04x: %s" origin (hex bytes)
   | Error e -> "REFUSED " ^ render e
 
-(* One line per instruction: bytes, canonical text, length, class. The 256
-   lines were derived from the reviewed opcode table of the Radio-86RK
-   contracts, not from this implementation. *)
-let fixture () =
-  let ic = open_in "opcodes.txt" in
-  let rec lines acc =
-    match input_line ic with
-    | l ->
-        lines
-          (match String.split_on_char '\t' l with
-          | [ b; t; n; c ] -> (b, t, int_of_string n, c) :: acc
-          | _ -> acc)
-    | exception End_of_file ->
-        close_in ic;
-        List.rev acc
-  in
-  lines []
-
-let%expect_test "all 256 opcode bytes decode, print and re-assemble as the fixtures say" =
-  let rows = fixture () in
+(* Each of the 256 bytes, with operand bytes after it, decodes to canonical text
+   that assembles back to the same bytes, in the length the model charges. Whether
+   the text is what the Intel manual calls the instruction is the oracle leg's
+   question, answered by asl. *)
+let%expect_test "all 256 opcode bytes decode, print and re-assemble to themselves" =
   let failures = ref [] in
   let fail fmt = Printf.ksprintf (fun m -> failures := m :: !failures) fmt in
-  List.iter
-    (fun (bytes, text, len, _) ->
-      let raw = unhex bytes in
-      if String.length raw <> len then fail "%s: fixture length %d" bytes len;
-      (match I8080_text.canonical ~origin:0 raw with
-      | Error e -> fail "%s: decode: %s" bytes (render e)
-      | Ok c -> (
-          let expect = Printf.sprintf "\torg 0x0000\n\t%s\n" text in
-          if c <> expect then fail "%s: printed %S, fixture %S" bytes c expect;
-          match I8080_text.assemble c with
-          | Ok i ->
-              if i.I8080_text.bytes <> raw then
-                fail "%s: canonical re-assembles to %s" bytes (hex i.I8080_text.bytes)
-          | Error e -> fail "%s: canonical text refused: %s" bytes (render e)));
-      match I8080_text.assemble text with
-      | Ok i ->
-          if i.I8080_text.bytes <> raw then
-            fail "%s: %S assembles to %s" bytes text (hex i.I8080_text.bytes)
-      | Error e -> fail "%s: %S refused: %s" bytes text (render e))
-    rows;
-  let firsts = List.sort_uniq compare (List.map (fun (b, _, _, _) -> String.sub b 0 2) rows) in
-  Printf.printf "rows=%d distinct-first-bytes=%d documented=%d alias=%d\n" (List.length rows)
-    (List.length firsts)
-    (List.length (List.filter (fun (_, _, _, c) -> c = "doc") rows))
-    (List.length (List.filter (fun (_, _, _, c) -> c = "alias") rows));
+  let documented = ref 0 and alias = ref 0 in
+  for b = 0 to 255 do
+    let len = I8080_ops.timings.(b).I8080_ops.length in
+    let raw =
+      String.init len (fun i ->
+          Char.chr (if i = 0 then b else if len = 2 then 0x2a else if i = 1 then 0 else 0x20))
+    in
+    (match I8080_ops.form_of_byte b with
+    | Some (I8080_ops.Documented _) -> incr documented
+    | Some (I8080_ops.Alias _) -> incr alias
+    | None -> fail "%02x: no form" b);
+    match I8080_text.canonical ~origin:0 raw with
+    | Error e -> fail "%02x: decode: %s" b (render e)
+    | Ok c -> (
+        match I8080_text.assemble c with
+        | Ok i ->
+            if i.I8080_text.bytes <> raw then
+              fail "%02x: canonical re-assembles to %s" b (hex i.I8080_text.bytes)
+        | Error e -> fail "%02x: canonical text refused: %s" b (render e))
+  done;
+  Printf.printf "bytes=256 documented=%d alias=%d\n" !documented !alias;
   List.iter print_endline (List.rev !failures);
-  [%expect {| rows=256 distinct-first-bytes=256 documented=244 alias=12 |}]
+  [%expect {| bytes=256 documented=244 alias=12 |}]
 
-let%expect_test "the MVI/STA/HLT fixture assembles to 3e 2a 32 00 20 76" =
+let%expect_test "the MVI/STA/HLT program assembles to 3e 2a 32 00 20 76" =
   print_endline (assemble {|mvi a, 0x2a
 sta 0x2000
 hlt
