@@ -72,6 +72,7 @@ construct the source/semantic/lowered AST directly.
 - `lib/{foundation,asm_core,asm_syntax,codec,image,target_intf}` — the
   architecture-independent engine (parsing/normalization/codec/image machinery
   and the `TARGET`-style module interfaces targets implement).
+- `targets/i8080` — the Intel 8080, in-tree but on the public contracts only (no other target, no `driver` in its closure; `scripts/asm-check-layers.sh`). `i8080_text` assembles Intel-syntax text (`org`, labels, `db`/`dw`, `0x` literals) to bytes at an origin. See `docs/i8080-gaps.md`.
 - `targets/{x86_32,x86_64,arm,aarch64,riscv32,riscv64}` — one target per
   architecture, each usually split into an `_encode` library (mode + encoder)
   and a front-end library (parses text, implements the target interface);
@@ -84,8 +85,8 @@ construct the source/semantic/lowered AST directly.
   or mode does not compile — `test/asm/neg`). Add an opcode as one table entry plus its builder,
   and keep the module's `.mli` current (the generated `*_asm_rows*.mli` are regenerated with
   `ocamlc -i` after `isa-table … -emit`). See `docs/design.md` §5.2.1.
-- `driver` — target-agnostic pipeline glue (`pipeline.ml`, `registry.ml`,
-  `directives.ml`) that wires a chosen target into the stages above;
+- `text_pipeline` — the target-agnostic text pipeline (`pipeline.ml`, `directives.ml`); names no target.
+- `driver` — target-agnostic glue (`registry.ml`, `portable.ml`) that wires a chosen target into the stages above;
   `tool/asm.ml` is the CLI built on top of it.
 - `native_exec` — runs a laid-out image natively, in-process. It ships C stubs,
   so it is gated by `RIVET_NATIVE_EXEC` and outside every default build.

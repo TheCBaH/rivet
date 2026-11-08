@@ -1,0 +1,14 @@
+; The i8080 target: the 256-byte table against hand-checked fixtures, the
+; MVI/STA/HLT program, labels, data, origin and the diagnostics.
+
+(library
+ (name test_i8080)
+ (modules test_i8080 test_as)
+ (modes byte native)
+ (libraries foundation asm_core i8080 i8080_text i8080_as)
+ (inline_tests
+  (deps opcodes.txt))
+ (preprocess
+  (pps ppx_expect))
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))

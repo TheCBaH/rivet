@@ -248,6 +248,38 @@ jobs:
           .fixture-exec-artifacts/${{ matrix.target }}/
           fixtures/gcc-14/*/${{ matrix.target }}/
 
+  # The i8080 oracles (asl, altairz80, vm80a_sim) are downloaded from the pinned
+  # retrocpu-tools release and verified by hash; nothing is built here.
+  fixture-oracle-i8080:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - {os: ubuntu-24.04, platform: linux/amd64}
+        - {os: ubuntu-24.04-arm, platform: linux/arm64}
+    env:
+      OCAML_VERSION: 5.5.0
+    steps:
+    - name: checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: true
+    - name: devcontainer
+      uses: TheCBaH/devcontainer-action/devcontainer@v1
+      id: devcontainer
+      env:
+        OCAML_VERSION: ${{ env.OCAML_VERSION }}
+      with:
+        variant: ${{ env.OCAML_VERSION }}
+        platform: ${{ matrix.platform }}
+    - name: setup
+      run: |
+        echo 'EXEC=${{ steps.devcontainer.outputs.exec }}' >> $GITHUB_ENV
+    - name: i8080 oracle (fetch by hash, smoke, comparisons)
+      run: |
+        ${{ env.EXEC }} make fixture-oracle-i8080
+
   # Byte-identical output from native OCaml, js_of_ocaml/Node, and Melange/Node.
   # Its own job on one pinned leg, because Melange requires `ocaml >= 4.14 &
   # < 4.15` and so cannot be installed on the OCaml 5.x images the matrix above

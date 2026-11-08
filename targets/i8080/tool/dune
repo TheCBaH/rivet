@@ -1,0 +1,9 @@
+; The i8080 command line: assemble AS-dialect sources, run programs in the
+; behavioural model. Held to the same closure as the target.
+
+(executable
+ (name i8080_tool)
+ (modes native)
+ (libraries i8080_as foundation)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))

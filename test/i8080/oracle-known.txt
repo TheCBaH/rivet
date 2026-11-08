@@ -1,0 +1,1 @@
+invalid/023 AS-dialect: asl accepts "ldax h" as mov a,m (0x7e); not an 8080 instruction, Rivet refuses it

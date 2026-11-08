@@ -1,0 +1,13 @@
+# The oracle release the i8080 legs run against (asl, p2bin, altairz80,
+# the 8080PRE/8080EX1 sources and the vm80a_sim harness). Nothing is built
+# here: scripts/retrocpu-fetch.sh downloads these assets by tag and refuses
+# anything whose SHA-256 differs from the lines below (the release's SHA256SUMS).
+RETROCPU_REPO=TheCBaH/devcontainer.retrocpu-tools
+RETROCPU_TAG=v0.0.2
+
+RETROCPU_SHA256_tools_x86_64=4edd3fc72c7bb883de6d5a82fc52078ce1423160a39f45931ef3b359eba46f89
+RETROCPU_SHA256_tools_aarch64=99e2a1ef735a0e6803d45509df39b0899cd2a75f8d0f9f6c29fda9c8c09558c2
+RETROCPU_SHA256_diagnostics_x86_64=33b917d1cf8cecfd0e59c69eed540285074c523ac0631a2f4928bac67b3081a7
+RETROCPU_SHA256_diagnostics_aarch64=5b7b99c73c29e706c3ff2cab5305872017579ccb1a8ac8fb2abaa32a58f1d48d
+RETROCPU_SHA256_vm80a_x86_64=84fe4a38554a1d0945cf8546a8beff62ffacd8e50d3e84b31e487da5dee00081
+RETROCPU_SHA256_vm80a_aarch64=aae50f0729986742140e6b78d6a08a136b938e5668a646d62d94090742d751b4

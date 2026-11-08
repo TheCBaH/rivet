@@ -443,6 +443,29 @@ let audit_layers asm_dir libs =
           (closure libs [ l ]))
     libs;
 
+  (* The in-tree i8080 target is held to the public contracts: whatever it
+     reaches, directly or not, must be generic machinery, the shared text
+     pipeline or itself. A second target, or the driver that links all of them,
+     in its closure would mean it is using something the contracts do not offer. *)
+  let is_i8080 l =
+    let d = dir_of l in
+    starts_with "targets/i8080" d || starts_with "melange/targets/i8080" d
+  in
+  let driver_pkg l =
+    let d = dir_of l in
+    starts_with "driver/" d || d = "driver" || starts_with "melange/driver/" d
+  in
+  List.iter
+    (fun l ->
+      if l.local && is_i8080 l then
+        List.iter
+          (fun m ->
+            if m.local && ((target m && not (is_i8080 m)) || driver_pkg m) then
+              fail "layers: i8080 library %S reaches %S, which is not a public contract" l.name
+                m.name)
+          (closure libs [ l ]))
+    libs;
+
   (* §3.7 again, from the other direction: no generic source may branch on a
      target's identity. Checked textually because it is a property of the source,
      not of the resolved graph - a `match` on a target name compiles fine. *)

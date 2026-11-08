@@ -173,6 +173,21 @@ $(FIXTURE_ORACLE_GOALS): fixture-oracle-%: tools-build
 fixture-oracle:
 	@for t in $(FIXTURE_TARGETS); do $(MAKE) fixture-oracle-$$t || exit 1; done
 
+# The i8080 oracle leg: asl, p2bin, altairz80 and vm80a_sim come from the pinned
+# retrocpu-tools release (scripts/retrocpu.pin), never from a local build. It is
+# not part of `ci`. `i8080-oracle` alone skips when nothing is fetched;
+# `fixture-oracle-i8080` fetches first.
+RETROCPU_DIR ?= .retrocpu
+.PHONY: fixture-oracle-i8080 i8080-oracle
+fixture-oracle-i8080:
+	@d=$$(scripts/retrocpu-fetch.sh $(RETROCPU_DIR)) && $(MAKE) i8080-oracle RETROCPU_ROOT=$$d
+i8080-oracle:
+	@if [ -z "$(RETROCPU_ROOT)" ] || [ ! -d "$(RETROCPU_ROOT)" ]; then \
+	  echo "i8080-oracle: SKIP, the retrocpu pin is not fetched (make fixture-oracle-i8080)"; exit 0; fi
+	scripts/retrocpu-smoke.sh $(RETROCPU_ROOT)
+	scripts/retrocpu-fetch-test.sh $(RETROCPU_ROOT)/../download
+	scripts/i8080-oracle.sh $(RETROCPU_ROOT)
+
 # A regeneration difference is a reviewed failure, not a refresh: it can change
 # accepted syntax, relocations, or instruction coverage.
 fixtures-regen: tools-build
