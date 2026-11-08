@@ -1712,7 +1712,7 @@ let%expect_test "a Cfi directive prints for GNU and changes no byte" =
     (Asm_core.Gnu_module.to_string
        { Asm_core.Gnu_module.type_char = '@' }
        ~instruction:X86_64.Instruction.pp_gnu with_cfi);
-  let module P = Driver.Pipeline.Make (X86_64) in
+  let module P = Pipeline.Make (X86_64) in
   let bytes m =
     match P.lower ~state:X86_64.default_state m with
     | Error _ -> "lowering failed"

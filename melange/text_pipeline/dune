@@ -1,0 +1,21 @@
+; Melange build of text_pipeline. Same sources, copied rather than duplicated;
+; see melange/dune for why the tree is mirrored at all.
+
+(copy_files#
+ (files ../../text_pipeline/*.ml))
+
+(library
+ (name text_pipeline)
+ (wrapped false)
+ (modes byte native melange)
+ (libraries
+  foundation
+  codec
+  asm_core
+  asm_syntax
+  driver_direct
+  image
+  target_intf
+  rivet_fmt)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))

@@ -1,0 +1,22 @@
+; The text front end's pipeline: lexer and parser glue, simplify, lower, plan
+; and the dumps, as a functor over a TARGET. It names no target, so a target
+; that is not in the registry (or is in-tree and wants to stay on the public
+; contracts) can use it without linking the other six. `driver` applies it to
+; each registered target.
+
+(library
+ (name text_pipeline)
+ (public_name rivet.text_pipeline)
+ (wrapped false)
+ (modes byte native)
+ (libraries
+  foundation
+  codec
+  asm_core
+  asm_syntax
+  driver_direct
+  image
+  target_intf
+  rivet_fmt)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))

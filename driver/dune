@@ -8,6 +8,7 @@
   asm_core
   asm_syntax
   driver_direct
+  text_pipeline
   image
   target_intf
   x86_32

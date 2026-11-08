@@ -16,6 +16,7 @@
  (libraries
   driver
   driver_direct
+  text_pipeline
   image
   asm_core
   target_intf
