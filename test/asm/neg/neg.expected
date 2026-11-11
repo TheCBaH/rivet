@@ -10,8 +10,21 @@ arm_vadd_f32_on_dregs: refused, mentions Dreg
 arm_vadd_f64_on_sregs: refused, mentions Sreg
 arm_vcvt_f64_s32_on_sregs: refused, mentions Sreg
 arm_vldr_d_on_sreg: refused, mentions Sreg
+i8080_dad_psw: refused, mentions `Psw
+i8080_inr_pair: refused, mentions `Hl
+i8080_label_for_immediate: refused, mentions string
+i8080_ldax_hl: refused, mentions `Hl
+i8080_lxi_psw: refused, mentions `Psw
+i8080_mov_pair_for_register: refused, mentions `Bc
+i8080_mvi_pair_for_register: refused, mentions `Bc
+i8080_pop_sp: refused, mentions `Sp
+i8080_push_sp: refused, mentions `Sp
+i8080_register_for_immediate: refused, mentions reg
+i8080_register_for_pair: refused, mentions reg
+i8080_stax_sp: refused, mentions `Sp
 ok_aarch64_asm: compiles
 ok_arm_asm: compiles
+ok_i8080_asm: compiles
 ok_riscv32_asm: compiles
 ok_riscv64_asm: compiles
 ok_riscv_asm: compiles

@@ -37,10 +37,25 @@
   (= %{env:RIVET_MELANGE=false} true)))
 
 (library
+ (name i8080_asm)
+ (modules i8080_asm)
+ (modes byte native melange)
+ (libraries foundation asm_core image driver_direct i8080_encode)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
+
+(library
  (name i8080_text)
  (modules i8080_text)
  (modes byte native melange)
- (libraries foundation asm_core asm_syntax image text_pipeline i8080)
+ (libraries
+  foundation
+  asm_core
+  asm_syntax
+  image
+  text_pipeline
+  i8080
+  i8080_asm)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 

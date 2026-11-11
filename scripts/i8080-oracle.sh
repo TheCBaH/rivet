@@ -13,6 +13,8 @@ sh "$here/i8080-corpus.sh" "$work/corpus"
 sh "$here/i8080-oracle-compare.sh" "$root" "$work/corpus" "$tool" test/i8080/oracle-known.txt
 echo "== every opcode byte: Rivet's decoder and printer, assembled by asl"
 sh "$here/i8080-oracle-dis.sh" "$root" "$tool"
+echo "== typed OCaml builders: the bytes they assemble to, against asl"
+sh "$here/i8080-oracle-dis.sh" "$root" "$tool" builders
 echo "== release sources: asl against Rivet"
 sh "$here/i8080-oracle-sources.sh" "$root" "$tool"
 echo "== model through the K5 shim: 8080PRE and 8080EX1 against altairz80"

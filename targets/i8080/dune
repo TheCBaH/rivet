@@ -1,6 +1,7 @@
 ; The Intel 8080 target, in two libraries like the others: the encoder
 ; (ENCODE: types, descriptor table, codec, decode) and the text front end
-; (TARGET). It names only public contracts; scripts/asm-check-layers.sh
+; (TARGET); i8080_asm adds typed builders and programs over the encoder alone.
+; It names only public contracts; scripts/asm-check-layers.sh
 ; rejects any dependency on another target or on the driver.
 
 (library
@@ -38,11 +39,27 @@
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
+ (name i8080_asm)
+ (public_name rivet.i8080_asm)
+ (modules i8080_asm)
+ (modes byte native)
+ (libraries foundation asm_core image driver_direct i8080_encode)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(library
  (name i8080_text)
  (public_name rivet.i8080_text)
  (modules i8080_text)
  (modes byte native)
- (libraries foundation asm_core asm_syntax image text_pipeline i8080)
+ (libraries
+  foundation
+  asm_core
+  asm_syntax
+  image
+  text_pipeline
+  i8080
+  i8080_asm)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 

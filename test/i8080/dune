@@ -4,13 +4,16 @@
 
 (library
  (name test_i8080)
- (modules test_i8080 test_as test_sem test_symbolic)
+ (modules test_i8080 test_as test_sem test_symbolic test_builders)
  (modes byte native)
  (libraries
   foundation
   asm_core
   i8080
   i8080_text
+  i8080_asm
+  i8080_corpus
+  i8080_encode
   i8080_as
   i8080_ops
   i8080_sem)

@@ -231,11 +231,30 @@ let dis () =
         Printf.printf "%s\t%s\t%d\t%s\n" bytes text len cls
   done
 
+(* builders: the corpus of typed builders, one line each in the layout of [dis]: bytes
+   assembled through [I8080_asm.Program], the instruction's printed text, length, "builder". *)
+let builders () =
+  List.iter
+    (fun i ->
+      match I8080_asm.Program.assemble [ I8080_asm.insn i ] with
+      | Error e ->
+          die "builders: %s" (Foundation.Diagnostic.render_all (Foundation.Diag.diagnostics e))
+      | Ok img ->
+          let bytes = img.I8080_asm.Program.bytes in
+          Printf.printf "%s\t%s\t%d\tbuilder\n"
+            (String.concat " "
+               (List.init (String.length bytes) (fun k ->
+                    Printf.sprintf "%02x" (Char.code bytes.[k]))))
+            (Format.asprintf "%a" I8080_encode.Instruction.pp i)
+            (String.length bytes))
+    I8080_corpus.all
+
 let () =
   match List.tl (Array.to_list Sys.argv) with
   | "asm" :: args -> asm args
   | "run" :: args -> run args
   | [ "dis" ] -> dis ()
+  | [ "builders" ] -> builders ()
   | [ "gen"; seed; units ] ->
       print_string (I8080_gen.program ~seed:(int_of_string seed) ~units:(int_of_string units))
-  | _ -> die "usage: i8080_tool asm|run|dis|gen ..."
+  | _ -> die "usage: i8080_tool asm|run|dis|builders|gen ..."

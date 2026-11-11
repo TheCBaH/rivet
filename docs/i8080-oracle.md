@@ -42,6 +42,7 @@ ignored `title`/`page`/`list`.
 | `i8080-oracle-sources.sh` | AS-syntax `8080PRE`, `8080EX1` and the K5 shim assembled by both; the M80 originals are refused with positions |
 | `i8080-oracle-model.sh` | `8080PRE` and `8080EX1` in the model through the K5 shim, console text equal to `altairz80` |
 | `i8080-oracle-dis.sh` | all 256 bytes as Rivet decodes and prints them (`i8080_tool dis`), assembled by `asl`: same bytes, so the decoder, the printer and every length are checked against a third-party assembler |
+| `i8080-oracle-dis.sh … builders` | the 614 instructions of `I8080_corpus` (every operand shape of every documented instruction, with the boundary values of its immediates), built with `I8080_asm`, assembled through `I8080_asm.Program`, printed, and assembled by `asl`: same bytes |
 | `i8080-oracle-diff.sh` | seeded generated programs (`i8080_tool gen`) in the model, `altairz80` and `vm80a_sim`: every OUT and the 64 KiB image against `vm80a_sim`, console and memory below `FF00` against `altairz80`; planted model bugs (`--plant`) must be caught |
 | `i8080-oracle-cycles.sh` | the T-states of every form, taken and not taken, in `vm80a_sim` and the model |
 

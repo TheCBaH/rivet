@@ -14,8 +14,6 @@ module P = Pipeline.Make (I8080)
 
 type image = { origin : int; bytes : string }
 
-let address_space = 0x10000
-
 let with_text_section (m : I8080.Surface.t Asm_syntax.Source_ast.module_) =
   let open Asm_syntax.Source_ast in
   let starts_section = function
@@ -60,25 +58,8 @@ let assemble ?(unit_name = "i8080") text =
   let* origin = origin_of norm in
   let* low = stage (P.lower ~state norm) in
   let* laid = stage (P.plan low) in
-  let* img = Image.bind_image laid ~addresses:[ (".text", Int64.of_int origin) ] in
-  match img.Image.segments with
-  | [] -> Ok { origin; bytes = "" }
-  | [ s ] ->
-      if origin + String.length s.Image.bytes > address_space then
-        Diag.fail ~pos:__POS__
-          [
-            I8080.error_diagnostic
-              (Target_error.make
-                 ~origin:(Origin.synthesized ~pass:"i8080" ())
-                 (`Address_space (String.length s.Image.bytes, origin)));
-          ]
-      else Ok { origin; bytes = s.Image.bytes }
-  | _ ->
-      Diag.fail ~pos:__POS__
-        [
-          I8080.error_diagnostic
-            (Target_error.make ~origin:(Origin.synthesized ~pass:"i8080" ()) `Many_sections);
-        ]
+  let* img = I8080_asm.Program.bind ~origin laid in
+  Ok { origin; bytes = img.I8080_asm.Program.bytes }
 
 (* The canonical text of [bytes] loaded at [origin]: an [org] line, then one
    instruction per line. Feeding it back to {!assemble} yields the same image. *)

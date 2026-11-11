@@ -135,10 +135,20 @@ module Instruction = struct
   let pp ppf = function
     | Insn { entry; args } -> (
         Fmt.string ppf entry.Ops.mnemonic;
-        match List.combine entry.Ops.operands args with
+        let rec pair kinds args =
+          match (kinds, args) with
+          | k :: ks, a :: rest -> (Some k, a) :: pair ks rest
+          | [], rest -> List.map (fun a -> (None, a)) rest
+          | _ :: _, [] -> []
+        in
+        match pair entry.Ops.operands args with
         | [] -> ()
         | pairs ->
-            Fmt.pf ppf " %a" Fmt.(list ~sep:(any ", ") (fun ppf (o, a) -> pp_arg o ppf a)) pairs)
+            Fmt.pf ppf " %a"
+              Fmt.(
+                list ~sep:(any ", ") (fun ppf (o, a) ->
+                    match o with Some o -> pp_arg o ppf a | None -> Operand.pp ppf a))
+              pairs)
     | Data { width; items } ->
         let digits = 2 * width in
         Fmt.pf ppf "%s %a"
@@ -235,6 +245,26 @@ let is_value = function Operand.Imm _ | Operand.Sym _ -> true | _ -> false
 let operand_ok kind a =
   match kind with Ops.D8 | Ops.P8 | Ops.D16 | Ops.A16 -> is_value a | k -> field_value k a <> None
 
+(* Why [args] is not a form of [entry], if it is not. Surface text and the public
+   [Instruction.Insn] constructor both reach lowering, so lowering asks too. *)
+let check_insn (entry : Ops.entry) args : error_kind option =
+  let m = entry.Ops.mnemonic and kinds = entry.Ops.operands in
+  if List.length kinds <> List.length args then Some (`No_form m)
+  else
+    let rec check i = function
+      | k :: ks, a :: rest ->
+          if operand_ok k a then check (i + 1) (ks, rest)
+          else Some (`Bad_operand { mnemonic = m; index = i; expected = expected_of k })
+      | _ -> None
+    in
+    match check 0 (kinds, args) with
+    | Some _ as e -> e
+    | None -> (
+        (* mov m,m is the slot of hlt *)
+        match args with
+        | [ Operand.Reg Reg.M; Operand.Reg Reg.M ] when m = "mov" -> Some (`No_form m)
+        | _ -> None)
+
 let simplify_instruction (_ : target_state) (s : Surface.t) =
   let bad kind = Error (diag ~pos:__POS__ ~origin:s.Surface.origin kind) in
   let m = String.lowercase_ascii s.Surface.mnemonic in
@@ -271,22 +301,10 @@ let simplify_instruction (_ : target_state) (s : Surface.t) =
       match Opcode.of_mnemonic m with
       | None -> bad (`Unknown_instruction s.Surface.mnemonic)
       | Some entry -> (
-          let kinds = entry.Ops.operands and args = s.Surface.ops in
-          if List.length kinds <> List.length args then bad (`No_form m)
-          else
-            let rec check i = function
-              | [], [] -> None
-              | k :: ks, a :: rest ->
-                  if operand_ok k a then check (i + 1) (ks, rest) else Some (i, expected_of k)
-              | _ -> Some (0, "")
-            in
-            match check 0 (kinds, args) with
-            | Some (index, expected) -> bad (`Bad_operand { mnemonic = m; index; expected })
-            | None ->
-                (* mov m,m is the slot of hlt *)
-                if m = "mov" && args = [ Operand.Reg Reg.M; Operand.Reg Reg.M ] then
-                  bad (`No_form m)
-                else Ok (Instruction.Insn { entry; args })))
+          let args = s.Surface.ops in
+          match check_insn entry args with
+          | Some kind -> bad kind
+          | None -> Ok (Instruction.Insn { entry; args })))
 
 (* {1 Lower} *)
 
@@ -306,7 +324,9 @@ let value_of ~bytes ~what ~origin a =
           Ok (Tconst (Int64.logand n mask))
       | _ -> Error (diag ~pos:__POS__ ~origin (`Out_of_range { what; value = v; low; high })))
   | _ ->
-      Error (diag ~pos:__POS__ ~origin (`Out_of_range { what; value = Bigint.of_int 0; low; high }))
+      Error
+        (diag ~pos:__POS__ ~origin
+           (`Bad_operand { mnemonic = what; index = 0; expected = "a value" }))
 
 let lower_instruction (_ : target_state) (i : Instruction.t) =
   let origin = Origin.synthesized ~pass:"i8080.lower" () in
@@ -336,22 +356,25 @@ let lower_instruction (_ : target_state) (i : Instruction.t) =
       in
       Result.map List.rev (List.fold_left one (Ok []) items)
   | Instruction.Insn { entry; args } -> (
-      let fields = ref [] and tail = ref (Ok (Tconst 0L)) in
-      List.iter2
-        (fun kind a ->
-          match kind with
-          | Ops.D8 | Ops.P8 ->
-              tail := value_of ~bytes:1 ~what:(entry.Ops.mnemonic ^ " operand") ~origin a
-          | Ops.D16 | Ops.A16 ->
-              tail := value_of ~bytes:2 ~what:(entry.Ops.mnemonic ^ " operand") ~origin a
-          | k -> fields := Option.get (field_value k a) :: !fields)
-        entry.Ops.operands args;
-      match (!tail, List.rev !fields) with
-      | Error e, _ -> Error e
-      | Ok tail, [] -> Ok [ Lowered.Insn { op = entry; a = 0; b = 0; tail } ]
-      | Ok tail, [ a ] -> Ok [ Lowered.Insn { op = entry; a; b = 0; tail } ]
-      | Ok tail, [ a; b ] -> Ok [ Lowered.Insn { op = entry; a; b; tail } ]
-      | Ok _, _ -> Error (diag ~pos:__POS__ ~origin (`No_form entry.Ops.mnemonic)))
+      match check_insn entry args with
+      | Some kind -> Error (diag ~pos:__POS__ ~origin kind)
+      | None -> (
+          let fields = ref [] and tail = ref (Ok (Tconst 0L)) in
+          List.iter2
+            (fun kind a ->
+              match kind with
+              | Ops.D8 | Ops.P8 ->
+                  tail := value_of ~bytes:1 ~what:(entry.Ops.mnemonic ^ " operand") ~origin a
+              | Ops.D16 | Ops.A16 ->
+                  tail := value_of ~bytes:2 ~what:(entry.Ops.mnemonic ^ " operand") ~origin a
+              | k -> fields := Option.get (field_value k a) :: !fields)
+            entry.Ops.operands args;
+          match (!tail, List.rev !fields) with
+          | Error e, _ -> Error e
+          | Ok tail, [] -> Ok [ Lowered.Insn { op = entry; a = 0; b = 0; tail } ]
+          | Ok tail, [ a ] -> Ok [ Lowered.Insn { op = entry; a; b = 0; tail } ]
+          | Ok tail, [ a; b ] -> Ok [ Lowered.Insn { op = entry; a; b; tail } ]
+          | Ok _, _ -> Error (diag ~pos:__POS__ ~origin (`No_form entry.Ops.mnemonic))))
 
 (* {1 The codec}
 
