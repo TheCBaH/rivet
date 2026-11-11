@@ -339,3 +339,78 @@ let%expect_test "a table of addresses resolves" =
     (Char.code (Bytes.get mem 0x8000))
     (Option.get (Program.symbol img "msg"));
   [%expect {| halted=true ram=5a msg=030a |}]
+
+(* The Items module: the same builders returning program items, so a program is a plain list. *)
+let%expect_test "Items builds the same programs as insn" =
+  let a =
+    let open I8080_asm in
+    [
+      insn (lxi sp 0xf000);
+      insn (mvi b 3);
+      label "loop";
+      insn (dcr b);
+      insn (ldax de);
+      insn (push psw);
+      insn (in_ 5);
+      insn (jnz_e (symbol "loop"));
+      db [ 1; 2 ];
+      dw_e [ symbol "loop" ];
+      insn (hlt ());
+    ]
+  and b =
+    let open I8080_asm.Items in
+    [
+      lxi sp 0xf000;
+      mvi b 3;
+      label "loop";
+      dcr b;
+      ldax de;
+      push psw;
+      in_ 5;
+      jnz_e (symbol "loop");
+      db [ 1; 2 ];
+      dw_e [ symbol "loop" ];
+      hlt ();
+    ]
+  in
+  print_endline (show a);
+  print_endline (show b);
+  [%expect
+    {|
+    0000: 31 00 f0 06 03 05 1a f5 db 05 c2 05 00 01 02 05 00 76
+    0000: 31 00 f0 06 03 05 1a f5 db 05 c2 05 00 01 02 05 00 76
+    |}]
+
+let%expect_test "Items builds a sample of every operand class" =
+  (* the previous test compares whole programs; this one assembles one of each shape *)
+  let open I8080_asm.Items in
+  let twins =
+    [
+      nop ();
+      mov a m;
+      mov m a;
+      inr h;
+      add c;
+      mvi_e l (symbol "t");
+      lxi_e sp (plus (symbol "t") (const 1));
+      inx hl;
+      dad sp;
+      ldax bc;
+      stax de;
+      push psw;
+      pop bc;
+      rst 7;
+      adi 5;
+      in_e (symbol "t");
+      out 1;
+      jmp_e (symbol "t");
+      cnz 0x100;
+      lda_e (symbol "t");
+      shld 0x2000;
+      rar ();
+      daa ();
+    ]
+  in
+  Printf.printf "%s\n" (show (twins @ [ label "t" ]));
+  [%expect
+    {| 0000: 00 7e 77 24 81 2e 25 31 26 00 23 39 0a 12 f5 c1 ff c6 05 db 25 d3 01 c3 25 00 c4 00 01 3a 25 00 22 00 20 1f 27 |}]
