@@ -44,6 +44,7 @@ ignored `title`/`page`/`list`.
 | `i8080-oracle-dis.sh` | all 256 bytes as Rivet decodes and prints them (`i8080_tool dis`), assembled by `asl`: same bytes, so the decoder, the printer and every length are checked against a third-party assembler |
 | `i8080-oracle-dis.sh … builders` | the 614 instructions of `I8080_corpus` (every operand shape of every documented instruction, with the boundary values of its immediates), built with `I8080_asm`, assembled through `I8080_asm.Program`, printed, and assembled by `asl`: same bytes |
 | `i8080-oracle-diff.sh` | seeded generated programs (`i8080_tool gen`) in the model, `altairz80` and `vm80a_sim`: every OUT and the 64 KiB image against `vm80a_sim`, console and memory below `FF00` against `altairz80`; planted model bugs (`--plant`) must be caught |
+| `i8080-oracle-interrupt.sh` | INT held high with `RST 0` supplied, after `EI; NOP`, `EI; EI`, `EI; EI; EI`, `EI; DI`, `EI; DI; EI`, `EI; EI; DI`: the OUT list in the model and in `vm80a_sim`. In `vm80a_sim` the acknowledge is not taken at the boundary after any `EI` or `DI`, so `EI; EI` enables interrupts after the instruction that follows the second `EI` |
 | `i8080-oracle-cycles.sh` | the T-states of every form, taken and not taken, in `vm80a_sim` and the model |
 
 ## Differences between the oracles

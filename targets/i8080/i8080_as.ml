@@ -432,6 +432,7 @@ let value ?(lenient = false) st text =
   try eval ~lookup ~pc:st.stmt_pc e with Undefined n -> fail "undefined symbol %s" n
 
 let emit st bytes =
+  if st.pc + String.length bytes > 0x10000 then fail "code runs past 0FFFFh";
   if bytes <> "" then (
     (match st.cur with
     | Some (o, b) when o + Buffer.length b = st.pc -> Buffer.add_string b bytes

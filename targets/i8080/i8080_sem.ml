@@ -18,6 +18,10 @@ module Desc = I8080_ops
 
 exception Not_concrete
 
+(** The interrupt-enable flip-flop: [Pending] is the one instruction after [EI] during which
+    interrupts are still refused. *)
+type ei = Off | Pending | On
+
 type regs = {
   ra : int;
   rb : int;
@@ -60,8 +64,7 @@ module Make (V : Compute.VALUE) (M : Compute.MEMORY with type value = V.t) = str
     mutable cy : value;
     mutable sp : value;
     mutable pc : value;
-    mutable inte : bool;
-    mutable ei_pending : bool;
+    mutable ei : ei;
     mutable halted : bool;
     mutable mem : M.t;
     mutable tstates : int;
@@ -93,8 +96,7 @@ module Make (V : Compute.VALUE) (M : Compute.MEMORY with type value = V.t) = str
       cy = z1;
       sp = c16 0;
       pc = c16 0;
-      inte = false;
-      ei_pending = false;
+      ei = Off;
       halted = false;
       mem;
       tstates = 0;
@@ -191,11 +193,8 @@ module Make (V : Compute.VALUE) (M : Compute.MEMORY with type value = V.t) = str
 
     let taken st = st.taken <- true
     let halt st = st.halted <- true
-    let ei st = st.ei_pending <- true
-
-    let di st =
-      st.inte <- false;
-      st.ei_pending <- false
+    let ei st = st.ei <- Pending
+    let di st = st.ei <- Off
   end
 
   module Lib = Desc.Lib (Machine)
@@ -217,22 +216,22 @@ module Make (V : Compute.VALUE) (M : Compute.MEMORY with type value = V.t) = str
   (* One instruction (or one interrupt-supplied instruction when [inta] is
      set), accounted in [tstates]. *)
   let step st =
-    let was_pending = st.ei_pending in
-    st.ei_pending <- false;
+    (* The instruction after [EI] runs with interrupts already on, so a [DI] there turns them
+       off and an [EI] there starts the wait again. *)
+    if st.ei = Pending then st.ei <- On;
     st.taken <- false;
     let op = to_int (fetch st) in
     Bytes.unsafe_set st.seen op '\001';
     (Array.unsafe_get program op) st;
     let t = Array.unsafe_get Desc.timings op in
     st.tstates <- (st.tstates + if st.taken then t.Desc.taken else t.Desc.tstates);
-    st.instructions <- st.instructions + 1;
-    if was_pending && not st.ei_pending then st.inte <- true
+    st.instructions <- st.instructions + 1
 
   (* Take an interrupt: the supplied bytes are the instruction (an RST, or a
      CALL with its two address bytes). Ignored while interrupts are disabled. *)
   let interrupt st bytes =
-    if st.inte then (
-      st.inte <- false;
+    if st.ei = On then (
+      st.ei <- Off;
       st.halted <- false;
       st.inta <- bytes;
       step st;
@@ -260,7 +259,7 @@ module Concrete_of (V : Compute.VALUE with type t = int) = struct
       rpc = st.pc;
     }
 
-  let create_memory () = Bytes.make 0x10000 '\000'
+  let create_memory () = Compute.Bytes_memory.create 0x10000
   let poke st addr s = Bytes.blit_string s 0 st.mem (addr land 0xffff) (String.length s)
 end
 
@@ -287,6 +286,7 @@ module type RUNNABLE = sig
   val start : t -> pc:int -> sp:int -> unit
   val trace : t -> (event -> unit) option -> unit
   val step : t -> unit
+  val interrupt : t -> int list -> unit
   val halted : t -> bool
   val instructions : t -> int
   val tstates : t -> int
@@ -302,6 +302,7 @@ module Runnable (V : Compute.VALUE with type t = int) : RUNNABLE = struct
 
   let create ~input ~output = C.create ~env:{ C.input; output } (C.create_memory ())
   let poke = C.poke
+  let interrupt = C.interrupt
 
   let start st ~pc ~sp =
     st.C.pc <- pc;

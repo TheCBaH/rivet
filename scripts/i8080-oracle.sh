@@ -22,6 +22,8 @@ sh "$here/i8080-oracle-model.sh" "$root" "$tool"
 echo "== generated programs: model, altairz80, vm80a_sim"
 seeds=${I8080_DIFF_SEEDS:-120}
 sh "$here/i8080-oracle-diff.sh" "$root" "$tool" "$seeds" 150
+echo "== interrupt timing after EI/DI: model, vm80a_sim"
+sh "$here/i8080-oracle-interrupt.sh" "$root" "$tool"
 echo "== planted model bugs must be caught"
 for bug in ult aux carry; do
     sh "$here/i8080-oracle-diff.sh" "$root" "$tool" 60 150 "$bug" | tail -1

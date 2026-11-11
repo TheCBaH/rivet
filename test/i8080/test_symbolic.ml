@@ -189,8 +189,7 @@ let trial ~vars ~flags op =
           ("pc", cst.pc, ev s.pc);
           ("tstates", cst.tstates, s.tstates);
           ("halted", Bool.to_int cst.halted, Bool.to_int s.halted);
-          ("inte", Bool.to_int cst.inte, Bool.to_int s.inte);
-          ("ei_pending", Bool.to_int cst.ei_pending, Bool.to_int s.ei_pending);
+          ("ei", Hashtbl.hash cst.ei, Hashtbl.hash s.ei);
         ]
       in
       let bad = List.filter (fun (_, x, y) -> x <> y) pairs in

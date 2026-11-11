@@ -199,6 +199,152 @@ val ascii : string -> item
 val space : int -> item
 (** That many zero bytes. *)
 
+module Items : sig
+  (** The same builders returning {!item}, so a program is a plain list and needs no {!insn}:
+      [let open I8080_asm.Items in [ lxi sp 0xf000; label "loop"; dcr b; jnz_e (symbol "loop"); hlt () ]].
+      The operands, the expression helpers and the data items are those above. *)
+
+  val b : reg
+  val c : reg
+  val d : reg
+  val e : reg
+  val h : reg
+  val l : reg
+  val m : reg
+  val a : reg
+  val bc : [> `Bc ]
+  val de : [> `De ]
+  val hl : [> `Hl ]
+  val sp : [> `Sp ]
+  val psw : [> `Psw ]
+  val symbol : string -> Asm_core.Expr.t
+  val const : int -> Asm_core.Expr.t
+  val plus : Asm_core.Expr.t -> Asm_core.Expr.t -> Asm_core.Expr.t
+  val minus : Asm_core.Expr.t -> Asm_core.Expr.t -> Asm_core.Expr.t
+  val low : Asm_core.Expr.t -> Asm_core.Expr.t
+  val high : Asm_core.Expr.t -> Asm_core.Expr.t
+  val nop : unit -> item
+  val hlt : unit -> item
+  val ret : unit -> item
+  val rnz : unit -> item
+  val rz : unit -> item
+  val rnc : unit -> item
+  val rc : unit -> item
+  val rpo : unit -> item
+  val rpe : unit -> item
+  val rp : unit -> item
+  val rm : unit -> item
+  val xchg : unit -> item
+  val xthl : unit -> item
+  val sphl : unit -> item
+  val pchl : unit -> item
+  val ei : unit -> item
+  val di : unit -> item
+  val daa : unit -> item
+  val cma : unit -> item
+  val stc : unit -> item
+  val cmc : unit -> item
+  val rlc : unit -> item
+  val rrc : unit -> item
+  val ral : unit -> item
+  val rar : unit -> item
+  val mov : reg -> reg -> item
+  val inr : reg -> item
+  val dcr : reg -> item
+  val add : reg -> item
+  val adc : reg -> item
+  val sub : reg -> item
+  val sbb : reg -> item
+  val ana : reg -> item
+  val xra : reg -> item
+  val ora : reg -> item
+  val cmp : reg -> item
+  val mvi : reg -> int -> item
+  val mvi_e : reg -> Asm_core.Expr.t -> item
+  val lxi : pair -> int -> item
+  val lxi_e : pair -> Asm_core.Expr.t -> item
+  val inx : pair -> item
+  val dcx : pair -> item
+  val dad : pair -> item
+  val ldax : ind_pair -> item
+  val stax : ind_pair -> item
+  val push : stack_pair -> item
+  val pop : stack_pair -> item
+  val rst : int -> item
+  val adi : int -> item
+  val adi_e : Asm_core.Expr.t -> item
+  val aci : int -> item
+  val aci_e : Asm_core.Expr.t -> item
+  val sui : int -> item
+  val sui_e : Asm_core.Expr.t -> item
+  val sbi : int -> item
+  val sbi_e : Asm_core.Expr.t -> item
+  val ani : int -> item
+  val ani_e : Asm_core.Expr.t -> item
+  val xri : int -> item
+  val xri_e : Asm_core.Expr.t -> item
+  val ori : int -> item
+  val ori_e : Asm_core.Expr.t -> item
+  val cpi : int -> item
+  val cpi_e : Asm_core.Expr.t -> item
+  val in_ : int -> item
+  val in_e : Asm_core.Expr.t -> item
+  val out : int -> item
+  val out_e : Asm_core.Expr.t -> item
+  val jmp : int -> item
+  val jmp_e : Asm_core.Expr.t -> item
+  val jnz : int -> item
+  val jnz_e : Asm_core.Expr.t -> item
+  val jz : int -> item
+  val jz_e : Asm_core.Expr.t -> item
+  val jnc : int -> item
+  val jnc_e : Asm_core.Expr.t -> item
+  val jc : int -> item
+  val jc_e : Asm_core.Expr.t -> item
+  val jpo : int -> item
+  val jpo_e : Asm_core.Expr.t -> item
+  val jpe : int -> item
+  val jpe_e : Asm_core.Expr.t -> item
+  val jp : int -> item
+  val jp_e : Asm_core.Expr.t -> item
+  val jm : int -> item
+  val jm_e : Asm_core.Expr.t -> item
+  val call : int -> item
+  val call_e : Asm_core.Expr.t -> item
+  val cnz : int -> item
+  val cnz_e : Asm_core.Expr.t -> item
+  val cz : int -> item
+  val cz_e : Asm_core.Expr.t -> item
+  val cnc : int -> item
+  val cnc_e : Asm_core.Expr.t -> item
+  val cc : int -> item
+  val cc_e : Asm_core.Expr.t -> item
+  val cpo : int -> item
+  val cpo_e : Asm_core.Expr.t -> item
+  val cpe : int -> item
+  val cpe_e : Asm_core.Expr.t -> item
+  val cp : int -> item
+  val cp_e : Asm_core.Expr.t -> item
+  val cm : int -> item
+  val cm_e : Asm_core.Expr.t -> item
+  val sta : int -> item
+  val sta_e : Asm_core.Expr.t -> item
+  val lda : int -> item
+  val lda_e : Asm_core.Expr.t -> item
+  val shld : int -> item
+  val shld_e : Asm_core.Expr.t -> item
+  val lhld : int -> item
+  val lhld_e : Asm_core.Expr.t -> item
+  val insn : t -> item
+  val label : string -> item
+  val db : int list -> item
+  val db_e : Asm_core.Expr.t list -> item
+  val dw : int list -> item
+  val dw_e : Asm_core.Expr.t list -> item
+  val ascii : string -> item
+  val space : int -> item
+end
+
 module Program : sig
   type image = {
     origin : int;

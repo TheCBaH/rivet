@@ -20,9 +20,24 @@ type result = {
 }
 
 module Make (S : I8080_sem.RUNNABLE) = struct
+  (* [interrupt]: the bytes an interrupt-acknowledge cycle supplies, with INT held high
+     from the start; it is taken at the first instruction boundary where interrupts are on. *)
   let run ?(max_instructions = max_int) ?(input = fun _ -> 0xff) ?(load = 0x100) ?(pc = 0x100)
-      ?(sp = 0xfe00) ?(trace : (I8080_sem.event -> unit) option)
+      ?(sp = 0xfe00) ?(interrupt : int list option) ?(trace : (I8080_sem.event -> unit) option)
       ?(before : (I8080_sem.regs -> unit) option) ~shim program =
+    let overlaps (at, len) =
+      load < at + len && at < load + String.length program && String.length program > 0
+    in
+    if load < 0 || load + String.length program > 0x10000 then
+      invalid_arg "I8080_run.run: the program does not fit in 64 KiB";
+    if
+      List.exists overlaps
+        [
+          (0, String.length shim.boot);
+          (5, String.length shim.bdos);
+          (0xfe00, String.length shim.handler);
+        ]
+    then invalid_arg "I8080_run.run: the program overlaps the shim";
     let console = Buffer.create 256 and io_out = ref [] and stop = ref false and fault = ref None in
     let output port v =
       io_out := (port, v) :: !io_out;
@@ -43,7 +58,9 @@ module Make (S : I8080_sem.RUNNABLE) = struct
       (not !stop) && !fault = None && (not (S.halted st)) && S.instructions st < max_instructions
     do
       (match before with None -> () | Some f -> f (S.regs st));
-      S.step st
+      let before_n = S.instructions st in
+      Option.iter (S.interrupt st) interrupt;
+      if S.instructions st = before_n then S.step st
     done;
     let status =
       match !fault with

@@ -79,7 +79,7 @@ let plant name =
         end)
   | n -> die "unknown planted bug %s (ult, aux, carry)" n
 
-(* run <program> --shim <dir> [--max N] [--load ADDR] [--regs] [--dump FILE] *)
+(* run <program> --shim <dir> [--max N] [--load ADDR] [--regs] [--dump FILE] [--int HEX[,HEX..]] *)
 let run args =
   let prog = ref None and shim = ref None and max = ref max_int and regs = ref false in
   let console = ref None
@@ -87,7 +87,8 @@ let run args =
   and trace = ref false
   and io_out = ref None
   and opcodes = ref None
-  and planted = ref None in
+  and planted = ref None
+  and interrupt = ref None in
   let dump = ref None and load = ref 0x100 and pc = ref None in
   let rec parse = function
     | [] -> ()
@@ -120,6 +121,10 @@ let run args =
         parse r
     | "--opcodes" :: f :: r ->
         opcodes := Some f;
+        parse r
+    | "--int" :: bytes :: r ->
+        interrupt :=
+          Some (List.map (fun b -> int_of_string ("0x" ^ b)) (String.split_on_char ',' bytes));
         parse r
     | "--plant" :: n :: r ->
         planted := Some n;
@@ -157,7 +162,7 @@ let run args =
           !states
       in
       let r =
-        run ?before ~max_instructions:!max ~load:!load ?pc:!pc
+        run ?before ~max_instructions:!max ~load:!load ?pc:!pc ?interrupt:!interrupt
           ?trace:
             (if !trace then
                Some

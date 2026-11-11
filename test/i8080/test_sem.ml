@@ -59,3 +59,44 @@ let%expect_test "conditional return and call cost more when taken" =
   let st = run "\torg 0\n\tlxi sp,100h\n\tcall f\n\thlt\nf:\txra a\n\trz\n\thlt\n" in
   show st;
   [%expect {| a=00 f=46 b=00 c=00 h=00 l=00 sp=0100 pc=0007 t=49 n=5 |}]
+
+(* {1 EI takes effect after the next instruction; DI cancels it} *)
+
+let interrupt_after src steps =
+  match I8080_as.assemble src with
+  | Error ds -> failwith (I8080_as.render ds)
+  | Ok img ->
+      let origin, bytes = I8080_as.flatten img in
+      let env = { S.input = (fun _ -> 0xff); output = (fun _ _ -> ()) } in
+      let st = S.create ~env (S.create_memory ()) in
+      S.poke st origin bytes;
+      st.S.pc <- origin;
+      st.S.sp <- 0x100;
+      for _ = 1 to steps do
+        S.step st
+      done;
+      let before = st.S.pc in
+      S.interrupt st [ 0xcf ];
+      Printf.printf "pc %04x -> %04x: %s\n" before st.S.pc
+        (if st.S.pc = 8 then "interrupt taken" else "interrupt ignored")
+
+let%expect_test "EI; NOP enables interrupts after the NOP" =
+  interrupt_after "\torg 0\n\tei\n\tnop\n\tnop\n\thlt\n" 1;
+  interrupt_after "\torg 0\n\tei\n\tnop\n\tnop\n\thlt\n" 2;
+  [%expect {|
+    pc 0001 -> 0001: interrupt ignored
+    pc 0002 -> 0008: interrupt taken |}]
+
+let%expect_test "EI; DI leaves interrupts disabled" =
+  interrupt_after "\torg 0\n\tei\n\tdi\n\tnop\n\thlt\n" 2;
+  interrupt_after "\torg 0\n\tei\n\tdi\n\tnop\n\thlt\n" 3;
+  [%expect {|
+    pc 0002 -> 0002: interrupt ignored
+    pc 0003 -> 0003: interrupt ignored |}]
+
+let%expect_test "EI; EI keeps the interrupt pending until the instruction after the second" =
+  interrupt_after "\torg 0\n\tei\n\tei\n\tnop\n\thlt\n" 2;
+  interrupt_after "\torg 0\n\tei\n\tei\n\tnop\n\thlt\n" 3;
+  [%expect {|
+    pc 0002 -> 0002: interrupt ignored
+    pc 0003 -> 0008: interrupt taken |}]

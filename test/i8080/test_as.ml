@@ -112,3 +112,15 @@ lab:	mvi a,lab
     0001               t.asm:3  org 4
     0004 3e04          t.asm:4  lab:	mvi a,lab
     0006 01            t.asm:5  db 1 |}]
+
+let%expect_test "code past 0xFFFF is diagnosed" =
+  show "\torg 0fffeh\n\tdb 1,2\n";
+  show "\torg 0fffeh\n\tdb 1,2,3\n";
+  show "\torg 0fffeh\n\tlxi h,0\n";
+  show "\torg 0ffffh\n\tnop\n\tnop\n";
+  [%expect
+    {|
+    fffe: 01 02
+    t.asm:2: code runs past 0FFFFh
+    t.asm:2: code runs past 0FFFFh
+    t.asm:3: code runs past 0FFFFh |}]

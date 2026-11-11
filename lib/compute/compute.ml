@@ -95,7 +95,7 @@ module Concrete : VALUE with type t = int = struct
   let shr a n = a lsr n
   let zext ~w:_ a = a
   let extract a ~hi ~lo = (a lsr lo) land mask (hi - lo + 1)
-  let concat ~hi ~lo ~lo_w = (hi lsl lo_w) lor lo
+  let concat ~hi ~lo ~lo_w = (hi lsl lo_w) lor (lo land mask lo_w)
   let eq a b = if a = b then 1 else 0
   let ult a b = if a < b then 1 else 0
   let ite c a b = if c <> 0 then a else b
@@ -103,14 +103,24 @@ module Concrete : VALUE with type t = int = struct
   let to_int a = Some a
 end
 
-module Bytes_memory : MEMORY with type value = int and type t = Bytes.t = struct
+module Bytes_memory : sig
+  include MEMORY with type value = int and type t = Bytes.t
+
+  val create : int -> t
+  (** Zeroed memory of [n] bytes; addresses wrap modulo [n], so [n] must be a power of two. *)
+end = struct
   type value = int
   type t = Bytes.t
 
-  let load8 m a = Char.code (Bytes.unsafe_get m (a land (Bytes.length m - 1)))
+  let create n =
+    if n < 1 || n land (n - 1) <> 0 then
+      invalid_arg "Compute.Bytes_memory.create: size must be a power of two";
+    Bytes.make n '\000'
+
+  let load8 m a = Char.code (Bytes.get m (a land (Bytes.length m - 1)))
 
   let store8 m a v =
-    Bytes.unsafe_set m (a land (Bytes.length m - 1)) (Char.unsafe_chr (v land 0xff));
+    Bytes.set m (a land (Bytes.length m - 1)) (Char.unsafe_chr (v land 0xff));
     m
 end
 
