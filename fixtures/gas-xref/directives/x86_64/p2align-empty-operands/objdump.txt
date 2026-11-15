@@ -1,0 +1,14 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <.text>:
+   0:	90                   	nop
+   1:	0f 1f 80 00 00 00 00 	nopl   0x0(%rax)
+   8:	01 00                	add    %eax,(%rax)
+   a:	00 00                	add    %al,(%rax)
+   c:	90                   	nop
+   d:	00 00                	add    %al,(%rax)
+   f:	00 02                	add    %al,(%rdx)
+  11:	00 00                	add    %al,(%rax)
+	...

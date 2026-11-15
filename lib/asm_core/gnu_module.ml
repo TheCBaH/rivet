@@ -39,14 +39,30 @@ let flags (p : Perms.t) =
   ^ (if p.Perms.write then "w" else "")
   ^ if p.Perms.execute then "x" else ""
 
-let directive syntax ppf (d : Directive.t) =
+let rec directive syntax ppf (d : Directive.t) =
   let t = syntax.type_char in
   match d with
   | Directive.Section { name; perms; nobits } ->
       Fmt.pf ppf "\t.section\t%s,\"%s\",%c%s" name (flags perms) t
         (if nobits then "nobits" else "progbits")
   | Directive.Declared_section { name } -> Fmt.pf ppf "\t.section\t%s,\"\",%cprogbits" name t
-  | Directive.Align { boundary } -> Fmt.pf ppf "\t.balign\t%d" boundary
+  | Directive.Align { boundary; fill; max_skip } -> (
+      Fmt.pf ppf "\t.balign\t%d" boundary;
+      match (fill, max_skip) with
+      | None, None -> ()
+      | _ ->
+          Fmt.pf ppf ",%a" Fmt.(option int) fill;
+          Option.iter (Fmt.pf ppf ",%d") max_skip)
+  | Directive.Visibility { name; visibility } ->
+      Fmt.pf ppf "\t.%s\t%s" (Directive.visibility_name visibility) name
+  | Directive.Push_section (Directive.Section { name; perms; nobits }) ->
+      Fmt.pf ppf "\t.pushsection\t%s,\"%s\",%c%s" name (flags perms) t
+        (if nobits then "nobits" else "progbits")
+  | Directive.Push_section (Directive.Declared_section { name }) ->
+      Fmt.pf ppf "\t.pushsection\t%s,\"\",%cprogbits" name t
+  | Directive.Push_section other -> directive syntax ppf other
+  | Directive.Pop_section -> Fmt.string ppf "\t.popsection"
+  | Directive.Previous_section -> Fmt.string ppf "\t.previous"
   | Directive.Global { name } -> Fmt.pf ppf "\t.globl\t%s" name
   | Directive.Weak { name } -> Fmt.pf ppf "\t.weak\t%s" name
   | Directive.Local { name } -> Fmt.pf ppf "\t.local\t%s" name

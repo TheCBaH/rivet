@@ -1,0 +1,18 @@
+
+
+Disassembly of section .text:
+
+00000000 <.text>:
+   0:	807f0100 	rsbshi	r0, pc, r0, lsl #2
+   4:	268ee501 	strcs	lr, [lr], r1, lsl #10
+   8:	ffffffff 			@ <UNDEFINED> instruction: 0xffffffff
+   c:	ffffffff 			@ <UNDEFINED> instruction: 0xffffffff
+  10:	7f0001ff 	svcvc	0x000001ff
+  14:	4000c03f 	andmi	ip, r0, pc, lsr r0
+  18:	bbc07fbf 	bllt	ff01ff1c <.text+0xff01ff1c>
+  1c:	ffffff78 			@ <UNDEFINED> instruction: 0xffffff78
+  20:	ffffffff 			@ <UNDEFINED> instruction: 0xffffffff
+  24:	8000ffff 	strdhi	pc, [r0], -pc	@ <UNPREDICTABLE>
+  28:	80808080 	addhi	r8, r0, r0, lsl #1
+  2c:	80808080 	addhi	r8, r0, r0, lsl #1
+  30:	0000177f 	andeq	r1, r0, pc, ror r7

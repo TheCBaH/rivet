@@ -1,0 +1,12 @@
+
+
+Disassembly of section .text:
+
+00000000 <.text>:
+   0:	01 00                	add    %eax,(%eax)
+   2:	02 00                	add    (%eax),%al
+   4:	00 00                	add    %al,(%eax)
+   6:	03 00                	add    (%eax),%eax
+   8:	04 00                	add    $0x0,%al
+   a:	05                   	.byte 0x5
+	...

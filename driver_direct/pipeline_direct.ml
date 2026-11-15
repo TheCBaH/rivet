@@ -18,6 +18,7 @@ module Make (T : Target_encode.ENCODE) = struct
     | `Data_value of Expr.error
     | `Data_fixup of string
     | `Section_attributes_changed of string
+    | `Section_stack_empty
     | `Directive_not_accepted of string
     | `Relax_ladder of Lowered_ast.relax_error
     | `Invalid_configuration of string ]
@@ -31,6 +32,7 @@ module Make (T : Target_encode.ENCODE) = struct
     | `Data_fixup m -> Fmt.string ppf m
     | `Section_attributes_changed n ->
         Fmt.pf ppf "section %s is re-entered with different attributes" n
+    | `Section_stack_empty -> Fmt.string ppf "there is no section to return to"
     | `Directive_not_accepted name -> Fmt.pf ppf "the target did not accept %s" name
     | `Relax_ladder e -> Lowered_ast.pp_relax_error ppf e
     | `Invalid_configuration m -> Fmt.pf ppf "invalid feature configuration: %s" m
@@ -40,6 +42,7 @@ module Make (T : Target_encode.ENCODE) = struct
     | `Data_value _ | `Data_fixup _ -> "lower.data"
     | `Directive_not_accepted _ -> "lower.directive"
     | `Section_attributes_changed _ -> "lower.section-attributes"
+    | `Section_stack_empty -> "lower.section-stack"
     | `Relax_ladder _ -> "lower.relax-ladder"
     | `Invalid_configuration _ -> "config.invalid"
 
@@ -147,6 +150,27 @@ module Make (T : Target_encode.ENCODE) = struct
           current := Some s;
           s
     in
+    let previous = ref None in
+    let stack = ref [] in
+    let switch_section ~origin = function
+      | Directive.Section { name; perms; nobits } ->
+          let kind = if nobits then Lowered_ast.Nobits else Lowered_ast.Progbits in
+          (match Hashtbl.find_opt section_table name with
+          | Some s when s.sb_perms <> perms || s.sb_kind <> kind ->
+              errors := diag ~origin (`Section_attributes_changed name) :: !errors
+          | _ -> ());
+          previous := !current;
+          ignore (ensure_section name perms kind)
+      | Directive.Declared_section { name } ->
+          declared := name :: !declared;
+          (* Deliberately does *not* become the current section: it is
+             never allocated, so a fragment landing in it would have
+             nowhere to go. Anything emitted after it is an error rather
+             than silently dropped. *)
+          previous := !current;
+          current := None
+      | _ -> ()
+    in
     let with_section origin f =
       match !current with
       | Some s -> f s
@@ -180,24 +204,30 @@ module Make (T : Target_encode.ENCODE) = struct
                 sy.sy_section <- s.sb_name)
         | Normalized_ast.Directive { directive; origin } -> (
             match directive with
-            | Directive.Section { name; perms; nobits } ->
-                let kind = if nobits then Lowered_ast.Nobits else Lowered_ast.Progbits in
-                (match Hashtbl.find_opt section_table name with
-                | Some s when s.sb_perms <> perms || s.sb_kind <> kind ->
-                    errors := diag ~origin (`Section_attributes_changed name) :: !errors
-                | _ -> ());
-                ignore (ensure_section name perms kind)
-            | Directive.Declared_section { name } ->
-                declared := name :: !declared;
-                (* Deliberately does *not* become the current section: it is
-                   never allocated, so a fragment landing in it would have
-                   nowhere to go. Anything emitted after it is an error rather
-                   than silently dropped. *)
-                current := None
-            | Directive.Align { boundary } ->
+            | Directive.Section _ | Directive.Declared_section _ -> switch_section ~origin directive
+            | Directive.Push_section d ->
+                stack := !current :: !stack;
+                switch_section ~origin d
+            | Directive.Pop_section -> (
+                match !stack with
+                | [] -> errors := diag ~origin `Section_stack_empty :: !errors
+                | s :: rest ->
+                    stack := rest;
+                    previous := !current;
+                    current := s)
+            | Directive.Previous_section -> (
+                match !previous with
+                | None -> errors := diag ~origin `Section_stack_empty :: !errors
+                | p ->
+                    let c = !current in
+                    current := p;
+                    previous := c)
+            | Directive.Visibility { name; visibility } -> (symbol name).sy_visibility <- visibility
+            | Directive.Align { boundary; fill; max_skip } ->
                 with_section origin (fun s ->
                     s.sb_align <- max s.sb_align boundary;
-                    s.sb_frags <- Lowered_ast.Align { boundary; origin } :: s.sb_frags)
+                    s.sb_frags <-
+                      Lowered_ast.Align { boundary; fill; max_skip; origin } :: s.sb_frags)
             (* One fragment per value, and a value that is not already a number
                becomes a fixup rather than being evaluated here: an initializer
                naming a symbol has no value until the linker chooses addresses,
@@ -384,7 +414,8 @@ module Make (T : Target_encode.ENCODE) = struct
           bss.sb_frags <-
             Lowered_ast.Zero { length = c.Lowered_ast.comm_size; origin }
             :: Lowered_ast.Label_def { name; origin }
-            :: Lowered_ast.Align { boundary = c.Lowered_ast.comm_align; origin }
+            :: Lowered_ast.Align
+                 { boundary = c.Lowered_ast.comm_align; fill = None; max_skip = None; origin }
             :: bss.sb_frags;
           (symbol name).sy_section <- ".bss")
         local_commons

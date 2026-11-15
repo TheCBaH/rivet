@@ -318,7 +318,7 @@ let%expect_test "alignment padding participates, and costs minimality" =
             label "entry";
             branch_to "here";
             filler 100;
-            Lowered_ast.Align { boundary = 16; origin };
+            Lowered_ast.Align { boundary = 16; fill = None; max_skip = None; origin };
             filler 20;
             label "here";
           ];
@@ -1541,8 +1541,16 @@ let invalid_cases () =
     ("duplicate section", module_ [ ok_text; sec [ filler 1 ] ]);
     ("section alignment 3", module_ [ ok_text; sec ~name:".d" ~align:3 [ filler 1 ] ]);
     ("section alignment 0", module_ [ ok_text; sec ~name:".d" ~align:0 [ filler 1 ] ]);
-    ("Align boundary 6", module_ [ text_section [ Lowered_ast.Align { boundary = 6; origin } ] ]);
-    ("Align boundary 0", module_ [ text_section [ Lowered_ast.Align { boundary = 0; origin } ] ]);
+    ( "Align boundary 6",
+      module_
+        [
+          text_section [ Lowered_ast.Align { boundary = 6; fill = None; max_skip = None; origin } ];
+        ] );
+    ( "Align boundary 0",
+      module_
+        [
+          text_section [ Lowered_ast.Align { boundary = 0; fill = None; max_skip = None; origin } ];
+        ] );
     ("Zero length -1", module_ [ text_section [ Lowered_ast.Zero { length = -1; origin } ] ]);
     ("common alignment 3", module_ ~commons:[ comm "c" 4 3 ] [ ok_text ]);
     ( "fixup past the fragment",

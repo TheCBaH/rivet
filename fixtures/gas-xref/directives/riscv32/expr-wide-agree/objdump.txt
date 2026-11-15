@@ -1,0 +1,30 @@
+
+
+Disassembly of section .text:
+
+00000000 <.text>:
+   0:	00000000          	.word	0x00000000
+   4:	80000000          	.word	0x80000000
+   8:	00000000          	.word	0x00000000
+   c:	80000000          	.word	0x80000000
+  10:	ffffffff          	.word	0xffffffff
+  14:	ffffffff          	.word	0xffffffff
+  18:	ffffffff          	.word	0xffffffff
+  1c:	ffffffff          	.word	0xffffffff
+  20:	ffffff00          	.word	0xffffff00
+  24:	ffffffff          	.word	0xffffffff
+  28:	fffffff1          	.word	0xfffffff1
+  2c:	ffffffff          	.word	0xffffffff
+  30:	0000000e          	.word	0x0000000e
+  34:	00000000          	.word	0x00000000
+  38:	00000002          	.word	0x00000002
+  3c:	00000000          	.word	0x00000000
+  40:	00000001          	.word	0x00000001
+  44:	00000000          	.word	0x00000000
+  48:	00000007          	.word	0x00000007
+  4c:	00000000          	.word	0x00000000
+  50:	00000006          	.word	0x00000006
+	...
+  5c:	80000000          	.word	0x80000000
+  60:	00000000          	.word	0x00000000
+  64:	00000300          	.word	0x00000300

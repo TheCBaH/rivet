@@ -4260,8 +4260,8 @@ let%expect_test "x86_64: byte-immediate and jmp r/m forms decode their REX/addre
     40000014  41 ff 64 24 08  jmp *8(%r12)      [x86_64.jmp-rm.asz-absent.opsz-absent.rex-present.sib-disp8] |}]
 
 (* [.p2align e] is an exponent: it normalizes to the byte count [2^e], the same
-   [Align] that [.balign 2^e] gives. Fill and max-skip operands, and exponents
-   past the portable cap of 29, are rejected rather than approximated. *)
+   [Align] that [.balign 2^e] gives. Fill and max-skip operands are carried; exponents
+   past the portable cap of 29 are rejected rather than approximated. *)
 let%expect_test ".p2align normalizes to a power-of-two byte boundary" =
   dump_norm "x86_32" "\t.text\n\t.p2align 4\n\tret\n\t.p2align 0\n\t.balign 16\n";
   dump_norm "x86_32" "\t.text\n\t.p2align 30\n";
@@ -4276,9 +4276,11 @@ let%expect_test ".p2align normalizes to a power-of-two byte boundary" =
     ret
     align 1
     align 16simplify.directive: .p2align needs an exponent from 0 to 29
-    parse: unexpected token
-    simplify.directive: .p2align: fill and max-skip arguments are not supported
-    simplify.directive: .p2align needs exactly one integer argument |}]
+    normalized t
+    section .text r-x
+    align 16 max 15normalized t
+    section .text r-x
+    align 16 fill 0simplify.directive: .p2align needs a non-negative constant alignment |}]
 
 (* The register-shift and unsigned-conversion forms the compiler prints for 64-bit
    variable shifts ([Plsrv]/[Pasrv]/[Prorv]) and [double]/[float] to unsigned
@@ -4640,7 +4642,7 @@ let%expect_test "a constructed module prints as GNU assembler source" =
       items =
         [
           d (Directive.Section { name = ".text"; perms = Perms.rx; nobits = false });
-          d (Directive.Align { boundary = 4 });
+          d (Directive.Align { boundary = 4; fill = None; max_skip = None });
           d (Directive.Global { name = "f" });
           d (Directive.Sym_type { name = "f"; kind = Directive.Function });
           Normalized_ast.Label { name = "f"; origin };
@@ -4693,7 +4695,7 @@ let%expect_test "a constructed module prints as GNU assembler source" =
                });
           d (Directive.Data { width = 4; values = [ Expr.Symbol "g" ] });
           d (Directive.Section { name = ".bss"; perms = Perms.rw; nobits = true });
-          d (Directive.Align { boundary = 16 });
+          d (Directive.Align { boundary = 16; fill = None; max_skip = None });
           d (Directive.Global { name = "g" });
           d (Directive.Sym_type { name = "g"; kind = Directive.Object });
           Normalized_ast.Label { name = "g"; origin };

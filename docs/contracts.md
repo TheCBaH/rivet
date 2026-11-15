@@ -121,11 +121,11 @@ section <name> <perms> align=<n>
   bytes <hex-run> [<form-id>] <fixup>…
   relax
     <hex-run> [<form-id>] <fixup>…
-  align <n>
+  align <n> [fill <byte>] [max <n>]
   zero <n>
   label <name>
   size <name> = <expr>
-<visibility> <name> <sym-kind> in <section> [size=<expr>]
+<binding> <name> <sym-kind> in <section> [visibility=<v>] [size=<expr>]
 declared <name> (not allocated)
 ```
 
@@ -371,6 +371,36 @@ Full parenthesization rather than minimal is chosen because minimal
 parenthesization has to encode GAS's precedence table into the printer, and then
 a bug in the table is invisible in the dump that would otherwise reveal it.
 
+### 1.9 Constant expression semantics
+
+Constant folding is **arbitrary precision** (design.md §4.3), not GNU as's 64-bit arithmetic. Every
+operator works on unbounded integers; the only limits are a shift count of 0 to 4096 and the
+resource budget of 65,536 bits per operand or result (`expr.resource`, `Expr.set_resource_limit`).
+A value is range-checked only where it meets a field: a data directive, an immediate, a fixup
+(`lower.data`, `bind.fixup-range`). So `.quad ((1 << 128) >> 128)` is 1 and `.quad (1 << 64) - 1`
+is accepted, where GNU as wraps modulo 2^64 at every step.
+
+This differs from GNU as in measured ways (binutils 2.44, all six targets alike). Each is pinned in
+the gas-xref directive corpus (`fixtures/gas-xref/directives`, the `diff-*` cases, whose transcript in
+`test/xref/test_xref.ml` shows both sides, so a change in either assembler is noticed):
+
+| Input | GNU as | Rivet |
+|---|---|---|
+| `.quad -16 >> 2` | `fcffffffffffff3f` (logical shift) | `fcffffffffffffff` (arithmetic shift) |
+| `.quad -1 >> 63` | `1` | `-1` |
+| `.quad 0xffffffffffffffff + 1` | eight zero bytes (wraps) | rejected: the value does not fit 64 bits |
+| `.quad 0 - 0x8000000000000001` | `ffffffffffffff7f` (wraps) | rejected: does not fit 64 bits |
+| `.quad 1 << 64` | warning, zero | rejected: does not fit 64 bits |
+| `.quad ((1 << 70) >> 68)` | warnings, zero | `4` |
+| `.byte 0x1234` | warning, `34` | rejected (`lower.data`) |
+
+Agreement holds wherever no intermediate leaves the signed or unsigned 64-bit range: `/` and `%`
+truncate toward zero, `<<` below 64, `&`, `|`, `^` and `~` match (the `expr-division` and
+`expr-wide-agree` cases). A GNU-compatible 64-bit mode would be a separate evaluation mode selected
+by a target or dialect; it is not built, because the gcc corpus shows no need (all `-O0` to `-O3`
+fixtures assemble, and the `-O2` and `-Os` ones without relocations match GNU as byte for byte). Comparison operators and character constants are syntax gaps, not
+semantics, and are not supported.
+
 ---
 
 ## 2. The `form_id` scheme
@@ -479,15 +509,18 @@ Four categories, and the category decides what happens:
 | `.data` | ● | ● | ● | ● | ● | ● | semantic | `Section {name = ".data"; perms = rw-}` |
 | `.section <n>,"<f>",<t>` | ● | ● | ● | ● | ● | ● | declared | `Declared_section` when unallocated; `Section {perms; nobits}` when allocatable. `perms` come from `a`/`w`/`x` in the flag string, from the name (`.text` r-x, `.rodata*` r--, else rw-) only when there are no flags. `nobits` is set by a `@nobits`/`%nobits` type, or by a `.bss`/`.tbss` name (or `.bss.*`/`.tbss.*`) when no type is written |
 | `.bss` | ● | ● | ● | ● | ● | ● | semantic | `Section {name = ".bss"; perms = rw-; nobits = true}` |
-| `.align <n>` | ● | ● | ● | ● | ● | ● | semantic | `Align {boundary = n}` — **bytes** on x86, `2^n` on ARM, AArch64, RISC-V |
-| `.balign <n>` | | | ● | ● | ● | ● | semantic | `Align {boundary = n}` — **bytes** |
-| `.p2align <e>` | ● | ● | ● | ● | ● | ● | semantic | `Align {boundary = 2^e}` — **exponent**, `0 ≤ e ≤ 29`; fill and max-skip operands rejected |
-| `.globl <s>` | ● | ● | ● | ● | ● | ● | semantic | `Global {name = s}` |
-| `.local <s>` | ● | ● | ● | ● | ● | ● | semantic | `Local {name = s}` |
-| `.weak <s>` | ● | ● | ● | ● | ● | ● | semantic | `Weak {name = s}` |
+| `.align <n>[,<fill>[,<max>]]` | ● | ● | ● | ● | ● | ● | semantic | `Align {boundary = n; fill; max_skip}` — **bytes** on x86, `2^n` on ARM, AArch64, RISC-V. `fill` is the padding byte (default: the target's no-op in code, zero elsewhere); when more than `max` bytes would be needed (`max` > 0) no padding is emitted, though the section alignment is still raised. Either operand may be empty (`.p2align 4,,10`) |
+| `.balign <n>[,<fill>[,<max>]]` | ● | ● | ● | ● | ● | ● | semantic | `Align {boundary = n; fill; max_skip}` — **bytes** |
+| `.p2align <e>[,<fill>[,<max>]]` | ● | ● | ● | ● | ● | ● | semantic | `Align {boundary = 2^e; fill; max_skip}` — **exponent**, `0 ≤ e ≤ 29` |
+| `.globl <s>[, <s>…]` | ● | ● | ● | ● | ● | ● | semantic | one `Global {name = s}` per symbol |
+| `.local <s>[, <s>…]` | ● | ● | ● | ● | ● | ● | semantic | one `Local {name = s}` per symbol |
+| `.weak <s>[, <s>…]` | ● | ● | ● | ● | ● | ● | semantic | one `Weak {name = s}` per symbol |
+| `.hidden`, `.protected`, `.internal <s>[, <s>…]` | ● | ● | ● | ● | ● | ● | semantic | one `Visibility {name; visibility}` per symbol; recorded on the symbol and printed in the lowered dump |
+| `.set <s>, <expr>`, `.equ`, `<s> = <expr>` | ● | ● | ● | ● | ● | ● | semantic | consumed before the target sees an operand: the expression must fold to a constant (using the symbols assigned so far) and every later use of `s` reads that value. A right-hand side naming a label or `.`, a label with the same name, and `.globl`/`.weak`/`.type`/`.hidden` on the name are errors (`simplify.assignment`): an absolute symbol is not emitted |
+| `.uleb128`, `.sleb128 <expr>[, …]` | ● | ● | ● | ● | ● | ● | semantic | `Ascii {bytes}` of the encodings; constants only (unsigned 0 to 2^64-1, signed 64-bit). GNU as for RISC-V accepts one value per directive; here a list is accepted everywhere |
+| `.pushsection <n>,"<f>",<t>`, `.popsection`, `.previous` | ● | ● | ● | ● | ● | ● | semantic | `Push_section`, `Pop_section`, `Previous_section`: the section stack and the previous-section swap; popping an empty stack is `lower.section-stack` |
 | `.comm <s>, <size>[, <align>]` | ● | ● | ● | ● | ● | ● | semantic | `Common {name; size; align}`; `align` is a power of two (GNU as stores a raw value for others). The merged `.bss` takes the largest `align` as its own |
-| `.zero <n>` | ● | ● | ● | ● | ● | ● | semantic | `Zero {length = n}` |
-| `.space <n>` | ● | ● | ● | ● | ● | ● | semantic | `Zero {length = n}` — the two-argument fill-byte form is rejected |
+| `.zero <n>`, `.space <n>[, <fill>]`, `.skip` | ● | ● | ● | ● | ● | ● | semantic | `n` is a constant expression. `Zero {length = n}`, or with a nonzero fill `Ascii` of that many bytes (at most 16 MiB) |
 | `.type <s>, @function` | ● | ● | | ● | ● | ● | semantic | `Sym_type {kind = Function}` |
 | `.type <s>, %function` | | | ● | | | | semantic | `Sym_type {kind = Function}` |
 | `.size <s>, <expr>` | ● | ● | ● | ● | ● | ● | semantic | `Sym_size {name; size}` |
@@ -940,6 +973,27 @@ instruction**, not per slice: `adrp` and `ldr :lo12:` are two records at two
 offsets matching two fixups, and §5.2's slices live *within* one record.
 
 ---
+
+### 5.8 Branches to an undefined weak symbol
+
+`bind_image` resolves an undefined weak symbol to address 0 and then range-checks a PC-relative
+fixup like any other. GNU ld (binutils 2.44, probed with `scripts/ld-weak-probe.sh`, text at the
+stated address) treats a branch to such a symbol specially on some targets:
+
+| Target, instruction | GNU ld | Rivet |
+|---|---|---|
+| x86-32 and x86-64, `call`/`jmp` | rel32 to address 0; `relocation truncated to fit` when text is beyond 2 GiB | the same, bytes and error |
+| AArch64, `bl`/`b` | replaced by `nop` | branch to 0 if it is within 128 MiB, else `branch target is out of range` |
+| AArch64, `cbz`/`tbz`/`b.cond` | branch to itself (offset 0) | branch to 0 if within range, else out of range |
+| ARM, `bl`/`b`/`b<cond>` | replaced by `nop` (`nopeq` for a condition) | branch to 0 if within 32 MiB, else out of range |
+| RISC-V, `call` | `auipc` with 0 and a `jalr` through `x0`: a jump to 0 at any text address | `auipc`/`jalr` pair that reaches 0 (different bytes, same target) within 2 GiB |
+| RISC-V, `j` | `jal` to 0; `relocation truncated to fit` beyond 1 MiB | the same, bytes and error |
+
+The AArch64 and ARM rows are a known difference, not yet implemented: reproducing them needs a
+per-target rewrite of the whole instruction to a no-op (and, for AArch64 conditional branches, to a
+self-branch) at bind time, which the erased image layer cannot do without a new target hook
+(`ENCODE`). `test/cram/weak_undefined_branch.t` pins what Rivet does today, so a change is noticed.
+GNU ld's `BLX` handling for ARM is not modelled either (it produces an instruction that is not a no-op).
 
 ## 6. Feature configuration
 

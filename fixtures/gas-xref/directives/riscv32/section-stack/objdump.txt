@@ -1,0 +1,6 @@
+
+
+Disassembly of section .text:
+
+00000000 <.text>:
+   0:	05040301          	.word	0x05040301

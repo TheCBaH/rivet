@@ -44,7 +44,12 @@ type 'k fragment =
       fixups : 'k fixup list;
       origin : Foundation.Origin.t;
     }
-  | Align of { boundary : int; origin : Foundation.Origin.t }
+  | Align of {
+      boundary : int;
+      fill : int option;
+      max_skip : int option;
+      origin : Foundation.Origin.t;
+    }
   | Relax of { alts : 'k encoded_form list; origin : Foundation.Origin.t }
   | Zero of { length : int; origin : Foundation.Origin.t }
   | Label_def of { name : string; origin : Foundation.Origin.t }
@@ -56,7 +61,7 @@ val section_kind_name : section_kind -> string
 
 type section = { sec_name : string; perms : Perms.t; alignment : int; kind : section_kind }
 type 'k section_content = { sec : section; fragments : 'k fragment list }
-type visibility = Default | Hidden | Protected | Internal
+type visibility = Directive.visibility = Default | Hidden | Protected | Internal
 
 val visibility_name : visibility -> string
 

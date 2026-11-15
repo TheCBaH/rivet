@@ -1,0 +1,34 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <.text>:
+   0:	00 01                	add    %al,(%rcx)
+   2:	7f 80                	jg     0xffffffffffffff84
+   4:	01 e5                	add    %esp,%ebp
+   6:	8e 26                	mov    (%rsi),%fs
+   8:	ff                   	(bad)
+   9:	ff                   	(bad)
+   a:	ff                   	(bad)
+   b:	ff                   	(bad)
+   c:	ff                   	(bad)
+   d:	ff                   	(bad)
+   e:	ff                   	(bad)
+   f:	ff                   	(bad)
+  10:	ff 01                	incl   (%rcx)
+  12:	00 7f 3f             	add    %bh,0x3f(%rdi)
+  15:	c0 00 40             	rolb   $0x40,(%rax)
+  18:	bf 7f c0 bb 78       	mov    $0x78bbc07f,%edi
+  1d:	ff                   	(bad)
+  1e:	ff                   	(bad)
+  1f:	ff                   	(bad)
+  20:	ff                   	(bad)
+  21:	ff                   	(bad)
+  22:	ff                   	(bad)
+  23:	ff                   	(bad)
+  24:	ff                   	(bad)
+  25:	ff 00                	incl   (%rax)
+  27:	80 80 80 80 80 80 80 	addb   $0x80,-0x7f7f7f80(%rax)
+  2e:	80                   	.byte 0x80
+  2f:	80 7f 17 00          	cmpb   $0x0,0x17(%rdi)
+	...

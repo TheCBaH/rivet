@@ -1,0 +1,13 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <.text>:
+   0:	fc                   	cld
+   1:	ff                   	(bad)
+   2:	ff                   	(bad)
+   3:	ff                   	(bad)
+   4:	ff                   	(bad)
+   5:	ff                   	(bad)
+   6:	ff                   	(bad)
+   7:	3f                   	(bad)

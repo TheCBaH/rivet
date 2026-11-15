@@ -1,0 +1,6 @@
+
+
+Disassembly of section .text:
+
+00000000 <.text>:
+   0:	05040301 	streq	r0, [r4, #-769]	@ 0xfffffcff

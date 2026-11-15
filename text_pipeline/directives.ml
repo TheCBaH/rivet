@@ -92,6 +92,7 @@ let is_metadata name =
 
 type outcome =
   | Normalized of Directive.t
+  | Normalized_many of Directive.t list  (** one directive naming several symbols *)
   | Dropped  (** metadata: consumed, understood, and deliberately discarded *)
   | Unknown
 
@@ -119,14 +120,67 @@ let pp_rejection ppf r =
 let reject ?code ~pos message = Err.fail ~pos ~pp_error:pp_rejection { code; message; reasons = [] }
 let reject_reasons ?code message reasons = { code; message; reasons }
 
-let normalize ~data_widths ~align_unit ~name ~(arguments : Token.slice list) =
-  let one () = match arguments with [ a ] -> Some (text_of a) | _ -> None in
-  let int_arg () =
-    match arguments with
-    | [ a ] -> (
-        match List.map Token.kind a with [ Token.Int v ] -> Bigint.to_int_opt v | _ -> None)
+(* A constant integer argument: any expression that folds without a symbol. *)
+let constant (slice : Token.slice) =
+  match Parse_lines.parse_expression slice with
+  | Error _ -> None
+  | Ok e -> ( match Expr.absolute Expr.no_env e with Ok v -> Some v | Error _ -> None)
+
+let constant_int slice = Option.bind (constant slice) Bigint.to_int_opt
+
+(* The symbols a binding or visibility directive names: one identifier per argument. *)
+let symbol_names arguments =
+  let name = function
+    | [ t ] -> ( match Token.kind t with Token.Ident n | Token.Directive n -> Some n | _ -> None)
     | _ -> None
   in
+  let names = List.map name arguments in
+  if arguments <> [] && List.for_all Option.is_some names then Some (List.map Option.get names)
+  else None
+
+let uleb128 v =
+  let b = Buffer.create 10 in
+  let rec go v =
+    let byte = Int64.to_int (Int64.logand v 0x7fL) in
+    let rest = Int64.shift_right_logical v 7 in
+    if rest = 0L then Buffer.add_char b (Char.chr byte)
+    else (
+      Buffer.add_char b (Char.chr (byte lor 0x80));
+      go rest)
+  in
+  go v;
+  Buffer.contents b
+
+let sleb128 v =
+  let b = Buffer.create 10 in
+  let rec go v =
+    let byte = Int64.to_int (Int64.logand v 0x7fL) in
+    let rest = Int64.shift_right v 7 in
+    if (rest = 0L && byte land 0x40 = 0) || (rest = -1L && byte land 0x40 <> 0) then
+      Buffer.add_char b (Char.chr byte)
+    else (
+      Buffer.add_char b (Char.chr (byte lor 0x80));
+      go rest)
+  in
+  go v;
+  Buffer.contents b
+
+(* The most a filled [.space] may reserve as real bytes. *)
+let max_filled_space = 1 lsl 24
+
+(* A trailing comma leaves an empty last slot, which GNU as ignores everywhere but in the
+   alignment directives, where [.p2align 4,] (a zero fill) and [.p2align 4,,] (the default
+   fill) differ. *)
+let rec drop_trailing_empty = function
+  | [] -> []
+  | l -> ( match List.rev l with [] :: rest -> drop_trailing_empty (List.rev rest) | _ -> l)
+
+let arguments_of ~name arguments =
+  match name with
+  | ".align" | ".balign" | ".p2align" -> arguments
+  | _ -> drop_trailing_empty arguments
+
+let normalize ~data_widths ~align_unit ~name ~(arguments : Token.slice list) =
   match name with
   | _ when is_metadata name -> Ok Dropped
   (* Asked before this table rather than after it, and by width rather than by
@@ -184,65 +238,130 @@ let normalize ~data_widths ~align_unit ~name ~(arguments : Token.slice list) =
       | Some (n, true, nobits, perms) ->
           Ok (Normalized (Directive.Section { name = n; perms; nobits }))
       | Some (n, false, _, _) -> Ok (Normalized (Directive.Declared_section { name = n })))
-  (* M3 §6: reservation-only, single-argument form. A fill byte
-     ([.space size,fill]) is rejected explicitly below rather than silently
-     ignored, since ignoring it would make [.space 4,1] mean something
-     different from what it says. *)
-  | ".zero" | ".space" -> (
-      match int_arg () with
-      | Some n when n >= 0 -> Ok (Normalized (Directive.Zero { length = n }))
-      | Some _ -> reject ~pos:__POS__ (name ^ " needs a non-negative length")
-      | None -> (
-          match arguments with
-          | [ _; _ ] -> reject ~pos:__POS__ (name ^ ": a fill-byte argument is not supported")
-          | _ -> reject ~pos:__POS__ (name ^ " needs exactly one integer argument")))
+  (* [.zero n] and [.space n[, fill]] ([.skip] is GNU's third spelling): [n] is a constant
+     expression. A zero or absent fill is a reservation, which the image layer makes real
+     bytes or pure extent according to the section's kind; any other fill is real bytes. *)
+  | ".zero" | ".space" | ".skip" -> (
+      let size = match arguments with s :: _ -> constant_int s | [] -> None in
+      let fill =
+        match arguments with
+        | [ _ ] | [ _; [] ] -> Some 0
+        | [ _; f ] -> Option.map (fun v -> v land 0xff) (constant_int f)
+        | _ -> None
+      in
+      match (arguments, size, fill) with
+      | ([ _ ] | [ _; _ ]), Some n, Some f when n >= 0 ->
+          if f = 0 then Ok (Normalized (Directive.Zero { length = n }))
+          else if n > max_filled_space then
+            reject ~pos:__POS__ (name ^ ": a filled reservation is limited to 16 MiB")
+          else Ok (Normalized (Directive.Ascii { bytes = String.make n (Char.chr f) }))
+      | ([ _ ] | [ _; _ ]), Some _, Some _ ->
+          reject ~pos:__POS__ (name ^ " needs a non-negative length")
+      | _ -> reject ~pos:__POS__ (name ^ " needs a constant length and an optional constant fill"))
   (* [.balign n] is a byte count; [.align n] is a byte count or an exponent according to the
-     dialect. Either way the boundary is a power of two, as GNU as requires, and 0 is accepted:
-     [.balign 0] and a byte-count [.align 0] pad nothing, and an exponent-unit [.align 0] stands
-     for [zero_exponent]. *)
-  | ".align" | ".balign" -> (
+     dialect; [.p2align n] is always an exponent, capped at 29 (the largest whose power of two is
+     a positive [int] on every build, 31-bit ones included), so read as a byte count
+     [.p2align 4] would be a valid image at wrong addresses. Either way the boundary is a power
+     of two, as GNU as requires, and 0 is accepted: [.balign 0] and a byte-count [.align 0] pad
+     nothing, and an exponent-unit [.align 0] stands for [zero_exponent].
+
+     The optional second operand is the fill byte and the third a limit: when more bytes than
+     that would be needed the padding is skipped (0 means no limit, as in GNU as). Either may
+     be left empty ([.p2align 4,,10]). *)
+  | ".align" | ".balign" | ".p2align" -> (
       let power_of_two n = n land (n - 1) = 0 in
-      match int_arg () with
-      | Some n when n >= 0 -> (
+      let operand = function [] -> Some None | s -> Option.map Option.some (constant_int s) in
+      let fill, max_skip, shape_ok =
+        match arguments with
+        | [ _ ] -> (Some None, Some None, true)
+        (* GNU as: a comma with nothing after it asks for a zero fill, unlike an empty fill
+           followed by a maximum, which leaves the default. *)
+        | [ _; [] ] -> (Some (Some 0), Some None, true)
+        | [ _; f ] -> (operand f, Some None, true)
+        | [ _; f; m ] -> (operand f, operand m, true)
+        | _ -> (None, None, false)
+      in
+      match (shape_ok, match arguments with n :: _ -> constant_int n | [] -> None) with
+      | true, Some n when n >= 0 -> (
           let boundary =
             match (name, align_unit) with
+            | ".p2align", _ -> if n > 29 then None else Some (1 lsl n)
             | ".align", Directive.Exponent { zero_exponent } ->
                 if n > 29 then None else Some (1 lsl if n = 0 then zero_exponent else n)
             | _ -> if n = 0 then Some 1 else if power_of_two n then Some n else None
           in
-          match boundary with
-          | Some boundary -> Ok (Normalized (Directive.Align { boundary }))
-          | None -> reject ~pos:__POS__ (name ^ ": the alignment is not a power of two"))
-      | _ -> reject ~pos:__POS__ (name ^ " needs a non-negative integer argument"))
-  (* [.p2align n] aligns to [2^n] bytes: its argument is an exponent, which is
-     why it is normalized here to the byte count [Align] carries rather than
-     sharing [.balign]'s row - read as a byte count, [.p2align 4] would align
-     to four bytes instead of sixteen, a valid image at wrong addresses. The
-     exponent is capped at 29, the largest whose power of two is a positive
-     [int] on every build this project supports (31-bit on linux/i386 and
-     linux/arm/v7). GAS's optional fill and max-skip operands are rejected
-     rather than ignored, since ignoring them would change what they say. *)
-  | ".p2align" -> (
-      match int_arg () with
-      | Some n when n >= 0 && n <= 29 -> Ok (Normalized (Directive.Align { boundary = 1 lsl n }))
-      | Some _ -> reject ~pos:__POS__ ".p2align needs an exponent from 0 to 29"
-      | None -> (
-          match arguments with
-          | _ :: _ :: _ ->
-              reject ~pos:__POS__ ".p2align: fill and max-skip arguments are not supported"
-          | _ -> reject ~pos:__POS__ ".p2align needs exactly one integer argument"))
-  | ".globl" | ".global" -> (
-      match one () with
-      | Some n -> Ok (Normalized (Directive.Global { name = n }))
-      | None -> reject ~pos:__POS__ (name ^ " needs exactly one symbol"))
-  | ".weak" -> (
-      match one () with
-      | Some n -> Ok (Normalized (Directive.Weak { name = n }))
-      | None -> reject ~pos:__POS__ (name ^ " needs exactly one symbol"))
-  | ".local" -> (
-      match one () with
-      | Some n -> Ok (Normalized (Directive.Local { name = n }))
-      | None -> reject ~pos:__POS__ (name ^ " needs exactly one symbol"))
+          match (boundary, fill, max_skip) with
+          | Some boundary, Some fill, Some max_skip -> (
+              match max_skip with
+              | Some m when m < 0 -> reject ~pos:__POS__ (name ^ ": the maximum skip is negative")
+              | _ ->
+                  let fill = Option.map (fun f -> f land 0xff) fill in
+                  Ok (Normalized (Directive.Align { boundary; fill; max_skip })))
+          | None, _, _ ->
+              reject ~pos:__POS__
+                (if name = ".p2align" then ".p2align needs an exponent from 0 to 29"
+                 else name ^ ": the alignment is not a power of two")
+          | _ -> reject ~pos:__POS__ (name ^ ": the fill and maximum skip must be constants"))
+      | false, _ ->
+          reject ~pos:__POS__
+            (name ^ " takes an alignment, an optional fill and an optional maximum skip")
+      | _ -> reject ~pos:__POS__ (name ^ " needs a non-negative constant alignment"))
+  | ".globl" | ".global" | ".weak" | ".local" -> (
+      match symbol_names arguments with
+      | Some names ->
+          let mk n =
+            match name with
+            | ".weak" -> Directive.Weak { name = n }
+            | ".local" -> Directive.Local { name = n }
+            | _ -> Directive.Global { name = n }
+          in
+          Ok (Normalized_many (List.map mk names))
+      | None -> reject ~pos:__POS__ (name ^ " needs one or more symbols"))
+  | ".hidden" | ".protected" | ".internal" -> (
+      let visibility =
+        match name with
+        | ".hidden" -> Directive.Hidden
+        | ".protected" -> Directive.Protected
+        | _ -> Directive.Internal
+      in
+      match symbol_names arguments with
+      | Some names ->
+          Ok
+            (Normalized_many
+               (List.map (fun n -> Directive.Visibility { name = n; visibility }) names))
+      | None -> reject ~pos:__POS__ (name ^ " needs one or more symbols"))
+  | ".uleb128" | ".sleb128" -> (
+      let signed = name = ".sleb128" in
+      let encode slice =
+        match constant slice with
+        | None -> None
+        | Some v ->
+            if signed then Option.map sleb128 (Bigint.to_int64_opt v)
+            else if Bigint.sign v < 0 then None
+            else Option.map uleb128 (Bigint.to_uint64_opt v)
+      in
+      match arguments with
+      | [] -> reject ~pos:__POS__ (name ^ " needs at least one value")
+      | args ->
+          let encoded = List.map encode args in
+          if List.for_all Option.is_some encoded then
+            Ok
+              (Normalized
+                 (Directive.Ascii { bytes = String.concat "" (List.map Option.get encoded) }))
+          else
+            reject ~pos:__POS__
+              (name ^ ": every value must be a constant"
+              ^ if signed then " that fits 64 bits" else " from 0 to 2^64-1"))
+  | ".pushsection" -> (
+      match section_of_args arguments with
+      | None -> reject ~pos:__POS__ "a .pushsection directive needs a name"
+      | Some (n, true, nobits, perms) ->
+          Ok (Normalized (Directive.Push_section (Directive.Section { name = n; perms; nobits })))
+      | Some (n, false, _, _) ->
+          Ok (Normalized (Directive.Push_section (Directive.Declared_section { name = n }))))
+  | ".popsection" when arguments = [] -> Ok (Normalized Directive.Pop_section)
+  | ".previous" when arguments = [] -> Ok (Normalized Directive.Previous_section)
+  | ".popsection" | ".previous" -> reject ~pos:__POS__ (name ^ " takes no arguments")
   | ".comm" -> (
       let int_of_slice slice =
         match List.map Token.kind slice with [ Token.Int v ] -> Bigint.to_int_opt v | _ -> None

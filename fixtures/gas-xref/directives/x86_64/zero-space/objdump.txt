@@ -1,0 +1,15 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <.text>:
+   0:	00 00                	add    %al,(%rax)
+   2:	00 00                	add    %al,(%rax)
+   4:	00 ab ab ab ab ab    	add    %ch,-0x54545455(%rbx)
+   a:	ab                   	stos   %eax,%es:(%rdi)
+   b:	ab                   	stos   %eax,%es:(%rdi)
+   c:	ab                   	stos   %eax,%es:(%rdi)
+   d:	00 00                	add    %al,(%rax)
+   f:	00 07                	add    %al,(%rdi)
+  11:	07                   	(bad)
+  12:	01 00                	add    %eax,(%rax)

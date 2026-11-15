@@ -1,0 +1,8 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <.text>:
+   0:	34          	.byte	0x34
+   1:	Address 0x1 is out of bounds.
+

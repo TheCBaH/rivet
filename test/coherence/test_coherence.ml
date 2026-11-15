@@ -52,7 +52,7 @@ let direct_normalized : T.Instruction.t Normalized_ast.module_ =
     items =
       [
         dir (Directive.Section { name = ".text"; perms = Perms.rx; nobits = false });
-        dir (Directive.Align { boundary = 4 });
+        dir (Directive.Align { boundary = 4; fill = None; max_skip = None });
         dir (Directive.Global { name = "asm_test_entry" });
         Normalized_ast.Label { name = "asm_test_entry"; origin };
         insn
@@ -188,7 +188,7 @@ let direct_lowered : T.fixup_kind Lowered_ast.module_ =
             };
           fragments =
             [
-              Lowered_ast.Align { boundary = 4; origin };
+              Lowered_ast.Align { boundary = 4; fill = None; max_skip = None; origin };
               Lowered_ast.Label_def { name = "asm_test_entry"; origin };
               frag
                 (T.Lowered.Add_imm

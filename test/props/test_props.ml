@@ -223,7 +223,7 @@ let module_of s =
                    fixups = [];
                    origin;
                  };
-               Lowered_ast.Align { boundary = s.align; origin };
+               Lowered_ast.Align { boundary = s.align; fill = None; max_skip = None; origin };
              ])
          s.hops)
   in

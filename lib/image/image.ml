@@ -419,12 +419,16 @@ type selection = int array
 
 let alt_bytes (a : 'k Lowered_ast.encoded_form) = String.length a.Lowered_ast.bytes
 
+let align_pad at boundary max_skip =
+  let pad = align_up at boundary - at in
+  match max_skip with Some m when m > 0 && pad > m -> 0 | _ -> pad
+
 let fragment_size (sel : selection) i frag at =
   match frag with
   | Lowered_ast.Bytes { bytes; _ } -> String.length bytes
   | Lowered_ast.Relax { alts; _ } -> alt_bytes (List.nth alts sel.(i))
   | Lowered_ast.Zero { length; _ } -> length
-  | Lowered_ast.Align { boundary; _ } -> align_up at boundary - at
+  | Lowered_ast.Align { boundary; max_skip; _ } -> align_pad at boundary max_skip
   | Lowered_ast.Label_def _ | Lowered_ast.Set_size _ -> 0
 
 (* Offsets of every fragment and every label under one selection. *)
@@ -614,21 +618,23 @@ let layout_section ~evaluate ~align_fill (sc : 'k Lowered_ast.section_content) =
                 | Some true | None -> ());
                 emit_bytes ~frag_off ~form:(Some a.Lowered_ast.form) a.Lowered_ast.bytes
                   a.Lowered_ast.fixups origin)
-      | Lowered_ast.Align { boundary; origin } ->
+      | Lowered_ast.Align { boundary; fill; max_skip; origin } ->
           (* NOBITS: [scan_offsets] already folded this padding into every
              later fragment's [frag_off] - nothing to write. *)
           if not nobits then begin
-            let target = align_up (Buffer.length buf) boundary in
-            let pad = target - Buffer.length buf in
+            let pad = align_pad (Buffer.length buf) boundary max_skip in
             (* The padding is asked for at the one gap size that occurs. A
                shorter pattern repeated would be the same number of bytes and
                a different program: x86 pads with a single no-op sized for the
                gap, so ten bytes is one ten-byte instruction and not two nops
                that add up. *)
             if pad > 0 then
-              match align_fill ~executable pad with
-              | Some b when String.length b = pad -> Buffer.add_string buf b
-              | _ -> errors := diag ~origin (`Align_fill { pad; boundary }) :: !errors
+              match fill with
+              | Some byte -> Buffer.add_string buf (String.make pad (Char.chr (byte land 0xff)))
+              | None -> (
+                  match align_fill ~executable pad with
+                  | Some b when String.length b = pad -> Buffer.add_string buf b
+                  | _ -> errors := diag ~origin (`Align_fill { pad; boundary }) :: !errors)
           end
       | Lowered_ast.Zero { length; _ } ->
           if not nobits then Buffer.add_string buf (String.make length '\000')
@@ -816,7 +822,8 @@ let resolve_commons ~(fail : ?origin:Origin.t -> error -> unit)
           List.concat_map
             (fun (name, size, align) ->
               [
-                Lowered_ast.Align { boundary = align; origin = common_origin };
+                Lowered_ast.Align
+                  { boundary = align; fill = None; max_skip = None; origin = common_origin };
                 Lowered_ast.Label_def { name; origin = common_origin };
                 Lowered_ast.Zero { length = size; origin = common_origin };
               ])

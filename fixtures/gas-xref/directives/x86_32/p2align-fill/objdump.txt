@@ -1,0 +1,31 @@
+
+
+Disassembly of section .text:
+
+00000000 <.text>:
+   0:	90                   	nop
+   1:	aa                   	stos   %al,%es:(%edi)
+   2:	aa                   	stos   %al,%es:(%edi)
+   3:	aa                   	stos   %al,%es:(%edi)
+   4:	aa                   	stos   %al,%es:(%edi)
+   5:	aa                   	stos   %al,%es:(%edi)
+   6:	aa                   	stos   %al,%es:(%edi)
+   7:	aa                   	stos   %al,%es:(%edi)
+   8:	01 00                	add    %eax,(%eax)
+   a:	00 00                	add    %al,(%eax)
+   c:	90                   	nop
+   d:	55                   	push   %ebp
+   e:	55                   	push   %ebp
+   f:	55                   	push   %ebp
+  10:	02 00                	add    (%eax),%al
+  12:	00 00                	add    %al,(%eax)
+  14:	90                   	nop
+  15:	aa                   	stos   %al,%es:(%edi)
+  16:	aa                   	stos   %al,%es:(%edi)
+  17:	aa                   	stos   %al,%es:(%edi)
+  18:	03 00                	add    (%eax),%eax
+  1a:	00 00                	add    %al,(%eax)
+  1c:	90                   	nop
+  1d:	11 11                	adc    %edx,(%ecx)
+  1f:	11 04 00             	adc    %eax,(%eax,%eax,1)
+	...

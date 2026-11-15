@@ -129,7 +129,7 @@ type 'k fragment =
       (** [form] is the codec's form identifier: the path of alternatives its encoding took. It is
           what the diagnostic disassembler prints and what a differential test names when an
           encoding is right by accident. *)
-  | Align of { boundary : int; origin : Origin.t }
+  | Align of { boundary : int; fill : int option; max_skip : int option; origin : Origin.t }
       (** pad to [boundary] bytes. Layout asks for the padding of the one gap length it needs
           ([Image.plan_image]'s [align_fill]) - not a pattern to repeat, and not a table built here:
           on x86 the padding is a *single no-op instruction* chosen for the gap, GAS fills ten
@@ -167,13 +167,9 @@ type 'k section_content = { sec : section; fragments : 'k fragment list }
    relocation classifier has to decide on visibility *this assembler parsed and
    preserved*. Reading it off the measured object instead would prove something
    about GNU rather than about us. *)
-type visibility = Default | Hidden | Protected | Internal
+type visibility = Directive.visibility = Default | Hidden | Protected | Internal
 
-let visibility_name = function
-  | Default -> "default"
-  | Hidden -> "hidden"
-  | Protected -> "protected"
-  | Internal -> "internal"
+let visibility_name = Directive.visibility_name
 
 (* M3 (docs/design.md §12, "Milestone 3"). Replaces the bare [global : bool]
    M1/M2 carried: a linker with more than one input needs a third state, since
@@ -249,7 +245,10 @@ let pp_fragment ppf = function
           list ~sep:nop (fun ppf a ->
               Fmt.pf ppf "@,  %-24s [%s]%a" (Byte_cursor.to_hex a.bytes) a.form pp_fixups a.fixups))
         alts
-  | Align { boundary; _ } -> Fmt.pf ppf "align %d" boundary
+  | Align { boundary; fill; max_skip; _ } ->
+      Fmt.pf ppf "align %d" boundary;
+      Option.iter (Fmt.pf ppf " fill %d") fill;
+      Option.iter (Fmt.pf ppf " max %d") max_skip
   | Zero { length; _ } -> Fmt.pf ppf "zero %d" length
   | Label_def { name; _ } -> Fmt.pf ppf "label %s" name
   | Set_size { name; size; _ } -> Fmt.pf ppf "size %s = %a" name Expr.pp size
@@ -367,8 +366,9 @@ let validate_relax (alts : 'k encoded_form list) =
       match compatible with Error _ as e -> e | Ok () -> ordered alts)
 
 let pp_symbol ppf s =
-  Fmt.pf ppf "%s %s %s in %s%a" (binding_name s.binding) s.name (Directive.sym_kind_name s.kind)
+  Fmt.pf ppf "%s %s %s in %s%s%a" (binding_name s.binding) s.name (Directive.sym_kind_name s.kind)
     s.section
+    (match s.visibility with Default -> "" | v -> " visibility=" ^ visibility_name v)
     Fmt.(option (any " size=" ++ using Expr.to_string string))
     s.size
 
@@ -554,6 +554,8 @@ let group_sections (m : 'k module_) =
                 Align
                   {
                     boundary = sc.sec.alignment;
+                    fill = None;
+                    max_skip = None;
                     origin = Foundation.Origin.synthesized ~pass:"group-sections" ();
                   }
                 :: !frags;

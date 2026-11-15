@@ -262,10 +262,181 @@ let%expect_test "a value wider than its directive is an error, not a truncation"
     .quad 0xffffffffffffffff     ffffffffffffffff
     .byte 0xffffffffffffffff     x86_64.s:2:1: error[lower.data]: value 18446744073709551615 does not fit in 1 byte |}]
 
-let%expect_test "symbol assignment says it is unsupported" =
+(* {1 .set, .equ and assignment}
+
+   The values are checked against GNU as in the gas-xref directive corpus
+   (set-equ); the cases here are the refusals. *)
+
+let%expect_test "symbol assignment of a constant is accepted" =
   print_endline (first_error ".text\nx = 1\n" "x86_64");
+  [%expect {| accepted |}]
+
+let%expect_test ".set and .equ substitute their constant everywhere" =
+  show_data ".data\n.set a, 3\n.equ b, a*4\nc = b+1\n.byte a, b, c\n.set a, 9\n.byte a\n";
   [%expect
-    {| x86_64.s:2:1: error[simplify.assignment]: symbol assignment (x = ...) is not supported |}]
+    {|
+    x86_32   030c0d09
+    x86_64   030c0d09
+    arm      030c0d09
+    aarch64  030c0d09
+    riscv32  030c0d09
+    riscv64  030c0d09
+    |}]
+
+let%expect_test "a symbolic right-hand side, a label of the name and .globl are refused" =
+  List.iter
+    (fun src -> print_endline (first_error src "x86_64"))
+    [
+      ".text\nf:\n.set x, f\n";
+      ".text\n.set x, . + 4\n";
+      ".text\n.set x, 1\nx:\n";
+      ".text\n.set x, 1\n.globl x\n";
+      ".text\n.set x\n";
+    ];
+  [%expect
+    {|
+    x86_64.s:3:1: error[simplify.assignment]: x: only a constant expression is supported (no labels or '.')
+    x86_64.s:2:1: error[simplify.assignment]: x: only a constant expression is supported (no labels or '.')
+    x86_64.s:3:1: error[simplify.assignment]: x is an absolute symbol set by .set and cannot be a label
+    x86_64.s:3:1: error[simplify.assignment]: .globl x: an absolute symbol set by .set is not emitted
+    x86_64.s:2:1: error[simplify.assignment]: .set needs a symbol name and a value
+    |}]
+
+(* {1 Alignment operands, .space, LEB128, symbol lists, visibility, section stack}
+
+   Bytes for the accepted forms are pinned against GNU as in the gas-xref
+   directive corpus. *)
+
+let%expect_test "alignment operands that are refused" =
+  List.iter
+    (fun src -> print_endline (first_error src "x86_64"))
+    [
+      ".text\n.p2align 4,,-1\n";
+      ".text\n.p2align 4,x\n";
+      ".text\n.p2align 4,1,2,3\n";
+      ".text\n.balign 3,0\n";
+      ".text\n.p2align 4,,\n";
+    ];
+  [%expect
+    {|
+    x86_64.s:2:1: error[simplify.directive]: .p2align: the maximum skip is negative
+    x86_64.s:2:1: error[simplify.directive]: .p2align: the fill and maximum skip must be constants
+    x86_64.s:2:1: error[simplify.directive]: .p2align takes an alignment, an optional fill and an optional maximum skip
+    x86_64.s:2:1: error[simplify.directive]: .balign: the alignment is not a power of two
+    accepted |}]
+
+let%expect_test ".space and .zero take constant expressions and a fill" =
+  show_data ".data\n.zero 2+1\n.space 2*2, 0xab\n.skip 1, 7\n.space 0, 5\n.byte 1\n";
+  [%expect
+    {|
+    x86_32   000000abababab0701
+    x86_64   000000abababab0701
+    arm      000000abababab0701
+    aarch64  000000abababab0701
+    riscv32  000000abababab0701
+    riscv64  000000abababab0701 |}]
+
+let%expect_test "bad .space operands" =
+  List.iter
+    (fun src -> print_endline (first_error src "x86_64"))
+    [
+      ".data\n.space -1\n";
+      ".data\n.space x\n";
+      ".data\n.space 1,2,3\n";
+      ".data\n.space 100000000, 1\n";
+    ];
+  [%expect
+    {|
+    x86_64.s:2:1: error[simplify.directive]: .space needs a non-negative length
+    x86_64.s:2:1: error[simplify.directive]: .space needs a constant length and an optional constant fill
+    x86_64.s:2:1: error[simplify.directive]: .space needs a constant length and an optional constant fill
+    x86_64.s:2:1: error[simplify.directive]: .space: a filled reservation is limited to 16 MiB |}]
+
+let%expect_test ".uleb128 and .sleb128" =
+  show_data ".data\n.uleb128 0, 127, 128, 624485\n.sleb128 -1, 63, 64, -64, -65, -123456\n";
+  [%expect
+    {|
+    x86_32   007f8001e58e267f3fc00040bf7fc0bb78
+    x86_64   007f8001e58e267f3fc00040bf7fc0bb78
+    arm      007f8001e58e267f3fc00040bf7fc0bb78
+    aarch64  007f8001e58e267f3fc00040bf7fc0bb78
+    riscv32  007f8001e58e267f3fc00040bf7fc0bb78
+    riscv64  007f8001e58e267f3fc00040bf7fc0bb78 |}]
+
+let%expect_test "LEB128 operands that are refused" =
+  List.iter
+    (fun src -> print_endline (first_error src "x86_64"))
+    [
+      ".data\n.uleb128 -1\n";
+      ".data\n.uleb128 0x10000000000000000\n";
+      ".data\n.sleb128 0x8000000000000000\n";
+      ".data\n.uleb128 x\n";
+      ".data\n.uleb128\n";
+    ];
+  [%expect
+    {|
+    x86_64.s:2:1: error[simplify.directive]: .uleb128: every value must be a constant from 0 to 2^64-1
+    x86_64.s:2:1: error[simplify.directive]: .uleb128: every value must be a constant from 0 to 2^64-1
+    x86_64.s:2:1: error[simplify.directive]: .sleb128: every value must be a constant that fits 64 bits
+    x86_64.s:2:1: error[simplify.directive]: .uleb128: every value must be a constant from 0 to 2^64-1
+    x86_64.s:2:1: error[simplify.directive]: .uleb128 needs at least one value |}]
+
+let%expect_test ".globl, .weak and .local take lists; visibility is recorded" =
+  (match
+     Driver.Portable.dump "x86_64" ~which:`Lowered_ast ~unit_name:"t"
+       ~text:".text\n.globl a, b\n.weak c\n.hidden a\n.protected b, c\n.internal d\na: b: c: d:\n"
+   with
+  | Ok s -> print_endline s
+  | Error _ -> print_endline "error");
+  [%expect
+    {|
+    lowered t
+    section .text r-x align=1
+      label a
+      label b
+      label c
+      label d
+    global a notype in .text visibility=hidden
+    global b notype in .text visibility=protected
+    weak c notype in .text visibility=protected
+    local d notype in .text visibility=internal |}]
+
+let%expect_test "the section stack" =
+  show_segments
+    ".text\n\
+     .byte 1\n\
+     .pushsection .data,\"aw\"\n\
+     .byte 2\n\
+     .popsection\n\
+     .byte 3\n\
+     .section .rodata,\"a\"\n\
+     .byte 9\n\
+     .previous\n\
+     .byte 4\n\
+     .pushsection .rodata,\"a\"\n\
+     .byte 8\n\
+     .pushsection .data,\"aw\"\n\
+     .byte 7\n\
+     .popsection\n\
+     .byte 6\n\
+     .popsection\n\
+     .byte 5\n";
+  List.iter
+    (fun src -> print_endline (first_error src "x86_64"))
+    [
+      ".text\n.popsection\n";
+      ".text\n.previous\n";
+      ".text\n.pushsection\n";
+      ".text\n.popsection 1\n";
+    ];
+  [%expect
+    {|
+    x86_64: .text r-x a1 01030405+0 .data rw- a1 0207+0 .rodata r-- a1 090806+0
+    aarch64: .text r-x a1 01030405+0 .data rw- a1 0207+0 .rodata r-- a1 090806+0
+    x86_64.s:2:1: error[lower.section-stack]: there is no section to return to
+    x86_64.s:2:1: error[lower.section-stack]: there is no section to return to
+    x86_64.s:2:1: error[simplify.directive]: a .pushsection directive needs a name
+    x86_64.s:2:1: error[simplify.directive]: .popsection takes no arguments |}]
 
 (* {1 Addresses at or above 2^63} *)
 

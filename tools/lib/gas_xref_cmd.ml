@@ -144,6 +144,44 @@ let regen repo =
               (Ok acc) (frontier_sources repo t))
           (Ok 0) Target.all
       in
+      let* directives =
+        (* test/xref/directives/<case>.s runs on every target. A variant replaces it for the targets
+           it names: <case>.x86.s for the two x86 targets (the no-op padding of an alignment needs a
+           real instruction before it; GNU as pads differently after data), <case>.<target>.s for
+           one. A case with no <case>.s runs only where a variant exists. *)
+        let src_dir = Fpath.(Repo.path repo / "test" / "xref" / "directives") in
+        let* files = Tool_fs.files ~root:src_dir ~exclude:(fun _ -> false) in
+        let sources = List.filter (fun f -> Filename.check_suffix f ".s") files in
+        let stem f = Filename.chop_suffix f ".s" in
+        let case_of f =
+          let s = stem f in
+          match String.index_opt s '.' with Some i -> String.sub s 0 i | None -> s
+        in
+        let cases = List.sort_uniq String.compare (List.map case_of sources) in
+        let is_x86 = function Target.X86_32 | Target.X86_64 -> true | _ -> false in
+        List.fold_left
+          (fun acc t ->
+            let* acc = acc in
+            let tools = Gnu_tools.for_target t in
+            List.fold_left
+              (fun acc case ->
+                let* m = acc in
+                let candidates =
+                  (case ^ "." ^ Target.to_string t ^ ".s")
+                  :: ((if is_x86 t then [ case ^ ".x86.s" ] else []) @ [ case ^ ".s" ])
+                in
+                match List.find_opt (fun f -> List.mem f sources) candidates with
+                | None -> Ok m
+                | Some file ->
+                    let dir = Fpath.(root / "directives" / Target.to_string t / case) in
+                    let* () = Tool_fs.mkdir_p dir in
+                    let input = Fpath.(dir / "input.s") in
+                    let* () = Tool_fs.copy ~src:Fpath.(src_dir // v file) ~dst:input in
+                    let* _ = record_gas tools ~dir ~src:input ~include_dir:None in
+                    Ok (m + 1))
+              (Ok acc) cases)
+          (Ok 0) Target.all
+      in
       let* versions =
         List.fold_left
           (fun acc t ->
@@ -186,6 +224,8 @@ let regen repo =
           Fpath.(root / "manifest.txt")
           (Manifest.serialize (Manifest.of_records (List.rev records)))
       in
-      Ok (Printf.sprintf "gas-xref: %d generated cases, %d frontier cases" generated frontier)
+      Ok
+        (Printf.sprintf "gas-xref: %d generated cases, %d frontier cases, %d directive cases"
+           generated frontier directives)
   in
   match step with Error e -> Command.of_error e | Ok line -> Command.ok [ Diagnostic.stdout line ]

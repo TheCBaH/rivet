@@ -1,0 +1,6 @@
+
+
+Disassembly of section .text:
+
+00000000 <.text>:
+   0:	00000034 	andeq	r0, r0, r4, lsr r0

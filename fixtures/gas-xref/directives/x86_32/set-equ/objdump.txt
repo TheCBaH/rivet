@@ -1,0 +1,9 @@
+
+
+Disassembly of section .text:
+
+00000000 <.text>:
+   0:	03 0c 0d 09 19 00 00 	add    0x1909(,%ecx,1),%ecx
+   7:	00 00                	add    %al,(%eax)
+   9:	00 03                	add    %al,(%ebx)
+	...

@@ -51,6 +51,8 @@
 %type <Statement.label> label
 %type <Statement.statement> statement
 %type <Foundation.Span.t * string list> pseudo_prefixes
+%type <Token.slice list> dir_args
+%type <Token.slice list> dir_rest
 %type <Token.slice list> slices
 %type <Token.slice> slice
 %type <Token.slice> slice_tail
@@ -124,11 +126,25 @@ statement:
         { name = (match Token.kind $1 with Token.Ident s -> s | _ -> "");
           value = $3;
           span = Token.span $1 } }
-  | DIRECTIVE slices
+  | DIRECTIVE dir_args
     { Statement.Directive
         { name = (match Token.kind $1 with Token.Directive s -> s | _ -> "");
           arguments = $2;
           span = Token.span $1 } }
+
+(* Directive arguments may leave a slot empty ([.p2align 4,,10]); an empty slot is the empty
+   slice, including after a final comma. *)
+dir_args:
+  | { [] }
+  | slice { [ $1 ] }
+  | slice COMMA dir_rest { $1 :: $3 }
+  | COMMA dir_rest { [] :: $2 }
+
+dir_rest:
+  | { [ [] ] }
+  | slice { [ $1 ] }
+  | slice COMMA dir_rest { $1 :: $3 }
+  | COMMA dir_rest { [] :: $2 }
 
 (* one or more braced pseudo-prefixes, [{evex} {load}]: the first one's span and the words *)
 pseudo_prefixes:

@@ -1,0 +1,8 @@
+
+
+Disassembly of section .text:
+
+00000000 <.text>:
+   0:	090d0c03 	stmdbeq	sp, {r0, r1, sl, fp}
+   4:	00000019 	andeq	r0, r0, r9, lsl r0
+   8:	00030000 	.word	0x00030000

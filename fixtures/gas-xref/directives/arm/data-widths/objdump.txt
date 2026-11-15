@@ -1,0 +1,12 @@
+
+
+Disassembly of section .text:
+
+00000000 <.text>:
+   0:	00030201 	.word	0x00030201
+   4:	00000004 	.word	0x00000004
+   8:	00000005 	.word	0x00000005
+   c:	00000006 	.word	0x00000006
+  10:	00000000 	.word	0x00000000
+  14:	fffeffff 	.word	0xfffeffff
+  18:	0007ffff 	.word	0x0007ffff

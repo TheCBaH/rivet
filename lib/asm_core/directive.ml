@@ -28,6 +28,8 @@ let sym_kind_name = function Function -> "function" | Object -> "object" | Notyp
     for (ARM treats [.align 0] as [.align 2]). *)
 type align_unit = Bytes | Exponent of { zero_exponent : int }
 
+type visibility = Default | Hidden | Protected | Internal
+
 type t =
   | Section of { name : string; perms : Perms.t; nobits : bool }
       (** [nobits] (M3 §6): a plain [bool] rather than [Lowered_ast.section_kind], because
@@ -35,8 +37,11 @@ type t =
           be circular. The driver converts at the point it builds a [Lowered_ast.section]. *)
   | Declared_section of { name : string }
       (** recorded in the module and never allocated; [.note.GNU-stack] is the M1 case *)
-  | Align of { boundary : int }
-      (** always a byte count. [.align 16] on x86 and [.balign 4] on ARM normalize to the same
+  | Align of { boundary : int; fill : int option; max_skip : int option }
+      (** [fill] is the byte value of the padding (GNU's second operand; the padding is the
+          target's no-op in an executable section and zero elsewhere when absent); [max_skip]
+          skips the padding altogether when more than that many bytes would be needed. The
+          section's alignment is raised to [boundary] either way. Always a byte count. [.align 16] on x86 and [.balign 4] on ARM normalize to the same
           constructor with *different values*: the dialect difference is which unit the surface
           syntax denotes, not the value. *)
   | Global of { name : string }
@@ -70,6 +75,13 @@ type t =
           [.space size,fill] is not a case any fixture needs yet. Reservation-only: real,
           initialized NUL bytes in a PROGBITS section, pure logical extent in a NOBITS one - the
           image layer (not this one) decides which, from the section's own kind. *)
+  | Visibility of { name : string; visibility : visibility }
+      (** [.hidden], [.protected], [.internal] *)
+  | Push_section of t
+      (** [.pushsection]: the current section goes on a stack and the [Section] or
+          [Declared_section] it carries becomes current *)
+  | Pop_section  (** [.popsection] *)
+  | Previous_section  (** [.previous]: swap with the section that was current before *)
   | Target_state of { name : string; arguments : string list }
       (** a state directive the target interpreted, with its comma-separated arguments as text *)
   | Cfi of { name : string; argument : string }
@@ -81,11 +93,20 @@ let ascii_values bytes =
   List.init (String.length bytes) (fun i ->
       Expr.Const (Foundation.Bigint.of_int (Char.code bytes.[i])))
 
-let pp ppf = function
+let visibility_name = function
+  | Default -> "default"
+  | Hidden -> "hidden"
+  | Protected -> "protected"
+  | Internal -> "internal"
+
+let rec pp ppf = function
   | Section { name; perms; nobits } ->
       Fmt.pf ppf "section %s %a%s" name Perms.pp perms (if nobits then " nobits" else "")
   | Declared_section { name } -> Fmt.pf ppf "declared-section %s" name
-  | Align { boundary } -> Fmt.pf ppf "align %d" boundary
+  | Align { boundary; fill; max_skip } ->
+      Fmt.pf ppf "align %d" boundary;
+      Option.iter (Fmt.pf ppf " fill %d") fill;
+      Option.iter (Fmt.pf ppf " max %d") max_skip
   | Global { name } -> Fmt.pf ppf "globl %s" name
   | Weak { name } -> Fmt.pf ppf "weak %s" name
   | Local { name } -> Fmt.pf ppf "local %s" name
@@ -97,6 +118,10 @@ let pp ppf = function
   | Ascii { bytes } ->
       Fmt.pf ppf "data 1 %a" Fmt.(list ~sep:(any ", ") Expr.pp) (ascii_values bytes)
   | Zero { length } -> Fmt.pf ppf "zero %d" length
+  | Visibility { name; visibility } -> Fmt.pf ppf "%s %s" (visibility_name visibility) name
+  | Push_section d -> Fmt.pf ppf "push-%a" pp d
+  | Pop_section -> Fmt.string ppf "pop-section"
+  | Previous_section -> Fmt.string ppf "previous-section"
   | Target_state { name; arguments } ->
       Fmt.pf ppf "target-state %s %s" name (String.concat ", " arguments)
   | Cfi { name; argument } -> Fmt.pf ppf "cfi %s %s" name argument

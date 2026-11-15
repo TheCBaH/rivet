@@ -1,0 +1,37 @@
+
+
+Disassembly of section .text:
+
+0000000000000000 <.text>:
+   0:	fd                   	std
+   1:	ff                   	(bad)
+   2:	ff                   	(bad)
+   3:	ff                   	(bad)
+   4:	ff                   	(bad)
+   5:	ff                   	(bad)
+   6:	ff                   	(bad)
+   7:	ff                   	(bad)
+   8:	ff                   	(bad)
+   9:	ff                   	(bad)
+   a:	ff                   	(bad)
+   b:	ff                   	(bad)
+   c:	ff                   	(bad)
+   d:	ff                   	(bad)
+   e:	ff                   	(bad)
+   f:	ff                   	(bad)
+  10:	fd                   	std
+  11:	ff                   	(bad)
+  12:	ff                   	(bad)
+  13:	ff                   	(bad)
+  14:	ff                   	(bad)
+  15:	ff                   	(bad)
+  16:	ff                   	(bad)
+  17:	ff 00                	incl   (%rax)
+  19:	00 00                	add    %al,(%rax)
+  1b:	00 00                	add    %al,(%rax)
+  1d:	00 00                	add    %al,(%rax)
+  1f:	40 00 00             	rex add %al,(%rax)
+  22:	00 00                	add    %al,(%rax)
+  24:	00 00                	add    %al,(%rax)
+  26:	00                   	.byte 0
+  27:	80                   	.byte 0x80

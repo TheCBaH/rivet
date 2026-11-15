@@ -81,6 +81,10 @@ module Make (T : T_intf.TARGET) = struct
         List.iter
           (fun (e : Local_labels.error) -> errors := Local_labels.diagnostic_of_error e :: !errors)
           label_errors;
+        let lines, set_errors = Set_symbols.run lines in
+        List.iter
+          (fun (e : Set_symbols.error) -> errors := Set_symbols.diagnostic_of_error e :: !errors)
+          set_errors;
         let items = ref [] in
         let add i = items := i :: !items in
         List.iter
@@ -182,13 +186,15 @@ module Make (T : T_intf.TARGET) = struct
             | T_intf.Unhandled -> (
                 match
                   Directives.normalize ~data_widths:T.data_widths ~align_unit:T.align_unit ~name
-                    ~arguments
+                    ~arguments:(Directives.arguments_of ~name arguments)
                 with
                 | Ok Directives.Dropped -> ()
                 | Ok (Directives.Normalized d) -> (
                     match fold_directive ~origin d with
                     | Ok d -> add (Normalized_ast.Directive { directive = d; origin })
                     | Error e -> errors := e :: !errors)
+                | Ok (Directives.Normalized_many ds) ->
+                    List.iter (fun d -> add (Normalized_ast.Directive { directive = d; origin })) ds
                 | Ok Directives.Unknown ->
                     errors := diag ~origin (`Unknown_directive name) :: !errors
                 | Error r ->

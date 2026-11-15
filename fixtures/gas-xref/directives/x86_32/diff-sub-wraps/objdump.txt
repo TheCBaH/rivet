@@ -1,0 +1,13 @@
+
+
+Disassembly of section .text:
+
+00000000 <.text>:
+   0:	ff                   	(bad)
+   1:	ff                   	(bad)
+   2:	ff                   	(bad)
+   3:	ff                   	(bad)
+   4:	ff                   	(bad)
+   5:	ff                   	(bad)
+   6:	ff                   	(bad)
+   7:	7f                   	.byte 0x7f

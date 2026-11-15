@@ -4949,7 +4949,7 @@ let host_trampolines (bindings : (string * int64) list) :
   let stub (name, address) =
     [
       dir (D.Section { name = ".text"; perms = Asm_core.Perms.rx; nobits = false });
-      dir (D.Align { boundary = 4 });
+      dir (D.Align { boundary = 4; fill = None; max_skip = None });
       dir (D.Global { name });
       dir (D.Sym_type { name; kind = D.Function });
       N.Label { name; origin };
