@@ -312,7 +312,8 @@ module Mem = struct
   let pp ppf m =
     let off =
       match m.offset with
-      | Imm v -> if Int64.equal v 0L then "" else Printf.sprintf ", #%Ld" v
+      | Imm v ->
+          if Int64.equal v 0L && not (m.pre && m.writeback) then "" else Printf.sprintf ", #%Ld" v
       | Reg_offset { reg; negate; kind = 0; amount = 0 } ->
           Printf.sprintf ", %s%s" (if negate then "-" else "") (Reg.name reg)
       | Reg_offset { reg; negate; kind; amount } ->

@@ -1,0 +1,38 @@
+; Fuzzing (review item R1).
+;
+; Two laws over every registered target, from a fixed seed:
+;
+;   - text: random and mutated assembly text goes through the parser, the
+;     normalizer, lowering and image planning, and the call returns - a result
+;     or diagnostics, never an exception;
+;   - bytes: random bytes go through the canonical disassembler, which returns
+;     too, and whatever it prints must re-assemble to something that prints the
+;     same text again (decode, re-encode, decode is stable).
+;
+; The default run is bounded to a few seconds so it stays inside @runtest on
+; every leg, the emulated 32-bit ones included. RIVET_FUZZ_ITERS scales it,
+; RIVET_FUZZ_SEED changes the seed: `make fuzz` runs a longer one.
+;
+; Native only and outside the three-runtime gate, for test/props' reason.
+
+(executable
+ (name test_fuzz)
+ (modes exe)
+ (libraries
+  qcheck-core
+  qcheck-core.runner
+  driver
+  target_intf
+  image
+  foundation)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(rule
+ (alias runtest)
+ (deps
+  (glob_files_rec %{workspace_root}/fixtures/gas-xref/**))
+ (action
+  (run ./test_fuzz.exe))
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))

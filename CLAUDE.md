@@ -42,6 +42,9 @@ devcontainer.
     `test/cram/bigint_dump.t`); add `--auto-promote` to accept a changed output.
   - `opam exec -- dune build @test/lib/<lib>/runtest` — the unit tests for one
     library under `test/lib/`, which mirrors `lib/`.
+- `make fuzz` — a longer run (`FUZZ_ITERS`, `FUZZ_SEED`) of `test/fuzz`, whose bounded run is part of
+  `@runtest`: random text must never make the pipeline raise, and random bytes must decode to text
+  that re-assembles to a fixed point.
 - Fixtures (checked-in bytes, no toolchain needed): `make fixtures-check`.
   Regenerating them (`fixtures-regen`, `oracle`, or one target's full
   `make fixture-oracle-<target>` / all six via `make fixture-oracle`) needs the

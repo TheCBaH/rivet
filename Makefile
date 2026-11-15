@@ -91,6 +91,14 @@ js-browser: js
 native-exec: submodules
 	RIVET_NATIVE_EXEC=true opam exec -- dune build @native_exec/all @native_exec/runtest @test/trampolines/runtest
 
+# A longer fuzz run than the bounded one inside `dune build @runtest` (test/fuzz): FUZZ_ITERS
+# scales it (the default run is 150), FUZZ_SEED changes the seed. Not part of ci.
+FUZZ_ITERS ?= 5000
+FUZZ_SEED ?= 1
+.PHONY: fuzz
+fuzz:
+	RIVET_FUZZ_ITERS=$(FUZZ_ITERS) RIVET_FUZZ_SEED=$(FUZZ_SEED) opam exec -- dune exec test/fuzz/test_fuzz.exe
+
 # The behavioral tool gate. APT tooling is range-checked rather than
 # digest-pinned, and version numbers alone do not establish compatibility where
 # behaviour matters - so this asks the tools to do the things the project

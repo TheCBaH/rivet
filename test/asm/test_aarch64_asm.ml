@@ -195,7 +195,7 @@ let%expect_test "every builder encodes like its text" =
     all_shapes;
   Printf.printf "%d builder shapes, %d differ\n" !n (List.length !bad);
   List.iter print_endline (List.rev !bad);
-  [%expect {| 305 builder shapes, 0 differ |}]
+  [%expect {| 307 builder shapes, 0 differ |}]
 
 let%expect_test "the bytes read back as text that assembles to them" =
   let bad = ref [] in

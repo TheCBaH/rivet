@@ -754,7 +754,10 @@ let () =
     ~enc:[ addsub true false ]
     ~lower:true
     [ p zzz; p zzz_sh; p spsp_ext; p spsp_i; p spsp_i12 ];
-  entry Opcode.Cmp ~name:"cmp" ~enc:[ addsub true true ] ~lower:true [ p zz; p sp_i; p sp_i12 ];
+  entry Opcode.Cmp ~name:"cmp"
+    ~enc:[ addsub true true ]
+    ~lower:true
+    [ p zz; p zz_sh; p sp_i; p sp_i12 ];
   entry Opcode.Cmn ~name:"cmn" ~enc:[ addsub false true ] ~lower:true [ p sp_i; p sp_i12 ];
   entry Opcode.And ~name:"and"
     ~enc:[ Logical { opc = 0; n = false }; Vlogic { u = 0; sel = 0b00 } ]

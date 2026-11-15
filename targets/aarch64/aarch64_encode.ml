@@ -2227,17 +2227,19 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   | _ -> None)
                 ~decode:(fun (sf, (op, (s, ((), (shift, ((), (rm, (amount, (rn, rd))))))))) ->
                   let width = if Int64.equal sf 1L then 64 else 32 in
-                  Some
-                    (Lowered.Addsub_shift
-                       {
-                         sub = Int64.equal op 1L;
-                         s = Int64.equal s 1L;
-                         rd = { rd with Reg.width };
-                         rn = { rn with Reg.width };
-                         rm = { rm with Reg.width };
-                         shift = Int64.to_int shift;
-                         amount = Int64.to_int amount;
-                       }))
+                  if Int64.to_int amount >= width || Int64.equal shift 3L then None
+                  else
+                    Some
+                      (Lowered.Addsub_shift
+                         {
+                           sub = Int64.equal op 1L;
+                           s = Int64.equal s 1L;
+                           rd = { rd with Reg.width };
+                           rn = { rn with Reg.width };
+                           rm = { rm with Reg.width };
+                           shift = Int64.to_int shift;
+                           amount = Int64.to_int amount;
+                         }))
                 C.(
                   field ~width:1 "sf" ** field ~width:1 "op" ** field ~width:1 "s"
                   ** const ~width:5 0b01011L ** field ~width:2 "shift" ** const ~width:1 0L
@@ -2278,17 +2280,19 @@ let codec : (Lowered.t, fixup_kind) C.t =
                      [add x3, x4, w5, uxtw #2] prints [w5], not [x5], even
                      though [rd]/[rn] are 64-bit. *)
                   let rm_width = if option = 3 || option = 7 then 64 else 32 in
-                  Some
-                    (Lowered.Addsub_extend
-                       {
-                         sub = Int64.equal op 1L;
-                         s = Int64.equal s 1L;
-                         rd = { rd with Reg.width };
-                         rn = { rn with Reg.width };
-                         rm = { rm with Reg.width = rm_width };
-                         option;
-                         imm3 = Int64.to_int imm3;
-                       }))
+                  if Int64.to_int imm3 > 4 then None
+                  else
+                    Some
+                      (Lowered.Addsub_extend
+                         {
+                           sub = Int64.equal op 1L;
+                           s = Int64.equal s 1L;
+                           rd = { rd with Reg.width };
+                           rn = { rn with Reg.width };
+                           rm = { rm with Reg.width = rm_width };
+                           option;
+                           imm3 = Int64.to_int imm3;
+                         }))
                 C.(
                   field ~width:1 "sf" ** field ~width:1 "op" ** field ~width:1 "s"
                   ** const ~width:5 0b01011L ** const ~width:2 0b00L ** const ~width:1 1L
@@ -2599,14 +2603,16 @@ let codec : (Lowered.t, fixup_kind) C.t =
                       let sf = if rd.Reg.width = 64 then 1L else 0L in
                       Some (sf, ((), (sf, (Int64.of_int immr, (Int64.of_int imms, (rn, rd))))))
                   | _ -> None)
-                ~decode:(fun (sf, ((), (_n, (immr, (imms, (rn, rd)))))) ->
+                ~decode:(fun (sf, ((), (n, (immr, (imms, (rn, rd)))))) ->
                   let width = if Int64.equal sf 1L then 64 else 32 in
                   let immr = Int64.to_int immr and imms = Int64.to_int imms in
                   (* Every SBFM word prints as [sbfx] ([imms >= immr]) or [sbfiz] (otherwise),
                      both of which re-parse to it. *)
-                  Some
-                    (Lowered.Sbfm
-                       { rd = { rd with Reg.width }; rn = { rn with Reg.width }; immr; imms }))
+                  if (not (Int64.equal n sf)) || immr >= width || imms >= width then None
+                  else
+                    Some
+                      (Lowered.Sbfm
+                         { rd = { rd with Reg.width }; rn = { rn with Reg.width }; immr; imms }))
                 C.(
                   field ~width:1 "sf" ** const ~width:8 0b00100110L ** field ~width:1 "N"
                   ** field ~width:6 "immr" ** field ~width:6 "imms"
@@ -2619,16 +2625,22 @@ let codec : (Lowered.t, fixup_kind) C.t =
                       let sf = if rd.Reg.width = 64 then 1L else 0L in
                       Some (sf, ((), (sf, (Int64.of_int immr, (Int64.of_int imms, (rn, rd))))))
                   | _ -> None)
-                ~decode:(fun (sf, ((), (_n, (immr, (imms, (rn, rd)))))) ->
+                ~decode:(fun (sf, ((), (n, (immr, (imms, (rn, rd)))))) ->
                   let width = if Int64.equal sf 1L then 64 else 32 in
-                  Some
-                    (Lowered.Ubfm
-                       {
-                         rd = { rd with Reg.width };
-                         rn = { rn with Reg.width };
-                         immr = Int64.to_int immr;
-                         imms = Int64.to_int imms;
-                       }))
+                  if
+                    (not (Int64.equal n sf))
+                    || Int64.to_int immr >= width
+                    || Int64.to_int imms >= width
+                  then None
+                  else
+                    Some
+                      (Lowered.Ubfm
+                         {
+                           rd = { rd with Reg.width };
+                           rn = { rn with Reg.width };
+                           immr = Int64.to_int immr;
+                           imms = Int64.to_int imms;
+                         }))
                 C.(
                   field ~width:1 "sf" ** const ~width:8 0b10100110L ** field ~width:1 "N"
                   ** field ~width:6 "immr" ** field ~width:6 "imms"
@@ -2686,17 +2698,19 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   | _ -> None)
                 ~decode:(fun (sf, (opc, ((), (shift, (n, (rm, (amount, (rn, rd)))))))) ->
                   let width = if Int64.equal sf 1L then 64 else 32 in
-                  Some
-                    (Lowered.Logical_shift
-                       {
-                         opc = Int64.to_int opc;
-                         n = Int64.equal n 1L;
-                         rd = { rd with Reg.width };
-                         rn = { rn with Reg.width };
-                         rm = { rm with Reg.width };
-                         shift = Int64.to_int shift;
-                         amount = Int64.to_int amount;
-                       }))
+                  if Int64.to_int amount >= width then None
+                  else
+                    Some
+                      (Lowered.Logical_shift
+                         {
+                           opc = Int64.to_int opc;
+                           n = Int64.equal n 1L;
+                           rd = { rd with Reg.width };
+                           rn = { rn with Reg.width };
+                           rm = { rm with Reg.width };
+                           shift = Int64.to_int shift;
+                           amount = Int64.to_int amount;
+                         }))
                 C.(
                   field ~width:1 "sf" ** field ~width:2 "opc" ** const ~width:5 0b01010L
                   ** field ~width:2 "shift" ** field ~width:1 "N"
@@ -4054,23 +4068,34 @@ let rec lower_instruction state i =
           | Ok imm, [ Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 } ] ->
               if fits imm then Ok [ make imm true ] else bad `Imm12_field
           | Ok _, _ -> bad `Too_many_operands)
-      | Opcode.Cmp, [ Operand.Reg rn; Operand.Reg rm ] ->
+      | Opcode.Cmp, Operand.Reg rn :: Operand.Reg rm :: rest -> (
           (* There is no compare instruction: a comparison is a subtraction that
          sets the flags and discards its result into the zero register, and
          reading it off [Opcode.Cmp] here is what keeps one encoding. *)
-          Ok
-            [
-              Lowered.Addsub_shift
-                {
-                  sub = true;
-                  s = true;
-                  rd = { Reg.num = 31; width = rn.Reg.width; is_sp = false };
-                  rn;
-                  rm;
-                  shift = 0;
-                  amount = 0;
-                };
-            ]
+          let make shift amount =
+            Ok
+              [
+                Lowered.Addsub_shift
+                  {
+                    sub = true;
+                    s = true;
+                    rd = { Reg.num = 31; width = rn.Reg.width; is_sp = false };
+                    rn;
+                    rm;
+                    shift;
+                    amount;
+                  };
+              ]
+          in
+          match rest with
+          | [] -> make 0 0
+          | [ Operand.Shift { Shift.kind; amount } ] -> (
+              match shift_code kind with
+              | Some shift ->
+                  if amount < 0 || amount >= rn.Reg.width then bad `Shift_amount_too_large
+                  else make shift amount
+              | None -> bad (`Not_a_shifted_register (Shift.name kind)))
+          | _ -> bad `Too_many_operands)
       | ( ((Opcode.And | Opcode.Orr | Opcode.Eor) as op),
           [ Operand.Reg rd; Operand.Reg rn; Operand.Imm v ] ) -> (
           let opc = match op with Opcode.And -> 0 | Opcode.Orr -> 1 | _ -> 2 in

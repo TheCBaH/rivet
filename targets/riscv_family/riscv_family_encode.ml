@@ -3199,6 +3199,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           Ok (instruction Opcode.C_addi [ reg rd; imm imm_value ], "c.addi", 2)
       | 1, 4, _, _ -> (
           match ca_name (funct6, funct2) with
+          | Some ("c.subw" | "c.addw") when xlen = 32 -> Error (diag ~pos:__POS__ `Decode_no_match)
           | Some n -> Ok (instruction (op_exn n) [ reg rd_rs1_c; reg rs2_c ], n, 2)
           | None -> Error (diag ~pos:__POS__ `Decode_no_match))
       | 1, 5, _, _ ->
@@ -3383,12 +3384,18 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                     Printf.sprintf "fence %s,%s" p q )
             | _ -> None)
       in
+      let result =
+        match result with
+        | Some (i, _) when Option.is_some (xlen_gate i.Instruction.op) -> Some None
+        | r -> Option.map Option.some r
+      in
       match result with
+      | Some None -> Error (diag ~pos:__POS__ `Decode_no_match)
       | None -> (
           match table_decode w with
           | Some (i, f) -> Ok (i, f, 4)
           | None -> Error (diag ~pos:__POS__ `Decode_no_match))
-      | Some (i, f) -> Ok (i, f, 4)
+      | Some (Some (i, f)) -> Ok (i, f, 4)
 
   let table_fallback ?legal bytes ~pos =
     if String.length bytes - pos < 2 then None

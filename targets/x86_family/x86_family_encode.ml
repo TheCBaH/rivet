@@ -2534,6 +2534,7 @@ module Make (M : MODE) = struct
             | Ok () ->
                 Ok [ Lowered.Sse_binop_imm_r_rm { op = i.Instruction.op; reg; rm = Rm.Mem m; imm } ]
             ))
+    | Opcode.Push, [ Operand.Reg r ] when Reg.width r <> M.address_width -> bad (`No_form "push")
     | Opcode.Push, [ Operand.Reg r ] -> Ok [ Lowered.Push { reg = r } ]
     (* [pushl $sym] (M5), gcc's own idiom for materializing
        a symbol's address on the stack: {!Push_imm}'s [imm] carries it as a
@@ -2613,6 +2614,7 @@ module Make (M : MODE) = struct
             Ok [ Lowered.Cmov_r_rm { cc; width = i.Instruction.width; reg = b; rm = Rm.Mem m } ])
     | Opcode.Ret, [] -> Ok [ Lowered.Ret ]
     | Opcode.Ud2, [] -> Ok [ Lowered.Ud2 ]
+    | Opcode.Pop, [ Operand.Reg r ] when Reg.width r <> M.address_width -> bad (`No_form "pop")
     | Opcode.Pop, [ Operand.Reg r ] -> Ok [ Lowered.Pop { reg = r } ]
     | Opcode.Bswap, [ Operand.Reg r ] when Reg.width r = 32 || (Reg.width r = 64 && M.rex_allowed)
       ->
@@ -5675,10 +5677,12 @@ module Make (M : MODE) = struct
                        ( prefixes_of ~width:32 ~reg:0 ~rm:(Rm.Reg reg),
                          ((), Int64.of_int (reg.num land 7)) )
                  | _ -> None)
-               ~decode:(fun (_rex, ((), r)) ->
-                 Some
-                   (Lowered.Pop
-                      { reg = reg_at ~width:M.address_width (Int64.to_int r + rex_bit _rex 1) }))
+               ~decode:(fun (rex, ((), r)) ->
+                 if rex.opsz then None
+                 else
+                   Some
+                     (Lowered.Pop
+                        { reg = reg_at ~width:M.address_width (Int64.to_int r + rex_bit rex 1) }))
                C.(prefixes_codec ** const ~width:5 0b01011L ** field ~width:3 "reg"));
           (* [bswap r]: [0F C8+r], the register in the opcode's low three bits (REX.B for
              r8-r15) and REX.W for the 64-bit form. Verified against real GNU as 2.44:
@@ -5782,10 +5786,12 @@ module Make (M : MODE) = struct
                        ( prefixes_of ~width:32 ~reg:0 ~rm:(Rm.Reg reg),
                          ((), Int64.of_int (reg.num land 7)) )
                  | _ -> None)
-               ~decode:(fun (_rex, ((), r)) ->
-                 Some
-                   (Lowered.Push
-                      { reg = reg_at ~width:M.address_width (Int64.to_int r + rex_bit _rex 1) }))
+               ~decode:(fun (rex, ((), r)) ->
+                 if rex.opsz then None
+                 else
+                   Some
+                     (Lowered.Push
+                        { reg = reg_at ~width:M.address_width (Int64.to_int r + rex_bit rex 1) }))
                C.(prefixes_codec ** const ~width:5 0b01010L ** field ~width:3 "reg"));
           (* Group-3 (opcode [0xF7]): {!Neg}/{!Mul}/{!Div}, the ModR/M reg
              field selecting the operation exactly as {!alu_form} does for
