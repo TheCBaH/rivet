@@ -393,7 +393,7 @@ module Program = struct
 
   let assemble ?(origin = 0) ?(unit_name = "i8080") items =
     let open Err.Syntax in
-    let stage r = Diag.stage ~pos:__POS__ Err.Action.Map r in
+    let stage r = Diag.stage ~pos:__POS__ r in
     let bad_origin = origin < 0 || origin >= address_space
     and bad_space =
       List.find_map

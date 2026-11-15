@@ -1007,7 +1007,7 @@ let%expect_test "riscv32: a call and an address taken of externs bind to their i
   in
   let laid =
     let open Err.Syntax in
-    let stage r = Foundation.Diag.stage ~pos:__POS__ Err.Action.Map r in
+    let stage r = Foundation.Diag.stage ~pos:__POS__ r in
     let* src =
       stage
         (P.parse ~unit_name:"t"

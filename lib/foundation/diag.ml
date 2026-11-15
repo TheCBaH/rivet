@@ -50,7 +50,7 @@ let diagnostics e = Err.Error.kind e
    at the position of the crossing. Under Err_policy.deterministic the [Map]
    action is selected and carries only the explicit [~pos], so this is free of
    host state. *)
-let stage ?pos action r = Err.mark_error ?pos ~pp_error action r
+let stage ?pos r = Err.map_error ?pos ~pp_error Fun.id r
 
 (* {1 Rendering}
 

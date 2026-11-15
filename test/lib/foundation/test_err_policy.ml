@@ -36,16 +36,16 @@ let%expect_test "deterministic policy: explicit position kept, stack dropped" =
   [%expect {| deterministic: explicit-source=true automatic-stack=false events=0 |}]
 
 (* And the converse, so the first test is a demonstrated difference rather than
-   an assertion about a value nobody varied. Err.Config.default is what a caller
+   an assertion about a value nobody varied. Err.Config.with_stacks is what a caller
    that forgets Err_policy.apply would get. *)
 let%expect_test "Err's own default captures a stack" =
   Err.Config.with_config Err_policy.deterministic (fun () ->
-      Err.Config.with_config Err.Config.default (fun () ->
-          report "Err.Config.default" (fail_here ()));
+      Err.Config.with_config Err.Config.with_stacks (fun () ->
+          report "Err.Config.with_stacks" (fail_here ()));
       report "restored" (fail_here ()));
   [%expect
     {|
-    Err.Config.default: explicit-source=true automatic-stack=true events=0
+    Err.Config.with_stacks: explicit-source=true automatic-stack=true events=0
     restored: explicit-source=true automatic-stack=false events=0
     |}]
 

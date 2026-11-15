@@ -217,7 +217,7 @@ module Make (T : T_intf.TARGET) = struct
 
   let assemble ?entry ?features ~unit_name ~source () =
     let open Err.Syntax in
-    let stage r = Diag.stage ~pos:__POS__ Err.Action.Map r in
+    let stage r = Diag.stage ~pos:__POS__ r in
     let* state = initial_state features in
     let* src = stage (parse ~unit_name ~source) in
     let* norm, _final_state = stage (simplify ~state src) in
@@ -232,7 +232,7 @@ module Make (T : T_intf.TARGET) = struct
      cross-input resolution (§2) actually happens. *)
   let assemble_many ?entry ?features (sources : (string * Span.source) list) () =
     let open Err.Syntax in
-    let stage r = Diag.stage ~pos:__POS__ Err.Action.Map r in
+    let stage r = Diag.stage ~pos:__POS__ r in
     let* state = initial_state features in
     (* Every unit starts from the same initial state, so one unit's directives cannot leak
        into the next. *)

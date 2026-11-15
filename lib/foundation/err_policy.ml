@@ -3,8 +3,8 @@
    [Err] has two independent nondeterminism sources, and this module turns one
    of them off while keeping the other.
 
-   The one that must go is automatic stack capture. [Err.Config.default], which
-   is what [Err] starts with if nobody says otherwise, uses [Origin] backtraces:
+   The one that must go is automatic stack capture. [Err.Config.with_stacks],
+   (what Err started with before 0.2) uses [Origin] backtraces:
    every detected error calls [Printexc.get_callstack]. That text carries host
    paths and frame counts, which docs/design.md §3.7 bans from any diagnostic
    string, and it differs between native OCaml, js_of_ocaml and Melange - so a

@@ -50,7 +50,7 @@ let origin_of (m : I8080.Instruction.t Normalized_ast.module_) =
 
 let assemble ?(unit_name = "i8080") text =
   let open Err.Syntax in
-  let stage r = Diag.stage ~pos:__POS__ Err.Action.Map r in
+  let stage r = Diag.stage ~pos:__POS__ r in
   let source = Span.source ~name:unit_name ~contents:text in
   let* state = P.initial_state None in
   let* src = stage (P.parse ~unit_name ~source) in
