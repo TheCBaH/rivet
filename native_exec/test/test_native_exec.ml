@@ -31,8 +31,9 @@ let io_of_string ?(size = 64) s =
   String.iteri (fun i c -> io.{i} <- c) s;
   io
 
+(* In this process: the events and the process's own mappings are what the tests observe. *)
 let run ?observe ?read_globals ?(io = io_of_string "") laid =
-  match Native_exec.run ?observe ?read_globals laid ~io with
+  match Native_exec.run ~isolate:false ?observe ?read_globals laid ~io with
   | Ok o -> o
   | Error e -> failwith (Format.asprintf "%a" Native_exec.pp_error e)
 
@@ -295,7 +296,7 @@ let%expect_test "no page is ever writable and executable" =
 let%expect_test "the mapping is released when the call path raises" =
   let before = List.length (maps ()) in
   let observe = function Native_exec.Calling _ -> raise Exit | _ -> () in
-  (match Native_exec.run ~observe return42 ~io:(io_of_string "") with
+  (match Native_exec.run ~isolate:false ~observe return42 ~io:(io_of_string "") with
   | _ -> print_endline "no exception?"
   | exception Exit -> print_endline "raised");
   Printf.printf "maps unchanged: %b\n" (List.length (maps ()) = before);
@@ -315,26 +316,6 @@ let%expect_test "10,000 map/run/unmap cycles leave the mapping count unchanged" 
   Printf.printf "wrong results: %d, maps before %s after\n" !bad
     (if before = after then "=" else Printf.sprintf "%d <> %d" before after);
   [%expect {| wrong results: 0, maps before = after |}]
-
-let%expect_test "an image for another target is refused before anything is mapped" =
-  (* arm is never a host ISA: AArch32 code cannot run in a 64-bit process. *)
-  let events = ref 0 in
-  (match
-     Native_exec.run ~target:"arm" ~observe:(fun _ -> incr events) return42 ~io:(io_of_string "")
-   with
-  | Ok _ -> print_endline "unexpectedly Ok"
-  | Error (Native_exec.Foreign_target { target; _ }) ->
-      Printf.printf "refused %s, events %d\n" target !events
-  | Error e -> Format.printf "other error: %a\n" Native_exec.pp_error e);
-  [%expect {| refused arm, events 0 |}]
-
-let%expect_test "the host's own target name is accepted" =
-  match Native_exec.host_isa with
-  | None -> print_endline "no host ISA"
-  | Some isa ->
-      Printf.printf "%Ld\n"
-        (Result.get_ok (Native_exec.run ~target:isa return42 ~io:(io_of_string ""))).value;
-      [%expect {| 42 |}]
 
 (* {1 Loaded images}
 
@@ -446,15 +427,6 @@ let%expect_test "globals are read from the live mapping between calls" =
     after two calls 09000000
     global absent is not exported with a known size |}]
 
-let%expect_test "a foreign target is refused by load before anything is mapped" =
-  let events = ref 0 in
-  (match Native_exec.load ~target:"arm" ~observe:(fun _ -> incr events) return42 with
-  | Ok _ -> print_endline "unexpectedly Ok"
-  | Error (Native_exec.Foreign_target { target; _ }) ->
-      Printf.printf "refused %s, events %d\n" target !events
-  | Error e -> print_endline ("other error: " ^ Format.asprintf "%a" Native_exec.pp_error e));
-  [%expect {| refused arm, events 0 |}]
-
 (* {1 Host symbols} *)
 
 let assemble_units target units =
@@ -463,6 +435,46 @@ let assemble_units target units =
     List.map (fun (name, text) -> (name, Foundation.Span.source ~name ~contents:text)) units
   in
   D.assemble_many ~entry:"entry" units ()
+
+let arm_image =
+  Result.get_ok (assemble_units "arm" [ ("arm", "\t.text\n\t.globl entry\nentry:\n\tbx\tlr\n") ])
+
+(* arm is never a host ISA: AArch32 code cannot run in a 64-bit process. *)
+let%expect_test "an image lowered for another target is refused before anything is mapped" =
+  let events = ref 0 in
+  let observe _ = incr events in
+  let show = function
+    | Ok _ -> print_endline "unexpectedly Ok"
+    | Error (Native_exec.Foreign_target { target; _ }) ->
+        Printf.printf "refused %s, events %d\n" target !events
+    | Error e -> Format.printf "other error: %a\n" Native_exec.pp_error e
+  in
+  show (Result.map ignore (Native_exec.load ~observe arm_image));
+  show (Result.map ignore (Native_exec.run ~observe arm_image ~io:(io_of_string "")));
+  show (Result.map ignore (Native_exec.run ~isolate:false ~observe arm_image ~io:(io_of_string "")));
+  [%expect {|
+    refused arm, events 0
+    refused arm, events 0
+    refused arm, events 0 |}]
+
+let%expect_test "the host's own target tag is accepted" =
+  Printf.printf "tag is host: %b, result %Ld\n"
+    ((Image.plan_of return42).target = host)
+    (Result.get_ok (Native_exec.run return42 ~io:(io_of_string ""))).value;
+  [%expect {| tag is host: true, result 42 |}]
+
+let faulting =
+  assemble
+    (for_host ~aarch64:"\t.text\n\t.globl entry\nentry:\n\tmov\tx0, #0\n\tldr\tx0, [x0]\n\tret\n"
+       ~x86_64:"\t.text\n\t.globl entry\nentry:\n\txorl\t%eax, %eax\n\tmovq\t(%rax), %rax\n\tret\n"
+       ~riscv64:"\t.text\n\t.globl entry\nentry:\n\tli\ta0, 0\n\tld\ta0, 0(a0)\n\tret\n")
+
+let%expect_test "run isolates the image by default, so a fault does not end this process" =
+  (match Native_exec.run faulting ~io:(io_of_string "") with
+  | Error (Native_exec.Signal _) -> print_endline "signal"
+  | Ok _ -> print_endline "unexpectedly Ok"
+  | Error e -> Format.printf "other error: %a\n" Native_exec.pp_error e);
+  [%expect {| signal |}]
 
 let strlen_caller = function
   | "aarch64" ->
@@ -500,12 +512,22 @@ entry:
 
 let show_error e = print_endline (Format.asprintf "%a" Native_exec.pp_error e)
 
+(* The text after the first [needle], so output that names the host stays
+   the same on every host. *)
+let after needle s =
+  let n = String.length needle in
+  let rec find i =
+    if i + n > String.length s then s
+    else if String.sub s i n = needle then String.sub s i (String.length s - i)
+    else find (i + 1)
+  in
+  find 0
+
 let%expect_test "an image calling a host symbol is closed until the symbol is bound" =
   (match assemble_units host [ ("main", strlen_caller host) ] with
   | Ok _ -> print_endline "linked"
-  | Error e -> print_endline (Foundation.Diag.render e));
-  [%expect
-    {| <synthesized by x86.encode>: error[image.undefined]: fixup target references undefined symbol strlen |}]
+  | Error e -> print_endline (after ": error" (Foundation.Diag.render e)));
+  [%expect {| : error[image.undefined]: fixup target references undefined symbol strlen |}]
 
 let%expect_test "a bound host symbol is called through its trampoline, repeatedly" =
   let tramp = Result.get_ok (Native_exec.bind_host ~target:host [ "strlen" ]) in
@@ -549,6 +571,8 @@ let%expect_test "trampolines exist for the 64-bit targets and nothing else" =
     [ "aarch64"; "x86_64"; "riscv64" ];
   (match Native_exec.trampolines ~target:"arm" [ ("f", 1L) ] with
   | Ok _ -> print_endline "arm: generated"
+  | Error (Native_exec.Foreign_target { target; _ }) ->
+      Printf.printf "%s code cannot run natively on this host\n" target
   | Error e -> show_error e);
   (match Native_exec.trampolines ~target:host [ ("not a symbol", 1L) ] with
   | exception Invalid_argument m -> print_endline m
@@ -558,7 +582,7 @@ let%expect_test "trampolines exist for the 64-bit targets and nothing else" =
     aarch64: assembles, .text 44 bytes
     x86_64: assembles, .text 27 bytes
     riscv64: assembles, .text 48 bytes
-    arm code cannot run natively on this host (x86_64)
+    arm code cannot run natively on this host
     Native_exec.trampolines: not a symbol |}]
 
 let%expect_test "a global is written into the live mapping between calls" =
@@ -636,6 +660,7 @@ let%expect_test "a writable executable segment loads only when the image was pla
   let m =
     {
       Lowered_ast.unit_name = "rwx";
+      target = host;
       sections =
         [
           {

@@ -163,9 +163,13 @@ address ever appears here it is a bug this dump is designed to expose.
 (`image.invalid-module`): empty or repeated section names, alignments that are not positive powers
 of two, negative `Zero` lengths, fixup geometry that falls outside its fragment, container (1 to 8
 bytes) or range, and a label defined twice at different addresses within a module. Two modules sharing a `unit_name` are refused as well
-(`image.duplicate-unit`); contributions are matched to their bases by position. A merged
+(`image.duplicate-unit`); contributions are matched to their bases by position. Every module
+carries the `target` it was lowered for (the pipelines set `ENCODE.name`; a direct producer states
+it), modules of different targets are refused (`image.mixed-targets`), and the plan records the
+tag for `Native_exec` to check against the host. A merged
 segment that is both writable and executable is an error (`image.rwx-segment`) unless the layout
 policy sets `allow_rwx`; `Native_exec.load` refuses such a segment in an image planned without it.
+The lowered dump does not print `target`.
 
 ### 1.5 `--dump-image` — plan and bound image
 

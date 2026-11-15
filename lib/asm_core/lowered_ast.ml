@@ -209,6 +209,9 @@ type common = { comm_name : string; comm_size : int; comm_align : int }
 
 type 'k module_ = {
   unit_name : string;
+  target : string;
+      (** the target the module was lowered for ([ENCODE.name]); a direct producer states it, and
+          an image of one target refuses to run on a host of another *)
   sections : 'k section_content list;
   symbols : symbol list;
   commons : common list;
@@ -400,7 +403,7 @@ type fixup_defect =
   | Range_width of int
 
 type invalid =
-  | Empty_name of [ `Unit | `Section ]
+  | Empty_name of [ `Unit | `Target | `Section ]
   | Duplicate_section of string
   | Bad_alignment of { where : string; value : int }
   | Negative_length of { section : string; length : int }
@@ -416,6 +419,7 @@ let pp_fixup_defect ppf = function
 
 let pp_invalid ppf = function
   | Empty_name `Unit -> Fmt.string ppf "the unit name is empty"
+  | Empty_name `Target -> Fmt.string ppf "the target name is empty"
   | Empty_name `Section -> Fmt.string ppf "a section name is empty"
   | Duplicate_section n -> Fmt.pf ppf "section %s appears twice in one module" n
   | Bad_alignment { where; value } ->
@@ -450,6 +454,7 @@ let validate (m : 'k module_) =
   let errs = ref [] in
   let add e = errs := e :: !errs in
   if m.unit_name = "" then add (Empty_name `Unit);
+  if m.target = "" then add (Empty_name `Target);
   let seen = Hashtbl.create 8 in
   let labels = Hashtbl.create 16 in
   let epoch = ref 0 in

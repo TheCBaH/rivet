@@ -5,9 +5,9 @@
 
 (library
  (name native_exec)
- (public_name rivet.native_exec)
+ (public_name rivet-native-exec)
  (modes byte native)
- (libraries foundation asm_core image unix)
+ (libraries rivet.foundation rivet.asm_core rivet.image unix)
  (foreign_stubs
   (language c)
   (names native_exec_stubs))

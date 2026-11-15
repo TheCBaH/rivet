@@ -88,8 +88,11 @@ construct the source/semantic/lowered AST directly.
 - `text_pipeline` — the target-agnostic text pipeline (`pipeline.ml`, `directives.ml`); names no target.
 - `driver` — target-agnostic glue (`registry.ml`, `portable.ml`) that wires a chosen target into the stages above;
   `tool/asm.ml` is the CLI built on top of it.
-- `native_exec` — runs a laid-out image natively, in-process. It ships C stubs,
-  so it is gated by `RIVET_NATIVE_EXEC` and outside every default build.
+- `native_exec` — runs a laid-out image natively, in-process. It ships C stubs
+  and is its own opam package, `rivet-native-exec` (library name
+  `rivet-native-exec`), gated by `RIVET_NATIVE_EXEC` and outside every default
+  build; `rivet.opam` is the pure library only. `make native-exec` builds and
+  tests it, and CI runs that on the amd64 and arm64 legs.
 - `test/` mirrors `lib/` and `targets/` (e.g. `test/lib/asm_syntax/`), plus
   pipeline-level suites: `test/cram/` (golden-output dumps at each pipeline
   boundary), `test/oracle/` (fixture oracle / ABI-conformance runners),

@@ -57,9 +57,11 @@ Every library a consumer needs has a public name in the `rivet` package
 repository as a subdirectory with `(vendored_dirs vendor)`, and name the
 libraries as usual.
 
-Or install it: `rivet.opam` builds the native libraries (with `Native_exec`)
-against the opam `fmt`, from a source archive with no
-submodules, e.g. `opam pin add rivet <archive URL>`.
+Or install it: `rivet.opam` builds the pure-OCaml libraries against the opam
+`fmt`, from a source archive with no submodules, e.g.
+`opam pin add rivet <archive URL>`. `Native_exec` is the separate package
+`rivet-native-exec` (library `rivet-native-exec`, C stubs, Linux on
+x86_64, aarch64 or riscv64 only), which depends on `rivet`.
 
 A consumer that already has its own Fmt, and links it into the same executable,
 builds with `RIVET_EXTERNAL_DEPS=true`. The vendored copy is then not built;
@@ -74,6 +76,10 @@ any number of times, and `close` unmaps it after the last call. Host functions
 are bound with `Native_exec.bind_host`, which generates a unit of ISA-specific
 trampolines (aarch64, x86_64, riscv64) to assemble beside the image; the
 addresses are process-specific and must not be cached.
+An image carries the target it was assembled for, and `load` and `run` refuse one
+that is not the host's ISA. `run` executes in a forked child by default, so a fault
+in the image is an error value; calls on one loaded image may run concurrently but
+share its writable data.
 
 ## History
 This repository began as a directory of a larger one, and its history was carried

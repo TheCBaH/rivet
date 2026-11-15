@@ -190,6 +190,7 @@ module Make (T : Target_encode.ENCODE) = struct
         let m =
           {
             Asm_core.Lowered_ast.unit_name = "snippet";
+            target = T.name;
             sections = [ section ];
             symbols = [];
             commons = [];

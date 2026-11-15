@@ -69,6 +69,7 @@ type segment_plan = {
 }
 
 type plan = {
+  target : string;  (** the target every input module was lowered for *)
   segments : segment_plan list;
   entry : string option;
   exports : string list;
@@ -202,6 +203,7 @@ type link_error =
           NOBITS model M3 builds, so this diverges from GNU on purpose. *)
   | `Invalid_module of invalid_module
   | `Duplicate_unit of string
+  | `Mixed_targets of string list
   | `Rwx_segment of string
   | `Duplicate_definition of string
   | `Common_conflicts_with_local of string
@@ -280,6 +282,8 @@ let pp_link_error ppf : link_error -> unit = function
   | `Invalid_module { unit_name; reason } ->
       Fmt.pf ppf "invalid module %s: %a" unit_name Lowered_ast.pp_invalid reason
   | `Duplicate_unit n -> Fmt.pf ppf "unit name %s is used by more than one module" n
+  | `Mixed_targets ts ->
+      Fmt.pf ppf "modules were lowered for different targets: %s" (String.concat ", " ts)
   | `Rwx_segment n ->
       Fmt.pf ppf
         "section %s is both writable and executable and the layout policy does not allow it" n
@@ -351,6 +355,7 @@ let link_error_code : link_error -> string = function
   | `Section_kind_mismatch _ -> "image.kind-mismatch"
   | `Invalid_module _ -> "image.invalid-module"
   | `Duplicate_unit _ -> "image.duplicate-unit"
+  | `Mixed_targets _ -> "image.mixed-targets"
   | `Rwx_segment _ -> "image.rwx-segment"
   | `Duplicate_definition _ -> "image.duplicate"
   | `Common_conflicts_with_local _ -> "image.common-conflicts-local"
@@ -673,7 +678,12 @@ let invalid_modules modules =
         let n = m.Lowered_ast.unit_name in
         if List.mem n seen then `Duplicate_unit n :: dups seen rest else dups (n :: seen) rest
   in
-  dups [] modules
+  let mixed =
+    match List.sort_uniq compare (List.map (fun m -> m.Lowered_ast.target) modules) with
+    | [] | [ _ ] -> []
+    | ts -> [ `Mixed_targets ts ]
+  in
+  dups [] modules @ mixed
   @ List.concat_map
       (fun (m : 'k Lowered_ast.module_) ->
         match Lowered_ast.validate m with
@@ -1340,6 +1350,7 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
                 (* Not "symbols we could not find" - those were just rejected -
                    but placement-dependent fixups still outstanding, which is
                    what §9 says a plan reports and what binding satisfies. *)
+                target = (List.hd modules).Lowered_ast.target;
                 allow_rwx = policy.allow_rwx;
                 unresolved = List.sort_uniq compare (List.map (fun f -> f.rf_name) fixups);
               };

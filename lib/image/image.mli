@@ -20,6 +20,7 @@ type segment_plan = {
 }
 
 type plan = {
+  target : string;  (** the target every input module was lowered for *)
   segments : segment_plan list;
   entry : string option;
   exports : string list;
@@ -61,6 +62,7 @@ type link_error =
   | `Fixup_undefined_symbol of fixup_undefined_symbol
   | `Invalid_module of invalid_module
   | `Duplicate_unit of string
+  | `Mixed_targets of string list
   | `Rwx_segment of string
   | `No_modules
   | `No_section
@@ -132,6 +134,7 @@ type error =
   | `Fixup_undefined_symbol of fixup_undefined_symbol
   | `Invalid_module of invalid_module
   | `Duplicate_unit of string
+  | `Mixed_targets of string list
   | `Rwx_segment of string
   | `Fixup_value of fixup_value
   | `Fixup_wraps of string

@@ -1,0 +1,26 @@
+opam-version: "2.0"
+synopsis: "Run a Rivet image in the calling process"
+description: """
+Native_exec maps an image laid out by Rivet, binds it at the addresses
+obtained, and calls its entry. It ships C stubs and runs code natively, so it
+is only meaningful on a host of the target's own ISA: aarch64, x86_64 or
+riscv64 Linux.
+"""
+maintainer: "Vladimir N. Silyaev"
+authors: ["Vladimir N. Silyaev"]
+license: "MIT"
+homepage: "https://github.com/TheCBaH/rivet"
+bug-reports: "https://github.com/TheCBaH/rivet/issues"
+depends: [
+  "ocaml" {>= "4.14.0"}
+  "dune" {>= "3.15"}
+  "rivet" {= version}
+  "fmt" {>= "0.9.0"}
+  "err_trace" {>= "0.2.0~dev"}
+  "ppx_expect" {with-test}
+]
+available: os = "linux" & (arch = "x86_64" | arch = "arm64" | arch = "riscv64")
+build: [
+  ["env" "RIVET_NATIVE_EXEC=true" "RIVET_EXTERNAL_DEPS=true"
+   "dune" "build" "-p" name "-j" jobs "@install"]
+]

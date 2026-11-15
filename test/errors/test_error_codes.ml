@@ -84,6 +84,7 @@ let () =
       `Section_kind_mismatch ".bss";
       `Invalid_module { Image.unit_name = "u"; reason = Asm_core.Lowered_ast.Empty_name `Unit };
       `Duplicate_unit "u";
+      `Mixed_targets [ "a"; "b" ];
       `Rwx_segment ".text";
       `Duplicate_definition "s";
       `Common_conflicts_with_local "s";
@@ -272,6 +273,7 @@ let%expect_test "every diagnostic code, and the domain that claims it" =
     image.export                 Image
     image.invalid-module         Image
     image.kind-mismatch          Image
+    image.mixed-targets          Image
     image.no-modules             Image
     image.no-section             Image
     image.nobits-content         Image

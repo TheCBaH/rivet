@@ -86,9 +86,10 @@ js-browser: js
 # The in-process execution host: maps a laid-out image, binds it and calls its
 # entry. It ships C stubs, so it is gated by RIVET_NATIVE_EXEC and outside every
 # default build, and it runs code natively, so it is only meaningful on a host
-# of the target's own ISA. Not part of ci.
+# of the target's own ISA. It is the opam package rivet-native-exec, apart from
+# the pure rivet package. Not part of ci; the CI workflow runs it on the 64-bit legs.
 native-exec: submodules
-	RIVET_NATIVE_EXEC=true opam exec -- dune build @native_exec/all @native_exec/runtest
+	RIVET_NATIVE_EXEC=true opam exec -- dune build @native_exec/all @native_exec/runtest @test/trampolines/runtest
 
 # The behavioral tool gate. APT tooling is range-checked rather than
 # digest-pinned, and version numbers alone do not establish compatibility where

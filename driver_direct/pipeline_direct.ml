@@ -388,6 +388,7 @@ module Make (T : Target_encode.ENCODE) = struct
       Ok
         {
           Lowered_ast.unit_name = m.Normalized_ast.unit_name;
+          target = T.name;
           sections =
             List.map
               (fun s ->

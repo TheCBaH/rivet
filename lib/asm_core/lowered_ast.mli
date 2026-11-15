@@ -77,6 +77,9 @@ type common = { comm_name : string; comm_size : int; comm_align : int }
 
 type 'k module_ = {
   unit_name : string;
+  target : string;
+      (** the target the module was lowered for ([ENCODE.name]); a direct producer states it, and
+          an image of one target refuses to run on a host of another *)
   sections : 'k section_content list;
   symbols : symbol list;
   commons : common list;
@@ -114,7 +117,7 @@ type fixup_defect =
   | Range_width of int
 
 type invalid =
-  | Empty_name of [ `Unit | `Section ]
+  | Empty_name of [ `Unit | `Target | `Section ]
   | Duplicate_section of string
   | Bad_alignment of { where : string; value : int }
   | Negative_length of { section : string; length : int }

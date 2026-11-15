@@ -229,6 +229,7 @@ let module_of s =
   in
   {
     Lowered_ast.unit_name = "p";
+    target = "props";
     sections =
       [
         {

@@ -2,13 +2,19 @@
 
 (cram enable)
 
-; One package, so that a consuming project can name every library it needs as
-; rivet.<library>. Libraries without a public name are private to this project,
-; and dune resolves a private library only from within it.
+; The pure-OCaml libraries are one package, so that a consuming project can name
+; every library it needs as rivet.<library>. Libraries without a public name are
+; private to this project, and dune resolves a private library only from within
+; it. native_exec ships C stubs and is the separate package rivet-native-exec.
 
 (package
  (name rivet)
  (synopsis "Retargetable assembler and linker in pure OCaml")
+ (allow_empty))
+
+(package
+ (name rivet-native-exec)
+ (synopsis "Run a Rivet image in the calling process")
  (allow_empty))
 
 ; 3.15, not 3.8: gating a library on %{env:...} needs it. Dune cannot make a

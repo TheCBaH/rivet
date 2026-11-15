@@ -198,8 +198,10 @@ let layout (plan : Image.plan) =
    times, and never maps or unmaps. [close] makes later calls fail with
    [Closed] and releases the mapping once no call is active, so the unmap
    happens exactly once, after the last call has returned. The caller owns
-   the io buffer of each call; nothing here is shared between calls but the
-   immutable code and data of the image. *)
+   the io buffer of each call. What calls share is the image: its code, and
+   its writable data (.data, .bss), which a call may modify and the next
+   one sees. Calls may run concurrently on several threads, and then they
+   share that data with no synchronisation. *)
 
 type loaded = {
   mapping : int64;
@@ -230,11 +232,11 @@ let with_open t f =
     ~finally:(fun () -> leave t)
     (fun () -> if Atomic.get t.closed then Error Closed else f ())
 
-let load ?(observe = fun (_ : event) -> ()) ?target (laid : Image.laid_out) =
-  match target with
-  | Some t when host_isa <> Some t -> Error (Foreign_target { target = t; host = host_isa })
+let load ?(observe = fun (_ : event) -> ()) (laid : Image.laid_out) =
+  let plan = Image.plan_of laid in
+  match plan.target with
+  | t when host_isa <> Some t -> Error (Foreign_target { target = t; host = host_isa })
   | _ -> (
-      let plan = Image.plan_of laid in
       if plan.entry = None then Error No_entry
       else
         match
@@ -431,12 +433,11 @@ let run_isolated ~timeout_s ?read_globals laid ~(io : io) =
           | Error e -> Error e)
       | Unix.WEXITED n -> Error (Child (Printf.sprintf "exited with status %d and no result" n)))
 
-(* [target] names the target [laid] was assembled for. When it is given and
-   is not the host's ISA, nothing is mapped or called: running another ISA's
-   bytes in this process would fault at best. *)
-let run ?target ?observe ?read_globals ?(isolate = false) ?(timeout_s = 10.0) laid ~io =
-  match target with
-  | Some t when host_isa <> Some t -> Error (Foreign_target { target = t; host = host_isa })
+(* An image planned for another ISA is refused before anything is mapped or
+   called: running its bytes in this process would fault at best. *)
+let run ?observe ?read_globals ?(isolate = true) ?(timeout_s = 10.0) laid ~io =
+  match (Image.plan_of laid).target with
+  | t when host_isa <> Some t -> Error (Foreign_target { target = t; host = host_isa })
   | _ ->
       if isolate then run_isolated ~timeout_s ?read_globals laid ~io
       else run_here ?observe ?read_globals laid ~io

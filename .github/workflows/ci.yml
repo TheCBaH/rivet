@@ -13,12 +13,48 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: read
+
+# A newer push to a branch supersedes the older run; the default branch keeps
+# every run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
 jobs:
   versions:
     uses: ./.github/workflows/ocaml-versions.yml
+  # Formatting does not depend on the OCaml version or the platform, so one
+  # leg checks it. make fmt-check installs .ocamlformat's pinned
+  # `version = 0.28.1` itself before running, so this does not depend on
+  # whatever ocamlformat the image shipped.
+  fmt-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      OCAML_VERSION: 5.5.0
+    steps:
+    - name: checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: true
+    - name: devcontainer
+      uses: TheCBaH/devcontainer-action/devcontainer@v1
+      id: devcontainer
+      with:
+        variant: ${{ env.OCAML_VERSION }}
+    - name: setup
+      run: |
+        echo 'EXEC=${{ steps.devcontainer.outputs.exec }}' >> $GITHUB_ENV
+    - name: fmt-check
+      run: |
+        ${{ env.EXEC }} make fmt-check
   ci:
     needs: versions
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -39,12 +75,6 @@ jobs:
     - name: setup
       run: |
         echo 'EXEC=${{ steps.devcontainer.outputs.exec }}' >> $GITHUB_ENV
-    # Checked first and on every leg. make fmt-check installs .ocamlformat's
-    # pinned `version = 0.28.1` itself before running, so this does not depend
-    # on whatever ocamlformat a given image shipped.
-    - name: fmt-check
-      run: |
-        ${{ env.EXEC }} make fmt-check
     - name: build
       run: |
         ${{ env.EXEC }} make build
@@ -57,6 +87,13 @@ jobs:
     - name: tool tests
       run: |
         ${{ env.EXEC }} make tools-test
+    # rivet-native-exec runs generated code in the test process, so it needs
+    # a host whose ISA is a target: the amd64 and arm64 legs. The 32-bit legs
+    # have no matching target and the package is unavailable there.
+    - name: native-exec build and test
+      if: matrix.platform != 'linux/i386' && matrix.platform != 'linux/arm/v7'
+      run: |
+        ${{ env.EXEC }} make native-exec
     # Toolchain-free (reads only the vendored vendor/isa-data/ submodules,
     # never a compiler) and platform-independent, so it belongs on every leg
     # rather than gated like tools-integration/tools-fixture-modes below.
@@ -126,6 +163,7 @@ jobs:
   # conformance still blocks.
   abi-conform:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     env:
       OCAML_VERSION: 5.5.0
     steps:
@@ -179,6 +217,7 @@ jobs:
   # abi-conform above remains the distinct ABI proof.
   tool-gate:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     env:
       OCAML_VERSION: 5.5.0
     steps:
@@ -204,6 +243,7 @@ jobs:
   # leg whose evidence broke.
   fixture-oracle:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -252,6 +292,7 @@ jobs:
   # retrocpu-tools release and verified by hash; nothing is built here.
   fixture-oracle-i8080:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -286,6 +327,7 @@ jobs:
   # also builds.
   three-build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     env:
       OCAML_VERSION: 4.14.3
     steps:

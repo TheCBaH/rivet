@@ -175,6 +175,7 @@ let direct_lowered : T.fixup_kind Lowered_ast.module_ =
   let frag l = Lowered_ast.Bytes { bytes = bytes_of l; form = form_of l; fixups = []; origin } in
   {
     Lowered_ast.unit_name = "asm_test_entry";
+    target = "aarch64";
     sections =
       [
         {

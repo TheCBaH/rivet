@@ -105,8 +105,8 @@ let text_section ?(align = 1) frags =
     fragments = frags;
   }
 
-let module_ ?(unit_name = "t") ?(symbols = []) ?(commons = []) sections =
-  { Lowered_ast.unit_name; sections; symbols; commons; declared_sections = [] }
+let module_ ?(unit_name = "t") ?(target = "x86_64") ?(symbols = []) ?(commons = []) sections =
+  { Lowered_ast.unit_name; target; sections; symbols; commons; declared_sections = [] }
 
 let nop_fill ~executable:_ n = Some (String.make n '\x90')
 
@@ -1652,6 +1652,25 @@ let%expect_test "two modules with one unit name are rejected, not linked with me
   | Error ds -> show_errors ds
   | Ok _ -> Fmt.pr "accepted@.");
   [%expect {| image.duplicate-unit: unit name u is used by more than one module |}]
+
+let%expect_test "modules lowered for different targets are rejected, and an empty tag is invalid" =
+  let unit_ unit_name target =
+    module_ ~unit_name ~target
+      ~symbols:[ sym ~global:false "f" ]
+      [ text_section [ label "f"; filler 4 ] ]
+  in
+  (match plan_many [ unit_ "a" "x86_64"; unit_ "b" "aarch64" ] with
+  | Error ds -> show_errors ds
+  | Ok _ -> Fmt.pr "accepted@.");
+  (match plan_many [ unit_ "a" "aarch64"; unit_ "b" "aarch64" ] with
+  | Error ds -> show_errors ds
+  | Ok l -> Fmt.pr "tag %s@." (Image.plan_of l).target);
+  (match plan_many [ unit_ "a" "" ] with Error ds -> show_errors ds | Ok _ -> Fmt.pr "accepted@.");
+  [%expect
+    {|
+    image.mixed-targets: modules were lowered for different targets: aarch64, x86_64
+    tag aarch64
+    image.invalid-module: invalid module a: the target name is empty |}]
 
 let%expect_test "a writable executable segment is an error unless the policy allows it" =
   let rwx =
