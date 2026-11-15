@@ -1,5 +1,12 @@
 # Plan for a Retargetable In-Memory Assembler in OCaml
 
+> **Historical plan.** This is the plan the assembler was built to, not a
+> description of the tree. `docs/architecture.md` says what exists now and
+> `docs/contracts.md` fixes the formats and behaviour; where they disagree with
+> this document they win. The known differences are marked inline with
+> *As built* notes (C stubs, the Intel 8080, `rivet.compute`, `ENCODE` and
+> `TARGET`).
+
 > **History.** This document is the plan the assembler was built to. It began as
 > one directory of a larger repository, where the evidence corpus was generated
 > by a formally verified C compiler. That compiler and its integration now live
@@ -21,6 +28,11 @@ js_of_ocaml and Melange. It contains no C source or foreign stubs and has no
 direct or transitive library dependency that requires C code. C programs and
 target runtime sources may appear as compiler-input fixtures, but are data tested
 by the assembler rather than implementation code linked into it.
+
+> *As built:* this holds for the `rivet` package. The in-process executor
+> `native_exec` ships C stubs and is the separate opam package
+> `rivet-native-exec`, gated by `RIVET_NATIVE_EXEC` and outside every default
+> build. The out-of-process runner is no longer the only execution route.
 
 The initial compatibility contract is deliberately external to gcc:
 
@@ -188,6 +200,11 @@ assumptions of the shared core.
 
 These six profiles are the complete planned target set. New work maintains their
 parity rather than reserving a future architecture-expansion milestone.
+
+> *As built:* the tree also holds the Intel 8080 (`targets/i8080`, text dialects,
+> typed builders) and a behavioural model of it over `rivet.compute`
+> (`i8080_sem`, `i8080_run`). It uses only the public contracts and is not one of
+> the six parity targets; nothing here plans simulators for the six.
 
 Development proceeds by semantic capability slices. For example, the first slice
 supports only what gcc emits for a freestanding function returning a
@@ -561,6 +578,10 @@ pseudo-instruction handling is therefore testable independently of byte emission
 
 #### 4.9.1 Typed bidirectional codec representation
 
+> *As built:* the codec is a view of the per-opcode and generated row tables,
+> and RISC-V and x86 publish only part of their forms as a tree
+> (`docs/contracts.md` §1.7).
+
 The initial description mechanism should be a typed OCaml embedded DSL whose
 values are inspectable codec trees. Descriptions must not be arbitrary encoding
 functions: an opaque function cannot be inverted or inspected to generate a
@@ -707,6 +728,10 @@ module type TARGET = sig
   val handle_directive : directive -> target_state -> directive_result
 end
 ```
+
+> *As built:* this single interface is split into `ENCODE` (types, lowering,
+> encode, decode, fixups, no lexer) and `TARGET` (`ENCODE` plus the lexical
+> profile, operand parsing and directive handling); see `docs/architecture.md`.
 
 Target state covers features and modes such as ARM/Thumb or RISC-V options. It
 must not contain global linker state.
@@ -1475,10 +1500,14 @@ a native consumer:
 5. Flush or synchronize the instruction cache as required.
 6. Call the exported entry and return the result block over the protocol.
 
+> *As built:* an in-process executor exists as `native_exec`, the separate
+> package `rivet-native-exec` (`run ~isolate:true` forks, as this section
+> describes for the worker). The rule below holds for the `rivet` package.
+
 Never link this executor, an ABI-call stub, or an OS memory package into any
 production OCaml library. The runner is supplied externally to the project as an
-optional out-of-process testing tool; this repository does not ship C source for
-it. Illegal instructions, memory faults, stack corruption, and infinite loops
+optional out-of-process testing tool; this document planned that the repository
+would not ship C source for it (not so as built, see the note above). Illegal instructions, memory faults, stack corruption, and infinite loops
 remain isolated to the worker, and the shell/CI coordinator enforces the timeout.
 
 This backend is enabled only when target ISA, execution mode, endianness, and ABI
@@ -2162,7 +2191,7 @@ The first complete version is successful when it can:
 14. Compile the complete production target registry with native OCaml,
     js_of_ocaml, and Melange and produce byte-identical images and normalized
     diagnostics through the same in-memory API.
-15. Contain no C/assembly stubs or direct/transitive C-backed dependency in the
+15. (As built: for the `rivet` package; `rivet-native-exec` has C stubs.) Contain no C/assembly stubs or direct/transitive C-backed dependency in the
     production closure, as verified from the actual build graph.
 16. Require no filesystem, process, Unix, native-pointer, or environment facility
     from the production API; run a smoke corpus in a real browser without Node

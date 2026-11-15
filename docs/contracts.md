@@ -323,6 +323,25 @@ happen to share a name. The kind name comes from `TARGET.fixup_kind_name`, the
 same function the oracle indexes on, so a dump and a relocation record cannot
 disagree about what a kind is called.
 
+#### Which description is authoritative
+
+The per-opcode tables (`Riscv_ops`, `X86_ops`, `Arm_ops`, `Aarch64_ops`) and the
+generated row tables (`Riscv_table_rows`, `X86_table_rows`) are the canonical
+description of a target's instructions. The codec is a view of them: ARM,
+AArch64 and the i8080 publish a real tree, where `Codec.check` proves
+reachability and overlap and `--dump-codec` lists every form; RISC-V publishes
+three `iso_fun` nodes (compressed, word, pair) over the table-driven encoder and
+decoder, and x86 publishes a tree for its hand-written forms with the generated
+rows beside it. For those two families `--dump-codec` and `Codec.check` therefore
+describe only part of the instruction space.
+
+The static guarantees move to the row level where the tree does not reach them:
+the RISC-V rows are checked for mask/match overlap against `Riscv_overlap`
+(test_components: every overlap is classified, a specialization precedes its
+general form), and the x86 rows for overlapping encoding positions (test_x86_overlap:
+every overlap is approved by source name). `ENCODE.codec` stays in the signature
+as the published view; a new family may offer a minimal one.
+
 ### 1.8 Canonical expressions
 
 Expressions appear in four of the seven dumps, so their format is fixed once here.
@@ -798,13 +817,17 @@ happened to take.
 
 Selection is a **promotion-only fixpoint**: start at the shortest rung, lay the
 section out, promote anything that does not reach, repeat. Selections travel one
-way along a finite ladder, so it terminates; after convergence every selection
+way along a finite ladder, so it terminates within the sum of the ladder lengths
+(exceeding that bound is an internal error, not a silent stop); after convergence every selection
 is verified and `image.relax-unreachable` reports one that still does not reach.
 
 Two limits are deliberate. Relaxation is **intra-section only** — a displacement
 within one section is independent of where the section is placed, which is what
 makes it decidable at plan time; a cross-section target keeps the longest rung.
-And the result is **not claimed minimal**: alignment padding makes layout
+The unit is one **contribution**, a section as one input provided it: separate
+inputs merged into one output section do not relax against each other, so a
+reference from one contribution to a label in another keeps the longest rung
+too. And the result is **not claimed minimal**: alignment padding makes layout
 non-monotone in fragment size, so a promotion whose bytes are absorbed by
 padding is not undone. What establishes agreement with GNU is the byte-for-byte
 differential gate on each fixture, not an optimality argument.

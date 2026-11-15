@@ -43,6 +43,17 @@ let rec pp ppf = function
   | Unary (op, a) -> Fmt.pf ppf "%s%a" (unop_name op) pp a
   | Modifier (m, a) -> Fmt.pf ppf "%s(%a)" m pp a
 
+let rec equal a b =
+  match (a, b) with
+  | Const x, Const y -> Bigint.equal x y
+  | Symbol x, Symbol y -> String.equal x y
+  | Current_location, Current_location -> true
+  | Local_ref (n, d), Local_ref (m, e) -> n = m && d = e
+  | Binary (o, a1, a2), Binary (p, b1, b2) -> o = p && equal a1 b1 && equal a2 b2
+  | Unary (o, a), Unary (p, b) -> o = p && equal a b
+  | Modifier (n, a), Modifier (m, b) -> String.equal n m && equal a b
+  | _ -> false
+
 let to_string = Fmt.to_to_string pp
 
 (* {1 Evaluation}

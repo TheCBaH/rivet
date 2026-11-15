@@ -171,7 +171,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       if major < minor - 1 then String.sub name 0 major else name
     else name
 
-  let parse_arch argument =
+  let parse_arch items =
     let item raw =
       let s = String.lowercase_ascii (String.trim raw) in
       let name = if s = "" then "" else strip_version (String.sub s 1 (String.length s - 1)) in
@@ -187,10 +187,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     List.fold_right
       (fun raw acc ->
         match (item raw, acc) with Ok i, Ok l -> Ok (i :: l) | (Error _ as e), _ -> e | _, e -> e)
-      (String.split_on_char ',' argument)
-      (Ok [])
+      items (Ok [])
 
-  let handle_directive ~name:directive ~argument state =
+  let handle_directive ~name:directive ~arguments state =
     if String.equal directive ".attribute" then (
       (* [.attribute arch, "rv32i2p1_..."], [.attribute unaligned_access, 0], ...
          - RISC-V's own build-attribute directive (ARM's [.eabi_attribute]
@@ -198,22 +197,22 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
          an ELF attribute and M1 produces no ELF; rejecting it would fail every
          gcc-compiled RISC-V file, and treating it as unknown would make it
          indistinguishable from a real misspelling). *)
-      ignore argument;
+      ignore arguments;
       Target_intf.Target.Handled { state; emit = [] })
     else if not (String.equal directive ".option") then Target_intf.Target.Unhandled
     else
-      let option = String.trim argument in
+      let option = String.trim (String.concat ", " arguments) in
       let arch =
-        match String.index_opt option ',' with
-        | Some i when String.trim (String.sub option 0 i) = "arch" ->
-            Some (String.sub option (i + 1) (String.length option - i - 1))
-        | _ -> if String.equal option "arch" then Some "" else None
+        match arguments with
+        | first :: items when String.equal (String.trim first) "arch" ->
+            Some (if items = [] then [ "" ] else items)
+        | _ -> None
       in
       let handled state = Target_intf.Target.Handled { state; emit = [] } in
       match (arch, option) with
-      | Some argument, _ -> (
+      | Some items, _ -> (
           let reject why = Target_intf.Target.Rejected (parse_diag ~pos:__POS__ why) in
-          match parse_arch argument with
+          match parse_arch items with
           | Error why -> reject why
           | Ok spec -> (
               match Target_config.apply components state.config spec with

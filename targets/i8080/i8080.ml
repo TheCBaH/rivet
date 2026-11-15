@@ -72,4 +72,4 @@ let parse_operands ~mnemonic:_ slices =
   in
   go [] slices
 
-let handle_directive ~name:_ ~argument:_ _ = Target_intf.Target.Unhandled
+let handle_directive ~name:_ ~arguments:_ _ = Target_intf.Target.Unhandled

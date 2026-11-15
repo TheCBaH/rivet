@@ -1,5 +1,4 @@
-; A dedicated parse-time performance regression test (docs/corpus.md's
-; floats.c "One shared timeout" follow-up). See test_parse_perf.ml.
+; A dedicated parse-time performance regression test. See test_parse_perf.ml.
 ;
 ; An executable plus a rule rather than a (test) stanza, the same shape
 ; test/props uses and for the same reason: (test) would put its executable in

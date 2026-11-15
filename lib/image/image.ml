@@ -19,18 +19,12 @@
    Collapsing them would force the assembler to choose addresses, which is
    precisely the decision an embedding host has to make.
 
-   The linker is still restricted - imports exist only for names the policy
-   lists as [externs], bound to host-supplied addresses - and every unsupported
-   condition is an explicit rejection rather than a silent partial result.
-   M2 removed the one-allocatable-section limit; M3 (docs/design.md §12)
-   removes the one-module limit, merging same-named sections across inputs
-   by name alone (a same-name PROGBITS/NOBITS kind mismatch is a dedicated
-   rejection instead - docs/m3-evidence found real `ld`, under this
-   project's own controlled-link shape, silently coerces that case instead
-   of keeping two sections) and resolving symbols across every input via
-   [Symtab] rather than per-module. Weak and common-symbol precedence (M3
-   §7) still resolve as plain strong-or-nothing today - nothing before M3
-   step 6 can produce a [Weak] binding or a [.comm] declaration. *)
+   Imports exist only for names the policy lists as [externs], bound to
+   host-supplied addresses, and every unsupported condition is an explicit
+   rejection rather than a silent partial result. Several inputs are linked in
+   one plan: same-named sections merge by name (a PROGBITS/NOBITS mismatch is a
+   dedicated rejection, as GNU ld would silently coerce it), and symbols resolve
+   across inputs through [Symtab], with strong over common over weak. *)
 
 open Foundation
 open Asm_core
@@ -512,7 +506,7 @@ let alt_reaches ~evaluate ~labels ~frag_off (a : 'k Lowered_ast.encoded_form) =
 
    Selections only travel one way along a finite ladder, so the state is
    monotone in a finite product order and this terminates in at most the sum of
-   the ladder lengths. On exit every selection reaches, or [verify] reports the
+   the ladder lengths; exceeding that bound is a bug and raises. On exit every selection reaches, or [verify] reports the
    one that does not.
 
    It deliberately does not claim minimality. Alignment padding makes layout
@@ -529,7 +523,7 @@ let relax_fixpoint ~evaluate frags =
   in
   let bound = Array.fold_left (fun acc l -> acc + max 0 (Array.length l - 1)) 0 ladders + 1 in
   let rec iterate steps =
-    if steps > bound then ()
+    if steps > bound then invalid_arg "Image.relax_fixpoint: promotions exceed the ladder bound"
     else
       let starts, labels, _ = scan_offsets sel frags in
       let moved = ref false in
@@ -558,21 +552,12 @@ let relax_fixpoint ~evaluate frags =
   iterate 0;
   sel
 
-(* M3 §6: NOBITS-ness is a *section*-level property, not a per-fragment one -
-   a section's [kind] is fixed before any fragment in it is laid out. That is
-   what makes this a small change rather than a dual-tracking scheme: a
-   PROGBITS section's fragments are all real-byte-producing, so
-   [Buffer.length buf] already equals the logical offset at every point (this
-   is the M1/M2 invariant, unchanged below) and [frag_off] - always
-   [starts.(i)], the position [scan_offsets] already computed for
-   relaxation - is simply provably equal to it by induction. A NOBITS
-   section instead never writes a real byte at all: [buf] stays empty, and
-   every offset [layout_section] reports comes from [frag_off] alone, which
-   [scan_offsets] gets right because [fragment_size] already treats [Zero]
-   uniformly regardless of section kind. [logical_size] is the address-space
-   extent ([init_size + zero_fill], §6's standing invariant) - equal to
-   [String.length bytes] for PROGBITS, and the whole reservation for
-   NOBITS. *)
+(* NOBITS-ness is a section-level property: a section's [kind] is fixed before any of its
+   fragments is laid out. A PROGBITS section's fragments all produce bytes, so [Buffer.length buf]
+   equals the logical offset throughout and equals [frag_off], the position [scan_offsets]
+   computed. A NOBITS section writes no byte: [buf] stays empty and every reported offset comes
+   from [frag_off]. [logical_size] is the address-space extent ([init_size + zero_fill]): the
+   byte length for PROGBITS, the whole reservation for NOBITS. *)
 let layout_section ~evaluate ~align_fill (sc : 'k Lowered_ast.section_content) =
   let frags = sc.Lowered_ast.fragments in
   let sel = relax_fixpoint ~evaluate frags in
@@ -703,451 +688,451 @@ let string_set names =
   List.iter (fun n -> Hashtbl.replace t n ()) names;
   t
 
-let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fill) ?section_pad
-    (policy : layout_policy) (modules : 'k Lowered_ast.module_ list) =
-  let errors = ref [] in
-  let fail ?origin e = errors := diag ?origin e :: !errors in
-  match modules with
-  | [] -> Diag.fail ~pos:__POS__ [ diag `No_modules ]
-  | modules when invalid_modules modules <> [] ->
-      Diag.fail ~pos:__POS__ (List.map (fun e -> diag e) (invalid_modules modules))
-  | modules ->
-      (* {2 Common-symbol resolution (§7), before any section is laid out}
+(* {2 Common-symbol resolution (§7), before any section is laid out}
 
-         Whether a [.comm] declaration ever contributes storage is a link-wide
-         fact ("does some input define this name with a real, strong
-         definition") that does not depend on offsets or addresses, so it can
-         be decided from the raw modules alone, before merging exists. Every
-         winning declaration becomes one extra, synthetic contribution to the
-         canonical [.bss] group - built from the same fragment vocabulary
-         (`Align`/`Label_def`/[Zero]) everything else uses, so it flows
-         through the ordinary merge/layout machinery below rather than
-         needing its own. *)
-      let module_symbols = List.map (fun m -> (m, first_symbols m)) modules in
-      let strong_defined_names = Hashtbl.create 64 in
+   Whether a [.comm] declaration ever contributes storage is a link-wide
+   fact ("does some input define this name with a real, strong
+   definition") that does not depend on offsets or addresses, so it can
+   be decided from the raw modules alone, before merging exists. Every
+   winning declaration becomes one extra, synthetic contribution to the
+   canonical [.bss] group - built from the same fragment vocabulary
+   (`Align`/`Label_def`/[Zero]) everything else uses, so it flows
+   through the ordinary merge/layout machinery below rather than
+   needing its own. *)
+let resolve_commons ~(fail : ?origin:Origin.t -> error -> unit)
+    (modules : 'k Lowered_ast.module_ list) =
+  let module_symbols = List.map (fun m -> (m, first_symbols m)) modules in
+  let strong_defined_names = Hashtbl.create 64 in
+  List.iter
+    (fun ((m : 'k Lowered_ast.module_), symbols) ->
       List.iter
-        (fun ((m : 'k Lowered_ast.module_), symbols) ->
+        (fun (sc : 'k Lowered_ast.section_content) ->
           List.iter
-            (fun (sc : 'k Lowered_ast.section_content) ->
-              List.iter
-                (function
-                  | Lowered_ast.Label_def { name; _ } -> (
-                      match Hashtbl.find_opt symbols name with
-                      | Some { Lowered_ast.binding = Lowered_ast.Global; _ } ->
-                          Hashtbl.replace strong_defined_names name ()
-                      | _ -> ())
+            (function
+              | Lowered_ast.Label_def { name; _ } -> (
+                  match Hashtbl.find_opt symbols name with
+                  | Some { Lowered_ast.binding = Lowered_ast.Global; _ } ->
+                      Hashtbl.replace strong_defined_names name ()
                   | _ -> ())
-                sc.Lowered_ast.fragments)
-            m.Lowered_ast.sections)
-        module_symbols;
-      let all_commons =
-        List.concat_map (fun (m : 'k Lowered_ast.module_) -> m.Lowered_ast.commons) modules
-      in
-      let common_names =
-        let seen = Hashtbl.create 16 in
-        List.filter_map
-          (fun (c : Lowered_ast.common) ->
-            let n = c.Lowered_ast.comm_name in
-            if Hashtbl.mem seen n then None
-            else begin
-              Hashtbl.add seen n ();
-              Some n
-            end)
-          all_commons
-      in
-      (* A common declaration conflicting with an ordinary *local* definition
+              | _ -> ())
+            sc.Lowered_ast.fragments)
+        m.Lowered_ast.sections)
+    module_symbols;
+  let all_commons =
+    List.concat_map (fun (m : 'k Lowered_ast.module_) -> m.Lowered_ast.commons) modules
+  in
+  let common_names =
+    let seen = Hashtbl.create 16 in
+    List.filter_map
+      (fun (c : Lowered_ast.common) ->
+        let n = c.Lowered_ast.comm_name in
+        if Hashtbl.mem seen n then None
+        else begin
+          Hashtbl.add seen n ();
+          Some n
+        end)
+      all_commons
+  in
+  (* A common declaration conflicting with an ordinary *local* definition
          of the same name in the *same* input is its own diagnostic,
          detectable within one input alone - distinct from the cross-input
          strong/common/weak precedence below, and checked first because it is
          about one input being self-contradictory rather than about how
          inputs combine. *)
-      List.iter
-        (fun ((m : 'k Lowered_ast.module_), symbols) ->
-          if m.Lowered_ast.commons <> [] then begin
-            let local_labels = Hashtbl.create 64 in
+  List.iter
+    (fun ((m : 'k Lowered_ast.module_), symbols) ->
+      if m.Lowered_ast.commons <> [] then begin
+        let local_labels = Hashtbl.create 64 in
+        List.iter
+          (fun (sc : 'k Lowered_ast.section_content) ->
             List.iter
-              (fun (sc : 'k Lowered_ast.section_content) ->
-                List.iter
-                  (function
-                    | Lowered_ast.Label_def { name; _ } -> (
-                        match Hashtbl.find_opt symbols name with
-                        | Some { Lowered_ast.binding = Lowered_ast.Local; _ } ->
-                            Hashtbl.replace local_labels name ()
-                        | _ -> ())
+              (function
+                | Lowered_ast.Label_def { name; _ } -> (
+                    match Hashtbl.find_opt symbols name with
+                    | Some { Lowered_ast.binding = Lowered_ast.Local; _ } ->
+                        Hashtbl.replace local_labels name ()
                     | _ -> ())
-                  sc.Lowered_ast.fragments)
-              m.Lowered_ast.sections;
-            List.iter
-              (fun (c : Lowered_ast.common) ->
-                if Hashtbl.mem local_labels c.Lowered_ast.comm_name then
-                  fail (`Common_conflicts_with_local c.Lowered_ast.comm_name))
-              m.Lowered_ast.commons
-          end)
-        module_symbols;
-      (* Strong beats common outright (no error - the common declarations are
+                | _ -> ())
+              sc.Lowered_ast.fragments)
+          m.Lowered_ast.sections;
+        List.iter
+          (fun (c : Lowered_ast.common) ->
+            if Hashtbl.mem local_labels c.Lowered_ast.comm_name then
+              fail (`Common_conflicts_with_local c.Lowered_ast.comm_name))
+          m.Lowered_ast.commons
+      end)
+    module_symbols;
+  (* Strong beats common outright (no error - the common declarations are
          simply discarded); several declarations of a name that wins fold
          into one reservation sized to the maximum requested size and aligned
          to the maximum requested alignment. *)
-      let decls_by_name = Hashtbl.create 16 in
-      List.iter
-        (fun (c : Lowered_ast.common) ->
-          let n = c.Lowered_ast.comm_name in
-          Hashtbl.replace decls_by_name n
-            (c :: Option.value (Hashtbl.find_opt decls_by_name n) ~default:[]))
-        (List.rev all_commons);
-      let winning_commons =
-        List.filter_map
-          (fun name ->
-            if Hashtbl.mem strong_defined_names name then None
-            else
-              let decls = Option.value (Hashtbl.find_opt decls_by_name name) ~default:[] in
-              let size =
-                List.fold_left
-                  (fun acc (c : Lowered_ast.common) -> max acc c.Lowered_ast.comm_size)
-                  0 decls
-              in
-              let align =
-                List.fold_left
-                  (fun acc (c : Lowered_ast.common) -> max acc c.Lowered_ast.comm_align)
-                  1 decls
-              in
-              Some (name, size, align))
-          common_names
-      in
-      (* Not a real input - there is no file this reservation came from - so a
+  let decls_by_name = Hashtbl.create 16 in
+  List.iter
+    (fun (c : Lowered_ast.common) ->
+      let n = c.Lowered_ast.comm_name in
+      Hashtbl.replace decls_by_name n
+        (c :: Option.value (Hashtbl.find_opt decls_by_name n) ~default:[]))
+    (List.rev all_commons);
+  let winning_commons =
+    List.filter_map
+      (fun name ->
+        if Hashtbl.mem strong_defined_names name then None
+        else
+          let decls = Option.value (Hashtbl.find_opt decls_by_name name) ~default:[] in
+          let size =
+            List.fold_left
+              (fun acc (c : Lowered_ast.common) -> max acc c.Lowered_ast.comm_size)
+              0 decls
+          in
+          let align =
+            List.fold_left
+              (fun acc (c : Lowered_ast.common) -> max acc c.Lowered_ast.comm_align)
+              1 decls
+          in
+          Some (name, size, align))
+      common_names
+  in
+  (* Not a real input - there is no file this reservation came from - so a
          name outside anything a real [unit_name] could ever be (no real
          input is named with angle brackets) is what marks a resolved
          definition as common-derived rather than something a fixup could
          accidentally address as its "own input". *)
-      let common_unit = "<common>" in
-      let common_origin = Origin.synthesized ~pass:"image" () in
-      let common_contribution =
-        match winning_commons with
-        | [] -> None
-        | _ ->
-            let fragments =
-              List.concat_map
-                (fun (name, size, align) ->
-                  [
-                    Lowered_ast.Align { boundary = align; origin = common_origin };
-                    Lowered_ast.Label_def { name; origin = common_origin };
-                    Lowered_ast.Zero { length = size; origin = common_origin };
-                  ])
-                winning_commons
-            in
-            Some
-              ( common_unit,
-                {
-                  Lowered_ast.sec =
-                    {
-                      Lowered_ast.sec_name = ".bss";
-                      perms = Perms.rw;
-                      alignment =
-                        List.fold_left (fun acc (_, _, align) -> max acc align) 1 winning_commons;
-                      kind = Lowered_ast.Nobits;
-                    };
-                  fragments;
-                } )
-      in
-      (* {2 Merge sections by name alone, first-occurrence order (§4)}
-
-         Matches [contents], [portable.ml]'s [section_bytes] and every other
-         name-keyed consumer exactly as it works today - no new compound key.
-         A same-name PROGBITS/NOBITS mismatch is a dedicated rejection instead
-         of GNU's measured silent coercion (§4); a flag mismatch is a silent
-         union, matching measured GNU behavior. *)
-      let real_contributions = Hashtbl.create 64 in
-      let section_names =
-        let real =
-          List.fold_left
-            (fun acc (m : 'k Lowered_ast.module_) ->
-              List.fold_left
-                (fun acc (sc : 'k Lowered_ast.section_content) ->
-                  let n = sc.Lowered_ast.sec.Lowered_ast.sec_name in
-                  let prior = Hashtbl.find_opt real_contributions n in
-                  Hashtbl.replace real_contributions n
-                    ((m.Lowered_ast.unit_name, sc) :: Option.value prior ~default:[]);
-                  if Option.is_some prior then acc else n :: acc)
-                acc m.Lowered_ast.sections)
-            [] modules
-          |> List.rev
+  let common_unit = "<common>" in
+  let common_origin = Origin.synthesized ~pass:"image" () in
+  let common_contribution =
+    match winning_commons with
+    | [] -> None
+    | _ ->
+        let fragments =
+          List.concat_map
+            (fun (name, size, align) ->
+              [
+                Lowered_ast.Align { boundary = align; origin = common_origin };
+                Lowered_ast.Label_def { name; origin = common_origin };
+                Lowered_ast.Zero { length = size; origin = common_origin };
+              ])
+            winning_commons
         in
-        match common_contribution with
-        | Some _ when not (Hashtbl.mem real_contributions ".bss") -> real @ [ ".bss" ]
-        | _ -> real
-      in
-      (match section_names with [] -> fail `No_section | _ -> ());
-      let contributions name =
-        let real = List.rev (Option.value (Hashtbl.find_opt real_contributions name) ~default:[]) in
-        match common_contribution with
-        | Some (u, sc) when String.equal name ".bss" -> real @ [ (u, sc) ]
-        | _ -> real
-      in
-      let union_perms =
-        List.fold_left
-          (fun acc (p : Perms.t) ->
+        Some
+          ( common_unit,
             {
-              Perms.read = acc.Perms.read || p.Perms.read;
-              write = acc.Perms.write || p.Perms.write;
-              execute = acc.Perms.execute || p.Perms.execute;
-            })
-          Perms.none
-      in
-      let merged =
-        List.map
-          (fun name ->
-            let cs = contributions name in
-            let perms =
-              union_perms (List.map (fun (_, sc) -> sc.Lowered_ast.sec.Lowered_ast.perms) cs)
-            in
-            let alignment =
-              List.fold_left
-                (fun acc (_, sc) -> max acc sc.Lowered_ast.sec.Lowered_ast.alignment)
-                1 cs
-            in
-            if Perms.writable perms && Perms.executable perms && not policy.allow_rwx then
-              fail (`Rwx_segment name);
-            (match
-               List.sort_uniq compare
-                 (List.map (fun (_, sc) -> sc.Lowered_ast.sec.Lowered_ast.kind) cs)
-             with
-            | [] | [ _ ] -> ()
-            | _ -> fail (`Section_kind_mismatch name));
-            let kind =
-              match cs with
-              | (_, sc) :: _ -> sc.Lowered_ast.sec.Lowered_ast.kind
-              | [] -> Lowered_ast.Progbits
-            in
-            (name, cs, perms, alignment, kind))
-          section_names
-      in
-      (* {2 Lay each contribution out on its own - unchanged from M1/M2 - then
-         concatenate with inter-contribution padding (§3/§5). A single-module
-         link has exactly one contribution per section, so this fold inserts
-         no padding and reproduces M1/M2's byte-for-byte output. *)
-      let laid =
-        List.map
-          (fun (name, cs, perms, alignment, kind) ->
-            let contribs =
-              List.map
-                (fun (unit_name, sc) ->
-                  let bytes, offs, szs, fx, errs, logical_size =
-                    layout_section ~evaluate ~align_fill sc
-                  in
-                  ( unit_name,
-                    sc.Lowered_ast.sec.Lowered_ast.alignment,
-                    bytes,
-                    offs,
-                    szs,
-                    fx,
-                    errs,
-                    logical_size ))
-                cs
-            in
-            List.iter
-              (fun (_, _, _, _, _, _, errs, _) -> errors := List.rev_append errs !errors)
-              contribs;
-            let buf = Buffer.create 256 in
-            let total_logical_size, bases =
-              List.fold_left
-                (fun (len, bases) (unit_name, calign, bytes, _, _, _, _, logical_size) ->
-                  let target = align_up len calign in
-                  let pad = target - len in
-                  (* NOBITS (§6): pure logical extent, no real bytes anywhere
+              Lowered_ast.sec =
+                {
+                  Lowered_ast.sec_name = ".bss";
+                  perms = Perms.rw;
+                  alignment =
+                    List.fold_left (fun acc (_, _, align) -> max acc align) 1 winning_commons;
+                  kind = Lowered_ast.Nobits;
+                };
+              fragments;
+            } )
+  in
+  (module_symbols, common_unit, common_contribution)
+
+(* {2 Merge sections by name alone, first-occurrence order (§4)}
+
+   Matches [contents], [portable.ml]'s [section_bytes] and every other
+   name-keyed consumer exactly as it works today - no new compound key.
+   A same-name PROGBITS/NOBITS mismatch is a dedicated rejection instead
+   of GNU's measured silent coercion (§4); a flag mismatch is a silent
+   union, matching measured GNU behavior. *)
+let merge_sections ~(fail : ?origin:Origin.t -> error -> unit) (policy : layout_policy)
+    (modules : 'k Lowered_ast.module_ list) common_contribution =
+  let real_contributions = Hashtbl.create 64 in
+  let section_names =
+    let real =
+      List.fold_left
+        (fun acc (m : 'k Lowered_ast.module_) ->
+          List.fold_left
+            (fun acc (sc : 'k Lowered_ast.section_content) ->
+              let n = sc.Lowered_ast.sec.Lowered_ast.sec_name in
+              let prior = Hashtbl.find_opt real_contributions n in
+              Hashtbl.replace real_contributions n
+                ((m.Lowered_ast.unit_name, sc) :: Option.value prior ~default:[]);
+              if Option.is_some prior then acc else n :: acc)
+            acc m.Lowered_ast.sections)
+        [] modules
+      |> List.rev
+    in
+    match common_contribution with
+    | Some _ when not (Hashtbl.mem real_contributions ".bss") -> real @ [ ".bss" ]
+    | _ -> real
+  in
+  (match section_names with [] -> fail `No_section | _ -> ());
+  let contributions name =
+    let real = List.rev (Option.value (Hashtbl.find_opt real_contributions name) ~default:[]) in
+    match common_contribution with
+    | Some (u, sc) when String.equal name ".bss" -> real @ [ (u, sc) ]
+    | _ -> real
+  in
+  let union_perms =
+    List.fold_left
+      (fun acc (p : Perms.t) ->
+        {
+          Perms.read = acc.Perms.read || p.Perms.read;
+          write = acc.Perms.write || p.Perms.write;
+          execute = acc.Perms.execute || p.Perms.execute;
+        })
+      Perms.none
+  in
+  let merged =
+    List.map
+      (fun name ->
+        let cs = contributions name in
+        let perms =
+          union_perms (List.map (fun (_, sc) -> sc.Lowered_ast.sec.Lowered_ast.perms) cs)
+        in
+        let alignment =
+          List.fold_left (fun acc (_, sc) -> max acc sc.Lowered_ast.sec.Lowered_ast.alignment) 1 cs
+        in
+        if Perms.writable perms && Perms.executable perms && not policy.allow_rwx then
+          fail (`Rwx_segment name);
+        (match
+           List.sort_uniq compare (List.map (fun (_, sc) -> sc.Lowered_ast.sec.Lowered_ast.kind) cs)
+         with
+        | [] | [ _ ] -> ()
+        | _ -> fail (`Section_kind_mismatch name));
+        let kind =
+          match cs with
+          | (_, sc) :: _ -> sc.Lowered_ast.sec.Lowered_ast.kind
+          | [] -> Lowered_ast.Progbits
+        in
+        (name, cs, perms, alignment, kind))
+      section_names
+  in
+  merged
+
+(* {2 Lay each contribution out on its own - unchanged from M1/M2 - then
+   concatenate with inter-contribution padding (§3/§5). A single-module
+   link has exactly one contribution per section, so this fold inserts
+   no padding and reproduces M1/M2's byte-for-byte output. *)
+let layout_contributions ~evaluate ~fill ~align_fill ~section_pad ~add_errors merged =
+  let laid =
+    List.map
+      (fun (name, cs, perms, alignment, kind) ->
+        let contribs =
+          List.map
+            (fun (unit_name, sc) ->
+              let bytes, offs, szs, fx, errs, logical_size =
+                layout_section ~evaluate ~align_fill sc
+              in
+              ( unit_name,
+                sc.Lowered_ast.sec.Lowered_ast.alignment,
+                bytes,
+                offs,
+                szs,
+                fx,
+                errs,
+                logical_size ))
+            cs
+        in
+        List.iter (fun (_, _, _, _, _, _, errs, _) -> add_errors errs) contribs;
+        let buf = Buffer.create 256 in
+        let total_logical_size, bases =
+          List.fold_left
+            (fun (len, bases) (unit_name, calign, bytes, _, _, _, _, logical_size) ->
+              let target = align_up len calign in
+              let pad = target - len in
+              (* NOBITS (§6): pure logical extent, no real bytes anywhere
                      in this section - not even for the merge-boundary gap,
                      since there is nothing for a "fill" to mean here. *)
-                  (match kind with
-                  | Lowered_ast.Progbits ->
-                      if pad > 0 then
-                        Buffer.add_string buf (fill ~executable:(Perms.executable perms) pad);
-                      Buffer.add_string buf bytes
-                  | Lowered_ast.Nobits -> ());
-                  (target + logical_size, (unit_name, target) :: bases))
-                (0, []) contribs
-            in
-            (* The runtime-vararg frontier gap (docs/corpus.md, Follow-ups):
-               a target that sets [section_pad] (RISC-V alone, measured) rounds this
+              (match kind with
+              | Lowered_ast.Progbits ->
+                  if pad > 0 then
+                    Buffer.add_string buf (fill ~executable:(Perms.executable perms) pad);
+                  Buffer.add_string buf bytes
+              | Lowered_ast.Nobits -> ());
+              (target + logical_size, (unit_name, target) :: bases))
+            (0, []) contribs
+        in
+        (* A target that sets [section_pad] (RISC-V alone, measured) rounds this
                executable PROGBITS section's own final size up to its recorded alignment (data
                sections stay as laid out, as in GAS), the same
                way GAS's own assembler does at end-of-section - distinct from the
                inter-contribution merge-gap [fill] above, which every target either lacks
                or answers differently. NOBITS has no bytes to pad (§6). *)
-            let total_logical_size =
-              match (kind, section_pad) with
-              | Lowered_ast.Progbits, Some pad_fn when Perms.executable perms ->
-                  let target = align_up total_logical_size alignment in
-                  let pad = target - total_logical_size in
-                  if pad > 0 then Buffer.add_string buf (pad_fn ~length:pad);
-                  target
-              | _ -> total_logical_size
-            in
-            let bases = List.rev_map snd bases in
-            let shifted =
-              List.map2
-                (fun base (unit_name, _, _, offs, szs, fx, _, _) ->
-                  ( unit_name,
-                    List.map (fun (n, o) -> (n, o + base)) offs,
-                    List.map (fun (n, e, o) -> (n, e, o + base)) szs,
-                    List.map (fun (fo, f) -> (fo + base, f)) fx ))
-                bases contribs
-            in
-            (name, perms, alignment, kind, Buffer.contents buf, shifted, total_logical_size))
-          merged
-      in
-      let contents = List.map (fun (n, _, _, _, bytes, _, _) -> (n, bytes)) laid in
-      (* {2 Symbol collection and identity (§1/§2): every [Label_def], in its
-         merged section's coordinates, qualified by owning input. *)
-      let owners = Hashtbl.create 16 in
-      List.iter
-        (fun ((m : 'k Lowered_ast.module_), symbols) ->
-          if not (Hashtbl.mem owners m.Lowered_ast.unit_name) then
-            Hashtbl.add owners m.Lowered_ast.unit_name symbols)
-        module_symbols;
-      let definitions =
+        let total_logical_size =
+          match (kind, section_pad) with
+          | Lowered_ast.Progbits, Some pad_fn when Perms.executable perms ->
+              let target = align_up total_logical_size alignment in
+              let pad = target - total_logical_size in
+              if pad > 0 then Buffer.add_string buf (pad_fn ~length:pad);
+              target
+          | _ -> total_logical_size
+        in
+        let bases = List.rev_map snd bases in
+        let shifted =
+          List.map2
+            (fun base (unit_name, _, _, offs, szs, fx, _, _) ->
+              ( unit_name,
+                List.map (fun (n, o) -> (n, o + base)) offs,
+                List.map (fun (n, e, o) -> (n, e, o + base)) szs,
+                List.map (fun (fo, f) -> (fo + base, f)) fx ))
+            bases contribs
+        in
+        (name, perms, alignment, kind, Buffer.contents buf, shifted, total_logical_size))
+      merged
+  in
+  laid
+
+(* {2 Symbol collection and identity (§1/§2): every [Label_def], in its
+   merged section's coordinates, qualified by owning input. *)
+let collect_definitions ~common_unit module_symbols laid =
+  let owners = Hashtbl.create 16 in
+  List.iter
+    (fun ((m : 'k Lowered_ast.module_), symbols) ->
+      if not (Hashtbl.mem owners m.Lowered_ast.unit_name) then
+        Hashtbl.add owners m.Lowered_ast.unit_name symbols)
+    module_symbols;
+  let definitions =
+    List.concat_map
+      (fun (name, _, _, _, _, shifted, _) ->
         List.concat_map
-          (fun (name, _, _, _, _, shifted, _) ->
-            List.concat_map
-              (fun (unit_name, offs, _, _) ->
-                let owner = Hashtbl.find_opt owners unit_name in
-                List.map
-                  (fun (sym_name, off) ->
-                    let binding =
-                      (* Not a real input (§7 above) - its symbols are
+          (fun (unit_name, offs, _, _) ->
+            let owner = Hashtbl.find_opt owners unit_name in
+            List.map
+              (fun (sym_name, off) ->
+                let binding =
+                  (* Not a real input (§7 above) - its symbols are
                          resolver-decided [Global], never looked up in any
                          module's own declarations. *)
-                      if String.equal unit_name common_unit then Lowered_ast.Global
-                      else
-                        match owner with
-                        | None -> Lowered_ast.Local
-                        | Some symbols -> (
-                            match Hashtbl.find_opt symbols sym_name with
-                            | Some s -> s.Lowered_ast.binding
-                            | None -> Lowered_ast.Local)
-                    in
-                    {
-                      Symtab.d_unit = unit_name;
-                      d_name = sym_name;
-                      d_binding = binding;
-                      d_section = name;
-                      d_offset = off;
-                    })
-                  offs)
-              shifted)
-          laid
-      in
-      let index = Symtab.index definitions in
-      let resolve = resolve_symbol ~index in
-      let fixups =
+                  if String.equal unit_name common_unit then Lowered_ast.Global
+                  else
+                    match owner with
+                    | None -> Lowered_ast.Local
+                    | Some symbols -> (
+                        match Hashtbl.find_opt symbols sym_name with
+                        | Some s -> s.Lowered_ast.binding
+                        | None -> Lowered_ast.Local)
+                in
+                {
+                  Symtab.d_unit = unit_name;
+                  d_name = sym_name;
+                  d_binding = binding;
+                  d_section = name;
+                  d_offset = off;
+                })
+              offs)
+          shifted)
+      laid
+  in
+  definitions
+
+let resolve_fixups ~evaluate laid =
+  let fixups =
+    List.concat_map
+      (fun (name, _, _, _, _, shifted, _) ->
         List.concat_map
-          (fun (name, _, _, _, _, shifted, _) ->
-            List.concat_map
-              (fun (unit_name, _, _, fx) ->
-                List.map
-                  (fun (frag_off, (f : 'k Lowered_ast.fixup)) ->
-                    {
-                      rf_unit = unit_name;
-                      rf_section = name;
-                      rf_frag_offset = frag_off;
-                      rf_byte_offset = frag_off + f.Lowered_ast.byte_offset;
-                      rf_container = f.Lowered_ast.container;
-                      rf_pc_bias = f.Lowered_ast.pc_bias;
-                      rf_slices = f.Lowered_ast.slices;
-                      rf_range = f.Lowered_ast.range;
-                      rf_value = f.Lowered_ast.value;
-                      rf_original_value = f.Lowered_ast.value;
-                      rf_pairing = f.Lowered_ast.pairing;
-                      rf_name = f.Lowered_ast.name;
-                      rf_kind_name = f.Lowered_ast.kind_name;
-                      rf_family = f.Lowered_ast.family;
-                      rf_role = f.Lowered_ast.role;
-                      rf_origin = f.Lowered_ast.origin;
-                      rf_evaluate = evaluate f.Lowered_ast.kind;
-                    })
-                  fx)
-              shifted)
-          laid
-      in
-      let label_locations =
+          (fun (unit_name, _, _, fx) ->
+            List.map
+              (fun (frag_off, (f : 'k Lowered_ast.fixup)) ->
+                {
+                  rf_unit = unit_name;
+                  rf_section = name;
+                  rf_frag_offset = frag_off;
+                  rf_byte_offset = frag_off + f.Lowered_ast.byte_offset;
+                  rf_container = f.Lowered_ast.container;
+                  rf_pc_bias = f.Lowered_ast.pc_bias;
+                  rf_slices = f.Lowered_ast.slices;
+                  rf_range = f.Lowered_ast.range;
+                  rf_value = f.Lowered_ast.value;
+                  rf_original_value = f.Lowered_ast.value;
+                  rf_pairing = f.Lowered_ast.pairing;
+                  rf_name = f.Lowered_ast.name;
+                  rf_kind_name = f.Lowered_ast.kind_name;
+                  rf_family = f.Lowered_ast.family;
+                  rf_role = f.Lowered_ast.role;
+                  rf_origin = f.Lowered_ast.origin;
+                  rf_evaluate = evaluate f.Lowered_ast.kind;
+                })
+              fx)
+          shifted)
+      laid
+  in
+  let label_locations =
+    List.concat_map
+      (fun (name, _, _, _, _, shifted, _) ->
         List.concat_map
-          (fun (name, _, _, _, _, shifted, _) ->
-            List.concat_map
-              (fun (unit_name, offs, _, _) ->
-                List.map (fun (symbol, offset) -> (symbol, name, offset, unit_name)) offs)
-              shifted)
-          laid
-      in
-      let heads =
-        List.filter
-          (fun f -> match f.rf_pairing with Lowered_ast.Pair_head _ -> true | _ -> false)
-          fixups
-      in
-      (* Head keys are fragment-local.  A duplicate is rejected even if no
+          (fun (unit_name, offs, _, _) ->
+            List.map (fun (symbol, offset) -> (symbol, name, offset, unit_name)) offs)
+          shifted)
+      laid
+  in
+  (fixups, label_locations)
+
+let pair_fixups ~(fail : ?origin:Origin.t -> error -> unit) fixups label_locations =
+  let heads =
+    List.filter
+      (fun f -> match f.rf_pairing with Lowered_ast.Pair_head _ -> true | _ -> false)
+      fixups
+  in
+  (* Head keys are fragment-local.  A duplicate is rejected even if no
          tail happens to reference it, since accepting it would make a later
          low fixup depend on list order. *)
-      let seen_head_keys = Hashtbl.create 64 in
-      List.iter
-        (fun h ->
-          match h.rf_pairing with
-          | Lowered_ast.Pair_head key ->
-              let qualified = (h.rf_section, h.rf_frag_offset, key) in
-              if Hashtbl.mem seen_head_keys qualified then
-                fail ~origin:h.rf_origin (`Pair_duplicate_head key)
-              else Hashtbl.add seen_head_keys qualified ()
-          | _ -> ())
-        heads;
-      let heads_by_sibling = Hashtbl.create 64 and heads_by_offset = Hashtbl.create 64 in
-      List.iter
-        (fun h ->
-          (match h.rf_pairing with
-          | Lowered_ast.Pair_head k ->
-              let key = (h.rf_section, h.rf_frag_offset, k) in
-              Hashtbl.replace heads_by_sibling key
-                (h :: Option.value (Hashtbl.find_opt heads_by_sibling key) ~default:[])
-          | _ -> ());
-          let key = (h.rf_section, h.rf_byte_offset) in
-          Hashtbl.replace heads_by_offset key
-            (h :: Option.value (Hashtbl.find_opt heads_by_offset key) ~default:[]))
-        (List.rev heads);
-      let labels_by_name = Hashtbl.create 256 in
-      List.iter
-        (fun ((n, _, _, _) as l) ->
-          Hashtbl.replace labels_by_name n
-            (l :: Option.value (Hashtbl.find_opt labels_by_name n) ~default:[]))
-        (List.rev label_locations);
-      let pair_tail tail candidates description =
-        match candidates with
-        | [] ->
-            fail ~origin:tail.rf_origin (`Pair_missing_head description);
-            tail
-        | [ head ] ->
-            if not (String.equal tail.rf_family head.rf_family) then begin
-              fail ~origin:tail.rf_origin (`Pair_incompatible_family description);
-              tail
-            end
-            else
-              {
-                tail with
-                rf_value = head.rf_value;
-                rf_frag_offset = head.rf_frag_offset;
-                rf_pc_bias = head.rf_pc_bias;
-              }
-        | _ ->
-            fail ~origin:tail.rf_origin (`Pair_ambiguous_head description);
-            tail
-      in
-      let fixups =
-        List.map
-          (fun tail ->
-            match tail.rf_pairing with
-            | Lowered_ast.Unpaired | Lowered_ast.Pair_head _ -> tail
-            | Lowered_ast.Pair_tail (Lowered_ast.Sibling_key key) ->
-                pair_tail tail
-                  (Option.value
-                     (Hashtbl.find_opt heads_by_sibling (tail.rf_section, tail.rf_frag_offset, key))
-                     ~default:[])
-                  key
-            | Lowered_ast.Pair_tail (Lowered_ast.Anchor_symbol anchor) -> (
-                (* Anchors are synthetic, per-instruction-sequence labels an
+  let seen_head_keys = Hashtbl.create 64 in
+  List.iter
+    (fun h ->
+      match h.rf_pairing with
+      | Lowered_ast.Pair_head key ->
+          let qualified = (h.rf_section, h.rf_frag_offset, key) in
+          if Hashtbl.mem seen_head_keys qualified then
+            fail ~origin:h.rf_origin (`Pair_duplicate_head key)
+          else Hashtbl.add seen_head_keys qualified ()
+      | _ -> ())
+    heads;
+  let heads_by_sibling = Hashtbl.create 64 and heads_by_offset = Hashtbl.create 64 in
+  List.iter
+    (fun h ->
+      (match h.rf_pairing with
+      | Lowered_ast.Pair_head k ->
+          let key = (h.rf_section, h.rf_frag_offset, k) in
+          Hashtbl.replace heads_by_sibling key
+            (h :: Option.value (Hashtbl.find_opt heads_by_sibling key) ~default:[])
+      | _ -> ());
+      let key = (h.rf_section, h.rf_byte_offset) in
+      Hashtbl.replace heads_by_offset key
+        (h :: Option.value (Hashtbl.find_opt heads_by_offset key) ~default:[]))
+    (List.rev heads);
+  let labels_by_name = Hashtbl.create 256 in
+  List.iter
+    (fun ((n, _, _, _) as l) ->
+      Hashtbl.replace labels_by_name n
+        (l :: Option.value (Hashtbl.find_opt labels_by_name n) ~default:[]))
+    (List.rev label_locations);
+  let pair_tail tail candidates description =
+    match candidates with
+    | [] ->
+        fail ~origin:tail.rf_origin (`Pair_missing_head description);
+        tail
+    | [ head ] ->
+        if not (String.equal tail.rf_family head.rf_family) then begin
+          fail ~origin:tail.rf_origin (`Pair_incompatible_family description);
+          tail
+        end
+        else
+          {
+            tail with
+            rf_value = head.rf_value;
+            rf_frag_offset = head.rf_frag_offset;
+            rf_pc_bias = head.rf_pc_bias;
+          }
+    | _ ->
+        fail ~origin:tail.rf_origin (`Pair_ambiguous_head description);
+        tail
+  in
+  let fixups =
+    List.map
+      (fun tail ->
+        match tail.rf_pairing with
+        | Lowered_ast.Unpaired | Lowered_ast.Pair_head _ -> tail
+        | Lowered_ast.Pair_tail (Lowered_ast.Sibling_key key) ->
+            pair_tail tail
+              (Option.value
+                 (Hashtbl.find_opt heads_by_sibling (tail.rf_section, tail.rf_frag_offset, key))
+                 ~default:[])
+              key
+        | Lowered_ast.Pair_tail (Lowered_ast.Anchor_symbol anchor) -> (
+            (* Anchors are synthetic, per-instruction-sequence labels an
                    encoder emits alongside the fixups it paired - always
                    within the input that emitted them, never across a link
                    boundary. §9 requires pairing to resolve in merged
@@ -1157,51 +1142,94 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
                    (legal - anchors are ordinary local labels, and §2 says two
                    inputs' locals never collide) from producing a spurious
                    [Pair_ambiguous_head] or a wrong match. *)
-                match
-                  List.filter
-                    (fun (_, _, _, u) -> String.equal u tail.rf_unit)
-                    (Option.value (Hashtbl.find_opt labels_by_name anchor) ~default:[])
-                with
-                | [] ->
-                    fail ~origin:tail.rf_origin (`Pair_undefined_anchor anchor);
-                    (* The pairing diagnostic is the root cause.  Replace the
+            match
+              List.filter
+                (fun (_, _, _, u) -> String.equal u tail.rf_unit)
+                (Option.value (Hashtbl.find_opt labels_by_name anchor) ~default:[])
+            with
+            | [] ->
+                fail ~origin:tail.rf_origin (`Pair_undefined_anchor anchor);
+                (* The pairing diagnostic is the root cause.  Replace the
                        unresolved effective expression so the generic import
                        check below does not add a misleading second error.  The
                        original anchor remains in [rf_original_value] for
                        relocation observations. *)
-                    { tail with rf_value = Expr.Const Bigint.zero }
-                | (_, section, _, _) :: _ when not (String.equal section tail.rf_section) ->
-                    fail ~origin:tail.rf_origin (`Pair_cross_section anchor);
-                    tail
-                | [ (_, section, offset, _) ] ->
-                    pair_tail tail
-                      (Option.value
-                         (Hashtbl.find_opt heads_by_offset (section, offset))
-                         ~default:[])
-                      anchor
-                | _ ->
-                    fail ~origin:tail.rf_origin (`Pair_ambiguous_head anchor);
-                    tail))
-          fixups
-      in
-      let globals =
-        (* First-occurrence order across modules, deduplicated stably: a name
+                { tail with rf_value = Expr.Const Bigint.zero }
+            | (_, section, _, _) :: _ when not (String.equal section tail.rf_section) ->
+                fail ~origin:tail.rf_origin (`Pair_cross_section anchor);
+                tail
+            | [ (_, section, offset, _) ] ->
+                pair_tail tail
+                  (Option.value (Hashtbl.find_opt heads_by_offset (section, offset)) ~default:[])
+                  anchor
+            | _ ->
+                fail ~origin:tail.rf_origin (`Pair_ambiguous_head anchor);
+                tail))
+      fixups
+  in
+  fixups
+
+let check_definitions ~(fail : ?origin:Origin.t -> error -> unit) ~externs ~index
+    (modules : 'k Lowered_ast.module_ list) definitions =
+  let global_addresses = Hashtbl.create 64 in
+  let conflicting = Hashtbl.create 16 in
+  List.iter
+    (fun (d : Symtab.definition) ->
+      if d.Symtab.d_binding = Lowered_ast.Global then
+        let at = (d.Symtab.d_section, d.Symtab.d_offset) in
+        match Hashtbl.find_opt global_addresses d.Symtab.d_name with
+        | None -> Hashtbl.add global_addresses d.Symtab.d_name at
+        | Some first -> if first <> at then Hashtbl.replace conflicting d.Symtab.d_name ())
+    definitions;
+  List.iter
+    (fun n -> fail (`Duplicate_definition n))
+    (List.sort compare (Hashtbl.fold (fun n () acc -> n :: acc) conflicting []));
+  (* A declaration with no definition anywhere it is allowed to see one
+         is [Declared_never_defined] - distinct from an undefined
+         *reference* (§1): this is about a declaration nothing backs, not a
+         fixup naming something nothing provides. A [Local] declaration must
+         be backed by its own input; a [Global] one by any input. [Weak] is
+         exempt entirely - an undefined weak symbol is not an error, it is
+         exactly the case §7's undefined-weak substitution exists for. *)
+  List.iter
+    (fun (m : 'k Lowered_ast.module_) ->
+      List.iter
+        (fun (s : Lowered_ast.symbol) ->
+          let ok =
+            match s.Lowered_ast.binding with
+            | Lowered_ast.Local ->
+                Option.is_some
+                  (Symtab.find_in_unit index ~unit_name:m.Lowered_ast.unit_name s.Lowered_ast.name)
+            | Lowered_ast.Global ->
+                Hashtbl.mem externs s.Lowered_ast.name || Symtab.is_global index s.Lowered_ast.name
+            | Lowered_ast.Weak -> true
+          in
+          if not ok then fail (`Declared_never_defined s.Lowered_ast.name))
+        m.Lowered_ast.symbols)
+    modules;
+  ()
+
+let check_references ~(fail : ?origin:Origin.t -> error -> unit) ~externs ~index
+    (policy : layout_policy) (modules : 'k Lowered_ast.module_ list) fixups =
+  let resolve = resolve_symbol ~index in
+  let globals =
+    (* First-occurrence order across modules, deduplicated stably: a name
            [.globl]'d in more than one input (legitimate re-declaration of the
            one, single winning definition) must not be exported twice. *)
-        let seen = Hashtbl.create 64 in
-        List.concat_map
-          (fun (m : 'k Lowered_ast.module_) ->
-            List.filter_map
-              (fun (s : Lowered_ast.symbol) ->
-                match s.Lowered_ast.binding with
-                | Lowered_ast.Global when not (Hashtbl.mem seen s.Lowered_ast.name) ->
-                    Hashtbl.add seen s.Lowered_ast.name ();
-                    Some s.Lowered_ast.name
-                | _ -> None)
-              m.Lowered_ast.symbols)
-          modules
-      in
-      (* Two or more strong (Global) definitions of the same name at *different*
+    let seen = Hashtbl.create 64 in
+    List.concat_map
+      (fun (m : 'k Lowered_ast.module_) ->
+        List.filter_map
+          (fun (s : Lowered_ast.symbol) ->
+            match s.Lowered_ast.binding with
+            | Lowered_ast.Global when not (Hashtbl.mem seen s.Lowered_ast.name) ->
+                Hashtbl.add seen s.Lowered_ast.name ();
+                Some s.Lowered_ast.name
+            | _ -> None)
+          m.Lowered_ast.symbols)
+      modules
+  in
+  (* Two or more strong (Global) definitions of the same name at *different*
          addresses - in one input or across several - is a rejection rather
          than a last-wins, unchanged from M1/M2 and now checked link-wide.
          [Weak] is never "strong" here: a weak definition never conflicts with
@@ -1214,104 +1242,92 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
          (confirmed against real arm-linux-gnueabihf-as: redefining a symbol
          to its own existing value is accepted, only a differing value is
          rejected), so only a genuine second *address* counts here. *)
-      let externs = string_set policy.externs in
-      let global_addresses = Hashtbl.create 64 in
-      let conflicting = Hashtbl.create 16 in
-      List.iter
-        (fun (d : Symtab.definition) ->
-          if d.Symtab.d_binding = Lowered_ast.Global then
-            let at = (d.Symtab.d_section, d.Symtab.d_offset) in
-            match Hashtbl.find_opt global_addresses d.Symtab.d_name with
-            | None -> Hashtbl.add global_addresses d.Symtab.d_name at
-            | Some first -> if first <> at then Hashtbl.replace conflicting d.Symtab.d_name ())
-        definitions;
-      List.iter
-        (fun n -> fail (`Duplicate_definition n))
-        (List.sort compare (Hashtbl.fold (fun n () acc -> n :: acc) conflicting []));
-      (* A declaration with no definition anywhere it is allowed to see one
-         is [Declared_never_defined] - distinct from an undefined
-         *reference* (§1): this is about a declaration nothing backs, not a
-         fixup naming something nothing provides. A [Local] declaration must
-         be backed by its own input; a [Global] one by any input. [Weak] is
-         exempt entirely - an undefined weak symbol is not an error, it is
-         exactly the case §7's undefined-weak substitution exists for. *)
-      List.iter
-        (fun (m : 'k Lowered_ast.module_) ->
-          List.iter
-            (fun (s : Lowered_ast.symbol) ->
-              let ok =
-                match s.Lowered_ast.binding with
-                | Lowered_ast.Local ->
-                    Option.is_some
-                      (Symtab.find_in_unit index ~unit_name:m.Lowered_ast.unit_name
-                         s.Lowered_ast.name)
-                | Lowered_ast.Global ->
-                    Hashtbl.mem externs s.Lowered_ast.name
-                    || Symtab.is_global index s.Lowered_ast.name
-                | Lowered_ast.Weak -> true
-              in
-              if not ok then fail (`Declared_never_defined s.Lowered_ast.name))
-            m.Lowered_ast.symbols)
-        modules;
-      (* Preferably a link-global definition, since that is the one an entry
+  (* Preferably a link-global definition, since that is the one an entry
          or export name is supposed to mean - but an explicit entry/export
          name is not required to be [.globl]'d (M1/M2 never required it, and
          a single-module link has no other input a plain local could be
          mistaken for), so a name any input defines at all is accepted too. *)
-      let resolvable n = Symtab.defined index n in
-      let exports =
-        match policy.exported with
-        | None -> List.filter (fun n -> resolvable n || not (Hashtbl.mem externs n)) globals
-        | Some names -> names
-      in
-      (* Without a link-global definition the name falls back to the input's own, which
+  let resolvable n = Symtab.defined index n in
+  let exports =
+    match policy.exported with
+    | None -> List.filter (fun n -> resolvable n || not (Hashtbl.mem externs n)) globals
+    | Some names -> names
+  in
+  (* Without a link-global definition the name falls back to the input's own, which
          only means one thing when a single input defines it. *)
-      let ambiguous n =
-        (not (Symtab.is_global index n))
-        && List.length
-             (List.sort_uniq String.compare
-                (List.map (fun (d : Symtab.definition) -> d.Symtab.d_unit) (Symtab.named index n)))
-           > 1
-      in
-      List.iter
-        (fun n ->
-          if not (resolvable n) then fail (`Export_undefined n)
-          else if ambiguous n then fail (`Ambiguous_symbol n))
-        exports;
-      (match policy.entry_symbol with
-      | Some e when not (resolvable e) -> fail (`Entry_undefined e)
-      | Some e when ambiguous e -> fail (`Ambiguous_symbol e)
-      | _ -> ());
-      (* A fixup naming a symbol nothing in this link defines cannot become a
+  let ambiguous n =
+    (not (Symtab.is_global index n))
+    && List.length
+         (List.sort_uniq String.compare
+            (List.map (fun (d : Symtab.definition) -> d.Symtab.d_unit) (Symtab.named index n)))
+       > 1
+  in
+  List.iter
+    (fun n ->
+      if not (resolvable n) then fail (`Export_undefined n)
+      else if ambiguous n then fail (`Ambiguous_symbol n))
+    exports;
+  (match policy.entry_symbol with
+  | Some e when not (resolvable e) -> fail (`Entry_undefined e)
+  | Some e when ambiguous e -> fail (`Ambiguous_symbol e)
+  | _ -> ());
+  (* A fixup naming a symbol nothing in this link defines cannot become a
          bound image unless the host promised to supply it: a name in
          [policy.externs] is an import, and [bind_image] requires its address.
          The other exception is a name declared [Weak] anywhere: §7 requires an
          undefined weak reference to resolve to 0, not to fail - [bind_image]'s
          [address_of] substitutes the value itself, using this same
          [weak_names] set, unless an import supplies one. *)
-      let weak_names =
-        List.sort_uniq compare
-          (List.concat_map
-             (fun (m : 'k Lowered_ast.module_) ->
-               List.filter_map
-                 (fun (s : Lowered_ast.symbol) ->
-                   if s.Lowered_ast.binding = Lowered_ast.Weak then Some s.Lowered_ast.name
-                   else None)
-                 m.Lowered_ast.symbols)
-             modules)
-      in
-      let weak_set = string_set weak_names in
-      let imports = ref [] in
+  let weak_names =
+    List.sort_uniq compare
+      (List.concat_map
+         (fun (m : 'k Lowered_ast.module_) ->
+           List.filter_map
+             (fun (s : Lowered_ast.symbol) ->
+               if s.Lowered_ast.binding = Lowered_ast.Weak then Some s.Lowered_ast.name else None)
+             m.Lowered_ast.symbols)
+         modules)
+  in
+  let weak_set = string_set weak_names in
+  let imports = ref [] in
+  List.iter
+    (fun f ->
       List.iter
-        (fun f ->
-          List.iter
-            (fun s ->
-              if Option.is_some (resolve ~from_unit:f.rf_unit s) then ()
-              else if Hashtbl.mem externs s then imports := s :: !imports
-              else if not (Hashtbl.mem weak_set s) then
-                fail ~origin:f.rf_origin (`Fixup_undefined_symbol { fixup = f.rf_name; symbol = s }))
-            (Expr.symbols f.rf_value))
-        fixups;
+        (fun s ->
+          if Option.is_some (resolve ~from_unit:f.rf_unit s) then ()
+          else if Hashtbl.mem externs s then imports := s :: !imports
+          else if not (Hashtbl.mem weak_set s) then
+            fail ~origin:f.rf_origin (`Fixup_undefined_symbol { fixup = f.rf_name; symbol = s }))
+        (Expr.symbols f.rf_value))
+    fixups;
+  (exports, weak_names, List.sort_uniq compare !imports)
+
+let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fill) ?section_pad
+    (policy : layout_policy) (modules : 'k Lowered_ast.module_ list) =
+  let errors = ref [] in
+  let fail ?origin e = errors := diag ?origin e :: !errors in
+  match modules with
+  | [] -> Diag.fail ~pos:__POS__ [ diag `No_modules ]
+  | modules when invalid_modules modules <> [] ->
+      Diag.fail ~pos:__POS__ (List.map (fun e -> diag e) (invalid_modules modules))
+  | modules ->
+      let externs = string_set policy.externs in
+      let module_symbols, common_unit, common_contribution = resolve_commons ~fail modules in
+      let merged = merge_sections ~fail policy modules common_contribution in
+      let laid =
+        layout_contributions ~evaluate ~fill ~align_fill ~section_pad
+          ~add_errors:(fun errs -> errors := List.rev_append errs !errors)
+          merged
+      in
+      let contents = List.map (fun (n, _, _, _, bytes, _, _) -> (n, bytes)) laid in
+      let definitions = collect_definitions ~common_unit module_symbols laid in
+      let index = Symtab.index definitions in
+      let fixups, label_locations = resolve_fixups ~evaluate laid in
+      let fixups = pair_fixups ~fail fixups label_locations in
+      check_definitions ~fail ~externs ~index modules definitions;
+      let exports, weak_names, imports =
+        check_references ~fail ~externs ~index policy modules fixups
+      in
       let segments =
         List.map
           (fun (name, perms, alignment, _kind, bytes, _, total_logical_size) ->
@@ -1345,7 +1361,7 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
                 segments;
                 entry = policy.entry_symbol;
                 exports;
-                imports = List.sort_uniq compare !imports;
+                imports;
                 (* Not "symbols we could not find" - those were just rejected -
                    but placement-dependent fixups still outstanding, which is
                    what §9 says a plan reports and what binding satisfies. *)
@@ -1925,11 +1941,8 @@ let fixup_observations (l : laid_out) =
               site;
               symbol;
               addend;
-              (* [Weak] is not yet reachable here: no directive produces it before
-                 M3 step 6/7 wires `.weak` through the resolver, so folding it
-                 into [`Global] for this oracle-facing pair is provisional, not a
-                 decision - §8 revisits this variant once a weak binding can
-                 actually arrive. *)
+              (* The oracle-facing pair has no weak variant: a weak definition is
+                 reported as [`Global]. *)
               binding =
                 (match sym with
                 | Some { Lowered_ast.binding = Lowered_ast.Global | Lowered_ast.Weak; _ } -> `Global

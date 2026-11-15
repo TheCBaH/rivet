@@ -1,6 +1,5 @@
-(* A performance regression guard for the parse-time pathology docs/
-   corpus.md's "One shared timeout, not a per-target rejection" note
-   describes: the compiler's test/regression/floats.c (~110K lines of generated
+(* A performance regression guard for a parse-time pathology: the compiler's
+   test/regression/floats.c (~110K lines of generated
    assembly) once made --dump-source-ast fail to return in any bounded time
    this project tried. That pathology is now fixed, but nothing short of a
    full corpus regen (needs a cross toolchain, and is deliberately kept off

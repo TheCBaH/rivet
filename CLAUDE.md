@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A retargetable assembler and linker in pure OCaml, for x86-32, x86-64, ARM,
 AArch64, RV32 and RV64: an in-memory pipeline from GNU-syntax text to an image
-that can be bound at chosen addresses. Its design is specified in
-`docs/design.md`.
+that can be bound at chosen addresses. `docs/architecture.md` describes what is
+built; `docs/design.md` is the historical plan.
 
 The repository holds two dune projects:
 
@@ -129,8 +129,9 @@ run `Rivet_tools_cli.Cli.main` with its own compiler and extra subcommands.
 
 ### Key docs
 
-- `docs/design.md` — the full design plan/spec (large; search it rather than
-  reading it end to end).
+- `docs/architecture.md` — the as-built libraries, interfaces and closure rules.
+- `docs/design.md` — the original design plan, kept as history (large; search it rather than
+  reading it end to end); where it differs from the tree, `architecture.md` wins.
 - `docs/isa-inventory.md` — the file format/schema for the whole-ISA inventory
   (per-target `manifest.txt`/`summary.txt`, sourced from the vendored
   `vendor/isa-data/{riscv-opcodes,xed}` submodules); not to be confused with the

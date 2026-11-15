@@ -7,7 +7,7 @@
    empty under Node" is exactly the class of failure the three-build equality
    requirement exists to catch.
 
-   This is the only package that may name all four targets at once, and the only
+   This is the only package that may name all six main targets at once, and the only
    place an existential target type is introduced. Everything downstream - the
    CLI, and any architecture-erased caller - sees [DRIVER] and never a
    target-specific type. *)

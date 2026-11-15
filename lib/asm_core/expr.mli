@@ -15,6 +15,9 @@ val unop_name : unop -> string
 val pp : Format.formatter -> t -> unit
 val to_string : t -> string
 
+val equal : t -> t -> bool
+(** Structural equality; constants compare by value. *)
+
 type env = { lookup : string -> Foundation.Bigint.t option; here : Foundation.Bigint.t option }
 
 val no_env : env

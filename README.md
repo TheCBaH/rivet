@@ -4,7 +4,7 @@ A retargetable assembler and linker in pure OCaml, for x86-32, x86-64, ARM,
 AArch64, RV32 and RV64. It reads GNU-syntax assembly, produces an in-memory
 image, and can bind that image at chosen addresses. There is no C code in the
 production closure: the same sources run natively, under js_of_ocaml, and
-under Melange. See [docs/design.md](docs/design.md).
+under Melange. See [docs/architecture.md](docs/architecture.md); [docs/design.md](docs/design.md) is the original plan.
 
 [![ci](https://github.com/TheCBaH/rivet/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TheCBaH/rivet/actions/workflows/ci.yml)
 

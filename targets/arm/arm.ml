@@ -459,9 +459,10 @@ let parse_operands ~mnemonic slices =
       in
       go [] groups
 
-let handle_directive ~name ~argument state =
+let handle_directive ~name ~arguments state =
   match name with
   | ".syntax" -> (
+      let argument = String.concat ", " arguments in
       match Arm_encode.Syntax.of_name (String.trim argument) with
       | Some syntax -> Target_intf.Target.Handled { state = { state with syntax }; emit = [] }
       | None -> Target_intf.Target.Rejected (parse_diag ~pos:__POS__ (`Unknown_syntax argument)))

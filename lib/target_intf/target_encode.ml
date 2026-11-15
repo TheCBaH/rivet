@@ -169,10 +169,11 @@ module type ENCODE = sig
 
   (* {1 Encoding}
 
-     One codec per target, holding every form as data (§4.9.1). [Codec.check]
-     runs over it in the test suite; [Codec.inspect] is what [--dump-codec]
-     prints; [Codec.encode] and [Codec.decode] are the two directions of this
-     single tree. *)
+     The codec is a view of the target's forms, not their authority: where a
+     target has per-opcode or generated row tables, those tables are the
+     description and the codec, or the part of it that is a tree, is derived
+     from them (docs/contracts.md §1.7). [Codec.check] and [--dump-codec] cover
+     the tree; the row tables carry their own checks in the test suite. *)
 
   val codec : (Lowered.t, fixup_kind) Codec.t
   (** The codec of the default configuration. A target with optional extensions may also offer a

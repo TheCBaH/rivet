@@ -167,8 +167,8 @@ module Make (T : T_intf.TARGET) = struct
                the target's to interpret and the common table has no business
                guessing what [.arch armv7-a] means. On [Unhandled] the common
                table decides; if neither claims it, it is a diagnostic. *)
-            let argument = String.concat ", " (List.map Token.slice_text arguments) in
-            match T.handle_directive ~name ~argument !state with
+            let texts = List.map Token.slice_text arguments in
+            match T.handle_directive ~name ~arguments:texts !state with
             | T_intf.Rejected e -> errors := parse_diagnostic e :: !errors
             | T_intf.Handled { state = s; emit } ->
                 state := s;
@@ -177,7 +177,7 @@ module Make (T : T_intf.TARGET) = struct
                    position instead of seeing only the final file state. *)
                 add
                   (Normalized_ast.Directive
-                     { directive = Directive.Target_state { name; argument }; origin });
+                     { directive = Directive.Target_state { name; arguments = texts }; origin });
                 List.iter (fun insn -> add (Normalized_ast.Instruction { insn; origin })) emit
             | T_intf.Unhandled -> (
                 match
@@ -204,8 +204,8 @@ module Make (T : T_intf.TARGET) = struct
 
   let lower ~state m =
     lower_with
-      ~target_state:(fun ~name ~argument st ->
-        match T.handle_directive ~name ~argument st with
+      ~target_state:(fun ~name ~arguments st ->
+        match T.handle_directive ~name ~arguments st with
         | T_intf.Handled { state = s; _ } -> Handled s
         | T_intf.Rejected e -> Rejected (parse_diagnostic e)
         | T_intf.Unhandled -> Unhandled)

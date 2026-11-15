@@ -106,10 +106,11 @@ module type TARGET = sig
 
   val handle_directive :
     name:string ->
-    argument:string ->
+    arguments:string list ->
     target_state ->
     (target_state, Instruction.t, parse_error Err.Error.t) directive_result
-  (** a directive arrives as source text, so a rejection is a front-end failure *)
+  (** [arguments] are the directive's arguments split at the top-level commas, each as its source
+      text. A directive arrives as source text, so a rejection is a front-end failure *)
 end
 
 (* The architecture-erased view (§5.1's DRIVER). Its whole purpose is that the

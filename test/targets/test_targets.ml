@@ -2061,7 +2061,7 @@ let%expect_test "a negative RIP-relative displacement redisplays with its sign" 
    symbol, not a literal; [split_nobase_sib] (x86_family.ml) is what makes
    the parenthesized-expression shape parse at all - [(tbl + 4)] is itself a
    grouped expression, not a bare identifier. Checked against i686-linux-gnu-as
-   before being promoted here (see corpus.md's Follow-ups / this session). *)
+   before being promoted here. *)
 (* [tbl] stays in [.text], like every other fixup test in this file
    ([disasm] binds every segment at the same address, so a second segment
    would overlap the first) and is a code label (a [ret], not a [.long]) so
@@ -2161,8 +2161,8 @@ let%expect_test "one binop per mandatory-prefix group (f2, f3, 66, none)" =
     4000000f  c3           ret                  [x86_64.ret]
     |}]
 
-(* An xmm8-15 operand needs REX, and the mandatory prefix has to precede it
-   (M5 corpus.md's Fix C step 3): real GNU as emits [f2 45 0f 58 c8], not
+(* An xmm8-15 operand needs REX, and the mandatory prefix has to precede it:
+   real GNU as emits [f2 45 0f 58 c8], not
    [45 f2 0f 58 c8]. *)
 let%expect_test "a REX-extended xmm register keeps the mandatory prefix before REX" =
   disasm "x86_64" "\t.text\n\t.globl f\nf:\n\taddsd %xmm8, %xmm9\n\tret\n";
@@ -2264,8 +2264,7 @@ let%expect_test "x86_32 has xmm0-xmm7 with the same SSE2 encoding as x86_64" =
    Reusing [Reg.t]/[Rm.t] for both GPR and xmm operands (width 128 is the
    only class marker) buys width-generic ModR/M machinery for free, but
    nothing else stops a cross-class operand from reaching the codec unless
-   [lower_instruction]'s new arms check it explicitly (M5, corpus.md's Fix C
-   step 5). *)
+   [lower_instruction]'s arms check it explicitly. *)
 
 let%expect_test "a GPR where an xmm operand is required is rejected" =
   attempt "x86_64" "\t.text\n\t.globl f\nf:\n\taddsd %eax, %xmm0\n\tret\n";
@@ -2400,8 +2399,8 @@ let%expect_test "addq $sym, %reg reads a symbolic ALU immediate" =
    until this session, this project's ALU-immediate encoder had no
    accumulator-specific alternative at all, so `addq $sym, %rax` fell
    through to the seven-byte ModR/M form instead of real `as`'s
-   six-byte `05 id`/`48 05 id` one - a documented, deliberately-left-open
-   byte mismatch (`docs/corpus.md`'s own Follow-ups entry), not
+   six-byte `05 id`/`48 05 id` one - a deliberately-left-open
+   byte mismatch, not
    evidenced by any *rejection* since nothing here failed to lower, only to
    byte-match. Now fixed on both x86_32 and x86_64, with a plain literal
    alongside the symbolic form to show the priority order still picks the
@@ -3115,7 +3114,7 @@ let%expect_test "riscv64: %pcrel_hi/%pcrel_lo resolve a symbol named like a regi
   riscv_pcrel_register_name_collision "riscv64";
   [%expect {| accepted |}]
 
-(* M5 corpus evidence (docs/corpus.md, assemble-c riscv32/riscv64): GAS
+(* Corpus evidence (assemble-c riscv32/riscv64): GAS
    overloads sll/srl/sra(w) with a third register operand as the R-type
    register-shift-amount form, and with a third immediate operand as an
    alias for slli/srli/srai(w) - confirmed against real
@@ -4048,8 +4047,8 @@ let%expect_test "add/sub auto-select the lsl #12 form for a bare multiple-of-409
 
 (* {1 RISC-V F/D: load/store, arithmetic, sign-inject moves}
 
-   Ordered Work item 3's floating-point second slice, RISC-V's own leg (M5, docs/
-   corpus.md - almabench.c/bisect.c/fft.c/fftsp.c/fftw.c/integr.c/mandelbrot.c/nbody.c/
+   Ordered Work item 3's floating-point second slice, RISC-V's own leg (corpus:
+   almabench.c/bisect.c/fft.c/fftsp.c/fftw.c/integr.c/mandelbrot.c/nbody.c/
    perlin.c/spectral.c). [fld]/[fsd]/[flw]/[fsw] are bit-for-bit the same addressing mode
    integer [lw]/[sw] use (opcodes [0x07]/[0x27] rather than [0x03]/[0x23], into/from an FP
    register instead of a GPR - the only field difference, matching {!Lowered.S}'s new

@@ -70,7 +70,8 @@ type t =
           [.space size,fill] is not a case any fixture needs yet. Reservation-only: real,
           initialized NUL bytes in a PROGBITS section, pure logical extent in a NOBITS one - the
           image layer (not this one) decides which, from the section's own kind. *)
-  | Target_state of { name : string; argument : string }
+  | Target_state of { name : string; arguments : string list }
+      (** a state directive the target interpreted, with its comma-separated arguments as text *)
   | Cfi of { name : string; argument : string }
       (** a [.cfi_*] directive ([name] with its dot), carried so a producer's call-frame
           information survives into a GNU export. It changes no byte of the image: lowering
@@ -96,5 +97,6 @@ let pp ppf = function
   | Ascii { bytes } ->
       Fmt.pf ppf "data 1 %a" Fmt.(list ~sep:(any ", ") Expr.pp) (ascii_values bytes)
   | Zero { length } -> Fmt.pf ppf "zero %d" length
-  | Target_state { name; argument } -> Fmt.pf ppf "target-state %s %s" name argument
+  | Target_state { name; arguments } ->
+      Fmt.pf ppf "target-state %s %s" name (String.concat ", " arguments)
   | Cfi { name; argument } -> Fmt.pf ppf "cfi %s %s" name argument

@@ -68,7 +68,8 @@ let directive syntax ppf (d : Directive.t) =
   | Directive.Zero { length } -> Fmt.pf ppf "\t.zero\t%d" length
   | Directive.Cfi { name; argument } ->
       if argument = "" then Fmt.pf ppf "\t%s" name else Fmt.pf ppf "\t%s\t%s" name argument
-  | Directive.Target_state { name; argument } -> Fmt.pf ppf "\t%s\t%s" name argument
+  | Directive.Target_state { name; arguments } ->
+      Fmt.pf ppf "\t%s\t%s" name (String.concat ", " arguments)
 
 let item syntax ~instruction ppf (i : _ Normalized_ast.item) =
   match i with

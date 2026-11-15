@@ -181,7 +181,7 @@ module Lowered = struct
   let equal_tail a b =
     match (a, b) with
     | Tconst x, Tconst y -> Int64.equal x y
-    | Tsym x, Tsym y -> String.equal (Asm_core.Expr.to_string x) (Asm_core.Expr.to_string y)
+    | Tsym x, Tsym y -> Asm_core.Expr.equal x y
     | _ -> false
 
   let equal x y =

@@ -2054,7 +2054,7 @@ let lower_instruction state i =
                   Lowered.Vmem_s
                     { cond; load = i.Instruction.op = Opcode.Vldr; vd; rn = base; offset };
                 ]
-        (* [vldr Dd/Sd, label] - a PC-relative literal-pool load (docs/corpus.md:
+        (* [vldr Dd/Sd, label] - a PC-relative literal-pool load (corpus:
        fftsp.c's/knucleotide.c's own [.f32] float constants). Load-only:
        {!Opcode.Vstr} never reaches here, since real hardware defines a
        store's [Rn = 1111] as UNPREDICTABLE and no fixture spells it. *)

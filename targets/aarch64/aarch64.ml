@@ -432,12 +432,11 @@ let parse_operands ~mnemonic slices =
       in
       go [] groups
 
-let handle_directive ~name ~argument state =
+let handle_directive ~name ~arguments state =
   match name with
   (* gcc opens every AArch64 file with [.arch armv8-a], the base profile this
      target implements. It is understood and changes nothing here; any other
      level would widen what may be assembled, so it stays an unknown
      directive rather than being silently accepted. *)
-  | ".arch" when String.equal (String.trim argument) "armv8-a" ->
-      Target_intf.Target.Handled { state; emit = [] }
+  | ".arch" when arguments = [ "armv8-a" ] -> Target_intf.Target.Handled { state; emit = [] }
   | _ -> Target_intf.Target.Unhandled

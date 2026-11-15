@@ -623,7 +623,8 @@ let%expect_test "RISC-V .option push/pop restores the configuration" =
   in
   let state = F.initial_state config in
   let step directive state =
-    match F.handle_directive ~name:".option" ~argument:directive state with
+    let arguments = List.map String.trim (String.split_on_char ',' directive) in
+    match F.handle_directive ~name:".option" ~arguments state with
     | Target_intf.Target.Handled { state; _ } -> state
     | _ -> failwith directive
   in

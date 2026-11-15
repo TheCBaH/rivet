@@ -6,6 +6,7 @@
  (modules
   test_targets
   test_components
+  test_x86_overlap
   test_features
   test_vendor
   test_zicsr

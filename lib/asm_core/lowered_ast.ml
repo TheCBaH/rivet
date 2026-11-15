@@ -116,8 +116,7 @@ let pp_branch ppf = function
 
 let equal_branch a b =
   match (a, b) with
-  | Symbolic x, Symbolic y ->
-      String.equal (Expr.to_string x.value) (Expr.to_string y.value) && x.rung = y.rung
+  | Symbolic x, Symbolic y -> Expr.equal x.value y.value && x.rung = y.rung
   | Resolved x, Resolved y -> Int64.equal x.value y.value && String.equal x.rung y.rung
   | _ -> false
 
@@ -152,12 +151,8 @@ type 'k fragment =
           expression mentions the current location, so its value depends on *where the directive
           appeared*; a symbol-level field would have lost that position and had to guess. *)
 
-(* PROGBITS/NOBITS (M3 §4/§6): every M1/M2 section is [Progbits] - nothing
-   before M3 can request a reservation-only section, since driver/directives.ml
-   still hard-rejects the NOBITS flag it already parses (`simplify.nobits-
-   section`) until §6 wires real `.bss` content support. The field exists now
-   because §4's merge step needs it: a same-name section fed both kinds by two
-   different inputs is a dedicated rejection (the GNU probe in
+(* PROGBITS/NOBITS: a [Nobits] section reserves space and has no bytes. A
+   same-name section fed both kinds by two different inputs is a dedicated rejection (the GNU probe in
    docs/m3-evidence found real `ld`, under this project's own linker-script
    shape, silently coerces that case into one PROGBITS section instead). *)
 type section_kind = Progbits | Nobits
@@ -363,7 +358,7 @@ let validate_relax (alts : 'k encoded_form list) =
                                        from_family = fb.family;
                                        to_family = fa.family;
                                      })
-                              else if Expr.to_string fa.value <> Expr.to_string fb.value then
+                              else if not (Expr.equal fa.value fb.value) then
                                 relax_fail ~pos:__POS__ (`Fixup_target_differs fa.name)
                               else Ok ()))
                     (Ok ()) a.fixups)

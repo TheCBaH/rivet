@@ -216,8 +216,7 @@ module Make (M : MODE) = struct
     let origin = slice_origin slice in
     let bad kind = Error (parse_diag ~pos:__POS__ ~origin kind) in
     let reg_named n = match find_reg n with Some r -> Ok r | None -> bad (`Unknown_register n) in
-    (* Only for a memory operand's base/index position (M5, corpus.md's SSE
-       triage): an xmm register is a legal plain operand ([%xmm3] alone) but
+    (* Only for a memory operand's base/index position (SSE triage): an xmm register is a legal plain operand ([%xmm3] alone) but
        never legal address arithmetic, and nothing about [Mem.t] or the SIB
        codec would otherwise catch [movsd (%xmm0), %xmm1] - ModR/M and SIB
        encode a bare register *number*, with no class of their own to check.
@@ -625,10 +624,7 @@ module Make (M : MODE) = struct
     | Error kind -> Error (parse_diag ~pos:__POS__ kind)
     | Ok grouped -> go [] (split_dfv grouped)
 
-  let handle_directive ~name ~argument state =
-    ignore argument;
-    ignore name;
-    ignore state;
+  let handle_directive ~name:_ ~arguments:_ _ =
     (* x86 has no target-state directive in M1: [.syntax], [.arch] and [.fpu]
        are ARM's, and the common table owns everything the x86 fixtures use. *)
     Target_intf.Target.Unhandled

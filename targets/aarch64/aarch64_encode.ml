@@ -404,8 +404,8 @@ module Lowered = struct
     | Shiftv of { shift : int; rd : Reg.t; rn : Reg.t; rm : Reg.t }
         (** [lsl]/[lsr]/[asr]/[ror rd, rn, rm] - {!Udiv}'s "data-processing (2 source)" cousins,
             LSLV/LSRV/ASRV/RORV's register-specified shift amount, one word whose 2-bit [op2] is
-            [shift] ({!shift_name}'s numbering). [lsl] is M5 corpus evidence (docs/corpus.md's
-            [nsieve.c]/[nsievebits.c]); [lsr]/[asr]/[ror] are what the compiler prints for its
+            [shift] ({!shift_name}'s numbering). [lsl] is corpus evidence
+            ([nsieve.c]/[nsievebits.c]); [lsr]/[asr]/[ror] are what the compiler prints for its
             [Plsrv]/[Pasrv]/[Prorv] (compiler-output evidence: 64-bit variable shifts). The
             immediate-shift-amount forms, [UBFM]/[SBFM] aliases, are not evidenced and not
             implemented: the compiler prints those as [ubfx]/[ubfiz]/[sbfx]. *)
