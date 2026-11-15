@@ -548,11 +548,12 @@ let relax_fixpoint ~evaluate frags =
    extent ([init_size + zero_fill], §6's standing invariant) - equal to
    [String.length bytes] for PROGBITS, and the whole reservation for
    NOBITS. *)
-let layout_section ~evaluate (sc : 'k Lowered_ast.section_content) =
+let layout_section ~evaluate ~align_fill (sc : 'k Lowered_ast.section_content) =
   let frags = sc.Lowered_ast.fragments in
   let sel = relax_fixpoint ~evaluate frags in
   let starts, labels, logical_size = scan_offsets sel frags in
   let nobits = sc.Lowered_ast.sec.Lowered_ast.kind = Lowered_ast.Nobits in
+  let executable = Perms.executable sc.Lowered_ast.sec.Lowered_ast.perms in
   let sec_name = sc.Lowered_ast.sec.Lowered_ast.sec_name in
   let buf = Buffer.create 256 in
   let offsets = ref [] in
@@ -594,21 +595,21 @@ let layout_section ~evaluate (sc : 'k Lowered_ast.section_content) =
                 | Some true | None -> ());
                 emit_bytes ~frag_off ~form:(Some a.Lowered_ast.form) a.Lowered_ast.bytes
                   a.Lowered_ast.fixups origin)
-      | Lowered_ast.Align { boundary; fills; origin } ->
+      | Lowered_ast.Align { boundary; origin } ->
           (* NOBITS: [scan_offsets] already folded this padding into every
              later fragment's [frag_off] - nothing to write. *)
           if not nobits then begin
             let target = align_up (Buffer.length buf) boundary in
             let pad = target - Buffer.length buf in
-            (* The target supplies one fill per gap size, and this picks the
-               one that fits exactly. Repeating a shorter pattern would be
-               the same number of bytes and a different program: x86 pads
-               with a single no-op sized for the gap, so ten bytes is one
-               ten-byte instruction and not two nops that add up. *)
+            (* The padding is asked for at the one gap size that occurs. A
+               shorter pattern repeated would be the same number of bytes and
+               a different program: x86 pads with a single no-op sized for the
+               gap, so ten bytes is one ten-byte instruction and not two nops
+               that add up. *)
             if pad > 0 then
-              if pad > Array.length fills || String.length fills.(pad - 1) <> pad then
-                errors := diag ~origin (`Align_fill { pad; boundary }) :: !errors
-              else Buffer.add_string buf fills.(pad - 1)
+              match align_fill ~executable pad with
+              | Some b when String.length b = pad -> Buffer.add_string buf b
+              | _ -> errors := diag ~origin (`Align_fill { pad; boundary }) :: !errors
           end
       | Lowered_ast.Zero { length; _ } ->
           if not nobits then Buffer.add_string buf (String.make length '\000')
@@ -637,8 +638,12 @@ let layout_section ~evaluate (sc : 'k Lowered_ast.section_content) =
    special case. *)
 let default_fill ~executable:_ n = String.make n '\000'
 
-let plan_image ~evaluate ?(fill = default_fill) ?section_pad policy
-    (modules : 'k Lowered_ast.module_ list) =
+(* The padding of an [Align] gap of [n] bytes, or [None] when the target has none of that
+   length. Zero everywhere unless the caller (a target's pipeline) says otherwise. *)
+let default_align_fill ~executable:_ n = Some (String.make n '\000')
+
+let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fill) ?section_pad
+    policy (modules : 'k Lowered_ast.module_ list) =
   let errors = ref [] in
   let fail ?origin e = errors := diag ?origin e :: !errors in
   match modules with
@@ -760,7 +765,7 @@ let plan_image ~evaluate ?(fill = default_fill) ?section_pad policy
               List.concat_map
                 (fun (name, size, align) ->
                   [
-                    Lowered_ast.Align { boundary = align; fills = [||]; origin = common_origin };
+                    Lowered_ast.Align { boundary = align; origin = common_origin };
                     Lowered_ast.Label_def { name; origin = common_origin };
                     Lowered_ast.Zero { length = size; origin = common_origin };
                   ])
@@ -773,7 +778,8 @@ let plan_image ~evaluate ?(fill = default_fill) ?section_pad policy
                     {
                       Lowered_ast.sec_name = ".bss";
                       perms = Perms.rw;
-                      alignment = 1;
+                      alignment =
+                        List.fold_left (fun acc (_, _, align) -> max acc align) 1 winning_commons;
                       kind = Lowered_ast.Nobits;
                     };
                   fragments;
@@ -865,7 +871,9 @@ let plan_image ~evaluate ?(fill = default_fill) ?section_pad policy
             let contribs =
               List.map
                 (fun (unit_name, sc) ->
-                  let bytes, offs, szs, fx, errs, logical_size = layout_section ~evaluate sc in
+                  let bytes, offs, szs, fx, errs, logical_size =
+                    layout_section ~evaluate ~align_fill sc
+                  in
                   ( unit_name,
                     sc.Lowered_ast.sec.Lowered_ast.alignment,
                     bytes,
@@ -899,13 +907,14 @@ let plan_image ~evaluate ?(fill = default_fill) ?section_pad policy
             in
             (* The runtime-vararg frontier gap (docs/corpus.md, Follow-ups):
                a target that sets [section_pad] (RISC-V alone, measured) rounds this
-               PROGBITS section's own final size up to its recorded alignment, the same
+               executable PROGBITS section's own final size up to its recorded alignment (data
+               sections stay as laid out, as in GAS), the same
                way GAS's own assembler does at end-of-section - distinct from the
                inter-contribution merge-gap [fill] above, which every target either lacks
                or answers differently. NOBITS has no bytes to pad (§6). *)
             let total_logical_size =
               match (kind, section_pad) with
-              | Lowered_ast.Progbits, Some pad_fn ->
+              | Lowered_ast.Progbits, Some pad_fn when Perms.executable perms ->
                   let target = align_up total_logical_size alignment in
                   let pad = target - total_logical_size in
                   if pad > 0 then Buffer.add_string buf (pad_fn ~length:pad);

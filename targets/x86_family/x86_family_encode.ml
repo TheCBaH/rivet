@@ -7799,6 +7799,8 @@ module Make (M : MODE) = struct
      initializer in GNU x86 syntax. [.word] is *two* bytes here, unlike on the
      two fixed-width targets, which is the whole reason this table is per
      dialect rather than shared. *)
+  let align_unit = Asm_core.Directive.Bytes
+
   let data_widths =
     [
       (".byte", 1);

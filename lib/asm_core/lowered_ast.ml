@@ -130,16 +130,15 @@ type 'k fragment =
       (** [form] is the codec's form identifier: the path of alternatives its encoding took. It is
           what the diagnostic disassembler prints and what a differential test names when an
           encoding is right by accident. *)
-  | Align of { boundary : int; fills : string array; origin : Origin.t }
-      (** [fills.(n-1)] is the target's padding for exactly [n] bytes - not one pattern to repeat.
+  | Align of { boundary : int; origin : Origin.t }
+      (** pad to [boundary] bytes. Layout asks for the padding of the one gap length it needs
+          ([Image.plan_image]'s [align_fill]) - not a pattern to repeat, and not a table built here:
+          on x86 the padding is a *single no-op instruction* chosen for the gap, GAS fills ten
+          bytes with one ten-byte nop, and a table of every possible gap would cost
+          [boundary^2 / 2] bytes per directive.
 
-          The distinction is the whole point on x86, where padding is a *single no-op instruction*
-          chosen for the gap: GAS fills ten bytes with one ten-byte nop, and cycling a shorter
-          pattern produces a different instruction stream that happens to be the same length. M1
-          never saw it because both x86 fixtures aligned at offset 0, where the gap is empty.
-
-          Still not zero-filled by default: a zero gap in [.text] decodes as an instruction nobody
-          wrote. *)
+          Not zero-filled in an executable section: a zero gap in [.text] decodes as an
+          instruction nobody wrote. *)
   | Relax of { alts : 'k encoded_form list; origin : Origin.t }
       (** several encodings of one operation, shortest first, chosen at layout. It is a fragment
           rather than an already-encoded [Bytes] because the choice depends on where the target
@@ -252,12 +251,7 @@ let pp_fragment ppf = function
           list ~sep:nop (fun ppf a ->
               Fmt.pf ppf "@,  %-24s [%s]%a" (Byte_cursor.to_hex a.bytes) a.form pp_fixups a.fixups))
         alts
-  | Align { boundary; fills; _ } ->
-      (* The widest fill stands for the table: printing all of them would put a
-         quadratic byte dump in every aligned section for no added fact, and the
-         longest is the one that shows which family the target pads with. *)
-      Fmt.pf ppf "align %d fill<=%s" boundary
-        (if Array.length fills = 0 then "" else Byte_cursor.to_hex fills.(Array.length fills - 1))
+  | Align { boundary; _ } -> Fmt.pf ppf "align %d" boundary
   | Zero { length; _ } -> Fmt.pf ppf "zero %d" length
   | Label_def { name; _ } -> Fmt.pf ppf "label %s" name
   | Set_size { name; size; _ } -> Fmt.pf ppf "size %s = %a" name Expr.pp size

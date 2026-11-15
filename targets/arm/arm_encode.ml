@@ -2529,6 +2529,8 @@ let evaluate_fixup kind ~place ~target =
    rather than padded with bytes, because a partial instruction is not a no-op. *)
 (* On ARM [.word] is four bytes, not two, and the compiler writes [.4byte] for a
    32-bit address - both spellings mean the same width here. *)
+let align_unit = Asm_core.Directive.Exponent { zero_exponent = 2 }
+
 let data_widths =
   [
     (".byte", 1);

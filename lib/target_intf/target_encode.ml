@@ -270,6 +270,10 @@ module type ENCODE = sig
       and four on ARM and AArch64, and the compiler writes [.4byte] for a 32-bit address on ARM. A
       single shared table would be silently wrong for one of them. *)
 
+  val align_unit : Asm_core.Directive.align_unit
+  (** the unit of [.align]'s argument in this dialect ([.balign] is always bytes, [.p2align] always
+      an exponent). *)
+
   val data_fixup : width:int -> (fixup_kind, error) Err.t
   (** Which fixup kind an initializer naming a symbol takes at that width. An error rather than an
       option, because a width with no absolute relocation is a real limit and the caller has to say

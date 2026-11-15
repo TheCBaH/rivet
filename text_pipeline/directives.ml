@@ -29,6 +29,27 @@ let text_of (slice : Token.slice) = Token.slice_text slice
    ([@progbits] and friends) means the ordinary case and is not tracked. *)
 let is_nobits s = match s with "@nobits" | "%nobits" | "nobits" -> true | _ -> false
 
+let has_prefix name prefix =
+  String.length name >= String.length prefix && String.sub name 0 (String.length prefix) = prefix
+
+let perms_of_section name =
+  if name = ".text" then Perms.rx
+  else if name = ".rodata" || has_prefix name ".rodata." then Perms.ro
+  else Perms.rw
+
+(* With a flag string the flags decide ([a] readable, [w], [x]); the name table
+   answers only when there is none. *)
+let perms_of_flags name = function
+  | None -> perms_of_section name
+  | Some f -> { Perms.read = true; write = String.contains f 'w'; execute = String.contains f 'x' }
+
+(* GNU as gives a section named like [.bss] or [.tbss] the NOBITS type when none is
+   written. *)
+let nobits_by_name name =
+  List.exists
+    (fun base -> String.equal name base || has_prefix name (base ^ "."))
+    [ ".bss"; ".tbss" ]
+
 let section_of_args args =
   match args with
   | [] -> None
@@ -40,14 +61,10 @@ let section_of_args args =
         | [] -> None
       in
       let allocatable = match flags with None -> true | Some s -> String.contains s 'a' in
-      let nobits = match rest with _ :: t :: _ -> is_nobits (text_of t) | _ -> false in
-      Some (name, allocatable, nobits)
-
-let perms_of_section name =
-  if name = ".text" then Perms.rx
-  else if name = ".rodata" || (String.length name >= 8 && String.sub name 0 8 = ".rodata.") then
-    Perms.ro
-  else Perms.rw
+      let nobits =
+        match rest with _ :: t :: _ -> is_nobits (text_of t) | _ -> nobits_by_name name
+      in
+      Some (name, allocatable, nobits, perms_of_flags name flags)
 
 let sym_kind_of s =
   (* [@function] and [%function] are the same thing: [@] introduces a comment on
@@ -102,7 +119,7 @@ let pp_rejection ppf r =
 let reject ?code ~pos message = Err.fail ~pos ~pp_error:pp_rejection { code; message; reasons = [] }
 let reject_reasons ?code message reasons = { code; message; reasons }
 
-let normalize ~data_widths ~name ~(arguments : Token.slice list) =
+let normalize ~data_widths ~align_unit ~name ~(arguments : Token.slice list) =
   let one () = match arguments with [ a ] -> Some (text_of a) | _ -> None in
   let int_arg () =
     match arguments with
@@ -154,6 +171,10 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
               let values = List.map (fun c -> Expr.Const (Bigint.of_int (Char.code c))) chars in
               Ok (Normalized (Directive.Data { width = 1; values }))
           | _ -> reject ~pos:__POS__ (name ^ ": every argument must be a string literal")))
+  (* GNU as takes a subsection number here; there are no subsections, so an argument is
+     rejected rather than ignored. *)
+  | (".bss" | ".text" | ".data") when arguments <> [] ->
+      reject ~pos:__POS__ (name ^ ": a subsection argument is not supported")
   | ".bss" ->
       Ok
         (Normalized
@@ -164,9 +185,9 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
   | ".section" -> (
       match section_of_args arguments with
       | None -> reject ~pos:__POS__ "a .section directive needs a name"
-      | Some (n, true, nobits) ->
-          Ok (Normalized (Directive.Section { name = n; perms = perms_of_section n; nobits }))
-      | Some (n, false, _) -> Ok (Normalized (Directive.Declared_section { name = n })))
+      | Some (n, true, nobits, perms) ->
+          Ok (Normalized (Directive.Section { name = n; perms; nobits }))
+      | Some (n, false, _, _) -> Ok (Normalized (Directive.Declared_section { name = n })))
   (* M3 §6: reservation-only, single-argument form. A fill byte
      ([.space size,fill]) is rejected explicitly below rather than silently
      ignored, since ignoring it would make [.space 4,1] mean something
@@ -179,14 +200,24 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
           match arguments with
           | [ _; _ ] -> reject ~pos:__POS__ (name ^ ": a fill-byte argument is not supported")
           | _ -> reject ~pos:__POS__ (name ^ " needs exactly one integer argument")))
-  (* [.align] and [.balign] normalize to the same constructor with different
-     values. On the four targets here both denote a byte count; a target where
-     [.align] means a power of two states that in its own directive handler,
-     and the table above is the checked claim rather than a general one. *)
+  (* [.balign n] is a byte count; [.align n] is a byte count or an exponent according to the
+     dialect. Either way the boundary is a power of two, as GNU as requires, and 0 is accepted:
+     [.balign 0] and a byte-count [.align 0] pad nothing, and an exponent-unit [.align 0] stands
+     for [zero_exponent]. *)
   | ".align" | ".balign" -> (
+      let power_of_two n = n land (n - 1) = 0 in
       match int_arg () with
-      | Some n when n > 0 -> Ok (Normalized (Directive.Align { boundary = n }))
-      | _ -> reject ~pos:__POS__ (name ^ " needs a positive integer argument"))
+      | Some n when n >= 0 -> (
+          let boundary =
+            match (name, align_unit) with
+            | ".align", Directive.Exponent { zero_exponent } ->
+                if n > 29 then None else Some (1 lsl if n = 0 then zero_exponent else n)
+            | _ -> if n = 0 then Some 1 else if power_of_two n then Some n else None
+          in
+          match boundary with
+          | Some boundary -> Ok (Normalized (Directive.Align { boundary }))
+          | None -> reject ~pos:__POS__ (name ^ ": the alignment is not a power of two"))
+      | _ -> reject ~pos:__POS__ (name ^ " needs a non-negative integer argument"))
   (* [.p2align n] aligns to [2^n] bytes: its argument is an exponent, which is
      why it is normalized here to the byte count [Align] carries rather than
      sharing [.balign]'s row - read as a byte count, [.p2align 4] would align
@@ -228,9 +259,9 @@ let normalize ~data_widths ~name ~(arguments : Token.slice list) =
           | _ -> reject ~pos:__POS__ ".comm needs a non-negative integer size")
       | [ n; s; a ] -> (
           match (int_of_slice s, int_of_slice a) with
-          | Some size, Some align when size >= 0 && align > 0 ->
+          | Some size, Some align when size >= 0 && align > 0 && align land (align - 1) = 0 ->
               Ok (Normalized (Directive.Common { name = text_of n; size; align }))
-          | _ -> reject ~pos:__POS__ ".comm needs a non-negative size and a positive alignment")
+          | _ -> reject ~pos:__POS__ ".comm needs a non-negative size and a power-of-two alignment")
       | _ -> reject ~pos:__POS__ ".comm needs a symbol and a size, and optionally an alignment")
   | ".type" -> (
       match arguments with

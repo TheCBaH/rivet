@@ -108,8 +108,12 @@ let text_section ?(align = 1) frags =
 let module_ ?(unit_name = "t") ?(symbols = []) ?(commons = []) sections =
   { Lowered_ast.unit_name; sections; symbols; commons; declared_sections = [] }
 
+let nop_fill ~executable:_ n = Some (String.make n '\x90')
+
 let plan ?(entry = "entry") m =
-  Image.plan_image ~evaluate { Image.default_policy with entry_symbol = Some entry } [ m ]
+  Image.plan_image ~evaluate ~align_fill:nop_fill
+    { Image.default_policy with entry_symbol = Some entry }
+    [ m ]
 
 (* {2 Multi-module linking (M3 §4)} *)
 
@@ -314,8 +318,7 @@ let%expect_test "alignment padding participates, and costs minimality" =
             label "entry";
             branch_to "here";
             filler 100;
-            Lowered_ast.Align
-              { boundary = 16; fills = Array.init 15 (fun i -> String.make (i + 1) '\x90'); origin };
+            Lowered_ast.Align { boundary = 16; origin };
             filler 20;
             label "here";
           ];
@@ -1455,6 +1458,31 @@ let%expect_test
   | Ok l -> Fmt.pr "%s@." (Fmt.to_to_string Image.pp_plan (Image.plan_of l)));
   (* One .bss segment, sized 8 (existing) + 4 (y) = 12 - not two. *)
   [%expect {| segment .bss size=0 zero=12 align=4 permissions=rw- |}]
+
+let%expect_test "a common carries its alignment into the merged .bss segment and offset" =
+  let show a =
+    match plan_many [ a ] with
+    | Error ds -> show_errors ds
+    | Ok l -> (
+        Fmt.pr "%s@." (Fmt.to_to_string Image.pp_plan (Image.plan_of l));
+        match bind_at l [ (".bss", 0x1000L) ] with
+        | None -> ()
+        | Some img -> List.iter (fun (n, a) -> Fmt.pr "%s at %Lx@." n a) img.Image.exports)
+  in
+  show (module_ ~unit_name:"a" ~symbols:[ sym "x" ~section:".bss" ] ~commons:[ comm "x" 8 8 ] []);
+  show
+    (module_ ~unit_name:"a"
+       ~symbols:[ sym "x" ~section:".bss" ]
+       ~commons:[ comm "x" 8 8 ]
+       [ bss_section ~align:1 [ Lowered_ast.Zero { length = 4; origin }; label "existing" ] ]);
+  [%expect
+    {|
+    segment .bss size=0 zero=8 align=8 permissions=rw-
+    export x
+    x at 1000
+    segment .bss size=0 zero=16 align=8 permissions=rw-
+    export x
+    x at 1008 |}]
 
 let%expect_test "an undefined weak reference resolves to 0, absolute and PC-relative alike" =
   let a =

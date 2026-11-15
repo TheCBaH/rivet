@@ -37,7 +37,6 @@ let x n =
 
 (* A64 has no one- two- or three-byte no-op, so those entries are legitimately
    empty; the alignment here is four and the gap is always zero. *)
-let nop_or_empty length = match T.nop_bytes ~length with Ok b -> b | Error _ -> ""
 
 (* {1 The direct normalized AST}
 
@@ -188,12 +187,7 @@ let direct_lowered : T.fixup_kind Lowered_ast.module_ =
             };
           fragments =
             [
-              (* The fill comes from the target, not from a byte string quoted
-                 here. A literal would be a second statement of what A64 pads
-                 with, and the one place it can disagree with {!Aarch64.nop_bytes}
-                 is the place no test would look. *)
-              Lowered_ast.Align
-                { boundary = 4; fills = Array.init 3 (fun i -> nop_or_empty (i + 1)); origin };
+              Lowered_ast.Align { boundary = 4; origin };
               Lowered_ast.Label_def { name = "asm_test_entry"; origin };
               frag
                 (T.Lowered.Add_imm
@@ -246,7 +240,7 @@ let%expect_test "lowering the direct normalized AST equals the direct lowered mo
         lowered modules are identical
         lowered asm_test_entry
         section .text r-x align=4
-          align 4 fill<=
+          align 4
           label asm_test_entry
           bytes ef 03 00 91              [aarch64.add-imm]
           bytes ef 7b bf a9              [aarch64.stp-pre]

@@ -121,7 +121,7 @@ section <name> <perms> align=<n>
   bytes <hex-run> [<form-id>] <fixup>…
   relax
     <hex-run> [<form-id>] <fixup>…
-  align <n> fill<=<hex-run>
+  align <n>
   zero <n>
   label <name>
   size <name> = <expr>
@@ -430,15 +430,15 @@ Four categories, and the category decides what happens:
 |---|:-:|:-:|:-:|:-:|:-:|:-:|---|---|
 | `.text` | ● | ● | ● | ● | ● | ● | semantic | `Section {name = ".text"; perms = r-x}` |
 | `.data` | ● | ● | ● | ● | ● | ● | semantic | `Section {name = ".data"; perms = rw-}` |
-| `.section <n>,"<f>",<t>` | ● | ● | ● | ● | ● | ● | declared | `Declared_section` when unallocated; `Section {nobits}` when allocatable, with a `@nobits`/`%nobits` type marker setting `nobits = true` |
+| `.section <n>,"<f>",<t>` | ● | ● | ● | ● | ● | ● | declared | `Declared_section` when unallocated; `Section {perms; nobits}` when allocatable. `perms` come from `a`/`w`/`x` in the flag string, from the name (`.text` r-x, `.rodata*` r--, else rw-) only when there are no flags. `nobits` is set by a `@nobits`/`%nobits` type, or by a `.bss`/`.tbss` name (or `.bss.*`/`.tbss.*`) when no type is written |
 | `.bss` | ● | ● | ● | ● | ● | ● | semantic | `Section {name = ".bss"; perms = rw-; nobits = true}` |
-| `.align <n>` | ● | ● | | | | | semantic | `Align {boundary = n}` — **bytes** |
+| `.align <n>` | ● | ● | ● | ● | ● | ● | semantic | `Align {boundary = n}` — **bytes** on x86, `2^n` on ARM, AArch64, RISC-V |
 | `.balign <n>` | | | ● | ● | ● | ● | semantic | `Align {boundary = n}` — **bytes** |
 | `.p2align <e>` | ● | ● | ● | ● | ● | ● | semantic | `Align {boundary = 2^e}` — **exponent**, `0 ≤ e ≤ 29`; fill and max-skip operands rejected |
 | `.globl <s>` | ● | ● | ● | ● | ● | ● | semantic | `Global {name = s}` |
 | `.local <s>` | ● | ● | ● | ● | ● | ● | semantic | `Local {name = s}` |
 | `.weak <s>` | ● | ● | ● | ● | ● | ● | semantic | `Weak {name = s}` |
-| `.comm <s>, <size>[, <align>]` | ● | ● | ● | ● | ● | ● | semantic | `Common {name; size; align}` |
+| `.comm <s>, <size>[, <align>]` | ● | ● | ● | ● | ● | ● | semantic | `Common {name; size; align}`; `align` is a power of two (GNU as stores a raw value for others). The merged `.bss` takes the largest `align` as its own |
 | `.zero <n>` | ● | ● | ● | ● | ● | ● | semantic | `Zero {length = n}` |
 | `.space <n>` | ● | ● | ● | ● | ● | ● | semantic | `Zero {length = n}` — the two-argument fill-byte form is rejected |
 | `.type <s>, @function` | ● | ● | | ● | ● | ● | semantic | `Sym_type {kind = Function}` |
@@ -495,12 +495,12 @@ arm and aarch64 — riscv accepts both.
 Notes on the rows that are not obvious:
 
 - **`.align` and `.balign` normalize to the same constructor with different
-  values.** `.align 16` on x86 and `.balign 4` on ARM both mean "pad to this many
-  bytes", and both become `Align`. The dialect difference GAS actually has —
-  `.align` meaning a power of two on some targets — does not arise for the six
-  targets here, and the table above is the checked claim rather than a general
-  one. A target where it does arise states its own unit in its directive handler.
-  `.p2align` is the case where the unit genuinely differs, and it is never
+  values.** The unit of `.align` is a per-target fact (`ENCODE.align_unit`), as
+  in GNU as: bytes on x86 ELF, an exponent on ARM, AArch64 and RISC-V. `.balign`
+  is always bytes. Either way the boundary must be a power of two, and a
+  boundary of 0 is accepted: it pads nothing, except that ARM reads `.align 0`
+  as `.align 2` (four bytes). The cases are pinned against each target's GNU
+  assembler in `test/directives`. `.p2align` is the case where the unit genuinely differs, and it is never
   treated as a synonym: its argument is an exponent, so reading it as a byte
   count would align `.p2align 4` to four bytes instead of sixteen — a valid
   image at wrong addresses, which is the worst shape a bug can take. It has its
@@ -522,6 +522,10 @@ Notes on the rows that are not obvious:
   Merging sections *across inputs*, and linking more than one module, landed in
   M3 (§4.1) — `cross_call` and `cross_data` are the committed fixtures.
 
+- **Section arguments are rejected, not ignored.** `.text`, `.data` and `.bss`
+  take no argument (GNU as reads a subsection number, which this assembler does
+  not have), and re-entering a section with different permissions or type is a
+  `lower.section-attributes` error, as GNU as reports it.
 - **A NOBITS section is accepted** (M3), whether written `.bss` or as a
   `.section` with a `@nobits`/`%nobits` type argument — both spellings are
   parsed for the same reason `@function` has two — and normalizes to a real

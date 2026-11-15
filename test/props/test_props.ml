@@ -223,12 +223,7 @@ let module_of s =
                  fixups = [];
                  origin;
                };
-             Lowered_ast.Align
-               {
-                 boundary = s.align;
-                 fills = Array.init (s.align - 1) (fun i -> String.make (i + 1) (Char.chr 0x90));
-                 origin;
-               };
+             Lowered_ast.Align { boundary = s.align; origin };
            ])
          s.hops)
   in
@@ -261,7 +256,11 @@ let module_of s =
     declared_sections = [];
   }
 
-let plan_shape s = Image.plan_image ~evaluate Image.default_policy [ module_of s ]
+let plan_shape s =
+  Image.plan_image ~evaluate
+    ~align_fill:(fun ~executable:_ n -> Some (String.make n '\x90'))
+    Image.default_policy
+    [ module_of s ]
 
 let prop_relax_feasible =
   (* Termination is not a separate assertion: the fixpoint either returns or the

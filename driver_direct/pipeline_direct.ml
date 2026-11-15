@@ -16,6 +16,7 @@ module Make (T : Target_encode.ENCODE) = struct
     [ `Statement_before_section
     | `Data_value of Expr.error
     | `Data_fixup of string
+    | `Section_attributes_changed of string
     | `Directive_not_accepted of string
     | `Relax_ladder of Lowered_ast.relax_error
     | `Invalid_configuration of string ]
@@ -27,6 +28,8 @@ module Make (T : Target_encode.ENCODE) = struct
        hand this over, so the arm reproduces the message rather than composing
        one. *)
     | `Data_fixup m -> Fmt.string ppf m
+    | `Section_attributes_changed n ->
+        Fmt.pf ppf "section %s is re-entered with different attributes" n
     | `Directive_not_accepted name -> Fmt.pf ppf "the target did not accept %s" name
     | `Relax_ladder e -> Lowered_ast.pp_relax_error ppf e
     | `Invalid_configuration m -> Fmt.pf ppf "invalid feature configuration: %s" m
@@ -35,6 +38,7 @@ module Make (T : Target_encode.ENCODE) = struct
     | `Statement_before_section -> "lower.no-section"
     | `Data_value _ | `Data_fixup _ -> "lower.data"
     | `Directive_not_accepted _ -> "lower.directive"
+    | `Section_attributes_changed _ -> "lower.section-attributes"
     | `Relax_ladder _ -> "lower.relax-ladder"
     | `Invalid_configuration _ -> "config.invalid"
 
@@ -171,9 +175,12 @@ module Make (T : Target_encode.ENCODE) = struct
         | Normalized_ast.Directive { directive; origin } -> (
             match directive with
             | Directive.Section { name; perms; nobits } ->
-                ignore
-                  (ensure_section name perms
-                     (if nobits then Lowered_ast.Nobits else Lowered_ast.Progbits))
+                let kind = if nobits then Lowered_ast.Nobits else Lowered_ast.Progbits in
+                (match List.find_opt (fun s -> String.equal s.sb_name name) !sections with
+                | Some s when s.sb_perms <> perms || s.sb_kind <> kind ->
+                    errors := diag ~origin (`Section_attributes_changed name) :: !errors
+                | _ -> ());
+                ignore (ensure_section name perms kind)
             | Directive.Declared_section { name } ->
                 declared := !declared @ [ name ];
                 (* Deliberately does *not* become the current section: it is
@@ -184,30 +191,7 @@ module Make (T : Target_encode.ENCODE) = struct
             | Directive.Align { boundary } ->
                 with_section origin (fun s ->
                     s.sb_align <- max s.sb_align boundary;
-                    (* One fill per possible gap, not one pattern to repeat.
-                       On x86 the padding is a *single* no-op sized for the
-                       gap, so cycling a shorter one produces a different
-                       instruction stream of the same length - which is exactly
-                       what GAS does not do.
-
-                       A gap is always smaller than the boundary, so lengths 1
-                       to boundary-1 cover every case. The target may refuse
-                       some of them - A32 and A64 have no one-byte no-op - and
-                       an empty entry means "this target cannot pad by that
-                       much", which layout reports if it ever needs one.
-
-                       Only for an executable section: a zero-filled gap in
-                       .text decodes as an instruction nobody wrote, and
-                       outside .text zero is exactly right. *)
-                    let fills =
-                      if Perms.executable s.sb_perms then
-                        Array.init
-                          (max 0 (boundary - 1))
-                          (fun i ->
-                            match T.nop_bytes ~length:(i + 1) with Ok b -> b | Error _ -> "")
-                      else Array.init (max 0 (boundary - 1)) (fun i -> String.make (i + 1) '\000')
-                    in
-                    s.sb_frags <- Lowered_ast.Align { boundary; fills; origin } :: s.sb_frags)
+                    s.sb_frags <- Lowered_ast.Align { boundary; origin } :: s.sb_frags)
             (* One fragment per value, and a value that is not already a number
                becomes a fixup rather than being evaluated here: an initializer
                naming a symbol has no value until the linker chooses addresses,
@@ -385,15 +369,7 @@ module Make (T : Target_encode.ENCODE) = struct
           bss.sb_frags <-
             Lowered_ast.Zero { length = c.Lowered_ast.comm_size; origin }
             :: Lowered_ast.Label_def { name; origin }
-            :: Lowered_ast.Align
-                 {
-                   boundary = c.Lowered_ast.comm_align;
-                   fills =
-                     Array.init
-                       (max 0 (c.Lowered_ast.comm_align - 1))
-                       (fun i -> String.make (i + 1) '\000');
-                   origin;
-                 }
+            :: Lowered_ast.Align { boundary = c.Lowered_ast.comm_align; origin }
             :: bss.sb_frags;
           (symbol name).sy_section <- ".bss")
         local_commons
@@ -505,11 +481,19 @@ module Make (T : Target_encode.ENCODE) = struct
           match T.nop_bytes ~length with Ok b -> b | Error _ -> String.make length '\000')
     else None
 
+  (* The assembler's [.align] padding: the target's no-op sized for the gap in an executable
+     section, zero elsewhere. [None] where the target has no padding of that length (A32 and A64
+     have no one-byte no-op), which layout reports. *)
+  let align_fill ~executable n =
+    if not executable then Some (String.make n '\000')
+    else match T.nop_bytes ~length:n with Ok b -> Some b | Error _ -> None
+
   let plan ?entry ?externs m =
-    Image.plan_image ~evaluate ~fill:merge_fill ?section_pad (policy_for ?entry ?externs m) [ m ]
+    Image.plan_image ~evaluate ~fill:merge_fill ~align_fill ?section_pad
+      (policy_for ?entry ?externs m) [ m ]
 
   let plan_many ?entry ?externs (modules : T.fixup_kind Lowered_ast.module_ list) =
-    Image.plan_image ~evaluate ~fill:merge_fill ?section_pad
+    Image.plan_image ~evaluate ~fill:merge_fill ~align_fill ?section_pad
       (policy_for_many ?entry ?externs modules)
       modules
 

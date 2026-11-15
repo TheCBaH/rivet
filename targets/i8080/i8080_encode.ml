@@ -685,6 +685,7 @@ let evaluate_fixup kind ~place:_ ~target =
         Ok (Int64.logand target 0xffffL)
       else Error (diag ~pos:__POS__ (`Fixup_out_of_range (target, 16)))
 
+let align_unit = Asm_core.Directive.Bytes
 let data_widths = [ (".byte", 1); (".word", 2); (".2byte", 2) ]
 
 let data_fixup ~width =

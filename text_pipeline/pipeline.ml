@@ -179,7 +179,10 @@ module Make (T : T_intf.TARGET) = struct
                      { directive = Directive.Target_state { name; argument }; origin });
                 List.iter (fun insn -> add (Normalized_ast.Instruction { insn; origin })) emit
             | T_intf.Unhandled -> (
-                match Directives.normalize ~data_widths:T.data_widths ~name ~arguments with
+                match
+                  Directives.normalize ~data_widths:T.data_widths ~align_unit:T.align_unit ~name
+                    ~arguments
+                with
                 | Ok Directives.Dropped -> ()
                 | Ok (Directives.Normalized d) -> (
                     match fold_directive ~origin d with

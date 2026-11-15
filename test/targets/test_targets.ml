@@ -3580,7 +3580,7 @@ let%expect_test ".local plus .comm is a local .bss object, not a common one" =
         @0/4B pc+0 imm add-lo12 u12 [10+12@0] = scratch
       bytes c0 03 5f d6              [aarch64.ret]
     section .bss rw- align=8
-      align 8 fill<=00 00 00 00 00 00 00
+      align 8
       label scratch
       zero 4096
     global f notype in .text

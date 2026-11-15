@@ -114,7 +114,7 @@
   ########## x86_32 lowered ast
   lowered asm_test_entry
   section .text r-x align=16
-    align 16 fill<=2e 8d b4 26 00 00 00 00 8d b4 26 00 00 00 00
+    align 16
     label asm_test_entry
     bytes 83 ec 0c                 [x86_32.alu-rm-imm8.opsz-absent.reg]
     bytes 8d 44 24 10              [x86_32.lea.opsz-absent.sib-disp8]
@@ -465,7 +465,7 @@
   ########## x86_64 lowered ast
   lowered asm_test_entry
   section .text r-x align=16
-    align 16 fill<=66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00
+    align 16
     label asm_test_entry
     bytes 48 83 ec 08              [x86_64.alu-rm-imm8.asz-absent.opsz-absent.rex-present.reg]
     bytes 48 8d 44 24 10           [x86_64.lea.asz-absent.opsz-absent.rex-present.sib-disp8]
@@ -882,7 +882,7 @@
   ########## arm lowered ast
   lowered asm_test_entry
   section .text r-x align=4
-    align 4 fill<=
+    align 4
     label asm_test_entry
     bytes 0d c0 a0 e1              [arm.dp-reg]
     bytes 08 d0 4d e2              [arm.dp-imm]
@@ -1123,7 +1123,7 @@
   ########## aarch64 lowered ast
   lowered asm_test_entry
   section .text r-x align=4
-    align 4 fill<=
+    align 4
     label asm_test_entry
     bytes ef 03 00 91              [aarch64.add-imm]
     bytes ef 7b bf a9              [aarch64.stp-pre]
@@ -1534,7 +1534,7 @@
   ########## riscv32 lowered ast
   lowered asm_test_entry
   section .text r-x align=2
-    align 2 fill<=
+    align 2
     label asm_test_entry
     bytes 13 0f 01 00              [riscv32.addi]
     bytes 13 01 01 ff              [riscv32.addi]
@@ -1729,7 +1729,7 @@
   ########## riscv64 lowered ast
   lowered asm_test_entry
   section .text r-x align=2
-    align 2 fill<=
+    align 2
     label asm_test_entry
     bytes 13 0f 01 00              [riscv64.addi]
     bytes 13 01 01 ff              [riscv64.addi]

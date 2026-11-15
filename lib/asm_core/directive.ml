@@ -23,6 +23,11 @@ type sym_kind = Function | Object | Notype
 
 let sym_kind_name = function Function -> "function" | Object -> "object" | Notype -> "notype"
 
+(** What the argument of [.align] denotes. GNU [as] reads it as a byte count on x86 and as an
+    exponent on ARM, AArch64 and RISC-V; [zero_exponent] is the exponent an argument of 0 stands
+    for (ARM treats [.align 0] as [.align 2]). *)
+type align_unit = Bytes | Exponent of { zero_exponent : int }
+
 type t =
   | Section of { name : string; perms : Perms.t; nobits : bool }
       (** [nobits] (M3 §6): a plain [bool] rather than [Lowered_ast.section_kind], because

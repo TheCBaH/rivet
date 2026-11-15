@@ -4897,6 +4897,8 @@ let evaluate_fixup kind ~place ~target =
 
 (* As on ARM: [.word] is four bytes. A64 additionally needs an eight-byte
    absolute for a pointer-sized initializer, which is why Abs64 exists. *)
+let align_unit = Asm_core.Directive.Exponent { zero_exponent = 0 }
+
 let data_widths =
   [
     (".byte", 1);

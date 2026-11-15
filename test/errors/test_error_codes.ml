@@ -160,6 +160,7 @@ let () =
       `Directive_rejected { Directives.code = None; message = ""; reasons = [] };
       `Statement_before_section;
       `Data_fixup "";
+      `Section_attributes_changed ".s";
       `Directive_not_accepted ".d";
       `Relax_ladder `Empty_ladder;
     ];
@@ -174,7 +175,10 @@ let%expect_test ".size keeps its typed expression failure" =
   let source = Span.source ~name:"test.s" ~contents:"s" in
   let span = Span.of_offset ~source ~offset:0 ~length:1 in
   let symbol = Asm_syntax.Token.make (Asm_syntax.Token.Ident "s") span in
-  (match Directives.normalize ~data_widths:[] ~name:".size" ~arguments:[ [ symbol ]; [] ] with
+  (match
+     Directives.normalize ~data_widths:[] ~align_unit:Asm_core.Directive.Bytes ~name:".size"
+       ~arguments:[ [ symbol ]; [] ]
+   with
   | Error error ->
       let rejection = Err.Error.kind error in
       Fmt.pr "%a; typed-cause=%b@." Directives.pp_rejection rejection
@@ -189,7 +193,9 @@ let%expect_test "data directives accumulate every expression failure" =
   let span = Span.of_offset ~source ~offset:0 ~length:1 in
   let plus = Asm_syntax.Token.make Asm_syntax.Token.Plus span in
   (match
-     Directives.normalize ~data_widths:[ (".long", 4) ] ~name:".long" ~arguments:[ []; [ plus ] ]
+     Directives.normalize
+       ~data_widths:[ (".long", 4) ]
+       ~align_unit:Asm_core.Directive.Bytes ~name:".long" ~arguments:[ []; [ plus ] ]
    with
   | Error error ->
       let rejection = Err.Error.kind error in
@@ -269,6 +275,7 @@ let%expect_test "every diagnostic code, and the domain that claims it" =
     lower.directive              Pipeline
     lower.no-section             Pipeline
     lower.relax-ladder           Pipeline
+    lower.section-attributes     Pipeline
     parse                        Parse_lines
     parse.expression             Parse_lines
     parse.local-label            Local_labels

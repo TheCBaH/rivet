@@ -3578,6 +3578,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Abs_hi20 -> Result.map hi (rv32_absolute ())
     | Abs_lo12_i | Abs_lo12_s -> Result.map lo (rv32_absolute ())
 
+  let align_unit = Asm_core.Directive.Exponent { zero_exponent = 0 }
+
   let data_widths =
     [
       (".byte", 1);
