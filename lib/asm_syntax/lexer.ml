@@ -76,7 +76,12 @@ let peek c pos off = if pos + off < String.length c.text then Some c.text.[pos +
 
 let starts_with c pos s =
   let n = String.length s in
-  pos + n <= String.length c.text && String.sub c.text pos n = s
+  pos + n <= String.length c.text
+  &&
+  let rec same i =
+    i >= n || (String.unsafe_get c.text (pos + i) = String.unsafe_get s i && same (i + 1))
+  in
+  same 0
 
 (* {1 Numbers}
 

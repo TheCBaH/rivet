@@ -147,10 +147,8 @@ let normalize ~data_widths ~align_unit ~name ~(arguments : Token.slice list) =
      string bytes; [.asciz] and [.string] (a GAS synonym) each append a
      trailing NUL. The lexer has already resolved escapes (including octal)
      into [Token.String]'s payload, so no further decoding happens here.
-     Reused as [Directive.Data { width = 1; ... }] - one [Const] byte value
-     per character - rather than a new constructor, since every downstream
-     consumer (layout, encoding, fixups) already knows how to turn that into
-     bytes and nothing here needs a symbol reference or fixup. *)
+     One [Directive.Ascii] string: nothing here needs a symbol reference or
+     fixup, and a [Const] value per character costs a Bigint each. *)
   | ".ascii" | ".asciz" | ".string" -> (
       let string_of arg =
         match List.map Token.kind arg with [ Token.String s ] -> Some s | _ -> None
@@ -161,15 +159,13 @@ let normalize ~data_widths ~align_unit ~name ~(arguments : Token.slice list) =
           match List.map string_of args with
           | opts when List.for_all Option.is_some opts ->
               let nul_terminated = name <> ".ascii" in
-              let chars =
-                List.concat_map
-                  (fun s ->
-                    let cs = List.init (String.length s) (String.get s) in
-                    if nul_terminated then cs @ [ '\000' ] else cs)
-                  (List.map Option.get opts)
+              let bytes =
+                String.concat ""
+                  (List.map
+                     (fun s -> if nul_terminated then Option.get s ^ "\000" else Option.get s)
+                     opts)
               in
-              let values = List.map (fun c -> Expr.Const (Bigint.of_int (Char.code c))) chars in
-              Ok (Normalized (Directive.Data { width = 1; values }))
+              Ok (Normalized (Directive.Ascii { bytes }))
           | _ -> reject ~pos:__POS__ (name ^ ": every argument must be a string literal")))
   (* GNU as takes a subsection number here; there are no subsections, so an argument is
      rejected rather than ignored. *)

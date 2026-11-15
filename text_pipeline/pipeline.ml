@@ -14,6 +14,7 @@
 open Foundation
 open Asm_core
 open Asm_syntax
+module List = Safe_list
 module T_intf = Target_intf.Target
 
 module Make (T : T_intf.TARGET) = struct
@@ -337,6 +338,19 @@ module Make (T : T_intf.TARGET) = struct
      contains and [bind_image] rejects an address that does not honour it. That
      invariant is what makes an address-based reading of the bytes correct; it
      is not an assumption about where hosts put things. *)
+  let fill_cache : (int, string option * string option) Hashtbl.t = Hashtbl.create 64
+
+  let fills n =
+    match Hashtbl.find_opt fill_cache n with
+    | Some f -> f
+    | None ->
+        let f =
+          ( (match T.nop_bytes ~length:n with Ok s -> Some s | Error _ -> None),
+            Option.map (fun f -> f ~length:n) T.merge_fill )
+        in
+        Hashtbl.add fill_cache n f;
+        f
+
   let padding_at ~address bytes ~pos =
     let len = String.length bytes in
     let here = Int64.add address (Int64.of_int pos) in
@@ -351,16 +365,22 @@ module Make (T : T_intf.TARGET) = struct
        - so a merge gap recognized by neither source falls through to the
        ordinary decoder and fails outright, which is exactly the gap this
        covers. *)
-    let fill_matches n candidate =
-      (match T.nop_bytes ~length:n with Ok s -> String.equal s candidate | Error _ -> false)
-      || match T.merge_fill with Some f -> String.equal (f ~length:n) candidate | None -> false
+    let same_at n candidate =
+      let rec go i =
+        i >= n || (String.unsafe_get bytes (pos + i) = String.unsafe_get candidate i && go (i + 1))
+      in
+      String.length candidate = n && go 0
+    in
+    let fill_matches n =
+      let nop, merge = fills n in
+      (match nop with Some s -> same_at n s | None -> false)
+      || match merge with Some s -> same_at n s | None -> false
     in
     let matches k =
       let b = Int64.of_int (1 lsl k) in
       let stop = Int64.mul (Int64.div (Int64.add here (Int64.sub b 1L)) b) b in
       let n = Int64.to_int (Int64.sub stop here) in
-      if n > 0 && pos + n <= len && fill_matches n (String.sub bytes pos n) then Some (1 lsl k, n)
-      else None
+      if n > 0 && pos + n <= len && fill_matches n then Some (1 lsl k, n) else None
     in
     (* Longest run first, so a short boundary can never claim a prefix of a
        longer pad and leave the tail to be decoded as instructions. Among the

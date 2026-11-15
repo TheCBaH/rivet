@@ -5,6 +5,7 @@
 
 open Foundation
 open Asm_core
+module List = Safe_list
 
 module Make (T : Target_encode.ENCODE) = struct
   let name = T.name
@@ -119,18 +120,21 @@ module Make (T : Target_encode.ENCODE) = struct
          name:string -> argument:string -> T.target_state -> T.target_state state_directive) ~state
       (m : T.Instruction.t Normalized_ast.module_) =
     let errors = ref [] in
+    (* The lists are reversed while building; the tables answer by-name lookups. *)
     let sections : section_build list ref = ref [] in
+    let section_table : (string, section_build) Hashtbl.t = Hashtbl.create 16 in
     let declared = ref [] in
     let symbols : symbol_build list ref = ref [] in
+    let symbol_table : (string, symbol_build) Hashtbl.t = Hashtbl.create 256 in
     let commons : (Lowered_ast.common * Origin.t) list ref = ref [] in
-    let made_local = ref [] in
+    let made_local : (string, unit) Hashtbl.t = Hashtbl.create 16 in
     (* [state] is retained in the public entry point for direct normalized-AST
        producers, and parsed programs pass the initial state of the caller's configuration.  Target
        directives in [m] then replay in source order below. *)
     let state = ref state in
     let current = ref None in
     let ensure_section name perms kind =
-      match List.find_opt (fun s -> String.equal s.sb_name name) !sections with
+      match Hashtbl.find_opt section_table name with
       | Some s ->
           current := Some s;
           s
@@ -138,7 +142,8 @@ module Make (T : Target_encode.ENCODE) = struct
           let s =
             { sb_name = name; sb_perms = perms; sb_kind = kind; sb_align = 1; sb_frags = [] }
           in
-          sections := !sections @ [ s ];
+          sections := s :: !sections;
+          Hashtbl.add section_table name s;
           current := Some s;
           s
     in
@@ -148,7 +153,7 @@ module Make (T : Target_encode.ENCODE) = struct
       | None -> errors := diag ~origin `Statement_before_section :: !errors
     in
     let symbol name =
-      match List.find_opt (fun s -> String.equal s.sy_name name) !symbols with
+      match Hashtbl.find_opt symbol_table name with
       | Some s -> s
       | None ->
           let s =
@@ -161,7 +166,8 @@ module Make (T : Target_encode.ENCODE) = struct
               sy_section = (match !current with Some c -> c.sb_name | None -> "");
             }
           in
-          symbols := !symbols @ [ s ];
+          symbols := s :: !symbols;
+          Hashtbl.add symbol_table name s;
           s
     in
     List.iter
@@ -176,13 +182,13 @@ module Make (T : Target_encode.ENCODE) = struct
             match directive with
             | Directive.Section { name; perms; nobits } ->
                 let kind = if nobits then Lowered_ast.Nobits else Lowered_ast.Progbits in
-                (match List.find_opt (fun s -> String.equal s.sb_name name) !sections with
+                (match Hashtbl.find_opt section_table name with
                 | Some s when s.sb_perms <> perms || s.sb_kind <> kind ->
                     errors := diag ~origin (`Section_attributes_changed name) :: !errors
                 | _ -> ());
                 ignore (ensure_section name perms kind)
             | Directive.Declared_section { name } ->
-                declared := !declared @ [ name ];
+                declared := name :: !declared;
                 (* Deliberately does *not* become the current section: it is
                    never allocated, so a fragment landing in it would have
                    nowhere to go. Anything emitted after it is an error rather
@@ -282,6 +288,11 @@ module Make (T : Target_encode.ENCODE) = struct
                                   Lowered_ast.Bytes { bytes; form = None; fixups; origin }
                                   :: s.sb_frags)))
                   values
+            | Directive.Ascii { bytes } ->
+                if bytes <> "" then
+                  with_section origin (fun s ->
+                      s.sb_frags <-
+                        Lowered_ast.Bytes { bytes; form = None; fixups = []; origin } :: s.sb_frags)
             | Directive.Zero { length } ->
                 with_section origin (fun s ->
                     s.sb_frags <- Lowered_ast.Zero { length; origin } :: s.sb_frags)
@@ -293,15 +304,12 @@ module Make (T : Target_encode.ENCODE) = struct
                 sy.sy_binding <- apply_binding_directive sy.sy_binding `Weak
             | Directive.Local { name } ->
                 let sy = symbol name in
-                made_local := name :: !made_local;
+                Hashtbl.replace made_local name ();
                 sy.sy_binding <- apply_binding_directive sy.sy_binding `Local
             | Directive.Common { name; size; align } ->
                 commons :=
-                  !commons
-                  @ [
-                      ( { Lowered_ast.comm_name = name; comm_size = size; comm_align = align },
-                        origin );
-                    ]
+                  ({ Lowered_ast.comm_name = name; comm_size = size; comm_align = align }, origin)
+                  :: !commons
             | Directive.Sym_type { name; kind } -> (symbol name).sy_kind <- kind
             | Directive.Sym_size { name; size } ->
                 (symbol name).sy_size <- Some size;
@@ -358,14 +366,12 @@ module Make (T : Target_encode.ENCODE) = struct
     let local_commons, global_commons =
       List.partition
         (fun ((c : Lowered_ast.common), _) ->
-          List.mem c.Lowered_ast.comm_name !made_local
+          Hashtbl.mem made_local c.Lowered_ast.comm_name
           &&
-          match
-            List.find_opt (fun s -> String.equal s.sy_name c.Lowered_ast.comm_name) !symbols
-          with
+          match Hashtbl.find_opt symbol_table c.Lowered_ast.comm_name with
           | Some { sy_binding = Lowered_ast.Local; _ } -> true
           | _ -> false)
-        !commons
+        (List.rev !commons)
     in
     if local_commons <> [] then begin
       let saved = !current in
@@ -402,7 +408,7 @@ module Make (T : Target_encode.ENCODE) = struct
                     };
                   fragments = List.rev s.sb_frags;
                 })
-              !sections;
+              (List.rev !sections);
           symbols =
             List.map
               (fun s ->
@@ -414,9 +420,9 @@ module Make (T : Target_encode.ENCODE) = struct
                   size = s.sy_size;
                   section = s.sy_section;
                 })
-              !symbols;
+              (List.rev !symbols);
           commons = List.map fst global_commons;
-          declared_sections = !declared;
+          declared_sections = List.rev !declared;
         }
 
   let lower ~state m = lower_with ~target_state:(fun ~name:_ ~argument:_ _ -> Unhandled) ~state m

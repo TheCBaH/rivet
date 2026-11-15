@@ -63,6 +63,8 @@ let directive syntax ppf (d : Directive.t) =
         (if width = 1 then ".byte" else Printf.sprintf ".%dbyte" width)
         Fmt.(list ~sep:(any ",") expr)
         values
+  | Directive.Ascii { bytes } ->
+      Fmt.pf ppf "\t.byte\t%a" Fmt.(list ~sep:(any ",") expr) (Directive.ascii_values bytes)
   | Directive.Zero { length } -> Fmt.pf ppf "\t.zero\t%d" length
   | Directive.Cfi { name; argument } ->
       if argument = "" then Fmt.pf ppf "\t%s" name else Fmt.pf ppf "\t%s\t%s" name argument

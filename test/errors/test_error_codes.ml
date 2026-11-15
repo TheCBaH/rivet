@@ -53,6 +53,7 @@ let () =
       `Arithmetic `Division_by_zero;
       `Shift_out_of_range Bigint.zero;
       `Not_absolute (Asm_core.Expr.Symbol "s");
+      `Resource { Asm_core.Expr.limit = 1; needed = 2 };
     ];
   record "Relax" Asm_core.Lowered_ast.relax_error_code
     [
@@ -263,6 +264,7 @@ let%expect_test "every diagnostic code, and the domain that claims it" =
     codec.unknown-rung           Codec
     expr.arithmetic              Expr
     expr.not-absolute            Expr
+    expr.resource                Expr
     expr.shift                   Expr
     image.align-fill             Image
     image.ambiguous              Image

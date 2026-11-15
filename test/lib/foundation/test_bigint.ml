@@ -146,3 +146,29 @@ let%expect_test "to_bits: 64-bit boundaries" =
     to_bits ~width:64  -9223372036854775808   -> 0x8000000000000000
     to_bits ~width:64  18446744073709551615   -> 0xffffffffffffffff
     to_bits ~width:64  18446744073709551616   -> error: value 0x10000000000000000 does not fit in 64 bits (signed or unsigned) |}]
+
+let%expect_test "to_int_opt agrees with the decimal rendering at the int boundaries" =
+  let candidates =
+    let near v = [ v - 1; v; v + 1 ] in
+    near max_int @ near min_int @ near 0
+    @ near (1 lsl 14)
+    @ near (-(1 lsl 14))
+    @ near (1 lsl 28)
+    @ near (-(1 lsl 28))
+    @ near (max_int / 2)
+    @ near (min_int / 2)
+  in
+  let values =
+    List.map Bigint.of_int candidates
+    @ [
+        Bigint.add (Bigint.of_int max_int) Bigint.one;
+        Bigint.sub (Bigint.of_int min_int) Bigint.one;
+        Bigint.shift_left_exn Bigint.one 100;
+        Bigint.neg (Bigint.shift_left_exn Bigint.one 100);
+      ]
+  in
+  let bad =
+    List.filter (fun v -> Bigint.to_int_opt v <> int_of_string_opt (Bigint.to_string v)) values
+  in
+  Printf.printf "%d values, %d disagree\n" (List.length values) (List.length bad);
+  [%expect {| 31 values, 0 disagree |}]

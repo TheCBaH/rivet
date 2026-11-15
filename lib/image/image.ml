@@ -34,6 +34,9 @@
 
 open Foundation
 open Asm_core
+module List = Safe_list
+
+let ( @ ) = List.append
 
 (* Re-exported so a caller writes [Image.Symtab], matching every other public
    name here - [symtab.ml] is a separate file only because [image.ml] is
@@ -129,7 +132,7 @@ type laid_out = {
   plan : plan;
   contents : (string * string) list;  (** merged section name -> initialized bytes *)
   definitions : Symtab.definition list;
-  link_global : Symtab.link_global_table;
+  index : Symtab.index;
   sizes : (string * string * Expr.t * int) list;
       (** owning unit, symbol, size expression, offset where it was written *)
   fixups : resolved_fixup list;
@@ -145,17 +148,10 @@ type laid_out = {
    every other input is allowed to see. Shared by [plan_image] (before
    [laid_out] exists), [bind_image] and [fixup_observations] (after), so the
    rule is stated once. *)
-let resolve_symbol ~(definitions : Symtab.definition list) ~(link_global : Symtab.link_global_table)
-    ~from_unit name =
-  match
-    List.find_opt
-      (fun (d : Symtab.definition) ->
-        String.equal d.Symtab.d_unit from_unit && String.equal d.Symtab.d_name name)
-      definitions
-  with
+let resolve_symbol ~(index : Symtab.index) ~from_unit name =
+  match Symtab.find_in_unit index ~unit_name:from_unit name with
   | Some d -> Some d
-  | None -> (
-      match List.assoc_opt name link_global with Some (d :: _) -> Some d | Some [] | None -> None)
+  | None -> Symtab.find_global index name
 
 (* {1 The bound image (§9)} *)
 
@@ -432,7 +428,7 @@ let fragment_size (sel : selection) i frag at =
 let scan_offsets (sel : selection) frags =
   let at = ref 0 in
   let starts = Array.make (List.length frags) 0 in
-  let labels = ref [] in
+  let labels = Hashtbl.create 64 in
   List.iteri
     (fun i frag ->
       let size = fragment_size sel i frag !at in
@@ -440,13 +436,13 @@ let scan_offsets (sel : selection) frags =
       | Lowered_ast.Align _ -> at := !at + size
       | Lowered_ast.Label_def { name; _ } ->
           starts.(i) <- !at;
-          labels := (name, !at) :: !labels
+          if not (Hashtbl.mem labels name) then Hashtbl.add labels name !at
       | _ ->
           starts.(i) <- !at;
           at := !at + size);
       if match frag with Lowered_ast.Align _ -> true | _ -> false then starts.(i) <- !at)
     frags;
-  (starts, List.rev !labels, !at)
+  (starts, labels, !at)
 
 (* Can this alternative's fixups all reach, with the section laid out as it
    currently is?
@@ -485,7 +481,7 @@ let alt_reaches ~evaluate ~labels ~frag_off (a : 'k Lowered_ast.encoded_form) =
   let env_for ~base (_ : 'k Lowered_ast.fixup) =
     {
       Expr.lookup =
-        (fun n -> Option.map (fun o -> Bigint.of_int (o + base)) (List.assoc_opt n labels));
+        (fun n -> Option.map (fun o -> Bigint.of_int (o + base)) (Hashtbl.find_opt labels n));
       here = Some (Bigint.of_int (frag_off + base));
     }
   in
@@ -694,6 +690,19 @@ let invalid_modules modules =
               rs)
       modules
 
+let first_symbols (m : 'k Lowered_ast.module_) =
+  let t = Hashtbl.create 64 in
+  List.iter
+    (fun (s : Lowered_ast.symbol) ->
+      if not (Hashtbl.mem t s.Lowered_ast.name) then Hashtbl.add t s.Lowered_ast.name s)
+    m.Lowered_ast.symbols;
+  t
+
+let string_set names =
+  let t = Hashtbl.create 64 in
+  List.iter (fun n -> Hashtbl.replace t n ()) names;
+  t
+
 let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fill) ?section_pad
     (policy : layout_policy) (modules : 'k Lowered_ast.module_ list) =
   let errors = ref [] in
@@ -714,36 +723,37 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
          (`Align`/`Label_def`/[Zero]) everything else uses, so it flows
          through the ordinary merge/layout machinery below rather than
          needing its own. *)
-      let strong_defined_names =
-        List.sort_uniq compare
-          (List.concat_map
-             (fun (m : 'k Lowered_ast.module_) ->
-               List.concat_map
-                 (fun (sc : 'k Lowered_ast.section_content) ->
-                   List.filter_map
-                     (function
-                       | Lowered_ast.Label_def { name; _ } -> (
-                           match
-                             List.find_opt
-                               (fun (s : Lowered_ast.symbol) ->
-                                 String.equal s.Lowered_ast.name name)
-                               m.Lowered_ast.symbols
-                           with
-                           | Some { Lowered_ast.binding = Lowered_ast.Global; _ } -> Some name
-                           | _ -> None)
-                       | _ -> None)
-                     sc.Lowered_ast.fragments)
-                 m.Lowered_ast.sections)
-             modules)
-      in
+      let module_symbols = List.map (fun m -> (m, first_symbols m)) modules in
+      let strong_defined_names = Hashtbl.create 64 in
+      List.iter
+        (fun ((m : 'k Lowered_ast.module_), symbols) ->
+          List.iter
+            (fun (sc : 'k Lowered_ast.section_content) ->
+              List.iter
+                (function
+                  | Lowered_ast.Label_def { name; _ } -> (
+                      match Hashtbl.find_opt symbols name with
+                      | Some { Lowered_ast.binding = Lowered_ast.Global; _ } ->
+                          Hashtbl.replace strong_defined_names name ()
+                      | _ -> ())
+                  | _ -> ())
+                sc.Lowered_ast.fragments)
+            m.Lowered_ast.sections)
+        module_symbols;
       let all_commons =
         List.concat_map (fun (m : 'k Lowered_ast.module_) -> m.Lowered_ast.commons) modules
       in
       let common_names =
-        List.fold_left
-          (fun acc (c : Lowered_ast.common) ->
-            if List.mem c.Lowered_ast.comm_name acc then acc else acc @ [ c.Lowered_ast.comm_name ])
-          [] all_commons
+        let seen = Hashtbl.create 16 in
+        List.filter_map
+          (fun (c : Lowered_ast.common) ->
+            let n = c.Lowered_ast.comm_name in
+            if Hashtbl.mem seen n then None
+            else begin
+              Hashtbl.add seen n ();
+              Some n
+            end)
+          all_commons
       in
       (* A common declaration conflicting with an ordinary *local* definition
          of the same name in the *same* input is its own diagnostic,
@@ -752,45 +762,45 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
          about one input being self-contradictory rather than about how
          inputs combine. *)
       List.iter
-        (fun (m : 'k Lowered_ast.module_) ->
-          List.iter
-            (fun (c : Lowered_ast.common) ->
-              let conflicts =
-                List.exists
-                  (fun (sc : 'k Lowered_ast.section_content) ->
-                    List.exists
-                      (function
-                        | Lowered_ast.Label_def { name; _ }
-                          when String.equal name c.Lowered_ast.comm_name -> (
-                            match
-                              List.find_opt
-                                (fun (s : Lowered_ast.symbol) ->
-                                  String.equal s.Lowered_ast.name name)
-                                m.Lowered_ast.symbols
-                            with
-                            | Some { Lowered_ast.binding = Lowered_ast.Local; _ } -> true
-                            | _ -> false)
-                        | _ -> false)
-                      sc.Lowered_ast.fragments)
-                  m.Lowered_ast.sections
-              in
-              if conflicts then fail (`Common_conflicts_with_local c.Lowered_ast.comm_name))
-            m.Lowered_ast.commons)
-        modules;
+        (fun ((m : 'k Lowered_ast.module_), symbols) ->
+          if m.Lowered_ast.commons <> [] then begin
+            let local_labels = Hashtbl.create 64 in
+            List.iter
+              (fun (sc : 'k Lowered_ast.section_content) ->
+                List.iter
+                  (function
+                    | Lowered_ast.Label_def { name; _ } -> (
+                        match Hashtbl.find_opt symbols name with
+                        | Some { Lowered_ast.binding = Lowered_ast.Local; _ } ->
+                            Hashtbl.replace local_labels name ()
+                        | _ -> ())
+                    | _ -> ())
+                  sc.Lowered_ast.fragments)
+              m.Lowered_ast.sections;
+            List.iter
+              (fun (c : Lowered_ast.common) ->
+                if Hashtbl.mem local_labels c.Lowered_ast.comm_name then
+                  fail (`Common_conflicts_with_local c.Lowered_ast.comm_name))
+              m.Lowered_ast.commons
+          end)
+        module_symbols;
       (* Strong beats common outright (no error - the common declarations are
          simply discarded); several declarations of a name that wins fold
          into one reservation sized to the maximum requested size and aligned
          to the maximum requested alignment. *)
+      let decls_by_name = Hashtbl.create 16 in
+      List.iter
+        (fun (c : Lowered_ast.common) ->
+          let n = c.Lowered_ast.comm_name in
+          Hashtbl.replace decls_by_name n
+            (c :: Option.value (Hashtbl.find_opt decls_by_name n) ~default:[]))
+        (List.rev all_commons);
       let winning_commons =
         List.filter_map
           (fun name ->
-            if List.mem name strong_defined_names then None
+            if Hashtbl.mem strong_defined_names name then None
             else
-              let decls =
-                List.filter
-                  (fun (c : Lowered_ast.common) -> String.equal c.Lowered_ast.comm_name name)
-                  all_commons
-              in
+              let decls = Option.value (Hashtbl.find_opt decls_by_name name) ~default:[] in
               let size =
                 List.fold_left
                   (fun acc (c : Lowered_ast.common) -> max acc c.Lowered_ast.comm_size)
@@ -846,6 +856,7 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
          A same-name PROGBITS/NOBITS mismatch is a dedicated rejection instead
          of GNU's measured silent coercion (§4); a flag mismatch is a silent
          union, matching measured GNU behavior. *)
+      let real_contributions = Hashtbl.create 64 in
       let section_names =
         let real =
           List.fold_left
@@ -853,28 +864,21 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
               List.fold_left
                 (fun acc (sc : 'k Lowered_ast.section_content) ->
                   let n = sc.Lowered_ast.sec.Lowered_ast.sec_name in
-                  if List.mem n acc then acc else n :: acc)
+                  let prior = Hashtbl.find_opt real_contributions n in
+                  Hashtbl.replace real_contributions n
+                    ((m.Lowered_ast.unit_name, sc) :: Option.value prior ~default:[]);
+                  if Option.is_some prior then acc else n :: acc)
                 acc m.Lowered_ast.sections)
             [] modules
           |> List.rev
         in
         match common_contribution with
-        | Some _ when not (List.mem ".bss" real) -> real @ [ ".bss" ]
+        | Some _ when not (Hashtbl.mem real_contributions ".bss") -> real @ [ ".bss" ]
         | _ -> real
       in
       (match section_names with [] -> fail `No_section | _ -> ());
       let contributions name =
-        let real =
-          List.concat_map
-            (fun (m : 'k Lowered_ast.module_) ->
-              List.filter_map
-                (fun (sc : 'k Lowered_ast.section_content) ->
-                  if String.equal sc.Lowered_ast.sec.Lowered_ast.sec_name name then
-                    Some (m.Lowered_ast.unit_name, sc)
-                  else None)
-                m.Lowered_ast.sections)
-            modules
-        in
+        let real = List.rev (Option.value (Hashtbl.find_opt real_contributions name) ~default:[]) in
         match common_contribution with
         | Some (u, sc) when String.equal name ".bss" -> real @ [ (u, sc) ]
         | _ -> real
@@ -993,17 +997,18 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
       let contents = List.map (fun (n, _, _, _, bytes, _, _) -> (n, bytes)) laid in
       (* {2 Symbol collection and identity (§1/§2): every [Label_def], in its
          merged section's coordinates, qualified by owning input. *)
+      let owners = Hashtbl.create 16 in
+      List.iter
+        (fun ((m : 'k Lowered_ast.module_), symbols) ->
+          if not (Hashtbl.mem owners m.Lowered_ast.unit_name) then
+            Hashtbl.add owners m.Lowered_ast.unit_name symbols)
+        module_symbols;
       let definitions =
         List.concat_map
           (fun (name, _, _, _, _, shifted, _) ->
             List.concat_map
               (fun (unit_name, offs, _, _) ->
-                let owner =
-                  List.find_opt
-                    (fun (m : 'k Lowered_ast.module_) ->
-                      String.equal m.Lowered_ast.unit_name unit_name)
-                    modules
-                in
+                let owner = Hashtbl.find_opt owners unit_name in
                 List.map
                   (fun (sym_name, off) ->
                     let binding =
@@ -1014,13 +1019,8 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
                       else
                         match owner with
                         | None -> Lowered_ast.Local
-                        | Some m -> (
-                            match
-                              List.find_opt
-                                (fun (s : Lowered_ast.symbol) ->
-                                  String.equal s.Lowered_ast.name sym_name)
-                                m.Lowered_ast.symbols
-                            with
+                        | Some symbols -> (
+                            match Hashtbl.find_opt symbols sym_name with
                             | Some s -> s.Lowered_ast.binding
                             | None -> Lowered_ast.Local)
                     in
@@ -1035,8 +1035,8 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
               shifted)
           laid
       in
-      let link_global = Symtab.build_link_global_table definitions in
-      let resolve = resolve_symbol ~definitions ~link_global in
+      let index = Symtab.index definitions in
+      let resolve = resolve_symbol ~index in
       let fixups =
         List.concat_map
           (fun (name, _, _, _, _, shifted, _) ->
@@ -1084,17 +1084,36 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
       (* Head keys are fragment-local.  A duplicate is rejected even if no
          tail happens to reference it, since accepting it would make a later
          low fixup depend on list order. *)
-      let seen_head_keys = ref [] in
+      let seen_head_keys = Hashtbl.create 64 in
       List.iter
         (fun h ->
           match h.rf_pairing with
           | Lowered_ast.Pair_head key ->
               let qualified = (h.rf_section, h.rf_frag_offset, key) in
-              if List.mem qualified !seen_head_keys then
+              if Hashtbl.mem seen_head_keys qualified then
                 fail ~origin:h.rf_origin (`Pair_duplicate_head key)
-              else seen_head_keys := qualified :: !seen_head_keys
+              else Hashtbl.add seen_head_keys qualified ()
           | _ -> ())
         heads;
+      let heads_by_sibling = Hashtbl.create 64 and heads_by_offset = Hashtbl.create 64 in
+      List.iter
+        (fun h ->
+          (match h.rf_pairing with
+          | Lowered_ast.Pair_head k ->
+              let key = (h.rf_section, h.rf_frag_offset, k) in
+              Hashtbl.replace heads_by_sibling key
+                (h :: Option.value (Hashtbl.find_opt heads_by_sibling key) ~default:[])
+          | _ -> ());
+          let key = (h.rf_section, h.rf_byte_offset) in
+          Hashtbl.replace heads_by_offset key
+            (h :: Option.value (Hashtbl.find_opt heads_by_offset key) ~default:[]))
+        (List.rev heads);
+      let labels_by_name = Hashtbl.create 256 in
+      List.iter
+        (fun ((n, _, _, _) as l) ->
+          Hashtbl.replace labels_by_name n
+            (l :: Option.value (Hashtbl.find_opt labels_by_name n) ~default:[]))
+        (List.rev label_locations);
       let pair_tail tail candidates description =
         match candidates with
         | [] ->
@@ -1123,15 +1142,9 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
             | Lowered_ast.Unpaired | Lowered_ast.Pair_head _ -> tail
             | Lowered_ast.Pair_tail (Lowered_ast.Sibling_key key) ->
                 pair_tail tail
-                  (List.filter
-                     (fun h ->
-                       String.equal h.rf_section tail.rf_section
-                       && h.rf_frag_offset = tail.rf_frag_offset
-                       &&
-                       match h.rf_pairing with
-                       | Lowered_ast.Pair_head k -> String.equal k key
-                       | _ -> false)
-                     heads)
+                  (Option.value
+                     (Hashtbl.find_opt heads_by_sibling (tail.rf_section, tail.rf_frag_offset, key))
+                     ~default:[])
                   key
             | Lowered_ast.Pair_tail (Lowered_ast.Anchor_symbol anchor) -> (
                 (* Anchors are synthetic, per-instruction-sequence labels an
@@ -1146,8 +1159,8 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
                    [Pair_ambiguous_head] or a wrong match. *)
                 match
                   List.filter
-                    (fun (n, _, _, u) -> String.equal n anchor && String.equal u tail.rf_unit)
-                    label_locations
+                    (fun (_, _, _, u) -> String.equal u tail.rf_unit)
+                    (Option.value (Hashtbl.find_opt labels_by_name anchor) ~default:[])
                 with
                 | [] ->
                     fail ~origin:tail.rf_origin (`Pair_undefined_anchor anchor);
@@ -1162,9 +1175,9 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
                     tail
                 | [ (_, section, offset, _) ] ->
                     pair_tail tail
-                      (List.filter
-                         (fun h -> String.equal h.rf_section section && h.rf_byte_offset = offset)
-                         heads)
+                      (Option.value
+                         (Hashtbl.find_opt heads_by_offset (section, offset))
+                         ~default:[])
                       anchor
                 | _ ->
                     fail ~origin:tail.rf_origin (`Pair_ambiguous_head anchor);
@@ -1175,16 +1188,18 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
         (* First-occurrence order across modules, deduplicated stably: a name
            [.globl]'d in more than one input (legitimate re-declaration of the
            one, single winning definition) must not be exported twice. *)
-        List.fold_left
-          (fun acc (m : 'k Lowered_ast.module_) ->
-            List.fold_left
-              (fun acc (s : Lowered_ast.symbol) ->
+        let seen = Hashtbl.create 64 in
+        List.concat_map
+          (fun (m : 'k Lowered_ast.module_) ->
+            List.filter_map
+              (fun (s : Lowered_ast.symbol) ->
                 match s.Lowered_ast.binding with
-                | Lowered_ast.Global ->
-                    if List.mem s.Lowered_ast.name acc then acc else acc @ [ s.Lowered_ast.name ]
-                | Lowered_ast.Local | Lowered_ast.Weak -> acc)
-              acc m.Lowered_ast.symbols)
-          [] modules
+                | Lowered_ast.Global when not (Hashtbl.mem seen s.Lowered_ast.name) ->
+                    Hashtbl.add seen s.Lowered_ast.name ();
+                    Some s.Lowered_ast.name
+                | _ -> None)
+              m.Lowered_ast.symbols)
+          modules
       in
       (* Two or more strong (Global) definitions of the same name at *different*
          addresses - in one input or across several - is a rejection rather
@@ -1199,25 +1214,20 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
          (confirmed against real arm-linux-gnueabihf-as: redefining a symbol
          to its own existing value is accepted, only a differing value is
          rejected), so only a genuine second *address* counts here. *)
-      let global_names =
-        List.sort_uniq compare
-          (List.filter_map
-             (fun (d : Symtab.definition) ->
-               if d.Symtab.d_binding = Lowered_ast.Global then Some d.Symtab.d_name else None)
-             definitions)
-      in
+      let externs = string_set policy.externs in
+      let global_addresses = Hashtbl.create 64 in
+      let conflicting = Hashtbl.create 16 in
       List.iter
-        (fun n ->
-          let addresses =
-            List.filter_map
-              (fun (d : Symtab.definition) ->
-                if String.equal d.Symtab.d_name n && d.Symtab.d_binding = Lowered_ast.Global then
-                  Some (d.Symtab.d_section, d.Symtab.d_offset)
-                else None)
-              definitions
-          in
-          if List.length (List.sort_uniq compare addresses) > 1 then fail (`Duplicate_definition n))
-        global_names;
+        (fun (d : Symtab.definition) ->
+          if d.Symtab.d_binding = Lowered_ast.Global then
+            let at = (d.Symtab.d_section, d.Symtab.d_offset) in
+            match Hashtbl.find_opt global_addresses d.Symtab.d_name with
+            | None -> Hashtbl.add global_addresses d.Symtab.d_name at
+            | Some first -> if first <> at then Hashtbl.replace conflicting d.Symtab.d_name ())
+        definitions;
+      List.iter
+        (fun n -> fail (`Duplicate_definition n))
+        (List.sort compare (Hashtbl.fold (fun n () acc -> n :: acc) conflicting []));
       (* A declaration with no definition anywhere it is allowed to see one
          is [Declared_never_defined] - distinct from an undefined
          *reference* (§1): this is about a declaration nothing backs, not a
@@ -1232,18 +1242,12 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
               let ok =
                 match s.Lowered_ast.binding with
                 | Lowered_ast.Local ->
-                    List.exists
-                      (fun (d : Symtab.definition) ->
-                        String.equal d.Symtab.d_unit m.Lowered_ast.unit_name
-                        && String.equal d.Symtab.d_name s.Lowered_ast.name)
-                      definitions
+                    Option.is_some
+                      (Symtab.find_in_unit index ~unit_name:m.Lowered_ast.unit_name
+                         s.Lowered_ast.name)
                 | Lowered_ast.Global ->
-                    List.mem s.Lowered_ast.name policy.externs
-                    || List.exists
-                         (fun (d : Symtab.definition) ->
-                           String.equal d.Symtab.d_name s.Lowered_ast.name
-                           && d.Symtab.d_binding <> Lowered_ast.Local)
-                         definitions
+                    Hashtbl.mem externs s.Lowered_ast.name
+                    || Symtab.is_global index s.Lowered_ast.name
                 | Lowered_ast.Weak -> true
               in
               if not ok then fail (`Declared_never_defined s.Lowered_ast.name))
@@ -1254,25 +1258,19 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
          name is not required to be [.globl]'d (M1/M2 never required it, and
          a single-module link has no other input a plain local could be
          mistaken for), so a name any input defines at all is accepted too. *)
-      let resolvable n =
-        Option.is_some (List.assoc_opt n link_global)
-        || List.exists (fun (d : Symtab.definition) -> String.equal d.Symtab.d_name n) definitions
-      in
+      let resolvable n = Symtab.defined index n in
       let exports =
         match policy.exported with
-        | None -> List.filter (fun n -> resolvable n || not (List.mem n policy.externs)) globals
+        | None -> List.filter (fun n -> resolvable n || not (Hashtbl.mem externs n)) globals
         | Some names -> names
       in
       (* Without a link-global definition the name falls back to the input's own, which
          only means one thing when a single input defines it. *)
       let ambiguous n =
-        (not (List.mem_assoc n link_global))
+        (not (Symtab.is_global index n))
         && List.length
              (List.sort_uniq String.compare
-                (List.filter_map
-                   (fun (d : Symtab.definition) ->
-                     if String.equal d.Symtab.d_name n then Some d.Symtab.d_unit else None)
-                   definitions))
+                (List.map (fun (d : Symtab.definition) -> d.Symtab.d_unit) (Symtab.named index n)))
            > 1
       in
       List.iter
@@ -1302,14 +1300,15 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
                  m.Lowered_ast.symbols)
              modules)
       in
+      let weak_set = string_set weak_names in
       let imports = ref [] in
       List.iter
         (fun f ->
           List.iter
             (fun s ->
               if Option.is_some (resolve ~from_unit:f.rf_unit s) then ()
-              else if List.mem s policy.externs then imports := s :: !imports
-              else if not (List.mem s weak_names) then
+              else if Hashtbl.mem externs s then imports := s :: !imports
+              else if not (Hashtbl.mem weak_set s) then
                 fail ~origin:f.rf_origin (`Fixup_undefined_symbol { fixup = f.rf_name; symbol = s }))
             (Expr.symbols f.rf_value))
         fixups;
@@ -1356,7 +1355,7 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
               };
             contents;
             definitions;
-            link_global;
+            index;
             sizes =
               List.concat_map
                 (fun (_, _, _, _, _, shifted, _) ->
@@ -1391,7 +1390,8 @@ let patch_container bytes ~at ~size ~slices ~value =
   let container = ref 0L in
   for i = size - 1 downto 0 do
     container :=
-      Int64.logor (Int64.shift_left !container 8) (Int64.of_int (Char.code bytes.[at + i]))
+      Int64.logor (Int64.shift_left !container 8)
+        (Int64.of_int (Char.code (Bytes.get bytes (at + i))))
   done;
   List.iter
     (fun (s : Lowered_ast.slice) ->
@@ -1405,12 +1405,10 @@ let patch_container bytes ~at ~size ~slices ~value =
       in
       container := Int64.logor cleared (Int64.shift_left piece s.Lowered_ast.bit_offset))
     slices;
-  let out = Bytes.of_string bytes in
   for i = 0 to size - 1 do
-    Bytes.set out (at + i)
+    Bytes.set bytes (at + i)
       (Char.chr (Int64.to_int (Int64.logand (Int64.shift_right_logical !container (8 * i)) 0xFFL)))
-  done;
-  Bytes.to_string out
+  done
 
 (* Addresses are 64-bit patterns: the full unsigned range is valid, so every comparison below is
    unsigned. A segment may end exactly at 2^64, which as a sum wraps to 0. *)
@@ -1559,10 +1557,7 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
       (fun f ->
         List.filter_map
           (fun s ->
-            match
-              resolve_symbol ~definitions:l.definitions ~link_global:l.link_global
-                ~from_unit:f.rf_unit s
-            with
+            match resolve_symbol ~index:l.index ~from_unit:f.rf_unit s with
             | Some d when other_overlays f.rf_section d.Symtab.d_section ->
                 Some
                   (reject_if ~pos:__POS__ true
@@ -1580,15 +1575,19 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
   let finish () =
     let errors = ref [] in
     let fail e = errors := diag e :: !errors in
+    let address_table = Hashtbl.create 16 and import_table = Hashtbl.create 16 in
+    List.iter (fun (n, a) -> Hashtbl.replace address_table n a) (List.rev addresses);
+    List.iter (fun (n, a) -> Hashtbl.replace import_table n a) (List.rev imports);
+    let plan_imports = string_set l.plan.imports and weak_set = string_set l.weak_names in
     (* §2's lookup order, restated at bind time against [l.definitions]/
-       [l.link_global] rather than re-derived: a reference always resolves
+       [l.index] rather than re-derived: a reference always resolves
        against its own input first, and only then against what the rest of
        the link may see. This is why [resolved_fixup] carries [rf_unit] and
        [laid_out.sizes] carries its owning unit alongside each entry - a bare
        name alone is not enough to find the right definition once more than
        one input can define same-spelled locals (§2). *)
     let address_of_def (d : Symtab.definition) =
-      match List.assoc_opt d.Symtab.d_section addresses with
+      match Hashtbl.find_opt address_table d.Symtab.d_section with
       | None -> None
       | Some base -> Some (Int64.add base (Int64.of_int d.Symtab.d_offset))
     in
@@ -1599,14 +1598,14 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
        "relative to address 0" falls out of the ordinary displacement
        arithmetic rather than needing to be special-cased here too. *)
     let address_of ~from_unit name =
-      match
-        resolve_symbol ~definitions:l.definitions ~link_global:l.link_global ~from_unit name
-      with
+      match resolve_symbol ~index:l.index ~from_unit name with
       | Some d -> address_of_def d
       | None -> (
-          match if List.mem name l.plan.imports then List.assoc_opt name imports else None with
+          match
+            if Hashtbl.mem plan_imports name then Hashtbl.find_opt import_table name else None
+          with
           | Some a -> Some a
-          | None -> if List.mem name l.weak_names then Some 0L else None)
+          | None -> if Hashtbl.mem weak_set name then Some 0L else None)
     in
     (* Entry and exports are always link-global names by construction
        ([plan_image] checked them against [link_global] before this ever
@@ -1614,22 +1613,16 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
        straight to [link_global] is not a shortcut, it is the correct rule
        for a name that can only mean one thing link-wide. *)
     let address_of_global name =
-      match List.assoc_opt name l.link_global with
-      | Some (d :: _) -> address_of_def d
-      | Some [] | None -> (
-          match
-            List.find_opt
-              (fun (d : Symtab.definition) -> String.equal d.Symtab.d_name name)
-              l.definitions
-          with
-          | Some d -> address_of_def d
-          | None -> None)
+      match Symtab.find_global l.index name with
+      | Some d -> address_of_def d
+      | None -> (
+          match Symtab.find_any l.index name with Some d -> address_of_def d | None -> None)
     in
     let env_at ~from_unit here_offset section =
       {
         Expr.lookup = (fun n -> Option.map big_of_address (address_of ~from_unit n));
         here =
-          (match List.assoc_opt section addresses with
+          (match Hashtbl.find_opt address_table section with
           | None -> None
           | Some base -> Some (big_of_address (Int64.add base (Int64.of_int here_offset))));
       }
@@ -1638,10 +1631,7 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
       List.filter_map
         (fun (unit_name, name, expr, at) ->
           let section =
-            match
-              resolve_symbol ~definitions:l.definitions ~link_global:l.link_global
-                ~from_unit:unit_name name
-            with
+            match resolve_symbol ~index:l.index ~from_unit:unit_name name with
             | Some d -> d.Symtab.d_section
             | None -> ""
           in
@@ -1662,12 +1652,13 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
        Everything a fixup needed and could not have before now: the expression
        becomes an address, [place] becomes the PC the architecture measures
        from, the target turns that into a field value, and the bits go in. *)
-    let patched =
-      List.fold_left
-        (fun acc f ->
-          let base = List.assoc_opt f.rf_section addresses in
+    let patched : (string, Bytes.t) Hashtbl.t = Hashtbl.create 16 in
+    let () =
+      List.iter
+        (fun f ->
+          let base = Hashtbl.find_opt address_table f.rf_section in
           match base with
-          | None -> acc
+          | None -> ()
           | Some base -> (
               let place = Int64.add base (Int64.of_int (f.rf_frag_offset + f.rf_pc_bias)) in
               (* [.] is the address of the instruction, not the PC the
@@ -1685,7 +1676,7 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
               match Expr.absolute env f.rf_value with
               | Error m ->
                   fail (`Fixup_value { fixup = f.rf_name; reason = Err.Error.kind m });
-                  acc
+                  ()
               | Ok target -> (
                   match
                     match Bigint.to_int64_opt target with
@@ -1694,14 +1685,14 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
                   with
                   | None ->
                       fail (`Fixup_target_too_wide f.rf_name);
-                      acc
+                      ()
                   | Some _
                     when pc_relative f
                          && not
                               (Bigint.fits_signed_exn ~width:64
                                  (Bigint.sub target (big_of_address place))) ->
                       fail (`Fixup_wraps f.rf_name);
-                      acc
+                      ()
                   | Some t -> (
                       match f.rf_evaluate ~place ~target:t with
                       (* The one arm that arrives already rendered: the
@@ -1710,7 +1701,7 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
                          other bind failure is what keeps the code it chose. *)
                       | Error d ->
                           fail (`Target_fixup d);
-                          acc
+                          ()
                       | Ok v ->
                           if not (Lowered_ast.range_admits f.rf_range v) then begin
                             fail
@@ -1721,25 +1712,27 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
                                    range = f.rf_range;
                                    at = f.rf_byte_offset;
                                  });
-                            acc
+                            ()
                           end
                           else
                             let cur =
-                              match List.assoc_opt f.rf_section acc with
+                              match Hashtbl.find_opt patched f.rf_section with
                               | Some b -> b
-                              | None -> (
-                                  try List.assoc f.rf_section l.contents with Not_found -> "")
+                              | None ->
+                                  let b =
+                                    Bytes.of_string
+                                      (try List.assoc f.rf_section l.contents with Not_found -> "")
+                                  in
+                                  Hashtbl.replace patched f.rf_section b;
+                                  b
                             in
-                            let updated =
-                              patch_container cur ~at:f.rf_byte_offset ~size:f.rf_container
-                                ~slices:f.rf_slices ~value:v
-                            in
-                            (f.rf_section, updated) :: List.remove_assoc f.rf_section acc))))
-        [] l.fixups
+                            patch_container cur ~at:f.rf_byte_offset ~size:f.rf_container
+                              ~slices:f.rf_slices ~value:v))))
+        l.fixups
     in
     let content_of name =
-      match List.assoc_opt name patched with
-      | Some b -> b
+      match Hashtbl.find_opt patched name with
+      | Some b -> Bytes.to_string b
       | None -> ( try List.assoc name l.contents with Not_found -> "")
     in
     let segments =
@@ -1895,6 +1888,14 @@ let normalize_ref (e : Expr.t) =
   | _ -> None
 
 let fixup_observations (l : laid_out) =
+  let in_unit = Hashtbl.create 256 and link_visible = Hashtbl.create 256 in
+  List.iter
+    (fun (u, (s : Lowered_ast.symbol)) ->
+      let n = s.Lowered_ast.name in
+      if not (Hashtbl.mem in_unit (u, n)) then Hashtbl.add in_unit (u, n) s;
+      if s.Lowered_ast.binding <> Lowered_ast.Local && not (Hashtbl.mem link_visible n) then
+        Hashtbl.add link_visible n s)
+    l.symbols;
   List.map
     (fun f ->
       let site =
@@ -1914,26 +1915,11 @@ let fixup_observations (l : laid_out) =
              [symbol] first (a local declaration is real metadata only there),
              and only then any input's link-visible one. *)
           let sym =
-            match
-              List.find_opt
-                (fun (u, s) -> String.equal u f.rf_unit && String.equal s.Lowered_ast.name symbol)
-                l.symbols
-            with
-            | Some (_, s) -> Some s
-            | None ->
-                List.find_map
-                  (fun (_, s) ->
-                    if
-                      String.equal s.Lowered_ast.name symbol
-                      && s.Lowered_ast.binding <> Lowered_ast.Local
-                    then Some s
-                    else None)
-                  l.symbols
+            match Hashtbl.find_opt in_unit (f.rf_unit, symbol) with
+            | Some _ as s -> s
+            | None -> Hashtbl.find_opt link_visible symbol
           in
-          let resolved =
-            resolve_symbol ~definitions:l.definitions ~link_global:l.link_global
-              ~from_unit:f.rf_unit symbol
-          in
+          let resolved = resolve_symbol ~index:l.index ~from_unit:f.rf_unit symbol in
           Symbolic_ref
             {
               site;

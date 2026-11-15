@@ -6249,6 +6249,19 @@ module Make (M : MODE) = struct
 
   let table_rows = X86_table_rows.rows
 
+  (* Row indexes by mnemonic, in table order. *)
+  let rows_by_mnemonic =
+    lazy
+      (let t = Hashtbl.create 4096 in
+       for i = Array.length table_rows - 1 downto 0 do
+         let m = table_rows.(i).T.mnemonic in
+         Hashtbl.replace t m (i :: Option.value (Hashtbl.find_opt t m) ~default:[])
+       done;
+       t)
+
+  let rows_named mnemonic =
+    Option.value (Hashtbl.find_opt (Lazy.force rows_by_mnemonic) mnemonic) ~default:[]
+
   let table_applies (r : T.row) =
     r.mode = 0 || (r.mode = 64 && M.rex_allowed) || (r.mode = 32 && not M.rex_allowed)
 
@@ -6593,15 +6606,15 @@ module Make (M : MODE) = struct
     match table_encode_row table_rows.(i) ops with
     | Some _ as found -> found
     | None ->
-        Array.fold_left
-          (fun acc (r : T.row) ->
+        List.fold_left
+          (fun acc j ->
             match acc with
             | Some _ -> acc
             | None ->
                 (* a pseudo-prefix-only row is reached only through it *)
-                if String.equal r.mnemonic mnemonic && r.pseudo = "" then table_encode_row r ops
-                else None)
-          None table_rows
+                let r = table_rows.(j) in
+                if r.pseudo = "" then table_encode_row r ops else None)
+          None (rows_named mnemonic)
 
   (* GNU as's pseudo-prefixes, each a condition on the row: [{evex}] and [{vex}] the encoding
      space, [{load}] and [{store}] whether the destination is ModR/M.reg or ModR/M.rm. *)
@@ -6643,13 +6656,7 @@ module Make (M : MODE) = struct
     go [] m
 
   let table_index mnemonic =
-    let rec go i =
-      if i >= Array.length table_rows then None
-      else if String.equal table_rows.(i).T.mnemonic mnemonic && table_applies table_rows.(i) then
-        Some i
-      else go (i + 1)
-    in
-    go 0
+    List.find_opt (fun i -> table_applies table_rows.(i)) (rows_named mnemonic)
 
   (* Decoding: prefixes (0x66, F2/F3, REX), then VEX or a legacy escape, then the opcode; every
      row with that space, map and opcode is tried in table order. *)
@@ -7119,17 +7126,12 @@ module Make (M : MODE) = struct
     | Some (prefix, m) -> (
         (* only a generated row can honour a pseudo-prefix: the first of the spelling's rows
            the prefix allows whose operands fit *)
-        let rec go i =
-          if i >= Array.length table_rows then None
-          else
-            let r = table_rows.(i) in
-            if
-              String.equal r.T.mnemonic m && table_applies r && pseudo_prefix_allows prefix r
-              && table_encode_row r s.Surface.ops <> None
-            then Some i
-            else go (i + 1)
+        let allowed i =
+          let r = table_rows.(i) in
+          table_applies r && pseudo_prefix_allows prefix r
+          && table_encode_row r s.Surface.ops <> None
         in
-        match go 0 with
+        match List.find_opt allowed (rows_named m) with
         | Some i -> Ok (Instruction.mk (Opcode.Table (Row.of_index i)) 0 s.Surface.ops)
         | None -> Error (diag ~pos:__POS__ (`Unknown_instruction s.Surface.mnemonic)))
     | None -> (
@@ -7692,7 +7694,9 @@ module Make (M : MODE) = struct
     | Lowered.Table x -> Some (Instruction.mk (Opcode.Table x.row) 0 x.ops)
 
   let decode_ungated ctx bytes ~pos =
-    let bits = C.Bits.of_bytes (String.sub bytes pos (String.length bytes - pos)) in
+    (* An instruction is at most 15 bytes; converting the whole rest of the section for every
+       instruction made disassembly quadratic. *)
+    let bits = C.Bits.of_bytes (String.sub bytes pos (min 16 (String.length bytes - pos))) in
     match C.decode_bits codec bits with
     | None -> (
         match table_decode bytes pos with

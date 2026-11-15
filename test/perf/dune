@@ -11,8 +11,8 @@
 ; run's own timing is not the claim this test makes) - and driver itself is
 ; gated the same way, so this follows its own dependency's own gate.
 
-(executable
- (name test_parse_perf)
+(executables
+ (names test_parse_perf test_assemble_perf)
  (modes exe)
  (libraries driver unix)
  (enabled_if
@@ -21,6 +21,8 @@
 (rule
  (alias runtest)
  (action
-  (run ./test_parse_perf.exe))
+  (progn
+   (run ./test_parse_perf.exe)
+   (run ./test_assemble_perf.exe)))
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

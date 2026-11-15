@@ -72,17 +72,38 @@ let no_env = { lookup = (fun _ -> None); here = None }
 
    Rendering is unchanged, so the diagnostics these become are the ones the
    fixtures already pin. *)
-type error = [ `Arithmetic of Bigint.error | `Shift_out_of_range of Bigint.t | `Not_absolute of t ]
+type resource = { limit : int; needed : int }
+
+type error =
+  [ `Arithmetic of Bigint.error
+  | `Shift_out_of_range of Bigint.t
+  | `Not_absolute of t
+  | `Resource of resource ]
+
+(* A resource budget, not an arithmetic cap: values keep their arbitrary precision (design.md
+   §4.3), but an operation whose operands or result would need more than this many bits is
+   refused, so a short expression cannot demand memory and time out of proportion to its length. *)
+let default_resource_limit = 65_536
+let resource_limit = ref default_resource_limit
+
+let set_resource_limit ~bits =
+  if bits < 1 then invalid_arg "Expr.set_resource_limit";
+  resource_limit := bits
+
+let resource_limit_bits () = !resource_limit
 
 let pp_error ppf : error -> unit = function
   | `Arithmetic e -> Bigint.pp_error ppf e
   | `Shift_out_of_range _ -> Fmt.string ppf "shift count out of range"
   | `Not_absolute residual -> Fmt.pf ppf "%s is not an absolute value here" (to_string residual)
+  | `Resource { limit; needed } ->
+      Fmt.pf ppf "expression value needs %d bits, over the limit of %d" needed limit
 
 let error_code : error -> string = function
   | `Arithmetic _ -> "expr.arithmetic"
   | `Shift_out_of_range _ -> "expr.shift"
   | `Not_absolute _ -> "expr.not-absolute"
+  | `Resource _ -> "expr.resource"
 
 (* [Bigint]'s failures are ours once they happen inside an expression, so this
    is a wrap with no added context - the tag is what records the crossing, and
@@ -90,7 +111,24 @@ let error_code : error -> string = function
 let of_bigint r = Err.map_error ~pos:__POS__ ~pp_error (fun e -> `Arithmetic e) r
 let fail ?pos (e : error) = Err.fail ?pos ~pp_error e
 
+let within_budget needed =
+  if needed <= !resource_limit then Ok ()
+  else fail ~pos:__POS__ (`Resource { limit = !resource_limit; needed })
+
+let ( let* ) = Result.bind
+
 let apply_binop op a b =
+  let na = Bigint.numbits a and nb = Bigint.numbits b in
+  let* () =
+    match op with
+    | Add | Sub -> within_budget (max na nb + 1)
+    | Mul -> within_budget (na + nb)
+    | Shl -> (
+        match Bigint.to_int_opt b with
+        | Some n when n >= 0 && n <= 4096 -> within_budget (na + n)
+        | _ -> Ok ())
+    | Div | Mod | And | Or | Xor | Shr -> within_budget (max na nb)
+  in
   match op with
   | Add -> Ok (Bigint.add a b)
   | Sub -> Ok (Bigint.sub a b)
@@ -125,15 +163,24 @@ let rec fold env e =
   | Unary (op, a) -> (
       match fold env a with
       | Error _ as err -> err
-      | Ok (Const v) -> Ok (Const (match op with Neg -> Bigint.neg v | Lognot -> Bigint.lognot v))
+      | Ok (Const v) -> (
+          match within_budget (Bigint.numbits v + 1) with
+          | Error _ as err -> err
+          | Ok () -> Ok (Const (match op with Neg -> Bigint.neg v | Lognot -> Bigint.lognot v)))
       | Ok a' -> Ok (Unary (op, a')))
   | Binary (op, a, b) -> (
-      match (fold env a, fold env b) with
-      | Error _, _ -> fold env a
-      | _, Error _ -> fold env b
-      | Ok (Const x), Ok (Const y) -> (
-          match apply_binop op x y with Ok v -> Ok (Const v) | Error m -> Error m)
-      | Ok a', Ok b' -> Ok (Binary (op, a', b')))
+      (* Left operand first, and each folded once: re-folding a failed operand doubled the work
+         at every level of nesting. *)
+      match fold env a with
+      | Error _ as err -> err
+      | Ok a' -> (
+          match fold env b with
+          | Error _ as err -> err
+          | Ok b' -> (
+              match (a', b') with
+              | Const x, Const y -> (
+                  match apply_binop op x y with Ok v -> Ok (Const v) | Error m -> Error m)
+              | _ -> Ok (Binary (op, a', b')))))
   | Modifier (m, a) -> (
       match fold env a with Error _ as err -> err | Ok a' -> Ok (Modifier (m, a')))
 

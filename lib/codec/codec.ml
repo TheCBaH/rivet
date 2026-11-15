@@ -129,7 +129,12 @@ type ('a, 'k) t =
           would mean enumerating 2^32 values. What {!check} can say about one of these is nothing;
           what proves them correct is a generated finite-domain round-trip test, which is why
           {!Finite} exists. *)
-  | Alt : { name : string; alts : ('a, 'k) alt list } -> ('a, 'k) t
+  | Alt : {
+      name : string;
+      alts : ('a, 'k) alt list;
+      by_priority : ('a, 'k) alt list;  (** [alts] sorted once, in construction *)
+    }
+      -> ('a, 'k) t
   | Relax : { name : string; rungs : ('a, 'k) rung list } -> ('a, 'k) t
       (** A *relaxation* choice, deliberately not an [Alt].
 
@@ -184,7 +189,9 @@ let iso_fun ~name ~encode ~decode inner = Iso_fun { name; encode; decode; inner 
 let alt ?(cost = 0) ?(guard = fun _ -> true) ~label ~priority body =
   { label; priority; guard; cost; body }
 
-let choice ~name alts = Alt { name; alts }
+let choice ~name alts =
+  Alt { name; alts; by_priority = List.stable_sort (fun a b -> compare a.priority b.priority) alts }
+
 let rung ~label body = { rung_label = label; rung_body = body }
 let relax ~name rungs = Relax { name; rungs }
 
@@ -369,8 +376,7 @@ let rec attempt : type a k. (a, k) t -> a -> k attempt =
       | Some (_, code) -> attempt inner code)
   | Iso_fun { encode = f; inner; _ } -> (
       match f v with None -> Declined | Some b -> attempt inner b)
-  | Alt { name; alts } ->
-      let ordered = List.sort (fun a b -> compare a.priority b.priority) alts in
+  | Alt { name; by_priority = ordered; _ } ->
       (* Priority order, first success wins, and a failure does not stop the
          search: a short form whose immediate is out of range is precisely how a
          long form gets selected. The error reported when nothing works is the
@@ -444,10 +450,9 @@ let rec ladder_tagged : type a k. (a, k) t -> a -> (string option * k encoded) l
           | Encoded e -> Some (Some r.rung_label, { e with form = r.rung_label :: e.form })
           | Declined | Failed _ -> None)
         rungs
-  | Alt { alts; _ } ->
+  | Alt { by_priority = ordered; _ } ->
       (* The ladder, if there is one, is inside whichever alternative this value
          selects; the alternatives themselves are not rungs. *)
-      let ordered = List.sort (fun a b -> compare a.priority b.priority) alts in
       let rec go = function
         | [] -> []
         | a :: rest -> (
@@ -589,8 +594,7 @@ let rec decode : type a k. (a, k) t -> Bits.t -> pos:int -> a decoded option =
       match decode inner bits ~pos with
       | None -> None
       | Some x -> ( match g x.value with None -> None | Some a -> Some { x with value = a }))
-  | Alt { alts; _ } ->
-      let ordered = List.sort (fun a b -> compare a.priority b.priority) alts in
+  | Alt { by_priority = ordered; _ } ->
       List.fold_left
         (fun acc a ->
           match acc with
@@ -669,7 +673,7 @@ module Shape = struct
           enqueue name s;
           Fmt.string ppf name
     and pp_def ppf = function
-      | Alt { name; alts } ->
+      | Alt { name; alts; _ } ->
           Fmt.pf ppf "@[<v2>alt %s@,%a@]" name
             Fmt.(
               list ~sep:cut (fun ppf (label, prio, cost, s) ->
@@ -716,14 +720,11 @@ let rec inspect : type a k. kind_name:(k -> string) -> (a, k) t -> Shape.shape =
   | Iso_table { name; entries; inner; _ } ->
       Shape.Iso_table { name; entries = List.length entries; inner = inspect inner }
   | Iso_fun { name; inner; _ } -> Shape.Iso_fun { name; inner = inspect inner }
-  | Alt { name; alts } ->
+  | Alt { name; by_priority; _ } ->
       Shape.Alt
         {
           name;
-          alts =
-            List.map
-              (fun a -> (a.label, a.priority, a.cost, inspect a.body))
-              (List.sort (fun a b -> compare a.priority b.priority) alts);
+          alts = List.map (fun a -> (a.label, a.priority, a.cost, inspect a.body)) by_priority;
         }
   | Relax { name; rungs } ->
       Shape.Relax { name; rungs = List.map (fun r -> (r.rung_label, inspect r.rung_body)) rungs }
@@ -937,7 +938,7 @@ let rec check_node : type a k.
          than silently returning [] is the point - a reader must not read an
          empty problem list as "checked". *)
       check inner
-  | Alt { name; alts } ->
+  | Alt { name; alts; by_priority; _ } ->
       let where = "alt " ^ name in
       let prios = List.map (fun a -> a.priority) alts in
       let dup_prio =
@@ -947,7 +948,7 @@ let rec check_node : type a k.
       in
       let pairs =
         let rec go = function [] -> [] | x :: rest -> List.map (fun y -> (x, y)) rest @ go rest in
-        go (List.sort (fun a b -> compare a.priority b.priority) alts)
+        go by_priority
       in
       let ambiguous =
         List.filter_map
@@ -1081,7 +1082,7 @@ module Finite = struct
      of with the rule. *)
   let unreachable_alts (type a k) (node : (a, k) t) (dom : a domain) =
     match node with
-    | Alt { name; alts } ->
+    | Alt { name; by_priority; _ } ->
         let hit =
           List.filter_map
             (fun v -> match encode node v with Ok { form = l :: _; _ } -> Some l | _ -> None)
@@ -1095,7 +1096,7 @@ module Finite = struct
                 (Printf.sprintf "alt %s: %s is selected by no value in domain %s (%s)" name a.label
                    dom.name
                    (if dom.exhaustive then "exhaustive" else "sample")))
-          (List.sort (fun a b -> compare a.priority b.priority) alts)
+          by_priority
     | _ -> []
 
   let pp_domain ppf d =

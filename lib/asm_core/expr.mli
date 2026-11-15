@@ -19,11 +19,24 @@ type env = { lookup : string -> Foundation.Bigint.t option; here : Foundation.Bi
 
 val no_env : env
 
+type resource = { limit : int; needed : int }
+(** Bits: the budget, and what the refused operation needed. *)
+
 type error =
   [ `Arithmetic of Foundation.Bigint.error
   | `Not_absolute of t
-  | `Shift_out_of_range of Foundation.Bigint.t ]
+  | `Shift_out_of_range of Foundation.Bigint.t
+  | `Resource of resource ]
 
+val default_resource_limit : int
+
+val set_resource_limit : bits:int -> unit
+(** The largest value, in bits, that a folded operation may take or produce; the default is
+    {!default_resource_limit}. Exceeding it is [`Resource], not a wrapped or truncated value:
+    arbitrary precision is unchanged below the limit. A host with less to spare (a browser) sets
+    it lower. Raises [Invalid_argument] below 1. *)
+
+val resource_limit_bits : unit -> int
 val pp_error : Format.formatter -> error -> unit
 val error_code : error -> string
 val fold : env -> t -> (t, error Err.Error.t) result

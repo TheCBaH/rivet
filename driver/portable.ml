@@ -129,7 +129,9 @@ let plan_text p = Fmt.to_to_string Image.pp_plan (Image.plan_of p.laid_out)
    observation in the oracle's own column order is what it would have to
    marshal [Image.fixup_observation] into anyway. *)
 let fixup_observations p =
-  List.map (fun o -> Fmt.to_to_string Image.pp_observation o) (Image.fixup_observations p.laid_out)
+  Foundation.Safe_list.map
+    (fun o -> Fmt.to_to_string Image.pp_observation o)
+    (Image.fixup_observations p.laid_out)
 
 let segments p =
   List.map

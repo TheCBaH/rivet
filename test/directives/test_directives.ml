@@ -362,3 +362,82 @@ let%expect_test "a branch across the end of the address space is an error, not a
     x86_64: .text at fffffffffffff000: e8fb0fffff
     x86_64: .data at ffffffffffff0000: 01
       export entry = fffffffffffff000 |}]
+
+let%expect_test ".ascii, .asciz and .string concatenate their arguments" =
+  show_data
+    ".data\n.ascii \"ab\", \"c\\n\"\n.asciz \"x\", \"y\"\n.string \"\"\n.ascii \"\"\n.byte 9\n";
+  [%expect
+    {|
+    x86_32   6162630a780079000009
+    x86_64   6162630a780079000009
+    arm      6162630a780079000009
+    aarch64  6162630a780079000009
+    riscv32  6162630a780079000009
+    riscv64  6162630a780079000009
+    |}]
+
+let%expect_test ".ascii dumps as one data directive of byte values" =
+  (match
+     Driver.Portable.dump "x86_64" ~which:`Normalized_ast ~unit_name:"t"
+       ~text:".data\n.ascii \"a\\n\"\n.asciz \"b\"\n"
+   with
+  | Ok s -> print_string s
+  | Error _ -> print_endline "error");
+  [%expect {|
+    normalized t
+    section .data rw-
+    data 1 97, 10
+    data 1 98, 0 |}]
+
+(* Expressions fold at arbitrary precision; only their resource use is bounded. *)
+let quad_value expr =
+  match assemble "x86_64" (".data\n.quad " ^ expr ^ "\n") with
+  | Ok segs -> hex (segment ".data" segs).Image.bytes
+  | Error m -> "error: " ^ List.hd (String.split_on_char '\n' m)
+
+let%expect_test "intermediate values may exceed 64 bits when they fold back" =
+  List.iter
+    (fun e -> Printf.printf "%s => %s\n" e (quad_value e))
+    [ "((1 << 128) >> 128)"; "(1 << 4000) / (1 << 3999)"; "((3 << 100) * (5 << 100)) >> 200" ];
+  [%expect
+    {|
+    ((1 << 128) >> 128) => 0100000000000000
+    (1 << 4000) / (1 << 3999) => 0200000000000000
+    ((3 << 100) * (5 << 100)) >> 200 => 0f00000000000000 |}]
+
+let squares n = String.concat " * " (List.init n (fun _ -> "(1 << 4000)"))
+
+let%expect_test "an expression over the resource limit is refused" =
+  print_endline (quad_value (squares 20));
+  print_endline (quad_value ("((" ^ squares 20 ^ ") >> 80000) + 1"));
+  (let open Asm_core.Expr in
+   let big = Const (Foundation.Bigint.shift_left_exn Foundation.Bigint.one 40000) in
+   match fold no_env (Binary (Mul, big, big)) with
+   | Error e -> print_endline (error_code (Err.Error.kind e))
+   | Ok _ -> print_endline "folded");
+  [%expect
+    {|
+    error: x86_64.s:2:1: error[lower.data]: expression value needs 68002 bits, over the limit of 65536
+    error: x86_64.s:2:1: error[lower.data]: expression value needs 68002 bits, over the limit of 65536
+    expr.resource |}]
+
+let%expect_test "the limit is configurable and the default restores" =
+  let saved = Asm_core.Expr.resource_limit_bits () in
+  Asm_core.Expr.set_resource_limit ~bits:256;
+  Fun.protect
+    ~finally:(fun () -> Asm_core.Expr.set_resource_limit ~bits:saved)
+    (fun () ->
+      List.iter
+        (fun e -> Printf.printf "%s => %s\n" e (quad_value e))
+        [ "((1 << 128) >> 128)"; "(1 << 200) * (1 << 100)" ]);
+  Printf.printf "limit %d\n" (Asm_core.Expr.resource_limit_bits ());
+  [%expect
+    {|
+    ((1 << 128) >> 128) => 0100000000000000
+    (1 << 200) * (1 << 100) => error: x86_64.s:2:1: error[lower.data]: expression value needs 302 bits, over the limit of 256
+    limit 65536 |}]
+
+let%expect_test "a failing operand is folded once, so nesting stays linear" =
+  let rec nest n = if n = 0 then "(1 / 0)" else "(" ^ nest (n - 1) ^ " + 1)" in
+  print_endline (quad_value (nest 60));
+  [%expect {| error: x86_64.s:2:1: error[lower.data]: division by zero |}]

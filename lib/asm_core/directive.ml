@@ -60,6 +60,10 @@ type t =
           The width in *bytes* rather than the spelling, because [.word] is two bytes in GNU x86
           syntax and four on ARM and AArch64 - so the surface name is a dialect fact and the width
           is the value. An initializer naming a symbol stays an expression and becomes a fixup. *)
+  | Ascii of { bytes : string }
+      (** [.ascii], [.asciz] and [.string]: the decoded bytes of every string argument, with the
+          terminating NUL of the last two already appended. One string rather than one [Data]
+          value per character. *)
   | Zero of { length : int }
       (** [.zero]/[.space] (M3 §6), single-argument form only - a fill byte ([.space size,fill])
           is not supported, since a NOBITS section cannot hold one anyway and a PROGBITS
@@ -71,6 +75,10 @@ type t =
       (** a [.cfi_*] directive ([name] with its dot), carried so a producer's call-frame
           information survives into a GNU export. It changes no byte of the image: lowering
           drops it, and the text route reads and discards it as before. *)
+
+let ascii_values bytes =
+  List.init (String.length bytes) (fun i ->
+      Expr.Const (Foundation.Bigint.of_int (Char.code bytes.[i])))
 
 let pp ppf = function
   | Section { name; perms; nobits } ->
@@ -85,6 +93,8 @@ let pp ppf = function
   | Sym_size { name; size } -> Fmt.pf ppf "size %s %a" name Expr.pp size
   | Data { width; values } ->
       Fmt.pf ppf "data %d %a" width Fmt.(list ~sep:(any ", ") Expr.pp) values
+  | Ascii { bytes } ->
+      Fmt.pf ppf "data 1 %a" Fmt.(list ~sep:(any ", ") Expr.pp) (ascii_values bytes)
   | Zero { length } -> Fmt.pf ppf "zero %d" length
   | Target_state { name; argument } -> Fmt.pf ppf "target-state %s %s" name argument
   | Cfi { name; argument } -> Fmt.pf ppf "cfi %s %s" name argument

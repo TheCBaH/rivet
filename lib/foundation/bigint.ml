@@ -429,7 +429,17 @@ let of_string s =
   else go start zero
 
 let of_string_exn s = or_raise (of_string s)
-let to_int_opt x = int_of_string_opt (to_string x)
+
+(* Accumulates the magnitude negatively so that [min_int] is reachable. *)
+let to_int_opt x =
+  let rec go acc = function
+    | [] -> Some acc
+    | limb :: rest ->
+        if acc < (min_int + limb) / limb_base then None else go ((acc * limb_base) - limb) rest
+  in
+  match go 0 (List.rev x.mag) with
+  | None -> None
+  | Some acc -> if x.sign < 0 then Some acc else if acc = min_int then None else Some (-acc)
 
 (* {1 Pretty-printing}
 
