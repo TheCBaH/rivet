@@ -19,7 +19,7 @@ Every library has a public name `rivet.<library>` in the `rivet` package, apart 
 | `lib/image` | `image` | Symbol resolution, layout, relaxation, fixups, address binding |
 | `lib/compute` | `compute` | Symbolic and concrete evaluation of machine semantics (not part of assembling) |
 | `text_pipeline` | `text_pipeline` | Parse, normalize and lower for any target; names no target |
-| `driver`, `driver_direct` | `driver`, `driver_direct` | The registry that links every target, the erased `Portable` API, and the direct pipeline stages for producers that build ASTs |
+| `driver`, `driver_direct` | `driver`, `driver_direct` | The registry that links every target, the erased `Portable` API, and the direct pipeline stages for producers that build ASTs. Planning options (entry, features, externs, exported, max size, RWX) travel as one `Target.request`, binding options (imports, overlays, load addresses) as `Portable.bind_request`; the CLI has an option for each |
 | `targets/*` | per target | See below |
 | `tool` | | The `asm.exe` command line |
 | `browser/{jsoo,melange}` | | Adapters exposing `Portable` to a browser |

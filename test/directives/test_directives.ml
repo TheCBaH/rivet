@@ -144,8 +144,8 @@ let%expect_test "permissions come from the flag string" =
      .byte 4\n";
   [%expect
     {|
-    x86_64: .text.startup r-x a1 01+0 .mydata rw- a1 02+0 .rodata rw- a1 03+0 .xyz r-- a1 04+0
-    aarch64: .text.startup r-x a1 01+0 .mydata rw- a1 02+0 .rodata rw- a1 03+0 .xyz r-- a1 04+0 |}]
+    x86_64: .text r-x a1 01+0 .mydata rw- a1 02+0 .rodata rw- a1 03+0 .xyz r-- a1 04+0
+    aarch64: .text r-x a1 01+0 .mydata rw- a1 02+0 .rodata rw- a1 03+0 .xyz r-- a1 04+0 |}]
 
 let%expect_test "no flags: the name decides" =
   show_segments ".section .rodata\n.byte 1\n.section .foo\n.byte 2\n";
@@ -158,7 +158,7 @@ let%expect_test "an executable custom section is NOP-filled" =
   show_segments ".section .text.hot,\"ax\",@progbits\n.byte 1\n.balign 4\n.byte 2\n";
   [%expect
     {|
-    x86_64: .text.hot r-x a4 010f1f0002+0
+    x86_64: .text r-x a4 010f1f0002+0
     aarch64: error: aarch64.s:3:1: error[image.align-fill]: the target supplies no 3-byte padding for a 4-byte alignment |}]
 
 let%expect_test "NOBITS is inferred from a .bss or .tbss name when no type is given" =
@@ -171,8 +171,8 @@ let%expect_test "NOBITS is inferred from a .bss or .tbss name when no type is gi
      .zero 2\n";
   [%expect
     {|
-    x86_64: .bss.x rw- a1 +4 .tbss.y rw- a1 +8 .bss.z rw- a1 0000+0
-    aarch64: .bss.x rw- a1 +4 .tbss.y rw- a1 +8 .bss.z rw- a1 0000+0 |}]
+    x86_64: .bss rw- a1 +4 .tbss.y rw- a1 +8 .bss.z rw- a1 0000+0
+    aarch64: .bss rw- a1 +4 .tbss.y rw- a1 +8 .bss.z rw- a1 0000+0 |}]
 
 let%expect_test "subsection and .bss arguments are rejected" =
   List.iter

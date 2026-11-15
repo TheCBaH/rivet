@@ -7,6 +7,7 @@ type layout_policy = {
   max_size : int option;
   externs : string list;
   allow_rwx : bool;
+  group_sections : bool;
 }
 
 val default_policy : layout_policy

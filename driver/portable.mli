@@ -12,6 +12,7 @@ val set_trace_policy : unit -> unit
 val targets : string list
 
 val dump :
+  ?features:Target_config.spec ->
   String.t ->
   which:[< `Lowered_ast | `Normalized_ast | `Source_ast | `Tokens ] ->
   unit_name:string ->
@@ -22,8 +23,25 @@ val dump_codec : String.t -> (string, error) Err.t
 
 type planned = { laid_out : Image.laid_out; target : string }
 
+type request = Target_intf.Target.request = {
+  entry : string option;
+  features : Target_config.spec option;
+  externs : string list;
+  exported : string list option;
+  max_size : int option;
+  allow_rwx : bool;
+  group_sections : bool;
+}
+(** every planning option in one value: entry symbol, feature spec, symbols left undefined until
+    bind ([externs]), the exported-symbol list, a size limit, whether an RWX segment is allowed *)
+
+val default_request : request
+val assemble_with : request -> String.t -> unit_name:string -> text:string -> (planned, error) Err.t
+val assemble_many_with : request -> String.t -> (string * string) list -> (planned, error) Err.t
+
 val assemble :
   ?entry:string -> String.t -> unit_name:string -> text:string -> (planned, error) Err.t
+(** [assemble_with] over {!default_request} with [entry] set *)
 
 val assemble_many : ?entry:string -> String.t -> (string * string) list -> (planned, error) Err.t
 val plan_text : planned -> string
@@ -31,6 +49,17 @@ val fixup_observations : planned -> string list
 val segments : planned -> (string * int * int * int) list
 
 type bound = { image : Image.t; target : string }
+
+type bind_request = {
+  imports : (string * int64) list;  (** addresses of the module's [externs] *)
+  overlays : string list list;  (** groups of segments allowed to share addresses *)
+  load_addresses : (string * int64) list;  (** per-segment load address when it differs *)
+}
+
+val default_bind_request : bind_request
+
+val bind_with :
+  bind_request -> planned -> addresses:(string * int64) list -> (bound, error Err.Error.t) result
 
 val bind : planned -> addresses:(string * int64) list -> (bound, error Err.Error.t) result
 val planned_segments : planned -> Image.segment_plan list
@@ -51,6 +80,15 @@ type manifest = {
 }
 
 val manifest : bound -> manifest
+
+val disassemble_for :
+  ?features:Target_config.spec ->
+  String.t ->
+  mode:[< `Canonical | `Diagnostic ] ->
+  address:int64 ->
+  string ->
+  (string, error) Err.t
+(** disassemble for a named target, with no [bound] value needed *)
 
 val disassemble :
   bound -> mode:[< `Canonical | `Diagnostic ] -> address:int64 -> string -> (string, error) Err.t

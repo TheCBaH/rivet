@@ -1838,3 +1838,50 @@ let%expect_test "ISA strings: every standard feature has a version" =
   [%expect {|
     rv32: ok
     rv64: ok |}]
+
+(* The erased request reaches the same options the direct pipeline has: features, externs,
+   exports, a size limit, and at bind imports. *)
+let%expect_test "Portable carries the whole request" =
+  let module P = Driver.Portable in
+  let show = function
+    | Ok s -> print_endline s
+    | Error e -> print_endline (P.render_error (Err.Error.kind e))
+  in
+  let text = "\t.text\n\t.globl f\nf:\n\tmul a0, a0, a1\n\tcall ext\n\tret\n" in
+  let go request =
+    match P.assemble_with request "riscv32" ~unit_name:"t" ~text with
+    | Error e -> Error e
+    | Ok p -> (
+        match
+          P.bind_with
+            { P.default_bind_request with imports = [ ("ext", 0x100L) ] }
+            p
+            ~addresses:[ (".text", 0x1000L) ]
+        with
+        | Error e -> Error e
+        | Ok b -> Ok (P.image_text b))
+  in
+  let r = { P.default_request with externs = [ "ext" ] } in
+  show (go r);
+  show (go { r with features = Some (spec "none") });
+  show (go { r with max_size = Some 4 });
+  show (go { r with exported = Some [ "nope" ] });
+  show (go P.default_request);
+  show (P.dump ~features:(spec "none") "riscv32" ~which:`Lowered_ast ~unit_name:"t" ~text);
+  show (P.disassemble_for "riscv32" ~mode:`Canonical ~address:0L "\x13\x00\x00\x00");
+  [%expect
+    {|
+    section .text address=0x1000 size=16 permissions=r-x
+    entry 0x1000
+    export f = 0x1000
+    t.s:4:2: error[riscv32.feature]: mul requires feature zmmul, which is not enabled
+      	mul a0, a0, a1
+      	^^^
+    <synthesized by image>: error[image.too-large]: image is 16 bytes, limit is 4
+    <synthesized by image>: error[image.export]: exported symbol nope is not defined
+    <synthesized by riscv32.encode>: error[image.undefined]: fixup hi references undefined symbol ext
+    <synthesized by riscv32.encode>: error[image.undefined]: fixup lo references undefined symbol ext
+    t.s:4:2: error[riscv32.feature]: mul requires feature zmmul, which is not enabled
+      	mul a0, a0, a1
+      	^^^
+    	addi x0, x0, 0 |}]

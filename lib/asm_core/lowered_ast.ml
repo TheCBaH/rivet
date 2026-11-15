@@ -502,3 +502,76 @@ let validate (m : 'k module_) =
         add (Bad_alignment { where = "common " ^ c.comm_name; value = c.comm_align }))
     m.commons;
   match List.rev !errs with [] -> Ok () | es -> Error es
+
+let group_parents = [ ".text"; ".rodata"; ".data"; ".bss" ]
+
+let group_parent name =
+  List.find_opt
+    (fun p ->
+      let n = String.length p in
+      String.length name > n && String.equal (String.sub name 0 n) p && name.[n] = '.')
+    group_parents
+
+let group_sections (m : 'k module_) =
+  let leader p =
+    match List.find_opt (fun sc -> String.equal sc.sec.sec_name p) m.sections with
+    | Some sc -> Some sc.sec
+    | None ->
+        List.find_map
+          (fun sc ->
+            match group_parent sc.sec.sec_name with
+            | Some q when String.equal q p -> Some sc.sec
+            | _ -> None)
+          m.sections
+  in
+  let compatible p (s : section) =
+    match leader p with Some l -> l.perms = s.perms && l.kind = s.kind | None -> false
+  in
+  let target_of (sc : 'k section_content) =
+    match group_parent sc.sec.sec_name with
+    | Some p when compatible p sc.sec -> p
+    | _ -> sc.sec.sec_name
+  in
+  let grouped =
+    List.exists (fun sc -> not (String.equal (target_of sc) sc.sec.sec_name)) m.sections
+  in
+  if not grouped then m
+  else begin
+    let order = ref [] in
+    let table : (string, section * 'k fragment list ref) Hashtbl.t = Hashtbl.create 16 in
+    List.iter
+      (fun sc ->
+        let t = target_of sc in
+        match Hashtbl.find_opt table t with
+        | None ->
+            order := t :: !order;
+            Hashtbl.replace table t ({ sc.sec with sec_name = t }, ref (List.rev sc.fragments))
+        | Some (sec, frags) ->
+            let sec = { sec with alignment = max sec.alignment sc.sec.alignment } in
+            Hashtbl.replace table t (sec, frags);
+            if sc.sec.alignment > 1 then
+              frags :=
+                Align
+                  {
+                    boundary = sc.sec.alignment;
+                    origin = Foundation.Origin.synthesized ~pass:"group-sections" ();
+                  }
+                :: !frags;
+            frags := List.rev_append sc.fragments !frags)
+      m.sections;
+    let sections =
+      List.rev_map
+        (fun t ->
+          let sec, frags = Hashtbl.find table t in
+          { sec; fragments = List.rev !frags })
+        !order
+    in
+    let renamed = List.map (fun sc -> (sc.sec.sec_name, target_of sc)) m.sections in
+    let rename n = Option.value (List.assoc_opt n renamed) ~default:n in
+    {
+      m with
+      sections;
+      symbols = List.map (fun s -> { s with section = rename s.section }) m.symbols;
+      declared_sections = List.sort_uniq compare (List.map rename m.declared_sections);
+    }
+  end

@@ -117,6 +117,30 @@ end
    CLI and the internal linker never mention a target-specific type, so no
    existential escapes into them. Defined here rather than in [driver] because
    it is part of the same contract: it says which requests survive erasure. *)
+type request = {
+  entry : string option;
+  features : Target_config.spec option;
+  externs : string list;
+  exported : string list option;
+  max_size : int option;
+  allow_rwx : bool;
+  group_sections : bool;
+}
+(** Everything an erased caller can ask of the planning step, in one value: the entry symbol,
+    the feature spec, symbols the module may leave undefined (resolved at bind time), the
+    exported-symbol list, a size limit and whether an RWX segment is allowed, and whether .text.* style sections merge into their parent. *)
+
+let default_request =
+  {
+    entry = None;
+    features = None;
+    externs = [];
+    exported = None;
+    max_size = None;
+    allow_rwx = false;
+    group_sections = true;
+  }
+
 module type DRIVER = sig
   val name : string
   val triple : string
@@ -168,6 +192,15 @@ module type DRIVER = sig
       ['k] never crosses this boundary, exactly as [assemble] already does not. A parse/simplify/
       lower failure in one input does not stop the others from being checked too: every input's
       diagnostics are collected before this fails, not just the first input's. *)
+
+  val assemble_request :
+    request -> unit_name:string -> source:Span.source -> unit -> Image.laid_out Diag.t
+  (** [assemble] with every planning option in one {!request}; [assemble ?entry ?features] is
+      [assemble_request] over {!default_request}. *)
+
+  val assemble_many_request :
+    request -> (string * Span.source) list -> unit -> Image.laid_out Diag.t
+  (** the same for [assemble_many] *)
 
   val fixup_observations : Image.laid_out -> Image.fixup_observation list
   (** The relocation evidence a laid-out module carries, kind erased. Named here even though

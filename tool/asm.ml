@@ -21,6 +21,18 @@ let usage =
       "  --fixed-base <addr>     bind the image at this address (hex with 0x, or decimal)";
       "  --features <spec>       enable/disable optional components: none, +name, -name, \
        comma-separated, applied left to right (default: all implemented)";
+      "  --entry <sym>           the entry symbol (default: the only global)";
+      "  --extern <a,b>          symbols the input may leave undefined (repeatable)";
+      "  --export <a,b>          the exported symbols (repeatable; default: every global)";
+      "  --max-size <n>          refuse an image larger than n bytes";
+      "  --no-section-grouping   keep .text.*, .rodata.*, .data.*, .bss.* as sections of their own";
+      "  --allow-rwx             allow a segment that is writable and executable";
+      "  --import <sym=addr>     the address of an extern (repeatable)";
+      "  --overlay <a,b>         one overlay group; segments of different groups may overlap \
+       (repeatable)";
+      "  --load-address <seg=addr>  a segment's load address when it differs (repeatable)";
+      "  --at <seg=addr>         a segment's address, overriding --fixed-base (repeatable)";
+      "  several input files are assembled and linked together";
       "  --inspect-disabled      with --dump-disasm=diagnostic: decode disabled components too, \
        and mark them";
       "  --err_trace <spec>      off | boundaries | all; error provenance to stderr";
@@ -45,7 +57,17 @@ type options = {
   mutable target : string option;
   mutable base : int64 option;
   mutable dumps : string list;
-  mutable file : string option;
+  mutable files : string list;
+  mutable entry : string option;
+  mutable externs : string list;
+  mutable exported : string list option;
+  mutable max_size : int option;
+  mutable allow_rwx : bool;
+  mutable group_sections : bool;
+  mutable imports : (string * int64) list;
+  mutable overlays : string list list;
+  mutable load_addresses : (string * int64) list;
+  mutable at : (string * int64) list;
   mutable features : Target_config.spec option;
   mutable inspect : bool;
 }
@@ -56,6 +78,13 @@ let die msg =
 
 let parse_base s =
   match Int64.of_string_opt s with Some v -> v | None -> die ("not an address: " ^ s)
+
+let split_commas s = List.filter (fun x -> x <> "") (String.split_on_char ',' s)
+
+let parse_pair s =
+  match String.index_opt s '=' with
+  | Some i -> (String.sub s 0 i, parse_base (String.sub s (i + 1) (String.length s - i - 1)))
+  | None -> die ("expected name=address: " ^ s)
 
 (* Isa_gen_ours (tools/lib) shells out to this executable rather than
    linking it, so this project's own hex-dump format has to be reproduced here
@@ -93,7 +122,24 @@ let () =
      be off here, and why the policy is not simply Err.Config.fast. *)
   Foundation.Err_policy.apply ();
   let o =
-    { target = None; base = None; dumps = []; file = None; features = None; inspect = false }
+    {
+      target = None;
+      base = None;
+      dumps = [];
+      files = [];
+      entry = None;
+      externs = [];
+      exported = None;
+      max_size = None;
+      allow_rwx = false;
+      group_sections = true;
+      imports = [];
+      overlays = [];
+      load_addresses = [];
+      at = [];
+      features = None;
+      inspect = false;
+    }
   in
   let args = Array.to_list Sys.argv in
   let rec go = function
@@ -111,6 +157,38 @@ let () =
         (match Target_config.parse_spec spec with
         | Ok s -> o.features <- Some s
         | Error m -> die ("invalid --features " ^ spec ^ ": " ^ m));
+        go rest
+    | "--entry" :: e :: rest ->
+        o.entry <- Some e;
+        go rest
+    | "--extern" :: l :: rest ->
+        o.externs <- o.externs @ split_commas l;
+        go rest
+    | "--export" :: l :: rest ->
+        o.exported <- Some (Option.value o.exported ~default:[] @ split_commas l);
+        go rest
+    | "--max-size" :: n :: rest ->
+        (match int_of_string_opt n with
+        | Some n when n >= 0 -> o.max_size <- Some n
+        | _ -> die ("not a size: " ^ n));
+        go rest
+    | "--no-section-grouping" :: rest ->
+        o.group_sections <- false;
+        go rest
+    | "--allow-rwx" :: rest ->
+        o.allow_rwx <- true;
+        go rest
+    | "--import" :: p :: rest ->
+        o.imports <- o.imports @ [ parse_pair p ];
+        go rest
+    | "--overlay" :: l :: rest ->
+        o.overlays <- o.overlays @ [ split_commas l ];
+        go rest
+    | "--load-address" :: p :: rest ->
+        o.load_addresses <- o.load_addresses @ [ parse_pair p ];
+        go rest
+    | "--at" :: p :: rest ->
+        o.at <- o.at @ [ parse_pair p ];
         go rest
     | "--inspect-disabled" :: rest ->
         o.inspect <- true;
@@ -145,7 +223,7 @@ let () =
         o.dumps <- o.dumps @ [ String.sub a 2 (String.length a - 2) ];
         go rest
     | f :: rest ->
-        o.file <- Some f;
+        o.files <- o.files @ [ f ];
         go rest
   in
   go (List.tl args);
@@ -156,9 +234,15 @@ let () =
     | None ->
         die ("unknown target " ^ target ^ "; known: " ^ String.concat ", " Driver.Registry.names)
   in
-  let path = match o.file with Some f -> f | None -> die "no input file" in
-  let source = Foundation.Span.source ~name:path ~contents:(read_file path) in
-  let unit_name = Filename.remove_extension (Filename.basename path) in
+  let paths = if o.files = [] then die "no input file" else o.files in
+  let sources =
+    List.map
+      (fun path ->
+        ( Filename.remove_extension (Filename.basename path),
+          Foundation.Span.source ~name:path ~contents:(read_file path) ))
+      paths
+  in
+  let unit_name, source = List.hd sources in
   let report ds =
     prerr_string (Foundation.Diagnostic.render_all ds);
     prerr_newline ();
@@ -169,7 +253,23 @@ let () =
      baseline compares; the tracing switch is how they are asked for. *)
   let ok = function Ok v -> v | Error e -> report (Foundation.Diag.diagnostics e) in
   let features = o.features in
-  let laid_out = lazy (ok (D.assemble ?features ~unit_name ~source ())) in
+  let request =
+    {
+      Target_intf.Target.entry = o.entry;
+      features;
+      externs = o.externs;
+      exported = o.exported;
+      max_size = o.max_size;
+      allow_rwx = o.allow_rwx;
+      group_sections = o.group_sections;
+    }
+  in
+  let laid_out =
+    lazy
+      (match sources with
+      | [ _ ] -> ok (D.assemble_request request ~unit_name ~source ())
+      | _ -> ok (D.assemble_many_request request sources ()))
+  in
   (* Binding is the *host's* step (§9), so the CLI is the host here: it chooses
      the address, and the assembler only says what constraints it must satisfy.
      With no --fixed-base there is no bound image and only the plan exists. *)
@@ -181,9 +281,15 @@ let () =
           let l = Lazy.force laid_out in
           let plan = Image.plan_of l in
           let addresses =
-            List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, base)) plan.Image.segments
+            List.map
+              (fun (s : Image.segment_plan) ->
+                (s.Image.seg_name, Option.value (List.assoc_opt s.Image.seg_name o.at) ~default:base))
+              plan.Image.segments
           in
-          Some (ok (Image.bind_image l ~addresses)))
+          Some
+            (ok
+               (Image.bind_image ~imports:o.imports ~overlays:o.overlays
+                  ~load_addresses:o.load_addresses l ~addresses)))
   in
   let text_of_image () =
     match Lazy.force bound with

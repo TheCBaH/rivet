@@ -440,7 +440,8 @@ module Make (T : Target_encode.ENCODE) = struct
      definition - would be a footgun, and cardinality over every input's
      [Global] declarations is the direct generalization of the single-module
      rule, not a new one. *)
-  let policy_for_many ?entry ?(externs = []) (modules : T.fixup_kind Lowered_ast.module_ list) =
+  let policy_for_many ?entry ?(externs = []) ?exported ?max_size ?(allow_rwx = false)
+      ?(group_sections = true) (modules : T.fixup_kind Lowered_ast.module_ list) =
     let globals =
       List.sort_uniq compare
         (List.concat_map
@@ -458,10 +459,11 @@ module Make (T : Target_encode.ENCODE) = struct
       | Some e -> Some e
       | None -> ( match globals with [ g ] -> Some g | _ -> None)
     in
-    { Image.default_policy with entry_symbol; externs }
+    { Image.entry_symbol; externs; exported; max_size; allow_rwx; group_sections }
 
-  let policy_for ?entry ?externs (m : T.fixup_kind Lowered_ast.module_) =
-    policy_for_many ?entry ?externs [ m ]
+  let policy_for ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections
+      (m : T.fixup_kind Lowered_ast.module_) =
+    policy_for_many ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections [ m ]
 
   (* The other erasure boundary: [Image] stores the fixup evaluator in a
      [laid_out], which the architecture-erased [DRIVER] hands around, so the
@@ -504,13 +506,15 @@ module Make (T : Target_encode.ENCODE) = struct
     if not executable then Some (String.make n '\000')
     else match T.nop_bytes ~length:n with Ok b -> Some b | Error _ -> None
 
-  let plan ?entry ?externs m =
+  let plan ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections m =
     Image.plan_image ~evaluate ~fill:merge_fill ~align_fill ?section_pad
-      (policy_for ?entry ?externs m) [ m ]
+      (policy_for ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections m)
+      [ m ]
 
-  let plan_many ?entry ?externs (modules : T.fixup_kind Lowered_ast.module_ list) =
+  let plan_many ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections
+      (modules : T.fixup_kind Lowered_ast.module_ list) =
     Image.plan_image ~evaluate ~fill:merge_fill ~align_fill ?section_pad
-      (policy_for_many ?entry ?externs modules)
+      (policy_for_many ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections modules)
       modules
 
   let fixup_observations = Image.fixup_observations

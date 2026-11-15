@@ -47,10 +47,19 @@ type layout_policy = {
       (** names no input has to define: a reference to one is an import, bound by [bind_image]'s
           [~imports] *)
   allow_rwx : bool;  (** accept a merged segment that is both writable and executable *)
+  group_sections : bool;
+      (** merge [.text.*], [.rodata.*], [.data.*], [.bss.*] into their parent section first *)
 }
 
 let default_policy =
-  { entry_symbol = None; exported = None; max_size = None; externs = []; allow_rwx = false }
+  {
+    entry_symbol = None;
+    exported = None;
+    max_size = None;
+    externs = [];
+    allow_rwx = false;
+    group_sections = true;
+  }
 
 (* {1 What a plan says}
 
@@ -1311,6 +1320,9 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
   | modules when invalid_modules modules <> [] ->
       Diag.fail ~pos:__POS__ (List.map (fun e -> diag e) (invalid_modules modules))
   | modules ->
+      let modules =
+        if policy.group_sections then List.map Lowered_ast.group_sections modules else modules
+      in
       let externs = string_set policy.externs in
       let module_symbols, common_unit, common_contribution = resolve_commons ~fail modules in
       let merged = merge_sections ~fail policy modules common_contribution in

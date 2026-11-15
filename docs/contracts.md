@@ -171,6 +171,14 @@ segment that is both writable and executable is an error (`image.rwx-segment`) u
 policy sets `allow_rwx`; `Native_exec.load` refuses such a segment in an image planned without it.
 The lowered dump does not print `target`.
 
+Unless the layout policy sets `group_sections` to false, `plan_image` then runs
+`Lowered_ast.group_sections` on each module: sections named `.text.*`, `.rodata.*`, `.data.*` and
+`.bss.*` (what `-ffunction-sections` and `-fdata-sections` emit) join their parent section in
+input order, each child starting at its own alignment, and their symbols move with them. A child
+whose permissions or kind differ from the parent's (or from the first child's when the module has
+no parent) keeps its own name. The order is the input order, not GNU ld's default script, which
+places `.text.unlikely`, `.text.startup` and `.text.hot` ahead of the rest.
+
 ### 1.5 `--dump-image` — plan and bound image
 
 Before binding (`plan_image`):

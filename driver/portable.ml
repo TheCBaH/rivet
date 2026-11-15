@@ -79,15 +79,15 @@ let source ~unit_name ~text = Foundation.Span.source ~name:(unit_name ^ ".s") ~c
 
 (* {1 Dumps} *)
 
-let dump target ~which ~unit_name ~text =
+let dump ?features target ~which ~unit_name ~text =
   with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
       let source = source ~unit_name ~text in
       let r =
         match which with
         | `Tokens -> D.dump_tokens ~source
         | `Source_ast -> D.dump_source_ast ~unit_name ~source
-        | `Normalized_ast -> D.dump_normalized_ast ~unit_name ~source ()
-        | `Lowered_ast -> D.dump_lowered_ast ~unit_name ~source ()
+        | `Normalized_ast -> D.dump_normalized_ast ?features ~unit_name ~source ()
+        | `Lowered_ast -> D.dump_lowered_ast ?features ~unit_name ~source ()
       in
       of_stage r)
 
@@ -102,25 +102,43 @@ let dump_codec target =
 
 type planned = { laid_out : Image.laid_out; target : string }
 
-let assemble ?entry target ~unit_name ~text =
+type request = Target_intf.Target.request = {
+  entry : string option;
+  features : Target_config.spec option;
+  externs : string list;
+  exported : string list option;
+  max_size : int option;
+  allow_rwx : bool;
+  group_sections : bool;
+}
+
+let default_request = Target_intf.Target.default_request
+
+let assemble_with request target ~unit_name ~text =
   with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
-      match D.assemble ?entry ~unit_name ~source:(source ~unit_name ~text) () with
+      match D.assemble_request request ~unit_name ~source:(source ~unit_name ~text) () with
       | Error ds -> of_stage (Error ds)
       | Ok laid_out -> Ok { laid_out; target })
+
+let assemble ?entry target ~unit_name ~text =
+  assemble_with { default_request with entry } target ~unit_name ~text
 
 (* M3's multi-module entry point, returning the same [planned] type
    [assemble] does - [Image.laid_out] is already architecture-erased and
    already carries however many inputs went into it, so nothing downstream
    ([plan_text], [bind], [fixup_observations]) needs a second version of
    itself just because this one exists. *)
-let assemble_many ?entry target (sources : (string * string) list) =
+let assemble_many_with request target (sources : (string * string) list) =
   with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
       let sources =
         List.map (fun (unit_name, text) -> (unit_name, source ~unit_name ~text)) sources
       in
-      match D.assemble_many ?entry sources () with
+      match D.assemble_many_request request sources () with
       | Error ds -> of_stage (Error ds)
       | Ok laid_out -> Ok { laid_out; target })
+
+let assemble_many ?entry target sources =
+  assemble_many_with { default_request with entry } target sources
 
 let plan_text p = Fmt.to_to_string Image.pp_plan (Image.plan_of p.laid_out)
 
@@ -141,11 +159,24 @@ let segments p =
 
 type bound = { image : Image.t; target : string }
 
-let bind p ~addresses =
-  match of_stage (Image.bind_image p.laid_out ~addresses) with
+type bind_request = {
+  imports : (string * int64) list;
+  overlays : string list list;
+  load_addresses : (string * int64) list;
+}
+
+let default_bind_request = { imports = []; overlays = []; load_addresses = [] }
+
+let bind_with (r : bind_request) p ~addresses =
+  match
+    of_stage
+      (Image.bind_image ~imports:r.imports ~overlays:r.overlays ~load_addresses:r.load_addresses
+         p.laid_out ~addresses)
+  with
   | Error _ as e -> e
   | Ok image -> Ok { image; target = p.target }
 
+let bind p ~addresses = bind_with default_bind_request p ~addresses
 let planned_segments p = (Image.plan_of p.laid_out).Image.segments
 
 (* The common case, spelled out so a caller with one section does not have to
@@ -250,11 +281,13 @@ let manifest (b : bound) =
 
 (* {1 Disassembly} *)
 
-let disassemble (b : bound) ~mode ~address bytes =
-  with_driver b.target (fun (module D : Target_intf.Target.DRIVER) ->
+let disassemble_for ?features target ~mode ~address bytes =
+  with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
       let r =
         match mode with
-        | `Canonical -> D.dump_disasm_canonical ~address bytes
-        | `Diagnostic -> D.dump_disasm_diagnostic ~address bytes
+        | `Canonical -> D.dump_disasm_canonical ?features ~address bytes
+        | `Diagnostic -> D.dump_disasm_diagnostic ?features ~address bytes
       in
       of_stage r)
+
+let disassemble (b : bound) ~mode ~address bytes = disassemble_for b.target ~mode ~address bytes

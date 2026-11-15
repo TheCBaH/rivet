@@ -129,3 +129,13 @@ val pp_invalid : Format.formatter -> invalid -> unit
 val validate : 'k module_ -> (unit, invalid list) result
 (** Checks one module on its own: names, alignments, zero lengths, fixup geometry and label
     uniqueness. Two labels of one name are accepted only at the same address. *)
+
+val group_parent : string -> string option
+(** [Some ".text"] for [".text.foo"], and likewise for [.rodata], [.data] and [.bss]; [None]
+    otherwise *)
+
+val group_sections : 'k module_ -> 'k module_
+(** Merges [.text.*], [.rodata.*], [.data.*] and [.bss.*] sections into their parent section, in
+    input order (the parent's own content first if it comes first), each child starting at its
+    own alignment, symbols moved with them. A child whose permissions or kind differ from the
+    parent's (or, with no parent, from the first child's) keeps its own name. *)

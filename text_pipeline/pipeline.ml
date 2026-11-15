@@ -219,14 +219,21 @@ module Make (T : T_intf.TARGET) = struct
      (docs/errors.md §2). The payload is untouched: a stage mark records
      that a failure crossed here, not a new failure. *)
 
-  let assemble ?entry ?features ~unit_name ~source () =
+  let assemble_request (r : Target_intf.Target.request) ~unit_name ~source () =
     let open Err.Syntax in
     let stage r = Diag.stage ~pos:__POS__ r in
-    let* state = initial_state features in
+    let* state = initial_state r.features in
     let* src = stage (parse ~unit_name ~source) in
     let* norm, _final_state = stage (simplify ~state src) in
     let* low = stage (lower ~state norm) in
-    stage (plan ?entry low)
+    stage
+      (plan ?entry:r.entry ~externs:r.externs ?exported:r.exported ?max_size:r.max_size
+         ~allow_rwx:r.allow_rwx ~group_sections:r.group_sections low)
+
+  let assemble ?entry ?features ~unit_name ~source () =
+    assemble_request
+      { Target_intf.Target.default_request with entry; features }
+      ~unit_name ~source ()
 
   (* M3's multi-module entry point. Every input is lowered independently
      ([lower_one]) - a failure in one input does not stop the others from
@@ -234,10 +241,11 @@ module Make (T : T_intf.TARGET) = struct
      circuit [lower_one]'s own three stages still use internally - and only
      the resulting module list crosses into [plan_many], the one place
      cross-input resolution (§2) actually happens. *)
-  let assemble_many ?entry ?features (sources : (string * Span.source) list) () =
+  let assemble_many_request (r : Target_intf.Target.request) (sources : (string * Span.source) list)
+      () =
     let open Err.Syntax in
     let stage r = Diag.stage ~pos:__POS__ r in
-    let* state = initial_state features in
+    let* state = initial_state r.features in
     (* Every unit starts from the same initial state, so one unit's directives cannot leak
        into the next. *)
     let lower_one (unit_name, source) =
@@ -249,7 +257,12 @@ module Make (T : T_intf.TARGET) = struct
       Err.Accum.map ~pos:__POS__ lower_one sources
       |> Err.Accum.fold_errors (fun errs -> List.concat_map Err.Error.kind errs)
     in
-    stage (plan_many ?entry modules)
+    stage
+      (plan_many ?entry:r.entry ~externs:r.externs ?exported:r.exported ?max_size:r.max_size
+         ~allow_rwx:r.allow_rwx ~group_sections:r.group_sections modules)
+
+  let assemble_many ?entry ?features sources () =
+    assemble_many_request { Target_intf.Target.default_request with entry; features } sources ()
 
   (* {1 Dumps (docs/contracts.md §1)} *)
 
