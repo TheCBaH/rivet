@@ -1,0 +1,32 @@
+; Melange build of targets/riscv_asm. Same sources, copied rather than duplicated;
+; see melange/dune for why the tree is mirrored at all. Typed RISC-V builders: the hand-written opcodes (riscv_asm) and per XLEN the generated rows (riscv32_asm, riscv64_asm).
+
+(copy_files#
+ (files ../../../targets/riscv_asm/*.ml))
+
+(copy_files#
+ (files ../../../targets/riscv_asm/*.mli))
+
+(library
+ (name riscv_asm)
+ (modules riscv_asm riscv_asm_rowkit)
+ (modes byte native melange)
+ (libraries foundation asm_core riscv_family_encode)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name riscv32_asm)
+ (modules riscv32_asm riscv_asm_rows32)
+ (modes byte native melange)
+ (libraries foundation asm_core riscv_family_encode riscv_asm)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name riscv64_asm)
+ (modules riscv64_asm riscv_asm_rows64)
+ (modes byte native melange)
+ (libraries foundation asm_core riscv_family_encode riscv_asm)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))

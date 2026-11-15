@@ -1,0 +1,44 @@
+; Melange build of targets/x86_asm. Same sources, copied rather than duplicated;
+; see melange/dune for why the tree is mirrored at all. Typed x86 builders: what both modes share (x86_asm) and per mode (x86_32_asm, x86_64_asm).
+
+(copy_files#
+ (files ../../../targets/x86_asm/*.ml))
+
+(copy_files#
+ (files ../../../targets/x86_asm/*.mli))
+
+(library
+ (name x86_asm)
+ (modules x86_asm)
+ (modes byte native melange)
+ (libraries foundation asm_core target_encode x86_family_encode)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name x86_32_asm)
+ (modules x86_32_asm x86_asm_rows32)
+ (modes byte native melange)
+ (libraries
+  foundation
+  asm_core
+  target_encode
+  x86_family_encode
+  x86_32_encode
+  x86_asm)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name x86_64_asm)
+ (modules x86_64_asm x86_asm_rows64)
+ (modes byte native melange)
+ (libraries
+  foundation
+  asm_core
+  target_encode
+  x86_family_encode
+  x86_64_encode
+  x86_asm)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))

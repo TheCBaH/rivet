@@ -150,6 +150,10 @@ jobs:
     - name: melange opt-in
       run: |
         ${{ env.EXEC }} make melange-optin
+    # The Melange mirror lists the same libraries and modules as the native tree.
+    - name: melange mirror
+      run: |
+        ${{ env.EXEC }} make melange-mirror
     # Fmt supplied by the consumer instead of vendored.
     - name: external deps
       run: |

@@ -1,0 +1,16 @@
+; Melange build of targets/aarch64_asm. Same sources, copied rather than duplicated;
+; see melange/dune for why the tree is mirrored at all. Typed AArch64 builders.
+
+(copy_files#
+ (files ../../../targets/aarch64_asm/*.ml))
+
+(copy_files#
+ (files ../../../targets/aarch64_asm/*.mli))
+
+(library
+ (name aarch64_asm)
+ (modules aarch64_asm)
+ (modes byte native melange)
+ (libraries foundation asm_core aarch64_encode)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))

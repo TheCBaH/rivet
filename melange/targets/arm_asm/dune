@@ -1,0 +1,16 @@
+; Melange build of targets/arm_asm. Same sources, copied rather than duplicated;
+; see melange/dune for why the tree is mirrored at all. Typed ARM builders.
+
+(copy_files#
+ (files ../../../targets/arm_asm/*.ml))
+
+(copy_files#
+ (files ../../../targets/arm_asm/*.mli))
+
+(library
+ (name arm_asm)
+ (modules arm_asm)
+ (modes byte native melange)
+ (libraries foundation asm_core arm_encode)
+ (enabled_if
+  (= %{env:RIVET_MELANGE=false} true)))
