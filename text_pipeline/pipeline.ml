@@ -38,7 +38,7 @@ module Make (T : T_intf.TARGET) = struct
     | `Local_label_survived n -> Fmt.pf ppf "numeric local label %d: survived resolution" n
     | `Expression e -> Expr.pp_error ppf e
     | `Assignment_out_of_scope name ->
-        Fmt.pf ppf "symbol assignment (%s = ...) is not in M1 scope" name
+        Fmt.pf ppf "symbol assignment (%s = ...) is not supported" name
     | `Unknown_directive name -> Fmt.pf ppf "unknown directive %s" name
     | `Directive_rejected r -> Directives.pp_rejection ppf r
     | #D.error as e -> D.pp_error ppf e

@@ -220,6 +220,15 @@ module Make (T : Target_encode.ENCODE) = struct
                                 | Some _ as r -> r
                                 | None -> Bigint.to_uint64_opt v
                               with
+                              | Some _
+                                when width < 8
+                                     && not
+                                          (Bigint.fits_signed_exn ~width:(8 * width) v
+                                          || Bigint.fits_unsigned_exn ~width:(8 * width) v) ->
+                                  Error
+                                    (Printf.sprintf "value %s does not fit in %d byte%s"
+                                       (Bigint.to_string v) width
+                                       (if width = 1 then "" else "s"))
                               | Some n ->
                                   Ok
                                     (String.init width (fun i ->

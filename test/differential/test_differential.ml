@@ -493,7 +493,7 @@ let unit_base_offset (b : built) ~section ~unit =
       if String.equal d.Image.Symtab.d_section section && String.equal d.Image.Symtab.d_unit unit
       then Some d.Image.Symtab.d_offset
       else None)
-    b.laid_out.Image.definitions
+    (Image.definitions b.laid_out)
   |> function
   | [] -> None
   | o :: os -> Some (List.fold_left min o os)

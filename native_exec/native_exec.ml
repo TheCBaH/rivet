@@ -56,6 +56,8 @@ type error =
   | Missing_symbol of string  (** a host symbol to bind does not resolve in this process *)
   | Global_size of { name : string; expected : int; actual : int }
       (** [write_global] was given other than the global's size in bytes *)
+  | Global_range of string  (** the global's address and size do not lie inside the image *)
+  | Rwx_segment of string  (** a writable executable segment in an image not planned to allow one *)
 
 let signal_name n =
   List.assoc_opt n
@@ -86,6 +88,8 @@ let pp_error ppf = function
   | Missing_symbol n -> Fmt.pf ppf "host symbol %s does not resolve in this process" n
   | Global_size { name; expected; actual } ->
       Fmt.pf ppf "global %s is %d bytes, not the %d written" name expected actual
+  | Global_range n -> Fmt.pf ppf "global %s does not lie inside the loaded image" n
+  | Rwx_segment n -> Fmt.pf ppf "segment %s is writable and executable" n
 
 (* {1 Host symbols}
 
@@ -233,79 +237,104 @@ let load ?(observe = fun (_ : event) -> ()) ?target (laid : Image.laid_out) =
       let plan = Image.plan_of laid in
       if plan.entry = None then Error No_entry
       else
-        let offsets, total, max_align = layout plan in
-        (* mmap only promises page alignment; over-reserve so a stricter
+        match
+          List.find_opt
+            (fun (s : Image.segment_plan) ->
+              Perms.writable s.perms && Perms.executable s.perms && not plan.allow_rwx)
+            plan.segments
+        with
+        | Some s -> Error (Rwx_segment s.seg_name)
+        | None -> (
+            let offsets, total, max_align = layout plan in
+            (* mmap only promises page alignment; over-reserve so a stricter
            segment alignment can be met by moving the base up. *)
-        let size = total + (max_align - page_size ()) in
-        match map size with
-        | exception Failure m -> Error (Os m)
-        | mapping -> (
-            observe (Mapped { base = mapping; size });
-            let discard () =
-              unmap mapping size;
-              observe (Unmapped { base = mapping; size })
-            in
-            let base = Int64.of_int (align_up (Int64.to_int mapping) max_align) in
-            let populate () =
-              let addresses =
-                List.map (fun (n, off) -> (n, Int64.add base (Int64.of_int off))) offsets
-              in
-              match Image.bind_image laid ~addresses with
-              | Error e -> Error (Bind (Diag.render e))
-              | Ok (image : Image.t) -> (
-                  try
-                    List.iter (fun (s : Image.segment) -> copy_in s.address s.bytes) image.segments;
-                    List.iter
-                      (fun (s : Image.segment) ->
-                        let size = align_up (String.length s.bytes + s.zero_fill) (page_size ()) in
-                        if size > 0 then begin
-                          protect s.address size (prot_bits s.perms);
-                          observe
-                            (Protected
-                               { segment = s.name; address = s.address; size; perms = s.perms })
-                        end)
-                      image.segments;
-                    List.iter
-                      (fun (s : Image.segment) ->
-                        let size = String.length s.bytes in
-                        if Perms.executable s.perms && size > 0 then begin
-                          clear_cache s.address size;
-                          observe (Flushed { segment = s.name; address = s.address; size })
-                        end)
-                      image.segments;
-                    Ok image
-                  with Failure m -> Error (Os m))
-            in
-            match populate () with
-            | exception e ->
-                discard ();
-                raise e
-            | Error e ->
-                discard ();
-                Error e
-            | Ok image ->
-                Ok
-                  {
-                    mapping;
-                    size;
-                    image;
-                    entry = Option.get image.entry;
-                    observe;
-                    active = Atomic.make 0;
-                    closed = Atomic.make false;
-                    released = Atomic.make false;
-                  }))
+            let size = total + (max_align - page_size ()) in
+            match map size with
+            | exception Failure m -> Error (Os m)
+            | mapping -> (
+                observe (Mapped { base = mapping; size });
+                let discard () =
+                  unmap mapping size;
+                  observe (Unmapped { base = mapping; size })
+                in
+                let base = Int64.of_int (align_up (Int64.to_int mapping) max_align) in
+                let populate () =
+                  let addresses =
+                    List.map (fun (n, off) -> (n, Int64.add base (Int64.of_int off))) offsets
+                  in
+                  match Image.bind_image laid ~addresses with
+                  | Error e -> Error (Bind (Diag.render e))
+                  | Ok (image : Image.t) -> (
+                      try
+                        List.iter
+                          (fun (s : Image.segment) -> copy_in s.address s.bytes)
+                          image.segments;
+                        List.iter
+                          (fun (s : Image.segment) ->
+                            let size =
+                              align_up (String.length s.bytes + s.zero_fill) (page_size ())
+                            in
+                            if size > 0 then begin
+                              protect s.address size (prot_bits s.perms);
+                              observe
+                                (Protected
+                                   { segment = s.name; address = s.address; size; perms = s.perms })
+                            end)
+                          image.segments;
+                        List.iter
+                          (fun (s : Image.segment) ->
+                            let size = String.length s.bytes in
+                            if Perms.executable s.perms && size > 0 then begin
+                              clear_cache s.address size;
+                              observe (Flushed { segment = s.name; address = s.address; size })
+                            end)
+                          image.segments;
+                        Ok image
+                      with Failure m -> Error (Os m))
+                in
+                match populate () with
+                | exception e ->
+                    discard ();
+                    raise e
+                | Error e ->
+                    discard ();
+                    Error e
+                | Ok image ->
+                    Ok
+                      {
+                        mapping;
+                        size;
+                        image;
+                        entry = Option.get image.entry;
+                        observe;
+                        active = Atomic.make 0;
+                        closed = Atomic.make false;
+                        released = Atomic.make false;
+                      })))
 
 let call t ~(io : io) =
   with_open t (fun () ->
       t.observe (Calling { entry = t.entry });
       try Ok (call_entry t.entry io) with Failure m -> Error (Os m))
 
+(* A global's [.size] comes from the source, so it is checked against the segment that holds the
+   address before anything is read or written there. *)
+let within_image t a sz =
+  Int64.compare sz 0L >= 0
+  && List.exists
+       (fun (s : Image.segment) ->
+         let len = Int64.of_int (String.length s.Image.bytes + s.Image.zero_fill) in
+         Int64.compare a s.Image.address >= 0
+         && Int64.compare sz len <= 0
+         && Int64.compare (Int64.sub a s.Image.address) (Int64.sub len sz) <= 0)
+       t.image.segments
+
 (* The bytes of an exported global with a known size, read from the live
    mapping. *)
 let read_global t name =
   with_open t (fun () ->
       match (List.assoc_opt name t.image.exports, List.assoc_opt name t.image.symbol_sizes) with
+      | Some a, Some sz when not (within_image t a sz) -> Error (Global_range name)
       | Some a, Some sz -> ( try Ok (copy_out a (Int64.to_int sz)) with Failure m -> Error (Os m))
       | _ -> Error (Missing_global name))
 
@@ -314,6 +343,7 @@ let read_global t name =
 let write_global t name bytes =
   with_open t (fun () ->
       match (List.assoc_opt name t.image.exports, List.assoc_opt name t.image.symbol_sizes) with
+      | Some a, Some sz when not (within_image t a sz) -> Error (Global_range name)
       | Some a, Some sz -> (
           let expected = Int64.to_int sz and actual = String.length bytes in
           if expected <> actual then Error (Global_size { name; expected; actual })

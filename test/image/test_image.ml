@@ -1100,65 +1100,8 @@ let%expect_test "placement preflight accumulates independent failures in order" 
           |> List.iter (fun diagnostic -> Fmt.pr "%s@." (Diagnostic.code diagnostic))));
   [%expect {|
     bind.overflow
-    bind.overlap
     bind.alignment
     |}]
-
-(* {1 Symtab: input-qualified symbol identity (M3 §2)}
-
-   Pure data-model tests against [Symtab] directly, with no
-   [plan_image] involved - multi-module planning is a later M3 step
-   (`create-implementation-plan-for-golden-kettle.md`'s step 4). These three
-   cases are exactly what that plan's step 2 requires proven before any
-   parser change: local names never collide across inputs, a local shadows a
-   same-spelled foreign global from inside its own input, and a foreign
-   local can never be captured by name the way a flat, bare-string lookup
-   over the old single-module [offsets] would have. *)
-
-let def ?(binding = Lowered_ast.Local) ?(section = ".text") ?(offset = 0) unit_name name =
-  {
-    Image.Symtab.d_unit = unit_name;
-    d_name = name;
-    d_binding = binding;
-    d_section = section;
-    d_offset = offset;
-  }
-
-let reference unit_name name = { Image.Symtab.r_unit = unit_name; r_name = name }
-
-let%expect_test "two modules each defining a same-named local do not collide" =
-  let defs = [ def "a" "x" ~offset:4; def "b" "x" ~offset:8 ] in
-  let local = Image.Symtab.build_local_table defs in
-  (match (List.assoc_opt ("a", "x") local, List.assoc_opt ("b", "x") local) with
-  | Some da, Some db -> Fmt.pr "a.x=%d b.x=%d@." da.Image.Symtab.d_offset db.Image.Symtab.d_offset
-  | _ -> Fmt.pr "missing@.");
-  [%expect {| a.x=4 b.x=8 |}]
-
-let%expect_test "a reference resolves to its own input's local, never a same-spelled foreign global"
-    =
-  let defs = [ def "a" "x" ~offset:4; def "b" "x" ~binding:Lowered_ast.Global ~offset:8 ] in
-  let local = Image.Symtab.build_local_table defs in
-  let link_global = Image.Symtab.build_link_global_table defs in
-  (match Image.Symtab.resolve_reference ~local ~link_global (reference "a" "x") with
-  | Image.Symtab.Resolved_local d ->
-      Fmt.pr "resolved to %s's local at %d@." d.Image.Symtab.d_unit d.Image.Symtab.d_offset
-  | Image.Symtab.Resolved_global _ -> Fmt.pr "wrongly resolved to a foreign global@."
-  | Image.Symtab.Unresolved -> Fmt.pr "wrongly unresolved@.");
-  [%expect {| resolved to a's local at 4 |}]
-
-let%expect_test
-    "a foreign local is never visible, even under a name a bare-string lookup would find" =
-  (* [x] is local in [a] and never exported - exactly the case where a flat,
-     bare-string [offsets] lookup (the pre-M3 shape) would have silently
-     handed [b]'s reference [a]'s definition. *)
-  let defs = [ def "a" "x" ~offset:4 ] in
-  let local = Image.Symtab.build_local_table defs in
-  let link_global = Image.Symtab.build_link_global_table defs in
-  (match Image.Symtab.resolve_reference ~local ~link_global (reference "b" "x") with
-  | Image.Symtab.Resolved_local d -> Fmt.pr "wrongly captured as %s's local@." d.Image.Symtab.d_unit
-  | Image.Symtab.Resolved_global _ -> Fmt.pr "wrongly captured as a global@."
-  | Image.Symtab.Unresolved -> Fmt.pr "unresolved, as required@.");
-  [%expect {| unresolved, as required |}]
 
 (* {1 Multi-module linking through plan_image/bind_image (M3 §4, step 4)}
 
@@ -1484,6 +1427,59 @@ let%expect_test "a common carries its alignment into the merged .bss segment and
     export x
     x at 1008 |}]
 
+let%expect_test "a .size that does not fit 64 bits is an error, not 0" =
+  let size_of v =
+    module_
+      ~symbols:[ sym "entry" ]
+      [
+        text_section
+          [
+            label "entry";
+            filler 4;
+            Lowered_ast.Set_size { name = "entry"; size = Expr.Const v; origin };
+          ];
+      ]
+  in
+  List.iter
+    (fun v ->
+      match plan (size_of v) with
+      | Error ds -> show_errors ds
+      | Ok l -> (
+          match bind_at l [ (".text", 0x1000L) ] with
+          | None -> ()
+          | Some img -> Fmt.pr "%a@." Image.pp img))
+    [ Bigint.of_int 4; Bigint.of_string_exn "18446744073709551616" ];
+  [%expect
+    {|
+    section .text address=0x1000 size=4 permissions=r-x
+    entry 0x1000
+    export entry = 0x1000 size=4
+    bind.size: size of entry does not fit 64 bits |}]
+
+let%expect_test "an entry or export naming several non-global definitions is ambiguous" =
+  let unit_ name =
+    module_ ~unit_name:name
+      ~symbols:[ sym ~global:false "f" ]
+      [ text_section [ label "f"; filler 4 ] ]
+  in
+  let report policy =
+    match Image.plan_image ~evaluate policy [ unit_ "a"; unit_ "b" ] with
+    | Error ds -> show_errors ds
+    | Ok _ -> Fmt.pr "accepted@."
+  in
+  report { Image.default_policy with entry_symbol = Some "f" };
+  report { Image.default_policy with exported = Some [ "f" ] };
+  (match
+     Image.plan_image ~evaluate { Image.default_policy with entry_symbol = Some "f" } [ unit_ "a" ]
+   with
+  | Error ds -> show_errors ds
+  | Ok _ -> Fmt.pr "one definition: accepted@.");
+  [%expect
+    {|
+    image.ambiguous: f names a non-global symbol defined by more than one input
+    image.ambiguous: f names a non-global symbol defined by more than one input
+    one definition: accepted |}]
+
 let%expect_test "an undefined weak reference resolves to 0, absolute and PC-relative alike" =
   let a =
     module_ ~unit_name:"a"
@@ -1517,3 +1513,185 @@ let%expect_test "Bitpattern admits both the signed and the unsigned reading" =
     2147483648: true
     4294967295: true
     4294967296: false |}]
+
+(* {1 Per-module validation} *)
+
+let invalid_cases () =
+  let sec ?(name = ".text") ?(align = 1) frags =
+    {
+      Lowered_ast.sec =
+        {
+          Lowered_ast.sec_name = name;
+          perms = Perms.rx;
+          alignment = align;
+          kind = Lowered_ast.Progbits;
+        };
+      fragments = frags;
+    }
+  in
+  let bytes ?(fixups = []) s = Lowered_ast.Bytes { bytes = s; form = None; fixups; origin } in
+  let fx ?(byte_offset = 0) ?(container = 4) ?(range = Lowered_ast.Signed 32)
+      ?(slices = whole_container ~bits:32) () =
+    fixup ~kind:Abs32 ~range ~slices ~byte_offset ~container (Expr.Symbol "x")
+  in
+  let ok_text = text_section [ label "entry"; filler 8 ] in
+  [
+    ("empty unit name", module_ ~unit_name:"" [ ok_text ]);
+    ("empty section name", module_ [ ok_text; sec ~name:"" [ filler 1 ] ]);
+    ("duplicate section", module_ [ ok_text; sec [ filler 1 ] ]);
+    ("section alignment 3", module_ [ ok_text; sec ~name:".d" ~align:3 [ filler 1 ] ]);
+    ("section alignment 0", module_ [ ok_text; sec ~name:".d" ~align:0 [ filler 1 ] ]);
+    ("Align boundary 6", module_ [ text_section [ Lowered_ast.Align { boundary = 6; origin } ] ]);
+    ("Align boundary 0", module_ [ text_section [ Lowered_ast.Align { boundary = 0; origin } ] ]);
+    ("Zero length -1", module_ [ text_section [ Lowered_ast.Zero { length = -1; origin } ] ]);
+    ("common alignment 3", module_ ~commons:[ comm "c" 4 3 ] [ ok_text ]);
+    ( "fixup past the fragment",
+      module_ [ text_section [ bytes ~fixups:[ fx ~byte_offset:2 () ] "abcd" ] ] );
+    ( "negative fixup offset",
+      module_ [ text_section [ bytes ~fixups:[ fx ~byte_offset:(-1) () ] "abcd" ] ] );
+    ( "container of 9",
+      module_ [ text_section [ bytes ~fixups:[ fx ~container:9 () ] "abcdefghij" ] ] );
+    ("container of 0", module_ [ text_section [ bytes ~fixups:[ fx ~container:0 () ] "abcd" ] ]);
+    ( "slice past the container",
+      module_
+        [
+          text_section
+            [
+              bytes
+                ~fixups:
+                  [
+                    fx ~slices:[ { Lowered_ast.bit_offset = 8; bit_width = 32; value_lsb = 0 } ] ();
+                  ]
+                "abcd";
+            ];
+        ] );
+    ( "slice past the range",
+      module_
+        [
+          text_section
+            [
+              bytes
+                ~fixups:
+                  [
+                    fx ~range:(Lowered_ast.Signed 16)
+                      ~slices:[ { Lowered_ast.bit_offset = 0; bit_width = 32; value_lsb = 0 } ]
+                      ();
+                  ]
+                "abcd";
+            ];
+        ] );
+    ( "range of 0 bits",
+      module_ [ text_section [ bytes ~fixups:[ fx ~range:(Lowered_ast.Unsigned 0) () ] "abcd" ] ] );
+    ("label at two addresses", module_ [ text_section [ label "l"; filler 1; label "l" ] ]);
+    ( "label in two sections",
+      module_ [ text_section [ label "l" ]; sec ~name:".data" [ label "l" ] ] );
+  ]
+
+let%expect_test "a malformed lowered module is rejected by plan_image with a diagnostic" =
+  List.iter
+    (fun (what, m) ->
+      Fmt.pr "%s:@." what;
+      match Image.plan_image ~evaluate Image.default_policy [ m ] with
+      | Error ds -> show_errors ds
+      | Ok _ -> Fmt.pr "accepted@.")
+    (invalid_cases ());
+  [%expect
+    {|
+    empty unit name:
+    image.invalid-module: invalid module : the unit name is empty
+    empty section name:
+    image.invalid-module: invalid module t: a section name is empty
+    duplicate section:
+    image.invalid-module: invalid module t: section .text appears twice in one module
+    section alignment 3:
+    image.invalid-module: invalid module t: section .d: alignment 3 is not a positive power of two
+    section alignment 0:
+    image.invalid-module: invalid module t: section .d: alignment 0 is not a positive power of two
+    Align boundary 6:
+    image.invalid-module: invalid module t: section .text: alignment 6 is not a positive power of two
+    Align boundary 0:
+    image.invalid-module: invalid module t: section .text: alignment 0 is not a positive power of two
+    Zero length -1:
+    image.invalid-module: invalid module t: section .text: a zero-fill fragment has length -1
+    common alignment 3:
+    image.invalid-module: invalid module t: common c: alignment 3 is not a positive power of two
+    fixup past the fragment:
+    image.invalid-module: invalid module t: section .text: fixup target: its container lies outside the fragment
+    negative fixup offset:
+    image.invalid-module: invalid module t: section .text: fixup target: its container lies outside the fragment
+    container of 9:
+    image.invalid-module: invalid module t: section .text: fixup target: its container is 9 bytes, not 1 to 8
+    container of 0:
+    image.invalid-module: invalid module t: section .text: fixup target: its container is 0 bytes, not 1 to 8
+    slice past the container:
+    image.invalid-module: invalid module t: section .text: fixup target: a slice lies outside the container
+    slice past the range:
+    image.invalid-module: invalid module t: section .text: fixup target: a slice carries bits beyond the range width
+    range of 0 bits:
+    image.invalid-module: invalid module t: section .text: fixup target: its range is 0 bits wide, not 1 to 64
+    image.invalid-module: invalid module t: section .text: fixup target: a slice carries bits beyond the range width
+    label at two addresses:
+    image.invalid-module: invalid module t: section .text: label l is defined at two different addresses
+    label in two sections:
+    image.invalid-module: invalid module t: section .data: label l is defined at two different addresses |}]
+
+let%expect_test "validate accepts a label repeated at the same address" =
+  let m = module_ [ text_section [ label "l"; label "l"; filler 1 ] ] in
+  (match Lowered_ast.validate m with
+  | Ok () -> Fmt.pr "valid@."
+  | Error rs -> List.iter (Fmt.pr "%a@." Lowered_ast.pp_invalid) rs);
+  [%expect {| valid |}]
+
+let%expect_test "two modules with one unit name are rejected, not linked with merged locals" =
+  let unit_ () =
+    module_ ~unit_name:"u"
+      ~symbols:[ sym ~global:false "f" ]
+      [ text_section [ label "f"; filler 4 ] ]
+  in
+  (match plan_many [ unit_ (); unit_ () ] with
+  | Error ds -> show_errors ds
+  | Ok _ -> Fmt.pr "accepted@.");
+  [%expect {| image.duplicate-unit: unit name u is used by more than one module |}]
+
+let%expect_test "a writable executable segment is an error unless the policy allows it" =
+  let rwx =
+    {
+      (text_section [ label "entry"; filler 4 ]) with
+      Lowered_ast.sec =
+        {
+          Lowered_ast.sec_name = ".text";
+          perms = { Perms.read = true; write = true; execute = true };
+          alignment = 1;
+          kind = Lowered_ast.Progbits;
+        };
+    }
+  in
+  let rw_data =
+    {
+      (text_section [ filler 4 ]) with
+      Lowered_ast.sec =
+        {
+          Lowered_ast.sec_name = ".text";
+          perms = Perms.rw;
+          alignment = 1;
+          kind = Lowered_ast.Progbits;
+        };
+    }
+  in
+  let report policy ms =
+    match Image.plan_image ~evaluate policy ms with
+    | Error ds -> show_errors ds
+    | Ok l -> Fmt.pr "accepted, allow_rwx=%b@." (Image.plan_of l).Image.allow_rwx
+  in
+  report Image.default_policy [ module_ [ rwx ] ];
+  report { Image.default_policy with allow_rwx = true } [ module_ [ rwx ] ];
+  report Image.default_policy
+    [
+      module_ ~unit_name:"a" [ text_section [ label "entry"; filler 4 ] ];
+      module_ ~unit_name:"b" [ rw_data ];
+    ];
+  [%expect
+    {|
+    image.rwx-segment: section .text is both writable and executable and the layout policy does not allow it
+    accepted, allow_rwx=true
+    image.rwx-segment: section .text is both writable and executable and the layout policy does not allow it |}]

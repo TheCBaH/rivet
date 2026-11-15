@@ -428,15 +428,20 @@ let encode node v =
    unrelated instructions. A tree with no reachable [Relax] has a ladder of one,
    so a caller does not have to know in advance whether a form relaxes. *)
 
-let rec ladder : type a k. (a, k) t -> a -> k encoded list =
+(* Each result carries the label of the rung that produced it, apart from the form path, which
+   also holds [Alt] labels: a pin names a rung, and an alternative that happens to share the
+   name is not one. *)
+let rec ladder_tagged : type a k. (a, k) t -> a -> (string option * k encoded) list =
  fun node v ->
-  let single n x = match attempt n x with Encoded e -> [ e ] | Declined | Failed _ -> [] in
+  let single n x =
+    match attempt n x with Encoded e -> [ (None, e) ] | Declined | Failed _ -> []
+  in
   match node with
   | Relax { rungs; _ } ->
       List.filter_map
         (fun r ->
           match attempt r.rung_body v with
-          | Encoded e -> Some { e with form = r.rung_label :: e.form }
+          | Encoded e -> Some (Some r.rung_label, { e with form = r.rung_label :: e.form })
           | Declined | Failed _ -> None)
         rungs
   | Alt { alts; _ } ->
@@ -450,7 +455,9 @@ let rec ladder : type a k. (a, k) t -> a -> k encoded list =
             else
               match attempt a.body v with
               | Encoded _ ->
-                  List.map (fun e -> { e with form = a.label :: e.form }) (ladder a.body v)
+                  List.map
+                    (fun (t, e) -> (t, { e with form = a.label :: e.form }))
+                    (ladder_tagged a.body v)
               | Declined -> go rest
               | Failed _ -> go rest)
       in
@@ -466,16 +473,22 @@ let rec ladder : type a k. (a, k) t -> a -> k encoded list =
       | Encoded ea, Encoded eb ->
           (* At most one side carries a ladder - [check] rejects two on one
              realized path - so vary that side and hold the other fixed. *)
-          let la = ladder a x and lb = ladder b y in
-          if List.length lb <= 1 then List.map (fun ea' -> seq_join ea' eb) la
-          else List.map (fun eb' -> seq_join ea eb') lb
+          let la = ladder_tagged a x and lb = ladder_tagged b y in
+          let first_tag l = match l with (t, _) :: _ -> t | [] -> None in
+          let pick t other = match t with Some _ -> t | None -> other in
+          if List.length lb <= 1 then
+            List.map (fun (t, ea') -> (pick t (first_tag lb), seq_join ea' eb)) la
+          else List.map (fun (t, eb') -> (pick t (first_tag la), seq_join ea eb')) lb
       | _ -> [])
-  | Iso_fun { encode = f; inner; _ } -> ( match f v with None -> [] | Some b -> ladder inner b)
+  | Iso_fun { encode = f; inner; _ } -> (
+      match f v with None -> [] | Some b -> ladder_tagged inner b)
   | Iso_table { entries; equal; inner; _ } -> (
       match List.find_opt (fun (a, _) -> equal a v) entries with
       | None -> []
-      | Some (_, code) -> ladder inner code)
+      | Some (_, code) -> ladder_tagged inner code)
   | Empty | Const _ | Field _ | Fixup _ -> single node v
+
+let ladder node v = List.map snd (ladder_tagged node v)
 
 let encode_ladder node v =
   match ladder node v with
@@ -515,7 +528,11 @@ let encode_rung node ~rung:name v =
     match encode_ladder node v with
     | Error e -> Error e
     | Ok forms -> (
-        match List.find_opt (fun e -> List.exists (String.equal name) e.form) forms with
+        match
+          List.find_map
+            (fun (t, e) -> if t = Some name then Some e else None)
+            (ladder_tagged node v)
+        with
         | Some e -> Ok e
         | None ->
             Error

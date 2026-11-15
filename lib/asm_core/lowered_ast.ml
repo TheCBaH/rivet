@@ -391,3 +391,114 @@ let pp ppf m =
     m.commons
     Fmt.(list ~sep:nop (fun ppf n -> Fmt.pf ppf "@,declared %s (not allocated)" n))
     m.declared_sections
+
+type fixup_defect =
+  | Offset_outside_fragment
+  | Container_size of int
+  | Slice_outside_container
+  | Slice_outside_range
+  | Range_width of int
+
+type invalid =
+  | Empty_name of [ `Unit | `Section ]
+  | Duplicate_section of string
+  | Bad_alignment of { where : string; value : int }
+  | Negative_length of { section : string; length : int }
+  | Bad_fixup of { section : string; fixup : string; defect : fixup_defect }
+  | Duplicate_label of { section : string; name : string }
+
+let pp_fixup_defect ppf = function
+  | Offset_outside_fragment -> Fmt.string ppf "its container lies outside the fragment"
+  | Container_size n -> Fmt.pf ppf "its container is %d bytes, not 1 to 8" n
+  | Slice_outside_container -> Fmt.string ppf "a slice lies outside the container"
+  | Slice_outside_range -> Fmt.string ppf "a slice carries bits beyond the range width"
+  | Range_width n -> Fmt.pf ppf "its range is %d bits wide, not 1 to 64" n
+
+let pp_invalid ppf = function
+  | Empty_name `Unit -> Fmt.string ppf "the unit name is empty"
+  | Empty_name `Section -> Fmt.string ppf "a section name is empty"
+  | Duplicate_section n -> Fmt.pf ppf "section %s appears twice in one module" n
+  | Bad_alignment { where; value } ->
+      Fmt.pf ppf "%s: alignment %d is not a positive power of two" where value
+  | Negative_length { section; length } ->
+      Fmt.pf ppf "section %s: a zero-fill fragment has length %d" section length
+  | Bad_fixup { section; fixup; defect } ->
+      Fmt.pf ppf "section %s: fixup %s: %a" section fixup pp_fixup_defect defect
+  | Duplicate_label { section; name } ->
+      Fmt.pf ppf "section %s: label %s is defined at two different addresses" section name
+
+let is_pow2 n = n > 0 && n land (n - 1) = 0
+
+let fixup_defects ~len (f : 'k fixup) =
+  let w = range_width f.range in
+  let outside_container (s : slice) =
+    s.bit_offset < 0 || s.bit_width < 1 || s.bit_offset + s.bit_width > f.container * 8
+  in
+  let outside_range (s : slice) = s.value_lsb < 0 || s.value_lsb + s.bit_width > w in
+  if f.container < 1 || f.container > 8 then [ Container_size f.container ]
+  else
+    (if f.byte_offset < 0 || f.byte_offset + f.container > len then [ Offset_outside_fragment ]
+     else [])
+    @ (if w < 1 || w > 64 then [ Range_width w ] else [])
+    @ (if List.exists outside_container f.slices then [ Slice_outside_container ] else [])
+    @ if List.exists outside_range f.slices then [ Slice_outside_range ] else []
+
+(* Label uniqueness cannot use final addresses, which relaxation has yet to settle. Two labels of
+   one name are the same address when no fragment that can occupy space lies between them; this
+   is how GAS tolerates a repeated label at the same value. *)
+let validate (m : 'k module_) =
+  let errs = ref [] in
+  let add e = errs := e :: !errs in
+  if m.unit_name = "" then add (Empty_name `Unit);
+  let seen = Hashtbl.create 8 in
+  let labels = Hashtbl.create 16 in
+  let epoch = ref 0 in
+  List.iter
+    (fun (sc : 'k section_content) ->
+      let section = sc.sec.sec_name in
+      if section = "" then add (Empty_name `Section)
+      else if Hashtbl.mem seen section then add (Duplicate_section section)
+      else Hashtbl.add seen section ();
+      if not (is_pow2 sc.sec.alignment) then
+        add (Bad_alignment { where = "section " ^ section; value = sc.sec.alignment });
+      let check_fixups len fixups =
+        List.iter
+          (fun (f : 'k fixup) ->
+            List.iter
+              (fun defect -> add (Bad_fixup { section; fixup = f.name; defect }))
+              (fixup_defects ~len f))
+          fixups
+      in
+      incr epoch;
+      List.iter
+        (function
+          | Bytes { bytes; fixups; _ } ->
+              if bytes <> "" then incr epoch;
+              check_fixups (String.length bytes) fixups
+          | Relax { alts; _ } ->
+              incr epoch;
+              List.iter
+                (fun (a : 'k encoded_form) -> check_fixups (String.length a.bytes) a.fixups)
+                alts
+          | Align { boundary; _ } ->
+              incr epoch;
+              if not (is_pow2 boundary) then
+                add (Bad_alignment { where = "section " ^ section; value = boundary })
+          | Zero { length; _ } ->
+              if length < 0 then add (Negative_length { section; length });
+              if length <> 0 then incr epoch
+          | Label_def { name; _ } -> (
+              let here = (section, !epoch) in
+              match Hashtbl.find_opt labels name with
+              | None -> Hashtbl.add labels name here
+              | Some there when there = here -> ()
+              | Some _ -> add (Duplicate_label { section; name }))
+          | Set_size _ -> ())
+        sc.fragments)
+    m.sections;
+  List.iter
+    (fun c ->
+      if not (is_pow2 c.comm_align) then
+        add (Bad_alignment { where = "common " ^ c.comm_name; value = c.comm_align }))
+    m.commons;
+  match List.rev !errs with [] -> Ok () | es -> Error es

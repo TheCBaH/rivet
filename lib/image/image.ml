@@ -49,9 +49,11 @@ type layout_policy = {
   externs : string list;
       (** names no input has to define: a reference to one is an import, bound by [bind_image]'s
           [~imports] *)
+  allow_rwx : bool;  (** accept a merged segment that is both writable and executable *)
 }
 
-let default_policy = { entry_symbol = None; exported = None; max_size = None; externs = [] }
+let default_policy =
+  { entry_symbol = None; exported = None; max_size = None; externs = []; allow_rwx = false }
 
 (* {1 What a plan says}
 
@@ -73,6 +75,7 @@ type plan = {
   imports : string list;
       (** the policy's externs that some fixup references and no input defines: the names
           [bind_image]'s [~imports] has to supply *)
+  allow_rwx : bool;  (** the layout policy allowed writable executable segments *)
   unresolved : string list;
       (** placement-dependent fixups still outstanding: their values await an address. Not
           "symbols we could not find" - a fixup naming a symbol no input defines is rejected
@@ -128,7 +131,6 @@ type laid_out = {
   link_global : Symtab.link_global_table;
   sizes : (string * string * Expr.t * int) list;
       (** owning unit, symbol, size expression, offset where it was written *)
-  globals : string list;
   fixups : resolved_fixup list;
   symbols : (string * Lowered_ast.symbol) list;  (** owning unit, symbol *)
   weak_names : string list;
@@ -198,6 +200,9 @@ type link_error =
           Measured GNU behavior (docs/m3-evidence) under this project's own controlled-link
           shape is to merge and coerce them to one type instead of rejecting - unsafe for the
           NOBITS model M3 builds, so this diverges from GNU on purpose. *)
+  | `Invalid_module of invalid_module
+  | `Duplicate_unit of string
+  | `Rwx_segment of string
   | `Duplicate_definition of string
   | `Common_conflicts_with_local of string
     (** M3 §7: a [.comm] declaration and an ordinary local definition of the same name in the
@@ -208,6 +213,7 @@ type link_error =
   | `Fixup_undefined_symbol of fixup_undefined_symbol
   | `Export_undefined of string
   | `Entry_undefined of string
+  | `Ambiguous_symbol of string
   | `Too_large of too_large
   | `Relax_ladder of Lowered_ast.relax_error
   | `Relax_unreachable of relax_unreachable
@@ -223,6 +229,7 @@ type link_error =
   | `Pair_incompatible_family of string
   | `Pair_duplicate_head of string ]
 
+and invalid_module = { unit_name : string; reason : Lowered_ast.invalid }
 and fixup_undefined_symbol = { fixup : string; symbol : string }
 and too_large = { size : int; limit : int }
 and relax_unreachable = { widest : string; at : int }
@@ -239,8 +246,10 @@ type bind_error =
   | `Cross_overlay of cross_overlay
   | `Alignment of alignment
   | `Symbol_size of symbol_size
+  | `Symbol_size_too_wide of string
   | `Fixup_value of fixup_value
   | `Fixup_target_too_wide of string
+  | `Fixup_wraps of string
   | `Fixup_out_of_range of fixup_out_of_range
   | `Target_fixup of Diagnostic.t ]
 
@@ -268,6 +277,12 @@ let pp_link_error ppf : link_error -> unit = function
   | `No_section -> Fmt.string ppf "no module defines an allocatable section"
   | `Section_kind_mismatch n ->
       Fmt.pf ppf "section %s is PROGBITS in one input and NOBITS in another" n
+  | `Invalid_module { unit_name; reason } ->
+      Fmt.pf ppf "invalid module %s: %a" unit_name Lowered_ast.pp_invalid reason
+  | `Duplicate_unit n -> Fmt.pf ppf "unit name %s is used by more than one module" n
+  | `Rwx_segment n ->
+      Fmt.pf ppf
+        "section %s is both writable and executable and the layout policy does not allow it" n
   | `Duplicate_definition n -> Fmt.pf ppf "duplicate definition of %s" n
   | `Common_conflicts_with_local n ->
       Fmt.pf ppf "common declaration of %s conflicts with a local definition in the same input" n
@@ -276,6 +291,8 @@ let pp_link_error ppf : link_error -> unit = function
       Fmt.pf ppf "fixup %s references undefined symbol %s" fixup symbol
   | `Export_undefined n -> Fmt.pf ppf "exported symbol %s is not defined" n
   | `Entry_undefined n -> Fmt.pf ppf "entry symbol %s is not defined" n
+  | `Ambiguous_symbol n ->
+      Fmt.pf ppf "%s names a non-global symbol defined by more than one input" n
   | `Too_large { size; limit } -> Fmt.pf ppf "image is %d bytes, limit is %d" size limit
   | `Relax_ladder e -> Lowered_ast.pp_relax_error ppf e
   | `Relax_unreachable { widest; at } ->
@@ -312,8 +329,11 @@ let pp_bind_error ppf : bind_error -> unit = function
   | `Alignment { segment; needs; address } ->
       Fmt.pf ppf "segment %s needs %d-byte alignment, address is 0x%Lx" segment needs address
   | `Symbol_size { symbol; reason } -> Fmt.pf ppf "size of %s: %a" symbol Expr.pp_error reason
+  | `Symbol_size_too_wide symbol -> Fmt.pf ppf "size of %s does not fit 64 bits" symbol
   | `Fixup_value { fixup; reason } -> Fmt.pf ppf "fixup %s: %a" fixup Expr.pp_error reason
   | `Fixup_target_too_wide f -> Fmt.pf ppf "fixup %s: target does not fit 64 bits" f
+  | `Fixup_wraps f ->
+      Fmt.pf ppf "fixup %s: the displacement wraps around the end of the address space" f
   | `Fixup_out_of_range { fixup; value; range; at } ->
       Fmt.pf ppf "fixup %s: value %Ld does not fit %a at section offset %d" fixup value
         Lowered_ast.pp_range range at
@@ -329,11 +349,15 @@ let link_error_code : link_error -> string = function
   | `No_modules -> "image.no-modules"
   | `No_section -> "image.no-section"
   | `Section_kind_mismatch _ -> "image.kind-mismatch"
+  | `Invalid_module _ -> "image.invalid-module"
+  | `Duplicate_unit _ -> "image.duplicate-unit"
+  | `Rwx_segment _ -> "image.rwx-segment"
   | `Duplicate_definition _ -> "image.duplicate"
   | `Common_conflicts_with_local _ -> "image.common-conflicts-local"
   | `Declared_never_defined _ | `Fixup_undefined_symbol _ -> "image.undefined"
   | `Export_undefined _ -> "image.export"
   | `Entry_undefined _ -> "image.entry"
+  | `Ambiguous_symbol _ -> "image.ambiguous"
   | `Too_large _ -> "image.too-large"
   | `Relax_ladder _ -> "image.relax-ladder"
   | `Relax_unreachable _ -> "image.relax-unreachable"
@@ -355,8 +379,8 @@ let bind_error_code : bind_error -> string = function
   | `Overlay_unknown _ | `Overlay_twice _ -> "bind.overlay"
   | `Cross_overlay _ -> "bind.cross-overlay"
   | `Alignment _ -> "bind.alignment"
-  | `Symbol_size _ -> "bind.size"
-  | `Fixup_value _ | `Fixup_target_too_wide _ -> "bind.fixup"
+  | `Symbol_size _ | `Symbol_size_too_wide _ -> "bind.size"
+  | `Fixup_value _ | `Fixup_target_too_wide _ | `Fixup_wraps _ -> "bind.fixup"
   | `Fixup_out_of_range _ -> "bind.fixup-range"
   (* The target named it; re-coding here would overwrite what only the target
      could know (docs/errors.md §2, delegation). *)
@@ -642,12 +666,32 @@ let default_fill ~executable:_ n = String.make n '\000'
    length. Zero everywhere unless the caller (a target's pipeline) says otherwise. *)
 let default_align_fill ~executable:_ n = Some (String.make n '\000')
 
+let invalid_modules modules =
+  let rec dups seen = function
+    | [] -> []
+    | (m : 'k Lowered_ast.module_) :: rest ->
+        let n = m.Lowered_ast.unit_name in
+        if List.mem n seen then `Duplicate_unit n :: dups seen rest else dups (n :: seen) rest
+  in
+  dups [] modules
+  @ List.concat_map
+      (fun (m : 'k Lowered_ast.module_) ->
+        match Lowered_ast.validate m with
+        | Ok () -> []
+        | Error rs ->
+            List.map
+              (fun reason -> `Invalid_module { unit_name = m.Lowered_ast.unit_name; reason })
+              rs)
+      modules
+
 let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fill) ?section_pad
-    policy (modules : 'k Lowered_ast.module_ list) =
+    (policy : layout_policy) (modules : 'k Lowered_ast.module_ list) =
   let errors = ref [] in
   let fail ?origin e = errors := diag ?origin e :: !errors in
   match modules with
   | [] -> Diag.fail ~pos:__POS__ [ diag `No_modules ]
+  | modules when invalid_modules modules <> [] ->
+      Diag.fail ~pos:__POS__ (List.map (fun e -> diag e) (invalid_modules modules))
   | modules ->
       (* {2 Common-symbol resolution (§7), before any section is laid out}
 
@@ -847,6 +891,8 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
                 (fun acc (_, sc) -> max acc sc.Lowered_ast.sec.Lowered_ast.alignment)
                 1 cs
             in
+            if Perms.writable perms && Perms.executable perms && not policy.allow_rwx then
+              fail (`Rwx_segment name);
             (match
                List.sort_uniq compare
                  (List.map (fun (_, sc) -> sc.Lowered_ast.sec.Lowered_ast.kind) cs)
@@ -921,17 +967,15 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
                   target
               | _ -> total_logical_size
             in
-            let bases = List.rev bases in
-            let base_of unit_name = List.assoc unit_name bases in
+            let bases = List.rev_map snd bases in
             let shifted =
-              List.map
-                (fun (unit_name, _, _, offs, szs, fx, _, _) ->
-                  let base = base_of unit_name in
+              List.map2
+                (fun base (unit_name, _, _, offs, szs, fx, _, _) ->
                   ( unit_name,
                     List.map (fun (n, o) -> (n, o + base)) offs,
                     List.map (fun (n, e, o) -> (n, e, o + base)) szs,
                     List.map (fun (fo, f) -> (fo + base, f)) fx ))
-                contribs
+                bases contribs
             in
             (name, perms, alignment, kind, Buffer.contents buf, shifted, total_logical_size))
           merged
@@ -1209,9 +1253,26 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
         | None -> List.filter (fun n -> resolvable n || not (List.mem n policy.externs)) globals
         | Some names -> names
       in
-      List.iter (fun n -> if not (resolvable n) then fail (`Export_undefined n)) exports;
+      (* Without a link-global definition the name falls back to the input's own, which
+         only means one thing when a single input defines it. *)
+      let ambiguous n =
+        (not (List.mem_assoc n link_global))
+        && List.length
+             (List.sort_uniq String.compare
+                (List.filter_map
+                   (fun (d : Symtab.definition) ->
+                     if String.equal d.Symtab.d_name n then Some d.Symtab.d_unit else None)
+                   definitions))
+           > 1
+      in
+      List.iter
+        (fun n ->
+          if not (resolvable n) then fail (`Export_undefined n)
+          else if ambiguous n then fail (`Ambiguous_symbol n))
+        exports;
       (match policy.entry_symbol with
       | Some e when not (resolvable e) -> fail (`Entry_undefined e)
+      | Some e when ambiguous e -> fail (`Ambiguous_symbol e)
       | _ -> ());
       (* A fixup naming a symbol nothing in this link defines cannot become a
          bound image unless the host promised to supply it: a name in
@@ -1279,6 +1340,7 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
                 (* Not "symbols we could not find" - those were just rejected -
                    but placement-dependent fixups still outstanding, which is
                    what §9 says a plan reports and what binding satisfies. *)
+                allow_rwx = policy.allow_rwx;
                 unresolved = List.sort_uniq compare (List.map (fun f -> f.rf_name) fixups);
               };
             contents;
@@ -1292,7 +1354,6 @@ let plan_image ~evaluate ?(fill = default_fill) ?(align_fill = default_align_fil
                       List.map (fun (n, e, o) -> (unit_name, n, e, o)) szs)
                     shifted)
                 laid;
-            globals;
             fixups;
             symbols;
             weak_names;
@@ -1340,6 +1401,31 @@ let patch_container bytes ~at ~size ~slices ~value =
   done;
   Bytes.to_string out
 
+(* Addresses are 64-bit patterns: the full unsigned range is valid, so every comparison below is
+   unsigned. A segment may end exactly at 2^64, which as a sum wraps to 0. *)
+let ult a b = Int64.unsigned_compare a b < 0
+
+let fits_address_space a size =
+  let e = Int64.add a (Int64.of_int size) in
+  (not (ult e a)) || Int64.equal e 0L
+
+(* [x < b + size] without forming a sum that may wrap. *)
+let before_end x b size = ult x b || ult (Int64.sub x b) (Int64.of_int size)
+
+(* An address as the non-negative number it denotes, so that expressions over addresses are exact. *)
+let big_of_address a =
+  if Int64.compare a 0L >= 0 then Bigint.of_int64 a
+  else Bigint.add (Bigint.of_int64 a) (Bigint.shift_left_exn Bigint.one 64)
+
+(* The target kinds that measure from the place of the fixup: the displacement is a distance, and a
+   distance between two unsigned addresses must not wrap. *)
+let pc_relative f =
+  let family = f.rf_family in
+  let starts p =
+    String.length family >= String.length p && String.sub family 0 (String.length p) = p
+  in
+  starts "pcrel" || starts "adrp"
+
 let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list list = [])
     ?(load_addresses : (string * int64) list = []) (l : laid_out)
     ~(addresses : (string * int64) list) =
@@ -1372,7 +1458,7 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
     List.map
       (fun (n, a, sz) ->
         reject_if ~pos:__POS__
-          (Int64.compare a 0L < 0 || Int64.compare (Int64.add a (Int64.of_int sz)) a < 0)
+          (not (fits_address_space a sz))
           (`Overflow { segment = n; address = a; size = sz }))
       placed
   in
@@ -1381,9 +1467,8 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
     | (n, a, sz) :: rest ->
         List.map
           (fun (n', a', sz') ->
-            let e = Int64.add a (Int64.of_int sz) and e' = Int64.add a' (Int64.of_int sz') in
             reject_if ~pos:__POS__
-              (Int64.compare a e' < 0 && Int64.compare a' e < 0 && not (other_overlays n n'))
+              (before_end a a' sz' && before_end a' a sz && not (other_overlays n n'))
               (`Overlap { a_name = n; a_at = a; a_size = sz; b_name = n'; b_at = a'; b_size = sz' }))
           rest
         @ overlap_checks rest
@@ -1400,7 +1485,7 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
         match List.assoc_opt s.seg_name addresses with
         | Some a ->
             reject_if ~pos:__POS__
-              (s.alignment > 1 && Int64.rem a (Int64.of_int s.alignment) <> 0L)
+              (s.alignment > 1 && Int64.unsigned_rem a (Int64.of_int s.alignment) <> 0L)
               (`Alignment { segment = s.seg_name; needs = s.alignment; address = a })
         | None -> Ok ())
       l.plan.segments
@@ -1423,10 +1508,7 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
         | _ -> None)
       l.plan.segments
   in
-  let intersects (a, sz) (a', sz') =
-    Int64.compare a (Int64.add a' (Int64.of_int sz')) < 0
-    && Int64.compare a' (Int64.add a (Int64.of_int sz)) < 0
-  in
+  let intersects (a, sz) (a', sz') = before_end a a' sz' && before_end a' a sz in
   let load_overlap (n, a, sz) (n', a', sz') =
     reject_if ~pos:__POS__
       ((not (String.equal n n')) && intersects (a, sz) (a', sz'))
@@ -1440,7 +1522,7 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
     List.map
       (fun (n, a, sz) ->
         reject_if ~pos:__POS__
-          (Int64.compare a 0L < 0 || Int64.compare (Int64.add a (Int64.of_int sz)) a < 0)
+          (not (fits_address_space a sz))
           (`Overflow { segment = n; address = a; size = sz }))
       stored
     @ List.concat_map (fun x -> List.map (load_overlap x) placed) stored
@@ -1534,11 +1616,11 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
     in
     let env_at ~from_unit here_offset section =
       {
-        Expr.lookup = (fun n -> Option.map Bigint.of_int64 (address_of ~from_unit n));
+        Expr.lookup = (fun n -> Option.map big_of_address (address_of ~from_unit n));
         here =
           (match List.assoc_opt section addresses with
           | None -> None
-          | Some base -> Some (Bigint.of_int64 (Int64.add base (Int64.of_int here_offset))));
+          | Some base -> Some (big_of_address (Int64.add base (Int64.of_int here_offset))));
       }
     in
     let symbol_sizes =
@@ -1553,7 +1635,12 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
             | None -> ""
           in
           match Expr.absolute (env_at ~from_unit:unit_name at section) expr with
-          | Ok v -> Some (name, Option.value ~default:0L (Bigint.to_int64_opt v))
+          | Ok v -> (
+              match Bigint.to_int64_opt v with
+              | Some n -> Some (name, n)
+              | None ->
+                  fail (`Symbol_size_too_wide name);
+                  None)
           | Error m ->
               fail (`Symbol_size { symbol = name; reason = Err.Error.kind m });
               None)
@@ -1580,8 +1667,8 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
               let env =
                 {
                   Expr.lookup =
-                    (fun n -> Option.map Bigint.of_int64 (address_of ~from_unit:f.rf_unit n));
-                  here = Some (Bigint.of_int64 (Int64.add base (Int64.of_int f.rf_frag_offset)));
+                    (fun n -> Option.map big_of_address (address_of ~from_unit:f.rf_unit n));
+                  here = Some (big_of_address (Int64.add base (Int64.of_int f.rf_frag_offset)));
                 }
               in
               match Expr.absolute env f.rf_value with
@@ -1589,9 +1676,20 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
                   fail (`Fixup_value { fixup = f.rf_name; reason = Err.Error.kind m });
                   acc
               | Ok target -> (
-                  match Bigint.to_int64_opt target with
+                  match
+                    match Bigint.to_int64_opt target with
+                    | Some _ as r -> r
+                    | None -> Bigint.to_uint64_opt target
+                  with
                   | None ->
                       fail (`Fixup_target_too_wide f.rf_name);
+                      acc
+                  | Some _
+                    when pc_relative f
+                         && not
+                              (Bigint.fits_signed_exn ~width:64
+                                 (Bigint.sub target (big_of_address place))) ->
+                      fail (`Fixup_wraps f.rf_name);
                       acc
                   | Some t -> (
                       match f.rf_evaluate ~place ~target:t with
@@ -1873,3 +1971,4 @@ let pp_observation ppf = function
    back to [bind_image] so that the two halves of §9's contract cannot be
    applied to different inputs. The plan is the half a host is meant to read. *)
 let plan_of (l : laid_out) = l.plan
+let definitions (l : laid_out) = l.definitions

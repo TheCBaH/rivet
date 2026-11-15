@@ -4,6 +4,9 @@
 (copy_files#
  (files ../../../lib/image/*.ml))
 
+(copy_files#
+ (files ../../../lib/image/*.mli))
+
 (library
  (name image)
  (modes byte native melange)

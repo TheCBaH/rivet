@@ -4,6 +4,9 @@
 (copy_files#
  (files ../../driver/*.ml))
 
+(copy_files#
+ (files ../../driver/*.mli))
+
 (library
  (name driver)
  (modes byte native melange)

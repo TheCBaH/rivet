@@ -594,3 +594,90 @@ let%expect_test "a buffer's address is stable and distinct per buffer" =
     (not (Int64.equal aa ba))
     (not (Int64.equal aa 0L));
   [%expect {| stable true distinct true nonzero true |}]
+
+let%expect_test "read_global refuses a size that is negative or larger than the image" =
+  let img =
+    assemble
+      (for_host ~aarch64:"\t.text\n\t.globl entry\nentry:\n\tmovz\tx0, #1\n\tret\n"
+         ~x86_64:"\t.text\n\t.globl entry\nentry:\n\tmovl\t$1, %eax\n\tret\n"
+         ~riscv64:"\t.text\n\t.globl entry\nentry:\n\tli\ta0, 1\n\tret\n"
+      ^ "\t.data\n\
+         \t.globl ok\n\
+         ok:\n\
+         \t.byte 5\n\
+         \t.size ok, 1\n\
+         \t.globl neg\n\
+         neg:\n\
+         \t.byte 1\n\
+         \t.size neg, -1\n\
+         \t.globl big\n\
+         big:\n\
+         \t.byte 1\n\
+         \t.size big, 0x7fffffffffffffff\n")
+  in
+  let t = ok_or_fail (Native_exec.load img) in
+  List.iter
+    (fun n ->
+      match Native_exec.read_global t n with
+      | Ok b -> Printf.printf "%s: %d byte(s)\n" n (String.length b)
+      | Error e -> Printf.printf "%s: %s\n" n (Format.asprintf "%a" Native_exec.pp_error e)
+      | exception ex -> Printf.printf "%s: EXCEPTION %s\n" n (Printexc.to_string ex))
+    [ "ok"; "neg"; "big" ];
+  Native_exec.close t;
+  [%expect
+    {|
+    ok: 1 byte(s)
+    neg: global neg does not lie inside the loaded image
+    big: global big does not lie inside the loaded image |}]
+
+let%expect_test "a writable executable segment loads only when the image was planned to allow it" =
+  let ret = for_host ~aarch64:"\xc0\x03\x5f\xd6" ~x86_64:"\xc3" ~riscv64:"\x67\x80\x00\x00" in
+  let origin = Foundation.Origin.synthesized ~pass:"test" () in
+  let m =
+    {
+      Lowered_ast.unit_name = "rwx";
+      sections =
+        [
+          {
+            Lowered_ast.sec =
+              {
+                Lowered_ast.sec_name = ".text";
+                perms = { Perms.read = true; write = true; execute = true };
+                alignment = 4;
+                kind = Lowered_ast.Progbits;
+              };
+            fragments =
+              [
+                Lowered_ast.Label_def { name = "entry"; origin };
+                Lowered_ast.Bytes { bytes = ret; form = None; fixups = []; origin };
+              ];
+          };
+        ];
+      symbols = [];
+      commons = [];
+      declared_sections = [];
+    }
+  in
+  let plan policy =
+    Image.plan_image
+      ~evaluate:(fun () ~place:_ ~target:_ -> Ok 0L)
+      { policy with Image.entry_symbol = Some "entry" }
+      [ m ]
+  in
+  (match plan Image.default_policy with
+  | Error ds ->
+      List.iter
+        (fun d -> print_endline (Foundation.Diagnostic.code d))
+        (Foundation.Diag.diagnostics ds)
+  | Ok _ -> print_endline "planned");
+  (match plan { Image.default_policy with allow_rwx = true } with
+  | Error _ -> print_endline "refused"
+  | Ok l -> (
+      match Native_exec.load l with
+      | Ok t ->
+          Native_exec.close t;
+          print_endline "loaded"
+      | Error e -> Format.printf "%a@." Native_exec.pp_error e));
+  [%expect {|
+    image.rwx-segment
+    loaded |}]

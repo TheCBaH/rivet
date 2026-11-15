@@ -870,8 +870,14 @@ let disp_form_of (m : Mem.t) =
       | Disp.Const v ->
           if Int64.equal v 0L && not ebp_like then D_none else if fits_s8 v then D_8 else D_32)
 
+(* SIB.index = 100 without REX.X is "no index", so %esp/%rsp cannot be one; %r12 (REX.X set) can,
+   and a vector register is a VSIB index, checked separately. *)
+let stack_pointer_index (i : Reg.t) =
+  i.num = 4 && match i.cls with Rclass.Gpr16 | Gpr32 | Gpr64 -> true | _ -> false
+
 let sib_of (m : Mem.t) =
   match log2_scale (if m.index = None then 1 else m.scale) with
+  | Some _ when Option.fold ~none:false ~some:stack_pointer_index m.index -> None
   | None -> None
   | Some sc ->
       Some
@@ -927,7 +933,7 @@ let make_rm_codec ~(reg_of_num : int -> Reg.t) ~rip_relative ~disp_kind : (rm_en
            match e.re_rm with
            | Rm.Mem m when m.Mem.index <> None && m.Mem.base = None -> (
                match (m.Mem.index, log2_scale m.Mem.scale) with
-               | Some i, Some sc ->
+               | Some i, Some sc when not (stack_pointer_index i) ->
                    Some
                      ( (),
                        ( Int64.of_int (e.re_reg land 7),
@@ -1209,7 +1215,8 @@ module Make (M : MODE) = struct
     | `Shift_count_not_one of int64
     | `Setcc_operands
     | `Sse_operand_class of sse_operand_class_mismatch
-    | `Vex_rm_extended_register of Reg.t ]
+    | `Vex_rm_extended_register of Reg.t
+    | `Invalid_index of Reg.t ]
 
   and bad_branch_suffix = { mnemonic : string; rungs : string list }
   and register_width_mismatch = { reg : Reg.t; insn_width : int }
@@ -1267,6 +1274,9 @@ module Make (M : MODE) = struct
           n
     | `Sse_operand_class { sse_reg } ->
         Fmt.pf ppf "%s is %d-bit, expected an xmm register" (Reg.name sse_reg) (Reg.width sse_reg)
+    | `Invalid_index reg ->
+        Fmt.pf ppf "%%%s is not a valid index register (SIB.index 100 means no index)"
+          (Reg.name reg)
     | `Vex_rm_extended_register reg ->
         Fmt.pf ppf
           "%s cannot be part of the r/m operand of a two-byte-VEX-encoded instruction (a register \
@@ -1285,7 +1295,7 @@ module Make (M : MODE) = struct
     | `Bad_branch_suffix _ -> "x86.branch-suffix"
     | `Immediate_too_wide | `No_form _ | `Immediate_destination | `Imm_to_mem_only_movb
     | `Mov8_only_movb | `Register_width_mismatch _ | `Shift_count_not_one _ | `Sse_operand_class _
-    | `Vex_rm_extended_register _ ->
+    | `Vex_rm_extended_register _ | `Invalid_index _ ->
         "x86.lower"
     | `Codec e -> Option.value (Codec.code e) ~default:"x86.encode"
     | `Decode_no_match | `Decode_partial_bytes | `Decode_no_normalized -> "x86.decode"
@@ -7736,8 +7746,24 @@ module Make (M : MODE) = struct
         | Ok () -> Ok i
         | Error _ as e -> e)
 
+  let rec operand_mems = function
+    | Operand.Mem m | Operand.Bcst { mem = m; _ } -> [ m ]
+    | Operand.Masked { op; _ } -> operand_mems op
+    | _ -> []
+
+  let stack_pointer_index_of (i : Instruction.t) =
+    List.find_map
+      (fun (m : Mem.t) ->
+        match m.index with Some r when stack_pointer_index r -> Some r | _ -> None)
+      (List.concat_map operand_mems i.ops)
+
   let lower_instruction state i =
-    match instruction_gate state i with Error _ as e -> e | Ok () -> lower_instruction_ungated i
+    match instruction_gate state i with
+    | Error _ as e -> e
+    | Ok () -> (
+        match stack_pointer_index_of i with
+        | Some r -> Error (diag ~pos:__POS__ (`Invalid_index r))
+        | None -> lower_instruction_ungated i)
 
   (* The opcode of a lowered form that can belong to a component. *)
   let lowered_op = function

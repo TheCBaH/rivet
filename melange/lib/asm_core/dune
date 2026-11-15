@@ -4,6 +4,9 @@
 (copy_files#
  (files ../../../lib/asm_core/*.ml))
 
+(copy_files#
+ (files ../../../lib/asm_core/*.mli))
+
 (library
  (name asm_core)
  (modes byte native melange)

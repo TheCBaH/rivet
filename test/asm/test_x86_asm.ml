@@ -349,3 +349,59 @@ let%expect_test "generated row builders read like the text" =
     x86_32   cpuid                        0f a2                    same
     x86_32   popcnt %ecx, %edx            f3 0f b8 d1              same
     x86_32   kmovw %k1, %k2               c5 f8 90 d1              same |}]
+
+(* {1 The stack pointer is not an index register}
+
+   SIB.index = 100 without REX.X means "no index", so [(%rax,%rsp,2)] would encode as [(%rax)]: a
+   valid instruction with another meaning. GAS refuses the operand; every producer has to be
+   refused alike, and [%r12] (REX.X set) stays legal. *)
+
+let%expect_test "%rsp and %esp are rejected as an index, from text, builders and direct forms" =
+  let module H64 = Harness.Make (X86_64_encode) in
+  let module H32 = Harness.Make (X86_32_encode) in
+  let show = function Ok b -> Harness.hex b | Error m -> "error: " ^ m in
+  let text64 t = show (H64.assemble t) and text32 t = show (H32.assemble t) in
+  print_endline (text64 "leaq (%rax,%rsp,2), %rbx");
+  print_endline (text64 "leaq (%rax,%r12,2), %rbx");
+  print_endline (text64 "movq (,%rsp,4), %rbx");
+  print_endline (text32 "leal (%eax,%esp,2), %ebx");
+  print_endline (text32 "leal (%eax,%edi,2), %ebx");
+  let open X86_64_asm in
+  print_endline (show (H64.encode (lea_m (mem ~index:rsp ~scale:2 rax) rbx)));
+  print_endline (show (H64.encode (lea_m (mem ~index:r12 ~scale:2 rax) rbx)));
+  print_endline (show (H64.encode (lea_m (abs ~index:rsp ~scale:4 0x10L) rbx)));
+  let direct index =
+    X86_64_encode.encode
+      (X86_64_encode.Lowered.Lea
+         {
+           width = 64;
+           reg = (Gpr64.of_int_exn 3 :> Reg.t);
+           mem =
+             {
+               Mem.base = Some (Gpr64.of_int_exn 0 :> Reg.t);
+               index = Some index;
+               scale = 2;
+               disp = Disp.zero;
+             };
+         })
+  in
+  let direct index =
+    match direct index with
+    | Ok (`Fixed f) -> Harness.hex f.Asm_core.Lowered_ast.bytes
+    | Ok (`Relax _) -> "relax"
+    | Error e -> "error: " ^ H64.message e
+  in
+  print_endline (direct (Gpr64.of_int_exn 4 :> Reg.t));
+  print_endline (direct (Gpr64.of_int_exn 12 :> Reg.t));
+  [%expect
+    {|
+    error: x86.lower: %rsp is not a valid index register (SIB.index 100 means no index)
+    4a 8d 1c 60
+    error: x86.lower: %rsp is not a valid index register (SIB.index 100 means no index)
+    error: x86.lower: %esp is not a valid index register (SIB.index 100 means no index)
+    8d 1c 78
+    error: %rsp is not a valid index register (SIB.index 100 means no index)
+    4a 8d 1c 60
+    error: %rsp is not a valid index register (SIB.index 100 means no index)
+    error: alt modrm: no alternative applies
+    4a 8d 1c 60 |}]

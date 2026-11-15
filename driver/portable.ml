@@ -60,7 +60,6 @@ let fail ?pos (e : error) : ('a, error) Err.t = Err.fail ?pos ~pp_error e
    diagnostic list, so this is the erasure arm rather than a conversion; the
    [Map] event records that the failure crossed into this domain. *)
 let of_stage r = Err.map_error ~pos:__POS__ ~pp_error (fun ds -> `Diagnostics ds) r
-let of_diagnostics ?pos ds = fail ?pos (`Diagnostics ds)
 
 (* The embedder's initializer. An adapter has no [main] to run this from, and
    [Err_policy] deliberately does not apply itself at module initialization -

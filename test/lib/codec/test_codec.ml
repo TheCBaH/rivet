@@ -249,6 +249,20 @@ let%expect_test "a rung can be selected by name" =
       rel16    e9 00 04
       rel99    ERROR encode_rung: no rung is named rel99; this description declares {rel16, rel8} |}]
 
+let%expect_test "a pin names a rung, not an alternative that shares the name" =
+  let wrapped : (branch, fixup_kind) t =
+    choice ~name:"wrapped" [ alt ~label:"rel16" ~priority:0 ladder ]
+  in
+  List.iter
+    (fun r ->
+      match encode_rung wrapped ~rung:r (Br 4L) with
+      | Ok e -> Fmt.pr "  %-8s %-12s %s@." r (form_id e) (hex e.bits)
+      | Error e -> Fmt.pr "  %-8s ERROR %a@." r pp_error e)
+    [ "rel8"; "rel16" ];
+  [%expect {|
+    rel8     rel16.rel8   eb 04
+    rel16    rel16.rel16  e9 00 04 |}]
+
 let%expect_test "a pin fails two different ways, and says which" =
   (* Only the codec can tell these apart, and only it can see either: a target
      rejects a bad *suffix* in source, where it has a mnemonic and a span, but a

@@ -213,18 +213,18 @@ let module_of s =
       (List.mapi
          (fun i hop ->
            let target = min (n - 1) (i + hop) in
-           [
-             Lowered_ast.Label_def { name = label i; origin };
-             branch_to (label target);
-             Lowered_ast.Bytes
-               {
-                 bytes = String.make (List.nth s.fillers i) '\x90';
-                 form = None;
-                 fixups = [];
-                 origin;
-               };
-             Lowered_ast.Align { boundary = s.align; origin };
-           ])
+           (if i < n - 1 then [ Lowered_ast.Label_def { name = label i; origin } ] else [])
+           @ [
+               branch_to (label target);
+               Lowered_ast.Bytes
+                 {
+                   bytes = String.make (List.nth s.fillers i) '\x90';
+                   form = None;
+                   fixups = [];
+                   origin;
+                 };
+               Lowered_ast.Align { boundary = s.align; origin };
+             ])
          s.hops)
   in
   {

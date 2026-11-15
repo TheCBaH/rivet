@@ -159,6 +159,14 @@ address ever appears here it is a bug this dump is designed to expose.
 `<perms>` is the three-character `rwx` string with `-` for absent
 (`r-x`, `rw-`, `r--`).
 
+`plan_image` first runs `Lowered_ast.validate` on every module and refuses a malformed one
+(`image.invalid-module`): empty or repeated section names, alignments that are not positive powers
+of two, negative `Zero` lengths, fixup geometry that falls outside its fragment, container (1 to 8
+bytes) or range, and a label defined twice at different addresses within a module. Two modules sharing a `unit_name` are refused as well
+(`image.duplicate-unit`); contributions are matched to their bases by position. A merged
+segment that is both writable and executable is an error (`image.rwx-segment`) unless the layout
+policy sets `allow_rwx`; `Native_exec.load` refuses such a segment in an image planned without it.
+
 ### 1.5 `--dump-image` — plan and bound image
 
 Before binding (`plan_image`):
@@ -189,6 +197,14 @@ is an *import*: the plan lists it under `import`, a referenced but undefined
 `.globl` of it is not `declared but never defined`, and `bind_image ~imports`
 must supply its address (`bind.import` otherwise; an undefined weak extern still
 binds to 0). A definition in the link wins over an import of the same name.
+
+A segment address is a 64-bit pattern, and the whole unsigned range `0 .. 2^64-1`
+is valid: overlap, alignment and end-of-address-space checks are unsigned, a
+segment may end exactly at `2^64`, and one that would pass it is
+`bind.overflow`. Expressions see addresses as the non-negative numbers they
+denote, so `end - start` is exact across `2^63`. A PC-relative fixup whose
+distance would wrap around the end of the address space is `bind.fixup`, not a
+short jump.
 
 `bind_image` rejects overlapping segments (`bind.overlap`) except segments of
 different overlays: `~overlays` lists each overlay as its set of segments, and
@@ -522,6 +538,10 @@ Notes on the rows that are not obvious:
   Merging sections *across inputs*, and linking more than one module, landed in
   M3 (§4.1) — `cross_call` and `cross_data` are the committed fixtures.
 
+- **A data value wider than its directive is an error.** `.byte 0x1234` is a
+  `lower.data` diagnostic; GNU as warns and keeps the low byte (`34`). Values in
+  `-2^(8w-1) .. 2^(8w)-1` for a `w`-byte directive are accepted. This stays an
+  error until the engine has a warning channel.
 - **Section arguments are rejected, not ignored.** `.text`, `.data` and `.bss`
   take no argument (GNU as reads a subsection number, which this assembler does
   not have), and re-entering a section with different permissions or type is a

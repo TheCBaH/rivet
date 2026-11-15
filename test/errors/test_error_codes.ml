@@ -82,11 +82,15 @@ let () =
       `No_modules;
       `No_section;
       `Section_kind_mismatch ".bss";
+      `Invalid_module { Image.unit_name = "u"; reason = Asm_core.Lowered_ast.Empty_name `Unit };
+      `Duplicate_unit "u";
+      `Rwx_segment ".text";
       `Duplicate_definition "s";
       `Common_conflicts_with_local "s";
       `Declared_never_defined "s";
       `Export_undefined "s";
       `Entry_undefined "s";
+      `Ambiguous_symbol "s";
       `Too_large { Image.size = 2; limit = 1 };
       `Relax_ladder `Empty_ladder;
       `Relax_unreachable { Image.widest = "w"; at = 0 };
@@ -98,7 +102,9 @@ let () =
       `No_address ".text";
       `Alignment { Image.segment = ".text"; needs = 4; address = 1L };
       `Symbol_size { Image.symbol = "s"; reason = `Arithmetic `Division_by_zero };
+      `Symbol_size_too_wide "s";
       `Fixup_target_too_wide "f";
+      `Fixup_wraps "f";
       `Fixup_out_of_range
         { Image.fixup = "f"; value = 0L; range = Asm_core.Lowered_ast.Signed 8; at = 0 };
     ]
@@ -258,16 +264,20 @@ let%expect_test "every diagnostic code, and the domain that claims it" =
     expr.not-absolute            Expr
     expr.shift                   Expr
     image.align-fill             Image
+    image.ambiguous              Image
     image.common-conflicts-local Image
     image.duplicate              Image
+    image.duplicate-unit         Image
     image.entry                  Image
     image.export                 Image
+    image.invalid-module         Image
     image.kind-mismatch          Image
     image.no-modules             Image
     image.no-section             Image
     image.nobits-content         Image
     image.relax-ladder           Image
     image.relax-unreachable      Image
+    image.rwx-segment            Image
     image.too-large              Image
     image.undefined              Image
     lex                          Lexer

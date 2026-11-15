@@ -144,7 +144,7 @@ let%expect_test "diagnostics for builders" =
     REFUSED <synthesized by i8080.lower from <synthesized by i8080>>: error[i8080.simplify]: rst: operand 1 must be 0..7
     REFUSED <synthesized by i8080.lower from <synthesized by i8080>>: error[i8080.lower]: out operand 256 does not fit -128..255
     REFUSED <synthesized by i8080.encode>: error[image.undefined]: fixup imm references undefined symbol nowhere
-    REFUSED <synthesized by image>: error[image.duplicate]: duplicate definition of x
+    REFUSED <synthesized by image>: error[image.invalid-module]: invalid module i8080: section .text: label x is defined at two different addresses
     REFUSED <synthesized by i8080.lower from <synthesized by i8080>>: error[i8080.lower]: db value 256 does not fit -128..255
     REFUSED <synthesized by i8080.lower from <synthesized by i8080>>: error[i8080.lower]: dw value 65536 does not fit -32768..65535
     REFUSED <synthesized by i8080>: error[i8080.lower]: space -1 does not fit 0..65535
