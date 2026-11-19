@@ -66,7 +66,8 @@ comparison, and say so:
 
 `rivet.compute` is target neutral: fixed-width values and byte memory as two
 signatures, a concrete interpretation (`int`, widths up to 30), a term-building
-one (`Compute.Term`, with `eval`) and a few derived operations. Each entry of
+one (`Compute.Term`: hash-consed, widths up to 64, memoised `eval` and printing)
+and a few derived operations. Each entry of
 the descriptor table (`I8080_ops`) carries its effect, written once against a
 small `MACHINE` signature, and its T-states. `I8080_sem.Make` supplies the
 machine (registers, five flags, stack, `IN`/`OUT` as an environment, `HLT`, `EI`
@@ -80,4 +81,5 @@ under the K5 shim. `8080EX1` takes about two minutes and counts the same
 term interpretation from the same state, with registers and flags free, and
 checks that the expression evaluates to the concrete result, including every
 memory and port access. A conditional branch on a free flag raises
-`Compute.Term.Undecided`: a driver that explores paths would catch it there.
+`Compute.Term.Undecided`, which `Compute.try_step` returns as an `Error`: a
+driver that explores paths would stop there.

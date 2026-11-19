@@ -1,0 +1,19 @@
+; Property tests for the concrete 64-bit interpretation and its memory (review 2.12, D5).
+;
+; Native only, like test/props, with a fixed seed. Nothing here assumes an int wider than 31
+; bits: values are Int64 throughout and ints stay below 2^30, because the linux/i386 and
+; linux/arm/v7 legs run this too.
+
+(executable
+ (name test_compute_props)
+ (modes exe)
+ (libraries qcheck-core qcheck-core.runner compute foundation)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(rule
+ (alias runtest)
+ (action
+  (run ./test_compute_props.exe))
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))

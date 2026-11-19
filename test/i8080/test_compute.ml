@@ -32,3 +32,21 @@ let%expect_test "Concrete.concat takes only the lo_w bits of lo" =
     (Compute.Concrete.concat ~hi:1 ~lo:0x1ff ~lo_w:8)
     (Compute.Concrete.concat ~hi:0 ~lo:0x1ff ~lo_w:8);
   [%expect {| 1ff ff |}]
+
+let%expect_test "Width bounds and masks" =
+  let module W = Compute.Width in
+  Printf.printf "%d %d %x %Lx %Lx\n" W.max_concrete W.max_term (W.mask 30) (W.mask64 40)
+    (W.mask64 64);
+  List.iter
+    (fun w ->
+      match W.check ~who:"X" ~max:W.max_term w with
+      | () -> Printf.printf "%d: ok\n" w
+      | exception Invalid_argument m -> Printf.printf "%d: %s\n" w m)
+    [ 0; 1; 64; 65 ];
+  [%expect
+    {|
+    30 64 3fffffff ffffffffff ffffffffffffffff
+    0: X: width must be 1..64
+    1: ok
+    64: ok
+    65: X: width must be 1..64 |}]

@@ -11,6 +11,8 @@
   test_symbolic
   test_builders
   test_compute
+  test_concrete64
+  test_term
   test_run)
  (modes byte native)
  (libraries

@@ -10,25 +10,7 @@ module Sym = I8080_sem.Make (T) (TM)
 let pattern a = ((a * 7) + 13) land 0xff
 let origin = 0x100
 let stack = 0x8000
-
-let rec pp ppf (t : T.t) =
-  match t with
-  | Const { n; w } -> Format.fprintf ppf "%d'%x" w n
-  | Var { name; _ } -> Format.pp_print_string ppf name
-  | Add (_, a, b) -> Format.fprintf ppf "(%a + %a)" pp a pp b
-  | Sub (_, a, b) -> Format.fprintf ppf "(%a - %a)" pp a pp b
-  | And (a, b) -> Format.fprintf ppf "(%a & %a)" pp a pp b
-  | Or (a, b) -> Format.fprintf ppf "(%a | %a)" pp a pp b
-  | Xor (a, b) -> Format.fprintf ppf "(%a ^ %a)" pp a pp b
-  | Not (_, a) -> Format.fprintf ppf "~%a" pp a
-  | Shl (_, a, k) -> Format.fprintf ppf "(%a << %d)" pp a k
-  | Shr (a, k) -> Format.fprintf ppf "(%a >> %d)" pp a k
-  | Zext (w, a) -> Format.fprintf ppf "zext%d(%a)" w pp a
-  | Extract (a, hi, lo) -> Format.fprintf ppf "%a[%d:%d]" pp a hi lo
-  | Concat (hi, lo, _) -> Format.fprintf ppf "{%a,%a}" pp hi pp lo
-  | Eq (a, b) -> Format.fprintf ppf "(%a == %a)" pp a pp b
-  | Ult (a, b) -> Format.fprintf ppf "(%a <u %a)" pp a pp b
-  | Ite (c, a, b) -> Format.fprintf ppf "(%a ? %a : %a)" pp c pp a pp b
+let pp = T.pp
 
 let program bytes =
   List.fold_left
@@ -68,10 +50,9 @@ let%expect_test "ADD B builds an expression" =
   let st = symbolic_state ~vars:[ "a"; "b" ] ~flags:`Var [ 0x80 ] in
   Sym.step st;
   Format.printf "a = %a@.cy = %a@." pp st.Sym.a pp st.cy;
-  [%expect
-    {|
-    a = ((zext9(a) + zext9(b)) + 9'0)[7:0]
-    cy = ((zext9(a) + zext9(b)) + 9'0)[8:8] |}]
+  [%expect {|
+    a = (zext9(a) + zext9(b))[7:0]
+    cy = (zext9(a) + zext9(b))[8:8] |}]
 
 (* Step one opcode byte in both interpretations from the same state and compare
    registers, flags, timing and every memory and port access. *)
@@ -166,9 +147,9 @@ let trial ~vars ~flags op =
       | Write (a, v) -> events_s := ("write", ev a, ev v) :: !events_s
       | In (a, v) -> events_s := ("in", ev a, ev v) :: !events_s
       | Out (a, v) -> events_s := ("out", ev a, ev v) :: !events_s);
-  match Sym.step sym_state with
-  | exception (T.Undecided _ | TM.Symbolic_address _) -> Skipped
-  | () ->
+  match Compute.try_step (fun () -> Sym.step sym_state) with
+  | Error _ -> Skipped
+  | Ok () ->
       C.step cst;
       let s = sym_state in
       let pairs =
