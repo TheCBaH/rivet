@@ -22,17 +22,39 @@ open Foundation
 
 type syntax = { type_char : char  (** introduces [function], [object], [progbits], [nobits] *) }
 
-(* GNU spelling of an expression: modifiers are the target's, and the target
-   prints them in its operand printer, so a bare expression here has none. *)
-let rec expr ppf (e : Expr.t) =
+(* A numeric local label reaches the module as the generated symbol [#L<n>#<k>] (the [k]th
+   definition of [n:]), named so that no dialect can read it and no written name can collide
+   with it. GNU source spells it as a [.L] local symbol instead. *)
+let symbol s =
+  match String.split_on_char '#' s with
+  | [ ""; l; k ] when String.length l > 1 && l.[0] = 'L' ->
+      Printf.sprintf ".Lrivet.%s.%s" (String.sub l 1 (String.length l - 1)) k
+  | _ -> s
+
+(* GNU spelling of an expression. A relocation modifier is the target's: [modifier] prints one,
+   and {!expr} is AArch64's [:m:a]. *)
+let rec expr_with ~modifier ppf (e : Expr.t) =
+  let expr = expr_with ~modifier in
   match e with
   | Expr.Const v -> Bigint.pp ppf v
-  | Expr.Symbol s -> Fmt.string ppf s
+  | Expr.Symbol s -> Fmt.string ppf (symbol s)
   | Expr.Current_location -> Fmt.string ppf "."
   | Expr.Local_ref (n, d) -> Fmt.pf ppf "%d%s" n (match d with `Back -> "b" | `Forward -> "f")
   | Expr.Binary (op, a, b) -> Fmt.pf ppf "(%a %s %a)" expr a (Expr.binop_name op) expr b
   | Expr.Unary (op, a) -> Fmt.pf ppf "%s%a" (Expr.unop_name op) expr a
-  | Expr.Modifier (m, a) -> Fmt.pf ppf ":%s:%a" m expr a
+  | Expr.Modifier (m, a) -> modifier expr ppf m a
+
+let expr = expr_with ~modifier:(fun expr ppf m a -> Fmt.pf ppf ":%s:%a" m expr a)
+
+(* [e] with every symbol as {!symbol} spells it, for a target whose operand printer is not
+   built on {!expr_with}. *)
+let rec rename (e : Expr.t) : Expr.t =
+  match e with
+  | Expr.Symbol s -> Expr.Symbol (symbol s)
+  | Expr.Binary (op, a, b) -> Expr.Binary (op, rename a, rename b)
+  | Expr.Unary (op, a) -> Expr.Unary (op, rename a)
+  | Expr.Modifier (m, a) -> Expr.Modifier (m, rename a)
+  | Expr.Const _ | Expr.Current_location | Expr.Local_ref _ -> e
 
 let flags (p : Perms.t) =
   (if p.Perms.read then "a" else "")
@@ -89,7 +111,7 @@ let rec directive syntax ppf (d : Directive.t) =
 
 let item syntax ~instruction ppf (i : _ Normalized_ast.item) =
   match i with
-  | Normalized_ast.Label { name; _ } -> Fmt.pf ppf "%s:" name
+  | Normalized_ast.Label { name; _ } -> Fmt.pf ppf "%s:" (symbol name)
   | Normalized_ast.Directive { directive = d; _ } -> directive syntax ppf d
   | Normalized_ast.Instruction { insn; _ } -> Fmt.pf ppf "\t%a" instruction insn
 

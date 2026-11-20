@@ -1,0 +1,44 @@
+; The GNU export of RISC-V modules: the isa-difficult corpus printed by Gnu_module with
+; Instruction.pp_gnu. test_gnu_text reads the print back through Rivet's text route (every leg);
+; gnu_text_emit writes it out for scripts/gnu-text-oracle.sh, which asks GNU as (oracle legs).
+
+(library
+ (name gnu_text_corpus)
+ (modules gnu_text_corpus)
+ (modes byte native)
+ (libraries foundation asm_core image target_intf text_pipeline riscv32)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name test_gnu_text)
+ (modules test_gnu_text)
+ (modes byte native)
+ (libraries
+  gnu_text_corpus
+  asm_core
+  foundation
+  target_intf
+  target_features
+  text_pipeline
+  riscv32
+  riscv32_encode
+  riscv_family
+  riscv_family_encode
+  x86_64
+  aarch64
+  rivet_fmt)
+ (inline_tests
+  (deps ../../fixtures/isa-difficult/cases.jsonl))
+ (preprocess
+  (pps ppx_expect))
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(executable
+ (name gnu_text_emit)
+ (modules gnu_text_emit)
+ (modes exe)
+ (libraries gnu_text_corpus riscv32)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))

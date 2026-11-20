@@ -1577,14 +1577,28 @@ module Instruction = struct
     | Csrrw | Csrrs | Csrrc | Csrrwi | Csrrsi | Csrrci | Csrr -> Some 1
     | _ -> None
 
-  let pp ppf i =
+  let pp_with ~expr ppf i =
     let csr = csr_position i.op in
     let operand ppf (k, o) =
-      match o with Operand.Imm n when csr = Some k -> Bigint.pp_hex ppf n | o -> Operand.pp ppf o
+      match (o : Operand.t) with
+      | Operand.Imm n when csr = Some k -> Bigint.pp_hex ppf n
+      | Operand.Sym e -> expr ppf e
+      | Operand.Mem m -> Fmt.pf ppf "%a(%a)" expr m.Mem.offset Reg.pp m.Mem.base
+      | o -> Operand.pp ppf o
     in
     if i.ops = [] then Fmt.string ppf (name i.op)
     else
       Fmt.pf ppf "%s %a" (name i.op)
         Fmt.(list ~sep:(any ", ") operand)
         (List.mapi (fun k o -> (k, o)) i.ops)
+
+  let pp = pp_with ~expr:Asm_core.Expr.pp
+
+  (* GNU assembler spelling: {!pp}, with a symbol GNU source cannot name as written (a numeric
+     local label's generated definition) spelled as [Asm_core.Gnu_module] spells it, and a
+     relocation modifier as RISC-V's [%m(a)]. *)
+  let pp_gnu =
+    pp_with
+      ~expr:
+        (Asm_core.Gnu_module.expr_with ~modifier:(fun expr ppf m a -> Fmt.pf ppf "%s(%a)" m expr a))
 end

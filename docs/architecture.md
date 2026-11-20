@@ -55,6 +55,24 @@ lexical profile, operand parsing and `handle_directive`. The registry names
 
 The design document's single `TARGET` sketch (§5.1) is superseded by this split.
 
+## GNU source export
+
+`Asm_core.Gnu_module.pp syntax ~instruction` prints a normalized module as GNU
+assembler source; the instruction printer is each target's `Instruction.pp_gnu`
+(x86, AArch64, RISC-V, vendor RISC-V compositions included). The contract:
+
+- Rivet's own text pipeline reads the print back to the identical image, for
+  every form, given the same feature configuration.
+- GNU as reads it to the same bytes for every standard form, given `-march`
+  for the configuration and, on RISC-V, `-mno-relax` (Rivet never relaxes).
+  GNU as cannot read a vendor row.
+- Target state travels in the module as `Directive.Target_state` and is
+  printed (`.option rvc`, `.option arch, +v`); a numeric local label's
+  generated definition is printed as the local symbol `.Lrivet.<n>.<k>`.
+
+`test/gnu_text` checks the first point over the RV32 isa-difficult corpus and a
+vendor row; `make gnu-text-oracle` (the riscv32 oracle leg) checks the second.
+
 ## Instruction descriptions
 
 The per-opcode tables (`*_ops`) and the generated row tables are the canonical

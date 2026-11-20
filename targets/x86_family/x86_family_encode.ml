@@ -593,8 +593,22 @@ module Instruction = struct
   (* The same instruction spelled so that GNU as and this module's own text
      parser both read it back: [pp] drops a size suffix where a register operand
      already says the size (GAS accepts either spelling, the parser only the
-     suffixed one), and spells a 64-bit [movd] as GAS's [movq]. *)
+     suffixed one), and spells a 64-bit [movd] as GAS's [movq]. A symbol GNU
+     source cannot name as written is spelled as [Asm_core.Gnu_module] spells it. *)
   let pp_gnu ppf i =
+    let rename = Asm_core.Gnu_module.rename in
+    let mem (m : Mem.t) =
+      match m.disp with Disp.Sym e -> { m with disp = Disp.Sym (rename e) } | Disp.Const _ -> m
+    in
+    let rec operand : Operand.t -> Operand.t = function
+      | Operand.Imm_sym e -> Operand.Imm_sym (rename e)
+      | Operand.Sym e -> Operand.Sym (rename e)
+      | Operand.Mem m -> Operand.Mem (mem m)
+      | Operand.Bcst b -> Operand.Bcst { b with mem = mem b.mem }
+      | Operand.Masked m -> Operand.Masked { m with op = operand m.op }
+      | o -> o
+    in
+    let i = { i with ops = List.map operand i.ops } in
     match (i.op, i.ops) with
     | Opcode.Movd, _ :: _ when i.width = 64 ->
         Fmt.pf ppf "movq %a" Fmt.(list ~sep:(any ", ") Operand.pp) i.ops

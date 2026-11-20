@@ -841,4 +841,7 @@ module Instruction : sig
   val name : Opcode.t -> string
   val csr_position : Opcode.t -> int option
   val pp : Format.formatter -> t -> unit
+
+  val pp_gnu : Format.formatter -> t -> unit
+  (** GNU assembler spelling. *)
 end

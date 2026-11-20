@@ -251,6 +251,12 @@ isa-difficult-check: tools-build
 isa-difficult-regen: tools-build build
 	RIVET_ROOT=$(CURDIR) $(TOOLS_EXE) isa-difficult regen
 
+# GNU as reads the GNU print of the RV32 isa-difficult corpus (test/gnu_text) as the bytes it
+# made from each original text. Needs a RISC-V binutils: the riscv32 oracle leg runs it.
+GNU_TEXT_BINUTILS ?= $(if $(shell command -v riscv32-linux-gnu-as),riscv32-linux-gnu,riscv64-linux-gnu)
+gnu-text-oracle:
+	scripts/gnu-text-oracle.sh $(GNU_TEXT_BINUTILS)-as $(GNU_TEXT_BINUTILS)-objcopy
+
 # The transitive purity and layer audits, and the planted violations that prove
 # they can fail. Run these before treating a successful JavaScript build as
 # evidence of portability - a package shipping a JS runtime replacement for its
@@ -476,7 +482,7 @@ $(addprefix asm-fixtures-verify-,$(FIXTURE_TARGETS)): asm-fixtures-verify-%: fix
 .PHONY: default fmt-ocamlformat submodules build test fmt fmt-check melange js js-portable \
   js-browser ci-extra ocaml5 native-exec tool-gate melange-optin melange-mirror external-deps fixtures-check fixture-oracle fixtures-regen oracle \
   gas-xref-check gas-xref-regen isa-generated-check isa-generated-regen \
-  isa-difficult-check isa-difficult-regen purity planted \
+  isa-difficult-check isa-difficult-regen gnu-text-oracle purity planted \
   tools-build tools-test tools-integration tools-boundary tools-fixture-modes \
   tools-oracle-diff tools-gasxref-diff tools-matrix tools-matrix-diff \
   tools-isa-inventory tools-isa-inventory-diff tools-isa-db-cross-validate \

@@ -274,6 +274,10 @@ jobs:
     - name: fixture oracle (verify, GNU oracle, QEMU, manifest, diff)
       run: |
         ${{ env.EXEC }} make fixture-oracle-${{ matrix.target }}
+    - name: GNU as reads the RV32 GNU print
+      if: matrix.target == 'riscv32'
+      run: |
+        ${{ env.EXEC }} make gnu-text-oracle
     - name: provenance and summaries
       if: success()
       uses: actions/upload-artifact@v7
