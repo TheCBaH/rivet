@@ -1,0 +1,52 @@
+; What a browser worker that prints and disassembles pays for, per closure:
+; scripts/jsoo-size.sh builds these with js_of_ocaml in the release profile
+; and reports their sizes. Off unless RIVET_JSOO_SIZE=true.
+
+(executable
+ (name size_driver)
+ (modules size_driver)
+ (modes js)
+ (libraries
+  asm_core
+  driver
+  target_intf
+  x86_64_encode
+  aarch64_encode
+  riscv32_encode)
+ (enabled_if
+  (= %{env:RIVET_JSOO_SIZE=false} true)))
+
+(executable
+ (name size_text)
+ (modules size_text)
+ (modes js)
+ (libraries asm_core text_pipeline target_encode x86_64 aarch64 riscv32)
+ (enabled_if
+  (= %{env:RIVET_JSOO_SIZE=false} true)))
+
+(executable
+ (name size_direct)
+ (modules size_direct)
+ (modes js)
+ (libraries
+  asm_core
+  driver_direct
+  target_encode
+  x86_64_encode
+  aarch64_encode
+  riscv32_encode)
+ (enabled_if
+  (= %{env:RIVET_JSOO_SIZE=false} true)))
+
+(executable
+ (name size_direct_no_x86)
+ (modules size_direct_no_x86)
+ (modes js)
+ (libraries
+  asm_core
+  driver_direct
+  target_encode
+  aarch64_encode
+  riscv32_encode)
+ (enabled_if
+  (= %{env:RIVET_JSOO_SIZE=false} true)))

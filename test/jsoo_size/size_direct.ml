@@ -1,0 +1,22 @@
+(* The same, through the direct pipeline over the three encoders: no lexer, no parser. *)
+let print instruction type_char =
+  print_string
+    (Asm_core.Gnu_module.to_string { Asm_core.Gnu_module.type_char } ~instruction
+       { Asm_core.Normalized_ast.unit_name = "m"; items = [] })
+
+module X = Driver_direct.Pipeline_direct.Make (X86_64_encode)
+module A = Driver_direct.Pipeline_direct.Make (Aarch64_encode)
+module R = Driver_direct.Pipeline_direct.Make (Riscv32_encode)
+
+let show = function
+  | Ok rs -> List.iter (fun (r : Target_encode.disasm_record) -> print_endline r.text) rs
+  | Error _ -> ()
+
+let () =
+  print X86_64_encode.Instruction.pp_gnu '@';
+  print Aarch64_encode.Instruction.pp_gnu '%';
+  print Riscv32_encode.Instruction.pp_gnu '@';
+  let b = "\x13\x05\x15\x00" in
+  show (X.disassemble_records ~address:0L b);
+  show (A.disassemble_records ~address:0L b);
+  show (R.disassemble_records ~address:0L b)

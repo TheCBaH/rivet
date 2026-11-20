@@ -24,6 +24,7 @@ Every library has a public name `rivet.<library>` in the `rivet` package, apart 
 | `tool` | | The `asm.exe` command line |
 | `browser/{jsoo,melange}` | | Adapters exposing `Portable` to a browser |
 | `native_exec` | `rivet-native-exec` | In-process execution of a laid-out image; C stubs; its own opam package |
+| `docs/consumers.md` | | Printing, disassembly, listings and the smallest closure for a program that embeds Rivet |
 | `tools/` | | A separate dune project: `rivet-tools` (fixtures, oracle, gas-xref, ISA inventory) |
 
 ## Targets
