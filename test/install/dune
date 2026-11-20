@@ -1,0 +1,13 @@
+; Built by .github/workflows/opam.yml against an opam-installed rivet.
+
+(test
+ (name check)
+ (libraries
+  rivet.test_support
+  rivet.driver
+  rivet.aarch64
+  rivet.asm_core
+  rivet.image
+  rivet.foundation
+  err_trace
+  fmt))

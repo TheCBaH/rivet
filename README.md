@@ -59,7 +59,9 @@ libraries as usual.
 
 Or install it: `rivet.opam` builds the pure-OCaml libraries against the opam
 `fmt`, from a source archive with no submodules, e.g.
-`opam pin add rivet <archive URL>`. `Native_exec` is the separate package
+`opam pin add rivet <archive URL>`; its `pin-depends` fetches `err_trace` from
+GitHub. The `opam` workflow installs it that way and runs `test/install`
+against it. `Native_exec` is the separate package
 `rivet-native-exec` (library `rivet-native-exec`, C stubs, Linux on
 x86_64, aarch64 or riscv64 only), which depends on `rivet`.
 

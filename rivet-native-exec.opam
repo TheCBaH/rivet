@@ -24,3 +24,7 @@ build: [
   ["env" "RIVET_NATIVE_EXEC=true" "RIVET_EXTERNAL_DEPS=true"
    "dune" "build" "-p" name "-j" jobs "@install"]
 ]
+# err_trace is not in opam-repository yet; the devcontainer pins the same commit.
+pin-depends: [
+  ["err_trace.0.2.0~dev" "git+https://github.com/TheCBaH/err_trace.git#d7765040d9cc3d024522e204866ac00ff261c4e8"]
+]

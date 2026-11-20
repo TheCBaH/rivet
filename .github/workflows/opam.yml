@@ -1,0 +1,62 @@
+name: opam
+
+# Installs rivet the way a user would, on a standard OCaml setup (no devcontainer) and without
+# a source checkout: opam pins it from the git ref under test and fetches its dependencies,
+# err_trace from GitHub through pin-depends. Only test/install is checked out, a consumer
+# built and run against the installed libraries.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+jobs:
+  install:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        ocaml-compiler: ["4.14.3", "5.5.0"]
+    steps:
+    # For pull_request events github.sha is a synthetic merge commit; pin the PR head instead.
+    - name: resolve git ref
+      id: ref
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "repo=${{ github.event.pull_request.head.repo.full_name }}" >> "$GITHUB_OUTPUT"
+          echo "sha=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+        else
+          echo "repo=${{ github.repository }}" >> "$GITHUB_OUTPUT"
+          echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+        fi
+    - name: checkout the consumer
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ steps.ref.outputs.sha }}
+        repository: ${{ steps.ref.outputs.repo }}
+        sparse-checkout: test/install
+        sparse-checkout-cone-mode: true
+    - name: ocaml
+      uses: ocaml/setup-ocaml@v3
+      with:
+        ocaml-compiler: ${{ matrix.ocaml-compiler }}
+        opam-pin: false
+    # A tarball, not git+: the opam build uses the installed fmt, so the submodules are not needed.
+    - name: pin
+      run: |
+        opam pin add -n -y rivet \
+          "https://github.com/${{ steps.ref.outputs.repo }}/archive/${{ steps.ref.outputs.sha }}.tar.gz"
+    - name: install
+      run: opam install -y rivet
+    - name: test-only dependencies stay out of the install
+      run: "! opam list --installed --silent ppx_expect"
+    - name: consumer
+      run: opam exec -- dune test --root test/install
