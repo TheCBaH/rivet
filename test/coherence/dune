@@ -1,6 +1,10 @@
 ; Path coherence (M1.7). Uses the statically selected target module rather than
 ; the erased DRIVER, which is the point: the types in this file are Aarch64's
 ; own, so handing it an ARM normalized AST is a compile error.
+;
+; test_coherence is the fixtures alone, public for consumers that check their
+; own producers against them; it takes no ppx, so installing it needs no test
+; dependency. The expect tests over it stay private.
 
 (library
  (name test_coherence)
@@ -15,6 +19,14 @@
   foundation
   test_dump_inputs
   rivet_fmt)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
+
+(library
+ (name test_coherence_paths)
+ (modules test_coherence_paths)
+ (modes byte native)
+ (libraries test_coherence asm_core foundation image rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))
