@@ -92,3 +92,26 @@ val disassemble_for :
 
 val disassemble :
   bound -> mode:[< `Canonical | `Diagnostic ] -> address:int64 -> string -> (string, error) Err.t
+
+val disassemble_records_for :
+  ?features:Target_config.spec ->
+  ?inspect:bool ->
+  String.t ->
+  address:int64 ->
+  string ->
+  (Target_intf.Target.disasm_record list, error) Err.t
+(** the records both disassembly modes are rendered from, for a named target *)
+
+val disassemble_records :
+  ?inspect:bool ->
+  bound ->
+  address:int64 ->
+  string ->
+  (Target_intf.Target.disasm_record list, error) Err.t
+
+val listing : ?inspect:bool -> bound -> segment:string -> (string, error) Err.t
+(** one segment of a bound image disassembled, with symbols at their definitions and beside the
+    instructions whose fixups name them *)
+
+val listing_records :
+  ?inspect:bool -> bound -> segment:string -> (Target_intf.Target.listing_line list, error) Err.t

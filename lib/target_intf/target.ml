@@ -117,6 +117,23 @@ end
    CLI and the internal linker never mention a target-specific type, so no
    existential escapes into them. Defined here rather than in [driver] because
    it is part of the same contract: it says which requests survive erasure. *)
+type disasm_record = Target_encode.disasm_record = {
+  address : int64;
+  bytes : string;
+  text : string;
+  form : string option;
+  refusal : string option;
+  alternatives : string list;
+}
+(** one line of a disassembly; see {!Target_encode.disasm_record} *)
+
+type listing_line = Target_encode.listing_line = {
+  record : disasm_record;
+  labels : string list;
+  targets : (string * int64) list;
+}
+(** one line of a symbol-labelled listing; see {!Target_encode.listing_line} *)
+
 type request = {
   entry : string option;
   features : Target_config.spec option;
@@ -235,6 +252,29 @@ module type DRIVER = sig
       audiences would satisfy neither. Strict by default; with [~inspect:true] it decodes every
       component regardless of the configuration and marks each instruction the configuration would
       refuse, so disabled code can be examined without pretending it assembles. *)
+
+  val disassemble_records :
+    ?features:Target_config.spec ->
+    ?inspect:bool ->
+    address:int64 ->
+    string ->
+    disasm_record list Diag.t
+  (** what both dumps above are rendered from, one record per instruction or padding run, with
+      the same strictness and [~inspect] behaviour as the diagnostic dump *)
+
+  val listing_records :
+    ?features:Target_config.spec ->
+    ?inspect:bool ->
+    Image.t ->
+    segment:string ->
+    listing_line list Diag.t
+  (** a bound image's segment disassembled, each record with the symbols defined at its address
+      and the symbol (and addend) each of its fixups names *)
+
+  val dump_listing :
+    ?features:Target_config.spec -> ?inspect:bool -> Image.t -> segment:string -> string Diag.t
+  (** {!listing_records} for reading: [name:] where a symbol starts, [<sym+0x4>] beside an
+      instruction whose fixup names [sym]. Not re-parseable. *)
 
   val dump_codec : unit -> string
 

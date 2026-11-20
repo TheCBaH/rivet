@@ -9,6 +9,7 @@
   test_x86_overlap
   test_features
   test_vendor
+  test_disasm_records
   test_zicsr
   test_riscv_types
   test_riscv_ops

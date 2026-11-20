@@ -466,6 +466,18 @@ let audit_layers asm_dir libs =
           (closure libs [ l ]))
     libs;
 
+  (* The direct stages, the disassembler included, serve a program that reads no source text:
+     the lexer and parser must not be in their closure. *)
+  List.iter
+    (fun l ->
+      if l.local && dir_of l = "driver_direct" then
+        List.iter
+          (fun m ->
+            if m.local && starts_with "lib/asm_syntax" (dir_of m) then
+              fail "layers: %S reaches the text front end %S" l.name m.name)
+          (closure libs [ l ]))
+    libs;
+
   (* §3.7 again, from the other direction: no generic source may branch on a
      target's identity. Checked textually because it is a property of the source,
      not of the resolved graph - a `match` on a target name compiles fine. *)

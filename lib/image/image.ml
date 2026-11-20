@@ -169,11 +169,25 @@ type segment = {
   zero_fill : int;
 }
 
+type symbol = {
+  sym_name : string;
+  sym_unit : string;  (** the input that defined it *)
+  sym_address : int64;
+  sym_binding : Lowered_ast.binding;
+  sym_size : int64 option;  (** its [.size], when it has one *)
+}
+
+(* A fixup whose value names exactly one symbol: the field at [ref_site] holds
+   [ref_symbol + ref_addend], encoded as the fixup's kind says. *)
+type reference = { ref_site : int64; ref_symbol : string; ref_addend : int64 }
+
 type t = {
   segments : segment list;
   entry : int64 option;
   exports : (string * int64) list;
   symbol_sizes : (string * int64) list;
+  symbols : symbol list;  (** every definition, locals included, in address order *)
+  references : reference list;  (** in site order *)
 }
 
 (* The linker's error domain (docs/errors.md), in two halves because the two
@@ -1662,6 +1676,7 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
           | Some base -> Some (big_of_address (Int64.add base (Int64.of_int here_offset))));
       }
     in
+    let sized = Hashtbl.create 16 in
     let symbol_sizes =
       List.filter_map
         (fun (unit_name, name, expr, at) ->
@@ -1673,7 +1688,9 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
           match Expr.absolute (env_at ~from_unit:unit_name at section) expr with
           | Ok v -> (
               match Bigint.to_int64_opt v with
-              | Some n -> Some (name, n)
+              | Some n ->
+                  Hashtbl.replace sized (unit_name, name) n;
+                  Some (name, n)
               | None ->
                   fail (`Symbol_size_too_wide name);
                   None)
@@ -1788,8 +1805,54 @@ let bind_image ?(imports : (string * int64) list = []) ?(overlays : string list 
     let exports =
       List.filter_map (fun n -> Option.map (fun a -> (n, a)) (address_of_global n)) l.plan.exports
     in
+    let symbols =
+      List.stable_sort
+        (fun a b -> Int64.unsigned_compare a.sym_address b.sym_address)
+        (List.filter_map
+           (fun (d : Symtab.definition) ->
+             Option.map
+               (fun sym_address ->
+                 {
+                   sym_name = d.Symtab.d_name;
+                   sym_unit = d.Symtab.d_unit;
+                   sym_address;
+                   sym_binding = d.Symtab.d_binding;
+                   sym_size = Hashtbl.find_opt sized (d.Symtab.d_unit, d.Symtab.d_name);
+                 })
+               (address_of_def d))
+           l.definitions)
+    in
+    let references =
+      List.stable_sort
+        (fun a b -> Int64.unsigned_compare a.ref_site b.ref_site)
+        (List.filter_map
+           (fun f ->
+             match
+               ( Hashtbl.find_opt address_table f.rf_section,
+                 List.sort_uniq compare (Expr.symbols f.rf_value) )
+             with
+             | Some base, [ s ] -> (
+                 let here = Int64.add base (Int64.of_int f.rf_frag_offset) in
+                 let env =
+                   {
+                     Expr.lookup =
+                       (fun n -> Option.map big_of_address (address_of ~from_unit:f.rf_unit n));
+                     here = Some (big_of_address here);
+                   }
+                 in
+                 match (address_of ~from_unit:f.rf_unit s, Expr.absolute env f.rf_value) with
+                 | Some a, Ok v -> (
+                     match Bigint.to_int64_opt (Bigint.sub v (big_of_address a)) with
+                     | Some ref_addend ->
+                         let ref_site = Int64.add base (Int64.of_int f.rf_byte_offset) in
+                         Some { ref_site; ref_symbol = s; ref_addend }
+                     | None -> None)
+                 | _ -> None)
+             | _ -> None)
+           l.fixups)
+    in
     if !errors <> [] then Diag.fail ~pos:__POS__ (List.rev !errors)
-    else Ok { segments; entry; exports; symbol_sizes }
+    else Ok { segments; entry; exports; symbol_sizes; symbols; references }
   in
   match
     Diag.validate_all ~pos:__POS__

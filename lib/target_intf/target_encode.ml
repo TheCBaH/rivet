@@ -19,6 +19,28 @@
 
 open Foundation
 
+(* One line of a disassembly: an instruction, or a run of the target's alignment padding. The
+   canonical and diagnostic dumps are both rendered from these. *)
+type disasm_record = {
+  address : int64;
+  bytes : string;  (** the bytes it was read from *)
+  text : string;  (** the canonical spelling; [.balign n] for padding *)
+  form : string option;  (** the form id ([riscv32.add]); [None] for padding *)
+  refusal : string option;
+      (** decoding with [~inspect:true]: why the configuration would not assemble it *)
+  alternatives : string list;
+      (** decoding with [~inspect:true]: the other readings of the same bytes, each with its
+          refusal *)
+}
+
+(* One line of a symbol-labelled listing: a disassembly record, the symbols defined at its address,
+   and the symbol each of its fixups names, with the addend. *)
+type listing_line = {
+  record : disasm_record;
+  labels : string list;
+  targets : (string * int64) list;
+}
+
 (* One register class of a target: its numbers, the values that name them, and their spellings.
    [numbers] is ascending and need not be contiguous or start at zero; [range] is [Some] only when
    it is contiguous. *)

@@ -21,7 +21,8 @@ module Make (T : Target_encode.ENCODE) = struct
     | `Section_stack_empty
     | `Directive_not_accepted of string
     | `Relax_ladder of Lowered_ast.relax_error
-    | `Invalid_configuration of string ]
+    | `Invalid_configuration of string
+    | `Unknown_segment of string ]
 
   let pp_error ppf : error -> unit = function
     | `Data_value e -> Expr.pp_error ppf e
@@ -36,6 +37,7 @@ module Make (T : Target_encode.ENCODE) = struct
     | `Directive_not_accepted name -> Fmt.pf ppf "the target did not accept %s" name
     | `Relax_ladder e -> Lowered_ast.pp_relax_error ppf e
     | `Invalid_configuration m -> Fmt.pf ppf "invalid feature configuration: %s" m
+    | `Unknown_segment s -> Fmt.pf ppf "the image has no segment %s" s
 
   let error_code : error -> string = function
     | `Statement_before_section -> "lower.no-section"
@@ -45,6 +47,7 @@ module Make (T : Target_encode.ENCODE) = struct
     | `Section_stack_empty -> "lower.section-stack"
     | `Relax_ladder _ -> "lower.relax-ladder"
     | `Invalid_configuration _ -> "config.invalid"
+    | `Unknown_segment _ -> "listing.segment"
 
   let diag ?origin (e : error) =
     Diagnostic.of_error ~code:error_code ~pp:pp_error
@@ -547,6 +550,274 @@ module Make (T : Target_encode.ENCODE) = struct
     Image.plan_image ~evaluate ~fill:merge_fill ~align_fill ?section_pad
       (policy_for_many ?entry ?externs ?exported ?max_size ?allow_rwx ?group_sections modules)
       modules
+
+  (* {2 The diagnostic disassembler (§6)}
+
+     Address, encoding bytes, canonical spelling and form id, in columns. Not
+     re-parseable, and no test may re-parse it: that is [dump_disasm_canonical]'s
+     job, and a format that had to satisfy both audiences would satisfy
+     neither. *)
+
+  (* Alignment padding is filler, not code, and disassembling it as code is not
+     merely awkward - on x86 it is impossible. GNU's padding table for 64-bit
+     mode ends with [66 2e 0f 1f 84 ...] and [66 66 2e 0f 1f 84 ...], and GAS
+     emits its prefixes in the order [2e 66]: no instruction source reassembles
+     to those two rows. They exist only inside the assembler's own padding
+     table. A canonical dump that spelled them as instructions could therefore
+     never round-trip, whatever spelling it chose.
+
+     What *does* reproduce filler is the directive that asked for it, so both
+     dumps recognize a padding run and print [.balign]. The recognition is
+     exact and target-driven: the bytes from here to a power-of-two boundary
+     must be precisely what this target's own [nop_bytes] emits for that length.
+     A byte sequence GNU pads with and we do not is then a loud decode failure
+     rather than a quiet misreading, which is the right way round.
+
+     [.balign] rather than [.align] or [.p2align] because it is a byte count on
+     all four dialects and is already in the accepted table; the identity being
+     preserved is the bytes, and any boundary that reproduces them reproduces
+     them exactly. A lone [nop] that happens to sit one byte below a boundary is
+     read as padding, which is harmless for exactly that reason.
+
+     Layout aligns *section offsets* and this aligns *addresses*, and the two
+     agree because a section's alignment is raised to the widest [Align] it
+     contains and [bind_image] rejects an address that does not honour it. That
+     invariant is what makes an address-based reading of the bytes correct; it
+     is not an assumption about where hosts put things. *)
+  let fill_cache : (int, string option * string option) Hashtbl.t = Hashtbl.create 64
+
+  let fills n =
+    match Hashtbl.find_opt fill_cache n with
+    | Some f -> f
+    | None ->
+        let f =
+          ( (match T.nop_bytes ~length:n with Ok s -> Some s | Error _ -> None),
+            Option.map (fun f -> f ~length:n) T.merge_fill )
+        in
+        Hashtbl.add fill_cache n f;
+        f
+
+  let padding_at ~address bytes ~pos =
+    let len = String.length bytes in
+    let here = Int64.add address (Int64.of_int pos) in
+    (* Two possible fill sources for the same run, not one: [T.nop_bytes] is
+       what [as] emits for an [.align] gap within one module, and (M3 §5,
+       docs/design.md §12) [T.merge_fill] is what [ld] emits for a gap the
+       merge step inserts between two modules - and on x86_32 those are
+       DIFFERENT byte sequences for the same length (nop_table's LEA forms
+       vs. merge_fill's plain [66 90] chain). Neither table's bytes decode as
+       ordinary instructions - {!T.nop_bytes}'s own doc comment is explicit
+       that GNU's padding table exists nowhere a real encoder would produce it
+       - so a merge gap recognized by neither source falls through to the
+       ordinary decoder and fails outright, which is exactly the gap this
+       covers. *)
+    let same_at n candidate =
+      let rec go i =
+        i >= n || (String.unsafe_get bytes (pos + i) = String.unsafe_get candidate i && go (i + 1))
+      in
+      String.length candidate = n && go 0
+    in
+    let fill_matches n =
+      let nop, merge = fills n in
+      (match nop with Some s -> same_at n s | None -> false)
+      || match merge with Some s -> same_at n s | None -> false
+    in
+    let matches k =
+      let b = Int64.of_int (1 lsl k) in
+      let stop = Int64.mul (Int64.div (Int64.add here (Int64.sub b 1L)) b) b in
+      let n = Int64.to_int (Int64.sub stop here) in
+      if n > 0 && pos + n <= len && fill_matches n then Some (1 lsl k, n) else None
+    in
+    (* Longest run first, so a short boundary can never claim a prefix of a
+       longer pad and leave the tail to be decoded as instructions. Among the
+       boundaries that produce that same run - a pad ending at 0x20 is reached
+       from 0x16 by both [.balign 16] and [.balign 32] - the smallest, which is
+       what the source said. Every one of them reproduces the bytes, so this is
+       a fidelity choice rather than a correctness one. *)
+    List.fold_left
+      (fun best k ->
+        match matches k with
+        | Some (b, n) when match best with None -> true | Some (_, bn) -> n > bn -> Some (b, n)
+        | _ -> best)
+      None
+      (List.init 12 (fun i -> i + 1))
+
+  let disassemble_records ?features ?(inspect = false) ~address bytes =
+    let open Err.Syntax in
+    let* state = initial_state features in
+    (* Strict decoding refuses a disabled component's instruction. Inspection first decodes
+       strictly; a word the configuration refuses is read under every component enabled, and each
+       reading is judged against the caller's configuration. *)
+    let discovery_state =
+      if inspect then T.initial_state (Target_config.all_enabled T.components) else state
+    in
+    let unmet insn =
+      match T.required insn with
+      | None -> None
+      | Some req ->
+          Option.map
+            (fun u -> Fmt.str "requires feature %a, which is not enabled" Target_component.Req.pp u)
+            (Target_component.Req.unmet (Target_config.enabled (T.state_config state)) req)
+    in
+    let shown insn = Fmt.to_to_string T.Instruction.pp insn in
+    let readings here pos strict_error =
+      match T.decode_candidates { T.state = discovery_state; address = here } bytes ~pos with
+      | [] -> Diag.fail ~pos:__POS__ [ target_diagnostic strict_error ]
+      | (insn, form, n) :: others ->
+          let alternative (i, _, _) =
+            shown i ^ match unmet i with Some m -> " (" ^ m ^ ")" | None -> ""
+          in
+          Ok (insn, form, n, unmet insn, List.map alternative others)
+    in
+    let record ~at ~pos ~n ~text ~form ~refusal ~alternatives : Target_encode.disasm_record =
+      { address = at; bytes = String.sub bytes pos n; text; form; refusal; alternatives }
+    in
+    let rec go pos acc =
+      if pos >= String.length bytes then Ok (List.rev acc)
+      else
+        let here = Int64.add address (Int64.of_int pos) in
+        match padding_at ~address bytes ~pos with
+        | Some (boundary, n) ->
+            go (pos + n)
+              (record ~at:here ~pos ~n
+                 ~text:(Printf.sprintf ".balign %d" boundary)
+                 ~form:None ~refusal:None ~alternatives:[]
+              :: acc)
+        | None -> (
+            let decoded =
+              match T.decode { T.state; address = here } bytes ~pos with
+              | Ok (insn, form, n) -> Ok (insn, form, n, None, [])
+              | Error e ->
+                  if inspect then readings here pos e
+                  else Diag.fail ~pos:__POS__ [ target_diagnostic e ]
+            in
+            match decoded with
+            | Error _ as e -> e
+            | Ok (insn, form, n, refusal, alternatives) ->
+                go (pos + n)
+                  (record ~at:here ~pos ~n ~text:(shown insn)
+                     ~form:(Some (T.name ^ "." ^ form))
+                     ~refusal ~alternatives
+                  :: acc))
+    in
+    go 0 []
+
+  let dump_disasm_diagnostic ?features ?inspect ~address bytes =
+    let open Err.Syntax in
+    let* records = disassemble_records ?features ?inspect ~address bytes in
+    let run (r : Target_encode.disasm_record) =
+      String.concat " "
+        (List.init (String.length r.bytes) (fun i -> Printf.sprintf "%02x" (Char.code r.bytes.[i])))
+    in
+    let text (r : Target_encode.disasm_record) =
+      r.text
+      ^ (match r.refusal with Some m -> "  ; " ^ m | None -> "")
+      ^ if r.alternatives = [] then "" else "  ; or " ^ String.concat "; or " r.alternatives
+    in
+    let rows = List.map (fun r -> (r, run r, text r)) records in
+    let wr = List.fold_left (fun a (_, run, _) -> max a (String.length run)) 0 rows in
+    let wt = List.fold_left (fun a (_, _, text) -> max a (String.length text)) 0 rows in
+    Ok
+      (String.concat ""
+         (List.map
+            (fun ((r : Target_encode.disasm_record), run, text) ->
+              Printf.sprintf "%08Lx  %-*s  %-*s  [%s]\n" r.address wr run wt text
+                (Option.value r.form ~default:"padding"))
+            rows))
+
+  let dump_disasm_canonical ?features ~address bytes =
+    let open Err.Syntax in
+    let* records = disassemble_records ?features ~address bytes in
+    Ok
+      (String.concat ""
+         (List.map (fun (r : Target_encode.disasm_record) -> "\t" ^ r.text ^ "\n") records))
+
+  (* {2 The symbol-labelled listing}
+
+     A bound image's segment, disassembled, with each symbol written where it is defined and each
+     fixup's symbol beside the instruction it patches. A numeric local label is spelled as the GNU
+     export spells it. Like the diagnostic dump it is for reading, not for re-parsing. *)
+
+  let listing_records ?features ?inspect (image : Image.t) ~segment =
+    let open Err.Syntax in
+    match List.find_opt (fun (s : Image.segment) -> String.equal s.name segment) image.segments with
+    | None -> Diag.fail ~pos:__POS__ [ diag (`Unknown_segment segment) ]
+    | Some s ->
+        let* records = disassemble_records ?features ?inspect ~address:s.address s.bytes in
+        let symbol = Asm_core.Gnu_module.symbol in
+        let rec go records (symbols : Image.symbol list) (refs : Image.reference list) acc =
+          match records with
+          | [] -> List.rev acc
+          | (r : Target_encode.disasm_record) :: rest ->
+              let stop = Int64.add r.address (Int64.of_int (String.length r.bytes)) in
+              let before a = Int64.unsigned_compare a stop < 0 in
+              let here, symbols =
+                List.partition (fun (y : Image.symbol) -> before y.sym_address) symbols
+              in
+              let mine, refs =
+                List.partition (fun (f : Image.reference) -> before f.ref_site) refs
+              in
+              let line : Target_encode.listing_line =
+                {
+                  record = r;
+                  labels = List.map (fun (y : Image.symbol) -> symbol y.sym_name) here;
+                  targets =
+                    List.sort_uniq compare
+                      (List.map
+                         (fun (f : Image.reference) -> (symbol f.ref_symbol, f.ref_addend))
+                         mine);
+                }
+              in
+              go rest symbols refs (line :: acc)
+        in
+        let inside a =
+          Int64.unsigned_compare a s.address >= 0
+          && Int64.unsigned_compare a (Int64.add s.address (Int64.of_int (String.length s.bytes)))
+             < 0
+        in
+        Ok
+          (go records
+             (List.filter (fun (y : Image.symbol) -> inside y.sym_address) image.symbols)
+             (List.filter (fun (f : Image.reference) -> inside f.ref_site) image.references)
+             [])
+
+  let dump_listing ?features ?inspect image ~segment =
+    let open Err.Syntax in
+    let* lines = listing_records ?features ?inspect image ~segment in
+    let run (r : Target_encode.disasm_record) =
+      String.concat " "
+        (List.init (String.length r.bytes) (fun i -> Printf.sprintf "%02x" (Char.code r.bytes.[i])))
+    in
+    let target (name, addend) =
+      if Int64.equal addend 0L then name
+      else if Int64.compare addend 0L > 0 then Printf.sprintf "%s+0x%Lx" name addend
+      else Printf.sprintf "%s-0x%Lx" name (Int64.neg addend)
+    in
+    let wr =
+      List.fold_left
+        (fun a (l : Target_encode.listing_line) -> max a (String.length (run l.record)))
+        0 lines
+    in
+    let wt =
+      List.fold_left
+        (fun a (l : Target_encode.listing_line) -> max a (String.length l.record.text))
+        0 lines
+    in
+    let buf = Buffer.create 256 in
+    List.iter
+      (fun (l : Target_encode.listing_line) ->
+        List.iter (fun n -> Buffer.add_string buf (n ^ ":\n")) l.labels;
+        let refs =
+          match l.targets with
+          | [] -> ""
+          | ts -> "  <" ^ String.concat ", " (List.map target ts) ^ ">"
+        in
+        Buffer.add_string buf
+          (Printf.sprintf "  %08Lx  %-*s  %-*s%s\n" l.record.address wr (run l.record)
+             (if refs = "" then 0 else wt)
+             l.record.text refs))
+      lines;
+    Ok (Buffer.contents buf)
 
   let fixup_observations = Image.fixup_observations
 end

@@ -45,11 +45,25 @@ type segment = {
   zero_fill : int;
 }
 
+type symbol = {
+  sym_name : string;
+  sym_unit : string;  (** the input that defined it *)
+  sym_address : int64;
+  sym_binding : Lowered_ast.binding;
+  sym_size : int64 option;  (** its [.size], when it has one *)
+}
+
+(* A fixup whose value names exactly one symbol: the field at [ref_site] holds
+   [ref_symbol + ref_addend], encoded as the fixup's kind says. *)
+type reference = { ref_site : int64; ref_symbol : string; ref_addend : int64 }
+
 type t = {
   segments : segment list;
   entry : int64 option;
   exports : (string * int64) list;
   symbol_sizes : (string * int64) list;
+  symbols : symbol list;  (** every definition, locals included, in address order *)
+  references : reference list;  (** in site order *)
 }
 
 type link_error =

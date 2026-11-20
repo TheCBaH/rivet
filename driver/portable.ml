@@ -291,3 +291,18 @@ let disassemble_for ?features target ~mode ~address bytes =
       of_stage r)
 
 let disassemble (b : bound) ~mode ~address bytes = disassemble_for b.target ~mode ~address bytes
+
+let disassemble_records_for ?features ?inspect target ~address bytes =
+  with_driver target (fun (module D : Target_intf.Target.DRIVER) ->
+      of_stage (D.disassemble_records ?features ?inspect ~address bytes))
+
+let disassemble_records ?inspect (b : bound) ~address bytes =
+  disassemble_records_for ?inspect b.target ~address bytes
+
+let listing ?inspect (b : bound) ~segment =
+  with_driver b.target (fun (module D : Target_intf.Target.DRIVER) ->
+      of_stage (D.dump_listing ?inspect b.image ~segment))
+
+let listing_records ?inspect (b : bound) ~segment =
+  with_driver b.target (fun (module D : Target_intf.Target.DRIVER) ->
+      of_stage (D.listing_records ?inspect b.image ~segment))
