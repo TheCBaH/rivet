@@ -1106,5 +1106,6 @@ re-parseable, like the rest of the diagnostic dump.
 `assemble`, `assemble_many`, `dump_normalized_ast`, `dump_lowered_ast` and both
 disassembly dumps. A spec that does not resolve fails the call with
 `config.invalid` before any source is read. CLI: `--features <spec>`,
+`--max-features <spec>` (a ceiling, `config.ceiling`; see `docs/extensions.md`),
 `--dump-features`, `--inspect-disabled`. Omitting all of them selects the
 default configuration (§6.2).

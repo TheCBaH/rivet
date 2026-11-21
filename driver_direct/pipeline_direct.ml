@@ -22,6 +22,7 @@ module Make (T : Target_encode.ENCODE) = struct
     | `Directive_not_accepted of string
     | `Relax_ladder of Lowered_ast.relax_error
     | `Invalid_configuration of string
+    | `Beyond_ceiling of string list
     | `Unknown_segment of string ]
 
   let pp_error ppf : error -> unit = function
@@ -37,6 +38,14 @@ module Make (T : Target_encode.ENCODE) = struct
     | `Directive_not_accepted name -> Fmt.pf ppf "the target did not accept %s" name
     | `Relax_ladder e -> Lowered_ast.pp_relax_error ppf e
     | `Invalid_configuration m -> Fmt.pf ppf "invalid feature configuration: %s" m
+    | `Beyond_ceiling fs ->
+        let shown, more =
+          if List.length fs <= 8 then (fs, "")
+          else
+            (List.filteri (fun i _ -> i < 8) fs, Printf.sprintf " and %d more" (List.length fs - 8))
+        in
+        Fmt.pf ppf "enables %s%s, beyond the maximum feature configuration"
+          (String.concat ", " shown) more
     | `Unknown_segment s -> Fmt.pf ppf "the image has no segment %s" s
 
   let error_code : error -> string = function
@@ -47,6 +56,7 @@ module Make (T : Target_encode.ENCODE) = struct
     | `Section_stack_empty -> "lower.section-stack"
     | `Relax_ladder _ -> "lower.relax-ladder"
     | `Invalid_configuration _ -> "config.invalid"
+    | `Beyond_ceiling _ -> "config.ceiling"
     | `Unknown_segment _ -> "listing.segment"
 
   let diag ?origin (e : error) =
@@ -78,6 +88,38 @@ module Make (T : Target_encode.ENCODE) = struct
         match configure spec with
         | Ok c -> Ok (T.initial_state c)
         | Error m -> Diag.fail ~pos:__POS__ [ diag (`Invalid_configuration m) ])
+
+  (* A ceiling is a maximum configuration: no state may enable a feature it leaves out, so a
+     directive that would ([.option arch, +d]) is refused where it is applied, not only at the
+     end of the module. [beyond] lists what [state] enables past it. *)
+  let beyond ~ceiling state =
+    match ceiling with
+    | None -> []
+    | Some c ->
+        List.filter
+          (fun f -> not (Target_config.enabled c f))
+          (Target_config.features (T.state_config state))
+
+  let ceiling_of = function
+    | None -> Ok None
+    | Some spec -> (
+        match configure spec with
+        | Ok c -> Ok (Some c)
+        | Error m -> Diag.fail ~pos:__POS__ [ diag (`Invalid_configuration m) ])
+
+  (* The initial state and the ceiling a request names: with a ceiling and no [features], the
+     ceiling is also where assembly starts. *)
+  let start ?features ?max_features () =
+    let open Err.Syntax in
+    let* ceiling = ceiling_of max_features in
+    let* state =
+      match (features, ceiling) with
+      | None, Some c -> Ok (T.initial_state c)
+      | _ -> initial_state features
+    in
+    match beyond ~ceiling state with
+    | [] -> Ok (state, ceiling)
+    | fs -> Diag.fail ~pos:__POS__ [ diag (`Beyond_ceiling fs) ]
 
   (* {1 Stage 3 - lower (§4.4, §7)}
 
@@ -121,7 +163,7 @@ module Make (T : Target_encode.ENCODE) = struct
      handler, whose rejections are already diagnostics. *)
   type 'state state_directive = Handled of 'state | Rejected of Diagnostic.t | Unhandled
 
-  let lower_with
+  let lower_with ?ceiling
       ~(target_state :
          name:string -> arguments:string list -> T.target_state -> T.target_state state_directive)
       ~state (m : T.Instruction.t Normalized_ast.module_) =
@@ -137,6 +179,9 @@ module Make (T : Target_encode.ENCODE) = struct
     (* [state] is retained in the public entry point for direct normalized-AST
        producers, and parsed programs pass the initial state of the caller's configuration.  Target
        directives in [m] then replay in source order below. *)
+    (match beyond ~ceiling state with
+    | [] -> ()
+    | fs -> errors := diag (`Beyond_ceiling fs) :: !errors);
     let state = ref state in
     let current = ref None in
     let ensure_section name perms kind =
@@ -351,7 +396,10 @@ module Make (T : Target_encode.ENCODE) = struct
             | Directive.Cfi _ -> ()
             | Directive.Target_state { name; arguments } -> (
                 match target_state ~name ~arguments !state with
-                | Handled s -> state := s
+                | Handled s -> (
+                    match beyond ~ceiling s with
+                    | [] -> state := s
+                    | fs -> errors := diag ~origin (`Beyond_ceiling fs) :: !errors)
                 | Rejected d -> errors := d :: !errors
                 | Unhandled -> errors := diag ~origin (`Directive_not_accepted name) :: !errors))
         | Normalized_ast.Instruction { insn; origin } ->
@@ -459,7 +507,8 @@ module Make (T : Target_encode.ENCODE) = struct
           declared_sections = List.rev !declared;
         }
 
-  let lower ~state m = lower_with ~target_state:(fun ~name:_ ~arguments:_ _ -> Unhandled) ~state m
+  let lower ?ceiling ~state m =
+    lower_with ?ceiling ~target_state:(fun ~name:_ ~arguments:_ _ -> Unhandled) ~state m
 
   (* {1 Stage 4 - the image (§8, §9)} *)
 

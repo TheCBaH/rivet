@@ -26,6 +26,7 @@ type planned = { laid_out : Image.laid_out; target : string }
 type request = Target_intf.Target.request = {
   entry : string option;
   features : Target_config.spec option;
+  max_features : Target_config.spec option;
   externs : string list;
   exported : string list option;
   max_size : int option;

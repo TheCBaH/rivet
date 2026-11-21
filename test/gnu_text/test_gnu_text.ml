@@ -151,13 +151,13 @@ let%expect_test "local labels read back from the GNU print on x86-64 and AArch64
   check
     (module X)
     ~type_char:'@'
-    ~simplify:(simplify_with X.parse X.simplify X86_64.default_state)
+    ~simplify:(simplify_with X.parse (fun ~state m -> X.simplify ~state m) X86_64.default_state)
     ~instruction:X86_64.Instruction.pp_gnu
     "\t.text\n1:\tnop\n\tjmp 1b\n\tleaq 1f(%rip), %rax\n1:\tret\n";
   check
     (module A)
     ~type_char:'%'
-    ~simplify:(simplify_with A.parse A.simplify Aarch64.default_state)
+    ~simplify:(simplify_with A.parse (fun ~state m -> A.simplify ~state m) Aarch64.default_state)
     ~instruction:Aarch64.Instruction.pp_gnu
     "\t.text\n1:\tadd x0, x0, #1\n\tb 1b\n\tcbz x0, 1f\n1:\tret\n";
   [%expect
@@ -203,8 +203,9 @@ let%expect_test "$ names read back from the GNU print on x86-64 and x86-32" =
   let module X32 = Pipeline.Make (X86_32) in
   check
     (module X64)
-    ~parse:X64.parse ~simplify:X64.simplify ~state:X86_64.default_state
-    ~instruction:X86_64.Instruction.pp_gnu
+    ~parse:X64.parse
+    ~simplify:(fun ~state m -> X64.simplify ~state m)
+    ~state:X86_64.default_state ~instruction:X86_64.Instruction.pp_gnu
     "\t.text\n\
      \t.globl $3\n\
      $3:\tmovl %eax, ($1)(%rip)\n\
@@ -215,8 +216,9 @@ let%expect_test "$ names read back from the GNU print on x86-64 and x86-32" =
      $1:\tret\n";
   check
     (module X32)
-    ~parse:X32.parse ~simplify:X32.simplify ~state:X86_32.default_state
-    ~instruction:X86_32.Instruction.pp_gnu
+    ~parse:X32.parse
+    ~simplify:(fun ~state m -> X32.simplify ~state m)
+    ~state:X86_32.default_state ~instruction:X86_32.Instruction.pp_gnu
     "\t.text\n\
      \t.globl $3\n\
      $3:\tmovl %eax, ($1)\n\

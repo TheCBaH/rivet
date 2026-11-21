@@ -681,6 +681,111 @@ let%expect_test "RISC-V .option arch edits the configuration mid-assembly" =
     unsigned                     REFUSED riscv64.directive: .option arch: expected +<extension> or -<extension>, got "zba"
     empty                        REFUSED riscv64.directive: .option arch: expected +<extension> or -<extension>, got "" |}]
 
+(* A maximum configuration bounds every state, not only the first: a directive that would enable
+   something past it is refused where it is applied, so a push/enable/use/pop sequence cannot
+   slip a D instruction into an F-only (ILP32F) program. *)
+let%expect_test "RISC-V .option arch cannot enable past the maximum configuration" =
+  let (module D : Target_intf.Target.DRIVER) = driver "riscv32" in
+  let ceiling = spec "none,+m,+f" in
+  let run ?features body =
+    let source =
+      Foundation.Span.source ~name:"<test>"
+        ~contents:({|
+      .text
+      .globl f
+    f:
+|} ^ body ^ "\n")
+    in
+    let request =
+      {
+        Target_intf.Target.default_request with
+        features = Option.map spec features;
+        max_features = Some ceiling;
+      }
+    in
+    match D.assemble_request request ~unit_name:"t" ~source () with
+    | Ok _ -> "accepted"
+    | Error ds -> "REFUSED " ^ render ds
+  in
+  List.iter
+    (fun (label, features, body) -> Printf.printf "%-22s %s\n" label (run ?features body))
+    [
+      ( "ILP32F code",
+        None,
+        {|
+      mul a0, a0, a1
+      flw fa0, 0(a0)
+      fadd.s fa0, fa0, fa1
+      ret
+|} );
+      ("narrowing", None, {|
+      .option arch, -m, +zmmul
+      mul a0, a0, a1
+|});
+      ("bare D", None, {|fadd.d fa0, fa0, fa1|});
+      ("bare C", None, {|
+      .option rvc
+      c.addi a0, 1
+|});
+      ("+d", None, {|
+      .option arch, +d
+      fadd.d fa0, fa0, fa1
+|});
+      ("+c", None, {|
+      .option arch, +c
+      .option rvc
+      c.addi a0, 1
+|});
+      ( "push, +d, use, pop",
+        None,
+        {|
+      .option push
+      .option arch, +d
+      fadd.d fa0, fa0, fa1
+      .option pop
+      ret
+|}
+      );
+      ("features past it", Some "", {|ret|});
+      ("features within it", Some "none,+f", {|fadd.s fa0, fa0, fa1|});
+    ];
+  [%expect
+    {|
+    ILP32F code            accepted
+    narrowing              accepted
+    bare D                 REFUSED riscv32.feature: fadd.d requires feature d, which is not enabled
+    bare C                 REFUSED riscv32.feature: c.addi requires feature zca, which is not enabled
+    +d                     REFUSED config.ceiling: enables d, beyond the maximum feature configuration; riscv32.feature: fadd.d requires feature d, which is not enabled
+    +c                     REFUSED config.ceiling: enables c, zca, zcf, beyond the maximum feature configuration; riscv32.feature: c.addi requires feature zca, which is not enabled
+    push, +d, use, pop     REFUSED config.ceiling: enables d, beyond the maximum feature configuration; riscv32.feature: fadd.d requires feature d, which is not enabled
+    features past it       REFUSED config.ceiling: enables a, c, d, h, q, s, sdext, ssctr and 53 more, beyond the maximum feature configuration
+    features within it     accepted |}]
+
+(* A producer that hands lowering a module directly is held to the same maximum. *)
+let%expect_test "lowering refuses an initial state past the maximum configuration" =
+  let module P = Pipeline.Make (Riscv32) in
+  let ceiling = Result.get_ok (P.configure (spec "none,+m,+f")) in
+  let source = Foundation.Span.source ~name:"<test>" ~contents:{|
+      .text
+      nop
+|} in
+  let m =
+    match P.parse ~unit_name:"t" ~source with
+    | Ok m -> fst (Result.get_ok (P.simplify ~state:Riscv32.default_state m))
+    | Error ds -> failwith (render ds)
+  in
+  List.iter
+    (fun (label, state) ->
+      Printf.printf "%-8s %s\n" label
+        (match P.lower ~ceiling ~state m with
+        | Ok _ -> "accepted"
+        | Error ds -> "REFUSED " ^ render ds))
+    [ ("default", Riscv32.default_state); ("ceiling", Riscv32.initial_state ceiling) ];
+  [%expect
+    {|
+    default  REFUSED config.ceiling: enables a, c, d, h, q, s, sdext, ssctr and 53 more, beyond the maximum feature configuration
+    ceiling  accepted |}]
+
 let%expect_test "every unit of a multi-unit assembly gets the caller's configuration" =
   let (module D : Target_intf.Target.DRIVER) = driver "riscv64" in
   let unit name text = (name, Foundation.Span.source ~name ~contents:text) in

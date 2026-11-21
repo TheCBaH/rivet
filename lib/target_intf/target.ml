@@ -137,6 +137,7 @@ type listing_line = Target_encode.listing_line = {
 type request = {
   entry : string option;
   features : Target_config.spec option;
+  max_features : Target_config.spec option;
   externs : string list;
   exported : string list option;
   max_size : int option;
@@ -144,13 +145,14 @@ type request = {
   group_sections : bool;
 }
 (** Everything an erased caller can ask of the planning step, in one value: the entry symbol,
-    the feature spec, symbols the module may leave undefined (resolved at bind time), the
+    the feature spec and the maximum one (a ceiling no directive may enable past), symbols the module may leave undefined (resolved at bind time), the
     exported-symbol list, a size limit and whether an RWX segment is allowed, and whether .text.* style sections merge into their parent. *)
 
 let default_request =
   {
     entry = None;
     features = None;
+    max_features = None;
     externs = [];
     exported = None;
     max_size = None;

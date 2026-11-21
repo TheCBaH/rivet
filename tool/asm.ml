@@ -21,6 +21,8 @@ let usage =
       "  --fixed-base <addr>     bind the image at this address (hex with 0x, or decimal)";
       "  --features <spec>       enable/disable optional components: none, +name, -name, \
        comma-separated, applied left to right (default: all implemented)";
+      "  --max-features <spec>   the most a directive such as .option arch may enable; with no \
+       --features, also the starting configuration";
       "  --entry <sym>           the entry symbol (default: the only global)";
       "  --extern <a,b>          symbols the input may leave undefined (repeatable)";
       "  --export <a,b>          the exported symbols (repeatable; default: every global)";
@@ -69,6 +71,7 @@ type options = {
   mutable load_addresses : (string * int64) list;
   mutable at : (string * int64) list;
   mutable features : Target_config.spec option;
+  mutable max_features : Target_config.spec option;
   mutable inspect : bool;
 }
 
@@ -138,6 +141,7 @@ let () =
       load_addresses = [];
       at = [];
       features = None;
+      max_features = None;
       inspect = false;
     }
   in
@@ -157,6 +161,11 @@ let () =
         (match Target_config.parse_spec spec with
         | Ok s -> o.features <- Some s
         | Error m -> die ("invalid --features " ^ spec ^ ": " ^ m));
+        go rest
+    | "--max-features" :: spec :: rest ->
+        (match Target_config.parse_spec spec with
+        | Ok s -> o.max_features <- Some s
+        | Error m -> die ("invalid --max-features " ^ spec ^ ": " ^ m));
         go rest
     | "--entry" :: e :: rest ->
         o.entry <- Some e;
@@ -257,6 +266,7 @@ let () =
     {
       Target_intf.Target.entry = o.entry;
       features;
+      max_features = o.max_features;
       externs = o.externs;
       exported = o.exported;
       max_size = o.max_size;

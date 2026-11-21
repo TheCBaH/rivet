@@ -151,8 +151,11 @@ module Make (T : T_intf.TARGET) = struct
         Result.map (fun size -> Directive.Sym_size { name; size }) (fold size)
     | other -> Ok other
 
-  let simplify ~state (m : T.Surface.t Source_ast.module_) =
+  let simplify ?ceiling ~state (m : T.Surface.t Source_ast.module_) =
     let errors = ref [] in
+    (match beyond ~ceiling state with
+    | [] -> ()
+    | fs -> errors := diag (`Beyond_ceiling fs) :: !errors);
     let items = ref [] in
     let add i = items := i :: !items in
     let state = ref state in
@@ -175,7 +178,9 @@ module Make (T : T_intf.TARGET) = struct
             match T.handle_directive ~name ~arguments:texts !state with
             | T_intf.Rejected e -> errors := parse_diagnostic e :: !errors
             | T_intf.Handled { state = s; emit } ->
-                state := s;
+                (match beyond ~ceiling s with
+                | [] -> state := s
+                | fs -> errors := diag ~origin (`Beyond_ceiling fs) :: !errors);
                 (* State transitions are part of the normalized program.  They
                    must survive so lowering can replay them at their source
                    position instead of seeing only the final file state. *)
@@ -208,8 +213,8 @@ module Make (T : T_intf.TARGET) = struct
      The direct stage, with this target's state directives handled as the text
      front end reads them. *)
 
-  let lower ~state m =
-    lower_with
+  let lower ?ceiling ~state m =
+    lower_with ?ceiling
       ~target_state:(fun ~name ~arguments st ->
         match T.handle_directive ~name ~arguments st with
         | T_intf.Handled { state = s; _ } -> Handled s
@@ -228,10 +233,10 @@ module Make (T : T_intf.TARGET) = struct
   let assemble_request (r : Target_intf.Target.request) ~unit_name ~source () =
     let open Err.Syntax in
     let stage r = Diag.stage ~pos:__POS__ r in
-    let* state = initial_state r.features in
+    let* state, ceiling = start ?features:r.features ?max_features:r.max_features () in
     let* src = stage (parse ~unit_name ~source) in
-    let* norm, _final_state = stage (simplify ~state src) in
-    let* low = stage (lower ~state norm) in
+    let* norm, _final_state = stage (simplify ?ceiling ~state src) in
+    let* low = stage (lower ?ceiling ~state norm) in
     stage
       (plan ?entry:r.entry ~externs:r.externs ?exported:r.exported ?max_size:r.max_size
          ~allow_rwx:r.allow_rwx ~group_sections:r.group_sections low)
@@ -251,13 +256,13 @@ module Make (T : T_intf.TARGET) = struct
       () =
     let open Err.Syntax in
     let stage r = Diag.stage ~pos:__POS__ r in
-    let* state = initial_state r.features in
+    let* state, ceiling = start ?features:r.features ?max_features:r.max_features () in
     (* Every unit starts from the same initial state, so one unit's directives cannot leak
        into the next. *)
     let lower_one (unit_name, source) =
       let* src = stage (parse ~unit_name ~source) in
-      let* norm, _final_state = stage (simplify ~state src) in
-      stage (lower ~state norm)
+      let* norm, _final_state = stage (simplify ?ceiling ~state src) in
+      stage (lower ?ceiling ~state norm)
     in
     let* modules =
       Err.Accum.map ~pos:__POS__ lower_one sources

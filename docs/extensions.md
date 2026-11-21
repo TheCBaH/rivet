@@ -70,6 +70,15 @@ the set unchanged. `.option push`/`pop` save and restore the set together with
 the pic, relax and rvc flags. An unsigned item, an unknown or inapplicable
 feature, or a contradictory result is an error.
 
+A maximum configuration (`--max-features <spec>`, the request's `max_features`, or
+`?ceiling` on `simplify` and `lower`) bounds every state: an `.option arch` that
+would enable a feature outside it is refused where it is applied
+(`config.ceiling`), so `.option push`, `+d`, a D instruction and `.option pop`
+cannot reach the encoder either. With no `--features`, assembly starts at the
+maximum; an initial configuration outside it is refused before any source is
+read. The ceiling covers instructions; data directives such as `.word` in an
+executable section are not decoded.
+
 ## Compressed
 
 `c` is an implication-only group: it implies `zca`, `zcd` when `d` is enabled
