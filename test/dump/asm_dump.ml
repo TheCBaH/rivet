@@ -23,12 +23,13 @@ let hex s =
 
 let banner title = Printf.printf "########## %s\n" title
 
-let run (name, text) =
+let run (i : Test_dump_inputs.input) =
   let (module D : Target_intf.Target.DRIVER) =
-    match Driver.Registry.find name with Some d -> d | None -> exit 1
+    match Driver.Registry.find i.target with Some d -> d | None -> exit 1
   in
-  let source = Foundation.Span.source ~name:(name ^ ".s") ~contents:text in
-  let unit_name = "asm_test_entry" in
+  let name = i.target ^ " " ^ i.case in
+  let source = Foundation.Span.source ~name:i.file ~contents:i.text in
+  let unit_name = Filename.remove_extension (Filename.basename i.file) in
   banner (name ^ " tokens");
   print_string (ok (D.dump_tokens ~source));
   banner (name ^ " source ast");
@@ -57,4 +58,4 @@ let run (name, text) =
   banner (name ^ " codec");
   print_string (D.dump_codec ())
 
-let () = List.iter run Test_dump_inputs.all
+let () = List.iter run Test_dump_inputs.inputs

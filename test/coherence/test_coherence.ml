@@ -41,68 +41,31 @@ let x n =
 (* {1 The direct normalized AST}
 
    Written as a compiler would produce it: directives are values, the aliases
-   are already resolved ([mov x15, sp] is [Opcode.Mov] with two registers, which
-   lowering turns into [add ..., #0]), and nothing here mentions a token, a span
-   or a spelling. *)
+   are already resolved ([mov w0, #42] is [Opcode.Mov] with a register and an
+   immediate, which lowering turns into [movz]), and nothing here mentions a
+   token, a span or a spelling. *)
 let direct_normalized : T.Instruction.t Normalized_ast.module_ =
   let insn i = Normalized_ast.Instruction { insn = i; origin } in
   let dir d = Normalized_ast.Directive { directive = d; origin } in
+  let label name = Normalized_ast.Label { name; origin } in
   {
     Normalized_ast.unit_name = "asm_test_entry";
     items =
       [
+        dir (Directive.Target_state { name = ".arch"; arguments = [ "armv8-a" ] });
         dir (Directive.Section { name = ".text"; perms = Perms.rx; nobits = false });
         dir (Directive.Align { boundary = 4; fill = None; max_skip = None });
         dir (Directive.Global { name = "asm_test_entry" });
-        Normalized_ast.Label { name = "asm_test_entry"; origin };
+        dir (Directive.Sym_type { name = "asm_test_entry"; kind = Directive.Function });
+        label "asm_test_entry";
+        label ".LFB0";
         insn
           {
             T.Instruction.op = T.Opcode.Mov;
-            ops = [ T.Operand.Reg (x "x15"); T.Operand.Reg (x "sp") ];
-          };
-        insn
-          {
-            T.Instruction.op = T.Opcode.Stp;
-            ops =
-              [
-                T.Operand.Reg (x "x15");
-                T.Operand.Reg (x "x30");
-                T.Operand.Mem
-                  {
-                    T.Mem.base = x "sp";
-                    offset = T.Disp.Const (-16L);
-                    writeback = true;
-                    pre = true;
-                  };
-              ];
-          };
-        insn
-          {
-            T.Instruction.op = T.Opcode.Movz;
             ops = [ T.Operand.Reg (x "w0"); T.Operand.Imm (Foundation.Bigint.of_int 42) ];
           };
-        insn
-          {
-            T.Instruction.op = T.Opcode.Ldr;
-            ops =
-              [
-                T.Operand.Reg (x "x30");
-                T.Operand.Mem
-                  { T.Mem.base = x "sp"; offset = T.Disp.Const 8L; writeback = false; pre = true };
-              ];
-          };
-        insn
-          {
-            T.Instruction.op = T.Opcode.Add;
-            ops =
-              [
-                T.Operand.Reg (x "sp");
-                T.Operand.Reg (x "sp");
-                T.Operand.Imm (Foundation.Bigint.of_int 16);
-              ];
-          };
-        insn { T.Instruction.op = T.Opcode.Ret; ops = [ T.Operand.Reg (x "x30") ] };
-        dir (Directive.Sym_type { name = "asm_test_entry"; kind = Directive.Function });
+        insn { T.Instruction.op = T.Opcode.Ret; ops = [] };
+        label ".LFE0";
         dir
           (Directive.Sym_size
              {
@@ -148,6 +111,16 @@ let form_of l =
 
 let direct_lowered : T.fixup_kind Lowered_ast.module_ =
   let frag l = Lowered_ast.Bytes { bytes = bytes_of l; form = form_of l; fixups = []; origin } in
+  let local name =
+    {
+      Lowered_ast.name;
+      binding = Lowered_ast.Local;
+      visibility = Lowered_ast.Default;
+      kind = Directive.Notype;
+      size = None;
+      section = ".text";
+    }
+  in
   {
     Lowered_ast.unit_name = "asm_test_entry";
     target = "aarch64";
@@ -165,18 +138,10 @@ let direct_lowered : T.fixup_kind Lowered_ast.module_ =
             [
               Lowered_ast.Align { boundary = 4; fill = None; max_skip = None; origin };
               Lowered_ast.Label_def { name = "asm_test_entry"; origin };
-              frag
-                (T.Lowered.Add_imm
-                   { rd = x "x15"; rn = x "sp"; imm = T.Disp.Const 0L; shift12 = false });
-              frag (T.Lowered.Stp_pre { rt = x "x15"; rt2 = x "x30"; rn = x "sp"; offset = -16L });
+              Lowered_ast.Label_def { name = ".LFB0"; origin };
               frag (T.Lowered.Movz { rd = x "w0"; imm16 = 42L; hw = 0 });
-              frag
-                (T.Lowered.Ldst_uoff
-                   { size = T.X; load = true; rt = x "x30"; rn = x "sp"; offset = T.Disp.Const 8L });
-              frag
-                (T.Lowered.Add_imm
-                   { rd = x "sp"; rn = x "sp"; imm = T.Disp.Const 16L; shift12 = false });
               frag (T.Lowered.Ret { rn = x "x30" });
+              Lowered_ast.Label_def { name = ".LFE0"; origin };
               Lowered_ast.Set_size
                 {
                   name = "asm_test_entry";
@@ -196,6 +161,8 @@ let direct_lowered : T.fixup_kind Lowered_ast.module_ =
           size = Some (Expr.Binary (Expr.Sub, Expr.Current_location, Expr.Symbol "asm_test_entry"));
           section = ".text";
         };
+        local ".LFB0";
+        local ".LFE0";
       ];
     commons = [];
     declared_sections = [ ".note.GNU-stack" ];

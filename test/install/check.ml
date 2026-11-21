@@ -39,22 +39,22 @@ let () =
       section .text r-x align=4
         align 4
         label asm_test_entry
-        bytes ef 03 00 91              [aarch64.add-imm]
-        bytes ef 7b bf a9              [aarch64.stp-pre]
+        label .LFB0
         bytes 40 05 80 52              [aarch64.movz]
-        bytes fe 07 40 f9              [aarch64.ldr64]
-        bytes ff 43 00 91              [aarch64.add-imm]
         bytes c0 03 5f d6              [aarch64.ret]
+        label .LFE0
         size asm_test_entry = (. - asm_test_entry)
       global asm_test_entry function in .text size=(. - asm_test_entry)
+      local .LFB0 notype in .text
+      local .LFE0 notype in .text
       declared .note.GNU-stack (not allocated)|};
   let image = image_of (ok (P.lower ~state parsed)) in
   expect "image, text vs normalized" image (image_of lowered);
   expect "image, text vs lowered" image (image_of C.direct_lowered);
   expect "image, frozen" image
-    {|section .text address=0x0 size=24 permissions=r-x
+    {|section .text address=0x0 size=8 permissions=r-x
       entry 0x0
-      export asm_test_entry = 0x0 size=24|};
+      export asm_test_entry = 0x0 size=8|};
   (* One Err: Foundation's errors are values of the err_trace this program links. *)
   (match Foundation.Bigint.of_string "not a number" with
   | Ok _ -> fail "Bigint parsed a non-number"

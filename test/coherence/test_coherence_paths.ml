@@ -14,17 +14,16 @@ let%expect_test "simplify of the parsed text equals the direct normalized AST" =
     {|
     normalized ASTs are identical
     normalized asm_test_entry
+    target-state .arch armv8-a
     section .text r-x
     align 4
     globl asm_test_entry
-    label asm_test_entry
-    mov x15, sp
-    stp x15, x30, [sp, #-16]!
-    movz w0, #42
-    ldr x30, [sp, #8]
-    add sp, sp, #16
-    ret x30
     type asm_test_entry function
+    label asm_test_entry
+    label .LFB0
+    mov w0, #42
+    ret
+    label .LFE0
     size asm_test_entry (. - asm_test_entry)
     declared-section .note.GNU-stack
     |}]
@@ -44,14 +43,14 @@ let%expect_test "lowering the direct normalized AST equals the direct lowered mo
         section .text r-x align=4
           align 4
           label asm_test_entry
-          bytes ef 03 00 91              [aarch64.add-imm]
-          bytes ef 7b bf a9              [aarch64.stp-pre]
+          label .LFB0
           bytes 40 05 80 52              [aarch64.movz]
-          bytes fe 07 40 f9              [aarch64.ldr64]
-          bytes ff 43 00 91              [aarch64.add-imm]
           bytes c0 03 5f d6              [aarch64.ret]
+          label .LFE0
           size asm_test_entry = (. - asm_test_entry)
         global asm_test_entry function in .text size=(. - asm_test_entry)
+        local .LFB0 notype in .text
+        local .LFE0 notype in .text
         declared .note.GNU-stack (not allocated)
         |}]
 
@@ -89,9 +88,9 @@ let%expect_test "text, direct normalized AST and direct lowered module give one 
   [%expect
     {|
     all three paths agree:
-    section .text address=0x0 size=24 permissions=r-x
+    section .text address=0x0 size=8 permissions=r-x
     entry 0x0
-    export asm_test_entry = 0x0 size=24
+    export asm_test_entry = 0x0 size=8
     |}]
 
 (* {1 Malformed direct ASTs fail at their own validator}

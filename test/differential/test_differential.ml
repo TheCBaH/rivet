@@ -371,7 +371,7 @@ let%expect_test "fixup observations classify to exactly the measured relocations
 
 (* {1 The embedded copies}
 
-   test/dump embeds the six fixture texts as string literals, because a Melange
+   test/dump embeds fixture texts as string literals, because a Melange
    build shares no filesystem with the native one and a three-build driver that
    read files would compare three programs with three different inputs. That
    copy is only safe while it is a copy, so this is where it is checked. Without
@@ -379,36 +379,26 @@ let%expect_test "fixup observations classify to exactly the measured relocations
    the three-build gate would still pass. *)
 let%expect_test "the embedded dump inputs are byte-identical to the fixtures" =
   List.iter
-    (fun (name, embedded) ->
-      let path =
-        Filename.concat
-          (Filename.concat (Filename.concat corpus_root "return42") name)
-          "asm_test_entry.s"
-      in
-      let committed = read path in
-      (* The fixture carries a two-line the compiler provenance banner that the
-         embedded copy drops: it is a comment, so it changes no output, and
-         keeping it would put a tool version inside a byte-compared artifact. *)
-      let strip_banner s =
-        match String.split_on_char '\n' s with
-        | a :: b :: rest when String.length a > 0 && (a.[0] = '#' || a.[0] = '@' || a.[0] = '/') ->
-            ignore b;
-            String.concat "\n" rest
-        | _ -> s
-      in
-      if String.equal (strip_banner committed) embedded then
-        Printf.printf "%-8s embedded copy matches the fixture\n" name
-      else Printf.printf "%-8s EMBEDDED COPY HAS DRIFTED FROM THE FIXTURE\n" name)
-    Test_dump_inputs.all;
+    (fun (i : Test_dump_inputs.input) ->
+      Printf.printf "%-8s %-8s %s\n" i.target i.case
+        (if String.equal (read (Filename.concat corpus_root i.file)) i.text then
+           "embedded copy matches the fixture"
+         else "EMBEDDED COPY HAS DRIFTED FROM THE FIXTURE"))
+    Test_dump_inputs.inputs;
   [%expect
     {|
-    x86_32   EMBEDDED COPY HAS DRIFTED FROM THE FIXTURE
-    x86_64   EMBEDDED COPY HAS DRIFTED FROM THE FIXTURE
-    arm      EMBEDDED COPY HAS DRIFTED FROM THE FIXTURE
-    aarch64  EMBEDDED COPY HAS DRIFTED FROM THE FIXTURE
-    riscv32  EMBEDDED COPY HAS DRIFTED FROM THE FIXTURE
-    riscv64  EMBEDDED COPY HAS DRIFTED FROM THE FIXTURE
-    |}]
+    x86_32   return42 embedded copy matches the fixture
+    x86_64   return42 embedded copy matches the fixture
+    arm      return42 embedded copy matches the fixture
+    aarch64  return42 embedded copy matches the fixture
+    riscv32  return42 embedded copy matches the fixture
+    riscv64  return42 embedded copy matches the fixture
+    x86_32   loop     embedded copy matches the fixture
+    x86_64   loop     embedded copy matches the fixture
+    arm      loop     embedded copy matches the fixture
+    aarch64  loop     embedded copy matches the fixture
+    riscv32  loop     embedded copy matches the fixture
+    riscv64  loop     embedded copy matches the fixture |}]
 
 (* The comparison's own failure modes, which the corpus cannot exercise because
    every case in it agrees. Untested error handling inside a gate is how a gate
