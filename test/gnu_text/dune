@@ -26,6 +26,7 @@
   riscv_family
   riscv_family_encode
   x86_64
+  x86_32
   aarch64
   rivet_fmt)
  (inline_tests

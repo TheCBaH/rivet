@@ -178,3 +178,74 @@ let%expect_test "local labels read back from the GNU print on x86-64 and AArch64
     .Lrivet.1.1:
     	ret
     same bytes |}]
+
+(* A symbol whose name starts with [$] (CompCert's spelling of the C identifier [$1]) is printed
+   parenthesised where an operand would start, so the print reads back; the bytes are the ones
+   x86_64-linux-gnu-as and i686-linux-gnu-as 2.44 produce for the same source bound at 0. *)
+let%expect_test "$ names read back from the GNU print on x86-64 and x86-32" =
+  let check (type i) (module D : Target_intf.Target.DRIVER) ~parse ~simplify ~state
+      ~(instruction : i Fmt.t) source =
+    let src = Foundation.Span.source ~name:"d.s" ~contents:source in
+    match parse ~unit_name:"d" ~source:src with
+    | Error ds -> print_endline (C.render ds)
+    | Ok m -> (
+        match simplify ~state m with
+        | Error ds -> print_endline (C.render ds)
+        | Ok (n, _) -> (
+            let text = Asm_core.Gnu_module.to_string C.gnu_syntax ~instruction n in
+            print_string text;
+            match (C.assemble (module D) source, C.assemble (module D) text) with
+            | Ok a, Ok b when String.equal a b -> print_endline (C.hex a)
+            | Ok a, Ok b -> Printf.printf "%s / %s\n" (C.hex a) (C.hex b)
+            | Error m, _ | _, Error m -> print_endline m))
+  in
+  let module X64 = Pipeline.Make (X86_64) in
+  let module X32 = Pipeline.Make (X86_32) in
+  check
+    (module X64)
+    ~parse:X64.parse ~simplify:X64.simplify ~state:X86_64.default_state
+    ~instruction:X86_64.Instruction.pp_gnu
+    "\t.text\n\
+     \t.globl $3\n\
+     $3:\tmovl %eax, ($1)(%rip)\n\
+     \tleaq ($1)+4(%rip), %rax\n\
+     \tmovl $1+$1, %ecx\n\
+     \tcall ($3)\n\
+     \tjmp ($3)\n\
+     $1:\tret\n";
+  check
+    (module X32)
+    ~parse:X32.parse ~simplify:X32.simplify ~state:X86_32.default_state
+    ~instruction:X86_32.Instruction.pp_gnu
+    "\t.text\n\
+     \t.globl $3\n\
+     $3:\tmovl %eax, ($1)\n\
+     \tmovl ($1)+4, %eax\n\
+     \tmovl $$1, %edx\n\
+     \tpushl $$3\n\
+     \tcall ($3)\n\
+     $1:\tret\n";
+  [%expect
+    {|
+    	.section	.text,"ax",@progbits
+    	.globl	$3
+    $3:
+    	movl %eax, ($1)(%rip)
+    	leaq ($1 + 4)(%rip), %rax
+    	movl $(1 + $1), %ecx
+    	call ($3)
+    	jmp ($3)
+    $1:
+    	ret
+    89 05 13 00 00 00 48 8d 05 10 00 00 00 b9 1a 00 00 00 e8 e9 ff ff ff eb e7 c3
+    	.section	.text,"ax",@progbits
+    	.globl	$3
+    $3:
+    	movl %eax, ($1)
+    	movl ($1 + 4), %eax
+    	movl $$1, %edx
+    	push $$3
+    	call ($3)
+    $1:
+    	ret
+    a3 19 00 00 00 a1 1d 00 00 00 ba 19 00 00 00 68 00 00 00 00 e8 e7 ff ff ff c3 |}]

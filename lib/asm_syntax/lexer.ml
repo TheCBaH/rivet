@@ -223,6 +223,31 @@ let scan_ident c pos =
   let stop = go pos in
   (String.sub c.text pos (stop - pos), stop)
 
+(* Whether the next token would start an instruction operand, judged from the tokens already
+   emitted for this statement ([acc], newest first): after any labels, an instruction (not a directive)
+   whose last token is its mnemonic, a prefix or a comma outside parentheses. *)
+let at_operand_start acc =
+  let rec statement acc stmt =
+    match acc with
+    | [] -> stmt
+    | t :: rest -> (
+        match Token.kind t with Token.Eol | Token.Semi -> stmt | _ -> statement rest (t :: stmt))
+  in
+  let rec after_labels = function
+    | (Token.Ident _ | Token.Directive _ | Token.Int _) :: Token.Colon :: rest -> after_labels rest
+    | kinds -> kinds
+  in
+  match after_labels (List.map Token.kind (statement acc [])) with
+  | [] | Token.Directive _ :: _ -> false
+  | kinds -> (
+      let depth, last =
+        List.fold_left
+          (fun (d, _) k ->
+            ((match k with Token.Lparen -> d + 1 | Token.Rparen -> d - 1 | _ -> d), Some k))
+          (0, None) kinds
+      in
+      depth = 0 && match last with Some (Token.Ident _ | Token.Comma) -> true | _ -> false)
+
 (* {1 The main loop} *)
 
 let tokenize ~profile ~source =
@@ -253,8 +278,16 @@ let tokenize ~profile ~source =
           (* A line continuation is whitespace, not a statement end. *)
           loop (pos + 2) acc
         else if Some ch = profile.Lexical_profile.statement_separator then continue (one Token.Semi)
-        else if Some ch = profile.Lexical_profile.immediate_sigil then
-          continue (one Token.Immediate_sigil)
+        else if
+          (* x86's [$] is also a GAS name character: GAS reads it as the immediate prefix only
+             where an operand starts, so [$1:], [.globl $1], [($1)(%rip)] and [$1+$2] (the
+             immediate 1 plus the symbol [$2]) all name a symbol [$1]/[$2]. *)
+          Some ch = profile.Lexical_profile.immediate_sigil
+          && not
+               (is_ident_start profile ch
+               && (match peek c pos 1 with Some c2 -> is_ident_char profile c2 | None -> false)
+               && not (at_operand_start acc))
+        then continue (one Token.Immediate_sigil)
         else if Some ch = profile.Lexical_profile.register_sigil then
           let name, stop = scan_ident c (pos + 1) in
           (* [%] with no name after it is the modulo operator; the dialects

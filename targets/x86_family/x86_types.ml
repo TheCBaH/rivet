@@ -172,7 +172,14 @@ module Disp = struct
   (* What goes in the bits before the linker gets there: a placeholder for
      anything symbolic, exactly as a branch target does. *)
   let placeholder = function Const v -> v | Sym _ -> 0L
-  let to_string = function Const v -> Int64.to_string v | Sym e -> Asm_core.Expr.to_string e
+
+  (* An operand that starts with [$] reads back as an immediate, so a symbol such as [$1] is
+     parenthesised, as GAS and CompCert spell it: [($1)(%rip)], [call ($1)]. *)
+  let sym_to_string e =
+    let s = Asm_core.Expr.to_string e in
+    if String.length s > 0 && s.[0] = '$' then "(" ^ s ^ ")" else s
+
+  let to_string = function Const v -> Int64.to_string v | Sym e -> sym_to_string e
 end
 
 module Mem = struct
@@ -242,7 +249,7 @@ module Operand = struct
     | Mem m -> Mem.pp ppf m
     | Imm v -> Fmt.pf ppf "$%a" Bigint.pp v
     | Imm_sym e -> Fmt.pf ppf "$%s" (Asm_core.Expr.to_string e)
-    | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
+    | Sym e -> Fmt.string ppf (Disp.sym_to_string e)
     | Rc n -> Fmt.pf ppf "{%s}" (rc_name n)
     | Bcst { mem; n } -> Fmt.pf ppf "%a{1to%d}" Mem.pp mem n
     | Dfv v ->

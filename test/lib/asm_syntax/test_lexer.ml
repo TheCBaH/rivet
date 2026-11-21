@@ -73,3 +73,47 @@ let%expect_test "a genuinely unknown escape is still rejected" =
 let%expect_test "\\e (not corpus-evidenced) is still rejected, not passed through" =
   strings {|.ascii "\e"|};
   [%expect {| error: unknown escape \e |}]
+
+(* x86's [$] is an immediate only where an operand starts; elsewhere it begins a name, as in
+   GNU as (checked with x86_64-linux-gnu-as 2.44: [movl $1+$2, %edi] is the immediate 1 plus the
+   symbol [$2]). CompCert spells a C identifier [$1] this way. *)
+let tokens text =
+  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  match Asm_syntax.Lexer.tokenize ~profile:X86_64.lexical_profile ~source with
+  | Error e -> Format.printf "error: %a@." Asm_syntax.Lexer.pp_error e
+  | Ok toks ->
+      List.iter
+        (fun t ->
+          match Asm_syntax.Token.kind t with
+          | Asm_syntax.Token.Eof -> ()
+          | Asm_syntax.Token.Eol -> Format.printf "@."
+          | k -> Format.printf "%a " Asm_syntax.Token.pp_kind k)
+        toks
+
+let%expect_test "a leading $ names a symbol outside operand position" =
+  tokens
+    "\t.globl $3\n\
+     $3:\tmovl $12, %eax\n\
+     \tmovl %eax, ($1)(%rip)\n\
+     \tmovl $1+$2, %edi\n\
+     \tcall ($3)\n\
+     lock addl $1, (%rax)\n\
+     .L1: $4: pushq $5\n\
+     \t.long $1, $3+4\n\
+     $5 = $2\n\
+     \t{evex} vcmpps $1, {sae}, %zmm1, %zmm2, %k1\n\
+     \tmovl $(1+2), %eax; movl $$1, %eax\n";
+  [%expect
+    {|
+    directive(.globl) ident($3)
+    ident($3) : ident(movl) imm-sigil int(12) , reg(eax)
+    ident(movl) reg(eax) , ( ident($1) ) ( reg(rip) )
+    ident(movl) imm-sigil int(1) + ident($2) , reg(edi)
+    ident(call) ( ident($3) )
+    ident(lock) ident(addl) imm-sigil int(1) , ( reg(rax) )
+    directive(.L1) : ident($4) : ident(pushq) imm-sigil int(5)
+    directive(.long) ident($1) , ident($3) + int(4)
+    ident($5) = ident($2)
+    { ident(evex) } ident(vcmpps) imm-sigil int(1) , { ident(sae) } , reg(zmm1) , reg(zmm2) , reg(k1)
+    ident(movl) imm-sigil ( int(1) + int(2) ) , reg(eax) ; ident(movl) imm-sigil ident($1) , reg(eax)
+    |}]

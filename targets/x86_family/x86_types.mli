@@ -58,6 +58,10 @@ module Disp : sig
   val zero : t
   val is_zero : t -> bool
   val placeholder : t -> int64
+
+  val sym_to_string : Asm_core.Expr.t -> string
+  (** a symbolic operand as AT&T spells it: parenthesised when it would start with [$] *)
+
   val to_string : t -> string
 end
 
