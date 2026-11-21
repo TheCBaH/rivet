@@ -19,11 +19,12 @@ Every library has a public name `rivet.<library>` in the `rivet` package, apart 
 | `lib/image` | `image` | Symbol resolution, layout, relaxation, fixups, address binding |
 | `lib/compute` | `compute` | Symbolic and concrete evaluation of machine semantics (not part of assembling) |
 | `text_pipeline` | `text_pipeline` | Parse, normalize and lower for any target; names no target |
-| `driver`, `driver_direct` | `driver`, `driver_direct` | The registry that links every target, the erased `Portable` API, and the direct pipeline stages for producers that build ASTs. Planning options (entry, features, externs, exported, max size, RWX) travel as one `Target.request`, binding options (imports, overlays, load addresses) as `Portable.bind_request`; the CLI has an option for each |
+| `driver`, `driver_direct` | `driver`, `driver_direct` | The registry that links every target, the erased `Portable` API, and the direct pipeline stages for producers that build ASTs. Planning options (entry, features and their maximum, externs, exported, max size, RWX) travel as one `Target.request`, binding options (imports, overlays, load addresses) as `Portable.bind_request`; the CLI has an option for each |
 | `targets/*` | per target | See below |
 | `tool` | | The `asm.exe` command line |
 | `browser/{jsoo,melange}` | | Adapters exposing `Portable` to a browser |
 | `native_exec` | `rivet-native-exec` | In-process execution of a laid-out image; C stubs; its own opam package |
+| `test/differential` | `differential` | The GNU differential gate as a functor over a fixture corpus (`Differential.Make`), so another project can run it on its own compiler's fixtures; `test_differential` instantiates it for `fixtures/gcc-14` |
 | `docs/consumers.md` | | Printing, disassembly, listings and the smallest closure for a program that embeds Rivet |
 | `tools/` | | A separate dune project: `rivet-tools` (fixtures, oracle, gas-xref, ISA inventory) |
 

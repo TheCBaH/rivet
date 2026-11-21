@@ -1,12 +1,25 @@
 ; The M1.5 differential gate. Reads the committed fixtures and their GNU oracle
 ; artifacts as ordinary files, so this needs no cross toolchain and no emulator
 ; and runs in every leg of the portable matrix.
+;
+; differential is the gate itself, parameterised by the corpus and public (no
+; ppx), so another project can run it over its own compiler's fixtures;
+; test_differential instantiates it for fixtures/gcc-14 and pins the transcripts.
+
+(library
+ (name differential)
+ (public_name rivet.differential)
+ (modules differential)
+ (modes byte native)
+ (libraries driver image target_intf foundation rivet_fmt)
+ (enabled_if
+  (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
  (name test_differential)
  (modules test_differential)
  (modes byte native)
- (libraries driver image target_intf foundation test_dump_inputs rivet_fmt)
+ (libraries differential test_dump_inputs)
  (inline_tests
   (deps
    (glob_files_rec %{workspace_root}/fixtures/gcc-14/**)))
