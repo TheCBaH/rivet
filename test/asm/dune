@@ -32,12 +32,12 @@
   rivet_arm_asm
   rivet_aarch64_encode
   rivet_aarch64_asm
-  x86_family_encode
-  x86_32_encode
-  x86_64_encode
-  x86_asm
-  x86_32_asm
-  x86_64_asm
+  rivet_x86_family_encode
+  rivet_x86_32_encode
+  rivet_x86_64_encode
+  rivet_x86_asm
+  rivet_x86_32_asm
+  rivet_x86_64_asm
   rivet_riscv32_encode
   rivet_riscv64_encode)
  (inline_tests)

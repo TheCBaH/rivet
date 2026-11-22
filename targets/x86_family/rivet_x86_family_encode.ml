@@ -1126,7 +1126,7 @@ module Make (M : MODE) = struct
   let triple = M.triple
 
   (* The constructor modules are re-exported rather than re-declared, so
-     [X86_64.Operand.Reg] and [X86_32.Operand.Reg] are the *same* constructor
+     [Rivet_x86_64.Operand.Reg] and [Rivet_x86_32.Operand.Reg] are the *same* constructor
      of the same type. Two modes that had their own copies would make an AST
      written for one mode fail to typecheck against the other for a reason that
      has nothing to do with the instruction set. *)

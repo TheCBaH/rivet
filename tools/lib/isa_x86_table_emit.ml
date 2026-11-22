@@ -376,8 +376,8 @@ let render_builders ~hand ~bits (rows : Isa_x86_table.spec list) =
             where it\n\
            \   has several shapes, the shape's operand letters. *)\n\n\
             [@@@ocaml.warning \"-32\"]\n\n\
-            open X86_family_encode\n\
-            open X86_asm\n\n"
+            open Rivet_x86_family_encode\n\
+            open Rivet_x86_asm\n\n"
            bits;
        ]
       @ body) )

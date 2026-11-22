@@ -212,13 +212,13 @@ val def :
 
 val mk :
   ?width:int ->
-  X86_family_encode__X86_types.Opcode.t ->
+  Rivet_x86_family_encode__X86_types.Opcode.t ->
   ('a, 'b, 'c, 'd, X86_types.Instruction.t) Shape.t ->
   'c
 
 val mk_e :
   ?width:int ->
-  X86_family_encode__X86_types.Opcode.t ->
+  Rivet_x86_family_encode__X86_types.Opcode.t ->
   ('a, 'b, 'c, 'd, X86_types.Instruction.t) Shape.t ->
   'd
 
@@ -229,7 +229,7 @@ val b :
   ?mode:mode ->
   string ->
   string ->
-  X86_family_encode__X86_types.Opcode.t ->
+  Rivet_x86_family_encode__X86_types.Opcode.t ->
   ('a, 'b, 'c, 'd, X86_types.Instruction.t) Shape.t ->
   builder
 

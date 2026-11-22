@@ -1,8 +1,8 @@
 (* The x86-64 builders: the registers this mode has, by name and by class, and the instruction
    builders that exist in it. *)
 
-open X86_family_encode
-include X86_asm
+open Rivet_x86_family_encode
+include Rivet_x86_asm
 
 (* the generated rows' builders, under the hand-written ones and the register names *)
 module Rows = X86_asm_rows64
@@ -12,7 +12,7 @@ module Gpr64 = Regs (struct
   type t = w64 gpr
 
   let cls = Rclass.Gpr64
-  let registers = base_registers X86_64_encode.Mode.registers
+  let registers = base_registers Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.gpr
   let reg r = (r : t :> Reg.t)
 end)
@@ -38,7 +38,7 @@ module Gpr32 = Regs (struct
   type t = w32 gpr
 
   let cls = Rclass.Gpr32
-  let registers = base_registers X86_64_encode.Mode.registers
+  let registers = base_registers Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.gpr
   let reg r = (r : t :> Reg.t)
 end)
@@ -64,7 +64,7 @@ module Gpr16 = Regs (struct
   type t = w16 gpr
 
   let cls = Rclass.Gpr16
-  let registers = base_registers X86_64_encode.Mode.registers
+  let registers = base_registers Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.gpr
   let reg r = (r : t :> Reg.t)
 end)
@@ -90,7 +90,7 @@ module Gpr8 = Regs (struct
   type t = w8 gpr
 
   let cls = Rclass.Gpr8
-  let registers = base_registers X86_64_encode.Mode.registers
+  let registers = base_registers Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.gpr
   let reg r = (r : t :> Reg.t)
 end)
@@ -116,7 +116,7 @@ module Xmm = Regs (struct
   type t = xmm
 
   let cls = Rclass.Xmm
-  let registers = base_registers X86_64_encode.Mode.registers
+  let registers = base_registers Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.vec
   let reg r = (r : t :> Reg.t)
 end)
@@ -142,7 +142,7 @@ module Ymm = Regs (struct
   type t = ymm
 
   let cls = Rclass.Ymm
-  let registers = base_registers X86_64_encode.Mode.registers
+  let registers = base_registers Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.vec
   let reg r = (r : t :> Reg.t)
 end)
@@ -168,7 +168,7 @@ module Zmm = Regs (struct
   type t = zmm
 
   let cls = Rclass.Zmm
-  let registers = base_registers X86_64_encode.Mode.registers
+  let registers = base_registers Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.vec
   let reg r = (r : t :> Reg.t)
 end)
@@ -194,7 +194,7 @@ module Gpr64_apx = Regs (struct
   type t = w64 agpr
 
   let cls = Rclass.Gpr64
-  let registers = X86_64_encode.Mode.registers
+  let registers = Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.gpr
   let reg r = (r : t :> Reg.t)
 end)
@@ -220,7 +220,7 @@ module Gpr32_apx = Regs (struct
   type t = w32 agpr
 
   let cls = Rclass.Gpr32
-  let registers = X86_64_encode.Mode.registers
+  let registers = Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.gpr
   let reg r = (r : t :> Reg.t)
 end)
@@ -246,7 +246,7 @@ module Gpr16_apx = Regs (struct
   type t = w16 agpr
 
   let cls = Rclass.Gpr16
-  let registers = X86_64_encode.Mode.registers
+  let registers = Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.gpr
   let reg r = (r : t :> Reg.t)
 end)
@@ -272,7 +272,7 @@ module Gpr8_apx = Regs (struct
   type t = w8 agpr
 
   let cls = Rclass.Gpr8
-  let registers = X86_64_encode.Mode.registers
+  let registers = Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.gpr
   let reg r = (r : t :> Reg.t)
 end)
@@ -298,7 +298,7 @@ module Xmm_evex = Regs (struct
   type t = l128 evec
 
   let cls = Rclass.Xmm
-  let registers = X86_64_encode.Mode.registers
+  let registers = Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.vec
   let reg r = (r : t :> Reg.t)
 end)
@@ -324,7 +324,7 @@ module Ymm_evex = Regs (struct
   type t = l256 evec
 
   let cls = Rclass.Ymm
-  let registers = X86_64_encode.Mode.registers
+  let registers = Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.vec
   let reg r = (r : t :> Reg.t)
 end)
@@ -350,7 +350,7 @@ module Zmm_evex = Regs (struct
   type t = l512 evec
 
   let cls = Rclass.Zmm
-  let registers = X86_64_encode.Mode.registers
+  let registers = Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.vec
   let reg r = (r : t :> Reg.t)
 end)
@@ -376,7 +376,7 @@ module Tmm = Regs (struct
   type t = tmm
 
   let cls = Rclass.Tmm
-  let registers = X86_64_encode.Mode.registers
+  let registers = Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.tmm
   let reg r = (r : t :> Reg.t)
 end)
@@ -394,7 +394,7 @@ module Creg = Regs (struct
   type t = creg
 
   let cls = Rclass.Cr
-  let registers = X86_64_encode.Mode.registers
+  let registers = Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.creg
   let reg r = (r : t :> Reg.t)
 end)
@@ -420,7 +420,7 @@ module Dreg = Regs (struct
   type t = dreg
 
   let cls = Rclass.Dr
-  let registers = X86_64_encode.Mode.registers
+  let registers = Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.dreg
   let reg r = (r : t :> Reg.t)
 end)
@@ -438,7 +438,7 @@ module Mmx = Regs (struct
   type t = mmx
 
   let cls = Rclass.Mmx
-  let registers = base_registers X86_64_encode.Mode.registers
+  let registers = base_registers Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.mmx
   let reg r = (r : t :> Reg.t)
 end)
@@ -456,7 +456,7 @@ module Kmask = Regs (struct
   type t = kmask
 
   let cls = Rclass.Kmask
-  let registers = base_registers X86_64_encode.Mode.registers
+  let registers = base_registers Rivet_x86_64_encode.Mode.registers
   let make = View.Unsafe.kmask
   let reg r = (r : t :> Reg.t)
 end)

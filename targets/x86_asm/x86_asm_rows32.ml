@@ -5,8 +5,8 @@
 
 [@@@ocaml.warning "-32"]
 
-open X86_family_encode
-open X86_asm
+open Rivet_x86_family_encode
+open Rivet_x86_asm
 
 let rclb_r8 (a1 : (w8, [< `Lo | `Hi ]) greg) = Rowkit.row 70 [ Rowkit.one; Rowkit.g a1 ]
 let rclw_r16 (a1 : (w16, [< `Lo | `Hi ]) greg) = Rowkit.row 71 [ Rowkit.one; Rowkit.g a1 ]

@@ -7,7 +7,7 @@ let print instruction type_char =
        { Rivet_asm_core.Normalized_ast.unit_name = "m"; items = [] })
 
 let () =
-  print X86_64_encode.Instruction.pp_gnu '@';
+  print Rivet_x86_64_encode.Instruction.pp_gnu '@';
   print Rivet_aarch64_encode.Instruction.pp_gnu '%';
   print Rivet_riscv32_encode.Instruction.pp_gnu '@';
   List.iter

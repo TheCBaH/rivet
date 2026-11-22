@@ -152,7 +152,7 @@ let%expect_test "local labels read back from the GNU print on x86-64 and AArch64
         | Ok a, Ok b -> print_endline (if String.equal a b then "same bytes" else "DIFFERENT")
         | Error m, _ | _, Error m -> print_endline m)
   in
-  let module X = Rivet_text_pipeline.Pipeline.Make (X86_64) in
+  let module X = Rivet_text_pipeline.Pipeline.Make (Rivet_x86_64) in
   let module A = Rivet_text_pipeline.Pipeline.Make (Rivet_aarch64) in
   let simplify_with parse simplify state src =
     match parse ~unit_name:"l" ~source:src with
@@ -162,8 +162,9 @@ let%expect_test "local labels read back from the GNU print on x86-64 and AArch64
   check
     (module X)
     ~type_char:'@'
-    ~simplify:(simplify_with X.parse (fun ~state m -> X.simplify ~state m) X86_64.default_state)
-    ~instruction:X86_64.Instruction.pp_gnu
+    ~simplify:
+      (simplify_with X.parse (fun ~state m -> X.simplify ~state m) Rivet_x86_64.default_state)
+    ~instruction:Rivet_x86_64.Instruction.pp_gnu
     {|
       .text
     1:
@@ -227,13 +228,13 @@ let%expect_test "$ names read back from the GNU print on x86-64 and x86-32" =
             | Ok a, Ok b -> Printf.printf "%s / %s\n" (C.hex a) (C.hex b)
             | Error m, _ | _, Error m -> print_endline m))
   in
-  let module X64 = Rivet_text_pipeline.Pipeline.Make (X86_64) in
-  let module X32 = Rivet_text_pipeline.Pipeline.Make (X86_32) in
+  let module X64 = Rivet_text_pipeline.Pipeline.Make (Rivet_x86_64) in
+  let module X32 = Rivet_text_pipeline.Pipeline.Make (Rivet_x86_32) in
   check
     (module X64)
     ~parse:X64.parse
     ~simplify:(fun ~state m -> X64.simplify ~state m)
-    ~state:X86_64.default_state ~instruction:X86_64.Instruction.pp_gnu
+    ~state:Rivet_x86_64.default_state ~instruction:Rivet_x86_64.Instruction.pp_gnu
     {|
       .text
       .globl $3
@@ -250,7 +251,7 @@ let%expect_test "$ names read back from the GNU print on x86-64 and x86-32" =
     (module X32)
     ~parse:X32.parse
     ~simplify:(fun ~state m -> X32.simplify ~state m)
-    ~state:X86_32.default_state ~instruction:X86_32.Instruction.pp_gnu
+    ~state:Rivet_x86_32.default_state ~instruction:Rivet_x86_32.Instruction.pp_gnu
     {|
       .text
       .globl $3

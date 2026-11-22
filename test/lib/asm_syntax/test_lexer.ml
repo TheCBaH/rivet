@@ -15,7 +15,7 @@
 
 let strings text =
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
-  match Rivet_asm_syntax.Lexer.tokenize ~profile:X86_64.lexical_profile ~source with
+  match Rivet_asm_syntax.Lexer.tokenize ~profile:Rivet_x86_64.lexical_profile ~source with
   | Error e -> Format.printf "error: %a@." Rivet_asm_syntax.Lexer.pp_error e
   | Ok toks ->
       List.iter
@@ -80,7 +80,7 @@ let%expect_test "\\e (not corpus-evidenced) is still rejected, not passed throug
    symbol [$2]). CompCert spells a C identifier [$1] this way. *)
 let tokens text =
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
-  match Rivet_asm_syntax.Lexer.tokenize ~profile:X86_64.lexical_profile ~source with
+  match Rivet_asm_syntax.Lexer.tokenize ~profile:Rivet_x86_64.lexical_profile ~source with
   | Error e -> Format.printf "error: %a@." Rivet_asm_syntax.Lexer.pp_error e
   | Ok toks ->
       List.iter

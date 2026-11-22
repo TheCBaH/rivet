@@ -26,16 +26,16 @@
   rivet_foundation
   rivet_arm
   rivet_aarch64
-  x86_32
-  x86_64
+  rivet_x86_32
+  rivet_x86_64
   rivet_riscv32_encode
   rivet_riscv64_encode
   rivet_riscv64
   rivet_riscv_family_encode
   rivet_riscv_family
-  x86_32_encode
-  x86_64_encode
-  x86_family_encode
+  rivet_x86_32_encode
+  rivet_x86_64_encode
+  rivet_x86_family_encode
   rivet_target_features
   rivet_fmt)
  (inline_tests

@@ -10,9 +10,9 @@
  (files ../../../targets/x86_family/*.mli))
 
 (library
- (name x86_family_encode)
+ (name rivet_x86_family_encode)
  (modules
-  x86_family_encode
+  rivet_x86_family_encode
   x86_types
   x86_ops
   x86_x87
@@ -30,8 +30,8 @@
   (= %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name x86_family)
- (modules x86_family)
+ (name rivet_x86_family)
+ (modules rivet_x86_family)
  (modes byte native melange)
  (libraries
   rivet_foundation
@@ -39,6 +39,6 @@
   rivet_asm_core
   rivet_asm_syntax
   rivet_target_intf
-  x86_family_encode)
+  rivet_x86_family_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

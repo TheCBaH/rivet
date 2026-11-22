@@ -7,8 +7,8 @@
  (files ../../../targets/x86_32/*.ml))
 
 (library
- (name x86_32_encode)
- (modules x86_32_encode)
+ (name rivet_x86_32_encode)
+ (modules rivet_x86_32_encode)
  (modes byte native melange)
  (libraries
   rivet_foundation
@@ -16,20 +16,20 @@
   rivet_asm_core
   rivet_target_error
   rivet_target_encode
-  x86_family_encode)
+  rivet_x86_family_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name x86_32)
- (modules x86_32)
+ (name rivet_x86_32)
+ (modules rivet_x86_32)
  (modes byte native melange)
  (libraries
   rivet_foundation
   rivet_codec
   rivet_asm_core
   rivet_target_intf
-  x86_family
-  x86_32_encode)
+  rivet_x86_family
+  rivet_x86_32_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

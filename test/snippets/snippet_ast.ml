@@ -582,9 +582,9 @@ end
 (* {1 x86}
 
    The prologue is written once for both modes. That is possible because
-   [X86_family_encode.Make] re-exports the family's constructor modules rather
-   than redeclaring them, so [X86_32_encode.Instruction.t] and
-   [X86_64_encode.Instruction.t] are the *same* type and one builder produces
+   [Rivet_x86_family_encode.Make] re-exports the family's constructor modules rather
+   than redeclaring them, so [Rivet_x86_32_encode.Instruction.t] and
+   [Rivet_x86_64_encode.Instruction.t] are the *same* type and one builder produces
    values both assemblers accept. §11 gives the modes different frame
    adjustments and different operand widths; that is all the parameterization
    the shape needs.
@@ -594,7 +594,7 @@ end
    apart in which snippets they even claim to cover. *)
 
 module X86_shared = struct
-  open X86_family_encode
+  open Rivet_x86_family_encode
 
   let insn op width ops : Instruction.t = Instruction.mk op width ops
   let imm n = Operand.Imm (Rivet_foundation.Bigint.of_int n)
@@ -700,9 +700,9 @@ module X86_shared = struct
 end
 
 module X86_64_corpus = struct
-  module A = Make (X86_64_encode)
+  module A = Make (Rivet_x86_64_encode)
 
-  let r n = reg_exn ~target:X86_64_encode.name X86_64_encode.find_reg n
+  let r n = reg_exn ~target:Rivet_x86_64_encode.name Rivet_x86_64_encode.find_reg n
 
   let cases =
     X86_shared.cases
@@ -730,9 +730,9 @@ module X86_64_corpus = struct
 end
 
 module X86_32_corpus = struct
-  module A = Make (X86_32_encode)
+  module A = Make (Rivet_x86_32_encode)
 
-  let r n = reg_exn ~target:X86_32_encode.name X86_32_encode.find_reg n
+  let r n = reg_exn ~target:Rivet_x86_32_encode.name Rivet_x86_32_encode.find_reg n
 
   let cases =
     X86_shared.cases

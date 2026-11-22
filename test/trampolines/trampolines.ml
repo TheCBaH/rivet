@@ -57,11 +57,12 @@ let () =
           (A.lower ~state:Rivet_aarch64_encode.default_state
              (Rivet_aarch64_encode.host_trampolines bindings))
           (fun l -> A.plan ~entry:"host_f" l)));
-  let module X = Rivet_driver_direct.Pipeline_direct.Make (X86_64_encode) in
+  let module X = Rivet_driver_direct.Pipeline_direct.Make (Rivet_x86_64_encode) in
   report "x86_64"
     (Result.map_error Diag.render
        (Result.bind
-          (X.lower ~state:X86_64_encode.default_state (X86_64_encode.host_trampolines bindings))
+          (X.lower ~state:Rivet_x86_64_encode.default_state
+             (Rivet_x86_64_encode.host_trampolines bindings))
           (fun l -> X.plan ~entry:"host_f" l)))
 
 let () = if !failed then exit 1

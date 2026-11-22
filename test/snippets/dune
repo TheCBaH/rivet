@@ -44,8 +44,8 @@
   rivet_image
   rivet_target_encode
   asm_oracle
-  x86_32_encode
-  x86_64_encode
+  rivet_x86_32_encode
+  rivet_x86_64_encode
   rivet_arm_encode
   rivet_aarch64_encode
   rivet_riscv32_encode

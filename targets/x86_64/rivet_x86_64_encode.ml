@@ -12,22 +12,22 @@ module Mode = struct
   let rex_allowed = true
 
   let registers =
-    X86_family_encode.Reg.base_regs Gpr64 8
-    @ X86_family_encode.Reg.extended_regs Gpr64
-    @ X86_family_encode.Reg.base_regs Gpr32 8
-    @ X86_family_encode.Reg.extended_regs Gpr32
-    @ X86_family_encode.Reg.base_regs Gpr16 8
-    @ X86_family_encode.Reg.extended_regs Gpr16
-    @ X86_family_encode.Reg.base_regs Gpr8 8
-    @ X86_family_encode.Reg.extended_regs Gpr8
-    @ X86_family_encode.Reg.base_regs Xmm 16
-    @ X86_family_encode.Reg.base_regs Ymm 16
-    @ X86_family_encode.Reg.base_regs Zmm 16
+    Rivet_x86_family_encode.Reg.base_regs Gpr64 8
+    @ Rivet_x86_family_encode.Reg.extended_regs Gpr64
+    @ Rivet_x86_family_encode.Reg.base_regs Gpr32 8
+    @ Rivet_x86_family_encode.Reg.extended_regs Gpr32
+    @ Rivet_x86_family_encode.Reg.base_regs Gpr16 8
+    @ Rivet_x86_family_encode.Reg.extended_regs Gpr16
+    @ Rivet_x86_family_encode.Reg.base_regs Gpr8 8
+    @ Rivet_x86_family_encode.Reg.extended_regs Gpr8
+    @ Rivet_x86_family_encode.Reg.base_regs Xmm 16
+    @ Rivet_x86_family_encode.Reg.base_regs Ymm 16
+    @ Rivet_x86_family_encode.Reg.base_regs Zmm 16
     (* x87 is available in 64-bit mode too.  As on x86-32, [st(1)] through
        [st(7)] are parsed directly by x86_family rather than enumerated here. *)
-    @ X86_family_encode.Reg.evex_upper
-    @ X86_family_encode.Reg.apx_gprs @ X86_family_encode.Reg.mm_and_k
-    @ [ { X86_family_encode.Reg.cls = St; num = 0 } ]
+    @ Rivet_x86_family_encode.Reg.evex_upper
+    @ Rivet_x86_family_encode.Reg.apx_gprs @ Rivet_x86_family_encode.Reg.mm_and_k
+    @ [ { Rivet_x86_family_encode.Reg.cls = St; num = 0 } ]
 
   (* Measured against x86_64-linux-gnu-as by padding a .align 16 at each
      distance, not copied from a manual: the long-NOP family plus the CS-prefix
@@ -55,4 +55,4 @@ module Mode = struct
   let merge_nop_table = nop_table
 end
 
-include X86_family_encode.Make (Mode)
+include Rivet_x86_family_encode.Make (Mode)

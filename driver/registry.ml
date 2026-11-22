@@ -17,8 +17,8 @@ module T_intf = Rivet_target_intf.Target
 (* Functor application happens once, here, at module level. The four results are
    ordinary modules; packing them into first-class module values below is what
    erases their types. *)
-module X86_32 = Rivet_text_pipeline.Pipeline.Make (X86_32)
-module X86_64 = Rivet_text_pipeline.Pipeline.Make (X86_64)
+module X86_32 = Rivet_text_pipeline.Pipeline.Make (Rivet_x86_32)
+module X86_64 = Rivet_text_pipeline.Pipeline.Make (Rivet_x86_64)
 module Arm = Rivet_text_pipeline.Pipeline.Make (Rivet_arm)
 module Aarch64 = Rivet_text_pipeline.Pipeline.Make (Rivet_aarch64)
 module Riscv32 = Rivet_text_pipeline.Pipeline.Make (Rivet_riscv32)

@@ -1671,18 +1671,18 @@ let%expect_test "movzbl and movsbl from %sil/%dil carry the empty REX" =
    [pp_gnu] spells what both accept. *)
 let%expect_test "pp_gnu spells instructions both GNU as and the text parser read" =
   let origin = Rivet_foundation.Origin.synthesized ~pass:"test" () in
-  let reg n = X86_64.Operand.Reg (Option.get (X86_64.find_reg n)) in
-  let imm n = X86_64.Operand.Imm (Rivet_foundation.Bigint.of_int n) in
+  let reg n = Rivet_x86_64.Operand.Reg (Option.get (Rivet_x86_64.find_reg n)) in
+  let imm n = Rivet_x86_64.Operand.Imm (Rivet_foundation.Bigint.of_int n) in
   let ins mnemonic ops =
-    match X86_64.make_surface_instruction ~mnemonic ~origin ops with
+    match Rivet_x86_64.make_surface_instruction ~mnemonic ~origin ops with
     | Error _ -> failwith mnemonic
     | Ok s -> (
-        match X86_64.simplify_instruction X86_64.default_state s with
+        match Rivet_x86_64.simplify_instruction Rivet_x86_64.default_state s with
         | Ok i -> i
         | Error _ -> failwith mnemonic)
   in
   List.iter
-    (fun i -> Fmt.pr "%a | %a@." X86_64.Instruction.pp i X86_64.Instruction.pp_gnu i)
+    (fun i -> Fmt.pr "%a | %a@." Rivet_x86_64.Instruction.pp i Rivet_x86_64.Instruction.pp_gnu i)
     [
       ins "testl" [ reg "r8d"; reg "r8d" ];
       ins "negq" [ reg "rax" ];
@@ -1734,9 +1734,9 @@ f:
 let%expect_test "a Cfi directive prints for GNU and changes no byte" =
   let origin = Rivet_foundation.Origin.synthesized ~pass:"test" () in
   let ins =
-    match X86_64.make_surface_instruction ~mnemonic:"ret" ~origin [] with
+    match Rivet_x86_64.make_surface_instruction ~mnemonic:"ret" ~origin [] with
     | Ok s -> (
-        match X86_64.simplify_instruction X86_64.default_state s with
+        match Rivet_x86_64.simplify_instruction Rivet_x86_64.default_state s with
         | Ok i -> i
         | Error _ -> failwith "ret")
     | Error _ -> failwith "ret"
@@ -1773,10 +1773,10 @@ let%expect_test "a Cfi directive prints for GNU and changes no byte" =
   print_string
     (Rivet_asm_core.Gnu_module.to_string
        { Rivet_asm_core.Gnu_module.type_char = '@' }
-       ~instruction:X86_64.Instruction.pp_gnu with_cfi);
-  let module P = Rivet_text_pipeline.Pipeline.Make (X86_64) in
+       ~instruction:Rivet_x86_64.Instruction.pp_gnu with_cfi);
+  let module P = Rivet_text_pipeline.Pipeline.Make (Rivet_x86_64) in
   let bytes m =
-    match P.lower ~state:X86_64.default_state m with
+    match P.lower ~state:Rivet_x86_64.default_state m with
     | Error _ -> "lowering failed"
     | Ok l -> (
         match P.plan ~entry:"f" l with
@@ -2764,7 +2764,7 @@ let show_padding name ~to_diag f =
   done
 
 let%expect_test "x86-64 padding matches its own GNU as" =
-  show_padding "x86_64" ~to_diag:X86_64.error_diagnostic X86_64.nop_bytes;
+  show_padding "x86_64" ~to_diag:Rivet_x86_64.error_diagnostic Rivet_x86_64.nop_bytes;
   [%expect
     {|
     x86_64  1: 90
@@ -2782,7 +2782,7 @@ let%expect_test "x86-64 padding matches its own GNU as" =
     |}]
 
 let%expect_test "x86-32 pads with lea forms, not long nops" =
-  show_padding "x86_32" ~to_diag:X86_32.error_diagnostic X86_32.nop_bytes;
+  show_padding "x86_32" ~to_diag:Rivet_x86_32.error_diagnostic Rivet_x86_32.nop_bytes;
   [%expect
     {|
     x86_32  1: 90
@@ -3012,7 +3012,7 @@ let%expect_test "a direct-lowered pin is checked by the codec, not by the parser
     let target =
       Rivet_asm_core.Lowered_ast.Symbolic { value = Rivet_asm_core.Expr.Symbol "foo"; rung }
     in
-    match X86_64.encode (X86_family_encode.Lowered.Jmp_rel { target }) with
+    match Rivet_x86_64.encode (Rivet_x86_family_encode.Lowered.Jmp_rel { target }) with
     | Ok (`Fixed a) ->
         Printf.printf "%-8s %s  %s\n"
           (Option.value rung ~default:"(none)")
@@ -3025,7 +3025,7 @@ let%expect_test "a direct-lowered pin is checked by the codec, not by the parser
           (Option.value rung ~default:"(none)")
           (String.concat ", " (List.map (fun a -> a.Rivet_asm_core.Lowered_ast.form) alts))
     | Error d ->
-        let d = X86_64.error_diagnostic (Err.Error.kind d) in
+        let d = Rivet_x86_64.error_diagnostic (Err.Error.kind d) in
         Printf.printf "%-8s %s: %s\n"
           (Option.value rung ~default:"(none)")
           (Rivet_foundation.Diagnostic.code d)

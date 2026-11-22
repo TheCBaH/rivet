@@ -21,7 +21,7 @@
   rivet_text_pipeline
   rivet_arm
   rivet_aarch64
-  x86_64
+  rivet_x86_64
   rivet_fmt)
  (inline_tests)
  (preprocess

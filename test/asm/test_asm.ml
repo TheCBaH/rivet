@@ -3,8 +3,8 @@
 open Harness
 module Rv32 = Make (Rivet_riscv32_encode)
 module Rv64 = Make (Rivet_riscv64_encode)
-module X32 = Make (X86_32_encode)
-module X64 = Make (X86_64_encode)
+module X32 = Make (Rivet_x86_32_encode)
+module X64 = Make (Rivet_x86_64_encode)
 module Arm = Make (Rivet_arm_encode)
 module A64 = Make (Rivet_aarch64_encode)
 
@@ -24,10 +24,10 @@ let%expect_test "Instruction.mk values encode like their text" =
   (let module E = Rivet_riscv64_encode in
   let x n = E.Operand.Reg (E.Reg.x n) in
   Rv64.check (E.Instruction.mk E.Opcode.Addw [ x 1; x 2; x 3 ]) "addw x1, x2, x3");
-  (let module E = X86_32_encode in
+  (let module E = Rivet_x86_32_encode in
   let r w n = E.Operand.Reg (E.reg_at ~width:w n) in
   X32.check (E.Instruction.mk E.Opcode.Add 32 [ r 32 0; r 32 3 ]) "addl %eax, %ebx");
-  (let module E = X86_64_encode in
+  (let module E = Rivet_x86_64_encode in
   let r w n = E.Operand.Reg (E.reg_at ~width:w n) in
   X64.check (E.Instruction.mk E.Opcode.Add 64 [ r 64 0; r 64 3 ]) "addq %rax, %rbx";
   X64.check (E.Instruction.mk E.Opcode.Mov 32 [ E.Operand.Imm (int 5); r 32 1 ]) "movl $5, %ecx");

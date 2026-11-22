@@ -2,44 +2,44 @@
 ; and per mode its registers and the builders that mode has.
 
 (library
- (name x86_asm)
+ (name rivet_x86_asm)
  (public_name rivet.x86_asm)
- (modules x86_asm)
+ (modules rivet_x86_asm)
  (modes byte native)
  (libraries
   rivet_foundation
   rivet_asm_core
   rivet_target_encode
-  x86_family_encode)
+  rivet_x86_family_encode)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name x86_32_asm)
+ (name rivet_x86_32_asm)
  (public_name rivet.x86_32_asm)
- (modules x86_32_asm x86_asm_rows32)
+ (modules rivet_x86_32_asm x86_asm_rows32)
  (modes byte native)
  (libraries
   rivet_foundation
   rivet_asm_core
   rivet_target_encode
-  x86_family_encode
-  x86_32_encode
-  x86_asm)
+  rivet_x86_family_encode
+  rivet_x86_32_encode
+  rivet_x86_asm)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name x86_64_asm)
+ (name rivet_x86_64_asm)
  (public_name rivet.x86_64_asm)
- (modules x86_64_asm x86_asm_rows64)
+ (modules rivet_x86_64_asm x86_asm_rows64)
  (modes byte native)
  (libraries
   rivet_foundation
   rivet_asm_core
   rivet_target_encode
-  x86_family_encode
-  x86_64_encode
-  x86_asm)
+  rivet_x86_family_encode
+  rivet_x86_64_encode
+  rivet_x86_asm)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

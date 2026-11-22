@@ -10,7 +10,7 @@
   rivet_asm_core
   rivet_driver
   rivet_target_intf
-  x86_64_encode
+  rivet_x86_64_encode
   rivet_aarch64_encode
   rivet_riscv32_encode)
  (enabled_if
@@ -24,7 +24,7 @@
   rivet_asm_core
   rivet_text_pipeline
   rivet_target_encode
-  x86_64
+  rivet_x86_64
   rivet_aarch64
   rivet_riscv32)
  (enabled_if
@@ -38,7 +38,7 @@
   rivet_asm_core
   rivet_driver_direct
   rivet_target_encode
-  x86_64_encode
+  rivet_x86_64_encode
   rivet_aarch64_encode
   rivet_riscv32_encode)
  (enabled_if

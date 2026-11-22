@@ -252,8 +252,8 @@ let%expect_test "component descriptors are structurally clean in every profile" 
   in
   report "riscv32" Rivet_riscv32_encode.components;
   report "riscv64" Rivet_riscv64_encode.components;
-  report "x86_32" X86_32_encode.components;
-  report "x86_64" X86_64_encode.components;
+  report "x86_32" Rivet_x86_32_encode.components;
+  report "x86_64" Rivet_x86_64_encode.components;
   [%expect
     {|
     riscv32: riscv.zmmul feature=zmmul forms=5; riscv.m feature=m forms=8; riscv.f feature=f forms=43; riscv.d feature=d forms=35; riscv.a feature=a forms=22; riscv.zacas feature=zacas forms=20; riscv.zabha feature=zabha forms=72; riscv.q feature=q forms=35; riscv.zfh feature=zfh forms=29; riscv.zfhmin feature=zfhmin forms=10; riscv.zfa feature=zfa forms=33; riscv.zfbfmin feature=zfbfmin forms=2; riscv.zba feature=zba forms=9; riscv.zbb feature=zbb forms=24; riscv.zbs feature=zbs forms=8; riscv.zbc feature=zbc forms=3; riscv.zbkb feature=zbkb forms=6; riscv.zbkc feature=zbkc forms=0; riscv.zbkx feature=zbkx forms=2; riscv.zknd feature=zknd forms=7; riscv.zkne feature=zkne forms=4; riscv.zknh feature=zknh forms=14; riscv.zksed feature=zksed forms=2; riscv.zksh feature=zksh forms=2; riscv.zicond feature=zicond forms=2; riscv.b feature=b forms=0; riscv.zkn feature=zkn forms=0; riscv.zks feature=zks forms=0; riscv.zk feature=zk forms=0; riscv.zicsr feature=zicsr forms=13; riscv.zifencei feature=zifencei forms=1; riscv.zicntr feature=zicntr forms=6; riscv.zihintntl feature=zihintntl forms=8; riscv.zawrs feature=zawrs forms=2; riscv.zimop feature=zimop forms=40; riscv.zicfiss feature=zicfiss forms=13; riscv.zicfilp feature=zicfilp forms=1; riscv.zicbom feature=zicbom forms=3; riscv.zicboz feature=zicboz forms=1; riscv.zicbop feature=zicbop forms=3; riscv.system feature=system forms=2; riscv.s feature=s forms=2; riscv.h feature=h forms=15; riscv.svinval feature=svinval forms=5; riscv.sdext feature=sdext forms=1; riscv.ssctr feature=ssctr forms=1; riscv.zve32x feature=zve32x forms=450; riscv.zve32f feature=zve32f forms=101; riscv.zve64x feature=zve64x forms=76; riscv.zve64f feature=zve64f forms=0; riscv.zve64d feature=zve64d forms=0; riscv.v feature=v forms=0; riscv.zvbb feature=zvbb forms=16; riscv.zvkned feature=zvkned forms=11; riscv.zvbc feature=zvbc forms=4; riscv.zvknha feature=zvknha forms=3; riscv.zvksed feature=zvksed forms=3; riscv.zvkg feature=zvkg forms=2; riscv.zvksh feature=zvksh forms=2; riscv.zvfbfmin feature=zvfbfmin forms=2; riscv.zvfbfwma feature=zvfbfwma forms=2; riscv.zvkb feature=zvkb forms=0; riscv.zvknhb feature=zvknhb forms=0; riscv.zvkn feature=zvkn forms=0; riscv.zvks feature=zvks forms=0; riscv.zvknc feature=zvknc forms=0; riscv.zvkng feature=zvkng forms=0; riscv.zvksc feature=zvksc forms=0; riscv.zvksg feature=zvksg forms=0; riscv.zca feature=zca forms=34; riscv.zcd feature=zcd forms=4; riscv.zcf feature=zcf forms=4; riscv.zcb feature=zcb forms=13; riscv.zcmp feature=zcmp forms=6; riscv.zcmt feature=zcmt forms=1; riscv.zcmop feature=zcmop forms=8; riscv.c feature=c forms=0
@@ -347,7 +347,7 @@ let%expect_test "x86 descriptor labels are all present in the codec dump" =
         components;
       Printf.printf "%s: %d alternatives, all descriptor labels present\n" target
         (List.length labels))
-    [ ("x86_32", X86_32_encode.components); ("x86_64", X86_64_encode.components) ];
+    [ ("x86_32", Rivet_x86_32_encode.components); ("x86_64", Rivet_x86_64_encode.components) ];
   [%expect
     {|
     x86_32: 173 alternatives, all descriptor labels present
@@ -578,10 +578,10 @@ let%expect_test "RISC-V table: AMO ordering suffixes and Zacas register pairs" =
    reached when the hand-written forms decline, so this pins that nothing they emit is
    undecodable. *)
 let%expect_test "generated x86 table rows round-trip through the decoder" =
-  let module Row = X86_family_encode.X86_table_row in
-  let check (type d) target ~mode64 ~(reg : width:int -> int -> X86_family_encode.Reg.t)
-      ~(reg_of : cls:X86_family_encode.Rclass.t -> int -> X86_family_encode.Reg.t)
-      ~(encode : Row.row -> X86_family_encode.Operand.t list -> string option)
+  let module Row = Rivet_x86_family_encode.X86_table_row in
+  let check (type d) target ~mode64 ~(reg : width:int -> int -> Rivet_x86_family_encode.Reg.t)
+      ~(reg_of : cls:Rivet_x86_family_encode.Rclass.t -> int -> Rivet_x86_family_encode.Reg.t)
+      ~(encode : Row.row -> Rivet_x86_family_encode.Operand.t list -> string option)
       ~(decode : string -> (int, d) result) =
     let failures = ref [] and count = ref 0 in
     Array.iter
@@ -592,10 +592,10 @@ let%expect_test "generated x86 table rows round-trip through the decoder" =
               (fun k (o : Row.operand) ->
                 match o with
                 | Reg { cls; _ } ->
-                    X86_family_encode.Operand.Reg
-                      (reg_of ~cls:(X86_family_encode.Rclass.of_row cls) (k + 1))
+                    Rivet_x86_family_encode.Operand.Reg
+                      (reg_of ~cls:(Rivet_x86_family_encode.Rclass.of_row cls) (k + 1))
                 | Fixed_reg name ->
-                    X86_family_encode.Operand.Reg
+                    Rivet_x86_family_encode.Operand.Reg
                       (match name with
                       | "cl" -> reg ~width:8 1
                       | "al" -> reg ~width:8 0
@@ -604,20 +604,23 @@ let%expect_test "generated x86 table rows round-trip through the decoder" =
                       | "dx" -> reg ~width:16 2
                       | _ -> reg ~width:64 0)
                 | Mem _ ->
-                    X86_family_encode.Operand.Mem
-                      (X86_family_encode.Mem.of_base ~disp:(X86_family_encode.Disp.Const 16L)
+                    Rivet_x86_family_encode.Operand.Mem
+                      (Rivet_x86_family_encode.Mem.of_base
+                         ~disp:(Rivet_x86_family_encode.Disp.Const 16L)
                          (reg ~width:(if mode64 then 64 else 32) 3))
-                | Imm _ -> X86_family_encode.Operand.Imm (Rivet_foundation.Bigint.of_int 1)
-                | Rounding { sae_only } -> X86_family_encode.Operand.Rc (if sae_only then 4 else 1)
-                | One -> X86_family_encode.Operand.Imm Rivet_foundation.Bigint.one
-                | Dfv -> X86_family_encode.Operand.Dfv 5
+                | Imm _ -> Rivet_x86_family_encode.Operand.Imm (Rivet_foundation.Bigint.of_int 1)
+                | Rounding { sae_only } ->
+                    Rivet_x86_family_encode.Operand.Rc (if sae_only then 4 else 1)
+                | One -> Rivet_x86_family_encode.Operand.Imm Rivet_foundation.Bigint.one
+                | Dfv -> Rivet_x86_family_encode.Operand.Dfv 5
                 | Vsib { cls } ->
-                    X86_family_encode.Operand.Mem
+                    Rivet_x86_family_encode.Operand.Mem
                       {
-                        X86_family_encode.Mem.base = Some (reg ~width:(if mode64 then 64 else 32) 3);
-                        index = Some (reg_of ~cls:(X86_family_encode.Rclass.of_row cls) 5);
+                        Rivet_x86_family_encode.Mem.base =
+                          Some (reg ~width:(if mode64 then 64 else 32) 3);
+                        index = Some (reg_of ~cls:(Rivet_x86_family_encode.Rclass.of_row cls) 5);
                         scale = 4;
-                        disp = X86_family_encode.Disp.Const 16L;
+                        disp = Rivet_x86_family_encode.Disp.Const 16L;
                       })
               r.operands
           in
@@ -628,23 +631,23 @@ let%expect_test "generated x86 table rows round-trip through the decoder" =
               match decode bytes with
               | Ok len when len = String.length bytes -> ()
               | _ -> failures := r.source :: !failures))
-      X86_family_encode.X86_table_rows.rows;
+      Rivet_x86_family_encode.X86_table_rows.rows;
     Printf.printf "%s: %s\n" target
       (match !failures with [] -> "ok" | fs -> String.concat " " (List.rev fs))
   in
-  check "x86_32" ~mode64:false ~reg:X86_32_encode.reg_at ~reg_of:X86_32_encode.reg_of
-    ~encode:X86_32_encode.table_encode_row ~decode:(fun b ->
+  check "x86_32" ~mode64:false ~reg:Rivet_x86_32_encode.reg_at ~reg_of:Rivet_x86_32_encode.reg_of
+    ~encode:Rivet_x86_32_encode.table_encode_row ~decode:(fun b ->
       Result.map
         (fun (_, _, len) -> len)
-        (X86_32_encode.decode_ungated
-           { state = X86_32_encode.default_state; address = 0L }
+        (Rivet_x86_32_encode.decode_ungated
+           { state = Rivet_x86_32_encode.default_state; address = 0L }
            b ~pos:0));
-  check "x86_64" ~mode64:true ~reg:X86_64_encode.reg_at ~reg_of:X86_64_encode.reg_of
-    ~encode:X86_64_encode.table_encode_row ~decode:(fun b ->
+  check "x86_64" ~mode64:true ~reg:Rivet_x86_64_encode.reg_at ~reg_of:Rivet_x86_64_encode.reg_of
+    ~encode:Rivet_x86_64_encode.table_encode_row ~decode:(fun b ->
       Result.map
         (fun (_, _, len) -> len)
-        (X86_64_encode.decode_ungated
-           { state = X86_64_encode.default_state; address = 0L }
+        (Rivet_x86_64_encode.decode_ungated
+           { state = Rivet_x86_64_encode.default_state; address = 0L }
            b ~pos:0));
   [%expect {|
     x86_32: ok

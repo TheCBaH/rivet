@@ -125,10 +125,10 @@ let () =
    family functor produces one - so listing x86_64 covers both. *)
 
 let () =
-  record "x86 encode" X86_64.error_kind_code
+  record "x86 encode" Rivet_x86_64.error_kind_code
     [
       `Unknown_instruction "m";
-      `Bad_branch_suffix { X86_64.mnemonic = "m"; rungs = [] };
+      `Bad_branch_suffix { Rivet_x86_64.mnemonic = "m"; rungs = [] };
       `No_form "op";
       `Codec `No_form;
       `Decode_no_match;
@@ -136,7 +136,7 @@ let () =
       `No_data_relocation 4;
       `Negative_padding 0;
     ];
-  record "x86 parse" X86_64.parse_error_kind_code [ `Unknown_register "r" ];
+  record "x86 parse" Rivet_x86_64.parse_error_kind_code [ `Unknown_register "r" ];
   record "arm encode" Rivet_arm.error_kind_code
     [
       `Unknown_instruction "m";

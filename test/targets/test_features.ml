@@ -505,7 +505,7 @@ let%expect_test "RISC-V: a refusal at lowering names the item it came from" =
     {| <synthesized by riscv32 from <kernel:peak+8>>: error[riscv32.feature]: mul requires feature zmmul, which is not enabled |}]
 
 let%expect_test "x86: a lowered x87 form is refused at encoding, a base one is not" =
-  let module E = X86_32_encode in
+  let module E = Rivet_x86_32_encode in
   let config text =
     match Rivet_target_features.Config.resolve E.components (spec text) with
     | Ok c -> c

@@ -3,7 +3,7 @@
    APX's and EVEX's upper registers in their own views); memory and EVEX operands print as the
    text they stand for. *)
 
-open X86_family_encode
+open Rivet_x86_family_encode
 
 module type REGS = Rivet_target_encode.REGS
 
@@ -30,7 +30,7 @@ let check ?(upper = false) (type t) mode registers (module R : REGS with type t 
   let covered =
     List.for_all
       (fun (r : Reg.t) -> r.cls <> cls || List.exists (fun v -> Reg.equal (to_reg v) r) R.all)
-      (if upper then registers else X86_asm.base_registers registers)
+      (if upper then registers else Rivet_x86_asm.base_registers registers)
   in
   Printf.printf "%s %-9s %2d [%s .. %s] laws %b parser %b\n" mode
     (Reg.name { Reg.cls; num = List.hd R.numbers })
@@ -41,8 +41,8 @@ let check ?(upper = false) (type t) mode registers (module R : REGS with type t 
     (List.for_all read R.all && covered)
 
 let%expect_test "x86_32 registers" =
-  let regs = X86_32_encode.Mode.registers in
-  let open X86_32_asm in
+  let regs = Rivet_x86_32_encode.Mode.registers in
+  let open Rivet_x86_32_asm in
   check "x86_32" regs (module Gpr32) (fun r -> (r :> Reg.t)) Gpr32;
   check "x86_32" regs (module Gpr16) (fun r -> (r :> Reg.t)) Gpr16;
   check "x86_32" regs (module Gpr8) (fun r -> (r :> Reg.t)) Gpr8;
@@ -73,8 +73,8 @@ let%expect_test "x86_32 registers" =
     x86_32 st         8 [st .. st(7)] laws true parser true |}]
 
 let%expect_test "x86_64 registers" =
-  let regs = X86_64_encode.Mode.registers in
-  let open X86_64_asm in
+  let regs = Rivet_x86_64_encode.Mode.registers in
+  let open Rivet_x86_64_asm in
   check "x86_64" regs (module Gpr64) (fun r -> (r :> Reg.t)) Gpr64;
   check "x86_64" regs (module Gpr32) (fun r -> (r :> Reg.t)) Gpr32;
   check "x86_64" regs (module Gpr16) (fun r -> (r :> Reg.t)) Gpr16;
@@ -119,7 +119,7 @@ let%expect_test "x86_64 registers" =
     x86_64 st         8 [st .. st(7)] laws true parser true |}]
 
 let%expect_test "memory and EVEX operands print as their text" =
-  let open X86_64_asm in
+  let open Rivet_x86_64_asm in
   List.iter
     (fun m -> print_endline (Fmt.str "%a" Mem.pp m))
     [
@@ -131,7 +131,7 @@ let%expect_test "memory and EVEX operands print as their text" =
       abs ~index:rcx ~scale:8 0x1000L;
       rip ~disp:16L ();
       rip_e (Rivet_asm_core.Expr.Symbol "g");
-      X86_32_asm.(mem ~index:esi ~scale:2 ebp);
+      Rivet_x86_32_asm.(mem ~index:esi ~scale:2 ebp);
     ];
   List.iter
     (fun o -> print_endline (Fmt.str "%a" Operand.pp o))
@@ -160,8 +160,8 @@ let%expect_test "memory and EVEX operands print as their text" =
     {sae} |}]
 
 let%expect_test "x86_64 builders read like the text" =
-  let module H = Harness.Make (X86_64_encode) in
-  let open X86_64_asm in
+  let module H = Harness.Make (Rivet_x86_64_encode) in
+  let open Rivet_x86_64_asm in
   let l = Rivet_asm_core.Expr.Symbol "l" in
   List.iter
     (fun (i, t) -> H.check i t)
@@ -222,8 +222,8 @@ let%expect_test "x86_64 builders read like the text" =
     x86_64   cvtsi2sdq %rax, %xmm0        f2 48 0f 2a c0           same |}]
 
 let%expect_test "x86_32 builders read like the text" =
-  let module H = Harness.Make (X86_32_encode) in
-  let open X86_32_asm in
+  let module H = Harness.Make (Rivet_x86_32_encode) in
+  let open Rivet_x86_32_asm in
   List.iter
     (fun (i, t) -> H.check i t)
     [
@@ -267,14 +267,14 @@ let%expect_test "x86_32 builders read like the text" =
 (* Branches: the displacement to the label after the instruction is zero. *)
 let%expect_test "branches to a label" =
   let l = Rivet_asm_core.Expr.Symbol "l" in
-  let module H64 = Harness.Make (X86_64_encode) in
-  let module H32 = Harness.Make (X86_32_encode) in
+  let module H64 = Harness.Make (Rivet_x86_64_encode) in
+  let module H32 = Harness.Make (Rivet_x86_32_encode) in
   let check name same (i, t) =
     Printf.printf "%-8s %-10s %s\n" name t (if same i (t ^ "\nl:") then "same" else "DIFFERENT")
   in
   List.iter
     (check "x86_64" (fun i t -> H64.same_bytes i t))
-    X86_64_asm.
+    Rivet_x86_64_asm.
       [
         (jmp l, "jmp l");
         (je l, "je l");
@@ -284,7 +284,7 @@ let%expect_test "branches to a label" =
       ];
   List.iter
     (check "x86_32" (fun i t -> H32.same_bytes i t))
-    X86_32_asm.[ (jmp l, "jmp l"); (jb l, "jb l"); (loop l, "loop l"); (jecxz l, "jecxz l") ];
+    Rivet_x86_32_asm.[ (jmp l, "jmp l"); (jb l, "jb l"); (loop l, "loop l"); (jecxz l, "jecxz l") ];
   [%expect
     {|
     x86_64   jmp l      same
@@ -298,9 +298,9 @@ let%expect_test "branches to a label" =
     x86_32   jecxz l    same |}]
 
 let%expect_test "generated row builders read like the text" =
-  let module H64 = Harness.Make (X86_64_encode) in
-  let module H32 = Harness.Make (X86_32_encode) in
-  let open X86_64_asm in
+  let module H64 = Harness.Make (Rivet_x86_64_encode) in
+  let module H32 = Harness.Make (Rivet_x86_32_encode) in
+  let open Rivet_x86_64_asm in
   let x16 = Xmm_evex.of_int_exn 16 and z31 = Zmm_evex.of_int_exn 31 in
   List.iter
     (fun (i, t) -> H64.check i t)
@@ -323,7 +323,7 @@ let%expect_test "generated row builders read like the text" =
     ];
   List.iter
     (fun (i, t) -> H32.check i t)
-    X86_32_asm.
+    Rivet_x86_32_asm.
       [
         (cpuid, "cpuid");
         (popcnt_r32r32 ecx edx, "popcnt %ecx, %edx");
@@ -357,8 +357,8 @@ let%expect_test "generated row builders read like the text" =
    refused alike, and [%r12] (REX.X set) stays legal. *)
 
 let%expect_test "%rsp and %esp are rejected as an index, from text, builders and direct forms" =
-  let module H64 = Harness.Make (X86_64_encode) in
-  let module H32 = Harness.Make (X86_32_encode) in
+  let module H64 = Harness.Make (Rivet_x86_64_encode) in
+  let module H32 = Harness.Make (Rivet_x86_32_encode) in
   let show = function Ok b -> Harness.hex b | Error m -> "error: " ^ m in
   let text64 t = show (H64.assemble t) and text32 t = show (H32.assemble t) in
   print_endline (text64 "leaq (%rax,%rsp,2), %rbx");
@@ -366,13 +366,13 @@ let%expect_test "%rsp and %esp are rejected as an index, from text, builders and
   print_endline (text64 "movq (,%rsp,4), %rbx");
   print_endline (text32 "leal (%eax,%esp,2), %ebx");
   print_endline (text32 "leal (%eax,%edi,2), %ebx");
-  let open X86_64_asm in
+  let open Rivet_x86_64_asm in
   print_endline (show (H64.encode (lea_m (mem ~index:rsp ~scale:2 rax) rbx)));
   print_endline (show (H64.encode (lea_m (mem ~index:r12 ~scale:2 rax) rbx)));
   print_endline (show (H64.encode (lea_m (abs ~index:rsp ~scale:4 0x10L) rbx)));
   let direct index =
-    X86_64_encode.encode
-      (X86_64_encode.Lowered.Lea
+    Rivet_x86_64_encode.encode
+      (Rivet_x86_64_encode.Lowered.Lea
          {
            width = 64;
            reg = (Gpr64.of_int_exn 3 :> Reg.t);

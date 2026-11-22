@@ -19,8 +19,8 @@
   rivet_text_pipeline
   rivet_image
   rivet_target_intf
-  x86_32
-  x86_64
+  rivet_x86_32
+  rivet_x86_64
   rivet_arm
   rivet_aarch64
   rivet_riscv32

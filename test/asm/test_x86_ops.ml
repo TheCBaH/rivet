@@ -3,10 +3,10 @@
    A target is the label after the instruction, so a branch's displacement is zero; where the text
    reads it as an absolute address, the bytes agree outside that address. *)
 
-open X86_family_encode
+open Rivet_x86_family_encode
 module Ops = X86_ops
 
-module type ENC = module type of X86_64_encode
+module type ENC = module type of Rivet_x86_64_encode
 
 module Check
     (E : ENC)
@@ -167,14 +167,14 @@ end
 let%expect_test "every builder's sample encodes like its text in both modes" =
   let module C32 =
     Check
-      (X86_32_encode)
+      (Rivet_x86_32_encode)
       (struct
         let bits = 32
       end)
   in
   let module C64 =
     Check
-      (X86_64_encode)
+      (Rivet_x86_64_encode)
       (struct
         let bits = 64
       end)
@@ -195,14 +195,14 @@ let%expect_test "every builder's sample encodes like its text in both modes" =
 let%expect_test "decoding a sample reads back as text with the same bytes" =
   let module C32 =
     Check
-      (X86_32_encode)
+      (Rivet_x86_32_encode)
       (struct
         let bits = 32
       end)
   in
   let module C64 =
     Check
-      (X86_64_encode)
+      (Rivet_x86_64_encode)
       (struct
         let bits = 64
       end)
@@ -219,7 +219,7 @@ let%expect_test "decoding a sample reads back as text with the same bytes" =
 (* What the encoder reads from the table: each table names one opcode per byte, the x87 component
    publishes exactly the opcodes the table gives it, and the gated encoder agrees. *)
 let%expect_test "the encoder's views of the table" =
-  let module E = X86_64_encode in
+  let module E = Rivet_x86_64_encode in
   let clashes = ref [] in
   Array.iter
     (fun (e : Ops.entry) ->

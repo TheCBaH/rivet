@@ -6,7 +6,7 @@ let print instruction type_char =
        ~instruction
        { Rivet_asm_core.Normalized_ast.unit_name = "m"; items = [] })
 
-module X = Rivet_text_pipeline.Pipeline.Make (X86_64)
+module X = Rivet_text_pipeline.Pipeline.Make (Rivet_x86_64)
 module A = Rivet_text_pipeline.Pipeline.Make (Rivet_aarch64)
 module R = Rivet_text_pipeline.Pipeline.Make (Rivet_riscv32)
 
@@ -15,7 +15,7 @@ let show = function
   | Error _ -> ()
 
 let () =
-  print X86_64.Instruction.pp_gnu '@';
+  print Rivet_x86_64.Instruction.pp_gnu '@';
   print Rivet_aarch64.Instruction.pp_gnu '%';
   print Rivet_riscv32.Instruction.pp_gnu '@';
   let b = "\x13\x05\x15\x00" in

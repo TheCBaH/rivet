@@ -2,7 +2,7 @@
    position and prefix, and every fixed field (REX.W, VEX.L, ModR/M digit, mode) equal or
    unconstrained in one of them. Every overlap must be listed here, so a new row cannot shadow
    another by accident. *)
-module Row = X86_family_encode.X86_table_row
+module Row = Rivet_x86_family_encode.X86_table_row
 
 let modrm_form (r : Row.row) =
   if List.exists (function Row.Mem _ | Row.Vsib _ -> true | _ -> false) r.operands then `Memory
@@ -44,7 +44,7 @@ let overlap (a : Row.row) (b : Row.row) =
 let approved = [ ("NOP_90", "XCHG_GPRv_OrAX"); ("XCHG_GPRv_OrAX", "XCHG_GPRv_OrAX") ]
 
 let%expect_test "generated x86 rows that overlap are all approved" =
-  let rows = X86_family_encode.X86_table_rows.rows in
+  let rows = Rivet_x86_family_encode.X86_table_rows.rows in
   let by_position = Hashtbl.create 4096 in
   Array.iteri
     (fun i (r : Row.row) ->

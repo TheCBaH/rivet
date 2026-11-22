@@ -1,6 +1,6 @@
 (* The x86 front end: how AT&T source text becomes operands.
 
-   {!X86_family_encode} is the rest of the family - the constructor modules, the
+   {!Rivet_x86_family_encode} is the rest of the family - the constructor modules, the
    codec, and everything that turns an instruction into bytes - and this file is
    what {!Target.TARGET} adds on top of {!Rivet_target_encode.ENCODE}: a lexical
    profile, an operand parser, and a directive handler. The two are separate
@@ -11,21 +11,21 @@
    The mode functor is applied here as well as there, which costs a second copy
    of the encoder's closures and nothing else: every type the two applications
    produce comes from the family's *top-level* constructor modules, so
-   [X86_32.Instruction.t] and [X86_32_encode.Instruction.t] are the same type,
-   exactly as [X86_32.Instruction.t] and [X86_64.Instruction.t] already were. *)
+   [Rivet_x86_32.Instruction.t] and [Rivet_x86_32_encode.Instruction.t] are the same type,
+   exactly as [Rivet_x86_32.Instruction.t] and [Rivet_x86_64.Instruction.t] already were. *)
 
 open Rivet_foundation
 
-module type MODE = X86_family_encode.MODE
+module type MODE = Rivet_x86_family_encode.MODE
 
 (* Opened rather than aliased module by module: the parser below was written as
    part of the family and reads its constructor modules, its register helpers
    and [rip_reg] as plain names. What the split moved is where the code lives,
    not what it may see. *)
-open X86_family_encode
+open Rivet_x86_family_encode
 
 module Make (M : MODE) = struct
-  include X86_family_encode.Make (M)
+  include Rivet_x86_family_encode.Make (M)
 
   (* The front end's error domain (docs/errors.md). Separate from the
      encoder's because it may name {!Rivet_asm_syntax} and the encoder's may not - see

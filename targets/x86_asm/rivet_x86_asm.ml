@@ -1,13 +1,13 @@
 (* What the x86 builder libraries share: the typed register views, the register classes' numbers,
-   memory and EVEX operands, and the builders that take a condition. {!X86_32_asm} and
-   {!X86_64_asm} name the registers each mode has and its builders: one per operand shape, in AT&T
+   memory and EVEX operands, and the builders that take a condition. {!Rivet_x86_32_asm} and
+   {!Rivet_x86_64_asm} name the registers each mode has and its builders: one per operand shape, in AT&T
    order, named by the mnemonic and a suffix for the shape's immediates ([i]), memory ([m]),
    symbols ([s]), [%cl] ([cl]) and leading registers ([rm]: a register into memory). A builder's
    width is its general registers', or its size letter where none fixes it ([addl_im]); 32- and
    64-bit immediates are [int64], an [_e] builder takes an {!Rivet_asm_core.Expr.t}. *)
 
 open Rivet_foundation
-open X86_family_encode
+open Rivet_x86_family_encode
 module View = X86_ops.View
 
 type w8 = View.w8
