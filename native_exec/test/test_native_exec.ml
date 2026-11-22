@@ -19,7 +19,7 @@ let for_host ~aarch64 ~x86_64 ~riscv64 =
   | h -> failwith ("no hand-written program for " ^ h)
 
 let assemble text =
-  let (module D : Rivet_target_intf.Target.DRIVER) = Option.get (Driver.Registry.find host) in
+  let (module D : Rivet_target_intf.Target.DRIVER) = Option.get (Rivet_driver.Registry.find host) in
   let source = Rivet_foundation.Span.source ~name:"hand.s" ~contents:text in
   match D.assemble ~entry:"entry" ~unit_name:"hand" ~source () with
   | Ok l -> l
@@ -432,7 +432,9 @@ let%expect_test "globals are read from the live mapping between calls" =
 (* {1 Host symbols} *)
 
 let assemble_units target units =
-  let (module D : Rivet_target_intf.Target.DRIVER) = Option.get (Driver.Registry.find target) in
+  let (module D : Rivet_target_intf.Target.DRIVER) =
+    Option.get (Rivet_driver.Registry.find target)
+  in
   let units =
     List.map (fun (name, text) -> (name, Rivet_foundation.Span.source ~name ~contents:text)) units
   in

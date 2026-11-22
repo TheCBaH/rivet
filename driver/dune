@@ -1,5 +1,5 @@
 (library
- (name driver)
+ (name rivet_driver)
  (public_name rivet.driver)
  (modes byte native)
  (libraries
@@ -7,8 +7,8 @@
   rivet_codec
   rivet_asm_core
   rivet_asm_syntax
-  driver_direct
-  text_pipeline
+  rivet_driver_direct
+  rivet_text_pipeline
   rivet_image
   rivet_target_intf
   x86_32

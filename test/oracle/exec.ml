@@ -130,7 +130,9 @@ let units_of dir =
 let assemble profile case =
   let name = target_of_profile profile in
   let (module D : Rivet_target_intf.Target.DRIVER) =
-    match Driver.Registry.find name with Some d -> d | None -> failwith ("no such target: " ^ name)
+    match Rivet_driver.Registry.find name with
+    | Some d -> d
+    | None -> failwith ("no such target: " ^ name)
   in
   let dir = Filename.concat (Filename.concat corpus_root case) name in
   let units = units_of dir in

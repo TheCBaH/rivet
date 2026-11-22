@@ -28,7 +28,7 @@
   codec_corpus
   rivet_asm_core
   rivet_image
-  driver
+  rivet_driver
   rivet_foundation
   rivet_fmt)
  (enabled_if

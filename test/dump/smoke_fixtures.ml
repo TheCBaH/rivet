@@ -21,22 +21,24 @@ b:
 	.zero 8
 |}
 
-let summarize (m : Driver.Portable.manifest) : string =
+let summarize (m : Rivet_driver.Portable.manifest) : string =
   let buf = Buffer.create 256 in
   Buffer.add_string buf
-    (Printf.sprintf "target=%s entry=%s\n" m.Driver.Portable.target
-       (match m.Driver.Portable.entry with Some e -> Printf.sprintf "0x%Lx" e | None -> "none"));
+    (Printf.sprintf "target=%s entry=%s\n" m.Rivet_driver.Portable.target
+       (match m.Rivet_driver.Portable.entry with
+       | Some e -> Printf.sprintf "0x%Lx" e
+       | None -> "none"));
   Buffer.add_string buf
     (Printf.sprintf "exports: %s\n"
-       (match m.Driver.Portable.exports with
+       (match m.Rivet_driver.Portable.exports with
        | [] -> "none"
        | l -> String.concat ", " (List.map (fun (n, a) -> Printf.sprintf "%s=0x%Lx" n a) l)));
   List.iter
-    (fun (s : Driver.Portable.manifest_segment) ->
+    (fun (s : Rivet_driver.Portable.manifest_segment) ->
       Buffer.add_string buf
-        (Printf.sprintf "%-6s address=0x%-10Lx bytes=%d %s\n" s.Driver.Portable.name
-           s.Driver.Portable.address
-           (String.length s.Driver.Portable.bytes)
-           (Rivet_asm_core.Perms.to_string s.Driver.Portable.perms)))
-    m.Driver.Portable.segments;
+        (Printf.sprintf "%-6s address=0x%-10Lx bytes=%d %s\n" s.Rivet_driver.Portable.name
+           s.Rivet_driver.Portable.address
+           (String.length s.Rivet_driver.Portable.bytes)
+           (Rivet_asm_core.Perms.to_string s.Rivet_driver.Portable.perms)))
+    m.Rivet_driver.Portable.segments;
   Buffer.contents buf

@@ -16,9 +16,9 @@
   test_typed_isa)
  (modes byte native)
  (libraries
-  driver
-  driver_direct
-  text_pipeline
+  rivet_driver
+  rivet_driver_direct
+  rivet_text_pipeline
   rivet_image
   rivet_asm_core
   rivet_target_intf

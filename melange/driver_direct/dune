@@ -5,7 +5,7 @@
  (files ../../driver_direct/*.ml))
 
 (library
- (name driver_direct)
+ (name rivet_driver_direct)
  (modes byte native melange)
  (libraries
   rivet_foundation

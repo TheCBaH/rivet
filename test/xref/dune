@@ -14,7 +14,12 @@
  (name test_xref)
  (modules test_xref)
  (modes byte native)
- (libraries driver rivet_image rivet_target_intf rivet_foundation rivet_fmt)
+ (libraries
+  rivet_driver
+  rivet_image
+  rivet_target_intf
+  rivet_foundation
+  rivet_fmt)
  (inline_tests
   (deps
    (glob_files_rec %{workspace_root}/fixtures/gas-xref/**)))

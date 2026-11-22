@@ -23,7 +23,7 @@
   rivet_foundation
   rivet_image
   rivet_target_intf
-  driver
+  rivet_driver
   test_dump_inputs
   smoke_fixtures)
  (enabled_if

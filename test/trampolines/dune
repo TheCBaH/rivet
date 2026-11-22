@@ -8,8 +8,8 @@
  (modes byte native)
  (libraries
   native_exec
-  driver
-  driver_direct
+  rivet_driver
+  rivet_driver_direct
   aarch64_encode
   x86_64_encode
   rivet_target_intf

@@ -124,7 +124,7 @@
  (libraries
   asm_oracle
   asm_oracle_run
-  driver
+  rivet_driver
   rivet_image
   rivet_target_intf
   rivet_foundation

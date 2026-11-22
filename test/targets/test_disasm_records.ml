@@ -2,7 +2,8 @@
 
 module T = Rivet_target_intf.Target
 
-let driver target = match Driver.Registry.find target with Some d -> d | None -> failwith target
+let driver target =
+  match Rivet_driver.Registry.find target with Some d -> d | None -> failwith target
 
 let render ds =
   String.concat "; "

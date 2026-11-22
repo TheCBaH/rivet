@@ -12,7 +12,7 @@
  (modules test_coherence)
  (modes byte native)
  (libraries
-  driver
+  rivet_driver
   rivet_image
   rivet_asm_core
   aarch64

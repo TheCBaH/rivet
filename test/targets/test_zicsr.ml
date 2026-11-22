@@ -1,7 +1,8 @@
 (* Zicsr words read back as text: each line assembles, decodes to the same text, and that text
    assembles to the same word. The aliases are the ones the assembler takes. *)
 
-let driver target = match Driver.Registry.find target with Some d -> d | None -> failwith target
+let driver target =
+  match Rivet_driver.Registry.find target with Some d -> d | None -> failwith target
 
 let render ds =
   String.concat "; "

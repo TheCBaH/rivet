@@ -1,6 +1,6 @@
 (* The js_of_ocaml adapter (docs/design.md §11.6).
 
-   A thin alias of Driver.Portable, and deliberately free of any js_of_ocaml
+   A thin alias of Rivet_driver.Portable, and deliberately free of any js_of_ocaml
    *binding*. The API it exposes is plain OCaml over strings and int64s: nothing
    here mentions a JavaScript value, a typed array, or a runtime stub.
 
@@ -16,4 +16,4 @@
    re-export one implementation, so there is no second surface to keep in step
    and the three-build gate is comparing one program. *)
 
-include Driver.Portable
+include Rivet_driver.Portable

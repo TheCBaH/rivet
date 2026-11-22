@@ -2,7 +2,7 @@
    decode to, and whether an instruction and its text agree. *)
 
 let driver target =
-  match Driver.Registry.find target with Some d -> d | None -> invalid_arg target
+  match Rivet_driver.Registry.find target with Some d -> d | None -> invalid_arg target
 
 let render ds =
   String.concat "; "

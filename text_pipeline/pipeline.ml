@@ -20,7 +20,7 @@ module T_intf = Rivet_target_intf.Target
 module Make (T : T_intf.TARGET) = struct
   (* The stages below source text are {!Pipeline_direct}'s, over this target's
      encoding half; what follows adds the front end. *)
-  module D = Driver_direct.Pipeline_direct.Make (T)
+  module D = Rivet_driver_direct.Pipeline_direct.Make (T)
   include D
 
   (* The pipeline's own error domain (docs/errors.md): the direct stages' and

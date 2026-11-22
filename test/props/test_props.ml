@@ -315,13 +315,13 @@ let prop_relax_stable =
 let rung_at ~gap =
   let filler = String.concat "" (List.init gap (fun _ -> "\tret\n")) in
   let text = Printf.sprintf "\t.text\nentry:\n\tjmp far\n%sfar:\n\tret\n" filler in
-  match Driver.Portable.assemble "x86_64" ~unit_name:"p" ~text with
+  match Rivet_driver.Portable.assemble "x86_64" ~unit_name:"p" ~text with
   | Error _ -> None
   | Ok p -> (
-      match Driver.Portable.bind_at p ~base:0x400000L with
+      match Rivet_driver.Portable.bind_at p ~base:0x400000L with
       | Error _ -> None
       | Ok b -> (
-          match Driver.Portable.section_bytes b ".text" with
+          match Rivet_driver.Portable.section_bytes b ".text" with
           | Some s when String.length s > 0 -> Some (Char.code s.[0])
           | _ -> None))
 

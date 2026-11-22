@@ -5,15 +5,14 @@
  (files ../../text_pipeline/*.ml))
 
 (library
- (name text_pipeline)
- (wrapped false)
+ (name rivet_text_pipeline)
  (modes byte native melange)
  (libraries
   rivet_foundation
   rivet_codec
   rivet_asm_core
   rivet_asm_syntax
-  driver_direct
+  rivet_driver_direct
   rivet_image
   rivet_target_intf
   rivet_fmt)

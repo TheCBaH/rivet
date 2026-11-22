@@ -1,4 +1,4 @@
-(* The three-build equality driver for Driver.Portable.manifest (docs/design.md
+(* The three-build equality driver for Rivet_driver.Portable.manifest (docs/design.md
    M4 Phase 8). Same shape as asm_dump.ml - one source, compiled native,
    js_of_ocaml, and Melange, with one committed cram baseline the three builds
    are checked against.
@@ -10,14 +10,14 @@
 let ok = function
   | Ok v -> v
   | Error e ->
-      print_string (Driver.Portable.render_error (Err.Error.kind e));
+      print_string (Rivet_driver.Portable.render_error (Err.Error.kind e));
       exit 1
 
 let () =
   let p =
     ok
-      (Driver.Portable.assemble ~entry:"start" "x86_64" ~unit_name:"m"
+      (Rivet_driver.Portable.assemble ~entry:"start" "x86_64" ~unit_name:"m"
          ~text:Smoke_fixtures.multi_segment_source)
   in
-  let b = ok (Driver.Portable.bind_sequential p ~base:0x400000L ~gap:0) in
-  print_string (Smoke_fixtures.summarize (Driver.Portable.manifest b))
+  let b = ok (Rivet_driver.Portable.bind_sequential p ~base:0x400000L ~gap:0) in
+  print_string (Smoke_fixtures.summarize (Rivet_driver.Portable.manifest b))

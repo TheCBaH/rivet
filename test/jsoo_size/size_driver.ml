@@ -12,7 +12,7 @@ let () =
   print Riscv32_encode.Instruction.pp_gnu '@';
   List.iter
     (fun t ->
-      match Driver.Portable.disassemble_records_for t ~address:0L "\x13\x05\x15\x00" with
+      match Rivet_driver.Portable.disassemble_records_for t ~address:0L "\x13\x05\x15\x00" with
       | Ok rs ->
           List.iter (fun (r : Rivet_target_intf.Target.disasm_record) -> print_endline r.text) rs
       | Error _ -> ())

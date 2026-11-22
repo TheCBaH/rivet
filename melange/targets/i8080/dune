@@ -50,7 +50,7 @@
   rivet_foundation
   rivet_asm_core
   rivet_image
-  driver_direct
+  rivet_driver_direct
   i8080_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
@@ -64,7 +64,7 @@
   rivet_asm_core
   rivet_asm_syntax
   rivet_image
-  text_pipeline
+  rivet_text_pipeline
   i8080
   i8080_asm)
  (enabled_if

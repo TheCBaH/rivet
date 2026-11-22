@@ -5,16 +5,15 @@
 ; each registered target.
 
 (library
- (name text_pipeline)
+ (name rivet_text_pipeline)
  (public_name rivet.text_pipeline)
- (wrapped false)
  (modes byte native)
  (libraries
   rivet_foundation
   rivet_codec
   rivet_asm_core
   rivet_asm_syntax
-  driver_direct
+  rivet_driver_direct
   rivet_image
   rivet_target_intf
   rivet_fmt)

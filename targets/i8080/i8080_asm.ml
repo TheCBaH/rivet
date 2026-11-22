@@ -374,7 +374,7 @@ module Program = struct
             }
     | _ -> fail `Many_sections
 
-  module P = Driver_direct.Pipeline_direct.Make (E)
+  module P = Rivet_driver_direct.Pipeline_direct.Make (E)
 
   let normalized ~unit_name items =
     let origin = synthesized () in

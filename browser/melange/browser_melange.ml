@@ -1,6 +1,6 @@
 (* The Melange adapter (docs/design.md §11.6).
 
-   The same alias of Driver.Portable that browser/jsoo exposes, for the same
+   The same alias of Rivet_driver.Portable that browser/jsoo exposes, for the same
    reasons; see that file for why neither carries a backend binding.
 
    Note the two trees. This is the adapter *package*; it is mirrored again under
@@ -9,4 +9,4 @@
    length). So the same source is compiled by three stanzas and there is still
    exactly one copy of it. *)
 
-include Driver.Portable
+include Rivet_driver.Portable

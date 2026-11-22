@@ -10,7 +10,7 @@
 
 open Rivet_foundation
 open Rivet_asm_core
-module P = Pipeline.Make (I8080)
+module P = Rivet_text_pipeline.Pipeline.Make (I8080)
 
 type image = { origin : int; bytes : string }
 

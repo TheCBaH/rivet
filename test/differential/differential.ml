@@ -438,7 +438,9 @@ module Make (C : CORPUS) = struct
           | _ -> None)
 
   let target_of_name name =
-    match Driver.Registry.find name with Some d -> d | None -> failwith ("no such target: " ^ name)
+    match Rivet_driver.Registry.find name with
+    | Some d -> d
+    | None -> failwith ("no such target: " ^ name)
 
   (* X1's convention: every case's entry is a zero-argument [asm_test_entry].
    Naming it explicitly rather than inferring it is the point - three of the M2

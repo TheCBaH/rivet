@@ -4,7 +4,7 @@
 ; text pipeline in driver includes it.
 
 (library
- (name driver_direct)
+ (name rivet_driver_direct)
  (public_name rivet.driver_direct)
  (modes byte native)
  (libraries

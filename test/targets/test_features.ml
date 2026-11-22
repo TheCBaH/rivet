@@ -6,7 +6,8 @@
    forms handed to the encoder, and bytes handed to the decoder. Feature enforcement that only
    filtered the text front end would pass the first section and fail the rest. *)
 
-let driver target = match Driver.Registry.find target with Some d -> d | None -> failwith target
+let driver target =
+  match Rivet_driver.Registry.find target with Some d -> d | None -> failwith target
 
 let render ds =
   String.concat "; "
@@ -465,7 +466,7 @@ let%expect_test "RISC-V: a normalized instruction is refused at lowering, a lowe
 
 let%expect_test "RISC-V: a refusal at lowering names the item it came from" =
   let module E = Riscv32_encode in
-  let module P = Driver_direct.Pipeline_direct.Make (E) in
+  let module P = Rivet_driver_direct.Pipeline_direct.Make (E) in
   let open Rivet_asm_core in
   let config =
     match Rivet_target_features.Config.resolve E.components (spec "none") with
@@ -783,7 +784,7 @@ let%expect_test "RISC-V .option arch cannot enable past the maximum configuratio
 
 (* A producer that hands lowering a module directly is held to the same maximum. *)
 let%expect_test "lowering refuses an initial state past the maximum configuration" =
-  let module P = Pipeline.Make (Riscv32) in
+  let module P = Rivet_text_pipeline.Pipeline.Make (Riscv32) in
   let ceiling = Result.get_ok (P.configure (spec "none,+m,+f")) in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:{|
       .text
@@ -886,7 +887,7 @@ let%expect_test "the default configuration is pinned" =
             (String.concat ","
                (List.map (fun (c : Rivet_target_features.Component.t) -> c.id) D.components))
       | Error m -> Printf.printf "%-8s error: %s\n" D.name m)
-    Driver.Registry.drivers;
+    Rivet_driver.Registry.drivers;
   [%expect
     {|
     x86_32   enabled=[x87] components=[x86.x87]
@@ -1985,7 +1986,7 @@ let%expect_test "ISA strings: every standard feature has a version" =
 (* The erased request reaches the same options the direct pipeline has: features, externs,
    exports, a size limit, and at bind imports. *)
 let%expect_test "Portable carries the whole request" =
-  let module P = Driver.Portable in
+  let module P = Rivet_driver.Portable in
   let show = function
     | Ok s -> print_endline s
     | Error e -> print_endline (P.render_error (Err.Error.kind e))

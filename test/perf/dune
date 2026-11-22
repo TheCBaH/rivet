@@ -13,7 +13,7 @@
 (executables
  (names test_parse_perf test_assemble_perf)
  (modes exe)
- (libraries driver unix)
+ (libraries rivet_driver unix)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 

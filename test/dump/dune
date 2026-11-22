@@ -25,7 +25,7 @@
   rivet_foundation
   rivet_image
   rivet_target_intf
-  driver
+  rivet_driver
   test_dump_inputs
   rivet_fmt))
 
@@ -40,7 +40,7 @@
  (name smoke_fixtures)
  (modules smoke_fixtures)
  (modes byte native)
- (libraries driver rivet_asm_core rivet_fmt)
+ (libraries rivet_driver rivet_asm_core rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -53,4 +53,9 @@
  (names manifest_dump)
  (modules manifest_dump)
  (modes exe js)
- (libraries rivet_foundation driver rivet_asm_core rivet_fmt smoke_fixtures))
+ (libraries
+  rivet_foundation
+  rivet_driver
+  rivet_asm_core
+  rivet_fmt
+  smoke_fixtures))

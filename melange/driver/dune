@@ -8,15 +8,15 @@
  (files ../../driver/*.mli))
 
 (library
- (name driver)
+ (name rivet_driver)
  (modes byte native melange)
  (libraries
   rivet_foundation
   rivet_codec
   rivet_asm_core
   rivet_asm_syntax
-  driver_direct
-  text_pipeline
+  rivet_driver_direct
+  rivet_text_pipeline
   rivet_image
   rivet_target_intf
   x86_32

@@ -25,7 +25,7 @@ let banner title = Printf.printf "########## %s\n" title
 
 let run (i : Test_dump_inputs.input) =
   let (module D : Rivet_target_intf.Target.DRIVER) =
-    match Driver.Registry.find i.target with Some d -> d | None -> exit 1
+    match Rivet_driver.Registry.find i.target with Some d -> d | None -> exit 1
   in
   let name = i.target ^ " " ^ i.case in
   let source = Rivet_foundation.Span.source ~name:i.file ~contents:i.text in

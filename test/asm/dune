@@ -17,7 +17,7 @@
   test_aarch64_asm)
  (modes byte native)
  (libraries
-  driver
+  rivet_driver
   rivet_image
   rivet_asm_core
   rivet_target_intf

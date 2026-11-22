@@ -167,22 +167,22 @@ let () =
    CLI runs and not a second instantiation. *)
 
 let () =
-  record "Pipeline" Driver.Registry.X86_64.error_code
+  record "Pipeline" Rivet_driver.Registry.X86_64.error_code
     [
       `Local_label_survived 1;
       `Expression (`Arithmetic `Division_by_zero);
       `Assignment_out_of_scope "s";
       `Unknown_directive ".d";
-      `Directive_rejected { Directives.code = None; message = ""; reasons = [] };
+      `Directive_rejected { Rivet_text_pipeline.Directives.code = None; message = ""; reasons = [] };
       `Statement_before_section;
       `Data_fixup "";
       `Section_attributes_changed ".s";
       `Directive_not_accepted ".d";
       `Relax_ladder `Empty_ladder;
     ];
-  record "Portable" Driver.Portable.error_code
+  record "Portable" Rivet_driver.Portable.error_code
     [
-      `Unknown_target { Driver.Portable.requested = "t"; known = [] };
+      `Unknown_target { Rivet_driver.Portable.requested = "t"; known = [] };
       `Bind_multi_segment [];
       `Diagnostics [];
     ]
@@ -192,13 +192,13 @@ let%expect_test ".size keeps its typed expression failure" =
   let span = Span.of_offset ~source ~offset:0 ~length:1 in
   let symbol = Rivet_asm_syntax.Token.make (Rivet_asm_syntax.Token.Ident "s") span in
   (match
-     Directives.normalize ~data_widths:[] ~align_unit:Rivet_asm_core.Directive.Bytes ~name:".size"
-       ~arguments:[ [ symbol ]; [] ]
+     Rivet_text_pipeline.Directives.normalize ~data_widths:[]
+       ~align_unit:Rivet_asm_core.Directive.Bytes ~name:".size" ~arguments:[ [ symbol ]; [] ]
    with
   | Error error ->
       let rejection = Err.Error.kind error in
-      Fmt.pr "%a; typed-cause=%b@." Directives.pp_rejection rejection
-        (match rejection.Directives.reasons with
+      Fmt.pr "%a; typed-cause=%b@." Rivet_text_pipeline.Directives.pp_rejection rejection
+        (match rejection.Rivet_text_pipeline.Directives.reasons with
         | [ reason ] -> Err.Error.kind reason = `Empty_expression
         | _ -> false)
   | Ok _ -> Fmt.pr "unexpected success@.");
@@ -209,14 +209,14 @@ let%expect_test "data directives accumulate every expression failure" =
   let span = Span.of_offset ~source ~offset:0 ~length:1 in
   let plus = Rivet_asm_syntax.Token.make Rivet_asm_syntax.Token.Plus span in
   (match
-     Directives.normalize
+     Rivet_text_pipeline.Directives.normalize
        ~data_widths:[ (".long", 4) ]
        ~align_unit:Rivet_asm_core.Directive.Bytes ~name:".long" ~arguments:[ []; [ plus ] ]
    with
   | Error error ->
       let rejection = Err.Error.kind error in
-      Fmt.pr "%a; typed-causes=%b@." Directives.pp_rejection rejection
-        (match rejection.Directives.reasons with
+      Fmt.pr "%a; typed-causes=%b@." Rivet_text_pipeline.Directives.pp_rejection rejection
+        (match rejection.Rivet_text_pipeline.Directives.reasons with
         | [ first; second ] -> (
             match (Err.Error.kind first, Err.Error.kind second) with
             | `Empty_expression, `Malformed_expression _ -> true

@@ -5,7 +5,7 @@
    non-production tree. This is where file I/O is allowed to live. §9's rule is
    that none of it leaks back into a library, which is why the whole of this file
    is argument handling, reading a file, and printing - every decision it makes
-   is made in [Driver].
+   is made in [Rivet_driver].
 
    Argument parsing is hand-written rather than cmdliner. The production closure
    must build under Melange and js_of_ocaml, and a dependency added "only for the
@@ -17,7 +17,7 @@ let usage =
     [
       "usage: asm --target <t> [options] <file.s>";
       "";
-      "  --target <t>            one of: " ^ String.concat ", " Driver.Registry.names;
+      "  --target <t>            one of: " ^ String.concat ", " Rivet_driver.Registry.names;
       "  --fixed-base <addr>     bind the image at this address (hex with 0x, or decimal)";
       "  --features <spec>       enable/disable optional components: none, +name, -name, \
        comma-separated, applied left to right (default: all implemented)";
@@ -238,10 +238,11 @@ let () =
   go (List.tl args);
   let target = match o.target with Some t -> t | None -> die "no --target" in
   let (module D : Rivet_target_intf.Target.DRIVER) =
-    match Driver.Registry.find target with
+    match Rivet_driver.Registry.find target with
     | Some d -> d
     | None ->
-        die ("unknown target " ^ target ^ "; known: " ^ String.concat ", " Driver.Registry.names)
+        die
+          ("unknown target " ^ target ^ "; known: " ^ String.concat ", " Rivet_driver.Registry.names)
   in
   let paths = if o.files = [] then die "no input file" else o.files in
   let sources =

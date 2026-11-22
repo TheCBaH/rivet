@@ -68,7 +68,7 @@ let cases tree target =
    own. Every case is relocation-free, so the base cannot matter - and if one day it does, this
    is where that shows up as a difference rather than as a silent success. *)
 let our_bytes target source_text =
-  match Driver.Registry.find target with
+  match Rivet_driver.Registry.find target with
   | None -> Error (target ^ ": no such target")
   | Some (module D : Rivet_target_intf.Target.DRIVER) -> (
       let source = Rivet_foundation.Span.source ~name:(target ^ ".s") ~contents:source_text in

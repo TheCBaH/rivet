@@ -21,7 +21,7 @@
  (libraries
   qcheck-core
   qcheck-core.runner
-  driver
+  rivet_driver
   rivet_target_intf
   rivet_image
   rivet_foundation)

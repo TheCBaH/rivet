@@ -12,7 +12,7 @@ export"). `syntax.type_char` is `'@'` on x86 and RISC-V, `'%'` on AArch64.
 
 ## Disassembly
 
-Every `Target.DRIVER`, and `Driver_direct.Pipeline_direct.Make (T)` for any
+Every `Target.DRIVER`, and `Rivet_driver_direct.Pipeline_direct.Make (T)` for any
 `ENCODE` `T`, has:
 
 - `dump_disasm_canonical ?features ~address bytes`: one instruction per line,
@@ -24,7 +24,7 @@ Every `Target.DRIVER`, and `Driver_direct.Pipeline_direct.Make (T)` for any
   (`address`, raw `bytes`, canonical `text`, `form` - `None` for padding -
   and, under `~inspect:true`, `refusal` and `alternatives`).
 
-`Driver.Portable.disassemble_records_for target` is the same for a target
+`Rivet_driver.Portable.disassemble_records_for target` is the same for a target
 named by string.
 
 ## A vendor extension
@@ -41,7 +41,7 @@ module C =
       let definition = validated
     end)
 
-module D = Pipeline.Make (C)   (* or Driver_direct.Pipeline_direct.Make (C) *)
+module D = Rivet_text_pipeline.Pipeline.Make (C)   (* or Rivet_driver_direct.Pipeline_direct.Make (C) *)
 
 let text =
   match Rivet_target_features.Config.parse_spec "+xfoo" with
@@ -69,7 +69,7 @@ _start:
   00001014  e7 80 c0 00  jalr x1, 12(x1)    <exp>
 ```
 
-`Driver.Portable.listing bound ~segment` is the same for a `Portable.bound`.
+`Rivet_driver.Portable.listing bound ~segment` is the same for a `Portable.bound`.
 
 ## The smallest closure
 

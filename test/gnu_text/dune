@@ -11,7 +11,7 @@
   rivet_asm_core
   rivet_image
   rivet_target_intf
-  text_pipeline
+  rivet_text_pipeline
   riscv32)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
@@ -26,7 +26,7 @@
   rivet_foundation
   rivet_target_intf
   rivet_target_features
-  text_pipeline
+  rivet_text_pipeline
   riscv32
   riscv32_encode
   riscv_family

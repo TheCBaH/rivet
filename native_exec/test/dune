@@ -3,7 +3,7 @@
  (modes byte native)
  (libraries
   native_exec
-  driver
+  rivet_driver
   rivet_target_intf
   rivet_foundation
   rivet_asm_core

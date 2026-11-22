@@ -6,9 +6,9 @@ let print instruction type_char =
        ~instruction
        { Rivet_asm_core.Normalized_ast.unit_name = "m"; items = [] })
 
-module X = Pipeline.Make (X86_64)
-module A = Pipeline.Make (Aarch64)
-module R = Pipeline.Make (Riscv32)
+module X = Rivet_text_pipeline.Pipeline.Make (X86_64)
+module A = Rivet_text_pipeline.Pipeline.Make (Aarch64)
+module R = Rivet_text_pipeline.Pipeline.Make (Riscv32)
 
 let show = function
   | Ok rs -> List.iter (fun (r : Rivet_target_encode.disasm_record) -> print_endline r.text) rs

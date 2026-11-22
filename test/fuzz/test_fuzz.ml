@@ -223,7 +223,7 @@ let gen_mutant corpus =
 (* {1 The laws} *)
 
 let driver name =
-  match Driver.Registry.find name with Some d -> d | None -> failwith ("no target " ^ name)
+  match Rivet_driver.Registry.find name with Some d -> d | None -> failwith ("no target " ^ name)
 
 (* Planning must not allocate without bound on a stray `.zero 99999999999`. *)
 let request = { Rivet_target_intf.Target.default_request with max_size = Some (1 lsl 24) }
@@ -441,7 +441,7 @@ let tests =
           ~name:(name ^ ": random words decode and re-encode stably")
           ~print:show gen_bytes4 (bytes_law name);
       ])
-    Driver.Registry.names
+    Rivet_driver.Registry.names
 
 let () =
   Printf.printf "fuzz tests, seed %d, %d iterations\n%!" seed iters;

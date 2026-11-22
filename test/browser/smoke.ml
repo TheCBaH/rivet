@@ -17,7 +17,7 @@ let ok_diag = function Ok v -> v | Error e -> failwith (Rivet_foundation.Diag.re
 let parser_encoder_summary () =
   let name = "x86_64" in
   let (module D : Rivet_target_intf.Target.DRIVER) =
-    match Driver.Registry.find name with
+    match Rivet_driver.Registry.find name with
     | Some d -> d
     | None -> failwith ("smoke: no driver for " ^ name)
   in
@@ -35,15 +35,15 @@ let parser_encoder_summary () =
 
 let ok_portable = function
   | Ok v -> v
-  | Error e -> failwith (Driver.Portable.render_error (Err.Error.kind e))
+  | Error e -> failwith (Rivet_driver.Portable.render_error (Err.Error.kind e))
 
 let linker_image_summary () =
   let p =
     ok_portable
-      (Driver.Portable.assemble ~entry:"start" "x86_64" ~unit_name:"m"
+      (Rivet_driver.Portable.assemble ~entry:"start" "x86_64" ~unit_name:"m"
          ~text:Smoke_fixtures.multi_segment_source)
   in
-  let b = ok_portable (Driver.Portable.bind_sequential p ~base:0x400000L ~gap:0) in
-  Smoke_fixtures.summarize (Driver.Portable.manifest b)
+  let b = ok_portable (Rivet_driver.Portable.bind_sequential p ~base:0x400000L ~gap:0) in
+  Smoke_fixtures.summarize (Rivet_driver.Portable.manifest b)
 
 let run () = parser_encoder_summary () ^ linker_image_summary ()

@@ -4,7 +4,7 @@
 open Rivet_foundation
 open Rivet_asm_core
 module A = Aarch64_encode
-module P = Driver_direct.Pipeline_direct.Make (A)
+module P = Rivet_driver_direct.Pipeline_direct.Make (A)
 
 let origin = Origin.synthesized ~pass:"direct" ()
 

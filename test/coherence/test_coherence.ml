@@ -11,8 +11,8 @@
      lower (that)           =  the direct lowered module
      and all three paths produce the same image bytes.
 
-   These use the *statically selected* target module - [Driver.Registry.Aarch64]
-   is [Pipeline.Make (Aarch64)], not the erased [DRIVER] - so every type below
+   These use the *statically selected* target module - [Rivet_driver.Registry.Aarch64]
+   is [Rivet_text_pipeline.Pipeline.Make (Aarch64)], not the erased [DRIVER] - so every type below
    is Aarch64's own. That is what makes the cross-target guarantee a compile-time
    one: [P.lower] takes an [Aarch64.instruction Normalized_ast.module_], so
 
@@ -22,7 +22,7 @@
    deliberately no test asserting it, because a test that passed would only mean
    the assertion compiled - the guarantee is that this file compiles at all. *)
 
-module P = Driver.Registry.Aarch64
+module P = Rivet_driver.Registry.Aarch64
 module T = Aarch64
 open Rivet_asm_core
 

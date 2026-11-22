@@ -7,7 +7,8 @@
    what that dump cannot show - which mnemonics a component owns and how each
    one is refused when misused. *)
 
-let driver target = match Driver.Registry.find target with Some d -> d | None -> failwith target
+let driver target =
+  match Rivet_driver.Registry.find target with Some d -> d | None -> failwith target
 
 let diagnostics_text ds =
   String.concat ""

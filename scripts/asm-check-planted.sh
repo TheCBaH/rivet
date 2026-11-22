@@ -286,7 +286,7 @@ plant generic-to-target layers reject-either 'depends on target' "
 plant i8080-reaches-target layers audit-fail 'i8080 library' "
   add_library targets/i8080/dune arm"
 plant i8080-reaches-driver layers audit-fail 'i8080 library' "
-  add_library targets/i8080/dune driver"
+  add_library targets/i8080/dune rivet_driver"
 
 # A generic source branching on a target's identity. Compiles fine, which is
 # exactly why this one has to be checked textually rather than through the graph.

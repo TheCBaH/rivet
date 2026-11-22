@@ -1,6 +1,6 @@
 (library
  (name browser_jsoo)
  (modes byte native)
- (libraries driver)
+ (libraries rivet_driver)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

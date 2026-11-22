@@ -140,8 +140,8 @@ let _ : Riscv32_encode.Reg.t -> Foo.Reg.t = Fun.id
 let _ : Riscv32_encode.Operand.t -> Foo.Operand.t = Fun.id
 let _ : Types.Mem.t -> Riscv64_encode.Mem.t = Fun.id
 
-module Foo_driver = Pipeline.Make (Foo)
-module Bar_driver = Pipeline.Make (Bar)
+module Foo_driver = Rivet_text_pipeline.Pipeline.Make (Foo)
+module Bar_driver = Rivet_text_pipeline.Pipeline.Make (Bar)
 
 let assembled (module D : Rivet_target_intf.Target.DRIVER) ?features text =
   let features =
@@ -175,7 +175,7 @@ let%expect_test "two compositions coexist and keep the standard instructions" =
   let foo = (module Foo_driver : Rivet_target_intf.Target.DRIVER) in
   let bar = (module Bar_driver : Rivet_target_intf.Target.DRIVER) in
   let standard =
-    match Driver.Registry.find "riscv64" with Some d -> d | None -> failwith "riscv64"
+    match Rivet_driver.Registry.find "riscv64" with Some d -> d | None -> failwith "riscv64"
   in
   List.iter
     (fun (label, driver) ->
@@ -338,7 +338,7 @@ module Tile =
         | Error ps -> failwith (String.concat "; " ps)
     end)
 
-module Tile_driver = Pipeline.Make (Tile)
+module Tile_driver = Rivet_text_pipeline.Pipeline.Make (Tile)
 
 let%expect_test "tile operands encode and decode by name" =
   let tile = (module Tile_driver : Rivet_target_intf.Target.DRIVER) in
@@ -452,7 +452,7 @@ module Mpause =
         | Error ps -> failwith (String.concat "; " ps)
     end)
 
-module Mpause_driver = Pipeline.Make (Mpause)
+module Mpause_driver = Rivet_text_pipeline.Pipeline.Make (Mpause)
 
 let%expect_test "mpause assembles, decodes, and leaves the standard system words alone" =
   let (module D : Rivet_target_intf.Target.DRIVER) = (module Mpause_driver) in

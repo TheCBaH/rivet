@@ -80,7 +80,7 @@ module V =
       let definition = vendor
     end)
 
-module VP = Pipeline.Make (V)
+module VP = Rivet_text_pipeline.Pipeline.Make (V)
 
 let%expect_test "a vendor row reads back from its GNU print" =
   let features =
@@ -150,8 +150,8 @@ let%expect_test "local labels read back from the GNU print on x86-64 and AArch64
         | Ok a, Ok b -> print_endline (if String.equal a b then "same bytes" else "DIFFERENT")
         | Error m, _ | _, Error m -> print_endline m)
   in
-  let module X = Pipeline.Make (X86_64) in
-  let module A = Pipeline.Make (Aarch64) in
+  let module X = Rivet_text_pipeline.Pipeline.Make (X86_64) in
+  let module A = Rivet_text_pipeline.Pipeline.Make (Aarch64) in
   let simplify_with parse simplify state src =
     match parse ~unit_name:"l" ~source:src with
     | Error ds -> Error (C.render ds)
@@ -224,8 +224,8 @@ let%expect_test "$ names read back from the GNU print on x86-64 and x86-32" =
             | Ok a, Ok b -> Printf.printf "%s / %s\n" (C.hex a) (C.hex b)
             | Error m, _ | _, Error m -> print_endline m))
   in
-  let module X64 = Pipeline.Make (X86_64) in
-  let module X32 = Pipeline.Make (X86_32) in
+  let module X64 = Rivet_text_pipeline.Pipeline.Make (X86_64) in
+  let module X32 = Rivet_text_pipeline.Pipeline.Make (X86_32) in
   check
     (module X64)
     ~parse:X64.parse

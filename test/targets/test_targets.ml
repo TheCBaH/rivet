@@ -24,7 +24,7 @@ let show_list label = function
 let%expect_test "every target's codec passes Codec.check" =
   List.iter
     (fun (module D : Rivet_target_intf.Target.DRIVER) -> show_list D.name (D.check_codec ()))
-    Driver.Registry.drivers;
+    Rivet_driver.Registry.drivers;
   [%expect
     {|
     x86_32: none
@@ -105,7 +105,9 @@ let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
 (* {1 Declared modifier lexing} *)
 
 let driver name =
-  match Driver.Registry.find name with Some d -> d | None -> failwith ("missing target " ^ name)
+  match Rivet_driver.Registry.find name with
+  | Some d -> d
+  | None -> failwith ("missing target " ^ name)
 
 let source text = Rivet_foundation.Span.source ~name:"<test>" ~contents:text
 
@@ -326,7 +328,7 @@ let%expect_test "which small constants are bitmask immediates" =
 
 let attempt target text =
   let (module D : Rivet_target_intf.Target.DRIVER) =
-    match Driver.Registry.find target with Some d -> d | None -> failwith target
+    match Rivet_driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.assemble ~unit_name:"t" ~source () with
@@ -464,13 +466,13 @@ let%expect_test "c.addi requires rvc, enforces its architectural domain, and rou
    were independently verified against real riscv32-linux-gnu-as 2.43.1 and
    riscv64-linux-gnu-as 2.44 for this exact source. *)
 let text_hex_of target text =
-  match Driver.Portable.assemble target ~unit_name:"t" ~text with
-  | Error e -> Driver.Portable.render_error (Err.Error.kind e)
+  match Rivet_driver.Portable.assemble target ~unit_name:"t" ~text with
+  | Error e -> Rivet_driver.Portable.render_error (Err.Error.kind e)
   | Ok p -> (
-      match Driver.Portable.bind_at p ~base:0x0L with
-      | Error e -> Driver.Portable.render_error (Err.Error.kind e)
+      match Rivet_driver.Portable.bind_at p ~base:0x0L with
+      | Error e -> Rivet_driver.Portable.render_error (Err.Error.kind e)
       | Ok b -> (
-          match Driver.Portable.section_bytes b ".text" with
+          match Rivet_driver.Portable.section_bytes b ".text" with
           | None -> "no .text"
           | Some s ->
               String.concat " "
@@ -536,19 +538,19 @@ let%expect_test "a RIP-relative pc_bias is the realized length, not a constant" 
   let text =
     "\t.text\nasm_test_entry:\n\tmovq g(%rip), %rax\n\tmovl g(%rip), %eax\n\tret\ng:\n\t.long 7\n"
   in
-  (match Driver.Portable.dump "x86_64" ~which:`Lowered_ast ~unit_name:"t" ~text with
-  | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
+  (match Rivet_driver.Portable.dump "x86_64" ~which:`Lowered_ast ~unit_name:"t" ~text with
+  | Error e -> print_endline (Rivet_driver.Portable.render_error (Err.Error.kind e))
   | Ok s ->
       List.iter
         (fun l -> if String.length l > 0 && l.[0] = ' ' then print_endline (String.trim l))
         (String.split_on_char '\n' s));
-  (match Driver.Portable.assemble "x86_64" ~unit_name:"t" ~text with
-  | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
+  (match Rivet_driver.Portable.assemble "x86_64" ~unit_name:"t" ~text with
+  | Error e -> print_endline (Rivet_driver.Portable.render_error (Err.Error.kind e))
   | Ok p -> (
-      match Driver.Portable.bind_at p ~base:0x400000L with
-      | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
+      match Rivet_driver.Portable.bind_at p ~base:0x400000L with
+      | Error e -> print_endline (Rivet_driver.Portable.render_error (Err.Error.kind e))
       | Ok b -> (
-          match Driver.Portable.section_bytes b ".text" with
+          match Rivet_driver.Portable.section_bytes b ".text" with
           | None -> print_endline "no .text"
           | Some s ->
               print_endline
@@ -581,25 +583,26 @@ let%expect_test "one base places one segment, and refuses to guess at two" =
   let text = "\t.text\n\tret\n\t.data\n\t.long 1\n" in
   let show label r =
     match r with
-    | Error e -> Printf.printf "%-12s %s\n" label (Driver.Portable.render_error (Err.Error.kind e))
+    | Error e ->
+        Printf.printf "%-12s %s\n" label (Rivet_driver.Portable.render_error (Err.Error.kind e))
     | Ok b ->
         Printf.printf "%-12s %s\n" label
           (String.concat " "
              (List.map
                 (fun (n, _, _, _) ->
-                  match Driver.Portable.section_bytes b n with
+                  match Rivet_driver.Portable.section_bytes b n with
                   | Some s -> Printf.sprintf "%s:%d" n (String.length s)
                   | None -> n ^ ":?")
                 [ (".text", 0, 0, 0); (".data", 0, 0, 0) ]))
   in
-  (match Driver.Portable.assemble "x86_64" ~unit_name:"t" ~text:"\t.text\n\tret\n" with
-  | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
-  | Ok p -> show "one" (Driver.Portable.bind_at p ~base:0x400000L));
-  match Driver.Portable.assemble "x86_64" ~unit_name:"t" ~text with
-  | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
+  (match Rivet_driver.Portable.assemble "x86_64" ~unit_name:"t" ~text:"\t.text\n\tret\n" with
+  | Error e -> print_endline (Rivet_driver.Portable.render_error (Err.Error.kind e))
+  | Ok p -> show "one" (Rivet_driver.Portable.bind_at p ~base:0x400000L));
+  match Rivet_driver.Portable.assemble "x86_64" ~unit_name:"t" ~text with
+  | Error e -> print_endline (Rivet_driver.Portable.render_error (Err.Error.kind e))
   | Ok p ->
-      show "two" (Driver.Portable.bind_at p ~base:0x400000L);
-      show "sequential" (Driver.Portable.bind_sequential p ~base:0x400000L ~gap:0x1000);
+      show "two" (Rivet_driver.Portable.bind_at p ~base:0x400000L);
+      show "sequential" (Rivet_driver.Portable.bind_sequential p ~base:0x400000L ~gap:0x1000);
       [%expect
         {|
         one          .text:1 .data:?
@@ -697,7 +700,7 @@ let%expect_test "binding-directive transitions match the measured GNU as table" 
 
 let entry_of ?entry target text =
   let (module D : Rivet_target_intf.Target.DRIVER) =
-    match Driver.Registry.find target with Some d -> d | None -> failwith target
+    match Rivet_driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.assemble ?entry ~unit_name:"t" ~source () with
@@ -790,7 +793,9 @@ let%expect_test "code before any section directive has nowhere to go" =
    gets a rejection rather than a misaligned image. *)
 
 let%expect_test "binding at a misaligned address is rejected" =
-  let (module D : Rivet_target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "aarch64") in
+  let (module D : Rivet_target_intf.Target.DRIVER) =
+    Option.get (Rivet_driver.Registry.find "aarch64")
+  in
   let source =
     Rivet_foundation.Span.source ~name:"<test>" ~contents:"\t.text\n\t.balign 4\n\tret\n"
   in
@@ -828,7 +833,7 @@ let%expect_test "binding at a misaligned address is rejected" =
 
 let normalized target text =
   let (module D : Rivet_target_intf.Target.DRIVER) =
-    match Driver.Registry.find target with Some d -> d | None -> failwith target
+    match Rivet_driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.dump_normalized_ast ~unit_name:"t" ~source () with
@@ -876,7 +881,7 @@ let%expect_test "a numeric label with no reference is still a defined symbol" =
 
 let dump_norm target text =
   let (module D : Rivet_target_intf.Target.DRIVER) =
-    match Driver.Registry.find target with Some d -> d | None -> failwith target
+    match Rivet_driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.dump_normalized_ast ~unit_name:"t" ~source () with
@@ -949,7 +954,7 @@ let%expect_test "a reference with no definition in its direction is a diagnostic
 
 let disasm target text =
   let (module D : Rivet_target_intf.Target.DRIVER) =
-    match Driver.Registry.find target with Some d -> d | None -> failwith target
+    match Rivet_driver.Registry.find target with Some d -> d | None -> failwith target
   in
   let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.assemble ~unit_name:"t" ~source () with
@@ -1026,7 +1031,7 @@ let%expect_test "a call to an undefined symbol is rejected at plan time" =
   [%expect {| image.undefined: fixup target references undefined symbol nowhere |}]
 
 let%expect_test "riscv32: a call and an address taken of externs bind to their imports" =
-  let module P = Driver.Registry.Riscv32 in
+  let module P = Rivet_driver.Registry.Riscv32 in
   let show ds =
     List.iter
       (fun d ->
@@ -1756,7 +1761,7 @@ let%expect_test "a Cfi directive prints for GNU and changes no byte" =
     (Rivet_asm_core.Gnu_module.to_string
        { Rivet_asm_core.Gnu_module.type_char = '@' }
        ~instruction:X86_64.Instruction.pp_gnu with_cfi);
-  let module P = Pipeline.Make (X86_64) in
+  let module P = Rivet_text_pipeline.Pipeline.Make (X86_64) in
   let bytes m =
     match P.lower ~state:X86_64.default_state m with
     | Error _ -> "lowering failed"
@@ -2795,7 +2800,7 @@ let%expect_test "x86-32 pads with lea forms, not long nops" =
 
 let pad_round_trip target ~insn ~size ~pad =
   let (module D : Rivet_target_intf.Target.DRIVER) =
-    match Driver.Registry.find target with Some d -> d | None -> failwith target
+    match Rivet_driver.Registry.find target with Some d -> d | None -> failwith target
   in
   (* [pad] bytes of filler, arranged by putting 16 - pad bytes of real
      instructions in front of a 16-byte alignment. Every row of the target's
@@ -2806,22 +2811,22 @@ let pad_round_trip target ~insn ~size ~pad =
   let base = 0x400000L in
   (* Rendered on the way in, because this helper's own "no .text" failure is
      prose and not a Portable.error: one shape for the printf below. *)
-  let render e = Driver.Portable.render_error (Err.Error.kind e) in
+  let render e = Rivet_driver.Portable.render_error (Err.Error.kind e) in
   let bytes_of t =
-    match Driver.Portable.assemble target ~unit_name:"t" ~text:t with
+    match Rivet_driver.Portable.assemble target ~unit_name:"t" ~text:t with
     | Error e -> Error (render e)
     | Ok p -> (
-        match Driver.Portable.bind_at p ~base with
+        match Rivet_driver.Portable.bind_at p ~base with
         | Error e -> Error (render e)
         | Ok b -> (
-            match Driver.Portable.section_bytes b ".text" with
+            match Rivet_driver.Portable.section_bytes b ".text" with
             | Some s -> Ok (b, s)
             | None -> Error "no .text"))
   in
   match bytes_of text with
   | Error e -> Printf.printf "pad %2d: %s\n" pad e
   | Ok (b, bytes) -> (
-      match Driver.Portable.disassemble b ~mode:`Canonical ~address:base bytes with
+      match Rivet_driver.Portable.disassemble b ~mode:`Canonical ~address:base bytes with
       | Error e -> Printf.printf "pad %2d: DISASM %s\n" pad (render e)
       | Ok canonical -> (
           let line =
@@ -2894,18 +2899,18 @@ let%expect_test "the fixed-width targets pad with their architectural nop" =
    and a decoded branch reassembles to the bytes it came from - including a near
    branch whose final displacement would also have fitted a short one. *)
 
-let render_portable e = Driver.Portable.render_error (Err.Error.kind e)
+let render_portable e = Rivet_driver.Portable.render_error (Err.Error.kind e)
 
 let branch_bytes target ~gap ~mnemonic =
   let filler = String.concat "" (List.init gap (fun _ -> "\tret\n")) in
   let text = Printf.sprintf "\t.text\nasm_test_entry:\n\t%s far\n%sfar:\n\tret\n" mnemonic filler in
-  match Driver.Portable.assemble ~entry:"asm_test_entry" target ~unit_name:"t" ~text with
+  match Rivet_driver.Portable.assemble ~entry:"asm_test_entry" target ~unit_name:"t" ~text with
   | Error e -> Error (render_portable e)
   | Ok p -> (
-      match Driver.Portable.bind_at p ~base:0x400000L with
+      match Rivet_driver.Portable.bind_at p ~base:0x400000L with
       | Error e -> Error (render_portable e)
       | Ok b -> (
-          match Driver.Portable.section_bytes b ".text" with
+          match Rivet_driver.Portable.section_bytes b ".text" with
           | Some s -> Ok (b, s)
           | None -> Error "no .text"))
 
@@ -2914,7 +2919,7 @@ let show_branch target ~gap ~mnemonic =
   | Error e -> Printf.printf "  gap %4d %s\n" gap e
   | Ok (b, bytes) -> (
       let head = String.sub bytes 0 (min 6 (String.length bytes)) in
-      match Driver.Portable.disassemble b ~mode:`Canonical ~address:0x400000L bytes with
+      match Rivet_driver.Portable.disassemble b ~mode:`Canonical ~address:0x400000L bytes with
       | Error e -> Printf.printf "  gap %4d DISASM %s\n" gap (render_portable e)
       | Ok canon -> (
           let first =
@@ -2925,13 +2930,17 @@ let show_branch target ~gap ~mnemonic =
           (* Reassembling the canonical text is what proves the pin survived:
              without it a near branch whose displacement fits a byte comes back
              two bytes shorter and the image changes under a round trip. *)
-          match Driver.Portable.assemble target ~unit_name:"r" ~text:("\t.text\n" ^ canon) with
+          match
+            Rivet_driver.Portable.assemble target ~unit_name:"r" ~text:("\t.text\n" ^ canon)
+          with
           | Error e -> Printf.printf "  gap %4d REASSEMBLE %s\n" gap (render_portable e)
           | Ok p2 -> (
-              match Driver.Portable.bind_at p2 ~base:0x400000L with
+              match Rivet_driver.Portable.bind_at p2 ~base:0x400000L with
               | Error e -> Printf.printf "  gap %4d REBIND %s\n" gap (render_portable e)
               | Ok b2 ->
-                  let again = Option.value ~default:"" (Driver.Portable.section_bytes b2 ".text") in
+                  let again =
+                    Option.value ~default:"" (Rivet_driver.Portable.section_bytes b2 ".text")
+                  in
                   Printf.printf "  gap %4d %3d bytes  %-18s %-16s %s\n" gap (String.length bytes)
                     (Rivet_foundation.Byte_cursor.to_hex head)
                     first
@@ -3431,7 +3440,7 @@ let%expect_test "a branch to a same-section symbol in another input always takes
 
 (* {1 Portable manifest (docs/design.md M4 Phase 7)}
 
-   [Driver.Portable.manifest] is a pure aggregation over [entry]/[exports]/
+   [Rivet_driver.Portable.manifest] is a pure aggregation over [entry]/[exports]/
    [segments]/[section_bytes] - proven here rather than re-deriving each
    accessor's own coverage, which the tests above already give. What is worth
    a dedicated case is the one thing [manifest] does that no existing test
@@ -3454,24 +3463,24 @@ b:
 	.zero 8
 |}
   in
-  (match Driver.Portable.assemble ~entry:"start" "x86_64" ~unit_name:"m" ~text with
-  | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
+  (match Rivet_driver.Portable.assemble ~entry:"start" "x86_64" ~unit_name:"m" ~text with
+  | Error e -> print_endline (Rivet_driver.Portable.render_error (Err.Error.kind e))
   | Ok p -> (
-      match Driver.Portable.bind_sequential p ~base:0x400000L ~gap:0 with
-      | Error e -> print_endline (Driver.Portable.render_error (Err.Error.kind e))
+      match Rivet_driver.Portable.bind_sequential p ~base:0x400000L ~gap:0 with
+      | Error e -> print_endline (Rivet_driver.Portable.render_error (Err.Error.kind e))
       | Ok b ->
-          let m = Driver.Portable.manifest b in
-          Printf.printf "target=%s entry=%s\n" m.Driver.Portable.target
-            (match m.Driver.Portable.entry with
+          let m = Rivet_driver.Portable.manifest b in
+          Printf.printf "target=%s entry=%s\n" m.Rivet_driver.Portable.target
+            (match m.Rivet_driver.Portable.entry with
             | Some e -> Printf.sprintf "0x%Lx" e
             | None -> "none");
           List.iter
-            (fun (s : Driver.Portable.manifest_segment) ->
-              Printf.printf "%-6s address=0x%-10Lx bytes=%d %s\n" s.Driver.Portable.name
-                s.Driver.Portable.address
-                (String.length s.Driver.Portable.bytes)
-                (Rivet_asm_core.Perms.to_string s.Driver.Portable.perms))
-            m.Driver.Portable.segments));
+            (fun (s : Rivet_driver.Portable.manifest_segment) ->
+              Printf.printf "%-6s address=0x%-10Lx bytes=%d %s\n" s.Rivet_driver.Portable.name
+                s.Rivet_driver.Portable.address
+                (String.length s.Rivet_driver.Portable.bytes)
+                (Rivet_asm_core.Perms.to_string s.Rivet_driver.Portable.perms))
+            m.Rivet_driver.Portable.segments));
   [%expect
     {|
     target=x86_64 entry=0x400000
@@ -4451,7 +4460,9 @@ f:
     4000004d  c3                             ret                               [x86_64.ret] |}]
 
 let%expect_test "movabsq is refused where GNU as would still emit ten bytes" =
-  let (module D : Rivet_target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "x86_64") in
+  let (module D : Rivet_target_intf.Target.DRIVER) =
+    Option.get (Rivet_driver.Registry.find "x86_64")
+  in
   let source =
     Rivet_foundation.Span.source ~name:"<test>" ~contents:"\t.text\n\tmovabsq $5, %rax\n"
   in
@@ -4468,7 +4479,9 @@ let%expect_test "movabsq is refused where GNU as would still emit ten bytes" =
    load of whatever followed the instruction. the compiler compares against 64-bit literals that
    way. Every form that can hold a memory operand now carries its fixup. *)
 let%expect_test "x86_64 memory-source forms keep their symbolic displacement" =
-  let (module D : Rivet_target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "x86_64") in
+  let (module D : Rivet_target_intf.Target.DRIVER) =
+    Option.get (Rivet_driver.Registry.find "x86_64")
+  in
   List.iter
     (fun insn ->
       let text = "\t.text\n\t" ^ insn ^ "\n\t.section .rodata\n.L1:\t.quad 5\n" in

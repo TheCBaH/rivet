@@ -7,7 +7,7 @@
 
    This generates a comparably large, synthetic x86_64 source in-process
    (no compiler dependency, so it runs on every asm-test/asm-ci leg) and
-   bounds --dump-source-ast's own stage, [Driver.Portable.dump]'s
+   bounds --dump-source-ast's own stage, [Rivet_driver.Portable.dump]'s
    `Source_ast case, against a realistic wall-clock budget rather than the
    corpus classifier's own generous 120s [classify_timeout_s]
    (tools/lib/corpus_classify_cmd.ml) - tight enough that a reintroduced
@@ -53,14 +53,16 @@ let () =
          exit 1));
   ignore (Unix.alarm (int_of_float bound_seconds));
   let t0 = Unix.gettimeofday () in
-  let result = Driver.Portable.dump "x86_64" ~which:`Source_ast ~unit_name:"parse_perf" ~text in
+  let result =
+    Rivet_driver.Portable.dump "x86_64" ~which:`Source_ast ~unit_name:"parse_perf" ~text
+  in
   ignore (Unix.alarm 0);
   let elapsed = Unix.gettimeofday () -. t0 in
   (match result with
   | Ok _ -> ()
   | Error e ->
       Printf.eprintf "test_parse_perf: unexpected parse failure: %s\n"
-        (Driver.Portable.render_error (Err.Error.kind e));
+        (Rivet_driver.Portable.render_error (Err.Error.kind e));
       exit 1);
   Printf.printf "test_parse_perf: parsed %d synthetic functions in %.3fs (bound %.1fs)\n"
     function_count elapsed bound_seconds;

@@ -6,8 +6,8 @@ let print instruction type_char =
        ~instruction
        { Rivet_asm_core.Normalized_ast.unit_name = "m"; items = [] })
 
-module A = Driver_direct.Pipeline_direct.Make (Aarch64_encode)
-module R = Driver_direct.Pipeline_direct.Make (Riscv32_encode)
+module A = Rivet_driver_direct.Pipeline_direct.Make (Aarch64_encode)
+module R = Rivet_driver_direct.Pipeline_direct.Make (Riscv32_encode)
 
 let show = function
   | Ok rs -> List.iter (fun (r : Rivet_target_encode.disasm_record) -> print_endline r.text) rs

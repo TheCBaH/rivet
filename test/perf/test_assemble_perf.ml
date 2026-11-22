@@ -26,7 +26,8 @@ let timed name f =
 let get = function
   | Ok v -> v
   | Error e ->
-      Printf.eprintf "test_assemble_perf: %s\n" (Driver.Portable.render_error (Err.Error.kind e));
+      Printf.eprintf "test_assemble_perf: %s\n"
+        (Rivet_driver.Portable.render_error (Err.Error.kind e));
       exit 1
 
 let program functions =
@@ -51,14 +52,14 @@ let program functions =
   add "\t.bss\n\t.zero\t0x400000\n";
   Buffer.contents b
 
-let assemble text = get (Driver.Portable.assemble "x86_64" ~unit_name:"perf" ~text)
+let assemble text = get (Rivet_driver.Portable.assemble "x86_64" ~unit_name:"perf" ~text)
 
 let () =
   let text = program functions in
   let planned = timed "assemble" (fun () -> assemble text) in
   ignore
     (timed "bind" (fun () ->
-         get (Driver.Portable.bind_sequential planned ~base:0x400000L ~gap:4096)));
+         get (Rivet_driver.Portable.bind_sequential planned ~base:0x400000L ~gap:4096)));
   let big_align =
     String.concat "" (List.init 200 (fun _ -> "\t.byte 1\n\t.p2align 12\n")) |> fun s ->
     "\t.data\n" ^ s
@@ -93,10 +94,10 @@ let () =
   let planned = timed "150,000 symbols" (fun () -> assemble many_symbols) in
   ignore
     (timed "bind, 150,000 symbols" (fun () ->
-         get (Driver.Portable.bind_sequential planned ~base:0x400000L ~gap:4096)));
+         get (Rivet_driver.Portable.bind_sequential planned ~base:0x400000L ~gap:4096)));
   let small = assemble (program 300) in
-  let b = get (Driver.Portable.bind_sequential small ~base:0x400000L ~gap:4096) in
-  let code = Option.get (Driver.Portable.section_bytes b ".text") in
+  let b = get (Rivet_driver.Portable.bind_sequential small ~base:0x400000L ~gap:4096) in
+  let code = Option.get (Rivet_driver.Portable.section_bytes b ".text") in
   ignore
     (timed "disassemble" (fun () ->
-         get (Driver.Portable.disassemble b ~mode:`Canonical ~address:0x400000L code)))
+         get (Rivet_driver.Portable.disassemble b ~mode:`Canonical ~address:0x400000L code)))

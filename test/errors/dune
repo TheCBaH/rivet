@@ -17,8 +17,8 @@
   rivet_asm_syntax
   rivet_codec
   rivet_image
-  driver
-  text_pipeline
+  rivet_driver
+  rivet_text_pipeline
   arm
   aarch64
   x86_64

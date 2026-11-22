@@ -6,7 +6,7 @@ let hex s =
 (* Assemble [src] for [target], bind every segment at its own 16 MiB slot, and
    return the bound segments or the rendered diagnostics. *)
 let assemble target src =
-  match Driver.Registry.find target with
+  match Rivet_driver.Registry.find target with
   | None -> failwith target
   | Some (module D : Rivet_target_intf.Target.DRIVER) -> (
       let source = Rivet_foundation.Span.source ~name:(target ^ ".s") ~contents:src in
@@ -385,7 +385,7 @@ let%expect_test "LEB128 operands that are refused" =
 
 let%expect_test ".globl, .weak and .local take lists; visibility is recorded" =
   (match
-     Driver.Portable.dump "x86_64" ~which:`Lowered_ast ~unit_name:"t"
+     Rivet_driver.Portable.dump "x86_64" ~which:`Lowered_ast ~unit_name:"t"
        ~text:".text\n.globl a, b\n.weak c\n.hidden a\n.protected b, c\n.internal d\na: b: c: d:\n"
    with
   | Ok s -> print_endline s
@@ -444,7 +444,7 @@ let%expect_test "the section stack" =
 (* {1 Addresses at or above 2^63} *)
 
 let assemble_laid target src =
-  match Driver.Registry.find target with
+  match Rivet_driver.Registry.find target with
   | None -> failwith target
   | Some (module D : Rivet_target_intf.Target.DRIVER) -> (
       let source = Rivet_foundation.Span.source ~name:(target ^ ".s") ~contents:src in
@@ -553,7 +553,7 @@ let%expect_test ".ascii, .asciz and .string concatenate their arguments" =
 
 let%expect_test ".ascii dumps as one data directive of byte values" =
   (match
-     Driver.Portable.dump "x86_64" ~which:`Normalized_ast ~unit_name:"t"
+     Rivet_driver.Portable.dump "x86_64" ~which:`Normalized_ast ~unit_name:"t"
        ~text:".data\n.ascii \"a\\n\"\n.asciz \"b\"\n"
    with
   | Ok s -> print_string s

@@ -26,7 +26,9 @@ let failed = ref false
 
 let () =
   let text target =
-    let (module D : Rivet_target_intf.Target.DRIVER) = Option.get (Driver.Registry.find target) in
+    let (module D : Rivet_target_intf.Target.DRIVER) =
+      Option.get (Rivet_driver.Registry.find target)
+    in
     let tramp = Result.get_ok (Native_exec.trampolines ~target bindings) in
     D.assemble_many ~entry:"host_f" [ ("host", Span.source ~name:"host" ~contents:tramp) ] ()
   in
@@ -48,13 +50,13 @@ let () =
         failed := true;
         print_endline e
   in
-  let module A = Driver_direct.Pipeline_direct.Make (Aarch64_encode) in
+  let module A = Rivet_driver_direct.Pipeline_direct.Make (Aarch64_encode) in
   report "aarch64"
     (Result.map_error Diag.render
        (Result.bind
           (A.lower ~state:Aarch64_encode.default_state (Aarch64_encode.host_trampolines bindings))
           (fun l -> A.plan ~entry:"host_f" l)));
-  let module X = Driver_direct.Pipeline_direct.Make (X86_64_encode) in
+  let module X = Rivet_driver_direct.Pipeline_direct.Make (X86_64_encode) in
   report "x86_64"
     (Result.map_error Diag.render
        (Result.bind
