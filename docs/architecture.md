@@ -59,7 +59,7 @@ The design document's single `TARGET` sketch (§5.1) is superseded by this split
 
 ## GNU source export
 
-`Asm_core.Gnu_module.pp syntax ~instruction` prints a normalized module as GNU
+`Rivet_asm_core.Gnu_module.pp syntax ~instruction` prints a normalized module as GNU
 assembler source; the instruction printer is each target's `Instruction.pp_gnu`
 (x86, AArch64, RISC-V, vendor RISC-V compositions included). The contract:
 

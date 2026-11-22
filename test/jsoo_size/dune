@@ -7,7 +7,7 @@
  (modules size_driver)
  (modes js)
  (libraries
-  asm_core
+  rivet_asm_core
   driver
   target_intf
   x86_64_encode
@@ -20,7 +20,13 @@
  (name size_text)
  (modules size_text)
  (modes js)
- (libraries asm_core text_pipeline target_encode x86_64 aarch64 riscv32)
+ (libraries
+  rivet_asm_core
+  text_pipeline
+  target_encode
+  x86_64
+  aarch64
+  riscv32)
  (enabled_if
   (= %{env:RIVET_JSOO_SIZE=false} true)))
 
@@ -29,7 +35,7 @@
  (modules size_direct)
  (modes js)
  (libraries
-  asm_core
+  rivet_asm_core
   driver_direct
   target_encode
   x86_64_encode
@@ -43,7 +49,7 @@
  (modules size_direct_no_x86)
  (modes js)
  (libraries
-  asm_core
+  rivet_asm_core
   driver_direct
   target_encode
   aarch64_encode

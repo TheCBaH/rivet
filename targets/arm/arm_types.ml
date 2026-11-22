@@ -2,7 +2,7 @@
    and lowered forms. The encoder ({!Arm_encode}) builds on them, and so does the per-opcode table
    ({!Arm_ops}), which sits between the two. *)
 
-open Foundation
+open Rivet_foundation
 module C = Codec
 
 (* {1 Registers}
@@ -442,7 +442,7 @@ module Operand = struct
     | Reg of Reg.t
     | Imm of Bigint.t
     | Mem of Mem.t
-    | Sym of Asm_core.Expr.t
+    | Sym of Rivet_asm_core.Expr.t
     | Shifted of { reg : Reg.t; kind : int; amount : int }
     | Dreg of Dreg.t
     | Sreg of Sreg.t
@@ -471,7 +471,7 @@ module Operand = struct
     | Reg r -> Reg.pp ppf r
     | Imm v -> Fmt.pf ppf "#%a" Bigint.pp v
     | Mem m -> Mem.pp ppf m
-    | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
+    | Sym e -> Fmt.string ppf (Rivet_asm_core.Expr.to_string e)
     | Shifted { reg; kind; amount } -> Fmt.pf ppf "%a, %s #%d" Reg.pp reg (shift_name kind) amount
     | Dreg r -> Dreg.pp ppf r
     | Sreg r -> Sreg.pp ppf r
@@ -847,14 +847,19 @@ module Lowered = struct
             on the way out, mirroring how real [objdump] never prints [ldmia sp!, {reglist}] for
             two or more registers. *)
     | Udf of { imm16 : int64 }  (** permanently undefined, and unconditional by definition *)
-    | Bl of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
-    | B of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
+    | Bl of { cond : Cond.t; target : Rivet_asm_core.Lowered_ast.branch }
+    | B of { cond : Cond.t; target : Rivet_asm_core.Lowered_ast.branch }
     | Mul of { cond : Cond.t; s : bool; rd : Reg.t; rn : Reg.t; rm : Reg.t }
     | Mla of { cond : Cond.t; s : bool; rd : Reg.t; rn : Reg.t; rm : Reg.t; ra : Reg.t }
     | Umull of { cond : Cond.t; s : bool; rdlo : Reg.t; rdhi : Reg.t; rn : Reg.t; rm : Reg.t }
         (** [umull RdLo, RdHi, Rn, Rm] - unsigned multiply long, {!Opcode.Umull}'s own doc comment
             has the full word-shape detail. *)
-    | Movw_movt of { cond : Cond.t; top : bool; rd : Reg.t; imm : Asm_core.Lowered_ast.branch }
+    | Movw_movt of {
+        cond : Cond.t;
+        top : bool;
+        rd : Reg.t;
+        imm : Rivet_asm_core.Lowered_ast.branch;
+      }
         (** [movw]/[movt] with a 16-bit immediate that is usually [:lower16:] or [:upper16:] of a
             symbol - hence a [branch], which is this codebase's name for "an operand that is either
             an expression awaiting the linker or a value a decoder recovered". *)
@@ -898,7 +903,7 @@ module Lowered = struct
     | Vcvt_s32_f64 of { cond : Cond.t; sd : Sreg.t; dm : Dreg.t }
     | Vmem_d of { cond : Cond.t; load : bool; vd : Dreg.t; rn : Reg.t; offset : int64 }
     | Vmem_s of { cond : Cond.t; load : bool; vd : Sreg.t; rn : Reg.t; offset : int64 }
-    | Vldr_lit_d of { cond : Cond.t; vd : Dreg.t; target : Asm_core.Lowered_ast.branch }
+    | Vldr_lit_d of { cond : Cond.t; vd : Dreg.t; target : Rivet_asm_core.Lowered_ast.branch }
         (** [vldr Dd, label] - a PC-relative literal-pool load, the same word shape as
             {!Vmem_d} with the base register fixed to [pc] (Rn = 0b1111) instead of a runtime
             register. Load-only: real hardware defines the store form's [Rn = 1111] encoding as
@@ -906,7 +911,7 @@ module Lowered = struct
             a deprecation warning). Forward references only ([U] fixed to 1) - every corpus
             occurrence is a same-function trailing literal pool, and {!evaluate_fixup} rejects a
             negative distance rather than silently mis-encoding one. *)
-    | Vldr_lit_s of { cond : Cond.t; vd : Sreg.t; target : Asm_core.Lowered_ast.branch }
+    | Vldr_lit_s of { cond : Cond.t; vd : Sreg.t; target : Rivet_asm_core.Lowered_ast.branch }
     | Vpush of { cond : Cond.t; vd : Dreg.t; count : int }
         (** [vd] is the reglist's lowest-numbered D register and [count] how many consecutive
             ones follow it - VSTM-class encodings have no bitmask, only a base and a count

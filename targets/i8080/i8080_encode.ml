@@ -6,10 +6,10 @@
    text front end. The 8080 has no relative branches, no prefixes and one
    instruction length per opcode, so every encoding is [`Fixed]. *)
 
-open Foundation
+open Rivet_foundation
 module C = Codec
 module Ops = I8080_ops
-module L = Asm_core.Lowered_ast
+module L = Rivet_asm_core.Lowered_ast
 
 let name = "i8080"
 let triple = "i8080-unknown-none"
@@ -29,14 +29,20 @@ module Reg = struct
 end
 
 module Operand = struct
-  type t = Reg of Reg.t | Sp | Psw | Imm of Bigint.t | Sym of Asm_core.Expr.t | Str of string
+  type t =
+    | Reg of Reg.t
+    | Sp
+    | Psw
+    | Imm of Bigint.t
+    | Sym of Rivet_asm_core.Expr.t
+    | Str of string
 
   let pp ppf = function
     | Reg r -> Fmt.string ppf (Reg.name r)
     | Sp -> Fmt.string ppf "sp"
     | Psw -> Fmt.string ppf "psw"
     | Imm v -> Bigint.pp ppf v
-    | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
+    | Sym e -> Fmt.string ppf (Rivet_asm_core.Expr.to_string e)
     | Str s -> Fmt.pf ppf "%S" s
 end
 
@@ -160,7 +166,7 @@ module Instruction = struct
     | Org n -> Fmt.pf ppf "org %s" (hex ~digits:4 n)
 end
 
-type tail_value = Tconst of int64 | Tsym of Asm_core.Expr.t
+type tail_value = Tconst of int64 | Tsym of Rivet_asm_core.Expr.t
 
 module Lowered = struct
   type t =
@@ -171,7 +177,7 @@ module Lowered = struct
 
   let pp_tail ppf = function
     | Tconst v -> Fmt.pf ppf "%Ld" v
-    | Tsym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
+    | Tsym e -> Fmt.string ppf (Rivet_asm_core.Expr.to_string e)
 
   let pp ppf = function
     | Insn { op; a; b; tail } -> Fmt.pf ppf "%s %d %d %a" op.Ops.mnemonic a b pp_tail tail
@@ -181,7 +187,7 @@ module Lowered = struct
   let equal_tail a b =
     match (a, b) with
     | Tconst x, Tconst y -> Int64.equal x y
-    | Tsym x, Tsym y -> Asm_core.Expr.equal x y
+    | Tsym x, Tsym y -> Rivet_asm_core.Expr.equal x y
     | _ -> false
 
   let equal x y =
@@ -685,7 +691,7 @@ let evaluate_fixup kind ~place:_ ~target =
         Ok (Int64.logand target 0xffffL)
       else Error (diag ~pos:__POS__ (`Fixup_out_of_range (target, 16)))
 
-let align_unit = Asm_core.Directive.Bytes
+let align_unit = Rivet_asm_core.Directive.Bytes
 let data_widths = [ (".byte", 1); (".word", 2); (".2byte", 2) ]
 
 let data_fixup ~width =

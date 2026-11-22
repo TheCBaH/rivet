@@ -43,7 +43,7 @@
       constraint - "must not contain global linker state" - is easier to keep
       when the state cannot be reached except by threading. *)
 
-open Foundation
+open Rivet_foundation
 
 (* What a target does with a directive it was handed. [Unhandled] is not an
    error and not silence: the caller (simplify) tries the target first for
@@ -70,7 +70,7 @@ module type TARGET = sig
      between this signature and {!Target_encode.ENCODE}. A target satisfies
      TARGET by adding them to the encoding half it already has. *)
 
-  val lexical_profile : Asm_syntax.Lexical_profile.t
+  val lexical_profile : Rivet_asm_syntax.Lexical_profile.t
   (** comment introducers, statement separator, sigils. The lexer is shared; only its table is
       per-target, which is why [#] can start a comment on ARM and an immediate on x86 without two
       lexers existing. *)
@@ -82,7 +82,7 @@ module type TARGET = sig
      a slice no operand shape claims - and those failures want to carry the
      tokens they were reading. {!Target_encode.ENCODE}'s [error] cannot: that
      signature is satisfied by libraries built without a lexer, so naming
-     {!Asm_syntax.Token} in it would drag the whole front end back into them,
+     {!Rivet_asm_syntax.Token} in it would drag the whole front end back into them,
      which is precisely the split ENCODE exists to make.
 
      So the encoder's domain stays below source text and the front end gets its
@@ -98,7 +98,7 @@ module type TARGET = sig
   (** the same erasure {!Target_encode.ENCODE.error_diagnostic} performs, for this domain *)
 
   val parse_operands :
-    mnemonic:string -> Asm_syntax.Token.slice list -> (Operand.t list, parse_error) Err.t
+    mnemonic:string -> Rivet_asm_syntax.Token.slice list -> (Operand.t list, parse_error) Err.t
   (** the hand-written per-target operand parser (§4.7). Menhir has already split the line into
       comma-separated slices; what those slices mean is decided here. *)
 

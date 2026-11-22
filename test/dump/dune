@@ -21,7 +21,13 @@
  (names asm_dump)
  (modules asm_dump)
  (modes exe js)
- (libraries foundation image target_intf driver test_dump_inputs rivet_fmt))
+ (libraries
+  rivet_foundation
+  image
+  target_intf
+  driver
+  test_dump_inputs
+  rivet_fmt))
 
 ; The manifest three-build driver's shared fixture (docs/design.md M4 Phase
 ; 8, extended by M5's real-browser harness). A real library, not a module
@@ -34,7 +40,7 @@
  (name smoke_fixtures)
  (modules smoke_fixtures)
  (modes byte native)
- (libraries driver asm_core rivet_fmt)
+ (libraries driver rivet_asm_core rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -47,4 +53,4 @@
  (names manifest_dump)
  (modules manifest_dump)
  (modes exe js)
- (libraries foundation driver asm_core rivet_fmt smoke_fixtures))
+ (libraries rivet_foundation driver rivet_asm_core rivet_fmt smoke_fixtures))

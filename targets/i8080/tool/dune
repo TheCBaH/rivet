@@ -22,6 +22,6 @@
   i8080_sem
   i8080_text
   i8080_run
-  foundation)
+  rivet_foundation)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

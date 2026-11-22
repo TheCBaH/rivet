@@ -22,9 +22,10 @@ let render ds =
   String.concat "; "
     (List.map
        (fun d ->
-         Printf.sprintf "%s: %s" (Foundation.Diagnostic.code d)
-           (cut (Foundation.Diagnostic.message d)))
-       (Foundation.Diag.diagnostics ds))
+         Printf.sprintf "%s: %s"
+           (Rivet_foundation.Diagnostic.code d)
+           (cut (Rivet_foundation.Diagnostic.message d)))
+       (Rivet_foundation.Diag.diagnostics ds))
 
 (* A custom-0 R-type instruction [mnemonic rd, rs1, rs2] told apart by funct3. *)
 let row ?(opcode = 0x0b) ?(feature = "") ~funct3 mnemonic : Row.row =
@@ -149,7 +150,9 @@ let assembled (module D : Target_intf.Target.DRIVER) ?features text =
         match Target_config.parse_spec t with Ok s -> s | Error m -> failwith ("bad spec: " ^ m))
       features
   in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:("\t.text\n\t" ^ text ^ "\n") in
+  let source =
+    Rivet_foundation.Span.source ~name:"<test>" ~contents:("\t.text\n\t" ^ text ^ "\n")
+  in
   match D.assemble ?features ~unit_name:"t" ~source () with
   | Error ds -> "REFUSED " ^ render ds
   | Ok laid_out -> (
@@ -229,7 +232,7 @@ let%expect_test "the configured codec and encoder agree on the golden words" =
     Foo.Lowered.Fixed { op = Option.get (Foo.Opcode.of_mnemonic "xfoo"); word = 0x0073028bL }
   in
   (match Foo.encode_in state lowered with
-  | Ok (`Fixed f) -> Printf.printf "encode_in: %s\n" (hex f.Asm_core.Lowered_ast.bytes)
+  | Ok (`Fixed f) -> Printf.printf "encode_in: %s\n" (hex f.Rivet_asm_core.Lowered_ast.bytes)
   | Ok _ -> print_endline "encode_in: relax"
   | Error _ -> print_endline "encode_in: refused");
   (match Foo.encode_in Foo.default_state lowered with

@@ -7,6 +7,12 @@
  (name driver_direct)
  (public_name rivet.driver_direct)
  (modes byte native)
- (libraries foundation codec asm_core image target_encode target_features)
+ (libraries
+  rivet_foundation
+  codec
+  rivet_asm_core
+  image
+  target_encode
+  target_features)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

@@ -1,4 +1,4 @@
-open Asm_core
+open Rivet_asm_core
 module Symtab = Symtab
 
 type layout_policy = {
@@ -115,7 +115,7 @@ type bind_error =
   | `Overlay_unknown of string
   | `Symbol_size of symbol_size
   | `Symbol_size_too_wide of string
-  | `Target_fixup of Foundation.Diagnostic.t ]
+  | `Target_fixup of Rivet_foundation.Diagnostic.t ]
 
 and overflow = { segment : string; address : int64; size : int }
 
@@ -174,7 +174,7 @@ type error =
   | `Section_kind_mismatch of string
   | `Symbol_size of symbol_size
   | `Symbol_size_too_wide of string
-  | `Target_fixup of Foundation.Diagnostic.t
+  | `Target_fixup of Rivet_foundation.Diagnostic.t
   | `Too_large of too_large ]
 
 val pp_link_error : Format.formatter -> link_error -> unit
@@ -183,16 +183,16 @@ val pp_error : Format.formatter -> error -> unit
 val link_error_code : link_error -> string
 val bind_error_code : bind_error -> string
 val error_code : error -> string
-val diag : ?origin:Foundation.Origin.t -> error -> Foundation.Diagnostic.t
+val diag : ?origin:Rivet_foundation.Origin.t -> error -> Rivet_foundation.Diagnostic.t
 
 val plan_image :
-  evaluate:('k -> place:int64 -> target:int64 -> (Int64.t, Foundation.Diagnostic.t) result) ->
+  evaluate:('k -> place:int64 -> target:int64 -> (Int64.t, Rivet_foundation.Diagnostic.t) result) ->
   ?fill:(executable:bool -> int -> string) ->
   ?align_fill:(executable:bool -> int -> string option) ->
   ?section_pad:(length:int -> string) ->
   layout_policy ->
   'k Lowered_ast.module_ list ->
-  (laid_out, Foundation.Diagnostic.t list) Err.t
+  (laid_out, Rivet_foundation.Diagnostic.t list) Err.t
 
 val bind_image :
   ?imports:(string * int64) list ->
@@ -200,7 +200,7 @@ val bind_image :
   ?load_addresses:(string * int64) list ->
   laid_out ->
   addresses:(string * int64) list ->
-  (t, Foundation.Diagnostic.t list) Err.t
+  (t, Rivet_foundation.Diagnostic.t list) Err.t
 
 val pp_plan : Format.formatter -> plan -> unit
 val pp : Format.formatter -> t -> unit

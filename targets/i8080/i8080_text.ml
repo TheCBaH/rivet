@@ -8,14 +8,14 @@
    the target's [org] pseudo-instruction in the normalized module, then handed
    to [Image.bind_image] as the section's address. *)
 
-open Foundation
-open Asm_core
+open Rivet_foundation
+open Rivet_asm_core
 module P = Pipeline.Make (I8080)
 
 type image = { origin : int; bytes : string }
 
-let with_text_section (m : I8080.Surface.t Asm_syntax.Source_ast.module_) =
-  let open Asm_syntax.Source_ast in
+let with_text_section (m : I8080.Surface.t Rivet_asm_syntax.Source_ast.module_) =
+  let open Rivet_asm_syntax.Source_ast in
   let starts_section = function
     | Directive { name; _ } -> List.mem name [ ".text"; ".data"; ".section" ]
     | _ -> false

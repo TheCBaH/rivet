@@ -34,7 +34,7 @@ let ext_sxtw = extend Extend.Sxtw
 let ext_sxtx = extend Extend.Sxtx
 
 (* A label or symbol expression. *)
-let label name = Asm_core.Expr.Symbol name
+let label name = Rivet_asm_core.Expr.Symbol name
 
 let mk base offset writeback =
   { Mem.base : (View.x, _) View.greg :> Reg.t; offset; writeback; pre = true }
@@ -46,7 +46,7 @@ let off base n = mk base (Disp.Const (Int64.of_int n)) false
 let pre base n = mk base (Disp.Const (Int64.of_int n)) true
 
 (* [\[base, #:lo12:sym\]]. *)
-let off_lo12 base e = mk base (Disp.Sym (Asm_core.Expr.Modifier ("lo12", e))) false
+let off_lo12 base e = mk base (Disp.Sym (Rivet_asm_core.Expr.Modifier ("lo12", e))) false
 
 (* [\[base, index\]]: an index register of either width, with the extend and shift it names
    ([lsl] by default). *)

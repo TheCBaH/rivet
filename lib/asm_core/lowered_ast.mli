@@ -25,7 +25,7 @@ type 'k fixup = {
   range : range;
   value : Expr.t;
   pairing : pairing;
-  origin : Foundation.Origin.t;
+  origin : Rivet_foundation.Origin.t;
 }
 
 type branch =
@@ -42,18 +42,18 @@ type 'k fragment =
       bytes : string;
       form : string option;
       fixups : 'k fixup list;
-      origin : Foundation.Origin.t;
+      origin : Rivet_foundation.Origin.t;
     }
   | Align of {
       boundary : int;
       fill : int option;
       max_skip : int option;
-      origin : Foundation.Origin.t;
+      origin : Rivet_foundation.Origin.t;
     }
-  | Relax of { alts : 'k encoded_form list; origin : Foundation.Origin.t }
-  | Zero of { length : int; origin : Foundation.Origin.t }
-  | Label_def of { name : string; origin : Foundation.Origin.t }
-  | Set_size of { name : string; size : Expr.t; origin : Foundation.Origin.t }
+  | Relax of { alts : 'k encoded_form list; origin : Rivet_foundation.Origin.t }
+  | Zero of { length : int; origin : Rivet_foundation.Origin.t }
+  | Label_def of { name : string; origin : Rivet_foundation.Origin.t }
+  | Set_size of { name : string; size : Expr.t; origin : Rivet_foundation.Origin.t }
 
 type section_kind = Progbits | Nobits
 

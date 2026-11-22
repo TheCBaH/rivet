@@ -1,4 +1,4 @@
-(* Expect tests for Foundation.Err_policy, Legacy_error, and Diagnostic.of_error.
+(* Expect tests for Rivet_foundation.Err_policy, Legacy_error, and Diagnostic.of_error.
 
    Three properties, each of which the rest of the migration relies on and none
    of which is obvious from reading the code.
@@ -8,7 +8,7 @@
    would be a poor guard. The observable facts are booleans and rendered
    diagnostics. *)
 
-open Foundation
+open Rivet_foundation
 
 (* Whether an error's origin carries each of its two independent components.
    [Err.Origin.pp] would print the stack text itself, which is exactly what must

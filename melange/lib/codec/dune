@@ -7,6 +7,6 @@
 (library
  (name codec)
  (modes byte native melange)
- (libraries foundation rivet_fmt)
+ (libraries rivet_foundation rivet_fmt)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

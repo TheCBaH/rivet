@@ -13,7 +13,7 @@
    (["unsupported: ..."]) and assembly goes on, so one run lists every
    unsupported construct of a file. *)
 
-open Foundation
+open Rivet_foundation
 module E = I8080_encode
 
 type loc = { file : string; line : int; via : (string * int) list }
@@ -523,7 +523,7 @@ let assemble_instruction st mnemonic args =
     (fun l ->
       let* enc = E.encode l in
       match enc with
-      | `Fixed f -> emit st f.Asm_core.Lowered_ast.bytes
+      | `Fixed f -> emit st f.Rivet_asm_core.Lowered_ast.bytes
       | _ -> fail "unexpected encoding")
     lowered
 

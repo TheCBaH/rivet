@@ -14,7 +14,7 @@
    [X86_32.Instruction.t] and [X86_32_encode.Instruction.t] are the same type,
    exactly as [X86_32.Instruction.t] and [X86_64.Instruction.t] already were. *)
 
-open Foundation
+open Rivet_foundation
 
 module type MODE = X86_family_encode.MODE
 
@@ -28,7 +28,7 @@ module Make (M : MODE) = struct
   include X86_family_encode.Make (M)
 
   (* The front end's error domain (docs/errors.md). Separate from the
-     encoder's because it may name {!Asm_syntax} and the encoder's may not - see
+     encoder's because it may name {!Rivet_asm_syntax} and the encoder's may not - see
      {!Target_intf.Target.TARGET} for why that split exists.
 
      That freedom is the point of the split, and [`Cannot_parse_operand] is what
@@ -43,13 +43,16 @@ module Make (M : MODE) = struct
     | `Cannot_parse_displacement of cannot_parse
     | `Cannot_parse_operand of cannot_parse
     | `Rip_requires_64bit
-    | `Malformed_rip_operand of Asm_syntax.Token.slice
-    | `Malformed_memory_operand of Asm_syntax.Token.slice
+    | `Malformed_rip_operand of Rivet_asm_syntax.Token.slice
+    | `Malformed_memory_operand of Rivet_asm_syntax.Token.slice
     | `Bad_scale of int64
     | `Unbalanced_parens
     | `Xmm_in_memory_operand of string ]
 
-  and cannot_parse = { slice : Asm_syntax.Token.slice; reason : Asm_syntax.Parse_lines.error_kind }
+  and cannot_parse = {
+    slice : Rivet_asm_syntax.Token.slice;
+    reason : Rivet_asm_syntax.Parse_lines.error_kind;
+  }
 
   type parse_error = parse_error_kind Target_error.t
 
@@ -57,9 +60,9 @@ module Make (M : MODE) = struct
     | `Unknown_register n -> Fmt.pf ppf "unknown register %%%s" n
     | `Displacement_too_wide -> Fmt.string ppf "displacement does not fit 64 bits"
     | `Cannot_parse_displacement { slice; _ } ->
-        Fmt.pf ppf "cannot parse displacement %s" (Asm_syntax.Token.slice_text slice)
+        Fmt.pf ppf "cannot parse displacement %s" (Rivet_asm_syntax.Token.slice_text slice)
     | `Cannot_parse_operand { slice; _ } ->
-        Fmt.pf ppf "cannot parse operand %s" (Asm_syntax.Token.slice_text slice)
+        Fmt.pf ppf "cannot parse operand %s" (Rivet_asm_syntax.Token.slice_text slice)
     | `Rip_requires_64bit -> Fmt.string ppf "%%rip-relative addressing is 64-bit only"
     | `Malformed_rip_operand _ -> Fmt.string ppf "malformed %%rip-relative operand"
     | `Malformed_memory_operand _ -> Fmt.string ppf "malformed scaled memory operand"
@@ -93,7 +96,7 @@ module Make (M : MODE) = struct
      register token whose name is not a register - the sigil is lexical, and
      what the name means is decided here. *)
   let lexical_profile =
-    Asm_syntax.Lexical_profile.make ~name:M.name ~comment_introducers:[ "#" ]
+    Rivet_asm_syntax.Lexical_profile.make ~name:M.name ~comment_introducers:[ "#" ]
       ~statement_separator:';' ~immediate_sigil:'$' ~register_sigil:'%' ()
 
   (* {2 Operand parsing (§4.7)}
@@ -102,14 +105,14 @@ module Make (M : MODE) = struct
      common parser can own: `16(%esp)` and `(1+2)*3` start identically and only
      the target knows that the first is a memory operand. *)
 
-  let slice_origin (s : Asm_syntax.Token.slice) =
-    match Asm_syntax.Token.slice_span s with
+  let slice_origin (s : Rivet_asm_syntax.Token.slice) =
+    match Rivet_asm_syntax.Token.slice_span s with
     | Some sp -> Origin.text sp
     | None -> Origin.synthesized ~pass:M.name ()
 
   (* The trailing [(%rip)] of a PC-relative operand, and what precedes it. *)
-  let split_rip (slice : Asm_syntax.Token.slice) =
-    let open Asm_syntax in
+  let split_rip (slice : Rivet_asm_syntax.Token.slice) =
+    let open Rivet_asm_syntax in
     match List.rev slice with
     | rp :: reg :: lp :: rest
       when Token.kind rp = Token.Rparen
@@ -134,8 +137,8 @@ module Make (M : MODE) = struct
      [Disp.Sym] exactly like [Disp.Const] (verified against i686-linux-gnu-as:
      all three shapes above encode as mod=00, SIB.base=101, disp32 with an
      R_386_32 relocation against the symbol). *)
-  let split_nobase_sib (slice : Asm_syntax.Token.slice) =
-    let open Asm_syntax in
+  let split_nobase_sib (slice : Rivet_asm_syntax.Token.slice) =
+    let open Rivet_asm_syntax in
     match List.rev slice with
     | rp :: si :: reg :: lp :: rest
       when Token.kind rp = Token.Rparen
@@ -165,8 +168,8 @@ module Make (M : MODE) = struct
      which declines [Disp.Sym] outright, so it now uses [sym_disp] instead -
      verified against i686-linux-gnu-as: both shapes above encode as mod=10,
      no SIB, disp32 with an R_386_32 relocation against the symbol. *)
-  let split_base (slice : Asm_syntax.Token.slice) =
-    let open Asm_syntax in
+  let split_base (slice : Rivet_asm_syntax.Token.slice) =
+    let open Rivet_asm_syntax in
     match List.rev slice with
     | rp :: reg :: lp :: rest
       when Token.kind rp = Token.Rparen
@@ -185,12 +188,12 @@ module Make (M : MODE) = struct
      its raw displacement, and re-parsing [2044(%rip)] as *symbolic* would make
      the linker subtract the place from a number that is already relative to it.
      A constant is a constant however it was spelled. *)
-  let disp_expression ~bad (slice : Asm_syntax.Token.slice) =
-    match Asm_syntax.Parse_lines.parse_expression slice with
+  let disp_expression ~bad (slice : Rivet_asm_syntax.Token.slice) =
+    match Rivet_asm_syntax.Parse_lines.parse_expression slice with
     | Error e -> bad (`Cannot_parse_displacement { slice; reason = Err.Error.kind e })
     | Ok e -> (
-        match Asm_core.Expr.fold Asm_core.Expr.no_env e with
-        | Ok (Asm_core.Expr.Const v) -> (
+        match Rivet_asm_core.Expr.fold Rivet_asm_core.Expr.no_env e with
+        | Ok (Rivet_asm_core.Expr.Const v) -> (
             match Bigint.to_int64_opt v with
             | Some d -> Ok (Disp.Const d)
             | None -> bad `Displacement_too_wide)
@@ -205,14 +208,14 @@ module Make (M : MODE) = struct
      sight), so the encoding is identical whether the source wrote the suffix
      or not. Stripped before the common expression parser ever sees it, since
      [@] is not an expression operator there. *)
-  let strip_plt_suffix (slice : Asm_syntax.Token.slice) =
-    let open Asm_syntax in
+  let strip_plt_suffix (slice : Rivet_asm_syntax.Token.slice) =
+    let open Rivet_asm_syntax in
     match List.rev slice with
     | { Token.kind = Token.Ident "PLT"; _ } :: { Token.kind = Token.At; _ } :: (_ :: _ as rest) ->
         List.rev rest
     | _ -> slice
 
-  let rec parse_one_operand (slice : Asm_syntax.Token.slice) =
+  let rec parse_one_operand (slice : Rivet_asm_syntax.Token.slice) =
     let origin = slice_origin slice in
     let bad kind = Error (parse_diag ~pos:__POS__ ~origin kind) in
     let reg_named n = match find_reg n with Some r -> Ok r | None -> bad (`Unknown_register n) in
@@ -233,7 +236,7 @@ module Make (M : MODE) = struct
     let index_reg_named n =
       match reg_named n with Ok r when Rclass.is_vector r.Reg.cls -> Ok r | _ -> mem_reg_named n
     in
-    let open Asm_syntax in
+    let open Rivet_asm_syntax in
     (* an EVEX opmask after the operand: [%zmm0{%k1}], [%zmm0{%k1}{z}], [(%rax){%k1}] *)
     let rec split_mask rev_kinds =
       match rev_kinds with
@@ -279,11 +282,11 @@ module Make (M : MODE) = struct
        parse-the-remainder-as-an-expression approach for a bare (non-`$`)
        symbol operand. *)
             | Token.Immediate_sigil :: _ :: _ -> (
-                match Asm_syntax.Parse_lines.parse_expression (List.tl slice) with
+                match Rivet_asm_syntax.Parse_lines.parse_expression (List.tl slice) with
                 | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e })
                 | Ok e -> (
-                    match Asm_core.Expr.fold Asm_core.Expr.no_env e with
-                    | Ok (Asm_core.Expr.Const v) -> Ok (Operand.Imm v)
+                    match Rivet_asm_core.Expr.fold Rivet_asm_core.Expr.no_env e with
+                    | Ok (Rivet_asm_core.Expr.Const v) -> Ok (Operand.Imm v)
                     | Ok folded -> Ok (Operand.Imm_sym folded)
                     | Error _ -> Ok (Operand.Imm_sym e)))
             (* %reg *)
@@ -542,7 +545,7 @@ module Make (M : MODE) = struct
                second hand-written one here, so [foo+4] means the same thing in
                an operand as in a directive argument. *)
                             match
-                              Asm_syntax.Parse_lines.parse_expression (strip_plt_suffix slice)
+                              Rivet_asm_syntax.Parse_lines.parse_expression (strip_plt_suffix slice)
                             with
                             | Ok e -> Ok (Operand.Sym e)
                             | Error e ->
@@ -558,14 +561,14 @@ module Make (M : MODE) = struct
      M1 never needed this because none of its fixtures had an index register.
      The separator itself is gone, so rejoining is concatenation; re-inserting a
      comma token would be inventing source text whose span is not the lexer's. *)
-  let regroup (slices : Asm_syntax.Token.slice list) =
+  let regroup (slices : Rivet_asm_syntax.Token.slice list) =
     let depth_of slice =
       List.fold_left
         (fun d t ->
-          match Asm_syntax.Token.kind t with
+          match Rivet_asm_syntax.Token.kind t with
           (* braces too: {dfv=of,cf} is one operand *)
-          | Asm_syntax.Token.Lparen | Asm_syntax.Token.Lbrace -> d + 1
-          | Asm_syntax.Token.Rparen | Asm_syntax.Token.Rbrace -> d - 1
+          | Rivet_asm_syntax.Token.Lparen | Rivet_asm_syntax.Token.Lbrace -> d + 1
+          | Rivet_asm_syntax.Token.Rparen | Rivet_asm_syntax.Token.Rbrace -> d - 1
           | _ -> d)
         0 slice
     in
@@ -591,13 +594,14 @@ module Make (M : MODE) = struct
     (* {dfv=...} is written with no comma after it: [ccmpz {dfv=cf} %eax, %ebx] *)
     let split_dfv slices =
       List.concat_map
-        (fun (slice : Asm_syntax.Token.slice) ->
-          match List.map Asm_syntax.Token.kind slice with
-          | Asm_syntax.Token.Lbrace :: Asm_syntax.Token.Ident "dfv" :: _ -> (
+        (fun (slice : Rivet_asm_syntax.Token.slice) ->
+          match List.map Rivet_asm_syntax.Token.kind slice with
+          | Rivet_asm_syntax.Token.Lbrace :: Rivet_asm_syntax.Token.Ident "dfv" :: _ -> (
               let rec cut n = function
                 | [] -> None
                 | t :: rest ->
-                    if Asm_syntax.Token.kind t = Asm_syntax.Token.Rbrace then Some (n + 1)
+                    if Rivet_asm_syntax.Token.kind t = Rivet_asm_syntax.Token.Rbrace then
+                      Some (n + 1)
                     else cut (n + 1) rest
               in
               match cut 0 slice with
@@ -611,11 +615,12 @@ module Make (M : MODE) = struct
        instruction's mnemonic becomes a leading symbol operand, which simplify joins back *)
     let slices =
       match (mnemonic, slices) with
-      | "lock", (first :: rest_slices : Asm_syntax.Token.slice list) -> (
+      | "lock", (first :: rest_slices : Rivet_asm_syntax.Token.slice list) -> (
           match first with
-          | m :: (_ :: _ as tail) when Asm_syntax.Token.kind m <> Asm_syntax.Token.Lparen -> (
-              match Asm_syntax.Token.kind m with
-              | Asm_syntax.Token.Ident _ -> [ m ] :: tail :: rest_slices
+          | m :: (_ :: _ as tail)
+            when Rivet_asm_syntax.Token.kind m <> Rivet_asm_syntax.Token.Lparen -> (
+              match Rivet_asm_syntax.Token.kind m with
+              | Rivet_asm_syntax.Token.Ident _ -> [ m ] :: tail :: rest_slices
               | _ -> slices)
           | _ -> slices)
       | _ -> slices

@@ -133,9 +133,9 @@ let prop_split_signed =
    The module is built directly rather than assembled from text, so a failure is
    about layout and not about a parser. *)
 
-open Asm_core
+open Rivet_asm_core
 
-let origin = Foundation.Origin.synthesized ~pass:"prop" ()
+let origin = Rivet_foundation.Origin.synthesized ~pass:"prop" ()
 
 type kind = Rel8 | Rel32
 
@@ -277,8 +277,8 @@ let prop_relax_feasible =
       match plan_shape s with
       | Error ds ->
           List.for_all
-            (fun d -> Foundation.Diagnostic.code d = "image.relax-unreachable")
-            (Foundation.Diag.diagnostics ds)
+            (fun d -> Rivet_foundation.Diagnostic.code d = "image.relax-unreachable")
+            (Rivet_foundation.Diag.diagnostics ds)
       | Ok l -> (
           match Image.bind_image l ~addresses:[ (".text", 0x400000L) ] with
           | Ok _ -> true

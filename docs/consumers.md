@@ -6,7 +6,7 @@ for instance an in-browser view running under js_of_ocaml.
 
 ## GNU source
 
-`Asm_core.Gnu_module.pp syntax ~instruction` with the target's
+`Rivet_asm_core.Gnu_module.pp syntax ~instruction` with the target's
 `Instruction.pp_gnu`; the contract is in `docs/architecture.md` ("GNU source
 export"). `syntax.type_char` is `'@'` on x86 and RISC-V, `'%'` on AArch64.
 

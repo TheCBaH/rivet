@@ -5,7 +5,7 @@ module S = I8080_sem.Runnable (Compute.Concrete)
 let hex s =
   String.concat " " (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i])))
 
-let render e = Foundation.Diagnostic.render_all (Foundation.Diag.diagnostics e)
+let render e = Rivet_foundation.Diagnostic.render_all (Rivet_foundation.Diag.diagnostics e)
 let text i = Format.asprintf "%a" E.Instruction.pp i
 
 let built ?origin items =
@@ -154,7 +154,7 @@ let%expect_test "diagnostics for builders" =
 let%expect_test "malformed generic instructions are diagnostics, not exceptions" =
   let open E in
   let entry n = Option.get (Ops.find_entry n) in
-  let imm n = Operand.Imm (Foundation.Bigint.of_int n) in
+  let imm n = Operand.Imm (Rivet_foundation.Bigint.of_int n) in
   let generic n args = I8080_asm.insn (Instruction.Insn { entry = entry n; args }) in
   List.iter
     (fun items ->
@@ -171,7 +171,7 @@ let%expect_test "malformed generic instructions are diagnostics, not exceptions"
       [ generic "push" [ Operand.Sp ] ];
       [ generic "ldax" [ Operand.Reg Reg.H ] ];
       [ generic "rst" [ imm 9 ] ];
-      [ generic "rst" [ Operand.Sym (Asm_core.Expr.Symbol "x") ] ];
+      [ generic "rst" [ Operand.Sym (Rivet_asm_core.Expr.Symbol "x") ] ];
       [ generic "jmp" [ Operand.Str "x" ] ];
       [ generic "mov" [ Operand.Reg Reg.M; Operand.Reg Reg.M ] ];
       [ I8080_asm.insn (Instruction.Data { width = 1; items = [ Operand.Reg Reg.A ] }) ];

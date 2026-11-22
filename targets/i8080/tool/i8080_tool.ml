@@ -243,7 +243,8 @@ let builders () =
     (fun i ->
       match I8080_asm.Program.assemble [ I8080_asm.insn i ] with
       | Error e ->
-          die "builders: %s" (Foundation.Diagnostic.render_all (Foundation.Diag.diagnostics e))
+          die "builders: %s"
+            (Rivet_foundation.Diagnostic.render_all (Rivet_foundation.Diag.diagnostics e))
       | Ok img ->
           let bytes = img.I8080_asm.Program.bytes in
           Printf.printf "%s\t%s\t%d\tbuilder\n"

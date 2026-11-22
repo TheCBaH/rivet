@@ -1,8 +1,8 @@
 (* Assemble a normalized module built as values, through the direct stages over
    the AArch64 encoder alone: [mov x0, #42; ret] is two words. *)
 
-open Foundation
-open Asm_core
+open Rivet_foundation
+open Rivet_asm_core
 module A = Aarch64_encode
 module P = Driver_direct.Pipeline_direct.Make (A)
 

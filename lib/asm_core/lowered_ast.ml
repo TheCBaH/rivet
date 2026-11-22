@@ -16,7 +16,7 @@
    the .cfi_* directives, and therefore .eh_frame, are discarded - but the
    direct-call and global fixtures do. *)
 
-open Foundation
+open Rivet_foundation
 
 (* What a reference is *for*. Not derivable from the kind by generic code - the
    kind is abstract above the target - and not recoverable by reading a name, so
@@ -556,7 +556,7 @@ let group_sections (m : 'k module_) =
                     boundary = sc.sec.alignment;
                     fill = None;
                     max_skip = None;
-                    origin = Foundation.Origin.synthesized ~pass:"group-sections" ();
+                    origin = Rivet_foundation.Origin.synthesized ~pass:"group-sections" ();
                   }
                 :: !frags;
             frags := List.rev_append sc.fragments !frags)

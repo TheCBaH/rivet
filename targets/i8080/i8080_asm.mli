@@ -4,7 +4,7 @@
     encoder lowers: [let open I8080_asm in [ lxi sp 0xf000; mvi a 42; sta 0x8000; hlt () ]]. A
     builder only selects the descriptor-table entry and wraps its operands; no opcode byte is
     listed here. Immediates and addresses are [int] and are range-checked when the program is
-    assembled; the [_e] variant of a builder with an immediate takes an {!Asm_core.Expr.t}, for
+    assembled; the [_e] variant of a builder with an immediate takes an {!Rivet_asm_core.Expr.t}, for
     labels and other symbols. The OCaml keyword [in] is [in_].
 
     Byte registers and register pairs are different types, and each pair class is closed, so
@@ -43,15 +43,15 @@ val psw : [> `Psw ]
 
 (** {1 Expressions} *)
 
-val symbol : string -> Asm_core.Expr.t
-val const : int -> Asm_core.Expr.t
-val plus : Asm_core.Expr.t -> Asm_core.Expr.t -> Asm_core.Expr.t
-val minus : Asm_core.Expr.t -> Asm_core.Expr.t -> Asm_core.Expr.t
+val symbol : string -> Rivet_asm_core.Expr.t
+val const : int -> Rivet_asm_core.Expr.t
+val plus : Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t
+val minus : Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t
 
-val low : Asm_core.Expr.t -> Asm_core.Expr.t
+val low : Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t
 (** The low byte of an address expression. *)
 
-val high : Asm_core.Expr.t -> Asm_core.Expr.t
+val high : Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t
 (** The high byte of an address expression. *)
 
 (** {1 Instructions} *)
@@ -93,9 +93,9 @@ val xra : reg -> t
 val ora : reg -> t
 val cmp : reg -> t
 val mvi : reg -> int -> t
-val mvi_e : reg -> Asm_core.Expr.t -> t
+val mvi_e : reg -> Rivet_asm_core.Expr.t -> t
 val lxi : pair -> int -> t
-val lxi_e : pair -> Asm_core.Expr.t -> t
+val lxi_e : pair -> Rivet_asm_core.Expr.t -> t
 val inx : pair -> t
 val dcx : pair -> t
 val dad : pair -> t
@@ -108,69 +108,69 @@ val rst : int -> t
 (** The restart vector, 0 to 7. *)
 
 val adi : int -> t
-val adi_e : Asm_core.Expr.t -> t
+val adi_e : Rivet_asm_core.Expr.t -> t
 val aci : int -> t
-val aci_e : Asm_core.Expr.t -> t
+val aci_e : Rivet_asm_core.Expr.t -> t
 val sui : int -> t
-val sui_e : Asm_core.Expr.t -> t
+val sui_e : Rivet_asm_core.Expr.t -> t
 val sbi : int -> t
-val sbi_e : Asm_core.Expr.t -> t
+val sbi_e : Rivet_asm_core.Expr.t -> t
 val ani : int -> t
-val ani_e : Asm_core.Expr.t -> t
+val ani_e : Rivet_asm_core.Expr.t -> t
 val xri : int -> t
-val xri_e : Asm_core.Expr.t -> t
+val xri_e : Rivet_asm_core.Expr.t -> t
 val ori : int -> t
-val ori_e : Asm_core.Expr.t -> t
+val ori_e : Rivet_asm_core.Expr.t -> t
 val cpi : int -> t
-val cpi_e : Asm_core.Expr.t -> t
+val cpi_e : Rivet_asm_core.Expr.t -> t
 val in_ : int -> t
-val in_e : Asm_core.Expr.t -> t
+val in_e : Rivet_asm_core.Expr.t -> t
 val out : int -> t
-val out_e : Asm_core.Expr.t -> t
+val out_e : Rivet_asm_core.Expr.t -> t
 val jmp : int -> t
-val jmp_e : Asm_core.Expr.t -> t
+val jmp_e : Rivet_asm_core.Expr.t -> t
 val jnz : int -> t
-val jnz_e : Asm_core.Expr.t -> t
+val jnz_e : Rivet_asm_core.Expr.t -> t
 val jz : int -> t
-val jz_e : Asm_core.Expr.t -> t
+val jz_e : Rivet_asm_core.Expr.t -> t
 val jnc : int -> t
-val jnc_e : Asm_core.Expr.t -> t
+val jnc_e : Rivet_asm_core.Expr.t -> t
 val jc : int -> t
-val jc_e : Asm_core.Expr.t -> t
+val jc_e : Rivet_asm_core.Expr.t -> t
 val jpo : int -> t
-val jpo_e : Asm_core.Expr.t -> t
+val jpo_e : Rivet_asm_core.Expr.t -> t
 val jpe : int -> t
-val jpe_e : Asm_core.Expr.t -> t
+val jpe_e : Rivet_asm_core.Expr.t -> t
 val jp : int -> t
-val jp_e : Asm_core.Expr.t -> t
+val jp_e : Rivet_asm_core.Expr.t -> t
 val jm : int -> t
-val jm_e : Asm_core.Expr.t -> t
+val jm_e : Rivet_asm_core.Expr.t -> t
 val call : int -> t
-val call_e : Asm_core.Expr.t -> t
+val call_e : Rivet_asm_core.Expr.t -> t
 val cnz : int -> t
-val cnz_e : Asm_core.Expr.t -> t
+val cnz_e : Rivet_asm_core.Expr.t -> t
 val cz : int -> t
-val cz_e : Asm_core.Expr.t -> t
+val cz_e : Rivet_asm_core.Expr.t -> t
 val cnc : int -> t
-val cnc_e : Asm_core.Expr.t -> t
+val cnc_e : Rivet_asm_core.Expr.t -> t
 val cc : int -> t
-val cc_e : Asm_core.Expr.t -> t
+val cc_e : Rivet_asm_core.Expr.t -> t
 val cpo : int -> t
-val cpo_e : Asm_core.Expr.t -> t
+val cpo_e : Rivet_asm_core.Expr.t -> t
 val cpe : int -> t
-val cpe_e : Asm_core.Expr.t -> t
+val cpe_e : Rivet_asm_core.Expr.t -> t
 val cp : int -> t
-val cp_e : Asm_core.Expr.t -> t
+val cp_e : Rivet_asm_core.Expr.t -> t
 val cm : int -> t
-val cm_e : Asm_core.Expr.t -> t
+val cm_e : Rivet_asm_core.Expr.t -> t
 val sta : int -> t
-val sta_e : Asm_core.Expr.t -> t
+val sta_e : Rivet_asm_core.Expr.t -> t
 val lda : int -> t
-val lda_e : Asm_core.Expr.t -> t
+val lda_e : Rivet_asm_core.Expr.t -> t
 val shld : int -> t
-val shld_e : Asm_core.Expr.t -> t
+val shld_e : Rivet_asm_core.Expr.t -> t
 val lhld : int -> t
-val lhld_e : Asm_core.Expr.t -> t
+val lhld_e : Rivet_asm_core.Expr.t -> t
 
 (** {1 Program items} *)
 
@@ -186,12 +186,12 @@ val label : string -> item
     {!Program.image}[.symbols]. *)
 
 val db : int list -> item
-val db_e : Asm_core.Expr.t list -> item
+val db_e : Rivet_asm_core.Expr.t list -> item
 
 val dw : int list -> item
 (** Little-endian words. *)
 
-val dw_e : Asm_core.Expr.t list -> item
+val dw_e : Rivet_asm_core.Expr.t list -> item
 
 val ascii : string -> item
 (** The bytes of the string. *)
@@ -217,12 +217,12 @@ module Items : sig
   val hl : [> `Hl ]
   val sp : [> `Sp ]
   val psw : [> `Psw ]
-  val symbol : string -> Asm_core.Expr.t
-  val const : int -> Asm_core.Expr.t
-  val plus : Asm_core.Expr.t -> Asm_core.Expr.t -> Asm_core.Expr.t
-  val minus : Asm_core.Expr.t -> Asm_core.Expr.t -> Asm_core.Expr.t
-  val low : Asm_core.Expr.t -> Asm_core.Expr.t
-  val high : Asm_core.Expr.t -> Asm_core.Expr.t
+  val symbol : string -> Rivet_asm_core.Expr.t
+  val const : int -> Rivet_asm_core.Expr.t
+  val plus : Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t
+  val minus : Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t
+  val low : Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t
+  val high : Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t
   val nop : unit -> item
   val hlt : unit -> item
   val ret : unit -> item
@@ -260,9 +260,9 @@ module Items : sig
   val ora : reg -> item
   val cmp : reg -> item
   val mvi : reg -> int -> item
-  val mvi_e : reg -> Asm_core.Expr.t -> item
+  val mvi_e : reg -> Rivet_asm_core.Expr.t -> item
   val lxi : pair -> int -> item
-  val lxi_e : pair -> Asm_core.Expr.t -> item
+  val lxi_e : pair -> Rivet_asm_core.Expr.t -> item
   val inx : pair -> item
   val dcx : pair -> item
   val dad : pair -> item
@@ -272,75 +272,75 @@ module Items : sig
   val pop : stack_pair -> item
   val rst : int -> item
   val adi : int -> item
-  val adi_e : Asm_core.Expr.t -> item
+  val adi_e : Rivet_asm_core.Expr.t -> item
   val aci : int -> item
-  val aci_e : Asm_core.Expr.t -> item
+  val aci_e : Rivet_asm_core.Expr.t -> item
   val sui : int -> item
-  val sui_e : Asm_core.Expr.t -> item
+  val sui_e : Rivet_asm_core.Expr.t -> item
   val sbi : int -> item
-  val sbi_e : Asm_core.Expr.t -> item
+  val sbi_e : Rivet_asm_core.Expr.t -> item
   val ani : int -> item
-  val ani_e : Asm_core.Expr.t -> item
+  val ani_e : Rivet_asm_core.Expr.t -> item
   val xri : int -> item
-  val xri_e : Asm_core.Expr.t -> item
+  val xri_e : Rivet_asm_core.Expr.t -> item
   val ori : int -> item
-  val ori_e : Asm_core.Expr.t -> item
+  val ori_e : Rivet_asm_core.Expr.t -> item
   val cpi : int -> item
-  val cpi_e : Asm_core.Expr.t -> item
+  val cpi_e : Rivet_asm_core.Expr.t -> item
   val in_ : int -> item
-  val in_e : Asm_core.Expr.t -> item
+  val in_e : Rivet_asm_core.Expr.t -> item
   val out : int -> item
-  val out_e : Asm_core.Expr.t -> item
+  val out_e : Rivet_asm_core.Expr.t -> item
   val jmp : int -> item
-  val jmp_e : Asm_core.Expr.t -> item
+  val jmp_e : Rivet_asm_core.Expr.t -> item
   val jnz : int -> item
-  val jnz_e : Asm_core.Expr.t -> item
+  val jnz_e : Rivet_asm_core.Expr.t -> item
   val jz : int -> item
-  val jz_e : Asm_core.Expr.t -> item
+  val jz_e : Rivet_asm_core.Expr.t -> item
   val jnc : int -> item
-  val jnc_e : Asm_core.Expr.t -> item
+  val jnc_e : Rivet_asm_core.Expr.t -> item
   val jc : int -> item
-  val jc_e : Asm_core.Expr.t -> item
+  val jc_e : Rivet_asm_core.Expr.t -> item
   val jpo : int -> item
-  val jpo_e : Asm_core.Expr.t -> item
+  val jpo_e : Rivet_asm_core.Expr.t -> item
   val jpe : int -> item
-  val jpe_e : Asm_core.Expr.t -> item
+  val jpe_e : Rivet_asm_core.Expr.t -> item
   val jp : int -> item
-  val jp_e : Asm_core.Expr.t -> item
+  val jp_e : Rivet_asm_core.Expr.t -> item
   val jm : int -> item
-  val jm_e : Asm_core.Expr.t -> item
+  val jm_e : Rivet_asm_core.Expr.t -> item
   val call : int -> item
-  val call_e : Asm_core.Expr.t -> item
+  val call_e : Rivet_asm_core.Expr.t -> item
   val cnz : int -> item
-  val cnz_e : Asm_core.Expr.t -> item
+  val cnz_e : Rivet_asm_core.Expr.t -> item
   val cz : int -> item
-  val cz_e : Asm_core.Expr.t -> item
+  val cz_e : Rivet_asm_core.Expr.t -> item
   val cnc : int -> item
-  val cnc_e : Asm_core.Expr.t -> item
+  val cnc_e : Rivet_asm_core.Expr.t -> item
   val cc : int -> item
-  val cc_e : Asm_core.Expr.t -> item
+  val cc_e : Rivet_asm_core.Expr.t -> item
   val cpo : int -> item
-  val cpo_e : Asm_core.Expr.t -> item
+  val cpo_e : Rivet_asm_core.Expr.t -> item
   val cpe : int -> item
-  val cpe_e : Asm_core.Expr.t -> item
+  val cpe_e : Rivet_asm_core.Expr.t -> item
   val cp : int -> item
-  val cp_e : Asm_core.Expr.t -> item
+  val cp_e : Rivet_asm_core.Expr.t -> item
   val cm : int -> item
-  val cm_e : Asm_core.Expr.t -> item
+  val cm_e : Rivet_asm_core.Expr.t -> item
   val sta : int -> item
-  val sta_e : Asm_core.Expr.t -> item
+  val sta_e : Rivet_asm_core.Expr.t -> item
   val lda : int -> item
-  val lda_e : Asm_core.Expr.t -> item
+  val lda_e : Rivet_asm_core.Expr.t -> item
   val shld : int -> item
-  val shld_e : Asm_core.Expr.t -> item
+  val shld_e : Rivet_asm_core.Expr.t -> item
   val lhld : int -> item
-  val lhld_e : Asm_core.Expr.t -> item
+  val lhld_e : Rivet_asm_core.Expr.t -> item
   val insn : t -> item
   val label : string -> item
   val db : int list -> item
-  val db_e : Asm_core.Expr.t list -> item
+  val db_e : Rivet_asm_core.Expr.t list -> item
   val dw : int list -> item
-  val dw_e : Asm_core.Expr.t list -> item
+  val dw_e : Rivet_asm_core.Expr.t list -> item
   val ascii : string -> item
   val space : int -> item
 end
@@ -352,14 +352,14 @@ module Program : sig
     symbols : (string * int) list;  (** every label, by address then name *)
   }
 
-  val assemble : ?origin:int -> ?unit_name:string -> item list -> image Foundation.Diag.t
+  val assemble : ?origin:int -> ?unit_name:string -> item list -> image Rivet_foundation.Diag.t
   (** Lowers, lays out and binds the items at [origin] (default 0) through the shared direct
       pipeline stages. Diagnostics: duplicate and undefined labels, operand shapes, ranges,
       an origin or image outside the 64 KiB address space. *)
 
   val symbol : image -> string -> int option
 
-  val bind : origin:int -> Image.laid_out -> image Foundation.Diag.t
+  val bind : origin:int -> Image.laid_out -> image Rivet_foundation.Diag.t
   (** The last step of {!assemble}, for a caller that planned its own module: one segment bound at
       [origin], with its exported symbols. *)
 end

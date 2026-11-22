@@ -19,7 +19,7 @@ library: `('a, 'e) Err.t = ('a, 'e Err.Error.t) result` keeps the typed payload
 while attaching a bounded detection origin and a bounded semantic event trail.
 
 Note the division of labour between the two origins, which is the reason both
-exist. `Foundation.Origin` says where in the **assembly source** a problem is —
+exist. `Rivet_foundation.Origin` says where in the **assembly source** a problem is —
 a span, a producer, a synthesizing pass. `Err.Error.origin` says where in the
 **assembler** it was detected, as an ordinary `__POS__`. Neither substitutes for
 the other, and a diagnostic that misattributes the first is diagnosed with the
@@ -137,7 +137,7 @@ And the rules that go with them:
 - `Diagnostic.of_error` is called **once**, at the reporting boundary, against
   the top-level union. Intermediate layers move variants, not diagnostics.
 
-`Foundation.Diag` names the combinations that recur, so no caller has to spell
+`Rivet_foundation.Diag` names the combinations that recur, so no caller has to spell
 out `Err.fail ~pp_error:Diagnostic.pp_all` and risk getting the printer wrong.
 
 ### Accumulating independent failures
@@ -160,7 +160,7 @@ cost bound before entering `Err.Accum`.
 
 ## 3. Determinism
 
-`Err` has two independent nondeterminism sources. `Foundation.Err_policy`
+`Err` has two independent nondeterminism sources. `Rivet_foundation.Err_policy`
 disables one and keeps the other, and the distinction matters:
 
 - **Automatic stack capture must be off.** `Err.Config.default` — what `Err`
@@ -201,7 +201,7 @@ boundaries` installs a monitor that writes to stderr:
 ```
 
 Two locations, and they answer different questions. `t.s:3:2` is
-`Foundation.Origin` — where in the assembly source. `driver/pipeline.ml:209` is
+`Rivet_foundation.Origin` — where in the assembly source. `driver/pipeline.ml:209` is
 `Err.Error.origin` — where in the assembler it was detected. The `trace:` line
 is the phase crossing recorded by `Diag.stage`.
 
@@ -216,7 +216,7 @@ Replacing ~160 string-built diagnostics is two changes, and only one of them can
 move committed output — 63 cram lines pin `origin: error[code]: message`. They
 are separated so the dangerous lines are not hidden among the mechanical ones.
 
-`Foundation.Legacy_error` was the seam:
+`Rivet_foundation.Legacy_error` was the seam:
 
 ```ocaml
 type t = [ `Diag of { code : string; message : string } ]

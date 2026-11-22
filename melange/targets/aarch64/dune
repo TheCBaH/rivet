@@ -12,7 +12,7 @@
  (name aarch64_encode)
  (modules aarch64_encode aarch64_types aarch64_ops)
  (modes byte native melange)
- (libraries foundation codec asm_core target_error target_encode)
+ (libraries rivet_foundation codec rivet_asm_core target_error target_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 
@@ -20,6 +20,12 @@
  (name aarch64)
  (modules aarch64)
  (modes byte native melange)
- (libraries foundation codec asm_core asm_syntax target_intf aarch64_encode)
+ (libraries
+  rivet_foundation
+  codec
+  rivet_asm_core
+  rivet_asm_syntax
+  target_intf
+  aarch64_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

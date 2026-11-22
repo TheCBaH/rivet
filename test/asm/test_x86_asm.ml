@@ -126,11 +126,11 @@ let%expect_test "memory and EVEX operands print as their text" =
       mem ~disp:8L rsp;
       mem ~index:rcx ~scale:4 ~disp:(-4L) rax;
       mem ~index:r9d ebx;
-      mem_e (Asm_core.Expr.Symbol "g") rax;
+      mem_e (Rivet_asm_core.Expr.Symbol "g") rax;
       abs 0x1000L;
       abs ~index:rcx ~scale:8 0x1000L;
       rip ~disp:16L ();
-      rip_e (Asm_core.Expr.Symbol "g");
+      rip_e (Rivet_asm_core.Expr.Symbol "g");
       X86_32_asm.(mem ~index:esi ~scale:2 ebp);
     ];
   List.iter
@@ -162,7 +162,7 @@ let%expect_test "memory and EVEX operands print as their text" =
 let%expect_test "x86_64 builders read like the text" =
   let module H = Harness.Make (X86_64_encode) in
   let open X86_64_asm in
-  let l = Asm_core.Expr.Symbol "l" in
+  let l = Rivet_asm_core.Expr.Symbol "l" in
   List.iter
     (fun (i, t) -> H.check i t)
     [
@@ -266,7 +266,7 @@ let%expect_test "x86_32 builders read like the text" =
 
 (* Branches: the displacement to the label after the instruction is zero. *)
 let%expect_test "branches to a label" =
-  let l = Asm_core.Expr.Symbol "l" in
+  let l = Rivet_asm_core.Expr.Symbol "l" in
   let module H64 = Harness.Make (X86_64_encode) in
   let module H32 = Harness.Make (X86_32_encode) in
   let check name same (i, t) =
@@ -387,7 +387,7 @@ let%expect_test "%rsp and %esp are rejected as an index, from text, builders and
   in
   let direct index =
     match direct index with
-    | Ok (`Fixed f) -> Harness.hex f.Asm_core.Lowered_ast.bytes
+    | Ok (`Fixed f) -> Harness.hex f.Rivet_asm_core.Lowered_ast.bytes
     | Ok (`Relax _) -> "relax"
     | Error e -> "error: " ^ H64.message e
   in

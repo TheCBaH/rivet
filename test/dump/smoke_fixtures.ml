@@ -37,6 +37,6 @@ let summarize (m : Driver.Portable.manifest) : string =
         (Printf.sprintf "%-6s address=0x%-10Lx bytes=%d %s\n" s.Driver.Portable.name
            s.Driver.Portable.address
            (String.length s.Driver.Portable.bytes)
-           (Asm_core.Perms.to_string s.Driver.Portable.perms)))
+           (Rivet_asm_core.Perms.to_string s.Driver.Portable.perms)))
     m.Driver.Portable.segments;
   Buffer.contents buf

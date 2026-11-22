@@ -52,14 +52,14 @@ module Reg : sig
 end
 
 module Disp : sig
-  type t = Const of int64 | Sym of Asm_core.Expr.t
+  type t = Const of int64 | Sym of Rivet_asm_core.Expr.t
 
   val equal : t -> t -> bool
   val zero : t
   val is_zero : t -> bool
   val placeholder : t -> int64
 
-  val sym_to_string : Asm_core.Expr.t -> string
+  val sym_to_string : Rivet_asm_core.Expr.t -> string
   (** a symbolic operand as AT&T spells it: parenthesised when it would start with [$] *)
 
   val to_string : t -> string
@@ -77,9 +77,9 @@ module Operand : sig
   type t =
     | Reg of Reg.t
     | Mem of Mem.t
-    | Imm of Foundation.Bigint.t
-    | Imm_sym of Asm_core.Expr.t
-    | Sym of Asm_core.Expr.t
+    | Imm of Rivet_foundation.Bigint.t
+    | Imm_sym of Rivet_asm_core.Expr.t
+    | Sym of Rivet_asm_core.Expr.t
     | Dfv of int
     | Bcst of { mem : Mem.t; n : int }
     | Masked of { op : t; k : int; zero : bool }
@@ -90,7 +90,7 @@ module Operand : sig
 end
 
 module Surface : sig
-  type t = { mnemonic : string; ops : Operand.t list; origin : Foundation.Origin.t }
+  type t = { mnemonic : string; ops : Operand.t list; origin : Rivet_foundation.Origin.t }
 
   val pp : Format.formatter -> t -> unit
 end

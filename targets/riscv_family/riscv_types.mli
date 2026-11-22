@@ -486,13 +486,17 @@ module Reg : sig
 end
 
 module Mem : sig
-  type t = { offset : Asm_core.Expr.t; base : Reg.t }
+  type t = { offset : Rivet_asm_core.Expr.t; base : Reg.t }
 
   val pp : Format.formatter -> t -> unit
 end
 
 module Operand : sig
-  type t = Reg of Reg.t | Imm of Foundation.Bigint.t | Sym of Asm_core.Expr.t | Mem of Mem.t
+  type t =
+    | Reg of Reg.t
+    | Imm of Rivet_foundation.Bigint.t
+    | Sym of Rivet_asm_core.Expr.t
+    | Mem of Mem.t
 
   val pp : Format.formatter -> t -> unit
 end

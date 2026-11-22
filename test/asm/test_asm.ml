@@ -8,13 +8,13 @@ module X64 = Make (X86_64_encode)
 module Arm = Make (Arm_encode)
 module A64 = Make (Aarch64_encode)
 
-let int n = Foundation.Bigint.of_int n
+let int n = Rivet_foundation.Bigint.of_int n
 
 let%expect_test "Instruction.mk values encode like their text" =
   (let module E = Riscv32_encode in
   let x n = E.Operand.Reg (E.Reg.x n) in
   let mem n base =
-    E.Operand.Mem { E.Mem.offset = Asm_core.Expr.Const (int n); base = E.Reg.x base }
+    E.Operand.Mem { E.Mem.offset = Rivet_asm_core.Expr.Const (int n); base = E.Reg.x base }
   in
   Rv32.check (E.Instruction.mk E.Opcode.Add [ x 1; x 2; x 3 ]) "add x1, x2, x3";
   Rv32.check (E.Instruction.mk E.Opcode.Lw [ x 10; mem 8 2 ]) "lw a0, 8(sp)";

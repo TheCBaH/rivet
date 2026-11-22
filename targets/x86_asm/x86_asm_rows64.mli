@@ -50,581 +50,581 @@ val ldtilecfg : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val sttilecfg : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val tilerelease : X86_family_encode.Instruction.t
 val ccmpbe_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpbe_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpbe_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbe_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpbe_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpbe_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbe_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpbe_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpbe_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbe_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpbe_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpbe_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbe_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpbe_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpbe_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbe_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpbe_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpbe_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbel_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbel_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbel_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbeq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbeq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbeq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbew_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbew_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbew_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbel_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbel_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbel_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbeq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbeq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbeq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbew_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbew_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbew_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpb_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpb_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpb_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpb_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpb_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpb_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpb_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpb_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpb_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpb_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpb_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpb_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpb_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpb_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpb_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpb_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpb_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpb_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbl_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbl_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbl_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbw_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbw_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbw_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbl_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbl_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbl_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbw_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbw_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbw_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpf_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpf_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpf_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpf_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpf_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpf_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpf_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpf_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpf_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpf_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpf_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpf_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpf_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpf_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpf_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpf_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpf_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpf_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpfl_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpfl_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpfl_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpfq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpfq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpfq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpfw_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpfw_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpfw_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpfl_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpfl_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpfl_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpfq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpfq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpfq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpfw_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpfw_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpfw_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmple_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmple_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmple_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmple_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmple_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmple_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmple_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmple_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmple_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmple_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmple_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmple_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmple_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmple_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmple_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmple_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmple_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmple_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmplel_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmplel_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmplel_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpleq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpleq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpleq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmplew_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmplew_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmplew_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmplel_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmplel_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmplel_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpleq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpleq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpleq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmplew_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmplew_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmplew_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpl_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpl_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpl_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpl_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpl_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpl_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpl_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpl_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpl_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpl_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpl_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpl_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpl_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpl_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpl_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpl_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpl_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpl_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpll_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpll_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpll_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmplq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmplq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmplq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmplw_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmplw_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmplw_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpll_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpll_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpll_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmplq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmplq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmplq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmplw_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmplw_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmplw_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbe_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnbe_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnbe_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbe_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnbe_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnbe_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbe_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnbe_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnbe_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbe_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnbe_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnbe_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbe_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnbe_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnbe_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbe_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnbe_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnbe_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbel_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbel_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbel_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbeq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbeq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbeq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbew_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbew_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbew_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbel_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbel_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbel_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbeq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbeq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbeq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbew_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbew_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbew_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnb_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnb_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnb_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnb_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnb_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnb_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnb_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnb_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnb_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnb_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnb_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnb_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnb_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnb_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnb_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnb_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnb_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnb_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbl_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbl_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbl_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbw_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbw_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbw_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbl_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbl_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbl_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbw_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbw_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbw_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnle_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnle_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnle_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnle_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnle_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnle_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnle_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnle_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnle_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnle_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnle_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnle_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnle_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnle_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnle_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnle_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnle_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnle_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnlel_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnlel_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnlel_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnleq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnleq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnleq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnlew_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnlew_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnlew_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnlel_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnlel_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnlel_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnleq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnleq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnleq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnlew_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnlew_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnlew_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnl_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnl_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnl_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnl_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnl_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnl_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnl_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnl_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnl_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnl_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnl_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnl_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnl_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnl_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnl_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnl_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnl_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnl_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnll_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnll_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnll_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnlq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnlq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnlq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnlw_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnlw_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnlw_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnll_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnll_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnll_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnlq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnlq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnlq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnlw_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnlw_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnlw_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpno_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpno_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpno_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpno_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpno_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpno_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpno_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpno_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpno_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpno_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpno_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpno_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpno_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpno_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpno_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpno_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpno_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpno_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnol_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnol_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnol_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnoq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnoq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnoq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnow_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnow_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnow_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnol_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnol_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnol_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnoq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnoq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnoq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnow_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnow_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnow_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpns_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpns_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpns_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpns_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpns_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpns_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpns_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpns_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpns_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpns_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpns_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpns_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpns_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpns_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpns_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpns_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpns_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpns_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnsl_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnsl_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnsl_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnsq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnsq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnsq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnsw_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnsw_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnsw_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnsl_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnsl_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnsl_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnsq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnsq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnsq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnsw_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnsw_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnsw_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnz_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnz_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnz_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnz_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnz_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnz_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnz_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnz_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnz_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnz_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnz_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnz_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnz_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnz_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnz_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnz_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnz_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnz_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnzl_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnzl_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnzl_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnzq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnzq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnzq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnzw_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnzw_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnzw_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnzl_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnzl_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnzl_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnzq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnzq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnzq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnzw_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnzw_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnzw_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpo_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpo_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpo_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpo_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpo_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpo_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpo_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpo_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpo_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpo_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpo_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpo_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpo_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpo_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpo_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpo_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpo_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpo_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpol_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpol_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpol_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpoq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpoq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpoq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpow_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpow_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpow_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpol_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpol_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpol_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpoq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpoq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpoq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpow_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpow_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpow_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmps_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmps_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmps_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmps_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmps_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmps_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmps_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmps_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmps_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmps_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmps_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmps_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmps_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmps_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmps_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmps_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmps_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmps_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpsl_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpsl_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpsl_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpsq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpsq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpsq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpsw_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpsw_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpsw_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpsl_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpsl_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpsl_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpsq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpsq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpsq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpsw_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpsw_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpsw_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpt_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpt_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpt_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpt_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpt_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpt_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpt_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpt_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpt_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpt_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpt_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpt_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpt_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpt_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpt_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpt_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpt_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpt_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmptl_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmptl_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmptl_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmptq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmptq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmptq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmptw_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmptw_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmptw_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmptl_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmptl_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmptl_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmptq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmptq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmptq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmptw_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmptw_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmptw_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpz_fi8r32 : int -> int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpz_fi8r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpz_fi8r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpz_fi8r64 : int -> int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpz_fi8r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpz_fi8r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpz_fi8r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpz_fi8r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpz_fi8r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpz_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpz_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpz_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpz_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpz_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpz_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpz_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpz_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpz_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpzl_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpzl_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpzl_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpzq_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpzq_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpzq_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpzw_fi8m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpzw_fi8m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpzw_fi8m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpzl_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpzl_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpzl_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpzq_fi32m : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpzq_fi32m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpzq_fi32m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpzw_fi16m : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpzw_fi16m_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpzw_fi16m_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestbe_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestbe_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestbe_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestbe_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestbe_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestbe_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestbe_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestbe_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestbe_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestbel : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestbel_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestbel_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestbeq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestbeq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestbeq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestbew : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestbew_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestbew_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestb_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestb_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestb_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestb_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestb_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestb_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestb_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestb_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestb_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestbl : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestbl_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestbl_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestbq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestbq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestbq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestbw : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestbw_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestbw_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestf_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestf_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestf_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestf_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestf_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestf_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestf_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestf_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestf_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestfl : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestfl_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestfl_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestfq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestfq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestfq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestfw : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestfw_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestfw_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestle_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestle_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestle_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestle_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestle_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestle_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestle_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestle_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestle_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestlel : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestlel_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestlel_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestleq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestleq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestleq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestlew : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestlew_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestlew_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestl_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestl_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestl_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestl_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestl_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestl_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestl_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestl_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestl_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestll : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestll_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestll_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestlq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestlq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestlq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestlw : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestlw_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestlw_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnbe_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnbe_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnbe_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnbe_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnbe_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnbe_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnbe_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnbe_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnbe_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnbel : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnbel_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnbel_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnbeq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnbeq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnbeq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnbew : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnbew_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnbew_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnb_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnb_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnb_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnb_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnb_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnb_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnb_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnb_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnb_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnbl : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnbl_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnbl_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnbq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnbq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnbq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnbw : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnbw_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnbw_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnle_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnle_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnle_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnle_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnle_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnle_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnle_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnle_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnle_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnlel : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnlel_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnlel_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnleq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnleq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnleq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnlew : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnlew_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnlew_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnl_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnl_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnl_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnl_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnl_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnl_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnl_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnl_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnl_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnll : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnll_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnll_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnlq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnlq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnlq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnlw : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnlw_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnlw_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestno_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestno_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestno_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestno_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestno_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestno_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestno_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestno_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestno_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnol : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnol_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnol_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnoq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnoq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnoq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnow : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnow_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnow_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestns_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestns_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestns_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestns_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestns_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestns_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestns_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestns_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestns_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnsl : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnsl_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnsl_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnsq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnsq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnsq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnsw : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnsw_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnsw_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnz_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnz_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnz_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnz_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnz_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnz_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnz_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnz_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnz_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnzl : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnzl_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnzl_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnzq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnzq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnzq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnzw : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnzw_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnzw_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctesto_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctesto_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctesto_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctesto_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctesto_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctesto_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctesto_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctesto_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctesto_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestol : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestol_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestol_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestoq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestoq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestoq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestow : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestow_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestow_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctests_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctests_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctests_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctests_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctests_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctests_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctests_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctests_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctests_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestsl : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestsl_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestsl_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestsq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestsq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestsq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestsw : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestsw_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestsw_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestt_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestt_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestt_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestt_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestt_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestt_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestt_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestt_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestt_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctesttl : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctesttl_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctesttl_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctesttq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctesttq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctesttq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctesttw : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctesttw_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctesttw_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestz_fi32r32 : int -> int64 -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestz_fi32r32_e : int -> Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestz_fi32r32_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestz_fi32r64 : int -> int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestz_fi32r64_e : int -> Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestz_fi32r64_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestz_fi16r16 : int -> int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestz_fi16r16_e : int -> Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestz_fi16r16_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestzl : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestzl_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestzl_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestzq : int -> int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestzq_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestzq_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestzw : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestzw_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestzw_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val incl_rr : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val incq_rr : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val incw_rr : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -635,104 +635,104 @@ val rcll_r32r322 : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [
 val rclq_r64r642 : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclw_r16r162 : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rcll_irr : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rcll_irr_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rcll_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclq_irr : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rclq_irr_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rclq_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclw_irr : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rclw_irr_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rclw_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rcll_mr322 : X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclq_mr642 : X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclw_mr162 : X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rcll_imr : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rcll_imr_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rcll_imr_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclq_imr : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rclq_imr_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rclq_imr_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclw_imr : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rclw_imr_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rclw_imr_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val roll_r32r322 : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolq_r64r642 : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolw_r16r162 : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val roll_irr : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val roll_irr_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val roll_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolq_irr : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rolq_irr_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rolq_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolw_irr : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rolw_irr_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rolw_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val roll_mr322 : X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolq_mr642 : X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolw_mr162 : X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val roll_imr : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val roll_imr_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val roll_imr_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolq_imr : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rolq_imr_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rolq_imr_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolw_imr : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rolw_imr_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rolw_imr_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shlw_r16r162 : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shlw_irr : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shlw_irr_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shlw_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shlw_mr162 : X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shlw_imr : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shlw_imr_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shlw_imr_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val vprold_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprold_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprold_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprold_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprold_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprold_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprolq_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprolq_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprolq_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprolq_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprolq_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprolq_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprord_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprord_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprord_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprord_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprord_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprord_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprorq_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprorq_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprorq_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprorq_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprorq_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprorq_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpsraq_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpsraq_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpsraq_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpsraq_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpsraq_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpsraq_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprold_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprold_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprold_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprold_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprold_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprold_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprolq_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprolq_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprolq_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprolq_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprolq_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprolq_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprord_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprord_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprord_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprord_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprord_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprord_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprorq_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprorq_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprorq_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprorq_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprorq_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprorq_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpsraq_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpsraq_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpsraq_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpsraq_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpsraq_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpsraq_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprold_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprold_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprold_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprold_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprold_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprold_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprolq_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprolq_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprolq_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprolq_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprolq_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprolq_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprord_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprord_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprord_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprord_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprord_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprord_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprorq_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprorq_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprorq_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprorq_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprorq_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprorq_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpsraq_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpsraq_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpsraq_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpsraq_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpsraq_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpsraq_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgatherpf0dpd : k:X86_asm.kmask -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vgatherpf0dps : k:X86_asm.kmask -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vgatherpf0qpd : k:X86_asm.kmask -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -764,21 +764,21 @@ val blsr_mr64 : X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm
 val llwpcb_r32 : (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val llwpcb_r64 : (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lwpins_i32r32r32 : int64 -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val lwpins_i32r32r32_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val lwpins_i32r32r32_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lwpins_i32r32r64 : int64 -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val lwpins_i32r32r64_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val lwpins_i32r32r64_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lwpins_i32mr32 : int64 -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val lwpins_i32mr32_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val lwpins_i32mr32_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lwpins_i32mr64 : int64 -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val lwpins_i32mr64_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val lwpins_i32mr64_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lwpval_i32r32r32 : int64 -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val lwpval_i32r32r32_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val lwpval_i32r32r32_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lwpval_i32r32r64 : int64 -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val lwpval_i32r32r64_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val lwpval_i32r32r64_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lwpval_i32mr32 : int64 -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val lwpval_i32mr32_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val lwpval_i32mr32_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lwpval_i32mr64 : int64 -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val lwpval_i32mr64_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val lwpval_i32mr64_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val slwpcb_r32 : (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val slwpcb_r64 : (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val blcfill_r32r32 : (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -818,48 +818,48 @@ val tzmsk_r64r64 : (X86_asm.w64, [< `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Lo 
 val tzmsk_mr32 : X86_family_encode.Mem.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val tzmsk_mr64 : X86_family_encode.Mem.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val urdmsr_ir : int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val urdmsr_ir_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val urdmsr_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val uwrmsr_ri : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> int64 -> X86_family_encode.Instruction.t
-val uwrmsr_ri_e : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val uwrmsr_ri_e : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 val tilemovcol_rza : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val tilemovcol_iza : int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
-val tilemovcol_iza_e : Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
+val tilemovcol_iza_e : Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val tilemovrow_rza : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val tilemovrow_iza : int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
-val tilemovrow_iza_e : Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
+val tilemovrow_iza_e : Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val top2bf16ps : (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val top4bssd : (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val top4bsud : (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val top4busd : (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val top4buud : (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val top4mxbf8ps : int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
-val top4mxbf8ps_e : Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
+val top4mxbf8ps_e : Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val top4mxbhf8ps : int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
-val top4mxbhf8ps_e : Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
+val top4mxbhf8ps_e : Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val top4mxbssps : int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
-val top4mxbssps_e : Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
+val top4mxbssps_e : Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val top4mxhbf8ps : int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
-val top4mxhbf8ps_e : Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
+val top4mxhbf8ps_e : Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val top4mxhf8ps : int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
-val top4mxhf8ps_e : Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
+val top4mxhf8ps_e : Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val tcvtrowd2ps_raz : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tcvtrowd2ps_iaz : int -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val tcvtrowd2ps_iaz_e : Asm_core.Expr.t -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val tcvtrowd2ps_iaz_e : Rivet_asm_core.Expr.t -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tcvtrowps2bf16h_raz : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tcvtrowps2bf16h_iaz : int -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val tcvtrowps2bf16h_iaz_e : Asm_core.Expr.t -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val tcvtrowps2bf16h_iaz_e : Rivet_asm_core.Expr.t -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tcvtrowps2bf16l_raz : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tcvtrowps2bf16l_iaz : int -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val tcvtrowps2bf16l_iaz_e : Asm_core.Expr.t -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val tcvtrowps2bf16l_iaz_e : Rivet_asm_core.Expr.t -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tcvtrowps2phh_raz : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tcvtrowps2phh_iaz : int -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val tcvtrowps2phh_iaz_e : Asm_core.Expr.t -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val tcvtrowps2phh_iaz_e : Rivet_asm_core.Expr.t -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tcvtrowps2phl_raz : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tcvtrowps2phl_iaz : int -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val tcvtrowps2phl_iaz_e : Asm_core.Expr.t -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val tcvtrowps2phl_iaz_e : Rivet_asm_core.Expr.t -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tilemovrow_raz : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tilemovrow_iaz : int -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val tilemovrow_iaz_e : Asm_core.Expr.t -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val tilemovrow_iaz_e : Rivet_asm_core.Expr.t -> X86_asm.tmm -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tdpbf16ps : X86_asm.tmm -> X86_asm.tmm -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val tcmmimfp16ps : X86_asm.tmm -> X86_asm.tmm -> X86_asm.tmm -> X86_family_encode.Instruction.t
 val tcmmrlfp16ps : X86_asm.tmm -> X86_asm.tmm -> X86_asm.tmm -> X86_family_encode.Instruction.t
@@ -882,7 +882,7 @@ val adox_mr32r32 : X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_
 val adox_r64r64r64 : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val adox_mr64r64 : X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbe_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpbe_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpbe_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbe_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbe_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbe_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -890,12 +890,12 @@ val ccmpbe_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo 
 val ccmpbe_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbe_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbeb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbeb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbeb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbe_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbe_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpbe_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpb_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpb_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpb_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpb_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpb_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpb_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -903,12 +903,12 @@ val ccmpb_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]
 val ccmpb_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpb_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpbb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpbb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpbb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpb_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpb_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpb_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpf_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpf_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpf_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpf_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpf_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpf_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -916,12 +916,12 @@ val ccmpf_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]
 val ccmpf_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpf_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpfb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpfb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpfb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpf_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpf_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpf_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmple_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmple_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmple_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmple_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmple_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmple_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -929,12 +929,12 @@ val ccmple_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo 
 val ccmple_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmple_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpleb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpleb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpleb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmple_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmple_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmple_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpl_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpl_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpl_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpl_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpl_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpl_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -942,12 +942,12 @@ val ccmpl_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]
 val ccmpl_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpl_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmplb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmplb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmplb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpl_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpl_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpl_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbe_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnbe_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnbe_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbe_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbe_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbe_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -955,12 +955,12 @@ val ccmpnbe_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo
 val ccmpnbe_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbe_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbeb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbeb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbeb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbe_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbe_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnbe_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnb_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnb_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnb_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnb_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnb_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnb_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -968,12 +968,12 @@ val ccmpnb_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo 
 val ccmpnb_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnb_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnbb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnbb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnbb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnb_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnb_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnb_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnle_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnle_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnle_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnle_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnle_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnle_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -981,12 +981,12 @@ val ccmpnle_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo
 val ccmpnle_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnle_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnleb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnleb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnleb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnle_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnle_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnle_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnl_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnl_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnl_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnl_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnl_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnl_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -994,12 +994,12 @@ val ccmpnl_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo 
 val ccmpnl_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnl_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnlb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnlb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnlb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnl_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnl_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnl_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpno_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpno_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpno_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpno_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpno_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpno_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -1007,12 +1007,12 @@ val ccmpno_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo 
 val ccmpno_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpno_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnob : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnob_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnob_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpno_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpno_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpno_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpns_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpns_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpns_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpns_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpns_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpns_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -1020,12 +1020,12 @@ val ccmpns_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo 
 val ccmpns_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpns_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnsb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnsb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnsb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpns_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpns_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpns_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnz_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpnz_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpnz_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnz_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnz_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnz_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -1033,12 +1033,12 @@ val ccmpnz_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo 
 val ccmpnz_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnz_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpnzb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpnzb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpnzb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnz_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnz_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpnz_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpo_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpo_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpo_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpo_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpo_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpo_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -1046,12 +1046,12 @@ val ccmpo_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]
 val ccmpo_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpo_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpob : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpob_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpob_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpo_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpo_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpo_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmps_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmps_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmps_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmps_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmps_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmps_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -1059,12 +1059,12 @@ val ccmps_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]
 val ccmps_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmps_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpsb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpsb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpsb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmps_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmps_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmps_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpt_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpt_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpt_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpt_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpt_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpt_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -1072,12 +1072,12 @@ val ccmpt_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]
 val ccmpt_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpt_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmptb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmptb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmptb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpt_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpt_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpt_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpz_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ccmpz_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ccmpz_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpz_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpz_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpz_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -1085,7 +1085,7 @@ val ccmpz_fmr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]
 val ccmpz_fmr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpz_fmr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ccmpzb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ccmpzb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ccmpzb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpz_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpz_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ccmpz_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -1366,187 +1366,187 @@ val cmovz_mr32r32 : X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86
 val cmovz_mr64r64 : X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val cmovz_mr16r16 : X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestbe_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestbe_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestbe_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestbe_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestbe_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestbe_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestbeb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestbeb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestbeb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestbe_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestbe_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestbe_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestb_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestb_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestb_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestb_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestb_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestb_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestbb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestbb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestbb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestb_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestb_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestb_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestf_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestf_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestf_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestf_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestf_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestf_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestfb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestfb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestfb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestf_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestf_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestf_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestle_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestle_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestle_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestle_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestle_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestle_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestleb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestleb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestleb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestle_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestle_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestle_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestl_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestl_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestl_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestl_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestl_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestl_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestlb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestlb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestlb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestl_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestl_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestl_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnbe_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnbe_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnbe_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnbe_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnbe_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnbe_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnbeb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnbeb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnbeb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnbe_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnbe_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnbe_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnb_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnb_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnb_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnb_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnb_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnb_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnbb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnbb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnbb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnb_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnb_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnb_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnle_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnle_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnle_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnle_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnle_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnle_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnleb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnleb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnleb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnle_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnle_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnle_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnl_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnl_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnl_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnl_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnl_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnl_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnlb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnlb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnlb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnl_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnl_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnl_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestno_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestno_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestno_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestno_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestno_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestno_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnob : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnob_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnob_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestno_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestno_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestno_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestns_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestns_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestns_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestns_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestns_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestns_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnsb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnsb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnsb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestns_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestns_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestns_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnz_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestnz_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestnz_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnz_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnz_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnz_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestnzb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestnzb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestnzb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnz_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnz_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestnz_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctesto_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctesto_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctesto_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctesto_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctesto_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctesto_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestob : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestob_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestob_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctesto_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctesto_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctesto_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctests_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctests_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctests_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctests_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctests_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctests_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestsb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestsb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestsb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctests_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctests_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctests_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestt_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestt_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestt_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestt_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestt_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestt_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctesttb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctesttb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctesttb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestt_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestt_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestt_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestz_fi8r8 : int -> int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val ctestz_fi8r8_e : int -> Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val ctestz_fi8r8_e : int -> Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestz_fr32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestz_fr64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestz_fr16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val ctestzb : int -> int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val ctestzb_e : int -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val ctestzb_e : int -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestz_fr32m : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestz_fr64m : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ctestz_fr16m : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val imulzu_i8r16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val imulzu_i8r16r16_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val imulzu_i8r16r16_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val imulzu_i16r16r16 : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val imulzu_i16r16r16_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val imulzu_i16r16r16_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val imulzu_i8mr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val imulzu_i8mr16_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val imulzu_i8mr16_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val imulzu_i16mr16 : int -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val imulzu_i16mr16_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val imulzu_i16mr16_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val incb_rr : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val incb_mr : X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclb_r8r82 : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclb_irr : int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rclb_irr_e : Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rclb_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclb_mr82 : X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclb_imr : int -> X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rclb_imr_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rclb_imr_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolb_r8r82 : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolb_irr : int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rolb_irr_e : Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rolb_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolb_mr82 : X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolb_imr : int -> X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rolb_imr_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rolb_imr_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val setzube : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val setzub : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val setzule : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -1565,34 +1565,34 @@ val setzus : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Inst
 val setzuz : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shlb_r8r82 : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shlb_irr : int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shlb_irr_e : Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shlb_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shlb_mr82 : X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shlb_imr : int -> X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shlb_imr_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shlb_imr_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdl_rrr : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdq_rrr : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdw_rrr : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdl_irrr : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shrdl_irrr_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shrdl_irrr_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdq_irrr : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shrdq_irrr_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shrdq_irrr_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdw_irrr : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shrdw_irrr_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shrdw_irrr_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdl_rmr : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdq_rmr : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdw_rmr : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdl_irmr : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shrdl_irmr_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shrdl_irmr_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdq_irmr : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shrdq_irmr_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shrdq_irmr_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdw_irmr : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shrdw_irmr_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shrdw_irmr_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val vaddbf16_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaddbf16_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcmpbf16_ibxk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpbf16_ibxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpbf16_ibxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcmpbf16_ixxk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpbf16_ixxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpbf16_ixxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vdivbf16_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vdivbf16_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd132bf16_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -1620,15 +1620,15 @@ val vfnmsub213bf16_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | 
 val vfnmsub231bf16_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfnmsub231bf16_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfpclassbf16x : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassbf16x_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassbf16x_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclassbf16_ixk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassbf16_ixk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassbf16_ixk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vgetexpbf16_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpbf16_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantbf16_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantbf16_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantbf16_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantbf16_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantbf16_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantbf16_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxbf16_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxbf16_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminbf16_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -1638,13 +1638,13 @@ val vmulbf16_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ])
 val vrcpbf16_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcpbf16_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducebf16_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducebf16_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducebf16_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducebf16_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducebf16_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducebf16_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalebf16_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalebf16_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalebf16_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalebf16_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalebf16_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalebf16_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtbf16_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtbf16_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefbf16_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -1656,9 +1656,9 @@ val vsubbf16_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ])
 val vaddbf16_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaddbf16_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcmpbf16_ibyk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpbf16_ibyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpbf16_ibyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcmpbf16_iyyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpbf16_iyyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpbf16_iyyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vdivbf16_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vdivbf16_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd132bf16_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -1686,15 +1686,15 @@ val vfnmsub213bf16_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | 
 val vfnmsub231bf16_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfnmsub231bf16_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfpclassbf16y : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassbf16y_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassbf16y_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclassbf16_iyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassbf16_iyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassbf16_iyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vgetexpbf16_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpbf16_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantbf16_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantbf16_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantbf16_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantbf16_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantbf16_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantbf16_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxbf16_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxbf16_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminbf16_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -1704,13 +1704,13 @@ val vmulbf16_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ])
 val vrcpbf16_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcpbf16_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducebf16_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducebf16_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducebf16_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducebf16_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducebf16_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducebf16_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalebf16_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalebf16_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalebf16_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalebf16_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalebf16_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalebf16_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtbf16_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtbf16_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefbf16_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -1722,9 +1722,9 @@ val vsubbf16_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ])
 val vaddbf16_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaddbf16_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcmpbf16_ibzk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpbf16_ibzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpbf16_ibzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcmpbf16_izzk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpbf16_izzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpbf16_izzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vdivbf16_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vdivbf16_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd132bf16_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -1752,15 +1752,15 @@ val vfnmsub213bf16_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | 
 val vfnmsub231bf16_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfnmsub231bf16_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfpclassbf16z : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassbf16z_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassbf16z_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclassbf16_izk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassbf16_izk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassbf16_izk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vgetexpbf16_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpbf16_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantbf16_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantbf16_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantbf16_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantbf16_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantbf16_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantbf16_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxbf16_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxbf16_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminbf16_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -1770,13 +1770,13 @@ val vmulbf16_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ])
 val vrcpbf16_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcpbf16_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducebf16_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducebf16_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducebf16_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducebf16_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducebf16_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducebf16_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalebf16_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalebf16_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalebf16_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalebf16_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalebf16_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalebf16_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtbf16_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtbf16_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefbf16_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -1836,9 +1836,9 @@ val vcvtrops2hf8_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo
 val vpmovssdb_xm : ?k:X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpmovssdb_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vunpackb_imx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vunpackb_imx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vunpackb_imx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vunpackb_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vunpackb_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vunpackb_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtbf42hf8_my : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtbf42hf8_xy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtbf62hf8_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -1876,9 +1876,9 @@ val vcvtrops2hf8_yx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo
 val vpmovssdb_ym : ?k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpmovssdb_yx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vunpackb_imy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vunpackb_imy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vunpackb_imy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vunpackb_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vunpackb_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vunpackb_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtbf42hf8_mz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtbf42hf8_yz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtbf62hf8_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -1916,29 +1916,29 @@ val vcvtrops2hf8_zx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo
 val vpmovssdb_zm : ?k:X86_asm.kmask -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpmovssdb_zx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vunpackb_imz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vunpackb_imz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vunpackb_imz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vunpackb_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vunpackb_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vunpackb_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vbroadcasti128 : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vbroadcastsd_xy : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vbroadcastss_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vbroadcastss_xy : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextracti128_iym : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextracti128_iym_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextracti128_iym_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextracti128_iyx : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextracti128_iyx_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextracti128_iyx_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti128_imyy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti128_imyy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti128_imyy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti128_ixyy : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti128_ixyy_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti128_ixyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpblendd_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpblendd_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpblendd_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpblendd_ixxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpblendd_ixxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpblendd_ixxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpblendd_imyy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpblendd_imyy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpblendd_imyy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpblendd_iyyy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpblendd_iyyy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpblendd_iyyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpblendvb_ymyy : (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpblendvb_yyyy : (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpbroadcastb_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -1958,21 +1958,21 @@ val vpbroadcastw_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [<
 val vpbroadcastw_my : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpbroadcastw_xy : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vperm2i128_imyy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vperm2i128_imyy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vperm2i128_imyy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vperm2i128_iyyy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vperm2i128_iyyy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vperm2i128_iyyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermd_myy : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermd_yyy : (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermpd_imy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermpd_imy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermpd_imy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermpd_i8yy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermpd_i8yy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermpd_i8yy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermps_myy : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermps_yyy : (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermq_imy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermq_imy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermq_imy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermq_i8yy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermq_i8yy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermq_i8yy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmaskmovd_xxm : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpmaskmovd_yym : (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpmaskmovd_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2072,9 +2072,9 @@ val vucomxss_xx : (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, 
 val vaddph_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaddph_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcmpph_ibxk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpph_ibxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpph_ibxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcmpph_ixxk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpph_ixxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpph_ixxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcvtdq2phx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtdq2ph_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtpd2phx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2166,15 +2166,15 @@ val vfnmsub213ph_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `L
 val vfnmsub231ph_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfnmsub231ph_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfpclassphx : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassphx_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassphx_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclassph_ixk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassph_ixk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassph_ixk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vgetexpph_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpph_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantph_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantph_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantph_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantph_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantph_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantph_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxph_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxph_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminph_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2184,13 +2184,13 @@ val vmulph_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X
 val vrcpph_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcpph_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceph_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceph_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceph_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceph_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceph_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceph_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleph_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleph_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleph_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleph_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleph_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleph_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtph_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtph_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefph_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2202,9 +2202,9 @@ val vsubph_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X
 val vaddph_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaddph_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcmpph_ibyk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpph_ibyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpph_ibyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcmpph_iyyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpph_iyyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpph_iyyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcvtdq2phy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtdq2ph_yx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtpd2phy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2296,15 +2296,15 @@ val vfnmsub213ph_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `L
 val vfnmsub231ph_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfnmsub231ph_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfpclassphy : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassphy_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassphy_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclassph_iyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassph_iyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassph_iyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vgetexpph_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpph_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantph_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantph_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantph_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantph_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantph_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantph_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxph_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxph_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminph_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2314,13 +2314,13 @@ val vmulph_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X
 val vrcpph_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcpph_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceph_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceph_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceph_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceph_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceph_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceph_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleph_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleph_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleph_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleph_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleph_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleph_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtph_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtph_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefph_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2332,9 +2332,9 @@ val vsubph_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X
 val vaddph_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaddph_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcmpph_ibzk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpph_ibzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpph_ibzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcmpph_izzk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpph_izzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpph_izzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcvtdq2ph_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtdq2ph_zy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtpd2phz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2426,15 +2426,15 @@ val vfnmsub213ph_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `L
 val vfnmsub231ph_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfnmsub231ph_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfpclassphz : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassphz_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassphz_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclassph_izk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassph_izk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassph_izk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vgetexpph_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpph_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantph_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantph_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantph_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantph_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantph_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantph_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxph_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxph_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminph_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2444,13 +2444,13 @@ val vmulph_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X
 val vrcpph_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcpph_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceph_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceph_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceph_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceph_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceph_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceph_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleph_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleph_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleph_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleph_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleph_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleph_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtph_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtph_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefph_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2468,9 +2468,9 @@ val vcvt2ps2phx_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo
 val vaddsh_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaddsh_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcmpsh_imxk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpsh_imxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpsh_imxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcmpsh_ixxk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpsh_ixxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpsh_ixxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcomish_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcomish_xx : (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtsd2sh_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2540,15 +2540,15 @@ val vfnmsub213sh_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `L
 val vfnmsub231sh_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfnmsub231sh_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfpclasssh_imk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasssh_imk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasssh_imk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclasssh_ixk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasssh_ixk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasssh_ixk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vgetexpsh_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpsh_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantsh_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantsh_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantsh_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantsh_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantsh_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantsh_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxsh_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxsh_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminsh_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2561,13 +2561,13 @@ val vmulsh_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X
 val vrcpsh_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcpsh_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducesh_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducesh_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducesh_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducesh_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducesh_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducesh_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalesh_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalesh_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalesh_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalesh_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalesh_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalesh_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtsh_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtsh_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefsh_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2657,13 +2657,13 @@ val vcvtph2hf8s_zy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo 
 val vcvtph2hf8_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtph2hf8_zy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineinvqb_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineinvqb_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineinvqb_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineinvqb_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineinvqb_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineinvqb_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineqb_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineqb_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineqb_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineqb_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineqb_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineqb_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8mulb_mzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8mulb_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmadd52huq_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2679,65 +2679,65 @@ val vpmadd52huq_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo
 val vpmadd52luq_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmadd52luq_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxbf16_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxbf16_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxbf16_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxbf16_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxbf16_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxbf16_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxpd_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxpd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxpd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxpd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxpd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxpd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxph_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxph_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxph_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxph_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxph_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxph_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxps_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxps_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxps_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxps_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxps_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxps_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxbf16_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxbf16_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxbf16_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxbf16_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxbf16_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxbf16_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxpd_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxpd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxpd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxpd_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxpd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxpd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxph_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxph_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxph_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxph_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxph_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxph_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxps_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxps_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxps_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxps_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxps_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxps_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxbf16_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxbf16_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxbf16_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxbf16_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxbf16_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxbf16_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxpd_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxpd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxpd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxpd_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxpd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxpd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxph_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxph_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxph_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxph_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxph_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxph_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxps_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxps_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxps_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxps_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxps_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxps_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxsd_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxsd_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxsd_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxsd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxsd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxsd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxsh_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxsh_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxsh_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxsh_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxsh_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxsh_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxss_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxss_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxss_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxss_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxss_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxss_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovw_xx : (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtbf162ibs_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtbf162ibs_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2884,13 +2884,13 @@ val vpexpandb_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ])
 val vpexpandw_mx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpexpandw_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldd_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldq_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldq_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldq_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldq_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldq_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldq_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldvd_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldvd_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldvq_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2898,17 +2898,17 @@ val vpshldvq_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ])
 val vpshldvw_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldvw_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldw_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldw_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldw_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldw_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldw_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldw_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdd_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdq_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdq_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdq_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdq_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdq_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdq_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdvd_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdvd_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdvq_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2916,9 +2916,9 @@ val vpshrdvq_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ])
 val vpshrdvw_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdvw_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdw_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdw_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdw_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdw_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdw_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdw_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcompressb_ym : ?k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpcompressb_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcompressw_ym : ?k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -2928,13 +2928,13 @@ val vpexpandb_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ])
 val vpexpandw_my : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpexpandw_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldd_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldd_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldq_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldq_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldq_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldq_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldq_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldq_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldvd_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldvd_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldvq_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2942,17 +2942,17 @@ val vpshldvq_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ])
 val vpshldvw_myy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldvw_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldw_imyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldw_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldw_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldw_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldw_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldw_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdd_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdd_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdq_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdq_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdq_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdq_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdq_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdq_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdvd_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdvd_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdvq_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2960,9 +2960,9 @@ val vpshrdvq_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ])
 val vpshrdvw_myy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdvw_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdw_imyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdw_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdw_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdw_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdw_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdw_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcompressb_zm : ?k:X86_asm.kmask -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpcompressb_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcompressw_zm : ?k:X86_asm.kmask -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -2972,13 +2972,13 @@ val vpexpandb_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ])
 val vpexpandw_mz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpexpandw_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldd_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldd_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldq_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldq_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldq_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldq_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldq_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldq_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldvd_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldvd_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldvq_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -2986,17 +2986,17 @@ val vpshldvq_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ])
 val vpshldvw_mzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldvw_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldw_imzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldw_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldw_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshldw_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshldw_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshldw_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdd_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdd_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdq_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdq_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdq_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdq_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdq_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdq_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdvd_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdvd_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdvq_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3004,9 +3004,9 @@ val vpshrdvq_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ])
 val vpshrdvw_mzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdvw_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdw_imzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdw_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdw_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshrdw_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpshrdw_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpshrdw_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermb_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermb_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermi2b_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3110,9 +3110,9 @@ val vpopcntd_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) 
 val vpopcntq_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpopcntq_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vdbpsadbw_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vdbpsadbw_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vdbpsadbw_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vdbpsadbw_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vdbpsadbw_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vdbpsadbw_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovdqu16_xm : ?k:X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vmovdqu16_mx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovdqu16_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3126,21 +3126,21 @@ val vpblendmw_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]
 val vpbroadcastb_rx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpbroadcastw_rx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpb_imxk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpb_imxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpb_imxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpb_ixxk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpb_ixxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpb_ixxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpub_imxk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpub_imxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpub_imxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpub_ixxk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpub_ixxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpub_ixxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpuw_imxk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpuw_imxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpuw_imxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpuw_ixxk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpuw_ixxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpuw_ixxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpw_imxk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpw_imxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpw_imxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpw_ixxk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpw_ixxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpw_ixxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpermi2w_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermi2w_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermt2w_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3172,9 +3172,9 @@ val vptestnmb_xxk : ?k:X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.v
 val vptestnmw_mxk : ?k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vptestnmw_xxk : ?k:X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vdbpsadbw_imyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vdbpsadbw_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vdbpsadbw_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vdbpsadbw_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vdbpsadbw_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vdbpsadbw_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovdqu16_ym : ?k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vmovdqu16_my : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovdqu16_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3188,21 +3188,21 @@ val vpblendmw_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]
 val vpbroadcastb_ry : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpbroadcastw_ry : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpb_imyk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpb_imyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpb_imyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpb_iyyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpb_iyyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpb_iyyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpub_imyk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpub_imyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpub_imyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpub_iyyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpub_iyyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpub_iyyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpuw_imyk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpuw_imyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpuw_imyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpuw_iyyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpuw_iyyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpuw_iyyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpw_imyk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpw_imyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpw_imyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpw_iyyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpw_iyyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpw_iyyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpermi2w_myy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermi2w_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermt2w_myy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3234,9 +3234,9 @@ val vptestnmb_yyk : ?k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.v
 val vptestnmw_myk : ?k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vptestnmw_yyk : ?k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vdbpsadbw_imzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vdbpsadbw_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vdbpsadbw_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vdbpsadbw_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vdbpsadbw_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vdbpsadbw_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovdqu16_zm : ?k:X86_asm.kmask -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vmovdqu16_mz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovdqu16_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3254,21 +3254,21 @@ val vpbroadcastw_rz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.w32, [< `Hi | `Lo 
 val vpbroadcastw_mz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpbroadcastw_xz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpb_imzk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpb_imzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpb_imzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpb_izzk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpb_izzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpb_izzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpub_imzk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpub_imzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpub_imzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpub_izzk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpub_izzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpub_izzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpuw_imzk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpuw_imzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpuw_imzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpuw_izzk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpuw_izzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpuw_izzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpw_imzk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpw_imzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpw_imzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpw_izzk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpw_izzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpw_izzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpermi2w_mzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermi2w_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermt2w_mzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3311,9 +3311,9 @@ val knotd : X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kord : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kortestd : X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kshiftld : int -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val kshiftld_e : Asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val kshiftld_e : Rivet_asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kshiftrd : int -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val kshiftrd_e : Asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val kshiftrd_e : Rivet_asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val ktestd : X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kunpckwd : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kxnord : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
@@ -3330,9 +3330,9 @@ val knotq : X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val korq : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kortestq : X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kshiftlq : int -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val kshiftlq_e : Asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val kshiftlq_e : Rivet_asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kshiftrq : int -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val kshiftrq_e : Asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val kshiftrq_e : Rivet_asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val ktestq : X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kunpckdq : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kxnorq : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
@@ -3394,13 +3394,13 @@ val vcvtuqq2pd_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]
 val vcvtuqq2psx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtuqq2ps_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfpclasspdx : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasspdx_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasspdx_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclasspd_ixk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasspd_ixk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasspd_ixk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclasspsx : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasspsx_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasspsx_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclassps_ixk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassps_ixk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassps_ixk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpmovd2m_xk : (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpmovm2d_kx : X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmovm2q_kx : X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3408,21 +3408,21 @@ val vpmovq2m_xk : (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -
 val vpmullq_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmullq_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangepd_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangepd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangepd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangepd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangepd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangepd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangeps_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangeps_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangeps_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangeps_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangeps_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangeps_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducepd_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducepd_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducepd_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducepd_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducepd_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducepd_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceps_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceps_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceps_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceps_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceps_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceps_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vbroadcastf32x2_my : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vbroadcastf32x2_xy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vbroadcastf64x2_my : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3454,29 +3454,29 @@ val vcvtuqq2pd_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]
 val vcvtuqq2psy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtuqq2ps_yx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextractf64x2_iym : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextractf64x2_iym_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextractf64x2_iym_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextractf64x2_iyx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextractf64x2_iyx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextractf64x2_iyx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextracti64x2_iym : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextracti64x2_iym_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextracti64x2_iym_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextracti64x2_iyx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextracti64x2_iyx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextracti64x2_iyx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfpclasspdy : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasspdy_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasspdy_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclasspd_iyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasspd_iyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasspd_iyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclasspsy : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasspsy_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasspsy_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclassps_iyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassps_iyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassps_iyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vinsertf64x2_imyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf64x2_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf64x2_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinsertf64x2_ixyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf64x2_ixyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf64x2_ixyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti64x2_imyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti64x2_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti64x2_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti64x2_ixyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti64x2_ixyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti64x2_ixyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmovd2m_yk : (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpmovm2d_ky : X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmovm2q_ky : X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3484,21 +3484,21 @@ val vpmovq2m_yk : (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -
 val vpmullq_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmullq_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangepd_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangepd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangepd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangepd_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangepd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangepd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangeps_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangeps_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangeps_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangeps_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangeps_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangeps_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducepd_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducepd_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducepd_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducepd_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducepd_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducepd_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceps_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceps_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceps_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceps_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceps_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceps_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vbroadcastf32x2_mz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vbroadcastf32x2_xz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vbroadcastf32x8 : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3532,45 +3532,45 @@ val vcvtuqq2pd_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]
 val vcvtuqq2ps_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtuqq2ps_zy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextractf32x8_izm : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextractf32x8_izm_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextractf32x8_izm_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextractf32x8_izy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextractf32x8_izy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextractf32x8_izy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextractf64x2_izm : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextractf64x2_izm_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextractf64x2_izm_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextractf64x2_izx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextractf64x2_izx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextractf64x2_izx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextracti32x8_izm : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextracti32x8_izm_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextracti32x8_izm_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextracti32x8_izy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextracti32x8_izy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextracti32x8_izy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextracti64x2_izm : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextracti64x2_izm_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextracti64x2_izm_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextracti64x2_izx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextracti64x2_izx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextracti64x2_izx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfpclasspdz : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasspdz_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasspdz_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclasspd_izk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasspd_izk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasspd_izk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclasspsz : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasspsz_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasspsz_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclassps_izk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassps_izk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassps_izk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vinsertf32x8_imzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf32x8_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf32x8_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinsertf32x8_iyzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf32x8_iyzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf32x8_iyzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinsertf64x2_imzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf64x2_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf64x2_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinsertf64x2_ixzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf64x2_ixzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf64x2_ixzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti32x8_imzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti32x8_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti32x8_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti32x8_iyzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti32x8_iyzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti32x8_iyzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti64x2_imzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti64x2_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti64x2_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti64x2_ixzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti64x2_ixzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti64x2_ixzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmovd2m_zk : (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpmovm2d_kz : X86_asm.kmask -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmovm2q_kz : X86_asm.kmask -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3578,21 +3578,21 @@ val vpmovq2m_zk : (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -
 val vpmullq_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmullq_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangepd_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangepd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangepd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangepd_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangepd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangepd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangeps_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangeps_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangeps_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangeps_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangeps_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangeps_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducepd_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducepd_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducepd_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducepd_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducepd_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducepd_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceps_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceps_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceps_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceps_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceps_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceps_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val kaddb : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kandb : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kandnb : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
@@ -3605,38 +3605,38 @@ val knotb : X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val korb : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kortestb : X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kshiftlb : int -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val kshiftlb_e : Asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val kshiftlb_e : Rivet_asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kshiftrb : int -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val kshiftrb_e : Asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val kshiftrb_e : Rivet_asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val ktestb : X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kxnorb : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kxorb : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kaddw : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val ktestw : X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclasssd_imk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasssd_imk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasssd_imk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclasssd_ixk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclasssd_ixk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclasssd_ixk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclassss_imk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassss_imk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassss_imk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vfpclassss_ixk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vfpclassss_ixk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vfpclassss_ixk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vrangesd_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangesd_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangesd_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangesd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangesd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangesd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangess_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangess_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangess_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangess_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangess_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangess_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducesd_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducesd_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducesd_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducesd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducesd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducesd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducess_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducess_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducess_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducess_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducess_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducess_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vexp2pd_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vexp2pd_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vexp2ps_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3658,13 +3658,13 @@ val vrsqrt28sd_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo 
 val vrsqrt28ss_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt28ss_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val valignd_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val valignd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val valignd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val valignd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val valignd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val valignd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val valignq_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val valignq_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val valignq_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val valignq_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val valignq_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val valignq_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vblendmpd_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vblendmpd_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vblendmps_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3690,13 +3690,13 @@ val vexpandpd_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ])
 val vexpandps_mx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vexpandps_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmpd_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmpd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmpd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmpd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmpd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmpd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmps_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmps_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmps_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmps_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmps_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmps_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgatherdpd_mx : k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgatherdps_mx : k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgatherqpd_mx : k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3706,13 +3706,13 @@ val vgetexppd_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ])
 val vgetexpps_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpps_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantpd_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantpd_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantpd_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantpd_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantpd_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantpd_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantps_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantps_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantps_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantps_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantps_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantps_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovdqa32_xm : ?k:X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vmovdqa32_mx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovdqa32_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3742,21 +3742,21 @@ val vpblendmq_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]
 val vpbroadcastd_rx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpbroadcastq_rx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpd_ibxk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpd_ibxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpd_ibxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpd_ixxk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpd_ixxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpd_ixxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpq_ibxk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpq_ibxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpq_ibxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpq_ixxk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpq_ixxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpq_ixxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpud_ibxk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpud_ibxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpud_ibxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpud_ixxk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpud_ixxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpud_ixxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpuq_ibxk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpuq_ibxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpuq_ibxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpuq_ixxk : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpuq_ixxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpuq_ixxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcompressd_xm : ?k:X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpcompressd_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcompressq_xm : ?k:X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -3844,13 +3844,13 @@ val vpsraq_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X
 val vpsravq_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpsravq_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpternlogd_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpternlogd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpternlogd_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpternlogd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpternlogd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpternlogd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpternlogq_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpternlogq_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpternlogq_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpternlogq_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpternlogq_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpternlogq_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vptestmd_bxk : ?k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vptestmd_xxk : ?k:X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vptestmq_bxk : ?k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
@@ -3868,13 +3868,13 @@ val vrcp14pd_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) 
 val vrcp14ps_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcp14ps_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalepd_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalepd_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalepd_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalepd_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalepd_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalepd_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleps_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleps_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleps_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleps_ixx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleps_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleps_ixx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt14pd_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt14pd_xx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt14ps_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3888,13 +3888,13 @@ val vscatterdps_xm : k:X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.v
 val vscatterqpd_xm : k:X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vscatterqps_xm : k:X86_asm.kmask -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val valignd_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val valignd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val valignd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val valignd_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val valignd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val valignd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val valignq_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val valignq_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val valignq_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val valignq_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val valignq_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val valignq_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vblendmpd_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vblendmpd_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vblendmps_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3922,21 +3922,21 @@ val vexpandpd_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ])
 val vexpandps_my : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vexpandps_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextractf32x4_iym : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextractf32x4_iym_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextractf32x4_iym_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextractf32x4_iyx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextractf32x4_iyx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextractf32x4_iyx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextracti32x4_iym : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextracti32x4_iym_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextracti32x4_iym_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextracti32x4_iyx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextracti32x4_iyx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextracti32x4_iyx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmpd_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmpd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmpd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmpd_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmpd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmpd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmps_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmps_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmps_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmps_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmps_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmps_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgatherdpd_my : k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgatherdps_my : k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgatherqpd_my : k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3945,21 +3945,21 @@ val vgetexppd_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ])
 val vgetexpps_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpps_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantpd_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantpd_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantpd_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantpd_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantpd_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantpd_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantps_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantps_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantps_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantps_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantps_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantps_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinsertf32x4_imyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf32x4_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf32x4_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinsertf32x4_ixyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf32x4_ixyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf32x4_ixyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti32x4_imyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti32x4_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti32x4_imyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti32x4_ixyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti32x4_ixyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti32x4_ixyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovdqa32_ym : ?k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vmovdqa32_my : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovdqa32_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -3989,21 +3989,21 @@ val vpblendmq_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]
 val vpbroadcastd_ry : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpbroadcastq_ry : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpd_ibyk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpd_ibyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpd_ibyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpd_iyyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpd_iyyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpd_iyyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpq_ibyk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpq_ibyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpq_ibyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpq_iyyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpq_iyyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpq_iyyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpud_ibyk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpud_ibyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpud_ibyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpud_iyyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpud_iyyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpud_iyyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpuq_ibyk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpuq_ibyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpuq_ibyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpuq_iyyk : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpuq_iyyk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpuq_iyyk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcompressd_ym : ?k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpcompressd_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcompressq_ym : ?k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -4093,13 +4093,13 @@ val vpsraq_xyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X
 val vpsravq_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpsravq_yyy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpternlogd_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpternlogd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpternlogd_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpternlogd_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpternlogd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpternlogd_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpternlogq_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpternlogq_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpternlogq_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpternlogq_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpternlogq_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpternlogq_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vptestmd_byk : ?k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vptestmd_yyk : ?k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vptestmq_byk : ?k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
@@ -4117,13 +4117,13 @@ val vrcp14pd_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) 
 val vrcp14ps_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcp14ps_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalepd_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalepd_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalepd_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalepd_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalepd_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalepd_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleps_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleps_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleps_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleps_iyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleps_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleps_iyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt14pd_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt14pd_yy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt14ps_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -4136,29 +4136,29 @@ val vscatterdpd_ym : k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.v
 val vscatterdps_ym : k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vscatterqpd_ym : k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vshuff32x4_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshuff32x4_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshuff32x4_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshuff32x4_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshuff32x4_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshuff32x4_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshuff64x2_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshuff64x2_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshuff64x2_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshuff64x2_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshuff64x2_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshuff64x2_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshufi32x4_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshufi32x4_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshufi32x4_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshufi32x4_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshufi32x4_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshufi32x4_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshufi64x2_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshufi64x2_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshufi64x2_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshufi64x2_iyyy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshufi64x2_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshufi64x2_iyyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val valignd_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val valignd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val valignd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val valignd_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val valignd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val valignd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val valignq_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val valignq_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val valignq_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val valignq_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val valignq_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val valignq_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vblendmpd_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vblendmpd_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vblendmps_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -4184,9 +4184,9 @@ val vcvtpd2udq_zy : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]
 val vcvtph2ps_mz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtph2ps_yz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtps2ph_izm : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vcvtps2ph_izm_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vcvtps2ph_izm_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vcvtps2ph_izy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vcvtps2ph_izy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vcvtps2ph_izy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtps2udq_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtps2udq_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvttpd2dq_by : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -4204,29 +4204,29 @@ val vexpandpd_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ])
 val vexpandps_mz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vexpandps_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextractf32x4_izm : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextractf32x4_izm_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextractf32x4_izm_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextractf32x4_izx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextractf32x4_izx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextractf32x4_izx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextractf64x4_izm : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextractf64x4_izm_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextractf64x4_izm_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextractf64x4_izy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextractf64x4_izy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextractf64x4_izy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextracti32x4_izm : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextracti32x4_izm_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextracti32x4_izm_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextracti32x4_izx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextracti32x4_izx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextracti32x4_izx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextracti64x4_izm : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextracti64x4_izm_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextracti64x4_izm_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextracti64x4_izy : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextracti64x4_izy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextracti64x4_izy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmpd_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmpd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmpd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmpd_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmpd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmpd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmps_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmps_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmps_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmps_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmps_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmps_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd132pd_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd132pd_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd132ps_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -4308,29 +4308,29 @@ val vgetexppd_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ])
 val vgetexpps_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpps_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantpd_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantpd_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantpd_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantpd_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantpd_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantpd_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantps_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantps_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantps_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantps_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantps_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantps_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinsertf32x4_imzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf32x4_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf32x4_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinsertf32x4_ixzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf32x4_ixzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf32x4_ixzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinsertf64x4_imzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf64x4_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf64x4_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinsertf64x4_iyzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf64x4_iyzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf64x4_iyzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti32x4_imzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti32x4_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti32x4_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti32x4_ixzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti32x4_ixzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti32x4_ixzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti64x4_imzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti64x4_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti64x4_imzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinserti64x4_iyzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinserti64x4_iyzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinserti64x4_iyzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovddup_mz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovddup_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmovdqa32_zm : ?k:X86_asm.kmask -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -4373,21 +4373,21 @@ val vpbroadcastq_rz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.w64, [< `Hi | `Lo 
 val vpbroadcastq_mz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpbroadcastq_xz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpd_ibzk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpd_ibzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpd_ibzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpd_izzk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpd_izzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpd_izzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpq_ibzk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpq_ibzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpq_ibzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpq_izzk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpq_izzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpq_izzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpud_ibzk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpud_ibzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpud_ibzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpud_izzk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpud_izzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpud_izzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpuq_ibzk : ?k:X86_asm.kmask -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpuq_ibzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpuq_ibzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcmpuq_izzk : ?k:X86_asm.kmask -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vpcmpuq_izzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vpcmpuq_izzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vpcompressd_zm : ?k:X86_asm.kmask -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpcompressd_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcompressq_zm : ?k:X86_asm.kmask -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -4403,29 +4403,29 @@ val vpermi2ps_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]
 val vpermi2q_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermi2q_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilpd_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilpd_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilpd_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilpd_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilps_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilps_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilps_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilps_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermpd_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermpd_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermpd_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermpd_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermpd_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermpd_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermpd_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermpd_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermps_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermps_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermq_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermq_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermq_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermq_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermq_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermq_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermq_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermq_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermt2d_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -4515,13 +4515,13 @@ val vpsrlvd_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) 
 val vpsrlvq_bzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpsrlvq_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpternlogd_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpternlogd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpternlogd_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpternlogd_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpternlogd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpternlogd_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpternlogq_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpternlogq_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpternlogq_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpternlogq_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpternlogq_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpternlogq_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vptestmd_bzk : ?k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vptestmd_zzk : ?k:X86_asm.kmask -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vptestmq_bzk : ?k:X86_asm.kmask -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
@@ -4539,13 +4539,13 @@ val vrcp14pd_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) 
 val vrcp14ps_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcp14ps_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalepd_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalepd_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalepd_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalepd_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalepd_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalepd_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleps_ibz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleps_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleps_ibz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleps_izz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleps_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleps_izz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt14pd_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt14pd_zz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt14ps_bz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -4559,21 +4559,21 @@ val vscatterdps_zm : k:X86_asm.kmask -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.v
 val vscatterqpd_zm : k:X86_asm.kmask -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vscatterqps_ym : k:X86_asm.kmask -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vshuff32x4_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshuff32x4_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshuff32x4_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshuff32x4_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshuff32x4_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshuff32x4_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshuff64x2_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshuff64x2_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshuff64x2_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshuff64x2_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshuff64x2_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshuff64x2_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshufi32x4_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshufi32x4_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshufi32x4_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshufi32x4_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshufi32x4_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshufi32x4_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshufi64x2_ibzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshufi64x2_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshufi64x2_ibzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vshufi64x2_izzz : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vshufi64x2_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vshufi64x2_izzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val kandnw : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kandw : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kmovw_kr : X86_asm.kmask -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -4585,9 +4585,9 @@ val knotw : X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kortestw : X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val korw : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kshiftlw : int -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val kshiftlw_e : Asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val kshiftlw_e : Rivet_asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kshiftrw : int -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val kshiftrw_e : Asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val kshiftrw_e : Rivet_asm_core.Expr.t -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kunpckbw : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kxnorw : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val kxorw : X86_asm.kmask -> X86_asm.kmask -> X86_asm.kmask -> X86_family_encode.Instruction.t
@@ -4616,37 +4616,37 @@ val vcvtusi2ss_r64xx : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l1
 val vcvtusi2ssl : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtusi2ssq : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmsd_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmsd_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmsd_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmsd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmsd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmsd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmss_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmss_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmss_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmss_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmss_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmss_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpsd_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpsd_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpss_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpss_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantsd_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantsd_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantsd_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantsd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantsd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantsd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantss_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantss_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantss_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantss_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantss_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantss_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcp14sd_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcp14sd_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcp14ss_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcp14ss_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalesd_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalesd_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalesd_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalesd_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalesd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalesd_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaless_imxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaless_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaless_imxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaless_ixxx : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaless_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaless_ixxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt14sd_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt14sd_xxx : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrt14ss_mxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -4668,13 +4668,13 @@ val vbroadcastsd_my : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_as
 val vbroadcastss_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vbroadcastss_my : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vextractf128_iym : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextractf128_iym_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextractf128_iym_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vextractf128_iyx : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vextractf128_iyx_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vextractf128_iyx_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinsertf128_imyy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf128_imyy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf128_imyy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vinsertf128_ixyy : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vinsertf128_ixyy_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vinsertf128_ixyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vldmxcsr : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vmaskmovpd_xxm : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vmaskmovpd_yym : (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -4689,69 +4689,69 @@ val vmovq_rx : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `
 val vpblendvb_xmxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpblendvb_xxxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpestriq_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcmpestriq_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcmpestriq_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpestriq_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcmpestriq_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcmpestriq_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpestri_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcmpestri_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcmpestri_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpestri_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcmpestri_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcmpestri_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpestrmq_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcmpestrmq_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcmpestrmq_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpestrmq_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcmpestrmq_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcmpestrmq_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpestrm_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcmpestrm_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcmpestrm_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpestrm_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcmpestrm_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcmpestrm_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpistri_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcmpistri_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcmpistri_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpistri_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcmpistri_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcmpistri_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vperm2f128_imyy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vperm2f128_imyy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vperm2f128_imyy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vperm2f128_iyyy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vperm2f128_iyyy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vperm2f128_iyyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilpd_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilpd_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_i8xx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilpd_i8xx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilpd_i8xx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_imy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilpd_imy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilpd_imy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_i8yy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilpd_i8yy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilpd_i8yy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_myy : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_yyy : (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilps_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilps_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_i8xx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilps_i8xx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilps_i8xx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_imy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilps_imy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilps_imy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_i8yy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilps_i8yy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilps_i8yy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_myy : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_yyy : (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpextrd_ixr : int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val vpextrd_ixr_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val vpextrd_ixr_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val vpextrd_ixm : int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vpextrd_ixm_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vpextrd_ixm_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpextrq_ixr : int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val vpextrq_ixr_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val vpextrq_ixr_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val vpextrq_ixm : int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vpextrq_ixm_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vpextrq_ixm_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpinsrd_irxx : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpinsrd_irxx_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpinsrd_irxx_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpinsrd_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpinsrd_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpinsrd_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpinsrq_irxx : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpinsrq_irxx_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpinsrq_irxx_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpinsrq_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpinsrq_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpinsrq_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vstmxcsr : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vtestpd_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vtestpd_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -4762,21 +4762,21 @@ val vtestps_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo 
 val vtestps_my : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vtestps_yy : (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineinvqb_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineinvqb_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineinvqb_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineinvqb_i8xxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineinvqb_i8xxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineinvqb_i8xxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineinvqb_imyy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineinvqb_imyy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineinvqb_imyy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineinvqb_i8yyy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineinvqb_i8yyy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineinvqb_i8yyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineqb_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineqb_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineqb_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineqb_i8xxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineqb_i8xxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineqb_i8xxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineqb_imyy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineqb_imyy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineqb_imyy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineqb_i8yyy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineqb_i8yyy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineqb_i8yyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8mulb_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8mulb_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8mulb_myy : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -4866,13 +4866,13 @@ val pext_mr32r32 : X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_
 val pext_r64r64r64 : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val pext_mr64r64 : X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rorx_i8r32r32 : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rorx_i8r32r32_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rorx_i8r32r32_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rorx_i8mr32 : int -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rorx_i8mr32_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rorx_i8mr32_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rorx_i8r64r64 : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rorx_i8r64r64_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rorx_i8r64r64_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rorx_i8mr64 : int -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rorx_i8mr64_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rorx_i8mr64_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val sarx_r32r32r32 : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val sarx_r32mr32 : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val sarx_r64r64r64 : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -4928,13 +4928,13 @@ val vcvtph2ps_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `L
 val vcvtph2ps_my : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtph2ps_xy : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtps2ph_i8ym : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vcvtps2ph_i8ym_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vcvtps2ph_i8ym_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vcvtps2ph_i8xm : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vcvtps2ph_i8xm_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vcvtps2ph_i8xm_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vcvtps2ph_i8yx : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vcvtps2ph_i8yx_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vcvtps2ph_i8yx_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtps2ph_i8xx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vcvtps2ph_i8xx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vcvtps2ph_i8xx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val nop_r64 : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val nopq : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vfmaddpd_xmxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5158,48 +5158,48 @@ val fxsave64 : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val fxrstor : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val fxsave : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rclq_ir : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rclq_ir_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rclq_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclq_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val rclq_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val rclq_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rolq_ir : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rolq_ir_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rolq_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolq_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val rolq_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val rolq_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val smswq : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val btcq_ir : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val btcq_ir_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val btcq_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lock_btcq_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_btcq_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_btcq_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btcq_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val btcq_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val btcq_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btrq_ir : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val btrq_ir_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val btrq_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lock_btrq_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_btrq_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_btrq_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btrq_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val btrq_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val btrq_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btsq_ir : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val btsq_ir_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val btsq_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lock_btsq_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_btsq_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_btsq_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btsq_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val btsq_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val btsq_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btq_ir : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val btq_ir_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val btq_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val btq_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val btq_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val btq_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_adcq_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_adcq_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_adcq_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_adcq_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_adcq_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_adcq_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_addq_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_addq_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_addq_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_addq_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_addq_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_addq_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_andq_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_andq_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_andq_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_andq_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_andq_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_andq_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_decq : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val idivq_r : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val idivq_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -5208,29 +5208,29 @@ val incq_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_negq : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_notq : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_orq_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_orq_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_orq_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_orq_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_orq_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_orq_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rclq_r642 : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclq_m2 : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rolq_r642 : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolq_m2 : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_sbbq_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_sbbq_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_sbbq_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_sbbq_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_sbbq_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_sbbq_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_subq_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_subq_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_subq_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_subq_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_subq_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_subq_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_xorq_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_xorq_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_xorq_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_xorq_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_xorq_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_xorq_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rdmsr_ir : int64 -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rdmsr_ir_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rdmsr_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val wrmsrns_ri : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> int64 -> X86_family_encode.Instruction.t
-val wrmsrns_ri_e : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val wrmsrns_ri_e : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 val lock_cmpxchg8bq : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val cmpxchg8bq : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ptwrite_r64 : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -5249,9 +5249,9 @@ val vsm3msg1_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `L
 val vsm3msg2_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vsm3msg2_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vsm3rnds2_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vsm3rnds2_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vsm3rnds2_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vsm3rnds2_ixxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vsm3rnds2_ixxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vsm3rnds2_ixxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vsm4key4_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vsm4key4_xxx : (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vsm4key4_myy : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5265,13 +5265,13 @@ val vsm4key4_zzz : (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512,
 val vsm4rnds4_mzz : X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vsm4rnds4_zzz : (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val bextr_i32r32r32 : int64 -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val bextr_i32r32r32_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val bextr_i32r32r32_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val bextr_i32r64r64 : int64 -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val bextr_i32r64r64_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val bextr_i32r64r64_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val bextr_i32mr32 : int64 -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val bextr_i32mr32_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val bextr_i32mr32_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val bextr_i32mr64 : int64 -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val bextr_i32mr64_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val bextr_i32mr64_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val vfrczpd_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfrczpd_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfrczpd_my : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5291,61 +5291,61 @@ val vpcmov_ymyy : (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem
 val vpcmov_myyy : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmov_yyyy : (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomb_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomb_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomb_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomb_ixxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomb_ixxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomb_ixxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomd_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomd_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomd_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomd_ixxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomd_ixxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomd_ixxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomq_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomq_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomq_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomq_ixxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomq_ixxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomq_ixxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomub_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomub_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomub_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomub_ixxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomub_ixxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomub_ixxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomud_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomud_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomud_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomud_ixxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomud_ixxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomud_ixxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomuq_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomuq_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomuq_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomuq_ixxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomuq_ixxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomuq_ixxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomuw_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomuw_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomuw_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomuw_ixxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomuw_ixxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomuw_ixxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomw_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomw_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomw_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcomw_ixxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcomw_ixxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcomw_ixxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermil2pd_ixmxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermil2pd_ixmxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermil2pd_ixmxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermil2pd_imxxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermil2pd_imxxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermil2pd_imxxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermil2pd_ixxxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermil2pd_ixxxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermil2pd_ixxxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermil2pd_iymyy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermil2pd_iymyy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermil2pd_iymyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermil2pd_imyyy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermil2pd_imyyy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermil2pd_imyyy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermil2pd_iyyyy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermil2pd_iyyyy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermil2pd_iyyyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermil2ps_ixmxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermil2ps_ixmxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermil2ps_ixmxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermil2ps_imxxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermil2ps_imxxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermil2ps_imxxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermil2ps_ixxxx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermil2ps_ixxxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermil2ps_ixxxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermil2ps_iymyy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermil2ps_iymyy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermil2ps_iymyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermil2ps_imyyy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermil2ps_imyyy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermil2ps_imyyy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermil2ps_iyyyy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermil2ps_iyyyy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermil2ps_iyyyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vphaddbd_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vphaddbd_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vphaddbq_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5404,31 +5404,31 @@ val vpperm_xmxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem
 val vpperm_mxxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpperm_xxxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotb_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprotb_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprotb_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotb_xmx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotb_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprotb_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprotb_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotb_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotb_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotd_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprotd_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprotd_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotd_xmx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotd_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprotd_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprotd_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotd_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotd_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotq_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprotq_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprotq_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotq_xmx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotq_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprotq_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprotq_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotq_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotq_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotw_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprotw_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprotw_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotw_xmx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotw_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vprotw_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vprotw_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotw_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vprotw_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpshab_xmx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5591,7 +5591,7 @@ val vmovw_rx : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `
 val vmovw_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaddph_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcmpph_iezzk : ?k:X86_asm.kmask -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpph_iezzk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpph_iezzk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcvtdq2ph_ezy : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtpd2ph_ezx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtph2dq_eyz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5639,21 +5639,21 @@ val vfnmsub213ph_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> 
 val vfnmsub231ph_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpph_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantph_iezz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantph_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantph_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxph_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminph_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmulph_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceph_iezz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceph_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceph_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleph_iezz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleph_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleph_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefph_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vsqrtph_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vsubph_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvt2ps2phx_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaddsh_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcmpsh_iexxk : ?k:X86_asm.kmask -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
-val vcmpsh_iexxk_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
+val vcmpsh_iexxk_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_asm.kmask -> X86_family_encode.Instruction.t
 val vcomish_exx : X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtsd2sh_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtsh2sd_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5690,30 +5690,30 @@ val vfnmsub213sh_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> 
 val vfnmsub231sh_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpsh_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantsh_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantsh_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantsh_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmaxsh_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminsh_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmulsh_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducesh_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducesh_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducesh_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalesh_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalesh_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalesh_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefsh_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vsqrtsh_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vsubsh_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vucomish_exx : X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxpd_iezzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxpd_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxpd_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxph_iezzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxph_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxph_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxps_iezzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxps_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxps_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxsd_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxsd_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxsd_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxsh_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxsh_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxsh_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vminmaxss_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vminmaxss_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vminmaxss_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtph2ibs_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtph2iubs_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtps2ibs_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5747,9 +5747,9 @@ val vaesenclast_zzz : (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l5
 val vaesenc_mzz : X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaesenc_zzz : (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpclmulqdq_imzz : int -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpclmulqdq_imzz_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpclmulqdq_imzz_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpclmulqdq_izzz : int -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpclmulqdq_izzz_e : Asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpclmulqdq_izzz_e : Rivet_asm_core.Expr.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpaddsb_mzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpaddsb_zzz : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpaddsw_mzz : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5781,21 +5781,21 @@ val vcvttps2uqq_eyz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X
 val vcvtuqq2pd_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtuqq2ps_ezy : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangepd_iezzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangepd_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangepd_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangeps_iezzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangeps_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangeps_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducepd_iezz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducepd_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducepd_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreduceps_iezz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreduceps_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreduceps_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangesd_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangesd_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangesd_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrangess_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrangess_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrangess_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducesd_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducesd_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducesd_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vreducess_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vreducess_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vreducess_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vexp2pd_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vexp2ps_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcp28pd_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5810,16 +5810,16 @@ val vcvtpd2dq_ezy : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86
 val vcvtpd2udq_ezy : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtph2ps_eyz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtps2ph_iezy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vcvtps2ph_iezy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vcvtps2ph_iezy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtps2udq_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvttpd2dq_ezy : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvttpd2udq_ezy : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvttps2udq_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtudq2ps_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmpd_iezzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmpd_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmpd_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmps_iezzz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmps_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmps_iezzz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd132pd_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd132ps_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd213pd_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5859,13 +5859,13 @@ val vfnmsub231ps_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> 
 val vgetexppd_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpps_ezz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantpd_iezz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantpd_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantpd_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantps_iezz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantps_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantps_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalepd_iezz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalepd_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalepd_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaleps_iezz : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaleps_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaleps_iezz_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefpd_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefps_ezzz : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l512, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtsd2si_exr32 : X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -5893,9 +5893,9 @@ val vcvtusi2sd_rexx : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_asm.Evex
 val vcvtusi2ss_r32exx : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtusi2ss_r64exx : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmsd_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmsd_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmsd_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfixupimmss_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vfixupimmss_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vfixupimmss_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd132sd_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd132ss_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd213sd_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5923,13 +5923,13 @@ val vfnmsub231ss_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> 
 val vgetexpsd_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetexpss_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantsd_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantsd_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantsd_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgetmantss_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgetmantss_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgetmantss_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscalesd_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscalesd_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscalesd_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrndscaless_iexxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vrndscaless_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vrndscaless_iexxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefsd_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vscalefss_exxx : ?k:X86_asm.kmask -> ?z:bool -> X86_asm.Evex.rounding -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaddsubpd_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -5979,9 +5979,9 @@ val vcvttss2si_xr32 : (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w3
 val vcvttss2si_mr64 : X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val vcvttss2si_xr64 : (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val vextractps_ixr : int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val vextractps_ixr_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val vextractps_ixr_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val vextractps_ixm : int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vextractps_ixm_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vextractps_ixm_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vhaddpd_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vhaddpd_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vhaddpd_myy : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -6041,21 +6041,21 @@ val vpaddusb_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `L
 val vpaddusw_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpaddusw_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpclmulqdq_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpclmulqdq_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpclmulqdq_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpclmulqdq_ixxx : int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpclmulqdq_ixxx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpclmulqdq_ixxx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpistrm_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcmpistrm_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcmpistrm_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpcmpistrm_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpcmpistrm_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpcmpistrm_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpextrb_ixr : int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val vpextrb_ixr_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val vpextrb_ixr_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val vpextrb_ixm : int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vpextrb_ixm_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vpextrb_ixm_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vpinsrb_irxx : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpinsrb_irxx_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpinsrb_irxx_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpinsrb_imxx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpinsrb_imxx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpinsrb_imxx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmaddwd_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmaddwd_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmuludq_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -6075,21 +6075,21 @@ val vrcpps_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]
 val vrcpps_my : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrcpps_yy : (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vroundpd_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vroundpd_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vroundpd_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vroundpd_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vroundpd_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vroundpd_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vroundpd_imy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vroundpd_imy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vroundpd_imy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vroundpd_iyy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vroundpd_iyy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vroundpd_iyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vroundps_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vroundps_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vroundps_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vroundps_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vroundps_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vroundps_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vroundps_imy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vroundps_imy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vroundps_imy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vroundps_iyy : int -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vroundps_iyy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vroundps_iyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtps_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtps_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vrsqrtps_my : X86_family_encode.Mem.t -> (X86_asm.l256, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -6107,9 +6107,9 @@ val vaesenc_xxx : (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, 
 val vaesimc_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaesimc_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaeskeygenassist_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vaeskeygenassist_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vaeskeygenassist_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vaeskeygenassist_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vaeskeygenassist_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vaeskeygenassist_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val tzcnt_r64r64 : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val tzcnt_mr64 : X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val clrssbsy : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -6230,45 +6230,45 @@ val vfnmsub231ss_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [
 val erets : X86_family_encode.Instruction.t
 val eretu : X86_family_encode.Instruction.t
 val hreset : int -> X86_family_encode.Instruction.t
-val hreset_e : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val hreset_e : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 val insw : X86_family_encode.Instruction.t
 val outsw : X86_family_encode.Instruction.t
 val rclb_ir : int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rclb_ir_e : Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rclb_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclw_ir : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rclw_ir_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rclw_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rcll_ir : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rcll_ir_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rcll_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rclb_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val rclb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val rclb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rclw_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val rclw_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val rclw_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rcll_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val rcll_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val rcll_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rep_insw : X86_family_encode.Instruction.t
 val repne_insw : X86_family_encode.Instruction.t
 val rep_outsw : X86_family_encode.Instruction.t
 val repne_outsw : X86_family_encode.Instruction.t
 val rolb_ir : int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rolb_ir_e : Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rolb_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolw_ir : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val rolw_ir_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val rolw_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val roll_ir : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val roll_ir_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val roll_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val rolb_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val rolb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val rolb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rolw_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val rolw_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val rolw_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val roll_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val roll_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val roll_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shlb_ir : int -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shlb_ir_e : Asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shlb_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shlw_ir : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shlw_ir_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shlw_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shlb_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val shlb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val shlb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shlw_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val shlw_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val shlw_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lldtw_r : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lldtw_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ltrw_r : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -6298,59 +6298,59 @@ val bsrq_rr : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi
 val bsrq_mr : X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val btcq_rr : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val btcw_ir : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val btcw_ir_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val btcw_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val btcl_ir : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val btcl_ir_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val btcl_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lock_btcq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_btcw_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_btcw_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_btcw_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_btcl_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_btcl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_btcl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btcq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btcw_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val btcw_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val btcw_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btcl_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val btcl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val btcl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btrq_rr : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val btrw_ir : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val btrw_ir_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val btrw_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val btrl_ir : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val btrl_ir_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val btrl_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lock_btrq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_btrw_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_btrw_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_btrw_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_btrl_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_btrl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_btrl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btrq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btrw_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val btrw_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val btrw_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btrl_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val btrl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val btrl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btsq_rr : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val btsw_ir : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val btsw_ir_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val btsw_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val btsl_ir : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val btsl_ir_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val btsl_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lock_btsq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_btsw_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_btsw_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_btsw_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_btsl_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_btsl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_btsl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btsq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btsw_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val btsw_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val btsw_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btsl_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val btsl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val btsl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btq_rr : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val btw_ir : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val btw_ir_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val btw_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val btl_ir : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val btl_ir_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val btl_ir_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val btq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btw_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val btw_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val btw_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val btl_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val btl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val btl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val cdq : X86_family_encode.Instruction.t
 val cmpsl : X86_family_encode.Instruction.t
 val cwde : X86_family_encode.Instruction.t
@@ -6407,10 +6407,10 @@ val setzb_r : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Ins
 val setzb_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shrdq_rr : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdq_irr : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shrdq_irr_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shrdq_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shrdq_irm : int -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val shrdq_irm_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val shrdq_irm_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val stosl : X86_family_encode.Instruction.t
 val cmpxchgq_rr : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val lock_cmpxchgq : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -6420,38 +6420,38 @@ val xaddq_rr : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `H
 val lock_xaddq : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val xaddq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_adcb_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_adcb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_adcb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_adcq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_adcw_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_adcw_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_adcw_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_adcl_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_adcl_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_adcl_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_adcw_i16m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_adcw_i16m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_adcw_i16m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_adcl_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_adcl_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_adcl_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_addb_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_addb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_addb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_addq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_addw_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_addw_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_addw_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_addl_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_addl_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_addl_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_addw_i16m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_addw_i16m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_addw_i16m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_addl_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_addl_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_addl_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_andb_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_andb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_andb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_andq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_andw_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_andw_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_andw_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_andl_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_andl_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_andl_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_andw_i16m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_andw_i16m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_andw_i16m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_andl_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_andl_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_andl_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val callw_r : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val callq_r : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val callw_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -6488,16 +6488,16 @@ val lock_notb : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_notw : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_notl : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_orb_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_orb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_orb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_orq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_orw_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_orw_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_orw_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_orl_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_orl_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_orl_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_orw_i16m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_orw_i16m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_orw_i16m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_orl_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_orl_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_orl_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val popfw : X86_family_encode.Instruction.t
 val pushfw : X86_family_encode.Instruction.t
 val rclb_r82 : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -6523,16 +6523,16 @@ val rolb_m2 : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rolw_m2 : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val roll_m2 : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_sbbb_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_sbbb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_sbbb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_sbbq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_sbbw_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_sbbw_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_sbbw_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_sbbl_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_sbbl_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_sbbl_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_sbbw_i16m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_sbbw_i16m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_sbbw_i16m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_sbbl_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_sbbl_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_sbbl_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val scasw : X86_family_encode.Instruction.t
 val shlb_r82 : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shlw_r162 : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -6540,31 +6540,31 @@ val shlb_m2 : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shlw_m2 : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val stosw : X86_family_encode.Instruction.t
 val lock_subb_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_subb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_subb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_subq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_subw_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_subw_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_subw_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_subl_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_subl_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_subl_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_subw_i16m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_subw_i16m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_subw_i16m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_subl_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_subl_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_subl_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val xchgq_rr : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val xchgq_r64 : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val xchgq_r642 : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val xchgq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_xorb_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_xorb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_xorb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_xorq_rm : (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_xorw_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_xorw_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_xorw_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_xorl_i8m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_xorl_i8m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_xorl_i8m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_xorw_i16m : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_xorw_i16m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_xorw_i16m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_xorl_i32m : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val lock_xorl_i32m_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val lock_xorl_i32m_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val aesdecwide128kl : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val aesdecwide256kl : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val aesencwide128kl : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -6639,7 +6639,7 @@ val rdgsbase_r32 : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_enco
 val wrfsbase_r32 : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val wrgsbase_r32 : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val xabort : int -> X86_family_encode.Instruction.t
-val xabort_e : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val xabort_e : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 val xend : X86_family_encode.Instruction.t
 val xtest : X86_family_encode.Instruction.t
 val serialize : X86_family_encode.Instruction.t
@@ -6660,33 +6660,33 @@ val fisttpll : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val fisttps : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val fisttpl : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val pcmpestriq_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pcmpestriq_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pcmpestriq_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pcmpestriq_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pcmpestriq_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pcmpestriq_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pcmpestri_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pcmpestri_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pcmpestri_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pcmpestri_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pcmpestri_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pcmpestri_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pcmpestrmq_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pcmpestrmq_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pcmpestrmq_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pcmpestrmq_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pcmpestrmq_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pcmpestrmq_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pcmpestrm_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pcmpestrm_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pcmpestrm_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pcmpestrm_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pcmpestrm_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pcmpestrm_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pcmpistri_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pcmpistri_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pcmpistri_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pcmpistri_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pcmpistri_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pcmpistri_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pextrq_ixr : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val pextrq_ixr_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val pextrq_ixr_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val pextrq_ixm : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val pextrq_ixm_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val pextrq_ixm_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val pinsrq_irx : int -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pinsrq_irx_e : Asm_core.Expr.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pinsrq_irx_e : Rivet_asm_core.Expr.t -> (X86_asm.w64, [< `Lo ]) X86_asm.greg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pinsrq_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pinsrq_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pinsrq_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val cvtss2si_mr32 : X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val cvtss2si_xr32 : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val cvtss2si_mr64 : X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -6736,9 +6736,9 @@ val rep_xsha1 : X86_family_encode.Instruction.t
 val rep_xsha256 : X86_family_encode.Instruction.t
 val vmfunc : X86_family_encode.Instruction.t
 val vpclmulqdq_imyy : int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpclmulqdq_imyy_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpclmulqdq_imyy_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpclmulqdq_iyyy : int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpclmulqdq_iyyy_e : Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpclmulqdq_iyyy_e : Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vmcall : X86_family_encode.Instruction.t
 val vmclear : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vmlaunch : X86_family_encode.Instruction.t
@@ -6920,9 +6920,9 @@ val aesenc_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]
 val aesimc_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val aesimc_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val aeskeygenassist_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val aeskeygenassist_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val aeskeygenassist_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val aeskeygenassist_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val aeskeygenassist_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val aeskeygenassist_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtsd2ss_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtsd2ss_xxx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtss2sd_mxx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -6966,13 +6966,13 @@ val cmovz_r32r32 : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [
 val cmovz_mr16 : X86_family_encode.Mem.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val cmovz_mr32 : X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val gf2p8affineinvqb_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val gf2p8affineinvqb_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val gf2p8affineinvqb_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val gf2p8affineinvqb_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val gf2p8affineinvqb_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val gf2p8affineinvqb_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val gf2p8affineqb_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val gf2p8affineqb_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val gf2p8affineqb_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val gf2p8affineqb_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val gf2p8affineqb_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val gf2p8affineqb_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val gf2p8mulb_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val gf2p8mulb_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val insb : X86_family_encode.Instruction.t
@@ -7024,15 +7024,15 @@ val lssl : X86_family_encode.Mem.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg
 val shrdw_rr : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdl_rr : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdw_irr : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shrdw_irr_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shrdw_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdl_irr : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
-val shrdl_irr_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
+val shrdl_irr_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val shrdw_rm : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shrdl_rm : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shrdw_irm : int -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val shrdw_irm_e : Asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val shrdw_irm_e : Rivet_asm_core.Expr.t -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shrdl_irm : int -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val shrdl_irm_e : Asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val shrdl_irm_e : Rivet_asm_core.Expr.t -> (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rsm : X86_family_encode.Instruction.t
 val cmpxchgb_rr : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val cmpxchgw_rr : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
@@ -7073,10 +7073,10 @@ val hlt : X86_family_encode.Instruction.t
 val int1 : X86_family_encode.Instruction.t
 val int3 : X86_family_encode.Instruction.t
 val int : int -> X86_family_encode.Instruction.t
-val int_e : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val int_e : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 val inb_ : X86_family_encode.Instruction.t
 val inb_i : int -> X86_family_encode.Instruction.t
-val inb_i_e : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val inb_i_e : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 val lodsb : X86_family_encode.Instruction.t
 val nop_ : X86_family_encode.Instruction.t
 val lock_orb_rm : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -7084,7 +7084,7 @@ val lock_orw_rm : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encod
 val lock_orl_rm : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val outb_ : X86_family_encode.Instruction.t
 val outb_i : int -> X86_family_encode.Instruction.t
-val outb_i_e : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val outb_i_e : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 val repe_cmpsb : X86_family_encode.Instruction.t
 val repe_scasb : X86_family_encode.Instruction.t
 val repne_cmpsb : X86_family_encode.Instruction.t
@@ -7097,7 +7097,7 @@ val rep_stosb : X86_family_encode.Instruction.t
 val repne_stosb : X86_family_encode.Instruction.t
 val lretl_ : X86_family_encode.Instruction.t
 val lretl_i : int -> X86_family_encode.Instruction.t
-val lretl_i_e : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val lretl_i_e : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 val lock_sbbb_rm : (X86_asm.w8, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_sbbw_rm : (X86_asm.w16, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val lock_sbbl_rm : (X86_asm.w32, [< `Hi | `Lo ]) X86_asm.greg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -7147,9 +7147,9 @@ val movrs_mr16 : X86_family_encode.Mem.t -> (X86_asm.w16, [< `Lo ]) X86_asm.greg
 val movrs_mr32 : X86_family_encode.Mem.t -> (X86_asm.w32, [< `Lo ]) X86_asm.greg -> X86_family_encode.Instruction.t
 val pause : X86_family_encode.Instruction.t
 val pclmulqdq_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pclmulqdq_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pclmulqdq_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pclmulqdq_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pclmulqdq_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pclmulqdq_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val emms : X86_family_encode.Instruction.t
 val maskmovq : X86_asm.mmx -> X86_asm.mmx -> X86_family_encode.Instruction.t
 val movntq : X86_asm.mmx -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -7164,9 +7164,9 @@ val paddusw_qq : X86_asm.mmx -> X86_asm.mmx -> X86_family_encode.Instruction.t
 val pmaddwd_mq : X86_family_encode.Mem.t -> X86_asm.mmx -> X86_family_encode.Instruction.t
 val pmaddwd_qq : X86_asm.mmx -> X86_asm.mmx -> X86_family_encode.Instruction.t
 val pshufw_imq : int -> X86_family_encode.Mem.t -> X86_asm.mmx -> X86_family_encode.Instruction.t
-val pshufw_imq_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.mmx -> X86_family_encode.Instruction.t
+val pshufw_imq_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_asm.mmx -> X86_family_encode.Instruction.t
 val pshufw_iqq : int -> X86_asm.mmx -> X86_asm.mmx -> X86_family_encode.Instruction.t
-val pshufw_iqq_e : Asm_core.Expr.t -> X86_asm.mmx -> X86_asm.mmx -> X86_family_encode.Instruction.t
+val pshufw_iqq_e : Rivet_asm_core.Expr.t -> X86_asm.mmx -> X86_asm.mmx -> X86_family_encode.Instruction.t
 val psubsb_mq : X86_family_encode.Mem.t -> X86_asm.mmx -> X86_family_encode.Instruction.t
 val psubsb_qq : X86_asm.mmx -> X86_asm.mmx -> X86_family_encode.Instruction.t
 val psubsw_mq : X86_family_encode.Mem.t -> X86_asm.mmx -> X86_family_encode.Instruction.t
@@ -7194,9 +7194,9 @@ val sha1msg2_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo
 val sha1nexte_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val sha1nexte_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val sha1rnds4_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val sha1rnds4_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val sha1rnds4_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val sha1rnds4_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val sha1rnds4_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val sha1rnds4_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val sha256msg1_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val sha256msg1_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val sha256msg2_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -7267,9 +7267,9 @@ val movshdup_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo
 val movsldup_mx : X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val movsldup_xx : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pcmpistrm_imx : int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pcmpistrm_imx_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pcmpistrm_imx_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val pcmpistrm_ixx : int -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val pcmpistrm_ixx_e : Asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val pcmpistrm_ixx_e : Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val extrq : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val insertq : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val movntsd : (X86_asm.l128, [< `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -7306,23 +7306,23 @@ val vmwrite_mr : X86_family_encode.Mem.t -> (X86_asm.w64, [< `Hi | `Lo ]) X86_as
 val wbnoinvd : X86_family_encode.Instruction.t
 val fwait : X86_family_encode.Instruction.t
 val vgf2p8affineinvqb_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineinvqb_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineinvqb_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineinvqb_i8xxx2 : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineinvqb_i8xxx2_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineinvqb_i8xxx2_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineqb_ibxx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineqb_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineqb_ibxx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineqb_i8xxx2 : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineqb_i8xxx2_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineqb_i8xxx2_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8mulb_mxx2 : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8mulb_xxx2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineinvqb_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineinvqb_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineinvqb_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineinvqb_i8yyy2 : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineinvqb_i8yyy2_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineinvqb_i8yyy2_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineqb_ibyy : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineqb_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineqb_ibyy_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8affineqb_i8yyy2 : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vgf2p8affineqb_i8yyy2_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vgf2p8affineqb_i8yyy2_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8mulb_myy2 : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vgf2p8mulb_yyy2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpdpwsuds_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -7391,9 +7391,9 @@ val vcvtpd2psx_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X
 val vcvtph2ps_mx2 : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtph2ps_xx2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtps2ph_i8xm2 : ?k:X86_asm.kmask -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vcvtps2ph_i8xm2_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vcvtps2ph_i8xm2_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vcvtps2ph_i8xx2 : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vcvtps2ph_i8xx2_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vcvtps2ph_i8xx2_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvttpd2dqx_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvttpd2dq_xx2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd132pd_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -7479,15 +7479,15 @@ val vpbroadcastd_xx2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `L
 val vpbroadcastq_mx2 : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpbroadcastq_xx2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilpd_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilpd_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_i8xx2 : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilpd_i8xx2_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilpd_i8xx2_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_xxx2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_ibx : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilps_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilps_ibx_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_i8xx2 : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilps_i8xx2_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilps_i8xx2_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_xxx2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmuludq_bxx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -7514,9 +7514,9 @@ val vcvtpd2psy_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X
 val vcvtph2ps_my2 : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtph2ps_xy2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvtps2ph_i8ym2 : ?k:X86_asm.kmask -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val vcvtps2ph_i8ym2_e : ?k:X86_asm.kmask -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val vcvtps2ph_i8ym2_e : ?k:X86_asm.kmask -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val vcvtps2ph_i8yx2 : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vcvtps2ph_i8yx2_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vcvtps2ph_i8yx2_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvttpd2dqy_bx : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vcvttpd2dq_yx2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l128, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vfmadd132pd_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
@@ -7604,27 +7604,27 @@ val vpbroadcastq_xy2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l128, [< `Hi | `L
 val vpermd_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermd_yyy2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilpd_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilpd_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_i8yy2 : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilpd_i8yy2_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilpd_i8yy2_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilpd_yyy2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilps_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilps_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_i8yy2 : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermilps_i8yy2_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermilps_i8yy2_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermilps_yyy2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermpd_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermpd_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermpd_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermpd_i8yy2 : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermpd_i8yy2_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermpd_i8yy2_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermps_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermps_yyy2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermq_iby : ?k:X86_asm.kmask -> ?z:bool -> int -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermq_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermq_iby_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpermq_i8yy2 : ?k:X86_asm.kmask -> ?z:bool -> int -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
-val vpermq_i8yy2_e : ?k:X86_asm.kmask -> ?z:bool -> Asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
+val vpermq_i8yy2_e : ?k:X86_asm.kmask -> ?z:bool -> Rivet_asm_core.Expr.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmuludq_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpmuludq_yyy2 : ?k:X86_asm.kmask -> ?z:bool -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t
 val vpsllvd_byy : ?k:X86_asm.kmask -> ?z:bool -> X86_family_encode.Mem.t -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> (X86_asm.l256, [< `Hi | `Lo ]) X86_asm.vreg -> X86_family_encode.Instruction.t

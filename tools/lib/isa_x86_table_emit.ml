@@ -210,8 +210,8 @@ let builder_operand (s : Isa_x86_table.spec) (o : Isa_x86_table.operand) =
   | Mem _ when s.bcst > 0 -> arg "Mem.t" (call (Printf.sprintf "b %d" s.bcst)) "b" "b"
   | Mem _ | Vsib _ -> arg "Mem.t" (call "m") "m" "m"
   | Imm { bytes } when bytes <= 2 ->
-      arg ~ty_e:"Asm_core.Expr.t" "int" (call "i") "i" (Printf.sprintf "i%d" (8 * bytes))
-  | Imm _ -> arg ~ty_e:"Asm_core.Expr.t" "int64" (call "i64") "i" "i32"
+      arg ~ty_e:"Rivet_asm_core.Expr.t" "int" (call "i") "i" (Printf.sprintf "i%d" (8 * bytes))
+  | Imm _ -> arg ~ty_e:"Rivet_asm_core.Expr.t" "int64" (call "i64") "i" "i32"
   | Fixed_reg name -> `Implicit (Printf.sprintf "Rowkit.fixed %S" name)
   | One -> `Implicit "Rowkit.one"
   | Dfv -> arg "int" (call "dfv") "f" "f"

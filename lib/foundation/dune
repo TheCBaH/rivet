@@ -11,7 +11,7 @@
 ; exclusive by RIVET_MELANGE, because dune cannot make `modes` conditional.
 
 (library
- (name foundation)
+ (name rivet_foundation)
  (public_name rivet.foundation)
  (modes byte native)
  (libraries

@@ -8,17 +8,21 @@
    instruction-shaped in this dialect, so they are the encoder's pseudo
    instructions; no directive is the target's. *)
 
-open Foundation
+open Rivet_foundation
 include I8080_encode
 
 type parse_error_kind = [ `Cannot_parse_operand of cannot_parse ]
-and cannot_parse = { slice : Asm_syntax.Token.slice; reason : Asm_syntax.Parse_lines.error_kind }
+
+and cannot_parse = {
+  slice : Rivet_asm_syntax.Token.slice;
+  reason : Rivet_asm_syntax.Parse_lines.error_kind;
+}
 
 type parse_error = parse_error_kind Target_error.t
 
 let pp_parse_error_kind ppf : parse_error_kind -> unit = function
   | `Cannot_parse_operand { slice; _ } ->
-      Fmt.pf ppf "cannot parse operand %s" (Asm_syntax.Token.slice_text slice)
+      Fmt.pf ppf "cannot parse operand %s" (Rivet_asm_syntax.Token.slice_text slice)
 
 let parse_error_kind_code : parse_error_kind -> string = function
   | `Cannot_parse_operand _ -> "i8080.operand"
@@ -35,29 +39,30 @@ let parse_diag ?pos ?origin kind =
        ~origin:(match origin with Some o -> o | None -> Origin.synthesized ~pass:"i8080" ())
        kind)
 
-let lexical_profile = Asm_syntax.Lexical_profile.make ~name:"i8080" ~comment_introducers:[ ";" ] ()
+let lexical_profile =
+  Rivet_asm_syntax.Lexical_profile.make ~name:"i8080" ~comment_introducers:[ ";" ] ()
 
-let slice_origin (s : Asm_syntax.Token.slice) =
-  match Asm_syntax.Token.slice_span s with
+let slice_origin (s : Rivet_asm_syntax.Token.slice) =
+  match Rivet_asm_syntax.Token.slice_span s with
   | Some sp -> Origin.text sp
   | None -> Origin.synthesized ~pass:"i8080" ()
 
-let parse_one (slice : Asm_syntax.Token.slice) =
-  match List.map Asm_syntax.Token.kind slice with
-  | [ Asm_syntax.Token.Ident n ] -> (
+let parse_one (slice : Rivet_asm_syntax.Token.slice) =
+  match List.map Rivet_asm_syntax.Token.kind slice with
+  | [ Rivet_asm_syntax.Token.Ident n ] -> (
       match String.lowercase_ascii n with
       | "sp" -> Ok Operand.Sp
       | "psw" -> Ok Operand.Psw
       | _ -> (
           match Reg.find n with
           | Some r -> Ok (Operand.Reg r)
-          | None -> Ok (Operand.Sym (Asm_core.Expr.Symbol n))))
-  | [ Asm_syntax.Token.String s ] -> Ok (Operand.Str s)
+          | None -> Ok (Operand.Sym (Rivet_asm_core.Expr.Symbol n))))
+  | [ Rivet_asm_syntax.Token.String s ] -> Ok (Operand.Str s)
   | _ -> (
-      match Asm_syntax.Parse_lines.parse_expression slice with
+      match Rivet_asm_syntax.Parse_lines.parse_expression slice with
       | Ok e -> (
-          match Asm_core.Expr.fold Asm_core.Expr.no_env e with
-          | Ok (Asm_core.Expr.Const v) -> Ok (Operand.Imm v)
+          match Rivet_asm_core.Expr.fold Rivet_asm_core.Expr.no_env e with
+          | Ok (Rivet_asm_core.Expr.Const v) -> Ok (Operand.Imm v)
           | Ok e -> Ok (Operand.Sym e)
           | Error _ -> Ok (Operand.Sym e))
       | Error e ->

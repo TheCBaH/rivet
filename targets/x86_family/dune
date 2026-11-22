@@ -22,9 +22,9 @@
   x86_table_rows)
  (modes byte native)
  (libraries
-  foundation
+  rivet_foundation
   codec
-  asm_core
+  rivet_asm_core
   target_error
   target_encode
   target_features)
@@ -37,10 +37,10 @@
  (modules x86_family)
  (modes byte native)
  (libraries
-  foundation
+  rivet_foundation
   codec
-  asm_core
-  asm_syntax
+  rivet_asm_core
+  rivet_asm_syntax
   target_intf
   x86_family_encode)
  (enabled_if

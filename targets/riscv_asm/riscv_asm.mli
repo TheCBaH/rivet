@@ -1,7 +1,7 @@
 (* Typed builders for the hand-written RISC-V instructions, one per opcode and named by its
    mnemonic ([.] becomes [_], a keyword gains [_]): [add x1 x2 x3], [lw a0 (off sp 8)]. Immediates
    are [int] ([int64] for [li]); the [_e] builder of a form with an immediate takes an
-   {!Asm_core.Expr.t} instead. [Rv32] and [Rv64] add the builders only one XLEN has. Each builder
+   {!Rivet_asm_core.Expr.t} instead. [Rv32] and [Rv64] add the builders only one XLEN has. Each builder
    returns the {!Riscv_types.Instruction.t} the encoders lower; lowering still checks ranges and
    enabled extensions. *)
 
@@ -174,11 +174,11 @@ module Common : sig
 
   val off_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Mem.t
 
   val cmem : Riscv_family_encode.Riscv_types.Creg.t -> int -> Riscv_family_encode.Riscv_ops.Cmem.t
-  val label : string -> Asm_core.Expr.t
+  val label : string -> Rivet_asm_core.Expr.t
   val rne : Riscv_family_encode.Riscv_types.Rm.t
   val rtz : Riscv_family_encode.Riscv_types.Rm.t
   val rdn : Riscv_family_encode.Riscv_types.Rm.t
@@ -429,7 +429,7 @@ module Common : sig
   val bclri_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bexti :
@@ -441,7 +441,7 @@ module Common : sig
   val bexti_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val binvi :
@@ -453,7 +453,7 @@ module Common : sig
   val binvi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bseti :
@@ -465,7 +465,7 @@ module Common : sig
   val bseti_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val clz :
@@ -529,7 +529,7 @@ module Common : sig
   val rori_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val zext_h :
@@ -588,7 +588,7 @@ module Common : sig
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val sm4ks :
@@ -602,7 +602,7 @@ module Common : sig
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val xperm4 :
@@ -645,7 +645,7 @@ module Common : sig
 
   val csrrw_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -657,7 +657,7 @@ module Common : sig
 
   val csrrs_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -669,7 +669,7 @@ module Common : sig
 
   val csrrc_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -681,8 +681,8 @@ module Common : sig
 
   val csrrwi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrrsi :
@@ -693,8 +693,8 @@ module Common : sig
 
   val csrrsi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrrci :
@@ -705,8 +705,8 @@ module Common : sig
 
   val csrrci_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrr :
@@ -714,14 +714,14 @@ module Common : sig
 
   val csrr_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrw :
     int -> Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrw_e :
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -729,7 +729,7 @@ module Common : sig
     int -> Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrs_e :
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -737,16 +737,24 @@ module Common : sig
     int -> Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrc_e :
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrwi : int -> int -> Riscv_family_encode.Riscv_types.Instruction.t
-  val csrwi_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
+  val csrwi_e :
+    Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
   val csrsi : int -> int -> Riscv_family_encode.Riscv_types.Instruction.t
-  val csrsi_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
+  val csrsi_e :
+    Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
   val csrci : int -> int -> Riscv_family_encode.Riscv_types.Instruction.t
-  val csrci_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
+  val csrci_e :
+    Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val amoswap_w :
     Riscv_family_encode.Riscv_types.Xreg.t ->
@@ -822,7 +830,7 @@ module Common : sig
   val addi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val c_addi :
@@ -830,7 +838,7 @@ module Common : sig
 
   val c_addi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val c_and :
@@ -888,14 +896,14 @@ module Common : sig
 
   val c_beqz :
     Riscv_family_encode.Riscv_types.Creg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
-  val c_j : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val c_j : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val c_bnez :
     Riscv_family_encode.Riscv_types.Creg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val slti :
@@ -907,7 +915,7 @@ module Common : sig
   val slti_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val sltiu :
@@ -919,7 +927,7 @@ module Common : sig
   val sltiu_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val xori :
@@ -931,7 +939,7 @@ module Common : sig
   val xori_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val ori :
@@ -943,7 +951,7 @@ module Common : sig
   val ori_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val andi :
@@ -955,7 +963,7 @@ module Common : sig
   val andi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val slli :
@@ -967,7 +975,7 @@ module Common : sig
   val slli_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val srli :
@@ -979,7 +987,7 @@ module Common : sig
   val srli_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val srai :
@@ -991,7 +999,7 @@ module Common : sig
   val srai_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val lb :
@@ -1037,91 +1045,91 @@ module Common : sig
   val beq :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bne :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val blt :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bge :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bltu :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgeu :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgtu :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bleu :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgt :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val ble :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val beqz :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bnez :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgez :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bltz :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val blez :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgtz :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val lui :
@@ -1129,7 +1137,7 @@ module Common : sig
 
   val lui_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val auipc :
@@ -1137,10 +1145,10 @@ module Common : sig
 
   val auipc_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
-  val jal : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val jal : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
   val jalr : Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val mv :
@@ -1149,19 +1157,19 @@ module Common : sig
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val nop : Riscv_family_encode.Riscv_types.Instruction.t
-  val j : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val j : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
   val jr : Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
-  val call : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
-  val tail : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val call : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val tail : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val la :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val lla :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val li :
@@ -1169,7 +1177,7 @@ module Common : sig
 
   val li_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val ret : Riscv_family_encode.Riscv_types.Instruction.t
@@ -1691,11 +1699,11 @@ module Rv32 : sig
 
   val off_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Mem.t
 
   val cmem : Riscv_family_encode.Riscv_types.Creg.t -> int -> Riscv_family_encode.Riscv_ops.Cmem.t
-  val label : string -> Asm_core.Expr.t
+  val label : string -> Rivet_asm_core.Expr.t
   val rne : Riscv_family_encode.Riscv_types.Rm.t
   val rtz : Riscv_family_encode.Riscv_types.Rm.t
   val rdn : Riscv_family_encode.Riscv_types.Rm.t
@@ -1946,7 +1954,7 @@ module Rv32 : sig
   val bclri_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bexti :
@@ -1958,7 +1966,7 @@ module Rv32 : sig
   val bexti_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val binvi :
@@ -1970,7 +1978,7 @@ module Rv32 : sig
   val binvi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bseti :
@@ -1982,7 +1990,7 @@ module Rv32 : sig
   val bseti_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val clz :
@@ -2046,7 +2054,7 @@ module Rv32 : sig
   val rori_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val zext_h :
@@ -2105,7 +2113,7 @@ module Rv32 : sig
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val sm4ks :
@@ -2119,7 +2127,7 @@ module Rv32 : sig
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val xperm4 :
@@ -2162,7 +2170,7 @@ module Rv32 : sig
 
   val csrrw_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -2174,7 +2182,7 @@ module Rv32 : sig
 
   val csrrs_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -2186,7 +2194,7 @@ module Rv32 : sig
 
   val csrrc_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -2198,8 +2206,8 @@ module Rv32 : sig
 
   val csrrwi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrrsi :
@@ -2210,8 +2218,8 @@ module Rv32 : sig
 
   val csrrsi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrrci :
@@ -2222,8 +2230,8 @@ module Rv32 : sig
 
   val csrrci_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrr :
@@ -2231,14 +2239,14 @@ module Rv32 : sig
 
   val csrr_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrw :
     int -> Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrw_e :
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -2246,7 +2254,7 @@ module Rv32 : sig
     int -> Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrs_e :
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -2254,16 +2262,24 @@ module Rv32 : sig
     int -> Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrc_e :
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrwi : int -> int -> Riscv_family_encode.Riscv_types.Instruction.t
-  val csrwi_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
+  val csrwi_e :
+    Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
   val csrsi : int -> int -> Riscv_family_encode.Riscv_types.Instruction.t
-  val csrsi_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
+  val csrsi_e :
+    Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
   val csrci : int -> int -> Riscv_family_encode.Riscv_types.Instruction.t
-  val csrci_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
+  val csrci_e :
+    Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val amoswap_w :
     Riscv_family_encode.Riscv_types.Xreg.t ->
@@ -2339,7 +2355,7 @@ module Rv32 : sig
   val addi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val c_addi :
@@ -2347,7 +2363,7 @@ module Rv32 : sig
 
   val c_addi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val c_and :
@@ -2405,14 +2421,14 @@ module Rv32 : sig
 
   val c_beqz :
     Riscv_family_encode.Riscv_types.Creg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
-  val c_j : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val c_j : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val c_bnez :
     Riscv_family_encode.Riscv_types.Creg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val slti :
@@ -2424,7 +2440,7 @@ module Rv32 : sig
   val slti_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val sltiu :
@@ -2436,7 +2452,7 @@ module Rv32 : sig
   val sltiu_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val xori :
@@ -2448,7 +2464,7 @@ module Rv32 : sig
   val xori_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val ori :
@@ -2460,7 +2476,7 @@ module Rv32 : sig
   val ori_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val andi :
@@ -2472,7 +2488,7 @@ module Rv32 : sig
   val andi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val slli :
@@ -2484,7 +2500,7 @@ module Rv32 : sig
   val slli_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val srli :
@@ -2496,7 +2512,7 @@ module Rv32 : sig
   val srli_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val srai :
@@ -2508,7 +2524,7 @@ module Rv32 : sig
   val srai_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val lb :
@@ -2554,91 +2570,91 @@ module Rv32 : sig
   val beq :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bne :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val blt :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bge :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bltu :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgeu :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgtu :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bleu :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgt :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val ble :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val beqz :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bnez :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgez :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bltz :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val blez :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgtz :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val lui :
@@ -2646,7 +2662,7 @@ module Rv32 : sig
 
   val lui_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val auipc :
@@ -2654,10 +2670,10 @@ module Rv32 : sig
 
   val auipc_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
-  val jal : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val jal : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
   val jalr : Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val mv :
@@ -2666,19 +2682,19 @@ module Rv32 : sig
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val nop : Riscv_family_encode.Riscv_types.Instruction.t
-  val j : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val j : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
   val jr : Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
-  val call : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
-  val tail : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val call : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val tail : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val la :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val lla :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val li :
@@ -2686,7 +2702,7 @@ module Rv32 : sig
 
   val li_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val ret : Riscv_family_encode.Riscv_types.Instruction.t
@@ -3097,7 +3113,7 @@ module Rv32 : sig
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val aes32dsmi :
@@ -3111,7 +3127,7 @@ module Rv32 : sig
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val aes32esi :
@@ -3125,7 +3141,7 @@ module Rv32 : sig
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val aes32esmi :
@@ -3139,10 +3155,10 @@ module Rv32 : sig
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
-  val c_jal : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val c_jal : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 end
 
 module Rv64 : sig
@@ -3314,11 +3330,11 @@ module Rv64 : sig
 
   val off_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Mem.t
 
   val cmem : Riscv_family_encode.Riscv_types.Creg.t -> int -> Riscv_family_encode.Riscv_ops.Cmem.t
-  val label : string -> Asm_core.Expr.t
+  val label : string -> Rivet_asm_core.Expr.t
   val rne : Riscv_family_encode.Riscv_types.Rm.t
   val rtz : Riscv_family_encode.Riscv_types.Rm.t
   val rdn : Riscv_family_encode.Riscv_types.Rm.t
@@ -3569,7 +3585,7 @@ module Rv64 : sig
   val bclri_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bexti :
@@ -3581,7 +3597,7 @@ module Rv64 : sig
   val bexti_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val binvi :
@@ -3593,7 +3609,7 @@ module Rv64 : sig
   val binvi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bseti :
@@ -3605,7 +3621,7 @@ module Rv64 : sig
   val bseti_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val clz :
@@ -3669,7 +3685,7 @@ module Rv64 : sig
   val rori_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val zext_h :
@@ -3728,7 +3744,7 @@ module Rv64 : sig
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val sm4ks :
@@ -3742,7 +3758,7 @@ module Rv64 : sig
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val xperm4 :
@@ -3785,7 +3801,7 @@ module Rv64 : sig
 
   val csrrw_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -3797,7 +3813,7 @@ module Rv64 : sig
 
   val csrrs_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -3809,7 +3825,7 @@ module Rv64 : sig
 
   val csrrc_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -3821,8 +3837,8 @@ module Rv64 : sig
 
   val csrrwi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrrsi :
@@ -3833,8 +3849,8 @@ module Rv64 : sig
 
   val csrrsi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrrci :
@@ -3845,8 +3861,8 @@ module Rv64 : sig
 
   val csrrci_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrr :
@@ -3854,14 +3870,14 @@ module Rv64 : sig
 
   val csrr_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrw :
     int -> Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrw_e :
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -3869,7 +3885,7 @@ module Rv64 : sig
     int -> Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrs_e :
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -3877,16 +3893,24 @@ module Rv64 : sig
     int -> Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrc_e :
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val csrwi : int -> int -> Riscv_family_encode.Riscv_types.Instruction.t
-  val csrwi_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
+  val csrwi_e :
+    Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
   val csrsi : int -> int -> Riscv_family_encode.Riscv_types.Instruction.t
-  val csrsi_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
+  val csrsi_e :
+    Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
   val csrci : int -> int -> Riscv_family_encode.Riscv_types.Instruction.t
-  val csrci_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
+  val csrci_e :
+    Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val amoswap_w :
     Riscv_family_encode.Riscv_types.Xreg.t ->
@@ -3962,7 +3986,7 @@ module Rv64 : sig
   val addi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val c_addi :
@@ -3970,7 +3994,7 @@ module Rv64 : sig
 
   val c_addi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val c_and :
@@ -4028,14 +4052,14 @@ module Rv64 : sig
 
   val c_beqz :
     Riscv_family_encode.Riscv_types.Creg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
-  val c_j : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val c_j : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val c_bnez :
     Riscv_family_encode.Riscv_types.Creg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val slti :
@@ -4047,7 +4071,7 @@ module Rv64 : sig
   val slti_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val sltiu :
@@ -4059,7 +4083,7 @@ module Rv64 : sig
   val sltiu_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val xori :
@@ -4071,7 +4095,7 @@ module Rv64 : sig
   val xori_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val ori :
@@ -4083,7 +4107,7 @@ module Rv64 : sig
   val ori_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val andi :
@@ -4095,7 +4119,7 @@ module Rv64 : sig
   val andi_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val slli :
@@ -4107,7 +4131,7 @@ module Rv64 : sig
   val slli_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val srli :
@@ -4119,7 +4143,7 @@ module Rv64 : sig
   val srli_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val srai :
@@ -4131,7 +4155,7 @@ module Rv64 : sig
   val srai_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val lb :
@@ -4177,91 +4201,91 @@ module Rv64 : sig
   val beq :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bne :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val blt :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bge :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bltu :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgeu :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgtu :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bleu :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgt :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val ble :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val beqz :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bnez :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgez :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bltz :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val blez :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val bgtz :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val lui :
@@ -4269,7 +4293,7 @@ module Rv64 : sig
 
   val lui_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val auipc :
@@ -4277,10 +4301,10 @@ module Rv64 : sig
 
   val auipc_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
-  val jal : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val jal : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
   val jalr : Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val mv :
@@ -4289,19 +4313,19 @@ module Rv64 : sig
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val nop : Riscv_family_encode.Riscv_types.Instruction.t
-  val j : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val j : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
   val jr : Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
-  val call : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
-  val tail : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val call : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+  val tail : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
   val la :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val lla :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val li :
@@ -4309,7 +4333,7 @@ module Rv64 : sig
 
   val li_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val ret : Riscv_family_encode.Riscv_types.Instruction.t
@@ -4723,7 +4747,7 @@ module Rv64 : sig
   val roriw_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val sha512sum0 :
@@ -4790,7 +4814,7 @@ module Rv64 : sig
   val aes64ks1i_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val amoswap_d :
@@ -4953,7 +4977,7 @@ module Rv64 : sig
   val addiw_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val slliw :
@@ -4965,7 +4989,7 @@ module Rv64 : sig
   val slliw_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val srliw :
@@ -4977,7 +5001,7 @@ module Rv64 : sig
   val srliw_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val sraiw :
@@ -4989,7 +5013,7 @@ module Rv64 : sig
   val sraiw_e :
     Riscv_family_encode.Riscv_types.Xreg.t ->
     Riscv_family_encode.Riscv_types.Xreg.t ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Riscv_family_encode.Riscv_types.Instruction.t
 
   val sext_w :
@@ -5225,10 +5249,12 @@ val v31 : Riscv_family_encode.Riscv_types.Vreg.t
 val off : Riscv_family_encode.Riscv_types.Xreg.t -> int -> Riscv_family_encode.Riscv_types.Mem.t
 
 val off_e :
-  Riscv_family_encode.Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Mem.t
+  Riscv_family_encode.Riscv_types.Xreg.t ->
+  Rivet_asm_core.Expr.t ->
+  Riscv_family_encode.Riscv_types.Mem.t
 
 val cmem : Riscv_family_encode.Riscv_types.Creg.t -> int -> Riscv_family_encode.Riscv_ops.Cmem.t
-val label : string -> Asm_core.Expr.t
+val label : string -> Rivet_asm_core.Expr.t
 val rne : Riscv_family_encode.Riscv_types.Rm.t
 val rtz : Riscv_family_encode.Riscv_types.Rm.t
 val rdn : Riscv_family_encode.Riscv_types.Rm.t
@@ -5479,7 +5505,7 @@ val bclri :
 val bclri_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bexti :
@@ -5491,7 +5517,7 @@ val bexti :
 val bexti_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val binvi :
@@ -5503,7 +5529,7 @@ val binvi :
 val binvi_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bseti :
@@ -5515,7 +5541,7 @@ val bseti :
 val bseti_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val clz :
@@ -5579,7 +5605,7 @@ val rori :
 val rori_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val zext_h :
@@ -5638,7 +5664,7 @@ val sm4ed_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val sm4ks :
@@ -5652,7 +5678,7 @@ val sm4ks_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val xperm4 :
@@ -5695,7 +5721,7 @@ val csrrw :
 
 val csrrw_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -5707,7 +5733,7 @@ val csrrs :
 
 val csrrs_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -5719,7 +5745,7 @@ val csrrc :
 
 val csrrc_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -5731,8 +5757,8 @@ val csrrwi :
 
 val csrrwi_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val csrrsi :
@@ -5743,8 +5769,8 @@ val csrrsi :
 
 val csrrsi_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val csrrci :
@@ -5755,8 +5781,8 @@ val csrrci :
 
 val csrrci_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val csrr :
@@ -5764,14 +5790,14 @@ val csrr :
 
 val csrr_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val csrw :
   int -> Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
 val csrw_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -5779,7 +5805,7 @@ val csrs :
   int -> Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
 val csrs_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
@@ -5787,16 +5813,24 @@ val csrc :
   int -> Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
 val csrc_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val csrwi : int -> int -> Riscv_family_encode.Riscv_types.Instruction.t
-val csrwi_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
+val csrwi_e :
+  Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
 val csrsi : int -> int -> Riscv_family_encode.Riscv_types.Instruction.t
-val csrsi_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
+val csrsi_e :
+  Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
 val csrci : int -> int -> Riscv_family_encode.Riscv_types.Instruction.t
-val csrci_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+
+val csrci_e :
+  Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
 val amoswap_w :
   Riscv_family_encode.Riscv_types.Xreg.t ->
@@ -5872,7 +5906,7 @@ val addi :
 val addi_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val c_addi :
@@ -5880,7 +5914,7 @@ val c_addi :
 
 val c_addi_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val c_and :
@@ -5936,14 +5970,14 @@ val c_swsp :
 
 val c_beqz :
   Riscv_family_encode.Riscv_types.Creg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
-val c_j : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+val c_j : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
 val c_bnez :
   Riscv_family_encode.Riscv_types.Creg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val slti :
@@ -5955,7 +5989,7 @@ val slti :
 val slti_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val sltiu :
@@ -5967,7 +6001,7 @@ val sltiu :
 val sltiu_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val xori :
@@ -5979,7 +6013,7 @@ val xori :
 val xori_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val ori :
@@ -5991,7 +6025,7 @@ val ori :
 val ori_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val andi :
@@ -6003,7 +6037,7 @@ val andi :
 val andi_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val slli :
@@ -6015,7 +6049,7 @@ val slli :
 val slli_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val srli :
@@ -6027,7 +6061,7 @@ val srli :
 val srli_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val srai :
@@ -6039,7 +6073,7 @@ val srai :
 val srai_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val lb :
@@ -6085,91 +6119,91 @@ val sw :
 val beq :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bne :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val blt :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bge :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bltu :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bgeu :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bgtu :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bleu :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bgt :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val ble :
   Riscv_family_encode.Riscv_types.Xreg.t ->
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val beqz :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bnez :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bgez :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bltz :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val blez :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val bgtz :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val lui :
@@ -6177,7 +6211,7 @@ val lui :
 
 val lui_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val auipc :
@@ -6185,10 +6219,10 @@ val auipc :
 
 val auipc_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
-val jal : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+val jal : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 val jalr : Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
 val mv :
@@ -6197,19 +6231,19 @@ val mv :
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val nop : Riscv_family_encode.Riscv_types.Instruction.t
-val j : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+val j : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 val jr : Riscv_family_encode.Riscv_types.Xreg.t -> Riscv_family_encode.Riscv_types.Instruction.t
-val call : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
-val tail : Asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+val call : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
+val tail : Rivet_asm_core.Expr.t -> Riscv_family_encode.Riscv_types.Instruction.t
 
 val la :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val lla :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val li :
@@ -6217,7 +6251,7 @@ val li :
 
 val li_e :
   Riscv_family_encode.Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_family_encode.Riscv_types.Instruction.t
 
 val ret : Riscv_family_encode.Riscv_types.Instruction.t

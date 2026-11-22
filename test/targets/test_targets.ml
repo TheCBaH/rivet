@@ -59,7 +59,7 @@ let%expect_test "every target's codec passes Codec.check" =
 
 let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
   let open Riscv32_encode in
-  let zero = Asm_core.Expr.Const Foundation.Bigint.zero in
+  let zero = Rivet_asm_core.Expr.Const Rivet_foundation.Bigint.zero in
   let values =
     [
       Lowered.I
@@ -67,10 +67,13 @@ let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
           op = Opcode.Addi;
           rd = Reg.x 10;
           rs1 = Reg.zero;
-          imm = Asm_core.Expr.Const (Foundation.Bigint.of_int 42);
+          imm = Rivet_asm_core.Expr.Const (Rivet_foundation.Bigint.of_int 42);
         };
       Lowered.Caddi
-        { rd = Xreg.of_int_exn 10; imm = Asm_core.Expr.Const (Foundation.Bigint.of_int (-1)) };
+        {
+          rd = Xreg.of_int_exn 10;
+          imm = Rivet_asm_core.Expr.Const (Rivet_foundation.Bigint.of_int (-1));
+        };
       Lowered.Pair { op = Opcode.Call; rd = Reg.x 1; tmp = Xreg.ra; target = zero; kind = Jalr };
     ]
   in
@@ -104,7 +107,7 @@ let%expect_test "RISC-V codec round-trips a word and an atomic call pair" =
 let driver name =
   match Driver.Registry.find name with Some d -> d | None -> failwith ("missing target " ^ name)
 
-let source text = Foundation.Span.source ~name:"<test>" ~contents:text
+let source text = Rivet_foundation.Span.source ~name:"<test>" ~contents:text
 
 let show_tokens target text =
   let (module D : Target_intf.Target.DRIVER) = driver target in
@@ -113,8 +116,10 @@ let show_tokens target text =
   | Error ds ->
       List.iter
         (fun d ->
-          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds)
+          Printf.printf "%s: %s\n"
+            (Rivet_foundation.Diagnostic.code d)
+            (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds)
 
 let%expect_test "modifier spellings are declared by the lexical profile" =
   show_tokens "riscv32" "%pcrel_hi(symbol) %undeclared(symbol)\n";
@@ -159,8 +164,10 @@ addi x0, x0, 0
   | Error ds ->
       List.iter
         (fun d ->
-          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds));
+          Printf.printf "%s: %s\n"
+            (Rivet_foundation.Diagnostic.code d)
+            (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds));
   [%expect
     {|
     lowered state
@@ -318,14 +325,16 @@ let attempt target text =
   let (module D : Target_intf.Target.DRIVER) =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.assemble ~unit_name:"t" ~source () with
   | Ok _ -> print_endline "accepted"
   | Error ds ->
       List.iter
         (fun d ->
-          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds)
+          Printf.printf "%s: %s\n"
+            (Rivet_foundation.Diagnostic.code d)
+            (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds)
 
 let%expect_test "RISC-V option state is explicit" =
   attempt "riscv32" ".text\n.option pop\naddi x0, x0, 0\n";
@@ -345,7 +354,7 @@ let show_fixup label result =
   | Ok value -> Printf.printf "%-18s %Ld\n" label value
   | Error error ->
       let diagnostic = Riscv32_encode.error_diagnostic (Err.Error.kind error) in
-      Printf.printf "%-18s %s\n" label (Foundation.Diagnostic.message diagnostic)
+      Printf.printf "%-18s %s\n" label (Rivet_foundation.Diagnostic.message diagnostic)
 
 let%expect_test "RISC-V branch, jump, and rounded split boundaries are exact" =
   let branch target = Riscv32_encode.evaluate_fixup Riscv32_encode.Branch13 ~place:0L ~target in
@@ -403,8 +412,10 @@ let show_decode target bytes =
   | Error ds ->
       List.iter
         (fun d ->
-          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds)
+          Printf.printf "%s: %s\n"
+            (Rivet_foundation.Diagnostic.code d)
+            (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds)
 
 let%expect_test "RISC-V decode rejects malformed or profile-incompatible words" =
   show_decode "riscv32" "\x13\x00\x00";
@@ -647,9 +658,10 @@ let%expect_test "binding-directive transitions match the measured GNU as table" 
     | Error ds ->
         List.iter
           (fun d ->
-            Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d)
-              (Foundation.Diagnostic.message d))
-          (Foundation.Diag.diagnostics ds)
+            Printf.printf "%s: %s\n"
+              (Rivet_foundation.Diagnostic.code d)
+              (Rivet_foundation.Diagnostic.message d))
+          (Rivet_foundation.Diag.diagnostics ds)
   in
   List.iter
     (fun (a, b) -> show a b)
@@ -684,19 +696,19 @@ let entry_of ?entry target text =
   let (module D : Target_intf.Target.DRIVER) =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.assemble ?entry ~unit_name:"t" ~source () with
   | Error ds ->
       List.iter
-        (fun d -> Printf.printf "%s\n" (Foundation.Diagnostic.code d))
-        (Foundation.Diag.diagnostics ds);
+        (fun d -> Printf.printf "%s\n" (Rivet_foundation.Diagnostic.code d))
+        (Rivet_foundation.Diag.diagnostics ds);
       None
   | Ok laid_out -> (
       match Image.bind_image laid_out ~addresses:[ (".text", 0x400000L) ] with
       | Error ds ->
           List.iter
-            (fun d -> Printf.printf "%s\n" (Foundation.Diagnostic.code d))
-            (Foundation.Diag.diagnostics ds);
+            (fun d -> Printf.printf "%s\n" (Rivet_foundation.Diagnostic.code d))
+            (Rivet_foundation.Diag.diagnostics ds);
           None
       | Ok img -> Some img.Image.entry)
 
@@ -776,7 +788,9 @@ let%expect_test "code before any section directive has nowhere to go" =
 
 let%expect_test "binding at a misaligned address is rejected" =
   let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "aarch64") in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:"\t.text\n\t.balign 4\n\tret\n" in
+  let source =
+    Rivet_foundation.Span.source ~name:"<test>" ~contents:"\t.text\n\t.balign 4\n\tret\n"
+  in
   match D.assemble ~unit_name:"t" ~source () with
   | Error _ -> print_endline "unexpected: did not assemble"
   | Ok l ->
@@ -788,8 +802,8 @@ let%expect_test "binding at a misaligned address is rejected" =
        | Ok _ -> print_endline "accepted a misaligned address"
        | Error ds ->
            List.iter
-             (fun d -> print_endline (Foundation.Diagnostic.message d))
-             (Foundation.Diag.diagnostics ds));
+             (fun d -> print_endline (Rivet_foundation.Diagnostic.message d))
+             (Rivet_foundation.Diag.diagnostics ds));
        match Image.bind_image l ~addresses:(at 0x40000000L) with
        | Ok img -> print_endline (Fmt.to_to_string Image.pp img)
        | Error _ -> print_endline "unexpected: aligned binding failed");
@@ -811,14 +825,16 @@ let normalized target text =
   let (module D : Target_intf.Target.DRIVER) =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.dump_normalized_ast ~unit_name:"t" ~source () with
   | Ok s -> print_endline (String.trim s)
   | Error ds ->
       List.iter
         (fun d ->
-          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds)
+          Printf.printf "%s: %s\n"
+            (Rivet_foundation.Diagnostic.code d)
+            (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds)
 
 let%expect_test "absolute subterms fold, symbolic ones survive" =
   normalized "x86_64" "\t.text\nfoo:\n\tret\n\t.size foo, 2 + 3 * 4\n\t.size bar, . - foo\n";
@@ -857,14 +873,16 @@ let dump_norm target text =
   let (module D : Target_intf.Target.DRIVER) =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.dump_normalized_ast ~unit_name:"t" ~source () with
   | Ok s -> print_string s
   | Error ds ->
       List.iter
         (fun d ->
-          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds)
+          Printf.printf "%s: %s\n"
+            (Rivet_foundation.Diagnostic.code d)
+            (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds)
 
 (* [.size] is the vehicle because it is the only directive that takes an
    expression today; the data directives that will carry these references
@@ -928,13 +946,15 @@ let disasm target text =
   let (module D : Target_intf.Target.DRIVER) =
     match Driver.Registry.find target with Some d -> d | None -> failwith target
   in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.assemble ~unit_name:"t" ~source () with
   | Error ds ->
       List.iter
         (fun d ->
-          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds)
+          Printf.printf "%s: %s\n"
+            (Rivet_foundation.Diagnostic.code d)
+            (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds)
   | Ok laid_out -> (
       let plan = Image.plan_of laid_out in
       let addresses =
@@ -946,9 +966,10 @@ let disasm target text =
       | Error ds ->
           List.iter
             (fun d ->
-              Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d)
-                (Foundation.Diagnostic.message d))
-            (Foundation.Diag.diagnostics ds)
+              Printf.printf "%s: %s\n"
+                (Rivet_foundation.Diagnostic.code d)
+                (Rivet_foundation.Diagnostic.message d))
+            (Rivet_foundation.Diag.diagnostics ds)
       | Ok img -> (
           match img.Image.segments with
           | s :: _ -> (
@@ -956,8 +977,8 @@ let disasm target text =
               | Ok text -> print_string text
               | Error ds ->
                   List.iter
-                    (fun d -> Printf.printf "decode: %s\n" (Foundation.Diagnostic.message d))
-                    (Foundation.Diag.diagnostics ds))
+                    (fun d -> Printf.printf "decode: %s\n" (Rivet_foundation.Diagnostic.message d))
+                    (Rivet_foundation.Diag.diagnostics ds))
           | [] -> print_endline "(no segments)"))
 
 let call_program = "\t.text\n\t.globl f\nf:\n\tret\n\t.globl g\ng:\n\tcall f\n\tret\n"
@@ -1004,12 +1025,14 @@ let%expect_test "riscv32: a call and an address taken of externs bind to their i
   let show ds =
     List.iter
       (fun d ->
-        Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-      (Foundation.Diag.diagnostics ds)
+        Printf.printf "%s: %s\n"
+          (Rivet_foundation.Diagnostic.code d)
+          (Rivet_foundation.Diagnostic.message d))
+      (Rivet_foundation.Diag.diagnostics ds)
   in
   let laid =
     let open Err.Syntax in
-    let stage r = Foundation.Diag.stage ~pos:__POS__ r in
+    let stage r = Rivet_foundation.Diag.stage ~pos:__POS__ r in
     let* src =
       stage
         (P.parse ~unit_name:"t"
@@ -1335,7 +1358,7 @@ let show_arm_fixup label result =
   | Ok value -> Printf.printf "%-12s %Ld\n" label value
   | Error error ->
       let diagnostic = Arm_encode.error_diagnostic (Err.Error.kind error) in
-      Printf.printf "%-12s %s\n" label (Foundation.Diagnostic.message diagnostic)
+      Printf.printf "%-12s %s\n" label (Rivet_foundation.Diagnostic.message diagnostic)
 
 let%expect_test "vldr literal-pool fixup: forward-only, word-aligned, +/-1020 reach" =
   let vldr8 target = Arm_encode.evaluate_fixup Arm_encode.Pcrel_vldr8 ~place:8L ~target in
@@ -1621,9 +1644,9 @@ let%expect_test "movzbl and movsbl from %sil/%dil carry the empty REX" =
    both; this module's own text parser reads only the suffixed ones, so
    [pp_gnu] spells what both accept. *)
 let%expect_test "pp_gnu spells instructions both GNU as and the text parser read" =
-  let origin = Foundation.Origin.synthesized ~pass:"test" () in
+  let origin = Rivet_foundation.Origin.synthesized ~pass:"test" () in
   let reg n = X86_64.Operand.Reg (Option.get (X86_64.find_reg n)) in
-  let imm n = X86_64.Operand.Imm (Foundation.Bigint.of_int n) in
+  let imm n = X86_64.Operand.Imm (Rivet_foundation.Bigint.of_int n) in
   let ins mnemonic ops =
     match X86_64.make_surface_instruction ~mnemonic ~origin ops with
     | Error _ -> failwith mnemonic
@@ -1683,7 +1706,7 @@ f:
 (* A [.cfi_*] directive a producer builds is printed for GNU and dropped by
    lowering: the bytes are those of the module without it. *)
 let%expect_test "a Cfi directive prints for GNU and changes no byte" =
-  let origin = Foundation.Origin.synthesized ~pass:"test" () in
+  let origin = Rivet_foundation.Origin.synthesized ~pass:"test" () in
   let ins =
     match X86_64.make_surface_instruction ~mnemonic:"ret" ~origin [] with
     | Ok s -> (
@@ -1692,36 +1715,38 @@ let%expect_test "a Cfi directive prints for GNU and changes no byte" =
         | Error _ -> failwith "ret")
     | Error _ -> failwith "ret"
   in
-  let module N = Asm_core.Normalized_ast in
+  let module N = Rivet_asm_core.Normalized_ast in
   let dir directive = N.Directive { directive; origin } in
   let section =
-    dir (Asm_core.Directive.Section { name = ".text"; perms = Asm_core.Perms.rx; nobits = false })
+    dir
+      (Rivet_asm_core.Directive.Section
+         { name = ".text"; perms = Rivet_asm_core.Perms.rx; nobits = false })
   in
   let module_ items = { N.unit_name = "t"; items } in
   let with_cfi =
     module_
       [
         section;
-        dir (Asm_core.Directive.Global { name = "f" });
+        dir (Rivet_asm_core.Directive.Global { name = "f" });
         N.Label { name = "f"; origin };
-        dir (Asm_core.Directive.Cfi { name = ".cfi_startproc"; argument = "" });
-        dir (Asm_core.Directive.Cfi { name = ".cfi_def_cfa_offset"; argument = "16" });
+        dir (Rivet_asm_core.Directive.Cfi { name = ".cfi_startproc"; argument = "" });
+        dir (Rivet_asm_core.Directive.Cfi { name = ".cfi_def_cfa_offset"; argument = "16" });
         N.Instruction { insn = ins; origin };
-        dir (Asm_core.Directive.Cfi { name = ".cfi_endproc"; argument = "" });
+        dir (Rivet_asm_core.Directive.Cfi { name = ".cfi_endproc"; argument = "" });
       ]
   in
   let without =
     module_
       [
         section;
-        dir (Asm_core.Directive.Global { name = "f" });
+        dir (Rivet_asm_core.Directive.Global { name = "f" });
         N.Label { name = "f"; origin };
         N.Instruction { insn = ins; origin };
       ]
   in
   print_string
-    (Asm_core.Gnu_module.to_string
-       { Asm_core.Gnu_module.type_char = '@' }
+    (Rivet_asm_core.Gnu_module.to_string
+       { Rivet_asm_core.Gnu_module.type_char = '@' }
        ~instruction:X86_64.Instruction.pp_gnu with_cfi);
   let module P = Pipeline.Make (X86_64) in
   let bytes m =
@@ -2706,10 +2731,10 @@ let%expect_test "xorpd sym, %xmmN reads a bare symbol's address" =
 let show_padding name ~to_diag f =
   for n = 1 to 12 do
     match f ~length:n with
-    | Ok s -> Printf.printf "%s %2d: %s\n" name n (Foundation.Byte_cursor.to_hex s)
+    | Ok s -> Printf.printf "%s %2d: %s\n" name n (Rivet_foundation.Byte_cursor.to_hex s)
     | Error d ->
         Printf.printf "%s %2d: %s\n" name n
-          (Foundation.Diagnostic.message (to_diag (Err.Error.kind d)))
+          (Rivet_foundation.Diagnostic.message (to_diag (Err.Error.kind d)))
   done
 
 let%expect_test "x86-64 padding matches its own GNU as" =
@@ -2900,7 +2925,7 @@ let show_branch target ~gap ~mnemonic =
               | Ok b2 ->
                   let again = Option.value ~default:"" (Driver.Portable.section_bytes b2 ".text") in
                   Printf.printf "  gap %4d %3d bytes  %-18s %-16s %s\n" gap (String.length bytes)
-                    (Foundation.Byte_cursor.to_hex head)
+                    (Rivet_foundation.Byte_cursor.to_hex head)
                     first
                     (if String.equal again bytes then "round trips" else "REASSEMBLES DIFFERENTLY"))
           ))
@@ -2954,24 +2979,27 @@ let%expect_test "a direct-lowered pin is checked by the codec, not by the parser
      that does not exist, and - reachable only because [Resolved] is what decode
      produces - the same absence when the operand carries its own rung. *)
   let show rung =
-    let target = Asm_core.Lowered_ast.Symbolic { value = Asm_core.Expr.Symbol "foo"; rung } in
+    let target =
+      Rivet_asm_core.Lowered_ast.Symbolic { value = Rivet_asm_core.Expr.Symbol "foo"; rung }
+    in
     match X86_64.encode (X86_family_encode.Lowered.Jmp_rel { target }) with
     | Ok (`Fixed a) ->
         Printf.printf "%-8s %s  %s\n"
           (Option.value rung ~default:"(none)")
-          a.Asm_core.Lowered_ast.form
+          a.Rivet_asm_core.Lowered_ast.form
           (String.concat " "
-             (List.init (String.length a.Asm_core.Lowered_ast.bytes) (fun i ->
-                  Printf.sprintf "%02x" (Char.code a.Asm_core.Lowered_ast.bytes.[i]))))
+             (List.init (String.length a.Rivet_asm_core.Lowered_ast.bytes) (fun i ->
+                  Printf.sprintf "%02x" (Char.code a.Rivet_asm_core.Lowered_ast.bytes.[i]))))
     | Ok (`Relax alts) ->
         Printf.printf "%-8s relax over %s\n"
           (Option.value rung ~default:"(none)")
-          (String.concat ", " (List.map (fun a -> a.Asm_core.Lowered_ast.form) alts))
+          (String.concat ", " (List.map (fun a -> a.Rivet_asm_core.Lowered_ast.form) alts))
     | Error d ->
         let d = X86_64.error_diagnostic (Err.Error.kind d) in
         Printf.printf "%-8s %s: %s\n"
           (Option.value rung ~default:"(none)")
-          (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d)
+          (Rivet_foundation.Diagnostic.code d)
+          (Rivet_foundation.Diagnostic.message d)
   in
   show None;
   show (Some "d32");
@@ -3057,8 +3085,10 @@ let assemble_many target sources =
   | Error ds ->
       List.iter
         (fun d ->
-          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds)
+          Printf.printf "%s: %s\n"
+            (Rivet_foundation.Diagnostic.code d)
+            (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds)
 
 let%expect_test "two inputs assemble and link through assemble_many, plain cross-file case" =
   assemble_many "x86_64"
@@ -3161,8 +3191,10 @@ let show_lowered target text =
   | Error ds ->
       List.iter
         (fun d ->
-          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds)
+          Printf.printf "%s: %s\n"
+            (Rivet_foundation.Diagnostic.code d)
+            (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds)
 
 let%expect_test "riscv32: sll/srl/sra with an immediate third operand alias slli/srli/srai" =
   show_lowered "riscv32"
@@ -3370,19 +3402,22 @@ let%expect_test "a branch to a same-section symbol in another input always takes
   | Error ds ->
       List.iter
         (fun d ->
-          Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds)
+          Printf.printf "%s: %s\n"
+            (Rivet_foundation.Diagnostic.code d)
+            (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds)
   | Ok laid_out -> (
       match Image.bind_image laid_out ~addresses:[ (".text", 0x400000L) ] with
       | Error ds ->
           List.iter
             (fun d ->
-              Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d)
-                (Foundation.Diagnostic.message d))
-            (Foundation.Diag.diagnostics ds)
+              Printf.printf "%s: %s\n"
+                (Rivet_foundation.Diagnostic.code d)
+                (Rivet_foundation.Diagnostic.message d))
+            (Rivet_foundation.Diag.diagnostics ds)
       | Ok img -> (
           match img.Image.segments with
-          | s :: _ -> Printf.printf "%s\n" (Foundation.Byte_cursor.to_hex s.Image.bytes)
+          | s :: _ -> Printf.printf "%s\n" (Rivet_foundation.Byte_cursor.to_hex s.Image.bytes)
           | [] -> print_endline "(no segments)")));
   [%expect {| e9 00 00 00 00 c3 |}]
 
@@ -3427,7 +3462,7 @@ b:
               Printf.printf "%-6s address=0x%-10Lx bytes=%d %s\n" s.Driver.Portable.name
                 s.Driver.Portable.address
                 (String.length s.Driver.Portable.bytes)
-                (Asm_core.Perms.to_string s.Driver.Portable.perms))
+                (Rivet_asm_core.Perms.to_string s.Driver.Portable.perms))
             m.Driver.Portable.segments));
   [%expect
     {|
@@ -3606,7 +3641,7 @@ f:
   let (module D : Target_intf.Target.DRIVER) = driver "aarch64" in
   (match D.dump_lowered_ast ~unit_name:"t" ~source:(source source_text) () with
   | Ok dump -> print_string dump
-  | Error ds -> print_string (Foundation.Diag.render ds));
+  | Error ds -> print_string (Rivet_foundation.Diag.render ds));
   [%expect
     {|
     lowered t
@@ -4409,13 +4444,15 @@ f:
 
 let%expect_test "movabsq is refused where GNU as would still emit ten bytes" =
   let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find "x86_64") in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:"\t.text\n\tmovabsq $5, %rax\n" in
+  let source =
+    Rivet_foundation.Span.source ~name:"<test>" ~contents:"\t.text\n\tmovabsq $5, %rax\n"
+  in
   (match D.assemble ~unit_name:"t" ~source () with
   | Ok _ -> print_endline "accepted"
   | Error ds ->
       List.iter
-        (fun d -> print_endline (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds));
+        (fun d -> print_endline (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds));
   [%expect {| no movabsq form takes these operands |}]
 
 (* A symbolic memory operand on a form whose lowered value was missing from the x86 fixup
@@ -4427,7 +4464,7 @@ let%expect_test "x86_64 memory-source forms keep their symbolic displacement" =
   List.iter
     (fun insn ->
       let text = "\t.text\n\t" ^ insn ^ "\n\t.section .rodata\n.L1:\t.quad 5\n" in
-      let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+      let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
       match D.dump_lowered_ast ~unit_name:"t" ~source () with
       | Error _ -> Printf.printf "%-26s rejected\n" insn
       | Ok s ->
@@ -4688,8 +4725,8 @@ f:
 (* A constructed module printed as GNU source: the text a producer hands the GNU assembler to
    check the project's own encoding against. Symbolic operands carry GNU's relocation spelling. *)
 let%expect_test "a constructed module prints as GNU assembler source" =
-  let open Asm_core in
-  let origin = Foundation.Origin.synthesized ~pass:"test" () in
+  let open Rivet_asm_core in
+  let origin = Rivet_foundation.Origin.synthesized ~pass:"test" () in
   let x n = { Aarch64.Reg.num = n; width = 64; is_sp = false } in
   let i op ops = Normalized_ast.Instruction { insn = { Aarch64.Instruction.op; ops }; origin } in
   let d directive = Normalized_ast.Directive { directive; origin } in
@@ -4710,8 +4747,8 @@ let%expect_test "a constructed module prints as GNU assembler source" =
               reg 1;
               ( sym "g" |> fun _ ->
                 Aarch64.Operand.Sym
-                  (Expr.Binary (Expr.Add, Expr.Symbol "g", Expr.Const (Foundation.Bigint.of_int 8)))
-              );
+                  (Expr.Binary
+                     (Expr.Add, Expr.Symbol "g", Expr.Const (Rivet_foundation.Bigint.of_int 8))) );
             ];
           i Aarch64.Opcode.Add
             [
@@ -4720,8 +4757,8 @@ let%expect_test "a constructed module prints as GNU assembler source" =
               Aarch64.Operand.Sym
                 (Expr.Modifier
                    ( "lo12",
-                     Expr.Binary (Expr.Add, Expr.Symbol "g", Expr.Const (Foundation.Bigint.of_int 8))
-                   ));
+                     Expr.Binary
+                       (Expr.Add, Expr.Symbol "g", Expr.Const (Rivet_foundation.Bigint.of_int 8)) ));
             ];
           i Aarch64.Opcode.Ldr
             [
@@ -4748,8 +4785,8 @@ let%expect_test "a constructed module prints as GNU assembler source" =
                  width = 1;
                  values =
                    [
-                     Expr.Const (Foundation.Bigint.of_int 1);
-                     Expr.Const (Foundation.Bigint.of_int 255);
+                     Expr.Const (Rivet_foundation.Bigint.of_int 1);
+                     Expr.Const (Rivet_foundation.Bigint.of_int 255);
                    ];
                });
           d (Directive.Data { width = 4; values = [ Expr.Symbol "g" ] });

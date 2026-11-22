@@ -2,7 +2,7 @@ type unknown_target = { requested : string; known : string list }
 
 type error =
   [ `Bind_multi_segment of string list
-  | `Diagnostics of Foundation.Diagnostic.t list
+  | `Diagnostics of Rivet_foundation.Diagnostic.t list
   | `Unknown_target of unknown_target ]
 
 val pp_error : Format.formatter -> error -> unit
@@ -71,7 +71,12 @@ val section_bytes : bound -> String.t -> string option
 val entry : bound -> int64 option
 val exports : bound -> (string * int64) list
 
-type manifest_segment = { name : string; address : int64; perms : Asm_core.Perms.t; bytes : string }
+type manifest_segment = {
+  name : string;
+  address : int64;
+  perms : Rivet_asm_core.Perms.t;
+  bytes : string;
+}
 
 type manifest = {
   target : string;

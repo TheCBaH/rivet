@@ -11,9 +11,9 @@
    That is §2.2, and it is the rule that stops a plausible image being produced
    from a file the assembler did not understand. *)
 
-open Foundation
-open Asm_core
-open Asm_syntax
+open Rivet_foundation
+open Rivet_asm_core
+open Rivet_asm_syntax
 
 let text_of (slice : Token.slice) = Token.slice_text slice
 

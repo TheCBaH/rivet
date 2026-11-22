@@ -36,7 +36,7 @@ type unknown_target = { requested : string; known : string list }
 type error =
   [ `Unknown_target of unknown_target
   | `Bind_multi_segment of string list
-  | `Diagnostics of Foundation.Diagnostic.t list ]
+  | `Diagnostics of Rivet_foundation.Diagnostic.t list ]
 
 let pp_error ppf : error -> unit = function
   | `Unknown_target { requested; known } ->
@@ -46,7 +46,7 @@ let pp_error ppf : error -> unit = function
         "bind.multi-segment: this plan has %d allocatable segments (%s), so one base does not \
          place it; use bind_sequential or pass an address per segment"
         (List.length names) (String.concat ", " names)
-  | `Diagnostics ds -> Fmt.string ppf (Foundation.Diagnostic.render_all ds)
+  | `Diagnostics ds -> Fmt.string ppf (Rivet_foundation.Diagnostic.render_all ds)
 
 let error_code : error -> string = function
   | `Unknown_target _ -> "portable.unknown-target"
@@ -67,7 +67,7 @@ let of_stage r = Err.map_error ~pos:__POS__ ~pp_error (fun ds -> `Diagnostics ds
    this once at startup; a host that does not still gets deterministic output,
    because nothing here renders Err provenance (docs/errors.md §3), and pays
    only for the callstack Err's default captures at each detection. *)
-let set_trace_policy = Foundation.Err_policy.apply
+let set_trace_policy = Rivet_foundation.Err_policy.apply
 let targets = Registry.names
 
 let with_driver target f =
@@ -75,7 +75,7 @@ let with_driver target f =
   | None -> fail ~pos:__POS__ (`Unknown_target { requested = target; known = targets })
   | Some (module D : Target_intf.Target.DRIVER) -> f (module D : Target_intf.Target.DRIVER)
 
-let source ~unit_name ~text = Foundation.Span.source ~name:(unit_name ^ ".s") ~contents:text
+let source ~unit_name ~text = Rivet_foundation.Span.source ~name:(unit_name ^ ".s") ~contents:text
 
 (* {1 Dumps} *)
 
@@ -148,7 +148,7 @@ let plan_text p = Fmt.to_to_string Image.pp_plan (Image.plan_of p.laid_out)
    observation in the oracle's own column order is what it would have to
    marshal [Image.fixup_observation] into anyway. *)
 let fixup_observations p =
-  Foundation.Safe_list.map
+  Rivet_foundation.Safe_list.map
     (fun o -> Fmt.to_to_string Image.pp_observation o)
     (Image.fixup_observations p.laid_out)
 
@@ -254,7 +254,12 @@ let exports b = b.image.Image.exports
    same-size string in memory - the same resource caveat [section_bytes]
    already carries, restated here because [manifest] is the entry point most
    callers will actually use. *)
-type manifest_segment = { name : string; address : int64; perms : Asm_core.Perms.t; bytes : string }
+type manifest_segment = {
+  name : string;
+  address : int64;
+  perms : Rivet_asm_core.Perms.t;
+  bytes : string;
+}
 
 type manifest = {
   target : string;

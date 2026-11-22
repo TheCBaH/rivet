@@ -4,7 +4,7 @@
    were checked by assembling them with GNU as, linking a C harness and running it under
    qemu-x86_64/qemu-riscv64. *)
 
-open Asm_core
+open Rivet_asm_core
 
 let host =
   match Native_exec.host_isa with
@@ -20,10 +20,10 @@ let for_host ~aarch64 ~x86_64 ~riscv64 =
 
 let assemble text =
   let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find host) in
-  let source = Foundation.Span.source ~name:"hand.s" ~contents:text in
+  let source = Rivet_foundation.Span.source ~name:"hand.s" ~contents:text in
   match D.assemble ~entry:"entry" ~unit_name:"hand" ~source () with
   | Ok l -> l
-  | Error e -> failwith (Foundation.Diag.render e)
+  | Error e -> failwith (Rivet_foundation.Diag.render e)
 
 let io_of_string ?(size = 64) s =
   let io = Bigarray.Array1.create Bigarray.char Bigarray.c_layout size in
@@ -434,7 +434,7 @@ let%expect_test "globals are read from the live mapping between calls" =
 let assemble_units target units =
   let (module D : Target_intf.Target.DRIVER) = Option.get (Driver.Registry.find target) in
   let units =
-    List.map (fun (name, text) -> (name, Foundation.Span.source ~name ~contents:text)) units
+    List.map (fun (name, text) -> (name, Rivet_foundation.Span.source ~name ~contents:text)) units
   in
   D.assemble_many ~entry:"entry" units ()
 
@@ -528,7 +528,7 @@ let after needle s =
 let%expect_test "an image calling a host symbol is closed until the symbol is bound" =
   (match assemble_units host [ ("main", strlen_caller host) ] with
   | Ok _ -> print_endline "linked"
-  | Error e -> print_endline (after ": error" (Foundation.Diag.render e)));
+  | Error e -> print_endline (after ": error" (Rivet_foundation.Diag.render e)));
   [%expect {| : error[image.undefined]: fixup target references undefined symbol strlen |}]
 
 let%expect_test "a bound host symbol is called through its trampoline, repeatedly" =
@@ -569,7 +569,7 @@ let%expect_test "trampolines exist for the 64-bit targets and nothing else" =
               (Image.plan_of laid).segments
           in
           Printf.printf "%s: assembles, .text %d bytes\n" target text.init_size
-      | Error e -> print_endline (Foundation.Diag.render e))
+      | Error e -> print_endline (Rivet_foundation.Diag.render e))
     [ "aarch64"; "x86_64"; "riscv64" ];
   (match Native_exec.trampolines ~target:"arm" [ ("f", 1L) ] with
   | Ok _ -> print_endline "arm: generated"
@@ -660,7 +660,7 @@ big:
 
 let%expect_test "a writable executable segment loads only when the image was planned to allow it" =
   let ret = for_host ~aarch64:"\xc0\x03\x5f\xd6" ~x86_64:"\xc3" ~riscv64:"\x67\x80\x00\x00" in
-  let origin = Foundation.Origin.synthesized ~pass:"test" () in
+  let origin = Rivet_foundation.Origin.synthesized ~pass:"test" () in
   let m =
     {
       Lowered_ast.unit_name = "rwx";
@@ -696,8 +696,8 @@ let%expect_test "a writable executable segment loads only when the image was pla
   (match plan Image.default_policy with
   | Error ds ->
       List.iter
-        (fun d -> print_endline (Foundation.Diagnostic.code d))
-        (Foundation.Diag.diagnostics ds)
+        (fun d -> print_endline (Rivet_foundation.Diagnostic.code d))
+        (Rivet_foundation.Diag.diagnostics ds)
   | Ok _ -> print_endline "planned");
   (match plan { Image.default_policy with allow_rwx = true } with
   | Error _ -> print_endline "refused"

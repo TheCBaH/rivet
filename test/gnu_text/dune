@@ -6,7 +6,13 @@
  (name gnu_text_corpus)
  (modules gnu_text_corpus)
  (modes byte native)
- (libraries foundation asm_core image target_intf text_pipeline riscv32)
+ (libraries
+  rivet_foundation
+  rivet_asm_core
+  image
+  target_intf
+  text_pipeline
+  riscv32)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -16,8 +22,8 @@
  (modes byte native)
  (libraries
   gnu_text_corpus
-  asm_core
-  foundation
+  rivet_asm_core
+  rivet_foundation
   target_intf
   target_features
   text_pipeline

@@ -37,9 +37,9 @@ module Shape : sig
     | Fimm : ('f, 'r) t -> (float -> 'f, 'r) t
     | Mem : ('f, 'r) t -> (Arm_types.Mem.t -> 'f, 'r) t
     | Post : ('f, 'r) t -> (Arm_types.Reg.t -> int -> 'f, 'r) t
-    | Sym : ('f, 'r) t -> (Asm_core.Expr.t -> 'f, 'r) t
-    | Lo16 : ('f, 'r) t -> (Asm_core.Expr.t -> 'f, 'r) t
-    | Hi16 : ('f, 'r) t -> (Asm_core.Expr.t -> 'f, 'r) t
+    | Sym : ('f, 'r) t -> (Rivet_asm_core.Expr.t -> 'f, 'r) t
+    | Lo16 : ('f, 'r) t -> (Rivet_asm_core.Expr.t -> 'f, 'r) t
+    | Hi16 : ('f, 'r) t -> (Rivet_asm_core.Expr.t -> 'f, 'r) t
     | Sh : ('f, 'r) t -> (Shift.t -> 'f, 'r) t
     | Reglist : ('f, 'r) t -> (Arm_types.Reg.t list -> 'f, 'r) t
     | Dreglist : ('f, 'r) t -> (Arm_types.Dreg.t list -> 'f, 'r) t
@@ -554,17 +554,17 @@ module Builders : sig
     Arm_types.Instruction.t
 
   val bx : ?cond:Arm_types.Cond.t -> Arm_types.Reg.t -> Arm_types.Instruction.t
-  val b : ?cond:Arm_types.Cond.t -> Asm_core.Expr.t -> Arm_types.Instruction.t
-  val bl : ?cond:Arm_types.Cond.t -> Asm_core.Expr.t -> Arm_types.Instruction.t
+  val b : ?cond:Arm_types.Cond.t -> Rivet_asm_core.Expr.t -> Arm_types.Instruction.t
+  val bl : ?cond:Arm_types.Cond.t -> Rivet_asm_core.Expr.t -> Arm_types.Instruction.t
   val movw : ?cond:Arm_types.Cond.t -> Arm_types.Reg.t -> int -> Arm_types.Instruction.t
 
   val movw_s :
-    ?cond:Arm_types.Cond.t -> Arm_types.Reg.t -> Asm_core.Expr.t -> Arm_types.Instruction.t
+    ?cond:Arm_types.Cond.t -> Arm_types.Reg.t -> Rivet_asm_core.Expr.t -> Arm_types.Instruction.t
 
   val movt : ?cond:Arm_types.Cond.t -> Arm_types.Reg.t -> int -> Arm_types.Instruction.t
 
   val movt_s :
-    ?cond:Arm_types.Cond.t -> Arm_types.Reg.t -> Asm_core.Expr.t -> Arm_types.Instruction.t
+    ?cond:Arm_types.Cond.t -> Arm_types.Reg.t -> Rivet_asm_core.Expr.t -> Arm_types.Instruction.t
 
   val nop : ?cond:Arm_types.Cond.t -> unit -> Arm_types.Instruction.t
   val udf : int -> Arm_types.Instruction.t
@@ -734,10 +734,10 @@ module Builders : sig
     ?cond:Arm_types.Cond.t -> Arm_types.Sreg.t -> Arm_types.Mem.t -> Arm_types.Instruction.t
 
   val vldr_d_l :
-    ?cond:Arm_types.Cond.t -> Arm_types.Dreg.t -> Asm_core.Expr.t -> Arm_types.Instruction.t
+    ?cond:Arm_types.Cond.t -> Arm_types.Dreg.t -> Rivet_asm_core.Expr.t -> Arm_types.Instruction.t
 
   val vldr_s_l :
-    ?cond:Arm_types.Cond.t -> Arm_types.Sreg.t -> Asm_core.Expr.t -> Arm_types.Instruction.t
+    ?cond:Arm_types.Cond.t -> Arm_types.Sreg.t -> Rivet_asm_core.Expr.t -> Arm_types.Instruction.t
 
   val vstr_d :
     ?cond:Arm_types.Cond.t -> Arm_types.Dreg.t -> Arm_types.Mem.t -> Arm_types.Instruction.t

@@ -92,10 +92,12 @@ module Shape : sig
     | St0 : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, 'f, 'g, 'r) t
     | Sti : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, View.st -> 'f, View.st -> 'g, 'r) t
     | M : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, X86_types.Mem.t -> 'f, X86_types.Mem.t -> 'g, 'r) t
-    | I : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, int -> 'f, Asm_core.Expr.t -> 'g, 'r) t
-    | I32 : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, int64 -> 'f, Asm_core.Expr.t -> 'g, 'r) t
-    | I64 : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, int64 -> 'f, Asm_core.Expr.t -> 'g, 'r) t
-    | S : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, Asm_core.Expr.t -> 'f, Asm_core.Expr.t -> 'g, 'r) t
+    | I : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, int -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
+    | I32 : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, int64 -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
+    | I64 : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, int64 -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
+    | S :
+        ('w, 'l, 'f, 'g, 'r) t
+        -> ('w, 'l, Rivet_asm_core.Expr.t -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
     | Cl : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, 'f, 'g, 'r) t
     | Ax : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, 'f, 'g, 'r) t
     | Dx : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, 'f, 'g, 'r) t
@@ -109,7 +111,7 @@ module Shape : sig
   val sti : View.st -> X86_types.Operand.t
   val imm : int -> X86_types.Operand.t
   val imm64 : int64 -> X86_types.Operand.t
-  val expr : Asm_core.Expr.t -> X86_types.Operand.t
+  val expr : Rivet_asm_core.Expr.t -> X86_types.Operand.t
   val st0 : X86_types.Operand.t
   val cl : X86_types.Operand.t
   val ax : X86_types.Operand.t
@@ -260,7 +262,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -284,7 +286,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -297,19 +299,34 @@ module S : sig
     Shape.t
 
   val s_addb_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_addl_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_addq_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_add_im :
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -341,7 +358,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -365,7 +382,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -378,19 +395,34 @@ module S : sig
     Shape.t
 
   val s_subb_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_subl_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_subq_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_sub_im :
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -409,10 +441,15 @@ module S : sig
     ('a, 'b, 'a View.gpr -> X86_types.Mem.t -> 'c, 'a View.gpr -> X86_types.Mem.t -> 'c, 'c) Shape.t
 
   val s_mov_rs :
-    ('a, 'b, 'a View.gpr -> Asm_core.Expr.t -> 'c, 'a View.gpr -> Asm_core.Expr.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      'a View.gpr -> Rivet_asm_core.Expr.t -> 'c,
+      'a View.gpr -> Rivet_asm_core.Expr.t -> 'c,
+      'c )
+    Shape.t
 
   val s_mov_i :
-    ('a, 'b, int64 -> 'a View.gpr -> 'c, Asm_core.Expr.t -> 'a View.gpr -> 'c, 'c) Shape.t
+    ('a, 'b, int64 -> 'a View.gpr -> 'c, Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c, 'c) Shape.t
 
   val s_mov_m :
     ('a, 'b, X86_types.Mem.t -> 'a View.gpr -> 'c, X86_types.Mem.t -> 'a View.gpr -> 'c, 'c) Shape.t
@@ -427,22 +464,47 @@ module S : sig
     ('a, 'b, View.mmx -> X86_types.Mem.t -> 'c, View.mmx -> X86_types.Mem.t -> 'c, 'c) Shape.t
 
   val s_mov_s :
-    ('a, 'b, Asm_core.Expr.t -> 'a View.gpr -> 'c, Asm_core.Expr.t -> 'a View.gpr -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
+      'c )
+    Shape.t
 
   val s_mov_xm :
     ('a, 'b, View.xmm -> X86_types.Mem.t -> 'c, View.xmm -> X86_types.Mem.t -> 'c, 'c) Shape.t
 
   val s_movb_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_movw_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_movl_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_movq_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_lea_m :
     ( ([< `W32 | `W64 ] as 'a),
@@ -455,8 +517,8 @@ module S : sig
   val s_lea_s :
     ( ([< `W32 | `W64 ] as 'a),
       'b,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -491,7 +553,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -515,7 +577,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -528,19 +590,34 @@ module S : sig
     Shape.t
 
   val s_xorb_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_xorl_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_xorq_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_xor_im :
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -572,7 +649,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -596,7 +673,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -609,19 +686,34 @@ module S : sig
     Shape.t
 
   val s_andb_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_andl_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_andq_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_and_im :
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -645,7 +737,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -658,13 +750,28 @@ module S : sig
     Shape.t
 
   val s_cmpb_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_cmpl_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_cmpq_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_imul : (([< `W32 | `W64 ] as 'a), 'b, 'a View.gpr -> 'c, 'a View.gpr -> 'c, 'c) Shape.t
 
@@ -698,8 +805,8 @@ module S : sig
   val s_imul_s :
     ( ([< `W32 | `W64 ] as 'a),
       'b,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -707,7 +814,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -723,7 +830,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int64 -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -734,22 +841,22 @@ module S : sig
   val s_pop_m_m32 : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
   val s_pop_m_m64 : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
   val s_bswap : (([< `W32 | `W64 ] as 'a), 'b, 'a View.gpr -> 'c, 'a View.gpr -> 'c, 'c) Shape.t
-  val s_jmp_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jmp_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jmp_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jmp_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_jmp_r_m32 : ('a, 'b, View.w32 View.gpr -> 'c, View.w32 View.gpr -> 'c, 'c) Shape.t
   val s_jmp_r_m64 : ('a, 'b, View.w64 View.gpr -> 'c, View.w64 View.gpr -> 'c, 'c) Shape.t
   val s_jmp_m_m32 : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
   val s_jmp_m_m64 : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
-  val s_call_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_call_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_call_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_call_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_call_r_m32 : ('a, 'b, View.w32 View.gpr -> 'c, View.w32 View.gpr -> 'c, 'c) Shape.t
   val s_call_r_m64 : ('a, 'b, View.w64 View.gpr -> 'c, View.w64 View.gpr -> 'c, 'c) Shape.t
   val s_call_m_m32 : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
   val s_call_m_m64 : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
   val s_push_m32 : ('a, 'b, View.w32 View.gpr -> 'c, View.w32 View.gpr -> 'c, 'c) Shape.t
   val s_push_m64 : ('a, 'b, View.w64 View.gpr -> 'c, View.w64 View.gpr -> 'c, 'c) Shape.t
-  val s_push_i_m32 : ('a, 'b, int64 -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_push_i_m64 : ('a, 'b, int64 -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_push_i_m32 : ('a, 'b, int64 -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_push_i_m64 : ('a, 'b, int64 -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_neg : (([< `W32 | `W64 ] as 'a), 'b, 'a View.gpr -> 'c, 'a View.gpr -> 'c, 'c) Shape.t
 
   val s_neg_rr :
@@ -791,15 +898,25 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
   val s_testl_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_testq_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_adc :
     ( ([< `W32 | `W64 | `W8 ] as 'a),
@@ -829,7 +946,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -853,7 +970,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -866,19 +983,34 @@ module S : sig
     Shape.t
 
   val s_adcb_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_adcl_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_adcq_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_adc_im :
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -910,7 +1042,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -934,7 +1066,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -947,19 +1079,34 @@ module S : sig
     Shape.t
 
   val s_sbbb_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_sbbl_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_sbbq_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_sbb_im :
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -980,7 +1127,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -996,7 +1143,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1004,10 +1151,20 @@ module S : sig
   val s_rcrq_clm : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
   val s_rcrl_im :
-    ('a, 'b, int -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_rcrq_im :
-    ('a, 'b, int -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_rcr_clm :
     ( ([< `W32 | `W64 ] as 'a),
@@ -1021,7 +1178,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1034,7 +1191,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1050,7 +1207,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1058,10 +1215,20 @@ module S : sig
   val s_shrq_clm : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
   val s_shrl_im :
-    ('a, 'b, int -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_shrq_im :
-    ('a, 'b, int -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_shr_clm :
     ( ([< `W32 | `W64 ] as 'a),
@@ -1075,7 +1242,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1107,7 +1274,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1131,7 +1298,7 @@ module S : sig
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1144,19 +1311,34 @@ module S : sig
     Shape.t
 
   val s_orb_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_orl_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_orq_im :
-    ('a, 'b, int64 -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int64 -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_or_im :
     ( ([< `W32 | `W64 | `W8 ] as 'a),
       'b,
       int64 -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1190,7 +1372,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1206,7 +1388,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1214,10 +1396,20 @@ module S : sig
   val s_rorq_clm : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
   val s_rorl_im :
-    ('a, 'b, int -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_rorq_im :
-    ('a, 'b, int -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_ror_clm :
     ( ([< `W32 | `W64 ] as 'a),
@@ -1231,7 +1423,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1244,7 +1436,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1260,7 +1452,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1268,10 +1460,20 @@ module S : sig
   val s_shlq_clm : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
   val s_shll_im :
-    ('a, 'b, int -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_shlq_im :
-    ('a, 'b, int -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_shl_clm :
     ( ([< `W32 | `W64 ] as 'a),
@@ -1285,7 +1487,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1298,7 +1500,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1314,7 +1516,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1322,10 +1524,20 @@ module S : sig
   val s_sarq_clm : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
   val s_sarl_im :
-    ('a, 'b, int -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_sarq_im :
-    ('a, 'b, int -> X86_types.Mem.t -> 'c, Asm_core.Expr.t -> X86_types.Mem.t -> 'c, 'c) Shape.t
+    ( 'a,
+      'b,
+      int -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'c,
+      'c )
+    Shape.t
 
   val s_sar_clm :
     ( ([< `W32 | `W64 ] as 'a),
@@ -1339,7 +1551,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1355,7 +1567,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1363,7 +1575,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> 'a View.gpr -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> 'a View.gpr -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1379,7 +1591,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> X86_types.Mem.t -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> X86_types.Mem.t -> 'c,
       'c )
     Shape.t
 
@@ -1387,7 +1599,7 @@ module S : sig
     ( ([< `W32 | `W64 ] as 'a),
       'b,
       int -> 'a View.gpr -> X86_types.Mem.t -> 'a View.gpr -> 'c,
-      Asm_core.Expr.t -> 'a View.gpr -> X86_types.Mem.t -> 'a View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> 'a View.gpr -> X86_types.Mem.t -> 'a View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -1926,8 +2138,12 @@ module S : sig
 
   val s_psllw_qq : ('a, 'b, View.mmx -> View.mmx -> 'c, View.mmx -> View.mmx -> 'c, 'c) Shape.t
   val s_psllw : ('a, 'b, View.xmm -> View.xmm -> 'c, View.xmm -> View.xmm -> 'c, 'c) Shape.t
-  val s_psllw_iq : ('a, 'b, int -> View.mmx -> 'c, Asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
-  val s_psllw_i : ('a, 'b, int -> View.xmm -> 'c, Asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
+
+  val s_psllw_iq :
+    ('a, 'b, int -> View.mmx -> 'c, Rivet_asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
+
+  val s_psllw_i :
+    ('a, 'b, int -> View.xmm -> 'c, Rivet_asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
 
   val s_psllw_mq :
     ('a, 'b, X86_types.Mem.t -> View.mmx -> 'c, X86_types.Mem.t -> View.mmx -> 'c, 'c) Shape.t
@@ -1937,8 +2153,12 @@ module S : sig
 
   val s_pslld_qq : ('a, 'b, View.mmx -> View.mmx -> 'c, View.mmx -> View.mmx -> 'c, 'c) Shape.t
   val s_pslld : ('a, 'b, View.xmm -> View.xmm -> 'c, View.xmm -> View.xmm -> 'c, 'c) Shape.t
-  val s_pslld_iq : ('a, 'b, int -> View.mmx -> 'c, Asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
-  val s_pslld_i : ('a, 'b, int -> View.xmm -> 'c, Asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
+
+  val s_pslld_iq :
+    ('a, 'b, int -> View.mmx -> 'c, Rivet_asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
+
+  val s_pslld_i :
+    ('a, 'b, int -> View.xmm -> 'c, Rivet_asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
 
   val s_pslld_mq :
     ('a, 'b, X86_types.Mem.t -> View.mmx -> 'c, X86_types.Mem.t -> View.mmx -> 'c, 'c) Shape.t
@@ -1948,8 +2168,12 @@ module S : sig
 
   val s_psllq_qq : ('a, 'b, View.mmx -> View.mmx -> 'c, View.mmx -> View.mmx -> 'c, 'c) Shape.t
   val s_psllq : ('a, 'b, View.xmm -> View.xmm -> 'c, View.xmm -> View.xmm -> 'c, 'c) Shape.t
-  val s_psllq_iq : ('a, 'b, int -> View.mmx -> 'c, Asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
-  val s_psllq_i : ('a, 'b, int -> View.xmm -> 'c, Asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
+
+  val s_psllq_iq :
+    ('a, 'b, int -> View.mmx -> 'c, Rivet_asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
+
+  val s_psllq_i :
+    ('a, 'b, int -> View.xmm -> 'c, Rivet_asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
 
   val s_psllq_mq :
     ('a, 'b, X86_types.Mem.t -> View.mmx -> 'c, X86_types.Mem.t -> View.mmx -> 'c, 'c) Shape.t
@@ -1959,8 +2183,12 @@ module S : sig
 
   val s_psrlw_qq : ('a, 'b, View.mmx -> View.mmx -> 'c, View.mmx -> View.mmx -> 'c, 'c) Shape.t
   val s_psrlw : ('a, 'b, View.xmm -> View.xmm -> 'c, View.xmm -> View.xmm -> 'c, 'c) Shape.t
-  val s_psrlw_iq : ('a, 'b, int -> View.mmx -> 'c, Asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
-  val s_psrlw_i : ('a, 'b, int -> View.xmm -> 'c, Asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
+
+  val s_psrlw_iq :
+    ('a, 'b, int -> View.mmx -> 'c, Rivet_asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
+
+  val s_psrlw_i :
+    ('a, 'b, int -> View.xmm -> 'c, Rivet_asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
 
   val s_psrlw_mq :
     ('a, 'b, X86_types.Mem.t -> View.mmx -> 'c, X86_types.Mem.t -> View.mmx -> 'c, 'c) Shape.t
@@ -1970,8 +2198,12 @@ module S : sig
 
   val s_psrld_qq : ('a, 'b, View.mmx -> View.mmx -> 'c, View.mmx -> View.mmx -> 'c, 'c) Shape.t
   val s_psrld : ('a, 'b, View.xmm -> View.xmm -> 'c, View.xmm -> View.xmm -> 'c, 'c) Shape.t
-  val s_psrld_iq : ('a, 'b, int -> View.mmx -> 'c, Asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
-  val s_psrld_i : ('a, 'b, int -> View.xmm -> 'c, Asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
+
+  val s_psrld_iq :
+    ('a, 'b, int -> View.mmx -> 'c, Rivet_asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
+
+  val s_psrld_i :
+    ('a, 'b, int -> View.xmm -> 'c, Rivet_asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
 
   val s_psrld_mq :
     ('a, 'b, X86_types.Mem.t -> View.mmx -> 'c, X86_types.Mem.t -> View.mmx -> 'c, 'c) Shape.t
@@ -1981,8 +2213,12 @@ module S : sig
 
   val s_psrlq_qq : ('a, 'b, View.mmx -> View.mmx -> 'c, View.mmx -> View.mmx -> 'c, 'c) Shape.t
   val s_psrlq : ('a, 'b, View.xmm -> View.xmm -> 'c, View.xmm -> View.xmm -> 'c, 'c) Shape.t
-  val s_psrlq_iq : ('a, 'b, int -> View.mmx -> 'c, Asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
-  val s_psrlq_i : ('a, 'b, int -> View.xmm -> 'c, Asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
+
+  val s_psrlq_iq :
+    ('a, 'b, int -> View.mmx -> 'c, Rivet_asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
+
+  val s_psrlq_i :
+    ('a, 'b, int -> View.xmm -> 'c, Rivet_asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
 
   val s_psrlq_mq :
     ('a, 'b, X86_types.Mem.t -> View.mmx -> 'c, X86_types.Mem.t -> View.mmx -> 'c, 'c) Shape.t
@@ -1992,8 +2228,12 @@ module S : sig
 
   val s_psraw_qq : ('a, 'b, View.mmx -> View.mmx -> 'c, View.mmx -> View.mmx -> 'c, 'c) Shape.t
   val s_psraw : ('a, 'b, View.xmm -> View.xmm -> 'c, View.xmm -> View.xmm -> 'c, 'c) Shape.t
-  val s_psraw_iq : ('a, 'b, int -> View.mmx -> 'c, Asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
-  val s_psraw_i : ('a, 'b, int -> View.xmm -> 'c, Asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
+
+  val s_psraw_iq :
+    ('a, 'b, int -> View.mmx -> 'c, Rivet_asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
+
+  val s_psraw_i :
+    ('a, 'b, int -> View.xmm -> 'c, Rivet_asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
 
   val s_psraw_mq :
     ('a, 'b, X86_types.Mem.t -> View.mmx -> 'c, X86_types.Mem.t -> View.mmx -> 'c, 'c) Shape.t
@@ -2003,8 +2243,12 @@ module S : sig
 
   val s_psrad_qq : ('a, 'b, View.mmx -> View.mmx -> 'c, View.mmx -> View.mmx -> 'c, 'c) Shape.t
   val s_psrad : ('a, 'b, View.xmm -> View.xmm -> 'c, View.xmm -> View.xmm -> 'c, 'c) Shape.t
-  val s_psrad_iq : ('a, 'b, int -> View.mmx -> 'c, Asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
-  val s_psrad_i : ('a, 'b, int -> View.xmm -> 'c, Asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
+
+  val s_psrad_iq :
+    ('a, 'b, int -> View.mmx -> 'c, Rivet_asm_core.Expr.t -> View.mmx -> 'c, 'c) Shape.t
+
+  val s_psrad_i :
+    ('a, 'b, int -> View.xmm -> 'c, Rivet_asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
 
   val s_psrad_mq :
     ('a, 'b, X86_types.Mem.t -> View.mmx -> 'c, X86_types.Mem.t -> View.mmx -> 'c, 'c) Shape.t
@@ -2012,8 +2256,12 @@ module S : sig
   val s_psrad_m :
     ('a, 'b, X86_types.Mem.t -> View.xmm -> 'c, X86_types.Mem.t -> View.xmm -> 'c, 'c) Shape.t
 
-  val s_pslldq_i : ('a, 'b, int -> View.xmm -> 'c, Asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
-  val s_psrldq_i : ('a, 'b, int -> View.xmm -> 'c, Asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
+  val s_pslldq_i :
+    ('a, 'b, int -> View.xmm -> 'c, Rivet_asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
+
+  val s_psrldq_i :
+    ('a, 'b, int -> View.xmm -> 'c, Rivet_asm_core.Expr.t -> View.xmm -> 'c, 'c) Shape.t
+
   val s_pshufb_qq : ('a, 'b, View.mmx -> View.mmx -> 'c, View.mmx -> View.mmx -> 'c, 'c) Shape.t
   val s_pshufb : ('a, 'b, View.xmm -> View.xmm -> 'c, View.xmm -> View.xmm -> 'c, 'c) Shape.t
 
@@ -2153,7 +2401,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.mmx -> View.mmx -> 'c,
-      Asm_core.Expr.t -> View.mmx -> View.mmx -> 'c,
+      Rivet_asm_core.Expr.t -> View.mmx -> View.mmx -> 'c,
       'c )
     Shape.t
 
@@ -2161,7 +2409,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2169,7 +2417,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.mmx -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.mmx -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.mmx -> 'c,
       'c )
     Shape.t
 
@@ -2177,7 +2425,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2185,7 +2433,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2193,7 +2441,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2201,7 +2449,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2209,7 +2457,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2217,7 +2465,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2225,7 +2473,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2233,7 +2481,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2241,7 +2489,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2402,7 +2650,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2410,7 +2658,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2418,7 +2666,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2426,7 +2674,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2434,7 +2682,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2442,7 +2690,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2450,7 +2698,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2458,7 +2706,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2466,7 +2714,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2474,7 +2722,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2482,7 +2730,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2490,7 +2738,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2498,7 +2746,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2506,7 +2754,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2514,7 +2762,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.w32 View.gpr -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2522,7 +2770,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2530,7 +2778,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.w32 View.gpr -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2538,7 +2786,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -2546,7 +2794,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.w32 View.gpr -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -2554,7 +2802,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> X86_types.Mem.t -> 'c,
-      Asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> 'c,
       'c )
     Shape.t
 
@@ -2562,7 +2810,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.w32 View.gpr -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -2570,7 +2818,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> X86_types.Mem.t -> 'c,
-      Asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> 'c,
       'c )
     Shape.t
 
@@ -2578,7 +2826,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.w32 View.gpr -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -2586,7 +2834,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> X86_types.Mem.t -> 'c,
-      Asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> 'c,
       'c )
     Shape.t
 
@@ -3026,7 +3274,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -3034,7 +3282,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -3042,7 +3290,7 @@ module S : sig
     ( 'a,
       ([< `L128 | `L256 ] as 'b),
       int -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -3050,7 +3298,7 @@ module S : sig
     ( 'a,
       ([< `L128 | `L256 ] as 'b),
       int -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -3058,7 +3306,7 @@ module S : sig
     ( 'a,
       ([< `L128 | `L256 ] as 'b),
       int -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -3066,7 +3314,7 @@ module S : sig
     ( 'a,
       ([< `L128 | `L256 ] as 'b),
       int -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -3074,7 +3322,7 @@ module S : sig
     ( 'a,
       ([< `L128 | `L256 ] as 'b),
       int -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -3082,7 +3330,7 @@ module S : sig
     ( 'a,
       ([< `L128 | `L256 ] as 'b),
       int -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -3090,7 +3338,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3098,7 +3346,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3106,7 +3354,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3114,7 +3362,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3122,7 +3370,7 @@ module S : sig
     ( 'a,
       ([< `L128 | `L256 ] as 'b),
       int -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -3130,7 +3378,7 @@ module S : sig
     ( 'a,
       ([< `L128 | `L256 ] as 'b),
       int -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -3138,7 +3386,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3146,7 +3394,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3154,7 +3402,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -3162,7 +3410,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -3170,7 +3418,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3178,7 +3426,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3517,7 +3765,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3525,7 +3773,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3533,7 +3781,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3541,7 +3789,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3549,7 +3797,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3557,7 +3805,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3565,7 +3813,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3573,7 +3821,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3581,7 +3829,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3589,7 +3837,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3597,7 +3845,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3605,7 +3853,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3613,7 +3861,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3621,7 +3869,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3629,7 +3877,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3637,7 +3885,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3645,7 +3893,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -3653,7 +3901,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -5007,7 +5255,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5015,7 +5263,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5023,7 +5271,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5031,7 +5279,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5039,7 +5287,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -5047,7 +5295,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -5055,7 +5303,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -5063,7 +5311,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -5071,7 +5319,7 @@ module S : sig
     ( 'a,
       ([< `L128 | `L256 ] as 'b),
       int -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5079,7 +5327,7 @@ module S : sig
     ( 'a,
       ([< `L128 | `L256 ] as 'b),
       int -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5087,7 +5335,7 @@ module S : sig
     ( 'a,
       ([< `L128 | `L256 ] as 'b),
       int -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5095,7 +5343,7 @@ module S : sig
     ( 'a,
       ([< `L128 | `L256 ] as 'b),
       int -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5103,7 +5351,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5111,7 +5359,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5119,7 +5367,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5127,7 +5375,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5135,7 +5383,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5143,7 +5391,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5269,7 +5517,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5285,7 +5533,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5301,7 +5549,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5317,7 +5565,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5333,7 +5581,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5349,7 +5597,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5365,7 +5613,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5381,7 +5629,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5397,7 +5645,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5413,7 +5661,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5429,7 +5677,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5445,7 +5693,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5461,7 +5709,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5477,7 +5725,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5493,7 +5741,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5509,7 +5757,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5517,7 +5765,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5525,7 +5773,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5533,7 +5781,7 @@ module S : sig
     ( 'a,
       'b,
       int -> 'b View.vec -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> 'b View.vec -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5541,7 +5789,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> 'b View.vec -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'b View.vec -> 'c,
       'c )
     Shape.t
 
@@ -5597,7 +5845,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.w32 View.gpr -> View.mmx -> 'c,
-      Asm_core.Expr.t -> View.w32 View.gpr -> View.mmx -> 'c,
+      Rivet_asm_core.Expr.t -> View.w32 View.gpr -> View.mmx -> 'c,
       'c )
     Shape.t
 
@@ -5605,7 +5853,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.w32 View.gpr -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -5613,7 +5861,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.mmx -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.mmx -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.mmx -> 'c,
       'c )
     Shape.t
 
@@ -5621,7 +5869,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -5629,7 +5877,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.mmx -> View.w32 View.gpr -> 'c,
-      Asm_core.Expr.t -> View.mmx -> View.w32 View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> View.mmx -> View.w32 View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -5637,7 +5885,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.w32 View.gpr -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -5645,7 +5893,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> X86_types.Mem.t -> 'c,
-      Asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> 'c,
       'c )
     Shape.t
 
@@ -5653,7 +5901,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.w32 View.gpr -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -5661,7 +5909,7 @@ module S : sig
     ( 'a,
       'b,
       int -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
-      Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
+      Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> 'c,
       'c )
     Shape.t
 
@@ -5669,7 +5917,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> View.w32 View.gpr -> 'c,
-      Asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> 'c,
       'c )
     Shape.t
 
@@ -5677,7 +5925,7 @@ module S : sig
     ( 'a,
       'b,
       int -> View.xmm -> X86_types.Mem.t -> 'c,
-      Asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> 'c,
+      Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> 'c,
       'c )
     Shape.t
 
@@ -5720,17 +5968,17 @@ module S : sig
   val s_fldl_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
   val s_fstpl_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
   val s_fstps_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
-  val s_flds : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_flds : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_flds_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
   val s_fildll_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
-  val s_fadds : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_fadds : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_fadds_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
   val s_fadd : ('a, 'b, View.st -> 'c, View.st -> 'c, 'c) Shape.t
   val s_fadd_r : ('a, 'b, View.st -> 'c, View.st -> 'c, 'c) Shape.t
   val s_fnstcw_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
   val s_fldcw_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
   val s_fistpll_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
-  val s_fsubs : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_fsubs : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_fsubs_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
   val s_fnstsw : ('a, 'b, 'c, 'c, 'c) Shape.t
   val s_fnstsw_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
@@ -5752,8 +6000,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jo_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jo_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jo_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jo_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_seto : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_seto_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -5773,8 +6021,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jno_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jno_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jno_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jno_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_setno : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_setno_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -5794,8 +6042,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jb_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jb_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jb_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jb_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_setb : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_setb_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -5815,8 +6063,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jae_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jae_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jae_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jae_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_setae : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_setae_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -5836,8 +6084,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_je_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_je_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_je_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_je_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_sete : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_sete_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -5857,8 +6105,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jne_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jne_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jne_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jne_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_setne : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_setne_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -5878,8 +6126,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jbe_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jbe_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jbe_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jbe_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_setbe : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_setbe_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -5899,8 +6147,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_ja_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_ja_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_ja_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_ja_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_seta : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_seta_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -5920,8 +6168,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_js_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_js_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_js_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_js_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_sets : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_sets_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -5941,8 +6189,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jns_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jns_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jns_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jns_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_setns : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_setns_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -5962,8 +6210,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jp_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jp_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jp_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jp_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_setp : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_setp_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -5983,8 +6231,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jnp_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jnp_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jnp_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jnp_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_setnp : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_setnp_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -6004,8 +6252,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jl_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jl_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jl_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jl_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_setl : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_setl_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -6025,8 +6273,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jge_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jge_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jge_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jge_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_setge : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_setge_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -6046,8 +6294,8 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jle_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jle_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jle_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jle_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_setle : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_setle_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
 
@@ -6067,20 +6315,20 @@ module S : sig
       'c )
     Shape.t
 
-  val s_jg_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jg_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jg_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jg_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
   val s_setg : ('a, 'b, View.w8 View.gpr -> 'c, View.w8 View.gpr -> 'c, 'c) Shape.t
   val s_setg_m : ('a, 'b, X86_types.Mem.t -> 'c, X86_types.Mem.t -> 'c, 'c) Shape.t
-  val s_loop_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_loop_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_loope_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_loope_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_loopne_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_loopne_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jcxz : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jecxz_m32 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jecxz_m64 : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
-  val s_jrcxz : ('a, 'b, Asm_core.Expr.t -> 'c, Asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_loop_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_loop_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_loope_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_loope_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_loopne_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_loopne_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jcxz : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jecxz_m32 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jecxz_m64 : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
+  val s_jrcxz : ('a, 'b, Rivet_asm_core.Expr.t -> 'c, Rivet_asm_core.Expr.t -> 'c, 'c) Shape.t
 
   val s_movzb :
     ( ([< `W16 | `W32 | `W64 ] as 'a),
@@ -6190,7 +6438,7 @@ val add_rrr :
 
 val add_rm : [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
 val add_i : int64 -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
-val add_i_e : Asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+val add_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 val add_m : X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val add_rmr :
@@ -6203,7 +6451,7 @@ val add_irr :
   int64 -> ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val add_irr_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `W32 | `W64 | `W8 ] as 'a) View.gpr ->
   'a View.gpr ->
   X86_types.Instruction.t
@@ -6215,15 +6463,18 @@ val add_mrr :
   X86_types.Instruction.t
 
 val addb_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val addb_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val addb_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val addl_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val addl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val addl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val addq_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val addq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val addq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val add_im : int64 -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val add_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  X86_types.Mem.t ->
+  [< `W32 | `W64 | `W8 ] View.gpr ->
+  X86_types.Instruction.t
 
 val sub : ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
@@ -6232,7 +6483,7 @@ val sub_rrr :
 
 val sub_rm : [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
 val sub_i : int64 -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
-val sub_i_e : Asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+val sub_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 val sub_m : X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val sub_rmr :
@@ -6245,7 +6496,7 @@ val sub_irr :
   int64 -> ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val sub_irr_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `W32 | `W64 | `W8 ] as 'a) View.gpr ->
   'a View.gpr ->
   X86_types.Instruction.t
@@ -6257,40 +6508,43 @@ val sub_mrr :
   X86_types.Instruction.t
 
 val subb_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val subb_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val subb_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val subl_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val subl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val subl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val subq_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val subq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val subq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val sub_im : int64 -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val sub_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  X86_types.Mem.t ->
+  [< `W32 | `W64 | `W8 ] View.gpr ->
+  X86_types.Instruction.t
 
 val mov : 'a View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val mov_qq : View.mmx -> View.mmx -> X86_types.Instruction.t
 val mov_q : View.mmx -> View.w64 View.gpr -> X86_types.Instruction.t
 val mov_rq : View.w64 View.gpr -> View.mmx -> X86_types.Instruction.t
 val mov_rm : 'a View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
-val mov_rs : 'a View.gpr -> Asm_core.Expr.t -> X86_types.Instruction.t
+val mov_rs : 'a View.gpr -> Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val mov_i : int64 -> 'a View.gpr -> X86_types.Instruction.t
-val mov_i_e : Asm_core.Expr.t -> 'a View.gpr -> X86_types.Instruction.t
+val mov_i_e : Rivet_asm_core.Expr.t -> 'a View.gpr -> X86_types.Instruction.t
 val mov_m : X86_types.Mem.t -> 'a View.gpr -> X86_types.Instruction.t
 val mov_mq : X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
 val mov_mx : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val mov_qm : View.mmx -> X86_types.Mem.t -> X86_types.Instruction.t
-val mov_s : Asm_core.Expr.t -> 'a View.gpr -> X86_types.Instruction.t
+val mov_s : Rivet_asm_core.Expr.t -> 'a View.gpr -> X86_types.Instruction.t
 val mov_xm : View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
 val movb_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val movb_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val movb_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val movw_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val movw_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val movw_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val movl_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val movl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val movl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val movq_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val movq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val movq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val lea_m : X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val lea_s : Asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+val lea_s : Rivet_asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val ret_m32 : X86_types.Instruction.t
 val ret_m64 : X86_types.Instruction.t
 val xor : ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
@@ -6300,7 +6554,7 @@ val xor_rrr :
 
 val xor_rm : [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
 val xor_i : int64 -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
-val xor_i_e : Asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+val xor_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 val xor_m : X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val xor_rmr :
@@ -6313,7 +6567,7 @@ val xor_irr :
   int64 -> ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val xor_irr_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `W32 | `W64 | `W8 ] as 'a) View.gpr ->
   'a View.gpr ->
   X86_types.Instruction.t
@@ -6325,15 +6579,18 @@ val xor_mrr :
   X86_types.Instruction.t
 
 val xorb_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val xorb_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val xorb_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val xorl_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val xorl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val xorl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val xorq_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val xorq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val xorq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val xor_im : int64 -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val xor_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  X86_types.Mem.t ->
+  [< `W32 | `W64 | `W8 ] View.gpr ->
+  X86_types.Instruction.t
 
 val and_ : ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
@@ -6342,7 +6599,7 @@ val and_rrr :
 
 val and_rm : [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
 val and_i : int64 -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
-val and_i_e : Asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+val and_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 val and_m : X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val and_rmr :
@@ -6355,7 +6612,7 @@ val and_irr :
   int64 -> ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val and_irr_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `W32 | `W64 | `W8 ] as 'a) View.gpr ->
   'a View.gpr ->
   X86_types.Instruction.t
@@ -6367,27 +6624,30 @@ val and_mrr :
   X86_types.Instruction.t
 
 val andb_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val andb_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val andb_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val andl_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val andl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val andl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val andq_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val andq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val andq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val and_im : int64 -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val and_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  X86_types.Mem.t ->
+  [< `W32 | `W64 | `W8 ] View.gpr ->
+  X86_types.Instruction.t
 
 val cmp : ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmp_rm : [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
 val cmp_i : int64 -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
-val cmp_i_e : Asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+val cmp_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 val cmp_m : X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 val cmpb_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val cmpb_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val cmpb_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val cmpl_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val cmpl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val cmpl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val cmpq_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val cmpq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val cmpq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val imul : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val imul_rr : ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
@@ -6397,11 +6657,14 @@ val imul_rrr :
 val imull_m : X86_types.Mem.t -> X86_types.Instruction.t
 val imulq_m : X86_types.Mem.t -> X86_types.Instruction.t
 val imul_m : X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val imul_s : Asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+val imul_s : Rivet_asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val imul_i : int64 -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val imul_i_e :
-  Asm_core.Expr.t -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  ([< `W32 | `W64 ] as 'a) View.gpr ->
+  'a View.gpr ->
+  X86_types.Instruction.t
 
 val imul_mrr :
   X86_types.Mem.t -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
@@ -6409,7 +6672,7 @@ val imul_mrr :
 val imul_im : int64 -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 
 val imul_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 
 val ud2_m32 : X86_types.Instruction.t
 val ud2_m64 : X86_types.Instruction.t
@@ -6418,14 +6681,14 @@ val pop_m64 : View.w64 View.gpr -> X86_types.Instruction.t
 val pop_m_m32 : X86_types.Mem.t -> X86_types.Instruction.t
 val pop_m_m64 : X86_types.Mem.t -> X86_types.Instruction.t
 val bswap : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jmp_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jmp_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jmp_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jmp_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val jmp_r_m32 : View.w32 View.gpr -> X86_types.Instruction.t
 val jmp_r_m64 : View.w64 View.gpr -> X86_types.Instruction.t
 val jmp_m_m32 : X86_types.Mem.t -> X86_types.Instruction.t
 val jmp_m_m64 : X86_types.Mem.t -> X86_types.Instruction.t
-val call_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val call_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val call_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val call_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val call_r_m32 : View.w32 View.gpr -> X86_types.Instruction.t
 val call_r_m64 : View.w64 View.gpr -> X86_types.Instruction.t
 val call_m_m32 : X86_types.Mem.t -> X86_types.Instruction.t
@@ -6433,9 +6696,9 @@ val call_m_m64 : X86_types.Mem.t -> X86_types.Instruction.t
 val push_m32 : View.w32 View.gpr -> X86_types.Instruction.t
 val push_m64 : View.w64 View.gpr -> X86_types.Instruction.t
 val push_i_m32 : int64 -> X86_types.Instruction.t
-val push_i_m32_e : Asm_core.Expr.t -> X86_types.Instruction.t
+val push_i_m32_e : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val push_i_m64 : int64 -> X86_types.Instruction.t
-val push_i_m64_e : Asm_core.Expr.t -> X86_types.Instruction.t
+val push_i_m64_e : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val neg : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val neg_rr : ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val negl_m : X86_types.Mem.t -> X86_types.Instruction.t
@@ -6444,11 +6707,11 @@ val neg_m : X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instructio
 val test : ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val test_rm : [< `W32 | `W64 ] View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
 val test_i : int64 -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val test_i_e : Asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+val test_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val testl_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val testl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val testl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val testq_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val testq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val testq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val adc : ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val adc_rrr :
@@ -6456,7 +6719,7 @@ val adc_rrr :
 
 val adc_rm : [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
 val adc_i : int64 -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
-val adc_i_e : Asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+val adc_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 val adc_m : X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val adc_rmr :
@@ -6469,7 +6732,7 @@ val adc_irr :
   int64 -> ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val adc_irr_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `W32 | `W64 | `W8 ] as 'a) View.gpr ->
   'a View.gpr ->
   X86_types.Instruction.t
@@ -6481,15 +6744,18 @@ val adc_mrr :
   X86_types.Instruction.t
 
 val adcb_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val adcb_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val adcb_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val adcl_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val adcl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val adcl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val adcq_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val adcq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val adcq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val adc_im : int64 -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val adc_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  X86_types.Mem.t ->
+  [< `W32 | `W64 | `W8 ] View.gpr ->
+  X86_types.Instruction.t
 
 val sbb : ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
@@ -6498,7 +6764,7 @@ val sbb_rrr :
 
 val sbb_rm : [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
 val sbb_i : int64 -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
-val sbb_i_e : Asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+val sbb_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 val sbb_m : X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val sbb_rmr :
@@ -6511,7 +6777,7 @@ val sbb_irr :
   int64 -> ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val sbb_irr_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `W32 | `W64 | `W8 ] as 'a) View.gpr ->
   'a View.gpr ->
   X86_types.Instruction.t
@@ -6523,15 +6789,18 @@ val sbb_mrr :
   X86_types.Instruction.t
 
 val sbbb_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val sbbb_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val sbbb_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val sbbl_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val sbbl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val sbbl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val sbbq_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val sbbq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val sbbq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val sbb_im : int64 -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val sbb_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  X86_types.Mem.t ->
+  [< `W32 | `W64 | `W8 ] View.gpr ->
+  X86_types.Instruction.t
 
 val mul : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val mull_m : X86_types.Mem.t -> X86_types.Instruction.t
@@ -6546,48 +6815,54 @@ val rcrl_m : X86_types.Mem.t -> X86_types.Instruction.t
 val rcrq_m : X86_types.Mem.t -> X86_types.Instruction.t
 val rcr_cl : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val rcr_i : int -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val rcr_i_e : Asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+val rcr_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val rcr_clrr : ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val rcr_irr : int -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val rcr_irr_e :
-  Asm_core.Expr.t -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  ([< `W32 | `W64 ] as 'a) View.gpr ->
+  'a View.gpr ->
+  X86_types.Instruction.t
 
 val rcrl_clm : X86_types.Mem.t -> X86_types.Instruction.t
 val rcrq_clm : X86_types.Mem.t -> X86_types.Instruction.t
 val rcrl_im : int -> X86_types.Mem.t -> X86_types.Instruction.t
-val rcrl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val rcrl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val rcrq_im : int -> X86_types.Mem.t -> X86_types.Instruction.t
-val rcrq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val rcrq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val rcr_clm : X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val rcr_im : int -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 
 val rcr_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 
 val shr : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val shrl_m : X86_types.Mem.t -> X86_types.Instruction.t
 val shrq_m : X86_types.Mem.t -> X86_types.Instruction.t
 val shr_cl : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val shr_i : int -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val shr_i_e : Asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+val shr_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val shr_clrr : ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val shr_irr : int -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val shr_irr_e :
-  Asm_core.Expr.t -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  ([< `W32 | `W64 ] as 'a) View.gpr ->
+  'a View.gpr ->
+  X86_types.Instruction.t
 
 val shrl_clm : X86_types.Mem.t -> X86_types.Instruction.t
 val shrq_clm : X86_types.Mem.t -> X86_types.Instruction.t
 val shrl_im : int -> X86_types.Mem.t -> X86_types.Instruction.t
-val shrl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val shrl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val shrq_im : int -> X86_types.Mem.t -> X86_types.Instruction.t
-val shrq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val shrq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val shr_clm : X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val shr_im : int -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 
 val shr_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 
 val or_ : ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
@@ -6596,7 +6871,7 @@ val or_rrr :
 
 val or_rm : [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
 val or_i : int64 -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
-val or_i_e : Asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+val or_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 val or_m : X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val or_rmr :
@@ -6609,7 +6884,7 @@ val or_irr :
   int64 -> ([< `W32 | `W64 | `W8 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val or_irr_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `W32 | `W64 | `W8 ] as 'a) View.gpr ->
   'a View.gpr ->
   X86_types.Instruction.t
@@ -6621,15 +6896,18 @@ val or_mrr :
   X86_types.Instruction.t
 
 val orb_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val orb_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val orb_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val orl_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val orl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val orl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val orq_im : int64 -> X86_types.Mem.t -> X86_types.Instruction.t
-val orq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val orq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val or_im : int64 -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
 
 val or_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 | `W8 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  X86_types.Mem.t ->
+  [< `W32 | `W64 | `W8 ] View.gpr ->
+  X86_types.Instruction.t
 
 val not : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val not_rr : ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
@@ -6641,84 +6919,96 @@ val rorl_m : X86_types.Mem.t -> X86_types.Instruction.t
 val rorq_m : X86_types.Mem.t -> X86_types.Instruction.t
 val ror_cl : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val ror_i : int -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val ror_i_e : Asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+val ror_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val ror_clrr : ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val ror_irr : int -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val ror_irr_e :
-  Asm_core.Expr.t -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  ([< `W32 | `W64 ] as 'a) View.gpr ->
+  'a View.gpr ->
+  X86_types.Instruction.t
 
 val rorl_clm : X86_types.Mem.t -> X86_types.Instruction.t
 val rorq_clm : X86_types.Mem.t -> X86_types.Instruction.t
 val rorl_im : int -> X86_types.Mem.t -> X86_types.Instruction.t
-val rorl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val rorl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val rorq_im : int -> X86_types.Mem.t -> X86_types.Instruction.t
-val rorq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val rorq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val ror_clm : X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val ror_im : int -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 
 val ror_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 
 val shl : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val shll_m : X86_types.Mem.t -> X86_types.Instruction.t
 val shlq_m : X86_types.Mem.t -> X86_types.Instruction.t
 val shl_cl : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val shl_i : int -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val shl_i_e : Asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+val shl_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val shl_clrr : ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val shl_irr : int -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val shl_irr_e :
-  Asm_core.Expr.t -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  ([< `W32 | `W64 ] as 'a) View.gpr ->
+  'a View.gpr ->
+  X86_types.Instruction.t
 
 val shll_clm : X86_types.Mem.t -> X86_types.Instruction.t
 val shlq_clm : X86_types.Mem.t -> X86_types.Instruction.t
 val shll_im : int -> X86_types.Mem.t -> X86_types.Instruction.t
-val shll_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val shll_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val shlq_im : int -> X86_types.Mem.t -> X86_types.Instruction.t
-val shlq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val shlq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val shl_clm : X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val shl_im : int -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 
 val shl_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 
 val sar : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val sarl_m : X86_types.Mem.t -> X86_types.Instruction.t
 val sarq_m : X86_types.Mem.t -> X86_types.Instruction.t
 val sar_cl : [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val sar_i : int -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val sar_i_e : Asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+val sar_i_e : Rivet_asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val sar_clrr : ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val sar_irr : int -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val sar_irr_e :
-  Asm_core.Expr.t -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  ([< `W32 | `W64 ] as 'a) View.gpr ->
+  'a View.gpr ->
+  X86_types.Instruction.t
 
 val sarl_clm : X86_types.Mem.t -> X86_types.Instruction.t
 val sarq_clm : X86_types.Mem.t -> X86_types.Instruction.t
 val sarl_im : int -> X86_types.Mem.t -> X86_types.Instruction.t
-val sarl_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val sarl_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val sarq_im : int -> X86_types.Mem.t -> X86_types.Instruction.t
-val sarq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
+val sarq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> X86_types.Instruction.t
 val sar_clm : X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val sar_im : int -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 
 val sar_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 
 val shld_cl : ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val shld_i : int -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val shld_i_e :
-  Asm_core.Expr.t -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t ->
+  ([< `W32 | `W64 ] as 'a) View.gpr ->
+  'a View.gpr ->
+  X86_types.Instruction.t
 
 val shld_irrr :
   int -> ([< `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 
 val shld_irrr_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `W32 | `W64 ] as 'a) View.gpr ->
   'a View.gpr ->
   'a View.gpr ->
@@ -6728,7 +7018,7 @@ val shld_clrm : [< `W32 | `W64 ] View.gpr -> X86_types.Mem.t -> X86_types.Instru
 val shld_irm : int -> [< `W32 | `W64 ] View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
 
 val shld_irm_e :
-  Asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> [< `W32 | `W64 ] View.gpr -> X86_types.Mem.t -> X86_types.Instruction.t
 
 val shld_irmr :
   int ->
@@ -6738,7 +7028,7 @@ val shld_irmr :
   X86_types.Instruction.t
 
 val shld_irmr_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `W32 | `W64 ] as 'a) View.gpr ->
   X86_types.Mem.t ->
   'a View.gpr ->
@@ -6963,71 +7253,71 @@ val psadbw_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val psllw_qq : View.mmx -> View.mmx -> X86_types.Instruction.t
 val psllw : View.xmm -> View.xmm -> X86_types.Instruction.t
 val psllw_iq : int -> View.mmx -> X86_types.Instruction.t
-val psllw_iq_e : Asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
+val psllw_iq_e : Rivet_asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
 val psllw_i : int -> View.xmm -> X86_types.Instruction.t
-val psllw_i_e : Asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
+val psllw_i_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
 val psllw_mq : X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
 val psllw_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pslld_qq : View.mmx -> View.mmx -> X86_types.Instruction.t
 val pslld : View.xmm -> View.xmm -> X86_types.Instruction.t
 val pslld_iq : int -> View.mmx -> X86_types.Instruction.t
-val pslld_iq_e : Asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
+val pslld_iq_e : Rivet_asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
 val pslld_i : int -> View.xmm -> X86_types.Instruction.t
-val pslld_i_e : Asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
+val pslld_i_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
 val pslld_mq : X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
 val pslld_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val psllq_qq : View.mmx -> View.mmx -> X86_types.Instruction.t
 val psllq : View.xmm -> View.xmm -> X86_types.Instruction.t
 val psllq_iq : int -> View.mmx -> X86_types.Instruction.t
-val psllq_iq_e : Asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
+val psllq_iq_e : Rivet_asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
 val psllq_i : int -> View.xmm -> X86_types.Instruction.t
-val psllq_i_e : Asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
+val psllq_i_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
 val psllq_mq : X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
 val psllq_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val psrlw_qq : View.mmx -> View.mmx -> X86_types.Instruction.t
 val psrlw : View.xmm -> View.xmm -> X86_types.Instruction.t
 val psrlw_iq : int -> View.mmx -> X86_types.Instruction.t
-val psrlw_iq_e : Asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
+val psrlw_iq_e : Rivet_asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
 val psrlw_i : int -> View.xmm -> X86_types.Instruction.t
-val psrlw_i_e : Asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
+val psrlw_i_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
 val psrlw_mq : X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
 val psrlw_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val psrld_qq : View.mmx -> View.mmx -> X86_types.Instruction.t
 val psrld : View.xmm -> View.xmm -> X86_types.Instruction.t
 val psrld_iq : int -> View.mmx -> X86_types.Instruction.t
-val psrld_iq_e : Asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
+val psrld_iq_e : Rivet_asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
 val psrld_i : int -> View.xmm -> X86_types.Instruction.t
-val psrld_i_e : Asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
+val psrld_i_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
 val psrld_mq : X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
 val psrld_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val psrlq_qq : View.mmx -> View.mmx -> X86_types.Instruction.t
 val psrlq : View.xmm -> View.xmm -> X86_types.Instruction.t
 val psrlq_iq : int -> View.mmx -> X86_types.Instruction.t
-val psrlq_iq_e : Asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
+val psrlq_iq_e : Rivet_asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
 val psrlq_i : int -> View.xmm -> X86_types.Instruction.t
-val psrlq_i_e : Asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
+val psrlq_i_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
 val psrlq_mq : X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
 val psrlq_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val psraw_qq : View.mmx -> View.mmx -> X86_types.Instruction.t
 val psraw : View.xmm -> View.xmm -> X86_types.Instruction.t
 val psraw_iq : int -> View.mmx -> X86_types.Instruction.t
-val psraw_iq_e : Asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
+val psraw_iq_e : Rivet_asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
 val psraw_i : int -> View.xmm -> X86_types.Instruction.t
-val psraw_i_e : Asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
+val psraw_i_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
 val psraw_mq : X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
 val psraw_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val psrad_qq : View.mmx -> View.mmx -> X86_types.Instruction.t
 val psrad : View.xmm -> View.xmm -> X86_types.Instruction.t
 val psrad_iq : int -> View.mmx -> X86_types.Instruction.t
-val psrad_iq_e : Asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
+val psrad_iq_e : Rivet_asm_core.Expr.t -> View.mmx -> X86_types.Instruction.t
 val psrad_i : int -> View.xmm -> X86_types.Instruction.t
-val psrad_i_e : Asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
+val psrad_i_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
 val psrad_mq : X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
 val psrad_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pslldq_i : int -> View.xmm -> X86_types.Instruction.t
-val pslldq_i_e : Asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
+val pslldq_i_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
 val psrldq_i : int -> View.xmm -> X86_types.Instruction.t
-val psrldq_i_e : Asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
+val psrldq_i_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Instruction.t
 val pshufb_qq : View.mmx -> View.mmx -> X86_types.Instruction.t
 val pshufb : View.xmm -> View.xmm -> X86_types.Instruction.t
 val pshufb_mq : X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
@@ -7089,29 +7379,29 @@ val pabsd : View.xmm -> View.xmm -> X86_types.Instruction.t
 val pabsd_mq : X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
 val pabsd_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val palignr_iqq : int -> View.mmx -> View.mmx -> X86_types.Instruction.t
-val palignr_iqq_e : Asm_core.Expr.t -> View.mmx -> View.mmx -> X86_types.Instruction.t
+val palignr_iqq_e : Rivet_asm_core.Expr.t -> View.mmx -> View.mmx -> X86_types.Instruction.t
 val palignr_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val palignr_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val palignr_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val palignr_imq : int -> X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
-val palignr_imq_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
+val palignr_imq_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
 val palignr_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val palignr_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val palignr_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val roundps_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val roundps_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val roundps_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val roundps_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val roundps_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val roundps_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val roundpd_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val roundpd_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val roundpd_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val roundpd_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val roundpd_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val roundpd_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val roundss_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val roundss_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val roundss_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val roundss_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val roundss_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val roundss_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val roundsd_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val roundsd_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val roundsd_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val roundsd_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val roundsd_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val roundsd_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pcmpeqq : View.xmm -> View.xmm -> X86_types.Instruction.t
 val pcmpeqq_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pcmpgtq : View.xmm -> View.xmm -> X86_types.Instruction.t
@@ -7174,53 +7464,59 @@ val blendvpd_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pblendvb : View.xmm -> View.xmm -> X86_types.Instruction.t
 val pblendvb_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val blendps_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val blendps_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val blendps_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val blendps_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val blendps_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val blendps_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val blendpd_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val blendpd_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val blendpd_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val blendpd_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val blendpd_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val blendpd_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val dpps_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val dpps_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val dpps_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val dpps_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val dpps_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val dpps_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val dppd_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val dppd_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val dppd_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val dppd_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val dppd_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val dppd_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val mpsadbw_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val mpsadbw_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val mpsadbw_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val mpsadbw_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val mpsadbw_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val mpsadbw_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pblendw_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val pblendw_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val pblendw_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val pblendw_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val pblendw_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val pblendw_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val insertps_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val insertps_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val insertps_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val insertps_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val insertps_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val insertps_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pinsrb_i : int -> View.w32 View.gpr -> View.xmm -> X86_types.Instruction.t
-val pinsrb_i_e : Asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> X86_types.Instruction.t
+val pinsrb_i_e : Rivet_asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> X86_types.Instruction.t
 val pinsrb_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val pinsrb_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val pinsrb_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pinsrd_i : int -> View.w32 View.gpr -> View.xmm -> X86_types.Instruction.t
-val pinsrd_i_e : Asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> X86_types.Instruction.t
+val pinsrd_i_e : Rivet_asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> X86_types.Instruction.t
 val pinsrd_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val pinsrd_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val pinsrd_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pextrb_i : int -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
-val pextrb_i_e : Asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
+val pextrb_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
 val pextrb_irm : int -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
-val pextrb_irm_e : Asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
+val pextrb_irm_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
 val pextrd_i : int -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
-val pextrd_i_e : Asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
+val pextrd_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
 val pextrd_irm : int -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
-val pextrd_irm_e : Asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
+val pextrd_irm_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
 val extractps_i : int -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
-val extractps_i_e : Asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
+
+val extractps_i_e :
+  Rivet_asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
+
 val extractps_irm : int -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
-val extractps_irm_e : Asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
+
+val extractps_irm_e :
+  Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
+
 val vpshufb : 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpshufb_m : X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
@@ -7328,12 +7624,12 @@ val vpmulld_m : X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instr
 val vpalignr_i : int -> 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vpalignr_i_e :
-  Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vpalignr_im : int -> X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vpalignr_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vblendps_i :
   int ->
@@ -7343,7 +7639,7 @@ val vblendps_i :
   X86_types.Instruction.t
 
 val vblendps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `L128 | `L256 ] as 'a) View.vec ->
   'a View.vec ->
   'a View.vec ->
@@ -7357,7 +7653,7 @@ val vblendps_im :
   X86_types.Instruction.t
 
 val vblendps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_types.Mem.t ->
   ([< `L128 | `L256 ] as 'a) View.vec ->
   'a View.vec ->
@@ -7371,7 +7667,7 @@ val vblendpd_i :
   X86_types.Instruction.t
 
 val vblendpd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `L128 | `L256 ] as 'a) View.vec ->
   'a View.vec ->
   'a View.vec ->
@@ -7385,7 +7681,7 @@ val vblendpd_im :
   X86_types.Instruction.t
 
 val vblendpd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_types.Mem.t ->
   ([< `L128 | `L256 ] as 'a) View.vec ->
   'a View.vec ->
@@ -7399,7 +7695,7 @@ val vpblendw_i :
   X86_types.Instruction.t
 
 val vpblendw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `L128 | `L256 ] as 'a) View.vec ->
   'a View.vec ->
   'a View.vec ->
@@ -7413,25 +7709,31 @@ val vpblendw_im :
   X86_types.Instruction.t
 
 val vpblendw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_types.Mem.t ->
   ([< `L128 | `L256 ] as 'a) View.vec ->
   'a View.vec ->
   X86_types.Instruction.t
 
 val vroundss_i : int -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val vroundss_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
+
+val vroundss_i_e :
+  Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
+
 val vroundss_im : int -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vroundss_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vroundsd_i : int -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val vroundsd_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
+
+val vroundsd_i_e :
+  Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
+
 val vroundsd_im : int -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vroundsd_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vdpps_i :
   int ->
@@ -7441,7 +7743,7 @@ val vdpps_i :
   X86_types.Instruction.t
 
 val vdpps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `L128 | `L256 ] as 'a) View.vec ->
   'a View.vec ->
   'a View.vec ->
@@ -7455,35 +7757,38 @@ val vdpps_im :
   X86_types.Instruction.t
 
 val vdpps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_types.Mem.t ->
   ([< `L128 | `L256 ] as 'a) View.vec ->
   'a View.vec ->
   X86_types.Instruction.t
 
 val vdppd_i : int -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val vdppd_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val vdppd_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val vdppd_im : int -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vdppd_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vmpsadbw_i : int -> 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vmpsadbw_i_e :
-  Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vmpsadbw_im : int -> X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vmpsadbw_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vinsertps_i : int -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val vinsertps_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
+
+val vinsertps_i_e :
+  Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
+
 val vinsertps_im : int -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vinsertps_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vpabsb : 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpabsb_m : X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
@@ -7596,41 +7901,41 @@ val sqrtps_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val sqrtpd : View.xmm -> View.xmm -> X86_types.Instruction.t
 val sqrtpd_m : X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val shufps_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val shufps_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val shufps_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val shufps_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val shufps_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val shufps_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val shufpd_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val shufpd_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val shufpd_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val shufpd_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val shufpd_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val shufpd_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val cmpss_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val cmpss_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val cmpss_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val cmpss_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val cmpss_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val cmpss_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val cmpsd_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val cmpsd_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val cmpsd_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val cmpsd_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val cmpsd_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val cmpsd_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val cmpps_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val cmpps_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val cmpps_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val cmpps_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val cmpps_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val cmpps_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val cmppd_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val cmppd_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val cmppd_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val cmppd_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val cmppd_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val cmppd_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pshufd_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val pshufd_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val pshufd_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val pshufd_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val pshufd_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val pshufd_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pshuflw_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val pshuflw_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val pshuflw_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val pshuflw_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val pshuflw_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val pshuflw_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pshufhw_i : int -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val pshufhw_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+val pshufhw_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 val pshufhw_im : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val pshufhw_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val pshufhw_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val movd_q : View.mmx -> View.w32 View.gpr -> X86_types.Instruction.t
 val movd_rq : View.w32 View.gpr -> View.mmx -> X86_types.Instruction.t
 val movd_rx : View.w32 View.gpr -> View.xmm -> X86_types.Instruction.t
@@ -7880,36 +8185,42 @@ val vcvttps2dq_m : X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
 val vshufps_i : int -> 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vshufps_i_e :
-  Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vshufps_im : int -> X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vshufps_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vshufpd_i : int -> 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vshufpd_i_e :
-  Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vshufpd_im : int -> X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vshufpd_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 
 val vcmpss_i : int -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val vcmpss_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
+
+val vcmpss_i_e :
+  Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
+
 val vcmpss_im : int -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vcmpss_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vcmpsd_i : int -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
-val vcmpsd_i_e : Asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
+
+val vcmpsd_i_e :
+  Rivet_asm_core.Expr.t -> View.xmm -> View.xmm -> View.xmm -> X86_types.Instruction.t
+
 val vcmpsd_im : int -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vcmpsd_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vcmpps_i :
   int ->
@@ -7919,7 +8230,7 @@ val vcmpps_i :
   X86_types.Instruction.t
 
 val vcmpps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `L128 | `L256 ] as 'a) View.vec ->
   'a View.vec ->
   'a View.vec ->
@@ -7933,7 +8244,7 @@ val vcmpps_im :
   X86_types.Instruction.t
 
 val vcmpps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_types.Mem.t ->
   ([< `L128 | `L256 ] as 'a) View.vec ->
   'a View.vec ->
@@ -7947,7 +8258,7 @@ val vcmppd_i :
   X86_types.Instruction.t
 
 val vcmppd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `L128 | `L256 ] as 'a) View.vec ->
   'a View.vec ->
   'a View.vec ->
@@ -7961,24 +8272,33 @@ val vcmppd_im :
   X86_types.Instruction.t
 
 val vcmppd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_types.Mem.t ->
   ([< `L128 | `L256 ] as 'a) View.vec ->
   'a View.vec ->
   X86_types.Instruction.t
 
 val vpshufd_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpshufd_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpshufd_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpshufd_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpshufd_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+
+val vpshufd_im_e :
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+
 val vpshuflw_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpshuflw_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpshuflw_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpshuflw_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpshuflw_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+
+val vpshuflw_im_e :
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+
 val vpshufhw_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpshufhw_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpshufhw_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpshufhw_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpshufhw_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+
+val vpshufhw_im_e :
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+
 val vmovd : View.w32 View.gpr -> View.xmm -> X86_types.Instruction.t
 val vmovd_rr : View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
 val vmovd_xx : View.xmm -> View.xmm -> X86_types.Instruction.t
@@ -7998,60 +8318,66 @@ val vpsadbw : 'a View.vec -> 'a View.vec -> 'a View.vec -> X86_types.Instruction
 val vpsadbw_m : X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsllw : View.xmm -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsllw_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpsllw_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpsllw_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsllw_m : X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsllw_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpsllw_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+val vpsllw_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
 val vpslld : View.xmm -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpslld_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpslld_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpslld_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpslld_m : X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpslld_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpslld_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+val vpslld_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
 val vpsllq : View.xmm -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsllq_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpsllq_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpsllq_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsllq_m : X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsllq_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpsllq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+val vpsllq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
 val vpsrlw : View.xmm -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrlw_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpsrlw_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpsrlw_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrlw_m : X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrlw_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpsrlw_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+val vpsrlw_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
 val vpsrld : View.xmm -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrld_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpsrld_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpsrld_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrld_m : X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrld_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpsrld_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+val vpsrld_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
 val vpsrlq : View.xmm -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrlq_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpsrlq_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpsrlq_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrlq_m : X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrlq_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpsrlq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+val vpsrlq_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
 val vpsraw : View.xmm -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsraw_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpsraw_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpsraw_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsraw_m : X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsraw_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpsraw_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+val vpsraw_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
 val vpsrad : View.xmm -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrad_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpsrad_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpsrad_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrad_m : X86_types.Mem.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrad_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpsrad_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+val vpsrad_im_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
 val vpslldq_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpslldq_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpslldq_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpslldq_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpslldq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+
+val vpslldq_im_e :
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+
 val vpsrldq_i : int -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
-val vpsrldq_i_e : Asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
+val vpsrldq_i_e : Rivet_asm_core.Expr.t -> 'a View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vpsrldq_im : int -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
-val vpsrldq_im_e : Asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+
+val vpsrldq_im_e :
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> 'a View.vec -> X86_types.Instruction.t
+
 val vmovdqa : ([< `L128 | `L256 ] as 'a) View.vec -> 'a View.vec -> X86_types.Instruction.t
 val vmovdqa_rm : [< `L128 | `L256 ] View.vec -> X86_types.Mem.t -> X86_types.Instruction.t
 val vmovdqa_m : X86_types.Mem.t -> [< `L128 | `L256 ] View.vec -> X86_types.Instruction.t
@@ -8059,33 +8385,33 @@ val vmovdqu : ([< `L128 | `L256 ] as 'a) View.vec -> 'a View.vec -> X86_types.In
 val vmovdqu_rm : [< `L128 | `L256 ] View.vec -> X86_types.Mem.t -> X86_types.Instruction.t
 val vmovdqu_m : X86_types.Mem.t -> [< `L128 | `L256 ] View.vec -> X86_types.Instruction.t
 val pinsrw_irq : int -> View.w32 View.gpr -> View.mmx -> X86_types.Instruction.t
-val pinsrw_irq_e : Asm_core.Expr.t -> View.w32 View.gpr -> View.mmx -> X86_types.Instruction.t
+val pinsrw_irq_e : Rivet_asm_core.Expr.t -> View.w32 View.gpr -> View.mmx -> X86_types.Instruction.t
 val pinsrw_irx : int -> View.w32 View.gpr -> View.xmm -> X86_types.Instruction.t
-val pinsrw_irx_e : Asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> X86_types.Instruction.t
+val pinsrw_irx_e : Rivet_asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> X86_types.Instruction.t
 val pinsrw_imq : int -> X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
-val pinsrw_imq_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
+val pinsrw_imq_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.mmx -> X86_types.Instruction.t
 val pinsrw_imx : int -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
-val pinsrw_imx_e : Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
+val pinsrw_imx_e : Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> X86_types.Instruction.t
 val pextrw_iq : int -> View.mmx -> View.w32 View.gpr -> X86_types.Instruction.t
-val pextrw_iq_e : Asm_core.Expr.t -> View.mmx -> View.w32 View.gpr -> X86_types.Instruction.t
+val pextrw_iq_e : Rivet_asm_core.Expr.t -> View.mmx -> View.w32 View.gpr -> X86_types.Instruction.t
 val pextrw_i : int -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
-val pextrw_i_e : Asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
+val pextrw_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
 val pextrw_irm : int -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
-val pextrw_irm_e : Asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
+val pextrw_irm_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
 val vpinsrw_i : int -> View.w32 View.gpr -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vpinsrw_i_e :
-  Asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> View.xmm -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> View.w32 View.gpr -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vpinsrw_im : int -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vpinsrw_im_e :
-  Asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_types.Mem.t -> View.xmm -> View.xmm -> X86_types.Instruction.t
 
 val vpextrw_i : int -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
-val vpextrw_i_e : Asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
+val vpextrw_i_e : Rivet_asm_core.Expr.t -> View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
 val vpextrw_irm : int -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
-val vpextrw_irm_e : Asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
+val vpextrw_irm_e : Rivet_asm_core.Expr.t -> View.xmm -> X86_types.Mem.t -> X86_types.Instruction.t
 val movmskps : View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
 val movmskpd : View.xmm -> View.w32 View.gpr -> X86_types.Instruction.t
 val pmovmskb_q : View.mmx -> View.w32 View.gpr -> X86_types.Instruction.t
@@ -8096,127 +8422,127 @@ val vpmovmskb : [< `L128 | `L256 ] View.vec -> View.w32 View.gpr -> X86_types.In
 val fldl_m : X86_types.Mem.t -> X86_types.Instruction.t
 val fstpl_m : X86_types.Mem.t -> X86_types.Instruction.t
 val fstps_m : X86_types.Mem.t -> X86_types.Instruction.t
-val flds : Asm_core.Expr.t -> X86_types.Instruction.t
+val flds : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val flds_m : X86_types.Mem.t -> X86_types.Instruction.t
 val fildll_m : X86_types.Mem.t -> X86_types.Instruction.t
-val fadds : Asm_core.Expr.t -> X86_types.Instruction.t
+val fadds : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val fadds_m : X86_types.Mem.t -> X86_types.Instruction.t
 val fadd : View.st -> X86_types.Instruction.t
 val fadd_r : View.st -> X86_types.Instruction.t
 val fnstcw_m : X86_types.Mem.t -> X86_types.Instruction.t
 val fldcw_m : X86_types.Mem.t -> X86_types.Instruction.t
 val fistpll_m : X86_types.Mem.t -> X86_types.Instruction.t
-val fsubs : Asm_core.Expr.t -> X86_types.Instruction.t
+val fsubs : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val fsubs_m : X86_types.Mem.t -> X86_types.Instruction.t
 val fnstsw : X86_types.Instruction.t
 val fnstsw_m : X86_types.Mem.t -> X86_types.Instruction.t
 val sahf : X86_types.Instruction.t
 val cmovo : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovo_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jo_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jo_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jo_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jo_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val seto : View.w8 View.gpr -> X86_types.Instruction.t
 val seto_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovno : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovno_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jno_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jno_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jno_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jno_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val setno : View.w8 View.gpr -> X86_types.Instruction.t
 val setno_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovb : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovb_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jb_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jb_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jb_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jb_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val setb : View.w8 View.gpr -> X86_types.Instruction.t
 val setb_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovae : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovae_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jae_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jae_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jae_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jae_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val setae : View.w8 View.gpr -> X86_types.Instruction.t
 val setae_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmove : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmove_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val je_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val je_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val je_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val je_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val sete : View.w8 View.gpr -> X86_types.Instruction.t
 val sete_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovne : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovne_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jne_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jne_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jne_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jne_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val setne : View.w8 View.gpr -> X86_types.Instruction.t
 val setne_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovbe : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovbe_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jbe_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jbe_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jbe_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jbe_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val setbe : View.w8 View.gpr -> X86_types.Instruction.t
 val setbe_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmova : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmova_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val ja_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val ja_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val ja_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val ja_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val seta : View.w8 View.gpr -> X86_types.Instruction.t
 val seta_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovs : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovs_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val js_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val js_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val js_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val js_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val sets : View.w8 View.gpr -> X86_types.Instruction.t
 val sets_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovns : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovns_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jns_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jns_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jns_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jns_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val setns : View.w8 View.gpr -> X86_types.Instruction.t
 val setns_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovp : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovp_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jp_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jp_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jp_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jp_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val setp : View.w8 View.gpr -> X86_types.Instruction.t
 val setp_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovnp : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovnp_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jnp_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jnp_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jnp_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jnp_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val setnp : View.w8 View.gpr -> X86_types.Instruction.t
 val setnp_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovl : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovl_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jl_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jl_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jl_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jl_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val setl : View.w8 View.gpr -> X86_types.Instruction.t
 val setl_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovge : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovge_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jge_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jge_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jge_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jge_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val setge : View.w8 View.gpr -> X86_types.Instruction.t
 val setge_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovle : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovle_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jle_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jle_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jle_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jle_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val setle : View.w8 View.gpr -> X86_types.Instruction.t
 val setle_m : X86_types.Mem.t -> X86_types.Instruction.t
 val cmovg : ([< `W16 | `W32 | `W64 ] as 'a) View.gpr -> 'a View.gpr -> X86_types.Instruction.t
 val cmovg_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
-val jg_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jg_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
+val jg_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jg_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val setg : View.w8 View.gpr -> X86_types.Instruction.t
 val setg_m : X86_types.Mem.t -> X86_types.Instruction.t
-val loop_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val loop_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
-val loope_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val loope_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
-val loopne_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val loopne_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jcxz : Asm_core.Expr.t -> X86_types.Instruction.t
-val jecxz_m32 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jecxz_m64 : Asm_core.Expr.t -> X86_types.Instruction.t
-val jrcxz : Asm_core.Expr.t -> X86_types.Instruction.t
+val loop_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val loop_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val loope_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val loope_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val loopne_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val loopne_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jcxz : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jecxz_m32 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jecxz_m64 : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
+val jrcxz : Rivet_asm_core.Expr.t -> X86_types.Instruction.t
 val movzb : View.w8 View.gpr -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val movzb_m : X86_types.Mem.t -> [< `W16 | `W32 | `W64 ] View.gpr -> X86_types.Instruction.t
 val movzw : View.w16 View.gpr -> [< `W32 | `W64 ] View.gpr -> X86_types.Instruction.t

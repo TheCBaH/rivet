@@ -10,10 +10,10 @@
  (wrapped false)
  (modes byte native)
  (libraries
-  foundation
+  rivet_foundation
   codec
-  asm_core
-  asm_syntax
+  rivet_asm_core
+  rivet_asm_syntax
   driver_direct
   image
   target_intf

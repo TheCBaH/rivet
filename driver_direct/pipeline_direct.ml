@@ -3,8 +3,8 @@
    lowers its module, plans the image, and links no lexer, parser or other
    target. The text pipeline includes this and adds the front end. *)
 
-open Foundation
-open Asm_core
+open Rivet_foundation
+open Rivet_asm_core
 module List = Safe_list
 
 module Make (T : Target_encode.ENCODE) = struct
@@ -793,7 +793,7 @@ module Make (T : Target_encode.ENCODE) = struct
     | None -> Diag.fail ~pos:__POS__ [ diag (`Unknown_segment segment) ]
     | Some s ->
         let* records = disassemble_records ?features ?inspect ~address:s.address s.bytes in
-        let symbol = Asm_core.Gnu_module.symbol in
+        let symbol = Rivet_asm_core.Gnu_module.symbol in
         let rec go records (symbols : Image.symbol list) (refs : Image.reference list) acc =
           match records with
           | [] -> List.rev acc

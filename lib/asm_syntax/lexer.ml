@@ -9,7 +9,7 @@
    Newlines are significant - an assembly statement ends at one - so [Eol] is a
    token rather than whitespace. *)
 
-open Foundation
+open Rivet_foundation
 
 (* The lexer's error domain (docs/errors.md). The span travels beside the
    tag rather than inside it because these are *accumulated* and turned into

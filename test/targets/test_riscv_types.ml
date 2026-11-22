@@ -54,7 +54,9 @@ let%expect_test "an FP instruction given integer registers is refused" =
   | Ok _ -> print_endline "accepted"
   | Error e ->
       let d = E.error_diagnostic (Err.Error.kind e) in
-      Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d));
+      Printf.printf "%s: %s\n"
+        (Rivet_foundation.Diagnostic.code d)
+        (Rivet_foundation.Diagnostic.message d));
   [%expect {| riscv64.lower: no fadd.s form takes these operands |}]
 
 (* {1 Every hand-written opcode}
@@ -74,10 +76,12 @@ module Sweep (E : ENC) = struct
       E.Operand.Reg (E.Reg.x n);
       E.Operand.Reg (E.Reg.f n);
       E.Operand.Reg (E.Reg.v n);
-      E.Operand.Imm (Foundation.Bigint.of_int 1);
-      E.Operand.Mem { E.Mem.offset = Asm_core.Expr.Const Foundation.Bigint.zero; base = E.Reg.x n };
-      E.Operand.Mem { E.Mem.offset = Asm_core.Expr.Const Foundation.Bigint.zero; base = E.Reg.x 2 };
-      E.Operand.Sym (Asm_core.Expr.Symbol "l");
+      E.Operand.Imm (Rivet_foundation.Bigint.of_int 1);
+      E.Operand.Mem
+        { E.Mem.offset = Rivet_asm_core.Expr.Const Rivet_foundation.Bigint.zero; base = E.Reg.x n };
+      E.Operand.Mem
+        { E.Mem.offset = Rivet_asm_core.Expr.Const Rivet_foundation.Bigint.zero; base = E.Reg.x 2 };
+      E.Operand.Sym (Rivet_asm_core.Expr.Symbol "l");
     ]
 
   let rec shapes n =
@@ -91,7 +95,7 @@ module Sweep (E : ENC) = struct
     match E.lower_instruction_ungated state (E.Instruction.mk op ops) with
     | Ok [ l ] -> (
         match E.encode_ungated l with
-        | Ok (`Fixed f) -> Some (l, f.Asm_core.Lowered_ast.bytes)
+        | Ok (`Fixed f) -> Some (l, f.Rivet_asm_core.Lowered_ast.bytes)
         | _ -> None)
     | _ -> None
 
@@ -104,7 +108,7 @@ module Sweep (E : ENC) = struct
         match E.lower_instruction_ungated state insn with
         | Ok [ l ] -> (
             match E.encode_ungated l with
-            | Ok (`Fixed f) -> Ok f.Asm_core.Lowered_ast.bytes
+            | Ok (`Fixed f) -> Ok f.Rivet_asm_core.Lowered_ast.bytes
             | _ -> Error `Reencode)
         | _ -> Error `Relower)
     | _ -> Error `Decode
@@ -322,7 +326,9 @@ let%expect_test "a form paired with an opcode of another format is refused" =
   | Ok _ -> print_endline "encoded"
   | Error e ->
       let d = E.error_diagnostic (Err.Error.kind e) in
-      Printf.printf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d));
+      Printf.printf "%s: %s\n"
+        (Rivet_foundation.Diagnostic.code d)
+        (Rivet_foundation.Diagnostic.message d));
   [%expect {| riscv64.internal.format: internal: lui has no R-format encoding |}]
 
 (* {1 Named standard rows} *)
@@ -805,7 +811,7 @@ let%expect_test "every instance and the builders share one Instruction.t" =
     match Riscv32_encode.lower_instruction Riscv32_encode.default_state built with
     | Ok [ l ] -> (
         match Riscv32_encode.encode l with
-        | Ok (`Fixed f) -> Test_zicsr.word_of_bytes f.Asm_core.Lowered_ast.bytes
+        | Ok (`Fixed f) -> Test_zicsr.word_of_bytes f.Rivet_asm_core.Lowered_ast.bytes
         | _ -> 0L)
     | _ -> 0L
   in
@@ -813,7 +819,7 @@ let%expect_test "every instance and the builders share one Instruction.t" =
     match Riscv64_encode.lower_instruction Riscv64_encode.default_state (as64 built) with
     | Ok [ l ] -> (
         match Riscv64_encode.encode l with
-        | Ok (`Fixed f) -> Test_zicsr.word_of_bytes f.Asm_core.Lowered_ast.bytes
+        | Ok (`Fixed f) -> Test_zicsr.word_of_bytes f.Rivet_asm_core.Lowered_ast.bytes
         | _ -> 0L)
     | _ -> 0L
   in

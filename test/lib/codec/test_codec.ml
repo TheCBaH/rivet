@@ -7,7 +7,7 @@ open Codec
 open Codec_corpus.Synthetic_isa
 
 let show_bits b = Bits.to_string b
-let hex b = Foundation.Byte_cursor.to_hex (Bits.to_bytes b)
+let hex b = Rivet_foundation.Byte_cursor.to_hex (Bits.to_bytes b)
 
 let pp_placement ppf (p : _ placement) =
   Fmt.pf ppf "  fixup %s:%s %a" p.name (fixup_name p.kind)

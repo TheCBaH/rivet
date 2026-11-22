@@ -91,7 +91,7 @@ type t =
 
 let ascii_values bytes =
   List.init (String.length bytes) (fun i ->
-      Expr.Const (Foundation.Bigint.of_int (Char.code bytes.[i])))
+      Expr.Const (Rivet_foundation.Bigint.of_int (Char.code bytes.[i])))
 
 let visibility_name = function
   | Default -> "default"

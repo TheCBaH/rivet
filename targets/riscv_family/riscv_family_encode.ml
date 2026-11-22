@@ -1,4 +1,4 @@
-open Foundation
+open Rivet_foundation
 module C = Codec
 
 (* Re-exported: the library's main module hides its siblings otherwise. *)
@@ -25,7 +25,7 @@ module type EXTENSIONS = sig
 end
 
 module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
-  open Asm_core.Lowered_ast
+  open Rivet_asm_core.Lowered_ast
 
   let () =
     if Riscv_extensions.Validated.xlen E.definition <> P.xlen then
@@ -220,22 +220,22 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           (** [fmadd]/[fmsub]/[fnmsub]/[fnmadd] - RISC-V's only R4-type instructions,
               with a fourth real register operand ([rs3]) {!R} has no field for; see
               {!f_fma_desc}. *)
-      | I of { op : Opcode.t; rd : Reg.t; rs1 : Reg.t; imm : Asm_core.Expr.t }
-      | S of { op : Opcode.t; rs1 : Reg.t; rs2 : Reg.t; imm : Asm_core.Expr.t }
-      | B of { op : Opcode.t; rs1 : Xreg.t; rs2 : Xreg.t; target : Asm_core.Expr.t }
-      | U of { op : Opcode.t; rd : Xreg.t; imm : Asm_core.Expr.t }
-      | J of { rd : Xreg.t; target : Asm_core.Expr.t }
+      | I of { op : Opcode.t; rd : Reg.t; rs1 : Reg.t; imm : Rivet_asm_core.Expr.t }
+      | S of { op : Opcode.t; rs1 : Reg.t; rs2 : Reg.t; imm : Rivet_asm_core.Expr.t }
+      | B of { op : Opcode.t; rs1 : Xreg.t; rs2 : Xreg.t; target : Rivet_asm_core.Expr.t }
+      | U of { op : Opcode.t; rd : Xreg.t; imm : Rivet_asm_core.Expr.t }
+      | J of { rd : Xreg.t; target : Rivet_asm_core.Expr.t }
       | Pair of {
           op : Opcode.t;
           rd : Reg.t;
           tmp : Xreg.t;
-          target : Asm_core.Expr.t;
+          target : Rivet_asm_core.Expr.t;
           kind : pair_kind;
         }
       | Fixed of { op : Opcode.t; word : int64 }
       | Fixed_half of { op : Opcode.t; word : int64 }
           (** a 16-bit compressed word with no fixup: a generated table row *)
-      | Caddi of { rd : Xreg.t; imm : Asm_core.Expr.t }
+      | Caddi of { rd : Xreg.t; imm : Rivet_asm_core.Expr.t }
       | Cr2 of { op : Opcode.t; rd_rs1 : Creg.t; rs2 : Creg.t }
           (** the CA-format compressed register-register ops ([c.and]/[c.or]/[c.xor]/[c.sub]/
               [c.addw]/[c.subw]): [rd_rs1]/[rs2] are the registers (x8..x15); {!Creg.field} gives
@@ -245,34 +245,34 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
               [c.add]/[c.ebreak]): unlike {!Cr2}, [rd_rs1]/[rs2] range over the full 0..31 GPR
               space (no compressed-subset restriction, no -8 bias) - [c.jr]/[c.jalr] set
               [rs2 = 0], [c.ebreak] sets both fields to 0 with [funct4 = 9]. *)
-      | Cl of { op : Opcode.t; rd : Creg.t; rs1 : Creg.t; imm : Asm_core.Expr.t }
+      | Cl of { op : Opcode.t; rd : Creg.t; rs1 : Creg.t; imm : Rivet_asm_core.Expr.t }
           (** CL-format compressed loads ([c.lw]/[c.ld]): [rd]/[rs1] are real register
               numbers (8..15) for the compressed 3-bit fields, like {!Cr2} - the packer
               subtracts 8. [c.lw]'s 5 raw offset bits scatter as [inst5|hi3|inst6] (RISC-V's
               own word-offset swap); [c.ld]'s instead concatenate straight as [lo2|hi3]
               (doubleword alignment leaves no swap to do) - {!word_c_lw}/{!word_c_ld} differ
               only in that shape, selected by [name] at the {!encode_ungated} call site. *)
-      | Cs of { op : Opcode.t; rs1 : Creg.t; rs2 : Creg.t; imm : Asm_core.Expr.t }
+      | Cs of { op : Opcode.t; rs1 : Creg.t; rs2 : Creg.t; imm : Rivet_asm_core.Expr.t }
           (** CS-format compressed stores ([c.sw]/[c.sd]): the store-side sibling of {!Cl}. *)
-      | Clsp of { op : Opcode.t; rd : Xreg.t; imm : Asm_core.Expr.t }
+      | Clsp of { op : Opcode.t; rd : Xreg.t; imm : Rivet_asm_core.Expr.t }
           (** CI-format compressed SP-relative loads ([c.lwsp]/[c.ldsp]): the base register
               is architecturally fixed to [x2] (sp) - CI-format has no rs1 field at all, so
               only [rd] and [imm] are ever assembled/decoded; confirmed against real
               riscv64-linux-gnu-as ([c.lwsp a0,8(x1)] is rejected as illegal operands). *)
-      | Css of { op : Opcode.t; rs2 : Xreg.t; imm : Asm_core.Expr.t }
+      | Css of { op : Opcode.t; rs2 : Xreg.t; imm : Rivet_asm_core.Expr.t }
           (** CSS-format compressed SP-relative stores ([c.swsp]/[c.sdsp]): the store-side
               sibling of {!Clsp}, same fixed-[x2]-base story. *)
-      | Cj of { op : Opcode.t; target : Asm_core.Expr.t }
+      | Cj of { op : Opcode.t; target : Rivet_asm_core.Expr.t }
           (** CJ-format compressed jumps ([c.j], RV32's [c.jal]): a 12-bit signed, 2-byte-aligned
               PC-relative target resolved via a {!fixup_kind.Jump12c} fixup. *)
-      | Cb of { op : Opcode.t; rs1 : Creg.t; target : Asm_core.Expr.t }
+      | Cb of { op : Opcode.t; rs1 : Creg.t; target : Rivet_asm_core.Expr.t }
           (** CB-format compressed conditional branches ([c.beqz]/[c.bnez]): [rs1] is a real
               register number (8..15) for the compressed 3-bit field, like {!Cl}. [target] is a
               PC-relative branch target resolved via a {!fixup_kind.Branch9c} fixup, the
               compressed sibling of {!B}'s [Branch13] - a 9-bit signed, 2-byte-aligned offset
               instead of [beq]/[bne]'s 13-bit one. *)
 
-    let pp_expr ppf e = Asm_core.Expr.pp ppf e
+    let pp_expr ppf e = Rivet_asm_core.Expr.pp ppf e
 
     let rm_suffix default rm =
       match (default, rm) with Some d, Some r when d <> r -> ", " ^ Rm.name r | _ -> ""
@@ -378,9 +378,9 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Abs_hi20 | Abs_lo12_i | Abs_lo12_s -> "absolute-address"
 
   let fixup_role = function
-    | Branch13 | Branch9c | Jump12c | Jal21 -> Asm_core.Lowered_ast.Branch
-    | Call_hi20 | Call_lo12_i -> Asm_core.Lowered_ast.Call
-    | _ -> Asm_core.Lowered_ast.Data_address
+    | Branch13 | Branch9c | Jump12c | Jal21 -> Rivet_asm_core.Lowered_ast.Branch
+    | Call_hi20 | Call_lo12_i -> Rivet_asm_core.Lowered_ast.Call
+    | _ -> Rivet_asm_core.Lowered_ast.Data_address
 
   (* The separable instruction components this family publishes (one per gating feature). The
      rest of the family is the always-available base. *)
@@ -500,10 +500,10 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | Error _ as e -> e
         | Ok () -> Ok { Instruction.op; ops = s.ops })
 
-  let const n = Asm_core.Expr.Const (Bigint.of_int n)
+  let const n = Rivet_asm_core.Expr.Const (Bigint.of_int n)
 
   let expr_of = function
-    | Operand.Imm n -> Some (Asm_core.Expr.Const n)
+    | Operand.Imm n -> Some (Rivet_asm_core.Expr.Const n)
     | Operand.Sym e -> Some e
     | _ -> None
 
@@ -530,7 +530,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      so it falls through {!parse_one}'s generic bare-identifier case to
      [Operand.Sym (Symbol "v0.t")] with no frontend change needed, the same
      way vsetvli/vsetivli's keyword tokens do). *)
-  let is_v0t = function Operand.Sym (Asm_core.Expr.Symbol "v0.t") -> true | _ -> false
+  let is_v0t = function Operand.Sym (Rivet_asm_core.Expr.Symbol "v0.t") -> true | _ -> false
   let rv64 op = if xlen = 64 then Ok () else Error (diag ~pos:__POS__ (`Rv64_only op))
   let wrong op = Error (diag ~pos:__POS__ (`Wrong_operands op))
 
@@ -1106,8 +1106,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let fits_scaled_unsigned bits scale v = Int64.rem v scale = 0L && fits_unsigned bits v
 
   let int64_expr e =
-    match Asm_core.Expr.fold Asm_core.Expr.no_env e with
-    | Ok (Asm_core.Expr.Const n) -> Bigint.to_int64_opt n
+    match Rivet_asm_core.Expr.fold Rivet_asm_core.Expr.no_env e with
+    | Ok (Rivet_asm_core.Expr.Const n) -> Bigint.to_int64_opt n
     | Ok _ | Error _ -> None
 
   (* A CSR address is a real 12-bit UNSIGNED field (0-4095), unlike every
@@ -1125,7 +1125,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      symbol of that name) or an absolute expression. *)
   let csr_number e =
     match e with
-    | Asm_core.Expr.Symbol s -> (
+    | Rivet_asm_core.Expr.Symbol s -> (
         match Riscv_csr.number s with Some n -> Some (Int64.of_int n) | None -> int64_expr e)
     | _ -> int64_expr e
 
@@ -1134,7 +1134,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      concrete nonzero fold rather than silently dropping it, matching real
      GNU as's own "illegal operands" rejection of `amoadd.w a0, a1, 4(a2)`. *)
   let zero_offset e = match int64_expr e with Some 0L -> true | _ -> false
-  let symbol_of = function Operand.Sym (Asm_core.Expr.Symbol s) -> Some s | _ -> None
+  let symbol_of = function Operand.Sym (Rivet_asm_core.Expr.Symbol s) -> Some s | _ -> None
 
   let symbols_of ops =
     let rec go acc = function
@@ -1196,17 +1196,17 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Fixed_gpr n -> ( match xnum op with Some m when m = n -> Some 0L | _ -> None)
     | Rm { lsb; _ } -> (
         match op with
-        | Operand.Sym (Asm_core.Expr.Symbol name) ->
+        | Operand.Sym (Rivet_asm_core.Expr.Symbol name) ->
             Option.bind (Rm.of_name name) (fun m -> place lsb (Int64.of_int (Rm.to_funct3 m)))
         | _ -> None)
     | Tied { lsb } -> Option.map (fun r -> Int64.shift_left (Int64.of_int r) lsb) prev
     | Keyword k -> (
         match op with
-        | Operand.Sym (Asm_core.Expr.Symbol s) when String.equal s k -> Some 0L
+        | Operand.Sym (Rivet_asm_core.Expr.Symbol s) when String.equal s k -> Some 0L
         | _ -> None)
     | Fli { lsb } -> (
         match op with
-        | Operand.Sym (Asm_core.Expr.Symbol text) ->
+        | Operand.Sym (Rivet_asm_core.Expr.Symbol text) ->
             Option.bind (Riscv_table_row.fli_index text) (fun i -> place lsb (Int64.of_int i))
         | _ -> None)
     | Mem_zero { base } -> (
@@ -1274,7 +1274,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
             Option.bind (Riscv_table_row.sreg_code n) (fun c -> place lsb (Int64.of_int c)))
     | Rlist { lsb } -> (
         match op with
-        | Operand.Sym (Asm_core.Expr.Symbol text) ->
+        | Operand.Sym (Rivet_asm_core.Expr.Symbol text) ->
             let compact = String.concat "" (String.split_on_char ' ' text) in
             Option.bind (Riscv_table_row.rlist_code compact) (fun c -> place lsb (Int64.of_int c))
         | _ -> None)
@@ -1314,7 +1314,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Vtype _ -> None
     | Indexed { prefix; lsb; width; scale } -> (
         match op with
-        | Operand.Sym (Asm_core.Expr.Symbol text) -> (
+        | Operand.Sym (Rivet_asm_core.Expr.Symbol text) -> (
             match Riscv_table_row.indexed_number ~prefix text with
             | Some n when n mod scale = 0 && fits_unsigned width (Int64.of_int (n / scale)) ->
                 place lsb (Int64.of_int (n / scale))
@@ -1932,13 +1932,14 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                backwards across an earlier instruction. *)
             Ok
               [
-                Lowered.U { op = Opcode.Lui; rd; imm = Asm_core.Expr.Modifier ("%hi", target) };
+                Lowered.U
+                  { op = Opcode.Lui; rd; imm = Rivet_asm_core.Expr.Modifier ("%hi", target) };
                 Lowered.I
                   {
                     op = Opcode.Addi;
                     rd = Reg.X rd;
                     rs1 = Reg.X rd;
-                    imm = Asm_core.Expr.Modifier ("%lo", target);
+                    imm = Rivet_asm_core.Expr.Modifier ("%lo", target);
                   };
               ]
         | _ -> wrong iop)
@@ -1968,7 +1969,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                       {
                         op = Opcode.Lui;
                         rd;
-                        imm = Asm_core.Expr.Const (Bigint.of_int64 (Int64.shift_right v 12));
+                        imm = Rivet_asm_core.Expr.Const (Bigint.of_int64 (Int64.shift_right v 12));
                       };
                   ]
             | _ -> addi imm)
@@ -1983,7 +1984,10 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         (* Bare [fence] is GNU as's [fence iorw,iorw]: `0ff0000f`. *)
         Ok [ Lowered.Fixed { op = Opcode.Fence; word = 0x0ff0000fL } ]
     | ( Opcode.Fence,
-        [ Operand.Sym (Asm_core.Expr.Symbol pred); Operand.Sym (Asm_core.Expr.Symbol succ) ] ) -> (
+        [
+          Operand.Sym (Rivet_asm_core.Expr.Symbol pred);
+          Operand.Sym (Rivet_asm_core.Expr.Symbol succ);
+        ] ) -> (
         (* [fence pred,succ]: opcode 0x0f/funct3 0 with rd = rs1 = x0 and fm = 0;
            [pred]/[succ] are (i,o,r,w) flag sets at bits 27:24/23:20, each a
            non-empty subset of "iorw" spelled in that order. Checked against real
@@ -2009,7 +2013,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let lower_instruction_ungated state i =
     let rounds = Option.is_some (default_rm i.Instruction.op) || Option.is_some (f_fma_desc i.op) in
     match List.rev i.ops with
-    | Operand.Sym (Asm_core.Expr.Symbol s) :: rest when rounds && Option.is_some (Rm.of_name s) -> (
+    | Operand.Sym (Rivet_asm_core.Expr.Symbol s) :: rest
+      when rounds && Option.is_some (Rm.of_name s) -> (
         let rm = Option.get (Rm.of_name s) in
         match lower_operands state { i with ops = List.rev rest } with
         | Ok [ Lowered.R ({ rm = Some _; _ } as r) ] -> Ok [ Lowered.R { r with rm = Some rm } ]
@@ -2304,7 +2309,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
 
   let mk_fixup ~kind ~name:fxname ~slices ~byte_offset ~container ~range ~value ~pairing =
     {
-      Asm_core.Lowered_ast.kind;
+      Rivet_asm_core.Lowered_ast.kind;
       kind_name = fixup_kind_name kind;
       family = fixup_family kind;
       role = fixup_role kind;
@@ -2319,17 +2324,17 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       origin = Origin.synthesized ~pass:(P.name ^ ".encode") ();
     }
 
-  let i_slices = [ { Asm_core.Lowered_ast.bit_offset = 20; bit_width = 12; value_lsb = 0 } ]
+  let i_slices = [ { Rivet_asm_core.Lowered_ast.bit_offset = 20; bit_width = 12; value_lsb = 0 } ]
 
   let s_slices =
     [
-      { Asm_core.Lowered_ast.bit_offset = 7; bit_width = 5; value_lsb = 0 };
+      { Rivet_asm_core.Lowered_ast.bit_offset = 7; bit_width = 5; value_lsb = 0 };
       { bit_offset = 25; bit_width = 7; value_lsb = 5 };
     ]
 
   let b_slices =
     [
-      { Asm_core.Lowered_ast.bit_offset = 7; bit_width = 1; value_lsb = 11 };
+      { Rivet_asm_core.Lowered_ast.bit_offset = 7; bit_width = 1; value_lsb = 11 };
       { bit_offset = 8; bit_width = 4; value_lsb = 1 };
       { bit_offset = 25; bit_width = 6; value_lsb = 5 };
       { bit_offset = 31; bit_width = 1; value_lsb = 12 };
@@ -2337,7 +2342,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
 
   let j_slices =
     [
-      { Asm_core.Lowered_ast.bit_offset = 12; bit_width = 8; value_lsb = 12 };
+      { Rivet_asm_core.Lowered_ast.bit_offset = 12; bit_width = 8; value_lsb = 12 };
       { bit_offset = 20; bit_width = 1; value_lsb = 11 };
       { bit_offset = 21; bit_width = 10; value_lsb = 1 };
       { bit_offset = 31; bit_width = 1; value_lsb = 20 };
@@ -2348,7 +2353,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      before writing any encoder code - see the GEN-05-RV-C follow-up 4 tracker entry. *)
   let cb_slices =
     [
-      { Asm_core.Lowered_ast.bit_offset = 3; bit_width = 2; value_lsb = 1 };
+      { Rivet_asm_core.Lowered_ast.bit_offset = 3; bit_width = 2; value_lsb = 1 };
       { bit_offset = 10; bit_width = 2; value_lsb = 3 };
       { bit_offset = 2; bit_width = 1; value_lsb = 5 };
       { bit_offset = 5; bit_width = 2; value_lsb = 6 };
@@ -2359,7 +2364,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      checked against real riscv32-linux-gnu-as: `c.j` +4 -> 0xa011, -2 -> 0xbffd). *)
   let cj_slices =
     [
-      { Asm_core.Lowered_ast.bit_offset = 12; bit_width = 1; value_lsb = 11 };
+      { Rivet_asm_core.Lowered_ast.bit_offset = 12; bit_width = 1; value_lsb = 11 };
       { bit_offset = 11; bit_width = 1; value_lsb = 4 };
       { bit_offset = 9; bit_width = 2; value_lsb = 8 };
       { bit_offset = 8; bit_width = 1; value_lsb = 10 };
@@ -2369,8 +2374,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       { bit_offset = 2; bit_width = 1; value_lsb = 5 };
     ]
 
-  let u_slices = [ { Asm_core.Lowered_ast.bit_offset = 12; bit_width = 20; value_lsb = 0 } ]
-  let form bytes form fixups = { Asm_core.Lowered_ast.bytes; form; fixups }
+  let u_slices = [ { Rivet_asm_core.Lowered_ast.bit_offset = 12; bit_width = 20; value_lsb = 0 } ]
+  let form bytes form fixups = { Rivet_asm_core.Lowered_ast.bytes; form; fixups }
   let bad_encode kind = Error (diag ~pos:__POS__ kind)
 
   let encode_ungated l =
@@ -2384,7 +2389,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | Some imm when x.rd <> Xreg.zero && imm <> 0L && fits_signed 6 imm ->
             Ok (`Fixed (form (bytes_of_half (word_caddi ~rd:x.rd imm)) "c.addi" []))
         | Some _ -> bad_encode (`Immediate_range "c.addi")
-        | None -> bad_encode (`Immediate_range ("c.addi " ^ Asm_core.Expr.to_string x.imm)))
+        | None -> bad_encode (`Immediate_range ("c.addi " ^ Rivet_asm_core.Expr.to_string x.imm)))
     | Lowered.Cr2 x ->
         fields "CA" Desc.ca x.op @@ fun (funct6, funct2) ->
         Ok
@@ -2411,7 +2416,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
             Ok (`Fixed (form (bytes_of_half word) (Opcode.name x.op) []))
         | Some _ -> bad_encode (`Immediate_range (Opcode.name x.op))
         | None ->
-            bad_encode (`Immediate_range (Opcode.name x.op ^ " " ^ Asm_core.Expr.to_string x.imm)))
+            bad_encode
+              (`Immediate_range (Opcode.name x.op ^ " " ^ Rivet_asm_core.Expr.to_string x.imm)))
     | Lowered.Cs x -> (
         fields "CS" Desc.c_funct3 x.op @@ fun funct3 ->
         let bits, scale = if x.op = Opcode.C_sw then (7, 4L) else (8, 8L) in
@@ -2424,7 +2430,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
             Ok (`Fixed (form (bytes_of_half word) (Opcode.name x.op) []))
         | Some _ -> bad_encode (`Immediate_range (Opcode.name x.op))
         | None ->
-            bad_encode (`Immediate_range (Opcode.name x.op ^ " " ^ Asm_core.Expr.to_string x.imm)))
+            bad_encode
+              (`Immediate_range (Opcode.name x.op ^ " " ^ Rivet_asm_core.Expr.to_string x.imm)))
     | Lowered.Clsp x -> (
         fields "CI" Desc.c_funct3 x.op @@ fun funct3 ->
         let bits, scale = if x.op = Opcode.C_lwsp then (8, 4L) else (9, 8L) in
@@ -2437,7 +2444,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
             Ok (`Fixed (form (bytes_of_half word) (Opcode.name x.op) []))
         | Some _ -> bad_encode (`Immediate_range (Opcode.name x.op))
         | None ->
-            bad_encode (`Immediate_range (Opcode.name x.op ^ " " ^ Asm_core.Expr.to_string x.imm)))
+            bad_encode
+              (`Immediate_range (Opcode.name x.op ^ " " ^ Rivet_asm_core.Expr.to_string x.imm)))
     | Lowered.Css x -> (
         fields "CSS" Desc.c_funct3 x.op @@ fun funct3 ->
         let bits, scale = if x.op = Opcode.C_swsp then (8, 4L) else (9, 8L) in
@@ -2450,12 +2458,13 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
             Ok (`Fixed (form (bytes_of_half word) (Opcode.name x.op) []))
         | Some _ -> bad_encode (`Immediate_range (Opcode.name x.op))
         | None ->
-            bad_encode (`Immediate_range (Opcode.name x.op ^ " " ^ Asm_core.Expr.to_string x.imm)))
+            bad_encode
+              (`Immediate_range (Opcode.name x.op ^ " " ^ Rivet_asm_core.Expr.to_string x.imm)))
     | Lowered.Cj x ->
         fields "CJ" Desc.c_funct3 x.op @@ fun funct3 ->
         let fx =
           mk_fixup ~kind:Jump12c ~name:"target" ~slices:cj_slices ~byte_offset:0 ~container:2
-            ~range:(Asm_core.Lowered_ast.Signed 12) ~value:x.target ~pairing:Unpaired
+            ~range:(Rivet_asm_core.Lowered_ast.Signed 12) ~value:x.target ~pairing:Unpaired
         in
         Ok
           (`Fixed
@@ -2466,7 +2475,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         fields "CB" Desc.c_funct3 x.op @@ fun funct3 ->
         let fx =
           mk_fixup ~kind:Branch9c ~name:"target" ~slices:cb_slices ~byte_offset:0 ~container:2
-            ~range:(Asm_core.Lowered_ast.Signed 9) ~value:x.target ~pairing:Unpaired
+            ~range:(Rivet_asm_core.Lowered_ast.Signed 9) ~value:x.target ~pairing:Unpaired
         in
         Ok (`Fixed (form (bytes_of_half (word_cb ~funct3 ~rs1:x.rs1)) (Opcode.name x.op) [ fx ]))
     | Lowered.R x -> (
@@ -2519,15 +2528,17 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                 bad_encode
                   (`Immediate_range
                      (Printf.sprintf "%s %s (%Ld)" (Opcode.name x.op)
-                        (Asm_core.Expr.to_string x.imm) imm)))
+                        (Rivet_asm_core.Expr.to_string x.imm)
+                        imm)))
         | None -> (
             match x.imm with
-            | Asm_core.Expr.Modifier ("%pcrel_lo", Asm_core.Expr.Symbol anchor) ->
+            | Rivet_asm_core.Expr.Modifier ("%pcrel_lo", Rivet_asm_core.Expr.Symbol anchor) ->
                 let kind = Pcrel_lo12_i in
                 let fx =
                   mk_fixup ~kind ~name:"lo" ~slices:i_slices ~byte_offset:0 ~container:4
-                    ~range:(Asm_core.Lowered_ast.Signed 12) ~value:(Asm_core.Expr.Symbol anchor)
-                    ~pairing:(Asm_core.Lowered_ast.Pair_tail (Anchor_symbol anchor))
+                    ~range:(Rivet_asm_core.Lowered_ast.Signed 12)
+                    ~value:(Rivet_asm_core.Expr.Symbol anchor)
+                    ~pairing:(Rivet_asm_core.Lowered_ast.Pair_tail (Anchor_symbol anchor))
                 in
                 Ok
                   (`Fixed
@@ -2535,10 +2546,10 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                         (bytes_of_word
                            (word_i ~opcode:d.opcode ~funct3:d.funct3 ~rd:x.rd ~rs1:x.rs1 0L))
                         (Opcode.name x.op) [ fx ]))
-            | Asm_core.Expr.Modifier ("%lo", target) ->
+            | Rivet_asm_core.Expr.Modifier ("%lo", target) ->
                 let fx =
                   mk_fixup ~kind:Abs_lo12_i ~name:"lo" ~slices:i_slices ~byte_offset:0 ~container:4
-                    ~range:(Asm_core.Lowered_ast.Signed 12) ~value:target ~pairing:Unpaired
+                    ~range:(Rivet_asm_core.Lowered_ast.Signed 12) ~value:target ~pairing:Unpaired
                 in
                 Ok
                   (`Fixed
@@ -2546,10 +2557,11 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                         (bytes_of_word
                            (word_i ~opcode:d.opcode ~funct3:d.funct3 ~rd:x.rd ~rs1:x.rs1 0L))
                         (Opcode.name x.op) [ fx ]))
-            | Asm_core.Expr.Modifier (m, _) -> bad_encode (`Bad_modifier m)
+            | Rivet_asm_core.Expr.Modifier (m, _) -> bad_encode (`Bad_modifier m)
             | _ ->
                 bad_encode
-                  (`Immediate_range (Opcode.name x.op ^ " " ^ Asm_core.Expr.to_string x.imm))))
+                  (`Immediate_range (Opcode.name x.op ^ " " ^ Rivet_asm_core.Expr.to_string x.imm)))
+        )
     | S x -> (
         fields "S" Desc.s x.op @@ fun (opcode, funct3) ->
         match int64_expr x.imm with
@@ -2558,19 +2570,19 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | Some _ -> bad_encode (`Immediate_range (Opcode.name x.op))
         | None -> (
             match x.imm with
-            | Asm_core.Expr.Modifier ("%pcrel_lo", Asm_core.Expr.Symbol anchor) ->
+            | Rivet_asm_core.Expr.Modifier ("%pcrel_lo", Rivet_asm_core.Expr.Symbol anchor) ->
                 let fx =
                   mk_fixup ~kind:Pcrel_lo12_s ~name:"lo" ~slices:s_slices ~byte_offset:0
-                    ~container:4 ~range:(Asm_core.Lowered_ast.Signed 12)
-                    ~value:(Asm_core.Expr.Symbol anchor)
-                    ~pairing:(Asm_core.Lowered_ast.Pair_tail (Anchor_symbol anchor))
+                    ~container:4 ~range:(Rivet_asm_core.Lowered_ast.Signed 12)
+                    ~value:(Rivet_asm_core.Expr.Symbol anchor)
+                    ~pairing:(Rivet_asm_core.Lowered_ast.Pair_tail (Anchor_symbol anchor))
                 in
                 Ok
                   (`Fixed
                      (form
                         (bytes_of_word (word_s ~opcode ~funct3 ~rs1:x.rs1 ~rs2:x.rs2 0L))
                         (Opcode.name x.op) [ fx ]))
-            | Asm_core.Expr.Modifier ("%lo", target) ->
+            | Rivet_asm_core.Expr.Modifier ("%lo", target) ->
                 (* [sw a0,%lo(sym)(s6)] - the store-side sibling of [I]'s own
                    [%lo] case just above (`la`'s non-PIC absolute [lui]+[addi]
                    pair, with [s6] already holding [%hi(sym)] from an earlier
@@ -2587,20 +2599,20 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                    [Abs_lo12_i] already produces for a load/[addi]. *)
                 let fx =
                   mk_fixup ~kind:Abs_lo12_s ~name:"lo" ~slices:s_slices ~byte_offset:0 ~container:4
-                    ~range:(Asm_core.Lowered_ast.Signed 12) ~value:target ~pairing:Unpaired
+                    ~range:(Rivet_asm_core.Lowered_ast.Signed 12) ~value:target ~pairing:Unpaired
                 in
                 Ok
                   (`Fixed
                      (form
                         (bytes_of_word (word_s ~opcode ~funct3 ~rs1:x.rs1 ~rs2:x.rs2 0L))
                         (Opcode.name x.op) [ fx ]))
-            | Asm_core.Expr.Modifier (m, _) -> bad_encode (`Bad_modifier m)
+            | Rivet_asm_core.Expr.Modifier (m, _) -> bad_encode (`Bad_modifier m)
             | _ -> bad_encode (`Immediate_range (Opcode.name x.op))))
     | B x ->
         fields "B" Desc.b x.op @@ fun funct3 ->
         let fx =
           mk_fixup ~kind:Branch13 ~name:"target" ~slices:b_slices ~byte_offset:0 ~container:4
-            ~range:(Asm_core.Lowered_ast.Signed 13) ~value:x.target ~pairing:Unpaired
+            ~range:(Rivet_asm_core.Lowered_ast.Signed 13) ~value:x.target ~pairing:Unpaired
         in
         Ok
           (`Fixed
@@ -2610,7 +2622,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | J x ->
         let fx =
           mk_fixup ~kind:Jal21 ~name:"target" ~slices:j_slices ~byte_offset:0 ~container:4
-            ~range:(Asm_core.Lowered_ast.Signed 21) ~value:x.target ~pairing:Unpaired
+            ~range:(Rivet_asm_core.Lowered_ast.Signed 21) ~value:x.target ~pairing:Unpaired
         in
         Ok (`Fixed (form (bytes_of_word (word_j ~rd:x.rd 0L)) "jal" [ fx ]))
     | U x -> (
@@ -2621,24 +2633,25 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | Some _ -> bad_encode (`Immediate_range (Opcode.name x.op))
         | None -> (
             match x.imm with
-            | Asm_core.Expr.Modifier ("%pcrel_hi", target) ->
+            | Rivet_asm_core.Expr.Modifier ("%pcrel_hi", target) ->
                 let fx =
                   mk_fixup ~kind:Pcrel_hi20 ~name:"hi" ~slices:u_slices ~byte_offset:0 ~container:4
-                    ~range:(Asm_core.Lowered_ast.Bitpattern 20) ~value:target
+                    ~range:(Rivet_asm_core.Lowered_ast.Bitpattern 20) ~value:target
                     ~pairing:(Pair_head "pcrel")
                 in
                 Ok
                   (`Fixed
                      (form (bytes_of_word (word_u ~opcode ~rd:x.rd 0L)) (Opcode.name x.op) [ fx ]))
-            | Asm_core.Expr.Modifier ("%hi", target) ->
+            | Rivet_asm_core.Expr.Modifier ("%hi", target) ->
                 let fx =
                   mk_fixup ~kind:Abs_hi20 ~name:"hi" ~slices:u_slices ~byte_offset:0 ~container:4
-                    ~range:(Asm_core.Lowered_ast.Bitpattern 20) ~value:target ~pairing:Unpaired
+                    ~range:(Rivet_asm_core.Lowered_ast.Bitpattern 20) ~value:target
+                    ~pairing:Unpaired
                 in
                 Ok
                   (`Fixed
                      (form (bytes_of_word (word_u ~opcode ~rd:x.rd 0L)) (Opcode.name x.op) [ fx ]))
-            | Asm_core.Expr.Modifier (m, _) -> bad_encode (`Bad_modifier m)
+            | Rivet_asm_core.Expr.Modifier (m, _) -> bad_encode (`Bad_modifier m)
             | _ -> bad_encode (`Immediate_range (Opcode.name x.op))))
     | Pair x ->
         let lo_opcode, lo_funct3 =
@@ -2657,11 +2670,12 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         in
         let hi =
           mk_fixup ~kind:hi_kind ~name:"hi" ~slices:u_slices ~byte_offset:0 ~container:4
-            ~range:(Asm_core.Lowered_ast.Bitpattern 20) ~value:x.target ~pairing:(Pair_head "pair")
+            ~range:(Rivet_asm_core.Lowered_ast.Bitpattern 20) ~value:x.target
+            ~pairing:(Pair_head "pair")
         in
         let lo =
           mk_fixup ~kind:lo_kind ~name:"lo" ~slices:i_slices ~byte_offset:4 ~container:4
-            ~range:(Asm_core.Lowered_ast.Signed 12) ~value:x.target
+            ~range:(Rivet_asm_core.Lowered_ast.Signed 12) ~value:x.target
             ~pairing:(Pair_tail (Sibling_key "pair"))
         in
         Ok
@@ -2742,10 +2756,11 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let reg n = Operand.Reg (Reg.x (n land 31))
   let f_operand n = Operand.Reg (Reg.f (n land 31))
   let imm n = Operand.Imm (Bigint.of_int64 n)
-  let sym n = Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 n))
+  let sym n = Operand.Sym (Rivet_asm_core.Expr.Const (Bigint.of_int64 n))
 
   let mem rs1 n =
-    Operand.Mem { Mem.base = Reg.x (rs1 land 31); offset = Asm_core.Expr.Const (Bigint.of_int64 n) }
+    Operand.Mem
+      { Mem.base = Reg.x (rs1 land 31); offset = Rivet_asm_core.Expr.Const (Bigint.of_int64 n) }
 
   let op_exn s = Option.get (Opcode.of_mnemonic s)
   let instruction op ops = { Instruction.op; ops }
@@ -2849,7 +2864,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     if Rm.to_funct3 default = f3 then Some ops
     else
       Option.map
-        (fun rm -> ops @ [ Operand.Sym (Asm_core.Expr.Symbol (Rm.name rm)) ])
+        (fun rm -> ops @ [ Operand.Sym (Rivet_asm_core.Expr.Symbol (Rm.name rm)) ])
         (Rm.of_funct3 f3)
 
   type decode_context = { state : target_state; address : int64 }
@@ -2882,15 +2897,16 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           if m = default then Some None
           else
             Option.map
-              (fun r -> Some (Operand.Sym (Asm_core.Expr.Symbol (Rm.name r))))
+              (fun r -> Some (Operand.Sym (Rivet_asm_core.Expr.Symbol (Rm.name r))))
               (Rm.of_funct3 m)
       | Tied _ -> Some None
-      | Keyword k -> Some (Some (Operand.Sym (Asm_core.Expr.Symbol k)))
+      | Keyword k -> Some (Some (Operand.Sym (Rivet_asm_core.Expr.Symbol k)))
       | Fli { lsb } ->
           Some
             (Some
                (Operand.Sym
-                  (Asm_core.Expr.Symbol Riscv_table_row.fli_constants.(Int64.to_int (field lsb 5)))))
+                  (Rivet_asm_core.Expr.Symbol
+                     Riscv_table_row.fli_constants.(Int64.to_int (field lsb 5)))))
       | Mem_i { base } ->
           Some (Some (mem (Int64.to_int (field base 5)) (sign_extend 12 (field 20 12))))
       | Mem_zero { base } -> Some (Some (mem (Int64.to_int (field base 5)) 0L))
@@ -2920,7 +2936,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
           Some (Some (reg (Riscv_table_row.sreg_register (Int64.to_int (field lsb 3)))))
       | Rlist { lsb } ->
           Option.map
-            (fun t -> Some (Operand.Sym (Asm_core.Expr.Symbol t)))
+            (fun t -> Some (Operand.Sym (Rivet_asm_core.Expr.Symbol t)))
             (Riscv_table_row.rlist_text (Int64.to_int (field lsb 4)))
       | Stack_adj { rlist; spimm; push } ->
           let code = Int64.to_int (field rlist 4) in
@@ -2937,19 +2953,19 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       | Vreg { lsb } -> Some (Some (Operand.Reg (Reg.v (Int64.to_int (field lsb 5)))))
       | Vm { lsb } ->
           if field lsb 1 = 1L then Some None
-          else Some (Some (Operand.Sym (Asm_core.Expr.Symbol "v0.t")))
+          else Some (Some (Operand.Sym (Rivet_asm_core.Expr.Symbol "v0.t")))
       | Fixed_vreg n -> Some (Some (Operand.Reg (Reg.v n)))
       | Vtype _ -> None
       | Indexed { prefix; lsb; width; scale } ->
           let n = Int64.mul (field lsb width) (Int64.of_int scale) in
-          Some (Some (Operand.Sym (Asm_core.Expr.Symbol (prefix ^ Int64.to_string n))))
+          Some (Some (Operand.Sym (Rivet_asm_core.Expr.Symbol (prefix ^ Int64.to_string n))))
     in
     (* Every operand's spelling; a vtype is its four keywords, and a reserved one has none. *)
     let spelling (o : Riscv_table_row.operand) =
       match o with
       | Vtype { lsb; width } ->
           Option.map
-            (List.map (fun w -> Operand.Sym (Asm_core.Expr.Symbol w)))
+            (List.map (fun w -> Operand.Sym (Rivet_asm_core.Expr.Symbol w)))
             (Riscv_table_row.keywords_of_vtype (Int64.to_int (field lsb width)))
       | o -> Option.map Option.to_list (operand o)
     in
@@ -3347,7 +3363,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                 let csr =
                   let n = Int64.to_int (bits w 20 12) in
                   match Riscv_csr.name n with
-                  | Some name -> Operand.Sym (Asm_core.Expr.Symbol name)
+                  | Some name -> Operand.Sym (Rivet_asm_core.Expr.Symbol name)
                   | None -> imm (Int64.of_int n)
                 in
                 let name, ops =
@@ -3380,7 +3396,10 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
                 and q = fence_set_name (Int64.to_int (bits w 20 4)) in
                 Some
                   ( instruction Opcode.Fence
-                      [ Operand.Sym (Asm_core.Expr.Symbol p); Operand.Sym (Asm_core.Expr.Symbol q) ],
+                      [
+                        Operand.Sym (Rivet_asm_core.Expr.Symbol p);
+                        Operand.Sym (Rivet_asm_core.Expr.Symbol q);
+                      ],
                     Printf.sprintf "fence %s,%s" p q )
             | _ -> None)
       in
@@ -3504,7 +3523,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
       if high_opcode <> 0x17 || rs1 <> tmp then None
       else
         let target =
-          Asm_core.Expr.Const (Bigint.of_int64 (Int64.add (Int64.shift_left high_imm 12) low_imm))
+          Rivet_asm_core.Expr.Const
+            (Bigint.of_int64 (Int64.add (Int64.shift_left high_imm 12) low_imm))
         in
         match low_opcode with
         | 0x13 ->
@@ -3585,7 +3605,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     | Abs_hi20 -> Result.map hi (rv32_absolute ())
     | Abs_lo12_i | Abs_lo12_s -> Result.map lo (rv32_absolute ())
 
-  let align_unit = Asm_core.Directive.Exponent { zero_exponent = 0 }
+  let align_unit = Rivet_asm_core.Directive.Exponent { zero_exponent = 0 }
 
   let data_widths =
     [

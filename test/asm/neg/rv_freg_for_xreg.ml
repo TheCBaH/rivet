@@ -5,5 +5,5 @@ let _ =
     {
       op = Riscv32_encode.Opcode.Lui;
       rd = Riscv32_encode.Freg.of_int_exn 1;
-      imm = Asm_core.Expr.Const Foundation.Bigint.zero;
+      imm = Rivet_asm_core.Expr.Const Rivet_foundation.Bigint.zero;
     }

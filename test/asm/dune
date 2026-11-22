@@ -19,7 +19,7 @@
  (libraries
   driver
   image
-  asm_core
+  rivet_asm_core
   target_intf
   target_encode
   target_features
@@ -27,7 +27,7 @@
   riscv_asm
   riscv32_asm
   riscv64_asm
-  foundation
+  rivet_foundation
   arm_encode
   arm_asm
   aarch64_encode

@@ -21,17 +21,17 @@ module Shape : sig
     | F : ('f, 'g, 'r) t -> (Riscv_types.Freg.t -> 'f, Riscv_types.Freg.t -> 'g, 'r) t
     | V : ('f, 'g, 'r) t -> (Riscv_types.Vreg.t -> 'f, Riscv_types.Vreg.t -> 'g, 'r) t
     | Creg : ('f, 'g, 'r) t -> (Riscv_types.Creg.t -> 'f, Riscv_types.Creg.t -> 'g, 'r) t
-    | Imm : ('f, 'g, 'r) t -> (int -> 'f, Asm_core.Expr.t -> 'g, 'r) t
-    | Imm64 : ('f, 'g, 'r) t -> (int64 -> 'f, Asm_core.Expr.t -> 'g, 'r) t
+    | Imm : ('f, 'g, 'r) t -> (int -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
+    | Imm64 : ('f, 'g, 'r) t -> (int64 -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
     | Mem : ('f, 'g, 'r) t -> (Riscv_types.Mem.t -> 'f, Riscv_types.Mem.t -> 'g, 'r) t
     | Cmem : ('f, 'g, 'r) t -> (Cmem.t -> 'f, Cmem.t -> 'g, 'r) t
     | Spmem : ('f, 'g, 'r) t -> (int -> 'f, int -> 'g, 'r) t
-    | Sym : ('f, 'g, 'r) t -> (Asm_core.Expr.t -> 'f, Asm_core.Expr.t -> 'g, 'r) t
+    | Sym : ('f, 'g, 'r) t -> (Rivet_asm_core.Expr.t -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
     | Rm : ('f, 'g, 'r) t -> (Riscv_types.Rm.t -> 'f, Riscv_types.Rm.t -> 'g, 'r) t
 
   val kinds : ('f, 'g, 'r) t -> Kind.t list
   val int : int -> Riscv_types.Operand.t
-  val expr : Asm_core.Expr.t -> Riscv_types.Operand.t
+  val expr : Rivet_asm_core.Expr.t -> Riscv_types.Operand.t
   val x : Riscv_types.Xreg.t -> Riscv_types.Operand.t
   val mem : base:Riscv_types.Xreg.t -> int -> Riscv_types.Operand.t
   val cmem : Cmem.t -> Riscv_types.Operand.t
@@ -205,22 +205,22 @@ val bset :
 val bclri : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val bclri_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val bexti : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val bexti_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val binvi : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val binvi_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val bseti : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val bseti_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val sh1add_uw :
   Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
@@ -264,12 +264,12 @@ val rorw :
 val rori : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val rori_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val roriw : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val roriw_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val zext_h : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 
@@ -298,7 +298,7 @@ val sm4ed_e :
   Riscv_types.Xreg.t ->
   Riscv_types.Xreg.t ->
   Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_types.Instruction.t
 
 val sm4ks :
@@ -308,7 +308,7 @@ val sm4ks_e :
   Riscv_types.Xreg.t ->
   Riscv_types.Xreg.t ->
   Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_types.Instruction.t
 
 val xperm4 :
@@ -363,7 +363,7 @@ val aes64im : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Riscv_types.Instructio
 val aes64ks1i : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val aes64ks1i_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val aes32dsi :
   Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
@@ -372,7 +372,7 @@ val aes32dsi_e :
   Riscv_types.Xreg.t ->
   Riscv_types.Xreg.t ->
   Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_types.Instruction.t
 
 val aes32dsmi :
@@ -382,7 +382,7 @@ val aes32dsmi_e :
   Riscv_types.Xreg.t ->
   Riscv_types.Xreg.t ->
   Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_types.Instruction.t
 
 val aes32esi :
@@ -392,7 +392,7 @@ val aes32esi_e :
   Riscv_types.Xreg.t ->
   Riscv_types.Xreg.t ->
   Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_types.Instruction.t
 
 val aes32esmi :
@@ -402,44 +402,53 @@ val aes32esmi_e :
   Riscv_types.Xreg.t ->
   Riscv_types.Xreg.t ->
   Riscv_types.Xreg.t ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Riscv_types.Instruction.t
 
 val csrrw : Riscv_types.Xreg.t -> int -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 
 val csrrw_e :
-  Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 
 val csrrs : Riscv_types.Xreg.t -> int -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 
 val csrrs_e :
-  Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 
 val csrrc : Riscv_types.Xreg.t -> int -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 
 val csrrc_e :
-  Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 
 val csrrwi : Riscv_types.Xreg.t -> int -> int -> Riscv_types.Instruction.t
-val csrrwi_e : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val csrrwi_e :
+  Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
 val csrrsi : Riscv_types.Xreg.t -> int -> int -> Riscv_types.Instruction.t
-val csrrsi_e : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val csrrsi_e :
+  Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
 val csrrci : Riscv_types.Xreg.t -> int -> int -> Riscv_types.Instruction.t
-val csrrci_e : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val csrrci_e :
+  Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
 val csrr : Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
-val csrr_e : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+val csrr_e : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 val csrw : int -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
-val csrw_e : Asm_core.Expr.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
+val csrw_e : Rivet_asm_core.Expr.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 val csrs : int -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
-val csrs_e : Asm_core.Expr.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
+val csrs_e : Rivet_asm_core.Expr.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 val csrc : int -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
-val csrc_e : Asm_core.Expr.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
+val csrc_e : Rivet_asm_core.Expr.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 val csrwi : int -> int -> Riscv_types.Instruction.t
-val csrwi_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+val csrwi_e : Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 val csrsi : int -> int -> Riscv_types.Instruction.t
-val csrsi_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+val csrsi_e : Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 val csrci : int -> int -> Riscv_types.Instruction.t
-val csrci_e : Asm_core.Expr.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+val csrci_e : Rivet_asm_core.Expr.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val amoswap_w :
   Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Riscv_types.Mem.t -> Riscv_types.Instruction.t
@@ -538,10 +547,10 @@ val remuw :
 val addi : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val addi_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val c_addi : Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
-val c_addi_e : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+val c_addi_e : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 val c_and : Riscv_types.Creg.t -> Riscv_types.Creg.t -> Riscv_types.Instruction.t
 val c_or : Riscv_types.Creg.t -> Riscv_types.Creg.t -> Riscv_types.Instruction.t
 val c_xor : Riscv_types.Creg.t -> Riscv_types.Creg.t -> Riscv_types.Instruction.t
@@ -561,66 +570,69 @@ val c_ld : Riscv_types.Creg.t -> Cmem.t -> Riscv_types.Instruction.t
 val c_sd : Riscv_types.Creg.t -> Cmem.t -> Riscv_types.Instruction.t
 val c_ldsp : Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 val c_sdsp : Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
-val c_beqz : Riscv_types.Creg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val c_j : Asm_core.Expr.t -> Riscv_types.Instruction.t
-val c_jal : Asm_core.Expr.t -> Riscv_types.Instruction.t
-val c_bnez : Riscv_types.Creg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+val c_beqz : Riscv_types.Creg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+val c_j : Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+val c_jal : Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+val c_bnez : Riscv_types.Creg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 val slti : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val slti_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val sltiu : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val sltiu_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val xori : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val xori_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val ori : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
-val ori_e : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val ori_e :
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
 val andi : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val andi_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val slli : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val slli_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val srli : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val srli_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val srai : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val srai_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val addiw : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val addiw_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val slliw : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val slliw_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val srliw : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val srliw_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val sraiw : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
 
 val sraiw_e :
-  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 
 val sext_w : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 val lb : Riscv_types.Xreg.t -> Riscv_types.Mem.t -> Riscv_types.Instruction.t
@@ -634,38 +646,59 @@ val sb : Riscv_types.Xreg.t -> Riscv_types.Mem.t -> Riscv_types.Instruction.t
 val sh : Riscv_types.Xreg.t -> Riscv_types.Mem.t -> Riscv_types.Instruction.t
 val sw : Riscv_types.Xreg.t -> Riscv_types.Mem.t -> Riscv_types.Instruction.t
 val sd : Riscv_types.Xreg.t -> Riscv_types.Mem.t -> Riscv_types.Instruction.t
-val beq : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val bne : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val blt : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val bge : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val bltu : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val bgeu : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val bgtu : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val bleu : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val bgt : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val ble : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val beqz : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val bnez : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val bgez : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val bltz : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val blez : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val bgtz : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val beq :
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val bne :
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val blt :
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val bge :
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val bltu :
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val bgeu :
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val bgtu :
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val bleu :
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val bgt :
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val ble :
+  Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+
+val beqz : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+val bnez : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+val bgez : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+val bltz : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+val blez : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+val bgtz : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 val lui : Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
-val lui_e : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+val lui_e : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 val auipc : Riscv_types.Xreg.t -> int -> Riscv_types.Instruction.t
-val auipc_e : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val jal : Asm_core.Expr.t -> Riscv_types.Instruction.t
+val auipc_e : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+val jal : Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 val jalr : Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 val mv : Riscv_types.Xreg.t -> Riscv_types.Xreg.t -> Riscv_types.Instruction.t
 val nop : Riscv_types.Instruction.t
-val j : Asm_core.Expr.t -> Riscv_types.Instruction.t
+val j : Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 val jr : Riscv_types.Xreg.t -> Riscv_types.Instruction.t
-val call : Asm_core.Expr.t -> Riscv_types.Instruction.t
-val tail : Asm_core.Expr.t -> Riscv_types.Instruction.t
-val la : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
-val lla : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+val call : Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+val tail : Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+val la : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
+val lla : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 val li : Riscv_types.Xreg.t -> int64 -> Riscv_types.Instruction.t
-val li_e : Riscv_types.Xreg.t -> Asm_core.Expr.t -> Riscv_types.Instruction.t
+val li_e : Riscv_types.Xreg.t -> Rivet_asm_core.Expr.t -> Riscv_types.Instruction.t
 val ret : Riscv_types.Instruction.t
 val ecall : Riscv_types.Instruction.t
 val ebreak : Riscv_types.Instruction.t

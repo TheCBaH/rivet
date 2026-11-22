@@ -6,7 +6,7 @@ let seed = 20261119
 
 module Q = QCheck2
 module G = Q.Gen
-module B = Foundation.Bigint
+module B = Rivet_foundation.Bigint
 module C = Compute.Concrete
 module C64 = Compute.Concrete64
 module T = Compute.Term

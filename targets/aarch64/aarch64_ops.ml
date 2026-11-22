@@ -8,7 +8,7 @@
    floating-point operand is a [d] or an [s] register and a vector one carries its arrangement, so
    [add x0 w1 x2], [fadd d0 s1 d2] and [fadd_v v0.4s v1.2d v2.4s] do not compile. *)
 
-open Foundation
+open Rivet_foundation
 open Aarch64_types
 open View
 
@@ -94,8 +94,8 @@ module Shape = struct
     | Fzero : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, 'f, 'r) t
     | Cond : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, Cond.t -> 'f, 'r) t
     | Fix_sym : string * ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, 'f, 'r) t
-    | Sym : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, Asm_core.Expr.t -> 'f, 'r) t
-    | Lo12 : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, Asm_core.Expr.t -> 'f, 'r) t
+    | Sym : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, Rivet_asm_core.Expr.t -> 'f, 'r) t
+    | Lo12 : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, Rivet_asm_core.Expr.t -> 'f, 'r) t
     | Mem : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, Mem.t -> 'f, 'r) t
     | Post : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, (x, [< gp | sp ]) greg -> int -> 'f, 'r) t
     | Sop : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, sop -> 'f, 'r) t
@@ -233,10 +233,10 @@ module Shape = struct
     | Lsl12 s -> next s (Operand.Shift { Shift.kind = Shift.Lsl; amount = 12 })
     | Fimm s -> fun v -> next s (Operand.Fimm v)
     | Fzero s -> next s (Operand.Fimm 0.0)
-    | Cond s -> fun c -> next s (Operand.Sym (Asm_core.Expr.Symbol (Cond.name c)))
-    | Fix_sym (n, s) -> next s (Operand.Sym (Asm_core.Expr.Symbol n))
+    | Cond s -> fun c -> next s (Operand.Sym (Rivet_asm_core.Expr.Symbol (Cond.name c)))
+    | Fix_sym (n, s) -> next s (Operand.Sym (Rivet_asm_core.Expr.Symbol n))
     | Sym s -> fun e -> next s (Operand.Sym e)
-    | Lo12 s -> fun e -> next s (Operand.Sym (Asm_core.Expr.Modifier ("lo12", e)))
+    | Lo12 s -> fun e -> next s (Operand.Sym (Rivet_asm_core.Expr.Modifier ("lo12", e)))
     | Mem s -> fun m -> next s (Operand.Mem m)
     | Post s -> fun base n -> build s (fun ops -> k (mem0 base :: int n :: ops))
     | Sop s -> fun o -> next s (Operand.Shift (o :> Shift.t))
@@ -281,8 +281,8 @@ module Shape = struct
       | Fzero s -> go (i + 1) s f
       | Cond s -> go (i + 1) s (f Cond.Ne)
       | Fix_sym (_, s) -> go (i + 1) s f
-      | Sym s -> go (i + 1) s (f (Asm_core.Expr.Symbol "l"))
-      | Lo12 s -> go (i + 1) s (f (Asm_core.Expr.Symbol "l"))
+      | Sym s -> go (i + 1) s (f (Rivet_asm_core.Expr.Symbol "l"))
+      | Lo12 s -> go (i + 1) s (f (Rivet_asm_core.Expr.Symbol "l"))
       | Mem s ->
           go (i + 1) s (f { Mem.base = g 64; offset = Disp.zero; writeback = false; pre = true })
       | Post s -> go (i + 1) s (f (Unsafe.greg (g 64)) sm.imm)

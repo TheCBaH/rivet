@@ -1,4 +1,4 @@
-open Foundation
+open Rivet_foundation
 
 module type PROFILE = Riscv_family_encode.PROFILE
 module type EXTENSIONS = Riscv_family_encode.EXTENSIONS
@@ -8,7 +8,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
 
   type parse_error_kind =
     [ `Unknown_register of string
-    | `Cannot_parse_operand of Asm_syntax.Token.slice
+    | `Cannot_parse_operand of Rivet_asm_syntax.Token.slice
     | `Malformed_memory_operand
     | `Option_stack_underflow
     | `Unsupported_option of string
@@ -20,7 +20,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
   let pp_parse_error_kind ppf : parse_error_kind -> unit = function
     | `Unknown_register r -> Fmt.pf ppf "unknown register %s" r
     | `Cannot_parse_operand s ->
-        Fmt.pf ppf "cannot parse operand %s" (Asm_syntax.Token.slice_text s)
+        Fmt.pf ppf "cannot parse operand %s" (Rivet_asm_syntax.Token.slice_text s)
     | `Malformed_memory_operand -> Fmt.string ppf "malformed offset(base) operand"
     | `Option_stack_underflow -> Fmt.string ppf ".option pop has no matching push"
     | `Unsupported_option o -> Fmt.pf ppf ".option %s is not supported" o
@@ -45,17 +45,18 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
          kind)
 
   let lexical_profile =
-    Asm_syntax.Lexical_profile.make ~name ~comment_introducers:[ "#" ] ~statement_separator:';'
+    Rivet_asm_syntax.Lexical_profile.make ~name ~comment_introducers:[ "#" ]
+      ~statement_separator:';'
       ~percent_call_modifiers:[ "hi"; "lo"; "pcrel_hi"; "pcrel_lo" ]
       ()
 
   let slice_origin s =
-    match Asm_syntax.Token.slice_span s with
+    match Rivet_asm_syntax.Token.slice_span s with
     | Some span -> Origin.text span
     | None -> Origin.synthesized ~pass:name ()
 
   let parse_expr slice =
-    match Asm_syntax.Parse_lines.parse_expression slice with
+    match Rivet_asm_syntax.Parse_lines.parse_expression slice with
     | Ok e -> Ok e
     | Error _ ->
         Error (parse_diag ~pos:__POS__ ~origin:(slice_origin slice) (`Cannot_parse_operand slice))
@@ -69,8 +70,8 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      bare-symbol operand fallback below, not {!parse_expr}'s other two call
      sites, since a memory-operand offset or a [%pcrel_hi] argument never
      carries this suffix. *)
-  let strip_plt_suffix (slice : Asm_syntax.Token.slice) =
-    let open Asm_syntax in
+  let strip_plt_suffix (slice : Rivet_asm_syntax.Token.slice) =
+    let open Rivet_asm_syntax in
     match List.rev slice with
     | { Token.kind = Token.Ident "plt"; _ } :: { Token.kind = Token.At; _ } :: (_ :: _ as rest) ->
         List.rev rest
@@ -80,9 +81,13 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     let rev_take = function
       | rparen :: base :: lparen :: rest -> (
           match
-            (Asm_syntax.Token.kind rparen, Asm_syntax.Token.kind base, Asm_syntax.Token.kind lparen)
+            ( Rivet_asm_syntax.Token.kind rparen,
+              Rivet_asm_syntax.Token.kind base,
+              Rivet_asm_syntax.Token.kind lparen )
           with
-          | Asm_syntax.Token.Rparen, Asm_syntax.Token.Ident b, Asm_syntax.Token.Lparen ->
+          | ( Rivet_asm_syntax.Token.Rparen,
+              Rivet_asm_syntax.Token.Ident b,
+              Rivet_asm_syntax.Token.Lparen ) ->
               Some (List.rev rest, b)
           | _ -> None)
       | _ -> None
@@ -100,11 +105,13 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
      consulted. *)
   let modifier_prefix = function
     | [ tok ] -> (
-        match Asm_syntax.Token.kind tok with Asm_syntax.Token.Modifier _ -> true | _ -> false)
+        match Rivet_asm_syntax.Token.kind tok with
+        | Rivet_asm_syntax.Token.Modifier _ -> true
+        | _ -> false)
     | _ -> false
 
   let parse_one slice =
-    let open Asm_syntax in
+    let open Rivet_asm_syntax in
     match split_memory slice with
     | Some (prefix, _) when modifier_prefix prefix -> (
         match parse_expr slice with Ok e -> Ok (Operand.Sym e) | Error _ as e -> e)
@@ -119,7 +126,7 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
             | Error _ as e -> e)
         | Some base -> (
             let parsed =
-              if prefix = [] then Ok (Asm_core.Expr.Const Bigint.zero) else parse_expr prefix
+              if prefix = [] then Ok (Rivet_asm_core.Expr.Const Bigint.zero) else parse_expr prefix
             in
             match parsed with
             | Ok offset -> Ok (Operand.Mem { Mem.offset; base })
@@ -129,10 +136,10 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
         | [ Token.Ident n ] -> (
             match Reg.find n with
             | Some r -> Ok (Operand.Reg r)
-            | None -> Ok (Operand.Sym (Asm_core.Expr.Symbol n)))
+            | None -> Ok (Operand.Sym (Rivet_asm_core.Expr.Symbol n)))
         | _ -> (
             match parse_expr (strip_plt_suffix slice) with
-            | Ok (Asm_core.Expr.Const n) -> Ok (Operand.Imm n)
+            | Ok (Rivet_asm_core.Expr.Const n) -> Ok (Operand.Imm n)
             | Ok e -> Ok (Operand.Sym e)
             | Error _ as e -> e))
 
@@ -147,14 +154,16 @@ module Make_with (P : PROFILE) (E : EXTENSIONS) = struct
     let rec go acc = function
       | [] -> Ok (List.rev acc)
       | s :: rest when fli && acc <> [] ->
-          go (Operand.Sym (Asm_core.Expr.Symbol (Asm_syntax.Token.slice_text s)) :: acc) rest
+          go
+            (Operand.Sym (Rivet_asm_core.Expr.Symbol (Rivet_asm_syntax.Token.slice_text s)) :: acc)
+            rest
       | s :: rest -> ( match parse_one s with Ok o -> go (o :: acc) rest | Error _ as e -> e)
     in
     match (rlist, List.rev slices) with
     | true, last :: (_ :: _ as list) -> (
-        let text = String.concat "," (List.rev_map Asm_syntax.Token.slice_text list) in
+        let text = String.concat "," (List.rev_map Rivet_asm_syntax.Token.slice_text list) in
         match parse_one last with
-        | Ok adj -> Ok [ Operand.Sym (Asm_core.Expr.Symbol text); adj ]
+        | Ok adj -> Ok [ Operand.Sym (Rivet_asm_core.Expr.Symbol text); adj ]
         | Error _ as e -> e)
     | _ -> go [] slices
 

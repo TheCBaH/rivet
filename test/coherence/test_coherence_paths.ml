@@ -2,7 +2,7 @@
    that library so rivet.test_support carries no ppx and no inline tests. *)
 
 open Test_coherence
-open Asm_core
+open Rivet_asm_core
 
 let%expect_test "simplify of the parsed text equals the direct normalized AST" =
   let parsed, _ = from_text () in
@@ -30,7 +30,7 @@ let%expect_test "simplify of the parsed text equals the direct normalized AST" =
 
 let%expect_test "lowering the direct normalized AST equals the direct lowered module" =
   match P.lower ~state:T.default_state direct_normalized with
-  | Error ds -> print_endline (Foundation.Diag.render ds)
+  | Error ds -> print_endline (Rivet_foundation.Diag.render ds)
   | Ok low ->
       let a = render_lowered low and b = render_lowered direct_lowered in
       if String.equal a b then print_endline "lowered modules are identical"
@@ -58,26 +58,26 @@ let%expect_test "lowering the direct normalized AST equals the direct lowered mo
 
 let image_of low =
   match P.plan low with
-  | Error ds -> failwith (Foundation.Diag.render ds)
+  | Error ds -> failwith (Rivet_foundation.Diag.render ds)
   | Ok l -> (
       let plan = Image.plan_of l in
       let addresses =
         List.map (fun (s : Image.segment_plan) -> (s.Image.seg_name, 0L)) plan.Image.segments
       in
       match Image.bind_image l ~addresses with
-      | Error ds -> failwith (Foundation.Diag.render ds)
+      | Error ds -> failwith (Rivet_foundation.Diag.render ds)
       | Ok img -> Fmt.to_to_string Image.pp img)
 
 let%expect_test "text, direct normalized AST and direct lowered module give one image" =
   let parsed, state = from_text () in
   let from_text_image =
     match P.lower ~state parsed with
-    | Error ds -> failwith (Foundation.Diag.render ds)
+    | Error ds -> failwith (Rivet_foundation.Diag.render ds)
     | Ok low -> image_of low
   in
   let from_normalized =
     match P.lower ~state:T.default_state direct_normalized with
-    | Error ds -> failwith (Foundation.Diag.render ds)
+    | Error ds -> failwith (Rivet_foundation.Diag.render ds)
     | Ok low -> image_of low
   in
   let from_lowered = image_of direct_lowered in
@@ -115,7 +115,8 @@ let%expect_test "a direct normalized AST with an out-of-range immediate is rejec
               insn =
                 {
                   T.Instruction.op = T.Opcode.Movz;
-                  ops = [ T.Operand.Reg (x "w0"); T.Operand.Imm (Foundation.Bigint.of_int 70000) ];
+                  ops =
+                    [ T.Operand.Reg (x "w0"); T.Operand.Imm (Rivet_foundation.Bigint.of_int 70000) ];
                 };
               origin;
             };
@@ -126,8 +127,8 @@ let%expect_test "a direct normalized AST with an out-of-range immediate is rejec
   | Ok _ -> print_endline "accepted an out-of-range immediate"
   | Error ds ->
       List.iter
-        (fun d -> print_endline (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds));
+        (fun d -> print_endline (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds));
   [%expect {| movz immediate does not fit 16 bits |}]
 
 let%expect_test "a direct normalized AST with no section is rejected at lowering" =
@@ -145,8 +146,8 @@ let%expect_test "a direct normalized AST with no section is rejected at lowering
   | Ok _ -> print_endline "accepted a fragment with nowhere to go"
   | Error ds ->
       List.iter
-        (fun d -> print_endline (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds));
+        (fun d -> print_endline (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds));
   [%expect {| this appears before any section directive |}]
 
 let%expect_test "a direct lowered module whose exported symbol is undefined is rejected at planning"
@@ -171,8 +172,8 @@ let%expect_test "a direct lowered module whose exported symbol is undefined is r
   | Ok _ -> print_endline "accepted an undefined export"
   | Error ds ->
       List.iter
-        (fun d -> print_endline (Foundation.Diagnostic.message d))
-        (Foundation.Diag.diagnostics ds));
+        (fun d -> print_endline (Rivet_foundation.Diagnostic.message d))
+        (Rivet_foundation.Diag.diagnostics ds));
   [%expect
     {|
     symbol absent is declared but never defined

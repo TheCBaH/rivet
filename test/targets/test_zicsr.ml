@@ -7,15 +7,19 @@ let render ds =
   String.concat "; "
     (List.map
        (fun d ->
-         Printf.sprintf "%s: %s" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-       (Foundation.Diag.diagnostics ds))
+         Printf.sprintf "%s: %s"
+           (Rivet_foundation.Diagnostic.code d)
+           (Rivet_foundation.Diagnostic.message d))
+       (Rivet_foundation.Diag.diagnostics ds))
 
 let spec text =
   match Target_config.parse_spec text with Ok s -> s | Error m -> failwith ("bad spec: " ^ m)
 
 let assembled ?features target text =
   let (module D : Target_intf.Target.DRIVER) = driver target in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:("\t.text\n\t" ^ text ^ "\n") in
+  let source =
+    Rivet_foundation.Span.source ~name:"<test>" ~contents:("\t.text\n\t" ^ text ^ "\n")
+  in
   match D.assemble ?features:(Option.map spec features) ~unit_name:"t" ~source () with
   | Error ds -> Error (render ds)
   | Ok laid_out -> (

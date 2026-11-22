@@ -11,7 +11,7 @@
  (public_name rivet.differential)
  (modules differential)
  (modes byte native)
- (libraries driver image target_intf foundation rivet_fmt)
+ (libraries driver image target_intf rivet_foundation rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 

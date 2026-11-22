@@ -71,9 +71,9 @@ let our_bytes target source_text =
   match Driver.Registry.find target with
   | None -> Error (target ^ ": no such target")
   | Some (module D : Target_intf.Target.DRIVER) -> (
-      let source = Foundation.Span.source ~name:(target ^ ".s") ~contents:source_text in
+      let source = Rivet_foundation.Span.source ~name:(target ^ ".s") ~contents:source_text in
       match D.assemble ~unit_name:"asm_snippet" ~source () with
-      | Error ds -> Error (String.trim (Foundation.Diag.render ds))
+      | Error ds -> Error (String.trim (Rivet_foundation.Diag.render ds))
       | Ok laid_out -> (
           let plan = Image.plan_of laid_out in
           let addresses =
@@ -82,7 +82,7 @@ let our_bytes target source_text =
               plan.Image.segments
           in
           match Image.bind_image laid_out ~addresses with
-          | Error ds -> Error (String.trim (Foundation.Diag.render ds))
+          | Error ds -> Error (String.trim (Rivet_foundation.Diag.render ds))
           | Ok img -> (
               match img.Image.segments with
               | s :: _ -> Ok s.Image.bytes

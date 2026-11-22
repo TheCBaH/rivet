@@ -16,9 +16,9 @@
   test_run)
  (modes byte native)
  (libraries
-  foundation
+  rivet_foundation
   compute
-  asm_core
+  rivet_asm_core
   i8080
   i8080_text
   i8080_asm

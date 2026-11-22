@@ -1,4 +1,4 @@
-(* Expect tests for Foundation.Bigint.
+(* Expect tests for Rivet_foundation.Bigint.
 
    Sections that the three-build equality gate also needs come from
    Corpus.Bigint_corpus, so the values checked here and the values compared
@@ -7,7 +7,7 @@
    pairs whose whole interest is which ones fail and with what message, and that
    reads better next to the output it produces than behind a function call. *)
 
-open Foundation
+open Rivet_foundation
 open Foundation_corpus.Bigint_corpus
 
 let%expect_test "representation" =

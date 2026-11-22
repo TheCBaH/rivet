@@ -22,15 +22,21 @@ module Check (E : ENC) = struct
     | "x" -> E.Operand.Reg (E.Reg.x (8 + i))
     | "f" -> E.Operand.Reg (E.Reg.f (8 + i))
     | "v" -> E.Operand.Reg (E.Reg.v (8 + i))
-    | "imm" -> E.Operand.Imm (Foundation.Bigint.of_int imm)
+    | "imm" -> E.Operand.Imm (Rivet_foundation.Bigint.of_int imm)
     | "mem" ->
         E.Operand.Mem
-          { E.Mem.offset = Asm_core.Expr.Const Foundation.Bigint.zero; base = E.Reg.x (8 + i) }
+          {
+            E.Mem.offset = Rivet_asm_core.Expr.Const Rivet_foundation.Bigint.zero;
+            base = E.Reg.x (8 + i);
+          }
     | "spmem" ->
         E.Operand.Mem
-          { E.Mem.offset = Asm_core.Expr.Const Foundation.Bigint.zero; base = E.Reg.x 2 }
-    | "sym" -> E.Operand.Sym (Asm_core.Expr.Symbol "l")
-    | _ -> E.Operand.Sym (Asm_core.Expr.Symbol "rtz")
+          {
+            E.Mem.offset = Rivet_asm_core.Expr.Const Rivet_foundation.Bigint.zero;
+            base = E.Reg.x 2;
+          }
+    | "sym" -> E.Operand.Sym (Rivet_asm_core.Expr.Symbol "l")
+    | _ -> E.Operand.Sym (Rivet_asm_core.Expr.Symbol "rtz")
 
   let rec lists n =
     if n = 0 then [ [] ]

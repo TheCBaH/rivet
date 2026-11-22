@@ -20,10 +20,10 @@
   driver_direct
   text_pipeline
   image
-  asm_core
+  rivet_asm_core
   target_intf
   codec
-  foundation
+  rivet_foundation
   arm
   aarch64
   x86_32

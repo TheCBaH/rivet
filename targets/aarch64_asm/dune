@@ -5,6 +5,6 @@
  (public_name rivet.aarch64_asm)
  (modules aarch64_asm)
  (modes byte native)
- (libraries foundation asm_core aarch64_encode)
+ (libraries rivet_foundation rivet_asm_core aarch64_encode)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

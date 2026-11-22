@@ -26,8 +26,8 @@
    dedicated rejection, as GNU ld would silently coerce it), and symbols resolve
    across inputs through [Symtab], with strong over common over weak. *)
 
-open Foundation
-open Asm_core
+open Rivet_foundation
+open Rivet_asm_core
 module List = Safe_list
 
 let ( @ ) = List.append

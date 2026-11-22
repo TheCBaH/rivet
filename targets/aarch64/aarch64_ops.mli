@@ -88,8 +88,8 @@ module Shape : sig
     | Fzero : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, 'f, 'r) t
     | Cond : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, Aarch64_types.Cond.t -> 'f, 'r) t
     | Fix_sym : string * ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, 'f, 'r) t
-    | Sym : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, Asm_core.Expr.t -> 'f, 'r) t
-    | Lo12 : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, Asm_core.Expr.t -> 'f, 'r) t
+    | Sym : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, Rivet_asm_core.Expr.t -> 'f, 'r) t
+    | Lo12 : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, Rivet_asm_core.Expr.t -> 'f, 'r) t
     | Mem : ('w, 's, 'a, 'f, 'r) t -> ('w, 's, 'a, Aarch64_types.Mem.t -> 'f, 'r) t
     | Post :
         ('w, 's, 'a, 'f, 'r) t
@@ -340,7 +340,7 @@ module Builders : sig
         'c,
         ('a, [< `Gp | `Sp ]) Aarch64_types.View.greg ->
         ('a, [< `Gp | `Sp ]) Aarch64_types.View.greg ->
-        Asm_core.Expr.t ->
+        Rivet_asm_core.Expr.t ->
         'd,
         'd )
       Shape.t
@@ -370,7 +370,7 @@ module Builders : sig
       ( 'a,
         'b,
         'c,
-        ('a, [< `Gp | `Zr ]) Aarch64_types.View.greg -> Asm_core.Expr.t -> 'd,
+        ('a, [< `Gp | `Zr ]) Aarch64_types.View.greg -> Rivet_asm_core.Expr.t -> 'd,
         'd )
       Shape.t
 
@@ -597,7 +597,9 @@ module Builders : sig
       ( 'a,
         'b,
         'c,
-        (Aarch64_types.View.x, [< `Gp | `Zr ]) Aarch64_types.View.greg -> Asm_core.Expr.t -> 'd,
+        (Aarch64_types.View.x, [< `Gp | `Zr ]) Aarch64_types.View.greg ->
+        Rivet_asm_core.Expr.t ->
+        'd,
         'd )
       Shape.t
 
@@ -624,7 +626,7 @@ module Builders : sig
     val xz :
       ('a, 'b, 'c, (Aarch64_types.View.x, [< `Gp | `Zr ]) Aarch64_types.View.greg -> 'd, 'd) Shape.t
 
-    val sym : ('a, 'b, 'c, Asm_core.Expr.t -> 'd, 'd) Shape.t
+    val sym : ('a, 'b, 'c, Rivet_asm_core.Expr.t -> 'd, 'd) Shape.t
     val imm : ('a, 'b, 'c, int -> 'd, 'd) Shape.t
 
     val d_xz :
@@ -747,7 +749,7 @@ module Builders : sig
   val add_lo12 :
     ('a, [< `Gp | `Sp ]) Aarch64_types.View.greg ->
     ('a, [< `Gp | `Sp ]) Aarch64_types.View.greg ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Aarch64_types.Instruction.t
 
   val sub :
@@ -1157,11 +1159,11 @@ module Builders : sig
     int ->
     Aarch64_types.Instruction.t
 
-  val b : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val bl : Asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val bl : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
 
   val b_cond :
-    Aarch64_encode__Aarch64_types.Cond.t -> Asm_core.Expr.t -> Aarch64_types.Instruction.t
+    Aarch64_encode__Aarch64_types.Cond.t -> Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
 
   val ret : unit -> Aarch64_types.Instruction.t
 
@@ -1172,19 +1174,23 @@ module Builders : sig
     (Aarch64_types.View.x, [< `Gp | `Zr ]) Aarch64_types.View.greg -> Aarch64_types.Instruction.t
 
   val cbz :
-    ('a, [< `Gp | `Zr ]) Aarch64_types.View.greg -> Asm_core.Expr.t -> Aarch64_types.Instruction.t
+    ('a, [< `Gp | `Zr ]) Aarch64_types.View.greg ->
+    Rivet_asm_core.Expr.t ->
+    Aarch64_types.Instruction.t
 
   val cbnz :
-    ('a, [< `Gp | `Zr ]) Aarch64_types.View.greg -> Asm_core.Expr.t -> Aarch64_types.Instruction.t
+    ('a, [< `Gp | `Zr ]) Aarch64_types.View.greg ->
+    Rivet_asm_core.Expr.t ->
+    Aarch64_types.Instruction.t
 
   val adrp :
     (Aarch64_types.View.x, [< `Gp | `Zr ]) Aarch64_types.View.greg ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Aarch64_types.Instruction.t
 
   val adr :
     (Aarch64_types.View.x, [< `Gp | `Zr ]) Aarch64_types.View.greg ->
-    Asm_core.Expr.t ->
+    Rivet_asm_core.Expr.t ->
     Aarch64_types.Instruction.t
 
   val udf : int -> Aarch64_types.Instruction.t
@@ -1448,22 +1454,22 @@ module Builders : sig
   val ld1_lane : Aarch64_types.View.vlist_lane -> Aarch64_types.Mem.t -> Aarch64_types.Instruction.t
   val st1_lane : Aarch64_types.View.vlist_lane -> Aarch64_types.Mem.t -> Aarch64_types.Instruction.t
   val ld1r : Aarch64_types.View.vlist -> Aarch64_types.Mem.t -> Aarch64_types.Instruction.t
-  val b_eq : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_ne : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_cs : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_cc : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_mi : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_pl : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_vs : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_vc : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_hi : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_ls : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_ge : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_lt : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_gt : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_le : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_al : Asm_core.Expr.t -> Aarch64_types.Instruction.t
-  val b_nv : Asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_eq : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_ne : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_cs : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_cc : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_mi : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_pl : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_vs : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_vc : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_hi : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_ls : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_ge : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_lt : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_gt : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_le : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_al : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
+  val b_nv : Rivet_asm_core.Expr.t -> Aarch64_types.Instruction.t
 end
 
 val all : entry list

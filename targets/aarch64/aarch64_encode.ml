@@ -19,7 +19,7 @@
    the same modules, so a target satisfies it by exposing what it already has
    rather than by restating each type and printer as a loose alias. *)
 
-open Foundation
+open Rivet_foundation
 module C = Codec
 include Aarch64_types
 module Aarch64_ops = Aarch64_ops
@@ -46,11 +46,12 @@ module Instruction = struct
      position and inside the brackets of a memory operand, and the expression around it is GNU's. *)
   let pp_gnu_operand ppf (o : Operand.t) =
     match o with
-    | Operand.Sym (Asm_core.Expr.Modifier (m, e)) ->
-        Fmt.pf ppf "#:%s:%a" m Asm_core.Gnu_module.expr e
-    | Operand.Sym e -> Asm_core.Gnu_module.expr ppf e
-    | Operand.Mem { Mem.base; offset = Disp.Sym (Asm_core.Expr.Modifier (m, e)); writeback; _ } ->
-        Fmt.pf ppf "[%a, #:%s:%a]%s" Reg.pp base m Asm_core.Gnu_module.expr e
+    | Operand.Sym (Rivet_asm_core.Expr.Modifier (m, e)) ->
+        Fmt.pf ppf "#:%s:%a" m Rivet_asm_core.Gnu_module.expr e
+    | Operand.Sym e -> Rivet_asm_core.Gnu_module.expr ppf e
+    | Operand.Mem
+        { Mem.base; offset = Disp.Sym (Rivet_asm_core.Expr.Modifier (m, e)); writeback; _ } ->
+        Fmt.pf ppf "[%a, #:%s:%a]%s" Reg.pp base m Rivet_asm_core.Gnu_module.expr e
           (if writeback then "!" else "")
     | o -> Operand.pp ppf o
 
@@ -270,7 +271,7 @@ module Lowered = struct
             zeroes the upper 32 bits of its 64-bit view, so [uxtw xd, wn] assembles to the identical
             bits as [mov wd, wn] (verified against real [as]/[objdump]) - {!Logical_shift} already
             covers it. *)
-    | Cbz of { nz : bool; rt : Reg.t; target : Asm_core.Lowered_ast.branch }
+    | Cbz of { nz : bool; rt : Reg.t; target : Rivet_asm_core.Lowered_ast.branch }
         (** [cbz]/[cbnz rt, target] - compare-and-branch, [nz] true for [cbnz] (M5 corpus evidence:
             [binarytrees.c]/[bisect.c]/etc.). A different 19-bit-immediate word
             shape from {!Bcond}'s (the fixed bits and [Rt] sit where {!Bcond}'s condition code does),
@@ -416,18 +417,18 @@ module Lowered = struct
             general [csinc rd, rn, rm, cc] this project would otherwise need a shared constructor
             for. *)
     | Csel of { cond : Cond.t; rd : Reg.t; rn : Reg.t; rm : Reg.t }
-    | Adrp of { rd : Reg.t; page : Asm_core.Lowered_ast.branch }
-    | Adr of { rd : Reg.t; offset : Asm_core.Lowered_ast.branch }
+    | Adrp of { rd : Reg.t; page : Rivet_asm_core.Lowered_ast.branch }
+    | Adr of { rd : Reg.t; offset : Rivet_asm_core.Lowered_ast.branch }
         (** [adr rd, label] - the same word shape as {!Adrp} (bit 31 is the only
             difference, [op = 0]), but the 21-bit immediate is a byte-granular
             program-relative offset, not a page count, so it materializes a
             precise address rather than a page base (M5 corpus evidence:
             [vmach.c]/[siphash24.c], a switch statement's
             computed-goto jump-table base). *)
-    | B of { target : Asm_core.Lowered_ast.branch }
-    | Bcond of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
+    | B of { target : Rivet_asm_core.Lowered_ast.branch }
+    | Bcond of { cond : Cond.t; target : Rivet_asm_core.Lowered_ast.branch }
     | Udf of { imm16 : int64 }
-    | Bl of { target : Asm_core.Lowered_ast.branch }
+    | Bl of { target : Rivet_asm_core.Lowered_ast.branch }
     | Fmov_imm of { rd : Freg.t; value : float }
     | Fcmp_imm0 of { rn : Freg.t }
         (** FCMP(immediate) only ever compares against [#0.0] - a fixed instruction, not a general
@@ -551,7 +552,7 @@ module Lowered = struct
     | Cbz { nz; rt; target } ->
         Fmt.pf ppf "%s %a, %a"
           (if nz then "cbnz" else "cbz")
-          Reg.pp rt Asm_core.Lowered_ast.pp_branch target
+          Reg.pp rt Rivet_asm_core.Lowered_ast.pp_branch target
     | Ldst_post { size; load; rt; rn; offset } ->
         Fmt.pf ppf "%s %a, [%a], #%Ld" (ldst_mnemonic ~size ~load) Reg.pp rt Reg.pp rn offset
     | Ldst_uoff { size; load; rt; rn; offset } ->
@@ -657,13 +658,15 @@ module Lowered = struct
         Fmt.pf ppf "msub %a, %a, %a, %a" Reg.pp rd Reg.pp rn Reg.pp rm Reg.pp ra
     | Csel { cond; rd; rn; rm } ->
         Fmt.pf ppf "csel %a, %a, %a, %s" Reg.pp rd Reg.pp rn Reg.pp rm (Cond.name cond)
-    | Adrp { rd; page } -> Fmt.pf ppf "adrp %a, %a" Reg.pp rd Asm_core.Lowered_ast.pp_branch page
-    | Adr { rd; offset } -> Fmt.pf ppf "adr %a, %a" Reg.pp rd Asm_core.Lowered_ast.pp_branch offset
-    | B { target } -> Fmt.pf ppf "b %a" Asm_core.Lowered_ast.pp_branch target
+    | Adrp { rd; page } ->
+        Fmt.pf ppf "adrp %a, %a" Reg.pp rd Rivet_asm_core.Lowered_ast.pp_branch page
+    | Adr { rd; offset } ->
+        Fmt.pf ppf "adr %a, %a" Reg.pp rd Rivet_asm_core.Lowered_ast.pp_branch offset
+    | B { target } -> Fmt.pf ppf "b %a" Rivet_asm_core.Lowered_ast.pp_branch target
     | Bcond { cond; target } ->
-        Fmt.pf ppf "b.%s %a" (Cond.name cond) Asm_core.Lowered_ast.pp_branch target
+        Fmt.pf ppf "b.%s %a" (Cond.name cond) Rivet_asm_core.Lowered_ast.pp_branch target
     | Udf { imm16 } -> Fmt.pf ppf "udf #%Ld" imm16
-    | Bl { target } -> Fmt.pf ppf "bl %a" Asm_core.Lowered_ast.pp_branch target
+    | Bl { target } -> Fmt.pf ppf "bl %a" Rivet_asm_core.Lowered_ast.pp_branch target
     | Fmov_imm { rd; value } -> Fmt.pf ppf "fmov %a, #%.18e" Freg.pp rd value
     | Fcmp_imm0 { rn } -> Fmt.pf ppf "fcmp %a, #0.0" Freg.pp rn
     | Fcmp_reg { rn; rm } -> Fmt.pf ppf "fcmp %a, %a" Freg.pp rn Freg.pp rm
@@ -705,7 +708,8 @@ module Lowered = struct
     | Sbfm x, Sbfm y ->
         Reg.equal x.rd y.rd && Reg.equal x.rn y.rn && x.immr = y.immr && x.imms = y.imms
     | Cbz x, Cbz y ->
-        x.nz = y.nz && Reg.equal x.rt y.rt && Asm_core.Lowered_ast.equal_branch x.target y.target
+        x.nz = y.nz && Reg.equal x.rt y.rt
+        && Rivet_asm_core.Lowered_ast.equal_branch x.target y.target
     | Ldst_post x, Ldst_post y ->
         x.size = y.size && x.load = y.load && Reg.equal x.rt y.rt && Reg.equal x.rn y.rn
         && Int64.equal x.offset y.offset
@@ -769,13 +773,14 @@ module Lowered = struct
     | Csel x, Csel y ->
         Cond.equal x.cond y.cond && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn
         && Reg.equal x.rm y.rm
-    | Adrp x, Adrp y -> Reg.equal x.rd y.rd && Asm_core.Lowered_ast.equal_branch x.page y.page
-    | Adr x, Adr y -> Reg.equal x.rd y.rd && Asm_core.Lowered_ast.equal_branch x.offset y.offset
-    | B x, B y -> Asm_core.Lowered_ast.equal_branch x.target y.target
+    | Adrp x, Adrp y -> Reg.equal x.rd y.rd && Rivet_asm_core.Lowered_ast.equal_branch x.page y.page
+    | Adr x, Adr y ->
+        Reg.equal x.rd y.rd && Rivet_asm_core.Lowered_ast.equal_branch x.offset y.offset
+    | B x, B y -> Rivet_asm_core.Lowered_ast.equal_branch x.target y.target
     | Bcond x, Bcond y ->
-        Cond.equal x.cond y.cond && Asm_core.Lowered_ast.equal_branch x.target y.target
+        Cond.equal x.cond y.cond && Rivet_asm_core.Lowered_ast.equal_branch x.target y.target
     | Udf x, Udf y -> Int64.equal x.imm16 y.imm16
-    | Bl x, Bl y -> Asm_core.Lowered_ast.equal_branch x.target y.target
+    | Bl x, Bl y -> Rivet_asm_core.Lowered_ast.equal_branch x.target y.target
     | Fmov_imm x, Fmov_imm y -> Freg.equal x.rd y.rd && Float.equal x.value y.value
     | Fcmp_imm0 x, Fcmp_imm0 y -> Freg.equal x.rn y.rn
     | Fcmp_reg x, Fcmp_reg y -> Freg.equal x.rn y.rn && Freg.equal x.rm y.rm
@@ -835,9 +840,9 @@ let fixup_family = function
 
 let fixup_role = function
   | Abs32 | Abs64 | Adrp_page | Pcrel_adr21 | Add_lo12 | Ldst_lo12 _ ->
-      Asm_core.Lowered_ast.Data_address
-  | Pcrel_b26 | Pcrel_b19 -> Asm_core.Lowered_ast.Branch
-  | Pcrel_call26 -> Asm_core.Lowered_ast.Call
+      Rivet_asm_core.Lowered_ast.Data_address
+  | Pcrel_b26 | Pcrel_b19 -> Rivet_asm_core.Lowered_ast.Branch
+  | Pcrel_call26 -> Rivet_asm_core.Lowered_ast.Call
 
 type target_state = { unused : unit }
 
@@ -2144,8 +2149,8 @@ let fcvt_alt ~src_double =
       ** field ~width:5 "rn" ** field ~width:5 "rd")
 
 let branch_value = function
-  | Asm_core.Lowered_ast.Symbolic _ -> 0L
-  | Asm_core.Lowered_ast.Resolved { value; _ } -> value
+  | Rivet_asm_core.Lowered_ast.Symbolic _ -> 0L
+  | Rivet_asm_core.Lowered_ast.Resolved { value; _ } -> value
 
 (* The fixup node is unsigned; the sign belongs to the whole value and is
    applied once, here, where the field width is known. *)
@@ -2668,7 +2673,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
                          nz = Int64.equal op 1L;
                          rt = { rt with Reg.width };
                          target =
-                           Asm_core.Lowered_ast.Resolved
+                           Rivet_asm_core.Lowered_ast.Resolved
                              { value = sign_extend ~width:19 d; rung = "cbz" };
                        }))
                 C.(
@@ -2923,7 +2928,10 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   let v = sign_extend ~width:21 (Int64.logor (Int64.shift_left immhi 2) immlo) in
                   Some
                     (Lowered.Adrp
-                       { rd; page = Asm_core.Lowered_ast.Resolved { value = v; rung = "adrp" } }))
+                       {
+                         rd;
+                         page = Rivet_asm_core.Lowered_ast.Resolved { value = v; rung = "adrp" };
+                       }))
                 C.(
                   const ~width:1 1L
                   ** fixup ~width:2 ~value_lsb:0 ~kind:Adrp_page "page"
@@ -2952,7 +2960,10 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   let v = sign_extend ~width:21 (Int64.logor (Int64.shift_left immhi 2) immlo) in
                   Some
                     (Lowered.Adr
-                       { rd; offset = Asm_core.Lowered_ast.Resolved { value = v; rung = "adr" } }))
+                       {
+                         rd;
+                         offset = Rivet_asm_core.Lowered_ast.Resolved { value = v; rung = "adr" };
+                       }))
                 C.(
                   const ~width:1 0L
                   ** fixup ~width:2 ~value_lsb:0 ~kind:Pcrel_adr21 "offset"
@@ -2973,7 +2984,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
                     (Lowered.B
                        {
                          target =
-                           Asm_core.Lowered_ast.Resolved
+                           Rivet_asm_core.Lowered_ast.Resolved
                              { value = sign_extend ~width:26 d; rung = "b" };
                        }))
                 C.(const ~width:6 0b000101L ** fixup ~width:26 ~kind:Pcrel_b26 "target"));
@@ -2988,7 +2999,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
                        {
                          cond;
                          target =
-                           Asm_core.Lowered_ast.Resolved
+                           Rivet_asm_core.Lowered_ast.Resolved
                              { value = sign_extend ~width:19 d; rung = "b-cond" };
                        }))
                 C.(
@@ -3010,7 +3021,7 @@ let codec : (Lowered.t, fixup_kind) C.t =
                     (Lowered.Bl
                        {
                          target =
-                           Asm_core.Lowered_ast.Resolved
+                           Rivet_asm_core.Lowered_ast.Resolved
                              { value = sign_extend ~width:26 d; rung = "bl" };
                        }))
                 C.(const ~width:6 0b100101L ** fixup ~width:26 ~kind:Pcrel_call26 "target"));
@@ -3244,7 +3255,7 @@ let simplify_instruction (_ : target_state) s =
          target, [adr]/[adrp], a literal load - a constant really is one, and stays
          that. *)
       let bare_immediates ops =
-        let imm = function Operand.Sym (Asm_core.Expr.Const v) -> Operand.Imm v | o -> o in
+        let imm = function Operand.Sym (Rivet_asm_core.Expr.Const v) -> Operand.Imm v | o -> o in
         match op with
         | Opcode.B | Opcode.Bl | Opcode.Bcond _ | Opcode.Cbz | Opcode.Cbnz | Opcode.Adr
         | Opcode.Adrp | Opcode.Ldr ->
@@ -3264,7 +3275,7 @@ let simplify_instruction (_ : target_state) s =
    operands; the rest - memory, address arithmetic, immediates with a choice of encoding, moves -
    stay code in {!lower_instruction}. *)
 
-let sym_target e = Asm_core.Lowered_ast.Symbolic { value = e; rung = None }
+let sym_target e = Rivet_asm_core.Lowered_ast.Symbolic { value = e; rung = None }
 let zr width = { Reg.num = 31; width; is_sp = false }
 let dp1_of op = List.find_opt (fun d -> dp1_op d = op) [ Rbit; Rev16; Rev32; Rev; Clz; Cls ]
 
@@ -3364,7 +3375,7 @@ let lower_regular i =
         | _ -> None)
     | Aarch64_ops.Enc.Cset -> (
         match i.Instruction.ops with
-        | [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Symbol s) ] ->
+        | [ Operand.Reg rd; Operand.Sym (Rivet_asm_core.Expr.Symbol s) ] ->
             Some (cond_of s (fun cond -> Ok [ Lowered.Cset { cond; rd } ]))
         | _ -> None)
     | Aarch64_ops.Enc.Csel -> (
@@ -3373,7 +3384,7 @@ let lower_regular i =
         match i.Instruction.ops with
         | [ Operand.Reg rd; Operand.Reg rn; Operand.Reg rm; Operand.Sym cond ] -> (
             match cond with
-            | Asm_core.Expr.Symbol s ->
+            | Rivet_asm_core.Expr.Symbol s ->
                 Some (cond_of s (fun cond -> Ok [ Lowered.Csel { cond; rd; rn; rm } ]))
             | _ -> Some (bad `Csel_needs_condition))
         | _ -> None)
@@ -3381,7 +3392,7 @@ let lower_regular i =
         match i.Instruction.ops with
         | [ Operand.Freg rd; Operand.Freg rn; Operand.Freg rm; Operand.Sym cond ] -> (
             match cond with
-            | Asm_core.Expr.Symbol s ->
+            | Rivet_asm_core.Expr.Symbol s ->
                 Some (cond_of s (fun cond -> Ok [ Lowered.Fcsel { cond; rd; rn; rm } ]))
             | _ -> Some (bad `Csel_needs_condition))
         | _ -> None)
@@ -3399,8 +3410,8 @@ let lower_regular i =
         | [
          Operand.Reg rd;
          Operand.Reg rn;
-         (Operand.Imm lsb_v | Operand.Sym (Asm_core.Expr.Const lsb_v));
-         (Operand.Imm width_v | Operand.Sym (Asm_core.Expr.Const width_v));
+         (Operand.Imm lsb_v | Operand.Sym (Rivet_asm_core.Expr.Const lsb_v));
+         (Operand.Imm width_v | Operand.Sym (Rivet_asm_core.Expr.Const width_v));
         ] -> (
             match (imm_of lsb_v, imm_of width_v) with
             | Error e, _ | _, Error e -> Some (Error e)
@@ -3440,16 +3451,16 @@ let lower_regular i =
         | _ -> None)
     | Aarch64_ops.Enc.Mrs -> (
         match i.Instruction.ops with
-        | [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "fpcr") ] ->
+        | [ Operand.Reg rt; Operand.Sym (Rivet_asm_core.Expr.Symbol "fpcr") ] ->
             Some (Ok [ Lowered.Mrs { sysreg = Fpcr; rt } ])
-        | [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol "nzcv") ] ->
+        | [ Operand.Reg rt; Operand.Sym (Rivet_asm_core.Expr.Symbol "nzcv") ] ->
             Some (Ok [ Lowered.Mrs { sysreg = Nzcv; rt } ])
         | _ -> None)
     | Aarch64_ops.Enc.Msr -> (
         match i.Instruction.ops with
-        | [ Operand.Sym (Asm_core.Expr.Symbol "fpcr"); Operand.Reg rt ] ->
+        | [ Operand.Sym (Rivet_asm_core.Expr.Symbol "fpcr"); Operand.Reg rt ] ->
             Some (Ok [ Lowered.Msr { sysreg = Fpcr; rt } ])
-        | [ Operand.Sym (Asm_core.Expr.Symbol "nzcv"); Operand.Reg rt ] ->
+        | [ Operand.Sym (Rivet_asm_core.Expr.Symbol "nzcv"); Operand.Reg rt ] ->
             Some (Ok [ Lowered.Msr { sysreg = Nzcv; rt } ])
         | _ -> None)
     | Aarch64_ops.Enc.Adrp -> (
@@ -3687,7 +3698,8 @@ let rec lower_instruction state i =
      form, so the expression underneath (with the modifier stripped) is what
      the lowered value stores. *)
       | ( Opcode.Add,
-          [ Operand.Reg rd; Operand.Reg rn; Operand.Sym (Asm_core.Expr.Modifier (m, inner)) ] ) ->
+          [ Operand.Reg rd; Operand.Reg rn; Operand.Sym (Rivet_asm_core.Expr.Modifier (m, inner)) ]
+        ) ->
           if m <> "lo12" then bad (`Wrong_memory_modifier m)
           else Ok [ Lowered.Add_imm { rd; rn; imm = Disp.Sym inner; shift12 = false } ]
       (* The explicit four-operand [lsl #12] spelling - not evidenced from the compiler's own output
@@ -3717,9 +3729,9 @@ let rec lower_instruction state i =
           else if m.Mem.writeback then bad `Writeback_out_of_scope
           else
             match m.Mem.offset with
-            | Disp.Sym (Asm_core.Expr.Modifier ("lo12", value)) ->
+            | Disp.Sym (Rivet_asm_core.Expr.Modifier ("lo12", value)) ->
                 Ok [ Lowered.Ldst_sx { size; rt; rn = m.Mem.base; offset = Disp.Sym value } ]
-            | Disp.Sym (Asm_core.Expr.Modifier (md, _)) -> bad (`Wrong_memory_modifier md)
+            | Disp.Sym (Rivet_asm_core.Expr.Modifier (md, _)) -> bad (`Wrong_memory_modifier md)
             | Disp.Sym _ -> bad `Missing_memory_modifier
             | Disp.Const off ->
                 let scale = Int64.of_int (access_bytes size) in
@@ -3822,8 +3834,8 @@ let rec lower_instruction state i =
                [bind_image] as a residual. *)
                 let inner =
                   match e with
-                  | Asm_core.Expr.Modifier ("lo12", inner) -> Ok inner
-                  | Asm_core.Expr.Modifier (m, _) -> Error (`Wrong_memory_modifier m)
+                  | Rivet_asm_core.Expr.Modifier ("lo12", inner) -> Ok inner
+                  | Rivet_asm_core.Expr.Modifier (m, _) -> Error (`Wrong_memory_modifier m)
                   | _ -> Error `Missing_memory_modifier
                 in
                 match inner with
@@ -3881,8 +3893,8 @@ let rec lower_instruction state i =
             | Disp.Sym e -> (
                 let inner =
                   match e with
-                  | Asm_core.Expr.Modifier ("lo12", inner) -> Ok inner
-                  | Asm_core.Expr.Modifier (m, _) -> Error (`Wrong_memory_modifier m)
+                  | Rivet_asm_core.Expr.Modifier ("lo12", inner) -> Ok inner
+                  | Rivet_asm_core.Expr.Modifier (m, _) -> Error (`Wrong_memory_modifier m)
                   | _ -> Error `Missing_memory_modifier
                 in
                 match inner with
@@ -4183,7 +4195,7 @@ let word_to_memory s = if String.length s <> 4 then s else String.init 4 (fun i 
 let fixup_of_placement (p : fixup_kind C.placement) =
   let kind = p.C.kind in
   {
-    Asm_core.Lowered_ast.kind;
+    Rivet_asm_core.Lowered_ast.kind;
     kind_name = fixup_kind_name kind;
     family = fixup_family kind;
     role = fixup_role kind;
@@ -4192,7 +4204,7 @@ let fixup_of_placement (p : fixup_kind C.placement) =
       List.map
         (fun (s : C.slice) ->
           {
-            Asm_core.Lowered_ast.bit_offset = 32 - s.C.bit_offset - s.C.bit_width;
+            Rivet_asm_core.Lowered_ast.bit_offset = 32 - s.C.bit_offset - s.C.bit_width;
             bit_width = s.C.bit_width;
             value_lsb = s.C.value_lsb;
           })
@@ -4202,16 +4214,16 @@ let fixup_of_placement (p : fixup_kind C.placement) =
     pc_bias = 0;
     range =
       (match kind with
-      | Abs32 -> Asm_core.Lowered_ast.Bitpattern 32
-      | Abs64 -> Asm_core.Lowered_ast.Bitpattern 64
-      | Pcrel_b26 | Pcrel_call26 -> Asm_core.Lowered_ast.Signed 26
-      | Pcrel_b19 -> Asm_core.Lowered_ast.Signed 19
-      | Adrp_page -> Asm_core.Lowered_ast.Signed 21
-      | Pcrel_adr21 -> Asm_core.Lowered_ast.Signed 21
-      | Add_lo12 -> Asm_core.Lowered_ast.Unsigned 12
-      | Ldst_lo12 _ -> Asm_core.Lowered_ast.Unsigned 12);
-    value = Asm_core.Expr.Const (Bigint.of_int 0);
-    pairing = Asm_core.Lowered_ast.Unpaired;
+      | Abs32 -> Rivet_asm_core.Lowered_ast.Bitpattern 32
+      | Abs64 -> Rivet_asm_core.Lowered_ast.Bitpattern 64
+      | Pcrel_b26 | Pcrel_call26 -> Rivet_asm_core.Lowered_ast.Signed 26
+      | Pcrel_b19 -> Rivet_asm_core.Lowered_ast.Signed 19
+      | Adrp_page -> Rivet_asm_core.Lowered_ast.Signed 21
+      | Pcrel_adr21 -> Rivet_asm_core.Lowered_ast.Signed 21
+      | Add_lo12 -> Rivet_asm_core.Lowered_ast.Unsigned 12
+      | Ldst_lo12 _ -> Rivet_asm_core.Lowered_ast.Unsigned 12);
+    value = Rivet_asm_core.Expr.Const (Bigint.of_int 0);
+    pairing = Rivet_asm_core.Lowered_ast.Unpaired;
     origin = Origin.synthesized ~pass:"aarch64.encode" ();
   }
 
@@ -4219,14 +4231,16 @@ let fixup_of_placement (p : fixup_kind C.placement) =
    and cannot mention Expr; pairing is by placement name. A placement with no
    expression belongs to a Resolved operand - its bits are already the real
    displacement - so it yields no linker fixup. *)
-let expr_of_lowered : Lowered.t -> (string * Asm_core.Expr.t) list = function
-  | Lowered.Bl { target = Asm_core.Lowered_ast.Symbolic { value; _ } }
-  | Lowered.B { target = Asm_core.Lowered_ast.Symbolic { value; _ } }
-  | Lowered.Bcond { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ }
-  | Lowered.Cbz { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
+let expr_of_lowered : Lowered.t -> (string * Rivet_asm_core.Expr.t) list = function
+  | Lowered.Bl { target = Rivet_asm_core.Lowered_ast.Symbolic { value; _ } }
+  | Lowered.B { target = Rivet_asm_core.Lowered_ast.Symbolic { value; _ } }
+  | Lowered.Bcond { target = Rivet_asm_core.Lowered_ast.Symbolic { value; _ }; _ }
+  | Lowered.Cbz { target = Rivet_asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
       [ ("target", value) ]
-  | Lowered.Adrp { page = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } -> [ ("page", value) ]
-  | Lowered.Adr { offset = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } -> [ ("offset", value) ]
+  | Lowered.Adrp { page = Rivet_asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
+      [ ("page", value) ]
+  | Lowered.Adr { offset = Rivet_asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
+      [ ("offset", value) ]
   (* The names are the codec placements', not descriptions: [form_of] pairs the
      two by name, and a mismatch does not fail - it silently produces an
      encoding with no fixup, which then binds to the placeholder. *)
@@ -4239,14 +4253,14 @@ let expr_of_lowered : Lowered.t -> (string * Asm_core.Expr.t) list = function
 let form_of l enc =
   let exprs = expr_of_lowered l in
   {
-    Asm_core.Lowered_ast.bytes = word_to_memory (C.Bits.to_bytes enc.C.bits);
+    Rivet_asm_core.Lowered_ast.bytes = word_to_memory (C.Bits.to_bytes enc.C.bits);
     form = C.form_id enc;
     fixups =
       List.filter_map
         (fun (p : fixup_kind C.placement) ->
           match List.assoc_opt p.C.name exprs with
           | None -> None
-          | Some value -> Some { (fixup_of_placement p) with Asm_core.Lowered_ast.value })
+          | Some value -> Some { (fixup_of_placement p) with Rivet_asm_core.Lowered_ast.value })
         enc.C.placements;
   }
 
@@ -4267,10 +4281,10 @@ type decode_context = { state : target_state; address : int64 }
 let branch_operand ~at target =
   let abs =
     match target with
-    | Asm_core.Lowered_ast.Resolved { value; _ } -> Int64.add at (Int64.mul value 4L)
-    | Asm_core.Lowered_ast.Symbolic _ -> at
+    | Rivet_asm_core.Lowered_ast.Resolved { value; _ } -> Int64.add at (Int64.mul value 4L)
+    | Rivet_asm_core.Lowered_ast.Symbolic _ -> at
   in
-  Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 abs))
+  Operand.Sym (Rivet_asm_core.Expr.Const (Bigint.of_int64 abs))
 
 let op_of enc = Option.get (Aarch64_ops.of_enc enc)
 
@@ -4282,7 +4296,7 @@ let instruction_of_lowered ?(at = 0L) = function
         let imm_op =
           match imm with
           | Disp.Const v -> Operand.Imm (Bigint.of_int64 v)
-          | Disp.Sym e -> Operand.Sym (Asm_core.Expr.Modifier ("lo12", e))
+          | Disp.Sym e -> Operand.Sym (Rivet_asm_core.Expr.Modifier ("lo12", e))
           | Disp.Reg _ -> Operand.Imm (Bigint.of_int 0)
           (* unreachable: decode never produces this *)
         in
@@ -4419,7 +4433,7 @@ let instruction_of_lowered ?(at = 0L) = function
       Some
         {
           Instruction.op = op_of Aarch64_ops.Enc.Cset;
-          ops = [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Symbol (Cond.name cond)) ];
+          ops = [ Operand.Reg rd; Operand.Sym (Rivet_asm_core.Expr.Symbol (Cond.name cond)) ];
         }
   | Lowered.Ubfm { rd; rn; immr; imms } -> (
       match ubfm_alias_of ~datasize:rd.Reg.width ~immr ~imms with
@@ -4608,13 +4622,13 @@ let instruction_of_lowered ?(at = 0L) = function
       Some
         {
           Instruction.op = op_of Aarch64_ops.Enc.Mrs;
-          ops = [ Operand.Reg rt; Operand.Sym (Asm_core.Expr.Symbol (sysreg_name sysreg)) ];
+          ops = [ Operand.Reg rt; Operand.Sym (Rivet_asm_core.Expr.Symbol (sysreg_name sysreg)) ];
         }
   | Lowered.Msr { sysreg; rt } ->
       Some
         {
           Instruction.op = op_of Aarch64_ops.Enc.Msr;
-          ops = [ Operand.Sym (Asm_core.Expr.Symbol (sysreg_name sysreg)); Operand.Reg rt ];
+          ops = [ Operand.Sym (Rivet_asm_core.Expr.Symbol (sysreg_name sysreg)); Operand.Reg rt ];
         }
   (* [adds zr, rn, #imm] is [cmn]; an [adds] that keeps its result has no surface spelling in
      this dialect, exactly like {!Lowered.Sub_imm}'s [subs] below. *)
@@ -4759,7 +4773,7 @@ let instruction_of_lowered ?(at = 0L) = function
               Operand.Reg rd;
               Operand.Reg rn;
               Operand.Reg rm;
-              Operand.Sym (Asm_core.Expr.Symbol (Cond.name cond));
+              Operand.Sym (Rivet_asm_core.Expr.Symbol (Cond.name cond));
             ];
         }
   | Lowered.Adrp { rd; page } ->
@@ -4767,14 +4781,14 @@ let instruction_of_lowered ?(at = 0L) = function
          the field: [adrp x16, 0] at address 8 names page 0, not offset 0. *)
       let abs =
         match page with
-        | Asm_core.Lowered_ast.Resolved { value; _ } ->
+        | Rivet_asm_core.Lowered_ast.Resolved { value; _ } ->
             Int64.add (Int64.logand at (Int64.lognot 0xFFFL)) (Int64.shift_left value 12)
-        | Asm_core.Lowered_ast.Symbolic _ -> Int64.logand at (Int64.lognot 0xFFFL)
+        | Rivet_asm_core.Lowered_ast.Symbolic _ -> Int64.logand at (Int64.lognot 0xFFFL)
       in
       Some
         {
           Instruction.op = op_of Aarch64_ops.Enc.Adrp;
-          ops = [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 abs)) ];
+          ops = [ Operand.Reg rd; Operand.Sym (Rivet_asm_core.Expr.Const (Bigint.of_int64 abs)) ];
         }
   | Lowered.Adr { rd; offset } ->
       (* Unlike [Adrp], the field already *is* the absolute-address delta, so
@@ -4782,13 +4796,13 @@ let instruction_of_lowered ?(at = 0L) = function
          own address, the same as any other PC-relative print. *)
       let abs =
         match offset with
-        | Asm_core.Lowered_ast.Resolved { value; _ } -> Int64.add at value
-        | Asm_core.Lowered_ast.Symbolic _ -> at
+        | Rivet_asm_core.Lowered_ast.Resolved { value; _ } -> Int64.add at value
+        | Rivet_asm_core.Lowered_ast.Symbolic _ -> at
       in
       Some
         {
           Instruction.op = op_of Aarch64_ops.Enc.Adr;
-          ops = [ Operand.Reg rd; Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 abs)) ];
+          ops = [ Operand.Reg rd; Operand.Sym (Rivet_asm_core.Expr.Const (Bigint.of_int64 abs)) ];
         }
   | Lowered.Udf { imm16 } ->
       Some
@@ -4834,7 +4848,7 @@ let instruction_of_lowered ?(at = 0L) = function
               Operand.Freg rd;
               Operand.Freg rn;
               Operand.Freg rm;
-              Operand.Sym (Asm_core.Expr.Symbol (Cond.name cond));
+              Operand.Sym (Rivet_asm_core.Expr.Symbol (Cond.name cond));
             ];
         }
   | Lowered.Cvtf { signed; rd; rn } ->
@@ -4922,7 +4936,7 @@ let evaluate_fixup kind ~place ~target =
 
 (* As on ARM: [.word] is four bytes. A64 additionally needs an eight-byte
    absolute for a pointer-sized initializer, which is why Abs64 exists. *)
-let align_unit = Asm_core.Directive.Exponent { zero_exponent = 0 }
+let align_unit = Rivet_asm_core.Directive.Exponent { zero_exponent = 0 }
 
 let data_widths =
   [
@@ -4962,18 +4976,18 @@ let pad_section_to_alignment = false
    caller's link register. The module is built as values, with no assembly text;
    lay it out beside the code that calls the names. *)
 let host_trampolines (bindings : (string * int64) list) :
-    Instruction.t Asm_core.Normalized_ast.module_ =
-  let module N = Asm_core.Normalized_ast in
-  let module D = Asm_core.Directive in
-  let origin = Foundation.Origin.synthesized ~pass:"aarch64.host_trampolines" () in
+    Instruction.t Rivet_asm_core.Normalized_ast.module_ =
+  let module N = Rivet_asm_core.Normalized_ast in
+  let module D = Rivet_asm_core.Directive in
+  let origin = Rivet_foundation.Origin.synthesized ~pass:"aarch64.host_trampolines" () in
   let x16 = Operand.Reg { Reg.num = 16; width = 64; is_sp = false } in
   let quarter addr k = Int64.logand (Int64.shift_right_logical addr (16 * k)) 0xffffL in
-  let imm v = Operand.Imm (Foundation.Bigint.of_int64 v) in
+  let imm v = Operand.Imm (Rivet_foundation.Bigint.of_int64 v) in
   let ins op ops = N.Instruction { insn = { Instruction.op; ops }; origin } in
   let dir directive = N.Directive { directive; origin } in
   let stub (name, address) =
     [
-      dir (D.Section { name = ".text"; perms = Asm_core.Perms.rx; nobits = false });
+      dir (D.Section { name = ".text"; perms = Rivet_asm_core.Perms.rx; nobits = false });
       dir (D.Align { boundary = 4; fill = None; max_skip = None });
       dir (D.Global { name });
       dir (D.Sym_type { name; kind = D.Function });

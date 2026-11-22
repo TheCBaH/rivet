@@ -6,9 +6,9 @@
  (modules riscv64_encode)
  (modes byte native melange)
  (libraries
-  foundation
+  rivet_foundation
   codec
-  asm_core
+  rivet_asm_core
   target_error
   target_encode
   riscv_family_encode)
@@ -20,10 +20,10 @@
  (modules riscv64)
  (modes byte native melange)
  (libraries
-  foundation
+  rivet_foundation
   codec
-  asm_core
-  asm_syntax
+  rivet_asm_core
+  rivet_asm_syntax
   target_intf
   riscv_family
   riscv64_encode)

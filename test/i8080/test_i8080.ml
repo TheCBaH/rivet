@@ -1,7 +1,7 @@
 let hex s =
   String.concat " " (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i])))
 
-let render e = Foundation.Diagnostic.render_all (Foundation.Diag.diagnostics e)
+let render e = Rivet_foundation.Diagnostic.render_all (Rivet_foundation.Diag.diagnostics e)
 
 let assemble text =
   match I8080_text.assemble text with

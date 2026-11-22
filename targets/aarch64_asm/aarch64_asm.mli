@@ -34,14 +34,14 @@ val ext_sxtb : int -> eop
 val ext_sxth : int -> eop
 val ext_sxtw : int -> eop
 val ext_sxtx : int -> eop
-val label : string -> Asm_core.Expr.t
+val label : string -> Rivet_asm_core.Expr.t
 
 val mk :
   (View.x, 'a) View.greg -> Aarch64_encode__Aarch64_types.Disp.t -> bool -> Aarch64_encode.Mem.t
 
 val off : (View.x, 'a) View.greg -> int -> Aarch64_encode.Mem.t
 val pre : (View.x, 'a) View.greg -> int -> Aarch64_encode.Mem.t
-val off_lo12 : (View.x, 'a) View.greg -> Asm_core.Expr.t -> Aarch64_encode.Mem.t
+val off_lo12 : (View.x, 'a) View.greg -> Rivet_asm_core.Expr.t -> Aarch64_encode.Mem.t
 
 val roff :
   ?extend:Extend.t ->
@@ -553,7 +553,7 @@ val add_i_lsl12 :
 val add_lo12 :
   ('a, [< `Gp | `Sp ]) Aarch64_encode.View.greg ->
   ('a, [< `Gp | `Sp ]) Aarch64_encode.View.greg ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Aarch64_encode.Instruction.t
 
 val sub :
@@ -963,9 +963,12 @@ val stp_post :
   int ->
   Aarch64_encode.Instruction.t
 
-val b : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val bl : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_cond : Aarch64_encode__Aarch64_types.Cond.t -> Asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val bl : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+
+val b_cond :
+  Aarch64_encode__Aarch64_types.Cond.t -> Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+
 val ret : unit -> Aarch64_encode.Instruction.t
 
 val ret_r :
@@ -975,19 +978,23 @@ val br :
   (Aarch64_encode.View.x, [< `Gp | `Zr ]) Aarch64_encode.View.greg -> Aarch64_encode.Instruction.t
 
 val cbz :
-  ('a, [< `Gp | `Zr ]) Aarch64_encode.View.greg -> Asm_core.Expr.t -> Aarch64_encode.Instruction.t
+  ('a, [< `Gp | `Zr ]) Aarch64_encode.View.greg ->
+  Rivet_asm_core.Expr.t ->
+  Aarch64_encode.Instruction.t
 
 val cbnz :
-  ('a, [< `Gp | `Zr ]) Aarch64_encode.View.greg -> Asm_core.Expr.t -> Aarch64_encode.Instruction.t
+  ('a, [< `Gp | `Zr ]) Aarch64_encode.View.greg ->
+  Rivet_asm_core.Expr.t ->
+  Aarch64_encode.Instruction.t
 
 val adrp :
   (Aarch64_encode.View.x, [< `Gp | `Zr ]) Aarch64_encode.View.greg ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Aarch64_encode.Instruction.t
 
 val adr :
   (Aarch64_encode.View.x, [< `Gp | `Zr ]) Aarch64_encode.View.greg ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   Aarch64_encode.Instruction.t
 
 val udf : int -> Aarch64_encode.Instruction.t
@@ -1260,19 +1267,19 @@ val st1_lane :
   Aarch64_encode.View.vlist_lane -> Aarch64_encode.Mem.t -> Aarch64_encode.Instruction.t
 
 val ld1r : Aarch64_encode.View.vlist -> Aarch64_encode.Mem.t -> Aarch64_encode.Instruction.t
-val b_eq : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_ne : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_cs : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_cc : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_mi : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_pl : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_vs : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_vc : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_hi : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_ls : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_ge : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_lt : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_gt : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_le : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_al : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
-val b_nv : Asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_eq : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_ne : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_cs : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_cc : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_mi : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_pl : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_vs : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_vc : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_hi : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_ls : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_ge : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_lt : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_gt : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_le : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_al : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t
+val b_nv : Rivet_asm_core.Expr.t -> Aarch64_encode.Instruction.t

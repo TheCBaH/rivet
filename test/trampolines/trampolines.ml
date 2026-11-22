@@ -1,4 +1,4 @@
-open Foundation
+open Rivet_foundation
 
 let bindings = [ ("host_f", 0x123456789abcdef0L); ("host_g", 0x0fedcba987654321L) ]
 

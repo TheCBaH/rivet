@@ -9,8 +9,8 @@
    guessed at, and so is applying [.globl], [.weak], [.type] and the like to an
    assigned name, since an absolute symbol is not emitted. *)
 
-open Foundation
-open Asm_core
+open Rivet_foundation
+open Rivet_asm_core
 
 type error = { message : string; span : Span.t }
 

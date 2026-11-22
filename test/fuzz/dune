@@ -24,7 +24,7 @@
   driver
   target_intf
   image
-  foundation)
+  rivet_foundation)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 

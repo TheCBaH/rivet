@@ -18,7 +18,7 @@
    carries no frame description to lose, and a producer that wants one needs the
    directive constructor first. *)
 
-open Foundation
+open Rivet_foundation
 
 type syntax = { type_char : char  (** introduces [function], [object], [progbits], [nobits] *) }
 

@@ -4,9 +4,9 @@
    order, named by the mnemonic and a suffix for the shape's immediates ([i]), memory ([m]),
    symbols ([s]), [%cl] ([cl]) and leading registers ([rm]: a register into memory). A builder's
    width is its general registers', or its size letter where none fixes it ([addl_im]); 32- and
-   64-bit immediates are [int64], an [_e] builder takes an {!Asm_core.Expr.t}. *)
+   64-bit immediates are [int64], an [_e] builder takes an {!Rivet_asm_core.Expr.t}. *)
 
-open Foundation
+open Rivet_foundation
 open X86_family_encode
 module View = X86_ops.View
 
@@ -135,7 +135,7 @@ module Rowkit = struct
   let b n (x : Mem.t) = Operand.Bcst { mem = x; n }
   let i n = Operand.Imm (Bigint.of_int n)
   let i64 n = Operand.Imm (Bigint.of_int64 n)
-  let e = function Asm_core.Expr.Const n -> Operand.Imm n | x -> Operand.Imm_sym x
+  let e = function Rivet_asm_core.Expr.Const n -> Operand.Imm n | x -> Operand.Imm_sym x
   let one = Operand.Imm Bigint.one
   let dfv n = Operand.Dfv n
   let rc r = Evex.rounding r

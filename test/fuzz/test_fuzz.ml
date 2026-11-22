@@ -235,8 +235,8 @@ let guard what f =
 
 let text_law name text =
   let (module D : Target_intf.Target.DRIVER) = driver name in
-  let source = Foundation.Span.source ~name:"fuzz.s" ~contents:text in
-  let render = function Ok _ -> () | Error ds -> ignore (Foundation.Diag.render ds) in
+  let source = Rivet_foundation.Span.source ~name:"fuzz.s" ~contents:text in
+  let render = function Ok _ -> () | Error ds -> ignore (Rivet_foundation.Diag.render ds) in
   guard "dump_tokens" (fun () -> render (D.dump_tokens ~source));
   guard "dump_source_ast" (fun () -> render (D.dump_source_ast ~unit_name:"fuzz" ~source));
   guard "dump_normalized_ast" (fun () ->
@@ -244,7 +244,7 @@ let text_law name text =
   guard "dump_lowered_ast" (fun () -> render (D.dump_lowered_ast ~unit_name:"fuzz" ~source ()));
   guard "assemble" (fun () ->
       match D.assemble_request request ~unit_name:"fuzz" ~source () with
-      | Error ds -> ignore (Foundation.Diag.render ds)
+      | Error ds -> ignore (Rivet_foundation.Diag.render ds)
       | Ok laid_out ->
           let plan = Image.plan_of laid_out in
           let addresses =
@@ -275,7 +275,7 @@ and bytes_law_exn name bytes =
   let (module D : Target_intf.Target.DRIVER) = driver name in
   let assemble what text =
     let source =
-      Foundation.Span.source ~name:"re.s" ~contents:("\t.text\n" ^ prelude name ^ text)
+      Rivet_foundation.Span.source ~name:"re.s" ~contents:("\t.text\n" ^ prelude name ^ text)
     in
     match guard what (fun () -> D.assemble ~unit_name:"re" ~source ()) with
     | Error ds ->
@@ -284,7 +284,7 @@ and bytes_law_exn name bytes =
           raise Exit)
         else
           Q.Test.fail_reportf "canonical text does not re-assemble:@.%s@.%s" text
-            (Foundation.Diag.render ds)
+            (Rivet_foundation.Diag.render ds)
     | Ok laid_out -> (
         let plan = Image.plan_of laid_out in
         let addresses =
@@ -299,7 +299,7 @@ and bytes_law_exn name bytes =
               raise Exit)
             else
               Q.Test.fail_reportf "canonical text does not bind:@.%s@.%s" text
-                (Foundation.Diag.render ds)
+                (Rivet_foundation.Diag.render ds)
         | Ok { Image.segments = []; _ } -> ""
         | Ok { Image.segments = s :: _; _ } -> s.Image.bytes)
   in
@@ -311,7 +311,7 @@ and bytes_law_exn name bytes =
     match guard "dump_disasm_canonical" (fun () -> dump bytes) with
     | Ok "" -> true
     | Error ds ->
-        ignore (Foundation.Diag.render ds);
+        ignore (Rivet_foundation.Diag.render ds);
         guard "dump_disasm_diagnostic" (fun () ->
             ignore (D.dump_disasm_diagnostic ~address:0x1000L bytes));
         true
@@ -324,7 +324,7 @@ and bytes_law_exn name bytes =
               true)
             else
               Q.Test.fail_reportf "re-encoded bytes do not decode:@.%s@.%s" text
-                (Foundation.Diag.render ds)
+                (Rivet_foundation.Diag.render ds)
         | Ok text' ->
             let bytes2 = assemble "re-assemble again" text' in
             bytes1 = bytes2
@@ -393,7 +393,9 @@ let regressions () =
   List.iter
     (fun (name, text) ->
       let (module D : Target_intf.Target.DRIVER) = driver name in
-      let source = Foundation.Span.source ~name:"r.s" ~contents:("\t.text\n\t" ^ text ^ "\n") in
+      let source =
+        Rivet_foundation.Span.source ~name:"r.s" ~contents:("\t.text\n\t" ^ text ^ "\n")
+      in
       match D.assemble ~unit_name:"r" ~source () with
       | Error _ -> ()
       | Ok _ -> fail "%s %S assembles, should be refused" name text)

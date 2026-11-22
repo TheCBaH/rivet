@@ -19,7 +19,7 @@
    it appears in the tree as an [Iso_fun] ({!le}) - [inspect] then shows it and
    [decode] inverts it for free. *)
 
-open Foundation
+open Rivet_foundation
 module C = Codec
 include X86_types
 module X86_ops = X86_ops
@@ -74,15 +74,15 @@ module Lowered = struct
         (** [bswap %r32]/[bswap %r64] ([0F C8+r], REX.W for 64): the compiler's
             [__builtin_bswap]/[__builtin_bswap64] (compiler-output evidence). *)
     | Jmp_rm of { rm : Rm.t }
-    | Jmp_rel of { target : Asm_core.Lowered_ast.branch }
-    | Jcc_rel of { cc : Cc.t; target : Asm_core.Lowered_ast.branch }
+    | Jmp_rel of { target : Rivet_asm_core.Lowered_ast.branch }
+    | Jcc_rel of { cc : Cc.t; target : Rivet_asm_core.Lowered_ast.branch }
         (** The two relaxing forms: [eb/e9] and [7x/0f 8x]. Unlike [call] these really do have two
             rungs, which is the whole reason {!Codec.Relax} exists. *)
-    | Short_rel of { op : Short.t; target : Asm_core.Lowered_ast.branch }
+    | Short_rel of { op : Short.t; target : Rivet_asm_core.Lowered_ast.branch }
         (** a rel8-only branch ([e2] loop, [e1] loope, [e0] loopne, [e3] jecxz/jrcxz, with
             0x67 where the counter is not the address width): one rung, so an out-of-range
             target is an error, not a longer form *)
-    | Call_rel of { target : Asm_core.Lowered_ast.branch }
+    | Call_rel of { target : Rivet_asm_core.Lowered_ast.branch }
         (** [e8 rel32]. The target is [Symbolic] from lowering and [Resolved] only from decode; the
             encoder dispatches on which, so a resolved displacement never rebuilds a ladder and a
             symbolic one never pretends to have a value. *)
@@ -299,12 +299,12 @@ module Lowered = struct
     | Pop { reg } -> Fmt.pf ppf "pop %a" Reg.pp reg
     | Bswap_r { reg; _ } -> Fmt.pf ppf "bswap %a" Reg.pp reg
     | Jmp_rm { rm } -> Fmt.pf ppf "jmp *%a" Rm.pp rm
-    | Jmp_rel { target } -> Fmt.pf ppf "jmp %a" Asm_core.Lowered_ast.pp_branch target
+    | Jmp_rel { target } -> Fmt.pf ppf "jmp %a" Rivet_asm_core.Lowered_ast.pp_branch target
     | Jcc_rel { cc; target } ->
-        Fmt.pf ppf "j%s %a" (Cc.name cc) Asm_core.Lowered_ast.pp_branch target
-    | Call_rel { target } -> Fmt.pf ppf "call %a" Asm_core.Lowered_ast.pp_branch target
+        Fmt.pf ppf "j%s %a" (Cc.name cc) Rivet_asm_core.Lowered_ast.pp_branch target
+    | Call_rel { target } -> Fmt.pf ppf "call %a" Rivet_asm_core.Lowered_ast.pp_branch target
     | Short_rel { op; target } ->
-        Fmt.pf ppf "%s %a" (Short.name op) Asm_core.Lowered_ast.pp_branch target
+        Fmt.pf ppf "%s %a" (Short.name op) Rivet_asm_core.Lowered_ast.pp_branch target
     | Push { reg } -> Fmt.pf ppf "push %a" Reg.pp reg
     | Push_imm { imm } -> Fmt.pf ppf "push $%s" (Disp.to_string imm)
     | Dec { reg } -> Fmt.pf ppf "dec %a" Reg.pp reg
@@ -398,11 +398,12 @@ module Lowered = struct
     | Pop x, Pop y -> Reg.equal x.reg y.reg
     | Bswap_r x, Bswap_r y -> x.width = y.width && Reg.equal x.reg y.reg
     | Jmp_rm x, Jmp_rm y -> Rm.equal x.rm y.rm
-    | Jmp_rel x, Jmp_rel y -> Asm_core.Lowered_ast.equal_branch x.target y.target
+    | Jmp_rel x, Jmp_rel y -> Rivet_asm_core.Lowered_ast.equal_branch x.target y.target
     | Jcc_rel x, Jcc_rel y ->
-        Cc.equal x.cc y.cc && Asm_core.Lowered_ast.equal_branch x.target y.target
-    | Call_rel x, Call_rel y -> Asm_core.Lowered_ast.equal_branch x.target y.target
-    | Short_rel x, Short_rel y -> x.op = y.op && Asm_core.Lowered_ast.equal_branch x.target y.target
+        Cc.equal x.cc y.cc && Rivet_asm_core.Lowered_ast.equal_branch x.target y.target
+    | Call_rel x, Call_rel y -> Rivet_asm_core.Lowered_ast.equal_branch x.target y.target
+    | Short_rel x, Short_rel y ->
+        x.op = y.op && Rivet_asm_core.Lowered_ast.equal_branch x.target y.target
     | Push x, Push y -> Reg.equal x.reg y.reg
     | Push_imm x, Push_imm y -> Disp.equal x.imm y.imm
     | Dec x, Dec y -> Reg.equal x.reg y.reg
@@ -594,9 +595,9 @@ module Instruction = struct
      parser both read it back: [pp] drops a size suffix where a register operand
      already says the size (GAS accepts either spelling, the parser only the
      suffixed one), and spells a 64-bit [movd] as GAS's [movq]. A symbol GNU
-     source cannot name as written is spelled as [Asm_core.Gnu_module] spells it. *)
+     source cannot name as written is spelled as [Rivet_asm_core.Gnu_module] spells it. *)
   let pp_gnu ppf i =
-    let rename = Asm_core.Gnu_module.rename in
+    let rename = Rivet_asm_core.Gnu_module.rename in
     let mem (m : Mem.t) =
       match m.disp with Disp.Sym e -> { m with disp = Disp.Sym (rename e) } | Disp.Const _ -> m
     in
@@ -670,9 +671,9 @@ let fixup_family = function
   | Pcrel32_data -> "pcrel-data"
 
 let fixup_role = function
-  | Abs32 | Abs64 | Pcrel32_data -> Asm_core.Lowered_ast.Data_address
-  | Pcrel8_branch | Pcrel32_branch -> Asm_core.Lowered_ast.Branch
-  | Pcrel32_call -> Asm_core.Lowered_ast.Call
+  | Abs32 | Abs64 | Pcrel32_data -> Rivet_asm_core.Lowered_ast.Data_address
+  | Pcrel8_branch | Pcrel32_branch -> Rivet_asm_core.Lowered_ast.Branch
+  | Pcrel32_call -> Rivet_asm_core.Lowered_ast.Call
 
 (* {1 Little-endian fields} *)
 
@@ -2646,7 +2647,10 @@ module Make (M : MODE) = struct
        which is why it still reaches the byte gate as a [`Fixed] form. *)
     | Opcode.Call, [ Operand.Sym e ] ->
         Ok
-          [ Lowered.Call_rel { target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } } ]
+          [
+            Lowered.Call_rel
+              { target = Rivet_asm_core.Lowered_ast.Symbolic { value = e; rung = None } };
+          ]
     (* The pin travels from the mnemonic into the operand and stops there.
        Lowering does not decide fixed-versus-relaxable - [encode] does, on
        exactly this field - which keeps the layering the same as everywhere
@@ -2655,13 +2659,16 @@ module Make (M : MODE) = struct
         Ok
           [
             Lowered.Jmp_rel
-              { target = Asm_core.Lowered_ast.Symbolic { value = e; rung = i.Instruction.form } };
+              {
+                target =
+                  Rivet_asm_core.Lowered_ast.Symbolic { value = e; rung = i.Instruction.form };
+              };
           ]
     | Opcode.Short_branch op, [ Operand.Sym e ] ->
         Ok
           [
             Lowered.Short_rel
-              { op; target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } };
+              { op; target = Rivet_asm_core.Lowered_ast.Symbolic { value = e; rung = None } };
           ]
     | Opcode.Jcc cc, [ Operand.Sym e ] ->
         Ok
@@ -2669,7 +2676,8 @@ module Make (M : MODE) = struct
             Lowered.Jcc_rel
               {
                 cc;
-                target = Asm_core.Lowered_ast.Symbolic { value = e; rung = i.Instruction.form };
+                target =
+                  Rivet_asm_core.Lowered_ast.Symbolic { value = e; rung = i.Instruction.form };
               };
           ]
     (* {3 SSE2 scalar float (M5)}
@@ -3442,15 +3450,15 @@ module Make (M : MODE) = struct
      rung by name or for all of them - because the dispatch happened before the
      codec was reached. *)
   let disp_of = function
-    | Asm_core.Lowered_ast.Symbolic _ -> 0L
-    | Asm_core.Lowered_ast.Resolved { value; _ } -> value
+    | Rivet_asm_core.Lowered_ast.Symbolic _ -> 0L
+    | Rivet_asm_core.Lowered_ast.Resolved { value; _ } -> value
 
   let resolved ~rung ~width d =
     (* A fixup node is unsigned - it is one slice of a value whose signedness
        belongs to the whole - so applying it is this Iso_fun's job. Skipping it
        makes a backward branch decode as a forward one at the far end of the
        address space. *)
-    Asm_core.Lowered_ast.Resolved { value = sign_extend ~width d; rung }
+    Rivet_asm_core.Lowered_ast.Resolved { value = sign_extend ~width d; rung }
 
   let jmp_rung ~opcode ~width ~kind ~rung =
     C.iso_fun ~name:("jmp." ^ rung)
@@ -5747,8 +5755,8 @@ module Make (M : MODE) = struct
                ~encode:(function
                  | Lowered.Call_rel { target } -> (
                      match target with
-                     | Asm_core.Lowered_ast.Symbolic _ -> Some ((), 0L)
-                     | Asm_core.Lowered_ast.Resolved { value; _ } -> Some ((), value))
+                     | Rivet_asm_core.Lowered_ast.Symbolic _ -> Some ((), 0L)
+                     | Rivet_asm_core.Lowered_ast.Resolved { value; _ } -> Some ((), value))
                  | _ -> None)
                ~decode:(fun ((), d) ->
                  (* A fixup node is unsigned - it is one slice of a value whose
@@ -5759,7 +5767,7 @@ module Make (M : MODE) = struct
                    (Lowered.Call_rel
                       {
                         target =
-                          Asm_core.Lowered_ast.Resolved
+                          Rivet_asm_core.Lowered_ast.Resolved
                             { value = sign_extend ~width:32 d; rung = "call-rel32" };
                       }))
                C.(const ~width:8 0xe8L ** le_fixup ~width:32 ~kind:Pcrel32_call "target"));
@@ -6132,7 +6140,7 @@ module Make (M : MODE) = struct
     let first = List.fold_left min max_int bits in
     let width = List.fold_left (fun a (s : C.slice) -> a + s.C.bit_width) 0 p.C.slices in
     {
-      Asm_core.Lowered_ast.kind;
+      Rivet_asm_core.Lowered_ast.kind;
       kind_name = fixup_kind_name kind;
       family = fixup_family kind;
       role = fixup_role kind;
@@ -6141,7 +6149,7 @@ module Make (M : MODE) = struct
         List.map
           (fun (s : C.slice) ->
             {
-              Asm_core.Lowered_ast.bit_offset = s.C.bit_offset - first;
+              Rivet_asm_core.Lowered_ast.bit_offset = s.C.bit_offset - first;
               bit_width = s.C.bit_width;
               value_lsb = s.C.value_lsb;
             })
@@ -6154,12 +6162,12 @@ module Make (M : MODE) = struct
         (* An absolute address is a bit pattern: 0x80000000 upwards (or, for
            [Abs64], 0x8000000000000000 upwards) is a perfectly good address,
            and a signed range would reject half of them. *)
-        | Abs32 -> Asm_core.Lowered_ast.Bitpattern 32
-        | Abs64 -> Asm_core.Lowered_ast.Bitpattern 64
-        | Pcrel8_branch -> Asm_core.Lowered_ast.Signed 8
-        | Pcrel32_branch | Pcrel32_call | Pcrel32_data -> Asm_core.Lowered_ast.Signed 32);
-      value = Asm_core.Expr.Const (Bigint.of_int 0);
-      pairing = Asm_core.Lowered_ast.Unpaired;
+        | Abs32 -> Rivet_asm_core.Lowered_ast.Bitpattern 32
+        | Abs64 -> Rivet_asm_core.Lowered_ast.Bitpattern 64
+        | Pcrel8_branch -> Rivet_asm_core.Lowered_ast.Signed 8
+        | Pcrel32_branch | Pcrel32_call | Pcrel32_data -> Rivet_asm_core.Lowered_ast.Signed 32);
+      value = Rivet_asm_core.Expr.Const (Bigint.of_int 0);
+      pairing = Rivet_asm_core.Lowered_ast.Unpaired;
       origin = Origin.synthesized ~pass:"x86.encode" ();
     }
 
@@ -6175,11 +6183,11 @@ module Make (M : MODE) = struct
   let disp_expr (rm : Rm.t) =
     match rm with Rm.Mem { Mem.disp = Disp.Sym e; _ } -> [ ("disp", e) ] | _ -> []
 
-  let expr_of_lowered : Lowered.t -> (string * Asm_core.Expr.t) list = function
-    | Lowered.Call_rel { target = Asm_core.Lowered_ast.Symbolic { value; _ } }
-    | Lowered.Jmp_rel { target = Asm_core.Lowered_ast.Symbolic { value; _ } }
-    | Lowered.Jcc_rel { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ }
-    | Lowered.Short_rel { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
+  let expr_of_lowered : Lowered.t -> (string * Rivet_asm_core.Expr.t) list = function
+    | Lowered.Call_rel { target = Rivet_asm_core.Lowered_ast.Symbolic { value; _ } }
+    | Lowered.Jmp_rel { target = Rivet_asm_core.Lowered_ast.Symbolic { value; _ } }
+    | Lowered.Jcc_rel { target = Rivet_asm_core.Lowered_ast.Symbolic { value; _ }; _ }
+    | Lowered.Short_rel { target = Rivet_asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
         [ ("target", value) ]
     | Lowered.Alu_rm_imm { rm; imm; _ } -> (
         disp_expr rm @ match imm with Disp.Sym e -> [ ("imm", e) ] | Disp.Const _ -> [])
@@ -6227,7 +6235,7 @@ module Make (M : MODE) = struct
     let total_bytes = String.length bytes in
     let exprs = expr_of_lowered l in
     {
-      Asm_core.Lowered_ast.bytes;
+      Rivet_asm_core.Lowered_ast.bytes;
       form = C.form_id enc;
       fixups =
         List.filter_map
@@ -6239,7 +6247,7 @@ module Make (M : MODE) = struct
             match List.assoc_opt p.C.name exprs with
             | None -> None
             | Some value ->
-                Some { (fixup_of_placement ~total_bytes p) with Asm_core.Lowered_ast.value })
+                Some { (fixup_of_placement ~total_bytes p) with Rivet_asm_core.Lowered_ast.value })
           enc.C.placements;
     }
 
@@ -6247,15 +6255,15 @@ module Make (M : MODE) = struct
      codec: a resolved displacement that fits a short form also fits a long one,
      so "several rungs succeeded" cannot tell the two apart. *)
   let pinned_rung : Lowered.t -> string option = function
-    | Lowered.Call_rel { target = Asm_core.Lowered_ast.Symbolic { rung; _ } }
-    | Lowered.Jmp_rel { target = Asm_core.Lowered_ast.Symbolic { rung; _ } }
-    | Lowered.Jcc_rel { target = Asm_core.Lowered_ast.Symbolic { rung; _ }; _ }
-    | Lowered.Short_rel { target = Asm_core.Lowered_ast.Symbolic { rung; _ }; _ } ->
+    | Lowered.Call_rel { target = Rivet_asm_core.Lowered_ast.Symbolic { rung; _ } }
+    | Lowered.Jmp_rel { target = Rivet_asm_core.Lowered_ast.Symbolic { rung; _ } }
+    | Lowered.Jcc_rel { target = Rivet_asm_core.Lowered_ast.Symbolic { rung; _ }; _ }
+    | Lowered.Short_rel { target = Rivet_asm_core.Lowered_ast.Symbolic { rung; _ }; _ } ->
         rung
-    | Lowered.Call_rel { target = Asm_core.Lowered_ast.Resolved { rung; _ } }
-    | Lowered.Jmp_rel { target = Asm_core.Lowered_ast.Resolved { rung; _ } }
-    | Lowered.Jcc_rel { target = Asm_core.Lowered_ast.Resolved { rung; _ }; _ }
-    | Lowered.Short_rel { target = Asm_core.Lowered_ast.Resolved { rung; _ }; _ } ->
+    | Lowered.Call_rel { target = Rivet_asm_core.Lowered_ast.Resolved { rung; _ } }
+    | Lowered.Jmp_rel { target = Rivet_asm_core.Lowered_ast.Resolved { rung; _ } }
+    | Lowered.Jcc_rel { target = Rivet_asm_core.Lowered_ast.Resolved { rung; _ }; _ }
+    | Lowered.Short_rel { target = Rivet_asm_core.Lowered_ast.Resolved { rung; _ }; _ } ->
         Some rung
     | _ -> None
 
@@ -7131,14 +7139,14 @@ module Make (M : MODE) = struct
     let s =
       match (s.Surface.mnemonic, s.Surface.ops) with
       | ( (("rep" | "repe" | "repz" | "repne" | "repnz") as p),
-          [ Operand.Sym (Asm_core.Expr.Symbol op) ] ) ->
+          [ Operand.Sym (Rivet_asm_core.Expr.Symbol op) ] ) ->
           let p = match p with "repz" -> "repe" | "repnz" -> "repne" | p -> p in
           { s with mnemonic = p ^ " " ^ op; ops = [] }
       (* GNU as encodes [int $3] as the one-byte int3 *)
       | "int", [ Operand.Imm v ] when Bigint.to_int_opt v = Some 3 ->
           { s with mnemonic = "int3"; ops = [] }
       (* [lock addl $1, (%rax)]: the parser hands the instruction over as a leading symbol *)
-      | "lock", Operand.Sym (Asm_core.Expr.Symbol op) :: ops ->
+      | "lock", Operand.Sym (Rivet_asm_core.Expr.Symbol op) :: ops ->
           { s with mnemonic = "lock " ^ op; ops }
       | _ -> s
     in
@@ -7258,7 +7266,7 @@ module Make (M : MODE) = struct
     | Lowered.Table x -> (
         match table_encode (`Row (Row.index x.row)) x.ops with
         | Some bytes ->
-            Ok (`Fixed { Asm_core.Lowered_ast.bytes; form = Row.mnemonic x.row; fixups = [] })
+            Ok (`Fixed { Rivet_asm_core.Lowered_ast.bytes; form = Row.mnemonic x.row; fixups = [] })
         | None -> Error (diag ~pos:__POS__ (`No_form (Row.mnemonic x.row))))
     | _ -> (
         match pinned_rung l with
@@ -7285,13 +7293,13 @@ module Make (M : MODE) = struct
        own address, which no test relies on: lowering never round-trips through
        text. *)
     let absolute_target = function
-      | Asm_core.Lowered_ast.Resolved { value; _ } ->
+      | Rivet_asm_core.Lowered_ast.Resolved { value; _ } ->
           Int64.add at (Int64.add (Int64.of_int len) value)
-      | Asm_core.Lowered_ast.Symbolic _ -> at
+      | Rivet_asm_core.Lowered_ast.Symbolic _ -> at
     in
     let rung_of = function
-      | Asm_core.Lowered_ast.Resolved { rung; _ } -> Some rung
-      | Asm_core.Lowered_ast.Symbolic { rung; _ } -> rung
+      | Rivet_asm_core.Lowered_ast.Resolved { rung; _ } -> Some rung
+      | Rivet_asm_core.Lowered_ast.Symbolic { rung; _ } -> rung
     in
     function
     | Lowered.Alu_rm_imm { ext; width; rm; imm } -> (
@@ -7440,7 +7448,7 @@ module Make (M : MODE) = struct
     | Lowered.Call_rel { target } ->
         Some
           (Instruction.mk Opcode.Call M.address_width
-             [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
+             [ Operand.Sym (Rivet_asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
     (* The two ladder forms carry their rung out to the text, which is B10: the
        image legitimately contains a near branch whose final displacement would
        also have fitted a short one - alignment padding and a cross-section
@@ -7452,15 +7460,15 @@ module Make (M : MODE) = struct
     | Lowered.Jmp_rel { target } ->
         Some
           (Instruction.mk ?form:(rung_of target) Opcode.Jmp M.address_width
-             [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
+             [ Operand.Sym (Rivet_asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
     | Lowered.Short_rel { op; target } ->
         Some
           (Instruction.mk (Opcode.Short_branch op) M.address_width
-             [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
+             [ Operand.Sym (Rivet_asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
     | Lowered.Jcc_rel { cc; target } ->
         Some
           (Instruction.mk ?form:(rung_of target) (Opcode.Jcc cc) M.address_width
-             [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
+             [ Operand.Sym (Rivet_asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
     | Lowered.Push { reg } -> Some (Instruction.mk Opcode.Push M.address_width [ Operand.Reg reg ])
     | Lowered.Push_imm { imm } ->
         Some
@@ -7849,7 +7857,7 @@ module Make (M : MODE) = struct
      initializer in GNU x86 syntax. [.word] is *two* bytes here, unlike on the
      two fixed-width targets, which is the whole reason this table is per
      dialect rather than shared. *)
-  let align_unit = Asm_core.Directive.Bytes
+  let align_unit = Rivet_asm_core.Directive.Bytes
 
   let data_widths =
     [
@@ -7914,10 +7922,10 @@ module Make (M : MODE) = struct
      returns to the caller. Built as values, with no assembly text; 64-bit modes
      only, since the address is a 64-bit immediate. *)
   let host_trampolines (bindings : (string * int64) list) :
-      Instruction.t Asm_core.Normalized_ast.module_ =
-    let module N = Asm_core.Normalized_ast in
-    let module D = Asm_core.Directive in
-    let origin = Foundation.Origin.synthesized ~pass:(M.name ^ ".host_trampolines") () in
+      Instruction.t Rivet_asm_core.Normalized_ast.module_ =
+    let module N = Rivet_asm_core.Normalized_ast in
+    let module D = Rivet_asm_core.Directive in
+    let origin = Rivet_foundation.Origin.synthesized ~pass:(M.name ^ ".host_trampolines") () in
     let r11 =
       match find_reg "r11" with
       | Some r -> Operand.Reg r
@@ -7934,11 +7942,11 @@ module Make (M : MODE) = struct
     let dir directive = N.Directive { directive; origin } in
     let stub (name, address) =
       [
-        dir (D.Section { name = ".text"; perms = Asm_core.Perms.rx; nobits = false });
+        dir (D.Section { name = ".text"; perms = Rivet_asm_core.Perms.rx; nobits = false });
         dir (D.Global { name });
         dir (D.Sym_type { name; kind = D.Function });
         N.Label { name; origin };
-        make "movq" [ Operand.Imm (Foundation.Bigint.of_int64 address); r11 ];
+        make "movq" [ Operand.Imm (Rivet_foundation.Bigint.of_int64 address); r11 ];
         make "jmp" [ r11 ];
       ]
     in

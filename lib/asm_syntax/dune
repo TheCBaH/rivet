@@ -17,10 +17,10 @@
 ; operands leave the grammar as token slices.
 
 (library
- (name asm_syntax)
+ (name rivet_asm_syntax)
  (public_name rivet.asm_syntax)
  (modes byte native)
- (libraries foundation asm_core rivet_fmt)
+ (libraries rivet_foundation rivet_asm_core rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 

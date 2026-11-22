@@ -12,11 +12,11 @@
    {!Arm_encode} exports is re-exported here, which is also what lets the parser
    below use [diag], [shift_of_name], [Reg] and the rest without qualification. *)
 
-open Foundation
+open Rivet_foundation
 include Arm_encode
 
 (* The front end's error domain (docs/errors.md). Separate from the
-   encoder's because it may name {!Asm_syntax} and the encoder's may not - see
+   encoder's because it may name {!Rivet_asm_syntax} and the encoder's may not - see
    {!Target_intf.Target.TARGET} for why that split exists. *)
 type parse_error_kind =
   [ `Unknown_register of string
@@ -31,7 +31,11 @@ type parse_error_kind =
   | `Unknown_syntax of string ]
 
 and shift_amount_out_of_range = { amount : int; max : int }
-and cannot_parse = { slice : Asm_syntax.Token.slice; reason : Asm_syntax.Parse_lines.error_kind }
+
+and cannot_parse = {
+  slice : Rivet_asm_syntax.Token.slice;
+  reason : Rivet_asm_syntax.Parse_lines.error_kind;
+}
 
 type parse_error = parse_error_kind Target_error.t
 
@@ -42,7 +46,7 @@ let pp_parse_error_kind ppf : parse_error_kind -> unit = function
   | `Shift_amount_out_of_range { max; _ } -> Fmt.pf ppf "shift amount must be 0 to %d" max
   | `Shift_amount_too_wide -> Fmt.string ppf "shift amount does not fit"
   | `Cannot_parse_operand { slice; _ } ->
-      Fmt.pf ppf "cannot parse operand %s" (Asm_syntax.Token.slice_text slice)
+      Fmt.pf ppf "cannot parse operand %s" (Rivet_asm_syntax.Token.slice_text slice)
   | `Unbalanced_brackets -> Fmt.string ppf "unbalanced brackets in operand"
   | `Bad_float_literal s -> Fmt.pf ppf "cannot parse floating-point literal %s" s
   | `Thumb_directive_out_of_scope -> Fmt.string ppf "Thumb is not in M1 scope"
@@ -74,8 +78,8 @@ let parse_diag ?pos ?origin kind =
    [r12] and a symbol named [r12] are the same token and only this file can
    tell them apart. *)
 let lexical_profile =
-  Asm_syntax.Lexical_profile.make ~name:"arm" ~comment_introducers:[ "@" ] ~statement_separator:';'
-    ~immediate_sigil:'#' ~modifier_syntax:[ "lower16"; "upper16" ] ()
+  Rivet_asm_syntax.Lexical_profile.make ~name:"arm" ~comment_introducers:[ "@" ]
+    ~statement_separator:';' ~immediate_sigil:'#' ~modifier_syntax:[ "lower16"; "upper16" ] ()
 
 (* {1 Operand parsing}
 
@@ -86,13 +90,13 @@ let lexical_profile =
    which is a target fact - AArch64 and ARM bracket memory operands, x86
    parenthesizes them - so it belongs here and not in the grammar. *)
 
-let regroup (slices : Asm_syntax.Token.slice list) =
+let regroup (slices : Rivet_asm_syntax.Token.slice list) =
   let depth_of slice =
     List.fold_left
       (fun d t ->
-        match Asm_syntax.Token.kind t with
-        | Asm_syntax.Token.Lbracket | Asm_syntax.Token.Lbrace -> d + 1
-        | Asm_syntax.Token.Rbracket | Asm_syntax.Token.Rbrace -> d - 1
+        match Rivet_asm_syntax.Token.kind t with
+        | Rivet_asm_syntax.Token.Lbracket | Rivet_asm_syntax.Token.Lbrace -> d + 1
+        | Rivet_asm_syntax.Token.Rbracket | Rivet_asm_syntax.Token.Rbrace -> d - 1
         | _ -> d)
       0 slice
   in
@@ -111,15 +115,15 @@ let regroup (slices : Asm_syntax.Token.slice list) =
   in
   go [] [] 0 slices
 
-let slice_origin (s : Asm_syntax.Token.slice) =
-  match Asm_syntax.Token.slice_span s with
+let slice_origin (s : Rivet_asm_syntax.Token.slice) =
+  match Rivet_asm_syntax.Token.slice_span s with
   | Some sp -> Origin.text sp
   | None -> Origin.synthesized ~pass:"arm" ()
 
-let parse_one (slice : Asm_syntax.Token.slice) =
+let parse_one (slice : Rivet_asm_syntax.Token.slice) =
   let origin = slice_origin slice in
   let bad kind = Error (parse_diag ~pos:__POS__ ~origin kind) in
-  let open Asm_syntax in
+  let open Rivet_asm_syntax in
   let signed_int neg v =
     match Bigint.to_int64_opt v with
     | None -> None
@@ -170,7 +174,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
           | None -> (
               match Sreg.find n with
               | Some r -> Ok (Operand.Sreg r)
-              | None -> Ok (Operand.Sym (Asm_core.Expr.Symbol n)))))
+              | None -> Ok (Operand.Sym (Rivet_asm_core.Expr.Symbol n)))))
   | [ Token.Immediate_sigil; Token.Int v ] -> Ok (Operand.Imm v)
   | [ Token.Immediate_sigil; Token.Minus; Token.Int v ] -> Ok (Operand.Imm (Bigint.neg v))
   | [ Token.Immediate_sigil; Token.Int whole; Token.Dot ] -> float_lit ~negate:false whole "."
@@ -343,7 +347,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
      so the sigil is dropped here and the rest handed on. Dropping it loses
      nothing: an A32 modifier only ever qualifies an immediate. *)
   | Token.Immediate_sigil :: Token.Modifier _ :: _ -> (
-      match Asm_syntax.Parse_lines.parse_expression (List.tl slice) with
+      match Rivet_asm_syntax.Parse_lines.parse_expression (List.tl slice) with
       | Ok e -> Ok (Operand.Sym e)
       | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))
   (* [{r0, r1, r2, r3}] - [push]'s operand (M5, the corpus notes:
@@ -420,7 +424,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
       (* A branch or call target, or any other expression the shapes above do
          not claim. The common expression parser decides, so [.LC1] and [foo+4]
          mean the same here as in a directive argument. *)
-      match Asm_syntax.Parse_lines.parse_expression slice with
+      match Rivet_asm_syntax.Parse_lines.parse_expression slice with
       | Ok e -> Ok (Operand.Sym e)
       | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))
 
@@ -430,12 +434,12 @@ let parse_one (slice : Asm_syntax.Token.slice) =
    a slice beginning with a shift name is joined to the one before it, exactly
    as x86 rejoins the pieces of a scaled address. Brackets cannot do this job
    the way [regroup] does, because there are none. *)
-let join_shifts (groups : Asm_syntax.Token.slice list) =
+let join_shifts (groups : Rivet_asm_syntax.Token.slice list) =
   let starts_with_shift s =
     match s with
     | t :: _ -> (
-        match Asm_syntax.Token.kind t with
-        | Asm_syntax.Token.Ident n -> shift_of_name n <> None
+        match Rivet_asm_syntax.Token.kind t with
+        | Rivet_asm_syntax.Token.Ident n -> shift_of_name n <> None
         | _ -> false)
     | [] -> false
   in

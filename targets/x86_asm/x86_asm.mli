@@ -4,7 +4,7 @@
    order, named by the mnemonic and a suffix for the shape's immediates ([i]), memory ([m]),
    symbols ([s]), [%cl] ([cl]) and leading registers ([rm]: a register into memory). A builder's
    width is its general registers', or its size letter where none fixes it ([addl_im]); 32- and
-   64-bit immediates are [int64], an [_e] builder takes an {!Asm_core.Expr.t}. *)
+   64-bit immediates are [int64], an [_e] builder takes an {!Rivet_asm_core.Expr.t}. *)
 
 module View = X86_family_encode.X86_ops.View
 
@@ -47,7 +47,7 @@ val mem :
 val mem_e :
   ?index:(([< `W32 | `W64 ] as 'w), [< `Hi | `Lo ]) greg ->
   ?scale:int ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ('w, [< `Hi | `Lo ]) greg ->
   X86_family_encode.Mem.t
 
@@ -57,7 +57,7 @@ val abs :
 val abs_e :
   ?index:([< `W32 | `W64 ], [< `Hi | `Lo ]) greg ->
   ?scale:int ->
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t
 
 module Evex : sig
@@ -129,7 +129,7 @@ module Rowkit : sig
   val b : int -> X86_family_encode.Mem.t -> X86_family_encode.Operand.t
   val i : int -> X86_family_encode.Operand.t
   val i64 : int64 -> X86_family_encode.Operand.t
-  val e : Asm_core.Expr.t -> X86_family_encode.Operand.t
+  val e : Rivet_asm_core.Expr.t -> X86_family_encode.Operand.t
   val one : X86_family_encode.Operand.t
   val dfv : int -> X86_family_encode.Operand.t
   val rc : Evex.rounding -> X86_family_encode.Operand.t

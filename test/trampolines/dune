@@ -13,8 +13,8 @@
   aarch64_encode
   x86_64_encode
   target_intf
-  foundation
-  asm_core
+  rivet_foundation
+  rivet_asm_core
   image)
  (inline_tests)
  (preprocess

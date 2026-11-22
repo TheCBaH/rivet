@@ -12,8 +12,8 @@
    package sit *below* target_intf in the dependency DAG (§5.1's one-way rule)
    instead of beside it. *)
 
-open Foundation
-open Asm_core
+open Rivet_foundation
+open Rivet_asm_core
 
 type 'sinsn item =
   | Label of { name : string; origin : Origin.t }

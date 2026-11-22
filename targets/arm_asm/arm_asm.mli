@@ -636,17 +636,17 @@ val sbfx :
   Arm_encode.Instruction.t
 
 val bx : ?cond:Arm_encode.Cond.t -> Arm_encode.Reg.t -> Arm_encode.Instruction.t
-val b : ?cond:Arm_encode.Cond.t -> Asm_core.Expr.t -> Arm_encode.Instruction.t
-val bl : ?cond:Arm_encode.Cond.t -> Asm_core.Expr.t -> Arm_encode.Instruction.t
+val b : ?cond:Arm_encode.Cond.t -> Rivet_asm_core.Expr.t -> Arm_encode.Instruction.t
+val bl : ?cond:Arm_encode.Cond.t -> Rivet_asm_core.Expr.t -> Arm_encode.Instruction.t
 val movw : ?cond:Arm_encode.Cond.t -> Arm_encode.Reg.t -> int -> Arm_encode.Instruction.t
 
 val movw_s :
-  ?cond:Arm_encode.Cond.t -> Arm_encode.Reg.t -> Asm_core.Expr.t -> Arm_encode.Instruction.t
+  ?cond:Arm_encode.Cond.t -> Arm_encode.Reg.t -> Rivet_asm_core.Expr.t -> Arm_encode.Instruction.t
 
 val movt : ?cond:Arm_encode.Cond.t -> Arm_encode.Reg.t -> int -> Arm_encode.Instruction.t
 
 val movt_s :
-  ?cond:Arm_encode.Cond.t -> Arm_encode.Reg.t -> Asm_core.Expr.t -> Arm_encode.Instruction.t
+  ?cond:Arm_encode.Cond.t -> Arm_encode.Reg.t -> Rivet_asm_core.Expr.t -> Arm_encode.Instruction.t
 
 val nop : ?cond:Arm_encode.Cond.t -> unit -> Arm_encode.Instruction.t
 val udf : int -> Arm_encode.Instruction.t
@@ -820,10 +820,10 @@ val vldr_s :
   ?cond:Arm_encode.Cond.t -> Arm_encode.Sreg.t -> Arm_encode.Mem.t -> Arm_encode.Instruction.t
 
 val vldr_d_l :
-  ?cond:Arm_encode.Cond.t -> Arm_encode.Dreg.t -> Asm_core.Expr.t -> Arm_encode.Instruction.t
+  ?cond:Arm_encode.Cond.t -> Arm_encode.Dreg.t -> Rivet_asm_core.Expr.t -> Arm_encode.Instruction.t
 
 val vldr_s_l :
-  ?cond:Arm_encode.Cond.t -> Arm_encode.Sreg.t -> Asm_core.Expr.t -> Arm_encode.Instruction.t
+  ?cond:Arm_encode.Cond.t -> Arm_encode.Sreg.t -> Rivet_asm_core.Expr.t -> Arm_encode.Instruction.t
 
 val vstr_d :
   ?cond:Arm_encode.Cond.t -> Arm_encode.Dreg.t -> Arm_encode.Mem.t -> Arm_encode.Instruction.t

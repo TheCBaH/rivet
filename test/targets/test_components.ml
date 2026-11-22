@@ -13,14 +13,16 @@ let diagnostics_text ds =
   String.concat ""
     (List.map
        (fun d ->
-         Printf.sprintf "%s: %s\n" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-       (Foundation.Diag.diagnostics ds))
+         Printf.sprintf "%s: %s\n"
+           (Rivet_foundation.Diagnostic.code d)
+           (Rivet_foundation.Diagnostic.message d))
+       (Rivet_foundation.Diag.diagnostics ds))
 
 (* The diagnostic disassembly of [text] bound at a fixed address, or the rendered
    diagnostics if it does not assemble. *)
 let disasm_string target text =
   let (module D : Target_intf.Target.DRIVER) = driver target in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.assemble ~unit_name:"t" ~source () with
   | Error ds -> diagnostics_text ds
   | Ok laid_out -> (
@@ -600,9 +602,9 @@ let%expect_test "generated x86 table rows round-trip through the decoder" =
                     X86_family_encode.Operand.Mem
                       (X86_family_encode.Mem.of_base ~disp:(X86_family_encode.Disp.Const 16L)
                          (reg ~width:(if mode64 then 64 else 32) 3))
-                | Imm _ -> X86_family_encode.Operand.Imm (Foundation.Bigint.of_int 1)
+                | Imm _ -> X86_family_encode.Operand.Imm (Rivet_foundation.Bigint.of_int 1)
                 | Rounding { sae_only } -> X86_family_encode.Operand.Rc (if sae_only then 4 else 1)
-                | One -> X86_family_encode.Operand.Imm Foundation.Bigint.one
+                | One -> X86_family_encode.Operand.Imm Rivet_foundation.Bigint.one
                 | Dfv -> X86_family_encode.Operand.Dfv 5
                 | Vsib { cls } ->
                     X86_family_encode.Operand.Mem

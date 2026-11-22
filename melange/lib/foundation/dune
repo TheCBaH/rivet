@@ -7,7 +7,7 @@
  (files ../../../lib/foundation/*.mli))
 
 (library
- (name foundation)
+ (name rivet_foundation)
  (modes byte native melange)
  (libraries
   rivet_fmt

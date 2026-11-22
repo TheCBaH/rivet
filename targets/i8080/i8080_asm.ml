@@ -6,8 +6,8 @@
    polymorphic variants, so a pair where a byte register is expected, or [sp]
    where [push] wants [psw], does not compile. *)
 
-open Foundation
-open Asm_core
+open Rivet_foundation
+open Rivet_asm_core
 module E = I8080_encode
 module Ops = I8080_ops
 module Operand = E.Operand

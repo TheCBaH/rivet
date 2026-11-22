@@ -12,11 +12,11 @@
    {!Aarch64_encode} exports is re-exported here, which is also what lets the
    parser below use [diag], [Reg], [Operand] and the rest without qualification. *)
 
-open Foundation
+open Rivet_foundation
 include Aarch64_encode
 
 (* The front end's error domain (docs/errors.md). Separate from the
-   encoder's because it may name {!Asm_syntax} and the encoder's may not - see
+   encoder's because it may name {!Rivet_asm_syntax} and the encoder's may not - see
    {!Target_intf.Target.TARGET} for why that split exists. *)
 type parse_error_kind =
   [ `Unknown_register of string
@@ -26,7 +26,10 @@ type parse_error_kind =
   | `Unbalanced_brackets
   | `Unknown_extend of string ]
 
-and cannot_parse = { slice : Asm_syntax.Token.slice; reason : Asm_syntax.Parse_lines.error_kind }
+and cannot_parse = {
+  slice : Rivet_asm_syntax.Token.slice;
+  reason : Rivet_asm_syntax.Parse_lines.error_kind;
+}
 
 type parse_error = parse_error_kind Target_error.t
 
@@ -35,7 +38,7 @@ let pp_parse_error_kind ppf : parse_error_kind -> unit = function
   | `Shift_amount_too_wide -> Fmt.string ppf "shift amount does not fit"
   | `Offset_too_wide -> Fmt.string ppf "offset does not fit"
   | `Cannot_parse_operand { slice; _ } ->
-      Fmt.pf ppf "cannot parse operand %s" (Asm_syntax.Token.slice_text slice)
+      Fmt.pf ppf "cannot parse operand %s" (Rivet_asm_syntax.Token.slice_text slice)
   | `Unbalanced_brackets -> Fmt.string ppf "unbalanced brackets in operand"
   | `Unknown_extend e -> Fmt.pf ppf "unknown index extend %s" e
 
@@ -62,7 +65,7 @@ let parse_diag ?pos ?origin kind =
    a dialect that also used [/] would otherwise take the first character and
    leave the second as a divide. *)
 let lexical_profile =
-  Asm_syntax.Lexical_profile.make ~name:"aarch64" ~comment_introducers:[ "//" ]
+  Rivet_asm_syntax.Lexical_profile.make ~name:"aarch64" ~comment_introducers:[ "//" ]
     ~statement_separator:';' ~immediate_sigil:'#' ~modifier_syntax:[ "lo12" ] ()
 (* {1 Operand parsing}
 
@@ -72,13 +75,13 @@ let lexical_profile =
    rejoined here by bracket depth. Second, the [!] belongs to the whole memory
    operand rather than to the token before it. *)
 
-let regroup (slices : Asm_syntax.Token.slice list) =
+let regroup (slices : Rivet_asm_syntax.Token.slice list) =
   let depth_of slice =
     List.fold_left
       (fun d t ->
-        match Asm_syntax.Token.kind t with
-        | Asm_syntax.Token.Lbracket | Asm_syntax.Token.Lbrace -> d + 1
-        | Asm_syntax.Token.Rbracket | Asm_syntax.Token.Rbrace -> d - 1
+        match Rivet_asm_syntax.Token.kind t with
+        | Rivet_asm_syntax.Token.Lbracket | Rivet_asm_syntax.Token.Lbrace -> d + 1
+        | Rivet_asm_syntax.Token.Rbracket | Rivet_asm_syntax.Token.Rbrace -> d - 1
         | _ -> d)
       0 slice
   in
@@ -97,8 +100,8 @@ let regroup (slices : Asm_syntax.Token.slice list) =
   in
   go [] [] 0 slices
 
-let slice_origin (s : Asm_syntax.Token.slice) =
-  match Asm_syntax.Token.slice_span s with
+let slice_origin (s : Rivet_asm_syntax.Token.slice) =
+  match Rivet_asm_syntax.Token.slice_span s with
   | Some sp -> Origin.text sp
   | None -> Origin.synthesized ~pass:"aarch64" ()
 
@@ -118,11 +121,11 @@ let q_name n =
     | _ -> None
   else None
 
-let parse_one (slice : Asm_syntax.Token.slice) =
+let parse_one (slice : Rivet_asm_syntax.Token.slice) =
   let origin = slice_origin slice in
   let bad kind = Error (parse_diag ~pos:__POS__ ~origin kind) in
-  let open Asm_core in
-  let open Asm_syntax in
+  let open Rivet_asm_core in
+  let open Rivet_asm_syntax in
   let mem ~base ~offset ~writeback =
     match Reg.find base with
     | Some r -> Ok (Operand.Mem { Mem.base = r; offset; writeback; pre = true })
@@ -272,7 +275,7 @@ let parse_one (slice : Asm_syntax.Token.slice) =
      on the expression here rather than being stripped: [lower_instruction]
      is what knows which instruction gets to keep it. *)
   | Token.Immediate_sigil :: Token.Modifier _ :: _ -> (
-      match Asm_syntax.Parse_lines.parse_expression (List.tl slice) with
+      match Rivet_asm_syntax.Parse_lines.parse_expression (List.tl slice) with
       | Ok e -> Ok (Operand.Sym e)
       | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))
   (* Register-offset addressing - [ldr w4, [x9, w10, uxtw #2]],
@@ -411,13 +414,13 @@ let parse_one (slice : Asm_syntax.Token.slice) =
         | _ :: _ :: _ :: rest -> List.filteri (fun i _ -> i < List.length rest - 1) rest
         | _ -> []
       in
-      match Asm_syntax.Parse_lines.parse_expression inner with
+      match Rivet_asm_syntax.Parse_lines.parse_expression inner with
       | Ok e -> mem ~base:b ~offset:(Disp.Sym e) ~writeback:false
       | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))
   | _ -> (
       (* A branch or call target: not a register, an immediate or an address, but
          still an expression. The common parser decides what it means. *)
-      match Asm_syntax.Parse_lines.parse_expression slice with
+      match Rivet_asm_syntax.Parse_lines.parse_expression slice with
       | Ok e -> Ok (Operand.Sym e)
       | Error e -> bad (`Cannot_parse_operand { slice; reason = Err.Error.kind e }))
 

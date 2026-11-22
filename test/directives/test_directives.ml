@@ -9,9 +9,9 @@ let assemble target src =
   match Driver.Registry.find target with
   | None -> failwith target
   | Some (module D : Target_intf.Target.DRIVER) -> (
-      let source = Foundation.Span.source ~name:(target ^ ".s") ~contents:src in
+      let source = Rivet_foundation.Span.source ~name:(target ^ ".s") ~contents:src in
       match D.assemble ~unit_name:"t" ~source () with
-      | Error ds -> Error (String.trim (Foundation.Diag.render ds))
+      | Error ds -> Error (String.trim (Rivet_foundation.Diag.render ds))
       | Ok laid_out -> (
           let plan = Image.plan_of laid_out in
           let addresses =
@@ -21,7 +21,7 @@ let assemble target src =
               plan.Image.segments
           in
           match Image.bind_image laid_out ~addresses with
-          | Error ds -> Error (String.trim (Foundation.Diag.render ds))
+          | Error ds -> Error (String.trim (Rivet_foundation.Diag.render ds))
           | Ok img -> Ok img.Image.segments))
 
 let segment name segs = List.find (fun (s : Image.segment) -> s.Image.name = name) segs
@@ -125,7 +125,7 @@ let show_segments src =
           List.iter
             (fun (s : Image.segment) ->
               Printf.printf " %s %s a%d %s+%d" s.Image.name
-                (Asm_core.Perms.to_string s.Image.perms)
+                (Rivet_asm_core.Perms.to_string s.Image.perms)
                 s.Image.alignment (hex s.Image.bytes) s.Image.zero_fill)
             segs
       | Error m -> print_string (" error: " ^ List.hd (String.split_on_char '\n' m)));
@@ -447,10 +447,10 @@ let assemble_laid target src =
   match Driver.Registry.find target with
   | None -> failwith target
   | Some (module D : Target_intf.Target.DRIVER) -> (
-      let source = Foundation.Span.source ~name:(target ^ ".s") ~contents:src in
+      let source = Rivet_foundation.Span.source ~name:(target ^ ".s") ~contents:src in
       match D.assemble ~unit_name:"t" ~source () with
       | Ok l -> l
-      | Error ds -> failwith (Foundation.Diag.render ds))
+      | Error ds -> failwith (Rivet_foundation.Diag.render ds))
 
 let first_line m = List.hd (String.split_on_char '\n' m)
 
@@ -458,7 +458,7 @@ let bind_show target src addresses =
   let l = assemble_laid target src in
   match Image.bind_image l ~addresses with
   | Error ds ->
-      Printf.printf "%s: %s\n" target (first_line (String.trim (Foundation.Diag.render ds)))
+      Printf.printf "%s: %s\n" target (first_line (String.trim (Rivet_foundation.Diag.render ds)))
   | Ok img ->
       List.iter
         (fun (s : Image.segment) ->
@@ -584,8 +584,8 @@ let squares n = String.concat " * " (List.init n (fun _ -> "(1 << 4000)"))
 let%expect_test "an expression over the resource limit is refused" =
   print_endline (quad_value (squares 20));
   print_endline (quad_value ("((" ^ squares 20 ^ ") >> 80000) + 1"));
-  (let open Asm_core.Expr in
-   let big = Const (Foundation.Bigint.shift_left_exn Foundation.Bigint.one 40000) in
+  (let open Rivet_asm_core.Expr in
+   let big = Const (Rivet_foundation.Bigint.shift_left_exn Rivet_foundation.Bigint.one 40000) in
    match fold no_env (Binary (Mul, big, big)) with
    | Error e -> print_endline (error_code (Err.Error.kind e))
    | Ok _ -> print_endline "folded");
@@ -596,15 +596,15 @@ let%expect_test "an expression over the resource limit is refused" =
     expr.resource |}]
 
 let%expect_test "the limit is configurable and the default restores" =
-  let saved = Asm_core.Expr.resource_limit_bits () in
-  Asm_core.Expr.set_resource_limit ~bits:256;
+  let saved = Rivet_asm_core.Expr.resource_limit_bits () in
+  Rivet_asm_core.Expr.set_resource_limit ~bits:256;
   Fun.protect
-    ~finally:(fun () -> Asm_core.Expr.set_resource_limit ~bits:saved)
+    ~finally:(fun () -> Rivet_asm_core.Expr.set_resource_limit ~bits:saved)
     (fun () ->
       List.iter
         (fun e -> Printf.printf "%s => %s\n" e (quad_value e))
         [ "((1 << 128) >> 128)"; "(1 << 200) * (1 << 100)" ]);
-  Printf.printf "limit %d\n" (Asm_core.Expr.resource_limit_bits ());
+  Printf.printf "limit %d\n" (Rivet_asm_core.Expr.resource_limit_bits ());
   [%expect
     {|
     ((1 << 128) >> 128) => 0100000000000000

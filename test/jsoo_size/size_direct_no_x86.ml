@@ -1,8 +1,10 @@
 (* The direct pipeline over AArch64 and RV32 only. *)
 let print instruction type_char =
   print_string
-    (Asm_core.Gnu_module.to_string { Asm_core.Gnu_module.type_char } ~instruction
-       { Asm_core.Normalized_ast.unit_name = "m"; items = [] })
+    (Rivet_asm_core.Gnu_module.to_string
+       { Rivet_asm_core.Gnu_module.type_char }
+       ~instruction
+       { Rivet_asm_core.Normalized_ast.unit_name = "m"; items = [] })
 
 module A = Driver_direct.Pipeline_direct.Make (Aarch64_encode)
 module R = Driver_direct.Pipeline_direct.Make (Riscv32_encode)

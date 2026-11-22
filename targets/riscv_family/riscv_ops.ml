@@ -4,7 +4,7 @@
    Each definition is also the opcode's typed builder. The encoder does not read it yet: a test
    holds it to the encoder's own tables until each consumer switches to it. *)
 
-open Foundation
+open Rivet_foundation
 open Riscv_types
 
 module Kind = struct
@@ -29,7 +29,7 @@ module Cmem = struct
 end
 
 (* A builder's operands, in the text's order. ['f] is the builder's type with immediates as [int]
-   ([int64] for [li]), ['g] the same with immediates as {!Asm_core.Expr.t} (the [_e] builder), ['r]
+   ([int64] for [li]), ['g] the same with immediates as {!Rivet_asm_core.Expr.t} (the [_e] builder), ['r]
    their result. *)
 module Shape = struct
   type ('f, 'g, 'r) t =
@@ -38,12 +38,12 @@ module Shape = struct
     | F : ('f, 'g, 'r) t -> (Freg.t -> 'f, Freg.t -> 'g, 'r) t
     | V : ('f, 'g, 'r) t -> (Vreg.t -> 'f, Vreg.t -> 'g, 'r) t
     | Creg : ('f, 'g, 'r) t -> (Creg.t -> 'f, Creg.t -> 'g, 'r) t
-    | Imm : ('f, 'g, 'r) t -> (int -> 'f, Asm_core.Expr.t -> 'g, 'r) t
-    | Imm64 : ('f, 'g, 'r) t -> (int64 -> 'f, Asm_core.Expr.t -> 'g, 'r) t
+    | Imm : ('f, 'g, 'r) t -> (int -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
+    | Imm64 : ('f, 'g, 'r) t -> (int64 -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
     | Mem : ('f, 'g, 'r) t -> (Mem.t -> 'f, Mem.t -> 'g, 'r) t
     | Cmem : ('f, 'g, 'r) t -> (Cmem.t -> 'f, Cmem.t -> 'g, 'r) t
     | Spmem : ('f, 'g, 'r) t -> (int -> 'f, int -> 'g, 'r) t
-    | Sym : ('f, 'g, 'r) t -> (Asm_core.Expr.t -> 'f, Asm_core.Expr.t -> 'g, 'r) t
+    | Sym : ('f, 'g, 'r) t -> (Rivet_asm_core.Expr.t -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
     | Rm : ('f, 'g, 'r) t -> (Rm.t -> 'f, Rm.t -> 'g, 'r) t
 
   let rec kinds : type f g r. (f, g, r) t -> Kind.t list = function
@@ -61,14 +61,14 @@ module Shape = struct
     | Rm s -> Kind.Rm :: kinds s
 
   let int n = Operand.Imm (Bigint.of_int n)
-  let expr = function Asm_core.Expr.Const n -> Operand.Imm n | e -> Operand.Sym e
+  let expr = function Rivet_asm_core.Expr.Const n -> Operand.Imm n | e -> Operand.Sym e
   let x r = Operand.Reg (Reg.X r)
 
   let mem ~base offset =
-    Operand.Mem { Mem.offset = Asm_core.Expr.Const (Bigint.of_int offset); base = Reg.X base }
+    Operand.Mem { Mem.offset = Rivet_asm_core.Expr.Const (Bigint.of_int offset); base = Reg.X base }
 
   let cmem (m : Cmem.t) = mem ~base:(Creg.to_xreg m.base) m.offset
-  let rm r = Operand.Sym (Asm_core.Expr.Symbol (Rm.name r))
+  let rm r = Operand.Sym (Rivet_asm_core.Expr.Symbol (Rm.name r))
 
   let rec build : type f g r. (f, g, r) t -> (Operand.t list -> r) -> f =
    fun s k ->
@@ -121,12 +121,12 @@ module Shape = struct
         sample s (i + 1) imm
           (f
              {
-               Mem.offset = Asm_core.Expr.Const Bigint.zero;
+               Mem.offset = Rivet_asm_core.Expr.Const Bigint.zero;
                base = Reg.X (Xreg.of_int_exn (8 + i));
              })
     | Cmem s -> sample s (i + 1) imm (f { Cmem.base = Creg.of_int_exn (8 + i); offset = 0 })
     | Spmem s -> sample s (i + 1) imm (f 0)
-    | Sym s -> sample s (i + 1) imm (f (Asm_core.Expr.Symbol "l"))
+    | Sym s -> sample s (i + 1) imm (f (Rivet_asm_core.Expr.Symbol "l"))
     | Rm s -> sample s (i + 1) imm (f Rm.Rtz)
 end
 

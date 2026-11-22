@@ -35,7 +35,7 @@
 %nonassoc UNARY
 
 %start <Statement.line list> program
-%start <Asm_core.Expr.t> expression_only
+%start <Rivet_asm_core.Expr.t> expression_only
 
 (* Every nonterminal's type is declared rather than inferred. Menhir can infer
    them by invoking the compiler, but that requires it to know the library's
@@ -50,7 +50,7 @@
 %type <unit> terminator
 %type <Statement.label> label
 %type <Statement.statement> statement
-%type <Foundation.Span.t * string list> pseudo_prefixes
+%type <Rivet_foundation.Span.t * string list> pseudo_prefixes
 %type <Token.slice list> dir_args
 %type <Token.slice list> dir_rest
 %type <Token.slice list> slices
@@ -58,7 +58,7 @@
 %type <Token.slice> slice_tail
 %type <Token.t> atom_or_equals
 %type <Token.t> atom
-%type <Asm_core.Expr.t> expr
+%type <Rivet_asm_core.Expr.t> expr
 
 %%
 
@@ -100,7 +100,7 @@ label:
     { Statement.Numeric
         (Token.span $1,
          match Token.kind $1 with
-         | Token.Int v -> (match Foundation.Bigint.to_int_opt v with Some n -> n | None -> -1)
+         | Token.Int v -> (match Rivet_foundation.Bigint.to_int_opt v with Some n -> n | None -> -1)
          | _ -> -1) }
 
 statement:
@@ -191,31 +191,31 @@ expression_only:
   | expr EOF { $1 }
 
 expr:
-  | INT { Asm_core.Expr.Const (match Token.kind $1 with Token.Int v -> v | _ -> Foundation.Bigint.zero) }
-  | IDENT { Asm_core.Expr.Symbol (match Token.kind $1 with Token.Ident s -> s | _ -> "") }
+  | INT { Rivet_asm_core.Expr.Const (match Token.kind $1 with Token.Int v -> v | _ -> Rivet_foundation.Bigint.zero) }
+  | IDENT { Rivet_asm_core.Expr.Symbol (match Token.kind $1 with Token.Ident s -> s | _ -> "") }
   (* The same names that [label] admits: [.L101] is a symbol wherever it is
      referenced, and it lexes as a directive only because of its leading dot. *)
-  | DIRECTIVE { Asm_core.Expr.Symbol (match Token.kind $1 with Token.Directive s -> s | _ -> "") }
-  | DOT { Asm_core.Expr.Current_location }
+  | DIRECTIVE { Rivet_asm_core.Expr.Symbol (match Token.kind $1 with Token.Directive s -> s | _ -> "") }
+  | DOT { Rivet_asm_core.Expr.Current_location }
   | LOCAL
     { match Token.kind $1 with
-      | Token.Local_label (n, d) -> Asm_core.Expr.Local_ref (n, d)
-      | _ -> Asm_core.Expr.Const Foundation.Bigint.zero }
+      | Token.Local_label (n, d) -> Rivet_asm_core.Expr.Local_ref (n, d)
+      | _ -> Rivet_asm_core.Expr.Const Rivet_foundation.Bigint.zero }
   (* A modifier is a prefix, not an operator: [:lower16:g + 4] takes the low
      half of the whole sum, so it wraps an expression rather than competing with
      one. See the precedence declaration above for the measurement. *)
   | MODIFIER expr %prec MODIFIER_PREC
-    { Asm_core.Expr.Modifier ((match Token.kind $1 with Token.Modifier m -> m | _ -> ""), $2) }
+    { Rivet_asm_core.Expr.Modifier ((match Token.kind $1 with Token.Modifier m -> m | _ -> ""), $2) }
   | LPAREN expr RPAREN { $2 }
-  | MINUS expr %prec UNARY { Asm_core.Expr.Unary (Asm_core.Expr.Neg, $2) }
-  | TILDE expr %prec UNARY { Asm_core.Expr.Unary (Asm_core.Expr.Lognot, $2) }
-  | expr PLUS expr { Asm_core.Expr.Binary (Asm_core.Expr.Add, $1, $3) }
-  | expr MINUS expr { Asm_core.Expr.Binary (Asm_core.Expr.Sub, $1, $3) }
-  | expr STAR expr { Asm_core.Expr.Binary (Asm_core.Expr.Mul, $1, $3) }
-  | expr SLASH expr { Asm_core.Expr.Binary (Asm_core.Expr.Div, $1, $3) }
-  | expr PERCENT expr { Asm_core.Expr.Binary (Asm_core.Expr.Mod, $1, $3) }
-  | expr AMP expr { Asm_core.Expr.Binary (Asm_core.Expr.And, $1, $3) }
-  | expr PIPE expr { Asm_core.Expr.Binary (Asm_core.Expr.Or, $1, $3) }
-  | expr CARET expr { Asm_core.Expr.Binary (Asm_core.Expr.Xor, $1, $3) }
-  | expr LSHIFT expr { Asm_core.Expr.Binary (Asm_core.Expr.Shl, $1, $3) }
-  | expr RSHIFT expr { Asm_core.Expr.Binary (Asm_core.Expr.Shr, $1, $3) }
+  | MINUS expr %prec UNARY { Rivet_asm_core.Expr.Unary (Rivet_asm_core.Expr.Neg, $2) }
+  | TILDE expr %prec UNARY { Rivet_asm_core.Expr.Unary (Rivet_asm_core.Expr.Lognot, $2) }
+  | expr PLUS expr { Rivet_asm_core.Expr.Binary (Rivet_asm_core.Expr.Add, $1, $3) }
+  | expr MINUS expr { Rivet_asm_core.Expr.Binary (Rivet_asm_core.Expr.Sub, $1, $3) }
+  | expr STAR expr { Rivet_asm_core.Expr.Binary (Rivet_asm_core.Expr.Mul, $1, $3) }
+  | expr SLASH expr { Rivet_asm_core.Expr.Binary (Rivet_asm_core.Expr.Div, $1, $3) }
+  | expr PERCENT expr { Rivet_asm_core.Expr.Binary (Rivet_asm_core.Expr.Mod, $1, $3) }
+  | expr AMP expr { Rivet_asm_core.Expr.Binary (Rivet_asm_core.Expr.And, $1, $3) }
+  | expr PIPE expr { Rivet_asm_core.Expr.Binary (Rivet_asm_core.Expr.Or, $1, $3) }
+  | expr CARET expr { Rivet_asm_core.Expr.Binary (Rivet_asm_core.Expr.Xor, $1, $3) }
+  | expr LSHIFT expr { Rivet_asm_core.Expr.Binary (Rivet_asm_core.Expr.Shl, $1, $3) }
+  | expr RSHIFT expr { Rivet_asm_core.Expr.Binary (Rivet_asm_core.Expr.Shr, $1, $3) }

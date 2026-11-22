@@ -2,7 +2,7 @@
    operands, condition codes, opcodes and instructions. The per-opcode table
    ({!X86_ops}) is written over these, and the family encoder includes them. *)
 
-open Foundation
+open Rivet_foundation
 module X86_table_row = X86_table_row
 module X86_table_rows = X86_table_rows
 
@@ -156,7 +156,7 @@ end
    the symbol g" has no meaning. An addend rides inside the expression, which is
    where GAS puts it too - [g+4(%%rip)] is one expression. *)
 module Disp = struct
-  type t = Const of int64 | Sym of Asm_core.Expr.t
+  type t = Const of int64 | Sym of Rivet_asm_core.Expr.t
 
   let equal a b =
     match (a, b) with
@@ -176,7 +176,7 @@ module Disp = struct
   (* An operand that starts with [$] reads back as an immediate, so a symbol such as [$1] is
      parenthesised, as GAS and CompCert spell it: [($1)(%rip)], [call ($1)]. *)
   let sym_to_string e =
-    let s = Asm_core.Expr.to_string e in
+    let s = Rivet_asm_core.Expr.to_string e in
     if String.length s > 0 && s.[0] = '$' then "(" ^ s ^ ")" else s
 
   let to_string = function Const v -> Int64.to_string v | Sym e -> sym_to_string e
@@ -217,7 +217,7 @@ module Operand = struct
      string/array address into a register or the stack, which the compiler's codegen
      (this project's only source of fixtures until now) never emitted. Kept
      as its own constructor rather than widening [Imm] to
-     [Bigint.t Asm_core.Expr.t]-like union, so every existing [Imm v] site
+     [Bigint.t Rivet_asm_core.Expr.t]-like union, so every existing [Imm v] site
      stays exactly as narrow as it was. All three evidenced forms now lower
      it: [mov]'s register-destination form ({!Lowered.Mov_r_imm}), the
      ALU-immediate form ({!Lowered.Alu_rm_imm}), and [push]'s immediate form
@@ -227,8 +227,8 @@ module Operand = struct
     | Reg of Reg.t
     | Mem of Mem.t
     | Imm of Bigint.t
-    | Imm_sym of Asm_core.Expr.t
-    | Sym of Asm_core.Expr.t
+    | Imm_sym of Rivet_asm_core.Expr.t
+    | Sym of Rivet_asm_core.Expr.t
     | Dfv of int  (** APX [{dfv=...}]: OF 8, SF 4, ZF 2, CF 1 *)
     | Bcst of { mem : Mem.t; n : int }  (** an EVEX broadcast source, [(mem){1toN}] *)
     | Masked of { op : t; k : int; zero : bool }
@@ -248,7 +248,7 @@ module Operand = struct
     | Reg r -> Reg.pp ppf r
     | Mem m -> Mem.pp ppf m
     | Imm v -> Fmt.pf ppf "$%a" Bigint.pp v
-    | Imm_sym e -> Fmt.pf ppf "$%s" (Asm_core.Expr.to_string e)
+    | Imm_sym e -> Fmt.pf ppf "$%s" (Rivet_asm_core.Expr.to_string e)
     | Sym e -> Fmt.string ppf (Disp.sym_to_string e)
     | Rc n -> Fmt.pf ppf "{%s}" (rc_name n)
     | Bcst { mem; n } -> Fmt.pf ppf "%a{1to%d}" Mem.pp mem n

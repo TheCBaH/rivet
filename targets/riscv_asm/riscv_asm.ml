@@ -1,7 +1,7 @@
 (* Typed builders for the hand-written RISC-V instructions, one per opcode and named by its
    mnemonic ([.] becomes [_], a keyword gains [_]): [add x1 x2 x3], [lw a0 (off sp 8)]. Immediates
    are [int] ([int64] for [li]); the [_e] builder of a form with an immediate takes an
-   {!Asm_core.Expr.t} instead. [Rv32] and [Rv64] add the builders only one XLEN has. Each builder
+   {!Rivet_asm_core.Expr.t} instead. [Rv32] and [Rv64] add the builders only one XLEN has. Each builder
    returns the {!Riscv_types.Instruction.t} the encoders lower; lowering still checks ranges and
    enabled extensions. *)
 
@@ -176,11 +176,11 @@ module Common = struct
 
   (* Operands. *)
   let off base n =
-    { Mem.offset = Asm_core.Expr.Const (Foundation.Bigint.of_int n); base = Reg.X base }
+    { Mem.offset = Rivet_asm_core.Expr.Const (Rivet_foundation.Bigint.of_int n); base = Reg.X base }
 
   let off_e base e = { Mem.offset = e; base = Reg.X base }
   let cmem base n = { Riscv_ops.Cmem.base; offset = n }
-  let label name = Asm_core.Expr.Symbol name
+  let label name = Rivet_asm_core.Expr.Symbol name
   let rne = Rm.Rne
   let rtz = Rm.Rtz
   let rdn = Rm.Rdn

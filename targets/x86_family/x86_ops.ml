@@ -4,7 +4,7 @@
    suffix for the shape ([add rax rbx], [add_i 5L rax], [add_m (mem rax) rbx]); a shape whose
    operands do not fix the operand size carries the AT&T size letter ([addl_im]). *)
 
-open Foundation
+open Rivet_foundation
 open X86_types
 
 (* Typed views of {!Reg.t}. A general register's width and a vector register's length are phantom
@@ -143,7 +143,7 @@ end
 
 (* A builder's operands in AT&T order. ['w]/['l] are the width/length its [R]/[V] operands share,
    ['f] the builder's type with immediates as [int] ([int64] for 32- and 64-bit immediates), ['g]
-   the same with immediates as {!Asm_core.Expr.t} (the [_e] builder), ['r] their result. *)
+   the same with immediates as {!Rivet_asm_core.Expr.t} (the [_e] builder), ['r] their result. *)
 module Shape = struct
   type ('w, 'l, 'f, 'g, 'r) t =
     | Done : ('w, 'l, 'r, 'r, 'r) t
@@ -161,10 +161,12 @@ module Shape = struct
     | St0 : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, 'f, 'g, 'r) t
     | Sti : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, st -> 'f, st -> 'g, 'r) t
     | M : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, Mem.t -> 'f, Mem.t -> 'g, 'r) t
-    | I : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, int -> 'f, Asm_core.Expr.t -> 'g, 'r) t
-    | I32 : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, int64 -> 'f, Asm_core.Expr.t -> 'g, 'r) t
-    | I64 : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, int64 -> 'f, Asm_core.Expr.t -> 'g, 'r) t
-    | S : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, Asm_core.Expr.t -> 'f, Asm_core.Expr.t -> 'g, 'r) t
+    | I : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, int -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
+    | I32 : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, int64 -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
+    | I64 : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, int64 -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
+    | S :
+        ('w, 'l, 'f, 'g, 'r) t
+        -> ('w, 'l, Rivet_asm_core.Expr.t -> 'f, Rivet_asm_core.Expr.t -> 'g, 'r) t
     | Cl : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, 'f, 'g, 'r) t
     | Ax : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, 'f, 'g, 'r) t
     | Dx : ('w, 'l, 'f, 'g, 'r) t -> ('w, 'l, 'f, 'g, 'r) t
@@ -201,7 +203,7 @@ module Shape = struct
   let sti (r : st) = Operand.Reg (r :> Reg.t)
   let imm n = Operand.Imm (Bigint.of_int n)
   let imm64 n = Operand.Imm (Bigint.of_int64 n)
-  let expr = function Asm_core.Expr.Const n -> Operand.Imm n | e -> Operand.Imm_sym e
+  let expr = function Rivet_asm_core.Expr.Const n -> Operand.Imm n | e -> Operand.Imm_sym e
   let st0 = Operand.Reg { Reg.cls = St; num = 0 }
   let cl = Operand.Reg { Reg.cls = Gpr8; num = 1 }
   let ax = Operand.Reg { Reg.cls = Gpr16; num = 0 }
@@ -303,7 +305,7 @@ module Sample = struct
       | I s -> go (i + 1) s (f 1)
       | I32 s -> go (i + 1) s (f 1L)
       | I64 s -> go (i + 1) s (f 1L)
-      | S s -> go (i + 1) s (f (Asm_core.Expr.Symbol "l"))
+      | S s -> go (i + 1) s (f (Rivet_asm_core.Expr.Symbol "l"))
       | Cl s -> go (i + 1) s f
       | Ax s -> go (i + 1) s f
       | Dx s -> go (i + 1) s f

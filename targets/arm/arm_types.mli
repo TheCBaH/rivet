@@ -195,9 +195,9 @@ val vfp_imm_domain : float C.Finite.domain
 module Operand : sig
   type t =
     | Reg of Reg.t
-    | Imm of Foundation.Bigint.t
+    | Imm of Rivet_foundation.Bigint.t
     | Mem of Mem.t
-    | Sym of Asm_core.Expr.t
+    | Sym of Rivet_asm_core.Expr.t
     | Shifted of { reg : Reg.t; kind : int; amount : int }
     | Dreg of Dreg.t
     | Sreg of Sreg.t
@@ -210,7 +210,7 @@ module Operand : sig
 end
 
 module Surface : sig
-  type t = { mnemonic : string; ops : Operand.t list; origin : Foundation.Origin.t }
+  type t = { mnemonic : string; ops : Operand.t list; origin : Rivet_foundation.Origin.t }
 
   val pp : Format.formatter -> t -> unit
 end
@@ -361,12 +361,17 @@ module Lowered : sig
     | Push of { cond : Cond.t; regs : int }
     | Ldm of { cond : Cond.t; load : bool; rn : Reg.t; regs : int }
     | Udf of { imm16 : int64 }
-    | Bl of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
-    | B of { cond : Cond.t; target : Asm_core.Lowered_ast.branch }
+    | Bl of { cond : Cond.t; target : Rivet_asm_core.Lowered_ast.branch }
+    | B of { cond : Cond.t; target : Rivet_asm_core.Lowered_ast.branch }
     | Mul of { cond : Cond.t; s : bool; rd : Reg.t; rn : Reg.t; rm : Reg.t }
     | Mla of { cond : Cond.t; s : bool; rd : Reg.t; rn : Reg.t; rm : Reg.t; ra : Reg.t }
     | Umull of { cond : Cond.t; s : bool; rdlo : Reg.t; rdhi : Reg.t; rn : Reg.t; rm : Reg.t }
-    | Movw_movt of { cond : Cond.t; top : bool; rd : Reg.t; imm : Asm_core.Lowered_ast.branch }
+    | Movw_movt of {
+        cond : Cond.t;
+        top : bool;
+        rd : Reg.t;
+        imm : Rivet_asm_core.Lowered_ast.branch;
+      }
     | Vmov_reg_d of { cond : Cond.t; vd : Dreg.t; vm : Dreg.t }
     | Vmov_reg_s of { cond : Cond.t; vd : Sreg.t; vm : Sreg.t }
     | Vmov_imm_d of { cond : Cond.t; vd : Dreg.t; imm8 : int }
@@ -392,8 +397,8 @@ module Lowered : sig
     | Vcvt_s32_f64 of { cond : Cond.t; sd : Sreg.t; dm : Dreg.t }
     | Vmem_d of { cond : Cond.t; load : bool; vd : Dreg.t; rn : Reg.t; offset : int64 }
     | Vmem_s of { cond : Cond.t; load : bool; vd : Sreg.t; rn : Reg.t; offset : int64 }
-    | Vldr_lit_d of { cond : Cond.t; vd : Dreg.t; target : Asm_core.Lowered_ast.branch }
-    | Vldr_lit_s of { cond : Cond.t; vd : Sreg.t; target : Asm_core.Lowered_ast.branch }
+    | Vldr_lit_d of { cond : Cond.t; vd : Dreg.t; target : Rivet_asm_core.Lowered_ast.branch }
+    | Vldr_lit_s of { cond : Cond.t; vd : Sreg.t; target : Rivet_asm_core.Lowered_ast.branch }
     | Vpush of { cond : Cond.t; vd : Dreg.t; count : int }
     | Nop of { cond : Cond.t }
     | Shift_reg of { cond : Cond.t; kind : int; rd : Reg.t; rm : Reg.t; rs : Reg.t }

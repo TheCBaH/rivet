@@ -8,8 +8,10 @@ let render ds =
   String.concat "; "
     (List.map
        (fun d ->
-         Printf.sprintf "%s: %s" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-       (Foundation.Diag.diagnostics ds))
+         Printf.sprintf "%s: %s"
+           (Rivet_foundation.Diagnostic.code d)
+           (Rivet_foundation.Diagnostic.message d))
+       (Rivet_foundation.Diag.diagnostics ds))
 
 let hex b =
   String.concat " " (List.init (String.length b) (fun i -> Printf.sprintf "%02x" (Char.code b.[i])))
@@ -23,7 +25,7 @@ let spec features =
 
 let assemble ?features target text =
   let (module D : Target_intf.Target.DRIVER) = driver target in
-  let source = Foundation.Span.source ~name:"<asm>" ~contents:("\t.text\n\t" ^ text ^ "\n") in
+  let source = Rivet_foundation.Span.source ~name:"<asm>" ~contents:("\t.text\n\t" ^ text ^ "\n") in
   match D.assemble ?features:(spec features) ~unit_name:"t" ~source () with
   | Error ds -> Error (render ds)
   | Ok laid_out -> (
@@ -44,7 +46,7 @@ let decode ?features target bytes =
 
 (* [E.name] is the target's driver name. *)
 module Make (E : Target_encode.ENCODE) = struct
-  let message e = Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))
+  let message e = Rivet_foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))
 
   (* Every lowered form's bytes in order; a relaxable form takes its first rung. *)
   (* [features] as the driver takes them, e.g. ["+zbs,+zicond"]. *)
@@ -64,7 +66,7 @@ module Make (E : Target_encode.ENCODE) = struct
           (fun acc l ->
             Result.bind acc (fun b ->
                 match E.encode l with
-                | Ok (`Fixed f) | Ok (`Relax (f :: _)) -> Ok (b ^ f.Asm_core.Lowered_ast.bytes)
+                | Ok (`Fixed f) | Ok (`Relax (f :: _)) -> Ok (b ^ f.Rivet_asm_core.Lowered_ast.bytes)
                 | Ok (`Relax []) -> Error "no rung"
                 | Error e -> Error (message e)))
           (Ok "") ls

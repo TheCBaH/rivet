@@ -17,7 +17,7 @@
    What is restricted is *relaxation*, which stays intra-section because a
    cross-section displacement is not knowable before binding. *)
 
-open Foundation
+open Rivet_foundation
 
 (* The generated name uses ['#'], which no dialect admits in an identifier:
    [Lexical_profile.identifier_extra] is ['_'], ['.'] and ['$'] everywhere. So a

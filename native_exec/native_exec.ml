@@ -9,8 +9,8 @@
 
    The code being run is trusted: a fault in it is a fault of this process. *)
 
-open Foundation
-open Asm_core
+open Rivet_foundation
+open Rivet_asm_core
 
 type io = (char, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t
 

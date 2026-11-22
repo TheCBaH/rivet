@@ -450,10 +450,12 @@ module Make (C : CORPUS) = struct
    is a row in a progress table; the full text is one [dune exec] away, and
    pasting it here would bury the twenty rows that do pass. *)
   let brief e =
-    match Foundation.Diag.diagnostics e with
+    match Rivet_foundation.Diag.diagnostics e with
     | [] -> "failed with no diagnostic"
     | d :: rest ->
-        Printf.sprintf "%s: %s%s" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d)
+        Printf.sprintf "%s: %s%s"
+          (Rivet_foundation.Diagnostic.code d)
+          (Rivet_foundation.Diagnostic.message d)
           (if rest = [] then "" else Printf.sprintf " (+%d more)" (List.length rest))
 
   type built = { laid_out : Image.laid_out; bound : Image.t; addresses : (string * int64) list }
@@ -467,7 +469,7 @@ module Make (C : CORPUS) = struct
     let units = unit_paths case target in
     let sourced =
       List.map
-        (fun (stem, path) -> (stem, Foundation.Span.source ~name:path ~contents:(read path)))
+        (fun (stem, path) -> (stem, Rivet_foundation.Span.source ~name:path ~contents:(read path)))
         units
     in
     let result =
@@ -790,7 +792,7 @@ module Make (C : CORPUS) = struct
           | Error ds -> Printf.printf "%-12s %-8s DISASM %s\n" case target (brief ds)
           | Ok text -> (
               let source =
-                Foundation.Span.source
+                Rivet_foundation.Span.source
                   ~name:(case ^ ":" ^ target ^ ":round-trip")
                   ~contents:("\t.text\n" ^ text)
               in
@@ -838,13 +840,13 @@ module Make (C : CORPUS) = struct
       if role <> r then
         Some
           (Printf.sprintf "kind %s has role %s, table says %s" kind_name
-             (Asm_core.Lowered_ast.fixup_role_name role)
-             (Asm_core.Lowered_ast.fixup_role_name r))
+             (Rivet_asm_core.Lowered_ast.fixup_role_name role)
+             (Rivet_asm_core.Lowered_ast.fixup_role_name r))
       else None
     in
-    let call = expect Asm_core.Lowered_ast.Call in
-    let branch = expect Asm_core.Lowered_ast.Branch in
-    let data = expect Asm_core.Lowered_ast.Data_address in
+    let call = expect Rivet_asm_core.Lowered_ast.Call in
+    let branch = expect Rivet_asm_core.Lowered_ast.Branch in
+    let data = expect Rivet_asm_core.Lowered_ast.Data_address in
     match (target, kind_name) with
     (* A call keeps a record on every target, whatever the binding: the linker may
      still have to route it through a stub. *)
@@ -957,7 +959,7 @@ module Make (C : CORPUS) = struct
           sites :=
             Printf.sprintf "  %s+0x%-4x %-16s %-6s %-6s %-9s %s" site.Image.o_section
               site.Image.o_offset site.Image.o_kind_name
-              (Asm_core.Lowered_ast.fixup_role_name site.Image.o_role)
+              (Rivet_asm_core.Lowered_ast.fixup_role_name site.Image.o_role)
               (match r.Image.binding with `Local -> "local" | `Global -> "global")
               (if not r.Image.defined then "undefined"
                else if r.Image.same_section then "same-sec"

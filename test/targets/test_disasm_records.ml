@@ -8,15 +8,17 @@ let render ds =
   String.concat "; "
     (List.map
        (fun d ->
-         Printf.sprintf "%s: %s" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-       (Foundation.Diag.diagnostics ds))
+         Printf.sprintf "%s: %s"
+           (Rivet_foundation.Diagnostic.code d)
+           (Rivet_foundation.Diagnostic.message d))
+       (Rivet_foundation.Diag.diagnostics ds))
 
 let spec text =
   match Target_config.parse_spec text with Ok s -> s | Error m -> failwith ("bad spec: " ^ m)
 
 let assembled target text =
   let (module D : T.DRIVER) = driver target in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:("\t.text\n" ^ text) in
+  let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:("\t.text\n" ^ text) in
   match D.assemble ~unit_name:"t" ~source () with
   | Error ds -> failwith (render ds)
   | Ok laid_out -> (
@@ -107,7 +109,7 @@ let%expect_test "inspection records why the configuration refuses an instruction
 (* The symbol-labelled listing of a bound image: [.text] at 0x1000, [.data] at 0x2000. *)
 let bound target text =
   let (module D : T.DRIVER) = driver target in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.assemble ~unit_name:"t" ~source () with
   | Error ds -> failwith (render ds)
   | Ok laid_out -> (
@@ -115,7 +117,8 @@ let bound target text =
       let addresses =
         List.map
           (fun (s : Image.segment_plan) ->
-            (s.Image.seg_name, if s.Image.perms.Asm_core.Perms.execute then 0x1000L else 0x2000L))
+            ( s.Image.seg_name,
+              if s.Image.perms.Rivet_asm_core.Perms.execute then 0x1000L else 0x2000L ))
           plan.Image.segments
       in
       match Image.bind_image laid_out ~addresses with
@@ -126,7 +129,9 @@ let listing target text =
   let (module D : T.DRIVER) = driver target in
   let image = bound target text in
   let text_segment =
-    List.find (fun (s : Image.segment) -> s.Image.perms.Asm_core.Perms.execute) image.Image.segments
+    List.find
+      (fun (s : Image.segment) -> s.Image.perms.Rivet_asm_core.Perms.execute)
+      image.Image.segments
   in
   Printf.printf "%s\n" target;
   match D.dump_listing image ~segment:text_segment.Image.name with

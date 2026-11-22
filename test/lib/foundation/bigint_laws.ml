@@ -6,7 +6,7 @@
    value-based so the same executable runs unchanged under native, js_of_ocaml,
    and Melange. *)
 
-open Foundation
+open Rivet_foundation
 
 let failures = ref []
 let check name cond = if not cond then failures := name :: !failures

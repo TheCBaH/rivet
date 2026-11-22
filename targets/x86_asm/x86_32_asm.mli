@@ -330,7 +330,7 @@ val add_i :
   X86_family_encode.Instruction.t
 
 val add_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 | `W8 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
@@ -340,9 +340,9 @@ val add_m :
   X86_family_encode.Instruction.t
 
 val addb_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val addb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val addb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val addl_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val addl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val addl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 
 val sub :
   ([< `W32 | `W64 | `W8 ] as 'a) X86_family_encode.X86_ops.View.gpr ->
@@ -360,7 +360,7 @@ val sub_i :
   X86_family_encode.Instruction.t
 
 val sub_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 | `W8 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
@@ -370,9 +370,9 @@ val sub_m :
   X86_family_encode.Instruction.t
 
 val subb_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val subb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val subb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val subl_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val subl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val subl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 
 val mov :
   'a X86_family_encode.X86_ops.View.gpr ->
@@ -385,12 +385,12 @@ val mov_rm :
   X86_family_encode.Instruction.t
 
 val mov_rs :
-  'a X86_family_encode.X86_ops.View.gpr -> Asm_core.Expr.t -> X86_family_encode.Instruction.t
+  'a X86_family_encode.X86_ops.View.gpr -> Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val mov_i : int64 -> 'a X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 
 val mov_i_e :
-  Asm_core.Expr.t -> 'a X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> 'a X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 
 val mov_m :
   X86_family_encode.Mem.t ->
@@ -398,14 +398,14 @@ val mov_m :
   X86_family_encode.Instruction.t
 
 val mov_s :
-  Asm_core.Expr.t -> 'a X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> 'a X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 
 val movb_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val movb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val movb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val movw_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val movw_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val movw_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val movl_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val movl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val movl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 
 val lea_m :
   X86_family_encode.Mem.t ->
@@ -413,7 +413,7 @@ val lea_m :
   X86_family_encode.Instruction.t
 
 val lea_s :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
@@ -435,7 +435,7 @@ val xor_i :
   X86_family_encode.Instruction.t
 
 val xor_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 | `W8 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
@@ -445,9 +445,9 @@ val xor_m :
   X86_family_encode.Instruction.t
 
 val xorb_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val xorb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val xorb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val xorl_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val xorl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val xorl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 
 val and_ :
   ([< `W32 | `W64 | `W8 ] as 'a) X86_family_encode.X86_ops.View.gpr ->
@@ -465,7 +465,7 @@ val and_i :
   X86_family_encode.Instruction.t
 
 val and_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 | `W8 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
@@ -475,9 +475,9 @@ val and_m :
   X86_family_encode.Instruction.t
 
 val andb_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val andb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val andb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val andl_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val andl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val andl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 
 val cmp :
   ([< `W32 | `W64 | `W8 ] as 'a) X86_family_encode.X86_ops.View.gpr ->
@@ -495,7 +495,7 @@ val cmp_i :
   X86_family_encode.Instruction.t
 
 val cmp_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 | `W8 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
@@ -505,9 +505,9 @@ val cmp_m :
   X86_family_encode.Instruction.t
 
 val cmpb_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val cmpb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val cmpb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val cmpl_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val cmpl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val cmpl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val imul : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 
 val imul_rr :
@@ -523,7 +523,7 @@ val imul_m :
   X86_family_encode.Instruction.t
 
 val imul_s :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
@@ -534,7 +534,7 @@ val imul_i :
   X86_family_encode.Instruction.t
 
 val imul_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `W32 | `W64 ] as 'a) X86_family_encode.X86_ops.View.gpr ->
   'a X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
@@ -546,7 +546,7 @@ val imul_im :
   X86_family_encode.Instruction.t
 
 val imul_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
@@ -559,14 +559,14 @@ val pop :
 
 val pop_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val bswap : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
-val jmp : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jmp : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val jmp_r :
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
 val jmp_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val call : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val call : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val call_r :
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
@@ -579,7 +579,7 @@ val push :
   X86_family_encode.Instruction.t
 
 val push_i : int64 -> X86_family_encode.Instruction.t
-val push_i_e : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val push_i_e : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 val neg : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 val negl_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 
@@ -597,12 +597,12 @@ val test_i :
   int64 -> [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 
 val test_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
 val testl_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val testl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val testl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 
 val adc :
   ([< `W32 | `W64 | `W8 ] as 'a) X86_family_encode.X86_ops.View.gpr ->
@@ -620,7 +620,7 @@ val adc_i :
   X86_family_encode.Instruction.t
 
 val adc_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 | `W8 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
@@ -630,9 +630,9 @@ val adc_m :
   X86_family_encode.Instruction.t
 
 val adcb_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val adcb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val adcb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val adcl_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val adcl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val adcl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 
 val sbb :
   ([< `W32 | `W64 | `W8 ] as 'a) X86_family_encode.X86_ops.View.gpr ->
@@ -650,7 +650,7 @@ val sbb_i :
   X86_family_encode.Instruction.t
 
 val sbb_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 | `W8 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
@@ -660,9 +660,9 @@ val sbb_m :
   X86_family_encode.Instruction.t
 
 val sbbb_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val sbbb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val sbbb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val sbbl_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val sbbl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val sbbl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val mul : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 val mull_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val div : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
@@ -681,13 +681,13 @@ val rcr_i :
   int -> [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 
 val rcr_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
 val rcrl_clm : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rcrl_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val rcrl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val rcrl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shr : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 val shrl_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shr_cl : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
@@ -696,13 +696,13 @@ val shr_i :
   int -> [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 
 val shr_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
 val shrl_clm : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shrl_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val shrl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val shrl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 
 val or_ :
   ([< `W32 | `W64 | `W8 ] as 'a) X86_family_encode.X86_ops.View.gpr ->
@@ -720,7 +720,7 @@ val or_i :
   X86_family_encode.Instruction.t
 
 val or_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 | `W8 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
@@ -730,9 +730,9 @@ val or_m :
   X86_family_encode.Instruction.t
 
 val orb_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val orb_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val orb_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val orl_im : int64 -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val orl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val orl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val not : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 val notl_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val ror : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
@@ -743,13 +743,13 @@ val ror_i :
   int -> [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 
 val ror_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
 val rorl_clm : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val rorl_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val rorl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val rorl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shl : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 val shll_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shl_cl : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
@@ -758,13 +758,13 @@ val shl_i :
   int -> [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 
 val shl_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
 val shll_clm : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val shll_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val shll_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val shll_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val sar : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 val sarl_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val sar_cl : [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
@@ -773,13 +773,13 @@ val sar_i :
   int -> [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr -> X86_family_encode.Instruction.t
 
 val sar_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
 val sarl_clm : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val sarl_im : int -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val sarl_im_e : Asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
+val sarl_im_e : Rivet_asm_core.Expr.t -> X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 
 val shld_cl :
   ([< `W32 | `W64 ] as 'a) X86_family_encode.X86_ops.View.gpr ->
@@ -793,7 +793,7 @@ val shld_i :
   X86_family_encode.Instruction.t
 
 val shld_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `W32 | `W64 ] as 'a) X86_family_encode.X86_ops.View.gpr ->
   'a X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
@@ -810,7 +810,7 @@ val shld_irm :
   X86_family_encode.Instruction.t
 
 val shld_irm_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Mem.t ->
   X86_family_encode.Instruction.t
@@ -1687,12 +1687,12 @@ val psllw :
 val psllw_iq : int -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psllw_iq_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psllw_i : int -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psllw_i_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psllw_mq :
   X86_family_encode.Mem.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
@@ -1713,12 +1713,12 @@ val pslld :
 val pslld_iq : int -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val pslld_iq_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val pslld_i : int -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val pslld_i_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val pslld_mq :
   X86_family_encode.Mem.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
@@ -1739,12 +1739,12 @@ val psllq :
 val psllq_iq : int -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psllq_iq_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psllq_i : int -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psllq_i_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psllq_mq :
   X86_family_encode.Mem.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
@@ -1765,12 +1765,12 @@ val psrlw :
 val psrlw_iq : int -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psrlw_iq_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psrlw_i : int -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psrlw_i_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psrlw_mq :
   X86_family_encode.Mem.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
@@ -1791,12 +1791,12 @@ val psrld :
 val psrld_iq : int -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psrld_iq_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psrld_i : int -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psrld_i_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psrld_mq :
   X86_family_encode.Mem.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
@@ -1817,12 +1817,12 @@ val psrlq :
 val psrlq_iq : int -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psrlq_iq_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psrlq_i : int -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psrlq_i_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psrlq_mq :
   X86_family_encode.Mem.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
@@ -1843,12 +1843,12 @@ val psraw :
 val psraw_iq : int -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psraw_iq_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psraw_i : int -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psraw_i_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psraw_mq :
   X86_family_encode.Mem.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
@@ -1869,12 +1869,12 @@ val psrad :
 val psrad_iq : int -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psrad_iq_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
 
 val psrad_i : int -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psrad_i_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psrad_mq :
   X86_family_encode.Mem.t -> X86_family_encode.X86_ops.View.mmx -> X86_family_encode.Instruction.t
@@ -1885,12 +1885,12 @@ val psrad_m :
 val pslldq_i : int -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val pslldq_i_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psrldq_i : int -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val psrldq_i_e :
-  Asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
+  Rivet_asm_core.Expr.t -> X86_family_encode.X86_ops.View.xmm -> X86_family_encode.Instruction.t
 
 val pshufb_qq :
   X86_family_encode.X86_ops.View.mmx ->
@@ -2139,7 +2139,7 @@ val palignr_iqq :
   X86_family_encode.Instruction.t
 
 val palignr_iqq_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.mmx ->
   X86_family_encode.X86_ops.View.mmx ->
   X86_family_encode.Instruction.t
@@ -2151,7 +2151,7 @@ val palignr_i :
   X86_family_encode.Instruction.t
 
 val palignr_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2163,7 +2163,7 @@ val palignr_imq :
   X86_family_encode.Instruction.t
 
 val palignr_imq_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.mmx ->
   X86_family_encode.Instruction.t
@@ -2175,7 +2175,7 @@ val palignr_im :
   X86_family_encode.Instruction.t
 
 val palignr_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2187,7 +2187,7 @@ val roundps_i :
   X86_family_encode.Instruction.t
 
 val roundps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2199,7 +2199,7 @@ val roundps_im :
   X86_family_encode.Instruction.t
 
 val roundps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2211,7 +2211,7 @@ val roundpd_i :
   X86_family_encode.Instruction.t
 
 val roundpd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2223,7 +2223,7 @@ val roundpd_im :
   X86_family_encode.Instruction.t
 
 val roundpd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2235,7 +2235,7 @@ val roundss_i :
   X86_family_encode.Instruction.t
 
 val roundss_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2247,7 +2247,7 @@ val roundss_im :
   X86_family_encode.Instruction.t
 
 val roundss_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2259,7 +2259,7 @@ val roundsd_i :
   X86_family_encode.Instruction.t
 
 val roundsd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2271,7 +2271,7 @@ val roundsd_im :
   X86_family_encode.Instruction.t
 
 val roundsd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2526,7 +2526,7 @@ val blendps_i :
   X86_family_encode.Instruction.t
 
 val blendps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2538,7 +2538,7 @@ val blendps_im :
   X86_family_encode.Instruction.t
 
 val blendps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2550,7 +2550,7 @@ val blendpd_i :
   X86_family_encode.Instruction.t
 
 val blendpd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2562,7 +2562,7 @@ val blendpd_im :
   X86_family_encode.Instruction.t
 
 val blendpd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2574,7 +2574,7 @@ val dpps_i :
   X86_family_encode.Instruction.t
 
 val dpps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2586,7 +2586,7 @@ val dpps_im :
   X86_family_encode.Instruction.t
 
 val dpps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2598,7 +2598,7 @@ val dppd_i :
   X86_family_encode.Instruction.t
 
 val dppd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2610,7 +2610,7 @@ val dppd_im :
   X86_family_encode.Instruction.t
 
 val dppd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2622,7 +2622,7 @@ val mpsadbw_i :
   X86_family_encode.Instruction.t
 
 val mpsadbw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2634,7 +2634,7 @@ val mpsadbw_im :
   X86_family_encode.Instruction.t
 
 val mpsadbw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2646,7 +2646,7 @@ val pblendw_i :
   X86_family_encode.Instruction.t
 
 val pblendw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2658,7 +2658,7 @@ val pblendw_im :
   X86_family_encode.Instruction.t
 
 val pblendw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2670,7 +2670,7 @@ val insertps_i :
   X86_family_encode.Instruction.t
 
 val insertps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2682,7 +2682,7 @@ val insertps_im :
   X86_family_encode.Instruction.t
 
 val insertps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2694,7 +2694,7 @@ val pinsrb_i :
   X86_family_encode.Instruction.t
 
 val pinsrb_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2706,7 +2706,7 @@ val pinsrb_im :
   X86_family_encode.Instruction.t
 
 val pinsrb_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2718,7 +2718,7 @@ val pinsrd_i :
   X86_family_encode.Instruction.t
 
 val pinsrd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2730,7 +2730,7 @@ val pinsrd_im :
   X86_family_encode.Instruction.t
 
 val pinsrd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -2742,7 +2742,7 @@ val pextrb_i :
   X86_family_encode.Instruction.t
 
 val pextrb_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
@@ -2754,7 +2754,7 @@ val pextrb_irm :
   X86_family_encode.Instruction.t
 
 val pextrb_irm_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Mem.t ->
   X86_family_encode.Instruction.t
@@ -2766,7 +2766,7 @@ val pextrd_i :
   X86_family_encode.Instruction.t
 
 val pextrd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
@@ -2778,7 +2778,7 @@ val pextrd_irm :
   X86_family_encode.Instruction.t
 
 val pextrd_irm_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Mem.t ->
   X86_family_encode.Instruction.t
@@ -2790,7 +2790,7 @@ val extractps_i :
   X86_family_encode.Instruction.t
 
 val extractps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
@@ -2802,7 +2802,7 @@ val extractps_irm :
   X86_family_encode.Instruction.t
 
 val extractps_irm_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Mem.t ->
   X86_family_encode.Instruction.t
@@ -3139,7 +3139,7 @@ val vpalignr_i :
   X86_family_encode.Instruction.t
 
 val vpalignr_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -3153,7 +3153,7 @@ val vpalignr_im :
   X86_family_encode.Instruction.t
 
 val vpalignr_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -3167,7 +3167,7 @@ val vblendps_i :
   X86_family_encode.Instruction.t
 
 val vblendps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `L128 | `L256 ] as 'a) X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -3181,7 +3181,7 @@ val vblendps_im :
   X86_family_encode.Instruction.t
 
 val vblendps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   ([< `L128 | `L256 ] as 'a) X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -3195,7 +3195,7 @@ val vblendpd_i :
   X86_family_encode.Instruction.t
 
 val vblendpd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `L128 | `L256 ] as 'a) X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -3209,7 +3209,7 @@ val vblendpd_im :
   X86_family_encode.Instruction.t
 
 val vblendpd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   ([< `L128 | `L256 ] as 'a) X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -3223,7 +3223,7 @@ val vpblendw_i :
   X86_family_encode.Instruction.t
 
 val vpblendw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `L128 | `L256 ] as 'a) X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -3237,7 +3237,7 @@ val vpblendw_im :
   X86_family_encode.Instruction.t
 
 val vpblendw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   ([< `L128 | `L256 ] as 'a) X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -3251,7 +3251,7 @@ val vroundss_i :
   X86_family_encode.Instruction.t
 
 val vroundss_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -3265,7 +3265,7 @@ val vroundss_im :
   X86_family_encode.Instruction.t
 
 val vroundss_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -3279,7 +3279,7 @@ val vroundsd_i :
   X86_family_encode.Instruction.t
 
 val vroundsd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -3293,7 +3293,7 @@ val vroundsd_im :
   X86_family_encode.Instruction.t
 
 val vroundsd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -3307,7 +3307,7 @@ val vdpps_i :
   X86_family_encode.Instruction.t
 
 val vdpps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `L128 | `L256 ] as 'a) X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -3321,7 +3321,7 @@ val vdpps_im :
   X86_family_encode.Instruction.t
 
 val vdpps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   ([< `L128 | `L256 ] as 'a) X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -3335,7 +3335,7 @@ val vdppd_i :
   X86_family_encode.Instruction.t
 
 val vdppd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -3349,7 +3349,7 @@ val vdppd_im :
   X86_family_encode.Instruction.t
 
 val vdppd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -3363,7 +3363,7 @@ val vmpsadbw_i :
   X86_family_encode.Instruction.t
 
 val vmpsadbw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -3377,7 +3377,7 @@ val vmpsadbw_im :
   X86_family_encode.Instruction.t
 
 val vmpsadbw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -3391,7 +3391,7 @@ val vinsertps_i :
   X86_family_encode.Instruction.t
 
 val vinsertps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -3405,7 +3405,7 @@ val vinsertps_im :
   X86_family_encode.Instruction.t
 
 val vinsertps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -3892,7 +3892,7 @@ val shufps_i :
   X86_family_encode.Instruction.t
 
 val shufps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -3904,7 +3904,7 @@ val shufps_im :
   X86_family_encode.Instruction.t
 
 val shufps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -3916,7 +3916,7 @@ val shufpd_i :
   X86_family_encode.Instruction.t
 
 val shufpd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -3928,7 +3928,7 @@ val shufpd_im :
   X86_family_encode.Instruction.t
 
 val shufpd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -3940,7 +3940,7 @@ val cmpss_i :
   X86_family_encode.Instruction.t
 
 val cmpss_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -3952,7 +3952,7 @@ val cmpss_im :
   X86_family_encode.Instruction.t
 
 val cmpss_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -3964,7 +3964,7 @@ val cmpsd_i :
   X86_family_encode.Instruction.t
 
 val cmpsd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -3976,7 +3976,7 @@ val cmpsd_im :
   X86_family_encode.Instruction.t
 
 val cmpsd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -3988,7 +3988,7 @@ val cmpps_i :
   X86_family_encode.Instruction.t
 
 val cmpps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -4000,7 +4000,7 @@ val cmpps_im :
   X86_family_encode.Instruction.t
 
 val cmpps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -4012,7 +4012,7 @@ val cmppd_i :
   X86_family_encode.Instruction.t
 
 val cmppd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -4024,7 +4024,7 @@ val cmppd_im :
   X86_family_encode.Instruction.t
 
 val cmppd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -4036,7 +4036,7 @@ val pshufd_i :
   X86_family_encode.Instruction.t
 
 val pshufd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -4048,7 +4048,7 @@ val pshufd_im :
   X86_family_encode.Instruction.t
 
 val pshufd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -4060,7 +4060,7 @@ val pshuflw_i :
   X86_family_encode.Instruction.t
 
 val pshuflw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -4072,7 +4072,7 @@ val pshuflw_im :
   X86_family_encode.Instruction.t
 
 val pshuflw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -4084,7 +4084,7 @@ val pshufhw_i :
   X86_family_encode.Instruction.t
 
 val pshufhw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -4096,7 +4096,7 @@ val pshufhw_im :
   X86_family_encode.Instruction.t
 
 val pshufhw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -5228,7 +5228,7 @@ val vshufps_i :
   X86_family_encode.Instruction.t
 
 val vshufps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -5242,7 +5242,7 @@ val vshufps_im :
   X86_family_encode.Instruction.t
 
 val vshufps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -5256,7 +5256,7 @@ val vshufpd_i :
   X86_family_encode.Instruction.t
 
 val vshufpd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -5270,7 +5270,7 @@ val vshufpd_im :
   X86_family_encode.Instruction.t
 
 val vshufpd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -5284,7 +5284,7 @@ val vcmpss_i :
   X86_family_encode.Instruction.t
 
 val vcmpss_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -5298,7 +5298,7 @@ val vcmpss_im :
   X86_family_encode.Instruction.t
 
 val vcmpss_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -5312,7 +5312,7 @@ val vcmpsd_i :
   X86_family_encode.Instruction.t
 
 val vcmpsd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -5326,7 +5326,7 @@ val vcmpsd_im :
   X86_family_encode.Instruction.t
 
 val vcmpsd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -5340,7 +5340,7 @@ val vcmpps_i :
   X86_family_encode.Instruction.t
 
 val vcmpps_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `L128 | `L256 ] as 'a) X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -5354,7 +5354,7 @@ val vcmpps_im :
   X86_family_encode.Instruction.t
 
 val vcmpps_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   ([< `L128 | `L256 ] as 'a) X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -5368,7 +5368,7 @@ val vcmppd_i :
   X86_family_encode.Instruction.t
 
 val vcmppd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   ([< `L128 | `L256 ] as 'a) X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -5382,7 +5382,7 @@ val vcmppd_im :
   X86_family_encode.Instruction.t
 
 val vcmppd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   ([< `L128 | `L256 ] as 'a) X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
@@ -5395,7 +5395,7 @@ val vpshufd_i :
   X86_family_encode.Instruction.t
 
 val vpshufd_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5407,7 +5407,7 @@ val vpshufd_im :
   X86_family_encode.Instruction.t
 
 val vpshufd_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5419,7 +5419,7 @@ val vpshuflw_i :
   X86_family_encode.Instruction.t
 
 val vpshuflw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5431,7 +5431,7 @@ val vpshuflw_im :
   X86_family_encode.Instruction.t
 
 val vpshuflw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5443,7 +5443,7 @@ val vpshufhw_i :
   X86_family_encode.Instruction.t
 
 val vpshufhw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5455,7 +5455,7 @@ val vpshufhw_im :
   X86_family_encode.Instruction.t
 
 val vpshufhw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5566,7 +5566,7 @@ val vpsllw_i :
   X86_family_encode.Instruction.t
 
 val vpsllw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5584,7 +5584,7 @@ val vpsllw_im :
   X86_family_encode.Instruction.t
 
 val vpsllw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5602,7 +5602,7 @@ val vpslld_i :
   X86_family_encode.Instruction.t
 
 val vpslld_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5620,7 +5620,7 @@ val vpslld_im :
   X86_family_encode.Instruction.t
 
 val vpslld_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5638,7 +5638,7 @@ val vpsllq_i :
   X86_family_encode.Instruction.t
 
 val vpsllq_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5656,7 +5656,7 @@ val vpsllq_im :
   X86_family_encode.Instruction.t
 
 val vpsllq_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5674,7 +5674,7 @@ val vpsrlw_i :
   X86_family_encode.Instruction.t
 
 val vpsrlw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5692,7 +5692,7 @@ val vpsrlw_im :
   X86_family_encode.Instruction.t
 
 val vpsrlw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5710,7 +5710,7 @@ val vpsrld_i :
   X86_family_encode.Instruction.t
 
 val vpsrld_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5728,7 +5728,7 @@ val vpsrld_im :
   X86_family_encode.Instruction.t
 
 val vpsrld_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5746,7 +5746,7 @@ val vpsrlq_i :
   X86_family_encode.Instruction.t
 
 val vpsrlq_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5764,7 +5764,7 @@ val vpsrlq_im :
   X86_family_encode.Instruction.t
 
 val vpsrlq_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5782,7 +5782,7 @@ val vpsraw_i :
   X86_family_encode.Instruction.t
 
 val vpsraw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5800,7 +5800,7 @@ val vpsraw_im :
   X86_family_encode.Instruction.t
 
 val vpsraw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5818,7 +5818,7 @@ val vpsrad_i :
   X86_family_encode.Instruction.t
 
 val vpsrad_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5836,7 +5836,7 @@ val vpsrad_im :
   X86_family_encode.Instruction.t
 
 val vpsrad_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5848,7 +5848,7 @@ val vpslldq_i :
   X86_family_encode.Instruction.t
 
 val vpslldq_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5860,7 +5860,7 @@ val vpslldq_im :
   X86_family_encode.Instruction.t
 
 val vpslldq_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5872,7 +5872,7 @@ val vpsrldq_i :
   X86_family_encode.Instruction.t
 
 val vpsrldq_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5884,7 +5884,7 @@ val vpsrldq_im :
   X86_family_encode.Instruction.t
 
 val vpsrldq_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   'a X86_family_encode.X86_ops.View.vec ->
   X86_family_encode.Instruction.t
@@ -5926,7 +5926,7 @@ val pinsrw_irq :
   X86_family_encode.Instruction.t
 
 val pinsrw_irq_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.X86_ops.View.mmx ->
   X86_family_encode.Instruction.t
@@ -5938,7 +5938,7 @@ val pinsrw_irx :
   X86_family_encode.Instruction.t
 
 val pinsrw_irx_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -5950,7 +5950,7 @@ val pinsrw_imq :
   X86_family_encode.Instruction.t
 
 val pinsrw_imq_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.mmx ->
   X86_family_encode.Instruction.t
@@ -5962,7 +5962,7 @@ val pinsrw_imx :
   X86_family_encode.Instruction.t
 
 val pinsrw_imx_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Instruction.t
@@ -5974,7 +5974,7 @@ val pextrw_iq :
   X86_family_encode.Instruction.t
 
 val pextrw_iq_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.mmx ->
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
@@ -5986,7 +5986,7 @@ val pextrw_i :
   X86_family_encode.Instruction.t
 
 val pextrw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
@@ -5998,7 +5998,7 @@ val pextrw_irm :
   X86_family_encode.Instruction.t
 
 val pextrw_irm_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Mem.t ->
   X86_family_encode.Instruction.t
@@ -6011,7 +6011,7 @@ val vpinsrw_i :
   X86_family_encode.Instruction.t
 
 val vpinsrw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -6025,7 +6025,7 @@ val vpinsrw_im :
   X86_family_encode.Instruction.t
 
 val vpinsrw_im_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.Mem.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.xmm ->
@@ -6038,7 +6038,7 @@ val vpextrw_i :
   X86_family_encode.Instruction.t
 
 val vpextrw_i_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.X86_ops.View.w32 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
@@ -6050,7 +6050,7 @@ val vpextrw_irm :
   X86_family_encode.Instruction.t
 
 val vpextrw_irm_e :
-  Asm_core.Expr.t ->
+  Rivet_asm_core.Expr.t ->
   X86_family_encode.X86_ops.View.xmm ->
   X86_family_encode.Mem.t ->
   X86_family_encode.Instruction.t
@@ -6093,17 +6093,17 @@ val vpmovmskb :
 val fldl_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val fstpl_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val fstps_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val flds : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val flds : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 val flds_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val fildll_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val fadds : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val fadds : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 val fadds_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val fadd : X86_family_encode.X86_ops.View.st -> X86_family_encode.Instruction.t
 val fadd_r : X86_family_encode.X86_ops.View.st -> X86_family_encode.Instruction.t
 val fnstcw_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val fldcw_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val fistpll_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val fsubs : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val fsubs : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 val fsubs_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
 val fnstsw : X86_family_encode.Instruction.t
 val fnstsw_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
@@ -6119,7 +6119,7 @@ val cmovo_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jo : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jo : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val seto :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6137,7 +6137,7 @@ val cmovno_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jno : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jno : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setno :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6155,7 +6155,7 @@ val cmovb_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jb : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jb : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setb :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6173,7 +6173,7 @@ val cmovae_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jae : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jae : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setae :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6191,7 +6191,7 @@ val cmove_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val je : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val je : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val sete :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6209,7 +6209,7 @@ val cmovne_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jne : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jne : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setne :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6227,7 +6227,7 @@ val cmovbe_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jbe : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jbe : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setbe :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6245,7 +6245,7 @@ val cmova_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val ja : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val ja : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val seta :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6263,7 +6263,7 @@ val cmovs_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val js : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val js : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val sets :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6281,7 +6281,7 @@ val cmovns_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jns : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jns : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setns :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6299,7 +6299,7 @@ val cmovp_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jp : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jp : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setp :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6317,7 +6317,7 @@ val cmovnp_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jnp : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jnp : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setnp :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6335,7 +6335,7 @@ val cmovl_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jl : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jl : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setl :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6353,7 +6353,7 @@ val cmovge_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jge : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jge : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setge :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6371,7 +6371,7 @@ val cmovle_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jle : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jle : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setle :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6389,18 +6389,18 @@ val cmovg_m :
   [< `W16 | `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jg : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jg : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setg :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
 val setg_m : X86_family_encode.Mem.t -> X86_family_encode.Instruction.t
-val loop : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val loope : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val loopne : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jcxz : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jecxz : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val loop : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val loope : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val loopne : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jcxz : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jecxz : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val movzb :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->
@@ -6442,21 +6442,23 @@ val movsw_m :
   [< `W32 | `W64 ] X86_family_encode.X86_ops.View.gpr ->
   X86_family_encode.Instruction.t
 
-val jcc : X86_family_encode__X86_types.Cc.t -> Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jc : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jnae : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jnb : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jnc : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jz : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jnz : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jna : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jnbe : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jpe : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jpo : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jnge : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jnl : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jng : Asm_core.Expr.t -> X86_family_encode.Instruction.t
-val jnle : Asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jcc :
+  X86_family_encode__X86_types.Cc.t -> Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+
+val jc : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jnae : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jnb : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jnc : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jz : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jnz : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jna : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jnbe : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jpe : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jpo : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jnge : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jnl : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jng : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
+val jnle : Rivet_asm_core.Expr.t -> X86_family_encode.Instruction.t
 
 val setc :
   X86_family_encode.X86_ops.View.w8 X86_family_encode.X86_ops.View.gpr ->

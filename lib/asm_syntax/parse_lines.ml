@@ -7,7 +7,7 @@
    notion of position in the frontend - [Span.t] - instead of two that must be
    kept in agreement. *)
 
-open Foundation
+open Rivet_foundation
 
 let to_menhir (t : Token.t) : Grammar.token =
   match Token.kind t with

@@ -12,7 +12,7 @@
    [run] below, which is why this module alone is safe to share across all
    three backends without duplication. *)
 
-let ok_diag = function Ok v -> v | Error e -> failwith (Foundation.Diag.render e)
+let ok_diag = function Ok v -> v | Error e -> failwith (Rivet_foundation.Diag.render e)
 
 let parser_encoder_summary () =
   let name = "x86_64" in
@@ -21,7 +21,7 @@ let parser_encoder_summary () =
     | Some d -> d
     | None -> failwith ("smoke: no driver for " ^ name)
   in
-  let source = Foundation.Span.source ~name:(name ^ ".s") ~contents:Test_dump_inputs.x86_64 in
+  let source = Rivet_foundation.Span.source ~name:(name ^ ".s") ~contents:Test_dump_inputs.x86_64 in
   let laid_out = ok_diag (D.assemble ~unit_name:"asm_test_entry" ~source ()) in
   let plan = Image.plan_of laid_out in
   let addresses =

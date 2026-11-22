@@ -1,6 +1,6 @@
 (** Input-qualified symbol identity: a definition belongs to the unit that defined it. *)
 
-open Asm_core
+open Rivet_asm_core
 
 type definition = {
   d_unit : string;

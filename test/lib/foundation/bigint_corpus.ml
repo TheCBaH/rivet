@@ -12,7 +12,7 @@
    values well beyond 2^53, where a JavaScript number stops holding integers
    exactly, since that is exactly what the equality gate is looking for. *)
 
-open Foundation
+open Rivet_foundation
 
 let section title = Fmt.pr "# %s@." title
 let repr label x = Fmt.pr "@[<v 2>%s =@,%a@]@." label Bigint.pp_repr x

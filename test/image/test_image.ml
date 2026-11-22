@@ -13,8 +13,8 @@
    for a nearby branch, so an assembler that always emitted the long form would
    be correct and would still fail a byte-for-byte comparison. *)
 
-open Foundation
-open Asm_core
+open Rivet_foundation
+open Rivet_asm_core
 
 type kind = Rel8 | Rel32 | Abs32
 

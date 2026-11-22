@@ -17,8 +17,10 @@ let render ds =
   String.concat "; "
     (List.map
        (fun d ->
-         Printf.sprintf "%s: %s" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-       (Foundation.Diag.diagnostics ds))
+         Printf.sprintf "%s: %s"
+           (Rivet_foundation.Diagnostic.code d)
+           (Rivet_foundation.Diagnostic.message d))
+       (Rivet_foundation.Diag.diagnostics ds))
 
 (* {1 The JSON lines, read just far enough} *)
 
@@ -115,20 +117,20 @@ let load ?(target = "riscv32") path =
 
 (* {1 Printing and reading back} *)
 
-let gnu_syntax = { Asm_core.Gnu_module.type_char = '@' }
+let gnu_syntax = { Rivet_asm_core.Gnu_module.type_char = '@' }
 
 let print ?features ~instruction source =
-  let src = Foundation.Span.source ~name:"case.s" ~contents:source in
+  let src = Rivet_foundation.Span.source ~name:"case.s" ~contents:source in
   match (P.initial_state features, P.parse ~unit_name:"case" ~source:src) with
   | Error ds, _ | _, Error ds -> Error (render ds)
   | Ok state, Ok m -> (
       match P.simplify ~state m with
       | Error ds -> Error (render ds)
-      | Ok (n, _) -> Ok (Asm_core.Gnu_module.to_string gnu_syntax ~instruction n))
+      | Ok (n, _) -> Ok (Rivet_asm_core.Gnu_module.to_string gnu_syntax ~instruction n))
 
 (* The bytes of a one-section source bound at 0, as the corpus's own assembler run binds it. *)
 let assemble ?features (module D : Target_intf.Target.DRIVER) text =
-  let source = Foundation.Span.source ~name:"gnu.s" ~contents:text in
+  let source = Rivet_foundation.Span.source ~name:"gnu.s" ~contents:text in
   match D.assemble ?features ~unit_name:"gnu" ~source () with
   | Error ds -> Error (render ds)
   | Ok laid_out -> (

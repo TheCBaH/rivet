@@ -9,7 +9,7 @@
    register lists and AArch64 shift/extend operands at once, and pretending
    otherwise is how a "generic" assembler acquires four special cases. *)
 
-open Foundation
+open Rivet_foundation
 
 type kind =
   | Ident of string

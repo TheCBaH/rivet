@@ -12,7 +12,7 @@
  (name arm_encode)
  (modules arm_encode arm_types arm_ops)
  (modes byte native melange)
- (libraries foundation codec asm_core target_error target_encode)
+ (libraries rivet_foundation codec rivet_asm_core target_error target_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))
 
@@ -20,6 +20,12 @@
  (name arm)
  (modules arm)
  (modes byte native melange)
- (libraries foundation codec asm_core asm_syntax target_intf arm_encode)
+ (libraries
+  rivet_foundation
+  codec
+  rivet_asm_core
+  rivet_asm_syntax
+  target_intf
+  arm_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

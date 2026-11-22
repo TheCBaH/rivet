@@ -11,6 +11,6 @@
  (name arm_asm)
  (modules arm_asm)
  (modes byte native melange)
- (libraries foundation asm_core arm_encode)
+ (libraries rivet_foundation rivet_asm_core arm_encode)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

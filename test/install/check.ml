@@ -12,7 +12,7 @@ let fail fmt =
       exit 1)
     fmt
 
-let ok = function Ok x -> x | Error ds -> fail "%s" (Foundation.Diag.render ds)
+let ok = function Ok x -> x | Error ds -> fail "%s" (Rivet_foundation.Diag.render ds)
 
 let lines s =
   String.split_on_char '\n' s |> List.map String.trim |> List.filter (fun l -> l <> "")
@@ -56,9 +56,9 @@ let () =
       entry 0x0
       export asm_test_entry = 0x0 size=8|};
   (* One Err: Foundation's errors are values of the err_trace this program links. *)
-  (match Foundation.Bigint.of_string "not a number" with
+  (match Rivet_foundation.Bigint.of_string "not a number" with
   | Ok _ -> fail "Bigint parsed a non-number"
   | Error e -> (
-      let r : (Foundation.Bigint.t, Foundation.Bigint.error) Err.t = Error e in
+      let r : (Rivet_foundation.Bigint.t, Rivet_foundation.Bigint.error) Err.t = Error e in
       match Err.payload r with Error _ -> () | Ok _ -> fail "Err.payload lost the error"));
   print_string image

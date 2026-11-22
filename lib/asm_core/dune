@@ -15,9 +15,9 @@
 ;   expressions, section permissions, directives, and the staged ASTs.
 
 (library
- (name asm_core)
+ (name rivet_asm_core)
  (public_name rivet.asm_core)
  (modes byte native)
- (libraries foundation rivet_fmt)
+ (libraries rivet_foundation rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

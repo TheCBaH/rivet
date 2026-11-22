@@ -38,7 +38,7 @@
    source under lib/ that does, and a tag describing a *kind* of failure never
    needs to. *)
 
-open Foundation
+open Rivet_foundation
 
 type 'kind t = { kind : 'kind; origin : Origin.t }
 

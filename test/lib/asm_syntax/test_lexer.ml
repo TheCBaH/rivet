@@ -14,14 +14,15 @@
    see lexer.ml's comment on scan_string. *)
 
 let strings text =
-  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
-  match Asm_syntax.Lexer.tokenize ~profile:X86_64.lexical_profile ~source with
-  | Error e -> Format.printf "error: %a@." Asm_syntax.Lexer.pp_error e
+  let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
+  match Rivet_asm_syntax.Lexer.tokenize ~profile:X86_64.lexical_profile ~source with
+  | Error e -> Format.printf "error: %a@." Rivet_asm_syntax.Lexer.pp_error e
   | Ok toks ->
       List.iter
         (fun t ->
-          match Asm_syntax.Token.kind t with
-          | Asm_syntax.Token.String _ as k -> Format.printf "%a@." Asm_syntax.Token.pp_kind k
+          match Rivet_asm_syntax.Token.kind t with
+          | Rivet_asm_syntax.Token.String _ as k ->
+              Format.printf "%a@." Rivet_asm_syntax.Token.pp_kind k
           | _ -> ())
         toks
 
@@ -78,16 +79,16 @@ let%expect_test "\\e (not corpus-evidenced) is still rejected, not passed throug
    GNU as (checked with x86_64-linux-gnu-as 2.44: [movl $1+$2, %edi] is the immediate 1 plus the
    symbol [$2]). CompCert spells a C identifier [$1] this way. *)
 let tokens text =
-  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
-  match Asm_syntax.Lexer.tokenize ~profile:X86_64.lexical_profile ~source with
-  | Error e -> Format.printf "error: %a@." Asm_syntax.Lexer.pp_error e
+  let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
+  match Rivet_asm_syntax.Lexer.tokenize ~profile:X86_64.lexical_profile ~source with
+  | Error e -> Format.printf "error: %a@." Rivet_asm_syntax.Lexer.pp_error e
   | Ok toks ->
       List.iter
         (fun t ->
-          match Asm_syntax.Token.kind t with
-          | Asm_syntax.Token.Eof -> ()
-          | Asm_syntax.Token.Eol -> Format.printf "@."
-          | k -> Format.printf "%a " Asm_syntax.Token.pp_kind k)
+          match Rivet_asm_syntax.Token.kind t with
+          | Rivet_asm_syntax.Token.Eof -> ()
+          | Rivet_asm_syntax.Token.Eol -> Format.printf "@."
+          | k -> Format.printf "%a " Rivet_asm_syntax.Token.pp_kind k)
         toks
 
 let%expect_test "a leading $ names a symbol outside operand position" =

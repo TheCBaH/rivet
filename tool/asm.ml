@@ -123,7 +123,7 @@ let () =
   (* First, before anything can fail. Err's own default captures a Printexc
      callstack at every detection; docs/errors.md §3 explains why that must
      be off here, and why the policy is not simply Err.Config.fast. *)
-  Foundation.Err_policy.apply ();
+  Rivet_foundation.Err_policy.apply ();
   let o =
     {
       target = None;
@@ -214,7 +214,7 @@ let () =
            would add host paths and frame counts that differ between native,
            js_of_ocaml and Melange, and say less. *)
         (match
-           Foundation.Err_policy.of_strings ~trace:(Some spec) ~backtrace:(Some "off")
+           Rivet_foundation.Err_policy.of_strings ~trace:(Some spec) ~backtrace:(Some "off")
              ~max_events:None ~max_frames:None ~max_external_bytes:None
          with
         | Ok config ->
@@ -224,7 +224,7 @@ let () =
                    Fmt.epr "@[<v>[err] %a@]@." Err.Observation.pp observation))
         | Error e ->
             Fmt.epr "invalid --err_trace %s: %a@." spec
-              (Err.Error.pp Foundation.Err_policy.pp_of_strings_error)
+              (Err.Error.pp Rivet_foundation.Err_policy.pp_of_strings_error)
               e;
             exit 2);
         go rest
@@ -248,19 +248,19 @@ let () =
     List.map
       (fun path ->
         ( Filename.remove_extension (Filename.basename path),
-          Foundation.Span.source ~name:path ~contents:(read_file path) ))
+          Rivet_foundation.Span.source ~name:path ~contents:(read_file path) ))
       paths
   in
   let unit_name, source = List.hd sources in
   let report ds =
-    prerr_string (Foundation.Diagnostic.render_all ds);
+    prerr_string (Rivet_foundation.Diagnostic.render_all ds);
     prerr_newline ();
     exit 1
   in
   (* The payload only. A wrapped failure also carries a detection origin and the
      phase trail, and docs/errors.md §3 keeps both out of what a cram
      baseline compares; the tracing switch is how they are asked for. *)
-  let ok = function Ok v -> v | Error e -> report (Foundation.Diag.diagnostics e) in
+  let ok = function Ok v -> v | Error e -> report (Rivet_foundation.Diag.diagnostics e) in
   let features = o.features in
   let request =
     {

@@ -11,9 +11,9 @@
    [assemble] function, so a direct AST producer joins the pipeline at the AST
    it can build rather than by generating text for the parser to read back. *)
 
-open Foundation
-open Asm_core
-open Asm_syntax
+open Rivet_foundation
+open Rivet_asm_core
+open Rivet_asm_syntax
 module List = Safe_list
 module T_intf = Target_intf.Target
 

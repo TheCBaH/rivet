@@ -18,7 +18,7 @@
  (modules smoke)
  (modes byte native)
  (libraries
-  foundation
+  rivet_foundation
   image
   target_intf
   driver

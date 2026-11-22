@@ -44,7 +44,8 @@ module Check (E : ENC) = struct
           (fun acc l ->
             Option.bind acc (fun b ->
                 match E.encode_in state l with
-                | Ok (`Fixed f) | Ok (`Relax (f :: _)) -> Some (b ^ f.Asm_core.Lowered_ast.bytes)
+                | Ok (`Fixed f) | Ok (`Relax (f :: _)) ->
+                    Some (b ^ f.Rivet_asm_core.Lowered_ast.bytes)
                 | _ -> None))
           (Some "") ls
 
@@ -124,7 +125,7 @@ let%expect_test "builders read like the text" =
       (add x1 x2 x3, "add x1, x2, x3");
       (lw a0 (off sp 8), "lw a0, 8(sp)");
       (addi t0 t1 (-3), "addi t0, t1, -3");
-      (addi_e t0 t1 (Asm_core.Expr.Const (Foundation.Bigint.of_int 7)), "addi t0, t1, 7");
+      (addi_e t0 t1 (Rivet_asm_core.Expr.Const (Rivet_foundation.Bigint.of_int 7)), "addi t0, t1, 7");
       (fcvt_w_s a0 fa0, "fcvt.w.s a0, fa0");
       (sw a1 (off s0 (-4)), "sw a1, -4(s0)");
     ];
@@ -162,7 +163,7 @@ let%expect_test "the RV32 library: hand-written and row builders read like the t
       match Riscv32_encode.lower_instruction state insn with
       | Ok [ l ] -> (
           match Riscv32_encode.encode_in state l with
-          | Ok (`Fixed f) -> Ok f.Asm_core.Lowered_ast.bytes
+          | Ok (`Fixed f) -> Ok f.Rivet_asm_core.Lowered_ast.bytes
           | _ -> Error "encode")
       | _ -> Error "lower"
     in

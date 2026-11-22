@@ -1,7 +1,7 @@
 (* RISC-V types shared by every instance of {!Riscv_family_encode.Make_with}: riscv32, riscv64
    and vendor compositions agree on registers, operands and opcodes. *)
 
-open Foundation
+open Rivet_foundation
 
 (* Register numbers by class. Each is a [private int]: it reads as an int, but only the checked
    [of_int] makes one, so an out-of-range or wrong-class number does not type-check. *)
@@ -576,18 +576,18 @@ module Reg = struct
 end
 
 module Mem = struct
-  type t = { offset : Asm_core.Expr.t; base : Reg.t }
+  type t = { offset : Rivet_asm_core.Expr.t; base : Reg.t }
 
-  let pp ppf m = Fmt.pf ppf "%a(%a)" Asm_core.Expr.pp m.offset Reg.pp m.base
+  let pp ppf m = Fmt.pf ppf "%a(%a)" Rivet_asm_core.Expr.pp m.offset Reg.pp m.base
 end
 
 module Operand = struct
-  type t = Reg of Reg.t | Imm of Bigint.t | Sym of Asm_core.Expr.t | Mem of Mem.t
+  type t = Reg of Reg.t | Imm of Bigint.t | Sym of Rivet_asm_core.Expr.t | Mem of Mem.t
 
   let pp ppf = function
     | Reg r -> Reg.pp ppf r
     | Imm n -> Bigint.pp ppf n
-    | Sym e -> Asm_core.Expr.pp ppf e
+    | Sym e -> Rivet_asm_core.Expr.pp ppf e
     | Mem m -> Mem.pp ppf m
 end
 
@@ -1592,13 +1592,14 @@ module Instruction = struct
         Fmt.(list ~sep:(any ", ") operand)
         (List.mapi (fun k o -> (k, o)) i.ops)
 
-  let pp = pp_with ~expr:Asm_core.Expr.pp
+  let pp = pp_with ~expr:Rivet_asm_core.Expr.pp
 
   (* GNU assembler spelling: {!pp}, with a symbol GNU source cannot name as written (a numeric
-     local label's generated definition) spelled as [Asm_core.Gnu_module] spells it, and a
+     local label's generated definition) spelled as [Rivet_asm_core.Gnu_module] spells it, and a
      relocation modifier as RISC-V's [%m(a)]. *)
   let pp_gnu =
     pp_with
       ~expr:
-        (Asm_core.Gnu_module.expr_with ~modifier:(fun expr ppf m a -> Fmt.pf ppf "%s(%a)" m expr a))
+        (Rivet_asm_core.Gnu_module.expr_with ~modifier:(fun expr ppf m a ->
+             Fmt.pf ppf "%s(%a)" m expr a))
 end

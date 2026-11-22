@@ -136,7 +136,7 @@ let assemble profile case =
   let units = units_of dir in
   let sourced =
     List.map
-      (fun (stem, path) -> (stem, Foundation.Span.source ~name:path ~contents:(read path)))
+      (fun (stem, path) -> (stem, Rivet_foundation.Span.source ~name:path ~contents:(read path)))
       units
   in
   let result =
@@ -146,7 +146,7 @@ let assemble profile case =
     | many -> D.assemble_many ~entry:"asm_test_entry" many ()
   in
   match result with
-  | Error ds -> Error (String.trim (Foundation.Diag.render ds))
+  | Error ds -> Error (String.trim (Rivet_foundation.Diag.render ds))
   | Ok laid_out -> (
       let plan = Image.plan_of laid_out in
       let addresses =
@@ -155,7 +155,7 @@ let assemble profile case =
           plan.Image.segments
       in
       match Image.bind_image laid_out ~addresses with
-      | Error ds -> Error (String.trim (Foundation.Diag.render ds))
+      | Error ds -> Error (String.trim (Rivet_foundation.Diag.render ds))
       | Ok img -> Ok img)
 
 (* {1 The manifest for a bound image}
@@ -198,9 +198,9 @@ let manifest_of_image profile (img : Image.t) ~expected ~observations =
                   zero_len = Int64.of_int s.Image.zero_fill;
                   align = max 16 s.Image.alignment;
                   perms =
-                    ((if Asm_core.Perms.readable s.Image.perms then Abi.perm_r else 0)
-                    lor (if Asm_core.Perms.writable s.Image.perms then Abi.perm_w else 0)
-                    lor if Asm_core.Perms.executable s.Image.perms then Abi.perm_x else 0);
+                    ((if Rivet_asm_core.Perms.readable s.Image.perms then Abi.perm_r else 0)
+                    lor (if Rivet_asm_core.Perms.writable s.Image.perms then Abi.perm_w else 0)
+                    lor if Rivet_asm_core.Perms.executable s.Image.perms then Abi.perm_x else 0);
                 })
               img.Image.segments;
         }
@@ -296,7 +296,7 @@ let describe (img : Image.t) =
        (fun (s : Image.segment) ->
          Printf.sprintf "%s %d bytes at 0x%Lx %s" s.Image.name (String.length s.Image.bytes)
            s.Image.address
-           (Asm_core.Perms.to_string s.Image.perms))
+           (Rivet_asm_core.Perms.to_string s.Image.perms))
        img.Image.segments)
 
 (* M4 Phase 9: an opt-in retry with QEMU's own tracing, decided here rather

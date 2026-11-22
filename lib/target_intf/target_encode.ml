@@ -12,12 +12,12 @@
    values - test/snippets does, and so does anything that generates them -
    wants the whole assembler *below* parsing and none of it above, and a single
    signature made that unaskable: naming any part of a target dragged in the
-   front end, because the signature itself mentioned {!Asm_syntax.Token}.
+   front end, because the signature itself mentioned {!Rivet_asm_syntax.Token}.
 
    Signatures only, like {!Target}: no implementation lives here, so a concrete
    target depends on a description it cannot influence. *)
 
-open Foundation
+open Rivet_foundation
 
 (* One line of a disassembly: an instruction, or a run of the target's alignment padding. The
    canonical and diagnostic dumps are both rendered from these. *)
@@ -203,8 +203,8 @@ module type ENCODE = sig
 
   val encode :
     Lowered.t ->
-    ( [ `Fixed of fixup_kind Asm_core.Lowered_ast.encoded_form
-      | `Relax of fixup_kind Asm_core.Lowered_ast.encoded_form list ],
+    ( [ `Fixed of fixup_kind Rivet_asm_core.Lowered_ast.encoded_form
+      | `Relax of fixup_kind Rivet_asm_core.Lowered_ast.encoded_form list ],
       error )
     Err.t
   (** Separate from {!codec} because packing bits into *memory order* is target-specific: a codec
@@ -213,7 +213,7 @@ module type ENCODE = sig
       in generic code would mean the generic code knew which targets are fixed-width, and putting
       it in the codec would mean [inspect] printed a form the machine does not contain.
 
-      Converting a {!Codec.placement} into a {!Asm_core.Lowered_ast.fixup} happens here for the same
+      Converting a {!Codec.placement} into a {!Rivet_asm_core.Lowered_ast.fixup} happens here for the same
       reason: only the target knows that its bit positions have just been reversed, and only it can
       say what PC the architecture measures from.
 
@@ -225,8 +225,8 @@ module type ENCODE = sig
   val encode_in :
     target_state ->
     Lowered.t ->
-    ( [ `Fixed of fixup_kind Asm_core.Lowered_ast.encoded_form
-      | `Relax of fixup_kind Asm_core.Lowered_ast.encoded_form list ],
+    ( [ `Fixed of fixup_kind Rivet_asm_core.Lowered_ast.encoded_form
+      | `Relax of fixup_kind Rivet_asm_core.Lowered_ast.encoded_form list ],
       error )
     Err.t
   (** {!encode} under a configuration: a lowered form belonging to a disabled component is
@@ -282,7 +282,7 @@ module type ENCODE = sig
       *must* change kind and width - that is what a ladder is - so ladder compatibility is checked
       on this rather than on the kind. *)
 
-  val fixup_role : fixup_kind -> Asm_core.Lowered_ast.fixup_role
+  val fixup_role : fixup_kind -> Rivet_asm_core.Lowered_ast.fixup_role
   (** call, branch, or data address. The oracle's classifier is indexed by role because the four
       targets disagree about which references survive assembly, and they disagree *per role*: a
       same-file global call keeps a record everywhere while a local branch keeps one nowhere. *)
@@ -293,7 +293,7 @@ module type ENCODE = sig
       and four on ARM and AArch64, and the compiler writes [.4byte] for a 32-bit address on ARM. A
       single shared table would be silently wrong for one of them. *)
 
-  val align_unit : Asm_core.Directive.align_unit
+  val align_unit : Rivet_asm_core.Directive.align_unit
   (** the unit of [.align]'s argument in this dialect ([.balign] is always bytes, [.p2align] always
       an exponent). *)
 

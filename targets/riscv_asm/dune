@@ -6,7 +6,7 @@
  (public_name rivet.riscv_asm)
  (modules riscv_asm riscv_asm_rowkit)
  (modes byte native)
- (libraries foundation asm_core riscv_family_encode)
+ (libraries rivet_foundation rivet_asm_core riscv_family_encode)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -15,7 +15,7 @@
  (public_name rivet.riscv32_asm)
  (modules riscv32_asm riscv_asm_rows32)
  (modes byte native)
- (libraries foundation asm_core riscv_family_encode riscv_asm)
+ (libraries rivet_foundation rivet_asm_core riscv_family_encode riscv_asm)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -24,6 +24,6 @@
  (public_name rivet.riscv64_asm)
  (modules riscv64_asm riscv_asm_rows64)
  (modes byte native)
- (libraries foundation asm_core riscv_family_encode riscv_asm)
+ (libraries rivet_foundation rivet_asm_core riscv_family_encode riscv_asm)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

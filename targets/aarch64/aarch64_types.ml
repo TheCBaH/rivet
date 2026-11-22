@@ -2,7 +2,7 @@
    instructions. The encoder ({!Aarch64_encode}) builds on them, and so does the per-opcode table
    ({!Aarch64_ops}), which sits between the two. *)
 
-open Foundation
+open Rivet_foundation
 
 (* {1 Registers}
 
@@ -120,7 +120,7 @@ module Disp = struct
      amount is unscaled, regardless of which spelling produced it. *)
   type t =
     | Const of int64
-    | Sym of Asm_core.Expr.t
+    | Sym of Rivet_asm_core.Expr.t
     | Reg of { index : Reg.t; extend : Extend.t; amount : int option }
 
   let zero = Const 0L
@@ -129,7 +129,7 @@ module Disp = struct
 
   let to_string = function
     | Const v -> Printf.sprintf "#%Ld" v
-    | Sym e -> Asm_core.Expr.to_string e
+    | Sym e -> Rivet_asm_core.Expr.to_string e
     | Reg { index; extend; amount } ->
         let tail =
           if extend = Extend.Lsl_ext && amount = None then ""
@@ -397,7 +397,7 @@ module Operand = struct
             immediate before it - but the common parser hands over comma-separated slices and this
             is one of them. Simplify folds it into the operand it belongs to; a surface AST that
             had already folded it could not report a shift applied to nothing. *)
-    | Sym of Asm_core.Expr.t
+    | Sym of Rivet_asm_core.Expr.t
         (** a branch or call target. Written without a [#], unlike an immediate: it is an address,
             not a value, and the two are spelled differently for that reason. *)
     | Vec of int * Varr.t  (** [v0.4s] *)
@@ -419,7 +419,7 @@ module Operand = struct
     | Fimm f -> Fmt.pf ppf "#%s" (Printf.sprintf "%.18e" f)
     | Mem m -> Mem.pp ppf m
     | Shift s -> Fmt.pf ppf "%s #%d" (Shift.name s.Shift.kind) s.Shift.amount
-    | Sym e -> Fmt.string ppf (Asm_core.Expr.to_string e)
+    | Sym e -> Fmt.string ppf (Rivet_asm_core.Expr.to_string e)
     | Vec (r, a) -> Fmt.pf ppf "v%d.%s" r (Varr.name a)
     | Vlane (r, l, i) -> Fmt.pf ppf "v%d.%s[%d]" r (Lane.name l) i
     | Vlist (r, a) -> Fmt.pf ppf "{v%d.%s}" r (Varr.name a)

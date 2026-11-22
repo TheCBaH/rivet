@@ -99,13 +99,13 @@ let%expect_test "a vendor row reads back from its GNU print" =
       ret
 |}
   in
-  let src = Foundation.Span.source ~name:"v.s" ~contents:source in
+  let src = Rivet_foundation.Span.source ~name:"v.s" ~contents:source in
   let text =
     match (VP.initial_state features, VP.parse ~unit_name:"v" ~source:src) with
     | Ok state, Ok m -> (
         match VP.simplify ~state m with
         | Ok (n, _) ->
-            Asm_core.Gnu_module.to_string C.gnu_syntax ~instruction:V.Instruction.pp_gnu n
+            Rivet_asm_core.Gnu_module.to_string C.gnu_syntax ~instruction:V.Instruction.pp_gnu n
         | Error ds -> C.render ds)
     | Error ds, _ | _, Error ds -> C.render ds
   in
@@ -133,13 +133,16 @@ let%expect_test "a vendor row reads back from its GNU print" =
 (* A numeric local label reads back on every target with a GNU printer. *)
 let%expect_test "local labels read back from the GNU print on x86-64 and AArch64" =
   let check (type i) (module D : Target_intf.Target.DRIVER) ~type_char
-      ~(simplify : Foundation.Span.source -> (i Asm_core.Normalized_ast.module_, string) result)
+      ~(simplify :
+         Rivet_foundation.Span.source -> (i Rivet_asm_core.Normalized_ast.module_, string) result)
       ~(instruction : i Fmt.t) source =
-    let src = Foundation.Span.source ~name:"l.s" ~contents:source in
+    let src = Rivet_foundation.Span.source ~name:"l.s" ~contents:source in
     match simplify src with
     | Error m -> print_endline m
     | Ok n -> (
-        let text = Asm_core.Gnu_module.to_string { Asm_core.Gnu_module.type_char } ~instruction n in
+        let text =
+          Rivet_asm_core.Gnu_module.to_string { Rivet_asm_core.Gnu_module.type_char } ~instruction n
+        in
         print_string text;
         match (C.assemble (module D) source, C.assemble (module D) text) with
         | Ok a, Ok b -> print_endline (if String.equal a b then "same bytes" else "DIFFERENT")
@@ -205,14 +208,14 @@ let%expect_test "local labels read back from the GNU print on x86-64 and AArch64
 let%expect_test "$ names read back from the GNU print on x86-64 and x86-32" =
   let check (type i) (module D : Target_intf.Target.DRIVER) ~parse ~simplify ~state
       ~(instruction : i Fmt.t) source =
-    let src = Foundation.Span.source ~name:"d.s" ~contents:source in
+    let src = Rivet_foundation.Span.source ~name:"d.s" ~contents:source in
     match parse ~unit_name:"d" ~source:src with
     | Error ds -> print_endline (C.render ds)
     | Ok m -> (
         match simplify ~state m with
         | Error ds -> print_endline (C.render ds)
         | Ok (n, _) -> (
-            let text = Asm_core.Gnu_module.to_string C.gnu_syntax ~instruction n in
+            let text = Rivet_asm_core.Gnu_module.to_string C.gnu_syntax ~instruction n in
             print_string text;
             match (C.assemble (module D) source, C.assemble (module D) text) with
             | Ok a, Ok b when String.equal a b -> print_endline (C.hex a)

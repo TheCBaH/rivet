@@ -7,7 +7,7 @@
    lowering reads as VFP is told apart from the integer ones by its register classes: {!Dreg.t} and
    {!Sreg.t} are different types, so a [d] register where an [s] one is expected does not compile. *)
 
-open Foundation
+open Rivet_foundation
 open Arm_types
 
 module Shift = struct
@@ -67,9 +67,9 @@ module Shape = struct
     | Fimm : ('f, 'r) t -> (float -> 'f, 'r) t
     | Mem : ('f, 'r) t -> (Mem.t -> 'f, 'r) t
     | Post : ('f, 'r) t -> (Reg.t -> int -> 'f, 'r) t
-    | Sym : ('f, 'r) t -> (Asm_core.Expr.t -> 'f, 'r) t
-    | Lo16 : ('f, 'r) t -> (Asm_core.Expr.t -> 'f, 'r) t
-    | Hi16 : ('f, 'r) t -> (Asm_core.Expr.t -> 'f, 'r) t
+    | Sym : ('f, 'r) t -> (Rivet_asm_core.Expr.t -> 'f, 'r) t
+    | Lo16 : ('f, 'r) t -> (Rivet_asm_core.Expr.t -> 'f, 'r) t
+    | Hi16 : ('f, 'r) t -> (Rivet_asm_core.Expr.t -> 'f, 'r) t
     | Sh : ('f, 'r) t -> (Shift.t -> 'f, 'r) t
     | Reglist : ('f, 'r) t -> (Reg.t list -> 'f, 'r) t
     | Dreglist : ('f, 'r) t -> (Dreg.t list -> 'f, 'r) t
@@ -110,8 +110,8 @@ module Shape = struct
         fun () ->
           k
             [
-              Operand.Sym (Asm_core.Expr.Symbol "APSR_nzcv");
-              Operand.Sym (Asm_core.Expr.Symbol "FPSCR");
+              Operand.Sym (Rivet_asm_core.Expr.Symbol "APSR_nzcv");
+              Operand.Sym (Rivet_asm_core.Expr.Symbol "FPSCR");
             ]
     | R s -> fun r -> next s (Operand.Reg r)
     | D s -> fun r -> next s (Operand.Dreg r)
@@ -123,8 +123,8 @@ module Shape = struct
     | Mem s -> fun m -> next s (Operand.Mem m)
     | Post s -> fun base n -> build s (fun ops -> k (mem0 base :: int n :: ops))
     | Sym s -> fun e -> next s (Operand.Sym e)
-    | Lo16 s -> fun e -> next s (Operand.Sym (Asm_core.Expr.Modifier ("lower16", e)))
-    | Hi16 s -> fun e -> next s (Operand.Sym (Asm_core.Expr.Modifier ("upper16", e)))
+    | Lo16 s -> fun e -> next s (Operand.Sym (Rivet_asm_core.Expr.Modifier ("lower16", e)))
+    | Hi16 s -> fun e -> next s (Operand.Sym (Rivet_asm_core.Expr.Modifier ("upper16", e)))
     | Sh s ->
         fun { Shift.reg; kind; amount } ->
           next s (Operand.Shifted { reg; kind = Shift.code kind; amount })
@@ -152,9 +152,9 @@ module Shape = struct
         sample s (i + 1) imm
           (f { Mem.base = Reg.of_num (1 + i); offset = Mem.Imm 0L; writeback = false; pre = true })
     | Post s -> sample s (i + 1) imm (f (Reg.of_num (1 + i)) imm)
-    | Sym s -> sample s (i + 1) imm (f (Asm_core.Expr.Symbol "l"))
-    | Lo16 s -> sample s (i + 1) imm (f (Asm_core.Expr.Symbol "l"))
-    | Hi16 s -> sample s (i + 1) imm (f (Asm_core.Expr.Symbol "l"))
+    | Sym s -> sample s (i + 1) imm (f (Rivet_asm_core.Expr.Symbol "l"))
+    | Lo16 s -> sample s (i + 1) imm (f (Rivet_asm_core.Expr.Symbol "l"))
+    | Hi16 s -> sample s (i + 1) imm (f (Rivet_asm_core.Expr.Symbol "l"))
     | Sh s ->
         sample s (i + 1) imm (f { Shift.reg = Reg.of_num (1 + i); kind = Shift.Lsl; amount = 2 })
     | Reglist s -> sample s (i + 1) imm (f [ Reg.of_num (1 + i); Reg.of_num (2 + i) ])

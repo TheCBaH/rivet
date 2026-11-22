@@ -12,8 +12,10 @@ let render ds =
   String.concat "; "
     (List.map
        (fun d ->
-         Printf.sprintf "%s: %s" (Foundation.Diagnostic.code d) (Foundation.Diagnostic.message d))
-       (Foundation.Diag.diagnostics ds))
+         Printf.sprintf "%s: %s"
+           (Rivet_foundation.Diagnostic.code d)
+           (Rivet_foundation.Diagnostic.message d))
+       (Rivet_foundation.Diag.diagnostics ds))
 
 let hex s =
   String.concat " " (List.init (String.length s) (fun i -> Printf.sprintf "%02x" (Char.code s.[i])))
@@ -25,7 +27,7 @@ let spec text =
 let assembled ?features target text =
   let (module D : Target_intf.Target.DRIVER) = driver target in
   let features = Option.map spec features in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:text in
+  let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:text in
   match D.assemble ?features ~unit_name:"t" ~source () with
   | Error ds -> Error (render ds)
   | Ok laid_out -> (
@@ -410,7 +412,7 @@ let%expect_test "RISC-V: a normalized instruction is refused at lowering, a lowe
   let config text =
     match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
   in
-  let origin = Foundation.Origin.synthesized ~pass:"test" () in
+  let origin = Rivet_foundation.Origin.synthesized ~pass:"test" () in
   let surface mnemonic ops =
     match E.make_surface_instruction ~mnemonic ~origin ops with
     | Ok s -> s
@@ -430,17 +432,19 @@ let%expect_test "RISC-V: a normalized instruction is refused at lowering, a lowe
             (match E.lower_instruction state insn with
             | Ok _ -> "accepted"
             | Error e ->
-                "refused: " ^ Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))));
+                "refused: "
+                ^ Rivet_foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))));
       let lowered =
         E.Lowered.R
           { op = E.Opcode.Mul; rd = E.Reg.x 5; rs1 = E.Reg.x 6; rs2 = Some (E.Reg.x 7); rm = None }
       in
       Printf.printf "%s: encode_in -> %s\n" label
         (match E.encode_in state lowered with
-        | Ok (`Fixed f) -> hex f.Asm_core.Lowered_ast.bytes
+        | Ok (`Fixed f) -> hex f.Rivet_asm_core.Lowered_ast.bytes
         | Ok (`Relax _) -> "relax"
         | Error e ->
-            "refused: " ^ Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))))
+            "refused: "
+            ^ Rivet_foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))))
     [ ("zmmul on ", "none,+zmmul"); ("zmmul off", "none") ];
   [%expect
     {|
@@ -452,11 +456,11 @@ let%expect_test "RISC-V: a normalized instruction is refused at lowering, a lowe
 let%expect_test "RISC-V: a refusal at lowering names the item it came from" =
   let module E = Riscv32_encode in
   let module P = Driver_direct.Pipeline_direct.Make (E) in
-  let open Asm_core in
+  let open Rivet_asm_core in
   let config =
     match Target_config.resolve E.components (spec "none") with Ok c -> c | Error m -> failwith m
   in
-  let origin = Foundation.Origin.producer ~tool:"kernel" ~item:"peak+8" () in
+  let origin = Rivet_foundation.Origin.producer ~tool:"kernel" ~item:"peak+8" () in
   let x n = E.Operand.Reg (E.Reg.x n) in
   let insn =
     match
@@ -483,7 +487,7 @@ let%expect_test "RISC-V: a refusal at lowering names the item it came from" =
   in
   (match P.lower ~state:(E.initial_state config) m with
   | Ok _ -> print_endline "accepted"
-  | Error e -> print_string (Foundation.Diag.render e));
+  | Error e -> print_string (Rivet_foundation.Diag.render e));
   [%expect
     {| <synthesized by riscv32 from <kernel:peak+8>>: error[riscv32.feature]: mul requires feature zmmul, which is not enabled |}]
 
@@ -496,10 +500,10 @@ let%expect_test "x86: a lowered x87 form is refused at encoding, a base one is n
     let state = E.initial_state (config features) in
     Printf.printf "%-9s %-8s -> %s\n" label features
       (match E.encode_in state lowered with
-      | Ok (`Fixed f) -> hex f.Asm_core.Lowered_ast.bytes
+      | Ok (`Fixed f) -> hex f.Rivet_asm_core.Lowered_ast.bytes
       | Ok (`Relax _) -> "relax"
       | Error e ->
-          "refused: " ^ Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e)))
+          "refused: " ^ Rivet_foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e)))
   in
   List.iter
     (fun features ->
@@ -689,7 +693,7 @@ let%expect_test "RISC-V .option arch cannot enable past the maximum configuratio
   let ceiling = spec "none,+m,+f" in
   let run ?features body =
     let source =
-      Foundation.Span.source ~name:"<test>"
+      Rivet_foundation.Span.source ~name:"<test>"
         ~contents:({|
       .text
       .globl f
@@ -765,7 +769,7 @@ let%expect_test "RISC-V .option arch cannot enable past the maximum configuratio
 let%expect_test "lowering refuses an initial state past the maximum configuration" =
   let module P = Pipeline.Make (Riscv32) in
   let ceiling = Result.get_ok (P.configure (spec "none,+m,+f")) in
-  let source = Foundation.Span.source ~name:"<test>" ~contents:{|
+  let source = Rivet_foundation.Span.source ~name:"<test>" ~contents:{|
       .text
       nop
 |} in
@@ -788,7 +792,7 @@ let%expect_test "lowering refuses an initial state past the maximum configuratio
 
 let%expect_test "every unit of a multi-unit assembly gets the caller's configuration" =
   let (module D : Target_intf.Target.DRIVER) = driver "riscv64" in
-  let unit name text = (name, Foundation.Span.source ~name ~contents:text) in
+  let unit name text = (name, Rivet_foundation.Span.source ~name ~contents:text) in
   let units =
     [
       unit "a" "\t.text\n\t.globl fa\nfa:\n\tmul x5, x6, x7\n";
@@ -968,10 +972,11 @@ let%expect_test "F and D: lowered and decoded forms" =
       let state = E.initial_state (config features) in
       Printf.printf "%-10s encode_in -> %s\n" features
         (match E.encode_in state lowered with
-        | Ok (`Fixed f) -> hex f.Asm_core.Lowered_ast.bytes
+        | Ok (`Fixed f) -> hex f.Rivet_asm_core.Lowered_ast.bytes
         | Ok (`Relax _) -> "relax"
         | Error e ->
-            "refused: " ^ Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))))
+            "refused: "
+            ^ Rivet_foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))))
     [ "none,+f"; "none" ];
   let code =
     bytes_of "riscv64" "\t.text\n\tfadd.d f1, f2, f3\n\tfmv.x.w x5, f1\n\taddi x5, x6, 1\n"
@@ -1537,7 +1542,7 @@ let%expect_test "RISC-V: lowered forms of each shape are refused when their exte
   let config text =
     match Target_config.resolve E.components (spec text) with Ok c -> c | Error m -> failwith m
   in
-  let imm n = Asm_core.Expr.Const (Foundation.Bigint.of_int n) in
+  let imm n = Rivet_asm_core.Expr.Const (Rivet_foundation.Bigint.of_int n) in
   let forms =
     [
       ( "R4",
@@ -1563,10 +1568,11 @@ let%expect_test "RISC-V: lowered forms of each shape are refused when their exte
           let state = E.initial_state (config features) in
           Printf.printf "%-6s %-10s -> %s\n" label features
             (match E.encode_in state lowered with
-            | Ok (`Fixed f) -> hex f.Asm_core.Lowered_ast.bytes
+            | Ok (`Fixed f) -> hex f.Rivet_asm_core.Lowered_ast.bytes
             | Ok (`Relax _) -> "relax"
             | Error e ->
-                "refused: " ^ Foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))))
+                "refused: "
+                ^ Rivet_foundation.Diagnostic.message (E.error_diagnostic (Err.Error.kind e))))
         [ "none,+f,+system"; "none" ])
     forms;
   [%expect

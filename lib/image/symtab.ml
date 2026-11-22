@@ -2,7 +2,7 @@
    not automatically the same symbol, so every definition carries the unit
    that produced it. *)
 
-open Asm_core
+open Rivet_asm_core
 
 (* Comes only from a [Label_def] fragment: qualified identity, binding,
    section, offset. *)

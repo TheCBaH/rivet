@@ -12,7 +12,7 @@
    reverses it. Both directions are little-endian in memory, and every committed
    artifact is in memory order. *)
 
-open Foundation
+open Rivet_foundation
 include Arm_types
 module Arm_ops = Arm_ops
 
@@ -161,9 +161,9 @@ module Lowered = struct
             members
     | Udf { imm16 } -> Fmt.pf ppf "udf #%Ld" imm16
     | Bl { cond; target } ->
-        Fmt.pf ppf "bl%s %a" (Cond.suffix cond) Asm_core.Lowered_ast.pp_branch target
+        Fmt.pf ppf "bl%s %a" (Cond.suffix cond) Rivet_asm_core.Lowered_ast.pp_branch target
     | B { cond; target } ->
-        Fmt.pf ppf "b%s %a" (Cond.suffix cond) Asm_core.Lowered_ast.pp_branch target
+        Fmt.pf ppf "b%s %a" (Cond.suffix cond) Rivet_asm_core.Lowered_ast.pp_branch target
     | Mul { cond; rd; rn; rm; _ } ->
         Fmt.pf ppf "mul%s %a, %a, %a" (Cond.suffix cond) Reg.pp rd Reg.pp rn Reg.pp rm
     | Mla { cond; rd; rn; rm; ra; _ } ->
@@ -174,7 +174,7 @@ module Lowered = struct
     | Movw_movt { cond; top; rd; imm } ->
         Fmt.pf ppf "%s%s %a, #%a"
           (if top then "movt" else "movw")
-          (Cond.suffix cond) Reg.pp rd Asm_core.Lowered_ast.pp_branch imm
+          (Cond.suffix cond) Reg.pp rd Rivet_asm_core.Lowered_ast.pp_branch imm
     | Vmov_reg_d { cond; vd; vm } ->
         Fmt.pf ppf "vmov%s.f64 %a, %a" (Cond.suffix cond) Dreg.pp vd Dreg.pp vm
     | Vmov_reg_s { cond; vd; vm } ->
@@ -231,11 +231,11 @@ module Lowered = struct
           (if load then "vldr" else "vstr")
           (Cond.suffix cond) Sreg.pp vd Reg.pp rn offset
     | Vldr_lit_d { cond; vd; target } ->
-        Fmt.pf ppf "vldr%s %a, %a" (Cond.suffix cond) Dreg.pp vd Asm_core.Lowered_ast.pp_branch
-          target
+        Fmt.pf ppf "vldr%s %a, %a" (Cond.suffix cond) Dreg.pp vd
+          Rivet_asm_core.Lowered_ast.pp_branch target
     | Vldr_lit_s { cond; vd; target } ->
-        Fmt.pf ppf "vldr%s %a, %a" (Cond.suffix cond) Sreg.pp vd Asm_core.Lowered_ast.pp_branch
-          target
+        Fmt.pf ppf "vldr%s %a, %a" (Cond.suffix cond) Sreg.pp vd
+          Rivet_asm_core.Lowered_ast.pp_branch target
     | Vpush { cond; vd; count } ->
         let members = List.init count (fun i -> Dreg.of_num (vd.Dreg.num + i)) in
         Fmt.pf ppf "vpush%s.64 {%a}" (Cond.suffix cond) Fmt.(list ~sep:(any ", ") Dreg.pp) members
@@ -275,8 +275,10 @@ module Lowered = struct
     | Ldm x, Ldm y ->
         Cond.equal x.cond y.cond && x.load = y.load && Reg.equal x.rn y.rn && x.regs = y.regs
     | Udf x, Udf y -> Int64.equal x.imm16 y.imm16
-    | Bl x, Bl y -> Cond.equal x.cond y.cond && Asm_core.Lowered_ast.equal_branch x.target y.target
-    | B x, B y -> Cond.equal x.cond y.cond && Asm_core.Lowered_ast.equal_branch x.target y.target
+    | Bl x, Bl y ->
+        Cond.equal x.cond y.cond && Rivet_asm_core.Lowered_ast.equal_branch x.target y.target
+    | B x, B y ->
+        Cond.equal x.cond y.cond && Rivet_asm_core.Lowered_ast.equal_branch x.target y.target
     | Mul x, Mul y ->
         Cond.equal x.cond y.cond && x.s = y.s && Reg.equal x.rd y.rd && Reg.equal x.rn y.rn
         && Reg.equal x.rm y.rm
@@ -285,7 +287,7 @@ module Lowered = struct
         && Reg.equal x.rm y.rm && Reg.equal x.ra y.ra
     | Movw_movt x, Movw_movt y ->
         Cond.equal x.cond y.cond && x.top = y.top && Reg.equal x.rd y.rd
-        && Asm_core.Lowered_ast.equal_branch x.imm y.imm
+        && Rivet_asm_core.Lowered_ast.equal_branch x.imm y.imm
     | Vmov_reg_d x, Vmov_reg_d y ->
         Cond.equal x.cond y.cond && Dreg.equal x.vd y.vd && Dreg.equal x.vm y.vm
     | Vmov_reg_s x, Vmov_reg_s y ->
@@ -339,10 +341,10 @@ module Lowered = struct
         && Int64.equal x.offset y.offset
     | Vldr_lit_d x, Vldr_lit_d y ->
         Cond.equal x.cond y.cond && Dreg.equal x.vd y.vd
-        && Asm_core.Lowered_ast.equal_branch x.target y.target
+        && Rivet_asm_core.Lowered_ast.equal_branch x.target y.target
     | Vldr_lit_s x, Vldr_lit_s y ->
         Cond.equal x.cond y.cond && Sreg.equal x.vd y.vd
-        && Asm_core.Lowered_ast.equal_branch x.target y.target
+        && Rivet_asm_core.Lowered_ast.equal_branch x.target y.target
     | Vpush x, Vpush y -> Cond.equal x.cond y.cond && Dreg.equal x.vd y.vd && x.count = y.count
     | Nop x, Nop y -> Cond.equal x.cond y.cond
     | Shift_reg x, Shift_reg y ->
@@ -377,9 +379,9 @@ let fixup_family = function
   | Pcrel_vldr8 -> "pcrel-vldr-literal"
 
 let fixup_role = function
-  | Abs32 | Movw_abs_nc | Movt_abs | Pcrel_vldr8 -> Asm_core.Lowered_ast.Data_address
-  | Pcrel_b26 -> Asm_core.Lowered_ast.Branch
-  | Pcrel_call -> Asm_core.Lowered_ast.Call
+  | Abs32 | Movw_abs_nc | Movt_abs | Pcrel_vldr8 -> Rivet_asm_core.Lowered_ast.Data_address
+  | Pcrel_b26 -> Rivet_asm_core.Lowered_ast.Branch
+  | Pcrel_call -> Rivet_asm_core.Lowered_ast.Call
 
 (* The [.syntax] modes; the instructions this target takes read the same in both. *)
 module Syntax = struct
@@ -531,8 +533,8 @@ let movw_alt ~top =
       | Lowered.Movw_movt { cond; top = t; rd; imm } when t = top ->
           let v =
             match imm with
-            | Asm_core.Lowered_ast.Symbolic _ -> 0L
-            | Asm_core.Lowered_ast.Resolved { value; _ } -> value
+            | Rivet_asm_core.Lowered_ast.Symbolic _ -> 0L
+            | Rivet_asm_core.Lowered_ast.Resolved { value; _ } -> value
           in
           Some
             ( cond,
@@ -543,7 +545,7 @@ let movw_alt ~top =
       let value = Int64.logor (Int64.shift_left imm4 12) imm12 in
       Some
         (Lowered.Movw_movt
-           { cond; top; rd; imm = Asm_core.Lowered_ast.Resolved { value; rung = name } }))
+           { cond; top; rd; imm = Rivet_asm_core.Lowered_ast.Resolved { value; rung = name } }))
     C.(
       cond_codec ** const ~width:8 op
       ** fixup ~width:4 ~value_lsb:12 ~kind "imm"
@@ -928,14 +930,14 @@ let codec : (Lowered.t, fixup_kind) C.t =
            ~encode:(function
              | Lowered.Bl { cond; target } -> (
                  match target with
-                 | Asm_core.Lowered_ast.Symbolic _ -> Some (cond, ((), 0L))
-                 | Asm_core.Lowered_ast.Resolved { value; _ } -> Some (cond, ((), value)))
+                 | Rivet_asm_core.Lowered_ast.Symbolic _ -> Some (cond, ((), 0L))
+                 | Rivet_asm_core.Lowered_ast.Resolved { value; _ } -> Some (cond, ((), value)))
              | _ -> None)
            ~decode:(fun (cond, ((), d)) ->
              let v = Int64.shift_right (Int64.shift_left d 40) 40 in
              Some
                (Lowered.Bl
-                  { cond; target = Asm_core.Lowered_ast.Resolved { value = v; rung = "bl" } }))
+                  { cond; target = Rivet_asm_core.Lowered_ast.Resolved { value = v; rung = "bl" } }))
            C.(cond_codec ** const ~width:4 0b1011L ** fixup ~width:24 ~kind:Pcrel_call "target"));
       (* [b] - the same word-counted 24-bit field as [bl], one opcode bit apart,
          and the reason A32 needs no relaxation ladder: 24 words of signed reach
@@ -945,13 +947,14 @@ let codec : (Lowered.t, fixup_kind) C.t =
            ~encode:(function
              | Lowered.B { cond; target } -> (
                  match target with
-                 | Asm_core.Lowered_ast.Symbolic _ -> Some (cond, ((), 0L))
-                 | Asm_core.Lowered_ast.Resolved { value; _ } -> Some (cond, ((), value)))
+                 | Rivet_asm_core.Lowered_ast.Symbolic _ -> Some (cond, ((), 0L))
+                 | Rivet_asm_core.Lowered_ast.Resolved { value; _ } -> Some (cond, ((), value)))
              | _ -> None)
            ~decode:(fun (cond, ((), d)) ->
              let v = Int64.shift_right (Int64.shift_left d 40) 40 in
              Some
-               (Lowered.B { cond; target = Asm_core.Lowered_ast.Resolved { value = v; rung = "b" } }))
+               (Lowered.B
+                  { cond; target = Rivet_asm_core.Lowered_ast.Resolved { value = v; rung = "b" } }))
            C.(cond_codec ** const ~width:4 0b1010L ** fixup ~width:24 ~kind:Pcrel_b26 "target"));
       (* [mul] and [mla]. Bits 7:4 are [1001], and the data-processing register
          format requires bit 4 to be zero, so these do not overlap [dp-reg] and
@@ -1464,8 +1467,8 @@ let codec : (Lowered.t, fixup_kind) C.t =
              | Lowered.Vldr_lit_d { cond; vd; target } ->
                  let imm8 =
                    match target with
-                   | Asm_core.Lowered_ast.Symbolic _ -> 0L
-                   | Asm_core.Lowered_ast.Resolved { value; _ } -> value
+                   | Rivet_asm_core.Lowered_ast.Symbolic _ -> 0L
+                   | Rivet_asm_core.Lowered_ast.Resolved { value; _ } -> value
                  in
                  let d, vdf = dreg_parts vd in
                  Some (cond, ((), ((), (d, ((), ((), ((), (vdf, ((), imm8)))))))))
@@ -1476,7 +1479,8 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   {
                     cond;
                     vd = dreg_unparts d vdf;
-                    target = Asm_core.Lowered_ast.Resolved { value = imm8; rung = "vldr-lit-d" };
+                    target =
+                      Rivet_asm_core.Lowered_ast.Resolved { value = imm8; rung = "vldr-lit-d" };
                   }))
            C.(
              cond_codec ** const ~width:4 0b1101L ** const ~width:1 1L (* U *) ** field ~width:1 "D"
@@ -1490,8 +1494,8 @@ let codec : (Lowered.t, fixup_kind) C.t =
              | Lowered.Vldr_lit_s { cond; vd; target } ->
                  let imm8 =
                    match target with
-                   | Asm_core.Lowered_ast.Symbolic _ -> 0L
-                   | Asm_core.Lowered_ast.Resolved { value; _ } -> value
+                   | Rivet_asm_core.Lowered_ast.Symbolic _ -> 0L
+                   | Rivet_asm_core.Lowered_ast.Resolved { value; _ } -> value
                  in
                  let d, vdf = sreg_parts vd in
                  Some (cond, ((), ((), (d, ((), ((), ((), (vdf, ((), imm8)))))))))
@@ -1502,7 +1506,8 @@ let codec : (Lowered.t, fixup_kind) C.t =
                   {
                     cond;
                     vd = sreg_unparts d vdf;
-                    target = Asm_core.Lowered_ast.Resolved { value = imm8; rung = "vldr-lit-s" };
+                    target =
+                      Rivet_asm_core.Lowered_ast.Resolved { value = imm8; rung = "vldr-lit-s" };
                   }))
            C.(
              cond_codec ** const ~width:4 0b1101L ** const ~width:1 1L (* U *) ** field ~width:1 "D"
@@ -1795,11 +1800,18 @@ let lower_regular (e : Arm_ops.entry) cond ops =
     | Enc.Bx, [ Operand.Reg rm ] -> Ok [ Lowered.Bx { cond; rm } ]
     | Enc.Bl, [ Operand.Sym x ] ->
         Ok
-          [ Lowered.Bl { cond; target = Asm_core.Lowered_ast.Symbolic { value = x; rung = None } } ]
+          [
+            Lowered.Bl
+              { cond; target = Rivet_asm_core.Lowered_ast.Symbolic { value = x; rung = None } };
+          ]
     (* A32 branches are fixed-width: one form, no ladder, so no rung to pin. The 24-bit field
        reaches 32 MiB either way, which every fixture is far inside. *)
     | Enc.B, [ Operand.Sym x ] ->
-        Ok [ Lowered.B { cond; target = Asm_core.Lowered_ast.Symbolic { value = x; rung = None } } ]
+        Ok
+          [
+            Lowered.B
+              { cond; target = Rivet_asm_core.Lowered_ast.Symbolic { value = x; rung = None } };
+          ]
     | Enc.Nop, [] -> Ok [ Lowered.Nop { cond } ]
     | Enc.V3 { dbl = true; _ }, [ Operand.Dreg vd; Operand.Dreg vn; Operand.Dreg vm ] -> (
         match e.op with
@@ -1995,7 +2007,7 @@ let lower_instruction state i =
             let top = op = Opcode.Movt in
             let want = if top then "upper16" else "lower16" in
             match e with
-            | Asm_core.Expr.Modifier (m, inner) when String.equal m want ->
+            | Rivet_asm_core.Expr.Modifier (m, inner) when String.equal m want ->
                 Ok
                   [
                     Lowered.Movw_movt
@@ -2003,10 +2015,10 @@ let lower_instruction state i =
                         cond;
                         top;
                         rd;
-                        imm = Asm_core.Lowered_ast.Symbolic { value = inner; rung = None };
+                        imm = Rivet_asm_core.Lowered_ast.Symbolic { value = inner; rung = None };
                       };
                   ]
-            | Asm_core.Expr.Modifier (m, _) ->
+            | Rivet_asm_core.Expr.Modifier (m, _) ->
                 bad (`Wrong_relocation_modifier { opcode = op; want; got = m })
             | _ -> bad (`Missing_relocation_modifier { opcode = op; want }))
         | ((Opcode.Movw | Opcode.Movt) as op), [ Operand.Reg rd; Operand.Imm v ] -> (
@@ -2023,11 +2035,15 @@ let lower_instruction state i =
                           cond;
                           top = op = Opcode.Movt;
                           rd;
-                          imm = Asm_core.Lowered_ast.Resolved { value = imm; rung = Opcode.name op };
+                          imm =
+                            Rivet_asm_core.Lowered_ast.Resolved
+                              { value = imm; rung = Opcode.name op };
                         };
                     ])
         | ( Opcode.Vmrs,
-            [ Operand.Sym (Asm_core.Expr.Symbol a); Operand.Sym (Asm_core.Expr.Symbol f) ] )
+            [
+              Operand.Sym (Rivet_asm_core.Expr.Symbol a); Operand.Sym (Rivet_asm_core.Expr.Symbol f);
+            ] )
           when String.equal a "APSR_nzcv" && String.equal f "FPSCR" ->
             Ok [ Lowered.Vmrs { cond } ]
         | Opcode.Vmrs, _ -> bad `Vmrs_unsupported_operands
@@ -2062,13 +2078,21 @@ let lower_instruction state i =
             Ok
               [
                 Lowered.Vldr_lit_d
-                  { cond; vd; target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } };
+                  {
+                    cond;
+                    vd;
+                    target = Rivet_asm_core.Lowered_ast.Symbolic { value = e; rung = None };
+                  };
               ]
         | Opcode.Vldr, [ Operand.Sreg vd; Operand.Sym e ] ->
             Ok
               [
                 Lowered.Vldr_lit_s
-                  { cond; vd; target = Asm_core.Lowered_ast.Symbolic { value = e; rung = None } };
+                  {
+                    cond;
+                    vd;
+                    target = Rivet_asm_core.Lowered_ast.Symbolic { value = e; rung = None };
+                  };
               ]
         (* [ite] is a Thumb construct. GAS accepts it in A32 source and emits
        nothing, because conditional execution there is native to every
@@ -2095,7 +2119,7 @@ let word_to_memory s = if String.length s <> 4 then s else String.init 4 (fun i 
 let fixup_of_placement (p : fixup_kind C.placement) =
   let kind = p.C.kind in
   {
-    Asm_core.Lowered_ast.kind;
+    Rivet_asm_core.Lowered_ast.kind;
     kind_name = fixup_kind_name kind;
     family = fixup_family kind;
     role = fixup_role kind;
@@ -2104,7 +2128,7 @@ let fixup_of_placement (p : fixup_kind C.placement) =
       List.map
         (fun (s : C.slice) ->
           {
-            Asm_core.Lowered_ast.bit_offset = 32 - s.C.bit_offset - s.C.bit_width;
+            Rivet_asm_core.Lowered_ast.bit_offset = 32 - s.C.bit_offset - s.C.bit_width;
             bit_width = s.C.bit_width;
             value_lsb = s.C.value_lsb;
           })
@@ -2114,16 +2138,16 @@ let fixup_of_placement (p : fixup_kind C.placement) =
     pc_bias = (match kind with Pcrel_b26 | Pcrel_call | Pcrel_vldr8 -> 8 | _ -> 0);
     range =
       (match kind with
-      | Abs32 -> Asm_core.Lowered_ast.Bitpattern 32
-      | Pcrel_b26 | Pcrel_call -> Asm_core.Lowered_ast.Signed 24
-      | Movw_abs_nc | Movt_abs -> Asm_core.Lowered_ast.Unsigned 16
+      | Abs32 -> Rivet_asm_core.Lowered_ast.Bitpattern 32
+      | Pcrel_b26 | Pcrel_call -> Rivet_asm_core.Lowered_ast.Signed 24
+      | Movw_abs_nc | Movt_abs -> Rivet_asm_core.Lowered_ast.Unsigned 16
       (* Already reduced to the final imm8 field's own value by
          [evaluate_fixup] (word-shifted, forward-only) - this is a defensive
          re-check, the same role [Unsigned 16] plays for [Movw_abs_nc]/
          [Movt_abs] above, not a second computation. *)
-      | Pcrel_vldr8 -> Asm_core.Lowered_ast.Unsigned 8);
-    value = Asm_core.Expr.Const (Bigint.of_int 0);
-    pairing = Asm_core.Lowered_ast.Unpaired;
+      | Pcrel_vldr8 -> Rivet_asm_core.Lowered_ast.Unsigned 8);
+    value = Rivet_asm_core.Expr.Const (Bigint.of_int 0);
+    pairing = Rivet_asm_core.Lowered_ast.Unpaired;
     origin = Origin.synthesized ~pass:"arm.encode" ();
   }
 
@@ -2131,29 +2155,30 @@ let fixup_of_placement (p : fixup_kind C.placement) =
    cannot mention Expr - and is paired with the placement by name. A placement
    with no expression came from a Resolved operand whose bits are already
    final, so it yields no linker fixup. *)
-let expr_of_lowered : Lowered.t -> (string * Asm_core.Expr.t) list = function
-  | Lowered.Bl { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ }
-  | Lowered.B { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ }
-  | Lowered.Vldr_lit_d { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ }
-  | Lowered.Vldr_lit_s { target = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
+let expr_of_lowered : Lowered.t -> (string * Rivet_asm_core.Expr.t) list = function
+  | Lowered.Bl { target = Rivet_asm_core.Lowered_ast.Symbolic { value; _ }; _ }
+  | Lowered.B { target = Rivet_asm_core.Lowered_ast.Symbolic { value; _ }; _ }
+  | Lowered.Vldr_lit_d { target = Rivet_asm_core.Lowered_ast.Symbolic { value; _ }; _ }
+  | Lowered.Vldr_lit_s { target = Rivet_asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
       [ ("target", value) ]
   (* The name is the codec placement's, not a description: [form_of] pairs the
      two by name, and a mismatch here does not fail - it silently produces an
      encoding with no fixup, which then binds to the placeholder. *)
-  | Lowered.Movw_movt { imm = Asm_core.Lowered_ast.Symbolic { value; _ }; _ } -> [ ("imm", value) ]
+  | Lowered.Movw_movt { imm = Rivet_asm_core.Lowered_ast.Symbolic { value; _ }; _ } ->
+      [ ("imm", value) ]
   | _ -> []
 
 let form_of l enc =
   let exprs = expr_of_lowered l in
   {
-    Asm_core.Lowered_ast.bytes = word_to_memory (C.Bits.to_bytes enc.C.bits);
+    Rivet_asm_core.Lowered_ast.bytes = word_to_memory (C.Bits.to_bytes enc.C.bits);
     form = C.form_id enc;
     fixups =
       List.filter_map
         (fun (p : fixup_kind C.placement) ->
           match List.assoc_opt p.C.name exprs with
           | None -> None
-          | Some value -> Some { (fixup_of_placement p) with Asm_core.Lowered_ast.value })
+          | Some value -> Some { (fixup_of_placement p) with Rivet_asm_core.Lowered_ast.value })
         enc.C.placements;
   }
 
@@ -2179,8 +2204,9 @@ let instruction_of_lowered ?(at = 0L) =
      Printing the absolute target rather than the count is what objdump does and
      the only spelling re-parsing can mean. *)
   let absolute_target = function
-    | Asm_core.Lowered_ast.Resolved { value; _ } -> Int64.add at (Int64.add 8L (Int64.mul value 4L))
-    | Asm_core.Lowered_ast.Symbolic _ -> at
+    | Rivet_asm_core.Lowered_ast.Resolved { value; _ } ->
+        Int64.add at (Int64.add 8L (Int64.mul value 4L))
+    | Rivet_asm_core.Lowered_ast.Symbolic _ -> at
   in
   function
   | Lowered.Dp_imm { cond; dp; s; rd; rn; imm } -> (
@@ -2308,11 +2334,11 @@ let instruction_of_lowered ?(at = 0L) =
   | Lowered.Bl { cond; target } ->
       Some
         (Instruction.mk ~cond (op_of Arm_ops.Enc.Bl)
-           [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
+           [ Operand.Sym (Rivet_asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
   | Lowered.B { cond; target } ->
       Some
         (Instruction.mk ~cond (op_of Arm_ops.Enc.B)
-           [ Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
+           [ Operand.Sym (Rivet_asm_core.Expr.Const (Bigint.of_int64 (absolute_target target))) ])
   | Lowered.Mul { cond; rd; rn; rm; _ } ->
       Some
         (Instruction.mk ~cond (op_of Arm_ops.Enc.Mul)
@@ -2331,8 +2357,8 @@ let instruction_of_lowered ?(at = 0L) =
          is what re-parsing needs to see. *)
       let v =
         match imm with
-        | Asm_core.Lowered_ast.Resolved { value; _ } -> Operand.Imm (Bigint.of_int64 value)
-        | Asm_core.Lowered_ast.Symbolic { value; _ } -> Operand.Sym value
+        | Rivet_asm_core.Lowered_ast.Resolved { value; _ } -> Operand.Imm (Bigint.of_int64 value)
+        | Rivet_asm_core.Lowered_ast.Symbolic { value; _ } -> Operand.Sym value
       in
       Some
         (Instruction.mk ~cond
@@ -2410,8 +2436,8 @@ let instruction_of_lowered ?(at = 0L) =
       Some
         (Instruction.mk ~cond (op_of Arm_ops.Enc.Vmrs)
            [
-             Operand.Sym (Asm_core.Expr.Symbol "APSR_nzcv");
-             Operand.Sym (Asm_core.Expr.Symbol "FPSCR");
+             Operand.Sym (Rivet_asm_core.Expr.Symbol "APSR_nzcv");
+             Operand.Sym (Rivet_asm_core.Expr.Symbol "FPSCR");
            ])
   | Lowered.Vcvt_f32_f64 { cond; sd; dm } ->
       Some
@@ -2465,7 +2491,7 @@ let instruction_of_lowered ?(at = 0L) =
            (op_of (Arm_ops.Enc.Vmem { load = true }))
            [
              Operand.Dreg vd;
-             Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target)));
+             Operand.Sym (Rivet_asm_core.Expr.Const (Bigint.of_int64 (absolute_target target)));
            ])
   | Lowered.Vldr_lit_s { cond; vd; target } ->
       Some
@@ -2473,7 +2499,7 @@ let instruction_of_lowered ?(at = 0L) =
            (op_of (Arm_ops.Enc.Vmem { load = true }))
            [
              Operand.Sreg vd;
-             Operand.Sym (Asm_core.Expr.Const (Bigint.of_int64 (absolute_target target)));
+             Operand.Sym (Rivet_asm_core.Expr.Const (Bigint.of_int64 (absolute_target target)));
            ])
   | Lowered.Vpush { cond; vd; count } ->
       Some
@@ -2529,7 +2555,7 @@ let evaluate_fixup kind ~place ~target =
    rather than padded with bytes, because a partial instruction is not a no-op. *)
 (* On ARM [.word] is four bytes, not two, and the compiler writes [.4byte] for a
    32-bit address - both spellings mean the same width here. *)
-let align_unit = Asm_core.Directive.Exponent { zero_exponent = 2 }
+let align_unit = Rivet_asm_core.Directive.Exponent { zero_exponent = 2 }
 
 let data_widths =
   [

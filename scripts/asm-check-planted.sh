@@ -301,8 +301,8 @@ plant target-name-in-generic layers reject-either 'mentions target name' \
 # ever runs, which is a stronger outcome - but it also means the auditor's own
 # allowlist branch would go unexercised, which is what the third case is for.
 
-plant tool-reaches-assembler tool-boundary build-fail 'Library "asm_core" not found' \
-  "add_library tools/lib/dune asm_core"
+plant tool-reaches-assembler tool-boundary build-fail 'Library "rivet_asm_core" not found' \
+  "add_library tools/lib/dune rivet_asm_core"
 
 plant assembler-reaches-tool purity build-fail 'Library "rivet_tools" not found' \
   "add_library lib/foundation/dune rivet_tools"

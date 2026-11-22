@@ -5,8 +5,8 @@
    operands. Keeping this type separate from the source AST is what stops "the
    parser understands x86 addressing" from becoming true by accident. *)
 
-open Foundation
-open Asm_core
+open Rivet_foundation
+open Rivet_asm_core
 
 type label = Named of Span.t * string | Numeric of Span.t * int
 

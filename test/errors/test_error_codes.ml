@@ -16,7 +16,7 @@
    and "a fixup names a symbol nothing defines" - so the list below needs one
    value per distinct code, not one per tag. Totality is the compiler's job. *)
 
-open Foundation
+open Rivet_foundation
 
 let claims = ref []
 let claim domain code = claims := (domain, code) :: !claims
@@ -40,28 +40,28 @@ let () =
 (* {1 asm_syntax} *)
 
 let () =
-  record "Lexer" Asm_syntax.Lexer.kind_code [ `Unterminated_string ];
-  record "Local_labels" Asm_syntax.Local_labels.kind_code [ `Reserved_namespace "x" ];
-  record "Parse_lines" Asm_syntax.Parse_lines.error_code
+  record "Lexer" Rivet_asm_syntax.Lexer.kind_code [ `Unterminated_string ];
+  record "Local_labels" Rivet_asm_syntax.Local_labels.kind_code [ `Reserved_namespace "x" ];
+  record "Parse_lines" Rivet_asm_syntax.Parse_lines.error_code
     [ `Unexpected_token None; `Empty_expression ]
 
 (* {1 asm_core and codec} *)
 
 let () =
-  record "Expr" Asm_core.Expr.error_code
+  record "Expr" Rivet_asm_core.Expr.error_code
     [
       `Arithmetic `Division_by_zero;
       `Shift_out_of_range Bigint.zero;
-      `Not_absolute (Asm_core.Expr.Symbol "s");
-      `Resource { Asm_core.Expr.limit = 1; needed = 2 };
+      `Not_absolute (Rivet_asm_core.Expr.Symbol "s");
+      `Resource { Rivet_asm_core.Expr.limit = 1; needed = 2 };
     ];
-  record "Relax" Asm_core.Lowered_ast.relax_error_code
+  record "Relax" Rivet_asm_core.Lowered_ast.relax_error_code
     [
       `Empty_ladder;
       `Rung_not_shorter
-        { Asm_core.Lowered_ast.rung = "a"; rung_bytes = 1; other = "b"; other_bytes = 1 };
+        { Rivet_asm_core.Lowered_ast.rung = "a"; rung_bytes = 1; other = "b"; other_bytes = 1 };
       `Rung_fixups_differ
-        { Asm_core.Lowered_ast.rung = "a"; rung_bytes = 1; other = "b"; other_bytes = 1 };
+        { Rivet_asm_core.Lowered_ast.rung = "a"; rung_bytes = 1; other = "b"; other_bytes = 1 };
       `Fixup_target_differs "f";
     ];
   (* Codec answers [Some] only where it is the only layer that could have seen
@@ -83,7 +83,8 @@ let () =
       `No_modules;
       `No_section;
       `Section_kind_mismatch ".bss";
-      `Invalid_module { Image.unit_name = "u"; reason = Asm_core.Lowered_ast.Empty_name `Unit };
+      `Invalid_module
+        { Image.unit_name = "u"; reason = Rivet_asm_core.Lowered_ast.Empty_name `Unit };
       `Duplicate_unit "u";
       `Mixed_targets [ "a"; "b" ];
       `Rwx_segment ".text";
@@ -108,7 +109,7 @@ let () =
       `Fixup_target_too_wide "f";
       `Fixup_wraps "f";
       `Fixup_out_of_range
-        { Image.fixup = "f"; value = 0L; range = Asm_core.Lowered_ast.Signed 8; at = 0 };
+        { Image.fixup = "f"; value = 0L; range = Rivet_asm_core.Lowered_ast.Signed 8; at = 0 };
     ]
 
 (* {1 targets}
@@ -182,9 +183,9 @@ let () =
 let%expect_test ".size keeps its typed expression failure" =
   let source = Span.source ~name:"test.s" ~contents:"s" in
   let span = Span.of_offset ~source ~offset:0 ~length:1 in
-  let symbol = Asm_syntax.Token.make (Asm_syntax.Token.Ident "s") span in
+  let symbol = Rivet_asm_syntax.Token.make (Rivet_asm_syntax.Token.Ident "s") span in
   (match
-     Directives.normalize ~data_widths:[] ~align_unit:Asm_core.Directive.Bytes ~name:".size"
+     Directives.normalize ~data_widths:[] ~align_unit:Rivet_asm_core.Directive.Bytes ~name:".size"
        ~arguments:[ [ symbol ]; [] ]
    with
   | Error error ->
@@ -199,11 +200,11 @@ let%expect_test ".size keeps its typed expression failure" =
 let%expect_test "data directives accumulate every expression failure" =
   let source = Span.source ~name:"test.s" ~contents:"+" in
   let span = Span.of_offset ~source ~offset:0 ~length:1 in
-  let plus = Asm_syntax.Token.make Asm_syntax.Token.Plus span in
+  let plus = Rivet_asm_syntax.Token.make Rivet_asm_syntax.Token.Plus span in
   (match
      Directives.normalize
        ~data_widths:[ (".long", 4) ]
-       ~align_unit:Asm_core.Directive.Bytes ~name:".long" ~arguments:[ []; [ plus ] ]
+       ~align_unit:Rivet_asm_core.Directive.Bytes ~name:".long" ~arguments:[ []; [ plus ] ]
    with
   | Error error ->
       let rejection = Err.Error.kind error in

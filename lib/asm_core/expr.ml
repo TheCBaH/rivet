@@ -6,7 +6,7 @@
    AArch64's page-address forms exist without their semantics being embedded in
    a grammar every other target also uses. *)
 
-open Foundation
+open Rivet_foundation
 
 type binop = Add | Sub | Mul | Div | Mod | And | Or | Xor | Shl | Shr
 type unop = Neg | Lognot

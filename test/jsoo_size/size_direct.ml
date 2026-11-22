@@ -1,8 +1,10 @@
 (* The same, through the direct pipeline over the three encoders: no lexer, no parser. *)
 let print instruction type_char =
   print_string
-    (Asm_core.Gnu_module.to_string { Asm_core.Gnu_module.type_char } ~instruction
-       { Asm_core.Normalized_ast.unit_name = "m"; items = [] })
+    (Rivet_asm_core.Gnu_module.to_string
+       { Rivet_asm_core.Gnu_module.type_char }
+       ~instruction
+       { Rivet_asm_core.Normalized_ast.unit_name = "m"; items = [] })
 
 module X = Driver_direct.Pipeline_direct.Make (X86_64_encode)
 module A = Driver_direct.Pipeline_direct.Make (Aarch64_encode)

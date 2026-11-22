@@ -128,7 +128,8 @@ module Make (T : Target_encode.ENCODE) = struct
   (* This harness reports refusals as prose, so a target failure is rendered on
      the way in. [Make] is generic over [T] and cannot hold a [T.error], which is
      the same erasure the pipeline performs (docs/errors.md §2). *)
-  let message_of_error e = Foundation.Diagnostic.message (T.error_diagnostic (Err.Error.kind e))
+  let message_of_error e =
+    Rivet_foundation.Diagnostic.message (T.error_diagnostic (Err.Error.kind e))
 
   let evaluate kind ~place ~target =
     Result.map_error
@@ -156,19 +157,19 @@ module Make (T : Target_encode.ENCODE) = struct
       | Ok lowered ->
           List.map
             (fun l ->
-              let origin = Foundation.Origin.synthesized ~pass:"snippet" () in
+              let origin = Rivet_foundation.Origin.synthesized ~pass:"snippet" () in
               let frag =
                 match T.encode l with
                 | Error d -> raise (Refuse (message_of_error d))
                 | Ok (`Fixed a) ->
-                    Asm_core.Lowered_ast.Bytes
+                    Rivet_asm_core.Lowered_ast.Bytes
                       {
-                        bytes = a.Asm_core.Lowered_ast.bytes;
-                        form = Some a.Asm_core.Lowered_ast.form;
-                        fixups = a.Asm_core.Lowered_ast.fixups;
+                        bytes = a.Rivet_asm_core.Lowered_ast.bytes;
+                        form = Some a.Rivet_asm_core.Lowered_ast.form;
+                        fixups = a.Rivet_asm_core.Lowered_ast.fixups;
                         origin;
                       }
-                | Ok (`Relax alts) -> Asm_core.Lowered_ast.Relax { alts; origin }
+                | Ok (`Relax alts) -> Rivet_asm_core.Lowered_ast.Relax { alts; origin }
               in
               (frag, Fmt.to_to_string T.Lowered.pp l))
             lowered
@@ -177,19 +178,19 @@ module Make (T : Target_encode.ENCODE) = struct
     | parts -> (
         let section =
           {
-            Asm_core.Lowered_ast.sec =
+            Rivet_asm_core.Lowered_ast.sec =
               {
-                Asm_core.Lowered_ast.sec_name = ".text";
-                perms = Asm_core.Perms.rx;
+                Rivet_asm_core.Lowered_ast.sec_name = ".text";
+                perms = Rivet_asm_core.Perms.rx;
                 alignment = 4;
-                kind = Asm_core.Lowered_ast.Progbits;
+                kind = Rivet_asm_core.Lowered_ast.Progbits;
               };
             fragments = List.map fst parts;
           }
         in
         let m =
           {
-            Asm_core.Lowered_ast.unit_name = "snippet";
+            Rivet_asm_core.Lowered_ast.unit_name = "snippet";
             target = T.name;
             sections = [ section ];
             symbols = [];
@@ -200,7 +201,9 @@ module Make (T : Target_encode.ENCODE) = struct
         let fail e =
           Refused
             (String.concat "; "
-               (List.map (fun d -> Foundation.Diagnostic.message d) (Foundation.Diag.diagnostics e)))
+               (List.map
+                  (fun d -> Rivet_foundation.Diagnostic.message d)
+                  (Rivet_foundation.Diag.diagnostics e)))
         in
         match Image.plan_image ~evaluate Image.default_policy [ m ] with
         | Error ds -> fail ds
@@ -242,7 +245,7 @@ module Aarch64_corpus = struct
   let r n = reg_exn ~target:T.name T.Reg.find n
   let insn op ops : T.Instruction.t = T.Instruction.mk op ops
   let reg n = T.Operand.Reg (r n)
-  let imm n = T.Operand.Imm (Foundation.Bigint.of_int n)
+  let imm n = T.Operand.Imm (Rivet_foundation.Bigint.of_int n)
 
   let mem ?(writeback = false) base offset =
     T.Operand.Mem { T.Mem.base = r base; offset = T.Disp.Const offset; writeback; pre = true }
@@ -258,7 +261,7 @@ module Aarch64_corpus = struct
          SIGTRAP) is a verified alternative; [udf] is preferred because it
          keeps all four profiles on SIGILL. *)
       trap = A.assemble T.Opcode.[ insn Udf [ imm 0 ] ];
-      spin = A.assemble T.Opcode.[ insn B [ T.Operand.Sym Asm_core.Expr.Current_location ] ];
+      spin = A.assemble T.Opcode.[ insn B [ T.Operand.Sym Rivet_asm_core.Expr.Current_location ] ];
       (* A64 has no predication outside [csel], so unlike A32 this one really
          does branch: [b.eq] jumps over the five-byte-equivalent single word
          that loads 41, which is [. + 8]. *)
@@ -273,8 +276,8 @@ module Aarch64_corpus = struct
               insn (Bcond T.Cond.Eq)
                 [
                   T.Operand.Sym
-                    Asm_core.Expr.(
-                      Binary (Add, Current_location, Const (Foundation.Bigint.of_int 8)));
+                    Rivet_asm_core.Expr.(
+                      Binary (Add, Current_location, Const (Rivet_foundation.Bigint.of_int 8)));
                 ];
               insn Movz [ reg "w0"; imm 41 ];
               insn Ret [];
@@ -333,7 +336,7 @@ module Arm_corpus = struct
   let r n = reg_exn ~target:T.name T.Reg.find n
   let insn op ops : T.Instruction.t = T.Instruction.mk op ops
   let reg n = T.Operand.Reg (r n)
-  let imm n = T.Operand.Imm (Foundation.Bigint.of_int n)
+  let imm n = T.Operand.Imm (Rivet_foundation.Bigint.of_int n)
 
   let mem base offset =
     T.Operand.Mem { T.Mem.base = r base; offset = T.Mem.Imm offset; writeback = false; pre = true }
@@ -349,7 +352,7 @@ module Arm_corpus = struct
          fell through into whatever followed would report success while proving
          nothing. *)
       trap = A.assemble T.Opcode.[ insn Udf [ imm 0 ] ];
-      spin = A.assemble T.Opcode.[ insn B [ T.Operand.Sym Asm_core.Expr.Current_location ] ];
+      spin = A.assemble T.Opcode.[ insn B [ T.Operand.Sym Rivet_asm_core.Expr.Current_location ] ];
       (* A32 needs no branch here: the two results are written by predicated
          moves, which is what the condition field is for and why this snippet
          is six words with no jump in it. The residue is 7 rather
@@ -423,17 +426,21 @@ module Riscv32_corpus = struct
 
   let r n = reg_exn ~target:T.name T.Reg.find n
   let reg n = T.Operand.Reg (r n)
-  let imm n = T.Operand.Imm (Foundation.Bigint.of_int n)
+  let imm n = T.Operand.Imm (Rivet_foundation.Bigint.of_int n)
 
   let mem base offset =
     T.Operand.Mem
-      { T.Mem.offset = Asm_core.Expr.Const (Foundation.Bigint.of_int64 offset); base = r base }
+      {
+        T.Mem.offset = Rivet_asm_core.Expr.Const (Rivet_foundation.Bigint.of_int64 offset);
+        base = r base;
+      }
 
   let insn op ops : T.Instruction.t = T.Instruction.mk op ops
-  let here = T.Operand.Sym Asm_core.Expr.Current_location
+  let here = T.Operand.Sym Rivet_asm_core.Expr.Current_location
 
   let ahead n =
-    T.Operand.Sym Asm_core.Expr.(Binary (Add, Current_location, Const (Foundation.Bigint.of_int n)))
+    T.Operand.Sym
+      Rivet_asm_core.Expr.(Binary (Add, Current_location, Const (Rivet_foundation.Bigint.of_int n)))
 
   let return_n n = A.assemble T.Opcode.[ insn Addi [ reg "a0"; reg "zero"; imm n ]; insn Ret [] ]
 
@@ -498,17 +505,21 @@ module Riscv64_corpus = struct
 
   let r n = reg_exn ~target:T.name T.Reg.find n
   let reg n = T.Operand.Reg (r n)
-  let imm n = T.Operand.Imm (Foundation.Bigint.of_int n)
+  let imm n = T.Operand.Imm (Rivet_foundation.Bigint.of_int n)
 
   let mem base offset =
     T.Operand.Mem
-      { T.Mem.offset = Asm_core.Expr.Const (Foundation.Bigint.of_int64 offset); base = r base }
+      {
+        T.Mem.offset = Rivet_asm_core.Expr.Const (Rivet_foundation.Bigint.of_int64 offset);
+        base = r base;
+      }
 
   let insn op ops : T.Instruction.t = T.Instruction.mk op ops
-  let here = T.Operand.Sym Asm_core.Expr.Current_location
+  let here = T.Operand.Sym Rivet_asm_core.Expr.Current_location
 
   let ahead n =
-    T.Operand.Sym Asm_core.Expr.(Binary (Add, Current_location, Const (Foundation.Bigint.of_int n)))
+    T.Operand.Sym
+      Rivet_asm_core.Expr.(Binary (Add, Current_location, Const (Rivet_foundation.Bigint.of_int n)))
 
   let return_n n = A.assemble T.Opcode.[ insn Addi [ reg "a0"; reg "zero"; imm n ]; insn Ret [] ]
 
@@ -585,17 +596,18 @@ module X86_shared = struct
   open X86_family_encode
 
   let insn op width ops : Instruction.t = Instruction.mk op width ops
-  let imm n = Operand.Imm (Foundation.Bigint.of_int n)
+  let imm n = Operand.Imm (Rivet_foundation.Bigint.of_int n)
 
   (* [.] and [. + k], the two branch targets §16.3 needs. A snippet has no
      labels, so a self-loop and a forward jump over three instructions are both
      written against the current location - which is exactly how GAS reads
      [jmp .], and why {!Image} resolves [.] to the instruction address rather
      than to the PC the architecture measures from. *)
-  let here = Operand.Sym Asm_core.Expr.Current_location
+  let here = Operand.Sym Rivet_asm_core.Expr.Current_location
 
   let here_plus k =
-    Operand.Sym Asm_core.Expr.(Binary (Add, Current_location, Const (Foundation.Bigint.of_int k)))
+    Operand.Sym
+      Rivet_asm_core.Expr.(Binary (Add, Current_location, Const (Rivet_foundation.Bigint.of_int k)))
 
   (* [movl $n, %eax] is byte-identical in 32- and 64-bit mode, so it is 32-bit
      wide in both and takes [%eax] rather than the mode's own accumulator. *)

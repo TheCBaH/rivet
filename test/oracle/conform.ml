@@ -63,7 +63,7 @@ let () =
    an encoding failure, which is what the case names describe.
 
    What this suite depends on is the assembler's encoding half only - lower,
-   encode, plan, bind. Not the driver, and not the front end: {!Asm_syntax} is
+   encode, plan, bind. Not the driver, and not the front end: {!Rivet_asm_syntax} is
    absent from the linked binary, so no lexer, grammar or token type is reached
    to produce §16.3. *)
 

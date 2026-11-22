@@ -136,12 +136,12 @@ let operand i : Ops.Kind.t -> Operand.t = function
   | R -> Operand.Reg (Reg.of_num (1 + i))
   | D -> Operand.Dreg (Dreg.of_num (1 + i))
   | S -> Operand.Sreg (Sreg.of_num (1 + i))
-  | Imm -> Operand.Imm (Foundation.Bigint.of_int 1)
+  | Imm -> Operand.Imm (Rivet_foundation.Bigint.of_int 1)
   | Fimm -> Operand.FImm 1.0
   | Mem ->
       Operand.Mem
         { Mem.base = Reg.of_num (1 + i); offset = Mem.Imm 0L; writeback = false; pre = true }
-  | Sym -> Operand.Sym (Asm_core.Expr.Symbol "l")
+  | Sym -> Operand.Sym (Rivet_asm_core.Expr.Symbol "l")
   | Sh -> Operand.Shifted { reg = Reg.of_num (1 + i); kind = 0; amount = 2 }
   | Reglist -> Operand.Reglist [ 1; 2 ]
   | Dreglist -> Operand.Dreglist [ 1; 2 ]

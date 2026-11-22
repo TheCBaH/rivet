@@ -1,8 +1,10 @@
 (* The same, through the text pipeline applied to the three targets. *)
 let print instruction type_char =
   print_string
-    (Asm_core.Gnu_module.to_string { Asm_core.Gnu_module.type_char } ~instruction
-       { Asm_core.Normalized_ast.unit_name = "m"; items = [] })
+    (Rivet_asm_core.Gnu_module.to_string
+       { Rivet_asm_core.Gnu_module.type_char }
+       ~instruction
+       { Rivet_asm_core.Normalized_ast.unit_name = "m"; items = [] })
 
 module X = Pipeline.Make (X86_64)
 module A = Pipeline.Make (Aarch64)

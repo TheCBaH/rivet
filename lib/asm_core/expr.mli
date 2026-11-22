@@ -2,7 +2,7 @@ type binop = Add | Sub | Mul | Div | Mod | And | Or | Xor | Shl | Shr
 type unop = Neg | Lognot
 
 type t =
-  | Const of Foundation.Bigint.t
+  | Const of Rivet_foundation.Bigint.t
   | Symbol of string
   | Current_location
   | Local_ref of int * [ `Back | `Forward ]
@@ -18,7 +18,10 @@ val to_string : t -> string
 val equal : t -> t -> bool
 (** Structural equality; constants compare by value. *)
 
-type env = { lookup : string -> Foundation.Bigint.t option; here : Foundation.Bigint.t option }
+type env = {
+  lookup : string -> Rivet_foundation.Bigint.t option;
+  here : Rivet_foundation.Bigint.t option;
+}
 
 val no_env : env
 
@@ -26,9 +29,9 @@ type resource = { limit : int; needed : int }
 (** Bits: the budget, and what the refused operation needed. *)
 
 type error =
-  [ `Arithmetic of Foundation.Bigint.error
+  [ `Arithmetic of Rivet_foundation.Bigint.error
   | `Not_absolute of t
-  | `Shift_out_of_range of Foundation.Bigint.t
+  | `Shift_out_of_range of Rivet_foundation.Bigint.t
   | `Resource of resource ]
 
 val default_resource_limit : int
@@ -43,5 +46,5 @@ val resource_limit_bits : unit -> int
 val pp_error : Format.formatter -> error -> unit
 val error_code : error -> string
 val fold : env -> t -> (t, error Err.Error.t) result
-val absolute : env -> t -> (Foundation.Bigint.t, error) Err.t
+val absolute : env -> t -> (Rivet_foundation.Bigint.t, error) Err.t
 val symbols : t -> string list

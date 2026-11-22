@@ -181,13 +181,15 @@ let alternatives (k : Ops.Kind.t) i =
         Operand.Freg { Freg.num = 1 + i; double = false };
       ]
   | S -> [ Operand.Freg { Freg.num = 1 + i; double = false } ]
-  | Imm -> [ Operand.Imm (Foundation.Bigint.of_int 8) ]
+  | Imm -> [ Operand.Imm (Rivet_foundation.Bigint.of_int 8) ]
   | Fimm -> [ Operand.Fimm 1.0; Operand.Fimm 0.0 ]
   | Mem ->
       [ Operand.Mem { Mem.base = reg 64 i; offset = Disp.zero; writeback = false; pre = true } ]
   | Sym ->
-      Operand.Sym (Asm_core.Expr.Modifier ("lo12", Asm_core.Expr.Symbol "l"))
-      :: List.map (fun s -> Operand.Sym (Asm_core.Expr.Symbol s)) [ "l"; "ne"; "fpcr"; "nzcv" ]
+      Operand.Sym (Rivet_asm_core.Expr.Modifier ("lo12", Rivet_asm_core.Expr.Symbol "l"))
+      :: List.map
+           (fun s -> Operand.Sym (Rivet_asm_core.Expr.Symbol s))
+           [ "l"; "ne"; "fpcr"; "nzcv" ]
   | Sh ->
       List.map
         (fun (kind, amount) -> Operand.Shift { Shift.kind; amount })

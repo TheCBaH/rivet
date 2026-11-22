@@ -26,10 +26,10 @@
   qcheck-core.runner
   codec
   codec_corpus
-  asm_core
+  rivet_asm_core
   image
   driver
-  foundation
+  rivet_foundation
   rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))

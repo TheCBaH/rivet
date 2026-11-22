@@ -8,8 +8,8 @@
  (files ../../../lib/asm_core/*.mli))
 
 (library
- (name asm_core)
+ (name rivet_asm_core)
  (modes byte native melange)
- (libraries foundation rivet_fmt)
+ (libraries rivet_foundation rivet_fmt)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

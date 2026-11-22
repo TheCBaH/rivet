@@ -12,9 +12,9 @@
  (modules test_error_codes)
  (modes byte native)
  (libraries
-  foundation
-  asm_core
-  asm_syntax
+  rivet_foundation
+  rivet_asm_core
+  rivet_asm_syntax
   codec
   image
   driver

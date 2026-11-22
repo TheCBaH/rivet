@@ -20,7 +20,7 @@
  (modules smoke)
  (module_systems commonjs)
  (libraries
-  foundation
+  rivet_foundation
   image
   target_intf
   driver

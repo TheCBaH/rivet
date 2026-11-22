@@ -7,7 +7,7 @@
    can honestly be folded, and instructions are canonical semantic operations
    rather than surface spellings. *)
 
-open Foundation
+open Rivet_foundation
 
 type 'insn item =
   | Label of { name : string; origin : Origin.t }

@@ -8,14 +8,14 @@
    The inputs come from Test_dump_inputs, which explains why they are string
    literals rather than files. *)
 
-(* [Foundation.Diag.render] rather than [Diagnostic.render_all]: the driver's
+(* [Rivet_foundation.Diag.render] rather than [Diagnostic.render_all]: the driver's
    failures are wrapped, and the rendering is deliberately of the payload alone -
    docs/errors.md §3 keeps Err provenance out of anything a baseline
    compares. *)
 let ok = function
   | Ok v -> v
   | Error e ->
-      print_string (Foundation.Diag.render e);
+      print_string (Rivet_foundation.Diag.render e);
       exit 1
 
 let hex s =
@@ -28,7 +28,7 @@ let run (i : Test_dump_inputs.input) =
     match Driver.Registry.find i.target with Some d -> d | None -> exit 1
   in
   let name = i.target ^ " " ^ i.case in
-  let source = Foundation.Span.source ~name:i.file ~contents:i.text in
+  let source = Rivet_foundation.Span.source ~name:i.file ~contents:i.text in
   let unit_name = Filename.remove_extension (Filename.basename i.file) in
   banner (name ^ " tokens");
   print_string (ok (D.dump_tokens ~source));
