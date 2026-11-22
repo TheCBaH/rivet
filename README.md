@@ -61,7 +61,7 @@ Or install it: `rivet.opam` builds the pure-OCaml libraries against the opam
 `fmt`, from a source archive with no submodules, e.g.
 `opam pin add rivet <archive URL>`; its `pin-depends` fetches `err_trace` from
 GitHub. The `opam` workflow installs it that way and runs `test/install`
-against it. `Native_exec` is the separate package
+against it. `Rivet_native_exec` is the separate package
 `rivet-native-exec` (library `rivet-native-exec`, C stubs, Linux on
 x86_64, aarch64 or riscv64 only), which depends on `rivet`.
 
@@ -73,9 +73,9 @@ so `Err.t` values cross the boundary without a second `Err`
 module. Melange builds keep the vendored Fmt. `make external-deps` builds and tests
 this configuration in a throwaway workspace; `test/consumer` is the example.
 
-Embedding native code: `Native_exec.load` maps an image once, `call` runs it
+Embedding native code: `Rivet_native_exec.load` maps an image once, `call` runs it
 any number of times, and `close` unmaps it after the last call. Host functions
-are bound with `Native_exec.bind_host`, which generates a unit of ISA-specific
+are bound with `Rivet_native_exec.bind_host`, which generates a unit of ISA-specific
 trampolines (aarch64, x86_64, riscv64) to assemble beside the image; the
 addresses are process-specific and must not be cached.
 An image carries the target it was assembled for, and `load` and `run` refuse one

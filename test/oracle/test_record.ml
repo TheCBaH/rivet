@@ -14,7 +14,7 @@
    shows what the host would report, which is the thing a reviewer needs to
    check against the document. *)
 
-open Asm_oracle
+open Rivet_oracle
 
 let case_id = 7
 let show s = Fmt.pr "%a@." Record.pp_verdict (Record.validate ~expected_case_id:case_id s)

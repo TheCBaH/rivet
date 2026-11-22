@@ -39,7 +39,7 @@
 ; this library still has no dependency of its own beyond fmt.
 
 (library
- (name asm_oracle)
+ (name rivet_oracle)
  (public_name rivet.oracle)
  (modules abi abi_v2 abi_v3 manifest record snippet_bytes)
  (modes byte native)
@@ -51,7 +51,7 @@
  (name test_oracle)
  (modules test_record test_manifest)
  (modes byte native)
- (libraries asm_oracle rivet_fmt)
+ (libraries rivet_oracle rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))
@@ -59,11 +59,11 @@
   (<> %{env:RIVET_MELANGE=false} true)))
 
 (library
- (name asm_oracle_run)
+ (name rivet_oracle_run)
  (public_name rivet.oracle_run)
  (modules qemu_user)
  (modes byte native)
- (libraries asm_oracle rivet_fmt unix)
+ (libraries rivet_oracle rivet_fmt unix)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -80,7 +80,7 @@
  (name conform)
  (modules conform)
  (modes exe)
- (libraries asm_oracle asm_oracle_run snippet_corpus rivet_fmt)
+ (libraries rivet_oracle rivet_oracle_run snippet_corpus rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -92,7 +92,7 @@
  (name abi_v3_smoke)
  (modules abi_v3_smoke)
  (modes exe)
- (libraries asm_oracle asm_oracle_run rivet_fmt)
+ (libraries rivet_oracle rivet_oracle_run rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
 
@@ -122,8 +122,8 @@
  (modules exec fixture_meta)
  (modes exe)
  (libraries
-  asm_oracle
-  asm_oracle_run
+  rivet_oracle
+  rivet_oracle_run
   rivet_driver
   rivet_image
   rivet_target_intf

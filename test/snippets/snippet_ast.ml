@@ -1,7 +1,7 @@
 (* The reference snippets of execution ABI v1 §16.3, written as ASTs.
 
    §16.3 used to be stated twice: once as frozen byte strings in
-   {!Asm_oracle.Snippet_bytes}, which is what {!Conform} ran under QEMU, and
+   {!Rivet_oracle.Snippet_bytes}, which is what {!Conform} ran under QEMU, and
    once here as ASTs that this project's own [lower_instruction] and [encode]
    turned back into those same bytes. The second statement had to reproduce the
    first exactly, and a test asserted it did.
@@ -51,7 +51,7 @@
    conformance suite cannot run, and {!for_profile} says so rather than
    handing QEMU a hole. *)
 
-module Sb = Asm_oracle.Snippet_bytes
+module Sb = Rivet_oracle.Snippet_bytes
 
 type built =
   | Assembled of { bytes : string; canonical : string list }
@@ -857,16 +857,16 @@ let snippet_bytes (c : cases) : (Sb.t, string) result =
     }
 
 (* Matched exhaustively rather than looked up in {!all} by name, so a profile
-   added to {!Asm_oracle.Abi} is a compile error here - the conformance suite
+   added to {!Rivet_oracle.Abi} is a compile error here - the conformance suite
    would otherwise report a new profile as having no snippets, which reads like
    a helper problem rather than a corpus that has not been extended. *)
-let for_profile : Asm_oracle.Abi.profile -> (Sb.t, string) result = function
-  | Asm_oracle.Abi.X86_32 -> snippet_bytes X86_32_corpus.cases
-  | Asm_oracle.Abi.X86_64 -> snippet_bytes X86_64_corpus.cases
-  | Asm_oracle.Abi.Arm -> snippet_bytes Arm_corpus.cases
-  | Asm_oracle.Abi.Aarch64 -> snippet_bytes Aarch64_corpus.cases
-  | Asm_oracle.Abi.Riscv32 -> snippet_bytes Riscv32_corpus.cases
-  | Asm_oracle.Abi.Riscv64 -> snippet_bytes Riscv64_corpus.cases
+let for_profile : Rivet_oracle.Abi.profile -> (Sb.t, string) result = function
+  | Rivet_oracle.Abi.X86_32 -> snippet_bytes X86_32_corpus.cases
+  | Rivet_oracle.Abi.X86_64 -> snippet_bytes X86_64_corpus.cases
+  | Rivet_oracle.Abi.Arm -> snippet_bytes Arm_corpus.cases
+  | Rivet_oracle.Abi.Aarch64 -> snippet_bytes Aarch64_corpus.cases
+  | Rivet_oracle.Abi.Riscv32 -> snippet_bytes Riscv32_corpus.cases
+  | Rivet_oracle.Abi.Riscv64 -> snippet_bytes Riscv64_corpus.cases
 
 (* {1 Assembly text}
 

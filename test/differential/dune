@@ -7,9 +7,9 @@
 ; test_differential instantiates it for fixtures/gcc-14 and pins the transcripts.
 
 (library
- (name differential)
+ (name rivet_differential)
  (public_name rivet.differential)
- (modules differential)
+ (modules rivet_differential)
  (modes byte native)
  (libraries
   rivet_driver
@@ -24,7 +24,7 @@
  (name test_differential)
  (modules test_differential)
  (modes byte native)
- (libraries differential test_dump_inputs)
+ (libraries rivet_differential rivet_test_dump_inputs)
  (inline_tests
   (deps
    (glob_files_rec %{workspace_root}/fixtures/gcc-14/**)))

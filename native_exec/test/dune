@@ -2,7 +2,7 @@
  (name test_native_exec)
  (modes byte native)
  (libraries
-  native_exec
+  rivet_native_exec
   rivet_driver
   rivet_target_intf
   rivet_foundation

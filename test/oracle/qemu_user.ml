@@ -25,7 +25,7 @@
    production and browser package, and scripts/asm-check-purity.sh enforces that
    over the resolved dependency DAG rather than by convention. *)
 
-open Asm_oracle
+open Rivet_oracle
 
 type termination =
   | Completed

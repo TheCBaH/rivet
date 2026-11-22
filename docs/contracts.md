@@ -166,9 +166,9 @@ bytes) or range, and a label defined twice at different addresses within a modul
 (`image.duplicate-unit`); contributions are matched to their bases by position. Every module
 carries the `target` it was lowered for (the pipelines set `ENCODE.name`; a direct producer states
 it), modules of different targets are refused (`image.mixed-targets`), and the plan records the
-tag for `Native_exec` to check against the host. A merged
+tag for `Rivet_native_exec` to check against the host. A merged
 segment that is both writable and executable is an error (`image.rwx-segment`) unless the layout
-policy sets `allow_rwx`; `Native_exec.load` refuses such a segment in an image planned without it.
+policy sets `allow_rwx`; `Rivet_native_exec.load` refuses such a segment in an image planned without it.
 The lowered dump does not print `target`.
 
 Unless the layout policy sets `group_sections` to false, `plan_image` then runs

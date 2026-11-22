@@ -1,14 +1,14 @@
-(* The differential gate over this repository's gcc corpus: {!Differential.Make} instantiated
+(* The differential gate over this repository's gcc corpus: {!Rivet_differential.Make} instantiated
    for fixtures/gcc-14, where a case is any generated directory with a manifest, and the
    transcripts that pin it. *)
 
-include Differential.Make (struct
+include Rivet_differential.Make (struct
   let root = "../../fixtures/gcc-14"
   let targets = [ "x86_32"; "x86_64"; "arm"; "aarch64"; "riscv32"; "riscv64" ]
   let is_case dir = Sys.file_exists (Filename.concat dir "manifest.txt")
 end)
 
-let read = Differential.read
+let read = Rivet_differential.read
 
 let%expect_test "every bound segment matches the controlled reference link" =
   List.iter (fun c -> List.iter (fun t -> check_bytes c t) (targets_for c)) (cases ());
@@ -379,12 +379,12 @@ let%expect_test "fixup observations classify to exactly the measured relocations
    the three-build gate would still pass. *)
 let%expect_test "the embedded dump inputs are byte-identical to the fixtures" =
   List.iter
-    (fun (i : Test_dump_inputs.input) ->
+    (fun (i : Rivet_test_dump_inputs.input) ->
       Printf.printf "%-8s %-8s %s\n" i.target i.case
         (if String.equal (read (Filename.concat corpus_root i.file)) i.text then
            "embedded copy matches the fixture"
          else "EMBEDDED COPY HAS DRIFTED FROM THE FIXTURE"))
-    Test_dump_inputs.inputs;
+    Rivet_test_dump_inputs.inputs;
   [%expect
     {|
     x86_32   return42 embedded copy matches the fixture

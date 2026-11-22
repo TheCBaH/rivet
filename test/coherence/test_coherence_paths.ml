@@ -1,7 +1,7 @@
 (* The path-coherence assertions over Test_coherence's fixtures. Kept out of
    that library so rivet.test_support carries no ppx and no inline tests. *)
 
-open Test_coherence
+open Rivet_test_support
 open Rivet_asm_core
 
 let%expect_test "simplify of the parsed text equals the direct normalized AST" =

@@ -3,7 +3,7 @@
    Each block is one snippet on one target: the lowered instruction sequence,
    and the bytes it encodes to. That is the whole assertion. These baselines
    used to carry a third line comparing the result against a frozen table in
-   {!Asm_oracle.Snippet_bytes}; the corpus is now the single statement of
+   {!Rivet_oracle.Snippet_bytes}; the corpus is now the single statement of
    §16.3, the table is gone, and the diff a promotion produces is what a
    regression has to get past. So read a change to these hexdumps as a change
    to the assembler's output, and promote one only after deciding the new

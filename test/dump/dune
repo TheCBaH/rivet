@@ -10,9 +10,9 @@
 ; what lets the cram stanza name the artifacts unconditionally.
 
 (library
- (name test_dump_inputs)
+ (name rivet_test_dump_inputs)
  (public_name rivet.test_dump_inputs)
- (modules test_dump_inputs)
+ (modules rivet_test_dump_inputs)
  (modes byte native)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
@@ -26,7 +26,7 @@
   rivet_image
   rivet_target_intf
   rivet_driver
-  test_dump_inputs
+  rivet_test_dump_inputs
   rivet_fmt))
 
 ; The manifest three-build driver's shared fixture (docs/design.md M4 Phase

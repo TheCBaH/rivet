@@ -2,7 +2,7 @@
    rivet.test_support: text, direct normalized AST and direct lowered module must
    agree with each other and with the outputs frozen in test_coherence_paths.ml. *)
 
-module C = Test_coherence
+module C = Rivet_test_support
 module P = C.P
 
 let fail fmt =

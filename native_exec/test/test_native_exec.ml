@@ -7,7 +7,7 @@
 open Rivet_asm_core
 
 let host =
-  match Native_exec.host_isa with
+  match Rivet_native_exec.host_isa with
   | Some h -> h
   | None -> failwith "native_exec tests need a host ISA the assembler targets"
 
@@ -33,9 +33,9 @@ let io_of_string ?(size = 64) s =
 
 (* In this process: the events and the process's own mappings are what the tests observe. *)
 let run ?observe ?read_globals ?(io = io_of_string "") laid =
-  match Native_exec.run ~isolate:false ?observe ?read_globals laid ~io with
+  match Rivet_native_exec.run ~isolate:false ?observe ?read_globals laid ~io with
   | Ok o -> o
-  | Error e -> failwith (Format.asprintf "%a" Native_exec.pp_error e)
+  | Error e -> failwith (Format.asprintf "%a" Rivet_native_exec.pp_error e)
 
 let return42 =
   assemble
@@ -267,7 +267,7 @@ let%expect_test "no page is ever writable and executable" =
   let observe e =
     events := e :: !events;
     match e with
-    | Native_exec.Mapped { base; size } -> range := (base, Int64.add base (Int64.of_int size))
+    | Rivet_native_exec.Mapped { base; size } -> range := (base, Int64.add base (Int64.of_int size))
     | Calling _ ->
         let lo, hi = !range in
         at_call := pages_within ~lo ~hi
@@ -276,14 +276,15 @@ let%expect_test "no page is ever writable and executable" =
   ignore (run ~observe segments);
   List.iter
     (function
-      | Native_exec.Protected { segment; perms; _ } ->
+      | Rivet_native_exec.Protected { segment; perms; _ } ->
           Printf.printf "protect %s %s\n" segment (Perms.to_string perms)
       | _ -> ())
     (List.rev !events);
   Printf.printf "maps at call: %s\n" (String.concat " " !at_call);
   Printf.printf "any w+x: %b\n"
     (List.exists
-       (function Native_exec.Protected { perms; _ } -> perms.write && perms.execute | _ -> false)
+       (function
+         | Rivet_native_exec.Protected { perms; _ } -> perms.write && perms.execute | _ -> false)
        !events
     || List.exists (fun p -> String.length p >= 3 && p.[1] = 'w' && p.[2] = 'x') !at_call);
   [%expect
@@ -297,8 +298,8 @@ let%expect_test "no page is ever writable and executable" =
 
 let%expect_test "the mapping is released when the call path raises" =
   let before = List.length (maps ()) in
-  let observe = function Native_exec.Calling _ -> raise Exit | _ -> () in
-  (match Native_exec.run ~isolate:false ~observe return42 ~io:(io_of_string "") with
+  let observe = function Rivet_native_exec.Calling _ -> raise Exit | _ -> () in
+  (match Rivet_native_exec.run ~isolate:false ~observe return42 ~io:(io_of_string "") with
   | _ -> print_endline "no exception?"
   | exception Exit -> print_endline "raised");
   Printf.printf "maps unchanged: %b\n" (List.length (maps ()) = before);
@@ -325,7 +326,7 @@ let%expect_test "10,000 map/run/unmap cycles leave the mapping count unchanged" 
 
 let ok_or_fail = function
   | Ok v -> v
-  | Error e -> failwith (Format.asprintf "%a" Native_exec.pp_error e)
+  | Error e -> failwith (Format.asprintf "%a" Rivet_native_exec.pp_error e)
 
 let u64_at io k =
   let r = ref 0L in
@@ -336,24 +337,26 @@ let u64_at io k =
 
 let%expect_test "repeated calls share one mapping, which is released by close" =
   let events = ref [] in
-  let t = ok_or_fail (Native_exec.load ~observe:(fun e -> events := e :: !events) roundtrip) in
+  let t =
+    ok_or_fail (Rivet_native_exec.load ~observe:(fun e -> events := e :: !events) roundtrip)
+  in
   let results =
     List.map
       (fun n ->
         let io = io_of_string (String.make 1 (Char.chr n) ^ String.make 7 '\000') in
-        let v = ok_or_fail (Native_exec.call t ~io) in
+        let v = ok_or_fail (Rivet_native_exec.call t ~io) in
         (v, u64_at io 8))
       [ 1; 2; 3 ]
   in
   List.iter (fun (v, w) -> Printf.printf "value %Ld, io[8] %Ld\n" v w) results;
   let count f = List.length (List.filter f !events) in
   Printf.printf "mapped %d, calling %d, unmapped before close %d\n"
-    (count (function Native_exec.Mapped _ -> true | _ -> false))
-    (count (function Native_exec.Calling _ -> true | _ -> false))
-    (count (function Native_exec.Unmapped _ -> true | _ -> false));
-  Native_exec.close t;
+    (count (function Rivet_native_exec.Mapped _ -> true | _ -> false))
+    (count (function Rivet_native_exec.Calling _ -> true | _ -> false))
+    (count (function Rivet_native_exec.Unmapped _ -> true | _ -> false));
+  Rivet_native_exec.close t;
   Printf.printf "unmapped after close %d\n"
-    (count (function Native_exec.Unmapped _ -> true | _ -> false));
+    (count (function Rivet_native_exec.Unmapped _ -> true | _ -> false));
   [%expect
     {|
     value 2, io[8] 2
@@ -364,16 +367,16 @@ let%expect_test "repeated calls share one mapping, which is released by close" =
 
 let%expect_test "a closed image refuses calls and close is idempotent" =
   let unmapped = ref 0 in
-  let observe = function Native_exec.Unmapped _ -> incr unmapped | _ -> () in
-  let t = ok_or_fail (Native_exec.load ~observe return42) in
-  Native_exec.close t;
-  Native_exec.close t;
-  (match Native_exec.call t ~io:(io_of_string "") with
+  let observe = function Rivet_native_exec.Unmapped _ -> incr unmapped | _ -> () in
+  let t = ok_or_fail (Rivet_native_exec.load ~observe return42) in
+  Rivet_native_exec.close t;
+  Rivet_native_exec.close t;
+  (match Rivet_native_exec.call t ~io:(io_of_string "") with
   | Ok _ -> print_endline "unexpectedly Ok"
-  | Error e -> print_endline (Format.asprintf "%a" Native_exec.pp_error e));
-  (match Native_exec.read_global t "counter" with
+  | Error e -> print_endline (Format.asprintf "%a" Rivet_native_exec.pp_error e));
+  (match Rivet_native_exec.read_global t "counter" with
   | Ok _ -> print_endline "unexpectedly Ok"
-  | Error e -> print_endline (Format.asprintf "%a" Native_exec.pp_error e));
+  | Error e -> print_endline (Format.asprintf "%a" Rivet_native_exec.pp_error e));
   Printf.printf "unmapped %d\n" !unmapped;
   [%expect {|
     the loaded image was closed
@@ -385,20 +388,20 @@ let%expect_test "close during a call defers the unmap until the call returns" =
   let t = ref None in
   let observe e =
     events := e :: !events;
-    match e with Native_exec.Calling _ -> Native_exec.close (Option.get !t) | _ -> ()
+    match e with Rivet_native_exec.Calling _ -> Rivet_native_exec.close (Option.get !t) | _ -> ()
   in
-  t := Some (ok_or_fail (Native_exec.load ~observe return42));
-  let v = ok_or_fail (Native_exec.call (Option.get !t) ~io:(io_of_string "")) in
+  t := Some (ok_or_fail (Rivet_native_exec.load ~observe return42));
+  let v = ok_or_fail (Rivet_native_exec.call (Option.get !t) ~io:(io_of_string "")) in
   Printf.printf "value %Ld\n" v;
   List.iter
     (function
-      | Native_exec.Calling _ -> print_endline "calling"
+      | Rivet_native_exec.Calling _ -> print_endline "calling"
       | Unmapped _ -> print_endline "unmapped"
       | _ -> ())
     (List.rev !events);
-  (match Native_exec.call (Option.get !t) ~io:(io_of_string "") with
+  (match Rivet_native_exec.call (Option.get !t) ~io:(io_of_string "") with
   | Ok _ -> print_endline "unexpectedly Ok"
-  | Error e -> print_endline (Format.asprintf "%a" Native_exec.pp_error e));
+  | Error e -> print_endline (Format.asprintf "%a" Rivet_native_exec.pp_error e));
   [%expect {|
     value 42
     calling
@@ -406,22 +409,22 @@ let%expect_test "close during a call defers the unmap until the call returns" =
     the loaded image was closed |}]
 
 let%expect_test "globals are read from the live mapping between calls" =
-  let t = ok_or_fail (Native_exec.load segments) in
+  let t = ok_or_fail (Rivet_native_exec.load segments) in
   let read () =
     String.concat ""
       (List.map
          (fun c -> Printf.sprintf "%02x" (Char.code c))
-         (List.of_seq (String.to_seq (ok_or_fail (Native_exec.read_global t "counter")))))
+         (List.of_seq (String.to_seq (ok_or_fail (Rivet_native_exec.read_global t "counter")))))
   in
   Printf.printf "before %s\n" (read ());
-  ignore (ok_or_fail (Native_exec.call t ~io:(io_of_string "")));
+  ignore (ok_or_fail (Rivet_native_exec.call t ~io:(io_of_string "")));
   Printf.printf "after one call %s\n" (read ());
-  ignore (ok_or_fail (Native_exec.call t ~io:(io_of_string "")));
+  ignore (ok_or_fail (Rivet_native_exec.call t ~io:(io_of_string "")));
   Printf.printf "after two calls %s\n" (read ());
-  (match Native_exec.read_global t "absent" with
+  (match Rivet_native_exec.read_global t "absent" with
   | Ok _ -> print_endline "unexpectedly Ok"
-  | Error e -> print_endline (Format.asprintf "%a" Native_exec.pp_error e));
-  Native_exec.close t;
+  | Error e -> print_endline (Format.asprintf "%a" Rivet_native_exec.pp_error e));
+  Rivet_native_exec.close t;
   [%expect
     {|
     before 07000000
@@ -449,13 +452,15 @@ let%expect_test "an image lowered for another target is refused before anything 
   let observe _ = incr events in
   let show = function
     | Ok _ -> print_endline "unexpectedly Ok"
-    | Error (Native_exec.Foreign_target { target; _ }) ->
+    | Error (Rivet_native_exec.Foreign_target { target; _ }) ->
         Printf.printf "refused %s, events %d\n" target !events
-    | Error e -> Format.printf "other error: %a\n" Native_exec.pp_error e
+    | Error e -> Format.printf "other error: %a\n" Rivet_native_exec.pp_error e
   in
-  show (Result.map ignore (Native_exec.load ~observe arm_image));
-  show (Result.map ignore (Native_exec.run ~observe arm_image ~io:(io_of_string "")));
-  show (Result.map ignore (Native_exec.run ~isolate:false ~observe arm_image ~io:(io_of_string "")));
+  show (Result.map ignore (Rivet_native_exec.load ~observe arm_image));
+  show (Result.map ignore (Rivet_native_exec.run ~observe arm_image ~io:(io_of_string "")));
+  show
+    (Result.map ignore
+       (Rivet_native_exec.run ~isolate:false ~observe arm_image ~io:(io_of_string "")));
   [%expect {|
     refused arm, events 0
     refused arm, events 0
@@ -464,7 +469,7 @@ let%expect_test "an image lowered for another target is refused before anything 
 let%expect_test "the host's own target tag is accepted" =
   Printf.printf "tag is host: %b, result %Ld\n"
     ((Rivet_image.plan_of return42).target = host)
-    (Result.get_ok (Native_exec.run return42 ~io:(io_of_string ""))).value;
+    (Result.get_ok (Rivet_native_exec.run return42 ~io:(io_of_string ""))).value;
   [%expect {| tag is host: true, result 42 |}]
 
 let faulting =
@@ -474,10 +479,10 @@ let faulting =
        ~riscv64:"\t.text\n\t.globl entry\nentry:\n\tli\ta0, 0\n\tld\ta0, 0(a0)\n\tret\n")
 
 let%expect_test "run isolates the image by default, so a fault does not end this process" =
-  (match Native_exec.run faulting ~io:(io_of_string "") with
-  | Error (Native_exec.Signal _) -> print_endline "signal"
+  (match Rivet_native_exec.run faulting ~io:(io_of_string "") with
+  | Error (Rivet_native_exec.Signal _) -> print_endline "signal"
   | Ok _ -> print_endline "unexpectedly Ok"
-  | Error e -> Format.printf "other error: %a\n" Native_exec.pp_error e);
+  | Error e -> Format.printf "other error: %a\n" Rivet_native_exec.pp_error e);
   [%expect {| signal |}]
 
 let strlen_caller = function
@@ -514,7 +519,7 @@ entry:
 |}
   | t -> failwith t
 
-let show_error e = print_endline (Format.asprintf "%a" Native_exec.pp_error e)
+let show_error e = print_endline (Format.asprintf "%a" Rivet_native_exec.pp_error e)
 
 (* The text after the first [needle], so output that names the host stays
    the same on every host. *)
@@ -534,25 +539,25 @@ let%expect_test "an image calling a host symbol is closed until the symbol is bo
   [%expect {| : error[image.undefined]: fixup target references undefined symbol strlen |}]
 
 let%expect_test "a bound host symbol is called through its trampoline, repeatedly" =
-  let tramp = Result.get_ok (Native_exec.bind_host ~target:host [ "strlen" ]) in
+  let tramp = Result.get_ok (Rivet_native_exec.bind_host ~target:host [ "strlen" ]) in
   let laid =
     Result.get_ok (assemble_units host [ ("main", strlen_caller host); ("host", tramp) ])
   in
-  let t = Result.get_ok (Native_exec.load laid) in
+  let t = Result.get_ok (Rivet_native_exec.load laid) in
   List.iter
     (fun s ->
-      match Native_exec.call t ~io:(io_of_string s) with
+      match Rivet_native_exec.call t ~io:(io_of_string s) with
       | Ok v -> Printf.printf "%Ld\n" v
       | Error e -> show_error e)
     [ "hello"; ""; "twelve bytes" ];
-  Native_exec.close t;
+  Rivet_native_exec.close t;
   [%expect {|
     5
     0
     12 |}]
 
 let%expect_test "an unresolvable host symbol is reported and generates nothing" =
-  (match Native_exec.bind_host ~target:host [ "strlen"; "rivet_no_such_symbol" ] with
+  (match Rivet_native_exec.bind_host ~target:host [ "strlen"; "rivet_no_such_symbol" ] with
   | Ok _ -> print_endline "bound"
   | Error e -> show_error e);
   [%expect {| host symbol rivet_no_such_symbol does not resolve in this process |}]
@@ -561,7 +566,7 @@ let%expect_test "trampolines exist for the 64-bit targets and nothing else" =
   List.iter
     (fun target ->
       let tramp =
-        Result.get_ok (Native_exec.trampolines ~target [ ("strlen", 0x123456789abcdef0L) ])
+        Result.get_ok (Rivet_native_exec.trampolines ~target [ ("strlen", 0x123456789abcdef0L) ])
       in
       match assemble_units target [ ("main", strlen_caller target); ("host", tramp) ] with
       | Ok laid ->
@@ -573,12 +578,12 @@ let%expect_test "trampolines exist for the 64-bit targets and nothing else" =
           Printf.printf "%s: assembles, .text %d bytes\n" target text.init_size
       | Error e -> print_endline (Rivet_foundation.Diag.render e))
     [ "aarch64"; "x86_64"; "riscv64" ];
-  (match Native_exec.trampolines ~target:"arm" [ ("f", 1L) ] with
+  (match Rivet_native_exec.trampolines ~target:"arm" [ ("f", 1L) ] with
   | Ok _ -> print_endline "arm: generated"
-  | Error (Native_exec.Foreign_target { target; _ }) ->
+  | Error (Rivet_native_exec.Foreign_target { target; _ }) ->
       Printf.printf "%s code cannot run natively on this host\n" target
   | Error e -> show_error e);
-  (match Native_exec.trampolines ~target:host [ ("not a symbol", 1L) ] with
+  (match Rivet_native_exec.trampolines ~target:host [ ("not a symbol", 1L) ] with
   | exception Invalid_argument m -> print_endline m
   | _ -> print_endline "accepted");
   [%expect
@@ -590,22 +595,22 @@ let%expect_test "trampolines exist for the 64-bit targets and nothing else" =
     Native_exec.trampolines: not a symbol |}]
 
 let%expect_test "a global is written into the live mapping between calls" =
-  let t = ok_or_fail (Native_exec.load segments) in
+  let t = ok_or_fail (Rivet_native_exec.load segments) in
   let hex s =
     String.concat ""
       (List.map (fun c -> Printf.sprintf "%02x" (Char.code c)) (List.of_seq (String.to_seq s)))
   in
-  ignore (ok_or_fail (Native_exec.write_global t "counter" "\x20\x00\x00\x00"));
-  Printf.printf "written %s\n" (hex (ok_or_fail (Native_exec.read_global t "counter")));
-  ignore (ok_or_fail (Native_exec.call t ~io:(io_of_string "")));
-  Printf.printf "after a call %s\n" (hex (ok_or_fail (Native_exec.read_global t "counter")));
-  (match Native_exec.write_global t "counter" "\x01" with
+  ignore (ok_or_fail (Rivet_native_exec.write_global t "counter" "\x20\x00\x00\x00"));
+  Printf.printf "written %s\n" (hex (ok_or_fail (Rivet_native_exec.read_global t "counter")));
+  ignore (ok_or_fail (Rivet_native_exec.call t ~io:(io_of_string "")));
+  Printf.printf "after a call %s\n" (hex (ok_or_fail (Rivet_native_exec.read_global t "counter")));
+  (match Rivet_native_exec.write_global t "counter" "\x01" with
   | Ok () -> print_endline "unexpectedly Ok"
-  | Error e -> print_endline (Format.asprintf "%a" Native_exec.pp_error e));
-  (match Native_exec.write_global t "absent" "\x01" with
+  | Error e -> print_endline (Format.asprintf "%a" Rivet_native_exec.pp_error e));
+  (match Rivet_native_exec.write_global t "absent" "\x01" with
   | Ok () -> print_endline "unexpectedly Ok"
-  | Error e -> print_endline (Format.asprintf "%a" Native_exec.pp_error e));
-  Native_exec.close t;
+  | Error e -> print_endline (Format.asprintf "%a" Rivet_native_exec.pp_error e));
+  Rivet_native_exec.close t;
   [%expect
     {|
     written 20000000
@@ -615,10 +620,10 @@ let%expect_test "a global is written into the live mapping between calls" =
 
 let%expect_test "a buffer's address is stable and distinct per buffer" =
   let a = io_of_string "abcd" and b = io_of_string "efgh" in
-  let aa = Native_exec.io_address a and ba = Native_exec.io_address b in
+  let aa = Rivet_native_exec.io_address a and ba = Rivet_native_exec.io_address b in
   Gc.full_major ();
   Printf.printf "stable %b distinct %b nonzero %b\n"
-    (Int64.equal aa (Native_exec.io_address a))
+    (Int64.equal aa (Rivet_native_exec.io_address a))
     (not (Int64.equal aa ba))
     (not (Int64.equal aa 0L));
   [%expect {| stable true distinct true nonzero true |}]
@@ -645,15 +650,15 @@ big:
 |}
       )
   in
-  let t = ok_or_fail (Native_exec.load img) in
+  let t = ok_or_fail (Rivet_native_exec.load img) in
   List.iter
     (fun n ->
-      match Native_exec.read_global t n with
+      match Rivet_native_exec.read_global t n with
       | Ok b -> Printf.printf "%s: %d byte(s)\n" n (String.length b)
-      | Error e -> Printf.printf "%s: %s\n" n (Format.asprintf "%a" Native_exec.pp_error e)
+      | Error e -> Printf.printf "%s: %s\n" n (Format.asprintf "%a" Rivet_native_exec.pp_error e)
       | exception ex -> Printf.printf "%s: EXCEPTION %s\n" n (Printexc.to_string ex))
     [ "ok"; "neg"; "big" ];
-  Native_exec.close t;
+  Rivet_native_exec.close t;
   [%expect
     {|
     ok: 1 byte(s)
@@ -704,11 +709,11 @@ let%expect_test "a writable executable segment loads only when the image was pla
   (match plan { Rivet_image.default_policy with allow_rwx = true } with
   | Error _ -> print_endline "refused"
   | Ok l -> (
-      match Native_exec.load l with
+      match Rivet_native_exec.load l with
       | Ok t ->
-          Native_exec.close t;
+          Rivet_native_exec.close t;
           print_endline "loaded"
-      | Error e -> Format.printf "%a@." Native_exec.pp_error e));
+      | Error e -> Format.printf "%a@." Rivet_native_exec.pp_error e));
   [%expect {|
     image.rwx-segment
     loaded |}]

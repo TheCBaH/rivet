@@ -24,7 +24,7 @@
   rivet_image
   rivet_target_intf
   rivet_driver
-  test_dump_inputs
+  rivet_test_dump_inputs
   smoke_fixtures)
  (enabled_if
   (= %{env:RIVET_MELANGE=false} true)))

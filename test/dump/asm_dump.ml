@@ -23,7 +23,7 @@ let hex s =
 
 let banner title = Printf.printf "########## %s\n" title
 
-let run (i : Test_dump_inputs.input) =
+let run (i : Rivet_test_dump_inputs.input) =
   let (module D : Rivet_target_intf.Target.DRIVER) =
     match Rivet_driver.Registry.find i.target with Some d -> d | None -> exit 1
   in
@@ -60,4 +60,4 @@ let run (i : Test_dump_inputs.input) =
   banner (name ^ " codec");
   print_string (D.dump_codec ())
 
-let () = List.iter run Test_dump_inputs.inputs
+let () = List.iter run Rivet_test_dump_inputs.inputs

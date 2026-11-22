@@ -12,8 +12,8 @@
    passed/failed decision all work end to end under real QEMU - the same
    surface Phase 4 will wire [exec.ml] to reach generically. *)
 
-open Asm_oracle
-open Asm_oracle_run
+open Rivet_oracle
+open Rivet_oracle_run
 
 (* x86-64: movabs $0x40020000,%rax ; movl $0x11223344,(%rax) ; movl $42,%eax ; ret *)
 let code =

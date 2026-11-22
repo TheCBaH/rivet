@@ -10,7 +10,7 @@
    accessors the real validator and [conform.ml]'s cases use, so a
    transcription mistake here would also be a transcription mistake there. *)
 
-open Asm_oracle
+open Rivet_oracle
 
 let profile = Abi.X86_64
 let case = Manifest.single_code profile "\x90\x90\x90\x90"

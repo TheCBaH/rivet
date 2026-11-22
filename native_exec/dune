@@ -4,7 +4,7 @@
 ; gated by RIVET_NATIVE_EXEC so that the default builds stay free of C.
 
 (library
- (name native_exec)
+ (name rivet_native_exec)
  (public_name rivet-native-exec)
  (modes byte native)
  (libraries rivet.foundation rivet.asm_core rivet.image unix)

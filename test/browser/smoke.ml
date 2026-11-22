@@ -21,7 +21,9 @@ let parser_encoder_summary () =
     | Some d -> d
     | None -> failwith ("smoke: no driver for " ^ name)
   in
-  let source = Rivet_foundation.Span.source ~name:(name ^ ".s") ~contents:Test_dump_inputs.x86_64 in
+  let source =
+    Rivet_foundation.Span.source ~name:(name ^ ".s") ~contents:Rivet_test_dump_inputs.x86_64
+  in
   let laid_out = ok_diag (D.assemble ~unit_name:"asm_test_entry" ~source ()) in
   let plan = Rivet_image.plan_of laid_out in
   let addresses =

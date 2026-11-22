@@ -43,7 +43,7 @@
   rivet_asm_core
   rivet_image
   rivet_target_encode
-  asm_oracle
+  rivet_oracle
   rivet_x86_32_encode
   rivet_x86_64_encode
   rivet_arm_encode
@@ -58,7 +58,7 @@
  (name test_snippets)
  (modules test_snippets)
  (modes byte native)
- (libraries snippet_corpus asm_oracle rivet_fmt)
+ (libraries snippet_corpus rivet_oracle rivet_fmt)
  (inline_tests)
  (preprocess
   (pps ppx_expect))

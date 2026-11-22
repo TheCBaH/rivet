@@ -7,7 +7,7 @@
  (modules trampolines)
  (modes byte native)
  (libraries
-  native_exec
+  rivet_native_exec
   rivet_driver
   rivet_driver_direct
   rivet_aarch64_encode

@@ -43,8 +43,8 @@
    splice that provably lands on 41, and inventing one per case would be four
    more things to keep true. One live control is what the gate needs. *)
 
-open Asm_oracle
-open Asm_oracle_run
+open Rivet_oracle
+open Rivet_oracle_run
 
 let profiles = [ Abi.X86_32; Abi.X86_64; Abi.Arm; Abi.Aarch64 ]
 let target_of_profile = Abi.profile_name

@@ -24,7 +24,7 @@ Every library has a public name `rivet.<library>` in the `rivet` package, apart 
 | `tool` | | The `asm.exe` command line |
 | `browser/{jsoo,melange}` | | Adapters exposing `Portable` to a browser |
 | `native_exec` | `rivet-native-exec` | In-process execution of a laid-out image; C stubs; its own opam package |
-| `test/differential` | `differential` | The GNU differential gate as a functor over a fixture corpus (`Differential.Make`), so another project can run it on its own compiler's fixtures; `test_differential` instantiates it for `fixtures/gcc-14` |
+| `test/differential` | `differential` | The GNU differential gate as a functor over a fixture corpus (`Rivet_differential.Make`), so another project can run it on its own compiler's fixtures; `test_differential` instantiates it for `fixtures/gcc-14` |
 | `docs/consumers.md` | | Printing, disassembly, listings and the smallest closure for a program that embeds Rivet |
 | `tools/` | | A separate dune project: `rivet-tools` (fixtures, oracle, gas-xref, ISA inventory) |
 

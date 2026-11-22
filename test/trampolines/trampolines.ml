@@ -29,7 +29,7 @@ let () =
     let (module D : Rivet_target_intf.Target.DRIVER) =
       Option.get (Rivet_driver.Registry.find target)
     in
-    let tramp = Result.get_ok (Native_exec.trampolines ~target bindings) in
+    let tramp = Result.get_ok (Rivet_native_exec.trampolines ~target bindings) in
     D.assemble_many ~entry:"host_f" [ ("host", Span.source ~name:"host" ~contents:tramp) ] ()
   in
   let report target typed =

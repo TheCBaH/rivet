@@ -76,7 +76,7 @@ let direct_normalized : T.Instruction.t Normalized_ast.module_ =
       ];
   }
 
-let text = Test_dump_inputs.aarch64
+let text = Rivet_test_dump_inputs.aarch64
 
 let from_text () =
   let source = Rivet_foundation.Span.source ~name:"aarch64.s" ~contents:text in

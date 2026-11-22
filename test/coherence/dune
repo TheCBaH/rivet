@@ -7,9 +7,9 @@
 ; dependency. The expect tests over it stay private.
 
 (library
- (name test_coherence)
+ (name rivet_test_support)
  (public_name rivet.test_support)
- (modules test_coherence)
+ (modules rivet_test_support)
  (modes byte native)
  (libraries
   rivet_driver
@@ -17,7 +17,7 @@
   rivet_asm_core
   rivet_aarch64
   rivet_foundation
-  test_dump_inputs
+  rivet_test_dump_inputs
   rivet_fmt)
  (enabled_if
   (<> %{env:RIVET_MELANGE=false} true)))
@@ -27,7 +27,7 @@
  (modules test_coherence_paths)
  (modes byte native)
  (libraries
-  test_coherence
+  rivet_test_support
   rivet_asm_core
   rivet_foundation
   rivet_image

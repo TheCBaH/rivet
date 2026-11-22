@@ -1,7 +1,7 @@
 opam-version: "2.0"
 synopsis: "Run a Rivet image in the calling process"
 description: """
-Native_exec maps an image laid out by Rivet, binds it at the addresses
+Rivet_native_exec maps an image laid out by Rivet, binds it at the addresses
 obtained, and calls its entry. It ships C stubs and runs code natively, so it
 is only meaningful on a host of the target's own ISA: aarch64, x86_64 or
 riscv64 Linux.

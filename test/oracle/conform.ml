@@ -25,8 +25,8 @@
 
    Snippet bytes are in memory order and quoted from the frozen tables. *)
 
-open Asm_oracle
-open Asm_oracle_run
+open Rivet_oracle
+open Rivet_oracle_run
 
 let abi_version =
   match Sys.getenv_opt "RIVET_ABI_VERSION" with
